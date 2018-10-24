@@ -3,5 +3,16 @@ kind: Deployment
 metadata:
   name: example-deployment
 spec:
-  # Add fields here
   manifest-ref: "the-manifest"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: the-manifest
+type: Opaque
+data:
+  manifest: |
+    instance-groups:
+      - name: diego
+        instances: 3
+      - name: myqsl

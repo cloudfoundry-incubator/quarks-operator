@@ -1,0 +1,4 @@
+instance-groups:
+  - name: diego
+    instances: 3
+  - name: myqsl
