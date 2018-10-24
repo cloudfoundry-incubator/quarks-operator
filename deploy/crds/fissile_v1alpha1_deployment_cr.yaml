@@ -1,0 +1,7 @@
+apiVersion: fissile.suse.com/v1alpha1
+kind: Deployment
+metadata:
+  name: example-deployment
+spec:
+  # Add fields here
+  size: 3
