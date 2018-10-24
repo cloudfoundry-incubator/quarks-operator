@@ -11,7 +11,7 @@ import (
 type DeploymentSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	ManifestRef string `jsonl:"manifest_ref"`
+	ManifestRef string `jsonl:"manifest-ref"`
 }
 
 // DeploymentStatus defines the observed state of Deployment

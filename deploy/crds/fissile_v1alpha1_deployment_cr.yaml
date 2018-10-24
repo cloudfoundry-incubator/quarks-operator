@@ -4,4 +4,4 @@ metadata:
   name: example-deployment
 spec:
   # Add fields here
-  size: 3
+  manifest-ref: "the-manifest"
