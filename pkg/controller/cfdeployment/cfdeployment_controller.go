@@ -1,10 +1,10 @@
-package deployment
+package cfdeployment
 
 import (
 	"context"
 	"log"
 
-	fissilev1alpha1 "github.com/scf/cf-operator/pkg/apis/fissile/v1alpha1"
+	fissilev1alpha1 "github.com/manno/cf-operator/pkg/apis/fissile/v1alpha1"
 	yaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -25,7 +25,7 @@ import (
 * business logic.  Delete these comments after modifying this file.*
  */
 
-// Add creates a new Deployment Controller and adds it to the Manager. The Manager will set fields on the Controller
+// Add creates a new CFDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -33,28 +33,28 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileDeployment{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileCFDeployment{client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("deployment-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("cfdeployment-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to primary resource Deployment
-	err = c.Watch(&source.Kind{Type: &fissilev1alpha1.Deployment{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to primary resource CFDeployment
+	err = c.Watch(&source.Kind{Type: &fissilev1alpha1.CFDeployment{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
 	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner Deployment
+	// Watch for changes to secondary resource Pods and requeue the owner CFDeployment
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &fissilev1alpha1.Deployment{},
+		OwnerType:    &fissilev1alpha1.CFDeployment{},
 	})
 	if err != nil {
 		return err
@@ -63,18 +63,18 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-var _ reconcile.Reconciler = &ReconcileDeployment{}
+var _ reconcile.Reconciler = &ReconcileCFDeployment{}
 
-// ReconcileDeployment reconciles a Deployment object
-type ReconcileDeployment struct {
+// ReconcileCFDeployment reconciles a CFDeployment object
+type ReconcileCFDeployment struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client client.Client
 	scheme *runtime.Scheme
 }
 
-// Reconcile reads that state of the cluster for a Deployment object and makes changes based on the state read
-// and what is in the Deployment.Spec
+// Reconcile reads that state of the cluster for a CFDeployment object and makes changes based on the state read
+// and what is in the CFDeployment.Spec
 // TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
 // a Pod as an example
 // Note:
@@ -87,14 +87,11 @@ type InstanceGroup struct {
 type Manifest struct {
 	InstanceGroups []InstanceGroup `yaml:"instance-groups"`
 }
+func (r *ReconcileCFDeployment) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	log.Printf("Reconciling CFDeployment %s/%s\n", request.Namespace, request.Name)
 
-//(m Manifest) GetObjectKind() schema.ObjectKind { return nil }
-
-func (r *ReconcileDeployment) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	log.Printf("Reconciling Deployment %s/%s\n", request.Namespace, request.Name)
-
-	// Fetch the Deployment instance
-	instance := &fissilev1alpha1.Deployment{}
+	// Fetch the CFDeployment instance
+	instance := &fissilev1alpha1.CFDeployment{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -130,7 +127,7 @@ func (r *ReconcileDeployment) Reconcile(request reconcile.Request) (reconcile.Re
 	// Define a new Pod object
 	pod := newPodForCR(manifest)
 
-	// Set Deployment instance as the owner and controller
+	// Set CFDeployment instance as the owner and controller
 	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -155,7 +152,6 @@ func (r *ReconcileDeployment) Reconcile(request reconcile.Request) (reconcile.Re
 	log.Printf("Skip reconcile: Pod %s/%s already exists", found.Namespace, found.Name)
 	return reconcile.Result{}, nil
 }
-
 // TODO:
 // *  alidate manifest
 // *

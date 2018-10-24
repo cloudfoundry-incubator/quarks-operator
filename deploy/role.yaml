@@ -36,5 +36,6 @@ rules:
   - fissile.suse.com
   resources:
   - '*'
+  - cfdeployments
   verbs:
   - '*'

@@ -1,13 +1,13 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: deployments.fissile.suse.com
+  name: cfdeployments.fissile.suse.com
 spec:
   group: fissile.suse.com
   names:
-    kind: Deployment
-    listKind: DeploymentList
-    plural: deployments
-    singular: deployment
+    kind: CFDeployment
+    listKind: CFDeploymentList
+    plural: cfdeployments
+    singular: cfdeployment
   scope: Namespaced
   version: v1alpha1

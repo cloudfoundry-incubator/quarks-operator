@@ -1,10 +1,10 @@
 package controller
 
 import (
-	"github.com/scf/cf-operator/pkg/controller/deployment"
+	"github.com/manno/cf-operator/pkg/controller/cfdeployment"
 )
 
 func init() {
 	// AddToManagerFuncs is a list of functions to create controllers and add them to a manager.
-	AddToManagerFuncs = append(AddToManagerFuncs, deployment.Add)
+	AddToManagerFuncs = append(AddToManagerFuncs, cfdeployment.Add)
 }

@@ -7,8 +7,8 @@ import (
 
 	k8sutil "github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
-	"github.com/scf/cf-operator/pkg/apis"
-	"github.com/scf/cf-operator/pkg/controller"
+	"github.com/manno/cf-operator/pkg/apis"
+	"github.com/manno/cf-operator/pkg/controller"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
