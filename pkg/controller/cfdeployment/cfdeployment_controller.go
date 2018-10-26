@@ -107,7 +107,7 @@ func (r *ReconcileCFDeployment) Reconcile(request reconcile.Request) (reconcile.
 	// retrieve secret manifest
 	config := &corev1.ConfigMap{}
 	ref := instance.Spec.ManifestRef
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: ref}, config)
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: ref, Namespace: request.Namespace}, config)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

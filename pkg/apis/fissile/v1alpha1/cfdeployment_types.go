@@ -11,7 +11,7 @@ import (
 type CFDeploymentSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	ManifestRef string `jsonl:"manifest-ref"`
+	ManifestRef string `json:"manifest-ref"`
 }
 
 // CFDeploymentStatus defines the observed state of CFDeployment
