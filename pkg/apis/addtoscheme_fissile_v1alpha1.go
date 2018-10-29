@@ -1,7 +1,7 @@
 package apis
 
 import (
-	"github.com/manno/cf-operator/pkg/apis/fissile/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/apis/fissile/v1alpha1"
 )
 
 func init() {

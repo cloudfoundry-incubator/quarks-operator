@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/manno/cf-operator/pkg/controller/cfdeployment"
+	"code.cloudfoundry.org/cf-operator/pkg/controller/cfdeployment"
 )
 
 func init() {

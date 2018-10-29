@@ -5,10 +5,10 @@ import (
 	"log"
 	"runtime"
 
+	"code.cloudfoundry.org/cf-operator/pkg/apis"
+	"code.cloudfoundry.org/cf-operator/pkg/controller"
 	k8sutil "github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
-	"github.com/manno/cf-operator/pkg/apis"
-	"github.com/manno/cf-operator/pkg/controller"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"

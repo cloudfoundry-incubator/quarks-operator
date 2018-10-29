@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	fissilev1alpha1 "github.com/manno/cf-operator/pkg/apis/fissile/v1alpha1"
+	fissilev1alpha1 "code.cloudfoundry.org/cf-operator/pkg/apis/fissile/v1alpha1"
 	yaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -87,6 +87,7 @@ type InstanceGroup struct {
 type Manifest struct {
 	InstanceGroups []InstanceGroup `yaml:"instance-groups"`
 }
+
 func (r *ReconcileCFDeployment) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	log.Printf("Reconciling CFDeployment %s/%s\n", request.Namespace, request.Name)
 
@@ -152,6 +153,7 @@ func (r *ReconcileCFDeployment) Reconcile(request reconcile.Request) (reconcile.
 	log.Printf("Skip reconcile: Pod %s/%s already exists", found.Namespace, found.Name)
 	return reconcile.Result{}, nil
 }
+
 // TODO:
 // *  alidate manifest
 // *
