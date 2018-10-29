@@ -2,13 +2,13 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
+	"os"
 	"runtime"
 
 	"code.cloudfoundry.org/cf-operator/pkg/apis"
 	"code.cloudfoundry.org/cf-operator/pkg/controller"
-	k8sutil "github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
-	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -18,14 +18,24 @@ import (
 func printVersion() {
 	log.Printf("Go Version: %s", runtime.Version())
 	log.Printf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH)
-	log.Printf("operator-sdk Version: %v", sdkVersion.Version)
+}
+
+// GetWatchNamespace returns the namespace the operator should be watching for changes
+const WatchNamespaceEnvVar = "WATCH_NAMESPACE"
+
+func getWatchNamespace() (string, error) {
+	ns, found := os.LookupEnv(WatchNamespaceEnvVar)
+	if !found {
+		return "", fmt.Errorf("%s must be set", WatchNamespaceEnvVar)
+	}
+	return ns, nil
 }
 
 func main() {
 	printVersion()
 	flag.Parse()
 
-	namespace, err := k8sutil.GetWatchNamespace()
+	namespace, err := getWatchNamespace()
 	if err != nil {
 		log.Fatalf("failed to get watch namespace: %v", err)
 	}

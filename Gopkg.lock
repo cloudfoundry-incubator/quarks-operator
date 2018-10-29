@@ -196,15 +196,6 @@
   version = "1.0.1"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/operator-framework/operator-sdk"
-  packages = [
-    "pkg/util/k8sutil",
-    "version"
-  ]
-  revision = "d4a6b28b3249a1f07068406cc48679f525d07cfc"
-
-[[projects]]
   name = "github.com/pborman/uuid"
   packages = ["."]
   revision = "adf5a7427709b9deb95d29d3fa8a2bf9cfd388f1"
