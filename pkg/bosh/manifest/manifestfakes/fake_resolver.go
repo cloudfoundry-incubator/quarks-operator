@@ -9,10 +9,10 @@ import (
 )
 
 type FakeResolver struct {
-	ResolveCRDStub        func(v1alpha1.CFDeploymentSpec, string) (*manifest.Manifest, error)
+	ResolveCRDStub        func(v1alpha1.BOSHDeploymentSpec, string) (*manifest.Manifest, error)
 	resolveCRDMutex       sync.RWMutex
 	resolveCRDArgsForCall []struct {
-		arg1 v1alpha1.CFDeploymentSpec
+		arg1 v1alpha1.BOSHDeploymentSpec
 		arg2 string
 	}
 	resolveCRDReturns struct {
@@ -27,11 +27,11 @@ type FakeResolver struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeResolver) ResolveCRD(arg1 v1alpha1.CFDeploymentSpec, arg2 string) (*manifest.Manifest, error) {
+func (fake *FakeResolver) ResolveCRD(arg1 v1alpha1.BOSHDeploymentSpec, arg2 string) (*manifest.Manifest, error) {
 	fake.resolveCRDMutex.Lock()
 	ret, specificReturn := fake.resolveCRDReturnsOnCall[len(fake.resolveCRDArgsForCall)]
 	fake.resolveCRDArgsForCall = append(fake.resolveCRDArgsForCall, struct {
-		arg1 v1alpha1.CFDeploymentSpec
+		arg1 v1alpha1.BOSHDeploymentSpec
 		arg2 string
 	}{arg1, arg2})
 	fake.recordInvocation("ResolveCRD", []interface{}{arg1, arg2})
@@ -52,13 +52,13 @@ func (fake *FakeResolver) ResolveCRDCallCount() int {
 	return len(fake.resolveCRDArgsForCall)
 }
 
-func (fake *FakeResolver) ResolveCRDCalls(stub func(v1alpha1.CFDeploymentSpec, string) (*manifest.Manifest, error)) {
+func (fake *FakeResolver) ResolveCRDCalls(stub func(v1alpha1.BOSHDeploymentSpec, string) (*manifest.Manifest, error)) {
 	fake.resolveCRDMutex.Lock()
 	defer fake.resolveCRDMutex.Unlock()
 	fake.ResolveCRDStub = stub
 }
 
-func (fake *FakeResolver) ResolveCRDArgsForCall(i int) (v1alpha1.CFDeploymentSpec, string) {
+func (fake *FakeResolver) ResolveCRDArgsForCall(i int) (v1alpha1.BOSHDeploymentSpec, string) {
 	fake.resolveCRDMutex.RLock()
 	defer fake.resolveCRDMutex.RUnlock()
 	argsForCall := fake.resolveCRDArgsForCall[i]

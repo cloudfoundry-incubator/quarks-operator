@@ -40,24 +40,24 @@ func TestResolveCRD(t *testing.T) {
 
 	resolver := bdm.NewResolver(client)
 
-	spec := fissile.CFDeploymentSpec{ManifestRef: "foo"}
+	spec := fissile.BOSHDeploymentSpec{ManifestRef: "foo"}
 	manifest, err := resolver.ResolveCRD(spec, "default")
 
 	assert.NoError(err)
 	assert.NotNil(manifest)
 	assert.Equal(0, len(manifest.InstanceGroups))
 
-	spec = fissile.CFDeploymentSpec{ManifestRef: "bar"}
+	spec = fissile.BOSHDeploymentSpec{ManifestRef: "bar"}
 	manifest, err = resolver.ResolveCRD(spec, "default")
 	assert.Error(err)
 	assert.Contains(err.Error(), "configmaps \"bar\" not found")
 
-	spec = fissile.CFDeploymentSpec{ManifestRef: "missing_key"}
+	spec = fissile.BOSHDeploymentSpec{ManifestRef: "missing_key"}
 	manifest, err = resolver.ResolveCRD(spec, "default")
 	assert.Error(err)
 	assert.Contains(err.Error(), "configmap doesn't contain manifest key")
 
-	spec = fissile.CFDeploymentSpec{ManifestRef: "invalid_yaml"}
+	spec = fissile.BOSHDeploymentSpec{ManifestRef: "invalid_yaml"}
 	manifest, err = resolver.ResolveCRD(spec, "default")
 	assert.Error(err)
 	assert.Contains(err.Error(), "yaml: unmarshal errors")

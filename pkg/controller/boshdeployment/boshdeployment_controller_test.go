@@ -1,4 +1,4 @@
-package cfdeployment_test
+package boshdeployment_test
 
 import (
 	"fmt"
@@ -8,8 +8,8 @@ import (
 	fissile "code.cloudfoundry.org/cf-operator/pkg/apis/fissile/v1alpha1"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/manifestfakes"
-	cfd "code.cloudfoundry.org/cf-operator/pkg/controller/cfdeployment"
-	cfakes "code.cloudfoundry.org/cf-operator/pkg/controller/cfdeployment/fakes"
+	cfd "code.cloudfoundry.org/cf-operator/pkg/controller/boshdeployment"
+	cfakes "code.cloudfoundry.org/cf-operator/pkg/controller/boshdeployment/fakes"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -72,12 +72,12 @@ func TestReconcileManifestOK(t *testing.T) {
 	assert := assert.New(t)
 
 	c := fake.NewFakeClient(
-		&fissile.CFDeployment{
+		&fissile.BOSHDeployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
 				Namespace: "default",
 			},
-			Spec: fissile.CFDeploymentSpec{},
+			Spec: fissile.BOSHDeploymentSpec{},
 		},
 	)
 
@@ -98,12 +98,12 @@ func TestReconcileSetControllerReference(t *testing.T) {
 	assert := assert.New(t)
 
 	c := fake.NewFakeClient(
-		&fissile.CFDeployment{
+		&fissile.BOSHDeployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
 				Namespace: "default",
 			},
-			Spec: fissile.CFDeploymentSpec{},
+			Spec: fissile.BOSHDeploymentSpec{},
 		},
 	)
 

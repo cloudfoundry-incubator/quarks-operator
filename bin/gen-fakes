@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
 
-counterfeiter -o pkg/controller/cfdeployment/fakes/manager.go vendor/sigs.k8s.io/controller-runtime/pkg/manager Manager
-counterfeiter -o pkg/controller/cfdeployment/fakes/client.go vendor/sigs.k8s.io/controller-runtime/pkg/client Client
+counterfeiter -o pkg/controller/boshdeployment/fakes/manager.go vendor/sigs.k8s.io/controller-runtime/pkg/manager Manager
+counterfeiter -o pkg/controller/boshdeployment/fakes/client.go vendor/sigs.k8s.io/controller-runtime/pkg/client Client
 counterfeiter pkg/bosh/manifest/ Resolver

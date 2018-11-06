@@ -1,7 +1,7 @@
 apiVersion: fissile.suse.com/v1alpha1
-kind: CFDeployment
+kind: BOSHDeployment
 metadata:
-  name: example-cfdeployment
+  name: example-boshdeployment
 spec:
   manifest-ref: "the-manifest"
 ---

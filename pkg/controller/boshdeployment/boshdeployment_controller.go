@@ -1,4 +1,4 @@
-package cfdeployment
+package boshdeployment
 
 import (
 	"context"
@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// Add creates a new CFDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
+// Add creates a new BOSHDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, NewReconciler(mgr, bdm.NewResolver(mgr.GetClient()), controllerutil.SetControllerReference))
@@ -29,7 +29,7 @@ func Add(mgr manager.Manager) error {
 
 // NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
-	return &ReconcileCFDeployment{
+	return &ReconcileBOSHDeployment{
 		client:       mgr.GetClient(),
 		scheme:       mgr.GetScheme(),
 		resolver:     resolver,
@@ -40,21 +40,21 @@ func NewReconciler(mgr manager.Manager, resolver bdm.Resolver, srf setReferenceF
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("cfdeployment-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("boshdeployment-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to primary resource CFDeployment
-	err = c.Watch(&source.Kind{Type: &fissilev1alpha1.CFDeployment{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to primary resource BOSHDeployment
+	err = c.Watch(&source.Kind{Type: &fissilev1alpha1.BOSHDeployment{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to secondary resource Pods and requeue the owner CFDeployment
+	// Watch for changes to secondary resource Pods and requeue the owner BOSHDeployment
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &fissilev1alpha1.CFDeployment{},
+		OwnerType:    &fissilev1alpha1.BOSHDeployment{},
 	})
 	if err != nil {
 		return err
@@ -63,12 +63,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-var _ reconcile.Reconciler = &ReconcileCFDeployment{}
+var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
-// ReconcileCFDeployment reconciles a CFDeployment object
-type ReconcileCFDeployment struct {
+// ReconcileBOSHDeployment reconciles a BOSHDeployment object
+type ReconcileBOSHDeployment struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client       client.Client
@@ -77,16 +77,16 @@ type ReconcileCFDeployment struct {
 	setReference setReferenceFunc
 }
 
-// Reconcile reads that state of the cluster for a CFDeployment object and makes changes based on the state read
-// and what is in the CFDeployment.Spec
+// Reconcile reads that state of the cluster for a BOSHDeployment object and makes changes based on the state read
+// and what is in the BOSHDeployment.Spec
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReconcileCFDeployment) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	log.Printf("Reconciling CFDeployment %s\n", request.NamespacedName)
+func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	log.Printf("Reconciling BOSHDeployment %s\n", request.NamespacedName)
 
-	// Fetch the CFDeployment instance
-	instance := &fissilev1alpha1.CFDeployment{}
+	// Fetch the BOSHDeployment instance
+	instance := &fissilev1alpha1.BOSHDeployment{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -113,7 +113,7 @@ func (r *ReconcileCFDeployment) Reconcile(request reconcile.Request) (reconcile.
 	// Define a new Pod object
 	pod := newPodForCR(manifest)
 
-	// Set CFDeployment instance as the owner and controller
+	// Set BOSHDeployment instance as the owner and controller
 	if err := r.setReference(instance, pod, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}

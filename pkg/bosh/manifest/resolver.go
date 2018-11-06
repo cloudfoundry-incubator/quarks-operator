@@ -14,7 +14,7 @@ import (
 
 // Resolver resolves references from CRD to a BOSH manifest
 type Resolver interface {
-	ResolveCRD(fissile.CFDeploymentSpec, string) (*Manifest, error)
+	ResolveCRD(fissile.BOSHDeploymentSpec, string) (*Manifest, error)
 }
 
 // ResolverImpl implements Resolver interface
@@ -28,7 +28,7 @@ func NewResolver(client client.Client) *ResolverImpl {
 }
 
 // ResolveCRD returns manifest referenced by our CRD
-func (r *ResolverImpl) ResolveCRD(spec fissile.CFDeploymentSpec, namespace string) (*Manifest, error) {
+func (r *ResolverImpl) ResolveCRD(spec fissile.BOSHDeploymentSpec, namespace string) (*Manifest, error) {
 	manifest := &Manifest{}
 
 	// TODO for now we only support config map ref

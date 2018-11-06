@@ -7,15 +7,15 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// CFDeploymentSpec defines the desired state of CFDeployment
-type CFDeploymentSpec struct {
+// BOSHDeploymentSpec defines the desired state of BOSHDeployment
+type BOSHDeploymentSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	ManifestRef string `json:"manifest-ref"`
 }
 
-// CFDeploymentStatus defines the observed state of CFDeployment
-type CFDeploymentStatus struct {
+// BOSHDeploymentStatus defines the observed state of BOSHDeployment
+type BOSHDeploymentStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	Nodes []string `json:"nodes"`
@@ -23,25 +23,25 @@ type CFDeploymentStatus struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// CFDeployment is the Schema for the cfdeployments API
+// BOSHDeployment is the Schema for the boshdeployments API
 // +k8s:openapi-gen=true
-type CFDeployment struct {
+type BOSHDeployment struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   CFDeploymentSpec   `json:"spec,omitempty"`
-	Status CFDeploymentStatus `json:"status,omitempty"`
+	Spec   BOSHDeploymentSpec   `json:"spec,omitempty"`
+	Status BOSHDeploymentStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// CFDeploymentList contains a list of CFDeployment
-type CFDeploymentList struct {
+// BOSHDeploymentList contains a list of BOSHDeployment
+type BOSHDeploymentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []CFDeployment `json:"items"`
+	Items           []BOSHDeployment `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&CFDeployment{}, &CFDeploymentList{})
+	SchemeBuilder.Register(&BOSHDeployment{}, &BOSHDeploymentList{})
 }
