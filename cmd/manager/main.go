@@ -20,7 +20,7 @@ func printVersion() {
 	log.Printf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH)
 }
 
-// GetWatchNamespace returns the namespace the operator should be watching for changes
+// WatchNamespaceEnvVar contains the namespace the operator should be watching for changes
 const WatchNamespaceEnvVar = "WATCH_NAMESPACE"
 
 func getWatchNamespace() (string, error) {

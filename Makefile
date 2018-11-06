@@ -7,4 +7,9 @@ up:
 	go run cmd/manager/main.go
 
 generate:
-	bash vendor/k8s.io/code-generator/generate-groups.sh deepcopy code.cloudfoundry.org/cf-operator/pkg/generated github.com/cloudfoundry-incubator/cf-operator/pkg/apis fissile:v1alpha1,
+	bash ${GOPATH}/src/k8s.io/code-generator/generate-groups.sh deepcopy code.cloudfoundry.org/cf-operator/pkg/generated github.com/cloudfoundry-incubator/cf-operator/pkg/apis fissile:v1alpha1,
+	bin/gen-fakes
+
+test:
+	bin/test
+	bin/test-integration

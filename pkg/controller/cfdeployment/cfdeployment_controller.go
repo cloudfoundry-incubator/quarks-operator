@@ -2,10 +2,11 @@ package cfdeployment
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	fissilev1alpha1 "code.cloudfoundry.org/cf-operator/pkg/apis/fissile/v1alpha1"
-	yaml "gopkg.in/yaml.v2"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,20 +21,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
-
 // Add creates a new CFDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+	return add(mgr, NewReconciler(mgr, bdm.NewResolver(mgr.GetClient()), controllerutil.SetControllerReference))
 }
 
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileCFDeployment{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+// NewReconciler returns a new reconcile.Reconciler
+func NewReconciler(mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
+	return &ReconcileCFDeployment{
+		client:       mgr.GetClient(),
+		scheme:       mgr.GetScheme(),
+		resolver:     resolver,
+		setReference: srf,
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -50,7 +51,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
 	// Watch for changes to secondary resource Pods and requeue the owner CFDeployment
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
@@ -65,31 +65,25 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 var _ reconcile.Reconciler = &ReconcileCFDeployment{}
 
+type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
+
 // ReconcileCFDeployment reconciles a CFDeployment object
 type ReconcileCFDeployment struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	client       client.Client
+	scheme       *runtime.Scheme
+	resolver     bdm.Resolver
+	setReference setReferenceFunc
 }
 
 // Reconcile reads that state of the cluster for a CFDeployment object and makes changes based on the state read
 // and what is in the CFDeployment.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-type InstanceGroup struct {
-	Name      string
-	Instances int
-}
-type Manifest struct {
-	InstanceGroups []InstanceGroup `yaml:"instance-groups"`
-}
-
 func (r *ReconcileCFDeployment) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	log.Printf("Reconciling CFDeployment %s/%s\n", request.Namespace, request.Name)
+	log.Printf("Reconciling CFDeployment %s\n", request.NamespacedName)
 
 	// Fetch the CFDeployment instance
 	instance := &fissilev1alpha1.CFDeployment{}
@@ -106,33 +100,25 @@ func (r *ReconcileCFDeployment) Reconcile(request reconcile.Request) (reconcile.
 	}
 
 	// retrieve secret manifest
-	config := &corev1.ConfigMap{}
-	ref := instance.Spec.ManifestRef
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: ref, Namespace: request.Namespace}, config)
+	manifest, err := r.resolver.ResolveCRD(instance.Spec, request.Namespace)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	// unmarshal manifet.data into bosh deployment mana... LoadManifest() from fisisle
-	m, ok := config.Data["manifest"]
-	if !ok {
-		return reconcile.Result{}, nil
-	}
-	manifest := &Manifest{}
-	err = yaml.Unmarshal([]byte(m), manifest)
-	if err != nil {
-		return reconcile.Result{}, nil
-	}
 
 	// TODO validation
+	if len(manifest.InstanceGroups) < 1 {
+		return reconcile.Result{}, fmt.Errorf("manifest is missing instance groups")
+	}
 
 	// Define a new Pod object
 	pod := newPodForCR(manifest)
 
 	// Set CFDeployment instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
+	if err := r.setReference(instance, pod, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
 
+	// TODO example implementation, untested, replace eventually
 	// Check if this Pod already exists
 	found := &corev1.Pod{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
@@ -154,12 +140,8 @@ func (r *ReconcileCFDeployment) Reconcile(request reconcile.Request) (reconcile.
 	return reconcile.Result{}, nil
 }
 
-// TODO:
-// *  alidate manifest
-// *
-
 // newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *Manifest) *corev1.Pod {
+func newPodForCR(cr *bdm.Manifest) *corev1.Pod {
 	ig := cr.InstanceGroups[0]
 	labels := map[string]string{
 		"app": ig.Name,
