@@ -1,0 +1,17 @@
+apiVersion: fissile.suse.com/v1alpha1
+kind: BOSHDeployment
+metadata:
+  name: example-boshdeployment
+spec:
+  manifest-ref: "the-manifest"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: the-manifest
+data:
+  manifest: |
+    instance-groups:
+      - name: diego
+        instances: 3
+      - name: myqsl
