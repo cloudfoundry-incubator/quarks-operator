@@ -2,7 +2,6 @@ package boshdeployment_test
 
 import (
 	"fmt"
-	"testing"
 
 	"code.cloudfoundry.org/cf-operator/pkg/apis"
 	fissile "code.cloudfoundry.org/cf-operator/pkg/apis/fissile/v1alpha1"
@@ -18,111 +17,115 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/stretchr/testify/assert"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-func init() {
-	// Add types to scheme: https://github.com/kubernetes-sigs/controller-runtime/issues/137
-	apis.AddToScheme(scheme.Scheme)
-}
-
-func TestReconcileFetchInstance(t *testing.T) {
-	assert := assert.New(t)
-
-	c := &cfakes.FakeClient{}
-	m := &cfakes.FakeManager{}
-	m.GetClientReturns(c)
-
-	r := cfd.NewReconciler(m, &manifestfakes.FakeResolver{}, controllerutil.SetControllerReference)
-
-	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "notfound", Namespace: "default"}}
-
-	c.GetReturns(errors.NewNotFound(schema.GroupResource{}, "not found is requeued"))
-	result, err := r.Reconcile(request)
-	assert.NoError(err)
-	assert.Equal(reconcile.Result{}, result)
-
-	c.GetReturns(errors.NewBadRequest("bad request returns error"))
-	result, err = r.Reconcile(request)
-	assert.Error(err)
-	assert.Contains(err.Error(), "bad request returns error")
-}
-
-func TestReconcileResolve(t *testing.T) {
-	assert := assert.New(t)
-
-	c := &cfakes.FakeClient{}
-	m := &cfakes.FakeManager{}
-	m.GetClientReturns(c)
-	resolver := &manifestfakes.FakeResolver{}
-	resolver.ResolveCRDReturns(nil, fmt.Errorf("resolver error"))
-
-	r := cfd.NewReconciler(m, resolver, controllerutil.SetControllerReference)
-
-	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "resolver error", Namespace: "default"}}
-	_, err := r.Reconcile(request)
-	assert.Error(err)
-	assert.Contains(err.Error(), "resolver error")
-}
-
-func TestReconcileManifestOK(t *testing.T) {
-	assert := assert.New(t)
-
-	c := fake.NewFakeClient(
-		&fissile.BOSHDeployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "default",
-			},
-			Spec: fissile.BOSHDeploymentSpec{},
-		},
+var _ = Describe("ReconcileBoshDeployment", func() {
+	var (
+		manager    *cfakes.FakeManager
+		reconciler reconcile.Reconciler
+		request    reconcile.Request
+		resolver   manifestfakes.FakeResolver
+		manifest   *bdm.Manifest
 	)
 
-	m := &cfakes.FakeManager{}
-	m.GetClientReturns(c)
-	resolver := &manifestfakes.FakeResolver{}
-	resolver.ResolveCRDReturns(&bdm.Manifest{}, nil)
-	r := cfd.NewReconciler(m, resolver, controllerutil.SetControllerReference)
-
-	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-	_, err := r.Reconcile(request)
-
-	assert.Error(err)
-	assert.Contains(err.Error(), "manifest is missing instance groups")
-}
-
-func TestReconcileSetControllerReference(t *testing.T) {
-	assert := assert.New(t)
-
-	c := fake.NewFakeClient(
-		&fissile.BOSHDeployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "default",
+	BeforeEach(func() {
+		apis.AddToScheme(scheme.Scheme)
+		manager = &cfakes.FakeManager{}
+		resolver = manifestfakes.FakeResolver{}
+		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
+		manifest = &bdm.Manifest{
+			InstanceGroups: []bdm.InstanceGroup{
+				bdm.InstanceGroup{Name: "fakepod"},
 			},
-			Spec: fissile.BOSHDeploymentSpec{},
-		},
-	)
-
-	m := &cfakes.FakeManager{}
-	m.GetClientReturns(c)
-	manifest := &bdm.Manifest{
-		InstanceGroups: []bdm.InstanceGroup{
-			bdm.InstanceGroup{Name: "fakepod"},
-		},
-	}
-	resolver := &manifestfakes.FakeResolver{}
-	resolver.ResolveCRDReturns(manifest, nil)
-	r := cfd.NewReconciler(m, resolver, func(owner, object metav1.Object, scheme *runtime.Scheme) error {
-		return fmt.Errorf("failed to set reference")
+		}
 	})
 
-	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-	_, err := r.Reconcile(request)
+	JustBeforeEach(func() {
+		resolver.ResolveCRDReturns(manifest, nil)
+		reconciler = cfd.NewReconciler(manager, &resolver, controllerutil.SetControllerReference)
+	})
 
-	assert.Error(err)
-	assert.Contains(err.Error(), "failed to set reference")
-}
+	Describe("Reconcile", func() {
+		Context("when the manifest can not be resolved", func() {
+			var (
+				client *cfakes.FakeClient
+			)
+			BeforeEach(func() {
+				client = &cfakes.FakeClient{}
+				manager.GetClientReturns(client)
+			})
+
+			It("returns an empty Result when the resource was not found", func() {
+				client.GetReturns(errors.NewNotFound(schema.GroupResource{}, "not found is requeued"))
+
+				reconciler.Reconcile(request)
+				result, err := reconciler.Reconcile(request)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(reconcile.Result{}).To(Equal(result))
+			})
+
+			It("throws an error when the request failed", func() {
+				client.GetReturns(errors.NewBadRequest("bad request returns error"))
+
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("bad request returns error"))
+			})
+
+			It("handles errors when resolving the CR", func() {
+				resolver.ResolveCRDReturns(nil, fmt.Errorf("resolver error"))
+
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("resolver error"))
+			})
+		})
+
+		Context("when the manifest can be resolved", func() {
+			var (
+				client client.Client
+			)
+			BeforeEach(func() {
+				client = fake.NewFakeClient(
+					&fissile.BOSHDeployment{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "foo",
+							Namespace: "default",
+						},
+						Spec: fissile.BOSHDeploymentSpec{},
+					},
+				)
+				manager.GetClientReturns(client)
+			})
+
+			Context("With an empty manifest", func() {
+				BeforeEach(func() {
+					manifest = &bdm.Manifest{}
+				})
+
+				It("raises an error if there are no instance groups defined in the manifest", func() {
+					_, err := reconciler.Reconcile(request)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("manifest is missing instance groups"))
+				})
+			})
+
+			It("handles errors when setting the owner reference on the object", func() {
+				reconciler = cfd.NewReconciler(manager, &resolver, func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+					return fmt.Errorf("failed to set reference")
+				})
+
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to set reference"))
+			})
+		})
+	})
+})
