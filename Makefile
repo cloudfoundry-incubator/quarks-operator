@@ -13,6 +13,7 @@ up:
 
 generate:
 	bash ${GOPATH}/src/k8s.io/code-generator/generate-groups.sh deepcopy code.cloudfoundry.org/cf-operator/pkg/generated github.com/cloudfoundry-incubator/cf-operator/pkg/apis fissile:v1alpha1,
+	client-gen -h /dev/null --clientset-name versioned --input-base code.cloudfoundry.org/cf-operator --input pkg/apis/fissile/v1alpha1 --output-package code.cloudfoundry.org/cf-operator/pkg/client/clientset
 	bin/gen-fakes
 
 test-unit:
