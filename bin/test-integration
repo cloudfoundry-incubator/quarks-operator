@@ -1,4 +1,15 @@
 #!/bin/sh
 set -e
 
-go test $(go list ./... | grep /integration)
+
+export TEST_NAMESPACE="test$(date +%s)"
+
+trap " kubectl delete namespace "$TEST_NAMESPACE" " EXIT
+
+# we could create CRD from Go
+kubectl apply -f deploy/crds/fissile_v1alpha1_boshdeployment_crd.yaml
+kubectl get customresourcedefinitions
+kubectl create namespace "$TEST_NAMESPACE"
+
+
+ginkgo integration/

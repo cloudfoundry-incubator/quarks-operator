@@ -111,7 +111,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Define a new Pod object
-	pod := newPodForCR(manifest)
+	pod := newPodForCR(manifest, request.Namespace)
 
 	// Set BOSHDeployment instance as the owner and controller
 	if err := r.setReference(instance, pod, r.scheme); err != nil {
@@ -141,7 +141,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 }
 
 // newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *bdm.Manifest) *corev1.Pod {
+func newPodForCR(cr *bdm.Manifest, namespace string) *corev1.Pod {
 	ig := cr.InstanceGroups[0]
 	labels := map[string]string{
 		"app": ig.Name,
@@ -149,7 +149,7 @@ func newPodForCR(cr *bdm.Manifest) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ig.Name + "-pod",
-			Namespace: "default",
+			Namespace: namespace,
 			Labels:    labels,
 		},
 		Spec: corev1.PodSpec{

@@ -7,9 +7,8 @@ import (
 	"os"
 	"runtime"
 
-	"code.cloudfoundry.org/cf-operator/pkg/apis"
-	"code.cloudfoundry.org/cf-operator/pkg/controller"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"code.cloudfoundry.org/cf-operator/pkg/operator"
+
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
@@ -40,35 +39,16 @@ func main() {
 		log.Fatalf("failed to get watch namespace: %v", err)
 	}
 
-	// TODO: Expose metrics port after SDK uses controller-runtime's dynamic client
-	// sdk.ExposeMetricsPort()
-
-	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Create a new Cmd to provide shared dependencies and start components
-	mgr, err := manager.New(cfg, manager.Options{Namespace: namespace})
+	mgr, err := operator.Setup(cfg, manager.Options{Namespace: namespace})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Print("Registering Components.")
-
-	// Setup Scheme for all resources
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Fatal(err)
-	}
-
-	// Setup all Controllers
-	if err := controller.AddToManager(mgr); err != nil {
-		log.Fatal(err)
-	}
-
 	log.Print("Starting the Cmd.")
-
-	// Start the Cmd
 	log.Fatal(mgr.Start(signals.SetupSignalHandler()))
 }
