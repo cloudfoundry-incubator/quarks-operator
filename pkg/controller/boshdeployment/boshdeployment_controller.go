@@ -99,7 +99,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
-	// retrieve secret manifest
+	// retrieve manifest
 	manifest, err := r.resolver.ResolveCRD(instance.Spec, request.Namespace)
 	if err != nil {
 		return reconcile.Result{}, err
