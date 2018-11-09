@@ -3,4 +3,4 @@ set -e
 
 go vet $(go list ./...)
 golint $(go list ./...)
-go test $(go list ./... | grep -v /integration)
+ginkgo -r -skipPackage integration
