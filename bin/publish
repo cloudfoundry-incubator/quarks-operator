@@ -1,0 +1,8 @@
+#!/bin/bash
+
+GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
+. "${GIT_ROOT}/bin/include/versioning"
+. "${GIT_ROOT}/.envrc"
+
+docker push ${OPERATOR_DOCKER_ORGANIZATION}/cf-operator:${VERSION_TAG}
+

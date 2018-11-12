@@ -1,6 +1,11 @@
-image:
-	go build -o build/_output/bin/cf-operator cmd/manager/main.go
-	docker build . -f build/Dockerfile -t cf-operator:latest
+all: test-unit build image
+
+.PHONY: build
+build:
+	bin/build
+
+image: build
+	bin/build-image
 
 export WATCH_NAMESPACE ?= default
 up:
@@ -10,6 +15,13 @@ generate:
 	bash ${GOPATH}/src/k8s.io/code-generator/generate-groups.sh deepcopy code.cloudfoundry.org/cf-operator/pkg/generated github.com/cloudfoundry-incubator/cf-operator/pkg/apis fissile:v1alpha1,
 	bin/gen-fakes
 
-test:
+test-unit:
 	bin/test
+
+test-integration:
 	bin/test-integration
+
+test: test-unit test-integration
+
+publish: image
+	bin/publish
