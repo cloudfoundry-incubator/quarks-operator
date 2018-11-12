@@ -1,6 +1,5 @@
 #!/bin/sh
-set -e
+set -ev
 
-go vet $(go list ./...)
-golint $(go list ./...)
-ginkgo -r -skipPackage integration
+bin/test-unit
+bin/test-integration

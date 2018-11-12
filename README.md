@@ -11,3 +11,16 @@ It's implemented as a k8s operator, an active controller component which acts up
 ## Install
 
 cf-operator is still missing core functionality.
+
+## Development
+
+### Start Operator Locally
+
+    make up
+    kubectl apply -f deploy/crds/fissile_v1alpha1_boshdeployment_cr.yaml
+    kubectl get boshdeployments.fissile.suse.com
+    kubectl get pods --watch
+
+    # clean up
+    kubectl delete configmap bosh-manifest
+    kubectl delete boshdeployments.fissile.suse.com example-boshdeployment

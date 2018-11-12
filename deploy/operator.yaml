@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: BOSHDeployment
+kind: Deployment
 metadata:
   name: cf-operator
 spec:

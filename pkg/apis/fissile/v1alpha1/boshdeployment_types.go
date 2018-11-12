@@ -21,6 +21,7 @@ type BOSHDeploymentStatus struct {
 	Nodes []string `json:"nodes"`
 }
 
+// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // BOSHDeployment is the Schema for the boshdeployments API
