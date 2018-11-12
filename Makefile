@@ -7,8 +7,8 @@ build:
 image: build
 	bin/build-image
 
-publish: image
-	bin/publish
+helm:
+	bin/build-helm
 
 export CFO_NAMESPACE ?= default
 up:
