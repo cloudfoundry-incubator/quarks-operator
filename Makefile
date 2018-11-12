@@ -19,7 +19,7 @@ generate:
 	bin/gen-fakes
 
 test-unit:
-	bin/test
+	bin/test-unit
 
 test-integration:
 	bin/test-integration
