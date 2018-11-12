@@ -14,7 +14,7 @@ type FissileV1alpha1Interface interface {
 	BOSHDeploymentsGetter
 }
 
-// FissileV1alpha1Client is used to interact with features provided by the fissile.suse.com group.
+// FissileV1alpha1Client is used to interact with features provided by the fissile.cloudfoundry.org group.
 type FissileV1alpha1Client struct {
 	restClient rest.Interface
 }

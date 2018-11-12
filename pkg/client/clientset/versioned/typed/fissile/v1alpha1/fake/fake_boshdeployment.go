@@ -18,9 +18,9 @@ type FakeBOSHDeployments struct {
 	ns   string
 }
 
-var boshdeploymentsResource = schema.GroupVersionResource{Group: "fissile.suse.com", Version: "v1alpha1", Resource: "boshdeployments"}
+var boshdeploymentsResource = schema.GroupVersionResource{Group: "fissile.cloudfoundry.org", Version: "v1alpha1", Resource: "boshdeployments"}
 
-var boshdeploymentsKind = schema.GroupVersionKind{Group: "fissile.suse.com", Version: "v1alpha1", Kind: "BOSHDeployment"}
+var boshdeploymentsKind = schema.GroupVersionKind{Group: "fissile.cloudfoundry.org", Version: "v1alpha1", Kind: "BOSHDeployment"}
 
 // Get takes name of the bOSHDeployment, and returns the corresponding bOSHDeployment object, and an error if there is any.
 func (c *FakeBOSHDeployments) Get(name string, options v1.GetOptions) (result *v1alpha1.BOSHDeployment, err error) {

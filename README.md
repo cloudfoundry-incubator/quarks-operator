@@ -18,9 +18,9 @@ cf-operator is still missing core functionality.
 
     make up
     kubectl apply -f deploy/crds/fissile_v1alpha1_boshdeployment_cr.yaml
-    kubectl get boshdeployments.fissile.suse.com
+    kubectl get boshdeployments.fissile.cloudfoundry.org
     kubectl get pods --watch
 
     # clean up
     kubectl delete configmap bosh-manifest
-    kubectl delete boshdeployments.fissile.suse.com example-boshdeployment
+    kubectl delete boshdeployments.fissile.cloudfoundry.org example-boshdeployment
