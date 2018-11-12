@@ -33,7 +33,7 @@ rules:
   - get
   - create
 - apiGroups:
-  - fissile.suse.com
+  - fissile.cloudfoundry.org
   resources:
   - '*'
   - boshdeployments
