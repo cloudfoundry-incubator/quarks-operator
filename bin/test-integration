@@ -15,4 +15,4 @@ kubectl get customresourcedefinitions
 kubectl create namespace "$TEST_NAMESPACE"
 
 
-ginkgo integration/
+ginkgo integration/ e2e/
