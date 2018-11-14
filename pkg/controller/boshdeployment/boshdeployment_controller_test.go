@@ -9,6 +9,9 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/manifestfakes"
 	cfd "code.cloudfoundry.org/cf-operator/pkg/controller/boshdeployment"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/controller/boshdeployment/fakes"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest/observer"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,6 +36,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		request    reconcile.Request
 		resolver   manifestfakes.FakeResolver
 		manifest   *bdm.Manifest
+		log        *zap.SugaredLogger
 	)
 
 	BeforeEach(func() {
@@ -45,11 +49,13 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				bdm.InstanceGroup{Name: "fakepod"},
 			},
 		}
+		core, _ := observer.New(zapcore.InfoLevel)
+		log = zap.New(core).Sugar()
 	})
 
 	JustBeforeEach(func() {
 		resolver.ResolveCRDReturns(manifest, nil)
-		reconciler = cfd.NewReconciler(manager, &resolver, controllerutil.SetControllerReference)
+		reconciler = cfd.NewReconciler(log, manager, &resolver, controllerutil.SetControllerReference)
 	})
 
 	Describe("Reconcile", func() {
@@ -118,7 +124,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles errors when setting the owner reference on the object", func() {
-				reconciler = cfd.NewReconciler(manager, &resolver, func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+				reconciler = cfd.NewReconciler(log, manager, &resolver, func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return fmt.Errorf("failed to set reference")
 				})
 

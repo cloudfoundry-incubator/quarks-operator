@@ -9,6 +9,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest/observer"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -29,9 +32,11 @@ var stop chan struct{}
 
 type IntegrationSuite struct {
 	machinery.Machine
-	mgr        manager.Manager
-	namespace  string
-	kubeConfig *rest.Config
+	mgr         manager.Manager
+	namespace   string
+	kubeConfig  *rest.Config
+	logRecorded *observer.ObservedLogs
+	log         *zap.SugaredLogger
 }
 
 var suite = &IntegrationSuite{
@@ -39,14 +44,9 @@ var suite = &IntegrationSuite{
 }
 
 var _ = BeforeSuite(func() {
-	err := suite.setupKube()
-	Expect(err).NotTo(HaveOccurred())
+	suite.setup()
 
-	suite.namespace = suite.getTestNamespace()
-	suite.mgr, err = operator.Setup(suite.kubeConfig, manager.Options{Namespace: suite.namespace})
-	Expect(err).NotTo(HaveOccurred())
-
-	suite.startClients(suite.kubeConfig)
+	err := suite.startClients(suite.kubeConfig)
 	Expect(err).NotTo(HaveOccurred())
 
 	suite.startOperator()
@@ -60,21 +60,22 @@ var _ = AfterSuite(func() {
 	}()
 })
 
-func (s *IntegrationSuite) startClients(kubeConfig *rest.Config) (err error) {
-	s.Clientset, err = kubernetes.NewForConfig(kubeConfig)
-	if err != nil {
-		return
-	}
-	s.VersionedClientset, err = versioned.NewForConfig(kubeConfig)
-	return
-}
-
-func (s *IntegrationSuite) getTestNamespace() string {
+func (s *IntegrationSuite) setup() {
 	ns, found := os.LookupEnv("TEST_NAMESPACE")
 	if !found {
-		return "default"
+		ns = "default"
 	}
-	return ns
+	s.namespace = ns
+
+	var core zapcore.Core
+	core, s.logRecorded = observer.New(zapcore.InfoLevel)
+	s.log = zap.New(core).Sugar()
+
+	err := suite.setupKube()
+	Expect(err).NotTo(HaveOccurred())
+
+	suite.mgr, err = operator.NewManager(suite.log, suite.kubeConfig, manager.Options{Namespace: suite.namespace})
+	Expect(err).NotTo(HaveOccurred())
 }
 
 func (s *IntegrationSuite) setupKube() (err error) {
@@ -92,6 +93,15 @@ func (s *IntegrationSuite) setupKube() (err error) {
 		}
 	}
 
+	return
+}
+
+func (s *IntegrationSuite) startClients(kubeConfig *rest.Config) (err error) {
+	s.Clientset, err = kubernetes.NewForConfig(kubeConfig)
+	if err != nil {
+		return
+	}
+	s.VersionedClientset, err = versioned.NewForConfig(kubeConfig)
 	return
 }
 

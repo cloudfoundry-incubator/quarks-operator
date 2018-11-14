@@ -3,7 +3,7 @@ kind: BOSHDeployment
 metadata:
   name: example-boshdeployment
 spec:
-  manifest-ref: "the-manifest"
+  manifest-ref: "bosh-manifest"
 ---
 apiVersion: v1
 kind: ConfigMap
