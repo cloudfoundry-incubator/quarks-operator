@@ -1,6 +1,4 @@
 #!/bin/sh
 set -e
 
-go vet $(go list ./...)
-golint $(go list ./...)
 ginkgo -r -skipPackage integration
