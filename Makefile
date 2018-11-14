@@ -7,6 +7,9 @@ build:
 image: build
 	bin/build-image
 
+publish: image
+	bin/publish
+
 export WATCH_NAMESPACE ?= default
 up:
 	kubectl apply -f deploy/crds/fissile_v1alpha1_boshdeployment_crd.yaml
@@ -18,13 +21,16 @@ generate:
 	client-gen -h /dev/null --clientset-name versioned --input-base code.cloudfoundry.org/cf-operator --input pkg/apis/fissile/v1alpha1 --output-package code.cloudfoundry.org/cf-operator/pkg/client/clientset
 	bin/gen-fakes
 
+vet:
+	bin/vet
+
+lint:
+	bin/lint
+
 test-unit:
 	bin/test-unit
 
 test-integration:
 	bin/test-integration
 
-test: test-unit test-integration
-
-publish: image
-	bin/publish
+test: vet lint test-unit test-integration
