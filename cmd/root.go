@@ -56,14 +56,11 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringP("kubeconfig", "c", "", "Path to a kubeconfig, not required in-cluster")
-	rootCmd.PersistentFlags().StringP("master", "m", "", "Kubernetes API server address")
 	rootCmd.PersistentFlags().StringP("namespace", "n", "default", "Namespace to watch for BOSH deployments")
 	viper.BindPFlag("kubeconfig", rootCmd.PersistentFlags().Lookup("kubeconfig"))
-	viper.BindPFlag("masterURL", rootCmd.PersistentFlags().Lookup("master"))
 	viper.BindPFlag("namespace", rootCmd.PersistentFlags().Lookup("namespace"))
 	viper.BindEnv("kubeconfig")
 	viper.BindEnv("namespace", "CFO_NAMESPACE")
-	viper.BindEnv("masterURL", "CFO_MASTER_URL")
 }
 
 // initConfig is executed before running commands
@@ -77,10 +74,9 @@ func initConfig() {
 
 func getKubeConfig() (*rest.Config, error) {
 	kubeconfig := viper.GetString("kubeconfig")
-	masterURL := viper.GetString("masterURL")
 
 	if len(kubeconfig) > 0 {
-		return clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
+		return clientcmd.BuildConfigFromFlags("", kubeconfig)
 	}
 
 	// If no explicit location, try the in-cluster config

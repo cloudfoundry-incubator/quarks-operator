@@ -30,7 +30,6 @@ var _ = Describe("CLI", func() {
 			Eventually(session.Out).Should(Say(`Flags:
   -h, --help                help for cf-operator
   -c, --kubeconfig string   Path to a kubeconfig, not required in-cluster
-  -m, --master string       Kubernetes API server address
   -n, --namespace string    Namespace to watch for BOSH deployments \(default "default"\)
 
 `))
