@@ -10,11 +10,11 @@ image: build
 publish: image
 	bin/publish
 
-export WATCH_NAMESPACE ?= default
+export CFO_NAMESPACE ?= default
 up:
 	kubectl apply -f deploy/crds/fissile_v1alpha1_boshdeployment_crd.yaml
-	@echo watching namespace ${WATCH_NAMESPACE}
-	go run cmd/manager/main.go
+	@echo watching namespace ${CFO_NAMESPACE}
+	go run main.go
 
 generate:
 	bash ${GOPATH}/src/k8s.io/code-generator/generate-groups.sh deepcopy code.cloudfoundry.org/cf-operator/pkg/generated github.com/cloudfoundry-incubator/cf-operator/pkg/apis fissile:v1alpha1,

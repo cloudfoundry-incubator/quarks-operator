@@ -3,10 +3,10 @@ package boshdeployment
 import (
 	"context"
 	"fmt"
-	"log"
 
 	fissilev1alpha1 "code.cloudfoundry.org/cf-operator/pkg/apis/fissile/v1alpha1"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,13 +23,14 @@ import (
 
 // Add creates a new BOSHDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	return add(mgr, NewReconciler(mgr, bdm.NewResolver(mgr.GetClient()), controllerutil.SetControllerReference))
+func Add(log *zap.SugaredLogger, mgr manager.Manager) error {
+	return add(mgr, NewReconciler(log, mgr, bdm.NewResolver(mgr.GetClient()), controllerutil.SetControllerReference))
 }
 
 // NewReconciler returns a new reconcile.Reconciler
-func NewReconciler(mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
+func NewReconciler(log *zap.SugaredLogger, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
 	return &ReconcileBOSHDeployment{
+		log:          log,
 		client:       mgr.GetClient(),
 		scheme:       mgr.GetScheme(),
 		resolver:     resolver,
@@ -75,6 +76,7 @@ type ReconcileBOSHDeployment struct {
 	scheme       *runtime.Scheme
 	resolver     bdm.Resolver
 	setReference setReferenceFunc
+	log          *zap.SugaredLogger
 }
 
 // Reconcile reads that state of the cluster for a BOSHDeployment object and makes changes based on the state read
@@ -83,7 +85,7 @@ type ReconcileBOSHDeployment struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	log.Printf("Reconciling BOSHDeployment %s\n", request.NamespacedName)
+	r.log.Infof("Reconciling BOSHDeployment %s\n", request.NamespacedName)
 
 	// Fetch the BOSHDeployment instance
 	instance := &fissilev1alpha1.BOSHDeployment{}
@@ -123,7 +125,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	found := &corev1.Pod{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Printf("Creating a new Pod %s/%s\n", pod.Namespace, pod.Name)
+		r.log.Infof("Creating a new Pod %s/%s\n", pod.Namespace, pod.Name)
 		err = r.client.Create(context.TODO(), pod)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -136,7 +138,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Pod already exists - don't requeue
-	log.Printf("Skip reconcile: Pod %s/%s already exists", found.Namespace, found.Name)
+	r.log.Infof("Skip reconcile: Pod %s/%s already exists", found.Namespace, found.Name)
 	return reconcile.Result{}, nil
 }
 
