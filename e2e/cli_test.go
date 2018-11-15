@@ -30,7 +30,6 @@ var _ = Describe("CLI", func() {
 			Eventually(session.Out).Should(Say(`Flags:
   -h, --help                help for cf-operator
   -c, --kubeconfig string   Path to a kubeconfig, not required in-cluster
-  -m, --master string       Kubernetes API server address
   -n, --namespace string    Namespace to watch for BOSH deployments \(default "default"\)
 
 `))
@@ -54,27 +53,55 @@ var _ = Describe("CLI", func() {
 			Eventually(session.Err).Should(Say(`Starting cf-operator with namespace default`))
 		})
 
-		Context("when using environment variables", func() {
-			BeforeEach(func() {
-				os.Setenv("CFO_NAMESPACE", "env-test")
+		Context("when specifying namespace", func() {
+			Context("via environment variables", func() {
+				BeforeEach(func() {
+					os.Setenv("CFO_NAMESPACE", "env-test")
+				})
+
+				AfterEach(func() {
+					os.Setenv("CFO_NAMESPACE", "")
+				})
+
+				It("should start for namespace", func() {
+					session, err := act()
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(session.Err).Should(Say(`Starting cf-operator with namespace env-test`))
+				})
 			})
 
-			AfterEach(func() {
-				os.Setenv("CFO_NAMESPACE", "")
-			})
-
-			It("should start for namespace", func() {
-				session, err := act()
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(session.Err).Should(Say(`Starting cf-operator with namespace env-test`))
+			Context("via using switches", func() {
+				It("should start for namespace", func() {
+					session, err := act("--namespace", "switch-test")
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(session.Err).Should(Say(`Starting cf-operator with namespace switch-test`))
+				})
 			})
 		})
 
-		Context("when using switches", func() {
-			It("should start for namespace", func() {
-				session, err := act("--namespace", "switch-test")
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(session.Err).Should(Say(`Starting cf-operator with namespace switch-test`))
+		Context("when specifying kubeconfig", func() {
+			Context("via environment variables", func() {
+				BeforeEach(func() {
+					os.Setenv("KUBECONFIG", "invalid")
+				})
+
+				AfterEach(func() {
+					os.Setenv("KUBECONFIG", "")
+				})
+
+				It("should use specified config", func() {
+					session, err := act()
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(session.Err).Should(Say(`stat invalid: no such file or directory`))
+				})
+			})
+
+			Context("via switches", func() {
+				It("should use specified config", func() {
+					session, err := act("--kubeconfig", "invalid")
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(session.Err).Should(Say(`stat invalid: no such file or directory`))
+				})
 			})
 		})
 	})
