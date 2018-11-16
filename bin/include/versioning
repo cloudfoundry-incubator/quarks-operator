@@ -20,5 +20,5 @@ ARTIFACT_NAME=${ARTIFACT_NAME:-$(basename $(git config --get remote.origin.url) 
 ARTIFACT_VERSION=${GIT_TAG}+${GIT_COMMITS}.${GIT_SHA}
 
 APP_VERSION=${ARTIFACT_NAME}-${ARTIFACT_VERSION}
-VERSION_TAG=${APP_VERSION//+/-}
+VERSION_TAG=${ARTIFACT_VERSION//+/-}
 set +o errexit +o nounset +o xtrace
