@@ -26,6 +26,30 @@
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
+  digest = "1:7294028ae4f4ebe9f92dccabdc69f63eba37b71fbfcdcb35ed1c32eb823fc6d4"
+  name = "github.com/bmatcuk/doublestar"
+  packages = ["."]
+  pruneopts = "NT"
+  revision = "85a78806aa1b4707d1dbace9be592cf1ece91ab3"
+  version = "v1.1.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:fba766d9d3c0d739b5b4ce55c12e439133b3691ab8d6d2b36f1aa401dd33527f"
+  name = "github.com/charlievieth/fs"
+  packages = ["."]
+  pruneopts = "NT"
+  revision = "7dc373669fa10ddf827c37c595dee30a2f001be9"
+
+[[projects]]
+  branch = "master"
+  digest = "1:71570cb9af58f4981cd3b6ac9902b37e978e1f3c34f35a04a3a4837ea542500f"
+  name = "github.com/cppforlife/go-patch"
+  packages = ["patch"]
+  pruneopts = "NT"
+  revision = "250da0e0e68ce3367b4302f34218f6c064eb9559"
+
+[[projects]]
   digest = "1:4b8b5811da6970495e04d1f4e98bb89518cc3cfc3b3f456bdb876ed7b6c74049"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -349,6 +373,8 @@
   packages = [
     ".",
     "format",
+    "gbytes",
+    "gexec",
     "internal/assertion",
     "internal/asyncassertion",
     "internal/oraclematcher",
@@ -481,6 +507,7 @@
     "internal/color",
     "internal/exit",
     "zapcore",
+    "zaptest/observer",
   ]
   pruneopts = "NT"
   revision = "ff33455a0e382e8a81d14dd7c922020b6b5e7982"
@@ -881,7 +908,6 @@
     "pkg/cache/internal",
     "pkg/client",
     "pkg/client/apiutil",
-    "pkg/client/config",
     "pkg/client/fake",
     "pkg/controller",
     "pkg/controller/controllerutil",
@@ -913,11 +939,32 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "code.cloudfoundry.org/cf-operator/cmd",
+    "code.cloudfoundry.org/cf-operator/integration/machinery",
+    "code.cloudfoundry.org/cf-operator/pkg/apis",
+    "code.cloudfoundry.org/cf-operator/pkg/apis/fissile/v1alpha1",
+    "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest",
+    "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/manifestfakes",
+    "code.cloudfoundry.org/cf-operator/pkg/client/clientset/versioned",
+    "code.cloudfoundry.org/cf-operator/pkg/client/clientset/versioned/scheme",
+    "code.cloudfoundry.org/cf-operator/pkg/client/clientset/versioned/typed/fissile/v1alpha1",
+    "code.cloudfoundry.org/cf-operator/pkg/client/clientset/versioned/typed/fissile/v1alpha1/fake",
+    "code.cloudfoundry.org/cf-operator/pkg/controller",
+    "code.cloudfoundry.org/cf-operator/pkg/controller/boshdeployment",
+    "code.cloudfoundry.org/cf-operator/pkg/controller/boshdeployment/fakes",
+    "code.cloudfoundry.org/cf-operator/pkg/operator",
+    "code.cloudfoundry.org/cf-operator/version",
+    "github.com/cppforlife/go-patch/patch",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
+    "github.com/onsi/gomega/gbytes",
+    "github.com/onsi/gomega/gexec",
     "github.com/pkg/errors",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
+    "go.uber.org/zap",
+    "go.uber.org/zap/zapcore",
+    "go.uber.org/zap/zaptest/observer",
     "gopkg.in/yaml.v2",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/errors",
@@ -950,7 +997,6 @@
     "k8s.io/gengo/args",
     "sigs.k8s.io/controller-runtime/pkg/cache",
     "sigs.k8s.io/controller-runtime/pkg/client",
-    "sigs.k8s.io/controller-runtime/pkg/client/config",
     "sigs.k8s.io/controller-runtime/pkg/client/fake",
     "sigs.k8s.io/controller-runtime/pkg/controller",
     "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil",

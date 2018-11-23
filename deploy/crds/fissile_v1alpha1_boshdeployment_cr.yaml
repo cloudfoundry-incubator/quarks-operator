@@ -4,6 +4,7 @@ metadata:
   name: example-boshdeployment
 spec:
   manifest-ref: "bosh-manifest"
+  ops-ref: "bosh-ops"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -14,4 +15,14 @@ data:
     instance-groups:
       - name: diego
         instances: 3
-      - name: myqsl
+      - name: mysql
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bosh-ops
+data:
+  ops: |
+    - type: replace
+      path: /instance-groups/name=diego?/instances
+      value: 4

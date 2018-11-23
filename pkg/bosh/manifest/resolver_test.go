@@ -3,6 +3,7 @@ package manifest_test
 import (
 	fissile "code.cloudfoundry.org/cf-operator/pkg/apis/fissile/v1alpha1"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	fakeIpl "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/interpolator/fakes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -42,7 +43,8 @@ var _ = Describe("Resolver", func() {
 				Data: map[string]string{},
 			},
 		)
-		resolver = bdm.NewResolver(client)
+		interpolator := &fakeIpl.FakeInterpolator{}
+		resolver = bdm.NewResolver(client, interpolator)
 	})
 
 	Describe("ResolveCRD", func() {
