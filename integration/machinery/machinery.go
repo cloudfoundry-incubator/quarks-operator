@@ -53,7 +53,7 @@ func (m *Machine) DefaultConfigMap(name string) apiv1.ConfigMap {
 			"manifest": `instance-groups:
 - name: diego
   instances: 3
-- name: myqsl
+- name: mysql
 `,
 		},
 	}

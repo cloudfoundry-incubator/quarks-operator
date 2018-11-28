@@ -3,9 +3,11 @@ package boshdeployment
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	fissilev1alpha1 "code.cloudfoundry.org/cf-operator/pkg/apis/fissile/v1alpha1"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	ipl "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/interpolator"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -24,7 +26,7 @@ import (
 // Add creates a new BOSHDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(log *zap.SugaredLogger, mgr manager.Manager) error {
-	return add(mgr, NewReconciler(log, mgr, bdm.NewResolver(mgr.GetClient()), controllerutil.SetControllerReference))
+	return add(mgr, NewReconciler(log, mgr, bdm.NewResolver(mgr.GetClient(), ipl.NewInterpolator()), controllerutil.SetControllerReference))
 }
 
 // NewReconciler returns a new reconcile.Reconciler
@@ -146,7 +148,8 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 func newPodForCR(cr *bdm.Manifest, namespace string) *corev1.Pod {
 	ig := cr.InstanceGroups[0]
 	labels := map[string]string{
-		"app": ig.Name,
+		"app":  ig.Name,
+		"size": strconv.Itoa(ig.Instances),
 	}
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{

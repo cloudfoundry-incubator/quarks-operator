@@ -5,8 +5,9 @@ import (
 	"fmt"
 
 	fissile "code.cloudfoundry.org/cf-operator/pkg/apis/fissile/v1alpha1"
+	ipl "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/interpolator"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,12 +20,13 @@ type Resolver interface {
 
 // ResolverImpl implements Resolver interface
 type ResolverImpl struct {
-	client client.Client
+	client       client.Client
+	interpolator ipl.Interpolator
 }
 
 // NewResolver constructs a resolver
-func NewResolver(client client.Client) *ResolverImpl {
-	return &ResolverImpl{client: client}
+func NewResolver(client client.Client, interpolator ipl.Interpolator) *ResolverImpl {
+	return &ResolverImpl{client: client, interpolator: interpolator}
 }
 
 // ResolveCRD returns manifest referenced by our CRD
@@ -37,16 +39,45 @@ func (r *ResolverImpl) ResolveCRD(spec fissile.BOSHDeploymentSpec, namespace str
 	config := &corev1.ConfigMap{}
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: ref, Namespace: namespace}, config)
 	if err != nil {
-		return manifest, errors.Wrap(err, "failed to retrieve via client.Get")
+		return manifest, errors.Wrapf(err, "Failed to retrieve configmap '%s/%s' via client.Get", namespace, ref)
 	}
 
 	// unmarshal manifest.data into bosh deployment manifest...
-	// TODO re-use LoadManifest() from fisisle
+	// TODO re-use LoadManifest() from fissile
 	m, ok := config.Data["manifest"]
 	if !ok {
 		return manifest, fmt.Errorf("configmap doesn't contain manifest key")
 	}
-	err = yaml.Unmarshal([]byte(m), manifest)
+
+	// unmarshal ops.data into bosh ops if exist
+	opsConfig := &corev1.ConfigMap{}
+	opsRef := spec.OpsRef
+	if opsRef == "" {
+		err = yaml.Unmarshal([]byte(m), manifest)
+		return manifest, err
+	}
+
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: opsRef, Namespace: namespace}, opsConfig)
+	if err != nil {
+		return manifest, errors.Wrapf(err, "Failed to retrieve configmap '%s/%s' via client.Get", namespace, opsRef)
+	}
+
+	opsData, ok := opsConfig.Data["ops"]
+	if !ok {
+		return manifest, fmt.Errorf("configmap doesn't contain ops key")
+	}
+
+	err = r.interpolator.BuildOps([]byte(opsData))
+	if err != nil {
+		return manifest, errors.Wrapf(err, "Failed to build ops: %#v", opsData)
+	}
+
+	bytes, err := r.interpolator.Interpolate([]byte(m))
+	if err != nil {
+		return manifest, errors.Wrapf(err, "Failed to interpolate %#v by %#v", m, opsData)
+	}
+
+	err = yaml.Unmarshal(bytes, manifest)
 
 	return manifest, err
 }
