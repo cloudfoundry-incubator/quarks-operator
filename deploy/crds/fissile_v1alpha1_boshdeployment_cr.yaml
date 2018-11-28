@@ -3,8 +3,14 @@ kind: BOSHDeployment
 metadata:
   name: example-boshdeployment
 spec:
-  manifest-ref: "bosh-manifest"
-  ops-ref: "bosh-ops"
+  manifest:
+    type: "configMap"
+    ref: "bosh-manifest"
+  ops:
+    - type: "configMap"
+      ref: "bosh-ops"
+    - type: "secret"
+      ref: "bosh-ops-secret"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -26,3 +32,15 @@ data:
     - type: replace
       path: /instance-groups/name=diego?/instances
       value: 4
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bosh-ops-secret
+type: Opaque
+stringData:
+  ops: |
+    - type: replace
+      path: /instance-groups/name=diego?/instances
+      value: 5

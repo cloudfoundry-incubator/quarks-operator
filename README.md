@@ -24,4 +24,5 @@ cf-operator is still missing core functionality.
     # clean up
     kubectl delete configmap bosh-manifest
     kubectl delete configmap bosh-ops
+    kubectl delete secret bosh-ops
     kubectl delete boshdeployments.fissile.cloudfoundry.org example-boshdeployment

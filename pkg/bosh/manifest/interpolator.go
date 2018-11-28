@@ -37,9 +37,8 @@ func (i *InterpolatorImpl) BuildOps(opsBytes []byte) error {
 	if err != nil {
 		return errors.Wrap(err, "Building ops")
 	}
-	i.ops = ops
+	i.ops = append(i.ops, ops)
 	return nil
-
 }
 
 // Interpolate returns manifest which is rendered by operations files
