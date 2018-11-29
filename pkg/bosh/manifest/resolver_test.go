@@ -5,8 +5,7 @@ import (
 
 	fissile "code.cloudfoundry.org/cf-operator/pkg/apis/fissile/v1alpha1"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	fakeIpl "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/interpolator/fakes"
-	"github.com/pkg/errors"
+	ipl "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/interpolator"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -18,9 +17,8 @@ import (
 
 var _ = Describe("Resolver", func() {
 	var (
-		resolver     bdm.Resolver
-		client       client.Client
-		interpolator *fakeIpl.FakeInterpolator
+		resolver bdm.Resolver
+		client   client.Client
 	)
 
 	BeforeEach(func() {
@@ -34,10 +32,43 @@ var _ = Describe("Resolver", func() {
 			},
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
+					Name:      "populated-foo",
+					Namespace: "default",
+				},
+				Data: map[string]string{"manifest": `
+instance-groups:
+- name: diego
+  instances: 3
+- name: mysql
+`},
+			},
+			&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
 					Namespace: "default",
 				},
-				Data: map[string]string{"ops": "---"},
+				Data: map[string]string{"ops": ""},
+			},
+			&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "populatedbaz",
+					Namespace: "default",
+				},
+				Data: map[string]string{"ops": `
+- type: replace
+  path: /instance-groups/name=diego?/instances
+  value: 4
+`},
+			},
+			&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "removeops",
+					Namespace: "default",
+				},
+				Data: map[string]string{"ops": `
+- type: remove
+  path: /instance-groups
+`},
 			},
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -71,29 +102,34 @@ var _ = Describe("Resolver", func() {
 				},
 				Data: map[string]string{"ops": `
 - type: replace
-   path: /missing_key
-   value: desired_value
+  path: /instance-groups/name=niego/instances
+  value: 5
 `},
 			},
 		)
-		interpolator = &fakeIpl.FakeInterpolator{}
-		resolver = bdm.NewResolver(client, interpolator)
+		resolver = bdm.NewResolver(client, ipl.NewInterpolator())
 	})
 
 	Describe("ResolveCRD", func() {
 		It("works for valid CRs", func() {
-			spec := fissile.BOSHDeploymentSpec{ManifestRef: "foo"}
+			spec := fissile.BOSHDeploymentSpec{ManifestRef: "populated-foo"}
 			manifest, err := resolver.ResolveCRD(spec, "default")
-
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
-			Expect(len(manifest.InstanceGroups)).To(Equal(0))
+			Expect(len(manifest.InstanceGroups)).To(Equal(2))
 		})
 
-		It("works for valid CRs containing ops", func() {
-			spec := fissile.BOSHDeploymentSpec{ManifestRef: "foo", OpsRef: "baz"}
+		It("works for valid CRs containing ops that replace", func() {
+			spec := fissile.BOSHDeploymentSpec{ManifestRef: "populated-foo", OpsRef: "populatedbaz"}
 			manifest, err := resolver.ResolveCRD(spec, "default")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(manifest).ToNot(Equal(nil))
+			Expect(manifest.InstanceGroups[0].Instances).To(Equal(4))
+		})
 
+		It("works for valid CRs containing ops that remove", func() {
+			spec := fissile.BOSHDeploymentSpec{ManifestRef: "populated-foo", OpsRef: "removeops"}
+			manifest, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
 			Expect(len(manifest.InstanceGroups)).To(Equal(0))
@@ -135,8 +171,6 @@ var _ = Describe("Resolver", func() {
 		})
 
 		It("throws an error if build invalid ops", func() {
-			interpolator.BuildOpsReturns(errors.New("fake-error"))
-
 			spec := fissile.BOSHDeploymentSpec{ManifestRef: "foo", OpsRef: "invalid_ops"}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
@@ -144,8 +178,7 @@ var _ = Describe("Resolver", func() {
 		})
 
 		It("throws an error if interpolate missing variables into a manifest", func() {
-			interpolator.InterpolateReturns(nil, errors.New("fake-error"))
-			spec := fissile.BOSHDeploymentSpec{ManifestRef: "foo", OpsRef: "missing_variables"}
+			spec := fissile.BOSHDeploymentSpec{ManifestRef: "populated-foo", OpsRef: "missing_variables"}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Failed to interpolate"))
