@@ -97,6 +97,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
+			r.log.Debug("Skip reconcile: CRD not found\n")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
