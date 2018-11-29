@@ -84,7 +84,7 @@ func (e *Environment) setupCFOperator() (err error) {
 	e.Namespace = ns
 
 	var core zapcore.Core
-	core, e.LogRecorded = observer.New(zapcore.InfoLevel)
+	core, e.LogRecorded = observer.New(zapcore.DebugLevel)
 	e.log = zap.New(core).Sugar()
 
 	err = e.setupKube()
