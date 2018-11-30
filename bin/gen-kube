@@ -10,7 +10,7 @@ CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${GIT_ROOT}; ls -d -1 ./vendor/k8s.io/code-gener
 # Comma separated list
 CONTROLLERS="boshdeploymentcontroller:v1alpha1"
 
-${CODEGEN_PKG}/generate-groups.sh all \
+${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
   code.cloudfoundry.org/cf-operator/pkg/kube/client \
   code.cloudfoundry.org/cf-operator/pkg/kube/apis \
   $CONTROLLERS \
