@@ -9,7 +9,10 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controller/boshdeployment"
 )
 
-var addToManagerFuncs = []func(*zap.SugaredLogger, manager.Manager) error{boshdeployment.Add}
+var addToManagerFuncs = []func(*zap.SugaredLogger, manager.Manager) error{
+	boshdeployment.Add,
+}
+
 var addToSchemes = runtime.SchemeBuilder{
 	bdc.AddToScheme,
 }
