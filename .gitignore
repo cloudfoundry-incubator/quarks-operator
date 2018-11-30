@@ -1,8 +1,12 @@
 # Temporary Build Files
+/cf-operator
 build/_output
 build/_test
 build/*zip
 build/helm
+# Temp dir for generated kube files
+/_tmp
+
 # Created by https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 ### Emacs ###
 # -*- mode: gitignore; -*-

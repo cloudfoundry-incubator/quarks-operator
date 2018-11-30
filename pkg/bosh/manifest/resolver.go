@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	fissile "code.cloudfoundry.org/cf-operator/pkg/apis/fissile/v1alpha1"
-	ipl "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/interpolator"
+	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -15,22 +14,22 @@ import (
 
 // Resolver resolves references from CRD to a BOSH manifest
 type Resolver interface {
-	ResolveCRD(fissile.BOSHDeploymentSpec, string) (*Manifest, error)
+	ResolveCRD(bdc.BOSHDeploymentSpec, string) (*Manifest, error)
 }
 
 // ResolverImpl implements Resolver interface
 type ResolverImpl struct {
 	client       client.Client
-	interpolator ipl.Interpolator
+	interpolator Interpolator
 }
 
 // NewResolver constructs a resolver
-func NewResolver(client client.Client, interpolator ipl.Interpolator) *ResolverImpl {
+func NewResolver(client client.Client, interpolator Interpolator) *ResolverImpl {
 	return &ResolverImpl{client: client, interpolator: interpolator}
 }
 
 // ResolveCRD returns manifest referenced by our CRD
-func (r *ResolverImpl) ResolveCRD(spec fissile.BOSHDeploymentSpec, namespace string) (*Manifest, error) {
+func (r *ResolverImpl) ResolveCRD(spec bdc.BOSHDeploymentSpec, namespace string) (*Manifest, error) {
 	manifest := &Manifest{}
 
 	// TODO for now we only support config map ref

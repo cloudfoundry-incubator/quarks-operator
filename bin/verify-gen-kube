@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+# This script tells you wether you need to run kube code generation
+# It generates code in GIT_ROOT/_tmp, then runs diff
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+
+GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
+DIFFROOT="${GIT_ROOT}/pkg/kube"
+TMP_DIFFROOT="${GIT_ROOT}/_tmp/pkg/kube"
+_tmp="${GIT_ROOT}/_tmp"
+
+cleanup() {
+  rm -rf "${_tmp}"
+}
+trap "cleanup" EXIT SIGINT
+
+cleanup
+
+mkdir -p "${TMP_DIFFROOT}"
+cp -a "${DIFFROOT}"/* "${TMP_DIFFROOT}"
+
+"${GIT_ROOT}/bin/gen-kube"
+echo "diffing ${DIFFROOT} against freshly generated codegen"
+ret=0
+diff -Naupr "${DIFFROOT}" "${TMP_DIFFROOT}" || ret=$?
+cp -a "${TMP_DIFFROOT}"/* "${DIFFROOT}"
+if [[ $ret -eq 0 ]]
+then
+  echo "${DIFFROOT} up to date."
+else
+  echo "${DIFFROOT} is out of date. Please run 'make gen-kube'"
+  exit 1
+fi

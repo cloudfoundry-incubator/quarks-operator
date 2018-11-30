@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"code.cloudfoundry.org/cf-operator/pkg/client/clientset/versioned"
-	"code.cloudfoundry.org/cf-operator/pkg/operator"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
