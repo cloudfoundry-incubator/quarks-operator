@@ -1,0 +1,22 @@
+#!/bin/bash
+
+GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
+. "${GIT_ROOT}/bin/include/versioning"
+. "${GIT_ROOT}/.envrc"
+
+set -e
+
+output_dir=${GIT_ROOT}/build
+filename="${output_dir}/${ARTIFACT_NAME}-${ARTIFACT_VERSION}.zip"
+
+[ -d "${output_dir}/helm" ] && rm -r "${output_dir}/helm"
+cp -r "${GIT_ROOT}/deploy/helm" ${output_dir}
+
+sed -i "s@repository: .*@repository: ${OPERATOR_DOCKER_ORGANIZATION}/cf-operator@" "${output_dir}/helm/cf-operator/values.yaml"
+sed -i "s@tag: .*@tag: ${VERSION_TAG}@" "${output_dir}/helm/cf-operator/values.yaml"
+
+pushd ${output_dir}
+zip -r ${filename} helm
+popd
+
+echo "The helm chart is now available from ${filename}"

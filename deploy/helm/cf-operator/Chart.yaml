@@ -1,0 +1,4 @@
+apiVersion: v1
+description: A Helm chart for cf-operator, the k8s operator for deploying BOSH releases
+name: cf-operator
+version: 0.0.1
