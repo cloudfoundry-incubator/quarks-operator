@@ -146,6 +146,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 // newPodForCR returns a busybox pod with the same name/namespace as the cr
 func newPodForCR(cr *bdm.Manifest, namespace string) *corev1.Pod {
+	t := int64(1)
 	ig := cr.InstanceGroups[0]
 	labels := map[string]string{
 		"app":  ig.Name,
@@ -158,6 +159,7 @@ func newPodForCR(cr *bdm.Manifest, namespace string) *corev1.Pod {
 			Labels:    labels,
 		},
 		Spec: corev1.PodSpec{
+			TerminationGracePeriodSeconds: &t,
 			Containers: []corev1.Container{
 				{
 					Name:    "busybox",
