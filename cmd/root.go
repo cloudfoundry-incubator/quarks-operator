@@ -7,7 +7,7 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"code.cloudfoundry.org/cf-operator/pkg/operator"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

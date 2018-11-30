@@ -1,7 +1,7 @@
 package integration_test
 
 import (
-	fisv1 "code.cloudfoundry.org/cf-operator/pkg/apis/fissile/v1alpha1"
+	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -11,7 +11,7 @@ import (
 
 var _ = Describe("Lifecycle", func() {
 	var (
-		fissileCR   fisv1.BOSHDeployment
+		fissileCR   bdcv1.BOSHDeployment
 		newManifest corev1.ConfigMap
 	)
 
@@ -36,7 +36,7 @@ var _ = Describe("Lifecycle", func() {
 			defer tearDown()
 
 			// Create fissile custom resource
-			var versionedCR *fisv1.BOSHDeployment
+			var versionedCR *bdcv1.BOSHDeployment
 			versionedCR, tearDown, err = env.CreateFissileCR(env.Namespace, fissileCR)
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()

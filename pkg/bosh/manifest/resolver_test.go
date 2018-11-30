@@ -3,9 +3,9 @@ package manifest_test
 import (
 	"fmt"
 
-	fissile "code.cloudfoundry.org/cf-operator/pkg/apis/fissile/v1alpha1"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	fakeIpl "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/interpolator/fakes"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
+	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +20,7 @@ var _ = Describe("Resolver", func() {
 	var (
 		resolver     bdm.Resolver
 		client       client.Client
-		interpolator *fakeIpl.FakeInterpolator
+		interpolator *fakes.FakeInterpolator
 	)
 
 	BeforeEach(func() {
@@ -76,13 +76,13 @@ var _ = Describe("Resolver", func() {
 `},
 			},
 		)
-		interpolator = &fakeIpl.FakeInterpolator{}
+		interpolator = &fakes.FakeInterpolator{}
 		resolver = bdm.NewResolver(client, interpolator)
 	})
 
 	Describe("ResolveCRD", func() {
 		It("works for valid CRs", func() {
-			spec := fissile.BOSHDeploymentSpec{ManifestRef: "foo"}
+			spec := bdc.BOSHDeploymentSpec{ManifestRef: "foo"}
 			manifest, err := resolver.ResolveCRD(spec, "default")
 
 			Expect(err).ToNot(HaveOccurred())
@@ -91,7 +91,7 @@ var _ = Describe("Resolver", func() {
 		})
 
 		It("works for valid CRs containing ops", func() {
-			spec := fissile.BOSHDeploymentSpec{ManifestRef: "foo", OpsRef: "baz"}
+			spec := bdc.BOSHDeploymentSpec{ManifestRef: "foo", OpsRef: "baz"}
 			manifest, err := resolver.ResolveCRD(spec, "default")
 
 			Expect(err).ToNot(HaveOccurred())
@@ -100,35 +100,35 @@ var _ = Describe("Resolver", func() {
 		})
 
 		It("throws an error if the CR can not be found", func() {
-			spec := fissile.BOSHDeploymentSpec{ManifestRef: "bar"}
+			spec := bdc.BOSHDeploymentSpec{ManifestRef: "bar"}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Failed to retrieve configmap '%s/%s' via client.Get", "default", "bar")))
 		})
 
 		It("throws an error if the CR is empty", func() {
-			spec := fissile.BOSHDeploymentSpec{ManifestRef: "missing_key"}
+			spec := bdc.BOSHDeploymentSpec{ManifestRef: "missing_key"}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("configmap doesn't contain manifest key"))
 		})
 
 		It("throws an error on invalid yaml", func() {
-			spec := fissile.BOSHDeploymentSpec{ManifestRef: "invalid_yaml"}
+			spec := bdc.BOSHDeploymentSpec{ManifestRef: "invalid_yaml"}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("yaml: unmarshal errors"))
 		})
 
 		It("throws an error if ops configmap can not be found", func() {
-			spec := fissile.BOSHDeploymentSpec{ManifestRef: "foo", OpsRef: "boo"}
+			spec := bdc.BOSHDeploymentSpec{ManifestRef: "foo", OpsRef: "boo"}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Failed to retrieve configmap '%s/%s' via client.Get", "default", "boo")))
 		})
 
 		It("throws an error if ops configmap can not be found", func() {
-			spec := fissile.BOSHDeploymentSpec{ManifestRef: "foo", OpsRef: "missing_key"}
+			spec := bdc.BOSHDeploymentSpec{ManifestRef: "foo", OpsRef: "missing_key"}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("configmap doesn't contain ops key"))
@@ -137,7 +137,7 @@ var _ = Describe("Resolver", func() {
 		It("throws an error if build invalid ops", func() {
 			interpolator.BuildOpsReturns(errors.New("fake-error"))
 
-			spec := fissile.BOSHDeploymentSpec{ManifestRef: "foo", OpsRef: "invalid_ops"}
+			spec := bdc.BOSHDeploymentSpec{ManifestRef: "foo", OpsRef: "invalid_ops"}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Failed to build ops"))
@@ -145,7 +145,7 @@ var _ = Describe("Resolver", func() {
 
 		It("throws an error if interpolate missing variables into a manifest", func() {
 			interpolator.InterpolateReturns(nil, errors.New("fake-error"))
-			spec := fissile.BOSHDeploymentSpec{ManifestRef: "foo", OpsRef: "missing_variables"}
+			spec := bdc.BOSHDeploymentSpec{ManifestRef: "foo", OpsRef: "missing_variables"}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Failed to interpolate"))
