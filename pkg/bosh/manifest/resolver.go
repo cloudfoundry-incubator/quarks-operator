@@ -3,6 +3,8 @@ package manifest
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
 	"github.com/pkg/errors"
@@ -34,49 +36,29 @@ func (r *ResolverImpl) ResolveCRD(spec bdc.BOSHDeploymentSpec, namespace string)
 	var (
 		m   string
 		err error
-		ok  bool
 	)
-	// TODO for now we only support config map ref
-	manifestRef := spec.Manifest
 
-	switch manifestRef.Type {
-	case "configMap":
-		config := &corev1.ConfigMap{}
-		err = r.client.Get(context.TODO(), types.NamespacedName{Name: manifestRef.Ref, Namespace: namespace}, config)
-		if err != nil {
-			return manifest, errors.Wrapf(err, "Failed to retrieve configmap '%s/%s' via client.Get", namespace, manifestRef.Ref)
-		}
-		// unmarshal manifest.data into bosh deployment manifest...
-		// TODO re-use LoadManifest() from fissile
-		m, ok = config.Data["manifest"]
-		if !ok {
-			return manifest, fmt.Errorf("configmap doesn't contain manifest key")
-		}
-	default:
-		return manifest, fmt.Errorf("unrecognized manifest type: %s", manifestRef.Type)
+	m, err = r.getRefData(namespace, spec.Manifest.Type, spec.Manifest.Ref, "manifest")
+	if err != nil {
+		return manifest, err
 	}
 
-	// unmarshal ops.data into bosh ops if exist
+	// Interpolate manifest with ops if exist
 	ops := spec.Ops
 	if len(ops) == 0 {
 		err = yaml.Unmarshal([]byte(m), manifest)
+		fmt.Println([]byte(m))
 		return manifest, err
 	}
 
 	for _, op := range ops {
-		switch op.Type {
-		case "secret":
-			err = r.buildOpsFromSecret(op.Ref, namespace)
-			if err != nil {
-				return manifest, errors.Wrapf(err, "Failed to build ops from secret %#v", m)
-			}
-		case "configMap":
-			err = r.buildOpsFromConfigMap(op.Ref, namespace)
-			if err != nil {
-				return manifest, errors.Wrapf(err, "Failed to build ops from config map %#v", m)
-			}
-		default:
-			return manifest, fmt.Errorf("unrecognized ops-ref type: %s", op.Type)
+		opsData, err := r.getRefData(namespace, op.Type, op.Ref, "ops")
+		if err != nil {
+			return manifest, err
+		}
+		err = r.interpolator.BuildOps([]byte(opsData))
+		if err != nil {
+			return manifest, errors.Wrapf(err, "Failed to interpolate ops with manifest: %#v", opsData)
 		}
 	}
 
@@ -90,42 +72,47 @@ func (r *ResolverImpl) ResolveCRD(spec bdc.BOSHDeploymentSpec, namespace string)
 	return manifest, err
 }
 
-func (r *ResolverImpl) buildOpsFromSecret(secretName string, namespace string) error {
-	opsSecret := &corev1.Secret{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: namespace}, opsSecret)
-	if err != nil {
-		return errors.Wrapf(err, "Failed to retrieve secret '%s/%s' via client.Get", namespace, secretName)
+// getRefData resolves different manifest reference types and returns manifest data
+func (r *ResolverImpl) getRefData(namespace string, manifestType string, manifestRef string, refKey string) (string, error) {
+	var (
+		refData string
+		ok      bool
+	)
+	switch manifestType {
+	case "configmap":
+		opsConfig := &corev1.ConfigMap{}
+		err := r.client.Get(context.TODO(), types.NamespacedName{Name: manifestRef, Namespace: namespace}, opsConfig)
+		if err != nil {
+			return refData, errors.Wrapf(err, "Failed to retrieve %s from configmap '%s/%s' via client.Get", refKey, namespace, manifestRef)
+		}
+		refData, ok = opsConfig.Data[refKey]
+		if !ok {
+			return refData, fmt.Errorf("configMap '%s/%s' doesn't contain key %s", namespace, manifestRef, refKey)
+		}
+		fmt.Println(refData)
+	case "secret":
+		opsSecret := &corev1.Secret{}
+		err := r.client.Get(context.TODO(), types.NamespacedName{Name: manifestRef, Namespace: namespace}, opsSecret)
+		if err != nil {
+			return refData, errors.Wrapf(err, "Failed to retrieve %s from secret '%s/%s' via client.Get", refKey, namespace, manifestRef)
+		}
+		encodedData, ok := opsSecret.Data[refKey]
+		if !ok {
+			return refData, fmt.Errorf("secert '%s/%s' doesn't contain key %s", namespace, manifestRef, refKey)
+		}
+		refData = string(encodedData)
+	case "url":
+		httpResponse, err := http.Get(manifestRef)
+		if err != nil {
+			return refData, errors.Wrapf(err, "Failed to resolve %s from url '%s' via http.Get", refKey, manifestRef)
+		}
+		body, err := ioutil.ReadAll(httpResponse.Body)
+		if err != nil {
+			return refData, errors.Wrapf(err, "Failed to read %s response body '%s' via ioutil", refKey, manifestRef)
+		}
+		refData = string(body)
+	default:
+		return refData, fmt.Errorf("unrecognized %s ref type %s", refKey, manifestRef)
 	}
-
-	encodedData, ok := opsSecret.Data["ops"]
-	if !ok {
-		return fmt.Errorf("secert doesn't contain ops key")
-	}
-	opsData := fmt.Sprintf("%s", encodedData)
-	err = r.interpolator.BuildOps([]byte(opsData))
-	if err != nil {
-		return errors.Wrapf(err, "Failed to build ops: %#v", opsData)
-	}
-
-	return nil
-}
-
-func (r *ResolverImpl) buildOpsFromConfigMap(configMapName string, namespace string) error {
-	opsConfig := &corev1.ConfigMap{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: configMapName, Namespace: namespace}, opsConfig)
-	if err != nil {
-		return errors.Wrapf(err, "Failed to retrieve config map '%s/%s' via client.Get", namespace, configMapName)
-	}
-
-	encodedData, ok := opsConfig.Data["ops"]
-	if !ok {
-		return fmt.Errorf("config map doesn't contain ops key")
-	}
-	opsData := fmt.Sprintf("%s", encodedData)
-	err = r.interpolator.BuildOps([]byte(opsData))
-	if err != nil {
-		return errors.Wrapf(err, "Failed to build ops: %#v", opsData)
-	}
-
-	return nil
+	return refData, nil
 }

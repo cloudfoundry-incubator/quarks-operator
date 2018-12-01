@@ -32,6 +32,13 @@ var _ = Describe("Resolver", func() {
 				},
 				Data: map[string]string{"manifest": "---"},
 			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-secret",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{"manifest": []byte("---")},
+			},
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "baz",
@@ -80,7 +87,7 @@ var _ = Describe("Resolver", func() {
 					Name:      "ops-secret",
 					Namespace: "default",
 				},
-				Data: map[string][]byte{"ops": []byte("LS0t")},
+				Data: map[string][]byte{"ops": []byte("---")},
 			},
 		)
 		interpolator = &fakes.FakeInterpolator{}
@@ -88,11 +95,25 @@ var _ = Describe("Resolver", func() {
 	})
 
 	Describe("ResolveCRD", func() {
-		It("works for valid CRs", func() {
+		It("works for valid CRs by using configmap", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configMap",
+					Type: "configmap",
 					Ref:  "foo",
+				},
+			}
+			manifest, err := resolver.ResolveCRD(spec, "default")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(manifest).ToNot(Equal(nil))
+			Expect(len(manifest.InstanceGroups)).To(Equal(0))
+		})
+
+		It("works for valid CRs by using secret", func() {
+			spec := bdc.BOSHDeploymentSpec{
+				Manifest: bdc.Manifest{
+					Type: "secret",
+					Ref:  "foo-secret",
 				},
 			}
 			manifest, err := resolver.ResolveCRD(spec, "default")
@@ -105,12 +126,12 @@ var _ = Describe("Resolver", func() {
 		It("works for valid CRs containing ops", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configMap",
+					Type: "configmap",
 					Ref:  "foo",
 				},
 				Ops: []bdc.Ops{
 					{
-						Type: "configMap",
+						Type: "configmap",
 						Ref:  "baz",
 					},
 				},
@@ -125,12 +146,12 @@ var _ = Describe("Resolver", func() {
 		It("works for valid CRs containing multi ops", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configMap",
+					Type: "configmap",
 					Ref:  "foo",
 				},
 				Ops: []bdc.Ops{
 					{
-						Type: "configMap",
+						Type: "configmap",
 						Ref:  "baz",
 					},
 					{
@@ -149,31 +170,31 @@ var _ = Describe("Resolver", func() {
 		It("throws an error if the CR can not be found", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configMap",
+					Type: "configmap",
 					Ref:  "bar",
 				},
 			}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Failed to retrieve configmap '%s/%s' via client.Get", "default", "bar")))
+			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Failed to retrieve manifest from configmap '%s/%s' via client.Get", "default", "bar")))
 		})
 
 		It("throws an error if the CR is empty", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configMap",
+					Type: "configmap",
 					Ref:  "missing_key",
 				},
 			}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("configmap doesn't contain manifest key"))
+			Expect(err.Error()).To(ContainSubstring("doesn't contain key manifest"))
 		})
 
 		It("throws an error on invalid yaml", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configMap",
+					Type: "configmap",
 					Ref:  "invalid_yaml",
 				},
 			}
@@ -192,43 +213,43 @@ var _ = Describe("Resolver", func() {
 			}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("unrecognized manifest type"))
+			Expect(err.Error()).To(ContainSubstring("unrecognized manifest ref type"))
 		})
 
 		It("throws an error if ops configMap can not be found", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configMap",
+					Type: "configmap",
 					Ref:  "foo",
 				},
 				Ops: []bdc.Ops{
 					{
-						Type: "configMap",
+						Type: "configmap",
 						Ref:  "boo",
 					},
 				},
 			}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Failed to retrieve config map '%s/%s' via client.Get", "default", "boo")))
+			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Failed to retrieve ops from configmap '%s/%s' via client.Get", "default", "boo")))
 		})
 
 		It("throws an error if ops configMap can not be found", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configMap",
+					Type: "configmap",
 					Ref:  "foo",
 				},
 				Ops: []bdc.Ops{
 					{
-						Type: "configMap",
+						Type: "configmap",
 						Ref:  "missing_key",
 					},
 				},
 			}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("config map doesn't contain ops key"))
+			Expect(err.Error()).To(ContainSubstring("doesn't contain key ops"))
 		})
 
 		It("throws an error if build invalid ops", func() {
@@ -236,31 +257,31 @@ var _ = Describe("Resolver", func() {
 
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configMap",
+					Type: "configmap",
 					Ref:  "foo",
 				},
 				Ops: []bdc.Ops{
 					{
-						Type: "configMap",
+						Type: "configmap",
 						Ref:  "invalid_ops",
 					},
 				},
 			}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Failed to build ops"))
+			Expect(err.Error()).To(ContainSubstring("Failed to interpolate ops"))
 		})
 
 		It("throws an error if interpolate missing variables into a manifest", func() {
 			interpolator.InterpolateReturns(nil, errors.New("fake-error"))
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configMap",
+					Type: "configmap",
 					Ref:  "foo",
 				},
 				Ops: []bdc.Ops{
 					{
-						Type: "configMap",
+						Type: "configmap",
 						Ref:  "missing_variables",
 					},
 				},
@@ -274,7 +295,7 @@ var _ = Describe("Resolver", func() {
 			interpolator.InterpolateReturns(nil, errors.New("fake-error"))
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configMap",
+					Type: "configmap",
 					Ref:  "foo",
 				},
 				Ops: []bdc.Ops{
@@ -286,13 +307,13 @@ var _ = Describe("Resolver", func() {
 			}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("unrecognized ops-ref type"))
+			Expect(err.Error()).To(ContainSubstring("unrecognized ops ref type"))
 		})
 
 		It("throws an error if ops configMap can not be found when contains multi-refs", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configMap",
+					Type: "configmap",
 					Ref:  "foo",
 				},
 				Ops: []bdc.Ops{
@@ -301,20 +322,20 @@ var _ = Describe("Resolver", func() {
 						Ref:  "ops-secret",
 					},
 					{
-						Type: "configMap",
-						Ref:  "missing_key",
+						Type: "configmap",
+						Ref:  "nonexist-configmap",
 					},
 				},
 			}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Failed to build ops from config map"))
+			Expect(err.Error()).To(ContainSubstring("Failed to retrieve ops from configmap"))
 		})
 
 		It("throws an error if ops secret can not be found when contains multi-refs", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configMap",
+					Type: "configmap",
 					Ref:  "foo",
 				},
 				Ops: []bdc.Ops{
@@ -323,14 +344,14 @@ var _ = Describe("Resolver", func() {
 						Ref:  "missing_key",
 					},
 					{
-						Type: "configMap",
+						Type: "configmap",
 						Ref:  "baz",
 					},
 				},
 			}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Failed to build ops from secret"))
+			Expect(err.Error()).To(ContainSubstring("Failed to retrieve ops from secret"))
 		})
 	})
 })

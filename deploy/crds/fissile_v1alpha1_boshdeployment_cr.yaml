@@ -4,10 +4,10 @@ metadata:
   name: example-boshdeployment
 spec:
   manifest:
-    type: "configMap"
+    type: "configmap"
     ref: "bosh-manifest"
   ops:
-    - type: "configMap"
+    - type: "configmap"
       ref: "bosh-ops"
     - type: "secret"
       ref: "bosh-ops-secret"
