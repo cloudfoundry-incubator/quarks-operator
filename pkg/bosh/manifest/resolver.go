@@ -77,8 +77,9 @@ func (r *ResolverImpl) getRefData(namespace string, manifestType string, manifes
 		refData string
 		ok      bool
 	)
+
 	switch manifestType {
-	case "configmap":
+	case bdc.ConfigMapType:
 		opsConfig := &corev1.ConfigMap{}
 		err := r.client.Get(context.TODO(), types.NamespacedName{Name: manifestRef, Namespace: namespace}, opsConfig)
 		if err != nil {
@@ -88,7 +89,7 @@ func (r *ResolverImpl) getRefData(namespace string, manifestType string, manifes
 		if !ok {
 			return refData, fmt.Errorf("configMap '%s/%s' doesn't contain key %s", namespace, manifestRef, refKey)
 		}
-	case "secret":
+	case bdc.SecretType:
 		opsSecret := &corev1.Secret{}
 		err := r.client.Get(context.TODO(), types.NamespacedName{Name: manifestRef, Namespace: namespace}, opsSecret)
 		if err != nil {
@@ -99,7 +100,7 @@ func (r *ResolverImpl) getRefData(namespace string, manifestType string, manifes
 			return refData, fmt.Errorf("secert '%s/%s' doesn't contain key %s", namespace, manifestRef, refKey)
 		}
 		refData = string(encodedData)
-	case "url":
+	case bdc.UrlType:
 		httpResponse, err := http.Get(manifestRef)
 		if err != nil {
 			return refData, errors.Wrapf(err, "Failed to resolve %s from url '%s' via http.Get", refKey, manifestRef)

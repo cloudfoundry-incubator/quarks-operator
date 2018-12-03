@@ -36,7 +36,7 @@ func (c *Catalog) DefaultFissileCR(name, manifestRef string) fisv1.BOSHDeploymen
 	return fisv1.BOSHDeployment{
 		ObjectMeta: v1.ObjectMeta{Name: name},
 		Spec: fisv1.BOSHDeploymentSpec{
-			Manifest: fisv1.Manifest{Ref: manifestRef, Type: "configmap"},
+			Manifest: fisv1.Manifest{Ref: manifestRef, Type: fisv1.ConfigMapType},
 		},
 	}
 }

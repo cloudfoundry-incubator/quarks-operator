@@ -8,6 +8,13 @@ import (
 // It's used as input for the Kube code generator
 // Run "make generate" after modifying this file
 
+// Valid values for ref types
+const (
+	ConfigMapType string = "configmap"
+	SecretType    string = "secret"
+	UrlType       string = "url"
+)
+
 // BOSHDeploymentSpec defines the desired state of BOSHDeployment
 type BOSHDeploymentSpec struct {
 	Manifest Manifest `json:"manifest"`

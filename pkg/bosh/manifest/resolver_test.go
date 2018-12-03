@@ -155,7 +155,7 @@ instance-groups:
 		It("works for valid CRs by using config map", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configmap",
+					Type: bdc.ConfigMapType,
 					Ref:  "base-manifest",
 				},
 			}
@@ -183,7 +183,7 @@ instance-groups:
 		It("works for valid CRs by using secret", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "secret",
+					Type: bdc.SecretType,
 					Ref:  "opaque-manifest",
 				},
 			}
@@ -211,7 +211,7 @@ instance-groups:
 		It("works for valid CRs by using URL", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "url",
+					Type: bdc.UrlType,
 					Ref:  remoteFileServer.URL() + validManifestPath,
 				},
 			}
@@ -243,12 +243,12 @@ instance-groups:
 
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configmap",
+					Type: bdc.ConfigMapType,
 					Ref:  "base-manifest",
 				},
 				Ops: []bdc.Ops{
 					{
-						Type: "configmap",
+						Type: bdc.ConfigMapType,
 						Ref:  "replace-ops",
 					},
 				},
@@ -283,24 +283,24 @@ instance-groups:
 
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configmap",
+					Type: bdc.ConfigMapType,
 					Ref:  "base-manifest",
 				},
 				Ops: []bdc.Ops{
 					{
-						Type: "configmap",
+						Type: bdc.ConfigMapType,
 						Ref:  "replace-ops",
 					},
 					{
-						Type: "secret",
+						Type: bdc.SecretType,
 						Ref:  "opaque-ops",
 					},
 					{
-						Type: "url",
+						Type: bdc.UrlType,
 						Ref:  remoteFileServer.URL() + validOpsPath,
 					},
 					{
-						Type: "configmap",
+						Type: bdc.ConfigMapType,
 						Ref:  "remove-ops",
 					},
 				},
@@ -325,7 +325,7 @@ instance-groups:
 		It("throws an error if the manifest can not be found", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configmap",
+					Type: bdc.ConfigMapType,
 					Ref:  "not-existing",
 				},
 			}
@@ -337,7 +337,7 @@ instance-groups:
 		It("throws an error if the CR is empty", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configmap",
+					Type: bdc.ConfigMapType,
 					Ref:  "empty-ref",
 				},
 			}
@@ -349,7 +349,7 @@ instance-groups:
 		It("throws an error on invalid yaml", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configmap",
+					Type: bdc.ConfigMapType,
 					Ref:  "invalid-yaml",
 				},
 			}
@@ -374,12 +374,12 @@ instance-groups:
 		It("throws an error if ops configMap can not be found", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configmap",
+					Type: bdc.ConfigMapType,
 					Ref:  "base-manifest",
 				},
 				Ops: []bdc.Ops{
 					{
-						Type: "configmap",
+						Type: bdc.ConfigMapType,
 						Ref:  "not-existing",
 					},
 				},
@@ -392,12 +392,12 @@ instance-groups:
 		It("throws an error if ops configMap is empty", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configmap",
+					Type: bdc.ConfigMapType,
 					Ref:  "base-manifest",
 				},
 				Ops: []bdc.Ops{
 					{
-						Type: "configmap",
+						Type: bdc.ConfigMapType,
 						Ref:  "empty-ref",
 					},
 				},
@@ -412,12 +412,12 @@ instance-groups:
 
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configmap",
+					Type: bdc.ConfigMapType,
 					Ref:  "base-manifest",
 				},
 				Ops: []bdc.Ops{
 					{
-						Type: "configmap",
+						Type: bdc.ConfigMapType,
 						Ref:  "invalid-ops",
 					},
 				},
@@ -431,12 +431,12 @@ instance-groups:
 			interpolator.InterpolateReturns(nil, errors.New("fake-error"))
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configmap",
+					Type: bdc.ConfigMapType,
 					Ref:  "base-manifest",
 				},
 				Ops: []bdc.Ops{
 					{
-						Type: "configmap",
+						Type: bdc.ConfigMapType,
 						Ref:  "missing-key",
 					},
 				},
@@ -450,7 +450,7 @@ instance-groups:
 			interpolator.InterpolateReturns(nil, errors.New("fake-error"))
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configmap",
+					Type: bdc.ConfigMapType,
 					Ref:  "base-manifest",
 				},
 				Ops: []bdc.Ops{
@@ -468,16 +468,16 @@ instance-groups:
 		It("throws an error if one config map can not be found when contains multi-ops", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configmap",
+					Type: bdc.ConfigMapType,
 					Ref:  "base-manifest",
 				},
 				Ops: []bdc.Ops{
 					{
-						Type: "secret",
+						Type: bdc.SecretType,
 						Ref:  "opaque-ops",
 					},
 					{
-						Type: "configmap",
+						Type: bdc.ConfigMapType,
 						Ref:  "not-existing",
 					},
 				},
@@ -490,16 +490,16 @@ instance-groups:
 		It("throws an error if one secret can not be found when contains multi-ops", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configmap",
+					Type: bdc.ConfigMapType,
 					Ref:  "base-manifest",
 				},
 				Ops: []bdc.Ops{
 					{
-						Type: "secret",
+						Type: bdc.SecretType,
 						Ref:  "not-existing",
 					},
 					{
-						Type: "configmap",
+						Type: bdc.ConfigMapType,
 						Ref:  "replace-ops",
 					},
 				},
@@ -512,20 +512,20 @@ instance-groups:
 		It("throws an error if one url ref can not be found when contains multi-ops", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: "configmap",
+					Type: bdc.ConfigMapType,
 					Ref:  "base-manifest",
 				},
 				Ops: []bdc.Ops{
 					{
-						Type: "configmap",
+						Type: bdc.ConfigMapType,
 						Ref:  "replace-ops",
 					},
 					{
-						Type: "secret",
+						Type: bdc.SecretType,
 						Ref:  "ops-secret",
 					},
 					{
-						Type: "url",
+						Type: bdc.UrlType,
 						Ref:  remoteFileServer.URL() + "/not-found-ops.yml",
 					},
 				},
