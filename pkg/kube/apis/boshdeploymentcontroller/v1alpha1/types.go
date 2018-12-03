@@ -12,7 +12,7 @@ import (
 const (
 	ConfigMapType string = "configmap"
 	SecretType    string = "secret"
-	UrlType       string = "url"
+	URLType       string = "url"
 )
 
 // BOSHDeploymentSpec defines the desired state of BOSHDeployment
@@ -21,12 +21,13 @@ type BOSHDeploymentSpec struct {
 	Ops      []Ops    `json:"ops"`
 }
 
+// Manifest defines the manifest type and location
 type Manifest struct {
 	Type string `json:"type"`
 	Ref  string `json:"ref"`
 }
 
-// OpsRef defines the ops type and location
+// Ops defines the ops type and location
 type Ops struct {
 	Type string `json:"type"`
 	Ref  string `json:"ref"`

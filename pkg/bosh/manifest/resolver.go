@@ -100,7 +100,7 @@ func (r *ResolverImpl) getRefData(namespace string, manifestType string, manifes
 			return refData, fmt.Errorf("secert '%s/%s' doesn't contain key %s", namespace, manifestRef, refKey)
 		}
 		refData = string(encodedData)
-	case bdc.UrlType:
+	case bdc.URLType:
 		httpResponse, err := http.Get(manifestRef)
 		if err != nil {
 			return refData, errors.Wrapf(err, "Failed to resolve %s from url '%s' via http.Get", refKey, manifestRef)

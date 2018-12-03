@@ -211,7 +211,7 @@ instance-groups:
 		It("works for valid CRs by using URL", func() {
 			spec := bdc.BOSHDeploymentSpec{
 				Manifest: bdc.Manifest{
-					Type: bdc.UrlType,
+					Type: bdc.URLType,
 					Ref:  remoteFileServer.URL() + validManifestPath,
 				},
 			}
@@ -296,7 +296,7 @@ instance-groups:
 						Ref:  "opaque-ops",
 					},
 					{
-						Type: bdc.UrlType,
+						Type: bdc.URLType,
 						Ref:  remoteFileServer.URL() + validOpsPath,
 					},
 					{
@@ -525,7 +525,7 @@ instance-groups:
 						Ref:  "ops-secret",
 					},
 					{
-						Type: bdc.UrlType,
+						Type: bdc.URLType,
 						Ref:  remoteFileServer.URL() + "/not-found-ops.yml",
 					},
 				},
