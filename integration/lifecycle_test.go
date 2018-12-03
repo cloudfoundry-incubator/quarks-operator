@@ -49,7 +49,7 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
-			versionedCR.Spec.ManifestRef = "newmanifest"
+			versionedCR.Spec.Manifest.Ref = "newmanifest"
 			_, _, err = env.UpdateFissileCR(env.Namespace, *versionedCR)
 			Expect(err).NotTo(HaveOccurred())
 

@@ -8,10 +8,29 @@ import (
 // It's used as input for the Kube code generator
 // Run "make generate" after modifying this file
 
+// Valid values for ref types
+const (
+	ConfigMapType string = "configmap"
+	SecretType    string = "secret"
+	URLType       string = "url"
+)
+
 // BOSHDeploymentSpec defines the desired state of BOSHDeployment
 type BOSHDeploymentSpec struct {
-	ManifestRef string `json:"manifest-ref"`
-	OpsRef      string `json:"ops-ref"`
+	Manifest Manifest `json:"manifest"`
+	Ops      []Ops    `json:"ops"`
+}
+
+// Manifest defines the manifest type and location
+type Manifest struct {
+	Type string `json:"type"`
+	Ref  string `json:"ref"`
+}
+
+// Ops defines the ops type and location
+type Ops struct {
+	Type string `json:"type"`
+	Ref  string `json:"ref"`
 }
 
 // BOSHDeploymentStatus defines the observed state of BOSHDeployment

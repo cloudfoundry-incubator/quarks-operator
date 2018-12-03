@@ -3,6 +3,8 @@ package manifest
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
 	"github.com/pkg/errors"
@@ -31,52 +33,86 @@ func NewResolver(client client.Client, interpolator Interpolator) *ResolverImpl 
 // ResolveCRD returns manifest referenced by our CRD
 func (r *ResolverImpl) ResolveCRD(spec bdc.BOSHDeploymentSpec, namespace string) (*Manifest, error) {
 	manifest := &Manifest{}
+	var (
+		m   string
+		err error
+	)
 
-	// TODO for now we only support config map ref
-	ref := spec.ManifestRef
-
-	config := &corev1.ConfigMap{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: ref, Namespace: namespace}, config)
+	m, err = r.getRefData(namespace, spec.Manifest.Type, spec.Manifest.Ref, "manifest")
 	if err != nil {
-		return manifest, errors.Wrapf(err, "Failed to retrieve configmap '%s/%s' via client.Get", namespace, ref)
+		return manifest, err
 	}
 
-	// unmarshal manifest.data into bosh deployment manifest...
-	// TODO re-use LoadManifest() from fissile
-	m, ok := config.Data["manifest"]
-	if !ok {
-		return manifest, fmt.Errorf("configmap doesn't contain manifest key")
-	}
-
-	// unmarshal ops.data into bosh ops if exist
-	opsConfig := &corev1.ConfigMap{}
-	opsRef := spec.OpsRef
-	if opsRef == "" {
+	// Interpolate manifest with ops if exist
+	ops := spec.Ops
+	if len(ops) == 0 {
 		err = yaml.Unmarshal([]byte(m), manifest)
 		return manifest, err
 	}
 
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: opsRef, Namespace: namespace}, opsConfig)
-	if err != nil {
-		return manifest, errors.Wrapf(err, "Failed to retrieve configmap '%s/%s' via client.Get", namespace, opsRef)
-	}
-
-	opsData, ok := opsConfig.Data["ops"]
-	if !ok {
-		return manifest, fmt.Errorf("configmap doesn't contain ops key")
-	}
-
-	err = r.interpolator.BuildOps([]byte(opsData))
-	if err != nil {
-		return manifest, errors.Wrapf(err, "Failed to build ops: %#v", opsData)
+	for _, op := range ops {
+		opsData, err := r.getRefData(namespace, op.Type, op.Ref, "ops")
+		if err != nil {
+			return manifest, err
+		}
+		err = r.interpolator.BuildOps([]byte(opsData))
+		if err != nil {
+			return manifest, errors.Wrapf(err, "Failed to build ops with: %#v", opsData)
+		}
 	}
 
 	bytes, err := r.interpolator.Interpolate([]byte(m))
 	if err != nil {
-		return manifest, errors.Wrapf(err, "Failed to interpolate %#v by %#v", m, opsData)
+		return manifest, errors.Wrapf(err, "Failed to interpolate %#v", m)
 	}
 
 	err = yaml.Unmarshal(bytes, manifest)
 
 	return manifest, err
+}
+
+// getRefData resolves different manifest reference types and returns manifest data
+func (r *ResolverImpl) getRefData(namespace string, manifestType string, manifestRef string, refKey string) (string, error) {
+	var (
+		refData string
+		ok      bool
+	)
+
+	switch manifestType {
+	case bdc.ConfigMapType:
+		opsConfig := &corev1.ConfigMap{}
+		err := r.client.Get(context.TODO(), types.NamespacedName{Name: manifestRef, Namespace: namespace}, opsConfig)
+		if err != nil {
+			return refData, errors.Wrapf(err, "Failed to retrieve %s from configmap '%s/%s' via client.Get", refKey, namespace, manifestRef)
+		}
+		refData, ok = opsConfig.Data[refKey]
+		if !ok {
+			return refData, fmt.Errorf("configMap '%s/%s' doesn't contain key %s", namespace, manifestRef, refKey)
+		}
+	case bdc.SecretType:
+		opsSecret := &corev1.Secret{}
+		err := r.client.Get(context.TODO(), types.NamespacedName{Name: manifestRef, Namespace: namespace}, opsSecret)
+		if err != nil {
+			return refData, errors.Wrapf(err, "Failed to retrieve %s from secret '%s/%s' via client.Get", refKey, namespace, manifestRef)
+		}
+		encodedData, ok := opsSecret.Data[refKey]
+		if !ok {
+			return refData, fmt.Errorf("secert '%s/%s' doesn't contain key %s", namespace, manifestRef, refKey)
+		}
+		refData = string(encodedData)
+	case bdc.URLType:
+		httpResponse, err := http.Get(manifestRef)
+		if err != nil {
+			return refData, errors.Wrapf(err, "Failed to resolve %s from url '%s' via http.Get", refKey, manifestRef)
+		}
+		body, err := ioutil.ReadAll(httpResponse.Body)
+		if err != nil {
+			return refData, errors.Wrapf(err, "Failed to read %s response body '%s' via ioutil", refKey, manifestRef)
+		}
+		refData = string(body)
+	default:
+		return refData, fmt.Errorf("unrecognized %s ref type %s", refKey, manifestRef)
+	}
+
+	return refData, nil
 }
