@@ -47,7 +47,6 @@ func (r *ResolverImpl) ResolveCRD(spec bdc.BOSHDeploymentSpec, namespace string)
 	ops := spec.Ops
 	if len(ops) == 0 {
 		err = yaml.Unmarshal([]byte(m), manifest)
-		fmt.Println([]byte(m))
 		return manifest, err
 	}
 
@@ -58,7 +57,7 @@ func (r *ResolverImpl) ResolveCRD(spec bdc.BOSHDeploymentSpec, namespace string)
 		}
 		err = r.interpolator.BuildOps([]byte(opsData))
 		if err != nil {
-			return manifest, errors.Wrapf(err, "Failed to interpolate ops with manifest: %#v", opsData)
+			return manifest, errors.Wrapf(err, "Failed to build ops with: %#v", opsData)
 		}
 	}
 
@@ -89,7 +88,6 @@ func (r *ResolverImpl) getRefData(namespace string, manifestType string, manifes
 		if !ok {
 			return refData, fmt.Errorf("configMap '%s/%s' doesn't contain key %s", namespace, manifestRef, refKey)
 		}
-		fmt.Println(refData)
 	case "secret":
 		opsSecret := &corev1.Secret{}
 		err := r.client.Get(context.TODO(), types.NamespacedName{Name: manifestRef, Namespace: namespace}, opsSecret)
@@ -114,5 +112,6 @@ func (r *ResolverImpl) getRefData(namespace string, manifestType string, manifes
 	default:
 		return refData, fmt.Errorf("unrecognized %s ref type %s", refKey, manifestRef)
 	}
+
 	return refData, nil
 }
