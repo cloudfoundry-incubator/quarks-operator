@@ -2,10 +2,13 @@
 - [CI](#ci)
 - [Publishing](#publishing)
 - [Creating a new Controller](#creating-a-new-controller)
+- [Versioning](#versioning)
 
 ## Makefile
 
 ## CI
+
+Our Concourse pipeline definitions are kept in the [https://github.com/cloudfoundry-incubator/cf-operator-ci](cf-operator-ci) repo.
 
 ## Publishing
 
@@ -26,7 +29,7 @@
   This file looks almost the same for all controllers.
 
   The `doc.go` (deep object copy) is required to make the `deepcopy` generator work.
-  It's safe to copy this file from another controller. 
+  It's safe to copy this file from another controller.
 
 - in `bin/gen-kube`, add your controller to the `CONTROLLERS` variable (separated by a space `" "`):
 
@@ -43,7 +46,7 @@
   make generate
   ```
 
-- create a directory structure like this for your actual controller code: 
+- create a directory structure like this for your actual controller code:
 
   ```
   .
@@ -52,11 +55,11 @@
          +-- controllers
              +-- <controller_name>
              ¦   +-- controller.go
-             ¦   +-- reconciler.go  
+             ¦   +-- reconciler.go
              +-- controller.go
   ```
 
-  - `controller.go` is your controller implementation; this is where you should implement an `Add` function where register the controller with the `Manager`, and you watch for changes for resources that you care about. 
+  - `controller.go` is your controller implementation; this is where you should implement an `Add` function where register the controller with the `Manager`, and you watch for changes for resources that you care about.
   - `reconciler.go` contains the code that takes action and reconciles actual state with desired state.
 
   Simple implementation to get you started below.
@@ -98,7 +101,7 @@
   }
   ```
 
-  **Reconciler:** 
+  **Reconciler:**
   ```go
   package myresource
 
@@ -134,3 +137,7 @@
     return reconcile.Result{}, nil
   }
   ```
+
+## Versioning
+
+APIs and types follow the upstream versioning scheme described at: https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-versioning
