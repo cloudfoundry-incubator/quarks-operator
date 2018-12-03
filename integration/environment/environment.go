@@ -8,6 +8,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -97,7 +98,7 @@ func (e *Environment) setupCFOperator() (err error) {
 }
 
 func (e *Environment) setupKube() (err error) {
-	location := os.Getenv("KUBE_CONFIG")
+	location := os.Getenv("KUBECONFIG")
 	if location == "" {
 		location = filepath.Join(os.Getenv("HOME"), ".kube", "config")
 	}
