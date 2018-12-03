@@ -1,17 +1,17 @@
 # ExtendedJob
 
 - [ExtendedJob](#extendedjob)
-    - [Description](#description)
-    - [Features](#features)
-        - [Triggers](#triggers)
-        - [Persisted Output](#persisted-output)
-    - [Example Resource](#example-resource)
+  - [Description](#description)
+  - [Features](#features)
+    - [Triggers](#triggers)
+    - [Persisted Output](#persisted-output)
+  - [Example Resource](#example-resource)
 
 ## Description
 
 An `ExtendedJob` allows the developer to run jobs when something interesting happens. It also allows the developer to store the output of the job into a `ConfigMap` or `Secret`.
 
-Just like an `ExtendedStatefulSet`, an `ExtendedJob` can automatically be restarted if its environment/mounts have changed due to a `ConfigMap` or a `Secret` being updated. 
+Just like an `ExtendedStatefulSet`, an `ExtendedJob` can automatically be restarted if its environment/mounts have changed due to a `ConfigMap` or a `Secret` being updated.
 
 ## Features
 
@@ -73,5 +73,11 @@ spec:
             image: perl
             command: ["perl",  "-Mbignum=bpi", "-wle", "print bpi(2000)"]
         restartPolicy: Never
+        env:
+        - name: MY_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: foo-config
+              key: special.how
     backoffLimit: 4
 ```
