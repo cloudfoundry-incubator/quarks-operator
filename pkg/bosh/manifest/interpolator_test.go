@@ -305,7 +305,7 @@ instance-groups:
 			Expect(result).To(MatchYAML(expectedManifest))
 		})
 
-		//Test for value
+		//Test for value by using single ops
 		It("works for modifying one existing variable", func() {
 			ops = []byte(`
 - type: replace
@@ -453,6 +453,138 @@ instance-groups:
 			_, err = interpolator.Interpolate(baseManifest)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Expected to find exactly one matching array item for path"))
+		})
+
+		//Test for value by using multiple ops
+		It("works for multiple modify ops", func() {
+			ops1 := []byte(`
+- type: replace
+  path: /instance-groups/name=diego/instances
+  value: 6
+`)
+			ops2 := []byte(`
+- type: replace
+  path: /instance-groups?/name=api/instances
+  value: 2
+`)
+			expectedManifest = []byte(`instance-groups:
+name: my-deployment
+director_uuid: 1234abcd
+dns:
+- 192.168.0.1
+- 192.168.0.2
+instance-groups:
+  - name: diego
+    instances: 6
+  - name: mysql
+    instances: 2
+  - name: api
+    instances: 2
+`)
+
+			err := interpolator.BuildOps(ops1)
+			Expect(err).ToNot(HaveOccurred())
+			err = interpolator.BuildOps(ops2)
+			Expect(err).ToNot(HaveOccurred())
+
+			result, err := interpolator.Interpolate(baseManifest)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(MatchYAML(expectedManifest))
+		})
+
+		It("works for multiple modify and remove ops", func() {
+			ops1 := []byte(`
+- type: replace
+  path: /instance-groups/name=diego/instances
+  value: 4
+`)
+			ops2 := []byte(`
+- type: replace
+  path: /instance-groups/name=diego/instances
+  value: 5
+`)
+			ops3 := []byte(`
+- type: remove
+  path: /instance-groups/name=mysql?
+`)
+			expectedManifest = []byte(`instance-groups:
+name: my-deployment
+director_uuid: 1234abcd
+dns:
+- 192.168.0.1
+- 192.168.0.2
+instance-groups:
+  - name: diego
+    instances: 5
+`)
+
+			err := interpolator.BuildOps(ops1)
+			Expect(err).ToNot(HaveOccurred())
+			err = interpolator.BuildOps(ops2)
+			Expect(err).ToNot(HaveOccurred())
+			err = interpolator.BuildOps(ops3)
+			Expect(err).ToNot(HaveOccurred())
+
+			result, err := interpolator.Interpolate(baseManifest)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(MatchYAML(expectedManifest))
+		})
+
+		It("throws an error if modify one non-existing variable in multiple ops", func() {
+			ops1 := []byte(`
+- type: replace
+  path: /instance-groups/name=diego/instances
+  value: 4
+`)
+			ops2 := []byte(`
+- type: remove
+  path: /instance-groups/name=api
+`)
+
+			err := interpolator.BuildOps(ops1)
+			Expect(err).ToNot(HaveOccurred())
+			err = interpolator.BuildOps(ops2)
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = interpolator.Interpolate(baseManifest)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Expected to find exactly one matching array item for path"))
+		})
+
+		It("throws an error if using wrong ops operation in multiple ops", func() {
+			ops1 := []byte(`
+- type: replace
+  path: /instance-groups/name=diego/instances
+  value: 4
+`)
+			ops2 := []byte(`
+- type: test
+  test: This is a wrong ops format file
+`)
+
+			err := interpolator.BuildOps(ops1)
+			Expect(err).ToNot(HaveOccurred())
+			err = interpolator.BuildOps(ops2)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Building ops: Unknown operation"))
+		})
+
+		It("throws an error if using wrong ops format in multiple ops", func() {
+			ops1 := []byte(`
+This is a wrong ops format file
+`)
+
+			ops2 := []byte(`
+			- type: replace
+			  path: /instance-groups/name=diego/instances
+			  value: 4
+			`)
+			err := interpolator.BuildOps(ops1)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("yaml: unmarshal errors"))
+			err = interpolator.BuildOps(ops2)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("found character that cannot start any token"))
 		})
 	})
 })
