@@ -5,7 +5,7 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controller"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 )
 
 // NewManager adds schemes, controllers and starts the manager

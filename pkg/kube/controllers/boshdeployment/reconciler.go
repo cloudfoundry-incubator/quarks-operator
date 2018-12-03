@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -14,19 +12,17 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
 )
 
-// Add creates a new BOSHDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
-// and Start it when the Manager is Started.
-func Add(log *zap.SugaredLogger, mgr manager.Manager) error {
-	return add(mgr, NewReconciler(log, mgr, bdm.NewResolver(mgr.GetClient(), bdm.NewInterpolator()), controllerutil.SetControllerReference))
-}
+// Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
+var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
+
+type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(log *zap.SugaredLogger, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
@@ -38,36 +34,6 @@ func NewReconciler(log *zap.SugaredLogger, mgr manager.Manager, resolver bdm.Res
 		setReference: srf,
 	}
 }
-
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
-	// Create a new controller
-	c, err := controller.New("boshdeployment-controller", mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to primary resource BOSHDeployment
-	err = c.Watch(&source.Kind{Type: &bdc.BOSHDeployment{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to secondary resource Pods and requeue the owner BOSHDeployment
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &bdc.BOSHDeployment{},
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
-
-type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // ReconcileBOSHDeployment reconciles a BOSHDeployment object
 type ReconcileBOSHDeployment struct {

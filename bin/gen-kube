@@ -7,12 +7,11 @@ set -o pipefail
 GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${GIT_ROOT}; ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
 
-# Comma separated list
-CONTROLLERS="boshdeploymentcontroller:v1alpha1"
+# The groups and their versions in the format "groupA:v1,v2 groupB:v1 groupC:v2"
+CONTROLLERS="boshdeploymentcontroller:v1alpha1 extendedstatefulsetcontroller:v1alpha1"
 
-${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,lister" \
+"${CODEGEN_PKG}/generate-groups.sh" "deepcopy,client,lister" \
   code.cloudfoundry.org/cf-operator/pkg/kube/client \
   code.cloudfoundry.org/cf-operator/pkg/kube/apis \
-  $CONTROLLERS \
-  --go-header-file ${GIT_ROOT}/gen/header.go.txt
-
+  "${CONTROLLERS}" \
+  --go-header-file "${GIT_ROOT}/gen/header.go.txt"

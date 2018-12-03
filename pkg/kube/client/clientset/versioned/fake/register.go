@@ -9,6 +9,7 @@ package fake
 
 import (
 	boshdeploymentcontrollerv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
+	extendedstatefulsetcontrollerv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulsetcontroller/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -40,4 +41,5 @@ func init() {
 // correctly.
 func AddToScheme(scheme *runtime.Scheme) {
 	boshdeploymentcontrollerv1alpha1.AddToScheme(scheme)
+	extendedstatefulsetcontrollerv1alpha1.AddToScheme(scheme)
 }
