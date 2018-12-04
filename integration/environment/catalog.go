@@ -40,3 +40,47 @@ func (c *Catalog) DefaultFissileCR(name, manifestRef string) fisv1.BOSHDeploymen
 		},
 	}
 }
+
+// EmptyFissileCR empty fissile deployment CR
+func (c *Catalog) EmptyFissileCR(name, manifestRef string) fisv1.BOSHDeployment {
+	return fisv1.BOSHDeployment{
+		ObjectMeta: v1.ObjectMeta{Name: name},
+		Spec:       fisv1.BOSHDeploymentSpec{},
+	}
+}
+
+// DefaultFissileCRWithOps fissile deployment CR with ops
+func (c *Catalog) DefaultFissileCRWithOps(name, manifestRef string, opsRef string) fisv1.BOSHDeployment {
+	return fisv1.BOSHDeployment{
+		ObjectMeta: v1.ObjectMeta{Name: name},
+		Spec: fisv1.BOSHDeploymentSpec{
+			Manifest: fisv1.Manifest{Ref: manifestRef, Type: fisv1.ConfigMapType},
+			Ops: []fisv1.Ops{
+				{Ref: opsRef, Type: fisv1.ConfigMapType},
+			},
+		},
+	}
+}
+
+// WrongTypeFissileCR fissile deployment CR containing wrong type
+func (c *Catalog) WrongTypeFissileCR(name, manifestRef string) fisv1.BOSHDeployment {
+	return fisv1.BOSHDeployment{
+		ObjectMeta: v1.ObjectMeta{Name: name},
+		Spec: fisv1.BOSHDeploymentSpec{
+			Manifest: fisv1.Manifest{Ref: manifestRef, Type: "wrong-type"},
+		},
+	}
+}
+
+// FissileCRWithWrongTypeOps fissile deployment CR with wrong type ops
+func (c *Catalog) FissileCRWithWrongTypeOps(name, manifestRef string, opsRef string) fisv1.BOSHDeployment {
+	return fisv1.BOSHDeployment{
+		ObjectMeta: v1.ObjectMeta{Name: name},
+		Spec: fisv1.BOSHDeploymentSpec{
+			Manifest: fisv1.Manifest{Ref: manifestRef, Type: fisv1.ConfigMapType},
+			Ops: []fisv1.Ops{
+				{Ref: opsRef, Type: "wrong-type"},
+			},
+		},
+	}
+}

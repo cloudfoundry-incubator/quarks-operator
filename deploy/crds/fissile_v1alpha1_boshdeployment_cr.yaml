@@ -11,6 +11,10 @@ spec:
       ref: "bosh-ops"
     - type: "secret"
       ref: "bosh-ops-secret"
+    - type: "secret"
+      ref: "bosh-ops-secret"
+    - type: "url"
+      ref: "bosh-ops-secret"
 ---
 apiVersion: v1
 kind: ConfigMap

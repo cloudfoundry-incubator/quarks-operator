@@ -18,7 +18,7 @@ const (
 // BOSHDeploymentSpec defines the desired state of BOSHDeployment
 type BOSHDeploymentSpec struct {
 	Manifest Manifest `json:"manifest"`
-	Ops      []Ops    `json:"ops"`
+	Ops      []Ops    `json:"ops,omitempty"`
 }
 
 // Manifest defines the manifest type and location

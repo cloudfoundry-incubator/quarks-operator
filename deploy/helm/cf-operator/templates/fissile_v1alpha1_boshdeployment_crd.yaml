@@ -13,3 +13,32 @@ spec:
     singular: boshdeployment
   scope: Namespaced
   version: v1alpha1
+  validation:
+    # openAPIV3Schema is the schema for validating custom objects.
+    openAPIV3Schema:
+      properties:
+        spec:
+          required: [manifest]
+          properties:
+            manifest:
+              type: object
+              required: [type, ref]
+              properties:
+                type:
+                  type: string
+                  enum: ["configmap", "secret", "url"]
+                ref:
+                  type: string
+                  minLength: 1
+            ops:
+              type: array
+              items:
+                type: object
+                required: [type, ref]
+                properties:
+                  type:
+                    type: string
+                    enum: ["configmap", "secret", "url"]
+                  ref:
+                    type: string
+                    minLength: 1
