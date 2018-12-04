@@ -1,8 +1,9 @@
 #!/bin/sh
-set -e
+set -eu
 
 
-export TEST_NAMESPACE="test$(date +%s)"
+TEST_NAMESPACE="test$(date +%s)"
+export TEST_NAMESPACE
 
 remove_namespace() {
   kubectl delete namespace "$TEST_NAMESPACE"
