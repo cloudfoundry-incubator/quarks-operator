@@ -11,10 +11,6 @@ spec:
       ref: "bosh-ops"
     - type: "secret"
       ref: "bosh-ops-secret"
-    - type: "secret"
-      ref: "bosh-ops-secret"
-    - type: "url"
-      ref: "bosh-ops-secret"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -46,5 +42,5 @@ type: Opaque
 stringData:
   ops: |
     - type: replace
-      path: /instance-groups/name=diego?/instances
+      path: /instance-groups/name=diego111/instances
       value: 5

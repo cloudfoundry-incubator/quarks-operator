@@ -7,6 +7,13 @@ import (
 
 var _ = Describe("Deploy", func() {
 	Context("when correctly setup", func() {
+		podName := "diego-pod"
+
+		AfterEach(func() {
+			err := env.WaitForPodsDelete(env.Namespace)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("should deploy a pod", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
 			Expect(err).NotTo(HaveOccurred())
@@ -17,22 +24,33 @@ var _ = Describe("Deploy", func() {
 			defer tearDown()
 
 			// check for pod
-			err = env.WaitForPod(env.Namespace, "diego-pod")
+			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 		})
 
-		It("should deploy a pod", func() {
+		It("should deploy manifest with multiple ops correctly", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
-			_, tearDown, err = env.CreateFissileCR(env.Namespace, env.DefaultFissileCRWithOps("test", "manifest", "ops"))
+			tearDown, err = env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops"))
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			tearDown, err = env.CreateSecret(env.Namespace, env.InterpolateOpsSecret("bosh-ops"))
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			_, tearDown, err = env.CreateFissileCR(env.Namespace, env.InterpolateFissileCR("test", "manifest", "bosh-ops"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
 			// check for pod
-			err = env.WaitForPod(env.Namespace, "diego-pod")
+			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
+			labeled, err := env.PodLabeled(env.Namespace, podName, "size", "4")
+			Expect(labeled).To(BeTrue())
+			Expect(err).NotTo(HaveOccurred(), "error verifying pod label")
 		})
 	})
 
@@ -93,5 +111,4 @@ var _ = Describe("Deploy", func() {
 			defer tearDown()
 		})
 	})
-
 })
