@@ -19,14 +19,20 @@ import (
 
 var _ = Describe("Resolver", func() {
 	var (
+		replaceOpsStr string
+		removeOpsStr  string
+		opaqueOpsStr  string
+		urlOpsStr     string
+
 		validManifestPath string
 		validOpsPath      string
 		invalidOpsPath    string
-		resolver          bdm.Resolver
-		client            client.Client
-		interpolator      *fakes.FakeInterpolator
-		remoteFileServer  *ghttp.Server
-		expectedManifest  *bdm.Manifest
+
+		resolver         bdm.Resolver
+		client           client.Client
+		interpolator     *fakes.FakeInterpolator
+		remoteFileServer *ghttp.Server
+		expectedManifest *bdm.Manifest
 	)
 
 	BeforeEach(func() {
@@ -34,13 +40,33 @@ var _ = Describe("Resolver", func() {
 		validOpsPath = "/valid-ops.yml"
 		invalidOpsPath = "/invalid-ops.yml"
 
+		replaceOpsStr = `
+- type: replace
+  path: /instance-groups/name=component1?/instances
+  value: 2
+`
+		removeOpsStr = `
+- type: remove
+  path: /instance-groups/name=component2?
+`
+		opaqueOpsStr = `---
+- type: replace
+  path: /instance-groups/name=component1?/instances
+  value: 3
+`
+
+		urlOpsStr = `---
+- type: replace
+  path: /instance-groups/name=component1?/instances
+  value: 4`
+
 		client = fakeClient.NewFakeClient(
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "base-manifest",
 					Namespace: "default",
 				},
-				Data: map[string]string{"manifest": `---
+				Data: map[string]string{bdc.ManifestSpecName: `---
 instance-groups:
   - name: component1
     instances: 1
@@ -53,7 +79,7 @@ instance-groups:
 					Name:      "opaque-manifest",
 					Namespace: "default",
 				},
-				Data: map[string][]byte{"manifest": []byte(`---
+				Data: map[string][]byte{bdc.ManifestSpecName: []byte(`---
 instance-groups:
   - name: component3
     instances: 1
@@ -66,21 +92,14 @@ instance-groups:
 					Name:      "replace-ops",
 					Namespace: "default",
 				},
-				Data: map[string]string{"ops": `
-- type: replace
-  path: /instance-groups/name=component1?/instances
-  value: 2
-`},
+				Data: map[string]string{bdc.OpsSpecName: replaceOpsStr},
 			},
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "remove-ops",
 					Namespace: "default",
 				},
-				Data: map[string]string{"ops": `
-- type: remove
-  path: /instance-groups/name=component2?
-`},
+				Data: map[string]string{bdc.OpsSpecName: removeOpsStr},
 			},
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -94,14 +113,14 @@ instance-groups:
 					Name:      "invalid-yaml",
 					Namespace: "default",
 				},
-				Data: map[string]string{"manifest": "!yaml"},
+				Data: map[string]string{bdc.ManifestSpecName: "!yaml"},
 			},
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "invalid-ops",
 					Namespace: "default",
 				},
-				Data: map[string]string{"ops": `
+				Data: map[string]string{bdc.OpsSpecName: `
 - type: invalid-ops
    path: /name
    value: new-deployment
@@ -112,7 +131,7 @@ instance-groups:
 					Name:      "missing-key",
 					Namespace: "default",
 				},
-				Data: map[string]string{"ops": `
+				Data: map[string]string{bdc.OpsSpecName: `
 - type: replace
    path: /missing_key
    value: desired_value
@@ -123,11 +142,7 @@ instance-groups:
 					Name:      "opaque-ops",
 					Namespace: "default",
 				},
-				Data: map[string][]byte{"ops": []byte(`---
-- type: replace
-  path: /instance-groups/name=component1?/instances
-  value: 3
-`)},
+				Data: map[string][]byte{bdc.OpsSpecName: []byte(opaqueOpsStr)},
 			},
 		)
 
@@ -138,10 +153,7 @@ instance-groups:
 instance-groups:
   - name: component5
     instances: 1`))
-		remoteFileServer.RouteToHandler("GET", validOpsPath, ghttp.RespondWith(http.StatusOK, `---
-- type: replace
-  path: /instance-groups/name=component1?/instances
-  value: 4`))
+		remoteFileServer.RouteToHandler("GET", validOpsPath, ghttp.RespondWith(http.StatusOK, urlOpsStr))
 		remoteFileServer.RouteToHandler("GET", invalidOpsPath, ghttp.RespondWith(http.StatusOK, `---
 - type: invalid-type
   path: /key
@@ -272,6 +284,10 @@ instance-groups:
 			Expect(manifest).ToNot(Equal(nil))
 			Expect(len(manifest.InstanceGroups)).To(Equal(2))
 			Expect(manifest).To(Equal(expectedManifest))
+
+			Expect(interpolator.BuildOpsCallCount()).To(Equal(1))
+			opsBytes := interpolator.BuildOpsArgsForCall(0)
+			Expect(string(opsBytes)).To(Equal(replaceOpsStr))
 		})
 
 		It("works for valid CRs containing multi ops", func() {
@@ -320,6 +336,16 @@ instance-groups:
 			Expect(manifest).ToNot(Equal(nil))
 			Expect(len(manifest.InstanceGroups)).To(Equal(1))
 			Expect(manifest).To(Equal(expectedManifest))
+
+			Expect(interpolator.BuildOpsCallCount()).To(Equal(4))
+			opsBytes := interpolator.BuildOpsArgsForCall(0)
+			Expect(string(opsBytes)).To(Equal(replaceOpsStr))
+			opsBytes = interpolator.BuildOpsArgsForCall(1)
+			Expect(string(opsBytes)).To(Equal(opaqueOpsStr))
+			opsBytes = interpolator.BuildOpsArgsForCall(2)
+			Expect(string(opsBytes)).To(Equal(urlOpsStr))
+			opsBytes = interpolator.BuildOpsArgsForCall(3)
+			Expect(string(opsBytes)).To(Equal(removeOpsStr))
 		})
 
 		It("throws an error if the manifest can not be found", func() {
