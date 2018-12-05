@@ -1,4 +1,5 @@
-FROM alpine:3.6
+ARG base_image=opensuse/leap:15.0
+FROM ${base_image}
 
 USER nobody
 
