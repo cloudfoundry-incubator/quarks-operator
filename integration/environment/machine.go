@@ -1,16 +1,17 @@
 package environment
 
 import (
+	"fmt"
 	"time"
 
 	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"github.com/pkg/errors"
-
 	apiv1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 )
@@ -34,6 +35,25 @@ func (m *Machine) WaitForPod(namespace string, name string) error {
 	})
 }
 
+// WaitForPodsDelete blocks until the pod is deleted. It fails after the timeout.
+func (m *Machine) WaitForPodsDelete(namespace string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.PodsDeleted(namespace)
+	})
+}
+
+// PodsDeleted returns true if the all pods are deleted
+func (m *Machine) PodsDeleted(namespace string) (bool, error) {
+	podList, err := m.Clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+	if err != nil {
+		return false, err
+	}
+	if len(podList.Items) == 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
 // PodRunning returns true if the pod by that name is in state running
 func (m *Machine) PodRunning(namespace string, name string) (bool, error) {
 	pod, err := m.Clientset.CoreV1().Pods(namespace).Get(name, v1.GetOptions{})
@@ -48,6 +68,22 @@ func (m *Machine) PodRunning(namespace string, name string) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+// PodLabeled returns true if the pod is interpolated correctly
+func (m *Machine) PodLabeled(namespace string, name string, desiredLabel, desiredValue string) (bool, error) {
+	pod, err := m.Clientset.CoreV1().Pods(namespace).Get(name, v1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, err
+		}
+		return false, errors.Wrapf(err, "Failed to query for pod by name: %s", name)
+	}
+
+	if pod.ObjectMeta.Labels[desiredLabel] == desiredValue {
+		return true, nil
+	}
+	return false, fmt.Errorf("Cannot match the desired label with %s", desiredValue)
 }
 
 // WaitForCRDeletion blocks until the CR is deleted

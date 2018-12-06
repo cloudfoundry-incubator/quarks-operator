@@ -10,15 +10,17 @@ import (
 
 // Valid values for ref types
 const (
-	ConfigMapType string = "configmap"
-	SecretType    string = "secret"
-	URLType       string = "url"
+	ManifestSpecName string = "manifest"
+	OpsSpecName      string = "ops"
+	ConfigMapType    string = "configmap"
+	SecretType       string = "secret"
+	URLType          string = "url"
 )
 
 // BOSHDeploymentSpec defines the desired state of BOSHDeployment
 type BOSHDeploymentSpec struct {
 	Manifest Manifest `json:"manifest"`
-	Ops      []Ops    `json:"ops"`
+	Ops      []Ops    `json:"ops,omitempty"`
 }
 
 // Manifest defines the manifest type and location

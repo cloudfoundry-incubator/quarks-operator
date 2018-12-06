@@ -38,7 +38,7 @@ func (r *ResolverImpl) ResolveCRD(spec bdc.BOSHDeploymentSpec, namespace string)
 		err error
 	)
 
-	m, err = r.getRefData(namespace, spec.Manifest.Type, spec.Manifest.Ref, "manifest")
+	m, err = r.getRefData(namespace, spec.Manifest.Type, spec.Manifest.Ref, bdc.ManifestSpecName)
 	if err != nil {
 		return manifest, err
 	}
@@ -51,7 +51,7 @@ func (r *ResolverImpl) ResolveCRD(spec bdc.BOSHDeploymentSpec, namespace string)
 	}
 
 	for _, op := range ops {
-		opsData, err := r.getRefData(namespace, op.Type, op.Ref, "ops")
+		opsData, err := r.getRefData(namespace, op.Type, op.Ref, bdc.OpsSpecName)
 		if err != nil {
 			return manifest, err
 		}
