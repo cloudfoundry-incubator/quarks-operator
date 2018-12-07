@@ -31,11 +31,11 @@ Our Concourse pipeline definitions are kept in the [https://github.com/cloudfoun
   The `doc.go` (deep object copy) is required to make the `deepcopy` generator work.
   It's safe to copy this file from another controller.
 
-- in `bin/gen-kube`, add your controller to the `CONTROLLERS` variable (separated by a space `" "`):
+- in `bin/gen-kube`, add your controller to the `GROUP_VERSIONS` variable (separated by a space `" "`):
 
   ```bash
   # ...
-  CONTROLLERS="boshdeploymentcontroller:v1alpha1 <controller_name>controller:<version>"
+  GROUP_VERSIONS="boshdeploymentcontroller:v1alpha1 <controller_name>controller:<version>"
   # ...
   ```
 
