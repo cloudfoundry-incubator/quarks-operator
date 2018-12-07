@@ -40,7 +40,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 	)
 
 	BeforeEach(func() {
-		controller.AddToScheme(scheme.Scheme)
+		controllers.AddToScheme(scheme.Scheme)
 		manager = &cfakes.FakeManager{}
 		resolver = fakes.FakeResolver{}
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
