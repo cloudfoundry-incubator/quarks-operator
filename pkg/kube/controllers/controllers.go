@@ -6,6 +6,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
+	ess "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulsetcontroller/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 )
 
@@ -15,6 +16,7 @@ var addToManagerFuncs = []func(*zap.SugaredLogger, manager.Manager) error{
 
 var addToSchemes = runtime.SchemeBuilder{
 	bdc.AddToScheme,
+	ess.AddToScheme,
 }
 
 // AddToManager adds all Controllers to the Manager

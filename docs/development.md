@@ -138,6 +138,9 @@ Our Concourse pipeline definitions are kept in the [https://github.com/cloudfoun
   }
   ```
 
+  Add the new group to `addToSchemes` in `pkg/controllers/controller.go`.
+  Add the new controller to `addToManagerFuncs` in the same file.
+
 ## Versioning
 
 APIs and types follow the upstream versioning scheme described at: https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-versioning
