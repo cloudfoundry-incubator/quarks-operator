@@ -20,7 +20,7 @@ type ExtendedStatefulSetStatus struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ExtendedStatefulSet is the Schema for the extendedstatefulsetcontroller API
+// ExtendedStatefulSet is the Schema for the extendedstatefulset API
 // +k8s:openapi-gen=true
 type ExtendedStatefulSet struct {
 	metav1.TypeMeta   `json:",inline"`

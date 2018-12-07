@@ -8,28 +8,28 @@ Don't alter this file, it was generated.
 package v1alpha1
 
 import (
-	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulsetcontroller/v1alpha1"
+	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/scheme"
 	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	rest "k8s.io/client-go/rest"
 )
 
-type ExtendedstatefulsetcontrollerV1alpha1Interface interface {
+type ExtendedstatefulsetV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	ExtendedStatefulSetsGetter
 }
 
-// ExtendedstatefulsetcontrollerV1alpha1Client is used to interact with features provided by the extendedstatefulsetcontroller group.
-type ExtendedstatefulsetcontrollerV1alpha1Client struct {
+// ExtendedstatefulsetV1alpha1Client is used to interact with features provided by the extendedstatefulset group.
+type ExtendedstatefulsetV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ExtendedstatefulsetcontrollerV1alpha1Client) ExtendedStatefulSets(namespace string) ExtendedStatefulSetInterface {
+func (c *ExtendedstatefulsetV1alpha1Client) ExtendedStatefulSets(namespace string) ExtendedStatefulSetInterface {
 	return newExtendedStatefulSets(c, namespace)
 }
 
-// NewForConfig creates a new ExtendedstatefulsetcontrollerV1alpha1Client for the given config.
-func NewForConfig(c *rest.Config) (*ExtendedstatefulsetcontrollerV1alpha1Client, error) {
+// NewForConfig creates a new ExtendedstatefulsetV1alpha1Client for the given config.
+func NewForConfig(c *rest.Config) (*ExtendedstatefulsetV1alpha1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -38,12 +38,12 @@ func NewForConfig(c *rest.Config) (*ExtendedstatefulsetcontrollerV1alpha1Client,
 	if err != nil {
 		return nil, err
 	}
-	return &ExtendedstatefulsetcontrollerV1alpha1Client{client}, nil
+	return &ExtendedstatefulsetV1alpha1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new ExtendedstatefulsetcontrollerV1alpha1Client for the given config and
+// NewForConfigOrDie creates a new ExtendedstatefulsetV1alpha1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *ExtendedstatefulsetcontrollerV1alpha1Client {
+func NewForConfigOrDie(c *rest.Config) *ExtendedstatefulsetV1alpha1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -51,9 +51,9 @@ func NewForConfigOrDie(c *rest.Config) *ExtendedstatefulsetcontrollerV1alpha1Cli
 	return client
 }
 
-// New creates a new ExtendedstatefulsetcontrollerV1alpha1Client for the given RESTClient.
-func New(c rest.Interface) *ExtendedstatefulsetcontrollerV1alpha1Client {
-	return &ExtendedstatefulsetcontrollerV1alpha1Client{c}
+// New creates a new ExtendedstatefulsetV1alpha1Client for the given RESTClient.
+func New(c rest.Interface) *ExtendedstatefulsetV1alpha1Client {
+	return &ExtendedstatefulsetV1alpha1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -71,7 +71,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *ExtendedstatefulsetcontrollerV1alpha1Client) RESTClient() rest.Interface {
+func (c *ExtendedstatefulsetV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

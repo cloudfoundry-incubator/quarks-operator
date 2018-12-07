@@ -1,7 +1,7 @@
 - [Makefile](#makefile)
 - [CI](#ci)
 - [Publishing](#publishing)
-- [Creating a new Controller](#creating-a-new-controller)
+- [Creating a new Group and Controller](#creating-a-new-group-and-controller)
 - [Versioning](#versioning)
 
 ## Makefile
@@ -12,9 +12,9 @@ Our Concourse pipeline definitions are kept in the [https://github.com/cloudfoun
 
 ## Publishing
 
-## Creating a new Controller
+## Creating a new Group and Controller
 
-- create a new directory: `./pkg/kube/apis/<controller_name>controller/<version>`
+- create a new directory: `./pkg/kube/apis/<group_name>/<version>`
 - in that directory, create the following files:
   - `types.go`
   - `register.go`
@@ -26,16 +26,16 @@ Our Concourse pipeline definitions are kept in the [https://github.com/cloudfoun
   The `types.go` file contains the definition of your resource. This is the file you care about. Make sure to run `make generate` _every time you make a change_. You can also check to see what changes would be done by running `make verify-gen-kube`.
 
   The `register.go` file contains some code that registers your new types.
-  This file looks almost the same for all controllers.
+  This file looks almost the same for all API groups.
 
   The `doc.go` (deep object copy) is required to make the `deepcopy` generator work.
   It's safe to copy this file from another controller.
 
-- in `bin/gen-kube`, add your controller to the `GROUP_VERSIONS` variable (separated by a space `" "`):
+- in `bin/gen-kube`, add your group to the `GROUP_VERSIONS` variable (separated by a space `" "`):
 
   ```bash
   # ...
-  GROUP_VERSIONS="boshdeploymentcontroller:v1alpha1 <controller_name>controller:<version>"
+  GROUP_VERSIONS="boshdeployment:v1alpha1 <controller_name>:<version>"
   # ...
   ```
 

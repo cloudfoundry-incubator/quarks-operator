@@ -8,7 +8,7 @@ Don't alter this file, it was generated.
 package v1alpha1
 
 import (
-	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulsetcontroller/v1alpha1"
+	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	scheme "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -43,7 +43,7 @@ type extendedStatefulSets struct {
 }
 
 // newExtendedStatefulSets returns a ExtendedStatefulSets
-func newExtendedStatefulSets(c *ExtendedstatefulsetcontrollerV1alpha1Client, namespace string) *extendedStatefulSets {
+func newExtendedStatefulSets(c *ExtendedstatefulsetV1alpha1Client, namespace string) *extendedStatefulSets {
 	return &extendedStatefulSets{
 		client: c.RESTClient(),
 		ns:     namespace,

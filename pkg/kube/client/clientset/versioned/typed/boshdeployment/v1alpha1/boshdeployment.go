@@ -8,7 +8,7 @@ Don't alter this file, it was generated.
 package v1alpha1
 
 import (
-	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
+	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	scheme "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -43,7 +43,7 @@ type bOSHDeployments struct {
 }
 
 // newBOSHDeployments returns a BOSHDeployments
-func newBOSHDeployments(c *BoshdeploymentcontrollerV1alpha1Client, namespace string) *bOSHDeployments {
+func newBOSHDeployments(c *BoshdeploymentV1alpha1Client, namespace string) *bOSHDeployments {
 	return &bOSHDeployments{
 		client: c.RESTClient(),
 		ns:     namespace,

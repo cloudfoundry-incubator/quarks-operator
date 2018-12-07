@@ -8,8 +8,8 @@ Don't alter this file, it was generated.
 package versioned
 
 import (
-	boshdeploymentcontrollerv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/boshdeploymentcontroller/v1alpha1"
-	extendedstatefulsetcontrollerv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedstatefulsetcontroller/v1alpha1"
+	boshdeploymentv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1"
+	extendedstatefulsetv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedstatefulset/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -17,42 +17,42 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	BoshdeploymentcontrollerV1alpha1() boshdeploymentcontrollerv1alpha1.BoshdeploymentcontrollerV1alpha1Interface
+	BoshdeploymentV1alpha1() boshdeploymentv1alpha1.BoshdeploymentV1alpha1Interface
 	// Deprecated: please explicitly pick a version if possible.
-	Boshdeploymentcontroller() boshdeploymentcontrollerv1alpha1.BoshdeploymentcontrollerV1alpha1Interface
-	ExtendedstatefulsetcontrollerV1alpha1() extendedstatefulsetcontrollerv1alpha1.ExtendedstatefulsetcontrollerV1alpha1Interface
+	Boshdeployment() boshdeploymentv1alpha1.BoshdeploymentV1alpha1Interface
+	ExtendedstatefulsetV1alpha1() extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Interface
 	// Deprecated: please explicitly pick a version if possible.
-	Extendedstatefulsetcontroller() extendedstatefulsetcontrollerv1alpha1.ExtendedstatefulsetcontrollerV1alpha1Interface
+	Extendedstatefulset() extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	boshdeploymentcontrollerV1alpha1      *boshdeploymentcontrollerv1alpha1.BoshdeploymentcontrollerV1alpha1Client
-	extendedstatefulsetcontrollerV1alpha1 *extendedstatefulsetcontrollerv1alpha1.ExtendedstatefulsetcontrollerV1alpha1Client
+	boshdeploymentV1alpha1      *boshdeploymentv1alpha1.BoshdeploymentV1alpha1Client
+	extendedstatefulsetV1alpha1 *extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Client
 }
 
-// BoshdeploymentcontrollerV1alpha1 retrieves the BoshdeploymentcontrollerV1alpha1Client
-func (c *Clientset) BoshdeploymentcontrollerV1alpha1() boshdeploymentcontrollerv1alpha1.BoshdeploymentcontrollerV1alpha1Interface {
-	return c.boshdeploymentcontrollerV1alpha1
+// BoshdeploymentV1alpha1 retrieves the BoshdeploymentV1alpha1Client
+func (c *Clientset) BoshdeploymentV1alpha1() boshdeploymentv1alpha1.BoshdeploymentV1alpha1Interface {
+	return c.boshdeploymentV1alpha1
 }
 
-// Deprecated: Boshdeploymentcontroller retrieves the default version of BoshdeploymentcontrollerClient.
+// Deprecated: Boshdeployment retrieves the default version of BoshdeploymentClient.
 // Please explicitly pick a version.
-func (c *Clientset) Boshdeploymentcontroller() boshdeploymentcontrollerv1alpha1.BoshdeploymentcontrollerV1alpha1Interface {
-	return c.boshdeploymentcontrollerV1alpha1
+func (c *Clientset) Boshdeployment() boshdeploymentv1alpha1.BoshdeploymentV1alpha1Interface {
+	return c.boshdeploymentV1alpha1
 }
 
-// ExtendedstatefulsetcontrollerV1alpha1 retrieves the ExtendedstatefulsetcontrollerV1alpha1Client
-func (c *Clientset) ExtendedstatefulsetcontrollerV1alpha1() extendedstatefulsetcontrollerv1alpha1.ExtendedstatefulsetcontrollerV1alpha1Interface {
-	return c.extendedstatefulsetcontrollerV1alpha1
+// ExtendedstatefulsetV1alpha1 retrieves the ExtendedstatefulsetV1alpha1Client
+func (c *Clientset) ExtendedstatefulsetV1alpha1() extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Interface {
+	return c.extendedstatefulsetV1alpha1
 }
 
-// Deprecated: Extendedstatefulsetcontroller retrieves the default version of ExtendedstatefulsetcontrollerClient.
+// Deprecated: Extendedstatefulset retrieves the default version of ExtendedstatefulsetClient.
 // Please explicitly pick a version.
-func (c *Clientset) Extendedstatefulsetcontroller() extendedstatefulsetcontrollerv1alpha1.ExtendedstatefulsetcontrollerV1alpha1Interface {
-	return c.extendedstatefulsetcontrollerV1alpha1
+func (c *Clientset) Extendedstatefulset() extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Interface {
+	return c.extendedstatefulsetV1alpha1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -71,11 +71,11 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
-	cs.boshdeploymentcontrollerV1alpha1, err = boshdeploymentcontrollerv1alpha1.NewForConfig(&configShallowCopy)
+	cs.boshdeploymentV1alpha1, err = boshdeploymentv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
-	cs.extendedstatefulsetcontrollerV1alpha1, err = extendedstatefulsetcontrollerv1alpha1.NewForConfig(&configShallowCopy)
+	cs.extendedstatefulsetV1alpha1, err = extendedstatefulsetv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -91,8 +91,8 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
-	cs.boshdeploymentcontrollerV1alpha1 = boshdeploymentcontrollerv1alpha1.NewForConfigOrDie(c)
-	cs.extendedstatefulsetcontrollerV1alpha1 = extendedstatefulsetcontrollerv1alpha1.NewForConfigOrDie(c)
+	cs.boshdeploymentV1alpha1 = boshdeploymentv1alpha1.NewForConfigOrDie(c)
+	cs.extendedstatefulsetV1alpha1 = extendedstatefulsetv1alpha1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -101,8 +101,8 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.boshdeploymentcontrollerV1alpha1 = boshdeploymentcontrollerv1alpha1.New(c)
-	cs.extendedstatefulsetcontrollerV1alpha1 = extendedstatefulsetcontrollerv1alpha1.New(c)
+	cs.boshdeploymentV1alpha1 = boshdeploymentv1alpha1.New(c)
+	cs.extendedstatefulsetV1alpha1 = extendedstatefulsetv1alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

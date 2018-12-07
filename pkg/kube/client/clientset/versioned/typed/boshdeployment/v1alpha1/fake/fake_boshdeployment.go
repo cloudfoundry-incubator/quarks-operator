@@ -8,7 +8,7 @@ Don't alter this file, it was generated.
 package fake
 
 import (
-	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
+	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -19,13 +19,13 @@ import (
 
 // FakeBOSHDeployments implements BOSHDeploymentInterface
 type FakeBOSHDeployments struct {
-	Fake *FakeBoshdeploymentcontrollerV1alpha1
+	Fake *FakeBoshdeploymentV1alpha1
 	ns   string
 }
 
-var boshdeploymentsResource = schema.GroupVersionResource{Group: "boshdeploymentcontroller", Version: "v1alpha1", Resource: "boshdeployments"}
+var boshdeploymentsResource = schema.GroupVersionResource{Group: "boshdeployment", Version: "v1alpha1", Resource: "boshdeployments"}
 
-var boshdeploymentsKind = schema.GroupVersionKind{Group: "boshdeploymentcontroller", Version: "v1alpha1", Kind: "BOSHDeployment"}
+var boshdeploymentsKind = schema.GroupVersionKind{Group: "boshdeployment", Version: "v1alpha1", Kind: "BOSHDeployment"}
 
 // Get takes name of the bOSHDeployment, and returns the corresponding bOSHDeployment object, and an error if there is any.
 func (c *FakeBOSHDeployments) Get(name string, options v1.GetOptions) (result *v1alpha1.BOSHDeployment, err error) {

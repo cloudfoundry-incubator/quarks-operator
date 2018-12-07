@@ -8,28 +8,28 @@ Don't alter this file, it was generated.
 package v1alpha1
 
 import (
-	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
+	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/scheme"
 	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	rest "k8s.io/client-go/rest"
 )
 
-type BoshdeploymentcontrollerV1alpha1Interface interface {
+type BoshdeploymentV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	BOSHDeploymentsGetter
 }
 
-// BoshdeploymentcontrollerV1alpha1Client is used to interact with features provided by the boshdeploymentcontroller group.
-type BoshdeploymentcontrollerV1alpha1Client struct {
+// BoshdeploymentV1alpha1Client is used to interact with features provided by the boshdeployment group.
+type BoshdeploymentV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *BoshdeploymentcontrollerV1alpha1Client) BOSHDeployments(namespace string) BOSHDeploymentInterface {
+func (c *BoshdeploymentV1alpha1Client) BOSHDeployments(namespace string) BOSHDeploymentInterface {
 	return newBOSHDeployments(c, namespace)
 }
 
-// NewForConfig creates a new BoshdeploymentcontrollerV1alpha1Client for the given config.
-func NewForConfig(c *rest.Config) (*BoshdeploymentcontrollerV1alpha1Client, error) {
+// NewForConfig creates a new BoshdeploymentV1alpha1Client for the given config.
+func NewForConfig(c *rest.Config) (*BoshdeploymentV1alpha1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -38,12 +38,12 @@ func NewForConfig(c *rest.Config) (*BoshdeploymentcontrollerV1alpha1Client, erro
 	if err != nil {
 		return nil, err
 	}
-	return &BoshdeploymentcontrollerV1alpha1Client{client}, nil
+	return &BoshdeploymentV1alpha1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new BoshdeploymentcontrollerV1alpha1Client for the given config and
+// NewForConfigOrDie creates a new BoshdeploymentV1alpha1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *BoshdeploymentcontrollerV1alpha1Client {
+func NewForConfigOrDie(c *rest.Config) *BoshdeploymentV1alpha1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -51,9 +51,9 @@ func NewForConfigOrDie(c *rest.Config) *BoshdeploymentcontrollerV1alpha1Client {
 	return client
 }
 
-// New creates a new BoshdeploymentcontrollerV1alpha1Client for the given RESTClient.
-func New(c rest.Interface) *BoshdeploymentcontrollerV1alpha1Client {
-	return &BoshdeploymentcontrollerV1alpha1Client{c}
+// New creates a new BoshdeploymentV1alpha1Client for the given RESTClient.
+func New(c rest.Interface) *BoshdeploymentV1alpha1Client {
+	return &BoshdeploymentV1alpha1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -71,7 +71,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *BoshdeploymentcontrollerV1alpha1Client) RESTClient() rest.Interface {
+func (c *BoshdeploymentV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}
