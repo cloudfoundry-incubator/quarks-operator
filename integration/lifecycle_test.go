@@ -67,8 +67,7 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred(), "error waiting for custom resource deletion")
 
 			// Deletion of CRD generated request
-			msgs := env.AllLogMessages()
-			Expect(msgs[len(msgs)-1]).To(ContainSubstring("Skip reconcile: CRD not found\n"))
+			Expect(env.Logger.AllMessages()).Should(ContainElement(ContainSubstring("Skip reconcile: CRD not found\n")))
 
 		})
 	})

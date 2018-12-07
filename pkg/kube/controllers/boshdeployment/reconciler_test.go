@@ -8,10 +8,8 @@ import (
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
-	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment/fakes"
+	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-	"go.uber.org/zap/zaptest/observer"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,8 +47,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				bdm.InstanceGroup{Name: "fakepod"},
 			},
 		}
-		core, _ := observer.New(zapcore.InfoLevel)
-		log = zap.New(core).Sugar()
+		_, log = cfakes.NewFakeLogger()
 	})
 
 	JustBeforeEach(func() {

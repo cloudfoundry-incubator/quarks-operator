@@ -7,12 +7,11 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-	"go.uber.org/zap/zaptest/observer"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -33,8 +32,8 @@ type Environment struct {
 	log        *zap.SugaredLogger
 	stop       chan struct{}
 
-	LogRecorded *observer.ObservedLogs
-	Namespace   string
+	Logger    *fakes.FakeLogger
+	Namespace string
 }
 
 // NewEnvironment returns a new struct
@@ -68,15 +67,6 @@ func (e *Environment) Setup() (StopFunc, error) {
 	}, nil
 }
 
-// AllLogMessages returns only the message part of existing logs to aid in debugging
-func (e *Environment) AllLogMessages() (msgs []string) {
-	for _, m := range e.LogRecorded.All() {
-		msgs = append(msgs, m.Message)
-	}
-
-	return
-}
-
 func (e *Environment) setupCFOperator() (err error) {
 	ns, found := os.LookupEnv("TEST_NAMESPACE")
 	if !found {
@@ -84,9 +74,7 @@ func (e *Environment) setupCFOperator() (err error) {
 	}
 	e.Namespace = ns
 
-	var core zapcore.Core
-	core, e.LogRecorded = observer.New(zapcore.DebugLevel)
-	e.log = zap.New(core).Sugar()
+	e.Logger, e.log = fakes.NewFakeLogger()
 
 	err = e.setupKube()
 	if err != nil {

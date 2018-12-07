@@ -30,7 +30,7 @@ Integration tests start our operator directly, bypassing the command line.
 
 The `environment` package provides helpers to start the operator, get the kubeconfig as well as defining and creating test objects.
 
-Integration tests use a special logger, which does not log to stdout and whose messages can be accessed as a an array by calling `env.AllLogMessages()`.
+Integration tests use a special logger, which does not log to stdout and whose messages can be accessed as a an array by calling `env.Logger.AllMessages()`.
 
 ## End-to-End
 
