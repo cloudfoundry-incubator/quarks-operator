@@ -6,6 +6,8 @@
 
 ## Makefile
 
+Before starting, run `make tools` to install the required dependencies.
+
 ## CI
 
 Our Concourse pipeline definitions are kept in the [https://github.com/cloudfoundry-incubator/cf-operator-ci](cf-operator-ci) repo.
