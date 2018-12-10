@@ -1,0 +1,13 @@
+package secrets_test
+
+import (
+	"testing"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+)
+
+func TestFoobar(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, `Versioning and persistence for "desired manifests" Suite`)
+}
