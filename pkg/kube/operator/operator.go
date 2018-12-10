@@ -18,11 +18,11 @@ func NewManager(log *zap.SugaredLogger, cfg *rest.Config, options manager.Option
 	log.Info("Registering Components.")
 
 	// Setup Scheme for all resources
-	if err = controller.AddToScheme(mgr.GetScheme()); err != nil {
+	if err = controllers.AddToScheme(mgr.GetScheme()); err != nil {
 		return
 	}
 
 	// Setup all Controllers
-	err = controller.AddToManager(log, mgr)
+	err = controllers.AddToManager(log, mgr)
 	return
 }

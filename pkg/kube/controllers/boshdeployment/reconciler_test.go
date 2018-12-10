@@ -5,7 +5,7 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
-	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
+	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment/fakes"
@@ -40,7 +40,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 	)
 
 	BeforeEach(func() {
-		controller.AddToScheme(scheme.Scheme)
+		controllers.AddToScheme(scheme.Scheme)
 		manager = &cfakes.FakeManager{}
 		resolver = fakes.FakeResolver{}
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}

@@ -5,7 +5,7 @@ import (
 	sync "sync"
 
 	manifest "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
+	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 )
 
 type FakeResolver struct {

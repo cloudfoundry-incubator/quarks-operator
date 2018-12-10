@@ -10,7 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
+	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 )
 
 // Add creates a new BOSHDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller

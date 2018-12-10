@@ -8,7 +8,7 @@ Don't alter this file, it was generated.
 package fake
 
 import (
-	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulsetcontroller/v1alpha1"
+	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -19,13 +19,13 @@ import (
 
 // FakeExtendedStatefulSets implements ExtendedStatefulSetInterface
 type FakeExtendedStatefulSets struct {
-	Fake *FakeExtendedstatefulsetcontrollerV1alpha1
+	Fake *FakeExtendedstatefulsetV1alpha1
 	ns   string
 }
 
-var extendedstatefulsetsResource = schema.GroupVersionResource{Group: "extendedstatefulsetcontroller", Version: "v1alpha1", Resource: "extendedstatefulsets"}
+var extendedstatefulsetsResource = schema.GroupVersionResource{Group: "extendedstatefulset", Version: "v1alpha1", Resource: "extendedstatefulsets"}
 
-var extendedstatefulsetsKind = schema.GroupVersionKind{Group: "extendedstatefulsetcontroller", Version: "v1alpha1", Kind: "ExtendedStatefulSet"}
+var extendedstatefulsetsKind = schema.GroupVersionKind{Group: "extendedstatefulset", Version: "v1alpha1", Kind: "ExtendedStatefulSet"}
 
 // Get takes name of the extendedStatefulSet, and returns the corresponding extendedStatefulSet object, and an error if there is any.
 func (c *FakeExtendedStatefulSets) Get(name string, options v1.GetOptions) (result *v1alpha1.ExtendedStatefulSet, err error) {

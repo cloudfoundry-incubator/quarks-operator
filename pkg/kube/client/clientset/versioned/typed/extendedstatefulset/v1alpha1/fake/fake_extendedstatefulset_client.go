@@ -8,22 +8,22 @@ Don't alter this file, it was generated.
 package fake
 
 import (
-	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedstatefulsetcontroller/v1alpha1"
+	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedstatefulset/v1alpha1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
 
-type FakeExtendedstatefulsetcontrollerV1alpha1 struct {
+type FakeExtendedstatefulsetV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeExtendedstatefulsetcontrollerV1alpha1) ExtendedStatefulSets(namespace string) v1alpha1.ExtendedStatefulSetInterface {
+func (c *FakeExtendedstatefulsetV1alpha1) ExtendedStatefulSets(namespace string) v1alpha1.ExtendedStatefulSetInterface {
 	return &FakeExtendedStatefulSets{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakeExtendedstatefulsetcontrollerV1alpha1) RESTClient() rest.Interface {
+func (c *FakeExtendedstatefulsetV1alpha1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

@@ -8,8 +8,8 @@ Don't alter this file, it was generated.
 package scheme
 
 import (
-	boshdeploymentcontrollerv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
-	extendedstatefulsetcontrollerv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulsetcontroller/v1alpha1"
+	boshdeploymentv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	extendedstatefulsetv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -40,6 +40,6 @@ func init() {
 // After this, RawExtensions in Kubernetes types will serialize kube-aggregator types
 // correctly.
 func AddToScheme(scheme *runtime.Scheme) {
-	boshdeploymentcontrollerv1alpha1.AddToScheme(scheme)
-	extendedstatefulsetcontrollerv1alpha1.AddToScheme(scheme)
+	boshdeploymentv1alpha1.AddToScheme(scheme)
+	extendedstatefulsetv1alpha1.AddToScheme(scheme)
 }

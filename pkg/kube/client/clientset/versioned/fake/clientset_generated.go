@@ -9,10 +9,10 @@ package fake
 
 import (
 	clientset "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
-	boshdeploymentcontrollerv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/boshdeploymentcontroller/v1alpha1"
-	fakeboshdeploymentcontrollerv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/boshdeploymentcontroller/v1alpha1/fake"
-	extendedstatefulsetcontrollerv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedstatefulsetcontroller/v1alpha1"
-	fakeextendedstatefulsetcontrollerv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedstatefulsetcontroller/v1alpha1/fake"
+	boshdeploymentv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1"
+	fakeboshdeploymentv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1/fake"
+	extendedstatefulsetv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedstatefulset/v1alpha1"
+	fakeextendedstatefulsetv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedstatefulset/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -62,22 +62,22 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 
 var _ clientset.Interface = &Clientset{}
 
-// BoshdeploymentcontrollerV1alpha1 retrieves the BoshdeploymentcontrollerV1alpha1Client
-func (c *Clientset) BoshdeploymentcontrollerV1alpha1() boshdeploymentcontrollerv1alpha1.BoshdeploymentcontrollerV1alpha1Interface {
-	return &fakeboshdeploymentcontrollerv1alpha1.FakeBoshdeploymentcontrollerV1alpha1{Fake: &c.Fake}
+// BoshdeploymentV1alpha1 retrieves the BoshdeploymentV1alpha1Client
+func (c *Clientset) BoshdeploymentV1alpha1() boshdeploymentv1alpha1.BoshdeploymentV1alpha1Interface {
+	return &fakeboshdeploymentv1alpha1.FakeBoshdeploymentV1alpha1{Fake: &c.Fake}
 }
 
-// Boshdeploymentcontroller retrieves the BoshdeploymentcontrollerV1alpha1Client
-func (c *Clientset) Boshdeploymentcontroller() boshdeploymentcontrollerv1alpha1.BoshdeploymentcontrollerV1alpha1Interface {
-	return &fakeboshdeploymentcontrollerv1alpha1.FakeBoshdeploymentcontrollerV1alpha1{Fake: &c.Fake}
+// Boshdeployment retrieves the BoshdeploymentV1alpha1Client
+func (c *Clientset) Boshdeployment() boshdeploymentv1alpha1.BoshdeploymentV1alpha1Interface {
+	return &fakeboshdeploymentv1alpha1.FakeBoshdeploymentV1alpha1{Fake: &c.Fake}
 }
 
-// ExtendedstatefulsetcontrollerV1alpha1 retrieves the ExtendedstatefulsetcontrollerV1alpha1Client
-func (c *Clientset) ExtendedstatefulsetcontrollerV1alpha1() extendedstatefulsetcontrollerv1alpha1.ExtendedstatefulsetcontrollerV1alpha1Interface {
-	return &fakeextendedstatefulsetcontrollerv1alpha1.FakeExtendedstatefulsetcontrollerV1alpha1{Fake: &c.Fake}
+// ExtendedstatefulsetV1alpha1 retrieves the ExtendedstatefulsetV1alpha1Client
+func (c *Clientset) ExtendedstatefulsetV1alpha1() extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Interface {
+	return &fakeextendedstatefulsetv1alpha1.FakeExtendedstatefulsetV1alpha1{Fake: &c.Fake}
 }
 
-// Extendedstatefulsetcontroller retrieves the ExtendedstatefulsetcontrollerV1alpha1Client
-func (c *Clientset) Extendedstatefulsetcontroller() extendedstatefulsetcontrollerv1alpha1.ExtendedstatefulsetcontrollerV1alpha1Interface {
-	return &fakeextendedstatefulsetcontrollerv1alpha1.FakeExtendedstatefulsetcontrollerV1alpha1{Fake: &c.Fake}
+// Extendedstatefulset retrieves the ExtendedstatefulsetV1alpha1Client
+func (c *Clientset) Extendedstatefulset() extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Interface {
+	return &fakeextendedstatefulsetv1alpha1.FakeExtendedstatefulsetV1alpha1{Fake: &c.Fake}
 }
