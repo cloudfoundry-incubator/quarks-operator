@@ -4,13 +4,17 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+GO111MODULE=${GO111MODULE:-on} #Always on, so it works also inside GOPATH
 GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
-CODEGEN_PKG=${CODEGEN_PKG:-$(cd "$GIT_ROOT"; ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
+cd "$GIT_ROOT"
+
+[[ ! -d "k8s-code-generator" && ! -d "../code-generator" ]] && git clone https://github.com/kubernetes/code-generator.git k8s-code-generator
+CODEGEN_PKG=${CODEGEN_PKG:-$(ls -d -1 ./k8s-code-generator 2>/dev/null)}
 
 # The groups and their versions in the format "groupA:v1,v2 groupB:v1 groupC:v2"
 GROUP_VERSIONS="boshdeployment:v1alpha1 extendedstatefulset:v1alpha1"
 
-"${CODEGEN_PKG}/generate-groups.sh" "deepcopy,client,lister" \
+env GO111MODULE=$GO111MODULE "${CODEGEN_PKG}/generate-groups.sh" "deepcopy,client,lister" \
   code.cloudfoundry.org/cf-operator/pkg/kube/client \
   code.cloudfoundry.org/cf-operator/pkg/kube/apis \
   "${GROUP_VERSIONS}" \

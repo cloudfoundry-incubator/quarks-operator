@@ -7,6 +7,9 @@ build/helm
 # Temp dir for generated kube files
 /_tmp
 
+# Kubernetes code-generator
+/k8s-code-generator
+
 # Created by https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 ### Emacs ###
 # -*- mode: gitignore; -*-
