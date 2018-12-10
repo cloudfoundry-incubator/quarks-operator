@@ -2,3 +2,4 @@
 set -e
 
 go get -u github.com/maxbrunsfeld/counterfeiter
+go get -u github.com/onsi/ginkgo/ginkgo
