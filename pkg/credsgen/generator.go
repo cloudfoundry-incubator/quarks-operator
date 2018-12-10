@@ -1,5 +1,9 @@
 package credsgen
 
+const (
+	DefaultPasswordLength = 64
+)
+
 // PasswordGenerationRequest specifies the generation parameters for Passwords
 type PasswordGenerationRequest struct {
 	Length int
@@ -10,33 +14,33 @@ type CertificateGenerationRequest struct {
 	CommonName       string
 	AlternativeNames []string
 	IsCA             bool
-	CA               string
+	CA               Certificate
 }
 
 // Certificate holds the information about a certificate
 type Certificate struct {
-	CA          string
-	Certificate string
-	PrivateKey  string
+	IsCA        bool
+	Certificate []byte
+	PrivateKey  []byte
 }
 
 // SSHKey represents an SSH key
 type SSHKey struct {
-	PrivateKey  string
-	PublicKey   string
+	PrivateKey  []byte
+	PublicKey   []byte
 	Fingerprint string
 }
 
 // RSAKey represents an RSA key
 type RSAKey struct {
-	PrivateKey string
-	PublicKey  string
+	PrivateKey []byte
+	PublicKey  []byte
 }
 
 // Generator provides an interface for generating credentials like passwords, certificates or SSH and RSA keys
 type Generator interface {
-	GeneratePassword(PasswordGenerationRequest) string
-	GenerateCertificate(CertificateGenerationRequest) Certificate
-	GenerateSSHKey() SSHKey
-	GenerateRSAKey() RSAKey
+	GeneratePassword(name string, request PasswordGenerationRequest) string
+	GenerateCertificate(name string, request CertificateGenerationRequest) (Certificate, error)
+	GenerateSSHKey(name string) (SSHKey, error)
+	GenerateRSAKey(name string) (RSAKey, error)
 }
