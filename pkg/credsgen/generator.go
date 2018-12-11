@@ -1,6 +1,8 @@
 package credsgen
 
 const (
+	// DefaultPasswordLength represents the default length of a generated password
+	// (number of characters)
 	DefaultPasswordLength = 64
 )
 
