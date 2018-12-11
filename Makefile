@@ -41,7 +41,7 @@ test-integration:
 	bin/test-integration
 
 test-e2e:
-	bin/test-integration
+	bin/test-e2e
 
 test: vet lint test-unit test-integration test-e2e
 

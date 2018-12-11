@@ -5,8 +5,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeploymentcontroller/v1alpha1"
-	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulsetcontroller/v1alpha1"
+	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 )
 
 // Catalog provides several instances for tests
@@ -43,7 +43,6 @@ func (c *Catalog) DefaultBOSHDeployment(name, manifestRef string) bdcv1.BOSHDepl
 		},
 	}
 }
-
 
 // InterpolateOpsConfigMap for ops interpolate configmap tests
 func (c *Catalog) InterpolateOpsConfigMap(name string) corev1.ConfigMap {
@@ -127,6 +126,64 @@ func (c *Catalog) DefaultPod(name string) corev1.PodTemplateSpec {
 					Image:   "busybox",
 					Command: []string{"sleep", "3600"},
 				},
+			},
+		},
+	}
+}
+
+// EmptyBOSHDeployment empty fissile deployment CR
+func (c *Catalog) EmptyBOSHDeployment(name, manifestRef string) bdcv1.BOSHDeployment {
+	return bdcv1.BOSHDeployment{
+		ObjectMeta: v1.ObjectMeta{Name: name},
+		Spec:       bdcv1.BOSHDeploymentSpec{},
+	}
+}
+
+// DefaultBOSHDeploymentWithOps fissile deployment CR with ops
+func (c *Catalog) DefaultBOSHDeploymentWithOps(name, manifestRef string, opsRef string) bdcv1.BOSHDeployment {
+	return bdcv1.BOSHDeployment{
+		ObjectMeta: v1.ObjectMeta{Name: name},
+		Spec: bdcv1.BOSHDeploymentSpec{
+			Manifest: bdcv1.Manifest{Ref: manifestRef, Type: bdcv1.ConfigMapType},
+			Ops: []bdcv1.Ops{
+				{Ref: opsRef, Type: bdcv1.ConfigMapType},
+			},
+		},
+	}
+}
+
+// WrongTypeBOSHDeployment fissile deployment CR containing wrong type
+func (c *Catalog) WrongTypeBOSHDeployment(name, manifestRef string) bdcv1.BOSHDeployment {
+	return bdcv1.BOSHDeployment{
+		ObjectMeta: v1.ObjectMeta{Name: name},
+		Spec: bdcv1.BOSHDeploymentSpec{
+			Manifest: bdcv1.Manifest{Ref: manifestRef, Type: "wrong-type"},
+		},
+	}
+}
+
+// BOSHDeploymentWithWrongTypeOps fissile deployment CR with wrong type ops
+func (c *Catalog) BOSHDeploymentWithWrongTypeOps(name, manifestRef string, opsRef string) bdcv1.BOSHDeployment {
+	return bdcv1.BOSHDeployment{
+		ObjectMeta: v1.ObjectMeta{Name: name},
+		Spec: bdcv1.BOSHDeploymentSpec{
+			Manifest: bdcv1.Manifest{Ref: manifestRef, Type: bdcv1.ConfigMapType},
+			Ops: []bdcv1.Ops{
+				{Ref: opsRef, Type: "wrong-type"},
+			},
+		},
+	}
+}
+
+// InterpolateBOSHDeployment fissile deployment CR
+func (c *Catalog) InterpolateBOSHDeployment(name, manifestRef, opsRef string) bdcv1.BOSHDeployment {
+	return bdcv1.BOSHDeployment{
+		ObjectMeta: v1.ObjectMeta{Name: name},
+		Spec: bdcv1.BOSHDeploymentSpec{
+			Manifest: bdcv1.Manifest{Ref: manifestRef, Type: bdcv1.ConfigMapType},
+			Ops: []bdcv1.Ops{
+				{Ref: opsRef, Type: bdcv1.ConfigMapType},
+				{Ref: opsRef, Type: bdcv1.SecretType},
 			},
 		},
 	}
