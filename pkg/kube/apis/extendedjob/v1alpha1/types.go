@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 // This file is safe to edit
@@ -18,10 +19,8 @@ type Triggers struct {
 }
 
 type Selector struct {
-	MatchLabels MatchLabels `json:"matchLabels"`
+	MatchLabels labels.Set `json:"matchLabels"`
 }
-
-type MatchLabels map[string]string
 
 // ExtendedJobStatus defines the observed state of ExtendedJob
 type ExtendedJobStatus struct {

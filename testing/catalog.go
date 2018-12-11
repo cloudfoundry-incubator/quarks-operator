@@ -1,11 +1,14 @@
 package testing
 
 import (
+	"time"
+
 	v1beta1 "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 )
 
@@ -137,7 +140,6 @@ func (c *Catalog) WrongStatefulSet(name string) v1beta1.StatefulSet {
 
 // DefaultPodTemplate defines a pod template with a simple web server useful for testing
 func (c *Catalog) DefaultPodTemplate(name string) corev1.PodTemplateSpec {
-	one := int64(1)
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -145,16 +147,7 @@ func (c *Catalog) DefaultPodTemplate(name string) corev1.PodTemplateSpec {
 				"testpod": "yes",
 			},
 		},
-		Spec: corev1.PodSpec{
-			TerminationGracePeriodSeconds: &one,
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
-				},
-			},
-		},
+		Spec: c.WebserverPodSpec(),
 	}
 }
 
@@ -182,19 +175,46 @@ func (c *Catalog) WrongPodTemplate(name string) corev1.PodTemplateSpec {
 
 // DefaultPod defines a pod with a simple web server useful for testing
 func (c *Catalog) DefaultPod(name string) corev1.Pod {
-	one := int64(1)
 	return corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: corev1.PodSpec{
-			TerminationGracePeriodSeconds: &one,
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
-				},
+		Spec: c.WebserverPodSpec(),
+	}
+}
+
+// LabeledPod defines a pod with labels and a simple web server
+func (c *Catalog) LabeledPod(name string, labels map[string]string) corev1.Pod {
+	return corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: labels,
+		},
+		Spec: c.WebserverPodSpec(),
+	}
+}
+
+// AnnotatedPod defines a pod with annotations
+func (c *Catalog) AnnotatedPod(name string, annotations map[string]string) corev1.Pod {
+	return corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Annotations: annotations,
+		},
+		Spec: c.WebserverPodSpec(),
+	}
+}
+
+// WebserverPodSpec defines a simple web server useful for testing
+func (c *Catalog) WebserverPodSpec() corev1.PodSpec {
+	one := int64(1)
+	return corev1.PodSpec{
+		TerminationGracePeriodSeconds: &one,
+		Containers: []corev1.Container{
+			{
+				Name:    "busybox",
+				Image:   "busybox",
+				Command: []string{"sleep", "3600"},
 			},
 		},
 	}
@@ -253,6 +273,32 @@ func (c *Catalog) InterpolateBOSHDeployment(name, manifestRef, opsRef string, se
 			Ops: []bdcv1.Ops{
 				{Ref: opsRef, Type: bdcv1.ConfigMapType},
 				{Ref: secretRef, Type: bdcv1.SecretType},
+			},
+		},
+	}
+}
+
+// DefaultPodEvent references a Pod by name
+func (c *Catalog) DefaultPodEvent(podName string) corev1.Event {
+	return corev1.Event{InvolvedObject: corev1.ObjectReference{Name: podName}}
+}
+
+// DatedPodEvent has last timestamp set
+func (c *Catalog) DatedPodEvent(t time.Time) corev1.Event {
+	return corev1.Event{LastTimestamp: metav1.NewTime(t)}
+}
+
+// DefaultExtendedJob default values
+func (c *Catalog) DefaultExtendedJob(name string) *ejv1.ExtendedJob {
+	return &ejv1.ExtendedJob{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Spec: ejv1.ExtendedJobSpec{
+			Triggers: ejv1.Triggers{
+				Selector: ejv1.Selector{
+					MatchLabels: map[string]string{
+						"key": "value",
+					},
+				},
 			},
 		},
 	}

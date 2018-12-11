@@ -8,7 +8,7 @@ GO111MODULE=${GO111MODULE:-on} #Always on, so it works also inside GOPATH
 GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 cd "$GIT_ROOT"
 
-if [ ! -d "$CODEGEN_PKG" ]; then
+if [ -z ${CODEGEN_PKG+x} ] || [ ! -d "$CODEGEN_PKG" ]; then
   echo Please set CODEGEN_PKG to the location of kubernetes/code-generator
   echo Make sure version of code-generator matches version of used kubernetes libraries
   echo

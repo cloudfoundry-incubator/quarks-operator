@@ -6,18 +6,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
 )
 
 var addToManagerFuncs = []func(*zap.SugaredLogger, manager.Manager) error{
 	boshdeployment.Add,
+	extendedjob.Add,
 	extendedstatefulset.Add,
 }
 
 var addToSchemes = runtime.SchemeBuilder{
 	bdcv1.AddToScheme,
+	ejv1.AddToScheme,
 	essv1.AddToScheme,
 }
 
