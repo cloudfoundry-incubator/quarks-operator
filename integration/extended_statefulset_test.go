@@ -87,7 +87,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			expectedMsg := fmt.Sprintf("StatefulSet '%s-v1' for ExtendedStatefulSet '%s/%s' has not changed, checking if any other changes are necessary.", extendedStatefulSet.Name, env.Namespace, extendedStatefulSet.Name)
-			msgs := env.LogRecorded.FilterMessage(expectedMsg)
+			msgs := env.ObservedLogs.FilterMessage(expectedMsg)
 			Expect(msgs.Len()).NotTo(Equal(0))
 		})
 	})

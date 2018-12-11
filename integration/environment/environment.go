@@ -1,18 +1,17 @@
 package environment
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
 
+	"code.cloudfoundry.org/cf-operator/integration/util"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
 
 	"k8s.io/client-go/kubernetes"
@@ -34,8 +33,8 @@ type Environment struct {
 	log        *zap.SugaredLogger
 	stop       chan struct{}
 
-	LogRecorded *observer.ObservedLogs
-	Namespace   string
+	ObservedLogs *observer.ObservedLogs
+	Namespace    string
 }
 
 // NewEnvironment returns a new struct
@@ -76,7 +75,7 @@ func (e *Environment) FlushLog() error {
 
 // AllLogMessages returns only the message part of existing logs to aid in debugging
 func (e *Environment) AllLogMessages() (msgs []string) {
-	for _, m := range e.LogRecorded.All() {
+	for _, m := range e.ObservedLogs.All() {
 		msgs = append(msgs, m.Message)
 	}
 
@@ -90,24 +89,7 @@ func (e *Environment) setupCFOperator() (err error) {
 	}
 	e.Namespace = ns
 
-	// An in-memory zap core that can be used for assertions
-	var memCore zapcore.Core
-	memCore, e.LogRecorded = observer.New(zapcore.DebugLevel)
-
-	// A zap core that writes to a temp file
-	consoleEncoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
-	f, err := os.Create("/tmp/cf-operator-tests.log")
-	if err != nil {
-		panic(fmt.Sprintf("can't create log file: %s\n", err.Error()))
-	}
-	fileCore := zapcore.NewCore(
-		consoleEncoder,
-		zapcore.Lock(f),
-		zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
-			return true
-		}))
-
-	e.log = zap.New(zapcore.NewTee(memCore, fileCore)).Sugar()
+	e.ObservedLogs, e.log = util.NewTestLogger()
 
 	err = e.setupKube()
 	if err != nil {
