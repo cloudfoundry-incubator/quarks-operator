@@ -8,8 +8,13 @@ GO111MODULE=${GO111MODULE:-on} #Always on, so it works also inside GOPATH
 GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 cd "$GIT_ROOT"
 
-[[ ! -d "k8s-code-generator" && ! -d "../code-generator" ]] && git clone https://github.com/kubernetes/code-generator.git k8s-code-generator
-CODEGEN_PKG=${CODEGEN_PKG:-$(ls -d -1 ./k8s-code-generator 2>/dev/null)}
+if [ ! -d "$CODEGEN_PKG" ]; then
+  echo Please set CODEGEN_PKG to the location of kubernetes/code-generator
+  echo Make sure version of code-generator matches version of used kubernetes libraries
+  echo
+  echo git clone https://github.com/kubernetes/code-generator.git ../code-generator
+  exit 1
+fi
 
 # The groups and their versions in the format "groupA:v1,v2 groupB:v1 groupC:v2"
 GROUP_VERSIONS="boshdeployment:v1alpha1 extendedstatefulset:v1alpha1"
