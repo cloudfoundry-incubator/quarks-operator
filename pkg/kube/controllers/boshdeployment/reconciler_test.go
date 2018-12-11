@@ -8,7 +8,7 @@ import (
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
-	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment/fakes"
+	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
