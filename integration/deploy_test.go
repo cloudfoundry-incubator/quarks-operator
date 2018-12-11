@@ -55,11 +55,6 @@ var _ = Describe("Deploy", func() {
 	})
 
 	Context("when incorrectly setup", func() {
-		AfterEach(func() {
-			err := env.WaitForPodsDelete(env.Namespace)
-			Expect(err).NotTo(HaveOccurred())
-		})
-
 		It("should report correct error if ops for is incorrect", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
 			Expect(err).NotTo(HaveOccurred())
@@ -73,13 +68,12 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
-			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment("test", "manifest", "bosh-ops", "bosh-ops-secret"))
+			boshDeployment, tearDown, err := env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment("test", "manifest", "bosh-ops", "bosh-ops-secret"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
-			// check for pod
-			pass, result := env.HasCREvent(env.Namespace)
-			Expect(pass).To(BeTrue())
+			success, result := env.GetBOSHDeploymentEventMessage(env.Namespace, boshDeployment.ObjectMeta.Name, string(boshDeployment.ObjectMeta.UID))
+			Expect(success).To(BeTrue())
 			Expect(result).To(ContainSubstring("Expected to find exactly one matching array item for path '/instance-groups/name=api' but found 0"))
 		})
 

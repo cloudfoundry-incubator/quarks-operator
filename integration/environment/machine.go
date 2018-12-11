@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"time"
 
+	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-
-	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 )
 
 // Machine produces and destroys resources for tests
@@ -128,28 +128,6 @@ func (m *Machine) WaitForBOSHDeploymentDeletion(namespace string, name string) e
 	})
 }
 
-// HasCREvent gets desired event
-func (m *Machine) HasCREvent(namespace string) (bool, string) {
-	events := m.Clientset.CoreV1().Events(namespace)
-	list, err := events.List(metav1.ListOptions{})
-	if err != nil {
-		return false, err.Error()
-	}
-	messageList := ""
-	for i := 0; i < len(list.Items); i++ {
-		messageList += list.Items[i].Message
-	}
-	return true, messageList
-}
-
-// WaitForCRDeletion blocks until the CR is deleted
-func (m *Machine) WaitForCRDeletion(namespace string, name string) error {
-	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
-		found, err := m.HasBOSHDeployment(namespace, name)
-		return !found, err
-	})
-}
-
 // HasBOSHDeployment returns true if the pod by that name is in state running
 func (m *Machine) HasBOSHDeployment(namespace string, name string) (bool, error) {
 	client := m.VersionedClientset.Boshdeployment().BOSHDeployments(namespace)
@@ -244,4 +222,46 @@ func (m *Machine) PodLabeled(namespace string, name string, desiredLabel, desire
 		return true, nil
 	}
 	return false, fmt.Errorf("Cannot match the desired label with %s", desiredValue)
+}
+
+// GetBOSHDeploymentEventMessage gets target resource event messages
+func (m *Machine) GetBOSHDeploymentEventMessage(namespace string, name string, id string) (bool, string) {
+	fieldSelector := fields.Set{"involvedObject.name": name, "involvedObject.uid": id}.AsSelector().String()
+	err := m.WaitForBOSHDeploymentEvent(namespace, fieldSelector)
+	if err != nil {
+		return false, err.Error()
+	}
+
+	events := m.Clientset.CoreV1().Events(namespace)
+
+	list, err := events.List(metav1.ListOptions{FieldSelector: fieldSelector})
+	if err != nil {
+		return false, err.Error()
+	}
+	messageList := ""
+	for i := 0; i < len(list.Items); i++ {
+		messageList += list.Items[i].Message
+	}
+	return true, messageList
+}
+
+// WaitForBOSHDeploymentEvent gets desired event
+func (m *Machine) WaitForBOSHDeploymentEvent(namespace string, fieldSelector string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		found, err := m.HasBOSHDeploymentEvent(namespace, fieldSelector)
+		return found, err
+	})
+}
+
+// HasBOSHDeploymentEvent returns true if the pod by that name is in state running
+func (m *Machine) HasBOSHDeploymentEvent(namespace string, fieldSelector string) (bool, error) {
+	events := m.Clientset.CoreV1().Events(namespace)
+	eventList, err := events.List(metav1.ListOptions{FieldSelector: fieldSelector})
+	if err != nil {
+		return false, err
+	}
+	if len(eventList.Items) == 0 {
+		return false, nil
+	}
+	return true, nil
 }
