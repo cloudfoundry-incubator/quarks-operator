@@ -14,6 +14,7 @@ import (
 
 // Add creates a new ExtendedStatefulSet controller and adds it to the Manager
 func Add(log *zap.SugaredLogger, mgr manager.Manager) error {
+	log.Info("Creating the ExtendedStatefulSet controller")
 	r := NewReconciler(log, mgr, controllerutil.SetControllerReference)
 
 	// Create a new controller
@@ -23,6 +24,7 @@ func Add(log *zap.SugaredLogger, mgr manager.Manager) error {
 	}
 
 	// Watch for changes to primary resource ExtendedStatefulSet
+	log.Info("Watching changes to ExtendedStatefulSet")
 	err = c.Watch(&source.Kind{Type: &essv1.ExtendedStatefulSet{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err

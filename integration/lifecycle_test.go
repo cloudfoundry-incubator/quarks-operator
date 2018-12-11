@@ -11,13 +11,13 @@ import (
 
 var _ = Describe("Lifecycle", func() {
 	var (
-		fissileCR   bdcv1.BOSHDeployment
-		newManifest corev1.ConfigMap
+		boshDeployment bdcv1.BOSHDeployment
+		newManifest    corev1.ConfigMap
 	)
 
 	Context("when correctly setup", func() {
 		BeforeEach(func() {
-			fissileCR = env.DefaultFissileCR("testcr", "manifest")
+			boshDeployment = env.DefaultBOSHDeployment("testcr", "manifest")
 			newManifest = corev1.ConfigMap{
 				ObjectMeta: v1.ObjectMeta{Name: "newmanifest"},
 				Data: map[string]string{
@@ -37,7 +37,7 @@ var _ = Describe("Lifecycle", func() {
 
 			// Create fissile custom resource
 			var versionedCR *bdcv1.BOSHDeployment
-			versionedCR, tearDown, err = env.CreateFissileCR(env.Namespace, fissileCR)
+			versionedCR, tearDown, err = env.CreateBOSHDeployment(env.Namespace, boshDeployment)
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
@@ -50,7 +50,7 @@ var _ = Describe("Lifecycle", func() {
 			defer tearDown()
 
 			versionedCR.Spec.Manifest.Ref = "newmanifest"
-			_, _, err = env.UpdateFissileCR(env.Namespace, *versionedCR)
+			_, _, err = env.UpdateBOSHDeployment(env.Namespace, *versionedCR)
 			Expect(err).NotTo(HaveOccurred())
 
 			err = env.WaitForPod(env.Namespace, "updated-pod")
@@ -61,9 +61,9 @@ var _ = Describe("Lifecycle", func() {
 			Expect(env.PodRunning(env.Namespace, "updated-pod")).To(BeTrue())
 
 			// Delete custom resource
-			err = env.DeleteFissileCR(env.Namespace, "testcr")
+			err = env.DeleteBOSHDeployment(env.Namespace, "testcr")
 			Expect(err).NotTo(HaveOccurred(), "error deleting custom resource")
-			err = env.WaitForCRDeletion(env.Namespace, "testcr")
+			err = env.WaitForBOSHDeploymentDeletion(env.Namespace, "testcr")
 			Expect(err).NotTo(HaveOccurred(), "error waiting for custom resource deletion")
 
 			// Deletion of CRD generated request

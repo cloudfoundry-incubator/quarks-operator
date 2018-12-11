@@ -19,7 +19,7 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
-			_, tearDown, err = env.CreateFissileCR(env.Namespace, env.DefaultFissileCR("test", "manifest"))
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test", "manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
