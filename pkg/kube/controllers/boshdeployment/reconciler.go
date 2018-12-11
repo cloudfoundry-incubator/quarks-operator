@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -30,6 +31,7 @@ func NewReconciler(log *zap.SugaredLogger, mgr manager.Manager, resolver bdm.Res
 		log:          log,
 		client:       mgr.GetClient(),
 		scheme:       mgr.GetScheme(),
+		recorder:     mgr.GetRecorder("RECONCILER RECORDER"),
 		resolver:     resolver,
 		setReference: srf,
 	}
@@ -41,6 +43,7 @@ type ReconcileBOSHDeployment struct {
 	// that reads objects from the cache and writes to the apiserver
 	client       client.Client
 	scheme       *runtime.Scheme
+	recorder     record.EventRecorder
 	resolver     bdm.Resolver
 	setReference setReferenceFunc
 	log          *zap.SugaredLogger
@@ -66,18 +69,22 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
+		r.recorder.Event(instance, corev1.EventTypeWarning, "GetCRD Error", err.Error())
 		return reconcile.Result{}, err
 	}
 
 	// retrieve manifest
 	manifest, err := r.resolver.ResolveCRD(instance.Spec, request.Namespace)
 	if err != nil {
+		r.recorder.Event(instance, corev1.EventTypeWarning, "ResolveCRD Error", err.Error())
 		return reconcile.Result{}, err
 	}
 
 	// TODO validation
 	if len(manifest.InstanceGroups) < 1 {
-		return reconcile.Result{}, fmt.Errorf("manifest is missing instance groups")
+		err = fmt.Errorf("manifest is missing instance groups")
+		r.recorder.Event(instance, corev1.EventTypeWarning, "MissingInstance Error", err.Error())
+		return reconcile.Result{}, err
 	}
 
 	// Define a new Pod object
@@ -85,6 +92,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Set BOSHDeployment instance as the owner and controller
 	if err := r.setReference(instance, pod, r.scheme); err != nil {
+		r.recorder.Event(instance, corev1.EventTypeWarning, "NewPodForCR Error", err.Error())
 		return reconcile.Result{}, err
 	}
 
@@ -96,12 +104,14 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		r.log.Infof("Creating a new Pod %s/%s\n", pod.Namespace, pod.Name)
 		err = r.client.Create(context.TODO(), pod)
 		if err != nil {
+			r.recorder.Event(instance, corev1.EventTypeWarning, "CreatePodForCR Error", err.Error())
 			return reconcile.Result{}, err
 		}
 
 		// Pod created successfully - don't requeue
 		return reconcile.Result{}, nil
 	} else if err != nil {
+		r.recorder.Event(instance, corev1.EventTypeWarning, "GetPodForCR Error", err.Error())
 		return reconcile.Result{}, err
 	}
 

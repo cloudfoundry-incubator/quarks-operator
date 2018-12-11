@@ -37,11 +37,11 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
-			tearDown, err = env.CreateSecret(env.Namespace, env.InterpolateOpsSecret("bosh-ops"))
+			tearDown, err = env.CreateSecret(env.Namespace, env.InterpolateOpsSecret("bosh-ops-secret"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
-			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment("test", "manifest", "bosh-ops"))
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment("test", "manifest", "bosh-ops", "bosh-ops-secret"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
@@ -55,6 +55,34 @@ var _ = Describe("Deploy", func() {
 	})
 
 	Context("when incorrectly setup", func() {
+		AfterEach(func() {
+			err := env.WaitForPodsDelete(env.Namespace)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should report correct error if ops for is incorrect", func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			tearDown, err = env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops"))
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			tearDown, err = env.CreateSecret(env.Namespace, env.InterpolateOpsIncorrectSecret("bosh-ops-secret"))
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment("test", "manifest", "bosh-ops", "bosh-ops-secret"))
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			// check for pod
+			pass, result := env.HasCREvent(env.Namespace)
+			Expect(pass).To(BeTrue())
+			Expect(result).To(ContainSubstring("Expected to find exactly one matching array item for path '/instance-groups/name=api' but found 0"))
+		})
+
 		It("failed to deploy a empty manifest", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
 			Expect(err).NotTo(HaveOccurred())

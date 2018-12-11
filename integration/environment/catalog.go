@@ -176,14 +176,14 @@ func (c *Catalog) BOSHDeploymentWithWrongTypeOps(name, manifestRef string, opsRe
 }
 
 // InterpolateBOSHDeployment fissile deployment CR
-func (c *Catalog) InterpolateBOSHDeployment(name, manifestRef, opsRef string) bdcv1.BOSHDeployment {
+func (c *Catalog) InterpolateBOSHDeployment(name, manifestRef, opsRef string, secretRef string) bdcv1.BOSHDeployment {
 	return bdcv1.BOSHDeployment{
 		ObjectMeta: v1.ObjectMeta{Name: name},
 		Spec: bdcv1.BOSHDeploymentSpec{
 			Manifest: bdcv1.Manifest{Ref: manifestRef, Type: bdcv1.ConfigMapType},
 			Ops: []bdcv1.Ops{
 				{Ref: opsRef, Type: bdcv1.ConfigMapType},
-				{Ref: opsRef, Type: bdcv1.SecretType},
+				{Ref: secretRef, Type: bdcv1.SecretType},
 			},
 		},
 	}

@@ -128,6 +128,28 @@ func (m *Machine) WaitForBOSHDeploymentDeletion(namespace string, name string) e
 	})
 }
 
+// HasCREvent gets desired event
+func (m *Machine) HasCREvent(namespace string) (bool, string) {
+	events := m.Clientset.CoreV1().Events(namespace)
+	list, err := events.List(metav1.ListOptions{})
+	if err != nil {
+		return false, err.Error()
+	}
+	messageList := ""
+	for i := 0; i < len(list.Items); i++ {
+		messageList += list.Items[i].Message
+	}
+	return true, messageList
+}
+
+// WaitForCRDeletion blocks until the CR is deleted
+func (m *Machine) WaitForCRDeletion(namespace string, name string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		found, err := m.HasBOSHDeployment(namespace, name)
+		return !found, err
+	})
+}
+
 // HasBOSHDeployment returns true if the pod by that name is in state running
 func (m *Machine) HasBOSHDeployment(namespace string, name string) (bool, error) {
 	client := m.VersionedClientset.Boshdeployment().BOSHDeployments(namespace)
