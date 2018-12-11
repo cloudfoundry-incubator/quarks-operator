@@ -33,8 +33,8 @@ type Environment struct {
 	log        *zap.SugaredLogger
 	stop       chan struct{}
 
-	LogRecorded *observer.ObservedLogs
-	Namespace   string
+	ObservedLogs *observer.ObservedLogs
+	Namespace    string
 }
 
 // NewEnvironment returns a new struct
@@ -75,7 +75,7 @@ func (e *Environment) FlushLog() error {
 
 // AllLogMessages returns only the message part of existing logs to aid in debugging
 func (e *Environment) AllLogMessages() (msgs []string) {
-	for _, m := range e.LogRecorded.All() {
+	for _, m := range e.ObservedLogs.All() {
 		msgs = append(msgs, m.Message)
 	}
 
@@ -89,7 +89,7 @@ func (e *Environment) setupCFOperator() (err error) {
 	}
 	e.Namespace = ns
 
-	e.LogRecorded, e.log = util.NewTestLogger()
+	e.ObservedLogs, e.log = util.NewTestLogger()
 
 	err = e.setupKube()
 	if err != nil {
