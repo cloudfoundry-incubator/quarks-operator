@@ -17,7 +17,7 @@ var cliPath string
 
 var _ = BeforeSuite(func() {
 	var err error
-	cliPath, err = gexec.Build("code.cloudfoundry.org/cf-operator")
+	cliPath, err = gexec.Build("code.cloudfoundry.org/cf-operator/cmd/cf-operator")
 	Expect(err).ToNot(HaveOccurred())
 })
 

@@ -4,7 +4,7 @@ all: test-unit build image
 build:
 	bin/build
 
-image: build
+image:
 	bin/build-image
 
 helm:
@@ -14,7 +14,7 @@ export CFO_NAMESPACE ?= default
 up:
 	kubectl apply -f deploy/helm/cf-operator/templates/fissile_v1alpha1_boshdeployment_crd.yaml
 	@echo watching namespace ${CFO_NAMESPACE}
-	go run main.go
+	go run cmd/cf-operator/main.go
 
 gen-kube:
 	bin/gen-kube

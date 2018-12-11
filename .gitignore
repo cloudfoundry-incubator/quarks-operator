@@ -1,6 +1,6 @@
 # Temporary Build Files
 /cf-operator
-build/_output
+binaries
 build/_test
 build/*zip
 build/helm
