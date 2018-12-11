@@ -1,4 +1,4 @@
 #!/bin/sh
 set -e
 
-ginkgo -p -r --randomizeAllSpecs -failOnPending --trace -skipPackage integration,e2e
+ginkgo -p -r --randomizeAllSpecs -failOnPending --trace -skipPackage integration,e2e,k8s-code-generator

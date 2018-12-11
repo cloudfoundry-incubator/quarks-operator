@@ -120,7 +120,7 @@ func (c *FakeExtendedStatefulSets) DeleteCollection(options *v1.DeleteOptions, l
 // Patch applies the patch and returns the patched extendedStatefulSet.
 func (c *FakeExtendedStatefulSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.ExtendedStatefulSet, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(extendedstatefulsetsResource, c.ns, name, data, subresources...), &v1alpha1.ExtendedStatefulSet{})
+		Invokes(testing.NewPatchSubresourceAction(extendedstatefulsetsResource, c.ns, name, pt, data, subresources...), &v1alpha1.ExtendedStatefulSet{})
 
 	if obj == nil {
 		return nil, err
