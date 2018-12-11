@@ -35,8 +35,6 @@ func (g InMemoryGenerator) GenerateCertificate(name string, request credsgen.Cer
 }
 
 func (g InMemoryGenerator) generateCertificate(request credsgen.CertificateGenerationRequest) (credsgen.Certificate, error) {
-	expiration := 365
-
 	if !request.CA.IsCA {
 		return credsgen.Certificate{}, fmt.Errorf("The passed CA is not a CA")
 	}
@@ -46,7 +44,7 @@ func (g InMemoryGenerator) generateCertificate(request credsgen.CertificateGener
 	}
 
 	// Generate certificate
-	certReq := &csr.CertificateRequest{KeyRequest: &csr.BasicKeyRequest{A: "rsa", S: 4096}}
+	certReq := &csr.CertificateRequest{KeyRequest: &csr.BasicKeyRequest{A: g.Algorithm, S: g.Bits}}
 
 	certReq.Hosts = append(certReq.Hosts, request.CommonName)
 	for _, name := range request.AlternativeNames {
@@ -74,8 +72,8 @@ func (g InMemoryGenerator) generateCertificate(request credsgen.CertificateGener
 	//Sign certificate
 	signingProfile := &config.SigningProfile{
 		Usage:        []string{"server auth", "client auth"},
-		Expiry:       time.Duration(expiration*24) * time.Hour,
-		ExpiryString: fmt.Sprintf("%dh", expiration*24),
+		Expiry:       time.Duration(g.Expiry*24) * time.Hour,
+		ExpiryString: fmt.Sprintf("%dh", g.Expiry*24),
 	}
 	policy := &config.Signing{
 		Profiles: map[string]*config.SigningProfile{},
@@ -98,9 +96,9 @@ func (g InMemoryGenerator) generateCertificate(request credsgen.CertificateGener
 
 func (g InMemoryGenerator) generateCACertificate() (credsgen.Certificate, error) {
 	req := &csr.CertificateRequest{
-		CA:         &csr.CAConfig{Expiry: fmt.Sprintf("%dh", 365*24)},
+		CA:         &csr.CAConfig{Expiry: fmt.Sprintf("%dh", g.Expiry*24)},
 		CN:         "SCF CA",
-		KeyRequest: &csr.BasicKeyRequest{A: "rsa", S: 4096},
+		KeyRequest: &csr.BasicKeyRequest{A: g.Algorithm, S: g.Bits},
 	}
 	ca, _, privateKey, err := initca.New(req)
 	if err != nil {

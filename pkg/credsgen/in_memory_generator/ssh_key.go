@@ -16,7 +16,7 @@ func (g InMemoryGenerator) GenerateSSHKey(name string) (credsgen.SSHKey, error) 
 	log.Println("Generating SSH key ", name)
 
 	// generate private key
-	private, err := rsa.GenerateKey(rand.Reader, 4096)
+	private, err := rsa.GenerateKey(rand.Reader, g.Bits)
 	if err != nil {
 		return credsgen.SSHKey{}, err
 	}
