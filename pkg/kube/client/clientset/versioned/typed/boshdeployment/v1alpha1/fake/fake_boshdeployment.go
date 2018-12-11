@@ -120,7 +120,7 @@ func (c *FakeBOSHDeployments) DeleteCollection(options *v1.DeleteOptions, listOp
 // Patch applies the patch and returns the patched bOSHDeployment.
 func (c *FakeBOSHDeployments) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.BOSHDeployment, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(boshdeploymentsResource, c.ns, name, pt, data, subresources...), &v1alpha1.BOSHDeployment{})
+		Invokes(testing.NewPatchSubresourceAction(boshdeploymentsResource, c.ns, name, data, subresources...), &v1alpha1.BOSHDeployment{})
 
 	if obj == nil {
 		return nil, err
