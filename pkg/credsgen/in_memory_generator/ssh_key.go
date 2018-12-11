@@ -11,6 +11,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// GenerateSSHKey generates an SSH key using go's standard crypto library
 func (g InMemoryGenerator) GenerateSSHKey(name string) (credsgen.SSHKey, error) {
 	log.Println("Generating SSH key ", name)
 

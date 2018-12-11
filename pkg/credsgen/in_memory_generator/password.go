@@ -7,6 +7,7 @@ import (
 	"github.com/dchest/uniuri"
 )
 
+// GeneratePassword generates a random password
 func (g InMemoryGenerator) GeneratePassword(name string, request credsgen.PasswordGenerationRequest) string {
 	fmt.Println("Generating password ", name)
 

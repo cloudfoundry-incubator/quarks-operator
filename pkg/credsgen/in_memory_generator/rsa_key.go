@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// GenerateRSAKey generates an RSA key using go's standard crypto library
 func (g InMemoryGenerator) GenerateRSAKey(name string) (credsgen.RSAKey, error) {
 	log.Println("Generating RSA key ", name)
 
