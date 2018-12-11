@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
-	"code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
+	inmemorygenerator "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -14,7 +14,7 @@ import (
 
 var _ = Describe("InMemoryGenerator", func() {
 	var (
-		generator credsgen.Generator = inmemorygenerator.InMemoryGenerator{}
+		generator credsgen.Generator = inmemorygenerator.NewInMemoryGenerator()
 	)
 
 	Describe("GenerateCertificate", func() {
