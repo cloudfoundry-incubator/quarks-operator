@@ -15,4 +15,4 @@ kubectl apply -f  deploy/helm/cf-operator/templates/
 kubectl get customresourcedefinitions
 kubectl create namespace "$TEST_NAMESPACE"
 
-ginkgo integration/
+ginkgo e2e/

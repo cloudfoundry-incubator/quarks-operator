@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"time"
 
-	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"github.com/pkg/errors"
-	apiv1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+
+	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 )
 
 // Machine produces and destroys resources for tests
@@ -33,6 +33,32 @@ func (m *Machine) WaitForPod(namespace string, name string) error {
 	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
 		return m.PodRunning(namespace, name)
 	})
+}
+
+// WaitForPods blocks until all selected pods are running. It fails after the timeout.
+func (m *Machine) WaitForPods(namespace string, labels string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.PodsRunning(namespace, labels)
+	})
+}
+
+// WaitForExtendedStatefulSets blocks until at least one WaitForExtendedStatefulSet is found. It fails after the timeout.
+func (m *Machine) WaitForExtendedStatefulSets(namespace string, labels string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.ExtendedStatefulSetExists(namespace, labels)
+	})
+}
+
+// ExtendedStatefulSetExists returns true if at least one ess selected by labels exists
+func (m *Machine) ExtendedStatefulSetExists(namespace string, labels string) (bool, error) {
+	esss, err := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace).List(metav1.ListOptions{
+		LabelSelector: labels,
+	})
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to query for ess by labels: %v", labels)
+	}
+
+	return len(esss.Items) > 0, nil
 }
 
 // WaitForPodsDelete blocks until the pod is deleted. It fails after the timeout.
@@ -56,7 +82,7 @@ func (m *Machine) PodsDeleted(namespace string) (bool, error) {
 
 // PodRunning returns true if the pod by that name is in state running
 func (m *Machine) PodRunning(namespace string, name string) (bool, error) {
-	pod, err := m.Clientset.CoreV1().Pods(namespace).Get(name, v1.GetOptions{})
+	pod, err := m.Clientset.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
@@ -64,40 +90,48 @@ func (m *Machine) PodRunning(namespace string, name string) (bool, error) {
 		return false, errors.Wrapf(err, "failed to query for pod by name: %s", name)
 	}
 
-	if pod.Status.Phase == apiv1.PodRunning {
+	if pod.Status.Phase == corev1.PodRunning {
 		return true, nil
 	}
 	return false, nil
 }
 
-// PodLabeled returns true if the pod is interpolated correctly
-func (m *Machine) PodLabeled(namespace string, name string, desiredLabel, desiredValue string) (bool, error) {
-	pod, err := m.Clientset.CoreV1().Pods(namespace).Get(name, v1.GetOptions{})
+// PodsRunning returns true if all the pods selected by labels are in state running
+// Note that only the first page of pods is considered - don't use this if you have a
+// long pod list that you care about
+func (m *Machine) PodsRunning(namespace string, labels string) (bool, error) {
+	pods, err := m.Clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{
+		LabelSelector: labels,
+	})
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return false, err
-		}
-		return false, errors.Wrapf(err, "Failed to query for pod by name: %s", name)
+		return false, errors.Wrapf(err, "failed to query for pod by labels: %v", labels)
 	}
 
-	if pod.ObjectMeta.Labels[desiredLabel] == desiredValue {
-		return true, nil
+	if len(pods.Items) == 0 {
+		return false, nil
 	}
-	return false, fmt.Errorf("Cannot match the desired label with %s", desiredValue)
+
+	for _, pod := range pods.Items {
+		if pod.Status.Phase != corev1.PodRunning {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
-// WaitForCRDeletion blocks until the CR is deleted
-func (m *Machine) WaitForCRDeletion(namespace string, name string) error {
+// WaitForBOSHDeploymentDeletion blocks until the CR is deleted
+func (m *Machine) WaitForBOSHDeploymentDeletion(namespace string, name string) error {
 	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
-		found, err := m.HasFissileCR(namespace, name)
+		found, err := m.HasBOSHDeployment(namespace, name)
 		return !found, err
 	})
 }
 
-// HasFissileCR returns true if the pod by that name is in state running
-func (m *Machine) HasFissileCR(namespace string, name string) (bool, error) {
+// HasBOSHDeployment returns true if the pod by that name is in state running
+func (m *Machine) HasBOSHDeployment(namespace string, name string) (bool, error) {
 	client := m.VersionedClientset.Boshdeployment().BOSHDeployments(namespace)
-	_, err := client.Get(name, v1.GetOptions{})
+	_, err := client.Get(name, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
@@ -113,7 +147,7 @@ func (m *Machine) CreateConfigMap(namespace string, configMap corev1.ConfigMap) 
 	client := m.Clientset.CoreV1().ConfigMaps(namespace)
 	_, err := client.Create(&configMap)
 	return func() {
-		client.Delete(configMap.GetName(), &v1.DeleteOptions{})
+		client.Delete(configMap.GetName(), &metav1.DeleteOptions{})
 	}, err
 }
 
@@ -122,30 +156,70 @@ func (m *Machine) CreateSecret(namespace string, secret corev1.Secret) (TearDown
 	client := m.Clientset.CoreV1().Secrets(namespace)
 	_, err := client.Create(&secret)
 	return func() {
-		client.Delete(secret.GetName(), &v1.DeleteOptions{})
+		client.Delete(secret.GetName(), &metav1.DeleteOptions{})
 	}, err
 }
 
-// CreateFissileCR creates a BOSHDeployment custom resource and returns a function to delete it
-func (m *Machine) CreateFissileCR(namespace string, deployment bdcv1.BOSHDeployment) (*bdcv1.BOSHDeployment, TearDownFunc, error) {
+// CreateBOSHDeployment creates a BOSHDeployment custom resource and returns a function to delete it
+func (m *Machine) CreateBOSHDeployment(namespace string, deployment bdcv1.BOSHDeployment) (*bdcv1.BOSHDeployment, TearDownFunc, error) {
 	client := m.VersionedClientset.Boshdeployment().BOSHDeployments(namespace)
 	d, err := client.Create(&deployment)
 	return d, func() {
-		client.Delete(deployment.GetName(), &v1.DeleteOptions{})
+		client.Delete(deployment.GetName(), &metav1.DeleteOptions{})
 	}, err
 }
 
-// UpdateFissileCR creates a BOSHDeployment custom resource and returns a function to delete it
-func (m *Machine) UpdateFissileCR(namespace string, deployment bdcv1.BOSHDeployment) (*bdcv1.BOSHDeployment, TearDownFunc, error) {
-	client := m.VersionedClientset.Boshdeployment().BOSHDeployments(namespace)
+// UpdateBOSHDeployment creates a BOSHDeployment custom resource and returns a function to delete it
+func (m *Machine) UpdateBOSHDeployment(namespace string, deployment bdcv1.BOSHDeployment) (*bdcv1.BOSHDeployment, TearDownFunc, error) {
+	client := m.VersionedClientset.BoshdeploymentV1alpha1().BOSHDeployments(namespace)
 	d, err := client.Update(&deployment)
 	return d, func() {
-		client.Delete(deployment.GetName(), &v1.DeleteOptions{})
+		client.Delete(deployment.GetName(), &metav1.DeleteOptions{})
 	}, err
 }
 
-// DeleteFissileCR deletes a BOSHDeployment custom resource
-func (m *Machine) DeleteFissileCR(namespace string, name string) error {
-	client := m.VersionedClientset.Boshdeployment().BOSHDeployments(namespace)
-	return client.Delete(name, &v1.DeleteOptions{})
+// DeleteBOSHDeployment deletes a BOSHDeployment custom resource
+func (m *Machine) DeleteBOSHDeployment(namespace string, name string) error {
+	client := m.VersionedClientset.BoshdeploymentV1alpha1().BOSHDeployments(namespace)
+	return client.Delete(name, &metav1.DeleteOptions{})
+}
+
+// CreateExtendedStatefulSet creates a ExtendedStatefulSet custom resource and returns a function to delete it
+func (m *Machine) CreateExtendedStatefulSet(namespace string, ess essv1.ExtendedStatefulSet) (*essv1.ExtendedStatefulSet, TearDownFunc, error) {
+	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
+	d, err := client.Create(&ess)
+	return d, func() {
+		client.Delete(ess.GetName(), &metav1.DeleteOptions{})
+	}, err
+}
+
+// UpdateExtendedStatefulSet creates a ExtendedStatefulSet custom resource and returns a function to delete it
+func (m *Machine) UpdateExtendedStatefulSet(namespace string, ess essv1.ExtendedStatefulSet) (*essv1.ExtendedStatefulSet, TearDownFunc, error) {
+	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
+	d, err := client.Update(&ess)
+	return d, func() {
+		client.Delete(ess.GetName(), &metav1.DeleteOptions{})
+	}, err
+}
+
+// DeleteExtendedStatefulSet deletes a ExtendedStatefulSet custom resource
+func (m *Machine) DeleteExtendedStatefulSet(namespace string, name string) error {
+	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
+	return client.Delete(name, &metav1.DeleteOptions{})
+}
+
+// PodLabeled returns true if the pod is labeled correctly
+func (m *Machine) PodLabeled(namespace string, name string, desiredLabel, desiredValue string) (bool, error) {
+	pod, err := m.Clientset.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, err
+		}
+		return false, errors.Wrapf(err, "Failed to query for pod by name: %s", name)
+	}
+
+	if pod.ObjectMeta.Labels[desiredLabel] == desiredValue {
+		return true, nil
+	}
+	return false, fmt.Errorf("Cannot match the desired label with %s", desiredValue)
 }

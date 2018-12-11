@@ -13,6 +13,7 @@ helm:
 export CFO_NAMESPACE ?= default
 up:
 	kubectl apply -f deploy/helm/cf-operator/templates/fissile_v1alpha1_boshdeployment_crd.yaml
+	kubectl apply -f deploy/helm/cf-operator/templates/fissile_v1alpha1_extendedstatefulset_crd.yaml
 	@echo watching namespace ${CFO_NAMESPACE}
 	go run cmd/cf-operator/main.go
 
@@ -39,7 +40,10 @@ test-unit:
 test-integration:
 	bin/test-integration
 
-test: vet lint test-unit test-integration
+test-e2e:
+	bin/test-e2e
+
+test: vet lint test-unit test-integration test-e2e
 
 tools:
 	bin/tools
