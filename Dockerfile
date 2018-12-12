@@ -1,7 +1,7 @@
-FROM golang:1.11 AS build
+FROM golang:1.11.2 AS build
 COPY . /go/src/code.cloudfoundry.org/cf-operator
 RUN cd /go/src/code.cloudfoundry.org/cf-operator && \
-    make build && \
+    GO111MODULE=on make build && \
     cp -p binaries/cf-operator /usr/local/bin/cf-operator
 
 FROM opensuse/leap:15.0
