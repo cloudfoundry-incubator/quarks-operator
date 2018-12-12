@@ -7,6 +7,7 @@ build:
 image:
 	bin/build-image
 
+.PHONY: helm
 helm:
 	bin/build-helm
 
