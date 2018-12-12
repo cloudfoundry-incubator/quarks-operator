@@ -26,7 +26,7 @@ var (
 
 // ExtendedStatefulSetSpec defines the desired state of ExtendedStatefulSet
 type ExtendedStatefulSetSpec struct {
-	Template v1beta1.StatefulSet
+	Template v1beta1.StatefulSet `json:"template"`
 }
 
 // ExtendedStatefulSetStatus defines the observed state of ExtendedStatefulSet
