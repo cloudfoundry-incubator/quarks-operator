@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"strconv"
 
+	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	v1beta1 "k8s.io/api/apps/v1beta1"
+	"k8s.io/api/apps/v1beta1"
+	"k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -15,8 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 )
 
 // Check that ReconcileExtendedStatefulSet implements the reconcile.Reconciler interface
@@ -257,4 +257,43 @@ func (r *ReconcileExtendedStatefulSet) getActualStatefulSet(ctx context.Context,
 	}
 
 	return result, maxVersion, nil
+}
+
+// isStatefulSetReady returns true if one owned Pod is running
+func (r *ReconcileExtendedStatefulSet) isStatefulSetReady(ctx context.Context, statefulSet *v1beta1.StatefulSet) (bool, error) {
+	podList := &v1.PodList{}
+	err := r.client.List(
+		ctx,
+		&client.ListOptions{
+			Namespace:     statefulSet.Namespace,
+			LabelSelector: labels.Everything(),
+		},
+		podList,
+	)
+	if err != nil {
+		return false, err
+	}
+
+	for _, pod := range podList.Items {
+		if metav1.IsControlledBy(&pod, statefulSet) {
+			if isPodReady(&pod) {
+				r.log.Debug("Pod '", statefulSet.Name, "' owned by StatefulSet '", statefulSet.Name, "' is running.")
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
+}
+
+// isPodReady returns false if the Pod Status is nil
+func isPodReady(pod *v1.Pod) bool {
+	var condition *v1.PodCondition
+	for i := range pod.Status.Conditions {
+		if pod.Status.Conditions[i].Type == v1.PodReady {
+			condition = &pod.Status.Conditions[i]
+			break
+		}
+	}
+	return condition != nil && condition.Status == v1.ConditionTrue
 }
