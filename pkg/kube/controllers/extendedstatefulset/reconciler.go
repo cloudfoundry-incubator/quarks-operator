@@ -103,6 +103,14 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		// if not equal, see what's different and act accordingly
 	}
 
+	// Find a way to check result
+	statefulSetVersions, err := r.listStatefulSetVersions(context.TODO(), exStatefulSet)
+	if err != nil {
+		return reconcile.Result{Requeue: true}, err
+	}
+
+	r.log.Info(statefulSetVersions)
+
 	// Cleanup
 	err = r.cleanupStatefulSets(context.TODO(), exStatefulSet)
 	if err != nil {
@@ -257,6 +265,32 @@ func (r *ReconcileExtendedStatefulSet) getActualStatefulSet(ctx context.Context,
 	}
 
 	return result, maxVersion, nil
+}
+
+// listStatefulSetVersions gets all StatefulSets' versions and ready status owned by the ExtendedStatefulSet
+func (r *ReconcileExtendedStatefulSet) listStatefulSetVersions(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) (map[string]bool, error) {
+	 result :=map[string]bool{}
+
+	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, statefulSet := range statefulSets {
+		ready, err := r.isStatefulSetReady(ctx, &statefulSet)
+		if err != nil {
+			return nil, err
+		}
+
+		r.log.Debug(statefulSet.Annotations[essv1a1.AnnotationVersion])
+		if ready {
+			result[statefulSet.Annotations[essv1a1.AnnotationVersion]] = true
+		} else {
+			result[statefulSet.Annotations[essv1a1.AnnotationVersion]] = false
+		}
+	}
+
+	return result, nil
 }
 
 // isStatefulSetReady returns true if one owned Pod is running
