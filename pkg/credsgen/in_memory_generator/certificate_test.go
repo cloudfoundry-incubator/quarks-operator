@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"time"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	inmemorygenerator "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
@@ -69,6 +70,26 @@ var _ = Describe("InMemoryGenerator", func() {
 				Expect(len(parsedCert.DNSNames)).To(Equal(3))
 				Expect(parsedCert.DNSNames).To(ContainElement(Equal("bar.com")))
 				Expect(parsedCert.DNSNames).To(ContainElement(Equal("baz.com")))
+			})
+
+			Context("with custom parameters", func() {
+				It("considers all parameters", func() {
+					g := generator.(*inmemorygenerator.InMemoryGenerator)
+					g.Bits = 256
+					g.Algorithm = "ecdsa"
+					g.Expiry = 1
+
+					cert, err := g.GenerateCertificate("foo", request)
+					Expect(err).ToNot(HaveOccurred())
+
+					key, _ := pem.Decode(cert.PrivateKey)
+					parsedCert, err := parseCert(cert.Certificate)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(key.Type).To(Equal("EC PRIVATE KEY"))
+					Expect(parsedCert.NotAfter.Before(time.Now().AddDate(0, 0, 2))).To(BeTrue())
+					Expect(len(cert.PrivateKey)).To(Equal(227))
+				})
 			})
 		})
 
