@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"code.cloudfoundry.org/cf-operator/integration/util"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
+	"code.cloudfoundry.org/cf-operator/pkg/util"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 
 	"go.uber.org/zap"
