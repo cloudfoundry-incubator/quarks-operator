@@ -16,7 +16,7 @@ func (g InMemoryGenerator) GenerateRSAKey(name string) (credsgen.RSAKey, error) 
 	log.Println("Generating RSA key ", name)
 
 	// generate private key
-	private, err := rsa.GenerateKey(rand.Reader, 4096)
+	private, err := rsa.GenerateKey(rand.Reader, g.Bits)
 	if err != nil {
 		return credsgen.RSAKey{}, errors.Wrap(err, "Generating private key")
 	}
