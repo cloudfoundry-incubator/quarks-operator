@@ -41,7 +41,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 	BeforeEach(func() {
 		controllers.AddToScheme(scheme.Scheme)
-		recorder = &record.FakeRecorder{}
+		recorder = record.NewFakeRecorder(20)
 		manager = &cfakes.FakeManager{}
 		manager.GetRecorderReturns(recorder)
 		resolver = fakes.FakeResolver{}
@@ -86,6 +86,9 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("bad request returns error"))
+
+				// check for events
+				Expect(<-recorder.Events).To(ContainSubstring("GetCRD Error"))
 			})
 
 			It("handles errors when resolving the CR", func() {
@@ -94,6 +97,22 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("resolver error"))
+
+				// check for events
+				Expect(<-recorder.Events).To(ContainSubstring("ResolveCRD Error"))
+			})
+
+			It("handles errors when missing instance groups", func() {
+				resolver.ResolveCRDReturns(&bdm.Manifest{
+					InstanceGroups: []bdm.InstanceGroup{},
+				}, nil)
+
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("manifest is missing instance groups"))
+
+				// check for events
+				Expect(<-recorder.Events).To(ContainSubstring("MissingInstance Error"))
 			})
 		})
 

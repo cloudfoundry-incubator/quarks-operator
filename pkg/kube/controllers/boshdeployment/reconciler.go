@@ -80,7 +80,6 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
-	// TODO validation
 	if len(manifest.InstanceGroups) < 1 {
 		err = fmt.Errorf("manifest is missing instance groups")
 		r.recorder.Event(instance, corev1.EventTypeWarning, "MissingInstance Error", err.Error())

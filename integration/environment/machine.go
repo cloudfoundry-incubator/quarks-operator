@@ -2,6 +2,7 @@ package environment
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
@@ -224,25 +225,32 @@ func (m *Machine) PodLabeled(namespace string, name string, desiredLabel, desire
 	return false, fmt.Errorf("Cannot match the desired label with %s", desiredValue)
 }
 
-// GetBOSHDeploymentEventMessage gets target resource event messages
-func (m *Machine) GetBOSHDeploymentEventMessage(namespace string, name string, id string) (bool, string) {
+// ContainExpectedEvent return true if events contain target resource event
+func (m *Machine) ContainExpectedEvent(events *[]corev1.Event, reason string, message string) bool {
+	for _, event := range *events {
+		if event.Reason == reason && strings.Contains(event.Message, message) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// GetBOSHDeploymentEvents gets target resource events
+func (m *Machine) GetBOSHDeploymentEvents(namespace string, name string, id string) (*[]corev1.Event, error) {
 	fieldSelector := fields.Set{"involvedObject.name": name, "involvedObject.uid": id}.AsSelector().String()
 	err := m.WaitForBOSHDeploymentEvent(namespace, fieldSelector)
 	if err != nil {
-		return false, err.Error()
+		return &[]corev1.Event{}, err
 	}
 
 	events := m.Clientset.CoreV1().Events(namespace)
 
 	list, err := events.List(metav1.ListOptions{FieldSelector: fieldSelector})
 	if err != nil {
-		return false, err.Error()
+		return &[]corev1.Event{}, err
 	}
-	messageList := ""
-	for i := 0; i < len(list.Items); i++ {
-		messageList += list.Items[i].Message
-	}
-	return true, messageList
+	return &list.Items, nil
 }
 
 // WaitForBOSHDeploymentEvent gets desired event

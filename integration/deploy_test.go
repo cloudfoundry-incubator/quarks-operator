@@ -55,7 +55,7 @@ var _ = Describe("Deploy", func() {
 	})
 
 	Context("when incorrectly setup", func() {
-		It("should report correct error if ops for is incorrect", func() {
+		It("failed to deploy if ResolveCRD error occurred", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
@@ -72,9 +72,10 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
-			success, result := env.GetBOSHDeploymentEventMessage(env.Namespace, boshDeployment.ObjectMeta.Name, string(boshDeployment.ObjectMeta.UID))
-			Expect(success).To(BeTrue())
-			Expect(result).To(ContainSubstring("Expected to find exactly one matching array item for path '/instance-groups/name=api' but found 0"))
+			// check for events
+			events, err := env.GetBOSHDeploymentEvents(env.Namespace, boshDeployment.ObjectMeta.Name, string(boshDeployment.ObjectMeta.UID))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(env.ContainExpectedEvent(events, "ResolveCRD Error", "Failed to interpolate")).To(BeTrue())
 		})
 
 		It("failed to deploy a empty manifest", func() {
