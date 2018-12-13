@@ -5,7 +5,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"log"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	"github.com/pkg/errors"
@@ -13,7 +12,7 @@ import (
 
 // GenerateRSAKey generates an RSA key using go's standard crypto library
 func (g InMemoryGenerator) GenerateRSAKey(name string) (credsgen.RSAKey, error) {
-	log.Println("Generating RSA key ", name)
+	g.log.Debugf("Generating RSA key ", name)
 
 	// generate private key
 	private, err := rsa.GenerateKey(rand.Reader, g.Bits)

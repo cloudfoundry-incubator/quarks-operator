@@ -1,15 +1,13 @@
 package inmemorygenerator
 
 import (
-	"fmt"
-
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	"github.com/dchest/uniuri"
 )
 
 // GeneratePassword generates a random password
 func (g InMemoryGenerator) GeneratePassword(name string, request credsgen.PasswordGenerationRequest) string {
-	fmt.Println("Generating password ", name)
+	g.log.Infof("Generating password ", name)
 
 	length := request.Length
 	if length == 0 {

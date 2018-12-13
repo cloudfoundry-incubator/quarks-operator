@@ -6,8 +6,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"code.cloudfoundry.org/cf-operator/integration/util"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/testing"
 )
 
 var _ = Describe("ExtendedStatefulSet", func() {
@@ -17,7 +17,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 	Context("when correctly setup", func() {
 		BeforeEach(func() {
-			essName := fmt.Sprintf("testess-%s", util.RandString(5))
+			essName := fmt.Sprintf("testess-%s", testing.RandString(5))
 			extendedStatefulSet = env.DefaultExtendedStatefulSet(essName)
 		})
 

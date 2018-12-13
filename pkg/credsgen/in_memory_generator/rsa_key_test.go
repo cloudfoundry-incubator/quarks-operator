@@ -3,14 +3,20 @@ package inmemorygenerator_test
 import (
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	inmemorygenerator "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
+	"code.cloudfoundry.org/cf-operator/testing"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("InMemoryGenerator", func() {
 	var (
-		generator credsgen.Generator = inmemorygenerator.NewInMemoryGenerator()
+		generator credsgen.Generator
 	)
+
+	BeforeEach(func() {
+		_, log := testing.NewTestLogger()
+		generator = inmemorygenerator.NewInMemoryGenerator(log)
+	})
 
 	Describe("GenerateRSAKey", func() {
 		It("generates an RSA key", func() {
