@@ -8,7 +8,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
-	"code.cloudfoundry.org/cf-operator/pkg/util"
+	"code.cloudfoundry.org/cf-operator/testing"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 
 	"go.uber.org/zap"
@@ -89,7 +89,7 @@ func (e *Environment) setupCFOperator() (err error) {
 	}
 	e.Namespace = ns
 
-	e.ObservedLogs, e.log = util.NewTestLogger()
+	e.ObservedLogs, e.log = testing.NewTestLogger()
 
 	err = e.setupKube()
 	if err != nil {

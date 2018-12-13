@@ -13,7 +13,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	inmemorygenerator "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
-	"code.cloudfoundry.org/cf-operator/pkg/util"
+	"code.cloudfoundry.org/cf-operator/testing"
 )
 
 var _ = Describe("InMemoryGenerator", func() {
@@ -24,7 +24,7 @@ var _ = Describe("InMemoryGenerator", func() {
 	BeforeEach(func() {
 		cfssllog.Level = cfssllog.LevelFatal
 
-		_, log := util.NewTestLogger()
+		_, log := testing.NewTestLogger()
 		generator = inmemorygenerator.NewInMemoryGenerator(log)
 	})
 

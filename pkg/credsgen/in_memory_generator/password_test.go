@@ -3,7 +3,7 @@ package inmemorygenerator_test
 import (
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
-	"code.cloudfoundry.org/cf-operator/pkg/util"
+	"code.cloudfoundry.org/cf-operator/testing"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -14,7 +14,7 @@ var _ = Describe("InMemoryGenerator", func() {
 	)
 
 	BeforeEach(func() {
-		_, log := util.NewTestLogger()
+		_, log := testing.NewTestLogger()
 		generator = inmemorygenerator.NewInMemoryGenerator(log)
 	})
 
