@@ -5,7 +5,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"log"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	"golang.org/x/crypto/ssh"
@@ -13,7 +12,7 @@ import (
 
 // GenerateSSHKey generates an SSH key using go's standard crypto library
 func (g InMemoryGenerator) GenerateSSHKey(name string) (credsgen.SSHKey, error) {
-	log.Println("Generating SSH key ", name)
+	g.log.Info("Generating SSH key %s")
 
 	// generate private key
 	private, err := rsa.GenerateKey(rand.Reader, g.Bits)

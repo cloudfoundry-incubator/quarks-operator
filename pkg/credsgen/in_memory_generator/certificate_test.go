@@ -6,17 +6,27 @@ import (
 	"fmt"
 	"time"
 
-	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
-	inmemorygenerator "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
+	cfssllog "github.com/cloudflare/cfssl/log"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+
+	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
+	inmemorygenerator "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
+	"code.cloudfoundry.org/cf-operator/pkg/util"
 )
 
 var _ = Describe("InMemoryGenerator", func() {
 	var (
-		generator credsgen.Generator = inmemorygenerator.NewInMemoryGenerator()
+		generator credsgen.Generator
 	)
+
+	BeforeEach(func() {
+		cfssllog.Level = cfssllog.LevelFatal
+
+		_, log := util.NewTestLogger()
+		generator = inmemorygenerator.NewInMemoryGenerator(log)
+	})
 
 	Describe("GenerateCertificate", func() {
 		Context("when generating a certificate", func() {
