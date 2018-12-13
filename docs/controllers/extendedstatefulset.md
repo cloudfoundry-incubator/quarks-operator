@@ -6,7 +6,6 @@
     - [Scaling Restrictions](#scaling-restrictions)
     - [Automatic Restart of Containers](#automatic-restart-of-containers)
     - [Extended Upgrade Support](#extended-upgrade-support)
-    - [Automatic Management of Roles for the ServiceAccount](#automatic-management-of-roles-for-the-serviceaccount)
     - [Annotated if Stale](#annotated-if-stale)
   - [Example Resource](#example-resource)
 
@@ -23,6 +22,8 @@ Ability to set restrictions on how scaling can occur: min, max, odd replicas.
 When an env value or mount changes due to a `ConfigMap` or `Secret` change, containers are restarted.
 The operator watches all the ConfigMaps and Secrets referenced by the StatefulSet, and automatically performs the update, without extra workarounds.
 
+> See [this implementation](https://thenewstack.io/solving-kubernetes-configuration-woes-with-a-custom-controller/) for inspiration
+
 ### Extended Upgrade Support
 
 A second StatefulSet for the new version is deployed, and both coexist until canary conditions are met. This also allows support for Blue/Green tehniques. 
@@ -31,11 +32,9 @@ A second StatefulSet for the new version is deployed, and both coexist until can
 
 Annotated with a version (auto-incremented on each update). 
 
-Ability to upgrade even though StatefulSet pods are not ready and the ability to run an `ExtendedJob` before and after the upgrade.
+Ability to upgrade even though StatefulSet pods are not ready.
 
-The Job can abort the upgrade if it doesn't complete successfully.
-
-### Automatic Management of Roles for the ServiceAccount
+An ability to run an `ExtendedJob` before and after the upgrade. The Job can abort the upgrade if it doesn't complete successfully.
 
 ### Annotated if Stale
 
