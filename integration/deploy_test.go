@@ -10,8 +10,7 @@ var _ = Describe("Deploy", func() {
 		podName := "diego-pod"
 
 		AfterEach(func() {
-			err := env.WaitForPodsDelete(env.Namespace)
-			Expect(err).NotTo(HaveOccurred())
+			env.WaitForPodsDelete(env.Namespace)
 		})
 
 		It("should deploy a pod", func() {
