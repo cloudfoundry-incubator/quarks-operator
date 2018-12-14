@@ -10,6 +10,7 @@ package versioned
 import (
 	boshdeploymentv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1"
 	extendedjobv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedjob/v1alpha1"
+	extendedsecretv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedsecret/v1alpha1"
 	extendedstatefulsetv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedstatefulset/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
@@ -24,6 +25,9 @@ type Interface interface {
 	ExtendedjobV1alpha1() extendedjobv1alpha1.ExtendedjobV1alpha1Interface
 	// Deprecated: please explicitly pick a version if possible.
 	Extendedjob() extendedjobv1alpha1.ExtendedjobV1alpha1Interface
+	ExtendedsecretV1alpha1() extendedsecretv1alpha1.ExtendedsecretV1alpha1Interface
+	// Deprecated: please explicitly pick a version if possible.
+	Extendedsecret() extendedsecretv1alpha1.ExtendedsecretV1alpha1Interface
 	ExtendedstatefulsetV1alpha1() extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Interface
 	// Deprecated: please explicitly pick a version if possible.
 	Extendedstatefulset() extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Interface
@@ -35,6 +39,7 @@ type Clientset struct {
 	*discovery.DiscoveryClient
 	boshdeploymentV1alpha1      *boshdeploymentv1alpha1.BoshdeploymentV1alpha1Client
 	extendedjobV1alpha1         *extendedjobv1alpha1.ExtendedjobV1alpha1Client
+	extendedsecretV1alpha1      *extendedsecretv1alpha1.ExtendedsecretV1alpha1Client
 	extendedstatefulsetV1alpha1 *extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Client
 }
 
@@ -58,6 +63,17 @@ func (c *Clientset) ExtendedjobV1alpha1() extendedjobv1alpha1.ExtendedjobV1alpha
 // Please explicitly pick a version.
 func (c *Clientset) Extendedjob() extendedjobv1alpha1.ExtendedjobV1alpha1Interface {
 	return c.extendedjobV1alpha1
+}
+
+// ExtendedsecretV1alpha1 retrieves the ExtendedsecretV1alpha1Client
+func (c *Clientset) ExtendedsecretV1alpha1() extendedsecretv1alpha1.ExtendedsecretV1alpha1Interface {
+	return c.extendedsecretV1alpha1
+}
+
+// Deprecated: Extendedsecret retrieves the default version of ExtendedsecretClient.
+// Please explicitly pick a version.
+func (c *Clientset) Extendedsecret() extendedsecretv1alpha1.ExtendedsecretV1alpha1Interface {
+	return c.extendedsecretV1alpha1
 }
 
 // ExtendedstatefulsetV1alpha1 retrieves the ExtendedstatefulsetV1alpha1Client
@@ -95,6 +111,10 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
+	cs.extendedsecretV1alpha1, err = extendedsecretv1alpha1.NewForConfig(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
 	cs.extendedstatefulsetV1alpha1, err = extendedstatefulsetv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -113,6 +133,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
 	cs.boshdeploymentV1alpha1 = boshdeploymentv1alpha1.NewForConfigOrDie(c)
 	cs.extendedjobV1alpha1 = extendedjobv1alpha1.NewForConfigOrDie(c)
+	cs.extendedsecretV1alpha1 = extendedsecretv1alpha1.NewForConfigOrDie(c)
 	cs.extendedstatefulsetV1alpha1 = extendedstatefulsetv1alpha1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
@@ -124,6 +145,7 @@ func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.boshdeploymentV1alpha1 = boshdeploymentv1alpha1.New(c)
 	cs.extendedjobV1alpha1 = extendedjobv1alpha1.New(c)
+	cs.extendedsecretV1alpha1 = extendedsecretv1alpha1.New(c)
 	cs.extendedstatefulsetV1alpha1 = extendedstatefulsetv1alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)

@@ -1,0 +1,51 @@
+package v1alpha1
+
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// This file is safe to edit
+// It's used as input for the Kube code generator
+// Run "make generate" after modifying this file
+
+type Type string
+
+// Valid values for ref types
+const (
+	Password    Type = "password"
+	Certificate Type = "certificate"
+	SSHKey      Type = "sshkey"
+	RSAKey      Type = "rsakey"
+)
+
+// ExtendedSecretSpec defines the desired state of ExtendedSecret
+type ExtendedSecretSpec struct {
+	Type Type `json:"type"`
+}
+
+// ExtendedSecretStatus defines the observed state of ExtendedSecret
+type ExtendedSecretStatus struct {
+	SecretStatus []string `json:"secretStatus"`
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ExtendedSecret is the Schema for the ExtendedSecrets API
+// +k8s:openapi-gen=true
+type ExtendedSecret struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   ExtendedSecretSpec   `json:"spec,omitempty"`
+	Status ExtendedSecretStatus `json:"status,omitempty"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ExtendedSecretList contains a list of ExtendedSecret
+type ExtendedSecretList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []ExtendedSecret `json:"items"`
+}
