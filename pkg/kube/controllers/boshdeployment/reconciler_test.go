@@ -12,14 +12,13 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -31,6 +30,7 @@ import (
 
 var _ = Describe("ReconcileBoshDeployment", func() {
 	var (
+		recorder   *record.FakeRecorder
 		manager    *cfakes.FakeManager
 		reconciler reconcile.Reconciler
 		request    reconcile.Request
@@ -41,12 +41,15 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 	BeforeEach(func() {
 		controllers.AddToScheme(scheme.Scheme)
+		recorder = record.NewFakeRecorder(20)
 		manager = &cfakes.FakeManager{}
+		manager.GetRecorderReturns(recorder)
 		resolver = fakes.FakeResolver{}
+
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 		manifest = &bdm.Manifest{
 			InstanceGroups: []bdm.InstanceGroup{
-				bdm.InstanceGroup{Name: "fakepod"},
+				{Name: "fakepod"},
 			},
 		}
 		core, _ := observer.New(zapcore.InfoLevel)
@@ -83,6 +86,9 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("bad request returns error"))
+
+				// check for events
+				Expect(<-recorder.Events).To(ContainSubstring("GetCRD Error"))
 			})
 
 			It("handles errors when resolving the CR", func() {
@@ -91,6 +97,22 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("resolver error"))
+
+				// check for events
+				Expect(<-recorder.Events).To(ContainSubstring("ResolveCRD Error"))
+			})
+
+			It("handles errors when missing instance groups", func() {
+				resolver.ResolveCRDReturns(&bdm.Manifest{
+					InstanceGroups: []bdm.InstanceGroup{},
+				}, nil)
+
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("manifest is missing instance groups"))
+
+				// check for events
+				Expect(<-recorder.Events).To(ContainSubstring("MissingInstance Error"))
 			})
 		})
 

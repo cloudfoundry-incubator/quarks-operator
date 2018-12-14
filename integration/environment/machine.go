@@ -2,18 +2,19 @@ package environment
 
 import (
 	"fmt"
+	"strings"
 	"time"
-
-	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
 
 	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 )
 
 // Machine produces and destroys resources for tests
@@ -222,4 +223,53 @@ func (m *Machine) PodLabeled(namespace string, name string, desiredLabel, desire
 		return true, nil
 	}
 	return false, fmt.Errorf("Cannot match the desired label with %s", desiredValue)
+}
+
+// ContainExpectedEvent return true if events contain target resource event
+func (m *Machine) ContainExpectedEvent(events *[]corev1.Event, reason string, message string) bool {
+	for _, event := range *events {
+		if event.Reason == reason && strings.Contains(event.Message, message) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// GetBOSHDeploymentEvents gets target resource events
+func (m *Machine) GetBOSHDeploymentEvents(namespace string, name string, id string) (*[]corev1.Event, error) {
+	fieldSelector := fields.Set{"involvedObject.name": name, "involvedObject.uid": id}.AsSelector().String()
+	err := m.WaitForBOSHDeploymentEvent(namespace, fieldSelector)
+	if err != nil {
+		return &[]corev1.Event{}, err
+	}
+
+	events := m.Clientset.CoreV1().Events(namespace)
+
+	list, err := events.List(metav1.ListOptions{FieldSelector: fieldSelector})
+	if err != nil {
+		return &[]corev1.Event{}, err
+	}
+	return &list.Items, nil
+}
+
+// WaitForBOSHDeploymentEvent gets desired event
+func (m *Machine) WaitForBOSHDeploymentEvent(namespace string, fieldSelector string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		found, err := m.HasBOSHDeploymentEvent(namespace, fieldSelector)
+		return found, err
+	})
+}
+
+// HasBOSHDeploymentEvent returns true if the pod by that name is in state running
+func (m *Machine) HasBOSHDeploymentEvent(namespace string, fieldSelector string) (bool, error) {
+	events := m.Clientset.CoreV1().Events(namespace)
+	eventList, err := events.List(metav1.ListOptions{FieldSelector: fieldSelector})
+	if err != nil {
+		return false, err
+	}
+	if len(eventList.Items) == 0 {
+		return false, nil
+	}
+	return true, nil
 }

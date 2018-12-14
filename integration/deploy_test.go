@@ -37,11 +37,11 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
-			tearDown, err = env.CreateSecret(env.Namespace, env.InterpolateOpsSecret("bosh-ops"))
+			tearDown, err = env.CreateSecret(env.Namespace, env.InterpolateOpsSecret("bosh-ops-secret"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
-			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment("test", "manifest", "bosh-ops"))
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment("test", "manifest", "bosh-ops", "bosh-ops-secret"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
@@ -55,6 +55,29 @@ var _ = Describe("Deploy", func() {
 	})
 
 	Context("when incorrectly setup", func() {
+		It("failed to deploy if ResolveCRD error occurred", func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			tearDown, err = env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops"))
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			tearDown, err = env.CreateSecret(env.Namespace, env.InterpolateOpsIncorrectSecret("bosh-ops-secret"))
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			boshDeployment, tearDown, err := env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment("test", "manifest", "bosh-ops", "bosh-ops-secret"))
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			// check for events
+			events, err := env.GetBOSHDeploymentEvents(env.Namespace, boshDeployment.ObjectMeta.Name, string(boshDeployment.ObjectMeta.UID))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(env.ContainExpectedEvent(events, "ResolveCRD Error", "Failed to interpolate")).To(BeTrue())
+		})
+
 		It("failed to deploy a empty manifest", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
 			Expect(err).NotTo(HaveOccurred())
