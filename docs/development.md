@@ -143,6 +143,7 @@ Our Concourse pipeline definitions are kept in the [https://github.com/cloudfoun
 - add the new group to `addToSchemes` in `pkg/controllers/controller.go`.
 - add the new controller to `addToManagerFuncs` in the same file.
 - create a custom resource definition in `deploy/helm/cf-operator/templates/`
+- add the custom resource definition to `bin/apply-crds`
 
 ### Testing
 

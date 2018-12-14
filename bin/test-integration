@@ -10,8 +10,8 @@ remove_namespace() {
 }
 trap remove_namespace EXIT
 
-# we could create CRD from Go
-kubectl apply -f  deploy/helm/cf-operator/templates/
+bin/apply-crds
+
 kubectl get customresourcedefinitions
 kubectl create namespace "$TEST_NAMESPACE"
 
