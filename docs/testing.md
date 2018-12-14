@@ -30,7 +30,8 @@ They require access to a Kubernetes, preferably `minikube`.
 
 Integration tests start our operator directly, bypassing the command line.
 
-The `environment` package provides helpers to start the operator, get the kubeconfig as well as defining and creating test objects.
+The `environment` package provides helpers to start the operator, get the kubeconfig and use the clients to create objects.
+In `testing` the `catalog` defines test objects.
 
 Integration tests use a special logger, which does not log to stdout and whose messages can be accessed as a an array by calling `env.AllLogMessages()`.
 

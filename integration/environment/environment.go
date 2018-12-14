@@ -27,7 +27,7 @@ type StopFunc func()
 // cluster used in the tests
 type Environment struct {
 	Machine
-	Catalog
+	testing.Catalog
 	mgr        manager.Manager
 	kubeConfig *rest.Config
 	log        *zap.SugaredLogger
