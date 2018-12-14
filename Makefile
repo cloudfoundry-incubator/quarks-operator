@@ -13,8 +13,7 @@ helm:
 
 export CFO_NAMESPACE ?= default
 up:
-	kubectl apply -f deploy/helm/cf-operator/templates/fissile_v1alpha1_boshdeployment_crd.yaml
-	kubectl apply -f deploy/helm/cf-operator/templates/fissile_v1alpha1_extendedstatefulset_crd.yaml
+	bin/apply-crds
 	@echo watching namespace ${CFO_NAMESPACE}
 	go run cmd/cf-operator/main.go
 
