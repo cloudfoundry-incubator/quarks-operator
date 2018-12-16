@@ -3,7 +3,9 @@ package extendedstatefulset
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strconv"
+	"time"
 
 	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"github.com/pkg/errors"
@@ -119,13 +121,25 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	// r.log.Debug(ownedResources)
-
 	//statefulSet.GenerateName
 	//statefulSet.GetOwnerReferences
 	// Which should be cleaned up?
 
 	// Update the Status of the resource
+	// Update status.Versions if needed
+	if !reflect.DeepEqual(statefulSetVersions, exStatefulSet.Status.Versions) {
+		exStatefulSet.Status.Versions = statefulSetVersions
+		err := r.client.Update(context.TODO(), exStatefulSet)
+		if err != nil {
+			r.log.Error("Failed to update exStatefulSet status: %v\n", err)
+			return reconcile.Result{}, err
+		}
+	}
+
+	if !statefulSetVersions[desiredVersion] {
+		r.log.Debug("Waiting desired version available")
+		return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, nil
+	}
 
 	return reconcile.Result{}, nil
 }
@@ -268,8 +282,8 @@ func (r *ReconcileExtendedStatefulSet) getActualStatefulSet(ctx context.Context,
 }
 
 // listStatefulSetVersions gets all StatefulSets' versions and ready status owned by the ExtendedStatefulSet
-func (r *ReconcileExtendedStatefulSet) listStatefulSetVersions(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) (map[string]bool, error) {
-	 result :=map[string]bool{}
+func (r *ReconcileExtendedStatefulSet) listStatefulSetVersions(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) (map[int]bool, error) {
+	result := map[int]bool{}
 
 	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
 	if err != nil {
@@ -277,16 +291,25 @@ func (r *ReconcileExtendedStatefulSet) listStatefulSetVersions(ctx context.Conte
 	}
 
 	for _, statefulSet := range statefulSets {
+		strVersion, found := statefulSet.Annotations[essv1a1.AnnotationVersion]
+		if !found {
+			return result, errors.Errorf("Version annotation is not found from: %+v", statefulSet.Annotations)
+		}
+
+		version, err := strconv.Atoi(strVersion)
+		if err != nil {
+			return result, errors.Wrapf(err, "Version annotation is not an int: %s", strVersion)
+		}
+
 		ready, err := r.isStatefulSetReady(ctx, &statefulSet)
 		if err != nil {
 			return nil, err
 		}
 
-		r.log.Debug(statefulSet.Annotations[essv1a1.AnnotationVersion])
 		if ready {
-			result[statefulSet.Annotations[essv1a1.AnnotationVersion]] = true
+			result[version] = true
 		} else {
-			result[statefulSet.Annotations[essv1a1.AnnotationVersion]] = false
+			result[version] = false
 		}
 	}
 
