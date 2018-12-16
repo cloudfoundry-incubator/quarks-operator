@@ -6,6 +6,7 @@ import (
 	"log"
 	"reflect"
 	"strconv"
+	"time"
 
 	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"github.com/pkg/errors"
@@ -108,10 +109,8 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	// Find a way to check result
 	statefulSetVersions, err := r.listStatefulSetVersions(context.TODO(), exStatefulSet)
 	if err != nil {
-		return reconcile.Result{Requeue: true}, err
+		return reconcile.Result{}, err
 	}
-
-	r.log.Info(statefulSetVersions)
 
 	// Cleanup
 	err = r.cleanupStatefulSets(context.TODO(), exStatefulSet)
@@ -129,13 +128,18 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 
 	// Update the Status of the resource
 	// Update status.Versions if needed
-	if !reflect.DeepEqual(statefulSetVersions, exStatefulSet.Status.Nodes) {
-		exStatefulSet.Status.Nodes = statefulSetVersions
+	if !reflect.DeepEqual(statefulSetVersions, exStatefulSet.Status.Versions) {
+		exStatefulSet.Status.Versions = statefulSetVersions
 		err := r.client.Update(context.TODO(), exStatefulSet)
 		if err != nil {
 			log.Printf("Failed to update exStatefulSet status: %v\n", err)
 			return reconcile.Result{}, err
 		}
+	}
+
+	if !statefulSetVersions[string(desiredVersion)] {
+		log.Println("Waiting latest version available")
+		return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, nil
 	}
 
 	return reconcile.Result{}, nil
@@ -293,7 +297,6 @@ func (r *ReconcileExtendedStatefulSet) listStatefulSetVersions(ctx context.Conte
 			return nil, err
 		}
 
-		r.log.Debug(statefulSet.Annotations[essv1a1.AnnotationVersion])
 		if ready {
 			result[statefulSet.Annotations[essv1a1.AnnotationVersion]] = true
 		} else {
