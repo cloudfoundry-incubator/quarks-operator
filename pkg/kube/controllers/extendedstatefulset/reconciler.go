@@ -108,10 +108,8 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	// Find a way to check result
 	statefulSetVersions, err := r.listStatefulSetVersions(context.TODO(), exStatefulSet)
 	if err != nil {
-		return reconcile.Result{Requeue: true}, err
+		return reconcile.Result{}, err
 	}
-
-	r.log.Info(statefulSetVersions)
 
 	// Cleanup
 	err = r.cleanupStatefulSets(context.TODO(), exStatefulSet)
