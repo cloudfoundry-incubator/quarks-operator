@@ -3,6 +3,8 @@ package extendedstatefulset
 import (
 	"context"
 	"fmt"
+	"log"
+	"reflect"
 	"strconv"
 
 	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
@@ -126,6 +128,15 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	// Which should be cleaned up?
 
 	// Update the Status of the resource
+	// Update status.Versions if needed
+	if !reflect.DeepEqual(statefulSetVersions, exStatefulSet.Status.Nodes) {
+		exStatefulSet.Status.Nodes = statefulSetVersions
+		err := r.client.Update(context.TODO(), exStatefulSet)
+		if err != nil {
+			log.Printf("Failed to update exStatefulSet status: %v\n", err)
+			return reconcile.Result{}, err
+		}
+	}
 
 	return reconcile.Result{}, nil
 }
@@ -269,7 +280,7 @@ func (r *ReconcileExtendedStatefulSet) getActualStatefulSet(ctx context.Context,
 
 // listStatefulSetVersions gets all StatefulSets' versions and ready status owned by the ExtendedStatefulSet
 func (r *ReconcileExtendedStatefulSet) listStatefulSetVersions(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) (map[string]bool, error) {
-	 result :=map[string]bool{}
+	result := map[string]bool{}
 
 	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
 	if err != nil {
