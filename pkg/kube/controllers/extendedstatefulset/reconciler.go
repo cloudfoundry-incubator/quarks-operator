@@ -91,10 +91,14 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		// If it doesn't exist, create it
 		r.log.Info("StatefulSet '", desiredStatefulSet.Name, "' for ExtendedStatefulSet '", request.NamespacedName, "' not found, will be created.")
 
+		// Record the template before creating the StatefulSet, so we don't include default values such as
+		// `ImagePullPolicy`, `TerminationMessagePath`, etc. in the signature.
+		originalTemplate := exStatefulSet.Spec.Template.DeepCopy()
 		if err := r.createStatefulSet(context.TODO(), exStatefulSet, desiredStatefulSet); err != nil {
 			r.log.Error("Could not create StatefulSet for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 			return reconcile.Result{}, err
 		}
+		exStatefulSet.Spec.Template = *originalTemplate
 	} else {
 		// If it does exist, do a deep equal and check that we own it
 		r.log.Info("StatefulSet '", desiredStatefulSet.Name, "' for ExtendedStatefulSet '", request.NamespacedName, "' has not changed, checking if any other changes are necessary.")
