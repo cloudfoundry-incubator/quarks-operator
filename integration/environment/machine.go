@@ -29,6 +29,14 @@ type Machine struct {
 // TearDownFunc tears down the resource
 type TearDownFunc func()
 
+func (m *Machine) CreateDefaultPod(namespace string, pod corev1.Pod) (TearDownFunc, error) {
+	client := m.Clientset.CoreV1().Pods(namespace)
+	_, err := client.Create(&pod)
+	return func() {
+		client.Delete(pod.GetName(), &metav1.DeleteOptions{})
+	}, err
+}
+
 // WaitForPod blocks until the pod is running. It fails after the timeout.
 func (m *Machine) WaitForPod(namespace string, name string) error {
 	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
