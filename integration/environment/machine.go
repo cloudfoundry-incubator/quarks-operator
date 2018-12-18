@@ -58,6 +58,13 @@ func (m *Machine) WaitForExtendedStatefulSets(namespace string, labels string) e
 	})
 }
 
+// WaitForExtendedStatefulSetAvailable blocks until latest version is available. It fails after the timeout.
+func (m *Machine) WaitForExtendedStatefulSetAvailable(namespace string, name string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.ExtendedStatefulSetAvailable(namespace, name)
+	})
+}
+
 // ExtendedStatefulSetExists returns true if at least one ess selected by labels exists
 func (m *Machine) ExtendedStatefulSetExists(namespace string, labels string) (bool, error) {
 	esss, err := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace).List(metav1.ListOptions{
@@ -68,6 +75,43 @@ func (m *Machine) ExtendedStatefulSetExists(namespace string, labels string) (bo
 	}
 
 	return len(esss.Items) > 0, nil
+}
+
+// ExtendedStatefulSetAvailable returns true if at least one latest version pod is running
+func (m *Machine) ExtendedStatefulSetAvailable(namespace string, name string) (bool, error) {
+	fieldSelector := fields.Set{"metadata.name": name}.AsSelector()
+	esss, err := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace).List(metav1.ListOptions{
+		FieldSelector: fieldSelector.String(),
+	})
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to query for ess by name: %v", name)
+	}
+
+	if len(esss.Items) != 1 {
+		return false, nil
+	}
+
+	ess := esss.Items[0]
+
+	if len(ess.Status.Versions) == 0 {
+		return false, nil
+	}
+
+	var latestVersion int
+	for latestVersion = range ess.Status.Versions {
+		break
+	}
+	for n := range ess.Status.Versions {
+		if n > latestVersion {
+			latestVersion = n
+		}
+	}
+
+	if ess.Status.Versions[latestVersion] {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 // WaitForPodsDelete blocks until the pod is deleted. It fails after the timeout.
@@ -200,6 +244,13 @@ func (m *Machine) CreateExtendedStatefulSet(namespace string, ess essv1.Extended
 	return d, func() {
 		client.Delete(ess.GetName(), &metav1.DeleteOptions{})
 	}, err
+}
+
+// GetExtendedStatefulSet gets a ExtendedStatefulSet custom resource
+func (m *Machine) GetExtendedStatefulSet(namespace string, name string) (*essv1.ExtendedStatefulSet, error) {
+	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
+	d, err := client.Get(name, metav1.GetOptions{})
+	return d, err
 }
 
 // UpdateExtendedStatefulSet creates a ExtendedStatefulSet custom resource and returns a function to delete it
