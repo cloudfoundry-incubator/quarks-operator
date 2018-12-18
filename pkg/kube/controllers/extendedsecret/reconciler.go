@@ -63,6 +63,11 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		if err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "Generating RSA key secret")
 		}
+	case esapi.SSHKey:
+		err = r.createSSHSecret(context.TODO(), instance)
+		if err != nil {
+			return reconcile.Result{}, errors.Wrap(err, "Generating SSH key secret")
+		}
 	default:
 		return reconcile.Result{}, fmt.Errorf("Invalid type: %s", instance.Spec.Type)
 	}
@@ -106,6 +111,30 @@ func (r *ReconcileExtendedSecret) createRSASecret(ctx context.Context, instance 
 		Data: map[string][]byte{
 			"RSAPrivateKey": key.PrivateKey,
 			"RSAPublicKey":  key.PublicKey,
+		},
+	}
+
+	return r.client.Create(ctx, secret)
+}
+
+func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance *esapi.ExtendedSecret) error {
+	r.log.Debug("Generating SSH Key")
+	key, err := r.generator.GenerateSSHKey("foo")
+	if err != nil {
+		r.log.Info("Error creating SSH key: ", err)
+		return err
+	}
+	fmt.Printf("%#v", string(key.PublicKey))
+	// Default response is an empty StatefulSet with version '0' and an empty signature
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "es-secret-" + instance.GetName(),
+			Namespace: instance.GetNamespace(),
+		},
+		Data: map[string][]byte{
+			"SSHPrivateKey":  key.PrivateKey,
+			"SSHPublicKey":   key.PublicKey,
+			"SSHFingerprint": []byte(key.Fingerprint),
 		},
 	}
 

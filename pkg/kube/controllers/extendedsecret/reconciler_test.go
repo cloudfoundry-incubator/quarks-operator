@@ -121,4 +121,26 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 			Expect(reconcile.Result{}).To(Equal(result))
 		})
 	})
+
+	Context("when generating SSH keys", func() {
+		BeforeEach(func() {
+			es.Spec.Type = "ssh"
+		})
+
+		It("generates SSH keys", func() {
+			client.CreateCalls(func(context context.Context, object runtime.Object) error {
+				secret := object.(*corev1.Secret)
+				Expect(secret.Data["SSHPrivateKey"]).To(ContainSubstring("RSA PRIVATE KEY"))
+				Expect(secret.Data["SSHPublicKey"]).To(MatchRegexp("ssh-rsa\\s.+"))
+				Expect(secret.Data["SSHFingerprint"]).To(MatchRegexp("([0-9a-f]{2}:){15}[0-9a-f]{2}"))
+				Expect(secret.GetName()).To(Equal("es-secret-foo"))
+				return nil
+			})
+
+			result, err := reconciler.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(client.CreateCallCount()).To(Equal(1))
+			Expect(reconcile.Result{}).To(Equal(result))
+		})
+	})
 })
