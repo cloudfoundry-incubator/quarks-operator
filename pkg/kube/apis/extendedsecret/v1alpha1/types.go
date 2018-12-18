@@ -14,8 +14,8 @@ type Type string
 const (
 	Password    Type = "password"
 	Certificate Type = "certificate"
-	SSHKey      Type = "sshkey"
-	RSAKey      Type = "rsakey"
+	SSHKey      Type = "ssh"
+	RSAKey      Type = "rsa"
 )
 
 // ExtendedSecretSpec defines the desired state of ExtendedSecret

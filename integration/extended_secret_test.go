@@ -34,5 +34,21 @@ var _ = Describe("ExtendedSecret", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(secret.Data["password"]).To(MatchRegexp("^\\w{64}$"))
 		})
+
+		It("generates a secret with an rsa key", func() {
+			// Create an ExtendedSecret
+			var es *es.ExtendedSecret
+			extendedSecret.Spec.Type = "rsa"
+			es, tearDown, err := env.CreateExtendedSecret(env.Namespace, extendedSecret)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(es).NotTo(Equal(nil))
+			defer tearDown()
+
+			// check for generated secret
+			secret, err := env.GetSecret(env.Namespace, "es-secret-"+extendedSecret.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(secret.Data["RSAPrivateKey"]).To(ContainSubstring("RSA PRIVATE KEY"))
+			Expect(secret.Data["RSAPublicKey"]).To(ContainSubstring("PUBLIC KEY"))
+		})
 	})
 })

@@ -101,4 +101,24 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 			Expect(reconcile.Result{}).To(Equal(result))
 		})
 	})
+
+	Context("when generating RSA keys", func() {
+		BeforeEach(func() {
+			es.Spec.Type = "rsa"
+		})
+
+		It("generates RSA keys", func() {
+			client.CreateCalls(func(context context.Context, object runtime.Object) error {
+				Expect(object.(*corev1.Secret).Data["RSAPrivateKey"]).To(ContainSubstring("RSA PRIVATE KEY"))
+				Expect(object.(*corev1.Secret).Data["RSAPublicKey"]).To(ContainSubstring("PUBLIC KEY"))
+				Expect(object.(*corev1.Secret).GetName()).To(Equal("es-secret-foo"))
+				return nil
+			})
+
+			result, err := reconciler.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(client.CreateCallCount()).To(Equal(1))
+			Expect(reconcile.Result{}).To(Equal(result))
+		})
+	})
 })
