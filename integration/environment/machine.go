@@ -29,6 +29,7 @@ type Machine struct {
 // TearDownFunc tears down the resource
 type TearDownFunc func()
 
+// CreateDefaultPod creates a default pod and returns a function to delete it
 func (m *Machine) CreateDefaultPod(namespace string, pod corev1.Pod) (TearDownFunc, error) {
 	client := m.Clientset.CoreV1().Pods(namespace)
 	_, err := client.Create(&pod)

@@ -16,6 +16,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	podUtils "k8s.io/kubernetes/pkg/api/v1/pod"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -308,11 +310,7 @@ func (r *ReconcileExtendedStatefulSet) listStatefulSetVersions(ctx context.Conte
 			return nil, err
 		}
 
-		if ready {
-			result[version] = true
-		} else {
-			result[version] = false
-		}
+		result[version] = ready
 	}
 
 	return result, nil
@@ -335,7 +333,7 @@ func (r *ReconcileExtendedStatefulSet) isStatefulSetReady(ctx context.Context, s
 
 	for _, pod := range podList.Items {
 		if metav1.IsControlledBy(&pod, statefulSet) {
-			if isPodReady(&pod) {
+			if podUtils.IsPodReady(&pod) {
 				r.log.Debug("Pod '", statefulSet.Name, "' owned by StatefulSet '", statefulSet.Name, "' is running.")
 				return true, nil
 			}
@@ -343,16 +341,4 @@ func (r *ReconcileExtendedStatefulSet) isStatefulSetReady(ctx context.Context, s
 	}
 
 	return false, nil
-}
-
-// isPodReady returns false if the Pod Status is nil
-func isPodReady(pod *v1.Pod) bool {
-	var condition *v1.PodCondition
-	for i := range pod.Status.Conditions {
-		if pod.Status.Conditions[i].Type == v1.PodReady {
-			condition = &pod.Status.Conditions[i]
-			break
-		}
-	}
-	return condition != nil && condition.Status == v1.ConditionTrue
 }
