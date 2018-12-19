@@ -7,6 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
@@ -93,6 +94,16 @@ func (c *Catalog) DefaultExtendedSecret(name string) esv1.ExtendedSecret {
 		},
 		Spec: esv1.ExtendedSecretSpec{
 			Type: "password",
+		},
+	}
+}
+
+func (c *Catalog) DefaultCA(name string, ca credsgen.Certificate) corev1.Secret {
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Data: map[string][]byte{
+			"ca":     ca.Certificate,
+			"ca_key": ca.PrivateKey,
 		},
 	}
 }

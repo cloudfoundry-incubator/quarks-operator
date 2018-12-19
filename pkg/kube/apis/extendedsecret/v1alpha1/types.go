@@ -18,9 +18,27 @@ const (
 	RSAKey      Type = "rsa"
 )
 
+type SecretReference struct {
+	Name string
+	Key  string
+}
+
+type CertificateRequest struct {
+	CommonName       string          `json:"common_name"`
+	AlternativeNames []string        `json:"alternative_names"`
+	IsCA             bool            `json:"is_ca"`
+	CARef            SecretReference `json:"ca_ref"`
+	CAKeyRef         SecretReference `json:"ca_key_ref"`
+}
+
+type Request struct {
+	CertificateRequest CertificateRequest `json:"certificate"`
+}
+
 // ExtendedSecretSpec defines the desired state of ExtendedSecret
 type ExtendedSecretSpec struct {
-	Type Type `json:"type"`
+	Type    Type    `json:"type"`
+	Request Request `json:"request"`
 }
 
 // ExtendedSecretStatus defines the observed state of ExtendedSecret

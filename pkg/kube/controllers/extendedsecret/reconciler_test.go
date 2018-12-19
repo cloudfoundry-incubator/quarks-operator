@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
-	"code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
+	generatorfakes "code.cloudfoundry.org/cf-operator/pkg/credsgen/fakes"
 	esapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/scheme"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
@@ -34,7 +34,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		request    reconcile.Request
 		log        *zap.SugaredLogger
 		client     *cfakes.FakeClient
-		generator  credsgen.Generator
+		generator  *generatorfakes.FakeGenerator
 		es         *esapi.ExtendedSecret
 	)
 
@@ -53,7 +53,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 				Type: "password",
 			},
 		}
-		generator = inmemorygenerator.NewInMemoryGenerator(log)
+		generator = &generatorfakes.FakeGenerator{}
 		client = &cfakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 			es.DeepCopyInto(object.(*esapi.ExtendedSecret))
@@ -88,9 +88,13 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 	})
 
 	Context("when generating passwords", func() {
+		BeforeEach(func() {
+			generator.GeneratePasswordReturns("securepassword")
+		})
+
 		It("generates passwords", func() {
 			client.CreateCalls(func(context context.Context, object runtime.Object) error {
-				Expect(object.(*corev1.Secret).StringData["password"]).To(MatchRegexp("^\\w{64}$"))
+				Expect(object.(*corev1.Secret).StringData["password"]).To(Equal("securepassword"))
 				Expect(object.(*corev1.Secret).GetName()).To(Equal("es-secret-foo"))
 				return nil
 			})
@@ -105,12 +109,14 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 	Context("when generating RSA keys", func() {
 		BeforeEach(func() {
 			es.Spec.Type = "rsa"
+
+			generator.GenerateRSAKeyReturns(credsgen.RSAKey{PrivateKey: []byte("private"), PublicKey: []byte("public")}, nil)
 		})
 
 		It("generates RSA keys", func() {
 			client.CreateCalls(func(context context.Context, object runtime.Object) error {
-				Expect(object.(*corev1.Secret).Data["RSAPrivateKey"]).To(ContainSubstring("RSA PRIVATE KEY"))
-				Expect(object.(*corev1.Secret).Data["RSAPublicKey"]).To(ContainSubstring("PUBLIC KEY"))
+				Expect(object.(*corev1.Secret).Data["RSAPrivateKey"]).To(Equal([]byte("private")))
+				Expect(object.(*corev1.Secret).Data["RSAPublicKey"]).To(Equal([]byte("public")))
 				Expect(object.(*corev1.Secret).GetName()).To(Equal("es-secret-foo"))
 				return nil
 			})
@@ -125,16 +131,88 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 	Context("when generating SSH keys", func() {
 		BeforeEach(func() {
 			es.Spec.Type = "ssh"
+
+			generator.GenerateSSHKeyReturns(credsgen.SSHKey{
+				PrivateKey:  []byte("private"),
+				PublicKey:   []byte("public"),
+				Fingerprint: "fingerprint",
+			}, nil)
 		})
 
 		It("generates SSH keys", func() {
 			client.CreateCalls(func(context context.Context, object runtime.Object) error {
 				secret := object.(*corev1.Secret)
-				Expect(secret.Data["SSHPrivateKey"]).To(ContainSubstring("RSA PRIVATE KEY"))
-				Expect(secret.Data["SSHPublicKey"]).To(MatchRegexp("ssh-rsa\\s.+"))
-				Expect(secret.Data["SSHFingerprint"]).To(MatchRegexp("([0-9a-f]{2}:){15}[0-9a-f]{2}"))
+				Expect(secret.Data["SSHPrivateKey"]).To(Equal([]byte("private")))
+				Expect(secret.Data["SSHPublicKey"]).To(Equal([]byte("public")))
+				Expect(secret.Data["SSHFingerprint"]).To(Equal([]byte("fingerprint")))
 				Expect(secret.GetName()).To(Equal("es-secret-foo"))
 				return nil
+			})
+
+			result, err := reconciler.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(client.CreateCallCount()).To(Equal(1))
+			Expect(reconcile.Result{}).To(Equal(result))
+		})
+	})
+
+	Context("when generating certificates", func() {
+		BeforeEach(func() {
+			es.Spec.Type = "certificate"
+			es.Spec.Request.CertificateRequest.IsCA = false
+			es.Spec.Request.CertificateRequest.CARef = esapi.SecretReference{Name: "mysecret", Key: "ca"}
+			es.Spec.Request.CertificateRequest.CAKeyRef = esapi.SecretReference{Name: "mysecret", Key: "key"}
+			es.Spec.Request.CertificateRequest.CommonName = "foo.com"
+			es.Spec.Request.CertificateRequest.AlternativeNames = []string{"bar.com", "baz.com"}
+
+			ca := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "mysecret",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"ca":  []byte("theca"),
+					"key": []byte("the_private_key"),
+				},
+			}
+
+			client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				switch object.(type) {
+				case *esapi.ExtendedSecret:
+					es.DeepCopyInto(object.(*esapi.ExtendedSecret))
+				case *corev1.Secret:
+					ca.DeepCopyInto(object.(*corev1.Secret))
+				}
+				return nil
+			})
+		})
+
+		It("triggers generation of a secret", func() {
+			generator.GenerateCertificateCalls(func(name string, request credsgen.CertificateGenerationRequest) (credsgen.Certificate, error) {
+				Expect(request.CA.Certificate).To(Equal([]byte("theca")))
+				Expect(request.CA.PrivateKey).To(Equal([]byte("the_private_key")))
+
+				return credsgen.Certificate{Certificate: []byte("the_cert"), PrivateKey: []byte("private_key"), IsCA: false}, nil
+			})
+			client.CreateCalls(func(context context.Context, object runtime.Object) error {
+				secret := object.(*corev1.Secret)
+				Expect(secret.Data["certificate"]).To(Equal([]byte("the_cert")))
+				Expect(secret.Data["private_key"]).To(Equal([]byte("private_key")))
+				return nil
+			})
+
+			result, err := reconciler.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(client.CreateCallCount()).To(Equal(1))
+			Expect(reconcile.Result{}).To(Equal(result))
+		})
+
+		It("considers generation parameters", func() {
+			generator.GenerateCertificateCalls(func(name string, request credsgen.CertificateGenerationRequest) (credsgen.Certificate, error) {
+				Expect(request.IsCA).To(BeFalse())
+				Expect(request.CommonName).To(Equal("foo.com"))
+				Expect(request.AlternativeNames).To(Equal([]string{"bar.com", "baz.com"}))
+				return credsgen.Certificate{Certificate: []byte("the_cert"), PrivateKey: []byte("private_key"), IsCA: false}, nil
 			})
 
 			result, err := reconciler.Reconcile(request)

@@ -10,6 +10,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -68,6 +69,11 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		if err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "Generating SSH key secret")
 		}
+	case esapi.Certificate:
+		err = r.createCertificateSecret(context.TODO(), instance)
+		if err != nil {
+			return reconcile.Result{}, errors.Wrap(err, "Generating certificate secret")
+		}
 	default:
 		return reconcile.Result{}, fmt.Errorf("Invalid type: %s", instance.Spec.Type)
 	}
@@ -80,7 +86,6 @@ func (r *ReconcileExtendedSecret) createPasswordSecret(ctx context.Context, inst
 	request := credsgen.PasswordGenerationRequest{}
 	password := r.generator.GeneratePassword("foo", request)
 
-	// Default response is an empty StatefulSet with version '0' and an empty signature
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "es-secret-" + instance.GetName(),
@@ -98,11 +103,9 @@ func (r *ReconcileExtendedSecret) createRSASecret(ctx context.Context, instance 
 	r.log.Debug("Generating RSA Key")
 	key, err := r.generator.GenerateRSAKey("foo")
 	if err != nil {
-		r.log.Info("Error creating RSA key: ", err)
 		return err
 	}
 
-	// Default response is an empty StatefulSet with version '0' and an empty signature
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "es-secret-" + instance.GetName(),
@@ -121,11 +124,9 @@ func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance 
 	r.log.Debug("Generating SSH Key")
 	key, err := r.generator.GenerateSSHKey("foo")
 	if err != nil {
-		r.log.Info("Error creating SSH key: ", err)
 		return err
 	}
 	fmt.Printf("%#v", string(key.PublicKey))
-	// Default response is an empty StatefulSet with version '0' and an empty signature
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "es-secret-" + instance.GetName(),
@@ -135,6 +136,67 @@ func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance 
 			"SSHPrivateKey":  key.PrivateKey,
 			"SSHPublicKey":   key.PublicKey,
 			"SSHFingerprint": []byte(key.Fingerprint),
+		},
+	}
+
+	return r.client.Create(ctx, secret)
+}
+
+func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, instance *esapi.ExtendedSecret) error {
+	r.log.Debug("Generating Certificate")
+
+	// Get CA certificate
+	caSecret := &corev1.Secret{}
+	caNamespacedName := types.NamespacedName{
+		Namespace: instance.Namespace,
+		Name:      instance.Spec.Request.CertificateRequest.CARef.Name,
+	}
+	err := r.client.Get(ctx, caNamespacedName, caSecret)
+	if err != nil {
+		return errors.Wrap(err, "Getting CA secret")
+	}
+	ca := caSecret.Data[instance.Spec.Request.CertificateRequest.CARef.Key]
+
+	// Get CA key
+	if instance.Spec.Request.CertificateRequest.CAKeyRef.Name != instance.Spec.Request.CertificateRequest.CARef.Name {
+		caSecret = &corev1.Secret{}
+		caNamespacedName = types.NamespacedName{
+			Namespace: instance.Namespace,
+			Name:      instance.Spec.Request.CertificateRequest.CAKeyRef.Name,
+		}
+		err = r.client.Get(ctx, caNamespacedName, caSecret)
+		if err != nil {
+			return errors.Wrap(err, "Getting CA Key secret")
+		}
+	}
+	key := caSecret.Data[instance.Spec.Request.CertificateRequest.CAKeyRef.Key]
+
+	// Build the generation request
+	request := credsgen.CertificateGenerationRequest{
+		IsCA:             instance.Spec.Request.CertificateRequest.IsCA,
+		CommonName:       instance.Spec.Request.CertificateRequest.CommonName,
+		AlternativeNames: instance.Spec.Request.CertificateRequest.AlternativeNames,
+		CA: credsgen.Certificate{
+			IsCA:        true,
+			PrivateKey:  key,
+			Certificate: ca,
+		},
+	}
+
+	// Generate certificate
+	cert, err := r.generator.GenerateCertificate("foo", request)
+	if err != nil {
+		return err
+	}
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "es-secret-" + instance.GetName(),
+			Namespace: instance.GetNamespace(),
+		},
+		Data: map[string][]byte{
+			"certificate": cert.Certificate,
+			"private_key": cert.PrivateKey,
+			"is_ca":       []byte("false"),
 		},
 	}
 
