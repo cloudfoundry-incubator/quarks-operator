@@ -156,8 +156,6 @@ k8s.io/apiextensions-apiserver v0.0.0-20181026154507-67bb9d92aa02 h1:IQNIg+mplrj
 k8s.io/apiextensions-apiserver v0.0.0-20181026154507-67bb9d92aa02/go.mod h1:IxkesAMoaCRoLrPJdZNZUQp9NfZnzqaVzLhb2VEQzXE=
 k8s.io/apimachinery v0.0.0-20181220065808-98853ca904e8 h1:WLypux0abPAfOJJKJNA1+g5yphAOk+ESOeSqWMwMnqA=
 k8s.io/apimachinery v0.0.0-20181220065808-98853ca904e8/go.mod h1:ccL7Eh7zubPUSh9A3USN90/OzHNSVN6zxzde07TDCL0=
-k8s.io/apiserver v0.0.0-20181026151337-2c1e297dcc92 h1:7apaX3/f1kc+n2PX1nHKhyrBXm0ROkCBWl6JWB+Wytg=
-k8s.io/apiserver v0.0.0-20181026151337-2c1e297dcc92/go.mod h1:6bqaTSOSJavUIXUtfaR9Os9JtTCm8ZqH2SUl2S60C4w=
 k8s.io/client-go v2.0.0-alpha.0.0.20181126152608-d082d5923d3c+incompatible h1:QOMBR2qlbwRbUJbJDXFjS8YEiXQc3AJBcEac7z3769I=
 k8s.io/client-go v2.0.0-alpha.0.0.20181126152608-d082d5923d3c+incompatible/go.mod h1:7vJpHMYJwNQCWgzmNV+VYUl1zCObLyodBc8nIyt8L5s=
 k8s.io/klog v0.1.0 h1:I5HMfc/DtuVaGR1KPwUrTc476K8NCqNBldC7H4dYEzk=
