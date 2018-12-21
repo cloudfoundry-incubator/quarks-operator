@@ -40,6 +40,23 @@ An ability to run an `ExtendedJob` before and after the upgrade. The Job can abo
 
 If a failure has occurred (e.g. canary has failed), the StatefulSet is annotated as being stale.
 
+### Detect if StatefulSet versions is running
+
+During upgrades, there is more than one version for an ExtendedStatefulSet resource.
+
+Ability to look at what versions are available, and store versions status that keeps track of if version is running:
+
+```yaml
+status:
+  versions:
+    "1": true
+    "2": false
+
+```
+
+One version is running is mean that at least one pod that belongs to this StatefulSet is running.
+
+
 ## Example Resource
 
 ```yaml
