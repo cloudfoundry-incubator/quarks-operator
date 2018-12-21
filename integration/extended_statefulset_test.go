@@ -32,6 +32,17 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			// check for pod
 			err = env.WaitForPods(env.Namespace, "testpod=yes")
 			Expect(err).NotTo(HaveOccurred())
+
+			// check for extendedStatefulSet available
+			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+
+			// check for extendedStatefulSet versions
+			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess.Status.Versions).To(Equal(map[int]bool{
+				1: true,
+			}))
 		})
 
 		It("should update a statefulset", func() {
@@ -46,14 +57,16 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			err = env.WaitForPods(env.Namespace, "testpod=yes")
 			Expect(err).NotTo(HaveOccurred())
 
-
-			// Check for extendedStatefulSet
+			// Check for extendedStatefulSet available
 			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName())
 			Expect(err).NotTo(HaveOccurred())
 
+			// check for extendedStatefulSet versions
 			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ess).NotTo(Equal(nil))
+			Expect(ess.Status.Versions).To(Equal(map[int]bool{
+				1: true,
+			}))
 
 			// Update the ExtendedStatefulSet
 			ess.Spec.Template.Spec.Template.ObjectMeta.Labels["testpodupdated"] = "yes"
@@ -65,6 +78,18 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			// check for pod
 			err = env.WaitForPods(env.Namespace, "testpodupdated=yes")
 			Expect(err).NotTo(HaveOccurred())
+
+			// Check for extendedStatefulSet available
+			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+
+			// check for extendedStatefulSet versions
+			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess.Status.Versions).To(Equal(map[int]bool{
+				1: true,
+				2: true,
+			}))
 
 			// check that old statefulset is deleted
 		})
@@ -82,13 +107,16 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			err = env.WaitForPods(env.Namespace, "testpod=yes")
 			Expect(err).NotTo(HaveOccurred())
 
-			// Check for extendedStatefulSet
+			// Check for extendedStatefulSet available
 			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName())
 			Expect(err).NotTo(HaveOccurred())
 
+			// check for extendedStatefulSet versions
 			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ess).NotTo(Equal(nil))
+			Expect(ess.Status.Versions).To(Equal(map[int]bool{
+				1: true,
+			}))
 
 			// Update the ExtendedStatefulSet
 			ess.Labels = map[string]string{
