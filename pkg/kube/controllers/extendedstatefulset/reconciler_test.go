@@ -4,15 +4,13 @@ import (
 	"context"
 	"time"
 
-	exss "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
-	exssc "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
-	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
 	"k8s.io/api/apps/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,14 +20,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	exss "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
+	exssc "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
+	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("ReconcileExtendedStatefulSet", func() {
 	var (
-		trueValue bool
-
 		manager    *cfakes.FakeManager
 		reconciler reconcile.Reconciler
 		request    reconcile.Request
@@ -37,8 +39,6 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 	)
 
 	BeforeEach(func() {
-		trueValue = true
-
 		controllers.AddToScheme(scheme.Scheme)
 		manager = &cfakes.FakeManager{}
 		manager.GetSchemeReturns(scheme.Scheme)
@@ -64,8 +64,15 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo",
 							Namespace: "default",
+							UID:       "foo-uid",
 						},
-						Spec: exss.ExtendedStatefulSetSpec{},
+						Spec: exss.ExtendedStatefulSetSpec{
+							Template: v1beta1.StatefulSet{
+								Spec: v1beta1.StatefulSetSpec{
+									Replicas: helper.Int32(1),
+								},
+							},
+						},
 					},
 				)
 				manager.GetClientReturns(client)
@@ -95,18 +102,20 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				err := client.Get(context.TODO(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
 				Expect(err).ToNot(HaveOccurred())
 
+				// Provide statefulSet and its pod from exStateful set
 				ss := &v1beta1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "foo-v1",
 						Namespace: "default",
+						UID:       "foo-v1-uid",
 						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion:         ess.APIVersion,
 								Kind:               ess.Kind,
 								Name:               ess.Name,
 								UID:                ess.UID,
-								Controller:         &trueValue,
-								BlockOwnerDeletion: &trueValue,
+								Controller:         helper.Bool(true),
+								BlockOwnerDeletion: helper.Bool(true),
 							},
 						},
 						Annotations: map[string]string{
@@ -118,6 +127,34 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				err = client.Create(context.TODO(), ss)
 				Expect(err).ToNot(HaveOccurred())
 
+				pod := &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "foo-v1-0",
+						Namespace: "default",
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         ss.APIVersion,
+								Kind:               ss.Kind,
+								Name:               ss.Name,
+								UID:                ss.UID,
+								Controller:         helper.Bool(true),
+								BlockOwnerDeletion: helper.Bool(true),
+							},
+						},
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				}
+				err = client.Create(context.TODO(), pod)
+				Expect(err).ToNot(HaveOccurred())
+
+				// First request creates new version because extendedStatefulSet has already one version
 				result, err := reconciler.Reconcile(request)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{
@@ -130,6 +167,43 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
+
+				// Create pod from stateful set foo-v2
+				pod = &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "foo-v2-0",
+						Namespace: "default",
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         ss.APIVersion,
+								Kind:               ss.Kind,
+								Name:               ss.Name,
+								UID:                ss.UID,
+								Controller:         helper.Bool(true),
+								BlockOwnerDeletion: helper.Bool(true),
+							},
+						},
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				}
+				err = client.Create(context.TODO(), pod)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Second request deletes old version because new version is already available
+				result, err = reconciler.Reconcile(request)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				err = client.Get(context.TODO(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
+				Expect(err).To(HaveOccurred())
+				Expect(kerrors.IsNotFound(err)).To(BeTrue())
 			})
 		})
 

@@ -92,6 +92,12 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			}))
 
 			// check that old statefulset is deleted
+			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
+			Expect(ess.Status.Versions).To(Equal(map[int]bool{
+				2: true,
+			}))
+			err = env.WaitForStatefulSetDeletion(env.Namespace, ess.GetName()+"-v2")
+
 		})
 
 		It("should do nothing if nothing has changed", func() {

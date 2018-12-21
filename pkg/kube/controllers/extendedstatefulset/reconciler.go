@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/api/apps/v1beta1"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -116,32 +116,35 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	// Cleanup
-	err = r.cleanupStatefulSets(context.TODO(), exStatefulSet)
-	if err != nil {
-		r.log.Error("Could not cleanup StatefulSets for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+	ptrStatefulSetVersions := &statefulSetVersions
 
-		return reconcile.Result{}, err
-	}
-
-	//statefulSet.GenerateName
-	//statefulSet.GetOwnerReferences
-	// Which should be cleaned up?
-
-	// Update the Status of the resource
-	// Update status.Versions if needed
-	if !reflect.DeepEqual(statefulSetVersions, exStatefulSet.Status.Versions) {
-		exStatefulSet.Status.Versions = statefulSetVersions
-		err := r.client.Update(context.TODO(), exStatefulSet)
-		if err != nil {
-			r.log.Error("Failed to update exStatefulSet status: %v\n", err)
-			return reconcile.Result{}, err
+	defer func() {
+		// Update the Status of the resource
+		if !reflect.DeepEqual(&ptrStatefulSetVersions, exStatefulSet.Status.Versions) {
+			exStatefulSet.Status.Versions = statefulSetVersions
+			updateErr := r.client.Update(context.TODO(), exStatefulSet)
+			if updateErr != nil {
+				r.log.Error("Failed to update exStatefulSet status: %v\n", updateErr)
+			}
 		}
-	}
+	}()
 
 	if !statefulSetVersions[desiredVersion] {
 		r.log.Debug("Waiting desired version available")
 		return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, nil
+	}
+
+	// Cleanup when desired version is available
+	if statefulSetVersions[desiredVersion] {
+		err = r.cleanupStatefulSets(context.TODO(), exStatefulSet, desiredVersion)
+		if err != nil {
+			r.log.Error("Could not cleanup StatefulSets for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+			return reconcile.Result{}, err
+		}
+	}
+
+	statefulSetVersions = map[int]bool{
+		desiredVersion: true,
 	}
 
 	return reconcile.Result{}, nil
@@ -200,8 +203,8 @@ func (r *ReconcileExtendedStatefulSet) createStatefulSet(ctx context.Context, ex
 }
 
 // cleanupStatefulSets cleans up StatefulSets if they are no longer required
-func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) error {
-	r.log.Info("Cleaning up StatefulSets for ExtendedStatefulSet '", exStatefulSet.Name, "'.")
+func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet, maxAvailableVersion int) error {
+	r.log.Info("Cleaning up StatefulSets for ExtendedStatefulSet '%s' less than version %d.", exStatefulSet.Name, maxAvailableVersion)
 
 	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
 	if err != nil {
@@ -210,6 +213,26 @@ func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, 
 
 	for _, statefulSet := range statefulSets {
 		r.log.Debug("Considering StatefulSet '", statefulSet.Name, "' for cleanup.")
+
+		strVersion, found := statefulSet.Annotations[essv1a1.AnnotationVersion]
+		if !found {
+			return errors.Errorf("Version annotation is not found from: %+v", statefulSet.Annotations)
+		}
+
+		version, err := strconv.Atoi(strVersion)
+		if err != nil {
+			return errors.Wrapf(err, "Version annotation is not an int: %s", strVersion)
+		}
+
+		if version >= maxAvailableVersion {
+			continue
+		}
+
+		err = r.client.Delete(context.TODO(), &statefulSet)
+		if err != nil {
+			r.log.Error("Could not delete StatefulSet  '", statefulSet.Name, "': ", err)
+			return err
+		}
 	}
 
 	return nil
@@ -321,7 +344,7 @@ func (r *ReconcileExtendedStatefulSet) isStatefulSetReady(ctx context.Context, s
 		"controller-revision-hash": statefulSet.Status.CurrentRevision,
 	}
 
-	podList := &v1.PodList{}
+	podList := &corev1.PodList{}
 	err := r.client.List(
 		ctx,
 		&client.ListOptions{
