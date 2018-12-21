@@ -6,44 +6,45 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	. "code.cloudfoundry.org/cf-operator/pkg/kube/secrets"
+	yaml "gopkg.in/yaml.v2"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	yaml "gopkg.in/yaml.v2"
+	. "code.cloudfoundry.org/cf-operator/pkg/kube/secrets"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	testclient "k8s.io/client-go/kubernetes/fake"
 )
 
-var _ = Describe(`Versioning and persistence for "desired manifests"`, func() {
-	exampleManifest := func(data string) manifest.Manifest {
-		var manifest manifest.Manifest
-		err := yaml.Unmarshal([]byte(data), &manifest)
-		Expect(err).ToNot(HaveOccurred())
+var (
+	namespace                = "default"
+	deploymentName           = "fake-deployment"
+	exampleSourceDescription = "created by a unit-test"
+)
 
-		return manifest
-	}
+func exampleManifest(data string) manifest.Manifest {
+	var manifest manifest.Manifest
+	err := yaml.Unmarshal([]byte(data), &manifest)
+	Expect(err).ToNot(HaveOccurred())
+	return manifest
+}
 
-	exampleSourceDescription := "created by a unit-test"
+var _ = Describe("PersistManifest", func() {
+	var (
+		client    kubernetes.Interface
+		persister ManifestPersister
+	)
 
-	var namespace = "default"
-	var deploymentName = "fake-deployment"
+	BeforeEach(func() {
+		client = testclient.NewSimpleClientset()
+		persister = NewManifestPersister(client, namespace, deploymentName)
+	})
 
-	Context("Creating a desired manifest secret", func() {
-		var client kubernetes.Interface
-		var persister ManifestPersister
-		var secretName string
-
-		BeforeEach(func() {
-			client = testclient.NewSimpleClientset()
-			persister = NewManifestPersister(client, namespace, deploymentName)
-		})
-
-		It("should create a secret when there is no versioned secret of the manifest", func() {
+	Context("when there is no versioned manifest", func() {
+		It("should create the first version", func() {
 			createdSecret, err := persister.PersistManifest(exampleManifest(`{"instance-groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`), exampleSourceDescription)
 
-			secretName = fmt.Sprintf("deployment-%s-%d", deploymentName, 1)
+			secretName := fmt.Sprintf("deployment-%s-%d", deploymentName, 1)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(createdSecret.Name).To(BeEquivalentTo(secretName))
@@ -52,8 +53,10 @@ var _ = Describe(`Versioning and persistence for "desired manifests"`, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(retrievedSecret).To(BeEquivalentTo(createdSecret))
 		})
+	})
 
-		It("should create a new versioned secret when already a version exists", func() {
+	Context("when there already is a version of the manifest", func() {
+		It("should create a new version", func() {
 			createdSecret, err := persister.PersistManifest(exampleManifest(`{"instance-groups":[{"instances":3,"name":"diego"}]}`), exampleSourceDescription)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(createdSecret.Name).To(BeEquivalentTo(fmt.Sprintf("deployment-%s-%d", deploymentName, 1)))
@@ -66,87 +69,46 @@ var _ = Describe(`Versioning and persistence for "desired manifests"`, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(createdSecret.Name).To(BeEquivalentTo(fmt.Sprintf("deployment-%s-%d", deploymentName, 3)))
 		})
+	})
 
-		It("should fail to create a secret, when the deployment name contains invalid characters", func() {
+	Context("when the deployment name contains invalid characters", func() {
+		It("should fail to create a new version", func() {
 			persister = NewManifestPersister(client, namespace, "InvalidName")
 			createdSecret, err := persister.PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
 			Expect(err).To(HaveOccurred())
 			Expect(createdSecret).To(BeNil())
 		})
+	})
 
-		It("should fail to create a secret, when the deployment name exceeds 253 chars length", func() {
+	Context("when the deployment name exceeds a length of 253 characters", func() {
+		It("should fail to create a new version", func() {
 			persister = NewManifestPersister(client, namespace, strings.Repeat("foobar", 42))
 			createdSecret, err := persister.PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
 			Expect(err).To(HaveOccurred())
 			Expect(createdSecret).To(BeNil())
 		})
 	})
+})
 
-	Context("Listing secrets", func() {
-		var client kubernetes.Interface
-		var persister ManifestPersister
+var _ = Describe("DeleteManifest", func() {
+	var (
+		client    kubernetes.Interface
+		persister ManifestPersister
+	)
 
+	Context("when a manifest with multiple version exists", func() {
 		BeforeEach(func() {
 			client = testclient.NewSimpleClientset()
 			persister = NewManifestPersister(client, namespace, deploymentName)
-		})
 
-		It("should give you all secrets of a deployment", func() {
-			for i := 1; i < 10; i++ {
-				_, err := persister.PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
-				Expect(err).ToNot(HaveOccurred())
-
-				_, err = NewManifestPersister(client, namespace, "another-deployment").PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
-				Expect(err).ToNot(HaveOccurred())
-			}
-			currentManifestSecrets, err := persister.ListAllVersions()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(len(currentManifestSecrets)).To(BeIdenticalTo(9))
-		})
-	})
-
-	Context("Retrieving secret versions", func() {
-		var client kubernetes.Interface
-		var persister ManifestPersister
-
-		BeforeEach(func() {
-			client = testclient.NewSimpleClientset()
-
-			persister = NewManifestPersister(client, namespace, "cf")
 			_, err := persister.PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
 			Expect(err).ToNot(HaveOccurred())
+
 			_, err = persister.PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should give you an specific secret version", func() {
-			versionedSecret, err := persister.RetrieveVersion(1)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(versionedSecret.Name).To(BeIdenticalTo(fmt.Sprintf("deployment-%s-%d", "cf", 1)))
-		})
-
-		It("should give you the latest secret version", func() {
-			versionedSecret, err := persister.RetrieveLatestVersion()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(versionedSecret.Name).To(BeIdenticalTo(fmt.Sprintf("deployment-%s-%d", "cf", 2)))
-		})
-	})
-
-	Context("Delete all versions of a secret", func() {
-		var client kubernetes.Interface
-		var persister ManifestPersister
-
-		BeforeEach(func() {
-			client = testclient.NewSimpleClientset()
-
-			persister = NewManifestPersister(client, namespace, "cf")
-			_, err := persister.PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
-			Expect(err).ToNot(HaveOccurred())
-			_, err = persister.PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("should get rid of all versions of a secret", func() {
+		It("should get rid of all versions of a manifest", func() {
 			currentManifestSecrets, err := persister.ListAllVersions()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(currentManifestSecrets)).To(BeIdenticalTo(2))
@@ -159,14 +121,18 @@ var _ = Describe(`Versioning and persistence for "desired manifests"`, func() {
 			Expect(len(currentManifestSecrets)).To(BeIdenticalTo(0))
 		})
 	})
+})
 
-	Context("Decorating the secret with key/value labels", func() {
-		var client kubernetes.Interface
-		var persister ManifestPersister
+var _ = Describe("DecorateManifest", func() {
+	var (
+		client    kubernetes.Interface
+		persister ManifestPersister
+	)
 
+	Context("when there is a manifest with multiple versions", func() {
 		BeforeEach(func() {
 			client = testclient.NewSimpleClientset()
-			persister = NewManifestPersister(client, namespace, "cf")
+			persister = NewManifestPersister(client, namespace, deploymentName)
 
 			_, err := persister.PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
 			Expect(err).ToNot(HaveOccurred())
@@ -175,12 +141,12 @@ var _ = Describe(`Versioning and persistence for "desired manifests"`, func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should decorate the lastest version of the secret with the provided key and value", func() {
+		It("should decorate the lastest version with the provided key and value", func() {
 			secret, err := persister.RetrieveLatestVersion()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(secret.Name).To(BeIdenticalTo(fmt.Sprintf("deployment-%s-%d", "cf", 2)))
+			Expect(secret.Name).To(BeIdenticalTo(fmt.Sprintf("deployment-%s-%d", deploymentName, 2)))
 			Expect(secret.GetLabels()).To(BeEquivalentTo(map[string]string{
-				"deployment-name":    "cf",
+				"deployment-name":    deploymentName,
 				"version":            "2",
 				"source-description": exampleSourceDescription,
 			}))
@@ -188,11 +154,73 @@ var _ = Describe(`Versioning and persistence for "desired manifests"`, func() {
 			updatedSecret, err := persister.DecorateManifest("foo", "bar")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updatedSecret.GetLabels()).To(BeEquivalentTo(map[string]string{
-				"deployment-name":    "cf",
+				"deployment-name":    deploymentName,
 				"version":            "2",
 				"source-description": exampleSourceDescription,
 				"foo":                "bar",
 			}))
+		})
+	})
+})
+
+var _ = Describe("ListAllVersions", func() {
+	var (
+		client    kubernetes.Interface
+		persister ManifestPersister
+	)
+
+	Context("when there is a manifest with multiple versions", func() {
+		BeforeEach(func() {
+			client = testclient.NewSimpleClientset()
+			persister = NewManifestPersister(client, namespace, deploymentName)
+
+			for i := 1; i < 10; i++ {
+				_, err := persister.PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
+				Expect(err).ToNot(HaveOccurred())
+
+				_, err = NewManifestPersister(client, namespace, "another-deployment").PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
+
+		It("should list all versions of a manifest", func() {
+			currentManifestSecrets, err := persister.ListAllVersions()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(currentManifestSecrets)).To(BeIdenticalTo(9))
+		})
+	})
+})
+
+var _ = Describe("RetrieveVersion/RetrieveLatestVersion", func() {
+	var (
+		client    kubernetes.Interface
+		persister ManifestPersister
+	)
+
+	Context("when there is a manifest with multiple versions", func() {
+		BeforeEach(func() {
+			client = testclient.NewSimpleClientset()
+			persister = NewManifestPersister(client, namespace, deploymentName)
+
+			for i := 1; i < 10; i++ {
+				_, err := persister.PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
+				Expect(err).ToNot(HaveOccurred())
+
+				_, err = NewManifestPersister(client, namespace, "another-deployment").PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
+
+		It("should be possible to pick a specific version", func() {
+			versionedSecret, err := persister.RetrieveVersion(1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(versionedSecret.Name).To(BeIdenticalTo(fmt.Sprintf("deployment-%s-%d", deploymentName, 1)))
+		})
+
+		It("should be possible to get the latest version", func() {
+			versionedSecret, err := persister.RetrieveLatestVersion()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(versionedSecret.Name).To(BeIdenticalTo(fmt.Sprintf("deployment-%s-%d", deploymentName, 9)))
 		})
 	})
 })
