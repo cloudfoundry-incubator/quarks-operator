@@ -87,7 +87,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ess.Status.Versions).To(Equal(map[int]bool{
-				1: true,
 				2: true,
 			}))
 
@@ -96,8 +95,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(ess.Status.Versions).To(Equal(map[int]bool{
 				2: true,
 			}))
-			err = env.WaitForStatefulSetDeletion(env.Namespace, ess.GetName()+"-v2")
-
 		})
 
 		It("should do nothing if nothing has changed", func() {

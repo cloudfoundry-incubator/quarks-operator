@@ -269,28 +269,6 @@ func (m *Machine) DeleteExtendedStatefulSet(namespace string, name string) error
 	return client.Delete(name, &metav1.DeleteOptions{})
 }
 
-// WaitForStatefulSetDeletion blocks until the CR is deleted
-func (m *Machine) WaitForStatefulSetDeletion(namespace string, name string) error {
-	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
-		found, err := m.HasStatefulSet(namespace, name)
-		return !found, err
-	})
-}
-
-// HasStatefulSet returns true if the statefulSet by that name is in state running
-func (m *Machine) HasStatefulSet(namespace string, name string) (bool, error) {
-	client := m.Clientset.AppsV1beta1().StatefulSets(name)
-	_, err := client.Get(name, metav1.GetOptions{})
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return false, nil
-		}
-		return false, errors.Wrapf(err, "failed to query for pod by name: %s", name)
-	}
-
-	return true, nil
-}
-
 // PodLabeled returns true if the pod is labeled correctly
 func (m *Machine) PodLabeled(namespace string, name string, desiredLabel, desiredValue string) (bool, error) {
 	pod, err := m.Clientset.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})

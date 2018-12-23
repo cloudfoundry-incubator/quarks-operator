@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/api/apps/v1beta1"
@@ -20,6 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 )
 
 // Check that ReconcileExtendedStatefulSet implements the reconcile.Reconciler interface
@@ -110,7 +111,6 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		// if not equal, see what's different and act accordingly
 	}
 
-	// Find a way to check result
 	statefulSetVersions, err := r.listStatefulSetVersions(context.TODO(), exStatefulSet)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -129,24 +129,23 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		}
 	}()
 
-	if !statefulSetVersions[desiredVersion] {
-		r.log.Debug("Waiting desired version available")
-		return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, nil
-	}
+	maxAvailableVersion := exStatefulSet.GetMaxAvailableVersion(statefulSetVersions)
 
-	// Cleanup when desired version is available
-	if statefulSetVersions[desiredVersion] {
-		err = r.cleanupStatefulSets(context.TODO(), exStatefulSet, desiredVersion)
+	if len(statefulSetVersions) > 1 {
+		// Cleanup versions smaller than the max available version
+		err = r.cleanupStatefulSets(context.TODO(), exStatefulSet, maxAvailableVersion, &statefulSetVersions)
 		if err != nil {
 			r.log.Error("Could not cleanup StatefulSets for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 			return reconcile.Result{}, err
 		}
 	}
 
-	statefulSetVersions = map[int]bool{
-		desiredVersion: true,
+	if !statefulSetVersions[desiredVersion] {
+		r.log.Debug("Waiting desired version available")
+		return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, nil
 	}
 
+	// Reconcile stops since only one version or no version exists.
 	return reconcile.Result{}, nil
 }
 
@@ -202,8 +201,8 @@ func (r *ReconcileExtendedStatefulSet) createStatefulSet(ctx context.Context, ex
 	return nil
 }
 
-// cleanupStatefulSets cleans up StatefulSets if they are no longer required
-func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet, maxAvailableVersion int) error {
+// cleanupStatefulSets cleans up StatefulSets and versions if they are no longer required
+func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet, maxAvailableVersion int, versions *map[int]bool) error {
 	r.log.Info("Cleaning up StatefulSets for ExtendedStatefulSet '%s' less than version %d.", exStatefulSet.Name, maxAvailableVersion)
 
 	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
@@ -233,6 +232,9 @@ func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, 
 			r.log.Error("Could not delete StatefulSet  '", statefulSet.Name, "': ", err)
 			return err
 		}
+
+		// Safe operation: If m is nil or there is no such element, delete is a no-op
+		delete(*versions, version)
 	}
 
 	return nil
