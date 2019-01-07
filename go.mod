@@ -49,10 +49,13 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.2.1
 	k8s.io/api v0.0.0-20181130031204-d04500c8c3dd
-	k8s.io/apiextensions-apiserver v0.0.0-20181126155829-0cd23ebeb688 // indirect
-	k8s.io/apimachinery v0.0.0-20181126123746-eddba98df674
+	k8s.io/apiextensions-apiserver v0.0.0-20181026154507-67bb9d92aa02 // indirect
+	k8s.io/apimachinery v0.0.0-20181220065808-98853ca904e8
 	k8s.io/client-go v2.0.0-alpha.0.0.20181126152608-d082d5923d3c+incompatible
+	k8s.io/klog v0.1.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20181024003938-96e8bb74ecdd // indirect
+	k8s.io/kubernetes v1.11.4
 	sigs.k8s.io/controller-runtime v0.1.8
 	sigs.k8s.io/testing_frameworks v0.1.0 // indirect
+	sigs.k8s.io/yaml v1.1.0 // indirect
 )

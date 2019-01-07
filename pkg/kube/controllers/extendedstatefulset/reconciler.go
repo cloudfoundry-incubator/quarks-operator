@@ -3,20 +3,23 @@ package extendedstatefulset
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strconv"
+	"time"
 
+	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	v1beta1 "k8s.io/api/apps/v1beta1"
+	"k8s.io/api/apps/v1beta1"
+	"k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	podUtils "k8s.io/kubernetes/pkg/api/v1/pod"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 )
 
 // Check that ReconcileExtendedStatefulSet implements the reconcile.Reconciler interface
@@ -89,10 +92,14 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		// If it doesn't exist, create it
 		r.log.Info("StatefulSet '", desiredStatefulSet.Name, "' for ExtendedStatefulSet '", request.NamespacedName, "' not found, will be created.")
 
+		// Record the template before creating the StatefulSet, so we don't include default values such as
+		// `ImagePullPolicy`, `TerminationMessagePath`, etc. in the signature.
+		originalTemplate := exStatefulSet.Spec.Template.DeepCopy()
 		if err := r.createStatefulSet(context.TODO(), exStatefulSet, desiredStatefulSet); err != nil {
 			r.log.Error("Could not create StatefulSet for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 			return reconcile.Result{}, err
 		}
+		exStatefulSet.Spec.Template = *originalTemplate
 	} else {
 		// If it does exist, do a deep equal and check that we own it
 		r.log.Info("StatefulSet '", desiredStatefulSet.Name, "' for ExtendedStatefulSet '", request.NamespacedName, "' has not changed, checking if any other changes are necessary.")
@@ -103,6 +110,12 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		// if not equal, see what's different and act accordingly
 	}
 
+	// Find a way to check result
+	statefulSetVersions, err := r.listStatefulSetVersions(context.TODO(), exStatefulSet)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// Cleanup
 	err = r.cleanupStatefulSets(context.TODO(), exStatefulSet)
 	if err != nil {
@@ -111,13 +124,25 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	// r.log.Debug(ownedResources)
-
 	//statefulSet.GenerateName
 	//statefulSet.GetOwnerReferences
 	// Which should be cleaned up?
 
 	// Update the Status of the resource
+	// Update status.Versions if needed
+	if !reflect.DeepEqual(statefulSetVersions, exStatefulSet.Status.Versions) {
+		exStatefulSet.Status.Versions = statefulSetVersions
+		err := r.client.Update(context.TODO(), exStatefulSet)
+		if err != nil {
+			r.log.Error("Failed to update exStatefulSet status: %v\n", err)
+			return reconcile.Result{}, err
+		}
+	}
+
+	if !statefulSetVersions[desiredVersion] {
+		r.log.Debug("Waiting desired version available")
+		return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, nil
+	}
 
 	return reconcile.Result{}, nil
 }
@@ -257,4 +282,66 @@ func (r *ReconcileExtendedStatefulSet) getActualStatefulSet(ctx context.Context,
 	}
 
 	return result, maxVersion, nil
+}
+
+// listStatefulSetVersions gets all StatefulSets' versions and ready status owned by the ExtendedStatefulSet
+func (r *ReconcileExtendedStatefulSet) listStatefulSetVersions(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) (map[int]bool, error) {
+	result := map[int]bool{}
+
+	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, statefulSet := range statefulSets {
+		strVersion, found := statefulSet.Annotations[essv1a1.AnnotationVersion]
+		if !found {
+			return result, errors.Errorf("Version annotation is not found from: %+v", statefulSet.Annotations)
+		}
+
+		version, err := strconv.Atoi(strVersion)
+		if err != nil {
+			return result, errors.Wrapf(err, "Version annotation is not an int: %s", strVersion)
+		}
+
+		ready, err := r.isStatefulSetReady(ctx, &statefulSet)
+		if err != nil {
+			return nil, err
+		}
+
+		result[version] = ready
+	}
+
+	return result, nil
+}
+
+// isStatefulSetReady returns true if one owned Pod is running
+func (r *ReconcileExtendedStatefulSet) isStatefulSetReady(ctx context.Context, statefulSet *v1beta1.StatefulSet) (bool, error) {
+	labelsSelector := labels.Set{
+		"controller-revision-hash": statefulSet.Status.CurrentRevision,
+	}
+
+	podList := &v1.PodList{}
+	err := r.client.List(
+		ctx,
+		&client.ListOptions{
+			Namespace:     statefulSet.Namespace,
+			LabelSelector: labelsSelector.AsSelector(),
+		},
+		podList,
+	)
+	if err != nil {
+		return false, err
+	}
+
+	for _, pod := range podList.Items {
+		if metav1.IsControlledBy(&pod, statefulSet) {
+			if podUtils.IsPodReady(&pod) {
+				r.log.Debug("Pod '", statefulSet.Name, "' owned by StatefulSet '", statefulSet.Name, "' is running.")
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }
