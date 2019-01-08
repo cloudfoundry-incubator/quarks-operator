@@ -228,6 +228,7 @@ func (m *Machine) CreateSecret(namespace string, secret corev1.Secret) (TearDown
 	}, err
 }
 
+// GetSecret fetches the specified secret
 func (m *Machine) GetSecret(namespace string, name string) (*corev1.Secret, error) {
 	err := m.WaitForSecret(namespace, name)
 	if err != nil {
@@ -242,7 +243,7 @@ func (m *Machine) GetSecret(namespace string, name string) (*corev1.Secret, erro
 	return secret, nil
 }
 
-// WaitForPod blocks until the pod is running. It fails after the timeout.
+// WaitForSecret blocks until the secret is available. It fails after the timeout.
 func (m *Machine) WaitForSecret(namespace string, name string) error {
 	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
 		return m.SecretExists(namespace, name)

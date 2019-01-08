@@ -8,6 +8,7 @@ import (
 // It's used as input for the Kube code generator
 // Run "make generate" after modifying this file
 
+// Type defines the type of the generated secret
 type Type string
 
 // Valid values for ref types
@@ -18,11 +19,13 @@ const (
 	RSAKey      Type = "rsa"
 )
 
+// SecretReference specifies a reference to another secret
 type SecretReference struct {
 	Name string
 	Key  string
 }
 
+// CertificateRequest specifies the details for the certificate generation
 type CertificateRequest struct {
 	CommonName       string          `json:"commonName"`
 	AlternativeNames []string        `json:"alternativeNames"`
@@ -31,6 +34,7 @@ type CertificateRequest struct {
 	CAKeyRef         SecretReference `json:"CAKeyRef"`
 }
 
+// Request specifies details for the secret generation
 type Request struct {
 	CertificateRequest CertificateRequest `json:"certificate"`
 }

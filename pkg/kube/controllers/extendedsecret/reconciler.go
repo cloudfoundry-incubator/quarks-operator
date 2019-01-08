@@ -19,6 +19,7 @@ import (
 	esapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 )
 
+// NewReconciler returns a new Reconciler
 func NewReconciler(log *zap.SugaredLogger, mgr manager.Manager, generator credsgen.Generator) reconcile.Reconciler {
 	return &ReconcileExtendedSecret{
 		log:       log,
@@ -28,6 +29,7 @@ func NewReconciler(log *zap.SugaredLogger, mgr manager.Manager, generator credsg
 	}
 }
 
+// ReconcileExtendedSecret reconciles an ExtendedSecret object
 type ReconcileExtendedSecret struct {
 	client    client.Client
 	generator credsgen.Generator
@@ -35,6 +37,11 @@ type ReconcileExtendedSecret struct {
 	log       *zap.SugaredLogger
 }
 
+// Reconcile reads that state of the cluster for a ExtendedSecret object and makes changes based on the state read
+// and what is in the ExtendedSecret.Spec
+// Note:
+// The Controller will requeue the Request to be processed again if the returned error is non-nil or
+// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	r.log.Infof("Reconciling ExtendedSecret %s", request.NamespacedName)
 

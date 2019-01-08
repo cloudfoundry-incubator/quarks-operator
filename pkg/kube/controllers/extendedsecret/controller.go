@@ -12,6 +12,7 @@ import (
 	es "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 )
 
+// Add creates a new ExtendedSecrets Controller and adds it to the Manager
 func Add(log *zap.SugaredLogger, mgr manager.Manager) error {
 	r := NewReconciler(log, mgr, credsgen.NewInMemoryGenerator(log))
 

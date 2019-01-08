@@ -99,6 +99,7 @@ func (c *Catalog) DefaultExtendedSecret(name string) esv1.ExtendedSecret {
 	}
 }
 
+// DefaultCA for use in tests
 func (c *Catalog) DefaultCA(name string, ca credsgen.Certificate) corev1.Secret {
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
