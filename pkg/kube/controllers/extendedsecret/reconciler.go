@@ -84,7 +84,7 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 func (r *ReconcileExtendedSecret) createPasswordSecret(ctx context.Context, instance *esapi.ExtendedSecret) error {
 	r.log.Debug("Generating password")
 	request := credsgen.PasswordGenerationRequest{}
-	password := r.generator.GeneratePassword("foo", request)
+	password := r.generator.GeneratePassword(instance.GetName(), request)
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -101,7 +101,7 @@ func (r *ReconcileExtendedSecret) createPasswordSecret(ctx context.Context, inst
 
 func (r *ReconcileExtendedSecret) createRSASecret(ctx context.Context, instance *esapi.ExtendedSecret) error {
 	r.log.Debug("Generating RSA Key")
-	key, err := r.generator.GenerateRSAKey("foo")
+	key, err := r.generator.GenerateRSAKey(instance.GetName())
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func (r *ReconcileExtendedSecret) createRSASecret(ctx context.Context, instance 
 
 func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance *esapi.ExtendedSecret) error {
 	r.log.Debug("Generating SSH Key")
-	key, err := r.generator.GenerateSSHKey("foo")
+	key, err := r.generator.GenerateSSHKey(instance.GetName())
 	if err != nil {
 		return err
 	}
@@ -184,7 +184,7 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 	}
 
 	// Generate certificate
-	cert, err := r.generator.GenerateCertificate("foo", request)
+	cert, err := r.generator.GenerateCertificate(instance.GetName(), request)
 	if err != nil {
 		return err
 	}
