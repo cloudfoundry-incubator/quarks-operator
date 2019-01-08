@@ -45,7 +45,7 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			r.log.Debug("Skip reconcile: CRD not found")
+			r.log.Info("Skip reconcile: CRD not found")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
@@ -55,26 +55,35 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 
 	switch instance.Spec.Type {
 	case esapi.Password:
+		r.log.Debug("Generating password")
 		err = r.createPasswordSecret(context.TODO(), instance)
 		if err != nil {
+			r.log.Info("Error generating password secret: " + err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "Generating password secret")
 		}
 	case esapi.RSAKey:
+		r.log.Debug("Generating RSA Key")
 		err = r.createRSASecret(context.TODO(), instance)
 		if err != nil {
+			r.log.Info("Error generating RSA key secret: " + err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "Generating RSA key secret")
 		}
 	case esapi.SSHKey:
+		r.log.Debug("Generating SSH Key")
 		err = r.createSSHSecret(context.TODO(), instance)
 		if err != nil {
+			r.log.Info("Error generating SSH key secret: " + err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "Generating SSH key secret")
 		}
 	case esapi.Certificate:
+		r.log.Debug("Generating certificate")
 		err = r.createCertificateSecret(context.TODO(), instance)
 		if err != nil {
+			r.log.Info("Error generating certificate secret: " + err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "Generating certificate secret")
 		}
 	default:
+		r.log.Infof("Invalid type: %s", instance.Spec.Type)
 		return reconcile.Result{}, fmt.Errorf("Invalid type: %s", instance.Spec.Type)
 	}
 
@@ -82,13 +91,12 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 }
 
 func (r *ReconcileExtendedSecret) createPasswordSecret(ctx context.Context, instance *esapi.ExtendedSecret) error {
-	r.log.Debug("Generating password")
 	request := credsgen.PasswordGenerationRequest{}
 	password := r.generator.GeneratePassword(instance.GetName(), request)
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-secret-" + instance.GetName(),
+			Name:      instance.Spec.SecretName,
 			Namespace: instance.GetNamespace(),
 		},
 		StringData: map[string]string{
@@ -100,7 +108,6 @@ func (r *ReconcileExtendedSecret) createPasswordSecret(ctx context.Context, inst
 }
 
 func (r *ReconcileExtendedSecret) createRSASecret(ctx context.Context, instance *esapi.ExtendedSecret) error {
-	r.log.Debug("Generating RSA Key")
 	key, err := r.generator.GenerateRSAKey(instance.GetName())
 	if err != nil {
 		return err
@@ -108,7 +115,7 @@ func (r *ReconcileExtendedSecret) createRSASecret(ctx context.Context, instance 
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-secret-" + instance.GetName(),
+			Name:      instance.Spec.SecretName,
 			Namespace: instance.GetNamespace(),
 		},
 		Data: map[string][]byte{
@@ -121,15 +128,13 @@ func (r *ReconcileExtendedSecret) createRSASecret(ctx context.Context, instance 
 }
 
 func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance *esapi.ExtendedSecret) error {
-	r.log.Debug("Generating SSH Key")
 	key, err := r.generator.GenerateSSHKey(instance.GetName())
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%#v", string(key.PublicKey))
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-secret-" + instance.GetName(),
+			Name:      instance.Spec.SecretName,
 			Namespace: instance.GetNamespace(),
 		},
 		Data: map[string][]byte{
@@ -143,8 +148,6 @@ func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance 
 }
 
 func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, instance *esapi.ExtendedSecret) error {
-	r.log.Debug("Generating Certificate")
-
 	// Get CA certificate
 	caSecret := &corev1.Secret{}
 	caNamespacedName := types.NamespacedName{
@@ -190,7 +193,7 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 	}
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es-secret-" + instance.GetName(),
+			Name:      instance.Spec.SecretName,
 			Namespace: instance.GetNamespace(),
 		},
 		Data: map[string][]byte{

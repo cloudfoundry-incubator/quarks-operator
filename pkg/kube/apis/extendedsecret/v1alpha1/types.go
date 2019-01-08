@@ -24,11 +24,11 @@ type SecretReference struct {
 }
 
 type CertificateRequest struct {
-	CommonName       string          `json:"common_name"`
-	AlternativeNames []string        `json:"alternative_names"`
-	IsCA             bool            `json:"is_ca"`
-	CARef            SecretReference `json:"ca_ref"`
-	CAKeyRef         SecretReference `json:"ca_key_ref"`
+	CommonName       string          `json:"commonName"`
+	AlternativeNames []string        `json:"alternativeNames"`
+	IsCA             bool            `json:"isCA"`
+	CARef            SecretReference `json:"CARef"`
+	CAKeyRef         SecretReference `json:"CAKeyRef"`
 }
 
 type Request struct {
@@ -37,8 +37,9 @@ type Request struct {
 
 // ExtendedSecretSpec defines the desired state of ExtendedSecret
 type ExtendedSecretSpec struct {
-	Type    Type    `json:"type"`
-	Request Request `json:"request"`
+	Type       Type    `json:"type"`
+	Request    Request `json:"request"`
+	SecretName string  `json:"secretName"`
 }
 
 // ExtendedSecretStatus defines the observed state of ExtendedSecret

@@ -50,7 +50,8 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 				Namespace: "default",
 			},
 			Spec: esapi.ExtendedSecretSpec{
-				Type: "password",
+				Type:       "password",
+				SecretName: "generated-secret",
 			},
 		}
 		generator = &generatorfakes.FakeGenerator{}
@@ -95,7 +96,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		It("generates passwords", func() {
 			client.CreateCalls(func(context context.Context, object runtime.Object) error {
 				Expect(object.(*corev1.Secret).StringData["password"]).To(Equal("securepassword"))
-				Expect(object.(*corev1.Secret).GetName()).To(Equal("es-secret-foo"))
+				Expect(object.(*corev1.Secret).GetName()).To(Equal("generated-secret"))
 				return nil
 			})
 
@@ -117,7 +118,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 			client.CreateCalls(func(context context.Context, object runtime.Object) error {
 				Expect(object.(*corev1.Secret).Data["RSAPrivateKey"]).To(Equal([]byte("private")))
 				Expect(object.(*corev1.Secret).Data["RSAPublicKey"]).To(Equal([]byte("public")))
-				Expect(object.(*corev1.Secret).GetName()).To(Equal("es-secret-foo"))
+				Expect(object.(*corev1.Secret).GetName()).To(Equal("generated-secret"))
 				return nil
 			})
 
@@ -145,7 +146,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 				Expect(secret.Data["SSHPrivateKey"]).To(Equal([]byte("private")))
 				Expect(secret.Data["SSHPublicKey"]).To(Equal([]byte("public")))
 				Expect(secret.Data["SSHFingerprint"]).To(Equal([]byte("fingerprint")))
-				Expect(secret.GetName()).To(Equal("es-secret-foo"))
+				Expect(object.(*corev1.Secret).GetName()).To(Equal("generated-secret"))
 				return nil
 			})
 

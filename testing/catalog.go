@@ -93,7 +93,8 @@ func (c *Catalog) DefaultExtendedSecret(name string) esv1.ExtendedSecret {
 			Name: name,
 		},
 		Spec: esv1.ExtendedSecretSpec{
-			Type: "password",
+			Type:       "password",
+			SecretName: "generated-secret",
 		},
 	}
 }

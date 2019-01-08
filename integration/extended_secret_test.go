@@ -29,13 +29,14 @@ var _ = Describe("ExtendedSecret", func() {
 		It("generates a secret with a password", func() {
 			// Create an ExtendedSecret
 			var es *es.ExtendedSecret
+			extendedSecret.Spec.SecretName = "generated-password-secret"
 			es, tearDown, err := env.CreateExtendedSecret(env.Namespace, extendedSecret)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(es).NotTo(Equal(nil))
 			defer tearDown()
 
 			// check for generated secret
-			secret, err := env.GetSecret(env.Namespace, "es-secret-"+extendedSecret.GetName())
+			secret, err := env.GetSecret(env.Namespace, "generated-password-secret")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(secret.Data["password"]).To(MatchRegexp("^\\w{64}$"))
 		})
@@ -44,13 +45,14 @@ var _ = Describe("ExtendedSecret", func() {
 			// Create an ExtendedSecret
 			var es *es.ExtendedSecret
 			extendedSecret.Spec.Type = "rsa"
+			extendedSecret.Spec.SecretName = "generated-rsa-secret"
 			es, tearDown, err := env.CreateExtendedSecret(env.Namespace, extendedSecret)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(es).NotTo(Equal(nil))
 			defer tearDown()
 
 			// check for generated secret
-			secret, err := env.GetSecret(env.Namespace, "es-secret-"+extendedSecret.GetName())
+			secret, err := env.GetSecret(env.Namespace, "generated-rsa-secret")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(secret.Data["RSAPrivateKey"]).To(ContainSubstring("RSA PRIVATE KEY"))
 			Expect(secret.Data["RSAPublicKey"]).To(ContainSubstring("PUBLIC KEY"))
@@ -60,13 +62,14 @@ var _ = Describe("ExtendedSecret", func() {
 			// Create an ExtendedSecret
 			var es *es.ExtendedSecret
 			extendedSecret.Spec.Type = "ssh"
+			extendedSecret.Spec.SecretName = "generated-ssh-secret"
 			es, tearDown, err := env.CreateExtendedSecret(env.Namespace, extendedSecret)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(es).NotTo(Equal(nil))
 			defer tearDown()
 
 			// check for generated secret
-			secret, err := env.GetSecret(env.Namespace, "es-secret-"+extendedSecret.GetName())
+			secret, err := env.GetSecret(env.Namespace, "generated-ssh-secret")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(secret.Data["SSHPrivateKey"]).To(ContainSubstring("RSA PRIVATE KEY"))
 			Expect(secret.Data["SSHPublicKey"]).To(ContainSubstring("ssh-rsa "))
@@ -97,6 +100,7 @@ var _ = Describe("ExtendedSecret", func() {
 
 			// Create an ExtendedSecret
 			var extendedsecret *es.ExtendedSecret
+			extendedSecret.Spec.SecretName = "generated-cert-secret"
 			extendedSecret.Spec.Type = "certificate"
 			extendedSecret.Spec.Request.CertificateRequest.CommonName = "example.com"
 			extendedSecret.Spec.Request.CertificateRequest.CARef = es.SecretReference{Name: "mysecret", Key: "ca"}
@@ -108,7 +112,7 @@ var _ = Describe("ExtendedSecret", func() {
 			defer tearDown()
 
 			// check for generated secret
-			secret, err := env.GetSecret(env.Namespace, "es-secret-"+extendedSecret.GetName())
+			secret, err := env.GetSecret(env.Namespace, "generated-cert-secret")
 			Expect(err).NotTo(HaveOccurred())
 			fmt.Println(secret.StringData)
 			Expect(secret.Data["certificate"]).To(ContainSubstring("BEGIN CERTIFICATE"))
