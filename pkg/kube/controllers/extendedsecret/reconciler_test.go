@@ -57,7 +57,12 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		generator = &generatorfakes.FakeGenerator{}
 		client = &cfakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-			es.DeepCopyInto(object.(*esapi.ExtendedSecret))
+			switch object.(type) {
+			case *esapi.ExtendedSecret:
+				es.DeepCopyInto(object.(*esapi.ExtendedSecret))
+			case *corev1.Secret:
+				return errors.NewNotFound(schema.GroupResource{}, "not found")
+			}
 			return nil
 		})
 		manager.GetClientReturns(client)
@@ -91,6 +96,15 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 	Context("when generating passwords", func() {
 		BeforeEach(func() {
 			generator.GeneratePasswordReturns("securepassword")
+		})
+
+		It("skips reconciling if the secret was already generated", func() {
+			client.GetReturns(nil)
+
+			result, err := reconciler.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(client.CreateCallCount()).To(Equal(0))
+			Expect(reconcile.Result{}).To(Equal(result))
 		})
 
 		It("generates passwords", func() {
@@ -182,7 +196,11 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 				case *esapi.ExtendedSecret:
 					es.DeepCopyInto(object.(*esapi.ExtendedSecret))
 				case *corev1.Secret:
-					ca.DeepCopyInto(object.(*corev1.Secret))
+					if nn.Name == "mysecret" {
+						ca.DeepCopyInto(object.(*corev1.Secret))
+					} else {
+						return errors.NewNotFound(schema.GroupResource{}, "not found is requeued")
+					}
 				}
 				return nil
 			})

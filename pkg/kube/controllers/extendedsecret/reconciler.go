@@ -60,6 +60,27 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
+	// Check if secret was already generated
+	generatedSecret := &corev1.Secret{}
+	namespacedName := types.NamespacedName{
+		Namespace: instance.Namespace,
+		Name:      instance.Spec.SecretName,
+	}
+	err = r.client.Get(context.TODO(), namespacedName, generatedSecret)
+	if err == nil {
+		r.log.Info("Skip reconcile: secret already exists")
+		return reconcile.Result{}, nil
+	}
+
+	if apierrors.IsNotFound(err) {
+		// Secret doesn't exist yet. Continue reconciling
+	} else {
+		// Error reading the object - requeue the request.
+		r.log.Info("Error reading the object")
+		return reconcile.Result{}, err
+	}
+
+	// Create secret
 	switch instance.Spec.Type {
 	case esapi.Password:
 		r.log.Debug("Generating password")
