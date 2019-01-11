@@ -5,13 +5,15 @@ import (
 	"regexp"
 	"strconv"
 
-	"k8s.io/client-go/kubernetes"
-
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
+
+	"golang.org/x/net/context"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
 const (
@@ -46,14 +48,14 @@ type ManifestPersister interface {
 
 // ManifestPersisterImpl contains the required fields to persist a manifest
 type ManifestPersisterImpl struct {
-	client         kubernetes.Interface
+	client         client.Client
 	namespace      string
 	deploymentName string
 }
 
 // NewManifestPersister returns a ManifestPersister implementation to be used
 // when working with desired manifest secrets
-func NewManifestPersister(client kubernetes.Interface, namespace string, deploymentName string) ManifestPersisterImpl {
+func NewManifestPersister(client client.Client, namespace string, deploymentName string) ManifestPersisterImpl {
 	return ManifestPersisterImpl{
 		client,
 		namespace,
@@ -82,7 +84,7 @@ func (p ManifestPersisterImpl) PersistManifest(manifest manifest.Manifest, sourc
 		return nil, err
 	}
 
-	return p.client.CoreV1().Secrets(p.namespace).Create(&corev1.Secret{
+	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
 			Namespace: p.namespace,
@@ -95,7 +97,9 @@ func (p ManifestPersisterImpl) PersistManifest(manifest manifest.Manifest, sourc
 		Data: map[string][]byte{
 			manifestKeyName: data,
 		},
-	})
+	}
+
+	return secret, p.client.Create(context.TODO(), secret)
 }
 
 // RetrieveVersion returns a specific version of the manifest
@@ -129,19 +133,20 @@ func (p ManifestPersisterImpl) RetrieveLatestVersion() (*corev1.Secret, error) {
 
 // ListAllVersions returns all versions of the manifest
 func (p ManifestPersisterImpl) ListAllVersions() ([]corev1.Secret, error) {
-	listResp, err := p.client.CoreV1().Secrets(p.namespace).List(metav1.ListOptions{})
-	if err != nil {
+	secrets := &corev1.SecretList{}
+	if err := p.client.List(context.TODO(), &client.ListOptions{Namespace: p.namespace}, secrets); err != nil {
 		return nil, err
 	}
 
 	result := []corev1.Secret{}
 
 	nameRegex := regexp.MustCompile(fmt.Sprintf(`^deployment-%s-\d+$`, p.deploymentName))
-	for _, secret := range listResp.Items {
+	for _, secret := range secrets.Items {
 		if nameRegex.MatchString(secret.Name) {
 			result = append(result, secret)
 		}
 	}
+
 	return result, nil
 }
 
@@ -154,12 +159,11 @@ func (p ManifestPersisterImpl) DeleteManifest() error {
 	}
 
 	for _, secret := range list {
-		err := p.client.CoreV1().Secrets(p.namespace).Delete(secret.Name, &metav1.DeleteOptions{})
-
-		if err != nil {
+		if err := p.client.Delete(context.TODO(), &secret); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -175,8 +179,8 @@ func (p ManifestPersisterImpl) DecorateManifest(key string, value string) (*core
 		return nil, err
 	}
 
-	secret, err := p.client.CoreV1().Secrets(p.namespace).Get(secretName, metav1.GetOptions{})
-	if err != nil {
+	secret := &corev1.Secret{}
+	if err := p.client.Get(context.TODO(), client.ObjectKey{Namespace: p.namespace, Name: secretName}, secret); err != nil {
 		return nil, err
 	}
 
@@ -188,7 +192,7 @@ func (p ManifestPersisterImpl) DecorateManifest(key string, value string) (*core
 	labels[key] = value
 	secret.SetLabels(labels)
 
-	return p.client.CoreV1().Secrets(p.namespace).Update(secret)
+	return secret, p.client.Update(context.TODO(), secret)
 }
 
 func getGreatestVersion(p ManifestPersisterImpl) (int, error) {

@@ -4,16 +4,18 @@ import (
 	"fmt"
 	"strings"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	yaml "gopkg.in/yaml.v2"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	. "code.cloudfoundry.org/cf-operator/pkg/kube/secrets"
+	"golang.org/x/net/context"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	fake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	testclient "k8s.io/client-go/kubernetes/fake"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+
+	. "code.cloudfoundry.org/cf-operator/pkg/kube/secrets"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var (
@@ -31,25 +33,24 @@ func exampleManifest(data string) manifest.Manifest {
 
 var _ = Describe("PersistManifest", func() {
 	var (
-		client    kubernetes.Interface
-		persister ManifestPersister
+		kubeClient client.Client
+		persister  ManifestPersister
 	)
 
 	BeforeEach(func() {
-		client = testclient.NewSimpleClientset()
-		persister = NewManifestPersister(client, namespace, deploymentName)
+		kubeClient = fake.NewFakeClient()
+		persister = NewManifestPersister(kubeClient, namespace, deploymentName)
 	})
 
 	Context("when there is no versioned manifest", func() {
 		It("should create the first version", func() {
-			createdSecret, err := persister.PersistManifest(exampleManifest(`{"instance-groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`), exampleSourceDescription)
-
 			secretName := fmt.Sprintf("deployment-%s-%d", deploymentName, 1)
-
+			createdSecret, err := persister.PersistManifest(exampleManifest(`{"instance-groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`), exampleSourceDescription)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(createdSecret.Name).To(BeEquivalentTo(secretName))
 
-			retrievedSecret, err := client.CoreV1().Secrets(namespace).Get(secretName, metav1.GetOptions{})
+			retrievedSecret := &corev1.Secret{}
+			err = kubeClient.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: secretName}, retrievedSecret)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(retrievedSecret).To(BeEquivalentTo(createdSecret))
 		})
@@ -73,7 +74,7 @@ var _ = Describe("PersistManifest", func() {
 
 	Context("when the deployment name contains invalid characters", func() {
 		It("should fail to create a new version", func() {
-			persister = NewManifestPersister(client, namespace, "InvalidName")
+			persister = NewManifestPersister(kubeClient, namespace, "InvalidName")
 			createdSecret, err := persister.PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
 			Expect(err).To(HaveOccurred())
 			Expect(createdSecret).To(BeNil())
@@ -82,7 +83,7 @@ var _ = Describe("PersistManifest", func() {
 
 	Context("when the deployment name exceeds a length of 253 characters", func() {
 		It("should fail to create a new version", func() {
-			persister = NewManifestPersister(client, namespace, strings.Repeat("foobar", 42))
+			persister = NewManifestPersister(kubeClient, namespace, strings.Repeat("foobar", 42))
 			createdSecret, err := persister.PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
 			Expect(err).To(HaveOccurred())
 			Expect(createdSecret).To(BeNil())
@@ -92,14 +93,14 @@ var _ = Describe("PersistManifest", func() {
 
 var _ = Describe("DeleteManifest", func() {
 	var (
-		client    kubernetes.Interface
-		persister ManifestPersister
+		kubeClient client.Client
+		persister  ManifestPersister
 	)
 
 	Context("when a manifest with multiple version exists", func() {
 		BeforeEach(func() {
-			client = testclient.NewSimpleClientset()
-			persister = NewManifestPersister(client, namespace, deploymentName)
+			kubeClient = fake.NewFakeClient()
+			persister = NewManifestPersister(kubeClient, namespace, deploymentName)
 
 			_, err := persister.PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
 			Expect(err).ToNot(HaveOccurred())
@@ -125,14 +126,14 @@ var _ = Describe("DeleteManifest", func() {
 
 var _ = Describe("DecorateManifest", func() {
 	var (
-		client    kubernetes.Interface
-		persister ManifestPersister
+		kubeClient client.Client
+		persister  ManifestPersister
 	)
 
 	Context("when there is a manifest with multiple versions", func() {
 		BeforeEach(func() {
-			client = testclient.NewSimpleClientset()
-			persister = NewManifestPersister(client, namespace, deploymentName)
+			kubeClient = fake.NewFakeClient()
+			persister = NewManifestPersister(kubeClient, namespace, deploymentName)
 
 			_, err := persister.PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
 			Expect(err).ToNot(HaveOccurred())
@@ -165,20 +166,20 @@ var _ = Describe("DecorateManifest", func() {
 
 var _ = Describe("ListAllVersions", func() {
 	var (
-		client    kubernetes.Interface
-		persister ManifestPersister
+		kubeClient client.Client
+		persister  ManifestPersister
 	)
 
 	Context("when there is a manifest with multiple versions", func() {
 		BeforeEach(func() {
-			client = testclient.NewSimpleClientset()
-			persister = NewManifestPersister(client, namespace, deploymentName)
+			kubeClient = fake.NewFakeClient()
+			persister = NewManifestPersister(kubeClient, namespace, deploymentName)
 
 			for i := 1; i < 10; i++ {
 				_, err := persister.PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = NewManifestPersister(client, namespace, "another-deployment").PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
+				_, err = NewManifestPersister(kubeClient, namespace, "another-deployment").PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
 			}
 		})
@@ -193,20 +194,20 @@ var _ = Describe("ListAllVersions", func() {
 
 var _ = Describe("RetrieveVersion/RetrieveLatestVersion", func() {
 	var (
-		client    kubernetes.Interface
-		persister ManifestPersister
+		kubeClient client.Client
+		persister  ManifestPersister
 	)
 
 	Context("when there is a manifest with multiple versions", func() {
 		BeforeEach(func() {
-			client = testclient.NewSimpleClientset()
-			persister = NewManifestPersister(client, namespace, deploymentName)
+			kubeClient = fake.NewFakeClient()
+			persister = NewManifestPersister(kubeClient, namespace, deploymentName)
 
 			for i := 1; i < 10; i++ {
 				_, err := persister.PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = NewManifestPersister(client, namespace, "another-deployment").PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
+				_, err = NewManifestPersister(kubeClient, namespace, "another-deployment").PersistManifest(exampleManifest(`instance-groups: []`), exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
 			}
 		})

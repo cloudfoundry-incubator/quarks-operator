@@ -9,5 +9,5 @@ import (
 
 func TestManifestPersistence(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, `Versioning and persistence for "desired manifests" Suite`)
+	RunSpecs(t, `Versioning and persistence for desired manifests Suite`)
 }
