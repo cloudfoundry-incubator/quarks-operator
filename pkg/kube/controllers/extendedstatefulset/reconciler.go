@@ -227,13 +227,12 @@ func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, 
 			continue
 		}
 
-		err = r.client.Delete(context.TODO(), &statefulSet)
+		err = r.client.Delete(context.TODO(), &statefulSet, client.PropagationPolicy(metav1.DeletePropagationBackground))
 		if err != nil {
 			r.log.Error("Could not delete StatefulSet  '", statefulSet.Name, "': ", err)
 			return err
 		}
 
-		// Safe operation: If m is nil or there is no such element, delete is a no-op
 		delete(*versions, version)
 	}
 

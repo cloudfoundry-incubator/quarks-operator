@@ -94,11 +94,9 @@ var _ = Describe("ExtendedStatefulSet", func() {
 				2: true,
 			}))
 
-			// check that old statefulset is deleted
-			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
-			Expect(ess.Status.Versions).To(Equal(map[int]bool{
-				2: true,
-			}))
+			// check that old pods is deleted
+			pods, err := env.GetPods(env.Namespace, "testpodupdated=yes")
+			Expect(len(pods.Items)).To(Equal(1))
 		})
 
 		It("should do nothing if nothing has changed", func() {
