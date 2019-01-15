@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"strconv"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	"github.com/pkg/errors"
-
-	v1beta1 "k8s.io/api/apps/v1beta1"
+	"k8s.io/api/apps/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 )
 
 // This file is safe to edit
@@ -23,6 +24,14 @@ var (
 	// AnnotationVersion is the annotation key for the StatefulSet version
 	AnnotationVersion = fmt.Sprintf("%s/version", apis.GroupName)
 )
+
+// Object is used as a helper interface when passing Kubernetes resources
+// between methods.
+// All Kubernetes resources should implement both of these interfaces
+type Object interface {
+	runtime.Object
+	metav1.Object
+}
 
 // ExtendedStatefulSetSpec defines the desired state of ExtendedStatefulSet
 type ExtendedStatefulSetSpec struct {

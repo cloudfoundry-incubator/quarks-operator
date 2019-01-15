@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	podUtils "k8s.io/kubernetes/pkg/api/v1/pod"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -368,4 +369,133 @@ func (r *ReconcileExtendedStatefulSet) isStatefulSetReady(ctx context.Context, s
 	}
 
 	return false, nil
+}
+
+// listConfigsFromSpec returns a list of all Secrets and ConfigMaps that are
+// referenced in the StatefulSet's spec
+func (r *ReconcileExtendedStatefulSet) listConfigsFromSpec(statefulSet *v1beta1.StatefulSet) ([]essv1a1.Object, error) {
+	r.log.Debug("Getting all ConfigMaps and Secrets that are referenced in '", statefulSet.Name, "' Spec.")
+	configMaps, secrets := getConfigNamesFromSpec(statefulSet)
+
+	// return error if config resource is not exist
+	var configs []essv1a1.Object
+	for name := range configMaps {
+		key := types.NamespacedName{Namespace: statefulSet.GetNamespace(), Name: name}
+		configMap := &corev1.ConfigMap{}
+		err := r.client.Get(context.TODO(), key, configMap)
+		if err != nil {
+			return []essv1a1.Object{}, err
+		}
+		if configMap != nil {
+			configs = append(configs, configMap)
+		}
+	}
+
+	for name := range secrets {
+		key := types.NamespacedName{Namespace: statefulSet.GetNamespace(), Name: name}
+		secret := &corev1.Secret{}
+		err := r.client.Get(context.TODO(), key, secret)
+		if err != nil {
+			return []essv1a1.Object{}, err
+		}
+		if secret != nil {
+			configs = append(configs, secret)
+		}
+	}
+
+	return configs, nil
+}
+
+// getConfigNamesFromSpec parses the StatefulSet object and returns two sets,
+// the first containing the names of all referenced ConfigMaps,
+// the second containing the names of all referenced Secrets
+func getConfigNamesFromSpec(statefulSet *v1beta1.StatefulSet) (map[string]struct{}, map[string]struct{}) {
+	// Create sets for storing the names fo the ConfigMaps/Secrets
+	configMaps := make(map[string]struct{})
+	secrets := make(map[string]struct{})
+
+	// Iterate over all Volumes and check the VolumeSources for ConfigMaps
+	// and Secrets
+	for _, vol := range statefulSet.Spec.Template.Spec.Volumes {
+		if cm := vol.VolumeSource.ConfigMap; cm != nil {
+			configMaps[cm.Name] = struct{}{}
+		}
+		if s := vol.VolumeSource.Secret; s != nil {
+			secrets[s.SecretName] = struct{}{}
+		}
+	}
+
+	// Iterate over all Containers and their respective EnvFrom and Env
+	// then check the EnvFromSources for ConfigMaps and Secrets
+	for _, container := range statefulSet.Spec.Template.Spec.Containers {
+		for _, env := range container.EnvFrom {
+			if cm := env.ConfigMapRef; cm != nil {
+				configMaps[cm.Name] = struct{}{}
+			}
+			if s := env.SecretRef; s != nil {
+				secrets[s.Name] = struct{}{}
+			}
+		}
+
+		for _, env := range container.Env {
+			if cmRef := env.ValueFrom.ConfigMapKeyRef; cmRef != nil {
+				configMaps[cmRef.Name] = struct{}{}
+
+			}
+			if sRef := env.ValueFrom.SecretKeyRef; sRef != nil {
+				configMaps[sRef.Name] = struct{}{}
+
+			}
+		}
+	}
+
+	return configMaps, secrets
+}
+
+// listConfigsOwnedBy returns a list of all ConfigMaps and Secrets that are
+// owned by the StatefulSet instance
+func (r *ReconcileExtendedStatefulSet) listConfigsOwnedBy(statefulSet *v1beta1.StatefulSet) ([]essv1a1.Object, error) {
+	r.log.Debug("Getting all ConfigMaps and Secrets that are owned by '", statefulSet.Name, "'.")
+	opts := client.InNamespace(statefulSet.GetNamespace())
+
+	// List all ConfigMaps in the StatefulSet's namespace
+	configMaps := &corev1.ConfigMapList{}
+	err := r.client.List(context.TODO(), opts, configMaps)
+	if err != nil {
+		return []essv1a1.Object{}, fmt.Errorf("error listing ConfigMaps: %v", err)
+	}
+
+	// List all Secrets in the StatefulSet's namespace
+	secrets := &corev1.SecretList{}
+	err = r.client.List(context.TODO(), opts, secrets)
+	if err != nil {
+		return []essv1a1.Object{}, fmt.Errorf("error listing Secrets: %v", err)
+	}
+
+	// Iterate over the ConfigMaps/Secrets and add the ones owned by the
+	// StatefulSet to the output list configs
+	configs := []essv1a1.Object{}
+	for _, cm := range configMaps.Items {
+		if isOwnedBy(&cm, statefulSet) {
+			configs = append(configs, cm.DeepCopy())
+		}
+	}
+	for _, s := range secrets.Items {
+		if isOwnedBy(&s, statefulSet) {
+			configs = append(configs, s.DeepCopy())
+		}
+	}
+
+	return configs, nil
+}
+
+// isOwnedBy returns true if the child has an owner reference that points to
+// the owner object
+func isOwnedBy(child, owner essv1a1.Object) bool {
+	for _, ref := range child.GetOwnerReferences() {
+		if ref.UID == owner.GetUID() {
+			return true
+		}
+	}
+	return false
 }
