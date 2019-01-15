@@ -148,7 +148,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(msgs.Len()).NotTo(Equal(0))
 		})
 
-		It("should keeps two versions if all are not running", func() {
+		It("should keep two versions if all are not running", func() {
 			// Create an ExtendedStatefulSet
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, wrongExtendedStatefulSet)
 			Expect(err).NotTo(HaveOccurred())
