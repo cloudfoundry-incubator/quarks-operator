@@ -93,6 +93,18 @@ func (c *Catalog) DefaultExtendedStatefulSet(name string) essv1.ExtendedStateful
 	}
 }
 
+// WrongExtendedStatefulSet for use in tests
+func (c *Catalog) WrongExtendedStatefulSet(name string) essv1.ExtendedStatefulSet {
+	return essv1.ExtendedStatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: essv1.ExtendedStatefulSetSpec{
+			Template: c.WrongStatefulSet(name),
+		},
+	}
+}
+
 // DefaultStatefulSet for use in tests
 func (c *Catalog) DefaultStatefulSet(name string) v1beta1.StatefulSet {
 	replicaCount := int32(1)
@@ -104,6 +116,21 @@ func (c *Catalog) DefaultStatefulSet(name string) v1beta1.StatefulSet {
 			Replicas:    &replicaCount,
 			ServiceName: name,
 			Template:    c.DefaultPodTemplate(name),
+		},
+	}
+}
+
+// WrongStatefulSet for use in tests
+func (c *Catalog) WrongStatefulSet(name string) v1beta1.StatefulSet {
+	replicaCount := int32(1)
+	return v1beta1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1beta1.StatefulSetSpec{
+			Replicas:    &replicaCount,
+			ServiceName: name,
+			Template:    c.WrongPodTemplate(name),
 		},
 	}
 }
@@ -125,6 +152,28 @@ func (c *Catalog) DefaultPodTemplate(name string) corev1.PodTemplateSpec {
 					Name:    "busybox",
 					Image:   "busybox",
 					Command: []string{"sleep", "3600"},
+				},
+			},
+		},
+	}
+}
+
+// WrongPodTemplate defines a pod template with a simple web server useful for testing
+func (c *Catalog) WrongPodTemplate(name string) corev1.PodTemplateSpec {
+	one := int64(1)
+	return corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				"wrongpod": "yes",
+			},
+		},
+		Spec: corev1.PodSpec{
+			TerminationGracePeriodSeconds: &one,
+			Containers: []corev1.Container{
+				{
+					Name:    "wrong-container",
+					Image:   "wrong-image",
 				},
 			},
 		},

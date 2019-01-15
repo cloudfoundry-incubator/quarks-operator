@@ -3,22 +3,26 @@ package integration_test
 import (
 	"fmt"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("ExtendedStatefulSet", func() {
 	var (
-		extendedStatefulSet essv1.ExtendedStatefulSet
+		extendedStatefulSet      essv1.ExtendedStatefulSet
+		wrongExtendedStatefulSet essv1.ExtendedStatefulSet
 	)
 
 	Context("when correctly setup", func() {
 		BeforeEach(func() {
 			essName := fmt.Sprintf("testess-%s", testing.RandString(5))
 			extendedStatefulSet = env.DefaultExtendedStatefulSet(essName)
+
+			wrongEssName := fmt.Sprintf("wrong-testess-%s", testing.RandString(5))
+			wrongExtendedStatefulSet = env.WrongExtendedStatefulSet(wrongEssName)
 		})
 
 		It("should create a statefulset and eventually a pod", func() {
@@ -87,11 +91,12 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ess.Status.Versions).To(Equal(map[int]bool{
-				1: true,
 				2: true,
 			}))
 
-			// check that old statefulset is deleted
+			// check that old pods is deleted
+			pods, err := env.GetPods(env.Namespace, "testpodupdated=yes")
+			Expect(len(pods.Items)).To(Equal(1))
 		})
 
 		It("should do nothing if nothing has changed", func() {
@@ -134,6 +139,41 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			expectedMsg := fmt.Sprintf("StatefulSet '%s-v1' for ExtendedStatefulSet '%s/%s' has not changed, checking if any other changes are necessary.", extendedStatefulSet.Name, env.Namespace, extendedStatefulSet.Name)
 			msgs := env.ObservedLogs.FilterMessage(expectedMsg)
 			Expect(msgs.Len()).NotTo(Equal(0))
+		})
+
+		It("should keeps two versions if all are not running", func() {
+			// Create an ExtendedStatefulSet
+			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, wrongExtendedStatefulSet)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+			defer tearDown()
+
+			// check for pod
+			err = env.WaitForPods(env.Namespace, "wrongpod=yes")
+			Expect(err).To(HaveOccurred())
+
+			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+
+			// Update the ExtendedStatefulSet
+			ess.Spec.Template.Spec.Template.ObjectMeta.Labels["testpodupdated"] = "yes"
+			essUpdated, tearDown, err := env.UpdateExtendedStatefulSet(env.Namespace, *ess)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+			defer tearDown()
+
+			// check for pod
+			err = env.WaitForPods(env.Namespace, "wrongpod=yes")
+			Expect(err).To(HaveOccurred())
+
+			// check that old statefulset is deleted
+			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess.Status.Versions).To(Equal(map[int]bool{
+				1: false,
+				2: false,
+			}))
 		})
 	})
 })

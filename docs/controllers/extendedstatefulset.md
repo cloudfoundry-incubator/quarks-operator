@@ -56,6 +56,16 @@ status:
 
 One version is running is mean that at least one pod that belongs to this StatefulSet is running.
 
+When latest version is running, any version smaller than the greatest version running is deleted.
+```yaml
+status:
+  versions:
+    # version 1 was cleaned up
+    "2": true 
+
+```
+
+Controller will continue to reconcile until there's only one version.
 
 ## Example Resource
 

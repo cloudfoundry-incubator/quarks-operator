@@ -104,3 +104,15 @@ func (e *ExtendedStatefulSet) CalculateStatefulSetSHA1() (string, error) {
 
 	return fmt.Sprintf("%x", sha1.Sum(data)), nil
 }
+
+// GetMaxAvailableVersion gets the greatest available version owned by the ExtendedStatefulSet
+func (e *ExtendedStatefulSet) GetMaxAvailableVersion(versions map[int]bool) int {
+	maxAvailableVersion := 0
+
+	for version, available := range versions {
+		if available && version > maxAvailableVersion {
+			maxAvailableVersion = version
+		}
+	}
+	return maxAvailableVersion
+}
