@@ -6,6 +6,7 @@ import (
 	"time"
 
 	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"github.com/pkg/errors"
@@ -344,4 +345,13 @@ func (m *Machine) HasBOSHDeploymentEvent(namespace string, fieldSelector string)
 		return false, nil
 	}
 	return true, nil
+}
+
+// CreateExtendedJob creates an ExtendedJob
+func (m *Machine) CreateExtendedJob(namespace string, job ejv1.ExtendedJob) (*ejv1.ExtendedJob, TearDownFunc, error) {
+	client := m.VersionedClientset.Extendedjob().ExtendedJobs(namespace)
+	d, err := client.Create(&job)
+	return d, func() {
+		client.Delete(job.GetName(), &metav1.DeleteOptions{})
+	}, err
 }
