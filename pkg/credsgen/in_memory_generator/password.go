@@ -7,7 +7,7 @@ import (
 
 // GeneratePassword generates a random password
 func (g InMemoryGenerator) GeneratePassword(name string, request credsgen.PasswordGenerationRequest) string {
-	g.log.Infof("Generating password ", name)
+	g.log.Debugf("Generating password %s", name)
 
 	length := request.Length
 	if length == 0 {

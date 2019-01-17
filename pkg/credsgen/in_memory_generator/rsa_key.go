@@ -12,7 +12,7 @@ import (
 
 // GenerateRSAKey generates an RSA key using go's standard crypto library
 func (g InMemoryGenerator) GenerateRSAKey(name string) (credsgen.RSAKey, error) {
-	g.log.Debugf("Generating RSA key ", name)
+	g.log.Debugf("Generating RSA key %s", name)
 
 	// generate private key
 	private, err := rsa.GenerateKey(rand.Reader, g.Bits)

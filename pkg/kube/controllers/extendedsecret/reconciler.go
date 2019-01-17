@@ -83,28 +83,28 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 	// Create secret
 	switch instance.Spec.Type {
 	case esapi.Password:
-		r.log.Debug("Generating password")
+		r.log.Info("Generating password")
 		err = r.createPasswordSecret(context.TODO(), instance)
 		if err != nil {
 			r.log.Info("Error generating password secret: " + err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "Generating password secret")
 		}
 	case esapi.RSAKey:
-		r.log.Debug("Generating RSA Key")
+		r.log.Info("Generating RSA Key")
 		err = r.createRSASecret(context.TODO(), instance)
 		if err != nil {
 			r.log.Info("Error generating RSA key secret: " + err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "Generating RSA key secret")
 		}
 	case esapi.SSHKey:
-		r.log.Debug("Generating SSH Key")
+		r.log.Info("Generating SSH Key")
 		err = r.createSSHSecret(context.TODO(), instance)
 		if err != nil {
 			r.log.Info("Error generating SSH key secret: " + err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "Generating SSH key secret")
 		}
 	case esapi.Certificate:
-		r.log.Debug("Generating certificate")
+		r.log.Info("Generating certificate")
 		err = r.createCertificateSecret(context.TODO(), instance)
 		if err != nil {
 			r.log.Info("Error generating certificate secret: " + err.Error())

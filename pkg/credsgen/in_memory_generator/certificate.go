@@ -17,6 +17,8 @@ import (
 
 // GenerateCertificate generates a certificate using Cloudflare's TLS toolkit
 func (g InMemoryGenerator) GenerateCertificate(name string, request credsgen.CertificateGenerationRequest) (credsgen.Certificate, error) {
+	g.log.Debugf("Generating certificate %s", name)
+
 	var certificate credsgen.Certificate
 	var err error
 
