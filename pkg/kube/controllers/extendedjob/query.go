@@ -28,7 +28,6 @@ type PodEvent struct {
 type Query interface {
 	RecentPodEvents() ([]corev1.Event, error)
 	FetchPods([]corev1.Event) ([]PodEvent, error)
-	// will need to check both, job timestamp and selector
 	Match(v1alpha1.ExtendedJob, []PodEvent) []PodEvent
 }
 
@@ -63,6 +62,7 @@ func (q *QueryImpl) RecentPodEvents() ([]corev1.Event, error) {
 }
 
 // FetchPods returns all events with their corresponding pod
+// It's ok if pods from events no longer exist, since events might be very old.
 func (q *QueryImpl) FetchPods(events []corev1.Event) ([]PodEvent, error) {
 	podEvents := []PodEvent{}
 	for _, ev := range events {

@@ -9,6 +9,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -26,7 +27,7 @@ type waitFunc func(func(), time.Duration, <-chan struct{})
 // Add creates a new ExtendedJob controller and adds it to the Manager
 func Add(log *zap.SugaredLogger, mgr manager.Manager) error {
 	query := NewQuery(mgr.GetClient())
-	runner := NewRunner(log, mgr, query)
+	runner := NewRunner(log, mgr, query, controllerutil.SetControllerReference)
 	c := NewExtendedJobController(log, mgr, wait.Until, runner)
 	return mgr.Add(c)
 }
