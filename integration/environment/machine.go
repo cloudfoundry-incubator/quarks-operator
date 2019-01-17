@@ -250,6 +250,14 @@ func (m *Machine) WaitForSecret(namespace string, name string) error {
 	})
 }
 
+// WaitForSecretDeletion blocks until the CR is deleted
+func (m *Machine) WaitForSecretDeletion(namespace string, name string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		found, err := m.SecretExists(namespace, name)
+		return !found, err
+	})
+}
+
 // SecretExists returns true if the pod by that name is in state running
 func (m *Machine) SecretExists(namespace string, name string) (bool, error) {
 	_, err := m.Clientset.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
@@ -294,6 +302,12 @@ func (m *Machine) CreateExtendedSecret(namespace string, es esv1.ExtendedSecret)
 	return d, func() {
 		client.Delete(es.GetName(), &metav1.DeleteOptions{})
 	}, err
+}
+
+// DeleteExtendedSecret deletes an ExtendedSecret custom resource
+func (m *Machine) DeleteExtendedSecret(namespace string, name string) error {
+	client := m.VersionedClientset.ExtendedsecretV1alpha1().ExtendedSecrets(namespace)
+	return client.Delete(name, &metav1.DeleteOptions{})
 }
 
 // CreateExtendedStatefulSet creates a ExtendedStatefulSet custom resource and returns a function to delete it

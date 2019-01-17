@@ -4,6 +4,7 @@ import (
 	"go.uber.org/zap"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -14,7 +15,7 @@ import (
 
 // Add creates a new ExtendedSecrets Controller and adds it to the Manager
 func Add(log *zap.SugaredLogger, mgr manager.Manager) error {
-	r := NewReconciler(log, mgr, credsgen.NewInMemoryGenerator(log))
+	r := NewReconciler(log, mgr, credsgen.NewInMemoryGenerator(log), controllerutil.SetControllerReference)
 
 	// Create a new controller
 	c, err := controller.New("extendedsecret-controller", mgr, controller.Options{Reconciler: r})

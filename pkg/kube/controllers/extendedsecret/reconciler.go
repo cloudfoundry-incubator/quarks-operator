@@ -19,22 +19,26 @@ import (
 	esapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 )
 
+type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
+
 // NewReconciler returns a new Reconciler
-func NewReconciler(log *zap.SugaredLogger, mgr manager.Manager, generator credsgen.Generator) reconcile.Reconciler {
+func NewReconciler(log *zap.SugaredLogger, mgr manager.Manager, generator credsgen.Generator, srf setReferenceFunc) reconcile.Reconciler {
 	return &ReconcileExtendedSecret{
-		log:       log,
-		client:    mgr.GetClient(),
-		scheme:    mgr.GetScheme(),
-		generator: generator,
+		log:          log,
+		client:       mgr.GetClient(),
+		scheme:       mgr.GetScheme(),
+		generator:    generator,
+		setReference: srf,
 	}
 }
 
 // ReconcileExtendedSecret reconciles an ExtendedSecret object
 type ReconcileExtendedSecret struct {
-	client    client.Client
-	generator credsgen.Generator
-	scheme    *runtime.Scheme
-	log       *zap.SugaredLogger
+	client       client.Client
+	generator    credsgen.Generator
+	scheme       *runtime.Scheme
+	setReference setReferenceFunc
+	log          *zap.SugaredLogger
 }
 
 // Reconcile reads that state of the cluster for a ExtendedSecret object and makes changes based on the state read
@@ -132,6 +136,10 @@ func (r *ReconcileExtendedSecret) createPasswordSecret(ctx context.Context, inst
 		},
 	}
 
+	if err := r.setReference(instance, secret, r.scheme); err != nil {
+		return errors.Wrapf(err, "Error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.Name, instance.Name, instance.Namespace)
+	}
+
 	return r.client.Create(ctx, secret)
 }
 
@@ -152,6 +160,10 @@ func (r *ReconcileExtendedSecret) createRSASecret(ctx context.Context, instance 
 		},
 	}
 
+	if err := r.setReference(instance, secret, r.scheme); err != nil {
+		return errors.Wrapf(err, "Error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.Name, instance.Name, instance.Namespace)
+	}
+
 	return r.client.Create(ctx, secret)
 }
 
@@ -170,6 +182,10 @@ func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance 
 			"SSHPublicKey":   key.PublicKey,
 			"SSHFingerprint": []byte(key.Fingerprint),
 		},
+	}
+
+	if err := r.setReference(instance, secret, r.scheme); err != nil {
+		return errors.Wrapf(err, "Error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.Name, instance.Name, instance.Namespace)
 	}
 
 	return r.client.Create(ctx, secret)
@@ -229,6 +245,10 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 			"private_key": cert.PrivateKey,
 			"is_ca":       []byte("false"),
 		},
+	}
+
+	if err := r.setReference(instance, secret, r.scheme); err != nil {
+		return errors.Wrapf(err, "Error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.Name, instance.Name, instance.Namespace)
 	}
 
 	return r.client.Create(ctx, secret)

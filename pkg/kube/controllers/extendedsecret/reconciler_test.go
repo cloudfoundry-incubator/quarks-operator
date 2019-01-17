@@ -29,13 +29,14 @@ import (
 
 var _ = Describe("ReconcileExtendedSecret", func() {
 	var (
-		manager    *cfakes.FakeManager
-		reconciler reconcile.Reconciler
-		request    reconcile.Request
-		log        *zap.SugaredLogger
-		client     *cfakes.FakeClient
-		generator  *generatorfakes.FakeGenerator
-		es         *esapi.ExtendedSecret
+		manager          *cfakes.FakeManager
+		reconciler       reconcile.Reconciler
+		request          reconcile.Request
+		log              *zap.SugaredLogger
+		client           *cfakes.FakeClient
+		generator        *generatorfakes.FakeGenerator
+		es               *esapi.ExtendedSecret
+		setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error = func(owner, object metav1.Object, scheme *runtime.Scheme) error { return nil }
 	)
 
 	BeforeEach(func() {
@@ -69,7 +70,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 	})
 
 	JustBeforeEach(func() {
-		reconciler = escontroller.NewReconciler(log, manager, generator)
+		reconciler = escontroller.NewReconciler(log, manager, generator, setReferenceFunc)
 	})
 
 	Context("if the resource can not be resolved", func() {

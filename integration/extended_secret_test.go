@@ -26,7 +26,7 @@ var _ = Describe("ExtendedSecret", func() {
 			extendedSecret = env.DefaultExtendedSecret(esName)
 		})
 
-		It("generates a secret with a password", func() {
+		It("generates a secret with a password and deletes it when being deleted", func() {
 			// Create an ExtendedSecret
 			var es *es.ExtendedSecret
 			extendedSecret.Spec.SecretName = "generated-password-secret"
@@ -39,9 +39,15 @@ var _ = Describe("ExtendedSecret", func() {
 			secret, err := env.GetSecret(env.Namespace, "generated-password-secret")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(secret.Data["password"]).To(MatchRegexp("^\\w{64}$"))
+
+			// delete ExtendedSecret
+			err = env.DeleteExtendedSecret(env.Namespace, extendedSecret.Name)
+			Expect(err).NotTo(HaveOccurred())
+			err = env.WaitForSecretDeletion(env.Namespace, "generated-password-secret")
+			Expect(err).NotTo(HaveOccurred(), "dependent secret not deleted")
 		})
 
-		It("generates a secret with an rsa key", func() {
+		It("generates a secret with an rsa key and deletes it when being deleted", func() {
 			// Create an ExtendedSecret
 			var es *es.ExtendedSecret
 			extendedSecret.Spec.Type = "rsa"
@@ -56,9 +62,15 @@ var _ = Describe("ExtendedSecret", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(secret.Data["RSAPrivateKey"]).To(ContainSubstring("RSA PRIVATE KEY"))
 			Expect(secret.Data["RSAPublicKey"]).To(ContainSubstring("PUBLIC KEY"))
+
+			// delete ExtendedSecret
+			err = env.DeleteExtendedSecret(env.Namespace, extendedSecret.Name)
+			Expect(err).NotTo(HaveOccurred())
+			err = env.WaitForSecretDeletion(env.Namespace, "generated-rsa-secret")
+			Expect(err).NotTo(HaveOccurred(), "dependent secret not deleted")
 		})
 
-		It("generates a secret with an ssh key", func() {
+		It("generates a secret with an ssh key and deletes it when being deleted", func() {
 			// Create an ExtendedSecret
 			var es *es.ExtendedSecret
 			extendedSecret.Spec.Type = "ssh"
@@ -74,9 +86,15 @@ var _ = Describe("ExtendedSecret", func() {
 			Expect(secret.Data["SSHPrivateKey"]).To(ContainSubstring("RSA PRIVATE KEY"))
 			Expect(secret.Data["SSHPublicKey"]).To(ContainSubstring("ssh-rsa "))
 			Expect(secret.Data["SSHFingerprint"]).To(MatchRegexp("([0-9a-f]{2}:){15}[0-9a-f]{2}"))
+
+			// delete ExtendedSecret
+			err = env.DeleteExtendedSecret(env.Namespace, extendedSecret.Name)
+			Expect(err).NotTo(HaveOccurred())
+			err = env.WaitForSecretDeletion(env.Namespace, "generated-ssh-secret")
+			Expect(err).NotTo(HaveOccurred(), "dependent secret not deleted")
 		})
 
-		It("generates a secret with a certificate key", func() {
+		It("generates a secret with a certificate key and deletes it when being deleted", func() {
 			generator := inmemorygenerator.NewInMemoryGenerator(env.Log)
 			ca, err := generator.GenerateCertificate("default-ca", credsgen.CertificateGenerationRequest{
 				IsCA: true,
@@ -114,9 +132,14 @@ var _ = Describe("ExtendedSecret", func() {
 			// check for generated secret
 			secret, err := env.GetSecret(env.Namespace, "generated-cert-secret")
 			Expect(err).NotTo(HaveOccurred())
-			fmt.Println(secret.StringData)
 			Expect(secret.Data["certificate"]).To(ContainSubstring("BEGIN CERTIFICATE"))
 			Expect(secret.Data["private_key"]).To(ContainSubstring("RSA PRIVATE KEY"))
+
+			// delete ExtendedSecret
+			err = env.DeleteExtendedSecret(env.Namespace, extendedSecret.Name)
+			Expect(err).NotTo(HaveOccurred())
+			err = env.WaitForSecretDeletion(env.Namespace, "generated-cert-secret")
+			Expect(err).NotTo(HaveOccurred(), "dependent secret not deleted")
 		})
 	})
 })
