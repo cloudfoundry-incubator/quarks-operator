@@ -34,8 +34,8 @@ type Machine struct {
 // TearDownFunc tears down the resource
 type TearDownFunc func()
 
-// CreateDefaultPod creates a default pod and returns a function to delete it
-func (m *Machine) CreateDefaultPod(namespace string, pod corev1.Pod) (TearDownFunc, error) {
+// CreatePod creates a default pod and returns a function to delete it
+func (m *Machine) CreatePod(namespace string, pod corev1.Pod) (TearDownFunc, error) {
 	client := m.Clientset.CoreV1().Pods(namespace)
 	_, err := client.Create(&pod)
 	return func() {
@@ -376,6 +376,26 @@ func (m *Machine) PodLabeled(namespace string, name string, desiredLabel, desire
 		return true, nil
 	}
 	return false, fmt.Errorf("Cannot match the desired label with %s", desiredValue)
+}
+
+// WaitForJob blocks until the job is running. It fails after the timeout.
+func (m *Machine) WaitForJob(namespace string, name string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.JobExists(namespace, name)
+	})
+}
+
+// JobExists returns true if job with that name exists
+func (m *Machine) JobExists(namespace string, name string) (bool, error) {
+	_, err := m.Clientset.BatchV1().Jobs(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "failed to query for job by name: %s", name)
+	}
+
+	return true, nil
 }
 
 // ContainExpectedEvent return true if events contain target resource event

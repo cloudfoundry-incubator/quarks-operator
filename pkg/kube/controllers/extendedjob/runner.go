@@ -19,6 +19,8 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 )
 
+var _ Runner = &RunnerImpl{}
+
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // Runner starts jobs for extended job definitions
@@ -174,6 +176,7 @@ func jobSpec() batchv1.JobSpec {
 	return batchv1.JobSpec{
 		Template: corev1.PodTemplateSpec{
 			Spec: corev1.PodSpec{
+				RestartPolicy:                 corev1.RestartPolicyNever,
 				TerminationGracePeriodSeconds: &one,
 				Containers: []corev1.Container{
 					{

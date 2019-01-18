@@ -15,6 +15,8 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 )
 
+var _ Query = &QueryImpl{}
+
 // Backlog defines the maximal minutes passed for pod events we take into consideration
 const Backlog = -30 * time.Minute
 
