@@ -392,9 +392,20 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 			return errors.Wrapf(err, "Could not list ConfigMaps and Secrets from '%s' spec", statefulSet.Name)
 		}
 
+		// Need to get existing configRef
+		existingConfigRef, err := r.listConfigsOwnedBy(&statefulSet)
+		if err != nil {
+			return err
+		}
+
 		currentsha, err := calculateConfigHash(currentConfigRef)
 		if err != nil {
 			return err
+		}
+
+		err = r.updateOwnerReferences(&statefulSet, existingConfigRef, currentConfigRef)
+		if err != nil {
+			return fmt.Errorf("error updating OwnerReferences: %v", err)
 		}
 
 		oldsha, _ := statefulSet.Annotations[essv1a1.AnnotationConfigSHA1]
@@ -596,4 +607,112 @@ func setConfigSHA1(actualStatefulSet *v1beta1.StatefulSet, hash string) {
 	// Update the annotations
 	annotations[essv1a1.AnnotationConfigSHA1] = hash
 	actualStatefulSet.SetAnnotations(annotations)
+}
+
+// updateOwnerReferences determines which children need to have their
+// OwnerReferences added/updated and which need to have their OwnerReferences
+// removed and then performs all updates
+func (r *ReconcileExtendedStatefulSet) updateOwnerReferences(owner *v1beta1.StatefulSet, existing, current []essv1a1.Object) error {
+	r.log.Debug("Updating ownerReferences for StatefulSet '", owner.Name, "' in namespace '", owner.Namespace, "'.")
+
+	// Add an owner reference to each child object
+	for _, obj := range current {
+		err := r.updateOwnerReference(owner, obj)
+		if err != nil {
+			return fmt.Errorf("error updating children: %v", err)
+		}
+	}
+
+	// Get the orphaned children and remove their OwnerReferences
+	orphans := getOrphans(existing, current)
+	err := r.removeOwnerReferences(owner, orphans)
+	if err != nil {
+		return fmt.Errorf("error removing Owner References: %v", err)
+	}
+
+	return nil
+}
+
+// removeOwnerReferences iterates over a list of children and removes the owner
+// reference from the child before updating it
+func (r *ReconcileExtendedStatefulSet) removeOwnerReferences(obj *v1beta1.StatefulSet, children []essv1a1.Object) error {
+	for _, child := range children {
+		// Filter the existing ownerReferences
+		ownerRefs := []metav1.OwnerReference{}
+		for _, ref := range child.GetOwnerReferences() {
+			if ref.UID != obj.UID {
+				ownerRefs = append(ownerRefs, ref)
+			}
+		}
+
+		// Compare the ownerRefs and update if they have changed
+		if !reflect.DeepEqual(ownerRefs, child.GetOwnerReferences()) {
+			child.SetOwnerReferences(ownerRefs)
+			r.log.Debug("Removing child '", child.GetObjectKind(), "/", child.GetName(), "' for StatefulSet '", obj.Name, "' in namespace '", obj.Namespace, "'.")
+			err := r.client.Update(context.TODO(), child)
+			if err != nil {
+				return fmt.Errorf("error updating child %s/%s: %v", child.GetNamespace(), child.GetName(), err)
+			}
+		}
+	}
+	return nil
+}
+
+// getOrphans creates a slice of orphaned child objects that need their
+// OwnerReferences removing
+func getOrphans(existing, current []essv1a1.Object) []essv1a1.Object {
+	orphans := []essv1a1.Object{}
+	for _, child := range existing {
+		if !isIn(current, child) {
+			orphans = append(orphans, child)
+		}
+	}
+	return orphans
+}
+
+// updateOwnerReference ensures that the child object has an OwnerReference
+// pointing to the owner
+func (r *ReconcileExtendedStatefulSet) updateOwnerReference(owner *v1beta1.StatefulSet, child essv1a1.Object) error {
+	ownerRef := getOwnerReference(owner)
+	for _, ref := range child.GetOwnerReferences() {
+		// Owner Reference already exists, do nothing
+		if reflect.DeepEqual(ref, ownerRef) {
+			return nil
+		}
+	}
+
+	// Append the new OwnerReference and update the child
+	ownerRefs := append(child.GetOwnerReferences(), ownerRef)
+	child.SetOwnerReferences(ownerRefs)
+
+	r.log.Debug("Updating child '", child.GetObjectKind().GroupVersionKind().Kind, "/", child.GetName(), "' for StatefulSet '", owner.Name, "' in namespace '", owner.Namespace, "'.")
+	err := r.client.Update(context.TODO(), child)
+	if err != nil {
+		return fmt.Errorf("error updating child: %v", err)
+	}
+	return nil
+}
+
+// getOwnerReference constructs an OwnerReference pointing to the object given
+func getOwnerReference(obj *v1beta1.StatefulSet) metav1.OwnerReference {
+	t := true
+	f := false
+	return metav1.OwnerReference{
+		APIVersion:         "apps/v1",
+		Kind:               "Deployment",
+		Name:               obj.GetName(),
+		UID:                obj.GetUID(),
+		BlockOwnerDeletion: &t,
+		Controller:         &f,
+	}
+}
+
+// isIn checks whether a child object exists within a slice of objects
+func isIn(list []essv1a1.Object, child essv1a1.Object) bool {
+	for _, obj := range list {
+		if obj.GetUID() == child.GetUID() {
+			return true
+		}
+	}
+	return false
 }

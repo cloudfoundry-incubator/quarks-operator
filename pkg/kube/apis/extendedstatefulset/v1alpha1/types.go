@@ -21,7 +21,7 @@ import (
 var (
 	// AnnotationStatefulSetSHA1 is the annotation key for the StatefulSet SHA1
 	AnnotationStatefulSetSHA1 = fmt.Sprintf("%s/statefulsetsha1", apis.GroupName)
-	// AnnotationConfigHash is the annotation key for the StatefulSet Config(ConfigMap/Secret) SHA1
+	// AnnotationConfigSHA1 is the annotation key for the StatefulSet Config(ConfigMap/Secret) SHA1
 	AnnotationConfigSHA1 = fmt.Sprintf("%s/configsha1", apis.GroupName)
 	// AnnotationVersion is the annotation key for the StatefulSet version
 	AnnotationVersion = fmt.Sprintf("%s/version", apis.GroupName)
