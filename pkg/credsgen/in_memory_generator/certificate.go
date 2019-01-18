@@ -10,6 +10,7 @@ import (
 	"github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/initca"
+	cfssllog "github.com/cloudflare/cfssl/log"
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/local"
 	"github.com/pkg/errors"
@@ -17,6 +18,9 @@ import (
 
 // GenerateCertificate generates a certificate using Cloudflare's TLS toolkit
 func (g InMemoryGenerator) GenerateCertificate(name string, request credsgen.CertificateGenerationRequest) (credsgen.Certificate, error) {
+	g.log.Debugf("Generating certificate %s", name)
+	cfssllog.Level = cfssllog.LevelWarning
+
 	var certificate credsgen.Certificate
 	var err error
 

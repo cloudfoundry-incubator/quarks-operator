@@ -7,6 +7,7 @@ import (
 
 	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"github.com/pkg/errors"
@@ -227,6 +228,49 @@ func (m *Machine) CreateSecret(namespace string, secret corev1.Secret) (TearDown
 	}, err
 }
 
+// GetSecret fetches the specified secret
+func (m *Machine) GetSecret(namespace string, name string) (*corev1.Secret, error) {
+	err := m.WaitForSecret(namespace, name)
+	if err != nil {
+		return nil, errors.Wrap(err, "Waiting for secret "+name)
+	}
+
+	secret, err := m.Clientset.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return nil, errors.Wrap(err, "Waiting for secret "+name)
+	}
+
+	return secret, nil
+}
+
+// WaitForSecret blocks until the secret is available. It fails after the timeout.
+func (m *Machine) WaitForSecret(namespace string, name string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.SecretExists(namespace, name)
+	})
+}
+
+// WaitForSecretDeletion blocks until the CR is deleted
+func (m *Machine) WaitForSecretDeletion(namespace string, name string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		found, err := m.SecretExists(namespace, name)
+		return !found, err
+	})
+}
+
+// SecretExists returns true if the pod by that name is in state running
+func (m *Machine) SecretExists(namespace string, name string) (bool, error) {
+	_, err := m.Clientset.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "failed to query for secret by name: %s", name)
+	}
+
+	return true, nil
+}
+
 // CreateBOSHDeployment creates a BOSHDeployment custom resource and returns a function to delete it
 func (m *Machine) CreateBOSHDeployment(namespace string, deployment bdcv1.BOSHDeployment) (*bdcv1.BOSHDeployment, TearDownFunc, error) {
 	client := m.VersionedClientset.Boshdeployment().BOSHDeployments(namespace)
@@ -248,6 +292,21 @@ func (m *Machine) UpdateBOSHDeployment(namespace string, deployment bdcv1.BOSHDe
 // DeleteBOSHDeployment deletes a BOSHDeployment custom resource
 func (m *Machine) DeleteBOSHDeployment(namespace string, name string) error {
 	client := m.VersionedClientset.BoshdeploymentV1alpha1().BOSHDeployments(namespace)
+	return client.Delete(name, &metav1.DeleteOptions{})
+}
+
+// CreateExtendedSecret creates a ExtendedSecret custom resource and returns a function to delete it
+func (m *Machine) CreateExtendedSecret(namespace string, es esv1.ExtendedSecret) (*esv1.ExtendedSecret, TearDownFunc, error) {
+	client := m.VersionedClientset.ExtendedsecretV1alpha1().ExtendedSecrets(namespace)
+	d, err := client.Create(&es)
+	return d, func() {
+		client.Delete(es.GetName(), &metav1.DeleteOptions{})
+	}, err
+}
+
+// DeleteExtendedSecret deletes an ExtendedSecret custom resource
+func (m *Machine) DeleteExtendedSecret(namespace string, name string) error {
+	client := m.VersionedClientset.ExtendedsecretV1alpha1().ExtendedSecrets(namespace)
 	return client.Delete(name, &metav1.DeleteOptions{})
 }
 

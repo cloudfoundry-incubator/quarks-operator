@@ -13,6 +13,8 @@ import (
 	fakeboshdeploymentv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1/fake"
 	extendedjobv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedjob/v1alpha1"
 	fakeextendedjobv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedjob/v1alpha1/fake"
+	extendedsecretv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedsecret/v1alpha1"
+	fakeextendedsecretv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedsecret/v1alpha1/fake"
 	extendedstatefulsetv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedstatefulset/v1alpha1"
 	fakeextendedstatefulsetv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedstatefulset/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -82,6 +84,16 @@ func (c *Clientset) ExtendedjobV1alpha1() extendedjobv1alpha1.ExtendedjobV1alpha
 // Extendedjob retrieves the ExtendedjobV1alpha1Client
 func (c *Clientset) Extendedjob() extendedjobv1alpha1.ExtendedjobV1alpha1Interface {
 	return &fakeextendedjobv1alpha1.FakeExtendedjobV1alpha1{Fake: &c.Fake}
+}
+
+// ExtendedsecretV1alpha1 retrieves the ExtendedsecretV1alpha1Client
+func (c *Clientset) ExtendedsecretV1alpha1() extendedsecretv1alpha1.ExtendedsecretV1alpha1Interface {
+	return &fakeextendedsecretv1alpha1.FakeExtendedsecretV1alpha1{Fake: &c.Fake}
+}
+
+// Extendedsecret retrieves the ExtendedsecretV1alpha1Client
+func (c *Clientset) Extendedsecret() extendedsecretv1alpha1.ExtendedsecretV1alpha1Interface {
+	return &fakeextendedsecretv1alpha1.FakeExtendedsecretV1alpha1{Fake: &c.Fake}
 }
 
 // ExtendedstatefulsetV1alpha1 retrieves the ExtendedstatefulsetV1alpha1Client

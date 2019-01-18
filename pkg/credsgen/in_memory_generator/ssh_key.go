@@ -12,7 +12,7 @@ import (
 
 // GenerateSSHKey generates an SSH key using go's standard crypto library
 func (g InMemoryGenerator) GenerateSSHKey(name string) (credsgen.SSHKey, error) {
-	g.log.Info("Generating SSH key %s")
+	g.log.Debugf("Generating SSH key %s", name)
 
 	// generate private key
 	private, err := rsa.GenerateKey(rand.Reader, g.Bits)

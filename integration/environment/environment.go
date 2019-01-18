@@ -30,9 +30,9 @@ type Environment struct {
 	testing.Catalog
 	mgr        manager.Manager
 	kubeConfig *rest.Config
-	log        *zap.SugaredLogger
 	stop       chan struct{}
 
+	Log          *zap.SugaredLogger
 	ObservedLogs *observer.ObservedLogs
 	Namespace    string
 }
@@ -70,7 +70,7 @@ func (e *Environment) Setup() (StopFunc, error) {
 
 // FlushLog flushes the zap log
 func (e *Environment) FlushLog() error {
-	return e.log.Sync()
+	return e.Log.Sync()
 }
 
 // AllLogMessages returns only the message part of existing logs to aid in debugging
@@ -89,14 +89,14 @@ func (e *Environment) setupCFOperator() (err error) {
 	}
 	e.Namespace = ns
 
-	e.ObservedLogs, e.log = testing.NewTestLogger()
+	e.ObservedLogs, e.Log = testing.NewTestLogger()
 
 	err = e.setupKube()
 	if err != nil {
 		return
 	}
 
-	e.mgr, err = operator.NewManager(e.log, e.kubeConfig, manager.Options{Namespace: e.Namespace})
+	e.mgr, err = operator.NewManager(e.Log, e.kubeConfig, manager.Options{Namespace: e.Namespace})
 	return
 }
 

@@ -18,6 +18,7 @@ var _ = Describe("Controllers", func() {
 				kinds = append(kinds, k.Kind)
 			}
 			Expect(kinds).To(ContainElement("BOSHDeployment"))
+			Expect(kinds).To(ContainElement("ExtendedSecret"))
 			Expect(kinds).To(ContainElement("ExtendedStatefulSet"))
 		})
 	})

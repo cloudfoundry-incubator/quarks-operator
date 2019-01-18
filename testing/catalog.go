@@ -7,8 +7,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 )
 
@@ -80,6 +82,30 @@ func (c *Catalog) InterpolateOpsIncorrectSecret(name string) corev1.Secret {
 			"ops": `- type: remove
   path: /instance-groups/name=api
 `,
+		},
+	}
+}
+
+// DefaultExtendedSecret for use in tests
+func (c *Catalog) DefaultExtendedSecret(name string) esv1.ExtendedSecret {
+	return esv1.ExtendedSecret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: esv1.ExtendedSecretSpec{
+			Type:       "password",
+			SecretName: "generated-secret",
+		},
+	}
+}
+
+// DefaultCA for use in tests
+func (c *Catalog) DefaultCA(name string, ca credsgen.Certificate) corev1.Secret {
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Data: map[string][]byte{
+			"ca":     ca.Certificate,
+			"ca_key": ca.PrivateKey,
 		},
 	}
 }
@@ -165,8 +191,8 @@ func (c *Catalog) WrongPodTemplate(name string) corev1.PodTemplateSpec {
 			TerminationGracePeriodSeconds: &one,
 			Containers: []corev1.Container{
 				{
-					Name:    "wrong-container",
-					Image:   "wrong-image",
+					Name:  "wrong-container",
+					Image: "wrong-image",
 				},
 			},
 		},
