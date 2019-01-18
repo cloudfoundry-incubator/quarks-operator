@@ -143,22 +143,16 @@ var _ = Describe("DecorateManifest", func() {
 		})
 
 		It("should decorate the lastest version with the provided key and value", func() {
-			secret, err := persister.RetrieveLatestVersion()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(secret.Name).To(BeIdenticalTo(fmt.Sprintf("deployment-%s-%d", deploymentName, 2)))
-			Expect(secret.GetLabels()).To(BeEquivalentTo(map[string]string{
-				"deployment-name":    deploymentName,
-				"version":            "2",
-				"source-description": exampleSourceDescription,
-			}))
-
 			updatedSecret, err := persister.DecorateManifest("foo", "bar")
 			Expect(err).ToNot(HaveOccurred())
+
 			Expect(updatedSecret.GetLabels()).To(BeEquivalentTo(map[string]string{
-				"deployment-name":    deploymentName,
-				"version":            "2",
+				"deployment-name": deploymentName,
+				"version":         "2",
+				"foo":             "bar",
+			}))
+			Expect(updatedSecret.GetAnnotations()).To(BeEquivalentTo(map[string]string{
 				"source-description": exampleSourceDescription,
-				"foo":                "bar",
 			}))
 		})
 	})

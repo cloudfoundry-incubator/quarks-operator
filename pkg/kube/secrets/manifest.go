@@ -48,7 +48,7 @@ type ManifestPersister interface {
 
 // ManifestPersisterImpl contains the required fields to persist a manifest
 type ManifestPersisterImpl struct {
-	client         client.Client
+	kubeClient     client.Client
 	namespace      string
 	deploymentName string
 }
@@ -91,7 +91,9 @@ func (p ManifestPersisterImpl) PersistManifest(manifest manifest.Manifest, sourc
 			Labels: map[string]string{
 				deploymentKeyName: p.deploymentName,
 				versionKeyName:    strconv.Itoa(version),
-				sourceKeyName:     sourceDescription,
+			},
+			Annotations: map[string]string{
+				sourceKeyName: sourceDescription,
 			},
 		},
 		Data: map[string][]byte{
@@ -99,27 +101,18 @@ func (p ManifestPersisterImpl) PersistManifest(manifest manifest.Manifest, sourc
 		},
 	}
 
-	return secret, p.client.Create(context.TODO(), secret)
+	return secret, p.kubeClient.Create(context.TODO(), secret)
 }
 
 // RetrieveVersion returns a specific version of the manifest
 func (p ManifestPersisterImpl) RetrieveVersion(version int) (*corev1.Secret, error) {
-	list, err := p.ListAllVersions()
+	name, err := secretName(p, version)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, secret := range list {
-		ver, err := getVersionFromSecretName(p, secret.Name)
-		if err != nil {
-			return nil, err
-		}
-
-		if ver == version {
-			return &secret, nil
-		}
-	}
-	return nil, fmt.Errorf("unable to find the requested version: %d", version)
+	secret := &corev1.Secret{}
+	return secret, p.kubeClient.Get(context.TODO(), client.ObjectKey{Namespace: p.namespace, Name: name}, secret)
 }
 
 // RetrieveLatestVersion returns the latest version of the manifest
@@ -134,7 +127,7 @@ func (p ManifestPersisterImpl) RetrieveLatestVersion() (*corev1.Secret, error) {
 // ListAllVersions returns all versions of the manifest
 func (p ManifestPersisterImpl) ListAllVersions() ([]corev1.Secret, error) {
 	secrets := &corev1.SecretList{}
-	if err := p.client.List(context.TODO(), &client.ListOptions{Namespace: p.namespace}, secrets); err != nil {
+	if err := p.kubeClient.List(context.TODO(), client.InNamespace(p.namespace), secrets); err != nil {
 		return nil, err
 	}
 
@@ -159,7 +152,7 @@ func (p ManifestPersisterImpl) DeleteManifest() error {
 	}
 
 	for _, secret := range list {
-		if err := p.client.Delete(context.TODO(), &secret); err != nil {
+		if err := p.kubeClient.Delete(context.TODO(), &secret); err != nil {
 			return err
 		}
 	}
@@ -180,7 +173,7 @@ func (p ManifestPersisterImpl) DecorateManifest(key string, value string) (*core
 	}
 
 	secret := &corev1.Secret{}
-	if err := p.client.Get(context.TODO(), client.ObjectKey{Namespace: p.namespace, Name: secretName}, secret); err != nil {
+	if err := p.kubeClient.Get(context.TODO(), client.ObjectKey{Namespace: p.namespace, Name: secretName}, secret); err != nil {
 		return nil, err
 	}
 
@@ -192,7 +185,7 @@ func (p ManifestPersisterImpl) DecorateManifest(key string, value string) (*core
 	labels[key] = value
 	secret.SetLabels(labels)
 
-	return secret, p.client.Update(context.TODO(), secret)
+	return secret, p.kubeClient.Update(context.TODO(), secret)
 }
 
 func getGreatestVersion(p ManifestPersisterImpl) (int, error) {
