@@ -526,7 +526,7 @@ func getConfigNamesFromSpec(statefulSet *v1beta1.StatefulSet) (map[string]struct
 
 			}
 			if sRef := env.ValueFrom.SecretKeyRef; sRef != nil {
-				configMaps[sRef.Name] = struct{}{}
+				secrets[sRef.Name] = struct{}{}
 
 			}
 		}

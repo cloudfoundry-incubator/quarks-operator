@@ -57,7 +57,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 			client client.Client
 		)
 
-		Context("Provides a extendedstatefulset definition", func() {
+		Context("Provides a extendedStatefulSet definition", func() {
 			var (
 				desiredExtendedStatefulSet *exss.ExtendedStatefulSet
 				v1StatefulSet              *v1beta1.StatefulSet
@@ -134,7 +134,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				manager.GetClientReturns(client)
 			})
 
-			It("creates new statefulset and continues to reconcile when new version is not available", func() {
+			It("creates new statefulSet and continues to reconcile when new version is not available", func() {
 				result, err := reconciler.Reconcile(request)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{
@@ -153,7 +153,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
 			})
 
-			It("updates existing statefulset", func() {
+			It("updates existing statefulSet", func() {
 				ess := &exss.ExtendedStatefulSet{}
 				err := client.Get(context.TODO(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
 				Expect(err).ToNot(HaveOccurred())
@@ -211,7 +211,335 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 			})
 		})
 
-		Context("doesn't provide any extendedstatefulset definition", func() {
+		FContext("Provides a extendedStatefulSet containing ConfigMaps and Secrets references", func() {
+			var (
+				desiredExtendedStatefulSet *exss.ExtendedStatefulSet
+				configMap1                 *corev1.ConfigMap
+				configMap2                 *corev1.ConfigMap
+				secret1                    *corev1.Secret
+				secret2                    *corev1.Secret
+			)
+
+			BeforeEach(func() {
+				desiredExtendedStatefulSet = &exss.ExtendedStatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "foo",
+						Namespace: "default",
+						UID:       "",
+					},
+					Spec: exss.ExtendedStatefulSetSpec{
+						Template: v1beta1.StatefulSet{
+							Spec: v1beta1.StatefulSetSpec{
+								Replicas: helper.Int32(1),
+								Template: corev1.PodTemplateSpec{
+									Spec: corev1.PodSpec{
+										Volumes: []corev1.Volume{
+											{
+												Name: "secret1",
+												VolumeSource: corev1.VolumeSource{
+													Secret: &corev1.SecretVolumeSource{
+														SecretName: "example1",
+													},
+												},
+											},
+											{
+												Name: "configmap1",
+												VolumeSource: corev1.VolumeSource{
+													ConfigMap: &corev1.ConfigMapVolumeSource{
+														LocalObjectReference: corev1.LocalObjectReference{
+															Name: "example1",
+														},
+													},
+												},
+											},
+										},
+										Containers: []corev1.Container{
+											{
+												Name:  "container1",
+												Image: "container1",
+												EnvFrom: []corev1.EnvFromSource{
+													{
+														ConfigMapRef: &corev1.ConfigMapEnvSource{
+															LocalObjectReference: corev1.LocalObjectReference{
+																Name: "example1",
+															},
+														},
+													},
+													{
+														SecretRef: &corev1.SecretEnvSource{
+															LocalObjectReference: corev1.LocalObjectReference{
+																Name: "example1",
+															},
+														},
+													},
+												},
+											},
+											{
+												Name:  "container2",
+												Image: "container2",
+												Env: []corev1.EnvVar{
+													{
+														ValueFrom: &corev1.EnvVarSource{
+															ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+																LocalObjectReference: corev1.LocalObjectReference{
+																	Name: "example2",
+																},
+															},
+														},
+													},
+													{
+														ValueFrom: &corev1.EnvVarSource{
+															SecretKeyRef: &corev1.SecretKeySelector{
+																LocalObjectReference: corev1.LocalObjectReference{
+																	Name: "example2",
+																},
+															},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				configMap1 = &corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example1",
+						Namespace: "default",
+					},
+					Data: map[string]string{
+						"key1": "example1:key1",
+					},
+				}
+				configMap2 = &corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example2",
+						Namespace: "default",
+					},
+					Data: map[string]string{
+						"key2": "example2:key2",
+					},
+				}
+				secret1 = &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example1",
+						Namespace: "default",
+					},
+					StringData: map[string]string{
+						"key3": "example1:key2",
+					},
+				}
+				secret2 = &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example2",
+						Namespace: "default",
+					},
+					StringData: map[string]string{
+						"key2": "example2:key2",
+					},
+				}
+
+				client = fake.NewFakeClient(
+					desiredExtendedStatefulSet,
+					configMap1,
+					configMap2,
+					secret1,
+					secret2,
+				)
+				manager.GetClientReturns(client)
+			})
+
+			It("creates new statefulSet and has correct resources", func() {
+				result, err := reconciler.Reconcile(request)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{
+					Requeue:      true,
+					RequeueAfter: 5 * time.Second,
+				}))
+
+				ess := &exss.ExtendedStatefulSet{}
+				err = client.Get(context.TODO(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
+				Expect(err).ToNot(HaveOccurred())
+
+				ss := &v1beta1.StatefulSet{}
+				err = client.Get(context.TODO(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
+
+				By("Adds OwnerReferences to all configurations", func() {
+					err = client.Get(context.TODO(), types.NamespacedName{Name: configMap1.Name, Namespace: "default"}, configMap1)
+					Expect(err).ToNot(HaveOccurred())
+					err = client.Get(context.TODO(), types.NamespacedName{Name: configMap2.Name, Namespace: "default"}, configMap2)
+					Expect(err).ToNot(HaveOccurred())
+					err = client.Get(context.TODO(), types.NamespacedName{Name: secret1.Name, Namespace: "default"}, secret1)
+					Expect(err).ToNot(HaveOccurred())
+					err = client.Get(context.TODO(), types.NamespacedName{Name: secret2.Name, Namespace: "default"}, secret2)
+					Expect(err).ToNot(HaveOccurred())
+
+					ownerRef := metav1.OwnerReference{
+						APIVersion:         "apps/v1",
+						Kind:               "StatefulSet",
+						Name:               ss.Name,
+						UID:                ss.UID,
+						Controller:         helper.Bool(false),
+						BlockOwnerDeletion: helper.Bool(true),
+					}
+
+					for _, obj := range []exss.Object{configMap1, configMap2, secret1, secret2} {
+						Expect(obj.GetOwnerReferences()).Should(ContainElement(ownerRef))
+					}
+				})
+
+				By("Adds a finalizer to the StatefulSet", func() {
+					Expect(ss.GetFinalizers()).Should(ContainElement(exss.FinalizerString))
+				})
+
+				By("Adds a finalizer to the ExtendedStatefulSet", func() {
+					Expect(ess.GetFinalizers()).Should(ContainElement(exss.FinalizerString))
+				})
+			})
+
+			When("A ConfigMap reference is removed", func() {
+				It("Creates new version and updates the config hash in the StatefulSet Annotations", func() {
+					result, err := reconciler.Reconcile(request)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(result).To(Equal(reconcile.Result{
+						Requeue:      true,
+						RequeueAfter: 5 * time.Second,
+					}))
+
+					ess := &exss.ExtendedStatefulSet{}
+					err = client.Get(context.TODO(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
+					Expect(err).ToNot(HaveOccurred())
+
+					ss := &v1beta1.StatefulSet{}
+					err = client.Get(context.TODO(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
+
+					originalSHA1 := ss.GetAnnotations()[exss.AnnotationConfigSHA1]
+
+					// Remove "container2" which references Secret example2 and ConfigMap
+					containers := ss.Spec.Template.Spec.Containers
+					ess.Spec.Template.Spec.Template.Spec.Containers = []corev1.Container{containers[0]}
+					err = client.Update(context.TODO(), ess)
+					Expect(err).ToNot(HaveOccurred())
+					result, err = reconciler.Reconcile(request)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(result).To(Equal(reconcile.Result{
+						Requeue:      true,
+						RequeueAfter: 5 * time.Second,
+					}))
+
+					ss = &v1beta1.StatefulSet{}
+					err = client.Get(context.TODO(), types.NamespacedName{Name: "foo-v2", Namespace: "default"}, ss)
+					Expect(err).ToNot(HaveOccurred())
+
+					currentSHA1 := ss.GetAnnotations()[exss.AnnotationConfigSHA1]
+
+					By("Removes the OwnerReference from the orphaned configurations", func() {
+						err = client.Get(context.TODO(), types.NamespacedName{Name: configMap1.Name, Namespace: "default"}, configMap1)
+						Expect(err).ToNot(HaveOccurred())
+						err = client.Get(context.TODO(), types.NamespacedName{Name: secret1.Name, Namespace: "default"}, secret1)
+						Expect(err).ToNot(HaveOccurred())
+
+						ownerRef := metav1.OwnerReference{
+							APIVersion:         "apps/v1",
+							Kind:               "StatefulSet",
+							Name:               ss.Name,
+							UID:                ss.UID,
+							Controller:         helper.Bool(false),
+							BlockOwnerDeletion: helper.Bool(true),
+						}
+
+						for _, obj := range []exss.Object{configMap1, secret1} {
+							Expect(obj.GetOwnerReferences()).Should(ContainElement(ownerRef))
+						}
+					})
+
+					By("Updates the config hash in the StatefulSet Annotations", func() {
+						Expect(currentSHA1).ShouldNot(Equal(originalSHA1))
+					})
+				})
+			})
+
+			When("A ConfigMap reference is updated", func() {
+				It("Preserves current version and updates the config hash in the StatefulSet Annotations", func() {
+					result, err := reconciler.Reconcile(request)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(result).To(Equal(reconcile.Result{
+						Requeue:      true,
+						RequeueAfter: 5 * time.Second,
+					}))
+
+					ess := &exss.ExtendedStatefulSet{}
+					err = client.Get(context.TODO(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
+					Expect(err).ToNot(HaveOccurred())
+
+					ss := &v1beta1.StatefulSet{}
+					err = client.Get(context.TODO(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
+
+					originalSHA1 := ss.GetAnnotations()[exss.AnnotationConfigSHA1]
+
+					// Update "configMap1"
+					err = client.Get(context.TODO(), types.NamespacedName{Name: configMap1.Name, Namespace: "default"}, configMap1)
+					Expect(err).ToNot(HaveOccurred())
+
+					configMap1.Data["key1"] = "modified"
+					err = client.Update(context.TODO(), configMap1)
+					Expect(err).ToNot(HaveOccurred())
+					result, err = reconciler.Reconcile(request)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(result).To(Equal(reconcile.Result{
+						Requeue:      true,
+						RequeueAfter: 5 * time.Second,
+					}))
+
+					ss = &v1beta1.StatefulSet{}
+					err = client.Get(context.TODO(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
+					Expect(err).ToNot(HaveOccurred())
+
+					currentSHA1 := ss.GetAnnotations()[exss.AnnotationConfigSHA1]
+
+					By("Adds OwnerReferences to all configurations", func() {
+						err = client.Get(context.TODO(), types.NamespacedName{Name: configMap1.Name, Namespace: "default"}, configMap1)
+						Expect(err).ToNot(HaveOccurred())
+						err = client.Get(context.TODO(), types.NamespacedName{Name: configMap2.Name, Namespace: "default"}, configMap2)
+						Expect(err).ToNot(HaveOccurred())
+						err = client.Get(context.TODO(), types.NamespacedName{Name: secret1.Name, Namespace: "default"}, secret1)
+						Expect(err).ToNot(HaveOccurred())
+						err = client.Get(context.TODO(), types.NamespacedName{Name: secret2.Name, Namespace: "default"}, secret2)
+						Expect(err).ToNot(HaveOccurred())
+
+						ownerRef := metav1.OwnerReference{
+							APIVersion:         "apps/v1",
+							Kind:               "StatefulSet",
+							Name:               ss.Name,
+							UID:                ss.UID,
+							Controller:         helper.Bool(false),
+							BlockOwnerDeletion: helper.Bool(true),
+						}
+
+						for _, obj := range []exss.Object{configMap1, configMap2, secret1, secret2} {
+							Expect(obj.GetOwnerReferences()).Should(ContainElement(ownerRef))
+						}
+					})
+
+					By("Updates the config hash in the StatefulSet Annotations", func() {
+						Expect(currentSHA1).ShouldNot(Equal(originalSHA1))
+					})
+				})
+			})
+		})
+
+		Context("doesn't provide any extendedStatefulSet definition", func() {
 			var (
 				client *cfakes.FakeClient
 			)
@@ -220,7 +548,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				manager.GetClientReturns(client)
 			})
 
-			It("doesn't create new statefulset if extendedstatefulset was not found", func() {
+			It("doesn't create new statefulset if extendedStatefulSet was not found", func() {
 				client.GetReturns(errors.NewNotFound(schema.GroupResource{}, "not found is requeued"))
 
 				result, err := reconciler.Reconcile(request)
