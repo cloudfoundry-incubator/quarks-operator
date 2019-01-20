@@ -25,6 +25,9 @@ var (
 	AnnotationConfigSHA1 = fmt.Sprintf("%s/configsha1", apis.GroupName)
 	// AnnotationVersion is the annotation key for the StatefulSet version
 	AnnotationVersion = fmt.Sprintf("%s/version", apis.GroupName)
+
+	// FinalizerString is the finalizer added to objects
+	FinalizerString = fmt.Sprintf("%s/finalizer", apis.GroupName)
 )
 
 // Object is used as a helper interface when passing Kubernetes resources
@@ -108,9 +111,7 @@ func (e *ExtendedStatefulSet) DesiredVersion(actualStatefulSet *v1beta1.Stateful
 // CalculateStatefulSetSHA1 calculates the SHA1 of the JSON representation of the
 // StatefulSet template
 func (e *ExtendedStatefulSet) CalculateStatefulSetSHA1() (string, error) {
-	needCacaludate := e.Spec.Template
-	delete(needCacaludate.Annotations, AnnotationStatefulSetSHA1)
-	data, err := json.Marshal(needCacaludate)
+	data, err := json.Marshal(e.Spec.Template)
 	if err != nil {
 		return "", err
 	}
@@ -128,4 +129,41 @@ func (e *ExtendedStatefulSet) GetMaxAvailableVersion(versions map[int]bool) int 
 		}
 	}
 	return maxAvailableVersion
+}
+
+// AddFinalizer adds the finalizer item to the ExtendedStatefulSet
+func (e *ExtendedStatefulSet) AddFinalizer() {
+	finalizers := e.GetFinalizers()
+	for _, finalizer := range finalizers {
+		if finalizer == FinalizerString {
+			// ExtendedStatefulSet already contains the finalizer
+			return
+		}
+	}
+
+	// ExtendedStatefulSet doesn't contain the finalizer, so add it
+	finalizers = append(finalizers, FinalizerString)
+	e.SetFinalizers(finalizers)
+}
+
+// RemoveFinalizer removes the finalizer item from the ExtendedStatefulSet
+func (e *ExtendedStatefulSet) RemoveFinalizer() {
+	finalizers := e.GetFinalizers()
+
+	// Remove any that match the finalizerString
+	newFinalizers := []string{}
+	for _, finalizer := range finalizers {
+		if finalizer != FinalizerString {
+			newFinalizers = append(newFinalizers, finalizer)
+		}
+	}
+
+	// Update the object's finalizers
+	e.SetFinalizers(newFinalizers)
+}
+
+// ToBeDeleted checks whether this ExtendedStatefulSet has been marked for deletion
+func (e *ExtendedStatefulSet) ToBeDeleted() bool {
+	// IsZero means that the object hasn't been marked for deletion
+	return !e.GetDeletionTimestamp().IsZero()
 }
