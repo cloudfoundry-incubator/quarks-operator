@@ -3,7 +3,10 @@ package integration_test
 import (
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
 
 	. "github.com/onsi/ginkgo"
@@ -12,8 +15,9 @@ import (
 
 var _ = Describe("ExtendedStatefulSet", func() {
 	var (
-		extendedStatefulSet      essv1.ExtendedStatefulSet
-		wrongExtendedStatefulSet essv1.ExtendedStatefulSet
+		extendedStatefulSet                essv1.ExtendedStatefulSet
+		wrongExtendedStatefulSet           essv1.ExtendedStatefulSet
+		ownedReferencesExtendedStatefulSet essv1.ExtendedStatefulSet
 	)
 
 	Context("when correctly setup", func() {
@@ -23,6 +27,9 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			wrongEssName := fmt.Sprintf("wrong-testess-%s", testing.RandString(5))
 			wrongExtendedStatefulSet = env.WrongExtendedStatefulSet(wrongEssName)
+
+			ownedRefEssName := fmt.Sprintf("owned-ref-testess-%s", testing.RandString(5))
+			ownedReferencesExtendedStatefulSet = env.OwnedReferencesExtendedStatefulSet(ownedRefEssName)
 		})
 
 		It("should create a statefulset and eventually a pod", func() {
@@ -173,6 +180,98 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(ess.Status.Versions).To(Equal(map[int]bool{
 				1: false,
 				2: false,
+			}))
+		})
+
+		It("should keeps current version if references are updated", func() {
+			// Create references
+			configMap1 := env.DefaultConfigMap("example1")
+			tearDown, err := env.CreateConfigMap(env.Namespace, configMap1)
+			defer tearDown()
+			configMap2 := env.DefaultConfigMap("example2")
+			tearDown, err = env.CreateConfigMap(env.Namespace, configMap2)
+			defer tearDown()
+			secret1 := env.DefaultSecret("example1")
+			tearDown, err = env.CreateSecret(env.Namespace, secret1)
+			defer tearDown()
+			secret2 := env.DefaultSecret("example2")
+			tearDown, err = env.CreateSecret(env.Namespace, secret2)
+			defer tearDown()
+
+			// Create an ExtendedStatefulSet
+			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, ownedReferencesExtendedStatefulSet)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+			defer tearDown()
+
+			// Check for pod
+			err = env.WaitForPods(env.Namespace, "referencedpod=yes")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Check for extendedStatefulSet available
+			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+
+			// Check for extendedStatefulSet versions
+			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess.Status.Versions).To(Equal(map[int]bool{
+				1: true,
+			}))
+
+			// Check for references OwnerReferences
+			ss, err := env.GetStatefulSet(env.Namespace, ess.GetName()+"-v1")
+			Expect(err).NotTo(HaveOccurred())
+
+			cm1, err := env.GetConfigMap(env.Namespace, configMap1.Name)
+			Expect(err).ToNot(HaveOccurred())
+			cm2, err := env.GetConfigMap(env.Namespace, configMap2.Name)
+			Expect(err).ToNot(HaveOccurred())
+			s1, err := env.GetSecret(env.Namespace, secret1.Name)
+			Expect(err).ToNot(HaveOccurred())
+			s2, err := env.GetSecret(env.Namespace, secret2.Name)
+			Expect(err).ToNot(HaveOccurred())
+
+			ownerRef := metav1.OwnerReference{
+				APIVersion:         "apps/v1",
+				Kind:               "StatefulSet",
+				Name:               ss.Name,
+				UID:                ss.UID,
+				Controller:         helper.Bool(false),
+				BlockOwnerDeletion: helper.Bool(true),
+			}
+
+			for _, obj := range []essv1.Object{cm1, cm2, s1, s2} {
+				Expect(obj.GetOwnerReferences()).Should(ContainElement(ownerRef))
+			}
+
+			// Update one ConfigMap and one Secret
+			cm1.Data["key1"] = "modified"
+			_, tearDown, err = env.UpdateConfigMap(env.Namespace, *cm1)
+			Expect(err).ToNot(HaveOccurred())
+			defer tearDown()
+
+			if s2.StringData == nil {
+				s2.StringData = make(map[string]string)
+			}
+			s2.StringData["key1"] = "modified"
+			_, tearDown, err = env.UpdateSecret(env.Namespace, *s2)
+			Expect(err).ToNot(HaveOccurred())
+			defer tearDown()
+
+			// TODO should wait pod restarts
+			err = env.WaitForPods(env.Namespace, "referencedpod=yes")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Check for extendedStatefulSet available
+			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+
+			// Check for extendedStatefulSet versions
+			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess.Status.Versions).To(Equal(map[int]bool{
+				1: true,
 			}))
 		})
 	})

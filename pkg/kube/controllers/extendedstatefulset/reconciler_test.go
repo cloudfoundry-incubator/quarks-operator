@@ -211,7 +211,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 			})
 		})
 
-		FContext("Provides a extendedStatefulSet containing ConfigMaps and Secrets references", func() {
+		Context("Provides a extendedStatefulSet containing ConfigMaps and Secrets references", func() {
 			var (
 				desiredExtendedStatefulSet *exss.ExtendedStatefulSet
 				configMap1                 *corev1.ConfigMap

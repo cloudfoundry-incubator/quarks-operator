@@ -439,13 +439,10 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 		if currentsha != oldsha {
 			r.log.Debug("StatefulSet '", statefulSet.Name, "' configuration has changed.")
 
-			setConfigSHA1(&statefulSet, currentsha)
-			r.log.Debug("Updating new config sha1 for StatefulSet '", statefulSet.Name, "'.")
-			err = r.client.Update(context.TODO(), &statefulSet)
+			err = r.updateConfigSHA1(&statefulSet, currentsha)
 			if err != nil {
 				return errors.Wrapf(err, "Update StatefulSet config sha1")
 			}
-
 			// TODO restart all pods ot the StatefulSet
 		}
 	}
@@ -486,6 +483,7 @@ func (r *ReconcileExtendedStatefulSet) listConfigsFromSpec(statefulSet *v1beta1.
 		}
 	}
 
+	r.log.Debug(configs)
 	return configs, nil
 }
 
@@ -601,10 +599,10 @@ func calculateConfigHash(children []essv1a1.Object) (string, error) {
 		switch child := obj.(type) {
 		case *corev1.ConfigMap:
 			cm := corev1.ConfigMap(*child)
-			hashSource.ConfigMaps[child.GetName()] = cm.Data
+			hashSource.ConfigMaps[cm.GetName()] = cm.Data
 		case *corev1.Secret:
 			s := corev1.Secret(*child)
-			hashSource.Secrets[child.GetName()] = s.Data
+			hashSource.Secrets[s.GetName()] = s.Data
 		default:
 			return "", fmt.Errorf("passed unknown type: %v", reflect.TypeOf(child))
 		}
@@ -619,9 +617,14 @@ func calculateConfigHash(children []essv1a1.Object) (string, error) {
 	return fmt.Sprintf("%x", sha1.Sum(hashSourceBytes)), nil
 }
 
-// setConfigSHA1 updates the configuration sha1 of the given StatefulSet to the
+// updateConfigSHA1 updates the configuration sha1 of the given StatefulSet to the
 // given string
-func setConfigSHA1(actualStatefulSet *v1beta1.StatefulSet, hash string) {
+func (r *ReconcileExtendedStatefulSet) updateConfigSHA1(actualStatefulSet *v1beta1.StatefulSet, hash string) error {
+	key := types.NamespacedName{Namespace: actualStatefulSet.GetNamespace(), Name: actualStatefulSet.GetName()}
+	err := r.client.Get(context.TODO(), key, actualStatefulSet)
+	if err != nil {
+		return errors.Wrapf(err, "Could not get StatefulSet '", actualStatefulSet.GetName(), "'")
+	}
 	// Get the existing annotations
 	annotations := actualStatefulSet.GetAnnotations()
 	if annotations == nil {
@@ -631,6 +634,14 @@ func setConfigSHA1(actualStatefulSet *v1beta1.StatefulSet, hash string) {
 	// Update the annotations
 	annotations[essv1a1.AnnotationConfigSHA1] = hash
 	actualStatefulSet.SetAnnotations(annotations)
+
+	r.log.Debug("Updating new config sha1 for StatefulSet '", actualStatefulSet.GetName(), "'.")
+	err = r.client.Update(context.TODO(), actualStatefulSet)
+	if err != nil {
+		return errors.Wrapf(err, "Could not update StatefulSet '", actualStatefulSet.GetName(), "'")
+	}
+
+	return nil
 }
 
 // updateOwnerReferences determines which children need to have their
@@ -672,10 +683,10 @@ func (r *ReconcileExtendedStatefulSet) removeOwnerReferences(obj *v1beta1.Statef
 		// Compare the ownerRefs and update if they have changed
 		if !reflect.DeepEqual(ownerRefs, child.GetOwnerReferences()) {
 			child.SetOwnerReferences(ownerRefs)
-			r.log.Debug("Removing child '", child.GetObjectKind().GroupVersionKind().Kind, "/", child.GetName(), "' from StatefulSet '", obj.Name, "' in namespace '", obj.Namespace, "'.")
+			r.log.Debug("Removing child '", child.GetName(), "' from StatefulSet '", obj.Name, "' in namespace '", obj.Namespace, "'.")
 			err := r.client.Update(context.TODO(), child)
 			if err != nil {
-				r.log.Error("Could not update '", child.GetObjectKind().GroupVersionKind().Kind, "/", child.GetName(), "': ", err)
+				r.log.Error("Could not update '", child.GetName(), "': ", err)
 				return err
 			}
 		}
@@ -751,10 +762,18 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(extendedStatefulSet *essv1a1
 	copy := extendedStatefulSet.DeepCopy()
 	copy.RemoveFinalizer()
 	if !reflect.DeepEqual(extendedStatefulSet, copy) {
-		r.log.Debug("Removing Finalizer from ExtendedStatefulSet '", extendedStatefulSet.Name, "'.")
-		err := r.client.Update(context.TODO(), copy)
+		r.log.Debug("Removing Finalizer from ExtendedStatefulSet '", copy.Name, "'.")
+		key := types.NamespacedName{Namespace: copy.GetNamespace(), Name: copy.GetName()}
+		err := r.client.Get(context.TODO(), key, copy)
 		if err != nil {
-			r.log.Error("Could not remove Finalizer from ExtendedStatefulSet '", extendedStatefulSet.Name, "': ", err)
+			return reconcile.Result{}, errors.Wrapf(err, "Could not get StatefulSet '", copy.GetName(), "'")
+		}
+
+		copy.RemoveFinalizer()
+
+		err = r.client.Update(context.TODO(), copy)
+		if err != nil {
+			r.log.Error("Could not remove Finalizer from ExtendedStatefulSet '", copy.GetName(), "': ", err)
 			return reconcile.Result{}, err
 		}
 	}
