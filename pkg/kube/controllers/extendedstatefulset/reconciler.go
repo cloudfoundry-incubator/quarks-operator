@@ -2,6 +2,8 @@ package extendedstatefulset
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -113,6 +115,12 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	}
 
 	statefulSetVersions, err := r.listStatefulSetVersions(context.TODO(), exStatefulSet)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// Update StatefulSets configSHA1 if necessary
+	err = r.updateStatefulSetsConfigSHA1(context.TODO(), exStatefulSet)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -371,6 +379,46 @@ func (r *ReconcileExtendedStatefulSet) isStatefulSetReady(ctx context.Context, s
 	return false, nil
 }
 
+// updateStatefulSetsConfigSHA1 Update StatefulSets configSHA1 and config OwnerReferences if necessary
+func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) error {
+	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
+	if err != nil {
+		return errors.Wrapf(err, "List StatefulSets owned by %s/%s", exStatefulSet.GetNamespace(), exStatefulSet.GetName())
+	}
+
+	for _, statefulSet := range statefulSets {
+		currentConfigRef, err := r.listConfigsFromSpec(&statefulSet)
+		if err != nil {
+			return errors.Wrapf(err, "Could not list ConfigMaps and Secrets from '%s' spec", statefulSet.Name)
+		}
+
+		currentsha, err := calculateConfigHash(currentConfigRef)
+		if err != nil {
+			return err
+		}
+
+		oldsha, _ := statefulSet.Annotations[essv1a1.AnnotationConfigSHA1]
+
+		// If the current config sha doesn't match the existing config sha, update it
+		if currentsha != oldsha {
+			r.log.Debug("StatefulSet '", statefulSet.Name, "' configuration has changed.")
+
+			setConfigSHA1(&statefulSet, currentsha)
+			r.log.Debug("Updating new config sha1 for StatefulSet '", statefulSet.Name, "'.")
+			err = r.client.Update(context.TODO(), &statefulSet)
+			if err != nil {
+				return errors.Wrapf(err, "Update StatefulSet config sha1")
+			}
+
+			// TODO restart all pods ot the StatefulSet
+		}
+
+	}
+
+	return nil
+
+}
+
 // listConfigsFromSpec returns a list of all Secrets and ConfigMaps that are
 // referenced in the StatefulSet's spec
 func (r *ReconcileExtendedStatefulSet) listConfigsFromSpec(statefulSet *v1beta1.StatefulSet) ([]essv1a1.Object, error) {
@@ -498,4 +546,54 @@ func isOwnedBy(child, owner essv1a1.Object) bool {
 		}
 	}
 	return false
+}
+
+// calculateConfigHash calculates the SHA1 of the JSON representation of configuration objects
+func calculateConfigHash(children []essv1a1.Object) (string, error) {
+	// hashSource contains all the data to be hashed
+	hashSource := struct {
+		ConfigMaps map[string]map[string]string `json:"configMaps"`
+		Secrets    map[string]map[string][]byte `json:"secrets"`
+	}{
+		ConfigMaps: make(map[string]map[string]string),
+		Secrets:    make(map[string]map[string][]byte),
+	}
+
+	// Add the data from each child to the hashSource
+	// All children should be in the same namespace so each one should have a
+	// unique name
+	for _, obj := range children {
+		switch child := obj.(type) {
+		case *corev1.ConfigMap:
+			cm := corev1.ConfigMap(*child)
+			hashSource.ConfigMaps[child.GetName()] = cm.Data
+		case *corev1.Secret:
+			s := corev1.Secret(*child)
+			hashSource.Secrets[child.GetName()] = s.Data
+		default:
+			return "", fmt.Errorf("passed unknown type: %v", reflect.TypeOf(child))
+		}
+	}
+
+	// Convert the hashSource to a byte slice so that it can be hashed
+	hashSourceBytes, err := json.Marshal(hashSource)
+	if err != nil {
+		return "", fmt.Errorf("unable to marshal JSON: %v", err)
+	}
+
+	return fmt.Sprintf("%x", sha1.Sum(hashSourceBytes)), nil
+}
+
+// setConfigSHA1 updates the configuration sha1 of the given StatefulSet to the
+// given string
+func setConfigSHA1(actualStatefulSet *v1beta1.StatefulSet, hash string) {
+	// Get the existing annotations
+	annotations := actualStatefulSet.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+
+	// Update the annotations
+	annotations[essv1a1.AnnotationConfigSHA1] = hash
+	actualStatefulSet.SetAnnotations(annotations)
 }

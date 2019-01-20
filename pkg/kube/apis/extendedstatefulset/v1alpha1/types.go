@@ -21,6 +21,8 @@ import (
 var (
 	// AnnotationStatefulSetSHA1 is the annotation key for the StatefulSet SHA1
 	AnnotationStatefulSetSHA1 = fmt.Sprintf("%s/statefulsetsha1", apis.GroupName)
+	// AnnotationConfigHash is the annotation key for the StatefulSet Config(ConfigMap/Secret) SHA1
+	AnnotationConfigSHA1 = fmt.Sprintf("%s/configsha1", apis.GroupName)
 	// AnnotationVersion is the annotation key for the StatefulSet version
 	AnnotationVersion = fmt.Sprintf("%s/version", apis.GroupName)
 )
@@ -106,7 +108,9 @@ func (e *ExtendedStatefulSet) DesiredVersion(actualStatefulSet *v1beta1.Stateful
 // CalculateStatefulSetSHA1 calculates the SHA1 of the JSON representation of the
 // StatefulSet template
 func (e *ExtendedStatefulSet) CalculateStatefulSetSHA1() (string, error) {
-	data, err := json.Marshal(e.Spec.Template)
+	needCacaludate := e.Spec.Template
+	delete(needCacaludate.Annotations, AnnotationStatefulSetSHA1)
+	data, err := json.Marshal(needCacaludate)
 	if err != nil {
 		return "", err
 	}
