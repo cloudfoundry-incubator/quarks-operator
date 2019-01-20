@@ -24,6 +24,39 @@ The operator watches all the ConfigMaps and Secrets referenced by the StatefulSe
 
 > See [this implementation](https://thenewstack.io/solving-kubernetes-configuration-woes-with-a-custom-controller/) for inspiration
 
+Adding an OwnerReference to all ConfigMaps and Secrets that are referenced by a StatefulSet. 
+
+```yaml
+apiVersion: v1
+  data:
+    key1: value1
+  kind: ConfigMap
+  metadata:
+    name: example-config
+    namespace: default
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: false
+      kind: StatefuelSet
+      name: example-stateful-set
+```
+
+This allows Controller to trigger a reconciliation whenever the ConfigMaps or Secrets are modified.
+
+And Controller managed ExtendedStatefulSet and StatefulSets will have a `fissile.cloudfoundry.org/finalizer` Finalizer. This allows Controller to perform additional cleanup logic which prevents owned ConfigMaps and Secrets from being deleted.
+
+```yaml
+apiVersion: fissile.cloudfoundry.org/v1alpha1
+kind: ExtendedStatefulSet
+metadata:
+  finalizers:
+  - fissile.cloudfoundry.org/finalizer
+  generation: 1
+  name:  example-extended-stateful-set
+  namespace: default
+```
+
 ### Extended Upgrade Support
 
 A second StatefulSet for the new version is deployed, and both coexist until canary conditions are met. This also allows support for Blue/Green tehniques. 

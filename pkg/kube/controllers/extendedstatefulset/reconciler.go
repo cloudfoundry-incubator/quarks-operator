@@ -623,7 +623,7 @@ func (r *ReconcileExtendedStatefulSet) updateConfigSHA1(actualStatefulSet *v1bet
 	key := types.NamespacedName{Namespace: actualStatefulSet.GetNamespace(), Name: actualStatefulSet.GetName()}
 	err := r.client.Get(context.TODO(), key, actualStatefulSet)
 	if err != nil {
-		return errors.Wrapf(err, "Could not get StatefulSet '", actualStatefulSet.GetName(), "'")
+		return errors.Wrapf(err, "Could not get StatefulSet '%s'", actualStatefulSet.GetName())
 	}
 	// Get the existing annotations
 	annotations := actualStatefulSet.GetAnnotations()
@@ -638,7 +638,7 @@ func (r *ReconcileExtendedStatefulSet) updateConfigSHA1(actualStatefulSet *v1bet
 	r.log.Debug("Updating new config sha1 for StatefulSet '", actualStatefulSet.GetName(), "'.")
 	err = r.client.Update(context.TODO(), actualStatefulSet)
 	if err != nil {
-		return errors.Wrapf(err, "Could not update StatefulSet '", actualStatefulSet.GetName(), "'")
+		return errors.Wrapf(err, "Could not update StatefulSet '%s'", actualStatefulSet.GetName())
 	}
 
 	return nil
@@ -766,7 +766,7 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(extendedStatefulSet *essv1a1
 		key := types.NamespacedName{Namespace: copy.GetNamespace(), Name: copy.GetName()}
 		err := r.client.Get(context.TODO(), key, copy)
 		if err != nil {
-			return reconcile.Result{}, errors.Wrapf(err, "Could not get StatefulSet '", copy.GetName(), "'")
+			return reconcile.Result{}, errors.Wrapf(err, "Could not get StatefulSet ''%s'", copy.GetName())
 		}
 
 		copy.RemoveFinalizer()
