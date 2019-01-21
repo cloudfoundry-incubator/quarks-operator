@@ -3,13 +3,11 @@ package extendedjob
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"time"
 
 	"go.uber.org/zap"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -21,7 +19,7 @@ import (
 
 var _ Runner = &RunnerImpl{}
 
-type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
+type setOwnerReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // Runner starts jobs for extended job definitions
 type Runner interface {
@@ -33,26 +31,26 @@ func NewRunner(
 	log *zap.SugaredLogger,
 	mgr manager.Manager,
 	query Query,
-	srf setReferenceFunc,
+	f setOwnerReferenceFunc,
 ) *RunnerImpl {
 	return &RunnerImpl{
-		client:       mgr.GetClient(),
-		log:          log,
-		query:        query,
-		recorder:     mgr.GetRecorder("extendedjob runner"),
-		scheme:       mgr.GetScheme(),
-		setReference: srf,
+		client:            mgr.GetClient(),
+		log:               log,
+		query:             query,
+		recorder:          mgr.GetRecorder("extendedjob runner"),
+		scheme:            mgr.GetScheme(),
+		setOwnerReference: f,
 	}
 }
 
 // RunnerImpl implements the Runner interface
 type RunnerImpl struct {
-	client       client.Client
-	log          *zap.SugaredLogger
-	query        Query
-	recorder     record.EventRecorder
-	scheme       *runtime.Scheme
-	setReference setReferenceFunc
+	client            client.Client
+	log               *zap.SugaredLogger
+	query             Query
+	recorder          record.EventRecorder
+	scheme            *runtime.Scheme
+	setOwnerReference setOwnerReferenceFunc
 }
 
 // Run jobs for all pods involved in recent events
@@ -80,6 +78,7 @@ func (r *RunnerImpl) Run() {
 		return
 	}
 
+	// we need to load all pods, otherwise we can't look at labels
 	var podEvents []PodEvent
 	podEvents, err = r.query.FetchPods(events)
 	if err != nil {
@@ -88,7 +87,6 @@ func (r *RunnerImpl) Run() {
 	}
 
 	for _, extJob := range extJobs.Items {
-		tsName := jobTimestampName(extJob.Name)
 		filtered := r.query.Match(extJob, podEvents)
 		// if multiple events belong to the same pod `query.Match` will return
 		// all of the (event, pod) tuples.
@@ -97,96 +95,54 @@ func (r *RunnerImpl) Run() {
 		// on the same pod, since the updated timestamp will be newer
 		// than any event we look at in this loop.
 		for _, podEvent := range filtered {
-			if r.isFreshStamp(tsName, podEvent) {
+			// this might be too noisy
+			r.log.Debugf("%s: looking at pod event: %s/%s for pod %s", extJob.Name, podEvent.Event.Name, podEvent.Event.Reason, podEvent.podName())
+
+			if podEvent.isOld(extJob.Name) {
 				continue
 			}
 
-			job, err := r.createJob(extJob, podEvent.Pod)
-			// Job names are unique, so AlreadyExists happens a lot
-			// for long running jobs, between multiple invocations
-			// of Run().
-			if err != nil && !errors.IsAlreadyExists(err) {
-				r.log.Infof("failed to create job for %s: %s", extJob.Name, err)
+			err := r.createJob(extJob, *podEvent.Pod)
+			if err != nil {
+				// Job names are unique, so AlreadyExists happens a lot
+				// for long running jobs, between multiple invocations
+				// of Run().
+				if apierrors.IsAlreadyExists(err) {
+					r.log.Debugf("%s: skipped job for pod %s: already running", extJob.Name, podEvent.podName())
+				} else {
+					r.log.Infof("%s: failed to create job for pod %s: %s", extJob.Name, podEvent.podName(), err)
+				}
 				continue
 			}
+			r.log.Infof("%s: created job for pod %s", extJob.Name, podEvent.podName())
 
-			err = r.setReference(&extJob, job, r.scheme)
+			err = podEvent.setTimestamp(r.client, extJob.Name)
 			if err != nil {
-				r.log.Infof("failed to set reference on job for %s: %s", extJob.Name, err)
-			}
-
-			err = r.updateStamp(tsName, podEvent)
-			if err != nil {
-				r.log.Infof("failed to update job stamp on pod %s: %s", podEvent.Pod.Name, err)
+				r.log.Infof("%s: failed to update job timestamp on pod %s: %s", extJob.Name, podEvent.podName(), err)
 			}
 		}
 	}
 }
 
-func (r *RunnerImpl) createJob(extJob v1alpha1.ExtendedJob, pod corev1.Pod) (*batchv1.Job, error) {
+func (r *RunnerImpl) createJob(extJob v1alpha1.ExtendedJob, pod corev1.Pod) error {
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("job-%s-%s", extJob.Name, pod.Name),
 			Namespace: extJob.Namespace,
+			Labels:    map[string]string{"extendedjob": "true"},
 		},
-		Spec: jobSpec(),
+		Spec: batchv1.JobSpec{Template: extJob.Spec.Template},
 	}
 
 	err := r.client.Create(context.TODO(), job)
-	return job, err
-}
-
-// return true if job timestamp on pod is newer than event timestamp
-func (r *RunnerImpl) isFreshStamp(tsName string, podEvent PodEvent) bool {
-	annotations := podEvent.Pod.Annotations
-	if ts, ok := annotations[tsName]; ok {
-
-		n, err := strconv.ParseInt(ts, 10, 64)
-		if err != nil {
-			r.log.Debugf("cannot parse job timestamp annotation on pod %s", podEvent.Pod.Name)
-			return false
-		}
-
-		podStamp := time.Unix(n, 0)
-		eventStamp := podEvent.Event.LastTimestamp.Time
-		return eventStamp.Before(podStamp)
-	}
-	r.log.Debugf("no job annotation on pod, ok for first time: %s", podEvent.Pod.Name)
-	return false
-}
-
-func (r *RunnerImpl) updateStamp(tsName string, podEvent PodEvent) error {
-	ts := podEvent.Event.LastTimestamp.Time.Unix()
-	annotations := podEvent.Pod.GetAnnotations()
-	if annotations == nil {
-		annotations = map[string]string{}
+	if err != nil {
+		return err
 	}
 
-	annotations[tsName] = strconv.FormatInt(ts, 10)
-	podEvent.Pod.SetAnnotations(annotations)
-	return r.client.Update(context.TODO(), &podEvent.Pod)
-}
-
-func jobTimestampName(name string) string {
-	return fmt.Sprintf("job-ts-%s", name)
-}
-
-func jobSpec() batchv1.JobSpec {
-	one := int64(1)
-	return batchv1.JobSpec{
-		Template: corev1.PodTemplateSpec{
-			Spec: corev1.PodSpec{
-				RestartPolicy:                 corev1.RestartPolicyNever,
-				TerminationGracePeriodSeconds: &one,
-				Containers: []corev1.Container{
-					{
-						Name:    "busybox",
-						Image:   "busybox",
-						Command: []string{"sleep", "6"},
-					},
-				},
-			},
-		},
+	err = r.setOwnerReference(&extJob, job, r.scheme)
+	if err != nil {
+		r.log.Errorf("%s: failed to set reference on job for pod %s: %s", extJob.Name, pod.Name, err)
 	}
 
+	return nil
 }

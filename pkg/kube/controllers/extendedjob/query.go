@@ -20,12 +20,6 @@ var _ Query = &QueryImpl{}
 // Backlog defines the maximal minutes passed for pod events we take into consideration
 const Backlog = -30 * time.Minute
 
-// PodEvent is an event with it's corresponding/involved Pod
-type PodEvent struct {
-	corev1.Event
-	Pod corev1.Pod
-}
-
 // Query for events involving pods and filter them
 type Query interface {
 	RecentPodEvents() ([]corev1.Event, error)
@@ -64,11 +58,19 @@ func (q *QueryImpl) RecentPodEvents() ([]corev1.Event, error) {
 }
 
 // FetchPods returns all events with their corresponding pod
+// Only store the pointer to the pod, so updates to pods show in all PodEvents.
 // It's ok if pods from events no longer exist, since events might be very old.
 func (q *QueryImpl) FetchPods(events []corev1.Event) ([]PodEvent, error) {
+	podCache := map[string]*corev1.Pod{}
 	podEvents := []PodEvent{}
 	for _, ev := range events {
 		name := types.NamespacedName{Name: ev.InvolvedObject.Name, Namespace: ev.InvolvedObject.Namespace}
+
+		if pod, ok := podCache[name.String()]; ok {
+			podEvents = append(podEvents, PodEvent{Event: ev, Pod: pod})
+			continue
+		}
+
 		pod := &corev1.Pod{}
 		err := q.client.Get(context.TODO(), name, pod)
 		if err != nil {
@@ -77,7 +79,9 @@ func (q *QueryImpl) FetchPods(events []corev1.Event) ([]PodEvent, error) {
 			}
 			return podEvents, err
 		}
-		podEvents = append(podEvents, PodEvent{Event: ev, Pod: *pod})
+
+		podEvents = append(podEvents, PodEvent{Event: ev, Pod: pod})
+		podCache[name.String()] = pod
 	}
 	return podEvents, nil
 }
@@ -86,9 +90,10 @@ func (q *QueryImpl) FetchPods(events []corev1.Event) ([]PodEvent, error) {
 func (q *QueryImpl) Match(job v1alpha1.ExtendedJob, pods []PodEvent) []PodEvent {
 	filtered := []PodEvent{}
 	// TODO https://github.com/kubernetes/apimachinery/blob/master/pkg/labels/selector.go
-	whitelist := job.Spec.Triggers.Selector.MatchLabels
+	match := job.Spec.Triggers.Selector.MatchLabels
 	for _, pod := range pods {
-		if labels.AreLabelsInWhiteList(pod.Pod.Labels, whitelist) {
+		// TODO why not load pod here instead of Fetch(), cache should help :)
+		if labels.AreLabelsInWhiteList(match, pod.Pod.Labels) {
 			filtered = append(filtered, pod)
 		}
 	}

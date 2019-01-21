@@ -106,17 +106,18 @@ var _ = Describe("Runner", func() {
 				}
 				client.ListCalls(jobListStub)
 				client.CreateReturns(fmt.Errorf("fake-error"))
+				fooPod := env.DefaultPod("fake-pod")
 				query.MatchReturns([]PodEvent{
-					PodEvent{Pod: env.DefaultPod("foo")},
-					PodEvent{Pod: env.DefaultPod("foo")},
+					PodEvent{Pod: &fooPod},
+					PodEvent{Pod: &fooPod},
 				})
 			})
 
 			It("should log create error and continue with next event", func() {
 				act()
 				Expect(client.CreateCallCount()).To(Equal(4))
-				Expect(logs.FilterMessageSnippet("failed to create job for foo: fake-error").Len()).To(Equal(2))
-				Expect(logs.FilterMessageSnippet("failed to create job for bar: fake-error").Len()).To(Equal(2))
+				Expect(logs.FilterMessageSnippet("foo: failed to create job for pod fake-pod: fake-error").Len()).To(Equal(2))
+				Expect(logs.FilterMessageSnippet("bar: failed to create job for pod fake-pod: fake-error").Len()).To(Equal(2))
 				Expect(setOwnerReferenceCallCount).To(Equal(0))
 			})
 		})
@@ -133,9 +134,10 @@ var _ = Describe("Runner", func() {
 				}
 				client.ListCalls(jobListStub)
 
+				fooPod := env.DefaultPod("mypod")
 				query.MatchReturns([]PodEvent{
-					PodEvent{Pod: env.DefaultPod("foo")},
-					PodEvent{Pod: env.DefaultPod("foo")},
+					PodEvent{Pod: &fooPod},
+					PodEvent{Pod: &fooPod},
 				})
 
 				client.UpdateReturns(fmt.Errorf("fake-error"))
@@ -143,7 +145,7 @@ var _ = Describe("Runner", func() {
 
 			It("should log and continue with next pod event", func() {
 				act()
-				Expect(logs.FilterMessageSnippet("failed to update job stamp on pod foo: fake-error").Len()).To(Equal(2))
+				Expect(logs.FilterMessageSnippet("foo: failed to update job timestamp on pod mypod: fake-error").Len()).To(Equal(2))
 			})
 		})
 
@@ -177,10 +179,10 @@ var _ = Describe("Runner", func() {
 
 			BeforeEach(func() {
 				now = time.Now()
-				before25 := now.Add(time.Minute * -25)
+				before25 := now.Add(-25 * time.Minute)
 				timestamp = strconv.FormatInt(before25.Unix(), 10)
 
-				fooPod = env.AnnotatedPod("fooPod", map[string]string{
+				fooPod = env.AnnotatedPod("fake-pod", map[string]string{
 					"job-ts-foo": timestamp,
 				})
 				barPod := env.AnnotatedPod("barPod", map[string]string{
@@ -188,7 +190,7 @@ var _ = Describe("Runner", func() {
 				})
 				runtimeObjects = []runtime.Object{
 					env.DefaultExtendedJob("foo"),
-					env.DefaultExtendedJob("bar"),
+					env.LongRunningExtendedJob("bar"),
 					&fooPod,
 					&barPod,
 				}
@@ -196,8 +198,8 @@ var _ = Describe("Runner", func() {
 				mgr.GetClientReturns(client)
 
 				query.MatchReturns([]PodEvent{
-					PodEvent{Pod: fooPod},
-					PodEvent{Pod: barPod},
+					PodEvent{Pod: &fooPod},
+					PodEvent{Pod: &barPod},
 				})
 			})
 
@@ -208,6 +210,11 @@ var _ = Describe("Runner", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(jobs).To(HaveLen(2))
 				Expect(jobs[0].Name).To(ContainSubstring("job-foo-"))
+				Expect(jobs[0].Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"sleep", "1"}))
+				Expect(jobs[1].Name).To(ContainSubstring("job-bar-"))
+				Expect(jobs[1].Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"sleep", "15"}))
+				Expect(logs.FilterMessageSnippet("foo: created job for pod barPod").Len()).To(Equal(1))
+				Expect(logs.FilterMessageSnippet("bar: created job for pod fake-pod").Len()).To(Equal(1))
 			})
 
 			Context("when querying events fails", func() {
@@ -256,27 +263,27 @@ var _ = Describe("Runner", func() {
 						setOwnerReferenceFail,
 					)
 					r.Run()
-					Expect(logs.FilterMessageSnippet("failed to set reference on job for foo: fake-error").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("foo: failed to set reference on job for pod barPod: fake-error").Len()).To(Equal(1))
 					Expect(fooPod.GetAnnotations()["job-ts-foo"]).NotTo(Equal(""))
 				})
 			})
 
 			Context("when old events are present", func() {
 				BeforeEach(func() {
-					before10 := now.Add(time.Minute * -10)
-					before20 := now.Add(time.Minute * -20)
-					before30 := now.Add(time.Minute * -30)
+					before10 := now.Add(-10 * time.Minute)
+					before20 := now.Add(-20 * time.Minute)
+					before30 := now.Add(-30 * time.Minute)
 					query.MatchReturns([]PodEvent{
 						PodEvent{
-							Pod:   fooPod,
+							Pod:   &fooPod,
 							Event: env.DatedPodEvent(before10),
 						},
 						PodEvent{
-							Pod:   fooPod,
+							Pod:   &fooPod,
 							Event: env.DatedPodEvent(before20),
 						},
 						PodEvent{
-							Pod:   fooPod,
+							Pod:   &fooPod,
 							Event: env.DatedPodEvent(before30),
 						},
 					})

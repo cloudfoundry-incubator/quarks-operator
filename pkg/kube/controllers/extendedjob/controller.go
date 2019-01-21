@@ -13,6 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
+const period = 10 * time.Second
+
 // Controller starts ExtendedJobs
 type Controller struct {
 	client   client.Client
@@ -52,15 +54,16 @@ func NewExtendedJobController(
 func (ejc *Controller) Start(stopCh <-chan struct{}) error {
 
 	defer utilruntime.HandleCrash()
-	ejc.log.Infof("Starting CronJob Manager")
-	// Check things every 10 second.
-	go ejc.waitFunc(ejc.wakeUp, 10*time.Second, stopCh)
+	ejc.log.Infof("Starting ExtendedJob scheduler")
+
+	// Check if we need to run jobs
+	go ejc.waitFunc(ejc.wakeUp, period, stopCh)
 	<-stopCh
-	ejc.log.Infof("Shutting down CronJob Manager")
+	ejc.log.Infof("Shutting down ExtendedJob scheduler")
 	return nil
 }
 
 func (ejc *Controller) wakeUp() {
-	ejc.log.Debugf("extendedjob controller wakeup")
+	ejc.log.Debugf("ExtendedJob controller wakeup")
 	ejc.runner.Run()
 }

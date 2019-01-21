@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -11,13 +12,16 @@ import (
 
 // ExtendedJobSpec defines the desired state of ExtendedJob
 type ExtendedJobSpec struct {
-	Triggers Triggers `json:"triggers"`
+	Triggers Triggers               `json:"triggers"`
+	Template corev1.PodTemplateSpec `json:"template"`
 }
 
+// Triggers decide which objects to act on
 type Triggers struct {
 	Selector Selector `json:"selector"`
 }
 
+// Selector filter objects
 type Selector struct {
 	MatchLabels labels.Set `json:"matchLabels"`
 }

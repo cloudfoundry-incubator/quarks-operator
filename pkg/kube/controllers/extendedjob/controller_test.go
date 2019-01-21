@@ -56,7 +56,7 @@ var _ = Describe("ExtendedJob", func() {
 		It("should log when waking up and run", func() {
 			err := c.Start(stopChan)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(logs.FilterMessage("extendedjob controller wakeup").Len()).To(Equal(1))
+			Expect(logs.FilterMessage("ExtendedJob controller wakeup").Len()).To(Equal(1))
 			Expect(runner.RunCallCount()).To(Equal(1))
 		})
 
