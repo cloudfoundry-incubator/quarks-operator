@@ -5,18 +5,21 @@ import (
 	"strings"
 	"time"
 
-	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
-	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
+
 	"github.com/pkg/errors"
+	"k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+
+	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 )
 
 // Machine produces and destroys resources for tests
@@ -228,6 +231,24 @@ func (m *Machine) CreateSecret(namespace string, secret corev1.Secret) (TearDown
 	}, err
 }
 
+// UpdateConfigMap updates a ConfigMap and returns a function to delete it
+func (m *Machine) UpdateConfigMap(namespace string, configMap corev1.ConfigMap) (*corev1.ConfigMap, TearDownFunc, error) {
+	client := m.Clientset.CoreV1().ConfigMaps(namespace)
+	cm, err := client.Update(&configMap)
+	return cm, func() {
+		client.Delete(configMap.GetName(), &metav1.DeleteOptions{})
+	}, err
+}
+
+// UpdateSecret updates a secret and returns a function to delete it
+func (m *Machine) UpdateSecret(namespace string, secret corev1.Secret) (*corev1.Secret, TearDownFunc, error) {
+	client := m.Clientset.CoreV1().Secrets(namespace)
+	s, err := client.Update(&secret)
+	return s, func() {
+		client.Delete(secret.GetName(), &metav1.DeleteOptions{})
+	}, err
+}
+
 // GetSecret fetches the specified secret
 func (m *Machine) GetSecret(namespace string, name string) (*corev1.Secret, error) {
 	err := m.WaitForSecret(namespace, name)
@@ -404,6 +425,26 @@ func (m *Machine) HasBOSHDeploymentEvent(namespace string, fieldSelector string)
 		return false, nil
 	}
 	return true, nil
+}
+
+// GetStatefulSet gets a StatefulSet custom resource
+func (m *Machine) GetStatefulSet(namespace string, name string) (*v1beta1.StatefulSet, error) {
+	configMap, err := m.Clientset.AppsV1beta1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return &v1beta1.StatefulSet{}, errors.Wrapf(err, "failed to query for configMap by name: %v", name)
+	}
+
+	return configMap, nil
+}
+
+// GetConfigMap gets a ConfigMap by name
+func (m *Machine) GetConfigMap(namespace string, name string) (*corev1.ConfigMap, error) {
+	configMap, err := m.Clientset.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return &corev1.ConfigMap{}, errors.Wrapf(err, "failed to query for configMap by name: %v", name)
+	}
+
+	return configMap, nil
 }
 
 // CreateExtendedJob creates an ExtendedJob

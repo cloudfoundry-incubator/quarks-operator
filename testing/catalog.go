@@ -3,7 +3,7 @@ package testing
 import (
 	"time"
 
-	v1beta1 "k8s.io/api/apps/v1beta1"
+	"k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -35,7 +35,19 @@ func (c *Catalog) DefaultBOSHManifest(name string) corev1.ConfigMap {
 func (c *Catalog) DefaultSecret(name string) corev1.Secret {
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
-		StringData: map[string]string{},
+		StringData: map[string]string{
+			name: "default-value",
+		},
+	}
+}
+
+// DefaultConfigMap for tests
+func (c *Catalog) DefaultConfigMap(name string) corev1.ConfigMap {
+	return corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Data: map[string]string{
+			name: "default-value",
+		},
 	}
 }
 
@@ -134,6 +146,18 @@ func (c *Catalog) WrongExtendedStatefulSet(name string) essv1.ExtendedStatefulSe
 	}
 }
 
+// OwnedReferencesExtendedStatefulSet for use in tests
+func (c *Catalog) OwnedReferencesExtendedStatefulSet(name string) essv1.ExtendedStatefulSet {
+	return essv1.ExtendedStatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: essv1.ExtendedStatefulSetSpec{
+			Template: c.OwnedReferencesStatefulSet(name),
+		},
+	}
+}
+
 // DefaultStatefulSet for use in tests
 func (c *Catalog) DefaultStatefulSet(name string) v1beta1.StatefulSet {
 	replicaCount := int32(1)
@@ -160,6 +184,21 @@ func (c *Catalog) WrongStatefulSet(name string) v1beta1.StatefulSet {
 			Replicas:    &replicaCount,
 			ServiceName: name,
 			Template:    c.WrongPodTemplate(name),
+		},
+	}
+}
+
+// OwnedReferencesStatefulSet for use in tests
+func (c *Catalog) OwnedReferencesStatefulSet(name string) v1beta1.StatefulSet {
+	replicaCount := int32(1)
+	return v1beta1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1beta1.StatefulSetSpec{
+			Replicas:    &replicaCount,
+			ServiceName: name,
+			Template:    c.OwnedReferencesPodTemplate(name),
 		},
 	}
 }
@@ -193,6 +232,94 @@ func (c *Catalog) WrongPodTemplate(name string) corev1.PodTemplateSpec {
 				{
 					Name:  "wrong-container",
 					Image: "wrong-image",
+				},
+			},
+		},
+	}
+}
+
+// OwnedReferencesPodTemplate defines a pod template with four references from VolumeSources, EnvFrom and Env
+func (c *Catalog) OwnedReferencesPodTemplate(name string) corev1.PodTemplateSpec {
+	one := int64(1)
+	return corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				"referencedpod": "yes",
+			},
+		},
+		Spec: corev1.PodSpec{
+			TerminationGracePeriodSeconds: &one,
+			Volumes: []corev1.Volume{
+				{
+					Name: "secret1",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "example1",
+						},
+					},
+				},
+				{
+					Name: "configmap1",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "example1",
+							},
+						},
+					},
+				},
+			},
+			Containers: []corev1.Container{
+				{
+					Name:    "container1",
+					Image:   "busybox",
+					Command: []string{"sleep", "3600"},
+					EnvFrom: []corev1.EnvFromSource{
+						{
+							ConfigMapRef: &corev1.ConfigMapEnvSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "example1",
+								},
+							},
+						},
+						{
+							SecretRef: &corev1.SecretEnvSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "example1",
+								},
+							},
+						},
+					},
+				},
+				{
+					Name:    "container2",
+					Image:   "busybox",
+					Command: []string{"sleep", "3600"},
+					Env: []corev1.EnvVar{
+						{
+							Name: "ENV1",
+							ValueFrom: &corev1.EnvVarSource{
+								ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+									Key: "example2",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "example2",
+									},
+								},
+							},
+						},
+						{
+							Name: "ENV2",
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									Key: "example2",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "example2",
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
