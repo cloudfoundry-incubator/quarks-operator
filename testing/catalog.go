@@ -212,7 +212,7 @@ func (c *Catalog) DefaultPodTemplate(name string) corev1.PodTemplateSpec {
 				"testpod": "yes",
 			},
 		},
-		Spec: c.WebserverPodSpec(),
+		Spec: c.Sleep1hPodSpec(),
 	}
 }
 
@@ -326,13 +326,31 @@ func (c *Catalog) OwnedReferencesPodTemplate(name string) corev1.PodTemplateSpec
 	}
 }
 
+// CmdPodTemplate returns the spec with a given command for busybox
+func (c *Catalog) CmdPodTemplate(cmd []string) corev1.PodTemplateSpec {
+	one := int64(1)
+	return corev1.PodTemplateSpec{
+		Spec: corev1.PodSpec{
+			RestartPolicy:                 corev1.RestartPolicyNever,
+			TerminationGracePeriodSeconds: &one,
+			Containers: []corev1.Container{
+				{
+					Name:    "busybox",
+					Image:   "busybox",
+					Command: cmd,
+				},
+			},
+		},
+	}
+}
+
 // DefaultPod defines a pod with a simple web server useful for testing
 func (c *Catalog) DefaultPod(name string) corev1.Pod {
 	return corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: c.WebserverPodSpec(),
+		Spec: c.Sleep1hPodSpec(),
 	}
 }
 
@@ -343,7 +361,7 @@ func (c *Catalog) LabeledPod(name string, labels map[string]string) corev1.Pod {
 			Name:   name,
 			Labels: labels,
 		},
-		Spec: c.WebserverPodSpec(),
+		Spec: c.Sleep1hPodSpec(),
 	}
 }
 
@@ -354,12 +372,12 @@ func (c *Catalog) AnnotatedPod(name string, annotations map[string]string) corev
 			Name:        name,
 			Annotations: annotations,
 		},
-		Spec: c.WebserverPodSpec(),
+		Spec: c.Sleep1hPodSpec(),
 	}
 }
 
-// WebserverPodSpec defines a simple web server useful for testing
-func (c *Catalog) WebserverPodSpec() corev1.PodSpec {
+// Sleep1hPodSpec defines a simple pod that sleeps 60*60s for testing
+func (c *Catalog) Sleep1hPodSpec() corev1.PodSpec {
 	one := int64(1)
 	return corev1.PodSpec{
 		TerminationGracePeriodSeconds: &one,
@@ -443,16 +461,31 @@ func (c *Catalog) DatedPodEvent(t time.Time) corev1.Event {
 
 // DefaultExtendedJob default values
 func (c *Catalog) DefaultExtendedJob(name string) *ejv1.ExtendedJob {
+	return c.LabelTriggeredExtendedJob(
+		name,
+		map[string]string{"key": "value"},
+		[]string{"sleep", "1"},
+	)
+}
+
+// LongRunningExtendedJob has a longer sleep time
+func (c *Catalog) LongRunningExtendedJob(name string) *ejv1.ExtendedJob {
+	return c.LabelTriggeredExtendedJob(
+		name,
+		map[string]string{"key": "value"},
+		[]string{"sleep", "15"},
+	)
+}
+
+// LabelTriggeredExtendedJob allows customization of labels triggers
+func (c *Catalog) LabelTriggeredExtendedJob(name string, ml map[string]string, cmd []string) *ejv1.ExtendedJob {
 	return &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
 			Triggers: ejv1.Triggers{
-				Selector: ejv1.Selector{
-					MatchLabels: map[string]string{
-						"key": "value",
-					},
-				},
+				Selector: ejv1.Selector{MatchLabels: ml},
 			},
+			Template: c.CmdPodTemplate(cmd),
 		},
 	}
 }

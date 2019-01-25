@@ -13,6 +13,8 @@ An `ExtendedJob` allows the developer to run jobs when something interesting hap
 
 Just like an `ExtendedStatefulSet`, an `ExtendedJob` can automatically be restarted if its environment/mounts have changed due to a `ConfigMap` or a `Secret` being updated.
 
+The same `ExtendedJob` cannot run in parallel for the same pod. Even if it is still running when a new event happens to the pod, there can't be two jobs of the same name.
+
 ## Features
 
 ### Triggers

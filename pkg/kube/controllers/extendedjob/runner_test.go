@@ -20,6 +20,7 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -34,8 +35,9 @@ var _ = Describe("Runner", func() {
 			mgr   *fakes.FakeManager
 			query *fakes.FakeQuery
 
-			exJobs  []runtime.Object
-			jobList []v1alpha1.ExtendedJob
+			runtimeObjects             []runtime.Object
+			jobList                    []v1alpha1.ExtendedJob
+			setOwnerReferenceCallCount int
 		)
 
 		listJobs := func(client crc.Client) ([]batchv1.Job, error) {
@@ -51,12 +53,18 @@ var _ = Describe("Runner", func() {
 			return nil
 		}
 
+		setOwnerReference := func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+			setOwnerReferenceCallCount++
+			return nil
+		}
+
 		act := func() {
 			// can't put New() into BeforeEach, mgr.GetClient would be nil
 			r := NewRunner(
 				log,
 				mgr,
 				query,
+				setOwnerReference,
 			)
 			r.Run()
 		}
@@ -66,6 +74,7 @@ var _ = Describe("Runner", func() {
 			logs, log = testing.NewTestLogger()
 			mgr = &fakes.FakeManager{}
 			query = &fakes.FakeQuery{}
+			setOwnerReferenceCallCount = 0
 		})
 
 		Context("when client fails to list extended jobs", func() {
@@ -82,22 +91,34 @@ var _ = Describe("Runner", func() {
 				act()
 				Expect(logs.FilterMessage("failed to query extended jobs: fake-error").Len()).To(Equal(1))
 			})
+		})
 
-			It("should log create error and continue", func() {
+		Context("when client fails to create jobs", func() {
+			var client fakes.FakeClient
+
+			BeforeEach(func() {
+				client = fakes.FakeClient{}
+				mgr.GetClientReturns(&client)
+
 				jobList = []v1alpha1.ExtendedJob{
 					*env.DefaultExtendedJob("foo"),
 					*env.DefaultExtendedJob("bar"),
 				}
 				client.ListCalls(jobListStub)
 				client.CreateReturns(fmt.Errorf("fake-error"))
+				fooPod := env.DefaultPod("fake-pod")
 				query.MatchReturns([]PodEvent{
-					PodEvent{Pod: env.DefaultPod("foo")},
+					PodEvent{Pod: &fooPod},
+					PodEvent{Pod: &fooPod},
 				})
+			})
 
+			It("should log create error and continue with next event", func() {
 				act()
-				Expect(client.CreateCallCount()).To(Equal(2))
-				Expect(logs.FilterMessageSnippet("failed to create job for foo: fake-error").Len()).To(Equal(1))
-				Expect(logs.FilterMessageSnippet("failed to create job for bar: fake-error").Len()).To(Equal(1))
+				Expect(client.CreateCallCount()).To(Equal(4))
+				Expect(logs.FilterMessageSnippet("foo: failed to create job for pod fake-pod: fake-error").Len()).To(Equal(2))
+				Expect(logs.FilterMessageSnippet("bar: failed to create job for pod fake-pod: fake-error").Len()).To(Equal(2))
+				Expect(setOwnerReferenceCallCount).To(Equal(0))
 			})
 		})
 
@@ -113,16 +134,18 @@ var _ = Describe("Runner", func() {
 				}
 				client.ListCalls(jobListStub)
 
+				fooPod := env.DefaultPod("mypod")
 				query.MatchReturns([]PodEvent{
-					PodEvent{Pod: env.DefaultPod("foo")},
+					PodEvent{Pod: &fooPod},
+					PodEvent{Pod: &fooPod},
 				})
 
 				client.UpdateReturns(fmt.Errorf("fake-error"))
 			})
 
-			It("should log and return", func() {
+			It("should log and continue with next pod event", func() {
 				act()
-				Expect(logs.FilterMessageSnippet("failed to update job stamp on pod foo: fake-error").Len()).To(Equal(1))
+				Expect(logs.FilterMessageSnippet("foo: failed to update job timestamp on pod mypod: fake-error").Len()).To(Equal(2))
 			})
 		})
 
@@ -130,8 +153,8 @@ var _ = Describe("Runner", func() {
 			var client crc.Client
 
 			BeforeEach(func() {
-				exJobs = []runtime.Object{}
-				client = fake.NewFakeClient(exJobs...)
+				runtimeObjects = []runtime.Object{}
+				client = fake.NewFakeClient(runtimeObjects...)
 				mgr.GetClientReturns(client)
 			})
 
@@ -147,19 +170,36 @@ var _ = Describe("Runner", func() {
 		})
 
 		Context("when extended jobs are present", func() {
-			var client crc.Client
+			var (
+				client    crc.Client
+				fooPod    corev1.Pod
+				now       time.Time
+				timestamp string
+			)
 
 			BeforeEach(func() {
-				exJobs = []runtime.Object{
+				now = time.Now()
+				before25 := now.Add(-25 * time.Minute)
+				timestamp = strconv.FormatInt(before25.Unix(), 10)
+
+				fooPod = env.AnnotatedPod("fake-pod", map[string]string{
+					"job-ts-foo": timestamp,
+				})
+				barPod := env.AnnotatedPod("barPod", map[string]string{
+					"job-ts-bar": timestamp,
+				})
+				runtimeObjects = []runtime.Object{
 					env.DefaultExtendedJob("foo"),
-					env.DefaultExtendedJob("bar"),
+					env.LongRunningExtendedJob("bar"),
+					&fooPod,
+					&barPod,
 				}
-				client = fake.NewFakeClient(exJobs...)
+				client = fake.NewFakeClient(runtimeObjects...)
 				mgr.GetClientReturns(client)
 
 				query.MatchReturns([]PodEvent{
-					PodEvent{Pod: env.DefaultPod("foo")},
-					PodEvent{Pod: env.DefaultPod("bar")},
+					PodEvent{Pod: &fooPod},
+					PodEvent{Pod: &barPod},
 				})
 			})
 
@@ -168,8 +208,13 @@ var _ = Describe("Runner", func() {
 
 				jobs, err := listJobs(client)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(jobs).To(HaveLen(4))
+				Expect(jobs).To(HaveLen(2))
 				Expect(jobs[0].Name).To(ContainSubstring("job-foo-"))
+				Expect(jobs[0].Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"sleep", "1"}))
+				Expect(jobs[1].Name).To(ContainSubstring("job-bar-"))
+				Expect(jobs[1].Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"sleep", "15"}))
+				Expect(logs.FilterMessageSnippet("foo: created job for pod barPod").Len()).To(Equal(1))
+				Expect(logs.FilterMessageSnippet("bar: created job for pod fake-pod").Len()).To(Equal(1))
 			})
 
 			Context("when querying events fails", func() {
@@ -205,47 +250,54 @@ var _ = Describe("Runner", func() {
 				})
 			})
 
-		})
-
-		Context("when processing events", func() {
-			var client crc.Client
-
-			BeforeEach(func() {
-				exJobs = []runtime.Object{
-					env.DefaultExtendedJob("foo"),
+			Context("when setting owner reference fails", func() {
+				setOwnerReferenceFail := func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+					return fmt.Errorf("fake-error")
 				}
-				client = fake.NewFakeClient(exJobs...)
-				mgr.GetClientReturns(client)
 
-				now := time.Now()
-				before10 := now.Add(time.Minute * -10)
-				before20 := now.Add(time.Minute * -20)
-				before25 := now.Add(time.Minute * -25)
-				before30 := now.Add(time.Minute * -30)
-				pod := env.AnnotatedPod("foo", map[string]string{
-					"job-foo": strconv.FormatInt(before25.Unix(), 10),
-				})
-				query.MatchReturns([]PodEvent{
-					PodEvent{
-						Pod:   pod,
-						Event: env.DatedPodEvent(before10),
-					},
-					PodEvent{
-						Pod:   pod,
-						Event: env.DatedPodEvent(before20),
-					},
-					PodEvent{
-						Pod:   pod,
-						Event: env.DatedPodEvent(before30),
-					},
+				It("should log and try to update timestamp", func() {
+					r := NewRunner(
+						log,
+						mgr,
+						query,
+						setOwnerReferenceFail,
+					)
+					r.Run()
+					Expect(logs.FilterMessageSnippet("foo: failed to set reference on job for pod barPod: fake-error").Len()).To(Equal(1))
+					Expect(fooPod.GetAnnotations()["job-ts-foo"]).NotTo(Equal(""))
 				})
 			})
 
-			It("should ignore old events and only run once per pod", func() {
-				act()
-				jobs, err := listJobs(client)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(jobs).To(HaveLen(1))
+			Context("when old events are present", func() {
+				BeforeEach(func() {
+					before10 := now.Add(-10 * time.Minute)
+					before20 := now.Add(-20 * time.Minute)
+					before30 := now.Add(-30 * time.Minute)
+					query.MatchReturns([]PodEvent{
+						PodEvent{
+							Pod:   &fooPod,
+							Event: env.DatedPodEvent(before10),
+						},
+						PodEvent{
+							Pod:   &fooPod,
+							Event: env.DatedPodEvent(before20),
+						},
+						PodEvent{
+							Pod:   &fooPod,
+							Event: env.DatedPodEvent(before30),
+						},
+					})
+				})
+
+				It("should ignore old events", func() {
+					act()
+					jobs, err := listJobs(client)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(jobs).To(HaveLen(2))
+					Expect(setOwnerReferenceCallCount).To(Equal(2))
+					Expect(fooPod.GetAnnotations()).To(HaveLen(2))
+					Expect(fooPod.GetAnnotations()["job-ts-foo"]).NotTo(Equal(timestamp))
+				})
 			})
 		})
 

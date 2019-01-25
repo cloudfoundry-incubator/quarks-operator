@@ -79,6 +79,7 @@ func (in *ExtendedJobList) DeepCopyObject() runtime.Object {
 func (in *ExtendedJobSpec) DeepCopyInto(out *ExtendedJobSpec) {
 	*out = *in
 	in.Triggers.DeepCopyInto(&out.Triggers)
+	in.Template.DeepCopyInto(&out.Template)
 	return
 }
 

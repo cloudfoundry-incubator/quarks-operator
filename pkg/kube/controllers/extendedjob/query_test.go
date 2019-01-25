@@ -121,7 +121,7 @@ var _ = Describe("Query", func() {
 				client.GetCalls(podGetStub)
 			})
 
-			It("returns all events with their pod", func() {
+			It("returns all events with pointer to the pod", func() {
 				podEvents, err := act()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(podEvents).To(HaveLen(3))
@@ -131,6 +131,8 @@ var _ = Describe("Query", func() {
 				Expect(podEvents[1].Event).To(Equal(events[1]))
 				Expect(podEvents[2].Pod.Name).To(Equal(pods[1].Name))
 				Expect(podEvents[2].Event).To(Equal(events[2]))
+				podEvents[0].Pod.Name = "test"
+				Expect(podEvents[0].Pod).To(Equal(podEvents[1].Pod))
 			})
 		})
 
@@ -187,16 +189,21 @@ var _ = Describe("Query", func() {
 		Context("when given events with pods", func() {
 			BeforeEach(func() {
 				job = *env.DefaultExtendedJob("foo")
+				matchingPod := env.LabeledPod("matching", map[string]string{"key": "value"})
+				otherPod := env.LabeledPod("other", map[string]string{"other": "value"})
+				anotherPod := env.LabeledPod("another", map[string]string{"key": "other"})
+				manyLabelsPod := env.LabeledPod("many", map[string]string{"key": "value", "test": "true"})
 				pods = []PodEvent{
-					PodEvent{Pod: env.LabeledPod("one", map[string]string{"key": "value"})},
-					PodEvent{Pod: env.LabeledPod("two", map[string]string{"other": "value"})},
-					PodEvent{Pod: env.LabeledPod("three", map[string]string{"key": "other"})},
+					PodEvent{Pod: &matchingPod},
+					PodEvent{Pod: &otherPod},
+					PodEvent{Pod: &anotherPod},
+					PodEvent{Pod: &manyLabelsPod},
 				}
 			})
 
 			It("returns only tuples with matching labels", func() {
 				filtered := act()
-				Expect(filtered).To(HaveLen(1))
+				Expect(filtered).To(HaveLen(2))
 			})
 		})
 	})

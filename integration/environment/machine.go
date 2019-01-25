@@ -5,10 +5,11 @@ import (
 	"strings"
 	"time"
 
-
 	"github.com/pkg/errors"
 	"k8s.io/api/apps/v1beta1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -34,8 +35,8 @@ type Machine struct {
 // TearDownFunc tears down the resource
 type TearDownFunc func()
 
-// CreateDefaultPod creates a default pod and returns a function to delete it
-func (m *Machine) CreateDefaultPod(namespace string, pod corev1.Pod) (TearDownFunc, error) {
+// CreatePod creates a default pod and returns a function to delete it
+func (m *Machine) CreatePod(namespace string, pod corev1.Pod) (TearDownFunc, error) {
 	client := m.Clientset.CoreV1().Pods(namespace)
 	_, err := client.Create(&pod)
 	return func() {
@@ -376,6 +377,73 @@ func (m *Machine) PodLabeled(namespace string, name string, desiredLabel, desire
 		return true, nil
 	}
 	return false, fmt.Errorf("Cannot match the desired label with %s", desiredValue)
+}
+
+// WaitForJob blocks until the job is running. It fails after the timeout.
+func (m *Machine) WaitForJob(namespace string, name string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.JobExists(namespace, name)
+	})
+}
+
+// WaitForJobEnd waits until the job no longer exists
+func (m *Machine) WaitForJobEnd(namespace string, name string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		found, err := m.JobExists(namespace, name)
+		return !found, err
+	})
+}
+
+// JobExists returns true if job with that name exists
+func (m *Machine) JobExists(namespace string, name string) (bool, error) {
+	_, err := m.Clientset.BatchV1().Jobs(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "failed to query for job by name: %s", name)
+	}
+
+	return true, nil
+}
+
+// CollectJobs waits for n jobs with specified labels.
+// It fails after the timeout.
+func (m *Machine) CollectJobs(namespace string, labels string, n int) ([]batchv1.Job, error) {
+	found := map[string]batchv1.Job{}
+	err := wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		jobs, err := m.Clientset.BatchV1().Jobs(namespace).List(metav1.ListOptions{
+			LabelSelector: labels,
+		})
+		if err != nil {
+			return false, errors.Wrapf(err, "failed to query for jobs by label: %s", labels)
+		}
+
+		for _, job := range jobs.Items {
+			found[job.GetName()] = job
+		}
+		return len(found) >= n, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	jobs := []batchv1.Job{}
+	for _, job := range found {
+		jobs = append(jobs, job)
+	}
+	return jobs, nil
+}
+
+// ContainJob searches job array for a job matching `name`
+func (m *Machine) ContainJob(jobs []batchv1.Job, name string) bool {
+	for _, job := range jobs {
+		if job.GetName() == name {
+			return true
+		}
+	}
+	return false
 }
 
 // ContainExpectedEvent return true if events contain target resource event
