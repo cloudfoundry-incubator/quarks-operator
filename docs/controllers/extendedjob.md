@@ -72,11 +72,13 @@ after completion the value will be reset to `manually`.
 
 ### Persisted Output
 
-The developer can specify a ConfigMap or a Secret where the standard output/error output of the ExtendedJob is stored.
+The developer can specify a ConfigMap or a Secret where the standard output/error output of the ExtendedJob is stored. Only single-pod jobs are supported when output persistence is enabled for now.
 
-Since a Job can run multiple times until it succeeds, the behavior of storing the output is controlled by specifying the following parameters:
-- `overwrite` - if true, the ConfigMap or Secret is updated on every run
-- `writeOnFailure` - if true, output is written even though the Job failed.
+**Note:** Output of previous runs of will be overwritten.
+
+The behavior of storing the output is controlled by specifying the following parameters:
+- `outputType` - Currently only `json` is supported. (default: `json`)
+- `writeOnFailure` - if true, output is written even though the Job failed. (default: `false`)
 
 ## Example Triggered ExtendedJob Resource
 
@@ -88,14 +90,9 @@ metadata:
   name: MyExtendedJob
 spec:
   output:
-    stderr:
-      configRef: "mynamespace/fooErrors"
-      overwrite: true
-      writeOnFailure: true
-    stdout:
-      secretRef: "mynamespace/fooSecret"
-      overwrite: true
-      writeOnFailure: false
+    configRef: "mynamespace/fooErrors"
+    writeOnFailure: true
+    outputType: "json"
   updateOnConfigChange: true
   triggers:
     when: ready
