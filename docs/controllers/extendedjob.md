@@ -24,10 +24,6 @@ errands.
 
 ### Triggered Jobs
 
-The controller periodically pulls the event log and inspects events involving a
-pod.  This should protect against controller downtime, as long as the k8s event
-log covers the duration of the downtime.
-
 An `ExtendedJob` can be triggered when something interesting happens to a pod.
 
 E.g. when a `Pod` is created, deleted, transitioned to **ready** or a

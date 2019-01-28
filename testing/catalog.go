@@ -1,8 +1,6 @@
 package testing
 
 import (
-	"time"
-
 	"k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -447,16 +445,6 @@ func (c *Catalog) InterpolateBOSHDeployment(name, manifestRef, opsRef string, se
 			},
 		},
 	}
-}
-
-// DefaultPodEvent references a Pod by name
-func (c *Catalog) DefaultPodEvent(podName string) corev1.Event {
-	return corev1.Event{InvolvedObject: corev1.ObjectReference{Name: podName}}
-}
-
-// DatedPodEvent has last timestamp set
-func (c *Catalog) DatedPodEvent(t time.Time) corev1.Event {
-	return corev1.Event{LastTimestamp: metav1.NewTime(t)}
 }
 
 // DefaultExtendedJob default values

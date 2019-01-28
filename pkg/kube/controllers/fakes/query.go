@@ -10,128 +10,30 @@ import (
 )
 
 type FakeQuery struct {
-	FetchPodsStub        func([]v1.Event) ([]extendedjob.PodEvent, error)
-	fetchPodsMutex       sync.RWMutex
-	fetchPodsArgsForCall []struct {
-		arg1 []v1.Event
-	}
-	fetchPodsReturns struct {
-		result1 []extendedjob.PodEvent
-		result2 error
-	}
-	fetchPodsReturnsOnCall map[int]struct {
-		result1 []extendedjob.PodEvent
-		result2 error
-	}
-	MatchStub        func(v1alpha1.ExtendedJob, []extendedjob.PodEvent) []extendedjob.PodEvent
+	MatchStub        func(v1alpha1.ExtendedJob, v1.Pod) bool
 	matchMutex       sync.RWMutex
 	matchArgsForCall []struct {
 		arg1 v1alpha1.ExtendedJob
-		arg2 []extendedjob.PodEvent
+		arg2 v1.Pod
 	}
 	matchReturns struct {
-		result1 []extendedjob.PodEvent
+		result1 bool
 	}
 	matchReturnsOnCall map[int]struct {
-		result1 []extendedjob.PodEvent
-	}
-	RecentPodEventsStub        func() ([]v1.Event, error)
-	recentPodEventsMutex       sync.RWMutex
-	recentPodEventsArgsForCall []struct {
-	}
-	recentPodEventsReturns struct {
-		result1 []v1.Event
-		result2 error
-	}
-	recentPodEventsReturnsOnCall map[int]struct {
-		result1 []v1.Event
-		result2 error
+		result1 bool
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeQuery) FetchPods(arg1 []v1.Event) ([]extendedjob.PodEvent, error) {
-	var arg1Copy []v1.Event
-	if arg1 != nil {
-		arg1Copy = make([]v1.Event, len(arg1))
-		copy(arg1Copy, arg1)
-	}
-	fake.fetchPodsMutex.Lock()
-	ret, specificReturn := fake.fetchPodsReturnsOnCall[len(fake.fetchPodsArgsForCall)]
-	fake.fetchPodsArgsForCall = append(fake.fetchPodsArgsForCall, struct {
-		arg1 []v1.Event
-	}{arg1Copy})
-	fake.recordInvocation("FetchPods", []interface{}{arg1Copy})
-	fake.fetchPodsMutex.Unlock()
-	if fake.FetchPodsStub != nil {
-		return fake.FetchPodsStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.fetchPodsReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *FakeQuery) FetchPodsCallCount() int {
-	fake.fetchPodsMutex.RLock()
-	defer fake.fetchPodsMutex.RUnlock()
-	return len(fake.fetchPodsArgsForCall)
-}
-
-func (fake *FakeQuery) FetchPodsCalls(stub func([]v1.Event) ([]extendedjob.PodEvent, error)) {
-	fake.fetchPodsMutex.Lock()
-	defer fake.fetchPodsMutex.Unlock()
-	fake.FetchPodsStub = stub
-}
-
-func (fake *FakeQuery) FetchPodsArgsForCall(i int) []v1.Event {
-	fake.fetchPodsMutex.RLock()
-	defer fake.fetchPodsMutex.RUnlock()
-	argsForCall := fake.fetchPodsArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *FakeQuery) FetchPodsReturns(result1 []extendedjob.PodEvent, result2 error) {
-	fake.fetchPodsMutex.Lock()
-	defer fake.fetchPodsMutex.Unlock()
-	fake.FetchPodsStub = nil
-	fake.fetchPodsReturns = struct {
-		result1 []extendedjob.PodEvent
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeQuery) FetchPodsReturnsOnCall(i int, result1 []extendedjob.PodEvent, result2 error) {
-	fake.fetchPodsMutex.Lock()
-	defer fake.fetchPodsMutex.Unlock()
-	fake.FetchPodsStub = nil
-	if fake.fetchPodsReturnsOnCall == nil {
-		fake.fetchPodsReturnsOnCall = make(map[int]struct {
-			result1 []extendedjob.PodEvent
-			result2 error
-		})
-	}
-	fake.fetchPodsReturnsOnCall[i] = struct {
-		result1 []extendedjob.PodEvent
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeQuery) Match(arg1 v1alpha1.ExtendedJob, arg2 []extendedjob.PodEvent) []extendedjob.PodEvent {
-	var arg2Copy []extendedjob.PodEvent
-	if arg2 != nil {
-		arg2Copy = make([]extendedjob.PodEvent, len(arg2))
-		copy(arg2Copy, arg2)
-	}
+func (fake *FakeQuery) Match(arg1 v1alpha1.ExtendedJob, arg2 v1.Pod) bool {
 	fake.matchMutex.Lock()
 	ret, specificReturn := fake.matchReturnsOnCall[len(fake.matchArgsForCall)]
 	fake.matchArgsForCall = append(fake.matchArgsForCall, struct {
 		arg1 v1alpha1.ExtendedJob
-		arg2 []extendedjob.PodEvent
-	}{arg1, arg2Copy})
-	fake.recordInvocation("Match", []interface{}{arg1, arg2Copy})
+		arg2 v1.Pod
+	}{arg1, arg2})
+	fake.recordInvocation("Match", []interface{}{arg1, arg2})
 	fake.matchMutex.Unlock()
 	if fake.MatchStub != nil {
 		return fake.MatchStub(arg1, arg2)
@@ -149,106 +51,47 @@ func (fake *FakeQuery) MatchCallCount() int {
 	return len(fake.matchArgsForCall)
 }
 
-func (fake *FakeQuery) MatchCalls(stub func(v1alpha1.ExtendedJob, []extendedjob.PodEvent) []extendedjob.PodEvent) {
+func (fake *FakeQuery) MatchCalls(stub func(v1alpha1.ExtendedJob, v1.Pod) bool) {
 	fake.matchMutex.Lock()
 	defer fake.matchMutex.Unlock()
 	fake.MatchStub = stub
 }
 
-func (fake *FakeQuery) MatchArgsForCall(i int) (v1alpha1.ExtendedJob, []extendedjob.PodEvent) {
+func (fake *FakeQuery) MatchArgsForCall(i int) (v1alpha1.ExtendedJob, v1.Pod) {
 	fake.matchMutex.RLock()
 	defer fake.matchMutex.RUnlock()
 	argsForCall := fake.matchArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeQuery) MatchReturns(result1 []extendedjob.PodEvent) {
+func (fake *FakeQuery) MatchReturns(result1 bool) {
 	fake.matchMutex.Lock()
 	defer fake.matchMutex.Unlock()
 	fake.MatchStub = nil
 	fake.matchReturns = struct {
-		result1 []extendedjob.PodEvent
+		result1 bool
 	}{result1}
 }
 
-func (fake *FakeQuery) MatchReturnsOnCall(i int, result1 []extendedjob.PodEvent) {
+func (fake *FakeQuery) MatchReturnsOnCall(i int, result1 bool) {
 	fake.matchMutex.Lock()
 	defer fake.matchMutex.Unlock()
 	fake.MatchStub = nil
 	if fake.matchReturnsOnCall == nil {
 		fake.matchReturnsOnCall = make(map[int]struct {
-			result1 []extendedjob.PodEvent
+			result1 bool
 		})
 	}
 	fake.matchReturnsOnCall[i] = struct {
-		result1 []extendedjob.PodEvent
+		result1 bool
 	}{result1}
-}
-
-func (fake *FakeQuery) RecentPodEvents() ([]v1.Event, error) {
-	fake.recentPodEventsMutex.Lock()
-	ret, specificReturn := fake.recentPodEventsReturnsOnCall[len(fake.recentPodEventsArgsForCall)]
-	fake.recentPodEventsArgsForCall = append(fake.recentPodEventsArgsForCall, struct {
-	}{})
-	fake.recordInvocation("RecentPodEvents", []interface{}{})
-	fake.recentPodEventsMutex.Unlock()
-	if fake.RecentPodEventsStub != nil {
-		return fake.RecentPodEventsStub()
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.recentPodEventsReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *FakeQuery) RecentPodEventsCallCount() int {
-	fake.recentPodEventsMutex.RLock()
-	defer fake.recentPodEventsMutex.RUnlock()
-	return len(fake.recentPodEventsArgsForCall)
-}
-
-func (fake *FakeQuery) RecentPodEventsCalls(stub func() ([]v1.Event, error)) {
-	fake.recentPodEventsMutex.Lock()
-	defer fake.recentPodEventsMutex.Unlock()
-	fake.RecentPodEventsStub = stub
-}
-
-func (fake *FakeQuery) RecentPodEventsReturns(result1 []v1.Event, result2 error) {
-	fake.recentPodEventsMutex.Lock()
-	defer fake.recentPodEventsMutex.Unlock()
-	fake.RecentPodEventsStub = nil
-	fake.recentPodEventsReturns = struct {
-		result1 []v1.Event
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeQuery) RecentPodEventsReturnsOnCall(i int, result1 []v1.Event, result2 error) {
-	fake.recentPodEventsMutex.Lock()
-	defer fake.recentPodEventsMutex.Unlock()
-	fake.RecentPodEventsStub = nil
-	if fake.recentPodEventsReturnsOnCall == nil {
-		fake.recentPodEventsReturnsOnCall = make(map[int]struct {
-			result1 []v1.Event
-			result2 error
-		})
-	}
-	fake.recentPodEventsReturnsOnCall[i] = struct {
-		result1 []v1.Event
-		result2 error
-	}{result1, result2}
 }
 
 func (fake *FakeQuery) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.fetchPodsMutex.RLock()
-	defer fake.fetchPodsMutex.RUnlock()
 	fake.matchMutex.RLock()
 	defer fake.matchMutex.RUnlock()
-	fake.recentPodEventsMutex.RLock()
-	defer fake.recentPodEventsMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
