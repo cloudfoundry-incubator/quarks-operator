@@ -2,11 +2,12 @@
 
 - [Transforming BOSH concepts to Kubernetes](#transforming-bosh-concepts-to-kubernetes)
   - [High-level Direction](#high-level-direction)
+  - [Deployment Lifecycle](#deployment-lifecycle)
     - [Create](#create)
     - [Update](#update)
     - [Delete](#delete)
   - [Open Questions and TODOs](#open-questions-and-todos)
-  - [Deployment manifest conversion details](#deployment-manifest-conversion-details)
+  - [Example Deployment Manifest Conversion Details](#example-deployment-manifest-conversion-details)
   - [BPM](#bpm)
     - [Entrypoint](#entrypoint)
     - [Environment](#environment)
@@ -20,9 +21,11 @@
 - each instance group can be transformed to an `ExtendedStatefulSet` or an `ExtendedJob`
 - each BOSH Job corresponds to a container in the pod defined in the `ExtendedStatefulSet` or the `ExtendedJob`
 - `variables` are generated using `ExtendedSecrets`
-- rendering of templates requires mounting the current version of the DesiredManifest and all secrets corresponding to variables
+- [rendering of BOSH Job Templates](rendering_templates.md) requires mounting the current version of the [Desired Manifest](desired_manifests.md) and all secrets corresponding to variables
 - all communication happens through `Services`, which have deterministic DNS Addresses
 - links are resolved using services
+
+## Deployment Lifecycle
 
 ### Create
 
@@ -49,18 +52,24 @@ As the `BOSHDeployment` is deleted, all owned resources are automatically delete
 
 1. Detailed specification for dealing with AZs 
 2. How do we specify credentials for docker registries containing release images?
+   - we could extend the deployment manifest schema (with agreement from the BOSH team)
+   - we could have a special k8s secret, which by convention is always named something like `docker-registry-secrets` and contains hostnames-to-credential mappings. e.g.:
+     ```
+     docker.io: { user: test, password: none }
+     localhost: { user: root, password, toor }
+     ```
 3. Are we going to use ephemeral disks? Are they useful?
 4. BOSH makes use of errands, which are manually triggered. How do we support this in ExtendedJob?
 5. Discuss the ability to extend the releases block with credentials.
 6. Details on how we create services for jobs
 7. How do we rename things?
 8. Do we need ephemeral disks?
-9. For persistent disks - are they shared among container pods?
+9.  For persistent disks - are they shared among container pods?
 10. Canary support in ExtendedStatefulSets
 11. How do we deal with volumes? How can data be migrated from an older volume? Can we use ExtendedJobs for this? Do we need `ExtendedPersistentVolumes`?
 12. How are readiness probes generated?
 
-## Deployment manifest conversion details
+## Example Deployment Manifest Conversion Details
 
 ```yaml
 ---
