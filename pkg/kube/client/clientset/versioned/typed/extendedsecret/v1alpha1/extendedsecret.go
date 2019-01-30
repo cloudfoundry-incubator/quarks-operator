@@ -8,6 +8,8 @@ Don't alter this file, it was generated.
 package v1alpha1
 
 import (
+	"time"
+
 	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	scheme "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,11 +67,16 @@ func (c *extendedSecrets) Get(name string, options v1.GetOptions) (result *v1alp
 
 // List takes label and field selectors, and returns the list of ExtendedSecrets that match those selectors.
 func (c *extendedSecrets) List(opts v1.ListOptions) (result *v1alpha1.ExtendedSecretList, err error) {
+	var timeout time.Duration
+	if opts.TimeoutSeconds != nil {
+		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
+	}
 	result = &v1alpha1.ExtendedSecretList{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("extendedsecrets").
 		VersionedParams(&opts, scheme.ParameterCodec).
+		Timeout(timeout).
 		Do().
 		Into(result)
 	return
@@ -77,11 +84,16 @@ func (c *extendedSecrets) List(opts v1.ListOptions) (result *v1alpha1.ExtendedSe
 
 // Watch returns a watch.Interface that watches the requested extendedSecrets.
 func (c *extendedSecrets) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	var timeout time.Duration
+	if opts.TimeoutSeconds != nil {
+		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
+	}
 	opts.Watch = true
 	return c.client.Get().
 		Namespace(c.ns).
 		Resource("extendedsecrets").
 		VersionedParams(&opts, scheme.ParameterCodec).
+		Timeout(timeout).
 		Watch()
 }
 
@@ -139,10 +151,15 @@ func (c *extendedSecrets) Delete(name string, options *v1.DeleteOptions) error {
 
 // DeleteCollection deletes a collection of objects.
 func (c *extendedSecrets) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
+	var timeout time.Duration
+	if listOptions.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
+	}
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("extendedsecrets").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
+		Timeout(timeout).
 		Body(options).
 		Do().
 		Error()
