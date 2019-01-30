@@ -137,6 +137,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	// Update StatefulSets configSHA1 if necessary
 	err = r.updateStatefulSetsConfigSHA1(ctx, exStatefulSet)
 	if err != nil {
+		// TODO fix the object has been modified
 		r.log.Error("Could not update StatefulSets owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 		return reconcile.Result{}, err
 	}
