@@ -451,6 +451,7 @@ func (c *Catalog) InterpolateBOSHDeployment(name, manifestRef, opsRef string, se
 func (c *Catalog) DefaultExtendedJob(name string) *ejv1.ExtendedJob {
 	return c.LabelTriggeredExtendedJob(
 		name,
+		ejv1.PodStateReady,
 		map[string]string{"key": "value"},
 		[]string{"sleep", "1"},
 	)
@@ -460,17 +461,29 @@ func (c *Catalog) DefaultExtendedJob(name string) *ejv1.ExtendedJob {
 func (c *Catalog) LongRunningExtendedJob(name string) *ejv1.ExtendedJob {
 	return c.LabelTriggeredExtendedJob(
 		name,
+		ejv1.PodStateReady,
 		map[string]string{"key": "value"},
 		[]string{"sleep", "15"},
 	)
 }
 
+// OnDeleteExtendedJob runs for deleted pods
+func (c *Catalog) OnDeleteExtendedJob(name string) *ejv1.ExtendedJob {
+	return c.LabelTriggeredExtendedJob(
+		name,
+		ejv1.PodStateDeleted,
+		map[string]string{"key": "value"},
+		[]string{"sleep", "1"},
+	)
+}
+
 // LabelTriggeredExtendedJob allows customization of labels triggers
-func (c *Catalog) LabelTriggeredExtendedJob(name string, ml map[string]string, cmd []string) *ejv1.ExtendedJob {
+func (c *Catalog) LabelTriggeredExtendedJob(name string, state ejv1.PodState, ml map[string]string, cmd []string) *ejv1.ExtendedJob {
 	return &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
 			Triggers: ejv1.Triggers{
+				When:     state,
 				Selector: ejv1.Selector{MatchLabels: ml},
 			},
 			Template: c.CmdPodTemplate(cmd),

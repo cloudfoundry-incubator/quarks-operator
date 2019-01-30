@@ -379,18 +379,30 @@ func (m *Machine) PodLabeled(namespace string, name string, desiredLabel, desire
 	return false, fmt.Errorf("Cannot match the desired label with %s", desiredValue)
 }
 
-// WaitForJob blocks until the job is running. It fails after the timeout.
-func (m *Machine) WaitForJob(namespace string, name string) error {
-	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
-		return m.JobExists(namespace, name)
-	})
+// DeleteJobs deletes all the jobs
+func (m *Machine) DeleteJobs(namespace string, labels string) (bool, error) {
+	err := m.Clientset.BatchV1().Jobs(namespace).DeleteCollection(
+		&metav1.DeleteOptions{},
+		metav1.ListOptions{LabelSelector: labels},
+	)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to delete all jobs with labels: %s", labels)
+	}
+
+	return true, nil
 }
 
-// WaitForJobEnd waits until the job no longer exists
-func (m *Machine) WaitForJobEnd(namespace string, name string) error {
+// WaitForJobsDeleted waits until the jobs no longer exists
+func (m *Machine) WaitForJobsDeleted(namespace string, labels string) error {
 	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
-		found, err := m.JobExists(namespace, name)
-		return !found, err
+		jobs, err := m.Clientset.BatchV1().Jobs(namespace).List(metav1.ListOptions{
+			LabelSelector: labels,
+		})
+		if err != nil {
+			return false, errors.Wrapf(err, "failed to list jobs by label: %s", labels)
+		}
+
+		return len(jobs.Items) < 1, nil
 	})
 }
 
@@ -436,10 +448,33 @@ func (m *Machine) CollectJobs(namespace string, labels string, n int) ([]batchv1
 	return jobs, nil
 }
 
+// WaitForJobExists polls until a short timeout is reached or a job is found
+// It returns true only if a job is found
+func (m *Machine) WaitForJobExists(namespace string, labels string) (bool, error) {
+	found := false
+	err := wait.Poll(5*time.Second, 1*time.Second, func() (bool, error) {
+		jobs, err := m.Clientset.BatchV1().Jobs(namespace).List(metav1.ListOptions{
+			LabelSelector: labels,
+		})
+		if err != nil {
+			return false, errors.Wrapf(err, "failed to query for jobs by label: %s", labels)
+		}
+
+		found = len(jobs.Items) != 0
+		return found, err
+	})
+
+	if err != nil && strings.Contains(err.Error(), "timed out waiting for the condition") {
+		err = nil
+	}
+
+	return found, err
+}
+
 // ContainJob searches job array for a job matching `name`
 func (m *Machine) ContainJob(jobs []batchv1.Job, name string) bool {
 	for _, job := range jobs {
-		if job.GetName() == name {
+		if strings.Contains(job.GetName(), name) {
 			return true
 		}
 	}
@@ -513,6 +548,13 @@ func (m *Machine) GetConfigMap(namespace string, name string) (*corev1.ConfigMap
 	}
 
 	return configMap, nil
+}
+
+// GetExtendedJob gets an ExtendedJob custom resource
+func (m *Machine) GetExtendedJob(namespace string, name string) (*ejv1.ExtendedJob, error) {
+	client := m.VersionedClientset.Extendedjob().ExtendedJobs(namespace)
+	d, err := client.Get(name, metav1.GetOptions{})
+	return d, err
 }
 
 // CreateExtendedJob creates an ExtendedJob

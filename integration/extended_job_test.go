@@ -5,12 +5,25 @@ import (
 	. "github.com/onsi/gomega"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ = Describe("ExtendedJob", func() {
-	Context("when using label matchers", func() {
+	ownerRef := func(exJob ejv1.ExtendedJob) metav1.OwnerReference {
+		return metav1.OwnerReference{
+			APIVersion:         "fissile.cloudfoundry.org/v1alpha1",
+			Kind:               "ExtendedJob",
+			Name:               exJob.Name,
+			UID:                exJob.UID,
+			Controller:         helper.Bool(true),
+			BlockOwnerDeletion: helper.Bool(true),
+		}
+	}
+
+	Context("when using label matchers to trigger jobs", func() {
 		AfterEach(func() {
 			env.WaitForPodsDelete(env.Namespace)
 		})
@@ -26,11 +39,9 @@ var _ = Describe("ExtendedJob", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
-			jobList, err := env.Clientset.BatchV1().Jobs(env.Namespace).List(metav1.ListOptions{
-				LabelSelector: "extendedjob=true",
-			})
+			exists, err := env.WaitForJobExists(env.Namespace, "extendedjob=true")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(jobList.Items).To(HaveLen(0))
+			Expect(exists).To(BeFalse())
 		})
 
 		It("should pick up new extended jobs", func() {
@@ -57,17 +68,21 @@ var _ = Describe("ExtendedJob", func() {
 			By("waiting for the job")
 			_, err = env.CollectJobs(env.Namespace, "extendedjob=true", 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
+
+			// Why does the ExtendedJob deletion not trigger the job deletion?
+			env.DeleteJobs(env.Namespace, "extendedjob=true")
+			env.WaitForJobsDeleted(env.Namespace, "extendedjob=true")
 		})
 
-		It("should start a job for a matched pod once", func() {
-			// prev events don't trigger, b/c no matching job was found when they happened
-
+		It("should start a job for a matched pod", func() {
+			// we have to create jobs first, reconciler noops if no job matches
 			By("creating extended jobs")
 			for _, ej := range []ejv1.ExtendedJob{
 				*env.DefaultExtendedJob("extendedjob"),
 				*env.LongRunningExtendedJob("slowjob"),
 				*env.LabelTriggeredExtendedJob(
 					"unmatched",
+					"ready",
 					map[string]string{"unmatched": "unmatched"},
 					[]string{"sleep", "1"},
 				),
@@ -97,11 +112,10 @@ var _ = Describe("ExtendedJob", func() {
 			Expect(env.ContainJob(jobs, "job-extendedjob-bar")).To(Equal(true))
 			Expect(env.ContainJob(jobs, "job-slowjob-bar")).To(Equal(true))
 
-			By("job does not appear again")
-
-			env.WaitForJobEnd(env.Namespace, "job-extendedjob-foo")
-			err = env.WaitForJob(env.Namespace, "job-extendedjob-foo")
+			By("checking if owner ref is set")
+			latest, err := env.GetExtendedJob(env.Namespace, "extendedjob")
 			Expect(err).NotTo(HaveOccurred())
+			Expect(jobs[0].GetOwnerReferences()).Should(ContainElement(ownerRef(*latest)))
 		})
 	})
 })

@@ -22,6 +22,18 @@ type FakeQuery struct {
 	matchReturnsOnCall map[int]struct {
 		result1 bool
 	}
+	MatchStateStub        func(v1alpha1.ExtendedJob, v1alpha1.PodState) bool
+	matchStateMutex       sync.RWMutex
+	matchStateArgsForCall []struct {
+		arg1 v1alpha1.ExtendedJob
+		arg2 v1alpha1.PodState
+	}
+	matchStateReturns struct {
+		result1 bool
+	}
+	matchStateReturnsOnCall map[int]struct {
+		result1 bool
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -87,11 +99,74 @@ func (fake *FakeQuery) MatchReturnsOnCall(i int, result1 bool) {
 	}{result1}
 }
 
+func (fake *FakeQuery) MatchState(arg1 v1alpha1.ExtendedJob, arg2 v1alpha1.PodState) bool {
+	fake.matchStateMutex.Lock()
+	ret, specificReturn := fake.matchStateReturnsOnCall[len(fake.matchStateArgsForCall)]
+	fake.matchStateArgsForCall = append(fake.matchStateArgsForCall, struct {
+		arg1 v1alpha1.ExtendedJob
+		arg2 v1alpha1.PodState
+	}{arg1, arg2})
+	fake.recordInvocation("MatchState", []interface{}{arg1, arg2})
+	fake.matchStateMutex.Unlock()
+	if fake.MatchStateStub != nil {
+		return fake.MatchStateStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.matchStateReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeQuery) MatchStateCallCount() int {
+	fake.matchStateMutex.RLock()
+	defer fake.matchStateMutex.RUnlock()
+	return len(fake.matchStateArgsForCall)
+}
+
+func (fake *FakeQuery) MatchStateCalls(stub func(v1alpha1.ExtendedJob, v1alpha1.PodState) bool) {
+	fake.matchStateMutex.Lock()
+	defer fake.matchStateMutex.Unlock()
+	fake.MatchStateStub = stub
+}
+
+func (fake *FakeQuery) MatchStateArgsForCall(i int) (v1alpha1.ExtendedJob, v1alpha1.PodState) {
+	fake.matchStateMutex.RLock()
+	defer fake.matchStateMutex.RUnlock()
+	argsForCall := fake.matchStateArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeQuery) MatchStateReturns(result1 bool) {
+	fake.matchStateMutex.Lock()
+	defer fake.matchStateMutex.Unlock()
+	fake.MatchStateStub = nil
+	fake.matchStateReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *FakeQuery) MatchStateReturnsOnCall(i int, result1 bool) {
+	fake.matchStateMutex.Lock()
+	defer fake.matchStateMutex.Unlock()
+	fake.MatchStateStub = nil
+	if fake.matchStateReturnsOnCall == nil {
+		fake.matchStateReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.matchStateReturnsOnCall[i] = struct {
+		result1 bool
+	}{result1}
+}
+
 func (fake *FakeQuery) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.matchMutex.RLock()
 	defer fake.matchMutex.RUnlock()
+	fake.matchStateMutex.RLock()
+	defer fake.matchStateMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

@@ -1,0 +1,20 @@
+apiVersion: fissile.cloudfoundry.org/v1alpha1
+kind: ExtendedJob
+metadata:
+  name: delete-triggered-sleep
+spec:
+  template:
+    spec:
+      containers:
+      - command:
+        - sleep
+        - "15"
+        image: busybox
+        name: busybox
+      restartPolicy: Never
+      terminationGracePeriodSeconds: 1
+  triggers:
+    selector:
+      matchLabels:
+        key: value
+    when: deleted
