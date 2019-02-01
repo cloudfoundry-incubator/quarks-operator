@@ -72,11 +72,17 @@ after completion the value will be reset to `manually`.
 
 ### Persisted Output
 
-The developer can specify a ConfigMap or a Secret where the standard output/error output of the ExtendedJob is stored. Only single-pod jobs are supported when output persistence is enabled for now.
+The developer can specify a Secret where the standard output/error output of
+the ExtendedJob is stored. Only single-pod jobs are supported when output
+persistence is enabled for now.
 
-**Note:** Output of previous runs of will be overwritten.
+The only supported output type currently is json with a flat structure, i.e.
+all values being string values.
+
+**Note:** Output of previous runs will be overwritten.
 
 The behavior of storing the output is controlled by specifying the following parameters:
+- `namePrefix` - Prefix for the name of the secret that will hold the output.
 - `outputType` - Currently only `json` is supported. (default: `json`)
 - `writeOnFailure` - if true, output is written even though the Job failed. (default: `false`)
 
