@@ -344,7 +344,7 @@ func (c *Catalog) CmdPodTemplate(cmd []string) corev1.PodTemplateSpec {
 	}
 }
 
-// CmdPodTemplate returns the spec with a given command for busybox
+// MultiContainerPodTemplate returns the spec with two containers running a given command for busybox
 func (c *Catalog) MultiContainerPodTemplate(cmd []string) corev1.PodTemplateSpec {
 	one := int64(1)
 	return corev1.PodTemplateSpec{
@@ -361,6 +361,29 @@ func (c *Catalog) MultiContainerPodTemplate(cmd []string) corev1.PodTemplateSpec
 					Name:    "busybox2",
 					Image:   "busybox",
 					Command: cmd,
+				},
+			},
+		},
+	}
+}
+
+// FailingMultiContainerPodTemplate returns a spec with a given command for busybox and a second container which fails
+func (c *Catalog) FailingMultiContainerPodTemplate(cmd []string) corev1.PodTemplateSpec {
+	one := int64(1)
+	return corev1.PodTemplateSpec{
+		Spec: corev1.PodSpec{
+			RestartPolicy:                 corev1.RestartPolicyNever,
+			TerminationGracePeriodSeconds: &one,
+			Containers: []corev1.Container{
+				{
+					Name:    "busybox",
+					Image:   "busybox",
+					Command: cmd,
+				},
+				{
+					Name:    "failing",
+					Image:   "busybox",
+					Command: []string{"exit", "1"},
 				},
 			},
 		},
@@ -479,7 +502,6 @@ func (c *Catalog) DefaultExtendedJob(name string) *ejv1.ExtendedJob {
 		ejv1.PodStateReady,
 		map[string]string{"key": "value"},
 		[]string{"sleep", "1"},
-		ejv1.Output{},
 	)
 }
 
@@ -490,7 +512,6 @@ func (c *Catalog) LongRunningExtendedJob(name string) *ejv1.ExtendedJob {
 		ejv1.PodStateReady,
 		map[string]string{"key": "value"},
 		[]string{"sleep", "15"},
-		ejv1.Output{},
 	)
 }
 
@@ -501,21 +522,21 @@ func (c *Catalog) OnDeleteExtendedJob(name string) *ejv1.ExtendedJob {
 		ejv1.PodStateDeleted,
 		map[string]string{"key": "value"},
 		[]string{"sleep", "1"},
-		ejv1.Output{},
 	)
 }
 
 // OutputExtendedJob persists its output
-func (c *Catalog) OutputExtendedJob(name string) *ejv1.ExtendedJob {
+func (c *Catalog) OutputExtendedJob(name string, template corev1.PodTemplateSpec) *ejv1.ExtendedJob {
 	return &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
 			Triggers: ejv1.Triggers{
+				When:     "ready",
 				Selector: ejv1.Selector{MatchLabels: map[string]string{"key": "value"}},
 			},
-			Template: c.MultiContainerPodTemplate([]string{"echo", `{"foo": "1", "bar": "baz"}`}),
+			Template: template,
 			Output: ejv1.Output{
-				NamePrefix: "foo-",
+				NamePrefix: name + "-output-",
 				OutputType: "json",
 			},
 		},
@@ -523,7 +544,7 @@ func (c *Catalog) OutputExtendedJob(name string) *ejv1.ExtendedJob {
 }
 
 // LabelTriggeredExtendedJob allows customization of labels triggers
-func (c *Catalog) LabelTriggeredExtendedJob(name string, state ejv1.PodState, ml map[string]string, cmd []string, output ejv1.Output) *ejv1.ExtendedJob {
+func (c *Catalog) LabelTriggeredExtendedJob(name string, state ejv1.PodState, ml map[string]string, cmd []string) *ejv1.ExtendedJob {
 	return &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
