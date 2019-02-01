@@ -148,6 +148,7 @@ var _ = Describe("ExtendedJob", func() {
 					"ready",
 					map[string]string{"unmatched": "unmatched"},
 					[]string{"sleep", "1"},
+					ejv1.Output{},
 				),
 			} {
 				_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
@@ -179,6 +180,33 @@ var _ = Describe("ExtendedJob", func() {
 			latest, err := env.GetExtendedJob(env.Namespace, "extendedjob")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(jobs[0].GetOwnerReferences()).Should(ContainElement(ownerRef(*latest)))
+		})
+
+		FIt("persists output when output peristance is configured", func() {
+			_, tearDown, err := env.CreateExtendedJob(env.Namespace, *env.OutputExtendedJob("output-job"))
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+			err = env.WaitForPods(env.Namespace, "test=true")
+
+			_, err = env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+			Expect(err).NotTo(HaveOccurred())
+			env.WaitForJobEnd(env.Namespace, "job-output-job-foo")
+
+			By("persisting output for the first container")
+			secret, err := env.GetSecret(env.Namespace, "foo-busybox")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(secret.Data["foo"])).To(Equal("1"))
+			Expect(string(secret.Data["bar"])).To(Equal("baz"))
+
+			By("persisting output for the second container")
+			secret, err = env.GetSecret(env.Namespace, "foo-busybox2")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(secret.Data["foo"])).To(Equal("1"))
+			Expect(string(secret.Data["bar"])).To(Equal("baz"))
 		})
 	})
 })
