@@ -89,10 +89,17 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 	// Persist output if needed
 	if (ejapi.Output{}) != ej.Spec.Output {
-		err = r.persistOutput(instance, &ej.Spec.Output)
-		if err != nil {
-			r.log.Errorf("Could not persist output: %s", err)
-			return reconcile.Result{}, err
+		if instance.Status.Succeeded == 1 || (instance.Status.Failed == 1 && ej.Spec.Output.WriteOnFailure) {
+			r.log.Infof("Persisting output of job %s", instance.Name)
+			err = r.persistOutput(instance, &ej.Spec.Output)
+			if err != nil {
+				r.log.Errorf("Could not persist output: %s", err)
+				return reconcile.Result{}, err
+			}
+		} else if instance.Status.Failed == 1 && !ej.Spec.Output.WriteOnFailure {
+			r.log.Infof("Will not persist output of job '%s' because it failed", instance.Name)
+		} else {
+			r.log.Errorf("Job is in an unexpected state: %#v", instance)
 		}
 	}
 
