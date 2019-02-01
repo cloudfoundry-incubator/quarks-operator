@@ -2,6 +2,7 @@ package testing
 
 import (
 	"k8s.io/api/apps/v1beta1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -10,6 +11,7 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 )
 
 // Catalog provides several instances for tests
@@ -342,6 +344,29 @@ func (c *Catalog) CmdPodTemplate(cmd []string) corev1.PodTemplateSpec {
 	}
 }
 
+// CmdPodTemplate returns the spec with a given command for busybox
+func (c *Catalog) MultiContainerPodTemplate(cmd []string) corev1.PodTemplateSpec {
+	one := int64(1)
+	return corev1.PodTemplateSpec{
+		Spec: corev1.PodSpec{
+			RestartPolicy:                 corev1.RestartPolicyNever,
+			TerminationGracePeriodSeconds: &one,
+			Containers: []corev1.Container{
+				{
+					Name:    "busybox",
+					Image:   "busybox",
+					Command: cmd,
+				},
+				{
+					Name:    "busybox2",
+					Image:   "busybox",
+					Command: cmd,
+				},
+			},
+		},
+	}
+}
+
 // DefaultPod defines a pod with a simple web server useful for testing
 func (c *Catalog) DefaultPod(name string) corev1.Pod {
 	return corev1.Pod{
@@ -454,6 +479,7 @@ func (c *Catalog) DefaultExtendedJob(name string) *ejv1.ExtendedJob {
 		ejv1.PodStateReady,
 		map[string]string{"key": "value"},
 		[]string{"sleep", "1"},
+		ejv1.Output{},
 	)
 }
 
@@ -464,6 +490,7 @@ func (c *Catalog) LongRunningExtendedJob(name string) *ejv1.ExtendedJob {
 		ejv1.PodStateReady,
 		map[string]string{"key": "value"},
 		[]string{"sleep", "15"},
+		ejv1.Output{},
 	)
 }
 
@@ -474,11 +501,29 @@ func (c *Catalog) OnDeleteExtendedJob(name string) *ejv1.ExtendedJob {
 		ejv1.PodStateDeleted,
 		map[string]string{"key": "value"},
 		[]string{"sleep", "1"},
+		ejv1.Output{},
 	)
 }
 
+// OutputExtendedJob persists its output
+func (c *Catalog) OutputExtendedJob(name string) *ejv1.ExtendedJob {
+	return &ejv1.ExtendedJob{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Spec: ejv1.ExtendedJobSpec{
+			Triggers: ejv1.Triggers{
+				Selector: ejv1.Selector{MatchLabels: map[string]string{"key": "value"}},
+			},
+			Template: c.MultiContainerPodTemplate([]string{"echo", `{"foo": "1", "bar": "baz"}`}),
+			Output: ejv1.Output{
+				NamePrefix: "foo-",
+				OutputType: "json",
+			},
+		},
+	}
+}
+
 // LabelTriggeredExtendedJob allows customization of labels triggers
-func (c *Catalog) LabelTriggeredExtendedJob(name string, state ejv1.PodState, ml map[string]string, cmd []string) *ejv1.ExtendedJob {
+func (c *Catalog) LabelTriggeredExtendedJob(name string, state ejv1.PodState, ml map[string]string, cmd []string, output ejv1.Output) *ejv1.ExtendedJob {
 	return &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
@@ -489,6 +534,28 @@ func (c *Catalog) LabelTriggeredExtendedJob(name string, state ejv1.PodState, ml
 			Template: c.CmdPodTemplate(cmd),
 		},
 	}
+}
+
+// DefaultExtendedJobWithSucceededJob returns an ExtendedJob and a Job owned by it
+func (c *Catalog) DefaultExtendedJobWithSucceededJob(name string) (*ejv1.ExtendedJob, *batchv1.Job, *corev1.Pod) {
+	ejob := c.DefaultExtendedJob(name)
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name + "-job",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Name:       name,
+					UID:        "",
+					Controller: helper.Bool(true),
+				},
+			},
+		},
+	}
+	pod := c.DefaultPod(name + "-pod")
+	pod.Labels = map[string]string{
+		"job-name": job.GetName(),
+	}
+	return ejob, job, &pod
 }
 
 // ErrandExtendedJob default values

@@ -33,10 +33,9 @@ const (
 
 // Output contains options to persist job output
 type Output struct {
-	SecretRef      string `json:"secretRef"`
-	ConfigMapRef   string `json:"configMapRef"`
+	NamePrefix     string `json:"namePrefix"` // the secret name will be <NamePrefix><container name>
+	OutputType     string `json:"outputType"` // only json is supported for now
 	WriteOnFailure bool   `json:"writeOnFailure"`
-	OutputType     string `json:"outputType"`
 }
 
 // PodState is our abstraction of the pods state with regards to triggered
