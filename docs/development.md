@@ -1,7 +1,7 @@
 - [Makefile](#makefile)
 - [CI](#ci)
 - [Publishing](#publishing)
-- [Creating a new Group and Controller](#creating-a-new-group-and-controller)
+- [Creating a new Resource and Controller](#creating-a-new-resource-and-controller)
 - [Versioning](#versioning)
 
 ## Makefile
@@ -10,11 +10,11 @@ Before starting, run `make tools` to install the required dependencies.
 
 ## CI
 
-Our Concourse pipeline definitions are kept in the [https://github.com/cloudfoundry-incubator/cf-operator-ci](cf-operator-ci) repo.
+Our Concourse pipeline definitions are kept in the [cf-operator-ci](https://github.com/cloudfoundry-incubator/cf-operator-ci) repo.
 
 ## Publishing
 
-## Creating a new Group and Controller
+## Creating a new Resource and Controller
 
 - create a new directory: `./pkg/kube/apis/<group_name>/<version>`
 - in that directory, create the following files:
@@ -28,12 +28,12 @@ Our Concourse pipeline definitions are kept in the [https://github.com/cloudfoun
   The `types.go` file contains the definition of your resource. This is the file you care about. Make sure to run `make generate` _every time you make a change_. You can also check to see what changes would be done by running `make verify-gen-kube`.
 
   The `register.go` file contains some code that registers your new types.
-  This file looks almost the same for all API groups.
+  This file looks almost the same for all API resources.
 
   The `doc.go` (deep object copy) is required to make the `deepcopy` generator work.
   It's safe to copy this file from another controller.
 
-- in `bin/gen-kube`, add your group to the `GROUP_VERSIONS` variable (separated by a space `" "`):
+- in `bin/gen-kube`, add your resource to the `GROUP_VERSIONS` variable (separated by a space `" "`):
 
   ```bash
   # ...
@@ -140,7 +140,7 @@ Our Concourse pipeline definitions are kept in the [https://github.com/cloudfoun
   }
   ```
 
-- add the new group to `addToSchemes` in `pkg/controllers/controller.go`.
+- add the new resource to `addToSchemes` in `pkg/controllers/controller.go`.
 - add the new controller to `addToManagerFuncs` in the same file.
 - create a custom resource definition in `deploy/helm/cf-operator/templates/`
 - add the custom resource definition to `bin/apply-crds`
