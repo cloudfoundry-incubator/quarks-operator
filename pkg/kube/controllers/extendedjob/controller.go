@@ -1,69 +1,29 @@
 package extendedjob
 
 import (
-	"time"
-
 	"go.uber.org/zap"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
-
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
-
-const period = 10 * time.Second
-
-// Controller starts ExtendedJobs
-type Controller struct {
-	client   client.Client
-	log      *zap.SugaredLogger
-	cache    cache.Cache
-	waitFunc waitFunc
-	runner   Runner
-}
-
-type waitFunc func(func(), time.Duration, <-chan struct{})
 
 // Add creates a new ExtendedJob controller and adds it to the Manager
 func Add(log *zap.SugaredLogger, mgr manager.Manager) error {
 	query := NewQuery(mgr.GetClient())
-	runner := NewRunner(log, mgr, query, controllerutil.SetControllerReference)
-	c := NewExtendedJobController(log, mgr, wait.Until, runner)
-	return mgr.Add(c)
-}
-
-// NewExtendedJobController returns a new controller
-func NewExtendedJobController(
-	log *zap.SugaredLogger,
-	mgr manager.Manager,
-	waitFunc waitFunc,
-	runner Runner,
-) *Controller {
-	return &Controller{
-		log:      log,
-		client:   mgr.GetClient(),
-		cache:    mgr.GetCache(),
-		waitFunc: waitFunc,
-		runner:   runner,
+	f := controllerutil.SetControllerReference
+	r := NewTriggerReconciler(log, mgr, query, f)
+	c, err := controller.New("extendedjob-trigger-controller", mgr, controller.Options{Reconciler: r})
+	if err != nil {
+		return err
 	}
-}
 
-// Start the controller, instead of watching resources this one polls events every 10s
-func (ejc *Controller) Start(stopCh <-chan struct{}) error {
+	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForObject{})
+	if err != nil {
+		return err
+	}
 
-	defer utilruntime.HandleCrash()
-	ejc.log.Infof("Starting ExtendedJob scheduler")
-
-	// Check if we need to run jobs
-	go ejc.waitFunc(ejc.wakeUp, period, stopCh)
-	<-stopCh
-	ejc.log.Infof("Shutting down ExtendedJob scheduler")
 	return nil
-}
-
-func (ejc *Controller) wakeUp() {
-	ejc.log.Debugf("ExtendedJob controller wakeup")
-	ejc.runner.Run()
 }

@@ -33,20 +33,36 @@ var _ = Describe("ExtendedJob", func() {
 			Expect(jobList.Items).To(HaveLen(0))
 		})
 
-		It("should start a job for a matched pod once", func() {
-			for _, pod := range []corev1.Pod{
-				env.LabeledPod("nomatch", testLabels("key", "nomatch")),
-				env.LabeledPod("foo", testLabels("key", "value")),
-				env.LabeledPod("bar", testLabels("key", "value")),
-			} {
-				tearDown, err := env.CreatePod(env.Namespace, pod)
-				Expect(err).NotTo(HaveOccurred())
-				defer tearDown()
-			}
-
-			err := env.WaitForPods(env.Namespace, "test=true")
+		It("should pick up new extended jobs", func() {
+			By("going into reconciliation without extended jobs")
+			pod := env.LabeledPod("nomatch", testLabels("key", "nomatch"))
+			tearDown, err := env.CreatePod(env.Namespace, pod)
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+			err = env.WaitForPods(env.Namespace, "test=true")
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pods")
 
+			By("creating a first extended job")
+			ej := *env.DefaultExtendedJob("extendedjob")
+			_, tearDown, err = env.CreateExtendedJob(env.Namespace, ej)
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			By("triggering another reconciliation")
+			pod = env.LabeledPod("foo", testLabels("key", "value"))
+			tearDown, err = env.CreatePod(env.Namespace, pod)
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			By("waiting for the job")
+			_, err = env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
+		})
+
+		It("should start a job for a matched pod once", func() {
+			// prev events don't trigger, b/c no matching job was found when they happened
+
+			By("creating extended jobs")
 			for _, ej := range []ejv1.ExtendedJob{
 				*env.DefaultExtendedJob("extendedjob"),
 				*env.LongRunningExtendedJob("slowjob"),
@@ -61,6 +77,18 @@ var _ = Describe("ExtendedJob", func() {
 				defer tearDown()
 			}
 
+			By("creating three pods, two match extended jobs and trigger jobs")
+			for _, pod := range []corev1.Pod{
+				env.LabeledPod("nomatch", testLabels("key", "nomatch")),
+				env.LabeledPod("foo", testLabels("key", "value")),
+				env.LabeledPod("bar", testLabels("key", "value")),
+			} {
+				tearDown, err := env.CreatePod(env.Namespace, pod)
+				Expect(err).NotTo(HaveOccurred())
+				defer tearDown()
+			}
+
+			By("waiting for the jobs")
 			jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 4)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
 			Expect(jobs).To(HaveLen(4))
