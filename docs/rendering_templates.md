@@ -116,3 +116,38 @@ Properties that reference variables have their values set at the time of renderi
 Links are resolved at the time of rendering. Because links can reference properties that use variables, we must mount all variables in each of the `ExtendedJobs` that render templates.
 
 > This won't cause superfluous restarts, since `ExtendedStatefulSets` and `ExtendedJobs` are restarted only if the referenced secrets/configmap contents have changed.
+
+
+#### Resolving Links
+
+1. Create a job that has a container for each releases
+2. All containers have an anv var `RELEASES` listing all available releases
+3. All containers copy their `/var/vcap/jobs-src` to `/var/vcap/rendering/<RELEASE_NAME>/*`
+4. When done with copying, each container writes `/var/vcap/releases/<RELEASE_NAME>.done`
+5. For rendering, the following data structure is created:
+
+```
+release
+  job
+    (contents of spec)
+    properties
+    consumes
+    provides
+```
+
+6. To resolve a link, the following steps are performed:
+
+    > Vocabulary:
+    > - `current job` - the job for which rendering is happening
+    > - `desired manifest` - the deployment manifest used
+    > - `provider job` - the job that has been identified to be the provider for a link
+
+  - the name and type of the link is retrieved from the spec of the `current job`
+  - the name of the link is looked up in the `current job`'s instance group `consumes` key (an explicit link definition); if found and is set to `nil`, nil is returned and resolving is complete
+  - if the link's name has been overridden by an explicit link definition in the `desired manifest`, the `desired manifest` is searched for a corresponding job, that has the same name; if found, the link is populated with the properties of the `provider job`; first, the defaults for for the exposed properties (defined in the `provides` section of the spec of the `provider job`) are set to the defaults from the spec, and then the properties from the `desired manifest` applied on top
+  - if there was no explicit override, we search for a job in all the releases, that provides a link with the same `type` 
+
+
+  > Note: the `deployment`, `network` and `ip_addresses` are not supported by the CF Operator
+
+  > Read more about links here: https://bosh.io/docs/links

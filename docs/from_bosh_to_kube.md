@@ -13,6 +13,7 @@
     - [Environment](#environment)
     - [Resources](#resources)
     - [Healthchecks](#healthchecks)
+  - [Other](#other)
 
 ## High-level Direction
 
@@ -333,3 +334,12 @@ tags:
 ### Resources
 
 ### Healthchecks
+
+
+## Other
+
+These need to be provided by a mount in each container,
+
+`/var/vcap/instance/name`
+`/var/vcap/instance/id`
+
