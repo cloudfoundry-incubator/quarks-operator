@@ -8,6 +8,8 @@ import (
 	"hash/fnv"
 	"strings"
 
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/clientcontext"
 	"go.uber.org/zap"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -18,13 +20,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 )
 
 var _ reconcile.Reconciler = &TriggerReconciler{}
 
 type setOwnerReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
+
+type key int
+
+var id = key(1)
+
+const (
+	controllerKey string = "extendedjob"
+)
 
 // NewTriggerReconciler returns a new reconcile to start jobs triggered by pods
 func NewTriggerReconciler(
@@ -60,7 +68,10 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 	podName := request.NamespacedName.Name
 
 	pod := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), request.NamespacedName, pod)
+
+	ctx, _ := clientcontext.NewBackgroundContextWithTimeout()
+
+	err = r.client.Get(ctx, request.NamespacedName, pod)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// do not requeue, pod is probably deleted
@@ -84,7 +95,7 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 	}
 
 	extJobs := &ejv1.ExtendedJobList{}
-	err = r.client.List(context.TODO(), &client.ListOptions{}, extJobs)
+	err = r.client.List(ctx, &client.ListOptions{}, extJobs)
 	if err != nil {
 		r.log.Infof("Failed to query extended jobs: %s", err)
 		return
@@ -101,7 +112,7 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 
 	for _, extJob := range extJobs.Items {
 		if r.query.MatchState(extJob, podState) && r.query.Match(extJob, *pod) {
-			err := r.createJob(extJob, podName)
+			err := r.createJob(ctx, extJob, podName)
 			if err != nil {
 				if apierrors.IsAlreadyExists(err) {
 					r.log.Debugf("Skip '%s' triggered by pod %s: already running", extJob.Name, podEvent)
@@ -113,11 +124,10 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 			r.log.Infof("Created job for '%s' via pod %s", extJob.Name, podEvent)
 		}
 	}
-
 	return
 }
 
-func (r *TriggerReconciler) createJob(extJob ejv1.ExtendedJob, podName string) error {
+func (r *TriggerReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJob, podName string) error {
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName(extJob.Name, podName),
@@ -132,7 +142,7 @@ func (r *TriggerReconciler) createJob(extJob ejv1.ExtendedJob, podName string) e
 		r.log.Errorf("Failed to set owner reference on job for '%s' via pod %s: %s", extJob.Name, podName, err)
 	}
 
-	err = r.client.Create(context.TODO(), job)
+	err = r.client.Create(ctx, job)
 	if err != nil {
 		return err
 	}
