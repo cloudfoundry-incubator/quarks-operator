@@ -565,3 +565,10 @@ func (m *Machine) CreateExtendedJob(namespace string, job ejv1.ExtendedJob) (*ej
 		client.Delete(job.GetName(), &metav1.DeleteOptions{})
 	}, err
 }
+
+// UpdateExtendedJob updates an extended job
+func (m *Machine) UpdateExtendedJob(namespace string, exJob ejv1.ExtendedJob) error {
+	client := m.VersionedClientset.Extendedjob().ExtendedJobs(namespace)
+	_, err := client.Update(&exJob)
+	return err
+}

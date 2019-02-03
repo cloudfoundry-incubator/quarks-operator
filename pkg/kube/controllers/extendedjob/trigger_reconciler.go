@@ -150,12 +150,16 @@ func (r *TriggerReconciler) createJob(extJob ejv1.ExtendedJob, podName string) e
 // k8s allows 63 chars, but the pod will have -\d{6} appended
 // IDEA: maybe use pod.Uid instead of rand
 func jobName(extJobName, podName string) string {
+	hashID := randSuffix(fmt.Sprintf("%s-%s", extJobName, podName))
+	return fmt.Sprintf("job-%s-%s-%s", truncate(extJobName, 15), truncate(podName, 15), hashID)
+}
+
+func randSuffix(str string) string {
 	randBytes := make([]byte, 16)
 	rand.Read(randBytes)
 	a := fnv.New64()
-	a.Write([]byte(fmt.Sprintf("%s-%s-%s", extJobName, podName, string(randBytes))))
-	hashID := hex.EncodeToString(a.Sum(nil))
-	return fmt.Sprintf("job-%s-%s-%s", truncate(extJobName, 15), truncate(podName, 15), hashID)
+	a.Write([]byte(str + string(randBytes)))
+	return hex.EncodeToString(a.Sum(nil))
 }
 
 func truncate(name string, max int) string {
