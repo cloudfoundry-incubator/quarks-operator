@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ejapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/clientcontext"
 )
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
@@ -51,7 +52,11 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 	r.log.Infof("Reconciling Job %s in the ExtendedJob context", request.NamespacedName)
 
 	instance := &batchv1.Job{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+
+	ctx, cancel := clientcontext.NewBackgroundContextWithTimeout()
+	defer cancel()
+
+	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -78,7 +83,7 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 
 	ej := ejapi.ExtendedJob{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: parentName, Namespace: instance.GetNamespace()}, &ej)
+	err = r.client.Get(ctx, types.NamespacedName{Name: parentName, Namespace: instance.GetNamespace()}, &ej)
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "Getting parent ExtendedJob")
 	}
@@ -87,7 +92,7 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 	if !reflect.DeepEqual(ejapi.Output{}, ej.Spec.Output) {
 		if instance.Status.Succeeded == 1 || (instance.Status.Failed == 1 && ej.Spec.Output.WriteOnFailure) {
 			r.log.Infof("Persisting output of job %s", instance.Name)
-			err = r.persistOutput(instance, &ej.Spec.Output)
+			err = r.persistOutput(ctx, instance, &ej.Spec.Output)
 			if err != nil {
 				r.log.Errorf("Could not persist output: %s", err)
 				return reconcile.Result{}, err
@@ -108,7 +113,7 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileJob) persistOutput(instance *batchv1.Job, conf *ejapi.Output) error {
+func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job, conf *ejapi.Output) error {
 	// Get job's pod. Only single-pod jobs are supported when persisting the output, so we just get the first one.
 	selector, err := labels.Parse("job-name=" + instance.Name)
 	if err != nil {
@@ -117,7 +122,7 @@ func (r *ReconcileJob) persistOutput(instance *batchv1.Job, conf *ejapi.Output) 
 
 	list := &corev1.PodList{}
 	err = r.client.List(
-		context.TODO(),
+		ctx,
 		&client.ListOptions{
 			Namespace:     instance.GetNamespace(),
 			LabelSelector: selector,
@@ -155,14 +160,14 @@ func (r *ReconcileJob) persistOutput(instance *batchv1.Job, conf *ejapi.Output) 
 			StringData: data,
 		}
 
-		err = r.client.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: instance.GetNamespace()}, &corev1.Secret{})
+		err = r.client.Get(ctx, types.NamespacedName{Name: secretName, Namespace: instance.GetNamespace()}, &corev1.Secret{})
 		if apierrors.IsNotFound(err) {
-			err = r.client.Create(context.TODO(), secret)
+			err = r.client.Create(ctx, secret)
 			if err != nil {
 				return errors.Wrap(err, "Could not create secret")
 			}
 		} else {
-			err = r.client.Update(context.TODO(), secret)
+			err = r.client.Update(ctx, secret)
 			if err != nil {
 				return errors.Wrap(err, "Could not update secret")
 			}

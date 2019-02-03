@@ -1,7 +1,6 @@
 package boshdeployment
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 
@@ -18,6 +17,7 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/clientcontext"
 )
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
@@ -59,7 +59,11 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Fetch the BOSHDeployment instance
 	instance := &bdc.BOSHDeployment{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+
+	ctx, cancel := clientcontext.NewBackgroundContextWithTimeout()
+	defer cancel()
+
+	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -98,10 +102,10 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	// TODO example implementation, untested, replace eventually
 	// Check if this Pod already exists
 	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
+	err = r.client.Get(ctx, types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		r.log.Infof("Creating a new Pod %s/%s\n", pod.Namespace, pod.Name)
-		err = r.client.Create(context.TODO(), pod)
+		err = r.client.Create(ctx, pod)
 		if err != nil {
 			r.recorder.Event(instance, corev1.EventTypeWarning, "CreatePodForCR Error", err.Error())
 			return reconcile.Result{}, err

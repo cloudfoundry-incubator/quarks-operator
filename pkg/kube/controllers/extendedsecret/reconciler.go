@@ -17,6 +17,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	esapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/clientcontext"
 )
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
@@ -50,7 +51,11 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 	r.log.Infof("Reconciling ExtendedSecret %s", request.NamespacedName)
 
 	instance := &esapi.ExtendedSecret{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+
+	ctx, cancel := clientcontext.NewBackgroundContextWithTimeout()
+	defer cancel()
+
+	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -70,7 +75,7 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		Namespace: instance.Namespace,
 		Name:      instance.Spec.SecretName,
 	}
-	err = r.client.Get(context.TODO(), namespacedName, generatedSecret)
+	err = r.client.Get(ctx, namespacedName, generatedSecret)
 	if err == nil {
 		r.log.Info("Skip reconcile: secret already exists")
 		return reconcile.Result{}, nil
@@ -88,28 +93,28 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 	switch instance.Spec.Type {
 	case esapi.Password:
 		r.log.Info("Generating password")
-		err = r.createPasswordSecret(context.TODO(), instance)
+		err = r.createPasswordSecret(ctx, instance)
 		if err != nil {
 			r.log.Info("Error generating password secret: " + err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "Generating password secret")
 		}
 	case esapi.RSAKey:
 		r.log.Info("Generating RSA Key")
-		err = r.createRSASecret(context.TODO(), instance)
+		err = r.createRSASecret(ctx, instance)
 		if err != nil {
 			r.log.Info("Error generating RSA key secret: " + err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "Generating RSA key secret")
 		}
 	case esapi.SSHKey:
 		r.log.Info("Generating SSH Key")
-		err = r.createSSHSecret(context.TODO(), instance)
+		err = r.createSSHSecret(ctx, instance)
 		if err != nil {
 			r.log.Info("Error generating SSH key secret: " + err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "Generating SSH key secret")
 		}
 	case esapi.Certificate:
 		r.log.Info("Generating certificate")
-		err = r.createCertificateSecret(context.TODO(), instance)
+		err = r.createCertificateSecret(ctx, instance)
 		if err != nil {
 			r.log.Info("Error generating certificate secret: " + err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "Generating certificate secret")
