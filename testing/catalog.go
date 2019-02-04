@@ -571,6 +571,7 @@ func (c *Catalog) DefaultExtendedJobWithSucceededJob(name string) (*ejv1.Extende
 				},
 			},
 		},
+		Status: batchv1.JobStatus{Succeeded: 1},
 	}
 	pod := c.DefaultPod(name + "-pod")
 	pod.Labels = map[string]string{

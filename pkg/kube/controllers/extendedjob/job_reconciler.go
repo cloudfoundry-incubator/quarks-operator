@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -25,25 +24,21 @@ import (
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // NewJobReconciler returns a new Reconciler
-func NewJobReconciler(log *zap.SugaredLogger, mgr manager.Manager) (reconcile.Reconciler, error) {
-	kubeclient, err := corev1client.NewForConfig(mgr.GetConfig())
-	if err != nil {
-		return nil, errors.Wrap(err, "Could not get kube client")
-	}
+func NewJobReconciler(log *zap.SugaredLogger, mgr manager.Manager, podLogGetter PodLogGetter) (reconcile.Reconciler, error) {
 	return &ReconcileJob{
-		log:        log,
-		client:     mgr.GetClient(),
-		kubeclient: kubeclient,
-		scheme:     mgr.GetScheme(),
+		log:          log,
+		client:       mgr.GetClient(),
+		podLogGetter: podLogGetter,
+		scheme:       mgr.GetScheme(),
 	}, nil
 }
 
 // ReconcileJob reconciles an Job object
 type ReconcileJob struct {
-	client     client.Client
-	kubeclient *corev1client.CoreV1Client
-	scheme     *runtime.Scheme
-	log        *zap.SugaredLogger
+	client       client.Client
+	podLogGetter PodLogGetter
+	scheme       *runtime.Scheme
+	log          *zap.SugaredLogger
 }
 
 // Reconcile reads that state of the cluster for a Job object that is owned by an ExtendedJob and
@@ -131,10 +126,7 @@ func (r *ReconcileJob) persistOutput(instance *batchv1.Job, conf *ejapi.Output) 
 
 	// Iterate over the pod's containers and store the output
 	for _, c := range pod.Spec.Containers {
-		options := corev1.PodLogOptions{
-			Container: c.Name,
-		}
-		result, err := r.kubeclient.Pods(instance.GetNamespace()).GetLogs(pod.Name, &options).DoRaw()
+		result, err := r.podLogGetter.Get(instance.GetNamespace(), pod.Name, c.Name)
 		if err != nil {
 			errors.Wrap(err, "Getting pod output")
 		}
