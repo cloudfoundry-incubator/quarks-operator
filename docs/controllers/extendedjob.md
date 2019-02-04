@@ -34,6 +34,8 @@ The execution of `ExtendedJob` can be limited to pods with certain labels.
 A separate native k8s job will be started for every pod that changed. The job
 has a label `affected-pod: pod1` to identify which pod it is running for.
 
+`ExtendedJob` does not trigger for pods from jobs. If a pod has a label `job-name` it won't trigger more jobs.
+
 #### State
 
 To trigger on the state of the pod, the `when` trigger can be used.

@@ -5,14 +5,15 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 )
 
 var _ Query = &QueryImpl{}
 
 // Query for events involving pods and filter them
 type Query interface {
-	Match(v1alpha1.ExtendedJob, corev1.Pod) bool
+	Match(ejv1.ExtendedJob, corev1.Pod) bool
+	MatchState(ejv1.ExtendedJob, ejv1.PodState) bool
 }
 
 // NewQuery returns a new Query struct
@@ -26,13 +27,23 @@ type QueryImpl struct {
 }
 
 // Match pod against label whitelist from extended job
-func (q *QueryImpl) Match(job v1alpha1.ExtendedJob, pod corev1.Pod) bool {
-	// TODO pod state
+func (q *QueryImpl) Match(extJob ejv1.ExtendedJob, pod corev1.Pod) bool {
+	if pod.Name == "" {
+		return false
+	}
 
 	// TODO https://github.com/kubernetes/apimachinery/blob/master/pkg/labels/selector.go
-	match := job.Spec.Triggers.Selector.MatchLabels
+	match := extJob.Spec.Triggers.Selector.MatchLabels
 
 	if labels.AreLabelsInWhiteList(match, pod.Labels) {
+		return true
+	}
+	return false
+}
+
+// MatchState checks pod state against state from extended job
+func (q *QueryImpl) MatchState(extJob ejv1.ExtendedJob, podState ejv1.PodState) bool {
+	if extJob.Spec.Triggers.When == podState {
 		return true
 	}
 	return false

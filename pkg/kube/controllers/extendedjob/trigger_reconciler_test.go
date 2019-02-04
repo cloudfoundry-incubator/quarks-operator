@@ -52,12 +52,6 @@ var _ = Describe("TriggerReconciler", func() {
 			}
 		}
 
-		listJobs := func(client crc.Client) ([]batchv1.Job, error) {
-			obj := &batchv1.JobList{}
-			err := client.List(context.TODO(), &crc.ListOptions{}, obj)
-			return obj.Items, err
-		}
-
 		podGetStub := func(ctx context.Context, nn types.NamespacedName, obj runtime.Object) error {
 			pod.DeepCopyInto(obj.(*corev1.Pod))
 			return nil
@@ -115,7 +109,7 @@ var _ = Describe("TriggerReconciler", func() {
 
 				It("should log and return", func() {
 					act()
-					Expect(logs.FilterMessageSnippet("failed to get the pod: fake-error").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Failed to get the pod: fake-error").Len()).To(Equal(1))
 					Expect(query.MatchCallCount()).To(Equal(0))
 				})
 			})
@@ -127,7 +121,7 @@ var _ = Describe("TriggerReconciler", func() {
 
 				It("should log list failure and return", func() {
 					act()
-					Expect(logs.FilterMessage("failed to query extended jobs: fake-error").Len()).To(Equal(1))
+					Expect(logs.FilterMessage("Failed to query extended jobs: fake-error").Len()).To(Equal(1))
 					Expect(query.MatchCallCount()).To(Equal(0))
 				})
 			})
@@ -140,18 +134,18 @@ var _ = Describe("TriggerReconciler", func() {
 					}
 					client.ListCalls(jobListStub)
 					query.MatchReturns(true)
+					query.MatchStateReturns(true)
 					client.CreateReturns(fmt.Errorf("fake-error"))
 				})
 
 				It("should log create error and continue with next job", func() {
 					act()
 					Expect(client.CreateCallCount()).To(Equal(2))
-					Expect(logs.FilterMessageSnippet("foo: failed to create job for pod fake-pod: fake-error").Len()).To(Equal(1))
-					Expect(logs.FilterMessageSnippet("bar: failed to create job for pod fake-pod: fake-error").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Failed to create job for 'foo' via pod fake-pod/deleted: fake-error").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Failed to create job for 'bar' via pod fake-pod/deleted: fake-error").Len()).To(Equal(1))
 					Expect(setOwnerReferenceCallCount).To(Equal(0))
 				})
 			})
-
 		})
 
 		Context("when no extended job is present", func() {
@@ -194,22 +188,26 @@ var _ = Describe("TriggerReconciler", func() {
 				mgr.GetClientReturns(client)
 
 				query.MatchReturns(true)
+				query.MatchStateReturns(true)
 				request = newRequest(pod)
 			})
 
-			Context("when pod matches", func() {
+			Context("when pod matches label selector", func() {
 				It("should create jobs", func() {
 					act()
 
-					jobs, err := listJobs(client)
+					obj := &batchv1.JobList{}
+					err := client.List(context.TODO(), &crc.ListOptions{}, obj)
 					Expect(err).ToNot(HaveOccurred())
+
+					jobs := obj.Items
 					Expect(jobs).To(HaveLen(2))
 					Expect(jobs[0].Name).To(ContainSubstring("job-foo-"))
 					Expect(jobs[0].Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"sleep", "1"}))
 					Expect(jobs[1].Name).To(ContainSubstring("job-bar-"))
 					Expect(jobs[1].Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"sleep", "15"}))
-					Expect(logs.FilterMessageSnippet("foo: created job for pod fake-pod").Len()).To(Equal(1))
-					Expect(logs.FilterMessageSnippet("bar: created job for pod fake-pod").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Created job for 'foo' via pod fake-pod/deleted").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Created job for 'bar' via pod fake-pod/deleted").Len()).To(Equal(1))
 				})
 			})
 
@@ -226,8 +224,8 @@ var _ = Describe("TriggerReconciler", func() {
 						setOwnerReferenceFail,
 					)
 					act()
-					Expect(logs.FilterMessageSnippet("foo: failed to set reference on job for pod fake-pod: fake-error").Len()).To(Equal(1))
-					Expect(logs.FilterMessageSnippet("foo: created job for pod fake-pod").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Failed to set owner reference on job for 'foo' via pod fake-pod: fake-error").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Created job for 'foo' via pod fake-pod/deleted").Len()).To(Equal(1))
 				})
 			})
 

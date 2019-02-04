@@ -27,9 +27,30 @@ type Output struct {
 	OutputType     string `json:"outputType"`
 }
 
+// PodState is our abstraction of the pods state with regards to triggered
+// extended jobs
+type PodState string
+
+const (
+	// PodStateUnknown means we could not identify the state
+	PodStateUnknown PodState = ""
+
+	// PodStateReady means the pod is in phase=running with condition=ready
+	PodStateReady PodState = "ready"
+
+	// PodStateCreated means the pod did not exist before and is ready
+	PodStateCreated PodState = "created"
+
+	// PodStateNotReady means the pod is in phase pending
+	PodStateNotReady PodState = "notready"
+
+	// PodStateDeleted means the pod is in phase=succeeded or disappeared or phase=''
+	PodStateDeleted PodState = "deleted"
+)
+
 // Triggers decide which objects to act on
 type Triggers struct {
-	When     string   `json:"when"`
+	When     PodState `json:"when"`
 	Selector Selector `json:"selector,omitempty"`
 }
 

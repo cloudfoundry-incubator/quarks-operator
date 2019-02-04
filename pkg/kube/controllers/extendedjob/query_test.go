@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	"code.cloudfoundry.org/cf-operator/testing"
 	corev1 "k8s.io/api/core/v1"
@@ -22,6 +23,40 @@ var _ = Describe("Query", func() {
 	BeforeEach(func() {
 		client = fakes.FakeClient{}
 		query = NewQuery(&client)
+	})
+
+	Describe("MatchState", func() {
+		var (
+			job      v1alpha1.ExtendedJob
+			podState ejv1.PodState
+		)
+
+		act := func() bool {
+			return query.MatchState(job, podState)
+		}
+
+		Context("when matching delete pod status", func() {
+			BeforeEach(func() {
+				job = *env.OnDeleteExtendedJob("foo")
+				podState = ejv1.PodStateDeleted
+			})
+			It("should match deleted job", func() {
+				m := act()
+				Expect(m).To(BeTrue())
+			})
+		})
+
+		Context("when matching running pod status", func() {
+			BeforeEach(func() {
+				job = *env.DefaultExtendedJob("foo")
+				podState = ejv1.PodStateReady
+			})
+			It("should match", func() {
+				m := act()
+				Expect(m).To(BeTrue())
+			})
+		})
+
 	})
 
 	Describe("Match", func() {
@@ -55,7 +90,18 @@ var _ = Describe("Query", func() {
 					pod = env.LabeledPod("other", map[string]string{"other": "value"})
 				})
 
-				It("returns true", func() {
+				It("returns false", func() {
+					m := act()
+					Expect(m).To(BeFalse())
+				})
+			})
+
+			Context("when pod is deleted", func() {
+				BeforeEach(func() {
+					pod = env.LabeledPod("", map[string]string{})
+				})
+
+				It("returns false", func() {
 					m := act()
 					Expect(m).To(BeFalse())
 				})
