@@ -2,7 +2,6 @@ package extendedjob_test
 
 import (
 	"context"
-	"fmt"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -27,15 +26,16 @@ import (
 
 var _ = Describe("ReconcileExtendedJob", func() {
 	var (
-		manager    *cfakes.FakeManager
-		reconciler reconcile.Reconciler
-		request    reconcile.Request
-		log        *zap.SugaredLogger
-		client     *cfakes.FakeClient
-		ejob       *ejapi.ExtendedJob
-		job        *batchv1.Job
-		pod        *corev1.Pod
-		env        testing.Catalog
+		manager      *cfakes.FakeManager
+		reconciler   reconcile.Reconciler
+		request      reconcile.Request
+		log          *zap.SugaredLogger
+		client       *cfakes.FakeClient
+		podLogGetter *cfakes.FakePodLogGetter
+		ejob         *ejapi.ExtendedJob
+		job          *batchv1.Job
+		pod          *corev1.Pod
+		env          testing.Catalog
 	)
 
 	BeforeEach(func() {
@@ -44,6 +44,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 		core, _ := observer.New(zapcore.InfoLevel)
 		log = zap.New(core).Sugar()
+
 		client = &cfakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 			switch object.(type) {
@@ -51,8 +52,6 @@ var _ = Describe("ReconcileExtendedJob", func() {
 				ejob.DeepCopyInto(object.(*ejapi.ExtendedJob))
 			case *batchv1.Job:
 				job.DeepCopyInto(object.(*batchv1.Job))
-				//ase *corev1.Secret:
-				//	return errors.NewNotFound(schema.GroupResource{}, "not found")
 			}
 			return nil
 		})
@@ -64,34 +63,69 @@ var _ = Describe("ReconcileExtendedJob", func() {
 			return nil
 		})
 		manager.GetClientReturns(client)
+		podLogGetter = &cfakes.FakePodLogGetter{}
+		podLogGetter.GetReturns([]byte(`{"foo": "bar"}`), nil)
 	})
 
 	JustBeforeEach(func() {
-		reconciler = ej.NewJobReconciler(log, manager)
+		reconciler, _ = ej.NewJobReconciler(log, manager, podLogGetter)
+		ejob, job, pod = env.DefaultExtendedJobWithSucceededJob("foo")
 	})
 
-	Context("when output persistence is not configured", func() {
-		BeforeEach(func() {
-			ejob, job, pod = env.DefaultExtendedJobWithSucceededJob("foo")
-			fmt.Println(ejob)
-			fmt.Printf("%#v\n", job)
-			fmt.Println(pod)
+	Context("With a succeeded Job", func() {
+		Context("when output persistence is not configured", func() {
+			It("does not persist output", func() {
+				result, err := reconciler.Reconcile(request)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(client.CreateCallCount()).To(Equal(0))
+				Expect(reconcile.Result{}).To(Equal(result))
+			})
 		})
 
-		It("does not persist output", func() {
-			result, err := reconciler.Reconcile(request)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(client.CreateCallCount()).To(Equal(0))
-			Expect(reconcile.Result{}).To(Equal(result))
+		Context("when output persistence is configured", func() {
+			JustBeforeEach(func() {
+				ejob.Spec.Output = ejapi.Output{
+					NamePrefix: "foo-",
+				}
+			})
+
+			It("creates the secret and persists the output", func() {
+				_, err := reconciler.Reconcile(request)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(client.CreateCallCount()).To(Equal(1))
+			})
+		})
+	})
+
+	Context("With a failed Job", func() {
+		JustBeforeEach(func() {
+			job.Status.Succeeded = 0
+			job.Status.Failed = 1
 		})
 
-		It("creates the secret and persists the output", func() {
-			ejob.Spec.Output = ejapi.Output{
-				SecretRef: "default/outputsecret",
-			}
-			_, err := reconciler.Reconcile(request)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(client.CreateCallCount()).To(Equal(1))
+		Context("when WriteOnFailure is not set", func() {
+			It("does not persist output", func() {
+				result, err := reconciler.Reconcile(request)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(client.CreateCallCount()).To(Equal(0))
+				Expect(reconcile.Result{}).To(Equal(result))
+			})
+		})
+
+		Context("when WriteOnFailure is not set", func() {
+			JustBeforeEach(func() {
+				ejob.Spec.Output = ejapi.Output{
+					NamePrefix:     "foo-",
+					WriteOnFailure: true,
+				}
+			})
+
+			It("does persist the output", func() {
+				result, err := reconciler.Reconcile(request)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(client.CreateCallCount()).To(Equal(1))
+				Expect(reconcile.Result{}).To(Equal(result))
+			})
 		})
 	})
 })

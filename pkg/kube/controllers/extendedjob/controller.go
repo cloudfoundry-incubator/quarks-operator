@@ -1,9 +1,12 @@
 package extendedjob
 
 import (
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -57,10 +60,12 @@ func Add(log *zap.SugaredLogger, mgr manager.Manager) error {
 		return err
 	}
 
-	jobReconciler, err := NewJobReconciler(log, mgr)
+	client, err := corev1client.NewForConfig(mgr.GetConfig())
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Could not get kube client")
 	}
+	podLogGetter := NewPodLogGetter(client)
+	jobReconciler, err := NewJobReconciler(log, mgr, podLogGetter)
 	jobController, err := controller.New("extendedjob-job-controller", mgr, controller.Options{Reconciler: jobReconciler})
 	if err != nil {
 		return err
