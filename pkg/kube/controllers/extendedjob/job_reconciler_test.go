@@ -12,7 +12,9 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	cclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -50,10 +52,12 @@ var _ = Describe("ReconcileExtendedJob", func() {
 			switch object.(type) {
 			case *ejapi.ExtendedJob:
 				ejob.DeepCopyInto(object.(*ejapi.ExtendedJob))
+				return nil
 			case *batchv1.Job:
 				job.DeepCopyInto(object.(*batchv1.Job))
+				return nil
 			}
-			return nil
+			return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 		})
 		client.ListCalls(func(context context.Context, options *cclient.ListOptions, object runtime.Object) error {
 			list := corev1.PodList{
