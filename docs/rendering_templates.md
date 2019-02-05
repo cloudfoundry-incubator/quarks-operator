@@ -1,12 +1,12 @@
+TODO: define service names
+
 # Rendering BOSH Templates
 
 You can read more about BOSH templates on [bosh.io](https://bosh.io/docs/jobs/#templates).
 
 Rendering happens using `ExtendedJobs`.
 
-An `ExtendedJob` is required for each BOSH Release and Instance Group defined in a Desired Manifest.
-
-Details are omitted in the example below, for brevity:
+Details are omitted in the example below, for brevity. This is a deployment manifest.
 
 ```yaml
 ---
@@ -35,6 +35,45 @@ variables:
 - name: bar
   type: password
 ```
+
+The first step is data gathering.
+An `ExtendedJob` is created for each release.
+Each `ExtendedJob` runs one container for each `bosh job` referenced in the `desired manifest`.
+Each container outputs a base64 encoded tar gzip fo the entire job folder that it's responsible for.
+
+```yaml
+---
+apiVersion: fissile.cloudfoundry.org/v1alpha1
+kind: ExtendedJob
+metadata:
+  name: "<DEPLOYMENT_NAME>-<RELEASE_NAME>"
+spec:
+  output:
+    stdout:
+      prefix: "<DEPLOYMENT_NAME>-<RELEASE_NAME>-"
+  template:
+    metadata:
+    name: "<DEPLOYMENT_NAME>-<RELEASE_NAME>-spec-export"
+    spec:
+      template:
+        spec:
+        containers:
+        - name: job1
+          image: docker.io/cfcontainerization/release-a:opensuse-42.3-26.gfed099b-30.70-1.76.0
+          command: []
+          
+```
+
+
+
+  in the with multiple pods, one for each release.
+Each pod runs a container for each Job that is referenced in the role manifest.
+
+
+
+
+An `ExtendedJob` is required for each BOSH Release and Instance Group defined in a Desired Manifest.
+
 
 In this case, to render all required templates, 3 `ExtendedJobs` are created:
 - one for  `instance-group-1`, because it only contains jobs from `release-a`
