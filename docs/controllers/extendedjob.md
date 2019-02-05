@@ -96,7 +96,7 @@ metadata:
   name: MyExtendedJob
 spec:
   output:
-    configRef: "mynamespace/fooErrors"
+    namePrefix: "myoutput-"
     writeOnFailure: true
     outputType: "json"
   updateOnConfigChange: true
