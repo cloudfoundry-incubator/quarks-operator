@@ -180,5 +180,90 @@ var _ = Describe("ExtendedJob", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(jobs[0].GetOwnerReferences()).Should(ContainElement(ownerRef(*latest)))
 		})
+
+		Context("when persisting output", func() {
+			var (
+				oej *ejv1.ExtendedJob
+			)
+
+			BeforeEach(func() {
+				oej = env.OutputExtendedJob("output-job",
+					env.MultiContainerPodTemplate([]string{"echo", `{"foo": "1", "bar": "baz"}`}))
+			})
+
+			It("persists output when output peristance is configured", func() {
+				_, tearDown, err := env.CreateExtendedJob(env.Namespace, *oej)
+				Expect(err).NotTo(HaveOccurred())
+				defer tearDown()
+
+				tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
+				Expect(err).NotTo(HaveOccurred())
+				defer tearDown()
+				err = env.WaitForPods(env.Namespace, "test=true")
+				Expect(err).NotTo(HaveOccurred(), "error waiting for pods")
+
+				_, err = env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+				Expect(err).NotTo(HaveOccurred())
+
+				By("persisting output for the first container")
+				secret, err := env.GetSecret(env.Namespace, "output-job-output-busybox")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(secret.Data["foo"])).To(Equal("1"))
+				Expect(string(secret.Data["bar"])).To(Equal("baz"))
+
+				By("persisting output for the second container")
+				secret, err = env.GetSecret(env.Namespace, "output-job-output-busybox2")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(secret.Data["foo"])).To(Equal("1"))
+				Expect(string(secret.Data["bar"])).To(Equal("baz"))
+			})
+
+			Context("when the job failed", func() {
+				BeforeEach(func() {
+					oej.Spec.Output.NamePrefix = "output-job2-output-"
+					oej.Spec.Template = env.FailingMultiContainerPodTemplate([]string{"echo", `{"foo": "1", "bar": "baz"}`})
+				})
+
+				Context("and WriteOnFailure is false", func() {
+					It("does not persist output", func() {
+						_, tearDown, err := env.CreateExtendedJob(env.Namespace, *oej)
+						Expect(err).NotTo(HaveOccurred())
+						defer tearDown()
+
+						tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
+						Expect(err).NotTo(HaveOccurred())
+						defer tearDown()
+						err = env.WaitForPods(env.Namespace, "test=true")
+
+						By("not persisting output for the first container")
+						_, err = env.GetSecret(env.Namespace, "output-job2-output-busybox")
+						Expect(err).To(HaveOccurred())
+						Expect(err.Error()).To(ContainSubstring("timed out"))
+					})
+				})
+
+				Context("and WriteOnFailure is true", func() {
+					BeforeEach(func() {
+						oej.Spec.Output.NamePrefix = "output-job3-output-"
+						oej.Spec.Output.WriteOnFailure = true
+					})
+
+					It("persists the output", func() {
+						_, tearDown, err := env.CreateExtendedJob(env.Namespace, *oej)
+						Expect(err).NotTo(HaveOccurred())
+						defer tearDown()
+
+						tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
+						Expect(err).NotTo(HaveOccurred())
+						defer tearDown()
+						err = env.WaitForPods(env.Namespace, "test=true")
+
+						By("persisting the output for the first container")
+						_, err = env.GetSecret(env.Namespace, "output-job3-output-busybox")
+						Expect(err).ToNot(HaveOccurred())
+					})
+				})
+			})
+		})
 	})
 })

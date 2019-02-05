@@ -1,8 +1,13 @@
 package extendedjob
 
 import (
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
+
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -51,6 +56,30 @@ func Add(log *zap.SugaredLogger, mgr manager.Manager) error {
 		},
 	}
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForObject{}, p)
+	if err != nil {
+		return err
+	}
+
+	client, err := corev1client.NewForConfig(mgr.GetConfig())
+	if err != nil {
+		return errors.Wrap(err, "Could not get kube client")
+	}
+	podLogGetter := NewPodLogGetter(client)
+	jobReconciler, err := NewJobReconciler(log, mgr, podLogGetter)
+	jobController, err := controller.New("extendedjob-job-controller", mgr, controller.Options{Reconciler: jobReconciler})
+	if err != nil {
+		return err
+	}
+	predicate := predicate.Funcs{
+		// We're only interested in Jobs going from Active to final state (Succeeded or Failed)
+		CreateFunc:  func(e event.CreateEvent) bool { return false },
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return e.ObjectNew.(*batchv1.Job).Status.Succeeded == 1 || e.ObjectNew.(*batchv1.Job).Status.Failed == 1
+		},
+	}
+	err = jobController.Watch(&source.Kind{Type: &batchv1.Job{}}, &handler.EnqueueRequestForObject{}, predicate)
 	if err != nil {
 		return err
 	}
