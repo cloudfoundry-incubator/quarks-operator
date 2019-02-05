@@ -128,13 +128,13 @@ func (r *ReconcileJob) persistOutput(instance *batchv1.Job, conf *ejapi.Output) 
 	for _, c := range pod.Spec.Containers {
 		result, err := r.podLogGetter.Get(instance.GetNamespace(), pod.Name, c.Name)
 		if err != nil {
-			errors.Wrap(err, "Getting pod output")
+			return errors.Wrap(err, "Getting pod output")
 		}
 
 		var data map[string]string
 		err = json.Unmarshal(result, &data)
 		if err != nil {
-			errors.Wrap(err, "Invalid output format")
+			return errors.Wrap(err, "Invalid output format")
 		}
 
 		// Create secret and persist the output
