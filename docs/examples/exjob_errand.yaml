@@ -1,0 +1,16 @@
+apiVersion: fissile.cloudfoundry.org/v1alpha1
+kind: ExtendedJob
+metadata:
+  name: manual-sleep
+spec:
+  template:
+    spec:
+      containers:
+      - command:
+        - sleep
+        - "15"
+        image: busybox
+        name: busybox
+      restartPolicy: Never
+      terminationGracePeriodSeconds: 1
+  run: manually

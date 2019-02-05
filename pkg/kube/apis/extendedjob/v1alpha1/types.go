@@ -13,11 +13,23 @@ import (
 // ExtendedJobSpec defines the desired state of ExtendedJob
 type ExtendedJobSpec struct {
 	Output               Output                 `json:"output,omitempty"`
-	Run                  string                 `json:"run,omitempty"`
+	Run                  Run                    `json:"run,omitempty"`
 	Triggers             Triggers               `json:"triggers,omitempty"`
 	Template             corev1.PodTemplateSpec `json:"template"`
 	UpdateOnConfigChange bool                   `json:"updateOnConfigChange,omitempty"`
 }
+
+// Run is used if the job is not triggered
+type Run string
+
+const (
+	// RunManually is the default for errand jobs
+	RunManually Run = "manually"
+	// RunNow instructs the controller to run the job now
+	RunNow Run = "now"
+	// RunOnce jobs run only once, when created
+	RunOnce Run = "once"
+)
 
 // Output contains options to persist job output
 type Output struct {

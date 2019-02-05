@@ -23,6 +23,69 @@ var _ = Describe("ExtendedJob", func() {
 		}
 	}
 
+	Context("when using manually triggered errand job", func() {
+		AfterEach(func() {
+			env.WaitForPodsDelete(env.Namespace)
+		})
+
+		It("does not start a job without Run being set to now", func() {
+			ej := env.ErrandExtendedJob("extendedjob")
+			ej.Spec.Run = ejv1.RunManually
+			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			exists, err := env.WaitForJobExists(env.Namespace, "extendedjob=true")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(exists).To(BeFalse())
+
+			latest, err := env.GetExtendedJob(env.Namespace, ej.Name)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(latest.Spec.Run).To(Equal(ejv1.RunManually))
+
+			err = env.UpdateExtendedJob(env.Namespace, *latest)
+			Expect(err).NotTo(HaveOccurred())
+
+			exists, err = env.WaitForJobExists(env.Namespace, "extendedjob=true")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(exists).To(BeFalse())
+		})
+
+		It("starts a job when creating extended job with now", func() {
+			ej := env.ErrandExtendedJob("extendedjob")
+			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
+			Expect(jobs).To(HaveLen(1))
+		})
+
+		It("starts a job when updating extended job to now", func() {
+			ej := env.ErrandExtendedJob("extendedjob")
+			ej.Spec.Run = ejv1.RunManually
+			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			latest, err := env.GetExtendedJob(env.Namespace, ej.Name)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(latest.Spec.Run).To(Equal(ejv1.RunManually))
+
+			latest.Spec.Run = ejv1.RunNow
+			err = env.UpdateExtendedJob(env.Namespace, *latest)
+			Expect(err).NotTo(HaveOccurred())
+
+			jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
+			Expect(jobs).To(HaveLen(1))
+
+			Expect(jobs[0].GetOwnerReferences()).Should(ContainElement(ownerRef(*latest)))
+
+		})
+	})
+
 	Context("when using label matchers to trigger jobs", func() {
 		AfterEach(func() {
 			env.WaitForPodsDelete(env.Namespace)
