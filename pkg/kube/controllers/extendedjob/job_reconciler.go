@@ -146,7 +146,19 @@ func (r *ReconcileJob) persistOutput(instance *batchv1.Job, conf *ejapi.Output) 
 			},
 			StringData: data,
 		}
-		err = r.client.Create(context.TODO(), secret)
+
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: instance.GetNamespace()}, &corev1.Secret{})
+		if apierrors.IsNotFound(err) {
+			err = r.client.Create(context.TODO(), secret)
+			if err != nil {
+				return errors.Wrap(err, "Could not create secret")
+			}
+		} else {
+			err = r.client.Update(context.TODO(), secret)
+			if err != nil {
+				return errors.Wrap(err, "Could not update secret")
+			}
+		}
 	}
 	return nil
 }
