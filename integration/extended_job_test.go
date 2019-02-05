@@ -218,6 +218,36 @@ var _ = Describe("ExtendedJob", func() {
 				Expect(string(secret.Data["bar"])).To(Equal("baz"))
 			})
 
+			Context("when a secret with the same name already exists", func() {
+				BeforeEach(func() {
+					oej.Spec.Output.NamePrefix = "overwrite-job-output-"
+				})
+
+				It("overwrites the secret", func() {
+					existingSecret := env.DefaultSecret("overwrite-job-output-busybox")
+					existingSecret.StringData["foo"] = "old"
+					existingSecret.StringData["bar"] = "old"
+					tearDown, err := env.CreateSecret(env.Namespace, existingSecret)
+					defer tearDown()
+					Expect(err).ToNot(HaveOccurred())
+
+					_, tearDown, err = env.CreateExtendedJob(env.Namespace, *oej)
+					Expect(err).NotTo(HaveOccurred())
+					defer tearDown()
+
+					tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
+					Expect(err).NotTo(HaveOccurred())
+					defer tearDown()
+
+					// Wait until the output of the second container has been persisted. Then check the first one
+					_, err = env.GetSecret(env.Namespace, "overwrite-job-output-busybox2")
+					secret, err := env.GetSecret(env.Namespace, "overwrite-job-output-busybox")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(string(secret.Data["foo"])).To(Equal("1"))
+					Expect(string(secret.Data["bar"])).To(Equal("baz"))
+				})
+			})
+
 			Context("when the job failed", func() {
 				BeforeEach(func() {
 					oej.Spec.Output.NamePrefix = "output-job2-output-"
