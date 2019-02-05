@@ -191,7 +191,7 @@ var _ = Describe("ExtendedJob", func() {
 					env.MultiContainerPodTemplate([]string{"echo", `{"foo": "1", "bar": "baz"}`}))
 			})
 
-			It("persists output when output peristance is configured", func() {
+			It("persists output when output persistence is configured", func() {
 				_, tearDown, err := env.CreateExtendedJob(env.Namespace, *oej)
 				Expect(err).NotTo(HaveOccurred())
 				defer tearDown()
@@ -199,11 +199,6 @@ var _ = Describe("ExtendedJob", func() {
 				tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
 				Expect(err).NotTo(HaveOccurred())
 				defer tearDown()
-				err = env.WaitForPods(env.Namespace, "test=true")
-				Expect(err).NotTo(HaveOccurred(), "error waiting for pods")
-
-				_, err = env.CollectJobs(env.Namespace, "extendedjob=true", 1)
-				Expect(err).NotTo(HaveOccurred())
 
 				By("persisting output for the first container")
 				secret, err := env.GetSecret(env.Namespace, "output-job-output-busybox")
@@ -216,6 +211,36 @@ var _ = Describe("ExtendedJob", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(secret.Data["foo"])).To(Equal("1"))
 				Expect(string(secret.Data["bar"])).To(Equal("baz"))
+			})
+
+			Context("when a secret with the same name already exists", func() {
+				BeforeEach(func() {
+					oej.Spec.Output.NamePrefix = "overwrite-job-output-"
+				})
+
+				It("overwrites the secret", func() {
+					existingSecret := env.DefaultSecret("overwrite-job-output-busybox")
+					existingSecret.StringData["foo"] = "old"
+					existingSecret.StringData["bar"] = "old"
+					tearDown, err := env.CreateSecret(env.Namespace, existingSecret)
+					defer tearDown()
+					Expect(err).ToNot(HaveOccurred())
+
+					_, tearDown, err = env.CreateExtendedJob(env.Namespace, *oej)
+					Expect(err).NotTo(HaveOccurred())
+					defer tearDown()
+
+					tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
+					Expect(err).NotTo(HaveOccurred())
+					defer tearDown()
+
+					// Wait until the output of the second container has been persisted. Then check the first one
+					_, err = env.GetSecret(env.Namespace, "overwrite-job-output-busybox2")
+					secret, err := env.GetSecret(env.Namespace, "overwrite-job-output-busybox")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(string(secret.Data["foo"])).To(Equal("1"))
+					Expect(string(secret.Data["bar"])).To(Equal("baz"))
+				})
 			})
 
 			Context("when the job failed", func() {
@@ -233,7 +258,6 @@ var _ = Describe("ExtendedJob", func() {
 						tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
 						Expect(err).NotTo(HaveOccurred())
 						defer tearDown()
-						err = env.WaitForPods(env.Namespace, "test=true")
 
 						By("not persisting output for the first container")
 						_, err = env.GetSecret(env.Namespace, "output-job2-output-busybox")
@@ -256,7 +280,6 @@ var _ = Describe("ExtendedJob", func() {
 						tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
 						Expect(err).NotTo(HaveOccurred())
 						defer tearDown()
-						err = env.WaitForPods(env.Namespace, "test=true")
 
 						By("persisting the output for the first container")
 						_, err = env.GetSecret(env.Namespace, "output-job3-output-busybox")
