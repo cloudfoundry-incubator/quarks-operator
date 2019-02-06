@@ -58,12 +58,14 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (result reconcil
 		return
 	}
 
-	// set Run back to manually
-	extJob.Spec.Run = ejv1.RunManually
-	err = r.client.Update(context.TODO(), extJob)
-	if err != nil {
-		r.log.Errorf("Failed to revert to 'Run=manually' on job '%s': %s", extJob.Name, err)
-		return
+	if extJob.Spec.Run == ejv1.RunNow {
+		// set Run back to manually for errand jobs
+		extJob.Spec.Run = ejv1.RunManually
+		err = r.client.Update(context.TODO(), extJob)
+		if err != nil {
+			r.log.Errorf("Failed to revert to 'Run=manually' on job '%s': %s", extJob.Name, err)
+			return
+		}
 	}
 
 	err = r.createJob(*extJob)

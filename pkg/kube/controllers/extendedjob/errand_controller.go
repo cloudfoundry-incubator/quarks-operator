@@ -24,7 +24,7 @@ func AddErrand(log *zap.SugaredLogger, mgr manager.Manager) error {
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			exJob := e.Object.(*ejv1.ExtendedJob)
-			return exJob.Spec.Run == ejv1.RunNow
+			return exJob.Spec.Run == ejv1.RunNow || exJob.Spec.Run == ejv1.RunOnce
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return false

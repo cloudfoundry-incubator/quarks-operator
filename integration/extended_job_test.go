@@ -25,6 +25,23 @@ var _ = Describe("ExtendedJob", func() {
 		}
 	}
 
+	Context("when using an auto-errand job", func() {
+		AfterEach(func() {
+			env.WaitForPodsDelete(env.Namespace)
+		})
+
+		It("immediately starts the job", func() {
+			ej := env.AutoErrandExtendedJob("extendedjob")
+			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
+			Expect(jobs).To(HaveLen(1))
+		})
+	})
+
 	Context("when using manually triggered errand job", func() {
 		AfterEach(func() {
 			env.WaitForPodsDelete(env.Namespace)
