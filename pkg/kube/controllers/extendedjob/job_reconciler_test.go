@@ -89,11 +89,23 @@ var _ = Describe("ReconcileExtendedJob", func() {
 		Context("when output persistence is configured", func() {
 			JustBeforeEach(func() {
 				ejob.Spec.Output = ejapi.Output{
-					NamePrefix: "foo-",
+					NamePrefix:   "foo-",
+					SecretLabels: map[string]string{"key": "value"},
 				}
 			})
 
 			It("creates the secret and persists the output", func() {
+				_, err := reconciler.Reconcile(request)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(client.CreateCallCount()).To(Equal(1))
+			})
+
+			It("adds configured labels to the generated secrets", func() {
+				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+					secret := object.(*corev1.Secret)
+					Expect(secret.ObjectMeta.Labels["key"]).To(Equal("value"))
+					return nil
+				})
 				_, err := reconciler.Reconcile(request)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(client.CreateCallCount()).To(Equal(1))

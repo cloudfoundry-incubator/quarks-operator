@@ -536,8 +536,9 @@ func (c *Catalog) OutputExtendedJob(name string, template corev1.PodTemplateSpec
 			},
 			Template: template,
 			Output: ejv1.Output{
-				NamePrefix: name + "-output-",
-				OutputType: "json",
+				NamePrefix:   name + "-output-",
+				OutputType:   "json",
+				SecretLabels: map[string]string{"label-key": "label-value", "label-key2": "label-value2"},
 			},
 		},
 	}
