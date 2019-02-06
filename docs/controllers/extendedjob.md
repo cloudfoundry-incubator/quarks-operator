@@ -76,14 +76,19 @@ The developer can specify a Secret where the standard output/error output of
 the ExtendedJob is stored. Only single-pod jobs are supported when output
 persistence is enabled for now.
 
+One secret is created or overwritten per container in the pod. The secrets'
+names are `<namePrefix><container-name>`
+
 The only supported output type currently is json with a flat structure, i.e.
 all values being string values.
 
 **Note:** Output of previous runs will be overwritten.
 
 The behavior of storing the output is controlled by specifying the following parameters:
-- `namePrefix` - Prefix for the name of the secret that will hold the output.
+
+- `namePrefix` - Prefix for the name of the secret(s) that will hold the output.
 - `outputType` - Currently only `json` is supported. (default: `json`)
+- `secretLabels` - An optional map of labels which will be attached to the generated secret(s)
 - `writeOnFailure` - if true, output is written even though the Job failed. (default: `false`)
 
 ## Example Triggered ExtendedJob Resource
@@ -99,6 +104,8 @@ spec:
     namePrefix: "myoutput-"
     writeOnFailure: true
     outputType: "json"
+    secretLabels:
+      foo: bar
   updateOnConfigChange: true
   triggers:
     when: ready

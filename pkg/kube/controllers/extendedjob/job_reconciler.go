@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -83,7 +84,7 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 
 	// Persist output if needed
-	if (ejapi.Output{}) != ej.Spec.Output {
+	if !reflect.DeepEqual(ejapi.Output{}, ej.Spec.Output) {
 		if instance.Status.Succeeded == 1 || (instance.Status.Failed == 1 && ej.Spec.Output.WriteOnFailure) {
 			r.log.Infof("Persisting output of job %s", instance.Name)
 			err = r.persistOutput(instance, &ej.Spec.Output)
@@ -143,6 +144,7 @@ func (r *ReconcileJob) persistOutput(instance *batchv1.Job, conf *ejapi.Output) 
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
 				Namespace: instance.GetNamespace(),
+				Labels:    conf.SecretLabels,
 			},
 			StringData: data,
 		}
