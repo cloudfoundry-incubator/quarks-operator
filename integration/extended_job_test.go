@@ -206,11 +206,19 @@ var _ = Describe("ExtendedJob", func() {
 				Expect(string(secret.Data["foo"])).To(Equal("1"))
 				Expect(string(secret.Data["bar"])).To(Equal("baz"))
 
+				By("adding the configured labels to the first generated secret")
+				Expect(secret.Labels["label-key"]).To(Equal("label-value"))
+				Expect(secret.Labels["label-key2"]).To(Equal("label-value2"))
+
 				By("persisting output for the second container")
 				secret, err = env.GetSecret(env.Namespace, "output-job-output-busybox2")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(secret.Data["foo"])).To(Equal("1"))
 				Expect(string(secret.Data["bar"])).To(Equal("baz"))
+
+				By("adding the configured labels to the second generated secret")
+				Expect(secret.Labels["label-key"]).To(Equal("label-value"))
+				Expect(secret.Labels["label-key2"]).To(Equal("label-value2"))
 			})
 
 			Context("when a secret with the same name already exists", func() {
