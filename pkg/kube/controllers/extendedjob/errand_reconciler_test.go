@@ -168,39 +168,76 @@ var _ = Describe("ErrandReconciler", func() {
 				client crc.Client
 			)
 
-			BeforeEach(func() {
-				exJob = env.ErrandExtendedJob("fake-pod")
-				runtimeObjects = []runtime.Object{
-					&exJob,
-				}
-				client = fake.NewFakeClient(runtimeObjects...)
-				mgr.GetClientReturns(client)
+			Context("and the errand is a manual errand", func() {
+				BeforeEach(func() {
+					exJob = env.ErrandExtendedJob("fake-pod")
+					runtimeObjects = []runtime.Object{
+						&exJob,
+					}
+					client = fake.NewFakeClient(runtimeObjects...)
+					mgr.GetClientReturns(client)
 
-				request = newRequest(exJob)
+					request = newRequest(exJob)
+				})
+
+				It("should set run back and create a job", func() {
+					Expect(exJob.Spec.Run).To(Equal(ejv1.RunNow))
+
+					result, err := act()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(result.Requeue).To(BeFalse())
+
+					obj := &batchv1.JobList{}
+					err = client.List(context.TODO(), &crc.ListOptions{}, obj)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(obj.Items).To(HaveLen(1))
+
+					client.Get(
+						context.TODO(),
+						types.NamespacedName{
+							Name:      exJob.Name,
+							Namespace: exJob.Namespace,
+						},
+						&exJob,
+					)
+					Expect(exJob.Spec.Run).To(Equal(ejv1.RunManually))
+
+				})
 			})
 
-			It("should set run back and create a job", func() {
-				Expect(exJob.Spec.Run).To(Equal(ejv1.RunNow))
+			Context("and the errand is an auto-errand", func() {
+				BeforeEach(func() {
+					exJob = env.AutoErrandExtendedJob("fake-pod")
+					runtimeObjects = []runtime.Object{
+						&exJob,
+					}
+					client = fake.NewFakeClient(runtimeObjects...)
+					mgr.GetClientReturns(client)
 
-				result, err := act()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(result.Requeue).To(BeFalse())
+					request = newRequest(exJob)
+				})
 
-				obj := &batchv1.JobList{}
-				err = client.List(context.TODO(), &crc.ListOptions{}, obj)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(obj.Items).To(HaveLen(1))
+				It("should immediately trigger the job", func() {
+					result, err := act()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(result.Requeue).To(BeFalse())
 
-				client.Get(
-					context.TODO(),
-					types.NamespacedName{
-						Name:      exJob.Name,
-						Namespace: exJob.Namespace,
-					},
-					&exJob,
-				)
-				Expect(exJob.Spec.Run).To(Equal(ejv1.RunManually))
+					obj := &batchv1.JobList{}
+					err = client.List(context.TODO(), &crc.ListOptions{}, obj)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(obj.Items).To(HaveLen(1))
 
+					client.Get(
+						context.TODO(),
+						types.NamespacedName{
+							Name:      exJob.Name,
+							Namespace: exJob.Namespace,
+						},
+						&exJob,
+					)
+					Expect(exJob.Spec.Run).To(Equal(ejv1.RunOnce))
+
+				})
 			})
 		})
 	})

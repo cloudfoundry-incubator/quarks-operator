@@ -592,3 +592,15 @@ func (c *Catalog) ErrandExtendedJob(name string) ejv1.ExtendedJob {
 		},
 	}
 }
+
+// ErrandExtendedJob default values
+func (c *Catalog) AutoErrandExtendedJob(name string) ejv1.ExtendedJob {
+	cmd := []string{"sleep", "1"}
+	return ejv1.ExtendedJob{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Spec: ejv1.ExtendedJobSpec{
+			Run:      ejv1.RunOnce,
+			Template: c.CmdPodTemplate(cmd),
+		},
+	}
+}
