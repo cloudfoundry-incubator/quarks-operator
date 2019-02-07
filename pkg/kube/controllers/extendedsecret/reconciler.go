@@ -17,15 +17,16 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	esapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/clientcontext"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 )
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // NewReconciler returns a new Reconciler
-func NewReconciler(log *zap.SugaredLogger, mgr manager.Manager, generator credsgen.Generator, srf setReferenceFunc) reconcile.Reconciler {
+func NewReconciler(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager, generator credsgen.Generator, srf setReferenceFunc) reconcile.Reconciler {
 	return &ReconcileExtendedSecret{
 		log:          log,
+		ctrConfig:    ctrConfig,
 		client:       mgr.GetClient(),
 		scheme:       mgr.GetScheme(),
 		generator:    generator,
@@ -40,6 +41,7 @@ type ReconcileExtendedSecret struct {
 	scheme       *runtime.Scheme
 	setReference setReferenceFunc
 	log          *zap.SugaredLogger
+	ctrConfig    *controllersconfig.ControllersConfig
 }
 
 // Reconcile reads that state of the cluster for a ExtendedSecret object and makes changes based on the state read
@@ -52,7 +54,8 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 
 	instance := &esapi.ExtendedSecret{}
 
-	ctx, cancel := clientcontext.NewBackgroundContextWithTimeout()
+	// Set the ctx to be Background, as the top-level context for incoming requests.
+	ctx, cancel := controllersconfig.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
 	defer cancel()
 
 	err := r.client.Get(ctx, request.NamespacedName, instance)

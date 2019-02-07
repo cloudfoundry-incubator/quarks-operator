@@ -3,8 +3,10 @@ package extendedjob_test
 import (
 	"context"
 	"fmt"
+	"time"
 
 	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -33,6 +35,7 @@ var _ = Describe("ErrandReconciler", func() {
 			env        testing.Catalog
 			logs       *observer.ObservedLogs
 			log        *zap.SugaredLogger
+			ctrsConfig *controllersconfig.ControllersConfig
 			mgr        *fakes.FakeManager
 			request    reconcile.Request
 			reconciler reconcile.Reconciler
@@ -64,6 +67,7 @@ var _ = Describe("ErrandReconciler", func() {
 		JustBeforeEach(func() {
 			reconciler = NewErrandReconciler(
 				log,
+				ctrsConfig,
 				mgr,
 				setOwnerReference,
 			)
@@ -77,6 +81,10 @@ var _ = Describe("ErrandReconciler", func() {
 			controllers.AddToScheme(scheme.Scheme)
 			logs, log = testing.NewTestLogger()
 			mgr = &fakes.FakeManager{}
+			ctrsConfig = &controllersconfig.ControllersConfig{ //Set the context to be TODO
+				CtxTimeOut: 10 * time.Second,
+				CtxType:    controllersconfig.NewContext(),
+			}
 			setOwnerReferenceCallCount = 0
 		})
 

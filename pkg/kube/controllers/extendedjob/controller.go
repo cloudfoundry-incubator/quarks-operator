@@ -1,6 +1,7 @@
 package extendedjob
 
 import (
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
@@ -18,10 +19,10 @@ import (
 )
 
 // Add creates a new ExtendedJob controller and adds it to the Manager
-func Add(log *zap.SugaredLogger, mgr manager.Manager) error {
+func Add(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager) error {
 	query := NewQuery(mgr.GetClient())
 	f := controllerutil.SetControllerReference
-	r := NewTriggerReconciler(log, mgr, query, f)
+	r := NewTriggerReconciler(log, ctrConfig, mgr, query, f)
 	c, err := controller.New("extendedjob-trigger-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
@@ -65,7 +66,7 @@ func Add(log *zap.SugaredLogger, mgr manager.Manager) error {
 		return errors.Wrap(err, "Could not get kube client")
 	}
 	podLogGetter := NewPodLogGetter(client)
-	jobReconciler, err := NewJobReconciler(log, mgr, podLogGetter)
+	jobReconciler, err := NewJobReconciler(log, ctrConfig, mgr, podLogGetter)
 	jobController, err := controller.New("extendedjob-job-controller", mgr, controller.Options{Reconciler: jobReconciler})
 	if err != nil {
 		return err
