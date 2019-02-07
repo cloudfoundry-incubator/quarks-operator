@@ -6,8 +6,8 @@
     - [Triggered Jobs](#triggered-jobs)
       - [State](#state)
       - [Labels](#labels)
-    - [One-Off Jobs / Auto-Errands](#one-off-jobs-auto-errands)
     - [Errand Jobs](#errand-jobs)
+    - [One-Off Jobs / Auto-Errands](#one-off-jobs-auto-errands)
     - [Persisted Output](#persisted-output)
   - [Example Resource](#example-resource)
 
@@ -53,13 +53,6 @@ It can also match by expressions if `matchExpressions` are given.
 
 If multiple selectors are given, all must match to include the pod.
 
-### One-Off Jobs / Auto-Errands
-
-One-off jobs run directly when created, just like native k8s jobs, but still
-persist their output.
-
-They can't have a `triggers` section and specify `run: once` instead.
-
 ### Errand Jobs
 
 Errands are manually run by the user.
@@ -69,6 +62,13 @@ They can't have a `triggers` section and specify `run: manually` instead.
 After the `ExtendedJob` is created, run an errand by editing and applying the
 manifest, i.e. via `k edit errand1` and change `run: manually` to `run: now`,
 after completion the value will be reset to `manually`.
+
+### One-Off Jobs / Auto-Errands
+
+One-off jobs run directly when created, just like native k8s jobs, but still
+persist their output.
+
+They can't have a `triggers` section and specify `run: now` instead.
 
 ### Persisted Output
 
