@@ -1,6 +1,8 @@
 package integration_test
 
 import (
+	"strings"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -176,9 +178,19 @@ var _ = Describe("ExtendedJob", func() {
 			Expect(env.ContainJob(jobs, "job-slowjob-bar")).To(Equal(true))
 
 			By("checking if owner ref is set")
-			latest, err := env.GetExtendedJob(env.Namespace, "extendedjob")
+			extJob, err := env.GetExtendedJob(env.Namespace, "extendedjob")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(jobs[0].GetOwnerReferences()).Should(ContainElement(ownerRef(*latest)))
+			slowJob, err := env.GetExtendedJob(env.Namespace, "slowjob")
+			Expect(err).NotTo(HaveOccurred())
+
+			for _, job := range jobs {
+				if strings.Contains(job.GetName(), "job-extendedjob-") {
+					Expect(job.GetOwnerReferences()).Should(ContainElement(ownerRef(*extJob)))
+				}
+				if strings.Contains(job.GetName(), "job-slowjob-") {
+					Expect(job.GetOwnerReferences()).Should(ContainElement(ownerRef(*slowJob)))
+				}
+			}
 		})
 
 		Context("when persisting output", func() {
