@@ -2,10 +2,12 @@ package extendedjob_test
 
 import (
 	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -32,6 +34,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 		reconciler   reconcile.Reconciler
 		request      reconcile.Request
 		log          *zap.SugaredLogger
+		ctrsConfig   *controllersconfig.ControllersConfig
 		client       *cfakes.FakeClient
 		podLogGetter *cfakes.FakePodLogGetter
 		ejob         *ejapi.ExtendedJob
@@ -46,6 +49,10 @@ var _ = Describe("ReconcileExtendedJob", func() {
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 		core, _ := observer.New(zapcore.InfoLevel)
 		log = zap.New(core).Sugar()
+		ctrsConfig = &controllersconfig.ControllersConfig{ //Set the context to be TODO
+			CtxTimeOut: 10 * time.Second,
+			CtxType:    controllersconfig.NewContext(),
+		}
 
 		client = &cfakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
@@ -72,7 +79,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 	})
 
 	JustBeforeEach(func() {
-		reconciler, _ = ej.NewJobReconciler(log, manager, podLogGetter)
+		reconciler, _ = ej.NewJobReconciler(log, ctrsConfig, manager, podLogGetter)
 		ejob, job, pod = env.DefaultExtendedJobWithSucceededJob("foo")
 	})
 

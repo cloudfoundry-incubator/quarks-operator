@@ -1,6 +1,8 @@
 package integration_test
 
 import (
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -13,7 +15,7 @@ var _ = Describe("Deploy", func() {
 			env.WaitForPodsDelete(env.Namespace)
 		})
 
-		It("should deploy a pod", func() {
+		It("should deploy a pod with 10 seconds for the reconciler context", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
@@ -25,6 +27,22 @@ var _ = Describe("Deploy", func() {
 			// check for pod
 			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
+		})
+
+		It("should deploy a pod with 1 nanosecond for the reconciler context", func() {
+			env.CtrsConfig.CtxTimeOut = 1 * time.Nanosecond
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test", "manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			// check for pod
+			err = env.WaitForPod(env.Namespace, podName)
+			Expect(err).To(HaveOccurred(), "error waiting for pod from deployment")
+			env.CtrsConfig.CtxTimeOut = 10 * time.Second
 		})
 
 		It("should deploy manifest with multiple ops correctly", func() {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 	"go.uber.org/zap"
 	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -21,12 +22,14 @@ var _ reconcile.Reconciler = &ErrandReconciler{}
 // NewErrandReconciler returns a new reconciler for errand jobs
 func NewErrandReconciler(
 	log *zap.SugaredLogger,
+	ctrConfig *controllersconfig.ControllersConfig,
 	mgr manager.Manager,
 	f setOwnerReferenceFunc,
 ) reconcile.Reconciler {
 	return &ErrandReconciler{
 		client:            mgr.GetClient(),
 		log:               log,
+		ctrConfig:         ctrConfig,
 		recorder:          mgr.GetRecorder("extendedjob errand reconciler"),
 		scheme:            mgr.GetScheme(),
 		setOwnerReference: f,
@@ -37,6 +40,7 @@ func NewErrandReconciler(
 type ErrandReconciler struct {
 	client            client.Client
 	log               *zap.SugaredLogger
+	ctrConfig         *controllersconfig.ControllersConfig
 	recorder          record.EventRecorder
 	scheme            *runtime.Scheme
 	setOwnerReference setOwnerReferenceFunc
@@ -45,7 +49,12 @@ type ErrandReconciler struct {
 // Reconcile starts jobs for extended jobs of the type errand with Run being set to 'now' manually
 func (r *ErrandReconciler) Reconcile(request reconcile.Request) (result reconcile.Result, err error) {
 	extJob := &ejv1.ExtendedJob{}
-	err = r.client.Get(context.TODO(), request.NamespacedName, extJob)
+
+	// Set the ctx to be Background, as the top-level context for incoming requests.
+	ctx, cancel := controllersconfig.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
+	defer cancel()
+
+	err = r.client.Get(ctx, request.NamespacedName, extJob)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// do not requeue, extended job is probably deleted
@@ -61,14 +70,14 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (result reconcil
 	if extJob.Spec.Run == ejv1.RunNow {
 		// set Run back to manually for errand jobs
 		extJob.Spec.Run = ejv1.RunManually
-		err = r.client.Update(context.TODO(), extJob)
+		err = r.client.Update(ctx, extJob)
 		if err != nil {
 			r.log.Errorf("Failed to revert to 'Run=manually' on job '%s': %s", extJob.Name, err)
 			return
 		}
 	}
 
-	err = r.createJob(*extJob)
+	err = r.createJob(ctx, *extJob)
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {
 			r.log.Infof("Skip '%s' triggered manually: already running", extJob.Name)
@@ -84,7 +93,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (result reconcil
 	return
 }
 
-func (r *ErrandReconciler) createJob(extJob ejv1.ExtendedJob) error {
+func (r *ErrandReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJob) error {
 	name := fmt.Sprintf("job-%s-%s", truncate(extJob.Name, 30), randSuffix(extJob.Name))
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -100,7 +109,7 @@ func (r *ErrandReconciler) createJob(extJob ejv1.ExtendedJob) error {
 		r.log.Errorf("Failed to set owner reference on job for '%s': %s", extJob.Name, err)
 	}
 
-	err = r.client.Create(context.TODO(), job)
+	err = r.client.Create(ctx, job)
 	if err != nil {
 		return err
 	}

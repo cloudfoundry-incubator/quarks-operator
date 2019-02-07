@@ -20,15 +20,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ejapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/clientcontext"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 )
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // NewJobReconciler returns a new Reconciler
-func NewJobReconciler(log *zap.SugaredLogger, mgr manager.Manager, podLogGetter PodLogGetter) (reconcile.Reconciler, error) {
+func NewJobReconciler(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager, podLogGetter PodLogGetter) (reconcile.Reconciler, error) {
 	return &ReconcileJob{
 		log:          log,
+		ctrConfig:    ctrConfig,
 		client:       mgr.GetClient(),
 		podLogGetter: podLogGetter,
 		scheme:       mgr.GetScheme(),
@@ -41,6 +42,7 @@ type ReconcileJob struct {
 	podLogGetter PodLogGetter
 	scheme       *runtime.Scheme
 	log          *zap.SugaredLogger
+	ctrConfig    *controllersconfig.ControllersConfig
 }
 
 // Reconcile reads that state of the cluster for a Job object that is owned by an ExtendedJob and
@@ -53,7 +55,8 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 	instance := &batchv1.Job{}
 
-	ctx, cancel := clientcontext.NewBackgroundContextWithTimeout()
+	// Set the ctx to be Background, as the top-level context for incoming requests.
+	ctx, cancel := controllersconfig.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
 	defer cancel()
 
 	err := r.client.Get(ctx, request.NamespacedName, instance)

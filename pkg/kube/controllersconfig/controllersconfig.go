@@ -1,13 +1,16 @@
-package clientcontext
+package controllersconfig
 
 import (
 	"context"
 	"time"
 )
 
-const (
-	timeOutInMiliseconds int = 500
-)
+//ControllersConfig controls the behaviour of
+//different controllers
+type ControllersConfig struct {
+	CtxTimeOut time.Duration
+	CtxType    context.Context
+}
 
 //NewContext returns a non-nil empty context, for usage
 //when it is unclear which context to use.
@@ -29,6 +32,6 @@ func WithValue(parent context.Context, key interface{}, val interface{}) context
 
 //NewBackgroundContextWithTimeout returns a context that if
 //cancelled it will release resources associated with it.
-func NewBackgroundContextWithTimeout() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(NewBackgroundContext(), time.Duration(timeOutInMiliseconds)*time.Millisecond)
+func NewBackgroundContextWithTimeout(ctx context.Context, ctxTimeOut time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, ctxTimeOut)
 }

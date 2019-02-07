@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/clientcontext"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 	"go.uber.org/zap"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -26,17 +26,10 @@ var _ reconcile.Reconciler = &TriggerReconciler{}
 
 type setOwnerReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
-type key int
-
-var id = key(1)
-
-const (
-	controllerKey string = "extendedjob"
-)
-
 // NewTriggerReconciler returns a new reconcile to start jobs triggered by pods
 func NewTriggerReconciler(
 	log *zap.SugaredLogger,
+	ctrConfig *controllersconfig.ControllersConfig,
 	mgr manager.Manager,
 	query Query,
 	f setOwnerReferenceFunc,
@@ -44,6 +37,7 @@ func NewTriggerReconciler(
 	return &TriggerReconciler{
 		client:            mgr.GetClient(),
 		log:               log,
+		ctrConfig:         ctrConfig,
 		query:             query,
 		recorder:          mgr.GetRecorder("extendedjob trigger reconciler"),
 		scheme:            mgr.GetScheme(),
@@ -55,6 +49,7 @@ func NewTriggerReconciler(
 type TriggerReconciler struct {
 	client            client.Client
 	log               *zap.SugaredLogger
+	ctrConfig         *controllersconfig.ControllersConfig
 	query             Query
 	recorder          record.EventRecorder
 	scheme            *runtime.Scheme
@@ -69,7 +64,8 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 
 	pod := &corev1.Pod{}
 
-	ctx, _ := clientcontext.NewBackgroundContextWithTimeout()
+	// Set the ctx to be Background, as the top-level context for incoming requests.
+	ctx, _ := controllersconfig.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
 
 	err = r.client.Get(ctx, request.NamespacedName, pod)
 	if err != nil {
