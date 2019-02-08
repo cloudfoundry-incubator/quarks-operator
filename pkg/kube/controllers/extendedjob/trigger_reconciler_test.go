@@ -143,7 +143,6 @@ var _ = Describe("TriggerReconciler", func() {
 					Expect(client.CreateCallCount()).To(Equal(2))
 					Expect(logs.FilterMessageSnippet("Failed to create job for 'foo' via pod fake-pod/deleted: fake-error").Len()).To(Equal(1))
 					Expect(logs.FilterMessageSnippet("Failed to create job for 'bar' via pod fake-pod/deleted: fake-error").Len()).To(Equal(1))
-					Expect(setOwnerReferenceCallCount).To(Equal(0))
 				})
 			})
 		})

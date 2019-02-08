@@ -127,19 +127,13 @@ func (r *TriggerReconciler) createJob(extJob ejv1.ExtendedJob, podName string) e
 		Spec: batchv1.JobSpec{Template: extJob.Spec.Template},
 	}
 
-	err := r.client.Create(context.TODO(), job)
-	if err != nil {
-		return err
-	}
-
-	err = r.setOwnerReference(&extJob, job, r.scheme)
+	err := r.setOwnerReference(&extJob, job, r.scheme)
 	if err != nil {
 		r.log.Errorf("Failed to set owner reference on job for '%s' via pod %s: %s", extJob.Name, podName, err)
 	}
 
-	err = r.client.Update(context.TODO(), job)
+	err = r.client.Create(context.TODO(), job)
 	if err != nil {
-		r.log.Errorf("Failed to update job with owner reference for '%s': %s", extJob.Name, err)
 		return err
 	}
 

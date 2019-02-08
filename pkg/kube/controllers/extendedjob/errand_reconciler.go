@@ -95,19 +95,13 @@ func (r *ErrandReconciler) createJob(extJob ejv1.ExtendedJob) error {
 		Spec: batchv1.JobSpec{Template: extJob.Spec.Template},
 	}
 
-	err := r.client.Create(context.TODO(), job)
-	if err != nil {
-		return err
-	}
-
-	err = r.setOwnerReference(&extJob, job, r.scheme)
+	err := r.setOwnerReference(&extJob, job, r.scheme)
 	if err != nil {
 		r.log.Errorf("Failed to set owner reference on job for '%s': %s", extJob.Name, err)
 	}
 
-	err = r.client.Update(context.TODO(), job)
+	err = r.client.Create(context.TODO(), job)
 	if err != nil {
-		r.log.Errorf("Failed to update job '%s' with owner reference for '%s': %s", name, extJob.Name, err)
 		return err
 	}
 
