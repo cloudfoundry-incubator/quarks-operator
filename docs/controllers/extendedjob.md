@@ -68,7 +68,7 @@ after completion the value will be reset to `manually`.
 One-off jobs run directly when created, just like native k8s jobs, but still
 persist their output.
 
-They can't have a `triggers` section and specify `run: now` instead.
+They can't have a `triggers` section and specify `run: once` instead.
 
 ### Persisted Output
 
