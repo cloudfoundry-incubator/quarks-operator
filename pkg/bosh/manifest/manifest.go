@@ -16,6 +16,6 @@ type Release struct {               # Added by Svk Rohit
 // Manifest is a BOSH deployment manifest
 type Manifest struct {
 	InstanceGroups []InstanceGroup `yaml:"instance-groups"`
-	Releases []Release `yaml:"releases"
+	Releases []Release `yaml:"releases"		# Added by Svk Rohit
 }
 
