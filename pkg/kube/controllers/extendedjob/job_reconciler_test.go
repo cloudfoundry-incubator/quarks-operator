@@ -77,6 +77,12 @@ var _ = Describe("ReconcileExtendedJob", func() {
 	})
 
 	Context("With a succeeded Job", func() {
+		It("deletes the job immediately", func() {
+			_, err := reconciler.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(client.DeleteCallCount()).To(Equal(1))
+		})
+
 		Context("when output persistence is not configured", func() {
 			It("does not persist output", func() {
 				result, err := reconciler.Reconcile(request)
@@ -117,6 +123,12 @@ var _ = Describe("ReconcileExtendedJob", func() {
 		JustBeforeEach(func() {
 			job.Status.Succeeded = 0
 			job.Status.Failed = 1
+		})
+
+		It("does not delete the job immediately", func() {
+			_, err := reconciler.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(client.DeleteCallCount()).To(Equal(0))
 		})
 
 		Context("when WriteOnFailure is not set", func() {

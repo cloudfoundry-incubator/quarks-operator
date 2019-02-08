@@ -99,6 +99,12 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 		}
 	}
 
+	// Delete Job if it succeeded
+	if instance.Status.Succeeded == 1 {
+		r.log.Infof("Deleting succeeded job %s", instance.Name)
+		r.client.Delete(context.TODO(), instance)
+	}
+
 	return reconcile.Result{}, nil
 }
 

@@ -127,7 +127,6 @@ var _ = Describe("ErrandReconciler", func() {
 					Expect(err).To(HaveOccurred())
 					Expect(logs.FilterMessageSnippet("Failed to revert to 'Run=manually' on job 'fake-exjob': fake-error").Len()).To(Equal(1))
 					Expect(client.CreateCallCount()).To(Equal(0))
-					Expect(setOwnerReferenceCallCount).To(Equal(0))
 				})
 			})
 
@@ -141,12 +140,12 @@ var _ = Describe("ErrandReconciler", func() {
 					Expect(logs.FilterMessageSnippet("Failed to create job 'fake-exjob': fake-error").Len()).To(Equal(1))
 					Expect(err).To(HaveOccurred())
 					Expect(client.CreateCallCount()).To(Equal(1))
-					Expect(setOwnerReferenceCallCount).To(Equal(0))
 				})
 			})
 
 			Context("when client fails to create jobs because it already exists", func() {
 				BeforeEach(func() {
+					client.UpdateReturns(nil)
 					client.CreateReturns(apierrors.NewAlreadyExists(schema.GroupResource{}, "fake-error"))
 				})
 
@@ -157,7 +156,6 @@ var _ = Describe("ErrandReconciler", func() {
 
 					Expect(logs.FilterMessageSnippet("Skip 'fake-exjob' triggered manually: already running").Len()).To(Equal(1))
 					Expect(client.CreateCallCount()).To(Equal(1))
-					Expect(setOwnerReferenceCallCount).To(Equal(0))
 				})
 			})
 
