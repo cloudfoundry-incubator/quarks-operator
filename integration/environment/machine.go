@@ -471,6 +471,14 @@ func (m *Machine) WaitForJobExists(namespace string, labels string) (bool, error
 	return found, err
 }
 
+// WaitForJobDeletion blocks until the CR is deleted
+func (m *Machine) WaitForJobDeletion(namespace string, name string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		found, err := m.JobExists(namespace, name)
+		return !found, err
+	})
+}
+
 // ContainJob searches job array for a job matching `name`
 func (m *Machine) ContainJob(jobs []batchv1.Job, name string) bool {
 	for _, job := range jobs {

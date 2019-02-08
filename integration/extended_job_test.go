@@ -30,8 +30,15 @@ var _ = Describe("ExtendedJob", func() {
 			env.WaitForPodsDelete(env.Namespace)
 		})
 
+		var (
+			ej ejv1.ExtendedJob
+		)
+
+		BeforeEach(func() {
+			ej = env.AutoErrandExtendedJob("autoerrand-job")
+		})
+
 		It("immediately starts the job", func() {
-			ej := env.AutoErrandExtendedJob("extendedjob")
 			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
@@ -39,6 +46,42 @@ var _ = Describe("ExtendedJob", func() {
 			jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
 			Expect(jobs).To(HaveLen(1))
+		})
+
+		It("cleans up succeeded jobs immediately", func() {
+			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
+			Expect(jobs).To(HaveLen(1))
+
+			err = env.WaitForJobDeletion(env.Namespace, jobs[0].Name)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		Context("when the job failed", func() {
+			BeforeEach(func() {
+				ej.Spec.Template = env.FailingMultiContainerPodTemplate([]string{"echo", "{}"})
+			})
+
+			It("cleans it up when the ExtendedJob is deleted", func() {
+				_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
+				Expect(err).NotTo(HaveOccurred())
+				defer tearDown()
+
+				jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+				Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
+				Expect(jobs).To(HaveLen(1))
+
+				err = env.WaitForJobDeletion(env.Namespace, jobs[0].Name)
+				Expect(err).To(HaveOccurred())
+
+				tearDown()
+				err = env.WaitForJobDeletion(env.Namespace, jobs[0].Name)
+				Expect(err).ToNot(HaveOccurred())
+			})
 		})
 	})
 
