@@ -2,11 +2,11 @@ package manifest
 
 // Job from BOSH deployment manifest
 type Job struct {
-	Name       string
-	Release    string
-	Consumes   map[string]string
-	Provides   map[string]string
-	Properties map[string]string
+	Name       string                 `yaml:"name"`
+	Release    string                 `yaml:"release"`
+	Consumes   map[string]interface{} `yaml:"consumes"`
+	Provides   map[string]interface{} `yaml:"provides"`
+	Properties map[string]interface{} `yaml:"properties"`
 }
 
 // VMResource from BOSH deployment manifest
@@ -18,9 +18,9 @@ type VMResource struct {
 
 // Network from BOSH deployment manifest
 type Network struct {
-	Name      string
-	StaticIps []string
-	Default   []string
+	Name      string   `yaml:"name"`
+	StaticIps []string `yaml:"static_ips"`
+	Default   []string `yaml:"default"`
 }
 
 // Update from BOSH deployment manifest
@@ -41,24 +41,38 @@ type MigratedFrom struct {
 
 // IPv6 from BOSH deployment manifest
 type IPv6 struct {
-	Enable bool
+	Enable bool `yaml:"enable"`
+}
+
+// JobDir from BOSH deployment manifest
+type JobDir struct {
+	Tmpfs     bool   `yaml:"tmpfs"`
+	TmpfsSize string `yaml:"tmpfs_size"`
+}
+
+// Agent from BOSH deployment manifest
+type Agent struct {
+	Settings string `yaml:"settings"`
+	Tmpfs    bool   `yaml:"tmpfs"`
 }
 
 // AgentEnvBoshConfig from BOSH deployment manifest
 type AgentEnvBoshConfig struct {
-	Password              string
-	KeepRootPassword      string
-	RemoveDevTools        bool
-	RemoveStaticLibraries bool
-	SwapSize              int
-	IPv6                  IPv6
+	Password              string `yaml:"password"`
+	KeepRootPassword      string `yaml:"keep_root_password"`
+	RemoveDevTools        bool   `yaml:"remove_dev_tools"`
+	RemoveStaticLibraries bool   `yaml:"remove_static_libraries"`
+	SwapSize              int    `yaml:"swap_size"`
+	IPv6                  IPv6   `yaml:"ipv6"`
+	JobDir                JobDir `yaml:"job_dir"`
+	Agent                 Agent  `yaml:"agent"`
 }
 
 // AgentEnv from BOSH deployment manifest
 type AgentEnv struct {
-	PersistentDiskFS           string   `yaml:"name"`
-	PersistentDiskMountOptions []string `yaml:"name"`
-	AgentEnvBoshConfig         []string `yaml:"name"`
+	PersistentDiskFS           string             `yaml:"persistent_disk_fs"`
+	PersistentDiskMountOptions []string           `yaml:"persistent_disk_mount_options"`
+	AgentEnvBoshConfig         AgentEnvBoshConfig `yaml:"bosh"`
 }
 
 // InstanceGroup from BOSH deployment manifest
@@ -77,7 +91,7 @@ type InstanceGroup struct {
 	Update             Update                 `yaml:"update"`
 	MigratedFrom       MigratedFrom           `yaml:"migrated_from"`
 	LifeCycle          string                 `yaml:"lifecycle"`
-	Properties         map[string]interface{} `yaml:"properties"` // Doubt
+	Properties         map[string]interface{} `yaml:"properties"`
 	Env                AgentEnv               `yaml:"env"`
 }
 
@@ -150,15 +164,16 @@ type AddOn struct {
 
 // Manifest is a BOSH deployment manifest
 type Manifest struct {
-	InstanceGroups []InstanceGroup        `yaml:"instance-groups"`
-	Features       Feature                `yaml:"features"`
-	Variable       Variable               `yaml:"variables"`
-	Tags           map[string]string      `yaml:"tags"`
-	Name           string                 `yaml:"name"`
-	DirectorUUID   string                 `yaml:"director_uuid"`
-	Releases       []Release              `yaml:"releases"`
-	Stemcells      []Stemcell             `yaml:"stemcells"`
-	AddOns         []AddOn                `yaml:"addons"`
-	Properties     map[string]interface{} `yaml:"properties"`
-	Variables      []Variable             `yaml:"variables"`
+	Name           string                   `yaml:"name"`
+	InstanceGroups []InstanceGroup          `yaml:"instance-groups"`
+	Features       Feature                  `yaml:"features"`
+	Variable       Variable                 `yaml:"variables"`
+	Tags           map[string]string        `yaml:"tags"`
+	DirectorUUID   string                   `yaml:"director_uuid"`
+	Releases       []Release                `yaml:"releases"`
+	Stemcells      []Stemcell               `yaml:"stemcells"`
+	AddOns         []AddOn                  `yaml:"addons"`
+	Properties     []map[string]interface{} `yaml:"properties"`
+	Variables      []Variable               `yaml:"variables"`
+	Update         Update                   `yaml:"update"`
 }
