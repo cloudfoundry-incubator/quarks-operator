@@ -2,10 +2,12 @@ module code.cloudfoundry.org/cf-operator
 
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
+	github.com/SUSE/bosh-deployment-schema v0.0.0-20180920145051-7bd6398880e4
 	github.com/appscode/jsonpatch v0.0.0-20190108182946-7c0e3b262f30 // indirect
 	github.com/cloudflare/cfssl v0.0.0-20181102015659-ea4033a214e7
 	github.com/cppforlife/go-patch v0.0.0-20171006213518-250da0e0e68c
 	github.com/dchest/uniuri v0.0.0-20160212164326-8902c56451e9
+	github.com/getkin/kin-openapi v0.1.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/go-logr/zapr v0.1.0 // indirect
@@ -23,12 +25,14 @@ require (
 	github.com/jmoiron/sqlx v1.2.0 // indirect
 	github.com/json-iterator/go v1.1.5 // indirect
 	github.com/kisielk/sqlstruct v0.0.0-20150923205031-648daed35d49 // indirect
+	github.com/manno/kin-openapi v0.0.0-20180920144307-20b72bb23321 // indirect
 	github.com/mattn/go-sqlite3 v1.10.0 // indirect
+	github.com/maxbrunsfeld/counterfeiter v0.0.0-20190111051351-d7285d544cff // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742 // indirect
-	github.com/onsi/ginkgo v1.6.0
-	github.com/onsi/gomega v1.4.2
+	github.com/onsi/ginkgo v1.7.0
+	github.com/onsi/gomega v1.4.3
 	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.8.0
@@ -42,13 +46,16 @@ require (
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
 	golang.org/x/crypto v0.0.0-20181015023909-0c41d7ab0a0e
-	golang.org/x/net v0.0.0-20181201002055-351d144fa1fc
+	golang.org/x/lint v0.0.0-20181217174547-8f45f776aaf1 // indirect
+	golang.org/x/net v0.0.0-20190213061140-3a22650c66bd
 	golang.org/x/oauth2 v0.0.0-20181017192945-9dcd33a902f4 // indirect
-	golang.org/x/sys v0.0.0-20181023152157-44b849a8bc13 // indirect
+	golang.org/x/sys v0.0.0-20190213115755-cea5d2f6b403 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
+	golang.org/x/tools v0.0.0-20190213042836-0e66cc6fab8b // indirect
 	google.golang.org/appengine v1.2.0 // indirect
+	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	gopkg.in/yaml.v2 v2.2.1
+	gopkg.in/yaml.v2 v2.2.2
 	k8s.io/api v0.0.0-20181213150558-05914d821849
 	k8s.io/apiextensions-apiserver v0.0.0-20181213153335-0fe22c71c476 // indirect
 	k8s.io/apimachinery v0.0.0-20181127025237-2b1284ed4c93

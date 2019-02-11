@@ -172,7 +172,7 @@ instance-groups:
 				},
 			}
 			expectedManifest = &bdm.Manifest{
-				InstanceGroups: []bdm.InstanceGroup{
+				InstanceGroups: []*bdm.InstanceGroup{
 					{
 						Name:      "component1",
 						Instances: 1,
@@ -200,7 +200,7 @@ instance-groups:
 				},
 			}
 			expectedManifest = &bdm.Manifest{
-				InstanceGroups: []bdm.InstanceGroup{
+				InstanceGroups: []*bdm.InstanceGroup{
 					{
 						Name:      "component3",
 						Instances: 1,
@@ -228,7 +228,7 @@ instance-groups:
 				},
 			}
 			expectedManifest = &bdm.Manifest{
-				InstanceGroups: []bdm.InstanceGroup{
+				InstanceGroups: []*bdm.InstanceGroup{
 					{
 						Name:      "component5",
 						Instances: 1,
@@ -266,7 +266,7 @@ instance-groups:
 				},
 			}
 			expectedManifest = &bdm.Manifest{
-				InstanceGroups: []bdm.InstanceGroup{
+				InstanceGroups: []*bdm.InstanceGroup{
 					{
 						Name:      "component1",
 						Instances: 2,
@@ -322,7 +322,7 @@ instance-groups:
 				},
 			}
 			expectedManifest = &bdm.Manifest{
-				InstanceGroups: []bdm.InstanceGroup{
+				InstanceGroups: []*bdm.InstanceGroup{
 					{
 						Name:      "component1",
 						Instances: 4,
