@@ -50,7 +50,7 @@ var _ = Describe("PersistManifest", func() {
 			Expect(createdSecret.Name).To(BeEquivalentTo(secretName))
 
 			retrievedSecret := &corev1.Secret{}
-			err = kubeClient.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: secretName}, retrievedSecret)
+			err = kubeClient.Get(context.Background(), client.ObjectKey{Namespace: namespace, Name: secretName}, retrievedSecret)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(retrievedSecret).To(BeEquivalentTo(createdSecret))
 		})
