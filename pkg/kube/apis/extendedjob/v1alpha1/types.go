@@ -4,6 +4,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 // This file is safe to edit
@@ -68,8 +69,15 @@ type Triggers struct {
 
 // Selector filter objects
 type Selector struct {
-	MatchLabels      labels.Set           `json:"matchLabels,omitempty"`
-	MatchExpressions []labels.Requirement `json:"matchExpressions,omitempty"`
+	MatchLabels      labels.Set    `json:"matchLabels,omitempty"`
+	MatchExpressions []Requirement `json:"matchExpressions,omitempty"`
+}
+
+// Requirement describes a label requirement
+type Requirement struct {
+	Key      string             `json:"key"`
+	Operator selection.Operator `json:"operator"`
+	Values   []string           `json:"values"`
 }
 
 // ExtendedJobStatus defines the observed state of ExtendedJob

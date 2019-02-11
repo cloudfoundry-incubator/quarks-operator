@@ -1,6 +1,7 @@
 package extendedjob
 
 import (
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,13 +18,14 @@ type Query interface {
 }
 
 // NewQuery returns a new Query struct
-func NewQuery(c client.Client) *QueryImpl {
-	return &QueryImpl{client: c}
+func NewQuery(c client.Client, log *zap.SugaredLogger) *QueryImpl {
+	return &QueryImpl{client: c, log: log}
 }
 
-// QueryImpl implements the query interface
+// QueryImpl implements the query interfacepod.Labels
 type QueryImpl struct {
 	client client.Client
+	log    *zap.SugaredLogger
 }
 
 // Match pod against label whitelist from extended job
@@ -32,10 +34,20 @@ func (q *QueryImpl) Match(extJob ejv1.ExtendedJob, pod corev1.Pod) bool {
 		return false
 	}
 
-	// TODO https://github.com/kubernetes/apimachinery/blob/master/pkg/labels/selector.go
-	match := extJob.Spec.Triggers.Selector.MatchLabels
+	podLabelsSet := labels.Set(pod.Labels)
+	matchExpressions := extJob.Spec.Triggers.Selector.MatchExpressions
+	for _, exp := range matchExpressions {
+		requirement, err := labels.NewRequirement(exp.Key, exp.Operator, exp.Values)
+		if err != nil {
+			q.log.Errorf("Error converting requirement '%#v': %s", exp, err)
+		} else if !requirement.Matches(podLabelsSet) {
+			return false
+		}
+	}
 
-	if labels.AreLabelsInWhiteList(match, pod.Labels) {
+	// TODO https://github.com/kubernetes/apimachinery/blob/master/pkg/labels/selector.go
+	matchLabels := extJob.Spec.Triggers.Selector.MatchLabels
+	if labels.AreLabelsInWhiteList(matchLabels, pod.Labels) {
 		return true
 	}
 	return false
