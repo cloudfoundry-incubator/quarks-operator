@@ -148,6 +148,26 @@ var _ = Describe("ExtendedJob", func() {
 		})
 	})
 
+	Context("when using matchExpressions to trigger jobs", func() {
+		It("triggers the job", func() {
+			ej := *env.MatchExpressionExtendedJob("extendedjob")
+			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+
+			pod := env.LabeledPod("matching", map[string]string{"env": "production"})
+			tearDown, err = env.CreatePod(env.Namespace, pod)
+			Expect(err).NotTo(HaveOccurred())
+			defer tearDown()
+			err = env.WaitForPods(env.Namespace, "env=production")
+			Expect(err).NotTo(HaveOccurred(), "error waiting for pods")
+
+			By("waiting for the job")
+			_, err = env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
+		})
+	})
+
 	Context("when using label matchers to trigger jobs", func() {
 		AfterEach(func() {
 			env.WaitForPodsDelete(env.Namespace)
@@ -209,6 +229,7 @@ var _ = Describe("ExtendedJob", func() {
 					"unmatched",
 					"ready",
 					map[string]string{"unmatched": "unmatched"},
+					[]ejv1.Requirement{},
 					[]string{"sleep", "1"},
 				),
 			} {

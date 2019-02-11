@@ -20,7 +20,7 @@ import (
 
 // Add creates a new ExtendedJob controller and adds it to the Manager
 func Add(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager) error {
-	query := NewQuery(mgr.GetClient())
+	query := NewQuery(mgr.GetClient(), log)
 	f := controllerutil.SetControllerReference
 	r := NewTriggerReconciler(log, ctrConfig, mgr, query, f)
 	c, err := controller.New("extendedjob-trigger-controller", mgr, controller.Options{Reconciler: r})
