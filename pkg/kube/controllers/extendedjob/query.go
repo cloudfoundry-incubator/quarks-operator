@@ -22,7 +22,7 @@ func NewQuery(c client.Client, log *zap.SugaredLogger) *QueryImpl {
 	return &QueryImpl{client: c, log: log}
 }
 
-// QueryImpl implements the query interfacepod.Labels
+// QueryImpl implements the query interface
 type QueryImpl struct {
 	client client.Client
 	log    *zap.SugaredLogger
