@@ -1,7 +1,6 @@
 package boshdeployment
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 
@@ -18,6 +17,7 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 )
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
@@ -26,9 +26,10 @@ var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // NewReconciler returns a new reconcile.Reconciler
-func NewReconciler(log *zap.SugaredLogger, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
+func NewReconciler(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
 	return &ReconcileBOSHDeployment{
 		log:          log,
+		ctrConfig:    ctrConfig,
 		client:       mgr.GetClient(),
 		scheme:       mgr.GetScheme(),
 		recorder:     mgr.GetRecorder("RECONCILER RECORDER"),
@@ -47,6 +48,7 @@ type ReconcileBOSHDeployment struct {
 	resolver     bdm.Resolver
 	setReference setReferenceFunc
 	log          *zap.SugaredLogger
+	ctrConfig    *controllersconfig.ControllersConfig
 }
 
 // Reconcile reads that state of the cluster for a BOSHDeployment object and makes changes based on the state read
@@ -59,7 +61,12 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Fetch the BOSHDeployment instance
 	instance := &bdc.BOSHDeployment{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+
+	// Set the ctx to be Background, as the top-level context for incoming requests.
+	ctx, cancel := controllersconfig.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
+	defer cancel()
+
+	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -98,10 +105,10 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	// TODO example implementation, untested, replace eventually
 	// Check if this Pod already exists
 	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
+	err = r.client.Get(ctx, types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		r.log.Infof("Creating a new Pod %s/%s\n", pod.Namespace, pod.Name)
-		err = r.client.Create(context.TODO(), pod)
+		err = r.client.Create(ctx, pod)
 		if err != nil {
 			r.recorder.Event(instance, corev1.EventTypeWarning, "CreatePodForCR Error", err.Error())
 			return reconcile.Result{}, err

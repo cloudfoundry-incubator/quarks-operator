@@ -2,6 +2,7 @@ package boshdeployment_test
 
 import (
 	"fmt"
+	"time"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
@@ -9,6 +10,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
@@ -37,6 +39,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		resolver   fakes.FakeResolver
 		manifest   *bdm.Manifest
 		log        *zap.SugaredLogger
+		ctrsConfig *controllersconfig.ControllersConfig
 	)
 
 	BeforeEach(func() {
@@ -53,12 +56,16 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			},
 		}
 		core, _ := observer.New(zapcore.InfoLevel)
+		ctrsConfig = &controllersconfig.ControllersConfig{ //Set the context to be TODO
+			CtxTimeOut: 10 * time.Second,
+			CtxType:    controllersconfig.NewContext(),
+		}
 		log = zap.New(core).Sugar()
 	})
 
 	JustBeforeEach(func() {
 		resolver.ResolveCRDReturns(manifest, nil)
-		reconciler = cfd.NewReconciler(log, manager, &resolver, controllerutil.SetControllerReference)
+		reconciler = cfd.NewReconciler(log, ctrsConfig, manager, &resolver, controllerutil.SetControllerReference)
 	})
 
 	Describe("Reconcile", func() {
@@ -146,7 +153,11 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles errors when setting the owner reference on the object", func() {
-				reconciler = cfd.NewReconciler(log, manager, &resolver, func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+				ctrsConfig := &controllersconfig.ControllersConfig{ //Set the context to be TODO
+					CtxTimeOut: 10 * time.Second,
+					CtxType:    controllersconfig.NewContext(),
+				}
+				reconciler = cfd.NewReconciler(log, ctrsConfig, manager, &resolver, func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return fmt.Errorf("failed to set reference")
 				})
 

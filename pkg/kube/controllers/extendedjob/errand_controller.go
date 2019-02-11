@@ -2,6 +2,7 @@ package extendedjob
 
 import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 	"go.uber.org/zap"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -13,9 +14,9 @@ import (
 )
 
 // AddErrand creates a new ExtendedJob controller and adds it to the Manager
-func AddErrand(log *zap.SugaredLogger, mgr manager.Manager) error {
+func AddErrand(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager) error {
 	f := controllerutil.SetControllerReference
-	r := NewErrandReconciler(log, mgr, f)
+	r := NewErrandReconciler(log, ctrConfig, mgr, f)
 	c, err := controller.New("extendedjob-errand-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err

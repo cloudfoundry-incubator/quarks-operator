@@ -3,7 +3,9 @@ package extendedjob_test
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -31,6 +33,7 @@ var _ = Describe("TriggerReconciler", func() {
 		var (
 			env        testing.Catalog
 			logs       *observer.ObservedLogs
+			ctrsConfig *controllersconfig.ControllersConfig
 			log        *zap.SugaredLogger
 			mgr        *fakes.FakeManager
 			query      *fakes.FakeQuery
@@ -72,6 +75,7 @@ var _ = Describe("TriggerReconciler", func() {
 		JustBeforeEach(func() {
 			reconciler = NewTriggerReconciler(
 				log,
+				ctrsConfig,
 				mgr,
 				query,
 				setOwnerReference,
@@ -85,6 +89,10 @@ var _ = Describe("TriggerReconciler", func() {
 		BeforeEach(func() {
 			controllers.AddToScheme(scheme.Scheme)
 			logs, log = testing.NewTestLogger()
+			ctrsConfig = &controllersconfig.ControllersConfig{ //Set the context to be TODO
+				CtxTimeOut: 10 * time.Second,
+				CtxType:    controllersconfig.NewContext(),
+			}
 			mgr = &fakes.FakeManager{}
 			query = &fakes.FakeQuery{}
 			setOwnerReferenceCallCount = 0
@@ -218,6 +226,7 @@ var _ = Describe("TriggerReconciler", func() {
 				It("should log and continue", func() {
 					reconciler = NewTriggerReconciler(
 						log,
+						ctrsConfig,
 						mgr,
 						query,
 						setOwnerReferenceFail,

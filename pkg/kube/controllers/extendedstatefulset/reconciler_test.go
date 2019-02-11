@@ -24,6 +24,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	exssc "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 
 	. "github.com/onsi/ginkgo"
@@ -36,6 +37,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 		reconciler reconcile.Reconciler
 		request    reconcile.Request
 		log        *zap.SugaredLogger
+		ctrsConfig *controllersconfig.ControllersConfig
 	)
 
 	BeforeEach(func() {
@@ -46,10 +48,15 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 		core, _ := observer.New(zapcore.InfoLevel)
 		log = zap.New(core).Sugar()
+
+		ctrsConfig = &controllersconfig.ControllersConfig{ //Set the context to be TODO
+			CtxTimeOut: 10 * time.Second,
+			CtxType:    controllersconfig.NewContext(),
+		}
 	})
 
 	JustBeforeEach(func() {
-		reconciler = exssc.NewReconciler(log, manager, controllerutil.SetControllerReference)
+		reconciler = exssc.NewReconciler(log, ctrsConfig, manager, controllerutil.SetControllerReference)
 	})
 
 	Describe("Reconcile", func() {

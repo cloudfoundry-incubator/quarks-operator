@@ -11,11 +11,12 @@ import (
 
 	credsgen "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
 	es "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 )
 
 // Add creates a new ExtendedSecrets Controller and adds it to the Manager
-func Add(log *zap.SugaredLogger, mgr manager.Manager) error {
-	r := NewReconciler(log, mgr, credsgen.NewInMemoryGenerator(log), controllerutil.SetControllerReference)
+func Add(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager) error {
+	r := NewReconciler(log, ctrConfig, mgr, credsgen.NewInMemoryGenerator(log), controllerutil.SetControllerReference)
 
 	// Create a new controller
 	c, err := controller.New("extendedsecret-controller", mgr, controller.Options{Reconciler: r})

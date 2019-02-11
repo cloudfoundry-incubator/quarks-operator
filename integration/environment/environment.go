@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
 	"code.cloudfoundry.org/cf-operator/testing"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
@@ -33,6 +34,7 @@ type Environment struct {
 	stop       chan struct{}
 
 	Log          *zap.SugaredLogger
+	CtrsConfig   *controllersconfig.ControllersConfig
 	ObservedLogs *observer.ObservedLogs
 	Namespace    string
 }
@@ -41,6 +43,10 @@ type Environment struct {
 func NewEnvironment() *Environment {
 	return &Environment{
 		Namespace: "",
+		CtrsConfig: &controllersconfig.ControllersConfig{ //Set the context to be TODO
+			CtxTimeOut: 10 * time.Second,
+			CtxType:    controllersconfig.NewBackgroundContext(),
+		},
 		Machine: Machine{
 			pollTimeout:  30 * time.Second,
 			pollInterval: 500 * time.Millisecond,
@@ -96,7 +102,7 @@ func (e *Environment) setupCFOperator() (err error) {
 		return
 	}
 
-	e.mgr, err = operator.NewManager(e.Log, e.kubeConfig, manager.Options{Namespace: e.Namespace})
+	e.mgr, err = operator.NewManager(e.Log, e.CtrsConfig, e.kubeConfig, manager.Options{Namespace: e.Namespace})
 	return
 }
 
