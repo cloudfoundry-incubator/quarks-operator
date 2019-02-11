@@ -1,4 +1,4 @@
-package secrets_test
+package manifest_test
 
 import (
 	"testing"

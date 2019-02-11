@@ -1,4 +1,4 @@
-package secrets
+package manifest
 
 import (
 	"fmt"
@@ -23,7 +23,9 @@ const (
 	deploymentKeyName = "deployment-name"
 )
 
-// ManifestPersister is the interface to persist manifests in Kubernetes
+var _ Store = &StoreImpl{}
+
+// Store is the interface to persist manifests in Kubernetes
 //
 // It uses Kubernetes secrets to persist a manifest. There can only be one
 // manifest per deployment. Each update to the manifest results in a new
@@ -37,36 +39,36 @@ const (
 // When persisting a new manifest, a source description is required, which
 // should explain the sources of the rendered manifest, e.g. the location of
 // the Custom Resource Definition that generated it.
-type ManifestPersister interface {
-	PersistManifest(manifest manifest.Manifest, sourceDescription string) (*corev1.Secret, error)
-	DeleteManifest() error
-	DecorateManifest(key string, value string) (*corev1.Secret, error)
-	ListAllVersions() ([]corev1.Secret, error)
-	RetrieveVersion(version int) (*corev1.Secret, error)
-	RetrieveLatestVersion() (*corev1.Secret, error)
+type Store interface {
+	Save(manifest manifest.Manifest, sourceDescription string) (*corev1.Secret, error)
+	Delete() error
+	Decorate(key string, value string) (*corev1.Secret, error)
+	List() ([]corev1.Secret, error)
+	Find(version int) (*corev1.Secret, error)
+	Latest() (*corev1.Secret, error)
 }
 
-// ManifestPersisterImpl contains the required fields to persist a manifest
-type ManifestPersisterImpl struct {
+// StoreImpl contains the required fields to persist a manifest
+type StoreImpl struct {
 	kubeClient     client.Client
 	namespace      string
 	deploymentName string
 }
 
-// NewManifestPersister returns a ManifestPersister implementation to be used
+// NewStore returns a Store implementation to be used
 // when working with desired manifest secrets
-func NewManifestPersister(client client.Client, namespace string, deploymentName string) ManifestPersisterImpl {
-	return ManifestPersisterImpl{
+func NewStore(client client.Client, namespace string, deploymentName string) StoreImpl {
+	return StoreImpl{
 		client,
 		namespace,
 		deploymentName,
 	}
 }
 
-// PersistManifest creates a new version of the manifest if it already exists,
+// Save creates a new version of the manifest if it already exists,
 // or a first one it not. A source description should explain the sources of
 // the rendered manifest, e.g. the location of the CRD that generated it
-func (p ManifestPersisterImpl) PersistManifest(manifest manifest.Manifest, sourceDescription string) (*corev1.Secret, error) {
+func (p StoreImpl) Save(manifest manifest.Manifest, sourceDescription string) (*corev1.Secret, error) {
 	currentVersion, err := getGreatestVersion(p)
 	if err != nil {
 		return nil, err
@@ -104,8 +106,8 @@ func (p ManifestPersisterImpl) PersistManifest(manifest manifest.Manifest, sourc
 	return secret, p.kubeClient.Create(context.TODO(), secret)
 }
 
-// RetrieveVersion returns a specific version of the manifest
-func (p ManifestPersisterImpl) RetrieveVersion(version int) (*corev1.Secret, error) {
+// Find returns a specific version of the manifest
+func (p StoreImpl) Find(version int) (*corev1.Secret, error) {
 	name, err := secretName(p, version)
 	if err != nil {
 		return nil, err
@@ -115,17 +117,17 @@ func (p ManifestPersisterImpl) RetrieveVersion(version int) (*corev1.Secret, err
 	return secret, p.kubeClient.Get(context.TODO(), client.ObjectKey{Namespace: p.namespace, Name: name}, secret)
 }
 
-// RetrieveLatestVersion returns the latest version of the manifest
-func (p ManifestPersisterImpl) RetrieveLatestVersion() (*corev1.Secret, error) {
+// Latest returns the latest version of the manifest
+func (p StoreImpl) Latest() (*corev1.Secret, error) {
 	latestVersion, err := getGreatestVersion(p)
 	if err != nil {
 		return nil, err
 	}
-	return p.RetrieveVersion(latestVersion)
+	return p.Find(latestVersion)
 }
 
-// ListAllVersions returns all versions of the manifest
-func (p ManifestPersisterImpl) ListAllVersions() ([]corev1.Secret, error) {
+// List returns all versions of the manifest
+func (p StoreImpl) List() ([]corev1.Secret, error) {
 	secrets := &corev1.SecretList{}
 	if err := p.kubeClient.List(context.TODO(), client.InNamespace(p.namespace), secrets); err != nil {
 		return nil, err
@@ -143,10 +145,10 @@ func (p ManifestPersisterImpl) ListAllVersions() ([]corev1.Secret, error) {
 	return result, nil
 }
 
-// DeleteManifest removes all versions of the manifest and therefore the
+// Delete removes all versions of the manifest and therefore the
 // manifest itself.
-func (p ManifestPersisterImpl) DeleteManifest() error {
-	list, err := p.ListAllVersions()
+func (p StoreImpl) Delete() error {
+	list, err := p.List()
 	if err != nil {
 		return err
 	}
@@ -160,8 +162,8 @@ func (p ManifestPersisterImpl) DeleteManifest() error {
 	return nil
 }
 
-// DecorateManifest adds a label to the lastest version of the manifest
-func (p ManifestPersisterImpl) DecorateManifest(key string, value string) (*corev1.Secret, error) {
+// Decorate adds a label to the lastest version of the manifest
+func (p StoreImpl) Decorate(key string, value string) (*corev1.Secret, error) {
 	version, err := getGreatestVersion(p)
 	if err != nil {
 		return nil, err
@@ -188,8 +190,8 @@ func (p ManifestPersisterImpl) DecorateManifest(key string, value string) (*core
 	return secret, p.kubeClient.Update(context.TODO(), secret)
 }
 
-func getGreatestVersion(p ManifestPersisterImpl) (int, error) {
-	list, err := p.ListAllVersions()
+func getGreatestVersion(p StoreImpl) (int, error) {
+	list, err := p.List()
 	if err != nil {
 		return -1, err
 	}
@@ -209,7 +211,7 @@ func getGreatestVersion(p ManifestPersisterImpl) (int, error) {
 	return greatestVersion, nil
 }
 
-func secretName(p ManifestPersisterImpl, version int) (string, error) {
+func secretName(p StoreImpl, version int) (string, error) {
 	proposedName := fmt.Sprintf("deployment-%s-%d", p.deploymentName, version)
 
 	// Check for Kubernetes name requirements (length)
@@ -226,7 +228,7 @@ func secretName(p ManifestPersisterImpl, version int) (string, error) {
 	return proposedName, nil
 }
 
-func getVersionFromSecretName(p ManifestPersisterImpl, name string) (int, error) {
+func getVersionFromSecretName(p StoreImpl, name string) (int, error) {
 	nameRegex := regexp.MustCompile(fmt.Sprintf(`^deployment-%s-(\d+)$`, p.deploymentName))
 	if captures := nameRegex.FindStringSubmatch(name); len(captures) > 0 {
 		number, err := strconv.Atoi(captures[1])
