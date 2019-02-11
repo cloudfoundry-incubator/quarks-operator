@@ -40,17 +40,19 @@ var _ Store = &StoreImpl{}
 // should explain the sources of the rendered manifest, e.g. the location of
 // the Custom Resource Definition that generated it.
 type Store interface {
-	Save(manifest manifest.Manifest, sourceDescription string) (*corev1.Secret, error)
+	Save(manifest manifest.Manifest, sourceDescription string) error
 	Delete() error
-	Decorate(key string, value string) (*corev1.Secret, error)
-	List() ([]corev1.Secret, error)
-	Find(version int) (*corev1.Secret, error)
-	Latest() (*corev1.Secret, error)
+	Decorate(key string, value string) error
+	List() ([]*manifest.Manifest, error)
+	Find(version int) (*manifest.Manifest, error)
+	Latest() (*manifest.Manifest, error)
+	VersionCount() (int, error)
+	RetrieveVersionSecret(int) (*corev1.Secret, error)
 }
 
 // StoreImpl contains the required fields to persist a manifest
 type StoreImpl struct {
-	kubeClient     client.Client
+	client         client.Client
 	namespace      string
 	deploymentName string
 }
@@ -68,22 +70,22 @@ func NewStore(client client.Client, namespace string, deploymentName string) Sto
 // Save creates a new version of the manifest if it already exists,
 // or a first one it not. A source description should explain the sources of
 // the rendered manifest, e.g. the location of the CRD that generated it
-func (p StoreImpl) Save(manifest manifest.Manifest, sourceDescription string) (*corev1.Secret, error) {
+func (p StoreImpl) Save(manifest manifest.Manifest, sourceDescription string) error {
 	currentVersion, err := getGreatestVersion(p)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	version := currentVersion + 1
 
-	secretName, err := secretName(p, version)
+	secretName, err := secretName(p.deploymentName, version)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	data, err := yaml.Marshal(manifest)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	secret := &corev1.Secret{
@@ -103,22 +105,36 @@ func (p StoreImpl) Save(manifest manifest.Manifest, sourceDescription string) (*
 		},
 	}
 
-	return secret, p.kubeClient.Create(context.TODO(), secret)
+	return p.client.Create(context.TODO(), secret)
 }
 
-// Find returns a specific version of the manifest
-func (p StoreImpl) Find(version int) (*corev1.Secret, error) {
-	name, err := secretName(p, version)
+// RetrieveVersionSecret retrieves the k8s secret containing a manifest version
+func (p StoreImpl) RetrieveVersionSecret(version int) (*corev1.Secret, error) {
+	name, err := secretName(p.deploymentName, version)
 	if err != nil {
 		return nil, err
 	}
 
 	secret := &corev1.Secret{}
-	return secret, p.kubeClient.Get(context.TODO(), client.ObjectKey{Namespace: p.namespace, Name: name}, secret)
+	err = p.client.Get(context.TODO(), client.ObjectKey{Namespace: p.namespace, Name: name}, secret)
+	if err != nil {
+		return nil, err
+	}
+
+	return secret, nil
+}
+
+// Find returns a specific version of the manifest
+func (p StoreImpl) Find(version int) (*manifest.Manifest, error) {
+	secret, err := p.RetrieveVersionSecret(version)
+	if err != nil {
+		return nil, err
+	}
+	return extractManifest(*secret)
 }
 
 // Latest returns the latest version of the manifest
-func (p StoreImpl) Latest() (*corev1.Secret, error) {
+func (p StoreImpl) Latest() (*manifest.Manifest, error) {
 	latestVersion, err := getGreatestVersion(p)
 	if err != nil {
 		return nil, err
@@ -127,9 +143,26 @@ func (p StoreImpl) Latest() (*corev1.Secret, error) {
 }
 
 // List returns all versions of the manifest
-func (p StoreImpl) List() ([]corev1.Secret, error) {
+func (p StoreImpl) List() ([]*manifest.Manifest, error) {
+	secrets, err := p.listSecrets()
+	if err != nil {
+		return nil, err
+	}
+
+	manifests := make([]*manifest.Manifest, 0, len(secrets))
+	for _, s := range secrets {
+		m, err := extractManifest(s)
+		if err != nil {
+			return nil, err
+		}
+		manifests = append(manifests, m)
+	}
+	return manifests, nil
+}
+
+func (p StoreImpl) listSecrets() ([]corev1.Secret, error) {
 	secrets := &corev1.SecretList{}
-	if err := p.kubeClient.List(context.TODO(), client.InNamespace(p.namespace), secrets); err != nil {
+	if err := p.client.List(context.TODO(), client.InNamespace(p.namespace), secrets); err != nil {
 		return nil, err
 	}
 
@@ -148,13 +181,13 @@ func (p StoreImpl) List() ([]corev1.Secret, error) {
 // Delete removes all versions of the manifest and therefore the
 // manifest itself.
 func (p StoreImpl) Delete() error {
-	list, err := p.List()
+	list, err := p.listSecrets()
 	if err != nil {
 		return err
 	}
 
 	for _, secret := range list {
-		if err := p.kubeClient.Delete(context.TODO(), &secret); err != nil {
+		if err := p.client.Delete(context.TODO(), &secret); err != nil {
 			return err
 		}
 	}
@@ -163,20 +196,20 @@ func (p StoreImpl) Delete() error {
 }
 
 // Decorate adds a label to the lastest version of the manifest
-func (p StoreImpl) Decorate(key string, value string) (*corev1.Secret, error) {
+func (p StoreImpl) Decorate(key string, value string) error {
 	version, err := getGreatestVersion(p)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	secretName, err := secretName(p, version)
+	secretName, err := secretName(p.deploymentName, version)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	secret := &corev1.Secret{}
-	if err := p.kubeClient.Get(context.TODO(), client.ObjectKey{Namespace: p.namespace, Name: secretName}, secret); err != nil {
-		return nil, err
+	if err := p.client.Get(context.TODO(), client.ObjectKey{Namespace: p.namespace, Name: secretName}, secret); err != nil {
+		return err
 	}
 
 	labels := secret.GetLabels()
@@ -187,18 +220,28 @@ func (p StoreImpl) Decorate(key string, value string) (*corev1.Secret, error) {
 	labels[key] = value
 	secret.SetLabels(labels)
 
-	return secret, p.kubeClient.Update(context.TODO(), secret)
+	return p.client.Update(context.TODO(), secret)
+}
+
+// VersionCount returns the number of versions for this manifest
+func (p StoreImpl) VersionCount() (int, error) {
+	list, err := p.listSecrets()
+	if err != nil {
+		return 0, err
+	}
+
+	return len(list), nil
 }
 
 func getGreatestVersion(p StoreImpl) (int, error) {
-	list, err := p.List()
+	list, err := p.listSecrets()
 	if err != nil {
 		return -1, err
 	}
 
 	var greatestVersion int
 	for _, secret := range list {
-		version, err := getVersionFromSecretName(p, secret.Name)
+		version, err := getVersionFromSecretName(p.deploymentName, secret.Name)
 		if err != nil {
 			return 0, err
 		}
@@ -211,8 +254,20 @@ func getGreatestVersion(p StoreImpl) (int, error) {
 	return greatestVersion, nil
 }
 
-func secretName(p StoreImpl, version int) (string, error) {
-	proposedName := fmt.Sprintf("deployment-%s-%d", p.deploymentName, version)
+func extractManifest(s corev1.Secret) (*manifest.Manifest, error) {
+
+	data, found := s.Data[manifestKeyName]
+	if !found {
+		return nil, fmt.Errorf("Failed to retrieve manifest data from secret '%s.%s'", s.Name, manifestKeyName)
+	}
+
+	var manifest manifest.Manifest
+	err := yaml.Unmarshal([]byte(data), &manifest)
+	return &manifest, err
+}
+
+func secretName(deploymentName string, version int) (string, error) {
+	proposedName := fmt.Sprintf("deployment-%s-%d", deploymentName, version)
 
 	// Check for Kubernetes name requirements (length)
 	const maxChars = 253
@@ -228,8 +283,8 @@ func secretName(p StoreImpl, version int) (string, error) {
 	return proposedName, nil
 }
 
-func getVersionFromSecretName(p StoreImpl, name string) (int, error) {
-	nameRegex := regexp.MustCompile(fmt.Sprintf(`^deployment-%s-(\d+)$`, p.deploymentName))
+func getVersionFromSecretName(deploymentName string, name string) (int, error) {
+	nameRegex := regexp.MustCompile(fmt.Sprintf(`^deployment-%s-(\d+)$`, deploymentName))
 	if captures := nameRegex.FindStringSubmatch(name); len(captures) > 0 {
 		number, err := strconv.Atoi(captures[1])
 		if err != nil {
