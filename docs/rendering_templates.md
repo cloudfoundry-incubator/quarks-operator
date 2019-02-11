@@ -1,12 +1,18 @@
 # Rendering BOSH Templates
 
+- [Rendering BOSH Templates](#rendering-bosh-templates)
+  - [Part 1 - Data Gathering](#part-1---data-gathering)
+  - [Part 2 - Rendering](#part-2---rendering)
+    - [Service Addresses](#service-addresses)
+    - [Input & Output](#input--output)
+    - [Properties & Links](#properties--links)
+      - [Resolving Links](#resolving-links)
+
 You can read more about BOSH templates on [bosh.io](https://bosh.io/docs/jobs/#templates).
 
 Rendering happens using `ExtendedJobs`.
 
-An `ExtendedJob` is required for each BOSH Release and Instance Group defined in a Desired Manifest.
-
-Details are omitted in the example below, for brevity:
+Details are omitted in the example below, for brevity. This is a deployment manifest.
 
 ```yaml
 ---
@@ -36,106 +42,151 @@ variables:
   type: password
 ```
 
-In this case, to render all required templates, 3 `ExtendedJobs` are created:
-- one for  `instance-group-1`, because it only contains jobs from `release-a`
-- two for `instance-group-2`, because it references jobs from both `release-a` and  `release-b`
+## Part 1 - Data Gathering
 
-The `ExtendedJob` runs a ruby process `TODO: reference to the implementation`
-
-## Input & Output
-
-Input is the desired manifest, generated `Secrets` for all referenced variables and information required for discovery of network addresses.
-
-We take advantage of the `ExtendedJob`'s feature to persist output in a `ConfigMap` or `Secret`.
-
-The output of the rendering process is a JSON object that contains all the rendered templates:
-
-The following is and example definition for the `ExtendedJob` that renders templates for `instance-group-2` and `release-a`.
-The release is inferred from the image itself.
+The first step is data gathering.
+An `ExtendedJob` is created for each release.
+Each `ExtendedJob` runs one container for each `bosh job` referenced in the `desired manifest`.
+Each container outputs a base64 encoded tar gzip fo the entire job folder that it's responsible for.
 
 ```yaml
----
 ---
 apiVersion: fissile.cloudfoundry.org/v1alpha1
 kind: ExtendedJob
 metadata:
-  name: MyExtendedJob
+  name: "<DEPLOYMENT_NAME>-<RELEASE_NAME>-spec-reader"
 spec:
+  run: "now"
   output:
-    stdout:
-      secretRef: "mynamespace/mydeployment-release-a-instance-group-2"
-      overwrite: true
-      writeOnFailure: false
-  updateOnConfigChange: true
+    namePrefix: "<DEPLOYMENT_NAME>-<RELEASE_NAME>-"
+    writeOnFailure: false
+    outputType: "json"
+    secretLabels:
+      deployment: '<DEPLOYMENT_NAME>'
+      bosh-release: 'release-a'
+      bosh-job-name: 'job1'
+    updateOnConfigChange: true
   template:
     spec:
-      template:
-        spec:
-        containers:
-        - image: "cfcontainerization/capi-release:opensuse-42.3-24.g63783b3-30.66-1.75.0"
-          command: ["some-ruby-script-that-renders"]
-          env:
-          - name: "INSTANCE_GROUP_NAME"
-            value: "instance-group-2"
-          volumeMounts:
-          - name: deployment-manifest
-            mountPath: /opt/fissile/
-          volumeMounts:
-          - name: mydeployment-bar
-            mountPath: /opt/fissile/
-        volumes:
-        - name: deployment-manifest
-          secret:
-            name: "deployment-mydeployment-12"
-            items:
-            - key: "manifest"
-              path: "deployment-manifest.yaml"
-        - name:
-          secret:
-            name: "mydeployment-bar"
-            items:
-            - key: "value"
-              path: "bar"
+      restartPolicy: 'OnFailure'
+      containers:
+      - name: 'job1'
+        image: 'cfcontainerization/release-a:opensuse-42.3-26.gfed099b-30.70-1.76.0'
+        command: ['bash', '-c', 'echo -n "{\"spec\":\"$(tar -zcf - -C "/var/vcap/jobs-src/$JOB_NAME/" . | base64 --wrap=0)\"}"']
+        env:
+        - name: 'JOB_NAME'
+          value: 'job1'
 ```
+
+The command used in the example below can be used for any BOSH release and job.
+
+```shell
+bash -c echo -n "{\"spec\":\"$(tar -zcf - -C "/var/vcap/jobs-src/$JOB_NAME/" . | base64 --wrap=0)\"}"
+```
+
+This results in multiple **BOSH Job Spec Secrets** being created, each labeled with deployment, release and job identifiers.
+
+## Part 2 - Rendering
+
+Given the information in the **BOSH Job Spec Secrets** and the **Desired Manifest**, the operator can gather all required input information:
+
+- a list of all **BOSH Releases**, **BOSH Jobs** and **BOSH Job Templates** that require rendering
+- a list of all **BOSH Variables** and their corresponding `ExtendedSecrets`
+- all **BOSH Properties** - both from specs and the **Desired Manifest**
+- an understanding of what type of template is being rendered (binary or not)
+
+### Service Addresses
+
+Service addresses are calculated in the following manner:
+
+```
+<JOB_NAME>-<INSTANCE_GROUP_NAME>-<DEPLOYMENT_NAME>.<KUBE_NAMESPACE>.<KUBE_SERVICE_DOMAIN>
+```
+
+> E.g.: `cloud-controller-ng-api-cfdeployment.mycf.svc.cluster.local`
+
+Service names can only consist of lowercase alphanumeric characters, and the character `"-"`.
+All `"_"` characters are replaced with `"-"`. All other non-alphanumeric characters are removed. 
+
+The `servicename` cannot start or end with a `"-"`. These characters are trimmed.
+
+Service names are also restricted to 63 characters in length, so if a generated name exceeds 63 characters, it should be recalculated as:
+
+```
+servicename=<JOB_NAME>-<INSTANCE_GROUP_NAME>-<DEPLOYMENT_NAME>
+
+<servicename trimmed to 31 characters><md5 hash of servicename>
+```
+
+The same check needs to apply to the entire address. If an entire address is longer than 253 characters, the `servicename` is trimmed until there's enough room for the MD5 hash. If it's not possible to include the hash (`KUBE_NAMESPACE` and `KUBE_SERVICE_DOMAIN` and the dots are 221 characters or more), an error is thrown.
+
+
+### Input & Output
+
+Rendering happens using the Operator's docker image.
+One rendering `ExtendedJob` is run for each **BOSH Job** in the **Desired Manifest**.
+Each of the `ExtendedJobs` runs a container for each template that needs rendering.
+
+The input to an actual rendering container for one template (not data gathering) is:
+
+- the **Desired Manifest** in the form of a `Secret` mount to `/var/vcap/rendering/manifest.yaml`
+-  the generated `Secrets` for all **BOSH Variables** used in the **BOSH Job** that owns the template and for all **BOSH Jobs** consumed by it (consumed via **BOSH Links**),  each as a mount in `/var/vcap/rendering/variables/<SECRET_NAME>`
+
+We take advantage of the `ExtendedJob`'s feature to persist output in a `Secret`.
+
+Example `ExtendedJob`:
+
+```yaml
+---
+apiVersion: fissile.cloudfoundry.org/v1alpha1
+kind: ExtendedJob
+metadata:
+  name: "<DEPLOYMENT_NAME>-<RELEASE_NAME>-<JOB_NAME>-renderer"
+spec:
+  run: "now"
+  output:
+    namePrefix: "<DEPLOYMENT_NAME>-<RELEASE_NAME>-<JOB_NAME>"
+    writeOnFailure: false
+    outputType: "json"
+    secretLabels:
+      bosh-deployment: '<DEPLOYMENT_NAME>'
+      bosh-release: 'release-a'
+      bosh-job-name: 'job1'
+    updateOnConfigChange: true
+  template:
+    spec:
+      restartPolicy: 'OnFailure'
+      containers:
+      - name: '<HASH_OF_INSTANCE_GROUP_AND_TEMPLATE_NAME>'
+        image: 'cfcontainerization/operator:1.0.0'
+        command: ['/bin/render-everything']
+        env:
+        - name: 'JOB_NAME'
+          value: 'job1'
+        - name: 'TEMPLATE'
+          value: 'bin/my_ctl.erb'
+```
+
+The output of the rendering process is a JSON object that contains the name of the template as a key, and the rendered template as a value.
 
 The following is an example output for `instance-group-2` and `release-a`
 ```json
 {
-    "job1":{
-        "bin/start_ctl.sh": "#!/bin/sh\necho hello"
-    }
+    "start_ctl.sh": "#!/bin/sh\necho hello"
 }
 ```
 
 ### Properties & Links 
 
-Properties are used straight from the mounted deployment manifest.
+**BOSH Properties** are used straight from the mounted **Desired Manifest**.
 
-Properties that reference variables have their values set at the time of rendering.
+**BOSH Properties** that reference **BOSH Variables** have their values set at the time of rendering using the mounted `Secrets`.
 
-Links are resolved at the time of rendering. Because links can reference properties that use variables, we must mount all variables in each of the `ExtendedJobs` that render templates.
-
-> This won't cause superfluous restarts, since `ExtendedStatefulSets` and `ExtendedJobs` are restarted only if the referenced secrets/configmap contents have changed.
-
+All **BOSH Links** are resolved at the time of rendering.
 
 #### Resolving Links
 
-1. Create a job that has a container for each releases
-2. All containers have an anv var `RELEASES` listing all available releases
-3. All containers copy their `/var/vcap/jobs-src` to `/var/vcap/rendering/<RELEASE_NAME>/*`
-4. When done with copying, each container writes `/var/vcap/releases/<RELEASE_NAME>.done`
-5. For rendering, the following data structure is created:
-
-```
-release
-  job
-    (contents of spec)
-    properties
-    consumes
-    provides
-```
-
-6. To resolve a link, the following steps are performed:
+To resolve a link, the following steps are performed:
 
     > Vocabulary:
     > - `current job` - the job for which rendering is happening
