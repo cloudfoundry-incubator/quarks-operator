@@ -56,32 +56,49 @@ type AgentEnvBoshConfig struct {
 
 // AgentEnv from BOSH deployment manifest
 type AgentEnv struct {
-	PersistentDiskFS           string
-	PersistentDiskMountOptions []string
-	AgentEnvBoshConfig         []string
+	PersistentDiskFS           string   `yaml:"name"`
+	PersistentDiskMountOptions []string `yaml:"name"`
+	AgentEnvBoshConfig         []string `yaml:"name"`
 }
 
 // InstanceGroup from BOSH deployment manifest
 type InstanceGroup struct {
-	Name               string
-	Instances          int
-	Azs                []string
-	Jobs               []Job
-	VMType             string
-	VMExtensions       []string
-	VMResources        VMResource
-	Stemcell           string
-	PersistentDisk     int
-	PersistentDiskType string
-	Networks           []Network
-	Update             Update
-	MigratedFrom       MigratedFrom
-	LifeCycle          string
-	Properties         map[string]string
-	Env                AgentEnv
+	Name               string                      `yaml:"name"`
+	Instances          int                         `yaml:"instances"`
+	Azs                []string                    `yaml:"azs"`
+	Jobs               []Job                       `yaml:"jobs"`
+	VMType             string                      `yaml:"vm_type"`
+	VMExtensions       []string                    `yaml:"vm_extensions"`
+	VMResources        VMResource                  `yaml:"vm_resources"`
+	Stemcell           string                      `yaml:"stemcell"`
+	PersistentDisk     int                         `yaml:"persistent_disk"`
+	PersistentDiskType string                      `yaml:"persistent_disk_type"`
+	Networks           []Network                   `yaml:"networks"`
+	Update             Update                      `yaml:"update"`
+	MigratedFrom       MigratedFrom                `yaml:"migrated_from"`
+	LifeCycle          string                      `yaml:"lifecycle"`
+	Properties         map[interface{}]interface{} `yaml:"properties"` // Doubt
+	Env                AgentEnv                    `yaml:"env"`
+}
+
+// Feature from BOSH deployment manifest
+type Feature struct {
+	ConvergeVariables    bool `yaml:"name"`
+	RandomizeAzPlacement bool `yaml:"randomize_az_placement"`
+	UseDNSAddresses      bool `yaml:"use_dns_addresses"`
+}
+
+// Variable from BOSH deployment manifest
+type Variable struct {
+	Name    string            `yaml:"name"`
+	Type    string            `yaml:"type"`
+	Options map[string]string `yaml:"options"`
 }
 
 // Manifest is a BOSH deployment manifest
 type Manifest struct {
-	InstanceGroups []InstanceGroup `yaml:"instance-groups"`
+	InstanceGroups []InstanceGroup   `yaml:"instance-groups"`
+	Features       Feature           `yaml:"features"`
+	Variable       Variable          `yaml:"variables"`
+	Tags           map[string]string `yaml:"tags"`
 }
