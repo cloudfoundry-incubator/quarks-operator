@@ -11,9 +11,9 @@ type Job struct {
 
 // VMResource from BOSH deployment manifest
 type VMResource struct {
-	CPU               int
-	RAM               int
-	EphemeralDiskSize int
+	CPU               int `yaml:"cpu"`
+	RAM               int `yaml:"ram"`
+	EphemeralDiskSize int `yaml:"ephemeral_disk_size"`
 }
 
 // Network from BOSH deployment manifest
