@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
-	"k8s.io/api/apps/v1beta1"
+	"k8s.io/api/apps/v1beta2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -40,7 +40,7 @@ type Object interface {
 
 // ExtendedStatefulSetSpec defines the desired state of ExtendedStatefulSet
 type ExtendedStatefulSetSpec struct {
-	Template v1beta1.StatefulSet `json:"template"`
+	Template v1beta2.StatefulSet `json:"template"`
 }
 
 // ExtendedStatefulSetStatus defines the observed state of ExtendedStatefulSet
@@ -72,7 +72,7 @@ type ExtendedStatefulSetList struct {
 }
 
 // CalculateDesiredStatefulSetName calculates the name of the StatefulSet to be managed
-func (e *ExtendedStatefulSet) CalculateDesiredStatefulSetName(actualStatefulSet *v1beta1.StatefulSet) (string, error) {
+func (e *ExtendedStatefulSet) CalculateDesiredStatefulSetName(actualStatefulSet *v1beta2.StatefulSet) (string, error) {
 	version, err := e.DesiredVersion(actualStatefulSet)
 	if err != nil {
 		return "", err
@@ -84,7 +84,7 @@ func (e *ExtendedStatefulSet) CalculateDesiredStatefulSetName(actualStatefulSet 
 
 // DesiredVersion calculates the desired version of the StatefulSet
 // If the template of the StatefulSet has changed, the desired version is incremented
-func (e *ExtendedStatefulSet) DesiredVersion(actualStatefulSet *v1beta1.StatefulSet) (int, error) {
+func (e *ExtendedStatefulSet) DesiredVersion(actualStatefulSet *v1beta2.StatefulSet) (int, error) {
 	strVersion, ok := actualStatefulSet.Annotations[AnnotationVersion]
 	if !ok {
 		strVersion = "0"

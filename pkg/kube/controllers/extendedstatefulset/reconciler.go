@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"k8s.io/api/apps/v1beta1"
+	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -177,7 +177,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 }
 
 // calculateDesiredStatefulSet generates the desired StatefulSet that should exist
-func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSet(exStatefulSet *essv1a1.ExtendedStatefulSet, actualStatefulSet *v1beta1.StatefulSet) (*v1beta1.StatefulSet, int, error) {
+func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSet(exStatefulSet *essv1a1.ExtendedStatefulSet, actualStatefulSet *v1beta2.StatefulSet) (*v1beta2.StatefulSet, int, error) {
 	result := exStatefulSet.Spec.Template
 
 	// Place the StatefulSet in the same namespace as the ExtendedStatefulSet
@@ -209,7 +209,7 @@ func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSet(exStatefulSet
 }
 
 // createStatefulSet creates a StatefulSet
-func (r *ReconcileExtendedStatefulSet) createStatefulSet(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet, statefulSet *v1beta1.StatefulSet) error {
+func (r *ReconcileExtendedStatefulSet) createStatefulSet(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet, statefulSet *v1beta2.StatefulSet) error {
 
 	// Set the owner of the StatefulSet, so it's garbage collected,
 	// and we can find it later
@@ -267,14 +267,14 @@ func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, 
 }
 
 // listStatefulSets gets all StatefulSets owned by the ExtendedStatefulSet
-func (r *ReconcileExtendedStatefulSet) listStatefulSets(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) ([]v1beta1.StatefulSet, error) {
+func (r *ReconcileExtendedStatefulSet) listStatefulSets(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) ([]v1beta2.StatefulSet, error) {
 	r.log.Debug("Listing StatefulSets owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
 
-	result := []v1beta1.StatefulSet{}
+	result := []v1beta2.StatefulSet{}
 
 	// Get owned resources
 	// Go through each StatefulSet
-	allStatefulSets := &v1beta1.StatefulSetList{}
+	allStatefulSets := &v1beta2.StatefulSetList{}
 	err := r.client.List(
 		ctx,
 		&client.ListOptions{
@@ -299,11 +299,11 @@ func (r *ReconcileExtendedStatefulSet) listStatefulSets(ctx context.Context, exS
 }
 
 // getActualStatefulSet gets the latest (by version) StatefulSet owned by the ExtendedStatefulSet
-func (r *ReconcileExtendedStatefulSet) getActualStatefulSet(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) (*v1beta1.StatefulSet, int, error) {
+func (r *ReconcileExtendedStatefulSet) getActualStatefulSet(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) (*v1beta2.StatefulSet, int, error) {
 	r.log.Debug("Listing StatefulSets owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
 
 	// Default response is an empty StatefulSet with version '0' and an empty signature
-	result := &v1beta1.StatefulSet{
+	result := &v1beta2.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
 				essv1a1.AnnotationStatefulSetSHA1: "",
@@ -367,7 +367,7 @@ func (r *ReconcileExtendedStatefulSet) listStatefulSetVersions(ctx context.Conte
 }
 
 // isStatefulSetReady returns true if one owned Pod is running
-func (r *ReconcileExtendedStatefulSet) isStatefulSetReady(ctx context.Context, statefulSet *v1beta1.StatefulSet) (bool, error) {
+func (r *ReconcileExtendedStatefulSet) isStatefulSetReady(ctx context.Context, statefulSet *v1beta2.StatefulSet) (bool, error) {
 	labelsSelector := labels.Set{
 		"controller-revision-hash": statefulSet.Status.CurrentRevision,
 	}
@@ -444,7 +444,7 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 
 // listConfigsFromSpec returns a list of all Secrets and ConfigMaps that are
 // referenced in the StatefulSet's spec
-func (r *ReconcileExtendedStatefulSet) listConfigsFromSpec(ctx context.Context, statefulSet *v1beta1.StatefulSet) ([]essv1a1.Object, error) {
+func (r *ReconcileExtendedStatefulSet) listConfigsFromSpec(ctx context.Context, statefulSet *v1beta2.StatefulSet) ([]essv1a1.Object, error) {
 	r.log.Debug("Getting all ConfigMaps and Secrets that are referenced in '", statefulSet.Name, "' Spec.")
 	configMaps, secrets := getConfigNamesFromSpec(statefulSet)
 
@@ -480,7 +480,7 @@ func (r *ReconcileExtendedStatefulSet) listConfigsFromSpec(ctx context.Context, 
 // getConfigNamesFromSpec parses the StatefulSet object and returns two sets,
 // the first containing the names of all referenced ConfigMaps,
 // the second containing the names of all referenced Secrets
-func getConfigNamesFromSpec(statefulSet *v1beta1.StatefulSet) (map[string]struct{}, map[string]struct{}) {
+func getConfigNamesFromSpec(statefulSet *v1beta2.StatefulSet) (map[string]struct{}, map[string]struct{}) {
 	// Create sets for storing the names fo the ConfigMaps/Secrets
 	configMaps := make(map[string]struct{})
 	secrets := make(map[string]struct{})
@@ -609,7 +609,7 @@ func calculateConfigHash(children []essv1a1.Object) (string, error) {
 
 // updateConfigSHA1 updates the configuration sha1 of the given StatefulSet to the
 // given string
-func (r *ReconcileExtendedStatefulSet) updateConfigSHA1(ctx context.Context, actualStatefulSet *v1beta1.StatefulSet, hash string) error {
+func (r *ReconcileExtendedStatefulSet) updateConfigSHA1(ctx context.Context, actualStatefulSet *v1beta2.StatefulSet, hash string) error {
 	key := types.NamespacedName{Namespace: actualStatefulSet.GetNamespace(), Name: actualStatefulSet.GetName()}
 	err := r.client.Get(ctx, key, actualStatefulSet)
 	if err != nil {
@@ -717,7 +717,7 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extende
 	r.log.Debug("Considering existing Owner References of ExtendedStatefulSet '", extendedStatefulSet.Name, "'.")
 
 	// Fetch all ConfigMaps and Secrets with an OwnerReference pointing to the object
-	existingConfigs, err := r.listConfigsOwnedBy(ctx,extendedStatefulSet)
+	existingConfigs, err := r.listConfigsOwnedBy(ctx, extendedStatefulSet)
 	if err != nil {
 		r.log.Error("Could not retrieve all ConfigMaps and Secrets owned by ExtendedStatefulSet '", extendedStatefulSet.Name, "': ", err)
 		return reconcile.Result{}, err
@@ -745,7 +745,7 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extende
 
 		err = r.client.Update(ctx, copy)
 		if err != nil {
-			r.log.Error("Could not remove Finalizer from ExtendedStatefulSet '", copy.GetName(), "': ", err)
+			r.log.Error("Could not remove finalizer from ExtendedStatefulSet '", copy.GetName(), "': ", err)
 			return reconcile.Result{}, err
 		}
 	}
