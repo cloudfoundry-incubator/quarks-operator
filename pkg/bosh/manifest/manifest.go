@@ -165,11 +165,10 @@ type AddOn struct {
 // Manifest is a BOSH deployment manifest
 type Manifest struct {
 	Name           string                   `yaml:"name"`
+	DirectorUUID   string                   `yaml:"director_uuid"`
 	InstanceGroups []InstanceGroup          `yaml:"instance-groups"`
 	Features       Feature                  `yaml:"features"`
-	Variable       Variable                 `yaml:"variables"`
 	Tags           map[string]string        `yaml:"tags"`
-	DirectorUUID   string                   `yaml:"director_uuid"`
 	Releases       []Release                `yaml:"releases"`
 	Stemcells      []Stemcell               `yaml:"stemcells"`
 	AddOns         []AddOn                  `yaml:"addons"`
