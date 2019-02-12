@@ -1,6 +1,11 @@
 package manifest
 
 import (
+	"crypto/md5"
+	"encoding/hex"
+	"regexp"
+	"strings"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
@@ -23,9 +28,8 @@ func (m *Manifest) ConvertToKube() KubeConfig {
 func (m *Manifest) convertVariables() []esv1.ExtendedSecret {
 	secrets := []esv1.ExtendedSecret{}
 
-	deploymentName := m.Name
 	for _, v := range m.Variables {
-		secretName := deploymentName + "." + v.Name
+		secretName := m.generateVariableSecretName(v.Name)
 		s := esv1.ExtendedSecret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: secretName,
@@ -39,4 +43,23 @@ func (m *Manifest) convertVariables() []esv1.ExtendedSecret {
 	}
 
 	return secrets
+}
+
+func (m *Manifest) generateVariableSecretName(name string) string {
+	nameRegex := regexp.MustCompile("[^-][a-z0-9-]*.[a-z0-9-]*[^-]")
+	partRegex := regexp.MustCompile("[a-z0-9-]*")
+
+	deploymentName := partRegex.FindString(strings.Replace(m.Name, "_", "-", -1))
+	variableName := partRegex.FindString(strings.Replace(name, "_", "-", -1))
+	secretName := nameRegex.FindString(deploymentName + "." + variableName)
+
+	if len(secretName) > 63 {
+		// secret names are limited to 63 characters so we recalculate the name as
+		// <name trimmed to 31 characters><md5 hash of name>
+		sumHex := md5.Sum([]byte(secretName))
+		sum := hex.EncodeToString(sumHex[:])
+		secretName = secretName[:63-32] + sum
+	}
+
+	return secretName
 }
