@@ -40,14 +40,14 @@ var _ Store = &StoreImpl{}
 // should explain the sources of the rendered manifest, e.g. the location of
 // the Custom Resource Definition that generated it.
 type Store interface {
-	Save(manifest manifest.Manifest, sourceDescription string) error
-	Delete() error
-	Decorate(key string, value string) error
-	List() ([]*manifest.Manifest, error)
-	Find(version int) (*manifest.Manifest, error)
-	Latest() (*manifest.Manifest, error)
-	VersionCount() (int, error)
-	RetrieveVersionSecret(int) (*corev1.Secret, error)
+	Save(context.Context, manifest.Manifest, string) error
+	Delete(context.Context) error
+	Decorate(context.Context, string, string) error
+	List(context.Context) ([]*manifest.Manifest, error)
+	Find(context.Context, int) (*manifest.Manifest, error)
+	Latest(context.Context) (*manifest.Manifest, error)
+	VersionCount(context.Context) (int, error)
+	RetrieveVersionSecret(context.Context, int) (*corev1.Secret, error)
 }
 
 // StoreImpl contains the required fields to persist a manifest
@@ -70,8 +70,8 @@ func NewStore(client client.Client, namespace string, deploymentName string) Sto
 // Save creates a new version of the manifest if it already exists,
 // or a first one it not. A source description should explain the sources of
 // the rendered manifest, e.g. the location of the CRD that generated it
-func (p StoreImpl) Save(manifest manifest.Manifest, sourceDescription string) error {
-	currentVersion, err := getGreatestVersion(p)
+func (p StoreImpl) Save(ctx context.Context, manifest manifest.Manifest, sourceDescription string) error {
+	currentVersion, err := p.getGreatestVersion(ctx)
 	if err != nil {
 		return err
 	}
@@ -105,18 +105,18 @@ func (p StoreImpl) Save(manifest manifest.Manifest, sourceDescription string) er
 		},
 	}
 
-	return p.client.Create(context.TODO(), secret)
+	return p.client.Create(ctx, secret)
 }
 
 // RetrieveVersionSecret retrieves the k8s secret containing a manifest version
-func (p StoreImpl) RetrieveVersionSecret(version int) (*corev1.Secret, error) {
+func (p StoreImpl) RetrieveVersionSecret(ctx context.Context, version int) (*corev1.Secret, error) {
 	name, err := secretName(p.deploymentName, version)
 	if err != nil {
 		return nil, err
 	}
 
 	secret := &corev1.Secret{}
-	err = p.client.Get(context.TODO(), client.ObjectKey{Namespace: p.namespace, Name: name}, secret)
+	err = p.client.Get(ctx, client.ObjectKey{Namespace: p.namespace, Name: name}, secret)
 	if err != nil {
 		return nil, err
 	}
@@ -125,8 +125,8 @@ func (p StoreImpl) RetrieveVersionSecret(version int) (*corev1.Secret, error) {
 }
 
 // Find returns a specific version of the manifest
-func (p StoreImpl) Find(version int) (*manifest.Manifest, error) {
-	secret, err := p.RetrieveVersionSecret(version)
+func (p StoreImpl) Find(ctx context.Context, version int) (*manifest.Manifest, error) {
+	secret, err := p.RetrieveVersionSecret(ctx, version)
 	if err != nil {
 		return nil, err
 	}
@@ -134,17 +134,17 @@ func (p StoreImpl) Find(version int) (*manifest.Manifest, error) {
 }
 
 // Latest returns the latest version of the manifest
-func (p StoreImpl) Latest() (*manifest.Manifest, error) {
-	latestVersion, err := getGreatestVersion(p)
+func (p StoreImpl) Latest(ctx context.Context) (*manifest.Manifest, error) {
+	latestVersion, err := p.getGreatestVersion(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return p.Find(latestVersion)
+	return p.Find(ctx, latestVersion)
 }
 
 // List returns all versions of the manifest
-func (p StoreImpl) List() ([]*manifest.Manifest, error) {
-	secrets, err := p.listSecrets()
+func (p StoreImpl) List(ctx context.Context) ([]*manifest.Manifest, error) {
+	secrets, err := p.listSecrets(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -160,9 +160,9 @@ func (p StoreImpl) List() ([]*manifest.Manifest, error) {
 	return manifests, nil
 }
 
-func (p StoreImpl) listSecrets() ([]corev1.Secret, error) {
+func (p StoreImpl) listSecrets(ctx context.Context) ([]corev1.Secret, error) {
 	secrets := &corev1.SecretList{}
-	if err := p.client.List(context.TODO(), client.InNamespace(p.namespace), secrets); err != nil {
+	if err := p.client.List(ctx, client.InNamespace(p.namespace), secrets); err != nil {
 		return nil, err
 	}
 
@@ -180,14 +180,14 @@ func (p StoreImpl) listSecrets() ([]corev1.Secret, error) {
 
 // Delete removes all versions of the manifest and therefore the
 // manifest itself.
-func (p StoreImpl) Delete() error {
-	list, err := p.listSecrets()
+func (p StoreImpl) Delete(ctx context.Context) error {
+	list, err := p.listSecrets(ctx)
 	if err != nil {
 		return err
 	}
 
 	for _, secret := range list {
-		if err := p.client.Delete(context.TODO(), &secret); err != nil {
+		if err := p.client.Delete(ctx, &secret); err != nil {
 			return err
 		}
 	}
@@ -196,8 +196,8 @@ func (p StoreImpl) Delete() error {
 }
 
 // Decorate adds a label to the lastest version of the manifest
-func (p StoreImpl) Decorate(key string, value string) error {
-	version, err := getGreatestVersion(p)
+func (p StoreImpl) Decorate(ctx context.Context, key string, value string) error {
+	version, err := p.getGreatestVersion(ctx)
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func (p StoreImpl) Decorate(key string, value string) error {
 	}
 
 	secret := &corev1.Secret{}
-	if err := p.client.Get(context.TODO(), client.ObjectKey{Namespace: p.namespace, Name: secretName}, secret); err != nil {
+	if err := p.client.Get(ctx, client.ObjectKey{Namespace: p.namespace, Name: secretName}, secret); err != nil {
 		return err
 	}
 
@@ -220,12 +220,12 @@ func (p StoreImpl) Decorate(key string, value string) error {
 	labels[key] = value
 	secret.SetLabels(labels)
 
-	return p.client.Update(context.TODO(), secret)
+	return p.client.Update(ctx, secret)
 }
 
 // VersionCount returns the number of versions for this manifest
-func (p StoreImpl) VersionCount() (int, error) {
-	list, err := p.listSecrets()
+func (p StoreImpl) VersionCount(ctx context.Context) (int, error) {
+	list, err := p.listSecrets(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -233,8 +233,8 @@ func (p StoreImpl) VersionCount() (int, error) {
 	return len(list), nil
 }
 
-func getGreatestVersion(p StoreImpl) (int, error) {
-	list, err := p.listSecrets()
+func (p StoreImpl) getGreatestVersion(ctx context.Context) (int, error) {
+	list, err := p.listSecrets(ctx)
 	if err != nil {
 		return -1, err
 	}
