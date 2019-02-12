@@ -425,7 +425,7 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 			return fmt.Errorf("error updating OwnerReferences: %v", err)
 		}
 
-		oldsha, _ := statefulSet.Annotations[essv1a1.AnnotationConfigSHA1]
+		oldsha, _ := statefulSet.Spec.Template.Annotations[essv1a1.AnnotationConfigSHA1]
 
 		// If the current config sha doesn't match the existing config sha, update it
 		if currentsha != oldsha {
@@ -435,7 +435,6 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 			if err != nil {
 				return errors.Wrapf(err, "Update StatefulSet config sha1")
 			}
-			// TODO restart all pods ot the StatefulSet
 		}
 	}
 
@@ -616,14 +615,14 @@ func (r *ReconcileExtendedStatefulSet) updateConfigSHA1(ctx context.Context, act
 		return errors.Wrapf(err, "Could not get StatefulSet '%s'", actualStatefulSet.GetName())
 	}
 	// Get the existing annotations
-	annotations := actualStatefulSet.GetAnnotations()
+	annotations := actualStatefulSet.Spec.Template.GetAnnotations()
 	if annotations == nil {
 		annotations = make(map[string]string)
 	}
 
 	// Update the annotations
 	annotations[essv1a1.AnnotationConfigSHA1] = hash
-	actualStatefulSet.SetAnnotations(annotations)
+	actualStatefulSet.Spec.Template.SetAnnotations(annotations)
 
 	r.log.Debug("Updating new config sha1 for StatefulSet '", actualStatefulSet.GetName(), "'.")
 	err = r.client.Update(ctx, actualStatefulSet)
