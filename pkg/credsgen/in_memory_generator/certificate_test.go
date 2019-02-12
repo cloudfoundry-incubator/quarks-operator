@@ -26,6 +26,10 @@ var _ = Describe("InMemoryGenerator", func() {
 
 		_, log := testing.NewTestLogger()
 		generator = inmemorygenerator.NewInMemoryGenerator(log)
+		// speed up tests with a fast algo
+		g := generator.(*inmemorygenerator.InMemoryGenerator)
+		g.Algorithm = "ecdsa"
+		g.Bits = 256
 	})
 
 	Describe("GenerateCertificate", func() {
