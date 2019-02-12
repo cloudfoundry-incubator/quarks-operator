@@ -194,12 +194,12 @@ var _ = Describe("ErrandReconciler", func() {
 					Expect(result.Requeue).To(BeFalse())
 
 					obj := &batchv1.JobList{}
-					err = client.List(context.Background(), &crc.ListOptions{}, obj)
+					err = client.List(controllersconfig.NewBackgroundContext(), &crc.ListOptions{}, obj)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(obj.Items).To(HaveLen(1))
 
 					client.Get(
-						context.Background(),
+						controllersconfig.NewBackgroundContext(),
 						types.NamespacedName{
 							Name:      exJob.Name,
 							Namespace: exJob.Namespace,
@@ -228,12 +228,12 @@ var _ = Describe("ErrandReconciler", func() {
 					Expect(result.Requeue).To(BeFalse())
 
 					obj := &batchv1.JobList{}
-					err = client.List(context.Background(), &crc.ListOptions{}, obj)
+					err = client.List(controllersconfig.NewBackgroundContext(), &crc.ListOptions{}, obj)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(obj.Items).To(HaveLen(1))
 
 					client.Get(
-						context.Background(),
+						context.controllersconfig.NewBackgroundContext(),
 						types.NamespacedName{
 							Name:      exJob.Name,
 							Namespace: exJob.Namespace,

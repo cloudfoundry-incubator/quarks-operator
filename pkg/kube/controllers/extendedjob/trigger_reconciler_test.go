@@ -171,7 +171,7 @@ var _ = Describe("TriggerReconciler", func() {
 				act()
 				Expect(query.MatchCallCount()).To(Equal(0))
 				obj := &batchv1.JobList{}
-				err := client.List(context.Background(), &crc.ListOptions{}, obj)
+				err := client.List(controllersconfig.NewBackgroundContext(), &crc.ListOptions{}, obj)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(obj.Items).To(HaveLen(0))
 			})
@@ -204,7 +204,7 @@ var _ = Describe("TriggerReconciler", func() {
 					act()
 
 					obj := &batchv1.JobList{}
-					err := client.List(context.Background(), &crc.ListOptions{}, obj)
+					err := client.List(controllersconfig.NewBackgroundContext(), &crc.ListOptions{}, obj)
 					Expect(err).ToNot(HaveOccurred())
 
 					jobs := obj.Items
