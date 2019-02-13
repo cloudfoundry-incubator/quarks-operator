@@ -20,6 +20,7 @@ kind: ExtendedStatefulSet
 metadata:
   name: example-extendedstatefulset
 spec:
+  updateOnEnvChange: true
   template:
     spec:
       replicas: 2

@@ -135,14 +135,15 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	// Update StatefulSets configSHA1 if necessary
-	err = r.updateStatefulSetsConfigSHA1(ctx, exStatefulSet)
-	if err != nil {
-		// TODO fix the object has been modified
-		r.log.Error("Could not update StatefulSets owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
-		return reconcile.Result{}, err
+	// Update StatefulSets configSHA1 and trigger statefulSet rollingUpdate if necessary
+	if exStatefulSet.Spec.UpdateOnEnvChange {
+		err = r.updateStatefulSetsConfigSHA1(ctx, exStatefulSet)
+		if err != nil {
+			// TODO fix the object has been modified
+			r.log.Error("Could not update StatefulSets owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+			return reconcile.Result{}, err
+		}
 	}
-
 	ptrStatefulSetVersions := &statefulSetVersions
 
 	defer func() {
@@ -151,7 +152,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 			exStatefulSet.Status.Versions = statefulSetVersions
 			updateErr := r.client.Update(ctx, exStatefulSet)
 			if updateErr != nil {
-				r.log.Error("Failed to update exStatefulSet status: %v\n", updateErr)
+				r.log.Errorf("Failed to update exStatefulSet status: %v", updateErr)
 			}
 		}
 	}()
@@ -254,7 +255,7 @@ func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, 
 			continue
 		}
 
-		err = r.client.Delete(context.TODO(), &statefulSet, client.PropagationPolicy(metav1.DeletePropagationBackground))
+		err = r.client.Delete(ctx, &statefulSet, client.PropagationPolicy(metav1.DeletePropagationBackground))
 		if err != nil {
 			r.log.Error("Could not delete StatefulSet  '", statefulSet.Name, "': ", err)
 			return err

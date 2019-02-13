@@ -40,7 +40,9 @@ type Object interface {
 
 // ExtendedStatefulSetSpec defines the desired state of ExtendedStatefulSet
 type ExtendedStatefulSetSpec struct {
-	Template v1beta2.StatefulSet `json:"template"`
+	// Indicates whether to update Pods in the StatefulSet when an env value or mount changes
+	UpdateOnEnvChange bool                `json:"updateOnEnvChange"`
+	Template          v1beta2.StatefulSet `json:"template"`
 }
 
 // ExtendedStatefulSetStatus defines the observed state of ExtendedStatefulSet
