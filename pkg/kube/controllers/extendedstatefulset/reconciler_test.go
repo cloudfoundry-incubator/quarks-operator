@@ -770,7 +770,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				ss := &v1beta1.StatefulSet{}
-				err = client.Get((), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
+				err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
 				Expect(err).To(HaveOccurred())
 				Expect(kerrors.IsNotFound(err)).To(BeTrue())
 
@@ -804,7 +804,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				}))
 
 				ess := &exss.ExtendedStatefulSet{}
-				err = client.Get((), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
+				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
 				Expect(err).ToNot(HaveOccurred())
 
 				ss := &v1beta1.StatefulSet{}
