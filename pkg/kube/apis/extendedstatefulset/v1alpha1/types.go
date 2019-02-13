@@ -164,6 +164,19 @@ func (e *ExtendedStatefulSet) RemoveFinalizer() {
 	e.SetFinalizers(newFinalizers)
 }
 
+// HasFinalizer checks the finalizer item from the ExtendedStatefulSet
+func (e *ExtendedStatefulSet) HasFinalizer() bool {
+	finalizers := e.GetFinalizers()
+
+	for _, finalizer := range finalizers {
+		if finalizer == FinalizerString {
+			return true
+		}
+	}
+
+	return false
+}
+
 // ToBeDeleted checks whether this ExtendedStatefulSet has been marked for deletion
 func (e *ExtendedStatefulSet) ToBeDeleted() bool {
 	// IsZero means that the object hasn't been marked for deletion

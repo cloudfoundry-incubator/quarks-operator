@@ -106,12 +106,6 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	if actualVersion == 0 {
-		// Add finalizer
-		r.log.Debug("Adding Finalizer to ExtendedStatefulSet '", exStatefulSet.Name, "'.")
-		exStatefulSet.AddFinalizer()
-	}
-
 	// If actual version is zero, there is no StatefulSet live
 	if actualVersion != desiredVersion {
 		// If it doesn't exist, create it
@@ -439,6 +433,25 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 		}
 	}
 
+	// Add the object's Finalizer and update if necessary
+	if !exStatefulSet.HasFinalizer() {
+		r.log.Debug("Adding Finalizer to ExtendedStatefulSet '", exStatefulSet.Name, "'.")
+		// Fetch latest ExtendedStatefulSet before update
+		key := types.NamespacedName{Namespace: exStatefulSet.GetNamespace(), Name: exStatefulSet.GetName()}
+		err := r.client.Get(ctx, key, exStatefulSet)
+		if err != nil {
+			return errors.Wrapf(err, "Could not get ExtendedStatefulSet '%s'", exStatefulSet.GetName())
+		}
+
+		exStatefulSet.AddFinalizer()
+
+		err = r.client.Update(ctx, exStatefulSet)
+		if err != nil {
+			r.log.Error("Could not add finalizer from ExtendedStatefulSet '", exStatefulSet.GetName(), "': ", err)
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -738,7 +751,7 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extende
 		key := types.NamespacedName{Namespace: copy.GetNamespace(), Name: copy.GetName()}
 		err := r.client.Get(ctx, key, copy)
 		if err != nil {
-			return reconcile.Result{}, errors.Wrapf(err, "Could not get StatefulSet ''%s'", copy.GetName())
+			return reconcile.Result{}, errors.Wrapf(err, "Could not get ExtendedStatefulSet ''%s'", copy.GetName())
 		}
 
 		copy.RemoveFinalizer()
