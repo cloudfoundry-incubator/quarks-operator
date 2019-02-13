@@ -1,4 +1,4 @@
-FROM golang:1.11.2 AS build
+FROM golang:1.11.5 AS build
 COPY . /go/src/code.cloudfoundry.org/cf-operator
 RUN cd /go/src/code.cloudfoundry.org/cf-operator && \
     GO111MODULE=on make build && \
@@ -8,5 +8,3 @@ FROM opensuse/leap:15.0
 RUN zypper -n in system-user-nobody
 USER nobody
 COPY --from=build /usr/local/bin/cf-operator /usr/local/bin/cf-operator
-
-
