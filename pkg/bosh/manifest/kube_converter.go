@@ -39,6 +39,20 @@ func (m *Manifest) convertVariables() []esv1.ExtendedSecret {
 				SecretName: secretName,
 			},
 		}
+		if esv1.Type(v.Type) == esv1.Certificate {
+			certRequest := esv1.CertificateRequest{
+				CommonName:       v.Options.CommonName,
+				AlternativeNames: v.Options.AlternativeNames,
+				IsCA:             v.Options.IsCA,
+			}
+			if v.Options.CA != "" {
+				certRequest.CARef = esv1.SecretReference{
+					Name: m.generateVariableSecretName(v.Options.CA),
+					Key:  "certificate",
+				}
+			}
+			s.Spec.Request.CertificateRequest = certRequest
+		}
 		secrets = append(secrets, s)
 	}
 
