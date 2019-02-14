@@ -116,15 +116,15 @@ spec:
     max: 13
     # If true, only odd replica counts are valid when scaling the StatefulSet
     oddOnly: true
-  # If true, the StatefulSet will be  
+  # If true, the StatefulSet will be updated When an env value or mount changes
   updateOnEnvChange: true
   updateStrategy:
     canaries: 1
     retryCount: 2
     updateNotReady: true
 
-  # Below you can see a template for a regular StatefulSet.
-  # Nothing else is custom below this point.
+  # Below you can see a template for a regular StatefulSet
+  # Nothing else is custom below this point
   template:
     metadata:
       labels:

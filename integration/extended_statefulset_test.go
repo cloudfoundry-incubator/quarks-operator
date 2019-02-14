@@ -146,6 +146,12 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			expectedMsg := fmt.Sprintf("StatefulSet '%s-v1' owned by ExtendedStatefulSet '%s/%s' has not changed, checking if any other changes are necessary.", extendedStatefulSet.Name, env.Namespace, extendedStatefulSet.Name)
 			msgs := env.ObservedLogs.FilterMessage(expectedMsg)
 			Expect(msgs.Len()).NotTo(Equal(0))
+
+			// Check AnnotationConfigSHA1 not existed
+			ss, err := env.GetStatefulSet(env.Namespace, ess.GetName()+"-v1")
+			Expect(err).NotTo(HaveOccurred())
+			currentSHA1 := ss.Spec.Template.GetAnnotations()[essv1.AnnotationConfigSHA1]
+			Expect(currentSHA1).Should(Equal(""))
 		})
 
 		It("should keep two versions if all are not running", func() {
@@ -208,6 +214,10 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			err = env.WaitForPods(env.Namespace, "referencedpod=yes")
 			Expect(err).NotTo(HaveOccurred())
 
+			ss, err := env.GetStatefulSet(env.Namespace, ess.GetName()+"-v1")
+			Expect(err).NotTo(HaveOccurred())
+			originalSHA1 := ss.Spec.Template.GetAnnotations()[essv1.AnnotationConfigSHA1]
+
 			// Check for extendedStatefulSet available
 			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName())
 			Expect(err).NotTo(HaveOccurred())
@@ -220,9 +230,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			}))
 
 			// Check for references OwnerReferences
-			ss, err := env.GetStatefulSet(env.Namespace, ess.GetName()+"-v1")
-			Expect(err).NotTo(HaveOccurred())
-
 			cm1, err := env.GetConfigMap(env.Namespace, configMap1.Name)
 			Expect(err).ToNot(HaveOccurred())
 			cm2, err := env.GetConfigMap(env.Namespace, configMap2.Name)
@@ -233,10 +240,10 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			ownerRef := metav1.OwnerReference{
-				APIVersion:         "apps/v1",
-				Kind:               "StatefulSet",
-				Name:               ss.Name,
-				UID:                ss.UID,
+				APIVersion:         "fissile.cloudfoundry.org/v1alpha1",
+				Kind:               "ExtendedStatefulSet",
+				Name:               ess.Name,
+				UID:                ess.UID,
 				Controller:         helper.Bool(false),
 				BlockOwnerDeletion: helper.Bool(true),
 			}
@@ -259,9 +266,14 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer tearDown()
 
-			// TODO should wait pod restarts
 			err = env.WaitForPods(env.Namespace, "referencedpod=yes")
 			Expect(err).NotTo(HaveOccurred())
+
+			// Check AnnotationConfigSHA1 changed
+			ss, err = env.GetStatefulSet(env.Namespace, ess.GetName()+"-v1")
+			Expect(err).NotTo(HaveOccurred())
+			currentSHA1 := ss.Spec.Template.GetAnnotations()[essv1.AnnotationConfigSHA1]
+			Expect(currentSHA1).ShouldNot(Equal(originalSHA1))
 
 			// Check for extendedStatefulSet available
 			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName())

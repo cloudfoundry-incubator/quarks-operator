@@ -168,6 +168,11 @@ func (c *Catalog) DefaultStatefulSet(name string) v1beta2.StatefulSet {
 		},
 		Spec: v1beta2.StatefulSetSpec{
 			Replicas:    &replicaCount,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"testpod": "yes",
+				},
+			},
 			ServiceName: name,
 			Template:    c.DefaultPodTemplate(name),
 		},
@@ -183,6 +188,11 @@ func (c *Catalog) WrongStatefulSet(name string) v1beta2.StatefulSet {
 		},
 		Spec: v1beta2.StatefulSetSpec{
 			Replicas:    &replicaCount,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"wrongpod": "yes",
+				},
+			},
 			ServiceName: name,
 			Template:    c.WrongPodTemplate(name),
 		},
@@ -198,6 +208,11 @@ func (c *Catalog) OwnedReferencesStatefulSet(name string) v1beta2.StatefulSet {
 		},
 		Spec: v1beta2.StatefulSetSpec{
 			Replicas:    &replicaCount,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"referencedpod": "yes",
+				},
+			},
 			ServiceName: name,
 			Template:    c.OwnedReferencesPodTemplate(name),
 		},
@@ -626,7 +641,7 @@ func (c *Catalog) ErrandExtendedJob(name string) ejv1.ExtendedJob {
 	}
 }
 
-// ErrandExtendedJob default values
+// AutoErrandExtendedJob default values
 func (c *Catalog) AutoErrandExtendedJob(name string) ejv1.ExtendedJob {
 	cmd := []string{"sleep", "1"}
 	return ejv1.ExtendedJob{
