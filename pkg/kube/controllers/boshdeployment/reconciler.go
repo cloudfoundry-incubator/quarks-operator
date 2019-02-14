@@ -27,8 +27,12 @@ type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) 
 
 // NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
+
+	reconcilerLog := log.Named("boshdeployment-reconciler")
+        reconcilerLog.Info("Creating a reconciler for BoshDeployment")
+
 	return &ReconcileBOSHDeployment{
-		log:          log,
+		log:          reconcilerLog,
 		ctrConfig:    ctrConfig,
 		client:       mgr.GetClient(),
 		scheme:       mgr.GetScheme(),

@@ -34,10 +34,11 @@ type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) 
 
 // NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager, srf setReferenceFunc) reconcile.Reconciler {
-	log.Info("Creating a reconciler for ExtendedStatefulSet")
+	reconcilerLog := log.Named("extendedstatefulset-reconciler")
+	reconcilerLog.Info("Creating a reconciler for ExtendedStatefulSet")
 
 	return &ReconcileExtendedStatefulSet{
-		log:          log,
+		log:          reconcilerLog,
 		ctrConfig:    ctrConfig,
 		client:       mgr.GetClient(),
 		scheme:       mgr.GetScheme(),
