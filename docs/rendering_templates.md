@@ -3,14 +3,14 @@
 - [Rendering BOSH Templates](#rendering-bosh-templates)
   - [Part 1 - Data Gathering](#part-1---data-gathering)
   - [Part 2 - Rendering](#part-2---rendering)
-    - [Service Addresses](#service-addresses)
+    - [Addresses](#addresses)
     - [Input & Output](#input--output)
     - [Properties & Links](#properties--links)
       - [Resolving Links](#resolving-links)
 
 You can read more about BOSH templates on [bosh.io](https://bosh.io/docs/jobs/#templates).
 
-Rendering happens using `ExtendedJobs`.
+Rendering happens using `ExtendedJobs` and **Init Containers**.
 
 Details are omitted in the example below, for brevity. This is a deployment manifest.
 
@@ -94,16 +94,38 @@ Given the information in the **BOSH Job Spec Secrets** and the **Desired Manifes
 - a list of all **BOSH Variables** and their corresponding `ExtendedSecrets`
 - all **BOSH Properties** - both from specs and the **Desired Manifest**
 - an understanding of what type of template is being rendered (binary or not)
+- the number of replicas for each instance group
+- the number of availability zones for each instance group
 
-### Service Addresses
+### Addresses
 
-Service addresses are calculated in the following manner:
+Addresses for individual pods are calculated in the following manner:
 
 ```
-<JOB_NAME>-<INSTANCE_GROUP_NAME>-<DEPLOYMENT_NAME>.<KUBE_NAMESPACE>.<KUBE_SERVICE_DOMAIN>
+<INSTANCE_GROUP_NAME>-<INDEX>-<DEPLOYMENT_NAME>.<KUBE_NAMESPACE>.<KUBE_SERVICE_DOMAIN>
 ```
 
-> E.g.: `cloud-controller-ng-api-cfdeployment.mycf.svc.cluster.local`
+> E.g.: `api-group-0-cfdeployment.mycf.svc.cluster.local`
+
+The index is calculated as the index of the pod, multiplied by the AZ index of the pod.
+A **Kubernetes Service** is created for each pod of a StatefulSet, that has a selector for the correct pod name(s).
+e.g.
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-group-0-cfdeployment
+spec:
+  type: ClusterIP
+  selector:
+    statefulset.kubernetes.io/pod-name: api-group-v1-0
+    statefulset.kubernetes.io/pod-name: api-group-v2-0
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+```
 
 Service names can only consist of lowercase alphanumeric characters, and the character `"-"`.
 All `"_"` characters are replaced with `"-"`. All other non-alphanumeric characters are removed. 
@@ -113,24 +135,22 @@ The `servicename` cannot start or end with a `"-"`. These characters are trimmed
 Service names are also restricted to 63 characters in length, so if a generated name exceeds 63 characters, it should be recalculated as:
 
 ```
-servicename=<JOB_NAME>-<INSTANCE_GROUP_NAME>-<DEPLOYMENT_NAME>
+servicename=<INSTANCE_GROUP_NAME>-<INDEX><DEPLOYMENT_NAME>
 
 <servicename trimmed to 31 characters><md5 hash of servicename>
 ```
 
 The same check needs to apply to the entire address. If an entire address is longer than 253 characters, the `servicename` is trimmed until there's enough room for the MD5 hash. If it's not possible to include the hash (`KUBE_NAMESPACE` and `KUBE_SERVICE_DOMAIN` and the dots are 221 characters or more), an error is thrown.
 
-
 ### Input & Output
 
 Rendering happens using the Operator's docker image.
-One rendering `ExtendedJob` is run for each **BOSH Job** in the **Desired Manifest**.
-Each of the `ExtendedJobs` runs a container for each template that needs rendering.
+One rendering `ExtendedJob` is run for each **BOSH Job** in each **Instance Group** in the **Desired Manifest**.
 
-The input to an actual rendering container for one template (not data gathering) is:
+The input to an actual rendering container for the templates of a **Instance Group** (not data gathering) is:
 
 - the **Desired Manifest** in the form of a `Secret` mount to `/var/vcap/rendering/manifest.yaml`
--  the generated `Secrets` for all **BOSH Variables** used in the **BOSH Job** that owns the template and for all **BOSH Jobs** consumed by it (consumed via **BOSH Links**),  each as a mount in `/var/vcap/rendering/variables/<SECRET_NAME>`
+-  the generated `Secrets` for all **BOSH Variables** used in the **Instance Group** or, used in any of the **BOSH Jobs** consumed by it (via **BOSH Links**),  each as a mount in `/var/vcap/rendering/variables/<SECRET_NAME>`
 
 We take advantage of the `ExtendedJob`'s feature to persist output in a `Secret`.
 
@@ -167,18 +187,23 @@ spec:
           value: 'bin/my_ctl.erb'
 ```
 
-The output of the rendering process is a JSON object that contains the name of the template as a key, and the rendered template as a value.
+The output of the rendering process is a JSON object that contains the name of the template and the index of the replica as a key, and the rendered template as a value.
 
 The following is an example output for `instance-group-2` and `release-a`
 ```json
 {
-    "start_ctl.sh": "#!/bin/sh\necho hello"
+    "start_ctl.sh-0": "#!/bin/sh\necho hello from replica 0",
+    "start_ctl.sh-1": "#!/bin/sh\necho hello from replica 1"
 }
 ```
 
+All replicas of a rendered template are mounted. The **init container** that runs in the pod of an **Instance Group** is responsible with symlinking the correct template index to its final location, where they can be used.
+
+We perform rendering in a distinct step **before** running, because of BPM. We require all the rendered information _before_ running. A good example is the entrypoint for a container. With BPM, the entrypoint for replica 0 can be different from replica 1. 
+
 ### Properties & Links 
 
-**BOSH Properties** are used straight from the mounted **Desired Manifest**.
+**BOSH Properties** are used straight from the mounted **Desired Manifest Subset**.
 
 **BOSH Properties** that reference **BOSH Variables** have their values set at the time of rendering using the mounted `Secrets`.
 
@@ -195,10 +220,21 @@ To resolve a link, the following steps are performed:
 
   - the name and type of the link is retrieved from the spec of the `current job`
   - the name of the link is looked up in the `current job`'s instance group `consumes` key (an explicit link definition); if found and is set to `nil`, nil is returned and resolving is complete
-  - if the link's name has been overridden by an explicit link definition in the `desired manifest`, the `desired manifest` is searched for a corresponding job, that has the same name; if found, the link is populated with the properties of the `provider job`; first, the defaults for for the exposed properties (defined in the `provides` section of the spec of the `provider job`) are set to the defaults from the spec, and then the properties from the `desired manifest` applied on top
+  - if the link's name has been overridden by an explicit link definition in the `desired manifest`, the `desired manifest` is searched for a corresponding job, that has the same name; if found, the link is populated with the properties of the `provider job`; first, the defaults for the exposed properties (defined in the `provides` section of the spec of the `provider job`) are set to the defaults from the spec, and then the properties from the `desired manifest` are applied on top
   - if there was no explicit override, we search for a job in all the releases, that provides a link with the same `type` 
 
+The `spec` of each job instance can be calculated by the rendering process in each `ExtendedJob`. The required input is the count of replicas for each instance group, and the AZ count, both available in the deployment manifest.
 
-  > Note: the `deployment`, `network` and `ip_addresses` are not supported by the CF Operator
+```yaml
+name: <name of the job> 
+# TODO: understand if indexes repeat across AZs in BOSH
+index: <index of pod>*<az index>
+az: <BOSH_AZ_INDEX>
+id: <name of the job>-<index>
+address: <calculated address>
+bootstrap: <index == 0>
+```
+
+  > Note: the `deployment`, `network` and `ip_addresses` keys are not supported by the CF Operator
 
   > Read more about links here: https://bosh.io/docs/links

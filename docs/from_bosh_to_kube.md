@@ -13,6 +13,16 @@
     - [Environment](#environment)
     - [Resources](#resources)
     - [Healthchecks](#healthchecks)
+  - [Conversion Details](#conversion-details)
+    - [Calculation of docker image location for releases](#calculation-of-docker-image-location-for-releases)
+    - [Variables to Extended Secrets](#variables-to-extended-secrets)
+    - [Instance Groups to Extended StatefulSets and Jobs](#instance-groups-to-extended-statefulsets-and-jobs)
+      - [BOSH Services vs BOSH Errands](#bosh-services-vs-bosh-errands)
+      - [Naming](#naming)
+      - [Pods](#pods)
+      - [Mounts](#mounts)
+      - [Entrypoints](#entrypoints)
+      - [Mounts](#mounts)
   - [Other](#other)
 
 ## High-level Direction
@@ -335,6 +345,54 @@ tags:
 
 ### Healthchecks
 
+## Conversion Details
+
+### Calculation of docker image location for releases
+
+### Variables to Extended Secrets
+
+For each **BOSH Variable**, the cf-operator creates `ExtendedSecrets`.
+The `ExtendedSecret` is meant to generate the value required by the variable.
+
+The name of the `ExtendedSecret` is calculated like this:
+
+```
+<DEPLOYMENT_NAME>.<VARIABLE_NAME>
+```
+
+The name of the final generated `Secret` (the `secretName` key) is calculated the same way.
+
+The deployment name and variable name can only consist of lowercase alphanumeric characters, and the character `"-"`.
+All `"_"` characters are replaced with `"-"`. All other non-alphanumeric characters are removed.
+
+The secret name cannot start or end with a `"-"`. These characters are trimmed.
+
+Secret names are also restricted to 63 characters in length, so if a generated name exceeds 63 characters, it should be recalculated as:
+
+```
+name=<DEPLOYMENT_NAME>-<VARIABLE_NAME>
+
+<name trimmed to 31 characters><md5 hash of name>
+```
+
+### Instance Groups to Extended StatefulSets and Jobs
+
+#### BOSH Services vs BOSH Errands
+
+#### Naming
+
+#### Pods
+
+#### Mounts
+
+- **desired manifest**
+- **bosh variable secrets**
+- **user configmaps** for variables that are not generated
+- data volumes
+
+#### Entrypoints
+
+#### Mounts
 
 ## Other
 
