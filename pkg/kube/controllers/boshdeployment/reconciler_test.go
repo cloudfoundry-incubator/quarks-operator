@@ -51,7 +51,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 		manifest = &bdm.Manifest{
-			InstanceGroups: []bdm.InstanceGroup{
+			InstanceGroups: []*bdm.InstanceGroup{
 				{Name: "fakepod"},
 			},
 		}
@@ -111,7 +111,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 			It("handles errors when missing instance groups", func() {
 				resolver.ResolveCRDReturns(&bdm.Manifest{
-					InstanceGroups: []bdm.InstanceGroup{},
+					InstanceGroups: []*bdm.InstanceGroup{},
 				}, nil)
 
 				_, err := reconciler.Reconcile(request)
