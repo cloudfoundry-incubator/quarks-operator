@@ -3,6 +3,7 @@ package extendedstatefulset
 import (
 	"go.uber.org/zap"
 
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -27,6 +28,24 @@ func Add(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig,
 	// Watch for changes to primary resource ExtendedStatefulSet
 	log.Info("Watching changes to ExtendedStatefulSet")
 	err = c.Watch(&source.Kind{Type: &essv1.ExtendedStatefulSet{}}, &handler.EnqueueRequestForObject{})
+	if err != nil {
+		return err
+	}
+
+	// Watch ConfigMaps owned by resource ExtendedStatefulSet
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{
+		IsController: false,
+		OwnerType:    &essv1.ExtendedStatefulSet{},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Watch Secrets owned by resource ExtendedStatefulSet
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+		IsController: false,
+		OwnerType:    &essv1.ExtendedStatefulSet{},
+	})
 	if err != nil {
 		return err
 	}
