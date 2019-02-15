@@ -25,7 +25,10 @@ func AddErrand(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersC
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			exJob := e.Object.(*ejv1.ExtendedJob)
-			return exJob.Spec.Run == ejv1.RunNow || exJob.Spec.Run == ejv1.RunOnce
+			if exJob.Spec.Run == nil {
+				return false
+			}
+			return *exJob.Spec.Run == ejv1.RunNow || *exJob.Spec.Run == ejv1.RunOnce
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return false
@@ -36,7 +39,10 @@ func AddErrand(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersC
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			oldExJob := e.ObjectOld.(*ejv1.ExtendedJob)
 			newExJob := e.ObjectNew.(*ejv1.ExtendedJob)
-			run := newExJob.Spec.Run == ejv1.RunNow && oldExJob.Spec.Run == ejv1.RunManually
+			if oldExJob.Spec.Run == nil || newExJob.Spec.Run == nil {
+				return false
+			}
+			run := *newExJob.Spec.Run == ejv1.RunNow && *oldExJob.Spec.Run == ejv1.RunManually
 			return run
 		},
 	}

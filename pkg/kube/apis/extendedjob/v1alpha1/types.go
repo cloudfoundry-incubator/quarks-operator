@@ -13,11 +13,11 @@ import (
 
 // ExtendedJobSpec defines the desired state of ExtendedJob
 type ExtendedJobSpec struct {
-	Output               Output                 `json:"output,omitempty"`
-	Run                  Run                    `json:"run,omitempty"`
-	Triggers             Triggers               `json:"triggers,omitempty"`
+	Output               *Output                `json:"output,omitempty"`
+	Run                  *Run                   `json:"run,omitempty"`
+	Triggers             *Triggers              `json:"triggers,omitempty"`
 	Template             corev1.PodTemplateSpec `json:"template"`
-	UpdateOnConfigChange bool                   `json:"updateOnConfigChange,omitempty"`
+	UpdateOnConfigChange bool                   `json:"updateOnConfigChange"`
 }
 
 // Run is used if the job is not triggered
@@ -63,14 +63,14 @@ const (
 
 // Triggers decide which objects to act on
 type Triggers struct {
-	When     PodState `json:"when"`
-	Selector Selector `json:"selector,omitempty"`
+	When     PodState  `json:"when"`
+	Selector *Selector `json:"selector,omitempty"`
 }
 
 // Selector filter objects
 type Selector struct {
-	MatchLabels      labels.Set    `json:"matchLabels,omitempty"`
-	MatchExpressions []Requirement `json:"matchExpressions,omitempty"`
+	MatchLabels      *labels.Set    `json:"matchLabels,omitempty"`
+	MatchExpressions []*Requirement `json:"matchExpressions,omitempty"`
 }
 
 // Requirement describes a label requirement
