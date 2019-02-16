@@ -1,4 +1,4 @@
-Spackage extendedjob
+package extendedjob
 
 import (
 	"context"
