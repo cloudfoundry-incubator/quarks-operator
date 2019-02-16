@@ -1,7 +1,7 @@
 package testing
 
 import (
-	"k8s.io/api/apps/v1beta1"
+	"k8s.io/api/apps/v1beta2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -153,20 +153,26 @@ func (c *Catalog) OwnedReferencesExtendedStatefulSet(name string) essv1.Extended
 			Name: name,
 		},
 		Spec: essv1.ExtendedStatefulSetSpec{
-			Template: c.OwnedReferencesStatefulSet(name),
+			UpdateOnEnvChange: true,
+			Template:          c.OwnedReferencesStatefulSet(name),
 		},
 	}
 }
 
 // DefaultStatefulSet for use in tests
-func (c *Catalog) DefaultStatefulSet(name string) v1beta1.StatefulSet {
+func (c *Catalog) DefaultStatefulSet(name string) v1beta2.StatefulSet {
 	replicaCount := int32(1)
-	return v1beta1.StatefulSet{
+	return v1beta2.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: v1beta1.StatefulSetSpec{
+		Spec: v1beta2.StatefulSetSpec{
 			Replicas:    &replicaCount,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"testpod": "yes",
+				},
+			},
 			ServiceName: name,
 			Template:    c.DefaultPodTemplate(name),
 		},
@@ -174,14 +180,19 @@ func (c *Catalog) DefaultStatefulSet(name string) v1beta1.StatefulSet {
 }
 
 // WrongStatefulSet for use in tests
-func (c *Catalog) WrongStatefulSet(name string) v1beta1.StatefulSet {
+func (c *Catalog) WrongStatefulSet(name string) v1beta2.StatefulSet {
 	replicaCount := int32(1)
-	return v1beta1.StatefulSet{
+	return v1beta2.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: v1beta1.StatefulSetSpec{
+		Spec: v1beta2.StatefulSetSpec{
 			Replicas:    &replicaCount,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"wrongpod": "yes",
+				},
+			},
 			ServiceName: name,
 			Template:    c.WrongPodTemplate(name),
 		},
@@ -189,14 +200,19 @@ func (c *Catalog) WrongStatefulSet(name string) v1beta1.StatefulSet {
 }
 
 // OwnedReferencesStatefulSet for use in tests
-func (c *Catalog) OwnedReferencesStatefulSet(name string) v1beta1.StatefulSet {
+func (c *Catalog) OwnedReferencesStatefulSet(name string) v1beta2.StatefulSet {
 	replicaCount := int32(1)
-	return v1beta1.StatefulSet{
+	return v1beta2.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: v1beta1.StatefulSetSpec{
+		Spec: v1beta2.StatefulSetSpec{
 			Replicas:    &replicaCount,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"referencedpod": "yes",
+				},
+			},
 			ServiceName: name,
 			Template:    c.OwnedReferencesPodTemplate(name),
 		},
@@ -625,7 +641,7 @@ func (c *Catalog) ErrandExtendedJob(name string) ejv1.ExtendedJob {
 	}
 }
 
-// ErrandExtendedJob default values
+// AutoErrandExtendedJob default values
 func (c *Catalog) AutoErrandExtendedJob(name string) ejv1.ExtendedJob {
 	cmd := []string{"sleep", "1"}
 	return ejv1.ExtendedJob{

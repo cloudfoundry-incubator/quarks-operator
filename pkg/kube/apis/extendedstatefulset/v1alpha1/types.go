@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
-	"k8s.io/api/apps/v1beta1"
+	"k8s.io/api/apps/v1beta2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -40,7 +40,9 @@ type Object interface {
 
 // ExtendedStatefulSetSpec defines the desired state of ExtendedStatefulSet
 type ExtendedStatefulSetSpec struct {
-	Template v1beta1.StatefulSet `json:"template"`
+	// Indicates whether to update Pods in the StatefulSet when an env value or mount changes
+	UpdateOnEnvChange bool                `json:"updateOnEnvChange"`
+	Template          v1beta2.StatefulSet `json:"template"`
 }
 
 // ExtendedStatefulSetStatus defines the observed state of ExtendedStatefulSet
@@ -72,7 +74,7 @@ type ExtendedStatefulSetList struct {
 }
 
 // CalculateDesiredStatefulSetName calculates the name of the StatefulSet to be managed
-func (e *ExtendedStatefulSet) CalculateDesiredStatefulSetName(actualStatefulSet *v1beta1.StatefulSet) (string, error) {
+func (e *ExtendedStatefulSet) CalculateDesiredStatefulSetName(actualStatefulSet *v1beta2.StatefulSet) (string, error) {
 	version, err := e.DesiredVersion(actualStatefulSet)
 	if err != nil {
 		return "", err
@@ -84,7 +86,7 @@ func (e *ExtendedStatefulSet) CalculateDesiredStatefulSetName(actualStatefulSet 
 
 // DesiredVersion calculates the desired version of the StatefulSet
 // If the template of the StatefulSet has changed, the desired version is incremented
-func (e *ExtendedStatefulSet) DesiredVersion(actualStatefulSet *v1beta1.StatefulSet) (int, error) {
+func (e *ExtendedStatefulSet) DesiredVersion(actualStatefulSet *v1beta2.StatefulSet) (int, error) {
 	strVersion, ok := actualStatefulSet.Annotations[AnnotationVersion]
 	if !ok {
 		strVersion = "0"
@@ -160,6 +162,19 @@ func (e *ExtendedStatefulSet) RemoveFinalizer() {
 
 	// Update the object's finalizers
 	e.SetFinalizers(newFinalizers)
+}
+
+// HasFinalizer checks the finalizer item from the ExtendedStatefulSet
+func (e *ExtendedStatefulSet) HasFinalizer() bool {
+	finalizers := e.GetFinalizers()
+
+	for _, finalizer := range finalizers {
+		if finalizer == FinalizerString {
+			return true
+		}
+	}
+
+	return false
 }
 
 // ToBeDeleted checks whether this ExtendedStatefulSet has been marked for deletion
