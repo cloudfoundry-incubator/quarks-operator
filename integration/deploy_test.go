@@ -16,7 +16,7 @@ var _ = Describe("Deploy", func() {
 		})
 
 		It("should deploy a pod with 10 seconds for the reconciler context", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
@@ -31,7 +31,7 @@ var _ = Describe("Deploy", func() {
 
 		It("should deploy a pod with 1 nanosecond for the reconciler context", func() {
 			env.CtrsConfig.CtxTimeOut = 1 * time.Nanosecond
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
@@ -46,7 +46,7 @@ var _ = Describe("Deploy", func() {
 		})
 
 		It("should deploy manifest with multiple ops correctly", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
@@ -73,7 +73,7 @@ var _ = Describe("Deploy", func() {
 
 	Context("when incorrectly setup", func() {
 		It("failed to deploy if ResolveCRD error occurred", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
@@ -96,7 +96,7 @@ var _ = Describe("Deploy", func() {
 		})
 
 		It("failed to deploy a empty manifest", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
@@ -108,7 +108,7 @@ var _ = Describe("Deploy", func() {
 		})
 
 		It("failed to deploy due to a wrong manifest type", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
@@ -119,7 +119,7 @@ var _ = Describe("Deploy", func() {
 		})
 
 		It("failed to deploy due to a empty manifest ref", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
@@ -130,7 +130,7 @@ var _ = Describe("Deploy", func() {
 		})
 
 		It("failed to deploy due to a wrong ops type", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
@@ -141,7 +141,7 @@ var _ = Describe("Deploy", func() {
 		})
 
 		It("failed to deploy due to a empty ops ref", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifest("manifest"))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
