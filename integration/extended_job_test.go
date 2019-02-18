@@ -92,7 +92,7 @@ var _ = Describe("ExtendedJob", func() {
 
 		It("does not start a job without Run being set to now", func() {
 			ej := env.ErrandExtendedJob("extendedjob")
-			ej.Spec.Run = ejv1.RunManually
+			*ej.Spec.Run = ejv1.RunManually
 			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
@@ -103,7 +103,7 @@ var _ = Describe("ExtendedJob", func() {
 
 			latest, err := env.GetExtendedJob(env.Namespace, ej.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(latest.Spec.Run).To(Equal(ejv1.RunManually))
+			Expect(*latest.Spec.Run).To(Equal(ejv1.RunManually))
 
 			err = env.UpdateExtendedJob(env.Namespace, *latest)
 			Expect(err).NotTo(HaveOccurred())
@@ -126,16 +126,16 @@ var _ = Describe("ExtendedJob", func() {
 
 		It("starts a job when updating extended job to now", func() {
 			ej := env.ErrandExtendedJob("extendedjob")
-			ej.Spec.Run = ejv1.RunManually
+			*ej.Spec.Run = ejv1.RunManually
 			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
 			latest, err := env.GetExtendedJob(env.Namespace, ej.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(latest.Spec.Run).To(Equal(ejv1.RunManually))
+			Expect(*latest.Spec.Run).To(Equal(ejv1.RunManually))
 
-			latest.Spec.Run = ejv1.RunNow
+			*latest.Spec.Run = ejv1.RunNow
 			err = env.UpdateExtendedJob(env.Namespace, *latest)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -229,7 +229,7 @@ var _ = Describe("ExtendedJob", func() {
 					"unmatched",
 					"ready",
 					map[string]string{"unmatched": "unmatched"},
-					[]ejv1.Requirement{},
+					[]*ejv1.Requirement{},
 					[]string{"sleep", "1"},
 				),
 			} {

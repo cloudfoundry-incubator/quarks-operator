@@ -101,7 +101,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 
 		Context("when output persistence is configured", func() {
 			JustBeforeEach(func() {
-				ejob.Spec.Output = ejapi.Output{
+				ejob.Spec.Output = &ejapi.Output{
 					NamePrefix:   "foo-",
 					SecretLabels: map[string]string{"key": "value"},
 				}
@@ -149,7 +149,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 
 		Context("when WriteOnFailure is not set", func() {
 			JustBeforeEach(func() {
-				ejob.Spec.Output = ejapi.Output{
+				ejob.Spec.Output = &ejapi.Output{
 					NamePrefix:     "foo-",
 					WriteOnFailure: true,
 				}
