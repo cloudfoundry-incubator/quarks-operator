@@ -187,7 +187,7 @@ var _ = Describe("ErrandReconciler", func() {
 				})
 
 				It("should set run back and create a job", func() {
-					Expect(exJob.Spec.Run).To(Equal(ejv1.RunNow))
+					Expect(*exJob.Spec.Run).To(Equal(ejv1.RunNow))
 
 					result, err := act()
 					Expect(err).ToNot(HaveOccurred())
@@ -206,7 +206,7 @@ var _ = Describe("ErrandReconciler", func() {
 						},
 						&exJob,
 					)
-					Expect(exJob.Spec.Run).To(Equal(ejv1.RunManually))
+					Expect(*exJob.Spec.Run).To(Equal(ejv1.RunManually))
 				})
 			})
 
@@ -240,7 +240,7 @@ var _ = Describe("ErrandReconciler", func() {
 						},
 						&exJob,
 					)
-					Expect(exJob.Spec.Run).To(Equal(ejv1.RunOnce))
+					Expect(*exJob.Spec.Run).To(Equal(ejv1.RunOnce))
 
 				})
 			})

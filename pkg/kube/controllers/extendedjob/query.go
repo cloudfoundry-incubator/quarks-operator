@@ -33,6 +33,9 @@ func (q *QueryImpl) Match(extJob ejv1.ExtendedJob, pod corev1.Pod) bool {
 	if pod.Name == "" {
 		return false
 	}
+	if extJob.Spec.Triggers.Selector == nil {
+		return true
+	}
 
 	podLabelsSet := labels.Set(pod.Labels)
 	matchExpressions := extJob.Spec.Triggers.Selector.MatchExpressions
@@ -47,7 +50,7 @@ func (q *QueryImpl) Match(extJob ejv1.ExtendedJob, pod corev1.Pod) bool {
 
 	// TODO https://github.com/kubernetes/apimachinery/blob/master/pkg/labels/selector.go
 	matchLabels := extJob.Spec.Triggers.Selector.MatchLabels
-	if labels.AreLabelsInWhiteList(matchLabels, pod.Labels) {
+	if labels.AreLabelsInWhiteList(*matchLabels, pod.Labels) {
 		return true
 	}
 	return false

@@ -14,6 +14,7 @@ import (
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 // Catalog provides several instances for tests
@@ -531,7 +532,7 @@ func (c *Catalog) DefaultExtendedJob(name string) *ejv1.ExtendedJob {
 		name,
 		ejv1.PodStateReady,
 		map[string]string{"key": "value"},
-		[]ejv1.Requirement{},
+		[]*ejv1.Requirement{},
 		[]string{"sleep", "1"},
 	)
 }
@@ -542,7 +543,7 @@ func (c *Catalog) LongRunningExtendedJob(name string) *ejv1.ExtendedJob {
 		name,
 		ejv1.PodStateReady,
 		map[string]string{"key": "value"},
-		[]ejv1.Requirement{},
+		[]*ejv1.Requirement{},
 		[]string{"sleep", "15"},
 	)
 }
@@ -553,7 +554,7 @@ func (c *Catalog) OnDeleteExtendedJob(name string) *ejv1.ExtendedJob {
 		name,
 		ejv1.PodStateDeleted,
 		map[string]string{"key": "value"},
-		[]ejv1.Requirement{},
+		[]*ejv1.Requirement{},
 		[]string{"sleep", "1"},
 	)
 }
@@ -564,7 +565,7 @@ func (c *Catalog) MatchExpressionExtendedJob(name string) *ejv1.ExtendedJob {
 		name,
 		ejv1.PodStateReady,
 		map[string]string{},
-		[]ejv1.Requirement{
+		[]*ejv1.Requirement{
 			{Key: "env", Operator: "in", Values: []string{"production"}},
 		},
 		[]string{"sleep", "1"},
@@ -577,7 +578,7 @@ func (c *Catalog) ComplexMatchExtendedJob(name string) *ejv1.ExtendedJob {
 		name,
 		ejv1.PodStateReady,
 		map[string]string{"key": "value"},
-		[]ejv1.Requirement{
+		[]*ejv1.Requirement{
 			{Key: "env", Operator: "in", Values: []string{"production"}},
 		},
 		[]string{"sleep", "1"},
@@ -589,12 +590,12 @@ func (c *Catalog) OutputExtendedJob(name string, template corev1.PodTemplateSpec
 	return &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
-			Triggers: ejv1.Triggers{
+			Triggers: &ejv1.Triggers{
 				When:     "ready",
-				Selector: ejv1.Selector{MatchLabels: map[string]string{"key": "value"}},
+				Selector: &ejv1.Selector{MatchLabels: &labels.Set{"key": "value"}},
 			},
 			Template: template,
-			Output: ejv1.Output{
+			Output: &ejv1.Output{
 				NamePrefix:   name + "-output-",
 				OutputType:   "json",
 				SecretLabels: map[string]string{"label-key": "label-value", "label-key2": "label-value2"},
@@ -604,14 +605,14 @@ func (c *Catalog) OutputExtendedJob(name string, template corev1.PodTemplateSpec
 }
 
 // LabelTriggeredExtendedJob allows customization of labels triggers
-func (c *Catalog) LabelTriggeredExtendedJob(name string, state ejv1.PodState, ml map[string]string, me []ejv1.Requirement, cmd []string) *ejv1.ExtendedJob {
+func (c *Catalog) LabelTriggeredExtendedJob(name string, state ejv1.PodState, ml labels.Set, me []*ejv1.Requirement, cmd []string) *ejv1.ExtendedJob {
 	return &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
-			Triggers: ejv1.Triggers{
+			Triggers: &ejv1.Triggers{
 				When: state,
-				Selector: ejv1.Selector{
-					MatchLabels:      ml,
+				Selector: &ejv1.Selector{
+					MatchLabels:      &ml,
 					MatchExpressions: me,
 				},
 			},
@@ -646,10 +647,11 @@ func (c *Catalog) DefaultExtendedJobWithSucceededJob(name string) (*ejv1.Extende
 // ErrandExtendedJob default values
 func (c *Catalog) ErrandExtendedJob(name string) ejv1.ExtendedJob {
 	cmd := []string{"sleep", "1"}
+	now := ejv1.RunNow
 	return ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
-			Run:      ejv1.RunNow,
+			Run:      &now,
 			Template: c.CmdPodTemplate(cmd),
 		},
 	}
@@ -658,10 +660,11 @@ func (c *Catalog) ErrandExtendedJob(name string) ejv1.ExtendedJob {
 // AutoErrandExtendedJob default values
 func (c *Catalog) AutoErrandExtendedJob(name string) ejv1.ExtendedJob {
 	cmd := []string{"sleep", "1"}
+	once := ejv1.RunOnce
 	return ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
-			Run:      ejv1.RunOnce,
+			Run:      &once,
 			Template: c.CmdPodTemplate(cmd),
 		},
 	}
