@@ -13,3 +13,16 @@ spec:
     singular: extendedstatefulset
   scope: Namespaced
   version: v1alpha1
+  validation:
+    # openAPIV3Schema is the schema for validating custom objects.
+    openAPIV3Schema:
+      properties:
+        spec:
+          required: [template]
+          properties:
+            template:
+              type: object
+              description: "A template for a regular StatefulSet"
+            updateOnEnvChange:
+              type: boolean
+              description: "Indicate whether to update Pods in the StatefulSet when an env value or mount changes"

@@ -1,11 +1,13 @@
 package testing
 
 import (
+	yaml "gopkg.in/yaml.v2"
 	"k8s.io/api/apps/v1beta2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
@@ -18,7 +20,19 @@ import (
 type Catalog struct{}
 
 // DefaultBOSHManifest for tests
-func (c *Catalog) DefaultBOSHManifest(name string) corev1.ConfigMap {
+func (c *Catalog) DefaultBOSHManifest() manifest.Manifest {
+	m := manifest.Manifest{}
+	source := `name: foo-deployment
+variables:
+- name: "adminpass"
+  type: "password"
+  options: {is_ca: true, common_name: "some-ca"}`
+	yaml.Unmarshal([]byte(source), &m)
+	return m
+}
+
+// DefaultBOSHManifestConfigMap for tests
+func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Data: map[string]string{
@@ -167,7 +181,7 @@ func (c *Catalog) DefaultStatefulSet(name string) v1beta2.StatefulSet {
 			Name: name,
 		},
 		Spec: v1beta2.StatefulSetSpec{
-			Replicas:    &replicaCount,
+			Replicas: &replicaCount,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"testpod": "yes",
@@ -187,7 +201,7 @@ func (c *Catalog) WrongStatefulSet(name string) v1beta2.StatefulSet {
 			Name: name,
 		},
 		Spec: v1beta2.StatefulSetSpec{
-			Replicas:    &replicaCount,
+			Replicas: &replicaCount,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"wrongpod": "yes",
@@ -207,7 +221,7 @@ func (c *Catalog) OwnedReferencesStatefulSet(name string) v1beta2.StatefulSet {
 			Name: name,
 		},
 		Spec: v1beta2.StatefulSetSpec{
-			Replicas:    &replicaCount,
+			Replicas: &replicaCount,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"referencedpod": "yes",
