@@ -1,4 +1,4 @@
-FROM golang:1.11.5 AS build
+FROM golang:1.12rc1 AS build
 COPY . /go/src/code.cloudfoundry.org/cf-operator
 RUN cd /go/src/code.cloudfoundry.org/cf-operator && \
     GO111MODULE=on make build && \
