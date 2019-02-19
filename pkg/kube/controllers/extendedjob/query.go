@@ -33,12 +33,12 @@ func (q *QueryImpl) Match(extJob ejv1.ExtendedJob, pod corev1.Pod) bool {
 	if pod.Name == "" {
 		return false
 	}
-	if extJob.Spec.Triggers.Selector == nil {
+	if extJob.Spec.Trigger.PodState.Selector == nil {
 		return true
 	}
 
 	podLabelsSet := labels.Set(pod.Labels)
-	matchExpressions := extJob.Spec.Triggers.Selector.MatchExpressions
+	matchExpressions := extJob.Spec.Trigger.PodState.Selector.MatchExpressions
 	for _, exp := range matchExpressions {
 		requirement, err := labels.NewRequirement(exp.Key, exp.Operator, exp.Values)
 		if err != nil {
@@ -49,7 +49,7 @@ func (q *QueryImpl) Match(extJob ejv1.ExtendedJob, pod corev1.Pod) bool {
 	}
 
 	// TODO https://github.com/kubernetes/apimachinery/blob/master/pkg/labels/selector.go
-	matchLabels := extJob.Spec.Triggers.Selector.MatchLabels
+	matchLabels := extJob.Spec.Trigger.PodState.Selector.MatchLabels
 	if labels.AreLabelsInWhiteList(*matchLabels, pod.Labels) {
 		return true
 	}
@@ -58,7 +58,7 @@ func (q *QueryImpl) Match(extJob ejv1.ExtendedJob, pod corev1.Pod) bool {
 
 // MatchState checks pod state against state from extended job
 func (q *QueryImpl) MatchState(extJob ejv1.ExtendedJob, podState ejv1.PodState) bool {
-	if extJob.Spec.Triggers.When == podState {
+	if extJob.Spec.Trigger.PodState.When == podState {
 		return true
 	}
 	return false

@@ -55,12 +55,10 @@ If multiple selectors are given, all must match to include the pod.
 
 ### Errand Jobs
 
-Errands are manually run by the user.
-
-They can't have a `triggers` section and specify `run: manually` instead.
+Errands are run manually by the user. They are created by setting `trigger.strategy: manually`.
 
 After the `ExtendedJob` is created, run an errand by editing and applying the
-manifest, i.e. via `k edit errand1` and change `run: manually` to `run: now`,
+manifest, i.e. via `k edit errand1` and change `trigger.strategy: manually` to `trigger.strategy: now`,
 after completion the value will be reset to `manually`.
 
 ### One-Off Jobs / Auto-Errands
@@ -68,7 +66,7 @@ after completion the value will be reset to `manually`.
 One-off jobs run directly when created, just like native k8s jobs, but still
 persist their output.
 
-They can't have a `triggers` section and specify `run: once` instead.
+They are created with `trigger.strategy: once`.
 
 ### Persisted Output
 
