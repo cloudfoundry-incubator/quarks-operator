@@ -1,0 +1,19 @@
+apiVersion: fissile.cloudfoundry.org/v1alpha1
+kind: ExtendedJob
+metadata:
+  name: myfoo
+spec:
+  template:
+    spec:
+      containers:
+        - name: json
+          image: busybox
+          command: ["echo", '{"foo": "1", "bar": "baz"}']
+      restartPolicy: Never
+      terminationGracePeriodSeconds: 1
+  trigger:
+    strategy: once
+  output:
+    namePrefix: foo-
+    secretLabels:
+      key: value
