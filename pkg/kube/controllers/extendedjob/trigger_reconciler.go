@@ -35,12 +35,12 @@ func NewTriggerReconciler(
 	f setOwnerReferenceFunc,
 ) reconcile.Reconciler {
 
-	triggerReconcilerLog := log.Named("extendedjob-trigger-reconciler")
-        triggerReconcilerLog.Info("Creating a trigger reconciler for ExtendedJob to start jobs triggered by pods")
+	reconcilerLog := log.Named("extendedjob-trigger-reconciler")
+	reconcilerLog.Info("Creating a trigger reconciler for ExtendedJob to start jobs triggered by pods")
 
 	return &TriggerReconciler{
 		client:            mgr.GetClient(),
-		log:               triggerReconcilerLog,
+		log:               reconcilerLog,
 		ctrConfig:         ctrConfig,
 		query:             query,
 		recorder:          mgr.GetRecorder("extendedjob trigger reconciler"),
