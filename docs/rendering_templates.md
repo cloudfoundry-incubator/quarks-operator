@@ -1,16 +1,103 @@
 # Rendering BOSH Templates
 
 - [Rendering BOSH Templates](#rendering-bosh-templates)
-  - [Part 1 - Data Gathering](#part-1---data-gathering)
-  - [Part 2 - Rendering](#part-2---rendering)
-    - [Addresses](#addresses)
-    - [Input & Output](#input--output)
-    - [Properties & Links](#properties--links)
-      - [Resolving Links](#resolving-links)
+  - [Flow](#flow)
+    - [Data Gathering](#data-gathering)
+      - [Extract Job Spec and Templates from Image](#extract-job-spec-and-templates-from-image)
+      - [Calculation of Required Properties for an Instance Group and Render BPM](#calculation-of-required-properties-for-an-instance-group-and-render-bpm)
+    - [Generate Kube Objects](#generate-kube-objects)
+      - [Create ExtendedStatefulSet and ExtendedJobs](#create-extendedstatefulset-and-extendedjobs)
+    - [Run](#run)
+      - [Render Templates](#render-templates)
+      - [Run the actual BOSH Jobs](#run-the-actual-bosh-jobs)
+  - [Example](#example)
+  - [Details](#details)
+    - [DNS Addresses](#dns-addresses)
+    - [Resolving Links](#resolving-links)
+    - [Calculating spec.* and link().instances[].*](#calculating-spec-and-linkinstances)
+  - [FAQ](#faq)
 
 You can read more about BOSH templates on [bosh.io](https://bosh.io/docs/jobs/#templates).
 
-Rendering happens using `ExtendedJobs` and **Init Containers**.
+
+
+## Flow
+
+![rendering-flow](./template-rendering-process.png)
+
+The following points describe each process that involves working with BOSH Job Templates, from beginning to end.
+
+### Data Gathering
+
+The Data Gathering step is run using one `ExtendedJob`, that has one pod with multiple containers.
+
+#### Extract Job Spec and Templates from Image
+
+This happens in the "Data Gathering" step, in one init container for each release present in the deployment manifest.
+
+The entrypoint of that init container is responsible with copying the contents of `/var/vcap/jobs-src` to a shared directory, where other containers can access it.
+
+Each init container runs the release's docker image.
+
+This results in multiple **BOSH Job Spec Secrets** being created, each labeled with deployment, release and job identifiers.
+
+#### Calculation of Required Properties for an Instance Group and Render BPM
+
+The main purpose of the data gathering phase is to compile all information required for all templates to be rendered and for all instance groups to be run:
+
+- properties
+- link instances
+- bpm yaml
+
+One container is run for each instance group in the deployment manifest.
+Once all properties and link instances are compiled, `bpm.yml.erb` can be rendered for each job and for each AZ and replica of the instance group.
+
+The output of each container is a deployment manifest structure that only has information pertinent to an instance group.
+This includes:
+
+- all job properties for that instance group
+- all properties for all jobs that are link providers to any of the jobs of that instance group
+- the rendered contents of each `bpm.yml.erb`, for each job in the instance group
+- link instance specs for all AZs and replicas; read more about instance keys available for links [here](https://bosh.io/docs/links/#templates)
+
+Both link instance specs as well as the contents of `bpm.yml.erb` are stored in the `bosh_containerization` property key for each job in the instance group.
+One BPM object should exist per replica of the instance group, but if they are all the same, we only store one copy. We perform this rendering in a distinct step **before** running because BPM has information we require _before_ running. A good example is the entrypoint for a container.
+
+Each output of this container should be compressed. Size can be large, and secrets are limited to 1MB.
+
+These containers run using the same docker image as the CF Operator.
+
+### Generate Kube Objects
+
+#### Create ExtendedStatefulSet and ExtendedJobs
+
+Operator creates definitions for `ExtendedStatefulSets` and `ExtendedJobs`, for each instance group. They have init containers for all releases in the instance group, as well as an init container that does rendering.
+
+### Run 
+
+All instance groups run either as an `ExtendedStatefulSet` (for **BOSH Services**) or as an `ExtendedJobs` (for **BOSH Errands**).
+
+These run pods that have multiple init containers for template rendering.
+
+#### Render Templates
+
+Init containers copy the templates of the releases to `/var/vcap/rendering`, which is a shared directory among all containers.
+
+Another init container is run using the operator's image, for rendering all templates. It mounts the property secrets for the instance group (generated in the data gathering step) and performs rendering. 
+It's also configured with the following environment variables, to facilitate BOSH `spec.*` property keys:
+- `BOSH_DEPLOYMENT_NAME` - the deployment name
+- `BOSH_AZ_INDEX` - current AZ (integer)
+- `BOSH_AZ_COUNT` - AZ Count 
+- `BOSH_REPLICA_COUNT` - replica count 
+- `BOSH_REPLICA_ORDINAL` - current replica ordinal
+- `BOSH_JOB_NAME` - job name
+
+#### Run the actual BOSH Jobs
+
+Once all the init containers are done, all control scripts and configuration files are available on disk, and the BOSH Job containers can start.
+Their entrypoints are set based on BPM information.
+
+## Example
 
 Details are omitted in the example below, for brevity. This is a deployment manifest.
 
@@ -42,64 +129,15 @@ variables:
   type: password
 ```
 
-## Part 1 - Data Gathering
+> TODO: complete example
 
-The first step is data gathering.
-An `ExtendedJob` is created for each release.
-Each `ExtendedJob` runs one container for each `bosh job` referenced in the `desired manifest`.
-Each container outputs a base64 encoded tar gzip fo the entire job folder that it's responsible for.
+## Details
 
-```yaml
----
-apiVersion: fissile.cloudfoundry.org/v1alpha1
-kind: ExtendedJob
-metadata:
-  name: "<DEPLOYMENT_NAME>-<RELEASE_NAME>-spec-reader"
-spec:
-  run: "now"
-  output:
-    namePrefix: "<DEPLOYMENT_NAME>-<RELEASE_NAME>-"
-    writeOnFailure: false
-    outputType: "json"
-    secretLabels:
-      deployment: '<DEPLOYMENT_NAME>'
-      bosh-release: 'release-a'
-      bosh-job-name: 'job1'
-    updateOnConfigChange: true
-  template:
-    spec:
-      restartPolicy: 'OnFailure'
-      containers:
-      - name: 'job1'
-        image: 'cfcontainerization/release-a:opensuse-42.3-26.gfed099b-30.70-1.76.0'
-        command: ['bash', '-c', 'echo -n "{\"spec\":\"$(tar -zcf - -C "/var/vcap/jobs-src/$JOB_NAME/" . | base64 --wrap=0)\"}"']
-        env:
-        - name: 'JOB_NAME'
-          value: 'job1'
-```
+The following section describes specific implementation details for algorithms required in the rendering process.
 
-The command used in the example below can be used for any BOSH release and job.
+### DNS Addresses
 
-```shell
-bash -c echo -n "{\"spec\":\"$(tar -zcf - -C "/var/vcap/jobs-src/$JOB_NAME/" . | base64 --wrap=0)\"}"
-```
-
-This results in multiple **BOSH Job Spec Secrets** being created, each labeled with deployment, release and job identifiers.
-
-## Part 2 - Rendering
-
-Given the information in the **BOSH Job Spec Secrets** and the **Desired Manifest**, the operator can gather all required input information:
-
-- a list of all **BOSH Releases**, **BOSH Jobs** and **BOSH Job Templates** that require rendering
-- a list of all **BOSH Variables** and their corresponding `ExtendedSecrets`
-- all **BOSH Properties** - both from specs and the **Desired Manifest**
-- an understanding of what type of template is being rendered (binary or not)
-- the number of replicas for each instance group
-- the number of availability zones for each instance group
-
-### Addresses
-
-Addresses for individual pods are calculated in the following manner:
+DNS Addresses for instance groups are calculated in the following manner:
 
 ```
 <INSTANCE_GROUP_NAME>-<INDEX>-<DEPLOYMENT_NAME>.<KUBE_NAMESPACE>.<KUBE_SERVICE_DOMAIN>
@@ -142,74 +180,9 @@ servicename=<INSTANCE_GROUP_NAME>-<INDEX><DEPLOYMENT_NAME>
 
 The same check needs to apply to the entire address. If an entire address is longer than 253 characters, the `servicename` is trimmed until there's enough room for the MD5 hash. If it's not possible to include the hash (`KUBE_NAMESPACE` and `KUBE_SERVICE_DOMAIN` and the dots are 221 characters or more), an error is thrown.
 
-### Input & Output
+### Resolving Links 
 
-Rendering happens using the Operator's docker image.
-One rendering `ExtendedJob` is run for each **BOSH Job** in each **Instance Group** in the **Desired Manifest**.
-
-The input to an actual rendering container for the templates of a **Instance Group** (not data gathering) is:
-
-- the **Desired Manifest** in the form of a `Secret` mount to `/var/vcap/rendering/manifest.yaml`
--  the generated `Secrets` for all **BOSH Variables** used in the **Instance Group** or, used in any of the **BOSH Jobs** consumed by it (via **BOSH Links**),  each as a mount in `/var/vcap/rendering/variables/<SECRET_NAME>`
-
-We take advantage of the `ExtendedJob`'s feature to persist output in a `Secret`.
-
-Example `ExtendedJob`:
-
-```yaml
----
-apiVersion: fissile.cloudfoundry.org/v1alpha1
-kind: ExtendedJob
-metadata:
-  name: "<DEPLOYMENT_NAME>-<RELEASE_NAME>-<JOB_NAME>-renderer"
-spec:
-  run: "now"
-  output:
-    namePrefix: "<DEPLOYMENT_NAME>-<RELEASE_NAME>-<JOB_NAME>"
-    writeOnFailure: false
-    outputType: "json"
-    secretLabels:
-      bosh-deployment: '<DEPLOYMENT_NAME>'
-      bosh-release: 'release-a'
-      bosh-job-name: 'job1'
-    updateOnConfigChange: true
-  template:
-    spec:
-      restartPolicy: 'OnFailure'
-      containers:
-      - name: '<HASH_OF_INSTANCE_GROUP_AND_TEMPLATE_NAME>'
-        image: 'cfcontainerization/operator:1.0.0'
-        command: ['/bin/render-everything']
-        env:
-        - name: 'JOB_NAME'
-          value: 'job1'
-        - name: 'TEMPLATE'
-          value: 'bin/my_ctl.erb'
-```
-
-The output of the rendering process is a JSON object that contains the name of the template and the index of the replica as a key, and the rendered template as a value.
-
-The following is an example output for `instance-group-2` and `release-a`
-```json
-{
-    "start_ctl.sh-0": "#!/bin/sh\necho hello from replica 0",
-    "start_ctl.sh-1": "#!/bin/sh\necho hello from replica 1"
-}
-```
-
-All replicas of a rendered template are mounted. The **init container** that runs in the pod of an **Instance Group** is responsible with symlinking the correct template index to its final location, where they can be used.
-
-We perform rendering in a distinct step **before** running, because of BPM. We require all the rendered information _before_ running. A good example is the entrypoint for a container. With BPM, the entrypoint for replica 0 can be different from replica 1. 
-
-### Properties & Links 
-
-**BOSH Properties** are used straight from the mounted **Desired Manifest Subset**.
-
-**BOSH Properties** that reference **BOSH Variables** have their values set at the time of rendering using the mounted `Secrets`.
-
-All **BOSH Links** are resolved at the time of rendering.
-
-#### Resolving Links
+The following steps describe how to resolve links assuming all information is available. The actual implementation will transform data and store it in between steps, but the outcome must be the same.
 
 To resolve a link, the following steps are performed:
 
@@ -223,11 +196,14 @@ To resolve a link, the following steps are performed:
   - if the link's name has been overridden by an explicit link definition in the `desired manifest`, the `desired manifest` is searched for a corresponding job, that has the same name; if found, the link is populated with the properties of the `provider job`; first, the defaults for the exposed properties (defined in the `provides` section of the spec of the `provider job`) are set to the defaults from the spec, and then the properties from the `desired manifest` are applied on top
   - if there was no explicit override, we search for a job in all the releases, that provides a link with the same `type` 
 
-The `spec` of each job instance can be calculated by the rendering process in each `ExtendedJob`. The required input is the count of replicas for each instance group, and the AZ count, both available in the deployment manifest.
+  > Read more about links here: https://bosh.io/docs/links
+
+### Calculating spec.* and link().instances[].*
+
+The `spec` of each job instance can be calculated:
 
 ```yaml
 name: <name of the job> 
-# TODO: understand if indexes repeat across AZs in BOSH
 index: <index of pod>*<az index>
 az: <BOSH_AZ_INDEX>
 id: <name of the job>-<index>
@@ -235,6 +211,19 @@ address: <calculated address>
 bootstrap: <index == 0>
 ```
 
-  > Note: the `deployment`, `network` and `ip_addresses` keys are not supported by the CF Operator
+## FAQ
 
-  > Read more about links here: https://bosh.io/docs/links
+- Why render BPM separately from all other BOSH Job Templates?
+
+  Because we need information from BPM to actually know what to run.
+  Without that, we don't have an entrypoint, env vars, etc. - so we can't create a pod and a containers for the BOSH Job. 
+
+- Why run all release images for **Data Gathering**?
+
+  We need to run everything all at once because of links. The only way to resolve them is to have all the BOSH Job specs available in one spot.
+
+- Is everything supported in templates, just like BOSH?
+
+  It should, yes. All feature should work the same (that's the goal).
+  There's one exception though - the use of `spec.ip` in `bpm.yml.erb`. Since `bpm.yml` is rendered before the actual instance group runs, in a different pod, `spec.ip` is invalid.
+
