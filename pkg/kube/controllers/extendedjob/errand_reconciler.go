@@ -26,9 +26,13 @@ func NewErrandReconciler(
 	mgr manager.Manager,
 	f setOwnerReferenceFunc,
 ) reconcile.Reconciler {
+
+	errandReconcilerLog := log.Named("extendedjob-errand-reconciler")
+        errandReconcilerLog.Info("Creating a reconciler for errand ExtendedJobs")
+
 	return &ErrandReconciler{
 		client:            mgr.GetClient(),
-		log:               log,
+		log:               errandReconcilerLog,
 		ctrConfig:         ctrConfig,
 		recorder:          mgr.GetRecorder("extendedjob errand reconciler"),
 		scheme:            mgr.GetScheme(),

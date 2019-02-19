@@ -1,3 +1,4 @@
+
 package extendedsecret
 
 import (
@@ -24,8 +25,12 @@ type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) 
 
 // NewReconciler returns a new Reconciler
 func NewReconciler(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager, generator credsgen.Generator, srf setReferenceFunc) reconcile.Reconciler {
+
+	reconcilerLog := log.Named("extendedsecret-reconciler")
+        reconcilerLog.Info("Creating a reconciler for ExtendedSecret")
+
 	return &ReconcileExtendedSecret{
-		log:          log,
+		log:          reconcilerLog,
 		ctrConfig:    ctrConfig,
 		client:       mgr.GetClient(),
 		scheme:       mgr.GetScheme(),
