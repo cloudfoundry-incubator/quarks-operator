@@ -1,5 +1,10 @@
 # cf-operator
-[![master](https://ci.flintstone.cf.cloud.ibm.com/api/v1/teams/containerization/pipelines/cf-operator/jobs/test/badge)](https://ci.flintstone.cf.cloud.ibm.com/teams/containerization/pipelines/cf-operator) [![build](https://ci.flintstone.cf.cloud.ibm.com/api/v1/teams/containerization/pipelines/cf-operator/jobs/build/badge)](https://ci.flintstone.cf.cloud.ibm.com/teams/containerization/pipelines/cf-operator) [![nightly](https://ci.flintstone.cf.cloud.ibm.com/api/v1/teams/containerization/pipelines/cf-operator-nightly/jobs/test/badge)](https://ci.flintstone.cf.cloud.ibm.com/teams/containerization/pipelines/cf-operator-nightly)
+[![master](https://ci.flintstone.cf.cloud.ibm.com/api/v1/teams/containerization/pipelines/cf-operator/jobs/test/badge)](https://ci.flintstone.cf.cloud.ibm.com/teams/containerization/pipelines/cf-operator) 
+[![go report card](https://goreportcard.com/badge/code.cloudfoundry.org/cf-operator)](https://goreportcard.com/badge/code.cloudfoundry.org/cf-operator)
+
+
+|Nightly build|[![nightly](https://ci.flintstone.cf.cloud.ibm.com/api/v1/teams/containerization/pipelines/cf-operator-nightly/jobs/test/badge)](https://ci.flintstone.cf.cloud.ibm.com/teams/containerization/pipelines/cf-operator-nightly)|
+|-|-|
 
 cf-operator will enable the deployment of BOSH Releases, especially Cloud Foundry, to Kubernetes.
 
