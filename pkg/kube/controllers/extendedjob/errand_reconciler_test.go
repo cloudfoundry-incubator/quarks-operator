@@ -133,7 +133,7 @@ var _ = Describe("ErrandReconciler", func() {
 				It("should return and try to requeue", func() {
 					_, err := act()
 					Expect(err).To(HaveOccurred())
-					Expect(logs.FilterMessageSnippet("Failed to revert to 'Run=manually' on job 'fake-exjob': fake-error").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Failed to revert to 'trigger.strategy=manually' on job 'fake-exjob': fake-error").Len()).To(Equal(1))
 					Expect(client.CreateCallCount()).To(Equal(0))
 				})
 			})
@@ -222,7 +222,7 @@ var _ = Describe("ErrandReconciler", func() {
 					request = newRequest(exJob)
 				})
 
-				It("should immediately trigger the job", func() {
+				It("should set the trigger strategy to done and immediately trigger the job", func() {
 					result, err := act()
 					Expect(err).ToNot(HaveOccurred())
 					Expect(result.Requeue).To(BeFalse())
@@ -240,7 +240,7 @@ var _ = Describe("ErrandReconciler", func() {
 						},
 						&exJob,
 					)
-					Expect(exJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerOnce))
+					Expect(exJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
 
 				})
 			})

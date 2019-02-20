@@ -72,11 +72,11 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (result reconcil
 	}
 
 	if extJob.Spec.Trigger.Strategy == ejv1.TriggerNow {
-		// set Run back to manually for errand jobs
+		// set Strategy back to manually for errand jobs
 		extJob.Spec.Trigger.Strategy = ejv1.TriggerManually
 		err = r.client.Update(ctx, extJob)
 		if err != nil {
-			r.log.Errorf("Failed to revert to 'Run=manually' on job '%s': %s", extJob.Name, err)
+			r.log.Errorf("Failed to revert to 'trigger.strategy=manually' on job '%s': %s", extJob.Name, err)
 			return
 		}
 	}
@@ -93,6 +93,16 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (result reconcil
 		return
 	}
 	r.log.Infof("Created errand job for '%s'", extJob.Name)
+
+	if extJob.Spec.Trigger.Strategy == ejv1.TriggerOnce {
+		// traverse Strategy into the final 'done' state
+		extJob.Spec.Trigger.Strategy = ejv1.TriggerDone
+		err = r.client.Update(ctx, extJob)
+		if err != nil {
+			r.log.Errorf("Failed to traverse to 'trigger.strategy=done' on job '%s': %s", extJob.Name, err)
+			return
+		}
+	}
 
 	return
 }

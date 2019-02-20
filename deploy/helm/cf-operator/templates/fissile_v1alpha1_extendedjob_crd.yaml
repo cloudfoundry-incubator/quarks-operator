@@ -39,7 +39,7 @@ spec:
               properties:
                 strategy:
                   type: string
-                  enum: ["manually", "once", "now", "podstate"]
+                  enum: ["manually", "once", "now", "podstate", "done"]
                 when:
                   type: string
                   enum: ["ready", "notready", "created", "deleted"]

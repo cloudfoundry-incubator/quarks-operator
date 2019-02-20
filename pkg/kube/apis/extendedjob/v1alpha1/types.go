@@ -29,6 +29,8 @@ const (
 	TriggerNow Strategy = "now"
 	// TriggerOnce jobs run only once, when created
 	TriggerOnce Strategy = "once"
+	// TriggerDone jobs are no longer triggered. It's the final state for TriggerOnce strategies
+	TriggerDone Strategy = "done"
 )
 
 // Trigger decides how to trigger the ExtendedJob
