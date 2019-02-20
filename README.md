@@ -23,7 +23,7 @@ cf-operator is still missing core functionality.
 ### Start Operator Locally
 
     make up
-    kubectl apply -f deploy/crds/fissile_v1alpha1_boshdeployment_cr.yaml
+    kubectl apply -f docs/examples/fissile_v1alpha1_boshdeployment_cr.yaml
     kubectl get boshdeployments.fissile.cloudfoundry.org
     kubectl get pods --watch
 
