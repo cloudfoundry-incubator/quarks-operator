@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/net/context"
 	yaml "gopkg.in/yaml.v2"
 
-	"golang.org/x/net/context"
 	corev1 "k8s.io/api/core/v1"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	fake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	ctx "code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 	. "code.cloudfoundry.org/cf-operator/pkg/kube/store/manifest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -62,7 +62,7 @@ var _ = Describe("Store", func() {
 	BeforeEach(func() {
 		client = fake.NewFakeClient()
 		store = NewStore(client, namespace, deploymentName)
-		context = controllersconfig.NewBackgroundContext()
+		context = ctx.NewBackgroundContext()
 	})
 
 	Describe("Save", func() {

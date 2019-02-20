@@ -1,7 +1,7 @@
 package extendedjob
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
@@ -19,7 +19,7 @@ import (
 )
 
 // Add creates a new ExtendedJob controller and adds it to the Manager
-func Add(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager) error {
+func Add(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager) error {
 	query := NewQuery(mgr.GetClient(), log)
 	f := controllerutil.SetControllerReference
 	r := NewTriggerReconciler(log, ctrConfig, mgr, query, f)

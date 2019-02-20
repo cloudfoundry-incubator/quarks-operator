@@ -10,7 +10,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
@@ -39,7 +39,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		resolver   fakes.FakeResolver
 		manifest   *bdm.Manifest
 		log        *zap.SugaredLogger
-		ctrsConfig *controllersconfig.ControllersConfig
+		ctrsConfig *context.Config
 	)
 
 	BeforeEach(func() {
@@ -56,9 +56,9 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			},
 		}
 		core, _ := observer.New(zapcore.InfoLevel)
-		ctrsConfig = &controllersconfig.ControllersConfig{ //Set the context to be TODO
+		ctrsConfig = &context.Config{ //Set the context to be TODO
 			CtxTimeOut: 10 * time.Second,
-			CtxType:    controllersconfig.NewContext(),
+			CtxType:    context.NewContext(),
 		}
 		log = zap.New(core).Sugar()
 	})
@@ -153,9 +153,9 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles errors when setting the owner reference on the object", func() {
-				ctrsConfig := &controllersconfig.ControllersConfig{ //Set the context to be TODO
+				ctrsConfig := &context.Config{ //Set the context to be TODO
 					CtxTimeOut: 10 * time.Second,
-					CtxType:    controllersconfig.NewContext(),
+					CtxType:    context.NewContext(),
 				}
 				reconciler = cfd.NewReconciler(log, ctrsConfig, manager, &resolver, func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return fmt.Errorf("failed to set reference")

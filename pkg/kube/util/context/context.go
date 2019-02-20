@@ -1,16 +1,19 @@
-package controllersconfig
+package context
 
 import (
 	"context"
 	"time"
 )
 
-//ControllersConfig controls the behaviour of
-//different controllers
-type ControllersConfig struct {
+//Config controls the behaviour of different controllers
+type Config struct {
 	CtxTimeOut time.Duration
 	CtxType    context.Context
 }
+
+// Context is a type alias for golang's context, to avoid having to import that
+// one just for the type.
+type Context = context.Context
 
 //NewContext returns a non-nil empty context, for usage
 //when it is unclear which context to use.

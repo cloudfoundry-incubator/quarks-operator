@@ -1,7 +1,6 @@
 package extendedstatefulset
 
 import (
-	"context"
 	"crypto/sha1"
 	"encoding/json"
 	"fmt"
@@ -25,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 )
 
 // Check that ReconcileExtendedStatefulSet implements the reconcile.Reconciler interface
@@ -34,7 +33,7 @@ var _ reconcile.Reconciler = &ReconcileExtendedStatefulSet{}
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // NewReconciler returns a new reconcile.Reconciler
-func NewReconciler(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager, srf setReferenceFunc) reconcile.Reconciler {
+func NewReconciler(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager, srf setReferenceFunc) reconcile.Reconciler {
 	reconcilerLog := log.Named("extendedstatefulset-reconciler")
 	reconcilerLog.Info("Creating a reconciler for ExtendedStatefulSet")
 
@@ -53,7 +52,7 @@ type ReconcileExtendedStatefulSet struct {
 	scheme       *runtime.Scheme
 	setReference setReferenceFunc
 	log          *zap.SugaredLogger
-	ctrConfig    *controllersconfig.ControllersConfig
+	ctrConfig    *context.Config
 }
 
 // Reconcile reads that state of the cluster for a ExtendedStatefulSet object
@@ -68,7 +67,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	exStatefulSet := &essv1a1.ExtendedStatefulSet{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
-	ctx, cancel := controllersconfig.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
+	ctx, cancel := context.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
 	defer cancel()
 
 	err := r.client.Get(ctx, request.NamespacedName, exStatefulSet)
