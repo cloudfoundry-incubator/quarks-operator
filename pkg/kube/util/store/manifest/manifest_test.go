@@ -14,7 +14,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	ctx "code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 
-	. "code.cloudfoundry.org/cf-operator/pkg/kube/store/manifest"
+	. "code.cloudfoundry.org/cf-operator/pkg/kube/util/store/manifest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
