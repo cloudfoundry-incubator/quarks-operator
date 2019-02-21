@@ -47,6 +47,7 @@ var rootCmd = &cobra.Command{
 		ctrsConfig := &context.Config{ //Set the context to be TODO
 			CtxTimeOut: 10 * time.Second,
 			CtxType:    context.NewBackgroundContext(),
+			Namespace:  namespace,
 		}
 		mgr, err := operator.NewManager(log, ctrsConfig, kubeConfig, manager.Options{Namespace: namespace})
 		if err != nil {

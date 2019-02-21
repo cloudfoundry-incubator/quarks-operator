@@ -1,9 +1,11 @@
 package controllers
 
 import (
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
@@ -32,6 +34,10 @@ var addToSchemes = runtime.SchemeBuilder{
 	essv1.AddToScheme,
 }
 
+var addHookFuncs = []func(*zap.SugaredLogger, *context.Config, manager.Manager, *webhook.Server) error{
+	extendedstatefulset.AddPod,
+}
+
 // AddToManager adds all Controllers to the Manager
 func AddToManager(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manager) error {
 	for _, f := range addToManagerFuncs {
@@ -45,4 +51,26 @@ func AddToManager(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.M
 // AddToScheme adds all Resources to the Scheme
 func AddToScheme(s *runtime.Scheme) error {
 	return addToSchemes.AddToScheme(s)
+}
+
+// AddHooks adds all web hooks to the Manager
+func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manager) error {
+	log.Info("Setting up webhook server")
+
+	// TODO: port should be configurable
+	hookServer, err := webhook.NewServer("cf-operator", m, webhook.ServerOptions{
+		Port:    2999,
+		CertDir: "/tmp/cert",
+	})
+
+	if err != nil {
+		return errors.Wrap(err, "unable to create a new webhook server")
+	}
+
+	for _, f := range addHookFuncs {
+		if err := f(log, ctrConfig, m, hookServer); err != nil {
+			return err
+		}
+	}
+	return nil
 }

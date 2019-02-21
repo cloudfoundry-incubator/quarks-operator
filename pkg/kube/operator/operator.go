@@ -23,6 +23,11 @@ func NewManager(log *zap.SugaredLogger, ctrConfig *context.Config, cfg *rest.Con
 		return
 	}
 
+	// Setup Hooks for all resources
+	if err = controllers.AddHooks(log, ctrConfig, mgr); err != nil {
+		return
+	}
+
 	// Setup all Controllers
 	err = controllers.AddToManager(log, ctrConfig, mgr)
 	return

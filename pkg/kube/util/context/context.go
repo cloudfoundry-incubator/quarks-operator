@@ -9,6 +9,7 @@ import (
 type Config struct {
 	CtxTimeOut time.Duration
 	CtxType    context.Context
+	Namespace  string
 }
 
 // Context is a type alias for golang's context, to avoid having to import that

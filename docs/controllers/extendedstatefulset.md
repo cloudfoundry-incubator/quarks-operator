@@ -79,7 +79,11 @@ If a failure has occurred (e.g. canary has failed), the StatefulSet is annotated
 ### Detect if StatefulSet versions are running
 
 During upgrades, there is more than one `StatefulSet` version for an `ExtendedStatefulSet` resource.
+<<<<<<< HEAD
 The operator can list available versions and store status that keeps track of which is running:
+=======
+The ability to list available versions, and store versions status that keeps track of whether a version is running:
+>>>>>>> Add webhook scaffolding to the operator
 
 ```yaml
 status:
@@ -89,14 +93,20 @@ status:
 
 ```
 
+<<<<<<< HEAD
 A version running means that at least one pod that belongs to a `StatefulSet` is running.
 When a version **n** is running, any version lower than **n** is deleted.
+=======
+A version running means that at least one pod that belongs to the `StatefulSet` is running.
+When a version is running, any version lower than it is deleted.
+>>>>>>> Add webhook scaffolding to the operator
 
 ```yaml
 status:
   versions:
     # version 1 was cleaned up
     "2": true
+<<<<<<< HEAD
 ```
 
 The controller continues to reconcile until there's only one version.
@@ -140,6 +150,8 @@ affinity:
         - key: "failure-domain.beta.kubernetes.io/zone"
           operator: In
           values: ["us-central1-a"]
+=======
+>>>>>>> Add webhook scaffolding to the operator
 ```
 
 If zones are set for an `ExtendedStatefulSet`, the following occurs:
@@ -173,6 +185,12 @@ If zones are set for an `ExtendedStatefulSet`, the following occurs:
   CF_OPERATOR_AZ_INDEX=="zone index"
   ```
 
+### Volume Management
+
+### AZ Support
+
+TODO
+
 ## Example Resource
 
 ```yaml
@@ -182,10 +200,15 @@ kind: ExtendedStatefulSet
 metadata:
   name: MyExtendedStatefulSet
 spec:
+<<<<<<< HEAD
   # Name of the label that defines the zone for a node
   zoneNodeLabel: "failure-domain.beta.kubernetes.io/zone"
   # List of zones this ExtendedStatefulSet should be deployed on
   zones: ["us-central1-a", "us-central1-b"]
+=======
+  az:
+    
+>>>>>>> Add webhook scaffolding to the operator
   scaling:
     # Minimum replica count for the StatefulSet
     min: 3
