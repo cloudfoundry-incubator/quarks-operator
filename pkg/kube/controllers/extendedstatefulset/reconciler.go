@@ -131,11 +131,13 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 
 	// Update StatefulSets configSHA1 and trigger statefulSet rollingUpdate if necessary
 	if exStatefulSet.Spec.UpdateOnEnvChange {
+        r.log.Debugf("Considering configurations to trigger update.")
+
 		err = r.updateStatefulSetsConfigSHA1(ctx, exStatefulSet)
 		if err != nil {
 			// TODO fix the object has been modified
 			r.log.Error("Could not update StatefulSets owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
-			return reconcile.Result{}, err
+			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, err
 		}
 	}
 	ptrStatefulSetVersions := &statefulSetVersions
@@ -164,7 +166,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 
 	if !statefulSetVersions[desiredVersion] {
 		r.log.Debug("Waiting desired version available")
-		return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, nil
+		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 
 	// Reconcile stops since only one version or no version exists.
@@ -226,7 +228,7 @@ func (r *ReconcileExtendedStatefulSet) createStatefulSet(ctx context.Context, ex
 
 // cleanupStatefulSets cleans up StatefulSets and versions if they are no longer required
 func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet, maxAvailableVersion int, versions *map[int]bool) error {
-	r.log.Info("Cleaning up StatefulSets for ExtendedStatefulSet '%s' less than version %d.", exStatefulSet.Name, maxAvailableVersion)
+	r.log.Infof("Cleaning up StatefulSets for ExtendedStatefulSet '%s' less than version %d.", exStatefulSet.Name, maxAvailableVersion)
 
 	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
 	if err != nil {
@@ -691,7 +693,7 @@ func (r *ReconcileExtendedStatefulSet) removeOwnerReferences(ctx context.Context
 		// Compare the ownerRefs and update if they have changed
 		if !reflect.DeepEqual(ownerRefs, child.GetOwnerReferences()) {
 			child.SetOwnerReferences(ownerRefs)
-			r.log.Debug("Removing child '", child.GetName(), "' from StatefulSet '", obj.Name, "' in namespace '", obj.Namespace, "'.")
+			r.log.Debug("Removing child '", child.GetNamespace(), "/",child.GetName(), "' from StatefulSet '", obj.Name, "' in namespace '", obj.Namespace, "'.")
 			err := r.client.Update(ctx, child)
 			if err != nil {
 				r.log.Error("Could not update '", child.GetName(), "': ", err)
@@ -741,7 +743,7 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extende
 	err = r.removeOwnerReferences(ctx, extendedStatefulSet, existingConfigs)
 	if err != nil {
 		r.log.Error("Could not remove OwnerReferences pointing to ExtendedStatefulSet '", extendedStatefulSet.Name, "': ", err)
-		return reconcile.Result{}, err
+		return reconcile.Result{Requeue: true, RequeueAfter: 1*time.Second}, err
 	}
 
 	// Remove the object's Finalizer and update if necessary

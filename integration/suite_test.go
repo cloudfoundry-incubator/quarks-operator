@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"testing"
+	"time"
 
 	"code.cloudfoundry.org/cf-operator/integration/environment"
 	. "github.com/onsi/ginkgo"
@@ -28,6 +29,7 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	if stopOperator != nil {
+		time.Sleep(3*time.Second)
 		defer stopOperator()
 	}
 })
