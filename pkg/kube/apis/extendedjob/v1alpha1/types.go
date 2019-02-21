@@ -14,7 +14,7 @@ import (
 // ExtendedJobSpec defines the desired state of ExtendedJob
 type ExtendedJobSpec struct {
 	Output               *Output                `json:"output,omitempty"`
-	Trigger              *Trigger               `json:"trigger,omitempty"`
+	Trigger              Trigger                `json:"trigger"`
 	Template             corev1.PodTemplateSpec `json:"template"`
 	UpdateOnConfigChange bool                   `json:"updateOnConfigChange"`
 }

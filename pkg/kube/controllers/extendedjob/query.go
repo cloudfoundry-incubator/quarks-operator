@@ -58,7 +58,7 @@ func (q *QueryImpl) Match(extJob ejv1.ExtendedJob, pod corev1.Pod) bool {
 
 // MatchState checks pod state against state from extended job
 func (q *QueryImpl) MatchState(extJob ejv1.ExtendedJob, podState ejv1.PodState) bool {
-	if extJob.Spec.Trigger.PodState.When == podState {
+	if extJob.Spec.Trigger.PodState != nil && extJob.Spec.Trigger.PodState.When == podState {
 		return true
 	}
 	return false

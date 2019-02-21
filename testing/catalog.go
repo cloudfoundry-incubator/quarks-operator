@@ -590,7 +590,7 @@ func (c *Catalog) OutputExtendedJob(name string, template corev1.PodTemplateSpec
 	return &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
-			Trigger: &ejv1.Trigger{
+			Trigger: ejv1.Trigger{
 				Strategy: "podstate",
 				PodState: &ejv1.PodStateTrigger{
 					When:     "ready",
@@ -612,7 +612,7 @@ func (c *Catalog) LabelTriggeredExtendedJob(name string, state ejv1.PodState, ml
 	return &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
-			Trigger: &ejv1.Trigger{
+			Trigger: ejv1.Trigger{
 				Strategy: "podstate",
 				PodState: &ejv1.PodStateTrigger{
 					When: state,
@@ -656,7 +656,7 @@ func (c *Catalog) ErrandExtendedJob(name string) ejv1.ExtendedJob {
 	return ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
-			Trigger: &ejv1.Trigger{
+			Trigger: ejv1.Trigger{
 				Strategy: ejv1.TriggerNow,
 			},
 			Template: c.CmdPodTemplate(cmd),
@@ -670,7 +670,7 @@ func (c *Catalog) AutoErrandExtendedJob(name string) ejv1.ExtendedJob {
 	return ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
-			Trigger: &ejv1.Trigger{
+			Trigger: ejv1.Trigger{
 				Strategy: ejv1.TriggerOnce,
 			},
 			Template: c.CmdPodTemplate(cmd),

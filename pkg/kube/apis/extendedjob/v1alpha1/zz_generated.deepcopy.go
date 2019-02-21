@@ -83,11 +83,7 @@ func (in *ExtendedJobSpec) DeepCopyInto(out *ExtendedJobSpec) {
 		*out = new(Output)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Trigger != nil {
-		in, out := &in.Trigger, &out.Trigger
-		*out = new(Trigger)
-		(*in).DeepCopyInto(*out)
-	}
+	in.Trigger.DeepCopyInto(&out.Trigger)
 	in.Template.DeepCopyInto(&out.Template)
 	return
 }
