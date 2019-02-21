@@ -26,6 +26,7 @@ import (
 
 	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
 )
 
 const OptimisticLockErrorMsg = "the object has been modified; please apply your changes to the latest version and try again"
@@ -440,7 +441,7 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 	}
 
 	// Add the object's Finalizer and update if necessary
-	if !exStatefulSet.HasFinalizer() {
+	if !finalizer.HasFinalizer(exStatefulSet) {
 		r.log.Debug("Adding Finalizer to ExtendedStatefulSet '", exStatefulSet.Name, "'.")
 		// Fetch latest ExtendedStatefulSet before update
 		key := types.NamespacedName{Namespace: exStatefulSet.GetNamespace(), Name: exStatefulSet.GetName()}
@@ -449,7 +450,7 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 			return errors.Wrapf(err, "Could not get ExtendedStatefulSet '%s'", exStatefulSet.GetName())
 		}
 
-		exStatefulSet.AddFinalizer()
+		finalizer.AddFinalizer(exStatefulSet)
 
 		err = r.client.Update(ctx, exStatefulSet)
 		if err != nil {
@@ -757,7 +758,7 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extende
 
 	// Remove the object's Finalizer and update if necessary
 	copy := extendedStatefulSet.DeepCopy()
-	copy.RemoveFinalizer()
+	finalizer.RemoveFinalizer(copy)
 	if !reflect.DeepEqual(extendedStatefulSet, copy) {
 		r.log.Debug("Removing finalizer from ExtendedStatefulSet '", copy.Name, "'.")
 		key := types.NamespacedName{Namespace: copy.GetNamespace(), Name: copy.GetName()}
@@ -766,7 +767,7 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extende
 			return reconcile.Result{}, errors.Wrapf(err, "Could not get ExtendedStatefulSet ''%s'", copy.GetName())
 		}
 
-		copy.RemoveFinalizer()
+		finalizer.RemoveFinalizer(copy)
 
 		err = r.client.Update(ctx, copy)
 		if err != nil {

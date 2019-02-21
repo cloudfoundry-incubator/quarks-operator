@@ -25,6 +25,7 @@ import (
 	exssc "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	cfctx "code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 
 	. "github.com/onsi/ginkgo"
@@ -484,7 +485,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 						By("Adds a finalizer to the ExtendedStatefulSet", func() {
 							err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
 							Expect(err).ToNot(HaveOccurred())
-							Expect(ess.GetFinalizers()).Should(ContainElement(exss.FinalizerString))
+							Expect(ess.GetFinalizers()).Should(ContainElement(finalizer.FinalizerString))
 						})
 					})
 				})
