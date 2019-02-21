@@ -168,6 +168,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	}
 
 	// Reconcile stops since only one version or no version exists.
+	r.log.Debug("Version '", desiredVersion, "' is available")
 	return reconcile.Result{}, nil
 }
 

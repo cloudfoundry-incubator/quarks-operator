@@ -58,7 +58,14 @@ func (m *Machine) WaitForPods(namespace string, labels string) error {
 	})
 }
 
-// WaitForExtendedStatefulSets blocks until at least one WaitForExtendedStatefulSet is found. It fails after the timeout.
+// WaitForStatefulSetNewGeneration blocks until at least one StatefulSet is found. It fails after the timeout.
+func (m *Machine) WaitForStatefulSetNewGeneration(namespace string, name string, currentVersion int64) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.StatefulSetNewGeneration(namespace, name, currentVersion)
+	})
+}
+
+// WaitForExtendedStatefulSets blocks until at least one ExtendedStatefulSet is found. It fails after the timeout.
 func (m *Machine) WaitForExtendedStatefulSets(namespace string, labels string) error {
 	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
 		return m.ExtendedStatefulSetExists(namespace, labels)
@@ -66,9 +73,9 @@ func (m *Machine) WaitForExtendedStatefulSets(namespace string, labels string) e
 }
 
 // WaitForExtendedStatefulSetAvailable blocks until latest version is available. It fails after the timeout.
-func (m *Machine) WaitForExtendedStatefulSetAvailable(namespace string, name string) error {
+func (m *Machine) WaitForExtendedStatefulSetAvailable(namespace string, name string, version int) error {
 	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
-		return m.ExtendedStatefulSetAvailable(namespace, name)
+		return m.ExtendedStatefulSetAvailable(namespace, name, version)
 	})
 }
 
@@ -84,30 +91,37 @@ func (m *Machine) ExtendedStatefulSetExists(namespace string, labels string) (bo
 	return len(esss.Items) > 0, nil
 }
 
-// ExtendedStatefulSetAvailable returns true if at least one latest version pod is running
-func (m *Machine) ExtendedStatefulSetAvailable(namespace string, name string) (bool, error) {
-	fieldSelector := fields.Set{"metadata.name": name}.AsSelector()
-	esss, err := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace).List(metav1.ListOptions{
-		FieldSelector: fieldSelector.String(),
-	})
+// StatefulSetNewGeneration returns true if StatefulSet has new generation
+func (m *Machine) StatefulSetNewGeneration(namespace string, name string, version int64) (bool, error) {
+	client := m.Clientset.AppsV1beta1().StatefulSets(namespace)
+
+	ss, err := client.Get(name, metav1.GetOptions{})
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to query for ess by name: %v", name)
+		return false, errors.Wrapf(err, "failed to query for statefulSet by name: %v", name)
 	}
 
-	if len(esss.Items) != 1 {
-		return false, nil
+	if *ss.Status.ObservedGeneration> version{
+		return true, nil
 	}
 
-	ess := esss.Items[0]
+	return false, nil
+}
+
+// ExtendedStatefulSetAvailable returns true if current version is available
+func (m *Machine) ExtendedStatefulSetAvailable(namespace string, name string, version int) (bool, error) {
+	latestVersion := version
+
+	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
+
+	ess, err := client.Get(name, metav1.GetOptions{})
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to query for extendedStatefulSet by name: %v", name)
+	}
 
 	if len(ess.Status.Versions) == 0 {
 		return false, nil
 	}
 
-	var latestVersion int
-	for latestVersion = range ess.Status.Versions {
-		break
-	}
 	for n := range ess.Status.Versions {
 		if n > latestVersion {
 			latestVersion = n
@@ -376,7 +390,7 @@ func (m *Machine) PodLabeled(namespace string, name string, desiredLabel, desire
 	if pod.ObjectMeta.Labels[desiredLabel] == desiredValue {
 		return true, nil
 	}
-	return false, fmt.Errorf("Cannot match the desired label with %s", desiredValue)
+	return false, fmt.Errorf("cannot match the desired label with %s", desiredValue)
 }
 
 // DeleteJobs deletes all the jobs
