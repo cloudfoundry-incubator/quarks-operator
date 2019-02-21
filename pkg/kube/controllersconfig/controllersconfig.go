@@ -10,6 +10,7 @@ import (
 type ControllersConfig struct {
 	CtxTimeOut time.Duration
 	CtxType    context.Context
+	Namespace  string
 }
 
 //NewContext returns a non-nil empty context, for usage

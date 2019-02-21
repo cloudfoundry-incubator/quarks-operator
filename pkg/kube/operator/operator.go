@@ -5,8 +5,8 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 )
 
 // NewManager adds schemes, controllers and starts the manager
@@ -20,6 +20,11 @@ func NewManager(log *zap.SugaredLogger, ctrConfig *controllersconfig.Controllers
 
 	// Setup Scheme for all resources
 	if err = controllers.AddToScheme(mgr.GetScheme()); err != nil {
+		return
+	}
+
+	// Setup Hooks for all resources
+	if err = controllers.AddHooks(log, ctrConfig, mgr); err != nil {
 		return
 	}
 

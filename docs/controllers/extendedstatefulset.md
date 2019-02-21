@@ -7,6 +7,9 @@
     - [Automatic Restart of Containers](#automatic-restart-of-containers)
     - [Extended Upgrade Support](#extended-upgrade-support)
     - [Annotated if Stale](#annotated-if-stale)
+    - [Detect if StatefulSet versions are running](#detect-if-statefulset-versions-are-running)
+    - [Volume Management](#volume-management)
+    - [AZ Support](#az-support)
   - [Example Resource](#example-resource)
 
 ## Description
@@ -24,7 +27,7 @@ The operator watches all the ConfigMaps and Secrets referenced by the StatefulSe
 
 > See [this implementation](https://thenewstack.io/solving-kubernetes-configuration-woes-with-a-custom-controller/) for inspiration
 
-Adding an OwnerReference to all ConfigMaps and Secrets that are referenced by a StatefulSet. 
+Adding an OwnerReference to all ConfigMaps and Secrets that are referenced by a StatefulSet.
 
 ```yaml
 apiVersion: v1
@@ -73,11 +76,10 @@ An ability to run an `ExtendedJob` before and after the upgrade. The Job can abo
 
 If a failure has occurred (e.g. canary has failed), the StatefulSet is annotated as being stale.
 
-### Detect if StatefulSet versions is running
+### Detect if StatefulSet versions are running
 
-During upgrades, there is more than one version for an ExtendedStatefulSet resource.
-
-Ability to look at what versions are available, and store versions status that keeps track of if version is running:
+During upgrades, there is more than one `StatefulSet` version for an `ExtendedStatefulSet` resource.
+The ability to list available versions, and store versions status that keeps track of whether a version is running:
 
 ```yaml
 status:
@@ -87,18 +89,23 @@ status:
 
 ```
 
-One version is running is mean that at least one pod that belongs to this StatefulSet is running.
+A version running means that at least one pod that belongs to the `StatefulSet` is running.
+When a version is running, any version lower than it is deleted.
 
-When latest version is running, any version smaller than the greatest version running is deleted.
 ```yaml
 status:
   versions:
     # version 1 was cleaned up
-    "2": true 
-
+    "2": true
 ```
 
 Controller will continue to reconcile until there's only one version.
+
+### Volume Management
+
+### AZ Support
+
+TODO
 
 ## Example Resource
 
@@ -109,6 +116,8 @@ kind: ExtendedStatefulSet
 metadata:
   name: MyExtendedStatefulSet
 spec:
+  az:
+    
   scaling:
     # Minimum replica count for the StatefulSet
     min: 3
