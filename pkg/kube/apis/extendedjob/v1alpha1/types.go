@@ -36,7 +36,7 @@ const (
 // Trigger decides how to trigger the ExtendedJob
 type Trigger struct {
 	Strategy Strategy         `json:"strategy"`
-	PodState *PodStateTrigger `json:"podstate, omitempty"`
+	PodState *PodStateTrigger `json:"podstate,omitempty"`
 }
 
 // PodState is our abstraction of the pods state with regards to triggered
