@@ -11,11 +11,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 )
 
 // Add creates a new ExtendedStatefulSet controller and adds it to the Manager
-func Add(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager) error {
+func Add(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager) error {
 	log.Info("Creating the ExtendedStatefulSet controller")
 	r := NewReconciler(log, ctrConfig, mgr, controllerutil.SetControllerReference)
 

@@ -9,14 +9,14 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 )
 
-var addToManagerFuncs = []func(*zap.SugaredLogger, *controllersconfig.ControllersConfig, manager.Manager) error{
+var addToManagerFuncs = []func(*zap.SugaredLogger, *context.Config, manager.Manager) error{
 	boshdeployment.Add,
 	extendedjob.Add,
 	extendedjob.AddErrand,
@@ -32,7 +32,7 @@ var addToSchemes = runtime.SchemeBuilder{
 }
 
 // AddToManager adds all Controllers to the Manager
-func AddToManager(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, m manager.Manager) error {
+func AddToManager(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manager) error {
 	for _, f := range addToManagerFuncs {
 		if err := f(log, ctrConfig, m); err != nil {
 			return err

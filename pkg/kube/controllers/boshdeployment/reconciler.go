@@ -17,7 +17,7 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 )
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
@@ -26,10 +26,10 @@ var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // NewReconciler returns a new reconcile.Reconciler
-func NewReconciler(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
+func NewReconciler(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
 
 	reconcilerLog := log.Named("boshdeployment-reconciler")
-        reconcilerLog.Info("Creating a reconciler for BoshDeployment")
+	reconcilerLog.Info("Creating a reconciler for BoshDeployment")
 
 	return &ReconcileBOSHDeployment{
 		log:          reconcilerLog,
@@ -52,7 +52,7 @@ type ReconcileBOSHDeployment struct {
 	resolver     bdm.Resolver
 	setReference setReferenceFunc
 	log          *zap.SugaredLogger
-	ctrConfig    *controllersconfig.ControllersConfig
+	ctrConfig    *context.Config
 }
 
 // Reconcile reads that state of the cluster for a BOSHDeployment object and makes changes based on the state read
@@ -67,7 +67,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	instance := &bdc.BOSHDeployment{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
-	ctx, cancel := controllersconfig.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
+	ctx, cancel := context.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
 	defer cancel()
 
 	err := r.client.Get(ctx, request.NamespacedName, instance)

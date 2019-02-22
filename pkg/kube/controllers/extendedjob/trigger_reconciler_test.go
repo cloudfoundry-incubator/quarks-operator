@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
 	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
+	cfctx "code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -33,7 +33,7 @@ var _ = Describe("TriggerReconciler", func() {
 		var (
 			env        testing.Catalog
 			logs       *observer.ObservedLogs
-			ctrsConfig *controllersconfig.ControllersConfig
+			ctrsConfig *cfctx.Config
 			log        *zap.SugaredLogger
 			mgr        *fakes.FakeManager
 			query      *fakes.FakeQuery
@@ -89,9 +89,9 @@ var _ = Describe("TriggerReconciler", func() {
 		BeforeEach(func() {
 			controllers.AddToScheme(scheme.Scheme)
 			logs, log = testing.NewTestLogger()
-			ctrsConfig = &controllersconfig.ControllersConfig{ //Set the context to be TODO
+			ctrsConfig = &cfctx.Config{ //Set the context to be TODO
 				CtxTimeOut: 10 * time.Second,
-				CtxType:    controllersconfig.NewContext(),
+				CtxType:    cfctx.NewContext(),
 			}
 			mgr = &fakes.FakeManager{}
 			query = &fakes.FakeQuery{}
