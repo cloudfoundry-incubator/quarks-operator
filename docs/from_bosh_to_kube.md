@@ -59,9 +59,9 @@
 
 As the `BOSHDeployment` is deleted, all owned resources are automatically deleted.
 
-## Open Questions and TODOs 
+## Open Questions and TODOs
 
-1. Detailed specification for dealing with AZs 
+1. Detailed specification for dealing with AZs
 2. How do we specify credentials for docker registries containing release images?
    - we could extend the deployment manifest schema (with agreement from the BOSH team)
    - we could have a special k8s secret, which by convention is always named something like `docker-registry-secrets` and contains hostnames-to-credential mappings. e.g.:
@@ -86,7 +86,7 @@ As the `BOSHDeployment` is deleted, all owned resources are automatically delete
 ---
 # The name of the deployment.
 # It's used to namespace resources created for this deployment.
-# Based on docs [1], names should be less than 253 characters. We should limit this to 
+# Based on docs [1], names should be less than 253 characters. We should limit this to
 # characters in the operator, to make sure that with any suffix, we won't go beyond the limit.
 name: "foo"
 # Not used by the cf-operator.
@@ -99,12 +99,12 @@ features:
   # the value will be automatically updated.
   # The operator won't be able to control this behavior.
   # A warning is printed in the logs if this is present.
-  converge_variables: true 
+  converge_variables: true
   # Randomizes AZs for left over instances that cannot be distributed equally between AZs.
-  # Not currently used. It's likely that we'll be able to support this. 
+  # Not currently used. It's likely that we'll be able to support this.
   randomize_az_placement: false
   # Enables or disables returning of DNS addresses in links.
-  # In Kubernetes we always use DNS addresses. 
+  # In Kubernetes we always use DNS addresses.
   # An error should be returned if this value is set to false.
   use_dns_addresses: true
 # A list of all releases used in this deployment.
@@ -120,10 +120,10 @@ releases:
   # Required for the operator. Link to the registry and organization containing the image.
   url: "docker.io/cloudfoundry"
   # Not used by the cf-operator.
-  # Integrity of the image itself is handled by whatever 
-  # container runtime and the image registry. 
+  # Integrity of the image itself is handled by whatever
+  # container runtime and the image registry.
   sha1: "332ac15609b220a3fdf5efad0e0aa069d8235788"
-  # Required by the operator 
+  # Required by the operator
   stemcell:
     # OS of the stemcell used by the release. Used to construct the image name.
     os: "opensuse"
@@ -140,7 +140,7 @@ releases:
 stemcells: []
 # Specifies how updates are handled
 # The cf-operator uses some of these settings.
-update: 
+update:
   # The number of pods to deploy in the new version of an ExtendedStatefulSet
   # Once canaries are running, deployment can continue.
   # TODO: Support for canaries needs implementation in ExtendedStatefulSet.
@@ -176,7 +176,7 @@ instance_groups:
     name: "cloud_controller_ng"
     # The name of a release that must exist in the releases block.
     # If it doesn't exist in the releases block, an error is thrown.
-    # The docker image used for the container is resolved using this release name. 
+    # The docker image used for the container is resolved using this release name.
     release: "capi-release"
     # Used by the cf-operator to calculate links before rendering templates.
     # All resources in the cf-operator are deterministic (IP addresses are not used),
@@ -195,7 +195,7 @@ instance_groups:
     # template's secret is (re)generated.
     # All properties are input to this ExtendedJob that does rendering.
     # Some properties can reference variables, which are generated. The cf-operator
-    # collects values for all properties before starting the rendering process. 
+    # collects values for all properties before starting the rendering process.
     properties:
       domain: "mycf.com"
       admin_password: "((adminpass))"
@@ -225,10 +225,10 @@ instance_groups:
           protocol: "TCP"
           internal: 8080
   # Not used by the cf-operator.
-  # A warning is logged if this is set. 
+  # A warning is logged if this is set.
   vm_type: ""
-  # Not used by the cf-operator. 
-  # A warning is logged if this is set. 
+  # Not used by the cf-operator.
+  # A warning is logged if this is set.
   vm_extensions: []
   # Used by the cf-operator to limit the resources used by a container in a pod
   vm_resources:
@@ -239,7 +239,7 @@ instance_groups:
     # TODO: figure out if we need to use ephemeral disks
     ephemeral_disk_size: 4096
   # Not used by the cf-operator.
-  # A warning is logged if this is set. 
+  # A warning is logged if this is set.
   stemcell: ""
   # Size of the volume attached to a pod container.
   # TODO: understand if this needs to be a shared volume, attached to each container,
@@ -257,17 +257,17 @@ instance_groups:
       # Not used by the cf-operator
       default: []
   # Specific update settings for this instance group. Use this to override global job update settings on a per-instance-group basis.
-  update: {} 
+  update: {}
   # TODO: understand how instance group renames can occur in an ExtendedStatefulSet or ExtendedJob
   migrated_from:
   - cloud_controller
   # This is the key that controls how an instance group is treated by the cf-operator.
   # If lifecycle is "service", an ExtendedStatefulSet is created for the instance group.
-  # Otherwise, if it's "errand", an ExtendedJob is created. As with normal BOSH, errands have a 
+  # Otherwise, if it's "errand", an ExtendedJob is created. As with normal BOSH, errands have a
   # manual trigger, so ExtendedJobs have to support this (manual triggers).
   # In Kubernetes we also need errands that can run on a trigger. These are not supported by BOSH.
   # The lifecycle for such an ExtendedJob is "auto-errand".
-  # TODO: how are manual triggers handled? 
+  # TODO: how are manual triggers handled?
   lifecycle: "service"
   # Deprecated - the cf-operator does not support this key.
   # An error is thrown if this is set.
@@ -348,6 +348,37 @@ tags:
 ## Conversion Details
 
 ### Calculation of docker image location for releases
+
+The release image locations are comprised of multiple elements: the docker registry URL, the organization and repository, the stemcell name and version, the fissile version and the release name and version. Release image locations always have to be resolved in the context of an instance group/job because it depends on the stemcell that is being used.
+
+A typical release image location looks could look like `hub.docker.com/cfcontainerization/cflinuxfs3-release:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0`.
+
+The different elements are taken from different places in the manifest. Given this excerpt from a BOSH deployment manifest:
+
+```yaml
+stemcells:
+- alias: default
+  os: opensuse-42.3
+  version: 28.g837c5b3-30.263-7.0.0_234.gcd7d1132
+instance_groups:
+- name: diego-cell
+  stemcell: default
+  jobs:
+  - name: cflinuxfs3-rootfs-setup
+    release: cflinuxfs3
+releases:
+- name: cflinuxfs3
+  version: 0.62.0
+  url: hub.docker.com/cfcontainerization
+  sha1: 6466c44827c3493645ca34b084e7c21de23272b4
+  stemcell:
+    os: opensuse-15.0
+    version: 28.g837c5b3-30.263-7.0.0_233.gde0accd0
+```
+
+the stemcell information (name, and stemcell and fissile version) are taken from the `stemcells` entry that matches the instance group's stemcell alias. The registry URL including the organization, the release name, and the version com from the `releases` entry that's referenced from the job.
+
+*Note*: Releases can optionally specify a separate `stemcell` section, in which case the information from the instance group stemcell is overridden.
 
 ### Variables to Extended Secrets
 
