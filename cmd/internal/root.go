@@ -8,9 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
-
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -40,9 +39,9 @@ var rootCmd = &cobra.Command{
 
 		log.Infof("Starting cf-operator with namespace %s", namespace)
 
-		ctrsConfig := &controllersconfig.ControllersConfig{ //Set the context to be TODO
+		ctrsConfig := &context.Config{ //Set the context to be TODO
 			CtxTimeOut: 10 * time.Second,
-			CtxType:    controllersconfig.NewBackgroundContext(),
+			CtxType:    context.NewBackgroundContext(),
 		}
 		mgr, err := operator.NewManager(log, ctrsConfig, kubeConfig, manager.Options{Namespace: namespace})
 		if err != nil {

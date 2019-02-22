@@ -1,7 +1,6 @@
 package extendedstatefulset
 
 import (
-	"context"
 	"crypto/sha1"
 	"encoding/json"
 	"fmt"
@@ -25,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 )
 
 // Check that ReconcileExtendedStatefulSet implements the reconcile.Reconciler interface
@@ -34,7 +33,7 @@ var _ reconcile.Reconciler = &ReconcileExtendedStatefulSet{}
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // NewReconciler returns a new reconcile.Reconciler
-func NewReconciler(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager, srf setReferenceFunc) reconcile.Reconciler {
+func NewReconciler(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager, srf setReferenceFunc) reconcile.Reconciler {
 	reconcilerLog := log.Named("extendedstatefulset-reconciler")
 	reconcilerLog.Info("Creating a reconciler for ExtendedStatefulSet")
 
@@ -53,7 +52,7 @@ type ReconcileExtendedStatefulSet struct {
 	scheme       *runtime.Scheme
 	setReference setReferenceFunc
 	log          *zap.SugaredLogger
-	ctrConfig    *controllersconfig.ControllersConfig
+	ctrConfig    *context.Config
 }
 
 // Reconcile reads that state of the cluster for a ExtendedStatefulSet object
@@ -68,7 +67,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	exStatefulSet := &essv1a1.ExtendedStatefulSet{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
-	ctx, cancel := controllersconfig.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
+	ctx, cancel := context.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
 	defer cancel()
 
 	err := r.client.Get(ctx, request.NamespacedName, exStatefulSet)
@@ -538,19 +537,19 @@ func getConfigNamesFromSpec(statefulSet *v1beta2.StatefulSet) (map[string]struct
 }
 
 // listConfigsOwnedBy returns a list of all ConfigMaps and Secrets that are
-// owned by the StatefulSet instance
+// owned by the ExtendedStatefulSet instance
 func (r *ReconcileExtendedStatefulSet) listConfigsOwnedBy(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) ([]essv1a1.Object, error) {
 	r.log.Debug("Getting all ConfigMaps and Secrets that are owned by '", exStatefulSet.Name, "'.")
 	opts := client.InNamespace(exStatefulSet.GetNamespace())
 
-	// List all ConfigMaps in the StatefulSet's namespace
+	// List all ConfigMaps in the ExtendedStatefulSet's namespace
 	configMaps := &corev1.ConfigMapList{}
 	err := r.client.List(ctx, opts, configMaps)
 	if err != nil {
 		return []essv1a1.Object{}, fmt.Errorf("error listing ConfigMaps: %v", err)
 	}
 
-	// List all Secrets in the StatefulSet's namespace
+	// List all Secrets in the ExtendedStatefulSet's namespace
 	secrets := &corev1.SecretList{}
 	err = r.client.List(ctx, opts, secrets)
 	if err != nil {
@@ -558,7 +557,7 @@ func (r *ReconcileExtendedStatefulSet) listConfigsOwnedBy(ctx context.Context, e
 	}
 
 	// Iterate over the ConfigMaps/Secrets and add the ones owned by the
-	// StatefulSet to the output list configs
+	// ExtendedStatefulSet to the output list configs
 	configs := []essv1a1.Object{}
 	for _, cm := range configMaps.Items {
 		if isOwnedBy(&cm, exStatefulSet) {
@@ -676,11 +675,11 @@ func (r *ReconcileExtendedStatefulSet) updateOwnerReferences(ctx context.Context
 	return nil
 }
 
-// removeOwnerReferences iterates over a list of children and removes the owner
-// reference from the child before updating it
+// removeOwnerReferences iterates over a list of children and removes the
+// ExtendedStatefulSet owner reference from the child before updating it
 func (r *ReconcileExtendedStatefulSet) removeOwnerReferences(ctx context.Context, obj *essv1a1.ExtendedStatefulSet, children []essv1a1.Object) error {
 	for _, child := range children {
-		// Filter the existing ownerReferences
+		// Filter ExtendedStatefulSet from the existing ownerReferences
 		ownerRefs := []metav1.OwnerReference{}
 		for _, ref := range child.GetOwnerReferences() {
 			if ref.UID != obj.UID {

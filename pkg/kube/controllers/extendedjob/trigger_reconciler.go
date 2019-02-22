@@ -1,7 +1,6 @@
 package extendedjob
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -9,7 +8,7 @@ import (
 	"strings"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 	"go.uber.org/zap"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,18 +28,18 @@ type setOwnerReferenceFunc func(owner, object metav1.Object, scheme *runtime.Sch
 // NewTriggerReconciler returns a new reconcile to start jobs triggered by pods
 func NewTriggerReconciler(
 	log *zap.SugaredLogger,
-	ctrConfig *controllersconfig.ControllersConfig,
+	ctrConfig *context.Config,
 	mgr manager.Manager,
 	query Query,
 	f setOwnerReferenceFunc,
 ) reconcile.Reconciler {
 
-	triggerReconcilerLog := log.Named("extendedjob-trigger-reconciler")
-        triggerReconcilerLog.Info("Creating a trigger reconciler for ExtendedJob to start jobs triggered by pods")
+	reconcilerLog := log.Named("extendedjob-trigger-reconciler")
+	reconcilerLog.Info("Creating a trigger reconciler for ExtendedJob to start jobs triggered by pods")
 
 	return &TriggerReconciler{
 		client:            mgr.GetClient(),
-		log:               triggerReconcilerLog,
+		log:               reconcilerLog,
 		ctrConfig:         ctrConfig,
 		query:             query,
 		recorder:          mgr.GetRecorder("extendedjob trigger reconciler"),
@@ -53,7 +52,7 @@ func NewTriggerReconciler(
 type TriggerReconciler struct {
 	client            client.Client
 	log               *zap.SugaredLogger
-	ctrConfig         *controllersconfig.ControllersConfig
+	ctrConfig         *context.Config
 	query             Query
 	recorder          record.EventRecorder
 	scheme            *runtime.Scheme
@@ -69,7 +68,7 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 	pod := &corev1.Pod{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
-	ctx, _ := controllersconfig.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
+	ctx, _ := context.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
 
 	err = r.client.Get(ctx, request.NamespacedName, pod)
 	if err != nil {
