@@ -11,12 +11,12 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 )
 
 // Add creates a new BOSHDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager) error {
+func Add(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager) error {
 	r := NewReconciler(log, ctrConfig, mgr, bdm.NewResolver(mgr.GetClient(), bdm.NewInterpolator()), controllerutil.SetControllerReference)
 
 	// Create a new controller

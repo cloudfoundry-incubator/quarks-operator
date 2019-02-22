@@ -1,11 +1,10 @@
 package extendedjob
 
 import (
-	"context"
 	"fmt"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 	"go.uber.org/zap"
 	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -22,17 +21,17 @@ var _ reconcile.Reconciler = &ErrandReconciler{}
 // NewErrandReconciler returns a new reconciler for errand jobs
 func NewErrandReconciler(
 	log *zap.SugaredLogger,
-	ctrConfig *controllersconfig.ControllersConfig,
+	ctrConfig *context.Config,
 	mgr manager.Manager,
 	f setOwnerReferenceFunc,
 ) reconcile.Reconciler {
 
-	errandReconcilerLog := log.Named("extendedjob-errand-reconciler")
-	errandReconcilerLog.Info("Creating a reconciler for errand ExtendedJobs")
+	reconcilerLog := log.Named("extendedjob-errand-reconciler")
+	reconcilerLog.Info("Creating a reconciler for errand ExtendedJobs")
 
 	return &ErrandReconciler{
 		client:            mgr.GetClient(),
-		log:               errandReconcilerLog,
+		log:               reconcilerLog,
 		ctrConfig:         ctrConfig,
 		recorder:          mgr.GetRecorder("extendedjob errand reconciler"),
 		scheme:            mgr.GetScheme(),
@@ -44,7 +43,7 @@ func NewErrandReconciler(
 type ErrandReconciler struct {
 	client            client.Client
 	log               *zap.SugaredLogger
-	ctrConfig         *controllersconfig.ControllersConfig
+	ctrConfig         *context.Config
 	recorder          record.EventRecorder
 	scheme            *runtime.Scheme
 	setOwnerReference setOwnerReferenceFunc
@@ -55,7 +54,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (result reconcil
 	extJob := &ejv1.ExtendedJob{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
-	ctx, cancel := controllersconfig.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
+	ctx, cancel := context.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
 	defer cancel()
 
 	err = r.client.Get(ctx, request.NamespacedName, extJob)
