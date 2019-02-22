@@ -7,6 +7,9 @@
     - [Automatic Restart of Containers](#automatic-restart-of-containers)
     - [Extended Upgrade Support](#extended-upgrade-support)
     - [Annotated if Stale](#annotated-if-stale)
+    - [Detect if StatefulSet versions are running](#detect-if-statefulset-versions-are-running)
+    - [Volume Management](#volume-management)
+    - [AZ Support](#az-support)
   - [Example Resource](#example-resource)
 
 ## Description
@@ -24,7 +27,7 @@ The operator watches all the ConfigMaps and Secrets referenced by the StatefulSe
 
 > See [this implementation](https://thenewstack.io/solving-kubernetes-configuration-woes-with-a-custom-controller/) for inspiration
 
-Adding an OwnerReference to all ConfigMaps and Secrets that are referenced by a ExtendedStatefulSet. 
+Adding an OwnerReference to all ConfigMaps and Secrets that are referenced by an ExtendedStatefulSet. 
 
 ```yaml
 apiVersion: v1
@@ -59,11 +62,11 @@ metadata:
 
 ### Extended Upgrade Support
 
-A second StatefulSet for the new version is deployed, and both coexist until canary conditions are met. This also allows support for Blue/Green tehniques. 
+A second StatefulSet for the new version is deployed, and both coexist until canary conditions are met. This also allows support for Blue/Green techniques.
 
 > Note: This could make integration with Istio easier and (more) seamless.
 
-Annotated with a version (auto-incremented on each update). 
+Annotated with a version (auto-incremented on each update).
 
 Ability to upgrade even though StatefulSet pods are not ready.
 
@@ -73,11 +76,10 @@ An ability to run an `ExtendedJob` before and after the upgrade. The Job can abo
 
 If a failure has occurred (e.g. canary has failed), the StatefulSet is annotated as being stale.
 
-### Detect if StatefulSet versions is running
+### Detect if StatefulSet versions are running
 
-During upgrades, there is more than one version for an ExtendedStatefulSet resource.
-
-Ability to look at what versions are available, and store versions status that keeps track of if version is running:
+During upgrades, there is more than one `StatefulSet` version for an `ExtendedStatefulSet` resource.
+The operator can list available versions and store status that keeps track of which is running:
 
 ```yaml
 status:
@@ -87,18 +89,25 @@ status:
 
 ```
 
-One version is running is mean that at least one pod that belongs to this StatefulSet is running.
+A version running means that at least one pod that belongs to the `StatefulSet` is running.
+When a version is running, any version lower than it is deleted.
 
-When latest version is running, any version smaller than the greatest version running is deleted.
 ```yaml
 status:
   versions:
     # version 1 was cleaned up
-    "2": true 
-
+    "2": true
 ```
 
 Controller will continue to reconcile until there's only one version.
+
+### Volume Management
+
+![Volume Claim management across versions](https://docs.google.com/drawings/d/e/2PACX-1vSvQkXe3zZhJYbkVX01mxS4PKa1iQmWyIgdZh1VKtTS1XW1lC14d1_FHLWn2oA7GVgzJCcEorNVXkK_/pub?w=1185&h=1203)
+
+### AZ Support
+
+TODO
 
 ## Example Resource
 
@@ -109,6 +118,7 @@ kind: ExtendedStatefulSet
 metadata:
   name: MyExtendedStatefulSet
 spec:
+  az:  
   scaling:
     # Minimum replica count for the StatefulSet
     min: 3
