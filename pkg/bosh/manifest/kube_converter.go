@@ -116,7 +116,12 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 		if m.Releases[i].Name == job.Release {
 			release := m.Releases[i]
 			name := strings.TrimRight(release.URL, "/")
-			return name + "/" + release.Name + "-release:" + stemcell.OS + "-" + stemcell.Version + "-" + release.Version, nil
+
+			stemcellVersion := stemcell.OS + "-" + stemcell.Version
+			if release.Stemcell != nil {
+				stemcellVersion = release.Stemcell.OS + "-" + release.Stemcell.Version
+			}
+			return name + "/" + release.Name + "-release:" + stemcellVersion + "-" + release.Version, nil
 		}
 	}
 	return "", fmt.Errorf("Release '%s' not found", job.Release)

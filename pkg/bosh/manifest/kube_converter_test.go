@@ -134,7 +134,13 @@ var _ = Describe("ConvertToKube", func() {
 		It("calculates the release image name", func() {
 			releaseImage, err := m.GetReleaseImage("redis-slave", "redis-server")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(releaseImage).To(Equal("https://hub.docker.com/r/cfcontainerization/redis-release:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
+			Expect(releaseImage).To(Equal("hub.docker.com/cfcontainerization/redis-release:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
+		})
+
+		It("uses the release stemcell information if it is set", func() {
+			releaseImage, err := m.GetReleaseImage("diego-cell", "cflinuxfs3-rootfs-setup")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(releaseImage).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3-release:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
 		})
 	})
 })
