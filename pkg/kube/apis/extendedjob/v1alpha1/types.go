@@ -14,30 +14,29 @@ import (
 // ExtendedJobSpec defines the desired state of ExtendedJob
 type ExtendedJobSpec struct {
 	Output               *Output                `json:"output,omitempty"`
-	Run                  *Run                   `json:"run,omitempty"`
-	Triggers             *Triggers              `json:"triggers,omitempty"`
+	Trigger              Trigger                `json:"trigger"`
 	Template             corev1.PodTemplateSpec `json:"template"`
 	UpdateOnConfigChange bool                   `json:"updateOnConfigChange"`
 }
 
-// Run is used if the job is not triggered
-type Run string
+// Strategy describes the trigger strategy
+type Strategy string
 
 const (
-	// RunManually is the default for errand jobs
-	RunManually Run = "manually"
-	// RunNow instructs the controller to run the job now
-	RunNow Run = "now"
-	// RunOnce jobs run only once, when created
-	RunOnce Run = "once"
+	// TriggerManually is the default for errand jobs
+	TriggerManually Strategy = "manually"
+	// TriggerNow instructs the controller to run the job now
+	TriggerNow Strategy = "now"
+	// TriggerOnce jobs run only once, when created
+	TriggerOnce Strategy = "once"
+	// TriggerDone jobs are no longer triggered. It's the final state for TriggerOnce strategies
+	TriggerDone Strategy = "done"
 )
 
-// Output contains options to persist job output
-type Output struct {
-	NamePrefix     string            `json:"namePrefix"` // the secret name will be <NamePrefix><container name>
-	OutputType     string            `json:"outputType"` // only json is supported for now
-	SecretLabels   map[string]string `json:"secretLabels"`
-	WriteOnFailure bool              `json:"writeOnFailure"`
+// Trigger decides how to trigger the ExtendedJob
+type Trigger struct {
+	Strategy Strategy         `json:"strategy"`
+	PodState *PodStateTrigger `json:"podstate,omitempty"`
 }
 
 // PodState is our abstraction of the pods state with regards to triggered
@@ -61,8 +60,8 @@ const (
 	PodStateDeleted PodState = "deleted"
 )
 
-// Triggers decide which objects to act on
-type Triggers struct {
+// PodStateTrigger specifies how to trigger depending on a Job
+type PodStateTrigger struct {
 	When     PodState  `json:"when"`
 	Selector *Selector `json:"selector,omitempty"`
 }
@@ -78,6 +77,14 @@ type Requirement struct {
 	Key      string             `json:"key"`
 	Operator selection.Operator `json:"operator"`
 	Values   []string           `json:"values"`
+}
+
+// Output contains options to persist job output
+type Output struct {
+	NamePrefix     string            `json:"namePrefix"`           // the secret name will be <NamePrefix><container name>
+	OutputType     string            `json:"outputType,omitempty"` // only json is supported for now
+	SecretLabels   map[string]string `json:"secretLabels,omitempty"`
+	WriteOnFailure bool              `json:"writeOnFailure,omitempty"`
 }
 
 // ExtendedJobStatus defines the observed state of ExtendedJob

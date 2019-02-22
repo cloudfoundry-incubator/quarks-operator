@@ -590,9 +590,12 @@ func (c *Catalog) OutputExtendedJob(name string, template corev1.PodTemplateSpec
 	return &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
-			Triggers: &ejv1.Triggers{
-				When:     "ready",
-				Selector: &ejv1.Selector{MatchLabels: &labels.Set{"key": "value"}},
+			Trigger: ejv1.Trigger{
+				Strategy: "podstate",
+				PodState: &ejv1.PodStateTrigger{
+					When:     "ready",
+					Selector: &ejv1.Selector{MatchLabels: &labels.Set{"key": "value"}},
+				},
 			},
 			Template: template,
 			Output: &ejv1.Output{
@@ -609,11 +612,14 @@ func (c *Catalog) LabelTriggeredExtendedJob(name string, state ejv1.PodState, ml
 	return &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
-			Triggers: &ejv1.Triggers{
-				When: state,
-				Selector: &ejv1.Selector{
-					MatchLabels:      &ml,
-					MatchExpressions: me,
+			Trigger: ejv1.Trigger{
+				Strategy: "podstate",
+				PodState: &ejv1.PodStateTrigger{
+					When: state,
+					Selector: &ejv1.Selector{
+						MatchLabels:      &ml,
+						MatchExpressions: me,
+					},
 				},
 			},
 			Template: c.CmdPodTemplate(cmd),
@@ -647,11 +653,12 @@ func (c *Catalog) DefaultExtendedJobWithSucceededJob(name string) (*ejv1.Extende
 // ErrandExtendedJob default values
 func (c *Catalog) ErrandExtendedJob(name string) ejv1.ExtendedJob {
 	cmd := []string{"sleep", "1"}
-	now := ejv1.RunNow
 	return ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
-			Run:      &now,
+			Trigger: ejv1.Trigger{
+				Strategy: ejv1.TriggerNow,
+			},
 			Template: c.CmdPodTemplate(cmd),
 		},
 	}
@@ -660,11 +667,12 @@ func (c *Catalog) ErrandExtendedJob(name string) ejv1.ExtendedJob {
 // AutoErrandExtendedJob default values
 func (c *Catalog) AutoErrandExtendedJob(name string) ejv1.ExtendedJob {
 	cmd := []string{"sleep", "1"}
-	once := ejv1.RunOnce
 	return ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
-			Run:      &once,
+			Trigger: ejv1.Trigger{
+				Strategy: ejv1.TriggerOnce,
+			},
 			Template: c.CmdPodTemplate(cmd),
 		},
 	}

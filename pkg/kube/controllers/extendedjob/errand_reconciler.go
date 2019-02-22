@@ -28,7 +28,7 @@ func NewErrandReconciler(
 ) reconcile.Reconciler {
 
 	errandReconcilerLog := log.Named("extendedjob-errand-reconciler")
-        errandReconcilerLog.Info("Creating a reconciler for errand ExtendedJobs")
+	errandReconcilerLog.Info("Creating a reconciler for errand ExtendedJobs")
 
 	return &ErrandReconciler{
 		client:            mgr.GetClient(),
@@ -71,12 +71,12 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (result reconcil
 		return
 	}
 
-	if *extJob.Spec.Run == ejv1.RunNow {
-		// set Run back to manually for errand jobs
-		*extJob.Spec.Run = ejv1.RunManually
+	if extJob.Spec.Trigger.Strategy == ejv1.TriggerNow {
+		// set Strategy back to manually for errand jobs
+		extJob.Spec.Trigger.Strategy = ejv1.TriggerManually
 		err = r.client.Update(ctx, extJob)
 		if err != nil {
-			r.log.Errorf("Failed to revert to 'Run=manually' on job '%s': %s", extJob.Name, err)
+			r.log.Errorf("Failed to revert to 'trigger.strategy=manually' on job '%s': %s", extJob.Name, err)
 			return
 		}
 	}
@@ -93,6 +93,16 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (result reconcil
 		return
 	}
 	r.log.Infof("Created errand job for '%s'", extJob.Name)
+
+	if extJob.Spec.Trigger.Strategy == ejv1.TriggerOnce {
+		// traverse Strategy into the final 'done' state
+		extJob.Spec.Trigger.Strategy = ejv1.TriggerDone
+		err = r.client.Update(ctx, extJob)
+		if err != nil {
+			r.log.Errorf("Failed to traverse to 'trigger.strategy=done' on job '%s': %s", extJob.Name, err)
+			return
+		}
+	}
 
 	return
 }

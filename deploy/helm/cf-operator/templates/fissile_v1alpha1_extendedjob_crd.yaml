@@ -23,7 +23,7 @@ spec:
           properties:
             output:
               type: object
-              required: [namePrefix,secretLabels]
+              required: [namePrefix]
               properties:
                 namePrefix:
                   type: string
@@ -33,13 +33,13 @@ spec:
                   type: object
                 writeOnFailure:
                   type: boolean
-            run:
-              type: string
-              enum: ["manually", "once", "now"]
-            triggers:
+            trigger:
               type: object
-              required: [when]
+              required: [strategy]
               properties:
+                strategy:
+                  type: string
+                  enum: ["manually", "once", "now", "podstate", "done"]
                 when:
                   type: string
                   enum: ["ready", "notready", "created", "deleted"]

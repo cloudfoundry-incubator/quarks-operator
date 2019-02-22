@@ -1,8 +1,6 @@
 package bpm_test
 
 import (
-	"fmt"
-
 	bpm "code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -43,7 +41,6 @@ var _ = Describe("bpm Config", func() {
 	})
 
 	It("unmarshals all data", func() {
-		fmt.Println(string(yaml))
 		config, err := bpm.NewConfig(yaml)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(len(config.Processes)).To(Equal(2))

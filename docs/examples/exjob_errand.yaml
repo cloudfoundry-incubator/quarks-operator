@@ -13,4 +13,5 @@ spec:
         name: busybox
       restartPolicy: Never
       terminationGracePeriodSeconds: 1
-  run: manually
+  trigger:
+    strategy: manually

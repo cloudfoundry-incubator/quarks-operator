@@ -13,8 +13,10 @@ spec:
         name: busybox
       restartPolicy: Never
       terminationGracePeriodSeconds: 1
-  triggers:
-    selector:
-      matchLabels:
-        key: value
-    when: deleted
+  trigger:
+    strategy: podstate
+    podstate:
+      selector:
+        matchLabels:
+          key: value
+      when: deleted

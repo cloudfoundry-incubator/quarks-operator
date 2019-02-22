@@ -1,17 +1,19 @@
 apiVersion: fissile.cloudfoundry.org/v1alpha1
 kind: ExtendedJob
 metadata:
-  name: one-time-sleep
+  name: myfoo
 spec:
   template:
     spec:
       containers:
-      - command:
-        - sleep
-        - "15"
-        image: busybox
-        name: busybox
+        - name: json
+          image: busybox
+          command: ["echo", '{"foo": "1", "bar": "baz"}']
       restartPolicy: Never
       terminationGracePeriodSeconds: 1
   trigger:
     strategy: once
+  output:
+    namePrefix: foo-
+    secretLabels:
+      key: value
