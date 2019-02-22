@@ -18,7 +18,7 @@ metadata:
   name: bosh-manifest
 data:
   manifest: |
-    instance-groups:
+    instance_groups:
       - name: diego
         instances: 3
       - name: mysql
@@ -30,7 +30,7 @@ metadata:
 data:
   ops: |
     - type: replace
-      path: /instance-groups/name=diego?/instances
+      path: /instance_groups/name=diego?/instances
       value: 4
 
 ---
@@ -42,5 +42,5 @@ type: Opaque
 stringData:
   ops: |
     - type: replace
-      path: /instance-groups/name=diego111/instances
+      path: /instance_groups/name=diego111/instances
       value: 5

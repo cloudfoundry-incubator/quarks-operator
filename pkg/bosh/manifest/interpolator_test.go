@@ -65,7 +65,7 @@ director_uuid: 1234abcd
 dns:
 - 192.168.0.1
 - 192.168.0.2
-instance-groups:
+instance_groups:
   - name: diego
     instances: 3
   - name: mysql
@@ -86,7 +86,7 @@ director_uuid: 1234abcd
 dns:
 - 192.168.0.1
 - 192.168.0.2
-instance-groups:
+instance_groups:
   - name: diego
     instances: 3
   - name: mysql
@@ -111,7 +111,7 @@ name: my-deployment
 dns:
 - 192.168.0.1
 - 192.168.0.2
-instance-groups:
+instance_groups:
   - name: diego
     instances: 3
   - name: mysql
@@ -138,7 +138,7 @@ director_uuid: 1234abcd
 dns:
 - 192.168.0.1
 - 192.168.0.2
-instance-groups:
+instance_groups:
   - name: diego
     instances: 3
   - name: mysql
@@ -182,7 +182,7 @@ director_uuid: 1234abcd
 dns:
 - 192.168.0.3
 - 192.168.0.2
-instance-groups:
+instance_groups:
   - name: diego
     instances: 3
   - name: mysql
@@ -207,7 +207,7 @@ name: my-deployment
 director_uuid: 1234abcd
 dns:
 - 192.168.0.1
-instance-groups:
+instance_groups:
   - name: diego
     instances: 3
   - name: mysql
@@ -235,7 +235,7 @@ dns:
 - 192.168.0.1
 - 192.168.0.2
 - 192.168.0.3
-instance-groups:
+instance_groups:
   - name: diego
     instances: 3
   - name: mysql
@@ -262,7 +262,7 @@ director_uuid: 1234abcd
 dns:
 - 192.168.0.4
 - 192.168.0.2
-instance-groups:
+instance_groups:
   - name: diego
     instances: 3
   - name: mysql
@@ -290,7 +290,7 @@ dns:
 - 192.168.0.1
 - 192.168.0.3
 - 192.168.0.2
-instance-groups:
+instance_groups:
   - name: diego
     instances: 3
   - name: mysql
@@ -309,16 +309,16 @@ instance-groups:
 		It("works for modifying one existing variable", func() {
 			ops = []byte(`
 - type: replace
-  path: /instance-groups/name=diego/instances
+  path: /instance_groups/name=diego/instances
   value: 4
 `)
-			expectedManifest = []byte(`instance-groups:
+			expectedManifest = []byte(`instance_groups:
 name: my-deployment
 director_uuid: 1234abcd
 dns:
 - 192.168.0.1
 - 192.168.0.2
-instance-groups:
+instance_groups:
   - name: diego
     instances: 4
   - name: mysql
@@ -336,16 +336,16 @@ instance-groups:
 		It("works for modifying one existing variable with question mark", func() {
 			ops = []byte(`
 - type: replace
-  path: /instance-groups/name=diego?/instances
+  path: /instance_groups/name=diego?/instances
   value: 2
 `)
-			expectedManifest = []byte(`instance-groups:
+			expectedManifest = []byte(`instance_groups:
 name: my-deployment
 director_uuid: 1234abcd
 dns:
 - 192.168.0.1
 - 192.168.0.2
-instance-groups:
+instance_groups:
   - name: diego
     instances: 2
   - name: mysql
@@ -363,16 +363,16 @@ instance-groups:
 		It("works for adding one root variable", func() {
 			ops = []byte(`
 - type: replace
-  path: /instance-groups?/name=api/instances
+  path: /instance_groups?/name=api/instances
   value: 2
 `)
-			expectedManifest = []byte(`instance-groups:
+			expectedManifest = []byte(`instance_groups:
 name: my-deployment
 director_uuid: 1234abcd
 dns:
 - 192.168.0.1
 - 192.168.0.2
-instance-groups:
+instance_groups:
   - name: diego
     instances: 3
   - name: mysql
@@ -392,16 +392,16 @@ instance-groups:
 		It("works for adding one variable", func() {
 			ops = []byte(`
 - type: replace
-  path: /instance-groups/name=mysql?/instances
+  path: /instance_groups/name=mysql?/instances
   value: 1
 `)
-			expectedManifest = []byte(`instance-groups:
+			expectedManifest = []byte(`instance_groups:
 name: my-deployment
 director_uuid: 1234abcd
 dns:
 - 192.168.0.1
 - 192.168.0.2
-instance-groups:
+instance_groups:
   - name: diego
     instances: 3
   - name: mysql
@@ -419,15 +419,15 @@ instance-groups:
 		It("works for removing one variable", func() {
 			ops = []byte(`
 - type: remove
-  path: /instance-groups/name=diego?
+  path: /instance_groups/name=diego?
 `)
-			expectedManifest = []byte(`instance-groups:
+			expectedManifest = []byte(`instance_groups:
 name: my-deployment
 director_uuid: 1234abcd
 dns:
 - 192.168.0.1
 - 192.168.0.2
-instance-groups:
+instance_groups:
   - name: mysql
     instances: 2
 `)
@@ -443,7 +443,7 @@ instance-groups:
 		It("throws an error if modify one non-existing variable", func() {
 			ops = []byte(`
 - type: replace
-  path: /instance-groups/name=missing-key/instances
+  path: /instance_groups/name=missing-key/instances
   value: 2
 `)
 
@@ -459,21 +459,21 @@ instance-groups:
 		It("works for multiple modify ops", func() {
 			ops1 := []byte(`
 - type: replace
-  path: /instance-groups/name=diego/instances
+  path: /instance_groups/name=diego/instances
   value: 6
 `)
 			ops2 := []byte(`
 - type: replace
-  path: /instance-groups?/name=api/instances
+  path: /instance_groups?/name=api/instances
   value: 2
 `)
-			expectedManifest = []byte(`instance-groups:
+			expectedManifest = []byte(`instance_groups:
 name: my-deployment
 director_uuid: 1234abcd
 dns:
 - 192.168.0.1
 - 192.168.0.2
-instance-groups:
+instance_groups:
   - name: diego
     instances: 6
   - name: mysql
@@ -495,25 +495,25 @@ instance-groups:
 		It("works for multiple modify and remove ops", func() {
 			ops1 := []byte(`
 - type: replace
-  path: /instance-groups/name=diego/instances
+  path: /instance_groups/name=diego/instances
   value: 4
 `)
 			ops2 := []byte(`
 - type: replace
-  path: /instance-groups/name=diego/instances
+  path: /instance_groups/name=diego/instances
   value: 5
 `)
 			ops3 := []byte(`
 - type: remove
-  path: /instance-groups/name=mysql?
+  path: /instance_groups/name=mysql?
 `)
-			expectedManifest = []byte(`instance-groups:
+			expectedManifest = []byte(`instance_groups:
 name: my-deployment
 director_uuid: 1234abcd
 dns:
 - 192.168.0.1
 - 192.168.0.2
-instance-groups:
+instance_groups:
   - name: diego
     instances: 5
 `)
@@ -533,12 +533,12 @@ instance-groups:
 		It("throws an error if modify one non-existing variable in multiple ops", func() {
 			ops1 := []byte(`
 - type: replace
-  path: /instance-groups/name=diego/instances
+  path: /instance_groups/name=diego/instances
   value: 4
 `)
 			ops2 := []byte(`
 - type: remove
-  path: /instance-groups/name=api
+  path: /instance_groups/name=api
 `)
 
 			err := interpolator.BuildOps(ops1)
@@ -554,7 +554,7 @@ instance-groups:
 		It("throws an error if using wrong ops operation in multiple ops", func() {
 			ops1 := []byte(`
 - type: replace
-  path: /instance-groups/name=diego/instances
+  path: /instance_groups/name=diego/instances
   value: 4
 `)
 			ops2 := []byte(`
@@ -576,7 +576,7 @@ This is a wrong ops format file
 
 			ops2 := []byte(`
 			- type: replace
-			  path: /instance-groups/name=diego/instances
+			  path: /instance_groups/name=diego/instances
 			  value: 4
 			`)
 			err := interpolator.BuildOps(ops1)

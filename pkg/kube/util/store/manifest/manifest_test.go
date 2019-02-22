@@ -68,7 +68,7 @@ var _ = Describe("Store", func() {
 	Describe("Save", func() {
 		Context("when there is no versioned manifest", func() {
 			It("should create the first version", func() {
-				err := store.Save(context, exampleManifest(`{"instance-groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`), exampleSourceDescription)
+				err := store.Save(context, exampleManifest(`{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`), exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(secretCount()).To(Equal(1))
 
@@ -80,17 +80,17 @@ var _ = Describe("Store", func() {
 		Context("when there already is a version of the manifest", func() {
 
 			It("should create a new version", func() {
-				err := store.Save(context, exampleManifest(`{"instance-groups":[{"instances":3,"name":"diego"}]}`), exampleSourceDescription)
+				err := store.Save(context, exampleManifest(`{"instance_groups":[{"instances":3,"name":"diego"}]}`), exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
 				name := fmt.Sprintf("deployment-%s-%d", deploymentName, 1)
 				Expect(hasSecret(name)).To(BeTrue())
 
-				err = store.Save(context, exampleManifest(`{"instance-groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`), exampleSourceDescription)
+				err = store.Save(context, exampleManifest(`{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`), exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
 				name = fmt.Sprintf("deployment-%s-%d", deploymentName, 2)
 				Expect(hasSecret(name)).To(BeTrue())
 
-				err = store.Save(context, exampleManifest(`instance-groups: []`), exampleSourceDescription)
+				err = store.Save(context, exampleManifest(`instance_groups: []`), exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
 				name = fmt.Sprintf("deployment-%s-%d", deploymentName, 3)
 				Expect(hasSecret(name)).To(BeTrue())
@@ -100,7 +100,7 @@ var _ = Describe("Store", func() {
 		Context("when the deployment name contains invalid characters", func() {
 			It("should fail to create a new version", func() {
 				store = NewStore(client, namespace, "InvalidName")
-				err := store.Save(context, exampleManifest(`instance-groups: []`), exampleSourceDescription)
+				err := store.Save(context, exampleManifest(`instance_groups: []`), exampleSourceDescription)
 				Expect(err).To(HaveOccurred())
 
 				Expect(secretCount()).To(Equal(0))
@@ -110,7 +110,7 @@ var _ = Describe("Store", func() {
 		Context("when the deployment name exceeds a length of 253 characters", func() {
 			It("should fail to create a new version", func() {
 				store = NewStore(client, namespace, strings.Repeat("foobar", 42))
-				err := store.Save(context, exampleManifest(`instance-groups: []`), exampleSourceDescription)
+				err := store.Save(context, exampleManifest(`instance_groups: []`), exampleSourceDescription)
 				Expect(err).To(HaveOccurred())
 				Expect(secretCount()).To(Equal(0))
 			})
@@ -120,10 +120,10 @@ var _ = Describe("Store", func() {
 	Describe("Delete", func() {
 		Context("when a manifest with multiple version exists", func() {
 			BeforeEach(func() {
-				err := store.Save(context, exampleManifest(`instance-groups: []`), exampleSourceDescription)
+				err := store.Save(context, exampleManifest(`instance_groups: []`), exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = store.Save(context, exampleManifest(`instance-groups: []`), exampleSourceDescription)
+				err = store.Save(context, exampleManifest(`instance_groups: []`), exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -145,10 +145,10 @@ var _ = Describe("Store", func() {
 	Describe("Decorate", func() {
 		Context("when there is a manifest with multiple versions", func() {
 			BeforeEach(func() {
-				err := store.Save(context, exampleManifest(`instance-groups: []`), exampleSourceDescription)
+				err := store.Save(context, exampleManifest(`instance_groups: []`), exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = store.Save(context, exampleManifest(`instance-groups: []`), exampleSourceDescription)
+				err = store.Save(context, exampleManifest(`instance_groups: []`), exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -175,10 +175,10 @@ var _ = Describe("Store", func() {
 		Context("when there is a manifest with multiple versions", func() {
 			BeforeEach(func() {
 				for i := 1; i < 10; i++ {
-					err := store.Save(context, exampleManifest(`instance-groups: []`), exampleSourceDescription)
+					err := store.Save(context, exampleManifest(`instance_groups: []`), exampleSourceDescription)
 					Expect(err).ToNot(HaveOccurred())
 
-					err = NewStore(client, namespace, "another-deployment").Save(context, exampleManifest(`instance-groups: []`), exampleSourceDescription)
+					err = NewStore(client, namespace, "another-deployment").Save(context, exampleManifest(`instance_groups: []`), exampleSourceDescription)
 					Expect(err).ToNot(HaveOccurred())
 				}
 			})
@@ -195,11 +195,11 @@ var _ = Describe("Store", func() {
 		Context("when there is a manifest with multiple versions", func() {
 			BeforeEach(func() {
 				for i := 1; i < 10; i++ {
-					m := exampleManifest(fmt.Sprintf("instance-groups: [{name: ig%d}]", i))
+					m := exampleManifest(fmt.Sprintf("instance_groups: [{name: ig%d}]", i))
 					err := store.Save(context, m, exampleSourceDescription)
 					Expect(err).ToNot(HaveOccurred())
 
-					err = NewStore(client, namespace, "another-deployment").Save(context, exampleManifest(`instance-groups: []`), exampleSourceDescription)
+					err = NewStore(client, namespace, "another-deployment").Save(context, exampleManifest(`instance_groups: []`), exampleSourceDescription)
 					Expect(err).ToNot(HaveOccurred())
 				}
 			})
@@ -227,7 +227,7 @@ var _ = Describe("Store", func() {
 
 	Describe("RetrieveVersionSecret", func() {
 		BeforeEach(func() {
-			err := store.Save(context, exampleManifest(`instance-groups: []`), exampleSourceDescription)
+			err := store.Save(context, exampleManifest(`instance_groups: []`), exampleSourceDescription)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -250,7 +250,7 @@ var _ = Describe("Store", func() {
 		Context("when manifest versions exist", func() {
 
 			BeforeEach(func() {
-				err := store.Save(context, exampleManifest(`instance-groups: []`), exampleSourceDescription)
+				err := store.Save(context, exampleManifest(`instance_groups: []`), exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
 			})
 

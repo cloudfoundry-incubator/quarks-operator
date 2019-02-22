@@ -37,7 +37,7 @@ func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Data: map[string]string{
-			"manifest": `instance-groups:
+			"manifest": `instance_groups:
 - name: diego
   instances: 3
 - name: mysql
@@ -82,7 +82,7 @@ func (c *Catalog) InterpolateOpsConfigMap(name string) corev1.ConfigMap {
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Data: map[string]string{
 			"ops": `- type: replace
-  path: /instance-groups/name=diego?/instances
+  path: /instance_groups/name=diego?/instances
   value: 4
 `,
 		},
@@ -95,7 +95,7 @@ func (c *Catalog) InterpolateOpsSecret(name string) corev1.Secret {
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		StringData: map[string]string{
 			"ops": `- type: remove
-  path: /instance-groups/name=mysql?
+  path: /instance_groups/name=mysql?
 `,
 		},
 	}
@@ -107,7 +107,7 @@ func (c *Catalog) InterpolateOpsIncorrectSecret(name string) corev1.Secret {
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		StringData: map[string]string{
 			"ops": `- type: remove
-  path: /instance-groups/name=api
+  path: /instance_groups/name=api
 `,
 		},
 	}
