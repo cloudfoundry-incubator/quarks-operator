@@ -46,7 +46,7 @@ var _ = Describe("Bosh Manifest Schema", func() {
 		Describe("InstanceGroups", func() {
 			It("contains desired values", func() {
 				Expect(getStructTagForName("InstanceGroups", manifest)).To(Equal(
-					`yaml:"instance-groups,omitempty"`,
+					`yaml:"instance_groups,omitempty"`,
 				))
 			})
 		})
