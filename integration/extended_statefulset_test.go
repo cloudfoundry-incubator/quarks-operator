@@ -56,7 +56,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			}))
 		})
 
-		It("should update a statefulset", func() {
+		XIt("should update a statefulset", func() {
 			// Create an ExtendedStatefulSet
 			var ess *essv1.ExtendedStatefulSet
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
