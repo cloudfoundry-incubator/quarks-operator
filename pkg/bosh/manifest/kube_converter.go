@@ -3,6 +3,7 @@ package manifest
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -76,4 +77,47 @@ func (m *Manifest) generateVariableSecretName(name string) string {
 	}
 
 	return secretName
+}
+
+func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, error) {
+	var instanceGroup *InstanceGroup
+	for i := range m.InstanceGroups {
+		if m.InstanceGroups[i].Name == instanceGroupName {
+			instanceGroup = m.InstanceGroups[i]
+			break
+		}
+	}
+	if instanceGroup == nil {
+		return "", fmt.Errorf("Instance group '%s' not found", instanceGroupName)
+	}
+
+	var stemcell *Stemcell
+	for i := range m.Stemcells {
+		if m.Stemcells[i].Alias == instanceGroup.Stemcell {
+			stemcell = m.Stemcells[i]
+		}
+	}
+	if stemcell == nil {
+		return "", fmt.Errorf("Stemcell '%s' not found", instanceGroup.Stemcell)
+	}
+
+	var job *Job
+	for i := range instanceGroup.Jobs {
+		if instanceGroup.Jobs[i].Name == jobName {
+			job = &instanceGroup.Jobs[i]
+			break
+		}
+	}
+	if job == nil {
+		return "", fmt.Errorf("Job '%s' not found in instance group '%s'", jobName, instanceGroupName)
+	}
+
+	for i := range m.Releases {
+		if m.Releases[i].Name == job.Release {
+			release := m.Releases[i]
+			name := strings.TrimRight(release.URL, "/")
+			return name + "/" + release.Name + "-release:" + stemcell.OS + "-" + stemcell.Version + "-" + release.Version, nil
+		}
+	}
+	return "", fmt.Errorf("Release '%s' not found", job.Release)
 }

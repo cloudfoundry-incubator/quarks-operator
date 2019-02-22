@@ -103,4 +103,38 @@ var _ = Describe("ConvertToKube", func() {
 			Expect(request.CARef.Key).To(Equal("certificate"))
 		})
 	})
+
+	Context("GetReleaseImage", func() {
+		It("reports an error if the instance group was not found", func() {
+			_, err := m.GetReleaseImage("unknown-instancegroup", "redis-server")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("not found"))
+		})
+
+		It("reports an error if the stemcell was not found", func() {
+			m.Stemcells = []*manifest.Stemcell{}
+			_, err := m.GetReleaseImage("redis-slave", "redis-server")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("not found"))
+		})
+
+		It("reports an error if the job was not found", func() {
+			_, err := m.GetReleaseImage("redis-slave", "unknown-job")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("not found"))
+		})
+
+		It("reports an error if the release was not found", func() {
+			m.Releases = []*manifest.Release{}
+			_, err := m.GetReleaseImage("redis-slave", "redis-server")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("not found"))
+		})
+
+		It("calculates the release image name", func() {
+			releaseImage, err := m.GetReleaseImage("redis-slave", "redis-server")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(releaseImage).To(Equal("https://hub.docker.com/r/cfcontainerization/redis-release:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
+		})
+	})
 })
