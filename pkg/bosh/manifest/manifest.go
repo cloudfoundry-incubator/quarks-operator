@@ -191,7 +191,7 @@ type AddOn struct {
 type Manifest struct {
 	Name           string                   `yaml:"name"`
 	DirectorUUID   string                   `yaml:"director_uuid"`
-	InstanceGroups []*InstanceGroup         `yaml:"instance-groups,omitempty"`
+	InstanceGroups []*InstanceGroup         `yaml:"instance_groups,omitempty"`
 	Features       *Feature                 `yaml:"features,omitempty"`
 	Tags           map[string]string        `yaml:"tags,omitempty"`
 	Releases       []*Release               `yaml:"releases,omitempty"`

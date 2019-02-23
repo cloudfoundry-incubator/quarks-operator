@@ -21,7 +21,7 @@ var _ = Describe("Lifecycle", func() {
 			newManifest = corev1.ConfigMap{
 				ObjectMeta: v1.ObjectMeta{Name: "newmanifest"},
 				Data: map[string]string{
-					"manifest": `instance-groups:
+					"manifest": `instance_groups:
 - name: updated
   instances: 1
 `,

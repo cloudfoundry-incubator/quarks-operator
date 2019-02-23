@@ -42,22 +42,22 @@ var _ = Describe("Resolver", func() {
 
 		replaceOpsStr = `
 - type: replace
-  path: /instance-groups/name=component1?/instances
+  path: /instance_groups/name=component1?/instances
   value: 2
 `
 		removeOpsStr = `
 - type: remove
-  path: /instance-groups/name=component2?
+  path: /instance_groups/name=component2?
 `
 		opaqueOpsStr = `---
 - type: replace
-  path: /instance-groups/name=component1?/instances
+  path: /instance_groups/name=component1?/instances
   value: 3
 `
 
 		urlOpsStr = `---
 - type: replace
-  path: /instance-groups/name=component1?/instances
+  path: /instance_groups/name=component1?/instances
   value: 4`
 
 		client = fakeClient.NewFakeClient(
@@ -67,7 +67,7 @@ var _ = Describe("Resolver", func() {
 					Namespace: "default",
 				},
 				Data: map[string]string{bdc.ManifestSpecName: `---
-instance-groups:
+instance_groups:
   - name: component1
     instances: 1
   - name: component2
@@ -80,7 +80,7 @@ instance-groups:
 					Namespace: "default",
 				},
 				Data: map[string][]byte{bdc.ManifestSpecName: []byte(`---
-instance-groups:
+instance_groups:
   - name: component3
     instances: 1
   - name: component4
@@ -150,7 +150,7 @@ instance-groups:
 		remoteFileServer.AllowUnhandledRequests = true
 
 		remoteFileServer.RouteToHandler("GET", validManifestPath, ghttp.RespondWith(http.StatusOK, `---
-instance-groups:
+instance_groups:
   - name: component5
     instances: 1`))
 		remoteFileServer.RouteToHandler("GET", validOpsPath, ghttp.RespondWith(http.StatusOK, urlOpsStr))
@@ -246,7 +246,7 @@ instance-groups:
 
 		It("works for valid CRs containing one ops", func() {
 			interpolator.InterpolateReturns([]byte(`---
-instance-groups:
+instance_groups:
   - name: component1
     instances: 2
   - name: component2
@@ -292,7 +292,7 @@ instance-groups:
 
 		It("works for valid CRs containing multi ops", func() {
 			interpolator.InterpolateReturns([]byte(`---
-instance-groups:
+instance_groups:
   - name: component1
     instances: 4
 `), nil)
