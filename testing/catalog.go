@@ -24,10 +24,53 @@ type Catalog struct{}
 func (c *Catalog) DefaultBOSHManifest() manifest.Manifest {
 	m := manifest.Manifest{}
 	source := `name: foo-deployment
+stemcells:
+- alias: default
+  os: opensuse-42.3
+  version: 28.g837c5b3-30.263-7.0.0_234.gcd7d1132
+instance_groups:
+- name: redis-slave
+  instances: 2
+  azs: [z1, z2]
+  jobs:
+  - name: redis-server
+    release: redis
+    properties: {}
+  vm_type: medium
+  stemcell: default
+  persistent_disk_type: medium
+  networks:
+  - name: default
+- name: diego-cell
+  azs:
+  - z1
+  - z2
+  instances: 2
+  vm_type: small-highmem
+  vm_extensions:
+  - 100GB_ephemeral_disk
+  stemcell: default
+  networks:
+  - name: default
+  jobs:
+  - name: cflinuxfs3-rootfs-setup
+    release: cflinuxfs3
 variables:
 - name: "adminpass"
   type: "password"
-  options: {is_ca: true, common_name: "some-ca"}`
+  options: {is_ca: true, common_name: "some-ca"}
+releases:
+- name: cflinuxfs3
+  version: 0.62.0
+  url: hub.docker.com/cfcontainerization
+  sha1: 6466c44827c3493645ca34b084e7c21de23272b4
+  stemcell:
+    os: opensuse-15.0
+    version: 28.g837c5b3-30.263-7.0.0_233.gde0accd0
+- name: redis
+  version: 36.15.0
+  url: hub.docker.com/cfcontainerization
+  sha1: 6466c44827c3493645ca34b084e7c21de23272b4`
 	yaml.Unmarshal([]byte(source), &m)
 	return m
 }
