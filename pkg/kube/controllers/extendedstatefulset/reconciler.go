@@ -20,21 +20,31 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	podUtils "k8s.io/kubernetes/pkg/api/v1/pod"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 )
 
+// OptimisticLockErrorMsg is an error message shown when locking fails
 const OptimisticLockErrorMsg = "the object has been modified; please apply your changes to the latest version and try again"
 
 // Check that ReconcileExtendedStatefulSet implements the reconcile.Reconciler interface
 var _ reconcile.Reconciler = &ReconcileExtendedStatefulSet{}
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
+
+// Owner bundles funcs to manage ownership on referenced configmaps and secrets
+type Owner interface {
+	Update(context.Context, apis.Object, []apis.Object, []apis.Object) error
+	RemoveOwnerReferences(context.Context, apis.Object, []apis.Object) error
+	ListConfigs(context.Context, string, corev1.PodSpec) ([]apis.Object, error)
+	ListConfigsOwnedBy(context.Context, apis.Object) ([]apis.Object, error)
+}
 
 // NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager, srf setReferenceFunc) reconcile.Reconciler {
@@ -47,6 +57,7 @@ func NewReconciler(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manage
 		client:       mgr.GetClient(),
 		scheme:       mgr.GetScheme(),
 		setReference: srf,
+		owner:        owner.NewOwner(mgr.GetClient(), reconcilerLog, mgr.GetScheme()),
 	}
 }
 
@@ -57,6 +68,7 @@ type ReconcileExtendedStatefulSet struct {
 	setReference setReferenceFunc
 	log          *zap.SugaredLogger
 	ctrConfig    *context.Config
+	owner        Owner
 }
 
 // Reconcile reads that state of the cluster for a ExtendedStatefulSet object
@@ -407,12 +419,16 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 	}
 
 	for _, statefulSet := range statefulSets {
-		currentConfigRef, err := r.listConfigsFromSpec(ctx, &statefulSet)
+		r.log.Debug("Getting all ConfigMaps and Secrets that are referenced in '", statefulSet.Name, "' Spec.")
+
+		namespace := statefulSet.GetNamespace()
+
+		currentConfigRef, err := r.owner.ListConfigs(ctx, namespace, statefulSet.Spec.Template.Spec)
 		if err != nil {
 			return errors.Wrapf(err, "Could not list ConfigMaps and Secrets from '%s' spec", statefulSet.Name)
 		}
 
-		existingConfigs, err := r.listConfigsOwnedBy(ctx, exStatefulSet)
+		existingConfigs, err := r.owner.ListConfigsOwnedBy(ctx, exStatefulSet)
 		if err != nil {
 			return errors.Wrapf(err, "Could not list ConfigMaps and Secrets owned by '%s'", exStatefulSet.Name)
 		}
@@ -422,7 +438,12 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 			return err
 		}
 
-		err = r.updateOwnerReferences(ctx, exStatefulSet, existingConfigs, currentConfigRef)
+		// determines which children need to have their OwnerReferences added/updated
+		// and which need to have their OwnerReferences removed and then performs all
+		// updates
+		r.log.Debug("Updating ownerReferences for StatefulSet '", exStatefulSet.Name, "' in namespace '", exStatefulSet.Namespace, "'.")
+
+		err = r.owner.Update(ctx, exStatefulSet, existingConfigs, currentConfigRef)
 		if err != nil {
 			return fmt.Errorf("error updating OwnerReferences: %v", err)
 		}
@@ -462,137 +483,8 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 	return nil
 }
 
-// listConfigsFromSpec returns a list of all Secrets and ConfigMaps that are
-// referenced in the StatefulSet's spec
-func (r *ReconcileExtendedStatefulSet) listConfigsFromSpec(ctx context.Context, statefulSet *v1beta2.StatefulSet) ([]essv1a1.Object, error) {
-	r.log.Debug("Getting all ConfigMaps and Secrets that are referenced in '", statefulSet.Name, "' Spec.")
-	configMaps, secrets := getConfigNamesFromSpec(statefulSet)
-
-	// return error if config resource is not exist
-	var configs []essv1a1.Object
-	for name := range configMaps {
-		key := types.NamespacedName{Namespace: statefulSet.GetNamespace(), Name: name}
-		configMap := &corev1.ConfigMap{}
-		err := r.client.Get(ctx, key, configMap)
-		if err != nil {
-			return []essv1a1.Object{}, err
-		}
-		if configMap != nil {
-			configs = append(configs, configMap)
-		}
-	}
-
-	for name := range secrets {
-		key := types.NamespacedName{Namespace: statefulSet.GetNamespace(), Name: name}
-		secret := &corev1.Secret{}
-		err := r.client.Get(ctx, key, secret)
-		if err != nil {
-			return []essv1a1.Object{}, err
-		}
-		if secret != nil {
-			configs = append(configs, secret)
-		}
-	}
-
-	return configs, nil
-}
-
-// getConfigNamesFromSpec parses the StatefulSet object and returns two sets,
-// the first containing the names of all referenced ConfigMaps,
-// the second containing the names of all referenced Secrets
-func getConfigNamesFromSpec(statefulSet *v1beta2.StatefulSet) (map[string]struct{}, map[string]struct{}) {
-	// Create sets for storing the names fo the ConfigMaps/Secrets
-	configMaps := make(map[string]struct{})
-	secrets := make(map[string]struct{})
-
-	// Iterate over all Volumes and check the VolumeSources for ConfigMaps
-	// and Secrets
-	for _, vol := range statefulSet.Spec.Template.Spec.Volumes {
-		if cm := vol.VolumeSource.ConfigMap; cm != nil {
-			configMaps[cm.Name] = struct{}{}
-		}
-		if s := vol.VolumeSource.Secret; s != nil {
-			secrets[s.SecretName] = struct{}{}
-		}
-	}
-
-	// Iterate over all Containers and their respective EnvFrom and Env
-	// then check the EnvFromSources for ConfigMaps and Secrets
-	for _, container := range statefulSet.Spec.Template.Spec.Containers {
-		for _, env := range container.EnvFrom {
-			if cm := env.ConfigMapRef; cm != nil {
-				configMaps[cm.Name] = struct{}{}
-			}
-			if s := env.SecretRef; s != nil {
-				secrets[s.Name] = struct{}{}
-			}
-		}
-
-		for _, env := range container.Env {
-			if cmRef := env.ValueFrom.ConfigMapKeyRef; cmRef != nil {
-				configMaps[cmRef.Name] = struct{}{}
-
-			}
-			if sRef := env.ValueFrom.SecretKeyRef; sRef != nil {
-				secrets[sRef.Name] = struct{}{}
-
-			}
-		}
-	}
-
-	return configMaps, secrets
-}
-
-// listConfigsOwnedBy returns a list of all ConfigMaps and Secrets that are
-// owned by the ExtendedStatefulSet instance
-func (r *ReconcileExtendedStatefulSet) listConfigsOwnedBy(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) ([]essv1a1.Object, error) {
-	r.log.Debug("Getting all ConfigMaps and Secrets that are owned by '", exStatefulSet.Name, "'.")
-	opts := client.InNamespace(exStatefulSet.GetNamespace())
-
-	// List all ConfigMaps in the ExtendedStatefulSet's namespace
-	configMaps := &corev1.ConfigMapList{}
-	err := r.client.List(ctx, opts, configMaps)
-	if err != nil {
-		return []essv1a1.Object{}, fmt.Errorf("error listing ConfigMaps: %v", err)
-	}
-
-	// List all Secrets in the ExtendedStatefulSet's namespace
-	secrets := &corev1.SecretList{}
-	err = r.client.List(ctx, opts, secrets)
-	if err != nil {
-		return []essv1a1.Object{}, fmt.Errorf("error listing Secrets: %v", err)
-	}
-
-	// Iterate over the ConfigMaps/Secrets and add the ones owned by the
-	// ExtendedStatefulSet to the output list configs
-	configs := []essv1a1.Object{}
-	for _, cm := range configMaps.Items {
-		if isOwnedBy(&cm, exStatefulSet) {
-			configs = append(configs, cm.DeepCopy())
-		}
-	}
-	for _, s := range secrets.Items {
-		if isOwnedBy(&s, exStatefulSet) {
-			configs = append(configs, s.DeepCopy())
-		}
-	}
-
-	return configs, nil
-}
-
-// isOwnedBy returns true if the child has an owner reference that points to
-// the owner object
-func isOwnedBy(child, owner essv1a1.Object) bool {
-	for _, ref := range child.GetOwnerReferences() {
-		if ref.UID == owner.GetUID() {
-			return true
-		}
-	}
-	return false
-}
-
 // calculateConfigHash calculates the SHA1 of the JSON representation of configuration objects
-func calculateConfigHash(children []essv1a1.Object) (string, error) {
+func calculateConfigHash(children []apis.Object) (string, error) {
 	// hashSource contains all the data to be hashed
 	hashSource := struct {
 		ConfigMaps map[string]map[string]string `json:"configMaps"`
@@ -660,97 +552,20 @@ func (r *ReconcileExtendedStatefulSet) updateConfigSHA1(ctx context.Context, act
 	return nil
 }
 
-// updateOwnerReferences determines which children need to have their
-// OwnerReferences added/updated and which need to have their OwnerReferences
-// removed and then performs all updates
-func (r *ReconcileExtendedStatefulSet) updateOwnerReferences(ctx context.Context, owner *essv1a1.ExtendedStatefulSet, existing, current []essv1a1.Object) error {
-	r.log.Debug("Updating ownerReferences for StatefulSet '", owner.Name, "' in namespace '", owner.Namespace, "'.")
-
-	// Add an owner reference to each child object
-	ownerRef, err := getOwnerReference(owner, r.scheme)
-	if err != nil {
-		return errors.Wrapf(err, "Could not get Owner Reference")
-	}
-	for _, obj := range current {
-		err := r.updateOwnerReference(ctx, ownerRef, obj)
-		if err != nil {
-			return errors.Wrapf(err, "Could not update Owner References")
-		}
-	}
-
-	// Get the orphaned children and remove their OwnerReferences
-	orphans := getOrphans(existing, current)
-	err = r.removeOwnerReferences(ctx, owner, orphans)
-	if err != nil {
-		return errors.Wrapf(err, "Could not remove Owner References")
-	}
-
-	return nil
-}
-
-// removeOwnerReferences iterates over a list of children and removes the
-// ExtendedStatefulSet owner reference from the child before updating it
-func (r *ReconcileExtendedStatefulSet) removeOwnerReferences(ctx context.Context, obj *essv1a1.ExtendedStatefulSet, children []essv1a1.Object) error {
-	for _, child := range children {
-		// Filter ExtendedStatefulSet from the existing ownerReferences
-		ownerRefs := []metav1.OwnerReference{}
-		for _, ref := range child.GetOwnerReferences() {
-			if ref.UID != obj.UID {
-				ownerRefs = append(ownerRefs, ref)
-			}
-		}
-
-		// Compare the ownerRefs and update if they have changed
-		if !reflect.DeepEqual(ownerRefs, child.GetOwnerReferences()) {
-			child.SetOwnerReferences(ownerRefs)
-			r.log.Debug("Removing child '", child.GetNamespace(), "/", child.GetName(), "' from StatefulSet '", obj.Name, "' in namespace '", obj.Namespace, "'.")
-			err := r.client.Update(ctx, child)
-			if err != nil {
-				r.log.Error("Could not update '", child.GetName(), "': ", err)
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-// updateOwnerReference ensures that the child object has an OwnerReference
-// pointing to the owner
-func (r *ReconcileExtendedStatefulSet) updateOwnerReference(ctx context.Context, ownerRef metav1.OwnerReference, child essv1a1.Object) error {
-	for _, ref := range child.GetOwnerReferences() {
-		// Owner Reference already exists, do nothing
-		if reflect.DeepEqual(ref, ownerRef) {
-			return nil
-		}
-	}
-
-	// Append the new OwnerReference and update the child
-	ownerRefs := append(child.GetOwnerReferences(), ownerRef)
-	child.SetOwnerReferences(ownerRefs)
-
-	r.log.Debug("Updating child '", child.GetObjectKind().GroupVersionKind().Kind, "/", child.GetName(), "' for ExtendedStatefulSet '", ownerRef.Name, "'.")
-	err := r.client.Update(ctx, child)
-	if err != nil {
-		r.log.Error("Could not update '", child.GetObjectKind().GroupVersionKind().Kind, "/", child.GetName(), "': ", err)
-		return err
-	}
-	return nil
-}
-
 // handleDelete removes all existing Owner References pointing to ExtendedStatefulSet
 // and object's Finalizers
 func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extendedStatefulSet *essv1a1.ExtendedStatefulSet) (reconcile.Result, error) {
 	r.log.Debug("Considering existing Owner References of ExtendedStatefulSet '", extendedStatefulSet.Name, "'.")
 
 	// Fetch all ConfigMaps and Secrets with an OwnerReference pointing to the object
-	existingConfigs, err := r.listConfigsOwnedBy(ctx, extendedStatefulSet)
+	existingConfigs, err := r.owner.ListConfigsOwnedBy(ctx, extendedStatefulSet)
 	if err != nil {
 		r.log.Error("Could not retrieve all ConfigMaps and Secrets owned by ExtendedStatefulSet '", extendedStatefulSet.Name, "': ", err)
 		return reconcile.Result{}, err
 	}
 
 	// Remove StatefulSet OwnerReferences from the existingConfigs
-	err = r.removeOwnerReferences(ctx, extendedStatefulSet, existingConfigs)
+	err = r.owner.RemoveOwnerReferences(ctx, extendedStatefulSet, existingConfigs)
 	if err != nil {
 		r.log.Error("Could not remove OwnerReferences pointing to ExtendedStatefulSet '", extendedStatefulSet.Name, "': ", err)
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, err
@@ -776,50 +591,4 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extende
 		}
 	}
 	return reconcile.Result{}, nil
-}
-
-// getOwnerReference constructs an OwnerReference pointing to the ExtendedStatefulSet
-func getOwnerReference(owner metav1.Object, scheme *runtime.Scheme) (metav1.OwnerReference, error) {
-	ro, ok := owner.(runtime.Object)
-	if !ok {
-		return metav1.OwnerReference{}, fmt.Errorf("is not a %T a runtime.Object, cannot call SetControllerReference", owner)
-	}
-
-	gvk, err := apiutil.GVKForObject(ro, scheme)
-	if err != nil {
-		return metav1.OwnerReference{}, err
-	}
-
-	t := true
-	f := false
-	return metav1.OwnerReference{
-		APIVersion:         gvk.GroupVersion().String(),
-		Kind:               gvk.Kind,
-		Name:               owner.GetName(),
-		UID:                owner.GetUID(),
-		BlockOwnerDeletion: &t,
-		Controller:         &f,
-	}, nil
-}
-
-// getOrphans creates a slice of orphaned objects that need their
-// OwnerReferences removing
-func getOrphans(existing, current []essv1a1.Object) []essv1a1.Object {
-	orphans := []essv1a1.Object{}
-	for _, child := range existing {
-		if !isIn(current, child) {
-			orphans = append(orphans, child)
-		}
-	}
-	return orphans
-}
-
-// isIn checks whether a child object exists within a slice of objects
-func isIn(list []essv1a1.Object, child essv1a1.Object) bool {
-	for _, obj := range list {
-		if obj.GetUID() == child.GetUID() {
-			return true
-		}
-	}
-	return false
 }
