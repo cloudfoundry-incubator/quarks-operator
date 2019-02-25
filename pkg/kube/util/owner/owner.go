@@ -39,6 +39,25 @@ func NewOwner(
 	}
 }
 
+// Sync updates ownership on referenced configs and removes it from configs which are no longer used
+func (r Owner) Sync(ctx context.Context, owner apis.Object, spec corev1.PodSpec) error {
+	existing, err := r.ListConfigsOwnedBy(ctx, owner)
+	if err != nil {
+		return errors.Wrapf(err, "could not list ConfigMaps and Secrets owned by '%s'", owner.GetName())
+	}
+
+	current, err := r.ListConfigs(ctx, owner.GetNamespace(), spec)
+	if err != nil {
+		return errors.Wrapf(err, "could not list ConfigMaps and Secrets from '%s' spec", owner.GetName())
+	}
+
+	err = r.Update(ctx, owner, existing, current)
+	if err != nil {
+		return fmt.Errorf("error updating OwnerReferences: %v", err)
+	}
+	return nil
+}
+
 // Update determines which children need to have their OwnerReferences
 // added/updated and which need to have their OwnerReferences removed and then
 // performs all updates
@@ -69,12 +88,12 @@ func (r Owner) Update(ctx context.Context, owner apis.Object, existing, current 
 
 // RemoveOwnerReferences iterates over a list of children and removes the
 // owner reference from the child before updating it
-func (r Owner) RemoveOwnerReferences(ctx context.Context, obj apis.Object, children []apis.Object) error {
+func (r Owner) RemoveOwnerReferences(ctx context.Context, owner apis.Object, children []apis.Object) error {
 	for _, child := range children {
 		// Filter owner from the existing ownerReferences
 		ownerRefs := []metav1.OwnerReference{}
 		for _, ref := range child.GetOwnerReferences() {
-			if ref.UID != obj.GetUID() {
+			if ref.UID != owner.GetUID() {
 				ownerRefs = append(ownerRefs, ref)
 			}
 		}
@@ -82,11 +101,11 @@ func (r Owner) RemoveOwnerReferences(ctx context.Context, obj apis.Object, child
 		// Compare the ownerRefs and update if they have changed
 		if !reflect.DeepEqual(ownerRefs, child.GetOwnerReferences()) {
 			child.SetOwnerReferences(ownerRefs)
-			r.log.Debug("Removing child '", child.GetNamespace(), "/", child.GetName(), "' from StatefulSet '", obj.GetName(), "' in namespace '", obj.GetNamespace(), "'.")
+			r.log.Debugf("Removing child '%T/%s' from '%s' in '%s'", child, child.GetName(), owner.GetName(), child.GetNamespace())
 			err := r.client.Update(ctx, child)
 			if err != nil {
-				r.log.Error("could not update '", child.GetName(), "': ", err)
-				return err
+				r.log.Debugf("child '%v' vs ownerrefs '%v'", child.GetUID(), ownerRefs)
+				return errors.Wrapf(err, "failed to update '%s'", child.GetName())
 			}
 		}
 	}
@@ -102,16 +121,15 @@ func (r Owner) updateOwnerReference(ctx context.Context, ownerRef metav1.OwnerRe
 			return nil
 		}
 	}
+	r.log.Debugf("Updating child '%T/%s' for owner '%s'", child, child.GetName(), ownerRef.Name)
 
 	// Append the new OwnerReference and update the child
 	ownerRefs := append(child.GetOwnerReferences(), ownerRef)
 	child.SetOwnerReferences(ownerRefs)
 
-	r.log.Debug("Updating child '", child.GetObjectKind().GroupVersionKind().Kind, "/", child.GetName(), "' for owner '", ownerRef.Name, "'.")
 	err := r.client.Update(ctx, child)
 	if err != nil {
-		r.log.Error("could not update '", child.GetObjectKind().GroupVersionKind().Kind, "/", child.GetName(), "': ", err)
-		return err
+		return errors.Wrapf(err, "failed to update '%s'", child.GetName())
 	}
 	return nil
 }
@@ -167,7 +185,7 @@ func isIn(list []apis.Object, child apis.Object) bool {
 func (r Owner) ListConfigs(ctx context.Context, namespace string, spec corev1.PodSpec) ([]apis.Object, error) {
 	configMaps, secrets := getConfigNamesFromSpec(spec)
 
-	// return error if config resource is not exist
+	// return error if config resource does not exist
 	var configs []apis.Object
 	for name := range configMaps {
 		key := types.NamespacedName{Namespace: namespace, Name: name}

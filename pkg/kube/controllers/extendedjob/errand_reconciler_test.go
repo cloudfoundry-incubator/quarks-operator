@@ -32,7 +32,7 @@ import (
 )
 
 var _ = Describe("ErrandReconciler", func() {
-	Describe("Run", func() {
+	Describe("Reconcile", func() {
 		var (
 			env        testing.Catalog
 			logs       *observer.ObservedLogs
@@ -41,6 +41,7 @@ var _ = Describe("ErrandReconciler", func() {
 			mgr        *fakes.FakeManager
 			request    reconcile.Request
 			reconciler reconcile.Reconciler
+			owner      *fakes.FakeOwner
 
 			runtimeObjects             []runtime.Object
 			exJob                      ejv1.ExtendedJob
@@ -72,6 +73,7 @@ var _ = Describe("ErrandReconciler", func() {
 				ctrsConfig,
 				mgr,
 				setOwnerReference,
+				owner,
 			)
 		})
 
@@ -83,6 +85,7 @@ var _ = Describe("ErrandReconciler", func() {
 			controllers.AddToScheme(scheme.Scheme)
 			logs, log = helper.NewTestLogger()
 			mgr = &fakes.FakeManager{}
+			owner = &fakes.FakeOwner{}
 			ctrsConfig = &cfctx.Config{ //Set the context to be TODO
 				CtxTimeOut: 10 * time.Second,
 				CtxType:    cfctx.NewContext(),
@@ -244,6 +247,51 @@ var _ = Describe("ErrandReconciler", func() {
 					)
 					Expect(exJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
 
+				})
+			})
+
+			Context("and the auto-errand is updated on config change", func() {
+				BeforeEach(func() {
+					exJob = env.AutoErrandExtendedJob("fake-pod")
+					exJob.Spec.UpdateOnConfigChange = true
+					exJob.Spec.Trigger.Strategy = ejv1.TriggerOnce
+					runtimeObjects = []runtime.Object{&exJob}
+					client = fake.NewFakeClient(runtimeObjects...)
+					mgr.GetClientReturns(client)
+
+					request = newRequest(exJob)
+				})
+
+				It("should  watch configs and trigger the job", func() {
+					result, err := act()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(result.Requeue).To(BeFalse())
+
+					Expect(owner.SyncCallCount()).To(Equal(1))
+
+					obj := &batchv1.JobList{}
+					err = client.List(context.Background(), &crc.ListOptions{}, obj)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(obj.Items).To(HaveLen(1))
+
+					client.Get(
+						context.Background(),
+						types.NamespacedName{
+							Name:      exJob.Name,
+							Namespace: exJob.Namespace,
+						},
+						&exJob,
+					)
+					Expect(exJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
+
+				})
+
+				It("adds missing finalizer", func() {
+					_, err := act()
+					Expect(err).NotTo(HaveOccurred())
+					ejob := &ejv1.ExtendedJob{}
+					client.Get(context.Background(), request.NamespacedName, ejob)
+					Expect(ejob.GetFinalizers()).NotTo(BeEmpty())
 				})
 			})
 		})

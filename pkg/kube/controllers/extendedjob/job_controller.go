@@ -34,7 +34,11 @@ func AddJob(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manag
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			return e.ObjectNew.(*batchv1.Job).Status.Succeeded == 1 || e.ObjectNew.(*batchv1.Job).Status.Failed == 1
+			reconcile := e.ObjectNew.(*batchv1.Job).Status.Succeeded == 1 || e.ObjectNew.(*batchv1.Job).Status.Failed == 1
+			if !e.ObjectNew.(*batchv1.Job).GetDeletionTimestamp().IsZero() {
+				return false
+			}
+			return reconcile
 		},
 	}
 	return jobController.Watch(&source.Kind{Type: &batchv1.Job{}}, &handler.EnqueueRequestForObject{}, predicate)

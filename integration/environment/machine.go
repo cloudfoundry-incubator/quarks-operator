@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"go.uber.org/zap/zaptest/observer"
 	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -62,6 +63,16 @@ func (m *Machine) WaitForPod(namespace string, name string) error {
 func (m *Machine) WaitForPods(namespace string, labels string) error {
 	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
 		return m.PodsRunning(namespace, labels)
+	})
+}
+
+// WaitForLogMsg searches zap test logs for at least one occurrence of msg.
+// When using this, tests should use FlushLog() to remove log messages from
+// other tests.
+func (m *Machine) WaitForLogMsg(logs *observer.ObservedLogs, msg string) error {
+	return wait.Poll(1*time.Second, 5*time.Second, func() (bool, error) {
+		n := logs.FilterMessageSnippet(msg).Len()
+		return n > 0, nil
 	})
 }
 
@@ -644,7 +655,7 @@ func (m *Machine) WaitForJobExists(namespace string, labels string) (bool, error
 	return found, err
 }
 
-// WaitForJobDeletion blocks until the CR is deleted
+// WaitForJobDeletion blocks until the batchv1.Job is deleted
 func (m *Machine) WaitForJobDeletion(namespace string, name string) error {
 	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
 		found, err := m.JobExists(namespace, name)
@@ -775,6 +786,27 @@ func (m *Machine) UpdateExtendedJob(namespace string, exJob ejv1.ExtendedJob) er
 	return err
 }
 
+// WaitForExtendedJobDeletion blocks until the CR job is deleted
+func (m *Machine) WaitForExtendedJobDeletion(namespace string, name string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		found, err := m.ExtendedJobExists(namespace, name)
+		return !found, err
+	})
+}
+
+// ExtendedJobExists returns true if extended job with that name exists
+func (m *Machine) ExtendedJobExists(namespace string, name string) (bool, error) {
+	_, err := m.GetExtendedJob(namespace, name)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "failed to query for extended job by name: %s", name)
+	}
+
+	return true, nil
+}
+
 // GetPodLogs gets pod logs
 func (m *Machine) GetPodLogs(namespace, podName string) (string, error) {
 	podLogOpts := corev1.PodLogOptions{}
@@ -794,4 +826,11 @@ func (m *Machine) GetPodLogs(namespace, podName string) (string, error) {
 	str := buf.String()
 
 	return str, nil
+}
+
+// TearDownAll calls all passed in tear down functions in order
+func (m *Machine) TearDownAll(funcs []TearDownFunc) {
+	for _, f := range funcs {
+		f()
+	}
 }

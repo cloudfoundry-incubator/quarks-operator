@@ -53,7 +53,7 @@ type ReconcileJob struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	r.log.Infof("Reconciling Job %s in the ExtendedJob context", request.NamespacedName)
+	r.log.Infof("Reconciling job output '%s' in the ExtendedJob context", request.NamespacedName)
 
 	instance := &batchv1.Job{}
 

@@ -5,6 +5,8 @@ import (
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -21,21 +23,21 @@ var _ reconcile.Reconciler = &ErrandReconciler{}
 // NewErrandReconciler returns a new reconciler for errand jobs
 func NewErrandReconciler(
 	log *zap.SugaredLogger,
-	ctrConfig *context.Config,
+	config *context.Config,
 	mgr manager.Manager,
 	f setOwnerReferenceFunc,
+	owner Owner,
 ) reconcile.Reconciler {
-
-	reconcilerLog := log.Named("extendedjob-errand-reconciler")
-	reconcilerLog.Info("Creating a reconciler for errand ExtendedJobs")
+	log.Info("Creating a reconciler for errand ExtendedJobs")
 
 	return &ErrandReconciler{
 		client:            mgr.GetClient(),
-		log:               reconcilerLog,
-		ctrConfig:         ctrConfig,
+		log:               log,
+		config:            config,
 		recorder:          mgr.GetRecorder("extendedjob errand reconciler"),
 		scheme:            mgr.GetScheme(),
 		setOwnerReference: f,
+		owner:             owner,
 	}
 }
 
@@ -43,31 +45,35 @@ func NewErrandReconciler(
 type ErrandReconciler struct {
 	client            client.Client
 	log               *zap.SugaredLogger
-	ctrConfig         *context.Config
+	config            *context.Config
 	recorder          record.EventRecorder
 	scheme            *runtime.Scheme
 	setOwnerReference setOwnerReferenceFunc
+	owner             Owner
 }
 
 // Reconcile starts jobs for extended jobs of the type errand with Run being set to 'now' manually
-func (r *ErrandReconciler) Reconcile(request reconcile.Request) (result reconcile.Result, err error) {
+func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	r.log.Info("Reconciling errand job ", request.NamespacedName)
+
+	var result = reconcile.Result{}
 	extJob := &ejv1.ExtendedJob{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
-	ctx, cancel := context.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
+	ctx, cancel := context.NewBackgroundContextWithTimeout(r.config.CtxType, r.config.CtxTimeOut)
 	defer cancel()
 
-	err = r.client.Get(ctx, request.NamespacedName, extJob)
+	err := r.client.Get(ctx, request.NamespacedName, extJob)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// do not requeue, extended job is probably deleted
 			r.log.Infof("Failed to find extended job '%s', not retrying: %s", request.NamespacedName, err)
 			err = nil
-			return
+			return result, err
 		}
 		// Error reading the object - requeue the request.
 		r.log.Errorf("Failed to get the extended job '%s': %s", request.NamespacedName, err)
-		return
+		return result, err
 	}
 
 	if extJob.Spec.Trigger.Strategy == ejv1.TriggerNow {
@@ -76,7 +82,28 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (result reconcil
 		err = r.client.Update(ctx, extJob)
 		if err != nil {
 			r.log.Errorf("Failed to revert to 'trigger.strategy=manual' on job '%s': %s", extJob.Name, err)
-			return
+			return result, err
+		}
+	}
+
+	// We might want to retrigger an old job due to a config change. In any
+	// case, if it's an auto-errand, let's keep track of the referenced
+	// configs and make sure the finalizer is in place to clean up ownership.
+	if extJob.Spec.UpdateOnConfigChange == true && extJob.Spec.Trigger.Strategy == ejv1.TriggerOnce {
+		r.log.Debugf("Synchronizing ownership on configs for extJob '%s' in namespace", extJob.Name)
+		err := r.owner.Sync(ctx, extJob, extJob.Spec.Template.Spec)
+		if err != nil {
+			return result, errors.Wrapf(err, "could not synchronize ownership for '%s'", extJob.Name)
+		}
+		if !finalizer.HasFinalizer(extJob) {
+			r.log.Debugf("Add finalizer to extendedJob '%s' in namespace '%s'.", extJob.Name, extJob.Namespace)
+			finalizer.AddFinalizer(extJob)
+			err = r.client.Update(ctx, extJob)
+			if err != nil {
+				r.log.Errorf("Could not remove finalizer from ExtJob '%s': ", extJob.GetName(), err)
+				return reconcile.Result{}, err
+			}
+
 		}
 	}
 
@@ -89,7 +116,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (result reconcil
 		} else {
 			r.log.Errorf("Failed to create job '%s': %s", extJob.Name, err)
 		}
-		return
+		return result, err
 	}
 	r.log.Infof("Created errand job for '%s'", extJob.Name)
 
@@ -99,11 +126,11 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (result reconcil
 		err = r.client.Update(ctx, extJob)
 		if err != nil {
 			r.log.Errorf("Failed to traverse to 'trigger.strategy=done' on job '%s': %s", extJob.Name, err)
-			return
+			return result, err
 		}
 	}
 
-	return
+	return result, err
 }
 
 func (r *ErrandReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJob) error {

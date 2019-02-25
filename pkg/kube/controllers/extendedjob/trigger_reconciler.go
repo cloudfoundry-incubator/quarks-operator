@@ -34,7 +34,7 @@ func NewTriggerReconciler(
 	f setOwnerReferenceFunc,
 ) reconcile.Reconciler {
 
-	reconcilerLog := log.Named("extendedjob-trigger-reconciler")
+	reconcilerLog := log.Named("ext-job-trigger-reconciler")
 	reconcilerLog.Info("Creating a trigger reconciler for ExtendedJob to start jobs triggered by pods")
 
 	return &TriggerReconciler{
