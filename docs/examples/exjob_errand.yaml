@@ -14,4 +14,4 @@ spec:
       restartPolicy: Never
       terminationGracePeriodSeconds: 1
   trigger:
-    strategy: manually
+    strategy: manual

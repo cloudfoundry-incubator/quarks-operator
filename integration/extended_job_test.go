@@ -92,7 +92,7 @@ var _ = Describe("ExtendedJob", func() {
 
 		It("does not start a job without Run being set to now", func() {
 			ej := env.ErrandExtendedJob("extendedjob")
-			ej.Spec.Trigger.Strategy = ejv1.TriggerManually
+			ej.Spec.Trigger.Strategy = ejv1.TriggerManual
 			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
@@ -103,7 +103,7 @@ var _ = Describe("ExtendedJob", func() {
 
 			latest, err := env.GetExtendedJob(env.Namespace, ej.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(latest.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerManually))
+			Expect(latest.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerManual))
 
 			err = env.UpdateExtendedJob(env.Namespace, *latest)
 			Expect(err).NotTo(HaveOccurred())
@@ -126,14 +126,14 @@ var _ = Describe("ExtendedJob", func() {
 
 		It("starts a job when updating extended job to now", func() {
 			ej := env.ErrandExtendedJob("extendedjob")
-			ej.Spec.Trigger.Strategy = ejv1.TriggerManually
+			ej.Spec.Trigger.Strategy = ejv1.TriggerManual
 			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
 			latest, err := env.GetExtendedJob(env.Namespace, ej.Name)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(latest.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerManually))
+			Expect(latest.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerManual))
 
 			latest.Spec.Trigger.Strategy = ejv1.TriggerNow
 			err = env.UpdateExtendedJob(env.Namespace, *latest)

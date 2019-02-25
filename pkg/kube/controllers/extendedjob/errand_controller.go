@@ -36,7 +36,7 @@ func AddErrand(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Ma
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			oldExJob := e.ObjectOld.(*ejv1.ExtendedJob)
 			newExJob := e.ObjectNew.(*ejv1.ExtendedJob)
-			run := newExJob.Spec.Trigger.Strategy == ejv1.TriggerNow && oldExJob.Spec.Trigger.Strategy == ejv1.TriggerManually
+			run := newExJob.Spec.Trigger.Strategy == ejv1.TriggerNow && oldExJob.Spec.Trigger.Strategy == ejv1.TriggerManual
 			return run
 		},
 	}

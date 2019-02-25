@@ -71,11 +71,11 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (result reconcil
 	}
 
 	if extJob.Spec.Trigger.Strategy == ejv1.TriggerNow {
-		// set Strategy back to manually for errand jobs
-		extJob.Spec.Trigger.Strategy = ejv1.TriggerManually
+		// set Strategy back to manual for errand jobs
+		extJob.Spec.Trigger.Strategy = ejv1.TriggerManual
 		err = r.client.Update(ctx, extJob)
 		if err != nil {
-			r.log.Errorf("Failed to revert to 'trigger.strategy=manually' on job '%s': %s", extJob.Name, err)
+			r.log.Errorf("Failed to revert to 'trigger.strategy=manual' on job '%s': %s", extJob.Name, err)
 			return
 		}
 	}
