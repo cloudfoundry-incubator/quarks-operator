@@ -79,6 +79,7 @@ func (m *Manifest) generateVariableSecretName(name string) string {
 	return secretName
 }
 
+// GetReleaseImage returns the release image location for a given instance group/job
 func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, error) {
 	var instanceGroup *InstanceGroup
 	for i := range m.InstanceGroups {
