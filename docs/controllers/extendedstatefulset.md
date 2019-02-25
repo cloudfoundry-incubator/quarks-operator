@@ -24,7 +24,7 @@ The operator watches all the ConfigMaps and Secrets referenced by the StatefulSe
 
 > See [this implementation](https://thenewstack.io/solving-kubernetes-configuration-woes-with-a-custom-controller/) for inspiration
 
-Adding an OwnerReference to all ConfigMaps and Secrets that are referenced by a StatefulSet. 
+Adding an OwnerReference to all ConfigMaps and Secrets that are referenced by a ExtendedStatefulSet. 
 
 ```yaml
 apiVersion: v1

@@ -267,7 +267,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			defer tearDown()
 
 			// Check new generation of statefulSet appear
-			err =env.WaitForStatefulSetNewGeneration(env.Namespace, ss.GetName(),*originalGeneration)
+			err = env.WaitForStatefulSetNewGeneration(env.Namespace, ss.GetName(), *originalGeneration)
 			Expect(err).NotTo(HaveOccurred())
 
 			err = env.WaitForPods(env.Namespace, "referencedpod=yes")

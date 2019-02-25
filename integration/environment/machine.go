@@ -100,7 +100,7 @@ func (m *Machine) StatefulSetNewGeneration(namespace string, name string, versio
 		return false, errors.Wrapf(err, "failed to query for statefulSet by name: %v", name)
 	}
 
-	if *ss.Status.ObservedGeneration> version{
+	if *ss.Status.ObservedGeneration > version {
 		return true, nil
 	}
 
