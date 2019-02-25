@@ -18,8 +18,9 @@ import (
 
 var addToManagerFuncs = []func(*zap.SugaredLogger, *context.Config, manager.Manager) error{
 	boshdeployment.Add,
-	extendedjob.Add,
+	extendedjob.AddTrigger,
 	extendedjob.AddErrand,
+	extendedjob.AddOutput,
 	extendedsecret.Add,
 	extendedstatefulset.Add,
 }
