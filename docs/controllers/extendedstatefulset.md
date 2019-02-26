@@ -24,7 +24,7 @@ The operator watches all the ConfigMaps and Secrets referenced by the StatefulSe
 
 > See [this implementation](https://thenewstack.io/solving-kubernetes-configuration-woes-with-a-custom-controller/) for inspiration
 
-Adding an OwnerReference to all ConfigMaps and Secrets that are referenced by a StatefulSet. 
+Adding an OwnerReference to all ConfigMaps and Secrets that are referenced by a ExtendedStatefulSet. 
 
 ```yaml
 apiVersion: v1
@@ -35,11 +35,11 @@ apiVersion: v1
     name: example-config
     namespace: default
     ownerReferences:
-    - apiVersion: apps/v1
+    - apiVersion: fissile.cloudfoundry.org/v1alpha1
       blockOwnerDeletion: true
       controller: false
-      kind: StatefuelSet
-      name: example-stateful-set
+      kind: ExtendedStatefulSet
+      name: example-extendedstatefulset
 ```
 
 This allows Controller to trigger a reconciliation whenever the ConfigMaps or Secrets are modified.

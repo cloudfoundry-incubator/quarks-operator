@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -26,6 +27,8 @@ import (
 	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 )
+
+const OptimisticLockErrorMsg = "the object has been modified; please apply your changes to the latest version and try again"
 
 // Check that ReconcileExtendedStatefulSet implements the reconcile.Reconciler interface
 var _ reconcile.Reconciler = &ReconcileExtendedStatefulSet{}
@@ -131,11 +134,13 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 
 	// Update StatefulSets configSHA1 and trigger statefulSet rollingUpdate if necessary
 	if exStatefulSet.Spec.UpdateOnEnvChange {
+		r.log.Debugf("Considering configurations to trigger update.")
+
 		err = r.updateStatefulSetsConfigSHA1(ctx, exStatefulSet)
 		if err != nil {
 			// TODO fix the object has been modified
 			r.log.Error("Could not update StatefulSets owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
-			return reconcile.Result{}, err
+			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, err
 		}
 	}
 	ptrStatefulSetVersions := &statefulSetVersions
@@ -164,10 +169,11 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 
 	if !statefulSetVersions[desiredVersion] {
 		r.log.Debug("Waiting desired version available")
-		return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, nil
+		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
 	}
 
 	// Reconcile stops since only one version or no version exists.
+	r.log.Debug("Version '", desiredVersion, "' is available")
 	return reconcile.Result{}, nil
 }
 
@@ -225,7 +231,7 @@ func (r *ReconcileExtendedStatefulSet) createStatefulSet(ctx context.Context, ex
 
 // cleanupStatefulSets cleans up StatefulSets and versions if they are no longer required
 func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet, maxAvailableVersion int, versions *map[int]bool) error {
-	r.log.Info("Cleaning up StatefulSets for ExtendedStatefulSet '%s' less than version %d.", exStatefulSet.Name, maxAvailableVersion)
+	r.log.Infof("Cleaning up StatefulSets for ExtendedStatefulSet '%s' less than version %d.", exStatefulSet.Name, maxAvailableVersion)
 
 	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
 	if err != nil {
@@ -623,27 +629,33 @@ func calculateConfigHash(children []essv1a1.Object) (string, error) {
 // updateConfigSHA1 updates the configuration sha1 of the given StatefulSet to the
 // given string
 func (r *ReconcileExtendedStatefulSet) updateConfigSHA1(ctx context.Context, actualStatefulSet *v1beta2.StatefulSet, hash string) error {
-	key := types.NamespacedName{Namespace: actualStatefulSet.GetNamespace(), Name: actualStatefulSet.GetName()}
-	err := r.client.Get(ctx, key, actualStatefulSet)
-	if err != nil {
-		return errors.Wrapf(err, "Could not get StatefulSet '%s'", actualStatefulSet.GetName())
-	}
-	// Get the existing annotations
-	annotations := actualStatefulSet.Spec.Template.GetAnnotations()
-	if annotations == nil {
-		annotations = make(map[string]string)
-	}
+	var err error
+	for i := 0; i < 3; i++ {
+		key := types.NamespacedName{Namespace: actualStatefulSet.GetNamespace(), Name: actualStatefulSet.GetName()}
+		err = r.client.Get(ctx, key, actualStatefulSet)
+		if err != nil {
+			return errors.Wrapf(err, "Could not get StatefulSet '%s'", actualStatefulSet.GetName())
+		}
+		// Get the existing annotations
+		annotations := actualStatefulSet.Spec.Template.GetAnnotations()
+		if annotations == nil {
+			annotations = make(map[string]string)
+		}
 
-	// Update the annotations
-	annotations[essv1a1.AnnotationConfigSHA1] = hash
-	actualStatefulSet.Spec.Template.SetAnnotations(annotations)
+		// Update the annotations
+		annotations[essv1a1.AnnotationConfigSHA1] = hash
+		actualStatefulSet.Spec.Template.SetAnnotations(annotations)
 
-	r.log.Debug("Updating new config sha1 for StatefulSet '", actualStatefulSet.GetName(), "'.")
-	err = r.client.Update(ctx, actualStatefulSet)
+		r.log.Debug("Updating new config sha1 for StatefulSet '", actualStatefulSet.GetName(), "'.")
+		err = r.client.Update(ctx, actualStatefulSet)
+		if err == nil || !strings.Contains(err.Error(), OptimisticLockErrorMsg) {
+			break
+		}
+		time.Sleep(time.Second)
+	}
 	if err != nil {
 		return errors.Wrapf(err, "Could not update StatefulSet '%s'", actualStatefulSet.GetName())
 	}
-
 	return nil
 }
 
@@ -690,7 +702,7 @@ func (r *ReconcileExtendedStatefulSet) removeOwnerReferences(ctx context.Context
 		// Compare the ownerRefs and update if they have changed
 		if !reflect.DeepEqual(ownerRefs, child.GetOwnerReferences()) {
 			child.SetOwnerReferences(ownerRefs)
-			r.log.Debug("Removing child '", child.GetName(), "' from StatefulSet '", obj.Name, "' in namespace '", obj.Namespace, "'.")
+			r.log.Debug("Removing child '", child.GetNamespace(), "/", child.GetName(), "' from StatefulSet '", obj.Name, "' in namespace '", obj.Namespace, "'.")
 			err := r.client.Update(ctx, child)
 			if err != nil {
 				r.log.Error("Could not update '", child.GetName(), "': ", err)
@@ -740,7 +752,7 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extende
 	err = r.removeOwnerReferences(ctx, extendedStatefulSet, existingConfigs)
 	if err != nil {
 		r.log.Error("Could not remove OwnerReferences pointing to ExtendedStatefulSet '", extendedStatefulSet.Name, "': ", err)
-		return reconcile.Result{}, err
+		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, err
 	}
 
 	// Remove the object's Finalizer and update if necessary

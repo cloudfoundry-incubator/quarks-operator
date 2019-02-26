@@ -55,11 +55,11 @@ If multiple selectors are given, all must match to include the pod.
 
 ### Errand Jobs
 
-Errands are run manually by the user. They are created by setting `trigger.strategy: manually`.
+Errands are run manually by the user. They are created by setting `trigger.strategy: manual`.
 
 After the `ExtendedJob` is created, run an errand by editing and applying the
-manifest, i.e. via `k edit errand1` and change `trigger.strategy: manually` to `trigger.strategy: now`,
-after completion the value will be reset to `manually`.
+manifest, i.e. via `k edit errand1` and change `trigger.strategy: manual` to `trigger.strategy: now`,
+after completion the value will be reset to `manual`.
 
 ### One-Off Jobs / Auto-Errands
 

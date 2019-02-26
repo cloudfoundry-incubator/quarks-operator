@@ -2,7 +2,6 @@ package integration_test
 
 import (
 	"fmt"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
@@ -32,7 +31,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			ownedReferencesExtendedStatefulSet = env.OwnedReferencesExtendedStatefulSet(ownedRefEssName)
 		})
 
-		It("should create a statefulset and eventually a pod", func() {
+		It("should create a statefulSet and eventually a pod", func() {
 			// Create an ExtendedStatefulSet
 			var ess *essv1.ExtendedStatefulSet
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
@@ -45,7 +44,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// check for extendedStatefulSet available
-			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName())
+			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName(), 1)
 			Expect(err).NotTo(HaveOccurred())
 
 			// check for extendedStatefulSet versions
@@ -56,7 +55,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			}))
 		})
 
-		XIt("should update a statefulset", func() {
+		It("should update a statefulSet", func() {
 			// Create an ExtendedStatefulSet
 			var ess *essv1.ExtendedStatefulSet
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
@@ -69,7 +68,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Check for extendedStatefulSet available
-			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName())
+			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName(), 1)
 			Expect(err).NotTo(HaveOccurred())
 
 			// check for extendedStatefulSet versions
@@ -90,8 +89,8 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			err = env.WaitForPods(env.Namespace, "testpodupdated=yes")
 			Expect(err).NotTo(HaveOccurred())
 
-			// Check for extendedStatefulSet available
-			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName())
+			// check for extendedStatefulSet available
+			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName(), 2)
 			Expect(err).NotTo(HaveOccurred())
 
 			// check for extendedStatefulSet versions
@@ -120,7 +119,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Check for extendedStatefulSet available
-			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName())
+			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName(), 1)
 			Expect(err).NotTo(HaveOccurred())
 
 			// check for extendedStatefulSet versions
@@ -217,9 +216,10 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			ss, err := env.GetStatefulSet(env.Namespace, ess.GetName()+"-v1")
 			Expect(err).NotTo(HaveOccurred())
 			originalSHA1 := ss.Spec.Template.GetAnnotations()[essv1.AnnotationConfigSHA1]
+			originalGeneration := ss.Status.ObservedGeneration
 
 			// Check for extendedStatefulSet available
-			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName())
+			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName(), 1)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Check for extendedStatefulSet versions
@@ -266,6 +266,10 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer tearDown()
 
+			// Check new generation of statefulSet appear
+			err = env.WaitForStatefulSetNewGeneration(env.Namespace, ss.GetName(), *originalGeneration)
+			Expect(err).NotTo(HaveOccurred())
+
 			err = env.WaitForPods(env.Namespace, "referencedpod=yes")
 			Expect(err).NotTo(HaveOccurred())
 
@@ -276,7 +280,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(currentSHA1).ShouldNot(Equal(originalSHA1))
 
 			// Check for extendedStatefulSet available
-			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName())
+			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName(), 1)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Check for extendedStatefulSet versions
