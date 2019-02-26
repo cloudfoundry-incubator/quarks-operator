@@ -4,7 +4,6 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -27,11 +26,6 @@ func AddPod(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConf
 		ForType(&corev1.Pod{}).
 		Handlers(podMutator).
 		WithManager(mgr).
-		NamespaceSelector(&metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{metav1.LabelSelectorRequirement{
-			Key:      "name",
-			Operator: metav1.LabelSelectorOpIn,
-			Values:   []string{ctrConfig.Namespace},
-		}}}).
 		Build()
 	if err != nil {
 		return errors.Wrap(err, "couldn't build a new webhook")

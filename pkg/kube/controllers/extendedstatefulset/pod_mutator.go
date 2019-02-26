@@ -31,11 +31,11 @@ var _ admission.Handler = &PodMutator{}
 
 // NewPodMutator returns a new reconcile.Reconciler
 func NewPodMutator(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, mgr manager.Manager, srf setReferenceFunc) admission.Handler {
-	reconcilerLog := log.Named("extendedstatefulset-pod1-mutator")
-	reconcilerLog.Info("Creating a Pod mutator for ExtendedStatefulSet")
+	mutatorLog := log.Named("extendedstatefulset-pod1-mutator")
+	mutatorLog.Info("Creating a Pod mutator for ExtendedStatefulSet")
 
 	return &PodMutator{
-		log:          reconcilerLog,
+		log:          mutatorLog,
 		ctrConfig:    ctrConfig,
 		client:       mgr.GetClient(),
 		scheme:       mgr.GetScheme(),
