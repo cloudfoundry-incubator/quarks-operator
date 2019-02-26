@@ -7,6 +7,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/version"
 )
 
 var (
@@ -33,4 +34,9 @@ func NewManager(log *zap.SugaredLogger, ctrConfig *context.Config, cfg *rest.Con
 	// Setup all Controllers
 	err = controllers.AddToManager(log, ctrConfig, mgr)
 	return
+}
+
+// GetOperatorDockerImage returns the image name of the operator docker image
+func GetOperatorDockerImage() string {
+	return DockerOrganization + "/" + DockerRepository + ":" + version.Version
 }
