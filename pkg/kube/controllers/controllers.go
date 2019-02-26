@@ -1,6 +1,9 @@
 package controllers
 
 import (
+	"os"
+	"strings"
+
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -57,10 +60,24 @@ func AddToScheme(s *runtime.Scheme) error {
 func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manager) error {
 	log.Info("Setting up webhook server")
 
+	var host *string
+	hostEnv := os.ExpandEnv("${OPERATOR_WEBHOOK_HOST}")
+	host = &hostEnv
+
+	if strings.TrimSpace(hostEnv) == "" {
+		host = nil
+	}
+
 	// TODO: port should be configurable
 	hookServer, err := webhook.NewServer("cf-operator", m, webhook.ServerOptions{
 		Port:    2999,
 		CertDir: "/tmp/cert",
+		BootstrapOptions: &webhook.BootstrapOptions{
+			// This should be properly configurable, and the user
+			// should be able to use a service instead.
+			Host: host,
+			// Service: ??
+		},
 	})
 
 	if err != nil {
