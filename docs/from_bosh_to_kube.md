@@ -18,11 +18,10 @@
     - [Variables to Extended Secrets](#variables-to-extended-secrets)
     - [Instance Groups to Extended StatefulSets and Jobs](#instance-groups-to-extended-statefulsets-and-jobs)
       - [BOSH Services vs BOSH Errands](#bosh-services-vs-bosh-errands)
-      - [Naming](#naming)
-      - [Pods](#pods)
+      - [Naming, Labels and Annotations](#naming-labels-and-annotations)
+      - [Containers](#containers)
       - [Mounts](#mounts)
       - [Entrypoints](#entrypoints)
-      - [Mounts](#mounts)
   - [Other](#other)
 
 ## High-level Direction
@@ -65,17 +64,19 @@ As the `BOSHDeployment` is deleted, all owned resources are automatically delete
 2. How do we specify credentials for docker registries containing release images?
    - we could extend the deployment manifest schema (with agreement from the BOSH team)
    - we could have a special k8s secret, which by convention is always named something like `docker-registry-secrets` and contains hostnames-to-credential mappings. e.g.:
-     ```
+
+     ```text
      docker.io: { user: test, password: none }
      localhost: { user: root, password, toor }
      ```
+
 3. Are we going to use ephemeral disks? Are they useful?
 4. BOSH makes use of errands, which are manually triggered. How do we support this in ExtendedJob?
 5. Discuss the ability to extend the releases block with credentials.
 6. Details on how we create services for jobs
 7. How do we rename things?
 8. Do we need ephemeral disks?
-9.  For persistent disks - are they shared among container pods?
+9. For persistent disks - are they shared among container pods?
 10. Canary support in ExtendedStatefulSets
 11. How do we deal with volumes? How can data be migrated from an older volume? Can we use ExtendedJobs for this? Do we need `ExtendedPersistentVolumes`?
 12. How are readiness probes generated?
@@ -162,7 +163,7 @@ update:
 # Each instance group is converted into an ExtendedStatefulSet
 instance_groups:
   # Used to name the ExtendedStatefulSet or ExtendedJob
-  name: "api-az1"
+- name: "api-az1"
   # TODO: how do we use this in conjunction with node labels? (exact procedure)
   azs: ["az1"]
   # Number of replicas for the StatefulSets in an ExtendedStatefulSet
@@ -173,7 +174,7 @@ instance_groups:
   # Each job has one or more processes (defined in bpm.yml), and each   corresponds to a container of a pod in a StatefulSet or Job
   jobs:
     # It's used to name the container
-    name: "cloud_controller_ng"
+  - name: "cloud_controller_ng"
     # The name of a release that must exist in the releases block.
     # If it doesn't exist in the releases block, an error is thrown.
     # The docker image used for the container is resolved using this release name.
@@ -184,11 +185,6 @@ instance_groups:
     consumes: {}
     # Same as the consumes block above.
     provides: {}
-    # Only used by the cf-operator.
-    # Affinity information for this instance group's pod.
-    # These definitions are merged directly into the pod's definition.
-    # The structure is the same as the one used by Kube [3].
-    affinity: {}
     # Defines all properties, used to render job templates.
     # Job templates are rendered as Secrets, and then mounted into pod containers.
     # If a property is changed, the operator runs rendering in an ExtendedJob, and the
@@ -302,10 +298,34 @@ instance_groups:
       swap_size: 100
       # Not used by the cf-operator.
       # A warning is logged if this is set.
-      ipv6 [Hash, optional]:
+      ipv6:
         # Not used by the cf-operator.
         # A warning is logged if this is set.
         enable: false
+      # Not used by the cf-operator.
+      # A warning is logged if this is set.
+      job_dir:
+        # Not used by the cf-operator.
+        # A warning is logged if this is set.
+        tmpfs: false
+        # Not used by the cf-operator.
+        # A warning is logged if this is set.
+        tmpfs_size: "0m"
+      agent:
+        # Not used by the cf-operator.
+        # A warning is logged if this is set.
+        tmpfs: false
+        # Used by the cf-operator to set kubernetes-specific information
+        # for the resources representing this instance group.
+        settings:
+          # Affinity information for this instance group's pod.
+          # These definitions are merged directly into the pod's definition.
+          # The structure is the same as the one used by Kube [3].
+          affinity: {}
+          # Labels to add to the resources representing the instance group
+          labels: {}
+          # Annotations to add to the resources representing the instance group
+          annotations: {}
 # Addons are not currently supported by the cf-operator.
 # A warning is logged if this is set.
 addons: []
@@ -320,7 +340,7 @@ properties: {}
 # to variables, so it knows what it needs to mount.
 variables:
     # Unique name used to identify a variable. Used to name the ExtendedSecret
-  - name: "adminpass"
+  - name: "adminPass"
     # As with normal BOSH, supported types are certificate, password, rsa, and ssh.
     type: "password"
     # Specifies generation options
@@ -331,9 +351,9 @@ tags:
   maintainer: "Philip J. Fry"
 ```
 
-* [1] https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-* [2] https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-* [3] https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+- [1] https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+- [2] https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+- [3] https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
 
 ## BPM
 
@@ -376,9 +396,9 @@ releases:
     version: 28.g837c5b3-30.263-7.0.0_233.gde0accd0
 ```
 
-the stemcell information (name, and stemcell and fissile version) are taken from the `stemcells` entry that matches the instance group's stemcell alias. The registry URL including the organization, the release name, and the version com from the `releases` entry that's referenced from the job.
+The stemcell information (name, and stemcell and fissile version) are taken from the `stemcells` entry that matches the instance group's stemcell alias. The registry URL including the organization, the release name, and the version com from the `releases` entry that's referenced from the job.
 
-*Note*: Releases can optionally specify a separate `stemcell` section, in which case the information from the instance group stemcell is overridden.
+> *Note*: Releases can optionally specify a separate `stemcell` section, in which case the information from the instance group stemcell is overridden.
 
 ### Variables to Extended Secrets
 
@@ -387,7 +407,7 @@ The `ExtendedSecret` is meant to generate the value required by the variable.
 
 The name of the `ExtendedSecret` is calculated like this:
 
-```
+```text
 <DEPLOYMENT_NAME>.<VARIABLE_NAME>
 ```
 
@@ -400,7 +420,7 @@ The secret name cannot start or end with a `"-"`. These characters are trimmed.
 
 Secret names are also restricted to 63 characters in length, so if a generated name exceeds 63 characters, it should be recalculated as:
 
-```
+```text
 name=<DEPLOYMENT_NAME>-<VARIABLE_NAME>
 
 <name trimmed to 31 characters><md5 hash of name>
@@ -410,9 +430,37 @@ name=<DEPLOYMENT_NAME>-<VARIABLE_NAME>
 
 #### BOSH Services vs BOSH Errands
 
-#### Naming
+BOSH Services are converted to `ExtendedStatefulSets`.
 
-#### Pods
+BOSH Errands are converted to `ExtendedJobs` with `trigger.strategy: manually`.
+
+BOSH Auto-Errands (supported only by the operator) are converted to `ExtendedJobs` with `trigger.strategy: once`.
+
+#### Naming, Labels and Annotations
+
+Name:
+
+```text
+<deployment-name>-<instance-group-name>
+```
+
+Labels:
+
+```yaml
+fissile.cloudfoundry.org/deployment-name: "<deployment-name>"
+fissile.cloudfoundry.org/instance-group-name: "<instance-group-name>"
+fissile.cloudfoundry.org/deployment-version: "<integer version of the desired manifest>"
+```
+
+Annotations:
+
+```yaml
+fissile.cloudfoundry.org/?
+```
+
+#### Containers
+
+Each pod (for either an `ExtendedStatefulSet` or `ExtendedJob`) contains one container for each BOSH Job that's part of its instance group.
 
 #### Mounts
 
@@ -423,12 +471,9 @@ name=<DEPLOYMENT_NAME>-<VARIABLE_NAME>
 
 #### Entrypoints
 
-#### Mounts
-
 ## Other
 
 These need to be provided by a mount in each container,
 
-`/var/vcap/instance/name`
-`/var/vcap/instance/id`
-
+- `/var/vcap/instance/name`
+- `/var/vcap/instance/id`
