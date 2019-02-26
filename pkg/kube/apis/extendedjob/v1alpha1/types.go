@@ -23,8 +23,8 @@ type ExtendedJobSpec struct {
 type Strategy string
 
 const (
-	// TriggerManually is the default for errand jobs
-	TriggerManually Strategy = "manually"
+	// TriggerManual is the default for errand jobs
+	TriggerManual Strategy = "manual"
 	// TriggerNow instructs the controller to run the job now
 	TriggerNow Strategy = "now"
 	// TriggerOnce jobs run only once, when created
