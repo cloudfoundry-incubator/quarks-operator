@@ -815,7 +815,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{
 					Requeue:      true,
-					RequeueAfter: 5000000000,
+					RequeueAfter: 1000000000,
 				}))
 
 				ess := &exss.ExtendedStatefulSet{}
@@ -843,7 +843,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{
 					Requeue:      true,
-					RequeueAfter: 5000000000,
+					RequeueAfter: 1000000000,
 				}))
 
 				ess := &exss.ExtendedStatefulSet{}
