@@ -36,8 +36,10 @@ var rootCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 		namespace := viper.GetString("namespace")
+		operator.DockerOrganization = viper.GetString("docker-image-org")
+		operator.DockerRepository = viper.GetString("docker-image-repository")
 
-		log.Infof("Starting cf-operator with namespace %s", namespace)
+		log.Infof("Starting cf-operator with namespace %s (docker image: %s/%s)", namespace, operator.DockerOrganization, operator.DockerRepository)
 
 		ctrsConfig := &context.Config{ //Set the context to be TODO
 			CtxTimeOut: 10 * time.Second,
@@ -64,10 +66,15 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringP("kubeconfig", "c", "", "Path to a kubeconfig, not required in-cluster")
 	rootCmd.PersistentFlags().StringP("namespace", "n", "default", "Namespace to watch for BOSH deployments")
+	rootCmd.PersistentFlags().StringP("docker-image-org", "o", "cfcontainerization", "Dockerhub organization that provides the operator docker image")
+	rootCmd.PersistentFlags().StringP("docker-image-repository", "r", "cf-operator", "Dockerhub repository that provides the operator docker image")
 	viper.BindPFlag("kubeconfig", rootCmd.PersistentFlags().Lookup("kubeconfig"))
 	viper.BindPFlag("namespace", rootCmd.PersistentFlags().Lookup("namespace"))
+	viper.BindPFlag("docker-image-org", rootCmd.PersistentFlags().Lookup("docker-image-org"))
+	viper.BindPFlag("docker-image-repository", rootCmd.PersistentFlags().Lookup("docker-image-repository"))
 	viper.BindEnv("kubeconfig")
-	viper.BindEnv("namespace", "CFO_NAMESPACE")
+	viper.BindEnv("docker-image-org", "DOCKER_IMAGE_ORG")
+	viper.BindEnv("docker-image-repository", "DOCKER_IMAGE_REPOSITORY")
 }
 
 // initConfig is executed before running commands

@@ -9,6 +9,13 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 )
 
+var (
+	// DockerOrganization is the organization which provides the operator image
+	DockerOrganization = ""
+	// DockerRepository is the repository which provides the operator image
+	DockerRepository = ""
+)
+
 // NewManager adds schemes, controllers and starts the manager
 func NewManager(log *zap.SugaredLogger, ctrConfig *context.Config, cfg *rest.Config, options manager.Options) (mgr manager.Manager, err error) {
 	mgr, err = manager.New(cfg, options)
