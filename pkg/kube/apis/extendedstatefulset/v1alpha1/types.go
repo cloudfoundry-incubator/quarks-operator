@@ -24,6 +24,10 @@ var (
 	AnnotationConfigSHA1 = fmt.Sprintf("%s/configsha1", apis.GroupName)
 	// AnnotationVersion is the annotation key for the StatefulSet version
 	AnnotationVersion = fmt.Sprintf("%s/version", apis.GroupName)
+	// AnnotationAZIndex is the index of available zone
+	AnnotationAZIndex = fmt.Sprintf("%s/az-index", apis.GroupName)
+	// AnnotationAZName is the name of available zone
+	AnnotationAZName = fmt.Sprintf("%s/az-name", apis.GroupName)
 )
 
 // ExtendedStatefulSetSpec defines the desired state of ExtendedStatefulSet
@@ -71,6 +75,9 @@ type ExtendedStatefulSetList struct {
 
 // CalculateDesiredStatefulSetName calculates the name of the StatefulSet to be managed
 func (e *ExtendedStatefulSet) CalculateDesiredStatefulSetName(actualStatefulSet *v1beta2.StatefulSet) (string, error) {
+	// TODO Check zone and add name
+
+
 	version, err := e.DesiredVersion(actualStatefulSet)
 	if err != nil {
 		return "", err

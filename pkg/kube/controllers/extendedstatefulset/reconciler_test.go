@@ -486,7 +486,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 						By("Adds a finalizer to the ExtendedStatefulSet", func() {
 							err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
 							Expect(err).ToNot(HaveOccurred())
-							Expect(ess.GetFinalizers()).Should(ContainElement(finalizer.FinalizerString))
+							Expect(ess.GetFinalizers()).Should(ContainElement(finalizer.AnnotationFinalizer))
 						})
 					})
 				})
