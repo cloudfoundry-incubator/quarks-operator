@@ -47,7 +47,7 @@ apiVersion: v1
 
 This allows Controller to trigger a reconciliation whenever the ConfigMaps or Secrets are modified.
 
-And Controller managed ExtendedStatefulSet and StatefulSets will have a `fissile.cloudfoundry.org/finalizer` Finalizer. This allows Controller to perform additional cleanup logic which prevents owned ConfigMaps and Secrets from being deleted.
+`ExtendedStatefulSets` and `StatefulSets` have a `fissile.cloudfoundry.org/finalizer` `Finalizer`. This allows the operator to perform additional cleanup logic, which prevents owned `ConfigMaps` and `Secrets` from being deleted.
 
 ```yaml
 apiVersion: fissile.cloudfoundry.org/v1alpha1
@@ -89,8 +89,8 @@ status:
 
 ```
 
-A version running means that at least one pod that belongs to the `StatefulSet` is running.
-When a version is running, any version lower than it is deleted.
+A version running means that at least one pod that belongs to a `StatefulSet` is running.
+When a version **n** is running, any version lower than **n** is deleted.
 
 ```yaml
 status:
@@ -99,7 +99,7 @@ status:
     "2": true
 ```
 
-Controller will continue to reconcile until there's only one version.
+The controller continues to reconcile until there's only one version.
 
 ### Volume Management
 
@@ -107,7 +107,71 @@ Controller will continue to reconcile until there's only one version.
 
 ### AZ Support
 
-TODO
+The `zones` key defines the availability zones the `ExtendedStatefulSet` needs to span.
+
+The `zoneNodeLabel` defines the node label that defines a node's zone.
+The default value for `zoneNodeLabel` is `failure-domain.beta.kubernetes.io/zone`.
+
+The example below defines an `ExtendedStatefulSet` that should be deployed in two availability zones, **us-central1-a** and **us-central1-b**.
+
+```yaml
+apiVersion: fissile.cloudfoundry.org/v1alpha1
+kind: ExtendedStatefulSet
+metadata:
+  name: MyExtendedStatefulSet
+spec:
+  zoneNodeLabel: "failure-domain.beta.kubernetes.io/zone"
+  zones: ["us-central1-a", "us-central1-b"]
+  ...
+  template:
+    spec:
+      replicas: 2
+  ...
+```
+
+The `ExtendedStatefulSet` controller creates one `StatefulSet` version for each availability zone, and adds affinity information to the pods of those `StatefulSets`:
+
+```yaml
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: "failure-domain.beta.kubernetes.io/zone"
+          operator: In
+          values: ["us-central1-a"]
+```
+
+If zones are set for an `ExtendedStatefulSet`, the following occurs:
+
+- The name of each created `StatefulSet` is generated as `<extended statefulset name>-z<index of az>-v<statefulset version>`.
+
+  ```text
+  myextendedstatefulset-z0-v1
+  ```
+
+- The `StatefulSet` and its `Pods` are labeled with the following:
+
+  ```yaml
+  fissile.cloudfoundry.org/az-index: "0"
+  fissile.cloudfoundry.org/az-name: "us-central1-a"
+  ```
+
+- The `StatefulSet` and its `Pods` are annotated with an **ordered** JSON array of all the availability zones:
+
+  ```yaml
+  fissile.cloudfoundry.org/zones: '["us-central1-a", "us-central1-b"]'
+  ```
+
+- As defined above, each pod is modified to contain affinity rules.
+- Each container and init container of each pod have the following env vars set:
+
+  ```shell
+  KUBE_AZ="zone name"
+  BOSH_AZ="zone name"
+  CF_OPERATOR_AZ="zone name"
+  CF_OPERATOR_AZ_INDEX=="zone index"
+  ```
 
 ## Example Resource
 
@@ -118,7 +182,10 @@ kind: ExtendedStatefulSet
 metadata:
   name: MyExtendedStatefulSet
 spec:
-  az:  
+  # Name of the label that defines the zone for a node
+  zoneNodeLabel: "failure-domain.beta.kubernetes.io/zone"
+  # List of zones this ExtendedStatefulSet should be deployed on
+  zones: ["us-central1-a", "us-central1-b"]
   scaling:
     # Minimum replica count for the StatefulSet
     min: 3
@@ -136,24 +203,21 @@ spec:
   # Below you can see a template for a regular StatefulSet
   # Nothing else is custom below this point
   template:
-    metadata:
-      labels:
-        a-label-for-my-stateful-set: "foo"
     spec:
+      replicas: 2
       selector:
         matchLabels:
-          app: my-app
-      serviceName: "app"
+          app: "myapp"
       template:
         metadata:
           labels:
-            app: my-app
+            app: "myapp"
         spec:
-          terminationGracePeriodSeconds: 10
           containers:
-          - name: my-web-app
-            image: k8s.gcr.io/nginx-slim:0.8
-            ports:
-            - containerPort: 80
-              name: web
+          - name: "busybox"
+            image: "busybox:latest"
+            command:
+            - "sleep"
+            - "3600"
+
 ```
