@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
+	machinerytypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
@@ -73,6 +74,11 @@ func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manag
 		Port:    2999,
 		CertDir: "/tmp/cert",
 		BootstrapOptions: &webhook.BootstrapOptions{
+			MutatingWebhookConfigName: "cf-operator-mutating-hook",
+			Secret: &machinerytypes.NamespacedName{
+				Name:      "cf-operator-mutating-hook-certs",
+				Namespace: ctrConfig.Namespace,
+			},
 			// This should be properly configurable, and the user
 			// should be able to use a service instead.
 			Host: host,
