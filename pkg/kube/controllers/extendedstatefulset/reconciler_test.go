@@ -20,11 +20,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	exss "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	exssc "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	cfctx "code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 
 	. "github.com/onsi/ginkgo"
@@ -397,7 +399,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							BlockOwnerDeletion: helper.Bool(true),
 						}
 
-						for _, obj := range []exss.Object{configMap1, configMap2, secret1, secret2} {
+						for _, obj := range []apis.Object{configMap1, configMap2, secret1, secret2} {
 							Expect(obj.GetOwnerReferences()).ShouldNot(ContainElement(ownerRef))
 						}
 					})
@@ -472,7 +474,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 								BlockOwnerDeletion: helper.Bool(true),
 							}
 
-							for _, obj := range []exss.Object{configMap1, secret1} {
+							for _, obj := range []apis.Object{configMap1, secret1} {
 								Expect(obj.GetOwnerReferences()).Should(ContainElement(ownerRef))
 							}
 						})
@@ -484,7 +486,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 						By("Adds a finalizer to the ExtendedStatefulSet", func() {
 							err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
 							Expect(err).ToNot(HaveOccurred())
-							Expect(ess.GetFinalizers()).Should(ContainElement(exss.FinalizerString))
+							Expect(ess.GetFinalizers()).Should(ContainElement(finalizer.FinalizerString))
 						})
 					})
 				})
@@ -548,7 +550,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 								BlockOwnerDeletion: helper.Bool(true),
 							}
 
-							for _, obj := range []exss.Object{configMap1, configMap2, secret1, secret2} {
+							for _, obj := range []apis.Object{configMap1, configMap2, secret1, secret2} {
 								Expect(obj.GetOwnerReferences()).Should(ContainElement(ownerRef))
 							}
 						})

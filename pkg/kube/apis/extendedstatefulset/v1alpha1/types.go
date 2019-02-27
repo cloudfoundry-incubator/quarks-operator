@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/api/apps/v1beta2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 )
@@ -25,18 +24,7 @@ var (
 	AnnotationConfigSHA1 = fmt.Sprintf("%s/configsha1", apis.GroupName)
 	// AnnotationVersion is the annotation key for the StatefulSet version
 	AnnotationVersion = fmt.Sprintf("%s/version", apis.GroupName)
-
-	// FinalizerString is the finalizer added to objects
-	FinalizerString = fmt.Sprintf("%s/finalizer", apis.GroupName)
 )
-
-// Object is used as a helper interface when passing Kubernetes resources
-// between methods.
-// All Kubernetes resources should implement both of these interfaces
-type Object interface {
-	runtime.Object
-	metav1.Object
-}
 
 // ExtendedStatefulSetSpec defines the desired state of ExtendedStatefulSet
 type ExtendedStatefulSetSpec struct {
@@ -131,50 +119,6 @@ func (e *ExtendedStatefulSet) GetMaxAvailableVersion(versions map[int]bool) int 
 		}
 	}
 	return maxAvailableVersion
-}
-
-// AddFinalizer adds the finalizer item to the ExtendedStatefulSet
-func (e *ExtendedStatefulSet) AddFinalizer() {
-	finalizers := e.GetFinalizers()
-	for _, finalizer := range finalizers {
-		if finalizer == FinalizerString {
-			// ExtendedStatefulSet already contains the finalizer
-			return
-		}
-	}
-
-	// ExtendedStatefulSet doesn't contain the finalizer, so add it
-	finalizers = append(finalizers, FinalizerString)
-	e.SetFinalizers(finalizers)
-}
-
-// RemoveFinalizer removes the finalizer item from the ExtendedStatefulSet
-func (e *ExtendedStatefulSet) RemoveFinalizer() {
-	finalizers := e.GetFinalizers()
-
-	// Remove any that match the finalizerString
-	newFinalizers := []string{}
-	for _, finalizer := range finalizers {
-		if finalizer != FinalizerString {
-			newFinalizers = append(newFinalizers, finalizer)
-		}
-	}
-
-	// Update the object's finalizers
-	e.SetFinalizers(newFinalizers)
-}
-
-// HasFinalizer checks the finalizer item from the ExtendedStatefulSet
-func (e *ExtendedStatefulSet) HasFinalizer() bool {
-	finalizers := e.GetFinalizers()
-
-	for _, finalizer := range finalizers {
-		if finalizer == FinalizerString {
-			return true
-		}
-	}
-
-	return false
 }
 
 // ToBeDeleted checks whether this ExtendedStatefulSet has been marked for deletion

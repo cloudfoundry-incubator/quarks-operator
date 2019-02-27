@@ -2,8 +2,10 @@ package integration_test
 
 import (
 	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
@@ -248,7 +250,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 				BlockOwnerDeletion: helper.Bool(true),
 			}
 
-			for _, obj := range []essv1.Object{cm1, cm2, s1, s2} {
+			for _, obj := range []apis.Object{cm1, cm2, s1, s2} {
 				Expect(obj.GetOwnerReferences()).Should(ContainElement(ownerRef))
 			}
 
