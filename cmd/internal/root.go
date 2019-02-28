@@ -10,6 +10,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/version"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -39,7 +40,8 @@ var rootCmd = &cobra.Command{
 		operator.DockerOrganization = viper.GetString("docker-image-org")
 		operator.DockerRepository = viper.GetString("docker-image-repository")
 
-		log.Infof("Starting cf-operator with namespace %s (docker image: %s/%s)", namespace, operator.DockerOrganization, operator.DockerRepository)
+		log.Infof("Starting cf-operator %s with namespace %s", version.Version, namespace)
+		log.Infof("cf-operator docker image: %s", operator.GetOperatorDockerImage())
 
 		ctrsConfig := &context.Config{ //Set the context to be TODO
 			CtxTimeOut: 10 * time.Second,
