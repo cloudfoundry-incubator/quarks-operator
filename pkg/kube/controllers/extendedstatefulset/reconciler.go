@@ -115,29 +115,31 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	// Calculate the desired StatefulSet
-	desiredStatefulSet, desiredVersion, err := r.calculateDesiredStatefulSet(exStatefulSet, actualStatefulSet)
+	// Calculate the desired statefulSets
+	desiredStatefulSets, desiredVersion, err := r.calculateDesiredStatefulSets(exStatefulSet, actualStatefulSet)
 	if err != nil {
 		r.log.Error("Could not calculate StatefulSet owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 		return reconcile.Result{}, err
 	}
 
-	// If actual version is zero, there is no StatefulSet live
-	if actualVersion != desiredVersion {
-		// If it doesn't exist, create it
-		r.log.Info("StatefulSet '", desiredStatefulSet.Name, "' owned by ExtendedStatefulSet '", request.NamespacedName, "' not found, will be created.")
+	for _, desiredStatefulSet := range desiredStatefulSets {
+		// If actual version is zero, there is no StatefulSet live
+		if actualVersion != desiredVersion {
+			// If it doesn't exist, create it
+			r.log.Info("StatefulSet '", desiredStatefulSet.Name, "' owned by ExtendedStatefulSet '", request.NamespacedName, "' not found, will be created.")
 
-		// Record the template before creating the StatefulSet, so we don't include default values such as
-		// `ImagePullPolicy`, `TerminationMessagePath`, etc. in the signature.
-		originalTemplate := exStatefulSet.Spec.Template.DeepCopy()
-		if err := r.createStatefulSet(ctx, exStatefulSet, desiredStatefulSet); err != nil {
-			r.log.Error("Could not create StatefulSet for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
-			return reconcile.Result{}, err
+			// Record the template before creating the StatefulSet, so we don't include default values such as
+			// `ImagePullPolicy`, `TerminationMessagePath`, etc. in the signature.
+			originalTemplate := exStatefulSet.Spec.Template.DeepCopy()
+			if err := r.createStatefulSet(ctx, exStatefulSet, desiredStatefulSet); err != nil {
+				r.log.Error("Could not create StatefulSet for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+				return reconcile.Result{}, err
+			}
+			exStatefulSet.Spec.Template = *originalTemplate
+		} else {
+			// If it does exist, do a deep equal and check that we own it
+			r.log.Info("StatefulSet '", desiredStatefulSet.Name, "' owned by ExtendedStatefulSet '", request.NamespacedName, "' has not changed, checking if any other changes are necessary.")
 		}
-		exStatefulSet.Spec.Template = *originalTemplate
-	} else {
-		// If it does exist, do a deep equal and check that we own it
-		r.log.Info("StatefulSet '", desiredStatefulSet.Name, "' owned by ExtendedStatefulSet '", request.NamespacedName, "' has not changed, checking if any other changes are necessary.")
 	}
 
 	statefulSetVersions, err := r.listStatefulSetVersions(ctx, exStatefulSet)
@@ -190,23 +192,48 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	return reconcile.Result{}, nil
 }
 
-// calculateDesiredStatefulSet generates the desired StatefulSet that should exist
-func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSet(exStatefulSet *essv1a1.ExtendedStatefulSet, actualStatefulSet *v1beta2.StatefulSet) (*v1beta2.StatefulSet, int, error) {
-	result := exStatefulSet.Spec.Template
+// calculateDesiredStatefulSets generates the desired StatefulSets that should exist
+func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSets(exStatefulSet *essv1a1.ExtendedStatefulSet, actualStatefulSet *v1beta2.StatefulSet) ([]v1beta2.StatefulSet, int, error) {
+	var desiredStatefulSets []v1beta2.StatefulSet
+
+	// TODO Check if version changed
+	template := exStatefulSet.Spec.Template
 
 	// Place the StatefulSet in the same namespace as the ExtendedStatefulSet
-	result.SetNamespace(exStatefulSet.Namespace)
+	template.SetNamespace(exStatefulSet.Namespace)
 
-	// Calculate its name
-	name, err := exStatefulSet.CalculateDesiredStatefulSetName(actualStatefulSet)
-	if err != nil {
-		return nil, 0, err
+	if exStatefulSet.Spec.ZoneNodeLabel == "" {
+		exStatefulSet.Spec.ZoneNodeLabel = essv1a1.DefaultZoneNodeLabel
 	}
-	result.SetName(name)
+
+	if len(exStatefulSet.Spec.Zones) > 0 {
+		// TODO Wrap as a func
+		for zoneIndex, zone := range exStatefulSet.Spec.Zones {
+			// Calculate its name
+			statefulSetNamePrefix := fmt.Sprintf("%s-z%d", exStatefulSet.GetName(), zoneIndex)
+			name, err := exStatefulSet.CalculateDesiredStatefulSetName(actualStatefulSet, statefulSetNamePrefix)
+			if err != nil {
+				return nil, 0, err
+			}
+
+			template.SetName(name)
+
+			desiredStatefulSets = append(desiredStatefulSets, r.generateSingleStatefulSet(exStatefulSet, &template, zoneIndex, zone))
+		}
+
+	} else {
+
+		// Calculate its name
+		name, err := exStatefulSet.CalculateDesiredStatefulSetName(actualStatefulSet, exStatefulSet.GetName())
+		if err != nil {
+			return nil, 0, err
+		}
+		template.SetName(name)
+	}
 
 	// Set version and sha
-	if result.Annotations == nil {
-		result.Annotations = map[string]string{}
+	if template.Annotations == nil {
+		template.Annotations = map[string]string{}
 	}
 	version, err := exStatefulSet.DesiredVersion(actualStatefulSet)
 	if err != nil {
@@ -216,10 +243,12 @@ func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSet(exStatefulSet
 	if err != nil {
 		return nil, 0, err
 	}
-	result.Annotations[essv1a1.AnnotationStatefulSetSHA1] = sha
-	result.Annotations[essv1a1.AnnotationVersion] = fmt.Sprintf("%d", version)
+	template.Annotations[essv1a1.AnnotationStatefulSetSHA1] = sha
+	template.Annotations[essv1a1.AnnotationVersion] = fmt.Sprintf("%d", version)
 
-	return &result, version, nil
+	// Add children labels and annotations
+
+	return desiredStatefulSets, version, nil
 }
 
 // createStatefulSet creates a StatefulSet
@@ -591,4 +620,34 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extende
 		}
 	}
 	return reconcile.Result{}, nil
+}
+
+// generateSingleStatefulSet creates a StatefulSet
+func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(extendedStatefulSet *essv1a1.ExtendedStatefulSet, template *v1beta2.StatefulSet, zoneIndex int, zoneName string) v1beta2.StatefulSet {
+	labels := template.GetLabels()
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	// Update the labels
+	labels[essv1a1.LabelAZIndex] = strconv.Itoa(zoneIndex)
+	labels[essv1a1.LabelAZName] = zoneName
+
+	template.SetLabels(labels)
+
+	annotations := template.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+
+	zonesBytes, err := json.Marshal(extendedStatefulSet.Spec.Zones)
+	if err != nil {
+		panic(err)
+	}
+
+	// Update the annotations
+	annotations[essv1a1.AnnotationZones] = string(zonesBytes)
+
+	template.SetAnnotations(annotations)
+
+	return *template
 }

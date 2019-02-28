@@ -17,6 +17,9 @@ import (
 // It's used as input for the Kube code generator
 // Run "make generate" after modifying this file
 
+// DefaultZoneNodeLabel is the default node label for available zones
+const DefaultZoneNodeLabel   = "failure-domain.beta.kubernetes.io/zone"
+
 var (
 	// AnnotationStatefulSetSHA1 is the annotation key for the StatefulSet SHA1
 	AnnotationStatefulSetSHA1 = fmt.Sprintf("%s/statefulsetsha1", apis.GroupName)
@@ -24,10 +27,12 @@ var (
 	AnnotationConfigSHA1 = fmt.Sprintf("%s/configsha1", apis.GroupName)
 	// AnnotationVersion is the annotation key for the StatefulSet version
 	AnnotationVersion = fmt.Sprintf("%s/version", apis.GroupName)
-	// AnnotationAZIndex is the index of available zone
-	AnnotationAZIndex = fmt.Sprintf("%s/az-index", apis.GroupName)
-	// AnnotationAZName is the name of available zone
-	AnnotationAZName = fmt.Sprintf("%s/az-name", apis.GroupName)
+	// AnnotationZones is an array of all zones
+	AnnotationZones = fmt.Sprintf("%s/zones", apis.GroupName)
+	// LabelAZIndex is the index of available zone
+	LabelAZIndex = fmt.Sprintf("%s/az-index", apis.GroupName)
+	// LabelAZName is the name of available zone
+	LabelAZName = fmt.Sprintf("%s/az-name", apis.GroupName)
 )
 
 // ExtendedStatefulSetSpec defines the desired state of ExtendedStatefulSet
@@ -74,17 +79,14 @@ type ExtendedStatefulSetList struct {
 }
 
 // CalculateDesiredStatefulSetName calculates the name of the StatefulSet to be managed
-func (e *ExtendedStatefulSet) CalculateDesiredStatefulSetName(actualStatefulSet *v1beta2.StatefulSet) (string, error) {
-	// TODO Check zone and add name
-
-
+func (e *ExtendedStatefulSet) CalculateDesiredStatefulSetName(actualStatefulSet *v1beta2.StatefulSet, statefulSetNamePrefix string) (string, error) {
 	version, err := e.DesiredVersion(actualStatefulSet)
 	if err != nil {
 		return "", err
 	}
 
-	// <extendedstatefulset.name>-v<version>
-	return fmt.Sprintf("%s-v%d", e.GetName(), version), nil
+	// <extendedstatefulset.name>-v<version> or <extendedstatefulset.name>-z<index of az>-v<version>
+	return fmt.Sprintf("%s-v%d", statefulSetNamePrefix, version), nil
 }
 
 // DesiredVersion calculates the desired version of the StatefulSet
