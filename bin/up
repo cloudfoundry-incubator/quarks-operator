@@ -1,0 +1,16 @@
+#!/bin/sh
+
+dockerenv=`minikube docker-env`
+if [ $? -ne 0 ]; then
+  echo "Error: Could not retrieve docker settings from minikube."
+  exit 1
+fi
+eval ${dockerenv}
+
+set -e
+
+bin/build-image
+bin/build
+bin/apply-crds
+echo "watching namespace ${CFO_NAMESPACE}"
+binaries/cf-operator
