@@ -131,7 +131,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 			// Record the template before creating the StatefulSet, so we don't include default values such as
 			// `ImagePullPolicy`, `TerminationMessagePath`, etc. in the signature.
 			originalTemplate := exStatefulSet.Spec.Template.DeepCopy()
-			if err := r.createStatefulSet(ctx, exStatefulSet, desiredStatefulSet); err != nil {
+			if err := r.createStatefulSet(ctx, exStatefulSet, &desiredStatefulSet); err != nil {
 				r.log.Error("Could not create StatefulSet for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 				return reconcile.Result{}, err
 			}
@@ -196,59 +196,52 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSets(exStatefulSet *essv1a1.ExtendedStatefulSet, actualStatefulSet *v1beta2.StatefulSet) ([]v1beta2.StatefulSet, int, error) {
 	var desiredStatefulSets []v1beta2.StatefulSet
 
-	// TODO Check if version changed
 	template := exStatefulSet.Spec.Template
 
 	// Place the StatefulSet in the same namespace as the ExtendedStatefulSet
 	template.SetNamespace(exStatefulSet.Namespace)
+
+	desiredVersion, err := exStatefulSet.DesiredVersion(actualStatefulSet)
+	if err != nil {
+		return nil, 0, err
+	}
+	templateSHA1, err := exStatefulSet.CalculateStatefulSetSHA1()
+	if err != nil {
+		return nil, 0, err
+	}
 
 	if exStatefulSet.Spec.ZoneNodeLabel == "" {
 		exStatefulSet.Spec.ZoneNodeLabel = essv1a1.DefaultZoneNodeLabel
 	}
 
 	if len(exStatefulSet.Spec.Zones) > 0 {
-		// TODO Wrap as a func
-		for zoneIndex, zone := range exStatefulSet.Spec.Zones {
-			// Calculate its name
-			statefulSetNamePrefix := fmt.Sprintf("%s-z%d", exStatefulSet.GetName(), zoneIndex)
-			name, err := exStatefulSet.CalculateDesiredStatefulSetName(actualStatefulSet, statefulSetNamePrefix)
+		for zoneIndex, zoneName := range exStatefulSet.Spec.Zones {
+			r.log.Debugf("Generating a template for zone '%d/%s'", zoneIndex, zoneName)
+			statefulSet, err := r.generateSingleStatefulSet(exStatefulSet, &template, zoneIndex, zoneName, desiredVersion, templateSHA1)
 			if err != nil {
-				return nil, 0, err
+				return desiredStatefulSets, desiredVersion, errors.Wrapf(err, "Could not generate StatefulSet template for AZ '%d/%s'", zoneIndex, zoneName)
 			}
-
-			template.SetName(name)
-
-			desiredStatefulSets = append(desiredStatefulSets, r.generateSingleStatefulSet(exStatefulSet, &template, zoneIndex, zone))
+			desiredStatefulSets = append(desiredStatefulSets, *statefulSet)
 		}
 
 	} else {
-
-		// Calculate its name
-		name, err := exStatefulSet.CalculateDesiredStatefulSetName(actualStatefulSet, exStatefulSet.GetName())
+		r.log.Debug("Generating a template for single zone")
+		statefulSet, err := r.generateSingleStatefulSet(exStatefulSet, &template, -1, "", desiredVersion, templateSHA1)
 		if err != nil {
-			return nil, 0, err
+			return desiredStatefulSets, desiredVersion, errors.Wrap(err, "Could not generate StatefulSet template for single zone")
 		}
-		template.SetName(name)
+		desiredStatefulSets = append(desiredStatefulSets, *statefulSet)
 	}
 
-	// Set version and sha
+	// Set version and template SHA1
 	if template.Annotations == nil {
 		template.Annotations = map[string]string{}
 	}
-	version, err := exStatefulSet.DesiredVersion(actualStatefulSet)
-	if err != nil {
-		return nil, 0, err
-	}
-	sha, err := exStatefulSet.CalculateStatefulSetSHA1()
-	if err != nil {
-		return nil, 0, err
-	}
-	template.Annotations[essv1a1.AnnotationStatefulSetSHA1] = sha
-	template.Annotations[essv1a1.AnnotationVersion] = fmt.Sprintf("%d", version)
 
-	// Add children labels and annotations
+	template.Annotations[essv1a1.AnnotationStatefulSetSHA1] = templateSHA1
+	template.Annotations[essv1a1.AnnotationVersion] = fmt.Sprintf("%d", desiredVersion)
 
-	return desiredStatefulSets, version, nil
+	return desiredStatefulSets, desiredVersion, nil
 }
 
 // createStatefulSet creates a StatefulSet
@@ -622,32 +615,88 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extende
 	return reconcile.Result{}, nil
 }
 
-// generateSingleStatefulSet creates a StatefulSet
-func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(extendedStatefulSet *essv1a1.ExtendedStatefulSet, template *v1beta2.StatefulSet, zoneIndex int, zoneName string) v1beta2.StatefulSet {
-	labels := template.GetLabels()
+// generateSingleStatefulSet creates a StatefulSet from one zone
+func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(extendedStatefulSet *essv1a1.ExtendedStatefulSet, template *v1beta2.StatefulSet, zoneIndex int, zone string, version int, templateSha1 string) (*v1beta2.StatefulSet, error) {
+	statefulSet := template.DeepCopy()
+
+	// Get the labels and annotations
+	labels := statefulSet.GetLabels()
 	if labels == nil {
 		labels = make(map[string]string)
 	}
-	// Update the labels
-	labels[essv1a1.LabelAZIndex] = strconv.Itoa(zoneIndex)
-	labels[essv1a1.LabelAZName] = zoneName
 
-	template.SetLabels(labels)
-
-	annotations := template.GetAnnotations()
+	annotations := statefulSet.GetAnnotations()
 	if annotations == nil {
 		annotations = make(map[string]string)
 	}
 
-	zonesBytes, err := json.Marshal(extendedStatefulSet.Spec.Zones)
-	if err != nil {
-		panic(err)
+	statefulSetNamePrefix := extendedStatefulSet.GetName()
+
+	// Update available-zone specified properties
+	if zoneIndex >= 0 && len(zone) != 0 {
+		// Reset name prefix with zoneIndex
+		statefulSetNamePrefix = fmt.Sprintf("%s-z%d", extendedStatefulSet.GetName(), zoneIndex)
+
+		labels[essv1a1.LabelAZIndex] = strconv.Itoa(zoneIndex)
+		labels[essv1a1.LabelAZName] = zone
+
+		zonesBytes, err := json.Marshal(extendedStatefulSet.Spec.Zones)
+		if err != nil {
+			return &v1beta2.StatefulSet{}, errors.Wrapf(err, "Could not marshal zones: '%v'", extendedStatefulSet.Spec.Zones)
+		}
+		annotations[essv1a1.AnnotationZones] = string(zonesBytes)
+
+		statefulSet = r.updateAffinity(statefulSet, extendedStatefulSet.Spec.ZoneNodeLabel, zoneIndex, zone)
 	}
 
-	// Update the annotations
-	annotations[essv1a1.AnnotationZones] = string(zonesBytes)
+	annotations[essv1a1.AnnotationStatefulSetSHA1] = templateSha1
+	annotations[essv1a1.AnnotationVersion] = fmt.Sprintf("%d", version)
 
-	template.SetAnnotations(annotations)
+	// Set updated properties
+	statefulSet.SetName(fmt.Sprintf("%s-v%d", statefulSetNamePrefix, version))
+	statefulSet.SetLabels(labels)
+	statefulSet.SetAnnotations(annotations)
 
-	return *template
+	return statefulSet, nil
+}
+
+// updateAffinity Update current statefulSet Affinity from AZ specification
+func (r *ReconcileExtendedStatefulSet) updateAffinity(statefulSet *v1beta2.StatefulSet, zoneNodeLabel string, zoneIndex int, zoneName string) *v1beta2.StatefulSet {
+	nodeInZoneSelector := v1.NodeSelectorRequirement{
+		Key:      zoneNodeLabel,
+		Operator: v1.NodeSelectorOpIn,
+		Values:   []string{zoneName},
+	}
+
+	affinity := statefulSet.Spec.Template.Spec.Affinity
+	// Check if optional properties were set
+	if affinity == nil {
+		affinity = &v1.Affinity{}
+	}
+
+	if affinity.NodeAffinity == nil {
+		affinity.NodeAffinity = &v1.NodeAffinity{}
+	}
+
+	if affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+		affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &v1.NodeSelector{
+			NodeSelectorTerms: []v1.NodeSelectorTerm{
+				{
+					MatchExpressions: []v1.NodeSelectorRequirement{
+						nodeInZoneSelector,
+					},
+				},
+			},
+		}
+	} else {
+		affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = append(affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, v1.NodeSelectorTerm{
+			MatchExpressions: []v1.NodeSelectorRequirement{
+				nodeInZoneSelector,
+			},
+		})
+	}
+
+	statefulSet.Spec.Template.Spec.Affinity = affinity
+
+	return statefulSet
 }

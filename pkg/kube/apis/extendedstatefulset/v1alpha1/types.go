@@ -38,16 +38,16 @@ var (
 // ExtendedStatefulSetSpec defines the desired state of ExtendedStatefulSet
 type ExtendedStatefulSetSpec struct {
 	// Indicates whether to update Pods in the StatefulSet when an env value or mount changes
-	UpdateOnEnvChange bool                `json:"updateOnEnvChange"`
+	UpdateOnEnvChange bool `json:"updateOnEnvChange"`
 
 	// Indicates the node label that a node locates
-	ZoneNodeLabel     string              `json:"zoneNodeLabel,omitempty"`
+	ZoneNodeLabel string `json:"zoneNodeLabel,omitempty"`
 
 	// Indicates the availability zones that the ExtendedStatefulSet needs to span
-	Zones             []string            `json:"zones,omitempty"`
+	Zones []string `json:"zones,omitempty"`
 
 	// Defines a regular StatefulSet template
-	Template          v1beta2.StatefulSet `json:"template"`
+	Template v1beta2.StatefulSet `json:"template"`
 }
 
 // ExtendedStatefulSetStatus defines the observed state of ExtendedStatefulSet
@@ -76,17 +76,6 @@ type ExtendedStatefulSetList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ExtendedStatefulSet `json:"items"`
-}
-
-// CalculateDesiredStatefulSetName calculates the name of the StatefulSet to be managed
-func (e *ExtendedStatefulSet) CalculateDesiredStatefulSetName(actualStatefulSet *v1beta2.StatefulSet, statefulSetNamePrefix string) (string, error) {
-	version, err := e.DesiredVersion(actualStatefulSet)
-	if err != nil {
-		return "", err
-	}
-
-	// <extendedstatefulset.name>-v<version> or <extendedstatefulset.name>-z<index of az>-v<version>
-	return fmt.Sprintf("%s-v%d", statefulSetNamePrefix, version), nil
 }
 
 // DesiredVersion calculates the desired version of the StatefulSet
