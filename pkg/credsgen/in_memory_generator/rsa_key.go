@@ -17,7 +17,7 @@ func (g InMemoryGenerator) GenerateRSAKey(name string) (credsgen.RSAKey, error) 
 	// generate private key
 	private, err := rsa.GenerateKey(rand.Reader, g.Bits)
 	if err != nil {
-		return credsgen.RSAKey{}, errors.Wrap(err, "Generating private key")
+		return credsgen.RSAKey{}, errors.Wrap(err, "generating private key")
 	}
 	privateBlock := &pem.Block{
 		Type:  "RSA PRIVATE KEY",
@@ -29,7 +29,7 @@ func (g InMemoryGenerator) GenerateRSAKey(name string) (credsgen.RSAKey, error) 
 	public := private.Public().(*rsa.PublicKey)
 	publicSerialized, err := x509.MarshalPKIXPublicKey(public)
 	if err != nil {
-		return credsgen.RSAKey{}, errors.Wrap(err, "Generating public key")
+		return credsgen.RSAKey{}, errors.Wrap(err, "generating public key")
 	}
 	publicBlock := &pem.Block{
 		Type:  "PUBLIC KEY",

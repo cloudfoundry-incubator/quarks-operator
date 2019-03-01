@@ -41,7 +41,7 @@ wrong-key
 
 			err := interpolator.BuildOps(ops)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Deserializing ops data"))
+			Expect(err.Error()).To(ContainSubstring("deserializing ops data"))
 		})
 
 		It("throws an error if build invalid ops", func() {
@@ -53,7 +53,7 @@ wrong-key
 
 			err := interpolator.BuildOps(ops)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Building ops"))
+			Expect(err.Error()).To(ContainSubstring("building ops"))
 		})
 	})
 
@@ -566,7 +566,7 @@ instance_groups:
 			Expect(err).ToNot(HaveOccurred())
 			err = interpolator.BuildOps(ops2)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Building ops: Unknown operation"))
+			Expect(err.Error()).To(ContainSubstring("building ops: Unknown operation"))
 		})
 
 		It("throws an error if using wrong ops format in multiple ops", func() {

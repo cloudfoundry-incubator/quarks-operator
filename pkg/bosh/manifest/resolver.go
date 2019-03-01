@@ -57,13 +57,13 @@ func (r *ResolverImpl) ResolveCRD(spec bdc.BOSHDeploymentSpec, namespace string)
 		}
 		err = r.interpolator.BuildOps([]byte(opsData))
 		if err != nil {
-			return manifest, errors.Wrapf(err, "Failed to build ops with: %#v", opsData)
+			return manifest, errors.Wrapf(err, "failed to build ops with: %#v", opsData)
 		}
 	}
 
 	bytes, err := r.interpolator.Interpolate([]byte(m))
 	if err != nil {
-		return manifest, errors.Wrapf(err, "Failed to interpolate %#v", m)
+		return manifest, errors.Wrapf(err, "failed to interpolate %#v", m)
 	}
 
 	err = yaml.Unmarshal(bytes, manifest)
@@ -83,7 +83,7 @@ func (r *ResolverImpl) getRefData(namespace string, manifestType string, manifes
 		opsConfig := &corev1.ConfigMap{}
 		err := r.client.Get(context.TODO(), types.NamespacedName{Name: manifestRef, Namespace: namespace}, opsConfig)
 		if err != nil {
-			return refData, errors.Wrapf(err, "Failed to retrieve %s from configmap '%s/%s' via client.Get", refKey, namespace, manifestRef)
+			return refData, errors.Wrapf(err, "failed to retrieve %s from configmap '%s/%s' via client.Get", refKey, namespace, manifestRef)
 		}
 		refData, ok = opsConfig.Data[refKey]
 		if !ok {
@@ -93,7 +93,7 @@ func (r *ResolverImpl) getRefData(namespace string, manifestType string, manifes
 		opsSecret := &corev1.Secret{}
 		err := r.client.Get(context.TODO(), types.NamespacedName{Name: manifestRef, Namespace: namespace}, opsSecret)
 		if err != nil {
-			return refData, errors.Wrapf(err, "Failed to retrieve %s from secret '%s/%s' via client.Get", refKey, namespace, manifestRef)
+			return refData, errors.Wrapf(err, "failed to retrieve %s from secret '%s/%s' via client.Get", refKey, namespace, manifestRef)
 		}
 		encodedData, ok := opsSecret.Data[refKey]
 		if !ok {
@@ -103,11 +103,11 @@ func (r *ResolverImpl) getRefData(namespace string, manifestType string, manifes
 	case bdc.URLType:
 		httpResponse, err := http.Get(manifestRef)
 		if err != nil {
-			return refData, errors.Wrapf(err, "Failed to resolve %s from url '%s' via http.Get", refKey, manifestRef)
+			return refData, errors.Wrapf(err, "failed to resolve %s from url '%s' via http.Get", refKey, manifestRef)
 		}
 		body, err := ioutil.ReadAll(httpResponse.Body)
 		if err != nil {
-			return refData, errors.Wrapf(err, "Failed to read %s response body '%s' via ioutil", refKey, manifestRef)
+			return refData, errors.Wrapf(err, "failed to read %s response body '%s' via ioutil", refKey, manifestRef)
 		}
 		refData = string(body)
 	default:

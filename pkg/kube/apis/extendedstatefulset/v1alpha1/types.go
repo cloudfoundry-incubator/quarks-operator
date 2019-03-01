@@ -83,7 +83,7 @@ func (e *ExtendedStatefulSet) DesiredVersion(actualStatefulSet *v1beta2.Stateful
 
 	version, err := strconv.Atoi(strVersion)
 	if err != nil {
-		return 0, errors.Wrap(err, "Version annotation is not an int!")
+		return 0, errors.Wrap(err, "version annotation is not an int!")
 	}
 
 	currentsha, err := e.CalculateStatefulSetSHA1()

@@ -85,13 +85,13 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 	if parentName == "" {
 		r.log.Errorf("Could not find parent ExtendedJob for Job %s", request.NamespacedName)
-		return reconcile.Result{}, fmt.Errorf("Could not find parent ExtendedJob for Job %s", request.NamespacedName)
+		return reconcile.Result{}, fmt.Errorf("could not find parent ExtendedJob for Job %s", request.NamespacedName)
 	}
 
 	ej := ejapi.ExtendedJob{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: parentName, Namespace: instance.GetNamespace()}, &ej)
 	if err != nil {
-		return reconcile.Result{}, errors.Wrap(err, "Getting parent ExtendedJob")
+		return reconcile.Result{}, errors.Wrap(err, "getting parent ExtendedJob")
 	}
 
 	// Persist output if needed
@@ -135,10 +135,10 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 		},
 		list)
 	if err != nil {
-		errors.Wrap(err, "Getting job's pods")
+		errors.Wrap(err, "getting job's pods")
 	}
 	if len(list.Items) == 0 {
-		errors.Errorf("Job does not own any pods?")
+		errors.Errorf("job does not own any pods?")
 	}
 	pod := list.Items[0]
 
@@ -146,13 +146,13 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 	for _, c := range pod.Spec.Containers {
 		result, err := r.podLogGetter.Get(instance.GetNamespace(), pod.Name, c.Name)
 		if err != nil {
-			return errors.Wrap(err, "Getting pod output")
+			return errors.Wrap(err, "getting pod output")
 		}
 
 		var data map[string]string
 		err = json.Unmarshal(result, &data)
 		if err != nil {
-			return errors.Wrap(err, "Invalid output format")
+			return errors.Wrap(err, "invalid output format")
 		}
 
 		// Create secret and persist the output
@@ -170,12 +170,12 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 		if apierrors.IsNotFound(err) {
 			err = r.client.Create(ctx, secret)
 			if err != nil {
-				return errors.Wrap(err, "Could not create secret")
+				return errors.Wrap(err, "could not create secret")
 			}
 		} else {
 			err = r.client.Update(ctx, secret)
 			if err != nil {
-				return errors.Wrap(err, "Could not update secret")
+				return errors.Wrap(err, "could not update secret")
 			}
 		}
 	}

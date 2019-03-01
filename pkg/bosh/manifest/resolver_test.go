@@ -357,7 +357,7 @@ instance_groups:
 			}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Failed to retrieve manifest"))
+			Expect(err.Error()).To(ContainSubstring("failed to retrieve manifest"))
 		})
 
 		It("throws an error if the CR is empty", func() {
@@ -412,7 +412,7 @@ instance_groups:
 			}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Failed to retrieve ops from configmap"))
+			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from configmap"))
 		})
 
 		It("throws an error if ops configMap is empty", func() {
@@ -450,7 +450,7 @@ instance_groups:
 			}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Failed to build ops"))
+			Expect(err.Error()).To(ContainSubstring("failed to build ops"))
 		})
 
 		It("throws an error if interpolate a missing key into a manifest", func() {
@@ -469,7 +469,7 @@ instance_groups:
 			}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Failed to interpolate"))
+			Expect(err.Error()).To(ContainSubstring("failed to interpolate"))
 		})
 
 		It("throws an error if containing unsupported ops type", func() {
@@ -510,7 +510,7 @@ instance_groups:
 			}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Failed to retrieve ops from configmap"))
+			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from configmap"))
 		})
 
 		It("throws an error if one secret can not be found when contains multi-ops", func() {
@@ -532,7 +532,7 @@ instance_groups:
 			}
 			_, err := resolver.ResolveCRD(spec, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Failed to retrieve ops from secret"))
+			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from secret"))
 		})
 
 		It("throws an error if one url ref can not be found when contains multi-ops", func() {
@@ -559,7 +559,7 @@ instance_groups:
 			_, err := resolver.ResolveCRD(spec, "default")
 
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Failed to retrieve ops from secret"))
+			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from secret"))
 		})
 	})
 })
