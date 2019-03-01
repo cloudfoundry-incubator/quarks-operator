@@ -1,6 +1,9 @@
 package testing
 
 import (
+	"time"
+
+	"github.com/spf13/afero"
 	yaml "gopkg.in/yaml.v2"
 	"k8s.io/api/apps/v1beta2"
 	batchv1 "k8s.io/api/batch/v1"
@@ -13,12 +16,25 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
 // Catalog provides several instances for tests
 type Catalog struct{}
+
+// DefaultContextConfig for tests
+func (c *Catalog) DefaultContextConfig() *context.Config {
+	return &context.Config{ //Set the context to be TODO
+		CtxTimeOut:        10 * time.Second,
+		CtxType:           context.NewContext(),
+		Namespace:         "default",
+		WebhookServerHost: "foo.com",
+		WebhookServerPort: 1234,
+		Fs:                afero.NewMemMapFs(),
+	}
+}
 
 // DefaultBOSHManifest for tests
 func (c *Catalog) DefaultBOSHManifest() manifest.Manifest {

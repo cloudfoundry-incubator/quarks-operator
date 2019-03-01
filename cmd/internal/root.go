@@ -13,6 +13,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 	"code.cloudfoundry.org/cf-operator/version"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -44,10 +45,16 @@ var rootCmd = &cobra.Command{
 		log.Infof("Starting cf-operator %s with namespace %s", version.Version, namespace)
 		log.Infof("cf-operator docker image: %s", manifest.GetOperatorDockerImage())
 
+		webhookHost := viper.GetString("operator-webhook-host")
+		webhookPort := viper.GetInt32("operator-webhook-port")
+
 		ctrsConfig := &context.Config{ //Set the context to be TODO
-			CtxTimeOut: 10 * time.Second,
-			CtxType:    context.NewBackgroundContext(),
-			Namespace:  namespace,
+			CtxTimeOut:        10 * time.Second,
+			CtxType:           context.NewBackgroundContext(),
+			Namespace:         namespace,
+			WebhookServerHost: webhookHost,
+			WebhookServerPort: webhookPort,
+			Fs:                afero.NewOsFs(),
 		}
 		mgr, err := operator.NewManager(log, ctrsConfig, kubeConfig, manager.Options{Namespace: namespace})
 		if err != nil {
@@ -72,14 +79,20 @@ func init() {
 	rootCmd.PersistentFlags().StringP("namespace", "n", "default", "Namespace to watch for BOSH deployments")
 	rootCmd.PersistentFlags().StringP("docker-image-org", "o", "cfcontainerization", "Dockerhub organization that provides the operator docker image")
 	rootCmd.PersistentFlags().StringP("docker-image-repository", "r", "cf-operator", "Dockerhub repository that provides the operator docker image")
+	rootCmd.PersistentFlags().StringP("operator-webhook-host", "w", "localhost", "Hostname of the webhook server")
+	rootCmd.PersistentFlags().StringP("operator-webhook-port", "p", "2999", "Port the webhook server listens on")
 	viper.BindPFlag("kubeconfig", rootCmd.PersistentFlags().Lookup("kubeconfig"))
 	viper.BindPFlag("namespace", rootCmd.PersistentFlags().Lookup("namespace"))
 	viper.BindPFlag("docker-image-org", rootCmd.PersistentFlags().Lookup("docker-image-org"))
 	viper.BindPFlag("docker-image-repository", rootCmd.PersistentFlags().Lookup("docker-image-repository"))
+	viper.BindPFlag("operator-webhook-host", rootCmd.PersistentFlags().Lookup("operator-webhook-host"))
+	viper.BindPFlag("operator-webhook-port", rootCmd.PersistentFlags().Lookup("operator-webhook-port"))
 	viper.BindEnv("kubeconfig")
 	viper.BindEnv("namespace", "CFO_NAMESPACE")
 	viper.BindEnv("docker-image-org", "DOCKER_IMAGE_ORG")
 	viper.BindEnv("docker-image-repository", "DOCKER_IMAGE_REPOSITORY")
+	viper.BindEnv("operator-webhook-host", "OPERATOR_WEBHOOK_HOST")
+	viper.BindEnv("operator-webhook-port", "OPERATOR_WEBHOOK_PORT")
 }
 
 // initConfig is executed before running commands

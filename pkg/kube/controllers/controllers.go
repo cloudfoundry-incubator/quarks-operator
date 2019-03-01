@@ -1,14 +1,15 @@
 package controllers
 
 import (
-	"strings"
-
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
+
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
@@ -36,7 +37,7 @@ var addToSchemes = runtime.SchemeBuilder{
 	essv1.AddToScheme,
 }
 
-var addHookFuncs = []func(*zap.SugaredLogger, *context.Config, manager.Manager, *webhook.Server) error{
+var addHookFuncs = []func(*zap.SugaredLogger, *context.Config, manager.Manager, *webhook.Server) (*admission.Webhook, error){
 	extendedstatefulset.AddPod,
 }
 
@@ -56,46 +57,44 @@ func AddToScheme(s *runtime.Scheme) error {
 }
 
 // AddHooks adds all web hooks to the Manager
-func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manager) error {
-	log.Info("Setting up webhook server")
+func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manager, generator credsgen.Generator) error {
+	log.Infof("Setting up webhook server on %s:%d", ctrConfig.WebhookServerHost, ctrConfig.WebhookServerPort)
 
-	hostEnv := "192.168.99.1"
+	webhookConfig := NewWebhookConfig(log, m.GetClient(), ctrConfig, generator, "cf-operator-mutating-hook")
 
-	if strings.TrimSpace(hostEnv) == "" {
-		hostEnv = "localhost"
-	}
-
-	log.Info("Webhook server listening on ", hostEnv)
-
-	disableWebhookInstaller := true
-
-	// TODO: port should be configurable
+	disableConfigInstaller := true
 	hookServer, err := webhook.NewServer("cf-operator", m, webhook.ServerOptions{
-		Port:                          2999,
-		CertDir:                       "/home/rohitsakala/cf-operator/.vlad/",
-		DisableWebhookConfigInstaller: &disableWebhookInstaller,
+		Port:    ctrConfig.WebhookServerPort,
+		CertDir: webhookConfig.CertDir,
+		DisableWebhookConfigInstaller: &disableConfigInstaller,
 		BootstrapOptions: &webhook.BootstrapOptions{
-			MutatingWebhookConfigName: "cf-operator-mutating-hook",
-			//			Secret: &machinerytypes.NamespacedName{
-			//				Name:      "cf-operator-mutating-hook-certs",
-			//				Namespace: ctrConfig.Namespace,
-			//			},
-			Host: &hostEnv,
-			//			Service: &webhook.Service{
-			//				Name: "cf-operator-webhook",
-			//				Namespace: ctrConfig.Namespace,
-			//			},
+			MutatingWebhookConfigName: webhookConfig.ConfigName,
+			Host: &ctrConfig.WebhookServerHost,
+			// The user should probably be able to use a service instead.
+			// Service: ??
 		},
 	})
-
 	if err != nil {
 		return errors.Wrap(err, "unable to create a new webhook server")
 	}
 
+	webhooks := []*admission.Webhook{}
 	for _, f := range addHookFuncs {
-		if err := f(log, ctrConfig, m, hookServer); err != nil {
+		wh, err := f(log, ctrConfig, m, hookServer)
+		if err != nil {
 			return err
 		}
+		webhooks = append(webhooks, wh)
 	}
-	return nil
+
+	err = webhookConfig.setupCertificate()
+	if err != nil {
+		return errors.Wrap(err, "setting up the webhook server certificate")
+	}
+	err = webhookConfig.generateWebhookServerConfig(webhooks)
+	if err != nil {
+		return errors.Wrap(err, "generating the webhook server configuration")
+	}
+
+	return err
 }
