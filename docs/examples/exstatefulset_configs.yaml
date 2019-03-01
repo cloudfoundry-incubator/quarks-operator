@@ -52,4 +52,3 @@ spec:
                   configMapKeyRef:
                     name: example1
                     key: key1
-
