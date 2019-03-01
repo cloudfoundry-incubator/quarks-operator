@@ -75,6 +75,7 @@ func init() {
 	viper.BindPFlag("docker-image-org", rootCmd.PersistentFlags().Lookup("docker-image-org"))
 	viper.BindPFlag("docker-image-repository", rootCmd.PersistentFlags().Lookup("docker-image-repository"))
 	viper.BindEnv("kubeconfig")
+	viper.BindEnv("namespace", "CFO_NAMESPACE")
 	viper.BindEnv("docker-image-org", "DOCKER_IMAGE_ORG")
 	viper.BindEnv("docker-image-repository", "DOCKER_IMAGE_REPOSITORY")
 }

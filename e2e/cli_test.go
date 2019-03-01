@@ -28,10 +28,11 @@ var _ = Describe("CLI", func() {
 			session, err := act("help")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
-  -h, --help                help for cf-operator
-  -c, --kubeconfig string   Path to a kubeconfig, not required in-cluster
-  -n, --namespace string    Namespace to watch for BOSH deployments \(default "default"\)
-
+  -o, --docker-image-org string          Dockerhub organization that provides the operator docker image \(default "cfcontainerization"\)
+  -r, --docker-image-repository string   Dockerhub repository that provides the operator docker image \(default "cf-operator"\)
+  -h, --help                             help for cf-operator
+  -c, --kubeconfig string                Path to a kubeconfig, not required in-cluster
+  -n, --namespace string                 Namespace to watch for BOSH deployments \(default "default"\)
 `))
 		})
 
@@ -50,7 +51,7 @@ var _ = Describe("CLI", func() {
 		It("should start the server", func() {
 			session, err := act()
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Err).Should(Say(`Starting cf-operator with namespace default`))
+			Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+ with namespace default`))
 		})
 
 		Context("when specifying namespace", func() {
@@ -66,7 +67,7 @@ var _ = Describe("CLI", func() {
 				It("should start for namespace", func() {
 					session, err := act()
 					Expect(err).ToNot(HaveOccurred())
-					Eventually(session.Err).Should(Say(`Starting cf-operator with namespace env-test`))
+					Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+ with namespace env-test`))
 				})
 			})
 
@@ -74,7 +75,7 @@ var _ = Describe("CLI", func() {
 				It("should start for namespace", func() {
 					session, err := act("--namespace", "switch-test")
 					Expect(err).ToNot(HaveOccurred())
-					Eventually(session.Err).Should(Say(`Starting cf-operator with namespace switch-test`))
+					Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+ with namespace switch-test`))
 				})
 			})
 		})
