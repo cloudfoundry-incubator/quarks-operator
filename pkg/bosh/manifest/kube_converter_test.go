@@ -14,8 +14,6 @@ var _ = Describe("ConvertToKube", func() {
 		m          manifest.Manifest
 		kubeConfig manifest.KubeConfig
 		env        testing.Catalog
-		ig         []*manifest.InstanceGroup //TODO: avoid this
-		errandIg   []*manifest.InstanceGroup //TODO: avoid this
 	)
 
 	BeforeEach(func() {
@@ -106,108 +104,47 @@ var _ = Describe("ConvertToKube", func() {
 	})
 
 	Context("convert service lifecycle to instance groups", func() {
-		JustBeforeEach(func() {
-			ig = []*manifest.InstanceGroup{
-				{Name: "ig-c", Stemcell: "default", Jobs: []manifest.Job{{Name: "nats", Release: "nats-release"}}},
-				{Name: "ig-a", Stemcell: "default", LifeCycle: "service", Jobs: []manifest.Job{{Name: "ig-a", Release: "ig-a-release"}}},
-			}
-		})
-		It("when the lifecycle is set to nothing", func() {
-			m2 := manifest.Manifest{
-				Name: "emptylc",
-				Stemcells: []*manifest.Stemcell{
-					{Alias: "default", Name: "open-suse", Version: "28.g837c5b3-30.263-7.0.0_234.gcd7d1132", OS: "opensuse-42.3"},
-				},
-				Releases: []*manifest.Release{
-					{Name: "nats-release", Version: "0.62.0", URL: "hub.docker.com/cfcontainerization"},
-					{Name: "ig-a-release", Version: "0.62.0", URL: "hub.docker.com/cfcontainerization"},
-				},
-				InstanceGroups: ig,
-			}
-			kubeConfig, err := m2.ConvertToKube()
-			Expect(err).ShouldNot(HaveOccurred())
-			anExtendedSts := kubeConfig.ExtendedSts[0]
-			Expect(anExtendedSts.Name).To(Equal("ig-c"))
-			//TODO: ginkgo Expect Actual statements are too long
-			Expect(anExtendedSts.Spec.Template.Spec.Template.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/nats-release-release:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-0.62.0"))
-			Expect(anExtendedSts.Spec.Template.Spec.Template.Spec.Containers[0].Command[0]).To(Equal("while true; do ping localhost;done"))
-			Expect(anExtendedSts.Spec.Template.Spec.Template.Spec.InitContainers[0].Image).To(Equal("/:0.0.1"))
-			Expect(anExtendedSts.Spec.Template.Spec.Template.Spec.InitContainers[1].Image).To(Equal("hub.docker.com/cfcontainerization/nats-release-release:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-0.62.0"))
-			Expect(anExtendedSts.Spec.Template.Spec.Template.Spec.InitContainers[1].Command[0]).To(Equal("echo \"\""))
-		})
-
 		It("when the lifecycle is set to service", func() {
-			m2 := manifest.Manifest{
-				Name: "emptylc",
-				Stemcells: []*manifest.Stemcell{
-					{Alias: "default", Name: "open-suse", Version: "28.g837c5b3-30.263-7.0.0_234.gcd7d1132", OS: "opensuse-42.3"},
-				},
-				Releases: []*manifest.Release{
-					{Name: "nats-release", Version: "0.62.0", URL: "hub.docker.com/cfcontainerization"},
-					{Name: "ig-a-release", Version: "0.62.0", URL: "hub.docker.com/cfcontainerization"},
-				},
-				InstanceGroups: ig,
-			}
-			kubeConfig, err := m2.ConvertToKube()
+			kubeConfig, err := m.ConvertToKube()
 			Expect(err).ShouldNot(HaveOccurred())
-			anExtendedSts := kubeConfig.ExtendedSts[1]
-			Expect(anExtendedSts.Name).To(Equal("ig-a"))
-			//TODO: ginkgo statements are too long
-			Expect(anExtendedSts.Spec.Template.Spec.Template.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/ig-a-release-release:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-0.62.0"))
-			Expect(anExtendedSts.Spec.Template.Spec.Template.Spec.Containers[0].Command[0]).To(Equal("while true; do ping localhost;done"))
-			Expect(anExtendedSts.Spec.Template.Spec.Template.Spec.InitContainers[0].Image).To(Equal("/:0.0.1"))
-			Expect(anExtendedSts.Spec.Template.Spec.Template.Spec.InitContainers[1].Image).To(Equal("hub.docker.com/cfcontainerization/ig-a-release-release:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-0.62.0"))
-			Expect(anExtendedSts.Spec.Template.Spec.Template.Spec.InitContainers[1].Command[0]).To(Equal("echo \"\""))
+			anExtendedSts := kubeConfig.ExtendedSts[0].Spec.Template.Spec.Template
+			Expect(anExtendedSts.Name).To(Equal("diego-cell"))
+
+			// Test containers in the extended statefulset
+			Expect(anExtendedSts.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3-release:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
+			Expect(anExtendedSts.Spec.Containers[0].Command[0]).To(Equal("while true; do ping localhost;done"))
+			Expect(anExtendedSts.Spec.Containers[0].Name).To(Equal("cflinuxfs3-rootfs-setup"))
+
+			// Test init containers in the extended statefulset
+			Expect(anExtendedSts.Spec.InitContainers[0].Image).To(Equal("/:0.0.1"))
+			Expect(anExtendedSts.Spec.InitContainers[0].Name).To(Equal("diego-cell"))
+			Expect(anExtendedSts.Spec.InitContainers[1].Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3-release:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
+			Expect(anExtendedSts.Spec.InitContainers[1].Command[0]).To(Equal("echo \"\""))
+			Expect(anExtendedSts.Spec.InitContainers[1].Name).To(Equal("cflinuxfs3-rootfs-setup"))
 		})
 	})
 
 	Context("convert errand lifecycle to instance groups", func() {
-		JustBeforeEach(func() {
-			errandIg = []*manifest.InstanceGroup{
-				{Name: "nats", Stemcell: "default", LifeCycle: "errand", Jobs: []manifest.Job{{Name: "nats", Release: "nats-release"}, {Name: "nats-processor", Release: "nats-processor-release"}}},
-				{Name: "api", Stemcell: "default", LifeCycle: "service", Jobs: []manifest.Job{{Name: "api", Release: "api-release"}}},
-				{Name: "router", Stemcell: "default", LifeCycle: "errand", Jobs: []manifest.Job{{Name: "router", Release: "router-release"}}},
-			}
-		})
 		It("when the lifecycle is set to errand", func() {
-			manifestWithErrands := manifest.Manifest{
-				Name: "with-errands",
-				Stemcells: []*manifest.Stemcell{
-					{Alias: "default", Name: "open-suse", Version: "28.g837c5b3-30.263-7.0.0_234.gcd7d1132", OS: "opensuse-42.3"},
-				},
-				Releases: []*manifest.Release{
-					{Name: "nats-release", Version: "0.62.0", URL: "hub.docker.com/cfcontainerization"},
-					{Name: "nats-processor-release", Version: "0.62.0", URL: "hub.docker.com/cfcontainerization"},
-					{Name: "api-release", Version: "0.62.0", URL: "hub.docker.com/cfcontainerization"},
-					{Name: "router-release", Version: "0.62.0", URL: "hub.docker.com/cfcontainerization"},
-				},
-				InstanceGroups: errandIg,
-			}
-			kubeConfig, err := manifestWithErrands.ConvertToKube()
+			kubeConfig, err := m.ConvertToKube()
 			Expect(err).ShouldNot(HaveOccurred())
-			firstExtendedJob := kubeConfig.ExtendedJob[0]
-			scndExtendedJob := kubeConfig.ExtendedJob[1]
-			// TODO: ginkgo statements are too long
-			Expect(len(kubeConfig.ExtendedJob)).To(Equal(2))
-			Expect(len(kubeConfig.ExtendedJob)).ToNot(Equal(3))
-			Expect(firstExtendedJob.Name).To(Equal("nats"))
-			Expect(scndExtendedJob.Name).To(Equal("router"))
+			anExtendedJob := kubeConfig.ExtendedJob[0]
 
-			Expect(firstExtendedJob.Spec.Template.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/nats-release-release:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-0.62.0"))
-			Expect(firstExtendedJob.Spec.Template.Spec.Containers[1].Image).To(Equal("hub.docker.com/cfcontainerization/nats-processor-release-release:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-0.62.0"))
-			Expect(firstExtendedJob.Spec.Template.Spec.Containers[0].Command[0]).To(Equal("while true; do ping localhost;done"))
-			Expect(firstExtendedJob.Spec.Template.Spec.Containers[1].Command[0]).To(Equal("while true; do ping localhost;done"))
-			Expect(firstExtendedJob.Spec.Template.Spec.InitContainers[0].Image).To(Equal("/:0.0.1"))
-			Expect(firstExtendedJob.Spec.Template.Spec.InitContainers[1].Image).To(Equal("hub.docker.com/cfcontainerization/nats-release-release:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-0.62.0"))
-			Expect(firstExtendedJob.Spec.Template.Spec.InitContainers[1].Command[0]).To(Equal("echo \"\""))
-			Expect(firstExtendedJob.Spec.Template.Spec.InitContainers[2].Image).To(Equal("hub.docker.com/cfcontainerization/nats-processor-release-release:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-0.62.0"))
-			Expect(firstExtendedJob.Spec.Template.Spec.InitContainers[2].Command[0]).To(Equal("echo \"\""))
+			Expect(len(kubeConfig.ExtendedJob)).To(Equal(1))
+			Expect(len(kubeConfig.ExtendedJob)).ToNot(Equal(2))
+			Expect(anExtendedJob.Name).To(Equal("redis-slave"))
 
-			Expect(scndExtendedJob.Spec.Template.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/router-release-release:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-0.62.0"))
-			Expect(scndExtendedJob.Spec.Template.Spec.Containers[0].Command[0]).To(Equal("while true; do ping localhost;done"))
-			Expect(scndExtendedJob.Spec.Template.Spec.InitContainers[0].Image).To(Equal("/:0.0.1"))
-			Expect(scndExtendedJob.Spec.Template.Spec.InitContainers[1].Image).To(Equal("hub.docker.com/cfcontainerization/router-release-release:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-0.62.0"))
-			Expect(scndExtendedJob.Spec.Template.Spec.InitContainers[1].Command[0]).To(Equal("echo \"\""))
+			// Test containers in the extended job
+			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Name).To(Equal("redis-server"))
+			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/redis-release:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
+			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Command[0]).To(Equal("while true; do ping localhost;done"))
+
+			// Test init containers in the extended job
+			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[0].Image).To(Equal("/:0.0.1"))
+			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[0].Name).To(Equal("redis-slave"))
+			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[1].Image).To(Equal("hub.docker.com/cfcontainerization/redis-release:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
+			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[1].Command[0]).To(Equal("echo \"\""))
+
 		})
 	})
 

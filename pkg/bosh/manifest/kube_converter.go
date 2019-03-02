@@ -58,6 +58,7 @@ func (m *Manifest) jobsToInitContainers(instanceName string, jobs []Job) ([]v1.C
 	if err != nil {
 		return []v1.Container{}, err
 	}
+	// prepend an init container that runs the cf-operator img
 	initContainers = append([]v1.Container{{Name: instanceName, Image: GetOperatorDockerImage()}}, initContainers...) //TODO: name of the first init container?
 	return initContainers, nil
 }
