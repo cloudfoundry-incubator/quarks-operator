@@ -30,8 +30,14 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 )
 
-// OptimisticLockErrorMsg is an error message shown when locking fails
-const OptimisticLockErrorMsg = "the object has been modified; please apply your changes to the latest version and try again"
+const (
+	// OptimisticLockErrorMsg is an error message shown when locking fails
+	OptimisticLockErrorMsg = "the object has been modified; please apply your changes to the latest version and try again"
+	EnvKubeAz              = "KUBE_AZ"
+	EnvBoshAz              = "BOSH_AZ"
+	EnvCfOperatorAz        = "CF_OPERATOR_AZ"
+	EnvCfOperatorAzIndex   = "CF_OPERATOR_AZ_INDEX"
+)
 
 // Check that ReconcileExtendedStatefulSet implements the reconcile.Reconciler interface
 var _ reconcile.Reconciler = &ReconcileExtendedStatefulSet{}
@@ -646,6 +652,23 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(extendedStatefu
 		}
 		annotations[essv1a1.AnnotationZones] = string(zonesBytes)
 
+		// Get the pod labels and annotations
+		podLabels := statefulSet.Spec.Template.GetLabels()
+		if podLabels == nil {
+			podLabels = make(map[string]string)
+		}
+		podLabels[essv1a1.LabelAZIndex] = strconv.Itoa(zoneIndex)
+		podLabels[essv1a1.LabelAZName] = zone
+
+		podAnnotations := statefulSet.Spec.Template.GetAnnotations()
+		if podAnnotations == nil {
+			podAnnotations = make(map[string]string)
+		}
+		podAnnotations[essv1a1.AnnotationZones] = string(zonesBytes)
+
+		statefulSet.Spec.Template.SetLabels(podLabels)
+		statefulSet.Spec.Template.SetAnnotations(podAnnotations)
+
 		statefulSet = r.updateAffinity(statefulSet, extendedStatefulSet.Spec.ZoneNodeLabel, zoneIndex, zone)
 	}
 
@@ -662,35 +685,35 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(extendedStatefu
 
 // updateAffinity Update current statefulSet Affinity from AZ specification
 func (r *ReconcileExtendedStatefulSet) updateAffinity(statefulSet *v1beta2.StatefulSet, zoneNodeLabel string, zoneIndex int, zoneName string) *v1beta2.StatefulSet {
-	nodeInZoneSelector := v1.NodeSelectorRequirement{
+	nodeInZoneSelector := corev1.NodeSelectorRequirement{
 		Key:      zoneNodeLabel,
-		Operator: v1.NodeSelectorOpIn,
+		Operator: corev1.NodeSelectorOpIn,
 		Values:   []string{zoneName},
 	}
 
 	affinity := statefulSet.Spec.Template.Spec.Affinity
 	// Check if optional properties were set
 	if affinity == nil {
-		affinity = &v1.Affinity{}
+		affinity = &corev1.Affinity{}
 	}
 
 	if affinity.NodeAffinity == nil {
-		affinity.NodeAffinity = &v1.NodeAffinity{}
+		affinity.NodeAffinity = &corev1.NodeAffinity{}
 	}
 
 	if affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
-		affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &v1.NodeSelector{
-			NodeSelectorTerms: []v1.NodeSelectorTerm{
+		affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{
+			NodeSelectorTerms: []corev1.NodeSelectorTerm{
 				{
-					MatchExpressions: []v1.NodeSelectorRequirement{
+					MatchExpressions: []corev1.NodeSelectorRequirement{
 						nodeInZoneSelector,
 					},
 				},
 			},
 		}
 	} else {
-		affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = append(affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, v1.NodeSelectorTerm{
-			MatchExpressions: []v1.NodeSelectorRequirement{
+		affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = append(affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, corev1.NodeSelectorTerm{
+			MatchExpressions: []corev1.NodeSelectorRequirement{
 				nodeInZoneSelector,
 			},
 		})
@@ -699,4 +722,33 @@ func (r *ReconcileExtendedStatefulSet) updateAffinity(statefulSet *v1beta2.State
 	statefulSet.Spec.Template.Spec.Affinity = affinity
 
 	return statefulSet
+}
+
+// injectContainerEnv inject AZ info to container envs
+func (r *ReconcileExtendedStatefulSet) injectContainerEnv(podTemplate *corev1.PodTemplateSpec, zoneIndex int, zoneName string) *corev1.PodTemplateSpec {
+
+	for i := 0; i < len(podTemplate.Spec.Containers); i++ {
+		envs := podTemplate.Spec.Containers[i].Env
+		envs = append(envs, corev1.EnvVar{
+			Name:  EnvKubeAz,
+			Value: zoneName,
+		})
+		envs = append(envs, corev1.EnvVar{
+			Name:  EnvBoshAz,
+			Value: zoneName,
+		})
+		envs = append(envs, corev1.EnvVar{
+			Name:  EnvCfOperatorAz,
+			Value: zoneName,
+		})
+		envs = append(envs, corev1.EnvVar{
+			Name:  EnvCfOperatorAzIndex,
+			Value: strconv.Itoa(zoneIndex),
+		})
+
+		podTemplate.Spec.Containers[i].Env = envs
+	}
+
+	return podTemplate
+
 }
