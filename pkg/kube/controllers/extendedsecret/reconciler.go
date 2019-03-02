@@ -102,32 +102,32 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		err = r.createPasswordSecret(ctx, instance)
 		if err != nil {
 			r.log.Info("Error generating password secret: " + err.Error())
-			return reconcile.Result{}, errors.Wrap(err, "Generating password secret")
+			return reconcile.Result{}, errors.Wrap(err, "generating password secret")
 		}
 	case esapi.RSAKey:
 		r.log.Info("Generating RSA Key")
 		err = r.createRSASecret(ctx, instance)
 		if err != nil {
 			r.log.Info("Error generating RSA key secret: " + err.Error())
-			return reconcile.Result{}, errors.Wrap(err, "Generating RSA key secret")
+			return reconcile.Result{}, errors.Wrap(err, "generating RSA key secret")
 		}
 	case esapi.SSHKey:
 		r.log.Info("Generating SSH Key")
 		err = r.createSSHSecret(ctx, instance)
 		if err != nil {
 			r.log.Info("Error generating SSH key secret: " + err.Error())
-			return reconcile.Result{}, errors.Wrap(err, "Generating SSH key secret")
+			return reconcile.Result{}, errors.Wrap(err, "generating SSH key secret")
 		}
 	case esapi.Certificate:
 		r.log.Info("Generating certificate")
 		err = r.createCertificateSecret(ctx, instance)
 		if err != nil {
 			r.log.Info("Error generating certificate secret: " + err.Error())
-			return reconcile.Result{}, errors.Wrap(err, "Generating certificate secret")
+			return reconcile.Result{}, errors.Wrap(err, "generating certificate secret")
 		}
 	default:
 		r.log.Infof("Invalid type: %s", instance.Spec.Type)
-		return reconcile.Result{}, fmt.Errorf("Invalid type: %s", instance.Spec.Type)
+		return reconcile.Result{}, fmt.Errorf("invalid type: %s", instance.Spec.Type)
 	}
 
 	return reconcile.Result{}, nil
@@ -148,7 +148,7 @@ func (r *ReconcileExtendedSecret) createPasswordSecret(ctx context.Context, inst
 	}
 
 	if err := r.setReference(instance, secret, r.scheme); err != nil {
-		return errors.Wrapf(err, "Error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.Name, instance.Name, instance.Namespace)
+		return errors.Wrapf(err, "error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.Name, instance.Name, instance.Namespace)
 	}
 
 	return r.client.Create(ctx, secret)
@@ -172,7 +172,7 @@ func (r *ReconcileExtendedSecret) createRSASecret(ctx context.Context, instance 
 	}
 
 	if err := r.setReference(instance, secret, r.scheme); err != nil {
-		return errors.Wrapf(err, "Error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.Name, instance.Name, instance.Namespace)
+		return errors.Wrapf(err, "error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.Name, instance.Name, instance.Namespace)
 	}
 
 	return r.client.Create(ctx, secret)
@@ -196,7 +196,7 @@ func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance 
 	}
 
 	if err := r.setReference(instance, secret, r.scheme); err != nil {
-		return errors.Wrapf(err, "Error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.Name, instance.Name, instance.Namespace)
+		return errors.Wrapf(err, "error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.Name, instance.Name, instance.Namespace)
 	}
 
 	return r.client.Create(ctx, secret)
@@ -211,7 +211,7 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 	}
 	err := r.client.Get(ctx, caNamespacedName, caSecret)
 	if err != nil {
-		return errors.Wrap(err, "Getting CA secret")
+		return errors.Wrap(err, "getting CA secret")
 	}
 	ca := caSecret.Data[instance.Spec.Request.CertificateRequest.CARef.Key]
 
@@ -224,7 +224,7 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 		}
 		err = r.client.Get(ctx, caNamespacedName, caSecret)
 		if err != nil {
-			return errors.Wrap(err, "Getting CA Key secret")
+			return errors.Wrap(err, "getting CA Key secret")
 		}
 	}
 	key := caSecret.Data[instance.Spec.Request.CertificateRequest.CAKeyRef.Key]
@@ -259,7 +259,7 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 	}
 
 	if err := r.setReference(instance, secret, r.scheme); err != nil {
-		return errors.Wrapf(err, "Error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.Name, instance.Name, instance.Namespace)
+		return errors.Wrapf(err, "error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.Name, instance.Name, instance.Namespace)
 	}
 
 	return r.client.Create(ctx, secret)

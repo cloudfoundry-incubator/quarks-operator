@@ -229,12 +229,12 @@ func (r *ReconcileExtendedStatefulSet) createStatefulSet(ctx context.Context, ex
 	// and we can find it later
 	r.log.Info("Setting owner for StatefulSet '", statefulSet.Name, "' to ExtendedStatefulSet '", exStatefulSet.Name, "' in namespace '", exStatefulSet.Namespace, "'.")
 	if err := r.setReference(exStatefulSet, statefulSet, r.scheme); err != nil {
-		return errors.Wrapf(err, "Could not set owner for StatefulSet '%s' to ExtendedStatefulSet '%s' in namespace '%s'", statefulSet.Name, exStatefulSet.Name, exStatefulSet.Namespace)
+		return errors.Wrapf(err, "could not set owner for StatefulSet '%s' to ExtendedStatefulSet '%s' in namespace '%s'", statefulSet.Name, exStatefulSet.Name, exStatefulSet.Namespace)
 	}
 
 	// Create the StatefulSet
 	if err := r.client.Create(ctx, statefulSet); err != nil {
-		return errors.Wrapf(err, "Could not create StatefulSet '%s' for ExtendedStatefulSet '%s' in namespace '%s'", statefulSet.Name, exStatefulSet.Name, exStatefulSet.Namespace)
+		return errors.Wrapf(err, "could not create StatefulSet '%s' for ExtendedStatefulSet '%s' in namespace '%s'", statefulSet.Name, exStatefulSet.Name, exStatefulSet.Namespace)
 	}
 
 	r.log.Info("Created StatefulSet '", statefulSet.Name, "' for ExtendedStatefulSet '", exStatefulSet.Name, "' in namespace '", exStatefulSet.Namespace, "'.")
@@ -248,7 +248,7 @@ func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, 
 
 	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
 	if err != nil {
-		return errors.Wrapf(err, "Couldn't list StatefulSets for cleanup")
+		return errors.Wrapf(err, "couldn't list StatefulSets for cleanup")
 	}
 
 	for _, statefulSet := range statefulSets {
@@ -256,12 +256,12 @@ func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, 
 
 		strVersion, found := statefulSet.Annotations[essv1a1.AnnotationVersion]
 		if !found {
-			return errors.Errorf("Version annotation is not found from: %+v", statefulSet.Annotations)
+			return errors.Errorf("version annotation is not found from: %+v", statefulSet.Annotations)
 		}
 
 		version, err := strconv.Atoi(strVersion)
 		if err != nil {
-			return errors.Wrapf(err, "Version annotation is not an int: %s", strVersion)
+			return errors.Wrapf(err, "version annotation is not an int: %s", strVersion)
 		}
 
 		if version >= maxAvailableVersion {
@@ -361,12 +361,12 @@ func (r *ReconcileExtendedStatefulSet) listStatefulSetVersions(ctx context.Conte
 	for _, statefulSet := range statefulSets {
 		strVersion, found := statefulSet.Annotations[essv1a1.AnnotationVersion]
 		if !found {
-			return result, errors.Errorf("Version annotation is not found from: %+v", statefulSet.Annotations)
+			return result, errors.Errorf("version annotation is not found from: %+v", statefulSet.Annotations)
 		}
 
 		version, err := strconv.Atoi(strVersion)
 		if err != nil {
-			return result, errors.Wrapf(err, "Version annotation is not an int: %s", strVersion)
+			return result, errors.Wrapf(err, "version annotation is not an int: %s", strVersion)
 		}
 
 		ready, err := r.isStatefulSetReady(ctx, &statefulSet)
@@ -415,7 +415,7 @@ func (r *ReconcileExtendedStatefulSet) isStatefulSetReady(ctx context.Context, s
 func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) error {
 	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
 	if err != nil {
-		return errors.Wrapf(err, "List StatefulSets owned by %s/%s", exStatefulSet.GetNamespace(), exStatefulSet.GetName())
+		return errors.Wrapf(err, "list StatefulSets owned by %s/%s", exStatefulSet.GetNamespace(), exStatefulSet.GetName())
 	}
 
 	for _, statefulSet := range statefulSets {
@@ -425,12 +425,12 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 
 		currentConfigRef, err := r.owner.ListConfigs(ctx, namespace, statefulSet.Spec.Template.Spec)
 		if err != nil {
-			return errors.Wrapf(err, "Could not list ConfigMaps and Secrets from '%s' spec", statefulSet.Name)
+			return errors.Wrapf(err, "could not list ConfigMaps and Secrets from '%s' spec", statefulSet.Name)
 		}
 
 		existingConfigs, err := r.owner.ListConfigsOwnedBy(ctx, exStatefulSet)
 		if err != nil {
-			return errors.Wrapf(err, "Could not list ConfigMaps and Secrets owned by '%s'", exStatefulSet.Name)
+			return errors.Wrapf(err, "could not list ConfigMaps and Secrets owned by '%s'", exStatefulSet.Name)
 		}
 
 		currentsha, err := calculateConfigHash(currentConfigRef)
@@ -456,7 +456,7 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 
 			err = r.updateConfigSHA1(ctx, &statefulSet, currentsha)
 			if err != nil {
-				return errors.Wrapf(err, "Update StatefulSet config sha1")
+				return errors.Wrapf(err, "update StatefulSet config sha1")
 			}
 		}
 	}
@@ -468,7 +468,7 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 		key := types.NamespacedName{Namespace: exStatefulSet.GetNamespace(), Name: exStatefulSet.GetName()}
 		err := r.client.Get(ctx, key, exStatefulSet)
 		if err != nil {
-			return errors.Wrapf(err, "Could not get ExtendedStatefulSet '%s'", exStatefulSet.GetName())
+			return errors.Wrapf(err, "could not get ExtendedStatefulSet '%s'", exStatefulSet.GetName())
 		}
 
 		finalizer.AddFinalizer(exStatefulSet)
@@ -527,7 +527,7 @@ func (r *ReconcileExtendedStatefulSet) updateConfigSHA1(ctx context.Context, act
 		key := types.NamespacedName{Namespace: actualStatefulSet.GetNamespace(), Name: actualStatefulSet.GetName()}
 		err = r.client.Get(ctx, key, actualStatefulSet)
 		if err != nil {
-			return errors.Wrapf(err, "Could not get StatefulSet '%s'", actualStatefulSet.GetName())
+			return errors.Wrapf(err, "could not get StatefulSet '%s'", actualStatefulSet.GetName())
 		}
 		// Get the existing annotations
 		annotations := actualStatefulSet.Spec.Template.GetAnnotations()
@@ -579,7 +579,7 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extende
 		key := types.NamespacedName{Namespace: copy.GetNamespace(), Name: copy.GetName()}
 		err := r.client.Get(ctx, key, copy)
 		if err != nil {
-			return reconcile.Result{}, errors.Wrapf(err, "Could not get ExtendedStatefulSet ''%s'", copy.GetName())
+			return reconcile.Result{}, errors.Wrapf(err, "could not get ExtendedStatefulSet ''%s'", copy.GetName())
 		}
 
 		finalizer.RemoveFinalizer(copy)

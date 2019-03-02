@@ -30,12 +30,12 @@ func (i *InterpolatorImpl) BuildOps(opsBytes []byte) error {
 	var opDefs []patch.OpDefinition
 	err := yaml.Unmarshal(opsBytes, &opDefs)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("Deserializing ops data '%s'", opsBytes))
+		return errors.Wrap(err, fmt.Sprintf("deserializing ops data '%s'", opsBytes))
 	}
 
 	ops, err := patch.NewOpsFromDefinitions(opDefs)
 	if err != nil {
-		return errors.Wrap(err, "Building ops")
+		return errors.Wrap(err, "building ops")
 	}
 	i.ops = append(i.ops, ops)
 	return nil

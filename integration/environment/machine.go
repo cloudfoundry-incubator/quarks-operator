@@ -268,12 +268,12 @@ func (m *Machine) UpdateSecret(namespace string, secret corev1.Secret) (*corev1.
 func (m *Machine) GetSecret(namespace string, name string) (*corev1.Secret, error) {
 	err := m.WaitForSecret(namespace, name)
 	if err != nil {
-		return nil, errors.Wrap(err, "Waiting for secret "+name)
+		return nil, errors.Wrap(err, "waiting for secret "+name)
 	}
 
 	secret, err := m.Clientset.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
-		return nil, errors.Wrap(err, "Waiting for secret "+name)
+		return nil, errors.Wrap(err, "waiting for secret "+name)
 	}
 
 	return secret, nil
@@ -384,7 +384,7 @@ func (m *Machine) PodLabeled(namespace string, name string, desiredLabel, desire
 		if apierrors.IsNotFound(err) {
 			return false, err
 		}
-		return false, errors.Wrapf(err, "Failed to query for pod by name: %s", name)
+		return false, errors.Wrapf(err, "failed to query for pod by name: %s", name)
 	}
 
 	if pod.ObjectMeta.Labels[desiredLabel] == desiredValue {

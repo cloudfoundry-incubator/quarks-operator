@@ -95,7 +95,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 
 			result, err := reconciler.Reconcile(request)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Invalid type"))
+			Expect(err.Error()).To(ContainSubstring("invalid type"))
 			Expect(reconcile.Result{}).To(Equal(result))
 		})
 	})
