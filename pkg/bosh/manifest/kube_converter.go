@@ -7,25 +7,192 @@ import (
 	"regexp"
 	"strings"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/version"
+	"k8s.io/api/apps/v1beta2"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+var (
+	// DockerOrganization is the organization which provides the operator image
+	DockerOrganization = ""
+	// DockerRepository is the repository which provides the operator image
+	DockerRepository = ""
 )
 
 // KubeConfig represents a Manifest in kube resources
 type KubeConfig struct {
-	Variables []esv1.ExtendedSecret
+	Variables   []esv1.ExtendedSecret
+	ExtendedSts []essv1.ExtendedStatefulSet
+	ExtendedJob []ejv1.ExtendedJob
 }
 
 // ConvertToKube converts a Manifest into kube resources
-func (m *Manifest) ConvertToKube() KubeConfig {
+func (m *Manifest) ConvertToKube() (KubeConfig, error) {
 	kubeConfig := KubeConfig{}
 
-	kubeConfig.Variables = m.convertVariables()
+	convertedExtSts, err := m.convertToExtendedSts()
+	if err != nil {
+		return KubeConfig{}, err
+	}
 
-	return kubeConfig
+	convertedExtJob, err := m.convertToExtendedJob()
+	if err != nil {
+		return KubeConfig{}, err
+	}
+	kubeConfig.Variables = m.convertVariables()
+	kubeConfig.ExtendedSts = convertedExtSts
+	kubeConfig.ExtendedJob = convertedExtJob
+
+	return kubeConfig, nil
 }
 
+// jobsToInitContainers creates a list of Containers for v1.PodSpec InitContainers field
+func (m *Manifest) jobsToInitContainers(instanceName string, jobs []Job) ([]v1.Container, error) {
+
+	var initContainers []v1.Container
+	initContainers, err := m.jobsToContainers(instanceName, jobs, true)
+	if err != nil {
+		return []v1.Container{}, err
+	}
+	// prepend an init container that runs the cf-operator img
+	initContainers = append([]v1.Container{{Name: instanceName, Image: GetOperatorDockerImage()}}, initContainers...) //TODO: name of the first init container?
+	return initContainers, nil
+}
+
+// jobsToContainers creates a list of Containers for v1.PodSpec Containers field
+func (m *Manifest) jobsToContainers(igName string, jobs []Job, isInitContainer bool) ([]v1.Container, error) {
+	var (
+		jobsToContainerPods []v1.Container
+		containerCmd        string
+	)
+	if isInitContainer {
+		containerCmd = "echo \"\""
+	} else {
+		containerCmd = "while true; do ping localhost;done"
+	}
+
+	for _, job := range jobs {
+		jobImage, err := m.GetReleaseImage(igName, job.Name)
+		if err != nil {
+			return []v1.Container{}, err
+		}
+		jobsToContainerPods = append(jobsToContainerPods, v1.Container{
+			Name:    job.Name,
+			Image:   jobImage,
+			Command: []string{containerCmd},
+		})
+	}
+	return jobsToContainerPods, nil
+}
+
+// serviceToExtendedSts will generate an ExtendedStatefulSet
+func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup) (essv1.ExtendedStatefulSet, error) {
+
+	igName := ig.Name
+
+	listOfContainers, err := m.jobsToContainers(igName, ig.Jobs, false)
+	if err != nil {
+		return essv1.ExtendedStatefulSet{}, err
+	}
+
+	listOfInitContainers, err := m.jobsToInitContainers(igName, ig.Jobs)
+	if err != nil {
+		return essv1.ExtendedStatefulSet{}, err
+	}
+
+	extSts := essv1.ExtendedStatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: igName,
+		},
+		Spec: essv1.ExtendedStatefulSetSpec{
+			Template: v1beta2.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: igName,
+				},
+				Spec: v1beta2.StatefulSetSpec{
+					Replicas: func() *int32 { i := int32(ig.Instances); return &i }(),
+					Template: v1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: igName,
+						},
+						Spec: v1.PodSpec{
+							Containers:     listOfContainers,
+							InitContainers: listOfInitContainers,
+						},
+					},
+				},
+			},
+		},
+	}
+	return extSts, nil
+}
+
+// convertToExtendedSts will convert instance_groups which lifecycle
+// is service to ExtendedStatefulSets
+func (m *Manifest) convertToExtendedSts() ([]essv1.ExtendedStatefulSet, error) {
+	extStsList := []essv1.ExtendedStatefulSet{}
+	for _, ig := range m.InstanceGroups {
+		if ig.LifeCycle == "service" || ig.LifeCycle == "" {
+			convertedExtStatefulSet, err := m.serviceToExtendedSts(ig)
+			if err != nil {
+				return []essv1.ExtendedStatefulSet{}, err
+			}
+			extStsList = append(extStsList, convertedExtStatefulSet)
+		}
+	}
+	return extStsList, nil
+}
+
+// errandToExtendedJob will generate an ExtendedJob
+func (m *Manifest) errandToExtendedJob(ig *InstanceGroup) (ejv1.ExtendedJob, error) {
+	igName := ig.Name
+
+	listOfContainers, err := m.jobsToContainers(igName, ig.Jobs, false)
+	if err != nil {
+		return ejv1.ExtendedJob{}, err
+	}
+	listOfInitContainers, err := m.jobsToInitContainers(igName, ig.Jobs)
+	if err != nil {
+		return ejv1.ExtendedJob{}, err
+	}
+	extJob := ejv1.ExtendedJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: igName,
+		},
+		Spec: ejv1.ExtendedJobSpec{
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: igName,
+				},
+				Spec: v1.PodSpec{
+					Containers:     listOfContainers,
+					InitContainers: listOfInitContainers,
+				},
+			},
+		},
+	}
+	return extJob, nil
+}
+
+// convertToExtendedJob will convert instance_groups which lifecycle is
+// errand to ExtendedJobs
+func (m *Manifest) convertToExtendedJob() ([]ejv1.ExtendedJob, error) {
+	extJobs := []ejv1.ExtendedJob{}
+	for _, ig := range m.InstanceGroups {
+		if ig.LifeCycle == "errand" {
+			convertedExtJob, err := m.errandToExtendedJob(ig)
+			if err != nil {
+				return []ejv1.ExtendedJob{}, err
+			}
+			extJobs = append(extJobs, convertedExtJob)
+		}
+	}
+	return extJobs, nil
+}
 func (m *Manifest) convertVariables() []esv1.ExtendedSecret {
 	secrets := []esv1.ExtendedSecret{}
 
@@ -126,4 +293,9 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 		}
 	}
 	return "", fmt.Errorf("Release '%s' not found", job.Release)
+}
+
+// GetOperatorDockerImage returns the image name of the operator docker image
+func GetOperatorDockerImage() string {
+	return DockerOrganization + "/" + DockerRepository + ":" + version.Version
 }
