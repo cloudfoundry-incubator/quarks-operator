@@ -670,6 +670,8 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(extendedStatefu
 		statefulSet.Spec.Template.SetAnnotations(podAnnotations)
 
 		statefulSet = r.updateAffinity(statefulSet, extendedStatefulSet.Spec.ZoneNodeLabel, zoneIndex, zone)
+
+		r.injectContainerEnv(&statefulSet.Spec.Template.Spec, zoneIndex, zone)
 	}
 
 	annotations[essv1a1.AnnotationStatefulSetSHA1] = templateSha1
@@ -725,30 +727,30 @@ func (r *ReconcileExtendedStatefulSet) updateAffinity(statefulSet *v1beta2.State
 }
 
 // injectContainerEnv inject AZ info to container envs
-func (r *ReconcileExtendedStatefulSet) injectContainerEnv(podTemplate *corev1.PodTemplateSpec, zoneIndex int, zoneName string) *corev1.PodTemplateSpec {
+func (r *ReconcileExtendedStatefulSet) injectContainerEnv(podSpec *corev1.PodSpec, zoneIndex int, zoneName string) {
+	for i := 0; i < len(podSpec.Containers); i++ {
+		envs := podSpec.Containers[i].Env
 
-	for i := 0; i < len(podTemplate.Spec.Containers); i++ {
-		envs := podTemplate.Spec.Containers[i].Env
-		envs = append(envs, corev1.EnvVar{
-			Name:  EnvKubeAz,
-			Value: zoneName,
-		})
-		envs = append(envs, corev1.EnvVar{
-			Name:  EnvBoshAz,
-			Value: zoneName,
-		})
-		envs = append(envs, corev1.EnvVar{
-			Name:  EnvCfOperatorAz,
-			Value: zoneName,
-		})
-		envs = append(envs, corev1.EnvVar{
-			Name:  EnvCfOperatorAzIndex,
-			Value: strconv.Itoa(zoneIndex),
-		})
+		envs = upsertEnvs(envs, EnvKubeAz, zoneName)
+		envs = upsertEnvs(envs, EnvBoshAz, zoneName)
+		envs = upsertEnvs(envs, EnvCfOperatorAz, zoneName)
+		envs = upsertEnvs(envs, EnvCfOperatorAzIndex, strconv.Itoa(zoneIndex))
 
-		podTemplate.Spec.Containers[i].Env = envs
+		podSpec.Containers[i].Env = envs
+	}
+}
+
+func upsertEnvs(envs []corev1.EnvVar, name string, value string) []corev1.EnvVar {
+	for idx, env := range envs {
+		if env.Name == name {
+			envs[idx].Value = value
+			return envs
+		}
 	}
 
-	return podTemplate
-
+	envs = append(envs, corev1.EnvVar{
+		Name:  name,
+		Value: value,
+	})
+	return envs
 }
