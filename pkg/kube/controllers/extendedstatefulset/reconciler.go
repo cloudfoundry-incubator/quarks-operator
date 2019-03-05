@@ -33,9 +33,13 @@ import (
 const (
 	// OptimisticLockErrorMsg is an error message shown when locking fails
 	OptimisticLockErrorMsg = "the object has been modified; please apply your changes to the latest version and try again"
+	// EnvKubeAz is set by available zone name
 	EnvKubeAz              = "KUBE_AZ"
+	// EnvBoshAz is set by available zone name
 	EnvBoshAz              = "BOSH_AZ"
+	// EnvCfOperatorAz is set by available zone name
 	EnvCfOperatorAz        = "CF_OPERATOR_AZ"
+	// EnvCfOperatorAzIndex is set by available zone index
 	EnvCfOperatorAzIndex   = "CF_OPERATOR_AZ_INDEX"
 )
 

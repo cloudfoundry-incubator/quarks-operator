@@ -18,7 +18,7 @@ import (
 // Run "make generate" after modifying this file
 
 // DefaultZoneNodeLabel is the default node label for available zones
-const DefaultZoneNodeLabel   = "failure-domain.beta.kubernetes.io/zone"
+const DefaultZoneNodeLabel = "failure-domain.beta.kubernetes.io/zone"
 
 var (
 	// AnnotationStatefulSetSHA1 is the annotation key for the StatefulSet SHA1
