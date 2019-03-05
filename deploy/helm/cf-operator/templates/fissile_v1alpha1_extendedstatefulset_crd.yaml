@@ -26,3 +26,11 @@ spec:
             updateOnEnvChange:
               type: boolean
               description: "Indicate whether to update Pods in the StatefulSet when an env value or mount changes"
+            zoneNodeLabel:
+              type: string
+              description: "Indicates the node label that a node locates."
+            zones:
+              type: array
+              description: "Indicates the availability zones that the ExtendedStatefulSet needs to span"
+              items:
+                type: string

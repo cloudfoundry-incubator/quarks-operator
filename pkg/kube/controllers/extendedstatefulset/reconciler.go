@@ -30,8 +30,18 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 )
 
-// OptimisticLockErrorMsg is an error message shown when locking fails
-const OptimisticLockErrorMsg = "the object has been modified; please apply your changes to the latest version and try again"
+const (
+	// OptimisticLockErrorMsg is an error message shown when locking fails
+	OptimisticLockErrorMsg = "the object has been modified; please apply your changes to the latest version and try again"
+	// EnvKubeAz is set by available zone name
+	EnvKubeAz              = "KUBE_AZ"
+	// EnvBoshAz is set by available zone name
+	EnvBoshAz              = "BOSH_AZ"
+	// EnvCfOperatorAz is set by available zone name
+	EnvCfOperatorAz        = "CF_OPERATOR_AZ"
+	// EnvCfOperatorAzIndex is set by available zone index
+	EnvCfOperatorAzIndex   = "CF_OPERATOR_AZ_INDEX"
+)
 
 // Check that ReconcileExtendedStatefulSet implements the reconcile.Reconciler interface
 var _ reconcile.Reconciler = &ReconcileExtendedStatefulSet{}
@@ -115,29 +125,31 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	// Calculate the desired StatefulSet
-	desiredStatefulSet, desiredVersion, err := r.calculateDesiredStatefulSet(exStatefulSet, actualStatefulSet)
+	// Calculate the desired statefulSets
+	desiredStatefulSets, desiredVersion, err := r.calculateDesiredStatefulSets(exStatefulSet, actualStatefulSet)
 	if err != nil {
 		r.log.Error("Could not calculate StatefulSet owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 		return reconcile.Result{}, err
 	}
 
-	// If actual version is zero, there is no StatefulSet live
-	if actualVersion != desiredVersion {
-		// If it doesn't exist, create it
-		r.log.Info("StatefulSet '", desiredStatefulSet.Name, "' owned by ExtendedStatefulSet '", request.NamespacedName, "' not found, will be created.")
+	for _, desiredStatefulSet := range desiredStatefulSets {
+		// If actual version is zero, there is no StatefulSet live
+		if actualVersion != desiredVersion {
+			// If it doesn't exist, create it
+			r.log.Info("StatefulSet '", desiredStatefulSet.Name, "' owned by ExtendedStatefulSet '", request.NamespacedName, "' not found, will be created.")
 
-		// Record the template before creating the StatefulSet, so we don't include default values such as
-		// `ImagePullPolicy`, `TerminationMessagePath`, etc. in the signature.
-		originalTemplate := exStatefulSet.Spec.Template.DeepCopy()
-		if err := r.createStatefulSet(ctx, exStatefulSet, desiredStatefulSet); err != nil {
-			r.log.Error("Could not create StatefulSet for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
-			return reconcile.Result{}, err
+			// Record the template before creating the StatefulSet, so we don't include default values such as
+			// `ImagePullPolicy`, `TerminationMessagePath`, etc. in the signature.
+			originalTemplate := exStatefulSet.Spec.Template.DeepCopy()
+			if err := r.createStatefulSet(ctx, exStatefulSet, &desiredStatefulSet); err != nil {
+				r.log.Error("Could not create StatefulSet for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+				return reconcile.Result{}, err
+			}
+			exStatefulSet.Spec.Template = *originalTemplate
+		} else {
+			// If it does exist, do a deep equal and check that we own it
+			r.log.Info("StatefulSet '", desiredStatefulSet.Name, "' owned by ExtendedStatefulSet '", request.NamespacedName, "' has not changed, checking if any other changes are necessary.")
 		}
-		exStatefulSet.Spec.Template = *originalTemplate
-	} else {
-		// If it does exist, do a deep equal and check that we own it
-		r.log.Info("StatefulSet '", desiredStatefulSet.Name, "' owned by ExtendedStatefulSet '", request.NamespacedName, "' has not changed, checking if any other changes are necessary.")
 	}
 
 	statefulSetVersions, err := r.listStatefulSetVersions(ctx, exStatefulSet)
@@ -190,36 +202,56 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	return reconcile.Result{}, nil
 }
 
-// calculateDesiredStatefulSet generates the desired StatefulSet that should exist
-func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSet(exStatefulSet *essv1a1.ExtendedStatefulSet, actualStatefulSet *v1beta2.StatefulSet) (*v1beta2.StatefulSet, int, error) {
-	result := exStatefulSet.Spec.Template
+// calculateDesiredStatefulSets generates the desired StatefulSets that should exist
+func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSets(exStatefulSet *essv1a1.ExtendedStatefulSet, actualStatefulSet *v1beta2.StatefulSet) ([]v1beta2.StatefulSet, int, error) {
+	var desiredStatefulSets []v1beta2.StatefulSet
+
+	template := exStatefulSet.Spec.Template
 
 	// Place the StatefulSet in the same namespace as the ExtendedStatefulSet
-	result.SetNamespace(exStatefulSet.Namespace)
+	template.SetNamespace(exStatefulSet.Namespace)
 
-	// Calculate its name
-	name, err := exStatefulSet.CalculateDesiredStatefulSetName(actualStatefulSet)
+	desiredVersion, err := exStatefulSet.DesiredVersion(actualStatefulSet)
 	if err != nil {
 		return nil, 0, err
 	}
-	result.SetName(name)
-
-	// Set version and sha
-	if result.Annotations == nil {
-		result.Annotations = map[string]string{}
-	}
-	version, err := exStatefulSet.DesiredVersion(actualStatefulSet)
+	templateSHA1, err := exStatefulSet.CalculateStatefulSetSHA1()
 	if err != nil {
 		return nil, 0, err
 	}
-	sha, err := exStatefulSet.CalculateStatefulSetSHA1()
-	if err != nil {
-		return nil, 0, err
-	}
-	result.Annotations[essv1a1.AnnotationStatefulSetSHA1] = sha
-	result.Annotations[essv1a1.AnnotationVersion] = fmt.Sprintf("%d", version)
 
-	return &result, version, nil
+	if exStatefulSet.Spec.ZoneNodeLabel == "" {
+		exStatefulSet.Spec.ZoneNodeLabel = essv1a1.DefaultZoneNodeLabel
+	}
+
+	if len(exStatefulSet.Spec.Zones) > 0 {
+		for zoneIndex, zoneName := range exStatefulSet.Spec.Zones {
+			r.log.Debugf("Generating a template for zone '%d/%s'", zoneIndex, zoneName)
+			statefulSet, err := r.generateSingleStatefulSet(exStatefulSet, &template, zoneIndex, zoneName, desiredVersion, templateSHA1)
+			if err != nil {
+				return desiredStatefulSets, desiredVersion, errors.Wrapf(err, "Could not generate StatefulSet template for AZ '%d/%s'", zoneIndex, zoneName)
+			}
+			desiredStatefulSets = append(desiredStatefulSets, *statefulSet)
+		}
+
+	} else {
+		r.log.Debug("Generating a template for single zone")
+		statefulSet, err := r.generateSingleStatefulSet(exStatefulSet, &template, -1, "", desiredVersion, templateSHA1)
+		if err != nil {
+			return desiredStatefulSets, desiredVersion, errors.Wrap(err, "Could not generate StatefulSet template for single zone")
+		}
+		desiredStatefulSets = append(desiredStatefulSets, *statefulSet)
+	}
+
+	// Set version and template SHA1
+	if template.Annotations == nil {
+		template.Annotations = map[string]string{}
+	}
+
+	template.Annotations[essv1a1.AnnotationStatefulSetSHA1] = templateSHA1
+	template.Annotations[essv1a1.AnnotationVersion] = fmt.Sprintf("%d", desiredVersion)
+
+	return desiredStatefulSets, desiredVersion, nil
 }
 
 // createStatefulSet creates a StatefulSet
@@ -591,4 +623,138 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extende
 		}
 	}
 	return reconcile.Result{}, nil
+}
+
+// generateSingleStatefulSet creates a StatefulSet from one zone
+func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(extendedStatefulSet *essv1a1.ExtendedStatefulSet, template *v1beta2.StatefulSet, zoneIndex int, zone string, version int, templateSha1 string) (*v1beta2.StatefulSet, error) {
+	statefulSet := template.DeepCopy()
+
+	// Get the labels and annotations
+	labels := statefulSet.GetLabels()
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+
+	annotations := statefulSet.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+
+	statefulSetNamePrefix := extendedStatefulSet.GetName()
+
+	// Update available-zone specified properties
+	if zoneIndex >= 0 && len(zone) != 0 {
+		// Reset name prefix with zoneIndex
+		statefulSetNamePrefix = fmt.Sprintf("%s-z%d", extendedStatefulSet.GetName(), zoneIndex)
+
+		labels[essv1a1.LabelAZIndex] = strconv.Itoa(zoneIndex)
+		labels[essv1a1.LabelAZName] = zone
+
+		zonesBytes, err := json.Marshal(extendedStatefulSet.Spec.Zones)
+		if err != nil {
+			return &v1beta2.StatefulSet{}, errors.Wrapf(err, "Could not marshal zones: '%v'", extendedStatefulSet.Spec.Zones)
+		}
+		annotations[essv1a1.AnnotationZones] = string(zonesBytes)
+
+		// Get the pod labels and annotations
+		podLabels := statefulSet.Spec.Template.GetLabels()
+		if podLabels == nil {
+			podLabels = make(map[string]string)
+		}
+		podLabels[essv1a1.LabelAZIndex] = strconv.Itoa(zoneIndex)
+		podLabels[essv1a1.LabelAZName] = zone
+
+		podAnnotations := statefulSet.Spec.Template.GetAnnotations()
+		if podAnnotations == nil {
+			podAnnotations = make(map[string]string)
+		}
+		podAnnotations[essv1a1.AnnotationZones] = string(zonesBytes)
+
+		statefulSet.Spec.Template.SetLabels(podLabels)
+		statefulSet.Spec.Template.SetAnnotations(podAnnotations)
+
+		statefulSet = r.updateAffinity(statefulSet, extendedStatefulSet.Spec.ZoneNodeLabel, zoneIndex, zone)
+
+		r.injectContainerEnv(&statefulSet.Spec.Template.Spec, zoneIndex, zone)
+	}
+
+	annotations[essv1a1.AnnotationStatefulSetSHA1] = templateSha1
+	annotations[essv1a1.AnnotationVersion] = fmt.Sprintf("%d", version)
+
+	// Set updated properties
+	statefulSet.SetName(fmt.Sprintf("%s-v%d", statefulSetNamePrefix, version))
+	statefulSet.SetLabels(labels)
+	statefulSet.SetAnnotations(annotations)
+
+	return statefulSet, nil
+}
+
+// updateAffinity Update current statefulSet Affinity from AZ specification
+func (r *ReconcileExtendedStatefulSet) updateAffinity(statefulSet *v1beta2.StatefulSet, zoneNodeLabel string, zoneIndex int, zoneName string) *v1beta2.StatefulSet {
+	nodeInZoneSelector := corev1.NodeSelectorRequirement{
+		Key:      zoneNodeLabel,
+		Operator: corev1.NodeSelectorOpIn,
+		Values:   []string{zoneName},
+	}
+
+	affinity := statefulSet.Spec.Template.Spec.Affinity
+	// Check if optional properties were set
+	if affinity == nil {
+		affinity = &corev1.Affinity{}
+	}
+
+	if affinity.NodeAffinity == nil {
+		affinity.NodeAffinity = &corev1.NodeAffinity{}
+	}
+
+	if affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+		affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{
+			NodeSelectorTerms: []corev1.NodeSelectorTerm{
+				{
+					MatchExpressions: []corev1.NodeSelectorRequirement{
+						nodeInZoneSelector,
+					},
+				},
+			},
+		}
+	} else {
+		affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = append(affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, corev1.NodeSelectorTerm{
+			MatchExpressions: []corev1.NodeSelectorRequirement{
+				nodeInZoneSelector,
+			},
+		})
+	}
+
+	statefulSet.Spec.Template.Spec.Affinity = affinity
+
+	return statefulSet
+}
+
+// injectContainerEnv inject AZ info to container envs
+func (r *ReconcileExtendedStatefulSet) injectContainerEnv(podSpec *corev1.PodSpec, zoneIndex int, zoneName string) {
+	for i := 0; i < len(podSpec.Containers); i++ {
+		envs := podSpec.Containers[i].Env
+
+		envs = upsertEnvs(envs, EnvKubeAz, zoneName)
+		envs = upsertEnvs(envs, EnvBoshAz, zoneName)
+		envs = upsertEnvs(envs, EnvCfOperatorAz, zoneName)
+		envs = upsertEnvs(envs, EnvCfOperatorAzIndex, strconv.Itoa(zoneIndex))
+
+		podSpec.Containers[i].Env = envs
+	}
+}
+
+func upsertEnvs(envs []corev1.EnvVar, name string, value string) []corev1.EnvVar {
+	for idx, env := range envs {
+		if env.Name == name {
+			envs[idx].Value = value
+			return envs
+		}
+	}
+
+	envs = append(envs, corev1.EnvVar{
+		Name:  name,
+		Value: value,
+	})
+	return envs
 }

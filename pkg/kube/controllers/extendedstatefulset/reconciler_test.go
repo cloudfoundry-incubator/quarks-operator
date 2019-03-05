@@ -2,6 +2,7 @@ package extendedstatefulset_test
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"go.uber.org/zap"
@@ -68,6 +69,11 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 
 		Context("Provides a extendedStatefulSet definition", func() {
 			var (
+				existingAnnotation string
+				existingLabel      string
+				existingEnv        string
+				existingValue      string
+
 				desiredExtendedStatefulSet *exss.ExtendedStatefulSet
 				v1StatefulSet              *v1beta2.StatefulSet
 				v1Pod                      *corev1.Pod
@@ -75,6 +81,11 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 			)
 
 			BeforeEach(func() {
+				existingAnnotation = "existing_annotation"
+				existingLabel = "existing_label"
+				existingEnv = "existing_env"
+				existingValue = "existing_value"
+
 				desiredExtendedStatefulSet = &exss.ExtendedStatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "foo",
@@ -83,8 +94,30 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 					},
 					Spec: exss.ExtendedStatefulSetSpec{
 						Template: v1beta2.StatefulSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Annotations: map[string]string{existingAnnotation: existingValue},
+								Labels:      map[string]string{existingLabel: existingValue},
+							},
 							Spec: v1beta2.StatefulSetSpec{
 								Replicas: helper.Int32(1),
+								Template: corev1.PodTemplateSpec{
+									ObjectMeta: metav1.ObjectMeta{
+										Annotations: map[string]string{existingAnnotation: existingValue},
+										Labels:      map[string]string{existingLabel: existingValue},
+									},
+									Spec: corev1.PodSpec{
+										Containers: []corev1.Container{
+											{
+												Env: []corev1.EnvVar{
+													{
+														Name:  existingEnv,
+														Value: existingValue,
+													},
+												},
+											},
+										},
+									},
+								},
 							},
 						},
 					},
@@ -217,6 +250,215 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
 				Expect(err).To(HaveOccurred())
 				Expect(kerrors.IsNotFound(err)).To(BeTrue())
+			})
+
+			Context("When zones has the values", func() {
+				var (
+					zones []string
+				)
+
+				BeforeEach(func() {
+					zones = []string{"z1", "z2", "z3"}
+					desiredExtendedStatefulSet.Spec.Zones = zones
+				})
+
+				When("When zoneNodeLabel has default value", func() {
+					BeforeEach(func() {
+						client = fake.NewFakeClient(
+							desiredExtendedStatefulSet,
+						)
+						manager.GetClientReturns(client)
+					})
+
+					It("Creates new version and updates AZ info", func() {
+						result, err := reconciler.Reconcile(request)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).To(Equal(reconcile.Result{
+							Requeue:      true,
+							RequeueAfter: 1 * time.Second,
+						}))
+
+						ess := &exss.ExtendedStatefulSet{}
+						err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
+						Expect(err).ToNot(HaveOccurred())
+
+						ssZ0 := &v1beta2.StatefulSet{}
+						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z0-v1", Namespace: "default"}, ssZ0)
+						Expect(err).ToNot(HaveOccurred())
+
+						ssZ1 := &v1beta2.StatefulSet{}
+						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z1-v1", Namespace: "default"}, ssZ1)
+						Expect(err).ToNot(HaveOccurred())
+
+						ssZ2 := &v1beta2.StatefulSet{}
+						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z2-v1", Namespace: "default"}, ssZ2)
+						Expect(err).ToNot(HaveOccurred())
+
+						for idx, ss := range []*v1beta2.StatefulSet{ssZ0, ssZ1, ssZ2} {
+							Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
+
+							// Check statefulSet labels and annotations
+							statefulSetLabels := ss.GetLabels()
+							Expect(statefulSetLabels).Should(HaveKeyWithValue(existingLabel, existingValue))
+							Expect(statefulSetLabels).Should(HaveKeyWithValue(exss.LabelAZIndex, strconv.Itoa(idx)))
+							Expect(statefulSetLabels).Should(HaveKeyWithValue(exss.LabelAZName, zones[idx]))
+
+							statefulSetAnnotations := ss.GetAnnotations()
+							Expect(statefulSetAnnotations).Should(HaveKeyWithValue(existingAnnotation, existingValue))
+							Expect(statefulSetAnnotations).Should(HaveKeyWithValue(exss.AnnotationZones, "[\"z1\",\"z2\",\"z3\"]"))
+
+							// Check pod labels and annotations
+							podLabels := ss.Spec.Template.GetLabels()
+							Expect(podLabels).Should(HaveKeyWithValue(existingLabel, existingValue))
+							Expect(podLabels).Should(HaveKeyWithValue(exss.LabelAZIndex, strconv.Itoa(idx)))
+							Expect(podLabels).Should(HaveKeyWithValue(exss.LabelAZName, zones[idx]))
+
+							podAnnotations := ss.Spec.Template.GetAnnotations()
+							Expect(podAnnotations).Should(HaveKeyWithValue(existingAnnotation, existingValue))
+							Expect(podAnnotations).Should(HaveKeyWithValue(exss.AnnotationZones, "[\"z1\",\"z2\",\"z3\"]"))
+
+							// Check pod affinity
+							podAffinity := ss.Spec.Template.Spec.Affinity
+							Expect(podAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms).Should(ContainElement(corev1.NodeSelectorTerm{
+								MatchExpressions: []corev1.NodeSelectorRequirement{
+									{
+										Key:      exss.DefaultZoneNodeLabel,
+										Operator: corev1.NodeSelectorOpIn,
+										Values:   []string{zones[idx]},
+									},
+								},
+							}))
+
+							// Check container envs
+							containers := ss.Spec.Template.Spec.Containers
+							for _, container := range containers {
+								envs := container.Env
+								Expect(envs).Should(ContainElement(corev1.EnvVar{
+									Name:  existingEnv,
+									Value: existingValue,
+								}))
+								Expect(envs).Should(ContainElement(corev1.EnvVar{
+									Name:  exssc.EnvKubeAz,
+									Value: zones[idx],
+								}))
+								Expect(envs).Should(ContainElement(corev1.EnvVar{
+									Name:  exssc.EnvBoshAz,
+									Value: zones[idx],
+								}))
+								Expect(envs).Should(ContainElement(corev1.EnvVar{
+									Name:  exssc.EnvCfOperatorAz,
+									Value: zones[idx],
+								}))
+								Expect(envs).Should(ContainElement(corev1.EnvVar{
+									Name:  exssc.EnvCfOperatorAzIndex,
+									Value: strconv.Itoa(idx),
+								}))
+							}
+						}
+					})
+				})
+
+				When("When zoneNodeLabel has been specified", func() {
+					var (
+						customizedNodeLabel string
+					)
+					BeforeEach(func() {
+						customizedNodeLabel ="fake-zone-label"
+						desiredExtendedStatefulSet.Spec.ZoneNodeLabel = customizedNodeLabel
+
+						client = fake.NewFakeClient(
+							desiredExtendedStatefulSet,
+						)
+						manager.GetClientReturns(client)
+					})
+
+					It("Creates new version and updates AZ info", func() {
+						result, err := reconciler.Reconcile(request)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).To(Equal(reconcile.Result{
+							Requeue:      true,
+							RequeueAfter: 1 * time.Second,
+						}))
+
+						ess := &exss.ExtendedStatefulSet{}
+						err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
+						Expect(err).ToNot(HaveOccurred())
+
+						ssZ0 := &v1beta2.StatefulSet{}
+						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z0-v1", Namespace: "default"}, ssZ0)
+						Expect(err).ToNot(HaveOccurred())
+
+						ssZ1 := &v1beta2.StatefulSet{}
+						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z1-v1", Namespace: "default"}, ssZ1)
+						Expect(err).ToNot(HaveOccurred())
+
+						ssZ2 := &v1beta2.StatefulSet{}
+						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z2-v1", Namespace: "default"}, ssZ2)
+						Expect(err).ToNot(HaveOccurred())
+
+						for idx, ss := range []*v1beta2.StatefulSet{ssZ0, ssZ1, ssZ2} {
+							Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
+
+							// Check statefulSet labels and annotations
+							statefulSetLabels := ss.GetLabels()
+							Expect(statefulSetLabels).Should(HaveKeyWithValue(existingLabel, existingValue))
+							Expect(statefulSetLabels).Should(HaveKeyWithValue(exss.LabelAZIndex, strconv.Itoa(idx)))
+							Expect(statefulSetLabels).Should(HaveKeyWithValue(exss.LabelAZName, zones[idx]))
+
+							statefulSetAnnotations := ss.GetAnnotations()
+							Expect(statefulSetAnnotations).Should(HaveKeyWithValue(existingAnnotation, existingValue))
+							Expect(statefulSetAnnotations).Should(HaveKeyWithValue(exss.AnnotationZones, "[\"z1\",\"z2\",\"z3\"]"))
+
+							// Check pod labels and annotations
+							podLabels := ss.Spec.Template.GetLabels()
+							Expect(podLabels).Should(HaveKeyWithValue(existingLabel, existingValue))
+							Expect(podLabels).Should(HaveKeyWithValue(exss.LabelAZIndex, strconv.Itoa(idx)))
+							Expect(podLabels).Should(HaveKeyWithValue(exss.LabelAZName, zones[idx]))
+
+							podAnnotations := ss.Spec.Template.GetAnnotations()
+							Expect(podAnnotations).Should(HaveKeyWithValue(existingAnnotation, existingValue))
+							Expect(podAnnotations).Should(HaveKeyWithValue(exss.AnnotationZones, "[\"z1\",\"z2\",\"z3\"]"))
+
+							// Check pod affinity
+							podAffinity := ss.Spec.Template.Spec.Affinity
+							Expect(podAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms).Should(ContainElement(corev1.NodeSelectorTerm{
+								MatchExpressions: []corev1.NodeSelectorRequirement{
+									{
+										Key:      customizedNodeLabel,
+										Operator: corev1.NodeSelectorOpIn,
+										Values:   []string{zones[idx]},
+									},
+								},
+							}))
+
+							// Check container envs
+							containers := ss.Spec.Template.Spec.Containers
+							for _, container := range containers {
+								envs := container.Env
+								Expect(envs).Should(ContainElement(corev1.EnvVar{
+									Name:  existingEnv,
+									Value: existingValue,
+								}))
+								Expect(envs).Should(ContainElement(corev1.EnvVar{
+									Name:  exssc.EnvKubeAz,
+									Value: zones[idx],
+								}))
+								Expect(envs).Should(ContainElement(corev1.EnvVar{
+									Name:  exssc.EnvBoshAz,
+									Value: zones[idx],
+								}))
+								Expect(envs).Should(ContainElement(corev1.EnvVar{
+									Name:  exssc.EnvCfOperatorAz,
+									Value: zones[idx],
+								}))
+								Expect(envs).Should(ContainElement(corev1.EnvVar{
+									Name:  exssc.EnvCfOperatorAzIndex,
+									Value: strconv.Itoa(idx),
+								}))
+							}
+						}
+					})
+				})
 			})
 		})
 
@@ -486,7 +728,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 						By("Adds a finalizer to the ExtendedStatefulSet", func() {
 							err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
 							Expect(err).ToNot(HaveOccurred())
-							Expect(ess.GetFinalizers()).Should(ContainElement(finalizer.FinalizerString))
+							Expect(ess.GetFinalizers()).Should(ContainElement(finalizer.AnnotationFinalizer))
 						})
 					})
 				})

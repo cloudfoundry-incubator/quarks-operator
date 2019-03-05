@@ -29,7 +29,7 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	if stopOperator != nil {
-		time.Sleep(3*time.Second)
+		time.Sleep(3 * time.Second)
 		defer stopOperator()
 	}
 })

@@ -8,22 +8,22 @@ import (
 )
 
 var (
-	// FinalizerString is the finalizer added to objects
-	FinalizerString = fmt.Sprintf("%s/finalizer", apis.GroupName)
+	// AnnotationFinalizer is the finalizer added to objects
+	AnnotationFinalizer = fmt.Sprintf("%s/finalizer", apis.GroupName)
 )
 
 // AddFinalizer adds the finalizer item to the ExtendedStatefulSet
 func AddFinalizer(e metav1.Object) {
 	finalizers := e.GetFinalizers()
 	for _, finalizer := range finalizers {
-		if finalizer == FinalizerString {
+		if finalizer == AnnotationFinalizer {
 			// ExtendedStatefulSet already contains the finalizer
 			return
 		}
 	}
 
 	// ExtendedStatefulSet doesn't contain the finalizer, so add it
-	finalizers = append(finalizers, FinalizerString)
+	finalizers = append(finalizers, AnnotationFinalizer)
 	e.SetFinalizers(finalizers)
 }
 
@@ -34,7 +34,7 @@ func RemoveFinalizer(e metav1.Object) {
 	// Remove any that match the finalizerString
 	newFinalizers := []string{}
 	for _, finalizer := range finalizers {
-		if finalizer != FinalizerString {
+		if finalizer != AnnotationFinalizer {
 			newFinalizers = append(newFinalizers, finalizer)
 		}
 	}
@@ -48,7 +48,7 @@ func HasFinalizer(e metav1.Object) bool {
 	finalizers := e.GetFinalizers()
 
 	for _, finalizer := range finalizers {
-		if finalizer == FinalizerString {
+		if finalizer == AnnotationFinalizer {
 			return true
 		}
 	}
