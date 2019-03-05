@@ -13,9 +13,7 @@ helm:
 
 export CFO_NAMESPACE ?= default
 up:
-	bin/apply-crds
-	@echo watching namespace ${CFO_NAMESPACE}
-	go run cmd/cf-operator/main.go
+	bin/up
 
 gen-kube:
 	bin/gen-kube

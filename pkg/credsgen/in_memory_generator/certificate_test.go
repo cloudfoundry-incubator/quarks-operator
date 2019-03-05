@@ -136,12 +136,12 @@ var _ = Describe("InMemoryGenerator", func() {
 func parseCert(certificate []byte) (*x509.Certificate, error) {
 	certBlob, _ := pem.Decode(certificate)
 	if certBlob == nil {
-		return nil, fmt.Errorf("Could not decode certificate PEM")
+		return nil, fmt.Errorf("could not decode certificate PEM")
 	}
 
 	cert, err := x509.ParseCertificate(certBlob.Bytes)
 	if err != nil {
-		return nil, errors.Wrap(err, "Parsing certificate")
+		return nil, errors.Wrap(err, "parsing certificate")
 	}
 
 	return cert, nil

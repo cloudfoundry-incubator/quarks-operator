@@ -27,12 +27,12 @@ func (g InMemoryGenerator) GenerateCertificate(name string, request credsgen.Cer
 	if request.IsCA {
 		certificate, err = g.generateCACertificate()
 		if err != nil {
-			return credsgen.Certificate{}, errors.Wrap(err, "Generating certificate")
+			return credsgen.Certificate{}, errors.Wrap(err, "generating certificate")
 		}
 	} else {
 		certificate, err = g.generateCertificate(request)
 		if err != nil {
-			return credsgen.Certificate{}, errors.Wrap(err, "Generating CA")
+			return credsgen.Certificate{}, errors.Wrap(err, "generating CA")
 		}
 	}
 	return certificate, nil
@@ -40,7 +40,7 @@ func (g InMemoryGenerator) GenerateCertificate(name string, request credsgen.Cer
 
 func (g InMemoryGenerator) generateCertificate(request credsgen.CertificateGenerationRequest) (credsgen.Certificate, error) {
 	if !request.CA.IsCA {
-		return credsgen.Certificate{}, fmt.Errorf("The passed CA is not a CA")
+		return credsgen.Certificate{}, fmt.Errorf("the passed CA is not a CA")
 	}
 
 	cert := credsgen.Certificate{
@@ -60,17 +60,17 @@ func (g InMemoryGenerator) generateCertificate(request credsgen.CertificateGener
 	sslValidator := &csr.Generator{Validator: genkey.Validator}
 	signingReq, privateKey, err := sslValidator.ProcessRequest(certReq)
 	if err != nil {
-		return credsgen.Certificate{}, errors.Wrap(err, "Generating certicate")
+		return credsgen.Certificate{}, errors.Wrap(err, "generating certicate")
 	}
 
 	// Parse CA
 	caCert, err := helpers.ParseCertificatePEM([]byte(request.CA.Certificate))
 	if err != nil {
-		return credsgen.Certificate{}, errors.Wrap(err, "Parsing CA PEM")
+		return credsgen.Certificate{}, errors.Wrap(err, "parsing CA PEM")
 	}
 	caKey, err := helpers.ParsePrivateKeyPEM([]byte(request.CA.PrivateKey))
 	if err != nil {
-		return credsgen.Certificate{}, errors.Wrap(err, "Parsing CA private key")
+		return credsgen.Certificate{}, errors.Wrap(err, "parsing CA private key")
 	}
 
 	//Sign certificate
@@ -86,12 +86,12 @@ func (g InMemoryGenerator) generateCertificate(request credsgen.CertificateGener
 
 	s, err := local.NewSigner(caKey, caCert, signer.DefaultSigAlgo(caKey), policy)
 	if err != nil {
-		return credsgen.Certificate{}, errors.Wrap(err, "Creating signer")
+		return credsgen.Certificate{}, errors.Wrap(err, "creating signer")
 	}
 
 	cert.Certificate, err = s.Sign(signer.SignRequest{Request: string(signingReq)})
 	if err != nil {
-		return credsgen.Certificate{}, errors.Wrap(err, "Signing certificate")
+		return credsgen.Certificate{}, errors.Wrap(err, "signing certificate")
 	}
 	cert.PrivateKey = privateKey
 
@@ -106,7 +106,7 @@ func (g InMemoryGenerator) generateCACertificate() (credsgen.Certificate, error)
 	}
 	ca, _, privateKey, err := initca.New(req)
 	if err != nil {
-		return credsgen.Certificate{}, errors.Wrap(err, "Creating CA")
+		return credsgen.Certificate{}, errors.Wrap(err, "creating CA")
 	}
 	cert := credsgen.Certificate{
 		IsCA:        true,

@@ -31,6 +31,7 @@ stemcells:
 instance_groups:
 - name: redis-slave
   instances: 2
+  lifecycle: errand
   azs: [z1, z2]
   jobs:
   - name: redis-server
@@ -46,6 +47,7 @@ instance_groups:
   - z1
   - z2
   instances: 2
+  lifecycle: service
   vm_type: small-highmem
   vm_extensions:
   - 100GB_ephemeral_disk
