@@ -25,7 +25,7 @@ var _ = Describe("ConvertToKube", func() {
 			m.Name = "-abc_123.?!\"§$&/()=?"
 			m.Variables[0].Name = "def-456.?!\"§$&/()=?-"
 
-			kubeConfig, _ = m.ConvertToKube()
+			kubeConfig, _ = m.ConvertToKube("foo")
 			Expect(kubeConfig.Variables[0].Name).To(Equal("abc-123.def-456"))
 		})
 
@@ -33,12 +33,12 @@ var _ = Describe("ConvertToKube", func() {
 			m.Name = "foo"
 			m.Variables[0].Name = "this-is-waaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaay-too-long"
 
-			kubeConfig, _ = m.ConvertToKube()
+			kubeConfig, _ = m.ConvertToKube("foo")
 			Expect(kubeConfig.Variables[0].Name).To(Equal("foo.this-is-waaaaaaaaaaaaaaaaaaa0bef0f482cfb7313e03e6bd86b53ef3"))
 		})
 
 		It("converts password variables", func() {
-			kubeConfig, _ = m.ConvertToKube()
+			kubeConfig, _ = m.ConvertToKube("foo")
 			Expect(len(kubeConfig.Variables)).To(Equal(1))
 
 			var1 := kubeConfig.Variables[0]
@@ -52,7 +52,7 @@ var _ = Describe("ConvertToKube", func() {
 				Name: "adminkey",
 				Type: "rsa",
 			}
-			kubeConfig, _ = m.ConvertToKube()
+			kubeConfig, _ = m.ConvertToKube("foo")
 			Expect(len(kubeConfig.Variables)).To(Equal(1))
 
 			var1 := kubeConfig.Variables[0]
@@ -66,7 +66,7 @@ var _ = Describe("ConvertToKube", func() {
 				Name: "adminkey",
 				Type: "ssh",
 			}
-			kubeConfig, _ = m.ConvertToKube()
+			kubeConfig, _ = m.ConvertToKube("foo")
 			Expect(len(kubeConfig.Variables)).To(Equal(1))
 
 			var1 := kubeConfig.Variables[0]
@@ -87,7 +87,7 @@ var _ = Describe("ConvertToKube", func() {
 					ExtendedKeyUsage: []manifest.AuthType{manifest.ClientAuth},
 				},
 			}
-			kubeConfig, _ = m.ConvertToKube()
+			kubeConfig, _ = m.ConvertToKube("foo")
 			Expect(len(kubeConfig.Variables)).To(Equal(1))
 
 			var1 := kubeConfig.Variables[0]
@@ -105,7 +105,7 @@ var _ = Describe("ConvertToKube", func() {
 
 	Context("convert service lifecycle to instance groups", func() {
 		It("when the lifecycle is set to service", func() {
-			kubeConfig, err := m.ConvertToKube()
+			kubeConfig, err := m.ConvertToKube("foo")
 			Expect(err).ShouldNot(HaveOccurred())
 			anExtendedSts := kubeConfig.ExtendedSts[0].Spec.Template.Spec.Template
 			Expect(anExtendedSts.Name).To(Equal("diego-cell"))
@@ -126,7 +126,7 @@ var _ = Describe("ConvertToKube", func() {
 
 	Context("convert errand lifecycle to instance groups", func() {
 		It("when the lifecycle is set to errand", func() {
-			kubeConfig, err := m.ConvertToKube()
+			kubeConfig, err := m.ConvertToKube("foo")
 			Expect(err).ShouldNot(HaveOccurred())
 			anExtendedJob := kubeConfig.ExtendedJob[0]
 

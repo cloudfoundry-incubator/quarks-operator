@@ -2,11 +2,13 @@ package boshdeployment
 
 import (
 	"fmt"
-	"strconv"
 
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -72,7 +74,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
@@ -85,74 +87,72 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// retrieve manifest
-	manifest, err := r.resolver.ResolveCRD(instance.Spec, request.Namespace)
+	manifest, err := r.resolver.ResolveManifest(instance.Spec, request.Namespace)
 	if err != nil {
 		r.recorder.Event(instance, corev1.EventTypeWarning, "ResolveCRD Error", err.Error())
+		r.log.Errorf("Error resolving the manifest %s: %s", request.NamespacedName, err)
 		return reconcile.Result{}, err
 	}
 
 	if len(manifest.InstanceGroups) < 1 {
 		err = fmt.Errorf("manifest is missing instance groups")
+		r.log.Errorf("No instance groups defined in manifest %s", request.NamespacedName)
 		r.recorder.Event(instance, corev1.EventTypeWarning, "MissingInstance Error", err.Error())
 		return reconcile.Result{}, err
 	}
 
-	// Define a new Pod object
-	pod := newPodForCR(manifest, request.Namespace)
-
-	// Set BOSHDeployment instance as the owner and controller
-	if err := r.setReference(instance, pod, r.scheme); err != nil {
-		r.recorder.Event(instance, corev1.EventTypeWarning, "NewPodForCR Error", err.Error())
-		return reconcile.Result{}, err
+	kubeConfigs, err := manifest.ConvertToKube(r.ctrConfig.Namespace)
+	if err != nil {
+		r.log.Errorf("Error converting bosh manifest %s to kube objects: %s", request.NamespacedName, err)
+		r.recorder.Event(instance, corev1.EventTypeWarning, "BadManifest Error", err.Error())
+		return reconcile.Result{}, errors.Wrap(err, "error converting manifest to kube objects")
 	}
 
-	// TODO example implementation, untested, replace eventually
-	// Check if this Pod already exists
-	found := &corev1.Pod{}
-	err = r.client.Get(ctx, types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		r.log.Infof("Creating a new Pod %s/%s\n", pod.Namespace, pod.Name)
-		err = r.client.Create(ctx, pod)
-		if err != nil {
-			r.recorder.Event(instance, corev1.EventTypeWarning, "CreatePodForCR Error", err.Error())
-			return reconcile.Result{}, err
+	for _, eJob := range kubeConfigs.ExtendedJob {
+		// Set BOSHDeployment instance as the owner and controller
+		if err := r.setReference(instance, &eJob, r.scheme); err != nil {
+			r.recorder.Event(instance, corev1.EventTypeWarning, "NewExtendedJobForDeployment Error", err.Error())
+			return reconcile.Result{}, errors.Wrap(err, "couldn't set reference for an ExtendedJob for a BOSH Deployment")
 		}
 
-		// Pod created successfully - don't requeue
-		return reconcile.Result{}, nil
-	} else if err != nil {
-		r.recorder.Event(instance, corev1.EventTypeWarning, "GetPodForCR Error", err.Error())
-		return reconcile.Result{}, err
+		// Check to see if the object already exists
+		existingEJob := &ejv1.ExtendedJob{}
+		err = r.client.Get(ctx, types.NamespacedName{Name: eJob.Name, Namespace: eJob.Namespace}, existingEJob)
+		if err != nil && apierrors.IsNotFound(err) {
+			r.log.Infof("Creating a new ExtendedJob %s/%s for Deployment Manifest %s\n", eJob.Namespace, eJob.Name, instance.Name)
+
+			// Create the extended job
+			err := r.client.Create(ctx, &eJob)
+			if err != nil {
+				r.recorder.Event(instance, corev1.EventTypeWarning, "CreateExtendedJobForDeployment Error", err.Error())
+				r.log.Errorf("Error creating ExtendedJob %s for deployment manifest %s: %s", eJob.Name, request.NamespacedName, err)
+				return reconcile.Result{}, errors.Wrap(err, "couldn't create an ExtendedJob for a BOSH Deployment")
+			}
+		}
 	}
 
-	// Pod already exists - don't requeue
-	r.log.Infof("Skip reconcile: Pod %s/%s already exists", found.Namespace, found.Name)
+	for _, eSts := range kubeConfigs.ExtendedSts {
+		// Set BOSHDeployment instance as the owner and controller
+		if err := r.setReference(instance, &eSts, r.scheme); err != nil {
+			r.recorder.Event(instance, corev1.EventTypeWarning, "NewExtendedStatefulSetForDeployment Error", err.Error())
+			return reconcile.Result{}, errors.Wrap(err, "couldn't set reference for an ExtendedStatefulSet for a BOSH Deployment")
+		}
+
+		// Check to see if the object already exists
+		existingESts := &estsv1.ExtendedStatefulSet{}
+		err = r.client.Get(ctx, types.NamespacedName{Name: eSts.Name, Namespace: eSts.Namespace}, existingESts)
+		if err != nil && apierrors.IsNotFound(err) {
+			r.log.Infof("Creating a new ExtendedStatefulset %s/%s for Deployment Manifest %s\n", eSts.Namespace, eSts.Name, instance.Name)
+
+			// Create the extended statefulset
+			err := r.client.Create(ctx, &eSts)
+			if err != nil {
+				r.recorder.Event(instance, corev1.EventTypeWarning, "CreateExtendedStatefulSetForDeployment Error", err.Error())
+				r.log.Errorf("Error creating ExtendedStatefulSet %s for deployment manifest %s: %s", eSts.Name, request.NamespacedName, err)
+				return reconcile.Result{}, errors.Wrap(err, "couldn't create an ExtendedStatefulSet for a BOSH Deployment")
+			}
+		}
+	}
+
 	return reconcile.Result{}, nil
-}
-
-// newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *bdm.Manifest, namespace string) *corev1.Pod {
-	t := int64(1)
-	ig := cr.InstanceGroups[0]
-	labels := map[string]string{
-		"app":  ig.Name,
-		"size": strconv.Itoa(ig.Instances),
-	}
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      ig.Name + "-pod",
-			Namespace: namespace,
-			Labels:    labels,
-		},
-		Spec: corev1.PodSpec{
-			TerminationGracePeriodSeconds: &t,
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
-				},
-			},
-		},
-	}
 }

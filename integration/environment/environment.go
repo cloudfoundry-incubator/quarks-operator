@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
@@ -114,6 +116,7 @@ func (e *Environment) setupCFOperator() (err error) {
 	if !found {
 		ns = "default"
 	}
+
 	e.Namespace = ns
 	e.CtrsConfig.Namespace = ns
 
@@ -123,6 +126,25 @@ func (e *Environment) setupCFOperator() (err error) {
 	if err != nil {
 		return
 	}
+
+	operatorDockerImageOrg, found := os.LookupEnv("DOCKER_IMAGE_ORG")
+	if !found {
+		operatorDockerImageOrg = "cfcontainerization"
+	}
+
+	operatorDockerImageRepo, found := os.LookupEnv("DOCKER_IMAGE_REPOSITORY")
+	if !found {
+		operatorDockerImageRepo = "cf-operator"
+	}
+
+	operatorDockerImageTag, found := os.LookupEnv("DOCKER_IMAGE_TAG")
+	if !found {
+		operatorDockerImageTag = "latest"
+	}
+
+	manifest.DockerOrganization = operatorDockerImageOrg
+	manifest.DockerRepository = operatorDockerImageRepo
+	manifest.DockerTag = operatorDockerImageTag
 
 	e.mgr, err = operator.NewManager(e.Log, e.CtrsConfig, e.kubeConfig, manager.Options{Namespace: e.Namespace})
 	return

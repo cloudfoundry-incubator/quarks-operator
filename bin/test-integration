@@ -1,6 +1,13 @@
 #!/bin/sh
 set -eu
 
+GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
+. "${GIT_ROOT}/bin/include/versioning"
+. "${GIT_ROOT}/.envrc"
+
+export DOCKER_IMAGE_TAG=${VERSION_TAG}
+
+echo "Test logs are here: /tmp/cf-operator-tests.log"
 
 TEST_NAMESPACE=${TEST_NAMESPACE:-"test$(date +%s)"}
 export TEST_NAMESPACE

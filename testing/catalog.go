@@ -98,10 +98,21 @@ func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Data: map[string]string{
-			"manifest": `instance_groups:
-- name: diego
-  instances: 3
-- name: mysql
+			"manifest": `---
+name: my-manifest
+releases:
+- name: fissile-nats
+  version: "26"
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 28.g837c5b3-30.79-7.0.0_237.g8a9ed8f
+instance_groups:
+- name: nats
+  instances: 1
+  jobs:
+  - name: nats
+    release: fissile-nats
 `,
 		},
 	}

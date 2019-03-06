@@ -168,11 +168,10 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, err
 		}
 	}
-	ptrStatefulSetVersions := &statefulSetVersions
 
 	defer func() {
 		// Update the Status of the resource
-		if !reflect.DeepEqual(&ptrStatefulSetVersions, exStatefulSet.Status.Versions) {
+		if !reflect.DeepEqual(statefulSetVersions, exStatefulSet.Status.Versions) {
 			exStatefulSet.Status.Versions = statefulSetVersions
 			updateErr := r.client.Update(ctx, exStatefulSet)
 			if updateErr != nil {
@@ -193,8 +192,8 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	}
 
 	if !statefulSetVersions[desiredVersion] {
-		r.log.Debug("Waiting desired version available")
-		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
+		r.log.Debug("Waiting for the desired version to become available for ExtendedStatefulSet ", request.NamespacedName)
+		return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, nil
 	}
 
 	// Reconcile stops since only one version or no version exists.
