@@ -21,15 +21,27 @@ var _ = Describe("Lifecycle", func() {
 			newManifest = corev1.ConfigMap{
 				ObjectMeta: v1.ObjectMeta{Name: "newmanifest"},
 				Data: map[string]string{
-					"manifest": `instance_groups:
-- name: updated
+					"manifest": `---
+name: my-manifest
+releases:
+- name: fissile-nats
+  version: "26"
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 28.g837c5b3-30.79-7.0.0_237.g8a9ed8f
+instance_groups:
+- name: nats-updated
   instances: 1
+  jobs:
+  - name: nats
+    release: fissile-nats
 `,
 				},
 			}
 		})
 
-		FIt("should exercise a deployment lifecycle", func() {
+		It("should exercise a deployment lifecycle", func() {
 			// Create BOSH manifest in config map
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
@@ -41,7 +53,7 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer tearDown()
 
-			err = env.WaitForPod(env.Namespace, "diego-pod")
+			err = env.WaitForPod(env.Namespace, "my-manifest-nats-v1-0")
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from initial deployment")
 
 			// Update
@@ -53,12 +65,12 @@ var _ = Describe("Lifecycle", func() {
 			_, _, err = env.UpdateBOSHDeployment(env.Namespace, *versionedCR)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = env.WaitForPod(env.Namespace, "updated-pod")
+			err = env.WaitForPod(env.Namespace, "my-manifest-nats-updated-v1-0")
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from updated deployment")
 
-			// TODO after update we still have diego-pod around
-			Expect(env.PodRunning(env.Namespace, "diego-pod")).To(BeTrue())
-			Expect(env.PodRunning(env.Namespace, "updated-pod")).To(BeTrue())
+			// TODO after update we still have my-manifest-nats-v1-0 around
+			Expect(env.PodRunning(env.Namespace, "my-manifest-nats-v1-0")).To(BeTrue())
+			Expect(env.PodRunning(env.Namespace, "my-manifest-nats-updated-v1-0")).To(BeTrue())
 
 			// Delete custom resource
 			err = env.DeleteBOSHDeployment(env.Namespace, "testcr")

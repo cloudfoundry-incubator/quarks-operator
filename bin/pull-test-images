@@ -1,0 +1,4 @@
+#!/bin/sh
+set -ev
+
+docker pull docker.io/cfcontainerization/fissile-nats:opensuse-42.3-28.g837c5b3-30.79-7.0.0_237.g8a9ed8f-26

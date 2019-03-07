@@ -9,7 +9,8 @@ import (
 
 var _ = Describe("Deploy", func() {
 	Context("when correctly setup", func() {
-		podName := "diego-pod"
+		podName := "my-manifest-nats-v1-0"
+		stsName := "my-manifest-nats-v1"
 
 		AfterEach(func() {
 			env.WaitForPodsDelete(env.Namespace)
@@ -65,8 +66,11 @@ var _ = Describe("Deploy", func() {
 			// check for pod
 			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
-			labeled, err := env.PodLabeled(env.Namespace, podName, "size", "4")
-			Expect(labeled).To(BeTrue())
+
+			sts, err := env.GetStatefulSet(env.Namespace, stsName)
+			Expect(err).NotTo(HaveOccurred(), "error getting statefulset for deployment")
+
+			Expect(*sts.Spec.Replicas).To(BeEquivalentTo(4))
 			Expect(err).NotTo(HaveOccurred(), "error verifying pod label")
 		})
 	})

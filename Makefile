@@ -7,6 +7,9 @@ build:
 image:
 	bin/build-image
 
+image-nobuild:
+	bin/build-nobuild-image
+
 .PHONY: helm
 helm:
 	bin/build-helm
@@ -32,10 +35,13 @@ vet:
 lint:
 	bin/lint
 
+pull-test-images:
+	bin/pull-test-images
+
 test-unit:
 	bin/test-unit
 
-test-integration:
+test-integration: pull-test-images image-nobuild
 	bin/test-integration
 
 test-e2e:

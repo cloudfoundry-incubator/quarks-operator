@@ -154,8 +154,8 @@ func (c *Catalog) InterpolateOpsConfigMap(name string) corev1.ConfigMap {
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Data: map[string]string{
 			"ops": `- type: replace
-  path: /instance_groups/name=diego?/instances
-  value: 4
+  path: /instance_groups/name=nats?/instances
+  value: 5
 `,
 		},
 	}
@@ -166,8 +166,9 @@ func (c *Catalog) InterpolateOpsSecret(name string) corev1.Secret {
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		StringData: map[string]string{
-			"ops": `- type: remove
-  path: /instance_groups/name=mysql?
+			"ops": `- type: replace
+  path: /instance_groups/name=nats?/instances
+  value: 4
 `,
 		},
 	}
