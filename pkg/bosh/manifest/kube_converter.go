@@ -7,13 +7,14 @@ import (
 	"regexp"
 	"strings"
 
+	"k8s.io/api/apps/v1beta2"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/version"
-	"k8s.io/api/apps/v1beta2"
-	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
@@ -256,7 +257,7 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 		}
 	}
 	if instanceGroup == nil {
-		return "", fmt.Errorf("Instance group '%s' not found", instanceGroupName)
+		return "", fmt.Errorf("instance group '%s' not found", instanceGroupName)
 	}
 
 	var stemcell *Stemcell
@@ -266,7 +267,7 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 		}
 	}
 	if stemcell == nil {
-		return "", fmt.Errorf("Stemcell '%s' not found", instanceGroup.Stemcell)
+		return "", fmt.Errorf("stemcell '%s' not found", instanceGroup.Stemcell)
 	}
 
 	var job *Job
@@ -277,7 +278,7 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 		}
 	}
 	if job == nil {
-		return "", fmt.Errorf("Job '%s' not found in instance group '%s'", jobName, instanceGroupName)
+		return "", fmt.Errorf("job '%s' not found in instance group '%s'", jobName, instanceGroupName)
 	}
 
 	for i := range m.Releases {
@@ -292,7 +293,7 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 			return name + "/" + release.Name + "-release:" + stemcellVersion + "-" + release.Version, nil
 		}
 	}
-	return "", fmt.Errorf("Release '%s' not found", job.Release)
+	return "", fmt.Errorf("release '%s' not found", job.Release)
 }
 
 // GetOperatorDockerImage returns the image name of the operator docker image
