@@ -35,13 +35,10 @@ vet:
 lint:
 	bin/lint
 
-pull-test-images:
-	bin/pull-test-images
-
 test-unit:
 	bin/test-unit
 
-test-integration: pull-test-images image-nobuild
+test-integration: image-nobuild
 	bin/test-integration
 
 test-e2e:
