@@ -40,8 +40,11 @@ var _ = Describe("CLI", func() {
 			session, err := act("help")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Available Commands:
-  help        Help about any command
-  version     Print the version number
+  data-gather            Gathers data of a bosh manifest
+  help                   Help about any command
+  template-render        Renders a bosh manifest
+  variable-interpolation Interpolate variables
+  version                Print the version number
 
 `))
 		})
