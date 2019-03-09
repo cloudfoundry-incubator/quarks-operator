@@ -1,0 +1,63 @@
+---
+name: redis
+packages: [redis-4]
+templates:
+  config/bpm.yml.erb: config/bpm.yml
+  config/redis.conf.erb: config/redis.conf
+  bin/health_check: bin/health_check
+  bin/pre_start.sh: bin/pre_start.sh
+
+provides:
+- name: redis
+  type: redis
+  properties:
+  - port
+  - password
+  - base_dir
+
+
+consumes:
+- name: redis
+  type: redis
+  optional: true
+
+properties:
+  port:
+    description: Port to listen for requests to redis server
+    default: 6379
+  password:
+    description: Password to access redis server
+  base_dir:
+    description: Base dir for storing database files
+    default: /var/vcap/store/redis
+  redis_save_intervals:
+    default:
+      - 900 1
+      - 300 10
+      - 60 10000
+    description: save <seconds> <changes>; save points to the rdb snapshot after #<seconds> seconds have passed if at least #<changes> key changes have occurred
+  bind_static_ip:
+    description: Specify this property if you would like the bind address of a given instance to be automatically set to its assigned static IP
+    default: false
+  consul.service.name:
+    description: Name for advertising/discovering this service over consul (defaults to deployment name)
+
+  health.interval:
+    description: Interval for consul to perform health checks
+    default: "20s"
+  health.disk.critical:
+    description: Percentage of persistent disk full to trigger critial health alert
+    default: 98
+  health.disk.warning:
+    description: Percentage of persistent disk full to trigger warning health alert
+    default: 50
+
+  redis.maxclients:
+    description: Set the max number of connected clients at the same time.
+    default: 10000
+  redis.replication:
+    description: When set to false, master/slave replication will be disabled and all instances will run as standalone deployments.
+    default: true
+  redis.raw_config:
+    description: Block literal representing redis configuration.  Appended at the end of redis.conf, the raw values provided will take precedence over any other configuration properties
+    default: ""

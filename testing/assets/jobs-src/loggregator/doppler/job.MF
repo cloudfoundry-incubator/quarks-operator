@@ -1,0 +1,76 @@
+---
+name: doppler
+
+templates:
+  bpm.yml.erb: config/bpm.yml
+  doppler.crt.erb: config/certs/doppler.crt
+  doppler.key.erb: config/certs/doppler.key
+  indicators.yml.erb: config/indicators.yml
+  loggregator_ca.crt.erb: config/certs/loggregator_ca.crt
+  dns_health_check.erb: bin/dns_health_check
+  profile.sh.erb: bin/profile.sh
+
+packages:
+- doppler
+- profiler
+
+provides:
+- name: doppler
+  type: doppler
+  properties:
+  - doppler.grpc_port
+  - fooprop
+- name: loggregator
+  type: loggregator
+  properties:
+  - loggregator.tls.ca_cert
+  - loggregator.tls.doppler.cert
+  - loggregator.tls.doppler.key
+  - metron_endpoint.grpc_port
+
+properties:
+  doppler.maxRetainedLogMessages:
+    description: number of log messages to retain per application
+    default: 100
+
+  loggregator.tls.ca_cert:
+    description: "CA root required for key/cert verification"
+  loggregator.tls.doppler.cert:
+    description: "TLS certificate for doppler"
+  loggregator.tls.doppler.key:
+    description: "TLS key for doppler"
+  loggregator.tls.cipher_suites:
+    description: |
+      An ordered list of supported SSL cipher suites. Allowed cipher suites are
+      TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 and TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384.
+    default: "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+
+  doppler.grpc_port:
+    description: Port for outgoing log messages via GRPC
+    default: 8082
+  
+  fooprop:
+    description: Port for outgoing log messages via GRPC
+    default: 10001
+
+  doppler.container_metric_ttl_seconds:
+    description: "TTL (in seconds) for container usage metrics"
+    default: 120
+
+  doppler.sink_inactivity_timeout_seconds:
+    description: "Interval before removing a sink due to inactivity"
+    default: 3600
+
+  doppler.pprof_port:
+    description: "The pprof port for runtime profiling data"
+    default: 0
+  doppler.health_addr:
+    description: "The host:port to expose health metrics for doppler"
+    default: "localhost:14825"
+
+  metron_endpoint.host:
+    description: "The host used to emit messages to the Metron agent"
+    default: "127.0.0.1"
+  metron_endpoint.grpc_port:
+    description: "The port used to emit grpc messages to the Metron agent"
+    default: 3458
