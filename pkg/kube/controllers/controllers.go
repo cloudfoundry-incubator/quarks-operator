@@ -1,13 +1,11 @@
 package controllers
 
 import (
-	"os"
 	"strings"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
-	machinerytypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
@@ -61,28 +59,32 @@ func AddToScheme(s *runtime.Scheme) error {
 func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manager) error {
 	log.Info("Setting up webhook server")
 
-	var host *string
-	hostEnv := os.ExpandEnv("${OPERATOR_WEBHOOK_HOST}")
-	host = &hostEnv
+	hostEnv := "192.168.99.1"
 
 	if strings.TrimSpace(hostEnv) == "" {
-		host = nil
+		hostEnv = "localhost"
 	}
+
+	log.Info("Webhook server listening on ", hostEnv)
+
+	disableWebhookInstaller := true
 
 	// TODO: port should be configurable
 	hookServer, err := webhook.NewServer("cf-operator", m, webhook.ServerOptions{
-		Port:    2999,
-		CertDir: "/tmp/cert",
+		Port:                          2999,
+		CertDir:                       "/home/rohitsakala/cf-operator/.vlad/",
+		DisableWebhookConfigInstaller: &disableWebhookInstaller,
 		BootstrapOptions: &webhook.BootstrapOptions{
 			MutatingWebhookConfigName: "cf-operator-mutating-hook",
-			Secret: &machinerytypes.NamespacedName{
-				Name:      "cf-operator-mutating-hook-certs",
-				Namespace: ctrConfig.Namespace,
-			},
-			// This should be properly configurable, and the user
-			// should be able to use a service instead.
-			Host: host,
-			// Service: ??
+			//			Secret: &machinerytypes.NamespacedName{
+			//				Name:      "cf-operator-mutating-hook-certs",
+			//				Namespace: ctrConfig.Namespace,
+			//			},
+			Host: &hostEnv,
+			//			Service: &webhook.Service{
+			//				Name: "cf-operator-webhook",
+			//				Namespace: ctrConfig.Namespace,
+			//			},
 		},
 	})
 
