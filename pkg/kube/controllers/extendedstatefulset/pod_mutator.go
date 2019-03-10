@@ -77,8 +77,6 @@ func (m *PodMutator) Handle(ctx context.Context, req types.Request) types.Respon
 func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 	m.log.Info("Mutating Pod ", pod.Name)
 
-	//podLabels := pod.GetLabels()
-
 	// Fetch statefulSet
 	statefulSetName := getStatefulSetName(pod.Name)
 	statefulSet := &v1beta2.StatefulSet{}
@@ -90,8 +88,8 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 
 	volumeClaimTemplateList := statefulSet.Spec.VolumeClaimTemplates
 
-	// check if VolumeClaimTemplate if present
-	if statefulSet.Spec.VolumeClaimTemplates != nil {
+	// check if VolumeClaimTemplate is present
+	if volumeClaimTemplateList != nil {
 
 		// Get persistentVolumeClaims list
 		opts := client.InNamespace(m.ctrConfig.Namespace)
@@ -115,23 +113,26 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 	return nil
 }
 
+// findPVC will fetch earliest pvc version
 func findPVC(pvcList *corev1.PersistentVolumeClaimList, pod *corev1.Pod, desiredVersionInt int, currentVersionInt int, volumeClaimTemplate *corev1.PersistentVolumeClaim) bool {
+
+	pvcFound := false
+
 	// generate desired pvc name
 	desiredVersion := fmt.Sprintf("%s%d", "v", desiredVersionInt)
 	desiredVCTName := replaceVersionInName(volumeClaimTemplate.Name, desiredVersion, 1)
 	desiredPodName := replaceVersionInName(pod.Name, desiredVersion, 2)
 	desiredPVCName := fmt.Sprintf("%s-%s", desiredVCTName, desiredPodName)
+
 	// Find desired pvc in pvcList
 	for _, pvc := range pvcList.Items {
 		if desiredPVCName == pvc.Name && desiredVersionInt != currentVersionInt {
-			if appendVolumetoPod(pod, volumeClaimTemplate, desiredVCTName, desiredPVCName) {
-				// remove appended volumes of previous versions
-				removeUnusedVolumes(pod, desiredVCTName, volumeClaimTemplate.Name)
-				return true
-			}
+			appendVolumetoPod(pod, volumeClaimTemplate, desiredVCTName, desiredPVCName)
+			removeUnusedVolumes(pod, desiredVCTName, volumeClaimTemplate.Name)
+			pvcFound = true
 		}
 	}
-	return true
+	return pvcFound
 }
 
 func removeUnusedVolumes(pod *corev1.Pod, desiredVCTName string, currentVCTName string) {
@@ -188,7 +189,7 @@ func replaceVersionInName(name string, version string, offset int) string {
 }
 
 // appendVolumetoPod appends desiredvolume to pod
-func appendVolumetoPod(pod *corev1.Pod, volumeClaimTemplate *corev1.PersistentVolumeClaim, desiredVCTName string, desiredPVCName string) bool {
+func appendVolumetoPod(pod *corev1.Pod, volumeClaimTemplate *corev1.PersistentVolumeClaim, desiredVCTName string, desiredPVCName string) {
 	// Find the desired volume and append new volume
 	podVolumes := pod.Spec.Volumes
 	for _, podVolume := range podVolumes {
@@ -204,7 +205,6 @@ func appendVolumetoPod(pod *corev1.Pod, volumeClaimTemplate *corev1.PersistentVo
 			// TODO delete unused PVC volumes
 		}
 	}
-	return true
 }
 
 // changeVolumeMountNames replaces name of volumeMount with desired volume's name
