@@ -1,11 +1,16 @@
 package controllers
 
 import (
+<<<<<<< HEAD
+=======
+	"os"
+>>>>>>> a028cb472ee656cbc66f581a8a279dcd4a458f61
 	"strings"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
+	machinerytypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
@@ -17,7 +22,11 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
+<<<<<<< HEAD
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+=======
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
+>>>>>>> a028cb472ee656cbc66f581a8a279dcd4a458f61
 )
 
 var addToManagerFuncs = []func(*zap.SugaredLogger, *context.Config, manager.Manager) error{
@@ -36,7 +45,11 @@ var addToSchemes = runtime.SchemeBuilder{
 	essv1.AddToScheme,
 }
 
+<<<<<<< HEAD
 var addHookFuncs = []func(*zap.SugaredLogger, *context.Config, manager.Manager, *webhook.Server) error{
+=======
+var addHookFuncs = []func(*zap.SugaredLogger, *controllersconfig.ControllersConfig, manager.Manager, *webhook.Server) error{
+>>>>>>> a028cb472ee656cbc66f581a8a279dcd4a458f61
 	extendedstatefulset.AddPod,
 }
 
@@ -56,6 +69,7 @@ func AddToScheme(s *runtime.Scheme) error {
 }
 
 // AddHooks adds all web hooks to the Manager
+<<<<<<< HEAD
 func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manager) error {
 	log.Info("Setting up webhook server")
 
@@ -85,6 +99,33 @@ func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manag
 			//				Name: "cf-operator-webhook",
 			//				Namespace: ctrConfig.Namespace,
 			//			},
+=======
+func AddHooks(log *zap.SugaredLogger, ctrConfig *controllersconfig.ControllersConfig, m manager.Manager) error {
+	log.Info("Setting up webhook server")
+
+	var host *string
+	hostEnv := os.ExpandEnv("${OPERATOR_WEBHOOK_HOST}")
+	host = &hostEnv
+
+	if strings.TrimSpace(hostEnv) == "" {
+		host = nil
+	}
+
+	// TODO: port should be configurable
+	hookServer, err := webhook.NewServer("cf-operator", m, webhook.ServerOptions{
+		Port:    2999,
+		CertDir: "/tmp/cert",
+		BootstrapOptions: &webhook.BootstrapOptions{
+			MutatingWebhookConfigName: "cf-operator-mutating-hook",
+			Secret: &machinerytypes.NamespacedName{
+				Name:      "cf-operator-mutating-hook-certs",
+				Namespace: ctrConfig.Namespace,
+			},
+			// This should be properly configurable, and the user
+			// should be able to use a service instead.
+			Host: host,
+			// Service: ??
+>>>>>>> a028cb472ee656cbc66f581a8a279dcd4a458f61
 		},
 	})
 

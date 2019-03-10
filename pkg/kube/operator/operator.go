@@ -6,7 +6,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
+<<<<<<< HEAD
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+=======
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllersconfig"
+>>>>>>> a028cb472ee656cbc66f581a8a279dcd4a458f61
 )
 
 // NewManager adds schemes, controllers and starts the manager
