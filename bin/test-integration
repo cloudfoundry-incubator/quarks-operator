@@ -2,7 +2,7 @@
 set -eu
 
 
-TEST_NAMESPACE="test$(date +%s)"
+TEST_NAMESPACE=${TEST_NAMESPACE:-"test$(date +%s)"}
 export TEST_NAMESPACE
 
 remove_namespace() {
@@ -13,6 +13,6 @@ trap remove_namespace EXIT
 bin/apply-crds
 
 kubectl get customresourcedefinitions
-kubectl create namespace "$TEST_NAMESPACE"
+kubectl namespace "$TEST_NAMESPACE" || kubectl create namespace "$TEST_NAMESPACE"
 
 ginkgo integration/
