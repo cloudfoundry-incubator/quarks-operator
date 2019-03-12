@@ -204,6 +204,17 @@ func (m *Machine) GetPods(namespace string, labels string) (*corev1.PodList, err
 	}
 
 	return pods, nil
+
+}
+
+// GetPod returns pod by name
+func (m *Machine) GetPod(namespace string, name string) (*corev1.Pod, error) {
+	pod, err := m.Clientset.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return &corev1.Pod{}, errors.Wrapf(err, "failed to query for pod by name: %v", name)
+	}
+
+	return pod, nil
 }
 
 // WaitForBOSHDeploymentDeletion blocks until the CR is deleted

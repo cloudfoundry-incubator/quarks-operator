@@ -2,14 +2,15 @@ package integration_test
 
 import (
 	"fmt"
+	"os/exec"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -21,17 +22,18 @@ var _ = Describe("ExtendedStatefulSet", func() {
 		ownedReferencesExtendedStatefulSet essv1.ExtendedStatefulSet
 	)
 
+	BeforeEach(func() {
+		essName := fmt.Sprintf("testess-%s", testing.RandString(5))
+		extendedStatefulSet = env.DefaultExtendedStatefulSet(essName)
+
+		wrongEssName := fmt.Sprintf("wrong-testess-%s", testing.RandString(5))
+		wrongExtendedStatefulSet = env.WrongExtendedStatefulSet(wrongEssName)
+
+		ownedRefEssName := fmt.Sprintf("owned-ref-testess-%s", testing.RandString(5))
+		ownedReferencesExtendedStatefulSet = env.OwnedReferencesExtendedStatefulSet(ownedRefEssName)
+	})
+
 	Context("when correctly setup", func() {
-		BeforeEach(func() {
-			essName := fmt.Sprintf("testess-%s", testing.RandString(5))
-			extendedStatefulSet = env.DefaultExtendedStatefulSet(essName)
-
-			wrongEssName := fmt.Sprintf("wrong-testess-%s", testing.RandString(5))
-			wrongExtendedStatefulSet = env.WrongExtendedStatefulSet(wrongEssName)
-
-			ownedRefEssName := fmt.Sprintf("owned-ref-testess-%s", testing.RandString(5))
-			ownedReferencesExtendedStatefulSet = env.OwnedReferencesExtendedStatefulSet(ownedRefEssName)
-		})
 
 		It("should create a statefulSet and eventually a pod", func() {
 			// Create an ExtendedStatefulSet
@@ -291,6 +293,169 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(ess.Status.Versions).To(Equal(map[int]bool{
 				1: true,
 			}))
+		})
+	})
+
+	Context("when volumeclaimtemplates are specified", func() {
+		BeforeEach(func() {
+			name := "pvc"
+			annotations := map[string]string{"fissile.cloudfoundry.org/configsha1": "234523563"}
+
+			extendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates = env.DefaultVolumeClaimTemplates(name)
+			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].VolumeMounts = append(extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].VolumeMounts, env.DefaultVolumeMount(name))
+			extendedStatefulSet.Spec.Template.Spec.Template.ObjectMeta.SetAnnotations(annotations)
+
+			wrongExtendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates = env.DefaultVolumeClaimTemplates(name)
+			wrongExtendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].VolumeMounts = append(wrongExtendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].VolumeMounts, env.DefaultVolumeMount(name))
+			wrongExtendedStatefulSet.Spec.Template.Spec.Template.ObjectMeta.SetAnnotations(annotations)
+		})
+
+		It("VolumeMount name's should have version", func() {
+
+			// Create an ExtendedStatefulSet
+			var ess *essv1.ExtendedStatefulSet
+			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+			defer tearDown()
+
+			// check for pod
+			err = env.WaitForPods(env.Namespace, "testpod=yes")
+			Expect(err).NotTo(HaveOccurred())
+
+			// get the pod
+			pods, err := env.GetPods(env.Namespace, "testpod=yes")
+			Expect(pods.Items[0].Spec.Containers[0].VolumeMounts[0].Name).To(Equal("pvc-v1"))
+		})
+
+		It("Should append earliest version volume spec when updated", func() {
+
+			// Create an ExtendedStatefulSet
+			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+			defer tearDown()
+
+			// check for pod
+			err = env.WaitForPods(env.Namespace, "testpod=yes")
+			Expect(err).NotTo(HaveOccurred())
+
+			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+
+			// Update the ExtendedStatefulSet
+			*ess.Spec.Template.Spec.Replicas += 1
+			essUpdated, tearDown, err := env.UpdateExtendedStatefulSet(env.Namespace, *ess)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+			defer tearDown()
+
+			// check for extendedStatefulSet available
+			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName(), 2)
+			Expect(err).NotTo(HaveOccurred())
+
+			podName := fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 2, 0)
+
+			// get the pod-0
+			pod, err := env.GetPod(env.Namespace, podName)
+			volumes := make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
+			}
+			_, ok := volumes["pvc-v1"]
+			Expect(ok).To(Equal(true))
+			_, ok = volumes["pvc-v2"]
+			Expect(ok).To(Equal(true))
+
+			volumeMounts := make(map[string]corev1.VolumeMount, len(pod.Spec.Containers[0].VolumeMounts))
+			for _, volumeMount := range pod.Spec.Containers[0].VolumeMounts {
+				volumeMounts[volumeMount.Name] = volumeMount
+			}
+			_, ok = volumeMounts["pvc-v1"]
+			Expect(ok).To(Equal(true))
+			_, ok = volumeMounts["pvc-v2"]
+			Expect(ok).NotTo(Equal(true))
+
+			essUpdated, err = env.GetExtendedStatefulSet(env.Namespace, essUpdated.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+
+			// Update the ExtendedStatefulSet
+			essUpdated.Spec.Template.Spec.Template.ObjectMeta.Labels["test"] = "test"
+			essUpdated, tearDown, err = env.UpdateExtendedStatefulSet(env.Namespace, *essUpdated)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+			defer tearDown()
+
+			// check for extendedStatefulSet available
+			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, essUpdated.GetName(), 3)
+			Expect(err).NotTo(HaveOccurred())
+
+			podName = fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 3, 1)
+
+			// get the pod-0
+			pod, err = env.GetPod(env.Namespace, podName)
+			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
+			}
+			_, ok = volumes["pvc-v3"]
+			Expect(ok).To(Equal(true))
+			_, ok = volumes["pvc-v2"]
+			Expect(ok).To(Equal(true))
+
+			volumeMounts = make(map[string]corev1.VolumeMount, len(pod.Spec.Containers[0].VolumeMounts))
+			for _, volumeMount := range pod.Spec.Containers[0].VolumeMounts {
+				volumeMounts[volumeMount.Name] = volumeMount
+			}
+			_, ok = volumeMounts["pvc-v2"]
+			Expect(ok).To(Equal(true))
+			_, ok = volumeMounts["pvc-v1"]
+			Expect(ok).NotTo(Equal(true))
+			_, ok = volumeMounts["pvc-v3"]
+			Expect(ok).NotTo(Equal(true))
+		})
+
+		FIt("should access same volume from different versions at the same time", func() {
+
+			// add volume write command
+			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].Image = "ubuntu"
+			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].Command = []string{"/bin/bash", "-c", "echo present > /etc/random/presentFile"}
+
+			// Create an ExtendedStatefulSet
+			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+			defer tearDown()
+
+			// Check for pod
+			err = env.WaitForPods(env.Namespace, "testpod=yes")
+			Expect(err).NotTo(HaveOccurred())
+
+			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+
+			// Update the ExtendedStatefulSet
+			ess.Spec.Template.Spec.Template.Spec.Containers[0].Command = []string{"/bin/bash", "-c", "cat /etc/random/presentFile"}
+			ess.Spec.Template.Spec.Template.ObjectMeta.Labels["testpodupdated"] = "yes"
+			essUpdated, tearDown, err := env.UpdateExtendedStatefulSet(env.Namespace, *ess)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+			defer tearDown()
+
+			// Check for pod
+			err = env.WaitForPods(env.Namespace, "testpodupdated=yes")
+			Expect(err).NotTo(HaveOccurred())
+
+			//time.Sleep(10 * time.Second)
+
+			podName := fmt.Sprintf("%s-v%d-%d", ess.GetName(), 2, 0)
+
+			// TODO set kubectl Path configurable
+			out, err := exec.Command("/usr/bin/kubectl", "logs", podName).Output()
+			Expect(string(out)).To(Equal("present\n"))
 		})
 	})
 })

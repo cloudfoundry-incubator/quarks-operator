@@ -206,15 +206,16 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSets(exStatefulSet *essv1a1.ExtendedStatefulSet, actualStatefulSet *v1beta2.StatefulSet) ([]v1beta2.StatefulSet, int, error) {
 	var desiredStatefulSets []v1beta2.StatefulSet
 
+	desiredVersion, err := exStatefulSet.DesiredVersion(actualStatefulSet)
+	if err != nil {
+		return nil, 0, err
+	}
+
 	template := exStatefulSet.Spec.Template
 
 	// Place the StatefulSet in the same namespace as the ExtendedStatefulSet
 	template.SetNamespace(exStatefulSet.Namespace)
 
-	desiredVersion, err := exStatefulSet.DesiredVersion(actualStatefulSet)
-	if err != nil {
-		return nil, 0, err
-	}
 	templateSHA1, err := exStatefulSet.CalculateStatefulSetSHA1()
 	if err != nil {
 		return nil, 0, err
@@ -686,7 +687,7 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(extendedStatefu
 	statefulSet.SetLabels(labels)
 	statefulSet.SetAnnotations(annotations)
 
-	// Add version to VolumeClaimTemplate's names
+	// Add version to VolumeClaimTemplate's names if present
 	for indexV, volumeClaimTemplate := range statefulSet.Spec.VolumeClaimTemplates {
 		actualVolumeClaimTemplateName := volumeClaimTemplate.GetName()
 		desiredVolumeClaimTemplateName := fmt.Sprintf("%s-v%d", volumeClaimTemplate.GetName(), version)

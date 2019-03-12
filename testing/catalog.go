@@ -5,6 +5,7 @@ import (
 	"k8s.io/api/apps/v1beta2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
@@ -236,6 +237,35 @@ func (c *Catalog) DefaultStatefulSet(name string) v1beta2.StatefulSet {
 			ServiceName: name,
 			Template:    c.DefaultPodTemplate(name),
 		},
+	}
+}
+
+// DefaultVolumeClaimTemplates for use in tests
+func (c *Catalog) DefaultVolumeClaimTemplates(name string) []corev1.PersistentVolumeClaim {
+	return []corev1.PersistentVolumeClaim{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes: []corev1.PersistentVolumeAccessMode{
+					"ReadWriteOnce",
+				},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceName(corev1.ResourceStorage): resource.MustParse("1G"),
+					},
+				},
+			},
+		},
+	}
+}
+
+// DefaultVolumeMount for use in tests
+func (c *Catalog) DefaultVolumeMount(name string) corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      name,
+		MountPath: "/etc/random",
 	}
 }
 

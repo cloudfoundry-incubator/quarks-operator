@@ -75,7 +75,7 @@ func (m *PodMutator) Handle(ctx context.Context, req types.Request) types.Respon
 
 // mutatePodsFn add an annotation to the given pod
 func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
-	m.log.Info("Mutating Pod ", pod.Name)
+	m.log.Info("RohitLogs mutatePodsFn")
 
 	// Fetch statefulSet
 	statefulSetName := getStatefulSetName(pod.Name)
@@ -91,6 +91,7 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 	// check if VolumeClaimTemplate is present
 	if volumeClaimTemplateList != nil {
 
+		m.log.Info("RohitLogs yes vct")
 		// Get persistentVolumeClaims list
 		opts := client.InNamespace(m.ctrConfig.Namespace)
 		pvcList := &corev1.PersistentVolumeClaimList{}
@@ -104,7 +105,9 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 			// Search for the least versioned pvc in the pvc List
 			currentVersionInt := getVersionFromName(pod.Name)
 			for desiredVersionInt := 1; desiredVersionInt <= currentVersionInt; desiredVersionInt++ {
+				m.log.Info("RohitLogs inside second for loop")
 				if findPVC(pvcList, pod, desiredVersionInt, currentVersionInt, &volumeClaimTemplate) {
+					m.log.Info("RohitLogs ", "Finally Found")
 					break
 				}
 			}
