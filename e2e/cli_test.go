@@ -3,6 +3,7 @@ package e2e_test
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -115,6 +116,25 @@ var _ = Describe("CLI", func() {
 			session, err := act("version")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`CF-Operator Version: \d+.\d+.\d+`))
+		})
+	})
+
+	Describe("variable-interpolation", func() {
+		It("should show a interpolated manifest with variables files", func() {
+			wd, err := os.Getwd()
+			Expect(err).ToNot(HaveOccurred())
+
+			manifestPath := filepath.Join(wd, "../testing/assets/manifest.yaml")
+			varsDir := filepath.Join(wd, "../testing/assets/vars")
+
+			session, err := act("variable-interpolation", "-m", manifestPath, "-v", varsDir)
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(session.Out).Should(Say(`# Manifest:
+instance-group:
+  key1: baz
+  key2: foo
+  key3: bar
+name: test`))
 		})
 	})
 })
