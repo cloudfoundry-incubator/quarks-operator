@@ -301,6 +301,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			name := "pvc"
 			annotations := map[string]string{"fissile.cloudfoundry.org/configsha1": "234523563"}
 
+			// Add volumeClaimTemplates
 			extendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates = env.DefaultVolumeClaimTemplates(name)
 			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].VolumeMounts = append(extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].VolumeMounts, env.DefaultVolumeMount(name))
 			extendedStatefulSet.Spec.Template.Spec.Template.ObjectMeta.SetAnnotations(annotations)
@@ -323,9 +324,18 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			err = env.WaitForPods(env.Namespace, "testpod=yes")
 			Expect(err).NotTo(HaveOccurred())
 
-			// get the pod
-			pods, err := env.GetPods(env.Namespace, "testpod=yes")
-			Expect(pods.Items[0].Spec.Containers[0].VolumeMounts[0].Name).To(Equal("pvc-v1"))
+			podName := fmt.Sprintf("%s-v%d-%d", extendedStatefulSet.GetName(), 1, 0)
+
+			// get the pod-0
+			pod, err := env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
+			volumeMounts := make(map[string]corev1.VolumeMount, len(pod.Spec.Containers[0].VolumeMounts))
+
+			for _, volumeMount := range pod.Spec.Containers[0].VolumeMounts {
+				volumeMounts[volumeMount.Name] = volumeMount
+			}
+			_, ok := volumeMounts["pvc-v1"]
+			Expect(ok).To(Equal(true))
 		})
 
 		It("Should append earliest version volume spec when updated", func() {
@@ -417,7 +427,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(ok).NotTo(Equal(true))
 		})
 
-		FIt("should access same volume from different versions at the same time", func() {
+		It("should access same volume from different versions at the same time", func() {
 
 			// add volume write command
 			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].Image = "ubuntu"
@@ -448,8 +458,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			// Check for pod
 			err = env.WaitForPods(env.Namespace, "testpodupdated=yes")
 			Expect(err).NotTo(HaveOccurred())
-
-			//time.Sleep(10 * time.Second)
 
 			podName := fmt.Sprintf("%s-v%d-%d", ess.GetName(), 2, 0)
 

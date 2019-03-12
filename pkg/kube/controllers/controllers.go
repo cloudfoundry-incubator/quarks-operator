@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"os"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -59,13 +60,14 @@ func AddToScheme(s *runtime.Scheme) error {
 func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manager) error {
 	log.Info("Setting up webhook server")
 
-	hostEnv := "192.168.99.1"
+	var host *string
+	hostEnv := os.ExpandEnv("${OPERATOR_WEBHOOK_HOST}")
+	host = &hostEnv
 
 	if strings.TrimSpace(hostEnv) == "" {
-		hostEnv = "localhost"
+		host = nil
 	}
-
-	log.Info("Webhook server listening on ", hostEnv)
+	log.Info("Webhook server listening on ", host)
 
 	disableWebhookInstaller := true
 
@@ -76,15 +78,7 @@ func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manag
 		DisableWebhookConfigInstaller: &disableWebhookInstaller,
 		BootstrapOptions: &webhook.BootstrapOptions{
 			MutatingWebhookConfigName: "cf-operator-mutating-hook",
-			//			Secret: &machinerytypes.NamespacedName{
-			//				Name:      "cf-operator-mutating-hook-certs",
-			//				Namespace: ctrConfig.Namespace,
-			//			},
-			Host: &hostEnv,
-			//			Service: &webhook.Service{
-			//				Name: "cf-operator-webhook",
-			//				Namespace: ctrConfig.Namespace,
-			//			},
+			Host:                      &hostEnv,
 		},
 	})
 

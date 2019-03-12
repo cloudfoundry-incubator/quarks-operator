@@ -78,16 +78,7 @@ If a failure has occurred (e.g. canary has failed), the StatefulSet is annotated
 
 ### Detect if StatefulSet versions are running
 
-During upgrades, there is more than one `StatefulSet` version for an `ExtendedStatefulSet` resource.
-<<<<<<< HEAD
-<<<<<<< HEAD
-The operator can list available versions and store status that keeps track of which is running:
-=======
-The ability to list available versions, and store versions status that keeps track of whether a version is running:
->>>>>>> Add webhook scaffolding to the operator
-=======
-The ability to list available versions, and store versions status that keeps track of whether a version is running:
->>>>>>> a028cb472ee656cbc66f581a8a279dcd4a458f61
+During upgrades, there is more than one `StatefulSet` version for an `ExtendedStatefulSet` resource. The ability to list available versions, and store versions status that keeps track of whether a version is running:
 
 ```yaml
 status:
@@ -97,26 +88,13 @@ status:
 
 ```
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-A version running means that at least one pod that belongs to a `StatefulSet` is running.
-When a version **n** is running, any version lower than **n** is deleted.
-=======
-A version running means that at least one pod that belongs to the `StatefulSet` is running.
-When a version is running, any version lower than it is deleted.
->>>>>>> Add webhook scaffolding to the operator
-=======
-A version running means that at least one pod that belongs to the `StatefulSet` is running.
-When a version is running, any version lower than it is deleted.
->>>>>>> a028cb472ee656cbc66f581a8a279dcd4a458f61
+A version running means that at least one pod that belongs to a `StatefulSet` is running. When a version **n** is running, any version lower than **n** is deleted.
 
 ```yaml
 status:
   versions:
     # version 1 was cleaned up
     "2": true
-<<<<<<< HEAD
-<<<<<<< HEAD
 ```
 
 The controller continues to reconcile until there's only one version.
@@ -147,8 +125,6 @@ spec:
     spec:
       replicas: 2
   ...
-=======
->>>>>>> a028cb472ee656cbc66f581a8a279dcd4a458f61
 ```
 
 The `ExtendedStatefulSet` controller creates one `StatefulSet` version for each availability zone, and adds affinity information to the pods of those `StatefulSets`:
@@ -162,8 +138,6 @@ affinity:
         - key: "failure-domain.beta.kubernetes.io/zone"
           operator: In
           values: ["us-central1-a"]
-=======
->>>>>>> Add webhook scaffolding to the operator
 ```
 
 If zones are set for an `ExtendedStatefulSet`, the following occurs:
@@ -203,12 +177,6 @@ If zones are set for an `ExtendedStatefulSet`, the following occurs:
 
 TODO
 
-### Volume Management
-
-### AZ Support
-
-TODO
-
 ## Example Resource
 
 ```yaml
@@ -218,20 +186,10 @@ kind: ExtendedStatefulSet
 metadata:
   name: MyExtendedStatefulSet
 spec:
-<<<<<<< HEAD
-<<<<<<< HEAD
   # Name of the label that defines the zone for a node
   zoneNodeLabel: "failure-domain.beta.kubernetes.io/zone"
   # List of zones this ExtendedStatefulSet should be deployed on
   zones: ["us-central1-a", "us-central1-b"]
-=======
-  az:
-    
->>>>>>> Add webhook scaffolding to the operator
-=======
-  az:
-    
->>>>>>> a028cb472ee656cbc66f581a8a279dcd4a458f61
   scaling:
     # Minimum replica count for the StatefulSet
     min: 3
