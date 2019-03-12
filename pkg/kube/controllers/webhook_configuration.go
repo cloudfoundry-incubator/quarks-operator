@@ -198,6 +198,13 @@ func (f *WebhookConfig) generateWebhookServerConfig(webhooks []*admission.Webhoo
 }
 
 func (f *WebhookConfig) writeSecretFiles() error {
+	if exists, _ := afero.DirExists(f.ctrConfig.Fs, f.CertDir); !exists {
+		err := f.ctrConfig.Fs.Mkdir(f.CertDir, 0700)
+		if err != nil {
+			return err
+		}
+	}
+
 	err := afero.WriteFile(f.ctrConfig.Fs, path.Join(f.CertDir, "ca-key.pem"), f.CaKey, 0600)
 	if err != nil {
 		return err
