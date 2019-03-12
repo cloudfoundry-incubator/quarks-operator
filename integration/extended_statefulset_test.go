@@ -2,14 +2,15 @@ package integration_test
 
 import (
 	"fmt"
+	"os/exec"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -21,17 +22,25 @@ var _ = Describe("ExtendedStatefulSet", func() {
 		ownedReferencesExtendedStatefulSet essv1.ExtendedStatefulSet
 	)
 
+	BeforeEach(func() {
+		essName := fmt.Sprintf("testess-%s", testing.RandString(5))
+		extendedStatefulSet = env.DefaultExtendedStatefulSet(essName)
+
+		wrongEssName := fmt.Sprintf("wrong-testess-%s", testing.RandString(5))
+		wrongExtendedStatefulSet = env.WrongExtendedStatefulSet(wrongEssName)
+
+		ownedRefEssName := fmt.Sprintf("owned-ref-testess-%s", testing.RandString(5))
+		ownedReferencesExtendedStatefulSet = env.OwnedReferencesExtendedStatefulSet(ownedRefEssName)
+
+	})
+
+	AfterEach(func() {
+		env.WaitForPodsDelete(env.Namespace)
+		env.WaitForPVCsDelete(env.Namespace)
+		env.WaitForPVsDelete()
+	})
+
 	Context("when correctly setup", func() {
-		BeforeEach(func() {
-			essName := fmt.Sprintf("testess-%s", testing.RandString(5))
-			extendedStatefulSet = env.DefaultExtendedStatefulSet(essName)
-
-			wrongEssName := fmt.Sprintf("wrong-testess-%s", testing.RandString(5))
-			wrongExtendedStatefulSet = env.WrongExtendedStatefulSet(wrongEssName)
-
-			ownedRefEssName := fmt.Sprintf("owned-ref-testess-%s", testing.RandString(5))
-			ownedReferencesExtendedStatefulSet = env.OwnedReferencesExtendedStatefulSet(ownedRefEssName)
-		})
 
 		It("should create a statefulSet and eventually a pod", func() {
 			// Create an ExtendedStatefulSet
@@ -291,6 +300,296 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(ess.Status.Versions).To(Equal(map[int]bool{
 				1: true,
 			}))
+		})
+	})
+
+	Context("when volumeclaimtemplates are specified", func() {
+		BeforeEach(func() {
+			name := "pvc"
+			annotations := map[string]string{"fissile.cloudfoundry.org/configsha1": "234523563"}
+
+			// Add volumeClaimTemplates
+			extendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates = env.DefaultVolumeClaimTemplates(name)
+			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].VolumeMounts = append(extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].VolumeMounts, env.DefaultVolumeMount(name))
+			extendedStatefulSet.Spec.Template.Spec.Template.ObjectMeta.SetAnnotations(annotations)
+
+			wrongExtendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates = env.DefaultVolumeClaimTemplates(name)
+			wrongExtendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].VolumeMounts = append(wrongExtendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].VolumeMounts, env.DefaultVolumeMount(name))
+			wrongExtendedStatefulSet.Spec.Template.Spec.Template.ObjectMeta.SetAnnotations(annotations)
+
+		})
+
+		It("VolumeMount name's should have version", func() {
+
+			// Create a pv
+			persistentVolume := env.DefaultPersistentVolume("pv-one")
+			pv, tearDown, err := env.CreatePersistentVolume(persistentVolume)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pv).NotTo(Equal(nil))
+			defer tearDown()
+
+			// check for pv
+			err = env.WaitForPV(pv.GetName())
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create an ExtendedStatefulSet
+			var ess *essv1.ExtendedStatefulSet
+			ess, tearDown, err = env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+			defer tearDown()
+
+			statefulSetName := fmt.Sprintf("%s-v%d", ess.GetName(), 1)
+
+			// wait for statefulset
+			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			podName := fmt.Sprintf("%s-v%d-%d", ess.GetName(), 1, 0)
+
+			// get the pod-0
+			pod, err := env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
+			volumeMounts := make(map[string]corev1.VolumeMount, len(pod.Spec.Containers[0].VolumeMounts))
+
+			for _, volumeMount := range pod.Spec.Containers[0].VolumeMounts {
+				volumeMounts[volumeMount.Name] = volumeMount
+			}
+			_, ok := volumeMounts["pvc-v1"]
+			Expect(ok).To(Equal(true))
+		})
+
+		It("Should append earliest version volume when spec is updated", func() {
+
+			// Create a pv
+			persistentVolume := env.DefaultPersistentVolume("pv-two")
+			pv, tearDown, err := env.CreatePersistentVolume(persistentVolume)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pv).NotTo(Equal(nil))
+			defer tearDown()
+
+			// check for pv
+			err = env.WaitForPV(pv.GetName())
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create an ExtendedStatefulSet
+			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+			defer tearDown()
+
+			statefulSetName := fmt.Sprintf("%s-v%d", ess.GetName(), 1)
+
+			// wait for statefulset
+			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create a pv
+			persistentVolume = env.DefaultPersistentVolume("pv-three")
+			pv, tearDown, err = env.CreatePersistentVolume(persistentVolume)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pv).NotTo(Equal(nil))
+			defer tearDown()
+
+			// check for pv
+			err = env.WaitForPV(pv.GetName())
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create a pv
+			persistentVolume = env.DefaultPersistentVolume("pv-four")
+			pv, tearDown, err = env.CreatePersistentVolume(persistentVolume)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pv).NotTo(Equal(nil))
+			defer tearDown()
+
+			// check for pv
+			err = env.WaitForPV(pv.GetName())
+			Expect(err).NotTo(HaveOccurred())
+
+			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+
+			By("updating the statefulset to v2")
+
+			// Update the ExtendedStatefulSet
+			*ess.Spec.Template.Spec.Replicas += 1
+			essUpdated, tearDown, err := env.UpdateExtendedStatefulSet(env.Namespace, *ess)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+			defer tearDown()
+
+			statefulSetName = fmt.Sprintf("%s-v%d", essUpdated.GetName(), 2)
+
+			// wait for statefulset
+			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			podName := fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 2, 0)
+
+			By("fetching a pod of v2-0")
+
+			// get the pod-0
+			pod, err := env.GetPod(env.Namespace, podName)
+			volumes := make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
+			}
+
+			By("check the volume Names")
+
+			_, ok := volumes["pvc-v1"]
+			Expect(ok).To(Equal(true))
+			_, ok = volumes["pvc-v2"]
+			Expect(ok).To(Equal(true))
+
+			volumeMounts := make(map[string]corev1.VolumeMount, len(pod.Spec.Containers[0].VolumeMounts))
+			for _, volumeMount := range pod.Spec.Containers[0].VolumeMounts {
+				volumeMounts[volumeMount.Name] = volumeMount
+			}
+
+			By("check the volumeMount's Names")
+
+			_, ok = volumeMounts["pvc-v1"]
+			Expect(ok).To(Equal(true))
+			_, ok = volumeMounts["pvc-v2"]
+			Expect(ok).NotTo(Equal(true))
+
+			By("update the statefulset to v3")
+
+			// Create a pv
+			persistentVolume = env.DefaultPersistentVolume("pv-five")
+			pv, tearDown, err = env.CreatePersistentVolume(persistentVolume)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pv).NotTo(Equal(nil))
+			defer tearDown()
+
+			// check for pv
+			err = env.WaitForPV(pv.GetName())
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create a pv
+			persistentVolume = env.DefaultPersistentVolume("pv-six")
+			pv, tearDown, err = env.CreatePersistentVolume(persistentVolume)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pv).NotTo(Equal(nil))
+			defer tearDown()
+
+			// check for pv
+			err = env.WaitForPV(pv.GetName())
+			Expect(err).NotTo(HaveOccurred())
+
+			essUpdated, err = env.GetExtendedStatefulSet(env.Namespace, essUpdated.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+
+			// Update the ExtendedStatefulSet
+			essUpdated.Spec.Template.Spec.Template.ObjectMeta.Labels["testpodupdated"] = "yes"
+			essUpdated, tearDown, err = env.UpdateExtendedStatefulSet(env.Namespace, *essUpdated)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+			defer tearDown()
+
+			statefulSetName = fmt.Sprintf("%s-v%d", essUpdated.GetName(), 3)
+
+			// wait for statefulset
+			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			podName = fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 3, 1)
+
+			By("fetch the statefulset pod v3-1")
+
+			// get the pod-0
+			pod, err = env.GetPod(env.Namespace, podName)
+			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
+			}
+
+			By("check the volume names")
+
+			_, ok = volumes["pvc-v3"]
+			Expect(ok).To(Equal(true))
+			_, ok = volumes["pvc-v2"]
+			Expect(ok).To(Equal(true))
+			_, ok = volumes["pvc-v1"]
+			Expect(ok).NotTo(Equal(true))
+
+			volumeMounts = make(map[string]corev1.VolumeMount, len(pod.Spec.Containers[0].VolumeMounts))
+			for _, volumeMount := range pod.Spec.Containers[0].VolumeMounts {
+				volumeMounts[volumeMount.Name] = volumeMount
+			}
+
+			By("check the volumeMount names")
+
+			_, ok = volumeMounts["pvc-v2"]
+			Expect(ok).To(Equal(true))
+			_, ok = volumeMounts["pvc-v1"]
+			Expect(ok).NotTo(Equal(true))
+			_, ok = volumeMounts["pvc-v3"]
+			Expect(ok).NotTo(Equal(true))
+		})
+
+		It("should access same volume from different versions at the same time", func() {
+
+			// add volume write command
+			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].Image = "opensuse"
+			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].Command = []string{"/bin/bash", "-c", "echo present > /etc/random/presentFile"}
+
+			// Create a pv
+			persistentVolume := env.DefaultPersistentVolume("pv-seven")
+			pv, tearDown, err := env.CreatePersistentVolume(persistentVolume)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pv).NotTo(Equal(nil))
+			defer tearDown()
+
+			// check for pv
+			err = env.WaitForPV(pv.GetName())
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create an ExtendedStatefulSet
+			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+			defer tearDown()
+
+			// Check for pod
+			err = env.WaitForPods(env.Namespace, "testpod=yes")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create a pv
+			persistentVolume = env.DefaultPersistentVolume("pv-eight")
+			pv, tearDown, err = env.CreatePersistentVolume(persistentVolume)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pv).NotTo(Equal(nil))
+			defer tearDown()
+
+			// check for pv
+			err = env.WaitForPV(pv.GetName())
+			Expect(err).NotTo(HaveOccurred())
+
+			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+
+			// Update the ExtendedStatefulSet
+			ess.Spec.Template.Spec.Template.Spec.Containers[0].Command = []string{"/bin/bash", "-c", "cat /etc/random/presentFile"}
+			ess.Spec.Template.Spec.Template.ObjectMeta.Labels["testpodupdated"] = "yes"
+			essUpdated, tearDown, err := env.UpdateExtendedStatefulSet(env.Namespace, *ess)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+			defer tearDown()
+
+			// Check for pod
+			err = env.WaitForPods(env.Namespace, "testpodupdated=yes")
+			Expect(err).NotTo(HaveOccurred())
+
+			podName := fmt.Sprintf("%s-v%d-%d", ess.GetName(), 2, 0)
+
+			// TODO set kubectl Path configurable
+			out, err := exec.Command("/usr/bin/kubectl", "logs", "-n", env.Namespace, podName).Output()
+			Expect(string(out)).To(Equal("present\n"))
 		})
 	})
 })

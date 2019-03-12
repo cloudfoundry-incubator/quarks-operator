@@ -68,12 +68,12 @@ func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manag
 
 	disableConfigInstaller := true
 	hookServer, err := webhook.NewServer("cf-operator", m, webhook.ServerOptions{
-		Port:    ctrConfig.WebhookServerPort,
-		CertDir: webhookConfig.CertDir,
+		Port:                          ctrConfig.WebhookServerPort,
+		CertDir:                       webhookConfig.CertDir,
 		DisableWebhookConfigInstaller: &disableConfigInstaller,
 		BootstrapOptions: &webhook.BootstrapOptions{
 			MutatingWebhookConfigName: webhookConfig.ConfigName,
-			Host: &ctrConfig.WebhookServerHost,
+			Host:                      &ctrConfig.WebhookServerHost,
 			// The user should probably be able to use a service instead.
 			// Service: ??
 		},
