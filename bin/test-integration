@@ -13,6 +13,6 @@ trap remove_namespace EXIT
 bin/apply-crds
 
 kubectl get customresourcedefinitions
-kubectl namespace "$TEST_NAMESPACE" || kubectl create namespace "$TEST_NAMESPACE"
+kubectl get namespace "$TEST_NAMESPACE" || kubectl create namespace "$TEST_NAMESPACE"
 
 ginkgo integration/
