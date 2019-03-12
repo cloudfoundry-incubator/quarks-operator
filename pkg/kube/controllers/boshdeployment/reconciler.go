@@ -2,9 +2,8 @@ package boshdeployment
 
 import (
 	"fmt"
+	"reflect"
 
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -19,6 +18,8 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 )
 
@@ -86,7 +87,25 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
+	// Get state from instance
+	instanceState := instance.Status.State
+	if instanceState == "" {
+		instanceState = "Created"
+	}
+
+	defer func() {
+		// Update the Status of the resource
+		if !reflect.DeepEqual(instanceState, instance.Status.State) {
+			instance.Status.State = instanceState
+			updateErr := r.client.Update(ctx, instance)
+			if updateErr != nil {
+				r.log.Errorf("Failed to update BOSHDeployment instance status: %v", updateErr)
+			}
+		}
+	}()
+
 	// retrieve manifest
+	instanceState = "Applying Ops Files"
 	manifest, err := r.resolver.ResolveManifest(instance.Spec, request.Namespace)
 	if err != nil {
 		r.recorder.Event(instance, corev1.EventTypeWarning, "ResolveCRD Error", err.Error())
@@ -107,6 +126,10 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		r.recorder.Event(instance, corev1.EventTypeWarning, "BadManifest Error", err.Error())
 		return reconcile.Result{}, errors.Wrap(err, "error converting manifest to kube objects")
 	}
+
+	// TODO placeholder for variable Interpolation
+
+	// TODO placeholder for gathered/rendered manifest
 
 	for _, eJob := range kubeConfigs.ExtendedJob {
 		// Set BOSHDeployment instance as the owner and controller

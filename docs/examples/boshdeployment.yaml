@@ -42,5 +42,5 @@ type: Opaque
 stringData:
   ops: |
     - type: replace
-      path: /instance_groups/name=diego111/instances
+      path: /instance_groups/name=diego?/instances
       value: 5
