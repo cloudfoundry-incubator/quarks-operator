@@ -34,13 +34,13 @@ const (
 	// OptimisticLockErrorMsg is an error message shown when locking fails
 	OptimisticLockErrorMsg = "the object has been modified; please apply your changes to the latest version and try again"
 	// EnvKubeAz is set by available zone name
-	EnvKubeAz              = "KUBE_AZ"
+	EnvKubeAz = "KUBE_AZ"
 	// EnvBoshAz is set by available zone name
-	EnvBoshAz              = "BOSH_AZ"
+	EnvBoshAz = "BOSH_AZ"
 	// EnvCfOperatorAz is set by available zone name
-	EnvCfOperatorAz        = "CF_OPERATOR_AZ"
+	EnvCfOperatorAz = "CF_OPERATOR_AZ"
 	// EnvCfOperatorAzIndex is set by available zone index
-	EnvCfOperatorAzIndex   = "CF_OPERATOR_AZ_INDEX"
+	EnvCfOperatorAzIndex = "CF_OPERATOR_AZ_INDEX"
 )
 
 // Check that ReconcileExtendedStatefulSet implements the reconcile.Reconciler interface
@@ -685,6 +685,25 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(extendedStatefu
 	statefulSet.SetName(fmt.Sprintf("%s-v%d", statefulSetNamePrefix, version))
 	statefulSet.SetLabels(labels)
 	statefulSet.SetAnnotations(annotations)
+
+	// Add version to VolumeClaimTemplate's names
+	for indexV, volumeClaimTemplate := range statefulSet.Spec.VolumeClaimTemplates {
+		actualVolumeClaimTemplateName := volumeClaimTemplate.GetName()
+		desiredVolumeClaimTemplateName := fmt.Sprintf("%s-v%d", volumeClaimTemplate.GetName(), version)
+
+		volumeClaimTemplate.SetName(desiredVolumeClaimTemplateName)
+		statefulSet.Spec.VolumeClaimTemplates[indexV] = volumeClaimTemplate
+
+		// change the name in the container's volume mounts
+		for indexC, container := range statefulSet.Spec.Template.Spec.Containers {
+			for indexM, volumeMount := range container.VolumeMounts {
+				if volumeMount.Name == actualVolumeClaimTemplateName {
+					volumeMount.Name = desiredVolumeClaimTemplateName
+					statefulSet.Spec.Template.Spec.Containers[indexC].VolumeMounts[indexM] = volumeMount
+				}
+			}
+		}
+	}
 
 	return statefulSet, nil
 }
