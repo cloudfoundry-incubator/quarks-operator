@@ -79,6 +79,90 @@ func (m *Machine) WaitForExtendedStatefulSetAvailable(namespace string, name str
 	})
 }
 
+// WaitForPV blocks until the pv is running. It fails after the timeout.
+func (m *Machine) WaitForPV(name string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.PVAvailable(name)
+	})
+}
+
+// PVAvailable returns true if the pv by that name is in state available
+func (m *Machine) PVAvailable(name string) (bool, error) {
+	pv, err := m.Clientset.CoreV1().PersistentVolumes().Get(name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "failed to query for pv by name: %s", name)
+	}
+
+	if pv.Status.Phase == "Available" {
+		return true, nil
+	}
+	return false, nil
+}
+
+// WaitForPVsDelete blocks until the pv is deleted. It fails after the timeout.
+func (m *Machine) WaitForPVsDelete() error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.PVsDeleted()
+	})
+}
+
+// PVsDeleted returns true if the all pvs are deleted
+func (m *Machine) PVsDeleted() (bool, error) {
+	pvList, err := m.Clientset.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
+	if err != nil {
+		return false, err
+	}
+	if len(pvList.Items) == 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
+// WaitForPVCsDelete blocks until the pvc is deleted. It fails after the timeout.
+func (m *Machine) WaitForPVCsDelete(namespace string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.PVCsDeleted(namespace)
+	})
+}
+
+// PVCsDeleted returns true if the all pvs are deleted
+func (m *Machine) PVCsDeleted(namespace string) (bool, error) {
+	pvcList, err := m.Clientset.CoreV1().PersistentVolumeClaims(namespace).List(metav1.ListOptions{})
+	if err != nil {
+		return false, err
+	}
+	if len(pvcList.Items) == 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
+// WaitForStatefulSet blocks until all statefulset pods are running. It fails after the timeout.
+func (m *Machine) WaitForStatefulSet(namespace string, labels string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.StatefulSetRunning(namespace, labels)
+	})
+}
+
+// StatefulSetRunning returns true if the statefulset by that name has all pods created
+func (m *Machine) StatefulSetRunning(namespace string, name string) (bool, error) {
+	statefulSet, err := m.Clientset.AppsV1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "failed to query for statefulset by name: %s", name)
+	}
+
+	if statefulSet.Status.CurrentReplicas == *statefulSet.Spec.Replicas {
+		return true, nil
+	}
+	return false, nil
+}
+
 // ExtendedStatefulSetExists returns true if at least one ess selected by labels exists
 func (m *Machine) ExtendedStatefulSetExists(namespace string, labels string) (bool, error) {
 	esss, err := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace).List(metav1.ListOptions{
@@ -204,6 +288,17 @@ func (m *Machine) GetPods(namespace string, labels string) (*corev1.PodList, err
 	}
 
 	return pods, nil
+
+}
+
+// GetPod returns pod by name
+func (m *Machine) GetPod(namespace string, name string) (*corev1.Pod, error) {
+	pod, err := m.Clientset.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return &corev1.Pod{}, errors.Wrapf(err, "failed to query for pod by name: %v", name)
+	}
+
+	return pod, nil
 }
 
 // WaitForBOSHDeploymentDeletion blocks until the CR is deleted
@@ -352,6 +447,16 @@ func (m *Machine) CreateExtendedStatefulSet(namespace string, ess essv1.Extended
 	d, err := client.Create(&ess)
 	return d, func() {
 		client.Delete(ess.GetName(), &metav1.DeleteOptions{})
+	}, err
+}
+
+// CreatePersistentVolume creates a PersistentVolume custom resource and returns a function to delete it
+func (m *Machine) CreatePersistentVolume(pv corev1.PersistentVolume) (*corev1.PersistentVolume, TearDownFunc, error) {
+
+	client := m.Clientset.CoreV1().PersistentVolumes()
+	p, err := client.Create(&pv)
+	return p, func() {
+		client.Delete(p.GetName(), nil)
 	}, err
 }
 

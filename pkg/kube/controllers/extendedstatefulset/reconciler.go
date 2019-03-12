@@ -215,6 +215,7 @@ func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSets(exStatefulSe
 	if err != nil {
 		return nil, 0, err
 	}
+
 	templateSHA1, err := exStatefulSet.CalculateStatefulSetSHA1()
 	if err != nil {
 		return nil, 0, err
@@ -686,7 +687,7 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(extendedStatefu
 	statefulSet.SetLabels(labels)
 	statefulSet.SetAnnotations(annotations)
 
-	// Add version to VolumeClaimTemplate's names
+	// Add version to VolumeClaimTemplate's names if present
 	for indexV, volumeClaimTemplate := range statefulSet.Spec.VolumeClaimTemplates {
 		actualVolumeClaimTemplateName := volumeClaimTemplate.GetName()
 		desiredVolumeClaimTemplateName := fmt.Sprintf("%s-v%d", volumeClaimTemplate.GetName(), version)
