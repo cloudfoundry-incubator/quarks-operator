@@ -19,9 +19,19 @@ metadata:
 data:
   manifest: |
     instance_groups:
-      - name: diego
-        instances: 3
-      - name: mysql
+    - name: diego-cell
+      instances: 3
+    - name: api
+      instances: 2
+      jobs:
+      - name: cloud_controller_ng
+        properties:
+          router:
+            route_services_secret: "((router_route_services_secret))"
+    - name: mysql
+    variables:
+    - name: router_route_services_secret
+      type: password
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -30,7 +40,7 @@ metadata:
 data:
   ops: |
     - type: replace
-      path: /instance_groups/name=diego?/instances
+      path: /instance_groups/name=diego-cell?/instances
       value: 4
 
 ---
@@ -42,5 +52,5 @@ type: Opaque
 stringData:
   ops: |
     - type: replace
-      path: /instance_groups/name=diego?/instances
+      path: /instance_groups/name=diego-cell?/instances
       value: 5

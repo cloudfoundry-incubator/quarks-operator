@@ -15,9 +15,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Variables represents a map of BOSH variables
-type Variables map[string]interface{}
-
 // variableInterpolationCmd represents the variableInterpolation command
 var variableInterpolationCmd = &cobra.Command{
 	Use:   "variable-interpolation [flags]",
