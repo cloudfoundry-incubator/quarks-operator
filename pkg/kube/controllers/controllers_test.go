@@ -136,7 +136,7 @@ var _ = Describe("Controllers", func() {
 			It("generates the webhook configuration", func() {
 				client.CreateCalls(func(context context.Context, object runtime.Object) error {
 					config := object.(*admissionregistrationv1beta1.MutatingWebhookConfiguration)
-					Expect(config.Name).To(Equal("cf-operator-mutating-hook"))
+					Expect(config.Name).To(Equal("cf-operator-mutating-hook-" + ctrsConfig.Namespace))
 					Expect(len(config.Webhooks)).To(Equal(1))
 
 					wh := config.Webhooks[0]
