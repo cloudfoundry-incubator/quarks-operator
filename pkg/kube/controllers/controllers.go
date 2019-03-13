@@ -3,8 +3,12 @@ package controllers
 import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	machinerytypes "k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -87,6 +91,11 @@ func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manag
 		webhooks = append(webhooks, wh)
 	}
 
+	err = setOperatorNamespaceLabel(log, ctrConfig, m.GetClient())
+	if err != nil {
+		return errors.Wrap(err, "setting the operator namespace label")
+	}
+
 	err = webhookConfig.setupCertificate()
 	if err != nil {
 		return errors.Wrap(err, "setting up the webhook server certificate")
@@ -97,4 +106,34 @@ func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manag
 	}
 
 	return err
+}
+
+func setOperatorNamespaceLabel(log *zap.SugaredLogger, ctrConfig *context.Config, c client.Client) error {
+	ctx := context.NewBackgroundContext()
+
+	ns := &unstructured.Unstructured{}
+	ns.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "",
+		Kind:    "Namespace",
+		Version: "v1",
+	})
+	err := c.Get(ctx, machinerytypes.NamespacedName{Name: ctrConfig.Namespace}, ns)
+
+	if err != nil {
+		return errors.Wrap(err, "getting the namespace object")
+	}
+
+	labels := ns.GetLabels()
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	labels["cf-operator-ns"] = ctrConfig.Namespace
+	ns.SetLabels(labels)
+	err = c.Update(ctx, ns)
+
+	if err != nil {
+		return errors.Wrap(err, "updating the namespace object")
+	}
+
+	return nil
 }
