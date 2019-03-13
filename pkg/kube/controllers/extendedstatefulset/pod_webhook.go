@@ -6,6 +6,7 @@ import (
 	"go.uber.org/zap"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -24,6 +25,11 @@ func AddPod(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manag
 	mutatingWebhook, err := builder.NewWebhookBuilder().
 		Path("/mutate-pods").
 		Mutating().
+		NamespaceSelector(&metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"cf-operator-ns": ctrConfig.Namespace,
+			},
+		}).
 		ForType(&corev1.Pod{}).
 		Handlers(podMutator).
 		WithManager(mgr).

@@ -74,6 +74,20 @@ var _ = Describe("Controllers", func() {
 			ctrsConfig = env.DefaultContextConfig()
 		})
 
+		It("sets the operator namespace label", func() {
+			client.UpdateCalls(func(_ context.Context, object runtime.Object) error {
+				ns := object.(*unstructured.Unstructured)
+				labels := ns.GetLabels()
+
+				Expect(labels["cf-operator-ns"]).To(Equal(ctrsConfig.Namespace))
+
+				return nil
+			})
+
+			err := controllers.AddHooks(log, ctrsConfig, manager, generator)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
 		Context("if there is no cert secret yet", func() {
 			It("generates and persists the certificates on disk and in a secret", func() {
 				Expect(afero.Exists(ctrsConfig.Fs, "/tmp/cf-operator-certs/key.pem")).To(BeFalse())
