@@ -64,7 +64,7 @@ func AddToScheme(s *runtime.Scheme) error {
 func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manager, generator credsgen.Generator) error {
 	log.Infof("Setting up webhook server on %s:%d", ctrConfig.WebhookServerHost, ctrConfig.WebhookServerPort)
 
-	webhookConfig := NewWebhookConfig(log, m.GetClient(), ctrConfig, generator, "cf-operator-mutating-hook")
+	webhookConfig := NewWebhookConfig(log, m.GetClient(), ctrConfig, generator, "cf-operator-mutating-hook-"+ctrConfig.Namespace)
 
 	disableConfigInstaller := true
 	hookServer, err := webhook.NewServer("cf-operator", m, webhook.ServerOptions{
