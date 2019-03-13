@@ -48,6 +48,10 @@ var rootCmd = &cobra.Command{
 		webhookHost := viper.GetString("operator-webhook-host")
 		webhookPort := viper.GetInt32("operator-webhook-port")
 
+		if webhookHost == "" {
+			log.Fatal("required flag 'operator-webhook-host' not set (env variable: OPERATOR_WEBHOOK_HOST)")
+		}
+
 		ctrsConfig := &context.Config{ //Set the context to be TODO
 			CtxTimeOut:        10 * time.Second,
 			CtxType:           context.NewBackgroundContext(),
@@ -75,18 +79,20 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringP("kubeconfig", "c", "", "Path to a kubeconfig, not required in-cluster")
-	rootCmd.PersistentFlags().StringP("namespace", "n", "default", "Namespace to watch for BOSH deployments")
-	rootCmd.PersistentFlags().StringP("docker-image-org", "o", "cfcontainerization", "Dockerhub organization that provides the operator docker image")
-	rootCmd.PersistentFlags().StringP("docker-image-repository", "r", "cf-operator", "Dockerhub repository that provides the operator docker image")
-	rootCmd.PersistentFlags().StringP("operator-webhook-host", "w", "localhost", "Hostname of the webhook server")
-	rootCmd.PersistentFlags().StringP("operator-webhook-port", "p", "2999", "Port the webhook server listens on")
-	viper.BindPFlag("kubeconfig", rootCmd.PersistentFlags().Lookup("kubeconfig"))
-	viper.BindPFlag("namespace", rootCmd.PersistentFlags().Lookup("namespace"))
-	viper.BindPFlag("docker-image-org", rootCmd.PersistentFlags().Lookup("docker-image-org"))
-	viper.BindPFlag("docker-image-repository", rootCmd.PersistentFlags().Lookup("docker-image-repository"))
-	viper.BindPFlag("operator-webhook-host", rootCmd.PersistentFlags().Lookup("operator-webhook-host"))
-	viper.BindPFlag("operator-webhook-port", rootCmd.PersistentFlags().Lookup("operator-webhook-port"))
+	pf := rootCmd.PersistentFlags()
+
+	pf.StringP("kubeconfig", "c", "", "Path to a kubeconfig, not required in-cluster")
+	pf.StringP("namespace", "n", "default", "Namespace to watch for BOSH deployments")
+	pf.StringP("docker-image-org", "o", "cfcontainerization", "Dockerhub organization that provides the operator docker image")
+	pf.StringP("docker-image-repository", "r", "cf-operator", "Dockerhub repository that provides the operator docker image")
+	pf.StringP("operator-webhook-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")
+	pf.StringP("operator-webhook-port", "p", "2999", "Port the webhook server listens on")
+	viper.BindPFlag("kubeconfig", pf.Lookup("kubeconfig"))
+	viper.BindPFlag("namespace", pf.Lookup("namespace"))
+	viper.BindPFlag("docker-image-org", pf.Lookup("docker-image-org"))
+	viper.BindPFlag("docker-image-repository", pf.Lookup("docker-image-repository"))
+	viper.BindPFlag("operator-webhook-host", pf.Lookup("operator-webhook-host"))
+	viper.BindPFlag("operator-webhook-port", pf.Lookup("operator-webhook-port"))
 	viper.BindEnv("kubeconfig")
 	viper.BindEnv("namespace", "CFO_NAMESPACE")
 	viper.BindEnv("docker-image-org", "DOCKER_IMAGE_ORG")
