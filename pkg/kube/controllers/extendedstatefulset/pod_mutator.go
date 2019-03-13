@@ -88,22 +88,25 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 
 	volumeClaimTemplateList := statefulSet.Spec.VolumeClaimTemplates
 
-	m.log.Info("RohitLogs yes vct")
-	// Get persistentVolumeClaims list
-	opts := client.InNamespace(m.ctrConfig.Namespace)
-	pvcList := &corev1.PersistentVolumeClaimList{}
-	err = m.client.List(ctx, opts, pvcList)
-	if err != nil {
-		return errors.Wrapf(err, "Couldn't fetch PVC's")
-	}
+	// check if VolumeClaimTemplate is present
+	if volumeClaimTemplateList != nil {
 
-	// Loop over volumeClaimTemplates
-	for _, volumeClaimTemplate := range volumeClaimTemplateList {
-		// Search for the least versioned pvc in the pvc List
-		currentVersionInt := getVersionFromName(pod.Name)
-		for desiredVersionInt := 1; desiredVersionInt <= currentVersionInt; desiredVersionInt++ {
-			if findPVC(pvcList, pod, desiredVersionInt, currentVersionInt, &volumeClaimTemplate) {
-				break
+		// Get persistentVolumeClaims list
+		opts := client.InNamespace(m.ctrConfig.Namespace)
+		pvcList := &corev1.PersistentVolumeClaimList{}
+		err := m.client.List(ctx, opts, pvcList)
+		if err != nil {
+			return errors.Wrapf(err, "Couldn't fetch PVC's")
+		}
+
+		// Loop over volumeClaimTemplates
+		for _, volumeClaimTemplate := range volumeClaimTemplateList {
+			// Search for the least versioned pvc in the pvc List
+			currentVersionInt := getVersionFromName(pod.Name)
+			for desiredVersionInt := 1; desiredVersionInt <= currentVersionInt; desiredVersionInt++ {
+				if findPVC(pvcList, pod, desiredVersionInt, currentVersionInt, &volumeClaimTemplate) {
+					break
+				}
 			}
 		}
 	}

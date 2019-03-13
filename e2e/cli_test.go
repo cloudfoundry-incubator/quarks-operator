@@ -34,7 +34,8 @@ var _ = Describe("CLI", func() {
   -h, --help                             help for cf-operator
   -c, --kubeconfig string                Path to a kubeconfig, not required in-cluster
   -n, --namespace string                 Namespace to watch for BOSH deployments \(default "default"\)
-`))
+  -w, --operator-webhook-host string     Hostname/IP under which the webhook server can be reached from the cluster
+  -p, --operator-webhook-port string     Port the webhook server listens on \(default "2999"\)`))
 		})
 
 		It("shows all available commands", func() {

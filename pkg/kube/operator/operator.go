@@ -7,6 +7,8 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+
+	credsgen "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
 )
 
 // NewManager adds schemes, controllers and starts the manager
@@ -24,7 +26,7 @@ func NewManager(log *zap.SugaredLogger, ctrConfig *context.Config, cfg *rest.Con
 	}
 
 	// Setup Hooks for all resources
-	if err = controllers.AddHooks(log, ctrConfig, mgr); err != nil {
+	if err = controllers.AddHooks(log, ctrConfig, mgr, credsgen.NewInMemoryGenerator(log)); err != nil {
 		return
 	}
 

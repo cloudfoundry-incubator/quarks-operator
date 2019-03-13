@@ -1,15 +1,18 @@
 package environment
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 	"code.cloudfoundry.org/cf-operator/testing"
+	"github.com/spf13/afero"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 
 	"go.uber.org/zap"
@@ -46,6 +49,7 @@ func NewEnvironment() *Environment {
 		CtrsConfig: &context.Config{ //Set the context to be TODO
 			CtxTimeOut: 10 * time.Second,
 			CtxType:    context.NewBackgroundContext(),
+			Fs:         afero.NewOsFs(),
 		},
 		Machine: Machine{
 			pollTimeout:  30 * time.Second,
@@ -89,11 +93,29 @@ func (e *Environment) AllLogMessages() (msgs []string) {
 }
 
 func (e *Environment) setupCFOperator() (err error) {
+	whh, found := os.LookupEnv("OPERATOR_WEBHOOK_HOST")
+	if !found {
+		return fmt.Errorf("no webhook host set. Please set OPERATOR_WEBHOOK_HOST to the host/ip the operator runs on and try again")
+	}
+	e.CtrsConfig.WebhookServerHost = whh
+
+	whp := int32(2999)
+	portString, found := os.LookupEnv("OPERATOR_WEBHOOK_PORT")
+	if found {
+		port, err := strconv.ParseInt(portString, 10, 32)
+		if err != nil {
+			return err
+		}
+		whp = int32(port)
+	}
+	e.CtrsConfig.WebhookServerPort = whp
+
 	ns, found := os.LookupEnv("TEST_NAMESPACE")
 	if !found {
 		ns = "default"
 	}
 	e.Namespace = ns
+	e.CtrsConfig.Namespace = ns
 
 	e.ObservedLogs, e.Log = testing.NewTestLogger()
 

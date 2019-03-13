@@ -1,15 +1,20 @@
 package controllers
 
 import (
-	"os"
-	"strings"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	machinerytypes "k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
@@ -37,7 +42,7 @@ var addToSchemes = runtime.SchemeBuilder{
 	essv1.AddToScheme,
 }
 
-var addHookFuncs = []func(*zap.SugaredLogger, *context.Config, manager.Manager, *webhook.Server) error{
+var addHookFuncs = []func(*zap.SugaredLogger, *context.Config, manager.Manager, *webhook.Server) (*admission.Webhook, error){
 	extendedstatefulset.AddPod,
 }
 
@@ -57,39 +62,80 @@ func AddToScheme(s *runtime.Scheme) error {
 }
 
 // AddHooks adds all web hooks to the Manager
-func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manager) error {
-	log.Info("Setting up webhook server")
+func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manager, generator credsgen.Generator) error {
+	log.Infof("Setting up webhook server on %s:%d", ctrConfig.WebhookServerHost, ctrConfig.WebhookServerPort)
 
-	var host *string
-	hostEnv := os.ExpandEnv("${OPERATOR_WEBHOOK_HOST}")
-	host = &hostEnv
+	webhookConfig := NewWebhookConfig(log, m.GetClient(), ctrConfig, generator, "cf-operator-mutating-hook")
 
-	if strings.TrimSpace(hostEnv) == "" {
-		host = nil
-	}
-	log.Info("Webhook server listening on ", host)
-
-	disableWebhookInstaller := true
-
-	// TODO: port should be configurable
+	disableConfigInstaller := true
 	hookServer, err := webhook.NewServer("cf-operator", m, webhook.ServerOptions{
-		Port:                          2999,
-		CertDir:                       "/home/rohitsakala/cf-operator/.vlad/",
-		DisableWebhookConfigInstaller: &disableWebhookInstaller,
+		Port:    ctrConfig.WebhookServerPort,
+		CertDir: webhookConfig.CertDir,
+		DisableWebhookConfigInstaller: &disableConfigInstaller,
 		BootstrapOptions: &webhook.BootstrapOptions{
-			MutatingWebhookConfigName: "cf-operator-mutating-hook",
-			Host:                      &hostEnv,
+			MutatingWebhookConfigName: webhookConfig.ConfigName,
+			Host: &ctrConfig.WebhookServerHost,
+			// The user should probably be able to use a service instead.
+			// Service: ??
 		},
 	})
 
-	if err != nil {
+  if err != nil {
 		return errors.Wrap(err, "unable to create a new webhook server")
 	}
 
+	webhooks := []*admission.Webhook{}
 	for _, f := range addHookFuncs {
-		if err := f(log, ctrConfig, m, hookServer); err != nil {
+		wh, err := f(log, ctrConfig, m, hookServer)
+		if err != nil {
 			return err
 		}
+		webhooks = append(webhooks, wh)
 	}
+
+	err = setOperatorNamespaceLabel(log, ctrConfig, m.GetClient())
+	if err != nil {
+		return errors.Wrap(err, "setting the operator namespace label")
+	}
+
+	err = webhookConfig.setupCertificate()
+	if err != nil {
+		return errors.Wrap(err, "setting up the webhook server certificate")
+	}
+	err = webhookConfig.generateWebhookServerConfig(webhooks)
+	if err != nil {
+		return errors.Wrap(err, "generating the webhook server configuration")
+	}
+
+	return err
+}
+
+func setOperatorNamespaceLabel(log *zap.SugaredLogger, ctrConfig *context.Config, c client.Client) error {
+	ctx := context.NewBackgroundContext()
+
+	ns := &unstructured.Unstructured{}
+	ns.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "",
+		Kind:    "Namespace",
+		Version: "v1",
+	})
+	err := c.Get(ctx, machinerytypes.NamespacedName{Name: ctrConfig.Namespace}, ns)
+
+	if err != nil {
+		return errors.Wrap(err, "getting the namespace object")
+	}
+
+	labels := ns.GetLabels()
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	labels["cf-operator-ns"] = ctrConfig.Namespace
+	ns.SetLabels(labels)
+	err = c.Update(ctx, ns)
+
+	if err != nil {
+		return errors.Wrap(err, "updating the namespace object")
+	}
+
 	return nil
 }
