@@ -3,13 +3,18 @@ package context
 import (
 	"context"
 	"time"
+
+	"github.com/spf13/afero"
 )
 
 //Config controls the behaviour of different controllers
 type Config struct {
-	CtxTimeOut time.Duration
-	CtxType    context.Context
-	Namespace  string
+	CtxTimeOut        time.Duration
+	CtxType           context.Context
+	Namespace         string
+	WebhookServerHost string
+	WebhookServerPort int32
+	Fs                afero.Fs
 }
 
 // Context is a type alias for golang's context, to avoid having to import that

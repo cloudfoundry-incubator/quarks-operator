@@ -3,6 +3,7 @@ package extendedstatefulset
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -63,6 +64,8 @@ func (m *PodMutator) Handle(ctx context.Context, req types.Request) types.Respon
 
 	updatedPod := pod.DeepCopy()
 
+	// TODO :- send pod instead of annotations.
+
 	if isStatefulSetPod(pod.GetAnnotations()) {
 		err = m.mutatePodsFn(ctx, updatedPod)
 		if err != nil {
@@ -88,53 +91,57 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 
 	volumeClaimTemplateList := statefulSet.Spec.VolumeClaimTemplates
 
-	m.log.Info("RohitLogs yes vct")
-	// Get persistentVolumeClaims list
-	opts := client.InNamespace(m.ctrConfig.Namespace)
-	pvcList := &corev1.PersistentVolumeClaimList{}
-	err = m.client.List(ctx, opts, pvcList)
-	if err != nil {
-		return errors.Wrapf(err, "Couldn't fetch PVC's")
-	}
+	// check if VolumeClaimTemplate is present
+	if volumeClaimTemplateList != nil {
 
-	// Loop over volumeClaimTemplates
-	for _, volumeClaimTemplate := range volumeClaimTemplateList {
-		// Search for the least versioned pvc in the pvc List
-		currentVersionInt := getVersionFromName(pod.Name)
-		for desiredVersionInt := 1; desiredVersionInt <= currentVersionInt; desiredVersionInt++ {
-			if findPVC(pvcList, pod, desiredVersionInt, currentVersionInt, &volumeClaimTemplate) {
-				break
+		// Get persistentVolumeClaims list
+		opts := client.InNamespace(m.ctrConfig.Namespace)
+		pvcList := &corev1.PersistentVolumeClaimList{}
+		err := m.client.List(ctx, opts, pvcList)
+		if err != nil {
+			return errors.Wrapf(err, "Couldn't fetch PVC's")
+		}
+
+		// Loop over volumeClaimTemplates
+		for _, volumeClaimTemplate := range volumeClaimTemplateList {
+
+			currentVersionInt := getVersionFromName(pod.Name, 2)
+			minVersion := math.MaxInt64
+			minPVCName := ""
+			// loop over pvclist to find the earliest one
+			for _, pvc := range pvcList.Items {
+				pvcName := strings.Split(pvc.GetName(), getNameWithOutVersion(pod.Name, 2))[0]
+				pvcName = pvcName[:len(pvcName)-1]
+				if getNameWithOutVersion(pvcName, 1) == getNameWithOutVersion(volumeClaimTemplate.Name, 1) && pvc.Name[len(pvc.Name)-1:] == pod.Name[len(pod.Name)-1:] {
+					pvcVersion := getVersionFromName(pvc.Name, 2)
+					if minVersion > pvcVersion {
+						minVersion = pvcVersion
+						minPVCName = pvc.Name
+					}
+				}
+			}
+			if minVersion != currentVersionInt {
+				changeVolumePods(minPVCName, pod, minVersion, currentVersionInt, &volumeClaimTemplate)
 			}
 		}
 	}
 	return nil
 }
 
-// findPVC will fetch earliest pvc version
-func findPVC(pvcList *corev1.PersistentVolumeClaimList, pod *corev1.Pod, desiredVersionInt int, currentVersionInt int, volumeClaimTemplate *corev1.PersistentVolumeClaim) bool {
+// changeVolumePods will append volume and change volumeMount name
+func changeVolumePods(desiredPVCName string, pod *corev1.Pod, desiredVersionInt int, currentVersionInt int, volumeClaimTemplate *corev1.PersistentVolumeClaim) {
 
-	pvcFound := false
-
-	// generate desired pvc name
+	// generate desired vct name
 	desiredVersion := fmt.Sprintf("%s%d", "v", desiredVersionInt)
 	desiredVCTName := replaceVersionInName(volumeClaimTemplate.Name, desiredVersion, 1)
-	desiredPodName := replaceVersionInName(pod.Name, desiredVersion, 2)
-	desiredPVCName := fmt.Sprintf("%s-%s", desiredVCTName, desiredPodName)
 
-	// Find desired pvc in pvcList
-	for _, pvc := range pvcList.Items {
-		if desiredPVCName == pvc.Name && desiredVersionInt != currentVersionInt {
-			appendVolumetoPod(pod, volumeClaimTemplate, desiredVCTName, desiredPVCName)
-			removeUnusedVolumes(pod, desiredVCTName, volumeClaimTemplate.Name)
-			pvcFound = true
-		}
-	}
-	return pvcFound
+	appendVolumetoPod(pod, volumeClaimTemplate, desiredVCTName, desiredPVCName)
+	removeUnusedVolumes(pod, desiredVCTName, volumeClaimTemplate.Name)
 }
 
 func removeUnusedVolumes(pod *corev1.Pod, desiredVCTName string, currentVCTName string) {
 	for indexV, volume := range pod.Spec.Volumes {
-		if getNameWithOutVersion(volume.Name) == getNameWithOutVersion(currentVCTName) && volume.Name != desiredVCTName && volume.Name != currentVCTName {
+		if getNameWithOutVersion(volume.Name, 1) == getNameWithOutVersion(currentVCTName, 1) && volume.Name != desiredVCTName && volume.Name != currentVCTName {
 			// delete this spec
 			pod.Spec.Volumes[indexV] = pod.Spec.Volumes[len(pod.Spec.Volumes)-1]
 			pod.Spec.Volumes = pod.Spec.Volumes[:len(pod.Spec.Volumes)-1]
@@ -143,9 +150,9 @@ func removeUnusedVolumes(pod *corev1.Pod, desiredVCTName string, currentVCTName 
 }
 
 // getNameWithOutVersion returns name removing the version index
-func getNameWithOutVersion(name string) string {
+func getNameWithOutVersion(name string, offset int) string {
 	nameSplit := strings.Split(name, "-")
-	nameSplit = nameSplit[0 : len(nameSplit)-1]
+	nameSplit = nameSplit[0 : len(nameSplit)-offset]
 	name = strings.Join(nameSplit, "-")
 	return name
 }
@@ -167,9 +174,9 @@ func getStatefulSetName(name string) string {
 }
 
 // getVersionFromName fetches version from name
-func getVersionFromName(name string) int {
+func getVersionFromName(name string, offset int) int {
 	nameSplit := strings.Split(name, "-")
-	version := string(nameSplit[len(nameSplit)-2][1])
+	version := string(nameSplit[len(nameSplit)-offset][1])
 	versionInt, err := strconv.Atoi(version)
 	if err != nil {
 		errors.Wrapf(err, "Atoi failed to convert")

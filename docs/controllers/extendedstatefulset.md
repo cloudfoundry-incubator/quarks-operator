@@ -78,7 +78,7 @@ If a failure has occurred (e.g. canary has failed), the StatefulSet is annotated
 
 ### Detect if StatefulSet versions are running
 
-During upgrades, there is more than one `StatefulSet` version for an `ExtendedStatefulSet` resource. The ability to list available versions, and store versions status that keeps track of whether a version is running:
+During upgrades, there is more than one `StatefulSet` version for an `ExtendedStatefulSet` resource. The operator can list available versions and store status that keeps track of which is running:
 
 ```yaml
 status:
@@ -190,6 +190,7 @@ spec:
   zoneNodeLabel: "failure-domain.beta.kubernetes.io/zone"
   # List of zones this ExtendedStatefulSet should be deployed on
   zones: ["us-central1-a", "us-central1-b"]
+  az:
   scaling:
     # Minimum replica count for the StatefulSet
     min: 3

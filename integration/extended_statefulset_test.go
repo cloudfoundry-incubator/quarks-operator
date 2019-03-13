@@ -338,7 +338,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(ok).To(Equal(true))
 		})
 
-		It("Should append earliest version volume spec when updated", func() {
+		It("Should append earliest version volume when spec is updated", func() {
 
 			// Create an ExtendedStatefulSet
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
@@ -354,12 +354,19 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ess).NotTo(Equal(nil))
 
+			By("updating the statefulset to v2")
+
 			// Update the ExtendedStatefulSet
 			*ess.Spec.Template.Spec.Replicas += 1
+			ess.Spec.Template.Spec.Template.ObjectMeta.Labels["testpodupdated"] = "yes"
 			essUpdated, tearDown, err := env.UpdateExtendedStatefulSet(env.Namespace, *ess)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(essUpdated).NotTo(Equal(nil))
 			defer tearDown()
+
+			// check for pod
+			err = env.WaitForPods(env.Namespace, "testpodupdated=yes")
+			Expect(err).NotTo(HaveOccurred())
 
 			// check for extendedStatefulSet available
 			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName(), 2)
@@ -367,12 +374,17 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			podName := fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 2, 0)
 
+			By("fetching a pod of v2-0")
+
 			// get the pod-0
 			pod, err := env.GetPod(env.Namespace, podName)
 			volumes := make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
 			}
+
+			By("check the volume Names")
+
 			_, ok := volumes["pvc-v1"]
 			Expect(ok).To(Equal(true))
 			_, ok = volumes["pvc-v2"]
@@ -382,6 +394,9 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			for _, volumeMount := range pod.Spec.Containers[0].VolumeMounts {
 				volumeMounts[volumeMount.Name] = volumeMount
 			}
+
+			By("check the volumeMount's Names")
+
 			_, ok = volumeMounts["pvc-v1"]
 			Expect(ok).To(Equal(true))
 			_, ok = volumeMounts["pvc-v2"]
@@ -390,6 +405,8 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			essUpdated, err = env.GetExtendedStatefulSet(env.Namespace, essUpdated.GetName())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(essUpdated).NotTo(Equal(nil))
+
+			By("update the statefulset to v3")
 
 			// Update the ExtendedStatefulSet
 			essUpdated.Spec.Template.Spec.Template.ObjectMeta.Labels["test"] = "test"
@@ -404,21 +421,31 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			podName = fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 3, 1)
 
+			By("fetch the statefulset pod v3-1")
+
 			// get the pod-0
 			pod, err = env.GetPod(env.Namespace, podName)
 			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
 			}
+
+			By("check the volume names")
+
 			_, ok = volumes["pvc-v3"]
 			Expect(ok).To(Equal(true))
 			_, ok = volumes["pvc-v2"]
 			Expect(ok).To(Equal(true))
+			_, ok = volumes["pvc-v1"]
+			Expect(ok).NotTo(Equal(true))
 
 			volumeMounts = make(map[string]corev1.VolumeMount, len(pod.Spec.Containers[0].VolumeMounts))
 			for _, volumeMount := range pod.Spec.Containers[0].VolumeMounts {
 				volumeMounts[volumeMount.Name] = volumeMount
 			}
+
+			By("check the volumeMount names")
+
 			_, ok = volumeMounts["pvc-v2"]
 			Expect(ok).To(Equal(true))
 			_, ok = volumeMounts["pvc-v1"]
@@ -430,7 +457,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 		It("should access same volume from different versions at the same time", func() {
 
 			// add volume write command
-			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].Image = "ubuntu"
+			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].Image = "opensuse"
 			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].Command = []string{"/bin/bash", "-c", "echo present > /etc/random/presentFile"}
 
 			// Create an ExtendedStatefulSet

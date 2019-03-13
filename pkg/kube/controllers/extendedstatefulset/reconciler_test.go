@@ -259,7 +259,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				)
 
 				BeforeEach(func() {
-					volumeClaimTemplates = []corev1.PersistentVolumeClaim{
+					volumeClaimTemplates = []corev1.PersistentVolumeClaim{ //TODO se catalog for this
 						{
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "pvc",
@@ -287,12 +287,8 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				})
 
 				It("Version should be added to the volume claim template name", func() {
-					result, err := reconciler.Reconcile(request)
+					_, err := reconciler.Reconcile(request)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(result).To(Equal(reconcile.Result{
-						Requeue:      true,
-						RequeueAfter: 1 * time.Second,
-					}))
 
 					ss := &v1beta2.StatefulSet{}
 					err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)

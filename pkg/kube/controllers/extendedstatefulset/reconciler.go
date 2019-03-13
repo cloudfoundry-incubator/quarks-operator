@@ -687,7 +687,7 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(extendedStatefu
 	statefulSet.SetLabels(labels)
 	statefulSet.SetAnnotations(annotations)
 
-	// Add version to VolumeClaimTemplate's names if present
+	// Add version to VolumeClaimTemplate's names
 	for indexV, volumeClaimTemplate := range statefulSet.Spec.VolumeClaimTemplates {
 		actualVolumeClaimTemplateName := volumeClaimTemplate.GetName()
 		desiredVolumeClaimTemplateName := fmt.Sprintf("%s-v%d", volumeClaimTemplate.GetName(), version)
