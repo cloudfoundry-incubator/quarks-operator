@@ -1,0 +1,27 @@
+#!/bin/bash
+
+if ! [ -x "$(command -v shellcheck)" ]; then
+  echo 'Warning: shellcheck is not installed. Shell scripts will not be linted.' >&2
+  exit
+fi
+
+check-scripts:
+# Run shellcheck to lint our shell scripts
+shellcheck ./bin/apply-crds
+shellcheck ./bin/build
+shellcheck ./bin/build-helm
+shellcheck ./bin/build-image
+shellcheck ./bin/gen-fakes
+shellcheck ./bin/gen-kube
+shellcheck ./bin/lint
+shellcheck ./bin/test
+shellcheck ./bin/test-e2e
+shellcheck ./bin/test-integration
+shellcheck ./bin/test-unit
+shellcheck ./bin/tools
+shellcheck ./bin/up
+shellcheck ./bin/verify-gen-kube
+shellcheck ./bin/vet
+
+
+exit 0
