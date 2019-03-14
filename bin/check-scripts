@@ -5,23 +5,8 @@ if ! [ -x "$(command -v shellcheck)" ]; then
   exit
 fi
 
-check-scripts:
-# Run shellcheck to lint our shell scripts
-shellcheck ./bin/apply-crds
-shellcheck ./bin/build
-shellcheck ./bin/build-helm
-shellcheck ./bin/build-image
-shellcheck ./bin/gen-fakes
-shellcheck ./bin/gen-kube
-shellcheck ./bin/lint
-shellcheck ./bin/test
-shellcheck ./bin/test-e2e
-shellcheck ./bin/test-integration
-shellcheck ./bin/test-unit
-shellcheck ./bin/tools
-shellcheck ./bin/up
-shellcheck ./bin/verify-gen-kube
-shellcheck ./bin/vet
-
+for script in $(find ./bin | xargs file -0 | grep -a shell | perl -pe 's/\0.*//'); do
+    shellcheck "${script}"
+done
 
 exit 0
