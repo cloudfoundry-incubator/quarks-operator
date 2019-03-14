@@ -33,6 +33,10 @@ var _ = Describe("ExtendedStatefulSet", func() {
 		ownedReferencesExtendedStatefulSet = env.OwnedReferencesExtendedStatefulSet(ownedRefEssName)
 	})
 
+	AfterEach(func() {
+		env.WaitForPodsDelete(env.Namespace)
+	})
+
 	Context("when correctly setup", func() {
 
 		It("should create a statefulSet and eventually a pod", func() {
@@ -489,7 +493,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			podName := fmt.Sprintf("%s-v%d-%d", ess.GetName(), 2, 0)
 
 			// TODO set kubectl Path configurable
-			out, err := exec.Command("/usr/bin/kubectl", "logs", podName).Output()
+			out, err := exec.Command("/usr/bin/kubectl", "logs", "-n", env.Namespace, podName).Output()
 			Expect(string(out)).To(Equal("present\n"))
 		})
 	})
