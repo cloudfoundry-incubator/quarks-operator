@@ -16,15 +16,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// AddOutput creates a new ExtendedJob controller and adds it to the Manager
-func AddOutput(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager) error {
+// AddJob creates a new ExtendedJob controller and adds it to the Manager
+func AddJob(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager) error {
 	client, err := corev1client.NewForConfig(mgr.GetConfig())
 	if err != nil {
 		return errors.Wrap(err, "Could not get kube client")
 	}
 	podLogGetter := NewPodLogGetter(client)
 	jobReconciler, err := NewJobReconciler(log, ctrConfig, mgr, podLogGetter)
-	jobController, err := controller.New("extendedjob-job-controller", mgr, controller.Options{Reconciler: jobReconciler})
+	jobController, err := controller.New("ext-job-job-controller", mgr, controller.Options{Reconciler: jobReconciler})
 	if err != nil {
 		return err
 	}

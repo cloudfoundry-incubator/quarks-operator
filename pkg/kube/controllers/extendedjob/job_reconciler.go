@@ -26,8 +26,7 @@ type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) 
 
 // NewJobReconciler returns a new Reconciler
 func NewJobReconciler(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager, podLogGetter PodLogGetter) (reconcile.Reconciler, error) {
-
-	jobReconcilerLog := log.Named("extendedjob-job-reconciler")
+	jobReconcilerLog := log.Named("ext-job-job-reconciler")
 	jobReconcilerLog.Info("Creating a reconciler for ExtendedJob")
 
 	return &ReconcileJob{

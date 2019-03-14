@@ -29,7 +29,7 @@ var addToManagerFuncs = []func(*zap.SugaredLogger, *context.Config, manager.Mana
 	boshdeployment.Add,
 	extendedjob.AddTrigger,
 	extendedjob.AddErrand,
-	extendedjob.AddOutput,
+	extendedjob.AddJob,
 	extendedsecret.Add,
 	extendedstatefulset.Add,
 }
