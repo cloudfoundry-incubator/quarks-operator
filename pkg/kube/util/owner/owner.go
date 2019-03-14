@@ -183,7 +183,7 @@ func isIn(list []apis.Object, child apis.Object) bool {
 // ListConfigs returns a list of all Secrets and ConfigMaps that are
 // referenced in the pod's spec
 func (r Owner) ListConfigs(ctx context.Context, namespace string, spec corev1.PodSpec) ([]apis.Object, error) {
-	configMaps, secrets := getConfigNamesFromSpec(spec)
+	configMaps, secrets := GetConfigNamesFromSpec(spec)
 
 	// return error if config resource does not exist
 	var configs []apis.Object
@@ -214,10 +214,10 @@ func (r Owner) ListConfigs(ctx context.Context, namespace string, spec corev1.Po
 	return configs, nil
 }
 
-// getConfigNamesFromSpec parses the owner object and returns two sets,
+// GetConfigNamesFromSpec parses the owner object and returns two sets,
 // the first containing the names of all referenced ConfigMaps,
 // the second containing the names of all referenced Secrets
-func getConfigNamesFromSpec(spec corev1.PodSpec) (map[string]struct{}, map[string]struct{}) {
+func GetConfigNamesFromSpec(spec corev1.PodSpec) (map[string]struct{}, map[string]struct{}) {
 	// Create sets for storing the names fo the ConfigMaps/Secrets
 	configMaps := make(map[string]struct{})
 	secrets := make(map[string]struct{})

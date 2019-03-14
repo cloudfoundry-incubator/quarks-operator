@@ -829,8 +829,16 @@ func (m *Machine) GetPodLogs(namespace, podName string) (string, error) {
 }
 
 // TearDownAll calls all passed in tear down functions in order
-func (m *Machine) TearDownAll(funcs []TearDownFunc) {
+func (m *Machine) TearDownAll(funcs []TearDownFunc) error {
+	var messages string
 	for _, f := range funcs {
-		f()
+		err := f()
+		if err != nil {
+			messages = fmt.Sprintf("%v%v\n", messages, err.Error())
+		}
 	}
+	if messages != "" {
+		return errors.New(messages)
+	}
+	return nil
 }
