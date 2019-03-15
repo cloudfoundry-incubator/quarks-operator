@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if ! [ -x "$(command -v shellcheck)" ]; then
+  echo 'Warning: shellcheck is not installed. Shell scripts will not be linted.' >&2
+  exit
+fi
+
+for script in $(find ./bin | xargs file -0 | grep -a shell | perl -pe 's/\0.*//'); do
+    shellcheck "${script}"
+done
+
+exit 0
