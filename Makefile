@@ -45,3 +45,6 @@ test: vet lint test-unit test-integration test-e2e
 
 tools:
 	bin/tools
+
+check-scripts:
+	bin/check-scripts
