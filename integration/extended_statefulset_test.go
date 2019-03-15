@@ -315,7 +315,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			wrongExtendedStatefulSet.Spec.Template.Spec.Template.ObjectMeta.SetAnnotations(annotations)
 		})
 
-		It("VolumeMount name's should have version", func() {
+		FIt("VolumeMount name's should have version", func() {
 
 			// Create an ExtendedStatefulSet
 			var ess *essv1.ExtendedStatefulSet
@@ -342,7 +342,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(ok).To(Equal(true))
 		})
 
-		It("Should append earliest version volume when spec is updated", func() {
+		FIt("Should append earliest version volume when spec is updated", func() {
 
 			// Create an ExtendedStatefulSet
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
@@ -458,7 +458,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(ok).NotTo(Equal(true))
 		})
 
-		It("should access same volume from different versions at the same time", func() {
+		FIt("should access same volume from different versions at the same time", func() {
 
 			// add volume write command
 			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].Image = "opensuse"
