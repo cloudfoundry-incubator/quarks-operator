@@ -1,5 +1,5 @@
 # cf-operator
-[![godoc](https://godoc.org/code.cloudfoundry.org/cf-operator?status.svg)](https://godoc.org/code.cloudfoundry.org/cf-operator)
+[![godoc](https://godoc.org/github.com/viovanov/bosh-template-go?status.svg)](https://godoc.org/github.com/viovanov/bosh-template-go)
 [![master](https://ci.flintstone.cf.cloud.ibm.com/api/v1/teams/containerization/pipelines/cf-operator/badge)](https://ci.flintstone.cf.cloud.ibm.com/teams/containerization/pipelines/cf-operator)
 [![go report card](https://goreportcard.com/badge/code.cloudfoundry.org/cf-operator)](https://goreportcard.com/report/code.cloudfoundry.org/cf-operator)
 
