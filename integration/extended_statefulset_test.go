@@ -320,7 +320,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			persistentVolumeTwo = env.DefaultPersistentVolume("pv-two")
 		})
 
-		It("VolumeMount name's should have version", func() {
+		FIt("VolumeMount name's should have version", func() {
 
 			// Create a pv
 			pv, tearDown, err := env.CreatePersistentVolume(persistentVolumeOne)
@@ -446,7 +446,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(essUpdated).NotTo(Equal(nil))
 
-			/*By("update the statefulset to v3")
+			By("update the statefulset to v3")
 
 			// Update the ExtendedStatefulSet
 			essUpdated.Spec.Template.Spec.Template.ObjectMeta.Labels["test"] = "test"
@@ -455,8 +455,10 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(essUpdated).NotTo(Equal(nil))
 			defer tearDown()
 
-			// check for extendedStatefulSet available
-			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, essUpdated.GetName(), 3)
+			statefulSetName = fmt.Sprintf("%s-v%d", essUpdated.GetName(), 3)
+
+			// wait for statefulset
+			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
 			Expect(err).NotTo(HaveOccurred())
 
 			podName = fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 3, 1)
@@ -491,7 +493,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			_, ok = volumeMounts["pvc-v1"]
 			Expect(ok).NotTo(Equal(true))
 			_, ok = volumeMounts["pvc-v3"]
-			Expect(ok).NotTo(Equal(true))*/
+			Expect(ok).NotTo(Equal(true))
 		})
 
 		It("should access same volume from different versions at the same time", func() {
