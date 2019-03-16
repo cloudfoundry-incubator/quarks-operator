@@ -279,6 +279,29 @@ func (c *Catalog) DefaultVolumeClaimTemplates(name string) []corev1.PersistentVo
 	}
 }
 
+// DefaultPersistentVolume for use in tests
+func (c *Catalog) DefaultPersistentVolume(name string) corev1.PersistentVolume {
+	return corev1.PersistentVolume{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: corev1.PersistentVolumeSpec{
+			StorageClassName: "hostpath",
+			Capacity: corev1.ResourceList{
+				corev1.ResourceName(corev1.ResourceStorage): resource.MustParse("1G"),
+			},
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				"ReadWriteOnce",
+			},
+			PersistentVolumeSource: corev1.PersistentVolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: "/mnt",
+				},
+			},
+		},
+	}
+}
+
 // DefaultVolumeMount for use in tests
 func (c *Catalog) DefaultVolumeMount(name string) corev1.VolumeMount {
 	return corev1.VolumeMount{
