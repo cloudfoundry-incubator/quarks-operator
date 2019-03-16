@@ -264,7 +264,7 @@ func (c *Catalog) DefaultVolumeClaimTemplates(name string) []corev1.PersistentVo
 				Name: name,
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
-				StorageClassName: "hostpath"
+				StorageClassName: &"hostpath",
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					"ReadWriteOnce",
 				},
