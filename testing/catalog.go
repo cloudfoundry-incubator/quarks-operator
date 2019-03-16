@@ -258,13 +258,14 @@ func (c *Catalog) DefaultStatefulSet(name string) v1beta2.StatefulSet {
 
 // DefaultVolumeClaimTemplates for use in tests
 func (c *Catalog) DefaultVolumeClaimTemplates(name string) []corev1.PersistentVolumeClaim {
+	hostPath := "hostpath"
 	return []corev1.PersistentVolumeClaim{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name,
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
-				StorageClassName: &"hostpath",
+				StorageClassName: &hostPath,
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					"ReadWriteOnce",
 				},
