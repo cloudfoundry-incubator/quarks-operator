@@ -293,6 +293,7 @@ func (c *Catalog) DefaultPersistentVolume(name string) corev1.PersistentVolume {
 			AccessModes: []corev1.PersistentVolumeAccessMode{
 				"ReadWriteOnce",
 			},
+			PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimDelete,
 			PersistentVolumeSource: corev1.PersistentVolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
 					Path: "/mnt",

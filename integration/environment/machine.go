@@ -102,6 +102,44 @@ func (m *Machine) PVAvailable(name string) (bool, error) {
 	return false, nil
 }
 
+// WaitForPVsDelete blocks until the pv is deleted. It fails after the timeout.
+func (m *Machine) WaitForPVsDelete() error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.PVsDeleted()
+	})
+}
+
+// PVsDeleted returns true if the all pvs are deleted
+func (m *Machine) PVsDeleted() (bool, error) {
+	pvList, err := m.Clientset.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
+	if err != nil {
+		return false, err
+	}
+	if len(pvList.Items) == 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
+// WaitForPVCsDelete blocks until the pvc is deleted. It fails after the timeout.
+func (m *Machine) WaitForPVCsDelete(namespace string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.PVCsDeleted(namespace)
+	})
+}
+
+// PVCsDeleted returns true if the all pvs are deleted
+func (m *Machine) PVCsDeleted(namespace string) (bool, error) {
+	pvcList, err := m.Clientset.CoreV1().PersistentVolumeClaims(namespace).List(metav1.ListOptions{})
+	if err != nil {
+		return false, err
+	}
+	if len(pvcList.Items) == 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
 // WaitForStatefulSet blocks until all statefulset pods are running. It fails after the timeout.
 func (m *Machine) WaitForStatefulSet(namespace string, labels string) error {
 	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
@@ -418,7 +456,7 @@ func (m *Machine) CreatePersistentVolume(pv corev1.PersistentVolume) (*corev1.Pe
 	client := m.Clientset.CoreV1().PersistentVolumes()
 	p, err := client.Create(&pv)
 	return p, func() {
-		client.Delete(pv.GetName(), &metav1.DeleteOptions{})
+		client.Delete(p.GetName(), nil)
 	}, err
 }
 
