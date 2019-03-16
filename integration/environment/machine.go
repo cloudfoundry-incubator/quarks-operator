@@ -110,8 +110,8 @@ func (m *Machine) WaitForStatefulSet(namespace string, labels string) error {
 }
 
 // StatefulSetRunning returns true if the statefulset by that name has all pods created
-func (m *Machine) StatefulSetRunning(name string) (bool, error) {
-	statefulSet, err := m.Clientset.CoreV1().StatefulSets().Get(name, metav1.GetOptions{})
+func (m *Machine) StatefulSetRunning(namespace string, name string) (bool, error) {
+	statefulSet, err := m.Clientset.AppsV1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
@@ -119,7 +119,7 @@ func (m *Machine) StatefulSetRunning(name string) (bool, error) {
 		return false, errors.Wrapf(err, "failed to query for statefulset by name: %s", name)
 	}
 
-	if statefulSet.Status.CurrentReplicas == statefulSet.Spec.Replicas {
+	if statefulSet.Status.CurrentReplicas == *statefulSet.Spec.Replicas {
 		return true, nil
 	}
 	return false, nil
