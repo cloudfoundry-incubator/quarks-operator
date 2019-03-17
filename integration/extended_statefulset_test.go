@@ -26,6 +26,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 		persistentVolumeThree corev1.PersistentVolume
 		persistentVolumeFour  corev1.PersistentVolume
 		persistentVolumeFive  corev1.PersistentVolume
+		persistentVolumeSix   corev1.PersistentVolume
 	)
 
 	BeforeEach(func() {
@@ -323,17 +324,12 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			wrongExtendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].VolumeMounts = append(wrongExtendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].VolumeMounts, env.DefaultVolumeMount(name))
 			wrongExtendedStatefulSet.Spec.Template.Spec.Template.ObjectMeta.SetAnnotations(annotations)
 
-			persistentVolumeOne = env.DefaultPersistentVolume("pv-one")
-			persistentVolumeTwo = env.DefaultPersistentVolume("pv-two")
-			persistentVolumeThree = env.DefaultPersistentVolume("pv-three")
-			persistentVolumeFour = env.DefaultPersistentVolume("pv-four")
-			persistentVolumeFive = env.DefaultPersistentVolume("pv-five")
-
 		})
 
 		FIt("VolumeMount name's should have version", func() {
 
 			// Create a pv
+			persistentVolumeOne = env.DefaultPersistentVolume("pv-one")
 			pv, tearDown, err := env.CreatePersistentVolume(persistentVolumeOne)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pv).NotTo(Equal(nil))
@@ -373,7 +369,8 @@ var _ = Describe("ExtendedStatefulSet", func() {
 		FIt("Should append earliest version volume when spec is updated", func() {
 
 			// Create a pv
-			pv, tearDown, err := env.CreatePersistentVolume(persistentVolumeOne)
+			persistentVolumeTwo = env.DefaultPersistentVolume("pv-two")
+			pv, tearDown, err := env.CreatePersistentVolume(persistentVolumeTwo)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pv).NotTo(Equal(nil))
 			defer tearDown()
@@ -395,7 +392,8 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Create a pv
-			pv, tearDown, err = env.CreatePersistentVolume(persistentVolumeTwo)
+			persistentVolumeThree = env.DefaultPersistentVolume("pv-three")
+			pv, tearDown, err = env.CreatePersistentVolume(persistentVolumeThree)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pv).NotTo(Equal(nil))
 			defer tearDown()
@@ -405,7 +403,8 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Create a pv
-			pv, tearDown, err = env.CreatePersistentVolume(persistentVolumeThree)
+			persistentVolumeFour = env.DefaultPersistentVolume("pv-four")
+			pv, tearDown, err = env.CreatePersistentVolume(persistentVolumeFour)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pv).NotTo(Equal(nil))
 			defer tearDown()
@@ -466,7 +465,8 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			By("update the statefulset to v3")
 
 			// Create a pv
-			pv, tearDown, err = env.CreatePersistentVolume(persistentVolumeFour)
+			persistentVolumeFive = env.DefaultPersistentVolume("pv-five")
+			pv, tearDown, err = env.CreatePersistentVolume(persistentVolumeFive)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pv).NotTo(Equal(nil))
 			defer tearDown()
@@ -476,7 +476,8 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Create a pv
-			pv, tearDown, err = env.CreatePersistentVolume(persistentVolumeFive)
+			persistentVolumeSix = env.DefaultPersistentVolume("pv-six")
+			pv, tearDown, err = env.CreatePersistentVolume(persistentVolumeSix)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pv).NotTo(Equal(nil))
 			defer tearDown()
