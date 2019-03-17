@@ -345,7 +345,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			// Create an ExtendedStatefulSet
 			var ess *essv1.ExtendedStatefulSet
-			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
+			ess, tearDown, err = env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ess).NotTo(Equal(nil))
 			defer tearDown()
