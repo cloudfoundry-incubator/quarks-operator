@@ -460,10 +460,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			_, ok = volumeMounts["pvc-v2"]
 			Expect(ok).NotTo(Equal(true))
 
-			essUpdated, err = env.GetExtendedStatefulSet(env.Namespace, essUpdated.GetName())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(essUpdated).NotTo(Equal(nil))
-
 			// Create a pv
 			pv, tearDown, err = env.CreatePersistentVolume(persistentVolumeFour)
 			Expect(err).NotTo(HaveOccurred())
@@ -486,8 +482,12 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			By("update the statefulset to v3")
 
+			essUpdated, err = env.GetExtendedStatefulSet(env.Namespace, essUpdated.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+
 			// Update the ExtendedStatefulSet
-			essUpdated.Spec.Template.Spec.Template.ObjectMeta.Labels["test"] = "test"
+			essUpdated.Spec.Template.Spec.Template.ObjectMeta.Labels["testpodupdated"] = "yes"
 			essUpdated, tearDown, err = env.UpdateExtendedStatefulSet(env.Namespace, *essUpdated)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(essUpdated).NotTo(Equal(nil))
@@ -534,17 +534,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(ok).NotTo(Equal(true))
 		})
 
-		It("should access same volume from different versions at the same time", func() {
-
-			// Create a pv
-			pv, tearDown, err := env.CreatePersistentVolume(persistentVolumeOne)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(pv).NotTo(Equal(nil))
-			defer tearDown()
-
-			// check for pv
-			err = env.WaitForPV(pv.GetName())
-			Expect(err).NotTo(HaveOccurred())
+		FIt("should access same volume from different versions at the same time", func() {
 
 			// add volume write command
 			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].Image = "opensuse"
@@ -556,26 +546,25 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(ess).NotTo(Equal(nil))
 			defer tearDown()
 
+			// Check for pod
+			err = env.WaitForPods(env.Namespace, "testpod=yes")
+			Expect(err).NotTo(HaveOccurred())
+
 			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ess).NotTo(Equal(nil))
 
-			// Create a pv
-			pv, tearDown, err = env.CreatePersistentVolume(persistentVolumeTwo)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(pv).NotTo(Equal(nil))
-			defer tearDown()
-
-			// check for pv
-			err = env.WaitForPV(pv.GetName())
-			Expect(err).NotTo(HaveOccurred())
-
 			// Update the ExtendedStatefulSet
 			ess.Spec.Template.Spec.Template.Spec.Containers[0].Command = []string{"/bin/bash", "-c", "cat /etc/random/presentFile"}
+			ess.Spec.Template.Spec.Template.ObjectMeta.Labels["testpodupdated"] = "yes"
 			essUpdated, tearDown, err := env.UpdateExtendedStatefulSet(env.Namespace, *ess)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(essUpdated).NotTo(Equal(nil))
 			defer tearDown()
+
+			// Check for pod
+			err = env.WaitForPods(env.Namespace, "testpodupdated=yes")
+			Expect(err).NotTo(HaveOccurred())
 
 			podName := fmt.Sprintf("%s-v%d-%d", ess.GetName(), 2, 0)
 
