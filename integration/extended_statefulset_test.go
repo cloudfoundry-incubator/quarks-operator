@@ -464,7 +464,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(ok).NotTo(Equal(true))
 		})
 
-		FIt("should access same volume from different versions at the same time", func() {
+		It("should access same volume from different versions at the same time", func() {
 
 			// add volume write command
 			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].Image = "opensuse"
