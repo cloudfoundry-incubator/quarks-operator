@@ -318,7 +318,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 		})
 
-		FIt("VolumeMount name's should have version", func() {
+		It("VolumeMount name's should have version", func() {
 
 			// Create an ExtendedStatefulSet
 			var ess *essv1.ExtendedStatefulSet
