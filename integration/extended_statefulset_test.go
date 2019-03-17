@@ -331,7 +331,17 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 		})
 
-		It("VolumeMount name's should have version", func() {
+		FIt("VolumeMount name's should have version", func() {
+
+			// Create a pv
+			pv, tearDown, err := env.CreatePersistentVolume(persistentVolumeOne)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pv).NotTo(Equal(nil))
+			defer tearDown()
+
+			// check for pv
+			err = env.WaitForPV(pv.GetName())
+			Expect(err).NotTo(HaveOccurred())
 
 			// Create an ExtendedStatefulSet
 			var ess *essv1.ExtendedStatefulSet
