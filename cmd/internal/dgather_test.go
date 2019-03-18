@@ -1,6 +1,8 @@
 package cmd_test
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -151,42 +153,33 @@ var _ = Describe("Dgather", func() {
 			// doppler job
 			jobBoshContainerizationProperties := m.InstanceGroups[1].Jobs[0].Properties["bosh_containerization"]
 			jobBoshContainerizationConsumes, consumeIsNotEmpty := jobBoshContainerizationProperties.(map[string]interface{})["consumes"]
-			_, consumeFromDopplerExists := jobBoshContainerizationConsumes.(map[string]manifest.JobLink)["doppler"]
 
-			// expectedContainerizationConsumes := map[string]manifest.JobLink{
-			// 	"doppler": manifest.JobLink{
-			// 		Instances: []manifest.JobInstance{
-			// 			{Address: "doppler-0-doppler.default.svc.cluster.local", AZ: "z1", ID: "doppler-0-doppler", Index: 0, Instance: 0, Name: "doppler-doppler"},
-			// 			{Address: "doppler-1-doppler.default.svc.cluster.local", AZ: "z2", ID: "doppler-1-doppler", Index: 1, Instance: 0, Name: "doppler-doppler"},
-			// 			{Address: "doppler-2-doppler.default.svc.cluster.local", AZ: "z1", ID: "doppler-2-doppler", Index: 2, Instance: 1, Name: "doppler-doppler"},
-			// 			{Address: "doppler-3-doppler.default.svc.cluster.local", AZ: "z2", ID: "doppler-3-doppler", Index: 3, Instance: 1, Name: "doppler-doppler"},
-			// 			{Address: "doppler-4-doppler.default.svc.cluster.local", AZ: "z1", ID: "doppler-4-doppler", Index: 4, Instance: 2, Name: "doppler-doppler"},
-			// 			{Address: "doppler-5-doppler.default.svc.cluster.local", AZ: "z2", ID: "doppler-5-doppler", Index: 5, Instance: 2, Name: "doppler-doppler"},
-			// 			{Address: "doppler-6-doppler.default.svc.cluster.local", AZ: "z1", ID: "doppler-6-doppler", Index: 6, Instance: 3, Name: "doppler-doppler"},
-			// 			{Address: "doppler-7-doppler.default.svc.cluster.local", AZ: "z2", ID: "doppler-7-doppler", Index: 7, Instance: 3, Name: "doppler-doppler"},
-			// 		},
-			// 		Properties: map[string]interface{}{
-			// 			"doppler": map[string]interface{}{
-			// 				"grpc_port": 7765,
-			// 			},
-			// 			"fooprop": 10001,
-			// 		},
-			// 	},
-			// }
 			Expect(len(releaseSpecs)).To(Equal(1)) // only one release per manifest.yml sample
 			Expect(err).ToNot(HaveOccurred())
 			Expect(consumeIsNotEmpty).To(BeTrue())
-			Expect(consumeFromDopplerExists).To(BeTrue())
-			// Expect(jobBoshContainerizationConsumes).To(BeEquivalentTo(expectedContainerizationConsumes))
 
+			jobConsumesFromDoppler, consumeFromDopplerExists := jobBoshContainerizationConsumes.(map[string]manifest.JobLink)["doppler"]
+			expectedProperties := map[string]interface{}{
+				"doppler": map[string]interface{}{
+					"grpc_port": 7765,
+				},
+				"fooprop": 10001,
+			}
+
+			Expect(consumeFromDopplerExists).To(BeTrue())
+			for i, instance := range jobConsumesFromDoppler.Instances.([]manifest.JobInstance) {
+				Expect(instance.Index).To(Equal(i))
+				Expect(instance.Address).To(Equal(fmt.Sprintf("doppler-%v-doppler.default.svc.cluster.local", i)))
+				Expect(instance.ID).To(Equal(fmt.Sprintf("doppler-%v-doppler", i)))
+			}
+			Expect(jobConsumesFromDoppler.Properties).To(BeEquivalentTo(expectedProperties))
 		})
 
 		It("should get nothing if the job does not consumes a link", func() {
 			releaseSpecs, links, _ := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default", []string{})
 			err := GetConsumersAndRenderERB(m, "../../testing/assets/", releaseSpecs, links)
 
-			// doppler instance_group, with doppler job, only provides
-			// doppler job
+			// doppler instance_group, with doppler job, only provides doppler link
 			jobBoshContainerizationProperties := m.InstanceGroups[0].Jobs[0].Properties["bosh_containerization"]
 			jobBoshContainerizationConsumes, _ := jobBoshContainerizationProperties.(map[string]interface{})["consumes"]
 			emptyJobBoshContainerizationConsumes := map[string]manifest.JobLink{}

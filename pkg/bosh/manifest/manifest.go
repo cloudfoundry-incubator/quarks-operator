@@ -8,8 +8,8 @@ type JobInstance struct {
 	Index       int         `json:"index"`
 	Instance    int         `json:"instance"`
 	Name        string      `json:"name"`
-	BPM         interface{} `json:"bpm`
-	Fingerprint interface{} `json:"fingerprint`
+	BPM         interface{} `json:"bpm"`
+	Fingerprint interface{} `json:"fingerprint"`
 }
 
 // Link ...

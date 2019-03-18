@@ -65,6 +65,6 @@ require (
 	k8s.io/kube-openapi v0.0.0-20181024003938-96e8bb74ecdd // indirect
 	k8s.io/kubernetes v1.13.1
 	sigs.k8s.io/controller-runtime v0.1.10
-	sigs.k8s.io/testing_frameworks v0.1.0 // indirect
+	sigs.k8s.io/testing_frameworks v0.1.1 // indirect
 	sigs.k8s.io/yaml v1.1.0 // indirect
 )

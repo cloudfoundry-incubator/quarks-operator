@@ -80,10 +80,10 @@ func init() {
 // CollectReleaseSpecsAndProviderLinks will collect all release specs and bosh links for provider jobs
 func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir string, ns string, desiredIgs []string) (map[string]map[string]manifest.JobSpec, map[string]map[string]manifest.JobLink, error) {
 	// Contains YAML.load('.../release_name/job_name/job.MF')
-	releaseSpecs := map[string]map[string]manifest.JobSpec{}
+	jobReleaseSpecs := map[string]map[string]manifest.JobSpec{}
 
-	// Lists every link provided by this manifest
-	providerLinks := map[string]map[string]manifest.JobLink{}
+	// Lists every link provided by the job
+	jobProviderLinks := map[string]map[string]manifest.JobLink{}
 
 	for igID, ig := range mStruct.InstanceGroups {
 		// Filter based on the list passed via --instance-groups flag
@@ -93,12 +93,12 @@ func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir str
 
 		for idJob, job := range ig.Jobs {
 			// make sure a map entry exists for the current job release
-			if _, ok := releaseSpecs[job.Release]; !ok {
-				releaseSpecs[job.Release] = map[string]manifest.JobSpec{}
+			if _, ok := jobReleaseSpecs[job.Release]; !ok {
+				jobReleaseSpecs[job.Release] = map[string]manifest.JobSpec{}
 			}
 
-			// load job.MF into releaseSpecs[job.Release][job.Name]
-			if _, ok := releaseSpecs[job.Release][job.Name]; !ok {
+			// load job.MF into jobReleaseSpecs[job.Release][job.Name]
+			if _, ok := jobReleaseSpecs[job.Release][job.Name]; !ok {
 				jobMFFilePath := filepath.Join(baseDir, "jobs-src", job.Release, job.Name, "job.MF")
 				jobMfBytes, err := ioutil.ReadFile(jobMFFilePath)
 				if err != nil {
@@ -109,13 +109,15 @@ func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir str
 				if err := yaml.Unmarshal([]byte(jobMfBytes), &jobSpec); err != nil {
 					return nil, nil, err
 				}
-				releaseSpecs[job.Release][job.Name] = jobSpec
+				jobReleaseSpecs[job.Release][job.Name] = jobSpec
 			}
 
 			// spec of the current jobs release/name
-			spec := releaseSpecs[job.Release][job.Name]
+			spec := jobReleaseSpecs[job.Release][job.Name]
 
 			// Generate instance spec for each ig instance
+			// This will be stored inside the current job under
+			// job.properties.bosh_containerization
 			var jobsInstances []manifest.JobInstance
 			for i := 0; i < ig.Instances; i++ {
 				for _, az := range ig.Azs {
@@ -135,16 +137,19 @@ func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir str
 				}
 			}
 
-			// add bosh_containerization to properties
+			// add bosh_containerization to properties to the current job
+			// at, job.properties
 			if mStruct.InstanceGroups[igID].Jobs[idJob].Properties == nil {
 				mStruct.InstanceGroups[igID].Jobs[idJob].Properties = map[string]interface{}{}
 			}
 			if _, ok := mStruct.InstanceGroups[igID].Jobs[idJob].Properties["bosh_containerization"]; !ok {
 				mStruct.InstanceGroups[igID].Jobs[idJob].Properties["bosh_containerization"] = map[string]interface{}{}
 			}
+			// set jobs.properties.bosh_containerization.instances with the ig instances
 			mStruct.InstanceGroups[igID].Jobs[idJob].Properties["bosh_containerization"].(map[string]interface{})["instances"] = jobsInstances
 
 			// Create a list of fully evaluated links provided by the current job
+			// These is specify in the job release job.MF file
 			if spec.Provides != nil {
 				var properties map[string]interface{}
 
@@ -171,7 +176,8 @@ func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir str
 					providerName := provider.Name
 					providerType := provider.Type
 
-					// instance_group can override the link name
+					// instance_group.job can override the link name through the
+					// instance_group.job.provides, via the "as" key
 					if mStruct.InstanceGroups[igID].Jobs[idJob].Provides != nil {
 						if value, ok := mStruct.InstanceGroups[igID].Jobs[idJob].Provides[providerName]; ok {
 							switch value.(type) {
@@ -186,21 +192,24 @@ func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir str
 						}
 					}
 
-					if providers, ok := providerLinks[providerType]; ok {
+					if providers, ok := jobProviderLinks[providerType]; ok {
 						if _, ok := providers[providerName]; ok {
 							return nil, nil, fmt.Errorf("multiple providers for link: name=%s type=%s", providerName, providerType)
 						}
 					}
 
-					if _, ok := providerLinks[providerType]; !ok {
-						providerLinks[providerType] = map[string]manifest.JobLink{}
+					if _, ok := jobProviderLinks[providerType]; !ok {
+						jobProviderLinks[providerType] = map[string]manifest.JobLink{}
 					}
 
 					// convert properties in case they have a type of the form
 					// map[interface{}]interface{}, while this will break the
 					// JSON marshalling when trying to render the bpm.yml.erb files
 					convert(&properties)
-					providerLinks[providerType][providerName] = manifest.JobLink{
+
+					// construct the jobProviderLinks of the current job that provides
+					// a link
+					jobProviderLinks[providerType][providerName] = manifest.JobLink{
 						Instances:  jobsInstances,
 						Properties: properties,
 					}
@@ -208,119 +217,151 @@ func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir str
 			}
 		}
 	}
-	return releaseSpecs, providerLinks, nil
+	return jobReleaseSpecs, jobProviderLinks, nil
+}
+
+// GenerateJobConsumersData will populate a job with its corresponding provider links
+// under properties.bosh_containerization.consumes
+func GenerateJobConsumersData(currentJob manifest.Job, jobReleaseSpecs map[string]map[string]manifest.JobSpec, jobProviderLinks map[string]map[string]manifest.JobLink) error {
+	currentJobSpecData := jobReleaseSpecs[currentJob.Release][currentJob.Name]
+	for _, consumes := range currentJobSpecData.Consumes {
+
+		consumesName := consumes.Name
+
+		if currentJob.Consumes != nil {
+			// Deployment manifest can intentionally prevent link resolution as long as the link is optional
+			// Continue to the next job if this one does not consumes links
+			if _, ok := currentJob.Consumes[consumesName]; !ok {
+				if consumes.Optional {
+					continue
+				}
+				return fmt.Errorf("mandatory link of consumer %s is explicitly set to nil", consumesName)
+			}
+
+			// When the job defines a consumes property in the manifest, use it instead of the one
+			// from currentJobSpecData.Consumes
+			if _, ok := currentJob.Consumes[consumesName]; ok {
+				if value, ok := currentJob.Consumes[consumesName].(map[interface{}]interface{})["from"]; ok {
+					consumesName = value.(string)
+				}
+			}
+		}
+
+		link, hasLink := jobProviderLinks[consumes.Type][consumesName]
+		if !hasLink && !consumes.Optional {
+			return fmt.Errorf("cannot resolve non-optional link for consumer %s", consumesName)
+		}
+
+		// generate the job.properties.bosh_containerization.consumes struct with the links information from providers.
+		currentJob.Properties["bosh_containerization"].(map[string]interface{})["consumes"] = map[string]manifest.JobLink{
+			consumesName: {
+				Instances:  link.Instances,
+				Properties: link.Properties,
+			},
+		}
+	}
+	return nil
+}
+
+// RenderJobERBFiles per job and add its value to the jobInstances.BPM field
+func RenderJobERBFiles(currentJob manifest.Job, jobInstances []manifest.JobInstance, baseDir string, manifestName string) error {
+	// ### Render bpm.yml.erb for each job instance
+	erbFilePath := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "templates", "bpm.yml.erb")
+	if _, err := os.Stat(erbFilePath); os.IsNotExist(err) {
+		return err
+	}
+
+	// Location of the current job job.MF file
+	jobSpecfile := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "job.MF")
+
+	if jobInstances != nil {
+		for i, instance := range jobInstances {
+			convert(&currentJob.Properties)
+			renderPointer := btg.NewERBRenderer(
+				&btg.EvaluationContext{
+					Properties: currentJob.Properties,
+				},
+
+				&btg.InstanceInfo{
+					Address:    instance.Address,
+					AZ:         instance.AZ,
+					ID:         instance.ID,
+					Index:      string(instance.Index),
+					Deployment: manifestName,
+					Name:       instance.Name,
+				},
+
+				jobSpecfile,
+			)
+
+			// Would be good if we can write the rendered file into memory,
+			// rather than to disk
+			tmpfile, err := ioutil.TempFile("", "rendered.*.yml")
+			if err != nil {
+				return err
+			}
+			defer os.Remove(tmpfile.Name())
+
+			if err := renderPointer.Render(erbFilePath, tmpfile.Name()); err != nil {
+				return err
+			}
+
+			bpmBytes, err := ioutil.ReadFile(tmpfile.Name())
+			if err != nil {
+				return err
+			}
+
+			// Parse a rendered bpm.yml into the bpm Config struct
+			jobInstances[i].BPM, err = bpm.NewConfig(bpmBytes)
+			if err != nil {
+				return err
+			}
+
+			// Consider adding a Fingerprint to each job instance
+			// instance.Fingerprint = generateSHA(fingerPrintBytes)
+		}
+	}
+	return nil
 }
 
 // GetConsumersAndRenderERB will generate a proper context for links and render the required ERB files
-func GetConsumersAndRenderERB(mStruct *manifest.Manifest, baseDir string, releaseSpec map[string]map[string]manifest.JobSpec, providerLinks map[string]map[string]manifest.JobLink) error {
+func GetConsumersAndRenderERB(mStruct *manifest.Manifest, baseDir string, jobReleaseSpecs map[string]map[string]manifest.JobSpec, jobProviderLinks map[string]map[string]manifest.JobLink) error {
 	for idIG, ig := range mStruct.InstanceGroups {
 		for idJob, job := range ig.Jobs {
 			if job.Properties == nil {
 				job.Properties = map[string]interface{}{}
 			}
-			jobPointer := mStruct.InstanceGroups[idIG].Jobs[idJob]
+
+			currentJob := mStruct.InstanceGroups[idIG].Jobs[idJob]
 
 			// Make sure that job.properties.bosh_containerization exists
-			if _, ok := jobPointer.Properties["bosh_containerization"]; !ok {
-				jobPointer.Properties["bosh_containerization"] = map[string]interface{}{}
+			if _, ok := currentJob.Properties["bosh_containerization"]; !ok {
+				currentJob.Properties["bosh_containerization"] = map[string]interface{}{}
 			}
 
 			// Make sure that job.properties.bosh_containerization.consumes exists
-			if _, ok := jobPointer.Properties["bosh_containerization"].(map[string]interface{})["consumes"]; !ok {
-				jobPointer.Properties["bosh_containerization"].(map[string]interface{})["consumes"] = map[string]manifest.JobLink{}
+			if _, ok := currentJob.Properties["bosh_containerization"].(map[string]interface{})["consumes"]; !ok {
+				currentJob.Properties["bosh_containerization"].(map[string]interface{})["consumes"] = map[string]manifest.JobLink{}
 			}
 
+			// Verify that the current job release exists on the manifest releases block
 			if lookUpJobRelease(mStruct.Releases, job.Release) {
-				jobPointer.Properties["bosh_containerization"].(map[string]interface{})["release"] = job.Release
+				currentJob.Properties["bosh_containerization"].(map[string]interface{})["release"] = job.Release
 			}
-
-			spec := releaseSpec[job.Release][job.Name]
-			for _, consumes := range spec.Consumes {
-				consumesName := consumes.Name
-				if jobPointer.Consumes != nil {
-					// Deployment manifest can intentionally prevent link resolution as long as the link is optional
-					if _, ok := jobPointer.Consumes[consumesName]; !ok {
-						if consumes.Optional {
-							continue
-						}
-						return fmt.Errorf("mandatory link of consumer %s is explicitly set to nil", consumesName)
-					}
-
-					if _, ok := jobPointer.Consumes[consumesName]; ok {
-						if value, ok := job.Consumes[consumesName].(map[interface{}]interface{})["from"]; ok {
-							consumesName = value.(string)
-						}
-					}
-				}
-				link, hasLink := providerLinks[consumes.Type][consumesName]
-				if !hasLink && !consumes.Optional {
-					return fmt.Errorf("cannot resolve non-optional link for consumer %s", consumesName)
-				}
-
-				jobPointer.Properties["bosh_containerization"].(map[string]interface{})["consumes"] = map[string]manifest.JobLink{
-					consumesName: {
-						Instances:  link.Instances,
-						Properties: link.Properties,
-					},
-				}
-			}
-
-			// ### Render bpm.yml.erb for each job instance
-			erbFilePath := filepath.Join(baseDir, "jobs-src", job.Release, job.Name, "templates", "bpm.yml.erb")
-			if _, err := os.Stat(erbFilePath); os.IsNotExist(err) {
+			err := GenerateJobConsumersData(currentJob, jobReleaseSpecs, jobProviderLinks)
+			if err != nil {
 				return err
 			}
 
-			jobSpecfile := filepath.Join(baseDir, "jobs-src", job.Release, job.Name, "job.MF")
-
+			// Get current job.bosh_containerization.instances, which will be required by the render to generate
+			// the render.InstanceInfo struct
 			jobInstances := job.Properties["bosh_containerization"].(map[string]interface{})["instances"].([]manifest.JobInstance)
-			if jobInstances != nil {
-				for i, instance := range jobInstances {
-					convert(&jobPointer.Properties)
-					renderPointer := btg.NewERBRenderer(
-						&btg.EvaluationContext{
-							Properties: jobPointer.Properties,
-						},
 
-						&btg.InstanceInfo{
-							Address:    instance.Address,
-							AZ:         instance.AZ,
-							ID:         instance.ID,
-							Index:      string(instance.Index),
-							Deployment: mStruct.Name,
-							Name:       instance.Name,
-						},
-
-						jobSpecfile,
-					)
-
-					// Would be good if we can write the rendered file into memory,
-					// rather than to disk
-
-					tmpfile, err := ioutil.TempFile("", "rendered.*.yml")
-					if err != nil {
-						return err
-					}
-					defer os.Remove(tmpfile.Name())
-
-					if err := renderPointer.Render(erbFilePath, tmpfile.Name()); err != nil {
-						return err
-					}
-
-					bpmBytes, err := ioutil.ReadFile(tmpfile.Name())
-					if err != nil {
-						return err
-					}
-
-					jobInstances[i].BPM, err = bpm.NewConfig(bpmBytes)
-					if err != nil {
-						return err
-					}
-
-					// Consider adding a Fingerprint to each job instance
-					// instance.Fingerprint = generateSHA(fingerPrintBytes)
-				}
+			renderError := RenderJobERBFiles(currentJob, jobInstances, baseDir, mStruct.Name)
+			if renderError != nil {
+				return renderError
 			}
+
 			// Store shared bpm as a top level property
 			jobInstancesLength := len(jobInstances)
 			bpmLastInstance := jobInstances[jobInstancesLength-1].BPM
@@ -330,29 +371,27 @@ func GetConsumersAndRenderERB(mStruct *manifest.Manifest, baseDir string, releas
 					jobInstances[i].BPM = nil
 				}
 			}
-
+			// Store shared bpm as a top level property
 			job.Properties["bosh_containerization"].(map[string]interface{})["bpm"] = bpmLastInstance
 		}
 	}
 
-	// TODO:
-	// Deserialize all rendered bpm.yml files
-	// Assume the last version may be shared between multiple instance (because it is NOT a bootstrap instance)
-	// Delete all instance versions that are identical to the shared one.
-
+	// fix some structs being of type map[interface{}]interface{}
 	for idIG, ig := range mStruct.InstanceGroups {
 		for idJob := range ig.Jobs {
-			jobPointer := mStruct.InstanceGroups[idIG].Jobs[idJob]
-			convert(&jobPointer.Consumes)
-			convert(&jobPointer.Provides)
+			currentJob := mStruct.InstanceGroups[idIG].Jobs[idJob]
+			convert(&currentJob.Consumes)
+			convert(&currentJob.Provides)
 		}
 	}
+
+	// marshall the whole manifest Structure
 	manifestResolved, err := json.Marshal(mStruct)
 	if err != nil {
 		return err
 	}
 
-	_ = ioutil.WriteFile("deployment.json", manifestResolved, 0644)
+	_ = ioutil.WriteFile("/tmp/deployment.json", manifestResolved, 0644)
 
 	return nil
 }
@@ -409,11 +448,11 @@ func cnvrt(input map[interface{}]interface{}) map[string]interface{} {
 // Render the bpm yaml file data
 func GatherData(mStruct *manifest.Manifest, baseDir string, ns string, desiredIgs []string) error {
 
-	releaseSpecs, providerLinks, err := CollectReleaseSpecsAndProviderLinks(mStruct, baseDir, ns, desiredIgs)
+	jobReleaseSpecs, jobProviderLinks, err := CollectReleaseSpecsAndProviderLinks(mStruct, baseDir, ns, desiredIgs)
 	if err != nil {
 		return err
 	}
-	err = GetConsumersAndRenderERB(mStruct, baseDir, releaseSpecs, providerLinks)
+	err = GetConsumersAndRenderERB(mStruct, baseDir, jobReleaseSpecs, jobProviderLinks)
 	if err != nil {
 		return err
 	}
