@@ -131,8 +131,7 @@ var _ = Describe("CLI", func() {
 
 			session, err := act("variable-interpolation", "-m", manifestPath, "-v", varsDir)
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out).Should(Say(`# Manifest:
-instance-group:
+			Eventually(session.Out).Should(Say(`instance-group:
   key1: baz
   key2: foo
   key3: bar

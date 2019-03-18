@@ -1,23 +1,10 @@
-apiVersion: fissile.cloudfoundry.org/v1alpha1
-kind: BOSHDeployment
-metadata:
-  name: example-boshdeployment
-spec:
-  manifest:
-    type: "configmap"
-    ref: "bosh-manifest"
-  ops:
-    - type: "configmap"
-      ref: "bosh-ops"
-    - type: "secret"
-      ref: "bosh-ops-secret"
----
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: bosh-manifest
 data:
   manifest: |
+    name: cf-deployment
     instance_groups:
     - name: diego-cell
       instances: 3
@@ -54,3 +41,17 @@ stringData:
     - type: replace
       path: /instance_groups/name=diego-cell?/instances
       value: 5
+---
+apiVersion: fissile.cloudfoundry.org/v1alpha1
+kind: BOSHDeployment
+metadata:
+  name: example-boshdeployment
+spec:
+  manifest:
+    type: "configmap"
+    ref: "bosh-manifest"
+  ops:
+    - type: "configmap"
+      ref: "bosh-ops"
+    - type: "secret"
+      ref: "bosh-ops-secret"
