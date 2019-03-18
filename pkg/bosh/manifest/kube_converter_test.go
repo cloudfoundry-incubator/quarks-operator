@@ -121,6 +121,14 @@ var _ = Describe("ConvertToKube", func() {
 			Expect(anExtendedSts.Spec.InitContainers[1].Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
 			Expect(anExtendedSts.Spec.InitContainers[1].Command[0]).To(Equal("bash"))
 			Expect(anExtendedSts.Spec.InitContainers[1].Name).To(Equal("spec-copier-cflinuxfs3-rootfs-setup"))
+
+			// Test shared volume setup
+			Expect(anExtendedSts.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
+			Expect(anExtendedSts.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(anExtendedSts.Spec.InitContainers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
+			Expect(anExtendedSts.Spec.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(anExtendedSts.Spec.InitContainers[1].VolumeMounts[0].Name).To(Equal("rendering-data"))
+			Expect(anExtendedSts.Spec.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
 		})
 	})
 
@@ -145,6 +153,13 @@ var _ = Describe("ConvertToKube", func() {
 			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[1].Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
 			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[1].Command[0]).To(Equal("bash"))
 
+			// Test shared volume setup
+			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
+			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
+			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[1].VolumeMounts[0].Name).To(Equal("rendering-data"))
+			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
 		})
 	})
 
