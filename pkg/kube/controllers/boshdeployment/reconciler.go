@@ -87,6 +87,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		}
 		// Error reading the object - requeue the request.
 		r.recorder.Event(instance, corev1.EventTypeWarning, "GetCRD Error", err.Error())
+		r.log.Errorf("Failed to get BOSHDeployment '%s': %v", request.NamespacedName, err)
 		return reconcile.Result{}, err
 	}
 
@@ -97,8 +98,15 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	defer func() {
+		key := types.NamespacedName{Namespace: instance.GetNamespace(), Name: instance.GetName()}
+		err := r.client.Get(ctx, key, instance)
+		if err != nil {
+			r.log.Errorf("Failed to get BOSHDeployment '%s': %v", instance.GetName(), err)
+		}
+
 		// Update the Status of the resource
 		if !reflect.DeepEqual(instanceState, instance.Status.State) {
+			// Fetch latest BOSHDeployment before update
 			instance.Status.State = instanceState
 			updateErr := r.client.Update(ctx, instance)
 			if updateErr != nil {
@@ -132,6 +140,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	tempManifestBytes, err := yaml.Marshal(manifest)
 	if err != nil {
+		r.log.Error("Failed to marshal temp manifest")
 		return reconcile.Result{}, err
 	}
 
@@ -143,13 +152,15 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	err = r.client.Create(ctx, tempManifestSecret)
 	if err != nil {
+		r.log.Error("Failed to create temp manifest secret")
 		return reconcile.Result{}, err
 	}
 
 	// TODO Need to update instanceState after finishing Variable Generation stuff
+	instanceState = "Variable Generation"
 
 	// TODO example implementation replace eventually
-	variableSecrets := []esv1.ExtendedSecret{
+	varSecrets := []esv1.ExtendedSecret{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "variable-",
@@ -160,16 +171,18 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			},
 		},
 	}
-	for _, variableSecret := range variableSecrets {
-		err = r.client.Create(ctx, &variableSecret)
+	for _, varSecret := range varSecrets {
+		err = r.client.Create(ctx, &varSecret)
 		if err != nil {
+			r.log.Errorf("Failed to create variable secret %s: %v", varSecret.GetName(), err)
 			return reconcile.Result{}, err
 		}
 	}
 
-	varIntJob := newJobForVariableInterpolation(tempManifestSecret, variableSecrets, request.Namespace)
+	varIntJob := newJobForVariableInterpolation(tempManifestSecret, varSecrets, request.Namespace)
 	// Set BOSHDeployment instance as the owner and controller
 	if err := r.setReference(instance, varIntJob, r.scheme); err != nil {
+		r.log.Errorf("Failed to set ownerReference for ExtendedJob '%s': %v", varIntJob.GetName(), err)
 		r.recorder.Event(instance, corev1.EventTypeWarning, "NewJobForVariableInterpolation Error", err.Error())
 		return reconcile.Result{}, err
 	}
@@ -180,6 +193,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		r.log.Infof("Creating a new Job %s/%s\n", varIntJob.Namespace, varIntJob.Name)
 		err = r.client.Create(ctx, varIntJob)
 		if err != nil {
+			r.log.Errorf("Failed to create ExtendedJob '%s': %v", varIntJob.GetName(), err)
 			r.recorder.Event(instance, corev1.EventTypeWarning, "CreateJobForVariableInterpolation Error", err.Error())
 			return reconcile.Result{}, err
 		}
@@ -187,6 +201,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		// Pod created successfully - don't requeue
 		return reconcile.Result{}, nil
 	} else if err != nil {
+		r.log.Errorf("Failed to get ExtendedJob '%s': %v", varIntJob.GetName(), err)
 		r.recorder.Event(instance, corev1.EventTypeWarning, "GetJobForVariableInterpolation Error", err.Error())
 		return reconcile.Result{}, err
 	}

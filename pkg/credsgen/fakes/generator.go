@@ -2,9 +2,9 @@
 package fakes
 
 import (
-	sync "sync"
+	"sync"
 
-	credsgen "code.cloudfoundry.org/cf-operator/pkg/credsgen"
+	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 )
 
 type FakeGenerator struct {
