@@ -127,13 +127,20 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 }
 
 func (r *TriggerReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJob, podName string) error {
+	template := extJob.Spec.Template.DeepCopy()
+
+	if template.Labels == nil {
+		template.Labels = map[string]string{}
+	}
+	template.Labels["ejob-name"] = extJob.Name
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      jobName(extJob.Name, podName),
 			Namespace: extJob.Namespace,
 			Labels:    map[string]string{"extendedjob": "true"},
 		},
-		Spec: batchv1.JobSpec{Template: extJob.Spec.Template},
+		Spec: batchv1.JobSpec{Template: *template},
 	}
 
 	err := r.setOwnerReference(&extJob, job, r.scheme)

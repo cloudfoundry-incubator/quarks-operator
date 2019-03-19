@@ -107,6 +107,13 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (result reconcil
 }
 
 func (r *ErrandReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJob) error {
+	template := extJob.Spec.Template.DeepCopy()
+
+	if template.Labels == nil {
+		template.Labels = map[string]string{}
+	}
+	template.Labels["ejob-name"] = extJob.Name
+
 	name := fmt.Sprintf("job-%s-%s", truncate(extJob.Name, 30), randSuffix(extJob.Name))
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -114,7 +121,7 @@ func (r *ErrandReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJo
 			Namespace: extJob.Namespace,
 			Labels:    map[string]string{"extendedjob": "true"},
 		},
-		Spec: batchv1.JobSpec{Template: extJob.Spec.Template},
+		Spec: batchv1.JobSpec{Template: *template},
 	}
 
 	err := r.setOwnerReference(&extJob, job, r.scheme)
