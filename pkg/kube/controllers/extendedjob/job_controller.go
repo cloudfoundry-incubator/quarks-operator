@@ -34,12 +34,22 @@ func AddJob(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manag
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			reconcile := e.ObjectNew.(*batchv1.Job).Status.Succeeded == 1 || e.ObjectNew.(*batchv1.Job).Status.Failed == 1
 			if !e.ObjectNew.(*batchv1.Job).GetDeletionTimestamp().IsZero() {
 				return false
 			}
-			return reconcile
+			if !isExtJobJob(e.MetaNew.GetLabels()) {
+				return false
+			}
+			return e.ObjectNew.(*batchv1.Job).Status.Succeeded == 1 || e.ObjectNew.(*batchv1.Job).Status.Failed == 1
 		},
 	}
 	return jobController.Watch(&source.Kind{Type: &batchv1.Job{}}, &handler.EnqueueRequestForObject{}, predicate)
+}
+
+// isExtJobJob matches our jobs
+func isExtJobJob(labels map[string]string) bool {
+	if _, exists := labels["extendedjob"]; exists {
+		return true
+	}
+	return false
 }
