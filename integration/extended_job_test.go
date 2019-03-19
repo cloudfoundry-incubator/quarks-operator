@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"code.cloudfoundry.org/cf-operator/integration/environment"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 
@@ -27,7 +28,7 @@ var _ = Describe("ExtendedJob", func() {
 
 	Context("when using an auto-errand job", func() {
 		AfterEach(func() {
-			env.WaitForPodsDelete(env.Namespace)
+			Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
 		})
 
 		var (
@@ -41,7 +42,7 @@ var _ = Describe("ExtendedJob", func() {
 		It("immediately starts the job", func() {
 			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
 			Expect(err).NotTo(HaveOccurred())
-			defer tearDown()
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
@@ -51,7 +52,7 @@ var _ = Describe("ExtendedJob", func() {
 		It("cleans up succeeded jobs immediately", func() {
 			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
 			Expect(err).NotTo(HaveOccurred())
-			defer tearDown()
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
@@ -69,7 +70,7 @@ var _ = Describe("ExtendedJob", func() {
 			It("cleans it up when the ExtendedJob is deleted", func() {
 				_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
 				Expect(err).NotTo(HaveOccurred())
-				defer tearDown()
+				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 				jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
@@ -78,7 +79,7 @@ var _ = Describe("ExtendedJob", func() {
 				err = env.WaitForJobDeletion(env.Namespace, jobs[0].Name)
 				Expect(err).To(HaveOccurred())
 
-				tearDown()
+				Expect(tearDown()).To(Succeed())
 				err = env.WaitForJobDeletion(env.Namespace, jobs[0].Name)
 				Expect(err).ToNot(HaveOccurred())
 			})
@@ -87,7 +88,7 @@ var _ = Describe("ExtendedJob", func() {
 
 	Context("when using manually triggered errand job", func() {
 		AfterEach(func() {
-			env.WaitForPodsDelete(env.Namespace)
+			Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
 		})
 
 		It("does not start a job without Run being set to now", func() {
@@ -95,7 +96,7 @@ var _ = Describe("ExtendedJob", func() {
 			ej.Spec.Trigger.Strategy = ejv1.TriggerManual
 			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
 			Expect(err).NotTo(HaveOccurred())
-			defer tearDown()
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			exists, err := env.WaitForJobExists(env.Namespace, "extendedjob=true")
 			Expect(err).NotTo(HaveOccurred())
@@ -117,7 +118,7 @@ var _ = Describe("ExtendedJob", func() {
 			ej := env.ErrandExtendedJob("extendedjob")
 			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
 			Expect(err).NotTo(HaveOccurred())
-			defer tearDown()
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
@@ -129,7 +130,7 @@ var _ = Describe("ExtendedJob", func() {
 			ej.Spec.Trigger.Strategy = ejv1.TriggerManual
 			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
 			Expect(err).NotTo(HaveOccurred())
-			defer tearDown()
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			latest, err := env.GetExtendedJob(env.Namespace, ej.Name)
 			Expect(err).NotTo(HaveOccurred())
@@ -153,12 +154,12 @@ var _ = Describe("ExtendedJob", func() {
 			ej := *env.MatchExpressionExtendedJob("extendedjob")
 			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
 			Expect(err).NotTo(HaveOccurred())
-			defer tearDown()
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			pod := env.LabeledPod("matching", map[string]string{"env": "production"})
 			tearDown, err = env.CreatePod(env.Namespace, pod)
 			Expect(err).NotTo(HaveOccurred())
-			defer tearDown()
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 			err = env.WaitForPods(env.Namespace, "env=production")
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pods")
 
@@ -170,7 +171,7 @@ var _ = Describe("ExtendedJob", func() {
 
 	Context("when using label matchers to trigger jobs", func() {
 		AfterEach(func() {
-			env.WaitForPodsDelete(env.Namespace)
+			Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
 		})
 
 		testLabels := func(key, value string) map[string]string {
@@ -182,7 +183,7 @@ var _ = Describe("ExtendedJob", func() {
 			ej := *env.DefaultExtendedJob("extendedjob")
 			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
 			Expect(err).NotTo(HaveOccurred())
-			defer tearDown()
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			exists, err := env.WaitForJobExists(env.Namespace, "extendedjob=true")
 			Expect(err).NotTo(HaveOccurred())
@@ -194,7 +195,7 @@ var _ = Describe("ExtendedJob", func() {
 			pod := env.LabeledPod("nomatch", testLabels("key", "nomatch"))
 			tearDown, err := env.CreatePod(env.Namespace, pod)
 			Expect(err).NotTo(HaveOccurred())
-			defer tearDown()
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 			err = env.WaitForPods(env.Namespace, "test=true")
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pods")
 
@@ -202,25 +203,25 @@ var _ = Describe("ExtendedJob", func() {
 			ej := *env.DefaultExtendedJob("extendedjob")
 			_, tearDown, err = env.CreateExtendedJob(env.Namespace, ej)
 			Expect(err).NotTo(HaveOccurred())
-			defer tearDown()
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("triggering another reconciliation")
 			pod = env.LabeledPod("foo", testLabels("key", "value"))
 			tearDown, err = env.CreatePod(env.Namespace, pod)
 			Expect(err).NotTo(HaveOccurred())
-			defer tearDown()
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("waiting for the job")
 			_, err = env.CollectJobs(env.Namespace, "extendedjob=true", 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
 
-			// Why does the ExtendedJob deletion not trigger the job deletion?
-			env.DeleteJobs(env.Namespace, "extendedjob=true")
-			env.WaitForJobsDeleted(env.Namespace, "extendedjob=true")
+			_, err = env.DeleteJobs(env.Namespace, "extendedjob=true")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(env.WaitForJobsDeleted(env.Namespace, "extendedjob=true")).To(Succeed())
 		})
 
 		It("should start a job for a matched pod", func() {
-			// we have to create jobs first, reconciler noops if no job matches
+			// we have to create jobs first, reconciler no-ops if no job matches
 			By("creating extended jobs")
 			for _, ej := range []ejv1.ExtendedJob{
 				*env.DefaultExtendedJob("extendedjob"),
@@ -235,7 +236,7 @@ var _ = Describe("ExtendedJob", func() {
 			} {
 				_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
 				Expect(err).NotTo(HaveOccurred())
-				defer tearDown()
+				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 			}
 
 			By("creating three pods, two match extended jobs and trigger jobs")
@@ -246,7 +247,7 @@ var _ = Describe("ExtendedJob", func() {
 			} {
 				tearDown, err := env.CreatePod(env.Namespace, pod)
 				Expect(err).NotTo(HaveOccurred())
-				defer tearDown()
+				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 			}
 
 			By("waiting for the jobs")
@@ -287,11 +288,11 @@ var _ = Describe("ExtendedJob", func() {
 			It("persists output when output persistence is configured", func() {
 				_, tearDown, err := env.CreateExtendedJob(env.Namespace, *oej)
 				Expect(err).NotTo(HaveOccurred())
-				defer tearDown()
+				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 				tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
 				Expect(err).NotTo(HaveOccurred())
-				defer tearDown()
+				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 				By("persisting output for the first container")
 				secret, err := env.GetSecret(env.Namespace, "output-job-output-busybox")
@@ -324,20 +325,21 @@ var _ = Describe("ExtendedJob", func() {
 					existingSecret.StringData["foo"] = "old"
 					existingSecret.StringData["bar"] = "old"
 					tearDown, err := env.CreateSecret(env.Namespace, existingSecret)
-					defer tearDown()
+					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 					Expect(err).ToNot(HaveOccurred())
 
 					_, tearDown, err = env.CreateExtendedJob(env.Namespace, *oej)
 					Expect(err).NotTo(HaveOccurred())
-					defer tearDown()
+					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 					tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
 					Expect(err).NotTo(HaveOccurred())
-					defer tearDown()
+					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 					// Wait until the output of the second container has been persisted. Then check the first one
 					_, err = env.GetSecret(env.Namespace, "overwrite-job-output-busybox2")
 					secret, err := env.GetSecret(env.Namespace, "overwrite-job-output-busybox")
+
 					Expect(err).ToNot(HaveOccurred())
 					Expect(string(secret.Data["foo"])).To(Equal("1"))
 					Expect(string(secret.Data["bar"])).To(Equal("baz"))
@@ -354,11 +356,11 @@ var _ = Describe("ExtendedJob", func() {
 					It("does not persist output", func() {
 						_, tearDown, err := env.CreateExtendedJob(env.Namespace, *oej)
 						Expect(err).NotTo(HaveOccurred())
-						defer tearDown()
+						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 						tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
 						Expect(err).NotTo(HaveOccurred())
-						defer tearDown()
+						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 						By("not persisting output for the first container")
 						_, err = env.GetSecret(env.Namespace, "output-job2-output-busybox")
@@ -376,11 +378,11 @@ var _ = Describe("ExtendedJob", func() {
 					It("persists the output", func() {
 						_, tearDown, err := env.CreateExtendedJob(env.Namespace, *oej)
 						Expect(err).NotTo(HaveOccurred())
-						defer tearDown()
+						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 						tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
 						Expect(err).NotTo(HaveOccurred())
-						defer tearDown()
+						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 						By("persisting the output for the first container")
 						_, err = env.GetSecret(env.Namespace, "output-job3-output-busybox")

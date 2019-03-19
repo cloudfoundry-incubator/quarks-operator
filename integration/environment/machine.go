@@ -1,7 +1,9 @@
 package environment
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -9,10 +11,12 @@ import (
 	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 
@@ -33,14 +37,18 @@ type Machine struct {
 }
 
 // TearDownFunc tears down the resource
-type TearDownFunc func()
+type TearDownFunc func() error
 
 // CreatePod creates a default pod and returns a function to delete it
 func (m *Machine) CreatePod(namespace string, pod corev1.Pod) (TearDownFunc, error) {
 	client := m.Clientset.CoreV1().Pods(namespace)
 	_, err := client.Create(&pod)
-	return func() {
-		client.Delete(pod.GetName(), &metav1.DeleteOptions{})
+	return func() error {
+		err := client.Delete(pod.GetName(), &metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
 	}, err
 }
 
@@ -103,15 +111,17 @@ func (m *Machine) PVAvailable(name string) (bool, error) {
 }
 
 // WaitForPVsDelete blocks until the pv is deleted. It fails after the timeout.
-func (m *Machine) WaitForPVsDelete() error {
+func (m *Machine) WaitForPVsDelete(labels string) error {
 	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
-		return m.PVsDeleted()
+		return m.PVsDeleted(labels)
 	})
 }
 
 // PVsDeleted returns true if the all pvs are deleted
-func (m *Machine) PVsDeleted() (bool, error) {
-	pvList, err := m.Clientset.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
+func (m *Machine) PVsDeleted(labels string) (bool, error) {
+	pvList, err := m.Clientset.CoreV1().PersistentVolumes().List(metav1.ListOptions{
+		LabelSelector: labels,
+	})
 	if err != nil {
 		return false, err
 	}
@@ -157,7 +167,7 @@ func (m *Machine) StatefulSetRunning(namespace string, name string) (bool, error
 		return false, errors.Wrapf(err, "failed to query for statefulset by name: %s", name)
 	}
 
-	if statefulSet.Status.CurrentReplicas == *statefulSet.Spec.Replicas {
+	if statefulSet.Status.ReadyReplicas == *statefulSet.Spec.Replicas {
 		return true, nil
 	}
 	return false, nil
@@ -295,7 +305,7 @@ func (m *Machine) GetPods(namespace string, labels string) (*corev1.PodList, err
 func (m *Machine) GetPod(namespace string, name string) (*corev1.Pod, error) {
 	pod, err := m.Clientset.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
-		return &corev1.Pod{}, errors.Wrapf(err, "failed to query for pod by name: %v", name)
+		return nil, errors.Wrapf(err, "failed to query for pod by name: %v", name)
 	}
 
 	return pod, nil
@@ -327,8 +337,12 @@ func (m *Machine) HasBOSHDeployment(namespace string, name string) (bool, error)
 func (m *Machine) CreateConfigMap(namespace string, configMap corev1.ConfigMap) (TearDownFunc, error) {
 	client := m.Clientset.CoreV1().ConfigMaps(namespace)
 	_, err := client.Create(&configMap)
-	return func() {
-		client.Delete(configMap.GetName(), &metav1.DeleteOptions{})
+	return func() error {
+		err := client.Delete(configMap.GetName(), &metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
 	}, err
 }
 
@@ -336,8 +350,12 @@ func (m *Machine) CreateConfigMap(namespace string, configMap corev1.ConfigMap) 
 func (m *Machine) CreateSecret(namespace string, secret corev1.Secret) (TearDownFunc, error) {
 	client := m.Clientset.CoreV1().Secrets(namespace)
 	_, err := client.Create(&secret)
-	return func() {
-		client.Delete(secret.GetName(), &metav1.DeleteOptions{})
+	return func() error {
+		err := client.Delete(secret.GetName(), &metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
 	}, err
 }
 
@@ -345,8 +363,12 @@ func (m *Machine) CreateSecret(namespace string, secret corev1.Secret) (TearDown
 func (m *Machine) UpdateConfigMap(namespace string, configMap corev1.ConfigMap) (*corev1.ConfigMap, TearDownFunc, error) {
 	client := m.Clientset.CoreV1().ConfigMaps(namespace)
 	cm, err := client.Update(&configMap)
-	return cm, func() {
-		client.Delete(configMap.GetName(), &metav1.DeleteOptions{})
+	return cm, func() error {
+		err := client.Delete(configMap.GetName(), &metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
 	}, err
 }
 
@@ -354,8 +376,12 @@ func (m *Machine) UpdateConfigMap(namespace string, configMap corev1.ConfigMap) 
 func (m *Machine) UpdateSecret(namespace string, secret corev1.Secret) (*corev1.Secret, TearDownFunc, error) {
 	client := m.Clientset.CoreV1().Secrets(namespace)
 	s, err := client.Update(&secret)
-	return s, func() {
-		client.Delete(secret.GetName(), &metav1.DeleteOptions{})
+	return s, func() error {
+		err := client.Delete(secret.GetName(), &metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
 	}, err
 }
 
@@ -406,8 +432,12 @@ func (m *Machine) SecretExists(namespace string, name string) (bool, error) {
 func (m *Machine) CreateBOSHDeployment(namespace string, deployment bdcv1.BOSHDeployment) (*bdcv1.BOSHDeployment, TearDownFunc, error) {
 	client := m.VersionedClientset.Boshdeployment().BOSHDeployments(namespace)
 	d, err := client.Create(&deployment)
-	return d, func() {
-		client.Delete(deployment.GetName(), &metav1.DeleteOptions{})
+	return d, func() error {
+		err := client.Delete(deployment.GetName(), &metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
 	}, err
 }
 
@@ -415,8 +445,12 @@ func (m *Machine) CreateBOSHDeployment(namespace string, deployment bdcv1.BOSHDe
 func (m *Machine) UpdateBOSHDeployment(namespace string, deployment bdcv1.BOSHDeployment) (*bdcv1.BOSHDeployment, TearDownFunc, error) {
 	client := m.VersionedClientset.BoshdeploymentV1alpha1().BOSHDeployments(namespace)
 	d, err := client.Update(&deployment)
-	return d, func() {
-		client.Delete(deployment.GetName(), &metav1.DeleteOptions{})
+	return d, func() error {
+		err := client.Delete(deployment.GetName(), &metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
 	}, err
 }
 
@@ -430,8 +464,12 @@ func (m *Machine) DeleteBOSHDeployment(namespace string, name string) error {
 func (m *Machine) CreateExtendedSecret(namespace string, es esv1.ExtendedSecret) (*esv1.ExtendedSecret, TearDownFunc, error) {
 	client := m.VersionedClientset.ExtendedsecretV1alpha1().ExtendedSecrets(namespace)
 	d, err := client.Create(&es)
-	return d, func() {
-		client.Delete(es.GetName(), &metav1.DeleteOptions{})
+	return d, func() error {
+		err := client.Delete(es.GetName(), &metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
 	}, err
 }
 
@@ -444,19 +482,45 @@ func (m *Machine) DeleteExtendedSecret(namespace string, name string) error {
 // CreateExtendedStatefulSet creates a ExtendedStatefulSet custom resource and returns a function to delete it
 func (m *Machine) CreateExtendedStatefulSet(namespace string, ess essv1.ExtendedStatefulSet) (*essv1.ExtendedStatefulSet, TearDownFunc, error) {
 	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
+
 	d, err := client.Create(&ess)
-	return d, func() {
-		client.Delete(ess.GetName(), &metav1.DeleteOptions{})
+
+	return d, func() error {
+		pvcs, err := m.Clientset.CoreV1().PersistentVolumeClaims(namespace).List(metav1.ListOptions{
+			LabelSelector: labels.Set(map[string]string{
+				"test-run-reference": ess.Name,
+			}).String(),
+		})
+		if err != nil {
+			return err
+		}
+
+		err = client.Delete(ess.GetName(), &metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+
+		for _, pvc := range pvcs.Items {
+			err = m.Clientset.CoreV1().PersistentVolumeClaims(namespace).Delete(pvc.GetName(), &metav1.DeleteOptions{})
+			if err != nil && !apierrors.IsNotFound(err) {
+				return err
+			}
+		}
+
+		return nil
 	}, err
 }
 
-// CreatePersistentVolume creates a PersistentVolume custom resource and returns a function to delete it
-func (m *Machine) CreatePersistentVolume(pv corev1.PersistentVolume) (*corev1.PersistentVolume, TearDownFunc, error) {
-
-	client := m.Clientset.CoreV1().PersistentVolumes()
-	p, err := client.Create(&pv)
-	return p, func() {
-		client.Delete(p.GetName(), nil)
+// CreateStorageClass creates a StorageClass and returns a function to delete it
+func (m *Machine) CreateStorageClass(sc storagev1.StorageClass) (*storagev1.StorageClass, TearDownFunc, error) {
+	client := m.Clientset.StorageV1().StorageClasses()
+	s, err := client.Create(&sc)
+	return s, func() error {
+		err := client.Delete(s.GetName(), nil)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
 	}, err
 }
 
@@ -471,8 +535,12 @@ func (m *Machine) GetExtendedStatefulSet(namespace string, name string) (*essv1.
 func (m *Machine) UpdateExtendedStatefulSet(namespace string, ess essv1.ExtendedStatefulSet) (*essv1.ExtendedStatefulSet, TearDownFunc, error) {
 	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
 	d, err := client.Update(&ess)
-	return d, func() {
-		client.Delete(ess.GetName(), &metav1.DeleteOptions{})
+	return d, func() error {
+		err := client.Delete(ess.GetName(), &metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
 	}, err
 }
 
@@ -688,8 +756,29 @@ func (m *Machine) GetExtendedJob(namespace string, name string) (*ejv1.ExtendedJ
 func (m *Machine) CreateExtendedJob(namespace string, job ejv1.ExtendedJob) (*ejv1.ExtendedJob, TearDownFunc, error) {
 	client := m.VersionedClientset.Extendedjob().ExtendedJobs(namespace)
 	d, err := client.Create(&job)
-	return d, func() {
-		client.Delete(job.GetName(), &metav1.DeleteOptions{})
+	return d, func() error {
+		pods, err := m.Clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{
+			LabelSelector: labels.Set(map[string]string{
+				"ejob-name": job.Name,
+			}).String(),
+		})
+		if err != nil {
+			return err
+		}
+
+		err = client.Delete(job.GetName(), &metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+
+		for _, pod := range pods.Items {
+			err = m.Clientset.CoreV1().Pods(namespace).Delete(pod.GetName(), &metav1.DeleteOptions{})
+			if err != nil && !apierrors.IsNotFound(err) {
+				return err
+			}
+		}
+
+		return nil
 	}, err
 }
 
@@ -698,4 +787,25 @@ func (m *Machine) UpdateExtendedJob(namespace string, exJob ejv1.ExtendedJob) er
 	client := m.VersionedClientset.Extendedjob().ExtendedJobs(namespace)
 	_, err := client.Update(&exJob)
 	return err
+}
+
+// GetPodLogs gets pod logs
+func (m *Machine) GetPodLogs(namespace, podName string) (string, error) {
+	podLogOpts := corev1.PodLogOptions{}
+
+	req := m.Clientset.CoreV1().Pods(namespace).GetLogs(podName, &podLogOpts)
+	podLogs, err := req.Stream()
+	if err != nil {
+		return "", errors.New("error in opening stream")
+	}
+	defer podLogs.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = io.Copy(buf, podLogs)
+	if err != nil {
+		return "", errors.New("error in copy information from podLogs to buf")
+	}
+	str := buf.String()
+
+	return str, nil
 }

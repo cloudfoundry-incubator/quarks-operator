@@ -8,6 +8,7 @@ import (
 	"k8s.io/api/apps/v1beta2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -99,10 +100,21 @@ func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Data: map[string]string{
-			"manifest": `instance_groups:
-- name: diego
-  instances: 3
-- name: mysql
+			"manifest": `---
+name: my-manifest
+releases:
+- name: fissile-nats
+  version: "26"
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 28.g837c5b3-30.79-7.0.0_237.g8a9ed8f
+instance_groups:
+- name: nats
+  instances: 1
+  jobs:
+  - name: nats
+    release: fissile-nats
 `,
 		},
 	}
@@ -144,8 +156,8 @@ func (c *Catalog) InterpolateOpsConfigMap(name string) corev1.ConfigMap {
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Data: map[string]string{
 			"ops": `- type: replace
-  path: /instance_groups/name=diego?/instances
-  value: 4
+  path: /instance_groups/name=nats?/instances
+  value: 5
 `,
 		},
 	}
@@ -156,8 +168,9 @@ func (c *Catalog) InterpolateOpsSecret(name string) corev1.Secret {
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		StringData: map[string]string{
-			"ops": `- type: remove
-  path: /instance_groups/name=mysql?
+			"ops": `- type: replace
+  path: /instance_groups/name=nats?/instances
+  value: 4
 `,
 		},
 	}
@@ -223,6 +236,30 @@ func (c *Catalog) WrongExtendedStatefulSet(name string) essv1.ExtendedStatefulSe
 	}
 }
 
+// ExtendedStatefulSetWithPVC for use in tests
+func (c *Catalog) ExtendedStatefulSetWithPVC(name, pvcName, storageClass string) essv1.ExtendedStatefulSet {
+	return essv1.ExtendedStatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: essv1.ExtendedStatefulSetSpec{
+			Template: c.StatefulSetWithPVC(name, pvcName, storageClass),
+		},
+	}
+}
+
+// WrongExtendedStatefulSetWithPVC for use in tests
+func (c *Catalog) WrongExtendedStatefulSetWithPVC(name, pvcName, storageClass string) essv1.ExtendedStatefulSet {
+	return essv1.ExtendedStatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: essv1.ExtendedStatefulSetSpec{
+			Template: c.WrongStatefulSetWithPVC(name, pvcName, storageClass),
+		},
+	}
+}
+
 // OwnedReferencesExtendedStatefulSet for use in tests
 func (c *Catalog) OwnedReferencesExtendedStatefulSet(name string) essv1.ExtendedStatefulSet {
 	return essv1.ExtendedStatefulSet{
@@ -256,16 +293,61 @@ func (c *Catalog) DefaultStatefulSet(name string) v1beta2.StatefulSet {
 	}
 }
 
+// StatefulSetWithPVC for use in tests
+func (c *Catalog) StatefulSetWithPVC(name, pvcName, storageClass string) v1beta2.StatefulSet {
+	labels := map[string]string{
+		"test-run-reference": name,
+		"testpod":            "yes",
+	}
+
+	return v1beta2.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1beta2.StatefulSetSpec{
+			Replicas: helper.Int32(1),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			ServiceName:          name,
+			Template:             c.PodTemplateWithLabelsAndMount(name, labels, pvcName),
+			VolumeClaimTemplates: c.DefaultVolumeClaimTemplates(pvcName, storageClass),
+		},
+	}
+}
+
+// WrongStatefulSetWithPVC for use in tests
+func (c *Catalog) WrongStatefulSetWithPVC(name, pvcName, storageClass string) v1beta2.StatefulSet {
+	labels := map[string]string{
+		"wrongpod":           "yes",
+		"test-run-reference": name,
+	}
+
+	return v1beta2.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1beta2.StatefulSetSpec{
+			Replicas: helper.Int32(1),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			ServiceName:          name,
+			Template:             c.WrongPodTemplateWithLabelsAndMount(name, labels, pvcName),
+			VolumeClaimTemplates: c.DefaultVolumeClaimTemplates(pvcName, storageClass),
+		},
+	}
+}
+
 // DefaultVolumeClaimTemplates for use in tests
-func (c *Catalog) DefaultVolumeClaimTemplates(name string) []corev1.PersistentVolumeClaim {
-	hostPath := "hostpath"
+func (c *Catalog) DefaultVolumeClaimTemplates(name, storageClass string) []corev1.PersistentVolumeClaim {
 	return []corev1.PersistentVolumeClaim{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name,
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
-				StorageClassName: &hostPath,
+				StorageClassName: &storageClass,
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					"ReadWriteOnce",
 				},
@@ -279,27 +361,20 @@ func (c *Catalog) DefaultVolumeClaimTemplates(name string) []corev1.PersistentVo
 	}
 }
 
-// DefaultPersistentVolume for use in tests
-func (c *Catalog) DefaultPersistentVolume(name string) corev1.PersistentVolume {
-	return corev1.PersistentVolume{
+// DefaultStorageClass for use in tests
+func (c *Catalog) DefaultStorageClass(name string) storagev1.StorageClass {
+	reclaimPolicy := corev1.PersistentVolumeReclaimDelete
+	volumeBindingMode := storagev1.VolumeBindingImmediate
+	return storagev1.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: corev1.PersistentVolumeSpec{
-			StorageClassName: "hostpath",
-			Capacity: corev1.ResourceList{
-				corev1.ResourceName(corev1.ResourceStorage): resource.MustParse("1G"),
-			},
-			AccessModes: []corev1.PersistentVolumeAccessMode{
-				"ReadWriteOnce",
-			},
-			PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimDelete,
-			PersistentVolumeSource: corev1.PersistentVolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/test",
-				},
-			},
+		Parameters: map[string]string{
+			"path": "/tmp",
 		},
+		Provisioner:       "kubernetes.io/host-path",
+		ReclaimPolicy:     &reclaimPolicy,
+		VolumeBindingMode: &volumeBindingMode,
 	}
 }
 
@@ -347,6 +422,51 @@ func (c *Catalog) OwnedReferencesStatefulSet(name string) v1beta2.StatefulSet {
 			},
 			ServiceName: name,
 			Template:    c.OwnedReferencesPodTemplate(name),
+		},
+	}
+}
+
+// PodTemplateWithLabelsAndMount defines a pod template with a simple web server useful for testing
+func (c *Catalog) PodTemplateWithLabelsAndMount(name string, labels map[string]string, pvcName string) corev1.PodTemplateSpec {
+	return corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: labels,
+		},
+		Spec: corev1.PodSpec{
+			TerminationGracePeriodSeconds: helper.Int64(1),
+			Containers: []corev1.Container{
+				{
+					Name:    "busybox",
+					Image:   "busybox",
+					Command: []string{"sleep", "3600"},
+					VolumeMounts: []corev1.VolumeMount{
+						c.DefaultVolumeMount(pvcName),
+					},
+				},
+			},
+		},
+	}
+}
+
+// WrongPodTemplateWithLabelsAndMount defines a pod template with a simple web server useful for testing
+func (c *Catalog) WrongPodTemplateWithLabelsAndMount(name string, labels map[string]string, pvcName string) corev1.PodTemplateSpec {
+	return corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: labels,
+		},
+		Spec: corev1.PodSpec{
+			TerminationGracePeriodSeconds: helper.Int64(1),
+			Containers: []corev1.Container{
+				{
+					Name:  "wrong-container",
+					Image: "wrong-image",
+					VolumeMounts: []corev1.VolumeMount{
+						c.DefaultVolumeMount(pvcName),
+					},
+				},
+			},
 		},
 	}
 }
@@ -572,9 +692,8 @@ func (c *Catalog) AnnotatedPod(name string, annotations map[string]string) corev
 
 // Sleep1hPodSpec defines a simple pod that sleeps 60*60s for testing
 func (c *Catalog) Sleep1hPodSpec() corev1.PodSpec {
-	one := int64(1)
 	return corev1.PodSpec{
-		TerminationGracePeriodSeconds: &one,
+		TerminationGracePeriodSeconds: helper.Int64(1),
 		Containers: []corev1.Container{
 			{
 				Name:    "busybox",

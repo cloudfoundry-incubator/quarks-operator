@@ -51,8 +51,27 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 		manifest = &bdm.Manifest{
+			Releases: []*bdm.Release{
+				&bdm.Release{
+					Name:    "bar",
+					URL:     "docker.io/cfcontainerization",
+					Version: "1.0",
+					Stemcell: &bdm.ReleaseStemcell{
+						OS:      "opensuse",
+						Version: "42.3",
+					},
+				},
+			},
 			InstanceGroups: []*bdm.InstanceGroup{
-				{Name: "fakepod"},
+				{
+					Name: "fakepod",
+					Jobs: []bdm.Job{
+						bdm.Job{
+							Name:    "foo",
+							Release: "bar",
+						},
+					},
+				},
 			},
 		}
 		core, _ := observer.New(zapcore.InfoLevel)
@@ -64,7 +83,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 	})
 
 	JustBeforeEach(func() {
-		resolver.ResolveCRDReturns(manifest, nil)
+		resolver.ResolveManifestReturns(manifest, nil)
 		reconciler = cfd.NewReconciler(log, ctrsConfig, manager, &resolver, controllerutil.SetControllerReference)
 	})
 
@@ -99,7 +118,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles errors when resolving the CR", func() {
-				resolver.ResolveCRDReturns(nil, fmt.Errorf("resolver error"))
+				resolver.ResolveManifestReturns(nil, fmt.Errorf("resolver error"))
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
@@ -110,7 +129,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles errors when missing instance groups", func() {
-				resolver.ResolveCRDReturns(&bdm.Manifest{
+				resolver.ResolveManifestReturns(&bdm.Manifest{
 					InstanceGroups: []*bdm.InstanceGroup{},
 				}, nil)
 
