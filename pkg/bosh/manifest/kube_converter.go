@@ -11,10 +11,10 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/version"
 )
 
 var (
@@ -22,6 +22,12 @@ var (
 	DockerOrganization = ""
 	// DockerRepository is the repository which provides the operator image
 	DockerRepository = ""
+	// DockerTag is the tag of the operator image
+	DockerTag = ""
+	// LabelDeploymentName is the name of a label for the deployment name
+	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
+	// LabelInstanceGroupName is the name of a label for an instance group name
+	LabelInstanceGroupName = fmt.Sprintf("%s/instance-group-name", apis.GroupName)
 )
 
 // KubeConfig represents a Manifest in kube resources
@@ -29,22 +35,25 @@ type KubeConfig struct {
 	Variables   []esv1.ExtendedSecret
 	ExtendedSts []essv1.ExtendedStatefulSet
 	ExtendedJob []ejv1.ExtendedJob
+	Namespace   string
 }
 
 // ConvertToKube converts a Manifest into kube resources
-func (m *Manifest) ConvertToKube() (KubeConfig, error) {
-	kubeConfig := KubeConfig{}
+func (m *Manifest) ConvertToKube(namespace string) (KubeConfig, error) {
+	kubeConfig := KubeConfig{
+		Namespace: namespace,
+	}
 
-	convertedExtSts, err := m.convertToExtendedSts()
+	convertedExtSts, err := m.convertToExtendedSts(namespace)
 	if err != nil {
 		return KubeConfig{}, err
 	}
 
-	convertedExtJob, err := m.convertToExtendedJob()
+	convertedExtJob, err := m.convertToExtendedJob(namespace)
 	if err != nil {
 		return KubeConfig{}, err
 	}
-	kubeConfig.Variables = m.convertVariables()
+	kubeConfig.Variables = m.convertVariables(namespace)
 	kubeConfig.ExtendedSts = convertedExtSts
 	kubeConfig.ExtendedJob = convertedExtJob
 
@@ -52,28 +61,43 @@ func (m *Manifest) ConvertToKube() (KubeConfig, error) {
 }
 
 // jobsToInitContainers creates a list of Containers for v1.PodSpec InitContainers field
-func (m *Manifest) jobsToInitContainers(instanceName string, jobs []Job) ([]v1.Container, error) {
+func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace string) ([]v1.Container, error) {
+	initContainers := []v1.Container{
+		v1.Container{
+			Name:    fmt.Sprintf("renderer-%s", igName),
+			Image:   GetOperatorDockerImage(),
+			Command: []string{"bash", "-c", "echo 'foo'"},
+		}}
 
-	var initContainers []v1.Container
-	initContainers, err := m.jobsToContainers(instanceName, jobs, true)
-	if err != nil {
-		return []v1.Container{}, err
+	// one init container for each release, for copying specs
+	doneReleases := map[string]bool{}
+	for _, job := range jobs {
+		if _, ok := doneReleases[job.Release]; ok {
+			continue
+		}
+
+		doneReleases[job.Release] = true
+		releaseImage, err := m.GetReleaseImage(igName, job.Name)
+		if err != nil {
+			return []v1.Container{}, err
+		}
+
+		initContainers = append(initContainers, v1.Container{
+			Name:    fmt.Sprintf("spec-copier-%s", job.Name),
+			Image:   releaseImage,
+			Command: []string{"bash", "-c", "echo 'foo'"},
+		})
 	}
-	// prepend an init container that runs the cf-operator img
-	initContainers = append([]v1.Container{{Name: instanceName, Image: GetOperatorDockerImage()}}, initContainers...) //TODO: name of the first init container?
+
 	return initContainers, nil
 }
 
 // jobsToContainers creates a list of Containers for v1.PodSpec Containers field
-func (m *Manifest) jobsToContainers(igName string, jobs []Job, isInitContainer bool) ([]v1.Container, error) {
-	var (
-		jobsToContainerPods []v1.Container
-		containerCmd        string
-	)
-	if isInitContainer {
-		containerCmd = "echo \"\""
-	} else {
-		containerCmd = "while true; do ping localhost;done"
+func (m *Manifest) jobsToContainers(igName string, jobs []Job, namespace string) ([]v1.Container, error) {
+	var jobsToContainerPods []v1.Container
+
+	if len(jobs) == 0 {
+		return nil, fmt.Errorf("instance group %s has no jobs defined", igName)
 	}
 
 	for _, job := range jobs {
@@ -82,32 +106,33 @@ func (m *Manifest) jobsToContainers(igName string, jobs []Job, isInitContainer b
 			return []v1.Container{}, err
 		}
 		jobsToContainerPods = append(jobsToContainerPods, v1.Container{
-			Name:    job.Name,
+			Name:    fmt.Sprintf("job-%s", job.Name),
 			Image:   jobImage,
-			Command: []string{containerCmd},
+			Command: []string{"bash", "-c", "ping localhost"},
 		})
 	}
 	return jobsToContainerPods, nil
 }
 
 // serviceToExtendedSts will generate an ExtendedStatefulSet
-func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup) (essv1.ExtendedStatefulSet, error) {
+func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (essv1.ExtendedStatefulSet, error) {
 
 	igName := ig.Name
 
-	listOfContainers, err := m.jobsToContainers(igName, ig.Jobs, false)
+	listOfContainers, err := m.jobsToContainers(igName, ig.Jobs, namespace)
 	if err != nil {
 		return essv1.ExtendedStatefulSet{}, err
 	}
 
-	listOfInitContainers, err := m.jobsToInitContainers(igName, ig.Jobs)
+	listOfInitContainers, err := m.jobsToInitContainers(igName, ig.Jobs, namespace)
 	if err != nil {
 		return essv1.ExtendedStatefulSet{}, err
 	}
 
 	extSts := essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: igName,
+			Name:      fmt.Sprintf("%s-%s", m.Name, igName),
+			Namespace: namespace,
 		},
 		Spec: essv1.ExtendedStatefulSetSpec{
 			Template: v1beta2.StatefulSet{
@@ -116,9 +141,19 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup) (essv1.ExtendedStatef
 				},
 				Spec: v1beta2.StatefulSetSpec{
 					Replicas: func() *int32 { i := int32(ig.Instances); return &i }(),
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							LabelDeploymentName:    m.Name,
+							LabelInstanceGroupName: igName,
+						},
+					},
 					Template: v1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: igName,
+							Labels: map[string]string{
+								LabelDeploymentName:    m.Name,
+								LabelInstanceGroupName: igName,
+							},
 						},
 						Spec: v1.PodSpec{
 							Containers:     listOfContainers,
@@ -134,11 +169,11 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup) (essv1.ExtendedStatef
 
 // convertToExtendedSts will convert instance_groups which lifecycle
 // is service to ExtendedStatefulSets
-func (m *Manifest) convertToExtendedSts() ([]essv1.ExtendedStatefulSet, error) {
+func (m *Manifest) convertToExtendedSts(namespace string) ([]essv1.ExtendedStatefulSet, error) {
 	extStsList := []essv1.ExtendedStatefulSet{}
 	for _, ig := range m.InstanceGroups {
 		if ig.LifeCycle == "service" || ig.LifeCycle == "" {
-			convertedExtStatefulSet, err := m.serviceToExtendedSts(ig)
+			convertedExtStatefulSet, err := m.serviceToExtendedSts(ig, namespace)
 			if err != nil {
 				return []essv1.ExtendedStatefulSet{}, err
 			}
@@ -149,20 +184,21 @@ func (m *Manifest) convertToExtendedSts() ([]essv1.ExtendedStatefulSet, error) {
 }
 
 // errandToExtendedJob will generate an ExtendedJob
-func (m *Manifest) errandToExtendedJob(ig *InstanceGroup) (ejv1.ExtendedJob, error) {
+func (m *Manifest) errandToExtendedJob(ig *InstanceGroup, namespace string) (ejv1.ExtendedJob, error) {
 	igName := ig.Name
 
-	listOfContainers, err := m.jobsToContainers(igName, ig.Jobs, false)
+	listOfContainers, err := m.jobsToContainers(igName, ig.Jobs, namespace)
 	if err != nil {
 		return ejv1.ExtendedJob{}, err
 	}
-	listOfInitContainers, err := m.jobsToInitContainers(igName, ig.Jobs)
+	listOfInitContainers, err := m.jobsToInitContainers(igName, ig.Jobs, namespace)
 	if err != nil {
 		return ejv1.ExtendedJob{}, err
 	}
 	extJob := ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: igName,
+			Name:      fmt.Sprintf("%s-%s", m.Name, igName),
+			Namespace: namespace,
 		},
 		Spec: ejv1.ExtendedJobSpec{
 			Template: v1.PodTemplateSpec{
@@ -181,11 +217,11 @@ func (m *Manifest) errandToExtendedJob(ig *InstanceGroup) (ejv1.ExtendedJob, err
 
 // convertToExtendedJob will convert instance_groups which lifecycle is
 // errand to ExtendedJobs
-func (m *Manifest) convertToExtendedJob() ([]ejv1.ExtendedJob, error) {
+func (m *Manifest) convertToExtendedJob(namespace string) ([]ejv1.ExtendedJob, error) {
 	extJobs := []ejv1.ExtendedJob{}
 	for _, ig := range m.InstanceGroups {
 		if ig.LifeCycle == "errand" {
-			convertedExtJob, err := m.errandToExtendedJob(ig)
+			convertedExtJob, err := m.errandToExtendedJob(ig, namespace)
 			if err != nil {
 				return []ejv1.ExtendedJob{}, err
 			}
@@ -194,14 +230,15 @@ func (m *Manifest) convertToExtendedJob() ([]ejv1.ExtendedJob, error) {
 	}
 	return extJobs, nil
 }
-func (m *Manifest) convertVariables() []esv1.ExtendedSecret {
+func (m *Manifest) convertVariables(namespace string) []esv1.ExtendedSecret {
 	secrets := []esv1.ExtendedSecret{}
 
 	for _, v := range m.Variables {
 		secretName := m.generateVariableSecretName(v.Name)
 		s := esv1.ExtendedSecret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: secretName,
+				Name:      secretName,
+				Namespace: namespace,
 			},
 			Spec: esv1.ExtendedSecretSpec{
 				Type:       esv1.Type(v.Type),
@@ -266,9 +303,6 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 			stemcell = m.Stemcells[i]
 		}
 	}
-	if stemcell == nil {
-		return "", fmt.Errorf("stemcell '%s' not found", instanceGroup.Stemcell)
-	}
 
 	var job *Job
 	for i := range instanceGroup.Jobs {
@@ -286,11 +320,17 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 			release := m.Releases[i]
 			name := strings.TrimRight(release.URL, "/")
 
-			stemcellVersion := stemcell.OS + "-" + stemcell.Version
+			var stemcellVersion string
+
 			if release.Stemcell != nil {
 				stemcellVersion = release.Stemcell.OS + "-" + release.Stemcell.Version
+			} else {
+				if stemcell == nil {
+					return "", fmt.Errorf("stemcell could not be resolved for instance group %s", instanceGroup.Name)
+				}
+				stemcellVersion = stemcell.OS + "-" + stemcell.Version
 			}
-			return name + "/" + release.Name + "-release:" + stemcellVersion + "-" + release.Version, nil
+			return fmt.Sprintf("%s/%s:%s-%s", name, release.Name, stemcellVersion, release.Version), nil
 		}
 	}
 	return "", fmt.Errorf("release '%s' not found", job.Release)
@@ -298,5 +338,5 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 
 // GetOperatorDockerImage returns the image name of the operator docker image
 func GetOperatorDockerImage() string {
-	return DockerOrganization + "/" + DockerRepository + ":" + version.Version
+	return DockerOrganization + "/" + DockerRepository + ":" + DockerTag
 }

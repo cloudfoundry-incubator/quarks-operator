@@ -9,6 +9,12 @@ if type -a minikube >/dev/null 2>/dev/null; then
     eval ${dockerenv}
 fi
 
+GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
+. "${GIT_ROOT}/bin/include/versioning"
+. "${GIT_ROOT}/.envrc"
+
+export DOCKER_IMAGE_TAG=${VERSION_TAG}
+
 set -e
 
 bin/build-image

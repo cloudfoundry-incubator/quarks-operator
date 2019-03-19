@@ -41,6 +41,7 @@ var rootCmd = &cobra.Command{
 		namespace := viper.GetString("namespace")
 		manifest.DockerOrganization = viper.GetString("docker-image-org")
 		manifest.DockerRepository = viper.GetString("docker-image-repository")
+		manifest.DockerTag = viper.GetString("docker-image-tag")
 
 		log.Infof("Starting cf-operator %s with namespace %s", version.Version, namespace)
 		log.Infof("cf-operator docker image: %s", manifest.GetOperatorDockerImage())
@@ -87,18 +88,21 @@ func init() {
 	pf.StringP("docker-image-repository", "r", "cf-operator", "Dockerhub repository that provides the operator docker image")
 	pf.StringP("operator-webhook-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")
 	pf.StringP("operator-webhook-port", "p", "2999", "Port the webhook server listens on")
+	pf.StringP("docker-image-tag", "t", version.Version, "Tag of the operator docker image")
 	viper.BindPFlag("kubeconfig", pf.Lookup("kubeconfig"))
 	viper.BindPFlag("namespace", pf.Lookup("namespace"))
 	viper.BindPFlag("docker-image-org", pf.Lookup("docker-image-org"))
 	viper.BindPFlag("docker-image-repository", pf.Lookup("docker-image-repository"))
 	viper.BindPFlag("operator-webhook-host", pf.Lookup("operator-webhook-host"))
 	viper.BindPFlag("operator-webhook-port", pf.Lookup("operator-webhook-port"))
+	viper.BindPFlag("docker-image-tag", rootCmd.PersistentFlags().Lookup("docker-image-tag"))
 	viper.BindEnv("kubeconfig")
 	viper.BindEnv("namespace", "CFO_NAMESPACE")
 	viper.BindEnv("docker-image-org", "DOCKER_IMAGE_ORG")
 	viper.BindEnv("docker-image-repository", "DOCKER_IMAGE_REPOSITORY")
 	viper.BindEnv("operator-webhook-host", "OPERATOR_WEBHOOK_HOST")
 	viper.BindEnv("operator-webhook-port", "OPERATOR_WEBHOOK_PORT")
+	viper.BindEnv("docker-image-tag", "DOCKER_IMAGE_TAG")
 }
 
 // initConfig is executed before running commands
