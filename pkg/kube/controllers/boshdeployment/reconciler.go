@@ -1,12 +1,9 @@
 package boshdeployment
 
 import (
-	"bytes"
 	"encoding/base64"
 	"fmt"
 	"reflect"
-	"text/template"
-	"time"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -32,11 +29,15 @@ import (
 )
 
 const (
-	passwordSecretTemplate = `---
-{{ .VariableName }}: {{ .VariableValue }}
-`
 	varInterpolationContainerName    = "variables-interpolation"
 	varInterpolationOutputNamePrefix = "manifest-"
+	createdState                     = "Created"
+	opsAppliedState                  = "OpsApplied"
+	variableGeneratedState           = "VariableGenerated"
+	variableInterpolatedState        = "VariableInterpolated"
+	dataGatheredState                = "DataGathered"
+	deployingState                   = "Deploying"
+	deployedState                    = "Deployed"
 )
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
@@ -74,9 +75,22 @@ type ReconcileBOSHDeployment struct {
 	ctrConfig    *context.Config
 }
 
-type passwordSecretConfig struct {
-	VariableName  string
-	VariableValue string
+type Variables map[string]interface{}
+
+type certificateConfig struct {
+	Certificate string `json:"certificate" yaml:"certificate"`
+	PrivateKey  string `json:"private_key" yaml:"private_key"`
+}
+
+type sshKeyConfig struct {
+	PrivateKey           string `json:"private_key" yaml:"private_key"`
+	PublicKey            string `json:"public_key" yaml:"public_key"`
+	PublicKeyFingerprint string `json:"public_key_fingerprint" yaml:"public_key_fingerprint"`
+}
+
+type rsaKeyConfig struct {
+	PrivateKey string `json:"private_key" yaml:"private_key"`
+	PublicKey  string `json:"public_key" yaml:"public_key"`
 }
 
 // Reconcile reads that state of the cluster for a BOSHDeployment object and makes changes based on the state read
@@ -112,14 +126,14 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	// Get state from instance
 	instanceState := instance.Status.State
 	if instanceState == "" {
-		instanceState = "Created"
+		instanceState = createdState
 	}
 
 	defer func() {
 		key := types.NamespacedName{Namespace: instance.GetNamespace(), Name: instance.GetName()}
 		err := r.client.Get(ctx, key, instance)
 		if err != nil {
-			r.log.Errorf("Failed to get BOSHDeployment '%s': %v", instance.GetName(), err)
+			r.log.Errorf("Failed to get BOSHDeployment instance '%s': %v", instance.GetName(), err)
 		}
 
 		// Update the Status of the resource
@@ -133,137 +147,132 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		}
 	}()
 
-	// retrieve manifest
-	instanceState = "Applying Ops Files"
-	manifest, err := r.resolver.ResolveManifest(instance.Spec, request.Namespace)
-	if err != nil {
-		r.recorder.Event(instance, corev1.EventTypeWarning, "ResolveCRD Error", err.Error())
-		r.log.Errorf("Error resolving the manifest %s: %s", request.NamespacedName, err)
-		return reconcile.Result{}, err
+	manifest := &bdm.Manifest{}
+	kubeConfigs := &bdm.KubeConfig{}
+	switch instanceState {
+	case createdState:
+		err := r.actionOnCreated(ctx, instance, manifest)
+		if err != nil {
+			return reconcile.Result{Requeue: true}, err
+		}
+	case opsAppliedState:
+		err := r.actionOnAppliedOps(ctx, instance, manifest, kubeConfigs)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	case variableGeneratedState:
+		variables := []esv1.ExtendedSecret{}
+		err := r.actionOnVariableGenerated(ctx, instance, manifest, variables)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	case variableInterpolatedState:
+		err := r.actionOnVariableInterpolated(ctx, instance)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	case dataGatheredState:
+		err := r.actionOnDataGathered(ctx, instance, kubeConfigs)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	case deployingState:
+		err := r.actionOnDeploying(ctx, instance, kubeConfigs)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	default:
+		if err != nil {
+			return reconcile.Result{}, errors.New("unknown instance state")
+		}
 	}
 
+	return reconcile.Result{}, nil
+}
+
+// actionOnCreated apply ops files after BoshDeployment instance created
+func (r *ReconcileBOSHDeployment) actionOnCreated(ctx context.Context, instance *bdc.BOSHDeployment, manifest *bdm.Manifest) error {
+	// Create temp manifest as variable interpolation job input
+	// retrieve manifest
+	manifest, err := r.resolver.ResolveManifest(instance.Spec, instance.GetNamespace())
+	if err != nil {
+		r.recorder.Event(instance, corev1.EventTypeWarning, "ResolveManifest Error", err.Error())
+		r.log.Errorf("Error resolving the manifest %s: %s", instance.GetName(), err)
+		return err
+	}
+
+	instance.Status.State = opsAppliedState
+
+	return nil
+}
+
+// actionOnAppliedOps handle
+func (r *ReconcileBOSHDeployment) actionOnAppliedOps(ctx context.Context, instance *bdc.BOSHDeployment, manifest *bdm.Manifest, kubeConfig *bdm.KubeConfig) error {
 	if len(manifest.InstanceGroups) < 1 {
-		err = fmt.Errorf("manifest is missing instance groups")
-		r.log.Errorf("No instance groups defined in manifest %s", request.NamespacedName)
+		err := fmt.Errorf("manifest is missing instance groups")
+		r.log.Errorf("No instance groups defined in manifest %s", manifest.Name)
 		r.recorder.Event(instance, corev1.EventTypeWarning, "MissingInstance Error", err.Error())
-		return reconcile.Result{}, err
+		return err
 	}
 
 	kubeConfigs, err := manifest.ConvertToKube(r.ctrConfig.Namespace)
 	if err != nil {
-		r.log.Errorf("Error converting bosh manifest %s to kube objects: %s", request.NamespacedName, err)
+		r.log.Errorf("Error converting bosh manifest %s to kube objects: %s", manifest.Name, err)
 		r.recorder.Event(instance, corev1.EventTypeWarning, "BadManifest Error", err.Error())
-		return reconcile.Result{}, errors.Wrap(err, "error converting manifest to kube objects")
+		return errors.Wrap(err, "error converting manifest to kube objects")
 	}
+	kubeConfig = &kubeConfigs
 
+	instance.Status.State = variableGeneratedState
+
+	return nil
+}
+
+// actionOn gets all jobs owned by the ExtendedJob
+func (r *ReconcileBOSHDeployment) actionOnVariableGenerated(ctx context.Context, instance *bdc.BOSHDeployment, manifest *bdm.Manifest, variables []esv1.ExtendedSecret) error {
+	// Create temp manifest as variable interpolation job input
 	tempManifestBytes, err := yaml.Marshal(manifest)
 	if err != nil {
-		r.log.Error("Failed to marshal temp manifest")
-		return reconcile.Result{}, err
+		return errors.Wrap(err, "could not marshal temp manifest")
 	}
 
 	tempManifestSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      manifest.GenerateSecretName(manifest.Name),
-			Namespace: request.Namespace,
+			Namespace: instance.GetNamespace(),
 		},
 		StringData: map[string]string{
 			"manifest.yaml": string(tempManifestBytes),
 		},
 	}
 
-	// Check if temp manifest secret already exists
 	foundSecret := &corev1.Secret{}
-	err = r.client.Get(ctx, types.NamespacedName{Name: tempManifestSecret.Name, Namespace: tempManifestSecret.Namespace}, foundSecret)
-	if err != nil && apierrors.IsNotFound(err) {
-		r.log.Infof("Creating a new temp manifest secret %s/%s\n", tempManifestSecret.Namespace, tempManifestSecret.Name)
-		if err := r.setReference(instance, tempManifestSecret, r.scheme); err != nil {
-			return reconcile.Result{}, err
-		}
+	err = r.client.Get(ctx, types.NamespacedName{Name: tempManifestSecret.GetName(), Namespace: tempManifestSecret.GetNamespace()}, &corev1.Secret{})
+	if apierrors.IsNotFound(err) {
 		err = r.client.Create(ctx, tempManifestSecret)
 		if err != nil {
-			r.log.Errorf("Failed to create temp manifest secret: %v", err)
-			return reconcile.Result{}, err
+			return errors.Wrap(err, "could not create temp manifest secret")
 		}
-
-		return reconcile.Result{Requeue: true}, err
-	} else if err != nil {
-		r.log.Errorf("Failed to get secret '%s': %v", tempManifestSecret.GetName(), err)
-		r.recorder.Event(instance, corev1.EventTypeWarning, "GetJobForVariableInterpolation Error", err.Error())
-		return reconcile.Result{}, err
 	} else {
-		foundSecret.StringData = tempManifestSecret.StringData
-		err = r.client.Update(ctx, foundSecret)
+		err = r.client.Update(ctx, tempManifestSecret)
 		if err != nil {
-			r.log.Errorf("Failed to update temp manifest secret: %v", err)
-			return reconcile.Result{}, err
+			return errors.Wrap(err, "could not update temp manifest secret")
 		}
 	}
 
-	// TODO Need to update instanceState after finishing Variable Generation stuff
-	instanceState = "Variable Generation"
-
-	// TODO example implementation replace eventually
-	varSecrets := []esv1.ExtendedSecret{}
-	for _, variable := range manifest.Variables {
-		varSecret := esv1.ExtendedSecret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      manifest.GenerateSecretName(variable.Name),
-				Namespace: request.Namespace,
-				Labels: map[string]string{
-					"variableName": variable.Name,
-				},
-			},
-			Spec: esv1.ExtendedSecretSpec{
-				SecretName: manifest.GenerateSecretName(variable.Name),
-				Type:       esv1.Type(variable.Type),
-			},
-		}
-
-		// Check if variable extendedSecret already exists
-		foundExSecret := &esv1.ExtendedSecret{}
-		err = r.client.Get(ctx, types.NamespacedName{Name: varSecret.Name, Namespace: varSecret.Namespace}, foundExSecret)
-		if err != nil && apierrors.IsNotFound(err) {
-			r.log.Infof("Creating a new temp manifest extendedSecret %s/%s\n", varSecret.Namespace, varSecret.Name)
-			if err := r.setReference(instance, &varSecret, r.scheme); err != nil {
-				return reconcile.Result{}, err
-			}
-			err = r.client.Create(ctx, &varSecret)
-			if err != nil {
-				r.log.Errorf("Failed to create temp manifest extendedSecret: %v", err)
-				return reconcile.Result{}, err
-			}
-
-			return reconcile.Result{Requeue: true}, err
-		} else if err != nil {
-			r.log.Errorf("Failed to get extendedSecret '%s': %v", varSecret.GetName(), err)
-			r.recorder.Event(instance, corev1.EventTypeWarning, "GetJobForVariableInterpolation Error", err.Error())
-			return reconcile.Result{}, err
-		} else {
-			foundExSecret.Spec = varSecret.Spec
-			err = r.client.Update(ctx, foundExSecret)
-			if err != nil {
-				r.log.Errorf("Failed to Update extendedSecret '%s': %v", varSecret.GetName(), err)
-				return reconcile.Result{}, err
-			}
-		}
-		varSecrets = append(varSecrets, *foundExSecret)
-	}
-
-	instanceState = "Variable Interpolation"
-	varIntExJob, err := r.newExtendedJobForVariableInterpolation(ctx, foundSecret, varSecrets, request.Namespace)
+	varIntExJob, err := r.newExtendedJobForVariableInterpolation(ctx, foundSecret, variables, instance.GetNamespace())
 	if err != nil && apierrors.IsNotFound(err) {
 		r.log.Debug("Could not find variable secrets, waiting")
-		return reconcile.Result{Requeue: true}, nil
+		return nil
 	} else if err != nil {
 		r.log.Errorf("Failed to generate variable interpolation job: %s", err)
-		return reconcile.Result{}, err
+		return err
 	}
 	// Set BOSHDeployment instance as the owner and controller
 	if err := r.setReference(instance, varIntExJob, r.scheme); err != nil {
 		r.log.Errorf("Failed to set ownerReference for ExtendedJob '%s': %v", varIntExJob.GetName(), err)
 		r.recorder.Event(instance, corev1.EventTypeWarning, "NewJobForVariableInterpolation Error", err.Error())
-		return reconcile.Result{}, err
+		return err
 	}
 
 	// Check if this job already exists
@@ -275,69 +284,81 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		if err != nil {
 			r.log.Errorf("Failed to create ExtendedJob '%s': %v", varIntExJob.GetName(), err)
 			r.recorder.Event(instance, corev1.EventTypeWarning, "CreateJobForVariableInterpolation Error", err.Error())
-			return reconcile.Result{}, err
+			return err
 		}
 
-		return reconcile.Result{Requeue: true}, nil
+		return nil
 	} else if err != nil {
 		r.log.Errorf("Failed to get ExtendedJob '%s': %v", varIntExJob.GetName(), err)
 		r.recorder.Event(instance, corev1.EventTypeWarning, "GetJobForVariableInterpolation Error", err.Error())
-		return reconcile.Result{}, err
+		return err
 	}
 
-	// Check job deletion and secret creation
+	// Check job deletion because of exJob logic and desired manifest secret creation
 	jobs, err := r.listJobs(ctx, foundExJob)
 	if err != nil {
 		r.log.Errorf("Failed to get jobs owned by '%s': %v", foundExJob.GetName(), err)
-		return reconcile.Result{Requeue: true}, err
+		return err
 	}
 
 	if len(jobs) != 0 {
 		r.log.Debugf("Waiting for ExtendedJob '%s' to finish", foundExJob.GetName())
-		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
+		return nil
 	}
 
 	varIntExJobSecret := &corev1.Secret{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: varInterpolationOutputNamePrefix + varInterpolationContainerName, Namespace: instance.Namespace}, varIntExJobSecret)
 	if err != nil && apierrors.IsNotFound(err) {
 		r.log.Debugf("Waiting for desired manifest secret '%s' to create", varInterpolationOutputNamePrefix+varInterpolationContainerName)
-		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
+		return nil
 	} else if err != nil {
 		r.log.Errorf("Failed to get secret '%s': %v", varInterpolationOutputNamePrefix+varInterpolationContainerName, err)
 		r.recorder.Event(instance, corev1.EventTypeWarning, "GetJobForVariableInterpolation Error", err.Error())
-		return reconcile.Result{}, err
+		return err
 	}
 
 	encodedDesiredManifest, exists := varIntExJobSecret.Data["interpolated-manifest.yaml"]
 	if !exists {
 		r.log.Errorf("Failed to get desiredManifest value from secret")
-		return reconcile.Result{}, err
+		return err
 	}
 	desiredManifestBytes, err := base64.StdEncoding.DecodeString(string(encodedDesiredManifest))
 	if err != nil {
 		r.log.Errorf("Failed to decode desiredManifest string: %v", err)
-		return reconcile.Result{}, err
+		return err
 	}
 
 	desiredManifest := &bdm.Manifest{}
 	err = yaml.Unmarshal(desiredManifestBytes, desiredManifest)
 	if err != nil {
 		r.log.Error("Failed to unmarshal desired manifest")
-		return reconcile.Result{}, err
+		return err
 	}
 
-	// TODO Need to update instanceState after finishing Data Gathering stuff
+	// Variable Interpolation job finished
+	instance.Status.State = variableInterpolatedState
 
+	return nil
+}
+
+// actionOn gets all jobs owned by the ExtendedJob
+func (r *ReconcileBOSHDeployment) actionOnVariableInterpolated(ctx context.Context, instance *bdc.BOSHDeployment) error {
+	instance.Status.State = dataGatheredState
+
+	return nil
+}
+
+func (r *ReconcileBOSHDeployment) actionOnDataGathered(ctx context.Context, instance *bdc.BOSHDeployment, kubeConfigs *bdm.KubeConfig) error {
 	for _, eJob := range kubeConfigs.ExtendedJob {
 		// Set BOSHDeployment instance as the owner and controller
 		if err := r.setReference(instance, &eJob, r.scheme); err != nil {
 			r.recorder.Event(instance, corev1.EventTypeWarning, "NewExtendedJobForDeployment Error", err.Error())
-			return reconcile.Result{}, errors.Wrap(err, "couldn't set reference for an ExtendedJob for a BOSH Deployment")
+			return errors.Wrap(err, "couldn't set reference for an ExtendedJob for a BOSH Deployment")
 		}
 
 		// Check to see if the object already exists
 		existingEJob := &ejv1.ExtendedJob{}
-		err = r.client.Get(ctx, types.NamespacedName{Name: eJob.Name, Namespace: eJob.Namespace}, existingEJob)
+		err := r.client.Get(ctx, types.NamespacedName{Name: eJob.Name, Namespace: eJob.Namespace}, existingEJob)
 		if err != nil && apierrors.IsNotFound(err) {
 			r.log.Infof("Creating a new ExtendedJob %s/%s for Deployment Manifest %s\n", eJob.Namespace, eJob.Name, instance.Name)
 
@@ -345,8 +366,8 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			err := r.client.Create(ctx, &eJob)
 			if err != nil {
 				r.recorder.Event(instance, corev1.EventTypeWarning, "CreateExtendedJobForDeployment Error", err.Error())
-				r.log.Errorf("Error creating ExtendedJob %s for deployment manifest %s: %s", eJob.Name, request.NamespacedName, err)
-				return reconcile.Result{}, errors.Wrap(err, "couldn't create an ExtendedJob for a BOSH Deployment")
+				r.log.Errorf("Error creating ExtendedJob %s for deployment manifest %s: %s", eJob.Name, instance.GetName(), err)
+				return errors.Wrap(err, "couldn't create an ExtendedJob for a BOSH Deployment")
 			}
 		}
 	}
@@ -355,26 +376,34 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		// Set BOSHDeployment instance as the owner and controller
 		if err := r.setReference(instance, &eSts, r.scheme); err != nil {
 			r.recorder.Event(instance, corev1.EventTypeWarning, "NewExtendedStatefulSetForDeployment Error", err.Error())
-			return reconcile.Result{}, errors.Wrap(err, "couldn't set reference for an ExtendedStatefulSet for a BOSH Deployment")
+			return errors.Wrap(err, "couldn't set reference for an ExtendedStatefulSet for a BOSH Deployment")
 		}
 
 		// Check to see if the object already exists
 		existingESts := &estsv1.ExtendedStatefulSet{}
-		err = r.client.Get(ctx, types.NamespacedName{Name: eSts.Name, Namespace: eSts.Namespace}, existingESts)
+		err := r.client.Get(ctx, types.NamespacedName{Name: eSts.Name, Namespace: eSts.Namespace}, existingESts)
 		if err != nil && apierrors.IsNotFound(err) {
-			r.log.Infof("Creating a new ExtendedStatefulset %s/%s for Deployment Manifest %s\n", eSts.Namespace, eSts.Name, instance.Name)
+			r.log.Infof("Creating a new ExtendedStatefulSet %s/%s for Deployment Manifest %s\n", eSts.Namespace, eSts.Name, instance.Name)
 
 			// Create the extended statefulset
 			err := r.client.Create(ctx, &eSts)
 			if err != nil {
 				r.recorder.Event(instance, corev1.EventTypeWarning, "CreateExtendedStatefulSetForDeployment Error", err.Error())
-				r.log.Errorf("Error creating ExtendedStatefulSet %s for deployment manifest %s: %s", eSts.Name, request.NamespacedName, err)
-				return reconcile.Result{}, errors.Wrap(err, "couldn't create an ExtendedStatefulSet for a BOSH Deployment")
+				r.log.Errorf("Error creating ExtendedStatefulSet %s for deployment manifest %s: %s", eSts.Name, instance.GetName(), err)
+				return errors.Wrap(err, "couldn't create an ExtendedStatefulSet for a BOSH Deployment")
 			}
 		}
 	}
 
-	return reconcile.Result{}, nil
+	instance.Status.State = deployingState
+
+	return nil
+}
+
+func (r *ReconcileBOSHDeployment) actionOnDeploying(ctx context.Context, instance *bdc.BOSHDeployment, kubeConfigs *bdm.KubeConfig) error {
+	instance.Status.State = deployedState
+
+	return nil
 }
 
 // newExtendedJobForVariableInterpolation returns a job to interpolate variables
@@ -410,59 +439,143 @@ func (r *ReconcileBOSHDeployment) newExtendedJobForVariableInterpolation(ctx con
 	}
 
 	for _, variable := range variables {
+		vars := Variables{}
+		varName := variable.GetLabels()["variableName"]
+
 		secretItems := []corev1.KeyToPath{}
-		// Update secret and
+
+		// Check if variable already exists
+		foundSecret := &corev1.Secret{}
+		err := r.client.Get(ctx, types.NamespacedName{Name: variable.Name, Namespace: variable.Namespace}, foundSecret)
+		if err != nil && apierrors.IsNotFound(err) {
+			r.log.Debugf("Could not find secret '%s'", variable.GetName())
+			return nil, err
+		} else if err != nil {
+			r.log.Errorf("Failed to get secret '%s': %v", variable.GetName(), err)
+			return nil, err
+		}
+
+		// Update secret and relative SecretVolumeSource
 		switch variable.Spec.Type {
 		case esv1.Password:
-			varName := variable.GetLabels()["variableName"]
+			if _, ok := foundSecret.Data["password-gen"]; !ok {
+				vars[varName] = string(foundSecret.Data[string(esv1.Password)])
 
-			// Check if temp manifest secret already exists
-			foundSecret := &corev1.Secret{}
-			err := r.client.Get(ctx, types.NamespacedName{Name: variable.Name, Namespace: variable.Namespace}, foundSecret)
-			if err != nil && apierrors.IsNotFound(err) {
-				r.log.Errorf("Could not find secret '%s'")
-				return nil, err
-			} else if err != nil {
-				r.log.Errorf("Failed to get secret '%s': %v", variable.GetName(), err)
-				return nil, err
-			}
-			varValue := string(foundSecret.Data[string(esv1.Password)])
+				bytes, err := yaml.Marshal(vars)
+				if err != nil {
+					return nil, err
+				}
 
-			passwordSecretValues := passwordSecretConfig{
-				VariableName:  varName,
-				VariableValue: varValue,
-			}
-
-			buffer := bytes.NewBuffer([]byte{})
-
-			t := template.Must(template.New("network-interfaces").Parse(passwordSecretTemplate))
-
-			err = t.Execute(buffer, passwordSecretValues)
-			if err != nil {
-				return nil, err
+				foundSecret.Data = map[string][]byte{}
+				foundSecret.StringData = map[string]string{
+					"password-gen": string(bytes),
+				}
+				err = r.client.Update(ctx, foundSecret)
+				if err != nil {
+					r.log.Errorf("Failed to Update secret '%s': %v", foundSecret.GetName(), err)
+					return nil, err
+				}
 			}
 
-			foundSecret.Data = map[string][]byte{}
-			foundSecret.StringData = map[string]string{
-				string(esv1.Password): buffer.String(),
-			}
-			err = r.client.Update(ctx, foundSecret)
-			if err != nil {
-				r.log.Errorf("Failed to Update secret '%s': %v", foundSecret.GetName(), err)
-				return nil, err
-			}
-
-			secretItems = []corev1.KeyToPath{
-				{
-					Key:  string(esv1.Password),
-					Path: "variable.yaml",
-				},
-			}
-		case esv1.RSAKey:
-		case esv1.SSHKey:
+			secretItems = append(secretItems, corev1.KeyToPath{
+				Key:  "password-gen",
+				Path: "variable.yaml",
+			})
 		case esv1.Certificate:
+			if _, ok := foundSecret.Data["certificate-gen"]; !ok {
+				certificate := string(foundSecret.Data["certificate"])
+				privateKey := string(foundSecret.Data["private_key"])
+
+				vars[varName] = certificateConfig{
+					Certificate: certificate,
+					PrivateKey:  privateKey,
+				}
+
+				bytes, err := yaml.Marshal(vars)
+				if err != nil {
+					return nil, err
+				}
+
+				foundSecret.Data = map[string][]byte{}
+				foundSecret.StringData = map[string]string{
+					string("certificate-gen"): string(bytes),
+				}
+				err = r.client.Update(ctx, foundSecret)
+				if err != nil {
+					r.log.Errorf("Failed to Update secret '%s': %v", foundSecret.GetName(), err)
+					return nil, err
+				}
+			}
+
+			secretItems = append(secretItems, corev1.KeyToPath{
+				Key:  "certificate-gen",
+				Path: "variable.yaml",
+			})
+		case esv1.SSHKey:
+			if _, ok := foundSecret.Data["ssh-key-gen"]; !ok {
+				privateKey := string(foundSecret.Data["SSHPrivateKey"])
+				publicKey := string(foundSecret.Data["SSHPublicKey"])
+				fingerprint := string(foundSecret.Data["SSHFingerprint"])
+
+				vars[varName] = sshKeyConfig{
+					PrivateKey:           privateKey,
+					PublicKey:            publicKey,
+					PublicKeyFingerprint: fingerprint,
+				}
+
+				bytes, err := yaml.Marshal(vars)
+				if err != nil {
+					return nil, err
+				}
+
+				foundSecret.Data = map[string][]byte{}
+				foundSecret.StringData = map[string]string{
+					"ssh-key-gen": string(bytes),
+				}
+				err = r.client.Update(ctx, foundSecret)
+				if err != nil {
+					r.log.Errorf("Failed to Update secret '%s': %v", foundSecret.GetName(), err)
+					return nil, err
+				}
+			}
+
+			secretItems = append(secretItems, corev1.KeyToPath{
+				Key:  "ssh-key-gen",
+				Path: "variable.yaml",
+			})
+		case esv1.RSAKey:
+			if _, ok := foundSecret.Data["rsa-key-gen"]; !ok {
+				privateKey := string(foundSecret.Data["RSAPrivateKey"])
+				publicKey := string(foundSecret.Data["RSAPublicKey"])
+
+				vars[varName] = rsaKeyConfig{
+					PrivateKey: privateKey,
+					PublicKey:  publicKey,
+				}
+
+				bytes, err := yaml.Marshal(vars)
+				if err != nil {
+					return nil, err
+				}
+
+				foundSecret.Data = map[string][]byte{}
+				foundSecret.StringData = map[string]string{
+					string("rsa-key-gen"): string(bytes),
+				}
+				err = r.client.Update(ctx, foundSecret)
+				if err != nil {
+					r.log.Errorf("Failed to Update secret '%s': %v", foundSecret.GetName(), err)
+					return nil, err
+				}
+			}
+
+			secretItems = append(secretItems, corev1.KeyToPath{
+				Key:  "rsa-key-gen",
+				Path: "variable.yaml",
+			})
 		default:
-			secretItems = []corev1.KeyToPath{}
+			r.log.Error("Unknown output variable type: %s", variable.Spec.Type)
+			return nil, errors.New(fmt.Sprintf("unknown output variable type: %s", variable.Spec.Type))
 		}
 
 		vol := corev1.Volume{

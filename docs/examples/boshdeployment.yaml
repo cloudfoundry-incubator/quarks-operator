@@ -1,4 +1,14 @@
 apiVersion: v1
+kind: Secret
+metadata:
+  name: cf-deployment.fake-ca
+type: Opaque
+stringData:
+  ca: fake-ca
+  key: the_private_key
+  certificate: fake-certificate
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: bosh-manifest
@@ -6,19 +16,55 @@ data:
   manifest: |
     name: cf-deployment
     instance_groups:
-    - name: diego-cell
-      instances: 3
     - name: api
       instances: 2
       jobs:
       - name: cloud_controller_ng
+        release: capi
         properties:
           router:
             route_services_secret: "((router_route_services_secret))"
-    - name: mysql
+          app_ssh:
+            host_key_fingerprint: "((diego_ssh_proxy_host_key.public_key_fingerprint))"
+          uaa:
+            ca_cert: "((uaa_ca.certificate))"
+    - name: uaa
+      instances: 2
+      jobs:
+      - name: uaa
+        release: uaa
+        properties:
+          uaa:
+            jwt:
+              policy:
+                active_key_id: key-1
+                keys:
+                  key-1:
+                    signingKey: "((uaa_jwt_signing_key.private_key))"
+    releases:
+    - name: capi
+      url: "docker.io/cfcontainerization"
+      stemcell:
+        os: "opensuse"
+        version: "42.3"
+    - name: uaa
+      url: "docker.io/cfcontainerization"
+      stemcell:
+        os: "opensuse"
+        version: "42.3"
     variables:
     - name: router_route_services_secret
       type: password
+    - name: uaa_jwt_signing_key
+      type: rsa
+    - name: uaa_ca
+      type: certificate
+      options:
+        is_ca: true
+        common_name: uaaCA
+        ca: fake-ca
+    - name: diego_ssh_proxy_host_key
+      type: ssh
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -27,9 +73,8 @@ metadata:
 data:
   ops: |
     - type: replace
-      path: /instance_groups/name=diego-cell?/instances
+      path: /instance_groups/name=api?/instances
       value: 4
-
 ---
 apiVersion: v1
 kind: Secret
@@ -39,7 +84,7 @@ type: Opaque
 stringData:
   ops: |
     - type: replace
-      path: /instance_groups/name=diego-cell?/instances
+      path: /instance_groups/name=api?/instances
       value: 5
 ---
 apiVersion: fissile.cloudfoundry.org/v1alpha1
