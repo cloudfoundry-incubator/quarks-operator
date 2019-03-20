@@ -41,6 +41,9 @@ test-unit:
 test-integration:
 	bin/test-integration
 
+test-integration-nobuild: build image-nobuild
+	bin/test-integration
+
 test-e2e:
 	bin/test-e2e
 
