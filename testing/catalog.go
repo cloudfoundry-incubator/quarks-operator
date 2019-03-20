@@ -171,7 +171,6 @@ func (c *Catalog) BOSHManifestWithProviderAndConsumer() *manifest.Manifest {
 	source := `---
 name: cf
 manifest_version: v7.7.0
-
 instance_groups:
 - name: doppler
   azs:
@@ -244,7 +243,96 @@ releases:
   url: https://bosh.io/d/github.com/cloudfoundry/loggregator-release?v=105.0
   version: "105.0"
   sha1: d0bed91335aaac418eb6e8b2be13c6ecf4ce7b90
+stemcells:
+- alias: default
+  os: ubuntu-xenial
+  version: "250.17"
+`
+	err := yaml.Unmarshal([]byte(source), m)
+	if err != nil {
+		panic(err)
+	}
+	return m
+}
 
+// BOSHManifestWithProviderAndConsumer for data gathering tests
+func (c *Catalog) BOSHManifestWithProviderAndConsumer() *manifest.Manifest {
+	m := &manifest.Manifest{}
+	source := `---
+name: cf
+manifest_version: v7.7.0
+instance_groups:
+- name: doppler
+  azs:
+  - z1
+  - z2
+  instances: 4
+  vm_type: minimal
+  stemcell: default
+  networks:
+  - name: default
+  jobs:
+  - name: doppler
+    release: loggregator
+    provides:
+      doppler: {as: doppler, shared: true}
+    properties:
+      doppler:
+        grpc_port: 7765
+      metron_endpoint:
+        host: foobar.com
+      loggregator:
+        tls:
+          ca_cert: "((loggregator_ca.certificate))"
+          doppler:
+            cert: "((loggregator_tls_doppler.certificate))"
+            key: "((loggregator_tls_doppler.private_key))"
+- name: log-api
+  azs:
+  - z1
+  - z2
+  instances: 2
+  vm_type: minimal
+  stemcell: default
+  update:
+    serial: true
+  networks:
+  - name: default
+  jobs:
+  - name: loggregator_trafficcontroller
+    release: loggregator
+    consumes:
+      doppler: {from: doppler}
+    properties:
+      uaa:
+        internal_url: https://uaa.service.cf.internal:8443
+        ca_cert: "((uaa_ca.certificate))"
+      doppler:
+        grpc_port: 6060
+      loggregator:
+        tls:
+          cc_trafficcontroller:
+            cert: "((loggregator_tls_cc_tc.certificate))"
+            key: "((loggregator_tls_cc_tc.private_key))"
+          ca_cert: "((loggregator_ca.certificate))"
+          trafficcontroller:
+            cert: "((loggregator_tls_tc.certificate))"
+            key: "((loggregator_tls_tc.private_key))"
+        uaa:
+          client_secret: "((uaa_clients_doppler_secret))"
+      system_domain: "((system_domain))"
+      ssl:
+        skip_cert_verify: true
+      cc:
+        internal_service_hostname: "cloud-controller-ng.service.cf.internal"
+        tls_port: 9023
+        mutual_tls:
+          ca_cert: "((service_cf_internal_ca.certificate))"
+releases:
+- name: loggregator
+  url: https://bosh.io/d/github.com/cloudfoundry/loggregator-release?v=105.0
+  version: "105.0"
+  sha1: d0bed91335aaac418eb6e8b2be13c6ecf4ce7b90
 stemcells:
 - alias: default
   os: ubuntu-xenial

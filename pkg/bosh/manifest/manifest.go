@@ -7,21 +7,31 @@ import (
 
 // JobInstance for data gathering
 type JobInstance struct {
-	Address     string      `yaml:"address"`
-	AZ          string      `yaml:"az"`
-	ID          string      `yaml:"id"`
-	Index       int         `yaml:"index"`
-	Instance    int         `yaml:"instance"`
-	Name        string      `yaml:"name"`
-	BPM         *bpm.Config `yaml:"bpm"`
-	Fingerprint interface{} `yaml:"fingerprint"`
+	Address     string                 `yaml:"address"`
+	AZ          string                 `yaml:"az"`
+	ID          string                 `yaml:"id"`
+	Index       int                    `yaml:"index"`
+	Instance    int                    `yaml:"instance"`
+	Name        string                 `yaml:"name"`
+	BPM         *bpm.Config            `yaml:"bpm"`
+	Fingerprint interface{}            `yaml:"fingerprint"`
+	Bootstrap   int                    `yaml:"bootstrap"`
+	Network     map[string]interface{} `yaml:"networks"`
+	IP          string                 `yaml:"ip"`
+}
+
+// Link with name for rendering
+type Link struct {
+	Name       string        `yaml:"name"`
+	Instances  []JobInstance `yaml:"instances"`
+	Properties interface{}   `yaml:"properties"`
 }
 
 // JobLink describes links inside a job properties
 // bosh_containerization.
 type JobLink struct {
-	Instances  []JobInstance `yaml:"instances"`
-	Properties interface{}   `yaml:"properties"`
+	Instances  []JobInstance          `yaml:"instances"`
+	Properties map[string]interface{} `yaml:"properties"`
 }
 
 // JobSpec describes the contents of "job.MF" files
