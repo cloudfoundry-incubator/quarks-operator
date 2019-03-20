@@ -237,25 +237,25 @@ func (c *Catalog) WrongExtendedStatefulSet(name string) essv1.ExtendedStatefulSe
 }
 
 // ExtendedStatefulSetWithPVC for use in tests
-func (c *Catalog) ExtendedStatefulSetWithPVC(name, pvcName, storageClass string) essv1.ExtendedStatefulSet {
+func (c *Catalog) ExtendedStatefulSetWithPVC(name, pvcName string) essv1.ExtendedStatefulSet {
 	return essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 		Spec: essv1.ExtendedStatefulSetSpec{
-			Template: c.StatefulSetWithPVC(name, pvcName, storageClass),
+			Template: c.StatefulSetWithPVC(name, pvcName),
 		},
 	}
 }
 
 // WrongExtendedStatefulSetWithPVC for use in tests
-func (c *Catalog) WrongExtendedStatefulSetWithPVC(name, pvcName, storageClass string) essv1.ExtendedStatefulSet {
+func (c *Catalog) WrongExtendedStatefulSetWithPVC(name, pvcName string) essv1.ExtendedStatefulSet {
 	return essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 		Spec: essv1.ExtendedStatefulSetSpec{
-			Template: c.WrongStatefulSetWithPVC(name, pvcName, storageClass),
+			Template: c.WrongStatefulSetWithPVC(name, pvcName),
 		},
 	}
 }
@@ -294,7 +294,7 @@ func (c *Catalog) DefaultStatefulSet(name string) v1beta2.StatefulSet {
 }
 
 // StatefulSetWithPVC for use in tests
-func (c *Catalog) StatefulSetWithPVC(name, pvcName, storageClass string) v1beta2.StatefulSet {
+func (c *Catalog) StatefulSetWithPVC(name, pvcName string) v1beta2.StatefulSet {
 	labels := map[string]string{
 		"test-run-reference": name,
 		"testpod":            "yes",
@@ -311,13 +311,13 @@ func (c *Catalog) StatefulSetWithPVC(name, pvcName, storageClass string) v1beta2
 			},
 			ServiceName:          name,
 			Template:             c.PodTemplateWithLabelsAndMount(name, labels, pvcName),
-			VolumeClaimTemplates: c.DefaultVolumeClaimTemplates(pvcName, storageClass),
+			VolumeClaimTemplates: c.DefaultVolumeClaimTemplates(pvcName),
 		},
 	}
 }
 
 // WrongStatefulSetWithPVC for use in tests
-func (c *Catalog) WrongStatefulSetWithPVC(name, pvcName, storageClass string) v1beta2.StatefulSet {
+func (c *Catalog) WrongStatefulSetWithPVC(name, pvcName string) v1beta2.StatefulSet {
 	labels := map[string]string{
 		"wrongpod":           "yes",
 		"test-run-reference": name,
@@ -334,20 +334,19 @@ func (c *Catalog) WrongStatefulSetWithPVC(name, pvcName, storageClass string) v1
 			},
 			ServiceName:          name,
 			Template:             c.WrongPodTemplateWithLabelsAndMount(name, labels, pvcName),
-			VolumeClaimTemplates: c.DefaultVolumeClaimTemplates(pvcName, storageClass),
+			VolumeClaimTemplates: c.DefaultVolumeClaimTemplates(pvcName),
 		},
 	}
 }
 
 // DefaultVolumeClaimTemplates for use in tests
-func (c *Catalog) DefaultVolumeClaimTemplates(name, storageClass string) []corev1.PersistentVolumeClaim {
+func (c *Catalog) DefaultVolumeClaimTemplates(name string) []corev1.PersistentVolumeClaim {
 	return []corev1.PersistentVolumeClaim{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name,
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
-				StorageClassName: &storageClass,
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					"ReadWriteOnce",
 				},
