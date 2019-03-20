@@ -2,16 +2,20 @@ package boshdeployment
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"reflect"
 	"text/template"
+	"time"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -27,9 +31,13 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 )
 
-const passwordSecretTemplate = `---
+const (
+	passwordSecretTemplate = `---
 {{ .VariableName }}: {{ .VariableValue }}
 `
+	varInterpolationContainerName    = "variables-interpolation"
+	varInterpolationOutputNamePrefix = "manifest-"
+)
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
@@ -178,12 +186,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			return reconcile.Result{}, err
 		}
 
-		err = r.client.Get(ctx, types.NamespacedName{Name: tempManifestSecret.Name, Namespace: tempManifestSecret.Namespace}, foundSecret)
-		if err != nil {
-			r.log.Errorf("Failed to get secret '%s': %v", tempManifestSecret.GetName(), err)
-			r.recorder.Event(instance, corev1.EventTypeWarning, "GetJobForVariableInterpolation Error", err.Error())
-			return reconcile.Result{Requeue: true}, err
-		}
+		return reconcile.Result{Requeue: true}, err
 	} else if err != nil {
 		r.log.Errorf("Failed to get secret '%s': %v", tempManifestSecret.GetName(), err)
 		r.recorder.Event(instance, corev1.EventTypeWarning, "GetJobForVariableInterpolation Error", err.Error())
@@ -231,12 +234,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 				return reconcile.Result{}, err
 			}
 
-			err = r.client.Get(ctx, types.NamespacedName{Name: varSecret.Name, Namespace: varSecret.Namespace}, foundExSecret)
-			if err != nil {
-				r.log.Errorf("Failed to get extendedSecret '%s': %v", varSecret.GetName(), err)
-				r.recorder.Event(instance, corev1.EventTypeWarning, "GetJobForVariableInterpolation Error", err.Error())
-				return reconcile.Result{Requeue: true}, err
-			}
+			return reconcile.Result{Requeue: true}, err
 		} else if err != nil {
 			r.log.Errorf("Failed to get extendedSecret '%s': %v", varSecret.GetName(), err)
 			r.recorder.Event(instance, corev1.EventTypeWarning, "GetJobForVariableInterpolation Error", err.Error())
@@ -269,8 +267,8 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Check if this job already exists
-	foundJob := &ejv1.ExtendedJob{}
-	err = r.client.Get(ctx, types.NamespacedName{Name: varIntExJob.Name, Namespace: varIntExJob.Namespace}, foundJob)
+	foundExJob := &ejv1.ExtendedJob{}
+	err = r.client.Get(ctx, types.NamespacedName{Name: varIntExJob.Name, Namespace: varIntExJob.Namespace}, foundExJob)
 	if err != nil && apierrors.IsNotFound(err) {
 		r.log.Infof("Creating a new Job %s/%s\n", varIntExJob.Namespace, varIntExJob.Name)
 		err = r.client.Create(ctx, varIntExJob)
@@ -280,15 +278,53 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			return reconcile.Result{}, err
 		}
 
-		// Pod created successfully - don't requeue
-		return reconcile.Result{}, nil
+		return reconcile.Result{Requeue: true}, nil
 	} else if err != nil {
 		r.log.Errorf("Failed to get ExtendedJob '%s': %v", varIntExJob.GetName(), err)
 		r.recorder.Event(instance, corev1.EventTypeWarning, "GetJobForVariableInterpolation Error", err.Error())
 		return reconcile.Result{}, err
 	}
 
-	// TODO Check job deletion and secret creation
+	// Check job deletion and secret creation
+	jobs, err := r.listJobs(ctx, foundExJob)
+	if err != nil {
+		r.log.Errorf("Failed to get jobs owned by '%s': %v", foundExJob.GetName(), err)
+		return reconcile.Result{Requeue: true}, err
+	}
+
+	if len(jobs) != 0 {
+		r.log.Debugf("Waiting for ExtendedJob '%s' to finish", foundExJob.GetName())
+		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
+	}
+
+	varIntExJobSecret := &corev1.Secret{}
+	err = r.client.Get(ctx, types.NamespacedName{Name: varInterpolationOutputNamePrefix + varInterpolationContainerName, Namespace: instance.Namespace}, varIntExJobSecret)
+	if err != nil && apierrors.IsNotFound(err) {
+		r.log.Debugf("Waiting for desired manifest secret '%s' to create", varInterpolationOutputNamePrefix+varInterpolationContainerName)
+		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
+	} else if err != nil {
+		r.log.Errorf("Failed to get secret '%s': %v", varInterpolationOutputNamePrefix+varInterpolationContainerName, err)
+		r.recorder.Event(instance, corev1.EventTypeWarning, "GetJobForVariableInterpolation Error", err.Error())
+		return reconcile.Result{}, err
+	}
+
+	encodedDesiredManifest, exists := varIntExJobSecret.Data["interpolated-manifest.yaml"]
+	if !exists {
+		r.log.Errorf("Failed to get desiredManifest value from secret")
+		return reconcile.Result{}, err
+	}
+	desiredManifestBytes, err := base64.StdEncoding.DecodeString(string(encodedDesiredManifest))
+	if err != nil {
+		r.log.Errorf("Failed to decode desiredManifest string: %v", err)
+		return reconcile.Result{}, err
+	}
+
+	desiredManifest := &bdm.Manifest{}
+	err = yaml.Unmarshal(desiredManifestBytes, desiredManifest)
+	if err != nil {
+		r.log.Error("Failed to unmarshal desired manifest")
+		return reconcile.Result{}, err
+	}
 
 	// TODO Need to update instanceState after finishing Data Gathering stuff
 
@@ -460,7 +496,7 @@ func (r *ReconcileBOSHDeployment) newExtendedJobForVariableInterpolation(ctx con
 					TerminationGracePeriodSeconds: &one,
 					Containers: []corev1.Container{
 						{
-							Name:         "variables-interpolation",
+							Name:         varInterpolationContainerName,
 							Image:        bdm.GetOperatorDockerImage(),
 							Command:      cmd,
 							Args:         args,
@@ -471,7 +507,7 @@ func (r *ReconcileBOSHDeployment) newExtendedJobForVariableInterpolation(ctx con
 				},
 			},
 			Output: &ejv1.Output{
-				NamePrefix:   "manifest-after-",
+				NamePrefix:   varInterpolationOutputNamePrefix,
 				SecretLabels: secretLabels,
 			},
 			Trigger: ejv1.Trigger{
@@ -480,4 +516,36 @@ func (r *ReconcileBOSHDeployment) newExtendedJobForVariableInterpolation(ctx con
 		},
 	}
 	return &job, nil
+}
+
+// listJobs gets all jobs owned by the ExtendedJob
+func (r *ReconcileBOSHDeployment) listJobs(ctx context.Context, exJob *ejv1.ExtendedJob) ([]batchv1.Job, error) {
+	r.log.Debug("Listing StatefulSets owned by ExtendedStatefulSet '", exJob.Name, "'.")
+
+	result := []batchv1.Job{}
+
+	// Get owned resources
+	// Go through each StatefulSet
+	allJobs := &batchv1.JobList{}
+	err := r.client.List(
+		ctx,
+		&client.ListOptions{
+			Namespace:     exJob.Namespace,
+			LabelSelector: labels.Everything(),
+		},
+		allJobs)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, job := range allJobs.Items {
+		if metav1.IsControlledBy(&job, exJob) {
+			result = append(result, job)
+			r.log.Debugf("Job '%s' is owned by ExtendedJob '%s'", job.Name, exJob.Name)
+		} else {
+			r.log.Debugf("Job '%s' is not owned by ExtendedJob '%s', ignoring", job.Name, exJob.Name)
+		}
+	}
+
+	return result, nil
 }
