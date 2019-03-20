@@ -347,7 +347,6 @@ func (c *Catalog) DefaultVolumeClaimTemplates(name, storageClass string) []corev
 				Name: name,
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
-				StorageClassName: &storageClass,
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					"ReadWriteOnce",
 				},
