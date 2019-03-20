@@ -78,6 +78,7 @@ func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manag
 			// Service: ??
 		},
 	})
+
 	if err != nil {
 		return errors.Wrap(err, "unable to create a new webhook server")
 	}

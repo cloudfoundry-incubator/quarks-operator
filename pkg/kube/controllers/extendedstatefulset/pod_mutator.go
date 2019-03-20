@@ -66,7 +66,7 @@ func (m *PodMutator) Handle(ctx context.Context, req types.Request) types.Respon
 
 	// TODO :- send pod instead of annotations.
 
-	if isStatefulSetPod(pod.GetAnnotations()) {
+	if isStatefulSetPod(pod.GetLabels()) {
 		err = m.mutatePodsFn(ctx, updatedPod)
 		if err != nil {
 			return admission.ErrorResponse(http.StatusInternalServerError, err)
@@ -158,8 +158,8 @@ func getNameWithOutVersion(name string, offset int) string {
 }
 
 // isStatefulSetPod check is it is extendedstatefulset Pod
-func isStatefulSetPod(annotations map[string]string) bool {
-	if _, exists := annotations["fissile.cloudfoundry.org/configsha1"]; exists {
+func isStatefulSetPod(labels map[string]string) bool {
+	if _, exists := labels["statefulset.kubernetes.io/pod-name"]; exists {
 		return true
 	}
 	return false

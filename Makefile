@@ -7,6 +7,9 @@ build:
 image:
 	bin/build-image
 
+image-nobuild:
+	bin/build-nobuild-image
+
 .PHONY: helm
 helm:
 	bin/build-helm

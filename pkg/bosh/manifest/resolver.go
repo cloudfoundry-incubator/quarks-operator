@@ -17,7 +17,7 @@ import (
 
 // Resolver resolves references from CRD to a BOSH manifest
 type Resolver interface {
-	ResolveCRD(bdc.BOSHDeploymentSpec, string) (*Manifest, error)
+	ResolveManifest(bdc.BOSHDeploymentSpec, string) (*Manifest, error)
 }
 
 // ResolverImpl implements Resolver interface
@@ -31,8 +31,8 @@ func NewResolver(client client.Client, interpolator Interpolator) *ResolverImpl 
 	return &ResolverImpl{client: client, interpolator: interpolator}
 }
 
-// ResolveCRD returns manifest referenced by our CRD
-func (r *ResolverImpl) ResolveCRD(spec bdc.BOSHDeploymentSpec, namespace string) (*Manifest, error) {
+// ResolveManifest returns manifest referenced by our CRD
+func (r *ResolverImpl) ResolveManifest(spec bdc.BOSHDeploymentSpec, namespace string) (*Manifest, error) {
 	manifest := &Manifest{}
 	var (
 		m   string

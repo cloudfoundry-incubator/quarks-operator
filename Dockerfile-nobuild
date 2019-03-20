@@ -1,0 +1,4 @@
+FROM opensuse/leap:15.0
+RUN zypper -n in system-user-nobody
+USER nobody
+COPY binaries/cf-operator /usr/local/bin/cf-operator

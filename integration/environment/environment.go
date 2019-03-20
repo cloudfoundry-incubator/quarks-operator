@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"time"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/testhelper"
+
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
@@ -71,6 +74,16 @@ func (e *Environment) Setup() (StopFunc, error) {
 	}
 
 	e.stop = e.startOperator()
+
+	err = testhelper.WaitForPort(
+		e.CtrsConfig.WebhookServerHost,
+		strconv.Itoa(int(e.CtrsConfig.WebhookServerPort)),
+		1*time.Minute)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return func() {
 		if e.stop != nil {
 			close(e.stop)
@@ -114,6 +127,7 @@ func (e *Environment) setupCFOperator() (err error) {
 	if !found {
 		ns = "default"
 	}
+
 	e.Namespace = ns
 	e.CtrsConfig.Namespace = ns
 
@@ -124,7 +138,27 @@ func (e *Environment) setupCFOperator() (err error) {
 		return
 	}
 
+	operatorDockerImageOrg, found := os.LookupEnv("DOCKER_IMAGE_ORG")
+	if !found {
+		operatorDockerImageOrg = "cfcontainerization"
+	}
+
+	operatorDockerImageRepo, found := os.LookupEnv("DOCKER_IMAGE_REPOSITORY")
+	if !found {
+		operatorDockerImageRepo = "cf-operator"
+	}
+
+	operatorDockerImageTag, found := os.LookupEnv("DOCKER_IMAGE_TAG")
+	if !found {
+		operatorDockerImageTag = "latest"
+	}
+
+	manifest.DockerOrganization = operatorDockerImageOrg
+	manifest.DockerRepository = operatorDockerImageRepo
+	manifest.DockerTag = operatorDockerImageTag
+
 	e.mgr, err = operator.NewManager(e.Log, e.CtrsConfig, e.kubeConfig, manager.Options{Namespace: e.Namespace})
+
 	return
 }
 

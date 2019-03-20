@@ -6,8 +6,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"code.cloudfoundry.org/cf-operator/integration/environment"
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
-	"code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
+	inmemorygenerator "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
 	es "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
 
@@ -33,7 +34,7 @@ var _ = Describe("ExtendedSecret", func() {
 			es, tearDown, err := env.CreateExtendedSecret(env.Namespace, extendedSecret)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(es).NotTo(Equal(nil))
-			defer tearDown()
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// check for generated secret
 			secret, err := env.GetSecret(env.Namespace, "generated-password-secret")
@@ -55,7 +56,7 @@ var _ = Describe("ExtendedSecret", func() {
 			es, tearDown, err := env.CreateExtendedSecret(env.Namespace, extendedSecret)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(es).NotTo(Equal(nil))
-			defer tearDown()
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// check for generated secret
 			secret, err := env.GetSecret(env.Namespace, "generated-rsa-secret")
@@ -78,7 +79,7 @@ var _ = Describe("ExtendedSecret", func() {
 			es, tearDown, err := env.CreateExtendedSecret(env.Namespace, extendedSecret)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(es).NotTo(Equal(nil))
-			defer tearDown()
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// check for generated secret
 			secret, err := env.GetSecret(env.Namespace, "generated-ssh-secret")
@@ -114,7 +115,7 @@ var _ = Describe("ExtendedSecret", func() {
 			}
 			tearDown, err := env.CreateSecret(env.Namespace, casecret)
 			Expect(err).NotTo(HaveOccurred())
-			defer tearDown()
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// Create an ExtendedSecret
 			var extendedsecret *es.ExtendedSecret
@@ -127,7 +128,7 @@ var _ = Describe("ExtendedSecret", func() {
 			extendedsecret, tearDown, err = env.CreateExtendedSecret(env.Namespace, extendedSecret)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(extendedsecret).NotTo(Equal(nil))
-			defer tearDown()
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// check for generated secret
 			secret, err := env.GetSecret(env.Namespace, "generated-cert-secret")

@@ -31,6 +31,7 @@ var _ = Describe("CLI", func() {
 			Eventually(session.Out).Should(Say(`Flags:
   -o, --docker-image-org string          Dockerhub organization that provides the operator docker image \(default "cfcontainerization"\)
   -r, --docker-image-repository string   Dockerhub repository that provides the operator docker image \(default "cf-operator"\)
+  -t, --docker-image-tag string          Tag of the operator docker image \(default "\d+.\d+.\d+"\)
   -h, --help                             help for cf-operator
   -c, --kubeconfig string                Path to a kubeconfig, not required in-cluster
   -n, --namespace string                 Namespace to watch for BOSH deployments \(default "default"\)
@@ -56,7 +57,7 @@ var _ = Describe("CLI", func() {
 		It("should start the server", func() {
 			session, err := act()
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+ with namespace default`))
+			Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+ with namespace`))
 		})
 
 		Context("when specifying namespace", func() {

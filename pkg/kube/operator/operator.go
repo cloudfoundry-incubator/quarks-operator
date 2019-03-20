@@ -19,6 +19,7 @@ func NewManager(log *zap.SugaredLogger, ctrConfig *context.Config, cfg *rest.Con
 	}
 
 	log.Info("Registering Components.")
+	ctrConfig.Namespace = options.Namespace
 
 	// Setup Scheme for all resources
 	if err = controllers.AddToScheme(mgr.GetScheme()); err != nil {
