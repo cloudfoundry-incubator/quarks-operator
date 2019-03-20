@@ -9,19 +9,18 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/testhelper"
-
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
-	"github.com/spf13/afero"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 
+	"github.com/spf13/afero"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 
 	"k8s.io/client-go/kubernetes"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -131,7 +130,7 @@ func (e *Environment) setupCFOperator() (err error) {
 	e.Namespace = ns
 	e.CtrsConfig.Namespace = ns
 
-	e.ObservedLogs, e.Log = testing.NewTestLogger()
+	e.ObservedLogs, e.Log = helper.NewTestLogger()
 
 	err = e.setupKube()
 	if err != nil {

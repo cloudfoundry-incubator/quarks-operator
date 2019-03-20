@@ -1,3 +1,6 @@
+// Package testing contains methods to create test data. It's a seaparate
+// package to avoid import cycles. Helper functions can be found in the package
+// `testhelper`.
 package testing
 
 import (

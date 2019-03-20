@@ -6,14 +6,15 @@ import (
 	"fmt"
 	"time"
 
-	cfssllog "github.com/cloudflare/cfssl/log"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	inmemorygenerator "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
-	"code.cloudfoundry.org/cf-operator/testing"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+
+	cfssllog "github.com/cloudflare/cfssl/log"
+	"github.com/pkg/errors"
 )
 
 var _ = Describe("InMemoryGenerator", func() {
@@ -24,7 +25,7 @@ var _ = Describe("InMemoryGenerator", func() {
 	BeforeEach(func() {
 		cfssllog.Level = cfssllog.LevelFatal
 
-		_, log := testing.NewTestLogger()
+		_, log := helper.NewTestLogger()
 		generator = inmemorygenerator.NewInMemoryGenerator(log)
 		// speed up tests with a fast algo
 		g := generator.(*inmemorygenerator.InMemoryGenerator)

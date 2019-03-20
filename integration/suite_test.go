@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"code.cloudfoundry.org/cf-operator/integration/environment"
-	operatortesting "code.cloudfoundry.org/cf-operator/testing"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"code.cloudfoundry.org/cf-operator/integration/environment"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 )
 
 func TestIntegration(t *testing.T) {
@@ -31,7 +31,7 @@ var _ = BeforeSuite(func() {
 	stopOperator, err = env.Setup()
 	Expect(err).NotTo(HaveOccurred())
 
-	storageClassName = fmt.Sprintf("testsc-%s", operatortesting.RandString(5))
+	storageClassName = fmt.Sprintf("testsc-%s", helper.RandString(5))
 	storageClass := env.DefaultStorageClass(storageClassName)
 	_, storageClassTeardown, err = env.CreateStorageClass(storageClass)
 	Expect(err).NotTo(HaveOccurred())
