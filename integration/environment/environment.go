@@ -74,7 +74,7 @@ func (e *Environment) Setup() (StopFunc, error) {
 
 	e.stop = e.startOperator()
 
-	err = testhelper.WaitForPort(
+	err = helper.WaitForPort(
 		"127.0.0.1",
 		strconv.Itoa(int(e.CtrsConfig.WebhookServerPort)),
 		1*time.Minute)
