@@ -1,7 +1,6 @@
 package integration_test
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -9,7 +8,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	"code.cloudfoundry.org/cf-operator/integration/environment"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 )
 
 func TestIntegration(t *testing.T) {
@@ -18,10 +16,8 @@ func TestIntegration(t *testing.T) {
 }
 
 var (
-	env                  *environment.Environment
-	stopOperator         environment.StopFunc
-	storageClassTeardown environment.TearDownFunc
-	storageClassName     string
+	env          *environment.Environment
+	stopOperator environment.StopFunc
 )
 
 var _ = BeforeSuite(func() {
@@ -30,16 +26,9 @@ var _ = BeforeSuite(func() {
 	var err error
 	stopOperator, err = env.Setup()
 	Expect(err).NotTo(HaveOccurred())
-
-	storageClassName = fmt.Sprintf("testsc-%s", helper.RandString(5))
-	storageClass := env.DefaultStorageClass(storageClassName)
-	_, storageClassTeardown, err = env.CreateStorageClass(storageClass)
-	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {
-	defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(storageClassTeardown)
-
 	if stopOperator != nil {
 		time.Sleep(3 * time.Second)
 		defer stopOperator()
