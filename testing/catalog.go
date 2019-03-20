@@ -1,6 +1,7 @@
 package testing
 
 import (
+	"os"
 	"time"
 
 	"github.com/spf13/afero"
@@ -341,12 +342,19 @@ func (c *Catalog) WrongStatefulSetWithPVC(name, pvcName string) v1beta2.Stateful
 
 // DefaultVolumeClaimTemplates for use in tests
 func (c *Catalog) DefaultVolumeClaimTemplates(name string) []corev1.PersistentVolumeClaim {
+	var storageClassName *string
+
+	if class, ok := os.LookupEnv("OPERATOR_TEST_STORAGE_CLASS"); ok {
+		storageClassName = &class
+	}
+
 	return []corev1.PersistentVolumeClaim{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name,
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
+				StorageClassName: storageClassName,
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					"ReadWriteOnce",
 				},
