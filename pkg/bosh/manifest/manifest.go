@@ -2,27 +2,21 @@ package manifest
 
 // JobInstance for data gathering
 type JobInstance struct {
-	Address     string      `json:"address"`
-	AZ          string      `json:"az"`
-	ID          string      `json:"id"`
-	Index       int         `json:"index"`
-	Instance    int         `json:"instance"`
-	Name        string      `json:"name"`
-	BPM         interface{} `json:"bpm"`
-	Fingerprint interface{} `json:"fingerprint"`
+	Address     string      `yaml:"address"`
+	AZ          string      `yaml:"az"`
+	ID          string      `yaml:"id"`
+	Index       int         `yaml:"index"`
+	Instance    int         `yaml:"instance"`
+	Name        string      `yaml:"name"`
+	BPM         interface{} `yaml:"bpm"`
+	Fingerprint interface{} `yaml:"fingerprint"`
 }
 
-// Link ...
-type Link struct {
-	Name       string      `yaml:"name"`
+// JobLink describes links inside a job properties
+// bosh_containerization.
+type JobLink struct {
 	Instances  interface{} `yaml:"instances"`
 	Properties interface{} `yaml:"properties"`
-}
-
-// JobLink ...
-type JobLink struct {
-	Instances  interface{} `json:"instances"`
-	Properties interface{} `json:"properties"`
 }
 
 // JobSpec describes the contents of "job.MF" files
