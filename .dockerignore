@@ -2,4 +2,3 @@ go.sum
 vendor/
 tmp/
 build/
-binaries/
