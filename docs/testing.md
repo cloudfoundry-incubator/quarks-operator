@@ -23,6 +23,13 @@ While unit testing we:
 * assert all handled error cases are triggered
 * can ignore outgoing queries, which only change internal state
 
+
+### Setup Ruby
+
+Ruby gem for template rendering
+
+    gem install bosh-template
+
 ## Integration
 
 Integration tests formulate expectations on the interactions of several components.
@@ -34,6 +41,42 @@ The `environment` package provides helpers to start the operator, get the kubeco
 In `testing` the `catalog` defines test objects.
 
 Integration tests use a special logger, which does not log to stdout and whose messages can be accessed as a an array by calling `env.AllLogMessages()`.
+
+### Setup Webhook Host
+
+Extended StatefulSet requires a k8s webhook to mutate the volumes of a pod.
+Kubernetes will call back to the operator for certain requests and use the
+modified pod manifest, which is returned.  The cf-operator binary will open a
+listening port bound to `OPERATOR_WEBHOOK_HOST` on port
+`OPERATOR_WEBHOOK_PORT`.
+
+The tests use a `mutatingwebhookconfiguration` to configure Kubernetes to
+connect to this address.  It needs to be reachable from the cluster.
+
+In case of minikube on Linux, the following one liner exports the public IP of
+the interface used for the default route:
+
+    export OPERATOR_WEBHOOK_HOST=$(ip -4 a s dev `ip r l 0/0 | cut -f5 -d' '` | grep -oP 'inet \K\S+(?=/)')
+
+### Upload Operator Image
+
+Template rendering for BOSH jobs is done at deployment time by the operator
+binary. Therefore the operator docker image needs to be made available to
+Kubernetes cluster.
+
+For running integration tests locally against minikube, we switch to minikubes
+docker daemon, build the binary, copy it to a docker image and finally start
+the tests:
+
+    eval `minikube docker-env`
+    bin/build; bin/build-nobuild-image
+    bin/test-integration
+
+The image source can be configured by these environment variables:
+
+    DOCKER_IMAGE_ORG
+    DOCKER_IMAGE_REPOSITORY
+    DOCKER_IMAGE_TAG
 
 ## End-to-End
 
