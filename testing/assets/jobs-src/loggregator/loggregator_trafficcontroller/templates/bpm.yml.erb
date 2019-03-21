@@ -1,0 +1,46 @@
+processes:
+  - name: loggregator_trafficcontroller
+    executable: /var/vcap/packages/loggregator_trafficcontroller/trafficcontroller
+    env:
+      AGENT_UDP_ADDRESS: "<%= p('metron_endpoint.host').to_s + ":" + p('metron_endpoint.dropsonde_port').to_s %>"
+      AGENT_GRPC_ADDRESS: "<%= p('metron_endpoint.host').to_s + ":" + p('metron_endpoint.grpc_port').to_s %>"
+
+      ROUTER_CA_FILE: "/var/vcap/jobs/loggregator_trafficcontroller/config/certs/loggregator_ca.crt"
+      ROUTER_CERT_FILE: "/var/vcap/jobs/loggregator_trafficcontroller/config/certs/trafficcontroller.crt"
+      ROUTER_KEY_FILE: "/var/vcap/jobs/loggregator_trafficcontroller/config/certs/trafficcontroller.key"
+
+      CC_CERT_FILE: "/var/vcap/jobs/loggregator_trafficcontroller/config/certs/cc_trafficcontroller.crt"
+      CC_KEY_FILE: "/var/vcap/jobs/loggregator_trafficcontroller/config/certs/cc_trafficcontroller.key"
+      CC_CA_FILE: "/var/vcap/jobs/loggregator_trafficcontroller/config/certs/mutual_tls_ca.crt"
+
+      TRAFFIC_CONTROLLER_IP: "<%= spec.ip %>"
+      TRAFFIC_CONTROLLER_OUTGOING_DROPSONDE_PORT: "<%= p("loggregator.outgoing_dropsonde_port") %>"
+      TRAFFIC_CONTROLLER_SKIP_CERT_VERIFY: "<%= p("ssl.skip_cert_verify") %>"
+      TRAFFIC_CONTROLLER_PPROF_PORT: "<%= p("traffic_controller.pprof_port") %>"
+      TRAFFIC_CONTROLLER_METRIC_EMITTER_INTERVAL: "<%= p('metric_emitter.interval') %>"
+      TRAFFIC_CONTROLLER_HEALTH_ADDR: "<%= p('traffic_controller.health_addr') %>"
+      TRAFFIC_CONTROLLER_DISABLE_ACCESS_CONTROL: "<%= p("traffic_controller.disable_access_control") %>"
+      
+      FOOBARWITHLINKVALUES: <%= link('doppler').p("fooprop") %>
+      FOOBARWITHLINKNESTEDVALUES: <%= link('doppler').p("doppler.grpc_port") %>
+      FOOBARWITHLINKINSTANCESINDEX: <%= link('doppler').instances[0].index %>
+      FOOBARWITHLINKINSTANCESAZ: <%= link('doppler').instances[0].az %>
+      FOOBARWITHLINKINSTANCESADDRESS: <%= link('doppler').instances[0].address %>
+
+
+      FOOBARWITHSPECADDRESS: <%= spec.address %>
+      FOOBARWITHSPECDEPLOYMENT: <%= spec.deployment %>
+      FOOBARWITHSPECIP: <%= spec.ip %>
+      <% if p("traffic_controller.security_event_logging.enabled") %>
+      TRAFFIC_CONTROLLER_SECURITY_EVENT_LOG: "/var/vcap/sys/log/loggregator_trafficcontroller/loggregator_trafficcontroller_security_events.log"
+      <% end %>
+
+      <% if_link("log-cache") do |logcache| %>
+      LOG_CACHE_ADDR: "<%= logcache.address %>:<%= logcache.p('port') %>"
+      LOG_CACHE_CA_FILE: "/var/vcap/jobs/loggregator_trafficcontroller/config/certs/logcache_ca.crt"
+      LOG_CACHE_CERT_FILE: "/var/vcap/jobs/loggregator_trafficcontroller/config/certs/logcache_trafficcontroller.crt"
+      LOG_CACHE_KEY_FILE: "/var/vcap/jobs/loggregator_trafficcontroller/config/certs/logcache_trafficcontroller.key"
+      LOG_CACHE_SERVER_NAME: "<%= p('logcache.tls.server_name') %>"
+      <% end %>
+    limits:
+      open_files: 65536
