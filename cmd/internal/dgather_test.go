@@ -167,7 +167,7 @@ var _ = Describe("Dgather", func() {
 			}
 
 			Expect(consumeFromDopplerExists).To(BeTrue())
-			for i, instance := range jobConsumesFromDoppler.Instances.([]manifest.JobInstance) {
+			for i, instance := range jobConsumesFromDoppler.Instances {
 				Expect(instance.Index).To(Equal(i))
 				Expect(instance.Address).To(Equal(fmt.Sprintf("doppler-%v-doppler.default.svc.cluster.local", i)))
 				Expect(instance.ID).To(Equal(fmt.Sprintf("doppler-%v-doppler", i)))
