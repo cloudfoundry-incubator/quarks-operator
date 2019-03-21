@@ -774,6 +774,44 @@ func (c *Catalog) CmdPodTemplate(cmd []string) corev1.PodTemplateSpec {
 	}
 }
 
+// ConfigPodTemplate returns the spec with a given command for busybox
+func (c *Catalog) ConfigPodTemplate() corev1.PodTemplateSpec {
+	one := int64(1)
+	return corev1.PodTemplateSpec{
+		Spec: corev1.PodSpec{
+			RestartPolicy:                 corev1.RestartPolicyNever,
+			TerminationGracePeriodSeconds: &one,
+			Volumes: []corev1.Volume{
+				{
+					Name: "secret1",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "secret1",
+						},
+					},
+				},
+				{
+					Name: "configmap1",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "config1",
+							},
+						},
+					},
+				},
+			},
+			Containers: []corev1.Container{
+				{
+					Name:    "busybox",
+					Image:   "busybox",
+					Command: []string{"sleep", "1"},
+				},
+			},
+		},
+	}
+}
+
 // MultiContainerPodTemplate returns the spec with two containers running a given command for busybox
 func (c *Catalog) MultiContainerPodTemplate(cmd []string) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{

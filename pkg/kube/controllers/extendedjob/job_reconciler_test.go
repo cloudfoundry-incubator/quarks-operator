@@ -48,7 +48,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 		core, _ := observer.New(zapcore.InfoLevel)
 		log = zap.New(core).Sugar()
-		ctrsConfig = &context.Config{ //Set the context to be TODO
+		ctrsConfig = &context.Config{
 			CtxTimeOut: 10 * time.Second,
 			CtxType:    context.NewContext(),
 		}

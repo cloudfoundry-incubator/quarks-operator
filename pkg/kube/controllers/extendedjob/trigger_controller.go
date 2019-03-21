@@ -20,7 +20,7 @@ func AddTrigger(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.M
 	query := NewQuery(mgr.GetClient(), log)
 	f := controllerutil.SetControllerReference
 	r := NewTriggerReconciler(log, ctrConfig, mgr, query, f)
-	c, err := controller.New("extendedjob-trigger-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("ext-job-trigger-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
@@ -35,8 +35,8 @@ func AddTrigger(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.M
 			// on existing pods for controller restarts, so we only
 			// want look at phase pending.
 			pod := e.Object.(*corev1.Pod)
-			test := pod.Status.Phase == "Pending"
-			return test
+			reconcile := pod.Status.Phase == "Pending"
+			return reconcile
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			// pod will be a 'not found' in reconciler, so skip

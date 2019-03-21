@@ -16,15 +16,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// AddOutput creates a new ExtendedJob controller and adds it to the Manager
-func AddOutput(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager) error {
+// AddJob creates a new ExtendedJob controller and adds it to the Manager
+func AddJob(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager) error {
 	client, err := corev1client.NewForConfig(mgr.GetConfig())
 	if err != nil {
 		return errors.Wrap(err, "Could not get kube client")
 	}
 	podLogGetter := NewPodLogGetter(client)
 	jobReconciler, err := NewJobReconciler(log, ctrConfig, mgr, podLogGetter)
-	jobController, err := controller.New("extendedjob-job-controller", mgr, controller.Options{Reconciler: jobReconciler})
+	jobController, err := controller.New("ext-job-job-controller", mgr, controller.Options{Reconciler: jobReconciler})
 	if err != nil {
 		return err
 	}
@@ -34,8 +34,22 @@ func AddOutput(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Ma
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
+			if !e.ObjectNew.(*batchv1.Job).GetDeletionTimestamp().IsZero() {
+				return false
+			}
+			if !isExtJobJob(e.MetaNew.GetLabels()) {
+				return false
+			}
 			return e.ObjectNew.(*batchv1.Job).Status.Succeeded == 1 || e.ObjectNew.(*batchv1.Job).Status.Failed == 1
 		},
 	}
 	return jobController.Watch(&source.Kind{Type: &batchv1.Job{}}, &handler.EnqueueRequestForObject{}, predicate)
+}
+
+// isExtJobJob matches our jobs
+func isExtJobJob(labels map[string]string) bool {
+	if _, exists := labels["extendedjob"]; exists {
+		return true
+	}
+	return false
 }

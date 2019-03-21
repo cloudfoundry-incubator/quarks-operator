@@ -23,11 +23,12 @@ type ExtendedJobSpec struct {
 type Strategy string
 
 const (
-	// TriggerManual is the default for errand jobs
+	// TriggerManual is the default for errand jobs, change to TriggerNow to run them
 	TriggerManual Strategy = "manual"
-	// TriggerNow instructs the controller to run the job now
+	// TriggerNow instructs the controller to run the job now,
+	// resets to TriggerManual after starting the job
 	TriggerNow Strategy = "now"
-	// TriggerOnce jobs run only once, when created
+	// TriggerOnce jobs run only once, when created, then switches to TriggerDone
 	TriggerOnce Strategy = "once"
 	// TriggerDone jobs are no longer triggered. It's the final state for TriggerOnce strategies
 	TriggerDone Strategy = "done"
@@ -113,3 +114,15 @@ type ExtendedJobList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ExtendedJob `json:"items"`
 }
+
+// ToBeDeleted checks whether this ExtendedJob has been marked for deletion
+func (e *ExtendedJob) ToBeDeleted() bool {
+	// IsZero means that the object hasn't been marked for deletion
+	return !e.GetDeletionTimestamp().IsZero()
+}
+
+// IsAutoErrand returns true if this ext job is an auto errand
+func (e *ExtendedJob) IsAutoErrand() bool {
+	return e.Spec.Trigger.Strategy == TriggerOnce || e.Spec.Trigger.Strategy == TriggerDone
+}
+

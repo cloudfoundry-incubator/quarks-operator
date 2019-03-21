@@ -14,8 +14,7 @@
 ## Description
 
 An `ExtendedJob` allows the developer to run jobs when something interesting happens. It also allows the developer to store the output of the job into a `ConfigMap` or `Secret`.
-
-Just like an `ExtendedStatefulSet`, an `ExtendedJob` can automatically be restarted if its environment/mounts have changed due to a `ConfigMap` or a `Secret` being updated.
+The job started by an `ExtendedJob` will be deleted automatically after it succeeds.
 
 There are three different kinds of `ExtendedJob`: triggered jobs, one-offs and
 errands.
@@ -66,7 +65,20 @@ after completion the value will be reset to `manual`.
 One-off jobs run directly when created, just like native k8s jobs, but still
 persist their output.
 
-They are created with `trigger.strategy: once`.
+They are created with `trigger.strategy: once` and switch to `done` when
+finished.
+
+#### Restarting on Config Change
+
+Just like an `ExtendedStatefulSet`, an auto-errand `ExtendedJob` can
+automatically be restarted if its environment/mounts have changed, due to a
+`ConfigMap` or a `Secret` being updated.
+
+This requires the attribute `updateOnConfigChange` to be set to true.
+
+Once `updateOnConfigChange` is enabled, modifying the `data` of any config,
+which is referenced by the `template` section of the job, will trigger the job
+again.
 
 ### Persisted Output
 
