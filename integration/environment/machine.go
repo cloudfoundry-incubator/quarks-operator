@@ -11,7 +11,6 @@ import (
 	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	storagev1 "k8s.io/api/storage/v1"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -507,19 +506,6 @@ func (m *Machine) CreateExtendedStatefulSet(namespace string, ess essv1.Extended
 			}
 		}
 
-		return nil
-	}, err
-}
-
-// CreateStorageClass creates a StorageClass and returns a function to delete it
-func (m *Machine) CreateStorageClass(sc storagev1.StorageClass) (*storagev1.StorageClass, TearDownFunc, error) {
-	client := m.Clientset.StorageV1().StorageClasses()
-	s, err := client.Create(&sc)
-	return s, func() error {
-		err := client.Delete(s.GetName(), nil)
-		if err != nil && !apierrors.IsNotFound(err) {
-			return err
-		}
 		return nil
 	}, err
 }

@@ -101,8 +101,6 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 	}
 
 	if len(extJobs.Items) < 1 {
-		// maybe we should requeue, so this is not lost for future jobs?
-		r.log.Debugf("no extendedjobs found")
 		return
 	}
 

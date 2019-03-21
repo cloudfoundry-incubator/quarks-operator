@@ -3,18 +3,17 @@ package integration_test
 import (
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/labels"
-
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 
 	"code.cloudfoundry.org/cf-operator/integration/environment"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
-	"code.cloudfoundry.org/cf-operator/testing"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 var _ = Describe("ExtendedStatefulSet", func() {
@@ -25,13 +24,13 @@ var _ = Describe("ExtendedStatefulSet", func() {
 	)
 
 	BeforeEach(func() {
-		essName := fmt.Sprintf("testess-%s", testing.RandString(5))
+		essName := fmt.Sprintf("testess-%s", helper.RandString(5))
 		extendedStatefulSet = env.DefaultExtendedStatefulSet(essName)
 
-		wrongEssName := fmt.Sprintf("wrong-testess-%s", testing.RandString(5))
+		wrongEssName := fmt.Sprintf("wrong-testess-%s", helper.RandString(5))
 		wrongExtendedStatefulSet = env.WrongExtendedStatefulSet(wrongEssName)
 
-		ownedRefEssName := fmt.Sprintf("owned-ref-testess-%s", testing.RandString(5))
+		ownedRefEssName := fmt.Sprintf("owned-ref-testess-%s", helper.RandString(5))
 		ownedReferencesExtendedStatefulSet = env.OwnedReferencesExtendedStatefulSet(ownedRefEssName)
 
 	})
@@ -307,11 +306,11 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 	Context("when volumeclaimtemplates are specified", func() {
 		BeforeEach(func() {
-			essName := fmt.Sprintf("testess-%s", testing.RandString(5))
-			extendedStatefulSet = env.ExtendedStatefulSetWithPVC(essName, "pvc", storageClassName)
+			essName := fmt.Sprintf("testess-%s", helper.RandString(5))
+			extendedStatefulSet = env.ExtendedStatefulSetWithPVC(essName, "pvc")
 
-			wrongEssName := fmt.Sprintf("wrong-testess-%s", testing.RandString(5))
-			wrongExtendedStatefulSet = env.WrongExtendedStatefulSetWithPVC(wrongEssName, "pvc", storageClassName)
+			wrongEssName := fmt.Sprintf("wrong-testess-%s", helper.RandString(5))
+			wrongExtendedStatefulSet = env.WrongExtendedStatefulSetWithPVC(wrongEssName, "pvc")
 		})
 
 		It("VolumeMount name's should have version", func() {

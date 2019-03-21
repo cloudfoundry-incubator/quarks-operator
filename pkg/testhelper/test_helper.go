@@ -1,4 +1,5 @@
-// Package testhelper has convenience functions for returning pointers to values
+// Package testhelper has convenience functions for tests, like returning
+// pointers to values.
 package testhelper
 
 // Int32 returns a pointer to the int32 value provided
