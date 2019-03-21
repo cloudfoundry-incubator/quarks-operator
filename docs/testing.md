@@ -72,6 +72,12 @@ the tests:
     bin/build; bin/build-nobuild-image
     bin/test-integration
 
+The image source can be configured by these environment variables:
+
+    DOCKER_IMAGE_ORG
+    DOCKER_IMAGE_REPOSITORY
+    DOCKER_IMAGE_TAG
+
 ## End-to-End
 
 The e2e tests are meant to test acceptance scenarios. They are written from an end user perspective. They also require a running Kubernetes, but build our operator CLI themselves.
