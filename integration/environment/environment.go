@@ -54,7 +54,7 @@ func NewEnvironment() *Environment {
 			Fs:         afero.NewOsFs(),
 		},
 		Machine: Machine{
-			pollTimeout:  60 * time.Second,
+			pollTimeout:  300 * time.Second,
 			pollInterval: 500 * time.Millisecond,
 		},
 	}
