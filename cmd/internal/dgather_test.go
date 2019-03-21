@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	. "code.cloudfoundry.org/cf-operator/cmd/internal"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/testing"
 	. "github.com/onsi/gomega/gstruct"
@@ -167,7 +166,7 @@ var _ = Describe("Dgather", func() {
 			}
 
 			Expect(consumeFromDopplerExists).To(BeTrue())
-			for i, instance := range jobConsumesFromDoppler.Instances.([]manifest.JobInstance) {
+			for i, instance := range jobConsumesFromDoppler.Instances {
 				Expect(instance.Index).To(Equal(i))
 				Expect(instance.Address).To(Equal(fmt.Sprintf("doppler-%v-doppler.default.svc.cluster.local", i)))
 				Expect(instance.ID).To(Equal(fmt.Sprintf("doppler-%v-doppler", i)))
@@ -215,7 +214,7 @@ var _ = Describe("Dgather", func() {
 			//   ...
 
 			// For the first instance
-			bpmProcesses := propertiesInstance.BPM.(*bpm.Config).Processes[0]
+			bpmProcesses := propertiesInstance.BPM.Processes[0]
 			Expect(bpmProcesses.Env["FOOBARWITHLINKVALUES"]).To(Equal("10001"))
 			Expect(bpmProcesses.Env["FOOBARWITHLINKNESTEDVALUES"]).To(Equal("7765"))
 
@@ -226,12 +225,12 @@ var _ = Describe("Dgather", func() {
 
 			// For the second instance
 			propertiesInstance = jobBoshContainerizationPropertiesInstances.([]manifest.JobInstance)[1]
-			bpmProcesses = propertiesInstance.BPM.(*bpm.Config).Processes[0]
+			bpmProcesses = propertiesInstance.BPM.Processes[0]
 			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-1-loggregator_trafficcontroller.default.svc.cluster.local"))
 
 			// For the third instance
 			propertiesInstance = jobBoshContainerizationPropertiesInstances.([]manifest.JobInstance)[2]
-			bpmProcesses = propertiesInstance.BPM.(*bpm.Config).Processes[0]
+			bpmProcesses = propertiesInstance.BPM.Processes[0]
 			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-2-loggregator_trafficcontroller.default.svc.cluster.local"))
 
 			// For the fourth instance
