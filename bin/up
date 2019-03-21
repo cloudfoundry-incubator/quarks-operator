@@ -1,23 +1,29 @@
 #!/bin/sh
 
-if type -a minikube >/dev/null 2>/dev/null; then
-    dockerenv=`minikube docker-env`
-    if [ $? -ne 0 ]; then
-        echo "Error: Could not retrieve docker settings from minikube."
-        exit 1
-    fi
-    eval ${dockerenv}
-fi
-
-GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
-. "${GIT_ROOT}/bin/include/versioning"
-. "${GIT_ROOT}/.envrc"
-
-export DOCKER_IMAGE_TAG=${VERSION_TAG}
-
 set -e
 
-bin/build-image
+if [ -z "$SKIP_IMAGE" ]; then
+  set +e
+
+  if type -a minikube >/dev/null 2>/dev/null; then
+    dockerenv=`minikube docker-env`
+    if [ $? -ne 0 ]; then
+      echo "Error: Could not retrieve docker settings from minikube."
+      exit 1
+    fi
+    eval ${dockerenv}
+  fi
+
+  . bin/include/versioning
+  . .envrc
+
+  export DOCKER_IMAGE_TAG=${VERSION_TAG}
+
+  set -e
+
+  bin/build-image
+fi
+
 bin/build
 bin/apply-crds
 echo "watching namespace ${CFO_NAMESPACE}"
