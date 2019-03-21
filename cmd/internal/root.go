@@ -1,14 +1,12 @@
 package cmd
 
 import (
-	"fmt"
 	golog "log"
 	"os"
-	"os/user"
-	"path/filepath"
 	"time"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	kubeConfig "code.cloudfoundry.org/cf-operator/pkg/kube/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 	"code.cloudfoundry.org/cf-operator/version"
@@ -18,8 +16,6 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" // from https://github.com/kubernetes/client-go/issues/345
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
@@ -34,10 +30,14 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		defer log.Sync()
 
-		kubeConfig, err := getKubeConfig()
+		restConfig, err := kubeConfig.NewGetter(log).Get(viper.GetString("kubeconfig"))
 		if err != nil {
 			log.Fatal(err)
 		}
+		if err := kubeConfig.NewChecker(log).Check(restConfig); err != nil {
+			log.Fatal(err)
+		}
+
 		namespace := viper.GetString("namespace")
 		manifest.DockerOrganization = viper.GetString("docker-image-org")
 		manifest.DockerRepository = viper.GetString("docker-image-repository")
@@ -61,7 +61,7 @@ var rootCmd = &cobra.Command{
 			WebhookServerPort: webhookPort,
 			Fs:                afero.NewOsFs(),
 		}
-		mgr, err := operator.NewManager(log, ctrsConfig, kubeConfig, manager.Options{Namespace: namespace})
+		mgr, err := operator.NewManager(log, ctrsConfig, restConfig, manager.Options{Namespace: namespace})
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -112,27 +112,4 @@ func initConfig() {
 		golog.Fatalf("cannot initialize ZAP logger: %v", err)
 	}
 	log = logger.Sugar()
-}
-
-func getKubeConfig() (*rest.Config, error) {
-	kubeconfig := viper.GetString("kubeconfig")
-
-	if len(kubeconfig) > 0 {
-		return clientcmd.BuildConfigFromFlags("", kubeconfig)
-	}
-
-	// If no explicit location, try the in-cluster config
-	if c, err := rest.InClusterConfig(); err == nil {
-		return c, nil
-	}
-
-	// If no in-cluster config, try the default location in the user's home directory
-	if usr, err := user.Current(); err == nil {
-		if c, err := clientcmd.BuildConfigFromFlags(
-			"", filepath.Join(usr.HomeDir, ".kube", "config")); err == nil {
-			return c, nil
-		}
-	}
-
-	return nil, fmt.Errorf("could not locate a kubeconfig")
 }
