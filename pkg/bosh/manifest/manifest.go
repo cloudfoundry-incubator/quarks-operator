@@ -1,12 +1,60 @@
 package manifest
 
+// JobInstance for data gathering
+type JobInstance struct {
+	Address     string      `json:"address"`
+	AZ          string      `json:"az"`
+	ID          string      `json:"id"`
+	Index       int         `json:"index"`
+	Instance    int         `json:"instance"`
+	Name        string      `json:"name"`
+	BPM         interface{} `json:"bpm"`
+	Fingerprint interface{} `json:"fingerprint"`
+}
+
+// Link ...
+type Link struct {
+	Name       string      `yaml:"name"`
+	Instances  interface{} `yaml:"instances"`
+	Properties interface{} `yaml:"properties"`
+}
+
+// JobLink ...
+type JobLink struct {
+	Instances  interface{} `json:"instances"`
+	Properties interface{} `json:"properties"`
+}
+
+// JobSpec describes the contents of "job.MF" files
+type JobSpec struct {
+	Name        string
+	Description string
+	Packages    []string
+	Templates   map[string]string
+	Properties  map[string]struct {
+		Description string
+		Default     interface{}
+		Example     interface{}
+	}
+	Consumes []struct {
+		Name     string
+		Type     string
+		Optional bool
+	}
+	Provides []struct {
+		Name       string
+		Type       string
+		Properties []string
+	}
+}
+
 // Job from BOSH deployment manifest
 type Job struct {
-	Name       string                   `yaml:"name"`
-	Release    string                   `yaml:"release"`
-	Consumes   []map[string]interface{} `yaml:"consumes,omitempty"`
-	Provides   []map[string]interface{} `yaml:"provides,omitempty"`
-	Properties []map[string]interface{} `yaml:"properties,omitempty"`
+	Name       string                 `yaml:"name"`
+	Release    string                 `yaml:"release"`
+	Consumes   map[string]interface{} `yaml:"consumes,omitempty"`
+	Provides   map[string]interface{} `yaml:"provides,omitempty"`
+	Properties map[string]interface{} `yaml:"properties,omitempty"`
 }
 
 // VMResource from BOSH deployment manifest
