@@ -1,6 +1,7 @@
 package manifest
 
 import (
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"gopkg.in/yaml.v2"
 )
 
@@ -12,7 +13,7 @@ type JobInstance struct {
 	Index       int         `yaml:"index"`
 	Instance    int         `yaml:"instance"`
 	Name        string      `yaml:"name"`
-	BPM         interface{} `yaml:"bpm"`
+	BPM         *bpm.Config `yaml:"bpm"`
 	Fingerprint interface{} `yaml:"fingerprint"`
 }
 
