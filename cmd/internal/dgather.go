@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -386,12 +385,12 @@ func GetConsumersAndRenderERB(mStruct *manifest.Manifest, baseDir string, jobRel
 	}
 
 	// marshall the whole manifest Structure
-	manifestResolved, err := json.Marshal(mStruct)
+	manifestResolved, err := yaml.Marshal(mStruct)
 	if err != nil {
 		return err
 	}
 
-	_ = ioutil.WriteFile("/tmp/deployment.json", manifestResolved, 0644)
+	_ = ioutil.WriteFile("/tmp/deployment.yml", manifestResolved, 0644)
 
 	return nil
 }
