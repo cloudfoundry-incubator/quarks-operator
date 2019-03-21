@@ -1,3 +1,6 @@
+// Package testing contains methods to create test data. It's a seaparate
+// package to avoid import cycles. Helper functions can be found in the package
+// `testhelper`.
 package testing
 
 import (
@@ -434,13 +437,12 @@ func (c *Catalog) OwnedReferencesExtendedStatefulSet(name string) essv1.Extended
 
 // DefaultStatefulSet for use in tests
 func (c *Catalog) DefaultStatefulSet(name string) v1beta2.StatefulSet {
-	replicaCount := int32(1)
 	return v1beta2.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 		Spec: v1beta2.StatefulSetSpec{
-			Replicas: &replicaCount,
+			Replicas: helper.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"testpod": "yes",
@@ -553,13 +555,12 @@ func (c *Catalog) DefaultVolumeMount(name string) corev1.VolumeMount {
 
 // WrongStatefulSet for use in tests
 func (c *Catalog) WrongStatefulSet(name string) v1beta2.StatefulSet {
-	replicaCount := int32(1)
 	return v1beta2.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 		Spec: v1beta2.StatefulSetSpec{
-			Replicas: &replicaCount,
+			Replicas: helper.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"wrongpod": "yes",
@@ -573,13 +574,12 @@ func (c *Catalog) WrongStatefulSet(name string) v1beta2.StatefulSet {
 
 // OwnedReferencesStatefulSet for use in tests
 func (c *Catalog) OwnedReferencesStatefulSet(name string) v1beta2.StatefulSet {
-	replicaCount := int32(1)
 	return v1beta2.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 		Spec: v1beta2.StatefulSetSpec{
-			Replicas: &replicaCount,
+			Replicas: helper.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"referencedpod": "yes",
@@ -651,7 +651,6 @@ func (c *Catalog) DefaultPodTemplate(name string) corev1.PodTemplateSpec {
 
 // WrongPodTemplate defines a pod template with a simple web server useful for testing
 func (c *Catalog) WrongPodTemplate(name string) corev1.PodTemplateSpec {
-	one := int64(1)
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -660,7 +659,7 @@ func (c *Catalog) WrongPodTemplate(name string) corev1.PodTemplateSpec {
 			},
 		},
 		Spec: corev1.PodSpec{
-			TerminationGracePeriodSeconds: &one,
+			TerminationGracePeriodSeconds: helper.Int64(1),
 			Containers: []corev1.Container{
 				{
 					Name:  "wrong-container",
@@ -673,7 +672,6 @@ func (c *Catalog) WrongPodTemplate(name string) corev1.PodTemplateSpec {
 
 // OwnedReferencesPodTemplate defines a pod template with four references from VolumeSources, EnvFrom and Env
 func (c *Catalog) OwnedReferencesPodTemplate(name string) corev1.PodTemplateSpec {
-	one := int64(1)
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -682,7 +680,7 @@ func (c *Catalog) OwnedReferencesPodTemplate(name string) corev1.PodTemplateSpec
 			},
 		},
 		Spec: corev1.PodSpec{
-			TerminationGracePeriodSeconds: &one,
+			TerminationGracePeriodSeconds: helper.Int64(1),
 			Volumes: []corev1.Volume{
 				{
 					Name: "secret1",
@@ -761,11 +759,10 @@ func (c *Catalog) OwnedReferencesPodTemplate(name string) corev1.PodTemplateSpec
 
 // CmdPodTemplate returns the spec with a given command for busybox
 func (c *Catalog) CmdPodTemplate(cmd []string) corev1.PodTemplateSpec {
-	one := int64(1)
 	return corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
 			RestartPolicy:                 corev1.RestartPolicyNever,
-			TerminationGracePeriodSeconds: &one,
+			TerminationGracePeriodSeconds: helper.Int64(1),
 			Containers: []corev1.Container{
 				{
 					Name:    "busybox",
@@ -779,11 +776,10 @@ func (c *Catalog) CmdPodTemplate(cmd []string) corev1.PodTemplateSpec {
 
 // MultiContainerPodTemplate returns the spec with two containers running a given command for busybox
 func (c *Catalog) MultiContainerPodTemplate(cmd []string) corev1.PodTemplateSpec {
-	one := int64(1)
 	return corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
 			RestartPolicy:                 corev1.RestartPolicyNever,
-			TerminationGracePeriodSeconds: &one,
+			TerminationGracePeriodSeconds: helper.Int64(1),
 			Containers: []corev1.Container{
 				{
 					Name:    "busybox",
@@ -802,11 +798,10 @@ func (c *Catalog) MultiContainerPodTemplate(cmd []string) corev1.PodTemplateSpec
 
 // FailingMultiContainerPodTemplate returns a spec with a given command for busybox and a second container which fails
 func (c *Catalog) FailingMultiContainerPodTemplate(cmd []string) corev1.PodTemplateSpec {
-	one := int64(1)
 	return corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
 			RestartPolicy:                 corev1.RestartPolicyNever,
-			TerminationGracePeriodSeconds: &one,
+			TerminationGracePeriodSeconds: helper.Int64(1),
 			Containers: []corev1.Container{
 				{
 					Name:    "busybox",

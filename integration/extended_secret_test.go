@@ -10,7 +10,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	inmemorygenerator "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
 	es "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/testing"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,7 +23,7 @@ var _ = Describe("ExtendedSecret", func() {
 
 	Context("when correctly setup", func() {
 		BeforeEach(func() {
-			esName := fmt.Sprintf("testes-%s", testing.RandString(5))
+			esName := fmt.Sprintf("testes-%s", helper.RandString(5))
 			extendedSecret = env.DefaultExtendedSecret(esName)
 		})
 

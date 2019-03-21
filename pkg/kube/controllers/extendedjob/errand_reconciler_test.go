@@ -5,25 +5,27 @@ import (
 	"fmt"
 	"time"
 
-	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
-	cfctx "code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
+	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	cfctx "code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
-	batchv1 "k8s.io/api/batch/v1"
-	"k8s.io/client-go/kubernetes/scheme"
 
+	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -79,7 +81,7 @@ var _ = Describe("ErrandReconciler", func() {
 
 		BeforeEach(func() {
 			controllers.AddToScheme(scheme.Scheme)
-			logs, log = testing.NewTestLogger()
+			logs, log = helper.NewTestLogger()
 			mgr = &fakes.FakeManager{}
 			ctrsConfig = &cfctx.Config{ //Set the context to be TODO
 				CtxTimeOut: 10 * time.Second,

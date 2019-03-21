@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"code.cloudfoundry.org/cf-operator/integration/environment"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"code.cloudfoundry.org/cf-operator/integration/environment"
 )
 
 func TestIntegration(t *testing.T) {

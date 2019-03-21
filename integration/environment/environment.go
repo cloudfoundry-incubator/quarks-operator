@@ -9,19 +9,18 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/testhelper"
-
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
-	"github.com/spf13/afero"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 
+	"github.com/spf13/afero"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 
 	"k8s.io/client-go/kubernetes"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -55,7 +54,7 @@ func NewEnvironment() *Environment {
 			Fs:         afero.NewOsFs(),
 		},
 		Machine: Machine{
-			pollTimeout:  30 * time.Second,
+			pollTimeout:  300 * time.Second,
 			pollInterval: 500 * time.Millisecond,
 		},
 	}
@@ -75,7 +74,7 @@ func (e *Environment) Setup() (StopFunc, error) {
 
 	e.stop = e.startOperator()
 
-	err = testhelper.WaitForPort(
+	err = helper.WaitForPort(
 		"127.0.0.1",
 		strconv.Itoa(int(e.CtrsConfig.WebhookServerPort)),
 		1*time.Minute)
@@ -131,7 +130,7 @@ func (e *Environment) setupCFOperator() (err error) {
 	e.Namespace = ns
 	e.CtrsConfig.Namespace = ns
 
-	e.ObservedLogs, e.Log = testing.NewTestLogger()
+	e.ObservedLogs, e.Log = helper.NewTestLogger()
 
 	err = e.setupKube()
 	if err != nil {
