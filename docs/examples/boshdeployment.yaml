@@ -1,12 +1,3 @@
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cf-deployment.fake-ca
-type: Opaque
-stringData:
-  ca: fake-ca
-  key: the_private_key
-  certificate: fake-certificate
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -26,8 +17,6 @@ data:
             route_services_secret: "((router_route_services_secret))"
           app_ssh:
             host_key_fingerprint: "((diego_ssh_proxy_host_key.public_key_fingerprint))"
-          uaa:
-            ca_cert: "((uaa_ca.certificate))"
     - name: uaa
       instances: 2
       jobs:
@@ -57,12 +46,6 @@ data:
       type: password
     - name: uaa_jwt_signing_key
       type: rsa
-    - name: uaa_ca
-      type: certificate
-      options:
-        is_ca: true
-        common_name: uaaCA
-        ca: fake-ca
     - name: diego_ssh_proxy_host_key
       type: ssh
 ---

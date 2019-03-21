@@ -239,6 +239,9 @@ func (m *Manifest) convertVariables(namespace string) []esv1.ExtendedSecret {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
 				Namespace: namespace,
+				Labels: map[string]string{
+					"variableName": v.Name,
+				},
 			},
 			Spec: esv1.ExtendedSecretSpec{
 				Type:       esv1.Type(v.Type),
