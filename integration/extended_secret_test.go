@@ -16,7 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = Describe("ExtendedSecret", func() {
+var _ = FDescribe("ExtendedSecret", func() {
 	var (
 		extendedSecret es.ExtendedSecret
 	)
@@ -61,8 +61,8 @@ var _ = Describe("ExtendedSecret", func() {
 			// check for generated secret
 			secret, err := env.GetSecret(env.Namespace, "generated-rsa-secret")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(secret.Data["RSAPrivateKey"]).To(ContainSubstring("RSA PRIVATE KEY"))
-			Expect(secret.Data["RSAPublicKey"]).To(ContainSubstring("PUBLIC KEY"))
+			Expect(secret.Data["private_key"]).To(ContainSubstring("RSA PRIVATE KEY"))
+			Expect(secret.Data["public_key"]).To(ContainSubstring("PUBLIC KEY"))
 
 			// delete ExtendedSecret
 			err = env.DeleteExtendedSecret(env.Namespace, extendedSecret.Name)
@@ -84,9 +84,9 @@ var _ = Describe("ExtendedSecret", func() {
 			// check for generated secret
 			secret, err := env.GetSecret(env.Namespace, "generated-ssh-secret")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(secret.Data["SSHPrivateKey"]).To(ContainSubstring("RSA PRIVATE KEY"))
-			Expect(secret.Data["SSHPublicKey"]).To(ContainSubstring("ssh-rsa "))
-			Expect(secret.Data["SSHFingerprint"]).To(MatchRegexp("([0-9a-f]{2}:){15}[0-9a-f]{2}"))
+			Expect(secret.Data["private_key"]).To(ContainSubstring("RSA PRIVATE KEY"))
+			Expect(secret.Data["public_key"]).To(ContainSubstring("ssh-rsa "))
+			Expect(secret.Data["public_key_fingerprint"]).To(MatchRegexp("([0-9a-f]{2}:){15}[0-9a-f]{2}"))
 
 			// delete ExtendedSecret
 			err = env.DeleteExtendedSecret(env.Namespace, extendedSecret.Name)
