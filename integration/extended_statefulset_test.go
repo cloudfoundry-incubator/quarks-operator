@@ -173,8 +173,8 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// check for pod
-			err = env.WaitForPods(env.Namespace, "wrongpod=yes")
-			Expect(err).To(HaveOccurred())
+			err = env.WaitForPodFailures(env.Namespace, "wrongpod=yes")
+			Expect(err).NotTo(HaveOccurred())
 
 			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
 			Expect(err).NotTo(HaveOccurred())
@@ -188,8 +188,8 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// check for pod
-			err = env.WaitForPods(env.Namespace, "wrongpod=yes")
-			Expect(err).To(HaveOccurred())
+			err = env.WaitForPodFailures(env.Namespace, "wrongpod=yes")
+			Expect(err).NotTo(HaveOccurred())
 
 			// check that old statefulset is deleted
 			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())

@@ -2,6 +2,8 @@
 // pointers to values.
 package testhelper
 
+import "encoding/json"
+
 // Int32 returns a pointer to the int32 value provided
 func Int32(v int32) *int32 {
 	return &v
@@ -20,4 +22,14 @@ func String(v string) *string {
 // Bool returns a pointer to the bool value provided
 func Bool(v bool) *bool {
 	return &v
+}
+
+// IndentedJSON returns data structure pretty printed as JSON
+func IndentedJSON(data interface{}) string {
+	txt, err := json.MarshalIndent(data, "", "    ")
+	if err != nil {
+		return "failed to marshal JSON"
+	}
+
+	return string(txt)
 }
