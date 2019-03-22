@@ -1,28 +1,27 @@
 package manifest
 
+import (
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"gopkg.in/yaml.v2"
+)
+
 // JobInstance for data gathering
 type JobInstance struct {
-	Address     string      `json:"address"`
-	AZ          string      `json:"az"`
-	ID          string      `json:"id"`
-	Index       int         `json:"index"`
-	Instance    int         `json:"instance"`
-	Name        string      `json:"name"`
-	BPM         interface{} `json:"bpm"`
-	Fingerprint interface{} `json:"fingerprint"`
+	Address     string      `yaml:"address"`
+	AZ          string      `yaml:"az"`
+	ID          string      `yaml:"id"`
+	Index       int         `yaml:"index"`
+	Instance    int         `yaml:"instance"`
+	Name        string      `yaml:"name"`
+	BPM         *bpm.Config `yaml:"bpm"`
+	Fingerprint interface{} `yaml:"fingerprint"`
 }
 
-// Link ...
-type Link struct {
-	Name       string      `yaml:"name"`
-	Instances  interface{} `yaml:"instances"`
-	Properties interface{} `yaml:"properties"`
-}
-
-// JobLink ...
+// JobLink describes links inside a job properties
+// bosh_containerization.
 type JobLink struct {
-	Instances  interface{} `json:"instances"`
-	Properties interface{} `json:"properties"`
+	Instances  []JobInstance `yaml:"instances"`
+	Properties interface{}   `yaml:"properties"`
 }
 
 // JobSpec describes the contents of "job.MF" files
@@ -55,6 +54,27 @@ type Job struct {
 	Consumes   map[string]interface{} `yaml:"consumes,omitempty"`
 	Provides   map[string]interface{} `yaml:"provides,omitempty"`
 	Properties map[string]interface{} `yaml:"properties,omitempty"`
+}
+
+// GetJobBoshContainerizationConsumers gives you back a proper JobLink populated struct
+// You need to provide the consumer name from which the job consumes.
+func (j *Job) GetJobBoshContainerizationConsumers(consumesFrom string) (JobLink, error) {
+	jobLinks := JobLink{}
+
+	jobContainerizationConsumes := j.Properties["bosh_containerization"].(map[interface{}]interface{})["consumes"]
+
+	consumesBoshLinksFrom := jobContainerizationConsumes.(map[interface{}]interface{})[consumesFrom]
+
+	jobBoshLinksData, err := yaml.Marshal(consumesBoshLinksFrom)
+	if err != nil {
+		return jobLinks, err
+	}
+
+	err = yaml.Unmarshal(jobBoshLinksData, &jobLinks)
+	if err != nil {
+		return jobLinks, err
+	}
+	return jobLinks, err
 }
 
 // VMResource from BOSH deployment manifest
