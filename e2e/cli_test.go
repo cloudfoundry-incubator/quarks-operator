@@ -135,7 +135,7 @@ var _ = Describe("CLI", func() {
   key1: baz
   key2: foo
   key3: bar
-name: test`))
+password: fake-password`))
 		})
 	})
 })

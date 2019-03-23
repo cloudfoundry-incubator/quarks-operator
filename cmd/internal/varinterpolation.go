@@ -84,10 +84,10 @@ func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string)
 	var vars []boshtpl.Variables
 
 	manifestFile := viper.GetString("manifest")
-	variablesDir := viper.GetString("variables_dir")
+	variablesDir := filepath.Clean(viper.GetString("variables_dir"))
 
 	if _, err := os.Stat(manifestFile); os.IsNotExist(err) {
-		return errors.Errorf("no such file: %s", manifestFile)
+		return errors.Errorf("no such variable: %s", manifestFile)
 	}
 
 	info, err := os.Stat(variablesDir)
@@ -98,31 +98,61 @@ func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string)
 	// Read files
 	mBytes, err := ioutil.ReadFile(manifestFile)
 	if err != nil {
-		return errors.Wrapf(err, "could not read manifest file")
+		return errors.Wrapf(err, "could not read manifest variable")
 	}
 
-	err = filepath.Walk(variablesDir, func(path string, info os.FileInfo, err error) error {
-		if !info.IsDir() {
-			extension := filepath.Ext(strings.TrimSpace(path))
-			if extension == ".yml" || extension == ".yaml" {
-				varBytes, err := ioutil.ReadFile(path)
-				if err != nil {
-					log.Fatal(errors.Wrapf(err, "could not read variables file"))
-				}
-				staticVars := boshtpl.StaticVariables{}
-
-				err = yaml.Unmarshal(varBytes, &staticVars)
-				if err != nil {
-					return errors.Wrapf(err, "could not deserialize variables: %s", string(varBytes))
-				}
-
-				vars = append(vars, staticVars)
-			}
-		}
-		return nil
-	})
+	variables, err := ioutil.ReadDir(variablesDir)
 	if err != nil {
 		return errors.Wrapf(err, "could not read variables directory")
+	}
+
+	for _, variable := range variables {
+		// Each directory is a variable name
+		if variable.IsDir() {
+			staticVars := boshtpl.StaticVariables{}
+			// Each filename is a field name and its context is a variable value
+			err = filepath.Walk(filepath.Clean(variablesDir+"/"+variable.Name()), func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+
+				if !info.IsDir() {
+					_, varFileName := filepath.Split(path)
+					// Skip the symlink to a directory
+					if strings.HasPrefix(varFileName, "..") {
+						return filepath.SkipDir
+					}
+					varBytes, err := ioutil.ReadFile(path)
+					if err != nil {
+						log.Fatal(errors.Wrapf(err, "could not read variables variable"))
+					}
+
+					// Find variable type is password, set password value directly
+					if varFileName == "password" {
+						staticVars[variable.Name()] = string(varBytes)
+					} else {
+						staticVars[variable.Name()] = mergeStaticVar(staticVars[variable.Name()], varFileName, string(varBytes))
+					}
+				}
+				return nil
+			})
+			if err != nil {
+				return errors.Wrapf(err, "could not read directory  %s", variable.Name())
+			}
+
+			// Re-unmarshal staticVars
+			bytes, err := yaml.Marshal(staticVars)
+			if err != nil {
+				return errors.Wrapf(err, "could not marshal variables: %s", string(bytes))
+			}
+
+			err = yaml.Unmarshal(bytes, &staticVars)
+			if err != nil {
+				return errors.Wrapf(err, "could not unmarshal variables: %s", string(bytes))
+			}
+
+			vars = append(vars, staticVars)
+		}
 	}
 
 	multiVars := boshtpl.NewMultiVars(vars)
@@ -156,4 +186,18 @@ func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string)
 	}
 
 	return nil
+}
+
+func mergeStaticVar(staticVar interface{}, field string, value string) interface{} {
+	if staticVar == nil {
+		staticVar = map[string]interface{}{
+			field: value,
+		}
+	} else {
+		staticVarMap := staticVar.(map[string]interface{})
+		staticVarMap[field] = value
+		staticVar = staticVarMap
+	}
+
+	return staticVar
 }
