@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -21,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
@@ -29,23 +29,17 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 )
 
+// State of instance
 const (
+	CreatedState                     = "Created"
+	OpsAppliedState                  = "OpsApplied"
+	VariableGeneratedState           = "VariableGenerated"
+	VariableInterpolatedState        = "VariableInterpolated"
+	DataGatheredState                = "DataGathered"
+	DeployingState                   = "Deploying"
+	DeployedState                    = "Deployed"
 	varInterpolationContainerName    = "variables-interpolation"
 	varInterpolationOutputNamePrefix = "manifest-"
-	createdState                     = "Created"
-	opsAppliedState                  = "OpsApplied"
-	variableGeneratedState           = "VariableGenerated"
-	variableInterpolatedState        = "VariableInterpolated"
-	dataGatheredState                = "DataGathered"
-	deployingState                   = "Deploying"
-	deployedState                    = "Deployed"
-)
-
-var (
-	labelKind              = fmt.Sprintf("%s/kind", apis.GroupName)
-	labelDeployment        = fmt.Sprintf("%s/deployment", apis.GroupName)
-	labelManifestSHA1      = fmt.Sprintf("%s/manifestsha1", apis.GroupName)
-	annotationManifestSHA1 = fmt.Sprintf("%s/manifestsha1", apis.GroupName)
 )
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
@@ -81,24 +75,6 @@ type ReconcileBOSHDeployment struct {
 	setReference setReferenceFunc
 	log          *zap.SugaredLogger
 	ctrConfig    *context.Config
-}
-
-type Variables map[string]interface{}
-
-type certificateConfig struct {
-	Certificate string `json:"certificate" yaml:"certificate"`
-	PrivateKey  string `json:"private_key" yaml:"private_key"`
-}
-
-type sshKeyConfig struct {
-	PrivateKey           string `json:"private_key" yaml:"private_key"`
-	PublicKey            string `json:"public_key" yaml:"public_key"`
-	PublicKeyFingerprint string `json:"public_key_fingerprint" yaml:"public_key_fingerprint"`
-}
-
-type rsaKeyConfig struct {
-	PrivateKey string `json:"private_key" yaml:"private_key"`
-	PublicKey  string `json:"public_key" yaml:"public_key"`
 }
 
 // Reconcile reads that state of the cluster for a BOSHDeployment object and makes changes based on the state read
@@ -137,7 +113,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	// Generate in-memory variables
 	manifest, err := r.applyOps(ctx, instance)
 	if err != nil {
-		instance.Status.State = createdState
+		instance.Status.State = CreatedState
 		updateErr := r.updateInstanceState(ctx, instance)
 		if updateErr != nil {
 			return reconcile.Result{Requeue: true}, errors.Wrap(err, "could not update instance state")
@@ -150,9 +126,9 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, errors.Wrap(err, "could not calculate manifest SHA1")
 	}
 
-	oldManifestSHA1, _ := instance.Annotations[annotationManifestSHA1]
+	oldManifestSHA1, _ := instance.Annotations[bdc.AnnotationManifestSHA1]
 
-	if oldManifestSHA1 == currentManifestSHA1 && instance.Status.State == deployedState {
+	if oldManifestSHA1 == currentManifestSHA1 && instance.Status.State == DeployedState {
 		r.log.Infof("Skip reconcile: deployed BoshDeployment '%s/%s' manifest has not changed", instance.GetName(), instance.GetNamespace())
 		return reconcile.Result{}, nil
 	}
@@ -173,103 +149,71 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	varIntJobLabels := map[string]string{
-		labelKind:       "variable-interpolation",
-		labelDeployment: manifest.Name,
+		bdc.LabelKind:       "variable-interpolation",
+		bdc.LabelDeployment: manifest.Name,
 	}
 	desiredManifestSecretLabels := map[string]string{
-		labelKind:         "desired-manifest",
-		labelDeployment:   manifest.Name,
-		labelManifestSHA1: currentManifestSHA1,
+		bdc.LabelKind:         "desired-manifest",
+		bdc.LabelDeployment:   manifest.Name,
+		bdc.LabelManifestSHA1: currentManifestSHA1,
 	}
 
 	// Overwrite instanceState only if in init or created status
-	if instanceState == "" || instanceState == createdState {
+	if instanceState == "" || instanceState == CreatedState {
 		instanceState = instance.Status.State
 	}
 
+	defer r.updateInstanceState(ctx, instance)
+
 	switch instanceState {
-	case opsAppliedState:
+	case OpsAppliedState:
 		err = r.generateVariables(ctx, instance, manifest, &kubeConfigs)
 		if err != nil {
 			r.log.Errorf("Failed to generate variables: %v", err)
 			r.recorder.Event(instance, corev1.EventTypeWarning, "VariableGeneration Error", err.Error())
 			return reconcile.Result{}, err
 		}
-	case variableGeneratedState:
+	case VariableGeneratedState:
 		err = r.createVariableInterpolationExJob(ctx, instance, manifest, kubeConfigs.Variables, varIntJobLabels, desiredManifestSecretLabels)
-		if apierrors.IsNotFound(err) {
-			r.log.Debugf("Waiting for variables generation to finish")
-			return reconcile.Result{Requeue: true}, err
-		} else if err != nil {
+		if err != nil {
 			r.log.Errorf("Failed to create variable interpolation exJob: %v", err)
+			r.recorder.Event(instance, corev1.EventTypeWarning, "VariableInterpolation Error", err.Error())
 			return reconcile.Result{}, err
 		}
-	case variableInterpolatedState:
-		err = r.createDataGatheringJob(ctx, instance, desiredManifestSecretLabels)
+	case VariableInterpolatedState:
+		err = r.createDataGatheringJob(ctx, instance, manifest, desiredManifestSecretLabels)
 		if err != nil {
 			r.log.Errorf("Failed to create data gathering exJob: %v", err)
+			r.recorder.Event(instance, corev1.EventTypeWarning, "DataGathering Error", err.Error())
 			return reconcile.Result{}, err
 		}
-	case dataGatheredState:
+	case DataGatheredState:
 		err = r.deployInstanceGroups(ctx, instance, &kubeConfigs)
 		if err != nil {
 			r.log.Errorf("Failed to deploy instance groups: %v", err)
 			return reconcile.Result{}, err
 		}
-	case deployingState:
+	case DeployingState:
 		err = r.actionOnDeploying(ctx, instance, &kubeConfigs)
 		if err != nil {
 			r.log.Errorf("Failed to  data: %v", err)
+			r.recorder.Event(instance, corev1.EventTypeWarning, "InstanceDeployment Error", err.Error())
 			return reconcile.Result{}, err
 		}
-	case deployedState:
+	case DeployedState:
 		r.log.Infof("Skip reconcile: BoshDeployment '%s/%s' already has been deployed", instance.GetName(), instance.GetNamespace())
 		return reconcile.Result{}, nil
 	default:
 		return reconcile.Result{}, errors.New("unknown instance state")
 	}
 
-	err = r.updateInstanceState(ctx, instance)
-	if err != nil {
-		return reconcile.Result{}, errors.Wrap(err, "could not update instance state")
-	}
-
 	r.log.Debugf("requeue the reconcile: BoshDeployment '%s/%s' is in state '%s'", instance.GetName(), instance.GetNamespace(), instance.Status.State)
 	return reconcile.Result{Requeue: true}, nil
 }
 
-// updateManifestSha1 update manifest
-func (r *ReconcileBOSHDeployment) updateManifestSha1(ctx context.Context, instance *bdc.BOSHDeployment, currentManifestSHA1 string) error {
-	// Fetch latest BOSHDeployment before update
-	foundInstance := &bdc.BOSHDeployment{}
-	key := types.NamespacedName{Namespace: instance.GetNamespace(), Name: instance.GetName()}
-	err := r.client.Get(ctx, key, foundInstance)
-	if err != nil {
-		r.log.Errorf("Failed to get BOSHDeployment instance '%s': %v", instance.GetName(), err)
-	}
-	oldManifestSHA1, _ := foundInstance.GetAnnotations()[annotationManifestSHA1]
-
-	if oldManifestSHA1 != currentManifestSHA1 {
-		// Set manifest SHA1
-		if foundInstance.Annotations == nil {
-			foundInstance.Annotations = map[string]string{}
-		}
-
-		foundInstance.Annotations[annotationManifestSHA1] = currentManifestSHA1
-		foundInstance.Status.State = instance.Status.State
-		err := r.client.Update(ctx, foundInstance)
-		if err != nil {
-			r.log.Errorf("Failed to update BOSHDeployment instance status: %v", err)
-			return err
-		}
-	}
-
-	return nil
-}
-
 // updateInstanceState update instance state
 func (r *ReconcileBOSHDeployment) updateInstanceState(ctx context.Context, currentInstance *bdc.BOSHDeployment) error {
-	currentManifestSHA1, _ := currentInstance.GetAnnotations()[annotationManifestSHA1]
+	currentManifestSHA1, _ := currentInstance.GetAnnotations()[bdc.AnnotationManifestSHA1]
 
 	// Fetch latest BOSHDeployment before update
 	foundInstance := &bdc.BOSHDeployment{}
@@ -279,7 +223,7 @@ func (r *ReconcileBOSHDeployment) updateInstanceState(ctx context.Context, curre
 		r.log.Errorf("Failed to get BOSHDeployment instance '%s': %v", currentInstance.GetName(), err)
 		return err
 	}
-	oldManifestSHA1, _ := foundInstance.GetAnnotations()[annotationManifestSHA1]
+	oldManifestSHA1, _ := foundInstance.GetAnnotations()[bdc.AnnotationManifestSHA1]
 
 	if oldManifestSHA1 != currentManifestSHA1 {
 		// Set manifest SHA1
@@ -287,7 +231,7 @@ func (r *ReconcileBOSHDeployment) updateInstanceState(ctx context.Context, curre
 			foundInstance.Annotations = map[string]string{}
 		}
 
-		foundInstance.Annotations[annotationManifestSHA1] = currentManifestSHA1
+		foundInstance.Annotations[bdc.AnnotationManifestSHA1] = currentManifestSHA1
 	}
 
 	// Update the Status of the resource
@@ -316,7 +260,7 @@ func (r *ReconcileBOSHDeployment) applyOps(ctx context.Context, instance *bdc.BO
 		return nil, err
 	}
 
-	instance.Status.State = opsAppliedState
+	instance.Status.State = OpsAppliedState
 
 	return manifest, nil
 }
@@ -328,7 +272,6 @@ func (r *ReconcileBOSHDeployment) generateVariables(ctx context.Context, instanc
 	for _, variable := range kubeConfig.Variables {
 		// Set BOSHDeployment instance as the owner and controller
 		if err := r.setReference(instance, &variable, r.scheme); err != nil {
-			r.recorder.Event(instance, corev1.EventTypeWarning, "NewExtendedStatefulSetForDeployment Error", err.Error())
 			return errors.Wrap(err, "could not set reference for an ExtendedStatefulSet for a BOSH Deployment")
 		}
 
@@ -348,13 +291,19 @@ func (r *ReconcileBOSHDeployment) generateVariables(ctx context.Context, instanc
 		}
 	}
 
-	instance.Status.State = variableGeneratedState
+	instance.Status.State = VariableGeneratedState
 
 	return nil
 }
 
 // createVariableInterpolationExJob create temp manifest and variable interpolation exJob
 func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.Context, instance *bdc.BOSHDeployment, manifest *bdm.Manifest, variables []esv1.ExtendedSecret, jobLabels map[string]string, secretLabels map[string]string) error {
+	if len(variables) == 0 {
+		r.log.Infof("Skip variable interpolation: BoshDeployment '%s/%s' already has been empty variables", instance.GetName(), instance.GetNamespace())
+		instance.Status.State = VariableInterpolatedState
+		return nil
+	}
+
 	// Create temp manifest as variable interpolation job input, this manifest has been already applied ops files.
 	tempManifestBytes, err := yaml.Marshal(manifest)
 	if err != nil {
@@ -390,14 +339,7 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 	}
 
 	r.log.Debug("Creating variable interpolation extendedJob")
-	varIntExJob, err := r.newExtendedJobTemplateForVariableInterpolation(ctx, foundSecret, variables, jobLabels, secretLabels, instance.GetNamespace())
-	if err != nil && apierrors.IsNotFound(err) {
-		r.log.Debug("Could not find variable secrets, waiting")
-		return err
-	} else if err != nil {
-		r.log.Errorf("Failed to generate variable interpolation job: %s", err)
-		return err
-	}
+	varIntExJob := r.newExtendedJobTemplateForVariableInterpolation(ctx, foundSecret, variables, jobLabels, secretLabels, instance.GetNamespace())
 	// Set BOSHDeployment instance as the owner and controller
 	if err := r.setReference(instance, varIntExJob, r.scheme); err != nil {
 		r.log.Errorf("Failed to set ownerReference for ExtendedJob '%s': %v", varIntExJob.GetName(), err)
@@ -422,52 +364,54 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 		return err
 	}
 
-	instance.Status.State = variableInterpolatedState
+	instance.Status.State = VariableInterpolatedState
 
 	return nil
 }
 
 // createDataGatheringJob gather data from manifest
-func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, instance *bdc.BOSHDeployment, secretLabels map[string]string) error {
-	labelsSelector := labels.Set(secretLabels)
+func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, instance *bdc.BOSHDeployment, manifest *bdm.Manifest, secretLabels map[string]string) error {
+	if len(manifest.Variables) > 0 {
+		labelsSelector := labels.Set(secretLabels)
 
-	secrets := &corev1.SecretList{}
-	err := r.client.List(
-		ctx,
-		&client.ListOptions{
-			Namespace:     instance.GetNamespace(),
-			LabelSelector: labelsSelector.AsSelector(),
-		},
-		secrets)
-	if err != nil {
-		return err
-	}
+		secrets := &corev1.SecretList{}
+		err := r.client.List(
+			ctx,
+			&client.ListOptions{
+				Namespace:     instance.GetNamespace(),
+				LabelSelector: labelsSelector.AsSelector(),
+			},
+			secrets)
+		if err != nil {
+			return err
+		}
 
-	if len(secrets.Items) != 1 {
-		return errors.New("variable interpolation must only have one output Secret")
-	}
+		if len(secrets.Items) != 1 {
+			return errors.New("variable interpolation must only have one output Secret")
+		}
 
-	encodedDesiredManifest, exists := secrets.Items[0].Data["interpolated-manifest.yaml"]
-	if !exists {
-		r.log.Errorf("Failed to get desiredManifest value from secret")
-		return err
-	}
-	desiredManifestBytes, err := base64.StdEncoding.DecodeString(string(encodedDesiredManifest))
-	if err != nil {
-		r.log.Errorf("Failed to decode desiredManifest string: %v", err)
-		return err
-	}
+		encodedDesiredManifest, exists := secrets.Items[0].Data["interpolated-manifest.yaml"]
+		if !exists {
+			r.log.Errorf("Failed to get desiredManifest value from secret")
+			return err
+		}
+		desiredManifestBytes, err := base64.StdEncoding.DecodeString(string(encodedDesiredManifest))
+		if err != nil {
+			r.log.Errorf("Failed to decode desiredManifest string: %v", err)
+			return err
+		}
 
-	desiredManifest := &bdm.Manifest{}
-	err = yaml.Unmarshal(desiredManifestBytes, desiredManifest)
-	if err != nil {
-		r.log.Error("Failed to unmarshal desired manifest")
-		return err
+		desiredManifest := &bdm.Manifest{}
+		err = yaml.Unmarshal(desiredManifestBytes, desiredManifest)
+		if err != nil {
+			r.log.Error("Failed to unmarshal desired manifest")
+			return err
+		}
 	}
 
 	// TODO Implement data gathering
 	r.log.Debug("Gathering data")
-	instance.Status.State = dataGatheredState
+	instance.Status.State = DataGatheredState
 
 	return nil
 }
@@ -521,7 +465,7 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 		}
 	}
 
-	instance.Status.State = deployingState
+	instance.Status.State = DeployingState
 
 	return nil
 }
@@ -529,194 +473,50 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 // actionOnDeploying check out deployment status
 func (r *ReconcileBOSHDeployment) actionOnDeploying(ctx context.Context, instance *bdc.BOSHDeployment, kubeConfigs *bdm.KubeConfig) error {
 	// TODO Check deployment
-	instance.Status.State = deployedState
+	instance.Status.State = DeployedState
 
 	return nil
 }
 
 // newExtendedJobTemplateForVariableInterpolation returns a job to interpolate variables
-func (r *ReconcileBOSHDeployment) newExtendedJobTemplateForVariableInterpolation(ctx context.Context, manifest *corev1.Secret, variables []esv1.ExtendedSecret, jobLabels map[string]string, secretLabels map[string]string, namespace string) (*ejv1.ExtendedJob, error) {
+func (r *ReconcileBOSHDeployment) newExtendedJobTemplateForVariableInterpolation(ctx context.Context, manifest *corev1.Secret, variables []esv1.ExtendedSecret, jobLabels map[string]string, secretLabels map[string]string, namespace string) *ejv1.ExtendedJob {
 	cmd := []string{"/bin/sh"}
 	args := []string{"-c", "cf-operator variable-interpolation --manifest /var/run/secrets/manifest.yaml --variables-dir /var/run/secrets/variables | base64 | tr -d '\n' | echo \"{\\\"interpolated-manifest.yaml\\\":\\\"$(</dev/stdin)\\\"}\""}
 
 	volumes := []corev1.Volume{
 		{
-			Name: string(manifest.GetUID()),
+			Name: generateVolumeName(manifest.GetName()),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: manifest.GetName(),
-					Items: []corev1.KeyToPath{
-						{
-							Key:  "manifest.yaml",
-							Path: "manifest.yaml",
-						},
-					},
 				},
 			},
 		},
 	}
 	volumeMounts := []corev1.VolumeMount{
 		{
-			Name:      string(manifest.GetUID()),
+			Name:      generateVolumeName(manifest.GetName()),
 			MountPath: "/var/run/secrets",
 			ReadOnly:  true,
 		},
 	}
 
 	for _, variable := range variables {
-		vars := Variables{}
 		varName := variable.GetLabels()["variableName"]
 
-		secretItems := []corev1.KeyToPath{}
-
-		// Check if variable already exists
-		foundSecret := &corev1.Secret{}
-		err := r.client.Get(ctx, types.NamespacedName{Name: variable.Name, Namespace: variable.Namespace}, foundSecret)
-		if err != nil && apierrors.IsNotFound(err) {
-			r.log.Debugf("Could not find secret '%s'", variable.GetName())
-			return nil, err
-		} else if err != nil {
-			r.log.Errorf("Failed to get secret '%s': %v", variable.GetName(), err)
-			return nil, err
-		}
-
-		// Update secret and relative SecretVolumeSource
-		switch variable.Spec.Type {
-		case esv1.Password:
-			if _, ok := foundSecret.Data["password-gen"]; !ok {
-				vars[varName] = string(foundSecret.Data[string(esv1.Password)])
-
-				bytes, err := yaml.Marshal(vars)
-				if err != nil {
-					return nil, err
-				}
-
-				//foundSecret.Data = map[string][]byte{}
-				foundSecret.StringData = map[string]string{
-					"password-gen": string(bytes),
-				}
-				err = r.client.Update(ctx, foundSecret)
-				if err != nil {
-					r.log.Errorf("Failed to Update secret '%s': %v", foundSecret.GetName(), err)
-					return nil, err
-				}
-			}
-
-			secretItems = append(secretItems, corev1.KeyToPath{
-				Key:  "password-gen",
-				Path: "variable.yaml",
-			})
-		case esv1.Certificate:
-			if _, ok := foundSecret.Data["certificate-gen"]; !ok {
-				certificate := string(foundSecret.Data["certificate"])
-				privateKey := string(foundSecret.Data["private_key"])
-
-				vars[varName] = certificateConfig{
-					Certificate: certificate,
-					PrivateKey:  privateKey,
-				}
-
-				bytes, err := yaml.Marshal(vars)
-				if err != nil {
-					return nil, err
-				}
-
-				foundSecret.Data = map[string][]byte{}
-				foundSecret.StringData = map[string]string{
-					string("certificate-gen"): string(bytes),
-				}
-				err = r.client.Update(ctx, foundSecret)
-				if err != nil {
-					r.log.Errorf("Failed to Update secret '%s': %v", foundSecret.GetName(), err)
-					return nil, err
-				}
-			}
-
-			secretItems = append(secretItems, corev1.KeyToPath{
-				Key:  "certificate-gen",
-				Path: "variable.yaml",
-			})
-		case esv1.SSHKey:
-			if _, ok := foundSecret.Data["ssh-key-gen"]; !ok {
-				privateKey := string(foundSecret.Data["SSHPrivateKey"])
-				publicKey := string(foundSecret.Data["SSHPublicKey"])
-				fingerprint := string(foundSecret.Data["SSHFingerprint"])
-
-				vars[varName] = sshKeyConfig{
-					PrivateKey:           privateKey,
-					PublicKey:            publicKey,
-					PublicKeyFingerprint: fingerprint,
-				}
-
-				bytes, err := yaml.Marshal(vars)
-				if err != nil {
-					return nil, err
-				}
-
-				foundSecret.Data = map[string][]byte{}
-				foundSecret.StringData = map[string]string{
-					"ssh-key-gen": string(bytes),
-				}
-				err = r.client.Update(ctx, foundSecret)
-				if err != nil {
-					r.log.Errorf("Failed to Update secret '%s': %v", foundSecret.GetName(), err)
-					return nil, err
-				}
-			}
-
-			secretItems = append(secretItems, corev1.KeyToPath{
-				Key:  "ssh-key-gen",
-				Path: "variable.yaml",
-			})
-		case esv1.RSAKey:
-			if _, ok := foundSecret.Data["rsa-key-gen"]; !ok {
-				privateKey := string(foundSecret.Data["RSAPrivateKey"])
-				publicKey := string(foundSecret.Data["RSAPublicKey"])
-
-				vars[varName] = rsaKeyConfig{
-					PrivateKey: privateKey,
-					PublicKey:  publicKey,
-				}
-
-				bytes, err := yaml.Marshal(vars)
-				if err != nil {
-					return nil, err
-				}
-
-				foundSecret.Data = map[string][]byte{}
-				foundSecret.StringData = map[string]string{
-					string("rsa-key-gen"): string(bytes),
-				}
-				err = r.client.Update(ctx, foundSecret)
-				if err != nil {
-					r.log.Errorf("Failed to Update secret '%s': %v", foundSecret.GetName(), err)
-					return nil, err
-				}
-			}
-
-			secretItems = append(secretItems, corev1.KeyToPath{
-				Key:  "rsa-key-gen",
-				Path: "variable.yaml",
-			})
-		default:
-			r.log.Error("Unknown output variable type: %s", variable.Spec.Type)
-			return nil, errors.New(fmt.Sprintf("unknown output variable type: %s", variable.Spec.Type))
-		}
-
 		vol := corev1.Volume{
-			Name: string(foundSecret.GetUID()),
+			Name: generateVolumeName(variable.GetName()),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: variable.GetName(),
-					Items:      secretItems,
 				},
 			},
 		}
 		volumes = append(volumes, vol)
 
 		volMount := corev1.VolumeMount{
-			Name:      string(foundSecret.GetUID()),
-			MountPath: "/var/run/secrets/variables/" + variable.GetName(),
+			Name:      generateVolumeName(variable.GetName()),
+			MountPath: "/var/run/secrets/variables/" + varName,
 			ReadOnly:  true,
 		}
 		volumeMounts = append(volumeMounts, volMount)
@@ -754,7 +554,7 @@ func (r *ReconcileBOSHDeployment) newExtendedJobTemplateForVariableInterpolation
 			},
 		},
 	}
-	return &job, nil
+	return &job
 }
 
 // calculateManifestSHA1 calculates the SHA1 of manifest
@@ -765,4 +565,16 @@ func calculateManifestSHA1(manifest *bdm.Manifest) (string, error) {
 	}
 
 	return fmt.Sprintf("%x", sha1.Sum(manifestBytes)), nil
+}
+
+// generateVolumeName generate volume name based on secret name
+func generateVolumeName(secretName string) string {
+	nameSlices := strings.Split(secretName, ".")
+	volName := ""
+	if len(nameSlices) > 1 {
+		volName = nameSlices[1]
+	} else {
+		volName = nameSlices[0]
+	}
+	return volName
 }
