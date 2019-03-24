@@ -2,19 +2,6 @@
 name: loggregator_trafficcontroller
 templates:
   bpm.yml.erb: config/bpm.yml
-  trafficcontroller.crt.erb: config/certs/trafficcontroller.crt
-  trafficcontroller.key.erb: config/certs/trafficcontroller.key
-  logcache_ca.crt.erb: config/certs/logcache_ca.crt
-  logcache_trafficcontroller.crt.erb: config/certs/logcache_trafficcontroller.crt
-  logcache_trafficcontroller.key.erb: config/certs/logcache_trafficcontroller.key
-  loggregator_ca.crt.erb: config/certs/loggregator_ca.crt
-  cc_trafficcontroller.crt.erb: config/certs/cc_trafficcontroller.crt
-  cc_trafficcontroller.key.erb: config/certs/cc_trafficcontroller.key
-  mutual_tls_ca.crt.erb: config/certs/mutual_tls_ca.crt
-  uaa_ca.crt.erb: config/certs/uaa_ca.crt
-  dns_health_check.erb: bin/dns_health_check
-  drain.erb: bin/drain
-  profile.sh.erb: bin/profile.sh
 
 packages:
 - loggregator_trafficcontroller

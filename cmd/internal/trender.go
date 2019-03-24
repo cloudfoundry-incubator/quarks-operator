@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -29,13 +28,12 @@ This will render a provided manifest instance-group
 		instanceGroupName := viper.GetString("instance_group_name")
 		address := viper.GetString("address")
 		az := viper.GetString("az")
-		_ = viper.GetString("bootstrap") // TODO do we require this ?
 		id := viper.GetString("id")
 		index := viper.GetInt("index")
 		ip := viper.GetString("ip")
 		name := viper.GetString("name")
 
-		network := map[string]interface{}{
+		network := map[string]interface{}{ // TODO Do I need to create struct for this ?
 			"default": map[string]interface{}{
 				"ip":              ip,
 				"dns_record_name": address,
@@ -43,14 +41,13 @@ This will render a provided manifest instance-group
 		}
 
 		jobInstance := manifest.JobInstance{ // TODO do we need deployment
-			Address:   address,
-			AZ:        az,
-			ID:        id,
-			Bootstrap: index,
-			Index:     index,
-			Name:      name,
-			IP:        ip,
-			Network:   network,
+			Address: address,
+			AZ:      az,
+			ID:      id,
+			Index:   index,
+			Name:    name,
+			IP:      ip,
+			Network: network,
 		}
 
 		return RenderData(deploymentManifest, jobsDir, instanceGroupName, jobInstance)
@@ -62,15 +59,13 @@ func init() {
 
 	templateRenderCmd.Flags().StringP("manifest", "f", "", "path to the manifest file")
 	templateRenderCmd.MarkFlagRequired("manifest")
-	templateRenderCmd.Flags().StringP("jobs-dir", "j", "", "path to the jobs dir. The flag can be specify multiple times")
+	templateRenderCmd.Flags().StringP("jobs-dir", "j", "", "path to the jobs dir.")
 	templateRenderCmd.MarkFlagRequired("jobs-dir")
-	templateRenderCmd.Flags().StringSliceP("instance-groups", "g", []string{}, "the instance-groups filter")
+	templateRenderCmd.Flags().StringP("instance-group-name", "g", "", "the instance-group name to render")
 	templateRenderCmd.Flags().StringP("address", "a", "", "address of the instance spec")
 	templateRenderCmd.MarkFlagRequired("address")
-	templateRenderCmd.Flags().StringP("az", "z", "", "az of the instance spec")
+	templateRenderCmd.Flags().StringSliceP("az", "z", []string{}, "az's of the instance spec")
 	templateRenderCmd.MarkFlagRequired("az")
-	templateRenderCmd.Flags().StringP("bootstrap", "s", "", "bootstrap of the instance spec")
-	templateRenderCmd.MarkFlagRequired("bootstrap")
 	templateRenderCmd.Flags().StringP("id", "d", "", "id of the instance spec")
 	templateRenderCmd.MarkFlagRequired("id")
 	templateRenderCmd.Flags().StringP("index", "x", "", "index of the instance spec")
@@ -85,7 +80,6 @@ func init() {
 	viper.BindPFlag("instance_group_name", templateRenderCmd.Flags().Lookup("instance-group_name"))
 	viper.BindPFlag("address", templateRenderCmd.Flags().Lookup("address"))
 	viper.BindPFlag("az", templateRenderCmd.Flags().Lookup("az"))
-	viper.BindPFlag("bootstrap", templateRenderCmd.Flags().Lookup("bootstrap"))
 	viper.BindPFlag("id", templateRenderCmd.Flags().Lookup("id"))
 	viper.BindPFlag("index", templateRenderCmd.Flags().Lookup("index"))
 	viper.BindPFlag("name", templateRenderCmd.Flags().Lookup("name"))
@@ -140,12 +134,11 @@ func RenderData(deploymentManifest string, jobsDir string, instanceGroupName str
 				// Loop over instances of link
 				for _, jobConsumerLinkInstance := range jobConsumersLink.Instances {
 					jobInstances = append(jobInstances, manifest.JobInstance{
-						Address:   jobConsumerLinkInstance.Address,
-						AZ:        jobConsumerLinkInstance.AZ,
-						ID:        jobConsumerLinkInstance.ID,
-						Index:     jobConsumerLinkInstance.Index,
-						Name:      jobConsumerLinkInstance.Name,
-						Bootstrap: jobConsumerLinkInstance.Bootstrap,
+						Address: jobConsumerLinkInstance.Address,
+						AZ:      jobConsumerLinkInstance.AZ,
+						ID:      jobConsumerLinkInstance.ID,
+						Index:   jobConsumerLinkInstance.Index,
+						Name:    jobConsumerLinkInstance.Name,
 					})
 				}
 
@@ -168,9 +161,10 @@ func RenderData(deploymentManifest string, jobsDir string, instanceGroupName str
 				return err
 			}
 
+			// Loop over templates for rendering files
 			for source, destination := range jobSpec.Templates {
 				absDest := filepath.Join(jobsDir, job.Name, destination)
-				os.MkdirAll(filepath.Dir(absDest), 0777) // TODO what is the right one ?
+				os.MkdirAll(filepath.Dir(absDest), 0777) // TODO what is the right access code ?
 				renderPointer := btg.NewERBRenderer(
 					&btg.EvaluationContext{
 						Properties: job.Properties,
@@ -187,28 +181,17 @@ func RenderData(deploymentManifest string, jobsDir string, instanceGroupName str
 					jobMFFile,
 				)
 
+				// Create the destination file
 				absDestFile, err := os.Create(absDest)
 				if err != nil {
-					fmt.Println("New error")
 					return err
 				}
 				defer absDestFile.Close()
-				fmt.Println(absDestFile.Name())
-				if err = renderPointer.Render(filepath.Join(jobsDir, "templates", source), absDestFile.Name()); err != nil {
+				if err = renderPointer.Render(filepath.Join(jobSrcDir, "templates", source), absDestFile.Name()); err != nil {
 					return err
 				}
 			}
 		}
 	}
 	return nil
-}
-
-// contains filter instance groups based on the name // TODO check if you can use from dgather
-func contains(igList []string, name string) bool {
-	for _, igName := range igList {
-		if name == igName {
-			return true
-		}
-	}
-	return false
 }
