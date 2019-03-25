@@ -85,32 +85,6 @@ var _ = Describe("CLI", func() {
 				})
 			})
 		})
-
-		Context("when specifying kubeconfig", func() {
-			Context("via environment variables", func() {
-				BeforeEach(func() {
-					os.Setenv("KUBECONFIG", "invalid")
-				})
-
-				AfterEach(func() {
-					os.Setenv("KUBECONFIG", "")
-				})
-
-				It("should use specified config", func() {
-					session, err := act()
-					Expect(err).ToNot(HaveOccurred())
-					Eventually(session.Err).Should(Say(`stat invalid: no such file or directory`))
-				})
-			})
-
-			Context("via switches", func() {
-				It("should use specified config", func() {
-					session, err := act("--kubeconfig", "invalid")
-					Expect(err).ToNot(HaveOccurred())
-					Eventually(session.Err).Should(Say(`stat invalid: no such file or directory`))
-				})
-			})
-		})
 	})
 
 	Describe("version", func() {
@@ -131,11 +105,16 @@ var _ = Describe("CLI", func() {
 
 			session, err := act("variable-interpolation", "-m", manifestPath, "-v", varsDir)
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out).Should(Say(`instance-group:
-  key1: baz
-  key2: foo
-  key3: bar
-password: fake-password`))
+			Eventually(session.Out).Should(Say(`---
+instance-group:
+  key1: |
+    baz
+  key2: |
+    foo
+  key3: |
+    bar
+password: |
+  fake-password`))
 		})
 	})
 })

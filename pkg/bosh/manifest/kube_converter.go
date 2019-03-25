@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"k8s.io/api/apps/v1beta2"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
@@ -32,10 +32,12 @@ var (
 
 // KubeConfig represents a Manifest in kube resources
 type KubeConfig struct {
-	Variables   []esv1.ExtendedSecret
-	ExtendedSts []essv1.ExtendedStatefulSet
-	ExtendedJob []ejv1.ExtendedJob
-	Namespace   string
+	Variables                []esv1.ExtendedSecret
+	InstanceGroups           []essv1.ExtendedStatefulSet
+	Errands                  []ejv1.ExtendedJob
+	Namespace                string
+	VariableInterpolationJob ejv1.ExtendedJob
+	DataGatheringJob         ejv1.ExtendedJob
 }
 
 // ConvertToKube converts a Manifest into kube resources
@@ -54,23 +56,15 @@ func (m *Manifest) ConvertToKube(namespace string) (KubeConfig, error) {
 		return KubeConfig{}, err
 	}
 	kubeConfig.Variables = m.convertVariables(namespace)
-	kubeConfig.ExtendedSts = convertedExtSts
-	kubeConfig.ExtendedJob = convertedExtJob
+	kubeConfig.InstanceGroups = convertedExtSts
+	kubeConfig.Errands = convertedExtJob
 
 	return kubeConfig, nil
 }
 
 // jobsToInitContainers creates a list of Containers for v1.PodSpec InitContainers field
 func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace string) ([]v1.Container, error) {
-	initContainers := []v1.Container{
-		v1.Container{
-			Name:  fmt.Sprintf("renderer-%s", igName),
-			Image: GetOperatorDockerImage(),
-			VolumeMounts: []v1.VolumeMount{
-				v1.VolumeMount{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
-			},
-			Command: []string{"bash", "-c", "echo 'foo'"},
-		}}
+	initContainers := []v1.Container{}
 
 	// one init container for each release, for copying specs
 	doneReleases := map[string]bool{}
@@ -91,9 +85,18 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 			VolumeMounts: []v1.VolumeMount{
 				v1.VolumeMount{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
 			},
-			Command: []string{"bash", "-c", "cp -ar /var/cvap/job-src /var/vcap/rendering"},
+			Command: []string{"bash", "-c", "cp -ar /var/vcap/jobs-src /var/vcap/rendering"},
 		})
 	}
+
+	initContainers = append(initContainers, v1.Container{
+		Name:  fmt.Sprintf("renderer-%s", igName),
+		Image: GetOperatorDockerImage(),
+		VolumeMounts: []v1.VolumeMount{
+			v1.VolumeMount{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
+		},
+		Command: []string{"bash", "-c", "echo 'foo'"},
+	})
 
 	return initContainers, nil
 }

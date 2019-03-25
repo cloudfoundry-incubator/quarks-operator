@@ -107,7 +107,7 @@ var _ = Describe("ConvertToKube", func() {
 		It("when the lifecycle is set to service", func() {
 			kubeConfig, err := m.ConvertToKube("foo")
 			Expect(err).ShouldNot(HaveOccurred())
-			anExtendedSts := kubeConfig.ExtendedSts[0].Spec.Template.Spec.Template
+			anExtendedSts := kubeConfig.InstanceGroups[0].Spec.Template.Spec.Template
 			Expect(anExtendedSts.Name).To(Equal("diego-cell"))
 
 			// Test containers in the extended statefulset
@@ -116,11 +116,11 @@ var _ = Describe("ConvertToKube", func() {
 			Expect(anExtendedSts.Spec.Containers[0].Name).To(Equal("job-cflinuxfs3-rootfs-setup"))
 
 			// Test init containers in the extended statefulset
-			Expect(anExtendedSts.Spec.InitContainers[0].Image).To(Equal("/:"))
-			Expect(anExtendedSts.Spec.InitContainers[0].Name).To(Equal("renderer-diego-cell"))
-			Expect(anExtendedSts.Spec.InitContainers[1].Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
-			Expect(anExtendedSts.Spec.InitContainers[1].Command[0]).To(Equal("bash"))
-			Expect(anExtendedSts.Spec.InitContainers[1].Name).To(Equal("spec-copier-cflinuxfs3-rootfs-setup"))
+			Expect(anExtendedSts.Spec.InitContainers[0].Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
+			Expect(anExtendedSts.Spec.InitContainers[0].Command[0]).To(Equal("bash"))
+			Expect(anExtendedSts.Spec.InitContainers[0].Name).To(Equal("spec-copier-cflinuxfs3-rootfs-setup"))
+			Expect(anExtendedSts.Spec.InitContainers[1].Image).To(Equal("/:"))
+			Expect(anExtendedSts.Spec.InitContainers[1].Name).To(Equal("renderer-diego-cell"))
 
 			// Test shared volume setup
 			Expect(anExtendedSts.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
@@ -136,10 +136,10 @@ var _ = Describe("ConvertToKube", func() {
 		It("when the lifecycle is set to errand", func() {
 			kubeConfig, err := m.ConvertToKube("foo")
 			Expect(err).ShouldNot(HaveOccurred())
-			anExtendedJob := kubeConfig.ExtendedJob[0]
+			anExtendedJob := kubeConfig.Errands[0]
 
-			Expect(len(kubeConfig.ExtendedJob)).To(Equal(1))
-			Expect(len(kubeConfig.ExtendedJob)).ToNot(Equal(2))
+			Expect(len(kubeConfig.Errands)).To(Equal(1))
+			Expect(len(kubeConfig.Errands)).ToNot(Equal(2))
 			Expect(anExtendedJob.Name).To(Equal("foo-deployment-redis-slave"))
 
 			// Test containers in the extended job
@@ -148,10 +148,10 @@ var _ = Describe("ConvertToKube", func() {
 			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Command[0]).To(Equal("bash"))
 
 			// Test init containers in the extended job
-			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[0].Image).To(Equal("/:"))
-			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[0].Name).To(Equal("renderer-redis-slave"))
-			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[1].Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
-			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[1].Command[0]).To(Equal("bash"))
+			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[0].Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
+			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[0].Command[0]).To(Equal("bash"))
+			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[1].Image).To(Equal("/:"))
+			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[1].Name).To(Equal("renderer-redis-slave"))
 
 			// Test shared volume setup
 			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
