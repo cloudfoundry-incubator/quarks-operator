@@ -64,8 +64,11 @@ func (m *Manifest) ConvertToKube(namespace string) (KubeConfig, error) {
 func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace string) ([]v1.Container, error) {
 	initContainers := []v1.Container{
 		v1.Container{
-			Name:    fmt.Sprintf("renderer-%s", igName),
-			Image:   GetOperatorDockerImage(),
+			Name:  fmt.Sprintf("renderer-%s", igName),
+			Image: GetOperatorDockerImage(),
+			VolumeMounts: []v1.VolumeMount{
+				v1.VolumeMount{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
+			},
 			Command: []string{"bash", "-c", "echo 'foo'"},
 		}}
 
@@ -83,9 +86,12 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 		}
 
 		initContainers = append(initContainers, v1.Container{
-			Name:    fmt.Sprintf("spec-copier-%s", job.Name),
-			Image:   releaseImage,
-			Command: []string{"bash", "-c", "echo 'foo'"},
+			Name:  fmt.Sprintf("spec-copier-%s", job.Name),
+			Image: releaseImage,
+			VolumeMounts: []v1.VolumeMount{
+				v1.VolumeMount{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
+			},
+			Command: []string{"bash", "-c", "cp -ar /var/cvap/job-src /var/vcap/rendering"},
 		})
 	}
 
@@ -106,8 +112,11 @@ func (m *Manifest) jobsToContainers(igName string, jobs []Job, namespace string)
 			return []v1.Container{}, err
 		}
 		jobsToContainerPods = append(jobsToContainerPods, v1.Container{
-			Name:    fmt.Sprintf("job-%s", job.Name),
-			Image:   jobImage,
+			Name:  fmt.Sprintf("job-%s", job.Name),
+			Image: jobImage,
+			VolumeMounts: []v1.VolumeMount{
+				v1.VolumeMount{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
+			},
 			Command: []string{"bash", "-c", "ping localhost"},
 		})
 	}
@@ -116,7 +125,6 @@ func (m *Manifest) jobsToContainers(igName string, jobs []Job, namespace string)
 
 // serviceToExtendedSts will generate an ExtendedStatefulSet
 func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (essv1.ExtendedStatefulSet, error) {
-
 	igName := ig.Name
 
 	listOfContainers, err := m.jobsToContainers(igName, ig.Jobs, namespace)
@@ -156,6 +164,12 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 							},
 						},
 						Spec: v1.PodSpec{
+							Volumes: []v1.Volume{
+								v1.Volume{
+									Name:         "rendering-data",
+									VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
+								},
+							},
 							Containers:     listOfContainers,
 							InitContainers: listOfInitContainers,
 						},
@@ -230,6 +244,7 @@ func (m *Manifest) convertToExtendedJob(namespace string) ([]ejv1.ExtendedJob, e
 	}
 	return extJobs, nil
 }
+
 func (m *Manifest) convertVariables(namespace string) []esv1.ExtendedSecret {
 	secrets := []esv1.ExtendedSecret{}
 
