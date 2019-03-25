@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 
 	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
@@ -66,11 +67,18 @@ func (m *Machine) WaitForPods(namespace string, labels string) error {
 	})
 }
 
+// WaitForPodFailures blocks until all selected pods are failing. It fails after the timeout.
+func (m *Machine) WaitForPodFailures(namespace string, labels string) error {
+	return wait.PollImmediate(5*time.Second, m.pollTimeout, func() (bool, error) {
+		return m.PodsFailing(namespace, labels)
+	})
+}
+
 // WaitForLogMsg searches zap test logs for at least one occurrence of msg.
 // When using this, tests should use FlushLog() to remove log messages from
 // other tests.
 func (m *Machine) WaitForLogMsg(logs *observer.ObservedLogs, msg string) error {
-	return wait.Poll(1*time.Second, 5*time.Second, func() (bool, error) {
+	return wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
 		n := logs.FilterMessageSnippet(msg).Len()
 		return n > 0, nil
 	})
@@ -274,6 +282,29 @@ func (m *Machine) PodRunning(namespace string, name string) (bool, error) {
 	return false, nil
 }
 
+// PodsFailing returns true if the pod by that name exist and is in a failed state
+func (m *Machine) PodsFailing(namespace string, labels string) (bool, error) {
+	pods, err := m.Clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{
+		LabelSelector: labels,
+	})
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to query for pod by labels: %v", labels)
+	}
+
+	if len(pods.Items) == 0 {
+		return false, nil
+	}
+
+	for _, pod := range pods.Items {
+		pos, condition := podutil.GetPodCondition(&pod.Status, corev1.ContainersReady)
+		if (pos > -1 && condition.Reason == "ContainersNotReady") || pod.Status.Phase == corev1.PodFailed {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 // PodsRunning returns true if all the pods selected by labels are in state running
 // Note that only the first page of pods is considered - don't use this if you have a
 // long pod list that you care about
@@ -395,13 +426,17 @@ func (m *Machine) UpdateSecret(namespace string, secret corev1.Secret) (*corev1.
 	}, err
 }
 
-// GetSecret fetches the specified secret
-func (m *Machine) GetSecret(namespace string, name string) (*corev1.Secret, error) {
+// CollectSecret polls untile the specified secret can be fetched
+func (m *Machine) CollectSecret(namespace string, name string) (*corev1.Secret, error) {
 	err := m.WaitForSecret(namespace, name)
 	if err != nil {
 		return nil, errors.Wrap(err, "waiting for secret "+name)
 	}
+	return m.GetSecret(namespace, name)
+}
 
+// GetSecret fetches the specified secret
+func (m *Machine) GetSecret(namespace string, name string) (*corev1.Secret, error) {
 	secret, err := m.Clientset.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return nil, errors.Wrap(err, "waiting for secret "+name)
@@ -643,7 +678,7 @@ func (m *Machine) CollectJobs(namespace string, labels string, n int) ([]batchv1
 // It returns true only if a job is found
 func (m *Machine) WaitForJobExists(namespace string, labels string) (bool, error) {
 	found := false
-	err := wait.Poll(5*time.Second, 1*time.Second, func() (bool, error) {
+	err := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
 		jobs, err := m.Clientset.BatchV1().Jobs(namespace).List(metav1.ListOptions{
 			LabelSelector: labels,
 		})
@@ -664,7 +699,7 @@ func (m *Machine) WaitForJobExists(namespace string, labels string) (bool, error
 
 // WaitForJobDeletion blocks until the batchv1.Job is deleted
 func (m *Machine) WaitForJobDeletion(namespace string, name string) error {
-	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+	return wait.PollImmediate(1*time.Second, 30*time.Second, func() (bool, error) {
 		found, err := m.JobExists(namespace, name)
 		return !found, err
 	})

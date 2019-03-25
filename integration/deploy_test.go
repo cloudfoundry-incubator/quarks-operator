@@ -41,9 +41,7 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			// check for pod
-			err = env.WaitForPod(env.Namespace, podName)
-			Expect(err).To(HaveOccurred(), "error waiting for pod from deployment")
+			Expect(env.WaitForLogMsg(env.ObservedLogs, "extendedstatefulsets: context deadline exceeded")).NotTo(HaveOccurred())
 			env.CtrsConfig.CtxTimeOut = 10 * time.Second
 		})
 
