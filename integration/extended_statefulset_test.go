@@ -308,9 +308,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 		BeforeEach(func() {
 			essName := fmt.Sprintf("testess-%s", helper.RandString(5))
 			extendedStatefulSet = env.ExtendedStatefulSetWithPVC(essName, "pvc")
-
-			wrongEssName := fmt.Sprintf("wrong-testess-%s", helper.RandString(5))
-			wrongExtendedStatefulSet = env.WrongExtendedStatefulSetWithPVC(wrongEssName, "pvc")
 		})
 
 		It("VolumeMount name's should have version", func() {

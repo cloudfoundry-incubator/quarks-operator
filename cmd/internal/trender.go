@@ -1,39 +1,197 @@
 package cmd
 
 import (
-	"github.com/spf13/viper"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	btg "github.com/viovanov/bosh-template-go"
+	yaml "gopkg.in/yaml.v2"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
-// templateRenderCmd represents the dataGather command
+// templateRenderCmd represents the template-render command
 var templateRenderCmd = &cobra.Command{
 	Use:   "template-render [flags]",
 	Short: "Renders a bosh manifest",
 	Long: `Renders a bosh manifest.
-
+ 
 This will render a provided manifest instance-group
-and will generate the output into the specified output
-directory.
-
 `,
-	Run: func(cmd *cobra.Command, args []string) {
-		// Note: for retrieving the values of the job-dir flag, use viper.GetStringSlice("job_dir"))
-		// All other flag values should be reachable via the viper.GetString("viper_flag")
+	RunE: func(cmd *cobra.Command, args []string) error {
+
+		deploymentManifest := viper.GetString("manifest")
+		jobsDir := viper.GetString("jobs_dir")
+		instanceGroupName := viper.GetString("instance_group_name")
+		address := viper.GetString("address")
+		az := viper.GetString("az")
+		id := viper.GetString("id")
+		index := viper.GetInt("index")
+		ip := viper.GetString("ip")
+		name := viper.GetString("name")
+
+		network := map[string]interface{}{ // TODO Do I need to create struct for this ?
+			"default": map[string]interface{}{
+				"ip":              ip,
+				"dns_record_name": address,
+			},
+		}
+
+		jobInstance := manifest.JobInstance{ // TODO do we need deployment
+			Address: address,
+			AZ:      az,
+			ID:      id,
+			Index:   index,
+			Name:    name,
+			IP:      ip,
+			Network: network,
+		}
+
+		return RenderData(deploymentManifest, jobsDir, instanceGroupName, jobInstance)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(templateRenderCmd)
-	templateRenderCmd.Flags().StringSliceP("job-dir", "j", []string{}, "path to the job dirs. The flag can be specify multiple times")
-	templateRenderCmd.Flags().StringP("instance-group-manifest", "i", "", "location of the ig manifest")
-	templateRenderCmd.Flags().StringP("output-dir", "d", "", "path to a directory to store the output")
 
-	// This will get the values from any set ENV var, but always
-	// the values provided via the flags have more precedence.
+	templateRenderCmd.Flags().StringP("manifest", "f", "", "path to the manifest file")
+	templateRenderCmd.MarkFlagRequired("manifest")
+	templateRenderCmd.Flags().StringP("jobs-dir", "j", "", "path to the jobs dir.")
+	templateRenderCmd.MarkFlagRequired("jobs-dir")
+	templateRenderCmd.Flags().StringP("instance-group-name", "g", "", "the instance-group name to render")
+	templateRenderCmd.Flags().StringP("address", "a", "", "address of the instance spec")
+	templateRenderCmd.MarkFlagRequired("address")
+	templateRenderCmd.Flags().StringSliceP("az", "z", []string{}, "az's of the instance spec")
+	templateRenderCmd.MarkFlagRequired("az")
+	templateRenderCmd.Flags().StringP("id", "d", "", "id of the instance spec")
+	templateRenderCmd.MarkFlagRequired("id")
+	templateRenderCmd.Flags().StringP("index", "x", "", "index of the instance spec")
+	templateRenderCmd.MarkFlagRequired("index")
+	templateRenderCmd.Flags().StringP("ip", "i", "", "ip of the instance spec")
+	templateRenderCmd.MarkFlagRequired("ip")
+	templateRenderCmd.Flags().StringP("name", "m", "", "name of the instance spec")
+	templateRenderCmd.MarkFlagRequired("name")
+
 	viper.AutomaticEnv()
-	viper.BindPFlag("job_dir", templateRenderCmd.Flags().Lookup("job-dir"))
-	viper.BindPFlag("instance_group_manifest", templateRenderCmd.Flags().Lookup("instance-group-manifest"))
-	viper.BindPFlag("output_dir", templateRenderCmd.Flags().Lookup("output-dir"))
+	viper.BindPFlag("jobs_dir", templateRenderCmd.Flags().Lookup("jobs-dir"))
+	viper.BindPFlag("instance_group_name", templateRenderCmd.Flags().Lookup("instance-group_name"))
+	viper.BindPFlag("address", templateRenderCmd.Flags().Lookup("address"))
+	viper.BindPFlag("az", templateRenderCmd.Flags().Lookup("az"))
+	viper.BindPFlag("id", templateRenderCmd.Flags().Lookup("id"))
+	viper.BindPFlag("index", templateRenderCmd.Flags().Lookup("index"))
+	viper.BindPFlag("name", templateRenderCmd.Flags().Lookup("name"))
+	viper.BindPFlag("ip", templateRenderCmd.Flags().Lookup("ip"))
+}
 
+// RenderData will render manifest instance group
+func RenderData(deploymentManifest string, jobsDir string, instanceGroupName string, jobInstance manifest.JobInstance) error {
+
+	// Loading deployment manifest file
+	resolvedYML, err := ioutil.ReadFile(deploymentManifest)
+	if err != nil {
+		return err
+	}
+	manifestDeployment := manifest.Manifest{}
+	err = yaml.Unmarshal(resolvedYML, &manifestDeployment)
+	if err != nil {
+		return err
+	}
+
+	// Loop over instancegroups
+	for _, instanceGroup := range manifestDeployment.InstanceGroups {
+
+		// Filter based on the instance group name
+		if instanceGroup.Name != instanceGroupName {
+			continue
+		}
+
+		// Render all files for all jobs included in this instance_group.
+		for _, job := range instanceGroup.Jobs {
+			jobInstanceLinks := []manifest.Link{}
+
+			// Make sure that job.properties.bosh_containerization exists
+			if _, ok := job.Properties["bosh_containerization"]; !ok {
+				job.Properties["bosh_containerization"] = map[interface{}]interface{}{}
+			}
+
+			// Make sure that job.properties.bosh_containerization.consumes exists
+			if _, ok := job.Properties["bosh_containerization"].(map[interface{}]interface{})["consumes"]; !ok {
+				job.Properties["bosh_containerization"].(map[interface{}]interface{})["consumes"] = map[interface{}]interface{}{}
+			}
+
+			// Loop over name and link
+			for name := range job.Properties["bosh_containerization"].(map[interface{}]interface{})["consumes"].(map[interface{}]interface{}) {
+				jobInstances := []manifest.JobInstance{}
+
+				jobConsumersLink, err := job.GetJobBoshContainerizationConsumers(name.(string))
+				if err != nil {
+					return err
+				}
+
+				// Loop over instances of link
+				for _, jobConsumerLinkInstance := range jobConsumersLink.Instances {
+					jobInstances = append(jobInstances, manifest.JobInstance{
+						Address: jobConsumerLinkInstance.Address,
+						AZ:      jobConsumerLinkInstance.AZ,
+						ID:      jobConsumerLinkInstance.ID,
+						Index:   jobConsumerLinkInstance.Index,
+						Name:    jobConsumerLinkInstance.Name,
+					})
+				}
+
+				jobInstanceLinks = append(jobInstanceLinks, manifest.Link{
+					Name:       name.(string),
+					Instances:  jobInstances,
+					Properties: jobConsumersLink.Properties,
+				})
+			}
+
+			jobSrcDir := filepath.Join(jobsDir, "jobs-src", job.Release, job.Name)
+			jobMFFile := filepath.Join(jobSrcDir, "job.MF")
+			jobMfBytes, err := ioutil.ReadFile(jobMFFile)
+			if err != nil {
+				return err
+			}
+
+			jobSpec := manifest.JobSpec{}
+			if err := yaml.Unmarshal([]byte(jobMfBytes), &jobSpec); err != nil {
+				return err
+			}
+
+			// Loop over templates for rendering files
+			for source, destination := range jobSpec.Templates {
+				absDest := filepath.Join(jobsDir, job.Name, destination)
+				os.MkdirAll(filepath.Dir(absDest), 0777) // TODO what is the right access code ?
+				renderPointer := btg.NewERBRenderer(
+					&btg.EvaluationContext{
+						Properties: job.Properties,
+					},
+
+					&btg.InstanceInfo{
+						Address: jobInstance.Address,
+						AZ:      jobInstance.AZ,
+						ID:      jobInstance.ID,
+						Index:   string(jobInstance.Index),
+						Name:    jobInstance.Name,
+					},
+
+					jobMFFile,
+				)
+
+				// Create the destination file
+				absDestFile, err := os.Create(absDest)
+				if err != nil {
+					return err
+				}
+				defer absDestFile.Close()
+				if err = renderPointer.Render(filepath.Join(jobSrcDir, "templates", source), absDestFile.Name()); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }

@@ -171,7 +171,6 @@ func (c *Catalog) BOSHManifestWithProviderAndConsumer() *manifest.Manifest {
 	source := `---
 name: cf
 manifest_version: v7.7.0
-
 instance_groups:
 - name: doppler
   azs:
@@ -244,7 +243,6 @@ releases:
   url: https://bosh.io/d/github.com/cloudfoundry/loggregator-release?v=105.0
   version: "105.0"
   sha1: d0bed91335aaac418eb6e8b2be13c6ecf4ce7b90
-
 stemcells:
 - alias: default
   os: ubuntu-xenial
