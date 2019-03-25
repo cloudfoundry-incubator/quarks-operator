@@ -36,12 +36,14 @@ var _ = Describe("InMemoryGenerator", func() {
 	Describe("GenerateCertificate", func() {
 		Context("when generating a certificate", func() {
 			var (
-				request credsgen.CertificateGenerationRequest
-				ca      credsgen.Certificate
+				caCommonName string
+				request      credsgen.CertificateGenerationRequest
+				ca           credsgen.Certificate
 			)
 
 			BeforeEach(func() {
-				ca, _ = generator.GenerateCertificate("testca", credsgen.CertificateGenerationRequest{IsCA: true})
+				caCommonName = "Fake CA"
+				ca, _ = generator.GenerateCertificate("testca", credsgen.CertificateGenerationRequest{CommonName: caCommonName, IsCA: true})
 				request = credsgen.CertificateGenerationRequest{
 					IsCA: false,
 					CA:   ca,
@@ -70,6 +72,7 @@ var _ = Describe("InMemoryGenerator", func() {
 
 				Expect(parsedCert.IsCA).To(BeFalse())
 				Expect(parsedCert.DNSNames).To(ContainElement(Equal("foo.com")))
+				Expect(parsedCert.Issuer.CommonName).To(Equal(caCommonName))
 			})
 
 			It("considers the alternative names", func() {
@@ -129,6 +132,7 @@ var _ = Describe("InMemoryGenerator", func() {
 
 				Expect(parsedCert.IsCA).To(BeTrue())
 				Expect(cert.PrivateKey).ToNot(BeEmpty())
+				Expect(parsedCert.Subject.CommonName).To(Equal(request.CommonName))
 			})
 		})
 	})

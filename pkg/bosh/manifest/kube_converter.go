@@ -277,6 +277,10 @@ func (m *Manifest) convertVariables(namespace string) []esv1.ExtendedSecret {
 					Name: m.GenerateSecretName(v.Options.CA),
 					Key:  "certificate",
 				}
+				certRequest.CAKeyRef = esv1.SecretReference{
+					Name: m.GenerateSecretName(v.Options.CA),
+					Key:  "private_key",
+				}
 			}
 			s.Spec.Request.CertificateRequest = certRequest
 		}
