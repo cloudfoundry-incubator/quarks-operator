@@ -1,7 +1,11 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 )
 
 // This file is safe to edit
@@ -15,6 +19,17 @@ const (
 	ConfigMapType    string = "configmap"
 	SecretType       string = "secret"
 	URLType          string = "url"
+)
+
+var (
+	// LabelKind is the label key for manifest/job kind
+	LabelKind = fmt.Sprintf("%s/kind", apis.GroupName)
+	// LabelDeployment is the label key for manifest name
+	LabelDeployment = fmt.Sprintf("%s/deployment", apis.GroupName)
+	// LabelManifestSHA1 is the label key for manifest SHA1
+	LabelManifestSHA1 = fmt.Sprintf("%s/manifestsha1", apis.GroupName)
+	// AnnotationManifestSHA1 is the annotation key for manifest SHA1
+	AnnotationManifestSHA1 = fmt.Sprintf("%s/manifestsha1", apis.GroupName)
 )
 
 // BOSHDeploymentSpec defines the desired state of BOSHDeployment
@@ -37,6 +52,7 @@ type Ops struct {
 
 // BOSHDeploymentStatus defines the observed state of BOSHDeployment
 type BOSHDeploymentStatus struct {
+	State string   `json:"state"`
 	Nodes []string `json:"nodes"`
 }
 

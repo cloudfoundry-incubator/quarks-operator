@@ -234,11 +234,14 @@ func (m *Manifest) convertVariables(namespace string) []esv1.ExtendedSecret {
 	secrets := []esv1.ExtendedSecret{}
 
 	for _, v := range m.Variables {
-		secretName := m.generateVariableSecretName(v.Name)
+		secretName := m.GenerateSecretName(v.Name)
 		s := esv1.ExtendedSecret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
 				Namespace: namespace,
+				Labels: map[string]string{
+					"variableName": v.Name,
+				},
 			},
 			Spec: esv1.ExtendedSecretSpec{
 				Type:       esv1.Type(v.Type),
@@ -253,7 +256,7 @@ func (m *Manifest) convertVariables(namespace string) []esv1.ExtendedSecret {
 			}
 			if v.Options.CA != "" {
 				certRequest.CARef = esv1.SecretReference{
-					Name: m.generateVariableSecretName(v.Options.CA),
+					Name: m.GenerateSecretName(v.Options.CA),
 					Key:  "certificate",
 				}
 			}
@@ -265,7 +268,8 @@ func (m *Manifest) convertVariables(namespace string) []esv1.ExtendedSecret {
 	return secrets
 }
 
-func (m *Manifest) generateVariableSecretName(name string) string {
+// GenerateSecretName Generates a Secret name or a given name
+func (m *Manifest) GenerateSecretName(name string) string {
 	nameRegex := regexp.MustCompile("[^-][a-z0-9-]*.[a-z0-9-]*[^-]")
 	partRegex := regexp.MustCompile("[a-z0-9-]*")
 

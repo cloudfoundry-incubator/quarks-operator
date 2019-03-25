@@ -1,0 +1,85 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bosh-manifest
+data:
+  manifest: |
+    name: cf-deployment
+    instance_groups:
+    - name: api
+      instances: 2
+      jobs:
+      - name: cloud_controller_ng
+        release: capi
+        properties:
+          router:
+            route_services_secret: "((router_route_services_secret))"
+          app_ssh:
+            host_key_fingerprint: "((diego_ssh_proxy_host_key.public_key_fingerprint))"
+    - name: uaa
+      instances: 2
+      jobs:
+      - name: uaa
+        release: uaa
+        properties:
+          uaa:
+            jwt:
+              policy:
+                active_key_id: key-1
+                keys:
+                  key-1:
+                    signingKey: "((uaa_jwt_signing_key.private_key))"
+    releases:
+    - name: capi
+      url: "docker.io/cfcontainerization"
+      stemcell:
+        os: "opensuse"
+        version: "42.3"
+    - name: uaa
+      url: "docker.io/cfcontainerization"
+      stemcell:
+        os: "opensuse"
+        version: "42.3"
+    variables:
+    - name: router_route_services_secret
+      type: password
+    - name: uaa_jwt_signing_key
+      type: rsa
+    - name: diego_ssh_proxy_host_key
+      type: ssh
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bosh-ops
+data:
+  ops: |
+    - type: replace
+      path: /instance_groups/name=api?/instances
+      value: 4
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bosh-ops-secret
+type: Opaque
+stringData:
+  ops: |
+    - type: replace
+      path: /instance_groups/name=api?/instances
+      value: 5
+---
+apiVersion: fissile.cloudfoundry.org/v1alpha1
+kind: BOSHDeployment
+metadata:
+  name: example-boshdeployment
+spec:
+  manifest:
+    type: "configmap"
+    ref: "bosh-manifest"
+  ops:
+    - type: "configmap"
+      ref: "bosh-ops"
+    - type: "secret"
+      ref: "bosh-ops-secret"

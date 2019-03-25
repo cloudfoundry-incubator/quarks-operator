@@ -137,8 +137,8 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 
 		It("generates RSA keys", func() {
 			client.CreateCalls(func(context context.Context, object runtime.Object) error {
-				Expect(object.(*corev1.Secret).Data["RSAPrivateKey"]).To(Equal([]byte("private")))
-				Expect(object.(*corev1.Secret).Data["RSAPublicKey"]).To(Equal([]byte("public")))
+				Expect(object.(*corev1.Secret).Data["private_key"]).To(Equal([]byte("private")))
+				Expect(object.(*corev1.Secret).Data["public_key"]).To(Equal([]byte("public")))
 				Expect(object.(*corev1.Secret).GetName()).To(Equal("generated-secret"))
 				return nil
 			})
@@ -164,9 +164,9 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		It("generates SSH keys", func() {
 			client.CreateCalls(func(context context.Context, object runtime.Object) error {
 				secret := object.(*corev1.Secret)
-				Expect(secret.Data["SSHPrivateKey"]).To(Equal([]byte("private")))
-				Expect(secret.Data["SSHPublicKey"]).To(Equal([]byte("public")))
-				Expect(secret.Data["SSHFingerprint"]).To(Equal([]byte("fingerprint")))
+				Expect(secret.Data["private_key"]).To(Equal([]byte("private")))
+				Expect(secret.Data["public_key"]).To(Equal([]byte("public")))
+				Expect(secret.Data["public_key_fingerprint"]).To(Equal([]byte("fingerprint")))
 				Expect(object.(*corev1.Secret).GetName()).To(Equal("generated-secret"))
 				return nil
 			})

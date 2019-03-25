@@ -1,11 +1,11 @@
 # ExtendedSecret
 
 - [ExtendedSecret](#extendedsecret)
-    - [Description](#description)
-    - [Features](#features)
-        - [Generated](#generated)
-        - [Policies](#policies)
-    - [Example Resource](#example-resource)
+  - [Description](#description)
+  - [Features](#features)
+    - [Generated](#generated)
+    - [Policies](#policies)
+  - [Example Resource](#example-resource)
 
 ## Description
 
@@ -30,7 +30,7 @@ metadata:
 spec:
   secretName: secretToBeCreated
   policy:
-    recreateInterval: 3600s 
+    recreateInterval: 3600s
   request:
     # one of the following
     # the specific contents for each type of request need to be determined by the definitions here:

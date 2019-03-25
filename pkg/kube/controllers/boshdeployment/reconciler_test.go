@@ -1,16 +1,12 @@
 package boshdeployment_test
 
 import (
+	"context"
 	"fmt"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"time"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
-	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
-	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
-	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
@@ -21,11 +17,16 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
+	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
+	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
+	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	cfctx "code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -39,20 +40,22 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		resolver   fakes.FakeResolver
 		manifest   *bdm.Manifest
 		log        *zap.SugaredLogger
-		ctrsConfig *context.Config
+		ctrsConfig *cfctx.Config
 	)
 
 	BeforeEach(func() {
 		controllers.AddToScheme(scheme.Scheme)
 		recorder = record.NewFakeRecorder(20)
 		manager = &cfakes.FakeManager{}
+		manager.GetSchemeReturns(scheme.Scheme)
 		manager.GetRecorderReturns(recorder)
 		resolver = fakes.FakeResolver{}
 
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 		manifest = &bdm.Manifest{
+			Name: "fake-manifest",
 			Releases: []*bdm.Release{
-				&bdm.Release{
+				{
 					Name:    "bar",
 					URL:     "docker.io/cfcontainerization",
 					Version: "1.0",
@@ -66,18 +69,27 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				{
 					Name: "fakepod",
 					Jobs: []bdm.Job{
-						bdm.Job{
+						{
 							Name:    "foo",
 							Release: "bar",
+							Properties: map[string]interface{}{
+								"password": "((foo_password))",
+							},
 						},
 					},
 				},
 			},
+			Variables: []bdm.Variable{
+				{
+					Name: "foo_password",
+					Type: "password",
+				},
+			},
 		}
 		core, _ := observer.New(zapcore.InfoLevel)
-		ctrsConfig = &context.Config{ //Set the context to be TODO
+		ctrsConfig = &cfctx.Config{ //Set the context to be TODO
 			CtxTimeOut: 10 * time.Second,
-			CtxType:    context.NewContext(),
+			CtxType:    cfctx.NewContext(),
 		}
 		log = zap.New(core).Sugar()
 	})
@@ -125,7 +137,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Expect(err.Error()).To(ContainSubstring("resolver error"))
 
 				// check for events
-				Expect(<-recorder.Events).To(ContainSubstring("ResolveCRD Error"))
+				Expect(<-recorder.Events).To(ContainSubstring("ResolveManifest Error"))
 			})
 
 			It("handles errors when missing instance groups", func() {
@@ -172,9 +184,9 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles errors when setting the owner reference on the object", func() {
-				ctrsConfig := &context.Config{ //Set the context to be TODO
+				ctrsConfig := &cfctx.Config{ //Set the context to be TODO
 					CtxTimeOut: 10 * time.Second,
-					CtxType:    context.NewContext(),
+					CtxType:    cfctx.NewContext(),
 				}
 				reconciler = cfd.NewReconciler(log, ctrsConfig, manager, &resolver, func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return fmt.Errorf("failed to set reference")
@@ -183,6 +195,37 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to set reference"))
+
+				// check for events
+				Expect(<-recorder.Events).To(ContainSubstring("VariableGeneration Error"))
+
+				instance := &bdc.BOSHDeployment{}
+				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(instance.Status.State).To(Equal(cfd.OpsAppliedState))
+			})
+
+			It("creates variable interpolation exJob successfully", func() {
+				result, err := reconciler.Reconcile(request)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{
+					Requeue: true,
+				}))
+
+				instance := &bdc.BOSHDeployment{}
+				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(instance.Status.State).To(Equal(cfd.VariableGeneratedState))
+
+				result, err = reconciler.Reconcile(request)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{
+					Requeue: true,
+				}))
+
+				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(instance.Status.State).To(Equal(cfd.VariableInterpolatedState))
 			})
 		})
 	})

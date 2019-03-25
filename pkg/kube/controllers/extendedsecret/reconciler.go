@@ -166,8 +166,8 @@ func (r *ReconcileExtendedSecret) createRSASecret(ctx context.Context, instance 
 			Namespace: instance.GetNamespace(),
 		},
 		Data: map[string][]byte{
-			"RSAPrivateKey": key.PrivateKey,
-			"RSAPublicKey":  key.PublicKey,
+			"private_key": key.PrivateKey,
+			"public_key":  key.PublicKey,
 		},
 	}
 
@@ -189,9 +189,9 @@ func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance 
 			Namespace: instance.GetNamespace(),
 		},
 		Data: map[string][]byte{
-			"SSHPrivateKey":  key.PrivateKey,
-			"SSHPublicKey":   key.PublicKey,
-			"SSHFingerprint": []byte(key.Fingerprint),
+			"private_key":            key.PrivateKey,
+			"public_key":             key.PublicKey,
+			"public_key_fingerprint": []byte(key.Fingerprint),
 		},
 	}
 
