@@ -165,10 +165,7 @@ var _ = Describe("ExtendedJob", func() {
 					extJob, err := env.GetExtendedJob(env.Namespace, ej.Name)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(extJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
-
-					jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(jobs).To(HaveLen(1))
+					Expect(env.WaitForLogMsg(env.ObservedLogs, "Deleting succeeded job")).ToNot(HaveOccurred())
 
 					By("modifying config")
 					c, _ := env.GetConfigMap(env.Namespace, configMap.Name)
@@ -177,9 +174,9 @@ var _ = Describe("ExtendedJob", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					By("checking if job is running")
-					jobs, err = env.CollectJobs(env.Namespace, "extendedjob=true", 2)
+					jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(jobs).To(HaveLen(2))
+					Expect(jobs).To(HaveLen(1))
 
 					By("checking config owner references")
 					c, _ = env.GetConfigMap(env.Namespace, configMap.Name)
@@ -608,7 +605,7 @@ var _ = Describe("ExtendedJob", func() {
 				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 				By("persisting output for the first container")
-				secret, err := env.GetSecret(env.Namespace, "output-job-output-busybox")
+				secret, err := env.CollectSecret(env.Namespace, "output-job-output-busybox")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(secret.Data["foo"])).To(Equal("1"))
 				Expect(string(secret.Data["bar"])).To(Equal("baz"))
@@ -618,7 +615,7 @@ var _ = Describe("ExtendedJob", func() {
 				Expect(secret.Labels["label-key2"]).To(Equal("label-value2"))
 
 				By("persisting output for the second container")
-				secret, err = env.GetSecret(env.Namespace, "output-job-output-busybox2")
+				secret, err = env.CollectSecret(env.Namespace, "output-job-output-busybox2")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(secret.Data["foo"])).To(Equal("1"))
 				Expect(string(secret.Data["bar"])).To(Equal("baz"))
@@ -650,8 +647,8 @@ var _ = Describe("ExtendedJob", func() {
 					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 					// Wait until the output of the second container has been persisted. Then check the first one
-					_, err = env.GetSecret(env.Namespace, "overwrite-job-output-busybox2")
-					secret, err := env.GetSecret(env.Namespace, "overwrite-job-output-busybox")
+					_, err = env.CollectSecret(env.Namespace, "overwrite-job-output-busybox2")
+					secret, err := env.CollectSecret(env.Namespace, "overwrite-job-output-busybox")
 
 					Expect(err).ToNot(HaveOccurred())
 					Expect(string(secret.Data["foo"])).To(Equal("1"))
@@ -675,10 +672,14 @@ var _ = Describe("ExtendedJob", func() {
 						Expect(err).NotTo(HaveOccurred())
 						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
+						By("waiting for reconcile")
+						err = env.WaitForLogMsg(env.ObservedLogs, "Reconciling job output ")
+						Expect(err).NotTo(HaveOccurred())
+
 						By("not persisting output for the first container")
 						_, err = env.GetSecret(env.Namespace, "output-job2-output-busybox")
 						Expect(err).To(HaveOccurred())
-						Expect(err.Error()).To(ContainSubstring("timed out"))
+						Expect(err.Error()).To(ContainSubstring("waiting for secret output-job2-output-busybox: secrets \"output-job2-output-busybox\" not found"))
 					})
 				})
 
@@ -698,7 +699,7 @@ var _ = Describe("ExtendedJob", func() {
 						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 						By("persisting the output for the first container")
-						_, err = env.GetSecret(env.Namespace, "output-job3-output-busybox")
+						_, err = env.CollectSecret(env.Namespace, "output-job3-output-busybox")
 						Expect(err).ToNot(HaveOccurred())
 					})
 				})

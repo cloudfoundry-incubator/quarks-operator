@@ -37,7 +37,7 @@ var _ = Describe("ExtendedSecret", func() {
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// check for generated secret
-			secret, err := env.GetSecret(env.Namespace, "generated-password-secret")
+			secret, err := env.CollectSecret(env.Namespace, "generated-password-secret")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(secret.Data["password"]).To(MatchRegexp("^\\w{64}$"))
 
@@ -59,7 +59,7 @@ var _ = Describe("ExtendedSecret", func() {
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// check for generated secret
-			secret, err := env.GetSecret(env.Namespace, "generated-rsa-secret")
+			secret, err := env.CollectSecret(env.Namespace, "generated-rsa-secret")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(secret.Data["private_key"]).To(ContainSubstring("RSA PRIVATE KEY"))
 			Expect(secret.Data["public_key"]).To(ContainSubstring("PUBLIC KEY"))
@@ -82,7 +82,7 @@ var _ = Describe("ExtendedSecret", func() {
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// check for generated secret
-			secret, err := env.GetSecret(env.Namespace, "generated-ssh-secret")
+			secret, err := env.CollectSecret(env.Namespace, "generated-ssh-secret")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(secret.Data["private_key"]).To(ContainSubstring("RSA PRIVATE KEY"))
 			Expect(secret.Data["public_key"]).To(ContainSubstring("ssh-rsa "))
@@ -131,7 +131,7 @@ var _ = Describe("ExtendedSecret", func() {
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// check for generated secret
-			secret, err := env.GetSecret(env.Namespace, "generated-cert-secret")
+			secret, err := env.CollectSecret(env.Namespace, "generated-cert-secret")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(secret.Data["certificate"]).To(ContainSubstring("BEGIN CERTIFICATE"))
 			Expect(secret.Data["private_key"]).To(ContainSubstring("RSA PRIVATE KEY"))
