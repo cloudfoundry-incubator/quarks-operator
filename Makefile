@@ -18,6 +18,9 @@ export CFO_NAMESPACE ?= default
 up:
 	bin/up
 
+up-nobuild:
+	bin/up-nobuild
+
 gen-kube:
 	bin/gen-kube
 

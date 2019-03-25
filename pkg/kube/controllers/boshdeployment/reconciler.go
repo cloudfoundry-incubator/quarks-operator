@@ -98,11 +98,11 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			r.log.Debug("Skip reconcile: CRD not found\n")
+			r.log.Debug("Skip reconcile: BOSHDeployment not found")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		r.recorder.Event(instance, corev1.EventTypeWarning, "GetCRD Error", err.Error())
+		r.recorder.Event(instance, corev1.EventTypeWarning, "GetBOSHDeployment Error", err.Error())
 		r.log.Errorf("Failed to get BOSHDeployment '%s': %v", request.NamespacedName, err)
 		return reconcile.Result{}, err
 	}

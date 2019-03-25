@@ -77,7 +77,7 @@ var _ = Describe("Deploy", func() {
 	})
 
 	Context("when incorrectly setup", func() {
-		It("failed to deploy if ResolveCRD error occurred", func() {
+		It("failed to deploy if an error occurred when applying ops files", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
@@ -96,8 +96,9 @@ var _ = Describe("Deploy", func() {
 
 			// check for events
 			events, err := env.GetBOSHDeploymentEvents(env.Namespace, boshDeployment.ObjectMeta.Name, string(boshDeployment.ObjectMeta.UID))
+
 			Expect(err).NotTo(HaveOccurred())
-			Expect(env.ContainExpectedEvent(events, "ResolveCRD Error", "failed to interpolate")).To(BeTrue())
+			Expect(env.ContainExpectedEvent(events, "ResolveManifest Error", "failed to interpolate")).To(BeTrue())
 		})
 
 		It("failed to deploy a empty manifest", func() {
