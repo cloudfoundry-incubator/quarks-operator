@@ -203,7 +203,6 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				instance := &bdc.BOSHDeployment{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(instance.Status.State).To(Equal(cfd.OpsAppliedState))
 			})
 
 			It("creates variable interpolation exJob successfully", func() {
