@@ -8,7 +8,7 @@ set -e
 export DOCKER_IMAGE_TAG=${VERSION_TAG}
 
 if [ -z "$SKIP_IMAGE" ]; then
-  bin/build-image
+  bin/build-nobuild-image
 fi
 
 bin/build
