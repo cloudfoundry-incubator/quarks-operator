@@ -97,7 +97,7 @@ var _ = Describe("Deploy", func() {
 			// check for events
 			events, err := env.GetBOSHDeploymentEvents(env.Namespace, boshDeployment.ObjectMeta.Name, string(boshDeployment.ObjectMeta.UID))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(env.ContainExpectedEvent(events, "ResolveCRD Error", "failed to interpolate")).To(BeTrue())
+			Expect(env.ContainExpectedEvent(events, "ResolveManifest Error", "failed to interpolate")).To(BeTrue())
 		})
 
 		It("failed to deploy a empty manifest", func() {
