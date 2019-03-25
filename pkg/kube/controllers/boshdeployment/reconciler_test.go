@@ -3,9 +3,10 @@ package boshdeployment_test
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -126,10 +127,10 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Expect(err.Error()).To(ContainSubstring("bad request returns error"))
 
 				// check for events
-				Expect(<-recorder.Events).To(ContainSubstring("GetCRD Error"))
+				Expect(<-recorder.Events).To(ContainSubstring("GetBOSHDeployment Error"))
 			})
 
-			It("handles errors when resolving the CR", func() {
+			It("handles errors when resolving the BOSHDeployment", func() {
 				resolver.ResolveManifestReturns(nil, fmt.Errorf("resolver error"))
 
 				_, err := reconciler.Reconcile(request)
