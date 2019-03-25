@@ -62,6 +62,10 @@ instance_groups:
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
+			versionedCR, err = env.GetBOSHDeployment(env.Namespace, versionedCR.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(versionedCR).NotTo(Equal(nil))
+
 			versionedCR.Spec.Manifest.Ref = "newmanifest"
 			_, _, err = env.UpdateBOSHDeployment(env.Namespace, *versionedCR)
 			Expect(err).NotTo(HaveOccurred())
