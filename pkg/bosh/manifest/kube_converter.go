@@ -429,7 +429,13 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 		VolumeMounts: []v1.VolumeMount{
 			{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
 		},
-		Command: []string{"bash", "-c", "echo 'foo'"},
+		Env: []v1.EnvVar{
+			v1.EnvVar{
+				Name:  "INSTANCE_GROUP_NAME",
+				Value: igName,
+			},
+		},
+		Command: []string{"bash", "-c", "/usr/local/bin/cf-operator render-template -j /var/vcap/rendering"},
 	})
 
 	return initContainers, nil
