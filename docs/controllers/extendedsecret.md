@@ -9,6 +9,12 @@
 
 ## Description
 
+## Types
+
+Currently ExtendedSecret supports to generate certificate, password, rsa, and ssh variables whose followed BOSH CLI generation options:
+
+> See [detailed info](https://bosh.io/docs/variable-types)
+
 ## Features
 
 ### Generated
@@ -26,18 +32,29 @@ The developer can specify policies for rotation (e.g. automatic or not) and how 
 apiVersion: fissile.cloudfoundry.org/v1alpha1
 kind: ExtendedSecret
 metadata:
-  name: mygeneratedsecret
+  name: my-generated-secret
 spec:
-  secretName: secretToBeCreated
+  # Type of the variable that ExtendedSecret supports
+  type: certificate
+  # Name of the Secret that stores this variable
+  secretName: cf-deployment.uaa-ssl
   policy:
     recreateInterval: 3600s
   request:
-    # one of the following
-    # the specific contents for each type of request need to be determined by the definitions here:
-    # https://github.com/cloudfoundry-incubator/cf-operator/blob/master/pkg/credsgen/generator.go#L43
-    # in the case where we need to reference a CA, that should be done by referencing a Secret
-    password:
     certificate:
-    sshKey:
-    rsaKey:
+      # The secret of CA private key
+      CAKeyRef:
+        Key: private_key
+        Name: cf-deployment.uaa-ca
+      # The secret of CA certificate
+      CARef:
+        Key: certificate
+        Name: cf-deployment.uaa-ca
+      # The Subject name of the certificate
+      commonName: uaa.service.cf.internal
+      # The subject alternative names
+      alternativeNames:
+      - uaa.service.cf.internal
+      # If true, the ExtendedSecret will generate self-signed root CA certificate and private key
+      isCA: false
 ```
