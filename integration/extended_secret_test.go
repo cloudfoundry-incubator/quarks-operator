@@ -98,6 +98,7 @@ var _ = Describe("ExtendedSecret", func() {
 		It("generates a secret with a certificate key and deletes it when being deleted", func() {
 			generator := inmemorygenerator.NewInMemoryGenerator(env.Log)
 			ca, err := generator.GenerateCertificate("default-ca", credsgen.CertificateGenerationRequest{
+				CommonName: "Fake CA",
 				IsCA: true,
 			})
 			Expect(err).ToNot(HaveOccurred())
