@@ -9,17 +9,20 @@ export DOCKER_IMAGE_TAG=${VERSION_TAG}
 
 echo "Test logs are here: /tmp/cf-operator-tests.log"
 
-TEST_NAMESPACE=${TEST_NAMESPACE:-"test$(date +%s)"}
-export TEST_NAMESPACE
+if [ -z ${TEST_NAMESPACE+x} ]; then
+  TEST_NAMESPACE="test$(date +%s)"
+  export TEST_NAMESPACE
 
-remove_namespace() {
-  kubectl delete namespace --wait=false --grace-period=60 "$TEST_NAMESPACE"
-}
-trap remove_namespace EXIT
+  remove_namespace() {
+    kubectl delete namespace --wait=false --grace-period=60 "$TEST_NAMESPACE"
+  }
+  trap remove_namespace EXIT
+
+  kubectl create namespace "$TEST_NAMESPACE"
+fi
 
 bin/apply-crds
 
 kubectl get customresourcedefinitions
-kubectl get namespace "$TEST_NAMESPACE" || kubectl create namespace "$TEST_NAMESPACE"
 
 ginkgo --slowSpecThreshold=50 integration/
