@@ -480,8 +480,8 @@ func (r *ReconcileBOSHDeployment) actionOnDeploying(ctx context.Context, instanc
 
 // newExtendedJobTemplateForVariableInterpolation returns a job to interpolate variables
 func (r *ReconcileBOSHDeployment) newExtendedJobTemplateForVariableInterpolation(ctx context.Context, manifest *corev1.Secret, variables []esv1.ExtendedSecret, jobLabels map[string]string, secretLabels map[string]string, namespace string) *ejv1.ExtendedJob {
-	cmd := []string{"/bin/sh"}
-	args := []string{"-c", "cf-operator variable-interpolation --manifest /var/run/secrets/manifest.yaml --variables-dir /var/run/secrets/variables | base64 | tr -d '\n' | echo \"{\\\"interpolated-manifest.yaml\\\":\\\"$(</dev/stdin)\\\"}\""}
+	cmd := []string{"cf-operator"}
+	args := []string{"variable-interpolation --manifest /var/run/secrets/manifest.yaml --variables-dir /var/run/secrets/variables | base64 | tr -d '\n' | echo \"{\\\"interpolated-manifest.yaml\\\":\\\"$(</dev/stdin)\\\"}\""}
 
 	volumes := []corev1.Volume{
 		{
