@@ -169,16 +169,15 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		}
 	}
 
-	defer func() {
-		// Update the Status of the resource
-		if !reflect.DeepEqual(statefulSetVersions, exStatefulSet.Status.Versions) {
-			exStatefulSet.Status.Versions = statefulSetVersions
-			updateErr := r.client.Update(ctx, exStatefulSet)
-			if updateErr != nil {
-				r.log.Errorf("Failed to update exStatefulSet status: %v", updateErr)
-			}
+	// Update the status of the resource
+	if !reflect.DeepEqual(statefulSetVersions, exStatefulSet.Status.Versions) {
+		r.log.Debugf("Updating ExtendedStatefulSet '%s'", request.NamespacedName)
+		exStatefulSet.Status.Versions = statefulSetVersions
+		updateErr := r.client.Update(ctx, exStatefulSet)
+		if updateErr != nil {
+			r.log.Errorf("Failed to update exStatefulSet status: %v", updateErr)
 		}
-	}()
+	}
 
 	maxAvailableVersion := exStatefulSet.GetMaxAvailableVersion(statefulSetVersions)
 
@@ -300,6 +299,7 @@ func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, 
 			continue
 		}
 
+		r.log.Debugf("Deleting StatefulSet '%s'", statefulSet.Name)
 		err = r.client.Delete(ctx, &statefulSet, client.PropagationPolicy(metav1.DeletePropagationBackground))
 		if err != nil {
 			r.log.Error("Could not delete StatefulSet  '", statefulSet.Name, "': ", err)
