@@ -193,7 +193,11 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					return fmt.Errorf("failed to set reference")
 				})
 
+				// First reconcile doesn't create any resources
 				_, err := reconciler.Reconcile(request)
+				Expect(err).ToNot(HaveOccurred())
+				// We need a second reconcile to create some stuff
+				_, err = reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to set reference"))
 
@@ -203,10 +207,9 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				instance := &bdc.BOSHDeployment{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(instance.Status.State).To(Equal(cfd.OpsAppliedState))
 			})
 
-			It("creates variable interpolation exJob successfully", func() {
+			It("goes from ops applied to variable generated state successfully", func() {
 				result, err := reconciler.Reconcile(request)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{
@@ -216,7 +219,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				instance := &bdc.BOSHDeployment{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(instance.Status.State).To(Equal(cfd.VariableGeneratedState))
+				Expect(instance.Status.State).To(Equal(cfd.OpsAppliedState))
 
 				result, err = reconciler.Reconcile(request)
 				Expect(err).NotTo(HaveOccurred())
@@ -226,7 +229,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(instance.Status.State).To(Equal(cfd.VariableInterpolatedState))
+				Expect(instance.Status.State).To(Equal(cfd.VariableGeneratedState))
 			})
 		})
 	})

@@ -296,9 +296,19 @@ func (m *Machine) PodsFailing(namespace string, labels string) (bool, error) {
 	}
 
 	for _, pod := range pods.Items {
+
 		pos, condition := podutil.GetPodCondition(&pod.Status, corev1.ContainersReady)
-		if (pos > -1 && condition.Reason == "ContainersNotReady") || pod.Status.Phase == corev1.PodFailed {
+		if (pos > -1 && condition.Reason == "ContainersNotReady") ||
+			pod.Status.Phase == corev1.PodFailed {
+
 			return true, nil
+		}
+		for _, containerStatus := range pod.Status.ContainerStatuses {
+			state := containerStatus.State
+			if (state.Waiting != nil && state.Waiting.Reason == "ImagePullBackOff") ||
+				(state.Waiting != nil && state.Waiting.Reason == "ErrImagePull") {
+				return true, nil
+			}
 		}
 	}
 

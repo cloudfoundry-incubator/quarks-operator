@@ -188,7 +188,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// check for pod
-			err = env.WaitForPodFailures(env.Namespace, "wrongpod=yes")
+			err = env.WaitForPodFailures(env.Namespace, "testpodupdated=yes")
 			Expect(err).NotTo(HaveOccurred())
 
 			// check that old statefulset is deleted
@@ -200,7 +200,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			}))
 		})
 
-		It("should keeps current version if references are updated", func() {
+		It("should keep current version if references are updated", func() {
 			// Create references
 			configMap1 := env.DefaultConfigMap("example1")
 			tearDown, err := env.CreateConfigMap(env.Namespace, configMap1)

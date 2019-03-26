@@ -33,6 +33,9 @@ var _ = Describe("Deploy", func() {
 
 		It("should deploy a pod with 1 nanosecond for the reconciler context", func() {
 			env.CtrsConfig.CtxTimeOut = 1 * time.Nanosecond
+			defer func() {
+				env.CtrsConfig.CtxTimeOut = 10 * time.Second
+			}()
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
@@ -41,8 +44,7 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			Expect(env.WaitForLogMsg(env.ObservedLogs, "extendedstatefulsets: context deadline exceeded")).NotTo(HaveOccurred())
-			env.CtrsConfig.CtxTimeOut = 10 * time.Second
+			Expect(env.WaitForLogMsg(env.ObservedLogs, "context deadline exceeded")).To(Succeed())
 		})
 
 		It("should deploy manifest with multiple ops correctly", func() {

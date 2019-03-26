@@ -32,6 +32,7 @@ import (
 // State of instance
 const (
 	CreatedState                     = "Created"
+	UpdatedState                     = "Updated"
 	OpsAppliedState                  = "OpsApplied"
 	VariableGeneratedState           = "VariableGenerated"
 	VariableInterpolatedState        = "VariableInterpolated"
@@ -110,29 +111,26 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	// Get state from instance
 	instanceState := instance.Status.State
 
-	// Generate in-memory variables
+	// Apply ops files
 	manifest, err := r.applyOps(ctx, instance)
 	if err != nil {
-		instance.Status.State = CreatedState
-		updateErr := r.updateInstanceState(ctx, instance)
-		if updateErr != nil {
-			return reconcile.Result{Requeue: true}, errors.Wrap(err, "could not update instance state")
-		}
 		return reconcile.Result{}, err
 	}
 
+	// Compute SHA1 of the manifest (with ops applied), so we can figure out if anything
+	// has changed.
 	currentManifestSHA1, err := calculateManifestSHA1(manifest)
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "could not calculate manifest SHA1")
 	}
-
 	oldManifestSHA1, _ := instance.Annotations[bdc.AnnotationManifestSHA1]
-
 	if oldManifestSHA1 == currentManifestSHA1 && instance.Status.State == DeployedState {
-		r.log.Infof("Skip reconcile: deployed BoshDeployment '%s/%s' manifest has not changed", instance.GetName(), instance.GetNamespace())
+		r.log.Infof("Skip reconcile: deployed BoshDeployment '%s/%s' manifest has not changed", instance.GetNamespace(), instance.GetName())
 		return reconcile.Result{}, nil
 	}
 
+	// If we have no instance groups, we should stop. There must be something wrong
+	// with the manifest.
 	if len(manifest.InstanceGroups) < 1 {
 		err := fmt.Errorf("manifest is missing instance groups")
 		r.log.Errorf("No instance groups defined in manifest %s", manifest.Name)
@@ -140,6 +138,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
+	// Generate all the kube objects we need for the manifest
 	r.log.Debug("Converting bosh manifest to kube objects")
 	kubeConfigs, err := manifest.ConvertToKube(r.ctrConfig.Namespace)
 	if err != nil {
@@ -148,51 +147,72 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, errors.Wrap(err, "error converting manifest to kube objects")
 	}
 
-	varIntJobLabels := map[string]string{
-		bdc.LabelKind:       "variable-interpolation",
-		bdc.LabelDeployment: manifest.Name,
-	}
-	desiredManifestSecretLabels := map[string]string{
-		bdc.LabelKind:         "desired-manifest",
-		bdc.LabelDeployment:   manifest.Name,
-		bdc.LabelManifestSHA1: currentManifestSHA1,
+	if instanceState == "" {
+		// Set a "Created" state if this has just been created
+		instanceState = CreatedState
+	} else if currentManifestSHA1 != oldManifestSHA1 {
+		// Set an "Updated" state if the signature of the manifest has changed
+		instanceState = UpdatedState
 	}
 
-	// Overwrite instanceState only if in init or created status
-	if instanceState == "" || instanceState == CreatedState {
-		instanceState = instance.Status.State
-	}
-
-	defer r.updateInstanceState(ctx, instance)
+	r.log.Debugf("BoshDeployment '%s/%s' is in state: %s", instance.GetNamespace(), instance.GetName(), instanceState)
 
 	switch instanceState {
+	case CreatedState:
+		fallthrough
+	case UpdatedState:
+		// Set manifest SHA1
+		if instance.Annotations == nil {
+			instance.Annotations = map[string]string{}
+		}
+		instance.Annotations[bdc.AnnotationManifestSHA1] = currentManifestSHA1
+		instance.Status.State = OpsAppliedState
+
 	case OpsAppliedState:
-		err = r.generateVariables(ctx, instance, manifest, &kubeConfigs)
+		err = r.generateVariableSecrets(ctx, instance, manifest, &kubeConfigs)
 		if err != nil {
 			r.log.Errorf("Failed to generate variables: %v", err)
 			r.recorder.Event(instance, corev1.EventTypeWarning, "VariableGeneration Error", err.Error())
 			return reconcile.Result{}, err
 		}
+
 	case VariableGeneratedState:
+		desiredManifestSecretLabels := map[string]string{
+			bdc.LabelKind:         "desired-manifest",
+			bdc.LabelDeployment:   manifest.Name,
+			bdc.LabelManifestSHA1: currentManifestSHA1,
+		}
+		varIntJobLabels := map[string]string{
+			bdc.LabelKind:       "variable-interpolation",
+			bdc.LabelDeployment: manifest.Name,
+		}
 		err = r.createVariableInterpolationExJob(ctx, instance, manifest, kubeConfigs.Variables, varIntJobLabels, desiredManifestSecretLabels)
 		if err != nil {
 			r.log.Errorf("Failed to create variable interpolation exJob: %v", err)
 			r.recorder.Event(instance, corev1.EventTypeWarning, "VariableInterpolation Error", err.Error())
 			return reconcile.Result{}, err
 		}
+
 	case VariableInterpolatedState:
+		desiredManifestSecretLabels := map[string]string{
+			bdc.LabelKind:         "desired-manifest",
+			bdc.LabelDeployment:   manifest.Name,
+			bdc.LabelManifestSHA1: currentManifestSHA1,
+		}
 		err = r.createDataGatheringJob(ctx, instance, manifest, desiredManifestSecretLabels)
 		if err != nil {
 			r.log.Errorf("Failed to create data gathering exJob: %v", err)
 			r.recorder.Event(instance, corev1.EventTypeWarning, "DataGathering Error", err.Error())
 			return reconcile.Result{}, err
 		}
+
 	case DataGatheredState:
 		err = r.deployInstanceGroups(ctx, instance, &kubeConfigs)
 		if err != nil {
 			r.log.Errorf("Failed to deploy instance groups: %v", err)
 			return reconcile.Result{}, err
 		}
+
 	case DeployingState:
 		err = r.actionOnDeploying(ctx, instance, &kubeConfigs)
 		if err != nil {
@@ -200,15 +220,16 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			r.recorder.Event(instance, corev1.EventTypeWarning, "InstanceDeployment Error", err.Error())
 			return reconcile.Result{}, err
 		}
+
 	case DeployedState:
-		r.log.Infof("Skip reconcile: BoshDeployment '%s/%s' already has been deployed", instance.GetName(), instance.GetNamespace())
+		r.log.Infof("Skip reconcile: BoshDeployment '%s/%s' already has been deployed", instance.GetNamespace(), instance.GetName())
 		return reconcile.Result{}, nil
 	default:
 		return reconcile.Result{}, errors.New("unknown instance state")
 	}
 
-	r.log.Debugf("requeue the reconcile: BoshDeployment '%s/%s' is in state '%s'", instance.GetName(), instance.GetNamespace(), instance.Status.State)
-	return reconcile.Result{Requeue: true}, nil
+	r.log.Debugf("requeue the reconcile: BoshDeployment '%s/%s' is in state '%s'", instance.GetNamespace(), instance.GetName(), instance.Status.State)
+	return reconcile.Result{Requeue: true}, r.updateInstanceState(ctx, instance)
 }
 
 // updateInstanceState update instance state
@@ -237,8 +258,11 @@ func (r *ReconcileBOSHDeployment) updateInstanceState(ctx context.Context, curre
 	// Update the Status of the resource
 	if !reflect.DeepEqual(foundInstance.Status.State, currentInstance.Status.State) {
 		r.log.Debugf("Updating boshDeployment from '%s' to '%s'", foundInstance.Status.State, currentInstance.Status.State)
-		foundInstance.Status.State = currentInstance.Status.State
-		err = r.client.Update(ctx, foundInstance)
+
+		newInstance := foundInstance.DeepCopy()
+		newInstance.Status.State = currentInstance.Status.State
+
+		err = r.client.Update(ctx, newInstance)
 		if err != nil {
 			r.log.Errorf("Failed to update BOSHDeployment instance status: %v", err)
 			return err
@@ -260,13 +284,11 @@ func (r *ReconcileBOSHDeployment) applyOps(ctx context.Context, instance *bdc.BO
 		return nil, err
 	}
 
-	instance.Status.State = OpsAppliedState
-
 	return manifest, nil
 }
 
-// generateVariables create variables extendedSecrets
-func (r *ReconcileBOSHDeployment) generateVariables(ctx context.Context, instance *bdc.BOSHDeployment, manifest *bdm.Manifest, kubeConfig *bdm.KubeConfig) error {
+// generateVariableSecrets create variables extendedSecrets
+func (r *ReconcileBOSHDeployment) generateVariableSecrets(ctx context.Context, instance *bdc.BOSHDeployment, manifest *bdm.Manifest, kubeConfig *bdm.KubeConfig) error {
 	r.log.Debug("Creating variables extendedSecrets")
 	var err error
 	for _, variable := range kubeConfig.Variables {
@@ -299,7 +321,7 @@ func (r *ReconcileBOSHDeployment) generateVariables(ctx context.Context, instanc
 // createVariableInterpolationExJob create temp manifest and variable interpolation exJob
 func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.Context, instance *bdc.BOSHDeployment, manifest *bdm.Manifest, variables []esv1.ExtendedSecret, jobLabels map[string]string, secretLabels map[string]string) error {
 	if len(variables) == 0 {
-		r.log.Infof("Skip variable interpolation: BoshDeployment '%s/%s' already has been empty variables", instance.GetName(), instance.GetNamespace())
+		r.log.Infof("Skip variable interpolation: BoshDeployment '%s/%s' doesn't have any variables", instance.GetNamespace(), instance.GetName())
 		instance.Status.State = VariableInterpolatedState
 		return nil
 	}
@@ -419,7 +441,7 @@ func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, in
 // deployInstanceGroups create ExtendedJobs and ExtendedStatefulSets
 func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, instance *bdc.BOSHDeployment, kubeConfigs *bdm.KubeConfig) error {
 	r.log.Debug("Creating extendedJobs and extendedStatefulSets of instance groups")
-	for _, eJob := range kubeConfigs.ExtendedJob {
+	for _, eJob := range kubeConfigs.Errands {
 		// Set BOSHDeployment instance as the owner and controller
 		if err := r.setReference(instance, &eJob, r.scheme); err != nil {
 			r.recorder.Event(instance, corev1.EventTypeWarning, "NewExtendedJobForDeployment Error", err.Error())
@@ -442,7 +464,7 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 		}
 	}
 
-	for _, eSts := range kubeConfigs.ExtendedSts {
+	for _, eSts := range kubeConfigs.InstanceGroups {
 		// Set BOSHDeployment instance as the owner and controller
 		if err := r.setReference(instance, &eSts, r.scheme); err != nil {
 			r.recorder.Event(instance, corev1.EventTypeWarning, "NewExtendedStatefulSetForDeployment Error", err.Error())
