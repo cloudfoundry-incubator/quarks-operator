@@ -32,6 +32,7 @@ import (
 // State of instance
 const (
 	CreatedState                     = "Created"
+	UpdatedState                     = "Updated"
 	OpsAppliedState                  = "OpsApplied"
 	VariableGeneratedState           = "VariableGenerated"
 	VariableInterpolatedState        = "VariableInterpolated"
@@ -110,29 +111,26 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	// Get state from instance
 	instanceState := instance.Status.State
 
-	// Generate in-memory variables
+	// Apply ops files
 	manifest, err := r.applyOps(ctx, instance)
 	if err != nil {
-		instance.Status.State = CreatedState
-		updateErr := r.updateInstanceState(ctx, instance)
-		if updateErr != nil {
-			return reconcile.Result{Requeue: true}, errors.Wrap(err, "could not update instance state")
-		}
 		return reconcile.Result{}, err
 	}
 
+	// Compute SHA1 of the manifest (with ops applied), so we can figure out if anything
+	// has changed.
 	currentManifestSHA1, err := calculateManifestSHA1(manifest)
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "could not calculate manifest SHA1")
 	}
-
 	oldManifestSHA1, _ := instance.Annotations[bdc.AnnotationManifestSHA1]
-
 	if oldManifestSHA1 == currentManifestSHA1 && instance.Status.State == DeployedState {
 		r.log.Infof("Skip reconcile: deployed BoshDeployment '%s/%s' manifest has not changed", instance.GetNamespace(), instance.GetName())
 		return reconcile.Result{}, nil
 	}
 
+	// If we have no instance groups, we should stop. There must be something wrong
+	// with the manifest.
 	if len(manifest.InstanceGroups) < 1 {
 		err := fmt.Errorf("manifest is missing instance groups")
 		r.log.Errorf("No instance groups defined in manifest %s", manifest.Name)
@@ -140,6 +138,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
+	// Generate all the kube objects we need for the manifest
 	r.log.Debug("Converting bosh manifest to kube objects")
 	kubeConfigs, err := manifest.ConvertToKube(r.ctrConfig.Namespace)
 	if err != nil {
@@ -148,24 +147,27 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, errors.Wrap(err, "error converting manifest to kube objects")
 	}
 
-	varIntJobLabels := map[string]string{
-		bdc.LabelKind:       "variable-interpolation",
-		bdc.LabelDeployment: manifest.Name,
-	}
-	desiredManifestSecretLabels := map[string]string{
-		bdc.LabelKind:         "desired-manifest",
-		bdc.LabelDeployment:   manifest.Name,
-		bdc.LabelManifestSHA1: currentManifestSHA1,
-	}
-
-	// Overwrite instanceState only if in init or created status
-	if instanceState == "" || instanceState == CreatedState {
-		instanceState = instance.Status.State
+	if instanceState == "" {
+		// Set a "Created" state if this has just been created
+		instanceState = CreatedState
+	} else if currentManifestSHA1 != oldManifestSHA1 {
+		// Set an "Updated" state if the signature of the manifest has changed
+		instanceState = UpdatedState
 	}
 
 	r.log.Debugf("BoshDeployment '%s/%s' is in state: %s", instance.GetNamespace(), instance.GetName(), instanceState)
 
 	switch instanceState {
+	case CreatedState:
+		fallthrough
+	case UpdatedState:
+		// Set manifest SHA1
+		if instance.Annotations == nil {
+			instance.Annotations = map[string]string{}
+		}
+		instance.Annotations[bdc.AnnotationManifestSHA1] = currentManifestSHA1
+		instance.Status.State = OpsAppliedState
+
 	case OpsAppliedState:
 		err = r.generateVariableSecrets(ctx, instance, manifest, &kubeConfigs)
 		if err != nil {
@@ -175,6 +177,15 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		}
 
 	case VariableGeneratedState:
+		desiredManifestSecretLabels := map[string]string{
+			bdc.LabelKind:         "desired-manifest",
+			bdc.LabelDeployment:   manifest.Name,
+			bdc.LabelManifestSHA1: currentManifestSHA1,
+		}
+		varIntJobLabels := map[string]string{
+			bdc.LabelKind:       "variable-interpolation",
+			bdc.LabelDeployment: manifest.Name,
+		}
 		err = r.createVariableInterpolationExJob(ctx, instance, manifest, kubeConfigs.Variables, varIntJobLabels, desiredManifestSecretLabels)
 		if err != nil {
 			r.log.Errorf("Failed to create variable interpolation exJob: %v", err)
@@ -183,6 +194,11 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		}
 
 	case VariableInterpolatedState:
+		desiredManifestSecretLabels := map[string]string{
+			bdc.LabelKind:         "desired-manifest",
+			bdc.LabelDeployment:   manifest.Name,
+			bdc.LabelManifestSHA1: currentManifestSHA1,
+		}
 		err = r.createDataGatheringJob(ctx, instance, manifest, desiredManifestSecretLabels)
 		if err != nil {
 			r.log.Errorf("Failed to create data gathering exJob: %v", err)
@@ -267,8 +283,6 @@ func (r *ReconcileBOSHDeployment) applyOps(ctx context.Context, instance *bdc.BO
 		r.log.Errorf("Error resolving the manifest %s: %s", instance.GetName(), err)
 		return nil, err
 	}
-
-	instance.Status.State = OpsAppliedState
 
 	return manifest, nil
 }

@@ -120,7 +120,7 @@ func (m *Manifest) jobsToContainers(igName string, jobs []Job, namespace string)
 			VolumeMounts: []v1.VolumeMount{
 				v1.VolumeMount{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
 			},
-			Command: []string{"bash", "-c", "ping localhost"},
+			Command: []string{"bash", "-c", "sleep 3600"},
 		})
 	}
 	return jobsToContainerPods, nil
