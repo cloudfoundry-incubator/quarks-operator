@@ -427,7 +427,8 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 		Name:  fmt.Sprintf("renderer-%s", igName),
 		Image: GetOperatorDockerImage(),
 		VolumeMounts: []v1.VolumeMount{
-			{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
+			v1.VolumeMount{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
+			v1.VolumeMount{Name: "manifest", MountPath: "/var/vcap/rendering-manifest"},
 		},
 		Env: []v1.EnvVar{
 			v1.EnvVar{
@@ -435,7 +436,7 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 				Value: igName,
 			},
 		},
-		Command: []string{"bash", "-c", "/usr/local/bin/cf-operator render-template -j /var/vcap/rendering"},
+		Command: []string{"bash", "-c", "/usr/local/bin/cf-operator render-template -j /var/vcap/rendering -m /var/vcap/rendering-manifest/manifest.yml"},
 	})
 
 	return initContainers, nil
@@ -510,7 +511,18 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 						},
 						Spec: v1.PodSpec{
 							Volumes: []v1.Volume{
-								{
+								v1.Volume{
+									Name: "rendering-input",
+									VolumeSource: v1.VolumeSource{
+										Secret: &v1.SecretVolumeSource{
+											SecretName: m.getResolvedInstanceGroupPropertiesSecretName(igName),
+											Items: []v1.KeyToPath{
+												v1.KeyToPath{Key: "manifest.yml", Path: "manifest.yml"}, // TODO: Is the key called "manifest.yml". Do we want to just map all keys instead?
+											},
+										},
+									},
+								},
+								v1.Volume{
 									Name:         "rendering-data",
 									VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
 								},
@@ -688,6 +700,11 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 		}
 	}
 	return "", fmt.Errorf("release '%s' not found", job.Release)
+}
+
+func (m *Manifest) getResolvedInstanceGroupPropertiesSecretName(igName string) string {
+	// TODO: Implement this
+	return ""
 }
 
 // GetOperatorDockerImage returns the image name of the operator docker image
