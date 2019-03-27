@@ -11,6 +11,8 @@ spec:
     listKind: ExtendedStatefulSetList
     plural: extendedstatefulsets
     singular: extendedstatefulset
+    shortNames:
+        - ests
   scope: Namespaced
   version: v1alpha1
   validation:
