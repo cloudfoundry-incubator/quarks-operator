@@ -8,3 +8,4 @@ FROM opensuse/leap:15.0
 RUN zypper -n in system-user-nobody
 USER nobody
 COPY --from=build /usr/local/bin/cf-operator /usr/local/bin/cf-operator
+ENTRYPOINT ["cf-operator"]
