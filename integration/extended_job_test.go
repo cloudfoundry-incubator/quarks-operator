@@ -37,7 +37,7 @@ var _ = Describe("ExtendedJob", func() {
 		}
 	}
 
-	Context("when using an auto-errand job", func() {
+	Context("when using an AutoErrandJob", func() {
 		AfterEach(func() {
 			Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
 			env.FlushLog()
@@ -396,7 +396,7 @@ var _ = Describe("ExtendedJob", func() {
 
 	})
 
-	Context("when using manually triggered errand job", func() {
+	Context("when using manually triggered ErrandJob", func() {
 		AfterEach(func() {
 			Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
 		})
@@ -459,186 +459,145 @@ var _ = Describe("ExtendedJob", func() {
 		})
 	})
 
-	Context("when using matchExpressions to trigger jobs", func() {
-		It("triggers the job", func() {
-			ej := *env.MatchExpressionExtendedJob("extendedjob")
-			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
-			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-
-			pod := env.LabeledPod("matching", map[string]string{"env": "production"})
-			tearDown, err = env.CreatePod(env.Namespace, pod)
-			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-			err = env.WaitForPods(env.Namespace, "env=production")
-			Expect(err).NotTo(HaveOccurred(), "error waiting for pods")
-
-			By("waiting for the job")
-			_, err = env.CollectJobs(env.Namespace, "extendedjob=true", 1)
-			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
-		})
-	})
-
-	Context("when using label matchers to trigger jobs", func() {
-		AfterEach(func() {
-			Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
-		})
-
-		testLabels := func(key, value string) map[string]string {
-			labels := map[string]string{key: value, "test": "true"}
-			return labels
-		}
-
-		It("does not start a job without matches", func() {
-			ej := *env.DefaultExtendedJob("extendedjob")
-			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
-			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-
-			exists, err := env.WaitForJobExists(env.Namespace, "extendedjob=true")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(exists).To(BeFalse())
-		})
-
-		It("should pick up new extended jobs", func() {
-			By("going into reconciliation without extended jobs")
-			pod := env.LabeledPod("nomatch", testLabels("key", "nomatch"))
-			tearDown, err := env.CreatePod(env.Namespace, pod)
-			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-			err = env.WaitForPods(env.Namespace, "test=true")
-			Expect(err).NotTo(HaveOccurred(), "error waiting for pods")
-
-			By("creating a first extended job")
-			ej := *env.DefaultExtendedJob("extendedjob")
-			_, tearDown, err = env.CreateExtendedJob(env.Namespace, ej)
-			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-
-			By("triggering another reconciliation")
-			pod = env.LabeledPod("foo", testLabels("key", "value"))
-			tearDown, err = env.CreatePod(env.Namespace, pod)
-			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-
-			By("waiting for the job")
-			_, err = env.CollectJobs(env.Namespace, "extendedjob=true", 1)
-			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
-
-			_, err = env.DeleteJobs(env.Namespace, "extendedjob=true")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(env.WaitForJobsDeleted(env.Namespace, "extendedjob=true")).To(Succeed())
-		})
-
-		It("should start a job for a matched pod", func() {
-			// we have to create jobs first, reconciler no-ops if no job matches
-			By("creating extended jobs")
-			for _, ej := range []ejv1.ExtendedJob{
-				*env.DefaultExtendedJob("extendedjob"),
-				*env.LongRunningExtendedJob("slowjob"),
-				*env.LabelTriggeredExtendedJob(
-					"unmatched",
-					"ready",
-					map[string]string{"unmatched": "unmatched"},
-					[]*ejv1.Requirement{},
-					[]string{"sleep", "1"},
-				),
-			} {
+	Context("when using podstate TriggeredJob", func() {
+		Context("when using matchExpressions", func() {
+			It("triggers the job", func() {
+				ej := *env.MatchExpressionExtendedJob("extendedjob")
 				_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
 				Expect(err).NotTo(HaveOccurred())
 				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+				pod := env.LabeledPod("matching", map[string]string{"env": "production"})
+				tearDown, err = env.CreatePod(env.Namespace, pod)
+				Expect(err).NotTo(HaveOccurred())
+				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+				err = env.WaitForPods(env.Namespace, "env=production")
+				Expect(err).NotTo(HaveOccurred(), "error waiting for pods")
+
+				By("waiting for the job")
+				_, err = env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+				Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
+			})
+		})
+
+		Context("when using label matchers", func() {
+			AfterEach(func() {
+				Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
+			})
+
+			testLabels := func(key, value string) map[string]string {
+				labels := map[string]string{key: value, "test": "true"}
+				return labels
 			}
 
-			By("creating three pods, two match extended jobs and trigger jobs")
-			for _, pod := range []corev1.Pod{
-				env.LabeledPod("nomatch", testLabels("key", "nomatch")),
-				env.LabeledPod("foo", testLabels("key", "value")),
-				env.LabeledPod("bar", testLabels("key", "value")),
-			} {
+			It("does not start a job without matches", func() {
+				ej := *env.DefaultExtendedJob("extendedjob")
+				_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
+				Expect(err).NotTo(HaveOccurred())
+				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+				exists, err := env.WaitForJobExists(env.Namespace, "extendedjob=true")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(exists).To(BeFalse())
+			})
+
+			It("should pick up new extended jobs", func() {
+				By("going into reconciliation without extended jobs")
+				pod := env.LabeledPod("nomatch", testLabels("key", "nomatch"))
 				tearDown, err := env.CreatePod(env.Namespace, pod)
 				Expect(err).NotTo(HaveOccurred())
 				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-			}
+				err = env.WaitForPods(env.Namespace, "test=true")
+				Expect(err).NotTo(HaveOccurred(), "error waiting for pods")
 
-			By("waiting for the jobs")
-			jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 4)
-			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
-			Expect(jobs).To(HaveLen(4))
-			Expect(env.ContainJob(jobs, "job-extendedjob-foo")).To(Equal(true))
-			Expect(env.ContainJob(jobs, "job-slowjob-foo")).To(Equal(true))
-			Expect(env.ContainJob(jobs, "job-extendedjob-bar")).To(Equal(true))
-			Expect(env.ContainJob(jobs, "job-slowjob-bar")).To(Equal(true))
-
-			By("checking if owner ref is set")
-			extJob, err := env.GetExtendedJob(env.Namespace, "extendedjob")
-			Expect(err).NotTo(HaveOccurred())
-			slowJob, err := env.GetExtendedJob(env.Namespace, "slowjob")
-			Expect(err).NotTo(HaveOccurred())
-
-			for _, job := range jobs {
-				if strings.Contains(job.GetName(), "job-extendedjob-") {
-					Expect(job.GetOwnerReferences()).Should(ContainElement(jobOwnerRef(*extJob)))
-				}
-				if strings.Contains(job.GetName(), "job-slowjob-") {
-					Expect(job.GetOwnerReferences()).Should(ContainElement(jobOwnerRef(*slowJob)))
-				}
-			}
-		})
-
-		Context("when persisting output", func() {
-			var (
-				oej *ejv1.ExtendedJob
-			)
-
-			BeforeEach(func() {
-				oej = env.OutputExtendedJob("output-job",
-					env.MultiContainerPodTemplate([]string{"echo", `{"foo": "1", "bar": "baz"}`}))
-			})
-
-			It("persists output when output persistence is configured", func() {
-				_, tearDown, err := env.CreateExtendedJob(env.Namespace, *oej)
+				By("creating a first extended job")
+				ej := *env.DefaultExtendedJob("extendedjob")
+				_, tearDown, err = env.CreateExtendedJob(env.Namespace, ej)
 				Expect(err).NotTo(HaveOccurred())
 				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-				tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
+				By("triggering another reconciliation")
+				pod = env.LabeledPod("foo", testLabels("key", "value"))
+				tearDown, err = env.CreatePod(env.Namespace, pod)
 				Expect(err).NotTo(HaveOccurred())
 				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-				By("persisting output for the first container")
-				secret, err := env.CollectSecret(env.Namespace, "output-job-output-busybox")
+				By("waiting for the job")
+				_, err = env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+				Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
+
+				_, err = env.DeleteJobs(env.Namespace, "extendedjob=true")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(string(secret.Data["foo"])).To(Equal("1"))
-				Expect(string(secret.Data["bar"])).To(Equal("baz"))
-
-				By("adding the configured labels to the first generated secret")
-				Expect(secret.Labels["label-key"]).To(Equal("label-value"))
-				Expect(secret.Labels["label-key2"]).To(Equal("label-value2"))
-
-				By("persisting output for the second container")
-				secret, err = env.CollectSecret(env.Namespace, "output-job-output-busybox2")
-				Expect(err).NotTo(HaveOccurred())
-				Expect(string(secret.Data["foo"])).To(Equal("1"))
-				Expect(string(secret.Data["bar"])).To(Equal("baz"))
-
-				By("adding the configured labels to the second generated secret")
-				Expect(secret.Labels["label-key"]).To(Equal("label-value"))
-				Expect(secret.Labels["label-key2"]).To(Equal("label-value2"))
+				Expect(env.WaitForJobsDeleted(env.Namespace, "extendedjob=true")).To(Succeed())
 			})
 
-			Context("when a secret with the same name already exists", func() {
+			It("should start a job for a matched pod", func() {
+				// we have to create jobs first, reconciler no-ops if no job matches
+				By("creating extended jobs")
+				for _, ej := range []ejv1.ExtendedJob{
+					*env.DefaultExtendedJob("extendedjob"),
+					*env.LongRunningExtendedJob("slowjob"),
+					*env.LabelTriggeredExtendedJob(
+						"unmatched",
+						"ready",
+						map[string]string{"unmatched": "unmatched"},
+						[]*ejv1.Requirement{},
+						[]string{"sleep", "1"},
+					),
+				} {
+					_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
+					Expect(err).NotTo(HaveOccurred())
+					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+				}
+
+				By("creating three pods, two match extended jobs and trigger jobs")
+				for _, pod := range []corev1.Pod{
+					env.LabeledPod("nomatch", testLabels("key", "nomatch")),
+					env.LabeledPod("foo", testLabels("key", "value")),
+					env.LabeledPod("bar", testLabels("key", "value")),
+				} {
+					tearDown, err := env.CreatePod(env.Namespace, pod)
+					Expect(err).NotTo(HaveOccurred())
+					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+				}
+
+				By("waiting for the jobs")
+				jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 4)
+				Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
+				Expect(jobs).To(HaveLen(4))
+				Expect(env.ContainJob(jobs, "job-extendedjob-foo")).To(Equal(true))
+				Expect(env.ContainJob(jobs, "job-slowjob-foo")).To(Equal(true))
+				Expect(env.ContainJob(jobs, "job-extendedjob-bar")).To(Equal(true))
+				Expect(env.ContainJob(jobs, "job-slowjob-bar")).To(Equal(true))
+
+				By("checking if owner ref is set")
+				extJob, err := env.GetExtendedJob(env.Namespace, "extendedjob")
+				Expect(err).NotTo(HaveOccurred())
+				slowJob, err := env.GetExtendedJob(env.Namespace, "slowjob")
+				Expect(err).NotTo(HaveOccurred())
+
+				for _, job := range jobs {
+					if strings.Contains(job.GetName(), "job-extendedjob-") {
+						Expect(job.GetOwnerReferences()).Should(ContainElement(jobOwnerRef(*extJob)))
+					}
+					if strings.Contains(job.GetName(), "job-slowjob-") {
+						Expect(job.GetOwnerReferences()).Should(ContainElement(jobOwnerRef(*slowJob)))
+					}
+				}
+			})
+
+			Context("when persisting output", func() {
+				var (
+					oej *ejv1.ExtendedJob
+				)
+
 				BeforeEach(func() {
-					oej.Spec.Output.NamePrefix = "overwrite-job-output-"
+					oej = env.OutputExtendedJob("output-job",
+						env.MultiContainerPodTemplate([]string{"echo", `{"foo": "1", "bar": "baz"}`}))
 				})
 
-				It("overwrites the secret", func() {
-					existingSecret := env.DefaultSecret("overwrite-job-output-busybox")
-					existingSecret.StringData["foo"] = "old"
-					existingSecret.StringData["bar"] = "old"
-					tearDown, err := env.CreateSecret(env.Namespace, existingSecret)
-					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-					Expect(err).ToNot(HaveOccurred())
-
-					_, tearDown, err = env.CreateExtendedJob(env.Namespace, *oej)
+				It("persists output when output persistence is configured", func() {
+					_, tearDown, err := env.CreateExtendedJob(env.Namespace, *oej)
 					Expect(err).NotTo(HaveOccurred())
 					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
@@ -646,51 +605,41 @@ var _ = Describe("ExtendedJob", func() {
 					Expect(err).NotTo(HaveOccurred())
 					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-					// Wait until the output of the second container has been persisted. Then check the first one
-					_, err = env.CollectSecret(env.Namespace, "overwrite-job-output-busybox2")
-					secret, err := env.CollectSecret(env.Namespace, "overwrite-job-output-busybox")
-
-					Expect(err).ToNot(HaveOccurred())
+					By("persisting output for the first container")
+					secret, err := env.CollectSecret(env.Namespace, "output-job-output-busybox")
+					Expect(err).NotTo(HaveOccurred())
 					Expect(string(secret.Data["foo"])).To(Equal("1"))
 					Expect(string(secret.Data["bar"])).To(Equal("baz"))
-				})
-			})
 
-			Context("when the job failed", func() {
-				BeforeEach(func() {
-					oej.Spec.Output.NamePrefix = "output-job2-output-"
-					oej.Spec.Template = env.FailingMultiContainerPodTemplate([]string{"echo", `{"foo": "1", "bar": "baz"}`})
-				})
+					By("adding the configured labels to the first generated secret")
+					Expect(secret.Labels["label-key"]).To(Equal("label-value"))
+					Expect(secret.Labels["label-key2"]).To(Equal("label-value2"))
 
-				Context("and WriteOnFailure is false", func() {
-					It("does not persist output", func() {
-						_, tearDown, err := env.CreateExtendedJob(env.Namespace, *oej)
-						Expect(err).NotTo(HaveOccurred())
-						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+					By("persisting output for the second container")
+					secret, err = env.CollectSecret(env.Namespace, "output-job-output-busybox2")
+					Expect(err).NotTo(HaveOccurred())
+					Expect(string(secret.Data["foo"])).To(Equal("1"))
+					Expect(string(secret.Data["bar"])).To(Equal("baz"))
 
-						tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
-						Expect(err).NotTo(HaveOccurred())
-						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-
-						By("waiting for reconcile")
-						err = env.WaitForLogMsg(env.ObservedLogs, "Reconciling job output ")
-						Expect(err).NotTo(HaveOccurred())
-
-						By("not persisting output for the first container")
-						_, err = env.GetSecret(env.Namespace, "output-job2-output-busybox")
-						Expect(err).To(HaveOccurred())
-						Expect(err.Error()).To(ContainSubstring("waiting for secret output-job2-output-busybox: secrets \"output-job2-output-busybox\" not found"))
-					})
+					By("adding the configured labels to the second generated secret")
+					Expect(secret.Labels["label-key"]).To(Equal("label-value"))
+					Expect(secret.Labels["label-key2"]).To(Equal("label-value2"))
 				})
 
-				Context("and WriteOnFailure is true", func() {
+				Context("when a secret with the same name already exists", func() {
 					BeforeEach(func() {
-						oej.Spec.Output.NamePrefix = "output-job3-output-"
-						oej.Spec.Output.WriteOnFailure = true
+						oej.Spec.Output.NamePrefix = "overwrite-job-output-"
 					})
 
-					It("persists the output", func() {
-						_, tearDown, err := env.CreateExtendedJob(env.Namespace, *oej)
+					It("overwrites the secret", func() {
+						existingSecret := env.DefaultSecret("overwrite-job-output-busybox")
+						existingSecret.StringData["foo"] = "old"
+						existingSecret.StringData["bar"] = "old"
+						tearDown, err := env.CreateSecret(env.Namespace, existingSecret)
+						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+						Expect(err).ToNot(HaveOccurred())
+
+						_, tearDown, err = env.CreateExtendedJob(env.Namespace, *oej)
 						Expect(err).NotTo(HaveOccurred())
 						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
@@ -698,9 +647,62 @@ var _ = Describe("ExtendedJob", func() {
 						Expect(err).NotTo(HaveOccurred())
 						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-						By("persisting the output for the first container")
-						_, err = env.CollectSecret(env.Namespace, "output-job3-output-busybox")
+						// Wait until the output of the second container has been persisted. Then check the first one
+						_, err = env.CollectSecret(env.Namespace, "overwrite-job-output-busybox2")
+						secret, err := env.CollectSecret(env.Namespace, "overwrite-job-output-busybox")
+
 						Expect(err).ToNot(HaveOccurred())
+						Expect(string(secret.Data["foo"])).To(Equal("1"))
+						Expect(string(secret.Data["bar"])).To(Equal("baz"))
+					})
+				})
+
+				Context("when the job failed", func() {
+					BeforeEach(func() {
+						oej.Spec.Output.NamePrefix = "output-job2-output-"
+						oej.Spec.Template = env.FailingMultiContainerPodTemplate([]string{"echo", `{"foo": "1", "bar": "baz"}`})
+					})
+
+					Context("and WriteOnFailure is false", func() {
+						It("does not persist output", func() {
+							_, tearDown, err := env.CreateExtendedJob(env.Namespace, *oej)
+							Expect(err).NotTo(HaveOccurred())
+							defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+							tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
+							Expect(err).NotTo(HaveOccurred())
+							defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+							By("waiting for reconcile")
+							err = env.WaitForLogMsg(env.ObservedLogs, "Reconciling job output ")
+							Expect(err).NotTo(HaveOccurred())
+
+							By("not persisting output for the first container")
+							_, err = env.GetSecret(env.Namespace, "output-job2-output-busybox")
+							Expect(err).To(HaveOccurred())
+							Expect(err.Error()).To(ContainSubstring("waiting for secret output-job2-output-busybox: secrets \"output-job2-output-busybox\" not found"))
+						})
+					})
+
+					Context("and WriteOnFailure is true", func() {
+						BeforeEach(func() {
+							oej.Spec.Output.NamePrefix = "output-job3-output-"
+							oej.Spec.Output.WriteOnFailure = true
+						})
+
+						It("persists the output", func() {
+							_, tearDown, err := env.CreateExtendedJob(env.Namespace, *oej)
+							Expect(err).NotTo(HaveOccurred())
+							defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+							tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
+							Expect(err).NotTo(HaveOccurred())
+							defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+							By("persisting the output for the first container")
+							_, err = env.CollectSecret(env.Namespace, "output-job3-output-busybox")
+							Expect(err).ToNot(HaveOccurred())
+						})
 					})
 				})
 			})
