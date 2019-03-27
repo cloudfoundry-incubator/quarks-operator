@@ -2,6 +2,7 @@ package extendedsecret
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -203,42 +204,51 @@ func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance 
 }
 
 func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, instance *esapi.ExtendedSecret) error {
-	// Get CA certificate
-	caSecret := &corev1.Secret{}
-	caNamespacedName := types.NamespacedName{
-		Namespace: instance.Namespace,
-		Name:      instance.Spec.Request.CertificateRequest.CARef.Name,
-	}
-	err := r.client.Get(ctx, caNamespacedName, caSecret)
-	if err != nil {
-		return errors.Wrap(err, "getting CA secret")
-	}
-	ca := caSecret.Data[instance.Spec.Request.CertificateRequest.CARef.Key]
-
-	// Get CA key
-	if instance.Spec.Request.CertificateRequest.CAKeyRef.Name != instance.Spec.Request.CertificateRequest.CARef.Name {
-		caSecret = &corev1.Secret{}
-		caNamespacedName = types.NamespacedName{
+	var request credsgen.CertificateGenerationRequest
+	if instance.Spec.Request.CertificateRequest.IsCA {
+		// Generate self-signed root CA certificate
+		request = credsgen.CertificateGenerationRequest{
+			IsCA:       instance.Spec.Request.CertificateRequest.IsCA,
+			CommonName: instance.Spec.Request.CertificateRequest.CommonName,
+		}
+	} else {
+		// Get CA certificate
+		caSecret := &corev1.Secret{}
+		caNamespacedName := types.NamespacedName{
 			Namespace: instance.Namespace,
-			Name:      instance.Spec.Request.CertificateRequest.CAKeyRef.Name,
+			Name:      instance.Spec.Request.CertificateRequest.CARef.Name,
 		}
-		err = r.client.Get(ctx, caNamespacedName, caSecret)
+		err := r.client.Get(ctx, caNamespacedName, caSecret)
 		if err != nil {
-			return errors.Wrap(err, "getting CA Key secret")
+			return errors.Wrap(err, "getting CA secret")
 		}
-	}
-	key := caSecret.Data[instance.Spec.Request.CertificateRequest.CAKeyRef.Key]
+		ca := caSecret.Data[instance.Spec.Request.CertificateRequest.CARef.Key]
 
-	// Build the generation request
-	request := credsgen.CertificateGenerationRequest{
-		IsCA:             instance.Spec.Request.CertificateRequest.IsCA,
-		CommonName:       instance.Spec.Request.CertificateRequest.CommonName,
-		AlternativeNames: instance.Spec.Request.CertificateRequest.AlternativeNames,
-		CA: credsgen.Certificate{
-			IsCA:        true,
-			PrivateKey:  key,
-			Certificate: ca,
-		},
+		// Get CA key
+		if instance.Spec.Request.CertificateRequest.CAKeyRef.Name != instance.Spec.Request.CertificateRequest.CARef.Name {
+			caSecret = &corev1.Secret{}
+			caNamespacedName = types.NamespacedName{
+				Namespace: instance.Namespace,
+				Name:      instance.Spec.Request.CertificateRequest.CAKeyRef.Name,
+			}
+			err = r.client.Get(ctx, caNamespacedName, caSecret)
+			if err != nil {
+				return errors.Wrap(err, "getting CA Key secret")
+			}
+		}
+		key := caSecret.Data[instance.Spec.Request.CertificateRequest.CAKeyRef.Key]
+
+		// Build the generation request
+		request = credsgen.CertificateGenerationRequest{
+			IsCA:             instance.Spec.Request.CertificateRequest.IsCA,
+			CommonName:       instance.Spec.Request.CertificateRequest.CommonName,
+			AlternativeNames: instance.Spec.Request.CertificateRequest.AlternativeNames,
+			CA: credsgen.Certificate{
+				IsCA:        true,
+				PrivateKey:  key,
+				Certificate: ca,
+			},
+		}
 	}
 
 	// Generate certificate
@@ -254,7 +264,7 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 		Data: map[string][]byte{
 			"certificate": cert.Certificate,
 			"private_key": cert.PrivateKey,
-			"is_ca":       []byte("false"),
+			"is_ca":       []byte(strconv.FormatBool(instance.Spec.Request.CertificateRequest.IsCA)),
 		},
 	}
 

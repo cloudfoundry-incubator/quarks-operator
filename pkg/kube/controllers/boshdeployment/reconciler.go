@@ -342,6 +342,10 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 		},
 	}
 
+	if err := r.setReference(instance, tempManifestSecret, r.scheme); err != nil {
+		return errors.Wrap(err, "could not set reference for a Secret for a BOSH Deployment")
+	}
+
 	foundSecret := &corev1.Secret{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: tempManifestSecret.GetName(), Namespace: tempManifestSecret.GetNamespace()}, foundSecret)
 	if apierrors.IsNotFound(err) {

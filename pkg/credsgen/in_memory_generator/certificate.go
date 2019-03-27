@@ -25,19 +25,20 @@ func (g InMemoryGenerator) GenerateCertificate(name string, request credsgen.Cer
 	var err error
 
 	if request.IsCA {
-		certificate, err = g.generateCACertificate()
+		certificate, err = g.generateCACertificate(request)
 		if err != nil {
-			return credsgen.Certificate{}, errors.Wrap(err, "generating certificate")
+			return credsgen.Certificate{}, errors.Wrap(err, "generating CA certificate")
 		}
 	} else {
 		certificate, err = g.generateCertificate(request)
 		if err != nil {
-			return credsgen.Certificate{}, errors.Wrap(err, "generating CA")
+			return credsgen.Certificate{}, errors.Wrap(err, "generating certificate")
 		}
 	}
 	return certificate, nil
 }
 
+// generateCertificate Generate a local-issued certificate and private key
 func (g InMemoryGenerator) generateCertificate(request credsgen.CertificateGenerationRequest) (credsgen.Certificate, error) {
 	if !request.CA.IsCA {
 		return credsgen.Certificate{}, fmt.Errorf("the passed CA is not a CA")
@@ -98,10 +99,11 @@ func (g InMemoryGenerator) generateCertificate(request credsgen.CertificateGener
 	return cert, nil
 }
 
-func (g InMemoryGenerator) generateCACertificate() (credsgen.Certificate, error) {
+// generateCACertificate Generate self-signed root CA certificate and private key
+func (g InMemoryGenerator) generateCACertificate(request credsgen.CertificateGenerationRequest) (credsgen.Certificate, error) {
 	req := &csr.CertificateRequest{
 		CA:         &csr.CAConfig{Expiry: fmt.Sprintf("%dh", g.Expiry*24)},
-		CN:         "SCF CA",
+		CN:         request.CommonName,
 		KeyRequest: &csr.BasicKeyRequest{A: g.Algorithm, S: g.Bits},
 	}
 	ca, _, privateKey, err := initca.New(req)

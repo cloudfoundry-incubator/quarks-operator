@@ -173,7 +173,7 @@ func reconcilesForConfigMap(ctx context.Context, mgr manager.Manager, log *zap.S
 	for _, extJob := range extJobs.Items {
 		configMapNames, _ := eowner.GetConfigNamesFromSpec(extJob.Spec.Template.Spec)
 		if _, ok := configMapNames[configMap.GetName()]; ok {
-			log.Debugf("==== RECONCILE WANT: %s <- ", configMap.GetName(), extJob.GetName())
+			log.Debugf("==== RECONCILE WANT: %s <- %s", configMap.GetName(), extJob.GetName())
 			reconciles = append(reconciles, reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      extJob.GetName(),

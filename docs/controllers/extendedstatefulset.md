@@ -171,12 +171,6 @@ If zones are set for an `ExtendedStatefulSet`, the following occurs:
   CF_OPERATOR_AZ_INDEX=="zone index"
   ```
 
-### Volume Management
-
-### AZ Support
-
-TODO
-
 ## Example Resource
 
 ```yaml
