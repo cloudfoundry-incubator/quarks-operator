@@ -7,15 +7,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
-	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	cfctx "code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
-	"code.cloudfoundry.org/cf-operator/testing"
-
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 
@@ -29,6 +20,15 @@ import (
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
+	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+	"code.cloudfoundry.org/cf-operator/testing"
 )
 
 var _ = Describe("ErrandReconciler", func() {
@@ -37,7 +37,6 @@ var _ = Describe("ErrandReconciler", func() {
 			env        testing.Catalog
 			logs       *observer.ObservedLogs
 			log        *zap.SugaredLogger
-			ctrsConfig *cfctx.Config
 			mgr        *fakes.FakeManager
 			request    reconcile.Request
 			reconciler reconcile.Reconciler
@@ -68,9 +67,11 @@ var _ = Describe("ErrandReconciler", func() {
 		}
 
 		JustBeforeEach(func() {
+			ctx := ctxlog.NewManagerContext(log)
+			config := &config.Config{CtxTimeOut: 10 * time.Second}
 			reconciler = NewErrandReconciler(
-				log,
-				ctrsConfig,
+				ctx,
+				config,
 				mgr,
 				setOwnerReference,
 				owner,
@@ -83,14 +84,10 @@ var _ = Describe("ErrandReconciler", func() {
 
 		BeforeEach(func() {
 			controllers.AddToScheme(scheme.Scheme)
-			logs, log = helper.NewTestLogger()
 			mgr = &fakes.FakeManager{}
 			owner = &fakes.FakeOwner{}
-			ctrsConfig = &cfctx.Config{ //Set the context to be TODO
-				CtxTimeOut: 10 * time.Second,
-				CtxType:    cfctx.NewContext(),
-			}
 			setOwnerReferenceCallCount = 0
+			logs, log = helper.NewTestLogger()
 		})
 
 		Context("when client fails", func() {

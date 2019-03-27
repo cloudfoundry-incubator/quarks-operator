@@ -1,16 +1,13 @@
 package extendedjob_test
 
 import (
+	"context"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-	"go.uber.org/zap/zaptest/observer"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -22,8 +19,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ejapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	ej "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
 
@@ -33,7 +34,6 @@ var _ = Describe("ReconcileExtendedJob", func() {
 		reconciler   reconcile.Reconciler
 		request      reconcile.Request
 		log          *zap.SugaredLogger
-		ctrsConfig   *context.Config
 		client       *cfakes.FakeClient
 		podLogGetter *cfakes.FakePodLogGetter
 		ejob         *ejapi.ExtendedJob
@@ -46,12 +46,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 		controllers.AddToScheme(scheme.Scheme)
 		manager = &cfakes.FakeManager{}
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-		core, _ := observer.New(zapcore.InfoLevel)
-		log = zap.New(core).Sugar()
-		ctrsConfig = &context.Config{
-			CtxTimeOut: 10 * time.Second,
-			CtxType:    context.NewContext(),
-		}
+		_, log = helper.NewTestLogger()
 
 		client = &cfakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
@@ -78,7 +73,9 @@ var _ = Describe("ReconcileExtendedJob", func() {
 	})
 
 	JustBeforeEach(func() {
-		reconciler, _ = ej.NewJobReconciler(log, ctrsConfig, manager, podLogGetter)
+		ctx := ctxlog.NewManagerContext(log)
+		config := &config.Config{CtxTimeOut: 10 * time.Second}
+		reconciler, _ = ej.NewJobReconciler(ctx, config, manager, podLogGetter)
 		ejob, job, pod = env.DefaultExtendedJobWithSucceededJob("foo")
 	})
 

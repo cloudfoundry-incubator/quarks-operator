@@ -7,16 +7,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
-	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	cfctx "code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
-	"code.cloudfoundry.org/cf-operator/testing"
-
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 
@@ -29,6 +19,16 @@ import (
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
+	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	cfcfg "code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+	"code.cloudfoundry.org/cf-operator/testing"
 )
 
 var _ = Describe("OwnershipReconciler", func() {
@@ -37,7 +37,8 @@ var _ = Describe("OwnershipReconciler", func() {
 			env        testing.Catalog
 			logs       *observer.ObservedLogs
 			log        *zap.SugaredLogger
-			config     *cfctx.Config
+			ctx        context.Context
+			config     *cfcfg.Config
 			mgr        *fakes.FakeManager
 			request    reconcile.Request
 			reconciler reconcile.Reconciler
@@ -69,7 +70,7 @@ var _ = Describe("OwnershipReconciler", func() {
 
 		JustBeforeEach(func() {
 			reconciler = NewOwnershipReconciler(
-				log,
+				ctx,
 				config,
 				mgr,
 				setOwnerReference,
@@ -83,13 +84,11 @@ var _ = Describe("OwnershipReconciler", func() {
 
 		BeforeEach(func() {
 			controllers.AddToScheme(scheme.Scheme)
-			logs, log = helper.NewTestLogger()
 			mgr = &fakes.FakeManager{}
 			owner = &fakes.FakeOwner{}
-			config = &cfctx.Config{
-				CtxTimeOut: 1 * time.Second,
-				CtxType:    cfctx.NewContext(),
-			}
+			config = &cfcfg.Config{CtxTimeOut: 1 * time.Second}
+			logs, log = helper.NewTestLogger()
+			ctx = ctxlog.NewManagerContext(log)
 			setOwnerReferenceCallCount = 0
 		})
 
@@ -157,7 +156,7 @@ var _ = Describe("OwnershipReconciler", func() {
 					_, err := act()
 					Expect(err).NotTo(HaveOccurred())
 					ejob := &ejv1.ExtendedJob{}
-					client.Get(context.Background(), request.NamespacedName, ejob)
+					client.Get(ctx, request.NamespacedName, ejob)
 					Expect(ejob.GetFinalizers()).To(BeEmpty())
 				})
 
@@ -195,7 +194,7 @@ var _ = Describe("OwnershipReconciler", func() {
 					_, err := act()
 					Expect(err).NotTo(HaveOccurred())
 					ejob := &ejv1.ExtendedJob{}
-					client.Get(context.Background(), request.NamespacedName, ejob)
+					client.Get(ctx, request.NamespacedName, ejob)
 					Expect(ejob.GetFinalizers()).To(BeEmpty())
 				})
 			})
@@ -223,7 +222,7 @@ var _ = Describe("OwnershipReconciler", func() {
 					_, err := act()
 					Expect(err).NotTo(HaveOccurred())
 					ejob := &ejv1.ExtendedJob{}
-					client.Get(context.Background(), request.NamespacedName, ejob)
+					client.Get(ctx, request.NamespacedName, ejob)
 					Expect(ejob.GetFinalizers()).NotTo(BeEmpty())
 				})
 			})

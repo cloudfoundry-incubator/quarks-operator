@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/api/apps/v1beta2"
@@ -19,8 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
-
-	cfContext "code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 )
 
 // PodMutator changes pod definitions
@@ -29,7 +28,7 @@ type PodMutator struct {
 	scheme       *runtime.Scheme
 	setReference setReferenceFunc
 	log          *zap.SugaredLogger
-	ctrConfig    *cfContext.Config
+	config       *config.Config
 	decoder      types.Decoder
 }
 
@@ -37,13 +36,13 @@ type PodMutator struct {
 var _ admission.Handler = &PodMutator{}
 
 // NewPodMutator returns a new reconcile.Reconciler
-func NewPodMutator(log *zap.SugaredLogger, ctrConfig *cfContext.Config, mgr manager.Manager, srf setReferenceFunc) admission.Handler {
+func NewPodMutator(log *zap.SugaredLogger, config *config.Config, mgr manager.Manager, srf setReferenceFunc) admission.Handler {
 	mutatorLog := log.Named("extendedstatefulset-pod1-mutator")
 	mutatorLog.Info("Creating a Pod mutator for ExtendedStatefulSet")
 
 	return &PodMutator{
 		log:          mutatorLog,
-		ctrConfig:    ctrConfig,
+		config:       config,
 		client:       mgr.GetClient(),
 		scheme:       mgr.GetScheme(),
 		setReference: srf,
@@ -83,7 +82,7 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 	// Fetch statefulSet
 	statefulSetName := getStatefulSetName(pod.Name)
 	statefulSet := &v1beta2.StatefulSet{}
-	key := mTypes.NamespacedName{Namespace: m.ctrConfig.Namespace, Name: statefulSetName}
+	key := mTypes.NamespacedName{Namespace: m.config.Namespace, Name: statefulSetName}
 	err := m.client.Get(ctx, key, statefulSet)
 	if err != nil {
 		return errors.Wrapf(err, "Couldn't fetch Statefulset")
@@ -95,7 +94,7 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 	if volumeClaimTemplateList != nil {
 
 		// Get persistentVolumeClaims list
-		opts := client.InNamespace(m.ctrConfig.Namespace)
+		opts := client.InNamespace(m.config.Namespace)
 		pvcList := &corev1.PersistentVolumeClaimList{}
 		err := m.client.List(ctx, opts, pvcList)
 		if err != nil {

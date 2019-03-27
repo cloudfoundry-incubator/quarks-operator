@@ -1,20 +1,12 @@
 package extendedsecret_test
 
 import (
+	"context"
 	"time"
 
-	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
-	generatorfakes "code.cloudfoundry.org/cf-operator/pkg/credsgen/fakes"
-	esapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/scheme"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
-	escontroller "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
-
-	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-	"go.uber.org/zap/zaptest/observer"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -24,8 +16,16 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
+	generatorfakes "code.cloudfoundry.org/cf-operator/pkg/credsgen/fakes"
+	esapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/scheme"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
+	escontroller "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
+	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	cfcfg "code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 )
 
 var _ = Describe("ReconcileExtendedSecret", func() {
@@ -33,8 +33,9 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		manager          *cfakes.FakeManager
 		reconciler       reconcile.Reconciler
 		request          reconcile.Request
+		ctx              context.Context
 		log              *zap.SugaredLogger
-		ctrsConfig       *context.Config
+		config           *cfcfg.Config
 		client           *cfakes.FakeClient
 		generator        *generatorfakes.FakeGenerator
 		es               *esapi.ExtendedSecret
@@ -45,12 +46,9 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		controllers.AddToScheme(scheme.Scheme)
 		manager = &cfakes.FakeManager{}
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-		core, _ := observer.New(zapcore.InfoLevel)
-		log = zap.New(core).Sugar()
-		ctrsConfig = &context.Config{ //Set the context to be TODO
-			CtxTimeOut: 10 * time.Second,
-			CtxType:    context.NewContext(),
-		}
+		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
+		_, log = helper.NewTestLogger()
+		ctx = ctxlog.NewManagerContext(log)
 		es = &esapi.ExtendedSecret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
@@ -76,7 +74,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 	})
 
 	JustBeforeEach(func() {
-		reconciler = escontroller.NewReconciler(log, ctrsConfig, manager, generator, setReferenceFunc)
+		reconciler = escontroller.NewReconciler(ctx, config, manager, generator, setReferenceFunc)
 	})
 
 	Context("if the resource can not be resolved", func() {

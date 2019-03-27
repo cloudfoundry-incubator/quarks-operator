@@ -11,7 +11,8 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
 
@@ -39,7 +40,7 @@ type Environment struct {
 	stop       chan struct{}
 
 	Log          *zap.SugaredLogger
-	CtrsConfig   *context.Config
+	Config       *config.Config
 	ObservedLogs *observer.ObservedLogs
 	Namespace    string
 }
@@ -48,9 +49,8 @@ type Environment struct {
 func NewEnvironment() *Environment {
 	return &Environment{
 		Namespace: "",
-		CtrsConfig: &context.Config{ //Set the context to be TODO
+		Config: &config.Config{
 			CtxTimeOut: 10 * time.Second,
-			CtxType:    context.NewBackgroundContext(),
 			Fs:         afero.NewOsFs(),
 		},
 		Machine: Machine{
@@ -75,7 +75,7 @@ func (e *Environment) Setup() (StopFunc, error) {
 	e.stop = e.startOperator()
 	err = helper.WaitForPort(
 		"127.0.0.1",
-		strconv.Itoa(int(e.CtrsConfig.WebhookServerPort)),
+		strconv.Itoa(int(e.Config.WebhookServerPort)),
 		1*time.Minute)
 
 	if err != nil {
@@ -108,7 +108,7 @@ func (e *Environment) setupCFOperator() (err error) {
 	if !found {
 		return fmt.Errorf("no webhook host set. Please set OPERATOR_WEBHOOK_HOST to the host/ip the operator runs on and try again")
 	}
-	e.CtrsConfig.WebhookServerHost = whh
+	e.Config.WebhookServerHost = whh
 
 	whp := int32(2999)
 	portString, found := os.LookupEnv("OPERATOR_WEBHOOK_PORT")
@@ -119,7 +119,7 @@ func (e *Environment) setupCFOperator() (err error) {
 		}
 		whp = int32(port)
 	}
-	e.CtrsConfig.WebhookServerPort = whp
+	e.Config.WebhookServerPort = whp
 
 	ns, found := os.LookupEnv("TEST_NAMESPACE")
 	if !found {
@@ -127,7 +127,7 @@ func (e *Environment) setupCFOperator() (err error) {
 	}
 
 	e.Namespace = ns
-	e.CtrsConfig.Namespace = ns
+	e.Config.Namespace = ns
 
 	e.ObservedLogs, e.Log = helper.NewTestLogger()
 
@@ -155,7 +155,8 @@ func (e *Environment) setupCFOperator() (err error) {
 	manifest.DockerRepository = operatorDockerImageRepo
 	manifest.DockerTag = operatorDockerImageTag
 
-	e.mgr, err = operator.NewManager(e.Log, e.CtrsConfig, e.kubeConfig, manager.Options{Namespace: e.Namespace})
+	ctx := ctxlog.NewManagerContext(e.Log)
+	e.mgr, err = operator.NewManager(ctx, e.Config, e.kubeConfig, manager.Options{Namespace: e.Namespace})
 
 	return
 }

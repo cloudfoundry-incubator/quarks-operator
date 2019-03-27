@@ -1,12 +1,14 @@
 package controllers
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-
 	machinerytypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -22,10 +24,11 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
-var addToManagerFuncs = []func(*zap.SugaredLogger, *context.Config, manager.Manager) error{
+var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager) error{
 	boshdeployment.Add,
 	extendedjob.AddTrigger,
 	extendedjob.AddErrand,
@@ -42,14 +45,14 @@ var addToSchemes = runtime.SchemeBuilder{
 	essv1.AddToScheme,
 }
 
-var addHookFuncs = []func(*zap.SugaredLogger, *context.Config, manager.Manager, *webhook.Server) (*admission.Webhook, error){
+var addHookFuncs = []func(*zap.SugaredLogger, *config.Config, manager.Manager, *webhook.Server) (*admission.Webhook, error){
 	extendedstatefulset.AddPod,
 }
 
 // AddToManager adds all Controllers to the Manager
-func AddToManager(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manager) error {
+func AddToManager(ctx context.Context, config *config.Config, m manager.Manager) error {
 	for _, f := range addToManagerFuncs {
-		if err := f(log, ctrConfig, m); err != nil {
+		if err := f(ctx, config, m); err != nil {
 			return err
 		}
 	}
@@ -62,19 +65,19 @@ func AddToScheme(s *runtime.Scheme) error {
 }
 
 // AddHooks adds all web hooks to the Manager
-func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manager, generator credsgen.Generator) error {
-	log.Infof("Setting up webhook server on %s:%d", ctrConfig.WebhookServerHost, ctrConfig.WebhookServerPort)
+func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, generator credsgen.Generator) error {
+	ctxlog.Infof(ctx, "Setting up webhook server on %s:%d", config.WebhookServerHost, config.WebhookServerPort)
 
-	webhookConfig := NewWebhookConfig(log, m.GetClient(), ctrConfig, generator, "cf-operator-mutating-hook-"+ctrConfig.Namespace)
+	webhookConfig := NewWebhookConfig(m.GetClient(), config, generator, "cf-operator-mutating-hook-"+config.Namespace)
 
 	disableConfigInstaller := true
 	hookServer, err := webhook.NewServer("cf-operator", m, webhook.ServerOptions{
-		Port:                          ctrConfig.WebhookServerPort,
+		Port:                          config.WebhookServerPort,
 		CertDir:                       webhookConfig.CertDir,
 		DisableWebhookConfigInstaller: &disableConfigInstaller,
 		BootstrapOptions: &webhook.BootstrapOptions{
 			MutatingWebhookConfigName: webhookConfig.ConfigName,
-			Host:                      &ctrConfig.WebhookServerHost,
+			Host:                      &config.WebhookServerHost,
 			// The user should probably be able to use a service instead.
 			// Service: ??
 		},
@@ -84,25 +87,26 @@ func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manag
 		return errors.Wrap(err, "unable to create a new webhook server")
 	}
 
+	log := ctxlog.ExtractLogger(ctx)
 	webhooks := []*admission.Webhook{}
 	for _, f := range addHookFuncs {
-		wh, err := f(log, ctrConfig, m, hookServer)
+		wh, err := f(log, config, m, hookServer)
 		if err != nil {
 			return err
 		}
 		webhooks = append(webhooks, wh)
 	}
 
-	err = setOperatorNamespaceLabel(log, ctrConfig, m.GetClient())
+	err = setOperatorNamespaceLabel(ctx, config, m.GetClient())
 	if err != nil {
 		return errors.Wrap(err, "setting the operator namespace label")
 	}
 
-	err = webhookConfig.setupCertificate()
+	err = webhookConfig.setupCertificate(ctx)
 	if err != nil {
 		return errors.Wrap(err, "setting up the webhook server certificate")
 	}
-	err = webhookConfig.generateWebhookServerConfig(webhooks)
+	err = webhookConfig.generateWebhookServerConfig(ctx, webhooks)
 	if err != nil {
 		return errors.Wrap(err, "generating the webhook server configuration")
 	}
@@ -110,16 +114,14 @@ func AddHooks(log *zap.SugaredLogger, ctrConfig *context.Config, m manager.Manag
 	return err
 }
 
-func setOperatorNamespaceLabel(log *zap.SugaredLogger, ctrConfig *context.Config, c client.Client) error {
-	ctx := context.NewBackgroundContext()
-
+func setOperatorNamespaceLabel(ctx context.Context, config *config.Config, c client.Client) error {
 	ns := &unstructured.Unstructured{}
 	ns.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Kind:    "Namespace",
 		Version: "v1",
 	})
-	err := c.Get(ctx, machinerytypes.NamespacedName{Name: ctrConfig.Namespace}, ns)
+	err := c.Get(ctx, machinerytypes.NamespacedName{Name: config.Namespace}, ns)
 
 	if err != nil {
 		return errors.Wrap(err, "getting the namespace object")
@@ -129,7 +131,7 @@ func setOperatorNamespaceLabel(log *zap.SugaredLogger, ctrConfig *context.Config
 	if labels == nil {
 		labels = map[string]string{}
 	}
-	labels["cf-operator-ns"] = ctrConfig.Namespace
+	labels["cf-operator-ns"] = config.Namespace
 	ns.SetLabels(labels)
 	err = c.Update(ctx, ns)
 

@@ -1,12 +1,13 @@
 package extendedjob
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
 
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -19,19 +20,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ejapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // NewJobReconciler returns a new Reconciler
-func NewJobReconciler(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager, podLogGetter PodLogGetter) (reconcile.Reconciler, error) {
-	jobReconcilerLog := log.Named("ext-job-job-reconciler")
-	jobReconcilerLog.Info("Creating a reconciler for ExtendedJob")
-
+func NewJobReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, podLogGetter PodLogGetter) (reconcile.Reconciler, error) {
 	return &ReconcileJob{
-		log:          jobReconcilerLog,
-		ctrConfig:    ctrConfig,
+		ctx:          ctx,
+		config:       config,
 		client:       mgr.GetClient(),
 		podLogGetter: podLogGetter,
 		scheme:       mgr.GetScheme(),
@@ -40,11 +39,11 @@ func NewJobReconciler(log *zap.SugaredLogger, ctrConfig *context.Config, mgr man
 
 // ReconcileJob reconciles an Job object
 type ReconcileJob struct {
+	ctx          context.Context
 	client       client.Client
 	podLogGetter PodLogGetter
 	scheme       *runtime.Scheme
-	log          *zap.SugaredLogger
-	ctrConfig    *context.Config
+	config       *config.Config
 }
 
 // Reconcile reads that state of the cluster for a Job object that is owned by an ExtendedJob and
@@ -53,25 +52,25 @@ type ReconcileJob struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	r.log.Infof("Reconciling job output '%s' in the ExtendedJob context", request.NamespacedName)
 
 	instance := &batchv1.Job{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
-	ctx, cancel := context.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
+	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()
 
+	ctxlog.Infof(ctx, "Reconciling job output '%s' in the ExtendedJob context", request.NamespacedName)
 	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			r.log.Info("Skip reconcile: Job not found")
+			ctxlog.Info(ctx, "Skip reconcile: Job not found")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		r.log.Info("Error reading the object")
+		ctxlog.Info(ctx, "Error reading the object")
 		return reconcile.Result{}, err
 	}
 
@@ -83,7 +82,7 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 		}
 	}
 	if parentName == "" {
-		r.log.Errorf("Could not find parent ExtendedJob for Job '%s'", request.NamespacedName)
+		ctxlog.Errorf(ctx, "Could not find parent ExtendedJob for Job '%s'", request.NamespacedName)
 		return reconcile.Result{}, fmt.Errorf("could not find parent ExtendedJob for Job '%s'", request.NamespacedName)
 	}
 
@@ -96,38 +95,38 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 	// Persist output if needed
 	if !reflect.DeepEqual(ejapi.Output{}, ej.Spec.Output) && ej.Spec.Output != nil {
 		if instance.Status.Succeeded == 1 || (instance.Status.Failed == 1 && ej.Spec.Output.WriteOnFailure) {
-			r.log.Infof("Persisting output of job '%s'", instance.Name)
+			ctxlog.Infof(ctx, "Persisting output of job '%s'", instance.Name)
 			err = r.persistOutput(ctx, instance, ej.Spec.Output)
 			if err != nil {
-				r.log.Errorf("Could not persist output: '%s'", err)
+				ctxlog.Errorf(ctx, "Could not persist output: '%s'", err)
 				return reconcile.Result{}, err
 			}
 		} else if instance.Status.Failed == 1 && !ej.Spec.Output.WriteOnFailure {
-			r.log.Infof("Will not persist output of job '%s' because it failed", instance.Name)
+			ctxlog.Infof(ctx, "Will not persist output of job '%s' because it failed", instance.Name)
 		} else {
-			r.log.Errorf("Job is in an unexpected state: %#v", instance)
+			ctxlog.Errorf(ctx, "Job is in an unexpected state: %#v", instance)
 		}
 	}
 
 	// Delete Job if it succeeded
 	if instance.Status.Succeeded == 1 {
-		r.log.Infof("Deleting succeeded job '%s'", instance.Name)
+		ctxlog.Infof(ctx, "Deleting succeeded job '%s'", instance.Name)
 		err = r.client.Delete(ctx, instance)
 		if err != nil {
-			r.log.Errorf("Cannot delete succeeded job: '%s'", err)
+			ctxlog.Errorf(ctx, "Cannot delete succeeded job: '%s'", err)
 		}
 
 		if d, ok := instance.Spec.Template.Labels["delete"]; ok {
 			if d == "pod" {
 				pod, err := r.jobPod(ctx, instance.Name, instance.GetNamespace())
 				if err != nil {
-					r.log.Errorf("Cannot find job's pod: '%s'", err)
+					ctxlog.Errorf(ctx, "Cannot find job's pod: '%s'", err)
 					return reconcile.Result{}, nil
 				}
-				r.log.Infof("Deleting succeeded job's pod '%s'", pod.Name)
+				ctxlog.Infof(ctx, "Deleting succeeded job's pod '%s'", pod.Name)
 				err = r.client.Delete(ctx, pod)
 				if err != nil {
-					r.log.Errorf("Cannot delete succeeded job's pod: '%s'", err)
+					ctxlog.Errorf(ctx, "Cannot delete succeeded job's pod: '%s'", err)
 				}
 			}
 		}

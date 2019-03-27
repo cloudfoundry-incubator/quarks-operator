@@ -7,15 +7,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
-	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	cfctx "code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
-	"code.cloudfoundry.org/cf-operator/testing"
-
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 
@@ -28,19 +19,29 @@ import (
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
+	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	cfcfg "code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+	"code.cloudfoundry.org/cf-operator/testing"
 )
 
 var _ = Describe("TriggerReconciler", func() {
 	Describe("Run", func() {
 		var (
+			config     *cfcfg.Config
+			ctx        context.Context
 			env        testing.Catalog
-			logs       *observer.ObservedLogs
-			ctrsConfig *cfctx.Config
 			log        *zap.SugaredLogger
+			logs       *observer.ObservedLogs
 			mgr        *fakes.FakeManager
 			query      *fakes.FakeQuery
-			request    reconcile.Request
 			reconciler reconcile.Reconciler
+			request    reconcile.Request
 
 			runtimeObjects             []runtime.Object
 			pod                        corev1.Pod
@@ -76,8 +77,8 @@ var _ = Describe("TriggerReconciler", func() {
 
 		JustBeforeEach(func() {
 			reconciler = NewTriggerReconciler(
-				log,
-				ctrsConfig,
+				ctx,
+				config,
 				mgr,
 				query,
 				setOwnerReference,
@@ -90,11 +91,10 @@ var _ = Describe("TriggerReconciler", func() {
 
 		BeforeEach(func() {
 			controllers.AddToScheme(scheme.Scheme)
+
+			config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
 			logs, log = helper.NewTestLogger()
-			ctrsConfig = &cfctx.Config{ //Set the context to be TODO
-				CtxTimeOut: 10 * time.Second,
-				CtxType:    cfctx.NewContext(),
-			}
+			ctx = ctxlog.NewManagerContext(log)
 			mgr = &fakes.FakeManager{}
 			query = &fakes.FakeQuery{}
 			setOwnerReferenceCallCount = 0
@@ -173,7 +173,7 @@ var _ = Describe("TriggerReconciler", func() {
 				act()
 				Expect(query.MatchCallCount()).To(Equal(0))
 				obj := &batchv1.JobList{}
-				err := client.List(context.Background(), &crc.ListOptions{}, obj)
+				err := client.List(ctx, &crc.ListOptions{}, obj)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(obj.Items).To(HaveLen(0))
 			})
@@ -206,7 +206,7 @@ var _ = Describe("TriggerReconciler", func() {
 					act()
 
 					obj := &batchv1.JobList{}
-					err := client.List(context.Background(), &crc.ListOptions{}, obj)
+					err := client.List(ctx, &crc.ListOptions{}, obj)
 					Expect(err).ToNot(HaveOccurred())
 
 					jobs := obj.Items
@@ -227,8 +227,8 @@ var _ = Describe("TriggerReconciler", func() {
 
 				It("should log and continue", func() {
 					reconciler = NewTriggerReconciler(
-						log,
-						ctrsConfig,
+						ctx,
+						config,
 						mgr,
 						query,
 						setOwnerReferenceFail,

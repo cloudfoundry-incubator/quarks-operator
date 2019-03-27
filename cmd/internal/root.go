@@ -8,7 +8,8 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	kubeConfig "code.cloudfoundry.org/cf-operator/pkg/kube/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/version"
 
 	"github.com/spf13/afero"
@@ -53,15 +54,16 @@ var rootCmd = &cobra.Command{
 			log.Fatal("required flag 'operator-webhook-host' not set (env variable: OPERATOR_WEBHOOK_HOST)")
 		}
 
-		ctrsConfig := &context.Config{ //Set the context to be TODO
+		config := &config.Config{
 			CtxTimeOut:        10 * time.Second,
-			CtxType:           context.NewBackgroundContext(),
 			Namespace:         namespace,
 			WebhookServerHost: webhookHost,
 			WebhookServerPort: webhookPort,
 			Fs:                afero.NewOsFs(),
 		}
-		mgr, err := operator.NewManager(log, ctrsConfig, restConfig, manager.Options{Namespace: namespace})
+		ctx := ctxlog.NewManagerContext(log)
+
+		mgr, err := operator.NewManager(ctx, config, restConfig, manager.Options{Namespace: namespace})
 		if err != nil {
 			log.Fatal(err)
 		}

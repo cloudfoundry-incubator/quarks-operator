@@ -4,6 +4,7 @@
 package testing
 
 import (
+	"context"
 	"os"
 	"time"
 
@@ -23,18 +24,23 @@ import (
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"k8s.io/apimachinery/pkg/labels"
 )
+
+// NewContext returns a non-nil empty context, for usage when it is unclear
+// which context to use.  Mostly used in tests.
+func NewContext() context.Context {
+	return context.TODO()
+}
 
 // Catalog provides several instances for tests
 type Catalog struct{}
 
-// DefaultContextConfig for tests
-func (c *Catalog) DefaultContextConfig() *context.Config {
-	return &context.Config{ //Set the context to be TODO
+// DefaultConfig for tests
+func (c *Catalog) DefaultConfig() *config.Config {
+	return &config.Config{
 		CtxTimeOut:        10 * time.Second,
-		CtxType:           context.NewContext(),
 		Namespace:         "default",
 		WebhookServerHost: "foo.com",
 		WebhookServerPort: 1234,

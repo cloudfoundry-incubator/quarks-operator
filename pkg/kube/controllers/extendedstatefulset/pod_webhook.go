@@ -1,7 +1,7 @@
 package extendedstatefulset
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
@@ -15,19 +15,18 @@ import (
 )
 
 // AddPod creates a new hook for working with Pods and adds it to the Manager
-func AddPod(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager, hookServer *webhook.Server) (*admission.Webhook, error) {
+func AddPod(log *zap.SugaredLogger, config *config.Config, mgr manager.Manager, hookServer *webhook.Server) (*admission.Webhook, error) {
 	log.Info("Creating the ExtendedStatefulSet Pod controller")
-
 	log.Info("Setting up pod webhooks")
 
-	podMutator := NewPodMutator(log, ctrConfig, mgr, controllerutil.SetControllerReference)
+	podMutator := NewPodMutator(log, config, mgr, controllerutil.SetControllerReference)
 
 	mutatingWebhook, err := builder.NewWebhookBuilder().
 		Path("/mutate-pods").
 		Mutating().
 		NamespaceSelector(&metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				"cf-operator-ns": ctrConfig.Namespace,
+				"cf-operator-ns": config.Namespace,
 			},
 		}).
 		ForType(&corev1.Pod{}).

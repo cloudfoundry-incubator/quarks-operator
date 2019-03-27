@@ -5,11 +5,12 @@ import (
 	"strconv"
 	"time"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-	"go.uber.org/zap/zaptest/observer"
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -28,11 +29,10 @@ import (
 	exssc "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
-	cfctx "code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	cfcfg "code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 )
 
 var _ = Describe("ReconcileExtendedStatefulSet", func() {
@@ -40,8 +40,9 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 		manager    *cfakes.FakeManager
 		reconciler reconcile.Reconciler
 		request    reconcile.Request
+		ctx        context.Context
 		log        *zap.SugaredLogger
-		ctrsConfig *cfctx.Config
+		config     *cfcfg.Config
 	)
 
 	BeforeEach(func() {
@@ -50,17 +51,13 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 		manager.GetSchemeReturns(scheme.Scheme)
 
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-		core, _ := observer.New(zapcore.InfoLevel)
-		log = zap.New(core).Sugar()
-
-		ctrsConfig = &cfctx.Config{ //Set the context to be TODO
-			CtxTimeOut: 10 * time.Second,
-			CtxType:    cfctx.NewContext(),
-		}
+		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
+		_, log = helper.NewTestLogger()
+		ctx = ctxlog.NewManagerContext(log)
 	})
 
 	JustBeforeEach(func() {
-		reconciler = exssc.NewReconciler(log, ctrsConfig, manager, controllerutil.SetControllerReference)
+		reconciler = exssc.NewReconciler(ctx, config, manager, controllerutil.SetControllerReference)
 	})
 
 	Describe("Reconcile", func() {
