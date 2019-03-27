@@ -11,6 +11,8 @@ spec:
     listKind: BOSHDeploymentList
     plural: boshdeployments
     singular: boshdeployment
+    shortNames:
+        - bdpl
   scope: Namespaced
   version: v1alpha1
   validation:

@@ -12,6 +12,8 @@ spec:
     listKind: ExtendedJobList
     plural: extendedjobs
     singular: extendedjob
+    shortNames:
+        - ejob
   scope: Namespaced
   version: v1alpha1
   validation:
