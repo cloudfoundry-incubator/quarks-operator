@@ -61,17 +61,66 @@ var _ = Describe("ExtendedJob", func() {
 			Expect(jobs).To(HaveLen(1))
 		})
 
-		It("cleans up succeeded jobs immediately", func() {
-			_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
-			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+		Context("when the job succeeded", func() {
+			It("cleans up job immediately", func() {
+				_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
+				Expect(err).NotTo(HaveOccurred())
+				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
-			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
-			Expect(jobs).To(HaveLen(1))
+				jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+				Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
+				Expect(jobs).To(HaveLen(1))
 
-			err = env.WaitForJobDeletion(env.Namespace, jobs[0].Name)
-			Expect(err).ToNot(HaveOccurred())
+				err = env.WaitForJobDeletion(env.Namespace, jobs[0].Name)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Checking pod is still there, because delete label is missing")
+				Expect(env.PodsDeleted(env.Namespace)).To(BeFalse())
+			})
+
+			Context("when pod template has delete label", func() {
+				Context("when delete is set to pod", func() {
+					BeforeEach(func() {
+						ej.Spec.Template.Labels = map[string]string{"delete": "pod"}
+					})
+
+					It("removes job's pod", func() {
+						_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
+						Expect(err).NotTo(HaveOccurred())
+						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+						jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+						Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
+						Expect(jobs).To(HaveLen(1))
+
+						err = env.WaitForJobDeletion(env.Namespace, jobs[0].Name)
+						Expect(err).ToNot(HaveOccurred())
+
+						Expect(env.PodsDeleted(env.Namespace)).To(BeTrue())
+					})
+				})
+
+				Context("when delete is set to something else", func() {
+					BeforeEach(func() {
+						ej.Spec.Template.Labels = map[string]string{"delete": "something-else"}
+					})
+
+					It("keeps the job's pod", func() {
+						_, tearDown, err := env.CreateExtendedJob(env.Namespace, ej)
+						Expect(err).NotTo(HaveOccurred())
+						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+						jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+						Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
+						Expect(jobs).To(HaveLen(1))
+
+						err = env.WaitForJobDeletion(env.Namespace, jobs[0].Name)
+						Expect(err).ToNot(HaveOccurred())
+
+						Expect(env.PodsDeleted(env.Namespace)).To(BeFalse())
+					})
+				})
+			})
 		})
 
 		Context("when the job failed", func() {

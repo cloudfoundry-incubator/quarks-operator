@@ -1,0 +1,20 @@
+apiVersion: fissile.cloudfoundry.org/v1alpha1
+kind: ExtendedJob
+metadata:
+  name: deletes-pod-1
+spec:
+  template:
+    metadata:
+      labels:
+        delete: pod
+    spec:
+      containers:
+      - command:
+        - sleep
+        - "5"
+        image: busybox
+        name: busybox
+      restartPolicy: Never
+      terminationGracePeriodSeconds: 1
+  trigger:
+    strategy: once
