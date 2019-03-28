@@ -22,8 +22,8 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -122,6 +122,8 @@ instance_groups:
       password: foobar
     provides:
       redis: {as: redis-server}
+  - name: cflinuxfs3-rootfs-setup
+    release: cflinuxfs3
   vm_type: medium
   stemcell: default
   persistent_disk_type: medium
@@ -440,7 +442,7 @@ func (c *Catalog) DefaultStatefulSet(name string) v1beta2.StatefulSet {
 			Name: name,
 		},
 		Spec: v1beta2.StatefulSetSpec{
-			Replicas: helper.Int32(1),
+			Replicas: util.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"testpod": "yes",
@@ -464,7 +466,7 @@ func (c *Catalog) StatefulSetWithPVC(name, pvcName string) v1beta2.StatefulSet {
 			Name: name,
 		},
 		Spec: v1beta2.StatefulSetSpec{
-			Replicas: helper.Int32(1),
+			Replicas: util.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},
@@ -487,7 +489,7 @@ func (c *Catalog) WrongStatefulSetWithPVC(name, pvcName string) v1beta2.Stateful
 			Name: name,
 		},
 		Spec: v1beta2.StatefulSetSpec{
-			Replicas: helper.Int32(1),
+			Replicas: util.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},
@@ -558,7 +560,7 @@ func (c *Catalog) WrongStatefulSet(name string) v1beta2.StatefulSet {
 			Name: name,
 		},
 		Spec: v1beta2.StatefulSetSpec{
-			Replicas: helper.Int32(1),
+			Replicas: util.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"wrongpod": "yes",
@@ -577,7 +579,7 @@ func (c *Catalog) OwnedReferencesStatefulSet(name string) v1beta2.StatefulSet {
 			Name: name,
 		},
 		Spec: v1beta2.StatefulSetSpec{
-			Replicas: helper.Int32(1),
+			Replicas: util.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"referencedpod": "yes",
@@ -597,7 +599,7 @@ func (c *Catalog) PodTemplateWithLabelsAndMount(name string, labels map[string]s
 			Labels: labels,
 		},
 		Spec: corev1.PodSpec{
-			TerminationGracePeriodSeconds: helper.Int64(1),
+			TerminationGracePeriodSeconds: util.Int64(1),
 			Containers: []corev1.Container{
 				{
 					Name:    "busybox",
@@ -620,7 +622,7 @@ func (c *Catalog) WrongPodTemplateWithLabelsAndMount(name string, labels map[str
 			Labels: labels,
 		},
 		Spec: corev1.PodSpec{
-			TerminationGracePeriodSeconds: helper.Int64(1),
+			TerminationGracePeriodSeconds: util.Int64(1),
 			Containers: []corev1.Container{
 				{
 					Name:  "wrong-container",
@@ -657,7 +659,7 @@ func (c *Catalog) WrongPodTemplate(name string) corev1.PodTemplateSpec {
 			},
 		},
 		Spec: corev1.PodSpec{
-			TerminationGracePeriodSeconds: helper.Int64(1),
+			TerminationGracePeriodSeconds: util.Int64(1),
 			Containers: []corev1.Container{
 				{
 					Name:  "wrong-container",
@@ -678,7 +680,7 @@ func (c *Catalog) OwnedReferencesPodTemplate(name string) corev1.PodTemplateSpec
 			},
 		},
 		Spec: corev1.PodSpec{
-			TerminationGracePeriodSeconds: helper.Int64(1),
+			TerminationGracePeriodSeconds: util.Int64(1),
 			Volumes: []corev1.Volume{
 				{
 					Name: "secret1",
@@ -760,7 +762,7 @@ func (c *Catalog) CmdPodTemplate(cmd []string) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
 			RestartPolicy:                 corev1.RestartPolicyNever,
-			TerminationGracePeriodSeconds: helper.Int64(1),
+			TerminationGracePeriodSeconds: util.Int64(1),
 			Containers: []corev1.Container{
 				{
 					Name:    "busybox",
@@ -815,7 +817,7 @@ func (c *Catalog) MultiContainerPodTemplate(cmd []string) corev1.PodTemplateSpec
 	return corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
 			RestartPolicy:                 corev1.RestartPolicyNever,
-			TerminationGracePeriodSeconds: helper.Int64(1),
+			TerminationGracePeriodSeconds: util.Int64(1),
 			Containers: []corev1.Container{
 				{
 					Name:    "busybox",
@@ -837,7 +839,7 @@ func (c *Catalog) FailingMultiContainerPodTemplate(cmd []string) corev1.PodTempl
 	return corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
 			RestartPolicy:                 corev1.RestartPolicyNever,
-			TerminationGracePeriodSeconds: helper.Int64(1),
+			TerminationGracePeriodSeconds: util.Int64(1),
 			Containers: []corev1.Container{
 				{
 					Name:    "busybox",
@@ -889,7 +891,7 @@ func (c *Catalog) AnnotatedPod(name string, annotations map[string]string) corev
 // Sleep1hPodSpec defines a simple pod that sleeps 60*60s for testing
 func (c *Catalog) Sleep1hPodSpec() corev1.PodSpec {
 	return corev1.PodSpec{
-		TerminationGracePeriodSeconds: helper.Int64(1),
+		TerminationGracePeriodSeconds: util.Int64(1),
 		Containers: []corev1.Container{
 			{
 				Name:    "busybox",
@@ -1069,7 +1071,7 @@ func (c *Catalog) DefaultExtendedJobWithSucceededJob(name string) (*ejv1.Extende
 				{
 					Name:       name,
 					UID:        "",
-					Controller: helper.Bool(true),
+					Controller: util.Bool(true),
 				},
 			},
 		},

@@ -73,8 +73,10 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 						{
 							Name:    "foo",
 							Release: "bar",
-							Properties: map[string]interface{}{
-								"password": "((foo_password))",
+							Properties: bdm.JobProperties{
+								Properties: map[string]interface{}{
+									"password": "((foo_password))",
+								},
 							},
 						},
 					},
