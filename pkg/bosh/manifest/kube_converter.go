@@ -3,6 +3,7 @@ package manifest
 import (
 	"crypto/sha1"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -22,7 +23,7 @@ import (
 const (
 	// VarInterpolationContainerName is the name of the container that performs
 	// variable interpolation for a manifest
-	VarInterpolationContainerName = "var-interpolation"
+	VarInterpolationContainerName = "interpolation"
 )
 
 var (
@@ -97,8 +98,8 @@ func generateVolumeName(secretName string) string {
 
 // variableInterpolationJob returns an extended job to interpolate variables
 func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob, error) {
-	cmd := []string{"cf-operator"}
-	args := []string{"variable-interpolation"}
+	cmd := []string{"/bin/sh"}
+	args := []string{"-c", `cf-operator variable-interpolation`}
 
 	// This is the source manifest, that still has the '((vars))'
 	manifestSecretName := m.CalculateSecretName(DeploymentSecretTypeManifestWithOps, "")
@@ -121,7 +122,7 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 	volumeMounts := []v1.VolumeMount{
 		{
 			Name:      generateVolumeName(manifestSecretName),
-			MountPath: "/var/run/secrets",
+			MountPath: "/var/run/secrets/deployment/",
 			ReadOnly:  true,
 		},
 	}
@@ -146,6 +147,26 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 		volMount := v1.VolumeMount{
 			Name:      generateVolumeName(varSecretName),
 			MountPath: "/var/run/secrets/variables/" + varName,
+			ReadOnly:  true,
+		}
+		volumeMounts = append(volumeMounts, volMount)
+	}
+
+	// If there are no variables, mount an empty dir for variables
+	if len(m.Variables) == 0 {
+		// The volume definition
+		vol := v1.Volume{
+			Name: generateVolumeName("no-vars"),
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		}
+		volumes = append(volumes, vol)
+
+		// And the volume mount
+		volMount := v1.VolumeMount{
+			Name:      generateVolumeName("no-vars"),
+			MountPath: "/var/run/secrets/variables/",
 			ReadOnly:  true,
 		}
 		volumeMounts = append(volumeMounts, volMount)
@@ -183,19 +204,11 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 							Env: []v1.EnvVar{
 								{
 									Name:  "MANIFEST",
-									Value: "/var/run/secrets/manifest.yaml",
+									Value: "/var/run/secrets/deployment/manifest.yaml",
 								},
 								{
 									Name:  "VARIABLES_DIR",
 									Value: "/var/run/secrets/variables/",
-								},
-								{
-									Name:  "FORMAT",
-									Value: "encode",
-								},
-								{
-									Name:  "ENCODE_KEY",
-									Value: bdv1.InterpolatedManifestKey,
 								},
 							},
 						},
@@ -254,6 +267,8 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 			}
 			doneSpecCopyingReleases[releaseName] = true
 
+			inContainerReleasePath := filepath.Join("/var/vcap/data-gathering/jobs-src/", releaseName)
+
 			// Get the docker image for the release
 			releaseImage, err := m.GetReleaseImage(ig.Name, boshJob.Name)
 			if err != nil {
@@ -266,9 +281,16 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 				Name:  fmt.Sprintf("spec-copier-%s", releaseName),
 				Image: releaseImage,
 				VolumeMounts: []v1.VolumeMount{
-					{Name: "data-gathering", MountPath: "/var/vcap/data-gathering"},
+					{
+						Name:      generateVolumeName("data-gathering"),
+						MountPath: "/var/vcap/data-gathering",
+					},
 				},
-				Command: []string{"bash", "-c", "cp -ar /var/vcap/jobs-src /var/vcap/data-gathering"},
+				Command: []string{
+					"bash",
+					"-c",
+					fmt.Sprintf(`mkdir -p "%s" && cp -ar /var/vcap/jobs-src/* "%s"`, inContainerReleasePath, inContainerReleasePath),
+				},
 			})
 		}
 
@@ -278,18 +300,22 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 			Name:    ig.Name,
 			Image:   GetOperatorDockerImage(),
 			Command: []string{"/bin/sh"},
-			Args:    []string{"-c", `cf-operator data-gather | base64 | tr -d '\n' | echo "{\"properties.yaml\":\"$(</dev/stdin)\"}"`},
+			Args:    []string{"-c", `cf-operator data-gather`},
 			VolumeMounts: []v1.VolumeMount{
 				{
 					Name:      generateVolumeName(interpolatedManifestSecretName),
-					MountPath: "/var/run/secrets",
+					MountPath: "/var/run/secrets/deployment/",
 					ReadOnly:  true,
+				},
+				{
+					Name:      generateVolumeName("data-gathering"),
+					MountPath: "/var/vcap/data-gathering",
 				},
 			},
 			Env: []v1.EnvVar{
 				{
 					Name:  "BOSH_MANIFEST",
-					Value: "/var/run/secrets/manifest.yml",
+					Value: "/var/run/secrets/deployment/manifest.yaml",
 				},
 				{
 					Name:  "KUBERNETES_NAMESPACE",
@@ -320,12 +346,16 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 					LabelDeploymentName: m.Name,
 				},
 			},
+			Trigger: ejv1.Trigger{
+				Strategy: ejv1.TriggerOnce,
+			},
 			UpdateOnConfigChange: true,
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: eJobName,
 				},
 				Spec: v1.PodSpec{
+					RestartPolicy: v1.RestartPolicyOnFailure,
 					// Init Container to copy contents
 					InitContainers: initContainers,
 					// Container to run data gathering
@@ -338,6 +368,12 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 								Secret: &v1.SecretVolumeSource{
 									SecretName: interpolatedManifestSecretName,
 								},
+							},
+						},
+						{
+							Name: generateVolumeName("data-gathering"),
+							VolumeSource: v1.VolumeSource{
+								EmptyDir: &v1.EmptyDirVolumeSource{},
 							},
 						},
 					},
