@@ -336,6 +336,7 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 		if err != nil {
 			return errors.Wrap(err, "could not create temp manifest secret")
 		}
+		foundSecret = tempManifestSecret
 	} else {
 		foundSecret.Data = map[string][]byte{}
 		foundSecret.StringData = map[string]string{
