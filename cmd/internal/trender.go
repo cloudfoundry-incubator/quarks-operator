@@ -109,7 +109,6 @@ func init() {
 
 	viper.BindEnv("az", "CF_OPERATOR_AZ")
 	viper.BindEnv("ip", "POD_IP")
-	viper.BindEnv("azi", "CF_OPERATOR_AZ_INDEX")
 
 }
 
