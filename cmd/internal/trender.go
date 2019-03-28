@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -28,9 +30,27 @@ This will render a provided manifest instance-group
 		instanceGroupName := viper.GetString("instance_group_name")
 		address := viper.GetString("address")
 		az := viper.GetString("az")
+		if len(az) == 0 {
+			return fmt.Errorf("az cannot be empty")
+		}
 		id := viper.GetString("id")
-		index := viper.GetInt("index")
+		index := viper.GetString("index")
+		if len(index) == 0 {
+			// calculate index
+			azIndex, err := strconv.Atoi(os.Getenv("CF_OPERATOR_AZ_INDEX"))
+			if err != nil {
+				return err
+			}
+			podIndex, err := strconv.Atoi(os.Getenv("POD_INDEX"))
+			if err != nil {
+				return fmt.Errorf("podIndex not found")
+			}
+			index = strconv.Itoa(podIndex * azIndex)
+		}
 		ip := viper.GetString("ip")
+		if len(ip) == 0 {
+			return fmt.Errorf("ip cannot be empty")
+		}
 		name := viper.GetString("name")
 
 		network := map[string]interface{}{ // TODO Do I need to create struct for this ?
@@ -40,11 +60,16 @@ This will render a provided manifest instance-group
 			},
 		}
 
+		indexInt, err := strconv.Atoi(index)
+		if err != nil {
+			return fmt.Errorf("index Atoi failed")
+		}
+
 		jobInstance := manifest.JobInstance{ // TODO do we need deployment
 			Address: address,
 			AZ:      az,
 			ID:      id,
-			Index:   index,
+			Index:   indexInt,
 			Name:    name,
 			IP:      ip,
 			Network: network,
@@ -64,26 +89,28 @@ func init() {
 	templateRenderCmd.Flags().StringP("instance-group-name", "g", "", "the instance-group name to render")
 	templateRenderCmd.Flags().StringP("address", "a", "", "address of the instance spec")
 	templateRenderCmd.MarkFlagRequired("address")
-	templateRenderCmd.Flags().StringSliceP("az", "z", []string{}, "az's of the instance spec")
-	templateRenderCmd.MarkFlagRequired("az")
+	templateRenderCmd.Flags().StringP("az", "z", "", "az's of the instance spec")
 	templateRenderCmd.Flags().StringP("id", "d", "", "id of the instance spec")
 	templateRenderCmd.MarkFlagRequired("id")
 	templateRenderCmd.Flags().StringP("index", "x", "", "index of the instance spec")
-	templateRenderCmd.MarkFlagRequired("index")
 	templateRenderCmd.Flags().StringP("ip", "i", "", "ip of the instance spec")
-	templateRenderCmd.MarkFlagRequired("ip")
 	templateRenderCmd.Flags().StringP("name", "m", "", "name of the instance spec")
 	templateRenderCmd.MarkFlagRequired("name")
 
 	viper.AutomaticEnv()
 	viper.BindPFlag("jobs_dir", templateRenderCmd.Flags().Lookup("jobs-dir"))
-	viper.BindPFlag("instance_group_name", templateRenderCmd.Flags().Lookup("instance-group_name"))
+	viper.BindPFlag("instance_group_name", templateRenderCmd.Flags().Lookup("instance-group-name"))
 	viper.BindPFlag("address", templateRenderCmd.Flags().Lookup("address"))
 	viper.BindPFlag("az", templateRenderCmd.Flags().Lookup("az"))
 	viper.BindPFlag("id", templateRenderCmd.Flags().Lookup("id"))
 	viper.BindPFlag("index", templateRenderCmd.Flags().Lookup("index"))
 	viper.BindPFlag("name", templateRenderCmd.Flags().Lookup("name"))
 	viper.BindPFlag("ip", templateRenderCmd.Flags().Lookup("ip"))
+
+	viper.BindEnv("az", "CF_OPERATOR_AZ")
+	viper.BindEnv("ip", "POD_IP")
+	viper.BindEnv("azi", "CF_OPERATOR_AZ_INDEX")
+
 }
 
 // RenderData will render manifest instance group
