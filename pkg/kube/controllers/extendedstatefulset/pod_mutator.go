@@ -192,13 +192,6 @@ func replaceVersionInName(name string, version string, offset int) string {
 	return name
 }
 
-// getPodIndex returns ordinal of the Pod
-func getPodIndex(name string) string {
-	nameSplit := strings.Split(name, "-")
-	index := nameSplit[len(nameSplit)-1]
-	return index
-}
-
 // appendVolumetoPod appends desiredvolume to pod
 func appendVolumetoPod(pod *corev1.Pod, volumeClaimTemplate *corev1.PersistentVolumeClaim, desiredVCTName string, desiredPVCName string) {
 	// Find the desired volume and append new volume
