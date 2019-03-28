@@ -116,5 +116,35 @@ instance-group:
 password: |
   fake-password`))
 		})
+
+		It("should show a json format", func() {
+			wd, err := os.Getwd()
+			Expect(err).ToNot(HaveOccurred())
+
+			manifestPath := filepath.Join(wd, "../testing/assets/manifest.yaml")
+			varsDir := filepath.Join(wd, "../testing/assets/vars")
+
+			session, err := act("variable-interpolation", "-m", manifestPath, "-v", varsDir, "-f", "json")
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(session.Out).Should(Say(`{"instance-group":{"key1":"baz\\n","key2":"foo\\n","key3":"bar\\n"},"password":"fake-password\\n"}`))
+		})
+
+		It("should show a encode format", func() {
+			wd, err := os.Getwd()
+			Expect(err).ToNot(HaveOccurred())
+
+			manifestPath := filepath.Join(wd, "../testing/assets/manifest.yaml")
+			varsDir := filepath.Join(wd, "../testing/assets/vars")
+
+			session, err := act("variable-interpolation", "-m", manifestPath, "-v", varsDir, "-f", "encode")
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(session.Out).Should(Say(`{"interpolated-manifest":"aW5zdGFuY2UtZ3JvdXA6CiAga2V5MTogfAogICAgYmF6CiAga2V5MjogfAogICAgZm9vCiAga2V5MzogfAogICAgYmFyCnBhc3N3b3JkOiB8CiAgZmFrZS1wYXNzd29yZAo="}`))
+
+			encodeKey := "e2e-manifest"
+			session, err = act("variable-interpolation", "-m", manifestPath, "-v", varsDir, "-f", "encode", "--encode-key", encodeKey)
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(session.Out).Should(Say(`{"` + encodeKey + `":"aW5zdGFuY2UtZ3JvdXA6CiAga2V5MTogfAogICAgYmF6CiAga2V5MjogfAogICAgZm9vCiAga2V5MzogfAogICAgYmFyCnBhc3N3b3JkOiB8CiAgZmFrZS1wYXNzd29yZAo="}`))
+
+		})
 	})
 })
