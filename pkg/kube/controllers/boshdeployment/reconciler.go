@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
@@ -83,7 +83,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	r.log.Infof("Reconciling BOSHDeployment %s", request.NamespacedName)
 
 	// Fetch the BOSHDeployment instance
-	instance := &bdc.BOSHDeployment{}
+	instance := &bdv1.BOSHDeployment{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
@@ -119,7 +119,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "could not calculate manifest SHA1")
 	}
-	oldManifestSHA1, _ := instance.Annotations[bdc.AnnotationManifestSHA1]
+	oldManifestSHA1, _ := instance.Annotations[bdv1.AnnotationManifestSHA1]
 	if oldManifestSHA1 == currentManifestSHA1 && instance.Status.State == DeployedState {
 		r.log.Infof("Skip reconcile: deployed BoshDeployment '%s/%s' manifest has not changed", instance.GetNamespace(), instance.GetName())
 		return reconcile.Result{}, nil
@@ -161,7 +161,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		if instance.Annotations == nil {
 			instance.Annotations = map[string]string{}
 		}
-		instance.Annotations[bdc.AnnotationManifestSHA1] = currentManifestSHA1
+		instance.Annotations[bdv1.AnnotationManifestSHA1] = currentManifestSHA1
 		instance.Status.State = OpsAppliedState
 
 	case OpsAppliedState:
@@ -182,9 +182,9 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	case VariableInterpolatedState:
 		desiredManifestSecretLabels := map[string]string{
-			bdc.LabelKind:         "desired-manifest",
-			bdc.LabelDeployment:   manifest.Name,
-			bdc.LabelManifestSHA1: currentManifestSHA1,
+			bdv1.LabelKind:         "desired-manifest",
+			bdv1.LabelDeployment:   manifest.Name,
+			bdv1.LabelManifestSHA1: currentManifestSHA1,
 		}
 		err = r.createDataGatheringJob(ctx, instance, manifest, desiredManifestSecretLabels)
 		if err != nil {
@@ -220,18 +220,18 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 }
 
 // updateInstanceState update instance state
-func (r *ReconcileBOSHDeployment) updateInstanceState(ctx context.Context, currentInstance *bdc.BOSHDeployment) error {
-	currentManifestSHA1, _ := currentInstance.GetAnnotations()[bdc.AnnotationManifestSHA1]
+func (r *ReconcileBOSHDeployment) updateInstanceState(ctx context.Context, currentInstance *bdv1.BOSHDeployment) error {
+	currentManifestSHA1, _ := currentInstance.GetAnnotations()[bdv1.AnnotationManifestSHA1]
 
 	// Fetch latest BOSHDeployment before update
-	foundInstance := &bdc.BOSHDeployment{}
+	foundInstance := &bdv1.BOSHDeployment{}
 	key := types.NamespacedName{Namespace: currentInstance.GetNamespace(), Name: currentInstance.GetName()}
 	err := r.client.Get(ctx, key, foundInstance)
 	if err != nil {
 		r.log.Errorf("Failed to get BOSHDeployment instance '%s': %v", currentInstance.GetName(), err)
 		return err
 	}
-	oldManifestSHA1, _ := foundInstance.GetAnnotations()[bdc.AnnotationManifestSHA1]
+	oldManifestSHA1, _ := foundInstance.GetAnnotations()[bdv1.AnnotationManifestSHA1]
 
 	if oldManifestSHA1 != currentManifestSHA1 {
 		// Set manifest SHA1
@@ -239,7 +239,7 @@ func (r *ReconcileBOSHDeployment) updateInstanceState(ctx context.Context, curre
 			foundInstance.Annotations = map[string]string{}
 		}
 
-		foundInstance.Annotations[bdc.AnnotationManifestSHA1] = currentManifestSHA1
+		foundInstance.Annotations[bdv1.AnnotationManifestSHA1] = currentManifestSHA1
 	}
 
 	// Update the Status of the resource
@@ -260,7 +260,7 @@ func (r *ReconcileBOSHDeployment) updateInstanceState(ctx context.Context, curre
 }
 
 // applyOps apply ops files after BoshDeployment instance created
-func (r *ReconcileBOSHDeployment) applyOps(ctx context.Context, instance *bdc.BOSHDeployment) (*bdm.Manifest, error) {
+func (r *ReconcileBOSHDeployment) applyOps(ctx context.Context, instance *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
 	// Create temp manifest as variable interpolation job input
 	// retrieve manifest
 	r.log.Debug("Resolving manifest")
@@ -275,7 +275,7 @@ func (r *ReconcileBOSHDeployment) applyOps(ctx context.Context, instance *bdc.BO
 }
 
 // generateVariableSecrets create variables extendedSecrets
-func (r *ReconcileBOSHDeployment) generateVariableSecrets(ctx context.Context, instance *bdc.BOSHDeployment, manifest *bdm.Manifest, kubeConfig *bdm.KubeConfig) error {
+func (r *ReconcileBOSHDeployment) generateVariableSecrets(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfig *bdm.KubeConfig) error {
 	r.log.Debug("Creating variables extendedSecrets")
 	var err error
 	for _, variable := range kubeConfig.Variables {
@@ -306,7 +306,7 @@ func (r *ReconcileBOSHDeployment) generateVariableSecrets(ctx context.Context, i
 }
 
 // createVariableInterpolationExJob create temp manifest and variable interpolation exJob
-func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.Context, instance *bdc.BOSHDeployment, manifest *bdm.Manifest, kubeConfig bdm.KubeConfig) error {
+func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfig bdm.KubeConfig) error {
 
 	// Create temp manifest as variable interpolation job input.
 	// Ops files have been applied on this manifest.
@@ -381,7 +381,7 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 }
 
 // createDataGatheringJob gather data from manifest
-func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, instance *bdc.BOSHDeployment, manifest *bdm.Manifest, secretLabels map[string]string) error {
+func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, secretLabels map[string]string) error {
 	if len(manifest.Variables) > 0 {
 		labelsSelector := labels.Set(secretLabels)
 
@@ -401,7 +401,7 @@ func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, in
 			return errors.New("variable interpolation must only have one output Secret")
 		}
 
-		encodedDesiredManifest, exists := secrets.Items[0].Data["interpolated-manifest.yaml"]
+		encodedDesiredManifest, exists := secrets.Items[0].Data[bdv1.InterpolatedManifestKey]
 		if !exists {
 			r.log.Errorf("Failed to get desiredManifest value from secret")
 			return err
@@ -428,7 +428,7 @@ func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, in
 }
 
 // deployInstanceGroups create ExtendedJobs and ExtendedStatefulSets
-func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, instance *bdc.BOSHDeployment, kubeConfigs *bdm.KubeConfig) error {
+func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, instance *bdv1.BOSHDeployment, kubeConfigs *bdm.KubeConfig) error {
 	r.log.Debug("Creating extendedJobs and extendedStatefulSets of instance groups")
 	for _, eJob := range kubeConfigs.Errands {
 		// Set BOSHDeployment instance as the owner and controller
@@ -482,7 +482,7 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 }
 
 // actionOnDeploying check out deployment status
-func (r *ReconcileBOSHDeployment) actionOnDeploying(ctx context.Context, instance *bdc.BOSHDeployment, kubeConfigs *bdm.KubeConfig) error {
+func (r *ReconcileBOSHDeployment) actionOnDeploying(ctx context.Context, instance *bdv1.BOSHDeployment, kubeConfigs *bdm.KubeConfig) error {
 	// TODO Check deployment
 	instance.Status.State = DeployedState
 

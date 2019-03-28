@@ -14,11 +14,12 @@ import (
 
 // Valid values for ref types
 const (
-	ManifestSpecName string = "manifest"
-	OpsSpecName      string = "ops"
-	ConfigMapType    string = "configmap"
-	SecretType       string = "secret"
-	URLType          string = "url"
+	ManifestSpecName        string = "manifest"
+	OpsSpecName             string = "ops"
+	ConfigMapType           string = "configmap"
+	SecretType              string = "secret"
+	URLType                 string = "url"
+	InterpolatedManifestKey string = "interpolated-manifest.yaml"
 )
 
 var (

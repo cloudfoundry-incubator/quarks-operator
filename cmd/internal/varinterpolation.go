@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -34,13 +35,14 @@ func (f *OutputFormat) Type() string {
 }
 
 const (
-	fmtJSON OutputFormat = "json"
-	fmtYAML OutputFormat = "yaml"
+	fmtJSON   OutputFormat = "json"
+	fmtYAML   OutputFormat = "yaml"
+	fmtEncode OutputFormat = "encode"
 )
 
 // Set validates and sets the value of the OutputFormat
 func (f *OutputFormat) Set(s string) error {
-	for _, of := range []OutputFormat{fmtJSON, fmtYAML} {
+	for _, of := range []OutputFormat{fmtJSON, fmtYAML, fmtEncode} {
 		if s == string(of) {
 			*f = of
 			return nil
@@ -68,7 +70,8 @@ func init() {
 	rootCmd.AddCommand(variableInterpolationCmd)
 	variableInterpolationCmd.Flags().StringP("manifest", "m", "", "path to a bosh manifest")
 	variableInterpolationCmd.Flags().StringP("variables-dir", "v", "", "path to the variables dir")
-	variableInterpolationCmd.Flags().VarP(&i.OutputFormat, "format", "f", "output manifest in specified format (json or yaml)")
+	variableInterpolationCmd.Flags().VarP(&i.OutputFormat, "format", "f", "output manifest in specified format, one of: json|yaml|encode (default yaml)")
+	variableInterpolationCmd.Flags().String("encode-key", "interpolated-manifest", "output key in encode format")
 
 	// This will get the values from any set ENV var, but always
 	// the values provided via the flags have more precedence.
@@ -76,15 +79,21 @@ func init() {
 
 	viper.BindPFlag("manifest", variableInterpolationCmd.Flags().Lookup("manifest"))
 	viper.BindPFlag("variables_dir", variableInterpolationCmd.Flags().Lookup("variables-dir"))
+	viper.BindPFlag("encode-key", variableInterpolationCmd.Flags().Lookup("encode-key"))
 }
 
 func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string) error {
+	if i.OutputFormat == "" {
+		i.OutputFormat = fmtYAML
+	}
+
 	defer log.Sync()
 
 	var vars []boshtpl.Variables
 
 	manifestFile := viper.GetString("manifest")
 	variablesDir := filepath.Clean(viper.GetString("variables_dir"))
+	encodeKey := viper.GetString("encode-key")
 
 	if _, err := os.Stat(manifestFile); os.IsNotExist(err) {
 		return errors.Errorf("no such variable: %s", manifestFile)
@@ -171,14 +180,16 @@ func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string)
 	}
 
 	switch i.OutputFormat.String() {
-	case "json":
+	case string(fmtJSON):
 		jsonBytes, err := yamlUtil.ToJSON(bytes)
 		if err != nil {
 			return err
 		}
 		fmt.Println(string(jsonBytes))
-	case "yaml":
-	case "":
+	case string(fmtEncode):
+		sEnc := base64.StdEncoding.EncodeToString(bytes)
+		fmt.Println(fmt.Sprintf(`{"%s":"%s"}`, encodeKey, sEnc))
+	case string(fmtYAML):
 		fmt.Println("---")
 		fmt.Println(string(bytes))
 	default:

@@ -97,8 +97,8 @@ func generateVolumeName(secretName string) string {
 
 // variableInterpolationJob returns an extended job to interpolate variables
 func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob, error) {
-	cmd := []string{"/bin/sh"}
-	args := []string{"-c", `cf-operator variable-interpolation | base64 | tr -d '\n' | echo "{\"interpolated-manifest.yaml\":\"$(</dev/stdin)\"}"`}
+	cmd := []string{"cf-operator"}
+	args := []string{"variable-interpolation"}
 
 	// This is the source manifest, that still has the '((vars))'
 	manifestSecretName := m.CalculateSecretName(DeploymentSecretTypeManifestWithOps, "")
@@ -181,13 +181,21 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 							Args:         args,
 							VolumeMounts: volumeMounts,
 							Env: []v1.EnvVar{
-								v1.EnvVar{
+								{
 									Name:  "MANIFEST",
 									Value: "/var/run/secrets/manifest.yaml",
 								},
-								v1.EnvVar{
+								{
 									Name:  "VARIABLES_DIR",
 									Value: "/var/run/secrets/variables/",
+								},
+								{
+									Name:  "FORMAT",
+									Value: "encode",
+								},
+								{
+									Name:  "ENCODE_KEY",
+									Value: bdv1.InterpolatedManifestKey,
 								},
 							},
 						},
@@ -258,7 +266,7 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 				Name:  fmt.Sprintf("spec-copier-%s", releaseName),
 				Image: releaseImage,
 				VolumeMounts: []v1.VolumeMount{
-					v1.VolumeMount{Name: "data-gathering", MountPath: "/var/vcap/data-gathering"},
+					{Name: "data-gathering", MountPath: "/var/vcap/data-gathering"},
 				},
 				Command: []string{"bash", "-c", "cp -ar /var/vcap/jobs-src /var/vcap/data-gathering"},
 			})
@@ -279,19 +287,19 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 				},
 			},
 			Env: []v1.EnvVar{
-				v1.EnvVar{
+				{
 					Name:  "BOSH_MANIFEST",
 					Value: "/var/run/secrets/manifest.yml",
 				},
-				v1.EnvVar{
+				{
 					Name:  "KUBERNETES_NAMESPACE",
 					Value: namespace,
 				},
-				v1.EnvVar{
+				{
 					Name:  "BASE_DIR",
 					Value: "/var/vcap/data-gathering",
 				},
-				v1.EnvVar{
+				{
 					Name:  "INSTANCE_GROUP",
 					Value: ig.Name,
 				},
@@ -362,7 +370,7 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 			Name:  fmt.Sprintf("spec-copier-%s", job.Name),
 			Image: releaseImage,
 			VolumeMounts: []v1.VolumeMount{
-				v1.VolumeMount{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
+				{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
 			},
 			Command: []string{"bash", "-c", "cp -ar /var/vcap/jobs-src /var/vcap/rendering"},
 		})
@@ -372,7 +380,7 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 		Name:  fmt.Sprintf("renderer-%s", igName),
 		Image: GetOperatorDockerImage(),
 		VolumeMounts: []v1.VolumeMount{
-			v1.VolumeMount{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
+			{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
 		},
 		Command: []string{"bash", "-c", "echo 'foo'"},
 	})
@@ -397,7 +405,7 @@ func (m *Manifest) jobsToContainers(igName string, jobs []Job, namespace string)
 			Name:  fmt.Sprintf("job-%s", job.Name),
 			Image: jobImage,
 			VolumeMounts: []v1.VolumeMount{
-				v1.VolumeMount{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
+				{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
 			},
 			Command: []string{"bash", "-c", "sleep 3600"},
 		})
@@ -447,7 +455,7 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 						},
 						Spec: v1.PodSpec{
 							Volumes: []v1.Volume{
-								v1.Volume{
+								{
 									Name:         "rendering-data",
 									VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
 								},
