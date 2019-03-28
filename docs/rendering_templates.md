@@ -200,10 +200,10 @@ To resolve a link, the following steps are performed:
 The `spec` of each job instance can be calculated:
 
 ```yaml
-name: <name of the job>
-index: <index of pod>*<az index>
+name: <name of the instance group>-<name of the job>
+index: (<az index>-1)*<replicas>+<pod_ordinal>
 az: <BOSH_AZ_INDEX>
-id: <name of the job>-<index>
+id: <name of the instance group>-<index>-<name of the job>
 address: <calculated address>
 bootstrap: <index == 0>
 ```
