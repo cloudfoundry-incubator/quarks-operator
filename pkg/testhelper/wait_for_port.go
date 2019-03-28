@@ -20,7 +20,6 @@ func WaitForPort(host, port string, timeOut time.Duration) error {
 				if err == nil {
 					return
 				}
-
 				time.Sleep(1 * time.Second)
 			}
 		}(net.JoinHostPort(host, port))

@@ -8,7 +8,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/integration/environment"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,8 +21,8 @@ var _ = Describe("ExtendedJob", func() {
 			Kind:               "ExtendedJob",
 			Name:               exJob.Name,
 			UID:                exJob.UID,
-			Controller:         helper.Bool(true),
-			BlockOwnerDeletion: helper.Bool(true),
+			Controller:         util.Bool(true),
+			BlockOwnerDeletion: util.Bool(true),
 		}
 	}
 
@@ -32,8 +32,8 @@ var _ = Describe("ExtendedJob", func() {
 			Kind:               "ExtendedJob",
 			Name:               exJob.Name,
 			UID:                exJob.UID,
-			Controller:         helper.Bool(false),
-			BlockOwnerDeletion: helper.Bool(true),
+			Controller:         util.Bool(false),
+			BlockOwnerDeletion: util.Bool(true),
 		}
 	}
 

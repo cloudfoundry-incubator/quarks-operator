@@ -99,7 +99,7 @@ var _ = Describe("ExtendedSecret", func() {
 			generator := inmemorygenerator.NewInMemoryGenerator(env.Log)
 			ca, err := generator.GenerateCertificate("default-ca", credsgen.CertificateGenerationRequest{
 				CommonName: "Fake CA",
-				IsCA: true,
+				IsCA:       true,
 			})
 			Expect(err).ToNot(HaveOccurred())
 
