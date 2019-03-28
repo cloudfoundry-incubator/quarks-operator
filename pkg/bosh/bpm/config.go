@@ -30,8 +30,8 @@ type Unsafe struct {
 
 // Process from a BPM config
 type Process struct {
-	Name              string            `yaml:"name"`
-	Executable        string            `yaml:"executable"`
+	Name              string            `yaml:"name,omitempty"`
+	Executable        string            `yaml:"executable,omitempty"`
 	Args              []string          `yaml:"args,omitempty"`
 	Env               map[string]string `yaml:"env,omitempty"`
 	Workdir           string            `yaml:"workdir,omitempty"`
@@ -46,15 +46,15 @@ type Process struct {
 
 // Config represent a BPM configuration
 type Config struct {
-	Processes []Process `yaml:"processes"`
+	Processes []Process `yaml:"processes,omitempty"`
 }
 
 // NewConfig creates a new Config object from the yaml
-func NewConfig(data []byte) (*Config, error) {
-	config := &Config{}
-	err := yaml.Unmarshal(data, config)
+func NewConfig(data []byte) (Config, error) {
+	config := Config{}
+	err := yaml.Unmarshal(data, &config)
 	if err != nil {
-		return nil, err
+		return Config{}, err
 	}
 	return config, nil
 }

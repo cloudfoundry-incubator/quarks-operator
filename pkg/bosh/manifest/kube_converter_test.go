@@ -7,6 +7,7 @@ import (
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/format"
 )
 
 var _ = Describe("ConvertToKube", func() {
@@ -18,6 +19,7 @@ var _ = Describe("ConvertToKube", func() {
 
 	BeforeEach(func() {
 		m = env.DefaultBOSHManifest()
+		format.TruncatedDiff = false
 	})
 
 	Context("converting variables", func() {
@@ -26,7 +28,7 @@ var _ = Describe("ConvertToKube", func() {
 			m.Variables[0].Name = "def-456.?!\"§$&/()=?-"
 
 			kubeConfig, _ = m.ConvertToKube("foo")
-			Expect(kubeConfig.Variables[0].Name).To(Equal("abc-123.def-456"))
+			Expect(kubeConfig.Variables[0].Name).To(Equal("abc-123.var-def-456"))
 		})
 
 		It("trims secret names to 63 characters", func() {
@@ -34,7 +36,7 @@ var _ = Describe("ConvertToKube", func() {
 			m.Variables[0].Name = "this-is-waaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaay-too-long"
 
 			kubeConfig, _ = m.ConvertToKube("foo")
-			Expect(kubeConfig.Variables[0].Name).To(Equal("foo.this-is-waaaaaaaaaaaaaaaaaaa0bef0f482cfb7313e03e6bd86b53ef3"))
+			Expect(kubeConfig.Variables[0].Name).To(Equal("foo.var-this-is-waaaaaaaaaaaaaa5bffdb0302ac051d11f52d2606254a5f"))
 		})
 
 		It("converts password variables", func() {
@@ -42,9 +44,9 @@ var _ = Describe("ConvertToKube", func() {
 			Expect(len(kubeConfig.Variables)).To(Equal(1))
 
 			var1 := kubeConfig.Variables[0]
-			Expect(var1.Name).To(Equal("foo-deployment.adminpass"))
+			Expect(var1.Name).To(Equal("foo-deployment.var-adminpass"))
 			Expect(var1.Spec.Type).To(Equal(esv1.Password))
-			Expect(var1.Spec.SecretName).To(Equal("foo-deployment.adminpass"))
+			Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminpass"))
 		})
 
 		It("converts rsa key variables", func() {
@@ -56,9 +58,9 @@ var _ = Describe("ConvertToKube", func() {
 			Expect(len(kubeConfig.Variables)).To(Equal(1))
 
 			var1 := kubeConfig.Variables[0]
-			Expect(var1.Name).To(Equal("foo-deployment.adminkey"))
+			Expect(var1.Name).To(Equal("foo-deployment.var-adminkey"))
 			Expect(var1.Spec.Type).To(Equal(esv1.RSAKey))
-			Expect(var1.Spec.SecretName).To(Equal("foo-deployment.adminkey"))
+			Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminkey"))
 		})
 
 		It("converts ssh key variables", func() {
@@ -70,9 +72,9 @@ var _ = Describe("ConvertToKube", func() {
 			Expect(len(kubeConfig.Variables)).To(Equal(1))
 
 			var1 := kubeConfig.Variables[0]
-			Expect(var1.Name).To(Equal("foo-deployment.adminkey"))
+			Expect(var1.Name).To(Equal("foo-deployment.var-adminkey"))
 			Expect(var1.Spec.Type).To(Equal(esv1.SSHKey))
-			Expect(var1.Spec.SecretName).To(Equal("foo-deployment.adminkey"))
+			Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminkey"))
 		})
 
 		It("converts certificate variables", func() {
@@ -91,14 +93,14 @@ var _ = Describe("ConvertToKube", func() {
 			Expect(len(kubeConfig.Variables)).To(Equal(1))
 
 			var1 := kubeConfig.Variables[0]
-			Expect(var1.Name).To(Equal("foo-deployment.foo-cert"))
+			Expect(var1.Name).To(Equal("foo-deployment.var-foo-cert"))
 			Expect(var1.Spec.Type).To(Equal(esv1.Certificate))
-			Expect(var1.Spec.SecretName).To(Equal("foo-deployment.foo-cert"))
+			Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-foo-cert"))
 			request := var1.Spec.Request.CertificateRequest
 			Expect(request.CommonName).To(Equal("example.com"))
 			Expect(request.AlternativeNames).To(Equal([]string{"foo.com", "bar.com"}))
 			Expect(request.IsCA).To(Equal(true))
-			Expect(request.CARef.Name).To(Equal("foo-deployment.theca"))
+			Expect(request.CARef.Name).To(Equal("foo-deployment.var-theca"))
 			Expect(request.CARef.Key).To(Equal("certificate"))
 		})
 	})

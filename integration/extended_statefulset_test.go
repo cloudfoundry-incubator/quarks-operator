@@ -9,6 +9,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/integration/environment"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 
 	corev1 "k8s.io/api/core/v1"
@@ -259,8 +260,8 @@ var _ = Describe("ExtendedStatefulSet", func() {
 				Kind:               "ExtendedStatefulSet",
 				Name:               ess.Name,
 				UID:                ess.UID,
-				Controller:         helper.Bool(false),
-				BlockOwnerDeletion: helper.Bool(true),
+				Controller:         util.Bool(false),
+				BlockOwnerDeletion: util.Bool(true),
 			}
 
 			for _, obj := range []apis.Object{cm1, cm2, s1, s2} {

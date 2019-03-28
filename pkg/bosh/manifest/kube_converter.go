@@ -1,20 +1,28 @@
 package manifest
 
 import (
-	"crypto/md5"
-	"encoding/hex"
+	"crypto/sha1"
 	"fmt"
-	"regexp"
 	"strings"
+
+	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 
 	"k8s.io/api/apps/v1beta2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+)
+
+const (
+	// VarInterpolationContainerName is the name of the container that performs
+	// variable interpolation for a manifest
+	VarInterpolationContainerName = "var-interpolation"
 )
 
 var (
@@ -36,8 +44,8 @@ type KubeConfig struct {
 	InstanceGroups           []essv1.ExtendedStatefulSet
 	Errands                  []ejv1.ExtendedJob
 	Namespace                string
-	VariableInterpolationJob ejv1.ExtendedJob
-	DataGatheringJob         ejv1.ExtendedJob
+	VariableInterpolationJob *ejv1.ExtendedJob
+	DataGatheringJob         *ejv1.ExtendedJob
 }
 
 // ConvertToKube converts a Manifest into kube resources
@@ -55,11 +63,282 @@ func (m *Manifest) ConvertToKube(namespace string) (KubeConfig, error) {
 	if err != nil {
 		return KubeConfig{}, err
 	}
+
+	dataGatheringJob, err := m.dataGatheringJob(namespace)
+	if err != nil {
+		return KubeConfig{}, err
+	}
+
+	varInterpolationJob, err := m.variableInterpolationJob(namespace)
+	if err != nil {
+		return KubeConfig{}, err
+	}
+
 	kubeConfig.Variables = m.convertVariables(namespace)
 	kubeConfig.InstanceGroups = convertedExtSts
 	kubeConfig.Errands = convertedExtJob
+	kubeConfig.VariableInterpolationJob = varInterpolationJob
+	kubeConfig.DataGatheringJob = dataGatheringJob
 
 	return kubeConfig, nil
+}
+
+// generateVolumeName generate volume name based on secret name
+func generateVolumeName(secretName string) string {
+	nameSlices := strings.Split(secretName, ".")
+	volName := ""
+	if len(nameSlices) > 1 {
+		volName = nameSlices[1]
+	} else {
+		volName = nameSlices[0]
+	}
+	return volName
+}
+
+// variableInterpolationJob returns an extended job to interpolate variables
+func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob, error) {
+	cmd := []string{"/bin/sh"}
+	args := []string{"-c", `cf-operator variable-interpolation | base64 | tr -d '\n' | echo "{\"interpolated-manifest.yaml\":\"$(</dev/stdin)\"}"`}
+
+	// This is the source manifest, that still has the '((vars))'
+	manifestSecretName := m.CalculateSecretName(DeploymentSecretTypeManifestWithOps, "")
+
+	// Prepare Volumes and Volume mounts
+
+	// This is a volume for the "not interpolated" manifest,
+	// that has the ops files applied, but still contains '((vars))'
+	volumes := []v1.Volume{
+		{
+			Name: generateVolumeName(manifestSecretName),
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: manifestSecretName,
+				},
+			},
+		},
+	}
+	// Volume mount for the manifest
+	volumeMounts := []v1.VolumeMount{
+		{
+			Name:      generateVolumeName(manifestSecretName),
+			MountPath: "/var/run/secrets",
+			ReadOnly:  true,
+		},
+	}
+
+	// We need a volume and a mount for each input variable
+	for _, variable := range m.Variables {
+		varName := variable.Name
+		varSecretName := m.CalculateSecretName(DeploymentSecretTypeGeneratedVariable, varName)
+
+		// The volume definition
+		vol := v1.Volume{
+			Name: generateVolumeName(varSecretName),
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: varSecretName,
+				},
+			},
+		}
+		volumes = append(volumes, vol)
+
+		// And the volume mount
+		volMount := v1.VolumeMount{
+			Name:      generateVolumeName(varSecretName),
+			MountPath: "/var/run/secrets/variables/" + varName,
+			ReadOnly:  true,
+		}
+		volumeMounts = append(volumeMounts, volMount)
+	}
+
+	// Calculate the signature of the manifest, to label things
+	manifestSignature, err := m.SHA1()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not calculate manifest SHA1")
+	}
+
+	outputSecretPrefix, _ := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, VarInterpolationContainerName)
+
+	// Assemble the Extended Job
+	job := &ejv1.ExtendedJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "variables-interpolation-job",
+			Namespace: namespace,
+			Labels: map[string]string{
+				bdv1.LabelKind:       "variable-interpolation",
+				bdv1.LabelDeployment: m.Name,
+			},
+		},
+		Spec: ejv1.ExtendedJobSpec{
+			Template: v1.PodTemplateSpec{
+				Spec: v1.PodSpec{
+					RestartPolicy: v1.RestartPolicyOnFailure,
+					Containers: []v1.Container{
+						{
+							Name:         VarInterpolationContainerName,
+							Image:        GetOperatorDockerImage(),
+							Command:      cmd,
+							Args:         args,
+							VolumeMounts: volumeMounts,
+							Env: []v1.EnvVar{
+								v1.EnvVar{
+									Name:  "MANIFEST",
+									Value: "/var/run/secrets/manifest.yaml",
+								},
+								v1.EnvVar{
+									Name:  "VARIABLES_DIR",
+									Value: "/var/run/secrets/variables/",
+								},
+							},
+						},
+					},
+					Volumes: volumes,
+				},
+			},
+			Output: &ejv1.Output{
+				NamePrefix: outputSecretPrefix,
+				SecretLabels: map[string]string{
+					bdv1.LabelKind:         "desired-manifest",
+					bdv1.LabelDeployment:   m.Name,
+					bdv1.LabelManifestSHA1: manifestSignature,
+				},
+			},
+			Trigger: ejv1.Trigger{
+				Strategy: ejv1.TriggerOnce,
+			},
+		},
+	}
+	return job, nil
+}
+
+// SHA1 calculates the SHA1 of the manifest
+func (m *Manifest) SHA1() (string, error) {
+	manifestBytes, err := yaml.Marshal(m)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", sha1.Sum(manifestBytes)), nil
+}
+
+// dataGatheringJob generates the Data Gathering Job for a manifest
+func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error) {
+
+	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, VarInterpolationContainerName)
+
+	eJobName := fmt.Sprintf("data-gathering-%s", m.Name)
+	outputSecretNamePrefix, _ := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, "")
+
+	initContainers := []v1.Container{}
+	containers := make([]v1.Container, len(m.InstanceGroups))
+
+	doneSpecCopyingReleases := map[string]bool{}
+
+	for idx, ig := range m.InstanceGroups {
+
+		// Iterate through each Job to find all releases so we can copy all
+		// sources to /var/vcap/data-gathering
+		for _, boshJob := range ig.Jobs {
+			// If we've already generated an init container for this release, skip
+			releaseName := boshJob.Release
+			if _, ok := doneSpecCopyingReleases[releaseName]; ok {
+				continue
+			}
+			doneSpecCopyingReleases[releaseName] = true
+
+			// Get the docker image for the release
+			releaseImage, err := m.GetReleaseImage(ig.Name, boshJob.Name)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to calculate release image for data gathering")
+			}
+
+			// Create an init container that copies sources
+			// TODO: destination should also contain release name, to prevent overwrites
+			initContainers = append(initContainers, v1.Container{
+				Name:  fmt.Sprintf("spec-copier-%s", releaseName),
+				Image: releaseImage,
+				VolumeMounts: []v1.VolumeMount{
+					v1.VolumeMount{Name: "data-gathering", MountPath: "/var/vcap/data-gathering"},
+				},
+				Command: []string{"bash", "-c", "cp -ar /var/vcap/jobs-src /var/vcap/data-gathering"},
+			})
+		}
+
+		// One container per Instance Group
+		// There will be one secret generated for each of these containers
+		containers[idx] = v1.Container{
+			Name:    ig.Name,
+			Image:   GetOperatorDockerImage(),
+			Command: []string{"/bin/sh"},
+			Args:    []string{"-c", `cf-operator data-gather | base64 | tr -d '\n' | echo "{\"properties.yaml\":\"$(</dev/stdin)\"}"`},
+			VolumeMounts: []v1.VolumeMount{
+				{
+					Name:      generateVolumeName(interpolatedManifestSecretName),
+					MountPath: "/var/run/secrets",
+					ReadOnly:  true,
+				},
+			},
+			Env: []v1.EnvVar{
+				v1.EnvVar{
+					Name:  "BOSH_MANIFEST",
+					Value: "/var/run/secrets/manifest.yml",
+				},
+				v1.EnvVar{
+					Name:  "KUBERNETES_NAMESPACE",
+					Value: namespace,
+				},
+				v1.EnvVar{
+					Name:  "BASE_DIR",
+					Value: "/var/vcap/data-gathering",
+				},
+				v1.EnvVar{
+					Name:  "INSTANCE_GROUP",
+					Value: ig.Name,
+				},
+			},
+		}
+	}
+
+	// Construct the data gathering job
+	dataGatheringJob := &ejv1.ExtendedJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      eJobName,
+			Namespace: namespace,
+		},
+		Spec: ejv1.ExtendedJobSpec{
+			Output: &ejv1.Output{
+				NamePrefix: outputSecretNamePrefix,
+				SecretLabels: map[string]string{
+					LabelDeploymentName: m.Name,
+				},
+			},
+			UpdateOnConfigChange: true,
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: eJobName,
+				},
+				Spec: v1.PodSpec{
+					// Init Container to copy contents
+					InitContainers: initContainers,
+					// Container to run data gathering
+					Containers: containers,
+					// Volumes for secrets
+					Volumes: []v1.Volume{
+						{
+							Name: generateVolumeName(interpolatedManifestSecretName),
+							VolumeSource: v1.VolumeSource{
+								Secret: &v1.SecretVolumeSource{
+									SecretName: interpolatedManifestSecretName,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return dataGatheringJob, nil
 }
 
 // jobsToInitContainers creates a list of Containers for v1.PodSpec InitContainers field
@@ -252,7 +531,7 @@ func (m *Manifest) convertVariables(namespace string) []esv1.ExtendedSecret {
 	secrets := []esv1.ExtendedSecret{}
 
 	for _, v := range m.Variables {
-		secretName := m.GenerateSecretName(v.Name)
+		secretName := m.CalculateSecretName(DeploymentSecretTypeGeneratedVariable, v.Name)
 		s := esv1.ExtendedSecret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
@@ -274,11 +553,11 @@ func (m *Manifest) convertVariables(namespace string) []esv1.ExtendedSecret {
 			}
 			if v.Options.CA != "" {
 				certRequest.CARef = esv1.SecretReference{
-					Name: m.GenerateSecretName(v.Options.CA),
+					Name: m.CalculateSecretName(DeploymentSecretTypeGeneratedVariable, v.Options.CA),
 					Key:  "certificate",
 				}
 				certRequest.CAKeyRef = esv1.SecretReference{
-					Name: m.GenerateSecretName(v.Options.CA),
+					Name: m.CalculateSecretName(DeploymentSecretTypeGeneratedVariable, v.Options.CA),
 					Key:  "private_key",
 				}
 			}
@@ -288,26 +567,6 @@ func (m *Manifest) convertVariables(namespace string) []esv1.ExtendedSecret {
 	}
 
 	return secrets
-}
-
-// GenerateSecretName Generates a Secret name or a given name
-func (m *Manifest) GenerateSecretName(name string) string {
-	nameRegex := regexp.MustCompile("[^-][a-z0-9-]*.[a-z0-9-]*[^-]")
-	partRegex := regexp.MustCompile("[a-z0-9-]*")
-
-	deploymentName := partRegex.FindString(strings.Replace(m.Name, "_", "-", -1))
-	variableName := partRegex.FindString(strings.Replace(name, "_", "-", -1))
-	secretName := nameRegex.FindString(deploymentName + "." + variableName)
-
-	if len(secretName) > 63 {
-		// secret names are limited to 63 characters so we recalculate the name as
-		// <name trimmed to 31 characters><md5 hash of name>
-		sumHex := md5.Sum([]byte(secretName))
-		sum := hex.EncodeToString(sumHex[:])
-		secretName = secretName[:63-32] + sum
-	}
-
-	return secretName
 }
 
 // GetReleaseImage returns the release image location for a given instance group/job

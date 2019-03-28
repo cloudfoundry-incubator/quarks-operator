@@ -1,11 +1,9 @@
 package boshdeployment
 
 import (
-	"crypto/sha1"
 	"encoding/base64"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -31,16 +29,14 @@ import (
 
 // State of instance
 const (
-	CreatedState                     = "Created"
-	UpdatedState                     = "Updated"
-	OpsAppliedState                  = "OpsApplied"
-	VariableGeneratedState           = "VariableGenerated"
-	VariableInterpolatedState        = "VariableInterpolated"
-	DataGatheredState                = "DataGathered"
-	DeployingState                   = "Deploying"
-	DeployedState                    = "Deployed"
-	varInterpolationContainerName    = "variables-interpolation"
-	varInterpolationOutputNamePrefix = "manifest-"
+	CreatedState              = "Created"
+	UpdatedState              = "Updated"
+	OpsAppliedState           = "OpsApplied"
+	VariableGeneratedState    = "VariableGenerated"
+	VariableInterpolatedState = "VariableInterpolated"
+	DataGatheredState         = "DataGathered"
+	DeployingState            = "Deploying"
+	DeployedState             = "Deployed"
 )
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
@@ -119,7 +115,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Compute SHA1 of the manifest (with ops applied), so we can figure out if anything
 	// has changed.
-	currentManifestSHA1, err := calculateManifestSHA1(manifest)
+	currentManifestSHA1, err := manifest.SHA1()
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "could not calculate manifest SHA1")
 	}
@@ -177,16 +173,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		}
 
 	case VariableGeneratedState:
-		desiredManifestSecretLabels := map[string]string{
-			bdc.LabelKind:         "desired-manifest",
-			bdc.LabelDeployment:   manifest.Name,
-			bdc.LabelManifestSHA1: currentManifestSHA1,
-		}
-		varIntJobLabels := map[string]string{
-			bdc.LabelKind:       "variable-interpolation",
-			bdc.LabelDeployment: manifest.Name,
-		}
-		err = r.createVariableInterpolationExJob(ctx, instance, manifest, kubeConfigs.Variables, varIntJobLabels, desiredManifestSecretLabels)
+		err = r.createVariableInterpolationExJob(ctx, instance, manifest, kubeConfigs)
 		if err != nil {
 			r.log.Errorf("Failed to create variable interpolation exJob: %v", err)
 			r.recorder.Event(instance, corev1.EventTypeWarning, "VariableInterpolation Error", err.Error())
@@ -319,22 +306,21 @@ func (r *ReconcileBOSHDeployment) generateVariableSecrets(ctx context.Context, i
 }
 
 // createVariableInterpolationExJob create temp manifest and variable interpolation exJob
-func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.Context, instance *bdc.BOSHDeployment, manifest *bdm.Manifest, variables []esv1.ExtendedSecret, jobLabels map[string]string, secretLabels map[string]string) error {
-	if len(variables) == 0 {
-		r.log.Infof("Skip variable interpolation: BoshDeployment '%s/%s' doesn't have any variables", instance.GetNamespace(), instance.GetName())
-		instance.Status.State = VariableInterpolatedState
-		return nil
-	}
+func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.Context, instance *bdc.BOSHDeployment, manifest *bdm.Manifest, kubeConfig bdm.KubeConfig) error {
 
-	// Create temp manifest as variable interpolation job input, this manifest has been already applied ops files.
+	// Create temp manifest as variable interpolation job input.
+	// Ops files have been applied on this manifest.
 	tempManifestBytes, err := yaml.Marshal(manifest)
 	if err != nil {
 		return errors.Wrap(err, "could not marshal temp manifest")
 	}
 
+	tempManifestSecretName := manifest.CalculateSecretName(bdm.DeploymentSecretTypeManifestWithOps, "")
+
+	// Create a secret object for the manifest
 	tempManifestSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      manifest.GenerateSecretName(manifest.Name),
+			Name:      tempManifestSecretName,
 			Namespace: instance.GetNamespace(),
 		},
 		StringData: map[string]string{
@@ -342,10 +328,7 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 		},
 	}
 
-	if err := r.setReference(instance, tempManifestSecret, r.scheme); err != nil {
-		return errors.Wrap(err, "could not set reference for a Secret for a BOSH Deployment")
-	}
-
+	// If the secret is missing, create it. Update it otherwise
 	foundSecret := &corev1.Secret{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: tempManifestSecret.GetName(), Namespace: tempManifestSecret.GetNamespace()}, foundSecret)
 	if apierrors.IsNotFound(err) {
@@ -364,8 +347,9 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 		}
 	}
 
+	// Generate the ExtendedJob object
 	r.log.Debug("Creating variable interpolation extendedJob")
-	varIntExJob := r.newExtendedJobTemplateForVariableInterpolation(ctx, foundSecret, variables, jobLabels, secretLabels, instance.GetNamespace())
+	varIntExJob := kubeConfig.VariableInterpolationJob
 	// Set BOSHDeployment instance as the owner and controller
 	if err := r.setReference(instance, varIntExJob, r.scheme); err != nil {
 		r.log.Errorf("Failed to set ownerReference for ExtendedJob '%s': %v", varIntExJob.GetName(), err)
@@ -373,7 +357,7 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 		return err
 	}
 
-	// Check if this job already exists
+	// Check if this job already exists and create/update accordingly
 	foundExJob := &ejv1.ExtendedJob{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: varIntExJob.Name, Namespace: varIntExJob.Namespace}, foundExJob)
 	if err != nil && apierrors.IsNotFound(err) {
@@ -502,105 +486,4 @@ func (r *ReconcileBOSHDeployment) actionOnDeploying(ctx context.Context, instanc
 	instance.Status.State = DeployedState
 
 	return nil
-}
-
-// newExtendedJobTemplateForVariableInterpolation returns a job to interpolate variables
-func (r *ReconcileBOSHDeployment) newExtendedJobTemplateForVariableInterpolation(ctx context.Context, manifest *corev1.Secret, variables []esv1.ExtendedSecret, jobLabels map[string]string, secretLabels map[string]string, namespace string) *ejv1.ExtendedJob {
-	cmd := []string{"cf-operator"}
-	args := []string{"variable-interpolation --manifest /var/run/secrets/manifest.yaml --variables-dir /var/run/secrets/variables | base64 | tr -d '\n' | echo \"{\\\"interpolated-manifest.yaml\\\":\\\"$(</dev/stdin)\\\"}\""}
-
-	volumes := []corev1.Volume{
-		{
-			Name: generateVolumeName(manifest.GetName()),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: manifest.GetName(),
-				},
-			},
-		},
-	}
-	volumeMounts := []corev1.VolumeMount{
-		{
-			Name:      generateVolumeName(manifest.GetName()),
-			MountPath: "/var/run/secrets",
-			ReadOnly:  true,
-		},
-	}
-
-	for _, variable := range variables {
-		varName := variable.GetLabels()["variableName"]
-
-		vol := corev1.Volume{
-			Name: generateVolumeName(variable.GetName()),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: variable.GetName(),
-				},
-			},
-		}
-		volumes = append(volumes, vol)
-
-		volMount := corev1.VolumeMount{
-			Name:      generateVolumeName(variable.GetName()),
-			MountPath: "/var/run/secrets/variables/" + varName,
-			ReadOnly:  true,
-		}
-		volumeMounts = append(volumeMounts, volMount)
-	}
-	one := int64(1)
-	job := ejv1.ExtendedJob{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "variables-interpolation-job",
-			Namespace: namespace,
-			Labels:    jobLabels,
-		},
-		Spec: ejv1.ExtendedJobSpec{
-			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					RestartPolicy:                 corev1.RestartPolicyOnFailure,
-					TerminationGracePeriodSeconds: &one,
-					Containers: []corev1.Container{
-						{
-							Name:         varInterpolationContainerName,
-							Image:        bdm.GetOperatorDockerImage(),
-							Command:      cmd,
-							Args:         args,
-							VolumeMounts: volumeMounts,
-						},
-					},
-					Volumes: volumes,
-				},
-			},
-			Output: &ejv1.Output{
-				NamePrefix:   varInterpolationOutputNamePrefix,
-				SecretLabels: secretLabels,
-			},
-			Trigger: ejv1.Trigger{
-				Strategy: ejv1.TriggerOnce,
-			},
-		},
-	}
-	return &job
-}
-
-// calculateManifestSHA1 calculates the SHA1 of manifest
-func calculateManifestSHA1(manifest *bdm.Manifest) (string, error) {
-	manifestBytes, err := yaml.Marshal(manifest)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("%x", sha1.Sum(manifestBytes)), nil
-}
-
-// generateVolumeName generate volume name based on secret name
-func generateVolumeName(secretName string) string {
-	nameSlices := strings.Split(secretName, ".")
-	volName := ""
-	if len(nameSlices) > 1 {
-		volName = nameSlices[1]
-	} else {
-		volName = nameSlices[0]
-	}
-	return volName
 }

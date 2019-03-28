@@ -2,7 +2,6 @@ package manifest
 
 import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"gopkg.in/yaml.v2"
 )
 
 // JobInstance for data gathering
@@ -13,7 +12,7 @@ type JobInstance struct {
 	Index       int                    `yaml:"index"`
 	Instance    int                    `yaml:"instance"`
 	Name        string                 `yaml:"name"`
-	BPM         *bpm.Config            `yaml:"bpm"`
+	BPM         bpm.Config             `yaml:"bpm"`
 	Fingerprint interface{}            `yaml:"fingerprint"`
 	Network     map[string]interface{} `yaml:"networks"`
 	IP          string                 `yaml:"ip"`
@@ -62,28 +61,36 @@ type Job struct {
 	Release    string                 `yaml:"release"`
 	Consumes   map[string]interface{} `yaml:"consumes,omitempty"`
 	Provides   map[string]interface{} `yaml:"provides,omitempty"`
-	Properties map[string]interface{} `yaml:"properties,omitempty"`
+	Properties JobProperties          `yaml:"properties,omitempty"`
 }
 
-// GetJobBoshContainerizationConsumers gives you back a proper JobLink populated struct
-// You need to provide the consumer name from which the job consumes.
-func (j *Job) GetJobBoshContainerizationConsumers(consumesFrom string) (JobLink, error) {
-	jobLinks := JobLink{}
+// BOSHContainerization represents the special 'bosh_containerization'
+// property key
+type BOSHContainerization struct {
+	Consumes  map[string]JobLink `yaml:"consumes"`
+	Instances []JobInstance      `yaml:"instances"`
+	Release   string             `yaml:"release"`
+	BPM       bpm.Config         `yaml:"bpm"`
+}
 
-	jobContainerizationConsumes := j.Properties["bosh_containerization"].(map[interface{}]interface{})["consumes"]
+// JobProperties represents the properties map of a Job
+type JobProperties struct {
+	BOSHContainerization `yaml:"bosh_containerization"`
+	Properties           map[string]interface{} `yaml:",inline"`
+}
 
-	consumesBoshLinksFrom := jobContainerizationConsumes.(map[interface{}]interface{})[consumesFrom]
+// ToMap returns a complete map with all properties, including the
+// bosh_containerization key
+func (p *JobProperties) ToMap() map[string]interface{} {
+	result := map[string]interface{}{}
 
-	jobBoshLinksData, err := yaml.Marshal(consumesBoshLinksFrom)
-	if err != nil {
-		return jobLinks, err
+	for k, v := range p.Properties {
+		result[k] = v
 	}
 
-	err = yaml.Unmarshal(jobBoshLinksData, &jobLinks)
-	if err != nil {
-		return jobLinks, err
-	}
-	return jobLinks, err
+	result["bosh_containerization"] = p.BOSHContainerization
+
+	return result
 }
 
 // VMResource from BOSH deployment manifest

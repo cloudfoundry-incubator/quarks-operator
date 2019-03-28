@@ -139,24 +139,9 @@ func RenderData(deploymentManifest string, jobsDir string, instanceGroupName str
 		for _, job := range instanceGroup.Jobs {
 			jobInstanceLinks := []manifest.Link{}
 
-			// Make sure that job.properties.bosh_containerization exists
-			if _, ok := job.Properties["bosh_containerization"]; !ok {
-				job.Properties["bosh_containerization"] = map[interface{}]interface{}{}
-			}
-
-			// Make sure that job.properties.bosh_containerization.consumes exists
-			if _, ok := job.Properties["bosh_containerization"].(map[interface{}]interface{})["consumes"]; !ok {
-				job.Properties["bosh_containerization"].(map[interface{}]interface{})["consumes"] = map[interface{}]interface{}{}
-			}
-
 			// Loop over name and link
-			for name := range job.Properties["bosh_containerization"].(map[interface{}]interface{})["consumes"].(map[interface{}]interface{}) {
+			for name, jobConsumersLink := range job.Properties.BOSHContainerization.Consumes {
 				jobInstances := []manifest.JobInstance{}
-
-				jobConsumersLink, err := job.GetJobBoshContainerizationConsumers(name.(string))
-				if err != nil {
-					return err
-				}
 
 				// Loop over instances of link
 				for _, jobConsumerLinkInstance := range jobConsumersLink.Instances {
@@ -170,7 +155,7 @@ func RenderData(deploymentManifest string, jobsDir string, instanceGroupName str
 				}
 
 				jobInstanceLinks = append(jobInstanceLinks, manifest.Link{
-					Name:       name.(string),
+					Name:       name,
 					Instances:  jobInstances,
 					Properties: jobConsumersLink.Properties,
 				})
@@ -191,10 +176,13 @@ func RenderData(deploymentManifest string, jobsDir string, instanceGroupName str
 			// Loop over templates for rendering files
 			for source, destination := range jobSpec.Templates {
 				absDest := filepath.Join(jobsDir, job.Name, destination)
-				os.MkdirAll(filepath.Dir(absDest), 0777) // TODO what is the right access code ?
+				os.MkdirAll(filepath.Dir(absDest), 0755)
+
+				properties := job.Properties.ToMap()
+
 				renderPointer := btg.NewERBRenderer(
 					&btg.EvaluationContext{
-						Properties: job.Properties,
+						Properties: properties,
 					},
 
 					&btg.InstanceInfo{

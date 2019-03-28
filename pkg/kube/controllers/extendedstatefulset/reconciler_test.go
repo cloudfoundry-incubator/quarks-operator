@@ -27,9 +27,9 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	exssc "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	cfctx "code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -100,7 +100,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 								Labels:      map[string]string{existingLabel: existingValue},
 							},
 							Spec: v1beta2.StatefulSetSpec{
-								Replicas: helper.Int32(1),
+								Replicas: util.Int32(1),
 								Template: corev1.PodTemplateSpec{
 									ObjectMeta: metav1.ObjectMeta{
 										Annotations: map[string]string{existingAnnotation: existingValue},
@@ -132,8 +132,8 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							{
 								Name:               "foo",
 								UID:                "",
-								Controller:         helper.Bool(true),
-								BlockOwnerDeletion: helper.Bool(true),
+								Controller:         util.Bool(true),
+								BlockOwnerDeletion: util.Bool(true),
 							},
 						},
 						Annotations: map[string]string{
@@ -150,8 +150,8 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							{
 								Name:               "foo-v1",
 								UID:                "",
-								Controller:         helper.Bool(true),
-								BlockOwnerDeletion: helper.Bool(true),
+								Controller:         util.Bool(true),
+								BlockOwnerDeletion: util.Bool(true),
 							},
 						},
 					},
@@ -164,8 +164,8 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							{
 								Name:               "foo-v2",
 								UID:                "",
-								Controller:         helper.Bool(true),
-								BlockOwnerDeletion: helper.Bool(true),
+								Controller:         util.Bool(true),
+								BlockOwnerDeletion: util.Bool(true),
 							},
 						},
 					},
@@ -526,7 +526,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 					Spec: exss.ExtendedStatefulSetSpec{
 						Template: v1beta2.StatefulSet{
 							Spec: v1beta2.StatefulSetSpec{
-								Replicas: helper.Int32(1),
+								Replicas: util.Int32(1),
 								Template: corev1.PodTemplateSpec{
 									Spec: corev1.PodSpec{
 										Volumes: []corev1.Volume{
@@ -682,8 +682,8 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							Kind:               "ExtendedStatefulSet",
 							Name:               ess.Name,
 							UID:                ess.UID,
-							Controller:         helper.Bool(false),
-							BlockOwnerDeletion: helper.Bool(true),
+							Controller:         util.Bool(false),
+							BlockOwnerDeletion: util.Bool(true),
 						}
 
 						for _, obj := range []apis.Object{configMap1, configMap2, secret1, secret2} {
@@ -757,8 +757,8 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 								Kind:               "ExtendedStatefulSet",
 								Name:               ess.Name,
 								UID:                ess.UID,
-								Controller:         helper.Bool(false),
-								BlockOwnerDeletion: helper.Bool(true),
+								Controller:         util.Bool(false),
+								BlockOwnerDeletion: util.Bool(true),
 							}
 
 							for _, obj := range []apis.Object{configMap1, secret1} {
@@ -833,8 +833,8 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 								Kind:               "ExtendedStatefulSet",
 								Name:               ess.Name,
 								UID:                ess.UID,
-								Controller:         helper.Bool(false),
-								BlockOwnerDeletion: helper.Bool(true),
+								Controller:         util.Bool(false),
+								BlockOwnerDeletion: util.Bool(true),
 							}
 
 							for _, obj := range []apis.Object{configMap1, configMap2, secret1, secret2} {
@@ -901,7 +901,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 					Spec: exss.ExtendedStatefulSetSpec{
 						Template: v1beta2.StatefulSet{
 							Spec: v1beta2.StatefulSetSpec{
-								Replicas: helper.Int32(1),
+								Replicas: util.Int32(1),
 							},
 						},
 					},
@@ -915,8 +915,8 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							{
 								Name:               "foo",
 								UID:                "foo-uid",
-								Controller:         helper.Bool(true),
-								BlockOwnerDeletion: helper.Bool(true),
+								Controller:         util.Bool(true),
+								BlockOwnerDeletion: util.Bool(true),
 							},
 						},
 						Annotations: map[string]string{
@@ -934,8 +934,8 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							{
 								Name:               "foo",
 								UID:                "foo-uid",
-								Controller:         helper.Bool(true),
-								BlockOwnerDeletion: helper.Bool(true),
+								Controller:         util.Bool(true),
+								BlockOwnerDeletion: util.Bool(true),
 							},
 						},
 						Annotations: map[string]string{
@@ -953,8 +953,8 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							{
 								Name:               "foo",
 								UID:                "foo-uid",
-								Controller:         helper.Bool(true),
-								BlockOwnerDeletion: helper.Bool(true),
+								Controller:         util.Bool(true),
+								BlockOwnerDeletion: util.Bool(true),
 							},
 						},
 						Annotations: map[string]string{
@@ -971,8 +971,8 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							{
 								Name:               "foo-v1",
 								UID:                "foo-v1-uid",
-								Controller:         helper.Bool(true),
-								BlockOwnerDeletion: helper.Bool(true),
+								Controller:         util.Bool(true),
+								BlockOwnerDeletion: util.Bool(true),
 							},
 						},
 					},
@@ -993,8 +993,8 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							{
 								Name:               "foo-v2",
 								UID:                "foo-v2-uid",
-								Controller:         helper.Bool(true),
-								BlockOwnerDeletion: helper.Bool(true),
+								Controller:         util.Bool(true),
+								BlockOwnerDeletion: util.Bool(true),
 							},
 						},
 					},
@@ -1015,8 +1015,8 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							{
 								Name:               "foo-v3",
 								UID:                "foo-v3-uid",
-								Controller:         helper.Bool(true),
-								BlockOwnerDeletion: helper.Bool(true),
+								Controller:         util.Bool(true),
+								BlockOwnerDeletion: util.Bool(true),
 							},
 						},
 					},
