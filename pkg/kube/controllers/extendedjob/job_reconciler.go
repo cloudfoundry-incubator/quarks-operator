@@ -83,8 +83,8 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 		}
 	}
 	if parentName == "" {
-		r.log.Errorf("Could not find parent ExtendedJob for Job %s", request.NamespacedName)
-		return reconcile.Result{}, fmt.Errorf("could not find parent ExtendedJob for Job %s", request.NamespacedName)
+		r.log.Errorf("Could not find parent ExtendedJob for Job '%s'", request.NamespacedName)
+		return reconcile.Result{}, fmt.Errorf("could not find parent ExtendedJob for Job '%s'", request.NamespacedName)
 	}
 
 	ej := ejapi.ExtendedJob{}
@@ -96,10 +96,10 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 	// Persist output if needed
 	if !reflect.DeepEqual(ejapi.Output{}, ej.Spec.Output) && ej.Spec.Output != nil {
 		if instance.Status.Succeeded == 1 || (instance.Status.Failed == 1 && ej.Spec.Output.WriteOnFailure) {
-			r.log.Infof("Persisting output of job %s", instance.Name)
+			r.log.Infof("Persisting output of job '%s'", instance.Name)
 			err = r.persistOutput(ctx, instance, ej.Spec.Output)
 			if err != nil {
-				r.log.Errorf("Could not persist output: %s", err)
+				r.log.Errorf("Could not persist output: '%s'", err)
 				return reconcile.Result{}, err
 			}
 		} else if instance.Status.Failed == 1 && !ej.Spec.Output.WriteOnFailure {
@@ -111,35 +111,60 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 	// Delete Job if it succeeded
 	if instance.Status.Succeeded == 1 {
-		r.log.Infof("Deleting succeeded job %s", instance.Name)
-		r.client.Delete(ctx, instance)
+		r.log.Infof("Deleting succeeded job '%s'", instance.Name)
+		err = r.client.Delete(ctx, instance)
+		if err != nil {
+			r.log.Errorf("Cannot delete succeeded job: '%s'", err)
+		}
+
+		if d, ok := instance.Spec.Template.Labels["delete"]; ok {
+			if d == "pod" {
+				pod, err := r.jobPod(ctx, instance.Name, instance.GetNamespace())
+				if err != nil {
+					r.log.Errorf("Cannot find job's pod: '%s'", err)
+					return reconcile.Result{}, nil
+				}
+				r.log.Infof("Deleting succeeded job's pod '%s'", pod.Name)
+				err = r.client.Delete(ctx, pod)
+				if err != nil {
+					r.log.Errorf("Cannot delete succeeded job's pod: '%s'", err)
+				}
+			}
+		}
 	}
 
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job, conf *ejapi.Output) error {
-	// Get job's pod. Only single-pod jobs are supported when persisting the output, so we just get the first one.
-	selector, err := labels.Parse("job-name=" + instance.Name)
+// jobPod gets the job's pod. Only single-pod jobs are supported when persisting the output, so we just get the first one.
+func (r *ReconcileJob) jobPod(ctx context.Context, name string, namespace string) (*corev1.Pod, error) {
+	selector, err := labels.Parse("job-name=" + name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	list := &corev1.PodList{}
 	err = r.client.List(
 		ctx,
 		&client.ListOptions{
-			Namespace:     instance.GetNamespace(),
+			Namespace:     namespace,
 			LabelSelector: selector,
 		},
 		list)
 	if err != nil {
-		errors.Wrap(err, "getting job's pods")
+		return nil, errors.Wrap(err, "listing job's pods")
 	}
 	if len(list.Items) == 0 {
-		errors.Errorf("job does not own any pods?")
+		return nil, errors.Errorf("job does not own any pods?")
 	}
-	pod := list.Items[0]
+	return &list.Items[0], nil
+}
+
+func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job, conf *ejapi.Output) error {
+	pod, err := r.jobPod(ctx, instance.Name, instance.GetNamespace())
+	if err != nil {
+		return errors.Wrap(err, "failed to persist output")
+	}
 
 	// Iterate over the pod's containers and store the output
 	for _, c := range pod.Spec.Containers {

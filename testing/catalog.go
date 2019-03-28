@@ -958,6 +958,26 @@ func (c *Catalog) InterpolateBOSHDeployment(name, manifestRef, opsRef string, se
 	}
 }
 
+// LabelTriggeredExtendedJob allows customization of labels triggers
+func (c *Catalog) LabelTriggeredExtendedJob(name string, state ejv1.PodState, ml labels.Set, me []*ejv1.Requirement, cmd []string) *ejv1.ExtendedJob {
+	return &ejv1.ExtendedJob{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Spec: ejv1.ExtendedJobSpec{
+			Trigger: ejv1.Trigger{
+				Strategy: "podstate",
+				PodState: &ejv1.PodStateTrigger{
+					When: state,
+					Selector: &ejv1.Selector{
+						MatchLabels:      &ml,
+						MatchExpressions: me,
+					},
+				},
+			},
+			Template: c.CmdPodTemplate(cmd),
+		},
+	}
+}
+
 // DefaultExtendedJob default values
 func (c *Catalog) DefaultExtendedJob(name string) *ejv1.ExtendedJob {
 	return c.LabelTriggeredExtendedJob(
@@ -1035,26 +1055,6 @@ func (c *Catalog) OutputExtendedJob(name string, template corev1.PodTemplateSpec
 				OutputType:   "json",
 				SecretLabels: map[string]string{"label-key": "label-value", "label-key2": "label-value2"},
 			},
-		},
-	}
-}
-
-// LabelTriggeredExtendedJob allows customization of labels triggers
-func (c *Catalog) LabelTriggeredExtendedJob(name string, state ejv1.PodState, ml labels.Set, me []*ejv1.Requirement, cmd []string) *ejv1.ExtendedJob {
-	return &ejv1.ExtendedJob{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Spec: ejv1.ExtendedJobSpec{
-			Trigger: ejv1.Trigger{
-				Strategy: "podstate",
-				PodState: &ejv1.PodStateTrigger{
-					When: state,
-					Selector: &ejv1.Selector{
-						MatchLabels:      &ml,
-						MatchExpressions: me,
-					},
-				},
-			},
-			Template: c.CmdPodTemplate(cmd),
 		},
 	}
 }

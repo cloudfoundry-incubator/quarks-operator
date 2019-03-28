@@ -17,4 +17,4 @@ fi
 
 set -e
 
-docker build "${GIT_ROOT}" -f "${GIT_ROOT}/Dockerfile" -t ${OPERATOR_DOCKER_ORGANIZATION}/cf-operator:${VERSION_TAG}
+docker build "${GIT_ROOT}" -f "${GIT_ROOT}/Dockerfile" --build-arg GO111MODULE="$GO111MODULE" -t ${OPERATOR_DOCKER_ORGANIZATION}/cf-operator:${VERSION_TAG}
