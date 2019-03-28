@@ -37,6 +37,8 @@ const (
 	EnvKubeAz = "KUBE_AZ"
 	// EnvBoshAz is set by available zone name
 	EnvBoshAz = "BOSH_AZ"
+	// EnvReplicas describes the number of replicas in the ExtendedStatefulSet
+	EnvReplicas = "REPLICAS"
 	// EnvCfOperatorAz is set by available zone name
 	EnvCfOperatorAz = "CF_OPERATOR_AZ"
 	// EnvCfOperatorAzIndex is set by available zone index
@@ -675,7 +677,7 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(extendedStatefu
 
 		statefulSet = r.updateAffinity(statefulSet, extendedStatefulSet.Spec.ZoneNodeLabel, zoneIndex, zone)
 
-		r.injectContainerEnv(&statefulSet.Spec.Template.Spec, zoneIndex, zone)
+		r.injectContainerEnv(&statefulSet.Spec.Template.Spec, zoneIndex, zone, extendedStatefulSet.Spec.Template.Spec.Replicas)
 	}
 
 	annotations[essv1a1.AnnotationStatefulSetSHA1] = templateSha1
@@ -750,7 +752,7 @@ func (r *ReconcileExtendedStatefulSet) updateAffinity(statefulSet *v1beta2.State
 }
 
 // injectContainerEnv inject AZ info to container envs
-func (r *ReconcileExtendedStatefulSet) injectContainerEnv(podSpec *corev1.PodSpec, zoneIndex int, zoneName string) {
+func (r *ReconcileExtendedStatefulSet) injectContainerEnv(podSpec *corev1.PodSpec, zoneIndex int, zoneName string, replicas *int32) {
 	for i := 0; i < len(podSpec.Containers); i++ {
 		envs := podSpec.Containers[i].Env
 
@@ -758,6 +760,7 @@ func (r *ReconcileExtendedStatefulSet) injectContainerEnv(podSpec *corev1.PodSpe
 		envs = upsertEnvs(envs, EnvBoshAz, zoneName)
 		envs = upsertEnvs(envs, EnvCfOperatorAz, zoneName)
 		envs = upsertEnvs(envs, EnvCfOperatorAzIndex, strconv.Itoa(zoneIndex))
+		envs = upsertEnvs(envs, EnvReplicas, strconv.Itoa(int(*replicas)))
 
 		podSpec.Containers[i].Env = envs
 	}

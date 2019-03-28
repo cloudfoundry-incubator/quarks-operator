@@ -398,6 +398,10 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 									Name:  exssc.EnvCfOperatorAzIndex,
 									Value: strconv.Itoa(idx),
 								}))
+								Expect(envs).Should(ContainElement(corev1.EnvVar{
+									Name:  exssc.EnvReplicas,
+									Value: "1",
+								}))
 							}
 						}
 					})
