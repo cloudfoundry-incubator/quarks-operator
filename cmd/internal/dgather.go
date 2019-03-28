@@ -1,12 +1,16 @@
 package cmd
 
 import (
+	"bufio"
 	"crypto/md5"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
@@ -20,14 +24,14 @@ import (
 var dataGatherCmd = &cobra.Command{
 	Use:   "data-gather [flags]",
 	Short: "Gathers data of a bosh manifest",
-	Long: `Gathers data of a manifest.
+	Long: `Gathers data of a manifest. 
 
 This will retrieve information of an instance-group
 inside a bosh manifest.
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		mFile := viper.GetString("gmanifest")
+		mFile := viper.GetString("bosh_manifest")
 		if len(mFile) == 0 {
 			return fmt.Errorf("manifest cannot be empty")
 		}
@@ -37,12 +41,12 @@ inside a bosh manifest.
 			return fmt.Errorf("base directory cannot be empty")
 		}
 
-		ns := viper.GetString("desired_namespace")
+		ns := viper.GetString("kubernetes_namespace")
 		if len(ns) == 0 {
 			return fmt.Errorf("namespace cannot be empty")
 		}
 
-		desiredIgs := viper.GetStringSlice("instance_groups")
+		instanceGroupName := viper.GetString("instance_group")
 
 		mBytes, err := ioutil.ReadFile(mFile)
 		if err != nil {
@@ -55,7 +59,19 @@ inside a bosh manifest.
 			return err
 		}
 
-		return GatherData(&mStruct, baseDir, ns, desiredIgs)
+		result, err := GatherData(&mStruct, baseDir, ns, instanceGroupName)
+		if err != nil {
+			return err
+		}
+
+		f := bufio.NewWriter(os.Stdout)
+		defer f.Flush()
+		_, err = f.Write(result)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	},
 }
 
@@ -63,34 +79,30 @@ func init() {
 	rootCmd.AddCommand(dataGatherCmd)
 
 	dataGatherCmd.Flags().StringP("manifest", "m", "", "path to a bosh manifest")
-	dataGatherCmd.Flags().String("desired-namespace", "", "the kubernetes namespace") //TODO: can we reuse the global ns flag
+	//TODO: can we reuse the global ns flag
+	dataGatherCmd.Flags().String("kubernetes-namespace", "", "the kubernetes namespace")
 	dataGatherCmd.Flags().StringP("base-dir", "b", "", "a path to the base directory")
-	dataGatherCmd.Flags().StringSliceP("instance-groups", "g", []string{}, "the instance-groups filter")
+	dataGatherCmd.Flags().StringP("instance-group", "g", "", "instance group for data gathering")
 
 	// This will get the values from any set ENV var, but always
 	// the values provided via the flags have more precedence.
 	viper.AutomaticEnv()
-	viper.BindPFlag("gmanifest", dataGatherCmd.Flags().Lookup("manifest"))
-	viper.BindPFlag("desired_namespace", dataGatherCmd.Flags().Lookup("desired-namespace"))
+	viper.BindPFlag("bosh_manifest", dataGatherCmd.Flags().Lookup("manifest"))
+	viper.BindPFlag("kubernetes_namespace", dataGatherCmd.Flags().Lookup("kubernetes-namespace"))
 	viper.BindPFlag("base_dir", dataGatherCmd.Flags().Lookup("base-dir"))
-	viper.BindPFlag("instance_groups", dataGatherCmd.Flags().Lookup("instance-groups"))
+	viper.BindPFlag("instance_group", dataGatherCmd.Flags().Lookup("instance-group"))
 }
 
 // CollectReleaseSpecsAndProviderLinks will collect all release specs and bosh links for provider jobs
-func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir string, ns string, desiredIgs []string) (map[string]map[string]manifest.JobSpec, map[string]map[string]manifest.JobLink, error) {
+func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir string, namespace string) (map[string]map[string]manifest.JobSpec, map[string]map[string]manifest.JobLink, error) {
 	// Contains YAML.load('.../release_name/job_name/job.MF')
 	jobReleaseSpecs := map[string]map[string]manifest.JobSpec{}
 
 	// Lists every link provided by the job
 	jobProviderLinks := map[string]map[string]manifest.JobLink{}
 
-	for igID, ig := range mStruct.InstanceGroups {
-		// Filter based on the list passed via --instance-groups flag
-		if len(desiredIgs) > 0 && !contains(desiredIgs, ig.Name) {
-			continue
-		}
-
-		for idJob, job := range ig.Jobs {
+	for _, instanceGroup := range mStruct.InstanceGroups {
+		for jobIdx, job := range instanceGroup.Jobs {
 			// make sure a map entry exists for the current job release
 			if _, ok := jobReleaseSpecs[job.Release]; !ok {
 				jobReleaseSpecs[job.Release] = map[string]manifest.JobSpec{}
@@ -118,12 +130,13 @@ func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir str
 			// This will be stored inside the current job under
 			// job.properties.bosh_containerization
 			var jobsInstances []manifest.JobInstance
-			for i := 0; i < ig.Instances; i++ {
-				for _, az := range ig.Azs {
+			for i := 0; i < instanceGroup.Instances; i++ {
+				for _, az := range instanceGroup.Azs {
 					index := len(jobsInstances)
-					name := fmt.Sprintf("%s-%s", ig.Name, job.Name)
-					id := fmt.Sprintf("%v-%v-%v", ig.Name, index, job.Name)
-					address := fmt.Sprintf("%s.%s.svc.cluster.local", id, ns)
+					name := fmt.Sprintf("%s-%s", instanceGroup.Name, job.Name)
+					id := fmt.Sprintf("%v-%v-%v", instanceGroup.Name, index, job.Name)
+					// TODO: not allowed to hardcode svc.cluster.local
+					address := fmt.Sprintf("%s.%s.svc.cluster.local", id, namespace)
 
 					jobsInstances = append(jobsInstances, manifest.JobInstance{
 						Address:  address,
@@ -136,19 +149,11 @@ func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir str
 				}
 			}
 
-			// add bosh_containerization to properties to the current job
-			// at, job.properties
-			if mStruct.InstanceGroups[igID].Jobs[idJob].Properties == nil {
-				mStruct.InstanceGroups[igID].Jobs[idJob].Properties = map[string]interface{}{}
-			}
-			if _, ok := mStruct.InstanceGroups[igID].Jobs[idJob].Properties["bosh_containerization"]; !ok {
-				mStruct.InstanceGroups[igID].Jobs[idJob].Properties["bosh_containerization"] = map[string]interface{}{}
-			}
 			// set jobs.properties.bosh_containerization.instances with the ig instances
-			mStruct.InstanceGroups[igID].Jobs[idJob].Properties["bosh_containerization"].(map[string]interface{})["instances"] = jobsInstances
+			instanceGroup.Jobs[jobIdx].Properties.BOSHContainerization.Instances = jobsInstances
 
 			// Create a list of fully evaluated links provided by the current job
-			// These is specify in the job release job.MF file
+			// These is specified in the job release job.MF file
 			if spec.Provides != nil {
 				var properties map[string]interface{}
 
@@ -156,7 +161,7 @@ func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir str
 					properties = map[string]interface{}{}
 					for _, property := range provider.Properties {
 						// generate a nested struct of map[string]interface{} when
-						// a property if of the form foo.bar
+						// a property is of the form foo.bar
 						if strings.Contains(property, ".") {
 							propertyStruct := RetrieveNestedProperty(spec, property)
 							properties = propertyStruct
@@ -177,8 +182,8 @@ func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir str
 
 					// instance_group.job can override the link name through the
 					// instance_group.job.provides, via the "as" key
-					if mStruct.InstanceGroups[igID].Jobs[idJob].Provides != nil {
-						if value, ok := mStruct.InstanceGroups[igID].Jobs[idJob].Provides[providerName]; ok {
+					if instanceGroup.Jobs[jobIdx].Provides != nil {
+						if value, ok := instanceGroup.Jobs[jobIdx].Provides[providerName]; ok {
 							switch value.(type) {
 							case map[interface{}]interface{}:
 								if overrideLinkName, ok := value.(map[interface{}]interface{})["as"]; ok {
@@ -201,11 +206,6 @@ func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir str
 						jobProviderLinks[providerType] = map[string]manifest.JobLink{}
 					}
 
-					// convert properties in case they have a type of the form
-					// map[interface{}]interface{}, while this will break the
-					// JSON marshalling when trying to render the bpm.yml.erb files
-					convert(&properties)
-
 					// construct the jobProviderLinks of the current job that provides
 					// a link
 					jobProviderLinks[providerType][providerName] = manifest.JobLink{
@@ -216,12 +216,13 @@ func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir str
 			}
 		}
 	}
+
 	return jobReleaseSpecs, jobProviderLinks, nil
 }
 
 // GenerateJobConsumersData will populate a job with its corresponding provider links
 // under properties.bosh_containerization.consumes
-func GenerateJobConsumersData(currentJob manifest.Job, jobReleaseSpecs map[string]map[string]manifest.JobSpec, jobProviderLinks map[string]map[string]manifest.JobLink) error {
+func GenerateJobConsumersData(currentJob *manifest.Job, jobReleaseSpecs map[string]map[string]manifest.JobSpec, jobProviderLinks map[string]map[string]manifest.JobLink) error {
 	currentJobSpecData := jobReleaseSpecs[currentJob.Release][currentJob.Name]
 	for _, consumes := range currentJobSpecData.Consumes {
 
@@ -252,18 +253,20 @@ func GenerateJobConsumersData(currentJob manifest.Job, jobReleaseSpecs map[strin
 		}
 
 		// generate the job.properties.bosh_containerization.consumes struct with the links information from providers.
-		currentJob.Properties["bosh_containerization"].(map[string]interface{})["consumes"] = map[string]manifest.JobLink{
-			consumesName: {
-				Instances:  link.Instances,
-				Properties: link.Properties,
-			},
+		if currentJob.Properties.BOSHContainerization.Consumes == nil {
+			currentJob.Properties.BOSHContainerization.Consumes = map[string]manifest.JobLink{}
+		}
+
+		currentJob.Properties.BOSHContainerization.Consumes[consumesName] = manifest.JobLink{
+			Instances:  link.Instances,
+			Properties: link.Properties,
 		}
 	}
 	return nil
 }
 
-// RenderJobERBFiles per job and add its value to the jobInstances.BPM field
-func RenderJobERBFiles(currentJob manifest.Job, jobInstances []manifest.JobInstance, baseDir string, manifestName string) error {
+// RenderJobBPM per job and add its value to the jobInstances.BPM field
+func RenderJobBPM(currentJob manifest.Job, jobInstances []manifest.JobInstance, baseDir string, manifestName string) error {
 	// ### Render bpm.yml.erb for each job instance
 	erbFilePath := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "templates", "bpm.yml.erb")
 	if _, err := os.Stat(erbFilePath); os.IsNotExist(err) {
@@ -275,10 +278,12 @@ func RenderJobERBFiles(currentJob manifest.Job, jobInstances []manifest.JobInsta
 
 	if jobInstances != nil {
 		for i, instance := range jobInstances {
-			convert(&currentJob.Properties)
+
+			properties := currentJob.Properties.ToMap()
+
 			renderPointer := btg.NewERBRenderer(
 				&btg.EvaluationContext{
-					Properties: currentJob.Properties,
+					Properties: properties,
 				},
 
 				&btg.InstanceInfo{
@@ -323,76 +328,76 @@ func RenderJobERBFiles(currentJob manifest.Job, jobInstances []manifest.JobInsta
 	return nil
 }
 
-// GetConsumersAndRenderERB will generate a proper context for links and render the required ERB files
-func GetConsumersAndRenderERB(mStruct *manifest.Manifest, baseDir string, jobReleaseSpecs map[string]map[string]manifest.JobSpec, jobProviderLinks map[string]map[string]manifest.JobLink) error {
-	for idIG, ig := range mStruct.InstanceGroups {
-		for idJob, job := range ig.Jobs {
-			if job.Properties == nil {
-				job.Properties = map[string]interface{}{}
-			}
-
-			currentJob := mStruct.InstanceGroups[idIG].Jobs[idJob]
-
-			// Make sure that job.properties.bosh_containerization exists
-			if _, ok := currentJob.Properties["bosh_containerization"]; !ok {
-				currentJob.Properties["bosh_containerization"] = map[string]interface{}{}
-			}
-
-			// Make sure that job.properties.bosh_containerization.consumes exists
-			if _, ok := currentJob.Properties["bosh_containerization"].(map[string]interface{})["consumes"]; !ok {
-				currentJob.Properties["bosh_containerization"].(map[string]interface{})["consumes"] = map[string]manifest.JobLink{}
-			}
-
-			// Verify that the current job release exists on the manifest releases block
-			if lookUpJobRelease(mStruct.Releases, job.Release) {
-				currentJob.Properties["bosh_containerization"].(map[string]interface{})["release"] = job.Release
-			}
-			err := GenerateJobConsumersData(currentJob, jobReleaseSpecs, jobProviderLinks)
-			if err != nil {
-				return err
-			}
-
-			// Get current job.bosh_containerization.instances, which will be required by the render to generate
-			// the render.InstanceInfo struct
-			jobInstances := job.Properties["bosh_containerization"].(map[string]interface{})["instances"].([]manifest.JobInstance)
-
-			renderError := RenderJobERBFiles(currentJob, jobInstances, baseDir, mStruct.Name)
-			if renderError != nil {
-				return renderError
-			}
-
-			// Store shared bpm as a top level property
-			jobInstancesLength := len(jobInstances)
-			bpmLastInstance := jobInstances[jobInstancesLength-1].BPM
-
-			for i := range jobInstances {
-				if jobInstances[i].BPM == bpmLastInstance {
-					jobInstances[i].BPM = nil
-				}
-			}
-			// Store shared bpm as a top level property
-			job.Properties["bosh_containerization"].(map[string]interface{})["bpm"] = bpmLastInstance
+// ProcessConsumersAndRenderBPM will generate a proper context for links and render the required ERB files
+func ProcessConsumersAndRenderBPM(mStruct *manifest.Manifest, baseDir string, jobReleaseSpecs map[string]map[string]manifest.JobSpec, jobProviderLinks map[string]map[string]manifest.JobLink, instanceGroupName string) ([]byte, error) {
+	var desiredInstanceGroup *manifest.InstanceGroup
+	for _, instanceGroup := range mStruct.InstanceGroups {
+		if instanceGroup.Name != instanceGroupName {
+			continue
 		}
+
+		desiredInstanceGroup = instanceGroup
+		break
 	}
 
-	// fix some structs being of type map[interface{}]interface{}
-	for idIG, ig := range mStruct.InstanceGroups {
-		for idJob := range ig.Jobs {
-			currentJob := mStruct.InstanceGroups[idIG].Jobs[idJob]
-			convert(&currentJob.Consumes)
-			convert(&currentJob.Provides)
+	if desiredInstanceGroup == nil {
+		return nil, errors.Errorf("can't find instance group '%s' in manifest", instanceGroupName)
+	}
+
+	for idJob, job := range desiredInstanceGroup.Jobs {
+
+		currentJob := &desiredInstanceGroup.Jobs[idJob]
+
+		// Verify that the current job release exists on the manifest releases block
+		if lookUpJobRelease(mStruct.Releases, job.Release) {
+			currentJob.Properties.BOSHContainerization.Release = job.Release
+		}
+		err := GenerateJobConsumersData(currentJob, jobReleaseSpecs, jobProviderLinks)
+		if err != nil {
+			return nil, err
+		}
+
+		// Get current job.bosh_containerization.instances, which will be required by the renderer to generate
+		// the render.InstanceInfo struct
+		jobInstances := currentJob.Properties.BOSHContainerization.Instances
+
+		err = RenderJobBPM(*currentJob, jobInstances, baseDir, mStruct.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		// Store shared bpm as a top level property
+		if len(jobInstances) < 1 {
+			continue
+		}
+
+		allBPMEqual := true
+
+		for _, jobInstance := range jobInstances {
+			if !reflect.DeepEqual(jobInstance, jobInstances[0].BPM) {
+				allBPMEqual = false
+				break
+			}
+		}
+
+		if allBPMEqual {
+			// Store shared bpm as a top level property
+			job.Properties.BOSHContainerization.BPM = jobInstances[0].BPM
+
+			// Remove all other BPM information
+			for _, jobInstance := range jobInstances {
+				jobInstance.BPM = bpm.Config{}
+			}
 		}
 	}
 
 	// marshall the whole manifest Structure
 	manifestResolved, err := yaml.Marshal(mStruct)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	_ = ioutil.WriteFile("/tmp/deployment.yml", manifestResolved, 0644)
-
-	return nil
+	return manifestResolved, nil
 }
 
 // generateSHA will generate a new fingerprint based on
@@ -404,65 +409,25 @@ func generateSHA(fingerPrint []byte) []byte {
 	return bs
 }
 
-// convert to be JSON compliant
-// When YAML unmarshalling, all properties with nested values will end up
-// being of type map[interface{}]interface{}, which is not supported by
-// the later JSON.Marshall call in the renderPointer.Render.
-// A solution is to enforce a change from map[interface{}]interface{} to
-// map[string]interface{}
-// Similar problems have been reported, as seen in
-// https://github.com/go-yaml/yaml/issues/139
-func convert(input *map[string]interface{}) {
-	for key, value := range *input {
-		switch value.(type) {
-		case map[interface{}]interface{}:
-			(*input)[key] = cnvrt(value.(map[interface{}]interface{}))
-		}
-	}
-}
-
-// cnvrt is an helper func for convert()
-func cnvrt(input map[interface{}]interface{}) map[string]interface{} {
-	result := map[string]interface{}{}
-
-	for key, value := range input {
-		keyAsString := fmt.Sprintf("%v", key)
-
-		switch value.(type) {
-		case map[interface{}]interface{}:
-			result[keyAsString] = cnvrt(value.(map[interface{}]interface{}))
-
-		default:
-			result[keyAsString] = value
-		}
-	}
-
-	return result
-}
-
 // GatherData will collect different data
 // Collect job spec information
 // Collect job properties
 // Collect bosh links
 // Render the bpm yaml file data
-func GatherData(mStruct *manifest.Manifest, baseDir string, ns string, desiredIgs []string) error {
+func GatherData(mStruct *manifest.Manifest, baseDir string, namespace string, instanceGroupName string) ([]byte, error) {
+	jobReleaseSpecs, jobProviderLinks, err := CollectReleaseSpecsAndProviderLinks(mStruct, baseDir, namespace)
+	if err != nil {
+		return nil, err
+	}
 
-	jobReleaseSpecs, jobProviderLinks, err := CollectReleaseSpecsAndProviderLinks(mStruct, baseDir, ns, desiredIgs)
-	if err != nil {
-		return err
-	}
-	err = GetConsumersAndRenderERB(mStruct, baseDir, jobReleaseSpecs, jobProviderLinks)
-	if err != nil {
-		return err
-	}
-	return nil
+	return ProcessConsumersAndRenderBPM(mStruct, baseDir, jobReleaseSpecs, jobProviderLinks, instanceGroupName)
 }
 
 // LookUpProperty search for property value in the job properties
 func LookUpProperty(job manifest.Job, propertyName string) (interface{}, bool) {
 	var pointer interface{}
 
-	pointer = job.Properties
+	pointer = job.Properties.Properties
 	for _, pathPart := range strings.Split(propertyName, ".") {
 		switch pointer.(type) {
 		case map[string]interface{}:
@@ -515,16 +480,6 @@ func RetrievePropertyDefault(jobSpec manifest.JobSpec, propertyName string) inte
 	}
 
 	return nil
-}
-
-// contains filter instance groups based on the name
-func contains(igList []string, name string) bool {
-	for _, igName := range igList {
-		if name == igName {
-			return true
-		}
-	}
-	return false
 }
 
 // lookUpJobRelease will check in the main manifest for

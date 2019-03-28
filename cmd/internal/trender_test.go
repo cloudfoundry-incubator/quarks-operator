@@ -58,7 +58,7 @@ var _ = Describe("Trender", func() {
 			absDestFile := filepath.Join(jobsDir, "loggregator_trafficcontroller", "config/bpm.yml")
 			Expect(absDestFile).Should(BeAnExistingFile())
 
-			// Unmarshall the rendered file
+			// Unmarshal the rendered file
 			bpmYmlBytes, err := ioutil.ReadFile(absDestFile)
 			Expect(err).ToNot(HaveOccurred())
 

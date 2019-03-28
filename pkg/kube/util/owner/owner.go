@@ -246,6 +246,10 @@ func GetConfigNamesFromSpec(spec corev1.PodSpec) (map[string]struct{}, map[strin
 		}
 
 		for _, env := range container.Env {
+			if env.ValueFrom == nil {
+				continue
+			}
+
 			if cmRef := env.ValueFrom.ConfigMapKeyRef; cmRef != nil {
 				configMaps[cmRef.Name] = struct{}{}
 

@@ -23,10 +23,12 @@ var _ = Describe("Dgather", func() {
 		It("should find a property value in the manifest job properties section (constructed example)", func() {
 			// health.disk.warning
 			exampleJob := manifest.Job{
-				Properties: map[string]interface{}{
-					"health": map[interface{}]interface{}{
-						"disk": map[interface{}]interface{}{
-							"warning": 42,
+				Properties: manifest.JobProperties{
+					Properties: map[string]interface{}{
+						"health": map[interface{}]interface{}{
+							"disk": map[interface{}]interface{}{
+								"warning": 42,
+							},
 						},
 					},
 				},
@@ -67,7 +69,7 @@ var _ = Describe("Dgather", func() {
 		})
 
 		It("should gather all data for each job spec file", func() {
-			releaseSpecs, _, err := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default", []string{})
+			releaseSpecs, _, err := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(releaseSpecs)).To(Equal(2))
 
@@ -94,11 +96,12 @@ var _ = Describe("Dgather", func() {
 			Expect(len(cfLinuxReleaseSpec.Provides)).To(Equal(0))
 		})
 		It("should have properties/bosh_containerization/instances populated for each job", func() {
-			_, _, err := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default", []string{})
+			_, _, err := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default")
 			Expect(err).ToNot(HaveOccurred())
 
 			//Check JobInstance for the redis-server job
-			jobInstancesRedis := m.InstanceGroups[0].Jobs[0].Properties["bosh_containerization"].(map[string]interface{})["instances"]
+			jobInstancesRedis := m.InstanceGroups[0].Jobs[0].Properties.BOSHContainerization.Instances
+
 			compareToFakeRedis := []manifest.JobInstance{
 				{Address: "redis-slave-0-redis-server.default.svc.cluster.local", AZ: "z1", ID: "redis-slave-0-redis-server", Index: 0, Instance: 0, Name: "redis-slave-redis-server"},
 				{Address: "redis-slave-1-redis-server.default.svc.cluster.local", AZ: "z2", ID: "redis-slave-1-redis-server", Index: 1, Instance: 0, Name: "redis-slave-redis-server"},
@@ -107,8 +110,11 @@ var _ = Describe("Dgather", func() {
 			}
 			Expect(jobInstancesRedis).To(BeEquivalentTo(compareToFakeRedis))
 
+			_, _, err = CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default")
+			Expect(err).ToNot(HaveOccurred())
 			//Check JobInstance for the cflinuxfs3-rootfs-setup job
-			jobInstancesCell := m.InstanceGroups[1].Jobs[0].Properties["bosh_containerization"].(map[string]interface{})["instances"]
+			jobInstancesCell := m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Instances
+
 			compareToFakeCell := []manifest.JobInstance{
 				{Address: "diego-cell-0-cflinuxfs3-rootfs-setup.default.svc.cluster.local", AZ: "z1", ID: "diego-cell-0-cflinuxfs3-rootfs-setup", Index: 0, Instance: 0, Name: "diego-cell-cflinuxfs3-rootfs-setup"},
 				{Address: "diego-cell-1-cflinuxfs3-rootfs-setup.default.svc.cluster.local", AZ: "z2", ID: "diego-cell-1-cflinuxfs3-rootfs-setup", Index: 1, Instance: 0, Name: "diego-cell-cflinuxfs3-rootfs-setup"},
@@ -119,7 +125,7 @@ var _ = Describe("Dgather", func() {
 		})
 
 		It("should get all links from providers", func() {
-			_, providerLinks, err := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default", []string{})
+			_, providerLinks, err := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(providerLinks)).To(BeEquivalentTo(1))
 			expectedInstances := []manifest.JobInstance{
@@ -145,27 +151,26 @@ var _ = Describe("Dgather", func() {
 		})
 
 		It("should get all required data if the job consumes a link", func() {
-			releaseSpecs, links, _ := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default", []string{})
-			err := GetConsumersAndRenderERB(m, "../../testing/assets/", releaseSpecs, links)
+			releaseSpecs, links, _ := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default")
+			_, err := ProcessConsumersAndRenderBPM(m, "../../testing/assets/", releaseSpecs, links, "log-api")
+			Expect(err).ToNot(HaveOccurred())
 
 			// log-api instance_group, with loggregator_trafficcontroller job, consumes a link from
 			// doppler job
-			jobBoshContainerizationProperties := m.InstanceGroups[1].Jobs[0].Properties["bosh_containerization"]
-			jobBoshContainerizationConsumes, consumeIsNotEmpty := jobBoshContainerizationProperties.(map[string]interface{})["consumes"]
+			jobBoshContainerizationConsumes := m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Consumes
 
-			Expect(len(releaseSpecs)).To(Equal(1)) // only one release per manifest.yml sample
-			Expect(err).ToNot(HaveOccurred())
-			Expect(consumeIsNotEmpty).To(BeTrue())
+			Expect(len(releaseSpecs)).To(Equal(1)) // only one release in the manifest.yml sample
 
-			jobConsumesFromDoppler, consumeFromDopplerExists := jobBoshContainerizationConsumes.(map[string]manifest.JobLink)["doppler"]
+			jobConsumesFromDoppler, consumeFromDopplerExists := jobBoshContainerizationConsumes["doppler"]
+			Expect(consumeFromDopplerExists).To(BeTrue())
+
 			expectedProperties := map[string]interface{}{
-				"doppler": map[string]interface{}{
+				"doppler": map[interface{}]interface{}{
 					"grpc_port": 7765,
 				},
 				"fooprop": 10001,
 			}
 
-			Expect(consumeFromDopplerExists).To(BeTrue())
 			for i, instance := range jobConsumesFromDoppler.Instances {
 				Expect(instance.Index).To(Equal(i))
 				Expect(instance.Address).To(Equal(fmt.Sprintf("doppler-%v-doppler.default.svc.cluster.local", i)))
@@ -175,13 +180,12 @@ var _ = Describe("Dgather", func() {
 		})
 
 		It("should get nothing if the job does not consumes a link", func() {
-			releaseSpecs, links, _ := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default", []string{})
-			err := GetConsumersAndRenderERB(m, "../../testing/assets/", releaseSpecs, links)
+			releaseSpecs, links, _ := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default")
+			_, err := ProcessConsumersAndRenderBPM(m, "../../testing/assets/", releaseSpecs, links, "log-api")
 
 			// doppler instance_group, with doppler job, only provides doppler link
-			jobBoshContainerizationProperties := m.InstanceGroups[0].Jobs[0].Properties["bosh_containerization"]
-			jobBoshContainerizationConsumes, _ := jobBoshContainerizationProperties.(map[string]interface{})["consumes"]
-			emptyJobBoshContainerizationConsumes := map[string]manifest.JobLink{}
+			jobBoshContainerizationConsumes := m.InstanceGroups[0].Jobs[0].Properties.BOSHContainerization.Consumes
+			var emptyJobBoshContainerizationConsumes map[string]manifest.JobLink
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(jobBoshContainerizationConsumes).To(BeEquivalentTo(emptyJobBoshContainerizationConsumes))
@@ -194,18 +198,17 @@ var _ = Describe("Dgather", func() {
 		})
 
 		It("should render complex ERB files", func() {
-			releaseSpecs, links, err := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default", []string{})
-			anotherErr := GetConsumersAndRenderERB(m, "../../testing/assets/", releaseSpecs, links)
+			releaseSpecs, links, err := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(anotherErr).ToNot(HaveOccurred())
+			_, err = ProcessConsumersAndRenderBPM(m, "../../testing/assets/", releaseSpecs, links, "log-api")
+			Expect(err).ToNot(HaveOccurred())
 
-			jobBoshContainerizationProperties := m.InstanceGroups[1].Jobs[0].Properties["bosh_containerization"]
-			jobBoshContainerizationPropertiesInstances := jobBoshContainerizationProperties.(map[string]interface{})["instances"]
-			Expect(len(jobBoshContainerizationPropertiesInstances.([]manifest.JobInstance))).To(Equal(4))
+			jobBoshContainerizationPropertiesInstances := m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Instances
+			Expect(len(jobBoshContainerizationPropertiesInstances)).To(Equal(4))
 
-			propertiesInstance := jobBoshContainerizationPropertiesInstances.([]manifest.JobInstance)[0]
+			propertiesInstance := jobBoshContainerizationPropertiesInstances[0]
 
-			// in ERB file, there are test environment variables like these:
+			// in ERB files, there are test environment variables like these:
 			//   FOOBARWITHLINKVALUES: <%= link('doppler').p("fooprop") %>
 			//   FOOBARWITHLINKNESTEDVALUES: <%= link('doppler').p("doppler.grpc_port") %>
 			//   FOOBARWITHLINKINSTANCESINDEX: <%= link('doppler').instances[0].index %>
@@ -215,27 +218,28 @@ var _ = Describe("Dgather", func() {
 
 			// For the first instance
 			bpmProcesses := propertiesInstance.BPM.Processes[0]
+
 			Expect(bpmProcesses.Env["FOOBARWITHLINKVALUES"]).To(Equal("10001"))
 			Expect(bpmProcesses.Env["FOOBARWITHLINKNESTEDVALUES"]).To(Equal("7765"))
-
 			Expect(bpmProcesses.Env["FOOBARWITHLINKINSTANCESAZ"]).To(Equal("z1"))
 			Expect(bpmProcesses.Env["FOOBARWITHLINKINSTANCESADDRESS"]).To(Equal("doppler-0-doppler.default.svc.cluster.local"))
 			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-0-loggregator_trafficcontroller.default.svc.cluster.local"))
 			Expect(bpmProcesses.Env["FOOBARWITHSPECDEPLOYMENT"]).To(Equal("cf"))
 
 			// For the second instance
-			propertiesInstance = jobBoshContainerizationPropertiesInstances.([]manifest.JobInstance)[1]
+			propertiesInstance = jobBoshContainerizationPropertiesInstances[1]
 			bpmProcesses = propertiesInstance.BPM.Processes[0]
 			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-1-loggregator_trafficcontroller.default.svc.cluster.local"))
 
 			// For the third instance
-			propertiesInstance = jobBoshContainerizationPropertiesInstances.([]manifest.JobInstance)[2]
+			propertiesInstance = jobBoshContainerizationPropertiesInstances[2]
 			bpmProcesses = propertiesInstance.BPM.Processes[0]
 			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-2-loggregator_trafficcontroller.default.svc.cluster.local"))
 
 			// For the fourth instance
-			propertiesInstance = jobBoshContainerizationPropertiesInstances.([]manifest.JobInstance)[3]
-			Expect(propertiesInstance.BPM).To(BeNil())
+			propertiesInstance = jobBoshContainerizationPropertiesInstances[3]
+			bpmProcesses = propertiesInstance.BPM.Processes[0]
+			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-3-loggregator_trafficcontroller.default.svc.cluster.local"))
 		})
 	})
 })
