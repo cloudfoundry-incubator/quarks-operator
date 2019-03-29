@@ -427,14 +427,18 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 		})
 	}
 
-	_, resolvedPropertiesSecreName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, igName)
+	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, igName)
 	volumeMounts := []v1.VolumeMount{
 		{
 			Name:      "rendering-data",
 			MountPath: "/var/vcap/rendering",
 		},
 		{
-			Name:      generateVolumeName(resolvedPropertiesSecreName),
+			Name:      "jobs-dir",
+			MountPath: "/var/vcap/jobs",
+		},
+		{
+			Name:      generateVolumeName(resolvedPropertiesSecretName),
 			MountPath: fmt.Sprintf("/var/run/secrets/resolved-properties/%s", igName),
 			ReadOnly:  true,
 		},
@@ -445,16 +449,21 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 		Image:        GetOperatorDockerImage(),
 		VolumeMounts: volumeMounts,
 		Env: []v1.EnvVar{
-			v1.EnvVar{
+			{
 				Name:  "INSTANCE_GROUP_NAME",
 				Value: igName,
 			},
+			{
+				Name:  "MANIFEST_PATH",
+				Value: fmt.Sprintf("/var/run/secrets/resolved-properties/%s/properties.yaml", igName),
+			},
+			{
+				Name:  "JOBS_DIR",
+				Value: "/var/vcap/rendering",
+			},
 		},
-		Command: []string{
-			"bash",
-			"-c",
-			fmt.Sprintf("find /var/run/secrets; sleep 4000; /usr/local/bin/cf-operator template-render -j /var/vcap/rendering -m /var/run/secrets/resolved-properties/%s/properties.yaml", igName),
-		},
+		Command: []string{"/bin/sh"},
+		Args:    []string{"-c", `cf-operator template-render`},
 	})
 
 	return initContainers, nil
@@ -477,7 +486,14 @@ func (m *Manifest) jobsToContainers(igName string, jobs []Job, namespace string)
 			Name:  fmt.Sprintf(job.Name),
 			Image: jobImage,
 			VolumeMounts: []v1.VolumeMount{
-				{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
+				{
+					Name:      "rendering-data",
+					MountPath: "/var/vcap/rendering",
+				},
+				{
+					Name:      "jobs-dir",
+					MountPath: "/var/vcap/jobs",
+				},
 			},
 		})
 	}
@@ -499,10 +515,14 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 	}
 
 	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, VarInterpolationContainerName)
-	_, resolvedPropertiesSecreName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, ig.Name)
+	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, ig.Name)
 	volumes := []v1.Volume{
 		{
 			Name:         "rendering-data",
+			VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name:         "jobs-dir",
 			VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
 		},
 		{
@@ -514,10 +534,10 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 			},
 		},
 		{
-			Name: generateVolumeName(resolvedPropertiesSecreName),
+			Name: generateVolumeName(resolvedPropertiesSecretName),
 			VolumeSource: v1.VolumeSource{
 				Secret: &v1.SecretVolumeSource{
-					SecretName: resolvedPropertiesSecreName,
+					SecretName: resolvedPropertiesSecretName,
 				},
 			},
 		},
@@ -593,6 +613,36 @@ func (m *Manifest) errandToExtendedJob(ig *InstanceGroup, namespace string) (ejv
 	if err != nil {
 		return ejv1.ExtendedJob{}, err
 	}
+
+	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, VarInterpolationContainerName)
+	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, ig.Name)
+	volumes := []v1.Volume{
+		{
+			Name:         "rendering-data",
+			VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name:         "jobs-dir",
+			VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name: generateVolumeName(interpolatedManifestSecretName),
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: interpolatedManifestSecretName,
+				},
+			},
+		},
+		{
+			Name: generateVolumeName(resolvedPropertiesSecretName),
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: resolvedPropertiesSecretName,
+				},
+			},
+		},
+	}
+
 	extJob := ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", m.Name, igName),
@@ -612,6 +662,7 @@ func (m *Manifest) errandToExtendedJob(ig *InstanceGroup, namespace string) (ejv
 				Spec: v1.PodSpec{
 					Containers:     listOfContainers,
 					InitContainers: listOfInitContainers,
+					Volumes:        volumes,
 				},
 			},
 		},
@@ -727,11 +778,6 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 		}
 	}
 	return "", fmt.Errorf("release '%s' not found", job.Release)
-}
-
-func (m *Manifest) getResolvedInstanceGroupPropertiesSecretName(igName string) string {
-	// TODO: Implement this
-	return ""
 }
 
 // GetOperatorDockerImage returns the image name of the operator docker image

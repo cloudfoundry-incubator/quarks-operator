@@ -69,9 +69,7 @@ func init() {
 	rootCmd.AddCommand(templateRenderCmd)
 
 	templateRenderCmd.Flags().StringP("manifest", "m", "", "path to the manifest file")
-	//templateRenderCmd.MarkFlagRequired("manifest")
 	templateRenderCmd.Flags().StringP("jobs-dir", "j", "", "path to the jobs dir.")
-	templateRenderCmd.MarkFlagRequired("jobs-dir")
 	templateRenderCmd.Flags().StringP("instance-group-name", "g", "", "the instance-group name to render")
 	templateRenderCmd.Flags().IntP("index", "", -1, "index of the instance spec")
 	templateRenderCmd.Flags().IntP("azindex", "", -1, "az index")
@@ -86,6 +84,7 @@ func init() {
 	viper.BindPFlag("podordinal", templateRenderCmd.Flags().Lookup("podordinal"))
 	viper.BindPFlag("replicas", templateRenderCmd.Flags().Lookup("replicas"))
 
+	viper.AutomaticEnv()
 	viper.BindEnv("bosh_manifest", "MANIFEST_PATH")
 	viper.BindEnv("jobs_dir", "JOBS_DIR")
 	viper.BindEnv("instance_group_name", "INSTANCE_GROUP_NAME")
@@ -170,7 +169,7 @@ func RenderData(manifestPath string, jobsDir string, instanceGroupName string, i
 
 			// Loop over templates for rendering files
 			for source, destination := range jobSpec.Templates {
-				absDest := filepath.Join(jobsDir, job.Name, destination)
+				absDest := filepath.Join("/var/vcap/jobs/", job.Name, destination)
 				os.MkdirAll(filepath.Dir(absDest), 0755)
 
 				properties := job.Properties.ToMap()
