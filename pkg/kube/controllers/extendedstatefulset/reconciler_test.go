@@ -396,7 +396,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 								}))
 								Expect(envs).Should(ContainElement(corev1.EnvVar{
 									Name:  exssc.EnvCfOperatorAzIndex,
-									Value: strconv.Itoa(idx),
+									Value: strconv.Itoa(idx + 1),
 								}))
 								Expect(envs).Should(ContainElement(corev1.EnvVar{
 									Name:  exssc.EnvReplicas,
@@ -502,7 +502,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 								}))
 								Expect(envs).Should(ContainElement(corev1.EnvVar{
 									Name:  exssc.EnvCfOperatorAzIndex,
-									Value: strconv.Itoa(idx),
+									Value: strconv.Itoa(idx + 1),
 								}))
 							}
 						}

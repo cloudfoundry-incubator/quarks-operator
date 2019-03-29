@@ -34,7 +34,7 @@ var _ = Describe("Trender", func() {
 			})
 
 			It("fails", func() {
-				err := RenderData(deploymentManifest, jobsDir, instanceGroupName, index)
+				err := RenderData(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("no instance found"))
 			})
@@ -46,7 +46,7 @@ var _ = Describe("Trender", func() {
 			})
 
 			It("renders the job erb files correctly", func() {
-				err := RenderData(deploymentManifest, jobsDir, instanceGroupName, index)
+				err := RenderData(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index)
 				Expect(err).ToNot(HaveOccurred())
 
 				absDestFile := filepath.Join(jobsDir, "loggregator_trafficcontroller", "config/bpm.yml")
