@@ -138,8 +138,12 @@ var _ = Describe("ConvertToKube", func() {
 			// Test the renderer container setup
 			Expect(rendererInitContainer.Env[0].Name).To(Equal("INSTANCE_GROUP_NAME"))
 			Expect(rendererInitContainer.Env[0].Value).To(Equal("diego-cell"))
-			Expect(rendererInitContainer.VolumeMounts[1].Name).To(Equal("manifest"))
-			Expect(rendererInitContainer.VolumeMounts[1].MountPath).To(Equal("/var/vcap/rendering-manifest"))
+			Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
+			Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(rendererInitContainer.VolumeMounts[1].Name).To(Equal("jobs-dir"))
+			Expect(rendererInitContainer.VolumeMounts[1].MountPath).To(Equal("/var/vcap/jobs"))
+			Expect(rendererInitContainer.VolumeMounts[2].Name).To(Equal("ig-resolved"))
+			Expect(rendererInitContainer.VolumeMounts[2].MountPath).To(Equal("/var/run/secrets/resolved-properties/diego-cell"))
 		})
 	})
 
@@ -178,8 +182,8 @@ var _ = Describe("ConvertToKube", func() {
 			// Test mounting the resolved instance group properties in the renderer container
 			Expect(rendererInitContainer.Env[0].Name).To(Equal("INSTANCE_GROUP_NAME"))
 			Expect(rendererInitContainer.Env[0].Value).To(Equal("redis-slave"))
-			Expect(rendererInitContainer.VolumeMounts[1].Name).To(Equal("manifest"))
-			Expect(rendererInitContainer.VolumeMounts[1].MountPath).To(Equal("/var/vcap/rendering-manifest"))
+			Expect(rendererInitContainer.VolumeMounts[1].Name).To(Equal("jobs-dir"))
+			Expect(rendererInitContainer.VolumeMounts[1].MountPath).To(Equal("/var/vcap/jobs"))
 		})
 	})
 

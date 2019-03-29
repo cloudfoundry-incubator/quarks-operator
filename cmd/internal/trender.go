@@ -61,7 +61,7 @@ This will render a provided manifest instance-group
 			index = (azIndex-1)*replicas + podOrdinal
 		}
 
-		return RenderData(deploymentManifest, jobsDir, instanceGroupName, index)
+		return RenderData(deploymentManifest, jobsDir, "/var/vcap/jobs/", instanceGroupName, index)
 	},
 }
 
@@ -96,7 +96,7 @@ func init() {
 }
 
 // RenderData will render manifest instance group
-func RenderData(manifestPath string, jobsDir string, instanceGroupName string, index int) error {
+func RenderData(manifestPath string, jobsDir, jobsOutputDir string, instanceGroupName string, index int) error {
 
 	// Loading deployment manifest file
 	resolvedYML, err := ioutil.ReadFile(manifestPath)
@@ -169,7 +169,7 @@ func RenderData(manifestPath string, jobsDir string, instanceGroupName string, i
 
 			// Loop over templates for rendering files
 			for source, destination := range jobSpec.Templates {
-				absDest := filepath.Join("/var/vcap/jobs/", job.Name, destination)
+				absDest := filepath.Join(jobsOutputDir, job.Name, destination)
 				os.MkdirAll(filepath.Dir(absDest), 0755)
 
 				properties := job.Properties.ToMap()
