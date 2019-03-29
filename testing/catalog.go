@@ -265,18 +265,22 @@ func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
 			"manifest": `---
 name: my-manifest
 releases:
-- name: fissile-nats
+- name: nats
   version: "26"
   url: docker.io/cfcontainerization
   stemcell:
     os: opensuse-42.3
-    version: 28.g837c5b3-30.79-7.0.0_237.g8a9ed8f
+    version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
 instance_groups:
 - name: nats
   instances: 1
   jobs:
   - name: nats
-    release: fissile-nats
+    release: nats
+    properties:
+      nats:
+        user: admin
+        password: changeme
 `,
 		},
 	}
