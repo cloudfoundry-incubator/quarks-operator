@@ -4,6 +4,3 @@ set -e
 go get -u golang.org/x/lint/golint
 go get -u github.com/maxbrunsfeld/counterfeiter
 go get -u github.com/onsi/ginkgo/ginkgo
-go get -u github.com/mattn/goveralls
-go get -u github.com/philwinder/gocoverage
-

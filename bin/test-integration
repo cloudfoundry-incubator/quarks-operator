@@ -27,6 +27,6 @@ kubectl get customresourcedefinitions
 
 ginkgo --slowSpecThreshold=50 -cover integration/
 
-# Send code coverage to coveralls.io
+# Send code coverage results to coveralls.io
 gocoverage
-goveralls -coverprofile profile.cov -service concourse -repotoken HRJYdoBdeuUYo4btGlm4H5vnxBR8rfjI4
+goveralls -coverprofile profile.cov -service concourse -repotoken "$COVERALLS_TOKEN"
