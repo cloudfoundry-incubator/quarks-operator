@@ -114,8 +114,8 @@ var _ = Describe("ConvertToKube", func() {
 
 			// Test containers in the extended statefulset
 			Expect(anExtendedSts.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
-			Expect(anExtendedSts.Spec.Containers[0].Command[0]).To(Equal("bash"))
-			Expect(anExtendedSts.Spec.Containers[0].Name).To(Equal("job-cflinuxfs3-rootfs-setup"))
+			Expect(anExtendedSts.Spec.Containers[0].Command).To(BeNil())
+			Expect(anExtendedSts.Spec.Containers[0].Name).To(Equal("cflinuxfs3-rootfs-setup"))
 
 			// Test init containers in the extended statefulset
 			Expect(anExtendedSts.Spec.InitContainers[0].Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
@@ -145,9 +145,9 @@ var _ = Describe("ConvertToKube", func() {
 			Expect(anExtendedJob.Name).To(Equal("foo-deployment-redis-slave"))
 
 			// Test containers in the extended job
-			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Name).To(Equal("job-redis-server"))
+			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Name).To(Equal("redis-server"))
 			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
-			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Command[0]).To(Equal("bash"))
+			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Command).To(BeNil())
 
 			// Test init containers in the extended job
 			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[0].Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
