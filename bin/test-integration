@@ -27,4 +27,3 @@ kubectl get customresourcedefinitions
 
 ginkgo --slowSpecThreshold=50 -cover integration/
 gocoverage
-goveralls -coverprofile profile.cov -service concourse -repotoken HRJYdoBdeuUYo4btGlm4H5vnxBR8rfjI4
