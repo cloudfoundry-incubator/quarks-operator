@@ -1,7 +1,6 @@
 package boshdeployment
 
 import (
-	"encoding/base64"
 	"fmt"
 	"reflect"
 
@@ -11,7 +10,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -181,12 +179,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		}
 
 	case VariableInterpolatedState:
-		desiredManifestSecretLabels := map[string]string{
-			bdv1.LabelKind:         "desired-manifest",
-			bdv1.LabelDeployment:   manifest.Name,
-			bdv1.LabelManifestSHA1: currentManifestSHA1,
-		}
-		err = r.createDataGatheringJob(ctx, instance, manifest, desiredManifestSecretLabels)
+		err = r.createDataGatheringJob(ctx, instance, manifest, kubeConfigs)
 		if err != nil {
 			r.log.Errorf("Failed to create data gathering exJob: %v", err)
 			r.recorder.Event(instance, corev1.EventTypeWarning, "DataGathering Error", err.Error())
@@ -381,47 +374,36 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 }
 
 // createDataGatheringJob gather data from manifest
-func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, secretLabels map[string]string) error {
-	if len(manifest.Variables) > 0 {
-		labelsSelector := labels.Set(secretLabels)
+func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfig bdm.KubeConfig) error {
 
-		secrets := &corev1.SecretList{}
-		err := r.client.List(
-			ctx,
-			&client.ListOptions{
-				Namespace:     instance.GetNamespace(),
-				LabelSelector: labelsSelector.AsSelector(),
-			},
-			secrets)
-		if err != nil {
-			return err
-		}
+	// Generate the ExtendedJob object
+	dataGatheringExJob := kubeConfig.DataGatheringJob
+	r.log.Debugf("Creating data gathering extendedJob %s/%s", dataGatheringExJob.Namespace, dataGatheringExJob.Name)
 
-		if len(secrets.Items) != 1 {
-			return errors.New("variable interpolation must only have one output Secret")
-		}
-
-		encodedDesiredManifest, exists := secrets.Items[0].Data[bdv1.InterpolatedManifestKey]
-		if !exists {
-			r.log.Errorf("Failed to get desiredManifest value from secret")
-			return err
-		}
-		desiredManifestBytes, err := base64.StdEncoding.DecodeString(string(encodedDesiredManifest))
-		if err != nil {
-			r.log.Errorf("Failed to decode desiredManifest string: %v", err)
-			return err
-		}
-
-		desiredManifest := &bdm.Manifest{}
-		err = yaml.Unmarshal(desiredManifestBytes, desiredManifest)
-		if err != nil {
-			r.log.Error("Failed to unmarshal desired manifest")
-			return err
-		}
+	// Set BOSHDeployment instance as the owner and controller
+	if err := r.setReference(instance, dataGatheringExJob, r.scheme); err != nil {
+		r.log.Errorf("Failed to set ownerReference for ExtendedJob '%s': %v", dataGatheringExJob.GetName(), err)
+		r.recorder.Event(instance, corev1.EventTypeWarning, "NewJobForDataGathering Error", err.Error())
+		return err
 	}
 
-	// TODO Implement data gathering
-	r.log.Debug("Gathering data")
+	// Check if this job already exists and create/update accordingly
+	foundExJob := &ejv1.ExtendedJob{}
+	err := r.client.Get(ctx, types.NamespacedName{Name: dataGatheringExJob.Name, Namespace: dataGatheringExJob.Namespace}, foundExJob)
+	if err != nil && apierrors.IsNotFound(err) {
+		r.log.Infof("Creating a new ExtendedJob %s/%s\n", dataGatheringExJob.Namespace, dataGatheringExJob.Name)
+		err = r.client.Create(ctx, dataGatheringExJob)
+		if err != nil {
+			r.log.Errorf("Failed to create ExtendedJob '%s': %v", dataGatheringExJob.GetName(), err)
+			r.recorder.Event(instance, corev1.EventTypeWarning, "GetJobForDataGathering Error", err.Error())
+			return err
+		}
+	} else if err != nil {
+		r.log.Errorf("Failed to get ExtendedJob '%s': %v", dataGatheringExJob.GetName(), err)
+		r.recorder.Event(instance, corev1.EventTypeWarning, "GetJobForDataGathering Error", err.Error())
+		return err
+	}
+
 	instance.Status.State = DataGatheredState
 
 	return nil

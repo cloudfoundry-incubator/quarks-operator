@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -64,9 +65,16 @@ inside a bosh manifest.
 			return err
 		}
 
+		jsonBytes, err := json.Marshal(map[string]string{
+			"properties.yaml": string(result),
+		})
+		if err != nil {
+			return errors.Wrapf(err, "could not marshal json output")
+		}
+
 		f := bufio.NewWriter(os.Stdout)
 		defer f.Flush()
-		_, err = f.Write(result)
+		_, err = f.Write(jsonBytes)
 		if err != nil {
 			return err
 		}
@@ -131,7 +139,15 @@ func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir str
 			// job.properties.bosh_containerization
 			var jobsInstances []manifest.JobInstance
 			for i := 0; i < instanceGroup.Instances; i++ {
-				for _, az := range instanceGroup.Azs {
+
+				// TODO: Understand whether there are negative side-effects to using this
+				// default
+				azs := []string{""}
+				if len(instanceGroup.Azs) > 0 {
+					azs = instanceGroup.Azs
+				}
+
+				for _, az := range azs {
 					index := len(jobsInstances)
 					name := fmt.Sprintf("%s-%s", instanceGroup.Name, job.Name)
 					id := fmt.Sprintf("%v-%v-%v", instanceGroup.Name, index, job.Name)
@@ -267,14 +283,43 @@ func GenerateJobConsumersData(currentJob *manifest.Job, jobReleaseSpecs map[stri
 
 // RenderJobBPM per job and add its value to the jobInstances.BPM field
 func RenderJobBPM(currentJob manifest.Job, jobInstances []manifest.JobInstance, baseDir string, manifestName string) error {
-	// ### Render bpm.yml.erb for each job instance
-	erbFilePath := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "templates", "bpm.yml.erb")
-	if _, err := os.Stat(erbFilePath); os.IsNotExist(err) {
-		return err
-	}
 
 	// Location of the current job job.MF file
-	jobSpecfile := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "job.MF")
+	jobSpecFile := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "job.MF")
+
+	var jobSpec struct {
+		Templates map[string]string `yaml:"templates"`
+	}
+
+	// First, we must figure out the location of the template.
+	// We're looking for a template in the spec, whose result is a file "bpm.yml"
+	yamlFile, err := ioutil.ReadFile(jobSpecFile)
+	if err != nil {
+		return errors.Wrap(err, "failed to read the job spec file")
+	}
+	err = yaml.Unmarshal(yamlFile, &jobSpec)
+	if err != nil {
+		return errors.Wrap(err, "failed to unmarshal the job spec file")
+	}
+
+	bpmSource := ""
+	for srcFile, dstFile := range jobSpec.Templates {
+		if filepath.Base(dstFile) == "bpm.yml" {
+			bpmSource = srcFile
+			break
+		}
+	}
+
+	if bpmSource == "" {
+		return fmt.Errorf("can't find BPM template for job %s", currentJob.Name)
+	}
+
+	// ### Render bpm.yml.erb for each job instance
+
+	erbFilePath := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "templates", bpmSource)
+	if _, err := os.Stat(erbFilePath); err != nil {
+		return err
+	}
 
 	if jobInstances != nil {
 		for i, instance := range jobInstances {
@@ -295,7 +340,7 @@ func RenderJobBPM(currentJob manifest.Job, jobInstances []manifest.JobInstance, 
 					Name:       instance.Name,
 				},
 
-				jobSpecfile,
+				jobSpecFile,
 			)
 
 			// Would be good if we can write the rendered file into memory,
@@ -352,6 +397,7 @@ func ProcessConsumersAndRenderBPM(mStruct *manifest.Manifest, baseDir string, jo
 		if lookUpJobRelease(mStruct.Releases, job.Release) {
 			currentJob.Properties.BOSHContainerization.Release = job.Release
 		}
+
 		err := GenerateJobConsumersData(currentJob, jobReleaseSpecs, jobProviderLinks)
 		if err != nil {
 			return nil, err

@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"encoding/base64"
-	"fmt"
+	"bufio"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -14,41 +14,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
-	yamlUtil "k8s.io/apimachinery/pkg/util/yaml"
 )
 
 type initCmd struct {
-	OutputFormat OutputFormat
-}
-
-// OutputFormat defines valid values for init output (json, yaml)
-type OutputFormat string
-
-// String returns the string value of the OutputFormat
-func (f *OutputFormat) String() string {
-	return string(*f)
-}
-
-// Type returns the string value of the OutputFormat
-func (f *OutputFormat) Type() string {
-	return "OutputFormat"
-}
-
-const (
-	fmtJSON   OutputFormat = "json"
-	fmtYAML   OutputFormat = "yaml"
-	fmtEncode OutputFormat = "encode"
-)
-
-// Set validates and sets the value of the OutputFormat
-func (f *OutputFormat) Set(s string) error {
-	for _, of := range []OutputFormat{fmtJSON, fmtYAML, fmtEncode} {
-		if s == string(of) {
-			*f = of
-			return nil
-		}
-	}
-	return fmt.Errorf("unknown output format %q", s)
 }
 
 // variableInterpolationCmd represents the variableInterpolation command
@@ -70,8 +38,6 @@ func init() {
 	rootCmd.AddCommand(variableInterpolationCmd)
 	variableInterpolationCmd.Flags().StringP("manifest", "m", "", "path to a bosh manifest")
 	variableInterpolationCmd.Flags().StringP("variables-dir", "v", "", "path to the variables dir")
-	variableInterpolationCmd.Flags().VarP(&i.OutputFormat, "format", "f", "output manifest in specified format, one of: json|yaml|encode (default yaml)")
-	variableInterpolationCmd.Flags().String("encode-key", "interpolated-manifest", "output key in encode format")
 
 	// This will get the values from any set ENV var, but always
 	// the values provided via the flags have more precedence.
@@ -79,29 +45,26 @@ func init() {
 
 	viper.BindPFlag("manifest", variableInterpolationCmd.Flags().Lookup("manifest"))
 	viper.BindPFlag("variables_dir", variableInterpolationCmd.Flags().Lookup("variables-dir"))
-	viper.BindPFlag("encode-key", variableInterpolationCmd.Flags().Lookup("encode-key"))
 }
 
 func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string) error {
-	if i.OutputFormat == "" {
-		i.OutputFormat = fmtYAML
-	}
-
 	defer log.Sync()
-
-	var vars []boshtpl.Variables
 
 	manifestFile := viper.GetString("manifest")
 	variablesDir := filepath.Clean(viper.GetString("variables_dir"))
-	encodeKey := viper.GetString("encode-key")
 
 	if _, err := os.Stat(manifestFile); os.IsNotExist(err) {
 		return errors.Errorf("no such variable: %s", manifestFile)
 	}
 
 	info, err := os.Stat(variablesDir)
-	if os.IsNotExist(err) || !info.IsDir() {
-		return errors.Errorf("no such directory: %s", variablesDir)
+
+	if os.IsNotExist(err) {
+		return errors.Errorf("directory %s doesn't exist", variablesDir)
+	} else if err != nil {
+		return errors.Errorf("error on dir stat: %s", variablesDir)
+	} else if !info.IsDir() {
+		return errors.Errorf("path %s is not a directory", variablesDir)
 	}
 
 	// Read files
@@ -114,6 +77,8 @@ func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string)
 	if err != nil {
 		return errors.Wrapf(err, "could not read variables directory")
 	}
+
+	var vars []boshtpl.Variables
 
 	for _, variable := range variables {
 		// Each directory is a variable name
@@ -174,26 +139,23 @@ func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string)
 		ExpectAllVarsUsed: false,
 	}
 
-	bytes, err := tpl.Evaluate(multiVars, op, evalOpts)
+	yamlBytes, err := tpl.Evaluate(multiVars, op, evalOpts)
 	if err != nil {
 		return errors.Wrapf(err, "could not evaluate variables")
 	}
 
-	switch i.OutputFormat.String() {
-	case string(fmtJSON):
-		jsonBytes, err := yamlUtil.ToJSON(bytes)
-		if err != nil {
-			return err
-		}
-		fmt.Println(string(jsonBytes))
-	case string(fmtEncode):
-		sEnc := base64.StdEncoding.EncodeToString(bytes)
-		fmt.Println(fmt.Sprintf(`{"%s":"%s"}`, encodeKey, sEnc))
-	case string(fmtYAML):
-		fmt.Println("---")
-		fmt.Println(string(bytes))
-	default:
-		return fmt.Errorf("unknown output format: %q", i.OutputFormat)
+	jsonBytes, err := json.Marshal(map[string]string{
+		"manifest.yaml": string(yamlBytes),
+	})
+	if err != nil {
+		return errors.Wrapf(err, "could not marshal json output")
+	}
+
+	f := bufio.NewWriter(os.Stdout)
+	defer f.Flush()
+	_, err = f.Write(jsonBytes)
+	if err != nil {
+		return err
 	}
 
 	return nil

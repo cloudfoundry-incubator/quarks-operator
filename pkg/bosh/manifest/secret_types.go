@@ -25,8 +25,8 @@ const (
 
 func (s DeploymentSecretType) String() string {
 	return [...]string{
-		"manifest-with-ops",
-		"manifest-with-vars",
+		"with-ops",
+		"with-vars",
 		"var",
 		"ig-resolved"}[s]
 }
@@ -62,7 +62,7 @@ func (m *Manifest) CalculateSecretName(secretType DeploymentSecretType, name str
 // given a container name
 func (m *Manifest) CalculateEJobOutputSecretPrefixAndName(secretType DeploymentSecretType, containerName string) (string, string) {
 	prefix := m.CalculateSecretName(secretType, "")
-	finalName := fmt.Sprintf("%s-%s", prefix, containerName)
+	finalName := fmt.Sprintf("%s.%s", prefix, containerName)
 
-	return prefix, finalName
+	return prefix + ".", finalName
 }
