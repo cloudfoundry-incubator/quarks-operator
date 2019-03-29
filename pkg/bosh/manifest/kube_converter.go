@@ -180,10 +180,12 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 
 	outputSecretPrefix, _ := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, VarInterpolationContainerName)
 
+	eJobName := fmt.Sprintf("var-interpolation-%s", m.Name)
+
 	// Assemble the Extended Job
 	job := &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "variables-interpolation-job",
+			Name:      eJobName,
 			Namespace: namespace,
 			Labels: map[string]string{
 				bdv1.LabelKind:       "variable-interpolation",
@@ -192,6 +194,12 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 		},
 		Spec: ejv1.ExtendedJobSpec{
 			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: eJobName,
+					Labels: map[string]string{
+						"delete": "pod",
+					},
+				},
 				Spec: v1.PodSpec{
 					RestartPolicy: v1.RestartPolicyOnFailure,
 					Containers: []v1.Container{
@@ -353,6 +361,9 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: eJobName,
+					Labels: map[string]string{
+						"delete": "pod",
+					},
 				},
 				Spec: v1.PodSpec{
 					RestartPolicy: v1.RestartPolicyOnFailure,
@@ -544,6 +555,9 @@ func (m *Manifest) errandToExtendedJob(ig *InstanceGroup, namespace string) (ejv
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: igName,
+					Labels: map[string]string{
+						"delete": "pod",
+					},
 				},
 				Spec: v1.PodSpec{
 					Containers:     listOfContainers,
