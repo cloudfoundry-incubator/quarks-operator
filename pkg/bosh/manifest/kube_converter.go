@@ -413,30 +413,48 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 			return []v1.Container{}, err
 		}
 
+		inContainerReleasePath := filepath.Join("/var/vcap/rendering/jobs-src/", job.Release)
 		initContainers = append(initContainers, v1.Container{
 			Name:  fmt.Sprintf("spec-copier-%s", job.Name),
 			Image: releaseImage,
 			VolumeMounts: []v1.VolumeMount{
-				{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
+				{
+					Name:      "rendering-data",
+					MountPath: "/var/vcap/rendering",
+				},
 			},
-			Command: []string{"bash", "-c", "cp -ar /var/vcap/jobs-src /var/vcap/rendering"},
+			Command: []string{"bash", "-c", fmt.Sprintf(`mkdir -p "%s" && cp -ar /var/vcap/jobs-src/* "%s"`, inContainerReleasePath, inContainerReleasePath)},
 		})
 	}
 
-	initContainers = append(initContainers, v1.Container{
-		Name:  fmt.Sprintf("renderer-%s", igName),
-		Image: GetOperatorDockerImage(),
-		VolumeMounts: []v1.VolumeMount{
-			v1.VolumeMount{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
-			v1.VolumeMount{Name: "manifest", MountPath: "/var/vcap/rendering-manifest"},
+	_, resolvedPropertiesSecreName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, igName)
+	volumeMounts := []v1.VolumeMount{
+		{
+			Name:      "rendering-data",
+			MountPath: "/var/vcap/rendering",
 		},
+		{
+			Name:      generateVolumeName(resolvedPropertiesSecreName),
+			MountPath: fmt.Sprintf("/var/run/secrets/resolved-properties/%s", igName),
+			ReadOnly:  true,
+		},
+	}
+
+	initContainers = append(initContainers, v1.Container{
+		Name:         fmt.Sprintf("renderer-%s", igName),
+		Image:        GetOperatorDockerImage(),
+		VolumeMounts: volumeMounts,
 		Env: []v1.EnvVar{
 			v1.EnvVar{
 				Name:  "INSTANCE_GROUP_NAME",
 				Value: igName,
 			},
 		},
-		Command: []string{"bash", "-c", "/usr/local/bin/cf-operator render-template -j /var/vcap/rendering -m /var/vcap/rendering-manifest/manifest.yml"},
+		Command: []string{
+			"bash",
+			"-c",
+			fmt.Sprintf("find /var/run/secrets; sleep 4000; /usr/local/bin/cf-operator template-render -j /var/vcap/rendering -m /var/run/secrets/resolved-properties/%s/properties.yaml", igName),
+		},
 	})
 
 	return initContainers, nil
@@ -480,6 +498,31 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 		return essv1.ExtendedStatefulSet{}, err
 	}
 
+	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, VarInterpolationContainerName)
+	_, resolvedPropertiesSecreName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, ig.Name)
+	volumes := []v1.Volume{
+		{
+			Name:         "rendering-data",
+			VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name: generateVolumeName(interpolatedManifestSecretName),
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: interpolatedManifestSecretName,
+				},
+			},
+		},
+		{
+			Name: generateVolumeName(resolvedPropertiesSecreName),
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: resolvedPropertiesSecreName,
+				},
+			},
+		},
+	}
+
 	extSts := essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", m.Name, igName),
@@ -510,23 +553,7 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 							},
 						},
 						Spec: v1.PodSpec{
-							Volumes: []v1.Volume{
-								v1.Volume{
-									Name: "rendering-input",
-									VolumeSource: v1.VolumeSource{
-										Secret: &v1.SecretVolumeSource{
-											SecretName: m.getResolvedInstanceGroupPropertiesSecretName(igName),
-											Items: []v1.KeyToPath{
-												v1.KeyToPath{Key: "manifest.yml", Path: "manifest.yml"}, // TODO: Is the key called "manifest.yml". Do we want to just map all keys instead?
-											},
-										},
-									},
-								},
-								v1.Volume{
-									Name:         "rendering-data",
-									VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
-								},
-							},
+							Volumes:        volumes,
 							Containers:     listOfContainers,
 							InitContainers: listOfInitContainers,
 						},
