@@ -29,6 +29,7 @@ require (
 	github.com/json-iterator/go v1.1.5 // indirect
 	github.com/kisielk/sqlstruct v0.0.0-20150923205031-648daed35d49 // indirect
 	github.com/mattn/go-sqlite3 v1.10.0 // indirect
+	github.com/mattn/goveralls v0.0.2 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742 // indirect
@@ -38,6 +39,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
+	github.com/philwinder/gocoverage v0.0.0-20161006143713-d979ee2d0d8c // indirect
 	github.com/pkg/errors v0.8.0
 	github.com/prometheus/client_golang v0.9.2 // indirect
 	github.com/spf13/afero v1.1.2
