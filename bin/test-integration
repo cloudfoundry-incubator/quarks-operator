@@ -25,7 +25,6 @@ bin/apply-crds
 
 kubectl get customresourcedefinitions
 
-#pkgs=$(go list ./... 2> /dev/null)
-#deps=`echo ${pkgs} | tr ' ' ","`
-#ginkgo --slowSpecThreshold=50 -cover -coverpkg "$deps" integration/
-ginkgo --slowSpecThreshold=50 -cover integration/
+pkgs=$(go list ./... 2> /dev/null)
+deps=`echo ${pkgs} | tr ' ' ","`
+ginkgo --slowSpecThreshold=50 -cover -coverpkg "$deps" integration/
