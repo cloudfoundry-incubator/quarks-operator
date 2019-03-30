@@ -25,10 +25,6 @@ bin/apply-crds
 
 kubectl get customresourcedefinitions
 
-pkgs=$(go list ./... 2> /dev/null | grep -v /vendor/)
+pkgs=$(go list ./... 2> /dev/null)
 deps=`echo ${pkgs} | tr ' ' ","`
 ginkgo --slowSpecThreshold=50 -cover -coverpkg "$deps" integration/
-
-# Send code coverage results to coveralls.io
-gocoverage
-goveralls -coverprofile profile.cov -service concourse -repotoken "$COVERALLS_TOKEN"
