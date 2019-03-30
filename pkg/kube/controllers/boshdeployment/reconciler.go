@@ -3,11 +3,13 @@ package boshdeployment
 import (
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -187,6 +189,20 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		}
 
 	case DataGatheredState:
+		// Wait for all instance group property outputs to be ready
+		// We need BPM information to start everything up
+		bpmInfo, err := r.waitForBPM(ctx, instance, manifest, &kubeConfigs)
+		if err != nil {
+			r.log.Info("Waiting from BPM: %s", err.Error())
+			return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, err
+		}
+
+		err = manifest.ApplyBPMInfo(&kubeConfigs, bpmInfo)
+		if err != nil {
+			r.log.Errorf("Failed to apply BPM information: %v", err)
+			return reconcile.Result{}, err
+		}
+
 		err = r.deployInstanceGroups(ctx, instance, &kubeConfigs)
 		if err != nil {
 			r.log.Errorf("Failed to deploy instance groups: %v", err)
@@ -407,6 +423,37 @@ func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, in
 	instance.Status.State = DataGatheredState
 
 	return nil
+}
+
+// waitForBPM checks to see if all BPM information is available and returns an error if it isn't
+func (r *ReconcileBOSHDeployment) waitForBPM(ctx context.Context, deployment *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfigs *bdm.KubeConfig) (map[string]bdm.Manifest, error) {
+	// TODO: this approach is not good enough, we need to reconcile and trigger on all of these secrets
+	// TODO: these secrets could exist, but not be up to date - we have to make sure they exist for the appropriate version
+
+	result := map[string]bdm.Manifest{}
+
+	for _, container := range kubeConfigs.DataGatheringJob.Spec.Template.Spec.Containers {
+		_, secretName := manifest.CalculateEJobOutputSecretPrefixAndName(bdm.DeploymentSecretTypeInstanceGroupResolvedProperties, container.Name)
+
+		secret := &v1.Secret{}
+		err := r.client.Get(ctx, types.NamespacedName{Name: secretName, Namespace: deployment.Namespace}, secret)
+
+		if err != nil && apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("secret %s/%s doesn't exist", deployment.Namespace, secretName)
+		} else if err != nil {
+			return nil, errors.Wrapf(err, "failed to retrieve resolved properties secret %s/%s", deployment.Namespace, secretName)
+		}
+
+		resolvedProperties := bdm.Manifest{}
+
+		err = yaml.Unmarshal(secret.Data["properties.yaml"], &resolvedProperties)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't unmarshal resolved properties from secret %s/%s", deployment.Namespace, secretName)
+		}
+		result[container.Name] = resolvedProperties
+	}
+
+	return result, nil
 }
 
 // deployInstanceGroups create ExtendedJobs and ExtendedStatefulSets

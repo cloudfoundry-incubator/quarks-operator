@@ -413,23 +413,57 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 			return []v1.Container{}, err
 		}
 
+		inContainerReleasePath := filepath.Join("/var/vcap/rendering/jobs-src/", job.Release)
 		initContainers = append(initContainers, v1.Container{
 			Name:  fmt.Sprintf("spec-copier-%s", job.Name),
 			Image: releaseImage,
 			VolumeMounts: []v1.VolumeMount{
-				{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
+				{
+					Name:      "rendering-data",
+					MountPath: "/var/vcap/rendering",
+				},
 			},
-			Command: []string{"bash", "-c", "cp -ar /var/vcap/jobs-src /var/vcap/rendering"},
+			Command: []string{"bash", "-c", fmt.Sprintf(`mkdir -p "%s" && cp -ar /var/vcap/jobs-src/* "%s"`, inContainerReleasePath, inContainerReleasePath)},
 		})
 	}
 
-	initContainers = append(initContainers, v1.Container{
-		Name:  fmt.Sprintf("renderer-%s", igName),
-		Image: GetOperatorDockerImage(),
-		VolumeMounts: []v1.VolumeMount{
-			{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
+	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, igName)
+	volumeMounts := []v1.VolumeMount{
+		{
+			Name:      "rendering-data",
+			MountPath: "/var/vcap/rendering",
 		},
-		Command: []string{"bash", "-c", "echo 'foo'"},
+		{
+			Name:      "jobs-dir",
+			MountPath: "/var/vcap/jobs",
+		},
+		{
+			Name:      generateVolumeName(resolvedPropertiesSecretName),
+			MountPath: fmt.Sprintf("/var/run/secrets/resolved-properties/%s", igName),
+			ReadOnly:  true,
+		},
+	}
+
+	initContainers = append(initContainers, v1.Container{
+		Name:         fmt.Sprintf("renderer-%s", igName),
+		Image:        GetOperatorDockerImage(),
+		VolumeMounts: volumeMounts,
+		Env: []v1.EnvVar{
+			{
+				Name:  "INSTANCE_GROUP_NAME",
+				Value: igName,
+			},
+			{
+				Name:  "MANIFEST_PATH",
+				Value: fmt.Sprintf("/var/run/secrets/resolved-properties/%s/properties.yaml", igName),
+			},
+			{
+				Name:  "JOBS_DIR",
+				Value: "/var/vcap/rendering",
+			},
+		},
+		Command: []string{"/bin/sh"},
+		Args:    []string{"-c", `cf-operator template-render`},
 	})
 
 	return initContainers, nil
@@ -449,12 +483,18 @@ func (m *Manifest) jobsToContainers(igName string, jobs []Job, namespace string)
 			return []v1.Container{}, err
 		}
 		jobsToContainerPods = append(jobsToContainerPods, v1.Container{
-			Name:  fmt.Sprintf("job-%s", job.Name),
+			Name:  fmt.Sprintf(job.Name),
 			Image: jobImage,
 			VolumeMounts: []v1.VolumeMount{
-				{Name: "rendering-data", MountPath: "/var/vcap/rendering"},
+				{
+					Name:      "rendering-data",
+					MountPath: "/var/vcap/rendering",
+				},
+				{
+					Name:      "jobs-dir",
+					MountPath: "/var/vcap/jobs",
+				},
 			},
-			Command: []string{"bash", "-c", "sleep 3600"},
 		})
 	}
 	return jobsToContainerPods, nil
@@ -474,10 +514,42 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 		return essv1.ExtendedStatefulSet{}, err
 	}
 
+	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, VarInterpolationContainerName)
+	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, ig.Name)
+	volumes := []v1.Volume{
+		{
+			Name:         "rendering-data",
+			VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name:         "jobs-dir",
+			VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name: generateVolumeName(interpolatedManifestSecretName),
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: interpolatedManifestSecretName,
+				},
+			},
+		},
+		{
+			Name: generateVolumeName(resolvedPropertiesSecretName),
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: resolvedPropertiesSecretName,
+				},
+			},
+		},
+	}
+
 	extSts := essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", m.Name, igName),
 			Namespace: namespace,
+			Labels: map[string]string{
+				"instance-group": igName,
+			},
 		},
 		Spec: essv1.ExtendedStatefulSetSpec{
 			Template: v1beta2.StatefulSet{
@@ -501,12 +573,7 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 							},
 						},
 						Spec: v1.PodSpec{
-							Volumes: []v1.Volume{
-								{
-									Name:         "rendering-data",
-									VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
-								},
-							},
+							Volumes:        volumes,
 							Containers:     listOfContainers,
 							InitContainers: listOfInitContainers,
 						},
@@ -518,8 +585,8 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 	return extSts, nil
 }
 
-// convertToExtendedSts will convert instance_groups which lifecycle
-// is service to ExtendedStatefulSets
+// convertToExtendedSts will convert instance_groups whose lifecycle
+// is service, to ExtendedStatefulSets
 func (m *Manifest) convertToExtendedSts(namespace string) ([]essv1.ExtendedStatefulSet, error) {
 	extStsList := []essv1.ExtendedStatefulSet{}
 	for _, ig := range m.InstanceGroups {
@@ -546,10 +613,43 @@ func (m *Manifest) errandToExtendedJob(ig *InstanceGroup, namespace string) (ejv
 	if err != nil {
 		return ejv1.ExtendedJob{}, err
 	}
+
+	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, VarInterpolationContainerName)
+	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, ig.Name)
+	volumes := []v1.Volume{
+		{
+			Name:         "rendering-data",
+			VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name:         "jobs-dir",
+			VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name: generateVolumeName(interpolatedManifestSecretName),
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: interpolatedManifestSecretName,
+				},
+			},
+		},
+		{
+			Name: generateVolumeName(resolvedPropertiesSecretName),
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName: resolvedPropertiesSecretName,
+				},
+			},
+		},
+	}
+
 	extJob := ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", m.Name, igName),
 			Namespace: namespace,
+			Labels: map[string]string{
+				"instance-group": igName,
+			},
 		},
 		Spec: ejv1.ExtendedJobSpec{
 			Template: v1.PodTemplateSpec{
@@ -562,6 +662,7 @@ func (m *Manifest) errandToExtendedJob(ig *InstanceGroup, namespace string) (ejv
 				Spec: v1.PodSpec{
 					Containers:     listOfContainers,
 					InitContainers: listOfInitContainers,
+					Volumes:        volumes,
 				},
 			},
 		},
@@ -682,4 +783,72 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 // GetOperatorDockerImage returns the image name of the operator docker image
 func GetOperatorDockerImage() string {
 	return DockerOrganization + "/" + DockerRepository + ":" + DockerTag
+}
+
+// ApplyBPMInfo uses BOSH Process Manager information to update container information like entrypoint, env vars, etc.
+func (m *Manifest) ApplyBPMInfo(kubeConfig *KubeConfig, allResolvedProperties map[string]Manifest) error {
+
+	applyBPMOnContainer := func(igName string, container *v1.Container) error {
+		boshJobName := container.Name
+
+		igResolvedProperties, ok := allResolvedProperties[igName]
+		if !ok {
+			return errors.Errorf("couldn't find instance group %s in resolved properties set", igName)
+		}
+
+		boshJob, err := igResolvedProperties.lookupJobInInstanceGroup(igName, boshJobName)
+		if err != nil {
+			return errors.Wrap(err, "failed to lookup bosh job in instance group resolved properties manifest")
+		}
+
+		// TODO: handle multi-process BPM?
+		// TODO: complete implementation - BPM information could be top-level only
+
+		if len(boshJob.Properties.BOSHContainerization.Instances) < 1 {
+			return errors.New("containerization data has no instances")
+		}
+		if len(boshJob.Properties.BOSHContainerization.Instances[0].BPM.Processes) < 1 {
+			return errors.New("bpm info has no processes")
+		}
+		process := boshJob.Properties.BOSHContainerization.Instances[0].BPM.Processes[0]
+
+		container.Command = []string{process.Executable}
+		container.Args = process.Args
+		for name, value := range process.Env {
+			container.Env = append(container.Env, v1.EnvVar{Name: name, Value: value})
+		}
+		container.WorkingDir = process.Workdir
+
+		return nil
+	}
+
+	for idx := range kubeConfig.InstanceGroups {
+		igSts := &(kubeConfig.InstanceGroups[idx])
+		igName := igSts.Labels["instance-group"]
+
+		// Go through each container
+		for idx := range igSts.Spec.Template.Spec.Template.Spec.Containers {
+			container := &(igSts.Spec.Template.Spec.Template.Spec.Containers[idx])
+			err := applyBPMOnContainer(igName, container)
+
+			if err != nil {
+				return errors.Wrapf(err, "failed to apply bpm information on bosh job %s, instance group %s", container.Name, igName)
+			}
+		}
+	}
+
+	for idx := range kubeConfig.Errands {
+		igJob := &(kubeConfig.Errands[idx])
+		igName := igJob.Labels["instance-group"]
+
+		for idx := range igJob.Spec.Template.Spec.Containers {
+			container := &(igJob.Spec.Template.Spec.Containers[idx])
+			err := applyBPMOnContainer(igName, container)
+
+			if err != nil {
+				return errors.Wrapf(err, "failed to apply bpm information on bosh job %s, instance group %s", container.Name, igName)
+			}
+		}
+	}
+	return nil
 }

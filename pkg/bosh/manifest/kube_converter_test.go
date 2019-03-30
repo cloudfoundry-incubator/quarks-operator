@@ -105,37 +105,50 @@ var _ = Describe("ConvertToKube", func() {
 		})
 	})
 
-	Context("convert service lifecycle to instance groups", func() {
-		It("when the lifecycle is set to service", func() {
+	Context("when the lifecycle is set to service", func() {
+		It("converts the instance group to an ExtendedStatefulset", func() {
 			kubeConfig, err := m.ConvertToKube("foo")
 			Expect(err).ShouldNot(HaveOccurred())
 			anExtendedSts := kubeConfig.InstanceGroups[0].Spec.Template.Spec.Template
 			Expect(anExtendedSts.Name).To(Equal("diego-cell"))
 
+			specCopierInitContainer := anExtendedSts.Spec.InitContainers[0]
+			rendererInitContainer := anExtendedSts.Spec.InitContainers[1]
+
 			// Test containers in the extended statefulset
 			Expect(anExtendedSts.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
-			Expect(anExtendedSts.Spec.Containers[0].Command[0]).To(Equal("bash"))
-			Expect(anExtendedSts.Spec.Containers[0].Name).To(Equal("job-cflinuxfs3-rootfs-setup"))
+			Expect(anExtendedSts.Spec.Containers[0].Command).To(BeNil())
+			Expect(anExtendedSts.Spec.Containers[0].Name).To(Equal("cflinuxfs3-rootfs-setup"))
 
 			// Test init containers in the extended statefulset
-			Expect(anExtendedSts.Spec.InitContainers[0].Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
-			Expect(anExtendedSts.Spec.InitContainers[0].Command[0]).To(Equal("bash"))
-			Expect(anExtendedSts.Spec.InitContainers[0].Name).To(Equal("spec-copier-cflinuxfs3-rootfs-setup"))
-			Expect(anExtendedSts.Spec.InitContainers[1].Image).To(Equal("/:"))
-			Expect(anExtendedSts.Spec.InitContainers[1].Name).To(Equal("renderer-diego-cell"))
+			Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
+			Expect(specCopierInitContainer.Command[0]).To(Equal("bash"))
+			Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3-rootfs-setup"))
+			Expect(rendererInitContainer.Image).To(Equal("/:"))
+			Expect(rendererInitContainer.Name).To(Equal("renderer-diego-cell"))
 
 			// Test shared volume setup
 			Expect(anExtendedSts.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
 			Expect(anExtendedSts.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
-			Expect(anExtendedSts.Spec.InitContainers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
-			Expect(anExtendedSts.Spec.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
-			Expect(anExtendedSts.Spec.InitContainers[1].VolumeMounts[0].Name).To(Equal("rendering-data"))
-			Expect(anExtendedSts.Spec.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(specCopierInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
+			Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
+			Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+
+			// Test the renderer container setup
+			Expect(rendererInitContainer.Env[0].Name).To(Equal("INSTANCE_GROUP_NAME"))
+			Expect(rendererInitContainer.Env[0].Value).To(Equal("diego-cell"))
+			Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
+			Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(rendererInitContainer.VolumeMounts[1].Name).To(Equal("jobs-dir"))
+			Expect(rendererInitContainer.VolumeMounts[1].MountPath).To(Equal("/var/vcap/jobs"))
+			Expect(rendererInitContainer.VolumeMounts[2].Name).To(Equal("ig-resolved"))
+			Expect(rendererInitContainer.VolumeMounts[2].MountPath).To(Equal("/var/run/secrets/resolved-properties/diego-cell"))
 		})
 	})
 
-	Context("convert errand lifecycle to instance groups", func() {
-		It("when the lifecycle is set to errand", func() {
+	Context("when the lifecycle is set to errand", func() {
+		It("converts the instance group to an ExtendedJob", func() {
 			kubeConfig, err := m.ConvertToKube("foo")
 			Expect(err).ShouldNot(HaveOccurred())
 			anExtendedJob := kubeConfig.Errands[0]
@@ -144,24 +157,33 @@ var _ = Describe("ConvertToKube", func() {
 			Expect(len(kubeConfig.Errands)).ToNot(Equal(2))
 			Expect(anExtendedJob.Name).To(Equal("foo-deployment-redis-slave"))
 
+			specCopierInitContainer := anExtendedJob.Spec.Template.Spec.InitContainers[0]
+			rendererInitContainer := anExtendedJob.Spec.Template.Spec.InitContainers[1]
+
 			// Test containers in the extended job
-			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Name).To(Equal("job-redis-server"))
+			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Name).To(Equal("redis-server"))
 			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
-			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Command[0]).To(Equal("bash"))
+			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Command).To(BeNil())
 
 			// Test init containers in the extended job
-			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[0].Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
-			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[0].Command[0]).To(Equal("bash"))
-			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[1].Image).To(Equal("/:"))
-			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[1].Name).To(Equal("renderer-redis-slave"))
+			Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
+			Expect(specCopierInitContainer.Command[0]).To(Equal("bash"))
+			Expect(rendererInitContainer.Image).To(Equal("/:"))
+			Expect(rendererInitContainer.Name).To(Equal("renderer-redis-slave"))
 
 			// Test shared volume setup
 			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
 			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
-			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
-			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
-			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[1].VolumeMounts[0].Name).To(Equal("rendering-data"))
-			Expect(anExtendedJob.Spec.Template.Spec.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(specCopierInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
+			Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
+			Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+
+			// Test mounting the resolved instance group properties in the renderer container
+			Expect(rendererInitContainer.Env[0].Name).To(Equal("INSTANCE_GROUP_NAME"))
+			Expect(rendererInitContainer.Env[0].Value).To(Equal("redis-slave"))
+			Expect(rendererInitContainer.VolumeMounts[1].Name).To(Equal("jobs-dir"))
+			Expect(rendererInitContainer.VolumeMounts[1].MountPath).To(Equal("/var/vcap/jobs"))
 		})
 	})
 

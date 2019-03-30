@@ -37,6 +37,8 @@ const (
 	EnvKubeAz = "KUBE_AZ"
 	// EnvBoshAz is set by available zone name
 	EnvBoshAz = "BOSH_AZ"
+	// EnvReplicas describes the number of replicas in the ExtendedStatefulSet
+	EnvReplicas = "REPLICAS"
 	// EnvCfOperatorAz is set by available zone name
 	EnvCfOperatorAz = "CF_OPERATOR_AZ"
 	// EnvCfOperatorAzIndex is set by available zone index
@@ -674,9 +676,9 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(extendedStatefu
 		statefulSet.Spec.Template.SetAnnotations(podAnnotations)
 
 		statefulSet = r.updateAffinity(statefulSet, extendedStatefulSet.Spec.ZoneNodeLabel, zoneIndex, zone)
-
-		r.injectContainerEnv(&statefulSet.Spec.Template.Spec, zoneIndex, zone)
 	}
+
+	r.injectContainerEnv(&statefulSet.Spec.Template.Spec, zoneIndex, zone, extendedStatefulSet.Spec.Template.Spec.Replicas)
 
 	annotations[essv1a1.AnnotationStatefulSetSHA1] = templateSha1
 	annotations[essv1a1.AnnotationVersion] = fmt.Sprintf("%d", version)
@@ -750,16 +752,30 @@ func (r *ReconcileExtendedStatefulSet) updateAffinity(statefulSet *v1beta2.State
 }
 
 // injectContainerEnv inject AZ info to container envs
-func (r *ReconcileExtendedStatefulSet) injectContainerEnv(podSpec *corev1.PodSpec, zoneIndex int, zoneName string) {
+func (r *ReconcileExtendedStatefulSet) injectContainerEnv(podSpec *corev1.PodSpec, zoneIndex int, zoneName string, replicas *int32) {
+
+	containers := []*corev1.Container{}
 	for i := 0; i < len(podSpec.Containers); i++ {
-		envs := podSpec.Containers[i].Env
+		containers = append(containers, &podSpec.Containers[i])
+	}
+	for i := 0; i < len(podSpec.InitContainers); i++ {
+		containers = append(containers, &podSpec.InitContainers[i])
+	}
+	for _, container := range containers {
+		envs := container.Env
 
-		envs = upsertEnvs(envs, EnvKubeAz, zoneName)
-		envs = upsertEnvs(envs, EnvBoshAz, zoneName)
-		envs = upsertEnvs(envs, EnvCfOperatorAz, zoneName)
-		envs = upsertEnvs(envs, EnvCfOperatorAzIndex, strconv.Itoa(zoneIndex))
+		if zoneIndex >= 0 {
+			envs = upsertEnvs(envs, EnvKubeAz, zoneName)
+			envs = upsertEnvs(envs, EnvBoshAz, zoneName)
+			envs = upsertEnvs(envs, EnvCfOperatorAz, zoneName)
+			envs = upsertEnvs(envs, EnvCfOperatorAzIndex, strconv.Itoa(zoneIndex+1))
+		} else {
+			// Default to zone 1
+			envs = upsertEnvs(envs, EnvCfOperatorAzIndex, "1")
+		}
+		envs = upsertEnvs(envs, EnvReplicas, strconv.Itoa(int(*replicas)))
 
-		podSpec.Containers[i].Env = envs
+		container.Env = envs
 	}
 }
 
