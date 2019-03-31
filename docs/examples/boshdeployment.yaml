@@ -2,98 +2,50 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: bosh-manifest
+  name: nats-manifest
 data:
   manifest: |
-    name: cf-deployment
-    instance_groups:
-    - name: api
-      instances: 2
-      jobs:
-      - name: cloud_controller_ng
-        release: capi
-        properties:
-          router:
-            route_services_secret: "((router_route_services_secret))"
-          app_ssh:
-            host_key_fingerprint: "((diego_ssh_proxy_host_key.public_key_fingerprint))"
-    - name: uaa
-      instances: 2
-      jobs:
-      - name: uaa
-        release: uaa
-        properties:
-          uaa:
-            jwt:
-              policy:
-                active_key_id: key-1
-                keys:
-                  key-1:
-                    signingKey: "((uaa_jwt_signing_key.private_key))"
-            sslCertificate: "((uaa_ssl.certificate))"
-            sslPrivateKey: "((uaa_ssl.private_key))"
+    ---
+    name: nats-manifest
     releases:
-    - name: capi
-      url: "docker.io/cfcontainerization"
+    - name: nats
+      version: "26"
+      url: docker.io/cfcontainerization
       stemcell:
-        os: "opensuse"
-        version: "42.3"
-    - name: uaa
-      url: "docker.io/cfcontainerization"
-      stemcell:
-        os: "opensuse"
-        version: "42.3"
+        os: opensuse-42.3
+        version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
+    instance_groups:
+    - name: nats
+      instances: 1
+      jobs:
+      - name: nats
+        release: nats
+        properties:
+          nats:
+            user: admin
+            password: ((nats_password))
     variables:
-    - name: router_route_services_secret
+    - name: nats_password
       type: password
-    - name: uaa_jwt_signing_key
-      type: rsa
-    - name: diego_ssh_proxy_host_key
-      type: ssh
-    - name: uaa_ca
-      type: certificate
-      options:
-        is_ca: true
-        common_name: uaaCA
-    - name: uaa_ssl
-      type: certificate
-      options:
-        ca: uaa_ca
-        common_name: uaa.service.cf.internal
-        alternative_names:
-        - uaa.service.cf.internal
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: bosh-ops
+  name: ops-foo
 data:
   ops: |
     - type: replace
-      path: /instance_groups/name=api?/instances
-      value: 4
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: bosh-ops-secret
-type: Opaque
-stringData:
-  ops: |
-    - type: replace
-      path: /instance_groups/name=api?/instances
-      value: 5
+      path: /instance_groups/name=nats?/instances
+      value: 2
 ---
 apiVersion: fissile.cloudfoundry.org/v1alpha1
 kind: BOSHDeployment
 metadata:
-  name: example-boshdeployment
+  name: nats-manifest
 spec:
   manifest:
-    type: "configmap"
-    ref: "bosh-manifest"
+    ref: nats-manifest
+    type: configmap
   ops:
-    - type: "configmap"
-      ref: "bosh-ops"
-    - type: "secret"
-      ref: "bosh-ops-secret"
+  - ref: ops-foo
+    type: configmap
