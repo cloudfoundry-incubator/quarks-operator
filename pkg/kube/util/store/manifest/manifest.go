@@ -13,7 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
 const (
@@ -40,12 +40,12 @@ var _ Store = &StoreImpl{}
 // should explain the sources of the rendered manifest, e.g. the location of
 // the Custom Resource Definition that generated it.
 type Store interface {
-	Save(context.Context, manifest.Manifest, string) error
+	Save(context.Context, bdm.Manifest, string) error
 	Delete(context.Context) error
 	Decorate(context.Context, string, string) error
-	List(context.Context) ([]*manifest.Manifest, error)
-	Find(context.Context, int) (*manifest.Manifest, error)
-	Latest(context.Context) (*manifest.Manifest, error)
+	List(context.Context) ([]*bdm.Manifest, error)
+	Find(context.Context, int) (*bdm.Manifest, error)
+	Latest(context.Context) (*bdm.Manifest, error)
 	VersionCount(context.Context) (int, error)
 	RetrieveVersionSecret(context.Context, int) (*corev1.Secret, error)
 }
@@ -70,7 +70,7 @@ func NewStore(client client.Client, namespace string, deploymentName string) Sto
 // Save creates a new version of the manifest if it already exists,
 // or a first one it not. A source description should explain the sources of
 // the rendered manifest, e.g. the location of the CRD that generated it
-func (p StoreImpl) Save(ctx context.Context, manifest manifest.Manifest, sourceDescription string) error {
+func (p StoreImpl) Save(ctx context.Context, manifest bdm.Manifest, sourceDescription string) error {
 	currentVersion, err := p.getGreatestVersion(ctx)
 	if err != nil {
 		return err
@@ -125,7 +125,7 @@ func (p StoreImpl) RetrieveVersionSecret(ctx context.Context, version int) (*cor
 }
 
 // Find returns a specific version of the manifest
-func (p StoreImpl) Find(ctx context.Context, version int) (*manifest.Manifest, error) {
+func (p StoreImpl) Find(ctx context.Context, version int) (*bdm.Manifest, error) {
 	secret, err := p.RetrieveVersionSecret(ctx, version)
 	if err != nil {
 		return nil, err
@@ -134,7 +134,7 @@ func (p StoreImpl) Find(ctx context.Context, version int) (*manifest.Manifest, e
 }
 
 // Latest returns the latest version of the manifest
-func (p StoreImpl) Latest(ctx context.Context) (*manifest.Manifest, error) {
+func (p StoreImpl) Latest(ctx context.Context) (*bdm.Manifest, error) {
 	latestVersion, err := p.getGreatestVersion(ctx)
 	if err != nil {
 		return nil, err
@@ -143,13 +143,13 @@ func (p StoreImpl) Latest(ctx context.Context) (*manifest.Manifest, error) {
 }
 
 // List returns all versions of the manifest
-func (p StoreImpl) List(ctx context.Context) ([]*manifest.Manifest, error) {
+func (p StoreImpl) List(ctx context.Context) ([]*bdm.Manifest, error) {
 	secrets, err := p.listSecrets(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	manifests := make([]*manifest.Manifest, 0, len(secrets))
+	manifests := make([]*bdm.Manifest, 0, len(secrets))
 	for _, s := range secrets {
 		m, err := extractManifest(s)
 		if err != nil {
@@ -254,14 +254,14 @@ func (p StoreImpl) getGreatestVersion(ctx context.Context) (int, error) {
 	return greatestVersion, nil
 }
 
-func extractManifest(s corev1.Secret) (*manifest.Manifest, error) {
+func extractManifest(s corev1.Secret) (*bdm.Manifest, error) {
 
 	data, found := s.Data[manifestKeyName]
 	if !found {
-		return nil, fmt.Errorf("Failed to retrieve manifest data from secret '%s.%s'", s.Name, manifestKeyName)
+		return nil, fmt.Errorf("failed to retrieve manifest data from secret '%s.%s'", s.Name, manifestKeyName)
 	}
 
-	var manifest manifest.Manifest
+	var manifest bdm.Manifest
 	err := yaml.Unmarshal([]byte(data), &manifest)
 	return &manifest, err
 }

@@ -18,7 +18,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
-// Owner helps managing ownership of configmaps and secrets, which are
+// Owner helps managing ownership of configMaps and secrets, which are
 // referenced in a pod spec
 type Owner struct {
 	client client.Client

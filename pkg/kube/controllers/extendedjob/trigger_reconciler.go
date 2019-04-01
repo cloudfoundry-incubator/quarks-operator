@@ -8,6 +8,7 @@ import (
 	"hash/fnv"
 	"strings"
 
+	"github.com/pkg/errors"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -131,18 +132,23 @@ func (r *TriggerReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJ
 	}
 	template.Labels["ejob-name"] = extJob.Name
 
+	name, err := jobName(extJob.Name, podName)
+	if err != nil {
+		return err
+	}
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      jobName(extJob.Name, podName),
+			Name:      name,
 			Namespace: extJob.Namespace,
 			Labels:    map[string]string{"extendedjob": "true"},
 		},
 		Spec: batchv1.JobSpec{Template: *template},
 	}
 
-	err := r.setOwnerReference(&extJob, job, r.scheme)
+	err = r.setOwnerReference(&extJob, job, r.scheme)
 	if err != nil {
-		ctxlog.Errorf(ctx, "Failed to set owner reference on job for '%s' via pod %s: %s", extJob.Name, podName, err)
+		ctxlog.Errorf(ctx, "failed to set owner reference on job for '%s' via pod %s: %s", extJob.Name, podName, err)
+		return err
 	}
 
 	err = r.client.Create(ctx, job)
@@ -156,17 +162,28 @@ func (r *TriggerReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJ
 // jobName returns a unique, short name for a given extJob, pod combination
 // k8s allows 63 chars, but the pod will have -\d{6} appended
 // IDEA: maybe use pod.Uid instead of rand
-func jobName(extJobName, podName string) string {
-	hashID := randSuffix(fmt.Sprintf("%s-%s", extJobName, podName))
-	return fmt.Sprintf("job-%s-%s-%s", truncate(extJobName, 15), truncate(podName, 15), hashID)
+func jobName(extJobName, podName string) (string, error) {
+	hashID, err := randSuffix(fmt.Sprintf("%s-%s", extJobName, podName))
+	if err != nil {
+		return "", errors.Wrap(err, "could not randomize job suffix")
+	}
+	return fmt.Sprintf("job-%s-%s-%s", truncate(extJobName, 15), truncate(podName, 15), hashID), nil
 }
 
-func randSuffix(str string) string {
+func randSuffix(str string) (string, error) {
 	randBytes := make([]byte, 16)
-	rand.Read(randBytes)
+	_, err := rand.Read(randBytes)
+	if err != nil {
+		return "", err
+	}
+
 	a := fnv.New64()
-	a.Write([]byte(str + string(randBytes)))
-	return hex.EncodeToString(a.Sum(nil))
+	_, err = a.Write([]byte(str + string(randBytes)))
+	if err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(a.Sum(nil)), nil
 }
 
 func truncate(name string, max int) string {
