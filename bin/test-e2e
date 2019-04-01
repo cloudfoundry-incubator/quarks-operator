@@ -19,4 +19,10 @@ bin/apply-crds
 
 kubectl get customresourcedefinitions
 
-ginkgo e2e/
+pkgs=$(go list ./... 2> /dev/null)
+deps=`echo ${pkgs} | tr ' ' ","`
+ginkgo -cover -coverpkg "$deps" e2e/
+
+#Send code coverage results to coveralls.io
+gover
+goveralls -coverprofile gover.coverprofile -service concourse -repotoken "$COVERALLS_TOKEN"
