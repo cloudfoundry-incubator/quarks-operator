@@ -1,4 +1,4 @@
-package manifest_test
+package manifeststore_test
 
 import (
 	"testing"

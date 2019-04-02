@@ -8,7 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
-
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -222,7 +221,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, errors.New("unknown instance state")
 	}
 
-	ctxlog.Debugf(ctx, "requeue the reconcile: BoshDeployment '%s/%s' is in state '%s'", instance.GetNamespace(), instance.GetName(), instance.Status.State)
+	ctxlog.Debugf(ctx, "Requeue the reconcile: BoshDeployment '%s/%s' is in state '%s'", instance.GetNamespace(), instance.GetName(), instance.Status.State)
 	return reconcile.Result{Requeue: true}, r.updateInstanceState(ctx, instance)
 }
 

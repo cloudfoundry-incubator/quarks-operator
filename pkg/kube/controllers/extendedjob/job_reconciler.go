@@ -177,6 +177,7 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 			return errors.Wrap(err, "invalid output format")
 		}
 
+		// TODO Should apply persisting manifest
 		// Create secret and persist the output
 		secretName := conf.NamePrefix + c.Name
 		secret := &corev1.Secret{
