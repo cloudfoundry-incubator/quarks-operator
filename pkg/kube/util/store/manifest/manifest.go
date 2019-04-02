@@ -1,4 +1,4 @@
-package manifest
+package manifeststore
 
 import (
 	"fmt"
@@ -14,13 +14,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 )
 
-const (
-	manifestKeyName   = "manifest"
-	versionKeyName    = "version"
-	sourceKeyName     = "source-description"
-	deploymentKeyName = "deployment-name"
+var (
+	manifestKeyName      = "manifest"
+	LabelVersionName     = fmt.Sprintf("%s/version", apis.GroupName)
+	LabelDeploymentName  = fmt.Sprintf("%s/deployment-name", apis.GroupName)
+	AnnotationSourceName = fmt.Sprintf("%s/source-description", apis.GroupName)
 )
 
 var _ Store = &StoreImpl{}
@@ -40,45 +41,41 @@ var _ Store = &StoreImpl{}
 // should explain the sources of the rendered manifest, e.g. the location of
 // the Custom Resource Definition that generated it.
 type Store interface {
-	Save(context.Context, bdm.Manifest, string) error
-	Delete(context.Context) error
-	Decorate(context.Context, string, string) error
-	List(context.Context) ([]*bdm.Manifest, error)
-	Find(context.Context, int) (*bdm.Manifest, error)
-	Latest(context.Context) (*bdm.Manifest, error)
-	VersionCount(context.Context) (int, error)
-	RetrieveVersionSecret(context.Context, int) (*corev1.Secret, error)
+	Save(ctx context.Context, namespace string, deploymentName string, manifest bdm.Manifest, sourceDescription string) error
+	RetrieveVersionSecret(ctx context.Context, namespace string, deploymentName string, version int) (*corev1.Secret, error)
+	Find(ctx context.Context, namespace string, deploymentName string, version int) (*bdm.Manifest, error)
+	Latest(ctx context.Context, namespace string, deploymentName string) (*bdm.Manifest, error)
+	List(ctx context.Context, namespace string, deploymentName string) ([]*bdm.Manifest, error)
+	VersionCount(ctx context.Context, namespace string, deploymentName string) (int, error)
+	Delete(ctx context.Context, namespace string, deploymentName string) error
+	Decorate(ctx context.Context, namespace string, deploymentName string, key string, value string) error
 }
 
 // StoreImpl contains the required fields to persist a manifest
 type StoreImpl struct {
-	client         client.Client
-	namespace      string
-	deploymentName string
+	client client.Client
 }
 
 // NewStore returns a Store implementation to be used
 // when working with desired manifest secrets
-func NewStore(client client.Client, namespace string, deploymentName string) StoreImpl {
+func NewStore(client client.Client) StoreImpl {
 	return StoreImpl{
 		client,
-		namespace,
-		deploymentName,
 	}
 }
 
 // Save creates a new version of the manifest if it already exists,
 // or a first one it not. A source description should explain the sources of
 // the rendered manifest, e.g. the location of the CRD that generated it
-func (p StoreImpl) Save(ctx context.Context, manifest bdm.Manifest, sourceDescription string) error {
-	currentVersion, err := p.getGreatestVersion(ctx)
+func (p StoreImpl) Save(ctx context.Context, namespace string, deploymentName string, manifest bdm.Manifest, sourceDescription string) error {
+	currentVersion, err := p.getGreatestVersion(ctx, namespace, deploymentName)
 	if err != nil {
 		return err
 	}
 
 	version := currentVersion + 1
 
-	secretName, err := secretName(p.deploymentName, version)
+	secretName, err := secretName(deploymentName, version)
 	if err != nil {
 		return err
 	}
@@ -91,13 +88,13 @@ func (p StoreImpl) Save(ctx context.Context, manifest bdm.Manifest, sourceDescri
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
-			Namespace: p.namespace,
+			Namespace: namespace,
 			Labels: map[string]string{
-				deploymentKeyName: p.deploymentName,
-				versionKeyName:    strconv.Itoa(version),
+				LabelDeploymentName: deploymentName,
+				LabelVersionName:    strconv.Itoa(version),
 			},
 			Annotations: map[string]string{
-				sourceKeyName: sourceDescription,
+				AnnotationSourceName: sourceDescription,
 			},
 		},
 		Data: map[string][]byte{
@@ -109,14 +106,14 @@ func (p StoreImpl) Save(ctx context.Context, manifest bdm.Manifest, sourceDescri
 }
 
 // RetrieveVersionSecret retrieves the k8s secret containing a manifest version
-func (p StoreImpl) RetrieveVersionSecret(ctx context.Context, version int) (*corev1.Secret, error) {
-	name, err := secretName(p.deploymentName, version)
+func (p StoreImpl) RetrieveVersionSecret(ctx context.Context, namespace string, deploymentName string, version int) (*corev1.Secret, error) {
+	name, err := secretName(deploymentName, version)
 	if err != nil {
 		return nil, err
 	}
 
 	secret := &corev1.Secret{}
-	err = p.client.Get(ctx, client.ObjectKey{Namespace: p.namespace, Name: name}, secret)
+	err = p.client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, secret)
 	if err != nil {
 		return nil, err
 	}
@@ -125,8 +122,8 @@ func (p StoreImpl) RetrieveVersionSecret(ctx context.Context, version int) (*cor
 }
 
 // Find returns a specific version of the manifest
-func (p StoreImpl) Find(ctx context.Context, version int) (*bdm.Manifest, error) {
-	secret, err := p.RetrieveVersionSecret(ctx, version)
+func (p StoreImpl) Find(ctx context.Context, namespace string, deploymentName string, version int) (*bdm.Manifest, error) {
+	secret, err := p.RetrieveVersionSecret(ctx, namespace, deploymentName, version)
 	if err != nil {
 		return nil, err
 	}
@@ -134,17 +131,17 @@ func (p StoreImpl) Find(ctx context.Context, version int) (*bdm.Manifest, error)
 }
 
 // Latest returns the latest version of the manifest
-func (p StoreImpl) Latest(ctx context.Context) (*bdm.Manifest, error) {
-	latestVersion, err := p.getGreatestVersion(ctx)
+func (p StoreImpl) Latest(ctx context.Context, namespace string, deploymentName string) (*bdm.Manifest, error) {
+	latestVersion, err := p.getGreatestVersion(ctx, namespace, deploymentName)
 	if err != nil {
 		return nil, err
 	}
-	return p.Find(ctx, latestVersion)
+	return p.Find(ctx, namespace, deploymentName, latestVersion)
 }
 
 // List returns all versions of the manifest
-func (p StoreImpl) List(ctx context.Context) ([]*bdm.Manifest, error) {
-	secrets, err := p.listSecrets(ctx)
+func (p StoreImpl) List(ctx context.Context, namespace string, deploymentName string) ([]*bdm.Manifest, error) {
+	secrets, err := p.listSecrets(ctx, namespace, deploymentName)
 	if err != nil {
 		return nil, err
 	}
@@ -160,55 +157,30 @@ func (p StoreImpl) List(ctx context.Context) ([]*bdm.Manifest, error) {
 	return manifests, nil
 }
 
-func (p StoreImpl) listSecrets(ctx context.Context) ([]corev1.Secret, error) {
-	secrets := &corev1.SecretList{}
-	if err := p.client.List(ctx, client.InNamespace(p.namespace), secrets); err != nil {
-		return nil, err
+// VersionCount returns the number of versions for this manifest
+func (p StoreImpl) VersionCount(ctx context.Context, namespace string, deploymentName string) (int, error) {
+	list, err := p.listSecrets(ctx, namespace, deploymentName)
+	if err != nil {
+		return 0, err
 	}
 
-	result := []corev1.Secret{}
-
-	nameRegex := regexp.MustCompile(fmt.Sprintf(`^deployment-%s-\d+$`, p.deploymentName))
-	for _, secret := range secrets.Items {
-		if nameRegex.MatchString(secret.Name) {
-			result = append(result, secret)
-		}
-	}
-
-	return result, nil
+	return len(list), nil
 }
 
-// Delete removes all versions of the manifest and therefore the
-// manifest itself.
-func (p StoreImpl) Delete(ctx context.Context) error {
-	list, err := p.listSecrets(ctx)
+// Decorate adds a label to the latest version of the manifest
+func (p StoreImpl) Decorate(ctx context.Context, namespace string, deploymentName string, key string, value string) error {
+	version, err := p.getGreatestVersion(ctx, namespace, deploymentName)
 	if err != nil {
 		return err
 	}
 
-	for _, secret := range list {
-		if err := p.client.Delete(ctx, &secret); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// Decorate adds a label to the lastest version of the manifest
-func (p StoreImpl) Decorate(ctx context.Context, key string, value string) error {
-	version, err := p.getGreatestVersion(ctx)
-	if err != nil {
-		return err
-	}
-
-	secretName, err := secretName(p.deploymentName, version)
+	secretName, err := secretName(deploymentName, version)
 	if err != nil {
 		return err
 	}
 
 	secret := &corev1.Secret{}
-	if err := p.client.Get(ctx, client.ObjectKey{Namespace: p.namespace, Name: secretName}, secret); err != nil {
+	if err := p.client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: secretName}, secret); err != nil {
 		return err
 	}
 
@@ -223,25 +195,51 @@ func (p StoreImpl) Decorate(ctx context.Context, key string, value string) error
 	return p.client.Update(ctx, secret)
 }
 
-// VersionCount returns the number of versions for this manifest
-func (p StoreImpl) VersionCount(ctx context.Context) (int, error) {
-	list, err := p.listSecrets(ctx)
+// Delete removes all versions of the manifest and therefore the
+// manifest itself.
+func (p StoreImpl) Delete(ctx context.Context, namespace string, deploymentName string) error {
+	list, err := p.listSecrets(ctx, namespace, deploymentName)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	return len(list), nil
+	for _, secret := range list {
+		if err := p.client.Delete(ctx, &secret); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func (p StoreImpl) getGreatestVersion(ctx context.Context) (int, error) {
-	list, err := p.listSecrets(ctx)
+func (p StoreImpl) listSecrets(ctx context.Context, namespace string, deploymentName string) ([]corev1.Secret, error) {
+	// TODO list by label selector
+	secrets := &corev1.SecretList{}
+	if err := p.client.List(ctx, client.InNamespace(namespace), secrets); err != nil {
+		return nil, err
+	}
+
+	result := []corev1.Secret{}
+
+	nameRegex := regexp.MustCompile(fmt.Sprintf(`^deployment-%s-\d+$`, deploymentName))
+	for _, secret := range secrets.Items {
+		if nameRegex.MatchString(secret.Name) {
+			result = append(result, secret)
+		}
+	}
+
+	return result, nil
+}
+
+func (p StoreImpl) getGreatestVersion(ctx context.Context, namespace string, deploymentName string) (int, error) {
+	list, err := p.listSecrets(ctx, namespace, deploymentName)
 	if err != nil {
 		return -1, err
 	}
 
 	var greatestVersion int
 	for _, secret := range list {
-		version, err := getVersionFromSecretName(p.deploymentName, secret.Name)
+		version, err := getVersionFromSecretName(deploymentName, secret.Name)
 		if err != nil {
 			return 0, err
 		}
