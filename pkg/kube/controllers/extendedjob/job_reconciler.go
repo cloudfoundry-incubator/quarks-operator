@@ -19,19 +19,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	ejapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	store "code.cloudfoundry.org/cf-operator/pkg/kube/util/store/manifest"
 )
 
 // NewJobReconciler returns a new Reconciler
 func NewJobReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, podLogGetter PodLogGetter) (reconcile.Reconciler, error) {
+	manifestStore := store.NewStore(mgr.GetClient(), bdm.DesiredManifestKeyName)
+
 	return &ReconcileJob{
 		ctx:          ctx,
 		config:       config,
 		client:       mgr.GetClient(),
 		podLogGetter: podLogGetter,
 		scheme:       mgr.GetScheme(),
+		manifestStore: manifestStore,
 	}, nil
 }
 
@@ -42,6 +47,7 @@ type ReconcileJob struct {
 	podLogGetter PodLogGetter
 	scheme       *runtime.Scheme
 	config       *config.Config
+	manifestStore store.Store
 }
 
 // Reconcile reads that state of the cluster for a Job object that is owned by an ExtendedJob and
@@ -176,30 +182,52 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 			return errors.Wrap(err, "invalid output format")
 		}
 
-		// TODO Should apply persisting manifest
 		// Create secret and persist the output
 		secretName := conf.NamePrefix + c.Name
-		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      secretName,
-				Namespace: instance.GetNamespace(),
-				Labels:    conf.SecretLabels,
-			},
-			StringData: data,
-		}
 
-		err = r.client.Get(ctx, types.NamespacedName{Name: secretName, Namespace: instance.GetNamespace()}, &corev1.Secret{})
-		if apierrors.IsNotFound(err) {
-			err = r.client.Create(ctx, secret)
+		if conf.ToBeVersioned {
+			// Check labels existing
+			if _, ok := conf.SecretLabels[store.LabelDeploymentName]; !ok {
+				return fmt.Errorf("secret labels doesn't contain %s", store.LabelDeploymentName)
+			}
+
+			// Use secretName as versioned secret name prefix: <secretName>-<version>
+			err = r.manifestStore.SaveSecretData(ctx, instance.GetNamespace(), secretName, data, conf.SecretLabels, "created by extendedJob")
 			if err != nil {
 				return errors.Wrap(err, "could not create secret")
 			}
 		} else {
-			err = r.client.Update(ctx, secret)
+			err = r.upsertSecret(ctx, instance.GetNamespace(), secretName, data, conf.SecretLabels)
 			if err != nil {
-				return errors.Wrap(err, "could not update secret")
+				return err
 			}
 		}
 	}
+	return nil
+}
+
+func (r *ReconcileJob) upsertSecret(ctx context.Context, namespace string, secretName string, data map[string]string, labels map[string]string) error {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: namespace,
+			Labels:    labels,
+		},
+		StringData: data,
+	}
+
+	err := r.client.Get(ctx, types.NamespacedName{Name: secretName, Namespace: namespace}, &corev1.Secret{})
+	if apierrors.IsNotFound(err) {
+		err = r.client.Create(ctx, secret)
+		if err != nil {
+			return errors.Wrap(err, "could not create secret")
+		}
+	} else {
+		err = r.client.Update(ctx, secret)
+		if err != nil {
+			return errors.Wrap(err, "could not update secret")
+		}
+	}
+
 	return nil
 }

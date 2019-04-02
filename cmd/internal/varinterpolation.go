@@ -14,6 +14,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
+
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
 type initCmd struct {
@@ -145,7 +147,7 @@ func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string)
 	}
 
 	jsonBytes, err := json.Marshal(map[string]string{
-		"manifest.yaml": string(yamlBytes),
+		bdm.DesiredManifestKeyName: string(yamlBytes),
 	})
 	if err != nil {
 		return errors.Wrapf(err, "could not marshal json output")

@@ -86,6 +86,7 @@ type Output struct {
 	OutputType     string            `json:"outputType,omitempty"` // only json is supported for now
 	SecretLabels   map[string]string `json:"secretLabels,omitempty"`
 	WriteOnFailure bool              `json:"writeOnFailure,omitempty"`
+	ToBeVersioned  bool              `json:"toBeVersioned,omitempty"`
 }
 
 // ExtendedJobStatus defines the observed state of ExtendedJob
@@ -125,4 +126,3 @@ func (e *ExtendedJob) ToBeDeleted() bool {
 func (e *ExtendedJob) IsAutoErrand() bool {
 	return e.Spec.Trigger.Strategy == TriggerOnce || e.Spec.Trigger.Strategy == TriggerDone
 }
-
