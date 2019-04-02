@@ -190,13 +190,13 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		// We need BPM information to start everything up
 		bpmInfo, err := r.waitForBPM(ctx, instance, manifest, &kubeConfigs)
 		if err != nil {
-			r.log.Info("Waiting from BPM: %s", err.Error())
+			ctxlog.Info(ctx, "Waiting from BPM: %s", err.Error())
 			return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, err
 		}
 
 		err = manifest.ApplyBPMInfo(&kubeConfigs, bpmInfo)
 		if err != nil {
-			r.log.Errorf("Failed to apply BPM information: %v", err)
+			ctxlog.Errorf(ctx, "Failed to apply BPM information: %v", err)
 			return reconcile.Result{}, err
 		}
 
