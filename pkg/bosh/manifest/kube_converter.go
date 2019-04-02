@@ -24,6 +24,8 @@ const (
 	// VarInterpolationContainerName is the name of the container that performs
 	// variable interpolation for a manifest
 	VarInterpolationContainerName = "interpolation"
+	// DesiredManifestKeyName is the name of the key in desired manifest secret
+	DesiredManifestKeyName = "manifest.yaml"
 )
 
 var (
@@ -212,7 +214,7 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 							Env: []v1.EnvVar{
 								{
 									Name:  "BOSH_MANIFEST_PATH",
-									Value: "/var/run/secrets/deployment/manifest.yaml",
+									Value: "/var/run/secrets/deployment/" + DesiredManifestKeyName,
 								},
 								{
 									Name:  "VARIABLES_DIR",
@@ -231,6 +233,7 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 					bdv1.LabelDeployment:   m.Name,
 					bdv1.LabelManifestSHA1: manifestSignature,
 				},
+				ToBeVersioned: true,
 			},
 			Trigger: ejv1.Trigger{
 				Strategy: ejv1.TriggerOnce,
@@ -323,7 +326,7 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 			Env: []v1.EnvVar{
 				{
 					Name:  "BOSH_MANIFEST_PATH",
-					Value: "/var/run/secrets/deployment/manifest.yaml",
+					Value: "/var/run/secrets/deployment/" + DesiredManifestKeyName,
 				},
 				{
 					Name:  "KUBERNETES_NAMESPACE",

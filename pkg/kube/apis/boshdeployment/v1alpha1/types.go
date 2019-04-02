@@ -19,7 +19,6 @@ const (
 	ConfigMapType           string = "configmap"
 	SecretType              string = "secret"
 	URLType                 string = "url"
-	InterpolatedManifestKey string = "interpolated-manifest.yaml"
 )
 
 var (
