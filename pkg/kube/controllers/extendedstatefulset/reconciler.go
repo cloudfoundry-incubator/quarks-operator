@@ -1,6 +1,7 @@
 package extendedstatefulset
 
 import (
+	"context"
 	"crypto/sha1"
 	"encoding/json"
 	"fmt"
@@ -10,7 +11,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
+
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -25,7 +26,8 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 )
@@ -59,27 +61,24 @@ type Owner interface {
 }
 
 // NewReconciler returns a new reconcile.Reconciler
-func NewReconciler(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager, srf setReferenceFunc) reconcile.Reconciler {
-	reconcilerLog := log.Named("extendedstatefulset-reconciler")
-	reconcilerLog.Info("Creating a reconciler for ExtendedStatefulSet")
-
+func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, srf setReferenceFunc) reconcile.Reconciler {
 	return &ReconcileExtendedStatefulSet{
-		log:          reconcilerLog,
-		ctrConfig:    ctrConfig,
+		ctx:          ctx,
+		config:       config,
 		client:       mgr.GetClient(),
 		scheme:       mgr.GetScheme(),
 		setReference: srf,
-		owner:        owner.NewOwner(mgr.GetClient(), reconcilerLog, mgr.GetScheme()),
+		owner:        owner.NewOwner(mgr.GetClient(), mgr.GetScheme()),
 	}
 }
 
 // ReconcileExtendedStatefulSet reconciles an ExtendedStatefulSet object
 type ReconcileExtendedStatefulSet struct {
+	ctx          context.Context
 	client       client.Client
 	scheme       *runtime.Scheme
 	setReference setReferenceFunc
-	log          *zap.SugaredLogger
-	ctrConfig    *context.Config
+	config       *config.Config
 	owner        Owner
 }
 
@@ -89,22 +88,21 @@ type ReconcileExtendedStatefulSet struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	r.log.Info("Reconciling ExtendedStatefulSet ", request.NamespacedName)
-
 	// Fetch the ExtendedStatefulSet we need to reconcile
 	exStatefulSet := &essv1a1.ExtendedStatefulSet{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
-	ctx, cancel := context.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
+	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()
 
+	ctxlog.Info(ctx, "Reconciling ExtendedStatefulSet ", request.NamespacedName)
 	err := r.client.Get(ctx, request.NamespacedName, exStatefulSet)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			r.log.Debug("Skip reconcile: ExtendedStatefulSet not found")
+			ctxlog.Debug(ctx, "Skip reconcile: ExtendedStatefulSet not found")
 			return reconcile.Result{}, nil
 		}
 
@@ -114,7 +112,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 
 	// Clean up exStatefulSet
 	if exStatefulSet.ToBeDeleted() {
-		r.log.Debug("ExtendedStatefulSet '", exStatefulSet.Name, "' instance marked for deletion. Clean up process.")
+		ctxlog.Debug(ctx, "ExtendedStatefulSet '", exStatefulSet.Name, "' instance marked for deletion. Clean up process.")
 		return r.handleDelete(ctx, exStatefulSet)
 	}
 
@@ -123,14 +121,14 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	// Get the actual StatefulSet
 	actualStatefulSet, actualVersion, err := r.getActualStatefulSet(ctx, exStatefulSet)
 	if err != nil {
-		r.log.Error("Could not retrieve latest StatefulSet owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+		ctxlog.Error(ctx, "Could not retrieve latest StatefulSet owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 		return reconcile.Result{}, err
 	}
 
 	// Calculate the desired statefulSets
 	desiredStatefulSets, desiredVersion, err := r.calculateDesiredStatefulSets(exStatefulSet, actualStatefulSet)
 	if err != nil {
-		r.log.Error("Could not calculate StatefulSet owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+		ctxlog.Error(ctx, "Could not calculate StatefulSet owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 		return reconcile.Result{}, err
 	}
 
@@ -138,19 +136,19 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		// If actual version is zero, there is no StatefulSet live
 		if actualVersion != desiredVersion {
 			// If it doesn't exist, create it
-			r.log.Info("StatefulSet '", desiredStatefulSet.Name, "' owned by ExtendedStatefulSet '", request.NamespacedName, "' not found, will be created.")
+			ctxlog.Info(ctx, "StatefulSet '", desiredStatefulSet.Name, "' owned by ExtendedStatefulSet '", request.NamespacedName, "' not found, will be created.")
 
 			// Record the template before creating the StatefulSet, so we don't include default values such as
 			// `ImagePullPolicy`, `TerminationMessagePath`, etc. in the signature.
 			originalTemplate := exStatefulSet.Spec.Template.DeepCopy()
 			if err := r.createStatefulSet(ctx, exStatefulSet, &desiredStatefulSet); err != nil {
-				r.log.Error("Could not create StatefulSet for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+				ctxlog.Error(ctx, "Could not create StatefulSet for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 				return reconcile.Result{}, err
 			}
 			exStatefulSet.Spec.Template = *originalTemplate
 		} else {
 			// If it does exist, do a deep equal and check that we own it
-			r.log.Info("StatefulSet '", desiredStatefulSet.Name, "' owned by ExtendedStatefulSet '", request.NamespacedName, "' has not changed, checking if any other changes are necessary.")
+			ctxlog.Info(ctx, "StatefulSet '", desiredStatefulSet.Name, "' owned by ExtendedStatefulSet '", request.NamespacedName, "' has not changed, checking if any other changes are necessary.")
 		}
 	}
 
@@ -161,23 +159,23 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 
 	// Update StatefulSets configSHA1 and trigger statefulSet rollingUpdate if necessary
 	if exStatefulSet.Spec.UpdateOnEnvChange {
-		r.log.Debugf("Considering configurations to trigger update.")
+		ctxlog.Debugf(ctx, "Considering configurations to trigger update.")
 
 		err = r.updateStatefulSetsConfigSHA1(ctx, exStatefulSet)
 		if err != nil {
 			// TODO fix the object has been modified
-			r.log.Error("Could not update StatefulSets owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+			ctxlog.Error(ctx, "Could not update StatefulSets owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, err
 		}
 	}
 
 	// Update the status of the resource
 	if !reflect.DeepEqual(statefulSetVersions, exStatefulSet.Status.Versions) {
-		r.log.Debugf("Updating ExtendedStatefulSet '%s'", request.NamespacedName)
+		ctxlog.Debugf(ctx, "Updating ExtendedStatefulSet '%s'", request.NamespacedName)
 		exStatefulSet.Status.Versions = statefulSetVersions
 		updateErr := r.client.Update(ctx, exStatefulSet)
 		if updateErr != nil {
-			r.log.Errorf("Failed to update exStatefulSet status: %v", updateErr)
+			ctxlog.Errorf(ctx, "Failed to update exStatefulSet status: %v", updateErr)
 		}
 	}
 
@@ -187,18 +185,18 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		// Cleanup versions smaller than the max available version
 		err = r.cleanupStatefulSets(ctx, exStatefulSet, maxAvailableVersion, &statefulSetVersions)
 		if err != nil {
-			r.log.Error("Could not cleanup StatefulSets owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+			ctxlog.Error(ctx, "Could not cleanup StatefulSets owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 			return reconcile.Result{}, err
 		}
 	}
 
 	if !statefulSetVersions[desiredVersion] {
-		r.log.Debug("Waiting for the desired version to become available for ExtendedStatefulSet ", request.NamespacedName)
+		ctxlog.Debug(ctx, "Waiting for the desired version to become available for ExtendedStatefulSet ", request.NamespacedName)
 		return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, nil
 	}
 
 	// Reconcile stops since only one version or no version exists.
-	r.log.Debug("Version '", desiredVersion, "' is available")
+	ctxlog.Debug(ctx, "Version '", desiredVersion, "' is available")
 	return reconcile.Result{}, nil
 }
 
@@ -227,7 +225,6 @@ func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSets(exStatefulSe
 
 	if len(exStatefulSet.Spec.Zones) > 0 {
 		for zoneIndex, zoneName := range exStatefulSet.Spec.Zones {
-			r.log.Debugf("Generating a template for zone '%d/%s'", zoneIndex, zoneName)
 			statefulSet, err := r.generateSingleStatefulSet(exStatefulSet, &template, zoneIndex, zoneName, desiredVersion, templateSHA1)
 			if err != nil {
 				return desiredStatefulSets, desiredVersion, errors.Wrapf(err, "Could not generate StatefulSet template for AZ '%d/%s'", zoneIndex, zoneName)
@@ -236,7 +233,6 @@ func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSets(exStatefulSe
 		}
 
 	} else {
-		r.log.Debug("Generating a template for single zone")
 		statefulSet, err := r.generateSingleStatefulSet(exStatefulSet, &template, -1, "", desiredVersion, templateSHA1)
 		if err != nil {
 			return desiredStatefulSets, desiredVersion, errors.Wrap(err, "Could not generate StatefulSet template for single zone")
@@ -260,7 +256,7 @@ func (r *ReconcileExtendedStatefulSet) createStatefulSet(ctx context.Context, ex
 
 	// Set the owner of the StatefulSet, so it's garbage collected,
 	// and we can find it later
-	r.log.Info("Setting owner for StatefulSet '", statefulSet.Name, "' to ExtendedStatefulSet '", exStatefulSet.Name, "' in namespace '", exStatefulSet.Namespace, "'.")
+	ctxlog.Info(ctx, "Setting owner for StatefulSet '", statefulSet.Name, "' to ExtendedStatefulSet '", exStatefulSet.Name, "' in namespace '", exStatefulSet.Namespace, "'.")
 	if err := r.setReference(exStatefulSet, statefulSet, r.scheme); err != nil {
 		return errors.Wrapf(err, "could not set owner for StatefulSet '%s' to ExtendedStatefulSet '%s' in namespace '%s'", statefulSet.Name, exStatefulSet.Name, exStatefulSet.Namespace)
 	}
@@ -270,14 +266,14 @@ func (r *ReconcileExtendedStatefulSet) createStatefulSet(ctx context.Context, ex
 		return errors.Wrapf(err, "could not create StatefulSet '%s' for ExtendedStatefulSet '%s' in namespace '%s'", statefulSet.Name, exStatefulSet.Name, exStatefulSet.Namespace)
 	}
 
-	r.log.Info("Created StatefulSet '", statefulSet.Name, "' for ExtendedStatefulSet '", exStatefulSet.Name, "' in namespace '", exStatefulSet.Namespace, "'.")
+	ctxlog.Info(ctx, "Created StatefulSet '", statefulSet.Name, "' for ExtendedStatefulSet '", exStatefulSet.Name, "' in namespace '", exStatefulSet.Namespace, "'.")
 
 	return nil
 }
 
 // cleanupStatefulSets cleans up StatefulSets and versions if they are no longer required
 func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet, maxAvailableVersion int, versions *map[int]bool) error {
-	r.log.Infof("Cleaning up StatefulSets for ExtendedStatefulSet '%s' less than version %d.", exStatefulSet.Name, maxAvailableVersion)
+	ctxlog.Infof(ctx, "Cleaning up StatefulSets for ExtendedStatefulSet '%s' less than version %d.", exStatefulSet.Name, maxAvailableVersion)
 
 	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
 	if err != nil {
@@ -285,7 +281,7 @@ func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, 
 	}
 
 	for _, statefulSet := range statefulSets {
-		r.log.Debug("Considering StatefulSet '", statefulSet.Name, "' for cleanup.")
+		ctxlog.Debug(ctx, "Considering StatefulSet '", statefulSet.Name, "' for cleanup.")
 
 		strVersion, found := statefulSet.Annotations[essv1a1.AnnotationVersion]
 		if !found {
@@ -301,10 +297,10 @@ func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, 
 			continue
 		}
 
-		r.log.Debugf("Deleting StatefulSet '%s'", statefulSet.Name)
+		ctxlog.Debugf(ctx, "Deleting StatefulSet '%s'", statefulSet.Name)
 		err = r.client.Delete(ctx, &statefulSet, client.PropagationPolicy(metav1.DeletePropagationBackground))
 		if err != nil {
-			r.log.Error("Could not delete StatefulSet  '", statefulSet.Name, "': ", err)
+			ctxlog.Error(ctx, "Could not delete StatefulSet  '", statefulSet.Name, "': ", err)
 			return err
 		}
 
@@ -316,7 +312,7 @@ func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, 
 
 // listStatefulSets gets all StatefulSets owned by the ExtendedStatefulSet
 func (r *ReconcileExtendedStatefulSet) listStatefulSets(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) ([]v1beta2.StatefulSet, error) {
-	r.log.Debug("Listing StatefulSets owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
+	ctxlog.Debug(ctx, "Listing StatefulSets owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
 
 	result := []v1beta2.StatefulSet{}
 
@@ -337,9 +333,9 @@ func (r *ReconcileExtendedStatefulSet) listStatefulSets(ctx context.Context, exS
 	for _, statefulSet := range allStatefulSets.Items {
 		if metav1.IsControlledBy(&statefulSet, exStatefulSet) {
 			result = append(result, statefulSet)
-			r.log.Debug("StatefulSet '", statefulSet.Name, "' owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
+			ctxlog.Debug(ctx, "StatefulSet '", statefulSet.Name, "' owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
 		} else {
-			r.log.Debug("StatefulSet '", statefulSet.Name, "' is not owned by ExtendedStatefulSet '", exStatefulSet.Name, "', ignoring.")
+			ctxlog.Debug(ctx, "StatefulSet '", statefulSet.Name, "' is not owned by ExtendedStatefulSet '", exStatefulSet.Name, "', ignoring.")
 		}
 	}
 
@@ -348,7 +344,7 @@ func (r *ReconcileExtendedStatefulSet) listStatefulSets(ctx context.Context, exS
 
 // getActualStatefulSet gets the latest (by version) StatefulSet owned by the ExtendedStatefulSet
 func (r *ReconcileExtendedStatefulSet) getActualStatefulSet(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) (*v1beta2.StatefulSet, int, error) {
-	r.log.Debug("Listing StatefulSets owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
+	ctxlog.Debug(ctx, "Listing StatefulSets owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
 
 	// Default response is an empty StatefulSet with version '0' and an empty signature
 	result := &v1beta2.StatefulSet{
@@ -436,7 +432,7 @@ func (r *ReconcileExtendedStatefulSet) isStatefulSetReady(ctx context.Context, s
 	for _, pod := range podList.Items {
 		if metav1.IsControlledBy(&pod, statefulSet) {
 			if podUtils.IsPodReady(&pod) {
-				r.log.Debug("Pod '", statefulSet.Name, "' owned by StatefulSet '", statefulSet.Name, "' is running.")
+				ctxlog.Debug(ctx, "Pod '", statefulSet.Name, "' owned by StatefulSet '", statefulSet.Name, "' is running.")
 				return true, nil
 			}
 		}
@@ -453,7 +449,7 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 	}
 
 	for _, statefulSet := range statefulSets {
-		r.log.Debug("Getting all ConfigMaps and Secrets that are referenced in '", statefulSet.Name, "' Spec.")
+		ctxlog.Debug(ctx, "Getting all ConfigMaps and Secrets that are referenced in '", statefulSet.Name, "' Spec.")
 
 		namespace := statefulSet.GetNamespace()
 
@@ -475,7 +471,7 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 		// determines which children need to have their OwnerReferences added/updated
 		// and which need to have their OwnerReferences removed and then performs all
 		// updates
-		r.log.Debug("Updating ownerReferences for StatefulSet '", exStatefulSet.Name, "' in namespace '", exStatefulSet.Namespace, "'.")
+		ctxlog.Debug(ctx, "Updating ownerReferences for StatefulSet '", exStatefulSet.Name, "' in namespace '", exStatefulSet.Namespace, "'.")
 
 		err = r.owner.Update(ctx, exStatefulSet, existingConfigs, currentConfigRef)
 		if err != nil {
@@ -486,7 +482,7 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 
 		// If the current config sha doesn't match the existing config sha, update it
 		if currentsha != oldsha {
-			r.log.Debug("StatefulSet '", statefulSet.Name, "' configuration has changed.")
+			ctxlog.Debug(ctx, "StatefulSet '", statefulSet.Name, "' configuration has changed.")
 
 			err = r.updateConfigSHA1(ctx, &statefulSet, currentsha)
 			if err != nil {
@@ -497,7 +493,7 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 
 	// Add the object's Finalizer and update if necessary
 	if !finalizer.HasFinalizer(exStatefulSet) {
-		r.log.Debug("Adding Finalizer to ExtendedStatefulSet '", exStatefulSet.Name, "'.")
+		ctxlog.Debug(ctx, "Adding Finalizer to ExtendedStatefulSet '", exStatefulSet.Name, "'.")
 		// Fetch latest ExtendedStatefulSet before update
 		key := types.NamespacedName{Namespace: exStatefulSet.GetNamespace(), Name: exStatefulSet.GetName()}
 		err := r.client.Get(ctx, key, exStatefulSet)
@@ -509,7 +505,7 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 
 		err = r.client.Update(ctx, exStatefulSet)
 		if err != nil {
-			r.log.Error("Could not add finalizer from ExtendedStatefulSet '", exStatefulSet.GetName(), "': ", err)
+			ctxlog.Error(ctx, "Could not add finalizer from ExtendedStatefulSet '", exStatefulSet.GetName(), "': ", err)
 			return err
 		}
 	}
@@ -573,7 +569,7 @@ func (r *ReconcileExtendedStatefulSet) updateConfigSHA1(ctx context.Context, act
 		annotations[essv1a1.AnnotationConfigSHA1] = hash
 		actualStatefulSet.Spec.Template.SetAnnotations(annotations)
 
-		r.log.Debug("Updating new config sha1 for StatefulSet '", actualStatefulSet.GetName(), "'.")
+		ctxlog.Debug(ctx, "Updating new config sha1 for StatefulSet '", actualStatefulSet.GetName(), "'.")
 		err = r.client.Update(ctx, actualStatefulSet)
 		if err == nil || !strings.Contains(err.Error(), OptimisticLockErrorMsg) {
 			break
@@ -589,19 +585,19 @@ func (r *ReconcileExtendedStatefulSet) updateConfigSHA1(ctx context.Context, act
 // handleDelete removes all existing Owner References pointing to ExtendedStatefulSet
 // and object's Finalizers
 func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extendedStatefulSet *essv1a1.ExtendedStatefulSet) (reconcile.Result, error) {
-	r.log.Debug("Considering existing Owner References of ExtendedStatefulSet '", extendedStatefulSet.Name, "'.")
+	ctxlog.Debug(ctx, "Considering existing Owner References of ExtendedStatefulSet '", extendedStatefulSet.Name, "'.")
 
 	// Fetch all ConfigMaps and Secrets with an OwnerReference pointing to the object
 	existingConfigs, err := r.owner.ListConfigsOwnedBy(ctx, extendedStatefulSet)
 	if err != nil {
-		r.log.Error("Could not retrieve all ConfigMaps and Secrets owned by ExtendedStatefulSet '", extendedStatefulSet.Name, "': ", err)
+		ctxlog.Error(ctx, "Could not retrieve all ConfigMaps and Secrets owned by ExtendedStatefulSet '", extendedStatefulSet.Name, "': ", err)
 		return reconcile.Result{}, err
 	}
 
 	// Remove StatefulSet OwnerReferences from the existingConfigs
 	err = r.owner.RemoveOwnerReferences(ctx, extendedStatefulSet, existingConfigs)
 	if err != nil {
-		r.log.Error("Could not remove OwnerReferences pointing to ExtendedStatefulSet '", extendedStatefulSet.Name, "': ", err)
+		ctxlog.Error(ctx, "Could not remove OwnerReferences pointing to ExtendedStatefulSet '", extendedStatefulSet.Name, "': ", err)
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, err
 	}
 
@@ -609,7 +605,7 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extende
 	copy := extendedStatefulSet.DeepCopy()
 	finalizer.RemoveFinalizer(copy)
 	if !reflect.DeepEqual(extendedStatefulSet, copy) {
-		r.log.Debug("Removing finalizer from ExtendedStatefulSet '", copy.Name, "'.")
+		ctxlog.Debug(ctx, "Removing finalizer from ExtendedStatefulSet '", copy.Name, "'.")
 		key := types.NamespacedName{Namespace: copy.GetNamespace(), Name: copy.GetName()}
 		err := r.client.Get(ctx, key, copy)
 		if err != nil {
@@ -620,7 +616,7 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extende
 
 		err = r.client.Update(ctx, copy)
 		if err != nil {
-			r.log.Error("Could not remove finalizer from ExtendedStatefulSet '", copy.GetName(), "': ", err)
+			ctxlog.Error(ctx, "Could not remove finalizer from ExtendedStatefulSet '", copy.GetName(), "': ", err)
 			return reconcile.Result{}, err
 		}
 	}

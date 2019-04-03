@@ -1,10 +1,8 @@
 package extendedjob
 
 import (
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 )
@@ -18,14 +16,12 @@ type Query interface {
 }
 
 // NewQuery returns a new Query struct
-func NewQuery(c client.Client, log *zap.SugaredLogger) *QueryImpl {
-	return &QueryImpl{client: c, log: log}
+func NewQuery() *QueryImpl {
+	return &QueryImpl{}
 }
 
 // QueryImpl implements the query interface
 type QueryImpl struct {
-	client client.Client
-	log    *zap.SugaredLogger
 }
 
 // Match pod against label whitelist from extended job
@@ -42,7 +38,7 @@ func (q *QueryImpl) Match(extJob ejv1.ExtendedJob, pod corev1.Pod) bool {
 	for _, exp := range matchExpressions {
 		requirement, err := labels.NewRequirement(exp.Key, exp.Operator, exp.Values)
 		if err != nil {
-			q.log.Errorf("Error converting requirement '%#v': %s", exp, err)
+			// q.log.Errorf("Error converting requirement '%#v': %s", exp, err)
 		} else if !requirement.Matches(podLabelsSet) {
 			return false
 		}

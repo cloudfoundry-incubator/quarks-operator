@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-	"go.uber.org/zap/zaptest/observer"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -18,6 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -27,9 +27,9 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	cfctx "code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	cfcfg "code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	ctxlog "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 )
 
 var _ = Describe("ReconcileBoshDeployment", func() {
@@ -41,7 +41,8 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		resolver   fakes.FakeResolver
 		manifest   *bdm.Manifest
 		log        *zap.SugaredLogger
-		ctrsConfig *cfctx.Config
+		config     *cfcfg.Config
+		ctx        context.Context
 	)
 
 	BeforeEach(func() {
@@ -89,17 +90,14 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				},
 			},
 		}
-		core, _ := observer.New(zapcore.InfoLevel)
-		ctrsConfig = &cfctx.Config{ //Set the context to be TODO
-			CtxTimeOut: 10 * time.Second,
-			CtxType:    cfctx.NewContext(),
-		}
-		log = zap.New(core).Sugar()
+		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
+		_, log = helper.NewTestLogger()
+		ctx = ctxlog.NewManagerContext(log)
 	})
 
 	JustBeforeEach(func() {
 		resolver.ResolveManifestReturns(manifest, nil)
-		reconciler = cfd.NewReconciler(log, ctrsConfig, manager, &resolver, controllerutil.SetControllerReference)
+		reconciler = cfd.NewReconciler(ctx, config, manager, &resolver, controllerutil.SetControllerReference)
 	})
 
 	Describe("Reconcile", func() {
@@ -187,11 +185,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles errors when setting the owner reference on the object", func() {
-				ctrsConfig := &cfctx.Config{ //Set the context to be TODO
-					CtxTimeOut: 10 * time.Second,
-					CtxType:    cfctx.NewContext(),
-				}
-				reconciler = cfd.NewReconciler(log, ctrsConfig, manager, &resolver, func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+				reconciler = cfd.NewReconciler(ctx, config, manager, &resolver, func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return fmt.Errorf("failed to set reference")
 				})
 

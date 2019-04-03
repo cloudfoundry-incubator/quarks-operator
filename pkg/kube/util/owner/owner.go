@@ -1,14 +1,11 @@
 package owner
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
-
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,6 +13,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
 // Owner helps managing ownership of configmaps and secrets, which are
@@ -23,18 +23,15 @@ import (
 type Owner struct {
 	client client.Client
 	scheme *runtime.Scheme
-	log    *zap.SugaredLogger
 }
 
 // NewOwner returns a newly initialized owner
 func NewOwner(
 	client client.Client,
-	log *zap.SugaredLogger,
 	scheme *runtime.Scheme,
 ) Owner {
 	return Owner{
 		client: client,
-		log:    log,
 		scheme: scheme,
 	}
 }
@@ -101,10 +98,10 @@ func (r Owner) RemoveOwnerReferences(ctx context.Context, owner apis.Object, chi
 		// Compare the ownerRefs and update if they have changed
 		if !reflect.DeepEqual(ownerRefs, child.GetOwnerReferences()) {
 			child.SetOwnerReferences(ownerRefs)
-			r.log.Debugf("Removing child '%T/%s' from '%s' in '%s'", child, child.GetName(), owner.GetName(), child.GetNamespace())
+			ctxlog.Debugf(ctx, "Removing child '%T/%s' from '%s' in '%s'", child, child.GetName(), owner.GetName(), child.GetNamespace())
 			err := r.client.Update(ctx, child)
 			if err != nil {
-				r.log.Debugf("child '%v' vs ownerrefs '%v'", child.GetUID(), ownerRefs)
+				ctxlog.Debugf(ctx, "child '%v' vs ownerrefs '%v'", child.GetUID(), ownerRefs)
 				return errors.Wrapf(err, "failed to update '%s'", child.GetName())
 			}
 		}
@@ -121,7 +118,7 @@ func (r Owner) updateOwnerReference(ctx context.Context, ownerRef metav1.OwnerRe
 			return nil
 		}
 	}
-	r.log.Debugf("Updating child '%T/%s' for owner '%s'", child, child.GetName(), ownerRef.Name)
+	ctxlog.Debugf(ctx, "Updating child '%T/%s' for owner '%s'", child, child.GetName(), ownerRef.Name)
 
 	// Append the new OwnerReference and update the child
 	ownerRefs := append(child.GetOwnerReferences(), ownerRef)
@@ -267,7 +264,7 @@ func GetConfigNamesFromSpec(spec corev1.PodSpec) (map[string]struct{}, map[strin
 // ListConfigsOwnedBy returns a list of all ConfigMaps and Secrets that are
 // owned by the instance
 func (r Owner) ListConfigsOwnedBy(ctx context.Context, owner apis.Object) ([]apis.Object, error) {
-	r.log.Debug("Getting all ConfigMaps and Secrets that are owned by '", owner.GetName(), "'.")
+	ctxlog.Debug(ctx, "Getting all ConfigMaps and Secrets that are owned by '", owner.GetName(), "'.")
 	opts := client.InNamespace(owner.GetNamespace())
 
 	// List all ConfigMaps in the owner's namespace

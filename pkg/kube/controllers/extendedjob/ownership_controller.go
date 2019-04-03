@@ -1,12 +1,7 @@
 package extendedjob
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
-	eowner "code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
-	"go.uber.org/zap"
+	"context"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,6 +14,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
+	eowner "code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 )
 
 // Owner interface to manage ownership on configs and secrets
@@ -29,10 +31,10 @@ type Owner interface {
 }
 
 // AddOwnership creates a new ExtendedJob controller to update ownership on configs for auto errands.
-func AddOwnership(log *zap.SugaredLogger, config *context.Config, mgr manager.Manager) error {
-	l := log.Named("ext-job-owner-reconciler")
-	owner := eowner.NewOwner(mgr.GetClient(), l, mgr.GetScheme())
-	r := NewOwnershipReconciler(l, config, mgr, controllerutil.SetControllerReference, owner)
+func AddOwnership(ctx context.Context, config *config.Config, mgr manager.Manager) error {
+	ctx = ctxlog.NewReconcilerContext(ctx, "ext-job-owner-reconciler")
+	owner := eowner.NewOwner(mgr.GetClient(), mgr.GetScheme())
+	r := NewOwnershipReconciler(ctx, config, mgr, controllerutil.SetControllerReference, owner)
 	c, err := controller.New("ext-job-owner-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
@@ -55,14 +57,13 @@ func AddOwnership(log *zap.SugaredLogger, config *context.Config, mgr manager.Ma
 	}
 
 	// pick up new configs which are referenced by an extended job
-	ctx, _ := context.NewBackgroundContextWithTimeout(config.CtxType, config.CtxTimeOut)
 	p = predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*corev1.ConfigMap)
 
 			reconcile, err := hasConfigReferences(ctx, mgr.GetClient(), *o)
 			if err != nil {
-				log.Errorf("Failed to query extended jobs: %s", err)
+				ctxlog.Errorf(ctx, "Failed to query extended jobs: %s", err)
 			}
 
 			return reconcile
@@ -74,7 +75,7 @@ func AddOwnership(log *zap.SugaredLogger, config *context.Config, mgr manager.Ma
 
 	mapConfigs := handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 		configMap := a.Object.(*corev1.ConfigMap)
-		return reconcilesForConfigMap(ctx, mgr, log, *configMap)
+		return reconcilesForConfigMap(ctx, mgr, *configMap)
 	})
 
 	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestsFromMapFunc{ToRequests: mapConfigs}, p)
@@ -89,7 +90,7 @@ func AddOwnership(log *zap.SugaredLogger, config *context.Config, mgr manager.Ma
 
 			reconcile, err := hasSecretReferences(ctx, mgr.GetClient(), *o)
 			if err != nil {
-				log.Errorf("Failed to query extended jobs: %s", err)
+				ctxlog.Errorf(ctx, "Failed to query extended jobs: %s", err)
 			}
 
 			return reconcile
@@ -101,7 +102,7 @@ func AddOwnership(log *zap.SugaredLogger, config *context.Config, mgr manager.Ma
 
 	mapSecrets := handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 		secret := a.Object.(*corev1.Secret)
-		return reconcilesForSecret(ctx, mgr, log, *secret)
+		return reconcilesForSecret(ctx, mgr, *secret)
 	})
 
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{ToRequests: mapSecrets}, p)
@@ -161,7 +162,7 @@ func hasSecretReferences(ctx context.Context, c client.Client, o corev1.Secret) 
 	return false, nil
 }
 
-func reconcilesForConfigMap(ctx context.Context, mgr manager.Manager, log *zap.SugaredLogger, configMap corev1.ConfigMap) []reconcile.Request {
+func reconcilesForConfigMap(ctx context.Context, mgr manager.Manager, configMap corev1.ConfigMap) []reconcile.Request {
 	reconciles := []reconcile.Request{}
 
 	extJobs := &ejv1.ExtendedJobList{}
@@ -173,7 +174,6 @@ func reconcilesForConfigMap(ctx context.Context, mgr manager.Manager, log *zap.S
 	for _, extJob := range extJobs.Items {
 		configMapNames, _ := eowner.GetConfigNamesFromSpec(extJob.Spec.Template.Spec)
 		if _, ok := configMapNames[configMap.GetName()]; ok {
-			log.Debugf("==== RECONCILE WANT: %s <- %s", configMap.GetName(), extJob.GetName())
 			reconciles = append(reconciles, reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      extJob.GetName(),
@@ -186,7 +186,7 @@ func reconcilesForConfigMap(ctx context.Context, mgr manager.Manager, log *zap.S
 	return reconciles
 }
 
-func reconcilesForSecret(ctx context.Context, mgr manager.Manager, log *zap.SugaredLogger, secret corev1.Secret) []reconcile.Request {
+func reconcilesForSecret(ctx context.Context, mgr manager.Manager, secret corev1.Secret) []reconcile.Request {
 	reconciles := []reconcile.Request{}
 
 	extJobs := &ejv1.ExtendedJobList{}

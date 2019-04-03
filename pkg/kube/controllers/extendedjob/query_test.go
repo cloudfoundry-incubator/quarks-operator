@@ -1,34 +1,26 @@
 package extendedjob_test
 
 import (
-	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-	"go.uber.org/zap/zaptest/observer"
+
+	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	"code.cloudfoundry.org/cf-operator/testing"
-	corev1 "k8s.io/api/core/v1"
 )
 
 var _ = Describe("Query", func() {
 
 	var (
-		client fakes.FakeClient
-		env    testing.Catalog
-		log    *zap.SugaredLogger
-		query  *QueryImpl
+		env   testing.Catalog
+		query *QueryImpl
 	)
 
 	BeforeEach(func() {
-		client = fakes.FakeClient{}
-		core, _ := observer.New(zapcore.InfoLevel)
-		log = zap.New(core).Sugar()
-		query = NewQuery(&client, log)
+		query = NewQuery()
 	})
 
 	Describe("MatchState", func() {
@@ -62,7 +54,6 @@ var _ = Describe("Query", func() {
 				Expect(m).To(BeTrue())
 			})
 		})
-
 	})
 
 	Describe("Match", func() {

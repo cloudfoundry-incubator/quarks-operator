@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"net"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
-	"go.uber.org/zap"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +21,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
 // WebhookConfig generates certificates and the configuration for the webhook server
@@ -33,31 +34,28 @@ type WebhookConfig struct {
 	CaCertificate []byte
 	CaKey         []byte
 
-	log       *zap.SugaredLogger
 	client    client.Client
-	ctrConfig *context.Config
+	config    *config.Config
 	generator credsgen.Generator
 }
 
 // NewWebhookConfig returns a new WebhookConfig
-func NewWebhookConfig(log *zap.SugaredLogger, c client.Client, ctrConfig *context.Config, generator credsgen.Generator, configName string) *WebhookConfig {
+func NewWebhookConfig(c client.Client, config *config.Config, generator credsgen.Generator, configName string) *WebhookConfig {
 	return &WebhookConfig{
 		ConfigName: configName,
 		CertDir:    "/tmp/cf-operator-certs",
-		log:        log,
 		client:     c,
-		ctrConfig:  ctrConfig,
+		config:     config,
 		generator:  generator,
 	}
 }
 
 // SetupCertificate ensures that a CA and a certificate is available for the
 // webhook server
-func (f *WebhookConfig) setupCertificate() error {
-	ctx := context.NewBackgroundContext()
+func (f *WebhookConfig) setupCertificate(ctx context.Context) error {
 	secretNamespacedName := machinerytypes.NamespacedName{
 		Name:      "cf-operator-webhook-server-cert",
-		Namespace: f.ctrConfig.Namespace,
+		Namespace: f.config.Namespace,
 	}
 
 	// We have to query for the Secret using an unstructured object because the cache for the structured
@@ -71,7 +69,7 @@ func (f *WebhookConfig) setupCertificate() error {
 	f.client.Get(ctx, secretNamespacedName, secret)
 
 	if secret.GetName() != "" {
-		f.log.Info("Not creating the webhook server certificate because it already exists")
+		ctxlog.Info(ctx, "Not creating the webhook server certificate because it already exists")
 		data := secret.Object["data"].(map[string]interface{})
 		//writeSecretFiles(data["ca_private_key"].([]byte), data["ca_certificate"].([]byte), data["private_key"].([]byte), data["certificate"].([]byte), certDir)
 		caKey, err := base64.StdEncoding.DecodeString(data["ca_private_key"].(string))
@@ -96,7 +94,7 @@ func (f *WebhookConfig) setupCertificate() error {
 		f.Key = key
 		f.Certificate = cert
 	} else {
-		f.log.Info("Creating webhook server certificate")
+		ctxlog.Info(ctx, "Creating webhook server certificate")
 
 		// Generate CA
 		caRequest := credsgen.CertificateGenerationRequest{
@@ -111,7 +109,7 @@ func (f *WebhookConfig) setupCertificate() error {
 		// Generate Certificate
 		request := credsgen.CertificateGenerationRequest{
 			IsCA:       false,
-			CommonName: f.ctrConfig.WebhookServerHost,
+			CommonName: f.config.WebhookServerHost,
 			CA: credsgen.Certificate{
 				IsCA:        true,
 				PrivateKey:  caCert.PrivateKey,
@@ -154,24 +152,22 @@ func (f *WebhookConfig) setupCertificate() error {
 	return nil
 }
 
-func (f *WebhookConfig) generateWebhookServerConfig(webhooks []*admission.Webhook) error {
+func (f *WebhookConfig) generateWebhookServerConfig(ctx context.Context, webhooks []*admission.Webhook) error {
 	if len(f.CaCertificate) == 0 {
 		return fmt.Errorf("Can not create a webhook server config with an empty ca certificate")
 	}
 
-	ctx := context.NewBackgroundContext()
-
 	config := &admissionregistrationv1beta1.MutatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      f.ConfigName,
-			Namespace: f.ctrConfig.Namespace,
+			Namespace: f.config.Namespace,
 		},
 	}
 
 	for _, webhook := range webhooks {
 		url := url.URL{
 			Scheme: "https",
-			Host:   net.JoinHostPort(f.ctrConfig.WebhookServerHost, strconv.Itoa(int(f.ctrConfig.WebhookServerPort))),
+			Host:   net.JoinHostPort(f.config.WebhookServerHost, strconv.Itoa(int(f.config.WebhookServerPort))),
 			Path:   webhook.Path,
 		}
 		urlString := url.String()
@@ -199,26 +195,26 @@ func (f *WebhookConfig) generateWebhookServerConfig(webhooks []*admission.Webhoo
 }
 
 func (f *WebhookConfig) writeSecretFiles() error {
-	if exists, _ := afero.DirExists(f.ctrConfig.Fs, f.CertDir); !exists {
-		err := f.ctrConfig.Fs.Mkdir(f.CertDir, 0700)
+	if exists, _ := afero.DirExists(f.config.Fs, f.CertDir); !exists {
+		err := f.config.Fs.Mkdir(f.CertDir, 0700)
 		if err != nil {
 			return err
 		}
 	}
 
-	err := afero.WriteFile(f.ctrConfig.Fs, path.Join(f.CertDir, "ca-key.pem"), f.CaKey, 0600)
+	err := afero.WriteFile(f.config.Fs, path.Join(f.CertDir, "ca-key.pem"), f.CaKey, 0600)
 	if err != nil {
 		return err
 	}
-	err = afero.WriteFile(f.ctrConfig.Fs, path.Join(f.CertDir, "ca-cert.pem"), f.CaCertificate, 0644)
+	err = afero.WriteFile(f.config.Fs, path.Join(f.CertDir, "ca-cert.pem"), f.CaCertificate, 0644)
 	if err != nil {
 		return err
 	}
-	err = afero.WriteFile(f.ctrConfig.Fs, path.Join(f.CertDir, "key.pem"), f.Key, 0600)
+	err = afero.WriteFile(f.config.Fs, path.Join(f.CertDir, "key.pem"), f.Key, 0600)
 	if err != nil {
 		return err
 	}
-	err = afero.WriteFile(f.ctrConfig.Fs, path.Join(f.CertDir, "cert.pem"), f.Certificate, 0644)
+	err = afero.WriteFile(f.config.Fs, path.Join(f.CertDir, "cert.pem"), f.Certificate, 0644)
 	if err != nil {
 		return err
 	}

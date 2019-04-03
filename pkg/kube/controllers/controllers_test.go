@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/base64"
 
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-	"go.uber.org/zap/zaptest/observer"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/spf13/afero"
+
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -20,12 +21,8 @@ import (
 	gfakes "code.cloudfoundry.org/cf-operator/pkg/credsgen/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	ocontext "code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/testing"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/spf13/afero"
 )
 
 var _ = Describe("Controllers", func() {
@@ -47,12 +44,12 @@ var _ = Describe("Controllers", func() {
 
 	Describe("AddHooks", func() {
 		var (
-			manager    *cfakes.FakeManager
-			client     *cfakes.FakeClient
-			log        *zap.SugaredLogger
-			ctrsConfig *ocontext.Config
-			generator  *gfakes.FakeGenerator
-			env        testing.Catalog
+			manager   *cfakes.FakeManager
+			client    *cfakes.FakeClient
+			ctx       context.Context
+			config    *config.Config
+			generator *gfakes.FakeGenerator
+			env       testing.Catalog
 		)
 
 		BeforeEach(func() {
@@ -66,12 +63,11 @@ var _ = Describe("Controllers", func() {
 			manager.GetClientReturns(client)
 			manager.GetRESTMapperReturns(restMapper)
 
-			core, _ := observer.New(zapcore.InfoLevel)
-			log = zap.New(core).Sugar()
 			generator = &gfakes.FakeGenerator{}
 			generator.GenerateCertificateReturns(credsgen.Certificate{Certificate: []byte("thecert")}, nil)
 
-			ctrsConfig = env.DefaultContextConfig()
+			config = env.DefaultConfig()
+			ctx = testing.NewContext()
 		})
 
 		It("sets the operator namespace label", func() {
@@ -79,23 +75,23 @@ var _ = Describe("Controllers", func() {
 				ns := object.(*unstructured.Unstructured)
 				labels := ns.GetLabels()
 
-				Expect(labels["cf-operator-ns"]).To(Equal(ctrsConfig.Namespace))
+				Expect(labels["cf-operator-ns"]).To(Equal(config.Namespace))
 
 				return nil
 			})
 
-			err := controllers.AddHooks(log, ctrsConfig, manager, generator)
+			err := controllers.AddHooks(ctx, config, manager, generator)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		Context("if there is no cert secret yet", func() {
 			It("generates and persists the certificates on disk and in a secret", func() {
-				Expect(afero.Exists(ctrsConfig.Fs, "/tmp/cf-operator-certs/key.pem")).To(BeFalse())
+				Expect(afero.Exists(config.Fs, "/tmp/cf-operator-certs/key.pem")).To(BeFalse())
 
-				err := controllers.AddHooks(log, ctrsConfig, manager, generator)
+				err := controllers.AddHooks(ctx, config, manager, generator)
 				Expect(err).ToNot(HaveOccurred())
 
-				Expect(afero.Exists(ctrsConfig.Fs, "/tmp/cf-operator-certs/key.pem")).To(BeTrue())
+				Expect(afero.Exists(config.Fs, "/tmp/cf-operator-certs/key.pem")).To(BeTrue())
 				Expect(generator.GenerateCertificateCallCount()).To(Equal(2)) // Generate CA and certificate
 				Expect(client.CreateCallCount()).To(Equal(2))                 // Persist secret and the webhook config
 			})
@@ -107,7 +103,7 @@ var _ = Describe("Controllers", func() {
 					Object: map[string]interface{}{
 						"metadata": map[string]interface{}{
 							"name":      "cf-operator-webhook-server-cert",
-							"namespace": ctrsConfig.Namespace,
+							"namespace": config.Namespace,
 						},
 						"data": map[string]interface{}{
 							"certificate":    base64.StdEncoding.EncodeToString([]byte("the-cert")),
@@ -128,7 +124,7 @@ var _ = Describe("Controllers", func() {
 			})
 
 			It("does not overwrite the existing secret", func() {
-				err := controllers.AddHooks(log, ctrsConfig, manager, generator)
+				err := controllers.AddHooks(ctx, config, manager, generator)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(client.CreateCallCount()).To(Equal(1)) // webhook config
 			})
@@ -136,7 +132,7 @@ var _ = Describe("Controllers", func() {
 			It("generates the webhook configuration", func() {
 				client.CreateCalls(func(context context.Context, object runtime.Object) error {
 					config := object.(*admissionregistrationv1beta1.MutatingWebhookConfiguration)
-					Expect(config.Name).To(Equal("cf-operator-mutating-hook-" + ctrsConfig.Namespace))
+					Expect(config.Name).To(Equal("cf-operator-mutating-hook-" + config.Namespace))
 					Expect(len(config.Webhooks)).To(Equal(1))
 
 					wh := config.Webhooks[0]
@@ -146,7 +142,7 @@ var _ = Describe("Controllers", func() {
 					Expect(*wh.FailurePolicy).To(Equal(admissionregistrationv1beta1.Fail))
 					return nil
 				})
-				err := controllers.AddHooks(log, ctrsConfig, manager, generator)
+				err := controllers.AddHooks(ctx, config, manager, generator)
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})

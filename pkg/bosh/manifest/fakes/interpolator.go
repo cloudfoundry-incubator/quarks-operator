@@ -2,9 +2,9 @@
 package fakes
 
 import (
-	"sync"
+	sync "sync"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	manifest "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
 type FakeInterpolator struct {

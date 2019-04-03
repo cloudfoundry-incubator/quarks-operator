@@ -1,11 +1,12 @@
 package extendedsecret
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,20 +18,17 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	esapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // NewReconciler returns a new Reconciler
-func NewReconciler(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager, generator credsgen.Generator, srf setReferenceFunc) reconcile.Reconciler {
-
-	reconcilerLog := log.Named("extendedsecret-reconciler")
-	reconcilerLog.Info("Creating a reconciler for ExtendedSecret")
-
+func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, generator credsgen.Generator, srf setReferenceFunc) reconcile.Reconciler {
 	return &ReconcileExtendedSecret{
-		log:          reconcilerLog,
-		ctrConfig:    ctrConfig,
+		ctx:          ctx,
+		config:       config,
 		client:       mgr.GetClient(),
 		scheme:       mgr.GetScheme(),
 		generator:    generator,
@@ -40,12 +38,12 @@ func NewReconciler(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manage
 
 // ReconcileExtendedSecret reconciles an ExtendedSecret object
 type ReconcileExtendedSecret struct {
+	ctx          context.Context
 	client       client.Client
 	generator    credsgen.Generator
 	scheme       *runtime.Scheme
 	setReference setReferenceFunc
-	log          *zap.SugaredLogger
-	ctrConfig    *context.Config
+	config       *config.Config
 }
 
 // Reconcile reads that state of the cluster for a ExtendedSecret object and makes changes based on the state read
@@ -54,25 +52,24 @@ type ReconcileExtendedSecret struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	r.log.Infof("Reconciling ExtendedSecret %s", request.NamespacedName)
-
 	instance := &esapi.ExtendedSecret{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
-	ctx, cancel := context.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
+	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()
 
+	ctxlog.Infof(ctx, "Reconciling ExtendedSecret %s", request.NamespacedName)
 	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			r.log.Info("Skip reconcile: CRD not found")
+			ctxlog.Info(ctx, "Skip reconcile: CRD not found")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		r.log.Info("Error reading the object")
+		ctxlog.Info(ctx, "Error reading the object")
 		return reconcile.Result{}, err
 	}
 
@@ -84,7 +81,7 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 	}
 	err = r.client.Get(ctx, namespacedName, generatedSecret)
 	if err == nil {
-		r.log.Info("Skip reconcile: secret already exists")
+		ctxlog.Info(ctx, "Skip reconcile: secret already exists")
 		return reconcile.Result{}, nil
 	}
 
@@ -92,42 +89,42 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		// Secret doesn't exist yet. Continue reconciling
 	} else {
 		// Error reading the object - requeue the request.
-		r.log.Info("Error reading the object")
+		ctxlog.Info(ctx, "Error reading the object")
 		return reconcile.Result{}, err
 	}
 
 	// Create secret
 	switch instance.Spec.Type {
 	case esapi.Password:
-		r.log.Info("Generating password")
+		ctxlog.Info(ctx, "Generating password")
 		err = r.createPasswordSecret(ctx, instance)
 		if err != nil {
-			r.log.Info("Error generating password secret: " + err.Error())
+			ctxlog.Info(ctx, "Error generating password secret: "+err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "generating password secret")
 		}
 	case esapi.RSAKey:
-		r.log.Info("Generating RSA Key")
+		ctxlog.Info(ctx, "Generating RSA Key")
 		err = r.createRSASecret(ctx, instance)
 		if err != nil {
-			r.log.Info("Error generating RSA key secret: " + err.Error())
+			ctxlog.Info(ctx, "Error generating RSA key secret: "+err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "generating RSA key secret")
 		}
 	case esapi.SSHKey:
-		r.log.Info("Generating SSH Key")
+		ctxlog.Info(ctx, "Generating SSH Key")
 		err = r.createSSHSecret(ctx, instance)
 		if err != nil {
-			r.log.Info("Error generating SSH key secret: " + err.Error())
+			ctxlog.Info(ctx, "Error generating SSH key secret: "+err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "generating SSH key secret")
 		}
 	case esapi.Certificate:
-		r.log.Info("Generating certificate")
+		ctxlog.Info(ctx, "Generating certificate")
 		err = r.createCertificateSecret(ctx, instance)
 		if err != nil {
-			r.log.Info("Error generating certificate secret: " + err.Error())
+			ctxlog.Info(ctx, "Error generating certificate secret: "+err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "generating certificate secret")
 		}
 	default:
-		r.log.Infof("Invalid type: %s", instance.Spec.Type)
+		ctxlog.Infof(ctx, "Invalid type: %s", instance.Spec.Type)
 		return reconcile.Result{}, fmt.Errorf("invalid type: %s", instance.Spec.Type)
 	}
 

@@ -1,29 +1,32 @@
 package extendedjob
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"context"
+
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
 // AddJob creates a new ExtendedJob controller and adds it to the Manager
-func AddJob(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager) error {
+func AddJob(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	client, err := corev1client.NewForConfig(mgr.GetConfig())
 	if err != nil {
 		return errors.Wrap(err, "Could not get kube client")
 	}
 	podLogGetter := NewPodLogGetter(client)
-	jobReconciler, err := NewJobReconciler(log, ctrConfig, mgr, podLogGetter)
+	ctx = ctxlog.NewReconcilerContext(ctx, "ext-statefulset-reconciler")
+	jobReconciler, err := NewJobReconciler(ctx, config, mgr, podLogGetter)
 	jobController, err := controller.New("ext-job-job-controller", mgr, controller.Options{Reconciler: jobReconciler})
 	if err != nil {
 		return err

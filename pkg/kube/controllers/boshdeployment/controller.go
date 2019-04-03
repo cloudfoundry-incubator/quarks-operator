@@ -1,7 +1,8 @@
 package boshdeployment
 
 import (
-	"go.uber.org/zap"
+	"context"
+
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -11,13 +12,15 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	ctxlog "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
 // Add creates a new BOSHDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager) error {
-	r := NewReconciler(log, ctrConfig, mgr, bdm.NewResolver(mgr.GetClient(), bdm.NewInterpolator()), controllerutil.SetControllerReference)
+func Add(ctx context.Context, config *config.Config, mgr manager.Manager) error {
+	ctx = ctxlog.NewReconcilerContext(ctx, "boshdeployment-reconciler")
+	r := NewReconciler(ctx, config, mgr, bdm.NewResolver(mgr.GetClient(), bdm.NewInterpolator()), controllerutil.SetControllerReference)
 
 	// Create a new controller
 	c, err := controller.New("boshdeployment-controller", mgr, controller.Options{Reconciler: r})

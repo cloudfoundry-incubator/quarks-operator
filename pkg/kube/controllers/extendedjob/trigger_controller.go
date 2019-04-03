@@ -1,11 +1,9 @@
 package extendedjob
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
-	"go.uber.org/zap"
+	"context"
 
 	corev1 "k8s.io/api/core/v1"
-
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -13,13 +11,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
 // AddTrigger creates a new ExtendedJob controller and adds it to the Manager
-func AddTrigger(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager) error {
-	query := NewQuery(mgr.GetClient(), log)
+func AddTrigger(ctx context.Context, config *config.Config, mgr manager.Manager) error {
+	query := NewQuery()
 	f := controllerutil.SetControllerReference
-	r := NewTriggerReconciler(log, ctrConfig, mgr, query, f)
+	ctx = ctxlog.NewReconcilerContext(ctx, "ext-job-trigger-reconciler")
+	r := NewTriggerReconciler(ctx, config, mgr, query, f)
 	c, err := controller.New("ext-job-trigger-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err

@@ -32,9 +32,9 @@ var _ = Describe("Deploy", func() {
 		})
 
 		It("should deploy a pod with 1 nanosecond for the reconciler context", func() {
-			env.CtrsConfig.CtxTimeOut = 1 * time.Nanosecond
+			env.Config.CtxTimeOut = 1 * time.Nanosecond
 			defer func() {
-				env.CtrsConfig.CtxTimeOut = 10 * time.Second
+				env.Config.CtxTimeOut = 10 * time.Second
 			}()
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
