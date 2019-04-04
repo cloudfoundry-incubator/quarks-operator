@@ -14,18 +14,16 @@ import (
 
 // Valid values for ref types
 const (
-	ManifestSpecName        string = "manifest"
-	OpsSpecName             string = "ops"
-	ConfigMapType           string = "configmap"
-	SecretType              string = "secret"
-	URLType                 string = "url"
+	ManifestSpecName string = "manifest"
+	OpsSpecName      string = "ops"
+	ConfigMapType    string = "configmap"
+	SecretType       string = "secret"
+	URLType          string = "url"
 )
 
 var (
-	// LabelKind is the label key for manifest/job kind
-	LabelKind = fmt.Sprintf("%s/kind", apis.GroupName)
-	// LabelDeployment is the label key for manifest name
-	LabelDeployment = fmt.Sprintf("%s/deployment", apis.GroupName)
+	// LabelDeploymentName is the label key for manifest name
+	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
 	// LabelManifestSHA1 is the label key for manifest SHA1
 	LabelManifestSHA1 = fmt.Sprintf("%s/manifestsha1", apis.GroupName)
 	// AnnotationManifestSHA1 is the annotation key for manifest SHA1

@@ -17,7 +17,7 @@ import (
 
 // Resolver resolves references from CRD to a BOSH manifest
 type Resolver interface {
-	ResolveManifest(bdc.BOSHDeploymentSpec, string) (*Manifest, error)
+	ResolveManifest(spec bdc.BOSHDeploymentSpec, namespace string, name string) (*Manifest, error)
 }
 
 // ResolverImpl implements Resolver interface
@@ -32,7 +32,7 @@ func NewResolver(client client.Client, interpolator Interpolator) *ResolverImpl 
 }
 
 // ResolveManifest returns manifest referenced by our CRD
-func (r *ResolverImpl) ResolveManifest(spec bdc.BOSHDeploymentSpec, namespace string) (*Manifest, error) {
+func (r *ResolverImpl) ResolveManifest(spec bdc.BOSHDeploymentSpec, namespace string, name string) (*Manifest, error) {
 	manifest := &Manifest{}
 	var (
 		m   string
@@ -68,6 +68,11 @@ func (r *ResolverImpl) ResolveManifest(spec bdc.BOSHDeploymentSpec, namespace st
 	}
 
 	err = yaml.Unmarshal(bytes, manifest)
+
+	// Override by boshDeployment name
+	if name != "" {
+		manifest.Name = name
+	}
 
 	return manifest, err
 }
