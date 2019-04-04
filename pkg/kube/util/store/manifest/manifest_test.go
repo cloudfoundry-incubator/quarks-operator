@@ -24,7 +24,7 @@ var (
 	deploymentName           = "fake-deployment"
 	exampleSourceDescription = "created by a unit-test"
 	secretLabels             = map[string]string{
-		LabelDeploymentName: deploymentName,
+		"deployment-name": deploymentName,
 	}
 )
 
@@ -163,9 +163,9 @@ var _ = Describe("Store", func() {
 				updatedSecret := getSecret(name)
 
 				Expect(updatedSecret.GetLabels()).To(BeEquivalentTo(map[string]string{
-					LabelDeploymentName: deploymentName,
-					LabelVersionName:    "2",
-					"foo":               "bar",
+					"deployment-name": deploymentName,
+					LabelVersionName:  "2",
+					"foo":             "bar",
 				}))
 				Expect(updatedSecret.GetAnnotations()).To(BeEquivalentTo(map[string]string{
 					AnnotationSourceName: exampleSourceDescription,

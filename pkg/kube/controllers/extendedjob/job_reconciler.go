@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
@@ -194,8 +195,8 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 
 		if conf.ToBeVersioned {
 			// Check labels existing
-			if _, ok := conf.SecretLabels[store.LabelDeploymentName]; !ok {
-				return fmt.Errorf("secret labels doesn't contain %s", store.LabelDeploymentName)
+			if _, ok := conf.SecretLabels[bdv1.LabelDeploymentName]; !ok {
+				return fmt.Errorf("secret labels doesn't contain %s", bdv1.LabelDeploymentName)
 			}
 
 			// Use secretName as versioned secret name prefix: <secretName>-<version>

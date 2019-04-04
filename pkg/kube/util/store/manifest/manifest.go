@@ -19,10 +19,10 @@ import (
 )
 
 var (
+	// LabelKind is the label key for secret kind
+	LabelKind = fmt.Sprintf("%s/kind", apis.GroupName)
 	// LabelVersionName is the label key for manifest version
 	LabelVersionName = fmt.Sprintf("%s/version", apis.GroupName)
-	// LabelDeploymentName is the label key for manifest name
-	LabelDeploymentName = fmt.Sprintf("%s/deployment", apis.GroupName)
 	// AnnotationSourceName is the label key for source description
 	AnnotationSourceName = fmt.Sprintf("%s/source-description", apis.GroupName)
 )
@@ -49,6 +49,7 @@ type Store interface {
 	RetrieveVersionSecret(ctx context.Context, namespace string, deploymentName string, version int) (*corev1.Secret, error)
 	Find(ctx context.Context, namespace string, deploymentName string, version int) (*bdm.Manifest, error)
 	Latest(ctx context.Context, namespace string, deploymentName string, secretLabels map[string]string) (*bdm.Manifest, error)
+	LatestSecret(ctx context.Context, namespace string, deploymentName string, secretLabels map[string]string) (*corev1.Secret, error)
 	List(ctx context.Context, namespace string, secretLabels map[string]string) ([]*bdm.Manifest, error)
 	VersionCount(ctx context.Context, namespace string, secretLabels map[string]string) (int, error)
 	Delete(ctx context.Context, namespace string, secretLabels map[string]string) error
@@ -98,6 +99,7 @@ func (p StoreImpl) SaveSecretData(ctx context.Context, namespace string, secretP
 
 	version := currentVersion + 1
 	labels[LabelVersionName] = strconv.Itoa(version)
+	labels[LabelKind] = "manifest"
 
 	secretName, err := secretName(secretPrefix, version)
 	if err != nil {
@@ -151,6 +153,15 @@ func (p StoreImpl) Latest(ctx context.Context, namespace string, deploymentName 
 		return nil, err
 	}
 	return p.Find(ctx, namespace, deploymentName, latestVersion)
+}
+
+// LatestSecret returns the latest version of the manifest secret
+func (p StoreImpl) LatestSecret(ctx context.Context, namespace string, deploymentName string, secretLabels map[string]string) (*corev1.Secret, error) {
+	latestVersion, err := p.getGreatestVersion(ctx, namespace, secretLabels)
+	if err != nil {
+		return nil, err
+	}
+	return p.RetrieveVersionSecret(ctx, namespace, deploymentName, latestVersion)
 }
 
 // List returns all versions of the manifest

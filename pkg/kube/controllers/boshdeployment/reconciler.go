@@ -190,7 +190,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		// We need BPM information to start everything up
 		bpmInfo, err := r.waitForBPM(ctx, instance, manifest, &kubeConfigs)
 		if err != nil {
-			ctxlog.Info(ctx, "Waiting from BPM: %s", err.Error())
+			ctxlog.Infof(ctx, "Waiting from BPM: %s", err.Error())
 			return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, err
 		}
 
@@ -270,7 +270,7 @@ func (r *ReconcileBOSHDeployment) applyOps(ctx context.Context, instance *bdv1.B
 	// Create temp manifest as variable interpolation job input
 	// retrieve manifest
 	ctxlog.Debug(ctx, "Resolving manifest")
-	manifest, err := r.resolver.ResolveManifest(instance.Spec, instance.GetNamespace())
+	manifest, err := r.resolver.ResolveManifest(instance.Spec, instance.GetNamespace(), instance.GetName())
 	if err != nil {
 		r.recorder.Event(instance, corev1.EventTypeWarning, "ResolveManifest Error", err.Error())
 		ctxlog.Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
@@ -318,7 +318,7 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 		return errors.Wrap(err, "could not marshal temp manifest")
 	}
 
-	tempManifestSecretName := manifest.CalculateSecretName(bdm.DeploymentSecretTypeManifestWithOps, "")
+	tempManifestSecretName := bdm.CalculateSecretName(bdm.DeploymentSecretTypeManifestWithOps, manifest.Name, "")
 
 	// Create a secret object for the manifest
 	tempManifestSecret := &corev1.Secret{
@@ -410,7 +410,7 @@ func (r *ReconcileBOSHDeployment) waitForBPM(ctx context.Context, deployment *bd
 	result := map[string]bdm.Manifest{}
 
 	for _, container := range kubeConfigs.DataGatheringJob.Spec.Template.Spec.Containers {
-		_, secretName := manifest.CalculateEJobOutputSecretPrefixAndName(bdm.DeploymentSecretTypeInstanceGroupResolvedProperties, container.Name)
+		_, secretName := bdm.CalculateEJobOutputSecretPrefixAndName(bdm.DeploymentSecretTypeInstanceGroupResolvedProperties, manifest.Name, container.Name)
 
 		secret := &v1.Secret{}
 		err := r.client.Get(ctx, types.NamespacedName{Name: secretName, Namespace: deployment.Namespace}, secret)
