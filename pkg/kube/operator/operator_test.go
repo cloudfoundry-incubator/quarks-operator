@@ -10,9 +10,9 @@ import (
 var _ = Describe("operator", func() {
 	Describe("GetOperatorDockerImage", func() {
 		It("returns the location of the docker image", func() {
-			manifest.DockerTag = "1.2.3"
-			manifest.DockerOrganization = "foo"
-			manifest.DockerRepository = "bar"
+			manifest.DockerImageTag = "1.2.3"
+			manifest.DockerImageOrganization = "foo"
+			manifest.DockerImageRepository = "bar"
 
 			Expect(manifest.GetOperatorDockerImage()).To(Equal("foo/bar:1.2.3"))
 		})

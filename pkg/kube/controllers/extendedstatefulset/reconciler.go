@@ -44,7 +44,7 @@ const (
 	// EnvCfOperatorAz is set by available zone name
 	EnvCfOperatorAz = "CF_OPERATOR_AZ"
 	// EnvCfOperatorAzIndex is set by available zone index
-	EnvCfOperatorAzIndex = "CF_OPERATOR_AZ_INDEX"
+	EnvCfOperatorAzIndex = "AZ_INDEX"
 )
 
 // Check that ReconcileExtendedStatefulSet implements the reconcile.Reconciler interface

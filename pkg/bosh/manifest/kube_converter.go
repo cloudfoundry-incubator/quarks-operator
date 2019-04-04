@@ -27,12 +27,12 @@ const (
 )
 
 var (
-	// DockerOrganization is the organization which provides the operator image
-	DockerOrganization = ""
-	// DockerRepository is the repository which provides the operator image
-	DockerRepository = ""
-	// DockerTag is the tag of the operator image
-	DockerTag = ""
+	// DockerImageOrganization is the organization which provides the operator image
+	DockerImageOrganization = ""
+	// DockerImageRepository is the repository which provides the operator image
+	DockerImageRepository = ""
+	// DockerImageTag is the tag of the operator image
+	DockerImageTag = ""
 	// LabelDeploymentName is the name of a label for the deployment name
 	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
 	// LabelInstanceGroupName is the name of a label for an instance group name
@@ -211,7 +211,7 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 							VolumeMounts: volumeMounts,
 							Env: []v1.EnvVar{
 								{
-									Name:  "MANIFEST",
+									Name:  "BOSH_MANIFEST_PATH",
 									Value: "/var/run/secrets/deployment/manifest.yaml",
 								},
 								{
@@ -322,7 +322,7 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 			},
 			Env: []v1.EnvVar{
 				{
-					Name:  "BOSH_MANIFEST",
+					Name:  "BOSH_MANIFEST_PATH",
 					Value: "/var/run/secrets/deployment/manifest.yaml",
 				},
 				{
@@ -334,7 +334,7 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 					Value: "/var/vcap/data-gathering",
 				},
 				{
-					Name:  "INSTANCE_GROUP",
+					Name:  "INSTANCE_GROUP_NAME",
 					Value: ig.Name,
 				},
 			},
@@ -454,7 +454,7 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 				Value: igName,
 			},
 			{
-				Name:  "MANIFEST_PATH",
+				Name:  "BOSH_MANIFEST_PATH",
 				Value: fmt.Sprintf("/var/run/secrets/resolved-properties/%s/properties.yaml", igName),
 			},
 			{
@@ -782,7 +782,7 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 
 // GetOperatorDockerImage returns the image name of the operator docker image
 func GetOperatorDockerImage() string {
-	return DockerOrganization + "/" + DockerRepository + ":" + DockerTag
+	return DockerImageOrganization + "/" + DockerImageRepository + ":" + DockerImageTag
 }
 
 // ApplyBPMInfo uses BOSH Process Manager information to update container information like entrypoint, env vars, etc.
