@@ -25,7 +25,15 @@ bin/apply-crds
 
 kubectl get customresourcedefinitions
 
-pkgs=$(go list ./... 2> /dev/null)
-deps=`echo ${pkgs} | tr ' ' ","`
-ginkgo --slowSpecThreshold=50 -cover -coverpkg "$deps" integration/
+
+pkgs="code.cloudfoundry.org/cf-operator/cmd/...,\
+code.cloudfoundry.org/cf-operator/pkg/bosh/...,\
+code.cloudfoundry.org/cf-operator/pkg/credsgen/...,\
+code.cloudfoundry.org/cf-operator/pkg/kube/operator/...,\
+code.cloudfoundry.org/cf-operator/pkg/kube/controllers/...,\
+code.cloudfoundry.org/cf-operator/pkg/kube/util/...,\
+code.cloudfoundry.org/cf-operator/pkg/kube/config/...,\
+code.cloudfoundry.org/cf-operator/pkg/kube/client/..."
+
+ginkgo --slowSpecThreshold=50 -cover -coverpkg "$pkgs" integration/
 
