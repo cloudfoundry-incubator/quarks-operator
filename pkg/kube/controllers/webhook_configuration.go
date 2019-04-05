@@ -70,7 +70,7 @@ func (f *WebhookConfig) setupCertificate(ctx context.Context) error {
 
 	err := f.client.Get(ctx, secretNamespacedName, secret)
 	if err != nil && apierrors.IsNotFound(err) {
-		ctxlog.Info(ctx,"Creating webhook server certificate")
+		ctxlog.Info(ctx, "Creating webhook server certificate")
 
 		// Generate CA
 		caRequest := credsgen.CertificateGenerationRequest{
@@ -121,7 +121,6 @@ func (f *WebhookConfig) setupCertificate(ctx context.Context) error {
 	} else {
 		ctxlog.Info(ctx, "Not creating the webhook server certificate because it already exists")
 		data := secret.Object["data"].(map[string]interface{})
-		//writeSecretFiles(data["ca_private_key"].([]byte), data["ca_certificate"].([]byte), data["private_key"].([]byte), data["certificate"].([]byte), certDir)
 		caKey, err := base64.StdEncoding.DecodeString(data["ca_private_key"].(string))
 		if err != nil {
 			return err
@@ -155,7 +154,7 @@ func (f *WebhookConfig) setupCertificate(ctx context.Context) error {
 
 func (f *WebhookConfig) generateWebhookServerConfig(ctx context.Context, webhooks []*admission.Webhook) error {
 	if len(f.CaCertificate) == 0 {
-		return fmt.Errorf("Can not create a webhook server config with an empty ca certificate")
+		return fmt.Errorf("can not create a webhook server config with an empty ca certificate")
 	}
 
 	config := &admissionregistrationv1beta1.MutatingWebhookConfiguration{

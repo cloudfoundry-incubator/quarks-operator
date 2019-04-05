@@ -80,6 +80,14 @@ var _ = Describe("Controllers", func() {
 				return nil
 			})
 
+			client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				kind := object.GetObjectKind()
+				if kind.GroupVersionKind().Kind == "Secret" {
+					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+				}
+				return nil
+			})
+
 			err := controllers.AddHooks(ctx, config, manager, generator)
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -87,6 +95,14 @@ var _ = Describe("Controllers", func() {
 		Context("if there is no cert secret yet", func() {
 			It("generates and persists the certificates on disk and in a secret", func() {
 				Expect(afero.Exists(config.Fs, "/tmp/cf-operator-certs/key.pem")).To(BeFalse())
+
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+					kind := object.GetObjectKind()
+					if kind.GroupVersionKind().Kind == "Secret" {
+						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+					}
+					return nil
+				})
 
 				err := controllers.AddHooks(ctx, config, manager, generator)
 				Expect(err).ToNot(HaveOccurred())

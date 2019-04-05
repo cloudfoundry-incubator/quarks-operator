@@ -1,13 +1,9 @@
 package extendedjob
 
 import (
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
-	"hash/fnv"
-	"strings"
-
 	"github.com/pkg/errors"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -132,9 +128,9 @@ func (r *TriggerReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJ
 	}
 	template.Labels["ejob-name"] = extJob.Name
 
-	name, err := jobName(extJob.Name, podName)
+	name, err := names.JobName(extJob.Name, podName)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not generate job name for extJob '%s'", extJob.Name)
 	}
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -157,39 +153,4 @@ func (r *TriggerReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJ
 	}
 
 	return nil
-}
-
-// jobName returns a unique, short name for a given extJob, pod combination
-// k8s allows 63 chars, but the pod will have -\d{6} appended
-// IDEA: maybe use pod.Uid instead of rand
-func jobName(extJobName, podName string) (string, error) {
-	hashID, err := randSuffix(fmt.Sprintf("%s-%s", extJobName, podName))
-	if err != nil {
-		return "", errors.Wrap(err, "could not randomize job suffix")
-	}
-	return fmt.Sprintf("job-%s-%s-%s", truncate(extJobName, 15), truncate(podName, 15), hashID), nil
-}
-
-func randSuffix(str string) (string, error) {
-	randBytes := make([]byte, 16)
-	_, err := rand.Read(randBytes)
-	if err != nil {
-		return "", err
-	}
-
-	a := fnv.New64()
-	_, err = a.Write([]byte(str + string(randBytes)))
-	if err != nil {
-		return "", err
-	}
-
-	return hex.EncodeToString(a.Sum(nil)), nil
-}
-
-func truncate(name string, max int) string {
-	name = strings.Replace(name, "-", "", -1)
-	if len(name) > max {
-		return name[0:max]
-	}
-	return name
 }

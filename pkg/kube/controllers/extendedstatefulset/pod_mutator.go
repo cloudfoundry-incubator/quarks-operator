@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"strconv"
 	"strings"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/api/apps/v1beta2"
@@ -20,6 +18,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
 // PodMutator changes pod definitions
@@ -80,7 +81,7 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 	m.log.Info("Mutating Pod ", pod.Name)
 
 	// Fetch statefulSet
-	statefulSetName := getStatefulSetName(pod.Name)
+	statefulSetName := names.GetStatefulSetName(pod.Name)
 	statefulSet := &v1beta2.StatefulSet{}
 	key := mTypes.NamespacedName{Namespace: m.config.Namespace, Name: statefulSetName}
 	err := m.client.Get(ctx, key, statefulSet)
@@ -103,7 +104,7 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 
 		// Loop over volumeClaimTemplates
 		for _, volumeClaimTemplate := range volumeClaimTemplateList {
-			currentVersionInt, err := getVersionFromName(pod.Name, 2)
+			currentVersionInt, err := names.GetVersionFromName(pod.Name, 2)
 			if err != nil {
 				return errors.Wrapf(err, "Couldn't fetch version from pod '%s'", pod.Name)
 			}
@@ -114,7 +115,7 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 				pvcName := strings.Split(pvc.GetName(), getNameWithOutVersion(pod.Name, 2))[0]
 				pvcName = pvcName[:len(pvcName)-1]
 				if getNameWithOutVersion(pvcName, 1) == getNameWithOutVersion(volumeClaimTemplate.Name, 1) && pvc.Name[len(pvc.Name)-1:] == pod.Name[len(pod.Name)-1:] {
-					pvcVersion, err := getVersionFromName(pvc.Name, 2)
+					pvcVersion, err := names.GetVersionFromName(pvc.Name, 2)
 					if err != nil {
 						return errors.Wrapf(err, "Couldn't fetch version from pvc '%s'", pvc.Name)
 					}
@@ -167,25 +168,6 @@ func isStatefulSetPod(labels map[string]string) bool {
 		return true
 	}
 	return false
-}
-
-// getStatefulSetName gets statefulset name from podName
-func getStatefulSetName(name string) string {
-	nameSplit := strings.Split(name, "-")
-	nameSplit = nameSplit[0 : len(nameSplit)-1]
-	statefulSetName := strings.Join(nameSplit, "-")
-	return statefulSetName
-}
-
-// getVersionFromName fetches version from name
-func getVersionFromName(name string, offset int) (int, error) {
-	nameSplit := strings.Split(name, "-")
-	version := string(nameSplit[len(nameSplit)-offset][1])
-	versionInt, err := strconv.Atoi(version)
-	if err != nil {
-		return versionInt, errors.Wrapf(err, "Atoi failed to convert")
-	}
-	return versionInt, nil
 }
 
 // replaceVersionInName replaces with the given version in name at offset
