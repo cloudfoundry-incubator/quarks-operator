@@ -19,10 +19,13 @@ bin/apply-crds
 
 kubectl get customresourcedefinitions
 
-pkgs=$(go list ./... 2> /dev/null)
-deps=`echo ${pkgs} | tr ' ' ","`
-ginkgo -cover -coverpkg "$deps" e2e/
+pkgs="code.cloudfoundry.org/cf-operator/cmd/...,\
+code.cloudfoundry.org/cf-operator/pkg/bosh/...,\
+code.cloudfoundry.org/cf-operator/pkg/credsgen/...,\
+code.cloudfoundry.org/cf-operator/pkg/kube/operator/...,\
+code.cloudfoundry.org/cf-operator/pkg/kube/controllers/...,\
+code.cloudfoundry.org/cf-operator/pkg/kube/util/...,\
+code.cloudfoundry.org/cf-operator/pkg/kube/config/...,\
+code.cloudfoundry.org/cf-operator/pkg/kube/client/..."
 
-#Send code coverage results to coveralls.io
-gover
-goveralls -coverprofile gover.coverprofile -service concourse -repotoken "$COVERALLS_TOKEN"
+ginkgo -cover -coverpkg "$pkgs" e2e/

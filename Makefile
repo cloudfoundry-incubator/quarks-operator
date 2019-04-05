@@ -57,3 +57,6 @@ tools:
 
 check-scripts:
 	bin/check-scripts
+
+coverage:
+	bin/coverage
