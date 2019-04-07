@@ -1,7 +1,8 @@
 package boshdeployment
 
 import (
-	"go.uber.org/zap"
+	"context"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -15,14 +16,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	manifestStore "code.cloudfoundry.org/cf-operator/pkg/kube/util/store/manifest"
 )
 
 // AddManifest creates a new BOSHDeployment controller to start when desired manifest creation
-func AddManifest(log *zap.SugaredLogger, config *context.Config, mgr manager.Manager) error {
-	r := NewManifestReconciler(log, config, mgr)
-	c, err := controller.New("bosh-deployment-manifest-controller", mgr, controller.Options{Reconciler: r})
+func AddManifest(ctx context.Context, config *config.Config, mgr manager.Manager) error {
+	ctx = ctxlog.NewReconcilerContext(ctx, "manifest-reconciler")
+
+	r := NewManifestReconciler(ctx, config, mgr)
+
+	// Create a new controller
+	c, err := controller.New("manifest-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
@@ -43,10 +49,9 @@ func AddManifest(log *zap.SugaredLogger, config *context.Config, mgr manager.Man
 	}
 
 	// pick up new Secret which are referenced by an boshDeployment instance
-	ctx, _ := context.NewBackgroundContextWithTimeout(config.CtxType, config.CtxTimeOut)
 	mapSecrets := handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 		secret := a.Object.(*corev1.Secret)
-		return reconcilesForSecret(ctx, mgr, log, *secret)
+		return reconcilesForSecret(ctx, mgr, *secret)
 	})
 
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{ToRequests: mapSecrets}, p)
@@ -57,7 +62,7 @@ func AddManifest(log *zap.SugaredLogger, config *context.Config, mgr manager.Man
 	return err
 }
 
-func reconcilesForSecret(ctx context.Context, mgr manager.Manager, log *zap.SugaredLogger, secret corev1.Secret) []reconcile.Request {
+func reconcilesForSecret(ctx context.Context, mgr manager.Manager, secret corev1.Secret) []reconcile.Request {
 	reconciles := []reconcile.Request{}
 	instances := &bdv1.BOSHDeploymentList{}
 	err := mgr.GetClient().List(ctx, &client.ListOptions{}, instances)
