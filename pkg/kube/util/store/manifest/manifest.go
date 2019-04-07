@@ -21,10 +21,10 @@ import (
 var (
 	// LabelKind is the label key for secret kind
 	LabelKind = fmt.Sprintf("%s/kind", apis.GroupName)
-	// LabelVersionName is the label key for manifest version
-	LabelVersionName = fmt.Sprintf("%s/version", apis.GroupName)
-	// AnnotationSourceName is the label key for source description
-	AnnotationSourceName = fmt.Sprintf("%s/source-description", apis.GroupName)
+	// LabelVersion is the label key for manifest version
+	LabelVersion = fmt.Sprintf("%s/version", apis.GroupName)
+	// AnnotationSourceDescription is the label key for source description
+	AnnotationSourceDescription = fmt.Sprintf("%s/source-description", apis.GroupName)
 )
 
 var _ Store = &StoreImpl{}
@@ -98,7 +98,7 @@ func (p StoreImpl) SaveSecretData(ctx context.Context, namespace string, secretP
 	}
 
 	version := currentVersion + 1
-	labels[LabelVersionName] = strconv.Itoa(version)
+	labels[LabelVersion] = strconv.Itoa(version)
 	labels[LabelKind] = "manifest"
 
 	secretName, err := secretName(secretPrefix, version)
@@ -112,7 +112,7 @@ func (p StoreImpl) SaveSecretData(ctx context.Context, namespace string, secretP
 			Namespace: namespace,
 			Labels:    labels,
 			Annotations: map[string]string{
-				AnnotationSourceName: sourceDescription,
+				AnnotationSourceDescription: sourceDescription,
 			},
 		},
 		StringData: secretData,
@@ -273,19 +273,18 @@ func (p StoreImpl) getGreatestVersion(ctx context.Context, namespace string, sec
 }
 
 func extractManifest(s corev1.Secret, manifestKeyName string) (*bdm.Manifest, error) {
-
 	data, found := s.Data[manifestKeyName]
 	if !found {
 		return nil, fmt.Errorf("failed to retrieve manifest data from secret '%s.%s'", s.Name, manifestKeyName)
 	}
 
 	var manifest bdm.Manifest
-	err := yaml.Unmarshal([]byte(data), &manifest)
+	err := yaml.Unmarshal(data, &manifest)
 	return &manifest, err
 }
 
 func secretName(namePrefix string, version int) (string, error) {
-	proposedName := fmt.Sprintf("%s-%d", namePrefix, version)
+	proposedName := fmt.Sprintf("%s-v%d", namePrefix, version)
 
 	// Check for Kubernetes name requirements (length)
 	const maxChars = 253
@@ -302,9 +301,9 @@ func secretName(namePrefix string, version int) (string, error) {
 }
 
 func getVersionFromSecretLabel(secretLabels map[string]string) (int, error) {
-	strVersion, ok := secretLabels[LabelVersionName]
+	strVersion, ok := secretLabels[LabelVersion]
 	if !ok {
-		return -1, fmt.Errorf("secret labels doesn't contain key %s", LabelVersionName)
+		return -1, fmt.Errorf("secret labels doesn't contain key %s", LabelVersion)
 	}
 
 	version, err := strconv.Atoi(strVersion)

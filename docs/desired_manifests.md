@@ -13,10 +13,17 @@ Each manifest version that goes live is stored and is immutable.
 A manifest's version is an integer that gets incremented.
 The _current version_ of the manifest is the greatest version.
 
-Manifest versions are kept in a secret named `<operator-namespace>/deployment-<deployment-name>-<version>`.
+Manifest versions are kept in a secret named `<operator-namespace>/<deployment-name>.<deployment-secret-type>.<container-name>-v<version>`.
+
+- `deployment-name`: the name of deployment manifest
+- `deployment-secret-type`: the type of deployment secret, follows [secret-types](../pkg/bosh/manifest/secret_types.go) lifecycle
+- `container-name`: the name of job's container
+- `version`: the version of manifest
+
 Each secret is also annotated and labeled with information such as:
 
 - the deployment name
+- the secret kind
 - its version
 - a description of the "sources" used to render the manifest (e.g. the location of the CRD that generated it).
 

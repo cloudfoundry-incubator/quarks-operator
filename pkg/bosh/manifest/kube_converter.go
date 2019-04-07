@@ -183,7 +183,7 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 
 	eJobName := fmt.Sprintf("var-interpolation-%s", m.Name)
 
-	// Assemble the Extended Job
+	// Construct the var interpolation job
 	job := &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      eJobName,

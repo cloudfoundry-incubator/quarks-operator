@@ -1,10 +1,11 @@
 package boshdeployment
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
-	"go.uber.org/zap"
+	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -15,21 +16,19 @@ import (
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/context"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	store "code.cloudfoundry.org/cf-operator/pkg/kube/util/store/manifest"
 )
 
 // NewManifestReconciler returns a new Reconciler for manifest secret creation
-func NewManifestReconciler(log *zap.SugaredLogger, ctrConfig *context.Config, mgr manager.Manager) reconcile.Reconciler {
-	jobReconcilerLog := log.Named("boshdeployment-manifest-reconciler")
-	jobReconcilerLog.Info("Creating a reconciler for manifest secret")
-
+func NewManifestReconciler(ctx context.Context, config *config.Config, mgr manager.Manager) reconcile.Reconciler {
 	manifestStore := store.NewStore(mgr.GetClient(), bdm.DesiredManifestKeyName)
 
 	return &ReconcileManifest{
-		log:           jobReconcilerLog,
-		ctrConfig:     ctrConfig,
+		ctx:           ctx,
 		client:        mgr.GetClient(),
+		config:        config,
 		scheme:        mgr.GetScheme(),
 		manifestStore: manifestStore,
 	}
@@ -37,23 +36,23 @@ func NewManifestReconciler(log *zap.SugaredLogger, ctrConfig *context.Config, mg
 
 // ReconcileManifest reconciles an Job object
 type ReconcileManifest struct {
+	ctx           context.Context
 	client        client.Client
+	config        *config.Config
 	scheme        *runtime.Scheme
-	log           *zap.SugaredLogger
-	ctrConfig     *context.Config
 	manifestStore store.Store
 }
 
 // Reconcile reads that state of the manifest secret
 func (r *ReconcileManifest) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	r.log.Infof("Reconciling BOSHDeployment %s for desired manifest creation", request.NamespacedName)
+	// Set the ctx to be Background, as the top-level context for incoming requests.
+	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
+	defer cancel()
+
+	ctxlog.Infof(ctx, "Reconciling BOSHDeployment %s for desired manifest creation", request.NamespacedName)
 
 	// Fetch the BOSHDeployment instance
 	instance := &bdv1.BOSHDeployment{}
-
-	// Set the ctx to be Background, as the top-level context for incoming requests.
-	ctx, cancel := context.NewBackgroundContextWithTimeout(r.ctrConfig.CtxType, r.ctrConfig.CtxTimeOut)
-	defer cancel()
 
 	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
@@ -61,42 +60,42 @@ func (r *ReconcileManifest) Reconcile(request reconcile.Request) (reconcile.Resu
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			r.log.Debug("Skip reconcile: BOSHDeployment not found")
+			ctxlog.Debug(ctx, "Skip reconcile: BOSHDeployment not found")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		r.log.Errorf("Failed to get BOSHDeployment '%s': %v", request.NamespacedName, err)
-		return reconcile.Result{}, err
+		ctxlog.Errorf(ctx, "Failed to get BOSHDeployment '%s': %v", request.NamespacedName, err)
+		return reconcile.Result{}, errors.Wrapf(err, "could not get BOSHDeployment '%s'", request.NamespacedName)
 	}
 
-	// Find data gathering exJob and change
+	// Find data gathering exJob
 	exJobKey := types.NamespacedName{Name: fmt.Sprintf("data-gathering-%s", instance.GetName()), Namespace: instance.GetNamespace()}
 	dataGatheringJob := &ejv1.ExtendedJob{}
 
 	err = r.client.Get(ctx, exJobKey, dataGatheringJob)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			r.log.Debug("Skip reconcile: data gathering job not found")
-			return reconcile.Result{Requeue: true}, nil
+			ctxlog.Debug(ctx, "Reconcile: data gathering job not found")
+			return reconcile.Result{Requeue: true}, errors.Wrapf(err, "data gathering job '%s' not found", exJobKey.Name)
 		}
-		r.log.Errorf("Failed to get data gathering job '%s': %v", request.NamespacedName, err)
-		return reconcile.Result{}, err
+		ctxlog.Errorf(ctx, "Failed to get data gathering job '%s': %v", request.NamespacedName, err)
+		return reconcile.Result{}, errors.Wrapf(err, "could not get data gathering job '%s'", exJobKey.Name)
 	}
 
 	// Update volumes for desired manifest secret
 	_, interpolatedManifestSecretName := bdm.CalculateEJobOutputSecretPrefixAndName(bdm.DeploymentSecretTypeManifestAndVars, instance.GetName(), bdm.VarInterpolationContainerName)
 
-	r.log.Debugf("Updating manifest secret to ExtendedJob '%s/%s' volumes", dataGatheringJob.GetNamespace(), dataGatheringJob.GetName())
-	err = r.UpdateExtendedJobVolumes(ctx, instance.GetNamespace(), dataGatheringJob, interpolatedManifestSecretName)
+	ctxlog.Debugf(ctx, "Updating manifest secret to ExtendedJob '%s/%s' volumes", dataGatheringJob.GetNamespace(), dataGatheringJob.GetName())
+	err = r.updateExtendedJobVolumes(ctx, instance.GetNamespace(), dataGatheringJob, interpolatedManifestSecretName)
 	if err != nil {
-		r.log.Errorf("Failed to update ExtendedJob '%s/%s' Volumes: %v", dataGatheringJob.GetNamespace(), dataGatheringJob.GetName(), err)
+		ctxlog.Errorf(ctx, "Failed to update ExtendedJob '%s/%s' Volumes: %v", dataGatheringJob.GetNamespace(), dataGatheringJob.GetName(), err)
 		return reconcile.Result{}, err
 	}
 
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileManifest) UpdateExtendedJobVolumes(ctx context.Context, namespace string, dataGatheringJob *ejv1.ExtendedJob, interpolatedManifestSecretName string) error {
+func (r *ReconcileManifest) updateExtendedJobVolumes(ctx context.Context, namespace string, dataGatheringJob *ejv1.ExtendedJob, interpolatedManifestSecretName string) error {
 	dataGatheringJobCopy := dataGatheringJob.DeepCopy()
 
 	volumes := dataGatheringJob.Spec.Template.Spec.Volumes
@@ -104,22 +103,22 @@ func (r *ReconcileManifest) UpdateExtendedJobVolumes(ctx context.Context, namesp
 		if vol.VolumeSource.Secret != nil && vol.VolumeSource.Secret.SecretName == interpolatedManifestSecretName {
 			manifestSecret, err := r.manifestStore.LatestSecret(ctx, namespace, vol.VolumeSource.Secret.SecretName, dataGatheringJob.Spec.Output.SecretLabels)
 			if err != nil {
-				r.log.Errorf("Failed to get manifest secret for '%s': %v", interpolatedManifestSecretName, err)
-				return err
+				ctxlog.Errorf(ctx, "Could not to get manifest secret for '%s': %v", interpolatedManifestSecretName, err)
+				return errors.Wrapf(err, "could not to get manifest secret for '%s'", interpolatedManifestSecretName)
 			}
 
-			r.log.Debugf("Changing manifest secret from '%s' to '%s'", vol.VolumeSource.Secret.SecretName, manifestSecret.GetName())
+			ctxlog.Debugf(ctx, "Changing manifest secret from '%s' to '%s'", vol.VolumeSource.Secret.SecretName, manifestSecret.GetName())
 			vol.VolumeSource.Secret.SecretName = manifestSecret.GetName()
 			volumes[idx] = vol
 		}
 	}
 
 	if !reflect.DeepEqual(volumes, dataGatheringJobCopy.Spec.Template.Spec.Volumes) {
-		r.log.Debugf("Updating ExtendedJob '%s/%s'", dataGatheringJob.GetNamespace(), dataGatheringJob.GetName())
+		ctxlog.Debugf(ctx, "Updating ExtendedJob '%s/%s'", dataGatheringJob.GetNamespace(), dataGatheringJob.GetName())
 		err := r.client.Update(ctx, dataGatheringJob)
 		if err != nil {
-			r.log.Errorf("Failed to update ExtendedJob '%s/%s': %v", dataGatheringJob.GetNamespace(), dataGatheringJob.GetName(), err)
-			return err
+			ctxlog.Errorf(ctx, "Could not update ExtendedJob '%s/%s': %v", dataGatheringJob.GetNamespace(), dataGatheringJob.GetName(), err)
+			return errors.Wrapf(err, "could not update ExtendedJob '%s/%s'", dataGatheringJob.GetNamespace(), dataGatheringJob.GetName())
 		}
 	}
 
