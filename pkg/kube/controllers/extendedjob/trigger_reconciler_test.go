@@ -234,8 +234,8 @@ var _ = Describe("TriggerReconciler", func() {
 						setOwnerReferenceFail,
 					)
 					act()
-					Expect(logs.FilterMessageSnippet("Failed to set owner reference on job for 'foo' via pod fake-pod: fake-error").Len()).To(Equal(1))
-					Expect(logs.FilterMessageSnippet("Created job for 'foo' via pod fake-pod/deleted").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("failed to set owner reference on job for 'foo' via pod fake-pod: fake-error").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Created job for 'foo' via pod fake-pod/deleted").Len()).To(Equal(0))
 				})
 			})
 

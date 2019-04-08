@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/afero"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -66,34 +67,9 @@ func (f *WebhookConfig) setupCertificate(ctx context.Context) error {
 		Kind:    "Secret",
 		Version: "v1",
 	})
-	f.client.Get(ctx, secretNamespacedName, secret)
 
-	if secret.GetName() != "" {
-		ctxlog.Info(ctx, "Not creating the webhook server certificate because it already exists")
-		data := secret.Object["data"].(map[string]interface{})
-		//writeSecretFiles(data["ca_private_key"].([]byte), data["ca_certificate"].([]byte), data["private_key"].([]byte), data["certificate"].([]byte), certDir)
-		caKey, err := base64.StdEncoding.DecodeString(data["ca_private_key"].(string))
-		if err != nil {
-			return err
-		}
-		caCert, err := base64.StdEncoding.DecodeString(data["ca_certificate"].(string))
-		if err != nil {
-			return err
-		}
-		key, err := base64.StdEncoding.DecodeString(data["private_key"].(string))
-		if err != nil {
-			return err
-		}
-		cert, err := base64.StdEncoding.DecodeString(data["certificate"].(string))
-		if err != nil {
-			return err
-		}
-
-		f.CaKey = caKey
-		f.CaCertificate = caCert
-		f.Key = key
-		f.Certificate = cert
-	} else {
+	err := f.client.Get(ctx, secretNamespacedName, secret)
+	if err != nil && apierrors.IsNotFound(err) {
 		ctxlog.Info(ctx, "Creating webhook server certificate")
 
 		// Generate CA
@@ -142,9 +118,33 @@ func (f *WebhookConfig) setupCertificate(ctx context.Context) error {
 		f.CaCertificate = caCert.Certificate
 		f.Key = cert.PrivateKey
 		f.Certificate = cert.Certificate
+	} else {
+		ctxlog.Info(ctx, "Not creating the webhook server certificate because it already exists")
+		data := secret.Object["data"].(map[string]interface{})
+		caKey, err := base64.StdEncoding.DecodeString(data["ca_private_key"].(string))
+		if err != nil {
+			return err
+		}
+		caCert, err := base64.StdEncoding.DecodeString(data["ca_certificate"].(string))
+		if err != nil {
+			return err
+		}
+		key, err := base64.StdEncoding.DecodeString(data["private_key"].(string))
+		if err != nil {
+			return err
+		}
+		cert, err := base64.StdEncoding.DecodeString(data["certificate"].(string))
+		if err != nil {
+			return err
+		}
+
+		f.CaKey = caKey
+		f.CaCertificate = caCert
+		f.Key = key
+		f.Certificate = cert
 	}
 
-	err := f.writeSecretFiles()
+	err = f.writeSecretFiles()
 	if err != nil {
 		return errors.Wrap(err, "writing webhook certificate files to disk")
 	}
@@ -154,7 +154,7 @@ func (f *WebhookConfig) setupCertificate(ctx context.Context) error {
 
 func (f *WebhookConfig) generateWebhookServerConfig(ctx context.Context, webhooks []*admission.Webhook) error {
 	if len(f.CaCertificate) == 0 {
-		return fmt.Errorf("Can not create a webhook server config with an empty ca certificate")
+		return fmt.Errorf("can not create a webhook server config with an empty ca certificate")
 	}
 
 	config := &admissionregistrationv1beta1.MutatingWebhookConfiguration{

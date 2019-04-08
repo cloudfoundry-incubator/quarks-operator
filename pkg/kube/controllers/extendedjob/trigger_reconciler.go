@@ -1,13 +1,10 @@
 package extendedjob
 
 import (
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
-	"hash/fnv"
-	"strings"
-
+	"github.com/pkg/errors"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -131,18 +128,23 @@ func (r *TriggerReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJ
 	}
 	template.Labels["ejob-name"] = extJob.Name
 
+	name, err := names.JobName(extJob.Name, podName)
+	if err != nil {
+		return errors.Wrapf(err, "could not generate job name for extJob '%s'", extJob.Name)
+	}
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      jobName(extJob.Name, podName),
+			Name:      name,
 			Namespace: extJob.Namespace,
 			Labels:    map[string]string{"extendedjob": "true"},
 		},
 		Spec: batchv1.JobSpec{Template: *template},
 	}
 
-	err := r.setOwnerReference(&extJob, job, r.scheme)
+	err = r.setOwnerReference(&extJob, job, r.scheme)
 	if err != nil {
-		ctxlog.Errorf(ctx, "Failed to set owner reference on job for '%s' via pod %s: %s", extJob.Name, podName, err)
+		ctxlog.Errorf(ctx, "failed to set owner reference on job for '%s' via pod %s: %s", extJob.Name, podName, err)
+		return err
 	}
 
 	err = r.client.Create(ctx, job)
@@ -151,28 +153,4 @@ func (r *TriggerReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJ
 	}
 
 	return nil
-}
-
-// jobName returns a unique, short name for a given extJob, pod combination
-// k8s allows 63 chars, but the pod will have -\d{6} appended
-// IDEA: maybe use pod.Uid instead of rand
-func jobName(extJobName, podName string) string {
-	hashID := randSuffix(fmt.Sprintf("%s-%s", extJobName, podName))
-	return fmt.Sprintf("job-%s-%s-%s", truncate(extJobName, 15), truncate(podName, 15), hashID)
-}
-
-func randSuffix(str string) string {
-	randBytes := make([]byte, 16)
-	rand.Read(randBytes)
-	a := fnv.New64()
-	a.Write([]byte(str + string(randBytes)))
-	return hex.EncodeToString(a.Sum(nil))
-}
-
-func truncate(name string, max int) string {
-	name = strings.Replace(name, "-", "", -1)
-	if len(name) > max {
-		return name[0:max]
-	}
-	return name
 }

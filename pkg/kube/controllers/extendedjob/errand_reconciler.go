@@ -2,10 +2,8 @@ package extendedjob
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pkg/errors"
-
 	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,6 +17,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
 var _ reconcile.Reconciler = &ErrandReconciler{}
@@ -141,7 +140,10 @@ func (r *ErrandReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJo
 	}
 	template.Labels["ejob-name"] = extJob.Name
 
-	name := fmt.Sprintf("job-%s-%s", truncate(extJob.Name, 30), randSuffix(extJob.Name))
+	name, err := names.JobName(extJob.Name, "")
+	if err != nil {
+		return errors.Wrapf(err, "could not generate job name for extJob '%s'", extJob.Name)
+	}
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -151,9 +153,10 @@ func (r *ErrandReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJo
 		Spec: batchv1.JobSpec{Template: *template},
 	}
 
-	err := r.setOwnerReference(&extJob, job, r.scheme)
+	err = r.setOwnerReference(&extJob, job, r.scheme)
 	if err != nil {
-		ctxlog.Errorf(ctx, "Failed to set owner reference on job for '%s': %s", extJob.Name, err)
+		ctxlog.Errorf(ctx, "failed to set owner reference on job for '%s': %s", extJob.Name, err)
+		return err
 	}
 
 	err = r.client.Create(ctx, job)

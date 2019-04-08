@@ -24,8 +24,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
-type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
-
 // NewJobReconciler returns a new Reconciler
 func NewJobReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, podLogGetter PodLogGetter) (reconcile.Reconciler, error) {
 	return &ReconcileJob{
