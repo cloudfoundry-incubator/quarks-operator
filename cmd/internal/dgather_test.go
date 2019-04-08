@@ -206,6 +206,8 @@ var _ = Describe("Dgather", func() {
 			jobBoshContainerizationPropertiesInstances := m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Instances
 			Expect(len(jobBoshContainerizationPropertiesInstances)).To(Equal(4))
 
+			Expect(jobBoshContainerizationPropertiesInstances[0].Fingerprint).ToNot(BeEmpty())
+
 			// in ERB files, there are test environment variables like these:
 			//   FOOBARWITHLINKVALUES: <%= link('doppler').p("fooprop") %>
 			//   FOOBARWITHLINKNESTEDVALUES: <%= link('doppler').p("doppler.grpc_port") %>
@@ -235,6 +237,7 @@ var _ = Describe("Dgather", func() {
 			// For the fourth instance
 			bpmProcesses = m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.BPM.Processes[0]
 			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-0-loggregator_trafficcontroller.default.svc.cluster.local"))
+
 		})
 	})
 })

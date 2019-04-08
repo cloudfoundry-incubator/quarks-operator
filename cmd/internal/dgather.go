@@ -87,7 +87,6 @@ func init() {
 	rootCmd.AddCommand(dataGatherCmd)
 
 	dataGatherCmd.Flags().StringP("bosh-manifest-path", "m", "", "path to a bosh manifest file")
-	//TODO: can we reuse the global ns flag
 	dataGatherCmd.Flags().String("kubernetes-namespace", "", "the kubernetes namespace")
 	dataGatherCmd.Flags().StringP("base-dir", "b", "", "a path to the base directory")
 	dataGatherCmd.Flags().StringP("instance-group-name", "g", "", "name of the instance group for data gathering")
@@ -351,8 +350,9 @@ func RenderJobBPM(currentJob *manifest.Job, jobInstances []manifest.JobInstance,
 				jobSpecFile,
 			)
 
-			// TODO: Would be good if we can write the rendered file into memory,
-			// rather than to disk
+			// Write to a tmp, this is following the conventions on how the
+			// https://github.com/viovanov/bosh-template-go/ processes the params
+			// when we calling the *.Render()
 			tmpfile, err := ioutil.TempFile("", "rendered.*.yml")
 			if err != nil {
 				return err
@@ -373,8 +373,10 @@ func RenderJobBPM(currentJob *manifest.Job, jobInstances []manifest.JobInstance,
 			if err != nil {
 				return err
 			}
-			// TODO: Consider adding a Fingerprint to each job instance
-			// instance.Fingerprint = generateSHA(fingerPrintBytes)
+			instanceBytes := generateJobInstanceSHA(currentJob, jobInstances[i])
+
+			// All instances SHA are the same, while all instances are based on index 0
+			jobInstances[i].Fingerprint = generateSHA(instanceBytes)
 		}
 
 		for _, jobBPMInstance := range jobIndexBPM {
@@ -386,6 +388,29 @@ func RenderJobBPM(currentJob *manifest.Job, jobInstances []manifest.JobInstance,
 		currentJob.Properties.BOSHContainerization.BPM = jobIndexBPM[0]
 	}
 	return nil
+}
+
+func generateJobInstanceSHA(currentJob *manifest.Job, jobInstance manifest.JobInstance) []byte {
+	// The following is based on https://github.com/cloudfoundry-incubator/cf-operator/compare/master...jandubois:161745895-erb-rendering-using-jobs#diff-55ce7ec0a607742ace583aad21b7acbaR231
+	// Calculate a fingerprint of all config settings for this job instance
+	jobPropertiesWithoutBoshContainerization := currentJob.Properties
+	jobPropertiesWithoutBoshContainerization.BOSHContainerization.Consumes = map[string]manifest.JobLink{}
+	jobPropertiesWithoutBoshContainerization.BOSHContainerization.Instances = []manifest.JobInstance{}
+	jobPropertiesWithoutBoshContainerization.BOSHContainerization.Release = ""
+	jobPropertiesWithoutBoshContainerization.BOSHContainerization.BPM = bpm.Config{}
+
+	// Generate anonymous struct for the fingerprint
+	fingerprintObject := struct {
+		Instance   manifest.JobInstance
+		Properties manifest.JobProperties
+		Release    string
+	}{
+		Instance:   jobInstance,
+		Properties: jobPropertiesWithoutBoshContainerization,
+		Release:    currentJob.Properties.BOSHContainerization.Release,
+	}
+	jobInstanceFP, _ := json.Marshal(fingerprintObject)
+	return jobInstanceFP
 }
 
 // ProcessConsumersAndRenderBPM will generate a proper context for links and render the required ERB files
