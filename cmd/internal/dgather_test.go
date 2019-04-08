@@ -206,8 +206,6 @@ var _ = Describe("Dgather", func() {
 			jobBoshContainerizationPropertiesInstances := m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Instances
 			Expect(len(jobBoshContainerizationPropertiesInstances)).To(Equal(4))
 
-			propertiesInstance := jobBoshContainerizationPropertiesInstances[0]
-
 			// in ERB files, there are test environment variables like these:
 			//   FOOBARWITHLINKVALUES: <%= link('doppler').p("fooprop") %>
 			//   FOOBARWITHLINKNESTEDVALUES: <%= link('doppler').p("doppler.grpc_port") %>
@@ -217,7 +215,7 @@ var _ = Describe("Dgather", func() {
 			//   ...
 
 			// For the first instance
-			bpmProcesses := propertiesInstance.BPM.Processes[0]
+			bpmProcesses := m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.BPM.Processes[0]
 
 			Expect(bpmProcesses.Env["FOOBARWITHLINKVALUES"]).To(Equal("10001"))
 			Expect(bpmProcesses.Env["FOOBARWITHLINKNESTEDVALUES"]).To(Equal("7765"))
@@ -227,19 +225,16 @@ var _ = Describe("Dgather", func() {
 			Expect(bpmProcesses.Env["FOOBARWITHSPECDEPLOYMENT"]).To(Equal("cf"))
 
 			// For the second instance
-			propertiesInstance = jobBoshContainerizationPropertiesInstances[1]
-			bpmProcesses = propertiesInstance.BPM.Processes[0]
-			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-1-loggregator_trafficcontroller.default.svc.cluster.local"))
+			bpmProcesses = m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.BPM.Processes[0]
+			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-0-loggregator_trafficcontroller.default.svc.cluster.local"))
 
 			// For the third instance
-			propertiesInstance = jobBoshContainerizationPropertiesInstances[2]
-			bpmProcesses = propertiesInstance.BPM.Processes[0]
-			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-2-loggregator_trafficcontroller.default.svc.cluster.local"))
+			bpmProcesses = m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.BPM.Processes[0]
+			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-0-loggregator_trafficcontroller.default.svc.cluster.local"))
 
 			// For the fourth instance
-			propertiesInstance = jobBoshContainerizationPropertiesInstances[3]
-			bpmProcesses = propertiesInstance.BPM.Processes[0]
-			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-3-loggregator_trafficcontroller.default.svc.cluster.local"))
+			bpmProcesses = m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.BPM.Processes[0]
+			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-0-loggregator_trafficcontroller.default.svc.cluster.local"))
 		})
 	})
 })

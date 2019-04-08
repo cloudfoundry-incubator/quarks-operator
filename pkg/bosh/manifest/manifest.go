@@ -12,7 +12,6 @@ type JobInstance struct {
 	Index       int                    `yaml:"index"`
 	Instance    int                    `yaml:"instance"`
 	Name        string                 `yaml:"name"`
-	BPM         bpm.Config             `yaml:"bpm"`
 	Fingerprint interface{}            `yaml:"fingerprint"`
 	Network     map[string]interface{} `yaml:"networks"`
 	IP          string                 `yaml:"ip"`

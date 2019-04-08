@@ -844,10 +844,10 @@ func (m *Manifest) ApplyBPMInfo(kubeConfig *KubeConfig, allResolvedProperties ma
 		if len(boshJob.Properties.BOSHContainerization.Instances) < 1 {
 			return errors.New("containerization data has no instances")
 		}
-		if len(boshJob.Properties.BOSHContainerization.Instances[0].BPM.Processes) < 1 {
+		if len(boshJob.Properties.BOSHContainerization.BPM.Processes) < 1 {
 			return errors.New("bpm info has no processes")
 		}
-		process := boshJob.Properties.BOSHContainerization.Instances[0].BPM.Processes[0]
+		process := boshJob.Properties.BOSHContainerization.BPM.Processes[0]
 
 		container.Command = []string{process.Executable}
 		container.Args = process.Args

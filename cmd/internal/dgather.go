@@ -12,13 +12,13 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	btg "github.com/viovanov/bosh-template-go"
 	yaml "gopkg.in/yaml.v2"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
 // dataGatherCmd represents the dataGather command
@@ -288,7 +288,7 @@ func GenerateJobConsumersData(currentJob *manifest.Job, jobReleaseSpecs map[stri
 }
 
 // RenderJobBPM per job and add its value to the jobInstances.BPM field
-func RenderJobBPM(currentJob manifest.Job, jobInstances []manifest.JobInstance, baseDir string, manifestName string) error {
+func RenderJobBPM(currentJob *manifest.Job, jobInstances []manifest.JobInstance, baseDir string, manifestName string) error {
 
 	// Location of the current job job.MF file
 	jobSpecFile := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "job.MF")
@@ -327,8 +327,10 @@ func RenderJobBPM(currentJob manifest.Job, jobInstances []manifest.JobInstance, 
 		return err
 	}
 
+	jobIndexBPM := make([]bpm.Config, len(jobInstances))
+
 	if jobInstances != nil {
-		for i, instance := range jobInstances {
+		for i := range jobInstances {
 
 			properties := currentJob.Properties.ToMap()
 
@@ -338,18 +340,18 @@ func RenderJobBPM(currentJob manifest.Job, jobInstances []manifest.JobInstance, 
 				},
 
 				&btg.InstanceInfo{
-					Address:    instance.Address,
-					AZ:         instance.AZ,
-					ID:         instance.ID,
-					Index:      string(instance.Index),
+					Address:    jobInstances[0].Address,
+					AZ:         jobInstances[0].AZ,
+					ID:         jobInstances[0].ID,
+					Index:      string(jobInstances[0].Index),
 					Deployment: manifestName,
-					Name:       instance.Name,
+					Name:       jobInstances[0].Name,
 				},
 
 				jobSpecFile,
 			)
 
-			// Would be good if we can write the rendered file into memory,
+			// TODO: Would be good if we can write the rendered file into memory,
 			// rather than to disk
 			tmpfile, err := ioutil.TempFile("", "rendered.*.yml")
 			if err != nil {
@@ -367,14 +369,21 @@ func RenderJobBPM(currentJob manifest.Job, jobInstances []manifest.JobInstance, 
 			}
 
 			// Parse a rendered bpm.yml into the bpm Config struct
-			jobInstances[i].BPM, err = bpm.NewConfig(bpmBytes)
+			jobIndexBPM[i], err = bpm.NewConfig(bpmBytes)
 			if err != nil {
 				return err
 			}
-
-			// Consider adding a Fingerprint to each job instance
+			// TODO: Consider adding a Fingerprint to each job instance
 			// instance.Fingerprint = generateSHA(fingerPrintBytes)
 		}
+
+		for _, jobBPMInstance := range jobIndexBPM {
+			if !reflect.DeepEqual(jobBPMInstance, jobIndexBPM[0]) {
+				return errors.New("found different BPM job indexes, this is not supported")
+			}
+		}
+
+		currentJob.Properties.BOSHContainerization.BPM = jobIndexBPM[0]
 	}
 	return nil
 }
@@ -413,7 +422,7 @@ func ProcessConsumersAndRenderBPM(boshManifestStruct *manifest.Manifest, baseDir
 		// the render.InstanceInfo struct
 		jobInstances := currentJob.Properties.BOSHContainerization.Instances
 
-		err = RenderJobBPM(*currentJob, jobInstances, baseDir, boshManifestStruct.Name)
+		err = RenderJobBPM(currentJob, jobInstances, baseDir, boshManifestStruct.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -421,25 +430,6 @@ func ProcessConsumersAndRenderBPM(boshManifestStruct *manifest.Manifest, baseDir
 		// Store shared bpm as a top level property
 		if len(jobInstances) < 1 {
 			continue
-		}
-
-		allBPMEqual := true
-
-		for _, jobInstance := range jobInstances {
-			if !reflect.DeepEqual(jobInstance, jobInstances[0].BPM) {
-				allBPMEqual = false
-				break
-			}
-		}
-
-		if allBPMEqual {
-			// Store shared bpm as a top level property
-			job.Properties.BOSHContainerization.BPM = jobInstances[0].BPM
-
-			// Remove all other BPM information
-			for _, jobInstance := range jobInstances {
-				jobInstance.BPM = bpm.Config{}
-			}
 		}
 	}
 
