@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 ginkgo -p -r --randomizeAllSpecs -failOnPending --trace -cover -skipPackage integration,e2e
