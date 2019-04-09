@@ -3,13 +3,13 @@ package cmd_test
 import (
 	"fmt"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	. "code.cloudfoundry.org/cf-operator/cmd/internal"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/testing"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
+	"go.uber.org/zap"
 )
 
 var _ = Describe("Dgather", func() {
@@ -17,6 +17,7 @@ var _ = Describe("Dgather", func() {
 	var (
 		m   *manifest.Manifest
 		env testing.Catalog
+		log *zap.SugaredLogger
 	)
 
 	Context("helper functions to override job specs from manifest", func() {
@@ -148,11 +149,14 @@ var _ = Describe("Dgather", func() {
 	Context("resolve links between providers and consumers", func() {
 		BeforeEach(func() {
 			m = env.BOSHManifestWithProviderAndConsumer()
+			logger := zap.NewNop()
+			defer logger.Sync()
+			log = logger.Sugar()
 		})
 
 		It("should get all required data if the job consumes a link", func() {
 			releaseSpecs, links, _ := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default")
-			_, err := ProcessConsumersAndRenderBPM(m, "../../testing/assets/", releaseSpecs, links, "log-api")
+			_, err := ProcessConsumersAndRenderBPM(m, "../../testing/assets/", releaseSpecs, links, "log-api", log)
 			Expect(err).ToNot(HaveOccurred())
 
 			// log-api instance_group, with loggregator_trafficcontroller job, consumes a link from
@@ -181,7 +185,7 @@ var _ = Describe("Dgather", func() {
 
 		It("should get nothing if the job does not consumes a link", func() {
 			releaseSpecs, links, _ := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default")
-			_, err := ProcessConsumersAndRenderBPM(m, "../../testing/assets/", releaseSpecs, links, "log-api")
+			_, err := ProcessConsumersAndRenderBPM(m, "../../testing/assets/", releaseSpecs, links, "log-api", log)
 
 			// doppler instance_group, with doppler job, only provides doppler link
 			jobBoshContainerizationConsumes := m.InstanceGroups[0].Jobs[0].Properties.BOSHContainerization.Consumes
@@ -193,14 +197,19 @@ var _ = Describe("Dgather", func() {
 	})
 
 	Context("rendering ERB files", func() {
+
 		BeforeEach(func() {
 			m = env.BOSHManifestWithProviderAndConsumer()
+			logger := zap.NewNop()
+			defer logger.Sync()
+			log = logger.Sugar()
 		})
 
 		It("should render complex ERB files", func() {
+
 			releaseSpecs, links, err := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default")
 			Expect(err).ToNot(HaveOccurred())
-			_, err = ProcessConsumersAndRenderBPM(m, "../../testing/assets/", releaseSpecs, links, "log-api")
+			_, err = ProcessConsumersAndRenderBPM(m, "../../testing/assets/", releaseSpecs, links, "log-api", log)
 			Expect(err).ToNot(HaveOccurred())
 
 			jobBoshContainerizationPropertiesInstances := m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Instances

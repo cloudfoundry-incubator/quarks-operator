@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	btg "github.com/viovanov/bosh-template-go"
+	"go.uber.org/zap"
 	yaml "gopkg.in/yaml.v2"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
@@ -32,6 +33,7 @@ inside a bosh manifest file.
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		defer log.Sync()
 		boshManifestPath := viper.GetString("bosh-manifest-path")
 		if len(boshManifestPath) == 0 {
 			return fmt.Errorf("manifest cannot be empty")
@@ -84,6 +86,7 @@ inside a bosh manifest file.
 }
 
 func init() {
+	initConfig()
 	rootCmd.AddCommand(dataGatherCmd)
 
 	dataGatherCmd.Flags().StringP("bosh-manifest-path", "m", "", "path to a bosh manifest file")
@@ -287,7 +290,7 @@ func GenerateJobConsumersData(currentJob *manifest.Job, jobReleaseSpecs map[stri
 }
 
 // RenderJobBPM per job and add its value to the jobInstances.BPM field
-func RenderJobBPM(currentJob *manifest.Job, jobInstances []manifest.JobInstance, baseDir string, manifestName string) error {
+func RenderJobBPM(currentJob *manifest.Job, jobInstances []manifest.JobInstance, baseDir string, manifestName string, log *zap.SugaredLogger) error {
 
 	// Location of the current job job.MF file
 	jobSpecFile := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "job.MF")
@@ -329,7 +332,7 @@ func RenderJobBPM(currentJob *manifest.Job, jobInstances []manifest.JobInstance,
 	jobIndexBPM := make([]bpm.Config, len(jobInstances))
 
 	if jobInstances != nil {
-		for i := range jobInstances {
+		for i, jobInstance := range jobInstances {
 
 			properties := currentJob.Properties.ToMap()
 
@@ -339,12 +342,12 @@ func RenderJobBPM(currentJob *manifest.Job, jobInstances []manifest.JobInstance,
 				},
 
 				&btg.InstanceInfo{
-					Address:    jobInstances[0].Address,
-					AZ:         jobInstances[0].AZ,
-					ID:         jobInstances[0].ID,
-					Index:      string(jobInstances[0].Index),
+					Address:    jobInstance.Address,
+					AZ:         jobInstance.AZ,
+					ID:         jobInstance.ID,
+					Index:      string(jobInstance.Index),
 					Deployment: manifestName,
-					Name:       jobInstances[0].Name,
+					Name:       jobInstance.Name,
 				},
 
 				jobSpecFile,
@@ -381,10 +384,9 @@ func RenderJobBPM(currentJob *manifest.Job, jobInstances []manifest.JobInstance,
 
 		for _, jobBPMInstance := range jobIndexBPM {
 			if !reflect.DeepEqual(jobBPMInstance, jobIndexBPM[0]) {
-				return errors.New("found different BPM job indexes, this is not supported")
+				log.Infof("found different BPM job indexes for job %v in manifest %v, this is NOT SUPPORTED", currentJob.Name, manifestName)
 			}
 		}
-
 		currentJob.Properties.BOSHContainerization.BPM = jobIndexBPM[0]
 	}
 	return nil
@@ -414,7 +416,7 @@ func generateJobInstanceSHA(currentJob *manifest.Job, jobInstance manifest.JobIn
 }
 
 // ProcessConsumersAndRenderBPM will generate a proper context for links and render the required ERB files
-func ProcessConsumersAndRenderBPM(boshManifestStruct *manifest.Manifest, baseDir string, jobReleaseSpecs map[string]map[string]manifest.JobSpec, jobProviderLinks map[string]map[string]manifest.JobLink, instanceGroupName string) ([]byte, error) {
+func ProcessConsumersAndRenderBPM(boshManifestStruct *manifest.Manifest, baseDir string, jobReleaseSpecs map[string]map[string]manifest.JobSpec, jobProviderLinks map[string]map[string]manifest.JobLink, instanceGroupName string, log *zap.SugaredLogger) ([]byte, error) {
 	var desiredInstanceGroup *manifest.InstanceGroup
 	for _, instanceGroup := range boshManifestStruct.InstanceGroups {
 		if instanceGroup.Name != instanceGroupName {
@@ -447,7 +449,7 @@ func ProcessConsumersAndRenderBPM(boshManifestStruct *manifest.Manifest, baseDir
 		// the render.InstanceInfo struct
 		jobInstances := currentJob.Properties.BOSHContainerization.Instances
 
-		err = RenderJobBPM(currentJob, jobInstances, baseDir, boshManifestStruct.Name)
+		err = RenderJobBPM(currentJob, jobInstances, baseDir, boshManifestStruct.Name, log)
 		if err != nil {
 			return nil, err
 		}
@@ -487,7 +489,7 @@ func GatherData(boshManifestStruct *manifest.Manifest, baseDir string, cfOperato
 		return nil, err
 	}
 
-	return ProcessConsumersAndRenderBPM(boshManifestStruct, baseDir, jobReleaseSpecs, jobProviderLinks, instanceGroupName)
+	return ProcessConsumersAndRenderBPM(boshManifestStruct, baseDir, jobReleaseSpecs, jobProviderLinks, instanceGroupName, log)
 }
 
 // LookUpProperty search for property value in the job properties
