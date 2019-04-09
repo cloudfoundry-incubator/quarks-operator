@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
-golint $(go list ./...)
+go list ./... | xargs golint

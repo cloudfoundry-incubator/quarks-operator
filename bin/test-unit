@@ -1,4 +1,7 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
-ginkgo -p -r --randomizeAllSpecs -failOnPending --trace -cover -skipPackage integration,e2e
+GOVER_FILE=${GOVER_FILE:-gover-unit.coverprofile}
+
+mkdir -p code-coverage
+ginkgo -p -r --randomizeAllSpecs -failOnPending --trace -cover -outputdir=./code-coverage  -coverprofile=${GOVER_FILE}  -skipPackage integration,e2e
