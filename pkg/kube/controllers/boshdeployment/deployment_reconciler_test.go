@@ -93,6 +93,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
 		_, log = helper.NewTestLogger()
 		ctx = ctxlog.NewManagerContext(log)
+		ctx = ctxlog.NewReconcilerContext(ctx, "TestRecorder", recorder)
 	})
 
 	JustBeforeEach(func() {
@@ -127,7 +128,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Expect(err.Error()).To(ContainSubstring("bad request returns error"))
 
 				// check for events
-				Expect(<-recorder.Events).To(ContainSubstring("GetBOSHDeployment Error"))
+				Expect(<-recorder.Events).To(ContainSubstring("GetBOSHDeploymentError"))
 			})
 
 			It("handles errors when resolving the BOSHDeployment", func() {
@@ -138,7 +139,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Expect(err.Error()).To(ContainSubstring("resolver error"))
 
 				// check for events
-				Expect(<-recorder.Events).To(ContainSubstring("ResolveManifest Error"))
+				Expect(<-recorder.Events).To(ContainSubstring("ResolveManifestError"))
 			})
 
 			It("handles errors when missing instance groups", func() {
@@ -148,10 +149,10 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("manifest is missing instance groups"))
+				Expect(err.Error()).To(ContainSubstring("no instance groups defined in manifest"))
 
 				// check for events
-				Expect(<-recorder.Events).To(ContainSubstring("MissingInstance Error"))
+				Expect(<-recorder.Events).To(ContainSubstring("MissingInstanceError"))
 			})
 		})
 
@@ -180,7 +181,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				It("raises an error if there are no instance groups defined in the manifest", func() {
 					_, err := reconciler.Reconcile(request)
 					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("manifest is missing instance groups"))
+					Expect(err.Error()).To(ContainSubstring("no instance groups defined in manifest"))
 				})
 			})
 
@@ -198,7 +199,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Expect(err.Error()).To(ContainSubstring("failed to set reference"))
 
 				// check for events
-				Expect(<-recorder.Events).To(ContainSubstring("VariableGeneration Error"))
+				Expect(<-recorder.Events).To(ContainSubstring("VariableGenerationError"))
 
 				instance := &bdc.BOSHDeployment{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)

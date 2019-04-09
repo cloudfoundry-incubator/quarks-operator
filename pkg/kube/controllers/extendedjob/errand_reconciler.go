@@ -9,7 +9,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -38,7 +37,6 @@ func NewErrandReconciler(
 		ctx:                  ctx,
 		client:               mgr.GetClient(),
 		config:               config,
-		recorder:             mgr.GetRecorder("extendedjob errand reconciler"),
 		scheme:               mgr.GetScheme(),
 		setOwnerReference:    f,
 		owner:                owner,
@@ -51,7 +49,6 @@ type ErrandReconciler struct {
 	ctx                  context.Context
 	client               client.Client
 	config               *config.Config
-	recorder             record.EventRecorder
 	scheme               *runtime.Scheme
 	setOwnerReference    setOwnerReferenceFunc
 	owner                Owner

@@ -17,7 +17,7 @@ import (
 
 // Add creates a new ExtendedSecrets Controller and adds it to the Manager
 func Add(ctx context.Context, config *config.Config, mgr manager.Manager) error {
-	ctx = ctxlog.NewReconcilerContext(ctx, "ext-secret-reconciler")
+	ctx = ctxlog.NewReconcilerContext(ctx, "ext-secret-reconciler", mgr.GetRecorder("ext-secret-recorder"))
 	log := ctxlog.ExtractLogger(ctx)
 	r := NewReconciler(ctx, config, mgr, credsgen.NewInMemoryGenerator(log), controllerutil.SetControllerReference)
 

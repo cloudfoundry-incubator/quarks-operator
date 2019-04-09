@@ -19,7 +19,7 @@ import (
 // AddDeployment creates a new BOSHDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manager) error {
-	ctx = ctxlog.NewReconcilerContext(ctx, "boshdeployment-reconciler")
+	ctx = ctxlog.NewReconcilerContext(ctx, "boshdeployment-reconciler", mgr.GetRecorder("boshdeployment-recorder"))
 	r := NewReconciler(ctx, config, mgr, bdm.NewResolver(mgr.GetClient(), bdm.NewInterpolator()), controllerutil.SetControllerReference)
 
 	// Create a new controller

@@ -25,7 +25,7 @@ func AddJob(ctx context.Context, config *config.Config, mgr manager.Manager) err
 		return errors.Wrap(err, "Could not get kube client")
 	}
 	podLogGetter := NewPodLogGetter(client)
-	ctx = ctxlog.NewReconcilerContext(ctx, "ext-statefulset-reconciler")
+	ctx = ctxlog.NewReconcilerContext(ctx, "ext-job-job-reconciler", mgr.GetRecorder("ext-job-job-recorder"))
 	jobReconciler, err := NewJobReconciler(ctx, config, mgr, podLogGetter)
 	jobController, err := controller.New("ext-job-job-controller", mgr, controller.Options{Reconciler: jobReconciler})
 	if err != nil {

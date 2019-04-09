@@ -1,16 +1,16 @@
 package extendedjob
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -18,6 +18,7 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
 var _ reconcile.Reconciler = &TriggerReconciler{}
@@ -37,7 +38,6 @@ func NewTriggerReconciler(
 		client:            mgr.GetClient(),
 		config:            config,
 		query:             query,
-		recorder:          mgr.GetRecorder("extendedjob trigger reconciler"),
 		scheme:            mgr.GetScheme(),
 		setOwnerReference: f,
 	}
@@ -49,7 +49,6 @@ type TriggerReconciler struct {
 	client            client.Client
 	config            *config.Config
 	query             Query
-	recorder          record.EventRecorder
 	scheme            *runtime.Scheme
 	setOwnerReference setOwnerReferenceFunc
 }
