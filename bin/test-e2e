@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -eu
 
 echo "Test logs are here: /tmp/cf-operator-tests.log"
