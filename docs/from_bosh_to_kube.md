@@ -85,7 +85,7 @@ As the `BOSHDeployment` is deleted, all owned resources are automatically delete
 
 ```yaml
 ---
-# The name of the deployment. Overrides it from BoshDeployment Resource name
+# The name of the deployment. Replace the name with the name of the BOSHDeployment resource
 # It's used to namespace resources created for this deployment.
 # Based on docs [1], names should be less than 253 characters. We should limit this to
 # characters in the operator, to make sure that with any suffix, we won't go beyond the limit.

@@ -1,15 +1,25 @@
 package v1alpha1
 
 import (
+	"fmt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 )
 
 // This file is safe to edit
 // It's used as input for the Kube code generator
 // Run "make generate" after modifying this file
+
+var (
+	// LabelDependantJobName is the name key for dependant(job)
+	LabelDependantJobName = fmt.Sprintf("%s/dependant-job-name", apis.GroupName)
+	// LabelDependantSecretName is the name key for dependant's secret
+	LabelDependantSecretName = fmt.Sprintf("%s/dependant-secret-name", apis.GroupName)
+)
 
 // ExtendedJobSpec defines the desired state of ExtendedJob
 type ExtendedJobSpec struct {

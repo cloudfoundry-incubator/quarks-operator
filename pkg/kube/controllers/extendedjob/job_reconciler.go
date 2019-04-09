@@ -11,7 +11,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -20,36 +19,35 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	ejapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	store "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	store "code.cloudfoundry.org/cf-operator/pkg/kube/util/store/manifest"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // NewJobReconciler returns a new Reconciler
 func NewJobReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, podLogGetter PodLogGetter) (reconcile.Reconciler, error) {
-	manifestStore := store.NewStore(mgr.GetClient(), bdm.DesiredManifestKeyName)
+	versionedSecretStore := store.NewVersionedSecretStore(mgr.GetClient())
 
 	return &ReconcileJob{
-		ctx:          ctx,
-		config:       config,
-		client:       mgr.GetClient(),
-		podLogGetter: podLogGetter,
-		scheme:       mgr.GetScheme(),
-		manifestStore: manifestStore,
+		ctx:                  ctx,
+		config:               config,
+		client:               mgr.GetClient(),
+		podLogGetter:         podLogGetter,
+		scheme:               mgr.GetScheme(),
+		versionedSecretStore: versionedSecretStore,
 	}, nil
 }
 
 // ReconcileJob reconciles an Job object
 type ReconcileJob struct {
-	ctx          context.Context
-	client       client.Client
-	podLogGetter PodLogGetter
-	scheme       *runtime.Scheme
-	config       *config.Config
-	manifestStore store.Store
+	ctx                  context.Context
+	client               client.Client
+	podLogGetter         PodLogGetter
+	scheme               *runtime.Scheme
+	config               *config.Config
+	versionedSecretStore store.VersionedSecretStore
 }
 
 // Reconcile reads that state of the cluster for a Job object that is owned by an ExtendedJob and
@@ -92,17 +90,17 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 		return reconcile.Result{}, fmt.Errorf("could not find parent ExtendedJob for Job '%s'", request.NamespacedName)
 	}
 
-	ej := ejapi.ExtendedJob{}
+	ej := ejv1.ExtendedJob{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: parentName, Namespace: instance.GetNamespace()}, &ej)
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "getting parent ExtendedJob")
 	}
 
 	// Persist output if needed
-	if !reflect.DeepEqual(ejapi.Output{}, ej.Spec.Output) && ej.Spec.Output != nil {
+	if !reflect.DeepEqual(ejv1.Output{}, ej.Spec.Output) && ej.Spec.Output != nil {
 		if instance.Status.Succeeded == 1 || (instance.Status.Failed == 1 && ej.Spec.Output.WriteOnFailure) {
 			ctxlog.Infof(ctx, "Persisting output of job '%s'", instance.Name)
-			err = r.persistOutput(ctx, instance, ej.Spec.Output)
+			err = r.persistOutput(ctx, ej.GetName(), instance, ej.Spec.Output)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Could not persist output: '%s'", err)
 				return reconcile.Result{}, err
@@ -165,8 +163,8 @@ func (r *ReconcileJob) jobPod(ctx context.Context, name string, namespace string
 	return &list.Items[0], nil
 }
 
-func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job, conf *ejapi.Output) error {
-	pod, err := r.jobPod(ctx, instance.Name, instance.GetNamespace())
+func (r *ReconcileJob) persistOutput(ctx context.Context, exJobName string, instance *batchv1.Job, conf *ejv1.Output) error {
+	pod, err := r.jobPod(ctx, instance.GetName(), instance.GetNamespace())
 	if err != nil {
 		return errors.Wrap(err, "failed to persist output")
 	}
@@ -194,13 +192,16 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 		}
 
 		if conf.ToBeVersioned {
-			// Check labels existing
-			if _, ok := conf.SecretLabels[bdv1.LabelDeploymentName]; !ok {
-				return fmt.Errorf("secret labels doesn't contain %s", bdv1.LabelDeploymentName)
+			secretLabels := conf.SecretLabels
+			if secretLabels == nil {
+				secretLabels = map[string]string{}
 			}
 
-			// Use secretName as versioned secret name prefix: <secretName>-<version>
-			err = r.manifestStore.SaveSecretData(ctx, instance.GetNamespace(), secretName, data, conf.SecretLabels, "created by extendedJob")
+			// Use ejv1.LabelDependantSecretName to record secret name of dependant's volume if needed
+			secretLabels[ejv1.LabelDependantSecretName] = secretName
+
+			// Use secretName as versioned secret name prefix: <secretName>-v<version>
+			err = r.versionedSecretStore.Create(ctx, instance.GetNamespace(), secretName, data, secretLabels, "created by extendedJob")
 			if err != nil {
 				return errors.Wrap(err, "could not create secret")
 			}
@@ -218,6 +219,7 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 				return errors.Wrapf(err, "creating or updating Secret '%s'", secret.Name)
 			}
 		}
+
 	}
 
 	return nil

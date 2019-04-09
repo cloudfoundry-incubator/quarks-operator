@@ -8,7 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
-
 	"k8s.io/api/apps/v1beta2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -213,7 +212,7 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 							Env: []v1.EnvVar{
 								{
 									Name:  "BOSH_MANIFEST_PATH",
-									Value: "/var/run/secrets/deployment/" + DesiredManifestKeyName,
+									Value: filepath.Join("/var/run/secrets/deployment/", DesiredManifestKeyName),
 								},
 								{
 									Name:  "VARIABLES_DIR",
@@ -228,8 +227,9 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 			Output: &ejv1.Output{
 				NamePrefix: outputSecretPrefix,
 				SecretLabels: map[string]string{
-					bdv1.LabelDeploymentName: m.Name,
-					bdv1.LabelManifestSHA1:   manifestSignature,
+					bdv1.LabelDeploymentName:   m.Name,
+					bdv1.LabelManifestSHA1:     manifestSignature,
+					ejv1.LabelDependantJobName: fmt.Sprintf("data-gathering-%s", m.Name),
 				},
 				ToBeVersioned: true,
 			},
@@ -324,7 +324,7 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 			Env: []v1.EnvVar{
 				{
 					Name:  "BOSH_MANIFEST_PATH",
-					Value: "/var/run/secrets/deployment/" + DesiredManifestKeyName,
+					Value: filepath.Join("/var/run/secrets/deployment/", DesiredManifestKeyName),
 				},
 				{
 					Name:  "KUBERNETES_NAMESPACE",
@@ -354,6 +354,7 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 				SecretLabels: map[string]string{
 					bdv1.LabelDeploymentName: m.Name,
 				},
+				ToBeVersioned: true,
 			},
 			Trigger: ejv1.Trigger{
 				Strategy: ejv1.TriggerOnce,

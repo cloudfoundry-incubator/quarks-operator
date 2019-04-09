@@ -22,10 +22,10 @@ import (
 	ejapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	ej "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
+	store "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	store "code.cloudfoundry.org/cf-operator/pkg/kube/util/store/manifest"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
@@ -106,8 +106,10 @@ var _ = Describe("ReconcileExtendedJob", func() {
 		Context("when output persistence is configured", func() {
 			JustBeforeEach(func() {
 				ejob.Spec.Output = &ejapi.Output{
-					NamePrefix:   "foo-",
-					SecretLabels: map[string]string{"key": "value"},
+					NamePrefix: "foo-",
+					SecretLabels: map[string]string{
+						"key": "value",
+					},
 				}
 			})
 
@@ -140,7 +142,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 
 					Expect(secret.Labels).To(HaveKeyWithValue("key", "value"))
 					Expect(secret.Labels).To(HaveKeyWithValue(bdv1.LabelDeploymentName, "fake-deployment"))
-					Expect(secret.Labels).To(HaveKeyWithValue(store.LabelKind, "manifest"))
+					Expect(secret.Labels).To(HaveKeyWithValue(store.LabelSecretKind, "versionedSecret"))
 					Expect(secret.Labels).To(HaveKeyWithValue(store.LabelVersion, "1"))
 					Expect(secretName).To(Equal("foo-busybox-v1"))
 					return nil
@@ -182,6 +184,12 @@ var _ = Describe("ReconcileExtendedJob", func() {
 			})
 
 			It("does persist the output", func() {
+				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+					secret := object.(*corev1.Secret)
+					Expect(secret.GetName()).To(Equal("foo-busybox"))
+					return nil
+				})
+
 				result, err := reconciler.Reconcile(request)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(client.CreateCallCount()).To(Equal(1))

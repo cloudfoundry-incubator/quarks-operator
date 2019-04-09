@@ -30,12 +30,12 @@ import (
 
 var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager) error{
 	boshdeployment.AddDeployment,
-	boshdeployment.AddManifest,
 	extendedjob.AddTrigger,
 	extendedjob.AddErrand,
 	extendedjob.AddJob,
 	extendedjob.AddOwnership,
 	extendedsecret.Add,
+	extendedsecret.AddVersionedSecret,
 	extendedstatefulset.Add,
 }
 

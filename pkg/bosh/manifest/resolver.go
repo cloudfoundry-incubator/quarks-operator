@@ -17,7 +17,7 @@ import (
 
 // Resolver resolves references from CRD to a BOSH manifest
 type Resolver interface {
-	ResolveManifest(spec bdc.BOSHDeploymentSpec, namespace string, name string) (*Manifest, error)
+	ResolveManifest(spec bdc.BOSHDeploymentSpec, namespace string) (*Manifest, error)
 }
 
 // ResolverImpl implements Resolver interface
@@ -32,7 +32,7 @@ func NewResolver(client client.Client, interpolator Interpolator) *ResolverImpl 
 }
 
 // ResolveManifest returns manifest referenced by our CRD
-func (r *ResolverImpl) ResolveManifest(spec bdc.BOSHDeploymentSpec, namespace string, name string) (*Manifest, error) {
+func (r *ResolverImpl) ResolveManifest(spec bdc.BOSHDeploymentSpec, namespace string) (*Manifest, error) {
 	manifest := &Manifest{}
 	var (
 		m   string
@@ -69,11 +69,6 @@ func (r *ResolverImpl) ResolveManifest(spec bdc.BOSHDeploymentSpec, namespace st
 
 	err = yaml.Unmarshal(bytes, manifest)
 
-	// Override by boshDeployment name
-	if name != "" {
-		manifest.Name = name
-	}
-
 	return manifest, err
 }
 
@@ -103,7 +98,7 @@ func (r *ResolverImpl) getRefData(namespace string, manifestType string, manifes
 		}
 		encodedData, ok := opsSecret.Data[refKey]
 		if !ok {
-			return refData, fmt.Errorf("secert '%s/%s' doesn't contain key %s", namespace, manifestRef, refKey)
+			return refData, fmt.Errorf("secret '%s/%s' doesn't contain key %s", namespace, manifestRef, refKey)
 		}
 		refData = string(encodedData)
 	case bdc.URLType:

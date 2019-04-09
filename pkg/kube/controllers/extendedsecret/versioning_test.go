@@ -1,11 +1,10 @@
-package manifeststore_test
+package extendedsecret_test
 
 import (
 	"context"
 	"fmt"
 	"strings"
 
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,20 +13,18 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	. "code.cloudfoundry.org/cf-operator/pkg/kube/util/store/manifest"
 	"code.cloudfoundry.org/cf-operator/testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Store", func() {
+var _ = Describe("VersionedSecretStore", func() {
 	var (
 		namespace                string
-		deploymentName           string
+		secretName               string
 		exampleSourceDescription string
 		secretLabels             map[string]string
 		secretV1                 *corev1.Secret
@@ -35,27 +32,26 @@ var _ = Describe("Store", func() {
 		secretV4                 *corev1.Secret
 
 		client *cfakes.FakeClient
-		store  Store
+		store  VersionedSecretStore
 		ctx    context.Context
 	)
 
 	BeforeEach(func() {
 		namespace = "default"
-		deploymentName = "fake-deployment"
+		secretName = "fake-deployment"
 		exampleSourceDescription = "created by a unit-test"
 		secretLabels = map[string]string{
-			"deployment-name": deploymentName,
+			"deployment-name": secretName,
 		}
 
 		secretV1 = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      deploymentName + "-v1",
+				Name:      secretName + "-v1",
 				Namespace: "default",
 				UID:       "",
 				Labels: map[string]string{
-					bdv1.LabelDeploymentName: "fake-manifest",
-					LabelKind:                "manifest",
-					LabelVersion:             "1",
+					LabelSecretKind: "versionedSecret",
+					LabelVersion:    "1",
 				},
 			},
 			Data: map[string][]byte{
@@ -69,13 +65,12 @@ name: fake-deployment-v1
 		}
 		secretV2 = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      deploymentName + "-v2",
+				Name:      secretName + "-v2",
 				Namespace: "default",
 				UID:       "",
 				Labels: map[string]string{
-					bdv1.LabelDeploymentName: "fake-manifest",
-					LabelKind:                "manifest",
-					LabelVersion:             "2",
+					LabelSecretKind: "versionedSecret",
+					LabelVersion:    "2",
 				},
 			},
 			Data: map[string][]byte{
@@ -89,13 +84,12 @@ name: fake-deployment-v4
 		}
 		secretV4 = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      deploymentName + "-v4",
+				Name:      secretName + "-v4",
 				Namespace: "default",
 				UID:       "",
 				Labels: map[string]string{
-					bdv1.LabelDeploymentName: deploymentName,
-					LabelKind:                "manifest",
-					LabelVersion:             "4",
+					LabelSecretKind: "versionedSecret",
+					LabelVersion:    "4",
 				},
 			},
 			Data: map[string][]byte{
@@ -109,33 +103,26 @@ name: fake-deployment-v4
 		}
 	})
 
-	exampleManifest := func(data string) manifest.Manifest {
-		var manifest manifest.Manifest
-		err := yaml.Unmarshal([]byte(data), &manifest)
-		Expect(err).ToNot(HaveOccurred())
-		return manifest
-	}
-
 	BeforeEach(func() {
 		client = &cfakes.FakeClient{}
-		store = NewStore(client, "")
+		store = NewVersionedSecretStore(client)
 		ctx = testing.NewContext()
 	})
 
-	Describe("Save", func() {
+	Describe("Create", func() {
 		Context("when there is no versioned manifest", func() {
 			It("should create the first version", func() {
 				client.CreateCalls(func(context context.Context, object runtime.Object) error {
 					switch object.(type) {
 					case *corev1.Secret:
 						secret := object.(*corev1.Secret)
-						Expect(secret.GetName()).To(Equal(fmt.Sprintf("%s-v%d", deploymentName, 1)))
+						Expect(secret.GetName()).To(Equal(fmt.Sprintf("%s-v%d", secretName, 1)))
 						return nil
 					}
 					return nil
 				})
 
-				err := store.Save(ctx, namespace, deploymentName, exampleManifest(`{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`), secretLabels, exampleSourceDescription)
+				err := store.Create(ctx, namespace, secretName, map[string]string{"manifest": `{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`}, secretLabels, exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -156,49 +143,22 @@ name: fake-deployment-v4
 					switch object.(type) {
 					case *corev1.Secret:
 						secret := object.(*corev1.Secret)
-						Expect(secret.GetName()).To(Equal(fmt.Sprintf("%s-v%d", deploymentName, 1)))
+						Expect(secret.GetName()).To(Equal(fmt.Sprintf("%s-v%d", secretName, 1)))
 						return nil
 					}
 					return nil
 				})
 
-				err := store.Save(ctx, namespace, deploymentName, exampleManifest(`{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`), secretLabels, exampleSourceDescription)
+				err := store.Create(ctx, namespace, secretName, map[string]string{"manifest": `{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`}, secretLabels, exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
-			})
-		})
-
-		Context("when the deployment name contains invalid characters", func() {
-			It("should fail to create a new version", func() {
-				store = NewStore(client, "")
-				err := store.Save(ctx, namespace, "InvalidName", exampleManifest(`instance_groups: []`), secretLabels, exampleSourceDescription)
-				Expect(err).To(HaveOccurred())
 			})
 		})
 
 		Context("when the deployment name exceeds a length of 253 characters", func() {
 			It("should fail to create a new version", func() {
-				store = NewStore(client, "")
-				err := store.Save(ctx, namespace, strings.Repeat("foobar", 42), exampleManifest(`instance_groups: []`), secretLabels, exampleSourceDescription)
+				store = NewVersionedSecretStore(client)
+				err := store.Create(ctx, namespace, strings.Repeat("foobar", 42), map[string]string{"manifest": `{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`}, secretLabels, exampleSourceDescription)
 				Expect(err).To(HaveOccurred())
-			})
-		})
-	})
-
-	Describe("SaveSecretData", func() {
-		Context("when there is no versioned manifest", func() {
-			It("should create the first version", func() {
-				client.CreateCalls(func(context context.Context, object runtime.Object) error {
-					switch object.(type) {
-					case *corev1.Secret:
-						secret := object.(*corev1.Secret)
-						Expect(secret.GetName()).To(Equal(fmt.Sprintf("%s-v%d", deploymentName, 1)))
-						return nil
-					}
-					return nil
-				})
-
-				err := store.SaveSecretData(ctx, namespace, deploymentName, map[string]string{"manifest": `{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`}, secretLabels, exampleSourceDescription)
-				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})
@@ -223,13 +183,13 @@ name: fake-deployment-v4
 					switch object.(type) {
 					case *corev1.Secret:
 						secret := object.(*corev1.Secret)
-						Expect(secret.GetName()).To(Equal(fmt.Sprintf("%s-v%d", deploymentName, 1)))
+						Expect(secret.GetName()).To(Equal(fmt.Sprintf("%s-v%d", secretName, 1)))
 						return nil
 					}
 					return nil
 				})
 
-				err := store.Delete(ctx, namespace, secretLabels)
+				err := store.Delete(ctx, namespace, secretName, secretLabels)
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -272,7 +232,7 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				err := store.Decorate(ctx, namespace, deploymentName, secretLabels, "foo", "bar")
+				err := store.Decorate(ctx, namespace, secretName, secretLabels, "foo", "bar")
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -294,7 +254,7 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				currentManifestSecrets, err := store.List(ctx, namespace, secretLabels)
+				currentManifestSecrets, err := store.List(ctx, namespace, secretName, secretLabels)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(currentManifestSecrets)).To(BeIdenticalTo(2))
 			})
@@ -320,9 +280,9 @@ name: fake-deployment-v4
 				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object.(type) {
 					case *corev1.Secret:
-						if nn.Name == deploymentName+"-v1" {
+						if nn.Name == secretName+"-v1" {
 							secretV1.DeepCopyInto(object.(*corev1.Secret))
-						} else if nn.Name == deploymentName+"-v4" {
+						} else if nn.Name == secretName+"-v4" {
 							secretV4.DeepCopyInto(object.(*corev1.Secret))
 						}
 
@@ -333,38 +293,22 @@ name: fake-deployment-v4
 				})
 			})
 
-			It("should be possible to pick a specific version", func() {
-				manifest, err := store.Find(ctx, namespace, deploymentName, 1)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(manifest.Name).To(Equal(fmt.Sprintf("%s-v%d", deploymentName, 1)))
-
-				manifest, err = store.Find(ctx, namespace, deploymentName, 4)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(manifest.Name).To(Equal(fmt.Sprintf("%s-v%d", deploymentName, 4)))
-			})
-
 			It("should be possible to get the latest version", func() {
-				manifest, err := store.Latest(ctx, namespace, deploymentName, secretLabels)
+				secret, err := store.Latest(ctx, namespace, secretName, secretLabels)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(manifest.Name).To(Equal(fmt.Sprintf("%s-v%d", deploymentName, 4)))
-			})
-
-			It("should be possible to get the latest version secret", func() {
-				secret, err := store.LatestSecret(ctx, namespace, deploymentName, secretLabels)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(secret.Name).To(Equal(fmt.Sprintf("%s-v%d", deploymentName, 4)))
+				Expect(secret.Name).To(Equal(fmt.Sprintf("%s-v%d", secretName, 4)))
 			})
 		})
 	})
 
-	Describe("RetrieveVersionSecret", func() {
+	Describe("Get", func() {
 		It("should retrieve the secret for specified version", func() {
 			client.GetCalls(func(_ context.Context, nn types.NamespacedName, object runtime.Object) error {
 				switch object.(type) {
 				case *corev1.Secret:
-					if nn.Name == deploymentName+"-v1" {
+					if nn.Name == secretName+"-v1" {
 						secretV1.DeepCopyInto(object.(*corev1.Secret))
-					} else if nn.Name == deploymentName+"-v4" {
+					} else if nn.Name == secretName+"-v4" {
 						secretV4.DeepCopyInto(object.(*corev1.Secret))
 					}
 
@@ -374,9 +318,9 @@ name: fake-deployment-v4
 				return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 			})
 
-			secret, err := store.RetrieveVersionSecret(ctx, namespace, deploymentName, 1)
+			secret, err := store.Get(ctx, namespace, secretName, 1)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(secret.Name).To(Equal(fmt.Sprintf("%s-v%d", deploymentName, 1)))
+			Expect(secret.Name).To(Equal(fmt.Sprintf("%s-v%d", secretName, 1)))
 		})
 	})
 
@@ -396,7 +340,7 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				n, err := store.VersionCount(ctx, namespace, secretLabels)
+				n, err := store.VersionCount(ctx, namespace, secretName, secretLabels)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(n).To(Equal(1))
 			})
@@ -416,7 +360,7 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				n, err := store.VersionCount(ctx, namespace, secretLabels)
+				n, err := store.VersionCount(ctx, namespace, secretName, secretLabels)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(n).To(Equal(2))
 			})

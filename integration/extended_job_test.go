@@ -655,7 +655,7 @@ var _ = Describe("ExtendedJob", func() {
 					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 					By("persisting output for the first container")
-					secret, err := env.CollectSecret(env.Namespace, "output-job-output-busybox")
+					secret, err := env.CollectSecret(env.Namespace, "output-job-output-busybox-v1")
 					Expect(err).NotTo(HaveOccurred())
 					Expect(string(secret.Data["foo"])).To(Equal("1"))
 					Expect(string(secret.Data["bar"])).To(Equal("baz"))
@@ -665,7 +665,7 @@ var _ = Describe("ExtendedJob", func() {
 					Expect(secret.Labels["label-key2"]).To(Equal("label-value2"))
 
 					By("persisting output for the second container")
-					secret, err = env.CollectSecret(env.Namespace, "output-job-output-busybox2")
+					secret, err = env.CollectSecret(env.Namespace, "output-job-output-busybox2-v1")
 					Expect(err).NotTo(HaveOccurred())
 					Expect(string(secret.Data["foo"])).To(Equal("1"))
 					Expect(string(secret.Data["bar"])).To(Equal("baz"))
@@ -697,8 +697,8 @@ var _ = Describe("ExtendedJob", func() {
 						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 						// Wait until the output of the second container has been persisted. Then check the first one
-						_, err = env.CollectSecret(env.Namespace, "overwrite-job-output-busybox2")
-						secret, err := env.CollectSecret(env.Namespace, "overwrite-job-output-busybox")
+						_, err = env.CollectSecret(env.Namespace, "overwrite-job-output-busybox2-v1")
+						secret, err := env.CollectSecret(env.Namespace, "overwrite-job-output-busybox-v1")
 
 						Expect(err).ToNot(HaveOccurred())
 						Expect(string(secret.Data["foo"])).To(Equal("1"))
@@ -727,9 +727,9 @@ var _ = Describe("ExtendedJob", func() {
 							Expect(err).NotTo(HaveOccurred())
 
 							By("not persisting output for the first container")
-							_, err = env.GetSecret(env.Namespace, "output-job2-output-busybox")
+							_, err = env.GetSecret(env.Namespace, "output-job2-output-busybox-v1")
 							Expect(err).To(HaveOccurred())
-							Expect(err.Error()).To(ContainSubstring("waiting for secret output-job2-output-busybox: secrets \"output-job2-output-busybox\" not found"))
+							Expect(err.Error()).To(ContainSubstring("waiting for secret output-job2-output-busybox-v1: secrets \"output-job2-output-busybox-v1\" not found"))
 						})
 					})
 
@@ -749,7 +749,7 @@ var _ = Describe("ExtendedJob", func() {
 							defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 							By("persisting the output for the first container")
-							_, err = env.CollectSecret(env.Namespace, "output-job3-output-busybox")
+							_, err = env.CollectSecret(env.Namespace, "output-job3-output-busybox-v1")
 							Expect(err).ToNot(HaveOccurred())
 						})
 					})

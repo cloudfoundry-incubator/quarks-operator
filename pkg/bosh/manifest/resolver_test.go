@@ -184,7 +184,7 @@ instance_groups:
 				},
 			}
 
-			manifest, err := resolver.ResolveManifest(spec, "default", "")
+			manifest, err := resolver.ResolveManifest(spec, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -212,7 +212,7 @@ instance_groups:
 				},
 			}
 
-			manifest, err := resolver.ResolveManifest(spec, "default", "")
+			manifest, err := resolver.ResolveManifest(spec, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -236,7 +236,7 @@ instance_groups:
 				},
 			}
 
-			manifest, err := resolver.ResolveManifest(spec, "default", "")
+			manifest, err := resolver.ResolveManifest(spec, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -278,7 +278,7 @@ instance_groups:
 				},
 			}
 
-			manifest, err := resolver.ResolveManifest(spec, "default", "")
+			manifest, err := resolver.ResolveManifest(spec, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -330,7 +330,7 @@ instance_groups:
 				},
 			}
 
-			manifest, err := resolver.ResolveManifest(spec, "default", "")
+			manifest, err := resolver.ResolveManifest(spec, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -355,7 +355,7 @@ instance_groups:
 					Ref:  "not-existing",
 				},
 			}
-			_, err := resolver.ResolveManifest(spec, "default", "")
+			_, err := resolver.ResolveManifest(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve manifest"))
 		})
@@ -367,7 +367,7 @@ instance_groups:
 					Ref:  "empty-ref",
 				},
 			}
-			_, err := resolver.ResolveManifest(spec, "default", "")
+			_, err := resolver.ResolveManifest(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("doesn't contain key manifest"))
 		})
@@ -379,7 +379,7 @@ instance_groups:
 					Ref:  "invalid-yaml",
 				},
 			}
-			_, err := resolver.ResolveManifest(spec, "default", "")
+			_, err := resolver.ResolveManifest(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("yaml: unmarshal errors"))
 		})
@@ -392,7 +392,7 @@ instance_groups:
 					Ref:  "base-manifest",
 				},
 			}
-			_, err := resolver.ResolveManifest(spec, "default", "")
+			_, err := resolver.ResolveManifest(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unrecognized manifest ref type"))
 		})
@@ -410,7 +410,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(spec, "default", "")
+			_, err := resolver.ResolveManifest(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from configmap"))
 		})
@@ -428,7 +428,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(spec, "default", "")
+			_, err := resolver.ResolveManifest(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("doesn't contain key ops"))
 		})
@@ -448,7 +448,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(spec, "default", "")
+			_, err := resolver.ResolveManifest(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to build ops"))
 		})
@@ -467,7 +467,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(spec, "default", "")
+			_, err := resolver.ResolveManifest(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to interpolate"))
 		})
@@ -486,7 +486,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(spec, "default", "")
+			_, err := resolver.ResolveManifest(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unrecognized ops ref type"))
 		})
@@ -508,7 +508,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(spec, "default", "")
+			_, err := resolver.ResolveManifest(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from configmap"))
 		})
@@ -530,7 +530,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(spec, "default", "")
+			_, err := resolver.ResolveManifest(spec, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from secret"))
 		})
@@ -556,7 +556,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(spec, "default", "")
+			_, err := resolver.ResolveManifest(spec, "default")
 
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from secret"))

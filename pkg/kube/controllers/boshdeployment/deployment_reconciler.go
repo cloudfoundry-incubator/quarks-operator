@@ -7,9 +7,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -25,6 +24,7 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	store "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
@@ -48,6 +48,8 @@ type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) 
 
 // NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
+	versionedSecretStore := store.NewVersionedSecretStore(mgr.GetClient())
+
 	return &ReconcileBOSHDeployment{
 		ctx:          ctx,
 		config:       config,
@@ -56,6 +58,8 @@ func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manag
 		recorder:     mgr.GetRecorder("RECONCILER RECORDER"),
 		resolver:     resolver,
 		setReference: srf,
+
+		versionedSecretStore: versionedSecretStore,
 	}
 }
 
@@ -70,6 +74,8 @@ type ReconcileBOSHDeployment struct {
 	resolver     bdm.Resolver
 	setReference setReferenceFunc
 	config       *config.Config
+
+	versionedSecretStore store.VersionedSecretStore
 }
 
 // Reconcile reads that state of the cluster for a BOSHDeployment object and makes changes based on the state read
@@ -270,12 +276,15 @@ func (r *ReconcileBOSHDeployment) applyOps(ctx context.Context, instance *bdv1.B
 	// Create temp manifest as variable interpolation job input
 	// retrieve manifest
 	ctxlog.Debug(ctx, "Resolving manifest")
-	manifest, err := r.resolver.ResolveManifest(instance.Spec, instance.GetNamespace(), instance.GetName())
+	manifest, err := r.resolver.ResolveManifest(instance.Spec, instance.GetNamespace())
 	if err != nil {
 		r.recorder.Event(instance, corev1.EventTypeWarning, "ResolveManifest Error", err.Error())
 		ctxlog.Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
 		return nil, err
 	}
+
+	// Replace the name with the name of the BOSHDeployment resource
+	manifest.Name = instance.GetName()
 
 	return manifest, nil
 }
@@ -412,9 +421,9 @@ func (r *ReconcileBOSHDeployment) waitForBPM(ctx context.Context, deployment *bd
 	for _, container := range kubeConfigs.DataGatheringJob.Spec.Template.Spec.Containers {
 		_, secretName := bdm.CalculateEJobOutputSecretPrefixAndName(bdm.DeploymentSecretTypeInstanceGroupResolvedProperties, manifest.Name, container.Name)
 
-		secret := &v1.Secret{}
-		err := r.client.Get(ctx, types.NamespacedName{Name: secretName, Namespace: deployment.Namespace}, secret)
-
+		ctxlog.Debugf(ctx, "Getting latest secret '%s'", secretName)
+		secretLabels := kubeConfigs.DataGatheringJob.Spec.Output.SecretLabels
+		secret, err := r.versionedSecretStore.Latest(ctx, deployment.Namespace, secretName, secretLabels)
 		if err != nil && apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("secret %s/%s doesn't exist", deployment.Namespace, secretName)
 		} else if err != nil {
@@ -436,14 +445,35 @@ func (r *ReconcileBOSHDeployment) waitForBPM(ctx context.Context, deployment *bd
 // deployInstanceGroups create ExtendedJobs and ExtendedStatefulSets
 func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, instance *bdv1.BOSHDeployment, kubeConfigs *bdm.KubeConfig) error {
 	ctxlog.Debug(ctx, "Creating extendedJobs and extendedStatefulSets of instance groups")
+
+	// Get secret name and labels of interpolated manifest and resolved properties
+	_, interpolatedManifestSecretName := bdm.CalculateEJobOutputSecretPrefixAndName(bdm.DeploymentSecretTypeManifestAndVars, instance.GetName(), bdm.VarInterpolationContainerName)
+	interpolatedManifestSecretLabels := kubeConfigs.VariableInterpolationJob.Spec.Output.SecretLabels
+
+	interpolatedManifestVersionedSecret, err := r.versionedSecretStore.Latest(ctx, instance.GetNamespace(), interpolatedManifestSecretName, interpolatedManifestSecretLabels)
+	if err != nil {
+		ctxlog.Errorf(ctx, "Could get interpolated manifest secret '%s': %v", interpolatedManifestSecretName, err)
+		return errors.Wrapf(err, "could get interpolated manifest secret '%s'", interpolatedManifestSecretName)
+	}
+	resolvedPropertiesSecretLabels := kubeConfigs.DataGatheringJob.Spec.Output.SecretLabels
+
 	for _, eJob := range kubeConfigs.Errands {
+		// Update secret volumes of interpolated manifest and resolved properties
+		_, resolvedPropertiesSecretName := bdm.CalculateEJobOutputSecretPrefixAndName(bdm.DeploymentSecretTypeInstanceGroupResolvedProperties, instance.GetName(), eJob.Spec.Template.GetName())
+		resolvedPropertiesVersionedSecret, err := r.versionedSecretStore.Latest(ctx, instance.GetNamespace(), resolvedPropertiesSecretName, resolvedPropertiesSecretLabels)
+		if err != nil {
+			ctxlog.Errorf(ctx, "Could not get resolved properties secret '%s': %v", resolvedPropertiesSecretName, err)
+			return errors.Wrapf(err, "could not get resolved properties secret  '%s'", resolvedPropertiesSecretName)
+		}
+		r.updateVolumes(ctx, eJob.Spec.Template.Spec.Volumes, interpolatedManifestSecretName, interpolatedManifestVersionedSecret, resolvedPropertiesSecretName, resolvedPropertiesVersionedSecret)
+
 		// Set BOSHDeployment instance as the owner and controller
 		if err := r.setReference(instance, &eJob, r.scheme); err != nil {
 			r.recorder.Event(instance, corev1.EventTypeWarning, "NewExtendedJobForDeployment Error", err.Error())
 			return errors.Wrap(err, "couldn't set reference for an ExtendedJob for a BOSH Deployment")
 		}
 
-		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
+		_, err = controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
 			ejob, ok := obj.(*ejv1.ExtendedJob)
 			if !ok {
 				return fmt.Errorf("object is not an ExtendedJob")
@@ -458,13 +488,22 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 	}
 
 	for _, eSts := range kubeConfigs.InstanceGroups {
+		// Update secret volumes of interpolated manifest and resolved properties
+		_, resolvedPropertiesSecretName := bdm.CalculateEJobOutputSecretPrefixAndName(bdm.DeploymentSecretTypeInstanceGroupResolvedProperties, instance.GetName(), eSts.Spec.Template.GetName())
+		resolvedPropertiesVersionedSecret, err := r.versionedSecretStore.Latest(ctx, instance.GetNamespace(), resolvedPropertiesSecretName, resolvedPropertiesSecretLabels)
+		if err != nil {
+			ctxlog.Errorf(ctx, "Could not get resolved properties secret '%s': %v", resolvedPropertiesSecretName, err)
+			return errors.Wrapf(err, "could not get resolved properties secret  '%s'", resolvedPropertiesSecretName)
+		}
+		r.updateVolumes(ctx, eSts.Spec.Template.Spec.Template.Spec.Volumes, interpolatedManifestSecretName, interpolatedManifestVersionedSecret, resolvedPropertiesSecretName, resolvedPropertiesVersionedSecret)
+
 		// Set BOSHDeployment instance as the owner and controller
 		if err := r.setReference(instance, &eSts, r.scheme); err != nil {
 			r.recorder.Event(instance, corev1.EventTypeWarning, "NewExtendedStatefulSetForDeployment Error", err.Error())
 			return errors.Wrap(err, "couldn't set reference for an ExtendedStatefulSet for a BOSH Deployment")
 		}
 
-		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eSts.DeepCopy(), func(obj runtime.Object) error {
+		_, err = controllerutil.CreateOrUpdate(ctx, r.client, eSts.DeepCopy(), func(obj runtime.Object) error {
 			sts, ok := obj.(*estsv1.ExtendedStatefulSet)
 			if !ok {
 				return fmt.Errorf("object is not an ExtendStatefulSet")
@@ -489,4 +528,20 @@ func (r *ReconcileBOSHDeployment) actionOnDeploying(ctx context.Context, instanc
 	instance.Status.State = DeployedState
 
 	return nil
+}
+
+// updateVolumes update volumes for each errand/instanceGroup pod template
+func (r *ReconcileBOSHDeployment) updateVolumes(ctx context.Context, volumes []corev1.Volume, interpolatedManifestSecretName string, interpolatedManifestVersionedSecret *corev1.Secret, resolvedPropertiesSecretName string, resolvedPropertiesVersionedSecret *corev1.Secret) {
+	for _, vol := range volumes {
+		if vol.VolumeSource.Secret != nil && vol.VolumeSource.Secret.SecretName == interpolatedManifestSecretName {
+			ctxlog.Debugf(ctx, "Changing volume secret from '%s' to '%s'", vol.VolumeSource.Secret.SecretName, interpolatedManifestVersionedSecret.GetName())
+			vol.VolumeSource.Secret.SecretName = interpolatedManifestVersionedSecret.GetName()
+		}
+
+		if vol.VolumeSource.Secret != nil && vol.VolumeSource.Secret.SecretName == resolvedPropertiesSecretName {
+			ctxlog.Debugf(ctx, "Changing volume secret from '%s' to '%s'", vol.VolumeSource.Secret.SecretName, resolvedPropertiesVersionedSecret.GetName())
+			vol.VolumeSource.Secret.SecretName = resolvedPropertiesVersionedSecret.GetName()
+		}
+	}
+
 }
