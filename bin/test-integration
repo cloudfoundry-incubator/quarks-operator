@@ -25,6 +25,7 @@ bin/apply-crds
 
 kubectl get customresourcedefinitions
 
+GOVER_FILE=${GOVER_FILE:-gover-integration.coverprofile}
 
 pkgs="code.cloudfoundry.org/cf-operator/cmd/...,\
 code.cloudfoundry.org/cf-operator/pkg/bosh/...,\
@@ -35,5 +36,5 @@ code.cloudfoundry.org/cf-operator/pkg/kube/util/...,\
 code.cloudfoundry.org/cf-operator/pkg/kube/config/...,\
 code.cloudfoundry.org/cf-operator/pkg/kube/client/..."
 
-ginkgo --slowSpecThreshold=50 -cover -coverpkg "$pkgs" integration/
-
+mkdir -p code-coverage
+ginkgo --slowSpecThreshold=50 -cover -outputdir=./code-coverage -coverprofile=${GOVER_FILE} -coverpkg "$pkgs" integration/
