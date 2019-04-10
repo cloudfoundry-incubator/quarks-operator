@@ -127,7 +127,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 	err = r.createJob(ctx, *extJob)
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			ctxlog.Infof(ctx, "Skip '%s' triggered manually: already running", extJob.Name)
+			ctxlog.WithEvent(extJob, "AlreadyRunning").Infof(ctx, "Skip '%s' triggered manually: already running", extJob.Name)
 			// we don't want to requeue the job
 			err = nil
 		} else {
@@ -135,7 +135,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 		return result, err
 	}
-	ctxlog.Infof(ctx, "Created errand job for '%s'", extJob.Name)
+	ctxlog.WithEvent(extJob, "CreateJob").Infof(ctx, "Created errand job for '%s'", extJob.Name)
 
 	if extJob.Spec.Trigger.Strategy == ejv1.TriggerOnce {
 		// traverse Strategy into the final 'done' state

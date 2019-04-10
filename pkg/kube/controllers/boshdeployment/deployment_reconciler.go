@@ -118,7 +118,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 	oldManifestSHA1, _ := instance.Annotations[bdv1.AnnotationManifestSHA1]
 	if oldManifestSHA1 == currentManifestSHA1 && instance.Status.State == DeployedState {
-		log.Infof(ctx, "Skip reconcile: deployed BoshDeployment '%s/%s' manifest has not changed", instance.GetNamespace(), instance.GetName())
+		log.WithEvent(instance, "SkipReconcile").Infof(ctx, "Skip reconcile: deployed BoshDeployment '%s/%s' manifest has not changed", instance.GetNamespace(), instance.GetName())
 		return reconcile.Result{}, nil
 	}
 
@@ -208,7 +208,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		}
 
 	case DeployedState:
-		log.Infof(ctx, "Skip reconcile: BoshDeployment '%s/%s' already has been deployed", instance.GetNamespace(), instance.GetName())
+		log.WithEvent(instance, "SkipReconcile").Infof(ctx, "Skip reconcile: BoshDeployment '%s/%s' already has been deployed", instance.GetNamespace(), instance.GetName())
 		return reconcile.Result{}, nil
 	default:
 		return reconcile.Result{}, errors.New("unknown instance state")

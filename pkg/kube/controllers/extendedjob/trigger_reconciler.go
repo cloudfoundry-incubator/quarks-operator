@@ -109,11 +109,11 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 				if apierrors.IsAlreadyExists(err) {
 					ctxlog.Debugf(ctx, "Skip '%s' triggered by pod %s: already running", extJob.Name, podEvent)
 				} else {
-					ctxlog.Infof(ctx, "Failed to create job for '%s' via pod %s: %s", extJob.Name, podEvent, err)
+					ctxlog.WithEvent(&extJob, "CreateJob").Infof(ctx, "Failed to create job for '%s' via pod %s: %s", extJob.Name, podEvent, err)
 				}
 				continue
 			}
-			ctxlog.Infof(ctx, "Created job for '%s' via pod %s", extJob.Name, podEvent)
+			ctxlog.WithEvent(&extJob, "CreateJob").Infof(ctx, "Created job for '%s' via pod %s", extJob.Name, podEvent)
 		}
 	}
 	return
@@ -142,7 +142,7 @@ func (r *TriggerReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJ
 
 	err = r.setOwnerReference(&extJob, job, r.scheme)
 	if err != nil {
-		ctxlog.WithEvent(instance, "SetOwnerReferenceError").Errorf(ctx, "failed to set owner reference on job for '%s' via pod %s: %s", extJob.Name, podName, err)
+		ctxlog.WithEvent(&extJob, "SetOwnerReferenceError").Errorf(ctx, "failed to set owner reference on job for '%s' via pod %s: %s", extJob.Name, podName, err)
 		return err
 	}
 

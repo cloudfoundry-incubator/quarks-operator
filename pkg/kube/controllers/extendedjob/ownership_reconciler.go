@@ -98,7 +98,7 @@ func (r *OwnershipReconciler) Reconcile(request reconcile.Request) (reconcile.Re
 		finalizer.RemoveFinalizer(extJob)
 		err = r.client.Update(ctx, extJob)
 		if err != nil {
-			ctxlog.WithEvent(extJob, "RemoveFinalizerError").Errorf(ctx, "Could not remove finalizer from ExtJob '%s': ", extJob.GetName(), err)
+			ctxlog.WithEvent(extJob, "RemoveFinalizerError").Errorf(ctx, "Could not remove finalizer from ExtJob '%s': %s", extJob.GetName(), err)
 			return reconcile.Result{}, err
 		}
 
@@ -117,7 +117,7 @@ func (r *OwnershipReconciler) Reconcile(request reconcile.Request) (reconcile.Re
 		finalizer.AddFinalizer(extJob)
 		err = r.client.Update(ctx, extJob)
 		if err != nil {
-			ctxlog.WithEvent(instance, "RemoveFinalizerError").Errorf(ctx, "Could not remove finalizer from ExtJob '%s': ", extJob.GetName(), err)
+			ctxlog.WithEvent(extJob, "RemoveFinalizerError").Errorf(ctx, "Could not remove finalizer from ExtJob '%s': %s", extJob.GetName(), err)
 			return reconcile.Result{}, err
 		}
 	}
