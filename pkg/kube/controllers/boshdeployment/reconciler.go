@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -290,19 +291,13 @@ func (r *ReconcileBOSHDeployment) generateVariableSecrets(ctx context.Context, i
 			return errors.Wrap(err, "could not set reference for an ExtendedStatefulSet for a BOSH Deployment")
 		}
 
-		foundSecret := &esv1.ExtendedSecret{}
-		err = r.client.Get(ctx, types.NamespacedName{Name: variable.GetName(), Namespace: variable.GetNamespace()}, foundSecret)
-		if apierrors.IsNotFound(err) {
-			err = r.client.Create(ctx, &variable)
-			if err != nil {
-				return errors.Wrapf(err, "could not create ExtendedSecret %s", variable.GetName())
-			}
-		} else {
-			foundSecret.Spec = variable.Spec
-			err = r.client.Update(ctx, foundSecret)
-			if err != nil {
-				return errors.Wrapf(err, "could not update ExtendedSecret %s", variable.GetName())
-			}
+		_, err = controllerutil.CreateOrUpdate(ctx, r.client, variable.DeepCopy(), func(obj runtime.Object) error {
+			s := obj.(*esv1.ExtendedSecret)
+			s.Spec = variable.Spec
+			return nil
+		})
+		if err != nil {
+			return errors.Wrapf(err, "creating or updating ExtendedSecret '%s'", variable.Name)
 		}
 	}
 
@@ -329,29 +324,17 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 			Name:      tempManifestSecretName,
 			Namespace: instance.GetNamespace(),
 		},
-		StringData: map[string]string{
-			"manifest.yaml": string(tempManifestBytes),
-		},
 	}
-
-	// If the secret is missing, create it. Update it otherwise
-	foundSecret := &corev1.Secret{}
-	err = r.client.Get(ctx, types.NamespacedName{Name: tempManifestSecret.GetName(), Namespace: tempManifestSecret.GetNamespace()}, foundSecret)
-	if apierrors.IsNotFound(err) {
-		err = r.client.Create(ctx, tempManifestSecret)
-		if err != nil {
-			return errors.Wrap(err, "could not create temp manifest secret")
-		}
-		foundSecret = tempManifestSecret
-	} else {
-		foundSecret.Data = map[string][]byte{}
-		foundSecret.StringData = map[string]string{
+	_, err = controllerutil.CreateOrUpdate(ctx, r.client, tempManifestSecret, func(obj runtime.Object) error {
+		s := obj.(*corev1.Secret)
+		s.Data = map[string][]byte{}
+		s.StringData = map[string]string{
 			"manifest.yaml": string(tempManifestBytes),
 		}
-		err = r.client.Update(ctx, foundSecret)
-		if err != nil {
-			return errors.Wrap(err, "could not update temp manifest secret")
-		}
+		return nil
+	})
+	if err != nil {
+		return errors.Wrapf(err, "creating or updating Secret '%s'", tempManifestSecret.Name)
 	}
 
 	// Generate the ExtendedJob object
@@ -364,21 +347,13 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 		return err
 	}
 
-	// Check if this job already exists and create/update accordingly
-	foundExJob := &ejv1.ExtendedJob{}
-	err = r.client.Get(ctx, types.NamespacedName{Name: varIntExJob.Name, Namespace: varIntExJob.Namespace}, foundExJob)
-	if err != nil && apierrors.IsNotFound(err) {
-		ctxlog.Infof(ctx, "Creating a new ExtendedJob %s/%s\n", varIntExJob.Namespace, varIntExJob.Name)
-		err = r.client.Create(ctx, varIntExJob)
-		if err != nil {
-			ctxlog.Errorf(ctx, "Failed to create ExtendedJob '%s': %v", varIntExJob.GetName(), err)
-			r.recorder.Event(instance, corev1.EventTypeWarning, "CreateJobForVariableInterpolation Error", err.Error())
-			return err
-		}
-	} else if err != nil {
-		ctxlog.Errorf(ctx, "Failed to get ExtendedJob '%s': %v", varIntExJob.GetName(), err)
+	_, err = controllerutil.CreateOrUpdate(ctx, r.client, varIntExJob.DeepCopy(), func(obj runtime.Object) error {
+		varIntExJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+		return nil
+	})
+	if err != nil {
 		r.recorder.Event(instance, corev1.EventTypeWarning, "GetJobForVariableInterpolation Error", err.Error())
-		return err
+		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", varIntExJob.Name)
 	}
 
 	instance.Status.State = VariableInterpolatedState
@@ -400,21 +375,13 @@ func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, in
 		return err
 	}
 
-	// Check if this job already exists and create/update accordingly
-	foundExJob := &ejv1.ExtendedJob{}
-	err := r.client.Get(ctx, types.NamespacedName{Name: dataGatheringExJob.Name, Namespace: dataGatheringExJob.Namespace}, foundExJob)
-	if err != nil && apierrors.IsNotFound(err) {
-		ctxlog.Infof(ctx, "Creating a new ExtendedJob %s/%s\n", dataGatheringExJob.Namespace, dataGatheringExJob.Name)
-		err = r.client.Create(ctx, dataGatheringExJob)
-		if err != nil {
-			ctxlog.Errorf(ctx, "Failed to create ExtendedJob '%s': %v", dataGatheringExJob.GetName(), err)
-			r.recorder.Event(instance, corev1.EventTypeWarning, "GetJobForDataGathering Error", err.Error())
-			return err
-		}
-	} else if err != nil {
-		ctxlog.Errorf(ctx, "Failed to get ExtendedJob '%s': %v", dataGatheringExJob.GetName(), err)
+	_, err := controllerutil.CreateOrUpdate(ctx, r.client, dataGatheringExJob.DeepCopy(), func(obj runtime.Object) error {
+		dataGatheringExJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+		return nil
+	})
+	if err != nil {
 		r.recorder.Event(instance, corev1.EventTypeWarning, "GetJobForDataGathering Error", err.Error())
-		return err
+		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", dataGatheringExJob.Name)
 	}
 
 	instance.Status.State = DataGatheredState
@@ -463,19 +430,13 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 			return errors.Wrap(err, "couldn't set reference for an ExtendedJob for a BOSH Deployment")
 		}
 
-		// Check to see if the object already exists
-		existingEJob := &ejv1.ExtendedJob{}
-		err := r.client.Get(ctx, types.NamespacedName{Name: eJob.Name, Namespace: eJob.Namespace}, existingEJob)
-		if err != nil && apierrors.IsNotFound(err) {
-			ctxlog.Infof(ctx, "Creating a new ExtendedJob %s/%s for Deployment Manifest %s\n", eJob.Namespace, eJob.Name, instance.Name)
-
-			// Create the extended job
-			err := r.client.Create(ctx, &eJob)
-			if err != nil {
-				r.recorder.Event(instance, corev1.EventTypeWarning, "CreateExtendedJobForDeployment Error", err.Error())
-				ctxlog.Errorf(ctx, "Error creating ExtendedJob %s for deployment manifest %s: %s", eJob.Name, instance.GetName(), err)
-				return errors.Wrap(err, "couldn't create an ExtendedJob for a BOSH Deployment")
-			}
+		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
+			eJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+			return nil
+		})
+		if err != nil {
+			r.recorder.Event(instance, corev1.EventTypeWarning, "CreateExtendedJobForDeployment Error", err.Error())
+			return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", eJob.Name)
 		}
 	}
 
@@ -486,19 +447,13 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 			return errors.Wrap(err, "couldn't set reference for an ExtendedStatefulSet for a BOSH Deployment")
 		}
 
-		// Check to see if the object already exists
-		existingESts := &estsv1.ExtendedStatefulSet{}
-		err := r.client.Get(ctx, types.NamespacedName{Name: eSts.Name, Namespace: eSts.Namespace}, existingESts)
-		if err != nil && apierrors.IsNotFound(err) {
-			ctxlog.Infof(ctx, "Creating a new ExtendedStatefulSet %s/%s for Deployment Manifest %s\n", eSts.Namespace, eSts.Name, instance.Name)
-
-			// Create the extended statefulset
-			err := r.client.Create(ctx, &eSts)
-			if err != nil {
-				r.recorder.Event(instance, corev1.EventTypeWarning, "CreateExtendedStatefulSetForDeployment Error", err.Error())
-				ctxlog.Errorf(ctx, "Error creating ExtendedStatefulSet %s for deployment manifest %s: %s", eSts.Name, instance.GetName(), err)
-				return errors.Wrap(err, "couldn't create an ExtendedStatefulSet for a BOSH Deployment")
-			}
+		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eSts.DeepCopy(), func(obj runtime.Object) error {
+			eSts.DeepCopyInto(obj.(*estsv1.ExtendedStatefulSet))
+			return nil
+		})
+		if err != nil {
+			r.recorder.Event(instance, corev1.EventTypeWarning, "CreateExtendedStatefulSetForDeployment Error", err.Error())
+			return errors.Wrapf(err, "creating or updating ExtendedStatefulSet '%s'", eSts.Name)
 		}
 	}
 

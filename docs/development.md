@@ -150,6 +150,36 @@ Our Concourse pipeline definitions are kept in the [cf-operator-ci](https://gith
 - create functions in `env/machine`
 - create functions in `env/catalog`
 
+## Create-Or-Update pattern
+
+A pattern that comes up quite often is that an object needs to be updated if it already exists or created if it doesn't. `controller-runtime` provides the `controller-util` package which has a `CreateOrUpdate` function that can help with that. It takes a skeleton object and a reconcile function that is caleld in both the create and the update case:
+
+```go
+tempManifestSecret := &corev1.Secret{
+  ObjectMeta: metav1.ObjectMeta{
+    Name:      tempManifestSecretName,
+    Namespace: instance.GetNamespace(),
+  },
+}
+_, err = controllerutil.CreateOrUpdate(ctx, r.client, tempManifestSecret, func(obj runtime.Object) error {
+  s := obj.(*corev1.Secret)
+  s.Data = map[string][]byte{}
+  s.StringData = map[string]string{
+    "manifest.yaml": string(tempManifestBytes),
+  }
+  return nil
+})
+```
+
+Care must be taken when persisting objects that are already in their final state because they will be overwritten with the existing state if there already is such an object in the system. The following example shows one way to solve this:
+
+```go
+_, err = controllerutil.CreateOrUpdate(ctx, r.client, varIntExJob.DeepCopy(), func(obj runtime.Object) error {
+  varIntExJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+  return nil
+})
+```
+
 ## Versioning
 
 APIs and types follow the upstream versioning scheme described at: https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-versioning
