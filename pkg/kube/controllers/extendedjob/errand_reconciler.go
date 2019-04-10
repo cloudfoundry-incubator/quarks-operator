@@ -2,18 +2,23 @@ package extendedjob
 
 import (
 	"context"
+	"fmt"
 
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 	"github.com/pkg/errors"
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	store "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
@@ -30,26 +35,30 @@ func NewErrandReconciler(
 	f setOwnerReferenceFunc,
 	owner Owner,
 ) reconcile.Reconciler {
+	versionedSecretStore := store.NewVersionedSecretStore(mgr.GetClient())
+
 	return &ErrandReconciler{
-		ctx:               ctx,
-		client:            mgr.GetClient(),
-		config:            config,
-		recorder:          mgr.GetRecorder("extendedjob errand reconciler"),
-		scheme:            mgr.GetScheme(),
-		setOwnerReference: f,
-		owner:             owner,
+		ctx:                  ctx,
+		client:               mgr.GetClient(),
+		config:               config,
+		recorder:             mgr.GetRecorder("extendedjob errand reconciler"),
+		scheme:               mgr.GetScheme(),
+		setOwnerReference:    f,
+		owner:                owner,
+		versionedSecretStore: versionedSecretStore,
 	}
 }
 
 // ErrandReconciler implements the Reconciler interface
 type ErrandReconciler struct {
-	ctx               context.Context
-	client            client.Client
-	config            *config.Config
-	recorder          record.EventRecorder
-	scheme            *runtime.Scheme
-	setOwnerReference setOwnerReferenceFunc
-	owner             Owner
+	ctx                  context.Context
+	client               client.Client
+	config               *config.Config
+	recorder             record.EventRecorder
+	scheme               *runtime.Scheme
+	setOwnerReference    setOwnerReferenceFunc
+	owner                Owner
+	versionedSecretStore store.VersionedSecretStore
 }
 
 // Reconcile starts jobs for extended jobs of the type errand with Run being set to 'now' manually
@@ -83,6 +92,12 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			ctxlog.Errorf(ctx, "Failed to revert to 'trigger.strategy=manual' on job '%s': %s", extJob.Name, err)
 			return result, err
 		}
+	}
+
+	err = r.updateSecretReference(ctx, extJob)
+	if err != nil {
+		ctxlog.Errorf(ctx, "Failed to update update secret references on job '%s': %s", extJob.Name, err)
+		return result, err
 	}
 
 	// We might want to retrigger an old job due to a config change. In any
@@ -162,6 +177,65 @@ func (r *ErrandReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJo
 	err = r.client.Create(ctx, job)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// updateSecretReference look and see if any referenced secret is versioned, and if it is, but it's not latest, you have to change the reference
+func (r *ErrandReconciler) updateSecretReference(ctx context.Context, extJob *ejv1.ExtendedJob) error {
+	var err error
+	extJobCopy := extJob.DeepCopy()
+
+	_, secretsInSpec := owner.GetConfigNamesFromSpec(extJob.Spec.Template.Spec)
+	for secretNameInSpec := range secretsInSpec {
+		secretKey := types.NamespacedName{Namespace: extJob.GetNamespace(), Name: secretNameInSpec}
+		secret := &corev1.Secret{}
+		err = r.client.Get(ctx, secretKey, secret)
+		if err != nil && apierrors.IsNotFound(err) {
+			// Replace a new versioned secret
+			ctxlog.Debugf(ctx, "Getting latest secret '%s'", secretNameInSpec)
+			versionedSecret, err := r.versionedSecretStore.Latest(ctx, extJob.GetNamespace(), secretNameInSpec)
+			if err != nil && apierrors.IsNotFound(err) {
+				ctxlog.Debugf(ctx, "versioned secret %s/%s doesn't exist", extJob.GetNamespace(), secretNameInSpec)
+				continue
+			} else if err != nil {
+				return errors.Wrapf(err, "failed to get versioned secret %s/%s", extJob.GetNamespace(), secretNameInSpec)
+			}
+
+			owner.ReplaceVolumesSecretRef(extJob.Spec.Template.Spec.Volumes, secretNameInSpec, versionedSecret.GetName())
+			owner.ReplaceContainerEnvsSecretRef(extJob.Spec.Template.Spec.Containers, secretNameInSpec, versionedSecret.GetName())
+		} else if err != nil {
+			return errors.Wrapf(err, "failed to retrieve secret %s/%s", extJob.GetNamespace(), secretNameInSpec)
+		}
+
+		// Update versioned secret if there is a newer version
+		secretLabels := secret.GetLabels()
+		if secretLabels == nil {
+			continue
+		}
+		referencedSecretName := secretLabels[ejv1.LabelReferencedSecretName]
+
+		ctxlog.Debugf(ctx, "Getting latest secret '%s'", referencedSecretName)
+		versionedSecret, err := r.versionedSecretStore.Latest(ctx, extJob.GetNamespace(), referencedSecretName)
+		if err != nil && apierrors.IsNotFound(err) {
+			return fmt.Errorf("versioned secret %s/%s doesn't exist", extJob.GetNamespace(), referencedSecretName)
+		} else if err != nil {
+			return errors.Wrapf(err, "failed to get versioned secret %s/%s", extJob.GetNamespace(), referencedSecretName)
+		}
+
+		if referencedSecretName != versionedSecret.GetName() {
+			owner.ReplaceVolumesSecretRef(extJob.Spec.Template.Spec.Volumes, secretNameInSpec, versionedSecret.GetName())
+			owner.ReplaceContainerEnvsSecretRef(extJob.Spec.Template.Spec.Containers, secretNameInSpec, versionedSecret.GetName())
+		}
+	}
+
+	if extJobCopy != extJob {
+		err = r.client.Update(ctx, extJob)
+		if err != nil {
+			ctxlog.Errorf(ctx, "Could not update ExtJob '%s': ", extJob.GetName(), err)
+			return err
+		}
 	}
 
 	return nil

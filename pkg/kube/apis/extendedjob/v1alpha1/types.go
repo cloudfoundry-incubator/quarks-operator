@@ -15,10 +15,10 @@ import (
 // Run "make generate" after modifying this file
 
 var (
-	// LabelDependantJobName is the name key for dependant(job)
-	LabelDependantJobName = fmt.Sprintf("%s/dependant-job-name", apis.GroupName)
-	// LabelDependantSecretName is the name key for dependant's secret
-	LabelDependantSecretName = fmt.Sprintf("%s/dependant-secret-name", apis.GroupName)
+	// LabelReferencedJobName is the name key for dependent job
+	LabelReferencedJobName = fmt.Sprintf("%s/referenced-job-name", apis.GroupName)
+	// LabelReferencedSecretName is the name key for dependant's referenced secret
+	LabelReferencedSecretName = fmt.Sprintf("%s/referenced-secret-name", apis.GroupName)
 )
 
 // ExtendedJobSpec defines the desired state of ExtendedJob

@@ -41,11 +41,11 @@ var _ VersionedSecretStore = &VersionedSecretStoreImpl{}
 type VersionedSecretStore interface {
 	Create(ctx context.Context, namespace string, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error
 	Get(ctx context.Context, namespace string, secretName string, version int) (*corev1.Secret, error)
-	Latest(ctx context.Context, namespace string, secretName string, secretLabels map[string]string) (*corev1.Secret, error)
-	List(ctx context.Context, namespace string, secretName string, secretLabels map[string]string) ([]corev1.Secret, error)
-	VersionCount(ctx context.Context, namespace string, secretName string, secretLabels map[string]string) (int, error)
-	Delete(ctx context.Context, namespace string, secretName string, secretLabels map[string]string) error
-	Decorate(ctx context.Context, namespace string, secretName string, secretLabels map[string]string, key string, value string) error
+	Latest(ctx context.Context, namespace string, secretName string) (*corev1.Secret, error)
+	List(ctx context.Context, namespace string, secretName string) ([]corev1.Secret, error)
+	VersionCount(ctx context.Context, namespace string, secretName string) (int, error)
+	Delete(ctx context.Context, namespace string, secretName string) error
+	Decorate(ctx context.Context, namespace string, secretName string, key string, value string) error
 }
 
 // VersionedSecretStoreImpl contains the required fields to persist a secret
@@ -63,7 +63,7 @@ func NewVersionedSecretStore(client client.Client) VersionedSecretStoreImpl {
 
 // Create creates a new version of the secret from secret data
 func (p VersionedSecretStoreImpl) Create(ctx context.Context, namespace string, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error {
-	currentVersion, err := p.getGreatestVersion(ctx, namespace, secretName, labels)
+	currentVersion, err := p.getGreatestVersion(ctx, namespace, secretName)
 	if err != nil {
 		return err
 	}
@@ -109,8 +109,8 @@ func (p VersionedSecretStoreImpl) Get(ctx context.Context, namespace string, dep
 }
 
 // Latest returns the latest version of the secret
-func (p VersionedSecretStoreImpl) Latest(ctx context.Context, namespace string, secretName string, secretLabels map[string]string) (*corev1.Secret, error) {
-	latestVersion, err := p.getGreatestVersion(ctx, namespace, secretName, secretLabels)
+func (p VersionedSecretStoreImpl) Latest(ctx context.Context, namespace string, secretName string) (*corev1.Secret, error) {
+	latestVersion, err := p.getGreatestVersion(ctx, namespace, secretName)
 	if err != nil {
 		return nil, err
 	}
@@ -118,8 +118,8 @@ func (p VersionedSecretStoreImpl) Latest(ctx context.Context, namespace string, 
 }
 
 // List returns all versions of the secret
-func (p VersionedSecretStoreImpl) List(ctx context.Context, namespace string, secretName string, secretLabels map[string]string) ([]corev1.Secret, error) {
-	secrets, err := p.listSecrets(ctx, namespace, secretName, secretLabels)
+func (p VersionedSecretStoreImpl) List(ctx context.Context, namespace string, secretName string) ([]corev1.Secret, error) {
+	secrets, err := p.listSecrets(ctx, namespace, secretName)
 	if err != nil {
 		return nil, err
 	}
@@ -128,8 +128,8 @@ func (p VersionedSecretStoreImpl) List(ctx context.Context, namespace string, se
 }
 
 // VersionCount returns the number of versions for this secret
-func (p VersionedSecretStoreImpl) VersionCount(ctx context.Context, namespace string, secretName string, secretLabels map[string]string) (int, error) {
-	list, err := p.listSecrets(ctx, namespace, secretName, secretLabels)
+func (p VersionedSecretStoreImpl) VersionCount(ctx context.Context, namespace string, secretName string) (int, error) {
+	list, err := p.listSecrets(ctx, namespace, secretName)
 	if err != nil {
 		return 0, err
 	}
@@ -138,8 +138,8 @@ func (p VersionedSecretStoreImpl) VersionCount(ctx context.Context, namespace st
 }
 
 // Decorate adds a label to the latest version of the secret
-func (p VersionedSecretStoreImpl) Decorate(ctx context.Context, namespace string, secretName string, secretLabels map[string]string, key string, value string) error {
-	version, err := p.getGreatestVersion(ctx, namespace, secretName, secretLabels)
+func (p VersionedSecretStoreImpl) Decorate(ctx context.Context, namespace string, secretName string, key string, value string) error {
+	version, err := p.getGreatestVersion(ctx, namespace, secretName)
 	if err != nil {
 		return err
 	}
@@ -167,8 +167,8 @@ func (p VersionedSecretStoreImpl) Decorate(ctx context.Context, namespace string
 
 // Delete removes all versions of the secret and therefore the
 // secret itself.
-func (p VersionedSecretStoreImpl) Delete(ctx context.Context, namespace string, secretName string, secretLabels map[string]string) error {
-	list, err := p.listSecrets(ctx, namespace, secretName, secretLabels)
+func (p VersionedSecretStoreImpl) Delete(ctx context.Context, namespace string, secretName string) error {
+	list, err := p.listSecrets(ctx, namespace, secretName)
 	if err != nil {
 		return err
 	}
@@ -182,8 +182,10 @@ func (p VersionedSecretStoreImpl) Delete(ctx context.Context, namespace string, 
 	return nil
 }
 
-func (p VersionedSecretStoreImpl) listSecrets(ctx context.Context, namespace string, secretName string, secretLabels map[string]string) ([]corev1.Secret, error) {
-	secretLabelsSet := labels.Set(secretLabels)
+func (p VersionedSecretStoreImpl) listSecrets(ctx context.Context, namespace string, secretName string) ([]corev1.Secret, error) {
+	secretLabelsSet := labels.Set{
+		LabelSecretKind : "versionedSecret",
+	}
 
 	secrets := &corev1.SecretList{}
 	if err := p.client.List(ctx, &client.ListOptions{
@@ -205,8 +207,8 @@ func (p VersionedSecretStoreImpl) listSecrets(ctx context.Context, namespace str
 	return result, nil
 }
 
-func (p VersionedSecretStoreImpl) getGreatestVersion(ctx context.Context, namespace string, secretName string, secretLabels map[string]string) (int, error) {
-	list, err := p.listSecrets(ctx, namespace, secretName, secretLabels)
+func (p VersionedSecretStoreImpl) getGreatestVersion(ctx context.Context, namespace string, secretName string) (int, error) {
+	list, err := p.listSecrets(ctx, namespace, secretName)
 	if err != nil {
 		return -1, err
 	}

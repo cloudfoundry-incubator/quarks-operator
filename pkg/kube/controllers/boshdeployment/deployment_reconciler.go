@@ -51,14 +51,13 @@ func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manag
 	versionedSecretStore := store.NewVersionedSecretStore(mgr.GetClient())
 
 	return &ReconcileBOSHDeployment{
-		ctx:          ctx,
-		config:       config,
-		client:       mgr.GetClient(),
-		scheme:       mgr.GetScheme(),
-		recorder:     mgr.GetRecorder("RECONCILER RECORDER"),
-		resolver:     resolver,
-		setReference: srf,
-
+		ctx:                  ctx,
+		config:               config,
+		client:               mgr.GetClient(),
+		scheme:               mgr.GetScheme(),
+		recorder:             mgr.GetRecorder("RECONCILER RECORDER"),
+		resolver:             resolver,
+		setReference:         srf,
 		versionedSecretStore: versionedSecretStore,
 	}
 }
@@ -67,14 +66,13 @@ func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manag
 type ReconcileBOSHDeployment struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	ctx          context.Context
-	client       client.Client
-	scheme       *runtime.Scheme
-	recorder     record.EventRecorder
-	resolver     bdm.Resolver
-	setReference setReferenceFunc
-	config       *config.Config
-
+	ctx                  context.Context
+	client               client.Client
+	scheme               *runtime.Scheme
+	recorder             record.EventRecorder
+	resolver             bdm.Resolver
+	setReference         setReferenceFunc
+	config               *config.Config
 	versionedSecretStore store.VersionedSecretStore
 }
 
@@ -327,7 +325,7 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 		return errors.Wrap(err, "could not marshal temp manifest")
 	}
 
-	tempManifestSecretName := bdm.CalculateSecretName(bdm.DeploymentSecretTypeManifestWithOps, manifest.Name, "")
+	tempManifestSecretName := manifest.CalculateSecretName(bdm.DeploymentSecretTypeManifestWithOps, "")
 
 	// Create a secret object for the manifest
 	tempManifestSecret := &corev1.Secret{
@@ -419,11 +417,10 @@ func (r *ReconcileBOSHDeployment) waitForBPM(ctx context.Context, deployment *bd
 	result := map[string]bdm.Manifest{}
 
 	for _, container := range kubeConfigs.DataGatheringJob.Spec.Template.Spec.Containers {
-		_, secretName := bdm.CalculateEJobOutputSecretPrefixAndName(bdm.DeploymentSecretTypeInstanceGroupResolvedProperties, manifest.Name, container.Name)
+		_, secretName := manifest.CalculateEJobOutputSecretPrefixAndName(bdm.DeploymentSecretTypeInstanceGroupResolvedProperties, container.Name)
 
 		ctxlog.Debugf(ctx, "Getting latest secret '%s'", secretName)
-		secretLabels := kubeConfigs.DataGatheringJob.Spec.Output.SecretLabels
-		secret, err := r.versionedSecretStore.Latest(ctx, deployment.Namespace, secretName, secretLabels)
+		secret, err := r.versionedSecretStore.Latest(ctx, deployment.Namespace, secretName)
 		if err != nil && apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("secret %s/%s doesn't exist", deployment.Namespace, secretName)
 		} else if err != nil {
@@ -446,34 +443,14 @@ func (r *ReconcileBOSHDeployment) waitForBPM(ctx context.Context, deployment *bd
 func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, instance *bdv1.BOSHDeployment, kubeConfigs *bdm.KubeConfig) error {
 	ctxlog.Debug(ctx, "Creating extendedJobs and extendedStatefulSets of instance groups")
 
-	// Get secret name and labels of interpolated manifest and resolved properties
-	_, interpolatedManifestSecretName := bdm.CalculateEJobOutputSecretPrefixAndName(bdm.DeploymentSecretTypeManifestAndVars, instance.GetName(), bdm.VarInterpolationContainerName)
-	interpolatedManifestSecretLabels := kubeConfigs.VariableInterpolationJob.Spec.Output.SecretLabels
-
-	interpolatedManifestVersionedSecret, err := r.versionedSecretStore.Latest(ctx, instance.GetNamespace(), interpolatedManifestSecretName, interpolatedManifestSecretLabels)
-	if err != nil {
-		ctxlog.Errorf(ctx, "Could get interpolated manifest secret '%s': %v", interpolatedManifestSecretName, err)
-		return errors.Wrapf(err, "could get interpolated manifest secret '%s'", interpolatedManifestSecretName)
-	}
-	resolvedPropertiesSecretLabels := kubeConfigs.DataGatheringJob.Spec.Output.SecretLabels
-
 	for _, eJob := range kubeConfigs.Errands {
-		// Update secret volumes of interpolated manifest and resolved properties
-		_, resolvedPropertiesSecretName := bdm.CalculateEJobOutputSecretPrefixAndName(bdm.DeploymentSecretTypeInstanceGroupResolvedProperties, instance.GetName(), eJob.Spec.Template.GetName())
-		resolvedPropertiesVersionedSecret, err := r.versionedSecretStore.Latest(ctx, instance.GetNamespace(), resolvedPropertiesSecretName, resolvedPropertiesSecretLabels)
-		if err != nil {
-			ctxlog.Errorf(ctx, "Could not get resolved properties secret '%s': %v", resolvedPropertiesSecretName, err)
-			return errors.Wrapf(err, "could not get resolved properties secret  '%s'", resolvedPropertiesSecretName)
-		}
-		r.updateVolumes(ctx, eJob.Spec.Template.Spec.Volumes, interpolatedManifestSecretName, interpolatedManifestVersionedSecret, resolvedPropertiesSecretName, resolvedPropertiesVersionedSecret)
-
 		// Set BOSHDeployment instance as the owner and controller
 		if err := r.setReference(instance, &eJob, r.scheme); err != nil {
 			r.recorder.Event(instance, corev1.EventTypeWarning, "NewExtendedJobForDeployment Error", err.Error())
 			return errors.Wrap(err, "couldn't set reference for an ExtendedJob for a BOSH Deployment")
 		}
 
-		_, err = controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
+		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
 			ejob, ok := obj.(*ejv1.ExtendedJob)
 			if !ok {
 				return fmt.Errorf("object is not an ExtendedJob")
@@ -488,22 +465,13 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 	}
 
 	for _, eSts := range kubeConfigs.InstanceGroups {
-		// Update secret volumes of interpolated manifest and resolved properties
-		_, resolvedPropertiesSecretName := bdm.CalculateEJobOutputSecretPrefixAndName(bdm.DeploymentSecretTypeInstanceGroupResolvedProperties, instance.GetName(), eSts.Spec.Template.GetName())
-		resolvedPropertiesVersionedSecret, err := r.versionedSecretStore.Latest(ctx, instance.GetNamespace(), resolvedPropertiesSecretName, resolvedPropertiesSecretLabels)
-		if err != nil {
-			ctxlog.Errorf(ctx, "Could not get resolved properties secret '%s': %v", resolvedPropertiesSecretName, err)
-			return errors.Wrapf(err, "could not get resolved properties secret  '%s'", resolvedPropertiesSecretName)
-		}
-		r.updateVolumes(ctx, eSts.Spec.Template.Spec.Template.Spec.Volumes, interpolatedManifestSecretName, interpolatedManifestVersionedSecret, resolvedPropertiesSecretName, resolvedPropertiesVersionedSecret)
-
 		// Set BOSHDeployment instance as the owner and controller
 		if err := r.setReference(instance, &eSts, r.scheme); err != nil {
 			r.recorder.Event(instance, corev1.EventTypeWarning, "NewExtendedStatefulSetForDeployment Error", err.Error())
 			return errors.Wrap(err, "couldn't set reference for an ExtendedStatefulSet for a BOSH Deployment")
 		}
 
-		_, err = controllerutil.CreateOrUpdate(ctx, r.client, eSts.DeepCopy(), func(obj runtime.Object) error {
+		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eSts.DeepCopy(), func(obj runtime.Object) error {
 			sts, ok := obj.(*estsv1.ExtendedStatefulSet)
 			if !ok {
 				return fmt.Errorf("object is not an ExtendStatefulSet")
@@ -528,20 +496,4 @@ func (r *ReconcileBOSHDeployment) actionOnDeploying(ctx context.Context, instanc
 	instance.Status.State = DeployedState
 
 	return nil
-}
-
-// updateVolumes update volumes for each errand/instanceGroup pod template
-func (r *ReconcileBOSHDeployment) updateVolumes(ctx context.Context, volumes []corev1.Volume, interpolatedManifestSecretName string, interpolatedManifestVersionedSecret *corev1.Secret, resolvedPropertiesSecretName string, resolvedPropertiesVersionedSecret *corev1.Secret) {
-	for _, vol := range volumes {
-		if vol.VolumeSource.Secret != nil && vol.VolumeSource.Secret.SecretName == interpolatedManifestSecretName {
-			ctxlog.Debugf(ctx, "Changing volume secret from '%s' to '%s'", vol.VolumeSource.Secret.SecretName, interpolatedManifestVersionedSecret.GetName())
-			vol.VolumeSource.Secret.SecretName = interpolatedManifestVersionedSecret.GetName()
-		}
-
-		if vol.VolumeSource.Secret != nil && vol.VolumeSource.Secret.SecretName == resolvedPropertiesSecretName {
-			ctxlog.Debugf(ctx, "Changing volume secret from '%s' to '%s'", vol.VolumeSource.Secret.SecretName, resolvedPropertiesVersionedSecret.GetName())
-			vol.VolumeSource.Secret.SecretName = resolvedPropertiesVersionedSecret.GetName()
-		}
-	}
-
 }

@@ -31,19 +31,19 @@ func (s DeploymentSecretType) String() string {
 		"ig-resolved"}[s]
 }
 
-// CalculateSecretName generates a Secret name based on deployment name and variable name
-func CalculateSecretName(secretType DeploymentSecretType, deployment string, variable string) string {
-	if variable == "" {
-		variable = secretType.String()
+// CalculateSecretName generates a Secret name for a given name
+func (m *Manifest) CalculateSecretName(secretType DeploymentSecretType, name string) string {
+	if name == "" {
+		name = secretType.String()
 	} else {
-		variable = fmt.Sprintf("%s-%s", secretType, variable)
+		name = fmt.Sprintf("%s-%s", secretType, name)
 	}
 
 	nameRegex := regexp.MustCompile("[^-][a-z0-9-]*.[a-z0-9-]*[^-]")
 	partRegex := regexp.MustCompile("[a-z0-9-]*")
 
-	deploymentName := partRegex.FindString(strings.Replace(deployment, "_", "-", -1))
-	variableName := partRegex.FindString(strings.Replace(variable, "_", "-", -1))
+	deploymentName := partRegex.FindString(strings.Replace(m.Name, "_", "-", -1))
+	variableName := partRegex.FindString(strings.Replace(name, "_", "-", -1))
 	secretName := nameRegex.FindString(deploymentName + "." + variableName)
 
 	if len(secretName) > 63 {
@@ -59,9 +59,9 @@ func CalculateSecretName(secretType DeploymentSecretType, deployment string, var
 
 // CalculateEJobOutputSecretPrefixAndName generates a Secret prefix for the output
 // of an Extended Job given a name, and calculates the final Secret name,
-// given deployment name and container name
-func CalculateEJobOutputSecretPrefixAndName(secretType DeploymentSecretType, deploymentName string, containerName string) (string, string) {
-	prefix := CalculateSecretName(secretType, deploymentName, "")
+// given a container name
+func (m *Manifest) CalculateEJobOutputSecretPrefixAndName(secretType DeploymentSecretType, containerName string) (string, string) {
+	prefix := m.CalculateSecretName(secretType, "")
 	finalName := fmt.Sprintf("%s.%s", prefix, containerName)
 
 	return prefix + ".", finalName

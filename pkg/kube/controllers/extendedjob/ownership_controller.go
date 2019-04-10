@@ -17,6 +17,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	store "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
@@ -88,10 +89,14 @@ func AddOwnership(ctx context.Context, config *config.Config, mgr manager.Manage
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*corev1.Secret)
 
+			// enqueuing secret referenced by EJob
 			reconcile, err := hasSecretReferences(ctx, mgr.GetClient(), *o)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to query extended jobs: %s", err)
 			}
+
+			// enqueuing versioned secret which has required labels
+			reconcile = hasVersionedSecretReferences(*o)
 
 			return reconcile
 		},
@@ -162,6 +167,17 @@ func hasSecretReferences(ctx context.Context, c client.Client, o corev1.Secret) 
 	return false, nil
 }
 
+func hasVersionedSecretReferences(o corev1.Secret) bool {
+	secretLabels := o.GetLabels()
+	if secretLabels == nil {
+		return false
+	}
+	kind, _ := secretLabels[store.LabelSecretKind]
+	_, referencedJobExist := secretLabels[ejv1.LabelReferencedJobName]
+	_, referencedSecretExist := secretLabels[ejv1.LabelReferencedSecretName]
+	return kind == "versionedSecret" && referencedJobExist && referencedSecretExist
+}
+
 func reconcilesForConfigMap(ctx context.Context, mgr manager.Manager, configMap corev1.ConfigMap) []reconcile.Request {
 	reconciles := []reconcile.Request{}
 
@@ -189,6 +205,16 @@ func reconcilesForConfigMap(ctx context.Context, mgr manager.Manager, configMap 
 func reconcilesForSecret(ctx context.Context, mgr manager.Manager, secret corev1.Secret) []reconcile.Request {
 	reconciles := []reconcile.Request{}
 
+	var referencedSecretName string
+	var ok bool
+	secretLabels := secret.GetLabels()
+	if secretLabels != nil {
+		referencedSecretName, ok = secretLabels[ejv1.LabelReferencedSecretName]
+		if !ok {
+			return reconciles
+		}
+	}
+
 	extJobs := &ejv1.ExtendedJobList{}
 	err := mgr.GetClient().List(ctx, &client.ListOptions{}, extJobs)
 	if err != nil || len(extJobs.Items) < 1 {
@@ -197,7 +223,17 @@ func reconcilesForSecret(ctx context.Context, mgr manager.Manager, secret corev1
 
 	for _, extJob := range extJobs.Items {
 		_, secretNames := eowner.GetConfigNamesFromSpec(extJob.Spec.Template.Spec)
+		// add requests for the ExtendedJob referencing the native secret
 		if _, ok := secretNames[secret.GetName()]; ok {
+			reconciles = append(reconciles, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      extJob.GetName(),
+					Namespace: extJob.GetNamespace(),
+				},
+			})
+		}
+		// add requests for the ExtendedStatefulSet referencing the versioned secret
+		if _, ok := secretNames[referencedSecretName]; ok && referencedSecretName != "" {
 			reconciles = append(reconciles, reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      extJob.GetName(),

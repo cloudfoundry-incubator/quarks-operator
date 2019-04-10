@@ -103,7 +103,7 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 	args := []string{"-c", `cf-operator variable-interpolation`}
 
 	// This is the source manifest, that still has the '((vars))'
-	manifestSecretName := CalculateSecretName(DeploymentSecretTypeManifestWithOps, m.Name, "")
+	manifestSecretName := m.CalculateSecretName(DeploymentSecretTypeManifestWithOps, "")
 
 	// Prepare Volumes and Volume mounts
 
@@ -131,7 +131,7 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 	// We need a volume and a mount for each input variable
 	for _, variable := range m.Variables {
 		varName := variable.Name
-		varSecretName := CalculateSecretName(DeploymentSecretTypeGeneratedVariable, m.Name, varName)
+		varSecretName := m.CalculateSecretName(DeploymentSecretTypeGeneratedVariable, varName)
 
 		// The volume definition
 		vol := v1.Volume{
@@ -179,7 +179,7 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 		return nil, errors.Wrap(err, "could not calculate manifest SHA1")
 	}
 
-	outputSecretPrefix, _ := CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, m.Name, VarInterpolationContainerName)
+	outputSecretPrefix, _ := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, VarInterpolationContainerName)
 
 	eJobName := fmt.Sprintf("var-interpolation-%s", m.Name)
 
@@ -227,9 +227,9 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 			Output: &ejv1.Output{
 				NamePrefix: outputSecretPrefix,
 				SecretLabels: map[string]string{
-					bdv1.LabelDeploymentName:   m.Name,
-					bdv1.LabelManifestSHA1:     manifestSignature,
-					ejv1.LabelDependantJobName: fmt.Sprintf("data-gathering-%s", m.Name),
+					bdv1.LabelDeploymentName:    m.Name,
+					bdv1.LabelManifestSHA1:      manifestSignature,
+					ejv1.LabelReferencedJobName: fmt.Sprintf("data-gathering-%s", m.Name),
 				},
 				ToBeVersioned: true,
 			},
@@ -254,10 +254,10 @@ func (m *Manifest) SHA1() (string, error) {
 // dataGatheringJob generates the Data Gathering Job for a manifest
 func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error) {
 
-	_, interpolatedManifestSecretName := CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, m.Name, VarInterpolationContainerName)
+	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, VarInterpolationContainerName)
 
 	eJobName := fmt.Sprintf("data-gathering-%s", m.Name)
-	outputSecretNamePrefix, _ := CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, m.Name, "")
+	outputSecretNamePrefix, _ := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, "")
 
 	initContainers := []v1.Container{}
 	containers := make([]v1.Container, len(m.InstanceGroups))
@@ -429,7 +429,7 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 		})
 	}
 
-	_, resolvedPropertiesSecretName := CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, m.Name, igName)
+	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, igName)
 	volumeMounts := []v1.VolumeMount{
 		{
 			Name:      "rendering-data",
@@ -516,8 +516,8 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 		return essv1.ExtendedStatefulSet{}, err
 	}
 
-	_, interpolatedManifestSecretName := CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, m.Name, VarInterpolationContainerName)
-	_, resolvedPropertiesSecretName := CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, m.Name, ig.Name)
+	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, VarInterpolationContainerName)
+	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, ig.Name)
 	volumes := []v1.Volume{
 		{
 			Name:         "rendering-data",
@@ -616,8 +616,8 @@ func (m *Manifest) errandToExtendedJob(ig *InstanceGroup, namespace string) (ejv
 		return ejv1.ExtendedJob{}, err
 	}
 
-	_, interpolatedManifestSecretName := CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, m.Name, VarInterpolationContainerName)
-	_, resolvedPropertiesSecretName := CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, m.Name, ig.Name)
+	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, VarInterpolationContainerName)
+	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, ig.Name)
 	volumes := []v1.Volume{
 		{
 			Name:         "rendering-data",
@@ -692,7 +692,7 @@ func (m *Manifest) convertVariables(namespace string) []esv1.ExtendedSecret {
 	secrets := []esv1.ExtendedSecret{}
 
 	for _, v := range m.Variables {
-		secretName := CalculateSecretName(DeploymentSecretTypeGeneratedVariable, m.Name, v.Name)
+		secretName := m.CalculateSecretName(DeploymentSecretTypeGeneratedVariable, v.Name)
 		s := esv1.ExtendedSecret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
@@ -714,11 +714,11 @@ func (m *Manifest) convertVariables(namespace string) []esv1.ExtendedSecret {
 			}
 			if v.Options.CA != "" {
 				certRequest.CARef = esv1.SecretReference{
-					Name: CalculateSecretName(DeploymentSecretTypeGeneratedVariable, m.Name, v.Options.CA),
+					Name: m.CalculateSecretName(DeploymentSecretTypeGeneratedVariable, v.Options.CA),
 					Key:  "certificate",
 				}
 				certRequest.CAKeyRef = esv1.SecretReference{
-					Name: CalculateSecretName(DeploymentSecretTypeGeneratedVariable, m.Name, v.Options.CA),
+					Name: m.CalculateSecretName(DeploymentSecretTypeGeneratedVariable, v.Options.CA),
 					Key:  "private_key",
 				}
 			}

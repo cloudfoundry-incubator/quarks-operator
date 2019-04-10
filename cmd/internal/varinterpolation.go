@@ -59,7 +59,7 @@ func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string)
 	variablesDir := filepath.Clean(viper.GetString("variables-dir"))
 
 	if _, err := os.Stat(boshManifestPath); os.IsNotExist(err) {
-		return errors.Errorf("no such variable: %s", boshManifestPath)
+		return errors.Errorf("no such file: %s", boshManifestPath)
 	}
 
 	info, err := os.Stat(variablesDir)

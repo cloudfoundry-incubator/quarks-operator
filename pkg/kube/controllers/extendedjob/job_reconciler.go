@@ -197,8 +197,8 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, exJobName string, inst
 				secretLabels = map[string]string{}
 			}
 
-			// Use ejv1.LabelDependantSecretName to record secret name of dependant's volume if needed
-			secretLabels[ejv1.LabelDependantSecretName] = secretName
+			// Use ejv1.LabelReferencedSecretName to record secret name of dependant's volume if needed
+			secretLabels[ejv1.LabelReferencedSecretName] = secretName
 
 			// Use secretName as versioned secret name prefix: <secretName>-v<version>
 			err = r.versionedSecretStore.Create(ctx, instance.GetNamespace(), secretName, data, secretLabels, "created by extendedJob")

@@ -35,7 +35,6 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 	extendedjob.AddJob,
 	extendedjob.AddOwnership,
 	extendedsecret.Add,
-	extendedsecret.AddVersionedSecret,
 	extendedstatefulset.Add,
 }
 

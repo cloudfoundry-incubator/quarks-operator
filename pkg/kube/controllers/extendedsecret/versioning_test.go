@@ -189,7 +189,7 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				err := store.Delete(ctx, namespace, secretName, secretLabels)
+				err := store.Delete(ctx, namespace, secretName)
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -232,7 +232,7 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				err := store.Decorate(ctx, namespace, secretName, secretLabels, "foo", "bar")
+				err := store.Decorate(ctx, namespace, secretName, "foo", "bar")
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -254,7 +254,7 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				currentManifestSecrets, err := store.List(ctx, namespace, secretName, secretLabels)
+				currentManifestSecrets, err := store.List(ctx, namespace, secretName)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(currentManifestSecrets)).To(BeIdenticalTo(2))
 			})
@@ -294,7 +294,7 @@ name: fake-deployment-v4
 			})
 
 			It("should be possible to get the latest version", func() {
-				secret, err := store.Latest(ctx, namespace, secretName, secretLabels)
+				secret, err := store.Latest(ctx, namespace, secretName)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(secret.Name).To(Equal(fmt.Sprintf("%s-v%d", secretName, 4)))
 			})
@@ -340,7 +340,7 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				n, err := store.VersionCount(ctx, namespace, secretName, secretLabels)
+				n, err := store.VersionCount(ctx, namespace, secretName)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(n).To(Equal(1))
 			})
@@ -360,7 +360,7 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				n, err := store.VersionCount(ctx, namespace, secretName, secretLabels)
+				n, err := store.VersionCount(ctx, namespace, secretName)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(n).To(Equal(2))
 			})

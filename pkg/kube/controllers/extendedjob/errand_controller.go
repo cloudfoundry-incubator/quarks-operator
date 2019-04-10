@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	store "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
@@ -75,7 +76,20 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 
 	// Watch Secrets owned by resource ExtendedJob
 	p = predicate.Funcs{
-		CreateFunc:  func(e event.CreateEvent) bool { return false },
+		CreateFunc: func(e event.CreateEvent) bool {
+			o := e.Object.(*corev1.Secret)
+			// Only enqueuing versioned secret which has versionedSecret label
+			secretLabels := o.GetLabels()
+			if secretLabels == nil {
+				return false
+			}
+
+			if kind, ok := secretLabels[store.LabelSecretKind]; ok && kind == "versionedSecret" {
+				return true
+			}
+
+			return false
+		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
