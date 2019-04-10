@@ -187,7 +187,10 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 		}
 
 		_, err = controllerutil.CreateOrUpdate(ctx, r.client, secret, func(obj runtime.Object) error {
-			s := obj.(*corev1.Secret)
+			s, ok := obj.(*corev1.Secret)
+			if !ok {
+				return fmt.Errorf("object is not a Secret")
+			}
 			s.SetLabels(conf.SecretLabels)
 			s.StringData = data
 			return nil

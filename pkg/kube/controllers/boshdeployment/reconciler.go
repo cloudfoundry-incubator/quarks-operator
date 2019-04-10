@@ -292,7 +292,10 @@ func (r *ReconcileBOSHDeployment) generateVariableSecrets(ctx context.Context, i
 		}
 
 		_, err = controllerutil.CreateOrUpdate(ctx, r.client, variable.DeepCopy(), func(obj runtime.Object) error {
-			s := obj.(*esv1.ExtendedSecret)
+			s, ok := obj.(*esv1.ExtendedSecret)
+			if !ok {
+				return fmt.Errorf("object is not an ExtendedSecret")
+			}
 			s.Spec = variable.Spec
 			return nil
 		})
@@ -326,7 +329,10 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 		},
 	}
 	_, err = controllerutil.CreateOrUpdate(ctx, r.client, tempManifestSecret, func(obj runtime.Object) error {
-		s := obj.(*corev1.Secret)
+		s, ok := obj.(*corev1.Secret)
+		if !ok {
+			return fmt.Errorf("object is not a Secret")
+		}
 		s.Data = map[string][]byte{}
 		s.StringData = map[string]string{
 			"manifest.yaml": string(tempManifestBytes),
@@ -348,7 +354,11 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 	}
 
 	_, err = controllerutil.CreateOrUpdate(ctx, r.client, varIntExJob.DeepCopy(), func(obj runtime.Object) error {
-		varIntExJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+		ejob, ok := obj.(*ejv1.ExtendedJob)
+		if !ok {
+			return fmt.Errorf("object is not an ExtendedJob")
+		}
+		varIntExJob.DeepCopyInto(ejob)
 		return nil
 	})
 	if err != nil {
@@ -376,7 +386,11 @@ func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, in
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.client, dataGatheringExJob.DeepCopy(), func(obj runtime.Object) error {
-		dataGatheringExJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+		ejob, ok := obj.(*ejv1.ExtendedJob)
+		if !ok {
+			return fmt.Errorf("object is not an ExtendedJob")
+		}
+		dataGatheringExJob.DeepCopyInto(ejob)
 		return nil
 	})
 	if err != nil {
@@ -431,7 +445,11 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 		}
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
-			eJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+			ejob, ok := obj.(*ejv1.ExtendedJob)
+			if !ok {
+				return fmt.Errorf("object is not an ExtendedJob")
+			}
+			eJob.DeepCopyInto(ejob)
 			return nil
 		})
 		if err != nil {
@@ -448,7 +466,11 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 		}
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eSts.DeepCopy(), func(obj runtime.Object) error {
-			eSts.DeepCopyInto(obj.(*estsv1.ExtendedStatefulSet))
+			sts, ok := obj.(*estsv1.ExtendedStatefulSet)
+			if !ok {
+				return fmt.Errorf("object is not an ExtendStatefulSet")
+			}
+			eSts.DeepCopyInto(sts)
 			return nil
 		})
 		if err != nil {

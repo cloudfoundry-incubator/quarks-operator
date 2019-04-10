@@ -162,7 +162,10 @@ tempManifestSecret := &corev1.Secret{
   },
 }
 _, err = controllerutil.CreateOrUpdate(ctx, r.client, tempManifestSecret, func(obj runtime.Object) error {
-  s := obj.(*corev1.Secret)
+  s, ok := obj.(*corev1.Secret)
+  if !ok {
+    return fmt.Errorf("object is not a Secret")
+  }
   s.Data = map[string][]byte{}
   s.StringData = map[string]string{
     "manifest.yaml": string(tempManifestBytes),
@@ -175,7 +178,11 @@ Care must be taken when persisting objects that are already in their final state
 
 ```go
 _, err = controllerutil.CreateOrUpdate(ctx, r.client, varIntExJob.DeepCopy(), func(obj runtime.Object) error {
-  varIntExJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+  ejob, ok := obj.(*ejv1.ExtendedJob)
+  if !ok {
+    return fmt.Errorf("object is not an ExtendedJob")
+  }
+  dataGatheringExJob.DeepCopyInto(ejob)
   return nil
 })
 ```
