@@ -64,7 +64,7 @@ func AddOwnership(ctx context.Context, config *config.Config, mgr manager.Manage
 
 			reconcile, err := hasConfigReferences(ctx, mgr.GetClient(), *o)
 			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to query extended jobs: %s", err)
+				ctxlog.WithEvent(o, "QueryExtendedJobError").Errorf(ctx, "Failed to query extended jobs: %s", err)
 			}
 
 			return reconcile
@@ -92,7 +92,7 @@ func AddOwnership(ctx context.Context, config *config.Config, mgr manager.Manage
 			// enqueuing secret referenced by EJob
 			reconcile, err := hasSecretReferences(ctx, mgr.GetClient(), *o)
 			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to query extended jobs: %s", err)
+				ctxlog.WithEvent(o, "QueryExtendedJobError").Errorf(ctx, "Failed to query extended jobs: %s", err)
 			}
 
 			// enqueuing versioned secret which has required labels

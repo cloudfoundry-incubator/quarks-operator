@@ -83,7 +83,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		extJob.Spec.Trigger.Strategy = ejv1.TriggerManual
 		err = r.client.Update(ctx, extJob)
 		if err != nil {
-			ctxlog.Errorf(ctx, "Failed to revert to 'trigger.strategy=manual' on job '%s': %s", extJob.Name, err)
+			ctxlog.WithEvent(extJob, "UpdateError").Errorf(ctx, "Failed to revert to 'trigger.strategy=manual' on job '%s': %s", extJob.Name, err)
 			return result, err
 		}
 	}
@@ -117,7 +117,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			finalizer.AddFinalizer(extJob)
 			err = r.client.Update(ctx, extJob)
 			if err != nil {
-				ctxlog.Errorf(ctx, "Could not remove finalizer from ExtJob '%s': ", extJob.GetName(), err)
+				ctxlog.WithEvent(extJob, "UpdateError").Errorf(ctx, "Could not remove finalizer from ExtJob '%s': %s", extJob.GetName(), err)
 				return reconcile.Result{}, err
 			}
 
@@ -131,7 +131,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			// we don't want to requeue the job
 			err = nil
 		} else {
-			ctxlog.Errorf(ctx, "Failed to create job '%s': %s", extJob.Name, err)
+			ctxlog.WithEvent(extJob, "CreateJobError").Errorf(ctx, "Failed to create job '%s': %s", extJob.Name, err)
 		}
 		return result, err
 	}
@@ -142,7 +142,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		extJob.Spec.Trigger.Strategy = ejv1.TriggerDone
 		err = r.client.Update(ctx, extJob)
 		if err != nil {
-			ctxlog.Errorf(ctx, "Failed to traverse to 'trigger.strategy=done' on job '%s': %s", extJob.Name, err)
+			ctxlog.WithEvent(extJob, "UpdateError").Errorf(ctx, "Failed to traverse to 'trigger.strategy=done' on job '%s': %s", extJob.Name, err)
 			return result, err
 		}
 	}
@@ -173,7 +173,7 @@ func (r *ErrandReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJo
 
 	err = r.setOwnerReference(&extJob, job, r.scheme)
 	if err != nil {
-		ctxlog.Errorf(ctx, "failed to set owner reference on job for '%s': %s", extJob.Name, err)
+		ctxlog.WithEvent(&extJob, "SetOwnerReferenceError").Errorf(ctx, "failed to set owner reference on job for '%s': %s", extJob.Name, err)
 		return err
 	}
 

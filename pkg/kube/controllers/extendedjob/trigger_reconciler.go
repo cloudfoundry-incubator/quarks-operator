@@ -142,7 +142,7 @@ func (r *TriggerReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJ
 
 	err = r.setOwnerReference(&extJob, job, r.scheme)
 	if err != nil {
-		ctxlog.Errorf(ctx, "failed to set owner reference on job for '%s' via pod %s: %s", extJob.Name, podName, err)
+		ctxlog.WithEvent(instance, "SetOwnerReferenceError").Errorf(ctx, "failed to set owner reference on job for '%s' via pod %s: %s", extJob.Name, podName, err)
 		return err
 	}
 

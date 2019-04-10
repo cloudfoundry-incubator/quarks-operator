@@ -34,6 +34,18 @@ func WithEvent(object runtime.Object, reason string) EventLogger {
 // You want to make that easy.
 func (ev event) Errorf(ctx context.Context, format string, v ...interface{}) error {
 	msg := fmt.Sprintf(format, v...)
+
+	return ev.logAndError(ctx, msg)
+}
+
+// Error uses the stored zap logger and recorder
+func (ev event) Error(ctx context.Context, parts ...interface{}) error {
+	msg := fmt.Sprint(parts...)
+
+	return ev.logAndError(ctx, msg)
+}
+
+func (ev event) logAndError(ctx context.Context, msg string) error {
 	Error(ctx, msg)
 
 	recorder := ExtractRecorder(ctx)

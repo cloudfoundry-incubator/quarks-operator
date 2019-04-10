@@ -91,14 +91,14 @@ func (r *OwnershipReconciler) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 		err = r.owner.RemoveOwnerReferences(ctx, extJob, existingConfigs)
 		if err != nil {
-			ctxlog.Errorf(ctx, "Could not remove OwnerReferences pointing to extJob '%s': %s", extJob.Name, err)
+			ctxlog.WithEvent(extJob, "RemoveOwnerReferenceError").Errorf(ctx, "Could not remove OwnerReferences pointing to extJob '%s': %s", extJob.Name, err)
 			return reconcile.Result{}, err
 		}
 
 		finalizer.RemoveFinalizer(extJob)
 		err = r.client.Update(ctx, extJob)
 		if err != nil {
-			ctxlog.Errorf(ctx, "Could not remove finalizer from ExtJob '%s': ", extJob.GetName(), err)
+			ctxlog.WithEvent(extJob, "RemoveFinalizerError").Errorf(ctx, "Could not remove finalizer from ExtJob '%s': ", extJob.GetName(), err)
 			return reconcile.Result{}, err
 		}
 
@@ -117,7 +117,7 @@ func (r *OwnershipReconciler) Reconcile(request reconcile.Request) (reconcile.Re
 		finalizer.AddFinalizer(extJob)
 		err = r.client.Update(ctx, extJob)
 		if err != nil {
-			ctxlog.Errorf(ctx, "Could not remove finalizer from ExtJob '%s': ", extJob.GetName(), err)
+			ctxlog.WithEvent(instance, "RemoveFinalizerError").Errorf(ctx, "Could not remove finalizer from ExtJob '%s': ", extJob.GetName(), err)
 			return reconcile.Result{}, err
 		}
 	}

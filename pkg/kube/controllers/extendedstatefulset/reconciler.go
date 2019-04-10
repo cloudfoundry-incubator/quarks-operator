@@ -132,14 +132,14 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	// Get the actual StatefulSet
 	actualStatefulSet, actualVersion, err := r.getActualStatefulSet(ctx, exStatefulSet)
 	if err != nil {
-		ctxlog.Error(ctx, "Could not retrieve latest StatefulSet owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+		ctxlog.WithEvent(exStatefulSet, "StatefulSetNotFound").Error(ctx, "Could not retrieve latest StatefulSet owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 		return reconcile.Result{}, err
 	}
 
 	// Calculate the desired statefulSets
 	desiredStatefulSets, desiredVersion, err := r.calculateDesiredStatefulSets(exStatefulSet, actualStatefulSet)
 	if err != nil {
-		ctxlog.Error(ctx, "Could not calculate StatefulSet owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+		ctxlog.WithEvent(exStatefulSet, "CalculationError").Error(ctx, "Could not calculate StatefulSet owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 		return reconcile.Result{}, err
 	}
 
@@ -153,7 +153,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 			// `ImagePullPolicy`, `TerminationMessagePath`, etc. in the signature.
 			originalTemplate := exStatefulSet.Spec.Template.DeepCopy()
 			if err := r.createStatefulSet(ctx, exStatefulSet, &desiredStatefulSet); err != nil {
-				ctxlog.Error(ctx, "Could not create StatefulSet for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+				ctxlog.WithEvent(exStatefulSet, "CreateStatefulSetError").Error(ctx, "Could not create StatefulSet for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 				return reconcile.Result{}, err
 			}
 			exStatefulSet.Spec.Template = *originalTemplate
@@ -175,7 +175,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		err = r.updateStatefulSetsConfigSHA1(ctx, exStatefulSet)
 		if err != nil {
 			// TODO fix the object has been modified
-			ctxlog.Error(ctx, "Could not update StatefulSets owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+			ctxlog.WithEvent(exStatefulSet, "UpdateError").Error(ctx, "Could not update StatefulSets owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, err
 		}
 	}
@@ -186,7 +186,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		exStatefulSet.Status.Versions = statefulSetVersions
 		updateErr := r.client.Update(ctx, exStatefulSet)
 		if updateErr != nil {
-			ctxlog.Errorf(ctx, "Failed to update exStatefulSet status: %v", updateErr)
+			ctxlog.WithEvent(exStatefulSet, "UpdateError").Errorf(ctx, "Failed to update exStatefulSet status: %v", updateErr)
 		}
 	}
 
@@ -196,7 +196,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		// Cleanup versions smaller than the max available version
 		err = r.cleanupStatefulSets(ctx, exStatefulSet, maxAvailableVersion, &statefulSetVersions)
 		if err != nil {
-			ctxlog.Error(ctx, "Could not cleanup StatefulSets owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+			ctxlog.WithEvent(exStatefulSet, "CleanupError").Error(ctx, "Could not cleanup StatefulSets owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 			return reconcile.Result{}, err
 		}
 	}
@@ -311,7 +311,7 @@ func (r *ReconcileExtendedStatefulSet) cleanupStatefulSets(ctx context.Context, 
 		ctxlog.Debugf(ctx, "Deleting StatefulSet '%s'", statefulSet.Name)
 		err = r.client.Delete(ctx, &statefulSet, client.PropagationPolicy(metav1.DeletePropagationBackground))
 		if err != nil {
-			ctxlog.Error(ctx, "Could not delete StatefulSet  '", statefulSet.Name, "': ", err)
+			ctxlog.WithEvent(exStatefulSet, "DeleteError").Error(ctx, "Could not delete StatefulSet  '", statefulSet.Name, "': ", err)
 			return err
 		}
 
@@ -516,7 +516,7 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 
 		err = r.client.Update(ctx, exStatefulSet)
 		if err != nil {
-			ctxlog.Error(ctx, "Could not add finalizer from ExtendedStatefulSet '", exStatefulSet.GetName(), "': ", err)
+			ctxlog.WithEvent(exStatefulSet, "UpdateError").Error(ctx, "Could not add finalizer from ExtendedStatefulSet '", exStatefulSet.GetName(), "': ", err)
 			return err
 		}
 	}
@@ -601,14 +601,14 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extende
 	// Fetch all ConfigMaps and Secrets with an OwnerReference pointing to the object
 	existingConfigs, err := r.owner.ListConfigsOwnedBy(ctx, extendedStatefulSet)
 	if err != nil {
-		ctxlog.Error(ctx, "Could not retrieve all ConfigMaps and Secrets owned by ExtendedStatefulSet '", extendedStatefulSet.Name, "': ", err)
+		ctxlog.WithEvent(extendedStatefulSet, "ListError").Error(ctx, "Could not retrieve all ConfigMaps and Secrets owned by ExtendedStatefulSet '", extendedStatefulSet.Name, "': ", err)
 		return reconcile.Result{}, err
 	}
 
 	// Remove StatefulSet OwnerReferences from the existingConfigs
 	err = r.owner.RemoveOwnerReferences(ctx, extendedStatefulSet, existingConfigs)
 	if err != nil {
-		ctxlog.Error(ctx, "Could not remove OwnerReferences pointing to ExtendedStatefulSet '", extendedStatefulSet.Name, "': ", err)
+		ctxlog.WithEvent(extendedStatefulSet, "RemoveOwnerReferenceError").Error(ctx, "Could not remove OwnerReferences pointing to ExtendedStatefulSet '", extendedStatefulSet.Name, "': ", err)
 		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, err
 	}
 
@@ -627,7 +627,7 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, extende
 
 		err = r.client.Update(ctx, copy)
 		if err != nil {
-			ctxlog.Error(ctx, "Could not remove finalizer from ExtendedStatefulSet '", copy.GetName(), "': ", err)
+			ctxlog.WithEvent(extendedStatefulSet, "UpdateError").Error(ctx, "Could not remove finalizer from ExtendedStatefulSet '", copy.GetName(), "': ", err)
 			return reconcile.Result{}, err
 		}
 	}
