@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 [ ! -d "vendor" ] && echo "$0 requires vendor/ folder, run 'go mod vendor'"

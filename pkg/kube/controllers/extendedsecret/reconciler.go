@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
-	esapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
@@ -52,7 +52,7 @@ type ReconcileExtendedSecret struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	instance := &esapi.ExtendedSecret{}
+	instance := &esv1.ExtendedSecret{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
@@ -73,50 +73,41 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
-	// Check if secret was already generated
-	generatedSecret := &corev1.Secret{}
-	namespacedName := types.NamespacedName{
-		Namespace: instance.Namespace,
-		Name:      instance.Spec.SecretName,
-	}
-	err = r.client.Get(ctx, namespacedName, generatedSecret)
-	if err == nil {
-		ctxlog.Info(ctx, "Skip reconcile: secret already exists")
-		return reconcile.Result{}, nil
-	}
-
-	if apierrors.IsNotFound(err) {
-		// Secret doesn't exist yet. Continue reconciling
-	} else {
-		// Error reading the object - requeue the request.
-		ctxlog.Info(ctx, "Error reading the object")
+	// Check if secret could be generated when secret was already created
+	canBeGenerated, err := r.canBeGenerated(ctx, instance)
+	if err != nil {
+		ctxlog.Errorf(ctx, "Error reading the secret: %v", err.Error())
 		return reconcile.Result{}, err
+	}
+	if !canBeGenerated {
+		ctxlog.Infof(ctx, "Skip reconcile: secret '%s' already exists and it's not generated", instance.Spec.SecretName)
+		return reconcile.Result{}, nil
 	}
 
 	// Create secret
 	switch instance.Spec.Type {
-	case esapi.Password:
+	case esv1.Password:
 		ctxlog.Info(ctx, "Generating password")
 		err = r.createPasswordSecret(ctx, instance)
 		if err != nil {
 			ctxlog.Info(ctx, "Error generating password secret: "+err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "generating password secret")
 		}
-	case esapi.RSAKey:
+	case esv1.RSAKey:
 		ctxlog.Info(ctx, "Generating RSA Key")
 		err = r.createRSASecret(ctx, instance)
 		if err != nil {
 			ctxlog.Info(ctx, "Error generating RSA key secret: "+err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "generating RSA key secret")
 		}
-	case esapi.SSHKey:
+	case esv1.SSHKey:
 		ctxlog.Info(ctx, "Generating SSH Key")
 		err = r.createSSHSecret(ctx, instance)
 		if err != nil {
 			ctxlog.Info(ctx, "Error generating SSH key secret: "+err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "generating SSH key secret")
 		}
-	case esapi.Certificate:
+	case esv1.Certificate:
 		ctxlog.Info(ctx, "Generating certificate")
 		err = r.createCertificateSecret(ctx, instance)
 		if err != nil {
@@ -131,7 +122,7 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileExtendedSecret) createPasswordSecret(ctx context.Context, instance *esapi.ExtendedSecret) error {
+func (r *ReconcileExtendedSecret) createPasswordSecret(ctx context.Context, instance *esv1.ExtendedSecret) error {
 	request := credsgen.PasswordGenerationRequest{}
 	password := r.generator.GeneratePassword(instance.GetName(), request)
 
@@ -145,14 +136,10 @@ func (r *ReconcileExtendedSecret) createPasswordSecret(ctx context.Context, inst
 		},
 	}
 
-	if err := r.setReference(instance, secret, r.scheme); err != nil {
-		return errors.Wrapf(err, "error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.Name, instance.Name, instance.Namespace)
-	}
-
-	return r.client.Create(ctx, secret)
+	return r.createSecret(ctx, instance, secret)
 }
 
-func (r *ReconcileExtendedSecret) createRSASecret(ctx context.Context, instance *esapi.ExtendedSecret) error {
+func (r *ReconcileExtendedSecret) createRSASecret(ctx context.Context, instance *esv1.ExtendedSecret) error {
 	key, err := r.generator.GenerateRSAKey(instance.GetName())
 	if err != nil {
 		return err
@@ -169,14 +156,10 @@ func (r *ReconcileExtendedSecret) createRSASecret(ctx context.Context, instance 
 		},
 	}
 
-	if err := r.setReference(instance, secret, r.scheme); err != nil {
-		return errors.Wrapf(err, "error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.Name, instance.Name, instance.Namespace)
-	}
-
-	return r.client.Create(ctx, secret)
+	return r.createSecret(ctx, instance, secret)
 }
 
-func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance *esapi.ExtendedSecret) error {
+func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance *esv1.ExtendedSecret) error {
 	key, err := r.generator.GenerateSSHKey(instance.GetName())
 	if err != nil {
 		return err
@@ -193,14 +176,10 @@ func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance 
 		},
 	}
 
-	if err := r.setReference(instance, secret, r.scheme); err != nil {
-		return errors.Wrapf(err, "error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.Name, instance.Name, instance.Namespace)
-	}
-
-	return r.client.Create(ctx, secret)
+	return r.createSecret(ctx, instance, secret)
 }
 
-func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, instance *esapi.ExtendedSecret) error {
+func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, instance *esv1.ExtendedSecret) error {
 	var request credsgen.CertificateGenerationRequest
 	if instance.Spec.Request.CertificateRequest.IsCA {
 		// Generate self-signed root CA certificate
@@ -265,9 +244,64 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 		},
 	}
 
-	if err := r.setReference(instance, secret, r.scheme); err != nil {
-		return errors.Wrapf(err, "error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.Name, instance.Name, instance.Namespace)
+	return r.createSecret(ctx, instance, secret)
+}
+
+func (r *ReconcileExtendedSecret) canBeGenerated(ctx context.Context, instance *esv1.ExtendedSecret) (bool, error) {
+	secretName := instance.Spec.SecretName
+
+	existingSecret := &corev1.Secret{}
+	err := r.client.Get(ctx, types.NamespacedName{Name: secretName, Namespace: instance.GetNamespace()}, existingSecret)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return true, nil
+		}
+		return true, errors.Wrapf(err, "could not get secret")
 	}
 
-	return r.client.Create(ctx, secret)
+	secretLabels := existingSecret.GetLabels()
+	if secretLabels == nil {
+		secretLabels = map[string]string{}
+	}
+
+	if secretLabels[esv1.LabelKind] != "generated" {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// createSecret applies common properties(labels and ownerReferences) to the secret and creates it
+func (r *ReconcileExtendedSecret) createSecret(ctx context.Context, instance *esv1.ExtendedSecret, secret *corev1.Secret) error {
+	secretLabels := secret.GetLabels()
+	if secretLabels == nil {
+		secretLabels = map[string]string{}
+	}
+
+	secretLabels[esv1.LabelKind] = "generated"
+
+	secret.SetLabels(secretLabels)
+
+	if err := r.setReference(instance, secret, r.scheme); err != nil {
+		return errors.Wrapf(err, "error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.GetName(), instance.GetName(), instance.GetNamespace())
+	}
+
+	existingSecret := &corev1.Secret{}
+	err := r.client.Get(ctx, types.NamespacedName{Name: secret.GetName(), Namespace: instance.GetNamespace()}, existingSecret)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrapf(err, "could not get secret '%s'", secret.GetName())
+		}
+		err = r.client.Create(ctx, secret)
+		if err != nil {
+			return errors.Wrapf(err, "could not create secret '%s'", secret.GetName())
+		}
+	} else {
+		err = r.client.Update(ctx, secret)
+		if err != nil {
+			return errors.Wrapf(err, "could not update secret '%s'", secret.GetName())
+		}
+	}
+
+	return nil
 }

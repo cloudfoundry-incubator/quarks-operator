@@ -1,7 +1,11 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 )
 
 // This file is safe to edit
@@ -17,6 +21,11 @@ const (
 	Certificate Type = "certificate"
 	SSHKey      Type = "ssh"
 	RSAKey      Type = "rsa"
+)
+
+var (
+	// LabelKind is the label key for secret kind
+	LabelKind = fmt.Sprintf("%s/secret-kind", apis.GroupName)
 )
 
 // SecretReference specifies a reference to another secret

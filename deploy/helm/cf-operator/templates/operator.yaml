@@ -23,7 +23,7 @@ spec:
           - cf-operator
           imagePullPolicy: Always
           env:
-            - name: CFO_NAMESPACE
+            - name: CF_OPERATOR_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace

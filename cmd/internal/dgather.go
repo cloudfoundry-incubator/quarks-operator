@@ -28,39 +28,39 @@ var dataGatherCmd = &cobra.Command{
 	Long: `Gathers data of a manifest. 
 
 This will retrieve information of an instance-group
-inside a bosh manifest.
+inside a bosh manifest file.
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		mFile := viper.GetString("bosh_manifest")
-		if len(mFile) == 0 {
+		boshManifestPath := viper.GetString("bosh-manifest-path")
+		if len(boshManifestPath) == 0 {
 			return fmt.Errorf("manifest cannot be empty")
 		}
 
-		baseDir := viper.GetString("base_dir")
+		baseDir := viper.GetString("base-dir")
 		if len(baseDir) == 0 {
 			return fmt.Errorf("base directory cannot be empty")
 		}
 
-		ns := viper.GetString("kubernetes_namespace")
-		if len(ns) == 0 {
+		cfOperatorNamespace := viper.GetString("cf-operator-namespace")
+		if len(cfOperatorNamespace) == 0 {
 			return fmt.Errorf("namespace cannot be empty")
 		}
 
-		instanceGroupName := viper.GetString("instance_group")
+		instanceGroupName := viper.GetString("instance-group-name")
 
-		mBytes, err := ioutil.ReadFile(mFile)
+		boshManifestBytes, err := ioutil.ReadFile(boshManifestPath)
 		if err != nil {
 			return err
 		}
 
-		mStruct := manifest.Manifest{}
-		err = yaml.Unmarshal(mBytes, &mStruct)
+		boshManifestStruct := manifest.Manifest{}
+		err = yaml.Unmarshal(boshManifestBytes, &boshManifestStruct)
 		if err != nil {
 			return err
 		}
 
-		result, err := GatherData(&mStruct, baseDir, ns, instanceGroupName)
+		result, err := GatherData(&boshManifestStruct, baseDir, cfOperatorNamespace, instanceGroupName)
 		if err != nil {
 			return err
 		}
@@ -86,30 +86,36 @@ inside a bosh manifest.
 func init() {
 	rootCmd.AddCommand(dataGatherCmd)
 
-	dataGatherCmd.Flags().StringP("manifest", "m", "", "path to a bosh manifest")
+	dataGatherCmd.Flags().StringP("bosh-manifest-path", "m", "", "path to a bosh manifest file")
 	//TODO: can we reuse the global ns flag
 	dataGatherCmd.Flags().String("kubernetes-namespace", "", "the kubernetes namespace")
 	dataGatherCmd.Flags().StringP("base-dir", "b", "", "a path to the base directory")
-	dataGatherCmd.Flags().StringP("instance-group", "g", "", "instance group for data gathering")
+	dataGatherCmd.Flags().StringP("instance-group-name", "g", "", "name of the instance group for data gathering")
 
-	// This will get the values from any set ENV var, but always
-	// the values provided via the flags have more precedence.
-	viper.AutomaticEnv()
-	viper.BindPFlag("bosh_manifest", dataGatherCmd.Flags().Lookup("manifest"))
-	viper.BindPFlag("kubernetes_namespace", dataGatherCmd.Flags().Lookup("kubernetes-namespace"))
-	viper.BindPFlag("base_dir", dataGatherCmd.Flags().Lookup("base-dir"))
-	viper.BindPFlag("instance_group", dataGatherCmd.Flags().Lookup("instance-group"))
+	viper.BindPFlag("bosh-manifest-path", dataGatherCmd.Flags().Lookup("bosh-manifest-path"))
+	viper.BindPFlag("kubernetes-namespace", dataGatherCmd.Flags().Lookup("kubernetes-namespace"))
+	viper.BindPFlag("base-dir", dataGatherCmd.Flags().Lookup("base-dir"))
+	viper.BindPFlag("instance-group-name", dataGatherCmd.Flags().Lookup("instance-group-name"))
+
+	argToEnv["bosh-manifest-path"] = "BOSH_MANIFEST_PATH"
+	argToEnv["instance-group-name"] = "INSTANCE_GROUP_NAME"
+	argToEnv["kubernetes-namespace"] = "KUBERNETES_NAMESPACE"
+	argToEnv["base-dir"] = "BASE_DIR"
+
+	for arg, env := range argToEnv {
+		viper.BindEnv(arg, env)
+	}
 }
 
 // CollectReleaseSpecsAndProviderLinks will collect all release specs and bosh links for provider jobs
-func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir string, namespace string) (map[string]map[string]manifest.JobSpec, map[string]map[string]manifest.JobLink, error) {
+func CollectReleaseSpecsAndProviderLinks(boshManifestStruct *manifest.Manifest, baseDir string, cfOperatorNamespace string) (map[string]map[string]manifest.JobSpec, map[string]map[string]manifest.JobLink, error) {
 	// Contains YAML.load('.../release_name/job_name/job.MF')
 	jobReleaseSpecs := map[string]map[string]manifest.JobSpec{}
 
 	// Lists every link provided by the job
 	jobProviderLinks := map[string]map[string]manifest.JobLink{}
 
-	for _, instanceGroup := range mStruct.InstanceGroups {
+	for _, instanceGroup := range boshManifestStruct.InstanceGroups {
 		for jobIdx, job := range instanceGroup.Jobs {
 			// make sure a map entry exists for the current job release
 			if _, ok := jobReleaseSpecs[job.Release]; !ok {
@@ -152,7 +158,7 @@ func CollectReleaseSpecsAndProviderLinks(mStruct *manifest.Manifest, baseDir str
 					name := fmt.Sprintf("%s-%s", instanceGroup.Name, job.Name)
 					id := fmt.Sprintf("%v-%v-%v", instanceGroup.Name, index, job.Name)
 					// TODO: not allowed to hardcode svc.cluster.local
-					address := fmt.Sprintf("%s.%s.svc.cluster.local", id, namespace)
+					address := fmt.Sprintf("%s.%s.svc.cluster.local", id, cfOperatorNamespace)
 
 					jobsInstances = append(jobsInstances, manifest.JobInstance{
 						Address:  address,
@@ -374,9 +380,9 @@ func RenderJobBPM(currentJob manifest.Job, jobInstances []manifest.JobInstance, 
 }
 
 // ProcessConsumersAndRenderBPM will generate a proper context for links and render the required ERB files
-func ProcessConsumersAndRenderBPM(mStruct *manifest.Manifest, baseDir string, jobReleaseSpecs map[string]map[string]manifest.JobSpec, jobProviderLinks map[string]map[string]manifest.JobLink, instanceGroupName string) ([]byte, error) {
+func ProcessConsumersAndRenderBPM(boshManifestStruct *manifest.Manifest, baseDir string, jobReleaseSpecs map[string]map[string]manifest.JobSpec, jobProviderLinks map[string]map[string]manifest.JobLink, instanceGroupName string) ([]byte, error) {
 	var desiredInstanceGroup *manifest.InstanceGroup
-	for _, instanceGroup := range mStruct.InstanceGroups {
+	for _, instanceGroup := range boshManifestStruct.InstanceGroups {
 		if instanceGroup.Name != instanceGroupName {
 			continue
 		}
@@ -394,7 +400,7 @@ func ProcessConsumersAndRenderBPM(mStruct *manifest.Manifest, baseDir string, jo
 		currentJob := &desiredInstanceGroup.Jobs[idJob]
 
 		// Verify that the current job release exists on the manifest releases block
-		if lookUpJobRelease(mStruct.Releases, job.Release) {
+		if lookUpJobRelease(boshManifestStruct.Releases, job.Release) {
 			currentJob.Properties.BOSHContainerization.Release = job.Release
 		}
 
@@ -407,7 +413,7 @@ func ProcessConsumersAndRenderBPM(mStruct *manifest.Manifest, baseDir string, jo
 		// the render.InstanceInfo struct
 		jobInstances := currentJob.Properties.BOSHContainerization.Instances
 
-		err = RenderJobBPM(*currentJob, jobInstances, baseDir, mStruct.Name)
+		err = RenderJobBPM(*currentJob, jobInstances, baseDir, boshManifestStruct.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -438,7 +444,7 @@ func ProcessConsumersAndRenderBPM(mStruct *manifest.Manifest, baseDir string, jo
 	}
 
 	// marshall the whole manifest Structure
-	manifestResolved, err := yaml.Marshal(mStruct)
+	manifestResolved, err := yaml.Marshal(boshManifestStruct)
 	if err != nil {
 		return nil, err
 	}
@@ -460,13 +466,13 @@ func generateSHA(fingerPrint []byte) []byte {
 // Collect job properties
 // Collect bosh links
 // Render the bpm yaml file data
-func GatherData(mStruct *manifest.Manifest, baseDir string, namespace string, instanceGroupName string) ([]byte, error) {
-	jobReleaseSpecs, jobProviderLinks, err := CollectReleaseSpecsAndProviderLinks(mStruct, baseDir, namespace)
+func GatherData(boshManifestStruct *manifest.Manifest, baseDir string, cfOperatorNamespace string, instanceGroupName string) ([]byte, error) {
+	jobReleaseSpecs, jobProviderLinks, err := CollectReleaseSpecsAndProviderLinks(boshManifestStruct, baseDir, cfOperatorNamespace)
 	if err != nil {
 		return nil, err
 	}
 
-	return ProcessConsumersAndRenderBPM(mStruct, baseDir, jobReleaseSpecs, jobProviderLinks, instanceGroupName)
+	return ProcessConsumersAndRenderBPM(boshManifestStruct, baseDir, jobReleaseSpecs, jobProviderLinks, instanceGroupName)
 }
 
 // LookUpProperty search for property value in the job properties

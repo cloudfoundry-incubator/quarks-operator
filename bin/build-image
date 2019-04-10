@@ -7,14 +7,13 @@ GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
 set +e
 
 if type -a minikube >/dev/null 2>/dev/null; then
-  dockerenv=`minikube docker-env`
-  if [ $? -ne 0 ]; then
+  if ! dockerenv=$(minikube docker-env); then
     echo "Error: Could not retrieve docker settings from minikube."
     exit 1
   fi
-  eval ${dockerenv}
+  eval "${dockerenv}"
 fi
 
 set -e
 
-docker build "${GIT_ROOT}" -f "${GIT_ROOT}/Dockerfile" --build-arg GO111MODULE="${GO111MODULE:-on}" -t ${OPERATOR_DOCKER_ORGANIZATION}/cf-operator:${VERSION_TAG}
+docker build "${GIT_ROOT}" -f "${GIT_ROOT}/Dockerfile" --build-arg GO111MODULE="${GO111MODULE:-on}" -t "${OPERATOR_DOCKER_ORGANIZATION}/cf-operator:${VERSION_TAG}"

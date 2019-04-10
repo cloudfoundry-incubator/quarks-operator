@@ -18,7 +18,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	generatorfakes "code.cloudfoundry.org/cf-operator/pkg/credsgen/fakes"
-	esapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/scheme"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	escontroller "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
@@ -38,7 +38,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		config           *cfcfg.Config
 		client           *cfakes.FakeClient
 		generator        *generatorfakes.FakeGenerator
-		es               *esapi.ExtendedSecret
+		es               *esv1.ExtendedSecret
 		setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error = func(owner, object metav1.Object, scheme *runtime.Scheme) error { return nil }
 	)
 
@@ -49,12 +49,12 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
 		_, log = helper.NewTestLogger()
 		ctx = ctxlog.NewManagerContext(log)
-		es = &esapi.ExtendedSecret{
+		es = &esv1.ExtendedSecret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
 				Namespace: "default",
 			},
-			Spec: esapi.ExtendedSecretSpec{
+			Spec: esv1.ExtendedSecretSpec{
 				Type:       "password",
 				SecretName: "generated-secret",
 			},
@@ -63,8 +63,8 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		client = &cfakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 			switch object.(type) {
-			case *esapi.ExtendedSecret:
-				es.DeepCopyInto(object.(*esapi.ExtendedSecret))
+			case *esv1.ExtendedSecret:
+				es.DeepCopyInto(object.(*esv1.ExtendedSecret))
 			case *corev1.Secret:
 				return errors.NewNotFound(schema.GroupResource{}, "not found")
 			}
@@ -114,8 +114,10 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 
 		It("generates passwords", func() {
 			client.CreateCalls(func(context context.Context, object runtime.Object) error {
-				Expect(object.(*corev1.Secret).StringData["password"]).To(Equal("securepassword"))
-				Expect(object.(*corev1.Secret).GetName()).To(Equal("generated-secret"))
+				secret := object.(*corev1.Secret)
+				Expect(secret.StringData["password"]).To(Equal("securepassword"))
+				Expect(secret.GetName()).To(Equal("generated-secret"))
+				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, "generated"))
 				return nil
 			})
 
@@ -135,9 +137,11 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 
 		It("generates RSA keys", func() {
 			client.CreateCalls(func(context context.Context, object runtime.Object) error {
-				Expect(object.(*corev1.Secret).Data["private_key"]).To(Equal([]byte("private")))
-				Expect(object.(*corev1.Secret).Data["public_key"]).To(Equal([]byte("public")))
-				Expect(object.(*corev1.Secret).GetName()).To(Equal("generated-secret"))
+				secret := object.(*corev1.Secret)
+				Expect(secret.Data["private_key"]).To(Equal([]byte("private")))
+				Expect(secret.Data["public_key"]).To(Equal([]byte("public")))
+				Expect(secret.GetName()).To(Equal("generated-secret"))
+				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, "generated"))
 				return nil
 			})
 
@@ -165,7 +169,8 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 				Expect(secret.Data["private_key"]).To(Equal([]byte("private")))
 				Expect(secret.Data["public_key"]).To(Equal([]byte("public")))
 				Expect(secret.Data["public_key_fingerprint"]).To(Equal([]byte("fingerprint")))
-				Expect(object.(*corev1.Secret).GetName()).To(Equal("generated-secret"))
+				Expect(secret.GetName()).To(Equal("generated-secret"))
+				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, "generated"))
 				return nil
 			})
 
@@ -180,8 +185,8 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		BeforeEach(func() {
 			es.Spec.Type = "certificate"
 			es.Spec.Request.CertificateRequest.IsCA = false
-			es.Spec.Request.CertificateRequest.CARef = esapi.SecretReference{Name: "mysecret", Key: "ca"}
-			es.Spec.Request.CertificateRequest.CAKeyRef = esapi.SecretReference{Name: "mysecret", Key: "key"}
+			es.Spec.Request.CertificateRequest.CARef = esv1.SecretReference{Name: "mysecret", Key: "ca"}
+			es.Spec.Request.CertificateRequest.CAKeyRef = esv1.SecretReference{Name: "mysecret", Key: "key"}
 			es.Spec.Request.CertificateRequest.CommonName = "foo.com"
 			es.Spec.Request.CertificateRequest.AlternativeNames = []string{"bar.com", "baz.com"}
 
@@ -198,8 +203,8 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 
 			client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 				switch object.(type) {
-				case *esapi.ExtendedSecret:
-					es.DeepCopyInto(object.(*esapi.ExtendedSecret))
+				case *esv1.ExtendedSecret:
+					es.DeepCopyInto(object.(*esv1.ExtendedSecret))
 				case *corev1.Secret:
 					if nn.Name == "mysecret" {
 						ca.DeepCopyInto(object.(*corev1.Secret))
@@ -222,6 +227,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 				secret := object.(*corev1.Secret)
 				Expect(secret.Data["certificate"]).To(Equal([]byte("the_cert")))
 				Expect(secret.Data["private_key"]).To(Equal([]byte("private_key")))
+				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, "generated"))
 				return nil
 			})
 
@@ -242,6 +248,73 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 			result, err := reconciler.Reconcile(request)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(client.CreateCallCount()).To(Equal(1))
+			Expect(reconcile.Result{}).To(Equal(result))
+		})
+	})
+
+	Context("when secret is set manually", func() {
+		var (
+			password string
+			secret   *corev1.Secret
+		)
+
+		BeforeEach(func() {
+			es.Spec.Type = "password"
+			es.Spec.SecretName = "mysecret"
+
+			password = "new-generated-password"
+			secret = &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "mysecret",
+					Namespace: "default",
+				},
+				StringData: map[string]string{
+					"password": "securepassword",
+				},
+			}
+
+			client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				switch object.(type) {
+				case *esv1.ExtendedSecret:
+					es.DeepCopyInto(object.(*esv1.ExtendedSecret))
+				case *corev1.Secret:
+					if nn.Name == "mysecret" {
+						secret.DeepCopyInto(object.(*corev1.Secret))
+					} else {
+						return errors.NewNotFound(schema.GroupResource{}, "not found is requeued")
+					}
+				}
+				return nil
+			})
+
+			generator.GeneratePasswordReturns(password)
+		})
+
+		It("Skips generation of a secret when existing secret has not `generated` label", func() {
+			result, err := reconciler.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(client.CreateCallCount()).To(Equal(0))
+			Expect(client.UpdateCallCount()).To(Equal(0))
+			Expect(reconcile.Result{}).To(Equal(result))
+		})
+
+		It("Regenerate generation of a secret when existing secret has `generated` label", func() {
+			secret.Labels = map[string]string{
+				esv1.LabelKind: "generated",
+			}
+
+			client.CreateCalls(func(context context.Context, object runtime.Object) error {
+				secret := object.(*corev1.Secret)
+				Expect(secret.StringData["password"]).To(Equal(password))
+				Expect(secret.GetName()).To(Equal("generated-secret"))
+				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, "generated"))
+				return nil
+			})
+
+			result, err := reconciler.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(client.CreateCallCount()).To(Equal(0))
+			Expect(client.UpdateCallCount()).To(Equal(1))
 			Expect(reconcile.Result{}).To(Equal(result))
 		})
 	})

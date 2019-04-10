@@ -14,7 +14,7 @@ image-nobuild:
 helm:
 	bin/build-helm
 
-export CFO_NAMESPACE ?= default
+export CF_OPERATOR_NAMESPACE ?= default
 up:
 	bin/up
 
@@ -60,3 +60,6 @@ check-scripts:
 
 coverage:
 	bin/coverage
+
+gen-command-docs:
+	go run cmd/gen-command-docs.go

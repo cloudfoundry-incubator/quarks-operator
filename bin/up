@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
@@ -13,5 +13,5 @@ fi
 
 bin/build
 bin/apply-crds
-echo "watching namespace ${CFO_NAMESPACE}"
+echo "watching namespace ${CF_OPERATOR_NAMESPACE}"
 binaries/cf-operator
