@@ -27,23 +27,23 @@ This will render a provided manifest instance-group
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		deploymentManifest := viper.GetString("bosh_manifest")
-		jobsDir := viper.GetString("jobs_dir")
-		instanceGroupName := viper.GetString("instance_group_name")
+		boshManifestPath := viper.GetString("bosh-manifest-path")
+		jobsDir := viper.GetString("jobs-dir")
+		instanceGroupName := viper.GetString("instance-group-name")
 
-		index := viper.GetInt("index")
-		if index < 0 {
+		specIndex := viper.GetInt("spec-index")
+		if specIndex < 0 {
 			// calculate index following the formula specified in
 			// docs/rendering_templates.md
-			azIndex := viper.GetInt("azindex")
+			azIndex := viper.GetInt("az-index")
 			if azIndex < 0 {
-				return fmt.Errorf("required parameter 'azindex' not set")
+				return fmt.Errorf("required parameter 'az-index' not set")
 			}
 			replicas := viper.GetInt("replicas")
 			if replicas < 0 {
 				return fmt.Errorf("required parameter 'replicas' not set")
 			}
-			podOrdinal := viper.GetInt("podordinal")
+			podOrdinal := viper.GetInt("pod-ordinal")
 			if podOrdinal < 0 {
 				// Infer ordinal from hostname
 				hostname, err := os.Hostname()
@@ -58,59 +58,62 @@ This will render a provided manifest instance-group
 				podOrdinal, _ = strconv.Atoi(match[1])
 			}
 
-			index = (azIndex-1)*replicas + podOrdinal
+			specIndex = (azIndex-1)*replicas + podOrdinal
 		}
 
-		return RenderData(deploymentManifest, jobsDir, "/var/vcap/jobs/", instanceGroupName, index)
+		return RenderData(boshManifestPath, jobsDir, "/var/vcap/jobs/", instanceGroupName, specIndex)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(templateRenderCmd)
 
-	templateRenderCmd.Flags().StringP("manifest", "m", "", "path to the manifest file")
+	templateRenderCmd.Flags().StringP("bosh-manifest-path", "m", "", "path to the bosh manifest file")
 	templateRenderCmd.Flags().StringP("jobs-dir", "j", "", "path to the jobs dir.")
 	templateRenderCmd.Flags().StringP("instance-group-name", "g", "", "the instance-group name to render")
-	templateRenderCmd.Flags().IntP("index", "", -1, "index of the instance spec")
-	templateRenderCmd.Flags().IntP("azindex", "", -1, "az index")
-	templateRenderCmd.Flags().IntP("podordinal", "", -1, "pod ordinal")
+	templateRenderCmd.Flags().IntP("spec-index", "", -1, "index of the instance spec")
+	templateRenderCmd.Flags().IntP("az-index", "", -1, "az index")
+	templateRenderCmd.Flags().IntP("pod-ordinal", "", -1, "pod ordinal")
 	templateRenderCmd.Flags().IntP("replicas", "", -1, "number of replicas")
 
-	viper.BindPFlag("bosh_manifest", templateRenderCmd.Flags().Lookup("manifest"))
-	viper.BindPFlag("jobs_dir", templateRenderCmd.Flags().Lookup("jobs-dir"))
-	viper.BindPFlag("instance_group_name", templateRenderCmd.Flags().Lookup("instance-group-name"))
-	viper.BindPFlag("azindex", templateRenderCmd.Flags().Lookup("azindex"))
-	viper.BindPFlag("index", templateRenderCmd.Flags().Lookup("index"))
-	viper.BindPFlag("podordinal", templateRenderCmd.Flags().Lookup("podordinal"))
+	viper.BindPFlag("bosh-manifest-path", templateRenderCmd.Flags().Lookup("bosh-manifest-path"))
+	viper.BindPFlag("jobs-dir", templateRenderCmd.Flags().Lookup("jobs-dir"))
+	viper.BindPFlag("instance-group-name", templateRenderCmd.Flags().Lookup("instance-group-name"))
+	viper.BindPFlag("az-index", templateRenderCmd.Flags().Lookup("az-index"))
+	viper.BindPFlag("spec-index", templateRenderCmd.Flags().Lookup("spec-index"))
+	viper.BindPFlag("pod-ordinal", templateRenderCmd.Flags().Lookup("pod-ordinal"))
 	viper.BindPFlag("replicas", templateRenderCmd.Flags().Lookup("replicas"))
 
-	viper.AutomaticEnv()
-	viper.BindEnv("bosh_manifest", "MANIFEST_PATH")
-	viper.BindEnv("jobs_dir", "JOBS_DIR")
-	viper.BindEnv("instance_group_name", "INSTANCE_GROUP_NAME")
-	viper.BindEnv("index", "SPEC_INDEX")
-	viper.BindEnv("azindex", "CF_OPERATOR_AZ_INDEX")
-	viper.BindEnv("podordinal", "POD_ORDINAL")
-	viper.BindEnv("replicas", "REPLICAS")
+	argToEnv["bosh-manifest-path"] = "BOSH_MANIFEST_PATH"
+	argToEnv["jobs-dir"] = "JOBS_DIR"
+	argToEnv["instance-group-name"] = "INSTANCE_GROUP_NAME"
+	argToEnv["docker-image-repository"] = "DOCKER_IMAGE_REPOSITORY"
+	argToEnv["spec-index"] = "SPEC_INDEX"
+	argToEnv["az-index"] = "AZ_INDEX"
+	argToEnv["pod-ordinal"] = "POD_ORDINAL"
+	argToEnv["replicas"] = "REPLICAS"
 
+	for arg, env := range argToEnv {
+		viper.BindEnv(arg, env)
+	}
 }
 
 // RenderData will render manifest instance group
-func RenderData(manifestPath string, jobsDir, jobsOutputDir string, instanceGroupName string, index int) error {
+func RenderData(boshManifestPath string, jobsDir string, jobsOutputDir string, instanceGroupName string, specIndex int) error {
 
 	// Loading deployment manifest file
-	resolvedYML, err := ioutil.ReadFile(manifestPath)
+	resolvedYML, err := ioutil.ReadFile(boshManifestPath)
 	if err != nil {
-		return errors.Wrapf(err, "couldn't read manifest file %s", manifestPath)
+		return errors.Wrapf(err, "couldn't read manifest file %s", boshManifestPath)
 	}
-	deploymentManifest := manifest.Manifest{}
-	err = yaml.Unmarshal(resolvedYML, &deploymentManifest)
+	boshManifest := manifest.Manifest{}
+	err = yaml.Unmarshal(resolvedYML, &boshManifest)
 	if err != nil {
-		return errors.Wrapf(err, "failed to unmarshal deployment manifest %s", manifestPath)
+		return errors.Wrapf(err, "failed to unmarshal deployment manifest %s", boshManifestPath)
 	}
 
 	// Loop over instancegroups
-	for _, instanceGroup := range deploymentManifest.InstanceGroups {
+	for _, instanceGroup := range boshManifest.InstanceGroups {
 
 		// Filter based on the instance group name
 		if instanceGroup.Name != instanceGroupName {
@@ -124,13 +127,13 @@ func RenderData(manifestPath string, jobsDir, jobsOutputDir string, instanceGrou
 			// Find job instance that's being rendered
 			var currentJobInstance *manifest.JobInstance
 			for _, instance := range job.Properties.BOSHContainerization.Instances {
-				if instance.Index == index {
+				if instance.Index == specIndex {
 					currentJobInstance = &instance
 					break
 				}
 			}
 			if currentJobInstance == nil {
-				return fmt.Errorf("no instance found for index '%d'", index)
+				return fmt.Errorf("no instance found for spec index '%d'", specIndex)
 			}
 
 			// Loop over name and link

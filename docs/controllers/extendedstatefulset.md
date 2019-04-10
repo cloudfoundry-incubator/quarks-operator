@@ -168,7 +168,7 @@ If zones are set for an `ExtendedStatefulSet`, the following occurs:
   KUBE_AZ="zone name"
   BOSH_AZ="zone name"
   CF_OPERATOR_AZ="zone name"
-  CF_OPERATOR_AZ_INDEX=="zone index"
+  AZ_INDEX=="zone index"
   ```
 
 ## Example Resource

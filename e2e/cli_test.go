@@ -29,14 +29,14 @@ var _ = Describe("CLI", func() {
 			session, err := act("help")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
-  -o, --docker-image-org string          Dockerhub organization that provides the operator docker image \(default "cfcontainerization"\)
-  -r, --docker-image-repository string   Dockerhub repository that provides the operator docker image \(default "cf-operator"\)
-  -t, --docker-image-tag string          Tag of the operator docker image \(default "\d+.\d+.\d+"\)
+  -n, --cf-operator-namespace string     \(CF_OPERATOR_NAMESPACE\) Namespace to watch for BOSH deployments \(default "default"\)
+  -o, --docker-image-org string          \(DOCKER_IMAGE_ORG\) Dockerhub organization that provides the operator docker image \(default "cfcontainerization"\)
+  -r, --docker-image-repository string   \(DOCKER_IMAGE_REPOSITORY\) Dockerhub repository that provides the operator docker image \(default "cf-operator"\)
+  -t, --docker-image-tag string          \(DOCKER_IMAGE_TAG\) Tag of the operator docker image \(default "\d+.\d+.\d+"\)
   -h, --help                             help for cf-operator
-  -c, --kubeconfig string                Path to a kubeconfig, not required in-cluster
-  -n, --namespace string                 Namespace to watch for BOSH deployments \(default "default"\)
-  -w, --operator-webhook-host string     Hostname/IP under which the webhook server can be reached from the cluster
-  -p, --operator-webhook-port string     Port the webhook server listens on \(default "2999"\)`))
+  -c, --kubeconfig string                \(KUBECONFIG\) Path to a kubeconfig, not required in-cluster
+  -w, --operator-webhook-host string     \(CF_OPERATOR_WEBHOOK_HOST\) Hostname/IP under which the webhook server can be reached from the cluster
+  -p, --operator-webhook-port string     \(CF_OPERATOR_WEBHOOK_PORT\) Port the webhook server listens on \(default "2999"\)`))
 		})
 
 		It("shows all available commands", func() {
@@ -63,11 +63,11 @@ var _ = Describe("CLI", func() {
 		Context("when specifying namespace", func() {
 			Context("via environment variables", func() {
 				BeforeEach(func() {
-					os.Setenv("CFO_NAMESPACE", "env-test")
+					os.Setenv("CF_OPERATOR_NAMESPACE", "env-test")
 				})
 
 				AfterEach(func() {
-					os.Setenv("CFO_NAMESPACE", "")
+					os.Setenv("CF_OPERATOR_NAMESPACE", "")
 				})
 
 				It("should start for namespace", func() {
@@ -79,7 +79,7 @@ var _ = Describe("CLI", func() {
 
 			Context("via using switches", func() {
 				It("should start for namespace", func() {
-					session, err := act("--namespace", "switch-test")
+					session, err := act("--cf-operator-namespace", "switch-test")
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+ with namespace switch-test`))
 				})

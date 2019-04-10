@@ -36,25 +36,28 @@ func init() {
 
 	variableInterpolationCmd.RunE = i.runVariableInterpolationCmd
 	rootCmd.AddCommand(variableInterpolationCmd)
-	variableInterpolationCmd.Flags().StringP("manifest", "m", "", "path to a bosh manifest")
+	variableInterpolationCmd.Flags().StringP("bosh-manifest-path", "m", "", "path to a bosh manifest")
 	variableInterpolationCmd.Flags().StringP("variables-dir", "v", "", "path to the variables dir")
 
-	// This will get the values from any set ENV var, but always
-	// the values provided via the flags have more precedence.
-	viper.AutomaticEnv()
+	viper.BindPFlag("bosh-manifest-path", variableInterpolationCmd.Flags().Lookup("bosh-manifest-path"))
+	viper.BindPFlag("variables-dir", variableInterpolationCmd.Flags().Lookup("variables-dir"))
 
-	viper.BindPFlag("manifest", variableInterpolationCmd.Flags().Lookup("manifest"))
-	viper.BindPFlag("variables_dir", variableInterpolationCmd.Flags().Lookup("variables-dir"))
+	argToEnv["bosh-manifest-path"] = "BOSH_MANIFEST_PATH"
+	argToEnv["variables-dir"] = "VARIABLES_DIR"
+
+	for arg, env := range argToEnv {
+		viper.BindEnv(arg, env)
+	}
 }
 
 func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string) error {
 	defer log.Sync()
 
-	manifestFile := viper.GetString("manifest")
-	variablesDir := filepath.Clean(viper.GetString("variables_dir"))
+	boshManifestPath := viper.GetString("bosh-manifest-path")
+	variablesDir := filepath.Clean(viper.GetString("variables-dir"))
 
-	if _, err := os.Stat(manifestFile); os.IsNotExist(err) {
-		return errors.Errorf("no such variable: %s", manifestFile)
+	if _, err := os.Stat(boshManifestPath); os.IsNotExist(err) {
+		return errors.Errorf("no such variable: %s", boshManifestPath)
 	}
 
 	info, err := os.Stat(variablesDir)
@@ -68,7 +71,7 @@ func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string)
 	}
 
 	// Read files
-	mBytes, err := ioutil.ReadFile(manifestFile)
+	boshManifestBytes, err := ioutil.ReadFile(boshManifestPath)
 	if err != nil {
 		return errors.Wrapf(err, "could not read manifest variable")
 	}
@@ -130,7 +133,7 @@ func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string)
 	}
 
 	multiVars := boshtpl.NewMultiVars(vars)
-	tpl := boshtpl.NewTemplate(mBytes)
+	tpl := boshtpl.NewTemplate(boshManifestBytes)
 
 	// Following options are empty for cf-operator
 	op := patch.Ops{}

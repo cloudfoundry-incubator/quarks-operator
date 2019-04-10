@@ -104,14 +104,14 @@ func (e *Environment) AllLogMessages() (msgs []string) {
 }
 
 func (e *Environment) setupCFOperator() (err error) {
-	whh, found := os.LookupEnv("OPERATOR_WEBHOOK_HOST")
+	whh, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_HOST")
 	if !found {
-		return fmt.Errorf("no webhook host set. Please set OPERATOR_WEBHOOK_HOST to the host/ip the operator runs on and try again")
+		return fmt.Errorf("no webhook host set. Please set CF_OPERATOR_WEBHOOK_HOST to the host/ip the operator runs on and try again")
 	}
 	e.Config.WebhookServerHost = whh
 
 	whp := int32(2999)
-	portString, found := os.LookupEnv("OPERATOR_WEBHOOK_PORT")
+	portString, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_PORT")
 	if found {
 		port, err := strconv.ParseInt(portString, 10, 32)
 		if err != nil {
@@ -151,9 +151,9 @@ func (e *Environment) setupCFOperator() (err error) {
 		operatorDockerImageTag = "latest"
 	}
 
-	manifest.DockerOrganization = operatorDockerImageOrg
-	manifest.DockerRepository = operatorDockerImageRepo
-	manifest.DockerTag = operatorDockerImageTag
+	manifest.DockerImageOrganization = operatorDockerImageOrg
+	manifest.DockerImageRepository = operatorDockerImageRepo
+	manifest.DockerImageTag = operatorDockerImageTag
 
 	ctx := ctxlog.NewManagerContext(e.Log)
 	e.mgr, err = operator.NewManager(ctx, e.Config, e.kubeConfig, manager.Options{Namespace: e.Namespace})
