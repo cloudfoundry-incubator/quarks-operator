@@ -105,6 +105,19 @@ var _ = Describe("ConvertToKube", func() {
 		})
 	})
 
+	Context("when invoking the data gathering job", func() {
+		It("verify job init containers fields", func() {
+			kubeConfig, err := m.ConvertToKube("foo")
+			Expect(err).ShouldNot(HaveOccurred())
+			jobDG := kubeConfig.DataGatheringJob.Spec.Template.Spec
+			// Test init containers in the datagathering job
+			Expect(jobDG.InitContainers[0].Name).To(Equal("spec-copier-redis-server"))
+			Expect(jobDG.InitContainers[1].Name).To(Equal("spec-copier-cflinuxfs3-rootfs-setup"))
+			Expect(jobDG.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+			Expect(jobDG.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+		})
+	})
+
 	Context("when the lifecycle is set to service", func() {
 		It("converts the instance group to an ExtendedStatefulset", func() {
 			kubeConfig, err := m.ConvertToKube("foo")
@@ -121,6 +134,7 @@ var _ = Describe("ConvertToKube", func() {
 			Expect(anExtendedSts.Spec.Containers[0].Name).To(Equal("cflinuxfs3-rootfs-setup"))
 
 			// Test init containers in the extended statefulset
+			Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3-rootfs-setup"))
 			Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
 			Expect(specCopierInitContainer.Command[0]).To(Equal("bash"))
 			Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3-rootfs-setup"))
@@ -129,17 +143,17 @@ var _ = Describe("ConvertToKube", func() {
 
 			// Test shared volume setup
 			Expect(anExtendedSts.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
-			Expect(anExtendedSts.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(anExtendedSts.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 			Expect(specCopierInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
-			Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 			Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
-			Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 
 			// Test the renderer container setup
 			Expect(rendererInitContainer.Env[0].Name).To(Equal("INSTANCE_GROUP_NAME"))
 			Expect(rendererInitContainer.Env[0].Value).To(Equal("diego-cell"))
 			Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
-			Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 			Expect(rendererInitContainer.VolumeMounts[1].Name).To(Equal("jobs-dir"))
 			Expect(rendererInitContainer.VolumeMounts[1].MountPath).To(Equal("/var/vcap/jobs"))
 			Expect(rendererInitContainer.VolumeMounts[2].Name).To(Equal("ig-resolved"))
@@ -166,6 +180,7 @@ var _ = Describe("ConvertToKube", func() {
 			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Command).To(BeNil())
 
 			// Test init containers in the extended job
+			Expect(specCopierInitContainer.Name).To(Equal("spec-copier-redis-server"))
 			Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
 			Expect(specCopierInitContainer.Command[0]).To(Equal("bash"))
 			Expect(rendererInitContainer.Image).To(Equal("/:"))
@@ -173,11 +188,11 @@ var _ = Describe("ConvertToKube", func() {
 
 			// Test shared volume setup
 			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
-			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 			Expect(specCopierInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
-			Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 			Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
-			Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/rendering"))
+			Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 
 			// Test mounting the resolved instance group properties in the renderer container
 			Expect(rendererInitContainer.Env[0].Name).To(Equal("INSTANCE_GROUP_NAME"))
