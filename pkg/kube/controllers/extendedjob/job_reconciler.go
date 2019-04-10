@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -182,22 +183,20 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
 				Namespace: instance.GetNamespace(),
-				Labels:    conf.SecretLabels,
 			},
-			StringData: data,
 		}
 
-		err = r.client.Get(ctx, types.NamespacedName{Name: secretName, Namespace: instance.GetNamespace()}, &corev1.Secret{})
-		if apierrors.IsNotFound(err) {
-			err = r.client.Create(ctx, secret)
-			if err != nil {
-				return errors.Wrap(err, "could not create secret")
+		_, err = controllerutil.CreateOrUpdate(ctx, r.client, secret, func(obj runtime.Object) error {
+			s, ok := obj.(*corev1.Secret)
+			if !ok {
+				return fmt.Errorf("object is not a Secret")
 			}
-		} else {
-			err = r.client.Update(ctx, secret)
-			if err != nil {
-				return errors.Wrap(err, "could not update secret")
-			}
+			s.SetLabels(conf.SecretLabels)
+			s.StringData = data
+			return nil
+		})
+		if err != nil {
+			return errors.Wrapf(err, "creating or updating Secret '%s'", secret.Name)
 		}
 	}
 	return nil
