@@ -9,7 +9,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/integration/environment"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versioned_secret_store"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -743,8 +743,8 @@ var _ = Describe("ExtendedJob", func() {
 						existingSecret.StringData["foo"] = "old"
 						existingSecret.StringData["bar"] = "old"
 						existingSecret.SetLabels(map[string]string{
-							versioned_secret_store.LabelSecretKind: versioned_secret_store.VersionSecretKind,
-							versioned_secret_store.LabelVersion:    "1",
+							versionedsecretstore.LabelSecretKind: versionedsecretstore.VersionSecretKind,
+							versionedsecretstore.LabelVersion:    "1",
 						})
 						tearDown, err := env.CreateSecret(env.Namespace, existingSecret)
 						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
@@ -754,8 +754,8 @@ var _ = Describe("ExtendedJob", func() {
 						existingSecret2.StringData["foo"] = "old"
 						existingSecret2.StringData["bar"] = "old"
 						existingSecret2.SetLabels(map[string]string{
-							versioned_secret_store.LabelSecretKind: versioned_secret_store.VersionSecretKind,
-							versioned_secret_store.LabelVersion:    "1",
+							versionedsecretstore.LabelSecretKind: versionedsecretstore.VersionSecretKind,
+							versionedsecretstore.LabelVersion:    "1",
 						})
 						tearDown, err = env.CreateSecret(env.Namespace, existingSecret2)
 						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)

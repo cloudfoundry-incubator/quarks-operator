@@ -1,4 +1,4 @@
-package versioned_secret_store_test
+package versionedsecretstore_test
 
 import (
 	. "github.com/onsi/ginkgo"

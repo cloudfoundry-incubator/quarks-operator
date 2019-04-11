@@ -30,7 +30,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versioned_secret_store"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 const (
@@ -63,7 +63,7 @@ type Owner interface {
 
 // NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, srf setReferenceFunc) reconcile.Reconciler {
-	versionedSecretStore := versioned_secret_store.NewVersionedSecretStore(mgr.GetClient())
+	versionedSecretStore := versionedsecretstore.NewVersionedSecretStore(mgr.GetClient())
 
 	return &ReconcileExtendedStatefulSet{
 		ctx:                  ctx,
@@ -84,7 +84,7 @@ type ReconcileExtendedStatefulSet struct {
 	setReference         setReferenceFunc
 	config               *config.Config
 	owner                Owner
-	versionedSecretStore versioned_secret_store.VersionedSecretStore
+	versionedSecretStore versionedsecretstore.VersionedSecretStore
 }
 
 // Reconcile reads that state of the cluster for a ExtendedStatefulSet object

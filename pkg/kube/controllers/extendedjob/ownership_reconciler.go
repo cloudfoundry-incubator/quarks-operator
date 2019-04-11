@@ -15,7 +15,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versioned_secret_store"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 var _ reconcile.Reconciler = &OwnershipReconciler{}
@@ -28,7 +28,7 @@ func NewOwnershipReconciler(
 	f setOwnerReferenceFunc,
 	owner Owner,
 ) reconcile.Reconciler {
-	versionedSecretStore := versioned_secret_store.NewVersionedSecretStore(mgr.GetClient())
+	versionedSecretStore := versionedsecretstore.NewVersionedSecretStore(mgr.GetClient())
 
 	return &OwnershipReconciler{
 		ctx:                  ctx,
@@ -49,7 +49,7 @@ type OwnershipReconciler struct {
 	scheme               *runtime.Scheme
 	setOwnerReference    setOwnerReferenceFunc
 	owner                Owner
-	versionedSecretStore versioned_secret_store.VersionedSecretStore
+	versionedSecretStore versionedsecretstore.VersionedSecretStore
 }
 
 // Reconcile keeps track of ownership on all configs, configmaps and secrets,

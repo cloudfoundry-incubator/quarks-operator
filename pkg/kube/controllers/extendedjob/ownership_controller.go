@@ -21,7 +21,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	eowner "code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versioned_secret_store"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // Owner interface to manage ownership on configs and secrets
@@ -172,9 +172,9 @@ func hasVersionedSecretReferences(o corev1.Secret) bool {
 	if secretLabels == nil {
 		return false
 	}
-	kind, _ := secretLabels[versioned_secret_store.LabelSecretKind]
+	kind, _ := secretLabels[versionedsecretstore.LabelSecretKind]
 	_, referencedJobExist := secretLabels[ejv1.LabelReferencedJobName]
-	return kind == versioned_secret_store.VersionSecretKind && referencedJobExist
+	return kind == versionedsecretstore.VersionSecretKind && referencedJobExist
 }
 
 func reconcilesForConfigMap(ctx context.Context, mgr manager.Manager, configMap corev1.ConfigMap) []reconcile.Request {

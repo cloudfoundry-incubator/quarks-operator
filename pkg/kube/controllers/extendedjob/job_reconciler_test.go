@@ -25,7 +25,7 @@ import (
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versioned_secret_store"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
@@ -142,8 +142,8 @@ var _ = Describe("ReconcileExtendedJob", func() {
 
 					Expect(secret.Labels).To(HaveKeyWithValue("key", "value"))
 					Expect(secret.Labels).To(HaveKeyWithValue(bdv1.LabelDeploymentName, "fake-deployment"))
-					Expect(secret.Labels).To(HaveKeyWithValue(versioned_secret_store.LabelSecretKind, "versionedSecret"))
-					Expect(secret.Labels).To(HaveKeyWithValue(versioned_secret_store.LabelVersion, "1"))
+					Expect(secret.Labels).To(HaveKeyWithValue(versionedsecretstore.LabelSecretKind, "versionedSecret"))
+					Expect(secret.Labels).To(HaveKeyWithValue(versionedsecretstore.LabelVersion, "1"))
 					Expect(secretName).To(Equal("foo-busybox-v1"))
 					return nil
 				})

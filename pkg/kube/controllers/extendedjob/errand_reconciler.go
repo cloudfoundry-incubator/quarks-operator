@@ -19,7 +19,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versioned_secret_store"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 var _ reconcile.Reconciler = &ErrandReconciler{}
@@ -32,7 +32,7 @@ func NewErrandReconciler(
 	f setOwnerReferenceFunc,
 	owner Owner,
 ) reconcile.Reconciler {
-	versionedSecretStore := versioned_secret_store.NewVersionedSecretStore(mgr.GetClient())
+	versionedSecretStore := versionedsecretstore.NewVersionedSecretStore(mgr.GetClient())
 
 	return &ErrandReconciler{
 		ctx:                  ctx,
@@ -55,7 +55,7 @@ type ErrandReconciler struct {
 	scheme               *runtime.Scheme
 	setOwnerReference    setOwnerReferenceFunc
 	owner                Owner
-	versionedSecretStore versioned_secret_store.VersionedSecretStore
+	versionedSecretStore versionedsecretstore.VersionedSecretStore
 }
 
 // Reconcile starts jobs for extended jobs of the type errand with Run being set to 'now' manually

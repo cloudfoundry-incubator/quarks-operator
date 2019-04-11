@@ -17,7 +17,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versioned_secret_store"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // AddErrand creates a new ExtendedJob controller to start errands when their
@@ -84,7 +84,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 				return false
 			}
 
-			if kind, ok := secretLabels[versioned_secret_store.LabelSecretKind]; ok && kind == versioned_secret_store.VersionSecretKind {
+			if kind, ok := secretLabels[versionedsecretstore.LabelSecretKind]; ok && kind == versionedsecretstore.VersionSecretKind {
 				return true
 			}
 

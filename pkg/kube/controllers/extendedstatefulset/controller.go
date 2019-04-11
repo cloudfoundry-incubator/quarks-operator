@@ -20,7 +20,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versioned_secret_store"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // Add creates a new ExtendedStatefulSet controller and adds it to the Manager
@@ -88,11 +88,11 @@ func reconcilesForSecret(ctx context.Context, mgr manager.Manager, secret corev1
 		return reconciles
 	}
 
-	secretKind, ok := secretLabels[versioned_secret_store.LabelSecretKind]
+	secretKind, ok := secretLabels[versionedsecretstore.LabelSecretKind]
 	if !ok {
 		return reconciles
 	}
-	if secretKind != versioned_secret_store.VersionSecretKind {
+	if secretKind != versionedsecretstore.VersionSecretKind {
 		return reconciles
 	}
 

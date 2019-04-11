@@ -1,4 +1,4 @@
-package versioned_secret_store
+package versionedsecretstore
 
 import (
 	"fmt"

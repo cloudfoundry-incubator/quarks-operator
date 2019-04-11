@@ -1,4 +1,4 @@
-package versioned_secret_store_test
+package versionedsecretstore_test
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
-	. "code.cloudfoundry.org/cf-operator/pkg/kube/util/versioned_secret_store"
+	. "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 	"code.cloudfoundry.org/cf-operator/testing"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

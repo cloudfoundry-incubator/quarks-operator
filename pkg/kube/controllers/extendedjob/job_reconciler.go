@@ -22,13 +22,13 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versioned_secret_store"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // NewJobReconciler returns a new Reconciler
 func NewJobReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, podLogGetter PodLogGetter) (reconcile.Reconciler, error) {
-	versionedSecretStore := versioned_secret_store.NewVersionedSecretStore(mgr.GetClient())
+	versionedSecretStore := versionedsecretstore.NewVersionedSecretStore(mgr.GetClient())
 
 	return &ReconcileJob{
 		ctx:                  ctx,
@@ -47,7 +47,7 @@ type ReconcileJob struct {
 	podLogGetter         PodLogGetter
 	scheme               *runtime.Scheme
 	config               *config.Config
-	versionedSecretStore versioned_secret_store.VersionedSecretStore
+	versionedSecretStore versionedsecretstore.VersionedSecretStore
 }
 
 // Reconcile reads that state of the cluster for a Job object that is owned by an ExtendedJob and
