@@ -29,7 +29,8 @@ func WithEvent(object runtime.Object, reason string) EventLogger {
 
 // Infof logs and adds an info event
 func (ev event) Infof(ctx context.Context, format string, v ...interface{}) {
-	Infof(ctx, format, v...)
+	log := ExtractLogger(ctx)
+	log.Infof(format, v...)
 
 	recorder := ExtractRecorder(ctx)
 	recorder.Eventf(ev.object, corev1.EventTypeNormal, ev.reason, format, v...)
@@ -56,7 +57,8 @@ func (ev event) Error(ctx context.Context, parts ...interface{}) error {
 }
 
 func (ev event) logAndError(ctx context.Context, msg string) error {
-	Error(ctx, msg)
+	log := ExtractLogger(ctx)
+	log.Error(msg)
 
 	recorder := ExtractRecorder(ctx)
 	recorder.Event(ev.object, corev1.EventTypeWarning, ev.reason, msg)
