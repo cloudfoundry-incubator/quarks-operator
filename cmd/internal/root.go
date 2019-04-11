@@ -125,7 +125,7 @@ func init() {
 
 // initConfig is executed before running commands
 func initConfig() {
-	logger, err := zap.NewDevelopment()
+	logger, err := zap.NewDevelopment(zap.AddCallerSkip(1))
 	if err != nil {
 		golog.Fatalf("cannot initialize ZAP logger: %v", err)
 	}
