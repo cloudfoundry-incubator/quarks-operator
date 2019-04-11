@@ -92,8 +92,8 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		}
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
 		_, log = helper.NewTestLogger()
-		ctx = ctxlog.NewManagerContext(log)
-		ctx = ctxlog.NewReconcilerContext(ctx, "TestRecorder", recorder)
+		ctx = ctxlog.NewParentContext(log)
+		ctx = ctxlog.NewContextWithRecorder(ctx, "TestRecorder", recorder)
 	})
 
 	JustBeforeEach(func() {

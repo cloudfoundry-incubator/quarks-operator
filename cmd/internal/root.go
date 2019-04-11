@@ -62,7 +62,7 @@ var rootCmd = &cobra.Command{
 			WebhookServerPort: operatorWebhookPort,
 			Fs:                afero.NewOsFs(),
 		}
-		ctx := ctxlog.NewManagerContext(log)
+		ctx := ctxlog.NewParentContext(log)
 
 		mgr, err := operator.NewManager(ctx, config, restConfig, manager.Options{Namespace: cfOperatorNamespace})
 		if err != nil {

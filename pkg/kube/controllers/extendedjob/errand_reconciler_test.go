@@ -67,7 +67,7 @@ var _ = Describe("ErrandReconciler", func() {
 		}
 
 		JustBeforeEach(func() {
-			ctx := ctxlog.NewManagerContext(log)
+			ctx := ctxlog.NewParentContext(log)
 			config := &config.Config{CtxTimeOut: 10 * time.Second}
 			reconciler = NewErrandReconciler(
 				ctx,

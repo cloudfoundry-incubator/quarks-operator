@@ -88,7 +88,7 @@ var _ = Describe("OwnershipReconciler", func() {
 			owner = &fakes.FakeOwner{}
 			config = &cfcfg.Config{CtxTimeOut: 1 * time.Second}
 			logs, log = helper.NewTestLogger()
-			ctx = ctxlog.NewManagerContext(log)
+			ctx = ctxlog.NewParentContext(log)
 			setOwnerReferenceCallCount = 0
 		})
 

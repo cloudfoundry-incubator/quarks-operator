@@ -24,7 +24,7 @@ import (
 // trigger strategy matches
 func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	f := controllerutil.SetControllerReference
-	ctx = ctxlog.NewReconcilerContext(ctx, "ext-job-errand-reconciler", mgr.GetRecorder("ext-job-errand-recorder"))
+	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-job-errand-reconciler", mgr.GetRecorder("ext-job-errand-recorder"))
 	owner := owner.NewOwner(mgr.GetClient(), mgr.GetScheme())
 	r := NewErrandReconciler(ctx, config, mgr, f, owner)
 	c, err := controller.New("ext-job-errand-controller", mgr, controller.Options{Reconciler: r})

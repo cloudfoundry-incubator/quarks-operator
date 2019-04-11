@@ -94,7 +94,7 @@ var _ = Describe("TriggerReconciler", func() {
 
 			config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
 			logs, log = helper.NewTestLogger()
-			ctx = ctxlog.NewManagerContext(log)
+			ctx = ctxlog.NewParentContext(log)
 			mgr = &fakes.FakeManager{}
 			query = &fakes.FakeQuery{}
 			setOwnerReferenceCallCount = 0

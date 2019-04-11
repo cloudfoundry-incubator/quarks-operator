@@ -18,23 +18,20 @@ var (
 	nopRecorder    = record.FakeRecorder{}
 )
 
-// NewManagerContext returns a new context with a logger
-func NewManagerContext(log *zap.SugaredLogger) context.Context {
+// NewParentContext returns a new context with a logger
+func NewParentContext(log *zap.SugaredLogger) context.Context {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, ctxLoggerKey, log)
 	return ctx
 }
 
-// newReconcilerContext includes a named logger for the reconciler
-func newContextWithNamedLog(ctx context.Context, name string) context.Context {
+// NewContextWithRecorder returns a new child context with the named
+// recorder and log inside
+func NewContextWithRecorder(ctx context.Context, name string, recorder record.EventRecorder) context.Context {
+	ctx = context.WithValue(ctx, ctxRecorderKey, recorder)
 	log := ExtractLogger(ctx)
 	log = log.Named(name)
 	return context.WithValue(ctx, ctxLoggerKey, log)
-}
-
-// NewReconcilerContext returns a new context with the named recorder and log inside
-func NewReconcilerContext(ctx context.Context, name string, recorder record.EventRecorder) context.Context {
-	return newContextWithNamedLog(context.WithValue(ctx, ctxRecorderKey, recorder), name)
 }
 
 // ExtractLogger returns the logger from the context
