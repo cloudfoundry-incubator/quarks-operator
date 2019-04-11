@@ -231,7 +231,7 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 					bdv1.LabelManifestSHA1:      manifestSignature,
 					ejv1.LabelReferencedJobName: fmt.Sprintf("data-gathering-%s", m.Name),
 				},
-				ToBeVersioned: true,
+				Versioned: true,
 			},
 			Trigger: ejv1.Trigger{
 				Strategy: ejv1.TriggerOnce,
@@ -354,7 +354,7 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 				SecretLabels: map[string]string{
 					bdv1.LabelDeploymentName: m.Name,
 				},
-				ToBeVersioned: true,
+				Versioned: true,
 			},
 			Trigger: ejv1.Trigger{
 				Strategy: ejv1.TriggerOnce,

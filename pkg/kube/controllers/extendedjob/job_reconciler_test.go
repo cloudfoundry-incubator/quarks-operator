@@ -22,10 +22,10 @@ import (
 	ejapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	ej "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
-	store "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versioned_secret_store"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
@@ -131,7 +131,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 			})
 
 			It("creates versioned manifest secret and persists the output", func() {
-				ejob.Spec.Output.ToBeVersioned = true
+				ejob.Spec.Output.Versioned = true
 				secretLabels := ejob.Spec.Output.SecretLabels
 				secretLabels[bdv1.LabelDeploymentName] = "fake-deployment"
 				ejob.Spec.Output.SecretLabels = secretLabels
@@ -142,8 +142,8 @@ var _ = Describe("ReconcileExtendedJob", func() {
 
 					Expect(secret.Labels).To(HaveKeyWithValue("key", "value"))
 					Expect(secret.Labels).To(HaveKeyWithValue(bdv1.LabelDeploymentName, "fake-deployment"))
-					Expect(secret.Labels).To(HaveKeyWithValue(store.LabelSecretKind, "versionedSecret"))
-					Expect(secret.Labels).To(HaveKeyWithValue(store.LabelVersion, "1"))
+					Expect(secret.Labels).To(HaveKeyWithValue(versioned_secret_store.LabelSecretKind, "versionedSecret"))
+					Expect(secret.Labels).To(HaveKeyWithValue(versioned_secret_store.LabelVersion, "1"))
 					Expect(secretName).To(Equal("foo-busybox-v1"))
 					return nil
 				})

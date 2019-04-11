@@ -25,13 +25,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	store "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versioned_secret_store"
 )
 
 const (
@@ -64,7 +63,7 @@ type Owner interface {
 
 // NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, srf setReferenceFunc) reconcile.Reconciler {
-	versionedSecretStore := store.NewVersionedSecretStore(mgr.GetClient())
+	versionedSecretStore := versioned_secret_store.NewVersionedSecretStore(mgr.GetClient())
 
 	return &ReconcileExtendedStatefulSet{
 		ctx:                  ctx,
@@ -85,7 +84,7 @@ type ReconcileExtendedStatefulSet struct {
 	setReference         setReferenceFunc
 	config               *config.Config
 	owner                Owner
-	versionedSecretStore store.VersionedSecretStore
+	versionedSecretStore versioned_secret_store.VersionedSecretStore
 }
 
 // Reconcile reads that state of the cluster for a ExtendedStatefulSet object
@@ -124,7 +123,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 
 	// TODO: generate an ID for the request
 
-	err = r.updateExtendedStatefulSetsVersionedSecrets(ctx, exStatefulSet)
+	err = r.versionedSecretStore.UpdateSecretReferences(ctx, exStatefulSet.GetNamespace(), &exStatefulSet.Spec.Template.Spec.Template.Spec)
 	if err != nil {
 		ctxlog.Error(ctx, "Could not update versioned secrets of ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 		return reconcile.Result{}, err
@@ -519,58 +518,6 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 		if err != nil {
 			ctxlog.Error(ctx, "Could not add finalizer from ExtendedStatefulSet '", exStatefulSet.GetName(), "': ", err)
 			return err
-		}
-	}
-
-	return nil
-}
-
-// updateExtendedStatefulSetsVersionedSecrets update statefulSets references of versioned secret
-// if they could not be found (that mean this reconcile invoked by creation of versioned secret)
-// or have a label that says they are versioned(there is a newer version should be update)
-func (r *ReconcileExtendedStatefulSet) updateExtendedStatefulSetsVersionedSecrets(ctx context.Context, exStatefulSet *essv1a1.ExtendedStatefulSet) error {
-	var err error
-
-	_, secretsInSpec := owner.GetConfigNamesFromSpec(exStatefulSet.Spec.Template.Spec.Template.Spec)
-	for secretNameInSpec := range secretsInSpec {
-		secretKey := types.NamespacedName{Namespace: exStatefulSet.GetNamespace(), Name: secretNameInSpec}
-		secret := &corev1.Secret{}
-		err = r.client.Get(ctx, secretKey, secret)
-		if err != nil && apierrors.IsNotFound(err) {
-			// Replace secret ref with a new versioned secret
-			ctxlog.Debugf(ctx, "Getting latest secret '%s'", secretNameInSpec)
-			versionedSecret, err := r.versionedSecretStore.Latest(ctx, exStatefulSet.GetNamespace(), secretNameInSpec)
-			if err != nil && apierrors.IsNotFound(err) {
-				ctxlog.Debugf(ctx, "versioned secret %s/%s doesn't exist", exStatefulSet.GetNamespace(), secretNameInSpec)
-				continue
-			} else if err != nil {
-				return errors.Wrapf(err, "failed to get versioned secret %s/%s", exStatefulSet.GetNamespace(), secretNameInSpec)
-			}
-
-			owner.ReplaceVolumesSecretRef(exStatefulSet.Spec.Template.Spec.Template.Spec.Volumes, secretNameInSpec, versionedSecret.GetName())
-			owner.ReplaceContainerEnvsSecretRef(exStatefulSet.Spec.Template.Spec.Template.Spec.Containers, secretNameInSpec, versionedSecret.GetName())
-		} else if err != nil {
-			return errors.Wrapf(err, "failed to retrieve secret %s/%s", exStatefulSet.GetNamespace(), secretNameInSpec)
-		}
-
-		// Update versioned secret if there is a newer version
-		secretLabels := secret.GetLabels()
-		if secretLabels == nil {
-			continue
-		}
-		referencedSecretName := secretLabels[ejv1.LabelReferencedSecretName]
-
-		ctxlog.Debugf(ctx, "Getting latest secret '%s'", referencedSecretName)
-		versionedSecret, err := r.versionedSecretStore.Latest(ctx, exStatefulSet.GetNamespace(), referencedSecretName)
-		if err != nil && apierrors.IsNotFound(err) {
-			return fmt.Errorf("versioned secret %s/%s doesn't exist", exStatefulSet.GetNamespace(), referencedSecretName)
-		} else if err != nil {
-			return errors.Wrapf(err, "failed to get versioned secret %s/%s", exStatefulSet.GetNamespace(), referencedSecretName)
-		}
-
-		if referencedSecretName != versionedSecret.GetName() {
-			owner.ReplaceVolumesSecretRef(exStatefulSet.Spec.Template.Spec.Template.Spec.Volumes, secretNameInSpec, versionedSecret.GetName())
-			owner.ReplaceContainerEnvsSecretRef(exStatefulSet.Spec.Template.Spec.Template.Spec.Containers, secretNameInSpec, versionedSecret.GetName())
 		}
 	}
 

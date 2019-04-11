@@ -298,40 +298,6 @@ func (r Owner) ListConfigsOwnedBy(ctx context.Context, owner apis.Object) ([]api
 	return configs, nil
 }
 
-// ReplaceVolumesSecretRef replace secret reference of volumes
-func ReplaceVolumesSecretRef(volumes []corev1.Volume, secretName string, versionedSecretName string) {
-	for _, vol := range volumes {
-		if vol.VolumeSource.Secret != nil && vol.VolumeSource.Secret.SecretName == secretName {
-			vol.VolumeSource.Secret.SecretName = versionedSecretName
-		}
-	}
-}
-
-// ReplaceContainerEnvsSecretRef replace secret reference of envs for each container
-func ReplaceContainerEnvsSecretRef(containers []corev1.Container, secretName string, versionedSecretName string) {
-	for _, container := range containers {
-
-		for _, env := range container.EnvFrom {
-			if s := env.SecretRef; s != nil {
-				if s.Name == secretName {
-					s.Name = versionedSecretName
-				}
-			}
-		}
-
-		for _, env := range container.Env {
-			if env.ValueFrom == nil {
-				continue
-			}
-			if sRef := env.ValueFrom.SecretKeyRef; sRef != nil {
-				if sRef.Name == secretName {
-					sRef.Name = versionedSecretName
-				}
-			}
-		}
-	}
-}
-
 // isOwnedBy returns true if the child has an owner reference that points to
 // the owner object
 func isOwnedBy(child, owner apis.Object) bool {

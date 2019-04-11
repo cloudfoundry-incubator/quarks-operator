@@ -1,4 +1,4 @@
-package extendedsecret_test
+package versioned_secret_store_test
 
 import (
 	"context"
@@ -13,10 +13,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
-	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
+	. "code.cloudfoundry.org/cf-operator/pkg/kube/util/versioned_secret_store"
 	"code.cloudfoundry.org/cf-operator/testing"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -107,6 +107,214 @@ name: fake-deployment-v4
 		client = &cfakes.FakeClient{}
 		store = NewVersionedSecretStore(client)
 		ctx = testing.NewContext()
+	})
+
+	Describe("UpdateSecretReferences", func() {
+		Context("when there is an extendedStatefulSet", func() {
+			var (
+				podSpec *corev1.PodSpec
+			)
+
+			BeforeEach(func() {
+				podSpec = &corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Env: []corev1.EnvVar{
+								{
+									Name: "SECRET_KEY",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: secretName,
+											},
+										},
+									},
+								},
+							},
+							EnvFrom: []corev1.EnvFromSource{
+								{
+									SecretRef: &corev1.SecretEnvSource{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: secretName,
+										},
+									},
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "secret-volume",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: secretName,
+								},
+							},
+						},
+					},
+				}
+			})
+
+			It("should replace references with a new versioned secret if there is one version", func() {
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object runtime.Object) error {
+					switch object.(type) {
+					case *corev1.Secret:
+						if nn.Name == secretV1.GetName() {
+							secretV1.DeepCopyInto(object.(*corev1.Secret))
+							return nil
+						}
+					}
+
+					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+				})
+				client.ListCalls(func(_ context.Context, options *crc.ListOptions, object runtime.Object) error {
+					switch object.(type) {
+					case *corev1.SecretList:
+						o := object.(*corev1.SecretList)
+						o.Items = []corev1.Secret{
+							*secretV1,
+						}
+						return nil
+					}
+
+					return nil
+				})
+
+				err := store.UpdateSecretReferences(ctx, namespace, podSpec)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Only one secret reference and it latest version
+				_, secretsInSpec := owner.GetConfigNamesFromSpec(*podSpec)
+				Expect(len(secretsInSpec)).To(Equal(1))
+				Expect(secretsInSpec).To(HaveKey(secretV1.Name))
+			})
+
+			It("should replace references with latest version if there is two versions", func() {
+				podSpec.Containers[0].Env[0].ValueFrom.SecretKeyRef.Name = secretV1.GetName()
+				podSpec.Containers[0].EnvFrom[0].SecretRef.Name = secretV1.GetName()
+				podSpec.Volumes[0].VolumeSource.Secret.SecretName = secretV1.GetName()
+
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object runtime.Object) error {
+					switch object.(type) {
+					case *corev1.Secret:
+						if nn.Name == secretV1.GetName() {
+							secretV1.DeepCopyInto(object.(*corev1.Secret))
+							return nil
+						}
+						if nn.Name == secretV2.GetName() {
+							secretV2.DeepCopyInto(object.(*corev1.Secret))
+							return nil
+						}
+					}
+
+					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+				})
+				client.ListCalls(func(_ context.Context, options *crc.ListOptions, object runtime.Object) error {
+					switch object.(type) {
+					case *corev1.SecretList:
+						o := object.(*corev1.SecretList)
+						o.Items = []corev1.Secret{
+							*secretV1,
+							*secretV2,
+						}
+						return nil
+					}
+
+					return nil
+				})
+
+				err := store.UpdateSecretReferences(ctx, namespace, podSpec)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Only one secret reference and it latest version
+				_, secretsInSpec := owner.GetConfigNamesFromSpec(*podSpec)
+				Expect(len(secretsInSpec)).To(Equal(1))
+				Expect(secretsInSpec).To(HaveKey(secretV2.Name))
+			})
+
+			It("should return error if it fails in getting original secret", func() {
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object runtime.Object) error {
+					switch object.(type) {
+					case *corev1.Secret:
+						return apierrors.NewBadRequest("fake-error")
+					}
+
+					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+				})
+
+				err := store.UpdateSecretReferences(ctx, namespace, podSpec)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to get secret '%s/%s'", namespace, secretName))
+			})
+
+			It("should return error if it fails in getting versioned secret", func() {
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object runtime.Object) error {
+					switch object.(type) {
+					case *corev1.Secret:
+						if nn.Name == secretV1.GetName() {
+							return apierrors.NewBadRequest("fake-error")
+						}
+					}
+
+					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+				})
+				client.ListCalls(func(_ context.Context, options *crc.ListOptions, object runtime.Object) error {
+					switch object.(type) {
+					case *corev1.SecretList:
+						o := object.(*corev1.SecretList)
+						o.Items = []corev1.Secret{
+							*secretV1,
+						}
+						return nil
+					}
+
+					return nil
+				})
+
+				err := store.UpdateSecretReferences(ctx, namespace, podSpec)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to get versioned secret '%s/%s'", namespace, secretName))
+			})
+
+			It("should return error if it fails in getting latest versioned secret", func() {
+				podSpec.Containers[0].Env[0].ValueFrom.SecretKeyRef.Name = secretV1.GetName()
+				podSpec.Containers[0].EnvFrom[0].SecretRef.Name = secretV1.GetName()
+				podSpec.Volumes[0].VolumeSource.Secret.SecretName = secretV1.GetName()
+
+				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object runtime.Object) error {
+					switch object.(type) {
+					case *corev1.Secret:
+						if nn.Name == secretV1.GetName() {
+							secretV1.DeepCopyInto(object.(*corev1.Secret))
+							return nil
+						}
+						if nn.Name == secretV2.GetName() {
+							return apierrors.NewBadRequest("fake-error")
+						}
+					}
+
+					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+				})
+				client.ListCalls(func(_ context.Context, options *crc.ListOptions, object runtime.Object) error {
+					switch object.(type) {
+					case *corev1.SecretList:
+						o := object.(*corev1.SecretList)
+						o.Items = []corev1.Secret{
+							*secretV1,
+							*secretV2,
+						}
+						return nil
+					}
+
+					return nil
+				})
+
+				err := store.UpdateSecretReferences(ctx, namespace, podSpec)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to get latest versioned secret '%s/%s'", namespace, secretName))
+			})
+		})
+
 	})
 
 	Describe("Create", func() {

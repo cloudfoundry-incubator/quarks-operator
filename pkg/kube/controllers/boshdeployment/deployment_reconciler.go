@@ -24,9 +24,9 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	store "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versioned_secret_store"
 )
 
 // State of instance
@@ -48,7 +48,7 @@ type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) 
 
 // NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
-	versionedSecretStore := store.NewVersionedSecretStore(mgr.GetClient())
+	versionedSecretStore := versioned_secret_store.NewVersionedSecretStore(mgr.GetClient())
 
 	return &ReconcileBOSHDeployment{
 		ctx:                  ctx,
@@ -73,7 +73,7 @@ type ReconcileBOSHDeployment struct {
 	resolver             bdm.Resolver
 	setReference         setReferenceFunc
 	config               *config.Config
-	versionedSecretStore store.VersionedSecretStore
+	versionedSecretStore versioned_secret_store.VersionedSecretStore
 }
 
 // Reconcile reads that state of the cluster for a BOSHDeployment object and makes changes based on the state read

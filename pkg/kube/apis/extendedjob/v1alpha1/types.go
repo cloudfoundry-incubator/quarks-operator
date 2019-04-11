@@ -17,8 +17,6 @@ import (
 var (
 	// LabelReferencedJobName is the name key for dependent job
 	LabelReferencedJobName = fmt.Sprintf("%s/referenced-job-name", apis.GroupName)
-	// LabelReferencedSecretName is the name key for dependant's referenced secret
-	LabelReferencedSecretName = fmt.Sprintf("%s/referenced-secret-name", apis.GroupName)
 )
 
 // ExtendedJobSpec defines the desired state of ExtendedJob
@@ -96,7 +94,7 @@ type Output struct {
 	OutputType     string            `json:"outputType,omitempty"` // only json is supported for now
 	SecretLabels   map[string]string `json:"secretLabels,omitempty"`
 	WriteOnFailure bool              `json:"writeOnFailure,omitempty"`
-	ToBeVersioned  bool              `json:"toBeVersioned,omitempty"`
+	Versioned      bool              `json:"versioned,omitempty"`
 }
 
 // ExtendedJobStatus defines the observed state of ExtendedJob

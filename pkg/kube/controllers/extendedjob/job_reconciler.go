@@ -20,15 +20,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	store "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versioned_secret_store"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // NewJobReconciler returns a new Reconciler
 func NewJobReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, podLogGetter PodLogGetter) (reconcile.Reconciler, error) {
-	versionedSecretStore := store.NewVersionedSecretStore(mgr.GetClient())
+	versionedSecretStore := versioned_secret_store.NewVersionedSecretStore(mgr.GetClient())
 
 	return &ReconcileJob{
 		ctx:                  ctx,
@@ -47,7 +47,7 @@ type ReconcileJob struct {
 	podLogGetter         PodLogGetter
 	scheme               *runtime.Scheme
 	config               *config.Config
-	versionedSecretStore store.VersionedSecretStore
+	versionedSecretStore versioned_secret_store.VersionedSecretStore
 }
 
 // Reconcile reads that state of the cluster for a Job object that is owned by an ExtendedJob and
@@ -191,14 +191,11 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, exJobName string, inst
 			},
 		}
 
-		if conf.ToBeVersioned {
+		if conf.Versioned {
 			secretLabels := conf.SecretLabels
 			if secretLabels == nil {
 				secretLabels = map[string]string{}
 			}
-
-			// Use ejv1.LabelReferencedSecretName to record secret name of dependant's volume if needed
-			secretLabels[ejv1.LabelReferencedSecretName] = secretName
 
 			// Use secretName as versioned secret name prefix: <secretName>-v<version>
 			err = r.versionedSecretStore.Create(ctx, instance.GetNamespace(), secretName, data, secretLabels, "created by extendedJob")

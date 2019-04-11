@@ -1,4 +1,4 @@
-package extendedsecret
+package versioned_secret_store
 
 import (
 	"fmt"
@@ -8,11 +8,16 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 )
 
 var (
@@ -22,6 +27,8 @@ var (
 	LabelVersion = fmt.Sprintf("%s/secret-version", apis.GroupName)
 	// AnnotationSourceDescription is the label key for source description
 	AnnotationSourceDescription = fmt.Sprintf("%s/source-description", apis.GroupName)
+	// VersionSecretKind is the kind of versioned secret
+	VersionSecretKind = "versionedSecret"
 )
 
 var _ VersionedSecretStore = &VersionedSecretStoreImpl{}
@@ -39,6 +46,7 @@ var _ VersionedSecretStore = &VersionedSecretStoreImpl{}
 // should explain the sources of the rendered secret, e.g. the location of
 // the Custom Resource Definition that generated it.
 type VersionedSecretStore interface {
+	UpdateSecretReferences(ctx context.Context, namespace string, podSpec *corev1.PodSpec) error
 	Create(ctx context.Context, namespace string, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error
 	Get(ctx context.Context, namespace string, secretName string, version int) (*corev1.Secret, error)
 	Latest(ctx context.Context, namespace string, secretName string) (*corev1.Secret, error)
@@ -61,6 +69,62 @@ func NewVersionedSecretStore(client client.Client) VersionedSecretStoreImpl {
 	}
 }
 
+// UpdateSecretReferences update versioned secret references in pod spec
+func (p VersionedSecretStoreImpl) UpdateSecretReferences(ctx context.Context, namespace string, podSpec *corev1.PodSpec) error {
+	_, secretsInSpec := owner.GetConfigNamesFromSpec(*podSpec)
+	for secretNameInSpec := range secretsInSpec {
+		secretKey := types.NamespacedName{Namespace: namespace, Name: secretNameInSpec}
+		secret := &corev1.Secret{}
+		err := p.client.Get(ctx, secretKey, secret)
+		if err != nil && apierrors.IsNotFound(err) {
+			// Replace a new versioned secret
+			ctxlog.Debugf(ctx, "Getting latest secret '%s'", secretNameInSpec)
+			versionedSecret, err := p.Latest(ctx, namespace, secretNameInSpec)
+			if err != nil && apierrors.IsNotFound(err) {
+				ctxlog.Debugf(ctx, "versioned secret '%s/%s' doesn't exist", namespace, secretNameInSpec)
+				continue
+			} else if err != nil {
+				return errors.Wrapf(err, "failed to get versioned secret '%s/%s'", namespace, secretNameInSpec)
+			}
+
+			replaceVolumesSecretRef(podSpec.Volumes, secretNameInSpec, versionedSecret.GetName())
+			replaceContainerEnvsSecretRef(podSpec.Containers, secretNameInSpec, versionedSecret.GetName())
+			continue
+		} else if err != nil {
+			return errors.Wrapf(err, "failed to get secret '%s/%s'", namespace, secretNameInSpec)
+		}
+
+		secretLabel := secret.Labels
+		if secretLabel == nil {
+			continue
+		}
+
+		secretKind, ok := secretLabel[LabelSecretKind]
+		if !ok || secretKind != VersionSecretKind {
+			continue
+		}
+
+		// Update versioned secret if there is a newer version
+		versionedSecretPrefix, err := names.GetPrefixFromVersionedSecretName(secret.GetName())
+		if err != nil {
+			return errors.Wrapf(err, "failed to get prefix from versioned secret '%s/%s'", namespace, secret.GetName())
+		}
+
+		ctxlog.Debugf(ctx, "Getting latest secret '%s'", versionedSecretPrefix)
+		versionedSecret, err := p.Latest(ctx, namespace, versionedSecretPrefix)
+		if err != nil {
+			return errors.Wrapf(err, "failed to get latest versioned secret '%s/%s'", namespace, versionedSecretPrefix)
+		}
+
+		if secretNameInSpec != versionedSecret.GetName() {
+			replaceVolumesSecretRef(podSpec.Volumes, secretNameInSpec, versionedSecret.GetName())
+			replaceContainerEnvsSecretRef(podSpec.Containers, secretNameInSpec, versionedSecret.GetName())
+		}
+	}
+
+	return nil
+}
+
 // Create creates a new version of the secret from secret data
 func (p VersionedSecretStoreImpl) Create(ctx context.Context, namespace string, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error {
 	currentVersion, err := p.getGreatestVersion(ctx, namespace, secretName)
@@ -70,7 +134,7 @@ func (p VersionedSecretStoreImpl) Create(ctx context.Context, namespace string, 
 
 	version := currentVersion + 1
 	labels[LabelVersion] = strconv.Itoa(version)
-	labels[LabelSecretKind] = "versionedSecret"
+	labels[LabelSecretKind] = VersionSecretKind
 
 	generatedSecretName, err := generateSecretName(secretName, version)
 	if err != nil {
@@ -184,7 +248,7 @@ func (p VersionedSecretStoreImpl) Delete(ctx context.Context, namespace string, 
 
 func (p VersionedSecretStoreImpl) listSecrets(ctx context.Context, namespace string, secretName string) ([]corev1.Secret, error) {
 	secretLabelsSet := labels.Set{
-		LabelSecretKind : "versionedSecret",
+		LabelSecretKind: VersionSecretKind,
 	}
 
 	secrets := &corev1.SecretList{}
@@ -257,4 +321,38 @@ func getVersionFromSecretName(name string) (int, error) {
 	}
 
 	return -1, fmt.Errorf("invalid secret name %s, it does not match the naming schema", name)
+}
+
+// replaceVolumesSecretRef replace secret reference of volumes
+func replaceVolumesSecretRef(volumes []corev1.Volume, secretName string, versionedSecretName string) {
+	for _, vol := range volumes {
+		if vol.VolumeSource.Secret != nil && vol.VolumeSource.Secret.SecretName == secretName {
+			vol.VolumeSource.Secret.SecretName = versionedSecretName
+		}
+	}
+}
+
+// replaceContainerEnvsSecretRef replace secret reference of envs for each container
+func replaceContainerEnvsSecretRef(containers []corev1.Container, secretName string, versionedSecretName string) {
+	for _, container := range containers {
+
+		for _, env := range container.EnvFrom {
+			if s := env.SecretRef; s != nil {
+				if s.Name == secretName {
+					s.Name = versionedSecretName
+				}
+			}
+		}
+
+		for _, env := range container.Env {
+			if env.ValueFrom == nil {
+				continue
+			}
+			if sRef := env.ValueFrom.SecretKeyRef; sRef != nil {
+				if sRef.Name == secretName {
+					sRef.Name = versionedSecretName
+				}
+			}
+		}
+	}
 }

@@ -15,11 +15,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versioned_secret_store"
 )
 
 // Add creates a new ExtendedStatefulSet controller and adds it to the Manager
@@ -87,13 +88,21 @@ func reconcilesForSecret(ctx context.Context, mgr manager.Manager, secret corev1
 		return reconciles
 	}
 
-	referencedSecretName, ok := secretLabels[ejv1.LabelReferencedSecretName]
+	secretKind, ok := secretLabels[versioned_secret_store.LabelSecretKind]
 	if !ok {
+		return reconciles
+	}
+	if secretKind != versioned_secret_store.VersionSecretKind {
+		return reconciles
+	}
+
+	referencedSecretName, err := names.GetPrefixFromVersionedSecretName(secret.GetName())
+	if err != nil {
 		return reconciles
 	}
 
 	exStatefulSets := &essv1.ExtendedStatefulSetList{}
-	err := mgr.GetClient().List(ctx, &client.ListOptions{}, exStatefulSets)
+	err = mgr.GetClient().List(ctx, &client.ListOptions{}, exStatefulSets)
 	if err != nil || len(exStatefulSets.Items) < 1 {
 		return reconciles
 	}
