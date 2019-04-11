@@ -187,6 +187,41 @@ _, err = controllerutil.CreateOrUpdate(ctx, r.client, varIntExJob.DeepCopy(), fu
 })
 ```
 
+## Logging and Events
+
+We start with a single context and pass that down via controllers into
+reconcilers. Reconcilers will create a context with timeout from the inherited
+context and linting will check if the `cancel()` function of that context is
+being handled.
+
+The `ctxlog` module provides a context with a named zap logger and an event recorder to the reconcilers.
+This is how it's set up for reconcilers:
+
+```
+// after logger is available
+ctx := ctxlog.NewParentContext(log)
+// adding named log and event recorder in controllers
+ctx = ctxlog.NewContextWithRecorder(ctx, "example-reconciler", mgr.GetRecorder("example-recorder"))
+// adding timeout in reconcilers
+ctx, cancel := context.WithTimeout(ctx, timeout)
+defer cancle()
+```
+
+The `ctxlog` package provides several logging functions. `Infof`, `Errorf`, `Error` and such wrap the corresponding zap log methods.
+
+The logging functions are also implemented on struct, to add event generation to the logging:
+
+```
+ctxlog.WithEvent(instance, "Reason").Infof("message: %s", v)
+err := ctxlog.WithEvent(instance, "Reason").Errorf("message: %s", v)
+err := ctxlog.WithEvent(instance, "Reason").Error("part", "part", "part")
+```
+The reason should be camel-case, so switch statements could match it.
+
+Error funcs like `WithEvent().Errorf()` also return an error, with the same message as the log message and event that were generated.
+
+Calling `WarningEvent` just creates a warning event, without logging.
+
 ## Versioning
 
 APIs and types follow the upstream versioning scheme described at: https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-versioning
