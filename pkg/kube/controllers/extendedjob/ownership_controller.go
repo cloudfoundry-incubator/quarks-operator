@@ -208,8 +208,8 @@ func reconcilesForSecret(ctx context.Context, mgr manager.Manager, secret corev1
 	var err error
 	secretLabels := secret.GetLabels()
 	if secretLabels != nil {
-		referencedSecretName, err = names.GetPrefixFromVersionedSecretName(secret.GetName())
-		if err != nil {
+		referencedSecretName = names.GetPrefixFromVersionedSecretName(secret.GetName())
+		if referencedSecretName == "" {
 			return reconciles
 		}
 	}

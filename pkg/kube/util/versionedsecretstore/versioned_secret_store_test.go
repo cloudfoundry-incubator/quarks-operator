@@ -24,7 +24,7 @@ import (
 var _ = Describe("VersionedSecretStore", func() {
 	var (
 		namespace                string
-		secretName               string
+		secretNamePrefix         string
 		exampleSourceDescription string
 		secretLabels             map[string]string
 		secretV1                 *corev1.Secret
@@ -38,15 +38,15 @@ var _ = Describe("VersionedSecretStore", func() {
 
 	BeforeEach(func() {
 		namespace = "default"
-		secretName = "fake-deployment"
+		secretNamePrefix = "fake-deployment"
 		exampleSourceDescription = "created by a unit-test"
 		secretLabels = map[string]string{
-			"deployment-name": secretName,
+			"deployment-name": secretNamePrefix,
 		}
 
 		secretV1 = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      secretName + "-v1",
+				Name:      secretNamePrefix + "-v1",
 				Namespace: "default",
 				UID:       "",
 				Labels: map[string]string{
@@ -65,7 +65,7 @@ name: fake-deployment-v1
 		}
 		secretV2 = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      secretName + "-v2",
+				Name:      secretNamePrefix + "-v2",
 				Namespace: "default",
 				UID:       "",
 				Labels: map[string]string{
@@ -84,7 +84,7 @@ name: fake-deployment-v4
 		}
 		secretV4 = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      secretName + "-v4",
+				Name:      secretNamePrefix + "-v4",
 				Namespace: "default",
 				UID:       "",
 				Labels: map[string]string{
@@ -125,7 +125,7 @@ name: fake-deployment-v4
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: secretName,
+												Name: secretNamePrefix + "-v1",
 											},
 										},
 									},
@@ -135,7 +135,7 @@ name: fake-deployment-v4
 								{
 									SecretRef: &corev1.SecretEnvSource{
 										LocalObjectReference: corev1.LocalObjectReference{
-											Name: secretName,
+											Name: secretNamePrefix + "-v1",
 										},
 									},
 								},
@@ -147,7 +147,7 @@ name: fake-deployment-v4
 							Name: "secret-volume",
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
-									SecretName: secretName,
+									SecretName: secretNamePrefix + "-v1",
 								},
 							},
 						},
@@ -156,17 +156,6 @@ name: fake-deployment-v4
 			})
 
 			It("should replace references with a new versioned secret if there is one version", func() {
-				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object runtime.Object) error {
-					switch object.(type) {
-					case *corev1.Secret:
-						if nn.Name == secretV1.GetName() {
-							secretV1.DeepCopyInto(object.(*corev1.Secret))
-							return nil
-						}
-					}
-
-					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
-				})
 				client.ListCalls(func(_ context.Context, options *crc.ListOptions, object runtime.Object) error {
 					switch object.(type) {
 					case *corev1.SecretList:
@@ -232,69 +221,11 @@ name: fake-deployment-v4
 				Expect(secretsInSpec).To(HaveKey(secretV2.Name))
 			})
 
-			It("should return error if it fails in getting original secret", func() {
-				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object runtime.Object) error {
-					switch object.(type) {
-					case *corev1.Secret:
-						return apierrors.NewBadRequest("fake-error")
-					}
-
-					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
-				})
-
-				err := store.UpdateSecretReferences(ctx, namespace, podSpec)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to get secret '%s/%s'", namespace, secretName))
-			})
-
-			It("should return error if it fails in getting versioned secret", func() {
-				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object runtime.Object) error {
-					switch object.(type) {
-					case *corev1.Secret:
-						if nn.Name == secretV1.GetName() {
-							return apierrors.NewBadRequest("fake-error")
-						}
-					}
-
-					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
-				})
-				client.ListCalls(func(_ context.Context, options *crc.ListOptions, object runtime.Object) error {
-					switch object.(type) {
-					case *corev1.SecretList:
-						o := object.(*corev1.SecretList)
-						o.Items = []corev1.Secret{
-							*secretV1,
-						}
-						return nil
-					}
-
-					return nil
-				})
-
-				err := store.UpdateSecretReferences(ctx, namespace, podSpec)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to get versioned secret '%s/%s'", namespace, secretName))
-			})
-
 			It("should return error if it fails in getting latest versioned secret", func() {
 				podSpec.Containers[0].Env[0].ValueFrom.SecretKeyRef.Name = secretV1.GetName()
 				podSpec.Containers[0].EnvFrom[0].SecretRef.Name = secretV1.GetName()
 				podSpec.Volumes[0].VolumeSource.Secret.SecretName = secretV1.GetName()
 
-				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object runtime.Object) error {
-					switch object.(type) {
-					case *corev1.Secret:
-						if nn.Name == secretV1.GetName() {
-							secretV1.DeepCopyInto(object.(*corev1.Secret))
-							return nil
-						}
-						if nn.Name == secretV2.GetName() {
-							return apierrors.NewBadRequest("fake-error")
-						}
-					}
-
-					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
-				})
 				client.ListCalls(func(_ context.Context, options *crc.ListOptions, object runtime.Object) error {
 					switch object.(type) {
 					case *corev1.SecretList:
@@ -303,7 +234,7 @@ name: fake-deployment-v4
 							*secretV1,
 							*secretV2,
 						}
-						return nil
+						return apierrors.NewBadRequest("fake-error")
 					}
 
 					return nil
@@ -311,7 +242,7 @@ name: fake-deployment-v4
 
 				err := store.UpdateSecretReferences(ctx, namespace, podSpec)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to get latest versioned secret '%s/%s'", namespace, secretName))
+				Expect(err.Error()).To(ContainSubstring("failed to get latest versioned secret %s in namespace %s", secretNamePrefix, namespace))
 			})
 		})
 
@@ -324,13 +255,13 @@ name: fake-deployment-v4
 					switch object.(type) {
 					case *corev1.Secret:
 						secret := object.(*corev1.Secret)
-						Expect(secret.GetName()).To(Equal(fmt.Sprintf("%s-v%d", secretName, 1)))
+						Expect(secret.GetName()).To(Equal(fmt.Sprintf("%s-v%d", secretNamePrefix, 1)))
 						return nil
 					}
 					return nil
 				})
 
-				err := store.Create(ctx, namespace, secretName, map[string]string{"manifest": `{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`}, secretLabels, exampleSourceDescription)
+				err := store.Create(ctx, namespace, secretNamePrefix, map[string]string{"manifest": `{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`}, secretLabels, exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -351,13 +282,13 @@ name: fake-deployment-v4
 					switch object.(type) {
 					case *corev1.Secret:
 						secret := object.(*corev1.Secret)
-						Expect(secret.GetName()).To(Equal(fmt.Sprintf("%s-v%d", secretName, 1)))
+						Expect(secret.GetName()).To(Equal(fmt.Sprintf("%s-v%d", secretNamePrefix, 1)))
 						return nil
 					}
 					return nil
 				})
 
-				err := store.Create(ctx, namespace, secretName, map[string]string{"manifest": `{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`}, secretLabels, exampleSourceDescription)
+				err := store.Create(ctx, namespace, secretNamePrefix, map[string]string{"manifest": `{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`}, secretLabels, exampleSourceDescription)
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -391,13 +322,13 @@ name: fake-deployment-v4
 					switch object.(type) {
 					case *corev1.Secret:
 						secret := object.(*corev1.Secret)
-						Expect(secret.GetName()).To(Equal(fmt.Sprintf("%s-v%d", secretName, 1)))
+						Expect(secret.GetName()).To(Equal(fmt.Sprintf("%s-v%d", secretNamePrefix, 1)))
 						return nil
 					}
 					return nil
 				})
 
-				err := store.Delete(ctx, namespace, secretName)
+				err := store.Delete(ctx, namespace, secretNamePrefix)
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -440,7 +371,7 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				err := store.Decorate(ctx, namespace, secretName, "foo", "bar")
+				err := store.Decorate(ctx, namespace, secretNamePrefix, "foo", "bar")
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -462,7 +393,7 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				currentManifestSecrets, err := store.List(ctx, namespace, secretName)
+				currentManifestSecrets, err := store.List(ctx, namespace, secretNamePrefix)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(currentManifestSecrets)).To(BeIdenticalTo(2))
 			})
@@ -488,9 +419,9 @@ name: fake-deployment-v4
 				client.GetCalls(func(_ context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object.(type) {
 					case *corev1.Secret:
-						if nn.Name == secretName+"-v1" {
+						if nn.Name == secretNamePrefix+"-v1" {
 							secretV1.DeepCopyInto(object.(*corev1.Secret))
-						} else if nn.Name == secretName+"-v4" {
+						} else if nn.Name == secretNamePrefix+"-v4" {
 							secretV4.DeepCopyInto(object.(*corev1.Secret))
 						}
 
@@ -502,9 +433,9 @@ name: fake-deployment-v4
 			})
 
 			It("should be possible to get the latest version", func() {
-				secret, err := store.Latest(ctx, namespace, secretName)
+				secret, err := store.Latest(ctx, namespace, secretNamePrefix)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(secret.Name).To(Equal(fmt.Sprintf("%s-v%d", secretName, 4)))
+				Expect(secret.Name).To(Equal(fmt.Sprintf("%s-v%d", secretNamePrefix, 4)))
 			})
 		})
 	})
@@ -514,9 +445,9 @@ name: fake-deployment-v4
 			client.GetCalls(func(_ context.Context, nn types.NamespacedName, object runtime.Object) error {
 				switch object.(type) {
 				case *corev1.Secret:
-					if nn.Name == secretName+"-v1" {
+					if nn.Name == secretNamePrefix+"-v1" {
 						secretV1.DeepCopyInto(object.(*corev1.Secret))
-					} else if nn.Name == secretName+"-v4" {
+					} else if nn.Name == secretNamePrefix+"-v4" {
 						secretV4.DeepCopyInto(object.(*corev1.Secret))
 					}
 
@@ -526,9 +457,9 @@ name: fake-deployment-v4
 				return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 			})
 
-			secret, err := store.Get(ctx, namespace, secretName, 1)
+			secret, err := store.Get(ctx, namespace, secretNamePrefix, 1)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(secret.Name).To(Equal(fmt.Sprintf("%s-v%d", secretName, 1)))
+			Expect(secret.Name).To(Equal(fmt.Sprintf("%s-v%d", secretNamePrefix, 1)))
 		})
 	})
 
@@ -548,7 +479,7 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				n, err := store.VersionCount(ctx, namespace, secretName)
+				n, err := store.VersionCount(ctx, namespace, secretNamePrefix)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(n).To(Equal(1))
 			})
@@ -568,7 +499,7 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				n, err := store.VersionCount(ctx, namespace, secretName)
+				n, err := store.VersionCount(ctx, namespace, secretNamePrefix)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(n).To(Equal(2))
 			})

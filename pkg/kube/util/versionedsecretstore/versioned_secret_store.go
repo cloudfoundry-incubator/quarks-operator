@@ -11,7 +11,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
@@ -27,6 +26,9 @@ var (
 	LabelVersion = fmt.Sprintf("%s/secret-version", apis.GroupName)
 	// AnnotationSourceDescription is the label key for source description
 	AnnotationSourceDescription = fmt.Sprintf("%s/source-description", apis.GroupName)
+)
+
+const (
 	// VersionSecretKind is the kind of versioned secret
 	VersionSecretKind = "versionedSecret"
 )
@@ -73,28 +75,29 @@ func NewVersionedSecretStore(client client.Client) VersionedSecretStoreImpl {
 func (p VersionedSecretStoreImpl) UpdateSecretReferences(ctx context.Context, namespace string, podSpec *corev1.PodSpec) error {
 	_, secretsInSpec := owner.GetConfigNamesFromSpec(*podSpec)
 	for secretNameInSpec := range secretsInSpec {
-		secretKey := types.NamespacedName{Namespace: namespace, Name: secretNameInSpec}
-		secret := &corev1.Secret{}
-		err := p.client.Get(ctx, secretKey, secret)
-		if err != nil && apierrors.IsNotFound(err) {
-			// Replace a new versioned secret
-			ctxlog.Debugf(ctx, "Getting latest secret '%s'", secretNameInSpec)
-			versionedSecret, err := p.Latest(ctx, namespace, secretNameInSpec)
-			if err != nil && apierrors.IsNotFound(err) {
-				ctxlog.Debugf(ctx, "versioned secret '%s/%s' doesn't exist", namespace, secretNameInSpec)
-				continue
-			} else if err != nil {
-				return errors.Wrapf(err, "failed to get versioned secret '%s/%s'", namespace, secretNameInSpec)
-			}
 
-			replaceVolumesSecretRef(podSpec.Volumes, secretNameInSpec, versionedSecret.GetName())
-			replaceContainerEnvsSecretRef(podSpec.Containers, secretNameInSpec, versionedSecret.GetName())
+		versionedSecretPrefix := names.GetPrefixFromVersionedSecretName(secretNameInSpec)
+		// If this secret doesn't look like a versioned secret (e.g. <name>-v2), move on
+		if versionedSecretPrefix == "" {
 			continue
-		} else if err != nil {
-			return errors.Wrapf(err, "failed to get secret '%s/%s'", namespace, secretNameInSpec)
 		}
 
-		secretLabel := secret.Labels
+		// We have the current secret name, we have to look and see if there's a new version
+		versionedSecret, err := p.Latest(ctx, namespace, versionedSecretPrefix)
+
+		// If the latest version of the secret doesn't exist yet, ignore this secret and move on
+		// There should be no situation where a version n + 1 exists, and versions 0 through n don't exist
+		if err != nil && apierrors.IsNotFound(err) {
+			ctxlog.Debugf(ctx, "versioned secret %s in namespace %s doesn't exist", versionedSecretPrefix, namespace)
+			continue
+		}
+
+		if err != nil {
+			return errors.Wrapf(err, "failed to get latest versioned secret %s in namespace %s", versionedSecretPrefix, namespace)
+		}
+
+		// Make sure that the secret we're looking at is an actual versioned secret
+		secretLabel := versionedSecret.Labels
 		if secretLabel == nil {
 			continue
 		}
@@ -104,21 +107,19 @@ func (p VersionedSecretStoreImpl) UpdateSecretReferences(ctx context.Context, na
 			continue
 		}
 
-		// Update versioned secret if there is a newer version
-		versionedSecretPrefix, err := names.GetPrefixFromVersionedSecretName(secret.GetName())
-		if err != nil {
-			return errors.Wrapf(err, "failed to get prefix from versioned secret '%s/%s'", namespace, secret.GetName())
-		}
+		// if the latest version is different than the current version in the spec, replace it
+		if versionedSecret.Name != secretNameInSpec {
+			replaceVolumesSecretRef(
+				podSpec.Volumes,
+				secretNameInSpec,
+				versionedSecret.GetName(),
+			)
 
-		ctxlog.Debugf(ctx, "Getting latest secret '%s'", versionedSecretPrefix)
-		versionedSecret, err := p.Latest(ctx, namespace, versionedSecretPrefix)
-		if err != nil {
-			return errors.Wrapf(err, "failed to get latest versioned secret '%s/%s'", namespace, versionedSecretPrefix)
-		}
-
-		if secretNameInSpec != versionedSecret.GetName() {
-			replaceVolumesSecretRef(podSpec.Volumes, secretNameInSpec, versionedSecret.GetName())
-			replaceContainerEnvsSecretRef(podSpec.Containers, secretNameInSpec, versionedSecret.GetName())
+			replaceContainerEnvsSecretRef(
+				podSpec.Containers,
+				secretNameInSpec,
+				versionedSecret.GetName(),
+			)
 		}
 	}
 

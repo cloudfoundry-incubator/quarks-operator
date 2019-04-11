@@ -32,14 +32,14 @@ func GetVersionFromName(name string, offset int) (int, error) {
 }
 
 // GetPrefixFromVersionedSecretName gets prefix from versioned secret
-func GetPrefixFromVersionedSecretName(name string) (string, error) {
+func GetPrefixFromVersionedSecretName(name string) string {
 	nameRegex := regexp.MustCompile(`^(\S+)-v\d+$`)
 	if captures := nameRegex.FindStringSubmatch(name); len(captures) > 0 {
 		prefix := captures[1]
-		return prefix, nil
+		return prefix
 	}
 
-	return "", fmt.Errorf("invalid secret name %s, it does not match the naming schema", name)
+	return ""
 }
 
 // JobName returns a unique, short name for a given extJob, pod(if exists) combination

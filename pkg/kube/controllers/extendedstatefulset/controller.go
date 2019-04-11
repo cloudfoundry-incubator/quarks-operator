@@ -96,13 +96,13 @@ func reconcilesForSecret(ctx context.Context, mgr manager.Manager, secret corev1
 		return reconciles
 	}
 
-	referencedSecretName, err := names.GetPrefixFromVersionedSecretName(secret.GetName())
-	if err != nil {
+	referencedSecretName := names.GetPrefixFromVersionedSecretName(secret.GetName())
+	if referencedSecretName == "" {
 		return reconciles
 	}
 
 	exStatefulSets := &essv1.ExtendedStatefulSetList{}
-	err = mgr.GetClient().List(ctx, &client.ListOptions{}, exStatefulSets)
+	err := mgr.GetClient().List(ctx, &client.ListOptions{}, exStatefulSets)
 	if err != nil || len(exStatefulSets.Items) < 1 {
 		return reconciles
 	}
