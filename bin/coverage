@@ -4,4 +4,5 @@ set -eu
  # Send code coverage report to coveralls.io
 gover
 sed -i 's/\([0-9]\)\(code.cloudfoundry.org\)/\1\n\2/g' gover.coverprofile
-goveralls -coverprofile gover.coverprofile -service concourse -repotoken "$COVERALLS_TOKEN"
+
+goveralls -coverprofile gover.coverprofile -jobId "$BUILD_NUMBER" -service concourse -repotoken "$COVERALLS_TOKEN"
