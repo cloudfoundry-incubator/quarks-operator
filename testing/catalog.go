@@ -70,6 +70,9 @@ instance_groups:
   persistent_disk_type: medium
   networks:
   - name: default
+  properties:
+    foo:
+      app_domain: "((app_domain))"
 - name: diego-cell
   azs:
   - z1
@@ -85,6 +88,9 @@ instance_groups:
   jobs:
   - name: cflinuxfs3-rootfs-setup
     release: cflinuxfs3
+    properties:
+      foo:
+        domain: "((system_domain))"
 variables:
 - name: "adminpass"
   type: "password"
