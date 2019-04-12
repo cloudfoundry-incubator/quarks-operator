@@ -104,6 +104,26 @@ var _ = Describe("kube converter", func() {
 				Expect(request.CARef.Name).To(Equal("foo-deployment.var-theca"))
 				Expect(request.CARef.Key).To(Equal("certificate"))
 			})
+
+			It("mounts variable secrets in the variable interpolation container", func() {
+				kubeConfig, err := m.ConvertToKube("foo")
+				Expect(err).ToNot(HaveOccurred())
+				job := kubeConfig.VariableInterpolationJob
+				podSpec := job.Spec.Template.Spec
+
+				volumes := []string{}
+				for _, v := range podSpec.Volumes {
+					volumes = append(volumes, v.Name)
+				}
+				Expect(volumes).To(ConsistOf("with-ops", "var-adminpass", "var-app-domain", "var-system-domain"))
+
+				mountPaths := []string{}
+				for _, p := range podSpec.Containers[0].VolumeMounts {
+					mountPaths = append(mountPaths, p.MountPath)
+				}
+				Expect(mountPaths).To(ConsistOf("/var/run/secrets/deployment/", "/var/run/secrets/variables/adminpass",
+					"/var/run/secrets/variables/app_domain", "/var/run/secrets/variables/system_domain"))
+			})
 		})
 
 		Context("when the lifecycle is set to service", func() {
