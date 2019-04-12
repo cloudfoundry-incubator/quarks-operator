@@ -18,12 +18,14 @@ import (
 	cclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	ej "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
@@ -61,10 +63,16 @@ var _ = Describe("ReconcileExtendedJob", func() {
 			return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 		})
 		client.ListCalls(func(context context.Context, options *cclient.ListOptions, object runtime.Object) error {
-			list := corev1.PodList{
-				Items: []corev1.Pod{*pod},
+			switch object.(type) {
+			case *corev1.PodList:
+				list := corev1.PodList{
+					Items: []corev1.Pod{*pod},
+				}
+				list.DeepCopyInto(object.(*corev1.PodList))
+			case *corev1.SecretList:
+				list := corev1.SecretList{}
+				list.DeepCopyInto(object.(*corev1.SecretList))
 			}
-			list.DeepCopyInto(object.(*corev1.PodList))
 			return nil
 		})
 		manager.GetClientReturns(client)
@@ -98,8 +106,10 @@ var _ = Describe("ReconcileExtendedJob", func() {
 		Context("when output persistence is configured", func() {
 			JustBeforeEach(func() {
 				ejob.Spec.Output = &ejapi.Output{
-					NamePrefix:   "foo-",
-					SecretLabels: map[string]string{"key": "value"},
+					NamePrefix: "foo-",
+					SecretLabels: map[string]string{
+						"key": "value",
+					},
 				}
 			})
 
@@ -113,6 +123,28 @@ var _ = Describe("ReconcileExtendedJob", func() {
 				client.CreateCalls(func(context context.Context, object runtime.Object) error {
 					secret := object.(*corev1.Secret)
 					Expect(secret.ObjectMeta.Labels["key"]).To(Equal("value"))
+					return nil
+				})
+				_, err := reconciler.Reconcile(request)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(client.CreateCallCount()).To(Equal(1))
+			})
+
+			It("creates versioned manifest secret and persists the output", func() {
+				ejob.Spec.Output.Versioned = true
+				secretLabels := ejob.Spec.Output.SecretLabels
+				secretLabels[bdv1.LabelDeploymentName] = "fake-deployment"
+				ejob.Spec.Output.SecretLabels = secretLabels
+
+				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+					secret := object.(*corev1.Secret)
+					secretName := secret.GetName()
+
+					Expect(secret.Labels).To(HaveKeyWithValue("key", "value"))
+					Expect(secret.Labels).To(HaveKeyWithValue(bdv1.LabelDeploymentName, "fake-deployment"))
+					Expect(secret.Labels).To(HaveKeyWithValue(versionedsecretstore.LabelSecretKind, "versionedSecret"))
+					Expect(secret.Labels).To(HaveKeyWithValue(versionedsecretstore.LabelVersion, "1"))
+					Expect(secretName).To(Equal("foo-busybox-v1"))
 					return nil
 				})
 				_, err := reconciler.Reconcile(request)
@@ -152,6 +184,12 @@ var _ = Describe("ReconcileExtendedJob", func() {
 			})
 
 			It("does persist the output", func() {
+				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+					secret := object.(*corev1.Secret)
+					Expect(secret.GetName()).To(Equal("foo-busybox"))
+					return nil
+				})
+
 				result, err := reconciler.Reconcile(request)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(client.CreateCallCount()).To(Equal(1))

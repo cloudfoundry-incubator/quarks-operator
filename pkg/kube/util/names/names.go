@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"hash/fnv"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -28,6 +29,17 @@ func GetVersionFromName(name string, offset int) (int, error) {
 		return versionInt, errors.Wrapf(err, "Atoi failed to convert")
 	}
 	return versionInt, nil
+}
+
+// GetPrefixFromVersionedSecretName gets prefix from versioned secret
+func GetPrefixFromVersionedSecretName(name string) string {
+	nameRegex := regexp.MustCompile(`^(\S+)-v\d+$`)
+	if captures := nameRegex.FindStringSubmatch(name); len(captures) > 0 {
+		prefix := captures[1]
+		return prefix
+	}
+
+	return ""
 }
 
 // JobName returns a unique, short name for a given extJob, pod(if exists) combination

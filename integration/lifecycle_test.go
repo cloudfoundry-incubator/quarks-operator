@@ -29,7 +29,7 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			err = env.WaitForPod(env.Namespace, "my-manifest-nats-v1-0")
+			err = env.WaitForPod(env.Namespace, "testcr-nats-v1-0")
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from initial deployment")
 		})
 	})

@@ -14,7 +14,7 @@ import (
 
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,6 +30,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 const (
@@ -62,24 +63,28 @@ type Owner interface {
 
 // NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, srf setReferenceFunc) reconcile.Reconciler {
+	versionedSecretStore := versionedsecretstore.NewVersionedSecretStore(mgr.GetClient())
+
 	return &ReconcileExtendedStatefulSet{
-		ctx:          ctx,
-		config:       config,
-		client:       mgr.GetClient(),
-		scheme:       mgr.GetScheme(),
-		setReference: srf,
-		owner:        owner.NewOwner(mgr.GetClient(), mgr.GetScheme()),
+		ctx:                  ctx,
+		config:               config,
+		client:               mgr.GetClient(),
+		scheme:               mgr.GetScheme(),
+		setReference:         srf,
+		owner:                owner.NewOwner(mgr.GetClient(), mgr.GetScheme()),
+		versionedSecretStore: versionedSecretStore,
 	}
 }
 
 // ReconcileExtendedStatefulSet reconciles an ExtendedStatefulSet object
 type ReconcileExtendedStatefulSet struct {
-	ctx          context.Context
-	client       client.Client
-	scheme       *runtime.Scheme
-	setReference setReferenceFunc
-	config       *config.Config
-	owner        Owner
+	ctx                  context.Context
+	client               client.Client
+	scheme               *runtime.Scheme
+	setReference         setReferenceFunc
+	config               *config.Config
+	owner                Owner
+	versionedSecretStore versionedsecretstore.VersionedSecretStore
 }
 
 // Reconcile reads that state of the cluster for a ExtendedStatefulSet object
@@ -98,7 +103,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	ctxlog.Info(ctx, "Reconciling ExtendedStatefulSet ", request.NamespacedName)
 	err := r.client.Get(ctx, request.NamespacedName, exStatefulSet)
 	if err != nil {
-		if kerrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
@@ -117,6 +122,12 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	}
 
 	// TODO: generate an ID for the request
+
+	err = r.versionedSecretStore.UpdateSecretReferences(ctx, exStatefulSet.GetNamespace(), &exStatefulSet.Spec.Template.Spec.Template.Spec)
+	if err != nil {
+		ctxlog.Error(ctx, "Could not update versioned secrets of ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+		return reconcile.Result{}, err
+	}
 
 	// Get the actual StatefulSet
 	actualStatefulSet, actualVersion, err := r.getActualStatefulSet(ctx, exStatefulSet)

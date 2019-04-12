@@ -9,6 +9,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/integration/environment"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -675,6 +676,37 @@ var _ = Describe("ExtendedJob", func() {
 					Expect(secret.Labels["label-key2"]).To(Equal("label-value2"))
 				})
 
+				It("persists output to versioned secret when versioned is configured", func() {
+					oej.Spec.Output.Versioned = true
+					_, tearDown, err := env.CreateExtendedJob(env.Namespace, *oej)
+					Expect(err).NotTo(HaveOccurred())
+					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+					tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
+					Expect(err).NotTo(HaveOccurred())
+					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+					By("persisting output for the first container")
+					secret, err := env.CollectSecret(env.Namespace, "output-job-output-busybox-v1")
+					Expect(err).NotTo(HaveOccurred())
+					Expect(string(secret.Data["foo"])).To(Equal("1"))
+					Expect(string(secret.Data["bar"])).To(Equal("baz"))
+
+					By("adding the configured labels to the first generated secret")
+					Expect(secret.Labels["label-key"]).To(Equal("label-value"))
+					Expect(secret.Labels["label-key2"]).To(Equal("label-value2"))
+
+					By("persisting output for the second container")
+					secret, err = env.CollectSecret(env.Namespace, "output-job-output-busybox2-v1")
+					Expect(err).NotTo(HaveOccurred())
+					Expect(string(secret.Data["foo"])).To(Equal("1"))
+					Expect(string(secret.Data["bar"])).To(Equal("baz"))
+
+					By("adding the configured labels to the second generated secret")
+					Expect(secret.Labels["label-key"]).To(Equal("label-value"))
+					Expect(secret.Labels["label-key2"]).To(Equal("label-value2"))
+				})
+
 				Context("when a secret with the same name already exists", func() {
 					BeforeEach(func() {
 						oej.Spec.Output.NamePrefix = "overwrite-job-output-"
@@ -699,6 +731,47 @@ var _ = Describe("ExtendedJob", func() {
 						// Wait until the output of the second container has been persisted. Then check the first one
 						_, err = env.CollectSecret(env.Namespace, "overwrite-job-output-busybox2")
 						secret, err := env.CollectSecret(env.Namespace, "overwrite-job-output-busybox")
+
+						Expect(err).ToNot(HaveOccurred())
+						Expect(string(secret.Data["foo"])).To(Equal("1"))
+						Expect(string(secret.Data["bar"])).To(Equal("baz"))
+					})
+
+					It("create new versions of versioned secret", func() {
+						oej.Spec.Output.Versioned = true
+						existingSecret := env.DefaultSecret("overwrite-job-output-busybox-v1")
+						existingSecret.StringData["foo"] = "old"
+						existingSecret.StringData["bar"] = "old"
+						existingSecret.SetLabels(map[string]string{
+							versionedsecretstore.LabelSecretKind: versionedsecretstore.VersionSecretKind,
+							versionedsecretstore.LabelVersion:    "1",
+						})
+						tearDown, err := env.CreateSecret(env.Namespace, existingSecret)
+						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+						Expect(err).ToNot(HaveOccurred())
+
+						existingSecret2 := env.DefaultSecret("overwrite-job-output-busybox2-v1")
+						existingSecret2.StringData["foo"] = "old"
+						existingSecret2.StringData["bar"] = "old"
+						existingSecret2.SetLabels(map[string]string{
+							versionedsecretstore.LabelSecretKind: versionedsecretstore.VersionSecretKind,
+							versionedsecretstore.LabelVersion:    "1",
+						})
+						tearDown, err = env.CreateSecret(env.Namespace, existingSecret2)
+						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+						Expect(err).ToNot(HaveOccurred())
+
+						_, tearDown, err = env.CreateExtendedJob(env.Namespace, *oej)
+						Expect(err).NotTo(HaveOccurred())
+						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+						tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
+						Expect(err).NotTo(HaveOccurred())
+						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+						// Wait until the output of the second container has been persisted. Then check the first one
+						_, err = env.CollectSecret(env.Namespace, "overwrite-job-output-busybox2-v2")
+						secret, err := env.CollectSecret(env.Namespace, "overwrite-job-output-busybox-v2")
 
 						Expect(err).ToNot(HaveOccurred())
 						Expect(string(secret.Data["foo"])).To(Equal("1"))
@@ -750,6 +823,21 @@ var _ = Describe("ExtendedJob", func() {
 
 							By("persisting the output for the first container")
 							_, err = env.CollectSecret(env.Namespace, "output-job3-output-busybox")
+							Expect(err).ToNot(HaveOccurred())
+						})
+
+						It("persists the output to versioned secret", func() {
+							oej.Spec.Output.Versioned = true
+							_, tearDown, err := env.CreateExtendedJob(env.Namespace, *oej)
+							Expect(err).NotTo(HaveOccurred())
+							defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+							tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
+							Expect(err).NotTo(HaveOccurred())
+							defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+							By("persisting the output for the first container")
+							_, err = env.CollectSecret(env.Namespace, "output-job3-output-busybox-v1")
 							Expect(err).ToNot(HaveOccurred())
 						})
 					})

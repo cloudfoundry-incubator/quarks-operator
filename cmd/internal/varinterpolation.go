@@ -14,6 +14,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
+
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
 type initCmd struct {
@@ -57,7 +59,7 @@ func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string)
 	variablesDir := filepath.Clean(viper.GetString("variables-dir"))
 
 	if _, err := os.Stat(boshManifestPath); os.IsNotExist(err) {
-		return errors.Errorf("no such variable: %s", boshManifestPath)
+		return errors.Errorf("no such file: %s", boshManifestPath)
 	}
 
 	info, err := os.Stat(variablesDir)
@@ -148,7 +150,7 @@ func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string)
 	}
 
 	jsonBytes, err := json.Marshal(map[string]string{
-		"manifest.yaml": string(yamlBytes),
+		bdm.DesiredManifestKeyName: string(yamlBytes),
 	})
 	if err != nil {
 		return errors.Wrapf(err, "could not marshal json output")
