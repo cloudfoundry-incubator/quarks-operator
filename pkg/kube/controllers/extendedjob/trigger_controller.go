@@ -20,7 +20,7 @@ import (
 func AddTrigger(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	query := NewQuery()
 	f := controllerutil.SetControllerReference
-	ctx = ctxlog.NewReconcilerContext(ctx, "ext-job-trigger-reconciler")
+	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-job-trigger-reconciler", mgr.GetRecorder("ext-job-trigger-recorder"))
 	r := NewTriggerReconciler(ctx, config, mgr, query, f)
 	c, err := controller.New("ext-job-trigger-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {

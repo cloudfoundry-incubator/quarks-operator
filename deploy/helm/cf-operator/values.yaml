@@ -1,7 +1,7 @@
 # Default values for cf-operator.
 image:
   repository: cfcontainerization/cf-operator
-  tag: v0.0.0
+  tag: latest
   pullPolicy: IfNotPresent
 
 nameOverride: ""
@@ -12,3 +12,7 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+operator:
+  webhook:
+    port: 2999

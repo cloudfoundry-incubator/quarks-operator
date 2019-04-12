@@ -81,7 +81,7 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 	if !canBeGenerated {
-		ctxlog.Infof(ctx, "Skip reconcile: secret '%s' already exists and it's not generated", instance.Spec.SecretName)
+		ctxlog.WithEvent(instance, "SkipReconcile").Infof(ctx, "Skip reconcile: secret '%s' already exists and it's not generated", instance.Spec.SecretName)
 		return reconcile.Result{}, nil
 	}
 
@@ -116,8 +116,8 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 			return reconcile.Result{}, errors.Wrap(err, "generating certificate secret")
 		}
 	default:
-		ctxlog.Infof(ctx, "Invalid type: %s", instance.Spec.Type)
-		return reconcile.Result{}, fmt.Errorf("invalid type: %s", instance.Spec.Type)
+		err = ctxlog.WithEvent(instance, "InvalidTypeError").Errorf(ctx, "Invalid type: %s", instance.Spec.Type)
+		return reconcile.Result{}, err
 	}
 
 	return reconcile.Result{}, nil

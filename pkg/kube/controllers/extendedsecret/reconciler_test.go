@@ -48,7 +48,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
 		_, log = helper.NewTestLogger()
-		ctx = ctxlog.NewManagerContext(log)
+		ctx = ctxlog.NewParentContext(log)
 		es = &esv1.ExtendedSecret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",

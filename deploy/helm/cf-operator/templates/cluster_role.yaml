@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: List
+items:
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      creationTimestamp: null
+      name: cf-operator:cluster
+    rules:
+    - apiGroups:
+      - admissionregistration.k8s.io
+      resources:
+      - mutatingwebhookconfigurations
+      verbs:
+      - '*'
+  - kind: ClusterRoleBinding
+    apiVersion: rbac.authorization.k8s.io/v1
+    metadata:
+      name: cf-operator:cluster
+    roleRef:
+      kind: ClusterRole
+      name: cf-operator:cluster
+      apiGroup: rbac.authorization.k8s.io
+    subjects:
+    - kind: ServiceAccount
+      name: cf-operator
+      namespace: {{ .Release.Namespace }}

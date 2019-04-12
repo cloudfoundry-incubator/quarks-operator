@@ -1,0 +1,11 @@
+apiVersio: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-webhook
+spec:
+  type: NodePort
+  selector:
+    name: cf-operator
+  ports:
+    - port: {{ .Values.operator.webhook.port }}
+      TargetPort: {{ .Values.operator.webhook.port }}

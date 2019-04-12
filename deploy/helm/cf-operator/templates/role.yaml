@@ -14,6 +14,7 @@ rules:
   - events
   - configmaps
   - secrets
+  - namespaces
   verbs:
   - '*'
 - apiGroups:
@@ -37,5 +38,11 @@ rules:
   resources:
   - '*'
   - boshdeployments
+  verbs:
+  - '*'
+- apiGroups:
+  - batch
+  resources:
+  - jobs
   verbs:
   - '*'
