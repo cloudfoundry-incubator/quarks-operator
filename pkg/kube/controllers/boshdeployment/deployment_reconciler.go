@@ -417,7 +417,11 @@ func (r *ReconcileBOSHDeployment) waitForBPM(ctx context.Context, deployment *bd
 	result := map[string]bdm.Manifest{}
 
 	for _, container := range kubeConfigs.DataGatheringJob.Spec.Template.Spec.Containers {
-		_, secretName := manifest.CalculateEJobOutputSecretPrefixAndName(bdm.DeploymentSecretTypeInstanceGroupResolvedProperties, container.Name)
+		_, secretName := manifest.CalculateEJobOutputSecretPrefixAndName(
+			bdm.DeploymentSecretTypeInstanceGroupResolvedProperties,
+			container.Name,
+			false,
+		)
 
 		ctxlog.Debugf(ctx, "Getting latest secret '%s'", secretName)
 		secret, err := r.versionedSecretStore.Latest(ctx, deployment.Namespace, secretName)

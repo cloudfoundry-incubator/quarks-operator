@@ -179,7 +179,11 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 		return nil, errors.Wrap(err, "could not calculate manifest SHA1")
 	}
 
-	outputSecretPrefix, _ := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, VarInterpolationContainerName)
+	outputSecretPrefix, _ := m.CalculateEJobOutputSecretPrefixAndName(
+		DeploymentSecretTypeManifestAndVars,
+		VarInterpolationContainerName,
+		false,
+	)
 
 	eJobName := fmt.Sprintf("var-interpolation-%s", m.Name)
 
@@ -254,10 +258,18 @@ func (m *Manifest) SHA1() (string, error) {
 // dataGatheringJob generates the Data Gathering Job for a manifest
 func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error) {
 
-	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, VarInterpolationContainerName)
+	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(
+		DeploymentSecretTypeManifestAndVars,
+		VarInterpolationContainerName,
+		true,
+	)
 
 	eJobName := fmt.Sprintf("data-gathering-%s", m.Name)
-	outputSecretNamePrefix, _ := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, "")
+	outputSecretNamePrefix, _ := m.CalculateEJobOutputSecretPrefixAndName(
+		DeploymentSecretTypeInstanceGroupResolvedProperties,
+		"",
+		false,
+	)
 
 	initContainers := []v1.Container{}
 	containers := make([]v1.Container, len(m.InstanceGroups))
@@ -429,7 +441,12 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 		})
 	}
 
-	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, igName)
+	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(
+		DeploymentSecretTypeInstanceGroupResolvedProperties,
+		igName,
+		true,
+	)
+
 	volumeMounts := []v1.VolumeMount{
 		{
 			Name:      "rendering-data",
@@ -516,8 +533,17 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 		return essv1.ExtendedStatefulSet{}, err
 	}
 
-	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, VarInterpolationContainerName)
-	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, ig.Name)
+	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(
+		DeploymentSecretTypeManifestAndVars,
+		VarInterpolationContainerName,
+		true,
+	)
+	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(
+		DeploymentSecretTypeInstanceGroupResolvedProperties,
+		ig.Name,
+		true,
+	)
+
 	volumes := []v1.Volume{
 		{
 			Name:         "rendering-data",
@@ -616,8 +642,17 @@ func (m *Manifest) errandToExtendedJob(ig *InstanceGroup, namespace string) (ejv
 		return ejv1.ExtendedJob{}, err
 	}
 
-	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeManifestAndVars, VarInterpolationContainerName)
-	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(DeploymentSecretTypeInstanceGroupResolvedProperties, ig.Name)
+	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(
+		DeploymentSecretTypeManifestAndVars,
+		VarInterpolationContainerName,
+		true,
+	)
+	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(
+		DeploymentSecretTypeInstanceGroupResolvedProperties,
+		ig.Name,
+		true,
+	)
+
 	volumes := []v1.Volume{
 		{
 			Name:         "rendering-data",

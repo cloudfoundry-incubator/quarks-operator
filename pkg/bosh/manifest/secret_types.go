@@ -60,9 +60,13 @@ func (m *Manifest) CalculateSecretName(secretType DeploymentSecretType, name str
 // CalculateEJobOutputSecretPrefixAndName generates a Secret prefix for the output
 // of an Extended Job given a name, and calculates the final Secret name,
 // given a container name
-func (m *Manifest) CalculateEJobOutputSecretPrefixAndName(secretType DeploymentSecretType, containerName string) (string, string) {
+func (m *Manifest) CalculateEJobOutputSecretPrefixAndName(secretType DeploymentSecretType, containerName string, versioned bool) (string, string) {
 	prefix := m.CalculateSecretName(secretType, "")
 	finalName := fmt.Sprintf("%s.%s", prefix, containerName)
+
+	if versioned {
+		finalName = fmt.Sprintf("%s-v0", finalName)
+	}
 
 	return prefix + ".", finalName
 }
