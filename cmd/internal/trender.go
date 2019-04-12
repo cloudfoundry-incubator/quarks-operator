@@ -26,7 +26,6 @@ var templateRenderCmd = &cobra.Command{
 This will render a provided manifest instance-group
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-
 		boshManifestPath := viper.GetString("bosh-manifest-path")
 		jobsDir := viper.GetString("jobs-dir")
 		instanceGroupName := viper.GetString("instance-group-name")

@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
@@ -53,6 +53,7 @@ func init() {
 }
 
 func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string) error {
+	log = newLogger()
 	defer log.Sync()
 
 	boshManifestPath := viper.GetString("bosh-manifest-path")
