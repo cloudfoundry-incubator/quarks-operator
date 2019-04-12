@@ -3,13 +3,15 @@ package cmd_test
 import (
 	"fmt"
 
-	. "code.cloudfoundry.org/cf-operator/cmd/internal"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/testing"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"go.uber.org/zap"
+
+	. "code.cloudfoundry.org/cf-operator/cmd/internal"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+	"code.cloudfoundry.org/cf-operator/testing"
 )
 
 var _ = Describe("Dgather", func() {
@@ -19,6 +21,11 @@ var _ = Describe("Dgather", func() {
 		env testing.Catalog
 		log *zap.SugaredLogger
 	)
+
+	BeforeEach(func() {
+		m = env.ElaboratedBOSHManifest()
+		_, log = helper.NewTestLogger()
+	})
 
 	Context("helper functions to override job specs from manifest", func() {
 		It("should find a property value in the manifest job properties section (constructed example)", func() {
@@ -149,9 +156,6 @@ var _ = Describe("Dgather", func() {
 	Context("resolve links between providers and consumers", func() {
 		BeforeEach(func() {
 			m = env.BOSHManifestWithProviderAndConsumer()
-			logger := zap.NewNop()
-			defer logger.Sync()
-			log = logger.Sugar()
 		})
 
 		It("should get all required data if the job consumes a link", func() {
@@ -197,12 +201,8 @@ var _ = Describe("Dgather", func() {
 	})
 
 	Context("rendering ERB files", func() {
-
 		BeforeEach(func() {
 			m = env.BOSHManifestWithProviderAndConsumer()
-			logger := zap.NewNop()
-			defer logger.Sync()
-			log = logger.Sugar()
 		})
 
 		It("should render complex ERB files", func() {
@@ -215,7 +215,7 @@ var _ = Describe("Dgather", func() {
 			jobBoshContainerizationPropertiesInstances := m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Instances
 			Expect(len(jobBoshContainerizationPropertiesInstances)).To(Equal(4))
 
-			Expect(jobBoshContainerizationPropertiesInstances[0].Fingerprint).ToNot(BeEmpty())
+			Expect(jobBoshContainerizationPropertiesInstances[0].Fingerprint).To(BeNil())
 
 			// in ERB files, there are test environment variables like these:
 			//   FOOBARWITHLINKVALUES: <%= link('doppler').p("fooprop") %>

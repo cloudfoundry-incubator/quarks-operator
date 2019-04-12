@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bufio"
-	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -376,43 +375,16 @@ func RenderJobBPM(currentJob *manifest.Job, jobInstances []manifest.JobInstance,
 			if err != nil {
 				return err
 			}
-			instanceBytes := generateJobInstanceSHA(currentJob, jobInstances[i])
-
-			// All instances SHA are the same, while all instances are based on index 0
-			jobInstances[i].Fingerprint = generateSHA(instanceBytes)
 		}
 
 		for _, jobBPMInstance := range jobIndexBPM {
 			if !reflect.DeepEqual(jobBPMInstance, jobIndexBPM[0]) {
-				log.Infof("found different BPM job indexes for job %v in manifest %v, this is NOT SUPPORTED", currentJob.Name, manifestName)
+				log.Warnf("found different BPM job indexes for job %s in manifest %s, this is NOT SUPPORTED", currentJob.Name, manifestName)
 			}
 		}
 		currentJob.Properties.BOSHContainerization.BPM = jobIndexBPM[0]
 	}
 	return nil
-}
-
-func generateJobInstanceSHA(currentJob *manifest.Job, jobInstance manifest.JobInstance) []byte {
-	// The following is based on https://github.com/cloudfoundry-incubator/cf-operator/compare/master...jandubois:161745895-erb-rendering-using-jobs#diff-55ce7ec0a607742ace583aad21b7acbaR231
-	// Calculate a fingerprint of all config settings for this job instance
-	jobPropertiesWithoutBoshContainerization := currentJob.Properties
-	jobPropertiesWithoutBoshContainerization.BOSHContainerization.Consumes = map[string]manifest.JobLink{}
-	jobPropertiesWithoutBoshContainerization.BOSHContainerization.Instances = []manifest.JobInstance{}
-	jobPropertiesWithoutBoshContainerization.BOSHContainerization.Release = ""
-	jobPropertiesWithoutBoshContainerization.BOSHContainerization.BPM = bpm.Config{}
-
-	// Generate anonymous struct for the fingerprint
-	fingerprintObject := struct {
-		Instance   manifest.JobInstance
-		Properties manifest.JobProperties
-		Release    string
-	}{
-		Instance:   jobInstance,
-		Properties: jobPropertiesWithoutBoshContainerization,
-		Release:    currentJob.Properties.BOSHContainerization.Release,
-	}
-	jobInstanceFP, _ := json.Marshal(fingerprintObject)
-	return jobInstanceFP
 }
 
 // ProcessConsumersAndRenderBPM will generate a proper context for links and render the required ERB files
@@ -467,15 +439,6 @@ func ProcessConsumersAndRenderBPM(boshManifestStruct *manifest.Manifest, baseDir
 	}
 
 	return manifestResolved, nil
-}
-
-// generateSHA will generate a new fingerprint based on
-// a struct
-func generateSHA(fingerPrint []byte) []byte {
-	h := md5.New()
-	h.Write(fingerPrint)
-	bs := h.Sum(nil)
-	return bs
 }
 
 // GatherData will collect different data
