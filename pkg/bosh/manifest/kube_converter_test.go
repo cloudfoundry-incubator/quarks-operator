@@ -187,45 +187,45 @@ var _ = Describe("kube converter", func() {
 				Expect(rendererInitContainer.VolumeMounts[1].MountPath).To(Equal("/var/vcap/jobs"))
 			})
 		})
+	})
 
-		Context("GetReleaseImage", func() {
-			It("reports an error if the instance group was not found", func() {
-				_, err := m.GetReleaseImage("unknown-instancegroup", "redis-server")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("not found"))
-			})
+	Describe("GetReleaseImage", func() {
+		It("reports an error if the instance group was not found", func() {
+			_, err := m.GetReleaseImage("unknown-instancegroup", "redis-server")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("not found"))
+		})
 
-			It("reports an error if the stemcell was not found", func() {
-				m.Stemcells = []*manifest.Stemcell{}
-				_, err := m.GetReleaseImage("redis-slave", "redis-server")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("stemcell could not be resolved"))
-			})
+		It("reports an error if the stemcell was not found", func() {
+			m.Stemcells = []*manifest.Stemcell{}
+			_, err := m.GetReleaseImage("redis-slave", "redis-server")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("stemcell could not be resolved"))
+		})
 
-			It("reports an error if the job was not found", func() {
-				_, err := m.GetReleaseImage("redis-slave", "unknown-job")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("not found"))
-			})
+		It("reports an error if the job was not found", func() {
+			_, err := m.GetReleaseImage("redis-slave", "unknown-job")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("not found"))
+		})
 
-			It("reports an error if the release was not found", func() {
-				m.Releases = []*manifest.Release{}
-				_, err := m.GetReleaseImage("redis-slave", "redis-server")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("not found"))
-			})
+		It("reports an error if the release was not found", func() {
+			m.Releases = []*manifest.Release{}
+			_, err := m.GetReleaseImage("redis-slave", "redis-server")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("not found"))
+		})
 
-			It("calculates the release image name", func() {
-				releaseImage, err := m.GetReleaseImage("redis-slave", "redis-server")
-				Expect(err).ToNot(HaveOccurred())
-				Expect(releaseImage).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
-			})
+		It("calculates the release image name", func() {
+			releaseImage, err := m.GetReleaseImage("redis-slave", "redis-server")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(releaseImage).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
+		})
 
-			It("uses the release stemcell information if it is set", func() {
-				releaseImage, err := m.GetReleaseImage("diego-cell", "cflinuxfs3-rootfs-setup")
-				Expect(err).ToNot(HaveOccurred())
-				Expect(releaseImage).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
-			})
+		It("uses the release stemcell information if it is set", func() {
+			releaseImage, err := m.GetReleaseImage("diego-cell", "cflinuxfs3-rootfs-setup")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(releaseImage).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
 		})
 	})
 
