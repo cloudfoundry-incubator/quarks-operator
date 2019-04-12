@@ -7,10 +7,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
-
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,6 +26,7 @@ import (
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // State of instance
@@ -49,14 +48,17 @@ type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) 
 
 // NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
+	versionedSecretStore := versionedsecretstore.NewVersionedSecretStore(mgr.GetClient())
+
 	return &ReconcileBOSHDeployment{
-		ctx:          ctx,
-		config:       config,
-		client:       mgr.GetClient(),
-		scheme:       mgr.GetScheme(),
-		recorder:     mgr.GetRecorder("RECONCILER RECORDER"),
-		resolver:     resolver,
-		setReference: srf,
+		ctx:                  ctx,
+		config:               config,
+		client:               mgr.GetClient(),
+		scheme:               mgr.GetScheme(),
+		recorder:             mgr.GetRecorder("RECONCILER RECORDER"),
+		resolver:             resolver,
+		setReference:         srf,
+		versionedSecretStore: versionedSecretStore,
 	}
 }
 
@@ -64,13 +66,14 @@ func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manag
 type ReconcileBOSHDeployment struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	ctx          context.Context
-	client       client.Client
-	scheme       *runtime.Scheme
-	recorder     record.EventRecorder
-	resolver     bdm.Resolver
-	setReference setReferenceFunc
-	config       *config.Config
+	ctx                  context.Context
+	client               client.Client
+	scheme               *runtime.Scheme
+	recorder             record.EventRecorder
+	resolver             bdm.Resolver
+	setReference         setReferenceFunc
+	config               *config.Config
+	versionedSecretStore versionedsecretstore.VersionedSecretStore
 }
 
 // Reconcile reads that state of the cluster for a BOSHDeployment object and makes changes based on the state read
@@ -191,7 +194,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		// We need BPM information to start everything up
 		bpmInfo, err := r.waitForBPM(ctx, instance, manifest, &kubeConfigs)
 		if err != nil {
-			ctxlog.Info(ctx, "Waiting from BPM: %s", err.Error())
+			ctxlog.Infof(ctx, "Waiting for BPM: %s", err.Error())
 			return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, err
 		}
 
@@ -222,7 +225,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, errors.New("unknown instance state")
 	}
 
-	ctxlog.Debugf(ctx, "requeue the reconcile: BoshDeployment '%s/%s' is in state '%s'", instance.GetNamespace(), instance.GetName(), instance.Status.State)
+	ctxlog.Debugf(ctx, "Requeue the reconcile: BoshDeployment '%s/%s' is in state '%s'", instance.GetNamespace(), instance.GetName(), instance.Status.State)
 	return reconcile.Result{Requeue: true}, r.updateInstanceState(ctx, instance)
 }
 
@@ -277,6 +280,9 @@ func (r *ReconcileBOSHDeployment) applyOps(ctx context.Context, instance *bdv1.B
 		ctxlog.Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
 		return nil, err
 	}
+
+	// Replace the name with the name of the BOSHDeployment resource
+	manifest.Name = instance.GetName()
 
 	return manifest, nil
 }
@@ -411,11 +417,14 @@ func (r *ReconcileBOSHDeployment) waitForBPM(ctx context.Context, deployment *bd
 	result := map[string]bdm.Manifest{}
 
 	for _, container := range kubeConfigs.DataGatheringJob.Spec.Template.Spec.Containers {
-		_, secretName := manifest.CalculateEJobOutputSecretPrefixAndName(bdm.DeploymentSecretTypeInstanceGroupResolvedProperties, container.Name)
+		_, secretName := manifest.CalculateEJobOutputSecretPrefixAndName(
+			bdm.DeploymentSecretTypeInstanceGroupResolvedProperties,
+			container.Name,
+			false,
+		)
 
-		secret := &v1.Secret{}
-		err := r.client.Get(ctx, types.NamespacedName{Name: secretName, Namespace: deployment.Namespace}, secret)
-
+		ctxlog.Debugf(ctx, "Getting latest secret '%s'", secretName)
+		secret, err := r.versionedSecretStore.Latest(ctx, deployment.Namespace, secretName)
 		if err != nil && apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("secret %s/%s doesn't exist", deployment.Namespace, secretName)
 		} else if err != nil {
@@ -437,6 +446,7 @@ func (r *ReconcileBOSHDeployment) waitForBPM(ctx context.Context, deployment *bd
 // deployInstanceGroups create ExtendedJobs and ExtendedStatefulSets
 func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, instance *bdv1.BOSHDeployment, kubeConfigs *bdm.KubeConfig) error {
 	ctxlog.Debug(ctx, "Creating extendedJobs and extendedStatefulSets of instance groups")
+
 	for _, eJob := range kubeConfigs.Errands {
 		// Set BOSHDeployment instance as the owner and controller
 		if err := r.setReference(instance, &eJob, r.scheme); err != nil {

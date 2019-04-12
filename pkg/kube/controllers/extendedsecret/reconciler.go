@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -286,21 +287,16 @@ func (r *ReconcileExtendedSecret) createSecret(ctx context.Context, instance *es
 		return errors.Wrapf(err, "error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.GetName(), instance.GetName(), instance.GetNamespace())
 	}
 
-	existingSecret := &corev1.Secret{}
-	err := r.client.Get(ctx, types.NamespacedName{Name: secret.GetName(), Namespace: instance.GetNamespace()}, existingSecret)
+	_, err := controllerutil.CreateOrUpdate(ctx, r.client, secret.DeepCopy(), func(obj runtime.Object) error {
+		s, ok := obj.(*corev1.Secret)
+		if !ok {
+			return fmt.Errorf("object is not a Secret")
+		}
+		secret.DeepCopyInto(s)
+		return nil
+	})
 	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "could not get secret '%s'", secret.GetName())
-		}
-		err = r.client.Create(ctx, secret)
-		if err != nil {
-			return errors.Wrapf(err, "could not create secret '%s'", secret.GetName())
-		}
-	} else {
-		err = r.client.Update(ctx, secret)
-		if err != nil {
-			return errors.Wrapf(err, "could not update secret '%s'", secret.GetName())
-		}
+		return errors.Wrapf(err, "could not create or update secret '%s'", secret.GetName())
 	}
 
 	return nil

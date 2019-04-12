@@ -10,8 +10,8 @@ import (
 
 var _ = Describe("Deploy", func() {
 	Context("when correctly setup", func() {
-		podName := "my-manifest-nats-v1-0"
-		stsName := "my-manifest-nats-v1"
+		podName := "test-nats-v1-0"
+		stsName := "test-nats-v1"
 
 		AfterEach(func() {
 			Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
