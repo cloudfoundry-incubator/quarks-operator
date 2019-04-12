@@ -155,7 +155,7 @@ func (e *Environment) setupCFOperator() (err error) {
 	manifest.DockerImageRepository = operatorDockerImageRepo
 	manifest.DockerImageTag = operatorDockerImageTag
 
-	ctx := ctxlog.NewManagerContext(e.Log)
+	ctx := ctxlog.NewParentContext(e.Log)
 	e.mgr, err = operator.NewManager(ctx, e.Config, e.kubeConfig, manager.Options{Namespace: e.Namespace})
 
 	return

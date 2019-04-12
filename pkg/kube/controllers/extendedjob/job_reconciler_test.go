@@ -81,7 +81,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 	})
 
 	JustBeforeEach(func() {
-		ctx := ctxlog.NewManagerContext(log)
+		ctx := ctxlog.NewParentContext(log)
 		config := &config.Config{CtxTimeOut: 10 * time.Second}
 		reconciler, _ = ej.NewJobReconciler(ctx, config, manager, podLogGetter)
 		ejob, job, pod = env.DefaultExtendedJobWithSucceededJob("foo")

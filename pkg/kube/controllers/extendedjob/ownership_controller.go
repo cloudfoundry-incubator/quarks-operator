@@ -33,7 +33,7 @@ type Owner interface {
 
 // AddOwnership creates a new ExtendedJob controller to update ownership on configs for auto errands.
 func AddOwnership(ctx context.Context, config *config.Config, mgr manager.Manager) error {
-	ctx = ctxlog.NewReconcilerContext(ctx, "ext-job-owner-reconciler")
+	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-job-owner-reconciler", mgr.GetRecorder("ext-job-owner-recorder"))
 	owner := eowner.NewOwner(mgr.GetClient(), mgr.GetScheme())
 	r := NewOwnershipReconciler(ctx, config, mgr, controllerutil.SetControllerReference, owner)
 	c, err := controller.New("ext-job-owner-controller", mgr, controller.Options{Reconciler: r})
@@ -64,7 +64,7 @@ func AddOwnership(ctx context.Context, config *config.Config, mgr manager.Manage
 
 			reconcile, err := hasConfigReferences(ctx, mgr.GetClient(), *o)
 			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to query extended jobs: %s", err)
+				ctxlog.WithEvent(o, "QueryExtendedJobError").Errorf(ctx, "Failed to query extended jobs: %s", err)
 			}
 
 			return reconcile
@@ -92,7 +92,7 @@ func AddOwnership(ctx context.Context, config *config.Config, mgr manager.Manage
 			// enqueuing secret referenced by EJob
 			reconcile, err := hasSecretReferences(ctx, mgr.GetClient(), *o)
 			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to query extended jobs: %s", err)
+				ctxlog.WithEvent(o, "QueryExtendedJobError").Errorf(ctx, "Failed to query extended jobs: %s", err)
 			}
 
 			// enqueuing versioned secret which has required labels

@@ -4,29 +4,33 @@ import (
 	"context"
 
 	"go.uber.org/zap"
+	"k8s.io/client-go/tools/record"
 )
 
 type ctxLogger struct{}
+type ctxRecorder struct{}
 
 // key must be comparable and should not be of type string
 var (
-	ctxLoggerKey = &ctxLogger{}
-	nopLogger    = zap.NewNop().Sugar()
+	ctxLoggerKey   = &ctxLogger{}
+	ctxRecorderKey = &ctxRecorder{}
+	nopLogger      = zap.NewNop().Sugar()
+	nopRecorder    = record.FakeRecorder{}
 )
 
-// NewManagerContext returns a new context with a logger
-func NewManagerContext(log *zap.SugaredLogger) context.Context {
+// NewParentContext returns a new context with a logger
+func NewParentContext(log *zap.SugaredLogger) context.Context {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, ctxLoggerKey, log)
 	return ctx
 }
 
-// NewReconcilerContext includes a named logger for the reconciler
-func NewReconcilerContext(ctx context.Context, name string) context.Context {
+// NewContextWithRecorder returns a new child context with the named
+// recorder and log inside
+func NewContextWithRecorder(ctx context.Context, name string, recorder record.EventRecorder) context.Context {
+	ctx = context.WithValue(ctx, ctxRecorderKey, recorder)
 	log := ExtractLogger(ctx)
-	if log != nil {
-		log = log.Named(name)
-	}
+	log = log.Named(name)
 	return context.WithValue(ctx, ctxLoggerKey, log)
 }
 
@@ -39,38 +43,11 @@ func ExtractLogger(ctx context.Context) *zap.SugaredLogger {
 	return log
 }
 
-// Debug uses the stored zap logger
-func Debug(ctx context.Context, v ...interface{}) {
-	log := ExtractLogger(ctx)
-	log.Debug(v...)
-}
-
-// Info uses the stored zap logger
-func Info(ctx context.Context, v ...interface{}) {
-	log := ExtractLogger(ctx)
-	log.Info(v...)
-}
-
-// Error uses the stored zap logger
-func Error(ctx context.Context, v ...interface{}) {
-	log := ExtractLogger(ctx)
-	log.Error(v...)
-}
-
-// Debugf uses the stored zap logger
-func Debugf(ctx context.Context, format string, v ...interface{}) {
-	log := ExtractLogger(ctx)
-	log.Debugf(format, v...)
-}
-
-// Infof uses the stored zap logger
-func Infof(ctx context.Context, format string, v ...interface{}) {
-	log := ExtractLogger(ctx)
-	log.Infof(format, v...)
-}
-
-// Errorf uses the stored zap logger
-func Errorf(ctx context.Context, format string, v ...interface{}) {
-	log := ExtractLogger(ctx)
-	log.Errorf(format, v...)
+// ExtractRecorder returns the event recorder from the context
+func ExtractRecorder(ctx context.Context) record.EventRecorder {
+	recorder, ok := ctx.Value(ctxRecorderKey).(record.EventRecorder)
+	if !ok || recorder == nil {
+		return &nopRecorder
+	}
+	return recorder
 }

@@ -9,7 +9,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -38,7 +37,6 @@ func NewErrandReconciler(
 		ctx:                  ctx,
 		client:               mgr.GetClient(),
 		config:               config,
-		recorder:             mgr.GetRecorder("extendedjob errand reconciler"),
 		scheme:               mgr.GetScheme(),
 		setOwnerReference:    f,
 		owner:                owner,
@@ -51,7 +49,6 @@ type ErrandReconciler struct {
 	ctx                  context.Context
 	client               client.Client
 	config               *config.Config
-	recorder             record.EventRecorder
 	scheme               *runtime.Scheme
 	setOwnerReference    setOwnerReferenceFunc
 	owner                Owner
@@ -86,7 +83,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		extJob.Spec.Trigger.Strategy = ejv1.TriggerManual
 		err = r.client.Update(ctx, extJob)
 		if err != nil {
-			ctxlog.Errorf(ctx, "Failed to revert to 'trigger.strategy=manual' on job '%s': %s", extJob.Name, err)
+			ctxlog.WithEvent(extJob, "UpdateError").Errorf(ctx, "Failed to revert to 'trigger.strategy=manual' on job '%s': %s", extJob.Name, err)
 			return result, err
 		}
 	}
@@ -120,7 +117,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			finalizer.AddFinalizer(extJob)
 			err = r.client.Update(ctx, extJob)
 			if err != nil {
-				ctxlog.Errorf(ctx, "Could not remove finalizer from ExtJob '%s': ", extJob.GetName(), err)
+				ctxlog.WithEvent(extJob, "UpdateError").Errorf(ctx, "Could not remove finalizer from ExtJob '%s': %s", extJob.GetName(), err)
 				return reconcile.Result{}, err
 			}
 
@@ -130,22 +127,22 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 	err = r.createJob(ctx, *extJob)
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			ctxlog.Infof(ctx, "Skip '%s' triggered manually: already running", extJob.Name)
+			ctxlog.WithEvent(extJob, "AlreadyRunning").Infof(ctx, "Skip '%s' triggered manually: already running", extJob.Name)
 			// we don't want to requeue the job
 			err = nil
 		} else {
-			ctxlog.Errorf(ctx, "Failed to create job '%s': %s", extJob.Name, err)
+			ctxlog.WithEvent(extJob, "CreateJobError").Errorf(ctx, "Failed to create job '%s': %s", extJob.Name, err)
 		}
 		return result, err
 	}
-	ctxlog.Infof(ctx, "Created errand job for '%s'", extJob.Name)
+	ctxlog.WithEvent(extJob, "CreateJob").Infof(ctx, "Created errand job for '%s'", extJob.Name)
 
 	if extJob.Spec.Trigger.Strategy == ejv1.TriggerOnce {
 		// traverse Strategy into the final 'done' state
 		extJob.Spec.Trigger.Strategy = ejv1.TriggerDone
 		err = r.client.Update(ctx, extJob)
 		if err != nil {
-			ctxlog.Errorf(ctx, "Failed to traverse to 'trigger.strategy=done' on job '%s': %s", extJob.Name, err)
+			ctxlog.WithEvent(extJob, "UpdateError").Errorf(ctx, "Failed to traverse to 'trigger.strategy=done' on job '%s': %s", extJob.Name, err)
 			return result, err
 		}
 	}
@@ -176,7 +173,7 @@ func (r *ErrandReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJo
 
 	err = r.setOwnerReference(&extJob, job, r.scheme)
 	if err != nil {
-		ctxlog.Errorf(ctx, "failed to set owner reference on job for '%s': %s", extJob.Name, err)
+		ctxlog.WithEvent(&extJob, "SetOwnerReferenceError").Errorf(ctx, "failed to set owner reference on job for '%s': %s", extJob.Name, err)
 		return err
 	}
 

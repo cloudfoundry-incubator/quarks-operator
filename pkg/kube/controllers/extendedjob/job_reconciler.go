@@ -86,8 +86,8 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 		}
 	}
 	if parentName == "" {
-		ctxlog.Errorf(ctx, "Could not find parent ExtendedJob for Job '%s'", request.NamespacedName)
-		return reconcile.Result{}, fmt.Errorf("could not find parent ExtendedJob for Job '%s'", request.NamespacedName)
+		err = ctxlog.WithEvent(instance, "NotFoundError").Errorf(ctx, "Could not find parent ExtendedJob for Job '%s'", request.NamespacedName)
+		return reconcile.Result{}, err
 	}
 
 	ej := ejv1.ExtendedJob{}
@@ -99,38 +99,38 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 	// Persist output if needed
 	if !reflect.DeepEqual(ejv1.Output{}, ej.Spec.Output) && ej.Spec.Output != nil {
 		if instance.Status.Succeeded == 1 || (instance.Status.Failed == 1 && ej.Spec.Output.WriteOnFailure) {
-			ctxlog.Infof(ctx, "Persisting output of job '%s'", instance.Name)
+			ctxlog.WithEvent(&ej, "PersistingOutput").Infof(ctx, "Persisting output of job '%s'", instance.Name)
 			err = r.persistOutput(ctx, ej.GetName(), instance, ej.Spec.Output)
 			if err != nil {
-				ctxlog.Errorf(ctx, "Could not persist output: '%s'", err)
+				ctxlog.WithEvent(instance, "PersistOutputError").Errorf(ctx, "Could not persist output: '%s'", err)
 				return reconcile.Result{}, err
 			}
 		} else if instance.Status.Failed == 1 && !ej.Spec.Output.WriteOnFailure {
-			ctxlog.Infof(ctx, "Will not persist output of job '%s' because it failed", instance.Name)
+			ctxlog.WithEvent(&ej, "FailedPersistingOutput").Infof(ctx, "Will not persist output of job '%s' because it failed", instance.Name)
 		} else {
-			ctxlog.Errorf(ctx, "Job is in an unexpected state: %#v", instance)
+			ctxlog.WithEvent(instance, "StateError").Errorf(ctx, "Job is in an unexpected state: %#v", instance)
 		}
 	}
 
 	// Delete Job if it succeeded
 	if instance.Status.Succeeded == 1 {
-		ctxlog.Infof(ctx, "Deleting succeeded job '%s'", instance.Name)
+		ctxlog.WithEvent(&ej, "DeletingJob").Infof(ctx, "Deleting succeeded job '%s'", instance.Name)
 		err = r.client.Delete(ctx, instance)
 		if err != nil {
-			ctxlog.Errorf(ctx, "Cannot delete succeeded job: '%s'", err)
+			ctxlog.WithEvent(instance, "DeleteError").Errorf(ctx, "Cannot delete succeeded job: '%s'", err)
 		}
 
 		if d, ok := instance.Spec.Template.Labels["delete"]; ok {
 			if d == "pod" {
 				pod, err := r.jobPod(ctx, instance.Name, instance.GetNamespace())
 				if err != nil {
-					ctxlog.Errorf(ctx, "Cannot find job's pod: '%s'", err)
+					ctxlog.WithEvent(instance, "NotFoundError").Errorf(ctx, "Cannot find job's pod: '%s'", err)
 					return reconcile.Result{}, nil
 				}
-				ctxlog.Infof(ctx, "Deleting succeeded job's pod '%s'", pod.Name)
+				ctxlog.WithEvent(&ej, "DeletingJobsPod").Infof(ctx, "Deleting succeeded job's pod '%s'", pod.Name)
 				err = r.client.Delete(ctx, pod)
 				if err != nil {
-					ctxlog.Errorf(ctx, "Cannot delete succeeded job's pod: '%s'", err)
+					ctxlog.WithEvent(instance, "DeleteError").Errorf(ctx, "Cannot delete succeeded job's pod: '%s'", err)
 				}
 			}
 		}
