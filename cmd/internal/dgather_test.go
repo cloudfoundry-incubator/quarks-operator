@@ -5,11 +5,13 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
+	"go.uber.org/zap"
 
 	. "code.cloudfoundry.org/cf-operator/cmd/internal"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
-	. "github.com/onsi/gomega/gstruct"
 )
 
 var _ = Describe("Dgather", func() {
@@ -17,7 +19,13 @@ var _ = Describe("Dgather", func() {
 	var (
 		m   *manifest.Manifest
 		env testing.Catalog
+		log *zap.SugaredLogger
 	)
+
+	BeforeEach(func() {
+		m = env.ElaboratedBOSHManifest()
+		_, log = helper.NewTestLogger()
+	})
 
 	Context("helper functions to override job specs from manifest", func() {
 		It("should find a property value in the manifest job properties section (constructed example)", func() {
@@ -152,7 +160,7 @@ var _ = Describe("Dgather", func() {
 
 		It("should get all required data if the job consumes a link", func() {
 			releaseSpecs, links, _ := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default")
-			_, err := ProcessConsumersAndRenderBPM(m, "../../testing/assets/", releaseSpecs, links, "log-api")
+			_, err := ProcessConsumersAndRenderBPM(m, "../../testing/assets/", releaseSpecs, links, "log-api", log)
 			Expect(err).ToNot(HaveOccurred())
 
 			// log-api instance_group, with loggregator_trafficcontroller job, consumes a link from
@@ -181,7 +189,7 @@ var _ = Describe("Dgather", func() {
 
 		It("should get nothing if the job does not consumes a link", func() {
 			releaseSpecs, links, _ := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default")
-			_, err := ProcessConsumersAndRenderBPM(m, "../../testing/assets/", releaseSpecs, links, "log-api")
+			_, err := ProcessConsumersAndRenderBPM(m, "../../testing/assets/", releaseSpecs, links, "log-api", log)
 
 			// doppler instance_group, with doppler job, only provides doppler link
 			jobBoshContainerizationConsumes := m.InstanceGroups[0].Jobs[0].Properties.BOSHContainerization.Consumes
@@ -198,15 +206,14 @@ var _ = Describe("Dgather", func() {
 		})
 
 		It("should render complex ERB files", func() {
+
 			releaseSpecs, links, err := CollectReleaseSpecsAndProviderLinks(m, "../../testing/assets/", "default")
 			Expect(err).ToNot(HaveOccurred())
-			_, err = ProcessConsumersAndRenderBPM(m, "../../testing/assets/", releaseSpecs, links, "log-api")
+			_, err = ProcessConsumersAndRenderBPM(m, "../../testing/assets/", releaseSpecs, links, "log-api", log)
 			Expect(err).ToNot(HaveOccurred())
 
 			jobBoshContainerizationPropertiesInstances := m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Instances
 			Expect(len(jobBoshContainerizationPropertiesInstances)).To(Equal(4))
-
-			propertiesInstance := jobBoshContainerizationPropertiesInstances[0]
 
 			// in ERB files, there are test environment variables like these:
 			//   FOOBARWITHLINKVALUES: <%= link('doppler').p("fooprop") %>
@@ -217,7 +224,7 @@ var _ = Describe("Dgather", func() {
 			//   ...
 
 			// For the first instance
-			bpmProcesses := propertiesInstance.BPM.Processes[0]
+			bpmProcesses := m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.BPM.Processes[0]
 
 			Expect(bpmProcesses.Env["FOOBARWITHLINKVALUES"]).To(Equal("10001"))
 			Expect(bpmProcesses.Env["FOOBARWITHLINKNESTEDVALUES"]).To(Equal("7765"))
@@ -227,19 +234,17 @@ var _ = Describe("Dgather", func() {
 			Expect(bpmProcesses.Env["FOOBARWITHSPECDEPLOYMENT"]).To(Equal("cf"))
 
 			// For the second instance
-			propertiesInstance = jobBoshContainerizationPropertiesInstances[1]
-			bpmProcesses = propertiesInstance.BPM.Processes[0]
-			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-1-loggregator_trafficcontroller.default.svc.cluster.local"))
+			bpmProcesses = m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.BPM.Processes[0]
+			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-0-loggregator_trafficcontroller.default.svc.cluster.local"))
 
 			// For the third instance
-			propertiesInstance = jobBoshContainerizationPropertiesInstances[2]
-			bpmProcesses = propertiesInstance.BPM.Processes[0]
-			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-2-loggregator_trafficcontroller.default.svc.cluster.local"))
+			bpmProcesses = m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.BPM.Processes[0]
+			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-0-loggregator_trafficcontroller.default.svc.cluster.local"))
 
 			// For the fourth instance
-			propertiesInstance = jobBoshContainerizationPropertiesInstances[3]
-			bpmProcesses = propertiesInstance.BPM.Processes[0]
-			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-3-loggregator_trafficcontroller.default.svc.cluster.local"))
+			bpmProcesses = m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.BPM.Processes[0]
+			Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-0-loggregator_trafficcontroller.default.svc.cluster.local"))
+
 		})
 	})
 })

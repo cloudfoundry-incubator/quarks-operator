@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bufio"
-	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,13 +11,14 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	btg "github.com/viovanov/bosh-template-go"
+	"go.uber.org/zap"
 	yaml "gopkg.in/yaml.v2"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
 // dataGatherCmd represents the dataGather command
@@ -32,6 +32,7 @@ inside a bosh manifest file.
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		defer log.Sync()
 		boshManifestPath := viper.GetString("bosh-manifest-path")
 		if len(boshManifestPath) == 0 {
 			return fmt.Errorf("manifest cannot be empty")
@@ -84,10 +85,10 @@ inside a bosh manifest file.
 }
 
 func init() {
+	initConfig()
 	rootCmd.AddCommand(dataGatherCmd)
 
 	dataGatherCmd.Flags().StringP("bosh-manifest-path", "m", "", "path to a bosh manifest file")
-	//TODO: can we reuse the global ns flag
 	dataGatherCmd.Flags().String("kubernetes-namespace", "", "the kubernetes namespace")
 	dataGatherCmd.Flags().StringP("base-dir", "b", "", "a path to the base directory")
 	dataGatherCmd.Flags().StringP("instance-group-name", "g", "", "name of the instance group for data gathering")
@@ -288,7 +289,7 @@ func GenerateJobConsumersData(currentJob *manifest.Job, jobReleaseSpecs map[stri
 }
 
 // RenderJobBPM per job and add its value to the jobInstances.BPM field
-func RenderJobBPM(currentJob manifest.Job, jobInstances []manifest.JobInstance, baseDir string, manifestName string) error {
+func RenderJobBPM(currentJob *manifest.Job, jobInstances []manifest.JobInstance, baseDir string, manifestName string, log *zap.SugaredLogger) error {
 
 	// Location of the current job job.MF file
 	jobSpecFile := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "job.MF")
@@ -327,8 +328,10 @@ func RenderJobBPM(currentJob manifest.Job, jobInstances []manifest.JobInstance, 
 		return err
 	}
 
+	jobIndexBPM := make([]bpm.Config, len(jobInstances))
+
 	if jobInstances != nil {
-		for i, instance := range jobInstances {
+		for i, jobInstance := range jobInstances {
 
 			properties := currentJob.Properties.ToMap()
 
@@ -338,19 +341,20 @@ func RenderJobBPM(currentJob manifest.Job, jobInstances []manifest.JobInstance, 
 				},
 
 				&btg.InstanceInfo{
-					Address:    instance.Address,
-					AZ:         instance.AZ,
-					ID:         instance.ID,
-					Index:      string(instance.Index),
+					Address:    jobInstance.Address,
+					AZ:         jobInstance.AZ,
+					ID:         jobInstance.ID,
+					Index:      string(jobInstance.Index),
 					Deployment: manifestName,
-					Name:       instance.Name,
+					Name:       jobInstance.Name,
 				},
 
 				jobSpecFile,
 			)
 
-			// Would be good if we can write the rendered file into memory,
-			// rather than to disk
+			// Write to a tmp, this is following the conventions on how the
+			// https://github.com/viovanov/bosh-template-go/ processes the params
+			// when we calling the *.Render()
 			tmpfile, err := ioutil.TempFile("", "rendered.*.yml")
 			if err != nil {
 				return err
@@ -367,20 +371,24 @@ func RenderJobBPM(currentJob manifest.Job, jobInstances []manifest.JobInstance, 
 			}
 
 			// Parse a rendered bpm.yml into the bpm Config struct
-			jobInstances[i].BPM, err = bpm.NewConfig(bpmBytes)
+			jobIndexBPM[i], err = bpm.NewConfig(bpmBytes)
 			if err != nil {
 				return err
 			}
-
-			// Consider adding a Fingerprint to each job instance
-			// instance.Fingerprint = generateSHA(fingerPrintBytes)
 		}
+
+		for _, jobBPMInstance := range jobIndexBPM {
+			if !reflect.DeepEqual(jobBPMInstance, jobIndexBPM[0]) {
+				log.Warnf("found different BPM job indexes for job %s in manifest %s, this is NOT SUPPORTED", currentJob.Name, manifestName)
+			}
+		}
+		currentJob.Properties.BOSHContainerization.BPM = jobIndexBPM[0]
 	}
 	return nil
 }
 
 // ProcessConsumersAndRenderBPM will generate a proper context for links and render the required ERB files
-func ProcessConsumersAndRenderBPM(boshManifestStruct *manifest.Manifest, baseDir string, jobReleaseSpecs map[string]map[string]manifest.JobSpec, jobProviderLinks map[string]map[string]manifest.JobLink, instanceGroupName string) ([]byte, error) {
+func ProcessConsumersAndRenderBPM(boshManifestStruct *manifest.Manifest, baseDir string, jobReleaseSpecs map[string]map[string]manifest.JobSpec, jobProviderLinks map[string]map[string]manifest.JobLink, instanceGroupName string, log *zap.SugaredLogger) ([]byte, error) {
 	var desiredInstanceGroup *manifest.InstanceGroup
 	for _, instanceGroup := range boshManifestStruct.InstanceGroups {
 		if instanceGroup.Name != instanceGroupName {
@@ -413,7 +421,7 @@ func ProcessConsumersAndRenderBPM(boshManifestStruct *manifest.Manifest, baseDir
 		// the render.InstanceInfo struct
 		jobInstances := currentJob.Properties.BOSHContainerization.Instances
 
-		err = RenderJobBPM(*currentJob, jobInstances, baseDir, boshManifestStruct.Name)
+		err = RenderJobBPM(currentJob, jobInstances, baseDir, boshManifestStruct.Name, log)
 		if err != nil {
 			return nil, err
 		}
@@ -421,25 +429,6 @@ func ProcessConsumersAndRenderBPM(boshManifestStruct *manifest.Manifest, baseDir
 		// Store shared bpm as a top level property
 		if len(jobInstances) < 1 {
 			continue
-		}
-
-		allBPMEqual := true
-
-		for _, jobInstance := range jobInstances {
-			if !reflect.DeepEqual(jobInstance, jobInstances[0].BPM) {
-				allBPMEqual = false
-				break
-			}
-		}
-
-		if allBPMEqual {
-			// Store shared bpm as a top level property
-			job.Properties.BOSHContainerization.BPM = jobInstances[0].BPM
-
-			// Remove all other BPM information
-			for _, jobInstance := range jobInstances {
-				jobInstance.BPM = bpm.Config{}
-			}
 		}
 	}
 
@@ -450,15 +439,6 @@ func ProcessConsumersAndRenderBPM(boshManifestStruct *manifest.Manifest, baseDir
 	}
 
 	return manifestResolved, nil
-}
-
-// generateSHA will generate a new fingerprint based on
-// a struct
-func generateSHA(fingerPrint []byte) []byte {
-	h := md5.New()
-	h.Write(fingerPrint)
-	bs := h.Sum(nil)
-	return bs
 }
 
 // GatherData will collect different data
@@ -472,7 +452,7 @@ func GatherData(boshManifestStruct *manifest.Manifest, baseDir string, cfOperato
 		return nil, err
 	}
 
-	return ProcessConsumersAndRenderBPM(boshManifestStruct, baseDir, jobReleaseSpecs, jobProviderLinks, instanceGroupName)
+	return ProcessConsumersAndRenderBPM(boshManifestStruct, baseDir, jobReleaseSpecs, jobProviderLinks, instanceGroupName, log)
 }
 
 // LookUpProperty search for property value in the job properties
