@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -883,4 +884,47 @@ func (m *Manifest) JobSpecCopierContainer(releaseName string, releaseImage strin
 	}
 
 	return initContainers
+}
+
+// AllVariableNames returns the names of all variables
+func (m *Manifest) AllVariableNames() ([]string, error) {
+	varMap := make(map[string]struct{})
+
+	// Add all "explicit" variables from the "variables" block
+	for _, v := range m.Variables {
+		varMap[v.Name] = struct{}{}
+	}
+
+	// Find all properties that could contain "implicit" variables like "app_domain: ((system_domain))"
+	properties := []interface{}{}
+	for _, ig := range m.InstanceGroups {
+		for _, property := range ig.Properties {
+			properties = append(properties, property)
+		}
+
+		for _, job := range ig.Jobs {
+			for _, property := range job.Properties.Properties {
+				properties = append(properties, property)
+			}
+		}
+	}
+
+	// Extract "implicit" variables
+	r := regexp.MustCompile(`\(\((.*)\)\)`)
+	for _, property := range properties {
+		raw, err := yaml.Marshal(property)
+		if err != nil {
+			return []string{}, errors.Wrapf(err, "marshalling property '%s' failed", property)
+		}
+		for _, match := range r.FindAllStringSubmatch(string(raw), -1) {
+			varMap[match[1]] = struct{}{}
+		}
+	}
+
+	names := []string{}
+	for k := range varMap {
+		names = append(names, k)
+	}
+
+	return names, nil
 }
