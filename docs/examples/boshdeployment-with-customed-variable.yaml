@@ -44,7 +44,7 @@ data:
 apiVersion: fissile.cloudfoundry.org/v1alpha1
 kind: BOSHDeployment
 metadata:
-  name: nats-manifest
+  name: nats-deployment
 spec:
   manifest:
     ref: nats-manifest

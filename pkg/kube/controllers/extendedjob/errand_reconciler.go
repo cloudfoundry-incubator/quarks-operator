@@ -2,6 +2,7 @@ package extendedjob
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/pkg/errors"
 	batchv1 "k8s.io/api/batch/v1"
@@ -18,6 +19,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 var _ reconcile.Reconciler = &ErrandReconciler{}
@@ -30,26 +32,30 @@ func NewErrandReconciler(
 	f setOwnerReferenceFunc,
 	owner Owner,
 ) reconcile.Reconciler {
+	versionedSecretStore := versionedsecretstore.NewVersionedSecretStore(mgr.GetClient())
+
 	return &ErrandReconciler{
-		ctx:               ctx,
-		client:            mgr.GetClient(),
-		config:            config,
-		recorder:          mgr.GetRecorder("extendedjob errand reconciler"),
-		scheme:            mgr.GetScheme(),
-		setOwnerReference: f,
-		owner:             owner,
+		ctx:                  ctx,
+		client:               mgr.GetClient(),
+		config:               config,
+		recorder:             mgr.GetRecorder("extendedjob errand reconciler"),
+		scheme:               mgr.GetScheme(),
+		setOwnerReference:    f,
+		owner:                owner,
+		versionedSecretStore: versionedSecretStore,
 	}
 }
 
 // ErrandReconciler implements the Reconciler interface
 type ErrandReconciler struct {
-	ctx               context.Context
-	client            client.Client
-	config            *config.Config
-	recorder          record.EventRecorder
-	scheme            *runtime.Scheme
-	setOwnerReference setOwnerReferenceFunc
-	owner             Owner
+	ctx                  context.Context
+	client               client.Client
+	config               *config.Config
+	recorder             record.EventRecorder
+	scheme               *runtime.Scheme
+	setOwnerReference    setOwnerReferenceFunc
+	owner                Owner
+	versionedSecretStore versionedsecretstore.VersionedSecretStore
 }
 
 // Reconcile starts jobs for extended jobs of the type errand with Run being set to 'now' manually
@@ -82,6 +88,21 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		if err != nil {
 			ctxlog.Errorf(ctx, "Failed to revert to 'trigger.strategy=manual' on job '%s': %s", extJob.Name, err)
 			return result, err
+		}
+	}
+
+	extJobCopy := extJob.DeepCopy()
+	err = r.versionedSecretStore.UpdateSecretReferences(ctx, extJob.GetNamespace(), &extJob.Spec.Template.Spec)
+	if err != nil {
+		ctxlog.Errorf(ctx, "Failed to update update secret references on job '%s': %s", extJob.Name, err)
+		return result, err
+	}
+
+	if !reflect.DeepEqual(extJob, extJobCopy) {
+		err = r.client.Update(ctx, extJob)
+		if err != nil {
+			ctxlog.Errorf(ctx, "Could not update ExtJob '%s': ", extJob.GetName(), err)
+			return result, errors.Wrapf(err, "could not update ExtJob '%s'", extJob.GetName())
 		}
 	}
 

@@ -16,9 +16,9 @@ import (
 	ctxlog "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
-// Add creates a new BOSHDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
+// AddDeployment creates a new BOSHDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(ctx context.Context, config *config.Config, mgr manager.Manager) error {
+func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewReconcilerContext(ctx, "boshdeployment-reconciler")
 	r := NewReconciler(ctx, config, mgr, bdm.NewResolver(mgr.GetClient(), bdm.NewInterpolator()), controllerutil.SetControllerReference)
 
