@@ -215,8 +215,6 @@ var _ = Describe("Dgather", func() {
 			jobBoshContainerizationPropertiesInstances := m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Instances
 			Expect(len(jobBoshContainerizationPropertiesInstances)).To(Equal(4))
 
-			Expect(jobBoshContainerizationPropertiesInstances[0].Fingerprint).To(BeNil())
-
 			// in ERB files, there are test environment variables like these:
 			//   FOOBARWITHLINKVALUES: <%= link('doppler').p("fooprop") %>
 			//   FOOBARWITHLINKNESTEDVALUES: <%= link('doppler').p("doppler.grpc_port") %>

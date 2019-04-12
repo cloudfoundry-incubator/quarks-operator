@@ -6,15 +6,14 @@ import (
 
 // JobInstance for data gathering
 type JobInstance struct {
-	Address     string                 `yaml:"address"`
-	AZ          string                 `yaml:"az"`
-	ID          string                 `yaml:"id"`
-	Index       int                    `yaml:"index"`
-	Instance    int                    `yaml:"instance"`
-	Name        string                 `yaml:"name"`
-	Fingerprint interface{}            `yaml:"fingerprint"`
-	Network     map[string]interface{} `yaml:"networks"`
-	IP          string                 `yaml:"ip"`
+	Address  string                 `yaml:"address"`
+	AZ       string                 `yaml:"az"`
+	ID       string                 `yaml:"id"`
+	Index    int                    `yaml:"index"`
+	Instance int                    `yaml:"instance"`
+	Name     string                 `yaml:"name"`
+	Network  map[string]interface{} `yaml:"networks"`
+	IP       string                 `yaml:"ip"`
 }
 
 // Link with name for rendering
