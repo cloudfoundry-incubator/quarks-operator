@@ -2,17 +2,17 @@
 package fakes
 
 import (
-	"sync"
+	sync "sync"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	manifest "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 )
 
 type FakeResolver struct {
-	ResolveManifestStub        func(v1alpha1.BOSHDeploymentSpec, string) (*manifest.Manifest, error)
+	ResolveManifestStub        func(*v1alpha1.BOSHDeployment, string) (*manifest.Manifest, error)
 	resolveManifestMutex       sync.RWMutex
 	resolveManifestArgsForCall []struct {
-		arg1 v1alpha1.BOSHDeploymentSpec
+		arg1 *v1alpha1.BOSHDeployment
 		arg2 string
 	}
 	resolveManifestReturns struct {
@@ -27,11 +27,11 @@ type FakeResolver struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeResolver) ResolveManifest(arg1 v1alpha1.BOSHDeploymentSpec, arg2 string) (*manifest.Manifest, error) {
+func (fake *FakeResolver) ResolveManifest(arg1 *v1alpha1.BOSHDeployment, arg2 string) (*manifest.Manifest, error) {
 	fake.resolveManifestMutex.Lock()
 	ret, specificReturn := fake.resolveManifestReturnsOnCall[len(fake.resolveManifestArgsForCall)]
 	fake.resolveManifestArgsForCall = append(fake.resolveManifestArgsForCall, struct {
-		arg1 v1alpha1.BOSHDeploymentSpec
+		arg1 *v1alpha1.BOSHDeployment
 		arg2 string
 	}{arg1, arg2})
 	fake.recordInvocation("ResolveManifest", []interface{}{arg1, arg2})
@@ -52,13 +52,13 @@ func (fake *FakeResolver) ResolveManifestCallCount() int {
 	return len(fake.resolveManifestArgsForCall)
 }
 
-func (fake *FakeResolver) ResolveManifestCalls(stub func(v1alpha1.BOSHDeploymentSpec, string) (*manifest.Manifest, error)) {
+func (fake *FakeResolver) ResolveManifestCalls(stub func(*v1alpha1.BOSHDeployment, string) (*manifest.Manifest, error)) {
 	fake.resolveManifestMutex.Lock()
 	defer fake.resolveManifestMutex.Unlock()
 	fake.ResolveManifestStub = stub
 }
 
-func (fake *FakeResolver) ResolveManifestArgsForCall(i int) (v1alpha1.BOSHDeploymentSpec, string) {
+func (fake *FakeResolver) ResolveManifestArgsForCall(i int) (*v1alpha1.BOSHDeployment, string) {
 	fake.resolveManifestMutex.RLock()
 	defer fake.resolveManifestMutex.RUnlock()
 	argsForCall := fake.resolveManifestArgsForCall[i]

@@ -105,8 +105,8 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	// Get state from instance
 	instanceState := instance.Status.State
 
-	// Apply ops files
-	manifest, err := r.applyOps(ctx, instance)
+	// Resolve the manifest (incl. ops files and implicit variables)
+	manifest, err := r.resolveManifest(ctx, instance)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -259,12 +259,12 @@ func (r *ReconcileBOSHDeployment) updateInstanceState(ctx context.Context, curre
 	return nil
 }
 
-// applyOps apply ops files after BoshDeployment instance created
-func (r *ReconcileBOSHDeployment) applyOps(ctx context.Context, instance *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
+// resolveManifest resolves the manifest and applies ops files and implicit variable interpolation
+func (r *ReconcileBOSHDeployment) resolveManifest(ctx context.Context, instance *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
 	// Create temp manifest as variable interpolation job input
 	// retrieve manifest
 	log.Debug(ctx, "Resolving manifest")
-	manifest, err := r.resolver.ResolveManifest(instance.Spec, instance.GetNamespace())
+	manifest, err := r.resolver.ResolveManifest(instance, instance.GetNamespace())
 	if err != nil {
 		log.WithEvent(instance, "ResolveManifestError").Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
 		return nil, err

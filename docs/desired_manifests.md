@@ -38,3 +38,28 @@ Each secret is also annotated and labeled with information such as:
 - `Job` for variable replacement
 - Temp Manifest `Secret`
 - Desired Manifest `Secret`
+
+### Manual ("implicit") variables
+
+BOSH deployment manifests support two different types of variables, implicit and explicit ones.
+
+"Explicit" variables are declared in the `variables` section of the manifest and are generated automatically before the interpolation step.
+
+"Implicit" variables just appear in the document within double parentheses without any declaration. These variables have to be provided by the user prior to creating the BOSH deployment. The variables have to be provided as a secret with the `value` key holding the variable content. The secret name has to follow the scheme
+
+```
+<deployment-name>.var-implicit-<variable-name>
+```
+
+Example:
+
+```
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nats-deployment.var-implicit-system-domain
+type: Opaque
+stringData:
+  value: example.com
+```

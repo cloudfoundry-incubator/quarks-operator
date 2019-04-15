@@ -115,14 +115,13 @@ var _ = Describe("kube converter", func() {
 				for _, v := range podSpec.Volumes {
 					volumes = append(volumes, v.Name)
 				}
-				Expect(volumes).To(ConsistOf("with-ops", "var-adminpass", "var-app-domain", "var-system-domain"))
+				Expect(volumes).To(ConsistOf("with-ops", "var-adminpass"))
 
 				mountPaths := []string{}
 				for _, p := range podSpec.Containers[0].VolumeMounts {
 					mountPaths = append(mountPaths, p.MountPath)
 				}
-				Expect(mountPaths).To(ConsistOf("/var/run/secrets/deployment/", "/var/run/secrets/variables/adminpass",
-					"/var/run/secrets/variables/app_domain", "/var/run/secrets/variables/system_domain"))
+				Expect(mountPaths).To(ConsistOf("/var/run/secrets/deployment/", "/var/run/secrets/variables/adminpass"))
 			})
 		})
 
@@ -261,14 +260,6 @@ var _ = Describe("kube converter", func() {
 			releaseImage, err := m.GetReleaseImage("diego-cell", "cflinuxfs3-rootfs-setup")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(releaseImage).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
-		})
-
-		var _ = Describe("AllVariableNames", func() {
-			It("returns all variable names", func() {
-				names, err := m.AllVariableNames()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(names).To(ConsistOf([]string{"app_domain", "adminpass", "system_domain"}))
-			})
 		})
 	})
 })

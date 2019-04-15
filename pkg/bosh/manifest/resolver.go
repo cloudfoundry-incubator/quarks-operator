@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
+	"strings"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -13,11 +15,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
 // Resolver resolves references from CRD to a BOSH manifest
 type Resolver interface {
-	ResolveManifest(spec bdc.BOSHDeploymentSpec, namespace string) (*Manifest, error)
+	ResolveManifest(instance *bdc.BOSHDeployment, namespace string) (*Manifest, error)
 }
 
 // ResolverImpl implements Resolver interface
@@ -32,7 +35,8 @@ func NewResolver(client client.Client, interpolator Interpolator) *ResolverImpl 
 }
 
 // ResolveManifest returns manifest referenced by our CRD
-func (r *ResolverImpl) ResolveManifest(spec bdc.BOSHDeploymentSpec, namespace string) (*Manifest, error) {
+func (r *ResolverImpl) ResolveManifest(instance *bdc.BOSHDeployment, namespace string) (*Manifest, error) {
+	spec := instance.Spec
 	manifest := &Manifest{}
 	var (
 		m   string
@@ -42,6 +46,23 @@ func (r *ResolverImpl) ResolveManifest(spec bdc.BOSHDeploymentSpec, namespace st
 	m, err = r.getRefData(namespace, spec.Manifest.Type, spec.Manifest.Ref, bdc.ManifestSpecName)
 	if err != nil {
 		return manifest, err
+	}
+
+	// Get the deployment name from the manifest
+	err = yaml.Unmarshal([]byte(m), manifest)
+	if err != nil {
+		return manifest, errors.Wrapf(err, "failed to unmarshal manifest")
+	}
+
+	// Interpolate implicit variables
+	vars, err := r.ImplicitVariables(manifest, m)
+	for _, v := range vars {
+		varData, err := r.getRefData(namespace, bdc.SecretType, names.CalculateSecretName(names.DeploymentSecretTypeImplicitVariable, instance.GetName(), v), bdc.ImplicitVariableKeyName)
+		if err != nil {
+			return manifest, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
+		}
+
+		m = strings.Replace(m, fmt.Sprintf("((%s))", v), varData, -1)
 	}
 
 	// Interpolate manifest with ops if exist
@@ -116,4 +137,33 @@ func (r *ResolverImpl) getRefData(namespace string, manifestType string, manifes
 	}
 
 	return refData, nil
+}
+
+// ImplicitVariables returns a list of all implicit variables in a manifest
+func (r *ResolverImpl) ImplicitVariables(m *Manifest, rawManifest string) ([]string, error) {
+	varMap := make(map[string]bool)
+
+	// Collect all variables
+	varRegexp := regexp.MustCompile(`\(\((!?[-/\.\w\pL]+)\)\)`)
+	for _, match := range varRegexp.FindAllStringSubmatch(rawManifest, -1) {
+		// Remove subfields from the match, e.g. ca.private_key -> ca
+		fieldRegexp := regexp.MustCompile(`[^\.]+`)
+		main := fieldRegexp.FindString(match[1])
+
+		varMap[main] = true
+	}
+
+	// Remove the explicit ones
+	for _, v := range m.Variables {
+		varMap[v.Name] = false
+	}
+
+	names := []string{}
+	for k, v := range varMap {
+		if v {
+			names = append(names, k)
+		}
+	}
+
+	return names, nil
 }

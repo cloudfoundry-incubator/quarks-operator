@@ -130,12 +130,8 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 	}
 
 	// We need a volume and a mount for each input variable
-	variables, err := m.AllVariableNames()
-	if err != nil {
-		return nil, errors.Wrapf(err, "extracting all variable names")
-	}
-	for _, variable := range variables {
-		varName := variable
+	for _, variable := range m.Variables {
+		varName := variable.Name
 		varSecretName := names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, m.Name, varName)
 
 		// The volume definition
@@ -159,7 +155,7 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 	}
 
 	// If there are no variables, mount an empty dir for variables
-	if len(variables) == 0 {
+	if len(m.Variables) == 0 {
 		// The volume definition
 		vol := v1.Volume{
 			Name: generateVolumeName("no-vars"),

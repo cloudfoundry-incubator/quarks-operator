@@ -36,7 +36,7 @@ func (s DeploymentSecretType) String() string {
 		"with-vars",
 		"var",
 		"ig-resolved",
-		"implicit-var"}[s]
+		"var-implicit"}[s]
 }
 
 // CalculateSecretName generates a Secret name for a given name and a deployment
