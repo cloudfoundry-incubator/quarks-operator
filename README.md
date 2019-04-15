@@ -62,7 +62,7 @@ Finally run the operator
 
 ## Development
 
-For more information see [docs/development.md](docs/development.md)
+For more information see [docs/development.md](docs/development.md) and [docs/testing.md](docs/testing.md)
 
 ### Requirements
 
@@ -87,6 +87,10 @@ Go 1.12.2 and install the tool chain:
 ### Start Operator Locally
 
     make up
+
+### Run Integration tests
+
+See [docs/testing.md](docs/testing.md#Integration)
 
 ### Test with Example Data
     kubectl apply -f docs/examples/fissile_v1alpha1_boshdeployment_cr.yaml
