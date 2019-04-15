@@ -26,6 +26,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
 // State of instance
@@ -313,7 +314,7 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 		return errors.Wrap(err, "could not marshal temp manifest")
 	}
 
-	tempManifestSecretName := manifest.CalculateSecretName(bdm.DeploymentSecretTypeManifestWithOps, "")
+	tempManifestSecretName := names.CalculateSecretName(names.DeploymentSecretTypeManifestWithOps, manifest.Name, "")
 
 	// Create a secret object for the manifest
 	tempManifestSecret := &corev1.Secret{
@@ -403,8 +404,9 @@ func (r *ReconcileBOSHDeployment) waitForBPM(ctx context.Context, deployment *bd
 	result := map[string]bdm.Manifest{}
 
 	for _, container := range kubeConfigs.DataGatheringJob.Spec.Template.Spec.Containers {
-		_, secretName := manifest.CalculateEJobOutputSecretPrefixAndName(
-			bdm.DeploymentSecretTypeInstanceGroupResolvedProperties,
+		_, secretName := names.CalculateEJobOutputSecretPrefixAndName(
+			names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+			manifest.Name,
 			container.Name,
 			false,
 		)
