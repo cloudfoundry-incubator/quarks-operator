@@ -8,36 +8,51 @@ import (
 	"reflect"
 	"strings"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"github.com/pkg/errors"
 	btg "github.com/viovanov/bosh-template-go"
 	"go.uber.org/zap"
 	yaml "gopkg.in/yaml.v2"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 )
+
+// DataGatherer gathers data for jobs in the manifest, it handles links and returns a resolved manifest
+type DataGatherer struct {
+	log      *zap.SugaredLogger
+	manifest *Manifest
+}
+
+// NewDataGatherer returns a data gatherer with logging for a given input manifest
+func NewDataGatherer(log *zap.SugaredLogger, manifest *Manifest) *DataGatherer {
+	return &DataGatherer{
+		log:      log,
+		manifest: manifest,
+	}
+}
 
 // GatherData will collect different data
 // Collect job spec information
 // Collect job properties
 // Collect bosh links
 // Render the bpm yaml file data
-func GatherData(log *zap.SugaredLogger, boshManifestStruct *Manifest, baseDir string, cfOperatorNamespace string, instanceGroupName string) ([]byte, error) {
-	jobReleaseSpecs, jobProviderLinks, err := CollectReleaseSpecsAndProviderLinks(boshManifestStruct, baseDir, cfOperatorNamespace)
+func (dg *DataGatherer) GatherData(baseDir string, cfOperatorNamespace string, instanceGroupName string) ([]byte, error) {
+	jobReleaseSpecs, jobProviderLinks, err := dg.CollectReleaseSpecsAndProviderLinks(baseDir, cfOperatorNamespace)
 	if err != nil {
 		return nil, err
 	}
 
-	return ProcessConsumersAndRenderBPM(boshManifestStruct, baseDir, jobReleaseSpecs, jobProviderLinks, instanceGroupName, log)
+	return dg.ProcessConsumersAndRenderBPM(baseDir, jobReleaseSpecs, jobProviderLinks, instanceGroupName)
 }
 
 // CollectReleaseSpecsAndProviderLinks will collect all release specs and bosh links for provider jobs
-func CollectReleaseSpecsAndProviderLinks(boshManifestStruct *Manifest, baseDir string, cfOperatorNamespace string) (map[string]map[string]JobSpec, map[string]map[string]JobLink, error) {
+func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string, cfOperatorNamespace string) (map[string]map[string]JobSpec, map[string]map[string]JobLink, error) {
 	// Contains YAML.load('.../release_name/job_name/job.MF')
 	jobReleaseSpecs := map[string]map[string]JobSpec{}
 
 	// Lists every link provided by the job
 	jobProviderLinks := map[string]map[string]JobLink{}
 
-	for _, instanceGroup := range boshManifestStruct.InstanceGroups {
+	for _, instanceGroup := range dg.manifest.InstanceGroups {
 		for jobIdx, job := range instanceGroup.Jobs {
 			// make sure a map entry exists for the current job release
 			if _, ok := jobReleaseSpecs[job.Release]; !ok {
@@ -107,17 +122,17 @@ func CollectReleaseSpecsAndProviderLinks(boshManifestStruct *Manifest, baseDir s
 						// generate a nested struct of map[string]interface{} when
 						// a property is of the form foo.bar
 						if strings.Contains(property, ".") {
-							propertyStruct := RetrieveNestedProperty(spec, property)
+							propertyStruct := spec.RetrieveNestedProperty(property)
 							properties = propertyStruct
 						} else {
-							properties[property] = RetrievePropertyDefault(spec, property)
+							properties[property] = spec.RetrievePropertyDefault(property)
 						}
 					}
 					// Override default spec values with explicit settings from the
 					// current bosh deployment manifest, this should be done under each
 					// job, inside a `properties` key.
 					for propertyName := range properties {
-						if explicitSetting, ok := LookUpProperty(job, propertyName); ok {
+						if explicitSetting, ok := job.Property(propertyName); ok {
 							properties[propertyName] = explicitSetting
 						}
 					}
@@ -164,9 +179,9 @@ func CollectReleaseSpecsAndProviderLinks(boshManifestStruct *Manifest, baseDir s
 	return jobReleaseSpecs, jobProviderLinks, nil
 }
 
-// GenerateJobConsumersData will populate a job with its corresponding provider links
+// generateJobConsumersData will populate a job with its corresponding provider links
 // under properties.bosh_containerization.consumes
-func GenerateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks map[string]map[string]JobLink) error {
+func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks map[string]map[string]JobLink) error {
 	currentJobSpecData := jobReleaseSpecs[currentJob.Release][currentJob.Name]
 	for _, consumes := range currentJobSpecData.Consumes {
 
@@ -209,8 +224,8 @@ func GenerateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[st
 	return nil
 }
 
-// RenderJobBPM per job and add its value to the jobInstances.BPM field
-func RenderJobBPM(currentJob *Job, jobInstances []JobInstance, baseDir string, manifestName string, log *zap.SugaredLogger) error {
+// renderJobBPM per job and add its value to the jobInstances.BPM field
+func (dg *DataGatherer) renderJobBPM(currentJob *Job, jobInstances []JobInstance, baseDir string, manifestName string) error {
 
 	// Location of the current job job.MF file
 	jobSpecFile := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "job.MF")
@@ -300,7 +315,7 @@ func RenderJobBPM(currentJob *Job, jobInstances []JobInstance, baseDir string, m
 
 		for _, jobBPMInstance := range jobIndexBPM {
 			if !reflect.DeepEqual(jobBPMInstance, jobIndexBPM[0]) {
-				log.Warnf("found different BPM job indexes for job %s in manifest %s, this is NOT SUPPORTED", currentJob.Name, manifestName)
+				dg.log.Warnf("found different BPM job indexes for job %s in manifest %s, this is NOT SUPPORTED", currentJob.Name, manifestName)
 			}
 		}
 		currentJob.Properties.BOSHContainerization.BPM = jobIndexBPM[0]
@@ -309,9 +324,9 @@ func RenderJobBPM(currentJob *Job, jobInstances []JobInstance, baseDir string, m
 }
 
 // ProcessConsumersAndRenderBPM will generate a proper context for links and render the required ERB files
-func ProcessConsumersAndRenderBPM(boshManifestStruct *Manifest, baseDir string, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks map[string]map[string]JobLink, instanceGroupName string, log *zap.SugaredLogger) ([]byte, error) {
+func (dg *DataGatherer) ProcessConsumersAndRenderBPM(baseDir string, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks map[string]map[string]JobLink, instanceGroupName string) ([]byte, error) {
 	var desiredInstanceGroup *InstanceGroup
-	for _, instanceGroup := range boshManifestStruct.InstanceGroups {
+	for _, instanceGroup := range dg.manifest.InstanceGroups {
 		if instanceGroup.Name != instanceGroupName {
 			continue
 		}
@@ -329,11 +344,11 @@ func ProcessConsumersAndRenderBPM(boshManifestStruct *Manifest, baseDir string, 
 		currentJob := &desiredInstanceGroup.Jobs[idJob]
 
 		// Verify that the current job release exists on the manifest releases block
-		if lookUpJobRelease(boshManifestStruct.Releases, job.Release) {
+		if lookUpJobRelease(dg.manifest.Releases, job.Release) {
 			currentJob.Properties.BOSHContainerization.Release = job.Release
 		}
 
-		err := GenerateJobConsumersData(currentJob, jobReleaseSpecs, jobProviderLinks)
+		err := generateJobConsumersData(currentJob, jobReleaseSpecs, jobProviderLinks)
 		if err != nil {
 			return nil, err
 		}
@@ -342,7 +357,7 @@ func ProcessConsumersAndRenderBPM(boshManifestStruct *Manifest, baseDir string, 
 		// the render.InstanceInfo struct
 		jobInstances := currentJob.Properties.BOSHContainerization.Instances
 
-		err = RenderJobBPM(currentJob, jobInstances, baseDir, boshManifestStruct.Name, log)
+		err = dg.renderJobBPM(currentJob, jobInstances, baseDir, dg.manifest.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -354,7 +369,7 @@ func ProcessConsumersAndRenderBPM(boshManifestStruct *Manifest, baseDir string, 
 	}
 
 	// marshall the whole manifest Structure
-	manifestResolved, err := yaml.Marshal(boshManifestStruct)
+	manifestResolved, err := yaml.Marshal(dg.manifest)
 	if err != nil {
 		return nil, err
 	}
@@ -362,8 +377,8 @@ func ProcessConsumersAndRenderBPM(boshManifestStruct *Manifest, baseDir string, 
 	return manifestResolved, nil
 }
 
-// LookUpProperty search for property value in the job properties
-func LookUpProperty(job Job, propertyName string) (interface{}, bool) {
+// Property search for property value in the job properties
+func (job Job) Property(propertyName string) (interface{}, bool) {
 	var pointer interface{}
 
 	pointer = job.Properties.Properties
@@ -392,14 +407,14 @@ func LookUpProperty(job Job, propertyName string) (interface{}, bool) {
 
 // RetrieveNestedProperty will generate an nested struct
 // based on a string of the type foo.bar
-func RetrieveNestedProperty(jobSpec JobSpec, propertyName string) map[string]interface{} {
+func (js JobSpec) RetrieveNestedProperty(propertyName string) map[string]interface{} {
 	var anStruct map[string]interface{}
 	var previous map[string]interface{}
 	items := strings.Split(propertyName, ".")
 	for i := len(items) - 1; i >= 0; i-- {
 		if i == (len(items) - 1) {
 			previous = map[string]interface{}{
-				items[i]: RetrievePropertyDefault(jobSpec, propertyName),
+				items[i]: js.RetrievePropertyDefault(propertyName),
 			}
 		} else {
 			anStruct = map[string]interface{}{
@@ -413,8 +428,8 @@ func RetrieveNestedProperty(jobSpec JobSpec, propertyName string) map[string]int
 }
 
 // RetrievePropertyDefault return the default value of the spec property
-func RetrievePropertyDefault(jobSpec JobSpec, propertyName string) interface{} {
-	if property, ok := jobSpec.Properties[propertyName]; ok {
+func (js JobSpec) RetrievePropertyDefault(propertyName string) interface{} {
+	if property, ok := js.Properties[propertyName]; ok {
 		return property.Default
 	}
 
