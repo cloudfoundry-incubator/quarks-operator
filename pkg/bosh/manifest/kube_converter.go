@@ -288,31 +288,14 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 			}
 			doneSpecCopyingReleases[releaseName] = true
 
-			inContainerReleasePath := filepath.Join("/var/vcap/data-gathering/jobs-src/", releaseName)
-
 			// Get the docker image for the release
 			releaseImage, err := m.GetReleaseImage(ig.Name, boshJob.Name)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to calculate release image for data gathering")
 			}
-
 			// Create an init container that copies sources
 			// TODO: destination should also contain release name, to prevent overwrites
-			initContainers = append(initContainers, v1.Container{
-				Name:  fmt.Sprintf("spec-copier-%s", releaseName),
-				Image: releaseImage,
-				VolumeMounts: []v1.VolumeMount{
-					{
-						Name:      generateVolumeName("data-gathering"),
-						MountPath: "/var/vcap/data-gathering",
-					},
-				},
-				Command: []string{
-					"bash",
-					"-c",
-					fmt.Sprintf(`mkdir -p "%s" && cp -ar /var/vcap/jobs-src/* "%s"`, inContainerReleasePath, inContainerReleasePath),
-				},
-			})
+			initContainers = append(initContainers, m.JobSpecCopierContainer(releaseName, releaseImage, generateVolumeName("data-gathering")))
 		}
 
 		// One container per Instance Group
@@ -330,7 +313,7 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 				},
 				{
 					Name:      generateVolumeName("data-gathering"),
-					MountPath: "/var/vcap/data-gathering",
+					MountPath: "/var/vcap/all-releases",
 				},
 			},
 			Env: []v1.EnvVar{
@@ -344,7 +327,7 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 				},
 				{
 					Name:  "BASE_DIR",
-					Value: "/var/vcap/data-gathering",
+					Value: "/var/vcap/all-releases",
 				},
 				{
 					Name:  "INSTANCE_GROUP_NAME",
@@ -426,19 +409,8 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 		if err != nil {
 			return []v1.Container{}, err
 		}
+		initContainers = append(initContainers, m.JobSpecCopierContainer(job.Release, releaseImage, "rendering-data"))
 
-		inContainerReleasePath := filepath.Join("/var/vcap/rendering/jobs-src/", job.Release)
-		initContainers = append(initContainers, v1.Container{
-			Name:  fmt.Sprintf("spec-copier-%s", job.Name),
-			Image: releaseImage,
-			VolumeMounts: []v1.VolumeMount{
-				{
-					Name:      "rendering-data",
-					MountPath: "/var/vcap/rendering",
-				},
-			},
-			Command: []string{"bash", "-c", fmt.Sprintf(`mkdir -p "%s" && cp -ar /var/vcap/jobs-src/* "%s"`, inContainerReleasePath, inContainerReleasePath)},
-		})
 	}
 
 	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(
@@ -450,7 +422,7 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 	volumeMounts := []v1.VolumeMount{
 		{
 			Name:      "rendering-data",
-			MountPath: "/var/vcap/rendering",
+			MountPath: "/var/vcap/all-releases",
 		},
 		{
 			Name:      "jobs-dir",
@@ -478,7 +450,7 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 			},
 			{
 				Name:  "JOBS_DIR",
-				Value: "/var/vcap/rendering",
+				Value: "/var/vcap/all-releases",
 			},
 		},
 		Command: []string{"/bin/sh"},
@@ -507,7 +479,7 @@ func (m *Manifest) jobsToContainers(igName string, jobs []Job, namespace string)
 			VolumeMounts: []v1.VolumeMount{
 				{
 					Name:      "rendering-data",
-					MountPath: "/var/vcap/rendering",
+					MountPath: "/var/vcap/all-releases",
 				},
 				{
 					Name:      "jobs-dir",
@@ -888,4 +860,27 @@ func (m *Manifest) ApplyBPMInfo(kubeConfig *KubeConfig, allResolvedProperties ma
 		}
 	}
 	return nil
+}
+
+// JobSpecCopierContainer will return a v1.Container{} with the populated field
+func (m *Manifest) JobSpecCopierContainer(releaseName string, releaseImage string, volumeMountName string) v1.Container {
+
+	inContainerReleasePath := filepath.Join("/var/vcap/all-releases/jobs-src", releaseName)
+	initContainers := v1.Container{
+		Name:  fmt.Sprintf("spec-copier-%s", releaseName),
+		Image: releaseImage,
+		VolumeMounts: []v1.VolumeMount{
+			{
+				Name:      volumeMountName,
+				MountPath: "/var/vcap/all-releases",
+			},
+		},
+		Command: []string{
+			"bash",
+			"-c",
+			fmt.Sprintf(`mkdir -p "%s" && cp -ar /var/vcap/jobs-src/* "%s"`, inContainerReleasePath, inContainerReleasePath),
+		},
+	}
+
+	return initContainers
 }
