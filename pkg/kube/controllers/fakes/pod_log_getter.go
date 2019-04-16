@@ -2,9 +2,9 @@
 package fakes
 
 import (
-	"sync"
+	sync "sync"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
+	extendedjob "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 )
 
 type FakePodLogGetter struct {

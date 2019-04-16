@@ -26,6 +26,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
 // State of instance
@@ -104,8 +105,8 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	// Get state from instance
 	instanceState := instance.Status.State
 
-	// Apply ops files
-	manifest, err := r.applyOps(ctx, instance)
+	// Resolve the manifest (incl. ops files and implicit variables)
+	manifest, err := r.resolveManifest(ctx, instance)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -258,12 +259,12 @@ func (r *ReconcileBOSHDeployment) updateInstanceState(ctx context.Context, curre
 	return nil
 }
 
-// applyOps apply ops files after BoshDeployment instance created
-func (r *ReconcileBOSHDeployment) applyOps(ctx context.Context, instance *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
+// resolveManifest resolves the manifest and applies ops files and implicit variable interpolation
+func (r *ReconcileBOSHDeployment) resolveManifest(ctx context.Context, instance *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
 	// Create temp manifest as variable interpolation job input
 	// retrieve manifest
 	log.Debug(ctx, "Resolving manifest")
-	manifest, err := r.resolver.ResolveManifest(instance.Spec, instance.GetNamespace())
+	manifest, err := r.resolver.ResolveManifest(instance, instance.GetNamespace())
 	if err != nil {
 		log.WithEvent(instance, "ResolveManifestError").Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
 		return nil, err
@@ -313,7 +314,7 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 		return errors.Wrap(err, "could not marshal temp manifest")
 	}
 
-	tempManifestSecretName := manifest.CalculateSecretName(bdm.DeploymentSecretTypeManifestWithOps, "")
+	tempManifestSecretName := names.CalculateSecretName(names.DeploymentSecretTypeManifestWithOps, manifest.Name, "")
 
 	// Create a secret object for the manifest
 	tempManifestSecret := &corev1.Secret{
@@ -403,8 +404,9 @@ func (r *ReconcileBOSHDeployment) waitForBPM(ctx context.Context, deployment *bd
 	result := map[string]bdm.Manifest{}
 
 	for _, container := range kubeConfigs.DataGatheringJob.Spec.Template.Spec.Containers {
-		_, secretName := manifest.CalculateEJobOutputSecretPrefixAndName(
-			bdm.DeploymentSecretTypeInstanceGroupResolvedProperties,
+		_, secretName := names.CalculateEJobOutputSecretPrefixAndName(
+			names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+			manifest.Name,
 			container.Name,
 			false,
 		)

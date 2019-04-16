@@ -17,6 +17,7 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
 const (
@@ -103,7 +104,7 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 	args := []string{"-c", `cf-operator variable-interpolation`}
 
 	// This is the source manifest, that still has the '((vars))'
-	manifestSecretName := m.CalculateSecretName(DeploymentSecretTypeManifestWithOps, "")
+	manifestSecretName := names.CalculateSecretName(names.DeploymentSecretTypeManifestWithOps, m.Name, "")
 
 	// Prepare Volumes and Volume mounts
 
@@ -131,7 +132,7 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 	// We need a volume and a mount for each input variable
 	for _, variable := range m.Variables {
 		varName := variable.Name
-		varSecretName := m.CalculateSecretName(DeploymentSecretTypeGeneratedVariable, varName)
+		varSecretName := names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, m.Name, varName)
 
 		// The volume definition
 		vol := v1.Volume{
@@ -179,8 +180,9 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 		return nil, errors.Wrap(err, "could not calculate manifest SHA1")
 	}
 
-	outputSecretPrefix, _ := m.CalculateEJobOutputSecretPrefixAndName(
-		DeploymentSecretTypeManifestAndVars,
+	outputSecretPrefix, _ := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeManifestAndVars,
+		m.Name,
 		VarInterpolationContainerName,
 		false,
 	)
@@ -258,15 +260,17 @@ func (m *Manifest) SHA1() (string, error) {
 // dataGatheringJob generates the Data Gathering Job for a manifest
 func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error) {
 
-	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(
-		DeploymentSecretTypeManifestAndVars,
+	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeManifestAndVars,
+		m.Name,
 		VarInterpolationContainerName,
 		true,
 	)
 
 	eJobName := fmt.Sprintf("data-gathering-%s", m.Name)
-	outputSecretNamePrefix, _ := m.CalculateEJobOutputSecretPrefixAndName(
-		DeploymentSecretTypeInstanceGroupResolvedProperties,
+	outputSecretNamePrefix, _ := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+		m.Name,
 		"",
 		false,
 	)
@@ -413,8 +417,9 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 
 	}
 
-	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(
-		DeploymentSecretTypeInstanceGroupResolvedProperties,
+	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+		m.Name,
 		igName,
 		true,
 	)
@@ -505,13 +510,15 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 		return essv1.ExtendedStatefulSet{}, err
 	}
 
-	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(
-		DeploymentSecretTypeManifestAndVars,
+	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeManifestAndVars,
+		m.Name,
 		VarInterpolationContainerName,
 		true,
 	)
-	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(
-		DeploymentSecretTypeInstanceGroupResolvedProperties,
+	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+		m.Name,
 		ig.Name,
 		true,
 	)
@@ -614,13 +621,15 @@ func (m *Manifest) errandToExtendedJob(ig *InstanceGroup, namespace string) (ejv
 		return ejv1.ExtendedJob{}, err
 	}
 
-	_, interpolatedManifestSecretName := m.CalculateEJobOutputSecretPrefixAndName(
-		DeploymentSecretTypeManifestAndVars,
+	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeManifestAndVars,
+		m.Name,
 		VarInterpolationContainerName,
 		true,
 	)
-	_, resolvedPropertiesSecretName := m.CalculateEJobOutputSecretPrefixAndName(
-		DeploymentSecretTypeInstanceGroupResolvedProperties,
+	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+		m.Name,
 		ig.Name,
 		true,
 	)
@@ -699,7 +708,7 @@ func (m *Manifest) convertVariables(namespace string) []esv1.ExtendedSecret {
 	secrets := []esv1.ExtendedSecret{}
 
 	for _, v := range m.Variables {
-		secretName := m.CalculateSecretName(DeploymentSecretTypeGeneratedVariable, v.Name)
+		secretName := names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, m.Name, v.Name)
 		s := esv1.ExtendedSecret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
@@ -721,11 +730,11 @@ func (m *Manifest) convertVariables(namespace string) []esv1.ExtendedSecret {
 			}
 			if v.Options.CA != "" {
 				certRequest.CARef = esv1.SecretReference{
-					Name: m.CalculateSecretName(DeploymentSecretTypeGeneratedVariable, v.Options.CA),
+					Name: names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, m.Name, v.Options.CA),
 					Key:  "certificate",
 				}
 				certRequest.CAKeyRef = esv1.SecretReference{
-					Name: m.CalculateSecretName(DeploymentSecretTypeGeneratedVariable, v.Options.CA),
+					Name: names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, m.Name, v.Options.CA),
 					Key:  "private_key",
 				}
 			}
