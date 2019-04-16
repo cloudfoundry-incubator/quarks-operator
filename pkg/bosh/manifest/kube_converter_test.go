@@ -111,8 +111,8 @@ var _ = Describe("ConvertToKube", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			jobDG := kubeConfig.DataGatheringJob.Spec.Template.Spec
 			// Test init containers in the datagathering job
-			Expect(jobDG.InitContainers[0].Name).To(Equal("spec-copier-redis-server"))
-			Expect(jobDG.InitContainers[1].Name).To(Equal("spec-copier-cflinuxfs3-rootfs-setup"))
+			Expect(jobDG.InitContainers[0].Name).To(Equal("spec-copier-redis"))
+			Expect(jobDG.InitContainers[1].Name).To(Equal("spec-copier-cflinuxfs3"))
 			Expect(jobDG.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 			Expect(jobDG.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 		})
@@ -134,10 +134,10 @@ var _ = Describe("ConvertToKube", func() {
 			Expect(anExtendedSts.Spec.Containers[0].Name).To(Equal("cflinuxfs3-rootfs-setup"))
 
 			// Test init containers in the extended statefulset
-			Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3-rootfs-setup"))
+			Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3"))
 			Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
 			Expect(specCopierInitContainer.Command[0]).To(Equal("bash"))
-			Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3-rootfs-setup"))
+			Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3"))
 			Expect(rendererInitContainer.Image).To(Equal("/:"))
 			Expect(rendererInitContainer.Name).To(Equal("renderer-diego-cell"))
 
@@ -180,7 +180,7 @@ var _ = Describe("ConvertToKube", func() {
 			Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Command).To(BeNil())
 
 			// Test init containers in the extended job
-			Expect(specCopierInitContainer.Name).To(Equal("spec-copier-redis-server"))
+			Expect(specCopierInitContainer.Name).To(Equal("spec-copier-redis"))
 			Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
 			Expect(specCopierInitContainer.Command[0]).To(Equal("bash"))
 			Expect(rendererInitContainer.Image).To(Equal("/:"))

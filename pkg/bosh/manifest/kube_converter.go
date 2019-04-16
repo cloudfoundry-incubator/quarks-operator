@@ -295,7 +295,7 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 			}
 			// Create an init container that copies sources
 			// TODO: destination should also contain release name, to prevent overwrites
-			initContainers = append(initContainers, m.JobSpecCopierContainer(boshJob.Name, releaseName, releaseImage, generateVolumeName("data-gathering")))
+			initContainers = append(initContainers, m.JobSpecCopierContainer(releaseName, releaseImage, generateVolumeName("data-gathering")))
 		}
 
 		// One container per Instance Group
@@ -409,7 +409,7 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 		if err != nil {
 			return []v1.Container{}, err
 		}
-		initContainers = append(initContainers, m.JobSpecCopierContainer(job.Name, job.Release, releaseImage, "rendering-data"))
+		initContainers = append(initContainers, m.JobSpecCopierContainer(job.Release, releaseImage, "rendering-data"))
 
 	}
 
@@ -863,11 +863,11 @@ func (m *Manifest) ApplyBPMInfo(kubeConfig *KubeConfig, allResolvedProperties ma
 }
 
 // JobSpecCopierContainer will return a v1.Container{} with the populated field
-func (m *Manifest) JobSpecCopierContainer(containerName string, releaseName string, releaseImage string, volumeMountName string) v1.Container {
+func (m *Manifest) JobSpecCopierContainer(releaseName string, releaseImage string, volumeMountName string) v1.Container {
 
 	inContainerReleasePath := filepath.Join("/var/vcap/all-releases/jobs-src", releaseName)
 	initContainers := v1.Container{
-		Name:  fmt.Sprintf("spec-copier-%s", containerName),
+		Name:  fmt.Sprintf("spec-copier-%s", releaseName),
 		Image: releaseImage,
 		VolumeMounts: []v1.VolumeMount{
 			{
