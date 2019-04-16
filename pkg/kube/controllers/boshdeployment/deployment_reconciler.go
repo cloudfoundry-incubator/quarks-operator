@@ -348,15 +348,15 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationEJob(ctx context.Co
 	}
 
 	_, err = controllerutil.CreateOrUpdate(ctx, r.client, varIntEJob.DeepCopy(), func(obj runtime.Object) error {
-		ejob, ok := obj.(*ejv1.ExtendedJob)
+		exstEJob, ok := obj.(*ejv1.ExtendedJob)
 		if !ok {
 			return fmt.Errorf("object is not an ExtendedJob")
 		}
-		varIntEJob.DeepCopyInto(ejob)
+		exstEJob.Spec = varIntEJob.Spec
 		return nil
 	})
 	if err != nil {
-		log.WarningEvent(ctx, instance, "GetJobForVariableInterpolationError", err.Error())
+		log.WarningEvent(ctx, instance, "CreateExtendedJobForVariableInterpolationError", err.Error())
 		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", varIntEJob.Name)
 	}
 
@@ -379,15 +379,15 @@ func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, in
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.client, dataGatheringEJob.DeepCopy(), func(obj runtime.Object) error {
-		ejob, ok := obj.(*ejv1.ExtendedJob)
+		exstEJob, ok := obj.(*ejv1.ExtendedJob)
 		if !ok {
 			return fmt.Errorf("object is not an ExtendedJob")
 		}
-		dataGatheringEJob.DeepCopyInto(ejob)
+		exstEJob.Spec = dataGatheringEJob.Spec
 		return nil
 	})
 	if err != nil {
-		log.WarningEvent(ctx, instance, "GetJobForDataGatheringError", err.Error())
+		log.WarningEvent(ctx, instance, "CreateJobForDataGatheringError", err.Error())
 		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", dataGatheringEJob.Name)
 	}
 
@@ -442,11 +442,11 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 		}
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
-			ejob, ok := obj.(*ejv1.ExtendedJob)
+			exstEJob, ok := obj.(*ejv1.ExtendedJob)
 			if !ok {
 				return fmt.Errorf("object is not an ExtendedJob")
 			}
-			eJob.DeepCopyInto(ejob)
+			exstEJob.Spec = eJob.Spec
 			return nil
 		})
 		if err != nil {
@@ -463,11 +463,12 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 		}
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eSts.DeepCopy(), func(obj runtime.Object) error {
-			sts, ok := obj.(*estsv1.ExtendedStatefulSet)
+			exstSts, ok := obj.(*estsv1.ExtendedStatefulSet)
 			if !ok {
 				return fmt.Errorf("object is not an ExtendStatefulSet")
 			}
-			eSts.DeepCopyInto(sts)
+
+			exstSts.Spec = eSts.Spec
 			return nil
 		})
 		if err != nil {
