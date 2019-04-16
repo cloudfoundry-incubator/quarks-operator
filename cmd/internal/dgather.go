@@ -32,6 +32,7 @@ inside a bosh manifest file.
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		log = newLogger()
 		defer log.Sync()
 		boshManifestPath := viper.GetString("bosh-manifest-path")
 		if len(boshManifestPath) == 0 {
@@ -85,7 +86,6 @@ inside a bosh manifest file.
 }
 
 func init() {
-	initConfig()
 	rootCmd.AddCommand(dataGatherCmd)
 
 	dataGatherCmd.Flags().StringP("bosh-manifest-path", "m", "", "path to a bosh manifest file")

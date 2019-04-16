@@ -30,6 +30,7 @@ var rootCmd = &cobra.Command{
 	Use:   "cf-operator",
 	Short: "cf-operator manages BOSH deployments on Kubernetes",
 	Run: func(cmd *cobra.Command, args []string) {
+		log = newLogger(zap.AddCallerSkip(1))
 		defer log.Sync()
 
 		restConfig, err := kubeConfig.NewGetter(log).Get(viper.GetString("kubeconfig"))
@@ -89,7 +90,6 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
 	pf := rootCmd.PersistentFlags()
 
 	pf.StringP("kubeconfig", "c", "", "Path to a kubeconfig, not required in-cluster")
@@ -123,13 +123,13 @@ func init() {
 	AddEnvToUsage(rootCmd, argToEnv)
 }
 
-// initConfig is executed before running commands
-func initConfig() {
-	logger, err := zap.NewDevelopment(zap.AddCallerSkip(1))
+// newLogger returns a new zap logger
+func newLogger(options ...zap.Option) *zap.SugaredLogger {
+	logger, err := zap.NewDevelopment(options...)
 	if err != nil {
 		golog.Fatalf("cannot initialize ZAP logger: %v", err)
 	}
-	log = logger.Sugar()
+	return logger.Sugar()
 }
 
 // AddEnvToUsage adds env variables to help
