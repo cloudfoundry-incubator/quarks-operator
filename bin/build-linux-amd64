@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -euo pipefail
+
+GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
+. "${GIT_ROOT}/bin/include/versioning"
+
+export GOARCH=amd64
+export GOOS=linux
+
+bin/build
