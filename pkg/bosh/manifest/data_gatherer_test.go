@@ -16,7 +16,7 @@ import (
 
 const assetPath = "../../../testing/assets"
 
-var _ = Describe("Dgather", func() {
+var _ = Describe("DataGatherer", func() {
 
 	var (
 		m   *Manifest
@@ -41,12 +41,7 @@ var _ = Describe("Dgather", func() {
 					},
 				}
 
-				var (
-					value interface{}
-					ok    bool
-				)
-
-				value, ok = exampleJob.Property("health.disk.warning")
+				value, ok := exampleJob.Property("health.disk.warning")
 				Expect(ok).To(BeTrue())
 				Expect(value).To(BeEquivalentTo(42))
 
@@ -56,15 +51,10 @@ var _ = Describe("Dgather", func() {
 			})
 
 			It("should find a property value in the manifest job properties section (proper manifest example)", func() {
-				m := env.BOSHManifestWithProviderAndConsumer()
+				m = env.BOSHManifestWithProviderAndConsumer()
 				job := m.InstanceGroups[0].Jobs[0]
 
-				var (
-					value interface{}
-					ok    bool
-				)
-
-				value, ok = job.Property("doppler.grpc_port")
+				value, ok := job.Property("doppler.grpc_port")
 				Expect(ok).To(BeTrue())
 				Expect(value).To(BeEquivalentTo(7765))
 			})
@@ -75,6 +65,19 @@ var _ = Describe("Dgather", func() {
 		JustBeforeEach(func() {
 			_, log = helper.NewTestLogger()
 			dg = manifest.NewDataGatherer(log, m)
+		})
+
+		Context("GenerateManifest", func() {
+			BeforeEach(func() {
+				m = env.BOSHManifestWithProviderAndConsumer()
+			})
+
+			It("generates a manifest", func() {
+				manifest, err := dg.GenerateManifest(assetPath, "default", "log-api")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(manifest).NotTo(BeEmpty())
+				Expect(string(manifest)).To(ContainSubstring("- name: doppler"))
+			})
 		})
 
 		Context("gather job release specs and generate provider links", func() {
