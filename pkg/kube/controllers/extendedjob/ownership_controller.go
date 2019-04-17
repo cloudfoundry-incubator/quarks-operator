@@ -123,20 +123,20 @@ func updateOnConfigChanged(n, o *ejv1.ExtendedJob) bool {
 		(o.Spec.UpdateOnConfigChange == true && n.Spec.UpdateOnConfigChange == false)
 }
 
-// config name referenced by any extjob?
+// config name referenced by any ejob?
 func hasConfigReferences(ctx context.Context, c client.Client, o corev1.ConfigMap) (bool, error) {
-	extJobs := &ejv1.ExtendedJobList{}
-	err := c.List(ctx, &client.ListOptions{}, extJobs)
+	eJobs := &ejv1.ExtendedJobList{}
+	err := c.List(ctx, &client.ListOptions{}, eJobs)
 	if err != nil {
 		return false, err
 	}
 
-	if len(extJobs.Items) < 1 {
+	if len(eJobs.Items) < 1 {
 		return false, nil
 	}
 
-	for _, extJob := range extJobs.Items {
-		configMapNames, _ := eowner.GetConfigNamesFromSpec(extJob.Spec.Template.Spec)
+	for _, eJob := range eJobs.Items {
+		configMapNames, _ := eowner.GetConfigNamesFromSpec(eJob.Spec.Template.Spec)
 		if _, ok := configMapNames[o.GetName()]; ok {
 			return true, nil
 		}
@@ -145,20 +145,20 @@ func hasConfigReferences(ctx context.Context, c client.Client, o corev1.ConfigMa
 	return false, nil
 }
 
-// secret name referenced by any extjob?
+// secret name referenced by any eJob?
 func hasSecretReferences(ctx context.Context, c client.Client, o corev1.Secret) (bool, error) {
-	extJobs := &ejv1.ExtendedJobList{}
-	err := c.List(ctx, &client.ListOptions{}, extJobs)
+	eJobs := &ejv1.ExtendedJobList{}
+	err := c.List(ctx, &client.ListOptions{}, eJobs)
 	if err != nil {
 		return false, err
 	}
 
-	if len(extJobs.Items) < 1 {
+	if len(eJobs.Items) < 1 {
 		return false, nil
 	}
 
-	for _, extJob := range extJobs.Items {
-		_, secretNames := eowner.GetConfigNamesFromSpec(extJob.Spec.Template.Spec)
+	for _, eJob := range eJobs.Items {
+		_, secretNames := eowner.GetConfigNamesFromSpec(eJob.Spec.Template.Spec)
 		if _, ok := secretNames[o.GetName()]; ok {
 			return true, nil
 		}
@@ -180,19 +180,19 @@ func hasVersionedSecretReferences(o corev1.Secret) bool {
 func reconcilesForConfigMap(ctx context.Context, mgr manager.Manager, configMap corev1.ConfigMap) []reconcile.Request {
 	reconciles := []reconcile.Request{}
 
-	extJobs := &ejv1.ExtendedJobList{}
-	err := mgr.GetClient().List(ctx, &client.ListOptions{}, extJobs)
-	if err != nil || len(extJobs.Items) < 1 {
+	eJobs := &ejv1.ExtendedJobList{}
+	err := mgr.GetClient().List(ctx, &client.ListOptions{}, eJobs)
+	if err != nil || len(eJobs.Items) < 1 {
 		return reconciles
 	}
 
-	for _, extJob := range extJobs.Items {
-		configMapNames, _ := eowner.GetConfigNamesFromSpec(extJob.Spec.Template.Spec)
+	for _, eJob := range eJobs.Items {
+		configMapNames, _ := eowner.GetConfigNamesFromSpec(eJob.Spec.Template.Spec)
 		if _, ok := configMapNames[configMap.GetName()]; ok {
 			reconciles = append(reconciles, reconcile.Request{
 				NamespacedName: types.NamespacedName{
-					Name:      extJob.GetName(),
-					Namespace: extJob.GetNamespace(),
+					Name:      eJob.GetName(),
+					Namespace: eJob.GetNamespace(),
 				},
 			})
 		}
@@ -214,20 +214,20 @@ func reconcilesForSecret(ctx context.Context, mgr manager.Manager, secret corev1
 		}
 	}
 
-	extJobs := &ejv1.ExtendedJobList{}
-	err = mgr.GetClient().List(ctx, &client.ListOptions{}, extJobs)
-	if err != nil || len(extJobs.Items) < 1 {
+	eJobs := &ejv1.ExtendedJobList{}
+	err = mgr.GetClient().List(ctx, &client.ListOptions{}, eJobs)
+	if err != nil || len(eJobs.Items) < 1 {
 		return reconciles
 	}
 
-	for _, extJob := range extJobs.Items {
-		_, secretNames := eowner.GetConfigNamesFromSpec(extJob.Spec.Template.Spec)
+	for _, eJob := range eJobs.Items {
+		_, secretNames := eowner.GetConfigNamesFromSpec(eJob.Spec.Template.Spec)
 		// add requests for the ExtendedJob referencing the native secret
 		if _, ok := secretNames[secret.GetName()]; ok {
 			reconciles = append(reconciles, reconcile.Request{
 				NamespacedName: types.NamespacedName{
-					Name:      extJob.GetName(),
-					Namespace: extJob.GetNamespace(),
+					Name:      eJob.GetName(),
+					Namespace: eJob.GetNamespace(),
 				},
 			})
 		}
@@ -235,8 +235,8 @@ func reconcilesForSecret(ctx context.Context, mgr manager.Manager, secret corev1
 		if _, ok := secretNames[referencedSecretName]; ok && referencedSecretName != "" {
 			reconciles = append(reconciles, reconcile.Request{
 				NamespacedName: types.NamespacedName{
-					Name:      extJob.GetName(),
-					Namespace: extJob.GetNamespace(),
+					Name:      eJob.GetName(),
+					Namespace: eJob.GetNamespace(),
 				},
 			})
 		}

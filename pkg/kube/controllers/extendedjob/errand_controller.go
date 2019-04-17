@@ -35,8 +35,8 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 	// Only trigger if Spec.Run is 'now'
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			exJob := e.Object.(*ejv1.ExtendedJob)
-			return exJob.Spec.Trigger.Strategy == ejv1.TriggerNow || exJob.Spec.Trigger.Strategy == ejv1.TriggerOnce
+			eJob := e.Object.(*ejv1.ExtendedJob)
+			return eJob.Spec.Trigger.Strategy == ejv1.TriggerNow || eJob.Spec.Trigger.Strategy == ejv1.TriggerOnce
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return false

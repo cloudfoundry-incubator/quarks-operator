@@ -57,14 +57,14 @@ type OwnershipReconciler struct {
 // UpdateOnConfigChange set to true.
 func (r *OwnershipReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	var result = reconcile.Result{}
-	extJob := &ejv1.ExtendedJob{}
+	eJob := &ejv1.ExtendedJob{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()
 
 	ctxlog.Info(ctx, "Reconciling errand job configs ownership ", request.NamespacedName)
-	err := r.client.Get(ctx, request.NamespacedName, extJob)
+	err := r.client.Get(ctx, request.NamespacedName, eJob)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// do not requeue, extended job is probably deleted
@@ -77,47 +77,47 @@ func (r *OwnershipReconciler) Reconcile(request reconcile.Request) (reconcile.Re
 		return result, err
 	}
 
-	err = r.versionedSecretStore.UpdateSecretReferences(ctx, extJob.GetNamespace(), &extJob.Spec.Template.Spec)
+	err = r.versionedSecretStore.UpdateSecretReferences(ctx, eJob.GetNamespace(), &eJob.Spec.Template.Spec)
 	if err != nil {
 		ctxlog.Error(ctx, "Could not update versioned secrets of ExtendedJob '", request.NamespacedName, " before sync': ", err)
 		return reconcile.Result{}, err
 	}
 
-	// Remove all ownership from configs and the finalizer from extJob
-	if !extJob.Spec.UpdateOnConfigChange || extJob.ToBeDeleted() {
-		existingConfigs, err := r.owner.ListConfigsOwnedBy(ctx, extJob)
+	// Remove all ownership from configs and the finalizer from eJob
+	if !eJob.Spec.UpdateOnConfigChange || eJob.ToBeDeleted() {
+		existingConfigs, err := r.owner.ListConfigsOwnedBy(ctx, eJob)
 		if err != nil {
-			return result, errors.Wrapf(err, "Could not list ConfigMaps and Secrets owned by '%s'", extJob.Name)
+			return result, errors.Wrapf(err, "Could not list ConfigMaps and Secrets owned by '%s'", eJob.Name)
 		}
-		err = r.owner.RemoveOwnerReferences(ctx, extJob, existingConfigs)
+		err = r.owner.RemoveOwnerReferences(ctx, eJob, existingConfigs)
 		if err != nil {
-			ctxlog.WithEvent(extJob, "RemoveOwnerReferenceError").Errorf(ctx, "Could not remove OwnerReferences pointing to extJob '%s': %s", extJob.Name, err)
+			ctxlog.WithEvent(eJob, "RemoveOwnerReferenceError").Errorf(ctx, "Could not remove OwnerReferences pointing to eJob '%s': %s", eJob.Name, err)
 			return reconcile.Result{}, err
 		}
 
-		finalizer.RemoveFinalizer(extJob)
-		err = r.client.Update(ctx, extJob)
+		finalizer.RemoveFinalizer(eJob)
+		err = r.client.Update(ctx, eJob)
 		if err != nil {
-			ctxlog.WithEvent(extJob, "RemoveFinalizerError").Errorf(ctx, "Could not remove finalizer from ExtJob '%s': %s", extJob.GetName(), err)
+			ctxlog.WithEvent(eJob, "RemoveFinalizerError").Errorf(ctx, "Could not remove finalizer from EJob '%s': %s", eJob.GetName(), err)
 			return reconcile.Result{}, err
 		}
 
 		return result, err
 	}
 
-	ctxlog.Debugf(ctx, "Updating ownerReferences for ExtendedJob '%s' in namespace '%s'.", extJob.Name, extJob.Namespace)
+	ctxlog.Debugf(ctx, "Updating ownerReferences for ExtendedJob '%s' in namespace '%s'.", eJob.Name, eJob.Namespace)
 
-	err = r.owner.Sync(ctx, extJob, extJob.Spec.Template.Spec)
+	err = r.owner.Sync(ctx, eJob, eJob.Spec.Template.Spec)
 	if err != nil {
 		return result, fmt.Errorf("error updating OwnerReferences: %s", err)
 	}
 
-	if !finalizer.HasFinalizer(extJob) {
-		ctxlog.Debugf(ctx, "Add finalizer to extendedJob '%s' in namespace '%s'.", extJob.Name, extJob.Namespace)
-		finalizer.AddFinalizer(extJob)
-		err = r.client.Update(ctx, extJob)
+	if !finalizer.HasFinalizer(eJob) {
+		ctxlog.Debugf(ctx, "Add finalizer to extendedJob '%s' in namespace '%s'.", eJob.Name, eJob.Namespace)
+		finalizer.AddFinalizer(eJob)
+		err = r.client.Update(ctx, eJob)
 		if err != nil {
-			ctxlog.WithEvent(extJob, "RemoveFinalizerError").Errorf(ctx, "Could not remove finalizer from ExtJob '%s': %s", extJob.GetName(), err)
+			ctxlog.WithEvent(eJob, "RemoveFinalizerError").Errorf(ctx, "Could not remove finalizer from EJob '%s': %s", eJob.GetName(), err)
 			return reconcile.Result{}, err
 		}
 	}
