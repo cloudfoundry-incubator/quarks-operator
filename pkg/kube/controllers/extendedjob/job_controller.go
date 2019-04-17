@@ -40,7 +40,7 @@ func AddJob(ctx context.Context, config *config.Config, mgr manager.Manager) err
 			if !e.ObjectNew.(*batchv1.Job).GetDeletionTimestamp().IsZero() {
 				return false
 			}
-			if !isExtJobJob(e.MetaNew.GetLabels()) {
+			if !isEJobJob(e.MetaNew.GetLabels()) {
 				return false
 			}
 			return e.ObjectNew.(*batchv1.Job).Status.Succeeded == 1 || e.ObjectNew.(*batchv1.Job).Status.Failed == 1
@@ -49,8 +49,8 @@ func AddJob(ctx context.Context, config *config.Config, mgr manager.Manager) err
 	return jobController.Watch(&source.Kind{Type: &batchv1.Job{}}, &handler.EnqueueRequestForObject{}, predicate)
 }
 
-// isExtJobJob matches our jobs
-func isExtJobJob(labels map[string]string) bool {
+// isEJobJob matches our jobs
+func isEJobJob(labels map[string]string) bool {
 	if _, exists := labels["extendedjob"]; exists {
 		return true
 	}

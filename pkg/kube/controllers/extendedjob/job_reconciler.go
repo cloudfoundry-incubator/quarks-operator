@@ -163,7 +163,7 @@ func (r *ReconcileJob) jobPod(ctx context.Context, name string, namespace string
 	return &list.Items[0], nil
 }
 
-func (r *ReconcileJob) persistOutput(ctx context.Context, exJobName string, instance *batchv1.Job, conf *ejv1.Output) error {
+func (r *ReconcileJob) persistOutput(ctx context.Context, eJobName string, instance *batchv1.Job, conf *ejv1.Output) error {
 	pod, err := r.jobPod(ctx, instance.GetName(), instance.GetNamespace())
 	if err != nil {
 		return errors.Wrap(err, "failed to persist output")

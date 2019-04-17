@@ -167,16 +167,16 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		}
 
 	case VariableGeneratedState:
-		err = r.createVariableInterpolationExJob(ctx, instance, manifest, kubeConfigs)
+		err = r.createVariableInterpolationEJob(ctx, instance, manifest, kubeConfigs)
 		if err != nil {
-			log.WithEvent(instance, "VariableInterpolationError").Errorf(ctx, "Failed to create variable interpolation exJob: %v", err)
+			log.WithEvent(instance, "VariableInterpolationError").Errorf(ctx, "Failed to create variable interpolation eJob: %v", err)
 			return reconcile.Result{}, err
 		}
 
 	case VariableInterpolatedState:
 		err = r.createDataGatheringJob(ctx, instance, manifest, kubeConfigs)
 		if err != nil {
-			log.WithEvent(instance, "DataGatheringError").Errorf(ctx, "Failed to create data gathering exJob: %v", err)
+			log.WithEvent(instance, "DataGatheringError").Errorf(ctx, "Failed to create data gathering eJob: %v", err)
 			return reconcile.Result{}, err
 		}
 
@@ -304,8 +304,8 @@ func (r *ReconcileBOSHDeployment) generateVariableSecrets(ctx context.Context, i
 	return nil
 }
 
-// createVariableInterpolationExJob create temp manifest and variable interpolation exJob
-func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfig bdm.KubeConfig) error {
+// createVariableInterpolationEJob create temp manifest and variable interpolation eJob
+func (r *ReconcileBOSHDeployment) createVariableInterpolationEJob(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfig bdm.KubeConfig) error {
 
 	// Create temp manifest as variable interpolation job input.
 	// Ops files have been applied on this manifest.
@@ -340,24 +340,24 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 
 	// Generate the ExtendedJob object
 	log.Debug(ctx, "Creating variable interpolation extendedJob")
-	varIntExJob := kubeConfig.VariableInterpolationJob
+	varIntEJob := kubeConfig.VariableInterpolationJob
 	// Set BOSHDeployment instance as the owner and controller
-	if err := r.setReference(instance, varIntExJob, r.scheme); err != nil {
-		log.WithEvent(instance, "NewJobForVariableInterpolationError").Errorf(ctx, "Failed to set ownerReference for ExtendedJob '%s': %v", varIntExJob.GetName(), err)
+	if err := r.setReference(instance, varIntEJob, r.scheme); err != nil {
+		log.WithEvent(instance, "NewJobForVariableInterpolationError").Errorf(ctx, "Failed to set ownerReference for ExtendedJob '%s': %v", varIntEJob.GetName(), err)
 		return err
 	}
 
-	_, err = controllerutil.CreateOrUpdate(ctx, r.client, varIntExJob.DeepCopy(), func(obj runtime.Object) error {
+	_, err = controllerutil.CreateOrUpdate(ctx, r.client, varIntEJob.DeepCopy(), func(obj runtime.Object) error {
 		ejob, ok := obj.(*ejv1.ExtendedJob)
 		if !ok {
 			return fmt.Errorf("object is not an ExtendedJob")
 		}
-		varIntExJob.DeepCopyInto(ejob)
+		varIntEJob.DeepCopyInto(ejob)
 		return nil
 	})
 	if err != nil {
 		log.WarningEvent(ctx, instance, "GetJobForVariableInterpolationError", err.Error())
-		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", varIntExJob.Name)
+		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", varIntEJob.Name)
 	}
 
 	instance.Status.State = VariableInterpolatedState
@@ -369,26 +369,26 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationExJob(ctx context.C
 func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfig bdm.KubeConfig) error {
 
 	// Generate the ExtendedJob object
-	dataGatheringExJob := kubeConfig.DataGatheringJob
-	log.Debugf(ctx, "Creating data gathering extendedJob %s/%s", dataGatheringExJob.Namespace, dataGatheringExJob.Name)
+	dataGatheringEJob := kubeConfig.DataGatheringJob
+	log.Debugf(ctx, "Creating data gathering extendedJob %s/%s", dataGatheringEJob.Namespace, dataGatheringEJob.Name)
 
 	// Set BOSHDeployment instance as the owner and controller
-	if err := r.setReference(instance, dataGatheringExJob, r.scheme); err != nil {
-		log.WithEvent(instance, "NewJobForDataGatheringError").Errorf(ctx, "Failed to set ownerReference for ExtendedJob '%s': %v", dataGatheringExJob.GetName(), err)
+	if err := r.setReference(instance, dataGatheringEJob, r.scheme); err != nil {
+		log.WithEvent(instance, "NewJobForDataGatheringError").Errorf(ctx, "Failed to set ownerReference for ExtendedJob '%s': %v", dataGatheringEJob.GetName(), err)
 		return err
 	}
 
-	_, err := controllerutil.CreateOrUpdate(ctx, r.client, dataGatheringExJob.DeepCopy(), func(obj runtime.Object) error {
+	_, err := controllerutil.CreateOrUpdate(ctx, r.client, dataGatheringEJob.DeepCopy(), func(obj runtime.Object) error {
 		ejob, ok := obj.(*ejv1.ExtendedJob)
 		if !ok {
 			return fmt.Errorf("object is not an ExtendedJob")
 		}
-		dataGatheringExJob.DeepCopyInto(ejob)
+		dataGatheringEJob.DeepCopyInto(ejob)
 		return nil
 	})
 	if err != nil {
 		log.WarningEvent(ctx, instance, "GetJobForDataGatheringError", err.Error())
-		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", dataGatheringExJob.Name)
+		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", dataGatheringEJob.Name)
 	}
 
 	instance.Status.State = DataGatheredState

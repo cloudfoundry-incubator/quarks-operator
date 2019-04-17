@@ -25,16 +25,16 @@ type QueryImpl struct {
 }
 
 // Match pod against label whitelist from extended job
-func (q *QueryImpl) Match(extJob ejv1.ExtendedJob, pod corev1.Pod) bool {
+func (q *QueryImpl) Match(eJob ejv1.ExtendedJob, pod corev1.Pod) bool {
 	if pod.Name == "" {
 		return false
 	}
-	if extJob.Spec.Trigger.PodState.Selector == nil {
+	if eJob.Spec.Trigger.PodState.Selector == nil {
 		return true
 	}
 
 	podLabelsSet := labels.Set(pod.Labels)
-	matchExpressions := extJob.Spec.Trigger.PodState.Selector.MatchExpressions
+	matchExpressions := eJob.Spec.Trigger.PodState.Selector.MatchExpressions
 	for _, exp := range matchExpressions {
 		requirement, err := labels.NewRequirement(exp.Key, exp.Operator, exp.Values)
 		if err != nil {
@@ -45,7 +45,7 @@ func (q *QueryImpl) Match(extJob ejv1.ExtendedJob, pod corev1.Pod) bool {
 	}
 
 	// TODO https://github.com/kubernetes/apimachinery/blob/master/pkg/labels/selector.go
-	matchLabels := extJob.Spec.Trigger.PodState.Selector.MatchLabels
+	matchLabels := eJob.Spec.Trigger.PodState.Selector.MatchLabels
 	if labels.AreLabelsInWhiteList(*matchLabels, pod.Labels) {
 		return true
 	}
@@ -53,8 +53,8 @@ func (q *QueryImpl) Match(extJob ejv1.ExtendedJob, pod corev1.Pod) bool {
 }
 
 // MatchState checks pod state against state from extended job
-func (q *QueryImpl) MatchState(extJob ejv1.ExtendedJob, podState ejv1.PodState) bool {
-	if extJob.Spec.Trigger.PodState != nil && extJob.Spec.Trigger.PodState.When == podState {
+func (q *QueryImpl) MatchState(eJob ejv1.ExtendedJob, podState ejv1.PodState) bool {
+	if eJob.Spec.Trigger.PodState != nil && eJob.Spec.Trigger.PodState.When == podState {
 		return true
 	}
 	return false

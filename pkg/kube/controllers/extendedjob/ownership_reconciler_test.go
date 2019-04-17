@@ -45,21 +45,21 @@ var _ = Describe("OwnershipReconciler", func() {
 			owner      *fakes.FakeOwner
 
 			runtimeObjects             []runtime.Object
-			extJob                     ejv1.ExtendedJob
+			eJob                     ejv1.ExtendedJob
 			setOwnerReferenceCallCount int
 		)
 
-		newRequest := func(extJob ejv1.ExtendedJob) reconcile.Request {
+		newRequest := func(eJob ejv1.ExtendedJob) reconcile.Request {
 			return reconcile.Request{
 				NamespacedName: types.NamespacedName{
-					Name:      extJob.Name,
-					Namespace: extJob.Namespace,
+					Name:      eJob.Name,
+					Namespace: eJob.Namespace,
 				},
 			}
 		}
 
-		exjobGetStub := func(ctx context.Context, nn types.NamespacedName, obj runtime.Object) error {
-			extJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+		ejobGetStub := func(ctx context.Context, nn types.NamespacedName, obj runtime.Object) error {
+			eJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
 			return nil
 		}
 
@@ -99,9 +99,9 @@ var _ = Describe("OwnershipReconciler", func() {
 				client = fakes.FakeClient{}
 				mgr.GetClientReturns(&client)
 
-				extJob = env.ErrandExtendedJob("fake-exjob")
-				client.GetCalls(exjobGetStub)
-				request = newRequest(extJob)
+				eJob = env.ErrandExtendedJob("fake-ejob")
+				client.GetCalls(ejobGetStub)
+				request = newRequest(eJob)
 			})
 
 			Context("because the extended job does not exist", func() {
@@ -113,7 +113,7 @@ var _ = Describe("OwnershipReconciler", func() {
 					result, err := act()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(result.Requeue).To(BeFalse())
-					Expect(logs.FilterMessageSnippet("Failed to find extended job '/fake-exjob', not retrying:  \"fake-error\" not found").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Failed to find extended job '/fake-ejob', not retrying:  \"fake-error\" not found").Len()).To(Equal(1))
 				})
 			})
 
@@ -125,7 +125,7 @@ var _ = Describe("OwnershipReconciler", func() {
 				It("should log and return, requeue", func() {
 					_, err := act()
 					Expect(err).To(HaveOccurred())
-					Expect(logs.FilterMessageSnippet("Failed to get the extended job '/fake-exjob': fake-error").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Failed to get the extended job '/fake-ejob': fake-error").Len()).To(Equal(1))
 				})
 			})
 		})
@@ -135,15 +135,15 @@ var _ = Describe("OwnershipReconciler", func() {
 
 			Context("when removing update on config change functionality", func() {
 				BeforeEach(func() {
-					extJob = env.ErrandExtendedJob("fake-pod")
-					extJob.SetFinalizers([]string{finalizer.AnnotationFinalizer})
-					extJob.Spec.UpdateOnConfigChange = false
+					eJob = env.ErrandExtendedJob("fake-pod")
+					eJob.SetFinalizers([]string{finalizer.AnnotationFinalizer})
+					eJob.Spec.UpdateOnConfigChange = false
 
-					runtimeObjects = []runtime.Object{&extJob}
+					runtimeObjects = []runtime.Object{&eJob}
 					client = fake.NewFakeClient(runtimeObjects...)
 					mgr.GetClientReturns(client)
 
-					request = newRequest(extJob)
+					request = newRequest(eJob)
 				})
 
 				It("removes owner references", func() {
@@ -170,17 +170,17 @@ var _ = Describe("OwnershipReconciler", func() {
 
 			Context("when deleting extended job", func() {
 				BeforeEach(func() {
-					extJob = env.ErrandExtendedJob("fake-pod")
-					extJob.SetFinalizers([]string{finalizer.AnnotationFinalizer})
-					extJob.Spec.UpdateOnConfigChange = true
+					eJob = env.ErrandExtendedJob("fake-pod")
+					eJob.SetFinalizers([]string{finalizer.AnnotationFinalizer})
+					eJob.Spec.UpdateOnConfigChange = true
 					now := metav1.NewTime(time.Now())
-					extJob.SetDeletionTimestamp(&now)
+					eJob.SetDeletionTimestamp(&now)
 
-					runtimeObjects = []runtime.Object{&extJob}
+					runtimeObjects = []runtime.Object{&eJob}
 					client = fake.NewFakeClient(runtimeObjects...)
 					mgr.GetClientReturns(client)
 
-					request = newRequest(extJob)
+					request = newRequest(eJob)
 				})
 
 				It("removes owner references, finalizer and doesn't call Sync", func() {
@@ -201,14 +201,14 @@ var _ = Describe("OwnershipReconciler", func() {
 
 			Context("when update on config change is enabled", func() {
 				BeforeEach(func() {
-					extJob = env.ErrandExtendedJob("fake-pod")
-					extJob.Spec.UpdateOnConfigChange = true
+					eJob = env.ErrandExtendedJob("fake-pod")
+					eJob.Spec.UpdateOnConfigChange = true
 
-					runtimeObjects = []runtime.Object{&extJob}
+					runtimeObjects = []runtime.Object{&eJob}
 					client = fake.NewFakeClient(runtimeObjects...)
 					mgr.GetClientReturns(client)
 
-					request = newRequest(extJob)
+					request = newRequest(eJob)
 				})
 
 				It("calls sync", func() {

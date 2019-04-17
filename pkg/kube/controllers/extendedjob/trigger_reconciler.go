@@ -88,61 +88,61 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 		return
 	}
 
-	extJobs := &ejv1.ExtendedJobList{}
-	err = r.client.List(ctx, &client.ListOptions{}, extJobs)
+	eJobs := &ejv1.ExtendedJobList{}
+	err = r.client.List(ctx, &client.ListOptions{}, eJobs)
 	if err != nil {
 		ctxlog.Infof(ctx, "Failed to query extended jobs: %s", err)
 		return
 	}
 
-	if len(extJobs.Items) < 1 {
+	if len(eJobs.Items) < 1 {
 		return
 	}
 
 	podEvent := fmt.Sprintf("%s/%s", podName, podState)
-	ctxlog.Debugf(ctx, "Considering %d extended jobs for pod %s", len(extJobs.Items), podEvent)
+	ctxlog.Debugf(ctx, "Considering %d extended jobs for pod %s", len(eJobs.Items), podEvent)
 
-	for _, extJob := range extJobs.Items {
-		if r.query.MatchState(extJob, podState) && r.query.Match(extJob, *pod) {
-			err := r.createJob(ctx, extJob, podName)
+	for _, eJob := range eJobs.Items {
+		if r.query.MatchState(eJob, podState) && r.query.Match(eJob, *pod) {
+			err := r.createJob(ctx, eJob, podName)
 			if err != nil {
 				if apierrors.IsAlreadyExists(err) {
-					ctxlog.Debugf(ctx, "Skip '%s' triggered by pod %s: already running", extJob.Name, podEvent)
+					ctxlog.Debugf(ctx, "Skip '%s' triggered by pod %s: already running", eJob.Name, podEvent)
 				} else {
-					ctxlog.WithEvent(&extJob, "CreateJob").Infof(ctx, "Failed to create job for '%s' via pod %s: %s", extJob.Name, podEvent, err)
+					ctxlog.WithEvent(&eJob, "CreateJob").Infof(ctx, "Failed to create job for '%s' via pod %s: %s", eJob.Name, podEvent, err)
 				}
 				continue
 			}
-			ctxlog.WithEvent(&extJob, "CreateJob").Infof(ctx, "Created job for '%s' via pod %s", extJob.Name, podEvent)
+			ctxlog.WithEvent(&eJob, "CreateJob").Infof(ctx, "Created job for '%s' via pod %s", eJob.Name, podEvent)
 		}
 	}
 	return
 }
 
-func (r *TriggerReconciler) createJob(ctx context.Context, extJob ejv1.ExtendedJob, podName string) error {
-	template := extJob.Spec.Template.DeepCopy()
+func (r *TriggerReconciler) createJob(ctx context.Context, eJob ejv1.ExtendedJob, podName string) error {
+	template := eJob.Spec.Template.DeepCopy()
 
 	if template.Labels == nil {
 		template.Labels = map[string]string{}
 	}
-	template.Labels["ejob-name"] = extJob.Name
+	template.Labels["ejob-name"] = eJob.Name
 
-	name, err := names.JobName(extJob.Name, podName)
+	name, err := names.JobName(eJob.Name, podName)
 	if err != nil {
-		return errors.Wrapf(err, "could not generate job name for extJob '%s'", extJob.Name)
+		return errors.Wrapf(err, "could not generate job name for eJob '%s'", eJob.Name)
 	}
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: extJob.Namespace,
+			Namespace: eJob.Namespace,
 			Labels:    map[string]string{"extendedjob": "true"},
 		},
 		Spec: batchv1.JobSpec{Template: *template},
 	}
 
-	err = r.setOwnerReference(&extJob, job, r.scheme)
+	err = r.setOwnerReference(&eJob, job, r.scheme)
 	if err != nil {
-		ctxlog.WithEvent(&extJob, "SetOwnerReferenceError").Errorf(ctx, "failed to set owner reference on job for '%s' via pod %s: %s", extJob.Name, podName, err)
+		ctxlog.WithEvent(&eJob, "SetOwnerReferenceError").Errorf(ctx, "failed to set owner reference on job for '%s' via pod %s: %s", eJob.Name, podName, err)
 		return err
 	}
 
