@@ -16,7 +16,8 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 )
 
-// DataGatherer gathers data for jobs in the manifest, it handles links and returns a resolved manifest
+// DataGatherer gathers data for jobs in the manifest, it handles links and returns a deployment manifest
+// that only has information pertinent to an instance group.
 type DataGatherer struct {
 	log      *zap.SugaredLogger
 	manifest *Manifest
@@ -30,13 +31,17 @@ func NewDataGatherer(log *zap.SugaredLogger, manifest *Manifest) *DataGatherer {
 	}
 }
 
-// GatherData will collect different data
-// Collect job spec information
-// Collect job properties
-// Collect bosh links
-// Render the bpm yaml file data
-func (dg *DataGatherer) GatherData(baseDir string, cfOperatorNamespace string, instanceGroupName string) ([]byte, error) {
-	jobReleaseSpecs, jobProviderLinks, err := dg.CollectReleaseSpecsAndProviderLinks(baseDir, cfOperatorNamespace)
+// GenerateManifest will collect different data and return a deployment
+// manifest for an instance group.
+// See docs/rendering_templates.md#calculation-of-required-properties-for-an-instance-group-and-render-bpm
+//
+// Data gathered:
+// * job spec information
+// * job properties
+// * bosh links
+// * bpm yaml file data
+func (dg *DataGatherer) GenerateManifest(baseDir string, namespace string, instanceGroupName string) ([]byte, error) {
+	jobReleaseSpecs, jobProviderLinks, err := dg.CollectReleaseSpecsAndProviderLinks(baseDir, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +50,7 @@ func (dg *DataGatherer) GatherData(baseDir string, cfOperatorNamespace string, i
 }
 
 // CollectReleaseSpecsAndProviderLinks will collect all release specs and bosh links for provider jobs
-func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string, cfOperatorNamespace string) (map[string]map[string]JobSpec, map[string]map[string]JobLink, error) {
+func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string, namespace string) (map[string]map[string]JobSpec, map[string]map[string]JobLink, error) {
 	// Contains YAML.load('.../release_name/job_name/job.MF')
 	jobReleaseSpecs := map[string]map[string]JobSpec{}
 
@@ -93,9 +98,9 @@ func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string, cfOp
 				for _, az := range azs {
 					index := len(jobsInstances)
 					name := fmt.Sprintf("%s-%s", instanceGroup.Name, job.Name)
-					id := fmt.Sprintf("%v-%v-%v", instanceGroup.Name, index, job.Name)
+					id := fmt.Sprintf("%s-%d-%s", instanceGroup.Name, index, job.Name)
 					// TODO: not allowed to hardcode svc.cluster.local
-					address := fmt.Sprintf("%s.%s.svc.cluster.local", id, cfOperatorNamespace)
+					address := fmt.Sprintf("%s.%s.svc.cluster.local", id, namespace)
 
 					jobsInstances = append(jobsInstances, JobInstance{
 						Address:  address,
@@ -179,6 +184,154 @@ func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string, cfOp
 	return jobReleaseSpecs, jobProviderLinks, nil
 }
 
+// ProcessConsumersAndRenderBPM will generate a proper context for links and render the required ERB files
+func (dg *DataGatherer) ProcessConsumersAndRenderBPM(baseDir string, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks map[string]map[string]JobLink, instanceGroupName string) ([]byte, error) {
+	var desiredInstanceGroup *InstanceGroup
+	for _, instanceGroup := range dg.manifest.InstanceGroups {
+		if instanceGroup.Name != instanceGroupName {
+			continue
+		}
+
+		desiredInstanceGroup = instanceGroup
+		break
+	}
+
+	if desiredInstanceGroup == nil {
+		return nil, errors.Errorf("can't find instance group '%s' in manifest", instanceGroupName)
+	}
+
+	for idJob, job := range desiredInstanceGroup.Jobs {
+
+		currentJob := &desiredInstanceGroup.Jobs[idJob]
+
+		// Verify that the current job release exists on the manifest releases block
+		if lookUpJobRelease(dg.manifest.Releases, job.Release) {
+			currentJob.Properties.BOSHContainerization.Release = job.Release
+		}
+
+		err := generateJobConsumersData(currentJob, jobReleaseSpecs, jobProviderLinks)
+		if err != nil {
+			return nil, err
+		}
+
+		err = dg.renderJobBPM(currentJob, baseDir, dg.manifest.Name)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// marshall the whole manifest Structure
+	manifestResolved, err := yaml.Marshal(dg.manifest)
+	if err != nil {
+		return nil, err
+	}
+
+	return manifestResolved, nil
+}
+
+// renderJobBPM per job and add its value to the jobInstances.BPM field
+func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string, manifestName string) error {
+	// Location of the current job job.MF file
+	jobSpecFile := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "job.MF")
+
+	var jobSpec struct {
+		Templates map[string]string `yaml:"templates"`
+	}
+
+	// First, we must figure out the location of the template.
+	// We're looking for a template in the spec, whose result is a file "bpm.yml"
+	yamlFile, err := ioutil.ReadFile(jobSpecFile)
+	if err != nil {
+		return errors.Wrap(err, "failed to read the job spec file")
+	}
+	err = yaml.Unmarshal(yamlFile, &jobSpec)
+	if err != nil {
+		return errors.Wrap(err, "failed to unmarshal the job spec file")
+	}
+
+	bpmSource := ""
+	for srcFile, dstFile := range jobSpec.Templates {
+		if filepath.Base(dstFile) == "bpm.yml" {
+			bpmSource = srcFile
+			break
+		}
+	}
+
+	if bpmSource == "" {
+		return fmt.Errorf("can't find BPM template for job %s", currentJob.Name)
+	}
+
+	// ### Render bpm.yml.erb for each job instance
+
+	erbFilePath := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "templates", bpmSource)
+	if _, err := os.Stat(erbFilePath); err != nil {
+		return err
+	}
+
+	// Get current job.bosh_containerization.instances, which will be required by the renderer to generate
+	// the render.InstanceInfo struct
+	jobInstances := currentJob.Properties.BOSHContainerization.Instances
+	if jobInstances == nil {
+		return nil
+	}
+
+	jobIndexBPM := make([]bpm.Config, len(jobInstances))
+	for i, jobInstance := range jobInstances {
+
+		properties := currentJob.Properties.ToMap()
+
+		renderPointer := btg.NewERBRenderer(
+			&btg.EvaluationContext{
+				Properties: properties,
+			},
+
+			&btg.InstanceInfo{
+				Address:    jobInstance.Address,
+				AZ:         jobInstance.AZ,
+				ID:         jobInstance.ID,
+				Index:      string(jobInstance.Index),
+				Deployment: manifestName,
+				Name:       jobInstance.Name,
+			},
+
+			jobSpecFile,
+		)
+
+		// Write to a tmp, this is following the conventions on how the
+		// https://github.com/viovanov/bosh-template-go/ processes the params
+		// when we calling the *.Render()
+		tmpfile, err := ioutil.TempFile("", "rendered.*.yml")
+		if err != nil {
+			return err
+		}
+		defer os.Remove(tmpfile.Name())
+
+		if err := renderPointer.Render(erbFilePath, tmpfile.Name()); err != nil {
+			return err
+		}
+
+		bpmBytes, err := ioutil.ReadFile(tmpfile.Name())
+		if err != nil {
+			return err
+		}
+
+		// Parse a rendered bpm.yml into the bpm Config struct
+		jobIndexBPM[i], err = bpm.NewConfig(bpmBytes)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, jobBPMInstance := range jobIndexBPM {
+		if !reflect.DeepEqual(jobBPMInstance, jobIndexBPM[0]) {
+			dg.log.Warnf("found different BPM job indexes for job %s in manifest %s, this is NOT SUPPORTED", currentJob.Name, manifestName)
+		}
+	}
+	currentJob.Properties.BOSHContainerization.BPM = jobIndexBPM[0]
+
+	return nil
+}
+
 // generateJobConsumersData will populate a job with its corresponding provider links
 // under properties.bosh_containerization.consumes
 func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks map[string]map[string]JobLink) error {
@@ -222,159 +375,6 @@ func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[st
 		}
 	}
 	return nil
-}
-
-// renderJobBPM per job and add its value to the jobInstances.BPM field
-func (dg *DataGatherer) renderJobBPM(currentJob *Job, jobInstances []JobInstance, baseDir string, manifestName string) error {
-
-	// Location of the current job job.MF file
-	jobSpecFile := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "job.MF")
-
-	var jobSpec struct {
-		Templates map[string]string `yaml:"templates"`
-	}
-
-	// First, we must figure out the location of the template.
-	// We're looking for a template in the spec, whose result is a file "bpm.yml"
-	yamlFile, err := ioutil.ReadFile(jobSpecFile)
-	if err != nil {
-		return errors.Wrap(err, "failed to read the job spec file")
-	}
-	err = yaml.Unmarshal(yamlFile, &jobSpec)
-	if err != nil {
-		return errors.Wrap(err, "failed to unmarshal the job spec file")
-	}
-
-	bpmSource := ""
-	for srcFile, dstFile := range jobSpec.Templates {
-		if filepath.Base(dstFile) == "bpm.yml" {
-			bpmSource = srcFile
-			break
-		}
-	}
-
-	if bpmSource == "" {
-		return fmt.Errorf("can't find BPM template for job %s", currentJob.Name)
-	}
-
-	// ### Render bpm.yml.erb for each job instance
-
-	erbFilePath := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "templates", bpmSource)
-	if _, err := os.Stat(erbFilePath); err != nil {
-		return err
-	}
-
-	jobIndexBPM := make([]bpm.Config, len(jobInstances))
-
-	if jobInstances != nil {
-		for i, jobInstance := range jobInstances {
-
-			properties := currentJob.Properties.ToMap()
-
-			renderPointer := btg.NewERBRenderer(
-				&btg.EvaluationContext{
-					Properties: properties,
-				},
-
-				&btg.InstanceInfo{
-					Address:    jobInstance.Address,
-					AZ:         jobInstance.AZ,
-					ID:         jobInstance.ID,
-					Index:      string(jobInstance.Index),
-					Deployment: manifestName,
-					Name:       jobInstance.Name,
-				},
-
-				jobSpecFile,
-			)
-
-			// Write to a tmp, this is following the conventions on how the
-			// https://github.com/viovanov/bosh-template-go/ processes the params
-			// when we calling the *.Render()
-			tmpfile, err := ioutil.TempFile("", "rendered.*.yml")
-			if err != nil {
-				return err
-			}
-			defer os.Remove(tmpfile.Name())
-
-			if err := renderPointer.Render(erbFilePath, tmpfile.Name()); err != nil {
-				return err
-			}
-
-			bpmBytes, err := ioutil.ReadFile(tmpfile.Name())
-			if err != nil {
-				return err
-			}
-
-			// Parse a rendered bpm.yml into the bpm Config struct
-			jobIndexBPM[i], err = bpm.NewConfig(bpmBytes)
-			if err != nil {
-				return err
-			}
-		}
-
-		for _, jobBPMInstance := range jobIndexBPM {
-			if !reflect.DeepEqual(jobBPMInstance, jobIndexBPM[0]) {
-				dg.log.Warnf("found different BPM job indexes for job %s in manifest %s, this is NOT SUPPORTED", currentJob.Name, manifestName)
-			}
-		}
-		currentJob.Properties.BOSHContainerization.BPM = jobIndexBPM[0]
-	}
-	return nil
-}
-
-// ProcessConsumersAndRenderBPM will generate a proper context for links and render the required ERB files
-func (dg *DataGatherer) ProcessConsumersAndRenderBPM(baseDir string, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks map[string]map[string]JobLink, instanceGroupName string) ([]byte, error) {
-	var desiredInstanceGroup *InstanceGroup
-	for _, instanceGroup := range dg.manifest.InstanceGroups {
-		if instanceGroup.Name != instanceGroupName {
-			continue
-		}
-
-		desiredInstanceGroup = instanceGroup
-		break
-	}
-
-	if desiredInstanceGroup == nil {
-		return nil, errors.Errorf("can't find instance group '%s' in manifest", instanceGroupName)
-	}
-
-	for idJob, job := range desiredInstanceGroup.Jobs {
-
-		currentJob := &desiredInstanceGroup.Jobs[idJob]
-
-		// Verify that the current job release exists on the manifest releases block
-		if lookUpJobRelease(dg.manifest.Releases, job.Release) {
-			currentJob.Properties.BOSHContainerization.Release = job.Release
-		}
-
-		err := generateJobConsumersData(currentJob, jobReleaseSpecs, jobProviderLinks)
-		if err != nil {
-			return nil, err
-		}
-
-		// Get current job.bosh_containerization.instances, which will be required by the renderer to generate
-		// the render.InstanceInfo struct
-		jobInstances := currentJob.Properties.BOSHContainerization.Instances
-
-		err = dg.renderJobBPM(currentJob, jobInstances, baseDir, dg.manifest.Name)
-		if err != nil {
-			return nil, err
-		}
-
-		// Store shared bpm as a top level property
-		if len(jobInstances) < 1 {
-			continue
-		}
-	}
-
-	// marshall the whole manifest Structure
-	manifestResolved, err := yaml.Marshal(dg.manifest)
-	if err != nil {
-		return nil, err
-	}
-
-	return manifestResolved, nil
 }
 
 // Property search for property value in the job properties
