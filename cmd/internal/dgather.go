@@ -57,7 +57,7 @@ inside a bosh manifest file.
 		}
 
 		dg := manifest.NewDataGatherer(log, &boshManifestStruct)
-		result, err := dg.GatherData(baseDir, cfOperatorNamespace, instanceGroupName)
+		result, err := dg.GenerateManifest(baseDir, cfOperatorNamespace, instanceGroupName)
 		if err != nil {
 			return err
 		}
