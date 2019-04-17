@@ -98,7 +98,7 @@ func GetVersionFromName(name string, offset int) (int, error) {
 	return versionInt, nil
 }
 
-// GetPrefixFromVersionedSecretName gets prefix from versioned secret
+// GetPrefixFromVersionedSecretName gets prefix from versioned secret name
 func GetPrefixFromVersionedSecretName(name string) string {
 	nameRegex := regexp.MustCompile(`^(\S+)-v\d+$`)
 	if captures := nameRegex.FindStringSubmatch(name); len(captures) > 0 {
@@ -107,6 +107,22 @@ func GetPrefixFromVersionedSecretName(name string) string {
 	}
 
 	return ""
+}
+
+// GetVersionFromVersionedSecretName gets version from versioned secret name
+// return -1 if not find valid version
+func GetVersionFromVersionedSecretName(name string) (int, error) {
+	nameRegex := regexp.MustCompile(`^\S+-v(\d+)$`)
+	if captures := nameRegex.FindStringSubmatch(name); len(captures) > 0 {
+		number, err := strconv.Atoi(captures[1])
+		if err != nil {
+			return -1, errors.Wrapf(err, "invalid secret name %s, it does not end with a version number", name)
+		}
+
+		return number, nil
+	}
+
+	return -1, fmt.Errorf("invalid secret name %s, it does not match the naming schema", name)
 }
 
 // JobName returns a unique, short name for a given eJob, pod(if exists) combination

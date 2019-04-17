@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
+
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -12,10 +13,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	"strings"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
@@ -47,10 +50,16 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectOld.(*ejv1.ExtendedJob)
 			n := e.ObjectNew.(*ejv1.ExtendedJob)
-			reconcile := n.Spec.Trigger.Strategy == ejv1.TriggerNow && o.Spec.Trigger.Strategy == ejv1.TriggerManual
-			return reconcile
+
+			enqueueForManualErrand := n.Spec.Trigger.Strategy == ejv1.TriggerNow || o.Spec.Trigger.Strategy == ejv1.TriggerManual
+
+			// enqueuing for auto-errand when referenced secrets changed
+			enqueueForConfigChange := n.IsAutoErrand() && n.Spec.UpdateOnConfigChange && hasConfigsChanged(o, n)
+			return enqueueForManualErrand || enqueueForConfigChange
 		},
 	}
+
+	// Only reconcile when
 	err = c.Watch(&source.Kind{Type: &ejv1.ExtendedJob{}}, &handler.EnqueueRequestForObject{}, p)
 
 	// Watch ConfigMaps owned by ExtendedJob, works because only auto
@@ -108,4 +117,46 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 	}
 
 	return err
+}
+
+// hasConfigsChanged return true if object's config references changed
+func hasConfigsChanged(oldEJob, newEJob *ejv1.ExtendedJob) bool {
+	oldConfigMaps, oldSecrets := owner.GetConfigNamesFromSpec(oldEJob.Spec.Template.Spec)
+	newConfigMaps, newSecrets := owner.GetConfigNamesFromSpec(newEJob.Spec.Template.Spec)
+
+	if reflect.DeepEqual(oldConfigMaps, newConfigMaps) && reflect.DeepEqual(oldSecrets, newSecrets) {
+		return false
+
+	}
+
+	// For versioned secret, we only enqueue changes for higher version of secrets
+	for newSecret := range newSecrets {
+		secretPrefix := names.GetPrefixFromVersionedSecretName(newSecret)
+		newVersion, err := names.GetVersionFromVersionedSecretName(newSecret)
+		if err != nil {
+			continue
+		}
+
+		if isLowerVersion(oldSecrets, secretPrefix, newVersion) {
+			return false
+		}
+	}
+
+	// other configs changes should be enqueued
+	return true
+}
+
+func isLowerVersion(oldSecrets map[string]struct{}, secretPrefix string, newVersion int) bool {
+	for oldSecret := range oldSecrets {
+		if strings.HasPrefix(oldSecret, secretPrefix) {
+			oldVersion, _ := names.GetVersionFromVersionedSecretName(oldSecret)
+
+			if newVersion < oldVersion {
+				return true
+			}
+		}
+	}
+
+	// if not found in old secrets, it's a new versioned secret
+	return false
 }

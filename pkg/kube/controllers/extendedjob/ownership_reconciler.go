@@ -3,6 +3,7 @@ package extendedjob
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -63,23 +64,24 @@ func (r *OwnershipReconciler) Reconcile(request reconcile.Request) (reconcile.Re
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()
 
-	ctxlog.Info(ctx, "Reconciling errand job configs ownership ", request.NamespacedName)
+	ctxlog.Infof(ctx, "Reconciling EJob '%s' configs ownership", request.NamespacedName)
 	err := r.client.Get(ctx, request.NamespacedName, eJob)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// do not requeue, extended job is probably deleted
-			ctxlog.Infof(ctx, "Failed to find extended job '%s', not retrying: %s", request.NamespacedName, err)
+			ctxlog.Infof(ctx, "Failed to find EJob '%s', not retrying: %s", request.NamespacedName, err)
 			err = nil
 			return result, err
 		}
 		// Error reading the object - requeue the request.
-		ctxlog.Errorf(ctx, "Failed to get the extended job '%s': %s", request.NamespacedName, err)
+		ctxlog.Errorf(ctx, "Failed to get EJob '%s': %s", request.NamespacedName, err)
 		return result, err
 	}
 
+	eJobCopy := eJob.DeepCopy()
 	err = r.versionedSecretStore.UpdateSecretReferences(ctx, eJob.GetNamespace(), &eJob.Spec.Template.Spec)
 	if err != nil {
-		ctxlog.Error(ctx, "Could not update versioned secrets of ExtendedJob '", request.NamespacedName, " before sync': ", err)
+		ctxlog.Errorf(ctx, "Could not update versioned secrets of EJob '%s' before sync: %v", request.NamespacedName, err)
 		return reconcile.Result{}, err
 	}
 
@@ -105,7 +107,7 @@ func (r *OwnershipReconciler) Reconcile(request reconcile.Request) (reconcile.Re
 		return result, err
 	}
 
-	ctxlog.Debugf(ctx, "Updating ownerReferences for ExtendedJob '%s' in namespace '%s'.", eJob.Name, eJob.Namespace)
+	ctxlog.Debugf(ctx, "Updating ownerReferences for EJob '%s' in namespace '%s'", eJob.Name, eJob.Namespace)
 
 	err = r.owner.Sync(ctx, eJob, eJob.Spec.Template.Spec)
 	if err != nil {
@@ -113,11 +115,16 @@ func (r *OwnershipReconciler) Reconcile(request reconcile.Request) (reconcile.Re
 	}
 
 	if !finalizer.HasFinalizer(eJob) {
-		ctxlog.Debugf(ctx, "Add finalizer to extendedJob '%s' in namespace '%s'.", eJob.Name, eJob.Namespace)
+		ctxlog.Debugf(ctx, "Add finalizer to EJob '%s' in namespace '%s'", eJob.Name, eJob.Namespace)
 		finalizer.AddFinalizer(eJob)
+	}
+
+	// Update if needed
+	if !reflect.DeepEqual(eJob, eJobCopy) {
+		ctxlog.Debugf(ctx, "Updating EJob '%s' in namespace '%s'", eJob.Name, eJob.Namespace)
 		err = r.client.Update(ctx, eJob)
 		if err != nil {
-			ctxlog.WithEvent(eJob, "RemoveFinalizerError").Errorf(ctx, "Could not remove finalizer from EJob '%s': %s", eJob.GetName(), err)
+			ctxlog.WithEvent(eJob, "UpdateEJobError").Errorf(ctx, "Could not update EJob '%s': %s", eJob.GetName(), err)
 			return reconcile.Result{}, err
 		}
 	}

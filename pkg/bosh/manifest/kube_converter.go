@@ -199,6 +199,7 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 			},
 		},
 		Spec: ejv1.ExtendedJobSpec{
+			UpdateOnConfigChange: true,
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: eJobName,
