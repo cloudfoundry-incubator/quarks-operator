@@ -62,7 +62,7 @@ func (m *Manifest) ConvertToKube(namespace string) (KubeConfig, error) {
 		return KubeConfig{}, err
 	}
 
-	convertedExtJob, err := m.convertToExtendedJob(namespace)
+	convertedEJob, err := m.convertToExtendedJob(namespace)
 	if err != nil {
 		return KubeConfig{}, err
 	}
@@ -79,7 +79,7 @@ func (m *Manifest) ConvertToKube(namespace string) (KubeConfig, error) {
 
 	kubeConfig.Variables = m.convertVariables(namespace)
 	kubeConfig.InstanceGroups = convertedExtSts
-	kubeConfig.Errands = convertedExtJob
+	kubeConfig.Errands = convertedEJob
 	kubeConfig.VariableInterpolationJob = varInterpolationJob
 	kubeConfig.DataGatheringJob = dataGatheringJob
 
@@ -661,7 +661,7 @@ func (m *Manifest) errandToExtendedJob(ig *InstanceGroup, namespace string) (ejv
 		},
 	}
 
-	extJob := ejv1.ExtendedJob{
+	eJob := ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", m.Name, igName),
 			Namespace: namespace,
@@ -685,23 +685,23 @@ func (m *Manifest) errandToExtendedJob(ig *InstanceGroup, namespace string) (ejv
 			},
 		},
 	}
-	return extJob, nil
+	return eJob, nil
 }
 
 // convertToExtendedJob will convert instance_groups which lifecycle is
 // errand to ExtendedJobs
 func (m *Manifest) convertToExtendedJob(namespace string) ([]ejv1.ExtendedJob, error) {
-	extJobs := []ejv1.ExtendedJob{}
+	eJobs := []ejv1.ExtendedJob{}
 	for _, ig := range m.InstanceGroups {
 		if ig.LifeCycle == "errand" {
-			convertedExtJob, err := m.errandToExtendedJob(ig, namespace)
+			convertedEJob, err := m.errandToExtendedJob(ig, namespace)
 			if err != nil {
 				return []ejv1.ExtendedJob{}, err
 			}
-			extJobs = append(extJobs, convertedExtJob)
+			eJobs = append(eJobs, convertedEJob)
 		}
 	}
-	return extJobs, nil
+	return eJobs, nil
 }
 
 func (m *Manifest) convertVariables(namespace string) []esv1.ExtendedSecret {

@@ -109,15 +109,15 @@ func GetPrefixFromVersionedSecretName(name string) string {
 	return ""
 }
 
-// JobName returns a unique, short name for a given extJob, pod(if exists) combination
+// JobName returns a unique, short name for a given eJob, pod(if exists) combination
 // k8s allows 63 chars, but the pod will have -\d{6} appended
 // IDEA: maybe use pod.Uid instead of rand
-func JobName(extJobName, podName string) (string, error) {
+func JobName(eJobName, podName string) (string, error) {
 	suffix := ""
 	if podName == "" {
-		suffix = truncate(extJobName, 15)
+		suffix = truncate(eJobName, 15)
 	} else {
-		suffix = fmt.Sprintf("%s-%s", truncate(extJobName, 15), truncate(podName, 15))
+		suffix = fmt.Sprintf("%s-%s", truncate(eJobName, 15), truncate(podName, 15))
 	}
 
 	namePrefix := fmt.Sprintf("job-%s", suffix)

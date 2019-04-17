@@ -1,18 +1,17 @@
-package cmd_test
+package manifest_test
 
 import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	. "code.cloudfoundry.org/cf-operator/cmd/internal"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	yaml "gopkg.in/yaml.v2"
 )
 
 var _ = Describe("Trender", func() {
-
 	Context("When flag values and manifest file are specified", func() {
 
 		var (
@@ -23,8 +22,8 @@ var _ = Describe("Trender", func() {
 		)
 
 		BeforeEach(func() {
-			deploymentManifest = "../../testing/assets/gatherManifest.yml"
-			jobsDir = "../../testing/assets"
+			deploymentManifest = "../../../testing/assets/gatherManifest.yml"
+			jobsDir = "../../../testing/assets"
 			instanceGroupName = "log-api"
 		})
 
@@ -34,7 +33,7 @@ var _ = Describe("Trender", func() {
 			})
 
 			It("fails", func() {
-				err := RenderData(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index)
+				err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("no instance found"))
 			})
@@ -46,7 +45,7 @@ var _ = Describe("Trender", func() {
 			})
 
 			It("renders the job erb files correctly", func() {
-				err := RenderData(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index)
+				err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index)
 				Expect(err).ToNot(HaveOccurred())
 
 				absDestFile := filepath.Join(jobsDir, "loggregator_trafficcontroller", "config/bpm.yml")

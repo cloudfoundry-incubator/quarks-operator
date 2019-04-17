@@ -832,9 +832,9 @@ func (m *Machine) CreateExtendedJob(namespace string, job ejv1.ExtendedJob) (*ej
 }
 
 // UpdateExtendedJob updates an extended job
-func (m *Machine) UpdateExtendedJob(namespace string, exJob ejv1.ExtendedJob) error {
+func (m *Machine) UpdateExtendedJob(namespace string, eJob ejv1.ExtendedJob) error {
 	client := m.VersionedClientset.Extendedjob().ExtendedJobs(namespace)
-	_, err := client.Update(&exJob)
+	_, err := client.Update(&eJob)
 	return err
 }
 

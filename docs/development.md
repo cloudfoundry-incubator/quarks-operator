@@ -177,12 +177,12 @@ _, err = controllerutil.CreateOrUpdate(ctx, r.client, tempManifestSecret, func(o
 Care must be taken when persisting objects that are already in their final state because they will be overwritten with the existing state if there already is such an object in the system. The following example shows one way to solve this:
 
 ```go
-_, err = controllerutil.CreateOrUpdate(ctx, r.client, varIntExJob.DeepCopy(), func(obj runtime.Object) error {
+_, err = controllerutil.CreateOrUpdate(ctx, r.client, varIntEJob.DeepCopy(), func(obj runtime.Object) error {
   ejob, ok := obj.(*ejv1.ExtendedJob)
   if !ok {
     return fmt.Errorf("object is not an ExtendedJob")
   }
-  dataGatheringExJob.DeepCopyInto(ejob)
+  dataGatheringEJob.DeepCopyInto(ejob)
   return nil
 })
 ```
