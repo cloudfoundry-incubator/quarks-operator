@@ -77,7 +77,7 @@ These run pods that have multiple init containers for template rendering.
 
 #### Render Templates
 
-Init containers copy the templates of the releases to `/var/vcap/rendering`, which is a shared directory among all containers.
+Init containers copy the templates of the releases to `/var/vcap/all-releases`, which is a shared directory among all containers.
 
 Another init container is run using the operator's image, for rendering all templates. It mounts the property secrets for the instance group (generated in the data gathering step) and performs rendering.
 It's also configured with the following environment variables, to facilitate BOSH `spec.*` property keys:
