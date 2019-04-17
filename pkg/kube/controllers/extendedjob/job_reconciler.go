@@ -100,7 +100,7 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 	if !reflect.DeepEqual(ejv1.Output{}, ej.Spec.Output) && ej.Spec.Output != nil {
 		if instance.Status.Succeeded == 1 || (instance.Status.Failed == 1 && ej.Spec.Output.WriteOnFailure) {
 			ctxlog.WithEvent(&ej, "PersistingOutput").Infof(ctx, "Persisting output of job '%s'", instance.Name)
-			err = r.persistOutput(ctx, ej.GetName(), instance, ej.Spec.Output)
+			err = r.persistOutput(ctx, instance, ej.Spec.Output)
 			if err != nil {
 				ctxlog.WithEvent(instance, "PersistOutputError").Errorf(ctx, "Could not persist output: '%s'", err)
 				return reconcile.Result{}, err
@@ -163,7 +163,7 @@ func (r *ReconcileJob) jobPod(ctx context.Context, name string, namespace string
 	return &list.Items[0], nil
 }
 
-func (r *ReconcileJob) persistOutput(ctx context.Context, eJobName string, instance *batchv1.Job, conf *ejv1.Output) error {
+func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job, conf *ejv1.Output) error {
 	pod, err := r.jobPod(ctx, instance.GetName(), instance.GetNamespace())
 	if err != nil {
 		return errors.Wrap(err, "failed to persist output")
