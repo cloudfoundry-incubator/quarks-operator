@@ -169,7 +169,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	}
 
 	// Update StatefulSets configSHA1 and trigger statefulSet rollingUpdate if necessary
-	if exStatefulSet.Spec.UpdateOnEnvChange {
+	if exStatefulSet.Spec.UpdateOnConfigChange {
 		ctxlog.Debugf(ctx, "Considering configurations to trigger update.")
 
 		err = r.updateStatefulSetsConfigSHA1(ctx, exStatefulSet)

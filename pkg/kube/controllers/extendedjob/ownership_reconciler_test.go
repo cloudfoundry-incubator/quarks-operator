@@ -113,7 +113,7 @@ var _ = Describe("OwnershipReconciler", func() {
 					result, err := act()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(result.Requeue).To(BeFalse())
-					Expect(logs.FilterMessageSnippet("Failed to find extended job '/fake-ejob', not retrying:  \"fake-error\" not found").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Failed to find EJob '/fake-ejob', not retrying:  \"fake-error\" not found").Len()).To(Equal(1))
 				})
 			})
 
@@ -125,7 +125,7 @@ var _ = Describe("OwnershipReconciler", func() {
 				It("should log and return, requeue", func() {
 					_, err := act()
 					Expect(err).To(HaveOccurred())
-					Expect(logs.FilterMessageSnippet("Failed to get the extended job '/fake-ejob': fake-error").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Failed to get EJob '/fake-ejob': fake-error").Len()).To(Equal(1))
 				})
 			})
 		})

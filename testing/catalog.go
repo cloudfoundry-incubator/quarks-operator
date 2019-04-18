@@ -445,8 +445,8 @@ func (c *Catalog) OwnedReferencesExtendedStatefulSet(name string) essv1.Extended
 			Name: name,
 		},
 		Spec: essv1.ExtendedStatefulSetSpec{
-			UpdateOnEnvChange: true,
-			Template:          c.OwnedReferencesStatefulSet(name),
+			UpdateOnConfigChange: true,
+			Template:             c.OwnedReferencesStatefulSet(name),
 		},
 	}
 }

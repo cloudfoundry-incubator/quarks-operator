@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	ctxlog "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
@@ -29,7 +29,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	}
 
 	// Watch for changes to primary resource BOSHDeployment
-	err = c.Watch(&source.Kind{Type: &bdc.BOSHDeployment{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &bdv1.BOSHDeployment{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -37,7 +37,25 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	// Watch for changes to secondary resource Pods and requeue the owner BOSHDeployment
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &bdc.BOSHDeployment{},
+		OwnerType:    &bdv1.BOSHDeployment{},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Watch ConfigMaps owned by resource BOSHDeployment
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{
+		IsController: false,
+		OwnerType:    &bdv1.BOSHDeployment{},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Watch Secrets owned by resource BOSHDeployment
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &bdv1.BOSHDeployment{},
 	})
 	if err != nil {
 		return err

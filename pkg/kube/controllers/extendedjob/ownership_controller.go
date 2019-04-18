@@ -2,6 +2,7 @@ package extendedjob
 
 import (
 	"context"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -90,15 +91,15 @@ func AddOwnership(ctx context.Context, config *config.Config, mgr manager.Manage
 			o := e.Object.(*corev1.Secret)
 
 			// enqueuing secret referenced by EJob
-			reconcile, err := hasSecretReferences(ctx, mgr.GetClient(), *o)
+			enqueueForReferencedSecret, err := hasSecretReferences(ctx, mgr.GetClient(), *o)
 			if err != nil {
 				ctxlog.WithEvent(o, "QueryExtendedJobError").Errorf(ctx, "Failed to query extended jobs: %s", err)
 			}
 
 			// enqueuing versioned secret which has required labels
-			reconcile = hasVersionedSecretReferences(*o)
+			enqueueForVersionedSecret := hasVersionedSecretReferences(*o)
 
-			return reconcile
+			return enqueueForReferencedSecret || enqueueForVersionedSecret
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
@@ -231,14 +232,16 @@ func reconcilesForSecret(ctx context.Context, mgr manager.Manager, secret corev1
 				},
 			})
 		}
-		// add requests for the ExtendedStatefulSet referencing the versioned secret
-		if _, ok := secretNames[referencedSecretName]; ok && referencedSecretName != "" {
-			reconciles = append(reconciles, reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name:      eJob.GetName(),
-					Namespace: eJob.GetNamespace(),
-				},
-			})
+		// add requests for the ExtendedJob referencing the versioned secret
+		for secretName := range secretNames {
+			if strings.HasPrefix(secretName, referencedSecretName) {
+				reconciles = append(reconciles, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      eJob.GetName(),
+						Namespace: eJob.GetNamespace(),
+					},
+				})
+			}
 		}
 	}
 

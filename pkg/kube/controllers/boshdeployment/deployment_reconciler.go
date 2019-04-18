@@ -19,14 +19,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // State of instance
@@ -46,6 +49,12 @@ var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
+// Owner bundles funcs to manage ownership on referenced configmaps and secrets
+type Owner interface {
+	RemoveOwnerReferences(context.Context, apis.Object, []apis.Object) error
+	ListConfigsOwnedBy(context.Context, apis.Object) ([]apis.Object, error)
+}
+
 // NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
 	versionedSecretStore := versionedsecretstore.NewVersionedSecretStore(mgr.GetClient())
@@ -57,6 +66,7 @@ func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manag
 		scheme:               mgr.GetScheme(),
 		resolver:             resolver,
 		setReference:         srf,
+		owner:                owner.NewOwner(mgr.GetClient(), mgr.GetScheme()),
 		versionedSecretStore: versionedSecretStore,
 	}
 }
@@ -71,6 +81,7 @@ type ReconcileBOSHDeployment struct {
 	resolver             bdm.Resolver
 	setReference         setReferenceFunc
 	config               *config.Config
+	owner                Owner
 	versionedSecretStore versionedsecretstore.VersionedSecretStore
 }
 
@@ -102,6 +113,11 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
+	// Clean up instance if has been marked for deletion
+	if instance.ToBeDeleted() {
+		return r.handleDeletion(ctx, instance)
+	}
+
 	// Get state from instance
 	instanceState := instance.Status.State
 
@@ -109,6 +125,20 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	manifest, err := r.resolveManifest(ctx, instance)
 	if err != nil {
 		return reconcile.Result{}, err
+	}
+
+	// Set manifest and ops ownerReference as instance
+	err = r.setSpecsOwnerReference(ctx, instance)
+	if err != nil {
+		log.Errorf(ctx, "Could not set specs ownerReference for instance '%s': %v", request.NamespacedName, err)
+		return reconcile.Result{}, errors.Wrap(err, "could not set specs ownerReference")
+	}
+
+	// Add or update the instance's finalizer
+	err = r.setFinalizer(ctx, instance)
+	if err != nil {
+		log.Errorf(ctx, "Could not set finalizer for instance '%s': %v", request.NamespacedName, err)
+		return reconcile.Result{}, errors.Wrap(err, "could not set instance's finalizer")
 	}
 
 	// Compute SHA1 of the manifest (with ops applied), so we can figure out if anything
@@ -276,6 +306,159 @@ func (r *ReconcileBOSHDeployment) resolveManifest(ctx context.Context, instance 
 	return manifest, nil
 }
 
+// setSpecsOwnerReference set manifest/ops ownerReference as BOSHDeployment instance
+func (r *ReconcileBOSHDeployment) setSpecsOwnerReference(ctx context.Context, instance *bdv1.BOSHDeployment) error {
+	var err error
+
+	// Set manifest's ownerReference as BOSHDeployment instance
+	refType := instance.Spec.Manifest.Type
+	refName := instance.Spec.Manifest.Ref
+
+	switch refType {
+	case bdv1.ConfigMapType:
+		opsConfig := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      refName,
+				Namespace: instance.GetNamespace(),
+			},
+		}
+		err = r.updateObjectWithOwnerReference(ctx, instance, opsConfig)
+		if err != nil {
+			return errors.Wrapf(err, "failed to update configMap '%s/%s'", refName, instance.GetNamespace())
+		}
+	case bdv1.SecretType:
+		opsSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      refName,
+				Namespace: instance.GetNamespace(),
+			}}
+		err = r.updateObjectWithOwnerReference(ctx, instance, opsSecret)
+		if err != nil {
+			return errors.Wrapf(err, "failed to update secret '%s/%s'", refName, instance.GetNamespace())
+		}
+	default:
+		log.Debugf(ctx, "unrecognized ref type %s to set ownerReference", refType)
+	}
+
+	// Set ops' ownerReference as BOSHDeployment instance
+	for _, op := range instance.Spec.Ops {
+		refType = op.Type
+		refName = op.Ref
+
+		switch refType {
+		case bdv1.ConfigMapType:
+			opsConfig := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      refName,
+					Namespace: instance.GetNamespace(),
+				},
+			}
+			err = r.updateObjectWithOwnerReference(ctx, instance, opsConfig)
+			if err != nil {
+				return errors.Wrapf(err, "failed to update configMap '%s/%s'", refName, instance.GetNamespace())
+			}
+		case bdv1.SecretType:
+			opsSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      refName,
+					Namespace: instance.GetNamespace(),
+				}}
+			err = r.updateObjectWithOwnerReference(ctx, instance, opsSecret)
+			if err != nil {
+				return errors.Wrapf(err, "failed to update secret '%s/%s'", refName, instance.GetNamespace())
+			}
+		default:
+			log.Debugf(ctx, "unrecognized ref type %s to set ownerReference", refType)
+		}
+	}
+
+	return err
+}
+
+// updateObjectWithOwnerReference update configMap/secret object as owned by instance
+func (r *ReconcileBOSHDeployment) updateObjectWithOwnerReference(ctx context.Context, instance *bdv1.BOSHDeployment, obj runtime.Object) error {
+	// get the existing object meta
+	metaObj, ok := obj.(metav1.Object)
+	if !ok {
+		return fmt.Errorf("%T does not implement metav1.Object interface", obj)
+	}
+
+	// retrieve the existing object
+	key := client.ObjectKey{
+		Name:      metaObj.GetName(),
+		Namespace: metaObj.GetNamespace(),
+	}
+	err := r.client.Get(ctx, key, obj)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get  secret '%s/%s'", metaObj.GetName(), metaObj.GetNamespace())
+	}
+
+	if err := r.setReference(instance, obj.(metav1.Object), r.scheme); err != nil {
+		return errors.Wrap(err, "could not set reference for a secret for a BOSH Deployment")
+	}
+
+	// update the existing object
+	err = r.client.Update(ctx, obj)
+	if err != nil {
+		return errors.Wrapf(err, "failed to update configMap '%s/%s'", metaObj.GetName(), metaObj.GetNamespace())
+	}
+
+	return nil
+}
+
+// setFinalizer Add the object's Finalizer and update if necessary
+func (r *ReconcileBOSHDeployment) setFinalizer(ctx context.Context, instance *bdv1.BOSHDeployment) error {
+	if !finalizer.HasFinalizer(instance) {
+		log.Debugf(ctx, "Adding Finalizer to BoshDeployment '%s'", instance.GetName())
+		// Fetch latest BoshDeployment before update
+		key := types.NamespacedName{Namespace: instance.GetNamespace(), Name: instance.GetName()}
+		err := r.client.Get(ctx, key, instance)
+		if err != nil {
+			return errors.Wrapf(err, "could not get BoshDeployment '%s'", instance.GetName())
+		}
+
+		finalizer.AddFinalizer(instance)
+
+		err = r.client.Update(ctx, instance)
+		if err != nil {
+			log.Errorf(ctx, "Could not add finalizer from BoshDeployment '%s': %v", instance.GetName(), err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+// handleDeletion remove all ownership from configs and the finalizer from instance
+func (r *ReconcileBOSHDeployment) handleDeletion(ctx context.Context, instance *bdv1.BOSHDeployment) (reconcile.Result, error) {
+
+	existingConfigs, err := r.owner.ListConfigsOwnedBy(ctx, instance)
+	if err != nil {
+		return reconcile.Result{}, errors.Wrapf(err, "Could not list ConfigMaps and Secrets owned by '%s'", instance.Name)
+	}
+	err = r.owner.RemoveOwnerReferences(ctx, instance, existingConfigs)
+	if err != nil {
+		log.Errorf(ctx, "Could not remove OwnerReferences pointing to instance '%s': %s", instance.Name, err)
+		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, err
+	}
+
+	// Use createOrUpdate pattern to remove finalizer
+	_, err = controllerutil.CreateOrUpdate(ctx, r.client, instance.DeepCopy(), func(obj runtime.Object) error {
+		exstInstance, ok := obj.(*bdv1.BOSHDeployment)
+		if !ok {
+			return fmt.Errorf("object is not a BOSHDeployment")
+		}
+		finalizer.RemoveFinalizer(exstInstance)
+		return nil
+	})
+	if err != nil {
+		log.Errorf(ctx, "Could not remove finalizer from BOSHDeployment '%s': %s", instance.GetName(), err)
+		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, errors.Wrapf(err, "Could updating BOSHDeployment '%s'", instance.GetName())
+	}
+
+	return reconcile.Result{}, nil
+}
+
 // generateVariableSecrets create variables extendedSecrets
 func (r *ReconcileBOSHDeployment) generateVariableSecrets(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfig *bdm.KubeConfig) error {
 	log.Debug(ctx, "Creating variables extendedSecrets")
@@ -348,15 +531,15 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationEJob(ctx context.Co
 	}
 
 	_, err = controllerutil.CreateOrUpdate(ctx, r.client, varIntEJob.DeepCopy(), func(obj runtime.Object) error {
-		ejob, ok := obj.(*ejv1.ExtendedJob)
+		exstEJob, ok := obj.(*ejv1.ExtendedJob)
 		if !ok {
 			return fmt.Errorf("object is not an ExtendedJob")
 		}
-		varIntEJob.DeepCopyInto(ejob)
+		exstEJob.Spec = varIntEJob.Spec
 		return nil
 	})
 	if err != nil {
-		log.WarningEvent(ctx, instance, "GetJobForVariableInterpolationError", err.Error())
+		log.WarningEvent(ctx, instance, "CreateExtendedJobForVariableInterpolationError", err.Error())
 		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", varIntEJob.Name)
 	}
 
@@ -379,15 +562,15 @@ func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, in
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.client, dataGatheringEJob.DeepCopy(), func(obj runtime.Object) error {
-		ejob, ok := obj.(*ejv1.ExtendedJob)
+		exstEJob, ok := obj.(*ejv1.ExtendedJob)
 		if !ok {
 			return fmt.Errorf("object is not an ExtendedJob")
 		}
-		dataGatheringEJob.DeepCopyInto(ejob)
+		exstEJob.Spec = dataGatheringEJob.Spec
 		return nil
 	})
 	if err != nil {
-		log.WarningEvent(ctx, instance, "GetJobForDataGatheringError", err.Error())
+		log.WarningEvent(ctx, instance, "CreateJobForDataGatheringError", err.Error())
 		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", dataGatheringEJob.Name)
 	}
 
@@ -442,11 +625,11 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 		}
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
-			ejob, ok := obj.(*ejv1.ExtendedJob)
+			exstEJob, ok := obj.(*ejv1.ExtendedJob)
 			if !ok {
 				return fmt.Errorf("object is not an ExtendedJob")
 			}
-			eJob.DeepCopyInto(ejob)
+			exstEJob.Spec = eJob.Spec
 			return nil
 		})
 		if err != nil {
@@ -463,11 +646,12 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 		}
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eSts.DeepCopy(), func(obj runtime.Object) error {
-			sts, ok := obj.(*estsv1.ExtendedStatefulSet)
+			exstSts, ok := obj.(*estsv1.ExtendedStatefulSet)
 			if !ok {
 				return fmt.Errorf("object is not an ExtendStatefulSet")
 			}
-			eSts.DeepCopyInto(sts)
+
+			exstSts.Spec = eSts.Spec
 			return nil
 		})
 		if err != nil {
