@@ -49,7 +49,7 @@ func (dg *DataGatherer) GenerateManifest(baseDir string, namespace string, insta
 	return dg.ProcessConsumersAndRenderBPM(baseDir, jobReleaseSpecs, jobProviderLinks, instanceGroupName)
 }
 
-// CollectReleaseSpecsAndProviderLinks will collect all release specs and bosh links for provider jobs
+// CollectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
 func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string, namespace string) (map[string]map[string]JobSpec, map[string]map[string]JobLink, error) {
 	// Contains YAML.load('.../release_name/job_name/job.MF')
 	jobReleaseSpecs := map[string]map[string]JobSpec{}
@@ -85,33 +85,7 @@ func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string, name
 			// Generate instance spec for each ig instance
 			// This will be stored inside the current job under
 			// job.properties.bosh_containerization
-			var jobsInstances []JobInstance
-			for i := 0; i < instanceGroup.Instances; i++ {
-
-				// TODO: Understand whether there are negative side-effects to using this
-				// default
-				azs := []string{""}
-				if len(instanceGroup.Azs) > 0 {
-					azs = instanceGroup.Azs
-				}
-
-				for _, az := range azs {
-					index := len(jobsInstances)
-					name := fmt.Sprintf("%s-%s", instanceGroup.Name, job.Name)
-					id := fmt.Sprintf("%s-%d-%s", instanceGroup.Name, index, job.Name)
-					// TODO: not allowed to hardcode svc.cluster.local
-					address := fmt.Sprintf("%s.%s.svc.cluster.local", id, namespace)
-
-					jobsInstances = append(jobsInstances, JobInstance{
-						Address:  address,
-						AZ:       az,
-						ID:       id,
-						Index:    index,
-						Instance: i,
-						Name:     name,
-					})
-				}
-			}
+			jobsInstances := jobInstances(namespace, *instanceGroup, job.Name, spec)
 
 			// set jobs.properties.bosh_containerization.instances with the ig instances
 			instanceGroup.Jobs[jobIdx].Properties.BOSHContainerization.Instances = jobsInstances
@@ -214,7 +188,7 @@ func (dg *DataGatherer) ProcessConsumersAndRenderBPM(baseDir string, jobReleaseS
 			return nil, err
 		}
 
-		err = dg.renderJobBPM(currentJob, baseDir, dg.manifest.Name)
+		err = dg.renderJobBPM(currentJob, baseDir)
 		if err != nil {
 			return nil, err
 		}
@@ -230,7 +204,7 @@ func (dg *DataGatherer) ProcessConsumersAndRenderBPM(baseDir string, jobReleaseS
 }
 
 // renderJobBPM per job and add its value to the jobInstances.BPM field
-func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string, manifestName string) error {
+func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string) error {
 	// Location of the current job job.MF file
 	jobSpecFile := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "job.MF")
 
@@ -290,7 +264,7 @@ func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string, manifestNa
 				AZ:         jobInstance.AZ,
 				ID:         jobInstance.ID,
 				Index:      string(jobInstance.Index),
-				Deployment: manifestName,
+				Deployment: dg.manifest.Name,
 				Name:       jobInstance.Name,
 			},
 
@@ -324,7 +298,7 @@ func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string, manifestNa
 
 	for _, jobBPMInstance := range jobIndexBPM {
 		if !reflect.DeepEqual(jobBPMInstance, jobIndexBPM[0]) {
-			dg.log.Warnf("found different BPM job indexes for job %s in manifest %s, this is NOT SUPPORTED", currentJob.Name, manifestName)
+			dg.log.Warnf("found different BPM job indexes for job %s in manifest %s, this is NOT SUPPORTED", currentJob.Name, dg.manifest.Name)
 		}
 	}
 	currentJob.Properties.BOSHContainerization.BPM = jobIndexBPM[0]
@@ -446,4 +420,36 @@ func lookUpJobRelease(releases []*Release, jobRelease string) bool {
 	}
 
 	return false
+}
+
+func jobInstances(namespace string, instanceGroup InstanceGroup, jobName string, spec JobSpec) []JobInstance {
+	var jobsInstances []JobInstance
+	for i := 0; i < instanceGroup.Instances; i++ {
+
+		// TODO: Understand whether there are negative side-effects to using this
+		// default
+		azs := []string{""}
+		if len(instanceGroup.AZs) > 0 {
+			azs = instanceGroup.AZs
+		}
+
+		for _, az := range azs {
+			index := len(jobsInstances)
+			name := fmt.Sprintf("%s-%s", instanceGroup.Name, jobName)
+			id := fmt.Sprintf("%s-%d-%s", instanceGroup.Name, index, jobName)
+
+			// TODO: not allowed to hardcode svc.cluster.local
+			address := fmt.Sprintf("%s.%s.svc.cluster.local", id, namespace)
+
+			jobsInstances = append(jobsInstances, JobInstance{
+				Address:  address,
+				AZ:       az,
+				ID:       id,
+				Index:    index,
+				Instance: i,
+				Name:     name,
+			})
+		}
+	}
+	return jobsInstances
 }

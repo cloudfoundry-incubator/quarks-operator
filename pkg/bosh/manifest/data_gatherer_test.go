@@ -67,7 +67,7 @@ var _ = Describe("DataGatherer", func() {
 			dg = manifest.NewDataGatherer(log, m)
 		})
 
-		Context("GenerateManifest", func() {
+		Describe("GenerateManifest", func() {
 			BeforeEach(func() {
 				m = env.BOSHManifestWithProviderAndConsumer()
 			})
@@ -80,7 +80,7 @@ var _ = Describe("DataGatherer", func() {
 			})
 		})
 
-		Context("gather job release specs and generate provider links", func() {
+		Describe("CollectReleaseSpecsAndProviderLinks", func() {
 			BeforeEach(func() {
 				m = env.ElaboratedBOSHManifest()
 			})
@@ -112,6 +112,7 @@ var _ = Describe("DataGatherer", func() {
 				Expect(len(cfLinuxReleaseSpec.Consumes)).To(Equal(0))
 				Expect(len(cfLinuxReleaseSpec.Provides)).To(Equal(0))
 			})
+
 			It("should have properties/bosh_containerization/instances populated for each job", func() {
 				_, _, err := dg.CollectReleaseSpecsAndProviderLinks(assetPath, "default")
 				Expect(err).ToNot(HaveOccurred())
@@ -162,54 +163,56 @@ var _ = Describe("DataGatherer", func() {
 			})
 		})
 
-		Context("resolve links between providers and consumers", func() {
-			BeforeEach(func() {
-				m = env.BOSHManifestWithProviderAndConsumer()
-			})
+		Describe("ProcessConsumersAndRenderBPM", func() {
+			Context("when resolving links between providers and consumers", func() {
+				BeforeEach(func() {
+					m = env.BOSHManifestWithProviderAndConsumer()
+				})
 
-			It("should get all required data if the job consumes a link", func() {
-				releaseSpecs, links, _ := dg.CollectReleaseSpecsAndProviderLinks(assetPath, "default")
-				_, err := dg.ProcessConsumersAndRenderBPM(assetPath, releaseSpecs, links, "log-api")
-				Expect(err).ToNot(HaveOccurred())
+				It("should get all required data if the job consumes a link", func() {
+					releaseSpecs, links, _ := dg.CollectReleaseSpecsAndProviderLinks(assetPath, "default")
+					_, err := dg.ProcessConsumersAndRenderBPM(assetPath, releaseSpecs, links, "log-api")
+					Expect(err).ToNot(HaveOccurred())
 
-				// log-api instance_group, with loggregator_trafficcontroller job, consumes a link from
-				// doppler job
-				jobBoshContainerizationConsumes := m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Consumes
+					// log-api instance_group, with loggregator_trafficcontroller job, consumes a link from
+					// doppler job
+					jobBoshContainerizationConsumes := m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Consumes
 
-				Expect(len(releaseSpecs)).To(Equal(1)) // only one release in the manifest.yml sample
+					Expect(len(releaseSpecs)).To(Equal(1)) // only one release in the manifest.yml sample
 
-				jobConsumesFromDoppler, consumeFromDopplerExists := jobBoshContainerizationConsumes["doppler"]
-				Expect(consumeFromDopplerExists).To(BeTrue())
+					jobConsumesFromDoppler, consumeFromDopplerExists := jobBoshContainerizationConsumes["doppler"]
+					Expect(consumeFromDopplerExists).To(BeTrue())
 
-				expectedProperties := map[string]interface{}{
-					"doppler": map[interface{}]interface{}{
-						"grpc_port": 7765,
-					},
-					"fooprop": 10001,
-				}
+					expectedProperties := map[string]interface{}{
+						"doppler": map[interface{}]interface{}{
+							"grpc_port": 7765,
+						},
+						"fooprop": 10001,
+					}
 
-				for i, instance := range jobConsumesFromDoppler.Instances {
-					Expect(instance.Index).To(Equal(i))
-					Expect(instance.Address).To(Equal(fmt.Sprintf("doppler-%v-doppler.default.svc.cluster.local", i)))
-					Expect(instance.ID).To(Equal(fmt.Sprintf("doppler-%v-doppler", i)))
-				}
-				Expect(jobConsumesFromDoppler.Properties).To(BeEquivalentTo(expectedProperties))
-			})
+					for i, instance := range jobConsumesFromDoppler.Instances {
+						Expect(instance.Index).To(Equal(i))
+						Expect(instance.Address).To(Equal(fmt.Sprintf("doppler-%v-doppler.default.svc.cluster.local", i)))
+						Expect(instance.ID).To(Equal(fmt.Sprintf("doppler-%v-doppler", i)))
+					}
+					Expect(jobConsumesFromDoppler.Properties).To(BeEquivalentTo(expectedProperties))
+				})
 
-			It("should get nothing if the job does not consumes a link", func() {
-				releaseSpecs, links, _ := dg.CollectReleaseSpecsAndProviderLinks(assetPath, "default")
-				_, err := dg.ProcessConsumersAndRenderBPM(assetPath, releaseSpecs, links, "log-api")
+				It("should get nothing if the job does not consumes a link", func() {
+					releaseSpecs, links, _ := dg.CollectReleaseSpecsAndProviderLinks(assetPath, "default")
+					_, err := dg.ProcessConsumersAndRenderBPM(assetPath, releaseSpecs, links, "log-api")
 
-				// doppler instance_group, with doppler job, only provides doppler link
-				jobBoshContainerizationConsumes := m.InstanceGroups[0].Jobs[0].Properties.BOSHContainerization.Consumes
-				var emptyJobBoshContainerizationConsumes map[string]JobLink
+					// doppler instance_group, with doppler job, only provides doppler link
+					jobBoshContainerizationConsumes := m.InstanceGroups[0].Jobs[0].Properties.BOSHContainerization.Consumes
+					var emptyJobBoshContainerizationConsumes map[string]JobLink
 
-				Expect(err).ToNot(HaveOccurred())
-				Expect(jobBoshContainerizationConsumes).To(BeEquivalentTo(emptyJobBoshContainerizationConsumes))
+					Expect(err).ToNot(HaveOccurred())
+					Expect(jobBoshContainerizationConsumes).To(BeEquivalentTo(emptyJobBoshContainerizationConsumes))
+				})
 			})
 		})
 
-		Context("rendering ERB files", func() {
+		Context("when rendering ERB files", func() {
 			BeforeEach(func() {
 				m = env.BOSHManifestWithProviderAndConsumer()
 			})
