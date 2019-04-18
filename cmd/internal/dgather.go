@@ -56,8 +56,8 @@ inside a bosh manifest file.
 			return err
 		}
 
-		dg := manifest.NewDataGatherer(log, &boshManifestStruct)
-		result, err := dg.GenerateManifest(baseDir, cfOperatorNamespace, instanceGroupName)
+		dg := manifest.NewDataGatherer(log, cfOperatorNamespace, &boshManifestStruct)
+		result, err := dg.GenerateManifest(baseDir, instanceGroupName)
 		if err != nil {
 			return err
 		}

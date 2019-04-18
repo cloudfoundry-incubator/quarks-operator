@@ -19,15 +19,86 @@ import (
 // DataGatherer gathers data for jobs in the manifest, it handles links and returns a deployment manifest
 // that only has information pertinent to an instance group.
 type DataGatherer struct {
-	log      *zap.SugaredLogger
-	manifest *Manifest
+	log       *zap.SugaredLogger
+	manifest  *Manifest
+	namespace string
+}
+
+type JobProviderLinks map[string]map[string]JobLink
+
+func (jpl JobProviderLinks) Lookup(consumesType string, consumesName string) (JobLink, bool) {
+	link, ok := jpl[consumesType][consumesName]
+	return link, ok
+}
+
+func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstance) error {
+	var properties map[string]interface{}
+
+	for _, provider := range spec.Provides {
+		properties = map[string]interface{}{}
+		for _, property := range provider.Properties {
+			// generate a nested struct of map[string]interface{} when
+			// a property is of the form foo.bar
+			if strings.Contains(property, ".") {
+				propertyStruct := spec.RetrieveNestedProperty(property)
+				properties = propertyStruct
+			} else {
+				properties[property] = spec.RetrievePropertyDefault(property)
+			}
+		}
+		// Override default spec values with explicit settings from the
+		// current bosh deployment manifest, this should be done under each
+		// job, inside a `properties` key.
+		for propertyName := range properties {
+			if explicitSetting, ok := job.Property(propertyName); ok {
+				properties[propertyName] = explicitSetting
+			}
+		}
+		providerName := provider.Name
+		providerType := provider.Type
+
+		// instance_group.job can override the link name through the
+		// instance_group.job.provides, via the "as" key
+		if job.Provides != nil {
+			if value, ok := job.Provides[providerName]; ok {
+				switch value.(type) {
+				case map[interface{}]interface{}:
+					if overrideLinkName, ok := value.(map[interface{}]interface{})["as"]; ok {
+						providerName = fmt.Sprintf("%v", overrideLinkName)
+					}
+				default:
+					return fmt.Errorf("unexpected type detected: %T, should have been a map", value)
+				}
+
+			}
+		}
+
+		if providers, ok := jpl[providerType]; ok {
+			if _, ok := providers[providerName]; ok {
+				return fmt.Errorf("multiple providers for link: name=%s type=%s", providerName, providerType)
+			}
+		}
+
+		if _, ok := jpl[providerType]; !ok {
+			jpl[providerType] = map[string]JobLink{}
+		}
+
+		// construct the jobProviderLinks of the current job that provides
+		// a link
+		jpl[providerType][providerName] = JobLink{
+			Instances:  jobsInstances,
+			Properties: properties,
+		}
+	}
+	return nil
 }
 
 // NewDataGatherer returns a data gatherer with logging for a given input manifest
-func NewDataGatherer(log *zap.SugaredLogger, manifest *Manifest) *DataGatherer {
+func NewDataGatherer(log *zap.SugaredLogger, namespace string, manifest *Manifest) *DataGatherer {
 	return &DataGatherer{
-		log:      log,
-		manifest: manifest,
+		log:       log,
+		manifest:  manifest,
+		namespace: namespace,
 	}
 }
 
@@ -40,8 +111,8 @@ func NewDataGatherer(log *zap.SugaredLogger, manifest *Manifest) *DataGatherer {
 // * job properties
 // * bosh links
 // * bpm yaml file data
-func (dg *DataGatherer) GenerateManifest(baseDir string, namespace string, instanceGroupName string) ([]byte, error) {
-	jobReleaseSpecs, jobProviderLinks, err := dg.CollectReleaseSpecsAndProviderLinks(baseDir, namespace)
+func (dg *DataGatherer) GenerateManifest(baseDir string, instanceGroupName string) ([]byte, error) {
+	jobReleaseSpecs, jobProviderLinks, err := dg.CollectReleaseSpecsAndProviderLinks(baseDir)
 	if err != nil {
 		return nil, err
 	}
@@ -50,12 +121,12 @@ func (dg *DataGatherer) GenerateManifest(baseDir string, namespace string, insta
 }
 
 // CollectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
-func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string, namespace string) (map[string]map[string]JobSpec, map[string]map[string]JobLink, error) {
+func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string) (map[string]map[string]JobSpec, JobProviderLinks, error) {
 	// Contains YAML.load('.../release_name/job_name/job.MF')
 	jobReleaseSpecs := map[string]map[string]JobSpec{}
 
 	// Lists every link provided by the job
-	jobProviderLinks := map[string]map[string]JobLink{}
+	jobProviderLinks := JobProviderLinks{}
 
 	for _, instanceGroup := range dg.manifest.InstanceGroups {
 		for jobIdx, job := range instanceGroup.Jobs {
@@ -66,17 +137,11 @@ func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string, name
 
 			// load job.MF into jobReleaseSpecs[job.Release][job.Name]
 			if _, ok := jobReleaseSpecs[job.Release][job.Name]; !ok {
-				jobMFFilePath := filepath.Join(baseDir, "jobs-src", job.Release, job.Name, "job.MF")
-				jobMfBytes, err := ioutil.ReadFile(jobMFFilePath)
+				jobSpec, err := loadJobSpec(baseDir, job)
 				if err != nil {
 					return nil, nil, err
 				}
-
-				jobSpec := JobSpec{}
-				if err := yaml.Unmarshal([]byte(jobMfBytes), &jobSpec); err != nil {
-					return nil, nil, err
-				}
-				jobReleaseSpecs[job.Release][job.Name] = jobSpec
+				jobReleaseSpecs[job.Release][job.Name] = *jobSpec
 			}
 
 			// spec of the current jobs release/name
@@ -85,7 +150,7 @@ func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string, name
 			// Generate instance spec for each ig instance
 			// This will be stored inside the current job under
 			// job.properties.bosh_containerization
-			jobsInstances := jobInstances(namespace, *instanceGroup, job.Name, spec)
+			jobsInstances := jobInstances(dg.namespace, *instanceGroup, job.Name, spec)
 
 			// set jobs.properties.bosh_containerization.instances with the ig instances
 			instanceGroup.Jobs[jobIdx].Properties.BOSHContainerization.Instances = jobsInstances
@@ -93,65 +158,13 @@ func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string, name
 			// Create a list of fully evaluated links provided by the current job
 			// These is specified in the job release job.MF file
 			if spec.Provides != nil {
-				var properties map[string]interface{}
-
-				for _, provider := range spec.Provides {
-					properties = map[string]interface{}{}
-					for _, property := range provider.Properties {
-						// generate a nested struct of map[string]interface{} when
-						// a property is of the form foo.bar
-						if strings.Contains(property, ".") {
-							propertyStruct := spec.RetrieveNestedProperty(property)
-							properties = propertyStruct
-						} else {
-							properties[property] = spec.RetrievePropertyDefault(property)
-						}
-					}
-					// Override default spec values with explicit settings from the
-					// current bosh deployment manifest, this should be done under each
-					// job, inside a `properties` key.
-					for propertyName := range properties {
-						if explicitSetting, ok := job.Property(propertyName); ok {
-							properties[propertyName] = explicitSetting
-						}
-					}
-					providerName := provider.Name
-					providerType := provider.Type
-
-					// instance_group.job can override the link name through the
-					// instance_group.job.provides, via the "as" key
-					if instanceGroup.Jobs[jobIdx].Provides != nil {
-						if value, ok := instanceGroup.Jobs[jobIdx].Provides[providerName]; ok {
-							switch value.(type) {
-							case map[interface{}]interface{}:
-								if overrideLinkName, ok := value.(map[interface{}]interface{})["as"]; ok {
-									providerName = fmt.Sprintf("%v", overrideLinkName)
-								}
-							default:
-								return nil, nil, fmt.Errorf("unexpected type detected: %T, should have been a map", value)
-							}
-
-						}
-					}
-
-					if providers, ok := jobProviderLinks[providerType]; ok {
-						if _, ok := providers[providerName]; ok {
-							return nil, nil, fmt.Errorf("multiple providers for link: name=%s type=%s", providerName, providerType)
-						}
-					}
-
-					if _, ok := jobProviderLinks[providerType]; !ok {
-						jobProviderLinks[providerType] = map[string]JobLink{}
-					}
-
-					// construct the jobProviderLinks of the current job that provides
-					// a link
-					jobProviderLinks[providerType][providerName] = JobLink{
-						Instances:  jobsInstances,
-						Properties: properties,
-					}
+				err := jobProviderLinks.Add(job, spec, jobsInstances)
+				if err != nil {
+					return nil, nil, err
 				}
+
 			}
+
 		}
 	}
 
@@ -306,9 +319,24 @@ func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string) error {
 	return nil
 }
 
+func loadJobSpec(baseDir string, job Job) (*JobSpec, error) {
+	jobMFFilePath := filepath.Join(baseDir, "jobs-src", job.Release, job.Name, "job.MF")
+	jobMfBytes, err := ioutil.ReadFile(jobMFFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	jobSpec := JobSpec{}
+	if err := yaml.Unmarshal([]byte(jobMfBytes), &jobSpec); err != nil {
+		return nil, err
+	}
+
+	return &jobSpec, nil
+}
+
 // generateJobConsumersData will populate a job with its corresponding provider links
 // under properties.bosh_containerization.consumes
-func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks map[string]map[string]JobLink) error {
+func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks JobProviderLinks) error {
 	currentJobSpecData := jobReleaseSpecs[currentJob.Release][currentJob.Name]
 	for _, consumes := range currentJobSpecData.Consumes {
 
@@ -333,7 +361,7 @@ func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[st
 			}
 		}
 
-		link, hasLink := jobProviderLinks[consumes.Type][consumesName]
+		link, hasLink := jobProviderLinks.Lookup(consumes.Type, consumesName)
 		if !hasLink && !consumes.Optional {
 			return fmt.Errorf("cannot resolve non-optional link for consumer %s", consumesName)
 		}
