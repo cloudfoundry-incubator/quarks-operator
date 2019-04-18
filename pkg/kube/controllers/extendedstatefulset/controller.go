@@ -2,6 +2,7 @@ package extendedstatefulset
 
 import (
 	"context"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -116,6 +117,18 @@ func reconcilesForSecret(ctx context.Context, mgr manager.Manager, secret corev1
 					Namespace: exStatefulSet.GetNamespace(),
 				},
 			})
+		}
+
+		// add requests for the ExtendedStatefulSet referencing the versioned secret when a new ExtendedStatefulSet template updated
+		for secretName := range referencedSecrets {
+			if strings.HasPrefix(secretName, referencedSecretName) {
+				reconciles = append(reconciles, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      exStatefulSet.GetName(),
+						Namespace: exStatefulSet.GetNamespace(),
+					},
+				})
+			}
 		}
 	}
 

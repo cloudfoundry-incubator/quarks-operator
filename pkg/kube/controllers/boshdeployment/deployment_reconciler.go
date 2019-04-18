@@ -130,12 +130,14 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	// Set manifest and ops ownerReference as instance
 	err = r.setSpecsOwnerReference(ctx, instance)
 	if err != nil {
+		log.Errorf(ctx, "Could not set specs ownerReference for instance '%s': %v", request.NamespacedName, err)
 		return reconcile.Result{}, errors.Wrap(err, "could not set specs ownerReference")
 	}
 
 	// Add or update the instance's finalizer
 	err = r.setFinalizer(ctx, instance)
 	if err != nil {
+		log.Errorf(ctx, "Could not set finalizer for instance '%s': %v", request.NamespacedName, err)
 		return reconcile.Result{}, errors.Wrap(err, "could not set instance's finalizer")
 	}
 

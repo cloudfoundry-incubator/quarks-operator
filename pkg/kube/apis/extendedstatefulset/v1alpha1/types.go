@@ -38,7 +38,7 @@ var (
 // ExtendedStatefulSetSpec defines the desired state of ExtendedStatefulSet
 type ExtendedStatefulSetSpec struct {
 	// Indicates whether to update Pods in the StatefulSet when an env value or mount changes
-	UpdateOnEnvChange bool `json:"updateOnEnvChange"`
+	UpdateOnConfigChange bool `json:"updateOnConfigChange"`
 
 	// Indicates the node label that a node locates
 	ZoneNodeLabel string `json:"zoneNodeLabel,omitempty"`

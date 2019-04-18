@@ -4,7 +4,7 @@ metadata:
   name: example-extendedstatefulset
 spec:
   zones: ["dal10", "dal13"]
-  updateOnEnvChange: true
+  updateOnConfigChange: true
   template:
     spec:
       replicas: 2

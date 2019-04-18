@@ -649,7 +649,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				manager.GetClientReturns(client)
 			})
 
-			Context("When UpdateOnEnvChange is false", func() {
+			Context("When UpdateOnConfigChange is false", func() {
 				It("creates new statefulSet and has correct resources", func() {
 					result, err := reconciler.Reconcile(request)
 					Expect(err).ToNot(HaveOccurred())
@@ -694,9 +694,9 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				})
 			})
 
-			Context("When UpdateOnEnvChange is set true", func() {
+			Context("When UpdateOnConfigChange is set true", func() {
 				BeforeEach(func() {
-					desiredExtendedStatefulSet.Spec.UpdateOnEnvChange = true
+					desiredExtendedStatefulSet.Spec.UpdateOnConfigChange = true
 
 					client = fake.NewFakeClient(
 						desiredExtendedStatefulSet,
