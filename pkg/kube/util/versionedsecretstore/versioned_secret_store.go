@@ -280,7 +280,7 @@ func (p VersionedSecretStoreImpl) getGreatestVersion(ctx context.Context, namesp
 
 	var greatestVersion int
 	for _, secret := range list {
-		version, err := getVersionFromSecretName(secret.GetName())
+		version, err := names.GetVersionFromVersionedSecretName(secret.GetName())
 		if err != nil {
 			return 0, err
 		}
@@ -308,20 +308,6 @@ func generateSecretName(namePrefix string, version int) (string, error) {
 	}
 
 	return proposedName, nil
-}
-
-func getVersionFromSecretName(name string) (int, error) {
-	nameRegex := regexp.MustCompile(`^\S+-v(\d+)$`)
-	if captures := nameRegex.FindStringSubmatch(name); len(captures) > 0 {
-		number, err := strconv.Atoi(captures[1])
-		if err != nil {
-			return -1, errors.Wrapf(err, "invalid secret name %s, it does not end with a version number", name)
-		}
-
-		return number, nil
-	}
-
-	return -1, fmt.Errorf("invalid secret name %s, it does not match the naming schema", name)
 }
 
 // replaceVolumesSecretRef replace secret reference of volumes

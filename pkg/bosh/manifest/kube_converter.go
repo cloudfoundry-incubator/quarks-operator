@@ -199,6 +199,7 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 			},
 		},
 		Spec: ejv1.ExtendedJobSpec{
+			UpdateOnConfigChange: true,
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: eJobName,
@@ -559,6 +560,7 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 			},
 		},
 		Spec: essv1.ExtendedStatefulSetSpec{
+			UpdateOnConfigChange: true,
 			Template: v1beta2.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: igName,
@@ -670,6 +672,7 @@ func (m *Manifest) errandToExtendedJob(ig *InstanceGroup, namespace string) (ejv
 			},
 		},
 		Spec: ejv1.ExtendedJobSpec{
+			UpdateOnConfigChange: true,
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: igName,

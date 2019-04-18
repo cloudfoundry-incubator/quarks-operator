@@ -312,7 +312,7 @@ var _ = Describe("ExtendedJob", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				By("waiting for reconcile")
-				Expect(env.WaitForLogMsg(env.ObservedLogs, "Updating ownerReferences for ExtendedJob 'autoerrand-job'")).ToNot(HaveOccurred())
+				Expect(env.WaitForLogMsg(env.ObservedLogs, "Updating ownerReferences for EJob 'autoerrand-job'")).ToNot(HaveOccurred())
 
 				By("checking if config owner references exist")
 				c, _ := env.GetConfigMap(env.Namespace, configMap.Name)

@@ -76,3 +76,9 @@ type BOSHDeploymentList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []BOSHDeployment `json:"items"`
 }
+
+// ToBeDeleted checks whether this BOSHDeployment has been marked for deletion
+func (e *BOSHDeployment) ToBeDeleted() bool {
+	// IsZero means that the object hasn't been marked for deletion
+	return !e.GetDeletionTimestamp().IsZero()
+}

@@ -106,7 +106,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 	// We might want to retrigger an old job due to a config change. In any
 	// case, if it's an auto-errand, let's keep track of the referenced
 	// configs and make sure the finalizer is in place to clean up ownership.
-	if eJob.Spec.UpdateOnConfigChange == true && eJob.Spec.Trigger.Strategy == ejv1.TriggerOnce {
+	if eJob.Spec.UpdateOnConfigChange && eJob.Spec.Trigger.Strategy == ejv1.TriggerOnce {
 		ctxlog.Debugf(ctx, "Synchronizing ownership on configs for eJob '%s' in namespace", eJob.Name)
 		err := r.owner.Sync(ctx, eJob, eJob.Spec.Template.Spec)
 		if err != nil {
