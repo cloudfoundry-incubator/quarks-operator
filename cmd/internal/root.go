@@ -72,9 +72,8 @@ var rootCmd = &cobra.Command{
 
 		log.Fatal(mgr.Start(signals.SetupSignalHandler()))
 	},
+	TraverseChildren: true,
 }
-
-var argToEnv = make(map[string]string)
 
 // NewCFOperatorCommand returns the `cf-operator` command.
 func NewCFOperatorCommand() *cobra.Command {
@@ -107,24 +106,23 @@ func init() {
 	viper.BindPFlag("operator-webhook-port", pf.Lookup("operator-webhook-port"))
 	viper.BindPFlag("docker-image-tag", rootCmd.PersistentFlags().Lookup("docker-image-tag"))
 
-	argToEnv["kubeconfig"] = "KUBECONFIG"
-	argToEnv["cf-operator-namespace"] = "CF_OPERATOR_NAMESPACE"
-	argToEnv["docker-image-org"] = "DOCKER_IMAGE_ORG"
-	argToEnv["docker-image-repository"] = "DOCKER_IMAGE_REPOSITORY"
-	argToEnv["operator-webhook-host"] = "CF_OPERATOR_WEBHOOK_HOST"
-	argToEnv["operator-webhook-port"] = "CF_OPERATOR_WEBHOOK_PORT"
-	argToEnv["docker-image-tag"] = "DOCKER_IMAGE_TAG"
-
-	for arg, env := range argToEnv {
-		viper.BindEnv(arg, env)
+	argToEnv := map[string]string{
+	"kubeconfig": "KUBECONFIG",
+	"cf-operator-namespace": "CF_OPERATOR_NAMESPACE",
+	"docker-image-org": "DOCKER_IMAGE_ORG",
+	"docker-image-repository": "DOCKER_IMAGE_REPOSITORY",
+	"operator-webhook-host": "CF_OPERATOR_WEBHOOK_HOST",
+	"operator-webhook-port": "CF_OPERATOR_WEBHOOK_PORT",
+	"docker-image-tag": "DOCKER_IMAGE_TAG",
 	}
-
+	
 	// Add env variables to help
 	AddEnvToUsage(rootCmd, argToEnv)
 }
 
 // newLogger returns a new zap logger
 func newLogger(options ...zap.Option) *zap.SugaredLogger {
+
 	logger, err := zap.NewDevelopment(options...)
 	if err != nil {
 		golog.Fatalf("cannot initialize ZAP logger: %v", err)
@@ -137,24 +135,13 @@ func AddEnvToUsage(cfOperatorCommand *cobra.Command, argToEnv map[string]string)
 	flagSet := make(map[string]bool)
 
 	for arg, env := range argToEnv {
+		viper.BindEnv(arg, env)
 		flag := cfOperatorCommand.Flag(arg)
 
 		if flag != nil {
 			flagSet[flag.Name] = true
 			// add environment variable to the description
 			flag.Usage = fmt.Sprintf("(%s) %s", env, flag.Usage)
-		}
-
-		//Loop over child commands
-		for _, childCommand := range cfOperatorCommand.Commands() {
-			flag = childCommand.Flag(arg)
-			if flag != nil {
-				_, ok := flagSet[flag.Name]
-				// Not to set twice if it is a parent flag
-				if !ok {
-					flag.Usage = fmt.Sprintf("(%s) %s", env, flag.Usage)
-				}
-			}
 		}
 	}
 }
