@@ -29,19 +29,15 @@ func init() {
 	i := &initCmd{}
 
 	variableInterpolationCmd.RunE = i.runVariableInterpolationCmd
-	rootCmd.AddCommand(variableInterpolationCmd)
-	variableInterpolationCmd.Flags().StringP("bosh-manifest-path", "m", "", "path to a bosh manifest")
+	utilCmd.AddCommand(variableInterpolationCmd)
 	variableInterpolationCmd.Flags().StringP("variables-dir", "v", "", "path to the variables dir")
 
-	viper.BindPFlag("bosh-manifest-path", variableInterpolationCmd.Flags().Lookup("bosh-manifest-path"))
 	viper.BindPFlag("variables-dir", variableInterpolationCmd.Flags().Lookup("variables-dir"))
 
-	argToEnv["bosh-manifest-path"] = "BOSH_MANIFEST_PATH"
-	argToEnv["variables-dir"] = "VARIABLES_DIR"
-
-	for arg, env := range argToEnv {
-		viper.BindEnv(arg, env)
+	argToEnv := map[string]string{
+		"variables-dir": "VARIABLES_DIR",
 	}
+	AddEnvToUsage(variableInterpolationCmd, argToEnv)
 }
 
 func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string) error {

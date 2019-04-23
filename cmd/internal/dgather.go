@@ -81,24 +81,17 @@ inside a bosh manifest file.
 }
 
 func init() {
-	rootCmd.AddCommand(dataGatherCmd)
+	utilCmd.AddCommand(dataGatherCmd)
 
-	dataGatherCmd.Flags().StringP("bosh-manifest-path", "m", "", "path to a bosh manifest file")
 	dataGatherCmd.Flags().String("kubernetes-namespace", "", "the kubernetes namespace")
 	dataGatherCmd.Flags().StringP("base-dir", "b", "", "a path to the base directory")
-	dataGatherCmd.Flags().StringP("instance-group-name", "g", "", "name of the instance group for data gathering")
 
-	viper.BindPFlag("bosh-manifest-path", dataGatherCmd.Flags().Lookup("bosh-manifest-path"))
 	viper.BindPFlag("kubernetes-namespace", dataGatherCmd.Flags().Lookup("kubernetes-namespace"))
 	viper.BindPFlag("base-dir", dataGatherCmd.Flags().Lookup("base-dir"))
-	viper.BindPFlag("instance-group-name", dataGatherCmd.Flags().Lookup("instance-group-name"))
 
-	argToEnv["bosh-manifest-path"] = "BOSH_MANIFEST_PATH"
-	argToEnv["instance-group-name"] = "INSTANCE_GROUP_NAME"
-	argToEnv["kubernetes-namespace"] = "KUBERNETES_NAMESPACE"
-	argToEnv["base-dir"] = "BASE_DIR"
-
-	for arg, env := range argToEnv {
-		viper.BindEnv(arg, env)
+	argToEnv := map[string]string{
+		"kubernetes-namespace": "KUBERNETES_NAMESPACE",
+		"base-dir": "BASE_DIR",
 	}
+	AddEnvToUsage(dataGatherCmd, argToEnv)
 }
