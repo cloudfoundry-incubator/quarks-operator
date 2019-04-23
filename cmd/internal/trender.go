@@ -61,34 +61,27 @@ This will render a provided manifest instance-group
 }
 
 func init() {
-	rootCmd.AddCommand(templateRenderCmd)
+	utilCmd.AddCommand(templateRenderCmd)
 
-	templateRenderCmd.Flags().StringP("bosh-manifest-path", "m", "", "path to the bosh manifest file")
 	templateRenderCmd.Flags().StringP("jobs-dir", "j", "", "path to the jobs dir.")
-	templateRenderCmd.Flags().StringP("instance-group-name", "g", "", "the instance-group name to render")
 	templateRenderCmd.Flags().IntP("spec-index", "", -1, "index of the instance spec")
 	templateRenderCmd.Flags().IntP("az-index", "", -1, "az index")
 	templateRenderCmd.Flags().IntP("pod-ordinal", "", -1, "pod ordinal")
 	templateRenderCmd.Flags().IntP("replicas", "", -1, "number of replicas")
 
-	viper.BindPFlag("bosh-manifest-path", templateRenderCmd.Flags().Lookup("bosh-manifest-path"))
 	viper.BindPFlag("jobs-dir", templateRenderCmd.Flags().Lookup("jobs-dir"))
-	viper.BindPFlag("instance-group-name", templateRenderCmd.Flags().Lookup("instance-group-name"))
 	viper.BindPFlag("az-index", templateRenderCmd.Flags().Lookup("az-index"))
 	viper.BindPFlag("spec-index", templateRenderCmd.Flags().Lookup("spec-index"))
 	viper.BindPFlag("pod-ordinal", templateRenderCmd.Flags().Lookup("pod-ordinal"))
 	viper.BindPFlag("replicas", templateRenderCmd.Flags().Lookup("replicas"))
 
-	argToEnv["bosh-manifest-path"] = "BOSH_MANIFEST_PATH"
-	argToEnv["jobs-dir"] = "JOBS_DIR"
-	argToEnv["instance-group-name"] = "INSTANCE_GROUP_NAME"
-	argToEnv["docker-image-repository"] = "DOCKER_IMAGE_REPOSITORY"
-	argToEnv["spec-index"] = "SPEC_INDEX"
-	argToEnv["az-index"] = "AZ_INDEX"
-	argToEnv["pod-ordinal"] = "POD_ORDINAL"
-	argToEnv["replicas"] = "REPLICAS"
-
-	for arg, env := range argToEnv {
-		viper.BindEnv(arg, env)
+	argToEnv := map[string]string{
+		"jobs-dir": "JOBS_DIR",
+		"docker-image-repository": "DOCKER_IMAGE_REPOSITORY",
+		"spec-index": "SPEC_INDEX",
+		"az-index": "AZ_INDEX",
+		"pod-ordinal": "POD_ORDINAL",
+		"replicas": "REPLICAS",
 	}
+	AddEnvToUsage(templateRenderCmd, argToEnv)
 }
