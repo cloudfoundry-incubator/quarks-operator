@@ -148,7 +148,7 @@ func (e *Environment) setupCFOperator() (err error) {
 
 	operatorDockerImageTag, found := os.LookupEnv("DOCKER_IMAGE_TAG")
 	if !found {
-		operatorDockerImageTag = "latest"
+		return fmt.Errorf("Required environment variable DOCKER_IMAGE_TAG not set")
 	}
 
 	manifest.DockerImageOrganization = operatorDockerImageOrg
