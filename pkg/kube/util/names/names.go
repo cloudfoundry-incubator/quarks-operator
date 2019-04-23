@@ -145,6 +145,21 @@ func JobName(eJobName, podName string) (string, error) {
 	return fmt.Sprintf("%s-%s", namePrefix, hashID), nil
 }
 
+// ServiceName returns a unique, short name for a given instance
+func ServiceName(deploymentName, instanceName string) string {
+	serviceName := fmt.Sprintf("%s-%s-headless", deploymentName, instanceName)
+
+	if len(serviceName) > 63 {
+		// names are limited to 63 characters so we recalculate the name as
+		// <name trimmed to 31 characters>-<md5 hash of name>-headless
+		sumHex := md5.Sum([]byte(serviceName))
+		sum := hex.EncodeToString(sumHex[:])
+		serviceName = fmt.Sprintf("%s-%s-headless", serviceName[:31], sum)
+	}
+
+	return serviceName
+}
+
 func randSuffix(str string) (string, error) {
 	randBytes := make([]byte, 16)
 	_, err := rand.Read(randBytes)

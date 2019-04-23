@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 	"k8s.io/api/apps/v1beta2"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
@@ -46,6 +46,7 @@ type KubeConfig struct {
 	Variables                []esv1.ExtendedSecret
 	InstanceGroups           []essv1.ExtendedStatefulSet
 	Errands                  []ejv1.ExtendedJob
+	Services                 []corev1.Service
 	Namespace                string
 	VariableInterpolationJob *ejv1.ExtendedJob
 	DataGatheringJob         *ejv1.ExtendedJob
@@ -57,7 +58,7 @@ func (m *Manifest) ConvertToKube(namespace string) (KubeConfig, error) {
 		Namespace: namespace,
 	}
 
-	convertedExtSts, err := m.convertToExtendedSts(namespace)
+	convertedExtSts, convertedSvcs, err := m.convertToExtendedStsAndServices(namespace)
 	if err != nil {
 		return KubeConfig{}, err
 	}
@@ -79,6 +80,7 @@ func (m *Manifest) ConvertToKube(namespace string) (KubeConfig, error) {
 
 	kubeConfig.Variables = m.convertVariables(namespace)
 	kubeConfig.InstanceGroups = convertedExtSts
+	kubeConfig.Services = convertedSvcs
 	kubeConfig.Errands = convertedEJob
 	kubeConfig.VariableInterpolationJob = varInterpolationJob
 	kubeConfig.DataGatheringJob = dataGatheringJob
@@ -110,18 +112,18 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 
 	// This is a volume for the "not interpolated" manifest,
 	// that has the ops files applied, but still contains '((vars))'
-	volumes := []v1.Volume{
+	volumes := []corev1.Volume{
 		{
 			Name: generateVolumeName(manifestSecretName),
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
 					SecretName: manifestSecretName,
 				},
 			},
 		},
 	}
 	// Volume mount for the manifest
-	volumeMounts := []v1.VolumeMount{
+	volumeMounts := []corev1.VolumeMount{
 		{
 			Name:      generateVolumeName(manifestSecretName),
 			MountPath: "/var/run/secrets/deployment/",
@@ -135,10 +137,10 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 		varSecretName := names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, m.Name, varName)
 
 		// The volume definition
-		vol := v1.Volume{
+		vol := corev1.Volume{
 			Name: generateVolumeName(varSecretName),
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
 					SecretName: varSecretName,
 				},
 			},
@@ -146,7 +148,7 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 		volumes = append(volumes, vol)
 
 		// And the volume mount
-		volMount := v1.VolumeMount{
+		volMount := corev1.VolumeMount{
 			Name:      generateVolumeName(varSecretName),
 			MountPath: "/var/run/secrets/variables/" + varName,
 			ReadOnly:  true,
@@ -157,16 +159,16 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 	// If there are no variables, mount an empty dir for variables
 	if len(m.Variables) == 0 {
 		// The volume definition
-		vol := v1.Volume{
+		vol := corev1.Volume{
 			Name: generateVolumeName("no-vars"),
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		}
 		volumes = append(volumes, vol)
 
 		// And the volume mount
-		volMount := v1.VolumeMount{
+		volMount := corev1.VolumeMount{
 			Name:      generateVolumeName("no-vars"),
 			MountPath: "/var/run/secrets/variables/",
 			ReadOnly:  true,
@@ -200,23 +202,23 @@ func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob
 		},
 		Spec: ejv1.ExtendedJobSpec{
 			UpdateOnConfigChange: true,
-			Template: v1.PodTemplateSpec{
+			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: eJobName,
 					Labels: map[string]string{
 						"delete": "pod",
 					},
 				},
-				Spec: v1.PodSpec{
-					RestartPolicy: v1.RestartPolicyOnFailure,
-					Containers: []v1.Container{
+				Spec: corev1.PodSpec{
+					RestartPolicy: corev1.RestartPolicyOnFailure,
+					Containers: []corev1.Container{
 						{
 							Name:         VarInterpolationContainerName,
 							Image:        GetOperatorDockerImage(),
 							Command:      cmd,
 							Args:         args,
 							VolumeMounts: volumeMounts,
-							Env: []v1.EnvVar{
+							Env: []corev1.EnvVar{
 								{
 									Name:  "BOSH_MANIFEST_PATH",
 									Value: filepath.Join("/var/run/secrets/deployment/", DesiredManifestKeyName),
@@ -276,8 +278,8 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 		false,
 	)
 
-	initContainers := []v1.Container{}
-	containers := make([]v1.Container, len(m.InstanceGroups))
+	initContainers := []corev1.Container{}
+	containers := make([]corev1.Container, len(m.InstanceGroups))
 
 	doneSpecCopyingReleases := map[string]bool{}
 
@@ -305,12 +307,12 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 
 		// One container per Instance Group
 		// There will be one secret generated for each of these containers
-		containers[idx] = v1.Container{
+		containers[idx] = corev1.Container{
 			Name:    ig.Name,
 			Image:   GetOperatorDockerImage(),
 			Command: []string{"/bin/sh"},
 			Args:    []string{"-c", `cf-operator util data-gather`},
-			VolumeMounts: []v1.VolumeMount{
+			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      generateVolumeName(interpolatedManifestSecretName),
 					MountPath: "/var/run/secrets/deployment/",
@@ -321,7 +323,7 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 					MountPath: "/var/vcap/all-releases",
 				},
 			},
-			Env: []v1.EnvVar{
+			Env: []corev1.EnvVar{
 				{
 					Name:  "BOSH_MANIFEST_PATH",
 					Value: filepath.Join("/var/run/secrets/deployment/", DesiredManifestKeyName),
@@ -360,33 +362,33 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 				Strategy: ejv1.TriggerOnce,
 			},
 			UpdateOnConfigChange: true,
-			Template: v1.PodTemplateSpec{
+			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: eJobName,
 					Labels: map[string]string{
 						"delete": "pod",
 					},
 				},
-				Spec: v1.PodSpec{
-					RestartPolicy: v1.RestartPolicyOnFailure,
+				Spec: corev1.PodSpec{
+					RestartPolicy: corev1.RestartPolicyOnFailure,
 					// Init Container to copy contents
 					InitContainers: initContainers,
 					// Container to run data gathering
 					Containers: containers,
 					// Volumes for secrets
-					Volumes: []v1.Volume{
+					Volumes: []corev1.Volume{
 						{
 							Name: generateVolumeName(interpolatedManifestSecretName),
-							VolumeSource: v1.VolumeSource{
-								Secret: &v1.SecretVolumeSource{
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
 									SecretName: interpolatedManifestSecretName,
 								},
 							},
 						},
 						{
 							Name: generateVolumeName("data-gathering"),
-							VolumeSource: v1.VolumeSource{
-								EmptyDir: &v1.EmptyDirVolumeSource{},
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{},
 							},
 						},
 					},
@@ -398,9 +400,9 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 	return dataGatheringJob, nil
 }
 
-// jobsToInitContainers creates a list of Containers for v1.PodSpec InitContainers field
-func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace string) ([]v1.Container, error) {
-	initContainers := []v1.Container{}
+// jobsToInitContainers creates a list of Containers for corev1.PodSpec InitContainers field
+func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace string) ([]corev1.Container, error) {
+	initContainers := []corev1.Container{}
 
 	// one init container for each release, for copying specs
 	doneReleases := map[string]bool{}
@@ -412,7 +414,7 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 		doneReleases[job.Release] = true
 		releaseImage, err := m.GetReleaseImage(igName, job.Name)
 		if err != nil {
-			return []v1.Container{}, err
+			return []corev1.Container{}, err
 		}
 		initContainers = append(initContainers, m.JobSpecCopierContainer(job.Release, releaseImage, "rendering-data"))
 
@@ -425,7 +427,7 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 		true,
 	)
 
-	volumeMounts := []v1.VolumeMount{
+	volumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "rendering-data",
 			MountPath: "/var/vcap/all-releases",
@@ -441,11 +443,11 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 		},
 	}
 
-	initContainers = append(initContainers, v1.Container{
+	initContainers = append(initContainers, corev1.Container{
 		Name:         fmt.Sprintf("renderer-%s", igName),
 		Image:        GetOperatorDockerImage(),
 		VolumeMounts: volumeMounts,
-		Env: []v1.EnvVar{
+		Env: []corev1.EnvVar{
 			{
 				Name:  "INSTANCE_GROUP_NAME",
 				Value: igName,
@@ -466,9 +468,9 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 	return initContainers, nil
 }
 
-// jobsToContainers creates a list of Containers for v1.PodSpec Containers field
-func (m *Manifest) jobsToContainers(igName string, jobs []Job, namespace string) ([]v1.Container, error) {
-	var jobsToContainerPods []v1.Container
+// jobsToContainers creates a list of Containers for corev1.PodSpec Containers field
+func (m *Manifest) jobsToContainers(igName string, jobs []Job, namespace string) ([]corev1.Container, error) {
+	var jobsToContainerPods []corev1.Container
 
 	if len(jobs) == 0 {
 		return nil, fmt.Errorf("instance group %s has no jobs defined", igName)
@@ -477,12 +479,12 @@ func (m *Manifest) jobsToContainers(igName string, jobs []Job, namespace string)
 	for _, job := range jobs {
 		jobImage, err := m.GetReleaseImage(igName, job.Name)
 		if err != nil {
-			return []v1.Container{}, err
+			return []corev1.Container{}, err
 		}
-		jobsToContainerPods = append(jobsToContainerPods, v1.Container{
+		jobsToContainerPods = append(jobsToContainerPods, corev1.Container{
 			Name:  fmt.Sprintf(job.Name),
 			Image: jobImage,
-			VolumeMounts: []v1.VolumeMount{
+			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "rendering-data",
 					MountPath: "/var/vcap/all-releases",
@@ -524,27 +526,27 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 		true,
 	)
 
-	volumes := []v1.Volume{
+	volumes := []corev1.Volume{
 		{
 			Name:         "rendering-data",
-			VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 		},
 		{
 			Name:         "jobs-dir",
-			VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 		},
 		{
 			Name: generateVolumeName(interpolatedManifestSecretName),
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
 					SecretName: interpolatedManifestSecretName,
 				},
 			},
 		},
 		{
 			Name: generateVolumeName(resolvedPropertiesSecretName),
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
 					SecretName: resolvedPropertiesSecretName,
 				},
 			},
@@ -573,7 +575,7 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 							LabelInstanceGroupName:   igName,
 						},
 					},
-					Template: v1.PodTemplateSpec{
+					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: igName,
 							Labels: map[string]string{
@@ -581,7 +583,7 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 								LabelInstanceGroupName:   igName,
 							},
 						},
-						Spec: v1.PodSpec{
+						Spec: corev1.PodSpec{
 							Volumes:        volumes,
 							Containers:     listOfContainers,
 							InitContainers: listOfInitContainers,
@@ -594,20 +596,75 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 	return extSts, nil
 }
 
-// convertToExtendedSts will convert instance_groups whose lifecycle
-// is service, to ExtendedStatefulSets
-func (m *Manifest) convertToExtendedSts(namespace string) ([]essv1.ExtendedStatefulSet, error) {
+// serviceToKubeService will generate a Service which expose ports for InstanceGroup's jobs
+func (m *Manifest) serviceToKubeService(ig *InstanceGroup, eSts *essv1.ExtendedStatefulSet, namespace string) (*corev1.Service, error) {
+	var service *corev1.Service
+	igName := ig.Name
+
+	ports := []corev1.ServicePort{}
+
+	// Collect ports to be exposed for jobs
+	for _, job := range ig.Jobs {
+		for _, port := range job.Properties.BOSHContainerization.Ports {
+			ports = append(ports, corev1.ServicePort{
+				Name:     port.Name,
+				Protocol: corev1.Protocol(port.Protocol),
+				Port:     int32(port.Internal),
+			})
+		}
+	}
+
+	if len(ports) != 0 {
+		service = &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      names.ServiceName(m.Name, igName),
+				Namespace: namespace,
+				Labels: map[string]string{
+					"instance-group": igName,
+				},
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: ports,
+				Selector: map[string]string{
+					"instance-group": igName,
+				},
+				ClusterIP: "None",
+			},
+		}
+
+		// Set service name of ExtendedStatefulSet
+		eSts.Spec.Template.Spec.ServiceName = names.ServiceName(m.Name, igName)
+	}
+
+	return service, nil
+}
+
+// convertToExtendedStsAndServices will convert instance_groups whose lifecycle
+// is service, to ExtendedStatefulSets and their Services
+func (m *Manifest) convertToExtendedStsAndServices(namespace string) ([]essv1.ExtendedStatefulSet, []corev1.Service, error) {
 	extStsList := []essv1.ExtendedStatefulSet{}
+	svcList := []corev1.Service{}
+
 	for _, ig := range m.InstanceGroups {
 		if ig.LifeCycle == "service" || ig.LifeCycle == "" {
 			convertedExtStatefulSet, err := m.serviceToExtendedSts(ig, namespace)
 			if err != nil {
-				return []essv1.ExtendedStatefulSet{}, err
+				return []essv1.ExtendedStatefulSet{}, []corev1.Service{}, err
 			}
+
+			convertedService, err := m.serviceToKubeService(ig, &convertedExtStatefulSet, namespace)
+			if err != nil {
+				return []essv1.ExtendedStatefulSet{}, []corev1.Service{}, err
+			}
+			if convertedService != nil {
+				svcList = append(svcList, *convertedService)
+			}
+
 			extStsList = append(extStsList, convertedExtStatefulSet)
 		}
 	}
-	return extStsList, nil
+
+	return extStsList, svcList, nil
 }
 
 // errandToExtendedJob will generate an ExtendedJob
@@ -636,27 +693,27 @@ func (m *Manifest) errandToExtendedJob(ig *InstanceGroup, namespace string) (ejv
 		true,
 	)
 
-	volumes := []v1.Volume{
+	volumes := []corev1.Volume{
 		{
 			Name:         "rendering-data",
-			VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 		},
 		{
 			Name:         "jobs-dir",
-			VolumeSource: v1.VolumeSource{EmptyDir: &v1.EmptyDirVolumeSource{}},
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 		},
 		{
 			Name: generateVolumeName(interpolatedManifestSecretName),
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
 					SecretName: interpolatedManifestSecretName,
 				},
 			},
 		},
 		{
 			Name: generateVolumeName(resolvedPropertiesSecretName),
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
 					SecretName: resolvedPropertiesSecretName,
 				},
 			},
@@ -673,14 +730,14 @@ func (m *Manifest) errandToExtendedJob(ig *InstanceGroup, namespace string) (ejv
 		},
 		Spec: ejv1.ExtendedJobSpec{
 			UpdateOnConfigChange: true,
-			Template: v1.PodTemplateSpec{
+			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: igName,
 					Labels: map[string]string{
 						"delete": "pod",
 					},
 				},
-				Spec: v1.PodSpec{
+				Spec: corev1.PodSpec{
 					Containers:     listOfContainers,
 					InitContainers: listOfInitContainers,
 					Volumes:        volumes,
@@ -809,7 +866,7 @@ func GetOperatorDockerImage() string {
 // ApplyBPMInfo uses BOSH Process Manager information to update container information like entrypoint, env vars, etc.
 func (m *Manifest) ApplyBPMInfo(kubeConfig *KubeConfig, allResolvedProperties map[string]Manifest) error {
 
-	applyBPMOnContainer := func(igName string, container *v1.Container) error {
+	applyBPMOnContainer := func(igName string, container *corev1.Container) error {
 		boshJobName := container.Name
 
 		igResolvedProperties, ok := allResolvedProperties[igName]
@@ -836,7 +893,7 @@ func (m *Manifest) ApplyBPMInfo(kubeConfig *KubeConfig, allResolvedProperties ma
 		container.Command = []string{process.Executable}
 		container.Args = process.Args
 		for name, value := range process.Env {
-			container.Env = append(container.Env, v1.EnvVar{Name: name, Value: value})
+			container.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
 		}
 		container.WorkingDir = process.Workdir
 
@@ -874,14 +931,14 @@ func (m *Manifest) ApplyBPMInfo(kubeConfig *KubeConfig, allResolvedProperties ma
 	return nil
 }
 
-// JobSpecCopierContainer will return a v1.Container{} with the populated field
-func (m *Manifest) JobSpecCopierContainer(releaseName string, releaseImage string, volumeMountName string) v1.Container {
+// JobSpecCopierContainer will return a corev1.Container{} with the populated field
+func (m *Manifest) JobSpecCopierContainer(releaseName string, releaseImage string, volumeMountName string) corev1.Container {
 
 	inContainerReleasePath := filepath.Join("/var/vcap/all-releases/jobs-src", releaseName)
-	initContainers := v1.Container{
+	initContainers := corev1.Container{
 		Name:  fmt.Sprintf("spec-copier-%s", releaseName),
 		Image: releaseImage,
-		VolumeMounts: []v1.VolumeMount{
+		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      volumeMountName,
 				MountPath: "/var/vcap/all-releases",

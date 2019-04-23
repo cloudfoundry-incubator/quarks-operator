@@ -69,6 +69,14 @@ type BOSHContainerization struct {
 	Instances []JobInstance      `yaml:"instances"`
 	Release   string             `yaml:"release"`
 	BPM       bpm.Config         `yaml:"bpm"`
+	Ports     []Port             `yaml:"ports"`
+}
+
+// Port represents the port to be opened up for this job
+type Port struct {
+	Name     string `yaml:"name"`
+	Protocol string `yaml:"protocol"`
+	Internal int    `yaml:"internal"`
 }
 
 // JobProperties represents the properties map of a Job
