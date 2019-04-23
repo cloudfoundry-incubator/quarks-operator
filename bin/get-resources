@@ -1,0 +1,64 @@
+#!/bin/bash
+
+set -euo pipefail
+
+function usage() {
+  echo "Usage: $0 [options]"
+  echo "Options:"
+  echo "   -n|--namespace <Kubernetes namespace to monitor>"
+  echo "   -h|--help <Info about how to use this script>"
+  echo
+}
+
+function monitor_ns_resources(){
+  echo "[INFO] Going to monitor all resources in ${NAMESPACE}."
+  while read -r RESOURCE_NAME API_GROUP; do
+    API_GROUP_INFO=$([ "${API_GROUP}" == "" ] && echo "" || echo ".${API_GROUP}")
+    if kubectl api-resources --namespaced=true --api-group="${API_GROUP}" | grep "${RESOURCE_NAME}" > /dev/null; then
+      echo -e "\\n[INFO] Retrieving ${RESOURCE_NAME}${API_GROUP_INFO} resources from ${NAMESPACE} namespace.\\n"
+      kubectl -n "${NAMESPACE}" get "${RESOURCE_NAME}"
+    fi
+  done <<EOL
+  configmaps 
+  persistentvolumeclaims
+  pods
+  secrets
+  services
+  deployments apps
+  statefulsets apps
+  jobs batch
+  boshdeployments fissile.cloudfoundry.org
+  extendedjobs fissile.cloudfoundry.org
+  extendedsecrets fissile.cloudfoundry.org
+  extendedstatefulsets fissile.cloudfoundry.org
+EOL
+}
+
+function parse_cmd() {
+  if [ $# -gt 0 ]; then
+    OPTION=$1
+    shift
+    case ${OPTION} in
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      -n | --namespace)
+        NAMESPACE=$1
+        monitor_ns_resources
+        shift
+        ;;
+      *)
+        echo "ERROR: Invalid argument ${OPTION}"
+        usage
+        exit 1
+        ;;
+    esac
+  else
+    usage
+    exit 0
+  fi
+}
+
+parse_cmd "$@"
+
