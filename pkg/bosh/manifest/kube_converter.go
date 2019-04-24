@@ -101,7 +101,7 @@ func generateVolumeName(secretName string) string {
 // variableInterpolationJob returns an extended job to interpolate variables
 func (m *Manifest) variableInterpolationJob(namespace string) (*ejv1.ExtendedJob, error) {
 	cmd := []string{"/bin/sh"}
-	args := []string{"-c", `cf-operator variable-interpolation`}
+	args := []string{"-c", `cf-operator util variable-interpolation`}
 
 	// This is the source manifest, that still has the '((vars))'
 	manifestSecretName := names.CalculateSecretName(names.DeploymentSecretTypeManifestWithOps, m.Name, "")
@@ -309,7 +309,7 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 			Name:    ig.Name,
 			Image:   GetOperatorDockerImage(),
 			Command: []string{"/bin/sh"},
-			Args:    []string{"-c", `cf-operator data-gather`},
+			Args:    []string{"-c", `cf-operator util data-gather`},
 			VolumeMounts: []v1.VolumeMount{
 				{
 					Name:      generateVolumeName(interpolatedManifestSecretName),
@@ -460,7 +460,7 @@ func (m *Manifest) jobsToInitContainers(igName string, jobs []Job, namespace str
 			},
 		},
 		Command: []string{"/bin/sh"},
-		Args:    []string{"-c", `cf-operator template-render`},
+		Args:    []string{"-c", `cf-operator util template-render`},
 	})
 
 	return initContainers, nil

@@ -1,6 +1,11 @@
 #!/bin/bash
 set -eu
 
+GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
+. "${GIT_ROOT}/bin/include/versioning"
+
+export DOCKER_IMAGE_TAG=${VERSION_TAG}
+
 echo "Test logs are here: /tmp/cf-operator-tests.log"
 
 if [ -z ${TEST_NAMESPACE+x} ]; then
