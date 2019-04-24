@@ -1,11 +1,12 @@
 package integration_test
 
 import (
-	"code.cloudfoundry.org/cf-operator/integration/environment"
-	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+
+	"code.cloudfoundry.org/cf-operator/integration/environment"
+	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 )
 
 var _ = Describe("Lifecycle", func() {
@@ -31,6 +32,17 @@ var _ = Describe("Lifecycle", func() {
 
 			err = env.WaitForPod(env.Namespace, "testcr-nats-v1-0")
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from initial deployment")
+
+			// check for service
+			svc, err := env.GetService(env.Namespace, "testcr-nats-headless")
+			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
+			Expect(svc.Spec.Ports)
+			Expect(svc.Spec.Selector).To(Equal(map[string]string{
+				"instance-group": "nats",
+			}))
+			Expect(svc.Spec.Ports[0].Name).To(Equal("nats"))
+			Expect(svc.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
+			Expect(svc.Spec.Ports[0].Port).To(Equal(int32(4222)))
 		})
 	})
 

@@ -73,6 +73,11 @@ instance_groups:
   properties:
     foo:
       app_domain: "((app_domain))"
+    bosh_containerization:
+      ports:
+      - name: "redis"
+        protocol: "TCP"
+        internal: 6379
 - name: diego-cell
   azs:
   - z1
@@ -91,6 +96,11 @@ instance_groups:
     properties:
       foo:
         domain: "((system_domain))"
+      bosh_containerization:
+        ports:
+        - name: "rep-server"
+          protocol: "TCP"
+          internal: 1801
 variables:
 - name: "adminpass"
   type: "password"
@@ -293,6 +303,11 @@ instance_groups:
       nats:
         user: admin
         password: changeme
+      bosh_containerization:
+        ports:
+        - name: "nats"
+          protocol: "TCP"
+          internal: 4222
 `,
 		},
 	}

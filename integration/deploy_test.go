@@ -3,15 +3,18 @@ package integration_test
 import (
 	"time"
 
-	"code.cloudfoundry.org/cf-operator/integration/environment"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+
+	"code.cloudfoundry.org/cf-operator/integration/environment"
 )
 
 var _ = Describe("Deploy", func() {
 	Context("when correctly setup", func() {
 		podName := "test-nats-v1-0"
 		stsName := "test-nats-v1"
+		svcName := "test-nats-headless"
 
 		AfterEach(func() {
 			Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
@@ -29,6 +32,17 @@ var _ = Describe("Deploy", func() {
 			// check for pod
 			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
+
+			// check for service
+			svc, err := env.GetService(env.Namespace, svcName)
+			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
+			Expect(svc.Spec.Ports)
+			Expect(svc.Spec.Selector).To(Equal(map[string]string{
+				"instance-group": "nats",
+			}))
+			Expect(svc.Spec.Ports[0].Name).To(Equal("nats"))
+			Expect(svc.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
+			Expect(svc.Spec.Ports[0].Port).To(Equal(int32(4222)))
 		})
 
 		It("should deploy a pod with 1 nanosecond for the reconciler context", func() {
