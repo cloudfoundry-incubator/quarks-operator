@@ -1,5 +1,21 @@
 ## Use Cases
 
-**exstatefulset_configs.yaml**   : Exstatefulset configs will create two extendedstatefulset pods. exstatefulset_configs_updated.yaml is a copy of the **exstatefulset_configs.yaml** except the value of key1 in config1 ConfigMap is changed. When **exstatefulset_configs_updated.yaml** is applied using kubectl, the statefulset pods get updated with the new value of the of key1 in the environment.
-**exstatefulset_configs.yaml**   : Exstatefulset azs will create 4 extendedstatefulset pods, 2 in one zone and 2 in another zone as specified in the config yaml.
+- [Use Cases](#use-cases)
+  - [exstatefulset_configs.yaml](#exstatefulsetconfigsyaml)
+  - [exstatefulset_configs_updated.yaml](#exstatefulsetconfigsupdatedyaml)
+  - [exstatefulset_azs.yaml](#exstatefulsetazsyaml)
+
+### exstatefulset_configs.yaml
+
+This creates a `StatefulSet` with two `Pods`.
+
+### exstatefulset_configs_updated.yaml
+
+This is a copy of `exstatefulset_configs.yaml`, with one config value changed. 
+
+When applied on top using `kubectl`, this exemplifies the automatic updating of the `Pods` with a new value for the `SPECIAL_KEY` environment variable.
+
+### exstatefulset_azs.yaml
+
+This creates 4 `Pods` - 2 in one zone and 2 in another zone.
 

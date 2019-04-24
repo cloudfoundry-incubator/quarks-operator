@@ -28,15 +28,15 @@ var _ = Describe("Examples", func() {
 
 		Context("all examples must be working", func() {
 
-			It("extended-job-triggers ready example must work", func() {
+			It("extended-job ready example must work", func() {
 
-				yamlFilePath := "../docs/examples/extended-job-triggers/exjob_trigger_ready.yaml"
+				yamlFilePath := "../docs/examples/extended-job/exjob_trigger_ready.yaml"
 
 				By("Creating exjob_trigger")
 				err := kubectlHelper.Create(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
-				yamlPodFilePath := "../docs/examples/extended-job-triggers/pod.yaml"
+				yamlPodFilePath := "../docs/examples/extended-job/pod.yaml"
 
 				By("Creating pod")
 				kubectlHelper = testing.NewKubectl()
@@ -179,7 +179,7 @@ var _ = Describe("Examples", func() {
 
 			It("extended-job auto errand delete example must work", func() {
 
-				yamlFilePath := "../docs/examples/extended-job-triggers/exjob_auto-errand-deletes-pod.yaml"
+				yamlFilePath := "../docs/examples/extended-job/exjob_auto-errand-deletes-pod.yaml"
 
 				By("Creating exjob")
 				kubectlHelper := testing.NewKubectl()
@@ -200,7 +200,7 @@ var _ = Describe("Examples", func() {
 
 			It("extended-job auto errand example must work", func() {
 
-				yamlFilePath := "../docs/examples/extended-job-triggers/exjob_auto-errand.yaml"
+				yamlFilePath := "../docs/examples/extended-job/exjob_auto-errand.yaml"
 
 				By("Creating exjob")
 				kubectlHelper := testing.NewKubectl()
@@ -224,7 +224,7 @@ var _ = Describe("Examples", func() {
 
 			It("extended-job auto errand update example must work", func() {
 
-				yamlFilePath := "../docs/examples/extended-job-triggers/exjob_auto-errand-updating.yaml"
+				yamlFilePath := "../docs/examples/extended-job/exjob_auto-errand-updating.yaml"
 
 				By("Creating exjob")
 				kubectlHelper := testing.NewKubectl()
@@ -243,7 +243,7 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Update the config change")
-				yamlFilePath = "../docs/examples/extended-job-triggers/exjob_auto-errand-updating_updated.yaml"
+				yamlFilePath = "../docs/examples/extended-job/exjob_auto-errand-updating_updated.yaml"
 
 				err = kubectlHelper.Apply(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
@@ -265,7 +265,7 @@ var _ = Describe("Examples", func() {
 
 			It("extended-job errand example must work", func() {
 
-				yamlFilePath := "../docs/examples/extended-job-triggers/exjob_errand.yaml"
+				yamlFilePath := "../docs/examples/extended-job/exjob_errand.yaml"
 
 				By("Creating exjob")
 				kubectlHelper := testing.NewKubectl()
@@ -274,7 +274,7 @@ var _ = Describe("Examples", func() {
 
 				By("Updating exjob to trigger now")
 
-				yamlFilePath = "../docs/examples/extended-job-triggers/exjob_errand_updated.yaml"
+				yamlFilePath = "../docs/examples/extended-job/exjob_errand_updated.yaml"
 
 				err = kubectlHelper.Apply(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
@@ -296,7 +296,7 @@ var _ = Describe("Examples", func() {
 
 			It("extended-job output example must work", func() {
 
-				yamlFilePath := "../docs/examples/extended-job-triggers/exjob_output.yaml"
+				yamlFilePath := "../docs/examples/extended-job/exjob_output.yaml"
 
 				By("Creating exjob")
 				kubectlHelper := testing.NewKubectl()
@@ -323,9 +323,9 @@ var _ = Describe("Examples", func() {
 
 			It("extended-secret example must work", func() {
 
-				yamlFilePath := "../docs/examples/extended-job-triggers/exjob_secret.yaml"
+				yamlFilePath := "../docs/examples/extended-secret/password.yaml"
 
-				By("Creating exjob_secret")
+				By("Creating an ExtendedSecret")
 				kubectlHelper := testing.NewKubectl()
 				err := kubectlHelper.Create(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
