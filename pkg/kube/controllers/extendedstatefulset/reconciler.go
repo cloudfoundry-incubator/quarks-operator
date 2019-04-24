@@ -424,7 +424,7 @@ func (r *ReconcileExtendedStatefulSet) listStatefulSetVersions(ctx context.Conte
 // isStatefulSetReady returns true if one owned Pod is running
 func (r *ReconcileExtendedStatefulSet) isStatefulSetReady(ctx context.Context, statefulSet *v1beta2.StatefulSet) (bool, error) {
 	labelsSelector := labels.Set{
-		"controller-revision-hash": statefulSet.Status.CurrentRevision,
+		v1beta2.StatefulSetRevisionLabel: statefulSet.Status.CurrentRevision,
 	}
 
 	podList := &corev1.PodList{}

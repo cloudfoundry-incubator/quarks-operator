@@ -186,7 +186,7 @@ var _ = Describe("kube converter", func() {
 				aService := kubeConfig.Services[0]
 				Expect(aService.Name).To(Equal(fmt.Sprintf("%s-%s-headless", m.Name, anExtendedSts.Name)))
 				Expect(aService.Spec.Selector).To(Equal(map[string]string{
-					"instance-group": anExtendedSts.Name,
+					manifest.LabelInstanceGroupName: anExtendedSts.Name,
 				}))
 				Expect(aService.Spec.Ports).To(Equal([]corev1.ServicePort{
 					{

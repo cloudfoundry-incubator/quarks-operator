@@ -558,7 +558,7 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 			Name:      fmt.Sprintf("%s-%s", m.Name, igName),
 			Namespace: namespace,
 			Labels: map[string]string{
-				"instance-group": igName,
+				LabelInstanceGroupName: igName,
 			},
 		},
 		Spec: essv1.ExtendedStatefulSetSpec{
@@ -620,13 +620,13 @@ func (m *Manifest) serviceToKubeService(ig *InstanceGroup, eSts *essv1.ExtendedS
 				Name:      names.ServiceName(m.Name, igName),
 				Namespace: namespace,
 				Labels: map[string]string{
-					"instance-group": igName,
+					LabelInstanceGroupName: igName,
 				},
 			},
 			Spec: corev1.ServiceSpec{
 				Ports: ports,
 				Selector: map[string]string{
-					"instance-group": igName,
+					LabelInstanceGroupName: igName,
 				},
 				ClusterIP: "None",
 			},
@@ -725,7 +725,7 @@ func (m *Manifest) errandToExtendedJob(ig *InstanceGroup, namespace string) (ejv
 			Name:      fmt.Sprintf("%s-%s", m.Name, igName),
 			Namespace: namespace,
 			Labels: map[string]string{
-				"instance-group": igName,
+				LabelInstanceGroupName: igName,
 			},
 		},
 		Spec: ejv1.ExtendedJobSpec{
@@ -902,7 +902,7 @@ func (m *Manifest) ApplyBPMInfo(kubeConfig *KubeConfig, allResolvedProperties ma
 
 	for idx := range kubeConfig.InstanceGroups {
 		igSts := &(kubeConfig.InstanceGroups[idx])
-		igName := igSts.Labels["instance-group"]
+		igName := igSts.Labels[LabelInstanceGroupName]
 
 		// Go through each container
 		for idx := range igSts.Spec.Template.Spec.Template.Spec.Containers {
@@ -917,7 +917,7 @@ func (m *Manifest) ApplyBPMInfo(kubeConfig *KubeConfig, allResolvedProperties ma
 
 	for idx := range kubeConfig.Errands {
 		igJob := &(kubeConfig.Errands[idx])
-		igName := igJob.Labels["instance-group"]
+		igName := igJob.Labels[LabelInstanceGroupName]
 
 		for idx := range igJob.Spec.Template.Spec.Containers {
 			container := &(igJob.Spec.Template.Spec.Containers[idx])

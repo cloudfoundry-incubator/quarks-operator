@@ -152,7 +152,7 @@ Our Concourse pipeline definitions are kept in the [cf-operator-ci](https://gith
 
 ## Create-Or-Update pattern
 
-A pattern that comes up quite often is that an object needs to be updated if it already exists or created if it doesn't. `controller-runtime` provides the `controller-util` package which has a `CreateOrUpdate` function that can help with that. It takes a skeleton object and a reconcile function that is caleld in both the create and the update case:
+A pattern that comes up quite often is that an object needs to be updated if it already exists or created if it doesn't. `controller-runtime` provides the `controller-util` package which has a `CreateOrUpdate` function that can help with that. It takes a skeleton object and a reconcile function that is called in both the create and the update case:
 
 ```go
 tempManifestSecret := &corev1.Secret{

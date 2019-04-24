@@ -6,6 +6,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/integration/environment"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 )
 
@@ -38,7 +39,7 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
 			Expect(svc.Spec.Ports)
 			Expect(svc.Spec.Selector).To(Equal(map[string]string{
-				"instance-group": "nats",
+				bdm.LabelInstanceGroupName: "nats",
 			}))
 			Expect(svc.Spec.Ports[0].Name).To(Equal("nats"))
 			Expect(svc.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
