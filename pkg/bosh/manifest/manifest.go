@@ -161,7 +161,7 @@ type AgentEnv struct {
 type InstanceGroup struct {
 	Name               string                 `yaml:"name"`
 	Instances          int                    `yaml:"instances"`
-	Azs                []string               `yaml:"azs"`
+	AZs                []string               `yaml:"azs"`
 	Jobs               []Job                  `yaml:"jobs"`
 	VMType             string                 `yaml:"vm_type,omitempty"`
 	VMExtensions       []string               `yaml:"vm_extensions,omitempty"`

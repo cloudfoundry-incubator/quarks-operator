@@ -539,9 +539,9 @@ var _ = Describe("Bosh Manifest Schema", func() {
 			})
 		})
 
-		Describe("Azs", func() {
+		Describe("AZs", func() {
 			It("contains desired values", func() {
-				Expect(getStructTagForName("Azs", instanceGroup)).To(Equal(
+				Expect(getStructTagForName("AZs", instanceGroup)).To(Equal(
 					`yaml:"azs"`,
 				))
 			})
