@@ -204,13 +204,16 @@ instance_groups:
   value: values`))
 
 		interpolator = &fakes.FakeInterpolator{}
-		resolver = bdm.NewResolver(client, interpolator)
+		newInterpolatorFunc := func() bdm.Interpolator {
+			return interpolator
+		}
+		resolver = bdm.NewResolver(client, newInterpolatorFunc)
 	})
 
 	Describe("ResolveCRD", func() {
 		It("works for valid CRs by using config map", func() {
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.ConfigMapType,
 						Ref:  "base-manifest",
@@ -239,8 +242,8 @@ instance_groups:
 		})
 
 		It("works for valid CRs by using secret", func() {
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.SecretType,
 						Ref:  "opaque-manifest",
@@ -269,8 +272,8 @@ instance_groups:
 		})
 
 		It("works for valid CRs by using URL", func() {
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.URLType,
 						Ref:  remoteFileServer.URL() + validManifestPath,
@@ -303,8 +306,8 @@ instance_groups:
     instances: 2
 `), nil)
 
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.ConfigMapType,
 						Ref:  "base-manifest",
@@ -349,8 +352,8 @@ instance_groups:
     instances: 4
 `), nil)
 
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.ConfigMapType,
 						Ref:  "base-manifest",
@@ -403,8 +406,8 @@ instance_groups:
 		})
 
 		It("throws an error if the manifest can not be found", func() {
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.ConfigMapType,
 						Ref:  "not-existing",
@@ -417,8 +420,8 @@ instance_groups:
 		})
 
 		It("throws an error if the CR is empty", func() {
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.ConfigMapType,
 						Ref:  "empty-ref",
@@ -431,8 +434,8 @@ instance_groups:
 		})
 
 		It("throws an error on invalid yaml", func() {
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.ConfigMapType,
 						Ref:  "invalid-yaml",
@@ -446,8 +449,8 @@ instance_groups:
 
 		It("throws an error if containing unsupported manifest type", func() {
 			interpolator.InterpolateReturns(nil, errors.New("fake-error"))
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: "unsupported_type",
 						Ref:  "base-manifest",
@@ -460,8 +463,8 @@ instance_groups:
 		})
 
 		It("throws an error if ops configMap can not be found", func() {
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.ConfigMapType,
 						Ref:  "base-manifest",
@@ -480,8 +483,8 @@ instance_groups:
 		})
 
 		It("throws an error if ops configMap is empty", func() {
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.ConfigMapType,
 						Ref:  "base-manifest",
@@ -502,8 +505,8 @@ instance_groups:
 		It("throws an error if build invalid ops", func() {
 			interpolator.BuildOpsReturns(errors.New("fake-error"))
 
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.ConfigMapType,
 						Ref:  "base-manifest",
@@ -523,8 +526,8 @@ instance_groups:
 
 		It("throws an error if interpolate a missing key into a manifest", func() {
 			interpolator.InterpolateReturns(nil, errors.New("fake-error"))
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.ConfigMapType,
 						Ref:  "base-manifest",
@@ -544,8 +547,8 @@ instance_groups:
 
 		It("throws an error if containing unsupported ops type", func() {
 			interpolator.InterpolateReturns(nil, errors.New("fake-error"))
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.ConfigMapType,
 						Ref:  "base-manifest",
@@ -564,8 +567,8 @@ instance_groups:
 		})
 
 		It("throws an error if one config map can not be found when contains multi-ops", func() {
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.ConfigMapType,
 						Ref:  "base-manifest",
@@ -588,8 +591,8 @@ instance_groups:
 		})
 
 		It("throws an error if one secret can not be found when contains multi-ops", func() {
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.ConfigMapType,
 						Ref:  "base-manifest",
@@ -612,8 +615,8 @@ instance_groups:
 		})
 
 		It("throws an error if one url ref can not be found when contains multi-ops", func() {
-			deployment := &bdc.BOSHDeployment {
-				Spec: bdc.BOSHDeploymentSpec {
+			deployment := &bdc.BOSHDeployment{
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.ConfigMapType,
 						Ref:  "base-manifest",
@@ -641,17 +644,16 @@ instance_groups:
 		})
 
 		It("replaces implicit variables", func() {
-			deployment := &bdc.BOSHDeployment {
+			deployment := &bdc.BOSHDeployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "foo-deployment",
 				},
-				Spec: bdc.BOSHDeploymentSpec {
+				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.Manifest{
 						Type: bdc.ConfigMapType,
 						Ref:  "manifest-with-vars",
 					},
-					Ops: []bdc.Ops{
-					},
+					Ops: []bdc.Ops{},
 				},
 			}
 			m, err := resolver.ResolveManifest(deployment, "default")

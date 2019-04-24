@@ -25,17 +25,21 @@ type Resolver interface {
 
 // ResolverImpl implements Resolver interface
 type ResolverImpl struct {
-	client       client.Client
-	interpolator Interpolator
+	client              client.Client
+	newInterpolatorFunc func() Interpolator
 }
 
+// NewInterpolatorFunc returns a fresh Interpolator
+type NewInterpolatorFunc func() Interpolator
+
 // NewResolver constructs a resolver
-func NewResolver(client client.Client, interpolator Interpolator) *ResolverImpl {
-	return &ResolverImpl{client: client, interpolator: interpolator}
+func NewResolver(client client.Client, f NewInterpolatorFunc) *ResolverImpl {
+	return &ResolverImpl{client: client, newInterpolatorFunc: f}
 }
 
 // ResolveManifest returns manifest referenced by our CRD
 func (r *ResolverImpl) ResolveManifest(instance *bdc.BOSHDeployment, namespace string) (*Manifest, error) {
+	interpolator := r.newInterpolatorFunc()
 	spec := instance.Spec
 	manifest := &Manifest{}
 	var (
@@ -77,13 +81,13 @@ func (r *ResolverImpl) ResolveManifest(instance *bdc.BOSHDeployment, namespace s
 		if err != nil {
 			return manifest, err
 		}
-		err = r.interpolator.BuildOps([]byte(opsData))
+		err = interpolator.BuildOps([]byte(opsData))
 		if err != nil {
 			return manifest, errors.Wrapf(err, "failed to build ops with: %#v", opsData)
 		}
 	}
 
-	bytes, err := r.interpolator.Interpolate([]byte(m))
+	bytes, err := interpolator.Interpolate([]byte(m))
 	if err != nil {
 		return manifest, errors.Wrapf(err, "failed to interpolate %#v", m)
 	}
