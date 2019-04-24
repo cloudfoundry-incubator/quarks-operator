@@ -5,13 +5,29 @@ set -euo pipefail
 function usage() {
   echo "Usage: $0 [options]"
   echo "Options:"
-  echo "   -n|--namespace <Kubernetes namespace to monitor>"
-  echo "   -h|--help <Info about how to use this script>"
+  echo "   -n|--namespace <value>"
+  echo "                  Mandatory: specify the namespace to monitor resources (default: all resources)"
+  echo "   -bdpl|--boshdeployment"
+  echo "                  Optional: get a boshdeployment and related objects"
+  echo "   -ejob|--extendedjobs"
+  echo "                  Optional: get a extendedjobs and related objects"
+  echo "   -esec|--extendedsecrets"
+  echo "                  Optional: get a extendedsecrets and related objects"
+  echo "   -ests|--extendedstatefulsets"
+  echo "                  Optional: get a extendedstatefulsets and related objects"
+  echo "   -h|--help"
+  echo "                  Information about how to use this script"
   echo
 }
 
+function monitor_ns_resource(){
+  RESOURCE_NAME=$1
+
+  echo -e "\\n[INFO] Going to monitor ${RESOURCE_NAME} in ${NAMESPACE} ns.\\n"
+  kubectl -n "${NAMESPACE}" get "${RESOURCE_NAME}"
+}
+
 function monitor_ns_resources(){
-  echo "[INFO] Going to monitor all resources in ${NAMESPACE}."
   while read -r RESOURCE_NAME API_GROUP; do
     API_GROUP_INFO=$([ "${API_GROUP}" == "" ] && echo "" || echo ".${API_GROUP}")
     if kubectl api-resources --namespaced=true --api-group="${API_GROUP}" | grep "${RESOURCE_NAME}" > /dev/null; then
@@ -34,8 +50,29 @@ function monitor_ns_resources(){
 EOL
 }
 
+function select_resource(){
+  case "${DESIREDRESOURCE}" in
+       boshdeployments)
+            monitor_ns_resource "${DESIREDRESOURCE}"
+            ;;
+       extendedjobs)
+            monitor_ns_resource "${DESIREDRESOURCE}"
+            ;;
+       extendedsecrets)
+            monitor_ns_resource "${DESIREDRESOURCE}"
+            ;;
+       extendedstatefulsets)
+            monitor_ns_resource "${DESIREDRESOURCE}"
+            ;;
+       *)
+            echo "[INFO] Going to monitor all resources in ${NAMESPACE}."
+            monitor_ns_resources "${DESIREDRESOURCE}"
+            ;;
+  esac
+}
+
 function parse_cmd() {
-  if [ $# -gt 0 ]; then
+  while [ $# -gt 0 ]; do
     OPTION=$1
     shift
     case ${OPTION} in
@@ -45,8 +82,19 @@ function parse_cmd() {
         ;;
       -n | --namespace)
         NAMESPACE=$1
-        monitor_ns_resources
         shift
+        ;;
+      -bdpl | --boshdeployments)
+        DESIREDRESOURCE="boshdeployments"
+        ;;
+      -ejob | --extendedjobs)
+        DESIREDRESOURCE="extendedjobs"
+        ;;
+      -esec | --extendedsecrets)
+        DESIREDRESOURCE="extendedsecrets"
+        ;;
+      -ests | --extendedstatefulsets)
+        DESIREDRESOURCE="extendedstatefulsets"
         ;;
       *)
         echo "ERROR: Invalid argument ${OPTION}"
@@ -54,11 +102,18 @@ function parse_cmd() {
         exit 1
         ;;
     esac
-  else
-    usage
-    exit 0
-  fi
+  done
 }
 
 parse_cmd "$@"
 
+if [ -z "${DESIREDRESOURCE:-}" ]; then
+  DESIREDRESOURCE="all"
+fi
+
+if [ -z "${NAMESPACE:-}" ]; then
+  usage
+  exit 1
+fi
+
+select_resource
