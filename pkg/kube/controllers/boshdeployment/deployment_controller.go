@@ -20,7 +20,7 @@ import (
 // and Start it when the Manager is Started.
 func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "boshdeployment-reconciler", mgr.GetRecorder("boshdeployment-recorder"))
-	r := NewReconciler(ctx, config, mgr, bdm.NewResolver(mgr.GetClient(), bdm.NewInterpolator()), controllerutil.SetControllerReference)
+	r := NewReconciler(ctx, config, mgr, bdm.NewResolver(mgr.GetClient(), func() bdm.Interpolator { return bdm.NewInterpolator() }), controllerutil.SetControllerReference)
 
 	// Create a new controller
 	c, err := controller.New("boshdeployment-controller", mgr, controller.Options{Reconciler: r})
