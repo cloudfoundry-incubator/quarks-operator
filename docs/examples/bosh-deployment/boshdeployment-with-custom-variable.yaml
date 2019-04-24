@@ -23,8 +23,7 @@ data:
         properties:
           nats:
             user: admin
-            password: ((nats_password))
-            customed_password: ((customed_password))
+            password: ((customed_password))
     variables:
     - name: nats_password
       type: password
@@ -60,3 +59,4 @@ metadata:
 type: Opaque
 stringData:
   password: customed_password
+
