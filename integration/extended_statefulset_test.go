@@ -314,35 +314,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			extendedStatefulSet = env.ExtendedStatefulSetWithPVC(essName, "pvc")
 		})
 
-		It("VolumeMount name's should have version", func() {
-			By("Creating an ExtendedStatefulSet")
-			var ess *essv1.ExtendedStatefulSet
-			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(ess).NotTo(Equal(nil))
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-
-			statefulSetName := fmt.Sprintf("%s-v%d", ess.GetName(), 1)
-
-			By("Waiting for the Statefulset")
-			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
-			Expect(err).NotTo(HaveOccurred())
-
-			podName := fmt.Sprintf("%s-v%d-%d", ess.GetName(), 1, 0)
-
-			By("Getting the first pod, pod-0")
-			pod, err := env.GetPod(env.Namespace, podName)
-			Expect(err).NotTo(HaveOccurred())
-			volumeMounts := make(map[string]corev1.VolumeMount, len(pod.Spec.Containers[0].VolumeMounts))
-
-			for _, volumeMount := range pod.Spec.Containers[0].VolumeMounts {
-				volumeMounts[volumeMount.Name] = volumeMount
-			}
-			_, ok := volumeMounts["pvc-v1"]
-			Expect(ok).To(Equal(true))
-		})
-
-		It("Should append earliest version volume when spec is updated", func() {
+		It("Should append the volumemanagement persistent volume claim always even when spec is updated", func() {
 
 			By("Creating an ExtendedStatefulSet")
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
@@ -356,7 +328,13 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Updating the ExtendedStatefulSet")
+			volumeManagementStatefulSetName := fmt.Sprintf("%s-%s", "volumemanagement", ess.GetName())
+
+			By("Checking that volumemanagement statefulset is deleted")
+			err = env.WaitForStatefulSetDelete(env.Namespace, volumeManagementStatefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Updating the ExtendedStatefulSet to v2")
 			Expect(env.WaitForLogMsg(env.ObservedLogs, "Updating ExtendedStatefulSet")).To(Succeed())
 			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
 			Expect(err).NotTo(HaveOccurred())
@@ -368,7 +346,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(essUpdated).NotTo(Equal(nil))
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			statefulSetName = fmt.Sprintf("%s-v%d", essUpdated.GetName(), 2)
+			statefulSetName = fmt.Sprintf("%s-v%d", ess.GetName(), 2)
 
 			By("Waiting for the statefulset")
 			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
@@ -376,29 +354,33 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			podName := fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 2, 0)
 
-			By("Fetching a pod of v2-0")
+			By("Checking pod v2-0 volumeclaim name")
 			pod, err := env.GetPod(env.Namespace, podName)
 			volumes := make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
 			}
 
-			By("Checking the volume names")
-			_, ok := volumes["pvc-v1"]
-			Expect(ok).To(Equal(true))
-			_, ok = volumes["pvc-v2"]
-			Expect(ok).To(Equal(true))
+			By("Checking the persistent volume claim name")
+			PersistentVolumeClaim := fmt.Sprintf("%s-%s-%s-%d", "pvc", "volumemanagement", ess.GetName(), 0)
+			Expect(volumes["pvc"].PersistentVolumeClaim.ClaimName).To(Equal(PersistentVolumeClaim))
 
-			volumeMounts := make(map[string]corev1.VolumeMount, len(pod.Spec.Containers[0].VolumeMounts))
-			for _, volumeMount := range pod.Spec.Containers[0].VolumeMounts {
-				volumeMounts[volumeMount.Name] = volumeMount
+			podName = fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 2, 1)
+
+			By("Checking pod v2-1 volumeclaim name")
+			pod, err = env.GetPod(env.Namespace, podName)
+			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
 			}
 
-			By("Checking the volumeMount's names")
-			_, ok = volumeMounts["pvc-v1"]
-			Expect(ok).To(Equal(true))
-			_, ok = volumeMounts["pvc-v2"]
-			Expect(ok).NotTo(Equal(true))
+			By("Checking the persistent volume claim name")
+			PersistentVolumeClaim = fmt.Sprintf("%s-%s-%s-%d", "pvc", "volumemanagement", ess.GetName(), 1)
+			Expect(volumes["pvc"].PersistentVolumeClaim.ClaimName).To(Equal(PersistentVolumeClaim))
+
+			By("Checking that volumemanagement statefulset is deleted")
+			err = env.WaitForStatefulSetDelete(env.Namespace, volumeManagementStatefulSetName)
+			Expect(err).NotTo(HaveOccurred())
 
 			By("Updating the statefulset to v3")
 			Expect(env.WaitForLogMsg(env.ObservedLogs, "Updating ExtendedStatefulSet")).To(Succeed())
@@ -412,41 +394,359 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(essUpdated).NotTo(Equal(nil))
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			statefulSetName = fmt.Sprintf("%s-v%d", essUpdated.GetName(), 3)
+			statefulSetName = fmt.Sprintf("%s-v%d", ess.GetName(), 3)
 
 			By("Waiting for the statefulset")
 			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
 			Expect(err).NotTo(HaveOccurred())
 
-			podName = fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 3, 1)
+			podName = fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 3, 0)
 
-			By("Fetching the statefulset pod v3-1")
+			By("Checking pod v3-0 volumeclaim name")
 			pod, err = env.GetPod(env.Namespace, podName)
 			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
 			}
 
-			By("Checking the volume names")
-			_, ok = volumes["pvc-v3"]
-			Expect(ok).To(Equal(true))
-			_, ok = volumes["pvc-v2"]
-			Expect(ok).To(Equal(true))
-			_, ok = volumes["pvc-v1"]
-			Expect(ok).NotTo(Equal(true))
+			By("Checking the persistent volume claim name")
+			PersistentVolumeClaim = fmt.Sprintf("%s-%s-%s-%d", "pvc", "volumemanagement", ess.GetName(), 0)
+			Expect(volumes["pvc"].PersistentVolumeClaim.ClaimName).To(Equal(PersistentVolumeClaim))
 
-			volumeMounts = make(map[string]corev1.VolumeMount, len(pod.Spec.Containers[0].VolumeMounts))
-			for _, volumeMount := range pod.Spec.Containers[0].VolumeMounts {
-				volumeMounts[volumeMount.Name] = volumeMount
+			podName = fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 3, 1)
+
+			By("Checking pod v3-1 volumeclaim name")
+			pod, err = env.GetPod(env.Namespace, podName)
+			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
 			}
 
-			By("Checking the volumeMount names")
-			_, ok = volumeMounts["pvc-v2"]
-			Expect(ok).To(Equal(true))
-			_, ok = volumeMounts["pvc-v1"]
-			Expect(ok).NotTo(Equal(true))
-			_, ok = volumeMounts["pvc-v3"]
-			Expect(ok).NotTo(Equal(true))
+			By("Checking the persistent volume claim name")
+			PersistentVolumeClaim = fmt.Sprintf("%s-%s-%s-%d", "pvc", "volumemanagement", ess.GetName(), 1)
+			Expect(volumes["pvc"].PersistentVolumeClaim.ClaimName).To(Equal(PersistentVolumeClaim))
+
+			By("Checking that volumemanagement statefulset is deleted")
+			err = env.WaitForStatefulSetDelete(env.Namespace, volumeManagementStatefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Updating the statefulset to v4")
+			Expect(env.WaitForLogMsg(env.ObservedLogs, "Updating ExtendedStatefulSet")).To(Succeed())
+			essUpdated, err = env.GetExtendedStatefulSet(env.Namespace, essUpdated.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+
+			*essUpdated.Spec.Template.Spec.Replicas -= 1
+			essUpdated, tearDown, err = env.UpdateExtendedStatefulSet(env.Namespace, *essUpdated)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			statefulSetName = fmt.Sprintf("%s-v%d", ess.GetName(), 4)
+
+			By("Waiting for the statefulset")
+			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			podName = fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 4, 0)
+
+			By("Checking pod v4-0 volumeclaim name")
+			pod, err = env.GetPod(env.Namespace, podName)
+			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
+			}
+
+			By("Checking the persistent volume claim name")
+			PersistentVolumeClaim = fmt.Sprintf("%s-%s-%s-%d", "pvc", "volumemanagement", ess.GetName(), 0)
+			Expect(volumes["pvc"].PersistentVolumeClaim.ClaimName).To(Equal(PersistentVolumeClaim))
+
+			By("Checking that volumemanagement statefulset is deleted")
+			err = env.WaitForStatefulSetDelete(env.Namespace, volumeManagementStatefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Should append the volumemanagement persistent volume claim when the replicas are increased twice", func() {
+
+			By("Creating an ExtendedStatefulSet")
+			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			statefulSetName := fmt.Sprintf("%s-v%d", ess.GetName(), 1)
+
+			By("Waiting for the statefulset")
+			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			volumeManagementStatefulSetName := fmt.Sprintf("%s-%s", "volumemanagement", ess.GetName())
+
+			By("Checking that volumemanagement statefulset is deleted")
+			err = env.WaitForStatefulSetDelete(env.Namespace, volumeManagementStatefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Updating the ExtendedStatefulSet to v2")
+			Expect(env.WaitForLogMsg(env.ObservedLogs, "Updating ExtendedStatefulSet")).To(Succeed())
+			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+
+			*ess.Spec.Template.Spec.Replicas += 1
+			essUpdated, tearDown, err := env.UpdateExtendedStatefulSet(env.Namespace, *ess)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			statefulSetName = fmt.Sprintf("%s-v%d", ess.GetName(), 2)
+
+			By("Waiting for the statefulset")
+			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			podName := fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 2, 0)
+
+			By("Checking pod v2-0 volumeclaim name")
+			pod, err := env.GetPod(env.Namespace, podName)
+			volumes := make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
+			}
+
+			By("Checking the persistent volume claim name")
+			PersistentVolumeClaim := fmt.Sprintf("%s-%s-%s-%d", "pvc", "volumemanagement", ess.GetName(), 0)
+			Expect(volumes["pvc"].PersistentVolumeClaim.ClaimName).To(Equal(PersistentVolumeClaim))
+
+			podName = fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 2, 1)
+
+			By("Checking pod v2-1 volumeclaim name")
+			pod, err = env.GetPod(env.Namespace, podName)
+			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
+			}
+
+			By("Checking the persistent volume claim name")
+			PersistentVolumeClaim = fmt.Sprintf("%s-%s-%s-%d", "pvc", "volumemanagement", ess.GetName(), 1)
+			Expect(volumes["pvc"].PersistentVolumeClaim.ClaimName).To(Equal(PersistentVolumeClaim))
+
+			By("Checking that volumemanagement statefulset is deleted")
+			err = env.WaitForStatefulSetDelete(env.Namespace, volumeManagementStatefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Updating the statefulset to v3")
+			Expect(env.WaitForLogMsg(env.ObservedLogs, "Updating ExtendedStatefulSet")).To(Succeed())
+			essUpdated, err = env.GetExtendedStatefulSet(env.Namespace, essUpdated.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+
+			*essUpdated.Spec.Template.Spec.Replicas += 2
+			essUpdated, tearDown, err = env.UpdateExtendedStatefulSet(env.Namespace, *essUpdated)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			statefulSetName = fmt.Sprintf("%s-v%d", ess.GetName(), 3)
+
+			By("Waiting for the statefulset")
+			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			podName = fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 3, 0)
+
+			By("Checking pod v3-0 volumeclaim name")
+			pod, err = env.GetPod(env.Namespace, podName)
+			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
+			}
+
+			By("Checking the persistent volume claim name")
+			PersistentVolumeClaim = fmt.Sprintf("%s-%s-%s-%d", "pvc", "volumemanagement", ess.GetName(), 0)
+			Expect(volumes["pvc"].PersistentVolumeClaim.ClaimName).To(Equal(PersistentVolumeClaim))
+
+			podName = fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 3, 1)
+
+			By("Checking pod v3-1 volumeclaim name")
+			pod, err = env.GetPod(env.Namespace, podName)
+			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
+			}
+
+			By("Checking the persistent volume claim name")
+			PersistentVolumeClaim = fmt.Sprintf("%s-%s-%s-%d", "pvc", "volumemanagement", ess.GetName(), 1)
+			Expect(volumes["pvc"].PersistentVolumeClaim.ClaimName).To(Equal(PersistentVolumeClaim))
+
+			podName = fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 3, 2)
+
+			By("Checking pod v3-2 volumeclaim name")
+			pod, err = env.GetPod(env.Namespace, podName)
+			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
+			}
+
+			By("Checking the persistent volume claim name")
+			PersistentVolumeClaim = fmt.Sprintf("%s-%s-%s-%d", "pvc", "volumemanagement", ess.GetName(), 2)
+			Expect(volumes["pvc"].PersistentVolumeClaim.ClaimName).To(Equal(PersistentVolumeClaim))
+
+			By("Checking that volumemanagement statefulset is deleted")
+			err = env.WaitForStatefulSetDelete(env.Namespace, volumeManagementStatefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+		})
+
+		It("Should append the volumemanagement persistent volume claim when the replicas are decreased twice", func() {
+
+			By("Creating an ExtendedStatefulSet")
+			*extendedStatefulSet.Spec.Template.Spec.Replicas = 4
+			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			statefulSetName := fmt.Sprintf("%s-v%d", ess.GetName(), 1)
+
+			By("Waiting for the statefulset")
+			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			volumeManagementStatefulSetName := fmt.Sprintf("%s-%s", "volumemanagement", ess.GetName())
+
+			By("Checking that volumemanagement statefulset is deleted")
+			err = env.WaitForStatefulSetDelete(env.Namespace, volumeManagementStatefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Updating the ExtendedStatefulSet to v2")
+			Expect(env.WaitForLogMsg(env.ObservedLogs, "Updating ExtendedStatefulSet")).To(Succeed())
+			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+
+			*ess.Spec.Template.Spec.Replicas -= 1
+			essUpdated, tearDown, err := env.UpdateExtendedStatefulSet(env.Namespace, *ess)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			statefulSetName = fmt.Sprintf("%s-v%d", ess.GetName(), 2)
+
+			By("Waiting for the statefulset")
+			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			podName := fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 2, 0)
+
+			By("Checking pod v2-0 volumeclaim name")
+			pod, err := env.GetPod(env.Namespace, podName)
+			volumes := make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
+			}
+
+			By("Checking the persistent volume claim name")
+			PersistentVolumeClaim := fmt.Sprintf("%s-%s-%s-%d", "pvc", "volumemanagement", ess.GetName(), 0)
+			Expect(volumes["pvc"].PersistentVolumeClaim.ClaimName).To(Equal(PersistentVolumeClaim))
+
+			podName = fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 2, 1)
+
+			By("Checking pod v2-1 volumeclaim name")
+			pod, err = env.GetPod(env.Namespace, podName)
+			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
+			}
+
+			By("Checking the persistent volume claim name")
+			PersistentVolumeClaim = fmt.Sprintf("%s-%s-%s-%d", "pvc", "volumemanagement", ess.GetName(), 1)
+			Expect(volumes["pvc"].PersistentVolumeClaim.ClaimName).To(Equal(PersistentVolumeClaim))
+
+			podName = fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 2, 2)
+
+			By("Checking pod v2-2 volumeclaim name")
+			pod, err = env.GetPod(env.Namespace, podName)
+			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
+			}
+
+			By("Checking the persistent volume claim name")
+			PersistentVolumeClaim = fmt.Sprintf("%s-%s-%s-%d", "pvc", "volumemanagement", ess.GetName(), 2)
+			Expect(volumes["pvc"].PersistentVolumeClaim.ClaimName).To(Equal(PersistentVolumeClaim))
+
+			By("Checking that volumemanagement statefulset is deleted")
+			err = env.WaitForStatefulSetDelete(env.Namespace, volumeManagementStatefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Updating the statefulset to v3")
+			Expect(env.WaitForLogMsg(env.ObservedLogs, "Updating ExtendedStatefulSet")).To(Succeed())
+			essUpdated, err = env.GetExtendedStatefulSet(env.Namespace, essUpdated.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+
+			*essUpdated.Spec.Template.Spec.Replicas -= 2
+			essUpdated, tearDown, err = env.UpdateExtendedStatefulSet(env.Namespace, *essUpdated)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			statefulSetName = fmt.Sprintf("%s-v%d", ess.GetName(), 3)
+
+			By("Waiting for the statefulset")
+			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			podName = fmt.Sprintf("%s-v%d-%d", essUpdated.GetName(), 3, 0)
+
+			By("Checking pod v3-0 volumeclaim name")
+			pod, err = env.GetPod(env.Namespace, podName)
+			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
+			}
+
+			By("Checking the persistent volume claim name")
+			PersistentVolumeClaim = fmt.Sprintf("%s-%s-%s-%d", "pvc", "volumemanagement", ess.GetName(), 0)
+			Expect(volumes["pvc"].PersistentVolumeClaim.ClaimName).To(Equal(PersistentVolumeClaim))
+
+			By("Checking that volumemanagement statefulset is deleted")
+			err = env.WaitForStatefulSetDelete(env.Namespace, volumeManagementStatefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+		})
+
+		It("VolumeManagement statefulset should be created and deleted after actual statefulset is ready", func() {
+
+			By("Creating an ExtendedStatefulSet")
+			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			statefulSetName := fmt.Sprintf("%s-v%d", ess.GetName(), 1)
+
+			By("Waiting for the statefulset")
+			err = env.WaitForStatefulSet(env.Namespace, statefulSetName)
+			Expect(err).NotTo(HaveOccurred())
+
+			podName := fmt.Sprintf("%s-v%d-%d", ess.GetName(), 1, 0)
+
+			pod, err := env.GetPod(env.Namespace, podName)
+			volumes := make(map[string]corev1.Volume, len(pod.Spec.Volumes))
+			for _, volume := range pod.Spec.Volumes {
+				volumes[volume.Name] = volume
+			}
+
+			By("Checking the persistent volume claim name")
+			PersistentVolumeClaim := fmt.Sprintf("%s-%s-%s-%d", "pvc", "volumemanagement", ess.GetName(), 0)
+			Expect(volumes["pvc"].PersistentVolumeClaim.ClaimName).To(Equal(PersistentVolumeClaim))
+
+			volumeManagementStatefulSetName := fmt.Sprintf("%s-%s", "volumemanagement", ess.GetName())
+
+			By("Checking that volumemanagement statefulset is deleted")
+			err = env.WaitForStatefulSetDelete(env.Namespace, volumeManagementStatefulSetName)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should access same volume from different versions at the same time", func() {

@@ -93,6 +93,7 @@ type ReconcileExtendedStatefulSet struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+
 	// Fetch the ExtendedStatefulSet we need to reconcile
 	exStatefulSet := &essv1a1.ExtendedStatefulSet{}
 
@@ -121,6 +122,13 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		return r.handleDelete(ctx, exStatefulSet)
 	}
 
+	// Cleanup volumemanagement statefulset once it's all pods are ready
+	err = r.deleteVolumeManagementStatefulSet(ctx, exStatefulSet)
+	if err != nil {
+		ctxlog.Error(ctx, "Could not delete volumemanagement statefulset of ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+		return reconcile.Result{}, err
+	}
+
 	// TODO: generate an ID for the request
 
 	err = r.versionedSecretStore.UpdateSecretReferences(ctx, exStatefulSet.GetNamespace(), &exStatefulSet.Spec.Template.Spec.Template.Spec)
@@ -143,9 +151,21 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
+	if exStatefulSet.Spec.Template.Spec.VolumeClaimTemplates != nil {
+		err := r.alterVolumeManagementStatefulSet(ctx, actualVersion, desiredVersion, exStatefulSet, actualStatefulSet)
+		if err != nil {
+			ctxlog.Error(ctx, "Alteration of VolumeManagement statefulset failed for ExtendedStatefulset ", exStatefulSet.Name, " in namespace ", exStatefulSet.Namespace, ".", err)
+			return reconcile.Result{}, err
+		}
+	}
+
 	for _, desiredStatefulSet := range desiredStatefulSets {
+
+		desiredStatefulSet.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{}
+
 		// If actual version is zero, there is no StatefulSet live
 		if actualVersion != desiredVersion {
+
 			// If it doesn't exist, create it
 			ctxlog.Info(ctx, "StatefulSet '", desiredStatefulSet.Name, "' owned by ExtendedStatefulSet '", request.NamespacedName, "' not found, will be created.")
 
@@ -698,25 +718,6 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(exStatefulSet *
 	statefulSet.SetName(fmt.Sprintf("%s-v%d", statefulSetNamePrefix, version))
 	statefulSet.SetLabels(labels)
 	statefulSet.SetAnnotations(annotations)
-
-	// Add version to VolumeClaimTemplate's names if present
-	for indexV, volumeClaimTemplate := range statefulSet.Spec.VolumeClaimTemplates {
-		actualVolumeClaimTemplateName := volumeClaimTemplate.GetName()
-		desiredVolumeClaimTemplateName := fmt.Sprintf("%s-v%d", volumeClaimTemplate.GetName(), version)
-
-		volumeClaimTemplate.SetName(desiredVolumeClaimTemplateName)
-		statefulSet.Spec.VolumeClaimTemplates[indexV] = volumeClaimTemplate
-
-		// change the name in the container's volume mounts
-		for indexC, container := range statefulSet.Spec.Template.Spec.Containers {
-			for indexM, volumeMount := range container.VolumeMounts {
-				if volumeMount.Name == actualVolumeClaimTemplateName {
-					volumeMount.Name = desiredVolumeClaimTemplateName
-					statefulSet.Spec.Template.Spec.Containers[indexC].VolumeMounts[indexM] = volumeMount
-				}
-			}
-		}
-	}
 
 	return statefulSet, nil
 }
