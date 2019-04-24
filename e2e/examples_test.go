@@ -139,7 +139,7 @@ var _ = Describe("Examples", func() {
 
 			It("bosh-deployment with customed variale example must work", func() {
 
-				yamlFilePath := "../docs/examples/bosh-deployment/boshdeployment-with-customed-variable.yaml"
+				yamlFilePath := "../docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml"
 
 				By("Creating bosh deployment")
 				kubectlHelper := testing.NewKubectl()
