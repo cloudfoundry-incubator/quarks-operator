@@ -2,11 +2,14 @@
 
 set -euo pipefail
 
+CMD_LIST=""
+i=0
+
 function usage() {
   echo "Usage: $0 [options]"
   echo "Options:"
   echo "   -n|--namespace <value>"
-  echo "                  Mandatory: specify the namespace to monitor resources (default: all resources)"
+  echo "                  Optional: specify the namespace to monitor resources (default: CF_OPERATOR_NAMESPACE env var)"
   echo "   -bdpl|--boshdeployment"
   echo "                  Optional: get a boshdeployment and related objects"
   echo "   -ejob|--extendedjobs"
@@ -15,24 +18,53 @@ function usage() {
   echo "                  Optional: get a extendedsecrets and related objects"
   echo "   -ests|--extendedstatefulsets"
   echo "                  Optional: get a extendedstatefulsets and related objects"
+  echo "   -v|--verbose"
+  echo "                  Optional: enable verbose mode(default: disable)"
   echo "   -h|--help"
   echo "                  Information about how to use this script"
   echo
 }
 
-function monitor_ns_resource(){
-  RESOURCE_NAME=$1
-
-  echo -e "\\n[INFO] Going to monitor ${RESOURCE_NAME} in ${NAMESPACE} ns.\\n"
-  kubectl -n "${NAMESPACE}" get "${RESOURCE_NAME}"
+# When verbose, print some logs
+function generate_logs(){
+  INFO=$1
+  if [ "${VERBOSE}" -eq 1 ]; then
+    echo "${INFO}"
+  fi
 }
 
+# Get an specific resource in an specific namespace
+function monitor_ns_resource(){
+  RESOURCE_NAME=$1
+  generate_logs "[INFO] Going to monitor ${RESOURCE_NAME} in ${NAMESPACE} ns"
+  KUBE_CMD_OUTPUT=$(kubectl -n "${NAMESPACE}" get "${RESOURCE_NAME}" --ignore-not-found  -o=custom-columns=NAME:.metadata.name,KIND:.kind,CREATION:.metadata.creationTimestamp)
+  if [ -n "${KUBE_CMD_OUTPUT:-}" ]; then
+    kubectl -n "${NAMESPACE}" get "${RESOURCE_NAME}" --ignore-not-found  -o=custom-columns=NAME:.metadata.name,KIND:.kind,CREATION:.metadata.creationTimestamp
+  else
+    generate_logs "[ERROR] None ${RESOURCE_NAME} resources found"
+    exit 1
+  fi
+}
+
+# For an specific ns, execute all resources retrieval in parallel
+function execute_kube_cmd(){
+  for KUBE_CMD in "${CMD_LIST[@]}"
+  do
+    CMD_OUTPUT=$($KUBE_CMD)
+    if [ -n "${CMD_OUTPUT:-}" ]; then
+      echo ; $KUBE_CMD &
+    fi
+  done
+}
+
+# Get all resources in an specific namespace
 function monitor_ns_resources(){
+  generate_logs "Going to monitor all resources in ${NAMESPACE} ns"
   while read -r RESOURCE_NAME API_GROUP; do
-    API_GROUP_INFO=$([ "${API_GROUP}" == "" ] && echo "" || echo ".${API_GROUP}")
     if kubectl api-resources --namespaced=true --api-group="${API_GROUP}" | grep "${RESOURCE_NAME}" > /dev/null; then
-      echo -e "\\n[INFO] Retrieving ${RESOURCE_NAME}${API_GROUP_INFO} resources from ${NAMESPACE} namespace.\\n"
-      kubectl -n "${NAMESPACE}" get "${RESOURCE_NAME}"
+      KUBE_CMD="kubectl -n ${NAMESPACE} get ${RESOURCE_NAME} --ignore-not-found -o=custom-columns=NAME:.metadata.name,KIND:.kind,CREATION:.metadata.creationTimestamp"
+      CMD_LIST[$i]=$KUBE_CMD
+      i=$((i+1))
     fi
   done <<EOL
   configmaps 
@@ -48,9 +80,16 @@ function monitor_ns_resources(){
   extendedsecrets fissile.cloudfoundry.org
   extendedstatefulsets fissile.cloudfoundry.org
 EOL
+execute_kube_cmd
+wait
 }
 
 function select_resource(){
+  # Check if namespace exists, before calling the main functions
+  if ! kubectl get namespaces -o=custom-columns=NAME:.metadata.name --no-headers | grep "^${NAMESPACE}" >/dev/null ; then
+    generate_logs "[ERROR] ${NAMESPACE} namespace does not exist."
+    exit 1
+  fi
   case "${DESIREDRESOURCE}" in
        boshdeployments)
             monitor_ns_resource "${DESIREDRESOURCE}"
@@ -65,7 +104,6 @@ function select_resource(){
             monitor_ns_resource "${DESIREDRESOURCE}"
             ;;
        *)
-            echo "[INFO] Going to monitor all resources in ${NAMESPACE}."
             monitor_ns_resources "${DESIREDRESOURCE}"
             ;;
   esac
@@ -96,6 +134,9 @@ function parse_cmd() {
       -ests | --extendedstatefulsets)
         DESIREDRESOURCE="extendedstatefulsets"
         ;;
+      -v | --verbose)
+        VERBOSE=1
+        ;;
       *)
         echo "ERROR: Invalid argument ${OPTION}"
         usage
@@ -111,9 +152,18 @@ if [ -z "${DESIREDRESOURCE:-}" ]; then
   DESIREDRESOURCE="all"
 fi
 
+if [ -z "${VERBOSE:-}" ]; then
+  VERBOSE=0
+fi
+
 if [ -z "${NAMESPACE:-}" ]; then
-  usage
-  exit 1
+  if [ -n "${CF_OPERATOR_NAMESPACE:-}" ]; then
+    NAMESPACE=${CF_OPERATOR_NAMESPACE:-}
+  else
+    echo "ERROR: CF_OPERATOR_NAMESPACE env var is not set, either set it, or specify it via --namespace "
+    usage
+    exit 1
+  fi
 fi
 
 select_resource
