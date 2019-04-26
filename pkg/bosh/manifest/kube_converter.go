@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -596,14 +597,13 @@ func (m *Manifest) serviceToExtendedSts(ig *InstanceGroup, namespace string) (es
 	return extSts, nil
 }
 
-// serviceToKubeService will generate a Service which expose ports for InstanceGroup's jobs
-func (m *Manifest) serviceToKubeService(ig *InstanceGroup, eSts *essv1.ExtendedStatefulSet, namespace string) (*corev1.Service, error) {
-	var service *corev1.Service
+// serviceToKubeServices will generate Services which expose ports for InstanceGroup's jobs
+func (m *Manifest) serviceToKubeServices(ig *InstanceGroup, eSts *essv1.ExtendedStatefulSet, namespace string) ([]corev1.Service, error) {
+	var services []corev1.Service
 	igName := ig.Name
 
+	// Collect ports to be exposed for each job
 	ports := []corev1.ServicePort{}
-
-	// Collect ports to be exposed for jobs
 	for _, job := range ig.Jobs {
 		for _, port := range job.Properties.BOSHContainerization.Ports {
 			ports = append(ports, corev1.ServicePort{
@@ -612,31 +612,81 @@ func (m *Manifest) serviceToKubeService(ig *InstanceGroup, eSts *essv1.ExtendedS
 				Port:     int32(port.Internal),
 			})
 		}
+
 	}
 
-	if len(ports) != 0 {
-		service = &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      names.ServiceName(m.Name, igName),
-				Namespace: namespace,
-				Labels: map[string]string{
-					LabelInstanceGroupName: igName,
+	if len(ports) == 0 {
+		return services, nil
+	}
+
+	for i := 0; i < ig.Instances; i++ {
+		if len(ig.AZs) == 0 {
+			services = append(services, corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      names.ServiceName(m.Name, igName, len(services)),
+					Namespace: namespace,
+					Labels: map[string]string{
+						LabelInstanceGroupName: igName,
+						essv1.LabelAZIndex:     strconv.Itoa(0),
+						essv1.LabelPodOrdinal:  strconv.Itoa(i),
+					},
 				},
-			},
-			Spec: corev1.ServiceSpec{
-				Ports: ports,
-				Selector: map[string]string{
-					LabelInstanceGroupName: igName,
+				Spec: corev1.ServiceSpec{
+					Ports: ports,
+					Selector: map[string]string{
+						LabelInstanceGroupName: igName,
+						essv1.LabelAZIndex:     strconv.Itoa(0),
+						essv1.LabelPodOrdinal:  strconv.Itoa(i),
+					},
 				},
-				ClusterIP: "None",
-			},
+			})
 		}
-
-		// Set service name of ExtendedStatefulSet
-		eSts.Spec.Template.Spec.ServiceName = names.ServiceName(m.Name, igName)
+		for azIndex := range ig.AZs {
+			services = append(services, corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      names.ServiceName(m.Name, igName, len(services)),
+					Namespace: namespace,
+					Labels: map[string]string{
+						LabelInstanceGroupName: igName,
+						essv1.LabelAZIndex:     strconv.Itoa(azIndex),
+						essv1.LabelPodOrdinal:  strconv.Itoa(i),
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: ports,
+					Selector: map[string]string{
+						LabelInstanceGroupName: igName,
+						essv1.LabelAZIndex:     strconv.Itoa(azIndex),
+						essv1.LabelPodOrdinal:  strconv.Itoa(i),
+					},
+				},
+			})
+		}
 	}
 
-	return service, nil
+	headlessService := corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      names.ServiceName(m.Name, igName, -1),
+			Namespace: namespace,
+			Labels: map[string]string{
+				LabelInstanceGroupName: igName,
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: ports,
+			Selector: map[string]string{
+				LabelInstanceGroupName: igName,
+			},
+			ClusterIP: "None",
+		},
+	}
+
+	services = append(services, headlessService)
+
+	// Set headlessService to govern StatefulSet
+	eSts.Spec.Template.Spec.ServiceName = names.ServiceName(m.Name, igName, -1)
+
+	return services, nil
 }
 
 // convertToExtendedStsAndServices will convert instance_groups whose lifecycle
@@ -652,12 +702,12 @@ func (m *Manifest) convertToExtendedStsAndServices(namespace string) ([]essv1.Ex
 				return []essv1.ExtendedStatefulSet{}, []corev1.Service{}, err
 			}
 
-			convertedService, err := m.serviceToKubeService(ig, &convertedExtStatefulSet, namespace)
+			services, err := m.serviceToKubeServices(ig, &convertedExtStatefulSet, namespace)
 			if err != nil {
 				return []essv1.ExtendedStatefulSet{}, []corev1.Service{}, err
 			}
-			if convertedService != nil {
-				svcList = append(svcList, *convertedService)
+			if len(services) != 0 {
+				svcList = append(svcList, services...)
 			}
 
 			extStsList = append(extStsList, convertedExtStatefulSet)

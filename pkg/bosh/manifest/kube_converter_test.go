@@ -10,6 +10,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
 
@@ -182,19 +183,80 @@ var _ = Describe("kube converter", func() {
 				Expect(rendererInitContainer.VolumeMounts[2].Name).To(Equal("ig-resolved"))
 				Expect(rendererInitContainer.VolumeMounts[2].MountPath).To(Equal("/var/run/secrets/resolved-properties/diego-cell"))
 
-				// Test the service for the extended statefulSet
-				aService := kubeConfig.Services[0]
-				Expect(aService.Name).To(Equal(fmt.Sprintf("%s-%s-headless", m.Name, anExtendedSts.Name)))
-				Expect(aService.Spec.Selector).To(Equal(map[string]string{
+				// Test services for the extended statefulSet
+				service0 := kubeConfig.Services[0]
+				Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-0", m.Name, anExtendedSts.Name)))
+				Expect(service0.Spec.Selector).To(Equal(map[string]string{
 					manifest.LabelInstanceGroupName: anExtendedSts.Name,
+					essv1.LabelAZIndex:              "0",
+					essv1.LabelPodOrdinal:           "0",
 				}))
-				Expect(aService.Spec.Ports).To(Equal([]corev1.ServicePort{
+				Expect(service0.Spec.Ports).To(Equal([]corev1.ServicePort{
 					{
 						Name:     "rep-server",
 						Protocol: corev1.ProtocolTCP,
 						Port:     1801,
 					},
 				}))
+
+				service1 := kubeConfig.Services[1]
+				Expect(service1.Name).To(Equal(fmt.Sprintf("%s-%s-1", m.Name, anExtendedSts.Name)))
+				Expect(service1.Spec.Selector).To(Equal(map[string]string{
+					manifest.LabelInstanceGroupName: anExtendedSts.Name,
+					essv1.LabelAZIndex:              "1",
+					essv1.LabelPodOrdinal:           "0",
+				}))
+				Expect(service1.Spec.Ports).To(Equal([]corev1.ServicePort{
+					{
+						Name:     "rep-server",
+						Protocol: corev1.ProtocolTCP,
+						Port:     1801,
+					},
+				}))
+
+				service2 := kubeConfig.Services[2]
+				Expect(service2.Name).To(Equal(fmt.Sprintf("%s-%s-2", m.Name, anExtendedSts.Name)))
+				Expect(service2.Spec.Selector).To(Equal(map[string]string{
+					manifest.LabelInstanceGroupName: anExtendedSts.Name,
+					essv1.LabelAZIndex:              "0",
+					essv1.LabelPodOrdinal:           "1",
+				}))
+				Expect(service2.Spec.Ports).To(Equal([]corev1.ServicePort{
+					{
+						Name:     "rep-server",
+						Protocol: corev1.ProtocolTCP,
+						Port:     1801,
+					},
+				}))
+
+				service3 := kubeConfig.Services[3]
+				Expect(service3.Name).To(Equal(fmt.Sprintf("%s-%s-3", m.Name, anExtendedSts.Name)))
+				Expect(service3.Spec.Selector).To(Equal(map[string]string{
+					manifest.LabelInstanceGroupName: anExtendedSts.Name,
+					essv1.LabelAZIndex:              "1",
+					essv1.LabelPodOrdinal:           "1",
+				}))
+				Expect(service3.Spec.Ports).To(Equal([]corev1.ServicePort{
+					{
+						Name:     "rep-server",
+						Protocol: corev1.ProtocolTCP,
+						Port:     1801,
+					},
+				}))
+
+				headlessService := kubeConfig.Services[4]
+				Expect(headlessService.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, anExtendedSts.Name)))
+				Expect(headlessService.Spec.Selector).To(Equal(map[string]string{
+					manifest.LabelInstanceGroupName: anExtendedSts.Name,
+				}))
+				Expect(headlessService.Spec.Ports).To(Equal([]corev1.ServicePort{
+					{
+						Name:     "rep-server",
+						Protocol: corev1.ProtocolTCP,
+						Port:     1801,
+					},
+				}))
+				Expect(headlessService.Spec.ClusterIP).To(Equal("None"))
 			})
 		})
 

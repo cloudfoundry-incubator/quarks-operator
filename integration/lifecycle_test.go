@@ -8,6 +8,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/integration/environment"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 )
 
 var _ = Describe("Lifecycle", func() {
@@ -34,12 +35,24 @@ var _ = Describe("Lifecycle", func() {
 			err = env.WaitForPod(env.Namespace, "testcr-nats-v1-0")
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from initial deployment")
 
-			// check for service
-			svc, err := env.GetService(env.Namespace, "testcr-nats-headless")
+			// check for services
+			svc, err := env.GetService(env.Namespace, "testcr-nats")
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
 			Expect(svc.Spec.Ports)
 			Expect(svc.Spec.Selector).To(Equal(map[string]string{
 				bdm.LabelInstanceGroupName: "nats",
+			}))
+			Expect(svc.Spec.Ports[0].Name).To(Equal("nats"))
+			Expect(svc.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
+			Expect(svc.Spec.Ports[0].Port).To(Equal(int32(4222)))
+
+			svc, err = env.GetService(env.Namespace, "testcr-nats-0")
+			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
+			Expect(svc.Spec.Ports)
+			Expect(svc.Spec.Selector).To(Equal(map[string]string{
+				bdm.LabelInstanceGroupName: "nats",
+				essv1.LabelAZIndex:         "0",
+				essv1.LabelPodOrdinal:      "0",
 			}))
 			Expect(svc.Spec.Ports[0].Name).To(Equal("nats"))
 			Expect(svc.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))

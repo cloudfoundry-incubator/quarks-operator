@@ -33,6 +33,8 @@ var (
 	LabelAZIndex = fmt.Sprintf("%s/az-index", apis.GroupName)
 	// LabelAZName is the name of available zone
 	LabelAZName = fmt.Sprintf("%s/az-name", apis.GroupName)
+	// LabelPodOrdinal is the index of pod ordinal
+	LabelPodOrdinal = fmt.Sprintf("%s/pod-ordinal", apis.GroupName)
 )
 
 // ExtendedStatefulSetSpec defines the desired state of ExtendedStatefulSet

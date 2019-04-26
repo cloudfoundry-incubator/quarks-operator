@@ -150,7 +150,7 @@ func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string) (map
 			// Generate instance spec for each ig instance
 			// This will be stored inside the current job under
 			// job.properties.bosh_containerization
-			jobsInstances := jobInstances(dg.namespace, *instanceGroup, job.Name, spec)
+			jobsInstances := jobInstances(dg.namespace, dg.manifest.Name, *instanceGroup, job.Name, spec)
 
 			// set jobs.properties.bosh_containerization.instances with the ig instances
 			instanceGroup.Jobs[jobIdx].Properties.BOSHContainerization.Instances = jobsInstances
@@ -450,12 +450,12 @@ func lookUpJobRelease(releases []*Release, jobRelease string) bool {
 	return false
 }
 
-func jobInstances(namespace string, instanceGroup InstanceGroup, jobName string, spec JobSpec) []JobInstance {
+func jobInstances(namespace string, deploymentName string, instanceGroup InstanceGroup, jobName string, spec JobSpec) []JobInstance {
 	var jobsInstances []JobInstance
 	for i := 0; i < instanceGroup.Instances; i++ {
 
 		// TODO: Understand whether there are negative side-effects to using this
-		// default
+		//   default
 		azs := []string{""}
 		if len(instanceGroup.AZs) > 0 {
 			azs = instanceGroup.AZs
@@ -465,9 +465,11 @@ func jobInstances(namespace string, instanceGroup InstanceGroup, jobName string,
 			index := len(jobsInstances)
 			name := fmt.Sprintf("%s-%s", instanceGroup.Name, jobName)
 			id := fmt.Sprintf("%s-%d-%s", instanceGroup.Name, index, jobName)
+			// All jobs in same instance group will use same service
+			serviceName := fmt.Sprintf("%s-%s-%d", deploymentName, instanceGroup.Name, index)
 
 			// TODO: not allowed to hardcode svc.cluster.local
-			address := fmt.Sprintf("%s.%s.svc.cluster.local", id, namespace)
+			address := fmt.Sprintf("%s.%s.svc.cluster.local", serviceName, namespace)
 
 			jobsInstances = append(jobsInstances, JobInstance{
 				Address:  address,
