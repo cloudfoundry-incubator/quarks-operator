@@ -3,7 +3,11 @@
 set -euo pipefail
 
 CMD_LIST=""
+
 i=0
+
+DESIRED_RESOURCES="configmaps,persistentvolumeclaims,pods,secrets,services,deployments, \
+  statefulsets,jobs,boshdeployments, extendedjobs,extendedsecrets,extendedstatefulsets"
 
 function usage() {
   echo "Usage: $0 [options]"
@@ -29,19 +33,19 @@ function usage() {
 function generate_logs(){
   INFO=$1
   if [ "${VERBOSE}" -eq 1 ]; then
-    echo "${INFO}"
+    echo -e "${INFO}"
   fi
 }
 
 # Get an specific resource in an specific namespace
 function monitor_ns_resource(){
   RESOURCE_NAME=$1
-  generate_logs "[INFO] Going to monitor ${RESOURCE_NAME} in ${NAMESPACE} ns"
+  generate_logs "\\033[1m[INFO]\\033[0m Going to monitor ${RESOURCE_NAME} in ${NAMESPACE} ns"
   KUBE_CMD_OUTPUT=$(kubectl -n "${NAMESPACE}" get "${RESOURCE_NAME}" --ignore-not-found  -o=custom-columns=NAME:.metadata.name,KIND:.kind,CREATION:.metadata.creationTimestamp)
   if [ -n "${KUBE_CMD_OUTPUT:-}" ]; then
     kubectl -n "${NAMESPACE}" get "${RESOURCE_NAME}" --ignore-not-found  -o=custom-columns=NAME:.metadata.name,KIND:.kind,CREATION:.metadata.creationTimestamp
   else
-    generate_logs "[ERROR] None ${RESOURCE_NAME} resources found"
+    generate_logs "\\033[1m[ERROR]\\033[0m None ${RESOURCE_NAME} resources found"
     exit 1
   fi
 }
@@ -57,9 +61,20 @@ function execute_kube_cmd(){
   done
 }
 
+# Get all resources in an specific namespace by using parallel
+function monitor_ns_resources_with_parallel(){
+  generate_logs "\\033[1m[INFO]\\033[0m Going to monitor all resources in ${NAMESPACE} ns"
+  kubectl api-resources -o wide --verbs=get --namespaced=true --no-headers | awk '{print $1}' | while read -r RESOURCE_NAME; do
+    if [[ ${DESIRED_RESOURCES} =~ .*${RESOURCE_NAME}.* ]]
+    then
+      parallel "kubectl -n {1} get {2} --ignore-not-found -o=custom-columns=NAME:.metadata.name,KIND:.kind,CREATION:.metadata.creationTimestamp" ::: "${NAMESPACE}" ::: "${RESOURCE_NAME}"
+    fi
+  done
+}
+
 # Get all resources in an specific namespace
 function monitor_ns_resources(){
-  generate_logs "Going to monitor all resources in ${NAMESPACE} ns"
+  generate_logs "\\033[1m[INFO]\\033[0m Going to monitor all resources in ${NAMESPACE} ns"
   while read -r RESOURCE_NAME API_GROUP; do
     if kubectl api-resources --namespaced=true --api-group="${API_GROUP}" | grep "${RESOURCE_NAME}" > /dev/null; then
       KUBE_CMD="kubectl -n ${NAMESPACE} get ${RESOURCE_NAME} --ignore-not-found -o=custom-columns=NAME:.metadata.name,KIND:.kind,CREATION:.metadata.creationTimestamp"
@@ -87,7 +102,7 @@ wait
 function select_resource(){
   # Check if namespace exists, before calling the main functions
   if ! kubectl get namespaces -o=custom-columns=NAME:.metadata.name --no-headers | grep "^${NAMESPACE}" >/dev/null ; then
-    generate_logs "[ERROR] ${NAMESPACE} namespace does not exist."
+    generate_logs "\\033[1m[ERROR]\\033[0m ${NAMESPACE} namespace does not exist."
     exit 1
   fi
   case "${DESIREDRESOURCE}" in
@@ -104,7 +119,16 @@ function select_resource(){
             monitor_ns_resource "${DESIREDRESOURCE}"
             ;;
        *)
-            monitor_ns_resources "${DESIREDRESOURCE}"
+            if ! hash parallel 2>/dev/null; then
+              generate_logs "\\033[1m[WARNING]\\033[0m \\033[1mGNU parallel\\033[0m binary is not installed."
+              generate_logs "\\033[1m[WARNING]\\033[0m Please install it for a faster script performance."
+              generate_logs "\\033[1m[WARNING]\\033[0m Going to run in slow mode."
+              monitor_ns_resources "${DESIREDRESOURCE}"
+            else
+              generate_logs "\\033[1m[WARNING]\\033[0m GNU parallel binary found."
+              generate_logs "\\033[1m[WARNING]\\033[0m Please run \\033[1m\"parallel --citation\"\\033[0m once, to silence citation notice for all future runs."
+              monitor_ns_resources_with_parallel "${DESIREDRESOURCE}"
+            fi
             ;;
   esac
 }
