@@ -78,6 +78,15 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 								Properties: map[string]interface{}{
 									"password": "((foo_password))",
 								},
+								BOSHContainerization: bdm.BOSHContainerization{
+									Ports: []bdm.Port{
+										{
+											Name:     "foo",
+											Protocol: "TCP",
+											Internal: 8080,
+										},
+									},
+								},
 							},
 						},
 					},

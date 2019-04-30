@@ -535,6 +535,8 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationEJob(ctx context.Co
 		if !ok {
 			return fmt.Errorf("object is not an ExtendedJob")
 		}
+
+		exstEJob.Labels = varIntEJob.Labels
 		exstEJob.Spec = varIntEJob.Spec
 		return nil
 	})
@@ -566,6 +568,8 @@ func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, in
 		if !ok {
 			return fmt.Errorf("object is not an ExtendedJob")
 		}
+
+		exstEJob.Labels = dataGatheringEJob.Labels
 		exstEJob.Spec = dataGatheringEJob.Spec
 		return nil
 	})
@@ -629,12 +633,38 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 			if !ok {
 				return fmt.Errorf("object is not an ExtendedJob")
 			}
+
+			exstEJob.Labels = eJob.Labels
 			exstEJob.Spec = eJob.Spec
 			return nil
 		})
 		if err != nil {
 			log.WarningEvent(ctx, instance, "CreateExtendedJobForDeploymentError", err.Error())
 			return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", eJob.Name)
+		}
+	}
+
+	log.Debugf(ctx, "Get result: %v",kubeConfigs.Services)
+	for _, svc := range kubeConfigs.Services {
+		// Set BOSHDeployment instance as the owner and controller
+		if err := r.setReference(instance, &svc, r.scheme); err != nil {
+			log.WarningEvent(ctx, instance, "NewServiceForDeploymentError", err.Error())
+			return errors.Wrap(err, "couldn't set reference for a Service for a BOSH Deployment")
+		}
+
+		_, err := controllerutil.CreateOrUpdate(ctx, r.client, svc.DeepCopy(), func(obj runtime.Object) error {
+			exstSvc, ok := obj.(*corev1.Service)
+			if !ok {
+				return fmt.Errorf("object is not a Service")
+			}
+
+			exstSvc.Labels = svc.Labels
+			exstSvc.Spec = svc.Spec
+			return nil
+		})
+		if err != nil {
+			log.WarningEvent(ctx, instance, "CreateServiceForDeploymentError", err.Error())
+			return errors.Wrapf(err, "creating or updating Service '%s'", svc.Name)
 		}
 	}
 
@@ -651,6 +681,7 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 				return fmt.Errorf("object is not an ExtendStatefulSet")
 			}
 
+			exstSts.Labels = eSts.Labels
 			exstSts.Spec = eSts.Spec
 			return nil
 		})

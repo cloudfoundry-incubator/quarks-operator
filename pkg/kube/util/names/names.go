@@ -145,6 +145,41 @@ func JobName(eJobName, podName string) (string, error) {
 	return fmt.Sprintf("%s-%s", namePrefix, hashID), nil
 }
 
+// ServiceName returns a unique, short name for a given instance
+func ServiceName(deploymentName, instanceName string, index int) string {
+	var serviceName string
+	if index == -1 {
+		serviceName = fmt.Sprintf("%s-%s", deploymentName, instanceName)
+	} else {
+		serviceName = fmt.Sprintf("%s-%s-%d", deploymentName, instanceName, index)
+	}
+
+	if len(serviceName) > 63 {
+		// names are limited to 63 characters so we recalculate the name as
+		// <name trimmed to 31 characters>-<md5 hash of name>-headless
+		sumHex := md5.Sum([]byte(serviceName))
+		sum := hex.EncodeToString(sumHex[:])
+		serviceName = fmt.Sprintf("%s-%s", serviceName[:31], sum)
+	}
+
+	return serviceName
+}
+
+// OrdinalFromPodName returns ordinal from pod name
+func OrdinalFromPodName(name string) int {
+	podOrdinal := -1
+	r := regexp.MustCompile(`(.*)-([0-9]+)$`)
+
+	match := r.FindStringSubmatch(name)
+	if len(match) < 3 {
+		return podOrdinal
+	}
+	if i, err := strconv.ParseInt(match[2], 10, 32); err == nil {
+		podOrdinal = int(i)
+	}
+	return podOrdinal
+}
+
 func randSuffix(str string) (string, error) {
 	randBytes := make([]byte, 16)
 	_, err := rand.Read(randBytes)

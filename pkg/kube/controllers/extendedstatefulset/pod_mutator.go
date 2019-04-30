@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -19,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 
+	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
@@ -130,6 +132,19 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 			}
 		}
 	}
+
+	// Add pod ordinal label for service selectors
+	podLabels := pod.GetLabels()
+	if podLabels == nil {
+		podLabels = map[string]string{}
+	}
+
+	podOrdinal := names.OrdinalFromPodName(pod.GetName())
+	if podOrdinal != -1 {
+		podLabels[essv1.LabelPodOrdinal] = strconv.Itoa(podOrdinal)
+		pod.SetLabels(podLabels)
+	}
+
 	return nil
 }
 

@@ -894,3 +894,13 @@ func (m *Machine) TearDownAll(funcs []TearDownFunc) error {
 	}
 	return nil
 }
+
+// GetService gets target Service
+func (m *Machine) GetService(namespace string, name string) (*corev1.Service, error) {
+	svc, err := m.Clientset.CoreV1().Services(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return svc, errors.Wrapf(err, "failed to get service '%s'", svc)
+	}
+
+	return svc, nil
+}

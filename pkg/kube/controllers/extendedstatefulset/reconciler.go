@@ -244,7 +244,7 @@ func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSets(exStatefulSe
 		}
 
 	} else {
-		statefulSet, err := r.generateSingleStatefulSet(exStatefulSet, &template, -1, "", desiredVersion, templateSHA1)
+		statefulSet, err := r.generateSingleStatefulSet(exStatefulSet, &template, 0, "", desiredVersion, templateSHA1)
 		if err != nil {
 			return desiredStatefulSets, desiredVersion, errors.Wrap(err, "Could not generate StatefulSet template for single zone")
 		}
@@ -424,7 +424,7 @@ func (r *ReconcileExtendedStatefulSet) listStatefulSetVersions(ctx context.Conte
 // isStatefulSetReady returns true if one owned Pod is running
 func (r *ReconcileExtendedStatefulSet) isStatefulSetReady(ctx context.Context, statefulSet *v1beta2.StatefulSet) (bool, error) {
 	labelsSelector := labels.Set{
-		"controller-revision-hash": statefulSet.Status.CurrentRevision,
+		v1beta2.StatefulSetRevisionLabel: statefulSet.Status.CurrentRevision,
 	}
 
 	podList := &corev1.PodList{}
@@ -635,7 +635,7 @@ func (r *ReconcileExtendedStatefulSet) handleDelete(ctx context.Context, exState
 }
 
 // generateSingleStatefulSet creates a StatefulSet from one zone
-func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(exStatefulSet *essv1a1.ExtendedStatefulSet, template *v1beta2.StatefulSet, zoneIndex int, zone string, version int, templateSha1 string) (*v1beta2.StatefulSet, error) {
+func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(exStatefulSet *essv1a1.ExtendedStatefulSet, template *v1beta2.StatefulSet, zoneIndex int, zoneName string, version int, templateSha1 string) (*v1beta2.StatefulSet, error) {
 	statefulSet := template.DeepCopy()
 
 	// Get the labels and annotations
@@ -651,13 +651,23 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(exStatefulSet *
 
 	statefulSetNamePrefix := exStatefulSet.GetName()
 
+	// Get the pod labels and annotations
+	podLabels := statefulSet.Spec.Template.GetLabels()
+	if podLabels == nil {
+		podLabels = make(map[string]string)
+	}
+	podAnnotations := statefulSet.Spec.Template.GetAnnotations()
+	if podAnnotations == nil {
+		podAnnotations = make(map[string]string)
+	}
+
 	// Update available-zone specified properties
-	if zoneIndex >= 0 && len(zone) != 0 {
+	if zoneName != "" {
 		// Reset name prefix with zoneIndex
 		statefulSetNamePrefix = fmt.Sprintf("%s-z%d", exStatefulSet.GetName(), zoneIndex)
 
 		labels[essv1a1.LabelAZIndex] = strconv.Itoa(zoneIndex)
-		labels[essv1a1.LabelAZName] = zone
+		labels[essv1a1.LabelAZName] = zoneName
 
 		zonesBytes, err := json.Marshal(exStatefulSet.Spec.Zones)
 		if err != nil {
@@ -665,27 +675,21 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(exStatefulSet *
 		}
 		annotations[essv1a1.AnnotationZones] = string(zonesBytes)
 
-		// Get the pod labels and annotations
-		podLabels := statefulSet.Spec.Template.GetLabels()
-		if podLabels == nil {
-			podLabels = make(map[string]string)
-		}
 		podLabels[essv1a1.LabelAZIndex] = strconv.Itoa(zoneIndex)
-		podLabels[essv1a1.LabelAZName] = zone
+		podLabels[essv1a1.LabelAZName] = zoneName
 
-		podAnnotations := statefulSet.Spec.Template.GetAnnotations()
-		if podAnnotations == nil {
-			podAnnotations = make(map[string]string)
-		}
 		podAnnotations[essv1a1.AnnotationZones] = string(zonesBytes)
 
-		statefulSet.Spec.Template.SetLabels(podLabels)
-		statefulSet.Spec.Template.SetAnnotations(podAnnotations)
-
-		statefulSet = r.updateAffinity(statefulSet, exStatefulSet.Spec.ZoneNodeLabel, zoneIndex, zone)
+		statefulSet = r.updateAffinity(statefulSet, exStatefulSet.Spec.ZoneNodeLabel, zoneIndex, zoneName)
 	}
 
-	r.injectContainerEnv(&statefulSet.Spec.Template.Spec, zoneIndex, zone, exStatefulSet.Spec.Template.Spec.Replicas)
+	// Set az-index as 0 for single zoneName
+	podLabels[essv1a1.LabelAZIndex] = strconv.Itoa(zoneIndex)
+
+	statefulSet.Spec.Template.SetLabels(podLabels)
+	statefulSet.Spec.Template.SetAnnotations(podAnnotations)
+
+	r.injectContainerEnv(&statefulSet.Spec.Template.Spec, zoneIndex, zoneName, exStatefulSet.Spec.Template.Spec.Replicas)
 
 	annotations[essv1a1.AnnotationStatefulSetSHA1] = templateSha1
 	annotations[essv1a1.AnnotationVersion] = fmt.Sprintf("%d", version)

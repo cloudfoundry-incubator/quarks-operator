@@ -24,6 +24,14 @@ data:
           nats:
             user: admin
             password: ((nats_password))
+          bosh_containerization:
+            ports:
+            - name: "nats"
+              protocol: "TCP"
+              internal: 4222
+            - name: "nats-routes"
+              protocol: TCP
+              internal: 4223
     variables:
     - name: nats_password
       type: password

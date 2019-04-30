@@ -121,10 +121,10 @@ var _ = Describe("DataGatherer", func() {
 				jobInstancesRedis := m.InstanceGroups[0].Jobs[0].Properties.BOSHContainerization.Instances
 
 				compareToFakeRedis := []JobInstance{
-					{Address: "redis-slave-0-redis-server.default.svc.cluster.local", AZ: "z1", ID: "redis-slave-0-redis-server", Index: 0, Instance: 0, Name: "redis-slave-redis-server"},
-					{Address: "redis-slave-1-redis-server.default.svc.cluster.local", AZ: "z2", ID: "redis-slave-1-redis-server", Index: 1, Instance: 0, Name: "redis-slave-redis-server"},
-					{Address: "redis-slave-2-redis-server.default.svc.cluster.local", AZ: "z1", ID: "redis-slave-2-redis-server", Index: 2, Instance: 1, Name: "redis-slave-redis-server"},
-					{Address: "redis-slave-3-redis-server.default.svc.cluster.local", AZ: "z2", ID: "redis-slave-3-redis-server", Index: 3, Instance: 1, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-0.default.svc.cluster.local", AZ: "z1", ID: "redis-slave-0-redis-server", Index: 0, Instance: 0, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-1.default.svc.cluster.local", AZ: "z2", ID: "redis-slave-1-redis-server", Index: 1, Instance: 0, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-2.default.svc.cluster.local", AZ: "z1", ID: "redis-slave-2-redis-server", Index: 2, Instance: 1, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-3.default.svc.cluster.local", AZ: "z2", ID: "redis-slave-3-redis-server", Index: 3, Instance: 1, Name: "redis-slave-redis-server"},
 				}
 				Expect(jobInstancesRedis).To(BeEquivalentTo(compareToFakeRedis))
 
@@ -134,10 +134,10 @@ var _ = Describe("DataGatherer", func() {
 				jobInstancesCell := m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Instances
 
 				compareToFakeCell := []JobInstance{
-					{Address: "diego-cell-0-cflinuxfs3-rootfs-setup.default.svc.cluster.local", AZ: "z1", ID: "diego-cell-0-cflinuxfs3-rootfs-setup", Index: 0, Instance: 0, Name: "diego-cell-cflinuxfs3-rootfs-setup"},
-					{Address: "diego-cell-1-cflinuxfs3-rootfs-setup.default.svc.cluster.local", AZ: "z2", ID: "diego-cell-1-cflinuxfs3-rootfs-setup", Index: 1, Instance: 0, Name: "diego-cell-cflinuxfs3-rootfs-setup"},
-					{Address: "diego-cell-2-cflinuxfs3-rootfs-setup.default.svc.cluster.local", AZ: "z1", ID: "diego-cell-2-cflinuxfs3-rootfs-setup", Index: 2, Instance: 1, Name: "diego-cell-cflinuxfs3-rootfs-setup"},
-					{Address: "diego-cell-3-cflinuxfs3-rootfs-setup.default.svc.cluster.local", AZ: "z2", ID: "diego-cell-3-cflinuxfs3-rootfs-setup", Index: 3, Instance: 1, Name: "diego-cell-cflinuxfs3-rootfs-setup"},
+					{Address: "foo-deployment-diego-cell-0.default.svc.cluster.local", AZ: "z1", ID: "diego-cell-0-cflinuxfs3-rootfs-setup", Index: 0, Instance: 0, Name: "diego-cell-cflinuxfs3-rootfs-setup"},
+					{Address: "foo-deployment-diego-cell-1.default.svc.cluster.local", AZ: "z2", ID: "diego-cell-1-cflinuxfs3-rootfs-setup", Index: 1, Instance: 0, Name: "diego-cell-cflinuxfs3-rootfs-setup"},
+					{Address: "foo-deployment-diego-cell-2.default.svc.cluster.local", AZ: "z1", ID: "diego-cell-2-cflinuxfs3-rootfs-setup", Index: 2, Instance: 1, Name: "diego-cell-cflinuxfs3-rootfs-setup"},
+					{Address: "foo-deployment-diego-cell-3.default.svc.cluster.local", AZ: "z2", ID: "diego-cell-3-cflinuxfs3-rootfs-setup", Index: 3, Instance: 1, Name: "diego-cell-cflinuxfs3-rootfs-setup"},
 				}
 				Expect(jobInstancesCell).To(BeEquivalentTo(compareToFakeCell))
 			})
@@ -147,10 +147,10 @@ var _ = Describe("DataGatherer", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(providerLinks)).To(BeEquivalentTo(1))
 				expectedInstances := []JobInstance{
-					{Address: "redis-slave-0-redis-server.default.svc.cluster.local", AZ: "z1", ID: "redis-slave-0-redis-server", Index: 0, Instance: 0, Name: "redis-slave-redis-server"},
-					{Address: "redis-slave-1-redis-server.default.svc.cluster.local", AZ: "z2", ID: "redis-slave-1-redis-server", Index: 1, Instance: 0, Name: "redis-slave-redis-server"},
-					{Address: "redis-slave-2-redis-server.default.svc.cluster.local", AZ: "z1", ID: "redis-slave-2-redis-server", Index: 2, Instance: 1, Name: "redis-slave-redis-server"},
-					{Address: "redis-slave-3-redis-server.default.svc.cluster.local", AZ: "z2", ID: "redis-slave-3-redis-server", Index: 3, Instance: 1, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-0.default.svc.cluster.local", AZ: "z1", ID: "redis-slave-0-redis-server", Index: 0, Instance: 0, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-1.default.svc.cluster.local", AZ: "z2", ID: "redis-slave-1-redis-server", Index: 1, Instance: 0, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-2.default.svc.cluster.local", AZ: "z1", ID: "redis-slave-2-redis-server", Index: 2, Instance: 1, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-3.default.svc.cluster.local", AZ: "z2", ID: "redis-slave-3-redis-server", Index: 3, Instance: 1, Name: "redis-slave-redis-server"},
 				}
 				expectedProperties := map[string]interface{}{
 					"port":     6379,
@@ -192,7 +192,7 @@ var _ = Describe("DataGatherer", func() {
 
 					for i, instance := range jobConsumesFromDoppler.Instances {
 						Expect(instance.Index).To(Equal(i))
-						Expect(instance.Address).To(Equal(fmt.Sprintf("doppler-%v-doppler.default.svc.cluster.local", i)))
+						Expect(instance.Address).To(Equal(fmt.Sprintf("cf-doppler-%v.default.svc.cluster.local", i)))
 						Expect(instance.ID).To(Equal(fmt.Sprintf("doppler-%v-doppler", i)))
 					}
 					Expect(jobConsumesFromDoppler.Properties).To(BeEquivalentTo(expectedProperties))
@@ -240,21 +240,21 @@ var _ = Describe("DataGatherer", func() {
 				Expect(bpmProcesses.Env["FOOBARWITHLINKVALUES"]).To(Equal("10001"))
 				Expect(bpmProcesses.Env["FOOBARWITHLINKNESTEDVALUES"]).To(Equal("7765"))
 				Expect(bpmProcesses.Env["FOOBARWITHLINKINSTANCESAZ"]).To(Equal("z1"))
-				Expect(bpmProcesses.Env["FOOBARWITHLINKINSTANCESADDRESS"]).To(Equal("doppler-0-doppler.default.svc.cluster.local"))
-				Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-0-loggregator_trafficcontroller.default.svc.cluster.local"))
+				Expect(bpmProcesses.Env["FOOBARWITHLINKINSTANCESADDRESS"]).To(Equal("cf-doppler-0.default.svc.cluster.local"))
+				Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-0.default.svc.cluster.local"))
 				Expect(bpmProcesses.Env["FOOBARWITHSPECDEPLOYMENT"]).To(Equal("cf"))
 
 				// For the second instance
 				bpmProcesses = m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.BPM.Processes[0]
-				Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-0-loggregator_trafficcontroller.default.svc.cluster.local"))
+				Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-0.default.svc.cluster.local"))
 
 				// For the third instance
 				bpmProcesses = m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.BPM.Processes[0]
-				Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-0-loggregator_trafficcontroller.default.svc.cluster.local"))
+				Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-0.default.svc.cluster.local"))
 
 				// For the fourth instance
 				bpmProcesses = m.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.BPM.Processes[0]
-				Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-0-loggregator_trafficcontroller.default.svc.cluster.local"))
+				Expect(bpmProcesses.Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-0.default.svc.cluster.local"))
 
 			})
 		})
