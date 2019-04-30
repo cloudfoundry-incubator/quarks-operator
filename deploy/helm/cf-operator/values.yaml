@@ -1,7 +1,7 @@
 # Default values for cf-operator.
 image:
-  repository: cfcontainerization/cf-operator
-  tag: latest
+  repository: havener/cf-operator
+  tag: test-encalada
   pullPolicy: IfNotPresent
 
 nameOverride: ""

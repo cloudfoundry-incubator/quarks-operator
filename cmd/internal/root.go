@@ -12,7 +12,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/version"
-
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -52,9 +51,10 @@ var rootCmd = &cobra.Command{
 		operatorWebhookHost := viper.GetString("operator-webhook-host")
 		operatorWebhookPort := viper.GetInt32("operator-webhook-port")
 
-		if operatorWebhookHost == "" {
-			log.Fatal("required flag 'operator-webhook-host' not set (env variable: CF_OPERATOR_WEBHOOK_HOST)")
-		}
+		// TODO: comment out this, while we do not want to break
+		// if operatorWebhookHost == "" {
+		// 	log.Fatal("required flag 'operator-webhook-host' not set (env variable: CF_OPERATOR_WEBHOOK_HOST)")
+		// }
 
 		config := &config.Config{
 			CtxTimeOut:        10 * time.Second,
@@ -107,15 +107,15 @@ func init() {
 	viper.BindPFlag("docker-image-tag", rootCmd.PersistentFlags().Lookup("docker-image-tag"))
 
 	argToEnv := map[string]string{
-	"kubeconfig": "KUBECONFIG",
-	"cf-operator-namespace": "CF_OPERATOR_NAMESPACE",
-	"docker-image-org": "DOCKER_IMAGE_ORG",
-	"docker-image-repository": "DOCKER_IMAGE_REPOSITORY",
-	"operator-webhook-host": "CF_OPERATOR_WEBHOOK_HOST",
-	"operator-webhook-port": "CF_OPERATOR_WEBHOOK_PORT",
-	"docker-image-tag": "DOCKER_IMAGE_TAG",
+		"kubeconfig":              "KUBECONFIG",
+		"cf-operator-namespace":   "CF_OPERATOR_NAMESPACE",
+		"docker-image-org":        "DOCKER_IMAGE_ORG",
+		"docker-image-repository": "DOCKER_IMAGE_REPOSITORY",
+		"operator-webhook-host":   "CF_OPERATOR_WEBHOOK_SERVICE_HOST",
+		"operator-webhook-port":   "CF_OPERATOR_WEBHOOK_PORT",
+		"docker-image-tag":        "DOCKER_IMAGE_TAG",
 	}
-	
+
 	// Add env variables to help
 	AddEnvToUsage(rootCmd, argToEnv)
 }
