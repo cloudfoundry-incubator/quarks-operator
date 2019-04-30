@@ -33,7 +33,11 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "cf-operator"
-            - name: CF_OPERATOR_WEBHOOK_HOST
-              value: {{ .Release.Name }}-webhook
+            - name: DOCKER_IMAGE_ORG
+              value: "cfcontainerization"
+            - name: DOCKER_IMAGE_REPOSITORY
+              value: "cf-operator"
+            - name: DOCKER_IMAGE_TAG
+              value: "latest"
             - name: CF_OPERATOR_WEBHOOK_PORT
               value: "{{ .Values.operator.webhook.port }}"

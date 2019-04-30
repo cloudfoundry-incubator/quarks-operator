@@ -29,14 +29,14 @@ var _ = Describe("CLI", func() {
 			session, err := act("help")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
-  -n, --cf-operator-namespace string     \(CF_OPERATOR_NAMESPACE\) Namespace to watch for BOSH deployments \(default "default"\)
-  -o, --docker-image-org string          \(DOCKER_IMAGE_ORG\) Dockerhub organization that provides the operator docker image \(default "cfcontainerization"\)
-  -r, --docker-image-repository string   \(DOCKER_IMAGE_REPOSITORY\) Dockerhub repository that provides the operator docker image \(default "cf-operator"\)
-  -t, --docker-image-tag string          \(DOCKER_IMAGE_TAG\) Tag of the operator docker image \(default "\d+.\d+.\d+"\)
-  -h, --help                             help for cf-operator
-  -c, --kubeconfig string                \(KUBECONFIG\) Path to a kubeconfig, not required in-cluster
-  -w, --operator-webhook-host string     \(CF_OPERATOR_WEBHOOK_HOST\) Hostname/IP under which the webhook server can be reached from the cluster
-  -p, --operator-webhook-port string     \(CF_OPERATOR_WEBHOOK_PORT\) Port the webhook server listens on \(default "2999"\)`))
+  -n, --cf-operator-namespace string           \(CF_OPERATOR_NAMESPACE\) Namespace to watch for BOSH deployments \(default "default"\)
+  -o, --docker-image-org string                \(DOCKER_IMAGE_ORG\) Dockerhub organization that provides the operator docker image \(default "cfcontainerization"\)
+  -r, --docker-image-repository string         \(DOCKER_IMAGE_REPOSITORY\) Dockerhub repository that provides the operator docker image \(default "cf-operator"\)
+  -t, --docker-image-tag string                \(DOCKER_IMAGE_TAG\) Tag of the operator docker image \(default "\d+.\d+.\d+"\)
+  -h, --help                                   help for cf-operator
+  -c, --kubeconfig string                      \(KUBECONFIG\) Path to a kubeconfig, not required in-cluster
+  -p, --operator-webhook-port string           \(CF_OPERATOR_WEBHOOK_PORT\) Port the webhook server listens on \(default "2999"\)
+  -w, --operator-webhook-service-host string   \(CF_OPERATOR_WEBHOOK_SERVICE_HOST\) Hostname/IP under which the webhook server can be reached from the cluster`))
 		})
 
 		It("shows all available commands", func() {
@@ -179,7 +179,7 @@ var _ = Describe("CLI", func() {
 
 	Describe("data-gather", func() {
 		It("lists its flags incl. ENV binding", func() {
-			session, err := act("util", "data-gather",  "-h")
+			session, err := act("util", "data-gather", "-h")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
   -b, --base-dir string               \(BASE_DIR\) a path to the base directory

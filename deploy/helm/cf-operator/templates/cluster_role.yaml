@@ -8,9 +8,13 @@ items:
       name: cf-operator:cluster
     rules:
     - apiGroups:
-      - admissionregistration.k8s.io
+      - '*'
       resources:
-      - mutatingwebhookconfigurations
+      - '*'
+      verbs:
+      - '*'
+    - nonResourceURLs:
+      - '*'
       verbs:
       - '*'
   - kind: ClusterRoleBinding

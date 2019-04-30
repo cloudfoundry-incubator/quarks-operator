@@ -15,11 +15,9 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
-
 	"github.com/spf13/afero"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
-
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 	"k8s.io/client-go/rest"
@@ -104,9 +102,9 @@ func (e *Environment) AllLogMessages() (msgs []string) {
 }
 
 func (e *Environment) setupCFOperator() (err error) {
-	whh, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_HOST")
+	whh, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_HOST")
 	if !found {
-		return fmt.Errorf("no webhook host set. Please set CF_OPERATOR_WEBHOOK_HOST to the host/ip the operator runs on and try again")
+		return fmt.Errorf("no webhook host set. Please set CF_OPERATOR_WEBHOOK_SERVICE_HOST to the host/ip the operator runs on and try again")
 	}
 	e.Config.WebhookServerHost = whh
 
