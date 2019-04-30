@@ -179,7 +179,7 @@ var _ = Describe("CLI", func() {
 
 	Describe("data-gather", func() {
 		It("lists its flags incl. ENV binding", func() {
-			session, err := act("util", "data-gather",  "-h")
+			session, err := act("util", "data-gather", "-h")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
   -b, --base-dir string               \(BASE_DIR\) a path to the base directory
