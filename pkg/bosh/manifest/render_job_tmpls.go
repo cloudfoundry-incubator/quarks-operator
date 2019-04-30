@@ -36,7 +36,11 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 
 		// Render all files for all jobs included in this instance_group.
 		for _, job := range instanceGroup.Jobs {
-			jobInstanceLinks := []Link{}
+			jobSpec, err := job.loadSpec(jobsDir)
+
+			if err != nil {
+				return errors.Wrapf(err, "failed to load job spec file %s", job.Name)
+			}
 
 			// Find job instance that's being rendered
 			var currentJobInstance *JobInstance
@@ -51,6 +55,7 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 			}
 
 			// Loop over name and link
+			jobInstanceLinks := []Link{}
 			for name, jobConsumersLink := range job.Properties.BOSHContainerization.Consumes {
 				jobInstances := []JobInstance{}
 
@@ -72,19 +77,8 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 				})
 			}
 
-			jobSrcDir := filepath.Join(jobsDir, "jobs-src", job.Release, job.Name)
-			jobMFFile := filepath.Join(jobSrcDir, "job.MF")
-			jobMfBytes, err := ioutil.ReadFile(jobMFFile)
-			if err != nil {
-				return errors.Wrapf(err, "failed to read job spec file %s", jobMFFile)
-			}
-
-			jobSpec := JobSpec{}
-			if err := yaml.Unmarshal([]byte(jobMfBytes), &jobSpec); err != nil {
-				return errors.Wrapf(err, "failed to unmarshal job spec %s", jobMFFile)
-			}
-
 			// Loop over templates for rendering files
+			jobSrcDir := job.specDir(jobsDir)
 			for source, destination := range jobSpec.Templates {
 				absDest := filepath.Join(jobsOutputDir, job.Name, destination)
 				os.MkdirAll(filepath.Dir(absDest), 0755)
@@ -104,7 +98,7 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 						Name:    currentJobInstance.Name,
 					},
 
-					jobMFFile,
+					filepath.Join(jobSrcDir, JobSpecFilename),
 				)
 
 				// Create the destination file
