@@ -1,4 +1,4 @@
-package e2e_test
+package kube_test
 
 import (
 	b64 "encoding/base64"
@@ -26,17 +26,19 @@ var _ = Describe("Examples", func() {
 			namespace = env.Namespace
 		})
 
+		const examplesDir = "../../docs/examples/"
+
 		Context("all examples must be working", func() {
 
 			It("extended-job ready example must work", func() {
 
-				yamlFilePath := "../docs/examples/extended-job/exjob_trigger_ready.yaml"
+				yamlFilePath := examplesDir + "extended-job/exjob_trigger_ready.yaml"
 
 				By("Creating exjob_trigger")
 				err := kubectlHelper.Create(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
-				yamlPodFilePath := "../docs/examples/extended-job/pod.yaml"
+				yamlPodFilePath := examplesDir + "extended-job/pod.yaml"
 
 				By("Creating pod")
 				kubectlHelper = testing.NewKubectl()
@@ -66,7 +68,7 @@ var _ = Describe("Examples", func() {
 
 			It("extended-statefulset configs example must work", func() {
 
-				yamlFilePath := "../docs/examples/extended-statefulset/exstatefulset_configs.yaml"
+				yamlFilePath := examplesDir + "extended-statefulset/exstatefulset_configs.yaml"
 
 				By("Creating exstatefulset configs")
 				kubectlHelper := testing.NewKubectl()
@@ -80,7 +82,7 @@ var _ = Describe("Examples", func() {
 				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v1-1")
 				Expect(err).ToNot(HaveOccurred())
 
-				yamlUpdatedFilePath := "../docs/examples/extended-statefulset/exstatefulset_configs_updated.yaml"
+				yamlUpdatedFilePath := examplesDir + "extended-statefulset/exstatefulset_configs_updated.yaml"
 
 				By("Updating the config value used by pods")
 				err = kubectlHelper.Apply(namespace, yamlUpdatedFilePath)
@@ -108,7 +110,7 @@ var _ = Describe("Examples", func() {
 
 			It("bosh-deployment example must work", func() {
 
-				yamlFilePath := "../docs/examples/bosh-deployment/boshdeployment.yaml"
+				yamlFilePath := examplesDir + "bosh-deployment/boshdeployment.yaml"
 
 				By("Creating bosh deployment")
 				kubectlHelper := testing.NewKubectl()
@@ -139,7 +141,7 @@ var _ = Describe("Examples", func() {
 
 			It("bosh-deployment with customed variale example must work", func() {
 
-				yamlFilePath := "../docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml"
+				yamlFilePath := examplesDir + "bosh-deployment/boshdeployment-with-custom-variable.yaml"
 
 				By("Creating bosh deployment")
 				kubectlHelper := testing.NewKubectl()
@@ -179,7 +181,7 @@ var _ = Describe("Examples", func() {
 
 			It("extended-job auto errand delete example must work", func() {
 
-				yamlFilePath := "../docs/examples/extended-job/exjob_auto-errand-deletes-pod.yaml"
+				yamlFilePath := examplesDir + "extended-job/exjob_auto-errand-deletes-pod.yaml"
 
 				By("Creating exjob")
 				kubectlHelper := testing.NewKubectl()
@@ -200,7 +202,7 @@ var _ = Describe("Examples", func() {
 
 			It("extended-job auto errand example must work", func() {
 
-				yamlFilePath := "../docs/examples/extended-job/exjob_auto-errand.yaml"
+				yamlFilePath := examplesDir + "extended-job/exjob_auto-errand.yaml"
 
 				By("Creating exjob")
 				kubectlHelper := testing.NewKubectl()
@@ -224,7 +226,7 @@ var _ = Describe("Examples", func() {
 
 			It("extended-job auto errand update example must work", func() {
 
-				yamlFilePath := "../docs/examples/extended-job/exjob_auto-errand-updating.yaml"
+				yamlFilePath := examplesDir + "extended-job/exjob_auto-errand-updating.yaml"
 
 				By("Creating exjob")
 				kubectlHelper := testing.NewKubectl()
@@ -243,7 +245,7 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Update the config change")
-				yamlFilePath = "../docs/examples/extended-job/exjob_auto-errand-updating_updated.yaml"
+				yamlFilePath = examplesDir + "extended-job/exjob_auto-errand-updating_updated.yaml"
 
 				err = kubectlHelper.Apply(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
@@ -265,7 +267,7 @@ var _ = Describe("Examples", func() {
 
 			It("extended-job errand example must work", func() {
 
-				yamlFilePath := "../docs/examples/extended-job/exjob_errand.yaml"
+				yamlFilePath := examplesDir + "extended-job/exjob_errand.yaml"
 
 				By("Creating exjob")
 				kubectlHelper := testing.NewKubectl()
@@ -274,7 +276,7 @@ var _ = Describe("Examples", func() {
 
 				By("Updating exjob to trigger now")
 
-				yamlFilePath = "../docs/examples/extended-job/exjob_errand_updated.yaml"
+				yamlFilePath = examplesDir + "extended-job/exjob_errand_updated.yaml"
 
 				err = kubectlHelper.Apply(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
@@ -296,7 +298,7 @@ var _ = Describe("Examples", func() {
 
 			It("extended-job output example must work", func() {
 
-				yamlFilePath := "../docs/examples/extended-job/exjob_output.yaml"
+				yamlFilePath := examplesDir + "extended-job/exjob_output.yaml"
 
 				By("Creating exjob")
 				kubectlHelper := testing.NewKubectl()
@@ -323,7 +325,7 @@ var _ = Describe("Examples", func() {
 
 			It("extended-secret example must work", func() {
 
-				yamlFilePath := "../docs/examples/extended-secret/password.yaml"
+				yamlFilePath := examplesDir + "extended-secret/password.yaml"
 
 				By("Creating an ExtendedSecret")
 				kubectlHelper := testing.NewKubectl()
@@ -342,7 +344,7 @@ var _ = Describe("Examples", func() {
 			It("Test cases must be written for all example use cases in docs", func() {
 
 				countFile := 0
-				err := filepath.Walk("../docs/examples/", func(path string, info os.FileInfo, err error) error {
+				err := filepath.Walk(examplesDir, func(path string, info os.FileInfo, err error) error {
 					if !info.IsDir() {
 						countFile = countFile + 1
 					}

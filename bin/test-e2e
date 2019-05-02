@@ -24,4 +24,4 @@ bin/apply-crds
 
 kubectl get customresourcedefinitions
 
-ginkgo e2e/
+ginkgo e2e/ e2e/kube/

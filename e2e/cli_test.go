@@ -3,7 +3,6 @@ package e2e_test
 import (
 	"os"
 	"os/exec"
-	"path/filepath"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -133,47 +132,6 @@ var _ = Describe("CLI", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Err).Should(Say("no such file: bar.txt"))
 			})
-		})
-
-		It("should show a interpolated manifest with variables files", func() {
-			wd, err := os.Getwd()
-			Expect(err).ToNot(HaveOccurred())
-
-			manifestPath := filepath.Join(wd, "../testing/assets/manifest.yaml")
-			varsDir := filepath.Join(wd, "../testing/assets/vars")
-
-			session, err := act("util", "-m", manifestPath, "variable-interpolation", "-v", varsDir)
-			Expect(err).ToNot(HaveOccurred())
-
-			Eventually(session.Out).Should(Say(`{"manifest.yaml":"instance-group:\\n  key1: |\\n    baz\\n  key2: |\\n    foo\\n  key3: |\\n    bar\\npassword: |\\n  fake-password\\n"}`))
-		})
-
-		It("should show a json format", func() {
-			wd, err := os.Getwd()
-			Expect(err).ToNot(HaveOccurred())
-
-			manifestPath := filepath.Join(wd, "../testing/assets/manifest.yaml")
-			varsDir := filepath.Join(wd, "../testing/assets/vars")
-
-			session, err := act("util", "variable-interpolation", "-m", manifestPath, "-v", varsDir)
-			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out).Should(Say(`{"manifest.yaml":"instance-group:\\n  key1: |\\n    baz\n  key2: |\\n    foo\\n  key3: |\\n    bar\\npassword: |\\n  fake-password\\n"}`))
-		})
-
-		It("should show a encode format", func() {
-			wd, err := os.Getwd()
-			Expect(err).ToNot(HaveOccurred())
-
-			manifestPath := filepath.Join(wd, "../testing/assets/manifest.yaml")
-			varsDir := filepath.Join(wd, "../testing/assets/vars")
-
-			session, err := act("util", "variable-interpolation", "-m", manifestPath, "-v", varsDir)
-			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out).Should(Say(`{"manifest.yaml":"instance-group:\\n  key1: |\\n    baz\\n  key2: |\\n    foo\\n  key3: |\\n    bar\\npassword: |\\n  fake-password\n"}`))
-
-			session, err = act("util", "variable-interpolation", "-m", manifestPath, "-v", varsDir)
-			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out).Should(Say(`{"manifest.yaml":"instance-group:\\n  key1: |\\n    baz\\n  key2: |\\n    foo\\n  key3: |\\n    bar\\npassword: |\\n  fake-password\\n"}`))
 		})
 	})
 
