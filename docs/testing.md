@@ -47,7 +47,7 @@ Integration tests use a special logger, which does not log to stdout and whose m
 Extended StatefulSet requires a k8s webhook to mutate the volumes of a pod.
 Kubernetes will call back to the operator for certain requests and use the
 modified pod manifest, which is returned.  The cf-operator binary will open a
-listening port bound to `CF_OPERATOR_WEBHOOK_HOST` on port
+listening port bound to `CF_OPERATOR_WEBHOOK_SERVICE_HOST` on port
 `CF_OPERATOR_WEBHOOK_PORT`.
 
 The tests use a `mutatingwebhookconfiguration` to configure Kubernetes to
@@ -56,11 +56,11 @@ connect to this address.  It needs to be reachable from the cluster.
 In case of minikube on Linux, the following one liner exports the public IP of
 the interface used for the default route:
 
-    export CF_OPERATOR_WEBHOOK_HOST=$(ip -4 a s dev `ip r l 0/0 | cut -f5 -d' '` | grep -oP 'inet \K\S+(?=/)')
+    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip -4 a s dev `ip r l 0/0 | cut -f5 -d' '` | grep -oP 'inet \K\S+(?=/)')
 
 And in case of minikube on Darwin, using following command to export the IP:
 
-    export CF_OPERATOR_WEBHOOK_HOST=$(ifconfig `route -n get 0.0.0.0 2>/dev/null | awk '/interface: / {print $2}'` | awk '/inet /{gsub(/\//," ");print $2}')
+    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ifconfig `route -n get 0.0.0.0 2>/dev/null | awk '/interface: / {print $2}'` | awk '/inet /{gsub(/\//," ");print $2}')
 
 ### Upload Operator Image
 
