@@ -69,6 +69,8 @@ var rootCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
+		ctxlog.Info(ctx, "Waiting for configurations to be applied into a BOSHDeployment resource...")
+
 		log.Fatal(mgr.Start(signals.SetupSignalHandler()))
 	},
 	TraverseChildren: true,
