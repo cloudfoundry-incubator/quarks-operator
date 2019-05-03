@@ -44,6 +44,9 @@ inside a bosh manifest file.
 		}
 
 		instanceGroupName := viper.GetString("instance-group-name")
+		if len(instanceGroupName) == 0 {
+			return fmt.Errorf("instance-group-name cannot be empty")
+		}
 
 		boshManifestBytes, err := ioutil.ReadFile(boshManifestPath)
 		if err != nil {

@@ -25,7 +25,12 @@ This will render a provided manifest instance-group
 		boshManifestPath := viper.GetString("bosh-manifest-path")
 		jobsDir := viper.GetString("jobs-dir")
 		outputDir := viper.GetString("output-dir")
+
 		instanceGroupName := viper.GetString("instance-group-name")
+		if len(instanceGroupName) == 0 {
+			return fmt.Errorf("instance-group-name cannot be empty")
+		}
+
 		specIndex := viper.GetInt("spec-index")
 		if specIndex < 0 {
 			// calculate index following the formula specified in

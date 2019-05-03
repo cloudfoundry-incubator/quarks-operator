@@ -145,7 +145,7 @@ var _ = Describe("CLI", func() {
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
-			session, err := act("util", "data-gather", "--base-dir=.", "-m", "foo.txt")
+			session, err := act("util", "data-gather", "--base-dir=.", "-m", "foo.txt", "-g", "log-api")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Err).Should(Say("open foo.txt: no such file or directory"))
 		})
@@ -160,7 +160,7 @@ var _ = Describe("CLI", func() {
 			})
 
 			It("accepts the bosh-manifest-path as an environment variable", func() {
-				session, err := act("util", "data-gather", "--base-dir=.")
+				session, err := act("util", "data-gather", "--base-dir=.", "-g", "log-api")
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Err).Should(Say("open bar.txt: no such file or directory"))
 			})
@@ -183,7 +183,7 @@ var _ = Describe("CLI", func() {
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
-			session, err := act("util", "template-render", "--az-index=1", "--replicas=1", "--pod-ordinal=1", "-m", "foo.txt")
+			session, err := act("util", "template-render", "--az-index=1", "--replicas=1", "--pod-ordinal=1", "-m", "foo.txt", "-g", "log-api")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Err).Should(Say("open foo.txt: no such file or directory"))
 		})
@@ -198,7 +198,7 @@ var _ = Describe("CLI", func() {
 			})
 
 			It("accepts the bosh-manifest-path as an environment variable", func() {
-				session, err := act("util", "template-render", "--az-index=1", "--replicas=1", "--pod-ordinal=1")
+				session, err := act("util", "template-render", "--az-index=1", "--replicas=1", "--pod-ordinal=1", "-g", "log-api")
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Err).Should(Say("open bar.txt: no such file or directory"))
 			})
