@@ -34,8 +34,8 @@ var _ = Describe("CLI", func() {
   -t, --docker-image-tag string                \(DOCKER_IMAGE_TAG\) Tag of the operator docker image \(default "\d+.\d+.\d+"\)
   -h, --help                                   help for cf-operator
   -c, --kubeconfig string                      \(KUBECONFIG\) Path to a kubeconfig, not required in-cluster
-  -p, --operator-webhook-port string           \(CF_OPERATOR_WEBHOOK_PORT\) Port the webhook server listens on \(default "2999"\)
-  -w, --operator-webhook-service-host string   \(CF_OPERATOR_WEBHOOK_SERVICE_HOST\) Hostname/IP under which the webhook server can be reached from the cluster`))
+  -w, --operator-webhook-service-host string   \(CF_OPERATOR_WEBHOOK_SERVICE_HOST\) Hostname/IP under which the webhook server can be reached from the cluster
+  -p, --operator-webhook-service-port string   \(CF_OPERATOR_WEBHOOK_SERVICE_PORT\) Port the webhook server listens on \(default "2999"\)`))
 		})
 
 		It("shows all available commands", func() {

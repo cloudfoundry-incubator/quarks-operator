@@ -48,7 +48,7 @@ Extended StatefulSet requires a k8s webhook to mutate the volumes of a pod.
 Kubernetes will call back to the operator for certain requests and use the
 modified pod manifest, which is returned.  The cf-operator binary will open a
 listening port bound to `CF_OPERATOR_WEBHOOK_SERVICE_HOST` on port
-`CF_OPERATOR_WEBHOOK_PORT`.
+`CF_OPERATOR_WEBHOOK_SERVICE_PORT`.
 
 The tests use a `mutatingwebhookconfiguration` to configure Kubernetes to
 connect to this address.  It needs to be reachable from the cluster.

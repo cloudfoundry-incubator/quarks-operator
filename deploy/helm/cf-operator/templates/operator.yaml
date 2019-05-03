@@ -39,5 +39,3 @@ spec:
               value: "cf-operator"
             - name: DOCKER_IMAGE_TAG
               value: "latest"
-            - name: CF_OPERATOR_WEBHOOK_PORT
-              value: "{{ .Values.operator.webhook.port }}"
