@@ -1,10 +1,10 @@
 #!/bin/bash
 
+set -euo pipefail
+
 GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 . "${GIT_ROOT}/bin/include/versioning"
 . "${GIT_ROOT}/.envrc"
-
-set -e
 
 output_dir=${GIT_ROOT}/helm
 filename="${output_dir}/${ARTIFACT_NAME}-${ARTIFACT_VERSION}.zip"
@@ -12,8 +12,8 @@ filename="${output_dir}/${ARTIFACT_NAME}-${ARTIFACT_VERSION}.zip"
 [ -d "${output_dir}" ] && rm -r "${output_dir}"
 cp -r "${GIT_ROOT}/deploy/helm" "${output_dir}"
 
-sed -i "s@repository: .*@repository: ${OPERATOR_DOCKER_ORGANIZATION}/cf-operator@" "${output_dir}/cf-operator/values.yaml"
-sed -i "s@tag: .*@tag: ${VERSION_TAG}@" "${output_dir}/cf-operator/values.yaml"
+perl -pi -e "s|repository: .*|repository: ${OPERATOR_DOCKER_ORGANIZATION}/cf-operator|g" "${output_dir}/cf-operator/values.yaml"
+perl -pi -e "s|tag: .*|tag: ${VERSION_TAG}|g" "${output_dir}/cf-operator/values.yaml"
 
 zip -r "${filename}" helm
 
