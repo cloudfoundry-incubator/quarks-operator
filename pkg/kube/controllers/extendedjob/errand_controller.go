@@ -6,6 +6,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	"strings"
+
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -13,7 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"strings"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
@@ -35,7 +36,9 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 		return err
 	}
 
-	// Only trigger if Spec.Run is 'now'
+	// Trigger when
+	//  * errand jobs are to be run (Spec.Run changes from `manual` to `now` or the job is created with `now`)
+	//  * auto-errands with UpdateOnConfigChange == true have changed config references
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			eJob := e.Object.(*ejv1.ExtendedJob)
@@ -51,7 +54,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			o := e.ObjectOld.(*ejv1.ExtendedJob)
 			n := e.ObjectNew.(*ejv1.ExtendedJob)
 
-			enqueueForManualErrand := n.Spec.Trigger.Strategy == ejv1.TriggerNow || o.Spec.Trigger.Strategy == ejv1.TriggerManual
+			enqueueForManualErrand := n.Spec.Trigger.Strategy == ejv1.TriggerNow && o.Spec.Trigger.Strategy == ejv1.TriggerManual
 
 			// enqueuing for auto-errand when referenced secrets changed
 			enqueueForConfigChange := n.IsAutoErrand() && n.Spec.UpdateOnConfigChange && hasConfigsChanged(o, n)
@@ -126,7 +129,6 @@ func hasConfigsChanged(oldEJob, newEJob *ejv1.ExtendedJob) bool {
 
 	if reflect.DeepEqual(oldConfigMaps, newConfigMaps) && reflect.DeepEqual(oldSecrets, newSecrets) {
 		return false
-
 	}
 
 	// For versioned secret, we only enqueue changes for higher version of secrets
