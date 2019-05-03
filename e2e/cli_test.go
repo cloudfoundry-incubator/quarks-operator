@@ -140,9 +140,8 @@ var _ = Describe("CLI", func() {
 			session, err := act("util", "data-gather", "-h")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
-  -b, --base-dir string               \(BASE_DIR\) a path to the base directory
-  -h, --help                          help for data-gather
-      --kubernetes-namespace string   \(KUBERNETES_NAMESPACE\) the kubernetes namespace`))
+  -b, --base-dir string * \(BASE_DIR\) a path to the base directory
+  -h, --help            * help for data-gather`))
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {

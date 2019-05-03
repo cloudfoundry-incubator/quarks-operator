@@ -38,8 +38,8 @@ inside a bosh manifest file.
 			return fmt.Errorf("base directory cannot be empty")
 		}
 
-		cfOperatorNamespace := viper.GetString("cf-operator-namespace")
-		if len(cfOperatorNamespace) == 0 {
+		namespace := viper.GetString("cf-operator-namespace")
+		if len(namespace) == 0 {
 			return fmt.Errorf("namespace cannot be empty")
 		}
 
@@ -56,7 +56,7 @@ inside a bosh manifest file.
 			return err
 		}
 
-		dg := manifest.NewDataGatherer(log, cfOperatorNamespace, &boshManifestStruct)
+		dg := manifest.NewDataGatherer(log, namespace, &boshManifestStruct)
 		result, err := dg.GenerateManifest(baseDir, instanceGroupName)
 		if err != nil {
 			return err
@@ -83,14 +83,11 @@ inside a bosh manifest file.
 func init() {
 	utilCmd.AddCommand(dataGatherCmd)
 
-	dataGatherCmd.Flags().String("kubernetes-namespace", "", "the kubernetes namespace")
 	dataGatherCmd.Flags().StringP("base-dir", "b", "", "a path to the base directory")
 
-	viper.BindPFlag("kubernetes-namespace", dataGatherCmd.Flags().Lookup("kubernetes-namespace"))
 	viper.BindPFlag("base-dir", dataGatherCmd.Flags().Lookup("base-dir"))
 
 	argToEnv := map[string]string{
-		"kubernetes-namespace": "KUBERNETES_NAMESPACE",
 		"base-dir": "BASE_DIR",
 	}
 	AddEnvToUsage(dataGatherCmd, argToEnv)
