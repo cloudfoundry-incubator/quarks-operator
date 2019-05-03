@@ -172,12 +172,13 @@ var _ = Describe("CLI", func() {
 			session, err := act("util", "template-render", "-h")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
-      --az-index int      \(AZ_INDEX\) az index \(default -1\)
-  -h, --help              help for template-render
-  -j, --jobs-dir string   \(JOBS_DIR\) path to the jobs dir.
-      --pod-ordinal int   \(POD_ORDINAL\) pod ordinal \(default -1\)
-      --replicas int      \(REPLICAS\) number of replicas \(default -1\)
-      --spec-index int    \(SPEC_INDEX\) index of the instance spec \(default -1\)
+      --az-index int        \(AZ_INDEX\) az index \(default -1\)
+  -h, --help                help for template-render
+  -j, --jobs-dir string     \(JOBS_DIR\) path to the jobs dir.
+  -d, --output-dir string   \(OUTPUT_DIR\) path to output dir. \(default "/var/vcap/jobs"\)
+      --pod-ordinal int     \(POD_ORDINAL\) pod ordinal \(default -1\)
+      --replicas int        \(REPLICAS\) number of replicas \(default -1\)
+      --spec-index int      \(SPEC_INDEX\) index of the instance spec \(default -1\)
 `))
 		})
 
