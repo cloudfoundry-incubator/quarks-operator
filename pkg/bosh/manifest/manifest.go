@@ -1,7 +1,13 @@
 package manifest
 
 import (
+	"fmt"
+	"io/ioutil"
+	"path/filepath"
+
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"github.com/pkg/errors"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // JobInstance for data gathering
@@ -29,6 +35,8 @@ type JobLink struct {
 	Instances  []JobInstance          `yaml:"instances"`
 	Properties map[string]interface{} `yaml:"properties"`
 }
+
+const JobSpecFilename = "job.MF"
 
 // JobSpec describes the contents of "job.MF" files
 type JobSpec struct {
@@ -60,6 +68,25 @@ type Job struct {
 	Consumes   map[string]interface{} `yaml:"consumes,omitempty"`
 	Provides   map[string]interface{} `yaml:"provides,omitempty"`
 	Properties JobProperties          `yaml:"properties,omitempty"`
+}
+
+func (j *Job) specDir(baseDir string) string {
+	return filepath.Join(baseDir, "jobs-src", j.Release, j.Name)
+}
+
+func (j *Job) loadSpec(baseDir string) (*JobSpec, error) {
+	jobMFFilePath := filepath.Join(j.specDir(baseDir), JobSpecFilename)
+	jobMfBytes, err := ioutil.ReadFile(jobMFFilePath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read file")
+	}
+
+	jobSpec := JobSpec{}
+	if err := yaml.Unmarshal([]byte(jobMfBytes), &jobSpec); err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal")
+	}
+
+	return &jobSpec, nil
 }
 
 // BOSHContainerization represents the special 'bosh_containerization'
@@ -183,6 +210,39 @@ type InstanceGroup struct {
 	LifeCycle          string                 `yaml:"lifecycle,omitempty"`
 	Properties         map[string]interface{} `yaml:"properties,omitempty"`
 	Env                *AgentEnv              `yaml:"env,omitempty"`
+}
+
+func (ig *InstanceGroup) jobInstances(namespace string, deploymentName string, jobName string, spec JobSpec) []JobInstance {
+	var jobsInstances []JobInstance
+	for i := 0; i < ig.Instances; i++ {
+
+		// TODO: Understand whether there are negative side-effects to using this
+		// default
+		azs := []string{""}
+		if len(ig.AZs) > 0 {
+			azs = ig.AZs
+		}
+
+		for _, az := range azs {
+			index := len(jobsInstances)
+			name := fmt.Sprintf("%s-%s", ig.Name, jobName)
+			id := fmt.Sprintf("%s-%d-%s", ig.Name, index, jobName)
+			// All jobs in same instance group will use same service
+			serviceName := fmt.Sprintf("%s-%s-%d", deploymentName, ig.Name, index)
+			// TODO: not allowed to hardcode svc.cluster.local
+			address := fmt.Sprintf("%s.%s.svc.cluster.local", serviceName, namespace)
+
+			jobsInstances = append(jobsInstances, JobInstance{
+				Address:  address,
+				AZ:       az,
+				ID:       id,
+				Index:    index,
+				Instance: i,
+				Name:     name,
+			})
+		}
+	}
+	return jobsInstances
 }
 
 // Feature from BOSH deployment manifest

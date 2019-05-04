@@ -4,7 +4,7 @@ Gathers data of a bosh manifest
 
 ### Synopsis
 
-Gathers data of a manifest. 
+Gathers data of a manifest.
 
 This will retrieve information of an instance-group
 inside a bosh manifest file.
@@ -20,7 +20,6 @@ cf-operator util data-gather [flags]
 ```
   -b, --base-dir string               (BASE_DIR) a path to the base directory
   -h, --help                          help for data-gather
-      --kubernetes-namespace string   (KUBERNETES_NAMESPACE) the kubernetes namespace
 ```
 
 ### Options inherited from parent commands

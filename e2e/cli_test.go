@@ -3,7 +3,6 @@ package e2e_test
 import (
 	"os"
 	"os/exec"
-	"path/filepath"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -134,47 +133,6 @@ var _ = Describe("CLI", func() {
 				Eventually(session.Err).Should(Say("no such file: bar.txt"))
 			})
 		})
-
-		It("should show a interpolated manifest with variables files", func() {
-			wd, err := os.Getwd()
-			Expect(err).ToNot(HaveOccurred())
-
-			manifestPath := filepath.Join(wd, "../testing/assets/manifest.yaml")
-			varsDir := filepath.Join(wd, "../testing/assets/vars")
-
-			session, err := act("util", "-m", manifestPath, "variable-interpolation", "-v", varsDir)
-			Expect(err).ToNot(HaveOccurred())
-
-			Eventually(session.Out).Should(Say(`{"manifest.yaml":"instance-group:\\n  key1: |\\n    baz\\n  key2: |\\n    foo\\n  key3: |\\n    bar\\npassword: |\\n  fake-password\\n"}`))
-		})
-
-		It("should show a json format", func() {
-			wd, err := os.Getwd()
-			Expect(err).ToNot(HaveOccurred())
-
-			manifestPath := filepath.Join(wd, "../testing/assets/manifest.yaml")
-			varsDir := filepath.Join(wd, "../testing/assets/vars")
-
-			session, err := act("util", "variable-interpolation", "-m", manifestPath, "-v", varsDir)
-			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out).Should(Say(`{"manifest.yaml":"instance-group:\\n  key1: |\\n    baz\n  key2: |\\n    foo\\n  key3: |\\n    bar\\npassword: |\\n  fake-password\\n"}`))
-		})
-
-		It("should show a encode format", func() {
-			wd, err := os.Getwd()
-			Expect(err).ToNot(HaveOccurred())
-
-			manifestPath := filepath.Join(wd, "../testing/assets/manifest.yaml")
-			varsDir := filepath.Join(wd, "../testing/assets/vars")
-
-			session, err := act("util", "variable-interpolation", "-m", manifestPath, "-v", varsDir)
-			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out).Should(Say(`{"manifest.yaml":"instance-group:\\n  key1: |\\n    baz\\n  key2: |\\n    foo\\n  key3: |\\n    bar\\npassword: |\\n  fake-password\n"}`))
-
-			session, err = act("util", "variable-interpolation", "-m", manifestPath, "-v", varsDir)
-			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out).Should(Say(`{"manifest.yaml":"instance-group:\\n  key1: |\\n    baz\\n  key2: |\\n    foo\\n  key3: |\\n    bar\\npassword: |\\n  fake-password\\n"}`))
-		})
 	})
 
 	Describe("data-gather", func() {
@@ -182,13 +140,12 @@ var _ = Describe("CLI", func() {
 			session, err := act("util", "data-gather", "-h")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
-  -b, --base-dir string               \(BASE_DIR\) a path to the base directory
-  -h, --help                          help for data-gather
-      --kubernetes-namespace string   \(KUBERNETES_NAMESPACE\) the kubernetes namespace`))
+  -b, --base-dir string * \(BASE_DIR\) a path to the base directory
+  -h, --help            * help for data-gather`))
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
-			session, err := act("util", "data-gather", "--base-dir=.", "-m", "foo.txt")
+			session, err := act("util", "data-gather", "--base-dir=.", "-m", "foo.txt", "-g", "log-api")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Err).Should(Say("open foo.txt: no such file or directory"))
 		})
@@ -203,7 +160,7 @@ var _ = Describe("CLI", func() {
 			})
 
 			It("accepts the bosh-manifest-path as an environment variable", func() {
-				session, err := act("util", "data-gather", "--base-dir=.")
+				session, err := act("util", "data-gather", "--base-dir=.", "-g", "log-api")
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Err).Should(Say("open bar.txt: no such file or directory"))
 			})
@@ -215,17 +172,18 @@ var _ = Describe("CLI", func() {
 			session, err := act("util", "template-render", "-h")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
-      --az-index int      \(AZ_INDEX\) az index \(default -1\)
-  -h, --help              help for template-render
-  -j, --jobs-dir string   \(JOBS_DIR\) path to the jobs dir.
-      --pod-ordinal int   \(POD_ORDINAL\) pod ordinal \(default -1\)
-      --replicas int      \(REPLICAS\) number of replicas \(default -1\)
-      --spec-index int    \(SPEC_INDEX\) index of the instance spec \(default -1\)
+      --az-index int        \(AZ_INDEX\) az index \(default -1\)
+  -h, --help                help for template-render
+  -j, --jobs-dir string     \(JOBS_DIR\) path to the jobs dir.
+  -d, --output-dir string   \(OUTPUT_DIR\) path to output dir. \(default "/var/vcap/jobs"\)
+      --pod-ordinal int     \(POD_ORDINAL\) pod ordinal \(default -1\)
+      --replicas int        \(REPLICAS\) number of replicas \(default -1\)
+      --spec-index int      \(SPEC_INDEX\) index of the instance spec \(default -1\)
 `))
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
-			session, err := act("util", "template-render", "--az-index=1", "--replicas=1", "--pod-ordinal=1", "-m", "foo.txt")
+			session, err := act("util", "template-render", "--az-index=1", "--replicas=1", "--pod-ordinal=1", "-m", "foo.txt", "-g", "log-api")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Err).Should(Say("open foo.txt: no such file or directory"))
 		})
@@ -240,7 +198,7 @@ var _ = Describe("CLI", func() {
 			})
 
 			It("accepts the bosh-manifest-path as an environment variable", func() {
-				session, err := act("util", "template-render", "--az-index=1", "--replicas=1", "--pod-ordinal=1")
+				session, err := act("util", "template-render", "--az-index=1", "--replicas=1", "--pod-ordinal=1", "-g", "log-api")
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Err).Should(Say("open bar.txt: no such file or directory"))
 			})
