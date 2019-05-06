@@ -1,15 +1,15 @@
 package cmd
 
 import (
-	"github.com/spf13/viper"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // UtilCmd represents the util subcommand
 var utilCmd = &cobra.Command{
-	Use: "util",
+	Use:   "util",
 	Short: "Calls a utility subcommand",
-	Long: `Calls a utility subcommand.`,
+	Long:  `Calls a utility subcommand.`,
 }
 
 func init() {
@@ -22,7 +22,7 @@ func init() {
 	viper.BindPFlag("instance-group-name", utilCmd.PersistentFlags().Lookup("instance-group-name"))
 
 	argToEnv := map[string]string{
-		"bosh-manifest-path": "BOSH_MANIFEST_PATH",
+		"bosh-manifest-path":  "BOSH_MANIFEST_PATH",
 		"instance-group-name": "INSTANCE_GROUP_NAME",
 	}
 	AddEnvToUsage(utilCmd, argToEnv)

@@ -137,7 +137,7 @@ func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string) (map
 
 			// load job.MF into jobReleaseSpecs[job.Release][job.Name]
 			if _, ok := jobReleaseSpecs[job.Release][job.Name]; !ok {
-				jobSpec, err := loadJobSpec(baseDir, job)
+				jobSpec, err := job.loadSpec(baseDir)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -150,7 +150,7 @@ func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string) (map
 			// Generate instance spec for each ig instance
 			// This will be stored inside the current job under
 			// job.properties.bosh_containerization
-			jobsInstances := jobInstances(dg.namespace, dg.manifest.Name, *instanceGroup, job.Name, spec)
+			jobsInstances := instanceGroup.jobInstances(dg.namespace, dg.manifest.Name, job.Name, spec)
 
 			// set jobs.properties.bosh_containerization.instances with the ig instances
 			instanceGroup.Jobs[jobIdx].Properties.BOSHContainerization.Instances = jobsInstances
@@ -319,21 +319,6 @@ func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string) error {
 	return nil
 }
 
-func loadJobSpec(baseDir string, job Job) (*JobSpec, error) {
-	jobMFFilePath := filepath.Join(baseDir, "jobs-src", job.Release, job.Name, "job.MF")
-	jobMfBytes, err := ioutil.ReadFile(jobMFFilePath)
-	if err != nil {
-		return nil, err
-	}
-
-	jobSpec := JobSpec{}
-	if err := yaml.Unmarshal([]byte(jobMfBytes), &jobSpec); err != nil {
-		return nil, err
-	}
-
-	return &jobSpec, nil
-}
-
 // generateJobConsumersData will populate a job with its corresponding provider links
 // under properties.bosh_containerization.consumes
 func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks JobProviderLinks) error {
@@ -448,38 +433,4 @@ func lookUpJobRelease(releases []*Release, jobRelease string) bool {
 	}
 
 	return false
-}
-
-func jobInstances(namespace string, deploymentName string, instanceGroup InstanceGroup, jobName string, spec JobSpec) []JobInstance {
-	var jobsInstances []JobInstance
-	for i := 0; i < instanceGroup.Instances; i++ {
-
-		// TODO: Understand whether there are negative side-effects to using this
-		//   default
-		azs := []string{""}
-		if len(instanceGroup.AZs) > 0 {
-			azs = instanceGroup.AZs
-		}
-
-		for _, az := range azs {
-			index := len(jobsInstances)
-			name := fmt.Sprintf("%s-%s", instanceGroup.Name, jobName)
-			id := fmt.Sprintf("%s-%d-%s", instanceGroup.Name, index, jobName)
-			// All jobs in same instance group will use same service
-			serviceName := fmt.Sprintf("%s-%s-%d", deploymentName, instanceGroup.Name, index)
-
-			// TODO: not allowed to hardcode svc.cluster.local
-			address := fmt.Sprintf("%s.%s.svc.cluster.local", serviceName, namespace)
-
-			jobsInstances = append(jobsInstances, JobInstance{
-				Address:  address,
-				AZ:       az,
-				ID:       id,
-				Index:    index,
-				Instance: i,
-				Name:     name,
-			})
-		}
-	}
-	return jobsInstances
 }

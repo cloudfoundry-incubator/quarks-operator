@@ -7,7 +7,7 @@
 |Nightly build|[![nightly](https://ci.flintstone.cf.cloud.ibm.com/api/v1/teams/containerization/pipelines/cf-operator-nightly/badge)](https://ci.flintstone.cf.cloud.ibm.com/teams/containerization/pipelines/cf-operator-nightly)|
 |-|-|
 
-<img align="right" width="200" height="200" src="https://github.com/cloudfoundry-incubator/cf-operator/raw/master/docs/cf-operator-logo.png">
+<img align="right" width="200" height="39" src="https://github.com/cloudfoundry-incubator/cf-operator/raw/master/docs/cf-operator-logo.png">
 
 cf-operator enables the deployment of BOSH Releases, especially Cloud Foundry, to Kubernetes.
 

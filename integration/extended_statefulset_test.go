@@ -310,8 +310,10 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 	Context("when volumeclaimtemplates are specified", func() {
 		BeforeEach(func() {
+
 			essName := fmt.Sprintf("testess-%s", helper.RandString(5))
 			extendedStatefulSet = env.ExtendedStatefulSetWithPVC(essName, "pvc")
+
 		})
 
 		It("Should append the volumemanagement persistent volume claim always even when spec is updated", func() {
