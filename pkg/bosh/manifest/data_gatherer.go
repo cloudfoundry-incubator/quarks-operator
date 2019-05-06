@@ -248,8 +248,7 @@ func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string) error {
 		return fmt.Errorf("can't find BPM template for job %s", currentJob.Name)
 	}
 
-	// ### Render bpm.yml.erb for each job instance
-
+	// Render bpm.yml.erb for each job instance
 	erbFilePath := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "templates", bpmSource)
 	if _, err := os.Stat(erbFilePath); err != nil {
 		return err

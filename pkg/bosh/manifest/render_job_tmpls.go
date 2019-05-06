@@ -13,6 +13,7 @@ import (
 
 // RenderJobTemplates will render templates for all jobs of the instance group
 // https://bosh.io/docs/create-release/#job-specs
+// boshManifest is a resolved manifest for a single instance group
 func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir string, instanceGroupName string, specIndex int) error {
 
 	// Loading deployment manifest file
