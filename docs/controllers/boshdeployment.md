@@ -20,6 +20,7 @@ Creates/updates:
 
 - the var interpolation extended job
 - the data gathering extended job
+- the "with-ops" secret
 
 > **Note:** the output of the "Var Interpolation" `ExtendedJob` is the input for the "Data Gathering" `ExtendedJob`.
 > The "Data Gathering" step generates 2 secrets for each Instance Group:
