@@ -54,29 +54,6 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 				return fmt.Errorf("no instance found for spec index '%d'", specIndex)
 			}
 
-			// Loop over name and link
-			jobInstanceLinks := []Link{}
-			for name, jobConsumersLink := range job.Properties.BOSHContainerization.Consumes {
-				jobInstances := []JobInstance{}
-
-				// Loop over instances of link
-				for _, jobConsumerLinkInstance := range jobConsumersLink.Instances {
-					jobInstances = append(jobInstances, JobInstance{
-						Address: jobConsumerLinkInstance.Address,
-						AZ:      jobConsumerLinkInstance.AZ,
-						ID:      jobConsumerLinkInstance.ID,
-						Index:   jobConsumerLinkInstance.Index,
-						Name:    jobConsumerLinkInstance.Name,
-					})
-				}
-
-				jobInstanceLinks = append(jobInstanceLinks, Link{
-					Name:       name,
-					Instances:  jobInstances,
-					Properties: jobConsumersLink.Properties,
-				})
-			}
-
 			// Loop over templates for rendering files
 			jobSrcDir := job.specDir(jobsDir)
 			for source, destination := range jobSpec.Templates {
