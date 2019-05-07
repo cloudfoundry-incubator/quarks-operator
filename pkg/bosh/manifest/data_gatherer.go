@@ -173,18 +173,9 @@ func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string) (map
 
 // ProcessConsumersAndRenderBPM will generate a proper context for links and render the required ERB files
 func (dg *DataGatherer) ProcessConsumersAndRenderBPM(baseDir string, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks map[string]map[string]JobLink, instanceGroupName string) ([]byte, error) {
-	var desiredInstanceGroup *InstanceGroup
-	for _, instanceGroup := range dg.manifest.InstanceGroups {
-		if instanceGroup.Name != instanceGroupName {
-			continue
-		}
-
-		desiredInstanceGroup = instanceGroup
-		break
-	}
-
-	if desiredInstanceGroup == nil {
-		return nil, errors.Errorf("can't find instance group '%s' in manifest", instanceGroupName)
+	desiredInstanceGroup, err := dg.manifest.InstanceGroupByName(instanceGroupName)
+	if err != nil {
+		return nil, err
 	}
 
 	for idJob, job := range desiredInstanceGroup.Jobs {

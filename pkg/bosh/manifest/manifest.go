@@ -1,12 +1,6 @@
 package manifest
 
-import (
-	"crypto/sha1"
-	"fmt"
-	"strings"
-
-	yaml "gopkg.in/yaml.v2"
-)
+import "github.com/pkg/errors"
 
 // Link with name for rendering
 type Link struct {
@@ -122,64 +116,13 @@ type Manifest struct {
 	Update         *Update                  `yaml:"update,omitempty"`
 }
 
-// SHA1 calculates the SHA1 of the manifest
-func (m *Manifest) SHA1() (string, error) {
-	manifestBytes, err := yaml.Marshal(m)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("%x", sha1.Sum(manifestBytes)), nil
-}
-
-// GetReleaseImage returns the release image location for a given instance group/job
-func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, error) {
-	var instanceGroup *InstanceGroup
-	for i := range m.InstanceGroups {
-		if m.InstanceGroups[i].Name == instanceGroupName {
-			instanceGroup = m.InstanceGroups[i]
-			break
-		}
-	}
-	if instanceGroup == nil {
-		return "", fmt.Errorf("instance group '%s' not found", instanceGroupName)
-	}
-
-	var stemcell *Stemcell
-	for i := range m.Stemcells {
-		if m.Stemcells[i].Alias == instanceGroup.Stemcell {
-			stemcell = m.Stemcells[i]
+// InstanceGroupByName returns the instance group identified by the given name
+func (m Manifest) InstanceGroupByName(name string) (*InstanceGroup, error) {
+	for _, instanceGroup := range m.InstanceGroups {
+		if instanceGroup.Name == name {
+			return instanceGroup, nil
 		}
 	}
 
-	var job *Job
-	for i := range instanceGroup.Jobs {
-		if instanceGroup.Jobs[i].Name == jobName {
-			job = &instanceGroup.Jobs[i]
-			break
-		}
-	}
-	if job == nil {
-		return "", fmt.Errorf("job '%s' not found in instance group '%s'", jobName, instanceGroupName)
-	}
-
-	for i := range m.Releases {
-		if m.Releases[i].Name == job.Release {
-			release := m.Releases[i]
-			name := strings.TrimRight(release.URL, "/")
-
-			var stemcellVersion string
-
-			if release.Stemcell != nil {
-				stemcellVersion = release.Stemcell.OS + "-" + release.Stemcell.Version
-			} else {
-				if stemcell == nil {
-					return "", fmt.Errorf("stemcell could not be resolved for instance group %s", instanceGroup.Name)
-				}
-				stemcellVersion = stemcell.OS + "-" + stemcell.Version
-			}
-			return fmt.Sprintf("%s/%s:%s-%s", name, release.Name, stemcellVersion, release.Version), nil
-		}
-	}
-	return "", fmt.Errorf("release '%s' not found", job.Release)
+	return nil, errors.Errorf("can't find instance group '%s' in manifest", name)
 }

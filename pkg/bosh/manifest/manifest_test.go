@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	t "code.cloudfoundry.org/cf-operator/testing"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -1009,6 +1010,30 @@ var _ = Describe("Bosh Manifest Schema", func() {
 					`yaml:"properties,omitempty"`,
 				))
 			})
+		})
+	})
+})
+
+var _ = Describe("Manifest", func() {
+	var (
+		manifest Manifest
+		env      t.Catalog
+	)
+
+	BeforeEach(func() {
+		manifest = env.DefaultBOSHManifest()
+	})
+
+	Describe("InstanceGroupByName", func() {
+		It("returns an error if the instance group does not exist", func() {
+			_, err := manifest.InstanceGroupByName("foo")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns the instance group if it exists", func() {
+			ig, err := manifest.InstanceGroupByName("redis-slave")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ig.Name).To(Equal("redis-slave"))
 		})
 	})
 })
