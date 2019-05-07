@@ -40,7 +40,7 @@ var _ = Describe("render-template", func() {
 			manifestPath = "../testing/assets/gatherManifest.yml"
 		})
 
-		It("rendert the instance group template to a file", func() {
+		It("renders the instance group template to a file", func() {
 			session, err := act(manifestPath)
 			Expect(err).ToNot(HaveOccurred())
 
