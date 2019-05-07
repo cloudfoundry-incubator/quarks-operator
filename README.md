@@ -35,7 +35,7 @@ We need to build the binary, which can run out of cluster:
 
 When starting the operator it needs to be reachable from the kubernetes API, so the web hooks work.
 
-    export CF_OPERATOR_WEBHOOK_HOST=<your-public-ip>
+    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=<your-public-ip>
 
 We need to tell the operator which docker image it can use for template rendering:
 
@@ -75,7 +75,7 @@ Go 1.12.2 and install the tool chain:
     export GO111MODULE=on
 
     # set to IP reachable from k8s API
-    export CF_OPERATOR_WEBHOOK_HOST=$(ip -4 a s dev `ip r l 0/0 | cut -f5 -d' '` | grep -oP 'inet \K\S+(?=/)')
+    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip -4 a s dev `ip r l 0/0 | cut -f5 -d' '` | grep -oP 'inet \K\S+(?=/)')
 
     # optionally, using vendor/ with GO111MODULE=off speeds up docker builds
     go mod vendor

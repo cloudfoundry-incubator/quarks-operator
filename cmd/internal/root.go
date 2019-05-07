@@ -49,7 +49,7 @@ var rootCmd = &cobra.Command{
 		log.Infof("cf-operator docker image: %s", manifest.GetOperatorDockerImage())
 
 		operatorWebhookHost := viper.GetString("operator-webhook-service-host")
-		operatorWebhookPort := viper.GetInt32("operator-webhook-port")
+		operatorWebhookPort := viper.GetInt32("operator-webhook-service-port")
 
 		if operatorWebhookHost == "" {
 			log.Fatal("required flag 'operator-webhook-service-host' not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST)")
@@ -97,14 +97,14 @@ func init() {
 	pf.StringP("docker-image-org", "o", "cfcontainerization", "Dockerhub organization that provides the operator docker image")
 	pf.StringP("docker-image-repository", "r", "cf-operator", "Dockerhub repository that provides the operator docker image")
 	pf.StringP("operator-webhook-service-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")
-	pf.StringP("operator-webhook-port", "p", "2999", "Port the webhook server listens on")
+	pf.StringP("operator-webhook-service-port", "p", "2999", "Port the webhook server listens on")
 	pf.StringP("docker-image-tag", "t", version.Version, "Tag of the operator docker image")
 	viper.BindPFlag("kubeconfig", pf.Lookup("kubeconfig"))
 	viper.BindPFlag("cf-operator-namespace", pf.Lookup("cf-operator-namespace"))
 	viper.BindPFlag("docker-image-org", pf.Lookup("docker-image-org"))
 	viper.BindPFlag("docker-image-repository", pf.Lookup("docker-image-repository"))
 	viper.BindPFlag("operator-webhook-service-host", pf.Lookup("operator-webhook-service-host"))
-	viper.BindPFlag("operator-webhook-port", pf.Lookup("operator-webhook-port"))
+	viper.BindPFlag("operator-webhook-service-port", pf.Lookup("operator-webhook-service-port"))
 	viper.BindPFlag("docker-image-tag", rootCmd.PersistentFlags().Lookup("docker-image-tag"))
 
 	argToEnv := map[string]string{
@@ -113,7 +113,7 @@ func init() {
 		"docker-image-org":              "DOCKER_IMAGE_ORG",
 		"docker-image-repository":       "DOCKER_IMAGE_REPOSITORY",
 		"operator-webhook-service-host": "CF_OPERATOR_WEBHOOK_SERVICE_HOST",
-		"operator-webhook-port":         "CF_OPERATOR_WEBHOOK_PORT",
+		"operator-webhook-service-port": "CF_OPERATOR_WEBHOOK_SERVICE_PORT",
 		"docker-image-tag":              "DOCKER_IMAGE_TAG",
 	}
 
