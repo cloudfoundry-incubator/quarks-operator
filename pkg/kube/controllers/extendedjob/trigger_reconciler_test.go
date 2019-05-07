@@ -198,6 +198,7 @@ var _ = Describe("TriggerReconciler", func() {
 
 				query.MatchReturns(true)
 				query.MatchStateReturns(true)
+				query.IsJobAlreadyExistsReturns(false, nil)
 				request = newRequest(pod)
 			})
 

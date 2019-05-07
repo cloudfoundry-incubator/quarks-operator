@@ -11,6 +11,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -104,22 +105,29 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 
 	for _, eJob := range eJobs.Items {
 		if r.query.MatchState(eJob, podState) && r.query.Match(eJob, *pod) {
-			err := r.createJob(ctx, eJob, podName)
+			found, err := r.query.IsJobAlreadyExists(ctx, eJob, pod.GetUID(), r)
 			if err != nil {
-				if apierrors.IsAlreadyExists(err) {
-					ctxlog.Debugf(ctx, "Skip '%s' triggered by pod %s: already running", eJob.Name, podEvent)
-				} else {
-					ctxlog.WithEvent(&eJob, "CreateJob").Infof(ctx, "Failed to create job for '%s' via pod %s: %s", eJob.Name, podEvent, err)
-				}
-				continue
+				ctxlog.Errorf(ctx, "Failed to check ejob already exists for the pod: %s", err)
 			}
-			ctxlog.WithEvent(&eJob, "CreateJob").Infof(ctx, "Created job for '%s' via pod %s", eJob.Name, podEvent)
+			if !found {
+				err := r.createJob(ctx, eJob, podName, pod.GetUID())
+
+				if err != nil {
+					if apierrors.IsAlreadyExists(err) {
+						ctxlog.Debugf(ctx, "Skip '%s' triggered by pod %s: already running", eJob.Name, podEvent)
+					} else {
+						ctxlog.WithEvent(&eJob, "CreateJob").Infof(ctx, "Failed to create job for '%s' via pod %s: %s", eJob.Name, podEvent, err)
+					}
+					continue
+				}
+				ctxlog.WithEvent(&eJob, "CreateJob").Infof(ctx, "Created job for '%s' via pod %s", eJob.Name, podEvent)
+			}
 		}
 	}
 	return
 }
 
-func (r *TriggerReconciler) createJob(ctx context.Context, eJob ejv1.ExtendedJob, podName string) error {
+func (r *TriggerReconciler) createJob(ctx context.Context, eJob ejv1.ExtendedJob, podName string, podUID types.UID) error {
 	template := eJob.Spec.Template.DeepCopy()
 
 	if template.Labels == nil {
@@ -127,7 +135,7 @@ func (r *TriggerReconciler) createJob(ctx context.Context, eJob ejv1.ExtendedJob
 	}
 	template.Labels["ejob-name"] = eJob.Name
 
-	name, err := names.JobName(eJob.Name, podName)
+	name, err := names.JobName(eJob.Name, podName, podUID)
 	if err != nil {
 		return errors.Wrapf(err, "could not generate job name for eJob '%s'", eJob.Name)
 	}

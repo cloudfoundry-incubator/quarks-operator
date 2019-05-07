@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // DeploymentSecretType lists all the types of secrets used in
@@ -127,22 +128,24 @@ func GetVersionFromVersionedSecretName(name string) (int, error) {
 
 // JobName returns a unique, short name for a given eJob, pod(if exists) combination
 // k8s allows 63 chars, but the pod will have -\d{6} appended
-// IDEA: maybe use pod.Uid instead of rand
-func JobName(eJobName, podName string) (string, error) {
+func JobName(eJobName, podName string, podUID types.UID) (string, error) {
 	suffix := ""
 	if podName == "" {
 		suffix = truncate(eJobName, 15)
 	} else {
-		suffix = fmt.Sprintf("%s-%s", truncate(eJobName, 15), truncate(podName, 15))
+		suffix = fmt.Sprintf("%s-%s", truncate(eJobName, 5), truncate(podName, 5))
 	}
 
 	namePrefix := fmt.Sprintf("job-%s", suffix)
 
-	hashID, err := randSuffix(suffix)
-	if err != nil {
-		return "", errors.Wrap(err, "could not randomize job suffix")
+	if podUID == "" {
+		hashID, err := randSuffix(suffix)
+		if err != nil {
+			return "", errors.Wrap(err, "could not randomize job suffix")
+		}
+		return fmt.Sprintf("%s-%s", namePrefix, hashID), nil
 	}
-	return fmt.Sprintf("%s-%s", namePrefix, hashID), nil
+	return fmt.Sprintf("%s-%s", namePrefix, podUID), nil
 }
 
 // ServiceName returns a unique, short name for a given instance

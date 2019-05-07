@@ -2,11 +2,11 @@
 package fakes
 
 import (
-	context "context"
-	sync "sync"
+	"context"
+	"sync"
 
-	apis "code.cloudfoundry.org/cf-operator/pkg/kube/apis"
-	extendedjob "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	v1 "k8s.io/api/core/v1"
 )
 

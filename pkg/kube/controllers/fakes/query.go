@@ -2,14 +2,32 @@
 package fakes
 
 import (
-	sync "sync"
+	"context"
+	"sync"
 
-	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	extendedjob "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type FakeQuery struct {
+	IsJobAlreadyExistsStub        func(context.Context, v1alpha1.ExtendedJob, types.UID, *extendedjob.TriggerReconciler) (bool, error)
+	isJobAlreadyExistsMutex       sync.RWMutex
+	isJobAlreadyExistsArgsForCall []struct {
+		arg1 context.Context
+		arg2 v1alpha1.ExtendedJob
+		arg3 types.UID
+		arg4 *extendedjob.TriggerReconciler
+	}
+	isJobAlreadyExistsReturns struct {
+		result1 bool
+		result2 error
+	}
+	isJobAlreadyExistsReturnsOnCall map[int]struct {
+		result1 bool
+		result2 error
+	}
 	MatchStub        func(v1alpha1.ExtendedJob, v1.Pod) bool
 	matchMutex       sync.RWMutex
 	matchArgsForCall []struct {
@@ -36,6 +54,72 @@ type FakeQuery struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *FakeQuery) IsJobAlreadyExists(arg1 context.Context, arg2 v1alpha1.ExtendedJob, arg3 types.UID, arg4 *extendedjob.TriggerReconciler) (bool, error) {
+	fake.isJobAlreadyExistsMutex.Lock()
+	ret, specificReturn := fake.isJobAlreadyExistsReturnsOnCall[len(fake.isJobAlreadyExistsArgsForCall)]
+	fake.isJobAlreadyExistsArgsForCall = append(fake.isJobAlreadyExistsArgsForCall, struct {
+		arg1 context.Context
+		arg2 v1alpha1.ExtendedJob
+		arg3 types.UID
+		arg4 *extendedjob.TriggerReconciler
+	}{arg1, arg2, arg3, arg4})
+	fake.recordInvocation("IsJobAlreadyExists", []interface{}{arg1, arg2, arg3, arg4})
+	fake.isJobAlreadyExistsMutex.Unlock()
+	if fake.IsJobAlreadyExistsStub != nil {
+		return fake.IsJobAlreadyExistsStub(arg1, arg2, arg3, arg4)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.isJobAlreadyExistsReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeQuery) IsJobAlreadyExistsCallCount() int {
+	fake.isJobAlreadyExistsMutex.RLock()
+	defer fake.isJobAlreadyExistsMutex.RUnlock()
+	return len(fake.isJobAlreadyExistsArgsForCall)
+}
+
+func (fake *FakeQuery) IsJobAlreadyExistsCalls(stub func(context.Context, v1alpha1.ExtendedJob, types.UID, *extendedjob.TriggerReconciler) (bool, error)) {
+	fake.isJobAlreadyExistsMutex.Lock()
+	defer fake.isJobAlreadyExistsMutex.Unlock()
+	fake.IsJobAlreadyExistsStub = stub
+}
+
+func (fake *FakeQuery) IsJobAlreadyExistsArgsForCall(i int) (context.Context, v1alpha1.ExtendedJob, types.UID, *extendedjob.TriggerReconciler) {
+	fake.isJobAlreadyExistsMutex.RLock()
+	defer fake.isJobAlreadyExistsMutex.RUnlock()
+	argsForCall := fake.isJobAlreadyExistsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+}
+
+func (fake *FakeQuery) IsJobAlreadyExistsReturns(result1 bool, result2 error) {
+	fake.isJobAlreadyExistsMutex.Lock()
+	defer fake.isJobAlreadyExistsMutex.Unlock()
+	fake.IsJobAlreadyExistsStub = nil
+	fake.isJobAlreadyExistsReturns = struct {
+		result1 bool
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeQuery) IsJobAlreadyExistsReturnsOnCall(i int, result1 bool, result2 error) {
+	fake.isJobAlreadyExistsMutex.Lock()
+	defer fake.isJobAlreadyExistsMutex.Unlock()
+	fake.IsJobAlreadyExistsStub = nil
+	if fake.isJobAlreadyExistsReturnsOnCall == nil {
+		fake.isJobAlreadyExistsReturnsOnCall = make(map[int]struct {
+			result1 bool
+			result2 error
+		})
+	}
+	fake.isJobAlreadyExistsReturnsOnCall[i] = struct {
+		result1 bool
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeQuery) Match(arg1 v1alpha1.ExtendedJob, arg2 v1.Pod) bool {
@@ -163,6 +247,8 @@ func (fake *FakeQuery) MatchStateReturnsOnCall(i int, result1 bool) {
 func (fake *FakeQuery) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.isJobAlreadyExistsMutex.RLock()
+	defer fake.isJobAlreadyExistsMutex.RUnlock()
 	fake.matchMutex.RLock()
 	defer fake.matchMutex.RUnlock()
 	fake.matchStateMutex.RLock()

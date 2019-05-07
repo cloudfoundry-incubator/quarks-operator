@@ -89,9 +89,6 @@ var _ = Describe("Examples", func() {
 				err = kubectlHelper.DeleteResource(namespace, "pod", "foo-pod-1")
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.WaitLabelFilter(namespace, "ready", "pod", "ejob-name=delete-triggered-sleep")
-				Expect(err).ToNot(HaveOccurred())
-
 				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", "ejob-name=delete-triggered-sleep")
 				Expect(err).ToNot(HaveOccurred())
 

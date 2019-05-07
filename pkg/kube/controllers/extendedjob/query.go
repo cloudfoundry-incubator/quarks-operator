@@ -1,8 +1,13 @@
 package extendedjob
 
 import (
+	"context"
+	"strings"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 )
@@ -13,6 +18,7 @@ var _ Query = &QueryImpl{}
 type Query interface {
 	Match(ejv1.ExtendedJob, corev1.Pod) bool
 	MatchState(ejv1.ExtendedJob, ejv1.PodState) bool
+	IsJobAlreadyExists(context.Context, ejv1.ExtendedJob, types.UID, *TriggerReconciler) (bool, error)
 }
 
 // NewQuery returns a new Query struct
@@ -58,4 +64,30 @@ func (q *QueryImpl) MatchState(eJob ejv1.ExtendedJob, podState ejv1.PodState) bo
 		return true
 	}
 	return false
+}
+
+// IsJobAlreadyExists checks if the job is already created for the pod event match with exjob
+func (q *QueryImpl) IsJobAlreadyExists(ctx context.Context, eJob ejv1.ExtendedJob, podUID types.UID, r *TriggerReconciler) (bool, error) {
+
+	// Fetch all jobs using label
+	podList := &corev1.PodList{}
+
+	podLabels := labels.Set{
+		"ejob-name": eJob.GetName(),
+	}
+
+	err := r.client.List(ctx, &client.ListOptions{
+		Namespace:     eJob.GetNamespace(),
+		LabelSelector: podLabels.AsSelector(),
+	}, podList)
+	if err != nil {
+		return false, err
+	}
+
+	for _, pod := range podList.Items {
+		if strings.Contains(pod.GetName(), string(podUID)) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
