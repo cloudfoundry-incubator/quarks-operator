@@ -1,6 +1,7 @@
 package integration_test
 
 import (
+	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -57,6 +58,12 @@ var _ = Describe("Lifecycle", func() {
 			Expect(svc.Spec.Ports[0].Name).To(Equal("nats"))
 			Expect(svc.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
 			Expect(svc.Spec.Ports[0].Port).To(Equal(int32(4222)))
+
+			// Check nats route address
+			out, err := env.GetPodLogs(env.Namespace, "testcr-nats-v1-0")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(out)).To(ContainSubstring("Trying to connect to route on testcr-nats-1.default.svc.cluster.local:4223"))
+			Expect(string(out)).To(ContainSubstring(fmt.Sprintf(`%s:4223 - [\w:]+ - Route connection created`, svc.Spec.ClusterIP)))
 		})
 	})
 

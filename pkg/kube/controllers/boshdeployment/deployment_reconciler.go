@@ -644,7 +644,6 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 		}
 	}
 
-	log.Debugf(ctx, "Get result: %v",kubeConfigs.Services)
 	for _, svc := range kubeConfigs.Services {
 		// Set BOSHDeployment instance as the owner and controller
 		if err := r.setReference(instance, &svc, r.scheme); err != nil {
