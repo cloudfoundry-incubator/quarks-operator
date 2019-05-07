@@ -27,13 +27,17 @@ var _ = Describe("Trender", func() {
 			instanceGroupName = "log-api"
 		})
 
+		act := func() error {
+			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index)
+		}
+
 		Context("with an invalid instance index", func() {
 			BeforeEach(func() {
 				index = 1000
 			})
 
 			It("fails", func() {
-				err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index)
+				err := act()
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("no instance found"))
 			})
@@ -45,13 +49,13 @@ var _ = Describe("Trender", func() {
 			})
 
 			It("renders the job erb files correctly", func() {
-				err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index)
+				err := act()
 				Expect(err).ToNot(HaveOccurred())
 
 				absDestFile := filepath.Join(jobsDir, "loggregator_trafficcontroller", "config/bpm.yml")
 				Expect(absDestFile).Should(BeAnExistingFile())
 
-				// Unmarshal the rendered file
+				By("Checking the content of the rendered file")
 				bpmYmlBytes, err := ioutil.ReadFile(absDestFile)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -60,12 +64,14 @@ var _ = Describe("Trender", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Check fields if they are rendered
-				Expect(bpmYml["processes"][0].(map[interface{}]interface{})["env"].(map[interface{}]interface{})["AGENT_UDP_ADDRESS"]).To(Equal("127.0.0.1:3457"))
-				Expect(bpmYml["processes"][0].(map[interface{}]interface{})["env"].(map[interface{}]interface{})["TRAFFIC_CONTROLLER_OUTGOING_DROPSONDE_PORT"]).To(Equal("8081"))
-				Expect(bpmYml["processes"][0].(map[interface{}]interface{})["env"].(map[interface{}]interface{})["FOOBARWITHLINKINSTANCESAZ"]).To(Equal("z1"))
+				values := bpmYml["processes"][0].(map[interface{}]interface{})["env"].(map[interface{}]interface{})
+				Expect(values["AGENT_UDP_ADDRESS"]).To(Equal("127.0.0.1:3457"))
+				Expect(values["TRAFFIC_CONTROLLER_OUTGOING_DROPSONDE_PORT"]).To(Equal("8081"))
+				Expect(values["FOOBARWITHLINKINSTANCESAZ"]).To(Equal("z1"))
+			})
 
-				// Delete  the file
-				err = os.RemoveAll(filepath.Join(jobsDir, "loggregator_trafficcontroller"))
+			AfterEach(func() {
+				err := os.RemoveAll(filepath.Join(jobsDir, "loggregator_trafficcontroller"))
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
