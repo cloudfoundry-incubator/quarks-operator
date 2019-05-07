@@ -13,6 +13,7 @@ import (
 
 // RenderJobTemplates will render templates for all jobs of the instance group
 // https://bosh.io/docs/create-release/#job-specs
+// boshManifest is a resolved manifest for a single instance group
 func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir string, instanceGroupName string, specIndex int) error {
 
 	// Loading deployment manifest file
@@ -52,29 +53,6 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 			}
 			if currentJobInstance == nil {
 				return fmt.Errorf("no instance found for spec index '%d'", specIndex)
-			}
-
-			// Loop over name and link
-			jobInstanceLinks := []Link{}
-			for name, jobConsumersLink := range job.Properties.BOSHContainerization.Consumes {
-				jobInstances := []JobInstance{}
-
-				// Loop over instances of link
-				for _, jobConsumerLinkInstance := range jobConsumersLink.Instances {
-					jobInstances = append(jobInstances, JobInstance{
-						Address: jobConsumerLinkInstance.Address,
-						AZ:      jobConsumerLinkInstance.AZ,
-						ID:      jobConsumerLinkInstance.ID,
-						Index:   jobConsumerLinkInstance.Index,
-						Name:    jobConsumerLinkInstance.Name,
-					})
-				}
-
-				jobInstanceLinks = append(jobInstanceLinks, Link{
-					Name:       name,
-					Instances:  jobInstances,
-					Properties: jobConsumersLink.Properties,
-				})
 			}
 
 			// Loop over templates for rendering files
