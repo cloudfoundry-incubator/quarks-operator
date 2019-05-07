@@ -866,14 +866,14 @@ func (m *Machine) GetPodLogs(namespace, podName string) (string, error) {
 	req := m.Clientset.CoreV1().Pods(namespace).GetLogs(podName, &podLogOpts)
 	podLogs, err := req.Stream()
 	if err != nil {
-		return "", errors.New("error in opening stream")
+		return "", errors.Wrapf(err, "error in opening stream")
 	}
 	defer podLogs.Close()
 
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, podLogs)
 	if err != nil {
-		return "", errors.New("error in copy information from podLogs to buf")
+		return "", errors.Wrapf(err, "error in copy information from podLogs to buf")
 	}
 	str := buf.String()
 
