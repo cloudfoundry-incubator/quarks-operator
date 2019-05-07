@@ -34,8 +34,8 @@ cf-operator util template-render [flags]
   -t, --docker-image-tag string                (DOCKER_IMAGE_TAG) Tag of the operator docker image (default "0.0.1")
   -g, --instance-group-name string             (INSTANCE_GROUP_NAME) name of the instance group for data gathering
   -c, --kubeconfig string                      (KUBECONFIG) Path to a kubeconfig, not required in-cluster
-  -p, --operator-webhook-port string           (CF_OPERATOR_WEBHOOK_PORT) Port the webhook server listens on (default "2999")
   -w, --operator-webhook-service-host string   (CF_OPERATOR_WEBHOOK_SERVICE_HOST) Hostname/IP under which the webhook server can be reached from the cluster
+  -p, --operator-webhook-service-port string   (CF_OPERATOR_WEBHOOK_SERVICE_PORT) Port the webhook server listens on (default "2999")
 ```
 
 ### SEE ALSO

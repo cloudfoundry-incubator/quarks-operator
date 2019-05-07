@@ -109,7 +109,7 @@ func (e *Environment) setupCFOperator() (err error) {
 	e.Config.WebhookServerHost = whh
 
 	whp := int32(2999)
-	portString, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_PORT")
+	portString, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_PORT")
 	if found {
 		port, err := strconv.ParseInt(portString, 10, 32)
 		if err != nil {
