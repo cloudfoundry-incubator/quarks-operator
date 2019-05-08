@@ -13,7 +13,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -248,50 +247,6 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
 				Expect(err).To(HaveOccurred())
 				Expect(kerrors.IsNotFound(err)).To(BeTrue())
-			})
-
-			Context("When volumeclaimTemplates has values", func() {
-				var (
-					volumeClaimTemplates []corev1.PersistentVolumeClaim
-				)
-
-				BeforeEach(func() {
-					volumeClaimTemplates = []corev1.PersistentVolumeClaim{ //TODO se catalog for this
-						{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "pvc",
-							},
-							Spec: corev1.PersistentVolumeClaimSpec{
-								AccessModes: []corev1.PersistentVolumeAccessMode{
-									"ReadWriteOnce",
-								},
-								Resources: corev1.ResourceRequirements{
-									Requests: corev1.ResourceList{
-										"Storage": resource.Quantity{
-											Format: "5Gi",
-										},
-									},
-								},
-							},
-						},
-					}
-					desiredExtendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates = volumeClaimTemplates
-
-					client = fake.NewFakeClient(
-						desiredExtendedStatefulSet,
-					)
-					manager.GetClientReturns(client)
-				})
-
-				It("Version should be added to the volume claim template name", func() {
-					_, err := reconciler.Reconcile(request)
-					Expect(err).ToNot(HaveOccurred())
-
-					ss := &v1beta2.StatefulSet{}
-					err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
-					Expect(err).ToNot(HaveOccurred())
-					Expect(ss.Spec.VolumeClaimTemplates[0].Name).To(Equal("pvc-v1"))
-				})
 			})
 
 			Context("When zones has the values", func() {
