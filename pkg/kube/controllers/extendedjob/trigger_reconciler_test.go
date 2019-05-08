@@ -186,6 +186,7 @@ var _ = Describe("TriggerReconciler", func() {
 
 			BeforeEach(func() {
 				pod = env.DefaultPod("fake-pod")
+				pod.UID = "1234-567"
 				otherPod := env.DefaultPod("other-fake-pod")
 				runtimeObjects = []runtime.Object{
 					env.DefaultExtendedJob("foo"),
@@ -198,7 +199,6 @@ var _ = Describe("TriggerReconciler", func() {
 
 				query.MatchReturns(true)
 				query.MatchStateReturns(true)
-				query.IsJobAlreadyExistsReturns(false, nil)
 				request = newRequest(pod)
 			})
 

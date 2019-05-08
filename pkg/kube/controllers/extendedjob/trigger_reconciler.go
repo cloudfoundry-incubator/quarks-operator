@@ -3,6 +3,7 @@ package extendedjob
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -10,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -105,7 +107,7 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 
 	for _, eJob := range eJobs.Items {
 		if r.query.MatchState(eJob, podState) && r.query.Match(eJob, *pod) {
-			found, err := r.query.IsJobAlreadyExists(ctx, eJob, pod.GetUID(), r)
+			found, err := r.JobExists(ctx, eJob, pod.GetUID())
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to check ejob already exists for the pod: %s", err)
 			}
@@ -160,4 +162,30 @@ func (r *TriggerReconciler) createJob(ctx context.Context, eJob ejv1.ExtendedJob
 	}
 
 	return nil
+}
+
+// JobExists returns true if the Job matching the ExtendedJob has already been created
+func (r *TriggerReconciler) JobExists(ctx context.Context, eJob ejv1.ExtendedJob, podUID types.UID) (bool, error) {
+
+	// Fetch all jobs using label
+	jobPodList := &corev1.PodList{}
+
+	podLabels := labels.Set{
+		"ejob-name": eJob.GetName(),
+	}
+
+	err := r.client.List(ctx, &client.ListOptions{
+		Namespace:     eJob.GetNamespace(),
+		LabelSelector: podLabels.AsSelector(),
+	}, jobPodList)
+	if err != nil {
+		return false, err
+	}
+
+	for _, pod := range jobPodList.Items {
+		if strings.Contains(pod.GetName(), string(podUID)) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
