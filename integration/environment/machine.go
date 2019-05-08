@@ -84,6 +84,26 @@ func (m *Machine) WaitForLogMsg(logs *observer.ObservedLogs, msg string) error {
 	})
 }
 
+// WaitForStatefulSetDelete blocks until the specified statefulset is deleted
+func (m *Machine) WaitForStatefulSetDelete(namespace string, name string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		found, err := m.StatefulSetExist(namespace, name)
+		return !found, err
+	})
+}
+
+// StatefulSetExist checks if the statefulset exists
+func (m *Machine) StatefulSetExist(namespace string, name string) (bool, error) {
+	_, err := m.Clientset.AppsV1beta1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "failed to query for statefulset by name: %s", name)
+	}
+	return true, nil
+}
+
 // WaitForStatefulSetNewGeneration blocks until at least one StatefulSet is found. It fails after the timeout.
 func (m *Machine) WaitForStatefulSetNewGeneration(namespace string, name string, currentVersion int64) error {
 	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
@@ -776,12 +796,12 @@ func (m *Machine) HasBOSHDeploymentEvent(namespace string, fieldSelector string)
 
 // GetStatefulSet gets a StatefulSet custom resource
 func (m *Machine) GetStatefulSet(namespace string, name string) (*v1beta1.StatefulSet, error) {
-	configMap, err := m.Clientset.AppsV1beta1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
+	statefulSet, err := m.Clientset.AppsV1beta1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
-		return &v1beta1.StatefulSet{}, errors.Wrapf(err, "failed to query for configMap by name: %v", name)
+		return &v1beta1.StatefulSet{}, errors.Wrapf(err, "failed to query for statefulSet by name: %v", name)
 	}
 
-	return configMap, nil
+	return statefulSet, nil
 }
 
 // GetConfigMap gets a ConfigMap by name
