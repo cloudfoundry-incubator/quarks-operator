@@ -658,6 +658,7 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 			}
 
 			exstSvc.Labels = svc.Labels
+			svc.Spec.ClusterIP = exstSvc.Spec.ClusterIP
 			exstSvc.Spec = svc.Spec
 			return nil
 		})

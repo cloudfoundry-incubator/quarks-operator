@@ -78,7 +78,7 @@ func (m *Machine) WaitForPodFailures(namespace string, labels string) error {
 // When using this, tests should use FlushLog() to remove log messages from
 // other tests.
 func (m *Machine) WaitForLogMsg(logs *observer.ObservedLogs, msg string) error {
-	return wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+	return wait.Poll(5*time.Second, m.pollTimeout, func() (bool, error) {
 		n := logs.FilterMessageSnippet(msg).Len()
 		return n > 0, nil
 	})
@@ -866,14 +866,14 @@ func (m *Machine) GetPodLogs(namespace, podName string) (string, error) {
 	req := m.Clientset.CoreV1().Pods(namespace).GetLogs(podName, &podLogOpts)
 	podLogs, err := req.Stream()
 	if err != nil {
-		return "", errors.Wrapf(err, "error in opening stream")
+		return "", errors.Wrapf(err, "error opening log stream for pod")
 	}
 	defer podLogs.Close()
 
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, podLogs)
 	if err != nil {
-		return "", errors.Wrapf(err, "error in copy information from podLogs to buf")
+		return "", errors.Wrapf(err, "failed to copy bytes from the pod log to a buffer")
 	}
 	str := buf.String()
 
