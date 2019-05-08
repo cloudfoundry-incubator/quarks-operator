@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"time"
 
@@ -71,6 +72,24 @@ func (m *Machine) WaitForPods(namespace string, labels string) error {
 func (m *Machine) WaitForPodFailures(namespace string, labels string) error {
 	return wait.PollImmediate(5*time.Second, m.pollTimeout, func() (bool, error) {
 		return m.PodsFailing(namespace, labels)
+	})
+}
+
+// WaitForPodLogMsg searches pod test logs for at least one occurrence of msg.
+func (m *Machine) WaitForPodLogMsg(namespace string, podName string, msg string) error {
+	return wait.Poll(5*time.Second, m.pollTimeout, func() (bool, error) {
+		logs, err := m.GetPodLogs(namespace, podName)
+		return strings.Contains(logs, msg), err
+	})
+}
+
+// WaitForPodLogMatchRegexp searches pod test logs for at least one occurrence of Regexp.
+func (m *Machine) WaitForPodLogMatchRegexp(namespace string, podName string, regExp string) error {
+	r, _ := regexp.Compile(regExp)
+
+	return wait.Poll(5*time.Second, m.pollTimeout, func() (bool, error) {
+		logs, err := m.GetPodLogs(namespace, podName)
+		return r.MatchString(logs), err
 	})
 }
 

@@ -76,11 +76,9 @@ var _ = Describe("Lifecycle", func() {
 			clusterIPService, err = env.GetService(env.Namespace, "testcr-nats-1")
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
 
-			// Check nats link address
-			out, err := env.GetPodLogs(env.Namespace, "testcr-nats-v1-0")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(string(out)).To(ContainSubstring(fmt.Sprintf("Trying to connect to route on %s.%s.svc.cluster.local:4223", clusterIPService.Name, env.Namespace)))
-			Expect(string(out)).To(MatchRegexp(fmt.Sprintf(`%s:4223 - [\w:]+ - Route connection created`, clusterIPService.Spec.ClusterIP)))
+			// Check link address
+			Expect(env.WaitForPodLogMsg(env.Namespace, "testcr-nats-v1-0", fmt.Sprintf("Trying to connect to route on %s.%s.svc.cluster.local:4223", clusterIPService.Name, env.Namespace))).To(BeNil())
+			Expect(env.WaitForPodLogMatchRegexp(env.Namespace, "testcr-nats-v1-0", fmt.Sprintf(`%s:4223 - [\w:]+ - Route connection created`, clusterIPService.Spec.ClusterIP))).To(BeNil())
 		})
 	})
 
