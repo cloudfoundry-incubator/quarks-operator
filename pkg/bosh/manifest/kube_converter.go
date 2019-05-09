@@ -330,7 +330,7 @@ func (m *Manifest) dataGatheringJob(namespace string) (*ejv1.ExtendedJob, error)
 					Value: filepath.Join("/var/run/secrets/deployment/", DesiredManifestKeyName),
 				},
 				{
-					Name:  "KUBERNETES_NAMESPACE",
+					Name:  "CF_OPERATOR_NAMESPACE",
 					Value: namespace,
 				},
 				{

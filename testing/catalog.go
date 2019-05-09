@@ -295,7 +295,7 @@ releases:
     version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
 instance_groups:
 - name: nats
-  instances: 1
+  instances: 2
   jobs:
   - name: nats
     release: nats
@@ -303,11 +303,15 @@ instance_groups:
       nats:
         user: admin
         password: changeme
+        debug: true
       bosh_containerization:
         ports:
         - name: "nats"
           protocol: "TCP"
           internal: 4222
+        - name: "nats-routes"
+          protocol: "TCP"
+          internal: 4223
 `,
 		},
 	}
