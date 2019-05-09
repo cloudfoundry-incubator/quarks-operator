@@ -70,9 +70,7 @@ var _ = Describe("DataGatherer", func() {
 
 		JustBeforeEach(func() {
 			var err error
-			dg, err = manifest.NewDataGatherer(log, assetPath, "default", m, ig)
-			Expect(err).ToNot(HaveOccurred())
-			err = dg.GatherData()
+			dg, err = manifest.NewDataGatherer(log, assetPath, "default", *m, ig)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -105,7 +103,8 @@ var _ = Describe("DataGatherer", func() {
 			})
 
 			It("should gather all data for each job spec file", func() {
-				manifest := dg.EnrichedManifest()
+				manifest, err := dg.ResolvedProperties()
+				Expect(err).ToNot(HaveOccurred())
 
 				//Check JobInstance for the redis-server job
 				jobInstancesRedis := manifest.InstanceGroups[0].Jobs[0].Properties.BOSHContainerization.Instances
@@ -126,7 +125,8 @@ var _ = Describe("DataGatherer", func() {
 				})
 
 				It("resolves all required data if the job consumes a link", func() {
-					manifest := dg.EnrichedManifest()
+					manifest, err := dg.ResolvedProperties()
+					Expect(err).ToNot(HaveOccurred())
 
 					// log-api instance_group, with loggregator_trafficcontroller job, consumes a link from doppler job
 					jobBoshContainerizationConsumes := manifest.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Consumes
@@ -147,7 +147,9 @@ var _ = Describe("DataGatherer", func() {
 				})
 
 				It("has an empty consumes list if the job does not consume a link", func() {
-					manifest := dg.EnrichedManifest()
+					manifest, err := dg.ResolvedProperties()
+					Expect(err).ToNot(HaveOccurred())
+
 					// doppler instance_group, with doppler job, only provides doppler link
 					jobBoshContainerizationConsumes := manifest.InstanceGroups[0].Jobs[0].Properties.BOSHContainerization.Consumes
 					var emptyJobBoshContainerizationConsumes map[string]JobLink

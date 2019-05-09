@@ -15,15 +15,14 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
-// dataGatherCmd represents the dataGather command
-var dataGatherCmd = &cobra.Command{
-	Use:   "data-gather [flags]",
-	Short: "Gathers data of a bosh manifest",
-	Long: `Gathers data of a manifest.
+// bpmConfigsCmd calculates and prints the BPM configs for all BOSH jobs of a given instance group
+var bpmConfigsCmd = &cobra.Command{
+	Use:   "bpm-configs [flags]",
+	Short: "Prints the BPM configs for all BOSH jobs of an instance group",
+	Long: `Prints the BPM configs for all BOSH jobs of an instance group.
 
-This will retrieve information of an instance-group
-inside a bosh manifest file.
-
+This command calculates and prints the BPM configurations for all all BOSH jobs of a given
+instance group.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		log = newLogger()
@@ -64,19 +63,12 @@ inside a bosh manifest file.
 			return err
 		}
 
-		resolvedProperties, err := dg.ResolvedProperties()
+		bpmConfigs, err := dg.BPMConfigs()
 		if err != nil {
 			return err
 		}
 
-		propertiesBytes, err := yaml.Marshal(resolvedProperties)
-		if err != nil {
-			return err
-		}
-
-		jsonBytes, err := json.Marshal(map[string]string{
-			"properties.yaml": string(result),
-		})
+		jsonBytes, err := json.Marshal(bpmConfigs)
 		if err != nil {
 			return errors.Wrapf(err, "could not marshal json output")
 		}
@@ -93,14 +85,5 @@ inside a bosh manifest file.
 }
 
 func init() {
-	utilCmd.AddCommand(dataGatherCmd)
-
-	dataGatherCmd.Flags().StringP("base-dir", "b", "", "a path to the base directory")
-
-	viper.BindPFlag("base-dir", dataGatherCmd.Flags().Lookup("base-dir"))
-
-	argToEnv := map[string]string{
-		"base-dir": "BASE_DIR",
-	}
-	AddEnvToUsage(dataGatherCmd, argToEnv)
+	utilCmd.AddCommand(bpmConfigsCmd)
 }

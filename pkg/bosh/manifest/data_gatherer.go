@@ -91,7 +91,7 @@ func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstan
 type DataGatherer struct {
 	log           *zap.SugaredLogger
 	baseDir       string
-	manifest      *Manifest
+	manifest      Manifest
 	namespace     string
 	instanceGroup *InstanceGroup
 
@@ -100,7 +100,7 @@ type DataGatherer struct {
 }
 
 // NewDataGatherer returns a data gatherer with logging for a given input manifest and instance group
-func NewDataGatherer(log *zap.SugaredLogger, basedir, namespace string, manifest *Manifest, instanceGroupName string) (*DataGatherer, error) {
+func NewDataGatherer(log *zap.SugaredLogger, basedir, namespace string, manifest Manifest, instanceGroupName string) (*DataGatherer, error) {
 	ig, err := manifest.InstanceGroupByName(instanceGroupName)
 	if err != nil {
 		return nil, err
@@ -117,14 +117,40 @@ func NewDataGatherer(log *zap.SugaredLogger, basedir, namespace string, manifest
 	}, nil
 }
 
-// GatherData collects bpm and link information and enriches the manifest accordingly
+// BPMConfigs returns a map of all BOSH jobs in the instance group
+func (dg *DataGatherer) BPMConfigs() (bpm.Configs, error) {
+	bpm := bpm.Configs{}
+
+	err := dg.gatherData()
+	if err != nil {
+		return bpm, err
+	}
+
+	for _, job := range dg.instanceGroup.Jobs {
+		bpm[job.Name] = job.Properties.BOSHContainerization.BPM
+	}
+
+	return bpm, nil
+}
+
+// ResolvedProperties returns the manifest including the gathered data
+func (dg *DataGatherer) ResolvedProperties() (Manifest, error) {
+	err := dg.gatherData()
+	if err != nil {
+		return Manifest{}, err
+	}
+
+	return dg.manifest, nil
+}
+
+// gatherData collects bpm and link information and enriches the manifest accordingly
 //
 // Data gathered:
 // * job spec information
 // * job properties
 // * bosh links
 // * bpm yaml file data
-func (dg *DataGatherer) GatherData() error {
+func (dg *DataGatherer) gatherData() error {
 	err := dg.collectReleaseSpecsAndProviderLinks()
 	if err != nil {
 		return err
@@ -141,21 +167,6 @@ func (dg *DataGatherer) GatherData() error {
 	}
 
 	return nil
-}
-
-// BPMConfigs returns a map of all BOSH jobs in the instance group
-func (dg *DataGatherer) BPMConfigs() (bpm.Configs, error) {
-	bpm := bpm.Configs{}
-
-	for _, job := range dg.instanceGroup.Jobs {
-		bpm[job.Name] = job.Properties.BOSHContainerization.BPM
-	}
-
-	return bpm, nil
-}
-
-func (dg *DataGatherer) EnrichedManifest() *Manifest {
-	return dg.manifest
 }
 
 // CollectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
@@ -221,16 +232,10 @@ func (dg *DataGatherer) processConsumers() error {
 }
 
 func (dg *DataGatherer) renderBPM() error {
-	for i, _ := range dg.instanceGroup.Jobs {
+	for i := range dg.instanceGroup.Jobs {
 		job := &dg.instanceGroup.Jobs[i]
 
-		// TODO: Can this be removed?
-		err := generateJobConsumersData(job, dg.jobReleaseSpecs, dg.jobProviderLinks)
-		if err != nil {
-			return err
-		}
-
-		err = dg.renderJobBPM(job, dg.baseDir)
+		err := dg.renderJobBPM(job, dg.baseDir)
 		if err != nil {
 			return err
 		}
