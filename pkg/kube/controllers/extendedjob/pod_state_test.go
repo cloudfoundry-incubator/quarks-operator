@@ -27,15 +27,20 @@ var _ = Describe("PodState", func() {
 		Context("when pod is deleted", func() {
 			BeforeEach(func() {
 				now := metav1.NewTime(time.Now())
+				period := int64(0)
 				pods = []corev1.Pod{
 					corev1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
-							DeletionTimestamp: &now,
+							DeletionTimestamp:          &now,
+							DeletionGracePeriodSeconds: &period,
 						},
 						Status: corev1.PodStatus{Phase: "Running"},
 					},
 					corev1.Pod{
-						Status: corev1.PodStatus{Phase: "Succeeded"},
+						ObjectMeta: metav1.ObjectMeta{
+							DeletionTimestamp:          &now,
+							DeletionGracePeriodSeconds: &period,
+						},
 					},
 				}
 			})
