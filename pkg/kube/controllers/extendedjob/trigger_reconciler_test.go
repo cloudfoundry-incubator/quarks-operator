@@ -186,6 +186,7 @@ var _ = Describe("TriggerReconciler", func() {
 
 			BeforeEach(func() {
 				pod = env.DefaultPod("fake-pod")
+				pod.UID = "1234-567"
 				otherPod := env.DefaultPod("other-fake-pod")
 				runtimeObjects = []runtime.Object{
 					env.DefaultExtendedJob("foo"),

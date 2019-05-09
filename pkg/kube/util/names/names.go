@@ -128,12 +128,16 @@ func GetVersionFromVersionedSecretName(name string) (int, error) {
 
 // JobName returns a unique, short name for a given eJob, pod(if exists) combination
 // k8s allows 63 chars, but the pod will have -\d{6} appended
+// JobName for which podName and podUID are specified will have the combination of
+// "job" + 9 chars of eJobName + 9 chars of podName + podUID + 5 chars appended by kube
+// JobName for which podName and podUID are not specified will have a combination of
+// "job" + 15 chars of ejobName + randstring + 6 chars appended by kube
 func JobName(eJobName, podName string, podUID types.UID) (string, error) {
 	suffix := ""
 	if podName == "" {
 		suffix = truncate(eJobName, 15)
 	} else {
-		suffix = fmt.Sprintf("%s-%s", truncate(eJobName, 13), truncate(podName, 13))
+		suffix = fmt.Sprintf("%s-%s", truncate(eJobName, 9), truncate(podName, 9))
 	}
 
 	namePrefix := fmt.Sprintf("job-%s", suffix)

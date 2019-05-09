@@ -181,9 +181,8 @@ func (k *Kubectl) CheckPodCompleteLabelFilter(namespace string, labelName string
 	}
 	if string(out) == "\"0\"" {
 		return true, nil
-	} else {
-		return false, nil
 	}
+	return false, nil
 }
 
 // CheckPodTerminateLabelFilter checks is the pod status is completed

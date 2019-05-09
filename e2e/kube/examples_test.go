@@ -66,6 +66,40 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 			})
 
+			It("extended-job delete example must work", func() {
+
+				yamlFilePath := examplesDir + "extended-job/exjob_trigger_deleted.yaml"
+
+				By("Creating exjob_trigger")
+				err := kubectlHelper.Create(namespace, yamlFilePath)
+				Expect(err).ToNot(HaveOccurred())
+
+				yamlPodFilePath := examplesDir + "extended-job/pod.yaml"
+
+				By("Creating pod")
+				kubectlHelper = testing.NewKubectl()
+				err = kubectlHelper.Create(namespace, yamlPodFilePath)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Waiting for the pods to run")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/foo-pod-1")
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Deleting the pod created")
+				err = kubectlHelper.DeleteResource(namespace, "pod", "foo-pod-1")
+				Expect(err).ToNot(HaveOccurred())
+
+				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", "ejob-name=delete-triggered-sleep")
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Clean up resources")
+				err = kubectlHelper.Delete(namespace, yamlFilePath)
+				Expect(err).ToNot(HaveOccurred())
+
+				err = kubectlHelper.DeleteLabelFilter(namespace, "pod", "ejob-name=delete-triggered-sleep")
+				Expect(err).ToNot(HaveOccurred())
+			})
+
 			It("extended-statefulset configs example must work", func() {
 
 				yamlFilePath := examplesDir + "extended-statefulset/exstatefulset_configs.yaml"
