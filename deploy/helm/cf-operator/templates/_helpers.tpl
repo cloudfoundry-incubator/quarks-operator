@@ -30,3 +30,14 @@ Create chart name and version as used by the chart label.
 {{- define "cf-operator.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
+
+{{/*
+Create the name of the cf-operator service account to use
+*/}}
+{{- define "cf-operator.serviceAccountName" -}}
+{{- if .Values.serviceAccount.cfOperatorServiceAccount.create -}}
+    {{ default (include "cf-operator.fullname" .) .Values.serviceAccount.cfOperatorServiceAccount.name }}
+{{- else -}}
+    {{ default "default" .Values.serviceAccount.cfOperatorServiceAccount.name }}
+{{- end -}}
+{{- end -}}

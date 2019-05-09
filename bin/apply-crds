@@ -1,8 +1,13 @@
 #!/bin/bash
+set -euo pipefail
 
-set -e
+if ! hash helm 2>/dev/null; then
+  echo "[Error] Please install the helm binary"
+  exit 1
+fi
 
-kubectl apply -f deploy/helm/cf-operator/templates/fissile_v1alpha1_boshdeployment_crd.yaml
-kubectl apply -f deploy/helm/cf-operator/templates/fissile_v1alpha1_extendedjob_crd.yaml
-kubectl apply -f deploy/helm/cf-operator/templates/fissile_v1alpha1_extendedsecret_crd.yaml
-kubectl apply -f deploy/helm/cf-operator/templates/fissile_v1alpha1_extendedstatefulset_crd.yaml
+# Apply CRD´s to the cluster
+helm template deploy/helm/cf-operator  -x templates/fissile_v1alpha1_extendedjob_crd.yaml  | kubectl apply -f -
+helm template deploy/helm/cf-operator  -x templates/fissile_v1alpha1_extendedsecret_crd.yaml  | kubectl apply -f -
+helm template deploy/helm/cf-operator  -x templates/fissile_v1alpha1_extendedstatefulset_crd.yaml  | kubectl apply -f -
+helm template deploy/helm/cf-operator  -x templates/fissile_v1alpha1_boshdeployment_crd.yaml  | kubectl apply -f -

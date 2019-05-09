@@ -1,12 +1,10 @@
 #!/bin/bash
-set -eu
+set -euo pipefail
 
 GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
 . "${GIT_ROOT}/bin/include/versioning"
 
 export DOCKER_IMAGE_TAG=${VERSION_TAG}
-
-echo "Test logs are here: /tmp/cf-operator-tests.log"
 
 if [ -z ${TEST_NAMESPACE+x} ]; then
   TEST_NAMESPACE="test$(date +%s)"
@@ -20,8 +18,11 @@ if [ -z ${TEST_NAMESPACE+x} ]; then
   kubectl create namespace "$TEST_NAMESPACE"
 fi
 
+# Add all required CRD´s
 bin/apply-crds
-
 kubectl get customresourcedefinitions
 
-ginkgo e2e/
+# Build the required helm charts to run the cf-operator
+./bin/build-helm
+
+ginkgo e2e/kube/

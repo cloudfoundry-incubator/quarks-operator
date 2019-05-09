@@ -17,3 +17,13 @@ affinity: {}
 operator:
   webhook:
     port: 2999
+
+customResources:
+  enableInstallation: true
+
+rbacEnable: true
+
+serviceAccount:
+  cfOperatorServiceAccount:
+    create: true
+    name:

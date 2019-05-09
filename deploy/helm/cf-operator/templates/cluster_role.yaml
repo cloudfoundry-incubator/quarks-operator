@@ -1,3 +1,5 @@
+{{- if .Values.rbacEnable }}
+---
 apiVersion: v1
 kind: List
 items:
@@ -5,7 +7,7 @@ items:
     kind: ClusterRole
     metadata:
       creationTimestamp: null
-      name: cf-operator:cluster
+      name: {{ template "cf-operator.fullname" . }}
     rules:
     - apiGroups:
       - '*'
@@ -13,19 +15,17 @@ items:
       - '*'
       verbs:
       - '*'
-    - nonResourceURLs:
-      - '*'
-      verbs:
-      - '*'
   - kind: ClusterRoleBinding
     apiVersion: rbac.authorization.k8s.io/v1
     metadata:
-      name: cf-operator:cluster
+      name: {{ template "cf-operator.fullname" . }}
+      namespace: {{ .Release.Namespace }}
     roleRef:
       kind: ClusterRole
-      name: cf-operator:cluster
+      name: {{ template "cf-operator.fullname" . }}
       apiGroup: rbac.authorization.k8s.io
     subjects:
     - kind: ServiceAccount
-      name: cf-operator
+      name: {{ template "cf-operator.serviceAccountName" . }}
       namespace: {{ .Release.Namespace }}
+{{- end }}

@@ -19,11 +19,15 @@ var _ = Describe("Examples", func() {
 		var (
 			kubectlHelper *testing.Kubectl
 			namespace     string
+			found         bool
 		)
 		kubectlHelper = testing.NewKubectl()
 
 		BeforeEach(func() {
-			namespace = env.Namespace
+			namespace, found = os.LookupEnv("TEST_NAMESPACE")
+			if !found {
+				namespace = "default"
+			}
 		})
 
 		const examplesDir = "../../docs/examples/"
