@@ -31,9 +31,10 @@ E.g. when a `Pod` is created, deleted, transitioned to **ready** or a
 The execution of `ExtendedJob` can be limited to pods with certain labels.
 
 A separate native k8s job will be started for every pod that changed. The job
-has a label `affected-pod: pod1` to identify which pod it is running for.
+has a label `triggering-pod: uid` to identify which pod it is running for.
 
-`ExtendedJob` does not trigger for pods from jobs. If a pod has a label `job-name` it won't trigger more jobs.
+`ExtendedJob` does not trigger for pods from jobs. This is done by checking if
+a pod has a label `job-name`. The `job-name` label is [assigned by Kubernetes](https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/) to job pods.
 
 #### State
 

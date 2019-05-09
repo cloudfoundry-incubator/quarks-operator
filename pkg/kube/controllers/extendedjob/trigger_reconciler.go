@@ -104,7 +104,7 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 
 	for _, eJob := range eJobs.Items {
 		if r.query.MatchState(eJob, podState) && r.query.Match(eJob, *pod) {
-			err := r.createJob(ctx, eJob, podName)
+			err := r.createJob(ctx, eJob, podName, string(pod.UID))
 			if err != nil {
 				if apierrors.IsAlreadyExists(err) {
 					ctxlog.Debugf(ctx, "Skip '%s' triggered by pod %s: already running", eJob.Name, podEvent)
@@ -119,13 +119,14 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 	return
 }
 
-func (r *TriggerReconciler) createJob(ctx context.Context, eJob ejv1.ExtendedJob, podName string) error {
+func (r *TriggerReconciler) createJob(ctx context.Context, eJob ejv1.ExtendedJob, podName string, podUID string) error {
 	template := eJob.Spec.Template.DeepCopy()
 
 	if template.Labels == nil {
 		template.Labels = map[string]string{}
 	}
 	template.Labels["ejob-name"] = eJob.Name
+	template.Labels["triggering-pod"] = podUID
 
 	name, err := names.JobName(eJob.Name, podName)
 	if err != nil {
