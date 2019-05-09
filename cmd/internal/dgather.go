@@ -75,7 +75,7 @@ inside a bosh manifest file.
 		}
 
 		jsonBytes, err := json.Marshal(map[string]string{
-			"properties.yaml": string(result),
+			"properties.yaml": string(propertiesBytes),
 		})
 		if err != nil {
 			return errors.Wrapf(err, "could not marshal json output")
@@ -94,13 +94,4 @@ inside a bosh manifest file.
 
 func init() {
 	utilCmd.AddCommand(dataGatherCmd)
-
-	dataGatherCmd.Flags().StringP("base-dir", "b", "", "a path to the base directory")
-
-	viper.BindPFlag("base-dir", dataGatherCmd.Flags().Lookup("base-dir"))
-
-	argToEnv := map[string]string{
-		"base-dir": "BASE_DIR",
-	}
-	AddEnvToUsage(dataGatherCmd, argToEnv)
 }
