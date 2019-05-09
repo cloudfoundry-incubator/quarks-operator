@@ -41,15 +41,6 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		return err
 	}
 
-	// Watch for changes to secondary resource Pods and requeue the owner BOSHDeployment
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &bdv1.BOSHDeployment{},
-	})
-	if err != nil {
-		return err
-	}
-
 	// Watch ConfigMaps owned by resource BOSHDeployment
 	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{
 		IsController: false,
