@@ -143,19 +143,15 @@ func (dg *DataGatherer) GatherData() error {
 	return nil
 }
 
-func (dg *DataGatherer) BPMConfig() ([]byte, error) {
-	bpm := map[string]bpm.Config{}
+// BPMConfigs returns a map of all BOSH jobs in the instance group
+func (dg *DataGatherer) BPMConfigs() (bpm.Configs, error) {
+	bpm := bpm.Configs{}
 
 	for _, job := range dg.instanceGroup.Jobs {
 		bpm[job.Name] = job.Properties.BOSHContainerization.BPM
 	}
 
-	res, err := yaml.Marshal(bpm)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	return bpm, nil
 }
 
 func (dg *DataGatherer) EnrichedManifest() *Manifest {

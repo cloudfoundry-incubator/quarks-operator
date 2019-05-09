@@ -8,9 +8,7 @@ import (
 
 	//. "github.com/onsi/gomega/gstruct"
 	"go.uber.org/zap"
-	yaml "gopkg.in/yaml.v2"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
@@ -85,14 +83,10 @@ var _ = Describe("DataGatherer", func() {
 			})
 
 			It("returns the bpm config for all jobs", func() {
-				bpmBytes, err := dg.BPMConfig()
+				bpmConfigs, err := dg.BPMConfigs()
 				Expect(err).ToNot(HaveOccurred())
 
-				bpmConfig := map[string]bpm.Config{}
-				err = yaml.Unmarshal(bpmBytes, &bpmConfig)
-				Expect(err).ToNot(HaveOccurred())
-
-				bpm := bpmConfig["loggregator_trafficcontroller"]
+				bpm := bpmConfigs["loggregator_trafficcontroller"]
 				Expect(bpm).ToNot(BeNil())
 				Expect(bpm.Processes[0].Executable).To(Equal("/var/vcap/packages/loggregator_trafficcontroller/trafficcontroller"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHLINKVALUES"]).To(Equal("10001"))
