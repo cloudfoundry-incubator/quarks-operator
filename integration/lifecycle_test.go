@@ -35,9 +35,9 @@ var _ = Describe("Lifecycle", func() {
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// Check pod-0 had been ready twice TODO should find a better way to determine final instance status
-			Expect(env.WaitForLogMsg(env.ObservedLogs, "Considering 2 extended jobs for pod testcr-nats-v1-0/ready")).To(Succeed())
+			Expect(env.WaitForLogMsg(env.ObservedLogs, "Considering 2 extended jobs for pod testcr-nats-v1-0/ready")).To(Succeed(), "error getting logs for watching pod-0/ready")
 			Expect(env.ObservedLogs.TakeAll())
-			Expect(env.WaitForLogMsg(env.ObservedLogs, "Considering 2 extended jobs for pod testcr-nats-v1-0/ready")).To(Succeed())
+			Expect(env.WaitForLogMsg(env.ObservedLogs, "Considering 2 extended jobs for pod testcr-nats-v1-0/ready")).To(Succeed(), "error getting logs for watching pod-0/ready again")
 
 			err = env.WaitForPod(env.Namespace, "testcr-nats-v1-0")
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from initial deployment")
@@ -73,12 +73,21 @@ var _ = Describe("Lifecycle", func() {
 			Expect(clusterIPService.Spec.Ports[1].Protocol).To(Equal(corev1.ProtocolTCP))
 			Expect(clusterIPService.Spec.Ports[1].Port).To(Equal(int32(4223)))
 
+			// check for endpoints
+			endpoints, err := env.GetEndpoints(env.Namespace, "testcr-nats-0")
+			Expect(err).NotTo(HaveOccurred(), "error getting endpoints for service 'testcr-nats-0'")
+			Expect(len(endpoints.Subsets)).NotTo(Equal(0))
+
+			endpoints, err = env.GetEndpoints(env.Namespace, "testcr-nats-1")
+			Expect(err).NotTo(HaveOccurred(), "error getting endpoints for service 'testcr-nats-1'")
+			Expect(len(endpoints.Subsets)).NotTo(Equal(0))
+
 			clusterIPService, err = env.GetService(env.Namespace, "testcr-nats-1")
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
 
 			// Check link address
-			Expect(env.WaitForPodLogMsg(env.Namespace, "testcr-nats-v1-0", fmt.Sprintf("Trying to connect to route on %s.%s.svc.cluster.local:4223", clusterIPService.Name, env.Namespace))).To(BeNil())
-			Expect(env.WaitForPodLogMatchRegexp(env.Namespace, "testcr-nats-v1-0", fmt.Sprintf(`%s:4223 - [\w:]+ - Route connection created`, clusterIPService.Spec.ClusterIP))).To(BeNil())
+			Expect(env.WaitForPodLogMsg(env.Namespace, "testcr-nats-v1-0", fmt.Sprintf("Trying to connect to route on %s.%s.svc.cluster.local:4223", clusterIPService.Name, env.Namespace))).To(BeNil(), "error getting logs for connecting nats route")
+			Expect(env.WaitForPodLogMatchRegexp(env.Namespace, "testcr-nats-v1-0", fmt.Sprintf(`%s:4223 - [\w:]+ - Route connection created`, clusterIPService.Spec.ClusterIP))).To(BeNil(), "error getting logs for resolving nats route address")
 		})
 	})
 

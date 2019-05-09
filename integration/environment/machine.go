@@ -943,3 +943,13 @@ func (m *Machine) GetService(namespace string, name string) (*corev1.Service, er
 
 	return svc, nil
 }
+
+// GetEndpoints gets target Endpoints
+func (m *Machine) GetEndpoints(namespace string, name string) (*corev1.Endpoints, error) {
+	ep, err := m.Clientset.CoreV1().Endpoints(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return ep, errors.Wrapf(err, "failed to get endpoint '%s'", ep)
+	}
+
+	return ep, nil
+}
