@@ -35,9 +35,9 @@ var _ = Describe("Lifecycle", func() {
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// Check pod-0 had been ready twice TODO should find a better way to determine final instance status
-			Expect(env.WaitForLogMsg(env.ObservedLogs, "Considering 2 extended jobs for pod testcr-nats-v1-0/ready")).To(Succeed(), "error getting logs for watching pod-0/ready")
+			Expect(env.WaitForLogMsg(env.ObservedLogs, "Considering 2 extended jobs for pod testcr-nats-v1-0/ready")).To(Succeed(), "error getting logs for waiting pod-0/ready")
 			Expect(env.ObservedLogs.TakeAll())
-			Expect(env.WaitForLogMsg(env.ObservedLogs, "Considering 2 extended jobs for pod testcr-nats-v1-0/ready")).To(Succeed(), "error getting logs for watching pod-0/ready again")
+			Expect(env.WaitForLogMsg(env.ObservedLogs, "Considering 2 extended jobs for pod testcr-nats-v1-0/ready")).To(Succeed(), "error getting logs for waiting pod-0/ready again")
 
 			err = env.WaitForPod(env.Namespace, "testcr-nats-v1-0")
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from initial deployment")

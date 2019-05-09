@@ -2,16 +2,16 @@
 package fakes
 
 import (
-	sync "sync"
+	"sync"
 
-	meta "k8s.io/apimachinery/pkg/api/meta"
-	runtime "k8s.io/apimachinery/pkg/runtime"
-	rest "k8s.io/client-go/rest"
-	record "k8s.io/client-go/tools/record"
-	cache "sigs.k8s.io/controller-runtime/pkg/cache"
-	client "sigs.k8s.io/controller-runtime/pkg/client"
-	manager "sigs.k8s.io/controller-runtime/pkg/manager"
-	types "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 )
 
 type FakeManager struct {
