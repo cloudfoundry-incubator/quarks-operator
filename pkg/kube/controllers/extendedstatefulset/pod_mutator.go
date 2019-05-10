@@ -3,9 +3,8 @@ package extendedstatefulset
 import (
 	"context"
 	"fmt"
-	"strconv"
-
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -108,6 +107,19 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 			}
 		}
 	}
+
+	// Add pod ordinal label for service selectors
+	podLabels := pod.GetLabels()
+	if podLabels == nil {
+		podLabels = map[string]string{}
+	}
+
+	podOrdinal := names.OrdinalFromPodName(pod.GetName())
+	if podOrdinal != -1 {
+		podLabels[essv1a1.LabelPodOrdinal] = strconv.Itoa(podOrdinal)
+		pod.SetLabels(podLabels)
+	}
+
 	return nil
 }
 
@@ -137,17 +149,6 @@ func (m *PodMutator) addPersistentVolumeClaims(ctx context.Context, statefulSet 
 
 	m.addVolumeSpec(pod, volumeClaimTemplatesMap, volumeMap, statefulSet)
 
-	// Add pod ordinal label for service selectors
-	podLabels := pod.GetLabels()
-	if podLabels == nil {
-		podLabels = map[string]string{}
-	}
-
-	podOrdinal := names.OrdinalFromPodName(pod.GetName())
-	if podOrdinal != -1 {
-		podLabels[essv1a1.LabelPodOrdinal] = strconv.Itoa(podOrdinal)
-		pod.SetLabels(podLabels)
-	}
 	return nil
 }
 

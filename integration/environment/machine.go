@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"time"
 
@@ -74,11 +75,29 @@ func (m *Machine) WaitForPodFailures(namespace string, labels string) error {
 	})
 }
 
+// WaitForPodLogMsg searches pod test logs for at least one occurrence of msg.
+func (m *Machine) WaitForPodLogMsg(namespace string, podName string, msg string) error {
+	return wait.Poll(5*time.Second, m.pollTimeout, func() (bool, error) {
+		logs, err := m.GetPodLogs(namespace, podName)
+		return strings.Contains(logs, msg), err
+	})
+}
+
+// WaitForPodLogMatchRegexp searches pod test logs for at least one occurrence of Regexp.
+func (m *Machine) WaitForPodLogMatchRegexp(namespace string, podName string, regExp string) error {
+	r, _ := regexp.Compile(regExp)
+
+	return wait.Poll(5*time.Second, m.pollTimeout, func() (bool, error) {
+		logs, err := m.GetPodLogs(namespace, podName)
+		return r.MatchString(logs), err
+	})
+}
+
 // WaitForLogMsg searches zap test logs for at least one occurrence of msg.
 // When using this, tests should use FlushLog() to remove log messages from
 // other tests.
 func (m *Machine) WaitForLogMsg(logs *observer.ObservedLogs, msg string) error {
-	return wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
+	return wait.Poll(5*time.Second, m.pollTimeout, func() (bool, error) {
 		n := logs.FilterMessageSnippet(msg).Len()
 		return n > 0, nil
 	})
@@ -886,14 +905,14 @@ func (m *Machine) GetPodLogs(namespace, podName string) (string, error) {
 	req := m.Clientset.CoreV1().Pods(namespace).GetLogs(podName, &podLogOpts)
 	podLogs, err := req.Stream()
 	if err != nil {
-		return "", errors.New("error in opening stream")
+		return "", errors.Wrapf(err, "error opening log stream for pod")
 	}
 	defer podLogs.Close()
 
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, podLogs)
 	if err != nil {
-		return "", errors.New("error in copy information from podLogs to buf")
+		return "", errors.Wrapf(err, "failed to copy bytes from the pod log to a buffer")
 	}
 	str := buf.String()
 
@@ -923,4 +942,14 @@ func (m *Machine) GetService(namespace string, name string) (*corev1.Service, er
 	}
 
 	return svc, nil
+}
+
+// GetEndpoints gets target Endpoints
+func (m *Machine) GetEndpoints(namespace string, name string) (*corev1.Endpoints, error) {
+	ep, err := m.Clientset.CoreV1().Endpoints(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return ep, errors.Wrapf(err, "failed to get endpoint '%s'", ep)
+	}
+
+	return ep, nil
 }

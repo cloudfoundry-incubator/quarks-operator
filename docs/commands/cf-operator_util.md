@@ -17,11 +17,12 @@ Calls a utility subcommand.
 ### Options inherited from parent commands
 
 ```
-  -n, --cf-operator-namespace string     (CF_OPERATOR_NAMESPACE) Namespace to watch for BOSH deployments (default "default")
-  -o, --docker-image-org string          (DOCKER_IMAGE_ORG) Dockerhub organization that provides the operator docker image (default "cfcontainerization")
-  -r, --docker-image-repository string   (DOCKER_IMAGE_REPOSITORY) Dockerhub repository that provides the operator docker image (default "cf-operator")
-  -t, --docker-image-tag string          (DOCKER_IMAGE_TAG) Tag of the operator docker image (default "0.0.1")
-  -c, --kubeconfig string                (KUBECONFIG) Path to a kubeconfig, not required in-cluster
+  -n, --cf-operator-namespace string           (CF_OPERATOR_NAMESPACE) Namespace to watch for BOSH deployments (default "default")
+  -o, --docker-image-org string                (DOCKER_IMAGE_ORG) Dockerhub organization that provides the operator docker image (default "cfcontainerization")
+  -r, --docker-image-repository string         (DOCKER_IMAGE_REPOSITORY) Dockerhub repository that provides the operator docker image (default "cf-operator")
+  -t, --docker-image-tag string                (DOCKER_IMAGE_TAG) Tag of the operator docker image (default "v0.2.0-dirty+19.gfaca017")
+  -h, --help                                   help for cf-operator
+  -c, --kubeconfig string                      (KUBECONFIG) Path to a kubeconfig, not required in-cluster
   -w, --operator-webhook-service-host string   (CF_OPERATOR_WEBHOOK_SERVICE_HOST) Hostname/IP under which the webhook server can be reached from the cluster
   -p, --operator-webhook-service-port string   (CF_OPERATOR_WEBHOOK_SERVICE_PORT) Port the webhook server listens on (default "2999")
 ```
