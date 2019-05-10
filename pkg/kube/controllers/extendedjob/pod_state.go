@@ -24,9 +24,10 @@ func InferPodState(pod corev1.Pod) ejv1.PodState {
 		}
 	}
 
-	// reconcile triggers update with a running pod for deletion, too
 	if pod.Status.Phase == "Running" {
-		return ejv1.PodStateReady
+		if podutil.IsPodReady(&pod) && pod.DeletionTimestamp == nil {
+			return ejv1.PodStateReady
+		}
 	}
 
 	if pod.Status.Phase == "Pending" {
