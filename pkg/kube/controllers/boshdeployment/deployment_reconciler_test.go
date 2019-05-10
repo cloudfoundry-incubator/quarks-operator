@@ -3,27 +3,28 @@ package boshdeployment_test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
-	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
@@ -35,15 +36,17 @@ import (
 
 var _ = Describe("ReconcileBoshDeployment", func() {
 	var (
-		recorder   *record.FakeRecorder
 		manager    *cfakes.FakeManager
 		reconciler reconcile.Reconciler
+		recorder   *record.FakeRecorder
 		request    reconcile.Request
+		ctx        context.Context
 		resolver   fakes.FakeResolver
 		manifest   *bdm.Manifest
 		log        *zap.SugaredLogger
 		config     *cfcfg.Config
-		ctx        context.Context
+		client     *cfakes.FakeClient
+		instance   *bdv1.BOSHDeployment
 	)
 
 	BeforeEach(func() {
@@ -104,6 +107,41 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		_, log = helper.NewTestLogger()
 		ctx = ctxlog.NewParentContext(log)
 		ctx = ctxlog.NewContextWithRecorder(ctx, "TestRecorder", recorder)
+
+		instance = &bdv1.BOSHDeployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "default",
+			},
+			Spec: bdv1.BOSHDeploymentSpec{
+				Manifest: bdv1.Manifest{
+					Ref:  "dummy-manifest",
+					Type: "configmap",
+				},
+				Ops: []bdv1.Ops{
+					{
+						Ref:  "bar",
+						Type: "configmap",
+					},
+					{
+						Ref:  "baz",
+						Type: "secret",
+					},
+				},
+			},
+		}
+
+		client = &cfakes.FakeClient{}
+		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+			switch object.(type) {
+			case *bdv1.BOSHDeployment:
+				instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
+			}
+
+			return nil
+		})
+
+		manager.GetClientReturns(client)
 	})
 
 	JustBeforeEach(func() {
@@ -117,16 +155,8 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 	Describe("Reconcile", func() {
 		Context("when the manifest can not be resolved", func() {
-			var (
-				client *cfakes.FakeClient
-			)
-			BeforeEach(func() {
-				client = &cfakes.FakeClient{}
-				manager.GetClientReturns(client)
-			})
-
-			It("returns an empty Result when the resource was not found", func() {
-				client.GetReturns(errors.NewNotFound(schema.GroupResource{}, "not found is requeued"))
+			It("returns an empty result when the resource was not found", func() {
+				client.GetReturns(apierrors.NewNotFound(schema.GroupResource{}, "not found is requeued"))
 
 				reconciler.Reconcile(request)
 				result, err := reconciler.Reconcile(request)
@@ -134,8 +164,8 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Expect(reconcile.Result{}).To(Equal(result))
 			})
 
-			It("throws an error when the request failed", func() {
-				client.GetReturns(errors.NewBadRequest("bad request returns error"))
+			It("handles an error when the request failed", func() {
+				client.GetReturns(apierrors.NewBadRequest("bad request returns error"))
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
@@ -145,7 +175,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Expect(<-recorder.Events).To(ContainSubstring("GetBOSHDeploymentError"))
 			})
 
-			It("handles errors when resolving the BOSHDeployment", func() {
+			It("handles an error when resolving the BOSHDeployment", func() {
 				resolver.ResolveManifestReturns(nil, fmt.Errorf("resolver error"))
 
 				_, err := reconciler.Reconcile(request)
@@ -156,7 +186,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Expect(<-recorder.Events).To(ContainSubstring("ResolveManifestError"))
 			})
 
-			It("handles errors when missing instance groups", func() {
+			It("handles an error when missing instance groups", func() {
 				resolver.ResolveManifestReturns(&bdm.Manifest{
 					InstanceGroups: []*bdm.InstanceGroup{},
 				}, nil)
@@ -171,35 +201,16 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		})
 
 		Context("when the manifest can be resolved", func() {
-			var (
-				client client.Client
-			)
-			BeforeEach(func() {
-				client = fake.NewFakeClient(
-					&bdc.BOSHDeployment{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "foo",
-							Namespace: "default",
-						},
-						Spec: bdc.BOSHDeploymentSpec{},
-					},
-				)
-				manager.GetClientReturns(client)
+			It("handles an error when resolving manifest", func() {
+				manifest = &bdm.Manifest{}
+				resolver.ResolveManifestReturns(manifest, errors.New("fake-error"))
+
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("could not resolve manifest"))
 			})
 
-			Context("With an empty manifest", func() {
-				BeforeEach(func() {
-					manifest = &bdm.Manifest{}
-				})
-
-				It("raises an error if there are no instance groups defined in the manifest", func() {
-					_, err := reconciler.Reconcile(request)
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("no instance groups defined in manifest"))
-				})
-			})
-
-			It("handles errors when setting the owner reference on the object", func() {
+			It("handles an error when setting the owner reference on the object", func() {
 				reconciler = cfd.NewReconciler(ctx, config, manager, &resolver,
 					func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 						return fmt.Errorf("failed to set reference")
@@ -208,43 +219,239 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					bdm.NewKubeConverter(config.Namespace),
 				)
 
-				// First reconcile doesn't create any resources
 				_, err := reconciler.Reconcile(request)
-				Expect(err).ToNot(HaveOccurred())
-				// We need a second reconcile to create some stuff
-				_, err = reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to set reference"))
-
-				// check for events
-				Expect(<-recorder.Events).To(ContainSubstring("VariableGenerationError"))
-
-				instance := &bdc.BOSHDeployment{}
-				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("could not set specs ownerReference"))
 			})
 
-			It("goes from ops applied to variable generated state successfully", func() {
+			It("handles an error when setting finalizer for BOSHDeployment", func() {
+				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+					switch object.(type) {
+					case *bdv1.BOSHDeployment:
+						return apierrors.NewNotFound(schema.GroupResource{}, "not found is requeued")
+					}
+					return nil
+				})
+
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("could not set instance's finalizer"))
+			})
+
+			It("handles an error when converting bosh manifest to kube objects", func() {
+				resolver.ResolveManifestReturns(&bdm.Manifest{
+					InstanceGroups: []*bdm.InstanceGroup{
+						{
+							Name: "empty-instance",
+						},
+					},
+				}, nil)
+
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("error converting bosh manifest"))
+			})
+
+			It("handles an errors when getting instance state", func() {
+				getInstanceCallCount := 0
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+					switch object.(type) {
+					case *bdv1.BOSHDeployment:
+						instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
+						getInstanceCallCount++
+						// We have 3 times calls to reach into r.updateInstanceState
+						if getInstanceCallCount > 2 {
+							return errors.New("fake-error")
+						}
+					}
+
+					return nil
+				})
+				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+					switch object.(type) {
+					case *bdv1.BOSHDeployment:
+						object.(*bdv1.BOSHDeployment).DeepCopyInto(instance)
+					}
+					return nil
+				})
+
+				By("From created state to ops applied state")
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("could not get BOSHDeployment instance"))
+			})
+
+			It("handles an errors when updating instance state", func() {
+				updateInstanceCallCount := 0
+				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+					switch object.(type) {
+					case *bdv1.BOSHDeployment:
+						object.(*bdv1.BOSHDeployment).DeepCopyInto(instance)
+						updateInstanceCallCount++
+						// We have 2 times calls to reach into r.updateInstanceState
+						if updateInstanceCallCount > 1 {
+							return errors.New("fake-error")
+						}
+					}
+					return nil
+				})
+
+				By("From created state to ops applied state")
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("could not update BOSHDeployment instance"))
+			})
+
+			It("handles an errors when creating variable interpolation eJob", func() {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+					switch object.(type) {
+					case *bdv1.BOSHDeployment:
+						instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
+					case *ejv1.ExtendedJob:
+						return apierrors.NewNotFound(schema.GroupResource{}, "not found is requeued")
+					}
+
+					return nil
+				})
+				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+					switch object.(type) {
+					case *bdv1.BOSHDeployment:
+						object.(*bdv1.BOSHDeployment).DeepCopyInto(instance)
+					}
+					return nil
+				})
+				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+					switch object.(type) {
+					case *ejv1.ExtendedJob:
+						eJob := object.(*ejv1.ExtendedJob)
+						if strings.HasPrefix(eJob.Name, "var-interpolation") {
+							return errors.New("fake-error")
+						}
+					}
+					return nil
+				})
+
+				By("From created state to ops applied state")
 				result, err := reconciler.Reconcile(request)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{
 					Requeue: true,
 				}))
 
-				instance := &bdc.BOSHDeployment{}
+				instance := &bdv1.BOSHDeployment{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(instance.Status.State).To(Equal(cfd.OpsAppliedState))
 
+				By("From ops applied state to ops variable generated state")
+				result, err = reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to create variable interpolation eJob"))
+			})
+
+			It("handles an errors when creating data gathering eJob", func() {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+					switch object.(type) {
+					case *bdv1.BOSHDeployment:
+						instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
+					case *ejv1.ExtendedJob:
+						return apierrors.NewNotFound(schema.GroupResource{}, "not found is requeued")
+					}
+
+					return nil
+				})
+				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+					switch object.(type) {
+					case *bdv1.BOSHDeployment:
+						object.(*bdv1.BOSHDeployment).DeepCopyInto(instance)
+					}
+					return nil
+				})
+				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+					switch object.(type) {
+					case *ejv1.ExtendedJob:
+						eJob := object.(*ejv1.ExtendedJob)
+						if strings.HasPrefix(eJob.Name, "data-gathering") {
+							return errors.New("fake-error")
+						}
+					}
+					return nil
+				})
+
+				By("From created state to ops applied state")
+				result, err := reconciler.Reconcile(request)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{
+					Requeue: true,
+				}))
+
+				instance := &bdv1.BOSHDeployment{}
+				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(instance.Status.State).To(Equal(cfd.OpsAppliedState))
+
+				By("From ops applied state to variable interpolated state")
 				result, err = reconciler.Reconcile(request)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{
 					Requeue: true,
 				}))
 
+				instance = &bdv1.BOSHDeployment{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(instance.Status.State).To(Equal(cfd.VariableGeneratedState))
+				Expect(instance.Status.State).To(Equal(cfd.VariableInterpolatedState))
+
+				By("From variable interpolated state to data gathered state")
+				result, err = reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to create data gathering eJob"))
+			})
+
+			It("goes from created state to data gathered state successfully", func() {
+				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+					switch object.(type) {
+					case *bdv1.BOSHDeployment:
+						object.(*bdv1.BOSHDeployment).DeepCopyInto(instance)
+					}
+					return nil
+				})
+
+				By("From created state to ops applied state")
+				result, err := reconciler.Reconcile(request)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{
+					Requeue: true,
+				}))
+
+				instance := &bdv1.BOSHDeployment{}
+				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(instance.Status.State).To(Equal(cfd.OpsAppliedState))
+
+				By("From ops applied state to variable interpolated state")
+				result, err = reconciler.Reconcile(request)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{
+					Requeue: true,
+				}))
+
+				instance = &bdv1.BOSHDeployment{}
+				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(instance.Status.State).To(Equal(cfd.VariableInterpolatedState))
+
+				By("From variable interpolated state to data gathered state")
+				result, err = reconciler.Reconcile(request)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{
+					Requeue: true,
+				}))
+
+				instance = &bdv1.BOSHDeployment{}
+				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(instance.Status.State).To(Equal(cfd.DataGatheredState))
 			})
 		})
 	})

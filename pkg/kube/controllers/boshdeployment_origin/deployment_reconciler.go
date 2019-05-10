@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,13 +23,13 @@ import (
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
-	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // State of instance
@@ -40,7 +40,6 @@ const (
 	VariableGeneratedState    = "VariableGenerated"
 	VariableInterpolatedState = "VariableInterpolated"
 	DataGatheredState         = "DataGathered"
-	BPMConfigsCreatedState    = "BPMConfigsCreatedState"
 	DeployingState            = "Deploying"
 	DeployedState             = "Deployed"
 )
@@ -57,7 +56,8 @@ type Owner interface {
 }
 
 // NewReconciler returns a new reconcile.Reconciler
-func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc, store vss.VersionedSecretStore, kubeConverter *bdm.KubeConverter) reconcile.Reconciler {
+func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
+	versionedSecretStore := versionedsecretstore.NewVersionedSecretStore(mgr.GetClient())
 
 	return &ReconcileBOSHDeployment{
 		ctx:                  ctx,
@@ -67,8 +67,7 @@ func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manag
 		resolver:             resolver,
 		setReference:         srf,
 		owner:                owner.NewOwner(mgr.GetClient(), mgr.GetScheme()),
-		versionedSecretStore: store,
-		kubeConverter:        kubeConverter,
+		versionedSecretStore: versionedSecretStore,
 	}
 }
 
@@ -84,7 +83,6 @@ type ReconcileBOSHDeployment struct {
 	config               *config.Config
 	owner                Owner
 	versionedSecretStore versionedsecretstore.VersionedSecretStore
-	kubeConverter        *bdm.KubeConverter
 }
 
 // Reconcile reads that state of the cluster for a BOSHDeployment object and makes changes based on the state read
@@ -110,7 +108,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			log.Debug(ctx, "Skip reconcile: BOSHDeployment not found")
 			return reconcile.Result{}, nil
 		}
-		err = log.WithEvent(instance, "GetBOSHDeploymentError").Errorf(ctx, "Failed to get BOSHDeployment '%s': %v", request.NamespacedName, err)
+		log.WithEvent(instance, "GetBOSHDeploymentError").Errorf(ctx, "Failed to get BOSHDeployment '%s': %v", request.NamespacedName, err)
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
@@ -126,8 +124,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	// Resolve the manifest (incl. ops files and implicit variables)
 	manifest, err := r.resolveManifest(ctx, instance)
 	if err != nil {
-		log.WithEvent(instance, "BadManifestError").Infof(ctx, "Error resolving the manifest %s", instance.GetName())
-		return reconcile.Result{}, errors.Wrap(err, "could not resolve manifest")
+		return reconcile.Result{}, err
 	}
 
 	// Set manifest and ops ownerReference as instance
@@ -150,7 +147,6 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "could not calculate manifest SHA1")
 	}
-
 	oldManifestSHA1, _ := instance.Annotations[bdv1.AnnotationManifestSHA1]
 	if oldManifestSHA1 == currentManifestSHA1 && instance.Status.State == DeployedState {
 		log.WithEvent(instance, "SkipReconcile").Infof(ctx, "Skip reconcile: deployed BoshDeployment '%s/%s' manifest has not changed", instance.GetNamespace(), instance.GetName())
@@ -166,7 +162,11 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Generate all the kube objects we need for the manifest
 	log.Debug(ctx, "Converting bosh manifest to kube objects")
-	jobFactory := bdm.NewJobFactory(*manifest, instance.GetNamespace())
+	kubeConfigs, err := manifest.ConvertToKube(r.config.Namespace)
+	if err != nil {
+		err = log.WithEvent(instance, "BadManifestError").Errorf(ctx, "Error converting bosh manifest %s to kube objects: %s", manifest.Name, err)
+		return reconcile.Result{}, err
+	}
 
 	if instanceState == "" {
 		// Set a "Created" state if this has just been created
@@ -190,34 +190,59 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		instance.Status.State = OpsAppliedState
 
 	case OpsAppliedState:
-		fallthrough
-	case VariableGeneratedState:
-		job, err := jobFactory.VariableInterpolationJob()
+		err = r.generateVariableSecrets(ctx, instance, manifest, &kubeConfigs)
 		if err != nil {
-			log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "Failed to build variable interpolation eJob: %v", err)
+			log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "Failed to generate variables: %v", err)
 			return reconcile.Result{}, err
 		}
-		err = r.createVariableInterpolationEJob(ctx, instance, manifest, job)
+
+	case VariableGeneratedState:
+		err = r.createVariableInterpolationEJob(ctx, instance, manifest, kubeConfigs)
 		if err != nil {
-			err = log.WithEvent(instance, "VariableInterpolationError").Errorf(ctx, "Failed to create variable interpolation eJob: %v", err)
+			log.WithEvent(instance, "VariableInterpolationError").Errorf(ctx, "Failed to create variable interpolation eJob: %v", err)
 			return reconcile.Result{}, err
 		}
 
 	case VariableInterpolatedState:
-		job, err := jobFactory.DataGatheringJob()
+		err = r.createDataGatheringJob(ctx, instance, manifest, kubeConfigs)
 		if err != nil {
-			log.WithEvent(instance, "DataGatheringError").Errorf(ctx, "Failed to build data gathering eJob: %v", err)
-			return reconcile.Result{}, err
-		}
-		err = r.createDataGatheringJob(ctx, instance, job)
-		if err != nil {
-			err = log.WithEvent(instance, "DataGatheringError").Errorf(ctx, "Failed to create data gathering eJob: %v", err)
+			log.WithEvent(instance, "DataGatheringError").Errorf(ctx, "Failed to create data gathering eJob: %v", err)
 			return reconcile.Result{}, err
 		}
 
-	default:
-		// TODO should sum up instance status
+	case DataGatheredState:
+		// Wait for all instance group property outputs to be ready
+		// We need BPM information to start everything up
+		bpmInfo, err := r.waitForBPM(ctx, instance, manifest, &kubeConfigs)
+		if err != nil {
+			log.Infof(ctx, "Waiting for BPM: %s", err.Error())
+			return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, err
+		}
+
+		err = manifest.ApplyBPMInfo(&kubeConfigs, bpmInfo)
+		if err != nil {
+			log.Errorf(ctx, "Failed to apply BPM information: %v", err)
+			return reconcile.Result{}, err
+		}
+
+		err = r.deployInstanceGroups(ctx, instance, &kubeConfigs)
+		if err != nil {
+			log.Errorf(ctx, "Failed to deploy instance groups: %v", err)
+			return reconcile.Result{}, err
+		}
+
+	case DeployingState:
+		err = r.actionOnDeploying(ctx, instance, &kubeConfigs)
+		if err != nil {
+			log.WithEvent(instance, "InstanceDeploymentError").Errorf(ctx, "Failed to deploy: %v", err)
+			return reconcile.Result{}, err
+		}
+
+	case DeployedState:
+		log.WithEvent(instance, "SkipReconcile").Infof(ctx, "Skip reconcile: BoshDeployment '%s/%s' already has been deployed", instance.GetNamespace(), instance.GetName())
 		return reconcile.Result{}, nil
+	default:
+		return reconcile.Result{}, errors.New("unknown instance state")
 	}
 
 	log.Debugf(ctx, "Requeue the reconcile: BoshDeployment '%s/%s' is in state '%s'", instance.GetNamespace(), instance.GetName(), instance.Status.State)
@@ -234,7 +259,7 @@ func (r *ReconcileBOSHDeployment) updateInstanceState(ctx context.Context, curre
 	err := r.client.Get(ctx, key, foundInstance)
 	if err != nil {
 		log.Errorf(ctx, "Failed to get BOSHDeployment instance '%s': %v", currentInstance.GetName(), err)
-		return errors.Wrapf(err, "could not get BOSHDeployment instance '%s' when update instance state", currentInstance.GetName())
+		return err
 	}
 	oldManifestSHA1, _ := foundInstance.GetAnnotations()[bdv1.AnnotationManifestSHA1]
 
@@ -257,7 +282,7 @@ func (r *ReconcileBOSHDeployment) updateInstanceState(ctx context.Context, curre
 		err = r.client.Update(ctx, newInstance)
 		if err != nil {
 			log.Errorf(ctx, "Failed to update BOSHDeployment instance status: %v", err)
-			return errors.Wrapf(err, "could not update BOSHDeployment instance '%s' when update instance state", currentInstance.GetName())
+			return err
 		}
 	}
 
@@ -435,10 +460,10 @@ func (r *ReconcileBOSHDeployment) handleDeletion(ctx context.Context, instance *
 }
 
 // generateVariableSecrets create variables extendedSecrets
-func (r *ReconcileBOSHDeployment) generateVariableSecrets(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, variables []esv1.ExtendedSecret) error {
+func (r *ReconcileBOSHDeployment) generateVariableSecrets(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfig *bdm.KubeConfig) error {
 	log.Debug(ctx, "Creating variables extendedSecrets")
 	var err error
-	for _, variable := range variables {
+	for _, variable := range kubeConfig.Variables {
 		// Set BOSHDeployment instance as the owner and controller
 		if err := r.setReference(instance, &variable, r.scheme); err != nil {
 			return errors.Wrap(err, "could not set reference for an ExtendedStatefulSet for a BOSH Deployment")
@@ -463,7 +488,7 @@ func (r *ReconcileBOSHDeployment) generateVariableSecrets(ctx context.Context, i
 }
 
 // createVariableInterpolationEJob create temp manifest and variable interpolation eJob
-func (r *ReconcileBOSHDeployment) createVariableInterpolationEJob(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, varIntEJob *ejv1.ExtendedJob) error {
+func (r *ReconcileBOSHDeployment) createVariableInterpolationEJob(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfig bdm.KubeConfig) error {
 
 	// Create temp manifest as variable interpolation job input.
 	// Ops files have been applied on this manifest.
@@ -496,7 +521,9 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationEJob(ctx context.Co
 		return errors.Wrapf(err, "creating or updating Secret '%s'", tempManifestSecret.Name)
 	}
 
+	// Generate the ExtendedJob object
 	log.Debug(ctx, "Creating variable interpolation extendedJob")
+	varIntEJob := kubeConfig.VariableInterpolationJob
 	// Set BOSHDeployment instance as the owner and controller
 	if err := r.setReference(instance, varIntEJob, r.scheme); err != nil {
 		log.WithEvent(instance, "NewJobForVariableInterpolationError").Errorf(ctx, "Failed to set ownerReference for ExtendedJob '%s': %v", varIntEJob.GetName(), err)
@@ -524,7 +551,10 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationEJob(ctx context.Co
 }
 
 // createDataGatheringJob gather data from manifest
-func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, instance *bdv1.BOSHDeployment, dataGatheringEJob *ejv1.ExtendedJob) error {
+func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfig bdm.KubeConfig) error {
+
+	// Generate the ExtendedJob object
+	dataGatheringEJob := kubeConfig.DataGatheringJob
 	log.Debugf(ctx, "Creating data gathering extendedJob %s/%s", dataGatheringEJob.Namespace, dataGatheringEJob.Name)
 
 	// Set BOSHDeployment instance as the owner and controller
@@ -549,6 +579,127 @@ func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, in
 	}
 
 	instance.Status.State = DataGatheredState
+
+	return nil
+}
+
+// waitForBPM checks to see if all BPM information is available and returns an error if it isn't
+func (r *ReconcileBOSHDeployment) waitForBPM(ctx context.Context, deployment *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfigs *bdm.KubeConfig) (map[string]bdm.Manifest, error) {
+	// TODO: this approach is not good enough, we need to reconcile and trigger on all of these secrets
+	// TODO: these secrets could exist, but not be up to date - we have to make sure they exist for the appropriate version
+
+	result := map[string]bdm.Manifest{}
+
+	for _, container := range kubeConfigs.DataGatheringJob.Spec.Template.Spec.Containers {
+		_, secretName := names.CalculateEJobOutputSecretPrefixAndName(
+			names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+			manifest.Name,
+			container.Name,
+			false,
+		)
+
+		log.Debugf(ctx, "Getting latest secret '%s'", secretName)
+		secret, err := r.versionedSecretStore.Latest(ctx, deployment.Namespace, secretName)
+		if err != nil && apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("secret %s/%s doesn't exist", deployment.Namespace, secretName)
+		} else if err != nil {
+			return nil, errors.Wrapf(err, "failed to retrieve resolved properties secret %s/%s", deployment.Namespace, secretName)
+		}
+
+		resolvedProperties := bdm.Manifest{}
+
+		err = yaml.Unmarshal(secret.Data["properties.yaml"], &resolvedProperties)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't unmarshal resolved properties from secret %s/%s", deployment.Namespace, secretName)
+		}
+		result[container.Name] = resolvedProperties
+	}
+
+	return result, nil
+}
+
+// deployInstanceGroups create ExtendedJobs and ExtendedStatefulSets
+func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, instance *bdv1.BOSHDeployment, kubeConfigs *bdm.KubeConfig) error {
+	log.Debug(ctx, "Creating extendedJobs and extendedStatefulSets of instance groups")
+	for _, eJob := range kubeConfigs.Errands {
+		// Set BOSHDeployment instance as the owner and controller
+		if err := r.setReference(instance, &eJob, r.scheme); err != nil {
+			log.WarningEvent(ctx, instance, "NewExtendedJobForDeploymentError", err.Error())
+			return errors.Wrap(err, "couldn't set reference for an ExtendedJob for a BOSH Deployment")
+		}
+
+		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
+			exstEJob, ok := obj.(*ejv1.ExtendedJob)
+			if !ok {
+				return fmt.Errorf("object is not an ExtendedJob")
+			}
+
+			exstEJob.Labels = eJob.Labels
+			exstEJob.Spec = eJob.Spec
+			return nil
+		})
+		if err != nil {
+			log.WarningEvent(ctx, instance, "CreateExtendedJobForDeploymentError", err.Error())
+			return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", eJob.Name)
+		}
+	}
+
+	for _, svc := range kubeConfigs.Services {
+		// Set BOSHDeployment instance as the owner and controller
+		if err := r.setReference(instance, &svc, r.scheme); err != nil {
+			log.WarningEvent(ctx, instance, "NewServiceForDeploymentError", err.Error())
+			return errors.Wrap(err, "couldn't set reference for a Service for a BOSH Deployment")
+		}
+
+		_, err := controllerutil.CreateOrUpdate(ctx, r.client, svc.DeepCopy(), func(obj runtime.Object) error {
+			exstSvc, ok := obj.(*corev1.Service)
+			if !ok {
+				return fmt.Errorf("object is not a Service")
+			}
+
+			exstSvc.Labels = svc.Labels
+			svc.Spec.ClusterIP = exstSvc.Spec.ClusterIP
+			exstSvc.Spec = svc.Spec
+			return nil
+		})
+		if err != nil {
+			log.WarningEvent(ctx, instance, "CreateServiceForDeploymentError", err.Error())
+			return errors.Wrapf(err, "creating or updating Service '%s'", svc.Name)
+		}
+	}
+
+	for _, eSts := range kubeConfigs.InstanceGroups {
+		// Set BOSHDeployment instance as the owner and controller
+		if err := r.setReference(instance, &eSts, r.scheme); err != nil {
+			log.WarningEvent(ctx, instance, "NewExtendedStatefulSetForDeploymentError", err.Error())
+			return errors.Wrap(err, "couldn't set reference for an ExtendedStatefulSet for a BOSH Deployment")
+		}
+
+		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eSts.DeepCopy(), func(obj runtime.Object) error {
+			exstSts, ok := obj.(*estsv1.ExtendedStatefulSet)
+			if !ok {
+				return fmt.Errorf("object is not an ExtendStatefulSet")
+			}
+
+			exstSts.Labels = eSts.Labels
+			exstSts.Spec = eSts.Spec
+			return nil
+		})
+		if err != nil {
+			log.WarningEvent(ctx, instance, "CreateExtendedStatefulSetForDeploymentError", err.Error())
+			return errors.Wrapf(err, "creating or updating ExtendedStatefulSet '%s'", eSts.Name)
+		}
+	}
+
+	instance.Status.State = DeployingState
+
+	return nil
+}
+
+// actionOnDeploying check out deployment status
+func (r *ReconcileBOSHDeployment) actionOnDeploying(ctx context.Context, instance *bdv1.BOSHDeployment, kubeConfigs *bdm.KubeConfig) error {
+	// TODO Check deployment
+	instance.Status.State = DeployedState
 
 	return nil
 }
