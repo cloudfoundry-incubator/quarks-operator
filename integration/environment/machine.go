@@ -953,3 +953,28 @@ func (m *Machine) GetEndpoints(namespace string, name string) (*corev1.Endpoints
 
 	return ep, nil
 }
+
+// WaitForSubsetsExist blocks until the specified endpoints' subsets exist
+func (m *Machine) WaitForSubsetsExist(namespace string, endpointsName string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		found, err := m.SubsetsExist(namespace, endpointsName)
+		return found, err
+	})
+}
+
+// SubsetsExist checks if the subsets of the endpoints exist
+func (m *Machine) SubsetsExist(namespace string, endpointsName string) (bool, error) {
+	ep, err := m.Clientset.CoreV1().Endpoints(namespace).Get(endpointsName, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "failed to query for endpoints by endpointsName: %s", endpointsName)
+	}
+
+	if len(ep.Subsets) == 0 {
+		return false, nil
+	}
+
+	return true, nil
+}

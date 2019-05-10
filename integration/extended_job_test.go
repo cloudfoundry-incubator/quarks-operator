@@ -615,9 +615,9 @@ var _ = Describe("ExtendedJob", func() {
 				jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 4)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
 				Expect(jobs).To(HaveLen(4))
-				Expect(env.ContainJob(jobs, "job-extendedj-foo")).To(Equal(true))
+				Expect(env.ContainJob(jobs, "job-extendedjob-foo")).To(Equal(true))
 				Expect(env.ContainJob(jobs, "job-slowjob-foo")).To(Equal(true))
-				Expect(env.ContainJob(jobs, "job-extendedj-bar")).To(Equal(true))
+				Expect(env.ContainJob(jobs, "job-extendedjob-bar")).To(Equal(true))
 				Expect(env.ContainJob(jobs, "job-slowjob-bar")).To(Equal(true))
 
 				By("checking if owner ref is set")

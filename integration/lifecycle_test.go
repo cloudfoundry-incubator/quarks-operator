@@ -74,13 +74,8 @@ var _ = Describe("Lifecycle", func() {
 			Expect(clusterIPService.Spec.Ports[1].Port).To(Equal(int32(4223)))
 
 			// check for endpoints
-			endpoints, err := env.GetEndpoints(env.Namespace, "testcr-nats-0")
-			Expect(err).NotTo(HaveOccurred(), "error getting endpoints for service 'testcr-nats-0'")
-			Expect(len(endpoints.Subsets)).NotTo(Equal(0))
-
-			endpoints, err = env.GetEndpoints(env.Namespace, "testcr-nats-1")
-			Expect(err).NotTo(HaveOccurred(), "error getting endpoints for service 'testcr-nats-1'")
-			Expect(len(endpoints.Subsets)).NotTo(Equal(0))
+			Expect(env.WaitForSubsetsExist(env.Namespace, "testcr-nats-0")).To(BeNil(), "timeout getting subsets of endpoints 'testcr-nats-0'")
+			Expect(env.WaitForSubsetsExist(env.Namespace, "testcr-nats-1")).To(BeNil(), "timeout getting subsets of endpoints 'testcr-nats-1'")
 
 			clusterIPService, err = env.GetService(env.Namespace, "testcr-nats-1")
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")

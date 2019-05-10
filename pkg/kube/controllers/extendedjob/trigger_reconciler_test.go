@@ -108,6 +108,13 @@ var _ = Describe("TriggerReconciler", func() {
 				mgr.GetClientReturns(&client)
 
 				pod = env.DefaultPod("fake-pod")
+				pod.Status.Phase = "Running"
+				pod.Status.Conditions = []corev1.PodCondition{
+					{
+						Type:   "Ready",
+						Status: "True",
+					},
+				}
 				client.GetCalls(podGetStub)
 				request = newRequest(pod)
 			})
@@ -151,8 +158,8 @@ var _ = Describe("TriggerReconciler", func() {
 				It("should log create error and continue with next job", func() {
 					act()
 					Expect(client.CreateCallCount()).To(Equal(2))
-					Expect(logs.FilterMessageSnippet("Failed to create job for 'foo' via pod fake-pod/deleted: fake-error").Len()).To(Equal(1))
-					Expect(logs.FilterMessageSnippet("Failed to create job for 'bar' via pod fake-pod/deleted: fake-error").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Failed to create job for 'foo' via pod fake-pod/ready: fake-error").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Failed to create job for 'bar' via pod fake-pod/ready: fake-error").Len()).To(Equal(1))
 				})
 			})
 		})
@@ -186,8 +193,15 @@ var _ = Describe("TriggerReconciler", func() {
 
 			BeforeEach(func() {
 				pod = env.DefaultPod("fake-pod")
-				pod.UID = "1234-567"
+				pod.Status.Phase = "Running"
+				pod.Status.Conditions = []corev1.PodCondition{
+					{
+						Type:   "Ready",
+						Status: "True",
+					},
+				}
 				otherPod := env.DefaultPod("other-fake-pod")
+				otherPod.Status.Phase = "Running"
 				runtimeObjects = []runtime.Object{
 					env.DefaultExtendedJob("foo"),
 					env.LongRunningExtendedJob("bar"),
@@ -216,8 +230,8 @@ var _ = Describe("TriggerReconciler", func() {
 					Expect(jobs[0].Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"sleep", "1"}))
 					Expect(jobs[1].Name).To(ContainSubstring("job-bar-"))
 					Expect(jobs[1].Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"sleep", "15"}))
-					Expect(logs.FilterMessageSnippet("Created job for 'foo' via pod fake-pod/deleted").Len()).To(Equal(1))
-					Expect(logs.FilterMessageSnippet("Created job for 'bar' via pod fake-pod/deleted").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Created job for 'foo' via pod fake-pod/ready").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Created job for 'bar' via pod fake-pod/ready").Len()).To(Equal(1))
 				})
 			})
 
