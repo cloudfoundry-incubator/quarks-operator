@@ -21,7 +21,7 @@ import (
 // and Start it when the Manager is Started.
 func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "boshdeployment-reconciler", mgr.GetRecorder("boshdeployment-recorder"))
-	r := NewReconciler(
+	r := NewDeploymentReconciler(
 		ctx, config, mgr,
 		bdm.NewResolver(mgr.GetClient(), func() bdm.Interpolator { return bdm.NewInterpolator() }),
 		controllerutil.SetControllerReference,

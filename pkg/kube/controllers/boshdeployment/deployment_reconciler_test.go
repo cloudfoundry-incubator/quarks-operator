@@ -146,7 +146,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 	JustBeforeEach(func() {
 		resolver.ResolveManifestReturns(manifest, nil)
-		reconciler = cfd.NewReconciler(ctx, config, manager, &resolver,
+		reconciler = cfd.NewDeploymentReconciler(ctx, config, manager, &resolver,
 			controllerutil.SetControllerReference,
 			versionedsecretstore.NewVersionedSecretStore(manager.GetClient()),
 			bdm.NewKubeConverter(config.Namespace),
@@ -211,7 +211,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles an error when setting the owner reference on the object", func() {
-				reconciler = cfd.NewReconciler(ctx, config, manager, &resolver,
+				reconciler = cfd.NewDeploymentReconciler(ctx, config, manager, &resolver,
 					func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 						return fmt.Errorf("failed to set reference")
 					},
@@ -308,7 +308,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					case *bdv1.BOSHDeployment:
 						instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
 					case *ejv1.ExtendedJob:
-						return apierrors.NewNotFound(schema.GroupResource{}, "not found is requeued")
+						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 					}
 
 					return nil
@@ -355,7 +355,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					case *bdv1.BOSHDeployment:
 						instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
 					case *ejv1.ExtendedJob:
-						return apierrors.NewNotFound(schema.GroupResource{}, "not found is requeued")
+						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 					}
 
 					return nil
