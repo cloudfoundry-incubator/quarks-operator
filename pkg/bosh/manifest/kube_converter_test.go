@@ -27,6 +27,18 @@ var _ = Describe("kube converter", func() {
 	})
 
 	var _ = Describe("ConvertToKube", func() {
+		It("creates a data gatheringjob", func() {
+			kubeConfig, err := m.ConvertToKube("foo")
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(kubeConfig.DataGatheringJob).ToNot(BeNil())
+		})
+
+		It("creates a variable interpolation job", func() {
+			kubeConfig, err := m.ConvertToKube("foo")
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(kubeConfig.VariableInterpolationJob).ToNot(BeNil())
+		})
+
 		Context("converting variables", func() {
 			It("sanitizes secret names", func() {
 				m.Name = "-abc_123.?!\"§$&/()=?"
@@ -107,38 +119,6 @@ var _ = Describe("kube converter", func() {
 				Expect(request.IsCA).To(Equal(true))
 				Expect(request.CARef.Name).To(Equal("foo-deployment.var-theca"))
 				Expect(request.CARef.Key).To(Equal("certificate"))
-			})
-
-			It("mounts variable secrets in the variable interpolation container", func() {
-				kubeConfig, err := m.ConvertToKube("foo")
-				Expect(err).ToNot(HaveOccurred())
-				job := kubeConfig.VariableInterpolationJob
-				podSpec := job.Spec.Template.Spec
-
-				volumes := []string{}
-				for _, v := range podSpec.Volumes {
-					volumes = append(volumes, v.Name)
-				}
-				Expect(volumes).To(ConsistOf("with-ops", "var-adminpass"))
-
-				mountPaths := []string{}
-				for _, p := range podSpec.Containers[0].VolumeMounts {
-					mountPaths = append(mountPaths, p.MountPath)
-				}
-				Expect(mountPaths).To(ConsistOf("/var/run/secrets/deployment/", "/var/run/secrets/variables/adminpass"))
-			})
-		})
-
-		Context("when invoking the data gathering job", func() {
-			It("verify job init containers fields", func() {
-				kubeConfig, err := m.ConvertToKube("foo")
-				Expect(err).ShouldNot(HaveOccurred())
-				jobDG := kubeConfig.DataGatheringJob.Spec.Template.Spec
-				// Test init containers in the datagathering job
-				Expect(jobDG.InitContainers[0].Name).To(Equal("spec-copier-redis"))
-				Expect(jobDG.InitContainers[1].Name).To(Equal("spec-copier-cflinuxfs3"))
-				Expect(jobDG.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-				Expect(jobDG.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 			})
 		})
 
