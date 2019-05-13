@@ -101,7 +101,7 @@ type DataGatherer struct {
 
 // NewDataGatherer returns a data gatherer with logging for a given input manifest and instance group
 func NewDataGatherer(log *zap.SugaredLogger, basedir, namespace string, manifest Manifest, instanceGroupName string) (*DataGatherer, error) {
-	ig, err := manifest.InstanceGroupByName(instanceGroupName)
+	ig, err := (&manifest).InstanceGroupByName(instanceGroupName)
 	if err != nil {
 		return nil, err
 	}

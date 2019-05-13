@@ -20,7 +20,10 @@ type JobFactory struct {
 
 // NewJobFactory returns a new JobFactory
 func NewJobFactory(manifest Manifest, namespace string) *JobFactory {
-	return &JobFactory{Manifest: manifest, Namespace: namespace}
+	return &JobFactory{
+		Manifest:  manifest,
+		Namespace: namespace,
+	}
 }
 
 // VariableInterpolationJob returns an extended job to interpolate variables
@@ -209,7 +212,7 @@ func (f *JobFactory) DataGatheringJob() (*ejv1.ExtendedJob, error) {
 			doneSpecCopyingReleases[releaseName] = true
 
 			// Get the docker image for the release
-			releaseImage, err := f.Manifest.GetReleaseImage(ig.Name, boshJob.Name)
+			releaseImage, err := (&f.Manifest).GetReleaseImage(ig.Name, boshJob.Name)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to calculate release image for data gathering")
 			}
