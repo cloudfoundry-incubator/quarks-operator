@@ -14,21 +14,18 @@ import (
 //	   created (p:Pending,c:[Initialized Ready ContainersReady PodScheduled])
 //	   notready (p:Pending,c:[PodScheduled])
 //	   notready (p:Pending,c:[])
-//	   deleted (p:Running,c:[Initialized Ready ContainersReady PodScheduled])
-//	   deleted (p:Succeeded,c:[Initialized Ready ContainersReady PodScheduled])
+//	   deleted (p:Running,c:[Initialized PodScheduled],deletionGracePeriodSeconds == 0)
 func InferPodState(pod corev1.Pod) ejv1.PodState {
 
-	// never seen this while testing
-	if pod.Status.Phase == "Succeeded" || pod.Status.Phase == "" {
-		return ejv1.PodStateDeleted
-	}
-
-	// reconcile triggers update with a running pod for deletion, too
-	if pod.Status.Phase == "Running" {
-		if pod.DeletionTimestamp != nil {
+	// if deletionGracePeriodSeconds is zero, it is deletestate
+	if pod.DeletionGracePeriodSeconds != nil {
+		if *pod.DeletionGracePeriodSeconds == 0 {
 			return ejv1.PodStateDeleted
 		}
-		if podutil.IsPodReady(&pod) {
+	}
+
+	if pod.Status.Phase == "Running" {
+		if podutil.IsPodReady(&pod) && pod.DeletionTimestamp == nil {
 			return ejv1.PodStateReady
 		}
 	}

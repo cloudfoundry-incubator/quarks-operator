@@ -158,7 +158,7 @@ func (r *ErrandReconciler) createJob(ctx context.Context, eJob ejv1.ExtendedJob)
 	}
 	template.Labels["ejob-name"] = eJob.Name
 
-	name, err := names.JobName(eJob.Name, "", "")
+	name, err := names.JobName(eJob.Name, "")
 	if err != nil {
 		return errors.Wrapf(err, "could not generate job name for eJob '%s'", eJob.Name)
 	}

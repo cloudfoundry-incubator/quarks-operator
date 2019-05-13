@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // DeploymentSecretType lists all the types of secrets used in
@@ -128,28 +127,22 @@ func GetVersionFromVersionedSecretName(name string) (int, error) {
 
 // JobName returns a unique, short name for a given eJob, pod(if exists) combination
 // k8s allows 63 chars, but the pod will have -\d{6} appended
-// JobName for which podName and podUID are specified will have the combination of
-// "job" + 9 chars of eJobName + 9 chars of podName + podUID + 5 chars appended by kube
-// JobName for which podName and podUID are not specified will have a combination of
-// "job" + 15 chars of ejobName + randstring + 6 chars appended by kube
-func JobName(eJobName, podName string, podUID types.UID) (string, error) {
+// IDEA: maybe use pod.Uid instead of rand
+func JobName(eJobName, podName string) (string, error) {
 	suffix := ""
 	if podName == "" {
 		suffix = truncate(eJobName, 15)
 	} else {
-		suffix = fmt.Sprintf("%s-%s", truncate(eJobName, 9), truncate(podName, 9))
+		suffix = fmt.Sprintf("%s-%s", truncate(eJobName, 15), truncate(podName, 15))
 	}
 
 	namePrefix := fmt.Sprintf("job-%s", suffix)
 
-	if podUID == "" {
-		hashID, err := randSuffix(suffix)
-		if err != nil {
-			return "", errors.Wrap(err, "could not randomize job suffix")
-		}
-		return fmt.Sprintf("%s-%s", namePrefix, hashID), nil
+	hashID, err := randSuffix(suffix)
+	if err != nil {
+		return "", errors.Wrap(err, "could not randomize job suffix")
 	}
-	return fmt.Sprintf("%s-%s", namePrefix, podUID), nil
+	return fmt.Sprintf("%s-%s", namePrefix, hashID), nil
 }
 
 // ServiceName returns a unique, short name for a given instance
