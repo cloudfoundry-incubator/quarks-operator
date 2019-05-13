@@ -125,8 +125,8 @@ func (r *TriggerReconciler) createJob(ctx context.Context, eJob ejv1.ExtendedJob
 	if template.Labels == nil {
 		template.Labels = map[string]string{}
 	}
-	template.Labels["ejob-name"] = eJob.Name
-	template.Labels["triggering-pod"] = podUID
+	template.Labels[ejv1.LabelEJobName] = eJob.Name
+	template.Labels[ejv1.LabelTriggeringPod] = podUID
 
 	name, err := names.JobName(eJob.Name, podName)
 	if err != nil {
@@ -136,7 +136,7 @@ func (r *TriggerReconciler) createJob(ctx context.Context, eJob ejv1.ExtendedJob
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: eJob.Namespace,
-			Labels:    map[string]string{"extendedjob": "true"},
+			Labels:    map[string]string{ejv1.LabelExtendedJob: "true"},
 		},
 		Spec: batchv1.JobSpec{Template: *template},
 	}

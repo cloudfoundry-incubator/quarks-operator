@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
@@ -51,7 +52,7 @@ func AddJob(ctx context.Context, config *config.Config, mgr manager.Manager) err
 
 // isEJobJob matches our jobs
 func isEJobJob(labels map[string]string) bool {
-	if _, exists := labels["extendedjob"]; exists {
+	if _, exists := labels[ejv1.LabelExtendedJob]; exists {
 		return true
 	}
 	return false

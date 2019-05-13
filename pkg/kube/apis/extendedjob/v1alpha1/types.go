@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -17,6 +18,16 @@ import (
 var (
 	// LabelReferencedJobName is the name key for dependent job
 	LabelReferencedJobName = fmt.Sprintf("%s/referenced-job-name", apis.GroupName)
+)
+
+const (
+	// LabelExtendedJob key for label used to identify extendedjob. Value
+	// is set to true if the batchv1.Job is from an ExtendedJob
+	LabelExtendedJob = "extendedjob"
+	// LabelEJobName key for label on a batchv1.Job's pod, which is set to the ExtendedJob's name
+	LabelEJobName = "ejob-name"
+	// LabelTriggeringPod key for label, which is set to the UID of the pod that triggered an ExtendedJob
+	LabelTriggeringPod = "triggering-pod"
 )
 
 // ExtendedJobSpec defines the desired state of ExtendedJob
