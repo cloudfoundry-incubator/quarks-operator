@@ -15,7 +15,7 @@ spec:
       serviceAccountName: cf-operator
       containers:
         - name: cf-operator
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.org }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           ports:
           - containerPort: 60000
             name: metrics
@@ -34,8 +34,8 @@ spec:
             - name: OPERATOR_NAME
               value: "cf-operator"
             - name: DOCKER_IMAGE_ORG
-              value: "cfcontainerization"
+              value: "{{ .Values.image.org }}"
             - name: DOCKER_IMAGE_REPOSITORY
-              value: "cf-operator"
+              value: "{{ .Values.image.repository }}"
             - name: DOCKER_IMAGE_TAG
-              value: "latest"
+              value: "{{ .Values.image.tag }}"
