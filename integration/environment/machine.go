@@ -847,7 +847,7 @@ func (m *Machine) CreateExtendedJob(namespace string, job ejv1.ExtendedJob) (*ej
 	return d, func() error {
 		pods, err := m.Clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{
 			LabelSelector: labels.Set(map[string]string{
-				"ejob-name": job.Name,
+				ejv1.LabelEJobName: job.Name,
 			}).String(),
 		})
 		if err != nil {
