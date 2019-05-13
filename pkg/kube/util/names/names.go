@@ -127,7 +127,6 @@ func GetVersionFromVersionedSecretName(name string) (int, error) {
 
 // JobName returns a unique, short name for a given eJob, pod(if exists) combination
 // k8s allows 63 chars, but the pod will have -\d{6} appended
-// IDEA: maybe use pod.Uid instead of rand
 func JobName(eJobName, podName string) (string, error) {
 	suffix := ""
 	if podName == "" {
