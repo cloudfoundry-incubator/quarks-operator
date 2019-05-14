@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	bpm "code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
@@ -40,6 +41,7 @@ const (
 	VariableGeneratedState    = "VariableGenerated"
 	VariableInterpolatedState = "VariableInterpolated"
 	DataGatheredState         = "DataGathered"
+	BPMConfigsCreatedState    = "BPMConfigsCreatedState"
 	DeployingState            = "Deploying"
 	DeployedState             = "Deployed"
 )
@@ -212,6 +214,13 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		}
 
 	case DataGatheredState:
+		err = r.createBPMConfigsJob(ctx, instance, manifest, *kubeConfigs)
+		if err != nil {
+			log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to create BPM configs eJob: %v", err)
+			return reconcile.Result{}, err
+		}
+
+	case BPMConfigsCreatedState:
 		// Wait for all instance group property outputs to be ready
 		// We need BPM information to start everything up
 		bpmInfo, err := r.waitForBPM(ctx, instance, manifest, kubeConfigs)
@@ -584,16 +593,49 @@ func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, in
 	return nil
 }
 
+// createBPMConfigsJob creates an ejob for creating the BPM configs from manifest
+func (r *ReconcileBOSHDeployment) createBPMConfigsJob(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfig bdm.KubeConfig) error {
+
+	// Generate the ExtendedJob object
+	bpmConfigsJob := kubeConfig.BPMConfigsJob
+	log.Debugf(ctx, "Creating BPM configs extendedJob %s/%s", bpmConfigsJob.Namespace, bpmConfigsJob.Name)
+
+	// Set BOSHDeployment instance as the owner and controller
+	if err := r.setReference(instance, bpmConfigsJob, r.scheme); err != nil {
+		log.WithEvent(instance, "NewJobForDataGatheringError").Errorf(ctx, "Failed to set ownerReference for ExtendedJob '%s': %v", bpmConfigsJob.GetName(), err)
+		return err
+	}
+
+	_, err := controllerutil.CreateOrUpdate(ctx, r.client, bpmConfigsJob.DeepCopy(), func(obj runtime.Object) error {
+		exstEJob, ok := obj.(*ejv1.ExtendedJob)
+		if !ok {
+			return fmt.Errorf("object is not an ExtendedJob")
+		}
+
+		exstEJob.Labels = bpmConfigsJob.Labels
+		exstEJob.Spec = bpmConfigsJob.Spec
+		return nil
+	})
+	if err != nil {
+		log.WarningEvent(ctx, instance, "CreateBPMConfigsJobError", err.Error())
+		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", bpmConfigsJob.Name)
+	}
+
+	instance.Status.State = BPMConfigsCreatedState
+
+	return nil
+}
+
 // waitForBPM checks to see if all BPM information is available and returns an error if it isn't
-func (r *ReconcileBOSHDeployment) waitForBPM(ctx context.Context, deployment *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfigs *bdm.KubeConfig) (map[string]bdm.Manifest, error) {
+func (r *ReconcileBOSHDeployment) waitForBPM(ctx context.Context, deployment *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfigs *bdm.KubeConfig) (map[string]bpm.Configs, error) {
 	// TODO: this approach is not good enough, we need to reconcile and trigger on all of these secrets
 	// TODO: these secrets could exist, but not be up to date - we have to make sure they exist for the appropriate version
 
-	result := map[string]bdm.Manifest{}
+	result := map[string]bpm.Configs{}
 
 	for _, container := range kubeConfigs.DataGatheringJob.Spec.Template.Spec.Containers {
 		_, secretName := names.CalculateEJobOutputSecretPrefixAndName(
-			names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+			names.DeploymentSecretBpmInformation,
 			manifest.Name,
 			container.Name,
 			false,
@@ -604,16 +646,15 @@ func (r *ReconcileBOSHDeployment) waitForBPM(ctx context.Context, deployment *bd
 		if err != nil && apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("secret %s/%s doesn't exist", deployment.Namespace, secretName)
 		} else if err != nil {
-			return nil, errors.Wrapf(err, "failed to retrieve resolved properties secret %s/%s", deployment.Namespace, secretName)
+			return nil, errors.Wrapf(err, "failed to retrieve bpm configs secret %s/%s", deployment.Namespace, secretName)
 		}
 
-		resolvedProperties := bdm.Manifest{}
-
-		err = yaml.Unmarshal(secret.Data["properties.yaml"], &resolvedProperties)
+		bpmConfigs := bpm.Configs{}
+		err = yaml.Unmarshal(secret.Data["bpm.yaml"], &bpmConfigs)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't unmarshal resolved properties from secret %s/%s", deployment.Namespace, secretName)
+			return nil, fmt.Errorf("couldn't unmarshal bpm configs from secret %s/%s", deployment.Namespace, secretName)
 		}
-		result[container.Name] = resolvedProperties
+		result[container.Name] = bpmConfigs
 	}
 
 	return result, nil
