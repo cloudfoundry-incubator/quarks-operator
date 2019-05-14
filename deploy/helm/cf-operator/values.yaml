@@ -1,7 +1,8 @@
 # Default values for cf-operator.
 image:
-  repository: cfcontainerization/cf-operator
-  tag: latest
+  repository: cf-operator
+  org: cfcontainerization
+  tag: foobar
   pullPolicy: IfNotPresent
 
 nameOverride: ""
