@@ -183,28 +183,28 @@ func (f *JobFactory) DataGatheringJob() (*ejv1.ExtendedJob, error) {
 	for idx, ig := range f.Manifest.InstanceGroups {
 		// One container per Instance Group
 		// There will be one secret generated for each of these containers
-		containers[idx] = f.dataGatheringContainer("data-gather", ig.Name)
+		containers[idx] = f.gatheringContainer("data-gather", ig.Name)
 	}
 
 	eJobName := fmt.Sprintf("data-gathering-%s", f.Manifest.Name)
-	return f.dataGatheringJob(eJobName, containers)
+	return f.gatheringJob(eJobName, names.DeploymentSecretTypeInstanceGroupResolvedProperties, containers)
 }
 
-// BPMConfigsJob returns an extended job to interpolate variables
+// BPMConfigsJob returns an extended job to calculate BPM information
 func (f *JobFactory) BPMConfigsJob() (*ejv1.ExtendedJob, error) {
 	containers := make([]corev1.Container, len(f.Manifest.InstanceGroups))
 
 	for idx, ig := range f.Manifest.InstanceGroups {
 		// One container per Instance Group
 		// There will be one secret generated for each of these containers
-		containers[idx] = f.dataGatheringContainer("bpm-configs", ig.Name)
+		containers[idx] = f.gatheringContainer("bpm-configs", ig.Name)
 	}
 
 	eJobName := fmt.Sprintf("bpm-configs-%s", f.Manifest.Name)
-	return f.dataGatheringJob(eJobName, containers)
+	return f.gatheringJob(eJobName, names.DeploymentSecretBpmInformation, containers)
 }
 
-func (f *JobFactory) dataGatheringContainer(cmd, instanceGroupName string) corev1.Container {
+func (f *JobFactory) gatheringContainer(cmd, instanceGroupName string) corev1.Container {
 	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
 		names.DeploymentSecretTypeManifestAndVars,
 		f.Manifest.Name,
@@ -249,7 +249,7 @@ func (f *JobFactory) dataGatheringContainer(cmd, instanceGroupName string) corev
 	}
 }
 
-func (f *JobFactory) dataGatheringJob(name string, containers []corev1.Container) (*ejv1.ExtendedJob, error) {
+func (f *JobFactory) gatheringJob(name string, secretType names.DeploymentSecretType, containers []corev1.Container) (*ejv1.ExtendedJob, error) {
 	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
 		names.DeploymentSecretTypeManifestAndVars,
 		f.Manifest.Name,
@@ -258,7 +258,7 @@ func (f *JobFactory) dataGatheringJob(name string, containers []corev1.Container
 	)
 
 	outputSecretNamePrefix, _ := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+		secretType,
 		f.Manifest.Name,
 		"",
 		false,
