@@ -22,7 +22,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
@@ -432,34 +431,6 @@ func (r *ReconcileBOSHDeployment) handleDeletion(ctx context.Context, instance *
 	}
 
 	return reconcile.Result{}, nil
-}
-
-// generateVariableSecrets create variables extendedSecrets
-func (r *ReconcileBOSHDeployment) generateVariableSecrets(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, variables []esv1.ExtendedSecret) error {
-	log.Debug(ctx, "Creating variables extendedSecrets")
-	var err error
-	for _, variable := range variables {
-		// Set BOSHDeployment instance as the owner and controller
-		if err := r.setReference(instance, &variable, r.scheme); err != nil {
-			return errors.Wrap(err, "could not set reference for an ExtendedStatefulSet for a BOSH Deployment")
-		}
-
-		_, err = controllerutil.CreateOrUpdate(ctx, r.client, variable.DeepCopy(), func(obj runtime.Object) error {
-			s, ok := obj.(*esv1.ExtendedSecret)
-			if !ok {
-				return fmt.Errorf("object is not an ExtendedSecret")
-			}
-			s.Spec = variable.Spec
-			return nil
-		})
-		if err != nil {
-			return errors.Wrapf(err, "creating or updating ExtendedSecret '%s'", variable.Name)
-		}
-	}
-
-	instance.Status.State = VariableGeneratedState
-
-	return nil
 }
 
 // createVariableInterpolationEJob create temp manifest and variable interpolation eJob

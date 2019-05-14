@@ -2,17 +2,16 @@ package boshdeployment_test
 
 import (
 	"context"
-	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
@@ -31,7 +30,7 @@ import (
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 )
 
-var _ = Describe("ReconcileBoshDeployment", func() {
+var _ = Describe("ReconcileGeneratedVariable", func() {
 	var (
 		manager    *cfakes.FakeManager
 		reconciler reconcile.Reconciler
@@ -151,7 +150,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 	Describe("Reconcile", func() {
 		Context("when manifest with ops is created", func() {
-			It("handles an when generating variables", func() {
+			It("handles an error when generating variables", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object.(type) {
 					case *bdv1.BOSHDeployment:

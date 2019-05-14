@@ -26,8 +26,6 @@ const (
 )
 
 var (
-	// LabelDeploymentName is the name of a label for the deployment name
-	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
 	// LabelInstanceGroupName is the name of a label for an instance group name
 	LabelInstanceGroupName = fmt.Sprintf("%s/instance-group-name", apis.GroupName)
 )

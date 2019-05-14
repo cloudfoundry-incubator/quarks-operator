@@ -54,6 +54,10 @@ Creates/updates:
 >
 > The "Versioned" `Secret` for Instance Group Resolved Properties is referenced by the Instance Group `ExtendedStatefulSets` and `ExtendedJobs`
 
+Handles deletion:
+
+- remove all ownership from configurations(ConfigMaps, Secrets)
+
 ### Generated Variable Reconciler
 
 Watches for:
