@@ -68,7 +68,14 @@ instance group.
 			return err
 		}
 
-		jsonBytes, err := json.Marshal(bpmConfigs)
+		bpmBytes, err := yaml.Marshal(bpmConfigs)
+		if err != nil {
+			return errors.Wrapf(err, "could not marshal json output")
+		}
+
+		jsonBytes, err := json.Marshal(map[string]string{
+			"bpm.yaml": string(bpmBytes),
+		})
 		if err != nil {
 			return errors.Wrapf(err, "could not marshal json output")
 		}
