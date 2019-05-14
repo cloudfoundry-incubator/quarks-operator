@@ -17,24 +17,29 @@ import (
 var _ = Describe("kube converter", func() {
 	var (
 		m          manifest.Manifest
-		kubeConfig manifest.KubeConfig
+		kubeConfig *manifest.KubeConfig
 		env        testing.Catalog
 	)
 
 	BeforeEach(func() {
 		m = env.DefaultBOSHManifest()
 		format.TruncatedDiff = false
+		kubeConfig = manifest.NewKubeConfig("foo", &m)
 	})
 
-	var _ = Describe("ConvertToKube", func() {
+	act := func() error {
+		return kubeConfig.Convert(m)
+	}
+
+	var _ = Describe("NewKubeConfig", func() {
 		It("creates a data gatheringjob", func() {
-			kubeConfig, err := m.ConvertToKube("foo")
+			err := act()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(kubeConfig.DataGatheringJob).ToNot(BeNil())
 		})
 
 		It("creates a variable interpolation job", func() {
-			kubeConfig, err := m.ConvertToKube("foo")
+			err := act()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(kubeConfig.VariableInterpolationJob).ToNot(BeNil())
 		})
@@ -44,7 +49,7 @@ var _ = Describe("kube converter", func() {
 				m.Name = "-abc_123.?!\"§$&/()=?"
 				m.Variables[0].Name = "def-456.?!\"§$&/()=?-"
 
-				kubeConfig, _ = m.ConvertToKube("foo")
+				act()
 				Expect(kubeConfig.Variables[0].Name).To(Equal("abc-123.var-def-456"))
 			})
 
@@ -52,12 +57,12 @@ var _ = Describe("kube converter", func() {
 				m.Name = "foo"
 				m.Variables[0].Name = "this-is-waaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaay-too-long"
 
-				kubeConfig, _ = m.ConvertToKube("foo")
+				act()
 				Expect(kubeConfig.Variables[0].Name).To(Equal("foo.var-this-is-waaaaaaaaaaaaaa5bffdb0302ac051d11f52d2606254a5f"))
 			})
 
 			It("converts password variables", func() {
-				kubeConfig, _ = m.ConvertToKube("foo")
+				act()
 				Expect(len(kubeConfig.Variables)).To(Equal(1))
 
 				var1 := kubeConfig.Variables[0]
@@ -71,7 +76,7 @@ var _ = Describe("kube converter", func() {
 					Name: "adminkey",
 					Type: "rsa",
 				}
-				kubeConfig, _ = m.ConvertToKube("foo")
+				act()
 				Expect(len(kubeConfig.Variables)).To(Equal(1))
 
 				var1 := kubeConfig.Variables[0]
@@ -85,7 +90,7 @@ var _ = Describe("kube converter", func() {
 					Name: "adminkey",
 					Type: "ssh",
 				}
-				kubeConfig, _ = m.ConvertToKube("foo")
+				act()
 				Expect(len(kubeConfig.Variables)).To(Equal(1))
 
 				var1 := kubeConfig.Variables[0]
@@ -106,7 +111,7 @@ var _ = Describe("kube converter", func() {
 						ExtendedKeyUsage: []manifest.AuthType{manifest.ClientAuth},
 					},
 				}
-				kubeConfig, _ = m.ConvertToKube("foo")
+				act()
 				Expect(len(kubeConfig.Variables)).To(Equal(1))
 
 				var1 := kubeConfig.Variables[0]
@@ -124,7 +129,7 @@ var _ = Describe("kube converter", func() {
 
 		Context("when the lifecycle is set to service", func() {
 			It("converts the instance group to an ExtendedStatefulSet", func() {
-				kubeConfig, err := m.ConvertToKube("foo")
+				err := act()
 				Expect(err).ShouldNot(HaveOccurred())
 				anExtendedSts := kubeConfig.InstanceGroups[0].Spec.Template.Spec.Template
 				Expect(anExtendedSts.Name).To(Equal("diego-cell"))
@@ -242,7 +247,7 @@ var _ = Describe("kube converter", func() {
 
 		Context("when the lifecycle is set to errand", func() {
 			It("converts the instance group to an ExtendedJob", func() {
-				kubeConfig, err := m.ConvertToKube("foo")
+				err := act()
 				Expect(err).ShouldNot(HaveOccurred())
 				anExtendedJob := kubeConfig.Errands[0]
 
