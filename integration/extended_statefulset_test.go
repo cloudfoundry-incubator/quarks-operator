@@ -105,8 +105,9 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName(), 2)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Waiting for first version to be deleteed")
-			Expect(env.WaitForLogMsg(env.ObservedLogs, "Deleting StatefulSet")).To(Succeed())
+			By("Checking for the first version statefulset is deleted")
+			err = env.WaitForStatefulSetDelete(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
 
 			By("Checking extendedStatefulSet versions")
 			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())

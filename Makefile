@@ -1,36 +1,9 @@
-all: test-unit build image
+#!/usr/bin/env make
 
-.PHONY: build
-build:
-	bin/build
+all: tools test-unit test-integration test-e2e build
 
-image:
-	bin/build-image
-
-image-nobuild:
-	bin/build-nobuild-image
-
-.PHONY: helm
-helm:
-	bin/build-helm
-
-export CF_OPERATOR_NAMESPACE ?= default
 up:
 	bin/up
-
-up-nobuild:
-	bin/up-nobuild
-
-gen-kube:
-	bin/gen-kube
-
-gen-fakes:
-	bin/gen-fakes
-
-verify-gen-kube:
-	bin/verify-gen-kube
-
-generate: gen-kube gen-fakes
 
 vet:
 	bin/vet
@@ -38,28 +11,48 @@ vet:
 lint:
 	bin/lint
 
-test-unit:
-	bin/test-unit
-
-test-integration:
-	bin/test-integration
-
-test-integration-nobuild: build image-nobuild
-	bin/test-integration
-
-test-e2e:
-	bin/test-e2e
-
-test: vet lint test-unit test-integration test-e2e
-
 tools:
 	bin/tools
 
 check-scripts:
 	bin/check-scripts
 
-coverage:
-	bin/coverage
+############ BUILD TARGETS ############
+
+build:
+	bin/build
+
+build-image:
+	bin/build-image
+
+build-helm:
+	bin/build-helm
+
+############ TEST TARGETS ############
+
+test: vet lint test-unit test-integration test-e2e
+
+test-unit:
+	bin/test-unit
+
+test-integration:
+	bin/test-integration
+
+test-e2e:
+	bin/test-e2e
+
+############ GENERATE TARGETS ############
+
+generate: gen-kube gen-fakes
+
+gen-kube:
+	bin/gen-kube
+
+gen-fakes:
+	bin/gen-fakes
 
 gen-command-docs:
 	go run cmd/gen-command-docs.go
+
+verify-gen-kube:
+	bin/verify-gen-kube

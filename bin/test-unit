@@ -8,4 +8,3 @@ if [ -n "$COVERAGE" ]; then COV_ARG="-cover -outputdir=./code-coverage  -coverpr
 
 mkdir -p code-coverage
 ginkgo -p -r --randomizeAllSpecs -failOnPending --trace $COV_ARG -skipPackage integration,e2e
-
