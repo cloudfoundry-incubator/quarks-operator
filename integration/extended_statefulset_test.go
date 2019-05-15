@@ -105,16 +105,15 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName(), 2)
 			Expect(err).NotTo(HaveOccurred())
 
+			statefulSetName := fmt.Sprintf("%s-v%d", ess.GetName(), 1)
+
 			By("Checking for the first version statefulset is deleted")
-			err = env.WaitForStatefulSetDelete(env.Namespace, ess.GetName())
+			err = env.WaitForStatefulSetDelete(env.Namespace, statefulSetName)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Checking extendedStatefulSet versions")
-			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
+			err = env.CheckExtendedStatefulSet(env.Namespace, ess.GetName(), 2)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ess.Status.Versions).To(Equal(map[int]bool{
-				2: true,
-			}))
 
 			By("Checking that old pods are deleted")
 			pods, err := env.GetPods(env.Namespace, "testpodupdated=yes")
