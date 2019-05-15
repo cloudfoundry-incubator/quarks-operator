@@ -619,6 +619,23 @@ func (m *Machine) GetExtendedStatefulSet(namespace string, name string) (*essv1.
 	return d, err
 }
 
+// CheckExtendedStatefulSet checks extendedstatefulset according to the version
+func (m *Machine) CheckExtendedStatefulSet(namespace string, name string, version int) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.CheckExtendedStatefulSetVersion(namespace, name, version)
+	})
+}
+
+// CheckExtendedStatefulSetVersion returns true if the version status is true
+func (m *Machine) CheckExtendedStatefulSetVersion(namespace string, name string, version int) (bool, error) {
+	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
+	d, err := client.Get(name, metav1.GetOptions{})
+	if d.Status.Versions[version] && len(d.Status.Versions) == 1 {
+		return true, nil
+	}
+	return false, err
+}
+
 // UpdateExtendedStatefulSet creates a ExtendedStatefulSet custom resource and returns a function to delete it
 func (m *Machine) UpdateExtendedStatefulSet(namespace string, ess essv1.ExtendedStatefulSet) (*essv1.ExtendedStatefulSet, TearDownFunc, error) {
 	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
