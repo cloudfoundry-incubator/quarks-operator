@@ -43,7 +43,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 	})
 
 	Context("when correctly setup", func() {
-
 		It("should create a statefulSet and eventually a pod", func() {
 			By("Creating an ExtendedStatefulSet")
 			var ess *essv1.ExtendedStatefulSet

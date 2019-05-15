@@ -162,7 +162,8 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Generate all the kube objects we need for the manifest
 	log.Debug(ctx, "Converting bosh manifest to kube objects")
-	kubeConfigs, err := manifest.ConvertToKube(r.config.Namespace)
+	kubeConfigs := bdm.NewKubeConfig(r.config.Namespace, manifest)
+	err = kubeConfigs.Convert(*manifest)
 	if err != nil {
 		err = log.WithEvent(instance, "BadManifestError").Errorf(ctx, "Error converting bosh manifest %s to kube objects: %s", manifest.Name, err)
 		return reconcile.Result{}, err
@@ -190,21 +191,21 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		instance.Status.State = OpsAppliedState
 
 	case OpsAppliedState:
-		err = r.generateVariableSecrets(ctx, instance, manifest, &kubeConfigs)
+		err = r.generateVariableSecrets(ctx, instance, manifest, kubeConfigs)
 		if err != nil {
 			log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "Failed to generate variables: %v", err)
 			return reconcile.Result{}, err
 		}
 
 	case VariableGeneratedState:
-		err = r.createVariableInterpolationEJob(ctx, instance, manifest, kubeConfigs)
+		err = r.createVariableInterpolationEJob(ctx, instance, manifest, *kubeConfigs)
 		if err != nil {
 			log.WithEvent(instance, "VariableInterpolationError").Errorf(ctx, "Failed to create variable interpolation eJob: %v", err)
 			return reconcile.Result{}, err
 		}
 
 	case VariableInterpolatedState:
-		err = r.createDataGatheringJob(ctx, instance, manifest, kubeConfigs)
+		err = r.createDataGatheringJob(ctx, instance, manifest, *kubeConfigs)
 		if err != nil {
 			log.WithEvent(instance, "DataGatheringError").Errorf(ctx, "Failed to create data gathering eJob: %v", err)
 			return reconcile.Result{}, err
@@ -213,26 +214,26 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	case DataGatheredState:
 		// Wait for all instance group property outputs to be ready
 		// We need BPM information to start everything up
-		bpmInfo, err := r.waitForBPM(ctx, instance, manifest, &kubeConfigs)
+		bpmInfo, err := r.waitForBPM(ctx, instance, manifest, kubeConfigs)
 		if err != nil {
 			log.Infof(ctx, "Waiting for BPM: %s", err.Error())
 			return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, err
 		}
 
-		err = manifest.ApplyBPMInfo(&kubeConfigs, bpmInfo)
+		err = kubeConfigs.ApplyBPMInfo(bpmInfo)
 		if err != nil {
 			log.Errorf(ctx, "Failed to apply BPM information: %v", err)
 			return reconcile.Result{}, err
 		}
 
-		err = r.deployInstanceGroups(ctx, instance, &kubeConfigs)
+		err = r.deployInstanceGroups(ctx, instance, kubeConfigs)
 		if err != nil {
 			log.Errorf(ctx, "Failed to deploy instance groups: %v", err)
 			return reconcile.Result{}, err
 		}
 
 	case DeployingState:
-		err = r.actionOnDeploying(ctx, instance, &kubeConfigs)
+		err = r.actionOnDeploying(ctx, instance, kubeConfigs)
 		if err != nil {
 			log.WithEvent(instance, "InstanceDeploymentError").Errorf(ctx, "Failed to deploy: %v", err)
 			return reconcile.Result{}, err

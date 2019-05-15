@@ -215,7 +215,7 @@ func (f *JobFactory) DataGatheringJob() (*ejv1.ExtendedJob, error) {
 			}
 			// Create an init container that copies sources
 			// TODO: destination should also contain release name, to prevent overwrites
-			initContainers = append(initContainers, f.Manifest.JobSpecCopierContainer(releaseName, releaseImage, generateVolumeName("data-gathering")))
+			initContainers = append(initContainers, jobSpecCopierContainer(releaseName, releaseImage, generateVolumeName("data-gathering")))
 		}
 
 		// One container per Instance Group
