@@ -98,7 +98,8 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 	// Generate all the kube objects we need for the manifest
 	log.Debug(ctx, "Converting bosh manifest to kube objects")
-	kubeConfigs, err := manifest.ConvertToKube(r.config.Namespace)
+	kubeConfigs := bdm.NewKubeConfig(r.config.Namespace, manifest)
+	err = kubeConfigs.Convert(*manifest)
 	if err != nil {
 		err = log.WithEvent(instance, "BadManifestError").Errorf(ctx, "Error converting bosh manifest %s to kube objects: %s", manifest.Name, err)
 		return reconcile.Result{}, err
@@ -108,19 +109,19 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	case DataGatheredState:
 		// Wait for all instance group property outputs to be ready
 		// We need BPM information to start everything up
-		bpmInfo, err := r.waitForBPM(ctx, instance, manifest, &kubeConfigs)
+		bpmInfo, err := r.waitForBPM(ctx, instance, manifest, kubeConfigs)
 		if err != nil {
 			err = log.WithEvent(instance, "BPMInfoError").Errorf(ctx, "Waiting for BPM: %s", err)
 			return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, err
 		}
 
-		err = manifest.ApplyBPMInfo(&kubeConfigs, bpmInfo)
+		err = kubeConfigs.ApplyBPMInfo(bpmInfo)
 		if err != nil {
 			err = log.WithEvent(instance, "BPMApplyingError").Errorf(ctx, "Failed to apply BPM information: %s", err)
 			return reconcile.Result{}, err
 		}
 
-		err = r.deployInstanceGroups(ctx, instance, &kubeConfigs)
+		err = r.deployInstanceGroups(ctx, instance, kubeConfigs)
 		if err != nil {
 			err = log.WithEvent(instance, "InstanceGroupsError").Errorf(ctx, "Failed to deploy instance groups: %s", err)
 			return reconcile.Result{}, err

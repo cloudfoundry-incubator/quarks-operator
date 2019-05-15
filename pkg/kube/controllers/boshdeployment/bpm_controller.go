@@ -2,7 +2,9 @@ package boshdeployment
 
 import (
 	"context"
+	"strings"
 
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -38,13 +40,13 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*corev1.Secret)
-			return isVersionedSecret(o)
+			return isVersionedSecret(o) && isIGResolvedManifest(o.Name)
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectNew.(*corev1.Secret)
-			return isVersionedSecret(o)
+			return isVersionedSecret(o) && isIGResolvedManifest(o.Name)
 		},
 	}
 
@@ -76,6 +78,14 @@ func isVersionedSecret(secret *corev1.Secret) bool {
 	}
 
 	return true
+}
+
+func isIGResolvedManifest(name string) bool {
+	if strings.Contains(name, names.DeploymentSecretTypeInstanceGroupResolvedProperties.String()) {
+		return true
+	}
+
+	return false
 }
 
 func reconcilesForVersionedSecret(ctx context.Context, mgr manager.Manager, secret corev1.Secret) []reconcile.Request {

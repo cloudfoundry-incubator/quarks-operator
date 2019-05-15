@@ -8,9 +8,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"go.uber.org/zap"
-
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -302,6 +302,42 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Expect(err.Error()).To(ContainSubstring("could not update BOSHDeployment instance"))
 			})
 
+			It("handles an errors when creating manifest secret with ops ", func() {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+					switch object.(type) {
+					case *bdv1.BOSHDeployment:
+						instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
+					case *ejv1.ExtendedJob:
+						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+					case *corev1.Secret:
+						if nn.Name == "foo.with-ops" {
+							return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+						}
+					}
+
+					return nil
+				})
+				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+					switch object.(type) {
+					case *bdv1.BOSHDeployment:
+						object.(*bdv1.BOSHDeployment).DeepCopyInto(instance)
+					}
+					return nil
+				})
+				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+					switch object.(type) {
+					case *corev1.Secret:
+						return errors.New("fake-error")
+					}
+					return nil
+				})
+
+				By("From created state to ops applied state")
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to create manifest with ops"))
+			})
+
 			It("handles an errors when creating variable interpolation eJob", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object.(type) {
@@ -334,14 +370,17 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				By("From created state to ops applied state")
 				result, err := reconciler.Reconcile(request)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(Equal(reconcile.Result{
-					Requeue: true,
-				}))
+				Expect(result).To(Equal(reconcile.Result{}))
 
 				instance := &bdv1.BOSHDeployment{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(instance.Status.State).To(Equal(cfd.OpsAppliedState))
+
+				// Simulate generated variable reconciliation
+				instance.Status.State = cfd.VariableGeneratedState
+				err = client.Update(context.Background(), instance)
+				Expect(err).ToNot(HaveOccurred())
 
 				By("From ops applied state to ops variable generated state")
 				result, err = reconciler.Reconcile(request)
@@ -381,28 +420,29 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				By("From created state to ops applied state")
 				result, err := reconciler.Reconcile(request)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(Equal(reconcile.Result{
-					Requeue: true,
-				}))
+				Expect(result).To(Equal(reconcile.Result{}))
 
 				instance := &bdv1.BOSHDeployment{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(instance.Status.State).To(Equal(cfd.OpsAppliedState))
 
+				// Simulate generated variable reconciliation
+				instance.Status.State = cfd.VariableGeneratedState
+				err = client.Update(context.Background(), instance)
+				Expect(err).ToNot(HaveOccurred())
+
 				By("From ops applied state to variable interpolated state")
 				result, err = reconciler.Reconcile(request)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(Equal(reconcile.Result{
-					Requeue: true,
-				}))
+				Expect(result).To(Equal(reconcile.Result{}))
 
 				instance = &bdv1.BOSHDeployment{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(instance.Status.State).To(Equal(cfd.VariableInterpolatedState))
 
-				By("From variable interpolated state to data gathered state")
+				By("From variable generated state to data gathered state")
 				result, err = reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to create data gathering eJob"))
@@ -420,21 +460,22 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				By("From created state to ops applied state")
 				result, err := reconciler.Reconcile(request)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(Equal(reconcile.Result{
-					Requeue: true,
-				}))
+				Expect(result).To(Equal(reconcile.Result{}))
 
 				instance := &bdv1.BOSHDeployment{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(instance.Status.State).To(Equal(cfd.OpsAppliedState))
 
-				By("From ops applied state to variable interpolated state")
+				// Simulate generated variable reconciliation
+				instance.Status.State = cfd.VariableGeneratedState
+				err = client.Update(context.Background(), instance)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("From variable generated state to variable interpolated state")
 				result, err = reconciler.Reconcile(request)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(Equal(reconcile.Result{
-					Requeue: true,
-				}))
+				Expect(result).To(Equal(reconcile.Result{}))
 
 				instance = &bdv1.BOSHDeployment{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)
@@ -444,9 +485,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				By("From variable interpolated state to data gathered state")
 				result, err = reconciler.Reconcile(request)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(Equal(reconcile.Result{
-					Requeue: true,
-				}))
+				Expect(result).To(Equal(reconcile.Result{}))
 
 				instance = &bdv1.BOSHDeployment{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, instance)

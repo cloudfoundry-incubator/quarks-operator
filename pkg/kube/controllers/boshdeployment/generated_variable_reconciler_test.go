@@ -188,9 +188,7 @@ var _ = Describe("ReconcileGeneratedVariable", func() {
 				By("From ops applied state to variable interpolated state")
 				result, err := reconciler.Reconcile(request)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(Equal(reconcile.Result{
-					Requeue: true,
-				}))
+				Expect(result).To(Equal(reconcile.Result{}))
 
 				newInstance := &bdv1.BOSHDeployment{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, newInstance)

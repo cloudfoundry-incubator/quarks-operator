@@ -28,6 +28,11 @@ var (
 	LabelKind = fmt.Sprintf("%s/secret-kind", apis.GroupName)
 )
 
+const (
+	// GeneratedSecretKind is the kind of generated secret
+	GeneratedSecretKind = "generated"
+)
+
 // SecretReference specifies a reference to another secret
 type SecretReference struct {
 	Name string

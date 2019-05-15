@@ -84,34 +84,36 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 	// Get state from instance
 	instanceState := instance.Status.State
 
-	// Resolve the manifest (incl. ops files and implicit variables)
-	manifest, err := r.resolveManifest(ctx, instance)
-	if err != nil {
-		log.WithEvent(instance, "BadManifestError").Infof(ctx, "Error resolving the manifest %s", instance.GetName())
-		return reconcile.Result{}, errors.Wrap(err, "could not resolve manifest")
-	}
-
-	// Generate all the kube objects we need for the manifest
-	log.Debug(ctx, "Converting bosh manifest to kube objects")
-	kubeConfigs, err := manifest.ConvertToKube(r.config.Namespace)
-	if err != nil {
-		err = log.WithEvent(instance, "BadManifestError").Errorf(ctx, "Error converting bosh manifest %s to kube objects: %s", manifest.Name, err)
-		return reconcile.Result{}, err
-	}
-
 	switch instanceState {
 	case OpsAppliedState:
-		err = r.generateVariableSecrets(ctx, instance, &kubeConfigs)
+		// Resolve the manifest (incl. ops files and implicit variables)
+		manifest, err := r.resolveManifest(ctx, instance)
+		if err != nil {
+			log.WithEvent(instance, "BadManifestError").Infof(ctx, "Error resolving the manifest %s", instance.GetName())
+			return reconcile.Result{}, errors.Wrap(err, "could not resolve manifest")
+		}
+
+		// Generate all the kube objects we need for the manifest
+		log.Debug(ctx, "Converting bosh manifest to kube objects")
+		kubeConfigs := bdm.NewKubeConfig(r.config.Namespace, manifest)
+		err = kubeConfigs.Convert(*manifest)
+		if err != nil {
+			err = log.WithEvent(instance, "BadManifestError").Errorf(ctx, "Error converting bosh manifest %s to kube objects: %s", manifest.Name, err)
+			return reconcile.Result{}, err
+		}
+
+		err = r.generateVariableSecrets(ctx, instance, kubeConfigs)
 		if err != nil {
 			err = log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "Failed to generate variables: %v", err)
 			return reconcile.Result{}, err
 		}
+
 	default:
-		return reconcile.Result{}, nil
+		log.Debugf(ctx, "Requeue the reconcile: BoshDeployment '%s/%s' is in state '%s' not '%s'", instance.GetNamespace(), instance.GetName(), instance.Status.State, OpsAppliedState)
+		return reconcile.Result{Requeue: true}, nil
 	}
 
-	log.Debugf(ctx, "Requeue the reconcile: BoshDeployment '%s/%s' is in state '%s'", instance.GetNamespace(), instance.GetName(), instance.Status.State)
-	return reconcile.Result{Requeue: true}, r.updateInstanceState(ctx, instance)
+	return reconcile.Result{}, r.updateInstanceState(ctx, instance)
 }
 
 // resolveManifest resolves the manifest and applies ops files and implicit variable interpolation

@@ -2,6 +2,7 @@ package boshdeployment
 
 import (
 	"context"
+	"reflect"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -19,7 +20,7 @@ import (
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	ctxlog "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
@@ -44,8 +45,9 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			o := e.ObjectNew.(*corev1.Secret)
-			return isManifestWithOps(o.Name)
+			oldSecret := e.ObjectOld.(*corev1.Secret)
+			newSecret := e.ObjectNew.(*corev1.Secret)
+			return isManifestWithOps(newSecret.Name) && !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
 		},
 	}
 
@@ -60,6 +62,14 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 	}
 
 	return nil
+}
+
+func isManifestWithOps(name string) bool {
+	if strings.HasSuffix(name, names.DeploymentSecretTypeManifestWithOps.String()) {
+		return true
+	}
+
+	return false
 }
 
 func reconcilesForSecret(ctx context.Context, mgr manager.Manager, secret corev1.Secret) []reconcile.Request {
@@ -85,12 +95,4 @@ func reconcilesForSecret(ctx context.Context, mgr manager.Manager, secret corev1
 	}
 
 	return reconciles
-}
-
-func isManifestWithOps(name string) bool {
-	if strings.HasSuffix(name, names.DeploymentSecretTypeManifestWithOps.String()) {
-		return true
-	}
-
-	return false
 }
