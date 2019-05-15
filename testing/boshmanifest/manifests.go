@@ -232,3 +232,53 @@ stemcells:
   os: ubuntu-xenial
   version: "250.17"
 `
+
+const WithBPM = `---
+name: my-manifest
+releases:
+- name: fake-release
+  version: "26"
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
+- name: dummy-release
+  version: "1"
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: dummy-os-1
+    version: 1
+instance_groups:
+- name: fake-ig-1
+  instances: 2
+  lifecycle: errand
+  jobs:
+  - name: fake-errand-a
+    release: fake-release
+    properties:
+      fake-release:
+        user: admin
+        password: changeme
+  - name: fake-errand-b
+    release: fake-release
+- name: fake-ig-2
+  instances: 3
+  jobs:
+  - name: fake-job-a
+    release: dummy-release
+  - name: fake-job-b
+    release: fake-release
+  - name: fake-job-c
+    release: fake-release
+- name: fake-ig-3
+  instances: 1
+  jobs:
+  - name: fake-job-a
+    release: dummy-release
+  - name: fake-job-b
+    release: fake-release
+  - name: fake-job-c
+    release: fake-release
+  - name: fake-job-d
+    release: fake-release
+`

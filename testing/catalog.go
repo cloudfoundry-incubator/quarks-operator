@@ -75,6 +75,15 @@ func (c *Catalog) BOSHManifestWithProviderAndConsumer() *manifest.Manifest {
 	return m
 }
 
+// BOSHManifestWithBPM returns a manifest with BPM configuraton
+func (c *Catalog) BOSHManifestWithBPM() *manifest.Manifest {
+	m, err := manifest.LoadYAML([]byte(bm.WithBPM))
+	if err != nil {
+		panic(err)
+	}
+	return m
+}
+
 // DefaultBOSHManifestConfigMap for tests
 func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{

@@ -104,65 +104,71 @@ func (kc *KubeConfig) Convert(m Manifest) error {
 
 // ApplyBPMInfo uses BOSH Process Manager information to update container information like entrypoint, env vars, etc.
 func (kc *KubeConfig) ApplyBPMInfo(allBPMConfigs map[string]bpm.Configs) error {
-
-	applyBPMOnContainer := func(igName string, container *corev1.Container) error {
+	applyBPMOnContainer := func(igName string, container corev1.Container) (error, []corev1.Container) {
 		boshJobName := container.Name
+		containers := []corev1.Container{}
 
 		igBPMConfigs, ok := allBPMConfigs[igName]
 		if !ok {
-			return errors.Errorf("couldn't find instance group '%s' in bpm configs set", igName)
+			return errors.Errorf("couldn't find instance group '%s' in bpm configs set", igName), containers
 		}
 
 		bpmConfig, ok := igBPMConfigs[boshJobName]
 		if !ok {
-			return errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs for instance group '%s'", boshJobName, igName)
+			return errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs for instance group '%s'", boshJobName, igName), containers
 		}
-
-		// TODO: handle multi-process BPM?
-		// TODO: complete implementation - BPM information could be top-level only
 
 		if len(bpmConfig.Processes) < 1 {
-			return errors.New("bpm info has no processes")
+			return errors.New("bpm info has no processes"), containers
 		}
-		process := bpmConfig.Processes[0]
 
-		container.Command = []string{process.Executable}
-		container.Args = process.Args
-		for name, value := range process.Env {
-			container.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
+		for _, process := range bpmConfig.Processes {
+			c := container.DeepCopy()
+
+			c.Name = fmt.Sprintf("%s-%s", boshJobName, process.Name)
+			c.Command = []string{process.Executable}
+			c.Args = process.Args
+			for name, value := range process.Env {
+				c.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
+			}
+			c.WorkingDir = process.Workdir
+
+			containers = append(containers, *c)
 		}
-		container.WorkingDir = process.Workdir
 
-		return nil
+		return nil, containers
 	}
 
 	for idx := range kc.InstanceGroups {
 		igSts := &(kc.InstanceGroups[idx])
 		igName := igSts.Labels[LabelInstanceGroupName]
 
-		// Go through each container
+		containers := []corev1.Container{}
 		for idx := range igSts.Spec.Template.Spec.Template.Spec.Containers {
-			container := &(igSts.Spec.Template.Spec.Template.Spec.Containers[idx])
-			err := applyBPMOnContainer(igName, container)
-
+			container := igSts.Spec.Template.Spec.Template.Spec.Containers[idx]
+			err, processes := applyBPMOnContainer(igName, container)
 			if err != nil {
 				return errors.Wrapf(err, "failed to apply bpm information on bosh job '%s', instance group '%s'", container.Name, igName)
 			}
+			containers = append(containers, processes...)
 		}
+		igSts.Spec.Template.Spec.Template.Spec.Containers = containers
 	}
 
 	for idx := range kc.Errands {
 		igJob := &(kc.Errands[idx])
 		igName := igJob.Labels[LabelInstanceGroupName]
 
+		containers := []corev1.Container{}
 		for idx := range igJob.Spec.Template.Spec.Containers {
-			container := &(igJob.Spec.Template.Spec.Containers[idx])
-			err := applyBPMOnContainer(igName, container)
-
+			container := igJob.Spec.Template.Spec.Containers[idx]
+			err, processes := applyBPMOnContainer(igName, container)
 			if err != nil {
 				return errors.Wrapf(err, "failed to apply bpm information on bosh job '%s', instance group '%s'", container.Name, igName)
 			}
+			containers = append(containers, processes...)
 		}
+		igJob.Spec.Template.Spec.Containers = containers
 	}
 	return nil
 }

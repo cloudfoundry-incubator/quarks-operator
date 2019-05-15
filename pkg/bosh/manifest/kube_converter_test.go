@@ -8,10 +8,12 @@ import (
 	"github.com/onsi/gomega/format"
 	corev1 "k8s.io/api/core/v1"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
+	"code.cloudfoundry.org/cf-operator/testing/boshreleases"
 )
 
 var _ = Describe("kube converter", func() {
@@ -21,17 +23,17 @@ var _ = Describe("kube converter", func() {
 		env        testing.Catalog
 	)
 
-	BeforeEach(func() {
-		m = env.DefaultBOSHManifest()
-		format.TruncatedDiff = false
-		kubeConfig = manifest.NewKubeConfig("foo", &m)
-	})
+	Describe("Convert", func() {
+		BeforeEach(func() {
+			m = env.DefaultBOSHManifest()
+			format.TruncatedDiff = false
+			kubeConfig = manifest.NewKubeConfig("foo", &m)
+		})
 
-	act := func() error {
-		return kubeConfig.Convert(m)
-	}
+		act := func() error {
+			return kubeConfig.Convert(m)
+		}
 
-	var _ = Describe("NewKubeConfig", func() {
 		It("creates a data gatheringjob", func() {
 			err := act()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -293,43 +295,100 @@ var _ = Describe("kube converter", func() {
 		})
 	})
 
-	Describe("GetReleaseImage", func() {
-		It("reports an error if the instance group was not found", func() {
-			_, err := m.GetReleaseImage("unknown-instancegroup", "redis-server")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("not found"))
+	Context("ApplyBPMInfo", func() {
+		var bpmConfigs map[string]bpm.Configs
+
+		BeforeEach(func() {
+			m = *env.BOSHManifestWithBPM()
+			kubeConfig = manifest.NewKubeConfig("foo", &m)
+			kubeConfig.Convert(m)
 		})
 
-		It("reports an error if the stemcell was not found", func() {
-			m.Stemcells = []*manifest.Stemcell{}
-			_, err := m.GetReleaseImage("redis-slave", "redis-server")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("stemcell could not be resolved"))
+		act := func() error {
+			return kubeConfig.ApplyBPMInfo(bpmConfigs)
+		}
+
+		Context("when BPM is missing in configs", func() {
+			It("returns an error", func() {
+				err := act()
+				Expect(err).Should(HaveOccurred())
+			})
 		})
 
-		It("reports an error if the job was not found", func() {
-			_, err := m.GetReleaseImage("redis-slave", "unknown-job")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("not found"))
-		})
+		Context("when multiple BPM processes exist", func() {
+			BeforeEach(func() {
+				c1, err := bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
+				Expect(err).ShouldNot(HaveOccurred())
+				c2, err := bpm.NewConfig([]byte(boshreleases.MultiProcessBPMConfig))
+				Expect(err).ShouldNot(HaveOccurred())
 
-		It("reports an error if the release was not found", func() {
-			m.Releases = []*manifest.Release{}
-			_, err := m.GetReleaseImage("redis-slave", "redis-server")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("not found"))
-		})
+				bpmConfigs = map[string]bpm.Configs{
+					"fake-ig-1": bpm.Configs{
+						"fake-errand-a": c1,
+						"fake-errand-b": c2,
+					},
+					"fake-ig-2": bpm.Configs{
+						"fake-job-a": c1,
+						"fake-job-b": c1,
+						"fake-job-c": c2,
+					},
+					"fake-ig-3": bpm.Configs{
+						"fake-job-a": c1,
+						"fake-job-b": c1,
+						"fake-job-c": c2,
+						"fake-job-d": c2,
+					},
+				}
+			})
 
-		It("calculates the release image name", func() {
-			releaseImage, err := m.GetReleaseImage("redis-slave", "redis-server")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(releaseImage).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
-		})
+			It("creates a k8s container for each BPM process", func() {
+				err := act()
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(kubeConfig.InstanceGroups).To(HaveLen(2))
+				Expect(kubeConfig.Errands).To(HaveLen(1))
 
-		It("uses the release stemcell information if it is set", func() {
-			releaseImage, err := m.GetReleaseImage("diego-cell", "cflinuxfs3-rootfs-setup")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(releaseImage).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
+				containers := kubeConfig.Errands[0].Spec.Template.Spec.Containers
+				Expect(containers).To(HaveLen(3))
+				Expect(containers[0].Name).To(Equal("fake-errand-a-test-server"))
+				Expect(containers[0].Command[0]).To(ContainSubstring("bin/test-server"))
+				Expect(containers[0].Args).To(HaveLen(2))
+				Expect(containers[0].Args[0]).To(Equal("--port"))
+				Expect(containers[0].Args[1]).To(Equal("1337"))
+				Expect(containers[0].Env).To(HaveLen(1))
+				Expect(containers[0].Env[0].Name).To(Equal("BPM"))
+				Expect(containers[0].Env[0].Value).To(Equal("SWEET"))
+				Expect(containers[1].Name).To(Equal("fake-errand-b-test-server"))
+				Expect(containers[2].Name).To(Equal("fake-errand-b-alt-test-server"))
+				Expect(containers[2].Command[0]).To(ContainSubstring("bin/test-server"))
+				Expect(containers[2].Args).To(HaveLen(3))
+				Expect(containers[2].Args[0]).To(Equal("--port"))
+				Expect(containers[2].Args[1]).To(Equal("1338"))
+				Expect(containers[2].Env).To(HaveLen(1))
+				Expect(containers[2].Env[0].Name).To(Equal("BPM"))
+				Expect(containers[2].Env[0].Value).To(Equal("CONTAINED"))
+
+				containers = kubeConfig.InstanceGroups[0].Spec.Template.Spec.Template.Spec.Containers
+				Expect(containers).To(HaveLen(4))
+				Expect(containers[0].Name).To(Equal("fake-job-a-test-server"))
+				Expect(containers[1].Name).To(Equal("fake-job-b-test-server"))
+				Expect(containers[2].Name).To(Equal("fake-job-c-test-server"))
+				Expect(containers[3].Name).To(Equal("fake-job-c-alt-test-server"))
+
+				containers = kubeConfig.InstanceGroups[1].Spec.Template.Spec.Template.Spec.Containers
+				Expect(containers).To(HaveLen(6))
+				Expect(containers[0].Name).To(Equal("fake-job-a-test-server"))
+				Expect(containers[1].Name).To(Equal("fake-job-b-test-server"))
+				Expect(containers[2].Name).To(Equal("fake-job-c-test-server"))
+				Expect(containers[3].Name).To(Equal("fake-job-c-alt-test-server"))
+				Expect(containers[4].Name).To(Equal("fake-job-d-test-server"))
+				Expect(containers[5].Name).To(Equal("fake-job-d-alt-test-server"))
+
+				containers = kubeConfig.InstanceGroups[1].Spec.Template.Spec.Template.Spec.InitContainers
+				Expect(containers).To(HaveLen(3))
+
+				containers = kubeConfig.InstanceGroups[1].Spec.Template.Spec.Template.Spec.InitContainers
+				Expect(containers).To(HaveLen(3))
+			})
 		})
 	})
 })
