@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"gopkg.in/yaml.v2"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 )
@@ -35,8 +36,12 @@ var _ = Describe("bpm-configs", func() {
 			Eventually(session).Should(gexec.Exit(0))
 
 			output := session.Out.Contents()
+			jsonOutput := map[string]string{}
+			err = json.Unmarshal(output, &jsonOutput)
+			Expect(err).ToNot(HaveOccurred())
+
 			configs := bpm.Configs{}
-			err = json.Unmarshal(output, &configs)
+			err = yaml.Unmarshal([]byte(jsonOutput["bpm.yaml"]), &configs)
 			Expect(err).ToNot(HaveOccurred())
 
 			config := configs["loggregator_trafficcontroller"]
