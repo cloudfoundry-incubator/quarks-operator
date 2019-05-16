@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
-	yaml "gopkg.in/yaml.v2"
 	"k8s.io/api/apps/v1beta2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -51,20 +50,16 @@ func (c *Catalog) DefaultConfig() *config.Config {
 
 // DefaultBOSHManifest for tests
 func (c *Catalog) DefaultBOSHManifest() manifest.Manifest {
-	m := manifest.Manifest{}
-	source := bm.Default
-	err := yaml.Unmarshal([]byte(source), &m)
+	m, err := manifest.LoadYAML([]byte(bm.Default))
 	if err != nil {
 		panic(err)
 	}
-	return m
+	return *m
 }
 
 // ElaboratedBOSHManifest for data gathering tests
 func (c *Catalog) ElaboratedBOSHManifest() *manifest.Manifest {
-	m := &manifest.Manifest{}
-	source := bm.Elaborated
-	err := yaml.Unmarshal([]byte(source), m)
+	m, err := manifest.LoadYAML([]byte(bm.Elaborated))
 	if err != nil {
 		panic(err)
 	}
@@ -73,9 +68,7 @@ func (c *Catalog) ElaboratedBOSHManifest() *manifest.Manifest {
 
 // BOSHManifestWithProviderAndConsumer for data gathering tests
 func (c *Catalog) BOSHManifestWithProviderAndConsumer() *manifest.Manifest {
-	m := &manifest.Manifest{}
-	source := bm.WithProviderAndConsumer
-	err := yaml.Unmarshal([]byte(source), m)
+	m, err := manifest.LoadYAML([]byte(bm.WithProviderAndConsumer))
 	if err != nil {
 		panic(err)
 	}

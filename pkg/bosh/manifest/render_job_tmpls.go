@@ -8,7 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 	btg "github.com/viovanov/bosh-template-go"
-	yaml "gopkg.in/yaml.v2"
 )
 
 // RenderJobTemplates will render templates for all jobs of the instance group
@@ -21,10 +20,9 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 	if err != nil {
 		return errors.Wrapf(err, "couldn't read manifest file %s", boshManifestPath)
 	}
-	boshManifest := Manifest{}
-	err = yaml.Unmarshal(resolvedYML, &boshManifest)
+	boshManifest, err := LoadYAML(resolvedYML)
 	if err != nil {
-		return errors.Wrapf(err, "failed to unmarshal deployment manifest %s", boshManifestPath)
+		return errors.Wrapf(err, "failed to load BOSH deployment manifest %s", boshManifestPath)
 	}
 
 	// Loop over instancegroups

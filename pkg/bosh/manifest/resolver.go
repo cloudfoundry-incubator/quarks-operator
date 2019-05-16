@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -53,7 +53,7 @@ func (r *ResolverImpl) ResolveManifest(instance *bdc.BOSHDeployment, namespace s
 	}
 
 	// Get the deployment name from the manifest
-	err = yaml.Unmarshal([]byte(m), manifest)
+	manifest, err = LoadYAML([]byte(m))
 	if err != nil {
 		return manifest, errors.Wrapf(err, "failed to unmarshal manifest")
 	}
@@ -92,7 +92,7 @@ func (r *ResolverImpl) ResolveManifest(instance *bdc.BOSHDeployment, namespace s
 		return manifest, errors.Wrapf(err, "failed to interpolate %#v", m)
 	}
 
-	err = yaml.Unmarshal(bytes, manifest)
+	manifest, err = LoadYAML(bytes)
 
 	return manifest, err
 }
