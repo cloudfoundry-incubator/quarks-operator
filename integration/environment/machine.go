@@ -509,7 +509,7 @@ func (m *Machine) WaitForSecretDeletion(namespace string, name string) error {
 	})
 }
 
-// SecretExists returns true if the pod by that name is in state running
+// SecretExists returns true if the secret by that name exist
 func (m *Machine) SecretExists(namespace string, name string) (bool, error) {
 	_, err := m.Clientset.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
