@@ -356,7 +356,10 @@ tags:
 
 ## BPM
 
-The BPM's are converted into containers of `ExtendedStatefulSet's` and `ExtendedJob's` pods. Each `process` in the BPM is run in a single `container` of kubernetes pods. Following subsections will describe about the mapping of BPM configuration into containers.
+In a BOSH release some jobs have BPM configuration in `templates/bpm.yml.erb`. These BPM configs are converted into containers. For instance groups of the type `service` the containers are added to the `ExtendedStatefulSet`'s, for `errands` to the `ExtendedJob`'s pods.
+Each `process` specified in the BPM configuration is run in a single Kubernetes `container` as part of a pod.
+
+The following subsections describe the mapping of BPM configuration into containers.
 
 ### Entrypoint & Environment Variables
 
