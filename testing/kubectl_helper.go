@@ -115,12 +115,31 @@ func (k *Kubectl) RunCommandWithOutput(namespace string, podName string, command
 func (k *Kubectl) GetSecretData(namespace string, secretName string, templatePath string) ([]byte, error) {
 	out, err := exec.Command("kubectl", "--namespace", namespace, "get", "secret", secretName, "-o", templatePath).Output()
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, errors.Wrapf(err, "Failed to get secret")
 	}
 	if len(string(out)) > 0 {
 		return out, nil
 	}
-	return []byte{}, err
+	return []byte{}, errors.Wrapf(err, "Output is empty")
+}
+
+// WaitForSecret blocks until the secret is available. It fails after the timeout.
+func (k *Kubectl) WaitForSecret(namespace string, secretName string) error {
+	return wait.PollImmediate(k.pollInterval, k.pollTimeout, func() (bool, error) {
+		return k.SecretExists(namespace, secretName)
+	})
+}
+
+// SecretExists returns true if the pod by that name is in state running
+func (k *Kubectl) SecretExists(namespace string, secretName string) (bool, error) {
+	out, err := exec.Command("kubectl", "--namespace", namespace, "get", "secret", secretName).Output()
+	if err != nil {
+		return false, errors.Wrap(err, "Couldn't get secret by kubectl")
+	}
+	if strings.Contains(string(out), secretName) {
+		return true, nil
+	}
+	return false, nil
 }
 
 // Wait waits for the condition on the resource using kubectl command
