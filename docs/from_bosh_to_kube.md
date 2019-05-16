@@ -384,6 +384,8 @@ Bosh             | Kube Pod Container |
 
 ## Healthchecks
 
+BPM doesn't provide information for health checks and relies on monit instead. CF-Operator provides health checks via the [BOSHContainerization](https://github.com/cloudfoundry-incubator/cf-operator/blob/2cab6516e8a3fc1f0c814554912449b88dee3101/pkg/bosh/manifest/containerization.go#L7-L13) property in the deployment manifest.
+
 Healthcheck is used for checking the status of the BPM process's using liveness and readiness as defined in Kubernetes [docs](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/).
 
 Bosh             | Kube Pod Container |
