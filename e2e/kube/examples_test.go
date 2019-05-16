@@ -163,6 +163,9 @@ var _ = Describe("Examples", func() {
 				err = kubectlHelper.Delete(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
+				err = kubectlHelper.DeleteResource(namespace, "secret", "nats-deployment.bpm.nats-v1")
+				Expect(err).ToNot(HaveOccurred())
+
 				err = kubectlHelper.DeleteResource(namespace, "secret", "nats-deployment.ig-resolved.nats-v1")
 				Expect(err).ToNot(HaveOccurred())
 
@@ -201,6 +204,9 @@ var _ = Describe("Examples", func() {
 				By("Clean up resources")
 
 				err = kubectlHelper.Delete(namespace, yamlFilePath)
+				Expect(err).ToNot(HaveOccurred())
+
+				err = kubectlHelper.DeleteResource(namespace, "secret", "nats-deployment.bpm.nats-v1")
 				Expect(err).ToNot(HaveOccurred())
 
 				err = kubectlHelper.DeleteResource(namespace, "secret", "nats-deployment.with-ops")

@@ -20,7 +20,10 @@ type JobFactory struct {
 
 // NewJobFactory returns a new JobFactory
 func NewJobFactory(manifest Manifest, namespace string) *JobFactory {
-	return &JobFactory{Manifest: manifest, Namespace: namespace}
+	return &JobFactory{
+		Manifest:  manifest,
+		Namespace: namespace,
+	}
 }
 
 // VariableInterpolationJob returns an extended job to interpolate variables
@@ -173,9 +176,35 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 	return job, nil
 }
 
-// dataGatheringJob generates the Data Gathering Job for a manifest
+// DataGatheringJob generates the Data Gathering Job for a manifest
 func (f *JobFactory) DataGatheringJob() (*ejv1.ExtendedJob, error) {
+	containers := make([]corev1.Container, len(f.Manifest.InstanceGroups))
 
+	for idx, ig := range f.Manifest.InstanceGroups {
+		// One container per Instance Group
+		// There will be one secret generated for each of these containers
+		containers[idx] = f.gatheringContainer("data-gather", ig.Name)
+	}
+
+	eJobName := fmt.Sprintf("data-gathering-%s", f.Manifest.Name)
+	return f.gatheringJob(eJobName, names.DeploymentSecretTypeInstanceGroupResolvedProperties, containers)
+}
+
+// BPMConfigsJob returns an extended job to calculate BPM information
+func (f *JobFactory) BPMConfigsJob() (*ejv1.ExtendedJob, error) {
+	containers := make([]corev1.Container, len(f.Manifest.InstanceGroups))
+
+	for idx, ig := range f.Manifest.InstanceGroups {
+		// One container per Instance Group
+		// There will be one secret generated for each of these containers
+		containers[idx] = f.gatheringContainer("bpm-configs", ig.Name)
+	}
+
+	eJobName := fmt.Sprintf("bpm-configs-%s", f.Manifest.Name)
+	return f.gatheringJob(eJobName, names.DeploymentSecretBpmInformation, containers)
+}
+
+func (f *JobFactory) gatheringContainer(cmd, instanceGroupName string) corev1.Container {
 	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
 		names.DeploymentSecretTypeManifestAndVars,
 		f.Manifest.Name,
@@ -183,21 +212,61 @@ func (f *JobFactory) DataGatheringJob() (*ejv1.ExtendedJob, error) {
 		true,
 	)
 
-	eJobName := fmt.Sprintf("data-gathering-%s", f.Manifest.Name)
+	return corev1.Container{
+		Name:    instanceGroupName,
+		Image:   GetOperatorDockerImage(),
+		Command: []string{"/bin/sh"},
+		Args:    []string{"-c", fmt.Sprintf("cf-operator util %s", cmd)},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      generateVolumeName(interpolatedManifestSecretName),
+				MountPath: "/var/run/secrets/deployment/",
+				ReadOnly:  true,
+			},
+			{
+				Name:      generateVolumeName("data-gathering"),
+				MountPath: "/var/vcap/all-releases",
+			},
+		},
+		Env: []corev1.EnvVar{
+			{
+				Name:  "BOSH_MANIFEST_PATH",
+				Value: filepath.Join("/var/run/secrets/deployment/", DesiredManifestKeyName),
+			},
+			{
+				Name:  "CF_OPERATOR_NAMESPACE",
+				Value: f.Namespace,
+			},
+			{
+				Name:  "BASE_DIR",
+				Value: "/var/vcap/all-releases",
+			},
+			{
+				Name:  "INSTANCE_GROUP_NAME",
+				Value: instanceGroupName,
+			},
+		},
+	}
+}
+
+func (f *JobFactory) gatheringJob(name string, secretType names.DeploymentSecretType, containers []corev1.Container) (*ejv1.ExtendedJob, error) {
+	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeManifestAndVars,
+		f.Manifest.Name,
+		VarInterpolationContainerName,
+		true,
+	)
+
 	outputSecretNamePrefix, _ := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+		secretType,
 		f.Manifest.Name,
 		"",
 		false,
 	)
 
 	initContainers := []corev1.Container{}
-	containers := make([]corev1.Container, len(f.Manifest.InstanceGroups))
-
 	doneSpecCopyingReleases := map[string]bool{}
-
-	for idx, ig := range f.Manifest.InstanceGroups {
-
+	for _, ig := range f.Manifest.InstanceGroups {
 		// Iterate through each Job to find all releases so we can copy all
 		// sources to /var/vcap/data-gathering
 		for _, boshJob := range ig.Jobs {
@@ -209,7 +278,7 @@ func (f *JobFactory) DataGatheringJob() (*ejv1.ExtendedJob, error) {
 			doneSpecCopyingReleases[releaseName] = true
 
 			// Get the docker image for the release
-			releaseImage, err := f.Manifest.GetReleaseImage(ig.Name, boshJob.Name)
+			releaseImage, err := (&f.Manifest).GetReleaseImage(ig.Name, boshJob.Name)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to calculate release image for data gathering")
 			}
@@ -217,50 +286,11 @@ func (f *JobFactory) DataGatheringJob() (*ejv1.ExtendedJob, error) {
 			// TODO: destination should also contain release name, to prevent overwrites
 			initContainers = append(initContainers, jobSpecCopierContainer(releaseName, releaseImage, generateVolumeName("data-gathering")))
 		}
-
-		// One container per Instance Group
-		// There will be one secret generated for each of these containers
-		containers[idx] = corev1.Container{
-			Name:    ig.Name,
-			Image:   GetOperatorDockerImage(),
-			Command: []string{"/bin/sh"},
-			Args:    []string{"-c", `cf-operator util data-gather`},
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      generateVolumeName(interpolatedManifestSecretName),
-					MountPath: "/var/run/secrets/deployment/",
-					ReadOnly:  true,
-				},
-				{
-					Name:      generateVolumeName("data-gathering"),
-					MountPath: "/var/vcap/all-releases",
-				},
-			},
-			Env: []corev1.EnvVar{
-				{
-					Name:  "BOSH_MANIFEST_PATH",
-					Value: filepath.Join("/var/run/secrets/deployment/", DesiredManifestKeyName),
-				},
-				{
-					Name:  "CF_OPERATOR_NAMESPACE",
-					Value: f.Namespace,
-				},
-				{
-					Name:  "BASE_DIR",
-					Value: "/var/vcap/all-releases",
-				},
-				{
-					Name:  "INSTANCE_GROUP_NAME",
-					Value: ig.Name,
-				},
-			},
-		}
 	}
 
-	// Construct the data gathering job
-	dataGatheringJob := &ejv1.ExtendedJob{
+	job := &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      eJobName,
+			Name:      name,
 			Namespace: f.Namespace,
 		},
 		Spec: ejv1.ExtendedJobSpec{
@@ -277,7 +307,7 @@ func (f *JobFactory) DataGatheringJob() (*ejv1.ExtendedJob, error) {
 			UpdateOnConfigChange: true,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: eJobName,
+					Name: name,
 					Labels: map[string]string{
 						"delete": "pod",
 					},
@@ -309,6 +339,5 @@ func (f *JobFactory) DataGatheringJob() (*ejv1.ExtendedJob, error) {
 			},
 		},
 	}
-
-	return dataGatheringJob, nil
+	return job, nil
 }

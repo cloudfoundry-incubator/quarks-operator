@@ -49,6 +49,9 @@ type Config struct {
 	Processes []Process `yaml:"processes,omitempty"`
 }
 
+// Configs holds a collection of BPM configurations by their according job
+type Configs map[string]Config
+
 // NewConfig creates a new Config object from the yaml
 func NewConfig(data []byte) (Config, error) {
 	config := Config{}

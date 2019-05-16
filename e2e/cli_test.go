@@ -97,6 +97,7 @@ var _ = Describe("CLI", func() {
 			session, err := act("util")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
+  -b, --base-dir string              \(BASE_DIR\) a path to the base directory
   -m, --bosh-manifest-path string    \(BOSH_MANIFEST_PATH\) path to the bosh manifest file
   -h, --help                         help for util
   -g, --instance-group-name string   \(INSTANCE_GROUP_NAME\) name of the instance group for data gathering`))
@@ -140,8 +141,7 @@ var _ = Describe("CLI", func() {
 			session, err := act("util", "data-gather", "-h")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
-  -b, --base-dir string * \(BASE_DIR\) a path to the base directory
-  -h, --help            * help for data-gather`))
+  -h, --help * help for data-gather`))
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
@@ -161,6 +161,37 @@ var _ = Describe("CLI", func() {
 
 			It("accepts the bosh-manifest-path as an environment variable", func() {
 				session, err := act("util", "data-gather", "--base-dir=.", "-g", "log-api")
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(session.Err).Should(Say("open bar.txt: no such file or directory"))
+			})
+		})
+	})
+
+	Describe("bpm-configs", func() {
+		It("lists its flags incl. ENV binding", func() {
+			session, err := act("util", "bpm-configs", "-h")
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(session.Out).Should(Say(`Flags:
+  -h, --help * help for bpm-configs`))
+		})
+
+		It("accepts the bosh-manifest-path as a parameter", func() {
+			session, err := act("util", "bpm-configs", "--base-dir=.", "-m", "foo.txt", "-g", "log-api")
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(session.Err).Should(Say("open foo.txt: no such file or directory"))
+		})
+
+		Context("using env variables for parameters", func() {
+			BeforeEach(func() {
+				os.Setenv("BOSH_MANIFEST_PATH", "bar.txt")
+			})
+
+			AfterEach(func() {
+				os.Setenv("BOSH_MANIFEST_PATH", "")
+			})
+
+			It("accepts the bosh-manifest-path as an environment variable", func() {
+				session, err := act("util", "bpm-configs", "--base-dir=.", "-g", "log-api")
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Err).Should(Say("open bar.txt: no such file or directory"))
 			})
