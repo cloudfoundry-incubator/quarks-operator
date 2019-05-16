@@ -16,14 +16,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 )
 
-// DataGatherer gathers data for jobs in the manifest, it handles links and returns a deployment manifest
-// that only has information pertinent to an instance group.
-type DataGatherer struct {
-	log       *zap.SugaredLogger
-	manifest  *Manifest
-	namespace string
-}
-
+// JobProviderLinks
 type JobProviderLinks map[string]map[string]JobLink
 
 func (jpl JobProviderLinks) Lookup(consumesType string, consumesName string) (JobLink, bool) {
@@ -93,59 +86,109 @@ func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstan
 	return nil
 }
 
-// NewDataGatherer returns a data gatherer with logging for a given input manifest
-func NewDataGatherer(log *zap.SugaredLogger, namespace string, manifest *Manifest) *DataGatherer {
-	return &DataGatherer{
-		log:       log,
-		manifest:  manifest,
-		namespace: namespace,
-	}
+// DataGatherer gathers data for jobs in the manifest, it handles links and returns a deployment manifest
+// that only has information pertinent to an instance group.
+type DataGatherer struct {
+	log           *zap.SugaredLogger
+	baseDir       string
+	manifest      Manifest
+	namespace     string
+	instanceGroup *InstanceGroup
+
+	jobReleaseSpecs  map[string]map[string]JobSpec
+	jobProviderLinks JobProviderLinks
 }
 
-// GenerateManifest will collect different data and return a deployment
-// manifest for an instance group.
-// See docs/rendering_templates.md#calculation-of-required-properties-for-an-instance-group-and-render-bpm
+// NewDataGatherer returns a data gatherer with logging for a given input manifest and instance group
+func NewDataGatherer(log *zap.SugaredLogger, basedir, namespace string, manifest Manifest, instanceGroupName string) (*DataGatherer, error) {
+	ig, err := (&manifest).InstanceGroupByName(instanceGroupName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DataGatherer{
+		log:              log,
+		baseDir:          basedir,
+		manifest:         manifest,
+		namespace:        namespace,
+		instanceGroup:    ig,
+		jobReleaseSpecs:  map[string]map[string]JobSpec{},
+		jobProviderLinks: JobProviderLinks{},
+	}, nil
+}
+
+// BPMConfigs returns a map of all BOSH jobs in the instance group
+func (dg *DataGatherer) BPMConfigs() (bpm.Configs, error) {
+	bpm := bpm.Configs{}
+
+	err := dg.gatherData()
+	if err != nil {
+		return bpm, err
+	}
+
+	for _, job := range dg.instanceGroup.Jobs {
+		bpm[job.Name] = job.Properties.BOSHContainerization.BPM
+	}
+
+	return bpm, nil
+}
+
+// ResolvedProperties returns the manifest including the gathered data
+func (dg *DataGatherer) ResolvedProperties() (Manifest, error) {
+	err := dg.gatherData()
+	if err != nil {
+		return Manifest{}, err
+	}
+
+	return dg.manifest, nil
+}
+
+// gatherData collects bpm and link information and enriches the manifest accordingly
 //
 // Data gathered:
 // * job spec information
 // * job properties
 // * bosh links
 // * bpm yaml file data
-func (dg *DataGatherer) GenerateManifest(baseDir string, instanceGroupName string) ([]byte, error) {
-	jobReleaseSpecs, jobProviderLinks, err := dg.CollectReleaseSpecsAndProviderLinks(baseDir)
+func (dg *DataGatherer) gatherData() error {
+	err := dg.collectReleaseSpecsAndProviderLinks()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return dg.ProcessConsumersAndRenderBPM(baseDir, jobReleaseSpecs, jobProviderLinks, instanceGroupName)
+	err = dg.processConsumers()
+	if err != nil {
+		return err
+	}
+
+	err = dg.renderBPM()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // CollectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
-func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string) (map[string]map[string]JobSpec, JobProviderLinks, error) {
-	// Contains YAML.load('.../release_name/job_name/job.MF')
-	jobReleaseSpecs := map[string]map[string]JobSpec{}
-
-	// Lists every link provided by the job
-	jobProviderLinks := JobProviderLinks{}
-
+func (dg *DataGatherer) collectReleaseSpecsAndProviderLinks() error {
 	for _, instanceGroup := range dg.manifest.InstanceGroups {
 		for jobIdx, job := range instanceGroup.Jobs {
 			// make sure a map entry exists for the current job release
-			if _, ok := jobReleaseSpecs[job.Release]; !ok {
-				jobReleaseSpecs[job.Release] = map[string]JobSpec{}
+			if _, ok := dg.jobReleaseSpecs[job.Release]; !ok {
+				dg.jobReleaseSpecs[job.Release] = map[string]JobSpec{}
 			}
 
 			// load job.MF into jobReleaseSpecs[job.Release][job.Name]
-			if _, ok := jobReleaseSpecs[job.Release][job.Name]; !ok {
-				jobSpec, err := job.loadSpec(baseDir)
+			if _, ok := dg.jobReleaseSpecs[job.Release][job.Name]; !ok {
+				jobSpec, err := job.loadSpec(dg.baseDir)
 				if err != nil {
-					return nil, nil, err
+					return err
 				}
-				jobReleaseSpecs[job.Release][job.Name] = *jobSpec
+				dg.jobReleaseSpecs[job.Release][job.Name] = *jobSpec
 			}
 
 			// spec of the current jobs release/name
-			spec := jobReleaseSpecs[job.Release][job.Name]
+			spec := dg.jobReleaseSpecs[job.Release][job.Name]
 
 			// Generate instance spec for each ig instance
 			// This will be stored inside the current job under
@@ -158,62 +201,47 @@ func (dg *DataGatherer) CollectReleaseSpecsAndProviderLinks(baseDir string) (map
 			// Create a list of fully evaluated links provided by the current job
 			// These is specified in the job release job.MF file
 			if spec.Provides != nil {
-				err := jobProviderLinks.Add(job, spec, jobsInstances)
+				err := dg.jobProviderLinks.Add(job, spec, jobsInstances)
 				if err != nil {
-					return nil, nil, err
+					return err
 				}
-
 			}
-
 		}
 	}
 
-	return jobReleaseSpecs, jobProviderLinks, nil
+	return nil
 }
 
-// ProcessConsumersAndRenderBPM will generate a proper context for links and render the required ERB files
-func (dg *DataGatherer) ProcessConsumersAndRenderBPM(baseDir string, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks map[string]map[string]JobLink, instanceGroupName string) ([]byte, error) {
-	var desiredInstanceGroup *InstanceGroup
-	for _, instanceGroup := range dg.manifest.InstanceGroups {
-		if instanceGroup.Name != instanceGroupName {
-			continue
-		}
-
-		desiredInstanceGroup = instanceGroup
-		break
-	}
-
-	if desiredInstanceGroup == nil {
-		return nil, errors.Errorf("can't find instance group '%s' in manifest", instanceGroupName)
-	}
-
-	for idJob, job := range desiredInstanceGroup.Jobs {
-
-		currentJob := &desiredInstanceGroup.Jobs[idJob]
+// ProcessConsumers will generate a proper context for links and render the required ERB files
+func (dg *DataGatherer) processConsumers() error {
+	for i := range dg.instanceGroup.Jobs {
+		job := &dg.instanceGroup.Jobs[i]
 
 		// Verify that the current job release exists on the manifest releases block
 		if lookUpJobRelease(dg.manifest.Releases, job.Release) {
-			currentJob.Properties.BOSHContainerization.Release = job.Release
+			job.Properties.BOSHContainerization.Release = job.Release
 		}
 
-		err := generateJobConsumersData(currentJob, jobReleaseSpecs, jobProviderLinks)
+		err := generateJobConsumersData(job, dg.jobReleaseSpecs, dg.jobProviderLinks)
 		if err != nil {
-			return nil, err
-		}
-
-		err = dg.renderJobBPM(currentJob, baseDir)
-		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	// marshall the whole manifest Structure
-	manifestResolved, err := yaml.Marshal(dg.manifest)
-	if err != nil {
-		return nil, err
+	return nil
+}
+
+func (dg *DataGatherer) renderBPM() error {
+	for i := range dg.instanceGroup.Jobs {
+		job := &dg.instanceGroup.Jobs[i]
+
+		err := dg.renderJobBPM(job, dg.baseDir)
+		if err != nil {
+			return err
+		}
 	}
 
-	return manifestResolved, nil
+	return nil
 }
 
 // renderJobBPM per job and add its value to the jobInstances.BPM field

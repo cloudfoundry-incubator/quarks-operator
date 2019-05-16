@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -182,4 +183,15 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 		}
 	}
 	return "", fmt.Errorf("release '%s' not found", job.Release)
+}
+
+// InstanceGroupByName returns the instance group identified by the given name
+func (m *Manifest) InstanceGroupByName(name string) (*InstanceGroup, error) {
+	for _, instanceGroup := range m.InstanceGroups {
+		if instanceGroup.Name == name {
+			return instanceGroup, nil
+		}
+	}
+
+	return nil, errors.Errorf("can't find instance group '%s' in manifest", name)
 }

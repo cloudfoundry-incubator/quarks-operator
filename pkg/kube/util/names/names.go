@@ -28,6 +28,8 @@ const (
 	DeploymentSecretTypeInstanceGroupResolvedProperties
 	// DeploymentSecretTypeImplicitVariable is a BOSH variable provided by the user as a Secret
 	DeploymentSecretTypeImplicitVariable
+	// DeploymentSecretBpmInformation is a YAML file containing the BPM information for one instance group
+	DeploymentSecretBpmInformation
 )
 
 func (s DeploymentSecretType) String() string {
@@ -36,7 +38,8 @@ func (s DeploymentSecretType) String() string {
 		"with-vars",
 		"var",
 		"ig-resolved",
-		"var-implicit"}[s]
+		"var-implicit",
+		"bpm"}[s]
 }
 
 // CalculateSecretName generates a Secret name for a given name and a deployment

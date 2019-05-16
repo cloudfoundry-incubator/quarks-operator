@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
@@ -46,6 +47,7 @@ type KubeConfig struct {
 	Services                 []corev1.Service
 	VariableInterpolationJob *ejv1.ExtendedJob
 	DataGatheringJob         *ejv1.ExtendedJob
+	BPMConfigsJob            *ejv1.ExtendedJob
 }
 
 type releaseImageProvider interface {
@@ -79,6 +81,11 @@ func (kc *KubeConfig) Convert(m Manifest) error {
 		return err
 	}
 
+	bpmConfigsJob, err := jobFactory.BPMConfigsJob()
+	if err != nil {
+		return err
+	}
+
 	varInterpolationJob, err := jobFactory.VariableInterpolationJob()
 	if err != nil {
 		return err
@@ -90,35 +97,34 @@ func (kc *KubeConfig) Convert(m Manifest) error {
 	kc.Errands = convertedEJob
 	kc.VariableInterpolationJob = varInterpolationJob
 	kc.DataGatheringJob = dataGatheringJob
+	kc.BPMConfigsJob = bpmConfigsJob
 
 	return nil
 }
 
 // ApplyBPMInfo uses BOSH Process Manager information to update container information like entrypoint, env vars, etc.
-func (kc *KubeConfig) ApplyBPMInfo(allResolvedProperties map[string]Manifest) error {
+func (kc *KubeConfig) ApplyBPMInfo(allBPMConfigs map[string]bpm.Configs) error {
+
 	applyBPMOnContainer := func(igName string, container *corev1.Container) error {
 		boshJobName := container.Name
 
-		igResolvedProperties, ok := allResolvedProperties[igName]
+		igBPMConfigs, ok := allBPMConfigs[igName]
 		if !ok {
-			return errors.Errorf("couldn't find instance group %s in resolved properties set", igName)
+			return errors.Errorf("couldn't find instance group '%s' in bpm configs set", igName)
 		}
 
-		boshJob, err := igResolvedProperties.lookupJobInInstanceGroup(igName, boshJobName)
-		if err != nil {
-			return errors.Wrap(err, "failed to lookup bosh job in instance group resolved properties manifest")
+		bpmConfig, ok := igBPMConfigs[boshJobName]
+		if !ok {
+			return errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs for instance group '%s'", boshJobName, igName)
 		}
 
 		// TODO: handle multi-process BPM?
 		// TODO: complete implementation - BPM information could be top-level only
 
-		if len(boshJob.Properties.BOSHContainerization.Instances) < 1 {
-			return errors.New("containerization data has no instances")
-		}
-		if len(boshJob.Properties.BOSHContainerization.BPM.Processes) < 1 {
+		if len(bpmConfig.Processes) < 1 {
 			return errors.New("bpm info has no processes")
 		}
-		process := boshJob.Properties.BOSHContainerization.BPM.Processes[0]
+		process := bpmConfig.Processes[0]
 
 		container.Command = []string{process.Executable}
 		container.Args = process.Args
@@ -140,7 +146,7 @@ func (kc *KubeConfig) ApplyBPMInfo(allResolvedProperties map[string]Manifest) er
 			err := applyBPMOnContainer(igName, container)
 
 			if err != nil {
-				return errors.Wrapf(err, "failed to apply bpm information on bosh job %s, instance group %s", container.Name, igName)
+				return errors.Wrapf(err, "failed to apply bpm information on bosh job '%s', instance group '%s'", container.Name, igName)
 			}
 		}
 	}
@@ -154,7 +160,7 @@ func (kc *KubeConfig) ApplyBPMInfo(allResolvedProperties map[string]Manifest) er
 			err := applyBPMOnContainer(igName, container)
 
 			if err != nil {
-				return errors.Wrapf(err, "failed to apply bpm information on bosh job %s, instance group %s", container.Name, igName)
+				return errors.Wrapf(err, "failed to apply bpm information on bosh job '%s', instance group '%s'", container.Name, igName)
 			}
 		}
 	}

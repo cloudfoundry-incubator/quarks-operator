@@ -3,8 +3,10 @@ package manifest_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
 
@@ -30,6 +32,32 @@ var _ = Describe("JobFactory", func() {
 			Expect(jobDG.InitContainers[1].Name).To(Equal("spec-copier-cflinuxfs3"))
 			Expect(jobDG.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 			Expect(jobDG.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+		})
+	})
+
+	Describe("BPMConfigsJob", func() {
+		var (
+			job  *ejv1.ExtendedJob
+			spec corev1.PodSpec
+		)
+
+		BeforeEach(func() {
+			var err error
+			job, err = factory.BPMConfigsJob()
+			spec = job.Spec.Template.Spec
+
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("has one spec-copier init container per instance group", func() {
+			Expect(len(spec.InitContainers)).To(Equal(len(m.InstanceGroups)))
+			Expect(spec.InitContainers[0].Name).To(ContainSubstring("spec-copier-"))
+		})
+
+		It("has one bpm-configs container per instance group", func() {
+			Expect(len(spec.Containers)).To(Equal(len(m.InstanceGroups)))
+			Expect(spec.Containers[0].Name).To(Equal(m.InstanceGroups[0].Name))
+			Expect(spec.Containers[0].Args).To(ContainElement("cf-operator util bpm-configs"))
 		})
 	})
 

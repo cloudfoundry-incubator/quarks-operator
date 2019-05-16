@@ -144,8 +144,6 @@ instance_groups:
       password: foobar
     provides:
       redis: {as: redis-server}
-  - name: cflinuxfs3-rootfs-setup
-    release: cflinuxfs3
   vm_type: medium
   stemcell: default
   persistent_disk_type: medium
