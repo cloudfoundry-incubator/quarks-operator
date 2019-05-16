@@ -343,6 +343,10 @@ var _ = Describe("Examples", func() {
 				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", "ejob-name=myfoo")
 				Expect(err).ToNot(HaveOccurred())
 
+				By("Checking for secret")
+				err = kubectlHelper.WaitForSecret(namespace, "foo-json")
+				Expect(err).ToNot(HaveOccurred())
+
 				By("Checking the secret data created")
 				outSecret, err := kubectlHelper.GetSecretData(namespace, "foo-json", "go-template={{.data.foo}}")
 				Expect(err).ToNot(HaveOccurred())
