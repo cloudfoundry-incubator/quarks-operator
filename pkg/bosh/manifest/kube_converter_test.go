@@ -38,6 +38,12 @@ var _ = Describe("kube converter", func() {
 			Expect(kubeConfig.DataGatheringJob).ToNot(BeNil())
 		})
 
+		It("creates a bpmconfigs job", func() {
+			err := act()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(kubeConfig.BPMConfigsJob).ToNot(BeNil())
+		})
+
 		It("creates a variable interpolation job", func() {
 			err := act()
 			Expect(err).ShouldNot(HaveOccurred())
