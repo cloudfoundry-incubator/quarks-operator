@@ -1,248 +1,18 @@
 package manifest
 
 import (
+	"crypto/sha1"
 	"fmt"
-	"io/ioutil"
-	"path/filepath"
+	"strings"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 )
-
-// JobInstance for data gathering
-type JobInstance struct {
-	Address  string                 `yaml:"address"`
-	AZ       string                 `yaml:"az"`
-	ID       string                 `yaml:"id"`
-	Index    int                    `yaml:"index"`
-	Instance int                    `yaml:"instance"`
-	Name     string                 `yaml:"name"`
-	Network  map[string]interface{} `yaml:"networks"`
-	IP       string                 `yaml:"ip"`
-}
 
 // Link with name for rendering
 type Link struct {
 	Name       string        `yaml:"name"`
 	Instances  []JobInstance `yaml:"instances"`
 	Properties interface{}   `yaml:"properties"`
-}
-
-// JobLink describes links inside a job properties
-// bosh_containerization.
-type JobLink struct {
-	Instances  []JobInstance          `yaml:"instances"`
-	Properties map[string]interface{} `yaml:"properties"`
-}
-
-const JobSpecFilename = "job.MF"
-
-// JobSpec describes the contents of "job.MF" files
-type JobSpec struct {
-	Name        string
-	Description string
-	Packages    []string
-	Templates   map[string]string
-	Properties  map[string]struct {
-		Description string
-		Default     interface{}
-		Example     interface{}
-	}
-	Consumes []struct {
-		Name     string
-		Type     string
-		Optional bool
-	}
-	Provides []struct {
-		Name       string
-		Type       string
-		Properties []string
-	}
-}
-
-// Job from BOSH deployment manifest
-type Job struct {
-	Name       string                 `yaml:"name"`
-	Release    string                 `yaml:"release"`
-	Consumes   map[string]interface{} `yaml:"consumes,omitempty"`
-	Provides   map[string]interface{} `yaml:"provides,omitempty"`
-	Properties JobProperties          `yaml:"properties,omitempty"`
-}
-
-func (j *Job) specDir(baseDir string) string {
-	return filepath.Join(baseDir, "jobs-src", j.Release, j.Name)
-}
-
-func (j *Job) loadSpec(baseDir string) (*JobSpec, error) {
-	jobMFFilePath := filepath.Join(j.specDir(baseDir), JobSpecFilename)
-	jobMfBytes, err := ioutil.ReadFile(jobMFFilePath)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read file")
-	}
-
-	jobSpec := JobSpec{}
-	if err := yaml.Unmarshal([]byte(jobMfBytes), &jobSpec); err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal")
-	}
-
-	return &jobSpec, nil
-}
-
-// BOSHContainerization represents the special 'bosh_containerization'
-// property key
-type BOSHContainerization struct {
-	Consumes  map[string]JobLink `yaml:"consumes"`
-	Instances []JobInstance      `yaml:"instances"`
-	Release   string             `yaml:"release"`
-	BPM       bpm.Config         `yaml:"bpm"`
-	Ports     []Port             `yaml:"ports"`
-}
-
-// Port represents the port to be opened up for this job
-type Port struct {
-	Name     string `yaml:"name"`
-	Protocol string `yaml:"protocol"`
-	Internal int    `yaml:"internal"`
-}
-
-// JobProperties represents the properties map of a Job
-type JobProperties struct {
-	BOSHContainerization `yaml:"bosh_containerization"`
-	Properties           map[string]interface{} `yaml:",inline"`
-}
-
-// ToMap returns a complete map with all properties, including the
-// bosh_containerization key
-func (p *JobProperties) ToMap() map[string]interface{} {
-	result := map[string]interface{}{}
-
-	for k, v := range p.Properties {
-		result[k] = v
-	}
-
-	result["bosh_containerization"] = p.BOSHContainerization
-
-	return result
-}
-
-// VMResource from BOSH deployment manifest
-type VMResource struct {
-	CPU               int `yaml:"cpu"`
-	RAM               int `yaml:"ram"`
-	EphemeralDiskSize int `yaml:"ephemeral_disk_size"`
-}
-
-// Network from BOSH deployment manifest
-type Network struct {
-	Name      string   `yaml:"name"`
-	StaticIps []string `yaml:"static_ips,omitempty"`
-	Default   []string `yaml:"default,omitempty"`
-}
-
-// Update from BOSH deployment manifest
-type Update struct {
-	Canaries        int     `yaml:"canaries"`
-	MaxInFlight     string  `yaml:"max_in_flight"`
-	CanaryWatchTime string  `yaml:"canary_watch_time"`
-	UpdateWatchTime string  `yaml:"update_watch_time"`
-	Serial          bool    `yaml:"serial,omitempty"`
-	VMStrategy      *string `yaml:"vm_strategy,omitempty"`
-}
-
-// MigratedFrom from BOSH deployment manifest
-type MigratedFrom struct {
-	Name string `yaml:"name"`
-	Az   string `yaml:"az,omitempty"`
-}
-
-// IPv6 from BOSH deployment manifest
-type IPv6 struct {
-	Enable bool `yaml:"enable"`
-}
-
-// JobDir from BOSH deployment manifest
-type JobDir struct {
-	Tmpfs     *bool  `yaml:"tmpfs,omitempty"`
-	TmpfsSize string `yaml:"tmpfs_size,omitempty"`
-}
-
-// Agent from BOSH deployment manifest
-type Agent struct {
-	Settings string `yaml:"settings,omitempty"`
-	Tmpfs    *bool  `yaml:"tmpfs,omitempty"`
-}
-
-// AgentEnvBoshConfig from BOSH deployment manifest
-type AgentEnvBoshConfig struct {
-	Password              string  `yaml:"password,omitempty"`
-	KeepRootPassword      string  `yaml:"keep_root_password,omitempty"`
-	RemoveDevTools        *bool   `yaml:"remove_dev_tools,omitempty"`
-	RemoveStaticLibraries *bool   `yaml:"remove_static_libraries,omitempty"`
-	SwapSize              *int    `yaml:"swap_size,omitempty"`
-	IPv6                  IPv6    `yaml:"ipv6,omitempty"`
-	JobDir                *JobDir `yaml:"job_dir,omitempty"`
-	Agent                 *Agent  `yaml:"agent,omitempty"`
-}
-
-// AgentEnv from BOSH deployment manifest
-type AgentEnv struct {
-	PersistentDiskFS           string              `yaml:"persistent_disk_fs,omitempty"`
-	PersistentDiskMountOptions []string            `yaml:"persistent_disk_mount_options,omitempty"`
-	AgentEnvBoshConfig         *AgentEnvBoshConfig `yaml:"bosh,omitempty"`
-}
-
-// InstanceGroup from BOSH deployment manifest
-type InstanceGroup struct {
-	Name               string                 `yaml:"name"`
-	Instances          int                    `yaml:"instances"`
-	AZs                []string               `yaml:"azs"`
-	Jobs               []Job                  `yaml:"jobs"`
-	VMType             string                 `yaml:"vm_type,omitempty"`
-	VMExtensions       []string               `yaml:"vm_extensions,omitempty"`
-	VMResources        *VMResource            `yaml:"vm_resources"`
-	Stemcell           string                 `yaml:"stemcell"`
-	PersistentDisk     *int                   `yaml:"persistent_disk,omitempty"`
-	PersistentDiskType string                 `yaml:"persistent_disk_type,omitempty"`
-	Networks           []*Network             `yaml:"networks,omitempty"`
-	Update             *Update                `yaml:"update,omitempty"`
-	MigratedFrom       *MigratedFrom          `yaml:"migrated_from,omitempty"`
-	LifeCycle          string                 `yaml:"lifecycle,omitempty"`
-	Properties         map[string]interface{} `yaml:"properties,omitempty"`
-	Env                *AgentEnv              `yaml:"env,omitempty"`
-}
-
-func (ig *InstanceGroup) jobInstances(namespace string, deploymentName string, jobName string, spec JobSpec) []JobInstance {
-	var jobsInstances []JobInstance
-	for i := 0; i < ig.Instances; i++ {
-
-		// TODO: Understand whether there are negative side-effects to using this
-		// default
-		azs := []string{""}
-		if len(ig.AZs) > 0 {
-			azs = ig.AZs
-		}
-
-		for _, az := range azs {
-			index := len(jobsInstances)
-			name := fmt.Sprintf("%s-%s", ig.Name, jobName)
-			id := fmt.Sprintf("%s-%d-%s", ig.Name, index, jobName)
-			// All jobs in same instance group will use same service
-			serviceName := fmt.Sprintf("%s-%s-%d", deploymentName, ig.Name, index)
-			// TODO: not allowed to hardcode svc.cluster.local
-			address := fmt.Sprintf("%s.%s.svc.cluster.local", serviceName, namespace)
-
-			jobsInstances = append(jobsInstances, JobInstance{
-				Address:  address,
-				AZ:       az,
-				ID:       id,
-				Index:    index,
-				Instance: i,
-				Name:     name,
-			})
-		}
-	}
-	return jobsInstances
 }
 
 // Feature from BOSH deployment manifest
@@ -350,4 +120,66 @@ type Manifest struct {
 	Properties     []map[string]interface{} `yaml:"properties,omitempty"`
 	Variables      []Variable               `yaml:"variables,omitempty"`
 	Update         *Update                  `yaml:"update,omitempty"`
+}
+
+// SHA1 calculates the SHA1 of the manifest
+func (m *Manifest) SHA1() (string, error) {
+	manifestBytes, err := yaml.Marshal(m)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", sha1.Sum(manifestBytes)), nil
+}
+
+// GetReleaseImage returns the release image location for a given instance group/job
+func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, error) {
+	var instanceGroup *InstanceGroup
+	for i := range m.InstanceGroups {
+		if m.InstanceGroups[i].Name == instanceGroupName {
+			instanceGroup = m.InstanceGroups[i]
+			break
+		}
+	}
+	if instanceGroup == nil {
+		return "", fmt.Errorf("instance group '%s' not found", instanceGroupName)
+	}
+
+	var stemcell *Stemcell
+	for i := range m.Stemcells {
+		if m.Stemcells[i].Alias == instanceGroup.Stemcell {
+			stemcell = m.Stemcells[i]
+		}
+	}
+
+	var job *Job
+	for i := range instanceGroup.Jobs {
+		if instanceGroup.Jobs[i].Name == jobName {
+			job = &instanceGroup.Jobs[i]
+			break
+		}
+	}
+	if job == nil {
+		return "", fmt.Errorf("job '%s' not found in instance group '%s'", jobName, instanceGroupName)
+	}
+
+	for i := range m.Releases {
+		if m.Releases[i].Name == job.Release {
+			release := m.Releases[i]
+			name := strings.TrimRight(release.URL, "/")
+
+			var stemcellVersion string
+
+			if release.Stemcell != nil {
+				stemcellVersion = release.Stemcell.OS + "-" + release.Stemcell.Version
+			} else {
+				if stemcell == nil {
+					return "", fmt.Errorf("stemcell could not be resolved for instance group %s", instanceGroup.Name)
+				}
+				stemcellVersion = stemcell.OS + "-" + stemcell.Version
+			}
+			return fmt.Sprintf("%s/%s:%s-%s", name, release.Name, stemcellVersion, release.Version), nil
+		}
+	}
+	return "", fmt.Errorf("release '%s' not found", job.Release)
 }
