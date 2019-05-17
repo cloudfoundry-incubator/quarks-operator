@@ -15,6 +15,14 @@ instance_groups:
             shared: true
         properties:
           bosh_containerization:
+            run:
+              healthcheck:
+                doppler:
+                  readiness:
+                    handler:
+                      exec:
+                        command:
+                        - "curl --silent --fail --head http://${HOSTNAME}:8080/health"
             bpm:
               processes:
                 - name: doppler
@@ -271,6 +279,14 @@ instance_groups:
             from: doppler
         properties:
           bosh_containerization:
+            run:
+              healthcheck:
+                doppler:
+                  liveness:
+                    handler:
+                      exec:
+                        command:
+                        - "curl --silent --fail --head http://${HOSTNAME}:8080/health"
             bpm:
               processes:
                 - name: loggregator_trafficcontroller

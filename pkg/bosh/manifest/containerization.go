@@ -1,6 +1,10 @@
 package manifest
 
-import "code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+import (
+	corev1 "k8s.io/api/core/v1"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+)
 
 // BOSHContainerization represents the special 'bosh_containerization'
 // property key
@@ -10,6 +14,7 @@ type BOSHContainerization struct {
 	Release   string             `yaml:"release"`
 	BPM       bpm.Config         `yaml:"bpm"`
 	Ports     []Port             `yaml:"ports"`
+	Run       RunConfig          `yaml:"run"`
 }
 
 // Port represents the port to be opened up for this job
@@ -36,4 +41,15 @@ type JobInstance struct {
 type JobLink struct {
 	Instances  []JobInstance          `yaml:"instances"`
 	Properties map[string]interface{} `yaml:"properties"`
+}
+
+// HealthCheck defines liveness and readiness probes for a container
+type HealthCheck struct {
+	ReadinessProbe *corev1.Probe `yaml:"readiness"`
+	LivenessProbe  *corev1.Probe `yaml:"liveness"`
+}
+
+// RunConfig describes the runtime configuration for this job
+type RunConfig struct {
+	HealthChecks map[string]HealthCheck `yaml:"healthcheck"`
 }
