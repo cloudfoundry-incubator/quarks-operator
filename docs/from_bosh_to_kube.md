@@ -9,10 +9,9 @@
   - [Open Questions and TODOs](#open-questions-and-todos)
   - [Example Deployment Manifest Conversion Details](#example-deployment-manifest-conversion-details)
   - [BPM](#bpm)
-    - [Entrypoint](#entrypoint)
-    - [Environment](#environment)
+    - [Entrypoint & Environment Variables](#entrypoint--environment-variables)
     - [Resources](#resources)
-    - [Healthchecks](#healthchecks)
+  - [Healthchecks](#healthchecks)
   - [Conversion Details](#conversion-details)
     - [Calculation of docker image location for releases](#calculation-of-docker-image-location-for-releases)
     - [Variables to Extended Secrets](#variables-to-extended-secrets)
@@ -357,13 +356,43 @@ tags:
 
 ## BPM
 
-### Entrypoint
+In a BOSH release some jobs have BPM configuration in `templates/bpm.yml.erb`. These BPM configs are converted into containers. For instance groups of the type `service` the containers are added to the `ExtendedStatefulSet`'s, for `errands` to the `ExtendedJob`'s pods.
+Each `process` specified in the BPM configuration is run in a single Kubernetes `container` as part of a pod.
 
-### Environment
+The following subsections describe the mapping of BPM configuration into containers.
+
+### Entrypoint & Environment Variables
+
+Bosh             | Kube Pod Container |
+--------------- | ---- |
+`executable`        | `command` |
+`args`              | `args` |
+`env`              | `env` |
 
 ### Resources
 
-### Healthchecks
+Bosh             | Kube Pod Container |
+--------------- | ---- |
+`workdir`             | `workingDir`. Not Supported. |
+`hooks`               | `Not Supported` |
+`capabilities`        | `container.SecurityContext.Capabilities`. Not yet supported.  |
+`limits`              | `container.Resources.Limits`. Not yet supported. |
+`ephermeral_disk`     | Not Supported. |
+`persistent_disk`     | Supported. |
+`additional_volumes`  | maps to `VolumeClaimTemplates` which creates Persistent Volume claims in kube cluster. Not yet supported. |
+`unsafe`              | Unmapped to Kubernetes resources. Can be programmatically supported. Not yet supported. |
+
+## Healthchecks
+
+BPM doesn't provide information for health checks and relies on monit instead. CF-Operator provides health checks via the [BOSHContainerization](https://github.com/cloudfoundry-incubator/cf-operator/blob/2cab6516e8a3fc1f0c814554912449b88dee3101/pkg/bosh/manifest/containerization.go#L7-L13) property in the deployment manifest.
+
+Healthcheck is used for checking the status of the BPM process's using liveness and readiness as defined in Kubernetes [docs](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/).
+
+Bosh             | Kube Pod Container |
+--------------- | ---- |
+`liveness` defined in properties of the Instance group job per BPM process.   | `livenessProbe`. Not Supported. |
+`readiness` defined in properties of the Instance group job per BPM process.  | `readinessProbe` Not Supported. |
+
 
 ## Conversion Details
 
