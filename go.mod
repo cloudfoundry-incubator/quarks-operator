@@ -1,6 +1,7 @@
 module code.cloudfoundry.org/cf-operator
 
 require (
+	code.cloudfoundry.org/bytefmt v0.0.0-20180906201452-2aa6f33b730c
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/appscode/jsonpatch v0.0.0-20190108182946-7c0e3b262f30 // indirect
 	github.com/bmatcuk/doublestar v1.1.1 // indirect

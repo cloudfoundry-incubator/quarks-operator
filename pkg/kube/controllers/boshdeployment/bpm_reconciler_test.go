@@ -57,6 +57,7 @@ var _ = Describe("ReconcileBPM", func() {
 		manager.GetSchemeReturns(scheme.Scheme)
 		manager.GetRecorderReturns(recorder)
 		resolver = fakes.FakeResolver{}
+		size := 1024
 
 		manifest = &bdm.Manifest{
 			Name: "fake-manifest",
@@ -73,8 +74,10 @@ var _ = Describe("ReconcileBPM", func() {
 			},
 			InstanceGroups: []*bdm.InstanceGroup{
 				{
-					Name:      "fakepod",
-					Instances: 1,
+					Name:               "fakepod",
+					Instances:          1,
+					PersistentDisk:     &size,
+					PersistentDiskType: "standard",
 					Jobs: []bdm.Job{
 						{
 							Name:    "foo",

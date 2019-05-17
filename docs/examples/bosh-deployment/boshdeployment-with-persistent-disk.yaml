@@ -1,0 +1,61 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nats-manifest
+data:
+  manifest: |
+    ---
+    name: nats-manifest
+    releases:
+    - name: nats
+      version: "26"
+      url: docker.io/cfcontainerization
+      stemcell:
+        os: opensuse-42.3
+        version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
+    instance_groups:
+    - name: nats
+      instances: 1
+      persistent_disk: 4096
+      persistent_disk_type: "standard"
+      jobs:
+      - name: nats
+        release: nats
+        properties:
+          nats:
+            user: admin
+            password: ((nats_password))
+          bosh_containerization:
+            ports:
+            - name: "nats"
+              protocol: "TCP"
+              internal: 4222
+            - name: "nats-routes"
+              protocol: TCP
+              internal: 4223
+    variables:
+    - name: nats_password
+      type: password
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ops-foo
+data:
+  ops: |
+    - type: replace
+      path: /instance_groups/name=nats?/instances
+      value: 2
+---
+apiVersion: fissile.cloudfoundry.org/v1alpha1
+kind: BOSHDeployment
+metadata:
+  name: nats-deployment
+spec:
+  manifest:
+    ref: nats-manifest
+    type: configmap
+  ops:
+  - ref: ops-foo
+    type: configmap

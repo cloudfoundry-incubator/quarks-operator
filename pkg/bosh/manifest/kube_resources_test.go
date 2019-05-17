@@ -87,10 +87,16 @@ var _ = Describe("kube converter", func() {
 					// Test shared volume setup
 					Expect(stS.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
 					Expect(stS.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[4].Name).To(Equal("store-dir"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[4].MountPath).To(Equal("/var/vcap/store"))
 					Expect(specCopierInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
 					Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 					Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
 					Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+
+					// Test share pod spec volumes
+					Expect(stS.Spec.Volumes[6].Name).To(Equal("store-dir"))
+					Expect(stS.Spec.Volumes[6].PersistentVolumeClaim.ClaimName).To(Equal("foo-deployment-diego-cell-pvc"))
 
 					// Test the renderer container setup
 					Expect(rendererInitContainer.Env[0].Name).To(Equal("INSTANCE_GROUP_NAME"))

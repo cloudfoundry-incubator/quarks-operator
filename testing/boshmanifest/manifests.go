@@ -34,6 +34,8 @@ instance_groups:
   - z2
   instances: 2
   lifecycle: service
+  persistent_disk: 1024
+  persistent_disk_type: "standard"
   vm_type: small-highmem
   vm_extensions:
   - 100GB_ephemeral_disk
