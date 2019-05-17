@@ -135,178 +135,23 @@ var _ = Describe("kube converter", func() {
 			})
 		})
 
-		Context("when the lifecycle is set to service", func() {
-			It("converts the instance group to an ExtendedStatefulSet", func() {
-				err := act()
-				Expect(err).ShouldNot(HaveOccurred())
-				anExtendedSts := kubeConfig.InstanceGroups[0].Spec.Template.Spec.Template
-				Expect(anExtendedSts.Name).To(Equal("diego-cell"))
-
-				specCopierInitContainer := anExtendedSts.Spec.InitContainers[0]
-				rendererInitContainer := anExtendedSts.Spec.InitContainers[1]
-
-				// Test containers in the extended statefulSet
-				Expect(anExtendedSts.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
-				Expect(anExtendedSts.Spec.Containers[0].Command).To(BeNil())
-				Expect(anExtendedSts.Spec.Containers[0].Name).To(Equal("cflinuxfs3-rootfs-setup"))
-
-				// Test init containers in the extended statefulSet
-				Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3"))
-				Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
-				Expect(specCopierInitContainer.Command[0]).To(Equal("bash"))
-				Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3"))
-				Expect(rendererInitContainer.Image).To(Equal("/:"))
-				Expect(rendererInitContainer.Name).To(Equal("renderer-diego-cell"))
-
-				// Test shared volume setup
-				Expect(anExtendedSts.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
-				Expect(anExtendedSts.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-				Expect(specCopierInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
-				Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-				Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
-				Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-
-				// Test the renderer container setup
-				Expect(rendererInitContainer.Env[0].Name).To(Equal("INSTANCE_GROUP_NAME"))
-				Expect(rendererInitContainer.Env[0].Value).To(Equal("diego-cell"))
-				Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
-				Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-				Expect(rendererInitContainer.VolumeMounts[1].Name).To(Equal("jobs-dir"))
-				Expect(rendererInitContainer.VolumeMounts[1].MountPath).To(Equal("/var/vcap/jobs"))
-				Expect(rendererInitContainer.VolumeMounts[2].Name).To(Equal("ig-resolved"))
-				Expect(rendererInitContainer.VolumeMounts[2].MountPath).To(Equal("/var/run/secrets/resolved-properties/diego-cell"))
-
-				// Test services for the extended statefulSet
-				service0 := kubeConfig.Services[0]
-				Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-0", m.Name, anExtendedSts.Name)))
-				Expect(service0.Spec.Selector).To(Equal(map[string]string{
-					manifest.LabelInstanceGroupName: anExtendedSts.Name,
-					essv1.LabelAZIndex:              "0",
-					essv1.LabelPodOrdinal:           "0",
-				}))
-				Expect(service0.Spec.Ports).To(Equal([]corev1.ServicePort{
-					{
-						Name:     "rep-server",
-						Protocol: corev1.ProtocolTCP,
-						Port:     1801,
-					},
-				}))
-
-				service1 := kubeConfig.Services[1]
-				Expect(service1.Name).To(Equal(fmt.Sprintf("%s-%s-1", m.Name, anExtendedSts.Name)))
-				Expect(service1.Spec.Selector).To(Equal(map[string]string{
-					manifest.LabelInstanceGroupName: anExtendedSts.Name,
-					essv1.LabelAZIndex:              "1",
-					essv1.LabelPodOrdinal:           "0",
-				}))
-				Expect(service1.Spec.Ports).To(Equal([]corev1.ServicePort{
-					{
-						Name:     "rep-server",
-						Protocol: corev1.ProtocolTCP,
-						Port:     1801,
-					},
-				}))
-
-				service2 := kubeConfig.Services[2]
-				Expect(service2.Name).To(Equal(fmt.Sprintf("%s-%s-2", m.Name, anExtendedSts.Name)))
-				Expect(service2.Spec.Selector).To(Equal(map[string]string{
-					manifest.LabelInstanceGroupName: anExtendedSts.Name,
-					essv1.LabelAZIndex:              "0",
-					essv1.LabelPodOrdinal:           "1",
-				}))
-				Expect(service2.Spec.Ports).To(Equal([]corev1.ServicePort{
-					{
-						Name:     "rep-server",
-						Protocol: corev1.ProtocolTCP,
-						Port:     1801,
-					},
-				}))
-
-				service3 := kubeConfig.Services[3]
-				Expect(service3.Name).To(Equal(fmt.Sprintf("%s-%s-3", m.Name, anExtendedSts.Name)))
-				Expect(service3.Spec.Selector).To(Equal(map[string]string{
-					manifest.LabelInstanceGroupName: anExtendedSts.Name,
-					essv1.LabelAZIndex:              "1",
-					essv1.LabelPodOrdinal:           "1",
-				}))
-				Expect(service3.Spec.Ports).To(Equal([]corev1.ServicePort{
-					{
-						Name:     "rep-server",
-						Protocol: corev1.ProtocolTCP,
-						Port:     1801,
-					},
-				}))
-
-				headlessService := kubeConfig.Services[4]
-				Expect(headlessService.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, anExtendedSts.Name)))
-				Expect(headlessService.Spec.Selector).To(Equal(map[string]string{
-					manifest.LabelInstanceGroupName: anExtendedSts.Name,
-				}))
-				Expect(headlessService.Spec.Ports).To(Equal([]corev1.ServicePort{
-					{
-						Name:     "rep-server",
-						Protocol: corev1.ProtocolTCP,
-						Port:     1801,
-					},
-				}))
-				Expect(headlessService.Spec.ClusterIP).To(Equal("None"))
-			})
-		})
-
-		Context("when the lifecycle is set to errand", func() {
-			It("converts the instance group to an ExtendedJob", func() {
-				err := act()
-				Expect(err).ShouldNot(HaveOccurred())
-				anExtendedJob := kubeConfig.Errands[0]
-
-				Expect(len(kubeConfig.Errands)).To(Equal(1))
-				Expect(len(kubeConfig.Errands)).ToNot(Equal(2))
-				Expect(anExtendedJob.Name).To(Equal("foo-deployment-redis-slave"))
-
-				specCopierInitContainer := anExtendedJob.Spec.Template.Spec.InitContainers[0]
-				rendererInitContainer := anExtendedJob.Spec.Template.Spec.InitContainers[1]
-
-				// Test containers in the extended job
-				Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Name).To(Equal("redis-server"))
-				Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
-				Expect(anExtendedJob.Spec.Template.Spec.Containers[0].Command).To(BeNil())
-
-				// Test init containers in the extended job
-				Expect(specCopierInitContainer.Name).To(Equal("spec-copier-redis"))
-				Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
-				Expect(specCopierInitContainer.Command[0]).To(Equal("bash"))
-				Expect(rendererInitContainer.Image).To(Equal("/:"))
-				Expect(rendererInitContainer.Name).To(Equal("renderer-redis-slave"))
-
-				// Test shared volume setup
-				Expect(anExtendedJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
-				Expect(anExtendedJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-				Expect(specCopierInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
-				Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-				Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
-				Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-
-				// Test mounting the resolved instance group properties in the renderer container
-				Expect(rendererInitContainer.Env[0].Name).To(Equal("INSTANCE_GROUP_NAME"))
-				Expect(rendererInitContainer.Env[0].Value).To(Equal("redis-slave"))
-				Expect(rendererInitContainer.VolumeMounts[1].Name).To(Equal("jobs-dir"))
-				Expect(rendererInitContainer.VolumeMounts[1].MountPath).To(Equal("/var/vcap/jobs"))
-			})
-		})
 	})
 
 	Context("ApplyBPMInfo", func() {
 		var bpmConfigs map[string]bpm.Configs
 
-		BeforeEach(func() {
-			m = *env.BOSHManifestWithBPM()
+		act := func() error {
+			return kubeConfig.ApplyBPMInfo(m.InstanceGroups, bpmConfigs)
+		}
+
+		JustBeforeEach(func() {
 			kubeConfig = manifest.NewKubeConfig("foo", &m)
 			kubeConfig.Convert(m)
 		})
 
-		act := func() error {
-			return kubeConfig.ApplyBPMInfo(bpmConfigs)
-		}
+		BeforeEach(func() {
+			m = env.DefaultBOSHManifest()
+		})
 
 		Context("when BPM is missing in configs", func() {
 			It("returns an error", func() {
@@ -315,8 +160,180 @@ var _ = Describe("kube converter", func() {
 			})
 		})
 
+		Context("when a BPM config is present", func() {
+			BeforeEach(func() {
+				c, err := bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
+				Expect(err).ShouldNot(HaveOccurred())
+
+				bpmConfigs = map[string]bpm.Configs{
+					"redis-slave": bpm.Configs{"redis-server": c},
+					"diego-cell":  bpm.Configs{"cflinuxfs3-rootfs-setup": c},
+				}
+			})
+
+			Context("when the lifecycle is set to service", func() {
+				It("converts the instance group to an ExtendedStatefulSet", func() {
+					err := act()
+					Expect(err).ShouldNot(HaveOccurred())
+					extStS := kubeConfig.InstanceGroups[0].Spec.Template.Spec.Template
+					Expect(extStS.Name).To(Equal("diego-cell"))
+
+					specCopierInitContainer := extStS.Spec.InitContainers[0]
+					rendererInitContainer := extStS.Spec.InitContainers[1]
+
+					// Test containers in the extended statefulSet
+					Expect(extStS.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
+					Expect(extStS.Spec.Containers[0].Command).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server"}))
+					Expect(extStS.Spec.Containers[0].Name).To(Equal("cflinuxfs3-rootfs-setup-test-server"))
+
+					// Test init containers in the extended statefulSet
+					Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3"))
+					Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
+					Expect(specCopierInitContainer.Command[0]).To(Equal("bash"))
+					Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3"))
+					Expect(rendererInitContainer.Image).To(Equal("/:"))
+					Expect(rendererInitContainer.Name).To(Equal("renderer-diego-cell"))
+
+					// Test shared volume setup
+					Expect(extStS.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
+					Expect(extStS.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+					Expect(specCopierInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
+					Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+					Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
+					Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+
+					// Test the renderer container setup
+					Expect(rendererInitContainer.Env[0].Name).To(Equal("INSTANCE_GROUP_NAME"))
+					Expect(rendererInitContainer.Env[0].Value).To(Equal("diego-cell"))
+					Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
+					Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+					Expect(rendererInitContainer.VolumeMounts[1].Name).To(Equal("jobs-dir"))
+					Expect(rendererInitContainer.VolumeMounts[1].MountPath).To(Equal("/var/vcap/jobs"))
+					Expect(rendererInitContainer.VolumeMounts[2].Name).To(Equal("ig-resolved"))
+					Expect(rendererInitContainer.VolumeMounts[2].MountPath).To(Equal("/var/run/secrets/resolved-properties/diego-cell"))
+
+					// Test services for the extended statefulSet
+					service0 := kubeConfig.Services[0]
+					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-0", m.Name, extStS.Name)))
+					Expect(service0.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelInstanceGroupName: extStS.Name,
+						essv1.LabelAZIndex:              "0",
+						essv1.LabelPodOrdinal:           "0",
+					}))
+					Expect(service0.Spec.Ports).To(Equal([]corev1.ServicePort{
+						{
+							Name:     "rep-server",
+							Protocol: corev1.ProtocolTCP,
+							Port:     1801,
+						},
+					}))
+
+					service1 := kubeConfig.Services[1]
+					Expect(service1.Name).To(Equal(fmt.Sprintf("%s-%s-1", m.Name, extStS.Name)))
+					Expect(service1.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelInstanceGroupName: extStS.Name,
+						essv1.LabelAZIndex:              "1",
+						essv1.LabelPodOrdinal:           "0",
+					}))
+					Expect(service1.Spec.Ports).To(Equal([]corev1.ServicePort{
+						{
+							Name:     "rep-server",
+							Protocol: corev1.ProtocolTCP,
+							Port:     1801,
+						},
+					}))
+
+					service2 := kubeConfig.Services[2]
+					Expect(service2.Name).To(Equal(fmt.Sprintf("%s-%s-2", m.Name, extStS.Name)))
+					Expect(service2.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelInstanceGroupName: extStS.Name,
+						essv1.LabelAZIndex:              "0",
+						essv1.LabelPodOrdinal:           "1",
+					}))
+					Expect(service2.Spec.Ports).To(Equal([]corev1.ServicePort{
+						{
+							Name:     "rep-server",
+							Protocol: corev1.ProtocolTCP,
+							Port:     1801,
+						},
+					}))
+
+					service3 := kubeConfig.Services[3]
+					Expect(service3.Name).To(Equal(fmt.Sprintf("%s-%s-3", m.Name, extStS.Name)))
+					Expect(service3.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelInstanceGroupName: extStS.Name,
+						essv1.LabelAZIndex:              "1",
+						essv1.LabelPodOrdinal:           "1",
+					}))
+					Expect(service3.Spec.Ports).To(Equal([]corev1.ServicePort{
+						{
+							Name:     "rep-server",
+							Protocol: corev1.ProtocolTCP,
+							Port:     1801,
+						},
+					}))
+
+					headlessService := kubeConfig.Services[4]
+					Expect(headlessService.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, extStS.Name)))
+					Expect(headlessService.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelInstanceGroupName: extStS.Name,
+					}))
+					Expect(headlessService.Spec.Ports).To(Equal([]corev1.ServicePort{
+						{
+							Name:     "rep-server",
+							Protocol: corev1.ProtocolTCP,
+							Port:     1801,
+						},
+					}))
+					Expect(headlessService.Spec.ClusterIP).To(Equal("None"))
+				})
+			})
+
+			Context("when the lifecycle is set to errand", func() {
+				It("converts the instance group to an ExtendedJob", func() {
+					err := act()
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(kubeConfig.Errands).To(HaveLen(1))
+
+					eJob := kubeConfig.Errands[0]
+					Expect(eJob.Name).To(Equal("foo-deployment-redis-slave"))
+
+					specCopierInitContainer := eJob.Spec.Template.Spec.InitContainers[0]
+					rendererInitContainer := eJob.Spec.Template.Spec.InitContainers[1]
+
+					// Test containers in the extended job
+					Expect(eJob.Spec.Template.Spec.Containers[0].Name).To(Equal("redis-server-test-server"))
+					Expect(eJob.Spec.Template.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
+					Expect(eJob.Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server"}))
+
+					// Test init containers in the extended job
+					Expect(specCopierInitContainer.Name).To(Equal("spec-copier-redis"))
+					Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
+					Expect(specCopierInitContainer.Command[0]).To(Equal("bash"))
+					Expect(rendererInitContainer.Image).To(Equal("/:"))
+					Expect(rendererInitContainer.Name).To(Equal("renderer-redis-slave"))
+
+					// Test shared volume setup
+					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
+					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+					Expect(specCopierInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
+					Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+					Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
+					Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+
+					// Test mounting the resolved instance group properties in the renderer container
+					Expect(rendererInitContainer.Env[0].Name).To(Equal("INSTANCE_GROUP_NAME"))
+					Expect(rendererInitContainer.Env[0].Value).To(Equal("redis-slave"))
+					Expect(rendererInitContainer.VolumeMounts[1].Name).To(Equal("jobs-dir"))
+					Expect(rendererInitContainer.VolumeMounts[1].MountPath).To(Equal("/var/vcap/jobs"))
+				})
+			})
+		})
+
 		Context("when multiple BPM processes exist", func() {
 			BeforeEach(func() {
+				m = *env.BOSHManifestWithBPM()
+
 				c1, err := bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
 				Expect(err).ShouldNot(HaveOccurred())
 				c2, err := bpm.NewConfig([]byte(boshreleases.MultiProcessBPMConfig))
@@ -382,12 +399,6 @@ var _ = Describe("kube converter", func() {
 				Expect(containers[3].Name).To(Equal("fake-job-c-alt-test-server"))
 				Expect(containers[4].Name).To(Equal("fake-job-d-test-server"))
 				Expect(containers[5].Name).To(Equal("fake-job-d-alt-test-server"))
-
-				containers = kubeConfig.InstanceGroups[1].Spec.Template.Spec.Template.Spec.InitContainers
-				Expect(containers).To(HaveLen(3))
-
-				containers = kubeConfig.InstanceGroups[1].Spec.Template.Spec.Template.Spec.InitContainers
-				Expect(containers).To(HaveLen(3))
 			})
 		})
 	})

@@ -229,7 +229,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, err
 		}
 
-		err = kubeConfigs.ApplyBPMInfo(bpmInfo)
+		err = kubeConfigs.ApplyBPMInfo(manifest.InstanceGroups, bpmInfo)
 		if err != nil {
 			log.Errorf(ctx, "Failed to apply BPM information: %v", err)
 			return reconcile.Result{}, err
