@@ -31,11 +31,9 @@ func NewKubectl() *Kubectl {
 // CreateNamespace create the namespace using kubectl command
 func (k *Kubectl) CreateNamespace(name string) error {
 	cmd := exec.Command("kubectl", "create", "namespace", name)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return errors.Wrapf(err, stderr.String())
+		return errors.Wrapf(err, string(out))
 	}
 	return nil
 }
@@ -43,11 +41,9 @@ func (k *Kubectl) CreateNamespace(name string) error {
 // DeleteNamespace deletes the namespace using kubectl command
 func (k *Kubectl) DeleteNamespace(name string) error {
 	cmd := exec.Command("kubectl", "delete", "namespace", name)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return errors.Wrapf(err, stderr.String())
+		return errors.Wrapf(err, string(out))
 	}
 	return nil
 }
@@ -55,11 +51,9 @@ func (k *Kubectl) DeleteNamespace(name string) error {
 // Create creates the resource using kubectl command
 func (k *Kubectl) Create(namespace string, yamlFilePath string) error {
 	cmd := exec.Command("kubectl", "--namespace", namespace, "create", "-f", yamlFilePath)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return errors.Wrapf(err, stderr.String())
+		return errors.Wrapf(err, string(out))
 	}
 	return nil
 }
@@ -67,11 +61,9 @@ func (k *Kubectl) Create(namespace string, yamlFilePath string) error {
 // Apply updates the resource using kubectl command
 func (k *Kubectl) Apply(namespace string, yamlFilePath string) error {
 	cmd := exec.Command("kubectl", "--namespace", namespace, "apply", "-f", yamlFilePath)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return errors.Wrapf(err, stderr.String())
+		return errors.Wrapf(err, string(out))
 	}
 	return nil
 }
@@ -100,10 +92,12 @@ func (k *Kubectl) RunCommandWithOutput(namespace string, podName string, command
 	kubectlCommand := "kubectl --namespace " + namespace + " exec -it " + podName + " " + commandInPod
 	cmd := exec.Command("bash", "-c", kubectlCommand)
 	var out bytes.Buffer
+	var stderr bytes.Buffer
 	cmd.Stdout = &out
+	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, stderr.String())
 	}
 	if len(out.String()) > 0 {
 		return out.String(), nil
@@ -113,9 +107,10 @@ func (k *Kubectl) RunCommandWithOutput(namespace string, podName string, command
 
 // GetSecretData fetches the specified output by the given templatePath
 func (k *Kubectl) GetSecretData(namespace string, secretName string, templatePath string) ([]byte, error) {
-	out, err := exec.Command("kubectl", "--namespace", namespace, "get", "secret", secretName, "-o", templatePath).Output()
+	cmd := exec.Command("kubectl", "--namespace", namespace, "get", "secret", secretName, "-o", templatePath)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return []byte{}, errors.Wrapf(err, "Failed to get secret")
+		return []byte{}, errors.Wrapf(err, string(out))
 	}
 	if len(string(out)) > 0 {
 		return out, nil
@@ -132,9 +127,10 @@ func (k *Kubectl) WaitForSecret(namespace string, secretName string) error {
 
 // SecretExists returns true if the pod by that name is in state running
 func (k *Kubectl) SecretExists(namespace string, secretName string) (bool, error) {
-	out, err := exec.Command("kubectl", "--namespace", namespace, "get", "secret", secretName).Output()
+	cmd := exec.Command("kubectl", "--namespace", namespace, "get", "secret", secretName)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return false, errors.Wrap(err, "Couldn't get secret by kubectl")
+		return false, errors.Wrapf(err, string(out))
 	}
 	if strings.Contains(string(out), secretName) {
 		return true, nil
@@ -152,11 +148,12 @@ func (k *Kubectl) Wait(namespace string, requiredStatus string, resourceName str
 // CheckWait check's if the condition is satisfied
 func (k *Kubectl) CheckWait(namespace string, requiredStatus string, resourceName string) (bool, error) {
 	cmd := exec.Command("kubectl", "--namespace", namespace, "wait", "--for=condition="+requiredStatus, resourceName)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return false, nil
+		if strings.Contains(string(out), "Error from server (NotFound)") {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, string(out))
 	}
 	return true, nil
 }
@@ -182,11 +179,12 @@ func (k *Kubectl) WaitLabelFilter(namespace string, requiredStatus string, resou
 // CheckPodReadyLabelFilter checks is the pod status is completed
 func (k *Kubectl) CheckPodReadyLabelFilter(namespace string, resourceName string, labelName string, requiredStatus string) (bool, error) {
 	cmd := exec.Command("kubectl", "--namespace", namespace, "wait", resourceName, "-l", labelName, "--for=condition="+requiredStatus)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return false, nil
+		if strings.Contains(string(out), "no matching resources found") {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, string(out))
 	}
 	return true, nil
 }
@@ -194,7 +192,8 @@ func (k *Kubectl) CheckPodReadyLabelFilter(namespace string, resourceName string
 // CheckPodCompleteLabelFilter checks is the pod status is completed
 func (k *Kubectl) CheckPodCompleteLabelFilter(namespace string, labelName string) (bool, error) {
 	exitCodeTemplate := "go-template=\"{{(index (index .items 0).status.containerStatuses 0).state.terminated.exitCode}}\""
-	out, err := exec.Command("kubectl", "--namespace", namespace, "get", "pod", "-l", labelName, "-o", exitCodeTemplate).Output()
+	cmd := exec.Command("kubectl", "--namespace", namespace, "get", "pod", "-l", labelName, "-o", exitCodeTemplate)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return false, nil
 	}
@@ -204,13 +203,14 @@ func (k *Kubectl) CheckPodCompleteLabelFilter(namespace string, labelName string
 	return false, nil
 }
 
-// CheckPodTerminateLabelFilter checks is the pod status is completed
+// CheckPodTerminateLabelFilter checks is the pod status is terminated
 func (k *Kubectl) CheckPodTerminateLabelFilter(namespace string, labelName string) (bool, error) {
-	out, err := exec.Command("kubectl", "--namespace", namespace, "get", "pod", "-l", labelName).Output()
+	cmd := exec.Command("kubectl", "--namespace", namespace, "get", "pod", "-l", labelName)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return false, err
+		return false, errors.Wrapf(err, string(out))
 	}
-	if string(out) == "" {
+	if string(out) == "No resources found.\n" {
 		return true, nil
 	}
 	return false, nil
@@ -219,11 +219,9 @@ func (k *Kubectl) CheckPodTerminateLabelFilter(namespace string, labelName strin
 // Delete creates the resource using kubectl command
 func (k *Kubectl) Delete(namespace string, yamlFilePath string) error {
 	cmd := exec.Command("kubectl", "--namespace", namespace, "delete", "-f", yamlFilePath)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return errors.Wrapf(err, stderr.String())
+		return errors.Wrapf(err, string(out))
 	}
 	return nil
 }
@@ -231,11 +229,12 @@ func (k *Kubectl) Delete(namespace string, yamlFilePath string) error {
 // DeleteResource deletes the resource using kubectl command
 func (k *Kubectl) DeleteResource(namespace string, resourceName string, name string) error {
 	cmd := exec.Command("kubectl", "--namespace", namespace, "delete", resourceName, name)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return errors.Wrapf(err, stderr.String())
+		if strings.Contains(string(out), "Error from server (NotFound)") {
+			return nil
+		}
+		return errors.Wrapf(err, string(out))
 	}
 	return nil
 }
@@ -243,11 +242,9 @@ func (k *Kubectl) DeleteResource(namespace string, resourceName string, name str
 // DeleteLabelFilter deletes the resource based on label using kubectl command
 func (k *Kubectl) DeleteLabelFilter(namespace string, resourceName string, labelName string) error {
 	cmd := exec.Command("kubectl", "--namespace", namespace, "delete", resourceName, "-l", labelName)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return errors.Wrapf(err, stderr.String())
+		return errors.Wrapf(err, string(out))
 	}
 	return nil
 }
@@ -255,9 +252,10 @@ func (k *Kubectl) DeleteLabelFilter(namespace string, resourceName string, label
 // SecretCheckData checks the field specified in the given field
 func (k *Kubectl) SecretCheckData(namespace string, secretName string, fieldPath string) error {
 	fetchCommand := "go-template=\"{{" + fieldPath + "}}\""
-	out, err := exec.Command("kubectl", "--namespace", namespace, "get", "secret", secretName, "-o", fetchCommand).Output()
+	cmd := exec.Command("kubectl", "--namespace", namespace, "get", "secret", secretName, "-o", fetchCommand)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, string(out))
 	}
 	if len(string(out)) > 0 {
 		return nil

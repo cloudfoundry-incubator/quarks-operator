@@ -140,6 +140,13 @@ var _ = Describe("Examples", func() {
 				err = kubectlHelper.Delete(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
+				By("Clean up resources")
+				err = kubectlHelper.DeleteResource(namespace, "pod", "example-extendedstatefulset-v1-0")
+				Expect(err).ToNot(HaveOccurred())
+
+				err = kubectlHelper.DeleteResource(namespace, "pod", "example-extendedstatefulset-v1-1")
+				Expect(err).ToNot(HaveOccurred())
+
 			})
 
 			It("bosh-deployment example must work", func() {
@@ -163,6 +170,12 @@ var _ = Describe("Examples", func() {
 				err = kubectlHelper.Delete(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
+				err = kubectlHelper.DeleteResource(namespace, "pod", "nats-deployment-nats-v1-1")
+				Expect(err).ToNot(HaveOccurred())
+
+				err = kubectlHelper.DeleteResource(namespace, "pod", "nats-deployment-nats-v1-0")
+				Expect(err).ToNot(HaveOccurred())
+
 				err = kubectlHelper.DeleteResource(namespace, "secret", "nats-deployment.bpm.nats-v1")
 				Expect(err).ToNot(HaveOccurred())
 
@@ -174,6 +187,7 @@ var _ = Describe("Examples", func() {
 
 				err = kubectlHelper.DeleteResource(namespace, "secret", "nats-deployment.with-vars.interpolation-v1")
 				Expect(err).ToNot(HaveOccurred())
+
 			})
 
 			It("bosh-deployment with customed variale example must work", func() {
@@ -204,6 +218,12 @@ var _ = Describe("Examples", func() {
 				By("Clean up resources")
 
 				err = kubectlHelper.Delete(namespace, yamlFilePath)
+				Expect(err).ToNot(HaveOccurred())
+
+				err = kubectlHelper.DeleteResource(namespace, "pod", "nats-deployment-nats-v1-1")
+				Expect(err).ToNot(HaveOccurred())
+
+				err = kubectlHelper.DeleteResource(namespace, "pod", "nats-deployment-nats-v1-0")
 				Expect(err).ToNot(HaveOccurred())
 
 				err = kubectlHelper.DeleteResource(namespace, "secret", "nats-deployment.bpm.nats-v1")
