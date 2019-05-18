@@ -16,7 +16,7 @@ type InstanceGroup struct {
 	PersistentDiskType string                 `yaml:"persistent_disk_type,omitempty"`
 	Networks           []*Network             `yaml:"networks,omitempty"`
 	Update             *Update                `yaml:"update,omitempty"`
-	MigratedFrom       []*MigratedFrom          `yaml:"migrated_from,omitempty"`
+	MigratedFrom       []*MigratedFrom        `yaml:"migrated_from,omitempty"`
 	LifeCycle          string                 `yaml:"lifecycle,omitempty"`
 	Properties         map[string]interface{} `yaml:"properties,omitempty"`
 	Env                *AgentEnv              `yaml:"env,omitempty"`
