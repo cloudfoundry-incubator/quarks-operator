@@ -47,6 +47,7 @@ var _ = Describe("ReconcileBPM", func() {
 		instance                      *bdv1.BOSHDeployment
 		manifestWithVars              *corev1.Secret
 		instanceGroupResolvedManifest *corev1.Secret
+		bpmInformation                *corev1.Secret
 	)
 
 	BeforeEach(func() {
@@ -130,7 +131,7 @@ var _ = Describe("ReconcileBPM", func() {
 				},
 			},
 			Status: bdv1.BOSHDeploymentStatus{
-				State: cfd.DataGatheredState,
+				State: cfd.BPMConfigsCreatedState,
 			},
 		}
 
@@ -224,6 +225,26 @@ releases:
     version: 42.3`),
 			},
 		}
+		bpmInformation = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo.bpm.fakepod-v1",
+				Namespace: "default",
+				Labels: map[string]string{
+					bdv1.LabelDeploymentName:             "foo",
+					versionedsecretstore.LabelSecretKind: "versionedSecret",
+					versionedsecretstore.LabelVersion:    "1",
+				},
+			},
+			Data: map[string][]byte{
+				"bpm.yaml": []byte(`foo:
+  processes:
+  - name: fake
+    executable: /var/vcap/packages/fake/bin/fake-exec
+    args: []
+    limits:
+      open_files: 100000`),
+			},
+		}
 
 		client = &cfakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
@@ -237,6 +258,9 @@ releases:
 				if nn.Name == instanceGroupResolvedManifest.Name {
 					instanceGroupResolvedManifest.DeepCopyInto(object.(*corev1.Secret))
 				}
+				if nn.Name == bpmInformation.Name {
+					bpmInformation.DeepCopyInto(object.(*corev1.Secret))
+				}
 			}
 
 			return nil
@@ -248,6 +272,7 @@ releases:
 				secretList.Items = []corev1.Secret{
 					*manifestWithVars,
 					*instanceGroupResolvedManifest,
+					*bpmInformation,
 				}
 				secretList.DeepCopyInto(object.(*corev1.SecretList))
 			}
@@ -356,6 +381,9 @@ releases:
 						if nn.Name == instanceGroupResolvedManifest.Name {
 							instanceGroupResolvedManifest.DeepCopyInto(object.(*corev1.Secret))
 						}
+						if nn.Name == bpmInformation.Name {
+							bpmInformation.DeepCopyInto(object.(*corev1.Secret))
+						}
 					case *corev1.Service:
 						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 					}
@@ -372,7 +400,7 @@ releases:
 				Expect(err.Error()).To(ContainSubstring("failed to deploy instance groups"))
 			})
 
-			It("creates instance groups and updates data gathered state to deploying state successfully", func() {
+			It("creates instance groups and updates bpm configs created state to deploying state successfully", func() {
 				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
 					switch object.(type) {
 					case *bdv1.BOSHDeployment:
@@ -381,7 +409,7 @@ releases:
 					return nil
 				})
 
-				By("From ops applied state to variable interpolated state")
+				By("From bpm configs created to variable interpolated state")
 				result, err := reconciler.Reconcile(request)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{

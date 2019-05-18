@@ -217,6 +217,13 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			return reconcile.Result{}, err
 		}
 
+	case DataGatheredState:
+		err = r.createBPMConfigsJob(ctx, instance, manifest, *kubeConfigs)
+		if err != nil {
+			err = log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to create BPM configs eJob: %v", err)
+			return reconcile.Result{}, err
+		}
+
 	case DeployingState:
 		// TODO How to determine deployed state
 	default:
@@ -531,6 +538,39 @@ func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, in
 	}
 
 	instance.Status.State = DataGatheredState
+
+	return nil
+}
+
+// createBPMConfigsJob creates an ejob for creating the BPM configs from manifest
+func (r *ReconcileBOSHDeployment) createBPMConfigsJob(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfig bdm.KubeConfig) error {
+
+	// Generate the ExtendedJob object
+	bpmConfigsJob := kubeConfig.BPMConfigsJob
+	log.Debugf(ctx, "Creating BPM configs extendedJob %s/%s", bpmConfigsJob.Namespace, bpmConfigsJob.Name)
+
+	// Set BOSHDeployment instance as the owner and controller
+	if err := r.setReference(instance, bpmConfigsJob, r.scheme); err != nil {
+		log.WithEvent(instance, "NewJobForDataGatheringError").Errorf(ctx, "Failed to set ownerReference for ExtendedJob '%s': %v", bpmConfigsJob.GetName(), err)
+		return err
+	}
+
+	_, err := controllerutil.CreateOrUpdate(ctx, r.client, bpmConfigsJob.DeepCopy(), func(obj runtime.Object) error {
+		exstEJob, ok := obj.(*ejv1.ExtendedJob)
+		if !ok {
+			return fmt.Errorf("object is not an ExtendedJob")
+		}
+
+		exstEJob.Labels = bpmConfigsJob.Labels
+		exstEJob.Spec = bpmConfigsJob.Spec
+		return nil
+	})
+	if err != nil {
+		log.WarningEvent(ctx, instance, "CreateBPMConfigsJobError", err.Error())
+		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", bpmConfigsJob.Name)
+	}
+
+	instance.Status.State = BPMConfigsCreatedState
 
 	return nil
 }

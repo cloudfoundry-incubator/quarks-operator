@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	bpm "code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
@@ -106,7 +107,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 
 	switch instanceState {
-	case DataGatheredState:
+	case BPMConfigsCreatedState:
 		// Wait for all instance group property outputs to be ready
 		// We need BPM information to start everything up
 		bpmInfo, err := r.waitForBPM(ctx, instance, manifest, kubeConfigs)
@@ -193,15 +194,15 @@ func (r *ReconcileBPM) resolveManifest(ctx context.Context, instance *bdv1.BOSHD
 }
 
 // waitForBPM checks to see if all BPM information is available and returns an error if it isn't
-func (r *ReconcileBPM) waitForBPM(ctx context.Context, deployment *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfigs *bdm.KubeConfig) (map[string]bdm.Manifest, error) {
+func (r *ReconcileBPM) waitForBPM(ctx context.Context, deployment *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfigs *bdm.KubeConfig) (map[string]bpm.Configs, error) {
 	// TODO: this approach is not good enough, we need to reconcile and trigger on all of these secrets
 	// TODO: these secrets could exist, but not be up to date - we have to make sure they exist for the appropriate version
 
-	result := map[string]bdm.Manifest{}
+	result := map[string]bpm.Configs{}
 
 	for _, container := range kubeConfigs.DataGatheringJob.Spec.Template.Spec.Containers {
 		_, secretName := names.CalculateEJobOutputSecretPrefixAndName(
-			names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+			names.DeploymentSecretBpmInformation,
 			manifest.Name,
 			container.Name,
 			false,
@@ -212,16 +213,15 @@ func (r *ReconcileBPM) waitForBPM(ctx context.Context, deployment *bdv1.BOSHDepl
 		if err != nil && apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("secret %s/%s doesn't exist", deployment.Namespace, secretName)
 		} else if err != nil {
-			return nil, errors.Wrapf(err, "failed to retrieve resolved properties secret %s/%s", deployment.Namespace, secretName)
+			return nil, errors.Wrapf(err, "failed to retrieve bpm configs secret %s/%s", deployment.Namespace, secretName)
 		}
 
-		resolvedProperties := bdm.Manifest{}
-
-		err = yaml.Unmarshal(secret.Data["properties.yaml"], &resolvedProperties)
+		bpmConfigs := bpm.Configs{}
+		err = yaml.Unmarshal(secret.Data["bpm.yaml"], &bpmConfigs)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't unmarshal resolved properties from secret %s/%s", deployment.Namespace, secretName)
+			return nil, fmt.Errorf("couldn't unmarshal bpm configs from secret %s/%s", deployment.Namespace, secretName)
 		}
-		result[container.Name] = resolvedProperties
+		result[container.Name] = bpmConfigs
 	}
 
 	return result, nil
