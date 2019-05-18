@@ -21,7 +21,7 @@ spec:
             name: metrics
           command:
           - cf-operator
-          imagePullPolicy: Always
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
           env:
             - name: CF_OPERATOR_NAMESPACE
               valueFrom:
