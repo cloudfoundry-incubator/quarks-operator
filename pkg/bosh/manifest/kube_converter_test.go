@@ -138,9 +138,7 @@ var _ = Describe("kube converter", func() {
 	})
 
 	Context("ApplyBPMInfo", func() {
-		var bpmConfigs map[string]bpm.Configs
-
-		act := func() error {
+		act := func(bpmConfigs map[string]bpm.Configs) error {
 			return kubeConfig.ApplyBPMInfo(m.InstanceGroups, bpmConfigs)
 		}
 
@@ -155,12 +153,14 @@ var _ = Describe("kube converter", func() {
 
 		Context("when BPM is missing in configs", func() {
 			It("returns an error", func() {
-				err := act()
+				bpmConfigs := map[string]bpm.Configs{}
+				err := act(bpmConfigs)
 				Expect(err).Should(HaveOccurred())
 			})
 		})
 
 		Context("when a BPM config is present", func() {
+			var bpmConfigs map[string]bpm.Configs
 			BeforeEach(func() {
 				c, err := bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
 				Expect(err).ShouldNot(HaveOccurred())
@@ -173,7 +173,7 @@ var _ = Describe("kube converter", func() {
 
 			Context("when the lifecycle is set to service", func() {
 				It("converts the instance group to an ExtendedStatefulSet", func() {
-					err := act()
+					err := act(bpmConfigs)
 					Expect(err).ShouldNot(HaveOccurred())
 					extStS := kubeConfig.InstanceGroups[0].Spec.Template.Spec.Template
 					Expect(extStS.Name).To(Equal("diego-cell"))
@@ -291,7 +291,7 @@ var _ = Describe("kube converter", func() {
 
 			Context("when the lifecycle is set to errand", func() {
 				It("converts the instance group to an ExtendedJob", func() {
-					err := act()
+					err := act(bpmConfigs)
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(kubeConfig.Errands).To(HaveLen(1))
 
@@ -331,6 +331,8 @@ var _ = Describe("kube converter", func() {
 		})
 
 		Context("when multiple BPM processes exist", func() {
+			var bpmConfigs map[string]bpm.Configs
+
 			BeforeEach(func() {
 				m = *env.BOSHManifestWithBPM()
 
@@ -359,7 +361,7 @@ var _ = Describe("kube converter", func() {
 			})
 
 			It("creates a k8s container for each BPM process", func() {
-				err := act()
+				err := act(bpmConfigs)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(kubeConfig.InstanceGroups).To(HaveLen(2))
 				Expect(kubeConfig.Errands).To(HaveLen(1))
