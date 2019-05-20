@@ -29,6 +29,7 @@ import (
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	cfcfg "code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	ctxlog "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 )
 
@@ -107,7 +108,11 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 	JustBeforeEach(func() {
 		resolver.ResolveManifestReturns(manifest, nil)
-		reconciler = cfd.NewReconciler(ctx, config, manager, &resolver, controllerutil.SetControllerReference)
+		reconciler = cfd.NewReconciler(ctx, config, manager, &resolver,
+			controllerutil.SetControllerReference,
+			versionedsecretstore.NewVersionedSecretStore(manager.GetClient()),
+			bdm.NewKubeConverter(config.Namespace),
+		)
 	})
 
 	Describe("Reconcile", func() {
@@ -195,9 +200,13 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles errors when setting the owner reference on the object", func() {
-				reconciler = cfd.NewReconciler(ctx, config, manager, &resolver, func(owner, object metav1.Object, scheme *runtime.Scheme) error {
-					return fmt.Errorf("failed to set reference")
-				})
+				reconciler = cfd.NewReconciler(ctx, config, manager, &resolver,
+					func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+						return fmt.Errorf("failed to set reference")
+					},
+					versionedsecretstore.NewVersionedSecretStore(manager.GetClient()),
+					bdm.NewKubeConverter(config.Namespace),
+				)
 
 				// First reconcile doesn't create any resources
 				_, err := reconciler.Reconcile(request)

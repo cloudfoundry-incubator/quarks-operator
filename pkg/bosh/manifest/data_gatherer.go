@@ -16,14 +16,16 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 )
 
-// JobProviderLinks
+// JobProviderLinks provides links to other jobs, indexed by provider type and name
 type JobProviderLinks map[string]map[string]JobLink
 
+// Lookup returns a link for a type and name, used when links are consumed
 func (jpl JobProviderLinks) Lookup(consumesType string, consumesName string) (JobLink, bool) {
 	link, ok := jpl[consumesType][consumesName]
 	return link, ok
 }
 
+// Add another job to the lookup map
 func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstance) error {
 	var properties map[string]interface{}
 

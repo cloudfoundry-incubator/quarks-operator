@@ -12,6 +12,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// DesiredManifestKeyName is the name of the key in desired manifest secret
+const DesiredManifestKeyName = "manifest.yaml"
+
 // JobFactory creates Jobs for a given manifest
 type JobFactory struct {
 	Manifest  Manifest

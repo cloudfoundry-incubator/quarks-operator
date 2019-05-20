@@ -8,6 +8,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+// JobSpecFilename is the name of the job spec manifest in an unpacked BOSH release
 const JobSpecFilename = "job.MF"
 
 // JobSpec describes the contents of "job.MF" files
