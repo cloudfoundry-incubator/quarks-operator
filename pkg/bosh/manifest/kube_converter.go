@@ -38,7 +38,6 @@ var (
 
 // KubeConfig represents a Manifest in kube resources
 type KubeConfig struct {
-	allBPMConfigs        map[string]bpm.Configs
 	namespace            string
 	releaseImageProvider releaseImageProvider
 	manifestName         string
@@ -105,12 +104,14 @@ func (kc *KubeConfig) Variables(variables []Variable) []esv1.ExtendedSecret {
 // ApplyBPMInfo uses BOSH Process Manager information to update container information like entrypoint, env vars, etc.
 // and create the extended stateful sets and extended jobs for instance groups
 func (kc *KubeConfig) ApplyBPMInfo(instanceGroups []*InstanceGroup, allBPMConfigs map[string]bpm.Configs) error {
-	kc.allBPMConfigs = allBPMConfigs
-
 	for _, ig := range instanceGroups {
 		switch ig.LifeCycle {
 		case "service", "":
-			convertedExtStatefulSet, err := kc.serviceToExtendedSts(ig)
+			bpmConfigs, ok := allBPMConfigs[ig.Name]
+			if !ok {
+				return errors.Errorf("couldn't find instance group '%s' in bpm configs set", ig.Name)
+			}
+			convertedExtStatefulSet, err := kc.serviceToExtendedSts(ig, bpmConfigs)
 			if err != nil {
 				return err
 			}
@@ -125,7 +126,11 @@ func (kc *KubeConfig) ApplyBPMInfo(instanceGroups []*InstanceGroup, allBPMConfig
 
 			kc.InstanceGroups = append(kc.InstanceGroups, convertedExtStatefulSet)
 		case "errand":
-			convertedEJob, err := kc.errandToExtendedJob(ig)
+			bpmConfigs, ok := allBPMConfigs[ig.Name]
+			if !ok {
+				return errors.Errorf("couldn't find instance group '%s' in bpm configs set", ig.Name)
+			}
+			convertedEJob, err := kc.errandToExtendedJob(ig, bpmConfigs)
 			if err != nil {
 				return err
 			}
@@ -137,7 +142,7 @@ func (kc *KubeConfig) ApplyBPMInfo(instanceGroups []*InstanceGroup, allBPMConfig
 }
 
 // serviceToExtendedSts will generate an ExtendedStatefulSet
-func (kc *KubeConfig) serviceToExtendedSts(ig *InstanceGroup) (essv1.ExtendedStatefulSet, error) {
+func (kc *KubeConfig) serviceToExtendedSts(ig *InstanceGroup, bpmConfigs bpm.Configs) (essv1.ExtendedStatefulSet, error) {
 	igName := ig.Name
 
 	listOfInitContainers, err := kc.jobsToInitContainers(igName, ig.Jobs)
@@ -185,7 +190,7 @@ func (kc *KubeConfig) serviceToExtendedSts(ig *InstanceGroup) (essv1.ExtendedSta
 		},
 	}
 
-	containers, err := kc.jobsToContainers(igName, ig.Jobs)
+	containers, err := kc.jobsToContainers(igName, ig.Jobs, bpmConfigs)
 	if err != nil {
 		return essv1.ExtendedStatefulSet{}, err
 	}
@@ -326,7 +331,7 @@ func (kc *KubeConfig) serviceToKubeServices(ig *InstanceGroup, eSts *essv1.Exten
 }
 
 // errandToExtendedJob will generate an ExtendedJob
-func (kc *KubeConfig) errandToExtendedJob(ig *InstanceGroup) (ejv1.ExtendedJob, error) {
+func (kc *KubeConfig) errandToExtendedJob(ig *InstanceGroup, bpmConfigs bpm.Configs) (ejv1.ExtendedJob, error) {
 	igName := ig.Name
 
 	listOfInitContainers, err := kc.jobsToInitContainers(igName, ig.Jobs)
@@ -374,10 +379,11 @@ func (kc *KubeConfig) errandToExtendedJob(ig *InstanceGroup) (ejv1.ExtendedJob, 
 		},
 	}
 
-	containers, err := kc.jobsToContainers(igName, ig.Jobs)
+	containers, err := kc.jobsToContainers(igName, ig.Jobs, bpmConfigs)
 	if err != nil {
 		return ejv1.ExtendedJob{}, err
 	}
+
 	eJob := ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", kc.manifestName, igName),
@@ -475,19 +481,14 @@ func (kc *KubeConfig) jobsToInitContainers(igName string, jobs []Job) ([]corev1.
 }
 
 // jobsToContainers creates a list of Containers for corev1.PodSpec Containers field
-func (kc *KubeConfig) jobsToContainers(igName string, jobs []Job) ([]corev1.Container, error) {
-	applyBPMOnContainer := func(igName string, container corev1.Container) (error, []corev1.Container) {
+func (kc *KubeConfig) jobsToContainers(igName string, jobs []Job, bpmConfigs bpm.Configs) ([]corev1.Container, error) {
+	applyBPMOnContainer := func(container corev1.Container) (error, []corev1.Container) {
 		boshJobName := container.Name
 		containers := []corev1.Container{}
 
-		igBPMConfigs, ok := kc.allBPMConfigs[igName]
+		bpmConfig, ok := bpmConfigs[boshJobName]
 		if !ok {
-			return errors.Errorf("couldn't find instance group '%s' in bpm configs set", igName), containers
-		}
-
-		bpmConfig, ok := igBPMConfigs[boshJobName]
-		if !ok {
-			return errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs for instance group '%s'", boshJobName, igName), containers
+			return errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", boshJobName), containers
 		}
 
 		if len(bpmConfig.Processes) < 1 {
@@ -503,7 +504,6 @@ func (kc *KubeConfig) jobsToContainers(igName string, jobs []Job) ([]corev1.Cont
 			for name, value := range process.Env {
 				c.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
 			}
-			// c.Healthcheck = lookupHealthcheck(job.Name, process.Name)
 			c.WorkingDir = process.Workdir
 
 			containers = append(containers, *c)
@@ -524,7 +524,7 @@ func (kc *KubeConfig) jobsToContainers(igName string, jobs []Job) ([]corev1.Cont
 			return []corev1.Container{}, err
 		}
 
-		err, processes := applyBPMOnContainer(igName, corev1.Container{
+		err, processes := applyBPMOnContainer(corev1.Container{
 			Name:  fmt.Sprintf(job.Name),
 			Image: jobImage,
 			VolumeMounts: []corev1.VolumeMount{
