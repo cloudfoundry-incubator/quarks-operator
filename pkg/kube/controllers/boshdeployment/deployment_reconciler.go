@@ -31,6 +31,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
+	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // State of instance
@@ -58,8 +59,7 @@ type Owner interface {
 }
 
 // NewReconciler returns a new reconcile.Reconciler
-func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
-	versionedSecretStore := versionedsecretstore.NewVersionedSecretStore(mgr.GetClient())
+func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc, store vss.VersionedSecretStore, kubeConverter *bdm.KubeConverter) reconcile.Reconciler {
 
 	return &ReconcileBOSHDeployment{
 		ctx:                  ctx,
@@ -69,7 +69,8 @@ func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manag
 		resolver:             resolver,
 		setReference:         srf,
 		owner:                owner.NewOwner(mgr.GetClient(), mgr.GetScheme()),
-		versionedSecretStore: versionedSecretStore,
+		versionedSecretStore: store,
+		kubeConverter:        kubeConverter,
 	}
 }
 
@@ -85,6 +86,7 @@ type ReconcileBOSHDeployment struct {
 	config               *config.Config
 	owner                Owner
 	versionedSecretStore versionedsecretstore.VersionedSecretStore
+	kubeConverter        *bdm.KubeConverter
 }
 
 // Reconcile reads that state of the cluster for a BOSHDeployment object and makes changes based on the state read
@@ -164,7 +166,6 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Generate all the kube objects we need for the manifest
 	log.Debug(ctx, "Converting bosh manifest to kube objects")
-	kubeConverters := bdm.NewKubeConverter(r.config.Namespace, manifest.Name)
 	jobFactory := bdm.NewJobFactory(*manifest, instance.GetNamespace())
 
 	if instanceState == "" {
@@ -189,7 +190,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		instance.Status.State = OpsAppliedState
 
 	case OpsAppliedState:
-		secrets := kubeConverters.Variables(manifest.Variables)
+		secrets := r.kubeConverter.Variables(manifest.Name, manifest.Variables)
 		err = r.generateVariableSecrets(ctx, instance, manifest, secrets)
 		if err != nil {
 			log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "Failed to generate variables: %v", err)
@@ -247,7 +248,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, err
 		}
 
-		resources, err := kubeConverters.BPMResources(manifest.InstanceGroups, manifest, bpmInfo)
+		resources, err := r.kubeConverter.BPMResources(manifest.Name, manifest.InstanceGroups, manifest, bpmInfo)
 		if err != nil {
 			log.Errorf(ctx, "Failed to apply BPM information: %v", err)
 			return reconcile.Result{}, err

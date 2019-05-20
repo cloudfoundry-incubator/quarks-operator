@@ -22,8 +22,8 @@ var _ = Describe("kube converter", func() {
 
 	Context("BPMResources", func() {
 		act := func(bpmConfigs map[string]bpm.Configs) (*manifest.BPMResources, error) {
-			kubeConverter := manifest.NewKubeConverter("foo", m.Name)
-			resources, err := kubeConverter.BPMResources(m.InstanceGroups, &m, bpmConfigs)
+			kubeConverter := manifest.NewKubeConverter("foo")
+			resources, err := kubeConverter.BPMResources(m.Name, m.InstanceGroups, &m, bpmConfigs)
 			return resources, err
 		}
 

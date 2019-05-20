@@ -23,8 +23,8 @@ var _ = Describe("kube converter", func() {
 		})
 
 		act := func() []esv1.ExtendedSecret {
-			kubeConverter := manifest.NewKubeConverter("foo", m.Name)
-			return kubeConverter.Variables(m.Variables)
+			kubeConverter := manifest.NewKubeConverter("foo")
+			return kubeConverter.Variables(m.Name, m.Variables)
 		}
 
 		Context("converting variables", func() {

@@ -9,23 +9,21 @@ import (
 
 // KubeConverter represents a Manifest in kube resources
 type KubeConverter struct {
-	namespace    string
-	manifestName string
+	namespace string
 }
 
 // NewKubeConverter converts a Manifest into kube resources
-func NewKubeConverter(namespace string, manifestName string) *KubeConverter {
+func NewKubeConverter(namespace string) *KubeConverter {
 	return &KubeConverter{
-		namespace:    namespace,
-		manifestName: manifestName,
+		namespace: namespace,
 	}
 }
 
-func (kc *KubeConverter) Variables(variables []Variable) []esv1.ExtendedSecret {
+func (kc *KubeConverter) Variables(manifestName string, variables []Variable) []esv1.ExtendedSecret {
 	secrets := []esv1.ExtendedSecret{}
 
 	for _, v := range variables {
-		secretName := names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, kc.manifestName, v.Name)
+		secretName := names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, manifestName, v.Name)
 		s := esv1.ExtendedSecret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
@@ -47,11 +45,11 @@ func (kc *KubeConverter) Variables(variables []Variable) []esv1.ExtendedSecret {
 			}
 			if v.Options.CA != "" {
 				certRequest.CARef = esv1.SecretReference{
-					Name: names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, kc.manifestName, v.Options.CA),
+					Name: names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, manifestName, v.Options.CA),
 					Key:  "certificate",
 				}
 				certRequest.CAKeyRef = esv1.SecretReference{
-					Name: names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, kc.manifestName, v.Options.CA),
+					Name: names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, manifestName, v.Options.CA),
 					Key:  "private_key",
 				}
 			}
