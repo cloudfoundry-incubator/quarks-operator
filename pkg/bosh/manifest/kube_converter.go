@@ -42,7 +42,6 @@ type KubeConfig struct {
 	namespace            string
 	releaseImageProvider releaseImageProvider
 	manifestName         string
-	Variables            []esv1.ExtendedSecret
 	InstanceGroups       []essv1.ExtendedStatefulSet
 	Errands              []ejv1.ExtendedJob
 	Services             []corev1.Service
@@ -53,17 +52,54 @@ type releaseImageProvider interface {
 }
 
 // NewKubeConfig converts a Manifest into kube resources
-func NewKubeConfig(namespace string, rip releaseImageProvider) *KubeConfig {
+func NewKubeConfig(namespace string, manifestName string, rip releaseImageProvider) *KubeConfig {
 	return &KubeConfig{
 		namespace:            namespace,
+		manifestName:         manifestName,
 		releaseImageProvider: rip,
 	}
 }
 
-func (kc *KubeConfig) Convert(m Manifest) error {
-	kc.manifestName = m.Name
-	kc.Variables = kc.convertVariables(m.Variables)
-	return nil
+func (kc *KubeConfig) Variables(variables []Variable) []esv1.ExtendedSecret {
+	secrets := []esv1.ExtendedSecret{}
+
+	for _, v := range variables {
+		secretName := names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, kc.manifestName, v.Name)
+		s := esv1.ExtendedSecret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      secretName,
+				Namespace: kc.namespace,
+				Labels: map[string]string{
+					"variableName": v.Name,
+				},
+			},
+			Spec: esv1.ExtendedSecretSpec{
+				Type:       esv1.Type(v.Type),
+				SecretName: secretName,
+			},
+		}
+		if esv1.Type(v.Type) == esv1.Certificate {
+			certRequest := esv1.CertificateRequest{
+				CommonName:       v.Options.CommonName,
+				AlternativeNames: v.Options.AlternativeNames,
+				IsCA:             v.Options.IsCA,
+			}
+			if v.Options.CA != "" {
+				certRequest.CARef = esv1.SecretReference{
+					Name: names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, kc.manifestName, v.Options.CA),
+					Key:  "certificate",
+				}
+				certRequest.CAKeyRef = esv1.SecretReference{
+					Name: names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, kc.manifestName, v.Options.CA),
+					Key:  "private_key",
+				}
+			}
+			s.Spec.Request.CertificateRequest = certRequest
+		}
+		secrets = append(secrets, s)
+	}
+
+	return secrets
 }
 
 // ApplyBPMInfo uses BOSH Process Manager information to update container information like entrypoint, env vars, etc.
@@ -509,48 +545,6 @@ func (kc *KubeConfig) jobsToContainers(igName string, jobs []Job) ([]corev1.Cont
 		containers = append(containers, processes...)
 	}
 	return containers, nil
-}
-
-func (kc *KubeConfig) convertVariables(variables []Variable) []esv1.ExtendedSecret {
-	secrets := []esv1.ExtendedSecret{}
-
-	for _, v := range variables {
-		secretName := names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, kc.manifestName, v.Name)
-		s := esv1.ExtendedSecret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      secretName,
-				Namespace: kc.namespace,
-				Labels: map[string]string{
-					"variableName": v.Name,
-				},
-			},
-			Spec: esv1.ExtendedSecretSpec{
-				Type:       esv1.Type(v.Type),
-				SecretName: secretName,
-			},
-		}
-		if esv1.Type(v.Type) == esv1.Certificate {
-			certRequest := esv1.CertificateRequest{
-				CommonName:       v.Options.CommonName,
-				AlternativeNames: v.Options.AlternativeNames,
-				IsCA:             v.Options.IsCA,
-			}
-			if v.Options.CA != "" {
-				certRequest.CARef = esv1.SecretReference{
-					Name: names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, kc.manifestName, v.Options.CA),
-					Key:  "certificate",
-				}
-				certRequest.CAKeyRef = esv1.SecretReference{
-					Name: names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, kc.manifestName, v.Options.CA),
-					Key:  "private_key",
-				}
-			}
-			s.Spec.Request.CertificateRequest = certRequest
-		}
-		secrets = append(secrets, s)
-	}
-
-	return secrets
 }
 
 // jobSpecCopierContainer will return a corev1.Container{} with the populated field

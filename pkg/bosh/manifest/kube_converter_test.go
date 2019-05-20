@@ -18,20 +18,19 @@ import (
 
 var _ = Describe("kube converter", func() {
 	var (
-		m          manifest.Manifest
-		kubeConfig *manifest.KubeConfig
-		env        testing.Catalog
+		m   manifest.Manifest
+		env testing.Catalog
 	)
 
-	Describe("Convert", func() {
+	Describe("Variables", func() {
 		BeforeEach(func() {
 			m = env.DefaultBOSHManifest()
 			format.TruncatedDiff = false
-			kubeConfig = manifest.NewKubeConfig("foo", &m)
 		})
 
-		act := func() error {
-			return kubeConfig.Convert(m)
+		act := func() []esv1.ExtendedSecret {
+			kubeConfig := manifest.NewKubeConfig("foo", m.Name, &m)
+			return kubeConfig.Variables(m.Variables)
 		}
 
 		Context("converting variables", func() {
@@ -39,23 +38,23 @@ var _ = Describe("kube converter", func() {
 				m.Name = "-abc_123.?!\"§$&/()=?"
 				m.Variables[0].Name = "def-456.?!\"§$&/()=?-"
 
-				act()
-				Expect(kubeConfig.Variables[0].Name).To(Equal("abc-123.var-def-456"))
+				variables := act()
+				Expect(variables[0].Name).To(Equal("abc-123.var-def-456"))
 			})
 
 			It("trims secret names to 63 characters", func() {
 				m.Name = "foo"
 				m.Variables[0].Name = "this-is-waaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaay-too-long"
 
-				act()
-				Expect(kubeConfig.Variables[0].Name).To(Equal("foo.var-this-is-waaaaaaaaaaaaaa5bffdb0302ac051d11f52d2606254a5f"))
+				variables := act()
+				Expect(variables[0].Name).To(Equal("foo.var-this-is-waaaaaaaaaaaaaa5bffdb0302ac051d11f52d2606254a5f"))
 			})
 
 			It("converts password variables", func() {
-				act()
-				Expect(len(kubeConfig.Variables)).To(Equal(1))
+				variables := act()
+				Expect(len(variables)).To(Equal(1))
 
-				var1 := kubeConfig.Variables[0]
+				var1 := variables[0]
 				Expect(var1.Name).To(Equal("foo-deployment.var-adminpass"))
 				Expect(var1.Spec.Type).To(Equal(esv1.Password))
 				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminpass"))
@@ -66,10 +65,10 @@ var _ = Describe("kube converter", func() {
 					Name: "adminkey",
 					Type: "rsa",
 				}
-				act()
-				Expect(len(kubeConfig.Variables)).To(Equal(1))
+				variables := act()
+				Expect(variables).To(HaveLen(1))
 
-				var1 := kubeConfig.Variables[0]
+				var1 := variables[0]
 				Expect(var1.Name).To(Equal("foo-deployment.var-adminkey"))
 				Expect(var1.Spec.Type).To(Equal(esv1.RSAKey))
 				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminkey"))
@@ -80,10 +79,10 @@ var _ = Describe("kube converter", func() {
 					Name: "adminkey",
 					Type: "ssh",
 				}
-				act()
-				Expect(len(kubeConfig.Variables)).To(Equal(1))
+				variables := act()
+				Expect(variables).To(HaveLen(1))
 
-				var1 := kubeConfig.Variables[0]
+				var1 := variables[0]
 				Expect(var1.Name).To(Equal("foo-deployment.var-adminkey"))
 				Expect(var1.Spec.Type).To(Equal(esv1.SSHKey))
 				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminkey"))
@@ -101,10 +100,10 @@ var _ = Describe("kube converter", func() {
 						ExtendedKeyUsage: []manifest.AuthType{manifest.ClientAuth},
 					},
 				}
-				act()
-				Expect(len(kubeConfig.Variables)).To(Equal(1))
+				variables := act()
+				Expect(variables).To(HaveLen(1))
 
-				var1 := kubeConfig.Variables[0]
+				var1 := variables[0]
 				Expect(var1.Name).To(Equal("foo-deployment.var-foo-cert"))
 				Expect(var1.Spec.Type).To(Equal(esv1.Certificate))
 				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-foo-cert"))
@@ -120,14 +119,11 @@ var _ = Describe("kube converter", func() {
 	})
 
 	Context("ApplyBPMInfo", func() {
-		act := func(bpmConfigs map[string]bpm.Configs) error {
-			return kubeConfig.ApplyBPMInfo(m.InstanceGroups, bpmConfigs)
+		act := func(bpmConfigs map[string]bpm.Configs) (*manifest.KubeConfig, error) {
+			kubeConfig := manifest.NewKubeConfig("foo", m.Name, &m)
+			err := kubeConfig.ApplyBPMInfo(m.InstanceGroups, bpmConfigs)
+			return kubeConfig, err
 		}
-
-		JustBeforeEach(func() {
-			kubeConfig = manifest.NewKubeConfig("foo", &m)
-			kubeConfig.Convert(m)
-		})
 
 		BeforeEach(func() {
 			m = env.DefaultBOSHManifest()
@@ -136,9 +132,9 @@ var _ = Describe("kube converter", func() {
 		Context("when BPM is missing in configs", func() {
 			It("returns an error", func() {
 				bpmConfigs := map[string]bpm.Configs{}
-				err := act(bpmConfigs)
+				_, err := act(bpmConfigs)
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to apply bpm information on bosh job 'redis-server', instance group 'redis-slave': couldn't find instance group 'redis-slave' in bpm configs set"))
+				Expect(err.Error()).To(ContainSubstring("couldn't find instance group 'redis-slave' in bpm configs set"))
 			})
 		})
 
@@ -156,7 +152,7 @@ var _ = Describe("kube converter", func() {
 
 			Context("when the lifecycle is set to service", func() {
 				It("converts the instance group to an ExtendedStatefulSet", func() {
-					err := act(bpmConfigs)
+					kubeConfig, err := act(bpmConfigs)
 					Expect(err).ShouldNot(HaveOccurred())
 					extStS := kubeConfig.InstanceGroups[0].Spec.Template.Spec.Template
 					Expect(extStS.Name).To(Equal("diego-cell"))
@@ -274,7 +270,7 @@ var _ = Describe("kube converter", func() {
 
 			Context("when the lifecycle is set to errand", func() {
 				It("converts the instance group to an ExtendedJob", func() {
-					err := act(bpmConfigs)
+					kubeConfig, err := act(bpmConfigs)
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(kubeConfig.Errands).To(HaveLen(1))
 
@@ -344,7 +340,7 @@ var _ = Describe("kube converter", func() {
 			})
 
 			It("creates a k8s container for each BPM process", func() {
-				err := act(bpmConfigs)
+				kubeConfig, err := act(bpmConfigs)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(kubeConfig.InstanceGroups).To(HaveLen(2))
 				Expect(kubeConfig.Errands).To(HaveLen(1))

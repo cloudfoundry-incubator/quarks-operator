@@ -164,12 +164,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Generate all the kube objects we need for the manifest
 	log.Debug(ctx, "Converting bosh manifest to kube objects")
-	kubeConfigs := bdm.NewKubeConfig(r.config.Namespace, manifest)
-	err = kubeConfigs.Convert(*manifest)
-	if err != nil {
-		err = log.WithEvent(instance, "BadManifestError").Errorf(ctx, "Error converting bosh manifest %s to kube objects: %s", manifest.Name, err)
-		return reconcile.Result{}, err
-	}
+	kubeConfigs := bdm.NewKubeConfig(r.config.Namespace, manifest.Name, manifest)
 	jobFactory := bdm.NewJobFactory(*manifest, instance.GetNamespace())
 
 	if instanceState == "" {
@@ -194,7 +189,8 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		instance.Status.State = OpsAppliedState
 
 	case OpsAppliedState:
-		err = r.generateVariableSecrets(ctx, instance, manifest, kubeConfigs)
+		secrets := kubeConfigs.Variables(manifest.Variables)
+		err = r.generateVariableSecrets(ctx, instance, manifest, secrets)
 		if err != nil {
 			log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "Failed to generate variables: %v", err)
 			return reconcile.Result{}, err
@@ -264,7 +260,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		}
 
 	case DeployingState:
-		err = r.actionOnDeploying(ctx, instance, kubeConfigs)
+		err = r.actionOnDeploying(ctx, instance)
 		if err != nil {
 			log.WithEvent(instance, "InstanceDeploymentError").Errorf(ctx, "Failed to deploy: %v", err)
 			return reconcile.Result{}, err
@@ -492,10 +488,10 @@ func (r *ReconcileBOSHDeployment) handleDeletion(ctx context.Context, instance *
 }
 
 // generateVariableSecrets create variables extendedSecrets
-func (r *ReconcileBOSHDeployment) generateVariableSecrets(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfig *bdm.KubeConfig) error {
+func (r *ReconcileBOSHDeployment) generateVariableSecrets(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, variables []esv1.ExtendedSecret) error {
 	log.Debug(ctx, "Creating variables extendedSecrets")
 	var err error
-	for _, variable := range kubeConfig.Variables {
+	for _, variable := range variables {
 		// Set BOSHDeployment instance as the owner and controller
 		if err := r.setReference(instance, &variable, r.scheme); err != nil {
 			return errors.Wrap(err, "could not set reference for an ExtendedStatefulSet for a BOSH Deployment")
@@ -753,7 +749,7 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 }
 
 // actionOnDeploying check out deployment status
-func (r *ReconcileBOSHDeployment) actionOnDeploying(ctx context.Context, instance *bdv1.BOSHDeployment, kubeConfigs *bdm.KubeConfig) error {
+func (r *ReconcileBOSHDeployment) actionOnDeploying(ctx context.Context, instance *bdv1.BOSHDeployment) error {
 	// TODO Check deployment
 	instance.Status.State = DeployedState
 
