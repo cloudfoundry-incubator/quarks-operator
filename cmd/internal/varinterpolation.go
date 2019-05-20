@@ -38,6 +38,7 @@ func init() {
 		"variables-dir": "VARIABLES_DIR",
 	}
 	AddEnvToUsage(variableInterpolationCmd, argToEnv)
+
 }
 
 func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string) error {
