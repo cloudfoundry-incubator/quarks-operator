@@ -119,6 +119,10 @@ func init() {
 
 	// Add env variables to help
 	AddEnvToUsage(rootCmd, argToEnv)
+
+	// Do not display cmd usage and errors
+	rootCmd.SilenceUsage = true
+	rootCmd.SilenceErrors = true
 }
 
 // newLogger returns a new zap logger
