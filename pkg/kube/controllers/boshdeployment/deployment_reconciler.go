@@ -164,7 +164,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Generate all the kube objects we need for the manifest
 	log.Debug(ctx, "Converting bosh manifest to kube objects")
-	kubeConfigs := bdm.NewKubeConfig(r.config.Namespace, manifest.Name, manifest)
+	kubeConverters := bdm.NewKubeConverter(r.config.Namespace, manifest.Name)
 	jobFactory := bdm.NewJobFactory(*manifest, instance.GetNamespace())
 
 	if instanceState == "" {
@@ -189,7 +189,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		instance.Status.State = OpsAppliedState
 
 	case OpsAppliedState:
-		secrets := kubeConfigs.Variables(manifest.Variables)
+		secrets := kubeConverters.Variables(manifest.Variables)
 		err = r.generateVariableSecrets(ctx, instance, manifest, secrets)
 		if err != nil {
 			log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "Failed to generate variables: %v", err)
@@ -247,13 +247,13 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, err
 		}
 
-		err = kubeConfigs.ApplyBPMInfo(manifest.InstanceGroups, bpmInfo)
+		resources, err := kubeConverters.BPMResources(manifest.InstanceGroups, manifest, bpmInfo)
 		if err != nil {
 			log.Errorf(ctx, "Failed to apply BPM information: %v", err)
 			return reconcile.Result{}, err
 		}
 
-		err = r.deployInstanceGroups(ctx, instance, kubeConfigs)
+		err = r.deployInstanceGroups(ctx, instance, resources)
 		if err != nil {
 			log.Errorf(ctx, "Failed to deploy instance groups: %v", err)
 			return reconcile.Result{}, err
@@ -671,9 +671,9 @@ func (r *ReconcileBOSHDeployment) waitForBPM(ctx context.Context, deployment *bd
 }
 
 // deployInstanceGroups create ExtendedJobs and ExtendedStatefulSets
-func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, instance *bdv1.BOSHDeployment, kubeConfigs *bdm.KubeConfig) error {
+func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, instance *bdv1.BOSHDeployment, resources *bdm.BPMResources) error {
 	log.Debug(ctx, "Creating extendedJobs and extendedStatefulSets of instance groups")
-	for _, eJob := range kubeConfigs.Errands {
+	for _, eJob := range resources.Errands {
 		// Set BOSHDeployment instance as the owner and controller
 		if err := r.setReference(instance, &eJob, r.scheme); err != nil {
 			log.WarningEvent(ctx, instance, "NewExtendedJobForDeploymentError", err.Error())
@@ -696,7 +696,7 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 		}
 	}
 
-	for _, svc := range kubeConfigs.Services {
+	for _, svc := range resources.Services {
 		// Set BOSHDeployment instance as the owner and controller
 		if err := r.setReference(instance, &svc, r.scheme); err != nil {
 			log.WarningEvent(ctx, instance, "NewServiceForDeploymentError", err.Error())
@@ -720,7 +720,7 @@ func (r *ReconcileBOSHDeployment) deployInstanceGroups(ctx context.Context, inst
 		}
 	}
 
-	for _, eSts := range kubeConfigs.InstanceGroups {
+	for _, eSts := range resources.InstanceGroups {
 		// Set BOSHDeployment instance as the owner and controller
 		if err := r.setReference(instance, &eSts, r.scheme); err != nil {
 			log.WarningEvent(ctx, instance, "NewExtendedStatefulSetForDeploymentError", err.Error())
