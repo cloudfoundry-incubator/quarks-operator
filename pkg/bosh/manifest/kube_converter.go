@@ -38,17 +38,14 @@ var (
 
 // KubeConfig represents a Manifest in kube resources
 type KubeConfig struct {
-	allBPMConfigs            map[string]bpm.Configs
-	namespace                string
-	releaseImageProvider     releaseImageProvider
-	manifestName             string
-	Variables                []esv1.ExtendedSecret
-	InstanceGroups           []essv1.ExtendedStatefulSet
-	Errands                  []ejv1.ExtendedJob
-	Services                 []corev1.Service
-	VariableInterpolationJob *ejv1.ExtendedJob
-	DataGatheringJob         *ejv1.ExtendedJob
-	BPMConfigsJob            *ejv1.ExtendedJob
+	allBPMConfigs        map[string]bpm.Configs
+	namespace            string
+	releaseImageProvider releaseImageProvider
+	manifestName         string
+	Variables            []esv1.ExtendedSecret
+	InstanceGroups       []essv1.ExtendedStatefulSet
+	Errands              []ejv1.ExtendedJob
+	Services             []corev1.Service
 }
 
 type releaseImageProvider interface {
@@ -65,28 +62,7 @@ func NewKubeConfig(namespace string, rip releaseImageProvider) *KubeConfig {
 
 func (kc *KubeConfig) Convert(m Manifest) error {
 	kc.manifestName = m.Name
-
-	jobFactory := NewJobFactory(m, kc.namespace)
-	dataGatheringJob, err := jobFactory.DataGatheringJob()
-	if err != nil {
-		return err
-	}
-
-	bpmConfigsJob, err := jobFactory.BPMConfigsJob()
-	if err != nil {
-		return err
-	}
-
-	varInterpolationJob, err := jobFactory.VariableInterpolationJob()
-	if err != nil {
-		return err
-	}
-
 	kc.Variables = kc.convertVariables(m.Variables)
-	kc.VariableInterpolationJob = varInterpolationJob
-	kc.DataGatheringJob = dataGatheringJob
-	kc.BPMConfigsJob = bpmConfigsJob
-
 	return nil
 }
 

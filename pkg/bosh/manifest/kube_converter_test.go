@@ -34,24 +34,6 @@ var _ = Describe("kube converter", func() {
 			return kubeConfig.Convert(m)
 		}
 
-		It("creates a data gatheringjob", func() {
-			err := act()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(kubeConfig.DataGatheringJob).ToNot(BeNil())
-		})
-
-		It("creates a bpmconfigs job", func() {
-			err := act()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(kubeConfig.BPMConfigsJob).ToNot(BeNil())
-		})
-
-		It("creates a variable interpolation job", func() {
-			err := act()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(kubeConfig.VariableInterpolationJob).ToNot(BeNil())
-		})
-
 		Context("converting variables", func() {
 			It("sanitizes secret names", func() {
 				m.Name = "-abc_123.?!\"§$&/()=?"
@@ -156,6 +138,7 @@ var _ = Describe("kube converter", func() {
 				bpmConfigs := map[string]bpm.Configs{}
 				err := act(bpmConfigs)
 				Expect(err).Should(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to apply bpm information on bosh job 'redis-server', instance group 'redis-slave': couldn't find instance group 'redis-slave' in bpm configs set"))
 			})
 		})
 
