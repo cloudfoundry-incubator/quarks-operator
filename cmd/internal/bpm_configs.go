@@ -52,13 +52,12 @@ instance group.
 			return err
 		}
 
-		boshManifestStruct := manifest.Manifest{}
-		err = yaml.Unmarshal(boshManifestBytes, &boshManifestStruct)
+		m, err := manifest.LoadYAML(boshManifestBytes)
 		if err != nil {
 			return err
 		}
 
-		dg, err := manifest.NewDataGatherer(log, baseDir, namespace, boshManifestStruct, instanceGroupName)
+		dg, err := manifest.NewDataGatherer(log, baseDir, namespace, *m, instanceGroupName)
 		if err != nil {
 			return err
 		}

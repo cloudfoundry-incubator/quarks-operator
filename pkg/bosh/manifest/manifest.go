@@ -123,6 +123,16 @@ type Manifest struct {
 	Update         *Update                  `yaml:"update,omitempty"`
 }
 
+// LoadYAML returns a new BOSH deployment manifest from a yaml representation
+func LoadYAML(data []byte) (*Manifest, error) {
+	m := &Manifest{}
+	err := yaml.Unmarshal(data, m)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal BOSH deployment manifest")
+	}
+	return m, nil
+}
+
 // SHA1 calculates the SHA1 of the manifest
 func (m *Manifest) SHA1() (string, error) {
 	manifestBytes, err := yaml.Marshal(m)

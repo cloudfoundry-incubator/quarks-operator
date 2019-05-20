@@ -38,6 +38,7 @@ var (
 
 // KubeConfig represents a Manifest in kube resources
 type KubeConfig struct {
+	allBPMConfigs            map[string]bpm.Configs
 	namespace                string
 	releaseImageProvider     releaseImageProvider
 	manifestName             string
@@ -65,16 +66,6 @@ func NewKubeConfig(namespace string, rip releaseImageProvider) *KubeConfig {
 func (kc *KubeConfig) Convert(m Manifest) error {
 	kc.manifestName = m.Name
 
-	convertedExtSts, convertedSvcs, err := kc.convertToExtendedStsAndServices(m.InstanceGroups)
-	if err != nil {
-		return err
-	}
-
-	convertedEJob, err := kc.convertToExtendedJob(m.InstanceGroups)
-	if err != nil {
-		return err
-	}
-
 	jobFactory := NewJobFactory(m, kc.namespace)
 	dataGatheringJob, err := jobFactory.DataGatheringJob()
 	if err != nil {
@@ -92,9 +83,6 @@ func (kc *KubeConfig) Convert(m Manifest) error {
 	}
 
 	kc.Variables = kc.convertVariables(m.Variables)
-	kc.InstanceGroups = convertedExtSts
-	kc.Services = convertedSvcs
-	kc.Errands = convertedEJob
 	kc.VariableInterpolationJob = varInterpolationJob
 	kc.DataGatheringJob = dataGatheringJob
 	kc.BPMConfigsJob = bpmConfigsJob
@@ -103,72 +91,311 @@ func (kc *KubeConfig) Convert(m Manifest) error {
 }
 
 // ApplyBPMInfo uses BOSH Process Manager information to update container information like entrypoint, env vars, etc.
-func (kc *KubeConfig) ApplyBPMInfo(allBPMConfigs map[string]bpm.Configs) error {
+// and create the extended stateful sets and extended jobs for instance groups
+func (kc *KubeConfig) ApplyBPMInfo(instanceGroups []*InstanceGroup, allBPMConfigs map[string]bpm.Configs) error {
+	kc.allBPMConfigs = allBPMConfigs
 
-	applyBPMOnContainer := func(igName string, container *corev1.Container) error {
-		boshJobName := container.Name
-
-		igBPMConfigs, ok := allBPMConfigs[igName]
-		if !ok {
-			return errors.Errorf("couldn't find instance group '%s' in bpm configs set", igName)
-		}
-
-		bpmConfig, ok := igBPMConfigs[boshJobName]
-		if !ok {
-			return errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs for instance group '%s'", boshJobName, igName)
-		}
-
-		// TODO: handle multi-process BPM?
-		// TODO: complete implementation - BPM information could be top-level only
-
-		if len(bpmConfig.Processes) < 1 {
-			return errors.New("bpm info has no processes")
-		}
-		process := bpmConfig.Processes[0]
-
-		container.Command = []string{process.Executable}
-		container.Args = process.Args
-		for name, value := range process.Env {
-			container.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
-		}
-		container.WorkingDir = process.Workdir
-
-		return nil
-	}
-
-	for idx := range kc.InstanceGroups {
-		igSts := &(kc.InstanceGroups[idx])
-		igName := igSts.Labels[LabelInstanceGroupName]
-
-		// Go through each container
-		for idx := range igSts.Spec.Template.Spec.Template.Spec.Containers {
-			container := &(igSts.Spec.Template.Spec.Template.Spec.Containers[idx])
-			err := applyBPMOnContainer(igName, container)
-
+	for _, ig := range instanceGroups {
+		switch ig.LifeCycle {
+		case "service", "":
+			convertedExtStatefulSet, err := kc.serviceToExtendedSts(ig)
 			if err != nil {
-				return errors.Wrapf(err, "failed to apply bpm information on bosh job '%s', instance group '%s'", container.Name, igName)
+				return err
 			}
-		}
-	}
 
-	for idx := range kc.Errands {
-		igJob := &(kc.Errands[idx])
-		igName := igJob.Labels[LabelInstanceGroupName]
-
-		for idx := range igJob.Spec.Template.Spec.Containers {
-			container := &(igJob.Spec.Template.Spec.Containers[idx])
-			err := applyBPMOnContainer(igName, container)
-
+			services, err := kc.serviceToKubeServices(ig, &convertedExtStatefulSet)
 			if err != nil {
-				return errors.Wrapf(err, "failed to apply bpm information on bosh job '%s', instance group '%s'", container.Name, igName)
+				return err
 			}
+			if len(services) != 0 {
+				kc.Services = append(kc.Services, services...)
+			}
+
+			kc.InstanceGroups = append(kc.InstanceGroups, convertedExtStatefulSet)
+		case "errand":
+			convertedEJob, err := kc.errandToExtendedJob(ig)
+			if err != nil {
+				return err
+			}
+			kc.Errands = append(kc.Errands, convertedEJob)
 		}
 	}
+
 	return nil
 }
 
+// serviceToExtendedSts will generate an ExtendedStatefulSet
+func (kc *KubeConfig) serviceToExtendedSts(ig *InstanceGroup) (essv1.ExtendedStatefulSet, error) {
+	igName := ig.Name
+
+	listOfInitContainers, err := kc.jobsToInitContainers(igName, ig.Jobs)
+	if err != nil {
+		return essv1.ExtendedStatefulSet{}, err
+	}
+
+	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeManifestAndVars,
+		kc.manifestName,
+		VarInterpolationContainerName,
+		true,
+	)
+	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+		kc.manifestName,
+		ig.Name,
+		true,
+	)
+
+	volumes := []corev1.Volume{
+		{
+			Name:         "rendering-data",
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name:         "jobs-dir",
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name: generateVolumeName(interpolatedManifestSecretName),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: interpolatedManifestSecretName,
+				},
+			},
+		},
+		{
+			Name: generateVolumeName(resolvedPropertiesSecretName),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: resolvedPropertiesSecretName,
+				},
+			},
+		},
+	}
+
+	containers, err := kc.jobsToContainers(igName, ig.Jobs)
+	if err != nil {
+		return essv1.ExtendedStatefulSet{}, err
+	}
+
+	extSts := essv1.ExtendedStatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", kc.manifestName, igName),
+			Namespace: kc.namespace,
+			Labels: map[string]string{
+				LabelInstanceGroupName: igName,
+			},
+		},
+		Spec: essv1.ExtendedStatefulSetSpec{
+			UpdateOnConfigChange: true,
+			Template: v1beta2.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: igName,
+				},
+				Spec: v1beta2.StatefulSetSpec{
+					Replicas: func() *int32 { i := int32(ig.Instances); return &i }(),
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							bdv1.LabelDeploymentName: kc.manifestName,
+							LabelInstanceGroupName:   igName,
+						},
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: igName,
+							Labels: map[string]string{
+								bdv1.LabelDeploymentName: kc.manifestName,
+								LabelInstanceGroupName:   igName,
+							},
+						},
+						Spec: corev1.PodSpec{
+							Volumes:        volumes,
+							InitContainers: listOfInitContainers,
+							Containers:     containers,
+						},
+					},
+				},
+			},
+		},
+	}
+	return extSts, nil
+}
+
+// serviceToKubeServices will generate Services which expose ports for InstanceGroup's jobs
+func (kc *KubeConfig) serviceToKubeServices(ig *InstanceGroup, eSts *essv1.ExtendedStatefulSet) ([]corev1.Service, error) {
+	var services []corev1.Service
+	igName := ig.Name
+
+	// Collect ports to be exposed for each job
+	ports := []corev1.ServicePort{}
+	for _, job := range ig.Jobs {
+		for _, port := range job.Properties.BOSHContainerization.Ports {
+			ports = append(ports, corev1.ServicePort{
+				Name:     port.Name,
+				Protocol: corev1.Protocol(port.Protocol),
+				Port:     int32(port.Internal),
+			})
+		}
+
+	}
+
+	if len(ports) == 0 {
+		return services, nil
+	}
+
+	for i := 0; i < ig.Instances; i++ {
+		if len(ig.AZs) == 0 {
+			services = append(services, corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      names.ServiceName(kc.manifestName, igName, len(services)),
+					Namespace: kc.namespace,
+					Labels: map[string]string{
+						LabelInstanceGroupName: igName,
+						essv1.LabelAZIndex:     strconv.Itoa(0),
+						essv1.LabelPodOrdinal:  strconv.Itoa(i),
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: ports,
+					Selector: map[string]string{
+						LabelInstanceGroupName: igName,
+						essv1.LabelAZIndex:     strconv.Itoa(0),
+						essv1.LabelPodOrdinal:  strconv.Itoa(i),
+					},
+				},
+			})
+		}
+		for azIndex := range ig.AZs {
+			services = append(services, corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      names.ServiceName(kc.manifestName, igName, len(services)),
+					Namespace: kc.namespace,
+					Labels: map[string]string{
+						LabelInstanceGroupName: igName,
+						essv1.LabelAZIndex:     strconv.Itoa(azIndex),
+						essv1.LabelPodOrdinal:  strconv.Itoa(i),
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: ports,
+					Selector: map[string]string{
+						LabelInstanceGroupName: igName,
+						essv1.LabelAZIndex:     strconv.Itoa(azIndex),
+						essv1.LabelPodOrdinal:  strconv.Itoa(i),
+					},
+				},
+			})
+		}
+	}
+
+	headlessService := corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      names.ServiceName(kc.manifestName, igName, -1),
+			Namespace: kc.namespace,
+			Labels: map[string]string{
+				LabelInstanceGroupName: igName,
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: ports,
+			Selector: map[string]string{
+				LabelInstanceGroupName: igName,
+			},
+			ClusterIP: "None",
+		},
+	}
+
+	services = append(services, headlessService)
+
+	// Set headlessService to govern StatefulSet
+	eSts.Spec.Template.Spec.ServiceName = names.ServiceName(kc.manifestName, igName, -1)
+
+	return services, nil
+}
+
+// errandToExtendedJob will generate an ExtendedJob
+func (kc *KubeConfig) errandToExtendedJob(ig *InstanceGroup) (ejv1.ExtendedJob, error) {
+	igName := ig.Name
+
+	listOfInitContainers, err := kc.jobsToInitContainers(igName, ig.Jobs)
+	if err != nil {
+		return ejv1.ExtendedJob{}, err
+	}
+
+	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeManifestAndVars,
+		kc.manifestName,
+		VarInterpolationContainerName,
+		true,
+	)
+	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+		kc.manifestName,
+		ig.Name,
+		true,
+	)
+
+	volumes := []corev1.Volume{
+		{
+			Name:         "rendering-data",
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name:         "jobs-dir",
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name: generateVolumeName(interpolatedManifestSecretName),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: interpolatedManifestSecretName,
+				},
+			},
+		},
+		{
+			Name: generateVolumeName(resolvedPropertiesSecretName),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: resolvedPropertiesSecretName,
+				},
+			},
+		},
+	}
+
+	containers, err := kc.jobsToContainers(igName, ig.Jobs)
+	if err != nil {
+		return ejv1.ExtendedJob{}, err
+	}
+	eJob := ejv1.ExtendedJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", kc.manifestName, igName),
+			Namespace: kc.namespace,
+			Labels: map[string]string{
+				LabelInstanceGroupName: igName,
+			},
+		},
+		Spec: ejv1.ExtendedJobSpec{
+			UpdateOnConfigChange: true,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: igName,
+					Labels: map[string]string{
+						"delete": "pod",
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers:     containers,
+					InitContainers: listOfInitContainers,
+					Volumes:        volumes,
+				},
+			},
+		},
+	}
+	return eJob, nil
+}
+
 // jobsToInitContainers creates a list of Containers for corev1.PodSpec InitContainers field
-func (kc *KubeConfig) jobsToInitContainers(igName string, jobs []Job, namespace string) ([]corev1.Container, error) {
+func (kc *KubeConfig) jobsToInitContainers(igName string, jobs []Job) ([]corev1.Container, error) {
 	initContainers := []corev1.Container{}
 
 	// one init container for each release, for copying specs
@@ -236,8 +463,44 @@ func (kc *KubeConfig) jobsToInitContainers(igName string, jobs []Job, namespace 
 }
 
 // jobsToContainers creates a list of Containers for corev1.PodSpec Containers field
-func (kc *KubeConfig) jobsToContainers(igName string, jobs []Job, namespace string) ([]corev1.Container, error) {
-	var jobsToContainerPods []corev1.Container
+func (kc *KubeConfig) jobsToContainers(igName string, jobs []Job) ([]corev1.Container, error) {
+	applyBPMOnContainer := func(igName string, container corev1.Container) (error, []corev1.Container) {
+		boshJobName := container.Name
+		containers := []corev1.Container{}
+
+		igBPMConfigs, ok := kc.allBPMConfigs[igName]
+		if !ok {
+			return errors.Errorf("couldn't find instance group '%s' in bpm configs set", igName), containers
+		}
+
+		bpmConfig, ok := igBPMConfigs[boshJobName]
+		if !ok {
+			return errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs for instance group '%s'", boshJobName, igName), containers
+		}
+
+		if len(bpmConfig.Processes) < 1 {
+			return errors.New("bpm info has no processes"), containers
+		}
+
+		for _, process := range bpmConfig.Processes {
+			c := container.DeepCopy()
+
+			c.Name = fmt.Sprintf("%s-%s", boshJobName, process.Name)
+			c.Command = []string{process.Executable}
+			c.Args = process.Args
+			for name, value := range process.Env {
+				c.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
+			}
+			// c.Healthcheck = lookupHealthcheck(job.Name, process.Name)
+			c.WorkingDir = process.Workdir
+
+			containers = append(containers, *c)
+		}
+
+		return nil, containers
+	}
+
+	var containers []corev1.Container
 
 	if len(jobs) == 0 {
 		return nil, fmt.Errorf("instance group %s has no jobs defined", igName)
@@ -248,7 +511,8 @@ func (kc *KubeConfig) jobsToContainers(igName string, jobs []Job, namespace stri
 		if err != nil {
 			return []corev1.Container{}, err
 		}
-		jobsToContainerPods = append(jobsToContainerPods, corev1.Container{
+
+		err, processes := applyBPMOnContainer(igName, corev1.Container{
 			Name:  fmt.Sprintf(job.Name),
 			Image: jobImage,
 			VolumeMounts: []corev1.VolumeMount{
@@ -262,323 +526,13 @@ func (kc *KubeConfig) jobsToContainers(igName string, jobs []Job, namespace stri
 				},
 			},
 		})
-	}
-	return jobsToContainerPods, nil
-}
-
-// serviceToExtendedSts will generate an ExtendedStatefulSet
-func (kc *KubeConfig) serviceToExtendedSts(ig *InstanceGroup, namespace string) (essv1.ExtendedStatefulSet, error) {
-	igName := ig.Name
-
-	// TODO this is not one to one
-	listOfContainers, err := kc.jobsToContainers(igName, ig.Jobs, namespace)
-	if err != nil {
-		return essv1.ExtendedStatefulSet{}, err
-	}
-
-	listOfInitContainers, err := kc.jobsToInitContainers(igName, ig.Jobs, namespace)
-	if err != nil {
-		return essv1.ExtendedStatefulSet{}, err
-	}
-
-	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeManifestAndVars,
-		kc.manifestName,
-		VarInterpolationContainerName,
-		true,
-	)
-	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
-		kc.manifestName,
-		ig.Name,
-		true,
-	)
-
-	volumes := []corev1.Volume{
-		{
-			Name:         "rendering-data",
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name:         "jobs-dir",
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name: generateVolumeName(interpolatedManifestSecretName),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: interpolatedManifestSecretName,
-				},
-			},
-		},
-		{
-			Name: generateVolumeName(resolvedPropertiesSecretName),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: resolvedPropertiesSecretName,
-				},
-			},
-		},
-	}
-
-	extSts := essv1.ExtendedStatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", kc.manifestName, igName),
-			Namespace: namespace,
-			Labels: map[string]string{
-				LabelInstanceGroupName: igName,
-			},
-		},
-		Spec: essv1.ExtendedStatefulSetSpec{
-			UpdateOnConfigChange: true,
-			Template: v1beta2.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: igName,
-				},
-				Spec: v1beta2.StatefulSetSpec{
-					Replicas: func() *int32 { i := int32(ig.Instances); return &i }(),
-					Selector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							bdv1.LabelDeploymentName: kc.manifestName,
-							LabelInstanceGroupName:   igName,
-						},
-					},
-					Template: corev1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: igName,
-							Labels: map[string]string{
-								bdv1.LabelDeploymentName: kc.manifestName,
-								LabelInstanceGroupName:   igName,
-							},
-						},
-						Spec: corev1.PodSpec{
-							Volumes:        volumes,
-							Containers:     listOfContainers,
-							InitContainers: listOfInitContainers,
-						},
-					},
-				},
-			},
-		},
-	}
-	return extSts, nil
-}
-
-// serviceToKubeServices will generate Services which expose ports for InstanceGroup's jobs
-func (kc *KubeConfig) serviceToKubeServices(ig *InstanceGroup, eSts *essv1.ExtendedStatefulSet, namespace string) ([]corev1.Service, error) {
-	var services []corev1.Service
-	igName := ig.Name
-
-	// Collect ports to be exposed for each job
-	ports := []corev1.ServicePort{}
-	for _, job := range ig.Jobs {
-		for _, port := range job.Properties.BOSHContainerization.Ports {
-			ports = append(ports, corev1.ServicePort{
-				Name:     port.Name,
-				Protocol: corev1.Protocol(port.Protocol),
-				Port:     int32(port.Internal),
-			})
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to apply bpm information on bosh job '%s', instance group '%s'", job.Name, igName)
 		}
 
+		containers = append(containers, processes...)
 	}
-
-	if len(ports) == 0 {
-		return services, nil
-	}
-
-	for i := 0; i < ig.Instances; i++ {
-		if len(ig.AZs) == 0 {
-			services = append(services, corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      names.ServiceName(kc.manifestName, igName, len(services)),
-					Namespace: namespace,
-					Labels: map[string]string{
-						LabelInstanceGroupName: igName,
-						essv1.LabelAZIndex:     strconv.Itoa(0),
-						essv1.LabelPodOrdinal:  strconv.Itoa(i),
-					},
-				},
-				Spec: corev1.ServiceSpec{
-					Ports: ports,
-					Selector: map[string]string{
-						LabelInstanceGroupName: igName,
-						essv1.LabelAZIndex:     strconv.Itoa(0),
-						essv1.LabelPodOrdinal:  strconv.Itoa(i),
-					},
-				},
-			})
-		}
-		for azIndex := range ig.AZs {
-			services = append(services, corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      names.ServiceName(kc.manifestName, igName, len(services)),
-					Namespace: namespace,
-					Labels: map[string]string{
-						LabelInstanceGroupName: igName,
-						essv1.LabelAZIndex:     strconv.Itoa(azIndex),
-						essv1.LabelPodOrdinal:  strconv.Itoa(i),
-					},
-				},
-				Spec: corev1.ServiceSpec{
-					Ports: ports,
-					Selector: map[string]string{
-						LabelInstanceGroupName: igName,
-						essv1.LabelAZIndex:     strconv.Itoa(azIndex),
-						essv1.LabelPodOrdinal:  strconv.Itoa(i),
-					},
-				},
-			})
-		}
-	}
-
-	headlessService := corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      names.ServiceName(kc.manifestName, igName, -1),
-			Namespace: namespace,
-			Labels: map[string]string{
-				LabelInstanceGroupName: igName,
-			},
-		},
-		Spec: corev1.ServiceSpec{
-			Ports: ports,
-			Selector: map[string]string{
-				LabelInstanceGroupName: igName,
-			},
-			ClusterIP: "None",
-		},
-	}
-
-	services = append(services, headlessService)
-
-	// Set headlessService to govern StatefulSet
-	eSts.Spec.Template.Spec.ServiceName = names.ServiceName(kc.manifestName, igName, -1)
-
-	return services, nil
-}
-
-// convertToExtendedStsAndServices will convert instance_groups whose lifecycle
-// is service, to ExtendedStatefulSets and their Services
-func (kc *KubeConfig) convertToExtendedStsAndServices(instanceGroups []*InstanceGroup) ([]essv1.ExtendedStatefulSet, []corev1.Service, error) {
-	extStsList := []essv1.ExtendedStatefulSet{}
-	svcList := []corev1.Service{}
-
-	for _, ig := range instanceGroups {
-		if ig.LifeCycle == "service" || ig.LifeCycle == "" {
-			convertedExtStatefulSet, err := kc.serviceToExtendedSts(ig, kc.namespace)
-			if err != nil {
-				return []essv1.ExtendedStatefulSet{}, []corev1.Service{}, err
-			}
-
-			services, err := kc.serviceToKubeServices(ig, &convertedExtStatefulSet, kc.namespace)
-			if err != nil {
-				return []essv1.ExtendedStatefulSet{}, []corev1.Service{}, err
-			}
-			if len(services) != 0 {
-				svcList = append(svcList, services...)
-			}
-
-			extStsList = append(extStsList, convertedExtStatefulSet)
-		}
-	}
-
-	return extStsList, svcList, nil
-}
-
-// errandToExtendedJob will generate an ExtendedJob
-func (kc *KubeConfig) errandToExtendedJob(ig *InstanceGroup, namespace string) (ejv1.ExtendedJob, error) {
-	igName := ig.Name
-
-	listOfContainers, err := kc.jobsToContainers(igName, ig.Jobs, namespace)
-	if err != nil {
-		return ejv1.ExtendedJob{}, err
-	}
-	listOfInitContainers, err := kc.jobsToInitContainers(igName, ig.Jobs, namespace)
-	if err != nil {
-		return ejv1.ExtendedJob{}, err
-	}
-
-	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeManifestAndVars,
-		kc.manifestName,
-		VarInterpolationContainerName,
-		true,
-	)
-	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
-		kc.manifestName,
-		ig.Name,
-		true,
-	)
-
-	volumes := []corev1.Volume{
-		{
-			Name:         "rendering-data",
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name:         "jobs-dir",
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name: generateVolumeName(interpolatedManifestSecretName),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: interpolatedManifestSecretName,
-				},
-			},
-		},
-		{
-			Name: generateVolumeName(resolvedPropertiesSecretName),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: resolvedPropertiesSecretName,
-				},
-			},
-		},
-	}
-
-	eJob := ejv1.ExtendedJob{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", kc.manifestName, igName),
-			Namespace: namespace,
-			Labels: map[string]string{
-				LabelInstanceGroupName: igName,
-			},
-		},
-		Spec: ejv1.ExtendedJobSpec{
-			UpdateOnConfigChange: true,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: igName,
-					Labels: map[string]string{
-						"delete": "pod",
-					},
-				},
-				Spec: corev1.PodSpec{
-					Containers:     listOfContainers,
-					InitContainers: listOfInitContainers,
-					Volumes:        volumes,
-				},
-			},
-		},
-	}
-	return eJob, nil
-}
-
-// convertToExtendedJob will convert instance_groups which lifecycle is
-// errand to ExtendedJobs
-func (kc *KubeConfig) convertToExtendedJob(instanceGroups []*InstanceGroup) ([]ejv1.ExtendedJob, error) {
-	eJobs := []ejv1.ExtendedJob{}
-	for _, ig := range instanceGroups {
-		if ig.LifeCycle == "errand" {
-			convertedEJob, err := kc.errandToExtendedJob(ig, kc.namespace)
-			if err != nil {
-				return []ejv1.ExtendedJob{}, err
-			}
-			eJobs = append(eJobs, convertedEJob)
-		}
-	}
-	return eJobs, nil
+	return containers, nil
 }
 
 func (kc *KubeConfig) convertVariables(variables []Variable) []esv1.ExtendedSecret {
