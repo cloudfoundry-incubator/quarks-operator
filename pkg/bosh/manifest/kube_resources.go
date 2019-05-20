@@ -36,6 +36,7 @@ type releaseImageProvider interface {
 	GetReleaseImage(instanceGroupName, jobName string) (string, error)
 }
 
+// BPMResources contains BPM related k8s resources, which were converted from BOSH objects
 type BPMResources struct {
 	InstanceGroups []essv1.ExtendedStatefulSet
 	Errands        []ejv1.ExtendedJob

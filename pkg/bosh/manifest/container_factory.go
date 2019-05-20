@@ -11,6 +11,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
+// ContainerFactory builds Kubernetes containers from BOSH jobs
 type ContainerFactory struct {
 	manifestName         string
 	igName               string
@@ -18,6 +19,7 @@ type ContainerFactory struct {
 	bpmConfigs           bpm.Configs
 }
 
+// NewContainerFactory returns a new ContainerFactory for a BOSH instant group
 func NewContainerFactory(manifestName string, igName string, releaseImageProvider releaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactory {
 	return &ContainerFactory{
 		manifestName:         manifestName,
@@ -95,7 +97,7 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job) ([]corev1.Container,
 	return initContainers, nil
 }
 
-// jobsToContainers creates a list of Containers for corev1.PodSpec Containers field
+// JobsToContainers creates a list of Containers for corev1.PodSpec Containers field
 func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, error) {
 	applyBPMOnContainer := func(container corev1.Container) (error, []corev1.Container) {
 		boshJobName := container.Name

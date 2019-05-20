@@ -19,6 +19,7 @@ func NewKubeConverter(namespace string) *KubeConverter {
 	}
 }
 
+// Variables returns extended secrets for a list of BOSH variables
 func (kc *KubeConverter) Variables(manifestName string, variables []Variable) []esv1.ExtendedSecret {
 	secrets := []esv1.ExtendedSecret{}
 
