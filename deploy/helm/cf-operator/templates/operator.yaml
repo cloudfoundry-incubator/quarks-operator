@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cf-operator
+  name: {{ template "cf-operator.fullname" . }}
 spec:
   replicas: 1
   selector:
@@ -12,7 +12,7 @@ spec:
       labels:
         name: cf-operator
     spec:
-      serviceAccountName: cf-operator
+      serviceAccountName: {{ template "cf-operator.serviceAccountName" . }}
       containers:
         - name: cf-operator
           image: "{{ .Values.image.org }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -39,3 +39,8 @@ spec:
               value: "{{ .Values.image.repository }}"
             - name: DOCKER_IMAGE_TAG
               value: "{{ .Values.image.tag }}"
+          readinessProbe:
+            exec:
+              command:
+              - date
+            initialDelaySeconds: 15

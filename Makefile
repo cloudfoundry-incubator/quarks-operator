@@ -41,6 +41,8 @@ test-integration:
 test-e2e:
 	bin/test-e2e
 
+test-helm-e2e:
+	bin/test-kube-e2e
 ############ GENERATE TARGETS ############
 
 generate: gen-kube gen-fakes
