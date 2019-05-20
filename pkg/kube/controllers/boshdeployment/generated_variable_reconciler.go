@@ -3,19 +3,18 @@ package boshdeployment
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
@@ -64,83 +63,67 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()
-
-	log.Infof(ctx, "Reconciling BOSHDeployment %s", request.NamespacedName)
-	instance := &bdv1.BOSHDeployment{}
+	log.Infof(ctx, "Reconciling BOSHDeployment manifest with ops file applied from secret '%s'", request.NamespacedName)
+	instance := &corev1.Secret{}
 	err := r.client.Get(ctx, request.NamespacedName, instance)
+
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			log.Debug(ctx, "Skip reconcile: BOSHDeployment not found")
+			log.Debug(ctx, "Skip reconcile: manifest with ops file secret not found")
 			return reconcile.Result{}, nil
 		}
-		err = log.WithEvent(instance, "GetBOSHDeploymentError").Errorf(ctx, "Failed to get BOSHDeployment '%s': %v", request.NamespacedName, err)
+
+		err = log.WithEvent(instance, "GetBOSHDeploymentManifestWithOpsFileError").Errorf(ctx, "Failed to get BOSHDeployment manifest with ops file secret '%s': %v", request.NamespacedName, err)
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
 
-	// Get state from instance
-	instanceState := instance.Status.State
+	// Get the manifest yaml
+	manifestContents := instance.StringData["manifest.yaml"]
 
-	switch instanceState {
-	case OpsAppliedState:
-		// Resolve the manifest (incl. ops files and implicit variables)
-		manifest, err := r.resolveManifest(ctx, instance)
-		if err != nil {
-			log.WithEvent(instance, "BadManifestError").Infof(ctx, "Error resolving the manifest %s", instance.GetName())
-			return reconcile.Result{}, errors.Wrap(err, "could not resolve manifest")
-		}
-
-		// Generate all the kube objects we need for the manifest
-		log.Debug(ctx, "Converting bosh manifest to kube objects")
-		kubeConfigs := bdm.NewKubeConfig(r.config.Namespace, manifest)
-		err = kubeConfigs.Convert(*manifest)
-		if err != nil {
-			err = log.WithEvent(instance, "BadManifestError").Errorf(ctx, "Error converting bosh manifest %s to kube objects: %s", manifest.Name, err)
-			return reconcile.Result{}, err
-		}
-
-		err = r.generateVariableSecrets(ctx, instance, kubeConfigs)
-		if err != nil {
-			err = log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "Failed to generate variables: %v", err)
-			return reconcile.Result{}, err
-		}
-
-	default:
-		log.Debugf(ctx, "Requeue the reconcile: BoshDeployment '%s/%s' is in state '%s' not '%s'", instance.GetNamespace(), instance.GetName(), instance.Status.State, OpsAppliedState)
-		return reconcile.Result{Requeue: true}, nil
-	}
-
-	return reconcile.Result{}, r.updateInstanceState(ctx, instance)
-}
-
-// resolveManifest resolves the manifest and applies ops files and implicit variable interpolation
-func (r *ReconcileGeneratedVariable) resolveManifest(ctx context.Context, instance *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
-	// Create temp manifest as variable interpolation job input
-	// retrieve manifest
-	log.Debug(ctx, "Resolving manifest")
-	manifest, err := r.resolver.ResolveManifest(instance, instance.GetNamespace())
+	// Unmarshal the manifest
+	log.Debug(ctx, "Unmarshaling BOSHDeployment manifest from manifest with ops secret")
+	manifest := &bdm.Manifest{}
+	err = yaml.Unmarshal([]byte(manifestContents), manifest)
 	if err != nil {
-		log.WithEvent(instance, "ResolveManifestError").Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
-		return nil, err
+		err = log.WithEvent(instance, "BadManifestError").Errorf(ctx, "Failed to unmarshal manifest from secret '%s': %v", request.NamespacedName, err)
+		return reconcile.Result{}, err
 	}
 
-	// Replace the name with the name of the BOSHDeployment resource
-	manifest.Name = instance.GetName()
+	// Convert the manifest to kube objects
+	log.Debug(ctx, "Converting bosh manifest to kube objects")
+	kubeConfigs := bdm.NewKubeConfig(r.config.Namespace, manifest)
+	err = kubeConfigs.Convert(*manifest)
+	if err != nil {
+		err = log.WithEvent(instance, "ManifestConversionError").Errorf(ctx, "Failed to convert bosh manifest '%s' to kube objects: %s", manifest.Name, err)
+		return reconcile.Result{}, err
+	}
 
-	return manifest, nil
+	// Create/update all explicit BOSH Variables
+	err = r.generateVariableSecrets(ctx, instance, kubeConfigs)
+	if err != nil {
+		err = log.WithEvent(instance, "BadManifestError").Errorf(ctx, "Failed to generate variables for bosh manifest '%s': %v", manifest.Name, err)
+		return reconcile.Result{}, err
+	}
+
+	return reconcile.Result{}, nil
 }
 
 // generateVariableSecrets create variables extendedSecrets
-func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context, instance *bdv1.BOSHDeployment, kubeConfig *bdm.KubeConfig) error {
-	log.Debug(ctx, "Creating variables extendedSecrets")
+func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context, instance *corev1.Secret, kubeConfig *bdm.KubeConfig) error {
+	log.Debug(ctx, "Creating ExtendedSecrets for explicit variables")
 	var err error
 	for _, variable := range kubeConfig.Variables {
-		// Set BOSHDeployment instance as the owner and controller
+		// Set the "manifest with ops" secret as the owner for the ExtendedSecrets
+		// The "manifest with ops" secret is owned by the actual BOSHDeployment, so everything
+		// should be garbage collected properly.
+
 		if err := r.setReference(instance, &variable, r.scheme); err != nil {
-			return errors.Wrap(err, "could not set reference for an ExtendedStatefulSet for a BOSH Deployment")
+			err = log.WithEvent(instance, "OwnershipError").Errorf(ctx, "Failed to set ownership for %s: %v", variable.Name, err)
+			return err
 		}
 
 		_, err = controllerutil.CreateOrUpdate(ctx, r.client, variable.DeepCopy(), func(obj runtime.Object) error {
@@ -153,48 +136,6 @@ func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context
 		})
 		if err != nil {
 			return errors.Wrapf(err, "creating or updating ExtendedSecret '%s'", variable.Name)
-		}
-	}
-
-	instance.Status.State = VariableGeneratedState
-
-	return nil
-}
-
-// updateInstanceState update instance state
-func (r *ReconcileGeneratedVariable) updateInstanceState(ctx context.Context, currentInstance *bdv1.BOSHDeployment) error {
-	currentManifestSHA1, _ := currentInstance.GetAnnotations()[bdv1.AnnotationManifestSHA1]
-
-	// Fetch latest BOSHDeployment before update
-	foundInstance := &bdv1.BOSHDeployment{}
-	key := types.NamespacedName{Namespace: currentInstance.GetNamespace(), Name: currentInstance.GetName()}
-	err := r.client.Get(ctx, key, foundInstance)
-	if err != nil {
-		log.Errorf(ctx, "Failed to get BOSHDeployment instance '%s': %v", currentInstance.GetName(), err)
-		return errors.Wrapf(err, "could not get BOSHDeployment instance '%s' when update instance state", currentInstance.GetName())
-	}
-	oldManifestSHA1, _ := foundInstance.GetAnnotations()[bdv1.AnnotationManifestSHA1]
-
-	if oldManifestSHA1 != currentManifestSHA1 {
-		// Set manifest SHA1
-		if foundInstance.Annotations == nil {
-			foundInstance.Annotations = map[string]string{}
-		}
-
-		foundInstance.Annotations[bdv1.AnnotationManifestSHA1] = currentManifestSHA1
-	}
-
-	// Update the Status of the resource
-	if !reflect.DeepEqual(foundInstance.Status.State, currentInstance.Status.State) {
-		log.Debugf(ctx, "Updating boshDeployment from '%s' to '%s'", foundInstance.Status.State, currentInstance.Status.State)
-
-		newInstance := foundInstance.DeepCopy()
-		newInstance.Status.State = currentInstance.Status.State
-
-		err = r.client.Update(ctx, newInstance)
-		if err != nil {
-			log.Errorf(ctx, "Failed to update BOSHDeployment instance status: %v", err)
-			return errors.Wrapf(err, "could not update BOSHDeployment instance '%s' when update instance state", currentInstance.GetName())
 		}
 	}
 

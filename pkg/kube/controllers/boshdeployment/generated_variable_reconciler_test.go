@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -18,7 +19,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
@@ -32,17 +32,16 @@ import (
 
 var _ = Describe("ReconcileGeneratedVariable", func() {
 	var (
-		manager    *cfakes.FakeManager
-		reconciler reconcile.Reconciler
-		recorder   *record.FakeRecorder
-		request    reconcile.Request
-		ctx        context.Context
-		resolver   fakes.FakeResolver
-		manifest   *bdm.Manifest
-		log        *zap.SugaredLogger
-		config     *cfcfg.Config
-		client     *cfakes.FakeClient
-		instance   *bdv1.BOSHDeployment
+		manager               *cfakes.FakeManager
+		reconciler            reconcile.Reconciler
+		recorder              *record.FakeRecorder
+		request               reconcile.Request
+		ctx                   context.Context
+		resolver              fakes.FakeResolver
+		log                   *zap.SugaredLogger
+		config                *cfcfg.Config
+		client                *cfakes.FakeClient
+		manifestWithOpsSecret *corev1.Secret
 	)
 
 	BeforeEach(func() {
@@ -53,50 +52,39 @@ var _ = Describe("ReconcileGeneratedVariable", func() {
 		manager.GetRecorderReturns(recorder)
 		resolver = fakes.FakeResolver{}
 
-		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-		manifest = &bdm.Manifest{
-			Name: "fake-manifest",
-			Releases: []*bdm.Release{
-				{
-					Name:    "bar",
-					URL:     "docker.io/cfcontainerization",
-					Version: "1.0",
-					Stemcell: &bdm.ReleaseStemcell{
-						OS:      "opensuse",
-						Version: "42.3",
-					},
-				},
+		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo-with-ops", Namespace: "default"}}
+
+		manifestWithOpsSecret = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo-with-ops",
+				Namespace: "default",
 			},
-			InstanceGroups: []*bdm.InstanceGroup{
-				{
-					Name: "fakepod",
-					Jobs: []bdm.Job{
-						{
-							Name:    "foo",
-							Release: "bar",
-							Properties: bdm.JobProperties{
-								Properties: map[string]interface{}{
-									"password": "((foo_password))",
-								},
-								BOSHContainerization: bdm.BOSHContainerization{
-									Ports: []bdm.Port{
-										{
-											Name:     "foo",
-											Protocol: "TCP",
-											Internal: 8080,
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			Variables: []bdm.Variable{
-				{
-					Name: "foo_password",
-					Type: "password",
-				},
+			StringData: map[string]string{
+				"manifest.yaml": `---
+name: fake-manifest
+releases:
+- name: bar
+  url: docker.io/cfcontainerization
+  version: 1.0
+  stemcell:
+    os: opensuse
+    version: 42.3
+instance_groups:
+- name: fakepod
+  jobs:
+  - name: foo
+    release: bar
+    properties:
+      password: ((foo_password))
+      bosh_containerization:
+        ports:
+        - name: foo
+          protocol: TCP
+          internal: 8080
+variables:
+- name: foo_password
+  type: password
+`,
 			},
 		}
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
@@ -104,37 +92,13 @@ var _ = Describe("ReconcileGeneratedVariable", func() {
 		ctx = ctxlog.NewParentContext(log)
 		ctx = ctxlog.NewContextWithRecorder(ctx, "TestRecorder", recorder)
 
-		instance = &bdv1.BOSHDeployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "default",
-			},
-			Spec: bdv1.BOSHDeploymentSpec{
-				Manifest: bdv1.Manifest{
-					Ref:  "dummy-manifest",
-					Type: "configmap",
-				},
-				Ops: []bdv1.Ops{
-					{
-						Ref:  "bar",
-						Type: "configmap",
-					},
-					{
-						Ref:  "baz",
-						Type: "secret",
-					},
-				},
-			},
-			Status: bdv1.BOSHDeploymentStatus{
-				State: cfd.OpsAppliedState,
-			},
-		}
-
 		client = &cfakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 			switch object.(type) {
-			case *bdv1.BOSHDeployment:
-				instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
+			case *corev1.Secret:
+				if nn.Name == "foo-with-ops" {
+					manifestWithOpsSecret.DeepCopyInto(object.(*corev1.Secret))
+				}
 			}
 
 			return nil
@@ -144,7 +108,6 @@ var _ = Describe("ReconcileGeneratedVariable", func() {
 	})
 
 	JustBeforeEach(func() {
-		resolver.ResolveManifestReturns(manifest, nil)
 		reconciler = cfd.NewGeneratedVariableReconciler(ctx, config, manager, &resolver, controllerutil.SetControllerReference)
 	})
 
@@ -153,8 +116,10 @@ var _ = Describe("ReconcileGeneratedVariable", func() {
 			It("handles an error when generating variables", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object.(type) {
-					case *bdv1.BOSHDeployment:
-						instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
+					case *corev1.Secret:
+						if nn.Name == "foo-with-ops" {
+							manifestWithOpsSecret.DeepCopyInto(object.(*corev1.Secret))
+						}
 					case *esv1.ExtendedSecret:
 						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 					}
@@ -176,16 +141,7 @@ var _ = Describe("ReconcileGeneratedVariable", func() {
 
 			})
 
-			It("creates generated variables and update instance state to variable generated state successfully", func() {
-				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
-					switch object.(type) {
-					case *bdv1.BOSHDeployment:
-						object.(*bdv1.BOSHDeployment).DeepCopyInto(instance)
-					}
-					return nil
-				})
-
-				By("From ops applied state to variable interpolated state")
+			It("creates generated variables", func() {
 				result, err := reconciler.Reconcile(request)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))
@@ -193,7 +149,6 @@ var _ = Describe("ReconcileGeneratedVariable", func() {
 				newInstance := &bdv1.BOSHDeployment{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, newInstance)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(newInstance.Status.State).To(Equal(cfd.VariableGeneratedState))
 			})
 		})
 	})

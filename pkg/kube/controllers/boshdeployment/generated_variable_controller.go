@@ -6,19 +6,15 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
@@ -51,12 +47,10 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 		},
 	}
 
-	mapSecrets := handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
-		secret := a.Object.(*corev1.Secret)
-		return reconcilesForSecret(ctx, mgr, *secret)
-	})
-
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{ToRequests: mapSecrets}, p)
+	// This is a manifest with ops files secret that has changed.
+	// We can reconcile this as-is, no need to find the corresponding BOSHDeployment.
+	// All we have to do is create secrets for explicit variables.
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, p)
 	if err != nil {
 		return err
 	}
@@ -65,34 +59,10 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 }
 
 func isManifestWithOps(name string) bool {
+	// TODO: replace this with an annotation
 	if strings.HasSuffix(name, names.DeploymentSecretTypeManifestWithOps.String()) {
 		return true
 	}
 
 	return false
-}
-
-func reconcilesForSecret(ctx context.Context, mgr manager.Manager, secret corev1.Secret) []reconcile.Request {
-	reconciles := []reconcile.Request{}
-	var err error
-
-	instances := &bdv1.BOSHDeploymentList{}
-	err = mgr.GetClient().List(ctx, &client.ListOptions{}, instances)
-	if err != nil || len(instances.Items) < 1 {
-		return reconciles
-	}
-
-	instanceName := strings.TrimSuffix(secret.Name, "."+names.DeploymentSecretTypeManifestWithOps.String())
-	for _, instance := range instances.Items {
-		if instance.Name == instanceName {
-			reconciles = append(reconciles, reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name:      instance.GetName(),
-					Namespace: instance.GetNamespace(),
-				},
-			})
-		}
-	}
-
-	return reconciles
 }
