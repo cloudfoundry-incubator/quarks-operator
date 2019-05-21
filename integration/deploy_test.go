@@ -32,29 +32,27 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			// check for pod
+			By("checking for pod")
 			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 
-			// check for services
+			By("checking for services")
 			svc, err := env.GetService(env.Namespace, headlessSvcName)
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
-			Expect(svc.Spec.Ports)
-			Expect(svc.Spec.Selector).To(Equal(map[string]string{
-				bdm.LabelInstanceGroupName: "nats",
-			}))
+			Expect(svc.Spec.Selector).To(Equal(map[string]string{bdm.LabelInstanceGroupName: "nats"}))
+			Expect(svc.Spec.Ports).NotTo(BeEmpty())
 			Expect(svc.Spec.Ports[0].Name).To(Equal("nats"))
 			Expect(svc.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
 			Expect(svc.Spec.Ports[0].Port).To(Equal(int32(4222)))
 
 			svc, err = env.GetService(env.Namespace, clusterIpSvcName)
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
-			Expect(svc.Spec.Ports)
 			Expect(svc.Spec.Selector).To(Equal(map[string]string{
 				bdm.LabelInstanceGroupName: "nats",
 				essv1.LabelAZIndex:         "0",
 				essv1.LabelPodOrdinal:      "0",
 			}))
+			Expect(svc.Spec.Ports).NotTo(BeEmpty())
 			Expect(svc.Spec.Ports[0].Name).To(Equal("nats"))
 			Expect(svc.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
 			Expect(svc.Spec.Ports[0].Port).To(Equal(int32(4222)))
@@ -93,15 +91,13 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			// check for pod
+			By("checking for pod")
 			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 
 			sts, err := env.GetStatefulSet(env.Namespace, stsName)
 			Expect(err).NotTo(HaveOccurred(), "error getting statefulset for deployment")
-
 			Expect(*sts.Spec.Replicas).To(BeEquivalentTo(4))
-			Expect(err).NotTo(HaveOccurred(), "error verifying pod label")
 		})
 	})
 
@@ -123,9 +119,8 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			// check for events
+			By("checking for events")
 			events, err := env.GetBOSHDeploymentEvents(env.Namespace, boshDeployment.ObjectMeta.Name, string(boshDeployment.ObjectMeta.UID))
-
 			Expect(err).NotTo(HaveOccurred())
 			Expect(env.ContainExpectedEvent(events, "ResolveManifestError", "failed to interpolate")).To(BeTrue())
 		})
