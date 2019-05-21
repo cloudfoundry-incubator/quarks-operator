@@ -1,4 +1,4 @@
-package e2e_test
+package cli_test
 
 import (
 	"os"
@@ -29,8 +29,8 @@ var _ = Describe("variable-interpolation", func() {
 			wd, err := os.Getwd()
 			Expect(err).ToNot(HaveOccurred())
 
-			manifestPath = filepath.Join(wd, "../testing/assets/manifest.yaml")
-			varsDir = filepath.Join(wd, "../testing/assets/vars")
+			manifestPath = filepath.Join(wd, assetPath+"/manifest.yaml")
+			varsDir = filepath.Join(wd, assetPath+"/vars")
 		})
 
 		// TODO these three tests are meant to test different things?

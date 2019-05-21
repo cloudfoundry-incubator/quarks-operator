@@ -84,6 +84,10 @@ The image source can be configured by these environment variables:
 
 ## End-to-End
 
-The e2e tests are meant to test acceptance scenarios. They are written from an end user perspective. They also require a running Kubernetes, but build our operator CLI themselves.
+The e2e tests are meant to test acceptance scenarios. They are written from an end user perspective.
+They are split into two types, 'cli' and 'kube'.
 
-Currently we only have e2e tests for the command line options.
+The e2e CLI test exercise different command line options and commands which don't need a running Kubernetes, like template rendering.
+The CLI tests build the operator binary themselves.
+
+The second type of e2e tests use `helm` to install the CF operator into the k8s cluster and use the files from `docs/examples` for testing.

@@ -35,7 +35,8 @@ Name            | Action |
 `test`              | runs unit,integration and e2e tests. |
 `test-unit`         | runs unit tests only. |
 `test-integration`  | runs integration tests only. |
-`test-e2e`          | runs end to end tests only. |
+`test-cli-e2e`          | runs end to end tests for CLI. |
+`test-helm-e2e`         | runs end to end tests on k8s using `helm install`. |
 
 ### Generate Targets
 

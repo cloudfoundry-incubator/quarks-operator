@@ -1,4 +1,4 @@
-package e2e_test
+package cli_test
 
 import (
 	"time"
@@ -10,15 +10,17 @@ import (
 	"testing"
 )
 
-func TestE2E(t *testing.T) {
+func TestE2ECli(t *testing.T) {
 	SetDefaultEventuallyTimeout(10 * time.Second)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "E2E Suite")
+	RunSpecs(t, "E2E CLI Suite")
 }
 
 var (
 	cliPath string
 )
+
+const assetPath = "../../testing/assets"
 
 var _ = BeforeSuite(func() {
 	var err error

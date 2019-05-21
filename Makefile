@@ -1,6 +1,6 @@
 #!/usr/bin/env make
 
-all: tools test-unit test-integration test-e2e build
+all: tools build test
 
 up:
 	bin/up
@@ -30,7 +30,7 @@ build-helm:
 
 ############ TEST TARGETS ############
 
-test: vet lint test-unit test-integration test-e2e
+test: vet lint test-unit test-integration test-cli-e2e test-helm-e2e
 
 test-unit:
 	bin/test-unit
@@ -38,11 +38,11 @@ test-unit:
 test-integration:
 	bin/test-integration
 
-test-e2e:
-	bin/test-e2e
+test-cli-e2e:
+	bin/test-cli-e2e
 
 test-helm-e2e:
-	bin/test-kube-e2e
+	bin/test-helm-e2e
 
 ############ GENERATE TARGETS ############
 
