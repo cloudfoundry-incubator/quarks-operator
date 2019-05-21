@@ -99,9 +99,23 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job) ([]corev1.Container,
 
 // JobsToContainers creates a list of Containers for corev1.PodSpec Containers field
 func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, error) {
-	applyBPMOnContainer := func(container corev1.Container) (error, []corev1.Container) {
-		boshJobName := container.Name
+	generateJobContainers := func(job Job, jobImage string) (error, []corev1.Container) {
+		boshJobName := job.Name
 		containers := []corev1.Container{}
+		template := corev1.Container{
+			Name:  fmt.Sprintf(job.Name),
+			Image: jobImage,
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "rendering-data",
+					MountPath: "/var/vcap/all-releases",
+				},
+				{
+					Name:      "jobs-dir",
+					MountPath: "/var/vcap/jobs",
+				},
+			},
+		}
 
 		bpmConfig, ok := c.bpmConfigs[boshJobName]
 		if !ok {
@@ -113,15 +127,28 @@ func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, err
 		}
 
 		for _, process := range bpmConfig.Processes {
-			c := container.DeepCopy()
+			c := template.DeepCopy()
 
 			c.Name = fmt.Sprintf("%s-%s", boshJobName, process.Name)
 			c.Command = []string{process.Executable}
 			c.Args = process.Args
 			for name, value := range process.Env {
-				c.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
+				c.Env = append(template.Env, corev1.EnvVar{Name: name, Value: value})
 			}
 			c.WorkingDir = process.Workdir
+
+			if len(job.Properties.BOSHContainerization.Run.HealthChecks) > 0 {
+				for name, hc := range job.Properties.BOSHContainerization.Run.HealthChecks {
+					if name == process.Name {
+						if hc.ReadinessProbe != nil {
+							c.ReadinessProbe = hc.ReadinessProbe
+						}
+						if hc.LivenessProbe != nil {
+							c.LivenessProbe = hc.LivenessProbe
+						}
+					}
+				}
+			}
 
 			containers = append(containers, *c)
 		}
@@ -141,20 +168,7 @@ func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, err
 			return []corev1.Container{}, err
 		}
 
-		err, processes := applyBPMOnContainer(corev1.Container{
-			Name:  fmt.Sprintf(job.Name),
-			Image: jobImage,
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "rendering-data",
-					MountPath: "/var/vcap/all-releases",
-				},
-				{
-					Name:      "jobs-dir",
-					MountPath: "/var/vcap/jobs",
-				},
-			},
-		})
+		err, processes := generateJobContainers(job, jobImage)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to apply bpm information on bosh job '%s', instance group '%s'", job.Name, c.igName)
 		}
