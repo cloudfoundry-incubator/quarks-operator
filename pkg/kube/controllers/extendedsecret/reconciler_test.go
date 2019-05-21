@@ -227,6 +227,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 				secret := object.(*corev1.Secret)
 				Expect(secret.Data["certificate"]).To(Equal([]byte("the_cert")))
 				Expect(secret.Data["private_key"]).To(Equal([]byte("private_key")))
+				Expect(secret.Data["ca"]).To(Equal([]byte("theca")))
 				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, "generated"))
 				return nil
 			})

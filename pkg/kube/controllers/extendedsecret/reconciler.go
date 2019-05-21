@@ -245,6 +245,10 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 		},
 	}
 
+	if len(request.CA.Certificate) > 0 {
+		secret.Data["ca"] = request.CA.Certificate
+	}
+
 	return r.createSecret(ctx, instance, secret)
 }
 

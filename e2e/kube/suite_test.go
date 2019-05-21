@@ -18,7 +18,7 @@ import (
 	"testing"
 )
 
-func TestE2E(t *testing.T) {
+func TestE2EKube(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "E2E Kube Suite")
 }
