@@ -1,4 +1,4 @@
-package e2e_test
+package cli_test
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 )
@@ -18,7 +18,7 @@ var _ = Describe("bpm-configs", func() {
 	)
 
 	act := func(manifestPath string) (session *gexec.Session, err error) {
-		args := []string{"util", "bpm-configs", "-m", manifestPath, "-b", "../testing/assets", "-g", "log-api"}
+		args := []string{"util", "bpm-configs", "-m", manifestPath, "-b", assetPath, "-g", "log-api"}
 		cmd := exec.Command(cliPath, args...)
 		session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 		return
@@ -26,7 +26,7 @@ var _ = Describe("bpm-configs", func() {
 
 	Context("when manifest exists", func() {
 		BeforeEach(func() {
-			manifestPath = "../testing/assets/gatherManifest.yml"
+			manifestPath = assetPath + "/gatherManifest.yml"
 		})
 
 		It("prints the bpm configs to stdout", func() {

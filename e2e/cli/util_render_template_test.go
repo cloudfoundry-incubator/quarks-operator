@@ -1,4 +1,4 @@
-package e2e_test
+package cli_test
 
 import (
 	"io/ioutil"
@@ -29,7 +29,7 @@ var _ = Describe("render-template", func() {
 	})
 
 	act := func(manifestPath string) (session *gexec.Session, err error) {
-		args := []string{"util", "template-render", "-m", manifestPath, "-j", "../testing/assets", "-g", "log-api", "--spec-index", "0", "-d", tmpDir}
+		args := []string{"util", "template-render", "-m", manifestPath, "-j", assetPath, "-g", "log-api", "--spec-index", "0", "-d", tmpDir}
 		cmd := exec.Command(cliPath, args...)
 		session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 		return
@@ -37,7 +37,7 @@ var _ = Describe("render-template", func() {
 
 	Context("when manifest exists", func() {
 		BeforeEach(func() {
-			manifestPath = "../testing/assets/gatherManifest.yml"
+			manifestPath = assetPath + "/gatherManifest.yml"
 		})
 
 		It("renders the instance group template to a file", func() {

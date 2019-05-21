@@ -1,4 +1,4 @@
-package e2e_test
+package cli_test
 
 import (
 	"encoding/json"
@@ -15,7 +15,7 @@ var _ = Describe("data-gather", func() {
 	)
 
 	act := func(manifestPath string) (session *gexec.Session, err error) {
-		args := []string{"util", "data-gather", "-m", manifestPath, "-b", "../testing/assets", "-g", "log-api"}
+		args := []string{"util", "data-gather", "-m", manifestPath, "-b", assetPath, "-g", "log-api"}
 		cmd := exec.Command(cliPath, args...)
 		session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 		return
@@ -23,7 +23,7 @@ var _ = Describe("data-gather", func() {
 
 	Context("when manifest exists", func() {
 		BeforeEach(func() {
-			manifestPath = "../testing/assets/gatherManifest.yml"
+			manifestPath = assetPath + "/gatherManifest.yml"
 		})
 
 		It("gathers data to stdout", func() {

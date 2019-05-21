@@ -1,4 +1,4 @@
-package e2e_test
+package cli_test
 
 import (
 	"os"
