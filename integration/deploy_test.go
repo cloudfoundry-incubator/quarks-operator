@@ -6,14 +6,16 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/integration/environment"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
 )
 
 var _ = Describe("Deploy", func() {
-	Context("when correctly setup", func() {
+	Context("when using the default configuration", func() {
 		podName := "test-nats-v1-0"
 		stsName := "test-nats-v1"
 		headlessSvcName := "test-nats"
@@ -23,7 +25,7 @@ var _ = Describe("Deploy", func() {
 			Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
 		})
 
-		It("should deploy a pod with 10 seconds for the reconciler context", func() {
+		It("should deploy a pod and create services", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
@@ -32,48 +34,30 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			// check for pod
+			By("checking for pod")
 			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 
-			// check for services
+			By("checking for services")
 			svc, err := env.GetService(env.Namespace, headlessSvcName)
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
-			Expect(svc.Spec.Ports)
-			Expect(svc.Spec.Selector).To(Equal(map[string]string{
-				bdm.LabelInstanceGroupName: "nats",
-			}))
+			Expect(svc.Spec.Selector).To(Equal(map[string]string{bdm.LabelInstanceGroupName: "nats"}))
+			Expect(svc.Spec.Ports).NotTo(BeEmpty())
 			Expect(svc.Spec.Ports[0].Name).To(Equal("nats"))
 			Expect(svc.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
 			Expect(svc.Spec.Ports[0].Port).To(Equal(int32(4222)))
 
 			svc, err = env.GetService(env.Namespace, clusterIpSvcName)
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
-			Expect(svc.Spec.Ports)
 			Expect(svc.Spec.Selector).To(Equal(map[string]string{
 				bdm.LabelInstanceGroupName: "nats",
 				essv1.LabelAZIndex:         "0",
 				essv1.LabelPodOrdinal:      "0",
 			}))
+			Expect(svc.Spec.Ports).NotTo(BeEmpty())
 			Expect(svc.Spec.Ports[0].Name).To(Equal("nats"))
 			Expect(svc.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
 			Expect(svc.Spec.Ports[0].Port).To(Equal(int32(4222)))
-		})
-
-		It("should deploy a pod with 1 nanosecond for the reconciler context", func() {
-			env.Config.CtxTimeOut = 1 * time.Nanosecond
-			defer func() {
-				env.Config.CtxTimeOut = 10 * time.Second
-			}()
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
-			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-
-			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test", "manifest"))
-			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-
-			Expect(env.WaitForLogMsg(env.ObservedLogs, "context deadline exceeded")).To(Succeed())
 		})
 
 		It("should deploy manifest with multiple ops correctly", func() {
@@ -93,19 +77,75 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			// check for pod
+			By("checking for pod")
 			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 
 			sts, err := env.GetStatefulSet(env.Namespace, stsName)
 			Expect(err).NotTo(HaveOccurred(), "error getting statefulset for deployment")
-
 			Expect(*sts.Spec.Replicas).To(BeEquivalentTo(4))
-			Expect(err).NotTo(HaveOccurred(), "error verifying pod label")
+		})
+
+	})
+
+	Context("when using multiple processes in BPM", func() {
+		AfterEach(func() {
+			Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
+		})
+
+		It("should add multiple containers to a pod", func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: "bpm-manifest"},
+				Data:       map[string]string{"manifest": bm.BPMRelease},
+			})
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test-bdpl", "bpm-manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			By("checking for pod")
+			err = env.WaitForPod(env.Namespace, "test-bdpl-bpm-v1-0")
+			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
+
+			By("checking for services")
+			svc, err := env.GetService(env.Namespace, "test-bdpl-bpm")
+			Expect(err).NotTo(HaveOccurred(), "error getting service")
+			Expect(svc.Spec.Selector).To(Equal(map[string]string{bdm.LabelInstanceGroupName: "bpm"}))
+			Expect(svc.Spec.Ports).NotTo(BeEmpty())
+			Expect(svc.Spec.Ports[0].Port).To(Equal(int32(1337)))
+			Expect(svc.Spec.Ports[1].Port).To(Equal(int32(1338)))
+
+			By("checking for containers")
+			pods, err := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=bpm")
+			Expect(len(pods.Items)).To(Equal(1))
+			pod := pods.Items[0]
+			Expect(pod.Spec.Containers).To(HaveLen(2))
+
 		})
 	})
 
-	Context("when incorrectly setup", func() {
+	Context("when using a custom reconciler configuration", func() {
+		It("should use the context timeout (1ns)", func() {
+			env.Config.CtxTimeOut = 1 * time.Nanosecond
+			defer func() {
+				env.Config.CtxTimeOut = 10 * time.Second
+			}()
+
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test", "manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			Expect(env.WaitForLogMsg(env.ObservedLogs, "context deadline exceeded")).To(Succeed())
+		})
+	})
+
+	Context("when data provided by the user is incorrect", func() {
 		It("failed to deploy if an error occurred when applying ops files", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
@@ -123,9 +163,8 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			// check for events
+			By("checking for events")
 			events, err := env.GetBOSHDeploymentEvents(env.Namespace, boshDeployment.ObjectMeta.Name, string(boshDeployment.ObjectMeta.UID))
-
 			Expect(err).NotTo(HaveOccurred())
 			Expect(env.ContainExpectedEvent(events, "ResolveManifestError", "failed to interpolate")).To(BeTrue())
 		})
