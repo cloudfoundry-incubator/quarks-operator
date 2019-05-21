@@ -13,7 +13,7 @@ import (
 )
 
 var _ = Describe("Deploy", func() {
-	Context("when correctly setup", func() {
+	Context("when using the default configuration", func() {
 		podName := "test-nats-v1-0"
 		stsName := "test-nats-v1"
 		headlessSvcName := "test-nats"
@@ -23,7 +23,7 @@ var _ = Describe("Deploy", func() {
 			Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
 		})
 
-		It("should deploy a pod with 10 seconds for the reconciler context", func() {
+		It("should deploy a pod and create services", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
@@ -58,22 +58,6 @@ var _ = Describe("Deploy", func() {
 			Expect(svc.Spec.Ports[0].Port).To(Equal(int32(4222)))
 		})
 
-		It("should deploy a pod with 1 nanosecond for the reconciler context", func() {
-			env.Config.CtxTimeOut = 1 * time.Nanosecond
-			defer func() {
-				env.Config.CtxTimeOut = 10 * time.Second
-			}()
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
-			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-
-			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test", "manifest"))
-			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-
-			Expect(env.WaitForLogMsg(env.ObservedLogs, "context deadline exceeded")).To(Succeed())
-		})
-
 		It("should deploy manifest with multiple ops correctly", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
@@ -101,7 +85,26 @@ var _ = Describe("Deploy", func() {
 		})
 	})
 
-	Context("when incorrectly setup", func() {
+	Context("when using a custom reconciler configuration", func() {
+		It("should use the context timeout (1ns)", func() {
+			env.Config.CtxTimeOut = 1 * time.Nanosecond
+			defer func() {
+				env.Config.CtxTimeOut = 10 * time.Second
+			}()
+
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test", "manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			Expect(env.WaitForLogMsg(env.ObservedLogs, "context deadline exceeded")).To(Succeed())
+		})
+	})
+
+	Context("when data provided by the user is incorrect", func() {
 		It("failed to deploy if an error occurred when applying ops files", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
