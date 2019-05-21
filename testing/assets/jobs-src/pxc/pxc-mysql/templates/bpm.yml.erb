@@ -1,0 +1,20 @@
+---
+processes:
+- name: galera-init
+  executable: /var/vcap/packages/galera-init/bin/galera-init
+  args:
+    - --configPath=/var/vcap/jobs/pxc-mysql/config/galera-init-config.yml
+  hooks:
+    pre_start: /var/vcap/jobs/pxc-mysql/bin/cleanup-socket
+  env:
+    # Add xtrabackup, pxc binaries, and socat to PATH
+    PATH: /usr/bin:/bin:/var/vcap/packages/percona-xtrabackup/bin:/var/vcap/packages/pxc/bin:/var/vcap/packages/socat/bin
+  limits:
+    open_files: 1048576
+  persistent_disk: true
+  ephemeral_disk: true
+  additional_volumes:
+  - path: /var/vcap/sys/run/pxc-mysql
+    writable: true
+  - path: /var/vcap/store/mysql_audit_logs
+    writable: true
