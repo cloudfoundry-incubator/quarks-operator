@@ -12,15 +12,14 @@ import (
 )
 
 var _ = Describe("Trender", func() {
+	var (
+		deploymentManifest string
+		jobsDir            string
+		instanceGroupName  string
+		index              int
+	)
+
 	Context("When flag values and manifest file are specified", func() {
-
-		var (
-			deploymentManifest string
-			jobsDir            string
-			instanceGroupName  string
-			index              int
-		)
-
 		BeforeEach(func() {
 			deploymentManifest = "../../../testing/assets/gatherManifest.yml"
 			jobsDir = "../../../testing/assets"
@@ -74,6 +73,32 @@ var _ = Describe("Trender", func() {
 				err := os.RemoveAll(filepath.Join(jobsDir, "loggregator_trafficcontroller"))
 				Expect(err).NotTo(HaveOccurred())
 			})
+		})
+	})
+
+	Context("with an empty instances array in consumes", func() {
+		BeforeEach(func() {
+			deploymentManifest = "../../../testing/assets/ig-resolved.mysql-v1.yml"
+			jobsDir = "../../../testing/assets"
+			instanceGroupName = "mysql0"
+			index = 0
+		})
+
+		AfterEach(func() {
+			err := os.RemoveAll(filepath.Join(jobsDir, "pxc-mysql"))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("renders the job erb files correctly", func() {
+			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index)
+			Expect(err).ToNot(HaveOccurred())
+
+			drainFile := filepath.Join(jobsDir, "pxc-mysql", "bin/drain")
+			Expect(drainFile).Should(BeAnExistingFile())
+
+			content, err := ioutil.ReadFile(drainFile)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(content).To(ContainSubstring("#!/usr/bin/env bash"))
 		})
 	})
 })
