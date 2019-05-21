@@ -43,6 +43,7 @@ test-e2e:
 
 test-helm-e2e:
 	bin/test-kube-e2e
+
 ############ GENERATE TARGETS ############
 
 generate: gen-kube gen-fakes
@@ -58,3 +59,8 @@ gen-command-docs:
 
 verify-gen-kube:
 	bin/verify-gen-kube
+
+############ COVERAGE TARGETS ############
+
+coverage:
+	bin/coverage
