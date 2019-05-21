@@ -6,10 +6,12 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/integration/environment"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
 )
 
 var _ = Describe("Deploy", func() {
@@ -82,6 +84,45 @@ var _ = Describe("Deploy", func() {
 			sts, err := env.GetStatefulSet(env.Namespace, stsName)
 			Expect(err).NotTo(HaveOccurred(), "error getting statefulset for deployment")
 			Expect(*sts.Spec.Replicas).To(BeEquivalentTo(4))
+		})
+
+	})
+
+	Context("when using multiple processes in BPM", func() {
+		AfterEach(func() {
+			Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
+		})
+
+		It("should add multiple containers to a pod", func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: "bpm-manifest"},
+				Data:       map[string]string{"manifest": bm.BPMRelease},
+			})
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test-bdpl", "bpm-manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			By("checking for pod")
+			err = env.WaitForPod(env.Namespace, "test-bdpl-bpm-v1-0")
+			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
+
+			By("checking for services")
+			svc, err := env.GetService(env.Namespace, "test-bdpl-bpm")
+			Expect(err).NotTo(HaveOccurred(), "error getting service")
+			Expect(svc.Spec.Selector).To(Equal(map[string]string{bdm.LabelInstanceGroupName: "bpm"}))
+			Expect(svc.Spec.Ports).NotTo(BeEmpty())
+			Expect(svc.Spec.Ports[0].Port).To(Equal(int32(1337)))
+			Expect(svc.Spec.Ports[1].Port).To(Equal(int32(1338)))
+
+			By("checking for containers")
+			pods, err := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=bpm")
+			Expect(len(pods.Items)).To(Equal(1))
+			pod := pods.Items[0]
+			Expect(pod.Spec.Containers).To(HaveLen(2))
+
 		})
 	})
 
