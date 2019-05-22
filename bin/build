@@ -3,7 +3,10 @@
 set -euo pipefail
 
 GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
-. "${GIT_ROOT}/bin/include/versioning"
+
+if [ -z "${ARTIFACT_VERSION:-}" ]; then
+  . "${GIT_ROOT}/bin/include/versioning"
+fi
 
 BASEDIR="$(cd "$(dirname "$0")/.." && pwd)"
 CGO_ENABLED=0 go build -o "${BASEDIR}/binaries/cf-operator" -ldflags="-X code.cloudfoundry.org/cf-operator/version.Version=${ARTIFACT_VERSION}" cmd/cf-operator/main.go
