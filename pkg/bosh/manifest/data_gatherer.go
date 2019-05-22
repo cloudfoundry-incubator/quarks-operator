@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	btg "github.com/viovanov/bosh-template-go"
 	"go.uber.org/zap"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 )
@@ -293,6 +293,12 @@ func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string) error {
 
 	jobIndexBPM := make([]bpm.Config, len(jobInstances))
 	for i, jobInstance := range jobInstances {
+
+		// Check if BPM.Processes exists
+		if len(currentJob.Properties.BOSHContainerization.BPM.Processes) > 0 {
+			jobIndexBPM[i] = currentJob.Properties.BPM
+			continue
+		}
 
 		properties := currentJob.Properties.ToMap()
 
