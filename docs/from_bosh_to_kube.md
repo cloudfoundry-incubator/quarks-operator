@@ -212,8 +212,10 @@ instance_groups:
           healthcheck:
             some_process_name:
               readiness:
-                command:
-                - "curl --silent --fail --head http://${HOSTNAME}:8080/health"
+                handler:
+                  exec:
+                    command:
+                    - "curl --silent --fail --head http://${HOSTNAME}:8080/health"
         # List of ports to be opened up for this job.
         ports:
         - name: "health-port"

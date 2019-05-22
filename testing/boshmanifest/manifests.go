@@ -47,6 +47,19 @@ instance_groups:
       foo:
         domain: "((system_domain))"
       bosh_containerization:
+        run:
+          healthcheck:
+            test-server:
+              readiness:
+                handler:
+                  exec:
+                    command:
+                    - "curl --silent --fail --head http://${HOSTNAME}:8080/health"
+              liveness:
+                handler:
+                  exec:
+                    command:
+                    - "curl --silent --fail --head http://${HOSTNAME}:8080"
         ports:
         - name: "rep-server"
           protocol: "TCP"
