@@ -1,6 +1,8 @@
 package integration_test
 
 import (
+	"fmt"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -10,8 +12,16 @@ import (
 	"code.cloudfoundry.org/cf-operator/integration/environment"
 )
 
+func myFail(description string, callerSkip ...int) {
+	fmt.Println("Handling test failure...")
+	out, _ := exec.Command("./dump_env.sh", env.Namespace).CombinedOutput()
+	fmt.Println(string(out))
+
+	Fail(description, callerSkip...)
+}
+
 func TestIntegration(t *testing.T) {
-	RegisterFailHandler(Fail)
+	RegisterFailHandler(myFail)
 	RunSpecs(t, "Integration Suite")
 }
 

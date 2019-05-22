@@ -24,6 +24,7 @@ var _ = Describe("Lifecycle", func() {
 		})
 
 		It("should exercise a deployment lifecycle", func() {
+			Expect(1).To(Equal(2))
 			// Create BOSH manifest in config map
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
