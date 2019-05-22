@@ -94,7 +94,8 @@ var _ = Describe("Controllers", func() {
 
 		Context("if there is no cert secret yet", func() {
 			It("generates and persists the certificates on disk and in a secret", func() {
-				Expect(afero.Exists(config.Fs, "/tmp/cf-operator-certs/key.pem")).To(BeFalse())
+				file := "/tmp/cf-operator-mutating-hook-" + config.Namespace + "/key.pem"
+				Expect(afero.Exists(config.Fs, file)).To(BeFalse())
 
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					kind := object.GetObjectKind()
@@ -107,7 +108,7 @@ var _ = Describe("Controllers", func() {
 				err := controllers.AddHooks(ctx, config, manager, generator)
 				Expect(err).ToNot(HaveOccurred())
 
-				Expect(afero.Exists(config.Fs, "/tmp/cf-operator-certs/key.pem")).To(BeTrue())
+				Expect(afero.Exists(config.Fs, file)).To(BeTrue())
 				Expect(generator.GenerateCertificateCallCount()).To(Equal(2)) // Generate CA and certificate
 				Expect(client.CreateCallCount()).To(Equal(2))                 // Persist secret and the webhook config
 			})
