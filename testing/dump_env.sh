@@ -1,0 +1,112 @@
+#!/bin/bash
+
+set -e
+
+NS="$1"
+
+echo "Collecting environment information for namespace ${NS}"
+
+function get_resources() {
+  kubectl get $1 --namespace "${NS}" --output=jsonpath='{.items[*].metadata.name}'
+}
+
+function describe_resource() {
+  kubectl describe "$1" "$2" --namespace "${NS}" > "$3"
+}
+
+function get_resource() {
+  kubectl get "$1" "$2" -oyaml --namespace "${NS}" > "$3"
+}
+
+function get_pod_phase() {
+  kubectl get pod "${POD}" --namespace "${NS}" --output=jsonpath='{.status.phase}'
+}
+
+function get_containers_of_pod() {
+  kubectl get pods "${POD}" --namespace "${NS}" --output=jsonpath='{.spec.containers[*].name}'
+}
+
+function retrieve_container_kube_logs() {
+  printf " Kube logs"
+  kubectl logs "${POD}" --namespace "${NS}" --container "${CONTAINER}"            > "${CONTAINER_DIR}/kube.log"
+  kubectl logs "${POD}" --namespace "${NS}" --container "${CONTAINER}" --previous > "${CONTAINER_DIR}/kube-previous.log"
+}
+
+function get_all_resources() {
+  printf "Resources ...\n"
+  kubectl get all --namespace "${NS}" --output=yaml > "${NAMESPACE_DIR}/resources.yaml"
+}
+
+function get_all_events() {
+  printf "Events ...\n"
+  kubectl get events --namespace "${NS}" --output=yaml > "${NAMESPACE_DIR}/events.yaml"
+}
+
+NAMESPACE_DIR="/tmp/env_dumps/${NS}"
+if [ -e "$NAMESPACE_DIR" ]; then
+  i=1
+  while [ -e "/tmp/env_dumps/${NS}-$i" ]; do
+    let i++
+  done
+  NAMESPACE_DIR="/tmp/env_dumps/${NS}-$i"
+fi
+
+printf "Output directory: $(basename $NAMESPACE_DIR)...\n"
+SECRETS_DIR="${NAMESPACE_DIR}/secrets"
+CONFIGMAPS_DIR="${NAMESPACE_DIR}/configmaps"
+mkdir -p /tmp/env_dumps
+mkdir -p ${SECRETS_DIR}
+mkdir -p ${CONFIGMAPS_DIR}
+
+# Iterate over configmaps
+CONFIGMAPS=($(get_resources "configmaps" ))
+for CM in "${CONFIGMAPS[@]}"; do
+  printf "Configmap \e[0;32m$CM\e[0m\n"
+  get_resource configmap "$CM" "${CONFIGMAPS_DIR}/${CM}.yaml"
+done
+
+# Iterate over secrets
+SECRETS=($(get_resources "secrets"))
+for SECRET in "${SECRETS[@]}"; do
+  printf "Secret \e[0;32m$SECRET\e[0m\n"
+  get_resource secret "$SECRET" "${SECRETS_DIR}/${SECRET}.yaml"
+done
+
+# Iterate over jobs
+JOBS=($(get_resources "jobs"))
+for JOB in "${JOBS[@]}"; do
+  printf "Job \e[0;32m$JOB\e[0m\n"
+
+  JOB_DIR="${NAMESPACE_DIR}/${JOB}"
+  mkdir -p ${JOB_DIR}
+  describe_resource job "$JOB" "${JOB_DIR}/describe-job.txt"
+done
+
+# Iterate over pods and their containers
+PODS=($(get_resources "pods"))
+for POD in "${PODS[@]}"; do
+  POD_DIR="${NAMESPACE_DIR}/${POD}"
+  PHASE="$(get_pod_phase)"
+
+  printf "Pod \e[0;32m$POD\e[0m = $PHASE\n"
+
+  # Iterate over containers and dump logs.
+  CONTAINERS=($(get_containers_of_pod))
+  for CONTAINER in "${CONTAINERS[@]}"; do
+    printf "  - \e[0;32m${CONTAINER}\e[0m logs:"
+
+    CONTAINER_DIR="${POD_DIR}/${CONTAINER}"
+    mkdir -p ${CONTAINER_DIR}
+    retrieve_container_kube_logs 2> /dev/null || true
+
+    printf "\n"
+  done
+
+  describe_resource pod "$POD" "${POD_DIR}/describe-pod.txt"
+done
+
+get_all_resources
+get_all_events
+
+printf "\e[0;32mDone\e[0m\n"
+exit
