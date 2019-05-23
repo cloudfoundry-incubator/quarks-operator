@@ -59,15 +59,27 @@ func NewEnvironment() *Environment {
 }
 
 // Setup prepares the test environment by loading config and finally starting the operator
-func (e *Environment) Setup() (StopFunc, error) {
-	err := e.setupCFOperator()
+func (e *Environment) Setup(node int32) (TearDownFunc, StopFunc, error) {
+	err := e.setupKube()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	err = e.startClients(e.kubeConfig)
+	err = e.startKubeClients(e.kubeConfig)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+
+	namespace := getNamespace(node)
+
+	nsTeardown, err := e.CreateNamespace(namespace)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = e.setupCFOperator(namespace, node)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	e.stop = e.startOperator()
@@ -75,12 +87,11 @@ func (e *Environment) Setup() (StopFunc, error) {
 		"127.0.0.1",
 		strconv.Itoa(int(e.Config.WebhookServerPort)),
 		1*time.Minute)
-
 	if err != nil {
-		return nil, err
+		return nsTeardown, nil, err
 	}
 
-	return func() {
+	return nsTeardown, func() {
 		if e.stop != nil {
 			close(e.stop)
 		}
@@ -97,64 +108,6 @@ func (e *Environment) AllLogMessages() (msgs []string) {
 	for _, m := range e.ObservedLogs.All() {
 		msgs = append(msgs, m.Message)
 	}
-
-	return
-}
-
-func (e *Environment) setupCFOperator() (err error) {
-	whh, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_HOST")
-	if !found {
-		return fmt.Errorf("no webhook host set. Please set CF_OPERATOR_WEBHOOK_SERVICE_HOST to the host/ip the operator runs on and try again")
-	}
-	e.Config.WebhookServerHost = whh
-
-	whp := int32(2999)
-	portString, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_PORT")
-	if found {
-		port, err := strconv.ParseInt(portString, 10, 32)
-		if err != nil {
-			return err
-		}
-		whp = int32(port)
-	}
-	e.Config.WebhookServerPort = whp
-
-	ns, found := os.LookupEnv("TEST_NAMESPACE")
-	if !found {
-		ns = "default"
-	}
-
-	e.Namespace = ns
-	e.Config.Namespace = ns
-
-	e.ObservedLogs, e.Log = helper.NewTestLogger()
-
-	err = e.setupKube()
-	if err != nil {
-		return
-	}
-
-	operatorDockerImageOrg, found := os.LookupEnv("DOCKER_IMAGE_ORG")
-	if !found {
-		operatorDockerImageOrg = "cfcontainerization"
-	}
-
-	operatorDockerImageRepo, found := os.LookupEnv("DOCKER_IMAGE_REPOSITORY")
-	if !found {
-		operatorDockerImageRepo = "cf-operator"
-	}
-
-	operatorDockerImageTag, found := os.LookupEnv("DOCKER_IMAGE_TAG")
-	if !found {
-		return fmt.Errorf("Required environment variable DOCKER_IMAGE_TAG not set")
-	}
-
-	manifest.DockerImageOrganization = operatorDockerImageOrg
-	manifest.DockerImageRepository = operatorDockerImageRepo
-	manifest.DockerImageTag = operatorDockerImageTag
-
-	ctx := ctxlog.NewParentContext(e.Log)
-	e.mgr, err = operator.NewManager(ctx, e.Config, e.kubeConfig, manager.Options{Namespace: e.Namespace})
 
 	return
 }
@@ -177,7 +130,7 @@ func (e *Environment) setupKube() (err error) {
 	return
 }
 
-func (e *Environment) startClients(kubeConfig *rest.Config) (err error) {
+func (e *Environment) startKubeClients(kubeConfig *rest.Config) (err error) {
 	e.Clientset, err = kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
 		return
@@ -186,8 +139,72 @@ func (e *Environment) startClients(kubeConfig *rest.Config) (err error) {
 	return
 }
 
+func (e *Environment) setupCFOperator(namespace string, node int32) (err error) {
+	whh, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_HOST")
+	if !found {
+		return fmt.Errorf("no webhook host set. Please set CF_OPERATOR_WEBHOOK_SERVICE_HOST to the host/ip the operator runs on and try again")
+	}
+	e.Config.WebhookServerHost = whh
+
+	port, err := getWebhookServicePort(node)
+	if err != nil {
+		return err
+	}
+	e.Config.WebhookServerPort = port
+
+	e.Namespace = namespace
+	e.Config.Namespace = namespace
+	log.Printf("Running integration tests on node %d in namespace %s, using webhook port: %d", node, namespace, port)
+
+	operatorDockerImageOrg, found := os.LookupEnv("DOCKER_IMAGE_ORG")
+	if !found {
+		operatorDockerImageOrg = "cfcontainerization"
+	}
+
+	operatorDockerImageRepo, found := os.LookupEnv("DOCKER_IMAGE_REPOSITORY")
+	if !found {
+		operatorDockerImageRepo = "cf-operator"
+	}
+
+	operatorDockerImageTag, found := os.LookupEnv("DOCKER_IMAGE_TAG")
+	if !found {
+		return fmt.Errorf("Required environment variable DOCKER_IMAGE_TAG not set")
+	}
+
+	manifest.DockerImageOrganization = operatorDockerImageOrg
+	manifest.DockerImageRepository = operatorDockerImageRepo
+	manifest.DockerImageTag = operatorDockerImageTag
+
+	e.ObservedLogs, e.Log = helper.NewTestLoggerWithPath(fmt.Sprintf("/tmp/cf-operator-tests-%d.log", node))
+	ctx := ctxlog.NewParentContext(e.Log)
+	e.mgr, err = operator.NewManager(ctx, e.Config, e.kubeConfig, manager.Options{Namespace: e.Namespace})
+
+	return
+}
+
 func (e *Environment) startOperator() chan struct{} {
 	stop := make(chan struct{})
 	go e.mgr.Start(stop)
 	return stop
+}
+
+func getNamespace(node int32) string {
+	ns, found := os.LookupEnv("TEST_NAMESPACE")
+	if !found {
+		ns = "default"
+	}
+	return ns + "-" + strconv.Itoa(int(node))
+}
+
+func getWebhookServicePort(node int32) (int32, error) {
+	port := int64(2998)
+	portString, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_PORT")
+	if found {
+		var err error
+		port, err = strconv.ParseInt(portString, 10, 32)
+		if err != nil {
+			return -1, err
+		}
+	}
+	return int32(port) + node, nil
 }

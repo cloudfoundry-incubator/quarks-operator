@@ -94,6 +94,15 @@ var _ = Describe("kube converter", func() {
 					Expect(rendererInitContainer.VolumeMounts[2].Name).To(Equal("ig-resolved"))
 					Expect(rendererInitContainer.VolumeMounts[2].MountPath).To(Equal("/var/run/secrets/resolved-properties/diego-cell"))
 
+					// Test the healthcheck setup
+					readinessProbe := extStS.Spec.Containers[0].ReadinessProbe
+					Expect(readinessProbe).ToNot(BeNil())
+					Expect(readinessProbe.Exec.Command[0]).To(Equal("curl --silent --fail --head http://${HOSTNAME}:8080/health"))
+
+					livenessProbe := extStS.Spec.Containers[0].LivenessProbe
+					Expect(livenessProbe).ToNot(BeNil())
+					Expect(livenessProbe.Exec.Command[0]).To(Equal("curl --silent --fail --head http://${HOSTNAME}:8080"))
+
 					// Test services for the extended statefulSet
 					service0 := kubeConverter.Services[0]
 					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-0", m.Name, extStS.Name)))

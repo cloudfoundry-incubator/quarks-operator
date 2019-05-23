@@ -7,18 +7,11 @@ GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
 
 export DOCKER_IMAGE_TAG=${VERSION_TAG}
 
-echo "Test logs are here: /tmp/cf-operator-tests.log"
+echo "Test logs are here: /tmp/cf-operator-tests-*.log"
 
 if [ -z ${TEST_NAMESPACE+x} ]; then
   TEST_NAMESPACE="test$(date +%s)"
   export TEST_NAMESPACE
-
-  remove_namespace() {
-    kubectl delete namespace --wait=false --grace-period=60 "$TEST_NAMESPACE"
-  }
-  trap remove_namespace EXIT
-
-  kubectl create namespace "$TEST_NAMESPACE"
 fi
 
 bin/apply-crds
@@ -36,8 +29,10 @@ code.cloudfoundry.org/cf-operator/pkg/kube/util/...,\
 code.cloudfoundry.org/cf-operator/pkg/kube/config/..."
 
 # Run code coverage only in CI
-if [ -n "$COVERAGE" ]; then COV_ARG="-cover -outputdir=./code-coverage  -coverprofile=${GOVER_FILE} -coverpkg ${pkgs}"; fi
+if [ -n "$COVERAGE" ]; then
+  COV_ARG="-cover -outputdir=./code-coverage  -coverprofile=${GOVER_FILE} -coverpkg ${pkgs}"
+  mkdir -p code-coverage
+fi
 
-mkdir -p code-coverage
-ginkgo --slowSpecThreshold=50 $COV_ARG integration/
-
+NODES=${NODES:-5}
+ginkgo --randomizeAllSpecs --nodes="$NODES" --slowSpecThreshold=50 $COV_ARG integration/

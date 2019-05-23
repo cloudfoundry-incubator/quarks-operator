@@ -44,7 +44,7 @@ type WebhookConfig struct {
 func NewWebhookConfig(c client.Client, config *config.Config, generator credsgen.Generator, configName string) *WebhookConfig {
 	return &WebhookConfig{
 		ConfigName: configName,
-		CertDir:    "/tmp/cf-operator-certs",
+		CertDir:    path.Join("/tmp", configName),
 		client:     c,
 		config:     config,
 		generator:  generator,

@@ -27,6 +27,7 @@ import (
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 )
 
 // Machine produces and destroys resources for tests
@@ -40,6 +41,31 @@ type Machine struct {
 
 // TearDownFunc tears down the resource
 type TearDownFunc func() error
+
+// CreateNamespace creates a namespace, it doesn't return an error if the namespace exists
+func (m *Machine) CreateNamespace(namespace string) (TearDownFunc, error) {
+	client := m.Clientset.CoreV1().Namespaces()
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: namespace,
+		},
+	}
+	_, err := client.Create(ns)
+	if apierrors.IsAlreadyExists(err) {
+		err = nil
+	}
+	return func() error {
+		b := metav1.DeletePropagationBackground
+		err := client.Delete(ns.GetName(), &metav1.DeleteOptions{
+			GracePeriodSeconds: util.Int64(0),
+			PropagationPolicy:  &b,
+		})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}, err
+}
 
 // CreatePod creates a default pod and returns a function to delete it
 func (m *Machine) CreatePod(namespace string, pod corev1.Pod) (TearDownFunc, error) {
