@@ -165,9 +165,10 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 			Output: &ejv1.Output{
 				NamePrefix: outputSecretPrefix,
 				SecretLabels: map[string]string{
-					bdv1.LabelDeploymentName:    f.Manifest.Name,
-					bdv1.LabelManifestSHA1:      manifestSignature,
-					ejv1.LabelReferencedJobName: fmt.Sprintf("data-gathering-%s", f.Manifest.Name),
+					bdv1.LabelDeploymentName:       f.Manifest.Name,
+					bdv1.LabelManifestSHA1:         manifestSignature,
+					bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeManifestWithOps.String(),
+					ejv1.LabelReferencedJobName:    fmt.Sprintf("data-gathering-%s", f.Manifest.Name),
 				},
 				Versioned: true,
 			},
@@ -300,7 +301,8 @@ func (f *JobFactory) gatheringJob(name string, secretType names.DeploymentSecret
 			Output: &ejv1.Output{
 				NamePrefix: outputSecretNamePrefix,
 				SecretLabels: map[string]string{
-					bdv1.LabelDeploymentName: f.Manifest.Name,
+					bdv1.LabelDeploymentName:       f.Manifest.Name,
+					bdv1.LabelDeploymentSecretType: secretType.String(),
 				},
 				Versioned: true,
 			},

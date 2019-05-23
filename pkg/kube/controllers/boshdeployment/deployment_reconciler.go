@@ -215,6 +215,7 @@ func (r *ReconcileBOSHDeployment) createVariableInterpolationEJob(ctx context.Co
 	// Apply the EJob
 	_, err := controllerutil.CreateOrUpdate(ctx, r.client, varIntEJob.DeepCopy(), func(obj runtime.Object) error {
 		if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
+			varIntEJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
 			varIntEJob.DeepCopyInto(existingEJob)
 			return nil
 		}
@@ -239,6 +240,7 @@ func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, in
 	// Apply the EJob
 	_, err := controllerutil.CreateOrUpdate(ctx, r.client, dataGatheringEJob.DeepCopy(), func(obj runtime.Object) error {
 		if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
+			dataGatheringEJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
 			dataGatheringEJob.DeepCopyInto(existingEJob)
 			return nil
 		}
@@ -263,6 +265,7 @@ func (r *ReconcileBOSHDeployment) createBPMConfigsJob(ctx context.Context, insta
 	// Apply the new EJob
 	_, err := controllerutil.CreateOrUpdate(ctx, r.client, bpmConfigsJob.DeepCopy(), func(obj runtime.Object) error {
 		if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
+			bpmConfigsJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
 			bpmConfigsJob.DeepCopyInto(existingEJob)
 			return nil
 		}

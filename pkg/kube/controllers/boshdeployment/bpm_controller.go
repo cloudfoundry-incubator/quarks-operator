@@ -2,7 +2,6 @@ package boshdeployment
 
 import (
 	"context"
-	"strings"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	corev1 "k8s.io/api/core/v1"
@@ -15,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
@@ -41,13 +41,13 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*corev1.Secret)
-			return isVersionedSecret(o) && isBPMInfoSecret(o.Name)
+			return isBPMInfoSecret(o)
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectNew.(*corev1.Secret)
-			return isVersionedSecret(o) && isBPMInfoSecret(o.Name)
+			return isBPMInfoSecret(o)
 		},
 	}
 
@@ -63,8 +63,7 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 	return nil
 }
 
-func isVersionedSecret(secret *corev1.Secret) bool {
-	// TODO: Use annotation/label for this
+func isBPMInfoSecret(secret *corev1.Secret) bool {
 	secretLabels := secret.GetLabels()
 	if secretLabels == nil {
 		return false
@@ -78,14 +77,13 @@ func isVersionedSecret(secret *corev1.Secret) bool {
 		return false
 	}
 
-	return true
-}
-
-func isBPMInfoSecret(name string) bool {
-	// TODO: Use annotation/label for this
-	if strings.Contains(name, names.DeploymentSecretBpmInformation.String()) {
-		return true
+	deploymentSecretType, ok := secretLabels[bdv1.LabelDeploymentSecretType]
+	if !ok {
+		return false
+	}
+	if deploymentSecretType != names.DeploymentSecretBpmInformation.String() {
+		return false
 	}
 
-	return false
+	return true
 }

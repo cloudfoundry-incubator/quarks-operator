@@ -152,6 +152,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, secret *corev1.
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
 			if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
+				eJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
 				eJob.DeepCopyInto(existingEJob)
 				return nil
 			}
@@ -173,8 +174,9 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, secret *corev1.
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.client, svc.DeepCopy(), func(obj runtime.Object) error {
 			if existingSvc, ok := obj.(*corev1.Service); ok {
-				// Should keep current ClusterIP when update
+				// Should keep current ClusterIP and ResourceVersion when update
 				svc.Spec.ClusterIP = existingSvc.Spec.ClusterIP
+				svc.ObjectMeta.ResourceVersion = existingSvc.ObjectMeta.ResourceVersion
 				svc.DeepCopyInto(existingSvc)
 				return nil
 			}
@@ -196,6 +198,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, secret *corev1.
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eSts.DeepCopy(), func(obj runtime.Object) error {
 			if existingSts, ok := obj.(*estsv1.ExtendedStatefulSet); ok {
+				eSts.ObjectMeta.ResourceVersion = existingSts.ObjectMeta.ResourceVersion
 				eSts.DeepCopyInto(existingSts)
 				return nil
 			}
