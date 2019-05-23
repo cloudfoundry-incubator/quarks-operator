@@ -23,7 +23,6 @@ While unit testing we:
 * assert all handled error cases are triggered
 * can ignore outgoing queries, which only change internal state
 
-
 ### Setup Ruby
 
 Ruby gem for template rendering
@@ -36,22 +35,38 @@ Integration tests formulate expectations on the interactions of several componen
 They require access to a Kubernetes, preferably `minikube`.
 
 Integration tests start our operator directly, bypassing the command line.
+They do require the operator [docker image](#upload-operator-image) and the `bosh-template` Ruby gem.
 
 The `environment` package provides helpers to start the operator, get the kubeconfig and use the clients to create objects.
 In `testing` the `catalog` defines test objects.
 
 Integration tests use a special logger, which does not log to stdout and whose messages can be accessed as a an array by calling `env.AllLogMessages()`.
 
+When using `bin/test-integration` the integration tests are run in parallel.
+Each Ginkgo test node has a separate namespace, log file and webhook server port and certificate.
+
+The node index starts at 1 and is used as following to generate names:
+
+		namespace: $TEST_NAMESPACE + <node_index>
+		webhook port: $CF_OPERATOR_WEBHOOK_SERVICE_PORT + <node_index>
+		log file: /tmp/cf-operator-tests-<node_index>.log
+
+Integration tests use the `TEST_NAMESPACE` environment variable as a base to
+calculate the namespace name. Test namespaces are deleted automatically once
+the tests are completed.
+
 ### Setup Webhook Host
 
 Extended StatefulSet requires a k8s webhook to mutate the volumes of a pod.
 Kubernetes will call back to the operator for certain requests and use the
-modified pod manifest, which is returned.  The cf-operator binary will open a
-listening port bound to `CF_OPERATOR_WEBHOOK_SERVICE_HOST` on port
-`CF_OPERATOR_WEBHOOK_SERVICE_PORT`.
+modified pod manifest, which is returned.
+
+The cf-operator integration tests use `CF_OPERATOR_WEBHOOK_SERVICE_PORT` as a
+base value to calculate the port number to listen to on
+`CF_OPERATOR_WEBHOOK_SERVICE_HOST`.
 
 The tests use a `mutatingwebhookconfiguration` to configure Kubernetes to
-connect to this address.  It needs to be reachable from the cluster.
+connect to this address. The address needs to be reachable from the cluster.
 
 In case of minikube on Linux, the following one liner exports the public IP of
 the interface used for the default route:
@@ -61,6 +76,20 @@ the interface used for the default route:
 And in case of minikube on Darwin, using following command to export the IP:
 
     export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ifconfig `route -n get 0.0.0.0 2>/dev/null | awk '/interface: / {print $2}'` | awk '/inet /{gsub(/\//," ");print $2}')
+
+### Mutatingwebhookconfiguration
+
+The configuration only applies to a single namespace, by using a selector. It contains the URL of the webhooks, build from
+`CF_OPERATOR_WEBHOOK_SERVICE_HOST` and the calculated port.
+It also contains SSL certificates and CA, which are necessary to connect to the webhook.
+
+The certificates and keys are written to disk, so the webhook server can use
+them.  They are also cached in a k8s secret for production, but that is not
+being used in integration tests, since they delete the test namespaces.
+
+Currently only the CI scripts for integration tests clean up unused mutatingwebhookconfigurations.
+
+		kubectl get mutatingwebhookconfiguration -oname | xargs -n 1 kubectl delete
 
 ### Upload Operator Image
 
