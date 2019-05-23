@@ -6,19 +6,15 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
@@ -36,26 +32,25 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 		return err
 	}
 
-	// Watch versioned secret referenced by BOSHDeployment instance
+	// We have to watch the versioned secret for each Instance Group
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*corev1.Secret)
-			return isVersionedSecret(o) && isIGResolvedManifest(o.Name)
+			return isVersionedSecret(o) && isBPMInfoSecret(o.Name)
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectNew.(*corev1.Secret)
-			return isVersionedSecret(o) && isIGResolvedManifest(o.Name)
+			return isVersionedSecret(o) && isBPMInfoSecret(o.Name)
 		},
 	}
 
-	mapSecrets := handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
-		secret := a.Object.(*corev1.Secret)
-		return reconcilesForVersionedSecret(ctx, mgr, *secret)
-	})
+	// We have to watch the BPM secret. It gives us information about how to
+	// start containers for each process.
+	// The BPM secret is annotated with the name of the BOSHDeployment.
 
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{ToRequests: mapSecrets}, p)
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, p)
 	if err != nil {
 		return err
 	}
@@ -64,6 +59,7 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 }
 
 func isVersionedSecret(secret *corev1.Secret) bool {
+	// TODO: Use annotation/label for this
 	secretLabels := secret.GetLabels()
 	if secretLabels == nil {
 		return false
@@ -80,44 +76,11 @@ func isVersionedSecret(secret *corev1.Secret) bool {
 	return true
 }
 
-func isIGResolvedManifest(name string) bool {
-	if strings.Contains(name, names.DeploymentSecretTypeInstanceGroupResolvedProperties.String()) {
+func isBPMInfoSecret(name string) bool {
+	// TODO: Use annotation/label for this
+	if strings.Contains(name, names.DeploymentSecretBpmInformation.String()) {
 		return true
 	}
 
 	return false
-}
-
-func reconcilesForVersionedSecret(ctx context.Context, mgr manager.Manager, secret corev1.Secret) []reconcile.Request {
-	reconciles := []reconcile.Request{}
-
-	// add requests for the BOSHDeployments referencing the versioned secret
-	secretLabels := secret.GetLabels()
-	if secretLabels == nil {
-		return reconciles
-	}
-
-	deploymentName, ok := secretLabels[bdv1.LabelDeploymentName]
-	if !ok {
-		return reconciles
-	}
-
-	deployments := &bdv1.BOSHDeploymentList{}
-	err := mgr.GetClient().List(ctx, &client.ListOptions{}, deployments)
-	if err != nil || len(deployments.Items) < 1 {
-		return reconciles
-	}
-
-	for _, deployment := range deployments.Items {
-		if deployment.GetName() == deploymentName {
-			reconciles = append(reconciles, reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name:      deployment.GetName(),
-					Namespace: deployment.GetNamespace(),
-				},
-			})
-		}
-	}
-
-	return reconciles
 }

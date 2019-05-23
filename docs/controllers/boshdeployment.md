@@ -45,6 +45,7 @@ Creates/updates:
 - the "with-ops" secret
 - the "Variable Interpolation" [auto-errand extended job](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/controllers/extendedjob.md#one-off-jobs-auto-errands)
 - the "Data Gathering" auto-errand extended job
+- the "BPM Configs" auto-errand extended job
 
 > **Note:** the output of the ["Variable Interpolation"](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_variable-interpolation.md) `ExtendedJob` is the input for the "Data Gathering" `ExtendedJob`:
 >

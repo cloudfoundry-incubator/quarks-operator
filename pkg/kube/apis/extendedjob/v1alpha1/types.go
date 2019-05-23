@@ -18,6 +18,9 @@ import (
 var (
 	// LabelReferencedJobName is the name key for dependent job
 	LabelReferencedJobName = fmt.Sprintf("%s/referenced-job-name", apis.GroupName)
+	// LabelPersistentSecretContainer is a label used for persisted secrets,
+	// identifying the container that created them
+	LabelPersistentSecretContainer = fmt.Sprintf("%s/container-name", apis.GroupName)
 )
 
 const (

@@ -2,12 +2,12 @@
 package fakes
 
 import (
-	"context"
-	"sync"
+	context "context"
+	sync "sync"
 
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	runtime "k8s.io/apimachinery/pkg/runtime"
+	types "k8s.io/apimachinery/pkg/types"
+	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type FakeClient struct {

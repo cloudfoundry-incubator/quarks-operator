@@ -47,14 +47,14 @@ func GetReconciles(ctx context.Context, mgr manager.Manager, reconcileType Recon
 		var name string
 
 		switch object.(type) {
-		case corev1.ConfigMap:
+		case *corev1.ConfigMap:
 			objectReferences, err = GetConfigMapsReferencedBy(parent)
-			name = object.(corev1.ConfigMap).Name
-		case corev1.Secret:
+			name = object.(*corev1.ConfigMap).Name
+		case *corev1.Secret:
 			objectReferences, err = GetSecretsReferencedBy(parent)
-			name = object.(corev1.Secret).Name
+			name = object.(*corev1.Secret).Name
 		default:
-			return false, errors.New("can't get reconciles for unkown object type; supported types are ConfigMap and Secret")
+			return false, errors.New("can't get reconciles for unknown object type; supported types are ConfigMap and Secret")
 		}
 
 		if err != nil {
@@ -72,7 +72,7 @@ func GetReconciles(ctx context.Context, mgr manager.Manager, reconcileType Recon
 
 	switch reconcileType {
 	case ReconcileForBOSHDeployment:
-		log.Debugf(ctx, "listing BOSHDeployments in namespace '%s'", namespace)
+		log.Debugf(ctx, "Listing BOSHDeployments in namespace '%s'", namespace)
 		boshDeployments, err := listBOSHDeployments(ctx, mgr, namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to list BOSHDeployments for ConfigMap reconciles")
@@ -93,7 +93,7 @@ func GetReconciles(ctx context.Context, mgr manager.Manager, reconcileType Recon
 			}
 		}
 	case ReconcileForExtendedJob:
-		log.Debugf(ctx, "listing ExtendedJobs in namespace '%s'", namespace)
+		log.Debugf(ctx, "Listing ExtendedJobs in namespace '%s'", namespace)
 		extendedJobs, err := listExtendedJobs(ctx, mgr, namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to list ExtendedJobs for ConfigMap reconciles")
@@ -114,7 +114,7 @@ func GetReconciles(ctx context.Context, mgr manager.Manager, reconcileType Recon
 			}
 		}
 	case ReconcileForExtendedStatefulSet:
-		log.Debugf(ctx, "listing ExtendedStatefulSets in namespace '%s'", namespace)
+		log.Debugf(ctx, "Listing ExtendedStatefulSets in namespace '%s'", namespace)
 		extendedStatefulSets, err := listExtendedStatefulSets(ctx, mgr, namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to list ExtendedStatefulSets for ConfigMap reconciles")
@@ -142,7 +142,7 @@ func GetReconciles(ctx context.Context, mgr manager.Manager, reconcileType Recon
 }
 
 func listBOSHDeployments(ctx context.Context, mgr manager.Manager, namespace string) (*bdv1.BOSHDeploymentList, error) {
-	log.Debugf(ctx, "listing BOSHDeployments in namespace '%s'", namespace)
+	log.Debugf(ctx, "Listing BOSHDeployments in namespace '%s'", namespace)
 	result := &bdv1.BOSHDeploymentList{}
 	err := mgr.GetClient().List(ctx, &client.ListOptions{}, result)
 	if err != nil {
@@ -153,7 +153,7 @@ func listBOSHDeployments(ctx context.Context, mgr manager.Manager, namespace str
 }
 
 func listExtendedStatefulSets(ctx context.Context, mgr manager.Manager, namespace string) (*estsv1.ExtendedStatefulSetList, error) {
-	log.Debugf(ctx, "listing ExtendedStatefulSets in namespace '%s'", namespace)
+	log.Debugf(ctx, "Listing ExtendedStatefulSets in namespace '%s'", namespace)
 	result := &estsv1.ExtendedStatefulSetList{}
 	err := mgr.GetClient().List(ctx, &client.ListOptions{}, result)
 	if err != nil {
@@ -164,7 +164,7 @@ func listExtendedStatefulSets(ctx context.Context, mgr manager.Manager, namespac
 }
 
 func listExtendedJobs(ctx context.Context, mgr manager.Manager, namespace string) (*ejobv1.ExtendedJobList, error) {
-	log.Debugf(ctx, "listing ExtendedJobs in namespace '%s'", namespace)
+	log.Debugf(ctx, "Listing ExtendedJobs in namespace '%s'", namespace)
 	result := &ejobv1.ExtendedJobList{}
 	err := mgr.GetClient().List(ctx, &client.ListOptions{}, result)
 	if err != nil {

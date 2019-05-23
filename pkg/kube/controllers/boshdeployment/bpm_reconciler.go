@@ -3,15 +3,12 @@ package boshdeployment
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
-	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -24,7 +21,6 @@ import (
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
@@ -61,246 +57,153 @@ type ReconcileBPM struct {
 	versionedSecretStore versionedsecretstore.VersionedSecretStore
 }
 
-// Reconcile reads that state of the cluster for a BOSHDeployment object and makes changes based on the state read
-// and what is in the BOSHDeployment.Spec
-// Note:
-// The Controller will requeue the Request to be processed again if the returned error is non-nil or
-// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
+// Reconcile reconciles an Instance Group BPM versioned secret read the corresponding
+// desired manifest. It then applies BPM information and deploys instance groups.
 func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()
 
-	log.Infof(ctx, "Reconciling BOSHDeployment %s", request.NamespacedName)
-	instance := &bdv1.BOSHDeployment{}
-	err := r.client.Get(ctx, request.NamespacedName, instance)
+	log.Infof(ctx, "Reconciling Instance Group BPM versioned secret '%s'", request.NamespacedName)
+	bpmSecret := &corev1.Secret{}
+	err := r.client.Get(ctx, request.NamespacedName, bpmSecret)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			log.Debug(ctx, "Skip reconcile: BOSHDeployment not found")
+			log.Debug(ctx, "Skip reconcile: Instance Group BPM versioned secret not found")
 			return reconcile.Result{}, nil
 		}
-		err = log.WithEvent(instance, "GetBOSHDeploymentError").Errorf(ctx, "Failed to get BOSHDeployment '%s': %v", request.NamespacedName, err)
+
 		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
+		return reconcile.Result{
+				Requeue:      true,
+				RequeueAfter: time.Second * 5,
+			},
+			log.WithEvent(bpmSecret, "GetBPMSecret").Errorf(ctx, "Failed to get Instance Group BPM versioned secret '%s': %v", request.NamespacedName, err)
 	}
 
-	// Get state from instance
-	instanceState := instance.Status.State
-
-	// Resolve the manifest (incl. ops files and implicit variables)
-	manifest, err := r.resolveManifest(ctx, instance)
+	// Get the label from the BPM Secret and read the corresponding desired manifest
+	var boshDeploymentName string
+	var ok bool
+	if boshDeploymentName, ok = bpmSecret.Labels[bdv1.LabelDeploymentName]; !ok {
+		return reconcile.Result{},
+			log.WithEvent(bpmSecret, "GetBOSHDeploymentLabel").Errorf(ctx, "There's no label for a BOSH Deployment name on the Instance Group BPM versioned bpmSecret '%s'", request.NamespacedName)
+	}
+	manifest, err := r.resolver.ReadDesiredManifest(ctx, boshDeploymentName, request.Namespace)
 	if err != nil {
-		log.WithEvent(instance, "BadManifestError").Infof(ctx, "Error resolving the manifest %s", instance.GetName())
-		return reconcile.Result{}, errors.Wrap(err, "could not resolve manifest")
+		return reconcile.Result{},
+			log.WithEvent(bpmSecret, "DesiredManifestReadError").Errorf(ctx, "Failed to read desired manifest '%s': %v", request.NamespacedName, err)
 	}
 
-	// Generate all the kube objects we need for the manifest
+	// Convert the manifest to kube objects
 	log.Debug(ctx, "Converting bosh manifest to kube objects")
 	kubeConfigs := bdm.NewKubeConfig(r.config.Namespace, manifest)
 	err = kubeConfigs.Convert(*manifest)
 	if err != nil {
-		err = log.WithEvent(instance, "BadManifestError").Errorf(ctx, "Error converting bosh manifest %s to kube objects: %s", manifest.Name, err)
-		return reconcile.Result{}, err
+		return reconcile.Result{},
+			log.WithEvent(bpmSecret, "ManifestConversionError").Errorf(ctx, "Failed to convert bosh manifest '%s' to kube objects: %v", request.NamespacedName, err)
 	}
 
-	switch instanceState {
-	case BPMConfigsCreatedState:
-		// Wait for all instance group property outputs to be ready
-		// We need BPM information to start everything up
-		bpmInfo, err := r.waitForBPM(ctx, instance, manifest, kubeConfigs)
-		if err != nil {
-			err = log.WithEvent(instance, "BPMInfoError").Errorf(ctx, "Waiting for BPM: %s", err)
-			return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, err
-		}
-
-		err = kubeConfigs.ApplyBPMInfo(bpmInfo)
-		if err != nil {
-			err = log.WithEvent(instance, "BPMApplyingError").Errorf(ctx, "Failed to apply BPM information: %s", err)
-			return reconcile.Result{}, err
-		}
-
-		err = r.deployInstanceGroups(ctx, instance, kubeConfigs)
-		if err != nil {
-			err = log.WithEvent(instance, "InstanceGroupsError").Errorf(ctx, "Failed to deploy instance groups: %s", err)
-			return reconcile.Result{}, err
-		}
-
-	default:
-		return reconcile.Result{}, nil
+	// Apply BPM information
+	bpmInfo := map[string]bpm.Configs{}
+	instanceGroupName, ok := bpmSecret.Labels[ejv1.LabelPersistentSecretContainer]
+	if !ok {
+		return reconcile.Result{},
+			log.WithEvent(bpmSecret, "LabelMissingError").Errorf(ctx, "Missing container label for bpm information bpmSecret '%s'", request.NamespacedName)
 	}
-
-	log.Debugf(ctx, "Requeue the reconcile: BoshDeployment '%s/%s' is in state '%s'", instance.GetNamespace(), instance.GetName(), instance.Status.State)
-	return reconcile.Result{Requeue: true}, r.updateInstanceState(ctx, instance)
-}
-
-// updateInstanceState update instance state
-func (r *ReconcileBPM) updateInstanceState(ctx context.Context, currentInstance *bdv1.BOSHDeployment) error {
-	currentManifestSHA1, _ := currentInstance.GetAnnotations()[bdv1.AnnotationManifestSHA1]
-
-	// Fetch latest BOSHDeployment before update
-	foundInstance := &bdv1.BOSHDeployment{}
-	key := types.NamespacedName{Namespace: currentInstance.GetNamespace(), Name: currentInstance.GetName()}
-	err := r.client.Get(ctx, key, foundInstance)
+	bpmConfigs := bpm.Configs{}
+	err = yaml.Unmarshal(bpmSecret.Data["bpm.yaml"], &bpmConfigs)
 	if err != nil {
-		log.Errorf(ctx, "Failed to get BOSHDeployment instance '%s': %v", currentInstance.GetName(), err)
-		return errors.Wrapf(err, "could not get BOSHDeployment instance '%s' when update instance state", currentInstance.GetName())
+		return reconcile.Result{},
+			log.WithEvent(bpmSecret, "BPMUnmarshalError").Errorf(ctx, "Couldn't unmarshal BPM configs from secret '%s'", request.NamespacedName)
 	}
-	oldManifestSHA1, _ := foundInstance.GetAnnotations()[bdv1.AnnotationManifestSHA1]
-
-	if oldManifestSHA1 != currentManifestSHA1 {
-		// Set manifest SHA1
-		if foundInstance.Annotations == nil {
-			foundInstance.Annotations = map[string]string{}
-		}
-
-		foundInstance.Annotations[bdv1.AnnotationManifestSHA1] = currentManifestSHA1
-	}
-
-	// Update the Status of the resource
-	if !reflect.DeepEqual(foundInstance.Status.State, currentInstance.Status.State) {
-		log.Debugf(ctx, "Updating boshDeployment from '%s' to '%s'", foundInstance.Status.State, currentInstance.Status.State)
-
-		newInstance := foundInstance.DeepCopy()
-		newInstance.Status.State = currentInstance.Status.State
-
-		err = r.client.Update(ctx, newInstance)
-		if err != nil {
-			log.Errorf(ctx, "Failed to update BOSHDeployment instance status: %v", err)
-			return errors.Wrapf(err, "could not update BOSHDeployment instance '%s' when update instance state", currentInstance.GetName())
-		}
-	}
-
-	return nil
-}
-
-// resolveManifest resolves the manifest and applies ops files and implicit variable interpolation
-func (r *ReconcileBPM) resolveManifest(ctx context.Context, instance *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
-	// Create temp manifest as variable interpolation job input
-	// retrieve manifest
-	log.Debug(ctx, "Resolving manifest")
-	manifest, err := r.resolver.ResolveManifest(instance, instance.GetNamespace())
+	bpmInfo[instanceGroupName] = bpmConfigs
+	err = kubeConfigs.ApplyBPMInfo(bpmInfo)
 	if err != nil {
-		log.WithEvent(instance, "ResolveManifestError").Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
-		return nil, err
+		return reconcile.Result{},
+			log.WithEvent(bpmSecret, "BPMApplyingError").Errorf(ctx, "Failed to apply BPM information: %v", err)
 	}
 
-	// Replace the name with the name of the BOSHDeployment resource
-	manifest.Name = instance.GetName()
-
-	return manifest, nil
-}
-
-// waitForBPM checks to see if all BPM information is available and returns an error if it isn't
-func (r *ReconcileBPM) waitForBPM(ctx context.Context, deployment *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfigs *bdm.KubeConfig) (map[string]bpm.Configs, error) {
-	// TODO: this approach is not good enough, we need to reconcile and trigger on all of these secrets
-	// TODO: these secrets could exist, but not be up to date - we have to make sure they exist for the appropriate version
-
-	result := map[string]bpm.Configs{}
-
-	for _, container := range kubeConfigs.DataGatheringJob.Spec.Template.Spec.Containers {
-		_, secretName := names.CalculateEJobOutputSecretPrefixAndName(
-			names.DeploymentSecretBpmInformation,
-			manifest.Name,
-			container.Name,
-			false,
-		)
-
-		log.Debugf(ctx, "Getting latest secret '%s'", secretName)
-		secret, err := r.versionedSecretStore.Latest(ctx, deployment.Namespace, secretName)
-		if err != nil && apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf("secret %s/%s doesn't exist", deployment.Namespace, secretName)
-		} else if err != nil {
-			return nil, errors.Wrapf(err, "failed to retrieve bpm configs secret %s/%s", deployment.Namespace, secretName)
-		}
-
-		bpmConfigs := bpm.Configs{}
-		err = yaml.Unmarshal(secret.Data["bpm.yaml"], &bpmConfigs)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't unmarshal bpm configs from secret %s/%s", deployment.Namespace, secretName)
-		}
-		result[container.Name] = bpmConfigs
+	// Start the instance groups referenced by this BPM secret
+	err = r.deployInstanceGroups(ctx, bpmSecret, instanceGroupName, kubeConfigs)
+	if err != nil {
+		return reconcile.Result{},
+			log.WithEvent(bpmSecret, "InstanceGroupStartError").Errorf(ctx, "Failed to start : %v", err)
 	}
 
-	return result, nil
+	return reconcile.Result{}, nil
 }
 
-// deployInstanceGroups create ExtendedJobs and ExtendedStatefulSets
-func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.BOSHDeployment, kubeConfigs *bdm.KubeConfig) error {
-	log.Debug(ctx, "Creating extendedJobs and extendedStatefulSets of instance groups")
+// deployInstanceGroups create or update ExtendedJobs and ExtendedStatefulSets for instance groups
+func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *corev1.Secret, instanceGroupName string, kubeConfigs *bdm.KubeConfig) error {
+	log.Debugf(ctx, "Creating extendedJobs and extendedStatefulSets for instance group '%s'", instanceGroupName)
+
 	for _, eJob := range kubeConfigs.Errands {
-		// Set BOSHDeployment instance as the owner and controller
+		if eJob.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
+			continue
+		}
+
 		if err := r.setReference(instance, &eJob, r.scheme); err != nil {
-			log.WarningEvent(ctx, instance, "NewExtendedJobForDeploymentError", err.Error())
-			return errors.Wrap(err, "couldn't set reference for an ExtendedJob for a BOSH Deployment")
+			return log.WithEvent(instance, "ExtendedJobForDeploymentError").Errorf(ctx, "Failed to set reference for ExtendedJob instance group '%s' : %v", instanceGroupName, err)
 		}
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
-			exstEJob, ok := obj.(*ejv1.ExtendedJob)
-			if !ok {
-				return fmt.Errorf("object is not an ExtendedJob")
+			if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
+				eJob.DeepCopyInto(existingEJob)
+				return nil
 			}
-
-			exstEJob.Labels = eJob.Labels
-			exstEJob.Spec = eJob.Spec
-			return nil
+			return fmt.Errorf("object is not an ExtendedJob")
 		})
 		if err != nil {
-			log.WarningEvent(ctx, instance, "CreateExtendedJobForDeploymentError", err.Error())
-			return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", eJob.Name)
+			return log.WithEvent(instance, "ApplyExtendedJobError").Errorf(ctx, "Failed to apply ExtendedJob for instance group '%s' : %v", instanceGroupName, err)
 		}
 	}
 
 	for _, svc := range kubeConfigs.Services {
-		// Set BOSHDeployment instance as the owner and controller
+		if svc.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
+			continue
+		}
+
 		if err := r.setReference(instance, &svc, r.scheme); err != nil {
-			log.WarningEvent(ctx, instance, "NewServiceForDeploymentError", err.Error())
-			return errors.Wrap(err, "couldn't set reference for a Service for a BOSH Deployment")
+			return log.WithEvent(instance, "ServiceForDeploymentError").Errorf(ctx, "Failed to set reference for Service instance group '%s' : %v", instanceGroupName, err)
 		}
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.client, svc.DeepCopy(), func(obj runtime.Object) error {
-			exstSvc, ok := obj.(*corev1.Service)
-			if !ok {
-				return fmt.Errorf("object is not a Service")
+			if existingSvc, ok := obj.(*corev1.Service); ok {
+				// Should keep current ClusterIP when update
+				svc.Spec.ClusterIP = existingSvc.Spec.ClusterIP
+				svc.DeepCopyInto(existingSvc)
+				return nil
 			}
-
-			exstSvc.Labels = svc.Labels
-			svc.Spec.ClusterIP = exstSvc.Spec.ClusterIP
-			exstSvc.Spec = svc.Spec
-			return nil
+			return fmt.Errorf("object is not a Service")
 		})
 		if err != nil {
-			log.WarningEvent(ctx, instance, "CreateServiceForDeploymentError", err.Error())
-			return errors.Wrapf(err, "creating or updating Service '%s'", svc.Name)
+			return log.WithEvent(instance, "ApplyServiceError").Errorf(ctx, "Failed to apply Service for instance group '%s' : %v", instanceGroupName, err)
 		}
 	}
 
 	for _, eSts := range kubeConfigs.InstanceGroups {
-		// Set BOSHDeployment instance as the owner and controller
+		if eSts.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
+			continue
+		}
+
 		if err := r.setReference(instance, &eSts, r.scheme); err != nil {
-			log.WarningEvent(ctx, instance, "NewExtendedStatefulSetForDeploymentError", err.Error())
-			return errors.Wrap(err, "couldn't set reference for an ExtendedStatefulSet for a BOSH Deployment")
+			return log.WithEvent(instance, "ExtendedStatefulSetForDeploymentError").Errorf(ctx, "Failed to set reference for ExtendedStatefulSet instance group '%s' : %v", instanceGroupName, err)
 		}
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eSts.DeepCopy(), func(obj runtime.Object) error {
-			exstSts, ok := obj.(*estsv1.ExtendedStatefulSet)
-			if !ok {
-				return fmt.Errorf("object is not an ExtendStatefulSet")
+			if existingSts, ok := obj.(*estsv1.ExtendedStatefulSet); ok {
+				eSts.DeepCopyInto(existingSts)
+				return nil
 			}
-
-			exstSts.Labels = eSts.Labels
-			exstSts.Spec = eSts.Spec
-			return nil
+			return fmt.Errorf("object is not an ExtendStatefulSet")
 		})
 		if err != nil {
-			log.WarningEvent(ctx, instance, "CreateExtendedStatefulSetForDeploymentError", err.Error())
-			return errors.Wrapf(err, "creating or updating ExtendedStatefulSet '%s'", eSts.Name)
+			return log.WithEvent(instance, "ApplyExtendedStatefulSetError").Errorf(ctx, "Failed to apply ExtendedStatefulSet for instance group '%s' : %v", instanceGroupName, err)
 		}
 	}
-
-	instance.Status.State = DeployingState
 
 	return nil
 }

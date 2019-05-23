@@ -23,6 +23,7 @@ import (
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
@@ -34,20 +35,19 @@ import (
 
 var _ = Describe("ReconcileBPM", func() {
 	var (
-		manager                       *cfakes.FakeManager
-		reconciler                    reconcile.Reconciler
-		recorder                      *record.FakeRecorder
-		request                       reconcile.Request
-		ctx                           context.Context
-		resolver                      fakes.FakeResolver
-		manifest                      *bdm.Manifest
-		log                           *zap.SugaredLogger
-		config                        *cfcfg.Config
-		client                        *cfakes.FakeClient
-		instance                      *bdv1.BOSHDeployment
-		manifestWithVars              *corev1.Secret
-		instanceGroupResolvedManifest *corev1.Secret
-		bpmInformation                *corev1.Secret
+		manager                   *cfakes.FakeManager
+		reconciler                reconcile.Reconciler
+		recorder                  *record.FakeRecorder
+		request                   reconcile.Request
+		ctx                       context.Context
+		resolver                  fakes.FakeResolver
+		manifest                  *bdm.Manifest
+		log                       *zap.SugaredLogger
+		config                    *cfcfg.Config
+		client                    *cfakes.FakeClient
+		manifestWithVars          *corev1.Secret
+		bpmInformation            *corev1.Secret
+		bpmInformationNoProcesses *corev1.Secret
 	)
 
 	BeforeEach(func() {
@@ -109,32 +109,6 @@ var _ = Describe("ReconcileBPM", func() {
 		ctx = ctxlog.NewParentContext(log)
 		ctx = ctxlog.NewContextWithRecorder(ctx, "TestRecorder", recorder)
 
-		instance = &bdv1.BOSHDeployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "default",
-			},
-			Spec: bdv1.BOSHDeploymentSpec{
-				Manifest: bdv1.Manifest{
-					Ref:  "dummy-manifest",
-					Type: "configmap",
-				},
-				Ops: []bdv1.Ops{
-					{
-						Ref:  "bar",
-						Type: "configmap",
-					},
-					{
-						Ref:  "baz",
-						Type: "secret",
-					},
-				},
-			},
-			Status: bdv1.BOSHDeploymentStatus{
-				State: cfd.BPMConfigsCreatedState,
-			},
-		}
-
 		manifestWithVars = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo.with-vars.interpolation-v1",
@@ -175,56 +149,7 @@ variables: []
 `),
 			},
 		}
-		instanceGroupResolvedManifest = &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo.ig-resolved.fakepod-v1",
-				Namespace: "default",
-				Labels: map[string]string{
-					bdv1.LabelDeploymentName:             "foo",
-					versionedsecretstore.LabelSecretKind: "versionedSecret",
-					versionedsecretstore.LabelVersion:    "1",
-				},
-			},
-			Data: map[string][]byte{
-				"properties.yaml": []byte(`name: foo
-director_uuid: ""
-instance_groups:
-- name: fakepod
-  instances: 1
-  azs: []
-  jobs:
-  - name: foo
-    release: bar
-    properties:
-      bosh_containerization:
-        instances:
-        - address: fakepod-foo-0.default.svc.cluster.local
-          az: ""
-          id: fakepod-0-foo
-          index: 0
-          instance: 0
-          name: fakepod-foo
-          networks: {}
-          ip: ""
-        bpm:
-          processes:
-          - name: fake
-            executable: /var/vcap/packages/fake/bin/fake-exec
-            args: []
-            limits:
-              open_files: 100000
-      password: generated-password
-  vm_resources: null
-  stemcell: ""
-releases:
-- name: bar
-  version: "1.0"
-  url: docker.io/cfcontainerization
-  stemcell:
-    os: opensuse
-    version: 42.3`),
-			},
-		}
+
 		bpmInformation = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo.bpm.fakepod-v1",
@@ -233,6 +158,7 @@ releases:
 					bdv1.LabelDeploymentName:             "foo",
 					versionedsecretstore.LabelSecretKind: "versionedSecret",
 					versionedsecretstore.LabelVersion:    "1",
+					ejv1.LabelPersistentSecretContainer:  "fakepod",
 				},
 			},
 			Data: map[string][]byte{
@@ -246,17 +172,29 @@ releases:
 			},
 		}
 
+		bpmInformationNoProcesses = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo.bpm.fakepod-v1",
+				Namespace: "default",
+				Labels: map[string]string{
+					bdv1.LabelDeploymentName:             "foo",
+					versionedsecretstore.LabelSecretKind: "versionedSecret",
+					versionedsecretstore.LabelVersion:    "1",
+					ejv1.LabelPersistentSecretContainer:  "fakepod",
+				},
+			},
+			Data: map[string][]byte{
+				"bpm.yaml": []byte(`foo:
+  processes: []`),
+			},
+		}
+
 		client = &cfakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 			switch object.(type) {
-			case *bdv1.BOSHDeployment:
-				instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
 			case *corev1.Secret:
 				if nn.Name == manifestWithVars.Name {
 					manifestWithVars.DeepCopyInto(object.(*corev1.Secret))
-				}
-				if nn.Name == instanceGroupResolvedManifest.Name {
-					instanceGroupResolvedManifest.DeepCopyInto(object.(*corev1.Secret))
 				}
 				if nn.Name == bpmInformation.Name {
 					bpmInformation.DeepCopyInto(object.(*corev1.Secret))
@@ -271,7 +209,6 @@ releases:
 				secretList := corev1.SecretList{}
 				secretList.Items = []corev1.Secret{
 					*manifestWithVars,
-					*instanceGroupResolvedManifest,
 					*bpmInformation,
 				}
 				secretList.DeepCopyInto(object.(*corev1.SecretList))
@@ -282,23 +219,22 @@ releases:
 
 		manager.GetClientReturns(client)
 
-		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
+		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo.bpm.fakepod-v1", Namespace: "default"}}
 	})
 
 	JustBeforeEach(func() {
 		resolver.ResolveManifestReturns(manifest, nil)
+		resolver.ReadDesiredManifestReturns(manifest, nil)
 		reconciler = cfd.NewBPMReconciler(ctx, config, manager, &resolver, controllerutil.SetControllerReference)
 	})
 
 	Describe("Reconcile", func() {
 		Context("when manifest with ops is created", func() {
-			It("handles an error when getting latest instanceGroupResolved manifest", func() {
+			It("handles an error when getting the resource", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object.(type) {
-					case *bdv1.BOSHDeployment:
-						instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
 					case *corev1.Secret:
-						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+						return errors.New("some error")
 					}
 
 					return nil
@@ -306,58 +242,15 @@ releases:
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("waiting for BPM"))
+				Expect(err.Error()).To(ContainSubstring("failed to get Instance Group BPM versioned secret 'default/foo.bpm.fakepod-v1'"))
 			})
 
 			It("handles an error when applying BPM info", func() {
-				missingInstancesManifest := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo.ig-resolved.fakepod-v1",
-						Namespace: "default",
-						Labels: map[string]string{
-							bdv1.LabelDeploymentName:             "foo",
-							versionedsecretstore.LabelSecretKind: "versionedSecret",
-							versionedsecretstore.LabelVersion:    "1",
-						},
-					},
-					Data: map[string][]byte{
-						"properties.yaml": []byte(`name: foo
-director_uuid: ""
-instance_groups:
-- name: fakepod
-  instances: 1
-  azs: []
-  jobs:
-  - name: foo
-    release: bar
-    properties:
-      bosh_containerization:
-        bpm:
-          processes:
-          - name: fake
-            executable: /var/vcap/packages/fake/bin/fake-exec
-            args: []
-            limits:
-              open_files: 100000
-      password: generated-password
-  vm_resources: null
-  stemcell: ""
-releases:
-- name: bar
-  version: "1.0"
-  url: docker.io/cfcontainerization
-  stemcell:
-    os: opensuse
-    version: 42.3`),
-					},
-				}
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object.(type) {
-					case *bdv1.BOSHDeployment:
-						instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
 					case *corev1.Secret:
-						if nn.Name == missingInstancesManifest.Name {
-							missingInstancesManifest.DeepCopyInto(object.(*corev1.Secret))
+						if nn.Name == request.Name {
+							bpmInformationNoProcesses.DeepCopyInto(object.(*corev1.Secret))
 						}
 					}
 
@@ -372,14 +265,9 @@ releases:
 			It("handles an error when deploying instance groups", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object.(type) {
-					case *bdv1.BOSHDeployment:
-						instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
 					case *corev1.Secret:
 						if nn.Name == manifestWithVars.Name {
 							manifestWithVars.DeepCopyInto(object.(*corev1.Secret))
-						}
-						if nn.Name == instanceGroupResolvedManifest.Name {
-							instanceGroupResolvedManifest.DeepCopyInto(object.(*corev1.Secret))
 						}
 						if nn.Name == bpmInformation.Name {
 							bpmInformation.DeepCopyInto(object.(*corev1.Secret))
@@ -397,14 +285,12 @@ releases:
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to deploy instance groups"))
+				Expect(err.Error()).To(ContainSubstring("failed to start : failed to apply Service for instance group 'fakepod'"))
 			})
 
 			It("creates instance groups and updates bpm configs created state to deploying state successfully", func() {
 				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
 					switch object.(type) {
-					case *bdv1.BOSHDeployment:
-						object.(*bdv1.BOSHDeployment).DeepCopyInto(instance)
 					}
 					return nil
 				})
@@ -413,13 +299,12 @@ releases:
 				result, err := reconciler.Reconcile(request)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{
-					Requeue: true,
+					Requeue: false,
 				}))
 
 				newInstance := &bdv1.BOSHDeployment{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, newInstance)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(newInstance.Status.State).To(Equal(cfd.DeployingState))
 			})
 		})
 	})

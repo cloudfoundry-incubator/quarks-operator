@@ -54,11 +54,7 @@ type ReconcileGeneratedVariable struct {
 	versionedSecretStore versionedsecretstore.VersionedSecretStore
 }
 
-// Reconcile reads that state of the cluster for a BOSHDeployment object and makes changes based on the state read
-// and what is in the BOSHDeployment.Spec
-// Note:
-// The Controller will requeue the Request to be processed again if the returned error is non-nil or
-// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
+// Reconcile creates or updates variables extendedSecrets
 func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
@@ -89,8 +85,9 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 	manifest := &bdm.Manifest{}
 	err = yaml.Unmarshal([]byte(manifestContents), manifest)
 	if err != nil {
-		err = log.WithEvent(instance, "BadManifestError").Errorf(ctx, "Failed to unmarshal manifest from secret '%s': %v", request.NamespacedName, err)
-		return reconcile.Result{}, err
+		return reconcile.Result{},
+			log.WithEvent(instance, "BadManifestError").Errorf(ctx, "Failed to unmarshal manifest from secret '%s': %v", request.NamespacedName, err)
+
 	}
 
 	// Convert the manifest to kube objects
@@ -98,15 +95,15 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 	kubeConfigs := bdm.NewKubeConfig(r.config.Namespace, manifest)
 	err = kubeConfigs.Convert(*manifest)
 	if err != nil {
-		err = log.WithEvent(instance, "ManifestConversionError").Errorf(ctx, "Failed to convert bosh manifest '%s' to kube objects: %s", manifest.Name, err)
-		return reconcile.Result{}, err
+		return reconcile.Result{},
+			log.WithEvent(instance, "ManifestConversionError").Errorf(ctx, "Failed to convert bosh manifest '%s' to kube objects: %s", manifest.Name, err)
 	}
 
 	// Create/update all explicit BOSH Variables
 	err = r.generateVariableSecrets(ctx, instance, kubeConfigs)
 	if err != nil {
-		err = log.WithEvent(instance, "BadManifestError").Errorf(ctx, "Failed to generate variables for bosh manifest '%s': %v", manifest.Name, err)
-		return reconcile.Result{}, err
+		return reconcile.Result{},
+			log.WithEvent(instance, "BadManifestError").Errorf(ctx, "Failed to generate variables for bosh manifest '%s': %v", manifest.Name, err)
 	}
 
 	return reconcile.Result{}, nil
