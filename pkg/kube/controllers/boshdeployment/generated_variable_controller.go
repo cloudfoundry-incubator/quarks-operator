@@ -24,7 +24,12 @@ import (
 // and Start it when the Manager is Started.
 func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "generated-variable-reconciler", mgr.GetRecorder("generated-variable-recorder"))
-	r := NewGeneratedVariableReconciler(ctx, config, mgr, bdm.NewResolver(mgr.GetClient(), func() bdm.Interpolator { return bdm.NewInterpolator() }), controllerutil.SetControllerReference)
+	r := NewGeneratedVariableReconciler(
+		ctx, config, mgr,
+		bdm.NewResolver(mgr.GetClient(), func() bdm.Interpolator { return bdm.NewInterpolator() }),
+		controllerutil.SetControllerReference,
+		bdm.NewKubeConverter(config.Namespace),
+	)
 
 	// Create a new controller
 	c, err := controller.New("generated-variable-controller", mgr, controller.Options{Reconciler: r})

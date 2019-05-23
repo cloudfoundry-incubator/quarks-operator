@@ -184,8 +184,7 @@ variables: []
 				},
 			},
 			Data: map[string][]byte{
-				"bpm.yaml": []byte(`foo:
-  processes: []`),
+				"bpm.yaml": []byte(``),
 			},
 		}
 
@@ -225,7 +224,9 @@ variables: []
 	JustBeforeEach(func() {
 		resolver.ResolveManifestReturns(manifest, nil)
 		resolver.ReadDesiredManifestReturns(manifest, nil)
-		reconciler = cfd.NewBPMReconciler(ctx, config, manager, &resolver, controllerutil.SetControllerReference)
+		reconciler = cfd.NewBPMReconciler(ctx, config, manager, &resolver,
+			controllerutil.SetControllerReference, bdm.NewKubeConverter(config.Namespace),
+		)
 	})
 
 	Describe("Reconcile", func() {

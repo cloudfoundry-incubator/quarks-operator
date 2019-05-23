@@ -79,7 +79,7 @@ Creates/updates:
 
 Watches for:
 
-- the "Versioned" `Secret` for Instance Group BPM
+- the "Versioned" `Secret` for Instance Group BPM information
 
 Creates/updates:
 

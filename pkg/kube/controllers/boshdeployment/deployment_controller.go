@@ -17,9 +17,8 @@ import (
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	ctxlog "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
-	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // AddDeployment creates a new BOSHDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -30,8 +29,6 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		ctx, config, mgr,
 		bdm.NewResolver(mgr.GetClient(), func() bdm.Interpolator { return bdm.NewInterpolator() }),
 		controllerutil.SetControllerReference,
-		vss.NewVersionedSecretStore(mgr.GetClient()),
-		bdm.NewKubeConverter(config.Namespace),
 	)
 
 	// Create a new controller

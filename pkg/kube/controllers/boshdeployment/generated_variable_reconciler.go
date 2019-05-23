@@ -18,40 +18,32 @@ import (
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 var _ reconcile.Reconciler = &ReconcileGeneratedVariable{}
 
 // NewGeneratedVariableReconciler returns a new reconcile.Reconciler
-func NewGeneratedVariableReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
-	versionedSecretStore := versionedsecretstore.NewVersionedSecretStore(mgr.GetClient())
-
+func NewGeneratedVariableReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc, kubeConverter *bdm.KubeConverter) reconcile.Reconciler {
 	return &ReconcileGeneratedVariable{
-		ctx:                  ctx,
-		config:               config,
-		client:               mgr.GetClient(),
-		scheme:               mgr.GetScheme(),
-		resolver:             resolver,
-		setReference:         srf,
-		owner:                owner.NewOwner(mgr.GetClient(), mgr.GetScheme()),
-		versionedSecretStore: versionedSecretStore,
+		ctx:           ctx,
+		config:        config,
+		client:        mgr.GetClient(),
+		scheme:        mgr.GetScheme(),
+		resolver:      resolver,
+		setReference:  srf,
+		kubeConverter: kubeConverter,
 	}
 }
 
-// ReconcileGeneratedVariable reconciles a BOSHDeployment object
+// ReconcileGeneratedVariable reconciles a manifest with ops
 type ReconcileGeneratedVariable struct {
-	// This client, initialized using mgr.Client() above, is a split client
-	// that reads objects from the cache and writes to the apiserver
-	ctx                  context.Context
-	client               client.Client
-	scheme               *runtime.Scheme
-	resolver             bdm.Resolver
-	setReference         setReferenceFunc
-	config               *config.Config
-	owner                Owner
-	versionedSecretStore versionedsecretstore.VersionedSecretStore
+	ctx           context.Context
+	config        *config.Config
+	client        client.Client
+	scheme        *runtime.Scheme
+	resolver      bdm.Resolver
+	setReference  setReferenceFunc
+	kubeConverter *bdm.KubeConverter
 }
 
 // Reconcile creates or updates variables extendedSecrets
@@ -59,9 +51,9 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()
-	log.Infof(ctx, "Reconciling BOSHDeployment manifest with ops file applied from secret '%s'", request.NamespacedName)
-	instance := &corev1.Secret{}
-	err := r.client.Get(ctx, request.NamespacedName, instance)
+	log.Infof(ctx, "Reconciling ops applied manifest secret '%s'", request.NamespacedName)
+	manifestSecret := &corev1.Secret{}
+	err := r.client.Get(ctx, request.NamespacedName, manifestSecret)
 
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -72,13 +64,13 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 			return reconcile.Result{}, nil
 		}
 
-		err = log.WithEvent(instance, "GetBOSHDeploymentManifestWithOpsFileError").Errorf(ctx, "Failed to get BOSHDeployment manifest with ops file secret '%s': %v", request.NamespacedName, err)
+		err = log.WithEvent(manifestSecret, "GetBOSHDeploymentManifestWithOpsFileError").Errorf(ctx, "Failed to get BOSHDeployment manifest with ops file secret '%s': %v", request.NamespacedName, err)
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
 
 	// Get the manifest yaml
-	manifestContents := instance.StringData["manifest.yaml"]
+	manifestContents := manifestSecret.StringData["manifest.yaml"]
 
 	// Unmarshal the manifest
 	log.Debug(ctx, "Unmarshaling BOSHDeployment manifest from manifest with ops secret")
@@ -86,40 +78,35 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 	err = yaml.Unmarshal([]byte(manifestContents), manifest)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(instance, "BadManifestError").Errorf(ctx, "Failed to unmarshal manifest from secret '%s': %v", request.NamespacedName, err)
+			log.WithEvent(manifestSecret, "BadManifestError").Errorf(ctx, "Failed to unmarshal manifest from secret '%s': %v", request.NamespacedName, err)
 
 	}
 
 	// Convert the manifest to kube objects
 	log.Debug(ctx, "Converting bosh manifest to kube objects")
-	kubeConfigs := bdm.NewKubeConfig(r.config.Namespace, manifest)
-	err = kubeConfigs.Convert(*manifest)
-	if err != nil {
-		return reconcile.Result{},
-			log.WithEvent(instance, "ManifestConversionError").Errorf(ctx, "Failed to convert bosh manifest '%s' to kube objects: %s", manifest.Name, err)
-	}
+	secrets := r.kubeConverter.Variables(manifest.Name, manifest.Variables)
 
 	// Create/update all explicit BOSH Variables
-	err = r.generateVariableSecrets(ctx, instance, kubeConfigs)
+	err = r.generateVariableSecrets(ctx, manifestSecret, secrets)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(instance, "BadManifestError").Errorf(ctx, "Failed to generate variables for bosh manifest '%s': %v", manifest.Name, err)
+			log.WithEvent(manifestSecret, "VariableGenerationError").Errorf(ctx, "Failed to generate variables for bosh manifest '%s': %v", manifest.Name, err)
 	}
 
 	return reconcile.Result{}, nil
 }
 
 // generateVariableSecrets create variables extendedSecrets
-func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context, instance *corev1.Secret, kubeConfig *bdm.KubeConfig) error {
+func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context, manifestSecret *corev1.Secret, variables []esv1.ExtendedSecret) error {
 	log.Debug(ctx, "Creating ExtendedSecrets for explicit variables")
 	var err error
-	for _, variable := range kubeConfig.Variables {
+	for _, variable := range variables {
 		// Set the "manifest with ops" secret as the owner for the ExtendedSecrets
 		// The "manifest with ops" secret is owned by the actual BOSHDeployment, so everything
 		// should be garbage collected properly.
 
-		if err := r.setReference(instance, &variable, r.scheme); err != nil {
-			err = log.WithEvent(instance, "OwnershipError").Errorf(ctx, "Failed to set ownership for %s: %v", variable.Name, err)
+		if err := r.setReference(manifestSecret, &variable, r.scheme); err != nil {
+			err = log.WithEvent(manifestSecret, "OwnershipError").Errorf(ctx, "Failed to set ownership for %s: %v", variable.Name, err)
 			return err
 		}
 

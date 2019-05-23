@@ -132,6 +132,9 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, ig *InstanceG
 	}
 
 	containers, err := cfac.JobsToContainers(ig.Jobs)
+	if err != nil {
+		return essv1.ExtendedStatefulSet{}, err
+	}
 
 	extSts := essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{

@@ -29,8 +29,7 @@ import (
 	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	cfcfg "code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	ctxlog "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 )
 
@@ -146,10 +145,8 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 	JustBeforeEach(func() {
 		resolver.ResolveManifestReturns(manifest, nil)
-		reconciler = cfd.NewDeploymentReconciler(ctx, config, manager, &resolver,
-			controllerutil.SetControllerReference,
-			versionedsecretstore.NewVersionedSecretStore(manager.GetClient()),
-			bdm.NewKubeConverter(config.Namespace),
+		reconciler = cfd.NewDeploymentReconciler(ctx, config, manager,
+			&resolver, controllerutil.SetControllerReference,
 		)
 	})
 
@@ -200,29 +197,13 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			It("handles an error when setting the owner reference on the object", func() {
 				reconciler = cfd.NewDeploymentReconciler(ctx, config, manager, &resolver,
 					func(owner, object metav1.Object, scheme *runtime.Scheme) error {
-						return fmt.Errorf("failed to set reference")
+						return fmt.Errorf("some error")
 					},
-					versionedsecretstore.NewVersionedSecretStore(manager.GetClient()),
-					bdm.NewKubeConverter(config.Namespace),
 				)
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to set ownerReference for Secret 'foo.with-ops': some error"))
-			})
-
-			It("handles an error when converting bosh manifest to kube objects", func() {
-				resolver.ResolveManifestReturns(&bdm.Manifest{
-					InstanceGroups: []*bdm.InstanceGroup{
-						{
-							Name: "empty-instance",
-						},
-					},
-				}, nil)
-
-				_, err := reconciler.Reconcile(request)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to convert BOSHDeployment 'default/foo' to kube objects"))
 			})
 
 			It("handles an errors when creating manifest secret with ops ", func() {

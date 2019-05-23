@@ -24,7 +24,12 @@ import (
 // and Start it when the Manager is Started.
 func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "bpm-reconciler", mgr.GetRecorder("bpm-recorder"))
-	r := NewBPMReconciler(ctx, config, mgr, bdm.NewResolver(mgr.GetClient(), func() bdm.Interpolator { return bdm.NewInterpolator() }), controllerutil.SetControllerReference)
+	r := NewBPMReconciler(
+		ctx, config, mgr,
+		bdm.NewResolver(mgr.GetClient(), func() bdm.Interpolator { return bdm.NewInterpolator() }),
+		controllerutil.SetControllerReference,
+		bdm.NewKubeConverter(config.Namespace),
+	)
 
 	// Create a new controller
 	c, err := controller.New("bpm-controller", mgr, controller.Options{Reconciler: r})

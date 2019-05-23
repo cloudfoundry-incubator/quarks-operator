@@ -22,8 +22,6 @@ import (
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
-	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // State of instance
@@ -51,34 +49,28 @@ type Owner interface {
 }
 
 // NewDeploymentReconciler returns a new reconcile.Reconciler
-func NewDeploymentReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc, store vss.VersionedSecretStore, kubeConverter *bdm.KubeConverter) reconcile.Reconciler {
+func NewDeploymentReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
 
 	return &ReconcileBOSHDeployment{
-		ctx:                  ctx,
-		config:               config,
-		client:               mgr.GetClient(),
-		scheme:               mgr.GetScheme(),
-		resolver:             resolver,
-		setReference:         srf,
-		owner:                owner.NewOwner(mgr.GetClient(), mgr.GetScheme()),
-		versionedSecretStore: store,
-		kubeConverter:        kubeConverter,
+		ctx:          ctx,
+		config:       config,
+		client:       mgr.GetClient(),
+		scheme:       mgr.GetScheme(),
+		resolver:     resolver,
+		setReference: srf,
+		owner:        owner.NewOwner(mgr.GetClient(), mgr.GetScheme()),
 	}
 }
 
 // ReconcileBOSHDeployment reconciles a BOSHDeployment object
 type ReconcileBOSHDeployment struct {
-	// This client, initialized using mgr.Client() above, is a split client
-	// that reads objects from the cache and writes to the apiserver
-	ctx                  context.Context
-	client               client.Client
-	scheme               *runtime.Scheme
-	resolver             bdm.Resolver
-	setReference         setReferenceFunc
-	config               *config.Config
-	owner                Owner
-	versionedSecretStore versionedsecretstore.VersionedSecretStore
-	kubeConverter        *bdm.KubeConverter
+	ctx          context.Context
+	config       *config.Config
+	client       client.Client
+	scheme       *runtime.Scheme
+	resolver     bdm.Resolver
+	setReference setReferenceFunc
+	owner        Owner
 }
 
 // Reconcile starts the deployment process for a BOSHDeployment and deploys ExtendedJobs to generate required properties for instance groups and rendered BPM
@@ -113,37 +105,47 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			log.WithEvent(instance, "WithOpsManifestError").Errorf(ctx, "Failed to create with-ops manifest secret for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	// Convert the manifest to kube objects
+	// Generate all the kube objects we need for the manifest
 	log.Debug(ctx, "Converting bosh manifest to kube objects")
-	kubeConfigs := bdm.NewKubeConfig(r.config.Namespace, manifest)
-	err = kubeConfigs.Convert(*manifest)
-	if err != nil {
-		return reconcile.Result{},
-			log.WithEvent(instance, "ManifestConversionError").Errorf(ctx, "Failed to convert BOSHDeployment '%s' to kube objects: %v", request.NamespacedName, err)
-	}
+	jobFactory := bdm.NewJobFactory(*manifest, instance.GetNamespace())
 
 	// Apply the "Variable Interpolation" ExtendedJob
+	job, err := jobFactory.VariableInterpolationJob()
+	if err != nil {
+		return reconcile.Result{}, log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "Failed to build variable interpolation eJob: %v", err)
+	}
+
 	log.Debug(ctx, "Creating variable interpolation ExtendedJob")
-	err = r.createVariableInterpolationEJob(ctx, instance, kubeConfigs)
+	err = r.createVariableInterpolationEJob(ctx, instance, job)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(instance, "VarInterpolationError").Errorf(ctx, "Failed to create variable interpolation ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	// Apply the "Data Gathering" ExtendedJob
+	job, err = jobFactory.DataGatheringJob()
+	if err != nil {
+		return reconcile.Result{}, log.WithEvent(instance, "DataGatheringError").Errorf(ctx, "Failed to build data gathering eJob: %v", err)
+
+	}
 	log.Debug(ctx, "Creating data gathering ExtendedJob")
-	err = r.createDataGatheringJob(ctx, instance, kubeConfigs)
+	err = r.createDataGatheringJob(ctx, instance, job)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(instance, "DataGatheringError").Errorf(ctx, "Failed to create data gathering ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	// Apply the "BPM Configs" ExtendedJob
+	job, err = jobFactory.BPMConfigsJob()
+	if err != nil {
+		return reconcile.Result{}, log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to build BPM configs eJob: %v", err)
+
+	}
 	log.Debug(ctx, "Creating bpm configs ExtendedJob")
-	err = r.createBPMConfigsJob(ctx, instance, manifest, *kubeConfigs)
+	err = r.createBPMConfigsJob(ctx, instance, job)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(instance, "BPMGatheringError").Errorf(ctx, "Failed to create bpm configs ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to create bpm configs ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	return reconcile.Result{}, nil
@@ -201,96 +203,74 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 	return manifest, nil
 }
 
-// createVariableInterpolationEJob create temp manifest and variable interpolation eJob
-func (r *ReconcileBOSHDeployment) createVariableInterpolationEJob(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, varIntEJob *ejv1.ExtendedJob) error {
-
+// createVariableInterpolationEJob creates a temp manifest secret and an EJob for variable interpolation
+func (r *ReconcileBOSHDeployment) createVariableInterpolationEJob(ctx context.Context, instance *bdv1.BOSHDeployment, varIntEJob *ejv1.ExtendedJob) error {
 	log.Debug(ctx, "Creating variable interpolation extendedJob")
-	// Set BOSHDeployment instance as the owner and controller
+
+	// Set ownership
 	if err := r.setReference(instance, varIntEJob, r.scheme); err != nil {
-		log.WithEvent(instance, "NewJobForVariableInterpolationError").Errorf(ctx, "Failed to set ownerReference for ExtendedJob '%s': %v", varIntEJob.GetName(), err)
-		return err
+		return log.WithEvent(instance, "VariableInterpolationEJobRefError").Errorf(ctx, "Failed to set ownerReference for ExtendedJob '%s': %v", varIntEJob.GetName(), err)
 	}
 
+	// Apply the EJob
 	_, err := controllerutil.CreateOrUpdate(ctx, r.client, varIntEJob.DeepCopy(), func(obj runtime.Object) error {
-		exstEJob, ok := obj.(*ejv1.ExtendedJob)
-		if !ok {
-			return fmt.Errorf("object is not an ExtendedJob")
+		if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
+			varIntEJob.DeepCopyInto(existingEJob)
+			return nil
 		}
-
-		exstEJob.Labels = varIntEJob.Labels
-		exstEJob.Spec = varIntEJob.Spec
-		return nil
+		return fmt.Errorf("object is not an ExtendedJob")
 	})
 	if err != nil {
-		log.WarningEvent(ctx, instance, "CreateExtendedJobForVariableInterpolationError", err.Error())
-		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", varIntEJob.Name)
+		return log.WithEvent(instance, "VariableInterpolationEJobApplyError").Errorf(ctx, "Failed to apply ExtendedJob '%s' for variable interpolation: %v", varIntEJob.Name, err)
 	}
-
-	instance.Status.State = VariableInterpolatedState
 
 	return nil
 }
 
-// createDataGatheringJob gather data from manifest
+// createDataGatheringJob gathers instance group data used for rendering templates
 func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, instance *bdv1.BOSHDeployment, dataGatheringEJob *ejv1.ExtendedJob) error {
-	log.Debugf(ctx, "Creating data gathering extendedJob %s/%s", dataGatheringEJob.Namespace, dataGatheringEJob.Name)
+	log.Debugf(ctx, "Creating data gathering extendedJob '%s/%s'", dataGatheringEJob.Namespace, dataGatheringEJob.Name)
 
 	// Set BOSHDeployment instance as the owner and controller
 	if err := r.setReference(instance, dataGatheringEJob, r.scheme); err != nil {
-		log.WithEvent(instance, "NewJobForDataGatheringError").Errorf(ctx, "Failed to set ownerReference for ExtendedJob '%s': %v", dataGatheringEJob.GetName(), err)
-		return err
+		return log.WithEvent(instance, "DataGatheringEJobRefError").Errorf(ctx, "Failed to set ownerReference for ExtendedJob '%s': %v", dataGatheringEJob.GetName(), err)
 	}
 
+	// Apply the EJob
 	_, err := controllerutil.CreateOrUpdate(ctx, r.client, dataGatheringEJob.DeepCopy(), func(obj runtime.Object) error {
-		exstEJob, ok := obj.(*ejv1.ExtendedJob)
-		if !ok {
-			return fmt.Errorf("object is not an ExtendedJob")
+		if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
+			dataGatheringEJob.DeepCopyInto(existingEJob)
+			return nil
 		}
-
-		exstEJob.Labels = dataGatheringEJob.Labels
-		exstEJob.Spec = dataGatheringEJob.Spec
-		return nil
+		return fmt.Errorf("object is not an ExtendedJob")
 	})
 	if err != nil {
-		log.WarningEvent(ctx, instance, "CreateJobForDataGatheringError", err.Error())
-		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", dataGatheringEJob.Name)
+		return log.WithEvent(instance, "DataGatheringEJobApplyError").Errorf(ctx, "Failed to apply ExtendedJob '%s' for data gathering: %v", dataGatheringEJob.Name, err)
 	}
-
-	instance.Status.State = DataGatheredState
 
 	return nil
 }
 
-// createBPMConfigsJob creates an ejob for creating the BPM configs from manifest
-func (r *ReconcileBOSHDeployment) createBPMConfigsJob(ctx context.Context, instance *bdv1.BOSHDeployment, manifest *bdm.Manifest, kubeConfig bdm.KubeConfig) error {
-
-	// Generate the ExtendedJob object
-	bpmConfigsJob := kubeConfig.BPMConfigsJob
+// createBPMConfigsJob creates an EJob for generating BPM configs
+func (r *ReconcileBOSHDeployment) createBPMConfigsJob(ctx context.Context, instance *bdv1.BOSHDeployment, bpmConfigsJob *ejv1.ExtendedJob) error {
 	log.Debugf(ctx, "Creating BPM configs extendedJob %s/%s", bpmConfigsJob.Namespace, bpmConfigsJob.Name)
 
-	// Set BOSHDeployment instance as the owner and controller
+	// Set instance as the owner
 	if err := r.setReference(instance, bpmConfigsJob, r.scheme); err != nil {
-		log.WithEvent(instance, "NewJobForDataGatheringError").Errorf(ctx, "Failed to set ownerReference for ExtendedJob '%s': %v", bpmConfigsJob.GetName(), err)
-		return err
+		return log.WithEvent(instance, "BPMGatheringEJobRefError").Errorf(ctx, "Failed to set ownerReference for ExtendedJob '%s': %v", bpmConfigsJob.GetName(), err)
 	}
 
+	// Apply the new EJob
 	_, err := controllerutil.CreateOrUpdate(ctx, r.client, bpmConfigsJob.DeepCopy(), func(obj runtime.Object) error {
-		exstEJob, ok := obj.(*ejv1.ExtendedJob)
-		if !ok {
-			return fmt.Errorf("object is not an ExtendedJob")
+		if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
+			bpmConfigsJob.DeepCopyInto(existingEJob)
+			return nil
 		}
-
-		exstEJob.Labels = bpmConfigsJob.Labels
-		exstEJob.Spec = bpmConfigsJob.Spec
-		return nil
+		return fmt.Errorf("object is not an ExtendedJob")
 	})
 	if err != nil {
-		log.WarningEvent(ctx, instance, "CreateBPMConfigsJobError", err.Error())
-		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", bpmConfigsJob.Name)
+		return log.WithEvent(instance, "BPMGatheringEJobApplyError").Errorf(ctx, "failed to create/update ExtendedJob '%s'", bpmConfigsJob.Name)
 	}
-
-	instance.Status.State = BPMConfigsCreatedState
 
 	return nil
 }
-
