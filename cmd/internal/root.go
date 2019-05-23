@@ -3,11 +3,8 @@ package cmd
 import (
 	"fmt"
 	golog "log"
-	"net/http"
 	"os"
 	"time"
-
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/probe"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	kubeConfig "code.cloudfoundry.org/cf-operator/pkg/kube/config"
@@ -22,10 +19,6 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" // from https://github.com/kubernetes/client-go/issues/345
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
-)
-
-const (
-	readinessProbeHostPort = "0.0.0.0:8080"
 )
 
 var (
@@ -71,16 +64,10 @@ var rootCmd = &cobra.Command{
 		}
 		ctx := ctxlog.NewParentContext(log)
 
-		readinessProbe := probe.ReadyzProbe{Ready: false, Ctx: ctx}
-		http.HandleFunc(readinessProbe.GetRoute(), readinessProbe.ReadyzHandler)
-		go http.ListenAndServe(readinessProbeHostPort, nil)
-
 		mgr, err := operator.NewManager(ctx, config, restConfig, manager.Options{Namespace: cfOperatorNamespace})
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		readinessProbe.SetReady()
 
 		ctxlog.Info(ctx, "Waiting for configurations to be applied into a BOSHDeployment resource...")
 
