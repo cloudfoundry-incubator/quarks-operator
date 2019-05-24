@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -104,7 +105,20 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 
 	// Start the instance groups referenced by this BPM secret
-	err = r.deployInstanceGroups(ctx, bpmSecret, instanceGroupName, resources)
+	instanceName, ok := bpmSecret.Labels[bdv1.LabelDeploymentName]
+	if !ok {
+		return reconcile.Result{},
+			log.WithEvent(bpmSecret, "LabelMissingError").Errorf(ctx, "Missing deployment mame label for bpm information bpmSecret '%s'", request.NamespacedName)
+	}
+
+	instance := &bdv1.BOSHDeployment{}
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: instanceName}, instance)
+	if err != nil {
+		return reconcile.Result{},
+			log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get BoshDeployment instance '%s': %v", instanceName, err)
+	}
+
+	err = r.deployInstanceGroups(ctx, instance, instanceGroupName, resources)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "InstanceGroupStartError").Errorf(ctx, "Failed to start : %v", err)
@@ -138,7 +152,7 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 }
 
 // deployInstanceGroups create or update ExtendedJobs and ExtendedStatefulSets for instance groups
-func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, secret *corev1.Secret, instanceGroupName string, resources *bdm.BPMResources) error {
+func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.BOSHDeployment, instanceGroupName string, resources *bdm.BPMResources) error {
 	log.Debugf(ctx, "Creating extendedJobs and extendedStatefulSets for secret group '%s'", instanceGroupName)
 
 	for _, eJob := range resources.Errands {
@@ -146,8 +160,8 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, secret *corev1.
 			continue
 		}
 
-		if err := r.setReference(secret, &eJob, r.scheme); err != nil {
-			return log.WithEvent(secret, "ExtendedJobForDeploymentError").Errorf(ctx, "Failed to set reference for ExtendedJob secret group '%s' : %v", instanceGroupName, err)
+		if err := r.setReference(instance, &eJob, r.scheme); err != nil {
+			return log.WithEvent(instance, "ExtendedJobForDeploymentError").Errorf(ctx, "Failed to set reference for ExtendedJob instance group '%s' : %v", instanceGroupName, err)
 		}
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
@@ -159,7 +173,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, secret *corev1.
 			return fmt.Errorf("object is not an ExtendedJob")
 		})
 		if err != nil {
-			return log.WithEvent(secret, "ApplyExtendedJobError").Errorf(ctx, "Failed to apply ExtendedJob for secret group '%s' : %v", instanceGroupName, err)
+			return log.WithEvent(instance, "ApplyExtendedJobError").Errorf(ctx, "Failed to apply ExtendedJob for instance group '%s' : %v", instanceGroupName, err)
 		}
 	}
 
@@ -168,8 +182,8 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, secret *corev1.
 			continue
 		}
 
-		if err := r.setReference(secret, &svc, r.scheme); err != nil {
-			return log.WithEvent(secret, "ServiceForDeploymentError").Errorf(ctx, "Failed to set reference for Service secret group '%s' : %v", instanceGroupName, err)
+		if err := r.setReference(instance, &svc, r.scheme); err != nil {
+			return log.WithEvent(instance, "ServiceForDeploymentError").Errorf(ctx, "Failed to set reference for Service instance group '%s' : %v", instanceGroupName, err)
 		}
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.client, svc.DeepCopy(), func(obj runtime.Object) error {
@@ -183,7 +197,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, secret *corev1.
 			return fmt.Errorf("object is not a Service")
 		})
 		if err != nil {
-			return log.WithEvent(secret, "ApplyServiceError").Errorf(ctx, "Failed to apply Service for instance group '%s' : %v", instanceGroupName, err)
+			return log.WithEvent(instance, "ApplyServiceError").Errorf(ctx, "Failed to apply Service for instance group '%s' : %v", instanceGroupName, err)
 		}
 	}
 
@@ -192,8 +206,8 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, secret *corev1.
 			continue
 		}
 
-		if err := r.setReference(secret, &eSts, r.scheme); err != nil {
-			return log.WithEvent(secret, "ExtendedStatefulSetForDeploymentError").Errorf(ctx, "Failed to set reference for ExtendedStatefulSet secret group '%s' : %v", instanceGroupName, err)
+		if err := r.setReference(instance, &eSts, r.scheme); err != nil {
+			return log.WithEvent(instance, "ExtendedStatefulSetForDeploymentError").Errorf(ctx, "Failed to set reference for ExtendedStatefulSet instance group '%s' : %v", instanceGroupName, err)
 		}
 
 		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eSts.DeepCopy(), func(obj runtime.Object) error {
@@ -205,7 +219,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, secret *corev1.
 			return fmt.Errorf("object is not an ExtendStatefulSet")
 		})
 		if err != nil {
-			return log.WithEvent(secret, "ApplyExtendedStatefulSetError").Errorf(ctx, "Failed to apply ExtendedStatefulSet for secret group '%s' : %v", instanceGroupName, err)
+			return log.WithEvent(instance, "ApplyExtendedStatefulSetError").Errorf(ctx, "Failed to apply ExtendedStatefulSet for instance group '%s' : %v", instanceGroupName, err)
 		}
 	}
 
