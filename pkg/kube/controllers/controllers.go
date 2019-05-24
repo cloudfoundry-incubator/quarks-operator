@@ -35,6 +35,8 @@ const (
 
 var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager) error{
 	boshdeployment.AddDeployment,
+	boshdeployment.AddGeneratedVariable,
+	boshdeployment.AddBPM,
 	extendedjob.AddTrigger,
 	extendedjob.AddErrand,
 	extendedjob.AddJob,

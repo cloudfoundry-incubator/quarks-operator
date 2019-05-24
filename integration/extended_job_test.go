@@ -1,6 +1,7 @@
 package integration_test
 
 import (
+	"fmt"
 	"strings"
 
 	. "github.com/onsi/ginkgo"
@@ -38,11 +39,12 @@ var _ = Describe("ExtendedJob", func() {
 		}
 	}
 
+	AfterEach(func() {
+		Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed(), fmt.Sprintf("error waiting for pod deletion in namespace '%s'", env.Namespace))
+		env.FlushLog()
+	})
+
 	Context("when using an AutoErrandJob", func() {
-		AfterEach(func() {
-			Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
-			env.FlushLog()
-		})
 
 		var (
 			ej ejv1.ExtendedJob
@@ -447,10 +449,6 @@ var _ = Describe("ExtendedJob", func() {
 	})
 
 	Context("when using manually triggered ErrandJob", func() {
-		AfterEach(func() {
-			Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
-		})
-
 		It("does not start a job without Run being set to now", func() {
 			ej := env.ErrandExtendedJob("extendedjob")
 			ej.Spec.Trigger.Strategy = ejv1.TriggerManual
@@ -531,9 +529,6 @@ var _ = Describe("ExtendedJob", func() {
 		})
 
 		Context("when using label matchers", func() {
-			AfterEach(func() {
-				Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
-			})
 
 			testLabels := func(key, value string) map[string]string {
 				labels := map[string]string{key: value, "test": "true"}

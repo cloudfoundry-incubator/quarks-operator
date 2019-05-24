@@ -1,6 +1,7 @@
 package integration_test
 
 import (
+	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -15,15 +16,15 @@ import (
 )
 
 var _ = Describe("Deploy", func() {
+	AfterEach(func() {
+		Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed(), fmt.Sprintf("error waiting for pod deletion in namespace '%s'", env.Namespace))
+	})
+
 	Context("when using the default configuration", func() {
 		podName := "test-nats-v1-0"
 		stsName := "test-nats-v1"
 		headlessSvcName := "test-nats"
 		clusterIpSvcName := "test-nats-0"
-
-		AfterEach(func() {
-			Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
-		})
 
 		It("should deploy a pod and create services", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
@@ -89,10 +90,6 @@ var _ = Describe("Deploy", func() {
 	})
 
 	Context("when using multiple processes in BPM", func() {
-		AfterEach(func() {
-			Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
-		})
-
 		It("should add multiple containers to a pod", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{Name: "bpm-manifest"},

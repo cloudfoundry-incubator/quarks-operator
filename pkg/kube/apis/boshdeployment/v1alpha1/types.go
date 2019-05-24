@@ -25,6 +25,8 @@ const (
 var (
 	// LabelDeploymentName is the label key for manifest name
 	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
+	// LabelDeploymentName is the label key for secret type name
+	LabelDeploymentSecretType = fmt.Sprintf("%s/secret-name", apis.GroupName)
 	// LabelManifestSHA1 is the label key for manifest SHA1
 	LabelManifestSHA1 = fmt.Sprintf("%s/manifestsha1", apis.GroupName)
 	// AnnotationManifestSHA1 is the annotation key for manifest SHA1

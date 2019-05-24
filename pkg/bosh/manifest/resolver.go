@@ -16,25 +16,34 @@ import (
 
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // Resolver resolves references from CRD to a BOSH manifest
 type Resolver interface {
 	ResolveManifest(instance *bdc.BOSHDeployment, namespace string) (*Manifest, error)
+	ReadDesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*Manifest, error)
 }
 
 // ResolverImpl implements Resolver interface
 type ResolverImpl struct {
-	client              client.Client
-	newInterpolatorFunc func() Interpolator
+	client               client.Client
+	versionedSecretStore versionedsecretstore.VersionedSecretStore
+	newInterpolatorFunc  func() Interpolator
 }
+
+var _ Resolver = &ResolverImpl{}
 
 // NewInterpolatorFunc returns a fresh Interpolator
 type NewInterpolatorFunc func() Interpolator
 
 // NewResolver constructs a resolver
 func NewResolver(client client.Client, f NewInterpolatorFunc) *ResolverImpl {
-	return &ResolverImpl{client: client, newInterpolatorFunc: f}
+	return &ResolverImpl{
+		client:               client,
+		newInterpolatorFunc:  f,
+		versionedSecretStore: versionedsecretstore.NewVersionedSecretStore(client),
+	}
 }
 
 // ResolveManifest returns manifest referenced by our CRD
@@ -95,6 +104,32 @@ func (r *ResolverImpl) ResolveManifest(instance *bdc.BOSHDeployment, namespace s
 	manifest, err = LoadYAML(bytes)
 
 	return manifest, err
+}
+
+// ReadDesiredManifest reads the versioned secret created by the variable interpolation job
+// and unmarshals it into a Manifest object
+func (r *ResolverImpl) ReadDesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*Manifest, error) {
+	_, secretName := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeManifestAndVars,
+		boshDeploymentName,
+		VarInterpolationContainerName,
+		false,
+	)
+
+	secret, err := r.versionedSecretStore.Latest(ctx, namespace, secretName)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read versioned secret for desired manifest")
+	}
+
+	manifestData := secret.Data["manifest.yaml"]
+
+	manifest := &Manifest{}
+	err = yaml.Unmarshal(manifestData, manifest)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to unmarshal manifest from secret '%s'", secretName)
+	}
+
+	return manifest, nil
 }
 
 // getRefData resolves different manifest reference types and returns manifest data
