@@ -40,7 +40,8 @@ spec:
             - name: DOCKER_IMAGE_TAG
               value: "{{ .Values.image.tag }}"
           readinessProbe:
-            exec:
-              command:
-              - date
-            initialDelaySeconds: 15
+            httpGet:
+              path: /readyz
+              port: 2999
+              scheme: "HTTPS"
+            initialDelaySeconds: 2
