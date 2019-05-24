@@ -2,13 +2,29 @@
 package fakes
 
 import (
-	"sync"
+	context "context"
+	sync "sync"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	manifest "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 )
 
 type FakeResolver struct {
+	ReadDesiredManifestStub        func(context.Context, string, string) (*manifest.Manifest, error)
+	readDesiredManifestMutex       sync.RWMutex
+	readDesiredManifestArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+	}
+	readDesiredManifestReturns struct {
+		result1 *manifest.Manifest
+		result2 error
+	}
+	readDesiredManifestReturnsOnCall map[int]struct {
+		result1 *manifest.Manifest
+		result2 error
+	}
 	ResolveManifestStub        func(*v1alpha1.BOSHDeployment, string) (*manifest.Manifest, error)
 	resolveManifestMutex       sync.RWMutex
 	resolveManifestArgsForCall []struct {
@@ -25,6 +41,71 @@ type FakeResolver struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *FakeResolver) ReadDesiredManifest(arg1 context.Context, arg2 string, arg3 string) (*manifest.Manifest, error) {
+	fake.readDesiredManifestMutex.Lock()
+	ret, specificReturn := fake.readDesiredManifestReturnsOnCall[len(fake.readDesiredManifestArgsForCall)]
+	fake.readDesiredManifestArgsForCall = append(fake.readDesiredManifestArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("ReadDesiredManifest", []interface{}{arg1, arg2, arg3})
+	fake.readDesiredManifestMutex.Unlock()
+	if fake.ReadDesiredManifestStub != nil {
+		return fake.ReadDesiredManifestStub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.readDesiredManifestReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeResolver) ReadDesiredManifestCallCount() int {
+	fake.readDesiredManifestMutex.RLock()
+	defer fake.readDesiredManifestMutex.RUnlock()
+	return len(fake.readDesiredManifestArgsForCall)
+}
+
+func (fake *FakeResolver) ReadDesiredManifestCalls(stub func(context.Context, string, string) (*manifest.Manifest, error)) {
+	fake.readDesiredManifestMutex.Lock()
+	defer fake.readDesiredManifestMutex.Unlock()
+	fake.ReadDesiredManifestStub = stub
+}
+
+func (fake *FakeResolver) ReadDesiredManifestArgsForCall(i int) (context.Context, string, string) {
+	fake.readDesiredManifestMutex.RLock()
+	defer fake.readDesiredManifestMutex.RUnlock()
+	argsForCall := fake.readDesiredManifestArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *FakeResolver) ReadDesiredManifestReturns(result1 *manifest.Manifest, result2 error) {
+	fake.readDesiredManifestMutex.Lock()
+	defer fake.readDesiredManifestMutex.Unlock()
+	fake.ReadDesiredManifestStub = nil
+	fake.readDesiredManifestReturns = struct {
+		result1 *manifest.Manifest
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeResolver) ReadDesiredManifestReturnsOnCall(i int, result1 *manifest.Manifest, result2 error) {
+	fake.readDesiredManifestMutex.Lock()
+	defer fake.readDesiredManifestMutex.Unlock()
+	fake.ReadDesiredManifestStub = nil
+	if fake.readDesiredManifestReturnsOnCall == nil {
+		fake.readDesiredManifestReturnsOnCall = make(map[int]struct {
+			result1 *manifest.Manifest
+			result2 error
+		})
+	}
+	fake.readDesiredManifestReturnsOnCall[i] = struct {
+		result1 *manifest.Manifest
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeResolver) ResolveManifest(arg1 *v1alpha1.BOSHDeployment, arg2 string) (*manifest.Manifest, error) {
@@ -94,6 +175,8 @@ func (fake *FakeResolver) ResolveManifestReturnsOnCall(i int, result1 *manifest.
 func (fake *FakeResolver) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.readDesiredManifestMutex.RLock()
+	defer fake.readDesiredManifestMutex.RUnlock()
 	fake.resolveManifestMutex.RLock()
 	defer fake.resolveManifestMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

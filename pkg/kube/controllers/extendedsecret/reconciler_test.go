@@ -117,7 +117,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 				secret := object.(*corev1.Secret)
 				Expect(secret.StringData["password"]).To(Equal("securepassword"))
 				Expect(secret.GetName()).To(Equal("generated-secret"))
-				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, "generated"))
+				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, esv1.GeneratedSecretKind))
 				return nil
 			})
 
@@ -141,7 +141,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 				Expect(secret.Data["private_key"]).To(Equal([]byte("private")))
 				Expect(secret.Data["public_key"]).To(Equal([]byte("public")))
 				Expect(secret.GetName()).To(Equal("generated-secret"))
-				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, "generated"))
+				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, esv1.GeneratedSecretKind))
 				return nil
 			})
 
@@ -170,7 +170,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 				Expect(secret.Data["public_key"]).To(Equal([]byte("public")))
 				Expect(secret.Data["public_key_fingerprint"]).To(Equal([]byte("fingerprint")))
 				Expect(secret.GetName()).To(Equal("generated-secret"))
-				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, "generated"))
+				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, esv1.GeneratedSecretKind))
 				return nil
 			})
 
@@ -228,7 +228,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 				Expect(secret.Data["certificate"]).To(Equal([]byte("the_cert")))
 				Expect(secret.Data["private_key"]).To(Equal([]byte("private_key")))
 				Expect(secret.Data["ca"]).To(Equal([]byte("theca")))
-				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, "generated"))
+				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, esv1.GeneratedSecretKind))
 				return nil
 			})
 
@@ -301,14 +301,14 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 
 		It("Regenerate generation of a secret when existing secret has `generated` label", func() {
 			secret.Labels = map[string]string{
-				esv1.LabelKind: "generated",
+				esv1.LabelKind: esv1.GeneratedSecretKind,
 			}
 
 			client.CreateCalls(func(context context.Context, object runtime.Object) error {
 				secret := object.(*corev1.Secret)
 				Expect(secret.StringData["password"]).To(Equal(password))
 				Expect(secret.GetName()).To(Equal("generated-secret"))
-				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, "generated"))
+				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, esv1.GeneratedSecretKind))
 				return nil
 			})
 

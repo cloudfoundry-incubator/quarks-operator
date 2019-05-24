@@ -42,17 +42,25 @@ Watches for:
 
 Creates/updates:
 
-- the "Variable Interpolation" [auto-errand extended job](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/controllers/extendedjob.md##one-off-jobs-auto-errands)
-- the "Data Gathering" auto-errand extended job
 - the "with-ops" secret
+- the "Variable Interpolation" [auto-errand extended job](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/controllers/extendedjob.md#one-off-jobs-auto-errands)
+- the "Data Gathering" auto-errand extended job
+- the "BPM Configs" auto-errand extended job
 
-> **Note:** the output of the ["Variable Interpolation"](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_variable-interpolation.md) `ExtendedJob` is the input for the "Data Gathering" `ExtendedJob`.
+> **Note:** the output of the ["Variable Interpolation"](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_variable-interpolation.md) `ExtendedJob` is the input for the "Data Gathering" `ExtendedJob`:
+>
+> - Interpolated manifest
+>
 > The ["Data Gathering"](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_data-gather.md) step generates 2 secrets for each Instance Group:
 >
 > - Instance Group Resolved Properties
 > - Instance Group BPM
 >
 > The "Versioned" `Secret` for Instance Group Resolved Properties is referenced by the Instance Group `ExtendedStatefulSets` and `ExtendedJobs`
+
+Handles deletion:
+
+- remove all ownership from configurations(ConfigMaps, Secrets)
 
 ### Generated Variable Reconciler
 
@@ -71,7 +79,7 @@ Creates/updates:
 
 Watches for:
 
-- the "Versioned" `Secret` for Instance Group BPM
+- the "Versioned" `Secret` for Instance Group BPM information
 
 Creates/updates:
 

@@ -2,10 +2,10 @@
 package fakes
 
 import (
-	"sync"
+	sync "sync"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
+	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	extendedjob "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	v1 "k8s.io/api/core/v1"
 )
 

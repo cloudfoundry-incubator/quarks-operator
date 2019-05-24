@@ -2,10 +2,10 @@ package controllers
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -28,8 +28,15 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
+const (
+	// HTTPReadyzEndpoint route
+	HTTPReadyzEndpoint = "/readyz"
+)
+
 var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager) error{
 	boshdeployment.AddDeployment,
+	boshdeployment.AddGeneratedVariable,
+	boshdeployment.AddBPM,
 	extendedjob.AddTrigger,
 	extendedjob.AddErrand,
 	extendedjob.AddJob,
@@ -87,6 +94,8 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 		return errors.Wrap(err, "unable to create a new webhook server")
 	}
 
+	hookServer.Handle(HTTPReadyzEndpoint, ordinaryHTTPHandler())
+
 	log := ctxlog.ExtractLogger(ctx)
 	webhooks := []*admission.Webhook{}
 	for _, f := range addHookFuncs {
@@ -110,8 +119,13 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 	if err != nil {
 		return errors.Wrap(err, "generating the webhook server configuration")
 	}
-
 	return err
+}
+
+func ordinaryHTTPHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
 }
 
 func setOperatorNamespaceLabel(ctx context.Context, config *config.Config, c client.Client) error {
