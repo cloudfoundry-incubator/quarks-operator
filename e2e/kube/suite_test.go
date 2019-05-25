@@ -3,23 +3,32 @@ package kube_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
+	"testing"
 
-	"fmt"
-
-	"code.cloudfoundry.org/cf-operator/integration/environment"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 
-	"testing"
+	"code.cloudfoundry.org/cf-operator/integration/environment"
 )
 
+func FailAndCollectDebugInfo(description string, callerSkip ...int) {
+	fmt.Println("Collecting debug information...")
+	out, err := exec.Command("../testing/dump_env.sh", env.Namespace).CombinedOutput()
+	if err != nil {
+		fmt.Println("Failed to run the `dump_env.sh` script", err)
+	}
+	fmt.Println(string(out))
+
+	Fail(description, callerSkip...)
+}
 func TestE2EKube(t *testing.T) {
-	RegisterFailHandler(Fail)
+	RegisterFailHandler(FailAndCollectDebugInfo)
 	RunSpecs(t, "E2E Kube Suite")
 }
 
