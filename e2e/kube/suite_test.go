@@ -19,7 +19,7 @@ import (
 
 func FailAndCollectDebugInfo(description string, callerSkip ...int) {
 	fmt.Println("Collecting debug information...")
-	out, err := exec.Command("../testing/dump_env.sh", env.Namespace).CombinedOutput()
+	out, err := exec.Command("../testing/dump_env.sh", GetTestNamespace()).CombinedOutput()
 	if err != nil {
 		fmt.Println("Failed to run the `dump_env.sh` script", err)
 	}
@@ -41,7 +41,6 @@ const (
 
 var (
 	cliPath      string
-	env          *environment.Environment
 	stopOperator environment.StopFunc
 )
 
