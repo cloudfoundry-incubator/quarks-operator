@@ -76,7 +76,7 @@ func CalculateEJobOutputSecretPrefixAndName(secretType DeploymentSecretType, dep
 	finalName := fmt.Sprintf("%s.%s", prefix, containerName)
 
 	if versioned {
-		finalName = fmt.Sprintf("%s-v0", finalName)
+		finalName = fmt.Sprintf("%s-v1", finalName)
 	}
 
 	return prefix + ".", finalName
