@@ -113,6 +113,12 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, ig *InstanceG
 			Name:         "jobs-dir",
 			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 		},
+		// for ephemeral job data
+		// https://bosh.io/docs/vm-config/#jobs-and-packages
+		{
+			Name:         "data-dir",
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		},
 		{
 			Name: generateVolumeName(interpolatedManifestSecretName),
 			VolumeSource: corev1.VolumeSource{

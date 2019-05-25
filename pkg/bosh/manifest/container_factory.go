@@ -3,6 +3,7 @@ package manifest
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -55,44 +56,8 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job) ([]corev1.Container,
 		c.igName,
 		true,
 	)
-
-	volumeMounts := []corev1.VolumeMount{
-		{
-			Name:      "rendering-data",
-			MountPath: "/var/vcap/all-releases",
-		},
-		{
-			Name:      "jobs-dir",
-			MountPath: "/var/vcap/jobs",
-		},
-		{
-			Name:      generateVolumeName(resolvedPropertiesSecretName),
-			MountPath: fmt.Sprintf("/var/run/secrets/resolved-properties/%s", c.igName),
-			ReadOnly:  true,
-		},
-	}
-
-	initContainers = append(initContainers, corev1.Container{
-		Name:         fmt.Sprintf("renderer-%s", c.igName),
-		Image:        GetOperatorDockerImage(),
-		VolumeMounts: volumeMounts,
-		Env: []corev1.EnvVar{
-			{
-				Name:  "INSTANCE_GROUP_NAME",
-				Value: c.igName,
-			},
-			{
-				Name:  "BOSH_MANIFEST_PATH",
-				Value: fmt.Sprintf("/var/run/secrets/resolved-properties/%s/properties.yaml", c.igName),
-			},
-			{
-				Name:  "JOBS_DIR",
-				Value: "/var/vcap/all-releases",
-			},
-		},
-		Command: []string{"/bin/sh"},
-		Args:    []string{"-c", `cf-operator util template-render`},
-	})
+	initContainers = append(initContainers, templateRenderingContainer(c.igName, resolvedPropertiesSecretName))
+	initContainers = append(initContainers, createDirContainer(c.igName, jobs))
 
 	return initContainers, nil
 }
@@ -113,6 +78,10 @@ func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, err
 				{
 					Name:      "jobs-dir",
 					MountPath: "/var/vcap/jobs",
+				},
+				{
+					Name:      "data-dir",
+					MountPath: "/var/vcap/data",
 				},
 			},
 		}
@@ -181,7 +150,7 @@ func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, err
 // jobSpecCopierContainer will return a corev1.Container{} with the populated field
 func jobSpecCopierContainer(releaseName string, releaseImage string, volumeMountName string) corev1.Container {
 	inContainerReleasePath := filepath.Join("/var/vcap/all-releases/jobs-src", releaseName)
-	initContainers := corev1.Container{
+	return corev1.Container{
 		Name:  fmt.Sprintf("spec-copier-%s", releaseName),
 		Image: releaseImage,
 		VolumeMounts: []corev1.VolumeMount{
@@ -196,6 +165,62 @@ func jobSpecCopierContainer(releaseName string, releaseImage string, volumeMount
 			fmt.Sprintf(`mkdir -p "%s" && cp -ar /var/vcap/jobs-src/* "%s"`, inContainerReleasePath, inContainerReleasePath),
 		},
 	}
+}
 
-	return initContainers
+func templateRenderingContainer(name string, secretName string) corev1.Container {
+	return corev1.Container{
+		Name:  fmt.Sprintf("renderer-%s", name),
+		Image: GetOperatorDockerImage(),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "rendering-data",
+				MountPath: "/var/vcap/all-releases",
+			},
+			{
+				Name:      "jobs-dir",
+				MountPath: "/var/vcap/jobs",
+			},
+			{
+				Name:      generateVolumeName(secretName),
+				MountPath: fmt.Sprintf("/var/run/secrets/resolved-properties/%s", name),
+				ReadOnly:  true,
+			},
+		},
+		Env: []corev1.EnvVar{
+			{
+				Name:  "INSTANCE_GROUP_NAME",
+				Value: name,
+			},
+			{
+				Name:  "BOSH_MANIFEST_PATH",
+				Value: fmt.Sprintf("/var/run/secrets/resolved-properties/%s/properties.yaml", name),
+			},
+			{
+				Name:  "JOBS_DIR",
+				Value: "/var/vcap/all-releases",
+			},
+		},
+		Command: []string{"/bin/sh"},
+		Args:    []string{"-c", `cf-operator util template-render`},
+	}
+}
+
+func createDirContainer(name string, jobs []Job) corev1.Container {
+	dirs := ""
+	for _, job := range jobs {
+		dirs = dirs + " " + strings.Join(job.dataDirs(job.Name), " ")
+	}
+	return corev1.Container{
+		Name:  fmt.Sprintf("create-dirs-%s", name),
+		Image: GetOperatorDockerImage(),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "data-dir",
+				MountPath: "/var/vcap/data",
+			},
+		},
+		Env:     []corev1.EnvVar{},
+		Command: []string{"/bin/sh"},
+		Args:    []string{"-c", "mkdir -p " + dirs},
+	}
 }
