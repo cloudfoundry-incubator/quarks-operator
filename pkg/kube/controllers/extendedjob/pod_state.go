@@ -1,12 +1,10 @@
 package extendedjob
 
 import (
-	"fmt"
+	corev1 "k8s.io/api/core/v1"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-
-	corev1 "k8s.io/api/core/v1"
-	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+	podutil "code.cloudfoundry.org/cf-operator/pkg/kube/util/pod"
 )
 
 // InferPodState determines our pod state
@@ -40,13 +38,4 @@ func InferPodState(pod corev1.Pod) ejv1.PodState {
 	}
 
 	return ejv1.PodStateUnknown
-}
-
-// PodStatusString gives a summary of the pods state
-func PodStatusString(pod corev1.Pod) string {
-	conditions := []string{}
-	for _, c := range pod.Status.Conditions {
-		conditions = append(conditions, fmt.Sprintf("%s", c.Type))
-	}
-	return fmt.Sprintf("phase=%s conditions=%s)", pod.Status.Phase, conditions)
 }

@@ -7,15 +7,16 @@ import (
 	"strconv"
 	"strings"
 
-	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"github.com/pkg/errors"
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	podUtils "k8s.io/kubernetes/pkg/api/v1/pod"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	podutil "code.cloudfoundry.org/cf-operator/pkg/kube/util/pod"
 )
 
 // alterVolumeManagementStatefulSet creates the volumemanagement statefulset for persistent volume claim creation
@@ -169,7 +170,7 @@ func (r *ReconcileExtendedStatefulSet) isVolumeManagementStatefulSetReady(ctx co
 		if err != nil {
 			return false, errors.Wrapf(err, "failed to query for pod by name: %v", podName)
 		}
-		if !podUtils.IsPodReady(pod) {
+		if !podutil.IsPodReady(pod) {
 			return false, nil
 		}
 	}
