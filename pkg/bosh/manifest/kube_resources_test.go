@@ -225,7 +225,7 @@ var _ = Describe("kube converter", func() {
 			var bpmConfigs map[string]bpm.Configs
 
 			BeforeEach(func() {
-				m = *env.BOSHManifestWithBPM()
+				m = *env.BOSHManifestWithMultiBPMProcesses()
 
 				c1, err := bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
 				Expect(err).ShouldNot(HaveOccurred())

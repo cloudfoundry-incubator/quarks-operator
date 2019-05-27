@@ -75,9 +75,27 @@ func (c *Catalog) BOSHManifestWithProviderAndConsumer() *manifest.Manifest {
 	return m
 }
 
-// BOSHManifestWithBPM returns a manifest with BPM configuraton
-func (c *Catalog) BOSHManifestWithBPM() *manifest.Manifest {
-	m, err := manifest.LoadYAML([]byte(bm.WithBPM))
+// BOSHManifestWithOverriddenBPMInfo for data gathering tests
+func (c *Catalog) BOSHManifestWithOverriddenBPMInfo() *manifest.Manifest {
+	m, err := manifest.LoadYAML([]byte(bm.WithOverriddenBPMInfo))
+	if err != nil {
+		panic(err)
+	}
+	return m
+}
+
+// BOSHManifestWithAbsentBPMInfo for data gathering tests
+func (c *Catalog) BOSHManifestWithAbsentBPMInfo() *manifest.Manifest {
+	m, err := manifest.LoadYAML([]byte(bm.WithAbsentBPMInfo))
+	if err != nil {
+		panic(err)
+	}
+	return m
+}
+
+// BOSHManifestWithMultiBPMProcesses returns a manifest with multi BPM configuration
+func (c *Catalog) BOSHManifestWithMultiBPMProcesses() *manifest.Manifest {
+	m, err := manifest.LoadYAML([]byte(bm.WithMultiBPMProcesses))
 	if err != nil {
 		panic(err)
 	}
