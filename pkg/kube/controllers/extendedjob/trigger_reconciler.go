@@ -19,6 +19,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	podutil "code.cloudfoundry.org/cf-operator/pkg/kube/util/pod"
 )
 
 var _ reconcile.Reconciler = &TriggerReconciler{}
@@ -82,7 +83,7 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 	if podState == ejv1.PodStateUnknown {
 		ctxlog.Debugf(ctx,
 			"Failed to determine state %s: %#v",
-			PodStatusString(*pod),
+			podutil.GetPodStatusString(*pod),
 			pod.Status,
 		)
 		return

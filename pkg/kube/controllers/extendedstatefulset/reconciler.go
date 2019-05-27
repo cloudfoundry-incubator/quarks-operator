@@ -19,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	podUtils "k8s.io/kubernetes/pkg/api/v1/pod"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -30,6 +29,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
+	podutil "code.cloudfoundry.org/cf-operator/pkg/kube/util/pod"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
@@ -462,7 +462,7 @@ func (r *ReconcileExtendedStatefulSet) isStatefulSetReady(ctx context.Context, s
 
 	for _, pod := range podList.Items {
 		if metav1.IsControlledBy(&pod, statefulSet) {
-			if podUtils.IsPodReady(&pod) {
+			if podutil.IsPodReady(&pod) {
 				ctxlog.Debug(ctx, "Pod '", statefulSet.Name, "' owned by StatefulSet '", statefulSet.Name, "' is running.")
 				return true, nil
 			}
