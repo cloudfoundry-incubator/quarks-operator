@@ -95,21 +95,37 @@ var _ = Describe("DataGatherer", func() {
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECDEPLOYMENT"]).To(Equal("cf"))
 			})
 
-
-
-			Context("when manifest presets bpm info", func() {
+			Context("when manifest presets overridden bpm info", func() {
 				BeforeEach(func() {
-					m = env.BOSHManifestWithBPMInfo()
+					m = env.BOSHManifestWithOverriddenBPMInfo()
 					ig = "redis-slave"
 				})
 
-				It("returns preset bpm config ", func() {
+				It("returns overwritten bpm config", func() {
 					bpmConfigs, err := dg.BPMConfigs()
 					Expect(err).ToNot(HaveOccurred())
 
 					bpm := bpmConfigs["redis-server"]
 					Expect(bpm).ToNot(BeNil())
 					Expect(bpm.Processes[0].Executable).To(Equal("/another/command"))
+				})
+			})
+
+			Context("when manifest presets absent bpm info", func() {
+				BeforeEach(func() {
+					m = env.BOSHManifestWithAbsentBPMInfo()
+					ig = "redis-slave"
+				})
+
+				It("returns merged bpm config", func() {
+					bpmConfigs, err := dg.BPMConfigs()
+					Expect(err).ToNot(HaveOccurred())
+
+					bpm := bpmConfigs["redis-server"]
+					Expect(bpm).ToNot(BeNil())
+					Expect(bpm.Processes[0].Executable).To(Equal("/var/vcap/packages/redis-4/bin/redis-server"))
+					Expect(bpm.Processes[1].Name).To(Equal("absent-process"))
+					Expect(bpm.Processes[1].Executable).To(Equal("/absent-process-command"))
 				})
 			})
 		})

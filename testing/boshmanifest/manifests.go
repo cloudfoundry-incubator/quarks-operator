@@ -246,7 +246,7 @@ stemcells:
   version: "250.17"
 `
 
-const WithBPMInfo = `---
+const WithOverriddenBPMInfo = `---
 name: foo-deployment
 stemcells:
 - alias: default
@@ -272,6 +272,46 @@ instance_groups:
           processes:
           - name: redis
             executable: /another/command
+            limits:
+            open_files: 100000
+  vm_type: medium
+  stemcell: default
+  persistent_disk_type: medium
+  networks:
+  - name: default
+releases:
+- name: redis
+  version: 36.15.0
+  url: hub.docker.com/cfcontainerization
+  sha1: 6466c44827c3493645ca34b084e7c21de23272b4
+`
+
+const WithAbsentBPMInfo = `---
+name: foo-deployment
+stemcells:
+- alias: default
+  os: opensuse-42.3
+  version: 28.g837c5b3-30.263-7.0.0_234.gcd7d1132
+instance_groups:
+- name: redis-slave
+  instances: 2
+  lifecycle: errand
+  azs: [z1, z2]
+  jobs:
+  - name: redis-server
+    release: redis
+    properties:
+      foo:
+        app_domain: "((app_domain))"
+      bosh_containerization:
+        ports:
+        - name: "redis"
+          protocol: "TCP"
+          internal: 6379
+        bpm:
+          processes:
+          - name: absent-process
+            executable: /absent-process-command
             limits:
             open_files: 100000
   vm_type: medium

@@ -75,9 +75,18 @@ func (c *Catalog) BOSHManifestWithProviderAndConsumer() *manifest.Manifest {
 	return m
 }
 
-// BOSHManifestWithBPMInfo for data gathering tests
-func (c *Catalog) BOSHManifestWithBPMInfo() *manifest.Manifest {
-	m, err := manifest.LoadYAML([]byte(bm.WithBPMInfo))
+// BOSHManifestWithOverriddenBPMInfo for data gathering tests
+func (c *Catalog) BOSHManifestWithOverriddenBPMInfo() *manifest.Manifest {
+	m, err := manifest.LoadYAML([]byte(bm.WithOverriddenBPMInfo))
+	if err != nil {
+		panic(err)
+	}
+	return m
+}
+
+// BOSHManifestWithAbsentBPMInfo for data gathering tests
+func (c *Catalog) BOSHManifestWithAbsentBPMInfo() *manifest.Manifest {
+	m, err := manifest.LoadYAML([]byte(bm.WithAbsentBPMInfo))
 	if err != nil {
 		panic(err)
 	}
