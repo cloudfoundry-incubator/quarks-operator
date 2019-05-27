@@ -100,8 +100,11 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			return nil, errors.Wrap(err, "failed to list ExtendedJobs for ConfigMap reconciles")
 		}
 
-		for _, extendedJob := range extendedJobs.Items {
-			isRef, err := isReferenceFor(extendedJob)
+		for _, eJob := range extendedJobs.Items {
+			if !(eJob.Spec.UpdateOnConfigChange && eJob.IsAutoErrand()) {
+				continue
+			}
+			isRef, err := isReferenceFor(eJob)
 			if err != nil {
 				return nil, err
 			}
@@ -109,8 +112,8 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			if isRef {
 				result = append(result, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      extendedJob.Name,
-						Namespace: extendedJob.Namespace,
+						Name:      eJob.Name,
+						Namespace: eJob.Namespace,
 					}})
 			}
 		}

@@ -3,10 +3,9 @@ package extendedjob
 import (
 	"context"
 	"reflect"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-
-	"strings"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -14,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
@@ -21,7 +21,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
 )
 
 // AddErrand creates a new ExtendedJob controller to start errands when their
@@ -29,8 +29,7 @@ import (
 func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	f := controllerutil.SetControllerReference
 	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-job-errand-reconciler", mgr.GetRecorder("ext-job-errand-recorder"))
-	owner := owner.NewOwner(mgr.GetClient(), mgr.GetScheme())
-	r := NewErrandReconciler(ctx, config, mgr, f, owner)
+	r := NewErrandReconciler(ctx, config, mgr, f)
 	c, err := controller.New("ext-job-errand-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
@@ -77,13 +76,13 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 		},
 	}
 
-	// Only reconcile when
 	err = c.Watch(&source.Kind{Type: &ejv1.ExtendedJob{}}, &handler.EnqueueRequestForObject{}, p)
 	if err != nil {
 		return err
 	}
-	// Watch ConfigMaps owned by ExtendedJob, works because only auto
-	// errands with UpdateOnConfigChange=true own configs
+
+	// Watch config maps referenced by resource ExtendedJob,
+	// trigger auto errand if UpdateOnConfigChange=true and config data changed
 	p = predicate.Funcs{
 		CreateFunc:  func(e event.CreateEvent) bool { return false },
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
@@ -91,69 +90,71 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectOld.(*corev1.ConfigMap)
 			n := e.ObjectNew.(*corev1.ConfigMap)
-			shouldProcessEvent := !reflect.DeepEqual(o.Data, n.Data)
-
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedJob, n)
+			if err != nil {
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s': %s", n.Name, err)
+			}
+			shouldProcessEvent := len(reconciles) > 0 && !reflect.DeepEqual(o.Data, n.Data)
 			if shouldProcessEvent {
 				ctxlog.WithEvent(n, "Predicates").Debugf(ctx,
 					"Configmap %s update allowed. Configmap data has changed.",
 					n.Name)
 			}
-
 			return shouldProcessEvent
 		},
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{
-		IsController: false,
-		OwnerType:    &ejv1.ExtendedJob{},
+
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
+			cm := a.Object.(*corev1.ConfigMap)
+
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedJob, cm)
+			if err != nil {
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for config '%s': %v", cm.Name, err)
+			}
+
+			return reconciles
+		}),
 	}, p)
 	if err != nil {
 		return err
 	}
 
-	// Watch Secrets owned by resource ExtendedJob
+	// Watch secrets referenced by resource ExtendedJob
+	// trigger auto errand if UpdateOnConfigChange=true and config data changed
 	p = predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			o := e.Object.(*corev1.Secret)
-			// Only enqueuing versioned secret which has versionedSecret label
-			secretLabels := o.GetLabels()
-			if secretLabels == nil {
-				return false
-			}
-
-			if kind, ok := secretLabels[versionedsecretstore.LabelSecretKind]; ok && kind == versionedsecretstore.VersionSecretKind {
-				ctxlog.WithEvent(o, "Predicates").Debugf(ctx,
-					"Secret %s creation allowed. Contains desired label %s, with value %s",
-					o.Name,
-					versionedsecretstore.LabelSecretKind,
-					versionedsecretstore.VersionSecretKind)
-				return true
-			}
-
-			return false
-		},
+		CreateFunc:  func(e event.CreateEvent) bool { return false },
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectOld.(*corev1.Secret)
 			n := e.ObjectNew.(*corev1.Secret)
-			shouldProcessEvent := !reflect.DeepEqual(o.Data, n.Data)
-
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedJob, n)
+			if err != nil {
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secrets '%s': %s", n.Name, err)
+			}
+			shouldProcessEvent := len(reconciles) > 0 && !reflect.DeepEqual(o.Data, n.Data)
 			if shouldProcessEvent {
 				ctxlog.WithEvent(n, "Predicates").Debugf(ctx,
 					"Secret %s update allowed. Secret data has changed.",
 					n.Name)
 			}
-
 			return shouldProcessEvent
 		},
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
-		IsController: false,
-		OwnerType:    &ejv1.ExtendedJob{},
+
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
+			s := a.Object.(*corev1.Secret)
+
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedJob, s)
+			if err != nil {
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", s.Name, err)
+			}
+
+			return reconciles
+		}),
 	}, p)
-	if err != nil {
-		return err
-	}
 
 	return err
 }

@@ -16,7 +16,6 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
@@ -29,7 +28,6 @@ func NewErrandReconciler(
 	config *config.Config,
 	mgr manager.Manager,
 	f setOwnerReferenceFunc,
-	owner Owner,
 ) reconcile.Reconciler {
 	versionedSecretStore := versionedsecretstore.NewVersionedSecretStore(mgr.GetClient())
 
@@ -39,7 +37,6 @@ func NewErrandReconciler(
 		config:               config,
 		scheme:               mgr.GetScheme(),
 		setOwnerReference:    f,
-		owner:                owner,
 		versionedSecretStore: versionedSecretStore,
 	}
 }
@@ -51,7 +48,6 @@ type ErrandReconciler struct {
 	config               *config.Config
 	scheme               *runtime.Scheme
 	setOwnerReference    setOwnerReferenceFunc
-	owner                Owner
 	versionedSecretStore versionedsecretstore.VersionedSecretStore
 }
 
@@ -88,10 +84,11 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 	}
 
+	// START update secret references
 	eJobCopy := eJob.DeepCopy()
 	err = r.versionedSecretStore.SetSecretReferences(ctx, eJob.GetNamespace(), &eJob.Spec.Template.Spec)
 	if err != nil {
-		ctxlog.Errorf(ctx, "Failed to update update secret references on job '%s': %s", eJob.Name, err)
+		ctxlog.Errorf(ctx, "Failed to set secret references on job '%s': %s", eJob.Name, err)
 		return result, err
 	}
 
@@ -102,27 +99,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			return result, errors.Wrapf(err, "could not update eJob '%s'", eJob.GetName())
 		}
 	}
-
-	// We might want to retrigger an old job due to a config change. In any
-	// case, if it's an auto-errand, let's keep track of the referenced
-	// configs and make sure the finalizer is in place to clean up ownership.
-	if eJob.Spec.UpdateOnConfigChange && eJob.Spec.Trigger.Strategy == ejv1.TriggerOnce {
-		ctxlog.Debugf(ctx, "Synchronizing ownership on configs for eJob '%s' in namespace", eJob.Name)
-		err := r.owner.Sync(ctx, eJob, eJob.Spec.Template.Spec)
-		if err != nil {
-			return result, errors.Wrapf(err, "could not synchronize ownership for '%s'", eJob.Name)
-		}
-		if !finalizer.HasFinalizer(eJob) {
-			ctxlog.Debugf(ctx, "Add finalizer to extendedJob '%s' in namespace '%s'.", eJob.Name, eJob.Namespace)
-			finalizer.AddFinalizer(eJob)
-			err = r.client.Update(ctx, eJob)
-			if err != nil {
-				ctxlog.WithEvent(eJob, "UpdateError").Errorf(ctx, "Could not remove finalizer from eJob '%s': %s", eJob.GetName(), err)
-				return reconcile.Result{}, err
-			}
-
-		}
-	}
+	// END update secret references
 
 	err = r.createJob(ctx, *eJob)
 	if err != nil {

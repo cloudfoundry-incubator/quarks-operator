@@ -28,17 +28,6 @@ var _ = Describe("ExtendedJob", func() {
 		}
 	}
 
-	configOwnerRef := func(eJob ejv1.ExtendedJob) metav1.OwnerReference {
-		return metav1.OwnerReference{
-			APIVersion:         "fissile.cloudfoundry.org/v1alpha1",
-			Kind:               "ExtendedJob",
-			Name:               eJob.Name,
-			UID:                eJob.UID,
-			Controller:         util.Bool(false),
-			BlockOwnerDeletion: util.Bool(true),
-		}
-	}
-
 	AfterEach(func() {
 		Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed(), fmt.Sprintf("error waiting for pod deletion in namespace '%s'", env.Namespace))
 		env.FlushLog()
@@ -180,35 +169,6 @@ var _ = Describe("ExtendedJob", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			Context("when the extended job is created", func() {
-				It("manages ownership on referenced configs", func() {
-					defer func(tdfs []environment.TearDownFunc) { Expect(env.TearDownAll(tdfs)).To(Succeed()) }(tearDowns)
-
-					By("checking if ownership is added to existing configs")
-					eJob, _ := env.GetExtendedJob(env.Namespace, ej.Name)
-					ownerRef := configOwnerRef(*eJob)
-					c, _ := env.GetConfigMap(env.Namespace, configMap.Name)
-					Expect(c.GetOwnerReferences()).Should(ContainElement(ownerRef))
-					s, _ := env.GetSecret(env.Namespace, secret.Name)
-					Expect(s.GetOwnerReferences()).Should(ContainElement(ownerRef))
-
-					By("checking for the finalizer on extended job")
-					Expect(eJob.GetFinalizers()).ShouldNot(BeEmpty())
-
-					By("removing the extended job and validating ownership is removed from referenced configs")
-					tearDownEJ()
-
-					err := env.WaitForExtendedJobDeletion(env.Namespace, ej.Name)
-					Expect(err).NotTo(HaveOccurred())
-
-					By("checking config owner references")
-					c, _ = env.GetConfigMap(env.Namespace, configMap.Name)
-					Expect(c.GetOwnerReferences()).ShouldNot(ContainElement(ownerRef))
-					s, _ = env.GetSecret(env.Namespace, secret.Name)
-					Expect(s.GetOwnerReferences()).ShouldNot(ContainElement(ownerRef))
-				})
-			})
-
 			Context("when a config content changes", func() {
 				It("it creates a new job", func() {
 					defer func(tdfs []environment.TearDownFunc) { Expect(env.TearDownAll(tdfs)).To(Succeed()) }(tearDowns)
@@ -229,45 +189,8 @@ var _ = Describe("ExtendedJob", func() {
 					jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(jobs).To(HaveLen(1))
-
-					By("checking config owner references")
-					c, _ = env.GetConfigMap(env.Namespace, configMap.Name)
-					Expect(c.GetOwnerReferences()).To(HaveLen(1))
-					s, _ := env.GetSecret(env.Namespace, secret.Name)
-					Expect(s.GetOwnerReferences()).To(HaveLen(1))
 				})
 			})
-
-			Context("when disabling UpdateOnConfigChange", func() {
-				It("removes ownership from configs and removes the finalizer", func() {
-					defer func(tdfs []environment.TearDownFunc) { Expect(env.TearDownAll(tdfs)).To(Succeed()) }(tearDowns)
-
-					By("checking if ext job is done")
-					eJob, err := env.GetExtendedJob(env.Namespace, ej.Name)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(eJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
-
-					By("setting UpdateOnConfigChange to false")
-					eJob.Spec.UpdateOnConfigChange = false
-					err = env.UpdateExtendedJob(env.Namespace, *eJob)
-					Expect(err).NotTo(HaveOccurred())
-
-					By("waiting for reconcile")
-					Expect(env.WaitForLogMsg(env.ObservedLogs, "Removing child ")).ToNot(HaveOccurred())
-
-					By("checking if config owner references are removed")
-					c, _ := env.GetConfigMap(env.Namespace, configMap.Name)
-					Expect(c.GetOwnerReferences()).To(HaveLen(0))
-					s, _ := env.GetSecret(env.Namespace, secret.Name)
-					Expect(s.GetOwnerReferences()).To(HaveLen(0))
-
-					By("checking if finalizer is removed from ext job")
-					eJob, err = env.GetExtendedJob(env.Namespace, ej.Name)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(eJob.GetFinalizers()).Should(BeEmpty())
-				})
-			})
-
 		})
 
 		Context("when enabling update on config change", func() {
@@ -300,34 +223,6 @@ var _ = Describe("ExtendedJob", func() {
 				_, err = env.WaitForJobExists(env.Namespace, "extendedjob=true")
 				Expect(err).NotTo(HaveOccurred())
 			})
-
-			It("adds ownership on configs and a finalizer", func() {
-				defer func(tdfs []environment.TearDownFunc) { Expect(env.TearDownAll(tdfs)).To(Succeed()) }(tearDowns)
-
-				By("checking if ext job is done")
-				eJob, err := env.GetExtendedJob(env.Namespace, ej.Name)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(eJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
-
-				By("setting UpdateOnConfigChange to true")
-				eJob.Spec.UpdateOnConfigChange = true
-				err = env.UpdateExtendedJob(env.Namespace, *eJob)
-				Expect(err).NotTo(HaveOccurred())
-
-				By("waiting for reconcile")
-				Expect(env.WaitForLogMsg(env.ObservedLogs, "Updating ownerReferences for EJob 'autoerrand-job'")).ToNot(HaveOccurred())
-
-				By("checking if config owner references exist")
-				c, _ := env.GetConfigMap(env.Namespace, configMap.Name)
-				Expect(c.GetOwnerReferences()).To(HaveLen(1))
-				s, _ := env.GetSecret(env.Namespace, secret.Name)
-				Expect(s.GetOwnerReferences()).To(HaveLen(1))
-
-				By("checking if finalizer is added to ext job")
-				eJob, err = env.GetExtendedJob(env.Namespace, ej.Name)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(eJob.GetFinalizers()).ShouldNot(BeEmpty())
-			})
 		})
 
 		Context("when referenced configs are created after the extended job", func() {
@@ -357,7 +252,7 @@ var _ = Describe("ExtendedJob", func() {
 					Expect(err).NotTo(HaveOccurred())
 				})
 
-				It("manages ownership on referenced configs", func() {
+				It("the job starts", func() {
 					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDownEJ)
 
@@ -369,14 +264,6 @@ var _ = Describe("ExtendedJob", func() {
 					By("waiting for the job to start")
 					_, err = env.WaitForJobExists(env.Namespace, "extendedjob=true")
 					Expect(err).ToNot(HaveOccurred())
-
-					By("checking if ownership has been added to existing configs")
-					eJob, _ := env.GetExtendedJob(env.Namespace, ej.Name)
-					ownerRef := configOwnerRef(*eJob)
-					c, _ := env.GetConfigMap(env.Namespace, configMap.Name)
-					Expect(c.GetOwnerReferences()).Should(ContainElement(ownerRef))
-					s, _ := env.GetSecret(env.Namespace, secret.Name)
-					Expect(s.GetOwnerReferences()).Should(ContainElement(ownerRef))
 				})
 			})
 
@@ -390,7 +277,7 @@ var _ = Describe("ExtendedJob", func() {
 					Expect(err).NotTo(HaveOccurred())
 				})
 
-				It("manages ownership on referenced configs", func() {
+				It("the job starts", func() {
 					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDownEJ)
 
@@ -402,14 +289,6 @@ var _ = Describe("ExtendedJob", func() {
 					By("waiting for the job to start")
 					_, err = env.WaitForJobExists(env.Namespace, "extendedjob=true")
 					Expect(err).ToNot(HaveOccurred())
-
-					By("checking if ownership has been added to existing configs")
-					eJob, _ := env.GetExtendedJob(env.Namespace, ej.Name)
-					ownerRef := configOwnerRef(*eJob)
-					c, _ := env.GetConfigMap(env.Namespace, configMap.Name)
-					Expect(c.GetOwnerReferences()).Should(ContainElement(ownerRef))
-					s, _ := env.GetSecret(env.Namespace, secret.Name)
-					Expect(s.GetOwnerReferences()).Should(ContainElement(ownerRef))
 				})
 			})
 
@@ -420,7 +299,7 @@ var _ = Describe("ExtendedJob", func() {
 					Expect(err).NotTo(HaveOccurred())
 				})
 
-				It("manages ownership on referenced configs", func() {
+				It("the job starts", func() {
 					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDownEJ)
 
 					By("creating the configs")
@@ -435,14 +314,6 @@ var _ = Describe("ExtendedJob", func() {
 					By("waiting for the job to start")
 					_, err = env.WaitForJobExists(env.Namespace, "extendedjob=true")
 					Expect(err).ToNot(HaveOccurred())
-
-					By("checking if ownership has been added to existing configs")
-					eJob, _ := env.GetExtendedJob(env.Namespace, ej.Name)
-					ownerRef := configOwnerRef(*eJob)
-					c, _ := env.GetConfigMap(env.Namespace, configMap.Name)
-					Expect(c.GetOwnerReferences()).Should(ContainElement(ownerRef))
-					s, _ := env.GetSecret(env.Namespace, secret.Name)
-					Expect(s.GetOwnerReferences()).Should(ContainElement(ownerRef))
 				})
 			})
 
