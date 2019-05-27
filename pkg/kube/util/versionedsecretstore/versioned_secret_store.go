@@ -48,7 +48,7 @@ var _ VersionedSecretStore = &VersionedSecretStoreImpl{}
 // should explain the sources of the rendered secret, e.g. the location of
 // the Custom Resource Definition that generated it.
 type VersionedSecretStore interface {
-	UpdateSecretReferences(ctx context.Context, namespace string, podSpec *corev1.PodSpec) error
+	SetSecretReferences(ctx context.Context, namespace string, podSpec *corev1.PodSpec) error
 	Create(ctx context.Context, namespace string, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error
 	Get(ctx context.Context, namespace string, secretName string, version int) (*corev1.Secret, error)
 	Latest(ctx context.Context, namespace string, secretName string) (*corev1.Secret, error)
@@ -71,8 +71,8 @@ func NewVersionedSecretStore(client client.Client) VersionedSecretStoreImpl {
 	}
 }
 
-// UpdateSecretReferences update versioned secret references in pod spec
-func (p VersionedSecretStoreImpl) UpdateSecretReferences(ctx context.Context, namespace string, podSpec *corev1.PodSpec) error {
+// SetSecretReferences update versioned secret references in pod spec
+func (p VersionedSecretStoreImpl) SetSecretReferences(ctx context.Context, namespace string, podSpec *corev1.PodSpec) error {
 	_, secretsInSpec := owner.GetConfigNamesFromSpec(*podSpec)
 	for secretNameInSpec := range secretsInSpec {
 

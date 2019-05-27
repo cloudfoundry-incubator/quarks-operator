@@ -89,7 +89,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 	}
 
 	eJobCopy := eJob.DeepCopy()
-	err = r.versionedSecretStore.UpdateSecretReferences(ctx, eJob.GetNamespace(), &eJob.Spec.Template.Spec)
+	err = r.versionedSecretStore.SetSecretReferences(ctx, eJob.GetNamespace(), &eJob.Spec.Template.Spec)
 	if err != nil {
 		ctxlog.Errorf(ctx, "Failed to update update secret references on job '%s': %s", eJob.Name, err)
 		return result, err

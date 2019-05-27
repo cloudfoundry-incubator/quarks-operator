@@ -79,7 +79,7 @@ func (r *OwnershipReconciler) Reconcile(request reconcile.Request) (reconcile.Re
 	}
 
 	eJobCopy := eJob.DeepCopy()
-	err = r.versionedSecretStore.UpdateSecretReferences(ctx, eJob.GetNamespace(), &eJob.Spec.Template.Spec)
+	err = r.versionedSecretStore.SetSecretReferences(ctx, eJob.GetNamespace(), &eJob.Spec.Template.Spec)
 	if err != nil {
 		ctxlog.Errorf(ctx, "Could not update versioned secrets of EJob '%s' before sync: %v", request.NamespacedName, err)
 		return reconcile.Result{}, err
