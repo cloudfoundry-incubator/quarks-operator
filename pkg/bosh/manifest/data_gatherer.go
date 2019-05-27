@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	btg "github.com/viovanov/bosh-template-go"
 	"go.uber.org/zap"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 )
@@ -332,10 +332,17 @@ func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string) error {
 		}
 
 		// Parse a rendered bpm.yml into the bpm Config struct
-		jobIndexBPM[i], err = bpm.NewConfig(bpmBytes)
+		renderedBPM, err := bpm.NewConfig(bpmBytes)
 		if err != nil {
 			return err
 		}
+
+		// Overwrite Processes if BPM.Processes exists in BOSHContainerization
+		if len(currentJob.Properties.BOSHContainerization.BPM.Processes) > 0 {
+			renderedBPM.Processes = overwriteBPMProcesses(renderedBPM.Processes, currentJob.Properties.BOSHContainerization.BPM.Processes)
+		}
+
+		jobIndexBPM[i] = renderedBPM
 	}
 
 	for _, jobBPMInstance := range jobIndexBPM {
@@ -462,4 +469,30 @@ func lookUpJobRelease(releases []*Release, jobRelease string) bool {
 	}
 
 	return false
+}
+
+// overwriteBPMProcesses will return new processes slice which be overwritten with preset processes
+func overwriteBPMProcesses(renderedProcesses []bpm.Process, presetProcesses []bpm.Process) []bpm.Process {
+	for _, process := range presetProcesses {
+		index, exist := indexOfBPMProcess(renderedProcesses, process.Name)
+		if exist {
+			renderedProcesses[index] = process
+		} else {
+			renderedProcesses = append(renderedProcesses, process)
+		}
+	}
+
+	return renderedProcesses
+}
+
+// indexOfBPMProcess will return the first index at which a given process name can be found in the []bpm.Process.
+// Return -1 if not find valid version
+func indexOfBPMProcess(processes []bpm.Process, processName string) (int, bool) {
+	for i, process := range processes {
+		if process.Name == processName {
+			return i, true
+		}
+	}
+
+	return -1, false
 }
