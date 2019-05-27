@@ -18,6 +18,10 @@ var _ = Describe("Lifecycle", func() {
 		boshDeployment bdcv1.BOSHDeployment
 	)
 
+	AfterEach(func() {
+		Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed(), fmt.Sprintf("error waiting for pod deletion in namespace '%s'", env.Namespace))
+	})
+
 	Context("when correctly setup", func() {
 		BeforeEach(func() {
 			boshDeployment = env.DefaultBOSHDeployment("testcr", "manifest")
@@ -34,10 +38,10 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			// Check pod-0 had been ready twice TODO should find a better way to determine final instance status
+			// Check pods
 			Expect(env.WaitForLogMsg(env.ObservedLogs, "Considering 3 extended jobs for pod testcr-nats-v1-0/ready")).To(Succeed(), "error getting logs for waiting pod-0/ready")
 			Expect(env.ObservedLogs.TakeAll())
-			Expect(env.WaitForLogMsg(env.ObservedLogs, "Considering 3 extended jobs for pod testcr-nats-v1-0/ready")).To(Succeed(), "error getting logs for waiting pod-0/ready again")
+			Expect(env.WaitForLogMsg(env.ObservedLogs, "Considering 3 extended jobs for pod testcr-nats-v1-1/ready")).To(Succeed(), "error getting logs for waiting pod-1/ready")
 
 			err = env.WaitForPod(env.Namespace, "testcr-nats-v1-0")
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from initial deployment")

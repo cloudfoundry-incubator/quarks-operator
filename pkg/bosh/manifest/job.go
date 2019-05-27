@@ -62,6 +62,14 @@ func (j *Job) loadSpec(baseDir string) (*JobSpec, error) {
 	return &jobSpec, nil
 }
 
+func (j *Job) dataDirs(name string) []string {
+	return []string{
+		"/var/vcap/data/" + name,
+		"/var/vcap/data/sys/log/" + name,
+		"/var/vcap/data/sys/run/" + name,
+	}
+}
+
 // JobProperties represents the properties map of a Job
 type JobProperties struct {
 	BOSHContainerization `yaml:"bosh_containerization"`

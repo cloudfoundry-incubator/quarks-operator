@@ -197,6 +197,8 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 				secretLabels = map[string]string{}
 			}
 
+			secretLabels[ejv1.LabelPersistentSecretContainer] = c.Name
+
 			// Use secretName as versioned secret name prefix: <secretName>-v<version>
 			err = r.versionedSecretStore.Create(ctx, instance.GetNamespace(), secretName, data, secretLabels, "created by extendedJob")
 			if err != nil {
@@ -208,7 +210,14 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 				if !ok {
 					return fmt.Errorf("object is not a Secret")
 				}
-				s.SetLabels(conf.SecretLabels)
+
+				secretLabels := conf.SecretLabels
+				if secretLabels == nil {
+					secretLabels = map[string]string{}
+				}
+				secretLabels[ejv1.LabelPersistentSecretContainer] = c.Name
+
+				s.SetLabels(secretLabels)
 				s.StringData = data
 				return nil
 			})

@@ -26,8 +26,6 @@ const (
 )
 
 var (
-	// LabelDeploymentName is the name of a label for the deployment name
-	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
 	// LabelInstanceGroupName is the name of a label for an instance group name
 	LabelInstanceGroupName = fmt.Sprintf("%s/instance-group-name", apis.GroupName)
 )
@@ -115,6 +113,12 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, ig *InstanceG
 			Name:         "jobs-dir",
 			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 		},
+		// for ephemeral job data
+		// https://bosh.io/docs/vm-config/#jobs-and-packages
+		{
+			Name:         "data-dir",
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		},
 		{
 			Name: generateVolumeName(interpolatedManifestSecretName),
 			VolumeSource: corev1.VolumeSource{
@@ -134,6 +138,9 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, ig *InstanceG
 	}
 
 	containers, err := cfac.JobsToContainers(ig.Jobs)
+	if err != nil {
+		return essv1.ExtendedStatefulSet{}, err
+	}
 
 	extSts := essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{

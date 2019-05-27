@@ -1,7 +1,6 @@
 # Temporary Build Files
 /cf-operator
 binaries
-/vendor
 # Temp dir for generated kube files
 /_tmp
 
