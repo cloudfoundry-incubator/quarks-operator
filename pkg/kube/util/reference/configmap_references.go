@@ -60,7 +60,7 @@ func getConfMapRefFromPod(object corev1.PodSpec) map[string]bool {
 	}
 
 	// Look at all init containers
-	for _, container := range object.Containers {
+	for _, container := range object.InitContainers {
 		for _, envFrom := range container.EnvFrom {
 			if envFrom.ConfigMapRef != nil {
 				result[envFrom.ConfigMapRef.Name] = true
