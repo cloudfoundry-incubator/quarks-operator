@@ -64,7 +64,9 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 
 	// Only reconcile when
 	err = c.Watch(&source.Kind{Type: &ejv1.ExtendedJob{}}, &handler.EnqueueRequestForObject{}, p)
-
+	if err != nil {
+		return err
+	}
 	// Watch ConfigMaps owned by ExtendedJob, works because only auto
 	// errands with UpdateOnConfigChange=true own configs
 	p = predicate.Funcs{

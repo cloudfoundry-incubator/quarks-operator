@@ -509,7 +509,7 @@ func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.
 			return fmt.Errorf("error updating OwnerReferences: %v", err)
 		}
 
-		oldsha, _ := statefulSet.Spec.Template.Annotations[essv1a1.AnnotationConfigSHA1]
+		oldsha := statefulSet.Spec.Template.Annotations[essv1a1.AnnotationConfigSHA1]
 
 		// If the current config sha doesn't match the existing config sha, update it
 		if currentsha != oldsha {

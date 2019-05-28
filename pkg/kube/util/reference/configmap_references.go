@@ -13,13 +13,13 @@ import (
 // The object can be an ExtendedStatefulSet, an ExtendedeJob or a BOSHDeployment
 func GetConfigMapsReferencedBy(object interface{}) (map[string]bool, error) {
 	// Figure out the type of object
-	switch object.(type) {
+	switch object := object.(type) {
 	case bdv1.BOSHDeployment:
-		return getConfMapRefFromBdpl(object.(bdv1.BOSHDeployment)), nil
+		return getConfMapRefFromBdpl(object), nil
 	case ejobv1.ExtendedJob:
-		return getConfMapRefFromEJob(object.(ejobv1.ExtendedJob)), nil
+		return getConfMapRefFromEJob(object), nil
 	case estsv1.ExtendedStatefulSet:
-		return getConfMapRefFromESts(object.(estsv1.ExtendedStatefulSet)), nil
+		return getConfMapRefFromESts(object), nil
 	default:
 		return nil, errors.New("can't get config map references for unkown type; supported types are BOSHDeployment, ExtendedJob and ExtendedStatefulSet")
 	}

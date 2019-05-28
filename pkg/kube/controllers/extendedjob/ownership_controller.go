@@ -120,8 +120,8 @@ func AddOwnership(ctx context.Context, config *config.Config, mgr manager.Manage
 }
 
 func updateOnConfigChanged(n, o *ejv1.ExtendedJob) bool {
-	return (o.Spec.UpdateOnConfigChange == false && n.Spec.UpdateOnConfigChange == true) ||
-		(o.Spec.UpdateOnConfigChange == true && n.Spec.UpdateOnConfigChange == false)
+	return (!o.Spec.UpdateOnConfigChange && n.Spec.UpdateOnConfigChange) ||
+		(o.Spec.UpdateOnConfigChange && !n.Spec.UpdateOnConfigChange)
 }
 
 // config name referenced by any ejob?
@@ -173,7 +173,7 @@ func hasVersionedSecretReferences(o corev1.Secret) bool {
 	if secretLabels == nil {
 		return false
 	}
-	kind, _ := secretLabels[versionedsecretstore.LabelSecretKind]
+	kind := secretLabels[versionedsecretstore.LabelSecretKind]
 	_, referencedJobExist := secretLabels[ejv1.LabelReferencedJobName]
 	return kind == versionedsecretstore.VersionSecretKind && referencedJobExist
 }

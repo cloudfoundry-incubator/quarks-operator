@@ -48,11 +48,8 @@ func AddTrigger(ctx context.Context, config *config.Config, mgr manager.Manager)
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if isJobPod(e.MetaNew.GetLabels()) {
-				return false
-			}
 			// This allows matching both our ready and deleted states
-			return true
+			return !isJobPod(e.MetaNew.GetLabels())
 		},
 	}
 	return c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForObject{}, p)

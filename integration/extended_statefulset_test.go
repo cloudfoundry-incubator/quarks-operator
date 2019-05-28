@@ -117,6 +117,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			By("Checking that old pods are deleted")
 			pods, err := env.GetPods(env.Namespace, "testpodupdated=yes")
+			Expect(err).NotTo(HaveOccurred())
 			Expect(len(pods.Items)).To(Equal(1))
 		})
 
@@ -207,15 +208,22 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			By("Creating references")
 			configMap1 := env.DefaultConfigMap("example1")
 			tearDown, err := env.CreateConfigMap(env.Namespace, configMap1)
+			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
 			configMap2 := env.DefaultConfigMap("example2")
 			tearDown, err = env.CreateConfigMap(env.Namespace, configMap2)
+			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
 			secret1 := env.DefaultSecret("example1")
 			tearDown, err = env.CreateSecret(env.Namespace, secret1)
+			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
 			secret2 := env.DefaultSecret("example2")
 			tearDown, err = env.CreateSecret(env.Namespace, secret2)
+			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("Creating an ExtendedStatefulSet")
@@ -357,6 +365,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			By("Checking pod v2-0 volumeclaim name")
 			pod, err := env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
 			volumes := make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
@@ -370,6 +379,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			By("Checking pod v2-1 volumeclaim name")
 			pod, err = env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
 			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
@@ -405,6 +415,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			By("Checking pod v3-0 volumeclaim name")
 			pod, err = env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
 			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
@@ -418,6 +429,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			By("Checking pod v3-1 volumeclaim name")
 			pod, err = env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
 			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
@@ -453,6 +465,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			By("Checking pod v4-0 volumeclaim name")
 			pod, err = env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
 			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
@@ -509,6 +522,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			By("Checking pod v2-0 volumeclaim name")
 			pod, err := env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
 			volumes := make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
@@ -522,6 +536,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			By("Checking pod v2-1 volumeclaim name")
 			pod, err = env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
 			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
@@ -557,6 +572,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			By("Checking pod v3-0 volumeclaim name")
 			pod, err = env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
 			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
@@ -570,6 +586,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			By("Checking pod v3-1 volumeclaim name")
 			pod, err = env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
 			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
@@ -583,6 +600,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			By("Checking pod v3-2 volumeclaim name")
 			pod, err = env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
 			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
@@ -641,6 +659,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			By("Checking pod v2-0 volumeclaim name")
 			pod, err := env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
 			volumes := make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
@@ -654,6 +673,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			By("Checking pod v2-1 volumeclaim name")
 			pod, err = env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
 			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
@@ -667,6 +687,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			By("Checking pod v2-2 volumeclaim name")
 			pod, err = env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
 			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
@@ -702,6 +723,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			By("Checking pod v3-0 volumeclaim name")
 			pod, err = env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
 			volumes = make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume
@@ -734,6 +756,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			podName := fmt.Sprintf("%s-v%d-%d", ess.GetName(), 1, 0)
 
 			pod, err := env.GetPod(env.Namespace, podName)
+			Expect(err).NotTo(HaveOccurred())
 			volumes := make(map[string]corev1.Volume, len(pod.Spec.Volumes))
 			for _, volume := range pod.Spec.Volumes {
 				volumes[volume.Name] = volume

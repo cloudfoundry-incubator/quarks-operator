@@ -115,7 +115,7 @@ var _ = Describe("Deploy", func() {
 			Expect(svc.Spec.Ports[1].Port).To(Equal(int32(1338)))
 
 			By("checking for containers")
-			pods, err := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=bpm")
+			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=bpm")
 			Expect(len(pods.Items)).To(Equal(1))
 			pod := pods.Items[0]
 			Expect(pod.Spec.Containers).To(HaveLen(2))

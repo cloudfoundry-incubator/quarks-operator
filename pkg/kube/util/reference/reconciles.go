@@ -46,13 +46,13 @@ func GetReconciles(ctx context.Context, mgr manager.Manager, reconcileType Recon
 		var err error
 		var name string
 
-		switch object.(type) {
+		switch object := object.(type) {
 		case *corev1.ConfigMap:
 			objectReferences, err = GetConfigMapsReferencedBy(parent)
-			name = object.(*corev1.ConfigMap).Name
+			name = object.Name
 		case *corev1.Secret:
 			objectReferences, err = GetSecretsReferencedBy(parent)
-			name = object.(*corev1.Secret).Name
+			name = object.Name
 		default:
 			return false, errors.New("can't get reconciles for unknown object type; supported types are ConfigMap and Secret")
 		}

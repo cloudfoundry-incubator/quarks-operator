@@ -62,9 +62,9 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		generator = &generatorfakes.FakeGenerator{}
 		client = &cfakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-			switch object.(type) {
+			switch object := object.(type) {
 			case *esv1.ExtendedSecret:
-				es.DeepCopyInto(object.(*esv1.ExtendedSecret))
+				es.DeepCopyInto(object)
 			case *corev1.Secret:
 				return errors.NewNotFound(schema.GroupResource{}, "not found")
 			}
@@ -202,12 +202,12 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 			}
 
 			client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-				switch object.(type) {
+				switch object := object.(type) {
 				case *esv1.ExtendedSecret:
-					es.DeepCopyInto(object.(*esv1.ExtendedSecret))
+					es.DeepCopyInto(object)
 				case *corev1.Secret:
 					if nn.Name == "mysecret" {
-						ca.DeepCopyInto(object.(*corev1.Secret))
+						ca.DeepCopyInto(object)
 					} else {
 						return errors.NewNotFound(schema.GroupResource{}, "not found is requeued")
 					}
@@ -275,12 +275,12 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 			}
 
 			client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-				switch object.(type) {
+				switch object := object.(type) {
 				case *esv1.ExtendedSecret:
-					es.DeepCopyInto(object.(*esv1.ExtendedSecret))
+					es.DeepCopyInto(object)
 				case *corev1.Secret:
 					if nn.Name == "mysecret" {
-						secret.DeepCopyInto(object.(*corev1.Secret))
+						secret.DeepCopyInto(object)
 					} else {
 						return errors.NewNotFound(schema.GroupResource{}, "not found is requeued")
 					}

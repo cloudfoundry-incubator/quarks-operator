@@ -68,7 +68,8 @@ func (r *ResolverImpl) ResolveManifest(instance *bdc.BOSHDeployment, namespace s
 	}
 
 	// Interpolate implicit variables
-	vars, err := r.ImplicitVariables(manifest, m)
+	// TODO: check why the error here was not returned
+	vars, _ := r.ImplicitVariables(manifest, m)
 	for _, v := range vars {
 		varData, err := r.getRefData(namespace, bdc.SecretType, names.CalculateSecretName(names.DeploymentSecretTypeImplicitVariable, instance.GetName(), v), bdc.ImplicitVariableKeyName)
 		if err != nil {

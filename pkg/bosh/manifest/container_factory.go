@@ -64,7 +64,7 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job) ([]corev1.Container,
 
 // JobsToContainers creates a list of Containers for corev1.PodSpec Containers field
 func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, error) {
-	generateJobContainers := func(job Job, jobImage string) (error, []corev1.Container) {
+	generateJobContainers := func(job Job, jobImage string) ([]corev1.Container, error) {
 		boshJobName := job.Name
 		containers := []corev1.Container{}
 		template := corev1.Container{
@@ -92,11 +92,11 @@ func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, err
 
 		bpmConfig, ok := c.bpmConfigs[boshJobName]
 		if !ok {
-			return errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", boshJobName), containers
+			return containers, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", boshJobName)
 		}
 
 		if len(bpmConfig.Processes) < 1 {
-			return errors.New("bpm info has no processes"), containers
+			return containers, errors.New("bpm info has no processes")
 		}
 
 		for _, process := range bpmConfig.Processes {
@@ -126,7 +126,7 @@ func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, err
 			containers = append(containers, *c)
 		}
 
-		return nil, containers
+		return containers, nil
 	}
 
 	var containers []corev1.Container
@@ -141,7 +141,7 @@ func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, err
 			return []corev1.Container{}, err
 		}
 
-		err, processes := generateJobContainers(job, jobImage)
+		processes, err := generateJobContainers(job, jobImage)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to apply bpm information on bosh job '%s', instance group '%s'", job.Name, c.igName)
 		}

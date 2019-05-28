@@ -52,9 +52,7 @@ func (g InMemoryGenerator) generateCertificate(request credsgen.CertificateGener
 	certReq := &csr.CertificateRequest{KeyRequest: &csr.BasicKeyRequest{A: g.Algorithm, S: g.Bits}}
 
 	certReq.Hosts = append(certReq.Hosts, request.CommonName)
-	for _, name := range request.AlternativeNames {
-		certReq.Hosts = append(certReq.Hosts, name)
-	}
+	certReq.Hosts = append(certReq.Hosts, request.AlternativeNames...)
 	certReq.CN = certReq.Hosts[0]
 
 	var signingReq []byte

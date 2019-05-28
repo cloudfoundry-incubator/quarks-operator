@@ -13,13 +13,13 @@ import (
 // The object can be an ExtendedStatefulSet, an ExtendedeJob or a BOSHDeployment
 func GetSecretsReferencedBy(object interface{}) (map[string]bool, error) {
 	// Figure out the type of object
-	switch object.(type) {
+	switch object := object.(type) {
 	case bdv1.BOSHDeployment:
-		return getSecretRefFromBdpl(object.(bdv1.BOSHDeployment)), nil
+		return getSecretRefFromBdpl(object), nil
 	case ejobv1.ExtendedJob:
-		return getSecretRefFromEJob(object.(ejobv1.ExtendedJob)), nil
+		return getSecretRefFromEJob(object), nil
 	case estsv1.ExtendedStatefulSet:
-		return getSecretRefFromESts(object.(estsv1.ExtendedStatefulSet)), nil
+		return getSecretRefFromESts(object), nil
 	default:
 		return nil, errors.New("can't get secret references for unkown type; supported types are BOSHDeployment, ExtendedJob and ExtendedStatefulSet")
 	}

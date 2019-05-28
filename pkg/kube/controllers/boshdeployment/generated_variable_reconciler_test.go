@@ -95,10 +95,10 @@ variables:
 
 		client = &cfakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-			switch object.(type) {
+			switch object := object.(type) {
 			case *corev1.Secret:
 				if nn.Name == "foo-with-ops" {
-					manifestWithOpsSecret.DeepCopyInto(object.(*corev1.Secret))
+					manifestWithOpsSecret.DeepCopyInto(object)
 				}
 			}
 
@@ -116,10 +116,10 @@ variables:
 		Context("when manifest with ops is created", func() {
 			It("handles an error when generating variables", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-					switch object.(type) {
+					switch object := object.(type) {
 					case *corev1.Secret:
 						if nn.Name == "foo-with-ops" {
-							manifestWithOpsSecret.DeepCopyInto(object.(*corev1.Secret))
+							manifestWithOpsSecret.DeepCopyInto(object)
 						}
 					case *esv1.ExtendedSecret:
 						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)

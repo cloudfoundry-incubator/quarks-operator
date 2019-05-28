@@ -437,7 +437,7 @@ func (m *Machine) WaitForBOSHDeploymentDeletion(namespace string, name string) e
 
 // HasBOSHDeployment returns true if the pod by that name is in state running
 func (m *Machine) HasBOSHDeployment(namespace string, name string) (bool, error) {
-	client := m.VersionedClientset.Boshdeployment().BOSHDeployments(namespace)
+	client := m.VersionedClientset.BoshdeploymentV1alpha1().BOSHDeployments(namespace)
 	_, err := client.Get(name, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -550,7 +550,7 @@ func (m *Machine) SecretExists(namespace string, name string) (bool, error) {
 
 // CreateBOSHDeployment creates a BOSHDeployment custom resource and returns a function to delete it
 func (m *Machine) CreateBOSHDeployment(namespace string, deployment bdcv1.BOSHDeployment) (*bdcv1.BOSHDeployment, TearDownFunc, error) {
-	client := m.VersionedClientset.Boshdeployment().BOSHDeployments(namespace)
+	client := m.VersionedClientset.BoshdeploymentV1alpha1().BOSHDeployments(namespace)
 	d, err := client.Create(&deployment)
 	return d, func() error {
 		err := client.Delete(deployment.GetName(), &metav1.DeleteOptions{})
@@ -878,14 +878,14 @@ func (m *Machine) GetConfigMap(namespace string, name string) (*corev1.ConfigMap
 
 // GetExtendedJob gets an ExtendedJob custom resource
 func (m *Machine) GetExtendedJob(namespace string, name string) (*ejv1.ExtendedJob, error) {
-	client := m.VersionedClientset.Extendedjob().ExtendedJobs(namespace)
+	client := m.VersionedClientset.ExtendedjobV1alpha1().ExtendedJobs(namespace)
 	d, err := client.Get(name, metav1.GetOptions{})
 	return d, err
 }
 
 // CreateExtendedJob creates an ExtendedJob
 func (m *Machine) CreateExtendedJob(namespace string, job ejv1.ExtendedJob) (*ejv1.ExtendedJob, TearDownFunc, error) {
-	client := m.VersionedClientset.Extendedjob().ExtendedJobs(namespace)
+	client := m.VersionedClientset.ExtendedjobV1alpha1().ExtendedJobs(namespace)
 	d, err := client.Create(&job)
 	return d, func() error {
 		pods, err := m.Clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{
@@ -915,7 +915,7 @@ func (m *Machine) CreateExtendedJob(namespace string, job ejv1.ExtendedJob) (*ej
 
 // UpdateExtendedJob updates an extended job
 func (m *Machine) UpdateExtendedJob(namespace string, eJob ejv1.ExtendedJob) error {
-	client := m.VersionedClientset.Extendedjob().ExtendedJobs(namespace)
+	client := m.VersionedClientset.ExtendedjobV1alpha1().ExtendedJobs(namespace)
 	_, err := client.Update(&eJob)
 	return err
 }
