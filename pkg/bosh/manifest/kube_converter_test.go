@@ -64,6 +64,7 @@ var _ = Describe("kube converter", func() {
 
 				var1 := variables[0]
 				Expect(var1.Name).To(Equal("foo-deployment.var-adminkey"))
+				Expect(var1.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
 				Expect(var1.Spec.Type).To(Equal(esv1.RSAKey))
 				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminkey"))
 			})
@@ -78,6 +79,7 @@ var _ = Describe("kube converter", func() {
 
 				var1 := variables[0]
 				Expect(var1.Name).To(Equal("foo-deployment.var-adminkey"))
+				Expect(var1.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
 				Expect(var1.Spec.Type).To(Equal(esv1.SSHKey))
 				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminkey"))
 			})
@@ -99,6 +101,7 @@ var _ = Describe("kube converter", func() {
 
 				var1 := variables[0]
 				Expect(var1.Name).To(Equal("foo-deployment.var-foo-cert"))
+				Expect(var1.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
 				Expect(var1.Spec.Type).To(Equal(esv1.Certificate))
 				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-foo-cert"))
 				request := var1.Spec.Request.CertificateRequest

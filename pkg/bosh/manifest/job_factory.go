@@ -296,6 +296,9 @@ func (f *JobFactory) gatheringJob(name string, secretType names.DeploymentSecret
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: f.Namespace,
+			Labels: map[string]string{
+				bdv1.LabelDeploymentName: f.Manifest.Name,
+			},
 		},
 		Spec: ejv1.ExtendedJobSpec{
 			Output: &ejv1.Output{

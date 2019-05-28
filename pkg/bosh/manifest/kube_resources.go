@@ -26,6 +26,8 @@ const (
 )
 
 var (
+	// LabelDeploymentName is the name of a label for the deployment name
+	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
 	// LabelInstanceGroupName is the name of a label for an instance group name
 	LabelInstanceGroupName = fmt.Sprintf("%s/instance-group-name", apis.GroupName)
 )
@@ -147,6 +149,7 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, ig *InstanceG
 			Name:      fmt.Sprintf("%s-%s", manifestName, igName),
 			Namespace: kc.namespace,
 			Labels: map[string]string{
+				LabelDeploymentName:    manifestName,
 				LabelInstanceGroupName: igName,
 			},
 		},
@@ -214,6 +217,7 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, ig *Instance
 					Name:      names.ServiceName(manifestName, igName, len(services)),
 					Namespace: kc.namespace,
 					Labels: map[string]string{
+						LabelDeploymentName:    manifestName,
 						LabelInstanceGroupName: igName,
 						essv1.LabelAZIndex:     strconv.Itoa(0),
 						essv1.LabelPodOrdinal:  strconv.Itoa(i),
@@ -336,6 +340,7 @@ func (kc *KubeConverter) errandToExtendedJob(manifestName string, ig *InstanceGr
 			Name:      fmt.Sprintf("%s-%s", manifestName, igName),
 			Namespace: kc.namespace,
 			Labels: map[string]string{
+				LabelDeploymentName:    manifestName,
 				LabelInstanceGroupName: igName,
 			},
 		},
