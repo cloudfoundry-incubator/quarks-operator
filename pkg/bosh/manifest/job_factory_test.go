@@ -50,6 +50,8 @@ var _ = Describe("JobFactory", func() {
 		})
 
 		It("has one spec-copier init container per instance group", func() {
+			Expect(job.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
+
 			Expect(len(spec.InitContainers)).To(Equal(len(m.InstanceGroups)))
 			Expect(spec.InitContainers[0].Name).To(ContainSubstring("spec-copier-"))
 		})
@@ -65,6 +67,8 @@ var _ = Describe("JobFactory", func() {
 		It("mounts variable secrets in the variable interpolation container", func() {
 			job, err := factory.VariableInterpolationJob()
 			Expect(err).ToNot(HaveOccurred())
+			Expect(job.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
+
 			podSpec := job.Spec.Template.Spec
 
 			volumes := []string{}

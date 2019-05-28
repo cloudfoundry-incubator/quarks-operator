@@ -30,7 +30,8 @@ func (kc *KubeConverter) Variables(manifestName string, variables []Variable) []
 				Name:      secretName,
 				Namespace: kc.namespace,
 				Labels: map[string]string{
-					"variableName": v.Name,
+					"variableName":      v.Name,
+					LabelDeploymentName: manifestName,
 				},
 			},
 			Spec: esv1.ExtendedSecretSpec{

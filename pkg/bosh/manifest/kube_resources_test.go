@@ -23,7 +23,7 @@ var _ = Describe("kube converter", func() {
 	Context("BPMResources", func() {
 		act := func(bpmConfigs map[string]bpm.Configs) (*manifest.BPMResources, error) {
 			kubeConverter := manifest.NewKubeConverter("foo")
-			resources, err := kubeConverter.BPMResources(m.Name, m.InstanceGroups, &m, bpmConfigs)
+			resources, err := kubeConverter.BPMResources(m.Name, "1", m.InstanceGroups, &m, bpmConfigs)
 			return resources, err
 		}
 
@@ -57,16 +57,24 @@ var _ = Describe("kube converter", func() {
 				It("converts the instance group to an ExtendedStatefulSet", func() {
 					kubeConverter, err := act(bpmConfigs)
 					Expect(err).ShouldNot(HaveOccurred())
-					extStS := kubeConverter.InstanceGroups[0].Spec.Template.Spec.Template
-					Expect(extStS.Name).To(Equal("diego-cell"))
 
-					specCopierInitContainer := extStS.Spec.InitContainers[0]
-					rendererInitContainer := extStS.Spec.InitContainers[1]
+					// Test labels and annotation in the extended statefulSet
+					extStS := kubeConverter.InstanceGroups[0]
+					Expect(extStS.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, "diego-cell")))
+					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
+					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, "diego-cell"))
+					Expect(extStS.GetAnnotations()).To(HaveKeyWithValue(manifest.AnnotationDeploymentVersion, "1"))
+
+					stS := extStS.Spec.Template.Spec.Template
+					Expect(stS.Name).To(Equal("diego-cell"))
+
+					specCopierInitContainer := stS.Spec.InitContainers[0]
+					rendererInitContainer := stS.Spec.InitContainers[1]
 
 					// Test containers in the extended statefulSet
-					Expect(extStS.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
-					Expect(extStS.Spec.Containers[0].Command).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server"}))
-					Expect(extStS.Spec.Containers[0].Name).To(Equal("cflinuxfs3-rootfs-setup-test-server"))
+					Expect(stS.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
+					Expect(stS.Spec.Containers[0].Command).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server"}))
+					Expect(stS.Spec.Containers[0].Name).To(Equal("cflinuxfs3-rootfs-setup-test-server"))
 
 					// Test init containers in the extended statefulSet
 					Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3"))
@@ -77,8 +85,8 @@ var _ = Describe("kube converter", func() {
 					Expect(rendererInitContainer.Name).To(Equal("renderer-diego-cell"))
 
 					// Test shared volume setup
-					Expect(extStS.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
-					Expect(extStS.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 					Expect(specCopierInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
 					Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 					Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
@@ -95,19 +103,19 @@ var _ = Describe("kube converter", func() {
 					Expect(rendererInitContainer.VolumeMounts[2].MountPath).To(Equal("/var/run/secrets/resolved-properties/diego-cell"))
 
 					// Test the healthcheck setup
-					readinessProbe := extStS.Spec.Containers[0].ReadinessProbe
+					readinessProbe := stS.Spec.Containers[0].ReadinessProbe
 					Expect(readinessProbe).ToNot(BeNil())
 					Expect(readinessProbe.Exec.Command[0]).To(Equal("curl --silent --fail --head http://${HOSTNAME}:8080/health"))
 
-					livenessProbe := extStS.Spec.Containers[0].LivenessProbe
+					livenessProbe := stS.Spec.Containers[0].LivenessProbe
 					Expect(livenessProbe).ToNot(BeNil())
 					Expect(livenessProbe.Exec.Command[0]).To(Equal("curl --silent --fail --head http://${HOSTNAME}:8080"))
 
 					// Test services for the extended statefulSet
 					service0 := kubeConverter.Services[0]
-					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-0", m.Name, extStS.Name)))
+					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-0", m.Name, stS.Name)))
 					Expect(service0.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelInstanceGroupName: extStS.Name,
+						manifest.LabelInstanceGroupName: stS.Name,
 						essv1.LabelAZIndex:              "0",
 						essv1.LabelPodOrdinal:           "0",
 					}))
@@ -120,9 +128,9 @@ var _ = Describe("kube converter", func() {
 					}))
 
 					service1 := kubeConverter.Services[1]
-					Expect(service1.Name).To(Equal(fmt.Sprintf("%s-%s-1", m.Name, extStS.Name)))
+					Expect(service1.Name).To(Equal(fmt.Sprintf("%s-%s-1", m.Name, stS.Name)))
 					Expect(service1.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelInstanceGroupName: extStS.Name,
+						manifest.LabelInstanceGroupName: stS.Name,
 						essv1.LabelAZIndex:              "1",
 						essv1.LabelPodOrdinal:           "0",
 					}))
@@ -135,9 +143,9 @@ var _ = Describe("kube converter", func() {
 					}))
 
 					service2 := kubeConverter.Services[2]
-					Expect(service2.Name).To(Equal(fmt.Sprintf("%s-%s-2", m.Name, extStS.Name)))
+					Expect(service2.Name).To(Equal(fmt.Sprintf("%s-%s-2", m.Name, stS.Name)))
 					Expect(service2.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelInstanceGroupName: extStS.Name,
+						manifest.LabelInstanceGroupName: stS.Name,
 						essv1.LabelAZIndex:              "0",
 						essv1.LabelPodOrdinal:           "1",
 					}))
@@ -150,9 +158,9 @@ var _ = Describe("kube converter", func() {
 					}))
 
 					service3 := kubeConverter.Services[3]
-					Expect(service3.Name).To(Equal(fmt.Sprintf("%s-%s-3", m.Name, extStS.Name)))
+					Expect(service3.Name).To(Equal(fmt.Sprintf("%s-%s-3", m.Name, stS.Name)))
 					Expect(service3.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelInstanceGroupName: extStS.Name,
+						manifest.LabelInstanceGroupName: stS.Name,
 						essv1.LabelAZIndex:              "1",
 						essv1.LabelPodOrdinal:           "1",
 					}))
@@ -165,9 +173,9 @@ var _ = Describe("kube converter", func() {
 					}))
 
 					headlessService := kubeConverter.Services[4]
-					Expect(headlessService.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, extStS.Name)))
+					Expect(headlessService.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, stS.Name)))
 					Expect(headlessService.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelInstanceGroupName: extStS.Name,
+						manifest.LabelInstanceGroupName: stS.Name,
 					}))
 					Expect(headlessService.Spec.Ports).To(Equal([]corev1.ServicePort{
 						{
@@ -186,8 +194,12 @@ var _ = Describe("kube converter", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(kubeConverter.Errands).To(HaveLen(1))
 
+					// Test labels and annotations in the extended job
 					eJob := kubeConverter.Errands[0]
 					Expect(eJob.Name).To(Equal("foo-deployment-redis-slave"))
+					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
+					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, m.InstanceGroups[0].Name))
+					Expect(eJob.GetAnnotations()).To(HaveKeyWithValue(manifest.AnnotationDeploymentVersion, "1"))
 
 					specCopierInitContainer := eJob.Spec.Template.Spec.InitContainers[0]
 					rendererInitContainer := eJob.Spec.Template.Spec.InitContainers[1]

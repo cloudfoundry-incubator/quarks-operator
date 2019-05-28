@@ -26,8 +26,12 @@ const (
 )
 
 var (
+	// LabelDeploymentName is the name of a label for the deployment name
+	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
 	// LabelInstanceGroupName is the name of a label for an instance group name
 	LabelInstanceGroupName = fmt.Sprintf("%s/instance-group-name", apis.GroupName)
+	// AnnotationDeploymentVersion is the annotation key for deployment version
+	AnnotationDeploymentVersion = fmt.Sprintf("%s/deployment-version", apis.GroupName)
 )
 
 type releaseImageProvider interface {
@@ -43,7 +47,7 @@ type BPMResources struct {
 
 // BPMResources uses BOSH Process Manager information to create k8s container specs from BOSH instance groups.
 // It returns extended stateful sets, services and extended jobs.
-func (kc *KubeConverter) BPMResources(manifestName string, instanceGroups []*InstanceGroup, releaseImageProvider releaseImageProvider, allBPMConfigs map[string]bpm.Configs) (*BPMResources, error) {
+func (kc *KubeConverter) BPMResources(manifestName string, version string, instanceGroups []*InstanceGroup, releaseImageProvider releaseImageProvider, allBPMConfigs map[string]bpm.Configs) (*BPMResources, error) {
 	res := &BPMResources{}
 
 	for _, ig := range instanceGroups {
@@ -56,12 +60,12 @@ func (kc *KubeConverter) BPMResources(manifestName string, instanceGroups []*Ins
 
 		switch ig.LifeCycle {
 		case "service", "":
-			convertedExtStatefulSet, err := kc.serviceToExtendedSts(manifestName, ig, cfac)
+			convertedExtStatefulSet, err := kc.serviceToExtendedSts(manifestName, version, ig, cfac)
 			if err != nil {
 				return nil, err
 			}
 
-			services, err := kc.serviceToKubeServices(manifestName, ig, &convertedExtStatefulSet)
+			services, err := kc.serviceToKubeServices(manifestName, version, ig, &convertedExtStatefulSet)
 			if err != nil {
 				return nil, err
 			}
@@ -71,7 +75,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, instanceGroups []*Ins
 
 			res.InstanceGroups = append(res.InstanceGroups, convertedExtStatefulSet)
 		case "errand":
-			convertedEJob, err := kc.errandToExtendedJob(manifestName, ig, cfac)
+			convertedEJob, err := kc.errandToExtendedJob(manifestName, version, ig, cfac)
 			if err != nil {
 				return nil, err
 			}
@@ -83,7 +87,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, instanceGroups []*Ins
 }
 
 // serviceToExtendedSts will generate an ExtendedStatefulSet
-func (kc *KubeConverter) serviceToExtendedSts(manifestName string, ig *InstanceGroup, cfac *ContainerFactory) (essv1.ExtendedStatefulSet, error) {
+func (kc *KubeConverter) serviceToExtendedSts(manifestName string, version string, ig *InstanceGroup, cfac *ContainerFactory) (essv1.ExtendedStatefulSet, error) {
 	igName := ig.Name
 
 	listOfInitContainers, err := cfac.JobsToInitContainers(ig.Jobs)
@@ -147,7 +151,11 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, ig *InstanceG
 			Name:      fmt.Sprintf("%s-%s", manifestName, igName),
 			Namespace: kc.namespace,
 			Labels: map[string]string{
+				LabelDeploymentName:    manifestName,
 				LabelInstanceGroupName: igName,
+			},
+			Annotations: map[string]string{
+				AnnotationDeploymentVersion: version,
 			},
 		},
 		Spec: essv1.ExtendedStatefulSetSpec{
@@ -186,7 +194,7 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, ig *InstanceG
 }
 
 // serviceToKubeServices will generate Services which expose ports for InstanceGroup's jobs
-func (kc *KubeConverter) serviceToKubeServices(manifestName string, ig *InstanceGroup, eSts *essv1.ExtendedStatefulSet) ([]corev1.Service, error) {
+func (kc *KubeConverter) serviceToKubeServices(manifestName string, version string, ig *InstanceGroup, eSts *essv1.ExtendedStatefulSet) ([]corev1.Service, error) {
 	var services []corev1.Service
 	igName := ig.Name
 
@@ -214,6 +222,7 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, ig *Instance
 					Name:      names.ServiceName(manifestName, igName, len(services)),
 					Namespace: kc.namespace,
 					Labels: map[string]string{
+						LabelDeploymentName:    manifestName,
 						LabelInstanceGroupName: igName,
 						essv1.LabelAZIndex:     strconv.Itoa(0),
 						essv1.LabelPodOrdinal:  strconv.Itoa(i),
@@ -259,6 +268,9 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, ig *Instance
 			Labels: map[string]string{
 				LabelInstanceGroupName: igName,
 			},
+			Annotations: map[string]string{
+				AnnotationDeploymentVersion: version,
+			},
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: ports,
@@ -278,7 +290,7 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, ig *Instance
 }
 
 // errandToExtendedJob will generate an ExtendedJob
-func (kc *KubeConverter) errandToExtendedJob(manifestName string, ig *InstanceGroup, cfac *ContainerFactory) (ejv1.ExtendedJob, error) {
+func (kc *KubeConverter) errandToExtendedJob(manifestName string, version string, ig *InstanceGroup, cfac *ContainerFactory) (ejv1.ExtendedJob, error) {
 	igName := ig.Name
 
 	listOfInitContainers, err := cfac.JobsToInitContainers(ig.Jobs)
@@ -336,7 +348,11 @@ func (kc *KubeConverter) errandToExtendedJob(manifestName string, ig *InstanceGr
 			Name:      fmt.Sprintf("%s-%s", manifestName, igName),
 			Namespace: kc.namespace,
 			Labels: map[string]string{
+				LabelDeploymentName:    manifestName,
 				LabelInstanceGroupName: igName,
+			},
+			Annotations: map[string]string{
+				AnnotationDeploymentVersion: version,
 			},
 		},
 		Spec: ejv1.ExtendedJobSpec{
