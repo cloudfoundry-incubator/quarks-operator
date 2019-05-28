@@ -69,8 +69,16 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, err
 	}
 
+	var manifestContents string
+
 	// Get the manifest yaml
-	manifestContents := manifestSecret.StringData["manifest.yaml"]
+	if val, ok := manifestSecret.StringData["manifest.yaml"]; ok {
+		manifestContents = val
+	} else if val, ok := manifestSecret.Data["manifest.yaml"]; ok {
+		manifestContents = string(val)
+	} else {
+		return reconcile.Result{}, errors.New("Couldn't find manifest.yaml tag in manifest secret")
+	}
 
 	// Unmarshal the manifest
 	log.Debug(ctx, "Unmarshaling BOSHDeployment manifest from manifest with ops secret")
