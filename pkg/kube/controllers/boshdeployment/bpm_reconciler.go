@@ -23,6 +23,7 @@ import (
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
@@ -111,6 +112,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 			log.WithEvent(bpmSecret, "LabelMissingError").Errorf(ctx, "Missing deployment mame label for bpm information bpmSecret '%s'", request.NamespacedName)
 	}
 
+	// Deploy instance groups
 	instance := &bdv1.BOSHDeployment{}
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: instanceName}, instance)
 	if err != nil {
@@ -137,13 +139,18 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 		return resources, errors.Errorf("Missing container label for bpm information secret '%s'", bpmSecret.Name)
 	}
 
+	version, ok := bpmSecret.Labels[vss.LabelVersion]
+	if !ok {
+		return resources, errors.Errorf("Missing version label for bpm information secret '%s'", bpmSecret.Name)
+	}
+
 	err := yaml.Unmarshal(bpmSecret.Data["bpm.yaml"], &bpmConfigs)
 	if err != nil {
 		return resources, err
 	}
 
 	bpmInfo[instanceGroupName] = bpmConfigs
-	resources, err = r.kubeConverter.BPMResources(manifest.Name, manifest.InstanceGroups, manifest, bpmInfo)
+	resources, err = r.kubeConverter.BPMResources(manifest.Name, version, manifest.InstanceGroups, manifest, bpmInfo)
 	if err != nil {
 		return resources, err
 	}

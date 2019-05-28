@@ -23,7 +23,7 @@ var _ = Describe("kube converter", func() {
 	Context("BPMResources", func() {
 		act := func(bpmConfigs map[string]bpm.Configs) (*manifest.BPMResources, error) {
 			kubeConverter := manifest.NewKubeConverter("foo")
-			resources, err := kubeConverter.BPMResources(m.Name, m.InstanceGroups, &m, bpmConfigs)
+			resources, err := kubeConverter.BPMResources(m.Name, "1", m.InstanceGroups, &m, bpmConfigs)
 			return resources, err
 		}
 
@@ -58,11 +58,12 @@ var _ = Describe("kube converter", func() {
 					kubeConverter, err := act(bpmConfigs)
 					Expect(err).ShouldNot(HaveOccurred())
 
-					// Test labels in the extended statefulSet
+					// Test labels and annotation in the extended statefulSet
 					extStS := kubeConverter.InstanceGroups[0]
 					Expect(extStS.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, "diego-cell")))
 					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
 					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, "diego-cell"))
+					Expect(extStS.GetAnnotations()).To(HaveKeyWithValue(manifest.AnnotationDeploymentVersion, "1"))
 
 					stS := extStS.Spec.Template.Spec.Template
 					Expect(stS.Name).To(Equal("diego-cell"))
@@ -193,11 +194,12 @@ var _ = Describe("kube converter", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(kubeConverter.Errands).To(HaveLen(1))
 
-					// Test labels in the extended job
+					// Test labels and annotations in the extended job
 					eJob := kubeConverter.Errands[0]
 					Expect(eJob.Name).To(Equal("foo-deployment-redis-slave"))
 					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
 					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, m.InstanceGroups[0].Name))
+					Expect(eJob.GetAnnotations()).To(HaveKeyWithValue(manifest.AnnotationDeploymentVersion, "1"))
 
 					specCopierInitContainer := eJob.Spec.Template.Spec.InitContainers[0]
 					rendererInitContainer := eJob.Spec.Template.Spec.InitContainers[1]
