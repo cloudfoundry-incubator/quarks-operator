@@ -7,14 +7,31 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 
 	"code.cloudfoundry.org/cf-operator/integration/environment"
+)
+
+const (
+	cfOperatorRelease    = "cf-operator"
+	installTimeOutInSecs = "600"
+	helmCmd              = "helm"
+	kubeCtlCmd           = "kubectl"
+)
+
+var (
+	cliPath      string
+	stopOperator environment.StopFunc
+	nsIndex      int
+	nsTeardown   environment.TearDownFunc
+	namespace    string
 )
 
 func FailAndCollectDebugInfo(description string, callerSkip ...int) {
@@ -27,74 +44,46 @@ func FailAndCollectDebugInfo(description string, callerSkip ...int) {
 
 	Fail(description, callerSkip...)
 }
+
 func TestE2EKube(t *testing.T) {
+	nsIndex = 0
+
 	RegisterFailHandler(FailAndCollectDebugInfo)
 	RunSpecs(t, "E2E Kube Suite")
 }
 
-const (
-	cfOperatorRelease    = "cf-operator"
-	installTimeOutInSecs = "600"
-	helmCmd              = "helm"
-	kubeCtlCmd           = "kubectl"
-)
-
-var (
-	cliPath      string
-	stopOperator environment.StopFunc
-)
-
-var _ = BeforeSuite(func() {
-	err := SetUpEnvironment()
+var _ = BeforeEach(func() {
+	var err error
+	nsTeardown, err = SetUpEnvironment()
 	Expect(err).ToNot(HaveOccurred())
 })
 
-var _ = AfterSuite(func() {
-	err := TearDownEnvironment()
-	Expect(err).ToNot(HaveOccurred())
+var _ = AfterEach(func() {
+	if nsTeardown != nil {
+		nsTeardown()
+	}
 })
-
-// TearDownEnvironment uninstall the cf-operator
-// related helm chart
-func TearDownEnvironment() error {
-	_, err := RunBinary(helmCmd, "delete", fmt.Sprintf("%s-%s", cfOperatorRelease, GetTestNamespace()), "--purge")
-	if err != nil {
-		return err
-	}
-
-	err = DeleteOperatorResources()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 // SetUpEnvironment ensures helm binary can run,
 // being able to reach tiller, and eventually it
 // will install the cf-operator chart.
-func SetUpEnvironment() error {
+func SetUpEnvironment() (environment.TearDownFunc, error) {
 	var crdExist bool
-
-	err := DeleteOperatorResources()
-	if err != nil {
-		return err
-	}
 
 	// Ensure tiller is there, if not
 	// then create it, via "init"
-	err = RunHelmBinaryWithCustomErr(helmCmd, "version", "-s")
+	err := RunHelmBinaryWithCustomErr(helmCmd, "version", "-s")
 	if err != nil {
 		switch err := err.(type) {
 		case *CustomError:
 			if strings.Contains(err.StdOut, "could not find tiller") {
 				_, err := RunBinary(helmCmd, "init", "--wait")
 				if err != nil {
-					return err
+					return nil, err
 				}
 			}
 		default:
-			return err
+			return nil, err
 		}
 	}
 
@@ -105,21 +94,42 @@ func SetUpEnvironment() error {
 
 	crdExist, err = ClusterCrdsExist()
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	namespace, err = GetTestNamespace()
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("Setting up test ns '" + namespace + "'...")
 
 	if crdExist {
 		_, err = RunBinary(helmCmd, "install", fmt.Sprintf("%s%s", dir, "/../../helm/cf-operator"),
-			"--name", fmt.Sprintf("%s-%s", cfOperatorRelease, GetTestNamespace()),
-			"--namespace", GetTestNamespace(),
+			"--name", fmt.Sprintf("%s-%s", cfOperatorRelease, namespace),
+			"--namespace", namespace,
 			"--timeout", installTimeOutInSecs,
 			"--set", "customResources.enableInstallation=false",
 			"--wait")
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+
+	teardownFunc := func() error {
+		_, err := RunBinary(helmCmd, "delete", fmt.Sprintf("%s-%s", cfOperatorRelease, namespace), "--purge")
+		if err != nil {
+			return err
+		}
+
+		err = DeleteOperatorResources(namespace)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	return teardownFunc, nil
 }
 
 func ClusterCrdsExist() (bool, error) {
@@ -168,21 +178,29 @@ func RunBinary(binaryName string, args ...string) ([]byte, error) {
 	return stdOutput, nil
 }
 
-func GetTestNamespace() string {
-	namespace, found := os.LookupEnv("TEST_NAMESPACE")
+func GetTestNamespace() (string, error) {
+	prefix, found := os.LookupEnv("TEST_NAMESPACE")
 	if !found {
-		namespace = "default"
+		prefix = "default"
 	}
-	return namespace
+	namespace := prefix + "-" + strconv.Itoa(config.GinkgoConfig.ParallelNode) + "-" + strconv.Itoa(int(nsIndex))
+	nsIndex += 1
+
+	_, err := RunBinary(kubeCtlCmd, "create", "ns", namespace)
+	if err != nil {
+		return "", err
+	}
+
+	return namespace, nil
 }
 
-func DeleteOperatorResources() error {
-	_, err := RunBinary(kubeCtlCmd, "--namespace", GetTestNamespace(), "delete", "secret", "cf-operator-webhook-server-cert", "--ignore-not-found")
+func DeleteOperatorResources(ns string) error {
+	_, err := RunBinary(kubeCtlCmd, "--namespace", ns, "delete", "secret", "cf-operator-webhook-server-cert", "--ignore-not-found")
 	if err != nil {
 		return err
 	}
 
-	webHookName := fmt.Sprintf("%s-%s", "cf-operator-mutating-hook-", GetTestNamespace())
+	webHookName := fmt.Sprintf("%s-%s", "cf-operator-mutating-hook-", ns)
 	_, err = RunBinary(kubeCtlCmd, "delete", "mutatingwebhookconfiguration", webHookName, "--ignore-not-found")
 	if err != nil {
 		return err

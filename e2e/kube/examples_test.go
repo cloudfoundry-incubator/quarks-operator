@@ -18,24 +18,14 @@ var _ = Describe("Examples", func() {
 
 		var (
 			kubectlHelper *testing.Kubectl
-			namespace     string
-			found         bool
 		)
 		kubectlHelper = testing.NewKubectl()
-
-		BeforeEach(func() {
-			namespace, found = os.LookupEnv("TEST_NAMESPACE")
-			if !found {
-				namespace = "default"
-			}
-		})
 
 		const examplesDir = "../../docs/examples/"
 
 		Context("all examples must be working", func() {
 
 			It("extended-job ready example must work", func() {
-
 				yamlFilePath := examplesDir + "extended-job/exjob_trigger_ready.yaml"
 
 				By("Creating exjob_trigger")
@@ -58,20 +48,9 @@ var _ = Describe("Examples", func() {
 
 				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", "ejob-name=ready-triggered-sleep")
 				Expect(err).ToNot(HaveOccurred())
-
-				By("Clean up resources")
-				err = kubectlHelper.DeleteResource(namespace, "pod", "foo-pod-1")
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.Delete(namespace, yamlFilePath)
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.DeleteLabelFilter(namespace, "pod", "ejob-name=ready-triggered-sleep")
-				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("extended-job delete example must work", func() {
-
 				yamlFilePath := examplesDir + "extended-job/exjob_trigger_deleted.yaml"
 
 				By("Creating exjob_trigger")
@@ -95,17 +74,9 @@ var _ = Describe("Examples", func() {
 
 				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", "ejob-name=delete-triggered-sleep")
 				Expect(err).ToNot(HaveOccurred())
-
-				By("Clean up resources")
-				err = kubectlHelper.Delete(namespace, yamlFilePath)
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.DeleteLabelFilter(namespace, "pod", "ejob-name=delete-triggered-sleep")
-				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("extended-statefulset configs example must work", func() {
-
 				yamlFilePath := examplesDir + "extended-statefulset/exstatefulset_configs.yaml"
 
 				By("Creating exstatefulset configs")
@@ -140,21 +111,9 @@ var _ = Describe("Examples", func() {
 				err = kubectlHelper.RunCommandWithCheckString(namespace, "example-extendedstatefulset-v1-1", "env", "SPECIAL_KEY=value1Updated")
 				Expect(err).ToNot(HaveOccurred())
 
-				By("Clean up resources")
-				err = kubectlHelper.Delete(namespace, yamlFilePath)
-				Expect(err).ToNot(HaveOccurred())
-
-				By("Clean up resources")
-				err = kubectlHelper.DeleteResource(namespace, "pod", "example-extendedstatefulset-v1-0")
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.DeleteResource(namespace, "pod", "example-extendedstatefulset-v1-1")
-				Expect(err).ToNot(HaveOccurred())
-
 			})
 
 			It("bosh-deployment example must work", func() {
-
 				yamlFilePath := examplesDir + "bosh-deployment/boshdeployment.yaml"
 
 				By("Creating bosh deployment")
@@ -169,33 +128,9 @@ var _ = Describe("Examples", func() {
 				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1")
 				Expect(err).ToNot(HaveOccurred())
 
-				By("Clean up resources")
-
-				err = kubectlHelper.Delete(namespace, yamlFilePath)
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.DeleteResource(namespace, "pod", "nats-deployment-nats-v1-1")
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.DeleteResource(namespace, "pod", "nats-deployment-nats-v1-0")
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.DeleteResource(namespace, "secret", "nats-deployment.bpm.nats-v1")
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.DeleteResource(namespace, "secret", "nats-deployment.ig-resolved.nats-v1")
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.DeleteResource(namespace, "secret", "nats-deployment.with-ops")
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.DeleteResource(namespace, "secret", "nats-deployment.with-vars.interpolation-v1")
-				Expect(err).ToNot(HaveOccurred())
-
 			})
 
 			It("bosh-deployment with a custom variable example must work", func() {
-
 				yamlFilePath := examplesDir + "bosh-deployment/boshdeployment-with-custom-variable.yaml"
 
 				By("Creating bosh deployment")
@@ -218,33 +153,9 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 				outSecretDecoded, _ := b64.StdEncoding.DecodeString(string(outSecret))
 				Expect(string(outSecretDecoded)).To(Equal(strings.TrimSuffix(outFile, "\n")))
-
-				By("Clean up resources")
-
-				err = kubectlHelper.Delete(namespace, yamlFilePath)
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.DeleteResource(namespace, "pod", "nats-deployment-nats-v1-1")
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.DeleteResource(namespace, "pod", "nats-deployment-nats-v1-0")
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.DeleteResource(namespace, "secret", "nats-deployment.bpm.nats-v1")
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.DeleteResource(namespace, "secret", "nats-deployment.with-ops")
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.DeleteResource(namespace, "secret", "nats-deployment.ig-resolved.nats-v1")
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.DeleteResource(namespace, "secret", "nats-deployment.with-vars.interpolation-v1")
-				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("extended-job auto errand delete example must work", func() {
-
 				yamlFilePath := examplesDir + "extended-job/exjob_auto-errand-deletes-pod.yaml"
 
 				By("Creating exjob")
@@ -258,14 +169,9 @@ var _ = Describe("Examples", func() {
 
 				err = kubectlHelper.WaitLabelFilter(namespace, "terminate", "pod", "ejob-name=deletes-pod-1")
 				Expect(err).ToNot(HaveOccurred())
-
-				By("Clean up resources")
-				err = kubectlHelper.Delete(namespace, yamlFilePath)
-				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("extended-job auto errand example must work", func() {
-
 				yamlFilePath := examplesDir + "extended-job/exjob_auto-errand.yaml"
 
 				By("Creating exjob")
@@ -279,17 +185,9 @@ var _ = Describe("Examples", func() {
 
 				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", "ejob-name=one-time-sleep")
 				Expect(err).ToNot(HaveOccurred())
-
-				By("Clean up resources")
-				err = kubectlHelper.Delete(namespace, yamlFilePath)
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.DeleteLabelFilter(namespace, "pod", "ejob-name=one-time-sleep")
-				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("extended-job auto errand update example must work", func() {
-
 				yamlFilePath := examplesDir + "extended-job/exjob_auto-errand-updating.yaml"
 
 				By("Creating exjob")
@@ -319,18 +217,9 @@ var _ = Describe("Examples", func() {
 
 				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", "ejob-name=auto-errand-sleep-again")
 				Expect(err).ToNot(HaveOccurred())
-
-				By("Clean up resources")
-				err = kubectlHelper.Delete(namespace, yamlFilePath)
-				Expect(err).ToNot(HaveOccurred())
-
-				By("Delete the pod")
-				err = kubectlHelper.DeleteLabelFilter(namespace, "pod", "ejob-name=auto-errand-sleep-again")
-				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("extended-job errand example must work", func() {
-
 				yamlFilePath := examplesDir + "extended-job/exjob_errand.yaml"
 
 				By("Creating exjob")
@@ -351,17 +240,9 @@ var _ = Describe("Examples", func() {
 
 				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", "ejob-name=manual-sleep")
 				Expect(err).ToNot(HaveOccurred())
-
-				By("Clean up resources")
-				err = kubectlHelper.DeleteLabelFilter(namespace, "pod", "ejob-name=manual-sleep")
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.Delete(namespace, yamlFilePath)
-				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("extended-job output example must work", func() {
-
 				yamlFilePath := examplesDir + "extended-job/exjob_output.yaml"
 
 				By("Creating exjob")
@@ -382,17 +263,9 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 				outSecretDecoded, _ := b64.StdEncoding.DecodeString(string(outSecret))
 				Expect(string(outSecretDecoded)).To(Equal("1"))
-
-				By("Clean up resources")
-				err = kubectlHelper.DeleteLabelFilter(namespace, "pod", "ejob-name=myfoo")
-				Expect(err).ToNot(HaveOccurred())
-
-				err = kubectlHelper.Delete(namespace, yamlFilePath)
-				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("extended-secret example must work", func() {
-
 				yamlFilePath := examplesDir + "extended-secret/password.yaml"
 
 				By("Creating an ExtendedSecret")
@@ -403,14 +276,9 @@ var _ = Describe("Examples", func() {
 				By("Checking the generated password")
 				err = kubectlHelper.SecretCheckData(namespace, "gen-secret1", ".data.password")
 				Expect(err).ToNot(HaveOccurred())
-
-				By("Clean up resources")
-				err = kubectlHelper.Delete(namespace, yamlFilePath)
-				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("Test cases must be written for all example use cases in docs", func() {
-
 				countFile := 0
 				err := filepath.Walk(examplesDir, func(path string, info os.FileInfo, err error) error {
 					if !info.IsDir() {
