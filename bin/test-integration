@@ -5,14 +5,17 @@ GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
 . "${GIT_ROOT}/bin/include/versioning"
 . "${GIT_ROOT}/.envrc"
 
-export DOCKER_IMAGE_TAG=${VERSION_TAG}
-
-echo "Test logs are here: /tmp/cf-operator-tests-*.log"
+if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
+  DOCKER_IMAGE_TAG=${VERSION_TAG}
+  export DOCKER_IMAGE_TAG
+fi
 
 if [ -z ${TEST_NAMESPACE+x} ]; then
   TEST_NAMESPACE="test$(date +%s)"
   export TEST_NAMESPACE
 fi
+
+echo "Test logs are here: /tmp/cf-operator-tests-*.log"
 
 bin/apply-crds
 
