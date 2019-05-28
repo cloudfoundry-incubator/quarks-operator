@@ -19,7 +19,7 @@ import (
 
 func FailAndCollectDebugInfo(description string, callerSkip ...int) {
 	fmt.Println("Collecting debug information...")
-	out, err := exec.Command("../testing/dump_env.sh", GetTestNamespace()).CombinedOutput()
+	out, err := exec.Command("../../testing/dump_env.sh", namespace).CombinedOutput()
 	if err != nil {
 		fmt.Println("Failed to run the `dump_env.sh` script", err)
 	}
