@@ -132,9 +132,9 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 		client = &cfakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-			switch object.(type) {
+			switch object := object.(type) {
 			case *bdv1.BOSHDeployment:
-				instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
+				instance.DeepCopyInto(object)
 			}
 
 			return nil
@@ -208,9 +208,9 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 			It("handles an errors when creating manifest secret with ops ", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-					switch object.(type) {
+					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
-						instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
+						instance.DeepCopyInto(object)
 					case *ejv1.ExtendedJob:
 						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 					case *corev1.Secret:
@@ -222,9 +222,9 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					return nil
 				})
 				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
-					switch object.(type) {
+					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
-						object.(*bdv1.BOSHDeployment).DeepCopyInto(instance)
+						object.DeepCopyInto(instance)
 					}
 					return nil
 				})
@@ -244,9 +244,9 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 			It("handles an errors when creating variable interpolation eJob", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-					switch object.(type) {
+					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
-						instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
+						instance.DeepCopyInto(object)
 					case *ejv1.ExtendedJob:
 						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 					}
@@ -254,16 +254,16 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					return nil
 				})
 				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
-					switch object.(type) {
+					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
-						object.(*bdv1.BOSHDeployment).DeepCopyInto(instance)
+						object.DeepCopyInto(instance)
 					}
 					return nil
 				})
 				client.CreateCalls(func(context context.Context, object runtime.Object) error {
-					switch object.(type) {
+					switch object := object.(type) {
 					case *ejv1.ExtendedJob:
-						eJob := object.(*ejv1.ExtendedJob)
+						eJob := object
 						if strings.HasPrefix(eJob.Name, "var-interpolation") {
 							return errors.New("fake-error")
 						}
@@ -278,9 +278,9 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 			It("handles an errors when creating data gathering eJob", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-					switch object.(type) {
+					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
-						instance.DeepCopyInto(object.(*bdv1.BOSHDeployment))
+						instance.DeepCopyInto(object)
 					case *ejv1.ExtendedJob:
 						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 					}
@@ -288,16 +288,16 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					return nil
 				})
 				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
-					switch object.(type) {
+					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
-						object.(*bdv1.BOSHDeployment).DeepCopyInto(instance)
+						object.DeepCopyInto(instance)
 					}
 					return nil
 				})
 				client.CreateCalls(func(context context.Context, object runtime.Object) error {
-					switch object.(type) {
+					switch object := object.(type) {
 					case *ejv1.ExtendedJob:
-						eJob := object.(*ejv1.ExtendedJob)
+						eJob := object
 						if strings.HasPrefix(eJob.Name, "data-gathering") {
 							return errors.New("fake-error")
 						}

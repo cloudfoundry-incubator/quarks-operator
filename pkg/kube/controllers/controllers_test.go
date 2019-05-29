@@ -31,7 +31,7 @@ var _ = Describe("Controllers", func() {
 			scheme := scheme.Scheme
 			controllers.AddToScheme(scheme)
 			kinds := []string{}
-			for k, _ := range scheme.AllKnownTypes() {
+			for k := range scheme.AllKnownTypes() {
 				kinds = append(kinds, k.Kind)
 			}
 			Expect(kinds).To(ContainElement("BOSHDeployment"))
@@ -131,9 +131,9 @@ var _ = Describe("Controllers", func() {
 					},
 				}
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-					switch object.(type) {
+					switch object := object.(type) {
 					case *unstructured.Unstructured:
-						secret.DeepCopyInto(object.(*unstructured.Unstructured))
+						secret.DeepCopyInto(object)
 						return nil
 					}
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)

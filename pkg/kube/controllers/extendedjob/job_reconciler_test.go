@@ -52,26 +52,26 @@ var _ = Describe("ReconcileExtendedJob", func() {
 
 		client = &cfakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-			switch object.(type) {
+			switch object := object.(type) {
 			case *ejapi.ExtendedJob:
-				ejob.DeepCopyInto(object.(*ejapi.ExtendedJob))
+				ejob.DeepCopyInto(object)
 				return nil
 			case *batchv1.Job:
-				job.DeepCopyInto(object.(*batchv1.Job))
+				job.DeepCopyInto(object)
 				return nil
 			}
 			return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 		})
 		client.ListCalls(func(context context.Context, options *cclient.ListOptions, object runtime.Object) error {
-			switch object.(type) {
+			switch object := object.(type) {
 			case *corev1.PodList:
 				list := corev1.PodList{
 					Items: []corev1.Pod{*pod},
 				}
-				list.DeepCopyInto(object.(*corev1.PodList))
+				list.DeepCopyInto(object)
 			case *corev1.SecretList:
 				list := corev1.SecretList{}
-				list.DeepCopyInto(object.(*corev1.SecretList))
+				list.DeepCopyInto(object)
 			}
 			return nil
 		})

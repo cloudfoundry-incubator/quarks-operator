@@ -51,7 +51,7 @@ func (r *ReconcileExtendedStatefulSet) createVolumeManagementStatefulSets(ctx co
 	var desiredVolumeManagementStatefulSets []v1beta2.StatefulSet
 
 	template := exStatefulSet.Spec.Template
-	template.SetName(fmt.Sprintf("%s", "volumemanagement"))
+	template.SetName("volumemanagement")
 
 	// Place the StatefulSet in the same namespace as the ExtendedStatefulSet
 	template.SetNamespace(exStatefulSet.Namespace)
@@ -180,10 +180,7 @@ func (r *ReconcileExtendedStatefulSet) isVolumeManagementStatefulSetReady(ctx co
 // isVolumeManagementStatefulSet checks if it is a statefulset created by the volumemanagement for its volume management purpose
 func (r *ReconcileExtendedStatefulSet) isVolumeManagementStatefulSet(statefulSetName string) bool {
 	statefulSetNamePrefix := strings.Split(statefulSetName, "-")[0]
-	if statefulSetNamePrefix == "volumemanagement" {
-		return true
-	}
-	return false
+	return statefulSetNamePrefix == "volumemanagement"
 }
 
 // deleteVolumeManagementStatefulSet deletes the statefulset created for volume management

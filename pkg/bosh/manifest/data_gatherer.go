@@ -56,9 +56,9 @@ func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstan
 		// instance_group.job.provides, via the "as" key
 		if job.Provides != nil {
 			if value, ok := job.Provides[providerName]; ok {
-				switch value.(type) {
+				switch value := value.(type) {
 				case map[interface{}]interface{}:
-					if overrideLinkName, ok := value.(map[interface{}]interface{})["as"]; ok {
+					if overrideLinkName, ok := value["as"]; ok {
 						providerName = fmt.Sprintf("%v", overrideLinkName)
 					}
 				default:
@@ -406,20 +406,18 @@ func (job Job) Property(propertyName string) (interface{}, bool) {
 
 	pointer = job.Properties.Properties
 	for _, pathPart := range strings.Split(propertyName, ".") {
-		switch pointer.(type) {
+		switch pointerCast := pointer.(type) {
 		case map[string]interface{}:
-			hash := pointer.(map[string]interface{})
-			if _, ok := hash[pathPart]; !ok {
+			if _, ok := pointerCast[pathPart]; !ok {
 				return nil, false
 			}
-			pointer = hash[pathPart]
+			pointer = pointerCast[pathPart]
 
 		case map[interface{}]interface{}:
-			hash := pointer.(map[interface{}]interface{})
-			if _, ok := hash[pathPart]; !ok {
+			if _, ok := pointerCast[pathPart]; !ok {
 				return nil, false
 			}
-			pointer = hash[pathPart]
+			pointer = pointerCast[pathPart]
 
 		default:
 			return nil, false

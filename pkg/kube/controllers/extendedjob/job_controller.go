@@ -28,6 +28,9 @@ func AddJob(ctx context.Context, config *config.Config, mgr manager.Manager) err
 	podLogGetter := NewPodLogGetter(client)
 	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-job-job-reconciler", mgr.GetRecorder("ext-job-job-recorder"))
 	jobReconciler, err := NewJobReconciler(ctx, config, mgr, podLogGetter)
+	if err != nil {
+		return err
+	}
 	jobController, err := controller.New("ext-job-job-controller", mgr, controller.Options{Reconciler: jobReconciler})
 	if err != nil {
 		return err

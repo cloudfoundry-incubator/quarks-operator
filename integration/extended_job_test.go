@@ -263,6 +263,7 @@ var _ = Describe("ExtendedJob", func() {
 
 					By("checking if finalizer is removed from ext job")
 					eJob, err = env.GetExtendedJob(env.Namespace, ej.Name)
+					Expect(err).NotTo(HaveOccurred())
 					Expect(eJob.GetFinalizers()).Should(BeEmpty())
 				})
 			})
@@ -324,6 +325,7 @@ var _ = Describe("ExtendedJob", func() {
 
 				By("checking if finalizer is added to ext job")
 				eJob, err = env.GetExtendedJob(env.Namespace, ej.Name)
+				Expect(err).NotTo(HaveOccurred())
 				Expect(eJob.GetFinalizers()).ShouldNot(BeEmpty())
 			})
 		})
@@ -725,9 +727,11 @@ var _ = Describe("ExtendedJob", func() {
 
 						// Wait until the output of the second container has been persisted. Then check the first one
 						_, err = env.CollectSecret(env.Namespace, "overwrite-job-output-busybox2")
-						secret, err := env.CollectSecret(env.Namespace, "overwrite-job-output-busybox")
-
 						Expect(err).ToNot(HaveOccurred())
+
+						secret, err := env.CollectSecret(env.Namespace, "overwrite-job-output-busybox")
+						Expect(err).ToNot(HaveOccurred())
+
 						Expect(string(secret.Data["foo"])).To(Equal("1"))
 						Expect(string(secret.Data["bar"])).To(Equal("baz"))
 					})
@@ -766,9 +770,11 @@ var _ = Describe("ExtendedJob", func() {
 
 						// Wait until the output of the second container has been persisted. Then check the first one
 						_, err = env.CollectSecret(env.Namespace, "overwrite-job-output-busybox2-v2")
-						secret, err := env.CollectSecret(env.Namespace, "overwrite-job-output-busybox-v2")
-
 						Expect(err).ToNot(HaveOccurred())
+
+						secret, err := env.CollectSecret(env.Namespace, "overwrite-job-output-busybox-v2")
+						Expect(err).ToNot(HaveOccurred())
+
 						Expect(string(secret.Data["foo"])).To(Equal("1"))
 						Expect(string(secret.Data["bar"])).To(Equal("baz"))
 					})

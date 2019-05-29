@@ -87,7 +87,7 @@ func (e *ExtendedStatefulSet) DesiredVersion(actualStatefulSet *v1beta2.Stateful
 	if !ok {
 		strVersion = "0"
 	}
-	oldsha, _ := actualStatefulSet.Annotations[AnnotationStatefulSetSHA1]
+	oldsha := actualStatefulSet.Annotations[AnnotationStatefulSetSHA1]
 
 	version, err := strconv.Atoi(strVersion)
 	if err != nil {

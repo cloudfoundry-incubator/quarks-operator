@@ -200,10 +200,7 @@ func getNameWithOutVersion(name string, offset int) string {
 // isVolumeManagementStatefulSetPod checks if it is pod of the volumemanagement statefulset
 func isVolumeManagementStatefulSetPod(podName string) bool {
 	podNamePrefix := strings.Split(podName, "-")[0]
-	if podNamePrefix == "volumemanagement" {
-		return true
-	}
-	return false
+	return podNamePrefix == "volumemanagement"
 }
 
 // fetchExtendedStatefulset fetches the extendedstatefulset of the pod

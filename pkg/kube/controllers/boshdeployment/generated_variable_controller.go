@@ -65,9 +65,5 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 
 func isManifestWithOps(name string) bool {
 	// TODO: replace this with an annotation
-	if strings.HasSuffix(name, names.DeploymentSecretTypeManifestWithOps.String()) {
-		return true
-	}
-
-	return false
+	return strings.HasSuffix(name, names.DeploymentSecretTypeManifestWithOps.String())
 }

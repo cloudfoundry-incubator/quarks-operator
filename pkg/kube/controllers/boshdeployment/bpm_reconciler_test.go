@@ -190,27 +190,27 @@ variables: []
 
 		client = &cfakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-			switch object.(type) {
+			switch object := object.(type) {
 			case *corev1.Secret:
 				if nn.Name == manifestWithVars.Name {
-					manifestWithVars.DeepCopyInto(object.(*corev1.Secret))
+					manifestWithVars.DeepCopyInto(object)
 				}
 				if nn.Name == bpmInformation.Name {
-					bpmInformation.DeepCopyInto(object.(*corev1.Secret))
+					bpmInformation.DeepCopyInto(object)
 				}
 			}
 
 			return nil
 		})
 		client.ListCalls(func(context context.Context, options *crc.ListOptions, object runtime.Object) error {
-			switch object.(type) {
+			switch object := object.(type) {
 			case *corev1.SecretList:
 				secretList := corev1.SecretList{}
 				secretList.Items = []corev1.Secret{
 					*manifestWithVars,
 					*bpmInformation,
 				}
-				secretList.DeepCopyInto(object.(*corev1.SecretList))
+				secretList.DeepCopyInto(object)
 			}
 
 			return nil
@@ -248,10 +248,10 @@ variables: []
 
 			It("handles an error when applying BPM info", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-					switch object.(type) {
+					switch object := object.(type) {
 					case *corev1.Secret:
 						if nn.Name == request.Name {
-							bpmInformationNoProcesses.DeepCopyInto(object.(*corev1.Secret))
+							bpmInformationNoProcesses.DeepCopyInto(object)
 						}
 					}
 
@@ -265,13 +265,13 @@ variables: []
 
 			It("handles an error when deploying instance groups", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-					switch object.(type) {
+					switch object := object.(type) {
 					case *corev1.Secret:
 						if nn.Name == manifestWithVars.Name {
-							manifestWithVars.DeepCopyInto(object.(*corev1.Secret))
+							manifestWithVars.DeepCopyInto(object)
 						}
 						if nn.Name == bpmInformation.Name {
-							bpmInformation.DeepCopyInto(object.(*corev1.Secret))
+							bpmInformation.DeepCopyInto(object)
 						}
 					case *corev1.Service:
 						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)

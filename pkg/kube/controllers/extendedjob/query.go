@@ -46,10 +46,8 @@ func (q *QueryImpl) Match(eJob ejv1.ExtendedJob, pod corev1.Pod) bool {
 
 	// TODO https://github.com/kubernetes/apimachinery/blob/master/pkg/labels/selector.go
 	matchLabels := eJob.Spec.Trigger.PodState.Selector.MatchLabels
-	if labels.AreLabelsInWhiteList(*matchLabels, pod.Labels) {
-		return true
-	}
-	return false
+
+	return labels.AreLabelsInWhiteList(*matchLabels, pod.Labels)
 }
 
 // MatchState checks pod state against state from extended job
