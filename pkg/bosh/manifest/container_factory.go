@@ -83,6 +83,10 @@ func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, err
 					Name:      "data-dir",
 					MountPath: "/var/vcap/data",
 				},
+				{
+					Name:      "sys-dir",
+					MountPath: "/var/vcap/sys",
+				},
 			},
 		}
 
