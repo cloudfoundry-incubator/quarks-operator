@@ -72,14 +72,16 @@ for SECRET in "${SECRETS[@]}"; do
   get_resource secret "$SECRET" "${SECRETS_DIR}/${SECRET}.yaml"
 done
 
-# Iterate over jobs
-JOBS=($(get_resources "jobs"))
-for JOB in "${JOBS[@]}"; do
-  printf "Job \e[0;32m$JOB\e[0m\n"
+# Iterate over jobs, Extended*
+for i in jobs ests ejobs esecs; do
+  RESOURCES=($(get_resources "$i"))
+  for RESOURCE in "${RESOURCES[@]}"; do
+    printf "$i \e[0;32m$RESOURCE\e[0m\n"
 
-  JOB_DIR="${NAMESPACE_DIR}/${JOB}"
-  mkdir -p ${JOB_DIR}
-  describe_resource job "$JOB" "${JOB_DIR}/describe-job.txt"
+    RESOURCE_DIR="${NAMESPACE_DIR}/$i/${RESOURCE}"
+    mkdir -p ${RESOURCE_DIR}
+    describe_resource "$i" "$RESOURCE" "${RESOURCE_DIR}/describe.txt"
+  done
 done
 
 # Iterate over pods and their containers
