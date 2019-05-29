@@ -461,7 +461,7 @@ name=<DEPLOYMENT_NAME>-<VARIABLE_NAME>
 
 #### BOSH Services vs BOSH Errands
 
-BOSH Services are converted to `ExtendedStatefulSets`.
+BOSH Services are converted to `ExtendedStatefulSets` and `Services` which are assigned a DNS A record for bosh links.
 
 BOSH Errands are converted to `ExtendedJobs` with `trigger.strategy: manually`.
 
@@ -471,23 +471,66 @@ BOSH Auto-Errands (supported only by the operator) are converted to `ExtendedJob
 
 Name:
 
-```text
-<deployment-name>-<instance-group-name>
-```
+- `ExtendedStatefulSets` and `ExtendedJobs`
 
-Labels:
+  ```text
+  <deployment-name>-<instance-group-name>
+  ```
 
-```yaml
-fissile.cloudfoundry.org/deployment-name: "<deployment-name>"
-fissile.cloudfoundry.org/instance-group-name: "<instance-group-name>"
-fissile.cloudfoundry.org/deployment-version: "<integer version of the desired manifest>"
-```
+- Kube native `Service`
 
-Annotations:
+  ```text
+  <deployment-name>-<instance-group-name>-<service-index>
+  ```
 
-```yaml
-fissile.cloudfoundry.org/?
-```
+The operator provide following metadata to identify the origin of resources:
+
+- Labels:
+
+  ```yaml
+  fissile.cloudfoundry.org/deployment-name: "<deployment-name>"
+  fissile.cloudfoundry.org/instance-group-name: "<instance-group-name>"
+  fissile.cloudfoundry.org/az-index: "<az-index>"
+  fissile.cloudfoundry.org/pod-ordinal: "<pod-ordinal>"
+  ```
+
+- Annotations:
+
+  ```yaml
+  fissile.cloudfoundry.org/deployment-version: "<integer version of the bpm configs secret>"
+  ```
+  
+#### Example a converted Service Resource
+
+- ExtendedStatefulSet 
+
+  ```yaml
+  apiVersion: fissile.cloudfoundry.org/v1alpha1
+  kind: ExtendedStatefulSet
+  metadata:
+    name: nats-deployment-nats
+    labels:
+      fissile.cloudfoundry.org/deployment-name: nats-deployment
+      fissile.cloudfoundry.org/instance-group-name: nats
+    annotations:
+      fissile.cloudfoundry.org/deployment-version: "3"
+  ...
+  ```
+
+- Kube native Service
+
+  ```yaml
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: nats-deployment-nats-1
+    labels:
+      fissile.cloudfoundry.org/deployment-name: nats-deployment
+      fissile.cloudfoundry.org/instance-group-name: nats
+      fissile.cloudfoundry.org/az-index: "0"
+      fissile.cloudfoundry.org/pod-ordinal: "1"
+  ...
+  ```
 
 #### Containers
 
