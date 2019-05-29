@@ -8,6 +8,7 @@ counterfeiter -o pkg/kube/controllers/fakes/client.go vendor/sigs.k8s.io/control
 counterfeiter -o pkg/kube/controllers/fakes/query.go pkg/kube/controllers/extendedjob Query
 counterfeiter -o pkg/kube/controllers/fakes/owner.go pkg/kube/controllers/extendedjob Owner
 counterfeiter -o pkg/kube/controllers/fakes/pod_log_getter.go pkg/kube/controllers/extendedjob PodLogGetter
+counterfeiter -o pkg/bosh/manifest/fakes/release_image_provider.go pkg/bosh/manifest/ ReleaseImageProvider
 counterfeiter -o pkg/bosh/manifest/fakes/resolver.go pkg/bosh/manifest/ Resolver
 counterfeiter -o pkg/bosh/manifest/fakes/interpolator.go pkg/bosh/manifest/ Interpolator
 counterfeiter -o pkg/credsgen/fakes/generator.go pkg/credsgen/ Generator

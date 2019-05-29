@@ -34,7 +34,10 @@ var (
 	AnnotationDeploymentVersion = fmt.Sprintf("%s/deployment-version", apis.GroupName)
 )
 
-type releaseImageProvider interface {
+// ReleaseImageProvider interface to provide the docker release image for a BOSH job
+// This lookup is currently implemented by the manifest model.
+type ReleaseImageProvider interface {
+	// GetReleaseImage returns the release image for an job in an instance group
 	GetReleaseImage(instanceGroupName, jobName string) (string, error)
 }
 
@@ -47,7 +50,7 @@ type BPMResources struct {
 
 // BPMResources uses BOSH Process Manager information to create k8s container specs from BOSH instance groups.
 // It returns extended stateful sets, services and extended jobs.
-func (kc *KubeConverter) BPMResources(manifestName string, version string, instanceGroups []*InstanceGroup, releaseImageProvider releaseImageProvider, allBPMConfigs map[string]bpm.Configs) (*BPMResources, error) {
+func (kc *KubeConverter) BPMResources(manifestName string, version string, instanceGroups []*InstanceGroup, releaseImageProvider ReleaseImageProvider, allBPMConfigs map[string]bpm.Configs) (*BPMResources, error) {
 	res := &BPMResources{}
 
 	for _, ig := range instanceGroups {
@@ -121,6 +124,10 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, version strin
 		// https://bosh.io/docs/vm-config/#jobs-and-packages
 		{
 			Name:         "data-dir",
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name:         "sys-dir",
 			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 		},
 		{
