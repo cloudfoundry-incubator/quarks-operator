@@ -15,24 +15,60 @@ var _ = Describe("ContainerFactory", func() {
 		cf         *ContainerFactory
 		bpmConfigs bpm.Configs
 		rip        *fakes.FakeReleaseImageProvider
+		jobs       []Job
 	)
 
 	BeforeEach(func() {
 		rip = &fakes.FakeReleaseImageProvider{}
 		rip.GetReleaseImageReturns("", nil)
+
+		jobs = []Job{
+			Job{Name: "fake-job"},
+			Job{Name: "other-job"},
+		}
+	})
+
+	JustBeforeEach(func() {
 		cf = NewContainerFactory("fake-manifest", "fake-ig", rip, bpmConfigs)
 	})
 
-	Context("JobsToInitContainers", func() {
-		var jobs []Job
-
+	Context("JobsToContainers", func() {
 		BeforeEach(func() {
-			jobs = []Job{
-				Job{Name: "fake-job"},
-				Job{Name: "other-job"},
+			bpmConfigs = bpm.Configs{
+				"fake-job": bpm.Config{
+					Processes: []bpm.Process{
+						bpm.Process{Name: "fake-process"},
+					},
+				},
+				"other-job": bpm.Config{
+					Processes: []bpm.Process{
+						bpm.Process{Name: "fake-process"},
+					},
+				},
 			}
 		})
 
+		act := func() ([]corev1.Container, error) {
+			return cf.JobsToContainers(jobs)
+		}
+
+		It("adds the sys volume", func() {
+			containers, err := act()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(containers).To(HaveLen(2))
+			Expect(containers[0].VolumeMounts).To(ContainElement(
+				corev1.VolumeMount{
+					Name:             "sys-dir",
+					ReadOnly:         false,
+					MountPath:        "/var/vcap/sys",
+					SubPath:          "",
+					MountPropagation: nil,
+				}))
+
+		})
+	})
+
+	Context("JobsToInitContainers", func() {
 		act := func() ([]corev1.Container, error) {
 			return cf.JobsToInitContainers(jobs)
 		}
