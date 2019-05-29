@@ -10,12 +10,14 @@ if [ -z ${TEST_NAMESPACE+x} ]; then
   TEST_NAMESPACE="test$(date +%s)"
   export TEST_NAMESPACE
 
-  remove_namespace() {
-    kubectl delete namespace --wait=false --grace-period=60 "$TEST_NAMESPACE"
+  remove_namespaces() {
+    namespaces=$(k get ns -o=jsonpath="{..name}" | tr '[[:space:]]' '\n' | grep "$TEST_NAMESPACE")
+    for ns in $namespaces; do
+      echo "Deleting namespace $ns..."
+      kubectl delete namespace --wait=false --grace-period=60 "$ns"
+    done
   }
-  trap remove_namespace EXIT
-
-  kubectl create namespace "$TEST_NAMESPACE"
+  trap remove_namespaces EXIT
 fi
 
 # Add all required CRD´s
@@ -25,4 +27,5 @@ kubectl get customresourcedefinitions
 # Build the required helm charts to run the cf-operator
 ./bin/build-helm
 
-ginkgo e2e/kube/
+NODES=${NODES:-5}
+ginkgo --nodes="$NODES" e2e/kube/
