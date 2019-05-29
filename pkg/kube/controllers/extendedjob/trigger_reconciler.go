@@ -81,11 +81,7 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 
 	podState := InferPodState(*pod)
 	if podState == ejv1.PodStateUnknown {
-		ctxlog.Debugf(ctx,
-			"Failed to determine state %s: %#v",
-			podutil.GetPodStatusString(*pod),
-			pod.Status,
-		)
+		ctxlog.Debugf(ctx, "Failed to determine state %s", podutil.GetPodStatusString(*pod))
 		return
 	}
 

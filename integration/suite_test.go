@@ -21,7 +21,11 @@ func FailAndCollectDebugInfo(description string, callerSkip ...int) {
 	}
 	fmt.Println(string(out))
 
-	Fail(description, callerSkip...)
+	skip := 0
+	if len(callerSkip) > 0 {
+		skip = callerSkip[0]
+	}
+	Fail(description, skip+1)
 }
 
 func TestIntegration(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 func GetPodStatusString(pod corev1.Pod) string {
 	conditions := []string{}
 	for _, c := range pod.Status.Conditions {
-		conditions = append(conditions, fmt.Sprintf("%s", c.Type))
+		conditions = append(conditions, fmt.Sprintf("%s=%v", c.Type, c.Status))
 	}
 	return fmt.Sprintf("phase=%s conditions=%s)", pod.Status.Phase, conditions)
 }
