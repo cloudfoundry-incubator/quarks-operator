@@ -16,12 +16,12 @@ import (
 type ContainerFactory struct {
 	manifestName         string
 	igName               string
-	releaseImageProvider releaseImageProvider
+	releaseImageProvider ReleaseImageProvider
 	bpmConfigs           bpm.Configs
 }
 
 // NewContainerFactory returns a new ContainerFactory for a BOSH instant group
-func NewContainerFactory(manifestName string, igName string, releaseImageProvider releaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactory {
+func NewContainerFactory(manifestName string, igName string, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactory {
 	return &ContainerFactory{
 		manifestName:         manifestName,
 		igName:               igName,
@@ -206,10 +206,12 @@ func templateRenderingContainer(name string, secretName string) corev1.Container
 }
 
 func createDirContainer(name string, jobs []Job) corev1.Container {
-	dirs := ""
+	dirs := []string{}
 	for _, job := range jobs {
-		dirs = dirs + " " + strings.Join(job.dataDirs(job.Name), " ")
+		jobDirs := append(job.dataDirs(job.Name), job.sysDirs(job.Name)...)
+		dirs = append(dirs, jobDirs...)
 	}
+
 	return corev1.Container{
 		Name:  fmt.Sprintf("create-dirs-%s", name),
 		Image: GetOperatorDockerImage(),
@@ -218,9 +220,13 @@ func createDirContainer(name string, jobs []Job) corev1.Container {
 				Name:      "data-dir",
 				MountPath: "/var/vcap/data",
 			},
+			{
+				Name:      "sys-dir",
+				MountPath: "/var/vcap/sys",
+			},
 		},
 		Env:     []corev1.EnvVar{},
 		Command: []string{"/bin/sh"},
-		Args:    []string{"-c", "mkdir -p " + dirs},
+		Args:    []string{"-c", "mkdir -p " + strings.Join(dirs, " ")},
 	}
 }

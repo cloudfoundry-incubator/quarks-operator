@@ -70,6 +70,13 @@ func (j *Job) dataDirs(name string) []string {
 	}
 }
 
+func (j *Job) sysDirs(name string) []string {
+	return []string{
+		"/var/vcap/sys/log/" + name,
+		"/var/vcap/sys/run/" + name,
+	}
+}
+
 // JobProperties represents the properties map of a Job
 type JobProperties struct {
 	BOSHContainerization `yaml:"bosh_containerization"`
