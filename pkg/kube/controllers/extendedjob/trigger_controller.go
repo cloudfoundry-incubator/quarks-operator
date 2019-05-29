@@ -37,8 +37,13 @@ func AddTrigger(ctx context.Context, config *config.Config, mgr manager.Manager)
 			// on existing pods for controller restarts, so we only
 			// want look at phase pending.
 			pod := e.Object.(*corev1.Pod)
-			reconcile := pod.Status.Phase == "Pending"
-			return reconcile
+			shouldProcessEvent := pod.Status.Phase == "Pending"
+			if shouldProcessEvent {
+				ctxlog.WithEvent(pod, "Predicates").Debugf(ctx,
+					"Pod %s creation allowed. Pod is in Pending status.",
+					pod.Name)
+			}
+			return shouldProcessEvent
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			// pod will be a 'not found' in reconciler, so skip

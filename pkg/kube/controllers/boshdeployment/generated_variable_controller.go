@@ -41,14 +41,30 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*corev1.Secret)
-			return isManifestWithOps(o.Name)
+			shouldProcessEvent := isManifestWithOps(o.Name)
+
+			if shouldProcessEvent {
+				ctxlog.WithEvent(o, "Predicates").Debugf(ctx,
+					"Secret %s creation allowed. Secret name contains with-ops suffix",
+					o.Name)
+			}
+
+			return shouldProcessEvent
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			oldSecret := e.ObjectOld.(*corev1.Secret)
 			newSecret := e.ObjectNew.(*corev1.Secret)
-			return isManifestWithOps(newSecret.Name) && !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
+			shouldProcessEvent := isManifestWithOps(newSecret.Name) && !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
+
+			if shouldProcessEvent {
+				ctxlog.WithEvent(newSecret, "Predicates").Debugf(ctx,
+					"Secret %s update allowed. Secret name contains with-ops suffix",
+					newSecret.Name)
+			}
+
+			return shouldProcessEvent
 		},
 	}
 
