@@ -19,7 +19,7 @@ type InstanceGroup struct {
 	MigratedFrom       []*MigratedFrom        `yaml:"migrated_from,omitempty"`
 	LifeCycle          string                 `yaml:"lifecycle,omitempty"`
 	Properties         map[string]interface{} `yaml:"properties,omitempty"`
-	Env                *AgentEnv              `yaml:"env,omitempty"`
+	Env                AgentEnv               `yaml:"env,omitempty"`
 }
 
 func (ig *InstanceGroup) jobInstances(namespace string, deploymentName string, jobName string, spec JobSpec) []JobInstance {
@@ -97,9 +97,15 @@ type JobDir struct {
 }
 
 // Agent from BOSH deployment manifest
+type AgentSettings struct {
+	Annotations map[string]string `yaml:"annotations,omitempty"`
+	Labels      map[string]string `yaml:"labels,omitempty"`
+}
+
+// Agent from BOSH deployment manifest
 type Agent struct {
-	Settings string `yaml:"settings,omitempty"`
-	Tmpfs    *bool  `yaml:"tmpfs,omitempty"`
+	Settings AgentSettings `yaml:"settings,omitempty"`
+	Tmpfs    *bool         `yaml:"tmpfs,omitempty"`
 }
 
 // AgentEnvBoshConfig from BOSH deployment manifest
@@ -111,12 +117,12 @@ type AgentEnvBoshConfig struct {
 	SwapSize              *int    `yaml:"swap_size,omitempty"`
 	IPv6                  IPv6    `yaml:"ipv6,omitempty"`
 	JobDir                *JobDir `yaml:"job_dir,omitempty"`
-	Agent                 *Agent  `yaml:"agent,omitempty"`
+	Agent                 Agent   `yaml:"agent,omitempty"`
 }
 
 // AgentEnv from BOSH deployment manifest
 type AgentEnv struct {
-	PersistentDiskFS           string              `yaml:"persistent_disk_fs,omitempty"`
-	PersistentDiskMountOptions []string            `yaml:"persistent_disk_mount_options,omitempty"`
-	AgentEnvBoshConfig         *AgentEnvBoshConfig `yaml:"bosh,omitempty"`
+	PersistentDiskFS           string             `yaml:"persistent_disk_fs,omitempty"`
+	PersistentDiskMountOptions []string           `yaml:"persistent_disk_mount_options,omitempty"`
+	AgentEnvBoshConfig         AgentEnvBoshConfig `yaml:"bosh,omitempty"`
 }

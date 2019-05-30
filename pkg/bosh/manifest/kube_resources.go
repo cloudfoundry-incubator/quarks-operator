@@ -12,7 +12,6 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
@@ -52,6 +51,21 @@ type BPMResources struct {
 // It returns extended stateful sets, services and extended jobs.
 func (kc *KubeConverter) BPMResources(manifestName string, version string, instanceGroup *InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) (*BPMResources, error) {
 	res := &BPMResources{}
+
+	// Override labels and annotations with operator-owned metadata
+	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels == nil {
+		instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels = map[string]string{}
+	}
+
+	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels[LabelDeploymentName] = manifestName
+	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels[LabelInstanceGroupName] = instanceGroup.Name
+
+	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations == nil {
+		instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations = map[string]string{}
+	}
+
+	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations[AnnotationDeploymentVersion] = version
+
 
 	cfac := NewContainerFactory(manifestName, instanceGroup.Name, releaseImageProvider, bpmConfigs)
 
@@ -156,37 +170,29 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, version strin
 
 	extSts := essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", manifestName, igName),
-			Namespace: kc.namespace,
-			Labels: map[string]string{
-				LabelDeploymentName:    manifestName,
-				LabelInstanceGroupName: igName,
-			},
-			Annotations: map[string]string{
-				AnnotationDeploymentVersion: version,
-			},
+			Name:        fmt.Sprintf("%s-%s", manifestName, igName),
+			Namespace:   kc.namespace,
+			Labels:      ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+			Annotations: ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
 		Spec: essv1.ExtendedStatefulSetSpec{
 			UpdateOnConfigChange: true,
 			Template: v1beta2.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: igName,
+					Name:        igName,
+					Labels:      ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+					Annotations: ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 				},
 				Spec: v1beta2.StatefulSetSpec{
 					Replicas: func() *int32 { i := int32(ig.Instances); return &i }(),
 					Selector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							bdv1.LabelDeploymentName: manifestName,
-							LabelInstanceGroupName:   igName,
-						},
+						MatchLabels: ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
 					},
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: igName,
-							Labels: map[string]string{
-								bdv1.LabelDeploymentName: manifestName,
-								LabelInstanceGroupName:   igName,
-							},
+							Name:        igName,
+							Labels:      ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+							Annotations: ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 						},
 						Spec: corev1.PodSpec{
 							Volumes:        volumes,
@@ -271,14 +277,10 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, version stri
 
 	headlessService := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      names.ServiceName(manifestName, igName, -1),
-			Namespace: kc.namespace,
-			Labels: map[string]string{
-				LabelInstanceGroupName: igName,
-			},
-			Annotations: map[string]string{
-				AnnotationDeploymentVersion: version,
-			},
+			Name:        names.ServiceName(manifestName, igName, -1),
+			Namespace:   kc.namespace,
+			Labels:      ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+			Annotations: ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: ports,
@@ -351,26 +353,24 @@ func (kc *KubeConverter) errandToExtendedJob(manifestName string, version string
 		return ejv1.ExtendedJob{}, err
 	}
 
+	podLabels := ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels
+	// Controller will delete successful job
+	podLabels["delete"] = "pod"
+
 	eJob := ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", manifestName, igName),
-			Namespace: kc.namespace,
-			Labels: map[string]string{
-				LabelDeploymentName:    manifestName,
-				LabelInstanceGroupName: igName,
-			},
-			Annotations: map[string]string{
-				AnnotationDeploymentVersion: version,
-			},
+			Name:        fmt.Sprintf("%s-%s", manifestName, igName),
+			Namespace:   kc.namespace,
+			Labels:      ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+			Annotations: ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
 		Spec: ejv1.ExtendedJobSpec{
 			UpdateOnConfigChange: true,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: igName,
-					Labels: map[string]string{
-						"delete": "pod",
-					},
+					Name:        igName,
+					Labels:      podLabels,
+					Annotations: ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 				},
 				Spec: corev1.PodSpec{
 					Containers:     containers,
