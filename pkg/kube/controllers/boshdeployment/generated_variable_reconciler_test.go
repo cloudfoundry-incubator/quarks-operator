@@ -60,8 +60,8 @@ var _ = Describe("ReconcileGeneratedVariable", func() {
 				Name:      "foo-with-ops",
 				Namespace: "default",
 			},
-			StringData: map[string]string{
-				"manifest.yaml": `---
+			Data: map[string][]byte{
+				"manifest.yaml": []byte(`---
 name: fake-manifest
 releases:
 - name: bar
@@ -85,7 +85,7 @@ instance_groups:
 variables:
 - name: foo_password
   type: password
-`,
+`),
 			},
 		}
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}

@@ -72,12 +72,10 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 	var manifestContents string
 
 	// Get the manifest yaml
-	if val, ok := manifestSecret.StringData["manifest.yaml"]; ok {
-		manifestContents = val
-	} else if val, ok := manifestSecret.Data["manifest.yaml"]; ok {
+	if val, ok := manifestSecret.Data["manifest.yaml"]; ok {
 		manifestContents = string(val)
 	} else {
-		return reconcile.Result{}, errors.New("Couldn't find manifest.yaml tag in manifest secret")
+		return reconcile.Result{}, errors.New("Couldn't find manifest.yaml key in manifest secret")
 	}
 
 	// Unmarshal the manifest
