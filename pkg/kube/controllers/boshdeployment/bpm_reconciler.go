@@ -144,13 +144,17 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 		return resources, errors.Errorf("Missing version label for bpm information secret '%s'", bpmSecret.Name)
 	}
 
-	err := yaml.Unmarshal(bpmSecret.Data["bpm.yaml"], &bpmConfigs)
-	if err != nil {
-		return resources, err
+	if val, ok := bpmSecret.Data["bpm.yaml"]; ok {
+		err := yaml.Unmarshal(val, &bpmConfigs)
+		if err != nil {
+			return resources, err
+		}
+	} else {
+		return resources, errors.New("Couldn't find bpm.yaml key in manifest secret")
 	}
 
 	bpmInfo[instanceGroupName] = bpmConfigs
-	resources, err = r.kubeConverter.BPMResources(manifest.Name, version, manifest.InstanceGroups, manifest, bpmInfo)
+	resources, err := r.kubeConverter.BPMResources(manifest.Name, version, manifest.InstanceGroups, manifest, bpmInfo)
 	if err != nil {
 		return resources, err
 	}
