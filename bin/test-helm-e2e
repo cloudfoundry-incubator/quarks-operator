@@ -28,4 +28,4 @@ kubectl get customresourcedefinitions
 ./bin/build-helm
 
 NODES=${NODES:-5}
-ginkgo --nodes="$NODES" e2e/kube/
+ginkgo --nodes="$NODES" --flakeAttempts=3 e2e/kube/
