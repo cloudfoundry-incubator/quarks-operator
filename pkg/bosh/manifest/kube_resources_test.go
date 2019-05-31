@@ -21,9 +21,9 @@ var _ = Describe("kube converter", func() {
 	)
 
 	Context("BPMResources", func() {
-		act := func(bpmConfigs map[string]bpm.Configs) (*manifest.BPMResources, error) {
+		act := func(bpmConfigs bpm.Configs, instanceGroup *manifest.InstanceGroup) (*manifest.BPMResources, error) {
 			kubeConverter := manifest.NewKubeConverter("foo")
-			resources, err := kubeConverter.BPMResources(m.Name, "1", m.InstanceGroups, &m, bpmConfigs)
+			resources, err := kubeConverter.BPMResources(m.Name, "1", instanceGroup, &m, bpmConfigs)
 			return resources, err
 		}
 
@@ -33,33 +33,78 @@ var _ = Describe("kube converter", func() {
 
 		Context("when BPM is missing in configs", func() {
 			It("returns an error", func() {
-				bpmConfigs := map[string]bpm.Configs{}
-				_, err := act(bpmConfigs)
+				bpmConfigs := bpm.Configs{}
+				_, err := act(bpmConfigs, m.InstanceGroups[0])
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("couldn't find instance group 'redis-slave' in bpm configs set"))
+				Expect(err.Error()).To(ContainSubstring("failed to lookup bpm config for bosh job 'redis-server' in bpm configs"))
 			})
 		})
 
 		Context("when a BPM config is present", func() {
-			var bpmConfigs map[string]bpm.Configs
+			var bpmConfigs []bpm.Configs
 
 			BeforeEach(func() {
 				c, err := bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
 				Expect(err).ShouldNot(HaveOccurred())
 
-				bpmConfigs = map[string]bpm.Configs{
-					"redis-slave": bpm.Configs{"redis-server": c},
-					"diego-cell":  bpm.Configs{"cflinuxfs3-rootfs-setup": c},
+				bpmConfigs = []bpm.Configs{
+					{"redis-server": c},
+					{"cflinuxfs3-rootfs-setup": c},
 				}
+
+			})
+
+			Context("when the lifecycle is set to errand", func() {
+				It("converts the instance group to an ExtendedJob", func() {
+					kubeConverter, err := act(bpmConfigs[0], m.InstanceGroups[0])
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(kubeConverter.Errands).To(HaveLen(1))
+
+					// Test labels and annotations in the extended job
+					eJob := kubeConverter.Errands[0]
+					Expect(eJob.Name).To(Equal("foo-deployment-redis-slave"))
+					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
+					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, m.InstanceGroups[0].Name))
+					Expect(eJob.GetAnnotations()).To(HaveKeyWithValue(manifest.AnnotationDeploymentVersion, "1"))
+
+					specCopierInitContainer := eJob.Spec.Template.Spec.InitContainers[0]
+					rendererInitContainer := eJob.Spec.Template.Spec.InitContainers[1]
+
+					// Test containers in the extended job
+					Expect(eJob.Spec.Template.Spec.Containers[0].Name).To(Equal("redis-server-test-server"))
+					Expect(eJob.Spec.Template.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
+					Expect(eJob.Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server"}))
+
+					// Test init containers in the extended job
+					Expect(specCopierInitContainer.Name).To(Equal("spec-copier-redis"))
+					Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
+					Expect(specCopierInitContainer.Command[0]).To(Equal("bash"))
+					Expect(rendererInitContainer.Image).To(Equal("/:"))
+					Expect(rendererInitContainer.Name).To(Equal("renderer-redis-slave"))
+
+					// Test shared volume setup
+					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
+					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+					Expect(specCopierInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
+					Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+					Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
+					Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+
+					// Test mounting the resolved instance group properties in the renderer container
+					Expect(rendererInitContainer.Env[0].Name).To(Equal("INSTANCE_GROUP_NAME"))
+					Expect(rendererInitContainer.Env[0].Value).To(Equal("redis-slave"))
+					Expect(rendererInitContainer.VolumeMounts[1].Name).To(Equal("jobs-dir"))
+					Expect(rendererInitContainer.VolumeMounts[1].MountPath).To(Equal("/var/vcap/jobs"))
+				})
 			})
 
 			Context("when the lifecycle is set to service", func() {
 				It("converts the instance group to an ExtendedStatefulSet", func() {
-					kubeConverter, err := act(bpmConfigs)
+					resources, err := act(bpmConfigs[1], m.InstanceGroups[1])
 					Expect(err).ShouldNot(HaveOccurred())
 
 					// Test labels and annotation in the extended statefulSet
-					extStS := kubeConverter.InstanceGroups[0]
+					extStS := resources.InstanceGroups[0]
 					Expect(extStS.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, "diego-cell")))
 					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
 					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, "diego-cell"))
@@ -118,7 +163,7 @@ var _ = Describe("kube converter", func() {
 					Expect(livenessProbe.Exec.Command[0]).To(Equal("curl --silent --fail --head http://${HOSTNAME}:8080"))
 
 					// Test services for the extended statefulSet
-					service0 := kubeConverter.Services[0]
+					service0 := resources.Services[0]
 					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-0", m.Name, stS.Name)))
 					Expect(service0.Spec.Selector).To(Equal(map[string]string{
 						manifest.LabelInstanceGroupName: stS.Name,
@@ -133,7 +178,7 @@ var _ = Describe("kube converter", func() {
 						},
 					}))
 
-					service1 := kubeConverter.Services[1]
+					service1 := resources.Services[1]
 					Expect(service1.Name).To(Equal(fmt.Sprintf("%s-%s-1", m.Name, stS.Name)))
 					Expect(service1.Spec.Selector).To(Equal(map[string]string{
 						manifest.LabelInstanceGroupName: stS.Name,
@@ -148,7 +193,7 @@ var _ = Describe("kube converter", func() {
 						},
 					}))
 
-					service2 := kubeConverter.Services[2]
+					service2 := resources.Services[2]
 					Expect(service2.Name).To(Equal(fmt.Sprintf("%s-%s-2", m.Name, stS.Name)))
 					Expect(service2.Spec.Selector).To(Equal(map[string]string{
 						manifest.LabelInstanceGroupName: stS.Name,
@@ -163,7 +208,7 @@ var _ = Describe("kube converter", func() {
 						},
 					}))
 
-					service3 := kubeConverter.Services[3]
+					service3 := resources.Services[3]
 					Expect(service3.Name).To(Equal(fmt.Sprintf("%s-%s-3", m.Name, stS.Name)))
 					Expect(service3.Spec.Selector).To(Equal(map[string]string{
 						manifest.LabelInstanceGroupName: stS.Name,
@@ -178,7 +223,7 @@ var _ = Describe("kube converter", func() {
 						},
 					}))
 
-					headlessService := kubeConverter.Services[4]
+					headlessService := resources.Services[4]
 					Expect(headlessService.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, stS.Name)))
 					Expect(headlessService.Spec.Selector).To(Equal(map[string]string{
 						manifest.LabelInstanceGroupName: stS.Name,
@@ -193,88 +238,47 @@ var _ = Describe("kube converter", func() {
 					Expect(headlessService.Spec.ClusterIP).To(Equal("None"))
 				})
 			})
-
-			Context("when the lifecycle is set to errand", func() {
-				It("converts the instance group to an ExtendedJob", func() {
-					kubeConverter, err := act(bpmConfigs)
-					Expect(err).ShouldNot(HaveOccurred())
-					Expect(kubeConverter.Errands).To(HaveLen(1))
-
-					// Test labels and annotations in the extended job
-					eJob := kubeConverter.Errands[0]
-					Expect(eJob.Name).To(Equal("foo-deployment-redis-slave"))
-					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
-					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, m.InstanceGroups[0].Name))
-					Expect(eJob.GetAnnotations()).To(HaveKeyWithValue(manifest.AnnotationDeploymentVersion, "1"))
-
-					specCopierInitContainer := eJob.Spec.Template.Spec.InitContainers[0]
-					rendererInitContainer := eJob.Spec.Template.Spec.InitContainers[1]
-
-					// Test containers in the extended job
-					Expect(eJob.Spec.Template.Spec.Containers[0].Name).To(Equal("redis-server-test-server"))
-					Expect(eJob.Spec.Template.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
-					Expect(eJob.Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server"}))
-
-					// Test init containers in the extended job
-					Expect(specCopierInitContainer.Name).To(Equal("spec-copier-redis"))
-					Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
-					Expect(specCopierInitContainer.Command[0]).To(Equal("bash"))
-					Expect(rendererInitContainer.Image).To(Equal("/:"))
-					Expect(rendererInitContainer.Name).To(Equal("renderer-redis-slave"))
-
-					// Test shared volume setup
-					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
-					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-					Expect(specCopierInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
-					Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-					Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
-					Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-
-					// Test mounting the resolved instance group properties in the renderer container
-					Expect(rendererInitContainer.Env[0].Name).To(Equal("INSTANCE_GROUP_NAME"))
-					Expect(rendererInitContainer.Env[0].Value).To(Equal("redis-slave"))
-					Expect(rendererInitContainer.VolumeMounts[1].Name).To(Equal("jobs-dir"))
-					Expect(rendererInitContainer.VolumeMounts[1].MountPath).To(Equal("/var/vcap/jobs"))
-				})
-			})
 		})
 
 		Context("when multiple BPM processes exist", func() {
-			var bpmConfigs map[string]bpm.Configs
+			var (
+				bpmConfigs []bpm.Configs
+				bpmConfig1 bpm.Config
+				bpmConfig2 bpm.Config
+			)
 
 			BeforeEach(func() {
+				var err error
 				m = *env.BOSHManifestWithMultiBPMProcesses()
 
-				c1, err := bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
+				bpmConfig1, err = bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
 				Expect(err).ShouldNot(HaveOccurred())
-				c2, err := bpm.NewConfig([]byte(boshreleases.MultiProcessBPMConfig))
+				bpmConfig2, err = bpm.NewConfig([]byte(boshreleases.MultiProcessBPMConfig))
 				Expect(err).ShouldNot(HaveOccurred())
 
-				bpmConfigs = map[string]bpm.Configs{
-					"fake-ig-1": bpm.Configs{
-						"fake-errand-a": c1,
-						"fake-errand-b": c2,
+				bpmConfigs = []bpm.Configs{
+					{
+						"fake-errand-a": bpmConfig1,
+						"fake-errand-b": bpmConfig2,
 					},
-					"fake-ig-2": bpm.Configs{
-						"fake-job-a": c1,
-						"fake-job-b": c1,
-						"fake-job-c": c2,
+					{
+						"fake-job-a": bpmConfig1,
+						"fake-job-b": bpmConfig1,
+						"fake-job-c": bpmConfig2,
 					},
-					"fake-ig-3": bpm.Configs{
-						"fake-job-a": c1,
-						"fake-job-b": c1,
-						"fake-job-c": c2,
-						"fake-job-d": c2,
+					{
+						"fake-job-a": bpmConfig1,
+						"fake-job-b": bpmConfig1,
+						"fake-job-c": bpmConfig2,
+						"fake-job-d": bpmConfig2,
 					},
 				}
 			})
 
 			It("creates a k8s container for each BPM process", func() {
-				resources, err := act(bpmConfigs)
+				resources, err := act(bpmConfigs[0], m.InstanceGroups[0])
 				Expect(err).ShouldNot(HaveOccurred())
-				Expect(resources.InstanceGroups).To(HaveLen(2))
 				Expect(resources.Errands).To(HaveLen(1))
-
 				containers := resources.Errands[0].Spec.Template.Spec.Containers
 				Expect(containers).To(HaveLen(3))
 				Expect(containers[0].Name).To(Equal("fake-errand-a-test-server"))
@@ -295,6 +299,8 @@ var _ = Describe("kube converter", func() {
 				Expect(containers[2].Env[0].Name).To(Equal("BPM"))
 				Expect(containers[2].Env[0].Value).To(Equal("CONTAINED"))
 
+				resources, err = act(bpmConfigs[1], m.InstanceGroups[1])
+				Expect(err).ShouldNot(HaveOccurred())
 				containers = resources.InstanceGroups[0].Spec.Template.Spec.Template.Spec.Containers
 				Expect(containers).To(HaveLen(4))
 				Expect(containers[0].Name).To(Equal("fake-job-a-test-server"))
@@ -302,7 +308,10 @@ var _ = Describe("kube converter", func() {
 				Expect(containers[2].Name).To(Equal("fake-job-c-test-server"))
 				Expect(containers[3].Name).To(Equal("fake-job-c-alt-test-server"))
 
-				containers = resources.InstanceGroups[1].Spec.Template.Spec.Template.Spec.Containers
+				resources, err = act(bpmConfigs[2], m.InstanceGroups[2])
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(resources.InstanceGroups).To(HaveLen(1))
+				containers = resources.InstanceGroups[0].Spec.Template.Spec.Template.Spec.Containers
 				Expect(containers).To(HaveLen(6))
 				Expect(containers[0].Name).To(Equal("fake-job-a-test-server"))
 				Expect(containers[1].Name).To(Equal("fake-job-b-test-server"))
