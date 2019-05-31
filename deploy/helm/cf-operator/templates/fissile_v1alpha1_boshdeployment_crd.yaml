@@ -15,6 +15,7 @@ spec:
     singular: boshdeployment
     shortNames:
         - bdpl
+        - bdpls
   scope: Namespaced
   version: v1alpha1
   validation:
