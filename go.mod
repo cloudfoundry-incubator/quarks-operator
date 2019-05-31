@@ -46,7 +46,7 @@ require (
 	github.com/spf13/pflag v1.0.3 // indirect
 	github.com/spf13/viper v1.2.1
 	github.com/stretchr/testify v1.3.0 // indirect
-	github.com/viovanov/bosh-template-go v0.0.0-20190521070146-d65b7056bcc9
+	github.com/viovanov/bosh-template-go v0.0.0-20190531002828-39f4ed6564ad
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
