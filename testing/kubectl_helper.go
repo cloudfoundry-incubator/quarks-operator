@@ -160,9 +160,15 @@ func (k *Kubectl) PVCExists(namespace string, pvcName string) (bool, error) {
 
 // Wait waits for the condition on the resource using kubectl command
 func (k *Kubectl) Wait(namespace string, requiredStatus string, resourceName string) error {
-	return wait.PollImmediate(k.pollInterval, k.pollTimeout, func() (bool, error) {
+	err := wait.PollImmediate(k.pollInterval, k.pollTimeout, func() (bool, error) {
 		return k.CheckWait(namespace, requiredStatus, resourceName)
 	})
+
+	if err != nil {
+		return errors.Wrapf(err, "current stack: %s", string(debug.Stack()))
+	}
+
+	return nil
 }
 
 // CheckWait check's if the condition is satisfied

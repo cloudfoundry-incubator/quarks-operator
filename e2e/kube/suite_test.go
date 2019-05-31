@@ -116,12 +116,12 @@ func SetUpEnvironment() (environment.TearDownFunc, error) {
 	}
 
 	teardownFunc := func() error {
-		_, err := RunBinary(helmCmd, "delete", fmt.Sprintf("%s-%s", cfOperatorRelease, namespace), "--purge")
+		err = DeleteOperatorResources(namespace)
 		if err != nil {
 			return err
 		}
 
-		err = DeleteOperatorResources(namespace)
+		_, err := RunBinary(helmCmd, "delete", fmt.Sprintf("%s-%s", cfOperatorRelease, namespace), "--purge")
 		if err != nil {
 			return err
 		}
