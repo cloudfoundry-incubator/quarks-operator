@@ -18,7 +18,7 @@ data:
     - name: nats
       instances: 1
       persistent_disk: 4096
-      persistent_disk_type: "standard"
+      persistent_disk_type: "hostpath-containerization"
       jobs:
       - name: nats
         release: nats

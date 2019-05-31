@@ -394,15 +394,6 @@ func (kc *KubeConverter) errandToExtendedJob(manifestName string, version string
 
 func (kc *KubeConverter) diskToPersistentVolumeClaims(cfac *ContainerFactory, extendedStatefulset *essv1.ExtendedStatefulSet, manifestName string, ig *InstanceGroup) *corev1.PersistentVolumeClaim {
 
-	var storageClassName string
-
-	// set storage class according to persistentdisktype key
-	if ig.PersistentDiskType != "" {
-		storageClassName = ig.PersistentDiskType
-	} else {
-		storageClassName = "standard"
-	}
-
 	// spec of a persistent volumeclaim
 	persistentVolumeClaim := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -410,14 +401,18 @@ func (kc *KubeConverter) diskToPersistentVolumeClaims(cfac *ContainerFactory, ex
 			Namespace: kc.namespace,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: &storageClassName,
-			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceName(corev1.ResourceStorage): resource.MustParse(fmt.Sprintf("%d%s", *ig.PersistentDisk, "Mi")),
 				},
 			},
 		},
+	}
+
+	// add storage class if specified
+	if ig.PersistentDiskType != "" {
+		persistentVolumeClaim.Spec.StorageClassName = &ig.PersistentDiskType
 	}
 
 	return persistentVolumeClaim
