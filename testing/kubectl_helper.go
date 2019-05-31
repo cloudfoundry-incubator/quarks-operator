@@ -3,6 +3,7 @@ package testing
 import (
 	"bytes"
 	"os/exec"
+	"runtime/debug"
 	"strings"
 	"time"
 
