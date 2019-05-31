@@ -1,7 +1,6 @@
 module code.cloudfoundry.org/cf-operator
 
 require (
-	code.cloudfoundry.org/bytefmt v0.0.0-20180906201452-2aa6f33b730c
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/appscode/jsonpatch v0.0.0-20190108182946-7c0e3b262f30 // indirect
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
@@ -38,14 +37,13 @@ require (
 	github.com/onsi/gomega v1.4.2
 	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
-	github.com/pkg/errors v0.8.0
+	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.2 // indirect
 	github.com/spf13/afero v1.1.2
 	github.com/spf13/cast v1.3.0 // indirect
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3 // indirect
 	github.com/spf13/viper v1.2.1
-	github.com/stretchr/testify v1.3.0 // indirect
 	github.com/viovanov/bosh-template-go v0.0.0-20190531002828-39f4ed6564ad
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
@@ -56,7 +54,7 @@ require (
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
 	google.golang.org/appengine v1.2.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	gopkg.in/yaml.v2 v2.2.1
+	gopkg.in/yaml.v2 v2.2.2
 	k8s.io/api v0.0.0-20190222213804-5cb15d344471
 	k8s.io/apiextensions-apiserver v0.0.0-20190508191920-007dc40467c5 // indirect
 	k8s.io/apimachinery v0.0.0-20190221213512-86fb29eff628
