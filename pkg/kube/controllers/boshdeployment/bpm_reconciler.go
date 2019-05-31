@@ -131,7 +131,6 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm.Manifest) (*bdm.BPMResources, error) {
 	resources := &bdm.BPMResources{}
-	bpmInfo := map[string]bpm.Configs{}
 	bpmConfigs := bpm.Configs{}
 
 	instanceGroupName, ok := bpmSecret.Labels[ejv1.LabelPersistentSecretContainer]
@@ -153,8 +152,15 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 		return resources, errors.New("Couldn't find bpm.yaml key in manifest secret")
 	}
 
-	bpmInfo[instanceGroupName] = bpmConfigs
-	resources, err := r.kubeConverter.BPMResources(manifest.Name, version, manifest.InstanceGroups, manifest, bpmInfo)
+	instanceGroup := &bdm.InstanceGroup{}
+	for _, ig := range manifest.InstanceGroups {
+		if ig.Name == instanceGroupName {
+			instanceGroup = ig
+			break
+		}
+	}
+
+	resources, err := r.kubeConverter.BPMResources(manifest.Name, version, instanceGroup, manifest, bpmConfigs)
 	if err != nil {
 		return resources, err
 	}

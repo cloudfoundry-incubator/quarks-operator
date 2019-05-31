@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -50,50 +48,43 @@ type BPMResources struct {
 	Disks          []corev1.PersistentVolumeClaim
 }
 
-// BPMResources uses BOSH Process Manager information to create k8s container specs from BOSH instance groups.
+// BPMResources uses BOSH Process Manager information to create k8s container specs from single BOSH instance group.
 // It returns extended stateful sets, services and extended jobs.
-func (kc *KubeConverter) BPMResources(manifestName string, version string, instanceGroups []*InstanceGroup, releaseImageProvider ReleaseImageProvider, allBPMConfigs map[string]bpm.Configs) (*BPMResources, error) {
+func (kc *KubeConverter) BPMResources(manifestName string, version string, instanceGroup *InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) (*BPMResources, error) {
 	res := &BPMResources{}
 
-	for _, ig := range instanceGroups {
+	cfac := NewContainerFactory(manifestName, instanceGroup.Name, releaseImageProvider, bpmConfigs)
 
-		bpmConfigs, ok := allBPMConfigs[ig.Name]
-		if !ok {
-			return nil, errors.Errorf("couldn't find instance group '%s' in bpm configs set", ig.Name)
+	switch instanceGroup.LifeCycle {
+	case "service", "":
+		convertedExtStatefulSet, err := kc.serviceToExtendedSts(manifestName, version, instanceGroup, cfac)
+		if err != nil {
+			return nil, err
 		}
-		cfac := NewContainerFactory(manifestName, ig.Name, releaseImageProvider, bpmConfigs)
 
-		switch ig.LifeCycle {
-		case "service", "":
-			convertedExtStatefulSet, err := kc.serviceToExtendedSts(manifestName, version, ig, cfac)
-			if err != nil {
-				return nil, err
+		// Create a persistent volume claim if specified in spec
+		if instanceGroup.PersistentDisk != nil {
+			if *instanceGroup.PersistentDisk > 0 {
+				persistentVolumeClaim := kc.diskToPersistentVolumeClaims(cfac, &convertedExtStatefulSet, manifestName, instanceGroup)
+				res.Disks = append(res.Disks, *persistentVolumeClaim)
+
+				// Add volumes spec to pod spec and container spec of pvc in extendedstatefulset
+				convertedExtStatefulSet = *kc.addPVCVolumeSpecs(cfac, &convertedExtStatefulSet, manifestName, instanceGroup)
 			}
-
-			// Create a persistent volume claim if specified in spec
-			if ig.PersistentDisk != nil {
-				if *ig.PersistentDisk > 0 {
-					persistentVolumeClaim := kc.diskToPersistentVolumeClaims(cfac, &convertedExtStatefulSet, manifestName, ig)
-					res.Disks = append(res.Disks, *persistentVolumeClaim)
-
-					// Add volumes spec to pod spec and container spec of pvc in extendedstatefulset
-					convertedExtStatefulSet = *kc.addPVCVolumeSpecs(cfac, &convertedExtStatefulSet, manifestName, ig)
-				}
-			}
-
-			services, err := kc.serviceToKubeServices(manifestName, version, ig, &convertedExtStatefulSet)
-			if len(services) != 0 {
-				res.Services = append(res.Services, services...)
-			}
-
-			res.InstanceGroups = append(res.InstanceGroups, convertedExtStatefulSet)
-		case "errand":
-			convertedEJob, err := kc.errandToExtendedJob(manifestName, version, ig, cfac)
-			if err != nil {
-				return nil, err
-			}
-			res.Errands = append(res.Errands, convertedEJob)
 		}
+
+		services, err := kc.serviceToKubeServices(manifestName, version, instanceGroup, &convertedExtStatefulSet)
+		if len(services) != 0 {
+			res.Services = append(res.Services, services...)
+		}
+
+		res.InstanceGroups = append(res.InstanceGroups, convertedExtStatefulSet)
+	case "errand":
+		convertedEJob, err := kc.errandToExtendedJob(manifestName, version, instanceGroup, cfac)
+		if err != nil {
+			return nil, err
+		}
+		res.Errands = append(res.Errands, convertedEJob)
 	}
 
 	return res, nil
