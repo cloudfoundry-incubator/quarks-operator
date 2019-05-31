@@ -9,6 +9,7 @@ import (
 
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
@@ -46,6 +47,7 @@ type BPMResources struct {
 	InstanceGroups []essv1.ExtendedStatefulSet
 	Errands        []ejv1.ExtendedJob
 	Services       []corev1.Service
+	Disks          []corev1.PersistentVolumeClaim
 }
 
 // BPMResources uses BOSH Process Manager information to create k8s container specs from BOSH instance groups.
@@ -68,10 +70,18 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 				return nil, err
 			}
 
-			services, err := kc.serviceToKubeServices(manifestName, version, ig, &convertedExtStatefulSet)
-			if err != nil {
-				return nil, err
+			// Create a persistent volume claim if specified in spec
+			if ig.PersistentDisk != nil {
+				if *ig.PersistentDisk > 0 {
+					persistentVolumeClaim := kc.diskToPersistentVolumeClaims(cfac, &convertedExtStatefulSet, manifestName, ig)
+					res.Disks = append(res.Disks, *persistentVolumeClaim)
+
+					// Add volumes spec to pod spec and container spec of pvc in extendedstatefulset
+					convertedExtStatefulSet = *kc.addPVCVolumeSpecs(cfac, &convertedExtStatefulSet, manifestName, ig)
+				}
 			}
+
+			services, err := kc.serviceToKubeServices(manifestName, version, ig, &convertedExtStatefulSet)
 			if len(services) != 0 {
 				res.Services = append(res.Services, services...)
 			}
@@ -380,6 +390,62 @@ func (kc *KubeConverter) errandToExtendedJob(manifestName string, version string
 		},
 	}
 	return eJob, nil
+}
+
+func (kc *KubeConverter) diskToPersistentVolumeClaims(cfac *ContainerFactory, extendedStatefulset *essv1.ExtendedStatefulSet, manifestName string, ig *InstanceGroup) *corev1.PersistentVolumeClaim {
+
+	var storageClassName string
+
+	// set storage class according to persistentdisktype key
+	if ig.PersistentDiskType != "" {
+		storageClassName = ig.PersistentDiskType
+	} else {
+		storageClassName = "standard"
+	}
+
+	// spec of a persistent volumeclaim
+	persistentVolumeClaim := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s-%s", manifestName, ig.Name, "pvc"),
+			Namespace: kc.namespace,
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			StorageClassName: &storageClassName,
+			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceName(corev1.ResourceStorage): resource.MustParse(fmt.Sprintf("%d%s", *ig.PersistentDisk, "Mi")),
+				},
+			},
+		},
+	}
+
+	return persistentVolumeClaim
+}
+
+func (kc *KubeConverter) addPVCVolumeSpecs(cfac *ContainerFactory, extendedStatefulset *essv1.ExtendedStatefulSet, manifestName string, ig *InstanceGroup) *essv1.ExtendedStatefulSet {
+	// add volumeMount specs to container of Extendedstatefulset
+	storeVolume := corev1.VolumeMount{
+		Name:      "store-dir",
+		MountPath: "/var/vcap/store",
+	}
+	containers := extendedStatefulset.Spec.Template.Spec.Template.Spec.Containers
+	for containerIndex, container := range containers {
+		containers[containerIndex].VolumeMounts = append(container.VolumeMounts, storeVolume)
+	}
+	extendedStatefulset.Spec.Template.Spec.Template.Spec.Containers = containers
+
+	// add volume spec to pod volumes of Extendedstatefulset
+	pvcVolume := corev1.Volume{
+		Name: "store-dir",
+		VolumeSource: corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: fmt.Sprintf("%s-%s-%s", manifestName, ig.Name, "pvc"),
+			},
+		},
+	}
+	extendedStatefulset.Spec.Template.Spec.Template.Spec.Volumes = append(extendedStatefulset.Spec.Template.Spec.Template.Spec.Volumes, pvcVolume)
+	return extendedStatefulset
 }
 
 // generateVolumeName generate volume name based on secret name

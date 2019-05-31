@@ -138,6 +138,26 @@ func (k *Kubectl) SecretExists(namespace string, secretName string) (bool, error
 	return false, nil
 }
 
+// WaitForPVC blocks until the pvc is available. It fails after the timeout.
+func (k *Kubectl) WaitForPVC(namespace string, pvcName string) error {
+	return wait.PollImmediate(k.pollInterval, k.pollTimeout, func() (bool, error) {
+		return k.PVCExists(namespace, pvcName)
+	})
+}
+
+// PVCExists returns true if the pvc by that name exists
+func (k *Kubectl) PVCExists(namespace string, pvcName string) (bool, error) {
+	cmd := exec.Command("kubectl", "--namespace", namespace, "get", "pvc", pvcName)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return false, errors.Wrapf(err, string(out))
+	}
+	if strings.Contains(string(out), pvcName) {
+		return true, nil
+	}
+	return false, nil
+}
+
 // Wait waits for the condition on the resource using kubectl command
 func (k *Kubectl) Wait(namespace string, requiredStatus string, resourceName string) error {
 	return wait.PollImmediate(k.pollInterval, k.pollTimeout, func() (bool, error) {

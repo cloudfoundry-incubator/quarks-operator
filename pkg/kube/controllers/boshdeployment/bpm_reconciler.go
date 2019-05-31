@@ -212,6 +212,15 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 		}
 	}
 
+	// Create a persistent volume claims for containers of the instance group
+	// Right now, only one pvc is being created at /var/vcap/store
+	for _, pvc := range resources.Disks {
+		err := r.createPersistentVolumeClaim(ctx, pvc)
+		if err != nil {
+			return log.WithEvent(instance, "ApplyPersistentVolumeClaimError").Errorf(ctx, "Failed to apply PersistentVolumeClaim for instance group '%s' : %v", instanceGroupName, err)
+		}
+	}
+
 	for _, eSts := range resources.InstanceGroups {
 		if eSts.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
 			continue
@@ -234,5 +243,21 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 		}
 	}
 
+	return nil
+}
+
+func (r *ReconcileBPM) createPersistentVolumeClaim(ctx context.Context, persistentVolumeClaim corev1.PersistentVolumeClaim) error {
+
+	_, err := controllerutil.CreateOrUpdate(ctx, r.client, persistentVolumeClaim.DeepCopy(), func(obj runtime.Object) error {
+		if existingPVC, ok := obj.(*corev1.PersistentVolumeClaim); ok {
+			persistentVolumeClaim.ObjectMeta.ResourceVersion = existingPVC.ObjectMeta.ResourceVersion
+			persistentVolumeClaim.DeepCopyInto(existingPVC)
+			return nil
+		}
+		return fmt.Errorf("object is not an Persistent Volume Claim")
+	})
+	if err != nil {
+		return err
+	}
 	return nil
 }

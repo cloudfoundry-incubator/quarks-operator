@@ -499,6 +499,8 @@ Each pod (for either an `ExtendedStatefulSet` or `ExtendedJob`) contains one con
 - **bosh variable secrets**
 - **user configmaps** for variables that are not generated
 - data volumes
+- **store-dir**
+  - A persistent volume claim is mounted at /var/vcap/store for each container if `persistent_disk` key in the BOSH manifest is specified.
 
 #### Entrypoints
 
