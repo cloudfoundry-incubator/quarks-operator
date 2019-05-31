@@ -15,6 +15,7 @@ spec:
     singular: extendedjob
     shortNames:
         - ejob
+        - ejobs
   scope: Namespaced
   version: v1alpha1
   validation:
