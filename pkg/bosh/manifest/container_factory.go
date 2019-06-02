@@ -109,6 +109,11 @@ func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, err
 				c.Env = append(template.Env, corev1.EnvVar{Name: name, Value: value})
 			}
 			c.WorkingDir = process.Workdir
+			c.SecurityContext = &corev1.SecurityContext{
+				Capabilities: &corev1.Capabilities{
+					Add: ToCapability(process.Capabilities),
+				},
+			}
 
 			if len(job.Properties.BOSHContainerization.Run.HealthChecks) > 0 {
 				for name, hc := range job.Properties.BOSHContainerization.Run.HealthChecks {
@@ -233,4 +238,13 @@ func createDirContainer(name string, jobs []Job) corev1.Container {
 		Command: []string{"/bin/sh"},
 		Args:    []string{"-c", "mkdir -p " + strings.Join(dirs, " ")},
 	}
+}
+
+// ToCapability converts string slice into Capability slice of kubernetes
+func ToCapability(s []string) []corev1.Capability {
+	capabilities := make([]corev1.Capability, len(s))
+	for capabilityIndex, capability := range s {
+		capabilities[capabilityIndex] = corev1.Capability(capability)
+	}
+	return capabilities
 }
