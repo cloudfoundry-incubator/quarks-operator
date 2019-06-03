@@ -3,7 +3,12 @@ package boshdeployment
 import (
 	"context"
 
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -12,12 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // AddBPM creates a new BPM Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -41,13 +40,31 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*corev1.Secret)
-			return isBPMInfoSecret(o)
+			shouldProcessEvent := isBPMInfoSecret(o)
+			if shouldProcessEvent {
+				ctxlog.WithEvent(o, "Predicates").Debugf(ctx,
+					"Secret %s creation allowed. Contains desired label %s, with value %s",
+					o.Name,
+					bdv1.LabelDeploymentSecretType,
+					o.GetLabels()[bdv1.LabelDeploymentSecretType])
+			}
+
+			return shouldProcessEvent
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectNew.(*corev1.Secret)
-			return isBPMInfoSecret(o)
+			shouldProcessEvent := isBPMInfoSecret(o)
+			if shouldProcessEvent {
+				ctxlog.WithEvent(o, "Predicates").Debugf(ctx,
+					"Secret %s update allowed. Contains desired label %s, with value %s",
+					o.Name,
+					bdv1.LabelDeploymentSecretType,
+					o.GetLabels()[bdv1.LabelDeploymentSecretType])
+			}
+
+			return shouldProcessEvent
 		},
 	}
 

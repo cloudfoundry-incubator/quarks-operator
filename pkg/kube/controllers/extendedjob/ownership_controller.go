@@ -50,7 +50,15 @@ func AddOwnership(ctx context.Context, config *config.Config, mgr manager.Manage
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectOld.(*ejv1.ExtendedJob)
 			n := e.ObjectNew.(*ejv1.ExtendedJob)
-			return n.IsAutoErrand() && (updateOnConfigChanged(n, o) || n.ToBeDeleted())
+			shouldProcessEvent := n.IsAutoErrand() && (updateOnConfigChanged(n, o) || n.ToBeDeleted())
+
+			if shouldProcessEvent {
+				ctxlog.WithEvent(n, "Predicates").Debugf(ctx,
+					"ExtendedJob %s update allowed. It either was updated or marked for deletion.",
+					n.Name)
+			}
+
+			return shouldProcessEvent
 		},
 	}
 	err = c.Watch(&source.Kind{Type: &ejv1.ExtendedJob{}}, &handler.EnqueueRequestForObject{}, p)
@@ -63,12 +71,18 @@ func AddOwnership(ctx context.Context, config *config.Config, mgr manager.Manage
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*corev1.ConfigMap)
 
-			reconcile, err := hasConfigReferences(ctx, mgr.GetClient(), *o)
+			shouldProcessEvent, err := hasConfigReferences(ctx, mgr.GetClient(), *o)
 			if err != nil {
 				ctxlog.WithEvent(o, "QueryExtendedJobError").Errorf(ctx, "Failed to query extended jobs: %s", err)
 			}
 
-			return reconcile
+			if shouldProcessEvent {
+				ctxlog.WithEvent(o, "Predicates").Debugf(ctx,
+					"Configmap %s creation allowed. It is referenced by an ExtendedJob.",
+					o.Name)
+			}
+
+			return shouldProcessEvent
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
@@ -99,7 +113,16 @@ func AddOwnership(ctx context.Context, config *config.Config, mgr manager.Manage
 			// enqueuing versioned secret which has required labels
 			enqueueForVersionedSecret := hasVersionedSecretReferences(*o)
 
-			return enqueueForReferencedSecret || enqueueForVersionedSecret
+			shouldProcessEvent := enqueueForReferencedSecret || enqueueForVersionedSecret
+
+			if shouldProcessEvent {
+				ctxlog.WithEvent(o, "Predicates").Debugf(ctx,
+					"Secret %s creation allowed. Secret is referenced by an ExtendedJob or is of the type %s.",
+					o.Name,
+					versionedsecretstore.VersionSecretKind)
+			}
+
+			return shouldProcessEvent
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },

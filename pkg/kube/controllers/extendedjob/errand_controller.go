@@ -42,7 +42,14 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			eJob := e.Object.(*ejv1.ExtendedJob)
-			return eJob.Spec.Trigger.Strategy == ejv1.TriggerNow || eJob.Spec.Trigger.Strategy == ejv1.TriggerOnce
+			shouldProcessEvent := eJob.Spec.Trigger.Strategy == ejv1.TriggerNow || eJob.Spec.Trigger.Strategy == ejv1.TriggerOnce
+			if shouldProcessEvent {
+				ctxlog.WithEvent(eJob, "Predicates").Debugf(ctx,
+					"Errand %s creation allowed. ExtendedJob trigger strategy, matches.",
+					eJob.Name)
+			}
+
+			return shouldProcessEvent
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return false
@@ -58,7 +65,15 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 
 			// enqueuing for auto-errand when referenced secrets changed
 			enqueueForConfigChange := n.IsAutoErrand() && n.Spec.UpdateOnConfigChange && hasConfigsChanged(o, n)
-			return enqueueForManualErrand || enqueueForConfigChange
+
+			shouldProcessEvent := enqueueForManualErrand || enqueueForConfigChange
+			if shouldProcessEvent {
+				ctxlog.WithEvent(n, "Predicates").Debugf(ctx,
+					"Errand %s update allowed. ExtendedJob trigger strategy, matches.",
+					n.Name)
+			}
+
+			return shouldProcessEvent
 		},
 	}
 
@@ -76,8 +91,15 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectOld.(*corev1.ConfigMap)
 			n := e.ObjectNew.(*corev1.ConfigMap)
-			reconcile := !reflect.DeepEqual(o.Data, n.Data)
-			return reconcile
+			shouldProcessEvent := !reflect.DeepEqual(o.Data, n.Data)
+
+			if shouldProcessEvent {
+				ctxlog.WithEvent(n, "Predicates").Debugf(ctx,
+					"Configmap %s update allowed. Configmap data has changed.",
+					n.Name)
+			}
+
+			return shouldProcessEvent
 		},
 	}
 	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{
@@ -99,6 +121,11 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			}
 
 			if kind, ok := secretLabels[versionedsecretstore.LabelSecretKind]; ok && kind == versionedsecretstore.VersionSecretKind {
+				ctxlog.WithEvent(o, "Predicates").Debugf(ctx,
+					"Secret %s creation allowed. Contains desired label %s, with value %s",
+					o.Name,
+					versionedsecretstore.LabelSecretKind,
+					versionedsecretstore.VersionSecretKind)
 				return true
 			}
 
@@ -109,8 +136,15 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectOld.(*corev1.Secret)
 			n := e.ObjectNew.(*corev1.Secret)
-			reconcile := !reflect.DeepEqual(o.Data, n.Data)
-			return reconcile
+			shouldProcessEvent := !reflect.DeepEqual(o.Data, n.Data)
+
+			if shouldProcessEvent {
+				ctxlog.WithEvent(n, "Predicates").Debugf(ctx,
+					"Secret %s update allowed. Secret data has changed.",
+					n.Name)
+			}
+
+			return shouldProcessEvent
 		},
 	}
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
