@@ -1,8 +1,10 @@
 package testhelper
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -16,8 +18,10 @@ func WaitForPort(host, port string, timeOut time.Duration) error {
 		go func(address string) {
 			defer wg.Done()
 			for {
-				_, err := net.Dial("tcp", address)
-				if err == nil {
+				t := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+				client := &http.Client{Transport: t}
+				r, err := client.Get(fmt.Sprintf("https://%s/readyz", address))
+				if err == nil && r.StatusCode == 200 {
 					return
 				}
 				time.Sleep(1 * time.Second)
