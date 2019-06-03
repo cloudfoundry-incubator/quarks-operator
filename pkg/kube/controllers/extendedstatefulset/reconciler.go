@@ -235,7 +235,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSets(exStatefulSet *essv1a1.ExtendedStatefulSet, actualStatefulSet *v1beta2.StatefulSet) ([]v1beta2.StatefulSet, int, error) {
 	var desiredStatefulSets []v1beta2.StatefulSet
 
-	template := exStatefulSet.Spec.Template
+	template := exStatefulSet.Spec.Template.DeepCopy()
 
 	// Place the StatefulSet in the same namespace as the ExtendedStatefulSet
 	template.SetNamespace(exStatefulSet.Namespace)
@@ -250,27 +250,6 @@ func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSets(exStatefulSe
 		return nil, 0, err
 	}
 
-	if exStatefulSet.Spec.ZoneNodeLabel == "" {
-		exStatefulSet.Spec.ZoneNodeLabel = essv1a1.DefaultZoneNodeLabel
-	}
-
-	if len(exStatefulSet.Spec.Zones) > 0 {
-		for zoneIndex, zoneName := range exStatefulSet.Spec.Zones {
-			statefulSet, err := r.generateSingleStatefulSet(exStatefulSet, &template, zoneIndex, zoneName, desiredVersion, templateSHA1)
-			if err != nil {
-				return desiredStatefulSets, desiredVersion, errors.Wrapf(err, "Could not generate StatefulSet template for AZ '%d/%s'", zoneIndex, zoneName)
-			}
-			desiredStatefulSets = append(desiredStatefulSets, *statefulSet)
-		}
-
-	} else {
-		statefulSet, err := r.generateSingleStatefulSet(exStatefulSet, &template, 0, "", desiredVersion, templateSHA1)
-		if err != nil {
-			return desiredStatefulSets, desiredVersion, errors.Wrap(err, "Could not generate StatefulSet template for single zone")
-		}
-		desiredStatefulSets = append(desiredStatefulSets, *statefulSet)
-	}
-
 	// Set version and template SHA1
 	if template.Annotations == nil {
 		template.Annotations = map[string]string{}
@@ -278,6 +257,27 @@ func (r *ReconcileExtendedStatefulSet) calculateDesiredStatefulSets(exStatefulSe
 
 	template.Annotations[essv1a1.AnnotationStatefulSetSHA1] = templateSHA1
 	template.Annotations[essv1a1.AnnotationVersion] = fmt.Sprintf("%d", desiredVersion)
+
+	if exStatefulSet.Spec.ZoneNodeLabel == "" {
+		exStatefulSet.Spec.ZoneNodeLabel = essv1a1.DefaultZoneNodeLabel
+	}
+
+	if len(exStatefulSet.Spec.Zones) > 0 {
+		for zoneIndex, zoneName := range exStatefulSet.Spec.Zones {
+			statefulSet, err := r.generateSingleStatefulSet(exStatefulSet, template, zoneIndex, zoneName, desiredVersion, templateSHA1)
+			if err != nil {
+				return desiredStatefulSets, desiredVersion, errors.Wrapf(err, "Could not generate StatefulSet template for AZ '%d/%s'", zoneIndex, zoneName)
+			}
+			desiredStatefulSets = append(desiredStatefulSets, *statefulSet)
+		}
+
+	} else {
+		statefulSet, err := r.generateSingleStatefulSet(exStatefulSet, template, 0, "", desiredVersion, templateSHA1)
+		if err != nil {
+			return desiredStatefulSets, desiredVersion, errors.Wrap(err, "Could not generate StatefulSet template for single zone")
+		}
+		desiredStatefulSets = append(desiredStatefulSets, *statefulSet)
+	}
 
 	return desiredStatefulSets, desiredVersion, nil
 }
