@@ -53,8 +53,18 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s': %v", configMap.Name, err)
 			}
 
+			shouldProcessEvent := len(reconciles) > 0
+			if shouldProcessEvent {
+				for _, reconcile := range reconciles {
+					ctxlog.WithEvent(configMap, "Predicates").Debugf(ctx,
+						"Configmap %s creation allowed. Found reconciliation for BOSHDeployment in namespace %s.",
+						configMap.Name,
+						reconcile.Namespace)
+				}
+			}
+
 			// The ConfigMap should reference at least one BOSHDeployment in order for us to consider it
-			return len(reconciles) > 0
+			return shouldProcessEvent
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
@@ -67,8 +77,18 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s': %v", newConfigMap.Name, err)
 			}
 
+			shouldProcessEvent := len(reconciles) > 0 && !reflect.DeepEqual(oldConfigMap.Data, newConfigMap.Data)
+			if shouldProcessEvent {
+				for _, reconcile := range reconciles {
+					ctxlog.WithEvent(newConfigMap, "Predicates").Debugf(ctx,
+						"Configmap %s update allowed. Found reconciliation for BOSHDeployment in namespace %s.",
+						newConfigMap.Name,
+						reconcile.Namespace)
+				}
+			}
+
 			// The ConfigMap should reference at least one BOSHDeployment in order for us to consider it
-			return len(reconciles) > 0 && !reflect.DeepEqual(oldConfigMap.Data, newConfigMap.Data)
+			return shouldProcessEvent
 		},
 	}
 	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestsFromMapFunc{
@@ -96,8 +116,19 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", secret.Name, err)
 			}
 
+			shouldProcessEvent := len(reconciles) > 1
+			if shouldProcessEvent {
+				for _, reconcile := range reconciles {
+					ctxlog.WithEvent(secret, "Predicates").Debugf(ctx,
+						"Secret %s creation allowed. Found reconciliation for BOSHDeployment in namespace %s.",
+						secret.Name,
+						reconcile.Namespace)
+				}
+
+			}
+
 			// The Secret should reference at least one BOSHDeployment in order for us to consider it
-			return len(reconciles) > 1
+			return shouldProcessEvent
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
@@ -110,7 +141,17 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", newSecret.Name, err)
 			}
 
-			return len(reconciles) > 1 && !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
+			shouldProcessEvent := len(reconciles) > 1 && !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
+			if shouldProcessEvent {
+				for _, reconcile := range reconciles {
+					ctxlog.WithEvent(newSecret, "Predicates").Debugf(ctx,
+						"Secret %s update allowed. Found reconciliation for BOSHDeployment in namespace %s.",
+						newSecret.Name,
+						reconcile.Namespace)
+				}
+			}
+
+			return shouldProcessEvent
 		},
 	}
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{

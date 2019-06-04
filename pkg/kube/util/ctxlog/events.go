@@ -18,6 +18,7 @@ type event struct {
 // EventLogger adds events and writes logs
 type EventLogger interface {
 	Infof(context.Context, string, ...interface{})
+	Debugf(context.Context, string, ...interface{})
 	Errorf(context.Context, string, ...interface{}) error
 	Error(context.Context, ...interface{}) error
 }
@@ -25,6 +26,15 @@ type EventLogger interface {
 // WithEvent returns a struct to provide event enhanced logging methods
 func WithEvent(object runtime.Object, reason string) EventLogger {
 	return event{object: object, reason: reason}
+}
+
+// Debugf logs and adds an info event
+func (ev event) Debugf(ctx context.Context, format string, v ...interface{}) {
+	log := ExtractLogger(ctx)
+	log.Debugf(format, v...)
+
+	recorder := ExtractRecorder(ctx)
+	recorder.Eventf(ev.object, corev1.EventTypeNormal, ev.reason, format, v...)
 }
 
 // Infof logs and adds an info event

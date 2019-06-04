@@ -41,13 +41,23 @@ func AddJob(ctx context.Context, config *config.Config, mgr manager.Manager) err
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if !e.ObjectNew.(*batchv1.Job).GetDeletionTimestamp().IsZero() {
+			o := e.ObjectNew.(*batchv1.Job)
+			if !o.GetDeletionTimestamp().IsZero() {
 				return false
 			}
+
 			if !isEJobJob(e.MetaNew.GetLabels()) {
 				return false
 			}
-			return e.ObjectNew.(*batchv1.Job).Status.Succeeded == 1 || e.ObjectNew.(*batchv1.Job).Status.Failed == 1
+
+			shouldProcessEvent := o.Status.Succeeded == 1 || o.Status.Failed == 1
+			if shouldProcessEvent {
+				ctxlog.WithEvent(o, "Predicates").Debugf(ctx,
+					"Job %s update allowed. Job has changed to a final state, either succeeded or failed.",
+					o.Name)
+			}
+
+			return shouldProcessEvent
 		},
 	}
 	return jobController.Watch(&source.Kind{Type: &batchv1.Job{}}, &handler.EnqueueRequestForObject{}, predicate)
