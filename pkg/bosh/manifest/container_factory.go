@@ -64,76 +64,6 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job) ([]corev1.Container,
 
 // JobsToContainers creates a list of Containers for corev1.PodSpec Containers field
 func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, error) {
-	generateJobContainers := func(job Job, jobImage string) ([]corev1.Container, error) {
-		boshJobName := job.Name
-		containers := []corev1.Container{}
-		template := corev1.Container{
-			Name:  fmt.Sprintf(job.Name),
-			Image: jobImage,
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "rendering-data",
-					MountPath: "/var/vcap/all-releases",
-				},
-				{
-					Name:      "jobs-dir",
-					MountPath: "/var/vcap/jobs",
-				},
-				{
-					Name:      "data-dir",
-					MountPath: "/var/vcap/data",
-				},
-				{
-					Name:      "sys-dir",
-					MountPath: "/var/vcap/sys",
-				},
-			},
-		}
-
-		bpmConfig, ok := c.bpmConfigs[boshJobName]
-		if !ok {
-			return containers, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", boshJobName)
-		}
-
-		if len(bpmConfig.Processes) < 1 {
-			return containers, errors.New("bpm info has no processes")
-		}
-
-		for _, process := range bpmConfig.Processes {
-			c := template.DeepCopy()
-
-			c.Name = fmt.Sprintf("%s-%s", boshJobName, process.Name)
-			c.Command = []string{process.Executable}
-			c.Args = process.Args
-			for name, value := range process.Env {
-				c.Env = append(template.Env, corev1.EnvVar{Name: name, Value: value})
-			}
-			c.WorkingDir = process.Workdir
-			c.SecurityContext = &corev1.SecurityContext{
-				Capabilities: &corev1.Capabilities{
-					Add: ToCapability(process.Capabilities),
-				},
-			}
-
-			if len(job.Properties.BOSHContainerization.Run.HealthChecks) > 0 {
-				for name, hc := range job.Properties.BOSHContainerization.Run.HealthChecks {
-					if name == process.Name {
-						if hc.ReadinessProbe != nil {
-							c.ReadinessProbe = hc.ReadinessProbe
-						}
-						if hc.LivenessProbe != nil {
-							c.LivenessProbe = hc.LivenessProbe
-						}
-					}
-				}
-			}
-
-			containers = append(containers, *c)
-		}
-
-		return containers, nil
-	}
-
 	var containers []corev1.Container
 
 	if len(jobs) == 0 {
@@ -146,13 +76,83 @@ func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, err
 			return []corev1.Container{}, err
 		}
 
-		processes, err := generateJobContainers(job, jobImage)
+		processes, err := c.generateJobContainers(job, jobImage)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to apply bpm information on bosh job '%s', instance group '%s'", job.Name, c.igName)
 		}
 
 		containers = append(containers, processes...)
 	}
+	return containers, nil
+}
+
+func (c *ContainerFactory) generateJobContainers(job Job, jobImage string) ([]corev1.Container, error) {
+	boshJobName := job.Name
+	containers := []corev1.Container{}
+	template := corev1.Container{
+		Name:  fmt.Sprintf(job.Name),
+		Image: jobImage,
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "rendering-data",
+				MountPath: "/var/vcap/all-releases",
+			},
+			{
+				Name:      "jobs-dir",
+				MountPath: "/var/vcap/jobs",
+			},
+			{
+				Name:      "data-dir",
+				MountPath: "/var/vcap/data",
+			},
+			{
+				Name:      "sys-dir",
+				MountPath: "/var/vcap/sys",
+			},
+		},
+	}
+
+	bpmConfig, ok := c.bpmConfigs[boshJobName]
+	if !ok {
+		return containers, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", boshJobName)
+	}
+
+	if len(bpmConfig.Processes) < 1 {
+		return containers, errors.New("bpm info has no processes")
+	}
+
+	for _, process := range bpmConfig.Processes {
+		container := template.DeepCopy()
+
+		container.Name = fmt.Sprintf("%s-%s", boshJobName, process.Name)
+		container.Command = []string{process.Executable}
+		container.Args = process.Args
+		for name, value := range process.Env {
+			container.Env = append(template.Env, corev1.EnvVar{Name: name, Value: value})
+		}
+		container.WorkingDir = process.Workdir
+		container.SecurityContext = &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Add: ToCapability(process.Capabilities),
+			},
+		}
+
+		if len(job.Properties.BOSHContainerization.Run.HealthChecks) > 0 {
+			for name, hc := range job.Properties.BOSHContainerization.Run.HealthChecks {
+				if name == process.Name {
+					if hc.ReadinessProbe != nil {
+						container.ReadinessProbe = hc.ReadinessProbe
+					}
+					if hc.LivenessProbe != nil {
+						container.LivenessProbe = hc.LivenessProbe
+					}
+				}
+			}
+		}
+
+		containers = append(containers, *container)
+	}
+
 	return containers, nil
 }
 
