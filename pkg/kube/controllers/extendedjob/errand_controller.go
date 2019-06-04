@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -108,6 +110,10 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			cm := a.Object.(*corev1.ConfigMap)
 
+			if skipCMReconciles(ctx, mgr.GetClient(), cm) {
+				return []reconcile.Request{}
+			}
+
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedJob, cm)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for config '%s': %v", cm.Name, err)
@@ -146,6 +152,10 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			s := a.Object.(*corev1.Secret)
+
+			if skipSecretReconciles(ctx, mgr.GetClient(), s) {
+				return []reconcile.Request{}
+			}
 
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedJob, s)
 			if err != nil {
@@ -197,5 +207,35 @@ func isLowerVersion(oldSecrets map[string]struct{}, secretPrefix string, newVers
 	}
 
 	// if not found in old secrets, it's a new versioned secret
+	return false
+}
+
+// skipCMReconciles gets the cm resource again. We want to skip if this is the mapAndEnqueue for ObjectOld
+func skipCMReconciles(ctx context.Context, client client.Client, obj *corev1.ConfigMap) bool {
+	n := &corev1.ConfigMap{}
+	err := client.Get(ctx, types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, n)
+	if err != nil {
+		ctxlog.Errorf(ctx, "Failed to get config map '%s': %s", obj.Name, err)
+		return true
+	}
+	if obj.ObjectMeta.ResourceVersion != n.ObjectMeta.ResourceVersion {
+		ctxlog.Debugf(ctx, "skip reconcile request for old resource version of '%s'", obj.Name)
+		return true
+	}
+	return false
+}
+
+// skipSecretReconciles gets the secret resource again. We want to skip if this is the mapAndEnqueue for ObjectOld
+func skipSecretReconciles(ctx context.Context, client client.Client, obj *corev1.Secret) bool {
+	n := &corev1.Secret{}
+	err := client.Get(ctx, types.NamespacedName{Name: obj.Name, Namespace: obj.Namespace}, n)
+	if err != nil {
+		ctxlog.Errorf(ctx, "Failed to get config map '%s': %s", obj.Name, err)
+		return true
+	}
+	if obj.ObjectMeta.ResourceVersion != n.ObjectMeta.ResourceVersion {
+		ctxlog.Debugf(ctx, "skip reconcile request for old resource version of '%s'", obj.Name)
+		return true
+	}
 	return false
 }
