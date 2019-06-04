@@ -377,10 +377,10 @@ Bosh             | Kube Pod Container |
 --------------- | ---- |
 `workdir`             | `workingDir`. Not Supported. |
 `hooks`               | `Not Supported` |
-`capabilities`        | `container.SecurityContext.Capabilities`. Not yet supported.  |
+`process.capabilities`| `container.SecurityContext.Capabilities`.  |
 `limits`              | `container.Resources.Limits`. Not yet supported. |
 `ephermeral_disk`     | Not Supported. |
-`persistent_disk`     | Supported. |
+`persistent_disk`     | Not Supported. |
 `additional_volumes`  | maps to `VolumeClaimTemplates` which creates Persistent Volume claims in kube cluster. Not yet supported. |
 `unsafe`              | Unmapped to Kubernetes resources. Can be programmatically supported. Not yet supported. |
 
