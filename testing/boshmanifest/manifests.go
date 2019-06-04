@@ -28,6 +28,14 @@ instance_groups:
       - name: "redis"
         protocol: "TCP"
         internal: 6379
+  env:
+    bosh:
+      agent:
+        settings:
+          labels:
+            custom-label: foo
+          annotations:
+            custom-annotation: bar
 - name: diego-cell
   azs:
   - z1

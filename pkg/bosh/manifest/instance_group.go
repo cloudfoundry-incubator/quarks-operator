@@ -96,7 +96,7 @@ type JobDir struct {
 	TmpfsSize string `yaml:"tmpfs_size,omitempty"`
 }
 
-// Agent from BOSH deployment manifest
+// AgentSettings from BOSH deployment manifest. These annotations and labels are added to kube resources
 type AgentSettings struct {
 	Annotations map[string]string `yaml:"annotations,omitempty"`
 	Labels      map[string]string `yaml:"labels,omitempty"`
