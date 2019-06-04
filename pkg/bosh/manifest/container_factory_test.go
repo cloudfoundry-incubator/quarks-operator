@@ -42,7 +42,10 @@ var _ = Describe("ContainerFactory", func() {
 				},
 				"other-job": bpm.Config{
 					Processes: []bpm.Process{
-						bpm.Process{Name: "fake-process"},
+						bpm.Process{
+							Name:         "fake-process",
+							Capabilities: []string{"CHOWN", "AUDIT_CONTROL"},
+						},
 					},
 				},
 			}
@@ -65,6 +68,13 @@ var _ = Describe("ContainerFactory", func() {
 					MountPropagation: nil,
 				}))
 
+		})
+
+		It("adds linux capabilities to containers", func() {
+			containers, err := act()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(containers[1].SecurityContext.Capabilities.Add[0])).To(Equal("CHOWN"))
+			Expect(string(containers[1].SecurityContext.Capabilities.Add[1])).To(Equal("AUDIT_CONTROL"))
 		})
 	})
 
