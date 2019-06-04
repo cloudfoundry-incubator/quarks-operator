@@ -514,6 +514,10 @@ var _ = Describe("ExtendedJob", func() {
 						env.MultiContainerPodTemplate([]string{"echo", `{"foo": "1", "bar": "baz"}`}))
 				})
 
+				AfterEach(func() {
+					env.DeleteSecrets(env.Namespace)
+				})
+
 				It("persists output when output persistence is configured", func() {
 					_, tearDown, err := env.CreateExtendedJob(env.Namespace, *oej)
 					Expect(err).NotTo(HaveOccurred())
@@ -689,6 +693,7 @@ var _ = Describe("ExtendedJob", func() {
 							Expect(err).NotTo(HaveOccurred())
 							defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
+							By("triggering the eJob")
 							tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
 							Expect(err).NotTo(HaveOccurred())
 							defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
@@ -704,6 +709,7 @@ var _ = Describe("ExtendedJob", func() {
 							Expect(err).NotTo(HaveOccurred())
 							defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
+							By("triggering the eJob")
 							tearDown, err = env.CreatePod(env.Namespace, env.LabeledPod("foo", testLabels("key", "value")))
 							Expect(err).NotTo(HaveOccurred())
 							defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)

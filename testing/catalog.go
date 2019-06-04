@@ -608,6 +608,9 @@ func (c *Catalog) CmdPodTemplate(cmd []string) corev1.PodTemplateSpec {
 func (c *Catalog) ConfigPodTemplate() corev1.PodTemplateSpec {
 	one := int64(1)
 	return corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{"delete": "pod"},
+		},
 		Spec: corev1.PodSpec{
 			RestartPolicy:                 corev1.RestartPolicyNever,
 			TerminationGracePeriodSeconds: &one,

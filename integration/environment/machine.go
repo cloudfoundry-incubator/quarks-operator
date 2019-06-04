@@ -57,7 +57,8 @@ func (m *Machine) CreateNamespace(namespace string) (TearDownFunc, error) {
 	return func() error {
 		b := metav1.DeletePropagationBackground
 		err := client.Delete(ns.GetName(), &metav1.DeleteOptions{
-			GracePeriodSeconds: util.Int64(0),
+			// this is run in aftersuite before failhandler, so let's keep the namespace for a few seconds
+			GracePeriodSeconds: util.Int64(5),
 			PropagationPolicy:  &b,
 		})
 		if err != nil && !apierrors.IsNotFound(err) {
@@ -543,6 +544,19 @@ func (m *Machine) SecretExists(namespace string, name string) (bool, error) {
 			return false, nil
 		}
 		return false, errors.Wrapf(err, "failed to query for secret by name: %s", name)
+	}
+
+	return true, nil
+}
+
+// DeleteSecrets deletes all the secrets
+func (m *Machine) DeleteSecrets(namespace string) (bool, error) {
+	err := m.Clientset.CoreV1().Secrets(namespace).DeleteCollection(
+		&metav1.DeleteOptions{},
+		metav1.ListOptions{},
+	)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to delete all secrets in namespace: %s", namespace)
 	}
 
 	return true, nil
