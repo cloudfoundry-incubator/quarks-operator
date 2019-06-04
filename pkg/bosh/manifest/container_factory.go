@@ -46,7 +46,7 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job) ([]corev1.Container,
 		if err != nil {
 			return []corev1.Container{}, err
 		}
-		initContainers = append(initContainers, jobSpecCopierContainer(job.Release, releaseImage, "rendering-data"))
+		initContainers = append(initContainers, jobSpecCopierContainer(job.Release, releaseImage, VolumeRenderingDataName))
 
 	}
 
@@ -94,20 +94,20 @@ func (c *ContainerFactory) generateJobContainers(job Job, jobImage string) ([]co
 		Image: jobImage,
 		VolumeMounts: []corev1.VolumeMount{
 			{
-				Name:      "rendering-data",
-				MountPath: "/var/vcap/all-releases",
+				Name:      VolumeRenderingDataName,
+				MountPath: VolumeRenderingDataMountPath,
 			},
 			{
-				Name:      "jobs-dir",
-				MountPath: "/var/vcap/jobs",
+				Name:      VolumeJobsDirName,
+				MountPath: VolumeJobsDirMountPath,
 			},
 			{
-				Name:      "data-dir",
-				MountPath: "/var/vcap/data",
+				Name:      VolumeDataDirName,
+				MountPath: VolumeDataDirMountPath,
 			},
 			{
-				Name:      "sys-dir",
-				MountPath: "/var/vcap/sys",
+				Name:      VolumeSysDirName,
+				MountPath: VolumeSysDirMountPath,
 			},
 		},
 	}
@@ -158,20 +158,20 @@ func (c *ContainerFactory) generateJobContainers(job Job, jobImage string) ([]co
 
 // jobSpecCopierContainer will return a corev1.Container{} with the populated field
 func jobSpecCopierContainer(releaseName string, releaseImage string, volumeMountName string) corev1.Container {
-	inContainerReleasePath := filepath.Join("/var/vcap/all-releases/jobs-src", releaseName)
+	inContainerReleasePath := filepath.Join(VolumeRenderingDataMountPath, "jobs-src", releaseName)
 	return corev1.Container{
 		Name:  fmt.Sprintf("spec-copier-%s", releaseName),
 		Image: releaseImage,
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      volumeMountName,
-				MountPath: "/var/vcap/all-releases",
+				MountPath: VolumeRenderingDataMountPath,
 			},
 		},
 		Command: []string{
 			"bash",
 			"-c",
-			fmt.Sprintf(`mkdir -p "%s" && cp -ar /var/vcap/jobs-src/* "%s"`, inContainerReleasePath, inContainerReleasePath),
+			fmt.Sprintf(`mkdir -p "%s" && cp -ar %s/* "%s"`, inContainerReleasePath, VolumeJobsSrcDirMountPath, inContainerReleasePath),
 		},
 	}
 }
@@ -182,12 +182,12 @@ func templateRenderingContainer(name string, secretName string) corev1.Container
 		Image: GetOperatorDockerImage(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
-				Name:      "rendering-data",
-				MountPath: "/var/vcap/all-releases",
+				Name:      VolumeRenderingDataName,
+				MountPath: VolumeRenderingDataMountPath,
 			},
 			{
-				Name:      "jobs-dir",
-				MountPath: "/var/vcap/jobs",
+				Name:      VolumeJobsDirName,
+				MountPath: VolumeJobsDirMountPath,
 			},
 			{
 				Name:      generateVolumeName(secretName),
@@ -206,7 +206,7 @@ func templateRenderingContainer(name string, secretName string) corev1.Container
 			},
 			{
 				Name:  "JOBS_DIR",
-				Value: "/var/vcap/all-releases",
+				Value: VolumeRenderingDataMountPath,
 			},
 		},
 		Args: []string{"util", "template-render"},
@@ -225,12 +225,12 @@ func createDirContainer(name string, jobs []Job) corev1.Container {
 		Image: GetOperatorDockerImage(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
-				Name:      "data-dir",
-				MountPath: "/var/vcap/data",
+				Name:      VolumeDataDirName,
+				MountPath: VolumeDataDirMountPath,
 			},
 			{
-				Name:      "sys-dir",
-				MountPath: "/var/vcap/sys",
+				Name:      VolumeSysDirName,
+				MountPath: VolumeSysDirMountPath,
 			},
 		},
 		Env:     []corev1.EnvVar{},

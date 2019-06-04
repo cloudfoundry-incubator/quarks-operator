@@ -61,9 +61,9 @@ var _ = Describe("ContainerFactory", func() {
 			Expect(containers).To(HaveLen(2))
 			Expect(containers[0].VolumeMounts).To(ContainElement(
 				corev1.VolumeMount{
-					Name:             "sys-dir",
+					Name:             VolumeSysDirName,
 					ReadOnly:         false,
-					MountPath:        "/var/vcap/sys",
+					MountPath:        VolumeSysDirMountPath,
 					SubPath:          "",
 					MountPropagation: nil,
 				}))

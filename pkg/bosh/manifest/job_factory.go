@@ -226,7 +226,7 @@ func (f *JobFactory) gatheringContainer(cmd, instanceGroupName string) corev1.Co
 			},
 			{
 				Name:      generateVolumeName("data-gathering"),
-				MountPath: "/var/vcap/all-releases",
+				MountPath: VolumeRenderingDataMountPath,
 			},
 		},
 		Env: []corev1.EnvVar{
@@ -240,7 +240,7 @@ func (f *JobFactory) gatheringContainer(cmd, instanceGroupName string) corev1.Co
 			},
 			{
 				Name:  "BASE_DIR",
-				Value: "/var/vcap/all-releases",
+				Value: VolumeRenderingDataMountPath,
 			},
 			{
 				Name:  "INSTANCE_GROUP_NAME",
