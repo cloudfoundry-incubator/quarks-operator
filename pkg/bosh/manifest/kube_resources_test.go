@@ -66,6 +66,8 @@ var _ = Describe("kube converter", func() {
 					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
 					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, m.InstanceGroups[0].Name))
 					Expect(eJob.GetAnnotations()).To(HaveKeyWithValue(manifest.AnnotationDeploymentVersion, "1"))
+					Expect(eJob.GetLabels()).To(HaveKeyWithValue("custom-label", "foo"))
+					Expect(eJob.GetAnnotations()).To(HaveKeyWithValue("custom-annotation", "bar"))
 
 					specCopierInitContainer := eJob.Spec.Template.Spec.InitContainers[0]
 					rendererInitContainer := eJob.Spec.Template.Spec.InitContainers[1]

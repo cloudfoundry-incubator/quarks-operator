@@ -828,6 +828,30 @@ var _ = Describe("Bosh Manifest Schema", func() {
 		})
 	})
 
+	Describe("AgentSettings", func() {
+		var agentSettings *AgentSettings
+
+		BeforeEach(func() {
+			agentSettings = &AgentSettings{}
+		})
+
+		Describe("Settings", func() {
+			It("contains desired values", func() {
+				Expect(getStructTagForName("Annotations", agentSettings)).To(Equal(
+					`yaml:"annotations,omitempty"`,
+				))
+			})
+		})
+
+		Describe("Tmpfs", func() {
+			It("contains desired values", func() {
+				Expect(getStructTagForName("Labels", agentSettings)).To(Equal(
+					`yaml:"labels,omitempty"`,
+				))
+			})
+		})
+	})
+
 	Describe("JobDir", func() {
 		var jobDir *JobDir
 
