@@ -69,6 +69,10 @@ func Add(ctx context.Context, config *config.Config, mgr manager.Manager) error 
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			config := a.Object.(*corev1.ConfigMap)
 
+			if reference.SkipReconciles(ctx, mgr.GetClient(), config) {
+				return []reconcile.Request{}
+			}
+
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, config)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s': %v", config.Name, err)
@@ -110,6 +114,10 @@ func Add(ctx context.Context, config *config.Config, mgr manager.Manager) error 
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			secret := a.Object.(*corev1.Secret)
+
+			if reference.SkipReconciles(ctx, mgr.GetClient(), secret) {
+				return []reconcile.Request{}
+			}
 
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, secret)
 			if err != nil {
