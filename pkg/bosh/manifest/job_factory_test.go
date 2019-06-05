@@ -59,7 +59,7 @@ var _ = Describe("JobFactory", func() {
 		It("has one bpm-configs container per instance group", func() {
 			Expect(len(spec.Containers)).To(Equal(len(m.InstanceGroups)))
 			Expect(spec.Containers[0].Name).To(Equal(m.InstanceGroups[0].Name))
-			Expect(spec.Containers[0].Args).To(ContainElement("cf-operator util bpm-configs"))
+			Expect(spec.Containers[0].Args).To(Equal([]string{"util", "bpm-configs"}))
 		})
 	})
 
