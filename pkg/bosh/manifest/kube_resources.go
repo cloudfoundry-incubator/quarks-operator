@@ -11,7 +11,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
@@ -21,15 +20,6 @@ const (
 	// VarInterpolationContainerName is the name of the container that performs
 	// variable interpolation for a manifest
 	VarInterpolationContainerName = "interpolation"
-)
-
-var (
-	// LabelDeploymentName is the name of a label for the deployment name
-	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
-	// LabelInstanceGroupName is the name of a label for an instance group name
-	LabelInstanceGroupName = fmt.Sprintf("%s/instance-group-name", apis.GroupName)
-	// AnnotationDeploymentVersion is the annotation key for deployment version
-	AnnotationDeploymentVersion = fmt.Sprintf("%s/deployment-version", apis.GroupName)
 )
 
 // ReleaseImageProvider interface to provide the docker release image for a BOSH job
@@ -52,19 +42,7 @@ type BPMResources struct {
 func (kc *KubeConverter) BPMResources(manifestName string, version string, instanceGroup *InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) (*BPMResources, error) {
 	res := &BPMResources{}
 
-	// Override labels and annotations with operator-owned metadata
-	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels == nil {
-		instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels = map[string]string{}
-	}
-
-	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels[LabelDeploymentName] = manifestName
-	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels[LabelInstanceGroupName] = instanceGroup.Name
-
-	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations == nil {
-		instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations = map[string]string{}
-	}
-
-	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations[AnnotationDeploymentVersion] = version
+	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(manifestName, instanceGroup.Name, version)
 
 	cfac := NewContainerFactory(manifestName, instanceGroup.Name, releaseImageProvider, bpmConfigs)
 
