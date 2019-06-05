@@ -100,55 +100,7 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, version strin
 		return essv1.ExtendedStatefulSet{}, err
 	}
 
-	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeManifestAndVars,
-		manifestName,
-		VarInterpolationContainerName,
-		true,
-	)
-	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
-		manifestName,
-		ig.Name,
-		true,
-	)
-
-	volumes := []corev1.Volume{
-		{
-			Name:         VolumeRenderingDataName,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name:         VolumeJobsDirName,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		// for ephemeral job data
-		// https://bosh.io/docs/vm-config/#jobs-and-packages
-		{
-			Name:         VolumeDataDirName,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name:         VolumeSysDirName,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name: generateVolumeName(interpolatedManifestSecretName),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: interpolatedManifestSecretName,
-				},
-			},
-		},
-		{
-			Name: generateVolumeName(resolvedPropertiesSecretName),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: resolvedPropertiesSecretName,
-				},
-			},
-		},
-	}
+	volumes := igVolumes(manifestName, ig.Name)
 
 	containers, err := cfac.JobsToContainers(ig.Jobs)
 	if err != nil {
@@ -295,45 +247,7 @@ func (kc *KubeConverter) errandToExtendedJob(manifestName string, version string
 		return ejv1.ExtendedJob{}, err
 	}
 
-	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeManifestAndVars,
-		manifestName,
-		VarInterpolationContainerName,
-		true,
-	)
-	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
-		manifestName,
-		ig.Name,
-		true,
-	)
-
-	volumes := []corev1.Volume{
-		{
-			Name:         VolumeRenderingDataName,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name:         VolumeJobsDirName,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name: generateVolumeName(interpolatedManifestSecretName),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: interpolatedManifestSecretName,
-				},
-			},
-		},
-		{
-			Name: generateVolumeName(resolvedPropertiesSecretName),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: resolvedPropertiesSecretName,
-				},
-			},
-		},
-	}
+	volumes := igVolumes(manifestName, ig.Name)
 
 	containers, err := cfac.JobsToContainers(ig.Jobs)
 	if err != nil {
@@ -434,6 +348,58 @@ func (kc *KubeConverter) addVolumeSpecs(podSpec *corev1.PodSpec, disks []corev1.
 		podSpec.Volumes = append(podSpec.Volumes, pvcVolume)
 	}
 	return *podSpec
+}
+
+func igVolumes(manifestName, igName string) []corev1.Volume {
+	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeManifestAndVars,
+		manifestName,
+		VarInterpolationContainerName,
+		true,
+	)
+	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+		manifestName,
+		igName,
+		true,
+	)
+
+	return []corev1.Volume{
+		{
+			Name:         VolumeRenderingDataName,
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name:         VolumeJobsDirName,
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		},
+		// for ephemeral job data
+		// https://bosh.io/docs/vm-config/#jobs-and-packages
+		{
+			Name:         VolumeDataDirName,
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name:         VolumeSysDirName,
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name: generateVolumeName(interpolatedManifestSecretName),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: interpolatedManifestSecretName,
+				},
+			},
+		},
+		{
+			Name: generateVolumeName(resolvedPropertiesSecretName),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: resolvedPropertiesSecretName,
+				},
+			},
+		},
+	}
 }
 
 // generateVolumeName generate volume name based on secret name
