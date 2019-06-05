@@ -83,13 +83,43 @@ var _ = Describe("ContainerFactory", func() {
 			return cf.JobsToInitContainers(jobs)
 		}
 
-		It("generates per job directories", func() {
-			containers, err := act()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(containers).To(HaveLen(3))
-			Expect(containers[2].Name).To(Equal("create-dirs-fake-ig"))
-			Expect(containers[2].Args).To(ContainElement("mkdir -p /var/vcap/data/fake-job /var/vcap/data/sys/log/fake-job /var/vcap/data/sys/run/fake-job /var/vcap/sys/log/fake-job /var/vcap/sys/run/fake-job /var/vcap/data/other-job /var/vcap/data/sys/log/other-job /var/vcap/data/sys/run/other-job /var/vcap/sys/log/other-job /var/vcap/sys/run/other-job"))
-			Expect(containers[2].VolumeMounts).To(HaveLen(2))
+		Context("when multiple jobs are configured", func() {
+			BeforeEach(func() {
+				bpmConfigs = bpm.Configs{
+					"fake-job":  bpm.Config{},
+					"other-job": bpm.Config{},
+				}
+			})
+
+			It("generates per job directories", func() {
+				containers, err := act()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(containers).To(HaveLen(3))
+				Expect(containers[2].Name).To(Equal("create-dirs-fake-ig"))
+				Expect(containers[2].Args).To(ContainElement("mkdir -p /var/vcap/data/fake-job /var/vcap/data/sys/log/fake-job /var/vcap/data/sys/run/fake-job /var/vcap/sys/log/fake-job /var/vcap/sys/run/fake-job /var/vcap/data/other-job /var/vcap/data/sys/log/other-job /var/vcap/data/sys/run/other-job /var/vcap/sys/log/other-job /var/vcap/sys/run/other-job"))
+				Expect(containers[2].VolumeMounts).To(HaveLen(2))
+			})
 		})
+
+		Context("when hooks are present", func() {
+			BeforeEach(func() {
+				bpmConfigs = bpm.Configs{
+					"fake-job": bpm.Config{
+						Processes: []bpm.Process{
+							bpm.Process{Name: "fake-process", Hooks: bpm.Hooks{PreStart: "fake-cmd"}},
+						},
+					},
+					"other-job": bpm.Config{},
+				}
+			})
+
+			It("adds the pre start init container", func() {
+				containers, err := act()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(containers).To(HaveLen(4))
+				Expect(containers[3].Command).To(ContainElement("fake-cmd"))
+			})
+		})
+
 	})
 })

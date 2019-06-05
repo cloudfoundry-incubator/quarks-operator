@@ -107,7 +107,7 @@ func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Data: map[string]string{
-			"manifest": bm.Small,
+			"manifest": bm.NatsSmall,
 		},
 	}
 }
