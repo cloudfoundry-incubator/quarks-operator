@@ -109,7 +109,7 @@ name: fake-deployment-v4
 		ctx = testing.NewContext()
 	})
 
-	Describe("UpdateSecretReferences", func() {
+	Describe("SetSecretReferences", func() {
 		Context("when there is an extendedStatefulSet", func() {
 			var (
 				podSpec *corev1.PodSpec
@@ -168,7 +168,7 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				err := store.UpdateSecretReferences(ctx, namespace, podSpec)
+				err := store.SetSecretReferences(ctx, namespace, podSpec)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Only one secret reference and it latest version
@@ -210,7 +210,7 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				err := store.UpdateSecretReferences(ctx, namespace, podSpec)
+				err := store.SetSecretReferences(ctx, namespace, podSpec)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Only one secret reference and it latest version
@@ -237,7 +237,7 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				err := store.UpdateSecretReferences(ctx, namespace, podSpec)
+				err := store.SetSecretReferences(ctx, namespace, podSpec)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to get latest versioned secret %s in namespace %s", secretNamePrefix, namespace))
 			})

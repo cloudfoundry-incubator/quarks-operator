@@ -48,7 +48,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		CreateFunc: func(e event.CreateEvent) bool {
 			configMap := e.Object.(*corev1.ConfigMap)
 
-			reconciles, err := reference.GetReconciles(ctx, mgr, reference.ReconcileForBOSHDeployment, configMap, config.Namespace)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, configMap)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s': %v", configMap.Name, err)
 			}
@@ -72,7 +72,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			oldConfigMap := e.ObjectOld.(*corev1.ConfigMap)
 			newConfigMap := e.ObjectNew.(*corev1.ConfigMap)
 
-			reconciles, err := reference.GetReconciles(ctx, mgr, reference.ReconcileForBOSHDeployment, newConfigMap, config.Namespace)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, newConfigMap)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s': %v", newConfigMap.Name, err)
 			}
@@ -95,7 +95,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			config := a.Object.(*corev1.ConfigMap)
 
-			reconciles, err := reference.GetReconciles(ctx, mgr, reference.ReconcileForBOSHDeployment, config, config.Namespace)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, config)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for config '%s': %v", config.Name, err)
 			}
@@ -111,7 +111,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	secretPredicates := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			secret := e.Object.(*corev1.Secret)
-			reconciles, err := reference.GetReconciles(ctx, mgr, reference.ReconcileForBOSHDeployment, secret, config.Namespace)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, secret)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", secret.Name, err)
 			}
@@ -136,7 +136,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			oldSecret := e.ObjectOld.(*corev1.Secret)
 			newSecret := e.ObjectNew.(*corev1.Secret)
 
-			reconciles, err := reference.GetReconciles(ctx, mgr, reference.ReconcileForBOSHDeployment, newSecret, config.Namespace)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, newSecret)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", newSecret.Name, err)
 			}
@@ -158,7 +158,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			secret := a.Object.(*corev1.Secret)
 
-			reconciles, err := reference.GetReconciles(ctx, mgr, reference.ReconcileForBOSHDeployment, secret, config.Namespace)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, secret)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", secret.Name, err)
 			}

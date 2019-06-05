@@ -40,10 +40,9 @@ var _ = Describe("ErrandReconciler", func() {
 			mgr        *fakes.FakeManager
 			request    reconcile.Request
 			reconciler reconcile.Reconciler
-			owner      *fakes.FakeOwner
 
 			runtimeObjects             []runtime.Object
-			eJob                      ejv1.ExtendedJob
+			eJob                       ejv1.ExtendedJob
 			setOwnerReferenceCallCount int
 		)
 
@@ -74,7 +73,6 @@ var _ = Describe("ErrandReconciler", func() {
 				config,
 				mgr,
 				setOwnerReference,
-				owner,
 			)
 		})
 
@@ -85,7 +83,6 @@ var _ = Describe("ErrandReconciler", func() {
 		BeforeEach(func() {
 			controllers.AddToScheme(scheme.Scheme)
 			mgr = &fakes.FakeManager{}
-			owner = &fakes.FakeOwner{}
 			setOwnerReferenceCallCount = 0
 			logs, log = helper.NewTestLogger()
 		})
@@ -259,12 +256,10 @@ var _ = Describe("ErrandReconciler", func() {
 					request = newRequest(eJob)
 				})
 
-				It("should  watch configs and trigger the job", func() {
+				It("should trigger the job", func() {
 					result, err := act()
 					Expect(err).ToNot(HaveOccurred())
 					Expect(result.Requeue).To(BeFalse())
-
-					Expect(owner.SyncCallCount()).To(Equal(1))
 
 					obj := &batchv1.JobList{}
 					err = client.List(context.Background(), &crc.ListOptions{}, obj)
@@ -281,14 +276,6 @@ var _ = Describe("ErrandReconciler", func() {
 					)
 					Expect(eJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
 
-				})
-
-				It("adds missing finalizer", func() {
-					_, err := act()
-					Expect(err).NotTo(HaveOccurred())
-					ejob := &ejv1.ExtendedJob{}
-					client.Get(context.Background(), request.NamespacedName, ejob)
-					Expect(ejob.GetFinalizers()).NotTo(BeEmpty())
 				})
 			})
 		})

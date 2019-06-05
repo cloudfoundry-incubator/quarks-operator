@@ -36,25 +36,6 @@ func NewOwner(
 	}
 }
 
-// Sync updates ownership on referenced configs and removes it from configs which are no longer used
-func (r Owner) Sync(ctx context.Context, owner apis.Object, spec corev1.PodSpec) error {
-	existing, err := r.ListConfigsOwnedBy(ctx, owner)
-	if err != nil {
-		return errors.Wrapf(err, "could not list ConfigMaps and Secrets owned by '%s'", owner.GetName())
-	}
-
-	current, err := r.ListConfigs(ctx, owner.GetNamespace(), spec)
-	if err != nil {
-		return errors.Wrapf(err, "could not list ConfigMaps and Secrets from '%s' spec", owner.GetName())
-	}
-
-	err = r.Update(ctx, owner, existing, current)
-	if err != nil {
-		return fmt.Errorf("error updating OwnerReferences: %v", err)
-	}
-	return nil
-}
-
 // Update determines which children need to have their OwnerReferences
 // added/updated and which need to have their OwnerReferences removed and then
 // performs all updates
