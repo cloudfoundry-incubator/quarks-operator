@@ -131,7 +131,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 
 	// TODO: generate an ID for the request
 
-	err = r.versionedSecretStore.UpdateSecretReferences(ctx, exStatefulSet.GetNamespace(), &exStatefulSet.Spec.Template.Spec.Template.Spec)
+	err = r.versionedSecretStore.SetSecretReferences(ctx, exStatefulSet.GetNamespace(), &exStatefulSet.Spec.Template.Spec.Template.Spec)
 	if err != nil {
 		ctxlog.Error(ctx, "Could not update versioned secrets of ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 		return reconcile.Result{}, err
