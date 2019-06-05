@@ -31,23 +31,59 @@ func NewContainerFactory(manifestName string, igName string, releaseImageProvide
 }
 
 // JobsToInitContainers creates a list of Containers for corev1.PodSpec InitContainers field
-func (c *ContainerFactory) JobsToInitContainers(jobs []Job) ([]corev1.Container, error) {
-	initContainers := []corev1.Container{}
+func (c *ContainerFactory) JobsToInitContainers(jobs []Job, hasPersistentDisk bool) ([]corev1.Container, error) {
+	copyingSpecsInitContainers := make([]corev1.Container, 0)
+	boshPreStartInitContainers := make([]corev1.Container, 0)
+	bpmPreStartInitContainers := make([]corev1.Container, 0)
 
-	// one init container for each release, for copying specs
-	doneReleases := map[string]bool{}
+	copyingSpecsUniq := map[string]struct{}{}
 	for _, job := range jobs {
-		if _, ok := doneReleases[job.Release]; ok {
-			continue
-		}
-
-		doneReleases[job.Release] = true
 		jobImage, err := c.releaseImageProvider.GetReleaseImage(c.igName, job.Name)
 		if err != nil {
 			return []corev1.Container{}, err
 		}
-		initContainers = append(initContainers, jobSpecCopierContainer(job.Release, jobImage, VolumeRenderingDataName))
 
+		// One copying specs init container for each release.
+		if _, done := copyingSpecsUniq[job.Release]; !done {
+			copyingSpecsUniq[job.Release] = struct{}{}
+			copyingSpecsInitContainer := jobSpecCopierContainer(job.Release, jobImage, VolumeRenderingDataName)
+			copyingSpecsInitContainers = append(copyingSpecsInitContainers, copyingSpecsInitContainer)
+		}
+
+		// Setup the BOSH pre-start init containers.
+		boshPreStart := filepath.Join(VolumeJobsDirMountPath, job.Name, "bin", "pre-start")
+		boshPreStartInitContainer := corev1.Container{
+			Name:         fmt.Sprintf("bosh-pre-start-%s", job.Name),
+			Image:        jobImage,
+			VolumeMounts: instanceGroupVolumeMounts(),
+			Command:      []string{"/bin/sh", "-c"},
+			Args:         []string{fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s"; fi`, boshPreStart)},
+		}
+		if hasPersistentDisk {
+			persistentDisk := corev1.VolumeMount{
+				Name:      VolumeStoreDirName,
+				MountPath: VolumeStoreDirMountPath,
+			}
+			boshPreStartInitContainer.VolumeMounts = append(boshPreStartInitContainer.VolumeMounts, persistentDisk)
+		}
+		boshPreStartInitContainers = append(boshPreStartInitContainers, boshPreStartInitContainer)
+
+		// Setup the BPM pre-start init containers.
+		bpmConfig, ok := c.bpmConfigs[job.Name]
+		if !ok {
+			return []corev1.Container{}, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
+		}
+		for _, process := range bpmConfig.Processes {
+			if process.Hooks.PreStart != "" {
+				bpmPrestartInitContainer := corev1.Container{
+					Name:         fmt.Sprintf("bpm-pre-start-%s", process.Name),
+					Image:        jobImage,
+					VolumeMounts: instanceGroupVolumeMounts(),
+					Command:      []string{process.Hooks.PreStart},
+				}
+				bpmPreStartInitContainers = append(bpmPreStartInitContainers, bpmPrestartInitContainer)
+			}
+		}
 	}
 
 	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
@@ -56,25 +92,14 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job) ([]corev1.Container,
 		c.igName,
 		true,
 	)
-	initContainers = append(initContainers, templateRenderingContainer(c.igName, resolvedPropertiesSecretName))
-	initContainers = append(initContainers, createDirContainer(c.igName, jobs))
 
-	// finally add init containers for BPM pre start hooks
-	for _, job := range jobs {
-		jobImage, err := c.releaseImageProvider.GetReleaseImage(c.igName, job.Name)
-		if err != nil {
-			return []corev1.Container{}, err
-		}
-		bpmConfig, ok := c.bpmConfigs[job.Name]
-		if !ok {
-			return []corev1.Container{}, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
-		}
-		for _, process := range bpmConfig.Processes {
-			if process.Hooks.PreStart != "" {
-				initContainers = append(initContainers, preStartHookContainer(job.Release, jobImage, process.Hooks.PreStart))
-			}
-		}
-	}
+	initContainers := flattenContainers(
+		copyingSpecsInitContainers,
+		templateRenderingContainer(c.igName, resolvedPropertiesSecretName),
+		createDirContainer(c.igName, jobs),
+		boshPreStartInitContainers,
+		bpmPreStartInitContainers,
+	)
 
 	return initContainers, nil
 }
@@ -105,7 +130,11 @@ func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, err
 
 func (c *ContainerFactory) generateJobContainers(job Job, jobImage string) ([]corev1.Container, error) {
 	containers := []corev1.Container{}
-	template := templateJobContainer(job.Name, jobImage)
+	template := corev1.Container{
+		Name:         job.Name,
+		Image:        jobImage,
+		VolumeMounts: instanceGroupVolumeMounts(),
+	}
 
 	bpmConfig, ok := c.bpmConfigs[job.Name]
 	if !ok {
@@ -156,7 +185,7 @@ func templateJobContainer(name, image string) corev1.Container {
 	return corev1.Container{
 		Name:         name,
 		Image:        image,
-		VolumeMounts: igVolumeMounts(),
+		VolumeMounts: instanceGroupVolumeMounts(),
 	}
 }
 
@@ -252,7 +281,7 @@ func ToCapability(s []string) []corev1.Capability {
 	return capabilities
 }
 
-func igVolumeMounts() []corev1.VolumeMount {
+func instanceGroupVolumeMounts() []corev1.VolumeMount {
 	return []corev1.VolumeMount{
 		{
 			Name:      VolumeRenderingDataName,
@@ -273,11 +302,27 @@ func igVolumeMounts() []corev1.VolumeMount {
 	}
 }
 
-func preStartHookContainer(releaseName string, jobImage string, cmd string) corev1.Container {
-	return corev1.Container{
-		Name:         fmt.Sprintf("pre-start-%s", releaseName),
-		Image:        jobImage,
-		VolumeMounts: igVolumeMounts(),
-		Command:      []string{cmd},
+// flattenContainers will flatten the containers parameter. Each argument passed to
+// flattenContainers should be a corev1.Container or []corev1.Container. The final
+// []corev1.Container creation is optimized to prevent slice re-allocation.
+func flattenContainers(containers ...interface{}) []corev1.Container {
+	var totalLen int
+	for _, instance := range containers {
+		switch v := instance.(type) {
+		case []corev1.Container:
+			totalLen += len(v)
+		case corev1.Container:
+			totalLen++
+		}
 	}
+	result := make([]corev1.Container, 0, totalLen)
+	for _, instance := range containers {
+		switch v := instance.(type) {
+		case []corev1.Container:
+			result = append(result, v...)
+		case corev1.Container:
+			result = append(result, v)
+		}
+	}
+	return result
 }
