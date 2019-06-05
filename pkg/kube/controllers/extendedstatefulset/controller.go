@@ -2,26 +2,22 @@ package extendedstatefulset
 
 import (
 	"context"
-	"strings"
+	"reflect"
 
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
-	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // Add creates a new ExtendedStatefulSet controller and adds it to the Manager
@@ -36,101 +32,96 @@ func Add(ctx context.Context, config *config.Config, mgr manager.Manager) error 
 	}
 
 	// Watch for changes to primary resource ExtendedStatefulSet
-	err = c.Watch(&source.Kind{Type: &essv1.ExtendedStatefulSet{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &estsv1.ExtendedStatefulSet{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
-	// Watch ConfigMaps owned by resource ExtendedStatefulSet
-	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{
-		IsController: false,
-		OwnerType:    &essv1.ExtendedStatefulSet{},
-	})
+	// Watch ConfigMaps referenced by the ExtendedStatefulSet
+	configMapPredicates := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			configMap := e.Object.(*corev1.ConfigMap)
+
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, configMap)
+			if err != nil {
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s': %v", configMap.Name, err)
+			}
+
+			// The ConfigMap should reference at least one ExtendedStatefulSet in order for us to consider it
+			return len(reconciles) > 0
+		},
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldConfigMap := e.ObjectOld.(*corev1.ConfigMap)
+			newConfigMap := e.ObjectNew.(*corev1.ConfigMap)
+
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, newConfigMap)
+			if err != nil {
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s': %v", newConfigMap.Name, err)
+			}
+
+			// The ConfigMap should reference at least one ExtendedStatefulSet in order for us to consider it
+			return len(reconciles) > 0 && !reflect.DeepEqual(oldConfigMap.Data, newConfigMap.Data)
+		},
+	}
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
+			config := a.Object.(*corev1.ConfigMap)
+
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, config)
+			if err != nil {
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s': %v", config.Name, err)
+			}
+
+			return reconciles
+		}),
+	}, configMapPredicates)
 	if err != nil {
 		return err
 	}
 
-	mapSecrets := handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
-		secret := a.Object.(*corev1.Secret)
-		return reconcilesForSecret(ctx, mgr, *secret)
-	})
+	// Watch Secrets referenced by the ExtendedStatefulSet
+	secretPredicates := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			secret := e.Object.(*corev1.Secret)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, secret)
+			if err != nil {
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", secret.Name, err)
+			}
 
-	// Watch Secrets owned by resource ExtendedStatefulSet or referenced by resource ExtendedStatefulSet
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{ToRequests: mapSecrets})
+			// The Secret should reference at least one ExtendedStatefulSet in order for us to consider it
+			return len(reconciles) > 1
+		},
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldSecret := e.ObjectOld.(*corev1.Secret)
+			newSecret := e.ObjectNew.(*corev1.Secret)
+
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, newSecret)
+			if err != nil {
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", newSecret.Name, err)
+			}
+
+			return len(reconciles) > 1 && !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
+		},
+	}
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
+			secret := a.Object.(*corev1.Secret)
+
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, secret)
+			if err != nil {
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", secret.Name, err)
+			}
+
+			return reconciles
+		}),
+	}, secretPredicates)
 	if err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func reconcilesForSecret(ctx context.Context, mgr manager.Manager, secret corev1.Secret) []reconcile.Request {
-	reconciles := []reconcile.Request{}
-
-	// add requests for the ExtendedStatefulSet owning the secret
-	exStsKind := essv1.ExtendedStatefulSet{}.Kind
-	for _, ref := range secret.GetOwnerReferences() {
-		refGV, err := schema.ParseGroupVersion(ref.APIVersion)
-		if err != nil {
-			return nil
-		}
-
-		if ref.Kind == exStsKind && refGV.Group == apis.GroupName {
-			reconciles = append(reconciles, reconcile.Request{NamespacedName: types.NamespacedName{
-				Namespace: secret.GetNamespace(),
-				Name:      ref.Name,
-			}})
-		}
-	}
-
-	// add requests for the ExtendedStatefulSet referencing the versioned secret
-	secretLabels := secret.GetLabels()
-	if secretLabels == nil {
-		return reconciles
-	}
-
-	secretKind, ok := secretLabels[versionedsecretstore.LabelSecretKind]
-	if !ok {
-		return reconciles
-	}
-	if secretKind != versionedsecretstore.VersionSecretKind {
-		return reconciles
-	}
-
-	referencedSecretName := names.GetPrefixFromVersionedSecretName(secret.GetName())
-	if referencedSecretName == "" {
-		return reconciles
-	}
-
-	exStatefulSets := &essv1.ExtendedStatefulSetList{}
-	err := mgr.GetClient().List(ctx, &client.ListOptions{}, exStatefulSets)
-	if err != nil || len(exStatefulSets.Items) < 1 {
-		return reconciles
-	}
-
-	for _, exStatefulSet := range exStatefulSets.Items {
-		_, referencedSecrets := owner.GetConfigNamesFromSpec(exStatefulSet.Spec.Template.Spec.Template.Spec)
-		if _, ok := referencedSecrets[referencedSecretName]; ok {
-			reconciles = append(reconciles, reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name:      exStatefulSet.GetName(),
-					Namespace: exStatefulSet.GetNamespace(),
-				},
-			})
-		}
-
-		// add requests for the ExtendedStatefulSet referencing the versioned secret when a new ExtendedStatefulSet template updated
-		for secretName := range referencedSecrets {
-			if strings.HasPrefix(secretName, referencedSecretName) {
-				reconciles = append(reconciles, reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Name:      exStatefulSet.GetName(),
-						Namespace: exStatefulSet.GetNamespace(),
-					},
-				})
-			}
-		}
-	}
-
-	return reconciles
 }

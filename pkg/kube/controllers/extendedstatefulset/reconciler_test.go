@@ -30,7 +30,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	cfcfg "code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 )
 
@@ -701,35 +700,8 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 						Expect(err).ToNot(HaveOccurred())
 
 						currentSHA1 := ss.Spec.Template.GetAnnotations()[exss.AnnotationConfigSHA1]
-
-						By("Adds the OwnerReference from the orphaned configurations", func() {
-							err = client.Get(context.Background(), types.NamespacedName{Name: configMap1.Name, Namespace: "default"}, configMap1)
-							Expect(err).ToNot(HaveOccurred())
-							err = client.Get(context.Background(), types.NamespacedName{Name: secret1.Name, Namespace: "default"}, secret1)
-							Expect(err).ToNot(HaveOccurred())
-
-							ownerRef := metav1.OwnerReference{
-								APIVersion:         "fissile.cloudfoundry.org/v1alpha1",
-								Kind:               "ExtendedStatefulSet",
-								Name:               ess.Name,
-								UID:                ess.UID,
-								Controller:         util.Bool(false),
-								BlockOwnerDeletion: util.Bool(true),
-							}
-
-							for _, obj := range []apis.Object{configMap1, secret1} {
-								Expect(obj.GetOwnerReferences()).Should(ContainElement(ownerRef))
-							}
-						})
-
 						By("Updates the config hash in the StatefulSet Annotations", func() {
 							Expect(currentSHA1).ShouldNot(Equal(originalSHA1))
-						})
-
-						By("Adds a finalizer to the ExtendedStatefulSet", func() {
-							err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
-							Expect(err).ToNot(HaveOccurred())
-							Expect(ess.GetFinalizers()).Should(ContainElement(finalizer.AnnotationFinalizer))
 						})
 					})
 				})
@@ -773,30 +745,6 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 						Expect(err).ToNot(HaveOccurred())
 
 						currentSHA1 := ss.Spec.Template.GetAnnotations()[exss.AnnotationConfigSHA1]
-
-						By("Adds OwnerReferences to all configurations", func() {
-							err = client.Get(context.Background(), types.NamespacedName{Name: configMap1.Name, Namespace: "default"}, configMap1)
-							Expect(err).ToNot(HaveOccurred())
-							err = client.Get(context.Background(), types.NamespacedName{Name: configMap2.Name, Namespace: "default"}, configMap2)
-							Expect(err).ToNot(HaveOccurred())
-							err = client.Get(context.Background(), types.NamespacedName{Name: secret1.Name, Namespace: "default"}, secret1)
-							Expect(err).ToNot(HaveOccurred())
-							err = client.Get(context.Background(), types.NamespacedName{Name: secret2.Name, Namespace: "default"}, secret2)
-							Expect(err).ToNot(HaveOccurred())
-
-							ownerRef := metav1.OwnerReference{
-								APIVersion:         "fissile.cloudfoundry.org/v1alpha1",
-								Kind:               "ExtendedStatefulSet",
-								Name:               ess.Name,
-								UID:                ess.UID,
-								Controller:         util.Bool(false),
-								BlockOwnerDeletion: util.Bool(true),
-							}
-
-							for _, obj := range []apis.Object{configMap1, configMap2, secret1, secret2} {
-								Expect(obj.GetOwnerReferences()).Should(ContainElement(ownerRef))
-							}
-						})
 
 						By("Updates the config hash in the StatefulSet Annotations", func() {
 							Expect(currentSHA1).ShouldNot(Equal(originalSHA1))
