@@ -87,34 +87,12 @@ func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, err
 }
 
 func (c *ContainerFactory) generateJobContainers(job Job, jobImage string) ([]corev1.Container, error) {
-	boshJobName := job.Name
 	containers := []corev1.Container{}
-	template := corev1.Container{
-		Name:  fmt.Sprintf(job.Name),
-		Image: jobImage,
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      VolumeRenderingDataName,
-				MountPath: VolumeRenderingDataMountPath,
-			},
-			{
-				Name:      VolumeJobsDirName,
-				MountPath: VolumeJobsDirMountPath,
-			},
-			{
-				Name:      VolumeDataDirName,
-				MountPath: VolumeDataDirMountPath,
-			},
-			{
-				Name:      VolumeSysDirName,
-				MountPath: VolumeSysDirMountPath,
-			},
-		},
-	}
+	template := templateJobContainer(job.Name, jobImage)
 
-	bpmConfig, ok := c.bpmConfigs[boshJobName]
+	bpmConfig, ok := c.bpmConfigs[job.Name]
 	if !ok {
-		return containers, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", boshJobName)
+		return containers, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
 	}
 
 	if len(bpmConfig.Processes) < 1 {
@@ -124,7 +102,7 @@ func (c *ContainerFactory) generateJobContainers(job Job, jobImage string) ([]co
 	for _, process := range bpmConfig.Processes {
 		container := template.DeepCopy()
 
-		container.Name = fmt.Sprintf("%s-%s", boshJobName, process.Name)
+		container.Name = fmt.Sprintf("%s-%s", job.Name, process.Name)
 		container.Command = []string{process.Executable}
 		container.Args = process.Args
 		for name, value := range process.Env {
@@ -154,6 +132,32 @@ func (c *ContainerFactory) generateJobContainers(job Job, jobImage string) ([]co
 	}
 
 	return containers, nil
+}
+
+// templateJobContainer creates the template for a job container.
+func templateJobContainer(name, image string) corev1.Container {
+	return corev1.Container{
+		Name:  name,
+		Image: image,
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      VolumeRenderingDataName,
+				MountPath: VolumeRenderingDataMountPath,
+			},
+			{
+				Name:      VolumeJobsDirName,
+				MountPath: VolumeJobsDirMountPath,
+			},
+			{
+				Name:      VolumeDataDirName,
+				MountPath: VolumeDataDirMountPath,
+			},
+			{
+				Name:      VolumeSysDirName,
+				MountPath: VolumeSysDirMountPath,
+			},
+		},
+	}
 }
 
 // jobSpecCopierContainer will return a corev1.Container{} with the populated field
