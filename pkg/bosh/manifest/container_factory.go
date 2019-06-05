@@ -209,8 +209,7 @@ func templateRenderingContainer(name string, secretName string) corev1.Container
 				Value: "/var/vcap/all-releases",
 			},
 		},
-		Command: []string{"/bin/sh"},
-		Args:    []string{"-c", `cf-operator util template-render`},
+		Args: []string{"util", "template-render"},
 	}
 }
 

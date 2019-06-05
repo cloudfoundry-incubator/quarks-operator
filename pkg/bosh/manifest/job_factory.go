@@ -31,8 +31,7 @@ func NewJobFactory(manifest Manifest, namespace string) *JobFactory {
 
 // VariableInterpolationJob returns an extended job to interpolate variables
 func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
-	cmd := []string{"/bin/sh"}
-	args := []string{"-c", `cf-operator util variable-interpolation`}
+	args := []string{"util", "variable-interpolation"}
 
 	// This is the source manifest, that still has the '((vars))'
 	manifestSecretName := names.CalculateSecretName(names.DeploymentSecretTypeManifestWithOps, f.Manifest.Name, "")
@@ -144,7 +143,6 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 						{
 							Name:         VarInterpolationContainerName,
 							Image:        GetOperatorDockerImage(),
-							Command:      cmd,
 							Args:         args,
 							VolumeMounts: volumeMounts,
 							Env: []corev1.EnvVar{
@@ -217,10 +215,9 @@ func (f *JobFactory) gatheringContainer(cmd, instanceGroupName string) corev1.Co
 	)
 
 	return corev1.Container{
-		Name:    instanceGroupName,
-		Image:   GetOperatorDockerImage(),
-		Command: []string{"/bin/sh"},
-		Args:    []string{"-c", fmt.Sprintf("cf-operator util %s", cmd)},
+		Name:  instanceGroupName,
+		Image: GetOperatorDockerImage(),
+		Args:  []string{"util", cmd},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      generateVolumeName(interpolatedManifestSecretName),
