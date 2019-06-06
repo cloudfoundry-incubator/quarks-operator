@@ -7,21 +7,18 @@ import (
 	. "github.com/onsi/gomega"
 
 	"code.cloudfoundry.org/cf-operator/integration/environment"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
-	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
+	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
 var _ = Describe("ExtendedStatefulSet", func() {
 	var (
-		extendedStatefulSet                essv1.ExtendedStatefulSet
-		wrongExtendedStatefulSet           essv1.ExtendedStatefulSet
-		ownedReferencesExtendedStatefulSet essv1.ExtendedStatefulSet
+		extendedStatefulSet                estsv1.ExtendedStatefulSet
+		wrongExtendedStatefulSet           estsv1.ExtendedStatefulSet
+		ownedReferencesExtendedStatefulSet estsv1.ExtendedStatefulSet
 	)
 
 	BeforeEach(func() {
@@ -45,7 +42,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 	Context("when correctly setup", func() {
 		It("should create a statefulSet and eventually a pod", func() {
 			By("Creating an ExtendedStatefulSet")
-			var ess *essv1.ExtendedStatefulSet
+			var ess *estsv1.ExtendedStatefulSet
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ess).NotTo(Equal(nil))
@@ -69,7 +66,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 		It("should update a statefulSet", func() {
 			By("Creating an ExtendedStatefulSet")
-			var ess *essv1.ExtendedStatefulSet
+			var ess *estsv1.ExtendedStatefulSet
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ess).NotTo(Equal(nil))
@@ -123,7 +120,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 		It("should do nothing if nothing has changed", func() {
 			By("Creating an ExtendedStatefulSet")
-			var ess *essv1.ExtendedStatefulSet
+			var ess *estsv1.ExtendedStatefulSet
 
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
 			Expect(err).NotTo(HaveOccurred())
@@ -165,7 +162,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			By("Checking AnnotationConfigSHA1 does not exist")
 			ss, err := env.GetStatefulSet(env.Namespace, ess.GetName()+"-v1")
 			Expect(err).NotTo(HaveOccurred())
-			currentSHA1 := ss.Spec.Template.GetAnnotations()[essv1.AnnotationConfigSHA1]
+			currentSHA1 := ss.Spec.Template.GetAnnotations()[estsv1.AnnotationConfigSHA1]
 			Expect(currentSHA1).Should(Equal(""))
 		})
 
@@ -238,7 +235,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 			ss, err := env.GetStatefulSet(env.Namespace, ess.GetName()+"-v1")
 			Expect(err).NotTo(HaveOccurred())
-			originalSHA1 := ss.Spec.Template.GetAnnotations()[essv1.AnnotationConfigSHA1]
+			originalSHA1 := ss.Spec.Template.GetAnnotations()[estsv1.AnnotationConfigSHA1]
 			originalGeneration := ss.Status.ObservedGeneration
 
 			By("Checking for extendedStatefulSet available")
@@ -252,30 +249,12 @@ var _ = Describe("ExtendedStatefulSet", func() {
 				1: true,
 			}))
 
-			By("Checking OwnerReferences on referenced configs")
+			By("Updating one ConfigMap and one Secret")
 			cm1, err := env.GetConfigMap(env.Namespace, configMap1.Name)
-			Expect(err).ToNot(HaveOccurred())
-			cm2, err := env.GetConfigMap(env.Namespace, configMap2.Name)
-			Expect(err).ToNot(HaveOccurred())
-			s1, err := env.GetSecret(env.Namespace, secret1.Name)
 			Expect(err).ToNot(HaveOccurred())
 			s2, err := env.GetSecret(env.Namespace, secret2.Name)
 			Expect(err).ToNot(HaveOccurred())
 
-			ownerRef := metav1.OwnerReference{
-				APIVersion:         "fissile.cloudfoundry.org/v1alpha1",
-				Kind:               "ExtendedStatefulSet",
-				Name:               ess.Name,
-				UID:                ess.UID,
-				Controller:         util.Bool(false),
-				BlockOwnerDeletion: util.Bool(true),
-			}
-
-			for _, obj := range []apis.Object{cm1, cm2, s1, s2} {
-				Expect(obj.GetOwnerReferences()).Should(ContainElement(ownerRef))
-			}
-
-			By("Updating one ConfigMap and one Secret")
 			cm1.Data["key1"] = "modified"
 			_, tearDown, err = env.UpdateConfigMap(env.Namespace, *cm1)
 			Expect(err).ToNot(HaveOccurred())
@@ -299,7 +278,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			By("Checking AnnotationConfigSHA1 changed")
 			ss, err = env.GetStatefulSet(env.Namespace, ess.GetName()+"-v1")
 			Expect(err).NotTo(HaveOccurred())
-			currentSHA1 := ss.Spec.Template.GetAnnotations()[essv1.AnnotationConfigSHA1]
+			currentSHA1 := ss.Spec.Template.GetAnnotations()[estsv1.AnnotationConfigSHA1]
 			Expect(currentSHA1).ShouldNot(Equal(originalSHA1))
 
 			By("Checking for ExtendedStatefulSet availability")
