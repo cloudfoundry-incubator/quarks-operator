@@ -3,103 +3,55 @@
 - [ExtendedStatefulSet](#extendedstatefulset)
   - [Description](#description)
   - [Features](#features)
-    - [Scaling Restrictions](#scaling-restrictions)
+    - [Scaling Restrictions (not implemented)](#scaling-restrictions-not-implemented)
     - [Automatic Restart of Containers](#automatic-restart-of-containers)
     - [Extended Upgrade Support](#extended-upgrade-support)
-    - [Annotated if Stale](#annotated-if-stale)
-    - [Detect if StatefulSet versions are running](#detect-if-statefulset-versions-are-running)
+    - [Detects if StatefulSet versions are running](#detects-if-statefulset-versions-are-running)
     - [Volume Management](#volume-management)
     - [AZ Support](#az-support)
-  - [Example Resource](#example-resource)
+  - [`ExtendedStatefulSet` Examples](#extendedstatefulset-examples)
 
 ## Description
 
 ## Features
 
-### Scaling Restrictions
+### Scaling Restrictions (not implemented)
 
 Ability to set restrictions on how scaling can occur: min, max, odd replicas.
 
 ### Automatic Restart of Containers
 
 When an env value or mount changes due to a `ConfigMap` or `Secret` change, containers are restarted.
-The operator watches all the ConfigMaps and Secrets referenced by the StatefulSet, and automatically performs the update, without extra workarounds.
-
-> See [this implementation](https://thenewstack.io/solving-kubernetes-configuration-woes-with-a-custom-controller/) for inspiration
-
-Adding an OwnerReference to all ConfigMaps and Secrets that are referenced by an ExtendedStatefulSet. 
-
-```yaml
-apiVersion: v1
-  data:
-    key1: value1
-  kind: ConfigMap
-  metadata:
-    name: example-config
-    namespace: default
-    ownerReferences:
-    - apiVersion: fissile.cloudfoundry.org/v1alpha1
-      blockOwnerDeletion: true
-      controller: false
-      kind: ExtendedStatefulSet
-      name: example-extendedstatefulset
-```
-
-This allows Controller to trigger a reconciliation whenever the ConfigMaps or Secrets are modified.
-
-`ExtendedStatefulSets` and `StatefulSets` have a `fissile.cloudfoundry.org/finalizer` `Finalizer`. This allows the operator to perform additional cleanup logic, which prevents owned `ConfigMaps` and `Secrets` from being deleted.
-
-```yaml
-apiVersion: fissile.cloudfoundry.org/v1alpha1
-kind: ExtendedStatefulSet
-metadata:
-  finalizers:
-  - fissile.cloudfoundry.org/finalizer
-  generation: 1
-  name:  example-extended-stateful-set
-  namespace: default
-```
+The operator watches all the `ConfigMaps` and `Secrets` referenced by the `StatefulSet`, and automatically performs the update, without extra workarounds.
 
 ### Extended Upgrade Support
 
-A second StatefulSet for the new version is deployed, and both coexist until canary conditions are met. This also allows support for Blue/Green techniques.
+When an update needs to happen, a second `StatefulSet` for the new version is deployed, and both coexist until canary conditions are met. This also allows support for Blue/Green techniques.
 
-> Note: This could make integration with Istio easier and (more) seamless.
+> **Note:**
+>
+> This could make integration with [Istio](https://istio.io/) easier and (more) seamless.
 
-Annotated with a version (auto-incremented on each update).
+Annotated with a version (auto-incremented on each update). The annotation key is `fissile.cloudfoundry.org/version`.
 
-Ability to upgrade even though StatefulSet pods are not ready.
+Ability to upgrade even though `StatefulSet` pods are not ready.
 
-An ability to run an `ExtendedJob` before and after the upgrade. The Job can abort the upgrade if it doesn't complete successfully.
+### Detects if StatefulSet versions are running
 
-### Annotated if Stale
+During upgrades, there is more than one `StatefulSet` version for an `ExtendedStatefulSet` resource. The operator lists available versions and keeps track of which are running.
 
-If a failure has occurred (e.g. canary has failed), the StatefulSet is annotated as being stale.
-
-### Detect if StatefulSet versions are running
-
-During upgrades, there is more than one `StatefulSet` version for an `ExtendedStatefulSet` resource. The operator can list available versions and store status that keeps track of which is running:
-
-```yaml
-status:
-  versions:
-    "1": true
-    "2": false
-
-```
-
-A version running means that at least one pod that belongs to a `StatefulSet` is running. When a version **n** is running, any version lower than **n** is deleted.
-
-```yaml
-status:
-  versions:
-    # version 1 was cleaned up
-    "2": true
-```
+A running version means that at least one pod that belongs to a `StatefulSet` is running. When a version **n** is running, any version lower than **n** is deleted.
 
 The controller continues to reconcile until there's only one version.
 
 ### Volume Management
+
+The problem we're solving here is the following:
+
+When we create an `ExtendedStatefulSet`, the version associated to it is **v1**. After an update, the `ExtendedStatefulSet` moves on to **v2** with a Blue/Green update strategy. The task is to replace the new `PersistentVolumeClaims` from the **v2** `StatefulSet` with the `PVCs` of **v1**. This is not something that the `StatefulSet` controller supports - it's always trying to recreate the replaced `PVCs` and reattach them to pods.
+
+Our solution is to use a "dummy" `StatefulSet` with the same replica count as the `ExtendedStatefulSet` replica count. We then wait for this "dummy" `StatefulSet` to generate the volumes that we need.
+The final step is to remove the `volumeClaimTemplates` from the actual "desired" `StatefulSets` and mutate the pods so they use the volumes from the "dummy" `StatefulSet`.
 
 ![Volume Claim management across versions](https://docs.google.com/drawings/d/e/2PACX-1vSvQkXe3zZhJYbkVX01mxS4PKa1iQmWyIgdZh1VKtTS1XW1lC14d1_FHLWn2oA7GVgzJCcEorNVXkK_/pub?w=1185&h=1203)
 
@@ -170,52 +122,7 @@ If zones are set for an `ExtendedStatefulSet`, the following occurs:
   CF_OPERATOR_AZ="zone name"
   AZ_INDEX=="zone index"
   ```
+  
+## `ExtendedStatefulSet` Examples
 
-## Example Resource
-
-```yaml
----
-apiVersion: fissile.cloudfoundry.org/v1alpha1
-kind: ExtendedStatefulSet
-metadata:
-  name: MyExtendedStatefulSet
-spec:
-  # Name of the label that defines the zone for a node
-  zoneNodeLabel: "failure-domain.beta.kubernetes.io/zone"
-  # List of zones this ExtendedStatefulSet should be deployed on
-  zones: ["us-central1-a", "us-central1-b"]
-  scaling:
-    # Minimum replica count for the StatefulSet
-    min: 3
-    # Maximum replica count for the StatefulSet
-    max: 13
-    # If true, only odd replica counts are valid when scaling the StatefulSet
-    oddOnly: true
-  # If true, the StatefulSet will be updated When an env value or mount changes
-  updateOnConfigChange: true
-  updateStrategy:
-    canaries: 1
-    retryCount: 2
-    updateNotReady: true
-
-  # Below you can see a template for a regular StatefulSet
-  # Nothing else is custom below this point
-  template:
-    spec:
-      replicas: 2
-      selector:
-        matchLabels:
-          app: "myapp"
-      template:
-        metadata:
-          labels:
-            app: "myapp"
-        spec:
-          containers:
-          - name: "busybox"
-            image: "busybox:latest"
-            command:
-            - "sleep"
-            - "3600"
-
-```
+See https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/examples/extended-statefulset
