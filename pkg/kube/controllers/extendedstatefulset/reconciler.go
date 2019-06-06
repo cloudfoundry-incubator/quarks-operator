@@ -140,7 +140,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	// Get the actual StatefulSet
 	actualStatefulSet, actualVersion, err := r.getActualStatefulSet(ctx, exStatefulSet)
 	if err != nil {
-		ctxlog.WithEvent(exStatefulSet, "StatefulSetNotFound").Error(ctx, "Could not retrieve latest StatefulSet owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+		ctxlog.WithEvent(exStatefulSet, "StatefulSetNotFound").Error(ctx, "Could not retrieve latest StatefulSet owned by ExtendedStatefulSet '", exStatefulSet.Name, "' in namespace '", request.NamespacedName, "': ", err)
 		return reconcile.Result{}, err
 	}
 
@@ -396,6 +396,10 @@ func (r *ReconcileExtendedStatefulSet) getActualStatefulSet(ctx context.Context,
 
 	for _, ss := range statefulSets {
 		strVersion := ss.Annotations[essv1a1.AnnotationVersion]
+		if strVersion == "" {
+			return nil, 0, errors.New(fmt.Sprintf("The statefulset '%s' does not have the annotation('%s'), a version could not be retrieved.", ss.Name, essv1a1.AnnotationVersion))
+		}
+
 		version, err := strconv.Atoi(strVersion)
 		if err != nil {
 			return nil, 0, err
