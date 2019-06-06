@@ -1,0 +1,78 @@
+#
+#
+# The dev-env-havener.yaml packs a development flow 
+# for a running minikube into a single configuration file. 
+# This flow involves:
+# - compiling a binary
+# - building a Docker img using the above binary
+# - Installing a helm chart using the above docker img
+#
+# It also, enables you to customize it further, depending on your needs,
+# e.g. to run it somewhere else, not necessarily minikube.
+#
+#
+# To download the latest havener, please refer to https://github.com/homeport/havener,
+# or trigger the following cmd:
+# curl -sL https://raw.githubusercontent.com/homeport/havener/master/scripts/download-latest.sh | bash
+#
+#
+# To install the charts, run it as follows:
+#
+# havener deploy --config dev-env-havener.yaml
+#
+# Make sure:
+#
+# - minikube is up and running (e.g. `minikube start`)
+# - your helm client is in sync with tiller.
+#
+#
+
+name: cf-operator-quarks
+releases:
+- chart_name: cf-operator
+  chart_namespace: quarks
+  chart_location: deploy/helm/cf-operator/
+  overrides:
+    image:
+      tag: (( shell . bin/include/versioning && echo "${VERSION_TAG}" )) 
+      repository: cf-operator
+      org: cfcontainerization
+    customResources:
+      enableInstallation: false
+
+before:
+- cmd: /bin/bash
+  args:
+  - -c
+  - |
+    #!/bin/bash
+    set -euo pipefail
+
+    export GO111MODULE=on
+
+    if ! hash minikube 2>/dev/null; then
+      echo -e "Required tool minikube is not installed."
+      echo
+      exit 1
+    fi
+
+    eval `minikube docker-env`
+
+    . bin/include/versioning
+    echo "Tag for docker image is ${VERSION_TAG}"
+
+    ./bin/build-image
+    ./bin/apply-crds
+
+    export RELEASE_NAMESPACE="quarks"
+    kubectl -n "${RELEASE_NAMESPACE}" delete mutatingwebhookconfiguration cf-operator-mutating-hook-quarks --ignore-not-found=true
+    kubectl -n "${RELEASE_NAMESPACE}" delete secret cf-operator-webhook-server-cert --ignore-not-found=true
+
+after:
+- cmd: /bin/bash
+  args:
+  - -c
+  - |
+    #!/bin/bash
+    export RELEASE_NAMESPACE="quarks"
+    kubectl -n "${RELEASE_NAMESPACE}" get pods
