@@ -10,6 +10,7 @@
     - [Entrypoint & Environment Variables](#entrypoint--environment-variables)
     - [Resources](#resources)
     - [Health checks](#health-checks)
+    - [Hooks](#hooks)
   - [Conversion Details](#conversion-details)
     - [Calculation of docker image location for releases](#calculation-of-docker-image-location-for-releases)
     - [Variables to Extended Secrets](#variables-to-extended-secrets)
@@ -356,6 +357,10 @@ BPM doesn't provide information for health checks and relies on monit instead.
 CF-Operator provides health checks via the [bosh_containerization](https://github.com/cloudfoundry-incubator/cf-operator/blob/master/pkg/bosh/manifest/containerization.go#L11) property key in the deployment manifest.
 
 In Kubernetes, we use [liveness and readiness probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/) for healthchecks.
+
+### Hooks
+
+BPM supports `pre_start` hooks. CF-Operator will convert those to additional init containers.
 
 ## Conversion Details
 

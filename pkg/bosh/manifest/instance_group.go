@@ -1,6 +1,10 @@
 package manifest
 
-import "fmt"
+import (
+	"fmt"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+)
 
 // InstanceGroup from BOSH deployment manifest
 type InstanceGroup struct {
@@ -96,10 +100,33 @@ type JobDir struct {
 	TmpfsSize string `yaml:"tmpfs_size,omitempty"`
 }
 
+var (
+	// LabelDeploymentName is the name of a label for the deployment name
+	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
+	// LabelInstanceGroupName is the name of a label for an instance group name
+	LabelInstanceGroupName = fmt.Sprintf("%s/instance-group-name", apis.GroupName)
+	// AnnotationDeploymentVersion is the annotation key for deployment version
+	AnnotationDeploymentVersion = fmt.Sprintf("%s/deployment-version", apis.GroupName)
+)
+
 // AgentSettings from BOSH deployment manifest. These annotations and labels are added to kube resources
 type AgentSettings struct {
 	Annotations map[string]string `yaml:"annotations,omitempty"`
 	Labels      map[string]string `yaml:"labels,omitempty"`
+}
+
+// Set overrides labels and annotations with operator-owned metadata
+func (as *AgentSettings) Set(manifestName, igName, version string) {
+	if as.Labels == nil {
+		as.Labels = map[string]string{}
+	}
+	as.Labels[LabelDeploymentName] = manifestName
+	as.Labels[LabelInstanceGroupName] = igName
+
+	if as.Annotations == nil {
+		as.Annotations = map[string]string{}
+	}
+	as.Annotations[AnnotationDeploymentVersion] = version
 }
 
 // Agent from BOSH deployment manifest

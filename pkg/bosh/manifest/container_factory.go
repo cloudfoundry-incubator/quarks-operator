@@ -42,11 +42,11 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job) ([]corev1.Container,
 		}
 
 		doneReleases[job.Release] = true
-		releaseImage, err := c.releaseImageProvider.GetReleaseImage(c.igName, job.Name)
+		jobImage, err := c.releaseImageProvider.GetReleaseImage(c.igName, job.Name)
 		if err != nil {
 			return []corev1.Container{}, err
 		}
-		initContainers = append(initContainers, jobSpecCopierContainer(job.Release, releaseImage, VolumeRenderingDataName))
+		initContainers = append(initContainers, jobSpecCopierContainer(job.Release, jobImage, VolumeRenderingDataName))
 
 	}
 
@@ -58,6 +58,23 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job) ([]corev1.Container,
 	)
 	initContainers = append(initContainers, templateRenderingContainer(c.igName, resolvedPropertiesSecretName))
 	initContainers = append(initContainers, createDirContainer(c.igName, jobs))
+
+	// finally add init containers for BPM pre start hooks
+	for _, job := range jobs {
+		jobImage, err := c.releaseImageProvider.GetReleaseImage(c.igName, job.Name)
+		if err != nil {
+			return []corev1.Container{}, err
+		}
+		bpmConfig, ok := c.bpmConfigs[job.Name]
+		if !ok {
+			return []corev1.Container{}, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
+		}
+		for _, process := range bpmConfig.Processes {
+			if process.Hooks.PreStart != "" {
+				initContainers = append(initContainers, preStartHookContainer(job.Release, jobImage, process.Hooks.PreStart))
+			}
+		}
+	}
 
 	return initContainers, nil
 }
@@ -137,35 +154,18 @@ func (c *ContainerFactory) generateJobContainers(job Job, jobImage string) ([]co
 // templateJobContainer creates the template for a job container.
 func templateJobContainer(name, image string) corev1.Container {
 	return corev1.Container{
-		Name:  name,
-		Image: image,
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      VolumeRenderingDataName,
-				MountPath: VolumeRenderingDataMountPath,
-			},
-			{
-				Name:      VolumeJobsDirName,
-				MountPath: VolumeJobsDirMountPath,
-			},
-			{
-				Name:      VolumeDataDirName,
-				MountPath: VolumeDataDirMountPath,
-			},
-			{
-				Name:      VolumeSysDirName,
-				MountPath: VolumeSysDirMountPath,
-			},
-		},
+		Name:         name,
+		Image:        image,
+		VolumeMounts: igVolumeMounts(),
 	}
 }
 
 // jobSpecCopierContainer will return a corev1.Container{} with the populated field
-func jobSpecCopierContainer(releaseName string, releaseImage string, volumeMountName string) corev1.Container {
+func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName string) corev1.Container {
 	inContainerReleasePath := filepath.Join(VolumeRenderingDataMountPath, "jobs-src", releaseName)
 	return corev1.Container{
 		Name:  fmt.Sprintf("spec-copier-%s", releaseName),
-		Image: releaseImage,
+		Image: jobImage,
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      volumeMountName,
@@ -250,4 +250,34 @@ func ToCapability(s []string) []corev1.Capability {
 		capabilities[capabilityIndex] = corev1.Capability(capability)
 	}
 	return capabilities
+}
+
+func igVolumeMounts() []corev1.VolumeMount {
+	return []corev1.VolumeMount{
+		{
+			Name:      VolumeRenderingDataName,
+			MountPath: VolumeRenderingDataMountPath,
+		},
+		{
+			Name:      VolumeJobsDirName,
+			MountPath: VolumeJobsDirMountPath,
+		},
+		{
+			Name:      VolumeDataDirName,
+			MountPath: VolumeDataDirMountPath,
+		},
+		{
+			Name:      VolumeSysDirName,
+			MountPath: VolumeSysDirMountPath,
+		},
+	}
+}
+
+func preStartHookContainer(releaseName string, jobImage string, cmd string) corev1.Container {
+	return corev1.Container{
+		Name:         fmt.Sprintf("pre-start-%s", releaseName),
+		Image:        jobImage,
+		VolumeMounts: igVolumeMounts(),
+		Command:      []string{cmd},
+	}
 }

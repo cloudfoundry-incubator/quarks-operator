@@ -11,7 +11,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
@@ -21,15 +20,6 @@ const (
 	// VarInterpolationContainerName is the name of the container that performs
 	// variable interpolation for a manifest
 	VarInterpolationContainerName = "interpolation"
-)
-
-var (
-	// LabelDeploymentName is the name of a label for the deployment name
-	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
-	// LabelInstanceGroupName is the name of a label for an instance group name
-	LabelInstanceGroupName = fmt.Sprintf("%s/instance-group-name", apis.GroupName)
-	// AnnotationDeploymentVersion is the annotation key for deployment version
-	AnnotationDeploymentVersion = fmt.Sprintf("%s/deployment-version", apis.GroupName)
 )
 
 // ReleaseImageProvider interface to provide the docker release image for a BOSH job
@@ -52,19 +42,7 @@ type BPMResources struct {
 func (kc *KubeConverter) BPMResources(manifestName string, version string, instanceGroup *InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) (*BPMResources, error) {
 	res := &BPMResources{}
 
-	// Override labels and annotations with operator-owned metadata
-	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels == nil {
-		instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels = map[string]string{}
-	}
-
-	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels[LabelDeploymentName] = manifestName
-	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels[LabelInstanceGroupName] = instanceGroup.Name
-
-	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations == nil {
-		instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations = map[string]string{}
-	}
-
-	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations[AnnotationDeploymentVersion] = version
+	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(manifestName, instanceGroup.Name, version)
 
 	cfac := NewContainerFactory(manifestName, instanceGroup.Name, releaseImageProvider, bpmConfigs)
 
@@ -122,55 +100,7 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, version strin
 		return essv1.ExtendedStatefulSet{}, err
 	}
 
-	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeManifestAndVars,
-		manifestName,
-		VarInterpolationContainerName,
-		true,
-	)
-	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
-		manifestName,
-		ig.Name,
-		true,
-	)
-
-	volumes := []corev1.Volume{
-		{
-			Name:         VolumeRenderingDataName,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name:         VolumeJobsDirName,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		// for ephemeral job data
-		// https://bosh.io/docs/vm-config/#jobs-and-packages
-		{
-			Name:         VolumeDataDirName,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name:         VolumeSysDirName,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name: generateVolumeName(interpolatedManifestSecretName),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: interpolatedManifestSecretName,
-				},
-			},
-		},
-		{
-			Name: generateVolumeName(resolvedPropertiesSecretName),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: resolvedPropertiesSecretName,
-				},
-			},
-		},
-	}
+	volumes := igVolumes(manifestName, ig.Name)
 
 	containers, err := cfac.JobsToContainers(ig.Jobs)
 	if err != nil {
@@ -317,45 +247,7 @@ func (kc *KubeConverter) errandToExtendedJob(manifestName string, version string
 		return ejv1.ExtendedJob{}, err
 	}
 
-	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeManifestAndVars,
-		manifestName,
-		VarInterpolationContainerName,
-		true,
-	)
-	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
-		manifestName,
-		ig.Name,
-		true,
-	)
-
-	volumes := []corev1.Volume{
-		{
-			Name:         VolumeRenderingDataName,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name:         VolumeJobsDirName,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name: generateVolumeName(interpolatedManifestSecretName),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: interpolatedManifestSecretName,
-				},
-			},
-		},
-		{
-			Name: generateVolumeName(resolvedPropertiesSecretName),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: resolvedPropertiesSecretName,
-				},
-			},
-		},
-	}
+	volumes := igVolumes(manifestName, ig.Name)
 
 	containers, err := cfac.JobsToContainers(ig.Jobs)
 	if err != nil {
@@ -456,6 +348,58 @@ func (kc *KubeConverter) addVolumeSpecs(podSpec *corev1.PodSpec, disks []corev1.
 		podSpec.Volumes = append(podSpec.Volumes, pvcVolume)
 	}
 	return *podSpec
+}
+
+func igVolumes(manifestName, igName string) []corev1.Volume {
+	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeManifestAndVars,
+		manifestName,
+		VarInterpolationContainerName,
+		true,
+	)
+	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+		manifestName,
+		igName,
+		true,
+	)
+
+	return []corev1.Volume{
+		{
+			Name:         VolumeRenderingDataName,
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name:         VolumeJobsDirName,
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		},
+		// for ephemeral job data
+		// https://bosh.io/docs/vm-config/#jobs-and-packages
+		{
+			Name:         VolumeDataDirName,
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name:         VolumeSysDirName,
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+		},
+		{
+			Name: generateVolumeName(interpolatedManifestSecretName),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: interpolatedManifestSecretName,
+				},
+			},
+		},
+		{
+			Name: generateVolumeName(resolvedPropertiesSecretName),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: resolvedPropertiesSecretName,
+				},
+			},
+		},
+	}
 }
 
 // generateVolumeName generate volume name based on secret name
