@@ -64,16 +64,16 @@ func (j *Job) loadSpec(baseDir string) (*JobSpec, error) {
 
 func (j *Job) dataDirs(name string) []string {
 	return []string{
-		"/var/vcap/data/" + name,
-		"/var/vcap/data/sys/log/" + name,
-		"/var/vcap/data/sys/run/" + name,
+		filepath.Join(VolumeDataDirMountPath, name),
+		filepath.Join(VolumeDataDirMountPath, "sys", "log", name),
+		filepath.Join(VolumeDataDirMountPath, "sys", "run", name),
 	}
 }
 
 func (j *Job) sysDirs(name string) []string {
 	return []string{
-		"/var/vcap/sys/log/" + name,
-		"/var/vcap/sys/run/" + name,
+		filepath.Join(VolumeSysDirMountPath, "log", name),
+		filepath.Join(VolumeSysDirMountPath, "run", name),
 	}
 }
 

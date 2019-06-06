@@ -66,7 +66,6 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 
 	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations[AnnotationDeploymentVersion] = version
 
-
 	cfac := NewContainerFactory(manifestName, instanceGroup.Name, releaseImageProvider, bpmConfigs)
 
 	// Create a persistent volume claim if specified in spec
@@ -138,21 +137,21 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, version strin
 
 	volumes := []corev1.Volume{
 		{
-			Name:         "rendering-data",
+			Name:         VolumeRenderingDataName,
 			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 		},
 		{
-			Name:         "jobs-dir",
+			Name:         VolumeJobsDirName,
 			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 		},
 		// for ephemeral job data
 		// https://bosh.io/docs/vm-config/#jobs-and-packages
 		{
-			Name:         "data-dir",
+			Name:         VolumeDataDirName,
 			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 		},
 		{
-			Name:         "sys-dir",
+			Name:         VolumeSysDirName,
 			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 		},
 		{
@@ -333,11 +332,11 @@ func (kc *KubeConverter) errandToExtendedJob(manifestName string, version string
 
 	volumes := []corev1.Volume{
 		{
-			Name:         "rendering-data",
+			Name:         VolumeRenderingDataName,
 			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 		},
 		{
-			Name:         "jobs-dir",
+			Name:         VolumeJobsDirName,
 			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 		},
 		{
