@@ -68,8 +68,7 @@ func (r *ResolverImpl) ResolveManifest(instance *bdc.BOSHDeployment, namespace s
 	}
 
 	// Interpolate implicit variables
-	// TODO: check why the error here was not returned
-	vars, _ := r.ImplicitVariables(manifest, m)
+	vars := r.ImplicitVariables(manifest, m)
 	for _, v := range vars {
 		varData, err := r.getRefData(namespace, bdc.SecretType, names.CalculateSecretName(names.DeploymentSecretTypeImplicitVariable, instance.GetName(), v), bdc.ImplicitVariableKeyName)
 		if err != nil {
@@ -180,7 +179,7 @@ func (r *ResolverImpl) getRefData(namespace string, manifestType string, manifes
 }
 
 // ImplicitVariables returns a list of all implicit variables in a manifest
-func (r *ResolverImpl) ImplicitVariables(m *Manifest, rawManifest string) ([]string, error) {
+func (r *ResolverImpl) ImplicitVariables(m *Manifest, rawManifest string) []string {
 	varMap := make(map[string]bool)
 
 	// Collect all variables
@@ -205,5 +204,5 @@ func (r *ResolverImpl) ImplicitVariables(m *Manifest, rawManifest string) ([]str
 		}
 	}
 
-	return names, nil
+	return names
 }
