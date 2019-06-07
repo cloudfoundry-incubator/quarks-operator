@@ -5,6 +5,9 @@ all: tools build test
 up:
 	bin/up
 
+up-bazel:
+	bin/up-bazel
+
 vet:
 	bin/vet
 

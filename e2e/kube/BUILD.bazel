@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "examples_test.go",
+        "suite_test.go",
+    ],
+    deps = [
+        "//integration/environment:go_default_library",
+        "//pkg/kube/apis/extendedjob/v1alpha1:go_default_library",
+        "//testing:go_default_library",
+        "@com_github_onsi_ginkgo//:go_default_library",
+        "@com_github_onsi_ginkgo//config:go_default_library",
+        "@com_github_onsi_gomega//:go_default_library",
+        "@com_github_pkg_errors//:go_default_library",
+    ],
+)

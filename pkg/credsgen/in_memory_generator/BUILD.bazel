@@ -1,0 +1,50 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "certificate.go",
+        "in_memory_generator.go",
+        "password.go",
+        "rsa_key.go",
+        "ssh_key.go",
+    ],
+    importpath = "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/credsgen:go_default_library",
+        "@com_github_cloudflare_cfssl//cli/genkey:go_default_library",
+        "@com_github_cloudflare_cfssl//config:go_default_library",
+        "@com_github_cloudflare_cfssl//csr:go_default_library",
+        "@com_github_cloudflare_cfssl//helpers:go_default_library",
+        "@com_github_cloudflare_cfssl//initca:go_default_library",
+        "@com_github_cloudflare_cfssl//log:go_default_library",
+        "@com_github_cloudflare_cfssl//signer:go_default_library",
+        "@com_github_cloudflare_cfssl//signer/local:go_default_library",
+        "@com_github_dchest_uniuri//:go_default_library",
+        "@com_github_pkg_errors//:go_default_library",
+        "@org_golang_x_crypto//ssh:go_default_library",
+        "@org_uber_go_zap//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "certificate_test.go",
+        "in_memory_generator_test.go",
+        "password_test.go",
+        "rsa_key_test.go",
+        "ssh_key_test.go",
+        "suite_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//pkg/credsgen:go_default_library",
+        "//pkg/testhelper:go_default_library",
+        "@com_github_cloudflare_cfssl//log:go_default_library",
+        "@com_github_onsi_ginkgo//:go_default_library",
+        "@com_github_onsi_gomega//:go_default_library",
+        "@com_github_pkg_errors//:go_default_library",
+    ],
+)

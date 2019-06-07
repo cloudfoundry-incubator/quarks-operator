@@ -1,0 +1,33 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "catalog.go",
+        "kubectl_helper.go",
+    ],
+    importpath = "code.cloudfoundry.org/cf-operator/testing",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/bosh/manifest:go_default_library",
+        "//pkg/credsgen:go_default_library",
+        "//pkg/kube/apis/boshdeployment/v1alpha1:go_default_library",
+        "//pkg/kube/apis/extendedjob/v1alpha1:go_default_library",
+        "//pkg/kube/apis/extendedsecret/v1alpha1:go_default_library",
+        "//pkg/kube/apis/extendedstatefulset/v1alpha1:go_default_library",
+        "//pkg/kube/util:go_default_library",
+        "//pkg/kube/util/config:go_default_library",
+        "//testing/boshmanifest:go_default_library",
+        "@com_github_pkg_errors//:go_default_library",
+        "@com_github_spf13_afero//:go_default_library",
+        "@io_k8s_api//apps/v1beta2:go_default_library",
+        "@io_k8s_api//batch/v1:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_api//storage/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/api/resource:go_default_library",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/labels:go_default_library",
+        "@io_k8s_apimachinery//pkg/util/wait:go_default_library",
+        "@org_uber_go_zap//:go_default_library",
+    ],
+)

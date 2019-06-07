@@ -1,0 +1,30 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["operator.go"],
+    importpath = "code.cloudfoundry.org/cf-operator/pkg/kube/operator",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/credsgen/in_memory_generator:go_default_library",
+        "//pkg/kube/controllers:go_default_library",
+        "//pkg/kube/util/config:go_default_library",
+        "//pkg/kube/util/ctxlog:go_default_library",
+        "@io_k8s_client_go//rest:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/manager:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "operator_test.go",
+        "suite_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//pkg/bosh/manifest:go_default_library",
+        "@com_github_onsi_ginkgo//:go_default_library",
+        "@com_github_onsi_gomega//:go_default_library",
+    ],
+)

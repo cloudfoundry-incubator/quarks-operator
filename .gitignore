@@ -85,3 +85,9 @@ tags
 
 *.coverprofile
 .envrc.local
+
+bazel-bin
+bazel-cf-operator
+bazel-genfiles
+bazel-out
+bazel-testlogs

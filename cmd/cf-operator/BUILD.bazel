@@ -1,0 +1,48 @@
+load("@io_bazel_rules_docker//container:container.bzl", "container_bundle", "container_push")
+load("@io_bazel_rules_docker//go:image.bzl", "go_image")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["main.go"],
+    importpath = "code.cloudfoundry.org/cf-operator/cmd/cf-operator",
+    visibility = ["//visibility:private"],
+    x_defs = {
+        "code.cloudfoundry.org/cf-operator/version.Version": "{STABLE_ARTIFACT_VERSION}",
+    },
+    deps = ["//cmd/internal:go_default_library"],
+)
+
+go_binary(
+    name = "cf-operator",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)
+
+go_image(
+    name = "image",
+    base = "@cf_operator_base//image",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+    goos = "linux",
+    goarch = "amd64",
+    cgo = False,
+)
+
+IMAGE_REPOSITORY = "{STABLE_OPERATOR_DOCKER_ORGANIZATION}/cf-operator"
+
+container_bundle(
+    name = "load_image",
+    images = {
+        "%s:{STABLE_DOCKER_IMAGE_TAG}" % IMAGE_REPOSITORY: ":image",
+    },
+)
+
+container_push(
+    name = "push_image_dockerhub",
+    image = ":image",
+    format = "Docker",
+    registry = "index.docker.io",
+    repository = IMAGE_REPOSITORY,
+    tag = "{STABLE_DOCKER_IMAGE_TAG}",
+)

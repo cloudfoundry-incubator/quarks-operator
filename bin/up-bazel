@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+set -o errexit -o nounset
+
+PROJECT_ROOT=$(bazel info workspace)
+source "${PROJECT_ROOT}/bin/include/versioning"
+source "${PROJECT_ROOT}/.envrc"
+
+if [ -z "$SKIP_IMAGE" ]; then
+  eval "$(minikube docker-env)"
+  bazel run //cmd/cf-operator:load_image
+fi
+
+if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
+  DOCKER_IMAGE_TAG=${VERSION_TAG}
+  export DOCKER_IMAGE_TAG
+fi
+
+export CF_OPERATOR_NAMESPACE=scf
+CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(minikube ssh -- "cat /etc/resolv.conf | grep nameserver | awk '{ printf \$2 }'")
+export CF_OPERATOR_WEBHOOK_SERVICE_HOST
+export CF_OPERATOR_WEBHOOK_SERVICE_PORT=8081
+
+"${PROJECT_ROOT}/bin/apply-crds"
+bazel run //cmd/cf-operator

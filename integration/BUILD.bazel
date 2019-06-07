@@ -1,0 +1,32 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "deploy_test.go",
+        "extended_job_test.go",
+        "extended_secret_test.go",
+        "extended_statefulset_test.go",
+        "lifecycle_test.go",
+        "suite_test.go",
+    ],
+    deps = [
+        "//integration/environment:go_default_library",
+        "//pkg/bosh/manifest:go_default_library",
+        "//pkg/credsgen:go_default_library",
+        "//pkg/credsgen/in_memory_generator:go_default_library",
+        "//pkg/kube/apis/boshdeployment/v1alpha1:go_default_library",
+        "//pkg/kube/apis/extendedjob/v1alpha1:go_default_library",
+        "//pkg/kube/apis/extendedsecret/v1alpha1:go_default_library",
+        "//pkg/kube/apis/extendedstatefulset/v1alpha1:go_default_library",
+        "//pkg/kube/util:go_default_library",
+        "//pkg/kube/util/versionedsecretstore:go_default_library",
+        "//pkg/testhelper:go_default_library",
+        "//testing/boshmanifest:go_default_library",
+        "@com_github_onsi_ginkgo//:go_default_library",
+        "@com_github_onsi_ginkgo//config:go_default_library",
+        "@com_github_onsi_gomega//:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:go_default_library",
+    ],
+)

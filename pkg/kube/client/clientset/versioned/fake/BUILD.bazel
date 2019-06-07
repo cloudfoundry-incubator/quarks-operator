@@ -1,0 +1,36 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "clientset_generated.go",
+        "doc.go",
+        "register.go",
+    ],
+    importpath = "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/fake",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/kube/apis/boshdeployment/v1alpha1:go_default_library",
+        "//pkg/kube/apis/extendedjob/v1alpha1:go_default_library",
+        "//pkg/kube/apis/extendedsecret/v1alpha1:go_default_library",
+        "//pkg/kube/apis/extendedstatefulset/v1alpha1:go_default_library",
+        "//pkg/kube/client/clientset/versioned:go_default_library",
+        "//pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1:go_default_library",
+        "//pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1/fake:go_default_library",
+        "//pkg/kube/client/clientset/versioned/typed/extendedjob/v1alpha1:go_default_library",
+        "//pkg/kube/client/clientset/versioned/typed/extendedjob/v1alpha1/fake:go_default_library",
+        "//pkg/kube/client/clientset/versioned/typed/extendedsecret/v1alpha1:go_default_library",
+        "//pkg/kube/client/clientset/versioned/typed/extendedsecret/v1alpha1/fake:go_default_library",
+        "//pkg/kube/client/clientset/versioned/typed/extendedstatefulset/v1alpha1:go_default_library",
+        "//pkg/kube/client/clientset/versioned/typed/extendedstatefulset/v1alpha1/fake:go_default_library",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/runtime:go_default_library",
+        "@io_k8s_apimachinery//pkg/runtime/schema:go_default_library",
+        "@io_k8s_apimachinery//pkg/runtime/serializer:go_default_library",
+        "@io_k8s_apimachinery//pkg/util/runtime:go_default_library",
+        "@io_k8s_apimachinery//pkg/watch:go_default_library",
+        "@io_k8s_client_go//discovery:go_default_library",
+        "@io_k8s_client_go//discovery/fake:go_default_library",
+        "@io_k8s_client_go//testing:go_default_library",
+    ],
+)

@@ -1,0 +1,9 @@
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+# gazelle:build_file_name BUILD.bazel
+# gazelle:exclude vendor/
+
+gazelle(
+    name = "gazelle",
+    prefix = "code.cloudfoundry.org/cf-operator",
+)

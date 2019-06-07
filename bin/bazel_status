@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -o errexit -o nounset
+
+source "bin/include/versioning"
+
+echo STABLE_ARTIFACT_VERSION "${ARTIFACT_VERSION}"
+
+echo STABLE_OPERATOR_DOCKER_ORGANIZATION "${OPERATOR_DOCKER_ORGANIZATION}"
+
+if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
+  DOCKER_IMAGE_TAG=${VERSION_TAG}
+  export DOCKER_IMAGE_TAG
+fi
+echo STABLE_DOCKER_IMAGE_TAG "${DOCKER_IMAGE_TAG}"

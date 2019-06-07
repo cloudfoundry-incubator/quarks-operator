@@ -1,24 +1,32 @@
 #!/bin/bash
 
-GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
-. "${GIT_ROOT}/bin/include/versioning"
-. "${GIT_ROOT}/.envrc"
+if [[ "${USE_BAZEL:-}" == true ]] || [[ "${USE_BAZEL:-}" == 1 ]]; then
+  bazel build //cmd/cf-operator:image.tar
 
-if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
-  DOCKER_IMAGE_TAG=${VERSION_TAG}
-  export DOCKER_IMAGE_TAG
-fi
-
-set +e
-
-if type -a minikube >/dev/null 2>/dev/null; then
-  if ! dockerenv=$(minikube docker-env); then
-    echo "Error: Could not retrieve docker settings from minikube."
-    exit 1
+  if docker info 1> /dev/null 2> /dev/null; then
+    bazel run //cmd/cf-operator:load_image
   fi
-  eval "${dockerenv}"
+else
+  GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
+  . "${GIT_ROOT}/bin/include/versioning"
+  . "${GIT_ROOT}/.envrc"
+
+  if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
+    DOCKER_IMAGE_TAG=${VERSION_TAG}
+    export DOCKER_IMAGE_TAG
+  fi
+
+  set +e
+
+  if type -a minikube >/dev/null 2>/dev/null; then
+    if ! dockerenv=$(minikube docker-env); then
+      echo "Error: Could not retrieve docker settings from minikube."
+      exit 1
+    fi
+    eval "${dockerenv}"
+  fi
+
+  set -e
+
+  docker build "${GIT_ROOT}" -f "${GIT_ROOT}/Dockerfile" --build-arg GO111MODULE="${GO111MODULE:-on}" -t "${OPERATOR_DOCKER_ORGANIZATION}/cf-operator:${DOCKER_IMAGE_TAG}"
 fi
-
-set -e
-
-docker build "${GIT_ROOT}" -f "${GIT_ROOT}/Dockerfile" --build-arg GO111MODULE="${GO111MODULE:-on}" -t "${OPERATOR_DOCKER_ORGANIZATION}/cf-operator:${DOCKER_IMAGE_TAG}"
