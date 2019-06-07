@@ -9,13 +9,13 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/integration/environment"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 )
 
 var _ = Describe("Lifecycle", func() {
 	var (
-		boshDeployment bdcv1.BOSHDeployment
+		boshDeployment bdv1.BOSHDeployment
 	)
 
 	AfterEach(func() {

@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -11,6 +12,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/integration/environment"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
 )
@@ -102,7 +104,7 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			By("checking for pod")
+			By("waiting for deployment to succeed, by checking for a pod")
 			err = env.WaitForPod(env.Namespace, "test-bdpl-bpm-v1-0")
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 
@@ -120,6 +122,94 @@ var _ = Describe("Deploy", func() {
 			pod := pods.Items[0]
 			Expect(pod.Spec.Containers).To(HaveLen(2))
 
+		})
+	})
+
+	Context("when updating deployment", func() {
+		var tearDowns []environment.TearDownFunc
+
+		BeforeEach(func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+		})
+
+		AfterEach(func() {
+			Expect(env.TearDownAll(tearDowns)).To(Succeed())
+		})
+
+		Context("which has no ops files", func() {
+			BeforeEach(func() {
+				_, tearDown, err := env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test", "manifest"))
+				Expect(err).NotTo(HaveOccurred())
+				tearDowns = append(tearDowns, tearDown)
+
+				By("waiting for deployment to succeed, by checking for a pod")
+				err = env.WaitForPod(env.Namespace, "test-nats-v1-0")
+				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
+			})
+
+			Context("when updating the bdm custom resource with an ops file", func() {
+				It("should update the deployment", func() {
+					tearDown, err := env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("test-ops"))
+					Expect(err).NotTo(HaveOccurred())
+					tearDowns = append(tearDowns, tearDown)
+
+					bdm, err := env.GetBOSHDeployment(env.Namespace, "test")
+					Expect(err).NotTo(HaveOccurred())
+					bdm.Spec.Ops = []bdv1.Ops{{Ref: "test-ops", Type: bdv1.ConfigMapType}}
+					_, _, err = env.UpdateBOSHDeployment(env.Namespace, *bdm)
+					Expect(err).NotTo(HaveOccurred())
+
+					By("checking if the deployment was updated")
+					err = env.WaitForPod(env.Namespace, "test-nats-v2-1")
+					Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
+				})
+			})
+
+			Context("when updating referenced BOSH deployment manifest", func() {
+				It("should update the deployment", func() {
+					cm, err := env.GetConfigMap(env.Namespace, "manifest")
+					Expect(err).NotTo(HaveOccurred())
+					cm.Data["manifest"] = strings.Replace(cm.Data["manifest"], "changeme", "dont", -1)
+					_, _, err = env.UpdateConfigMap(env.Namespace, *cm)
+					Expect(err).NotTo(HaveOccurred())
+
+					By("checking if the deployment was updated")
+					err = env.WaitForPod(env.Namespace, "test-nats-v2-1")
+					Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
+				})
+			})
+		})
+
+		Context("when updating referenced ops files", func() {
+			BeforeEach(func() {
+				tearDown, err := env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops"))
+				Expect(err).NotTo(HaveOccurred())
+				tearDowns = append(tearDowns, tearDown)
+
+				_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeploymentWithOps("test", "manifest", "bosh-ops"))
+				Expect(err).NotTo(HaveOccurred())
+				tearDowns = append(tearDowns, tearDown)
+
+				By("waiting for deployment to succeed, by checking for a pod")
+				err = env.WaitForPod(env.Namespace, "test-nats-v1-0")
+				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
+			})
+
+			It("should update the deployment", func() {
+				ops, err := env.GetConfigMap(env.Namespace, "bosh-ops")
+				Expect(err).NotTo(HaveOccurred())
+				ops.Data["ops"] = `- type: replace
+  path: /instance_groups/name=nats?/instances
+  value: 1`
+				_, _, err = env.UpdateConfigMap(env.Namespace, *ops)
+				Expect(err).NotTo(HaveOccurred())
+
+				By("checking if the deployment was updated")
+				err = env.WaitForPod(env.Namespace, "test-nats-v2-1")
+				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
+			})
 		})
 	})
 

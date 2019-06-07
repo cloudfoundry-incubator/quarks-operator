@@ -95,6 +95,10 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			config := a.Object.(*corev1.ConfigMap)
 
+			if reference.SkipReconciles(ctx, mgr.GetClient(), config) {
+				return []reconcile.Request{}
+			}
+
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, config)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for config '%s': %v", config.Name, err)
@@ -157,6 +161,10 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			secret := a.Object.(*corev1.Secret)
+
+			if reference.SkipReconciles(ctx, mgr.GetClient(), secret) {
+				return []reconcile.Request{}
+			}
 
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, secret)
 			if err != nil {

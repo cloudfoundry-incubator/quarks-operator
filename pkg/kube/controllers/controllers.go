@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
-	bdcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
@@ -45,7 +45,7 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 }
 
 var addToSchemes = runtime.SchemeBuilder{
-	bdcv1.AddToScheme,
+	bdv1.AddToScheme,
 	ejv1.AddToScheme,
 	esv1.AddToScheme,
 	essv1.AddToScheme,
