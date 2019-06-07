@@ -91,7 +91,8 @@ releases:
   url: hub.docker.com/cfcontainerization
   sha1: 6466c44827c3493645ca34b084e7c21de23272b4`
 
-const Small = `---
+// NatsSmall is a small manifest to start nats
+const NatsSmall = `---
 name: my-manifest
 releases:
 - name: nats
@@ -386,6 +387,7 @@ instance_groups:
     release: fake-release
 `
 
+// BPMRelease utilizing the test server to open two tcp ports
 const BPMRelease = `
 name: bpm
 

@@ -68,14 +68,10 @@ base value to calculate the port number to listen to on
 The tests use a `mutatingwebhookconfiguration` to configure Kubernetes to
 connect to this address. The address needs to be reachable from the cluster.
 
-In case of minikube on Linux, the following one liner exports the public IP of
-the interface used for the default route:
+In case of minikube, the following one liner exports the IP of the host bridge
+interface used by minikube:
 
-    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip -4 a s dev `ip r l 0/0 | cut -f5 -d' '` | grep -oP 'inet \K\S+(?=/)')
-
-And in case of minikube on Darwin, using following command to export the IP:
-
-    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ifconfig `route -n get 0.0.0.0 2>/dev/null | awk '/interface: / {print $2}'` | awk '/inet /{gsub(/\//," ");print $2}')
+    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(minikube ssh -- "cat /etc/resolv.conf | grep nameserver | awk '{ printf \$2 }'")
 
 ### Mutatingwebhookconfiguration
 
