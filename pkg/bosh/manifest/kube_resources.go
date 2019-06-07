@@ -46,18 +46,15 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 
 	cfac := NewContainerFactory(manifestName, instanceGroup.Name, releaseImageProvider, bpmConfigs)
 
-	// Create a persistent volume claim if specified in spec
-	if instanceGroup.PersistentDisk != nil {
-		if *instanceGroup.PersistentDisk > 0 {
-
-			// annotations are added to specify the mount path and volume name
-			annotations := map[string]string{
-				"volume-name":       "store-dir",
-				"volume-mount-path": "/var/vcap/store",
-			}
-			persistentVolumeClaim := kc.diskToPersistentVolumeClaims(cfac, manifestName, instanceGroup, annotations)
-			res.Disks = append(res.Disks, *persistentVolumeClaim)
+	// Create a persistent volume claim if specified in spec.
+	if instanceGroup.PersistentDisk != nil && *instanceGroup.PersistentDisk > 0 {
+		// Annotations are added to specify the volume name and mount path.
+		annotations := map[string]string{
+			"volume-name":       VolumeStoreDirName,
+			"volume-mount-path": VolumeStoreDirMountPath,
 		}
+		persistentVolumeClaim := kc.diskToPersistentVolumeClaims(cfac, manifestName, instanceGroup, annotations)
+		res.Disks = append(res.Disks, *persistentVolumeClaim)
 	}
 
 	switch instanceGroup.LifeCycle {
@@ -71,6 +68,9 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 		kc.addPVCSpecs(cfac, &convertedExtStatefulSet, manifestName, instanceGroup, res.Disks)
 
 		services, err := kc.serviceToKubeServices(manifestName, version, instanceGroup, &convertedExtStatefulSet)
+		if err != nil {
+			return nil, err
+		}
 		if len(services) != 0 {
 			res.Services = append(res.Services, services...)
 		}
@@ -95,7 +95,8 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 func (kc *KubeConverter) serviceToExtendedSts(manifestName string, version string, ig *InstanceGroup, cfac *ContainerFactory) (essv1.ExtendedStatefulSet, error) {
 	igName := ig.Name
 
-	listOfInitContainers, err := cfac.JobsToInitContainers(ig.Jobs)
+	hasPersistentDisk := (ig.PersistentDisk != nil && *ig.PersistentDisk > 0)
+	listOfInitContainers, err := cfac.JobsToInitContainers(ig.Jobs, hasPersistentDisk)
 	if err != nil {
 		return essv1.ExtendedStatefulSet{}, err
 	}
@@ -242,7 +243,8 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, version stri
 func (kc *KubeConverter) errandToExtendedJob(manifestName string, version string, ig *InstanceGroup, cfac *ContainerFactory) (ejv1.ExtendedJob, error) {
 	igName := ig.Name
 
-	listOfInitContainers, err := cfac.JobsToInitContainers(ig.Jobs)
+	hasPersistentDisk := (ig.PersistentDisk != nil && *ig.PersistentDisk > 0)
+	listOfInitContainers, err := cfac.JobsToInitContainers(ig.Jobs, hasPersistentDisk)
 	if err != nil {
 		return ejv1.ExtendedJob{}, err
 	}

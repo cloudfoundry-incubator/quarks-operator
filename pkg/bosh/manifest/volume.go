@@ -23,4 +23,9 @@ const (
 	VolumeSysDirName = "sys-dir"
 	// VolumeSysDirMountPath is the mount path for the sys directory.
 	VolumeSysDirMountPath = "/var/vcap/sys"
+
+	// VolumeStoreDirName is the volume name for the store directory.
+	VolumeStoreDirName = "store-dir"
+	// VolumeStoreDirMountPath is the mount path for the store directory.
+	VolumeStoreDirMountPath = "/var/vcap/store"
 )
