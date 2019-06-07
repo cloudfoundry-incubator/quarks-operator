@@ -108,6 +108,9 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, version strin
 		return essv1.ExtendedStatefulSet{}, err
 	}
 
+	bpmVolumes := bpmVolumes(cfac, ig, manifestName)
+	volumes = append(volumes, bpmVolumes...)
+
 	extSts := essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        fmt.Sprintf("%s-%s", manifestName, igName),
@@ -256,6 +259,9 @@ func (kc *KubeConverter) errandToExtendedJob(manifestName string, version string
 		return ejv1.ExtendedJob{}, err
 	}
 
+	bpmVolumes := bpmVolumes(cfac, ig, manifestName)
+	volumes = append(volumes, bpmVolumes...)
+
 	podLabels := ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels
 	// Controller will delete successful job
 	podLabels["delete"] = "pod"
@@ -287,7 +293,6 @@ func (kc *KubeConverter) errandToExtendedJob(manifestName string, version string
 }
 
 func (kc *KubeConverter) diskToPersistentVolumeClaims(cfac *ContainerFactory, manifestName string, ig *InstanceGroup, annotations map[string]string) *corev1.PersistentVolumeClaim {
-
 	// spec of a persistent volumeclaim
 	persistentVolumeClaim := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -350,6 +355,42 @@ func (kc *KubeConverter) addVolumeSpecs(podSpec *corev1.PodSpec, disks []corev1.
 		podSpec.Volumes = append(podSpec.Volumes, pvcVolume)
 	}
 	return *podSpec
+}
+
+func bpmVolumes(cfac *ContainerFactory, ig *InstanceGroup, manifestName string) []corev1.Volume {
+	var bpmVolumes []corev1.Volume
+	for _, job := range ig.Jobs {
+		bpmConfig := cfac.bpmConfigs[job.Name]
+		for _, process := range bpmConfig.Processes {
+			if process.EphemeralDisk {
+				eD := corev1.Volume{
+					Name:         fmt.Sprintf("%s-%s", VolumeEphemeralDirName, job.Name),
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				}
+				bpmVolumes = append(bpmVolumes, eD)
+			}
+			if process.PersistentDisk {
+				pD := corev1.Volume{
+					Name: fmt.Sprintf("%s-%s", VolumePersistentDirName, job.Name),
+					VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: fmt.Sprintf("%s-%s-%s", manifestName, ig.Name, "pvc"),
+					}},
+				}
+				bpmVolumes = append(bpmVolumes, pD)
+			}
+			for i := range process.AdditionalVolumes {
+				aV := corev1.Volume{
+					Name: fmt.Sprintf("%s-%s-%b", AdditionalVolume, job.Name, i),
+					VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: fmt.Sprintf("%s-%s-%s", manifestName, ig.Name, "pvc"),
+					}},
+				}
+				bpmVolumes = append(bpmVolumes, aV)
+			}
+
+		}
+	}
+	return bpmVolumes
 }
 
 func igVolumes(manifestName, igName string) []corev1.Volume {

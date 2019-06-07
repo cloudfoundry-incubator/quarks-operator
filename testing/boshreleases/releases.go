@@ -43,6 +43,9 @@ processes:
     open_files: 1024
   ephemeral_disk: true
   persistent_disk: true
+  additional_volumes:
+  - path: /var/vcap/data/shared
+    writable: true
   unsafe:
     unrestricted_volumes:
     - path: /dev/log
