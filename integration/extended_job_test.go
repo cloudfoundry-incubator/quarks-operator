@@ -169,10 +169,12 @@ var _ = Describe("ExtendedJob", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
+			AfterEach(func() {
+				Expect(env.TearDownAll(tearDowns)).To(Succeed())
+			})
+
 			Context("when a config content changes", func() {
 				It("it creates a new job", func() {
-					defer func(tdfs []environment.TearDownFunc) { Expect(env.TearDownAll(tdfs)).To(Succeed()) }(tearDowns)
-
 					By("checking if ext job is done")
 					eJob, err := env.GetExtendedJob(env.Namespace, ej.Name)
 					Expect(err).NotTo(HaveOccurred())
