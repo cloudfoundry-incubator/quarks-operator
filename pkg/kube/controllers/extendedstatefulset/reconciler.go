@@ -32,8 +32,6 @@ import (
 )
 
 const (
-	// OptimisticLockErrorMsg is an error message shown when locking fails
-	OptimisticLockErrorMsg = "the object has been modified; please apply your changes to the latest version and try again"
 	// EnvKubeAz is set by available zone name
 	EnvKubeAz = "KUBE_AZ"
 	// EnvBoshAz is set by available zone name
@@ -167,16 +165,6 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	statefulSetVersions, err := r.listStatefulSetVersions(ctx, exStatefulSet)
 	if err != nil {
 		return reconcile.Result{}, err
-	}
-
-	// Update StatefulSets configSHA1 and trigger statefulSet rollingUpdate if necessary
-	if exStatefulSet.Spec.UpdateOnConfigChange {
-		ctxlog.Debugf(ctx, "Considering configurations to trigger update.")
-
-		err = r.updateStatefulSetsConfigSHA1(ctx, exStatefulSet)
-		if err != nil {
-			return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, ctxlog.WithEvent(exStatefulSet, "UpdateError").Error(ctx, "Could not update StatefulSets owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
-		}
 	}
 
 	// Update the status of the resource
@@ -453,44 +441,6 @@ func (r *ReconcileExtendedStatefulSet) isStatefulSetReady(ctx context.Context, s
 	}
 
 	return false, nil
-}
-
-// updateStatefulSetsConfigSHA1 Update StatefulSets configSHA1 and config OwnerReferences if necessary
-func (r *ReconcileExtendedStatefulSet) updateStatefulSetsConfigSHA1(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet) error {
-	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
-	if err != nil {
-		return errors.Wrapf(err, "list StatefulSets owned by %s/%s", exStatefulSet.GetNamespace(), exStatefulSet.GetName())
-	}
-
-	for _, statefulSet := range statefulSets {
-		ctxlog.Debug(ctx, "Getting all ConfigMaps and Secrets that are referenced in '", statefulSet.Name, "' Spec.")
-
-		namespace := statefulSet.GetNamespace()
-
-		currentConfigRef, err := r.owner.ListConfigs(ctx, namespace, statefulSet.Spec.Template.Spec)
-		if err != nil {
-			return errors.Wrapf(err, "could not list ConfigMaps and Secrets from '%s' spec", statefulSet.Name)
-		}
-
-		currentsha, err := calculateConfigHash(currentConfigRef)
-		if err != nil {
-			return err
-		}
-
-		oldsha := statefulSet.Spec.Template.Annotations[estsv1.AnnotationConfigSHA1]
-
-		// If the current config sha doesn't match the existing config sha, update it
-		if currentsha != oldsha {
-			ctxlog.Debug(ctx, "StatefulSet '", statefulSet.Name, "' configuration has changed.")
-
-			err = r.updateConfigSHA1(ctx, &statefulSet, currentsha)
-			if err != nil {
-				return errors.Wrapf(err, "update StatefulSet config sha1")
-			}
-		}
-	}
-
-	return nil
 }
 
 // calculateConfigHash calculates the SHA1 of the JSON representation of configuration objects

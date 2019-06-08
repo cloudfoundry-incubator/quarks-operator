@@ -32,6 +32,7 @@ func Add(ctx context.Context, config *config.Config, mgr manager.Manager) error 
 	}
 
 	// Watch for changes to primary resource ExtendedStatefulSet
+	// Trigger when extendedStatefulSet is created or spec update
 	err = c.Watch(&source.Kind{Type: &estsv1.ExtendedStatefulSet{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
