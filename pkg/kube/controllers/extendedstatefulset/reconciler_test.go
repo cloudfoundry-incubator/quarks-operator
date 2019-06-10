@@ -10,7 +10,6 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"strconv"
 	"time"
 
@@ -162,6 +161,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		}
 	}
 
+	// TODO delete below
 	statefulSetVersions, err := r.listStatefulSetVersions(ctx, exStatefulSet)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -454,7 +454,7 @@ func calculateConfigHash(children []apis.Object) (string, error) {
 		Secrets:    make(map[string]map[string][]byte),
 	}
 
-	// Add the data from each child to the hashSource
+	// AddReference the data from each child to the hashSource
 	// All children should be in the same namespace so each one should have a
 	// unique name
 	for _, obj := range children {
@@ -477,35 +477,6 @@ func calculateConfigHash(children []apis.Object) (string, error) {
 	}
 
 	return fmt.Sprintf("%x", sha1.Sum(hashSourceBytes)), nil
-}
-
-// updateConfigSHA1 updates the configuration sha1 of the given StatefulSet to the
-// given string
-func (r *ReconcileExtendedStatefulSet) updateConfigSHA1(ctx context.Context, actualStatefulSet *v1beta2.StatefulSet, hash string) error {
-	// Get the existing annotations
-	annotations := actualStatefulSet.Spec.Template.GetAnnotations()
-	if annotations == nil {
-		annotations = make(map[string]string)
-	}
-
-	// Update the annotations
-	annotations[estsv1.AnnotationConfigSHA1] = hash
-
-	ctxlog.Debug(ctx, "Updating new config sha1 for StatefulSet '", actualStatefulSet.Name, "'.")
-	_, err := controllerutil.CreateOrUpdate(ctx, r.client, actualStatefulSet.DeepCopy(), func(obj runtime.Object) error {
-		if existingSts, ok := obj.(*v1beta2.StatefulSet); ok {
-			actualStatefulSet.ObjectMeta.ResourceVersion = existingSts.ObjectMeta.ResourceVersion
-			actualStatefulSet.Spec.Template.SetAnnotations(annotations)
-			actualStatefulSet.DeepCopyInto(existingSts)
-			return nil
-		}
-		return fmt.Errorf("object is not an ExtendStatefulSet")
-	})
-	if err != nil {
-		return errors.Wrapf(err, "Failed to apply StatefulSet '%s': %v", actualStatefulSet.Name, err)
-	}
-
-	return nil
 }
 
 // generateSingleStatefulSet creates a StatefulSet from one zone

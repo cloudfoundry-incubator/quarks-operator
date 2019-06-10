@@ -26,7 +26,7 @@ func Add(ctx context.Context, config *config.Config, mgr manager.Manager) error 
 	r := NewReconciler(ctx, config, mgr, controllerutil.SetControllerReference)
 
 	// Create a new controller
-	c, err := controller.New("extendedstatefulset-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("ext-statefulset-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
