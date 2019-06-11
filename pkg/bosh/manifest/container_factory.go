@@ -52,22 +52,7 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job, hasPersistentDisk bo
 		}
 
 		// Setup the BOSH pre-start init containers.
-		boshPreStart := filepath.Join(VolumeJobsDirMountPath, job.Name, "bin", "pre-start")
-		boshPreStartInitContainer := corev1.Container{
-			Name:         fmt.Sprintf("bosh-pre-start-%s", job.Name),
-			Image:        jobImage,
-			VolumeMounts: instanceGroupVolumeMounts(),
-			Command:      []string{"/bin/sh", "-c"},
-			Args:         []string{fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s"; fi`, boshPreStart)},
-		}
-		if hasPersistentDisk {
-			persistentDisk := corev1.VolumeMount{
-				Name:      VolumeStoreDirName,
-				MountPath: VolumeStoreDirMountPath,
-			}
-			boshPreStartInitContainer.VolumeMounts = append(boshPreStartInitContainer.VolumeMounts, persistentDisk)
-		}
-		boshPreStartInitContainers = append(boshPreStartInitContainers, boshPreStartInitContainer)
+		boshPreStartInitContainers = append(boshPreStartInitContainers, boshPreStartInitContainer(job.Name, jobImage, hasPersistentDisk))
 
 		// Setup the BPM pre-start init containers.
 		bpmConfig, ok := c.bpmConfigs[job.Name]
@@ -76,20 +61,11 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job, hasPersistentDisk bo
 		}
 		for _, process := range bpmConfig.Processes {
 			if process.Hooks.PreStart != "" {
-				bpmPrestartInitContainer := corev1.Container{
-					Name:         fmt.Sprintf("bpm-pre-start-%s", process.Name),
-					Image:        jobImage,
-					VolumeMounts: instanceGroupVolumeMounts(),
-					Command:      []string{process.Hooks.PreStart},
-				}
-
 				bpmVolumes, err := generateBPMVolumes(process, job.Name)
 				if err != nil {
 					return []corev1.Container{}, err
 				}
-				bpmPrestartInitContainer.VolumeMounts = append(bpmPrestartInitContainer.VolumeMounts, bpmVolumes...)
-
-				bpmPreStartInitContainers = append(bpmPreStartInitContainers, bpmPrestartInitContainer)
+				bpmPreStartInitContainers = append(bpmPreStartInitContainers, bpmPrestartInitContainer(process.Name, jobImage, process.Hooks.PreStart, bpmVolumes))
 			}
 		}
 	}
@@ -165,7 +141,7 @@ func (c *ContainerFactory) generateJobContainers(job Job, jobImage string) ([]co
 		container.WorkingDir = process.Workdir
 		container.SecurityContext = &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
-				Add: ToCapability(process.Capabilities),
+				Add: capability(process.Capabilities),
 			},
 		}
 
@@ -267,15 +243,6 @@ func generateBPMVolumes(bpmProcess bpm.Process, jobName string) ([]corev1.Volume
 	return bpmVolumes, nil
 }
 
-// templateJobContainer creates the template for a job container.
-func templateJobContainer(name, image string) corev1.Container {
-	return corev1.Container{
-		Name:         name,
-		Image:        image,
-		VolumeMounts: instanceGroupVolumeMounts(),
-	}
-}
-
 // jobSpecCopierContainer will return a corev1.Container{} with the populated field
 func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName string) corev1.Container {
 	inContainerReleasePath := filepath.Join(VolumeRenderingDataMountPath, "jobs-src", releaseName)
@@ -359,8 +326,37 @@ func createDirContainer(name string, jobs []Job) corev1.Container {
 	}
 }
 
-// ToCapability converts string slice into Capability slice of kubernetes
-func ToCapability(s []string) []corev1.Capability {
+func boshPreStartInitContainer(jobName string, jobImage string, hasPersistentDisk bool) corev1.Container {
+	boshPreStart := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "pre-start")
+	c := corev1.Container{
+		Name:         fmt.Sprintf("bosh-pre-start-%s", jobName),
+		Image:        jobImage,
+		VolumeMounts: instanceGroupVolumeMounts(),
+		Command:      []string{"/bin/sh", "-c"},
+		Args:         []string{fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s"; fi`, boshPreStart)},
+	}
+	if hasPersistentDisk {
+		persistentDisk := corev1.VolumeMount{
+			Name:      VolumeStoreDirName,
+			MountPath: VolumeStoreDirMountPath,
+		}
+		c.VolumeMounts = append(c.VolumeMounts, persistentDisk)
+	}
+	return c
+}
+
+func bpmPrestartInitContainer(processName string, jobImage string, cmd string, bpmVolumes []corev1.VolumeMount) corev1.Container {
+	return corev1.Container{
+		Name:         fmt.Sprintf("bpm-pre-start-%s", processName),
+		Image:        jobImage,
+		VolumeMounts: append(instanceGroupVolumeMounts(), bpmVolumes...),
+		Command:      []string{cmd},
+	}
+
+}
+
+// capability converts string slice into Capability slice of kubernetes
+func capability(s []string) []corev1.Capability {
 	capabilities := make([]corev1.Capability, len(s))
 	for capabilityIndex, capability := range s {
 		capabilities[capabilityIndex] = corev1.Capability(capability)
