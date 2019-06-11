@@ -369,15 +369,12 @@ func bpmVolumes(cfac *ContainerFactory, ig *InstanceGroup, manifestName string) 
 				}
 				bpmVolumes = append(bpmVolumes, eD)
 			}
-			if process.PersistentDisk {
-				pD := corev1.Volume{
-					Name: fmt.Sprintf("%s-%s", VolumePersistentDirName, job.Name),
-					VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: fmt.Sprintf("%s-%s-%s", manifestName, ig.Name, "pvc"),
-					}},
-				}
-				bpmVolumes = append(bpmVolumes, pD)
-			}
+
+			// TODO: skip this, while we need to figure it out a better way
+			// to define persistenVolumeClaims for jobs
+			// if process.PersistentDisk {
+			// }
+
 			for i := range process.AdditionalVolumes {
 				aV := corev1.Volume{
 					Name: fmt.Sprintf("%s-%s-%b", AdditionalVolume, job.Name, i),

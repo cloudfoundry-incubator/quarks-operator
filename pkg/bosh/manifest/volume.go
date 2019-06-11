@@ -34,11 +34,6 @@ const (
 	// VolumeEphemeralDirMountPath is the mount path for the ephemeral directory.
 	VolumeEphemeralDirMountPath = "/var/vcap/data/"
 
-	// VolumePersistentDirName is the volume name for the persistent disk directory.
-	VolumePersistentDirName = "bpm-persistent-disk"
-	// VolumePersistentDirMountPath is the mount path for the persistent directory.
-	VolumePersistentDirMountPath = "/var/vcap/store/"
-
 	// AdditionalVolume helps in building an additional volume name together with
 	// the index under the additional_volumes bpm list inside the bpm process schema
 	AdditionalVolume = "bpm-additional-volume"

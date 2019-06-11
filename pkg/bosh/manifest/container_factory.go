@@ -209,13 +209,10 @@ func generateBPMVolumes(bpmProcess bpm.Process, jobName string) ([]corev1.Volume
 		bpmVolumes = append(bpmVolumes, bpmEphemeralDisk)
 	}
 
-	if bpmProcess.PersistentDisk {
-		bpmPersistentDisk := corev1.VolumeMount{
-			Name:      fmt.Sprintf("%s-%s", VolumePersistentDirName, jobName),
-			MountPath: fmt.Sprintf("%s%s", VolumePersistentDirMountPath, jobName),
-		}
-		bpmVolumes = append(bpmVolumes, bpmPersistentDisk)
-	}
+	// TODO: skip this, while we need to figure it out a better way
+	// to define persistenVolumeClaims for jobs
+	// if bpmProcess.PersistentDisk {
+	// }
 
 	for i, additionalVolume := range bpmProcess.AdditionalVolumes {
 		match, _ := regexp.MatchString(AdditionalVolumesRegexValidation, additionalVolume.Path)
