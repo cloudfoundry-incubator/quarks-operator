@@ -2,6 +2,7 @@ package extendedjob
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -39,9 +40,19 @@ func AddTrigger(ctx context.Context, config *config.Config, mgr manager.Manager)
 			pod := e.Object.(*corev1.Pod)
 			shouldProcessEvent := pod.Status.Phase == "Pending"
 			if shouldProcessEvent {
-				ctxlog.WithEvent(pod, "Predicates").Debugf(ctx,
-					"Pod %s creation allowed. Pod is in Pending status.",
-					pod.Name)
+				ctxlog.WithEvent(pod, "Predicates").DebugJSON(ctx,
+					"Filter for create events",
+					ctxlog.ReconcileEventsFromSource{
+						ReconciliationObjectName: e.Meta.GetName(),
+						ReconciliationObjectKind: "corev1.Pod",
+						PredicateObjectName:      e.Meta.GetName(),
+						PredicateObjectKind:      "corev1.Pod",
+						Namespace:                e.Meta.GetNamespace(),
+						Type:                     "predicate",
+						Message: fmt.Sprintf("Filter passed for %s, existing pod is in Pending status",
+							e.Meta.GetName()),
+					},
+				)
 			}
 			return shouldProcessEvent
 		},

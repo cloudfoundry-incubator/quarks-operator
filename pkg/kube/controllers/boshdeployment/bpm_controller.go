@@ -2,6 +2,7 @@ package boshdeployment
 
 import (
 	"context"
+	"fmt"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
@@ -42,11 +43,19 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 			o := e.Object.(*corev1.Secret)
 			shouldProcessEvent := isBPMInfoSecret(o)
 			if shouldProcessEvent {
-				ctxlog.WithEvent(o, "Predicates").Debugf(ctx,
-					"Secret %s creation allowed. Contains desired label %s, with value %s",
-					o.Name,
-					bdv1.LabelDeploymentSecretType,
-					o.GetLabels()[bdv1.LabelDeploymentSecretType])
+				ctxlog.WithEvent(o, "Predicates").DebugJSON(ctx,
+					"Filter for create events",
+					ctxlog.ReconcileEventsFromSource{
+						ReconciliationObjectName: e.Meta.GetName(),
+						ReconciliationObjectKind: bdv1.SecretType,
+						PredicateObjectName:      e.Meta.GetName(),
+						PredicateObjectKind:      bdv1.SecretType,
+						Namespace:                e.Meta.GetNamespace(),
+						Type:                     "predicate",
+						Message: fmt.Sprintf("Filter passed for %s, existing secret with label %s, value %s",
+							e.Meta.GetName(), bdv1.LabelDeploymentSecretType, o.GetLabels()[bdv1.LabelDeploymentSecretType]),
+					},
+				)
 			}
 
 			return shouldProcessEvent
@@ -57,11 +66,19 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 			o := e.ObjectNew.(*corev1.Secret)
 			shouldProcessEvent := isBPMInfoSecret(o)
 			if shouldProcessEvent {
-				ctxlog.WithEvent(o, "Predicates").Debugf(ctx,
-					"Secret %s update allowed. Contains desired label %s, with value %s",
-					o.Name,
-					bdv1.LabelDeploymentSecretType,
-					o.GetLabels()[bdv1.LabelDeploymentSecretType])
+				ctxlog.WithEvent(o, "Predicates").DebugJSON(ctx,
+					"Filter for update events",
+					ctxlog.ReconcileEventsFromSource{
+						ReconciliationObjectName: e.MetaNew.GetName(),
+						ReconciliationObjectKind: bdv1.SecretType,
+						PredicateObjectName:      e.MetaNew.GetName(),
+						PredicateObjectKind:      bdv1.SecretType,
+						Namespace:                e.MetaNew.GetNamespace(),
+						Type:                     "predicate",
+						Message: fmt.Sprintf("Filter passed for %s, new secret with label %s, value %s",
+							e.MetaNew.GetName(), bdv1.LabelDeploymentSecretType, o.GetLabels()[bdv1.LabelDeploymentSecretType]),
+					},
+				)
 			}
 
 			return shouldProcessEvent

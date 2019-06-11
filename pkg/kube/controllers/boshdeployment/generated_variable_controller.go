@@ -2,6 +2,7 @@ package boshdeployment
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -15,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
@@ -44,9 +46,19 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 			shouldProcessEvent := isManifestWithOps(o.Name)
 
 			if shouldProcessEvent {
-				ctxlog.WithEvent(o, "Predicates").Debugf(ctx,
-					"Secret %s creation allowed. Secret name contains with-ops suffix",
-					o.Name)
+				ctxlog.WithEvent(o, "Predicates").DebugJSON(ctx,
+					"Filter for create events",
+					ctxlog.ReconcileEventsFromSource{
+						ReconciliationObjectName: e.Meta.GetName(),
+						ReconciliationObjectKind: bdv1.SecretType,
+						PredicateObjectName:      e.Meta.GetName(),
+						PredicateObjectKind:      bdv1.SecretType,
+						Namespace:                e.Meta.GetNamespace(),
+						Type:                     "predicate",
+						Message: fmt.Sprintf("Filter passed for %s, existing secret with the %s suffix",
+							e.Meta.GetName(), names.DeploymentSecretTypeManifestWithOps.String()),
+					},
+				)
 			}
 
 			return shouldProcessEvent
@@ -59,9 +71,19 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 			shouldProcessEvent := isManifestWithOps(newSecret.Name) && !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
 
 			if shouldProcessEvent {
-				ctxlog.WithEvent(newSecret, "Predicates").Debugf(ctx,
-					"Secret %s update allowed. Secret name contains with-ops suffix",
-					newSecret.Name)
+				ctxlog.WithEvent(newSecret, "Predicates").DebugJSON(ctx,
+					"Filter for update events",
+					ctxlog.ReconcileEventsFromSource{
+						ReconciliationObjectName: e.MetaNew.GetName(),
+						ReconciliationObjectKind: bdv1.SecretType,
+						PredicateObjectName:      e.MetaNew.GetName(),
+						PredicateObjectKind:      bdv1.SecretType,
+						Namespace:                e.MetaNew.GetNamespace(),
+						Type:                     "predicate",
+						Message: fmt.Sprintf("Filter passed for %s, existing secret with the %s suffix has been updated",
+							e.MetaNew.GetName(), names.DeploymentSecretTypeManifestWithOps.String()),
+					},
+				)
 			}
 
 			return shouldProcessEvent

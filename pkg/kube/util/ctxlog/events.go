@@ -3,6 +3,7 @@ package ctxlog
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -15,10 +16,24 @@ type event struct {
 	reason string
 }
 
+// ReconcileEventsFromSource for defining useful logs when defining
+// a mapping between a watched object and a
+// reconcile one
+type ReconcileEventsFromSource struct {
+	ReconciliationObjectName string `json:"reconciliationObjectName"`
+	ReconciliationObjectKind string `json:"reconciliationObjectKind"`
+	PredicateObjectName      string `json:"predicateObjectName"`
+	PredicateObjectKind      string `json:"predicateObjectKind"`
+	Namespace                string `json:"namespace"`
+	Message                  string `json:"message"`
+	Type                     string `json:"type"`
+}
+
 // EventLogger adds events and writes logs
 type EventLogger interface {
 	Infof(context.Context, string, ...interface{})
 	Debugf(context.Context, string, ...interface{})
+	DebugJSON(context.Context, string, interface{})
 	Errorf(context.Context, string, ...interface{}) error
 	Error(context.Context, ...interface{}) error
 }
@@ -28,6 +43,17 @@ func WithEvent(object runtime.Object, reason string) EventLogger {
 	return event{object: object, reason: reason}
 }
 
+// DebugJSON logs and adds an info event in json format
+func (ev event) DebugJSON(ctx context.Context, format string, objectInfo interface{}) {
+	log := ExtractLogger(ctx)
+
+	prettyJSON, _ := json.MarshalIndent(objectInfo, "", " ")
+	log.Debug(format, string(prettyJSON))
+
+	recorder := ExtractRecorder(ctx)
+	recorder.Event(ev.object, corev1.EventTypeNormal, ev.reason, fmt.Sprintf("%s \n%s", format, string(prettyJSON)))
+}
+
 // Debugf logs and adds an info event
 func (ev event) Debugf(ctx context.Context, format string, v ...interface{}) {
 	log := ExtractLogger(ctx)
@@ -35,6 +61,11 @@ func (ev event) Debugf(ctx context.Context, format string, v ...interface{}) {
 
 	recorder := ExtractRecorder(ctx)
 	recorder.Eventf(ev.object, corev1.EventTypeNormal, ev.reason, format, v...)
+}
+
+// GenReconcilePredicatesObject ...
+func GenReconcilePredicatesObject(ns string, t string, msg string, rKind string, pKind string) ReconcileEventsFromSource {
+	return ReconcileEventsFromSource{}
 }
 
 // Infof logs and adds an info event
