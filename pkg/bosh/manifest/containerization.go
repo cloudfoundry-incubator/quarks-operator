@@ -12,7 +12,7 @@ type BOSHContainerization struct {
 	Consumes  map[string]JobLink `yaml:"consumes"`
 	Instances []JobInstance      `yaml:"instances"`
 	Release   string             `yaml:"release"`
-	BPM       bpm.Config         `yaml:"bpm"`
+	BPM       *bpm.Config        `yaml:"bpm,omitempty"`
 	Ports     []Port             `yaml:"ports"`
 	Run       RunConfig          `yaml:"run"`
 }

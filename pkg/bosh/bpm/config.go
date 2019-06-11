@@ -1,6 +1,8 @@
 package bpm
 
-import yaml "gopkg.in/yaml.v2"
+import (
+	yaml "gopkg.in/yaml.v2"
+)
 
 // Hooks from a BPM config
 type Hooks struct {

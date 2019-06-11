@@ -129,7 +129,7 @@ func (dg *DataGatherer) BPMConfigs() (bpm.Configs, error) {
 	}
 
 	for _, job := range dg.instanceGroup.Jobs {
-		bpm[job.Name] = job.Properties.BOSHContainerization.BPM
+		bpm[job.Name] = *job.Properties.BOSHContainerization.BPM
 	}
 
 	return bpm, nil
@@ -246,9 +246,9 @@ func (dg *DataGatherer) renderBPM() error {
 	return nil
 }
 
-// renderJobBPM per job and add its value to the jobInstances.BPM field
+// renderJobBPM per job and add its value to the jobInstances.BPM field.
 func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string) error {
-	// Location of the current job job.MF file
+	// Location of the current job job.MF file.
 	jobSpecFile := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "job.MF")
 
 	var jobSpec struct {
@@ -256,7 +256,7 @@ func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string) error {
 	}
 
 	// First, we must figure out the location of the template.
-	// We're looking for a template in the spec, whose result is a file "bpm.yml"
+	// We're looking for a template in the spec, whose result is a file "bpm.yml".
 	yamlFile, err := ioutil.ReadFile(jobSpecFile)
 	if err != nil {
 		return errors.Wrap(err, "failed to read the job spec file")
@@ -266,7 +266,7 @@ func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string) error {
 		return errors.Wrap(err, "failed to unmarshal the job spec file")
 	}
 
-	bpmSource := ""
+	var bpmSource string
 	for srcFile, dstFile := range jobSpec.Templates {
 		if filepath.Base(dstFile) == "bpm.yml" {
 			bpmSource = srcFile
@@ -274,83 +274,84 @@ func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string) error {
 		}
 	}
 
-	if bpmSource == "" {
+	if bpmSource != "" {
+		// Render bpm.yml.erb for each job instance.
+		erbFilePath := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "templates", bpmSource)
+		if _, err := os.Stat(erbFilePath); err != nil {
+			return err
+		}
+
+		// Get current job.bosh_containerization.instances, which will be required by the renderer to generate
+		// the render.InstanceInfo struct.
+		jobInstances := currentJob.Properties.BOSHContainerization.Instances
+		if jobInstances == nil {
+			return nil
+		}
+
+		jobIndexBPM := make([]bpm.Config, len(jobInstances))
+		for i, jobInstance := range jobInstances {
+
+			properties := currentJob.Properties.ToMap()
+
+			renderPointer := btg.NewERBRenderer(
+				&btg.EvaluationContext{
+					Properties: properties,
+				},
+
+				&btg.InstanceInfo{
+					Address:    jobInstance.Address,
+					AZ:         jobInstance.AZ,
+					ID:         jobInstance.ID,
+					Index:      string(jobInstance.Index),
+					Deployment: dg.manifest.Name,
+					Name:       jobInstance.Name,
+				},
+
+				jobSpecFile,
+			)
+
+			// Write to a tmp, this is following the conventions on how the
+			// https://github.com/viovanov/bosh-template-go/ processes the params
+			// when we calling the *.Render().
+			tmpfile, err := ioutil.TempFile("", "rendered.*.yml")
+			if err != nil {
+				return err
+			}
+			defer os.Remove(tmpfile.Name())
+
+			if err := renderPointer.Render(erbFilePath, tmpfile.Name()); err != nil {
+				return err
+			}
+
+			bpmBytes, err := ioutil.ReadFile(tmpfile.Name())
+			if err != nil {
+				return err
+			}
+
+			// Parse a rendered bpm.yml into the bpm Config struct.
+			renderedBPM, err := bpm.NewConfig(bpmBytes)
+			if err != nil {
+				return err
+			}
+
+			// Overwrite Processes if BPM.Processes exists in BOSHContainerization.
+			if currentJob.Properties.BOSHContainerization.BPM != nil && len(currentJob.Properties.BOSHContainerization.BPM.Processes) > 0 {
+				renderedBPM.Processes = overwriteBPMProcesses(renderedBPM.Processes, currentJob.Properties.BOSHContainerization.BPM.Processes)
+			}
+
+			jobIndexBPM[i] = renderedBPM
+		}
+
+		firstJobIndexBPM := jobIndexBPM[0]
+		for _, jobBPMInstance := range jobIndexBPM {
+			if !reflect.DeepEqual(jobBPMInstance, firstJobIndexBPM) {
+				dg.log.Warnf("found different BPM job indexes for job %s in manifest %s, this is NOT SUPPORTED", currentJob.Name, dg.manifest.Name)
+			}
+		}
+		currentJob.Properties.BOSHContainerization.BPM = &firstJobIndexBPM
+	} else if currentJob.Properties.BOSHContainerization.BPM == nil {
 		return fmt.Errorf("can't find BPM template for job %s", currentJob.Name)
 	}
-
-	// Render bpm.yml.erb for each job instance
-	erbFilePath := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "templates", bpmSource)
-	if _, err := os.Stat(erbFilePath); err != nil {
-		return err
-	}
-
-	// Get current job.bosh_containerization.instances, which will be required by the renderer to generate
-	// the render.InstanceInfo struct
-	jobInstances := currentJob.Properties.BOSHContainerization.Instances
-	if jobInstances == nil {
-		return nil
-	}
-
-	jobIndexBPM := make([]bpm.Config, len(jobInstances))
-	for i, jobInstance := range jobInstances {
-
-		properties := currentJob.Properties.ToMap()
-
-		renderPointer := btg.NewERBRenderer(
-			&btg.EvaluationContext{
-				Properties: properties,
-			},
-
-			&btg.InstanceInfo{
-				Address:    jobInstance.Address,
-				AZ:         jobInstance.AZ,
-				ID:         jobInstance.ID,
-				Index:      string(jobInstance.Index),
-				Deployment: dg.manifest.Name,
-				Name:       jobInstance.Name,
-			},
-
-			jobSpecFile,
-		)
-
-		// Write to a tmp, this is following the conventions on how the
-		// https://github.com/viovanov/bosh-template-go/ processes the params
-		// when we calling the *.Render()
-		tmpfile, err := ioutil.TempFile("", "rendered.*.yml")
-		if err != nil {
-			return err
-		}
-		defer os.Remove(tmpfile.Name())
-
-		if err := renderPointer.Render(erbFilePath, tmpfile.Name()); err != nil {
-			return err
-		}
-
-		bpmBytes, err := ioutil.ReadFile(tmpfile.Name())
-		if err != nil {
-			return err
-		}
-
-		// Parse a rendered bpm.yml into the bpm Config struct
-		renderedBPM, err := bpm.NewConfig(bpmBytes)
-		if err != nil {
-			return err
-		}
-
-		// Overwrite Processes if BPM.Processes exists in BOSHContainerization
-		if len(currentJob.Properties.BOSHContainerization.BPM.Processes) > 0 {
-			renderedBPM.Processes = overwriteBPMProcesses(renderedBPM.Processes, currentJob.Properties.BOSHContainerization.BPM.Processes)
-		}
-
-		jobIndexBPM[i] = renderedBPM
-	}
-
-	for _, jobBPMInstance := range jobIndexBPM {
-		if !reflect.DeepEqual(jobBPMInstance, jobIndexBPM[0]) {
-			dg.log.Warnf("found different BPM job indexes for job %s in manifest %s, this is NOT SUPPORTED", currentJob.Name, dg.manifest.Name)
-		}
-	}
-	currentJob.Properties.BOSHContainerization.BPM = jobIndexBPM[0]
 
 	return nil
 }
