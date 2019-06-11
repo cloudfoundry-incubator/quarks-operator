@@ -72,6 +72,7 @@ var _ = Describe("ContainerFactory", func() {
 						bpm.Process{
 							Name:           "fake-process",
 							Capabilities:   []string{"CHOWN", "AUDIT_CONTROL"},
+							Env:            map[string]string{"a": "1", "b": "2"},
 							EphemeralDisk:  true,
 							PersistentDisk: true,
 						},
@@ -196,6 +197,12 @@ var _ = Describe("ContainerFactory", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(containers[1].SecurityContext.Capabilities.Add[0])).To(Equal("CHOWN"))
 			Expect(string(containers[1].SecurityContext.Capabilities.Add[1])).To(Equal("AUDIT_CONTROL"))
+		})
+
+		It("adds all environment variales to containers", func() {
+			containers, err := act()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(containers[1].Env).To(HaveLen(2))
 		})
 	})
 
