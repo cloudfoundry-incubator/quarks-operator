@@ -45,4 +45,7 @@ const (
 	// AdditionalVolumesVcapStoreRegex ensures that the path is of the form
 	// /var/vcap/store
 	AdditionalVolumesVcapStoreRegex = "(/var/vcap/store/.+)"
+
+	// UnrestrictedVolume is the volume name for the unrestricted ones
+	UnrestrictedVolume = "bpm-unrestricted-volume"
 )

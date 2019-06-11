@@ -360,6 +360,9 @@ func (kc *KubeConverter) addVolumeSpecs(podSpec *corev1.PodSpec, disks []corev1.
 
 func bpmVolumes(cfac *ContainerFactory, ig *InstanceGroup, manifestName string) []corev1.Volume {
 	var bpmVolumes []corev1.Volume
+
+	r, _ := regexp.Compile(AdditionalVolumesVcapStoreRegex)
+
 	for _, job := range ig.Jobs {
 		bpmConfig := cfac.bpmConfigs[job.Name]
 		for _, process := range bpmConfig.Processes {
@@ -377,7 +380,7 @@ func bpmVolumes(cfac *ContainerFactory, ig *InstanceGroup, manifestName string) 
 			// }
 
 			for i, additionalVolume := range process.AdditionalVolumes {
-				matchVcapStore, _ := regexp.MatchString(AdditionalVolumesVcapStoreRegex, additionalVolume.Path)
+				matchVcapStore := r.MatchString(additionalVolume.Path)
 				if matchVcapStore {
 					continue
 				}
@@ -386,6 +389,18 @@ func bpmVolumes(cfac *ContainerFactory, ig *InstanceGroup, manifestName string) 
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 				}
 				bpmVolumes = append(bpmVolumes, aV)
+			}
+
+			for i, unrestrictedVolumes := range process.Unsafe.UnrestrictedVolumes {
+				matchVcapStore := r.MatchString(unrestrictedVolumes.Path)
+				if matchVcapStore {
+					continue
+				}
+				uV := corev1.Volume{
+					Name:         fmt.Sprintf("%s-%s-%b", UnrestrictedVolume, job.Name, i),
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				}
+				bpmVolumes = append(bpmVolumes, uV)
 			}
 		}
 	}

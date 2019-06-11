@@ -52,6 +52,18 @@ var _ = Describe("ContainerFactory", func() {
 									Writable: false,
 								},
 							},
+							Unsafe: bpm.Unsafe{
+								UnrestrictedVolumes: []bpm.Volume{
+									{
+										Path:     "/",
+										Writable: true,
+									},
+									{
+										Path:     "/etc",
+										Writable: true,
+									},
+								},
+							},
 						},
 					},
 				},
@@ -152,6 +164,33 @@ var _ = Describe("ContainerFactory", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
+		It("adds the unrestricted volumes", func() {
+			containers, err := act()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(containers[0].VolumeMounts).To(ContainElement(
+				corev1.VolumeMount{
+					Name:             "bpm-unrestricted-volume-fake-job-0",
+					ReadOnly:         false,
+					MountPath:        "/",
+					SubPath:          "",
+					MountPropagation: nil,
+				}))
+			Expect(containers[0].VolumeMounts).To(ContainElement(
+				corev1.VolumeMount{
+					Name:             "bpm-unrestricted-volume-fake-job-1",
+					ReadOnly:         false,
+					MountPath:        "/etc",
+					SubPath:          "",
+					MountPropagation: nil,
+				}))
+		})
+
+		It("ensures the amount of volume mounts is correct", func() {
+			containers, err := act()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(containers[0].VolumeMounts)).To(Equal(8))
+		})
+
 		It("adds linux capabilities to containers", func() {
 			containers, err := act()
 			Expect(err).ToNot(HaveOccurred())
@@ -230,6 +269,18 @@ var _ = Describe("ContainerFactory", func() {
 										Writable: false,
 									},
 								},
+								Unsafe: bpm.Unsafe{
+									UnrestrictedVolumes: []bpm.Volume{
+										{
+											Path:     "/etc",
+											Writable: false,
+										},
+										{
+											Path:     "/var/vcap/store/foobar",
+											Writable: false,
+										},
+									},
+								},
 							},
 						},
 					},
@@ -247,7 +298,7 @@ var _ = Describe("ContainerFactory", func() {
 			It("generates hook init containers with bpm volumes for ephemeral disk", func() {
 				containers, err := act(false)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(containers[5].VolumeMounts).To(HaveLen(6))
+				Expect(containers[5].VolumeMounts).To(HaveLen(7))
 				Expect(containers[5].VolumeMounts).To(ContainElement(
 					corev1.VolumeMount{
 						Name:             "bpm-ephemeral-disk-fake-job",
@@ -261,7 +312,7 @@ var _ = Describe("ContainerFactory", func() {
 			It("generates hook init containers with bpm additional volumes", func() {
 				containers, err := act(false)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(containers[5].VolumeMounts).To(HaveLen(6))
+				Expect(containers[5].VolumeMounts).To(HaveLen(7))
 				Expect(containers[5].VolumeMounts).To(ContainElement(
 					corev1.VolumeMount{
 						Name:             "bpm-additional-volume-fake-job-0",
@@ -273,6 +324,28 @@ var _ = Describe("ContainerFactory", func() {
 				Expect(containers[5].VolumeMounts).ToNot(ContainElement(
 					corev1.VolumeMount{
 						Name:             "bpm-additional-volume-fake-job-1",
+						ReadOnly:         true,
+						MountPath:        "/var/vcap/store/foobar",
+						SubPath:          "",
+						MountPropagation: nil,
+					}))
+			})
+
+			It("generates hook init containers with bpm unrestricted volumes", func() {
+				containers, err := act(false)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(containers[5].VolumeMounts).To(HaveLen(7))
+				Expect(containers[5].VolumeMounts).To(ContainElement(
+					corev1.VolumeMount{
+						Name:             "bpm-unrestricted-volume-fake-job-0",
+						ReadOnly:         true,
+						MountPath:        "/etc",
+						SubPath:          "",
+						MountPropagation: nil,
+					}))
+				Expect(containers[5].VolumeMounts).ToNot(ContainElement(
+					corev1.VolumeMount{
+						Name:             "bpm-unrestricted-volume-fake-job-1",
 						ReadOnly:         true,
 						MountPath:        "/var/vcap/store/foobar",
 						SubPath:          "",

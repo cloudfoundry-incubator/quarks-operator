@@ -134,7 +134,7 @@ var _ = Describe("kube converter", func() {
 					Expect(rendererInitContainer.Name).To(Equal("renderer-diego-cell"))
 
 					// Test shared volume setup
-					Expect(len(stS.Spec.Containers[0].VolumeMounts)).To(Equal(7))
+					Expect(len(stS.Spec.Containers[0].VolumeMounts)).To(Equal(8))
 					Expect(stS.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
 					Expect(stS.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 					Expect(stS.Spec.Containers[0].VolumeMounts[4].Name).To(Equal("bpm-ephemeral-disk-cflinuxfs3-rootfs-setup"))
@@ -142,15 +142,17 @@ var _ = Describe("kube converter", func() {
 					Expect(stS.Spec.Containers[0].VolumeMounts[5].Name).To(Equal("bpm-additional-volume-cflinuxfs3-rootfs-setup-0"))
 					Expect(stS.Spec.Containers[0].VolumeMounts[5].MountPath).To(Equal("/var/vcap/data/shared"))
 					Expect(stS.Spec.Containers[0].VolumeMounts[5].ReadOnly).To(Equal(false))
-					Expect(stS.Spec.Containers[0].VolumeMounts[6].Name).To(Equal("store-dir"))
-					Expect(stS.Spec.Containers[0].VolumeMounts[6].MountPath).To(Equal("/var/vcap/store"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[6].Name).To(Equal("bpm-unrestricted-volume-cflinuxfs3-rootfs-setup-0"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[6].MountPath).To(Equal("/dev/log"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[7].Name).To(Equal("store-dir"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[7].MountPath).To(Equal("/var/vcap/store"))
 					Expect(specCopierInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
 					Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 					Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
 					Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 
 					// Test share pod spec volumes
-					Expect(len(stS.Spec.Volumes)).To(Equal(9))
+					Expect(len(stS.Spec.Volumes)).To(Equal(10))
 
 					Expect(stS.Spec.Volumes[6].Name).To(Equal("bpm-ephemeral-disk-cflinuxfs3-rootfs-setup"))
 					Expect(stS.Spec.Volumes[6].EmptyDir).To(Equal(&corev1.EmptyDirVolumeSource{}))
@@ -158,8 +160,11 @@ var _ = Describe("kube converter", func() {
 					Expect(stS.Spec.Volumes[7].Name).To(Equal("bpm-additional-volume-cflinuxfs3-rootfs-setup-0"))
 					Expect(stS.Spec.Volumes[7].EmptyDir).To(Equal(&corev1.EmptyDirVolumeSource{}))
 
-					Expect(stS.Spec.Volumes[8].Name).To(Equal("store-dir"))
-					Expect(stS.Spec.Volumes[8].PersistentVolumeClaim.ClaimName).To(Equal("foo-deployment-diego-cell-pvc"))
+					Expect(stS.Spec.Volumes[8].Name).To(Equal("bpm-unrestricted-volume-cflinuxfs3-rootfs-setup-0"))
+					Expect(stS.Spec.Volumes[8].EmptyDir).To(Equal(&corev1.EmptyDirVolumeSource{}))
+
+					Expect(stS.Spec.Volumes[9].Name).To(Equal("store-dir"))
+					Expect(stS.Spec.Volumes[9].PersistentVolumeClaim.ClaimName).To(Equal("foo-deployment-diego-cell-pvc"))
 
 					// Test the renderer container setup
 					Expect(rendererInitContainer.Env[0].Name).To(Equal("INSTANCE_GROUP_NAME"))

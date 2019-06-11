@@ -201,6 +201,9 @@ func (c *ContainerFactory) generateJobContainers(job Job, jobImage string) ([]co
 func generateBPMVolumes(bpmProcess bpm.Process, jobName string) ([]corev1.VolumeMount, error) {
 	var bpmVolumes []corev1.VolumeMount
 
+	r, _ := regexp.Compile(AdditionalVolumesRegex)
+	rS, _ := regexp.Compile(AdditionalVolumesVcapStoreRegex)
+	// Process all ephemeral_disk
 	if bpmProcess.EphemeralDisk {
 		bpmEphemeralDisk := corev1.VolumeMount{
 			Name:      fmt.Sprintf("%s-%s", VolumeEphemeralDirName, jobName),
@@ -214,16 +217,16 @@ func generateBPMVolumes(bpmProcess bpm.Process, jobName string) ([]corev1.Volume
 	// if bpmProcess.PersistentDisk {
 	// }
 
+	// Process all additional_volumes
 	for i, additionalVolume := range bpmProcess.AdditionalVolumes {
-		match, _ := regexp.MatchString(AdditionalVolumesRegex, additionalVolume.Path)
+		match := r.MatchString(additionalVolume.Path)
 		if !match {
 			return []corev1.VolumeMount{}, errors.Errorf("The %s path, must be a path inside"+
 				" /var/vcap/data, /var/vcap/store or /var/vcap/sys/run, for a path outside these,"+
 				" you must use the unrestricted_volumes key", additionalVolume.Path)
 		}
 
-		matchVcapStore, _ := regexp.MatchString(AdditionalVolumesVcapStoreRegex, additionalVolume.Path)
-
+		matchVcapStore := rS.MatchString(additionalVolume.Path)
 		// TODO: skip additional volumes under /var/vcap/store
 		// while we need to figure it out a better way to define
 		// persistenVolumeClaims for jobs
@@ -240,6 +243,25 @@ func generateBPMVolumes(bpmProcess bpm.Process, jobName string) ([]corev1.Volume
 			MountPath: additionalVolume.Path,
 		}
 		bpmVolumes = append(bpmVolumes, bpmAdditionalVolume)
+	}
+
+	// Process the unsafe configuration
+	for i, unrestrictedVolumes := range bpmProcess.Unsafe.UnrestrictedVolumes {
+		matchVcapStore := rS.MatchString(unrestrictedVolumes.Path)
+
+		// TODO: skip unrestricted volumes under /var/vcap/store
+		// while we need to figure it out a better way to define
+		// persistenVolumeClaims for jobs
+		if matchVcapStore {
+			continue
+		}
+		uVolume := corev1.VolumeMount{
+			Name:      fmt.Sprintf("%s-%s-%b", UnrestrictedVolume, jobName, i),
+			ReadOnly:  !unrestrictedVolumes.Writable,
+			MountPath: unrestrictedVolumes.Path,
+		}
+		bpmVolumes = append(bpmVolumes, uVolume)
+
 	}
 
 	return bpmVolumes, nil
