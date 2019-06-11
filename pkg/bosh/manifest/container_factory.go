@@ -215,11 +215,20 @@ func generateBPMVolumes(bpmProcess bpm.Process, jobName string) ([]corev1.Volume
 	// }
 
 	for i, additionalVolume := range bpmProcess.AdditionalVolumes {
-		match, _ := regexp.MatchString(AdditionalVolumesRegexValidation, additionalVolume.Path)
+		match, _ := regexp.MatchString(AdditionalVolumesRegex, additionalVolume.Path)
 		if !match {
 			return []corev1.VolumeMount{}, errors.Errorf("The %s path, must be a path inside"+
 				" /var/vcap/data, /var/vcap/store or /var/vcap/sys/run, for a path outside these,"+
 				" you must use the unrestricted_volumes key", additionalVolume.Path)
+		}
+
+		matchVcapStore, _ := regexp.MatchString(AdditionalVolumesVcapStoreRegex, additionalVolume.Path)
+
+		// TODO: skip additional volumes under /var/vcap/store
+		// while we need to figure it out a better way to define
+		// persistenVolumeClaims for jobs
+		if matchVcapStore {
+			continue
 		}
 		// TODO: How to map the following bpm volume schema fields
 		// - allow_executions

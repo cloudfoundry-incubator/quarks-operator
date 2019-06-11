@@ -46,6 +46,8 @@ processes:
   additional_volumes:
   - path: /var/vcap/data/shared
     writable: true
+  - path: /var/vcap/store/foo
+    writable: true
   unsafe:
     unrestricted_volumes:
     - path: /dev/log

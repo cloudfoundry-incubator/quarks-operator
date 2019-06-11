@@ -119,7 +119,7 @@ var _ = Describe("ContainerFactory", func() {
 					SubPath:          "",
 					MountPropagation: nil,
 				}))
-			Expect(containers[0].VolumeMounts).To(ContainElement(
+			Expect(containers[0].VolumeMounts).ToNot(ContainElement(
 				corev1.VolumeMount{
 					Name:             "bpm-additional-volume-fake-job-1",
 					ReadOnly:         true,
@@ -247,7 +247,7 @@ var _ = Describe("ContainerFactory", func() {
 			It("generates hook init containers with bpm volumes for ephemeral disk", func() {
 				containers, err := act(false)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(containers[5].VolumeMounts).To(HaveLen(7))
+				Expect(containers[5].VolumeMounts).To(HaveLen(6))
 				Expect(containers[5].VolumeMounts).To(ContainElement(
 					corev1.VolumeMount{
 						Name:             "bpm-ephemeral-disk-fake-job",
@@ -261,7 +261,7 @@ var _ = Describe("ContainerFactory", func() {
 			It("generates hook init containers with bpm additional volumes", func() {
 				containers, err := act(false)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(containers[5].VolumeMounts).To(HaveLen(7))
+				Expect(containers[5].VolumeMounts).To(HaveLen(6))
 				Expect(containers[5].VolumeMounts).To(ContainElement(
 					corev1.VolumeMount{
 						Name:             "bpm-additional-volume-fake-job-0",
@@ -270,7 +270,7 @@ var _ = Describe("ContainerFactory", func() {
 						SubPath:          "",
 						MountPropagation: nil,
 					}))
-				Expect(containers[5].VolumeMounts).To(ContainElement(
+				Expect(containers[5].VolumeMounts).ToNot(ContainElement(
 					corev1.VolumeMount{
 						Name:             "bpm-additional-volume-fake-job-1",
 						ReadOnly:         true,

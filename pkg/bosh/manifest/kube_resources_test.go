@@ -156,7 +156,7 @@ var _ = Describe("kube converter", func() {
 					Expect(stS.Spec.Volumes[6].EmptyDir).To(Equal(&corev1.EmptyDirVolumeSource{}))
 
 					Expect(stS.Spec.Volumes[7].Name).To(Equal("bpm-additional-volume-cflinuxfs3-rootfs-setup-0"))
-					Expect(stS.Spec.Volumes[7].PersistentVolumeClaim.ClaimName).To(Equal("foo-deployment-diego-cell-pvc"))
+					Expect(stS.Spec.Volumes[7].EmptyDir).To(Equal(&corev1.EmptyDirVolumeSource{}))
 
 					Expect(stS.Spec.Volumes[8].Name).To(Equal("store-dir"))
 					Expect(stS.Spec.Volumes[8].PersistentVolumeClaim.ClaimName).To(Equal("foo-deployment-diego-cell-pvc"))

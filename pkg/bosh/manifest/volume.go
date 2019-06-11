@@ -38,7 +38,11 @@ const (
 	// the index under the additional_volumes bpm list inside the bpm process schema
 	AdditionalVolume = "bpm-additional-volume"
 
-	// AdditionalVolumesRegexValidation ensures only a valid path is defined
+	// AdditionalVolumesRegex ensures only a valid path is defined
 	// under the additional_volumes bpm list inside the bpm process schema
-	AdditionalVolumesRegexValidation = "((/var/vcap/data/.+)|(/var/vcap/store/.+)|(/var/vcap/sys/run/.+))"
+	AdditionalVolumesRegex = "((/var/vcap/data/.+)|(/var/vcap/store/.+)|(/var/vcap/sys/run/.+))"
+
+	// AdditionalVolumesVcapStoreRegex ensures that the path is of the form
+	// /var/vcap/store
+	AdditionalVolumesVcapStoreRegex = "(/var/vcap/store/.+)"
 )

@@ -2,6 +2,7 @@ package manifest
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -375,16 +376,17 @@ func bpmVolumes(cfac *ContainerFactory, ig *InstanceGroup, manifestName string) 
 			// if process.PersistentDisk {
 			// }
 
-			for i := range process.AdditionalVolumes {
+			for i, additionalVolume := range process.AdditionalVolumes {
+				matchVcapStore, _ := regexp.MatchString(AdditionalVolumesVcapStoreRegex, additionalVolume.Path)
+				if matchVcapStore {
+					continue
+				}
 				aV := corev1.Volume{
-					Name: fmt.Sprintf("%s-%s-%b", AdditionalVolume, job.Name, i),
-					VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: fmt.Sprintf("%s-%s-%s", manifestName, ig.Name, "pvc"),
-					}},
+					Name:         fmt.Sprintf("%s-%s-%b", AdditionalVolume, job.Name, i),
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 				}
 				bpmVolumes = append(bpmVolumes, aV)
 			}
-
 		}
 	}
 	return bpmVolumes
