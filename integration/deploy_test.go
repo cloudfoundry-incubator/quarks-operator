@@ -125,6 +125,37 @@ var _ = Describe("Deploy", func() {
 		})
 	})
 
+	Context("when job name contains an underscore", func() {
+		var tearDowns []environment.TearDownFunc
+
+		AfterEach(func() {
+			Expect(env.TearDownAll(tearDowns)).To(Succeed())
+		})
+
+		It("should apply naming guidelines", func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: "router-manifest"},
+				Data:       map[string]string{"manifest": bm.CFRouting},
+			})
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test-bdpl", "router-manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			By("waiting for deployment to succeed, by checking for a pod")
+			err = env.WaitForPod(env.Namespace, "test-bdpl-routing-v1-0")
+			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
+
+			By("checking for containers")
+			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=routing")
+			Expect(len(pods.Items)).To(Equal(1))
+			Expect(pods.Items[0].Spec.Containers).To(HaveLen(1))
+			Expect(pods.Items[0].Spec.Containers[0].Name).To(Equal("route-registrar-route-registrar"))
+		})
+	})
+
 	Context("when updating deployment", func() {
 		var tearDowns []environment.TearDownFunc
 

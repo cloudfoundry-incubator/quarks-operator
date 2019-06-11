@@ -57,15 +57,7 @@ func CalculateSecretName(secretType DeploymentSecretType, deploymentName, name s
 	variableName := partRegex.FindString(strings.Replace(name, "_", "-", -1))
 	secretName := nameRegex.FindString(deploymentName + "." + variableName)
 
-	if len(secretName) > 63 {
-		// secret names are limited to 63 characters so we recalculate the name as
-		// <name trimmed to 31 characters><md5 hash of name>
-		sumHex := md5.Sum([]byte(secretName))
-		sum := hex.EncodeToString(sumHex[:])
-		secretName = secretName[:63-32] + sum
-	}
-
-	return secretName
+	return truncateMD5(secretName)
 }
 
 // CalculateEJobOutputSecretPrefixAndName generates a Secret prefix for the output
@@ -80,6 +72,30 @@ func CalculateEJobOutputSecretPrefixAndName(secretType DeploymentSecretType, dep
 	}
 
 	return prefix + ".", finalName
+}
+
+var allowedKubeChars = regexp.MustCompile("[^-a-z0-9]*")
+
+// Sanitize produces valid k8s names, i.e. for containers: [a-z0-9]([-a-z0-9]*[a-z0-9])?
+func Sanitize(name string) string {
+	name = strings.Replace(name, "_", "-", -1)
+	name = strings.ToLower(name)
+	name = allowedKubeChars.ReplaceAllLiteralString(name, "")
+	name = strings.TrimPrefix(name, "-")
+	name = strings.TrimSuffix(name, "-")
+	name = truncateMD5(name)
+	return name
+}
+
+func truncateMD5(s string) string {
+	if len(s) > 63 {
+		// names are limited to 63 characters so we recalculate the name as
+		// <name trimmed to 31 characters>-<md5 hash of name>
+		sumHex := md5.Sum([]byte(s))
+		sum := hex.EncodeToString(sumHex[:])
+		s = s[:63-32] + sum
+	}
+	return s
 }
 
 // GetStatefulSetName gets statefulset name from podName
