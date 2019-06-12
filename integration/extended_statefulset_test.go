@@ -158,12 +158,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			expectedMsg := fmt.Sprintf("StatefulSet '%s-v1' owned by ExtendedStatefulSet '%s/%s' has not changed, checking if any other changes are necessary.", extendedStatefulSet.Name, env.Namespace, extendedStatefulSet.Name)
 			msgs := env.ObservedLogs.FilterMessage(expectedMsg)
 			Expect(msgs.Len()).NotTo(Equal(0))
-
-			By("Checking AnnotationConfigSHA1 does not exist")
-			ss, err := env.GetStatefulSet(env.Namespace, ess.GetName()+"-v1")
-			Expect(err).NotTo(HaveOccurred())
-			currentSHA1 := ss.Spec.Template.GetAnnotations()[estsv1.AnnotationConfigSHA1]
-			Expect(currentSHA1).Should(Equal(""))
 		})
 
 		It("should keep two versions if all are not running", func() {
@@ -233,11 +227,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			err = env.WaitForPods(env.Namespace, "referencedpod=yes")
 			Expect(err).NotTo(HaveOccurred())
 
-			ss, err := env.GetStatefulSet(env.Namespace, ess.GetName()+"-v1")
-			Expect(err).NotTo(HaveOccurred())
-			originalSHA1 := ss.Spec.Template.GetAnnotations()[estsv1.AnnotationConfigSHA1]
-			originalGeneration := ss.Status.ObservedGeneration
-
 			By("Checking for extendedStatefulSet available")
 			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName(), 1)
 			Expect(err).NotTo(HaveOccurred())
@@ -269,17 +258,8 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("Checking new generation of statefulSet appears")
-			err = env.WaitForStatefulSetNewGeneration(env.Namespace, ss.GetName(), *originalGeneration)
-			Expect(err).NotTo(HaveOccurred())
-
 			err = env.WaitForPods(env.Namespace, "referencedpod=yes")
 			Expect(err).NotTo(HaveOccurred())
-
-			By("Checking AnnotationConfigSHA1 changed")
-			ss, err = env.GetStatefulSet(env.Namespace, ess.GetName()+"-v1")
-			Expect(err).NotTo(HaveOccurred())
-			currentSHA1 := ss.Spec.Template.GetAnnotations()[estsv1.AnnotationConfigSHA1]
-			Expect(currentSHA1).ShouldNot(Equal(originalSHA1))
 
 			By("Checking for ExtendedStatefulSet availability")
 			err = env.WaitForExtendedStatefulSetAvailable(env.Namespace, ess.GetName(), 1)
