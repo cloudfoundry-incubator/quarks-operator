@@ -86,7 +86,7 @@ var _ = Describe("Deploy", func() {
 
 			sts, err := env.GetStatefulSet(env.Namespace, stsName)
 			Expect(err).NotTo(HaveOccurred(), "error getting statefulset for deployment")
-			Expect(*sts.Spec.Replicas).To(BeEquivalentTo(4))
+			Expect(*sts.Spec.Replicas).To(BeEquivalentTo(3))
 		})
 
 	})
