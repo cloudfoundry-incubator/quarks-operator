@@ -41,8 +41,8 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 	extendedjob.AddErrand,
 	extendedjob.AddJob,
 	extendedsecret.Add,
-	extendedstatefulset.Add,
-	extendedstatefulset.AddVersionCleanup,
+	extendedstatefulset.AddExtendedStatefulSet,
+	extendedstatefulset.AddStatefulSetCleanup,
 }
 
 var addToSchemes = runtime.SchemeBuilder{

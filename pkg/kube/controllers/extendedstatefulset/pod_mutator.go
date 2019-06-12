@@ -41,7 +41,7 @@ var _ admission.Handler = &PodMutator{}
 
 // NewPodMutator returns a new reconcile.Reconciler
 func NewPodMutator(log *zap.SugaredLogger, config *config.Config, mgr manager.Manager, srf setReferenceFunc) admission.Handler {
-	mutatorLog := log.Named("extendedstatefulset-pod1-mutator")
+	mutatorLog := log.Named("extendedstatefulset-pod-mutator")
 	mutatorLog.Info("Creating a Pod mutator for ExtendedStatefulSet")
 
 	return &PodMutator{
@@ -84,7 +84,7 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 
 	m.log.Info("Mutating Pod ", pod.Name)
 
-	// Check if it is a volumemanagement statefulset pod
+	// Check if it is a volumeManagement statefulSet pod
 	if !isVolumeManagementStatefulSetPod(pod.Name) {
 
 		// Fetch extendedStatefulSet
@@ -161,7 +161,7 @@ func (m *PodMutator) addVolumeSpec(pod *corev1.Pod, volumeClaimTemplatesMap map[
 			_, foundVolumeClaimTemplate := volumeClaimTemplatesMap[volumeMount.Name]
 			if foundVolumeClaimTemplate {
 				podOrdinal := names.OrdinalFromPodName(pod.GetName())
-				persistentVolumeClaim := fmt.Sprintf("%s-%s-%s-%d", volumeMount.Name, "volumemanagement", getNameWithOutVersion(statefulSet.Name, 1), podOrdinal)
+				persistentVolumeClaim := fmt.Sprintf("%s-%s-%s-%d", volumeMount.Name, "volume-management", getNameWithOutVersion(statefulSet.Name, 1), podOrdinal)
 
 				volume, foundVolume := volumeMap[volumeMount.Name]
 				if !foundVolume {
@@ -197,10 +197,9 @@ func getNameWithOutVersion(name string, offset int) string {
 	return name
 }
 
-// isVolumeManagementStatefulSetPod checks if it is pod of the volumemanagement statefulset
+// isVolumeManagementStatefulSetPod checks if it is pod of the volumeManagement statefulSet
 func isVolumeManagementStatefulSetPod(podName string) bool {
-	podNamePrefix := strings.Split(podName, "-")[0]
-	return podNamePrefix == "volumemanagement"
+	return strings.HasPrefix(podName, "volume-management")
 }
 
 // fetchExtendedStatefulset fetches the extendedstatefulset of the pod

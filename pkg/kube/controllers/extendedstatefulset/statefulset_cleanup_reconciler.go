@@ -21,9 +21,9 @@ import (
 	podutil "code.cloudfoundry.org/cf-operator/pkg/kube/util/pod"
 )
 
-// NewVersionCleanupReconciler returns a new reconcile.Reconciler
-func NewVersionCleanupReconciler(ctx context.Context, config *config.Config, mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileVersionCleanup{
+// NewStatefulSetCleanupReconciler returns a new reconcile.Reconciler
+func NewStatefulSetCleanupReconciler(ctx context.Context, config *config.Config, mgr manager.Manager) reconcile.Reconciler {
+	return &ReconcileStatefulSetCleanup{
 		ctx:    ctx,
 		config: config,
 		client: mgr.GetClient(),
@@ -31,16 +31,16 @@ func NewVersionCleanupReconciler(ctx context.Context, config *config.Config, mgr
 	}
 }
 
-// ReconcileVersionCleanup reconciles an ExtendedStatefulSet object when references changes
-type ReconcileVersionCleanup struct {
+// ReconcileStatefulSetCleanup reconciles an ExtendedStatefulSet object when references changes
+type ReconcileStatefulSetCleanup struct {
 	ctx    context.Context
 	client client.Client
 	scheme *runtime.Scheme
 	config *config.Config
 }
 
-// Reconcile clean up old versions of the ExtendedStatefulSet
-func (r *ReconcileVersionCleanup) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+// Reconcile cleans up old versions and volumeManagement statefulSet of the ExtendedStatefulSet
+func (r *ReconcileStatefulSetCleanup) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 
 	// Fetch the ExtendedStatefulSet we need to reconcile
 	exStatefulSet := &estsv1.ExtendedStatefulSet{}
@@ -64,6 +64,13 @@ func (r *ReconcileVersionCleanup) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
+	// Cleanup volumeManagement statefulSet once it's all pods are ready
+	err = r.deleteVolumeManagementStatefulSet(ctx, exStatefulSet)
+	if err != nil {
+		ctxlog.Error(ctx, "Could not delete volumeManagement statefulSet of ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+		return reconcile.Result{}, err
+	}
+
 	statefulSetVersions, err := r.listStatefulSetVersions(ctx, exStatefulSet)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -83,7 +90,7 @@ func (r *ReconcileVersionCleanup) Reconcile(request reconcile.Request) (reconcil
 }
 
 // listStatefulSetVersions gets all StatefulSets' versions and ready status owned by the ExtendedStatefulSet
-func (r *ReconcileVersionCleanup) listStatefulSetVersions(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet) (map[int]bool, error) {
+func (r *ReconcileStatefulSetCleanup) listStatefulSetVersions(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet) (map[int]bool, error) {
 	ctxlog.Debug(ctx, "Listing StatefulSets owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
 
 	versions := map[int]bool{}
@@ -116,7 +123,7 @@ func (r *ReconcileVersionCleanup) listStatefulSetVersions(ctx context.Context, e
 }
 
 // cleanupStatefulSets cleans up StatefulSets and versions if they are no longer required
-func (r *ReconcileVersionCleanup) cleanupStatefulSets(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet, maxAvailableVersion int) error {
+func (r *ReconcileStatefulSetCleanup) cleanupStatefulSets(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet, maxAvailableVersion int) error {
 	ctxlog.WithEvent(exStatefulSet, "CleanupStatefulSets").Infof(ctx, "Cleaning up StatefulSets for ExtendedStatefulSet '%s' less than version %d.", exStatefulSet.Name, maxAvailableVersion)
 
 	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
@@ -152,7 +159,7 @@ func (r *ReconcileVersionCleanup) cleanupStatefulSets(ctx context.Context, exSta
 }
 
 // listStatefulSets gets all StatefulSets owned by the ExtendedStatefulSet
-func (r *ReconcileVersionCleanup) listStatefulSets(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet) ([]v1beta2.StatefulSet, error) {
+func (r *ReconcileStatefulSetCleanup) listStatefulSets(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet) ([]v1beta2.StatefulSet, error) {
 	ctxlog.Debug(ctx, "Listing StatefulSets owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
 
 	result := []v1beta2.StatefulSet{}
@@ -180,7 +187,7 @@ func (r *ReconcileVersionCleanup) listStatefulSets(ctx context.Context, exStatef
 }
 
 // isStatefulSetReady returns true if at least one pod owned by the StatefulSet is running
-func (r *ReconcileVersionCleanup) isStatefulSetReady(ctx context.Context, statefulSet *v1beta2.StatefulSet) (bool, error) {
+func (r *ReconcileStatefulSetCleanup) isStatefulSetReady(ctx context.Context, statefulSet *v1beta2.StatefulSet) (bool, error) {
 	labelsSelector := labels.Set{
 		v1beta2.StatefulSetRevisionLabel: statefulSet.Status.CurrentRevision,
 	}

@@ -20,8 +20,8 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
-// Add creates a new ExtendedStatefulSet controller and adds it to the Manager
-func Add(ctx context.Context, config *config.Config, mgr manager.Manager) error {
+// AddExtendedStatefulSet creates a new ExtendedStatefulSet controller and adds it to the Manager
+func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-statefulset-reconciler", mgr.GetRecorder("ext-statefulset-recorder"))
 	r := NewReconciler(ctx, config, mgr, controllerutil.SetControllerReference)
 

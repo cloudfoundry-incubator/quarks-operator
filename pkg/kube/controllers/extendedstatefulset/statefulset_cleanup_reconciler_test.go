@@ -30,7 +30,7 @@ import (
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 )
 
-var _ = Describe("ReconcileVersionCleanup", func() {
+var _ = Describe("ReconcileStatefulSetCleanup", func() {
 	var (
 		manager              *cfakes.FakeManager
 		reconciler           reconcile.Reconciler
@@ -128,7 +128,7 @@ var _ = Describe("ReconcileVersionCleanup", func() {
 	})
 
 	JustBeforeEach(func() {
-		reconciler = exssc.NewVersionCleanupReconciler(ctx, config, manager)
+		reconciler = exssc.NewStatefulSetCleanupReconciler(ctx, config, manager)
 	})
 
 	Context("when there is only one running version", func() {
@@ -393,7 +393,7 @@ var _ = Describe("ReconcileVersionCleanup", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("some error"))
 			Expect(client.GetCallCount()).To(Equal(1))
-			Expect(client.ListCallCount()).To(Equal(4))
+			Expect(client.ListCallCount()).To(Equal(5))
 			Expect(client.DeleteCallCount()).To(Equal(1))
 		})
 	})

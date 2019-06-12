@@ -107,13 +107,6 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	// Cleanup volumemanagement statefulset once it's all pods are ready
-	err = r.deleteVolumeManagementStatefulSet(ctx, exStatefulSet)
-	if err != nil {
-		ctxlog.Error(ctx, "Could not delete volumemanagement statefulset of ExtendedStatefulSet '", request.NamespacedName, "': ", err)
-		return reconcile.Result{}, err
-	}
-
 	// Get the actual StatefulSet
 	actualStatefulSet, actualVersion, err := r.getActualStatefulSet(ctx, exStatefulSet)
 	if err != nil {
