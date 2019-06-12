@@ -47,11 +47,11 @@ func WithEvent(object runtime.Object, reason string) EventLogger {
 func (ev event) DebugJSON(ctx context.Context, format string, objectInfo interface{}) {
 	log := ExtractLogger(ctx)
 
-	prettyJSON, _ := json.MarshalIndent(objectInfo, "", " ")
-	log.Debug(format, string(prettyJSON))
+	jsonData, _ := json.Marshal(objectInfo)
+	log.Debug(format, string(jsonData))
 
 	recorder := ExtractRecorder(ctx)
-	recorder.Event(ev.object, corev1.EventTypeNormal, ev.reason, fmt.Sprintf("%s \n%s", format, string(prettyJSON)))
+	recorder.Event(ev.object, corev1.EventTypeNormal, ev.reason, fmt.Sprintf("%s %s", format, string(jsonData)))
 }
 
 // Debugf logs and adds an info event
