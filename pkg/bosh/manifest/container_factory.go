@@ -287,8 +287,8 @@ func createDirContainer(name string, jobs []Job) corev1.Container {
 			},
 		},
 		Env:     []corev1.EnvVar{},
-		Command: []string{"/bin/sh"},
-		Args:    []string{"-c", "mkdir -p " + strings.Join(dirs, " ")},
+		Command: []string{"/bin/sh", "-c"},
+		Args:    []string{fmt.Sprintf("mkdir -p %[1]s; chown 1000:1000 %[1]s", strings.Join(dirs, " "))},
 	}
 }
 
