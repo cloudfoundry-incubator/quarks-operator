@@ -224,7 +224,8 @@ var _ = Describe("ContainerFactory", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(containers).To(HaveLen(5))
 				Expect(containers[2].Name).To(Equal("create-dirs-fake-ig"))
-				Expect(containers[2].Args).To(ContainElement("mkdir -p /var/vcap/data/fake-job /var/vcap/data/sys/log/fake-job /var/vcap/data/sys/run/fake-job /var/vcap/sys/log/fake-job /var/vcap/sys/run/fake-job /var/vcap/data/other-job /var/vcap/data/sys/log/other-job /var/vcap/data/sys/run/other-job /var/vcap/sys/log/other-job /var/vcap/sys/run/other-job"))
+				dirs := "/var/vcap/data/fake-job /var/vcap/data/sys/log/fake-job /var/vcap/data/sys/run/fake-job /var/vcap/sys/log/fake-job /var/vcap/sys/run/fake-job /var/vcap/data/other-job /var/vcap/data/sys/log/other-job /var/vcap/data/sys/run/other-job /var/vcap/sys/log/other-job /var/vcap/sys/run/other-job"
+				Expect(containers[2].Args).To(Equal([]string{fmt.Sprintf("mkdir -p %[1]s; chown 1000:1000 %[1]s", dirs)}))
 				Expect(containers[2].VolumeMounts).To(HaveLen(2))
 			})
 
