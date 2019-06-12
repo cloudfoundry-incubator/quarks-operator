@@ -2,6 +2,7 @@ package extendedjob
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -52,9 +53,19 @@ func AddJob(ctx context.Context, config *config.Config, mgr manager.Manager) err
 
 			shouldProcessEvent := o.Status.Succeeded == 1 || o.Status.Failed == 1
 			if shouldProcessEvent {
-				ctxlog.WithEvent(o, "Predicates").Debugf(ctx,
-					"Job %s update allowed. Job has changed to a final state, either succeeded or failed.",
-					o.Name)
+				ctxlog.WithEvent(o, "Predicates").DebugJSON(ctx,
+					"Filter for update events",
+					ctxlog.ReconcileEventsFromSource{
+						ReconciliationObjectName: e.MetaNew.GetName(),
+						ReconciliationObjectKind: "batchv1.Job",
+						PredicateObjectName:      e.MetaNew.GetName(),
+						PredicateObjectKind:      "batchv1.Job",
+						Namespace:                e.MetaNew.GetNamespace(),
+						Type:                     "predicate",
+						Message: fmt.Sprintf("Filter passed for %s, existing batchv1.Job has changed to a final state, either succeeded or failed",
+							e.MetaNew.GetName()),
+					},
+				)
 			}
 
 			return shouldProcessEvent

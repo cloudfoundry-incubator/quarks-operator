@@ -2,9 +2,17 @@ package extendedjob
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strings"
 
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -14,13 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
 )
 
 // AddErrand creates a new ExtendedJob controller to start errands when their
@@ -42,9 +43,19 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			eJob := e.Object.(*ejv1.ExtendedJob)
 			shouldProcessEvent := eJob.Spec.Trigger.Strategy == ejv1.TriggerNow || eJob.Spec.Trigger.Strategy == ejv1.TriggerOnce
 			if shouldProcessEvent {
-				ctxlog.WithEvent(eJob, "Predicates").Debugf(ctx,
-					"Errand %s creation allowed. ExtendedJob trigger strategy, matches.",
-					eJob.Name)
+				ctxlog.WithEvent(eJob, "Predicates").DebugJSON(ctx,
+					"Filter for create events",
+					ctxlog.ReconcileEventsFromSource{
+						ReconciliationObjectName: e.Meta.GetName(),
+						ReconciliationObjectKind: ejv1.LabelExtendedJob,
+						PredicateObjectName:      e.Meta.GetName(),
+						PredicateObjectKind:      ejv1.LabelExtendedJob,
+						Namespace:                e.Meta.GetNamespace(),
+						Type:                     "predicate",
+						Message: fmt.Sprintf("Filter passed for %s, existing extendedJob spec.Trigger.Strategy  matches the values 'now' or 'once'",
+							e.Meta.GetName()),
+					},
+				)
 			}
 
 			return shouldProcessEvent
@@ -66,9 +77,19 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 
 			shouldProcessEvent := enqueueForManualErrand || enqueueForConfigChange
 			if shouldProcessEvent {
-				ctxlog.WithEvent(n, "Predicates").Debugf(ctx,
-					"Errand %s update allowed. ExtendedJob trigger strategy, matches.",
-					n.Name)
+				ctxlog.WithEvent(o, "Predicates").DebugJSON(ctx,
+					"Filter for update events",
+					ctxlog.ReconcileEventsFromSource{
+						ReconciliationObjectName: e.MetaNew.GetName(),
+						ReconciliationObjectKind: ejv1.LabelExtendedJob,
+						PredicateObjectName:      e.MetaNew.GetName(),
+						PredicateObjectKind:      ejv1.LabelExtendedJob,
+						Namespace:                e.MetaNew.GetNamespace(),
+						Type:                     "predicate",
+						Message: fmt.Sprintf("Filter passed for %s, a change in it´s referenced secrets have been detected",
+							e.MetaNew.GetName()),
+					},
+				)
 			}
 
 			return shouldProcessEvent
@@ -93,13 +114,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s': %s", n.Name, err)
 			}
-			shouldProcessEvent := len(reconciles) > 0 && !reflect.DeepEqual(o.Data, n.Data)
-			if shouldProcessEvent {
-				ctxlog.WithEvent(n, "Predicates").Debugf(ctx,
-					"Configmap %s update allowed. Configmap data has changed.",
-					n.Name)
-			}
-			return shouldProcessEvent
+			return len(reconciles) > 0 && !reflect.DeepEqual(o.Data, n.Data)
 		},
 	}
 
@@ -116,6 +131,19 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for config '%s': %v", cm.Name, err)
 			}
 
+			for _, reconciliation := range reconciles {
+				ctxlog.WithEvent(a.Object, "Mapping").DebugJSON(ctx,
+					"Enqueuing reconcile requests in response to events",
+					ctxlog.ReconcileEventsFromSource{
+						ReconciliationObjectName: reconciliation.Name,
+						ReconciliationObjectKind: "ExtendedJob",
+						PredicateObjectName:      a.Meta.GetName(),
+						PredicateObjectKind:      bdv1.ConfigMapType,
+						Namespace:                reconciliation.Namespace,
+						Type:                     "mapping",
+						Message:                  fmt.Sprintf("fan-out updates from %s, type %s into %s", a.Meta.GetName(), bdv1.ConfigMapType, reconciliation.Name),
+					})
+			}
 			return reconciles
 		}),
 	}, p)
@@ -136,13 +164,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secrets '%s': %s", n.Name, err)
 			}
-			shouldProcessEvent := len(reconciles) > 0 && !reflect.DeepEqual(o.Data, n.Data)
-			if shouldProcessEvent {
-				ctxlog.WithEvent(n, "Predicates").Debugf(ctx,
-					"Secret %s update allowed. Secret data has changed.",
-					n.Name)
-			}
-			return shouldProcessEvent
+			return len(reconciles) > 0 && !reflect.DeepEqual(o.Data, n.Data)
 		},
 	}
 
@@ -157,6 +179,20 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedJob, s)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", s.Name, err)
+			}
+
+			for _, reconciliation := range reconciles {
+				ctxlog.WithEvent(a.Object, "Mapping").DebugJSON(ctx,
+					"Enqueuing reconcile requests in response to events",
+					ctxlog.ReconcileEventsFromSource{
+						ReconciliationObjectName: reconciliation.Name,
+						ReconciliationObjectKind: "ExtendedJob",
+						PredicateObjectName:      a.Meta.GetName(),
+						PredicateObjectKind:      bdv1.SecretType,
+						Namespace:                reconciliation.Namespace,
+						Type:                     "mapping",
+						Message:                  fmt.Sprintf("fan-out updates from %s, type %s into %s", a.Meta.GetName(), bdv1.SecretType, reconciliation.Name),
+					})
 			}
 
 			return reconciles
