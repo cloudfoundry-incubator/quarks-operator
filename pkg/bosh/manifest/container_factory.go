@@ -52,22 +52,7 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job, hasPersistentDisk bo
 		}
 
 		// Setup the BOSH pre-start init containers.
-		boshPreStart := filepath.Join(VolumeJobsDirMountPath, job.Name, "bin", "pre-start")
-		boshPreStartInitContainer := corev1.Container{
-			Name:         fmt.Sprintf("bosh-pre-start-%s", job.Name),
-			Image:        jobImage,
-			VolumeMounts: instanceGroupVolumeMounts(),
-			Command:      []string{"/bin/sh", "-c"},
-			Args:         []string{fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s"; fi`, boshPreStart)},
-		}
-		if hasPersistentDisk {
-			persistentDisk := corev1.VolumeMount{
-				Name:      VolumeStoreDirName,
-				MountPath: VolumeStoreDirMountPath,
-			}
-			boshPreStartInitContainer.VolumeMounts = append(boshPreStartInitContainer.VolumeMounts, persistentDisk)
-		}
-		boshPreStartInitContainers = append(boshPreStartInitContainers, boshPreStartInitContainer)
+		boshPreStartInitContainers = append(boshPreStartInitContainers, boshPreStartInitContainer(job.Name, jobImage, hasPersistentDisk))
 
 		// Setup the BPM pre-start init containers.
 		bpmConfig, ok := c.bpmConfigs[job.Name]
@@ -76,20 +61,15 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job, hasPersistentDisk bo
 		}
 		for _, process := range bpmConfig.Processes {
 			if process.Hooks.PreStart != "" {
-				bpmPrestartInitContainer := corev1.Container{
-					Name:         fmt.Sprintf("bpm-pre-start-%s", process.Name),
-					Image:        jobImage,
-					VolumeMounts: instanceGroupVolumeMounts(),
-					Command:      []string{process.Hooks.PreStart},
-				}
+				container := bpmPrestartInitContainer(process.Name, jobImage, process.Hooks.PreStart)
 
 				bpmVolumes, err := generateBPMVolumes(process, job.Name)
 				if err != nil {
 					return []corev1.Container{}, err
 				}
-				bpmPrestartInitContainer.VolumeMounts = append(bpmPrestartInitContainer.VolumeMounts, bpmVolumes...)
+				container.VolumeMounts = append(instanceGroupVolumeMounts(), bpmVolumes...)
 
-				bpmPreStartInitContainers = append(bpmPreStartInitContainers, bpmPrestartInitContainer)
+				bpmPreStartInitContainers = append(bpmPreStartInitContainers, container)
 			}
 		}
 	}
@@ -126,70 +106,32 @@ func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, err
 			return []corev1.Container{}, err
 		}
 
-		processes, err := c.generateJobContainers(job, jobImage)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to apply bpm information on bosh job '%s', instance group '%s'", job.Name, c.igName)
+		bpmConfig, ok := c.bpmConfigs[job.Name]
+		if !ok {
+			return nil, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
 		}
 
-		containers = append(containers, processes...)
-	}
-	return containers, nil
-}
-
-func (c *ContainerFactory) generateJobContainers(job Job, jobImage string) ([]corev1.Container, error) {
-	containers := []corev1.Container{}
-	template := corev1.Container{
-		Name:         job.Name,
-		Image:        jobImage,
-		VolumeMounts: instanceGroupVolumeMounts(),
-	}
-
-	bpmConfig, ok := c.bpmConfigs[job.Name]
-	if !ok {
-		return containers, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
-	}
-
-	if len(bpmConfig.Processes) < 1 {
-		return containers, errors.New("bpm info has no processes")
-	}
-
-	for _, process := range bpmConfig.Processes {
-		container := template.DeepCopy()
-
-		container.Name = fmt.Sprintf("%s-%s", job.Name, process.Name)
-		container.Command = []string{process.Executable}
-		container.Args = process.Args
-		for name, value := range process.Env {
-			container.Env = append(template.Env, corev1.EnvVar{Name: name, Value: value})
-		}
-		container.WorkingDir = process.Workdir
-		container.SecurityContext = &corev1.SecurityContext{
-			Capabilities: &corev1.Capabilities{
-				Add: ToCapability(process.Capabilities),
-			},
+		if len(bpmConfig.Processes) < 1 {
+			return nil, errors.New("bpm info has no processes")
 		}
 
-		if len(job.Properties.BOSHContainerization.Run.HealthChecks) > 0 {
-			for name, hc := range job.Properties.BOSHContainerization.Run.HealthChecks {
-				if name == process.Name {
-					if hc.ReadinessProbe != nil {
-						container.ReadinessProbe = hc.ReadinessProbe
-					}
-					if hc.LivenessProbe != nil {
-						container.LivenessProbe = hc.LivenessProbe
-					}
-				}
+		for _, process := range bpmConfig.Processes {
+			container := bpmProcessContainer(
+				fmt.Sprintf("%s-%s", job.Name, process.Name),
+				jobImage,
+				process,
+				job.Properties.BOSHContainerization.Run.HealthChecks,
+			)
+
+			bpmVolumes, err := generateBPMVolumes(process, job.Name)
+			if err != nil {
+				return []corev1.Container{}, err
 			}
-		}
-		bpmVolumes, err := generateBPMVolumes(process, job.Name)
-		if err != nil {
-			return []corev1.Container{}, err
-		}
-		container.VolumeMounts = append(container.VolumeMounts, bpmVolumes...)
+			container.VolumeMounts = append(instanceGroupVolumeMounts(), bpmVolumes...)
 
-		containers = append(containers, *container)
+			containers = append(containers, container)
+		}
 	}
-
 	return containers, nil
 }
 
@@ -267,20 +209,11 @@ func generateBPMVolumes(bpmProcess bpm.Process, jobName string) ([]corev1.Volume
 	return bpmVolumes, nil
 }
 
-// templateJobContainer creates the template for a job container.
-func templateJobContainer(name, image string) corev1.Container {
-	return corev1.Container{
-		Name:         name,
-		Image:        image,
-		VolumeMounts: instanceGroupVolumeMounts(),
-	}
-}
-
 // jobSpecCopierContainer will return a corev1.Container{} with the populated field
 func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName string) corev1.Container {
 	inContainerReleasePath := filepath.Join(VolumeRenderingDataMountPath, "jobs-src", releaseName)
 	return corev1.Container{
-		Name:  fmt.Sprintf("spec-copier-%s", releaseName),
+		Name:  names.Sanitize(fmt.Sprintf("spec-copier-%s", releaseName)),
 		Image: jobImage,
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -298,7 +231,7 @@ func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 
 func templateRenderingContainer(name string, secretName string) corev1.Container {
 	return corev1.Container{
-		Name:  fmt.Sprintf("renderer-%s", name),
+		Name:  names.Sanitize(fmt.Sprintf("renderer-%s", name)),
 		Image: GetOperatorDockerImage(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -341,7 +274,7 @@ func createDirContainer(name string, jobs []Job) corev1.Container {
 	}
 
 	return corev1.Container{
-		Name:  fmt.Sprintf("create-dirs-%s", name),
+		Name:  names.Sanitize(fmt.Sprintf("create-dirs-%s", name)),
 		Image: GetOperatorDockerImage(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -359,8 +292,68 @@ func createDirContainer(name string, jobs []Job) corev1.Container {
 	}
 }
 
-// ToCapability converts string slice into Capability slice of kubernetes
-func ToCapability(s []string) []corev1.Capability {
+func boshPreStartInitContainer(jobName string, jobImage string, hasPersistentDisk bool) corev1.Container {
+	boshPreStart := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "pre-start")
+	c := corev1.Container{
+		Name:         names.Sanitize(fmt.Sprintf("bosh-pre-start-%s", jobName)),
+		Image:        jobImage,
+		VolumeMounts: instanceGroupVolumeMounts(),
+		Command:      []string{"/bin/sh", "-c"},
+		Args:         []string{fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s"; fi`, boshPreStart)},
+	}
+	if hasPersistentDisk {
+		persistentDisk := corev1.VolumeMount{
+			Name:      VolumeStoreDirName,
+			MountPath: VolumeStoreDirMountPath,
+		}
+		c.VolumeMounts = append(c.VolumeMounts, persistentDisk)
+	}
+	return c
+}
+
+func bpmPrestartInitContainer(processName string, jobImage string, cmd string) corev1.Container {
+	return corev1.Container{
+		Name:    names.Sanitize(fmt.Sprintf("bpm-pre-start-%s", processName)),
+		Image:   jobImage,
+		Command: []string{cmd},
+	}
+
+}
+
+func bpmProcessContainer(name string, jobImage string, process bpm.Process, healthchecks map[string]HealthCheck) corev1.Container {
+	container := corev1.Container{
+		Name:       names.Sanitize(name),
+		Image:      jobImage,
+		Command:    []string{process.Executable},
+		Args:       process.Args,
+		WorkingDir: process.Workdir,
+		SecurityContext: &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Add: capability(process.Capabilities),
+			},
+		},
+	}
+
+	for name, value := range process.Env {
+		container.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
+	}
+
+	for name, hc := range healthchecks {
+		if name == process.Name {
+			if hc.ReadinessProbe != nil {
+				container.ReadinessProbe = hc.ReadinessProbe
+			}
+			if hc.LivenessProbe != nil {
+				container.LivenessProbe = hc.LivenessProbe
+			}
+		}
+	}
+	return container
+
+}
+
+// capability converts string slice into Capability slice of kubernetes
+func capability(s []string) []corev1.Capability {
 	capabilities := make([]corev1.Capability, len(s))
 	for capabilityIndex, capability := range s {
 		capabilities[capabilityIndex] = corev1.Capability(capability)

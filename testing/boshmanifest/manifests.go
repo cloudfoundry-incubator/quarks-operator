@@ -415,3 +415,39 @@ instance_groups:
           protocol: TCP
           internal: 1338
 `
+
+// CFRouting uses the cf-routing release
+const CFRouting = `
+name: routing
+
+releases:
+- name: routing
+  version: 0.188.0
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 36.g03b4653-30.80-7.0.0_332.g0d8469bb
+
+instance_groups:
+- name: routing
+  instances: 1
+  jobs:
+  - name: route_registrar
+    release: routing
+    properties:
+      route_registrar:
+        routes: []
+      nats:
+        user: nats
+        password: natSpa55w0rd
+        port: 4222
+        machines:
+          - 192.168.52.123
+      uaa:
+        clients:
+          gorouter:
+            secret: no
+        ca_cert: ""
+        ssl:
+          port: 8443
+`
