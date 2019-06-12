@@ -340,16 +340,17 @@ The following subsections describe the mapping of BPM configuration into contain
 
 ### Resources
 
-| Bosh                   | Kube Pod Container                                             |
-| ---------------------- | -------------------------------------------------------------- |
-| `workdir`              | `workingDir`. Not implemented yet.                             |
-| `hooks`                | `initContainers` and container hooks. Not implemented yet.     |
-| `process.capabilities` | `container.SecurityContext.Capabilities`.                      |
-| `limits`               | `container.Resources.Limits`. Not implemented yet.             |
-| `ephemeral_disk`       | `emptyDir` volumes.                                            |
-| `persistent_disk`      | `PersistentVolumeClaims`.                                      |
-| `additional_volumes`   | `PersistentVolumeClaims`. Not yet implemented.                 |
-| `unsafe`               | `container.SecurityContext.Capabilities`. Not yet implemented. |
+| Bosh                          | Kube Pod Container                                              |
+| ----------------------------- | --------------------------------------------------------------- |
+| `workdir`                     | `workingDir`. Not implemented yet.                              |
+| `hooks`                       | `initContainers`. and container hooks. Not implemented yet.     |
+| `process.capabilities`        | `container.SecurityContext.Capabilities`.                       |
+| `limits`                      | `container.Resources.Limits`. Not implemented yet.              |
+| `ephemeral_disk`              | `emptyDir`. volumes.                                            |
+| `persistent_disk`             | `PersistentVolumeClaims`. Not yet implemented.                  |
+| `additional_volumes`          | `emptyDir`. Paths under /var/vcap/store are currently ignored.  |
+| `unsafe.unrestricted_volumes` | `emptyDir`. Paths under /var/vcap/store are currently ignored.  |
+| `unsafe`                      | `container.SecurityContext.Capabilities`. Not yet implemented.  |
 
 ### Health checks
 
