@@ -541,6 +541,19 @@ stringData:
   value: example.com
 ```
 
+### "Well-known" BOSH directories
+
+A few directories will be created for each job and be owned by the user ID 1000 (the first user in
+the system) - the `vcap` user. They are the following:
+
+```
+/var/vcap/data/<job_name>
+/var/vcap/data/sys/log/<job_name>
+/var/vcap/data/sys/run/<job_name>
+/var/vcap/sys/log/<job_name>
+/var/vcap/sys/run/<job_name>
+```
+
 ## Flow
 
 ![flow](https://docs.google.com/drawings/d/e/2PACX-1vSsapirEQTlBvFDYjRbCxK5IJaxRqPDfTi37OcBVr60BGbDThn83HeHJyRModicUeghc7enfyYY_CHI/pub?w=1279&h=997)
