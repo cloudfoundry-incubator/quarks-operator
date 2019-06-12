@@ -3,6 +3,7 @@ package manifest
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -81,6 +82,13 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job, hasPersistentDisk bo
 					VolumeMounts: instanceGroupVolumeMounts(),
 					Command:      []string{process.Hooks.PreStart},
 				}
+
+				bpmVolumes, err := generateBPMVolumes(process, job.Name)
+				if err != nil {
+					return []corev1.Container{}, err
+				}
+				bpmPrestartInitContainer.VolumeMounts = append(bpmPrestartInitContainer.VolumeMounts, bpmVolumes...)
+
 				bpmPreStartInitContainers = append(bpmPreStartInitContainers, bpmPrestartInitContainer)
 			}
 		}
@@ -173,11 +181,90 @@ func (c *ContainerFactory) generateJobContainers(job Job, jobImage string) ([]co
 				}
 			}
 		}
+		bpmVolumes, err := generateBPMVolumes(process, job.Name)
+		if err != nil {
+			return []corev1.Container{}, err
+		}
+		container.VolumeMounts = append(container.VolumeMounts, bpmVolumes...)
 
 		containers = append(containers, *container)
 	}
 
 	return containers, nil
+}
+
+// generateBPMVolumes defines any other volumes required to be mounted,
+// based on the bpm process schema definition. This looks for:
+// - ephemeral_disk (boolean)
+// - persistent_disk (boolean)
+// - additional_volumes (list of volumes)
+func generateBPMVolumes(bpmProcess bpm.Process, jobName string) ([]corev1.VolumeMount, error) {
+	var bpmVolumes []corev1.VolumeMount
+
+	r, _ := regexp.Compile(AdditionalVolumesRegex)
+	rS, _ := regexp.Compile(AdditionalVolumesVcapStoreRegex)
+	// Process all ephemeral_disk
+	if bpmProcess.EphemeralDisk {
+		bpmEphemeralDisk := corev1.VolumeMount{
+			Name:      fmt.Sprintf("%s-%s", VolumeEphemeralDirName, jobName),
+			MountPath: fmt.Sprintf("%s%s", VolumeEphemeralDirMountPath, jobName),
+		}
+		bpmVolumes = append(bpmVolumes, bpmEphemeralDisk)
+	}
+
+	// TODO: skip this, while we need to figure it out a better way
+	// to define persistenVolumeClaims for jobs
+	// if bpmProcess.PersistentDisk {
+	// }
+
+	// Process all additional_volumes
+	for i, additionalVolume := range bpmProcess.AdditionalVolumes {
+		match := r.MatchString(additionalVolume.Path)
+		if !match {
+			return []corev1.VolumeMount{}, errors.Errorf("The %s path, must be a path inside"+
+				" /var/vcap/data, /var/vcap/store or /var/vcap/sys/run, for a path outside these,"+
+				" you must use the unrestricted_volumes key", additionalVolume.Path)
+		}
+
+		matchVcapStore := rS.MatchString(additionalVolume.Path)
+		// TODO: skip additional volumes under /var/vcap/store
+		// while we need to figure it out a better way to define
+		// persistenVolumeClaims for jobs
+		if matchVcapStore {
+			continue
+		}
+		// TODO: How to map the following bpm volume schema fields
+		// - allow_executions
+		// - mount_only
+		// into a corev1.VolumeMount
+		bpmAdditionalVolume := corev1.VolumeMount{
+			Name:      fmt.Sprintf("%s-%s-%b", AdditionalVolume, jobName, i),
+			ReadOnly:  !additionalVolume.Writable,
+			MountPath: additionalVolume.Path,
+		}
+		bpmVolumes = append(bpmVolumes, bpmAdditionalVolume)
+	}
+
+	// Process the unsafe configuration
+	for i, unrestrictedVolumes := range bpmProcess.Unsafe.UnrestrictedVolumes {
+		matchVcapStore := rS.MatchString(unrestrictedVolumes.Path)
+
+		// TODO: skip unrestricted volumes under /var/vcap/store
+		// while we need to figure it out a better way to define
+		// persistenVolumeClaims for jobs
+		if matchVcapStore {
+			continue
+		}
+		uVolume := corev1.VolumeMount{
+			Name:      fmt.Sprintf("%s-%s-%b", UnrestrictedVolume, jobName, i),
+			ReadOnly:  !unrestrictedVolumes.Writable,
+			MountPath: unrestrictedVolumes.Path,
+		}
+		bpmVolumes = append(bpmVolumes, uVolume)
+
+	}
+
+	return bpmVolumes, nil
 }
 
 // templateJobContainer creates the template for a job container.

@@ -76,6 +76,8 @@ var _ = Describe("kube converter", func() {
 					Expect(eJob.Spec.Template.Spec.Containers[0].Name).To(Equal("redis-server-test-server"))
 					Expect(eJob.Spec.Template.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
 					Expect(eJob.Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server"}))
+					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[4].Name).To(Equal("bpm-ephemeral-disk-redis-server"))
+					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[5].Name).To(Equal("bpm-additional-volume-redis-server-0"))
 
 					// Test init containers in the extended job
 					Expect(specCopierInitContainer.Name).To(Equal("spec-copier-redis"))
@@ -132,18 +134,37 @@ var _ = Describe("kube converter", func() {
 					Expect(rendererInitContainer.Name).To(Equal("renderer-diego-cell"))
 
 					// Test shared volume setup
+					Expect(len(stS.Spec.Containers[0].VolumeMounts)).To(Equal(8))
 					Expect(stS.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
 					Expect(stS.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-					Expect(stS.Spec.Containers[0].VolumeMounts[4].Name).To(Equal("store-dir"))
-					Expect(stS.Spec.Containers[0].VolumeMounts[4].MountPath).To(Equal("/var/vcap/store"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[4].Name).To(Equal("bpm-ephemeral-disk-cflinuxfs3-rootfs-setup"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[4].MountPath).To(Equal("/var/vcap/data/cflinuxfs3-rootfs-setup"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[5].Name).To(Equal("bpm-additional-volume-cflinuxfs3-rootfs-setup-0"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[5].MountPath).To(Equal("/var/vcap/data/shared"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[5].ReadOnly).To(Equal(false))
+					Expect(stS.Spec.Containers[0].VolumeMounts[6].Name).To(Equal("bpm-unrestricted-volume-cflinuxfs3-rootfs-setup-0"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[6].MountPath).To(Equal("/dev/log"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[7].Name).To(Equal("store-dir"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[7].MountPath).To(Equal("/var/vcap/store"))
 					Expect(specCopierInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
 					Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 					Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
 					Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 
 					// Test share pod spec volumes
-					Expect(stS.Spec.Volumes[6].Name).To(Equal("store-dir"))
-					Expect(stS.Spec.Volumes[6].PersistentVolumeClaim.ClaimName).To(Equal("foo-deployment-diego-cell-pvc"))
+					Expect(len(stS.Spec.Volumes)).To(Equal(10))
+
+					Expect(stS.Spec.Volumes[6].Name).To(Equal("bpm-ephemeral-disk-cflinuxfs3-rootfs-setup"))
+					Expect(stS.Spec.Volumes[6].EmptyDir).To(Equal(&corev1.EmptyDirVolumeSource{}))
+
+					Expect(stS.Spec.Volumes[7].Name).To(Equal("bpm-additional-volume-cflinuxfs3-rootfs-setup-0"))
+					Expect(stS.Spec.Volumes[7].EmptyDir).To(Equal(&corev1.EmptyDirVolumeSource{}))
+
+					Expect(stS.Spec.Volumes[8].Name).To(Equal("bpm-unrestricted-volume-cflinuxfs3-rootfs-setup-0"))
+					Expect(stS.Spec.Volumes[8].EmptyDir).To(Equal(&corev1.EmptyDirVolumeSource{}))
+
+					Expect(stS.Spec.Volumes[9].Name).To(Equal("store-dir"))
+					Expect(stS.Spec.Volumes[9].PersistentVolumeClaim.ClaimName).To(Equal("foo-deployment-diego-cell-pvc"))
 
 					// Test the renderer container setup
 					Expect(rendererInitContainer.Env[0].Name).To(Equal("INSTANCE_GROUP_NAME"))

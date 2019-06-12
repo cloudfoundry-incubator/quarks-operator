@@ -2,6 +2,7 @@ package manifest
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -107,6 +108,9 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, version strin
 	if err != nil {
 		return essv1.ExtendedStatefulSet{}, err
 	}
+
+	bpmVolumes := bpmVolumes(cfac, ig, manifestName)
+	volumes = append(volumes, bpmVolumes...)
 
 	extSts := essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -256,6 +260,9 @@ func (kc *KubeConverter) errandToExtendedJob(manifestName string, version string
 		return ejv1.ExtendedJob{}, err
 	}
 
+	bpmVolumes := bpmVolumes(cfac, ig, manifestName)
+	volumes = append(volumes, bpmVolumes...)
+
 	podLabels := ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels
 	// Controller will delete successful job
 	podLabels["delete"] = "pod"
@@ -287,7 +294,6 @@ func (kc *KubeConverter) errandToExtendedJob(manifestName string, version string
 }
 
 func (kc *KubeConverter) diskToPersistentVolumeClaims(cfac *ContainerFactory, manifestName string, ig *InstanceGroup, annotations map[string]string) *corev1.PersistentVolumeClaim {
-
 	// spec of a persistent volumeclaim
 	persistentVolumeClaim := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -350,6 +356,55 @@ func (kc *KubeConverter) addVolumeSpecs(podSpec *corev1.PodSpec, disks []corev1.
 		podSpec.Volumes = append(podSpec.Volumes, pvcVolume)
 	}
 	return *podSpec
+}
+
+func bpmVolumes(cfac *ContainerFactory, ig *InstanceGroup, manifestName string) []corev1.Volume {
+	var bpmVolumes []corev1.Volume
+
+	r, _ := regexp.Compile(AdditionalVolumesVcapStoreRegex)
+
+	for _, job := range ig.Jobs {
+		bpmConfig := cfac.bpmConfigs[job.Name]
+		for _, process := range bpmConfig.Processes {
+			if process.EphemeralDisk {
+				eD := corev1.Volume{
+					Name:         fmt.Sprintf("%s-%s", VolumeEphemeralDirName, job.Name),
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				}
+				bpmVolumes = append(bpmVolumes, eD)
+			}
+
+			// TODO: skip this, while we need to figure it out a better way
+			// to define persistenVolumeClaims for jobs
+			// if process.PersistentDisk {
+			// }
+
+			for i, additionalVolume := range process.AdditionalVolumes {
+				matchVcapStore := r.MatchString(additionalVolume.Path)
+				if matchVcapStore {
+					continue
+				}
+				aV := corev1.Volume{
+					Name:         fmt.Sprintf("%s-%s-%b", AdditionalVolume, job.Name, i),
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				}
+				bpmVolumes = append(bpmVolumes, aV)
+			}
+
+			for i, unrestrictedVolumes := range process.Unsafe.UnrestrictedVolumes {
+				matchVcapStore := r.MatchString(unrestrictedVolumes.Path)
+				if matchVcapStore {
+					continue
+				}
+				uV := corev1.Volume{
+					Name:         fmt.Sprintf("%s-%s-%b", UnrestrictedVolume, job.Name, i),
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				}
+				bpmVolumes = append(bpmVolumes, uV)
+			}
+		}
+	}
+	return bpmVolumes
 }
 
 func igVolumes(manifestName, igName string) []corev1.Volume {
