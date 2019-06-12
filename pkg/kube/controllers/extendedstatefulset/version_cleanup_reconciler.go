@@ -125,7 +125,7 @@ func (r *ReconcileVersionCleanup) cleanupStatefulSets(ctx context.Context, exSta
 	}
 
 	for _, statefulSet := range statefulSets {
-		ctxlog.Debug(ctx, "Considering StatefulSet '", statefulSet.Name, "' for cleanup.")
+		ctxlog.Debugf(ctx, "Considering StatefulSet '%s' for cleanup", statefulSet.Name)
 
 		strVersion, found := statefulSet.Annotations[estsv1.AnnotationVersion]
 		if !found {
@@ -144,7 +144,7 @@ func (r *ReconcileVersionCleanup) cleanupStatefulSets(ctx context.Context, exSta
 		ctxlog.Debugf(ctx, "Deleting StatefulSet '%s'", statefulSet.Name)
 		err = r.client.Delete(ctx, &statefulSet, client.PropagationPolicy(metav1.DeletePropagationBackground))
 		if err != nil {
-			return ctxlog.WithEvent(exStatefulSet, "DeleteError").Errorf(ctx, "Could not delete StatefulSet  '%s': %v", statefulSet.Name, err)
+			return ctxlog.WithEvent(exStatefulSet, "DeleteError").Errorf(ctx, "Could not delete StatefulSet '%s': %v", statefulSet.Name, err)
 		}
 	}
 
@@ -172,7 +172,7 @@ func (r *ReconcileVersionCleanup) listStatefulSets(ctx context.Context, exStatef
 	for _, statefulSet := range allStatefulSets.Items {
 		if metav1.IsControlledBy(&statefulSet, exStatefulSet) {
 			result = append(result, statefulSet)
-			ctxlog.Debugf(ctx, "StatefulSet '%s' owned by ExtendedStatefulSet ''.", statefulSet.Name, exStatefulSet.Name)
+			ctxlog.Debugf(ctx, "StatefulSet '%s' owned by ExtendedStatefulSet '%s'.", statefulSet.Name, exStatefulSet.Name)
 		}
 	}
 
@@ -201,7 +201,7 @@ func (r *ReconcileVersionCleanup) isStatefulSetReady(ctx context.Context, statef
 	for _, pod := range podList.Items {
 		if metav1.IsControlledBy(&pod, statefulSet) {
 			if podutil.IsPodReady(&pod) {
-				ctxlog.Debugf(ctx, "Pod '%s' owned by StatefulSet '' is running.", pod.Name, statefulSet.Name)
+				ctxlog.Debugf(ctx, "Pod '%s' owned by StatefulSet '%s' is running.", pod.Name, statefulSet.Name)
 				return true, nil
 			}
 		}
