@@ -23,6 +23,10 @@ const (
 	VarInterpolationContainerName = "interpolation"
 )
 
+var (
+	admGroupID int64 = 1000
+)
+
 // ReleaseImageProvider interface to provide the docker release image for a BOSH job
 // This lookup is currently implemented by the manifest model.
 type ReleaseImageProvider interface {
@@ -142,6 +146,9 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, version strin
 							Volumes:        volumes,
 							InitContainers: listOfInitContainers,
 							Containers:     containers,
+							SecurityContext: &corev1.PodSecurityContext{
+								FSGroup: &admGroupID,
+							},
 						},
 					},
 				},
@@ -286,6 +293,9 @@ func (kc *KubeConverter) errandToExtendedJob(manifestName string, version string
 					Containers:     containers,
 					InitContainers: listOfInitContainers,
 					Volumes:        volumes,
+					SecurityContext: &corev1.PodSecurityContext{
+						FSGroup: &admGroupID,
+					},
 				},
 			},
 		},
