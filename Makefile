@@ -28,6 +28,9 @@ build-image:
 build-helm:
 	bin/build-helm
 
+tag:
+	@bin/print-tag
+
 ############ TEST TARGETS ############
 
 test: vet lint test-unit test-integration test-cli-e2e test-helm-e2e

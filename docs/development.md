@@ -32,11 +32,12 @@ The following are the make targets available and their actions.
 
 ### Build Targets
 
-| Name          | Action                                  |
-| ------------- | --------------------------------------- |
-| `build`       | builds the `cf-operator` binary.        |
-| `build-image` | builds the `cf-operator` docker image.  |
-| `build-helm`  | builds the `cf-operator` helm tar file. |
+| Name          | Action                                    |
+| ------------- | ----------------------------------------- |
+| `build`       | builds the `cf-operator` binary.          |
+| `build-image` | builds the `cf-operator` docker image.    |
+| `build-helm`  | builds the `cf-operator` helm tar file.   |
+| `print-tag`   | prints the current tag of the cf-operator |
 
 ### Test Targets
 
