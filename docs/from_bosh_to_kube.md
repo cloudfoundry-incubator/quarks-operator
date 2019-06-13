@@ -34,21 +34,17 @@
 
 ## Missing Features
 
-1. Canary support in ExtendedStatefulSets.
+1. Canary support in ExtendedStatefulSets
 
 ## High-level Direction
 
-- Releases are defined in the usual way (a `releases` block), but the information given is used to
-  build a reference for a docker image.
-- Each instance group is transformed to an `ExtendedStatefulSet` or an `ExtendedJob`.
-- Each BOSH Job corresponds to one or more containers in the `Pod` template defined in the
-  `ExtendedStatefulSet` or the `ExtendedJob`; there's one container for each process defined in the
-  BPM information of each BOSH Job.
-- "explicit" `variables` are generated using `ExtendedSecrets`.
-- For rendering of BOSH Job Templates, please read [this document](rendering_templates.md).
-- We have a concept of [Desired Manifests](desired_manifests.md).
-- All communication happens through Kubernetes `Services`, which have deterministic DNS Addresses;
-  you can read more about these [here](rendering_templates.md#services-and-dns-addresses).
+- releases are defined in the usual way (a `releases` block), but the information given is used to build a reference for a docker image
+- each instance group is transformed to an `ExtendedStatefulSet` or an `ExtendedJob`
+- each BOSH Job corresponds to one or more containers in the `Pod` template defined in the `ExtendedStatefulSet` or the `ExtendedJob`; there's one container for each process defined in the BPM information of each BOSH Job
+- "explicit" `variables` are generated using `ExtendedSecrets`
+- for rendering of BOSH Job Templates, please read [this document](rendering_templates.md)
+- we have a concept of [Desired Manifests](desired_manifests.md)
+- all communication happens through Kubernetes `Services`, which have deterministic DNS Addresses; you can read more about these [here](rendering_templates.md#services-and-dns-addresses)
 
 ## Deployment Lifecycle
 
@@ -330,8 +326,7 @@ tags:
 
 ## BPM
 
-In a BOSH release some jobs have BPM configuration in `templates/bpm.yml.erb`. Each process
-specified in the BPM configuration is run in a single Kubernetes `Container` as part of a `Pod`.
+In a BOSH release some jobs have BPM configuration in `templates/bpm.yml.erb`. Each process specified in the BPM configuration is run in a single Kubernetes `Container` as part of a `Pod`.
 
 The following subsections describe the mapping of BPM configuration into containers.
 
@@ -360,14 +355,9 @@ The following subsections describe the mapping of BPM configuration into contain
 ### Health checks
 
 BPM doesn't provide information for health checks and relies on monit instead.
-CF-Operator provides health checks via the [bosh_containerization][bosh_containerization]
-property key in the deployment manifest.
+CF-Operator provides health checks via the [bosh_containerization](https://github.com/cloudfoundry-incubator/cf-operator/blob/master/pkg/bosh/manifest/containerization.go#L11) property key in the deployment manifest.
 
-In Kubernetes, we use [liveness and readiness probes][liveness and readiness probes]
-for healthchecks.
-
-[bosh_containerization]: https://github.com/cloudfoundry-incubator/cf-operator/blob/master/pkg/bosh/manifest/containerization.go#L11
-[liveness and readiness probes]: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/
+In Kubernetes, we use [liveness and readiness probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/) for healthchecks.
 
 ### Hooks
 
@@ -377,22 +367,20 @@ BPM supports `pre_start` hooks. CF-Operator will convert those to additional ini
 
 ### Calculation of docker image location for releases
 
-Release image tags are immutable. The release image locations are comprised of multiple elements:
+Release image tags are immutable.
+The release image locations are comprised of multiple elements:
 
-- Docker registry URL.
-- Organization and repository.
-- Stemcell name and version.
-- Fissile version.
-- The release name and version.
+- docker registry URL
+- organization and repository
+- stemcell name and version
+- fissile version
+- the release name and version
 
-Release image locations always have to be resolved in the context of an instance group/job because
-they depend on the stemcell that is being used.
+Release image locations always have to be resolved in the context of an instance group/job because they depend on the stemcell that is being used.
 
-A typical release image location looks could look like
-`hub.docker.com/cfcontainerization/cflinuxfs3-release:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0`.
+A typical release image location looks could look like `hub.docker.com/cfcontainerization/cflinuxfs3-release:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0`.
 
-The different elements are taken from different places in the manifest. Given this excerpt from a
-BOSH deployment manifest:
+The different elements are taken from different places in the manifest. Given this excerpt from a BOSH deployment manifest:
 
 ```yaml
 stemcells:
@@ -415,20 +403,16 @@ releases:
     version: 28.g837c5b3-30.263-7.0.0_233.gde0accd0
 ```
 
-The stemcell information (name, and stemcell and fissile version) are taken from the `stemcells`
-entry that matches the instance group's stemcell alias. The registry URL including the organization,
-the release name, and the version com from the `releases` entry that's referenced from the job.
+The stemcell information (name, and stemcell and fissile version) are taken from the `stemcells` entry that matches the instance group's stemcell alias. The registry URL including the organization, the release name, and the version com from the `releases` entry that's referenced from the job.
 
 > **Note:**
 >
-> Releases can optionally specify a separate `stemcell` section, in which case the information from
-> the instance group stemcell is overridden.
+> Releases can optionally specify a separate `stemcell` section, in which case the information from the instance group stemcell is overridden.
 
 ### Variables to Extended Secrets
 
-For each **Explicit BOSH Variable** (with a definition in the `variables` section in the deployment
-manifest), the cf-operator creates an `ExtendedSecret`. The `ExtendedSecret` is meant to generate
-the value required by the variable.
+For each **Explicit BOSH Variable** (with a definition in the `variables` section in the deployment manifest), the cf-operator creates an `ExtendedSecret`.
+The `ExtendedSecret` is meant to generate the value required by the variable.
 
 The name of the `ExtendedSecret` is calculated like this:
 
@@ -436,8 +420,7 @@ The name of the `ExtendedSecret` is calculated like this:
 <DEPLOYMENT_NAME>.var-<VARIABLE_NAME>
 ```
 
-The name of the final generated `Secret` (the `secretName` key of the `ExtendedSecret`) is
-calculated the same way.
+The name of the final generated `Secret` (the `secretName` key of the `ExtendedSecret`) is calculated the same way.
 
 ### Instance Groups to Extended StatefulSets and Jobs
 
@@ -447,15 +430,13 @@ BOSH Services are converted to `ExtendedStatefulSets` and `Services`.
 
 BOSH Errands are converted to `ExtendedJobs` with `trigger.strategy: manually`.
 
-BOSH Auto-Errands (supported only by the operator) are converted to `ExtendedJobs` with
-`trigger.strategy: once`.
+BOSH Auto-Errands (supported only by the operator) are converted to `ExtendedJobs` with `trigger.strategy: once`.
 
 ## Miscellaneous
 
 ### Dealing with AZs
 
-`ExtendedStatefulSets` support AZs. You can learn more about this in
-[the docs](controllers/extendedstatefulset.md#az-support).
+`ExtendedStatefulSets` support AZs. You can learn more about this in [the docs](controllers/extendedstatefulset.md#az-support).
 
 ### Support for active/passive pod replicas
 
@@ -463,23 +444,20 @@ TODO - Not implemented yet.
 
 ### Ephemeral Disks
 
-We use an `emptyDir` for ephemeral disks. You can learn more from
-[the official docs](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir).
+We use an `emptyDir` for ephemeral disks. You can learn more from [the official docs](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir).
 
 ### Credentials for Docker Registries
 
-Providing credentials for private registries is supported by Kubernetes. Please read
-[the official docs](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/#registry-secret-existing-credentials).
+Providing credentials for private registries is supported by Kubernetes. Please read [the official docs](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/#registry-secret-existing-credentials).
 
 ### Running manual errands
 
-BOSH makes use of errands, which are manually triggered. We support manual triggers - you can learn
-more in the [ExtendedJob docs](controllers/extendedjob.md#errand-jobs).
+BOSH makes use of errands, which are manually triggered.
+We support manual triggers - you can learn more in the [ExtendedJob docs](controllers/extendedjob.md#errand-jobs).
 
 ### Readiness and Liveness Probes
 
-When the deployment manifest declares health check information for jobs, via the
-`bosh_containerization` section, we configure those in Kubernetes.
+When the deployment manifest declares health check information for jobs, via the `bosh_containerization` section, we configure those in Kubernetes.
 
 The probes are defined per BPM process.
 
@@ -498,31 +476,23 @@ instance_groups:
               liveness:
 ```
 
-Both keys contain information that should is used as-is for the container that matches the process
-name.
+Both keys contain information that should is used as-is for the container that matches the process name.
 
 ### Persistent Disks
 
-When a BOSH deployment manifest declares persistent disks on instance groups, we provide a
-persistent volume to the containers of a pod in `/var/vcap/store`. You can learn more about BOSH
-Persistent Disks in the [BOSH Official Docs](https://bosh.io/docs/persistent-disks/).
+When a BOSH deployment manifest declares persistent disks on instance groups, we provide a persistent volume to the containers of a pod in `/var/vcap/store`. You can learn more about BOSH Persistent Disks in the [BOSH Official Docs](https://bosh.io/docs/persistent-disks/).
 
 These volumes are mounted on each container that's part of the instance group.
 
-The implementation uses the default storage class if not specified using the `persistent_disk_type`
-key in the manifest.
+The implementation uses the default storage class if not specified using the `persistent_disk_type` key in the manifest.
 
 ### Manual ("implicit") variables
 
 BOSH deployment manifests support two different types of variables, implicit and explicit ones.
 
-"Explicit" variables are declared in the `variables` section of the manifest and are generated
-automatically before the interpolation step.
+"Explicit" variables are declared in the `variables` section of the manifest and are generated automatically before the interpolation step.
 
-"Implicit" variables just appear in the document within double parentheses without any declaration.
-These variables have to be provided by the user prior to creating the BOSH deployment. The variables
-have to be provided as a secret with the `value` key holding the variable content. The secret name
-has to follow the scheme:
+"Implicit" variables just appear in the document within double parentheses without any declaration. These variables have to be provided by the user prior to creating the BOSH deployment. The variables have to be provided as a secret with the `value` key holding the variable content. The secret name has to follow the scheme
 
 ```text
 <deployment-name>.var-implicit-<variable-name>
@@ -541,27 +511,13 @@ stringData:
   value: example.com
 ```
 
-### "Well-known" BOSH directories
-
-A few directories will be created for each job and be owned by the user ID 1000 (the first user in
-the system) - the `vcap` user. They are the following:
-
-```
-/var/vcap/data/<job_name>
-/var/vcap/data/sys/log/<job_name>
-/var/vcap/data/sys/run/<job_name>
-/var/vcap/sys/log/<job_name>
-/var/vcap/sys/run/<job_name>
-```
-
 ## Flow
 
 ![flow](https://docs.google.com/drawings/d/e/2PACX-1vSsapirEQTlBvFDYjRbCxK5IJaxRqPDfTi37OcBVr60BGbDThn83HeHJyRModicUeghc7enfyYY_CHI/pub?w=1279&h=997)
 
 ## Naming Conventions
 
-After creating a `BOSHDeployment` named `nats-deployment`, with one Instance Group, the following
-resources should exist:
+After creating a `BOSHDeployment` named `nats-deployment`, with one Instance Group, the following resources should exist:
 
 - `BOSHDeployment`
 
