@@ -287,8 +287,11 @@ func createDirContainer(name string, jobs []Job) corev1.Container {
 			},
 		},
 		Env:     []corev1.EnvVar{},
-		Command: []string{"/bin/sh"},
-		Args:    []string{"-c", "mkdir -p " + strings.Join(dirs, " ")},
+		Command: []string{"/bin/sh", "-c"},
+		Args:    []string{fmt.Sprintf("mkdir -p %s", strings.Join(dirs, " "))},
+		SecurityContext: &corev1.SecurityContext{
+			RunAsUser: &vcapUserID,
+		},
 	}
 }
 
@@ -317,7 +320,6 @@ func bpmPrestartInitContainer(processName string, jobImage string, cmd string) c
 		Image:   jobImage,
 		Command: []string{cmd},
 	}
-
 }
 
 func bpmProcessContainer(name string, jobImage string, process bpm.Process, healthchecks map[string]HealthCheck) corev1.Container {
@@ -349,7 +351,6 @@ func bpmProcessContainer(name string, jobImage string, process bpm.Process, heal
 		}
 	}
 	return container
-
 }
 
 // capability converts string slice into Capability slice of kubernetes
