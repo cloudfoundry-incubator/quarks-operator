@@ -24,6 +24,7 @@ const (
 )
 
 var (
+	vcapUserID int64 = 1000
 	admGroupID int64 = 1000
 )
 
