@@ -15,6 +15,7 @@ import (
 	ejobv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // ReconcileType lists all the types of reconciliations we can return,
@@ -41,10 +42,13 @@ func (r ReconcileType) String() string {
 // GetReconciles returns reconciliation requests for the BOSHDeployments, ExtendedJobs or ExtendedStatefulSets
 // that reference an object. The object can be a ConfigMap or a Secret
 func GetReconciles(ctx context.Context, client crc.Client, reconcileType ReconcileType, object apis.Object) ([]reconcile.Request, error) {
-	isReferenceFor := func(parent interface{}) (bool, error) {
-		var objectReferences map[string]bool
-		var err error
-		var name string
+	objReferencedBy := func(parent interface{}) (bool, error) {
+		var (
+			objectReferences map[string]bool
+			err              error
+			name             string
+			versionedSecret  bool
+		)
 
 		switch object := object.(type) {
 		case *corev1.ConfigMap:
@@ -53,6 +57,8 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 		case *corev1.Secret:
 			objectReferences, err = GetSecretsReferencedBy(parent)
 			name = object.Name
+			versionedSecret = vss.IsVersionedSecret(*object)
+
 		default:
 			return false, errors.New("can't get reconciles for unknown object type; supported types are ConfigMap and Secret")
 		}
@@ -61,10 +67,17 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			return false, errors.Wrap(err, "error listing references")
 		}
 
+		if versionedSecret {
+			keys := make([]string, len(objectReferences))
+			i := 0
+			for k := range objectReferences {
+				keys[i] = k
+				i++
+			}
+			return vss.ContainsSecretName(keys, name)
+		}
+
 		_, ok := objectReferences[name]
-
-		// TODO: also cover versioned secrets/configmaps
-
 		return ok, nil
 	}
 
@@ -80,7 +93,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 		}
 
 		for _, boshDeployment := range boshDeployments.Items {
-			isRef, err := isReferenceFor(boshDeployment)
+			isRef, err := objReferencedBy(boshDeployment)
 			if err != nil {
 				return nil, err
 			}
@@ -104,7 +117,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			if !(eJob.Spec.UpdateOnConfigChange && eJob.IsAutoErrand()) {
 				continue
 			}
-			isRef, err := isReferenceFor(eJob)
+			isRef, err := objReferencedBy(eJob)
 			if err != nil {
 				return nil, err
 			}
@@ -125,7 +138,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 		}
 
 		for _, extendedStatefulSet := range extendedStatefulSets.Items {
-			isRef, err := isReferenceFor(extendedStatefulSet)
+			isRef, err := objReferencedBy(extendedStatefulSet)
 			if err != nil {
 				return nil, err
 			}

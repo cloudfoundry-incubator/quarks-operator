@@ -238,7 +238,7 @@ var _ = Describe("Deploy", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				By("checking if the deployment was updated")
-				err = env.WaitForPod(env.Namespace, "test-nats-v2-1")
+				err = env.WaitForPod(env.Namespace, "test-nats-v2-0")
 				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 			})
 		})

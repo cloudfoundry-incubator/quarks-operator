@@ -66,7 +66,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 
 	switch instanceGroup.LifeCycle {
 	case "service", "":
-		convertedExtStatefulSet, err := kc.serviceToExtendedSts(manifestName, version, instanceGroup, cfac)
+		convertedExtStatefulSet, err := kc.serviceToExtendedSts(manifestName, instanceGroup, cfac)
 		if err != nil {
 			return nil, err
 		}
@@ -74,7 +74,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 		// Add volumes spec to pod spec and container spec of pvc's in extendedstatefulset
 		kc.addPVCSpecs(cfac, &convertedExtStatefulSet, manifestName, instanceGroup, res.Disks)
 
-		services, err := kc.serviceToKubeServices(manifestName, version, instanceGroup, &convertedExtStatefulSet)
+		services, err := kc.serviceToKubeServices(manifestName, instanceGroup, &convertedExtStatefulSet)
 		if err != nil {
 			return nil, err
 		}
@@ -84,7 +84,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 
 		res.InstanceGroups = append(res.InstanceGroups, convertedExtStatefulSet)
 	case "errand":
-		convertedEJob, err := kc.errandToExtendedJob(manifestName, version, instanceGroup, cfac)
+		convertedEJob, err := kc.errandToExtendedJob(manifestName, instanceGroup, cfac)
 		if err != nil {
 			return nil, err
 		}
@@ -99,7 +99,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 }
 
 // serviceToExtendedSts will generate an ExtendedStatefulSet
-func (kc *KubeConverter) serviceToExtendedSts(manifestName string, version string, ig *InstanceGroup, cfac *ContainerFactory) (essv1.ExtendedStatefulSet, error) {
+func (kc *KubeConverter) serviceToExtendedSts(manifestName string, ig *InstanceGroup, cfac *ContainerFactory) (essv1.ExtendedStatefulSet, error) {
 	igName := ig.Name
 
 	hasPersistentDisk := (ig.PersistentDisk != nil && *ig.PersistentDisk > 0)
@@ -161,7 +161,7 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, version strin
 }
 
 // serviceToKubeServices will generate Services which expose ports for InstanceGroup's jobs
-func (kc *KubeConverter) serviceToKubeServices(manifestName string, version string, ig *InstanceGroup, eSts *essv1.ExtendedStatefulSet) ([]corev1.Service, error) {
+func (kc *KubeConverter) serviceToKubeServices(manifestName string, ig *InstanceGroup, eSts *essv1.ExtendedStatefulSet) ([]corev1.Service, error) {
 	var services []corev1.Service
 	igName := ig.Name
 
@@ -253,7 +253,7 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, version stri
 }
 
 // errandToExtendedJob will generate an ExtendedJob
-func (kc *KubeConverter) errandToExtendedJob(manifestName string, version string, ig *InstanceGroup, cfac *ContainerFactory) (ejv1.ExtendedJob, error) {
+func (kc *KubeConverter) errandToExtendedJob(manifestName string, ig *InstanceGroup, cfac *ContainerFactory) (ejv1.ExtendedJob, error) {
 	igName := ig.Name
 
 	hasPersistentDisk := (ig.PersistentDisk != nil && *ig.PersistentDisk > 0)
