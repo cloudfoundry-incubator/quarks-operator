@@ -122,6 +122,26 @@ instance_groups:
           internal: 4223
 `
 
+// Drains is a small manifest with jobs that include drain scripts
+const Drains = `---
+name: my-manifest
+releases:
+- name: cf-operator-testing
+  version: "0.0.2"
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 36.g03b4653-30.80-7.0.0_332.g0d8469bb
+instance_groups:
+- name: drains
+  instances: 1
+  jobs:
+  - name: failing-drain-job
+    release: cf-operator-testing
+  - name: delaying-drain-job
+    release: cf-operator-testing
+`
+
 const Elaborated = `name: foo-deployment
 stemcells:
 - alias: default
