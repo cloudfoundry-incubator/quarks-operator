@@ -350,7 +350,7 @@ The following subsections describe the mapping of BPM configuration into contain
 | `persistent_disk`             | `PersistentVolumeClaims`. Not yet implemented.                  |
 | `additional_volumes`          | `emptyDir`. Paths under /var/vcap/store are currently ignored.  |
 | `unsafe.unrestricted_volumes` | `emptyDir`. Paths under /var/vcap/store are currently ignored.  |
-| `unsafe`                      | `container.SecurityContext.Capabilities`. Not yet implemented.  |
+| `unsafe.privileged`           | `container.SecurityContext.Privileged`.                         |
 
 ### Health checks
 

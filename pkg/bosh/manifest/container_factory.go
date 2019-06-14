@@ -61,7 +61,7 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job, hasPersistentDisk bo
 		}
 		for _, process := range bpmConfig.Processes {
 			if process.Hooks.PreStart != "" {
-				container := bpmPrestartInitContainer(process.Name, jobImage, process.Hooks.PreStart)
+				container := bpmPrestartInitContainer(process, jobImage)
 
 				bpmVolumes, err := generateBPMVolumes(process, job.Name)
 				if err != nil {
@@ -314,11 +314,14 @@ func boshPreStartInitContainer(jobName string, jobImage string, hasPersistentDis
 	return c
 }
 
-func bpmPrestartInitContainer(processName string, jobImage string, cmd string) corev1.Container {
+func bpmPrestartInitContainer(process bpm.Process, jobImage string) corev1.Container {
 	return corev1.Container{
-		Name:    names.Sanitize(fmt.Sprintf("bpm-pre-start-%s", processName)),
+		Name:    names.Sanitize(fmt.Sprintf("bpm-pre-start-%s", process.Name)),
 		Image:   jobImage,
-		Command: []string{cmd},
+		Command: []string{process.Hooks.PreStart},
+		SecurityContext: &corev1.SecurityContext{
+			Privileged: &process.Unsafe.Privileged,
+		},
 	}
 }
 
@@ -333,6 +336,7 @@ func bpmProcessContainer(name string, jobImage string, process bpm.Process, heal
 			Capabilities: &corev1.Capabilities{
 				Add: capability(process.Capabilities),
 			},
+			Privileged: &process.Unsafe.Privileged,
 		},
 	}
 
