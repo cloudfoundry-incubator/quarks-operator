@@ -10,7 +10,6 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,7 +29,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	cfcfg "code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/finalizer"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 )
 
@@ -72,9 +70,6 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				existingValue      string
 
 				desiredExtendedStatefulSet *exss.ExtendedStatefulSet
-				v1StatefulSet              *v1beta2.StatefulSet
-				v1Pod                      *corev1.Pod
-				v2Pod                      *corev1.Pod
 			)
 
 			BeforeEach(func() {
@@ -119,53 +114,6 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 						},
 					},
 				}
-				v1StatefulSet = &v1beta2.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo-v1",
-						Namespace: "default",
-						UID:       "",
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								Name:               "foo",
-								UID:                "",
-								Controller:         util.Bool(true),
-								BlockOwnerDeletion: util.Bool(true),
-							},
-						},
-						Annotations: map[string]string{
-							exss.AnnotationStatefulSetSHA1: "",
-							exss.AnnotationVersion:         "1",
-						},
-					},
-				}
-				v1Pod = &corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo-v1-0",
-						Namespace: "default",
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								Name:               "foo-v1",
-								UID:                "",
-								Controller:         util.Bool(true),
-								BlockOwnerDeletion: util.Bool(true),
-							},
-						},
-					},
-				}
-				v2Pod = &corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo-v2-0",
-						Namespace: "default",
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								Name:               "foo-v2",
-								UID:                "",
-								Controller:         util.Bool(true),
-								BlockOwnerDeletion: util.Bool(true),
-							},
-						},
-					},
-				}
 
 				client = fake.NewFakeClient(
 					desiredExtendedStatefulSet,
@@ -176,10 +124,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 			It("creates new statefulSet and continues to reconcile when new version is not available", func() {
 				result, err := reconciler.Reconcile(request)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(result).To(Equal(reconcile.Result{
-					Requeue:      true,
-					RequeueAfter: 5 * time.Second,
-				}))
+				Expect(result).To(Equal(reconcile.Result{}))
 
 				ess := &exss.ExtendedStatefulSet{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
@@ -190,63 +135,6 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
-			})
-
-			It("updates existing statefulSet", func() {
-				ess := &exss.ExtendedStatefulSet{}
-				err := client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
-				Expect(err).ToNot(HaveOccurred())
-
-				// Provide statefulset and its pod from exStateful set
-				ss := v1StatefulSet
-				err = client.Create(context.Background(), ss)
-				Expect(err).ToNot(HaveOccurred())
-
-				pod := v1Pod
-				pod.Status = corev1.PodStatus{
-					Conditions: []corev1.PodCondition{
-						{
-							Type:   corev1.PodReady,
-							Status: corev1.ConditionTrue,
-						},
-					},
-				}
-
-				err = client.Create(context.Background(), pod)
-				Expect(err).ToNot(HaveOccurred())
-
-				// First reconcile creates new version because template has been update
-				result, err := reconciler.Reconcile(request)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(result).To(Equal(reconcile.Result{}))
-
-				ss = &v1beta2.StatefulSet{}
-				err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v2", Namespace: "default"}, ss)
-				Expect(err).ToNot(HaveOccurred())
-
-				Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
-
-				// Create pod from statefulset foo-v2
-				pod = v2Pod
-				pod.Status = corev1.PodStatus{
-					Conditions: []corev1.PodCondition{
-						{
-							Type:   corev1.PodReady,
-							Status: corev1.ConditionTrue,
-						},
-					},
-				}
-				err = client.Create(context.Background(), pod)
-				Expect(err).ToNot(HaveOccurred())
-
-				// Second reconcile deletes old version because new version is already available
-				result, err = reconciler.Reconcile(request)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(result).To(Equal(reconcile.Result{}))
-
-				err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
-				Expect(err).To(HaveOccurred())
-				Expect(kerrors.IsNotFound(err)).To(BeTrue())
 			})
 
 			Context("When zones has the values", func() {
@@ -270,10 +158,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 					It("Creates new version and updates AZ info", func() {
 						result, err := reconciler.Reconcile(request)
 						Expect(err).ToNot(HaveOccurred())
-						Expect(result).To(Equal(reconcile.Result{
-							Requeue:      true,
-							RequeueAfter: 5 * time.Second,
-						}))
+						Expect(result).To(Equal(reconcile.Result{}))
 
 						ess := &exss.ExtendedStatefulSet{}
 						err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
@@ -376,10 +261,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 					It("Creates new version and updates AZ info", func() {
 						result, err := reconciler.Reconcile(request)
 						Expect(err).ToNot(HaveOccurred())
-						Expect(result).To(Equal(reconcile.Result{
-							Requeue:      true,
-							RequeueAfter: 5 * time.Second,
-						}))
+						Expect(result).To(Equal(reconcile.Result{}))
 
 						ess := &exss.ExtendedStatefulSet{}
 						err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
@@ -608,10 +490,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				It("creates new statefulSet and has correct resources", func() {
 					result, err := reconciler.Reconcile(request)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(result).To(Equal(reconcile.Result{
-						Requeue:      true,
-						RequeueAfter: 5 * time.Second,
-					}))
+					Expect(result).To(Equal(reconcile.Result{}))
 
 					ess := &exss.ExtendedStatefulSet{}
 					err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
@@ -667,10 +546,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 					It("Creates new version and updates the config hash in the StatefulSet Annotations", func() {
 						result, err := reconciler.Reconcile(request)
 						Expect(err).ToNot(HaveOccurred())
-						Expect(result).To(Equal(reconcile.Result{
-							Requeue:      true,
-							RequeueAfter: 5 * time.Second,
-						}))
+						Expect(result).To(Equal(reconcile.Result{}))
 
 						ess := &exss.ExtendedStatefulSet{}
 						err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
@@ -681,8 +557,6 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 						Expect(err).ToNot(HaveOccurred())
 
 						Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
-
-						originalSHA1 := ss.Spec.Template.GetAnnotations()[exss.AnnotationConfigSHA1]
 
 						// Remove "container2" which references Secret example2 and ConfigMap
 						containers := ss.Spec.Template.Spec.Containers
@@ -691,46 +565,11 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 						Expect(err).ToNot(HaveOccurred())
 						result, err = reconciler.Reconcile(request)
 						Expect(err).ToNot(HaveOccurred())
-						Expect(result).To(Equal(reconcile.Result{
-							Requeue:      true,
-							RequeueAfter: 5 * time.Second,
-						}))
+						Expect(result).To(Equal(reconcile.Result{}))
 
 						ss = &v1beta2.StatefulSet{}
 						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v2", Namespace: "default"}, ss)
 						Expect(err).ToNot(HaveOccurred())
-
-						currentSHA1 := ss.Spec.Template.GetAnnotations()[exss.AnnotationConfigSHA1]
-
-						By("Adds the OwnerReference from the orphaned configurations", func() {
-							err = client.Get(context.Background(), types.NamespacedName{Name: configMap1.Name, Namespace: "default"}, configMap1)
-							Expect(err).ToNot(HaveOccurred())
-							err = client.Get(context.Background(), types.NamespacedName{Name: secret1.Name, Namespace: "default"}, secret1)
-							Expect(err).ToNot(HaveOccurred())
-
-							ownerRef := metav1.OwnerReference{
-								APIVersion:         "fissile.cloudfoundry.org/v1alpha1",
-								Kind:               "ExtendedStatefulSet",
-								Name:               ess.Name,
-								UID:                ess.UID,
-								Controller:         util.Bool(false),
-								BlockOwnerDeletion: util.Bool(true),
-							}
-
-							for _, obj := range []apis.Object{configMap1, secret1} {
-								Expect(obj.GetOwnerReferences()).Should(ContainElement(ownerRef))
-							}
-						})
-
-						By("Updates the config hash in the StatefulSet Annotations", func() {
-							Expect(currentSHA1).ShouldNot(Equal(originalSHA1))
-						})
-
-						By("Adds a finalizer to the ExtendedStatefulSet", func() {
-							err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
-							Expect(err).ToNot(HaveOccurred())
-							Expect(ess.GetFinalizers()).Should(ContainElement(finalizer.AnnotationFinalizer))
-						})
 					})
 				})
 
@@ -738,10 +577,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 					It("Preserves current version and updates the config hash in the StatefulSet Annotations", func() {
 						result, err := reconciler.Reconcile(request)
 						Expect(err).ToNot(HaveOccurred())
-						Expect(result).To(Equal(reconcile.Result{
-							Requeue:      true,
-							RequeueAfter: 5 * time.Second,
-						}))
+						Expect(result).To(Equal(reconcile.Result{}))
 
 						ess := &exss.ExtendedStatefulSet{}
 						err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
@@ -751,8 +587,6 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
-
-						originalSHA1 := ss.Spec.Template.GetAnnotations()[exss.AnnotationConfigSHA1]
 
 						// Update "configMap1"
 						err = client.Get(context.Background(), types.NamespacedName{Name: configMap1.Name, Namespace: "default"}, configMap1)
@@ -763,44 +597,11 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 						Expect(err).ToNot(HaveOccurred())
 						result, err = reconciler.Reconcile(request)
 						Expect(err).ToNot(HaveOccurred())
-						Expect(result).To(Equal(reconcile.Result{
-							Requeue:      true,
-							RequeueAfter: 5 * time.Second,
-						}))
+						Expect(result).To(Equal(reconcile.Result{}))
 
 						ss = &v1beta2.StatefulSet{}
 						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
 						Expect(err).ToNot(HaveOccurred())
-
-						currentSHA1 := ss.Spec.Template.GetAnnotations()[exss.AnnotationConfigSHA1]
-
-						By("Adds OwnerReferences to all configurations", func() {
-							err = client.Get(context.Background(), types.NamespacedName{Name: configMap1.Name, Namespace: "default"}, configMap1)
-							Expect(err).ToNot(HaveOccurred())
-							err = client.Get(context.Background(), types.NamespacedName{Name: configMap2.Name, Namespace: "default"}, configMap2)
-							Expect(err).ToNot(HaveOccurred())
-							err = client.Get(context.Background(), types.NamespacedName{Name: secret1.Name, Namespace: "default"}, secret1)
-							Expect(err).ToNot(HaveOccurred())
-							err = client.Get(context.Background(), types.NamespacedName{Name: secret2.Name, Namespace: "default"}, secret2)
-							Expect(err).ToNot(HaveOccurred())
-
-							ownerRef := metav1.OwnerReference{
-								APIVersion:         "fissile.cloudfoundry.org/v1alpha1",
-								Kind:               "ExtendedStatefulSet",
-								Name:               ess.Name,
-								UID:                ess.UID,
-								Controller:         util.Bool(false),
-								BlockOwnerDeletion: util.Bool(true),
-							}
-
-							for _, obj := range []apis.Object{configMap1, configMap2, secret1, secret2} {
-								Expect(obj.GetOwnerReferences()).Should(ContainElement(ownerRef))
-							}
-						})
-
-						By("Updates the config hash in the StatefulSet Annotations", func() {
-							Expect(currentSHA1).ShouldNot(Equal(originalSHA1))
-						})
 					})
 				})
 			})
@@ -833,21 +634,14 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 			})
 		})
 
-		Context("when there are three versions", func() {
+		Context("when there are two versions", func() {
 			var (
-				currentSha string
-
 				desiredExtendedStatefulSet *exss.ExtendedStatefulSet
 				v1StatefulSet              *v1beta2.StatefulSet
 				v2StatefulSet              *v1beta2.StatefulSet
-				v3StatefulSet              *v1beta2.StatefulSet
-				v1Pod                      *corev1.Pod
-				v2Pod                      *corev1.Pod
-				v3Pod                      *corev1.Pod
 			)
 
 			BeforeEach(func() {
-				currentSha = "00654e00b9b5e4e4268e16392723c8b7fcfbab1b"
 				desiredExtendedStatefulSet = &exss.ExtendedStatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "foo",
@@ -876,8 +670,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							},
 						},
 						Annotations: map[string]string{
-							exss.AnnotationStatefulSetSHA1: "",
-							exss.AnnotationVersion:         "1",
+							exss.AnnotationVersion: "1",
 						},
 					},
 				}
@@ -895,93 +688,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							},
 						},
 						Annotations: map[string]string{
-							exss.AnnotationStatefulSetSHA1: "",
-							exss.AnnotationVersion:         "2",
-						},
-					},
-				}
-				v3StatefulSet = &v1beta2.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo-v3",
-						Namespace: "default",
-						UID:       "foo-v3-uid",
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								Name:               "foo",
-								UID:                "foo-uid",
-								Controller:         util.Bool(true),
-								BlockOwnerDeletion: util.Bool(true),
-							},
-						},
-						Annotations: map[string]string{
-							exss.AnnotationStatefulSetSHA1: currentSha,
-							exss.AnnotationVersion:         "3",
-						},
-					},
-				}
-				v1Pod = &corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo-v1-0",
-						Namespace: "default",
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								Name:               "foo-v1",
-								UID:                "foo-v1-uid",
-								Controller:         util.Bool(true),
-								BlockOwnerDeletion: util.Bool(true),
-							},
-						},
-					},
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{
-							{
-								Type:   corev1.PodReady,
-								Status: corev1.ConditionFalse,
-							},
-						},
-					},
-				}
-				v2Pod = &corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo-v2-0",
-						Namespace: "default",
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								Name:               "foo-v2",
-								UID:                "foo-v2-uid",
-								Controller:         util.Bool(true),
-								BlockOwnerDeletion: util.Bool(true),
-							},
-						},
-					},
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{
-							{
-								Type:   corev1.PodReady,
-								Status: corev1.ConditionFalse,
-							},
-						},
-					},
-				}
-				v3Pod = &corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo-v3-0",
-						Namespace: "default",
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								Name:               "foo-v3",
-								UID:                "foo-v3-uid",
-								Controller:         util.Bool(true),
-								BlockOwnerDeletion: util.Bool(true),
-							},
-						},
-					},
-					Status: corev1.PodStatus{
-						Conditions: []corev1.PodCondition{
-							{
-								Type:   corev1.PodReady,
-								Status: corev1.ConditionFalse,
-							},
+							exss.AnnotationVersion: "2",
 						},
 					},
 				}
@@ -989,37 +696,16 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				client = fake.NewFakeClient(
 					desiredExtendedStatefulSet,
 					v1StatefulSet,
-					v1Pod,
 					v2StatefulSet,
-					v2Pod,
-					v3StatefulSet,
-					v3Pod,
 				)
 				manager.GetClientReturns(client)
 			})
 
-			It("cleans up old versions and stops reconcile when newer V3 is running", func() {
-				v2Pod.Status = corev1.PodStatus{
-					Conditions: []corev1.PodCondition{
-						{
-							Type:   corev1.PodReady,
-							Status: corev1.ConditionTrue,
-						},
-					},
-				}
-				err := client.Update(context.Background(), v2Pod)
-				Expect(err).ToNot(HaveOccurred())
-
-				v3Pod.Status = corev1.PodStatus{
-					Conditions: []corev1.PodCondition{
-						{
-							Type:   corev1.PodReady,
-							Status: corev1.ConditionTrue,
-						},
-					},
-				}
-				err = client.Update(context.Background(), v3Pod)
-				Expect(err).ToNot(HaveOccurred())
+			It("creates version 3 is running", func() {
+				ss := &v1beta2.StatefulSet{}
+				err := client.Get(context.Background(), types.NamespacedName{Name: "foo-v3", Namespace: "default"}, ss)
+				Expect(err).To(HaveOccurred())
+				Expect(kerrors.IsNotFound(err)).To(BeTrue())
 
 				result, err := reconciler.Reconcile(request)
 				Expect(err).ToNot(HaveOccurred())
@@ -1029,83 +715,9 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
 				Expect(err).ToNot(HaveOccurred())
 
-				ss := &v1beta2.StatefulSet{}
-				err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
-				Expect(err).To(HaveOccurred())
-				Expect(kerrors.IsNotFound(err)).To(BeTrue())
-
-				err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v2", Namespace: "default"}, ss)
-				Expect(err).To(HaveOccurred())
-				Expect(kerrors.IsNotFound(err)).To(BeTrue())
-
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v3", Namespace: "default"}, ss)
 				Expect(err).ToNot(HaveOccurred())
 
-				Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
-			})
-
-			It("Only cleans up old V1 version and continues to reconcile when latest V3 is not running and V2 is running", func() {
-				v2Pod.Status = corev1.PodStatus{
-					Conditions: []corev1.PodCondition{
-						{
-							Type:   corev1.PodReady,
-							Status: corev1.ConditionTrue,
-						},
-					},
-				}
-				err := client.Update(context.Background(), v2Pod)
-				Expect(err).ToNot(HaveOccurred())
-
-				result, err := reconciler.Reconcile(request)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(result).To(Equal(reconcile.Result{
-					Requeue:      true,
-					RequeueAfter: 5 * time.Second,
-				}))
-
-				ess := &exss.ExtendedStatefulSet{}
-				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
-				Expect(err).ToNot(HaveOccurred())
-
-				ss := &v1beta2.StatefulSet{}
-				err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
-				Expect(err).To(HaveOccurred())
-				Expect(kerrors.IsNotFound(err)).To(BeTrue())
-
-				err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v2", Namespace: "default"}, ss)
-				Expect(err).ToNot(HaveOccurred())
-
-				Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
-
-				err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v3", Namespace: "default"}, ss)
-				Expect(err).ToNot(HaveOccurred())
-
-				Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
-			})
-
-			It("does nothing and continues to reconcile when V1, V2 and V3 are all not running", func() {
-				result, err := reconciler.Reconcile(request)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(result).To(Equal(reconcile.Result{
-					Requeue:      true,
-					RequeueAfter: 5 * time.Second,
-				}))
-
-				ess := &exss.ExtendedStatefulSet{}
-				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
-				Expect(err).ToNot(HaveOccurred())
-
-				ss := &v1beta2.StatefulSet{}
-				err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
-
-				err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v2", Namespace: "default"}, ss)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
-
-				err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v3", Namespace: "default"}, ss)
-				Expect(err).ToNot(HaveOccurred())
 				Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
 			})
 		})
