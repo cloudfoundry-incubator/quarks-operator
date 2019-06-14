@@ -385,7 +385,7 @@ func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[st
 
 		link, hasLink := jobProviderLinks.Lookup(consumes.Type, consumesName)
 		if !hasLink && !consumes.Optional {
-			return fmt.Errorf("cannot resolve non-optional link for consumer %s", consumesName)
+			return fmt.Errorf("cannot resolve non-optional link for provider %s", consumesName)
 		}
 
 		// generate the job.properties.bosh_containerization.consumes struct with the links information from providers.
