@@ -149,7 +149,7 @@ func (c *Catalog) InterpolateOpsConfigMap(name string) corev1.ConfigMap {
 		Data: map[string]string{
 			"ops": `- type: replace
   path: /instance_groups/name=nats?/instances
-  value: 5
+  value: 1
 `,
 		},
 	}
@@ -162,7 +162,7 @@ func (c *Catalog) InterpolateOpsSecret(name string) corev1.Secret {
 		StringData: map[string]string{
 			"ops": `- type: replace
   path: /instance_groups/name=nats?/instances
-  value: 4
+  value: 3
 `,
 		},
 	}

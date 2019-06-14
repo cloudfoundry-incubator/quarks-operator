@@ -53,12 +53,12 @@ Here's a state diagram that tries to explain the process of reconciling a `BOSHD
 
 > **Note**
 >
-> The output of the ["Variable Interpolation"](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_variable-interpolation.md) `ExtendedJob` is the input for the "Data Gathering" `ExtendedJob`. This is the "Desired Manifest" `Secret`.
+> The output of the ["Variable Interpolation"](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_variable-interpolation.md) `ExtendedJob` is the input for the "Data Gathering" `ExtendedJob`. This is the "Desired Manifest" `Secret`. (`with-vars.interpolation-v1`)
 >
 > The ["Data Gathering"](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_data-gather.md) step generates 2 [Versioned Secrets](extendedjob.md#versioned-secrets) for each Instance Group:
 >
-> - Instance Group Resolved Properties (referenced by the Instance Group `ExtendedStatefulSets` and `ExtendedJobs`)
-> - Instance Group BPM (watched for by the BPM Reconciler)
+> - Instance Group Resolved Properties (referenced by the Instance Group `ExtendedStatefulSets` and `ExtendedJobs`) (i.e. `ig-resolved.nats-v1`)
+> - Instance Group BPM (watched for by the BPM Reconciler) (i.e. `bpm.nats-v1`)
 >
 
 ### Generated Variable Reconciler
