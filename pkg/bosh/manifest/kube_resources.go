@@ -14,6 +14,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
@@ -133,7 +134,7 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, version strin
 					Annotations: ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 				},
 				Spec: v1beta2.StatefulSetSpec{
-					Replicas: func() *int32 { i := int32(ig.Instances); return &i }(),
+					Replicas: util.Int32(int32(ig.Instances)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
 					},
