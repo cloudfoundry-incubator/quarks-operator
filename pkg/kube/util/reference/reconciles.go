@@ -15,6 +15,8 @@ import (
 	ejobv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // ReconcileType lists all the types of reconciliations we can return,
@@ -53,6 +55,10 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 		case *corev1.Secret:
 			objectReferences, err = GetSecretsReferencedBy(parent)
 			name = object.Name
+			// When secret is versioned secret, we should check out versioned secret reference
+			if isVersionedSecret(object) {
+				return isVersionedSecretReference(objectReferences, name), nil
+			}
 		default:
 			return false, errors.New("can't get reconciles for unknown object type; supported types are ConfigMap and Secret")
 		}
@@ -63,8 +69,6 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 
 		_, ok := objectReferences[name]
 
-		// TODO: also cover versioned secrets/configmaps
-
 		return ok, nil
 	}
 
@@ -73,7 +77,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 
 	switch reconcileType {
 	case ReconcileForBOSHDeployment:
-		log.Debugf(ctx, "Listing BOSHDeployments in namespace '%s'", namespace)
+		log.Debugf(ctx, "Listing BOSHDeployments for object '%s' in namespace '%s'", object.GetName(), namespace)
 		boshDeployments, err := listBOSHDeployments(ctx, client, namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to list BOSHDeployments for ConfigMap reconciles")
@@ -94,7 +98,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			}
 		}
 	case ReconcileForExtendedJob:
-		log.Debugf(ctx, "Listing ExtendedJobs in namespace '%s'", namespace)
+		log.Debugf(ctx, "Listing ExtendedJobs for object '%s' in namespace '%s'", object.GetName(), namespace)
 		extendedJobs, err := listExtendedJobs(ctx, client, namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to list ExtendedJobs for ConfigMap reconciles")
@@ -118,7 +122,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			}
 		}
 	case ReconcileForExtendedStatefulSet:
-		log.Debugf(ctx, "Listing ExtendedStatefulSets in namespace '%s'", namespace)
+		log.Debugf(ctx, "Listing ExtendedStatefulSets for object '%s' in namespace '%s'", object.GetName(), namespace)
 		extendedStatefulSets, err := listExtendedStatefulSets(ctx, client, namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to list ExtendedStatefulSets for ConfigMap reconciles")
@@ -211,4 +215,39 @@ func listExtendedJobs(ctx context.Context, client crc.Client, namespace string) 
 	}
 
 	return result, nil
+}
+
+func isVersionedSecret(secret *corev1.Secret) bool {
+	labels := secret.Labels
+	if labels == nil {
+		return false
+	}
+	secretKind, ok := labels[vss.LabelSecretKind]
+	if ok && secretKind == vss.VersionSecretKind {
+		return true
+	}
+
+	return false
+}
+
+func isVersionedSecretReference(objectReferences map[string]bool, secretName string) bool {
+	secretPrefix := names.GetPrefixFromVersionedSecretName(secretName)
+
+	// The versioned secret reference can be original secret prefix (e.g. <name-prefix>)
+	if len(secretPrefix) != 0 {
+		_, ok := objectReferences[secretPrefix]
+		if ok {
+			return true
+		}
+	}
+
+	// The versioned secret reference can also be secret prefix with version (e.g. <name-prefix>-v2)
+	for ref := range objectReferences {
+		refPrefix := names.GetPrefixFromVersionedSecretName(ref)
+		if refPrefix == secretPrefix {
+			return true
+		}
+	}
+
+	return false
 }

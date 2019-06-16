@@ -154,7 +154,15 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 	// Watch secrets referenced by resource ExtendedJob
 	// trigger auto errand if UpdateOnConfigChange=true and config data changed
 	p = predicate.Funcs{
-		CreateFunc:  func(e event.CreateEvent) bool { return false },
+		CreateFunc: func(e event.CreateEvent) bool {
+			// Versioned secret could be created after EJob is created
+			n := e.Object.(*corev1.Secret)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedJob, n)
+			if err != nil {
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secrets '%s': %s", n.Name, err)
+			}
+			return len(reconciles) > 0
+		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
