@@ -38,3 +38,12 @@ func GetPodCondition(
 	}
 	return -1, nil
 }
+
+func LookupEnv(env []corev1.EnvVar, name string) (string, bool) {
+	for _, v := range env {
+		if v.Name == name {
+			return v.Value, true
+		}
+	}
+	return "", false
+}

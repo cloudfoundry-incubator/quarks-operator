@@ -11,6 +11,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,11 +20,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	podutil "code.cloudfoundry.org/cf-operator/pkg/kube/util/pod"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // NewJobReconciler returns a new Reconciler
@@ -191,13 +193,17 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 			},
 		}
 
-		if conf.Versioned {
-			secretLabels := conf.SecretLabels
-			if secretLabels == nil {
-				secretLabels = map[string]string{}
-			}
+		secretLabels := conf.SecretLabels
+		if secretLabels == nil {
+			secretLabels = map[string]string{}
+		}
 
-			secretLabels[ejv1.LabelPersistentSecretContainer] = c.Name
+		secretLabels[ejv1.LabelPersistentSecretContainer] = c.Name
+		if ig, ok := podutil.LookupEnv(c.Env, manifest.EnvInstanceGroupName); ok {
+			secretLabels[ejv1.LabelInstanceGroup] = ig
+		}
+
+		if conf.Versioned {
 
 			// Use secretName as versioned secret name prefix: <secretName>-v<version>
 			err = r.versionedSecretStore.Create(ctx, instance.GetNamespace(), secretName, data, secretLabels, "created by extendedJob")
@@ -210,12 +216,6 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 				if !ok {
 					return fmt.Errorf("object is not a Secret")
 				}
-
-				secretLabels := conf.SecretLabels
-				if secretLabels == nil {
-					secretLabels = map[string]string{}
-				}
-				secretLabels[ejv1.LabelPersistentSecretContainer] = c.Name
 
 				s.SetLabels(secretLabels)
 				s.StringData = data
