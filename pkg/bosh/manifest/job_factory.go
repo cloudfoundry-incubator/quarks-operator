@@ -12,8 +12,22 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// DesiredManifestKeyName is the name of the key in desired manifest secret
-const DesiredManifestKeyName = "manifest.yaml"
+const (
+	// DesiredManifestKeyName is the name of the key in desired manifest secret
+	DesiredManifestKeyName = "manifest.yaml"
+	// EnvInstanceGroupName is a key for the container Env identifying the
+	// instance group that container is started for
+	EnvInstanceGroupName = "INSTANCE_GROUP_NAME"
+	// EnvBOSHManifestPath is a key for the container Env pointing to the BOSH manifest
+	EnvBOSHManifestPath = "BOSH_MANIFEST_PATH"
+	// EnvCFONamespace is a key for the container Env used to lookup the
+	// namespace CF operator is running in
+	EnvCFONamespace = "CF_OPERATOR_NAMESPACE"
+	// EnvBaseDir is a key for the container Env used to lookup the base dir
+	EnvBaseDir = "BASE_DIR"
+	// EnvVariablesDir is a key for the container Env used to lookup the variables dir
+	EnvVariablesDir = "VARIABLES_DIR"
+)
 
 // JobFactory creates Jobs for a given manifest
 type JobFactory struct {
@@ -147,11 +161,11 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 							VolumeMounts: volumeMounts,
 							Env: []corev1.EnvVar{
 								{
-									Name:  "BOSH_MANIFEST_PATH",
+									Name:  EnvBOSHManifestPath,
 									Value: filepath.Join("/var/run/secrets/deployment/", DesiredManifestKeyName),
 								},
 								{
-									Name:  "VARIABLES_DIR",
+									Name:  EnvVariablesDir,
 									Value: "/var/run/secrets/variables/",
 								},
 							},
@@ -231,19 +245,19 @@ func (f *JobFactory) gatheringContainer(cmd, instanceGroupName string) corev1.Co
 		},
 		Env: []corev1.EnvVar{
 			{
-				Name:  "BOSH_MANIFEST_PATH",
+				Name:  EnvBOSHManifestPath,
 				Value: filepath.Join("/var/run/secrets/deployment/", DesiredManifestKeyName),
 			},
 			{
-				Name:  "CF_OPERATOR_NAMESPACE",
+				Name:  EnvCFONamespace,
 				Value: f.Namespace,
 			},
 			{
-				Name:  "BASE_DIR",
+				Name:  EnvBaseDir,
 				Value: VolumeRenderingDataMountPath,
 			},
 			{
-				Name:  "INSTANCE_GROUP_NAME",
+				Name:  EnvInstanceGroupName,
 				Value: instanceGroupName,
 			},
 		},
