@@ -4,25 +4,29 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"time"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
-	"code.cloudfoundry.org/cf-operator/testing"
 	"github.com/spf13/afero"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
+
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+	"code.cloudfoundry.org/cf-operator/testing"
 )
 
 // StopFunc is used to clean up the environment
@@ -96,6 +100,10 @@ func (e *Environment) Setup(node int32) (TearDownFunc, StopFunc, error) {
 			close(e.stop)
 		}
 	}, nil
+}
+
+func (e *Environment) RemoveWebhookCache(node int32) {
+	os.RemoveAll(path.Join(controllers.WebhookConfigDir, controllers.WebhookConfigPrefix+getNamespace(node)))
 }
 
 // FlushLog flushes the zap log

@@ -117,7 +117,7 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 		false,
 	)
 
-	eJobName := fmt.Sprintf("var-interpolation-%s", f.Manifest.Name)
+	eJobName := fmt.Sprintf("vi-%s", f.Manifest.Name)
 
 	// Construct the var interpolation job
 	job := &ejv1.ExtendedJob{
@@ -188,7 +188,7 @@ func (f *JobFactory) DataGatheringJob() (*ejv1.ExtendedJob, error) {
 		containers[idx] = f.gatheringContainer("data-gather", ig.Name)
 	}
 
-	eJobName := fmt.Sprintf("data-gathering-%s", f.Manifest.Name)
+	eJobName := fmt.Sprintf("dg-%s", f.Manifest.Name)
 	return f.gatheringJob(eJobName, names.DeploymentSecretTypeInstanceGroupResolvedProperties, containers)
 }
 
@@ -202,7 +202,7 @@ func (f *JobFactory) BPMConfigsJob() (*ejv1.ExtendedJob, error) {
 		containers[idx] = f.gatheringContainer("bpm-configs", ig.Name)
 	}
 
-	eJobName := fmt.Sprintf("bpm-configs-%s", f.Manifest.Name)
+	eJobName := fmt.Sprintf("bpm-%s", f.Manifest.Name)
 	return f.gatheringJob(eJobName, names.DeploymentSecretBpmInformation, containers)
 }
 

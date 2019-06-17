@@ -11,6 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
+
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -28,7 +29,8 @@ import (
 
 // WebhookConfig generates certificates and the configuration for the webhook server
 type WebhookConfig struct {
-	ConfigName    string
+	ConfigName string
+	// CertDir is not deleted automatically, so we can re-use the same SSL between operator restarts in production
 	CertDir       string
 	Certificate   []byte
 	Key           []byte
@@ -44,7 +46,7 @@ type WebhookConfig struct {
 func NewWebhookConfig(c client.Client, config *config.Config, generator credsgen.Generator, configName string) *WebhookConfig {
 	return &WebhookConfig{
 		ConfigName: configName,
-		CertDir:    path.Join("/tmp", configName),
+		CertDir:    path.Join(WebhookConfigDir, configName),
 		client:     c,
 		config:     config,
 		generator:  generator,

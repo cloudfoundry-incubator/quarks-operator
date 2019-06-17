@@ -484,10 +484,10 @@ var _ = Describe("ExtendedJob", func() {
 				jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 4)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
 				Expect(jobs).To(HaveLen(4))
-				Expect(env.ContainJob(jobs, "job-extendedjob-foo")).To(Equal(true))
-				Expect(env.ContainJob(jobs, "job-slowjob-foo")).To(Equal(true))
-				Expect(env.ContainJob(jobs, "job-extendedjob-bar")).To(Equal(true))
-				Expect(env.ContainJob(jobs, "job-slowjob-bar")).To(Equal(true))
+				Expect(env.ContainJob(jobs, "extendedjob-foo")).To(Equal(true))
+				Expect(env.ContainJob(jobs, "slowjob-foo")).To(Equal(true))
+				Expect(env.ContainJob(jobs, "extendedjob-bar")).To(Equal(true))
+				Expect(env.ContainJob(jobs, "slowjob-bar")).To(Equal(true))
 
 				By("checking if owner ref is set")
 				eJob, err := env.GetExtendedJob(env.Namespace, "extendedjob")
@@ -496,10 +496,10 @@ var _ = Describe("ExtendedJob", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				for _, job := range jobs {
-					if strings.Contains(job.GetName(), "job-extendedjob-") {
+					if strings.Contains(job.GetName(), "extendedjob-") {
 						Expect(job.GetOwnerReferences()).Should(ContainElement(jobOwnerRef(*eJob)))
 					}
-					if strings.Contains(job.GetName(), "job-slowjob-") {
+					if strings.Contains(job.GetName(), "slowjob-") {
 						Expect(job.GetOwnerReferences()).Should(ContainElement(jobOwnerRef(*slowJob)))
 					}
 				}

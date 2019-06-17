@@ -48,6 +48,7 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
+	env.RemoveWebhookCache(int32(config.GinkgoConfig.ParallelNode))
 	if stopOperator != nil {
 		time.Sleep(3 * time.Second)
 		defer stopOperator()

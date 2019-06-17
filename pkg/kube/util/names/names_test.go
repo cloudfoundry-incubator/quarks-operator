@@ -10,34 +10,57 @@ import (
 )
 
 var _ = Describe("Names", func() {
-
 	type test struct {
-		expectation string
-		result      string
+		arg1   string
+		arg2   string
+		result string
+		n      int
 	}
+	long31 := "a123456789012345678901234567890"
+	long63 := long31 + "b123456789012345678901234567890c"
+
+	Context("JobName", func() {
+		tests := []test{
+			{arg1: "ab1", result: "ab1", n: 20},
+			{arg1: "a-b1", result: "a-b1-", n: 21},
+			{arg1: "a-b1", arg2: "pod", result: "a-b1-pod-", n: 25},
+			{arg1: long31, arg2: "", result: "a123456789012345678901234567890-", n: 48},
+			{arg1: long31, arg2: "pod", result: "a123456789012345678-pod", n: 40},
+			{arg1: long31, arg2: long31, result: "a123456789012345678-a123456789012345678-", n: 56},
+			{arg1: long63, arg2: "", result: long63[:39] + "-", n: 56},
+		}
+
+		It("produces valid k8s job names", func() {
+			for _, t := range tests {
+				r, err := names.JobName(t.arg1, t.arg2)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r).To(ContainSubstring(t.result), fmt.Sprintf("%#v", t))
+				Expect(r).To(HaveLen(t.n), fmt.Sprintf("%#v", t))
+			}
+		})
+	})
 
 	Context("Sanitize", func() {
 		// according to docs/naming.md
-		long31 := "a123456789012345678901234567890"
-		long63 := long31 + "b123456789012345678901234567890c"
 		tests := []test{
-			{expectation: "AB1", result: "ab1"},
-			{expectation: "ab1", result: "ab1"},
-			{expectation: "1bc", result: "1bc"},
-			{expectation: "a-b", result: "a-b"},
-			{expectation: "a_b", result: "a-b"},
-			{expectation: "a_b_123", result: "a-b-123"},
-			{expectation: "-abc", result: "abc"},
-			{expectation: "abc-", result: "abc"},
-			{expectation: "_abc_", result: "abc"},
-			{expectation: "-abc-", result: "abc"},
-			{expectation: "abcü.123:4", result: "abc1234"},
-			{expectation: long63, result: long63},
-			{expectation: long63 + "0", result: long31 + "f61acdbce0e8ea6e4912f53bde4de866"},
+			{arg1: "AB1", result: "ab1"},
+			{arg1: "ab1", result: "ab1"},
+			{arg1: "1bc", result: "1bc"},
+			{arg1: "a-b", result: "a-b"},
+			{arg1: "a_b", result: "a-b"},
+			{arg1: "a_b_123", result: "a-b-123"},
+			{arg1: "-abc", result: "abc"},
+			{arg1: "abc-", result: "abc"},
+			{arg1: "_abc_", result: "abc"},
+			{arg1: "-abc-", result: "abc"},
+			{arg1: "abcü.123:4", result: "abc1234"},
+			{arg1: long63, result: long63},
+			{arg1: long63 + "0", result: long31 + "f61acdbce0e8ea6e4912f53bde4de866"},
 		}
+
 		It("produces valid k8s names", func() {
 			for _, t := range tests {
-				Expect(names.Sanitize(t.expectation)).To(Equal(t.result), fmt.Sprintf("%#v", t))
+				Expect(names.Sanitize(t.arg1)).To(Equal(t.result), fmt.Sprintf("%#v", t))
 			}
 		})
 	})
