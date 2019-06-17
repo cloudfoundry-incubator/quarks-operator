@@ -125,6 +125,32 @@ var _ = Describe("Deploy", func() {
 		})
 	})
 
+	FContext("when BPM has pre-start hooks configured", func() {
+		It("should run pre-start script in an init container", func() {
+
+			tearDown, err := env.CreateConfigMap(env.Namespace, corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: "garden-manifest"},
+				Data:       map[string]string{"manifest": bm.GardenRunc},
+			})
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test-bdpl", "garden-manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			By("checking for pod")
+			err = env.WaitForPod(env.Namespace, "test-bdpl-garden-runc-v1-1")
+			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
+
+			By("checking for containers")
+			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=garden-runc")
+			Expect(len(pods.Items)).To(Equal(2))
+			pod := pods.Items[1]
+			Expect(pod.Spec.InitContainers).To(HaveLen(5))
+			Expect(pod.Spec.InitContainers[4].Command).To(ContainElement("bin/pre-start"))
+		})
+	})
+
 	Context("when job name contains an underscore", func() {
 		var tearDowns []environment.TearDownFunc
 

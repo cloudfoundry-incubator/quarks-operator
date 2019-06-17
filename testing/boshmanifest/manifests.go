@@ -451,3 +451,37 @@ instance_groups:
         ssl:
           port: 8443
 `
+
+// GardenRunc BOSH release is being tested for BPM pre start hook
+const GardenRunc = `
+name: garden-runc
+
+releases:
+- name: garden-runc
+  version: 1.19.2
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 36.g03b4653-30.80-7.0.0_332.g0d8469bb
+
+instance_groups:
+- name: garden-runc
+  instances: 2
+  jobs:
+  - name: garden
+    release: garden-runc
+    properties:
+      containerd_mode: true
+      cleanup_process_dirs_on_wait: true
+      debug_listen_address: 127.0.0.1:17019
+      default_container_grace_time: 0
+      destroy_containers_on_start: true
+      deny_networks:
+      - 0.0.0.0/0
+      network_plugin: /var/vcap/packages/runc-cni/bin/garden-external-networker
+      network_plugin_extra_args:
+      - --configFile=/var/vcap/jobs/garden-cni/config/adapter.json
+    logging:
+      format:
+        timestamp: "rfc3339"
+`
