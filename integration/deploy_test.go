@@ -193,7 +193,7 @@ var _ = Describe("Deploy", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					By("checking if the deployment was updated")
-					err = env.WaitForPod(env.Namespace, "test-nats-v2-1")
+					err = env.WaitForPod(env.Namespace, "test-nats-v2-0")
 					Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 				})
 			})
@@ -233,13 +233,20 @@ var _ = Describe("Deploy", func() {
 				Expect(err).NotTo(HaveOccurred())
 				ops.Data["ops"] = `- type: replace
   path: /instance_groups/name=nats?/instances
-  value: 1`
+  value: 2`
 				_, _, err = env.UpdateConfigMap(env.Namespace, *ops)
 				Expect(err).NotTo(HaveOccurred())
 
 				By("checking if the deployment was updated")
-				err = env.WaitForPod(env.Namespace, "test-nats-v2-1")
+				err = env.WaitForPod(env.Namespace, "test-nats-v2-0")
 				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
+
+				// TODO pass some time so v1 disappears, idea: check for v2 only
+				time.Sleep(60 * time.Second)
+
+				pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=nats")
+				Expect(len(pods.Items)).To(Equal(2))
+
 			})
 		})
 	})

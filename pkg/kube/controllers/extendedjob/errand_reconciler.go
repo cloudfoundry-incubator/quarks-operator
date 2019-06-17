@@ -2,7 +2,6 @@ package extendedjob
 
 import (
 	"context"
-	"reflect"
 
 	"github.com/pkg/errors"
 	batchv1 "k8s.io/api/batch/v1"
@@ -83,23 +82,6 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			return result, err
 		}
 	}
-
-	// START update secret references
-	eJobCopy := eJob.DeepCopy()
-	err = r.versionedSecretStore.SetSecretReferences(ctx, eJob.GetNamespace(), &eJob.Spec.Template.Spec)
-	if err != nil {
-		ctxlog.Errorf(ctx, "Failed to set secret references on job '%s': %s", eJob.Name, err)
-		return result, err
-	}
-
-	if !reflect.DeepEqual(eJob, eJobCopy) {
-		err = r.client.Update(ctx, eJob)
-		if err != nil {
-			ctxlog.Errorf(ctx, "Could not update eJob '%s': ", eJob.GetName(), err)
-			return result, errors.Wrapf(err, "could not update eJob '%s'", eJob.GetName())
-		}
-	}
-	// END update secret references
 
 	err = r.createJob(ctx, *eJob)
 	if err != nil {

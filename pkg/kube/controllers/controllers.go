@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,6 +32,10 @@ import (
 const (
 	// HTTPReadyzEndpoint route
 	HTTPReadyzEndpoint = "/readyz"
+	// WebhookConfigPrefix is the prefix for the dir containing the webhook SSL certs
+	WebhookConfigPrefix = "cf-operator-mutating-hook-"
+	// WebhookConfigDir contains the dir with the webhook SSL certs
+	WebhookConfigDir = "/tmp"
 )
 
 var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager) error{
@@ -75,7 +80,7 @@ func AddToScheme(s *runtime.Scheme) error {
 func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, generator credsgen.Generator) error {
 	ctxlog.Infof(ctx, "Setting up webhook server on %s:%d", config.WebhookServerHost, config.WebhookServerPort)
 
-	webhookConfig := NewWebhookConfig(m.GetClient(), config, generator, "cf-operator-mutating-hook-"+config.Namespace)
+	webhookConfig := NewWebhookConfig(m.GetClient(), config, generator, WebhookConfigPrefix+config.Namespace)
 
 	disableConfigInstaller := true
 	hookServer, err := webhook.NewServer("cf-operator", m, webhook.ServerOptions{

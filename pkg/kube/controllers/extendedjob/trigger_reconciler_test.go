@@ -226,9 +226,9 @@ var _ = Describe("TriggerReconciler", func() {
 
 					jobs := obj.Items
 					Expect(jobs).To(HaveLen(2))
-					Expect(jobs[0].Name).To(ContainSubstring("job-foo-"))
+					Expect(jobs[0].Name).To(ContainSubstring("foo-fake-pod"))
 					Expect(jobs[0].Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"sleep", "1"}))
-					Expect(jobs[1].Name).To(ContainSubstring("job-bar-"))
+					Expect(jobs[1].Name).To(ContainSubstring("bar-fake-pod"))
 					Expect(jobs[1].Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"sleep", "15"}))
 					Expect(logs.FilterMessageSnippet("Created job for 'foo' via pod fake-pod/ready").Len()).To(Equal(1))
 					Expect(logs.FilterMessageSnippet("Created job for 'bar' via pod fake-pod/ready").Len()).To(Equal(1))

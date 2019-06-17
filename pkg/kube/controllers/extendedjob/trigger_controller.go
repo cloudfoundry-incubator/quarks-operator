@@ -41,7 +41,7 @@ func AddTrigger(ctx context.Context, config *config.Config, mgr manager.Manager)
 			shouldProcessEvent := pod.Status.Phase == "Pending"
 			if shouldProcessEvent {
 				ctxlog.WithEvent(pod, "Predicates").DebugJSON(ctx,
-					"Filter for create events",
+					"ejob: create predicate for trigger controller",
 					ctxlog.ReconcileEventsFromSource{
 						ReconciliationObjectName: e.Meta.GetName(),
 						ReconciliationObjectKind: "corev1.Pod",
@@ -65,7 +65,27 @@ func AddTrigger(ctx context.Context, config *config.Config, mgr manager.Manager)
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// This allows matching both our ready and deleted states
-			return !isJobPod(e.MetaNew.GetLabels())
+			shouldProcessEvent := !isJobPod(e.MetaNew.GetLabels())
+
+			if shouldProcessEvent {
+				pod := e.ObjectOld.(*corev1.Pod)
+
+				ctxlog.WithEvent(pod, "Predicates").DebugJSON(ctx,
+					"ejob: update predicate for trigger controller",
+					ctxlog.ReconcileEventsFromSource{
+						ReconciliationObjectName: e.MetaOld.GetName(),
+						ReconciliationObjectKind: "corev1.Pod",
+						PredicateObjectName:      e.MetaOld.GetName(),
+						PredicateObjectKind:      "corev1.Pod",
+						Namespace:                e.MetaOld.GetNamespace(),
+						Type:                     "predicate",
+						Message: fmt.Sprintf("Filter passed for %s, existing pod is in Pending status",
+							e.MetaOld.GetName()),
+					},
+				)
+			}
+
+			return shouldProcessEvent
 		},
 	}
 	return c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForObject{}, p)

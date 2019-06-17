@@ -9,7 +9,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
+	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -98,19 +98,12 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 }
 
 func isBPMInfoSecret(secret *corev1.Secret) bool {
-	secretLabels := secret.GetLabels()
-	if secretLabels == nil {
-		return false
-	}
-
-	secretKind, ok := secretLabels[versionedsecretstore.LabelSecretKind]
+	ok := vss.IsVersionedSecret(*secret)
 	if !ok {
 		return false
 	}
-	if secretKind != versionedsecretstore.VersionSecretKind {
-		return false
-	}
 
+	secretLabels := secret.GetLabels()
 	deploymentSecretType, ok := secretLabels[bdv1.LabelDeploymentSecretType]
 	if !ok {
 		return false

@@ -36,11 +36,16 @@ var _ = Describe("ExtendedJob", func() {
 	Context("when using an AutoErrandJob", func() {
 
 		var (
-			ej ejv1.ExtendedJob
+			ej        ejv1.ExtendedJob
+			tearDowns []environment.TearDownFunc
 		)
 
 		BeforeEach(func() {
 			ej = env.AutoErrandExtendedJob("autoerrand-job")
+		})
+
+		AfterEach(func() {
+			Expect(env.TearDownAll(tearDowns)).To(Succeed())
 		})
 
 		It("immediately starts the job", func() {
@@ -142,7 +147,6 @@ var _ = Describe("ExtendedJob", func() {
 			var (
 				configMap  corev1.ConfigMap
 				secret     corev1.Secret
-				tearDowns  []environment.TearDownFunc
 				tearDownEJ environment.TearDownFunc
 			)
 
@@ -167,10 +171,6 @@ var _ = Describe("ExtendedJob", func() {
 
 				_, err = env.WaitForJobExists(env.Namespace, "extendedjob=true")
 				Expect(err).NotTo(HaveOccurred())
-			})
-
-			AfterEach(func() {
-				Expect(env.TearDownAll(tearDowns)).To(Succeed())
 			})
 
 			Context("when a config content changes", func() {
@@ -199,7 +199,6 @@ var _ = Describe("ExtendedJob", func() {
 			var (
 				configMap  corev1.ConfigMap
 				secret     corev1.Secret
-				tearDowns  []environment.TearDownFunc
 				tearDownEJ environment.TearDownFunc
 			)
 
@@ -485,10 +484,10 @@ var _ = Describe("ExtendedJob", func() {
 				jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 4)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
 				Expect(jobs).To(HaveLen(4))
-				Expect(env.ContainJob(jobs, "job-extendedjob-foo")).To(Equal(true))
-				Expect(env.ContainJob(jobs, "job-slowjob-foo")).To(Equal(true))
-				Expect(env.ContainJob(jobs, "job-extendedjob-bar")).To(Equal(true))
-				Expect(env.ContainJob(jobs, "job-slowjob-bar")).To(Equal(true))
+				Expect(env.ContainJob(jobs, "extendedjob-foo")).To(Equal(true))
+				Expect(env.ContainJob(jobs, "slowjob-foo")).To(Equal(true))
+				Expect(env.ContainJob(jobs, "extendedjob-bar")).To(Equal(true))
+				Expect(env.ContainJob(jobs, "slowjob-bar")).To(Equal(true))
 
 				By("checking if owner ref is set")
 				eJob, err := env.GetExtendedJob(env.Namespace, "extendedjob")
@@ -497,10 +496,10 @@ var _ = Describe("ExtendedJob", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				for _, job := range jobs {
-					if strings.Contains(job.GetName(), "job-extendedjob-") {
+					if strings.Contains(job.GetName(), "extendedjob-") {
 						Expect(job.GetOwnerReferences()).Should(ContainElement(jobOwnerRef(*eJob)))
 					}
-					if strings.Contains(job.GetName(), "job-slowjob-") {
+					if strings.Contains(job.GetName(), "slowjob-") {
 						Expect(job.GetOwnerReferences()).Should(ContainElement(jobOwnerRef(*slowJob)))
 					}
 				}

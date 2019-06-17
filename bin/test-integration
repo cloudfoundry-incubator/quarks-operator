@@ -38,4 +38,5 @@ if [ -n "$COVERAGE" ]; then
 fi
 
 NODES=${NODES:-5}
-ginkgo --randomizeAllSpecs --nodes="$NODES" --slowSpecThreshold=50 --flakeAttempts=3 $COV_ARG integration/
+FLAKE_ATTEMPTS=${FLAKE_ATTEMPTS:-3}
+ginkgo --randomizeAllSpecs --nodes="$NODES" --slowSpecThreshold=50 --flakeAttempts="$FLAKE_ATTEMPTS" $COV_ARG integration/
