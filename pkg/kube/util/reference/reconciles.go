@@ -74,7 +74,8 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 				keys[i] = k
 				i++
 			}
-			return vss.ContainsSecretName(keys, name)
+			ok := vss.ContainsSecretName(keys, name)
+			return ok, nil
 		}
 
 		_, ok := objectReferences[name]

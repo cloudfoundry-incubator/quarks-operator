@@ -20,7 +20,6 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
@@ -226,8 +225,8 @@ func hasConfigsChanged(oldEJob, newEJob *ejv1.ExtendedJob) bool {
 
 	// For versioned secret, we only enqueue changes for higher version of secrets
 	for newSecret := range newSecrets {
-		secretPrefix := names.GetPrefixFromVersionedSecretName(newSecret)
-		newVersion, err := names.GetVersionFromVersionedSecretName(newSecret)
+		secretPrefix := vss.NamePrefix(newSecret)
+		newVersion, err := vss.VersionFromName(newSecret)
 		if err != nil {
 			continue
 		}
@@ -244,7 +243,7 @@ func hasConfigsChanged(oldEJob, newEJob *ejv1.ExtendedJob) bool {
 func isLowerVersion(oldSecrets map[string]struct{}, secretPrefix string, newVersion int) bool {
 	for oldSecret := range oldSecrets {
 		if strings.HasPrefix(oldSecret, secretPrefix) {
-			oldVersion, _ := names.GetVersionFromVersionedSecretName(oldSecret)
+			oldVersion, _ := vss.VersionFromName(oldSecret)
 
 			if newVersion < oldVersion {
 				return true
