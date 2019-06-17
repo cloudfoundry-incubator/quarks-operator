@@ -208,7 +208,6 @@ var _ = Describe("Deploy", func() {
 
 			Context("when updating the bdm custom resource with an ops file", func() {
 				It("should update the deployment", func() {
-					Skip("These tests fail, because we move to v3 instead of v2")
 					tearDown, err := env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("test-ops"))
 					Expect(err).NotTo(HaveOccurred())
 					tearDowns = append(tearDowns, tearDown)
@@ -220,14 +219,13 @@ var _ = Describe("Deploy", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					By("checking if the deployment was updated")
-					err = env.WaitForPod(env.Namespace, "test-nats-v2-1")
+					err = env.WaitForPod(env.Namespace, "test-nats-v2-0")
 					Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 				})
 			})
 
 			Context("when updating referenced BOSH deployment manifest", func() {
 				It("should update the deployment", func() {
-					Skip("These tests fail, because we move to v3 instead of v2")
 					cm, err := env.GetConfigMap(env.Namespace, "manifest")
 					Expect(err).NotTo(HaveOccurred())
 					cm.Data["manifest"] = strings.Replace(cm.Data["manifest"], "changeme", "dont", -1)
@@ -257,7 +255,6 @@ var _ = Describe("Deploy", func() {
 			})
 
 			It("should update the deployment", func() {
-				Skip("These tests fail, because we move to v3 instead of v2")
 				ops, err := env.GetConfigMap(env.Namespace, "bosh-ops")
 				Expect(err).NotTo(HaveOccurred())
 				ops.Data["ops"] = `- type: replace
