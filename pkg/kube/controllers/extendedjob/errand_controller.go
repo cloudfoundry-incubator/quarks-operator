@@ -45,7 +45,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			shouldProcessEvent := eJob.Spec.Trigger.Strategy == ejv1.TriggerNow || eJob.Spec.Trigger.Strategy == ejv1.TriggerOnce
 			if shouldProcessEvent {
 				ctxlog.WithEvent(eJob, "Predicates").DebugJSON(ctx,
-					"Filter for create events",
+					"ejob: create predicate for errand controller",
 					ctxlog.ReconcileEventsFromSource{
 						ReconciliationObjectName: e.Meta.GetName(),
 						ReconciliationObjectKind: ejv1.LabelExtendedJob,
@@ -79,7 +79,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			shouldProcessEvent := enqueueForManualErrand || enqueueForConfigChange
 			if shouldProcessEvent {
 				ctxlog.WithEvent(o, "Predicates").DebugJSON(ctx,
-					"Filter for update events",
+					"ejob: update predicate for errand controller",
 					ctxlog.ReconcileEventsFromSource{
 						ReconciliationObjectName: e.MetaNew.GetName(),
 						ReconciliationObjectKind: ejv1.LabelExtendedJob,

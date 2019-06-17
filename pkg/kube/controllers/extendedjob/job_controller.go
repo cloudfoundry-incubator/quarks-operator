@@ -54,7 +54,7 @@ func AddJob(ctx context.Context, config *config.Config, mgr manager.Manager) err
 			shouldProcessEvent := o.Status.Succeeded == 1 || o.Status.Failed == 1
 			if shouldProcessEvent {
 				ctxlog.WithEvent(o, "Predicates").DebugJSON(ctx,
-					"Filter for update events",
+					"ejob: update predicate for job controller",
 					ctxlog.ReconcileEventsFromSource{
 						ReconciliationObjectName: e.MetaNew.GetName(),
 						ReconciliationObjectKind: "batchv1.Job",
