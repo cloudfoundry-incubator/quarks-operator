@@ -73,6 +73,34 @@ var _ = Describe("ContainerFactory", func() {
 			},
 			{
 				Volume: &corev1.Volume{
+					Name:         fmt.Sprintf("%s-%s", VolumeStoreDirName, "fake-job"),
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				},
+				VolumeMount: &corev1.VolumeMount{
+					Name:      fmt.Sprintf("%s-%s", VolumeStoreDirName, "fake-job"),
+					MountPath: path.Join(VolumeStoreDirMountPath, "fake-job"),
+				},
+				Labels: map[string]string{
+					"job_name":   "fake-job",
+					"persistent": "true",
+				},
+			},
+			{
+				Volume: &corev1.Volume{
+					Name:         fmt.Sprintf("%s-%s", VolumeStoreDirName, "other-job"),
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				},
+				VolumeMount: &corev1.VolumeMount{
+					Name:      fmt.Sprintf("%s-%s", VolumeStoreDirName, "other-job"),
+					MountPath: path.Join(VolumeStoreDirMountPath, "other-job"),
+				},
+				Labels: map[string]string{
+					"job_name":   "other-job",
+					"persistent": "true",
+				},
+			},
+			{
+				Volume: &corev1.Volume{
 					Name:         "bpm-additional-volume-fake-job-fake-process-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 				},
@@ -152,8 +180,9 @@ var _ = Describe("ContainerFactory", func() {
 				"fake-job": bpm.Config{
 					Processes: []bpm.Process{
 						bpm.Process{
-							Name:          "fake-process",
-							EphemeralDisk: true,
+							Name:           "fake-process",
+							EphemeralDisk:  true,
+							PersistentDisk: true,
 							AdditionalVolumes: []bpm.Volume{
 								{
 									Path:     "/var/vcap/data/shared/foo",
@@ -236,6 +265,27 @@ var _ = Describe("ContainerFactory", func() {
 					ReadOnly:         false,
 					MountPath:        fmt.Sprintf("%s/%s", VolumeEphemeralDirMountPath, "other-job"),
 					SubPath:          "",
+					MountPropagation: nil,
+				}))
+		})
+
+		It("adds the persistent_disk volume", func() {
+			containers, err := act()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(containers[0].VolumeMounts).To(ContainElement(
+				corev1.VolumeMount{
+					Name:             "store-dir-fake-job",
+					ReadOnly:         false,
+					MountPath:        fmt.Sprintf("%s/%s", VolumeStoreDirMountPath, "fake-job"),
+					SubPath:          "fake-job",
+					MountPropagation: nil,
+				}))
+			Expect(containers[1].VolumeMounts).To(ContainElement(
+				corev1.VolumeMount{
+					Name:             "store-dir-other-job",
+					ReadOnly:         false,
+					MountPath:        fmt.Sprintf("%s/%s", VolumeStoreDirMountPath, "other-job"),
+					SubPath:          "other-job",
 					MountPropagation: nil,
 				}))
 		})

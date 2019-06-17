@@ -174,7 +174,7 @@ func generateDefaultDisks(manifestName string, instanceGroup *InstanceGroup, nam
 // - persistent_disk (boolean)
 // - additional_volumes (list of volumes)
 // - unrestricted_volumes (list of volumes)
-func generateBPMDisks(manifestName string, instanceGroup *InstanceGroup, bpmConfigs bpm.Configs) (BPMResourceDisks, error) {
+func generateBPMDisks(manifestName string, instanceGroup *InstanceGroup, bpmConfigs bpm.Configs, namespace string) (BPMResourceDisks, error) {
 	bpmDisks := make(BPMResourceDisks, 0)
 
 	rAdditionalVolumes := regexp.MustCompile(AdditionalVolumesRegex)
@@ -182,15 +182,14 @@ func generateBPMDisks(manifestName string, instanceGroup *InstanceGroup, bpmConf
 	for _, job := range instanceGroup.Jobs {
 		bpmConfig := bpmConfigs[job.Name]
 		hasEphemeralDisk := false
+		hasPersistentDisk := false
 		for _, process := range bpmConfig.Processes {
 			if !hasEphemeralDisk && process.EphemeralDisk {
 				hasEphemeralDisk = true
 			}
-
-			// TODO: skip this, while we need to figure it out a better way
-			// to define persistenVolumeClaims for jobs
-			// if process.PersistentDisk {
-			// }
+			if !hasPersistentDisk && process.PersistentDisk {
+				hasPersistentDisk = true
+			}
 
 			for i, additionalVolume := range process.AdditionalVolumes {
 				match := rAdditionalVolumes.MatchString(additionalVolume.Path)
@@ -266,6 +265,32 @@ func generateBPMDisks(manifestName string, instanceGroup *InstanceGroup, bpmConf
 				},
 			}
 			bpmDisks = append(bpmDisks, ephemeralDisk)
+		}
+
+		if hasPersistentDisk {
+			// Specify the job sub-path inside of the instance group PVC
+			persistentVolumeClaim := generatePersistentVolumeClaim(manifestName, instanceGroup, namespace)
+
+			bpmPersistentDisk := BPMResourceDisk{
+				Volume: &corev1.Volume{
+					Name: VolumeStoreDirName,
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: persistentVolumeClaim.Name,
+						},
+					},
+				},
+				VolumeMount: &corev1.VolumeMount{
+					Name:      fmt.Sprintf("%s-%s", VolumeStoreDirName, job.Name),
+					MountPath: path.Join(VolumeStoreDirMountPath, job.Name),
+					SubPath:   job.Name,
+				},
+				Labels: map[string]string{
+					"job_name":   job.Name,
+					"persistent": "true",
+				},
+			}
+			bpmDisks = append(bpmDisks, bpmPersistentDisk)
 		}
 	}
 	return bpmDisks, nil
