@@ -264,7 +264,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					switch object := object.(type) {
 					case *ejv1.ExtendedJob:
 						eJob := object
-						if strings.HasPrefix(eJob.Name, "var-interpolation") {
+						if strings.HasPrefix(eJob.Name, "vi-") {
 							return errors.New("fake-error")
 						}
 					}
@@ -273,7 +273,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to apply ExtendedJob 'var-interpolation-foo' for variable interpolation: fake-error"))
+				Expect(err.Error()).To(ContainSubstring("failed to apply ExtendedJob 'vi-foo' for variable interpolation: fake-error"))
 			})
 
 			It("handles an errors when creating data gathering eJob", func() {
@@ -298,7 +298,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					switch object := object.(type) {
 					case *ejv1.ExtendedJob:
 						eJob := object
-						if strings.HasPrefix(eJob.Name, "data-gathering") {
+						if strings.HasPrefix(eJob.Name, "dg-") {
 							return errors.New("fake-error")
 						}
 					}
@@ -307,7 +307,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to apply ExtendedJob 'data-gathering-foo' for data gathering: fake-error"))
+				Expect(err.Error()).To(ContainSubstring("failed to apply ExtendedJob 'dg-foo' for data gathering: fake-error"))
 			})
 		})
 	})

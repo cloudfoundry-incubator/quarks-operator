@@ -146,21 +146,20 @@ func GetVersionFromVersionedSecretName(name string) (int, error) {
 
 // JobName returns a unique, short name for a given eJob, pod(if exists) combination
 // k8s allows 63 chars, but the pod will have -\d{6} appended
+// So we return max 56 chars: name19(-podname19)-suffix16
 func JobName(eJobName, podName string) (string, error) {
-	suffix := ""
+	name := ""
 	if podName == "" {
-		suffix = truncate(eJobName, 15)
+		name = truncate(eJobName, 39)
 	} else {
-		suffix = fmt.Sprintf("%s-%s", truncate(eJobName, 15), truncate(podName, 15))
+		name = fmt.Sprintf("%s-%s", truncate(eJobName, 19), truncate(podName, 19))
 	}
 
-	namePrefix := fmt.Sprintf("job-%s", suffix)
-
-	hashID, err := randSuffix(suffix)
+	hashID, err := randSuffix(name)
 	if err != nil {
 		return "", errors.Wrap(err, "could not randomize job suffix")
 	}
-	return fmt.Sprintf("%s-%s", namePrefix, hashID), nil
+	return fmt.Sprintf("%s-%s", name, hashID), nil
 }
 
 // ServiceName returns a unique, short name for a given instance
@@ -215,7 +214,6 @@ func randSuffix(str string) (string, error) {
 }
 
 func truncate(name string, max int) string {
-	name = strings.Replace(name, "-", "", -1)
 	if len(name) > max {
 		return name[0:max]
 	}
