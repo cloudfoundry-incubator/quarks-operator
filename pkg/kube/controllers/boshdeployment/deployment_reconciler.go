@@ -110,42 +110,42 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	jobFactory := bdm.NewJobFactory(*manifest, instance.GetNamespace())
 
 	// Apply the "Variable Interpolation" ExtendedJob
-	job, err := jobFactory.VariableInterpolationJob()
+	eJob, err := jobFactory.VariableInterpolationJob()
 	if err != nil {
 		return reconcile.Result{}, log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "Failed to build variable interpolation eJob: %v", err)
 	}
 
 	log.Debug(ctx, "Creating variable interpolation ExtendedJob")
-	err = r.createVariableInterpolationEJob(ctx, instance, job)
+	err = r.createEJob(ctx, instance, eJob)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(instance, "VarInterpolationError").Errorf(ctx, "Failed to create variable interpolation ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	// Apply the "Data Gathering" ExtendedJob
-	job, err = jobFactory.DataGatheringJob()
+	eJob, err = jobFactory.DataGatheringJob()
 	if err != nil {
 		return reconcile.Result{}, log.WithEvent(instance, "DataGatheringError").Errorf(ctx, "Failed to build data gathering eJob: %v", err)
 
 	}
 	log.Debug(ctx, "Creating data gathering ExtendedJob")
-	err = r.createDataGatheringJob(ctx, instance, job)
+	err = r.createEJob(ctx, instance, eJob)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(instance, "DataGatheringError").Errorf(ctx, "Failed to create data gathering ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	// Apply the "BPM Configs" ExtendedJob
-	job, err = jobFactory.BPMConfigsJob()
+	eJob, err = jobFactory.BPMConfigsJob()
 	if err != nil {
 		return reconcile.Result{}, log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to build BPM configs eJob: %v", err)
 
 	}
-	log.Debug(ctx, "Creating bpm configs ExtendedJob")
-	err = r.createBPMConfigsJob(ctx, instance, job)
+	log.Debug(ctx, "Creating BPM configs ExtendedJob")
+	err = r.createEJob(ctx, instance, eJob)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to create bpm configs ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to create BPM configs ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	return reconcile.Result{}, nil
@@ -203,77 +203,19 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 	return manifest, nil
 }
 
-// createVariableInterpolationEJob creates a temp manifest secret and an EJob for variable interpolation
-func (r *ReconcileBOSHDeployment) createVariableInterpolationEJob(ctx context.Context, instance *bdv1.BOSHDeployment, varIntEJob *ejv1.ExtendedJob) error {
-	log.Debug(ctx, "Creating variable interpolation extendedJob")
-
-	// Set ownership
-	if err := r.setReference(instance, varIntEJob, r.scheme); err != nil {
-		return log.WithEvent(instance, "VariableInterpolationEJobRefError").Errorf(ctx, "Failed to set ownerReference for ExtendedJob '%s': %v", varIntEJob.GetName(), err)
+// createEJob creates a an EJob and sets ownership
+func (r *ReconcileBOSHDeployment) createEJob(ctx context.Context, instance *bdv1.BOSHDeployment, eJob *ejv1.ExtendedJob) error {
+	if err := r.setReference(instance, eJob, r.scheme); err != nil {
+		return fmt.Errorf("Failed to set ownerReference for ExtendedJob '%s': %v", eJob.GetName(), err)
 	}
 
-	// Apply the EJob
-	_, err := controllerutil.CreateOrUpdate(ctx, r.client, varIntEJob.DeepCopy(), func(obj runtime.Object) error {
+	_, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
 		if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
-			varIntEJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
-			varIntEJob.DeepCopyInto(existingEJob)
+			eJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
+			eJob.DeepCopyInto(existingEJob)
 			return nil
 		}
 		return fmt.Errorf("object is not an ExtendedJob")
 	})
-	if err != nil {
-		return log.WithEvent(instance, "VariableInterpolationEJobApplyError").Errorf(ctx, "Failed to apply ExtendedJob '%s' for variable interpolation: %v", varIntEJob.Name, err)
-	}
-
-	return nil
-}
-
-// createDataGatheringJob gathers instance group data used for rendering templates
-func (r *ReconcileBOSHDeployment) createDataGatheringJob(ctx context.Context, instance *bdv1.BOSHDeployment, dataGatheringEJob *ejv1.ExtendedJob) error {
-	log.Debugf(ctx, "Creating data gathering extendedJob '%s/%s'", dataGatheringEJob.Namespace, dataGatheringEJob.Name)
-
-	// Set BOSHDeployment instance as the owner and controller
-	if err := r.setReference(instance, dataGatheringEJob, r.scheme); err != nil {
-		return log.WithEvent(instance, "DataGatheringEJobRefError").Errorf(ctx, "Failed to set ownerReference for ExtendedJob '%s': %v", dataGatheringEJob.GetName(), err)
-	}
-
-	// Apply the EJob
-	_, err := controllerutil.CreateOrUpdate(ctx, r.client, dataGatheringEJob.DeepCopy(), func(obj runtime.Object) error {
-		if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
-			dataGatheringEJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
-			dataGatheringEJob.DeepCopyInto(existingEJob)
-			return nil
-		}
-		return fmt.Errorf("object is not an ExtendedJob")
-	})
-	if err != nil {
-		return log.WithEvent(instance, "DataGatheringEJobApplyError").Errorf(ctx, "Failed to apply ExtendedJob '%s' for data gathering: %v", dataGatheringEJob.Name, err)
-	}
-
-	return nil
-}
-
-// createBPMConfigsJob creates an EJob for generating BPM configs
-func (r *ReconcileBOSHDeployment) createBPMConfigsJob(ctx context.Context, instance *bdv1.BOSHDeployment, bpmConfigsJob *ejv1.ExtendedJob) error {
-	log.Debugf(ctx, "Creating BPM configs extendedJob %s/%s", bpmConfigsJob.Namespace, bpmConfigsJob.Name)
-
-	// Set instance as the owner
-	if err := r.setReference(instance, bpmConfigsJob, r.scheme); err != nil {
-		return log.WithEvent(instance, "BPMGatheringEJobRefError").Errorf(ctx, "Failed to set ownerReference for ExtendedJob '%s': %v", bpmConfigsJob.GetName(), err)
-	}
-
-	// Apply the new EJob
-	_, err := controllerutil.CreateOrUpdate(ctx, r.client, bpmConfigsJob.DeepCopy(), func(obj runtime.Object) error {
-		if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
-			bpmConfigsJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
-			bpmConfigsJob.DeepCopyInto(existingEJob)
-			return nil
-		}
-		return fmt.Errorf("object is not an ExtendedJob")
-	})
-	if err != nil {
-		return log.WithEvent(instance, "BPMGatheringEJobApplyError").Errorf(ctx, "failed to create/update ExtendedJob '%s'", bpmConfigsJob.Name)
-	}
-
-	return nil
+	return err
 }

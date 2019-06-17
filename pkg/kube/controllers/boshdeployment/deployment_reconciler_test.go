@@ -273,7 +273,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to apply ExtendedJob 'var-interpolation-foo' for variable interpolation: fake-error"))
+				Expect(err.Error()).To(ContainSubstring("failed to create variable interpolation ExtendedJob for BOSHDeployment 'default/foo': fake-error"))
 			})
 
 			It("handles an errors when creating data gathering eJob", func() {
@@ -307,7 +307,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to apply ExtendedJob 'data-gathering-foo' for data gathering: fake-error"))
+				Expect(err.Error()).To(ContainSubstring("failed to create data gathering ExtendedJob for BOSHDeployment 'default/foo': fake-error"))
 			})
 		})
 	})
