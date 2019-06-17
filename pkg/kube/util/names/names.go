@@ -106,44 +106,6 @@ func GetStatefulSetName(name string) string {
 	return statefulSetName
 }
 
-// GetVersionFromName fetches version from name
-func GetVersionFromName(name string, offset int) (int, error) {
-	nameSplit := strings.Split(name, "-")
-	version := string(nameSplit[len(nameSplit)-offset][1])
-	versionInt, err := strconv.Atoi(version)
-	if err != nil {
-		return versionInt, errors.Wrapf(err, "Atoi failed to convert")
-	}
-	return versionInt, nil
-}
-
-// GetPrefixFromVersionedSecretName gets prefix from versioned secret name
-func GetPrefixFromVersionedSecretName(name string) string {
-	nameRegex := regexp.MustCompile(`^(\S+)-v\d+$`)
-	if captures := nameRegex.FindStringSubmatch(name); len(captures) > 0 {
-		prefix := captures[1]
-		return prefix
-	}
-
-	return ""
-}
-
-// GetVersionFromVersionedSecretName gets version from versioned secret name
-// return -1 if not find valid version
-func GetVersionFromVersionedSecretName(name string) (int, error) {
-	nameRegex := regexp.MustCompile(`^\S+-v(\d+)$`)
-	if captures := nameRegex.FindStringSubmatch(name); len(captures) > 0 {
-		number, err := strconv.Atoi(captures[1])
-		if err != nil {
-			return -1, errors.Wrapf(err, "invalid secret name %s, it does not end with a version number", name)
-		}
-
-		return number, nil
-	}
-
-	return -1, fmt.Errorf("invalid secret name %s, it does not match the naming schema", name)
-}
-
 // JobName returns a unique, short name for a given eJob, pod(if exists) combination
 // k8s allows 63 chars, but the pod will have -\d{6} appended
 // So we return max 56 chars: name19(-podname19)-suffix16

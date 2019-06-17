@@ -84,7 +84,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 	}
 
-	// START update secret references
+	ctxlog.Debugf(ctx, "Updating secret references in ejob '%s'", eJob.Name)
 	eJobCopy := eJob.DeepCopy()
 	err = r.versionedSecretStore.SetSecretReferences(ctx, eJob.GetNamespace(), &eJob.Spec.Template.Spec)
 	if err != nil {
@@ -99,7 +99,6 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			return result, errors.Wrapf(err, "could not update eJob '%s'", eJob.GetName())
 		}
 	}
-	// END update secret references
 
 	err = r.createJob(ctx, *eJob)
 	if err != nil {

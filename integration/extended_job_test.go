@@ -36,11 +36,16 @@ var _ = Describe("ExtendedJob", func() {
 	Context("when using an AutoErrandJob", func() {
 
 		var (
-			ej ejv1.ExtendedJob
+			ej        ejv1.ExtendedJob
+			tearDowns []environment.TearDownFunc
 		)
 
 		BeforeEach(func() {
 			ej = env.AutoErrandExtendedJob("autoerrand-job")
+		})
+
+		AfterEach(func() {
+			Expect(env.TearDownAll(tearDowns)).To(Succeed())
 		})
 
 		It("immediately starts the job", func() {
@@ -142,7 +147,6 @@ var _ = Describe("ExtendedJob", func() {
 			var (
 				configMap  corev1.ConfigMap
 				secret     corev1.Secret
-				tearDowns  []environment.TearDownFunc
 				tearDownEJ environment.TearDownFunc
 			)
 
@@ -167,10 +171,6 @@ var _ = Describe("ExtendedJob", func() {
 
 				_, err = env.WaitForJobExists(env.Namespace, "extendedjob=true")
 				Expect(err).NotTo(HaveOccurred())
-			})
-
-			AfterEach(func() {
-				Expect(env.TearDownAll(tearDowns)).To(Succeed())
 			})
 
 			Context("when a config content changes", func() {
@@ -199,7 +199,6 @@ var _ = Describe("ExtendedJob", func() {
 			var (
 				configMap  corev1.ConfigMap
 				secret     corev1.Secret
-				tearDowns  []environment.TearDownFunc
 				tearDownEJ environment.TearDownFunc
 			)
 

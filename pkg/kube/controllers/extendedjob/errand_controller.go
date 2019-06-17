@@ -6,13 +6,6 @@ import (
 	"reflect"
 	"strings"
 
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -22,6 +15,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
+	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // AddErrand creates a new ExtendedJob controller to start errands when their
@@ -154,9 +155,20 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 	// Watch secrets referenced by resource ExtendedJob
 	// trigger auto errand if UpdateOnConfigChange=true and config data changed
 	p = predicate.Funcs{
-		CreateFunc:  func(e event.CreateEvent) bool { return false },
+		// Only enqueuing versioned secret which has versionedSecret label
+		CreateFunc: func(e event.CreateEvent) bool {
+			o := e.Object.(*corev1.Secret)
+			ok := vss.IsVersionedSecret(*o)
+			// Skip initial version since it will trigger twice if the job has been created with
+			// `Strategy: Once` and secrets are created afterwards
+			if ok && vss.IsInitialVersion(*o) {
+				return false
+			}
+			return ok
+		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
+		// React to updates on all referenced secrets
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectOld.(*corev1.Secret)
 			n := e.ObjectNew.(*corev1.Secret)
@@ -213,8 +225,8 @@ func hasConfigsChanged(oldEJob, newEJob *ejv1.ExtendedJob) bool {
 
 	// For versioned secret, we only enqueue changes for higher version of secrets
 	for newSecret := range newSecrets {
-		secretPrefix := names.GetPrefixFromVersionedSecretName(newSecret)
-		newVersion, err := names.GetVersionFromVersionedSecretName(newSecret)
+		secretPrefix := vss.NamePrefix(newSecret)
+		newVersion, err := vss.VersionFromName(newSecret)
 		if err != nil {
 			continue
 		}
@@ -231,7 +243,7 @@ func hasConfigsChanged(oldEJob, newEJob *ejv1.ExtendedJob) bool {
 func isLowerVersion(oldSecrets map[string]struct{}, secretPrefix string, newVersion int) bool {
 	for oldSecret := range oldSecrets {
 		if strings.HasPrefix(oldSecret, secretPrefix) {
-			oldVersion, _ := names.GetVersionFromVersionedSecretName(oldSecret)
+			oldVersion, _ := vss.VersionFromName(oldSecret)
 
 			if newVersion < oldVersion {
 				return true

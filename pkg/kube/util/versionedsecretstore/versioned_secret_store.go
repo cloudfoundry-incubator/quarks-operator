@@ -15,7 +15,6 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 )
 
@@ -76,7 +75,7 @@ func (p VersionedSecretStoreImpl) SetSecretReferences(ctx context.Context, names
 	_, secretsInSpec := owner.GetConfigNamesFromSpec(*podSpec)
 	for secretNameInSpec := range secretsInSpec {
 
-		versionedSecretPrefix := names.GetPrefixFromVersionedSecretName(secretNameInSpec)
+		versionedSecretPrefix := NamePrefix(secretNameInSpec)
 		// If this secret doesn't look like a versioned secret (e.g. <name>-v2), move on
 		if versionedSecretPrefix == "" {
 			continue
@@ -280,7 +279,7 @@ func (p VersionedSecretStoreImpl) getGreatestVersion(ctx context.Context, namesp
 
 	var greatestVersion int
 	for _, secret := range list {
-		version, err := names.GetVersionFromVersionedSecretName(secret.GetName())
+		version, err := Version(secret)
 		if err != nil {
 			return 0, err
 		}
