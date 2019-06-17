@@ -120,7 +120,7 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, ig *InstanceG
 
 	extSts := essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        fmt.Sprintf("%s-%s", manifestName, igName),
+			Name:        fmt.Sprintf("%s-%s", manifestName, names.Sanitize(igName)),
 			Namespace:   kc.namespace,
 			Labels:      ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
 			Annotations: ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,

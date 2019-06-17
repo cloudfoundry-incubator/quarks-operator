@@ -171,11 +171,11 @@ var _ = Describe("Deploy", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			By("waiting for deployment to succeed, by checking for a pod")
-			err = env.WaitForPod(env.Namespace, "test-bdpl-routing-v1-0")
+			err = env.WaitForPod(env.Namespace, "test-bdpl-route-registrar-v1-0")
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 
 			By("checking for containers")
-			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=routing")
+			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=route_registrar")
 			Expect(len(pods.Items)).To(Equal(1))
 			Expect(pods.Items[0].Spec.Containers).To(HaveLen(1))
 			Expect(pods.Items[0].Spec.Containers[0].Name).To(Equal("route-registrar-route-registrar"))

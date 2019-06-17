@@ -102,6 +102,15 @@ func (c *Catalog) BOSHManifestWithMultiBPMProcesses() *manifest.Manifest {
 	return m
 }
 
+// BOSHManifestCFRouting returns a manifest for the CF routing release with an underscore in the name
+func (c *Catalog) BOSHManifestCFRouting() *manifest.Manifest {
+	m, err := manifest.LoadYAML([]byte(bm.CFRouting))
+	if err != nil {
+		panic(err)
+	}
+	return m
+}
+
 // DefaultBOSHManifestConfigMap for tests
 func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{

@@ -429,12 +429,18 @@ releases:
     version: 36.g03b4653-30.80-7.0.0_332.g0d8469bb
 
 instance_groups:
-- name: routing
+- name: route_registrar
   instances: 1
   jobs:
   - name: route_registrar
     release: routing
     properties:
+      bosh_containerization:
+        bpm:
+          processes:
+          - name: route_registrar
+            executable: sleep
+            args: ["10"]
       route_registrar:
         routes: []
       nats:
