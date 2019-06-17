@@ -21,6 +21,9 @@ var (
 	// LabelPersistentSecretContainer is a label used for persisted secrets,
 	// identifying the container that created them
 	LabelPersistentSecretContainer = fmt.Sprintf("%s/container-name", apis.GroupName)
+	// LabelInstanceGroup is a label for persisted secrets, identifying
+	// the instance group they belong to
+	LabelInstanceGroup = fmt.Sprintf("%s/instance-group", apis.GroupName)
 )
 
 const (

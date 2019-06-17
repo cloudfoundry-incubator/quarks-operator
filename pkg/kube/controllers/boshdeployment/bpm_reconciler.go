@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -93,7 +93,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 
 	// Apply BPM information
-	instanceGroupName, ok := bpmSecret.Labels[ejv1.LabelPersistentSecretContainer]
+	instanceGroupName, ok := bpmSecret.Labels[ejv1.LabelInstanceGroup]
 	if !ok {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "LabelMissingError").Errorf(ctx, "Missing container label for bpm information bpmSecret '%s'", request.NamespacedName)
@@ -133,7 +133,7 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 	resources := &bdm.BPMResources{}
 	bpmConfigs := bpm.Configs{}
 
-	instanceGroupName, ok := bpmSecret.Labels[ejv1.LabelPersistentSecretContainer]
+	instanceGroupName, ok := bpmSecret.Labels[ejv1.LabelInstanceGroup]
 	if !ok {
 		return resources, errors.Errorf("Missing container label for bpm information secret '%s'", bpmSecret.Name)
 	}
