@@ -53,3 +53,14 @@ processes:
     - path: /dev/log
       mount_only: true
 `
+
+const CFRouting = `
+processes:
+  - name: route_registrar
+    executable: /var/vcap/packages/route_registrar/bin/route-registrar
+    args:
+    - --configPath
+    - /var/vcap/jobs/route_registrar/config/registrar_settings.json
+    - -timeFormat
+    - rfc3339
+`

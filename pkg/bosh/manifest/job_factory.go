@@ -229,7 +229,7 @@ func (f *JobFactory) gatheringContainer(cmd, instanceGroupName string) corev1.Co
 	)
 
 	return corev1.Container{
-		Name:  instanceGroupName,
+		Name:  names.Sanitize(instanceGroupName),
 		Image: GetOperatorDockerImage(),
 		Args:  []string{"util", cmd},
 		VolumeMounts: []corev1.VolumeMount{
