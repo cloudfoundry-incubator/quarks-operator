@@ -13,6 +13,11 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
+const (
+	// EnvJobsDir is a key for the container Env used to lookup the jobs dir
+	EnvJobsDir = "JOBS_DIR"
+)
+
 // ContainerFactory builds Kubernetes containers from BOSH jobs
 type ContainerFactory struct {
 	manifestName         string
@@ -229,9 +234,9 @@ func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 	}
 }
 
-func templateRenderingContainer(name string, secretName string) corev1.Container {
+func templateRenderingContainer(igName string, secretName string) corev1.Container {
 	return corev1.Container{
-		Name:  names.Sanitize(fmt.Sprintf("renderer-%s", name)),
+		Name:  names.Sanitize(fmt.Sprintf("renderer-%s", igName)),
 		Image: GetOperatorDockerImage(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -244,21 +249,21 @@ func templateRenderingContainer(name string, secretName string) corev1.Container
 			},
 			{
 				Name:      generateVolumeName(secretName),
-				MountPath: fmt.Sprintf("/var/run/secrets/resolved-properties/%s", name),
+				MountPath: fmt.Sprintf("/var/run/secrets/resolved-properties/%s", igName),
 				ReadOnly:  true,
 			},
 		},
 		Env: []corev1.EnvVar{
 			{
-				Name:  "INSTANCE_GROUP_NAME",
-				Value: name,
+				Name:  EnvInstanceGroupName,
+				Value: igName,
 			},
 			{
-				Name:  "BOSH_MANIFEST_PATH",
-				Value: fmt.Sprintf("/var/run/secrets/resolved-properties/%s/properties.yaml", name),
+				Name:  EnvBOSHManifestPath,
+				Value: fmt.Sprintf("/var/run/secrets/resolved-properties/%s/properties.yaml", igName),
 			},
 			{
-				Name:  "JOBS_DIR",
+				Name:  EnvJobsDir,
 				Value: VolumeRenderingDataMountPath,
 			},
 		},

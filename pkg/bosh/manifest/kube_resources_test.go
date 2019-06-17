@@ -344,5 +344,29 @@ var _ = Describe("kube converter", func() {
 				Expect(containers[5].Name).To(Equal("fake-job-d-alt-test-server"))
 			})
 		})
+
+		Context("when the instance group name contains an underscore", func() {
+			var bpmConfigs []bpm.Configs
+
+			BeforeEach(func() {
+				m = *env.BOSHManifestCFRouting()
+
+				c, err := bpm.NewConfig([]byte(boshreleases.CFRouting))
+				Expect(err).ShouldNot(HaveOccurred())
+
+				bpmConfigs = []bpm.Configs{
+					{"route_registrar": c},
+				}
+
+			})
+
+			Context("when the lifecycle is set to errand", func() {
+				It("converts the instance group to an ExtendedJob", func() {
+					resources, err := act(bpmConfigs[0], m.InstanceGroups[0])
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(resources.InstanceGroups).To(HaveLen(1))
+				})
+			})
+		})
 	})
 })
