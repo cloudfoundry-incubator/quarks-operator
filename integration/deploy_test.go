@@ -262,7 +262,7 @@ var _ = Describe("Deploy", func() {
 				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 			})
 
-			It("should update the deployment", func() {
+			It("should update the deployment and respect the instance count", func() {
 				ops, err := env.GetConfigMap(env.Namespace, "bosh-ops")
 				Expect(err).NotTo(HaveOccurred())
 				ops.Data["ops"] = `- type: replace
@@ -272,15 +272,11 @@ var _ = Describe("Deploy", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				By("checking if the deployment was updated")
-				err = env.WaitForPod(env.Namespace, "test-nats-v2-0")
+				err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "v2")
 				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 
-				// TODO pass some time so v1 disappears, idea: check for v2 only
-				time.Sleep(60 * time.Second)
-
-				pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=nats")
+				pods, _ := env.GetInstanceGroupPods(env.Namespace, "test", "nats", "v2")
 				Expect(len(pods.Items)).To(Equal(2))
-
 			})
 		})
 	})

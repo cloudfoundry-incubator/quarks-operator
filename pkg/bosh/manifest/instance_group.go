@@ -105,8 +105,8 @@ var (
 	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
 	// LabelInstanceGroupName is the name of a label for an instance group name
 	LabelInstanceGroupName = fmt.Sprintf("%s/instance-group-name", apis.GroupName)
-	// AnnotationDeploymentVersion is the annotation key for deployment version
-	AnnotationDeploymentVersion = fmt.Sprintf("%s/deployment-version", apis.GroupName)
+	// LabelDeploymentVersion is the name of a label for the deployment's version
+	LabelDeploymentVersion = fmt.Sprintf("%s/deployment-version", apis.GroupName)
 )
 
 // AgentSettings from BOSH deployment manifest. These annotations and labels are added to kube resources
@@ -122,11 +122,7 @@ func (as *AgentSettings) Set(manifestName, igName, version string) {
 	}
 	as.Labels[LabelDeploymentName] = manifestName
 	as.Labels[LabelInstanceGroupName] = igName
-
-	if as.Annotations == nil {
-		as.Annotations = map[string]string{}
-	}
-	as.Annotations[AnnotationDeploymentVersion] = version
+	as.Labels[LabelDeploymentVersion] = version
 }
 
 // Agent from BOSH deployment manifest
