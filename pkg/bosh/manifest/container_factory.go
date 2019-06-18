@@ -36,7 +36,7 @@ func NewContainerFactory(manifestName string, instanceGroupName string, releaseI
 }
 
 // JobsToInitContainers creates a list of Containers for corev1.PodSpec InitContainers field
-func (containerFactory *ContainerFactory) JobsToInitContainers(
+func (c *ContainerFactory) JobsToInitContainers(
 	jobs []Job,
 	defaultVolumeMounts []corev1.VolumeMount,
 	bpmDisks BPMResourceDisks,
@@ -47,7 +47,7 @@ func (containerFactory *ContainerFactory) JobsToInitContainers(
 
 	copyingSpecsUniq := map[string]struct{}{}
 	for _, job := range jobs {
-		jobImage, err := containerFactory.releaseImageProvider.GetReleaseImage(containerFactory.instanceGroupName, job.Name)
+		jobImage, err := c.releaseImageProvider.GetReleaseImage(c.instanceGroupName, job.Name)
 		if err != nil {
 			return []corev1.Container{}, err
 		}
@@ -61,7 +61,7 @@ func (containerFactory *ContainerFactory) JobsToInitContainers(
 
 		// Setup the BPM pre-start init containers before the BOSH pre-start init container in order to
 		// collect all the extra BPM volumes and pass them to the BOSH pre-start init container.
-		bpmConfig, ok := containerFactory.bpmConfigs[job.Name]
+		bpmConfig, ok := c.bpmConfigs[job.Name]
 		if !ok {
 			return []corev1.Container{}, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
 		}
@@ -84,7 +84,7 @@ func (containerFactory *ContainerFactory) JobsToInitContainers(
 				if ephemeralMount != nil {
 					processVolumeMounts = append(processVolumeMounts, *ephemeralMount)
 				}
-				container := generateBPMPrestartInitContainer(
+				container := bpmPreStartInitContainer(
 					process,
 					jobImage,
 					processVolumeMounts,
@@ -95,7 +95,7 @@ func (containerFactory *ContainerFactory) JobsToInitContainers(
 		}
 
 		// Setup the BOSH pre-start init container for the job.
-		boshPreStartInitContainer := generateBOSHPreStartInitContainer(
+		boshPreStartInitContainer := boshPreStartInitContainer(
 			job.Name,
 			jobImage,
 			append(defaultVolumeMounts, bpmDisks.VolumeMounts()...),
@@ -105,15 +105,15 @@ func (containerFactory *ContainerFactory) JobsToInitContainers(
 
 	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
-		containerFactory.manifestName,
-		containerFactory.instanceGroupName,
+		c.manifestName,
+		c.instanceGroupName,
 		true,
 	)
 
 	initContainers := flattenContainers(
 		copyingSpecsInitContainers,
-		templateRenderingContainer(containerFactory.instanceGroupName, resolvedPropertiesSecretName),
-		createDirContainer(containerFactory.instanceGroupName, jobs),
+		templateRenderingContainer(c.instanceGroupName, resolvedPropertiesSecretName),
+		createDirContainer(c.instanceGroupName, jobs),
 		boshPreStartInitContainers,
 		bpmPreStartInitContainers,
 	)
@@ -122,7 +122,7 @@ func (containerFactory *ContainerFactory) JobsToInitContainers(
 }
 
 // JobsToContainers creates a list of Containers for corev1.PodSpec Containers field
-func (containerFactory *ContainerFactory) JobsToContainers(
+func (c *ContainerFactory) JobsToContainers(
 	jobs []Job,
 	defaultVolumeMounts []corev1.VolumeMount,
 	bpmDisks BPMResourceDisks,
@@ -130,16 +130,16 @@ func (containerFactory *ContainerFactory) JobsToContainers(
 	var containers []corev1.Container
 
 	if len(jobs) == 0 {
-		return nil, fmt.Errorf("instance group %s has no jobs defined", containerFactory.instanceGroupName)
+		return nil, fmt.Errorf("instance group %s has no jobs defined", c.instanceGroupName)
 	}
 
 	for _, job := range jobs {
-		jobImage, err := containerFactory.releaseImageProvider.GetReleaseImage(containerFactory.instanceGroupName, job.Name)
+		jobImage, err := c.releaseImageProvider.GetReleaseImage(c.instanceGroupName, job.Name)
 		if err != nil {
 			return []corev1.Container{}, err
 		}
 
-		bpmConfig, ok := containerFactory.bpmConfigs[job.Name]
+		bpmConfig, ok := c.bpmConfigs[job.Name]
 		if !ok {
 			return nil, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
 		}
@@ -166,7 +166,7 @@ func (containerFactory *ContainerFactory) JobsToContainers(
 				processVolumeMounts = append(processVolumeMounts, *ephemeralMount)
 			}
 
-			container := generateBPMProcessContainer(
+			container := bpmProcessContainer(
 				fmt.Sprintf("%s-%s", job.Name, process.Name),
 				jobImage,
 				process,
@@ -266,7 +266,7 @@ func createDirContainer(name string, jobs []Job) corev1.Container {
 	}
 }
 
-func generateBOSHPreStartInitContainer(
+func boshPreStartInitContainer(
 	jobName string,
 	jobImage string,
 	volumeMounts []corev1.VolumeMount,
@@ -281,7 +281,7 @@ func generateBOSHPreStartInitContainer(
 	}
 }
 
-func generateBPMPrestartInitContainer(
+func bpmPreStartInitContainer(
 	process bpm.Process,
 	jobImage string,
 	volumeMounts []corev1.VolumeMount,
@@ -297,7 +297,7 @@ func generateBPMPrestartInitContainer(
 	}
 }
 
-func generateBPMProcessContainer(
+func bpmProcessContainer(
 	name string,
 	jobImage string,
 	process bpm.Process,
