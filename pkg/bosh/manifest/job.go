@@ -22,16 +22,22 @@ type JobSpec struct {
 		Default     interface{}
 		Example     interface{}
 	}
-	Consumes []struct {
-		Name     string
-		Type     string
-		Optional bool
-	}
-	Provides []struct {
-		Name       string
-		Type       string
-		Properties []string
-	}
+	Consumes []JobSpecProvider
+	Provides []JobSpecLink
+}
+
+// JobSpecProvider represents a provider in the job spec Consumes field.
+type JobSpecProvider struct {
+	Name     string
+	Type     string
+	Optional bool
+}
+
+// JobSpecLink represents a link in the job spec Provides field.
+type JobSpecLink struct {
+	Name       string
+	Type       string
+	Properties []string
 }
 
 // Job from BOSH deployment manifest

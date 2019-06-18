@@ -20,8 +20,8 @@ import (
 type JobProviderLinks map[string]map[string]JobLink
 
 // Lookup returns a link for a type and name, used when links are consumed
-func (jpl JobProviderLinks) Lookup(consumesType string, consumesName string) (JobLink, bool) {
-	link, ok := jpl[consumesType][consumesName]
+func (jpl JobProviderLinks) Lookup(provider *JobSpecProvider) (JobLink, bool) {
+	link, ok := jpl[provider.Type][provider.Name]
 	return link, ok
 }
 
@@ -29,9 +29,9 @@ func (jpl JobProviderLinks) Lookup(consumesType string, consumesName string) (Jo
 func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstance) error {
 	var properties map[string]interface{}
 
-	for _, provider := range spec.Provides {
+	for _, link := range spec.Provides {
 		properties = map[string]interface{}{}
-		for _, property := range provider.Properties {
+		for _, property := range link.Properties {
 			// generate a nested struct of map[string]interface{} when
 			// a property is of the form foo.bar
 			if strings.Contains(property, ".") {
@@ -49,17 +49,17 @@ func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstan
 				properties[propertyName] = explicitSetting
 			}
 		}
-		providerName := provider.Name
-		providerType := provider.Type
+		linkName := link.Name
+		linkType := link.Type
 
 		// instance_group.job can override the link name through the
 		// instance_group.job.provides, via the "as" key
 		if job.Provides != nil {
-			if value, ok := job.Provides[providerName]; ok {
+			if value, ok := job.Provides[linkName]; ok {
 				switch value := value.(type) {
 				case map[interface{}]interface{}:
 					if overrideLinkName, ok := value["as"]; ok {
-						providerName = fmt.Sprintf("%v", overrideLinkName)
+						linkName = fmt.Sprintf("%v", overrideLinkName)
 					}
 				default:
 					return fmt.Errorf("unexpected type detected: %T, should have been a map", value)
@@ -68,19 +68,19 @@ func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstan
 			}
 		}
 
-		if providers, ok := jpl[providerType]; ok {
-			if _, ok := providers[providerName]; ok {
-				return fmt.Errorf("multiple providers for link: name=%s type=%s", providerName, providerType)
+		if providers, ok := jpl[linkType]; ok {
+			if _, ok := providers[linkName]; ok {
+				return fmt.Errorf("multiple providers for link: name=%s type=%s", linkName, linkType)
 			}
 		}
 
-		if _, ok := jpl[providerType]; !ok {
-			jpl[providerType] = map[string]JobLink{}
+		if _, ok := jpl[linkType]; !ok {
+			jpl[linkType] = map[string]JobLink{}
 		}
 
 		// construct the jobProviderLinks of the current job that provides
 		// a link
-		jpl[providerType][providerName] = JobLink{
+		jpl[linkType][linkName] = JobLink{
 			Instances:  jobsInstances,
 			Properties: properties,
 		}
@@ -360,32 +360,32 @@ func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string) error {
 // under properties.bosh_containerization.consumes
 func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks JobProviderLinks) error {
 	currentJobSpecData := jobReleaseSpecs[currentJob.Release][currentJob.Name]
-	for _, consumes := range currentJobSpecData.Consumes {
+	for _, provider := range currentJobSpecData.Consumes {
 
-		consumesName := consumes.Name
+		providerName := provider.Name
 
 		if currentJob.Consumes != nil {
 			// Deployment manifest can intentionally prevent link resolution as long as the link is optional
-			// Continue to the next job if this one does not consumes links
-			if _, ok := currentJob.Consumes[consumesName]; !ok {
-				if consumes.Optional {
+			// Continue to the next job if this one does not consumes links.
+			if _, ok := currentJob.Consumes[providerName]; !ok {
+				if provider.Optional {
 					continue
 				}
-				return fmt.Errorf("mandatory link of consumer %s is explicitly set to nil", consumesName)
+				return fmt.Errorf("mandatory link of consumer %s is explicitly set to nil", providerName)
 			}
 
 			// When the job defines a consumes property in the manifest, use it instead of the one
-			// from currentJobSpecData.Consumes
-			if _, ok := currentJob.Consumes[consumesName]; ok {
-				if value, ok := currentJob.Consumes[consumesName].(map[interface{}]interface{})["from"]; ok {
-					consumesName = value.(string)
+			// from currentJobSpecData.Consumes.
+			if _, ok := currentJob.Consumes[providerName]; ok {
+				if value, ok := currentJob.Consumes[providerName].(map[interface{}]interface{})["from"]; ok {
+					providerName = value.(string)
 				}
 			}
 		}
 
-		link, hasLink := jobProviderLinks.Lookup(consumes.Type, consumesName)
-		if !hasLink && !consumes.Optional {
-			return fmt.Errorf("cannot resolve non-optional link for consumer %s", consumesName)
+		link, hasLink := jobProviderLinks.Lookup(&provider)
+		if !hasLink && !provider.Optional {
+			return fmt.Errorf("cannot resolve non-optional link for provider %s", providerName)
 		}
 
 		// generate the job.properties.bosh_containerization.consumes struct with the links information from providers.
@@ -393,7 +393,7 @@ func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[st
 			currentJob.Properties.BOSHContainerization.Consumes = map[string]JobLink{}
 		}
 
-		currentJob.Properties.BOSHContainerization.Consumes[consumesName] = JobLink{
+		currentJob.Properties.BOSHContainerization.Consumes[providerName] = JobLink{
 			Instances:  link.Instances,
 			Properties: link.Properties,
 		}
