@@ -124,12 +124,7 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 		return nil, errors.Wrap(err, "could not calculate manifest SHA1")
 	}
 
-	outputSecretPrefix, _ := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeManifestAndVars,
-		f.Manifest.Name,
-		VarInterpolationContainerName,
-		false,
-	)
+	outputSecretPrefix := names.CalculateIGSecretPrefix(names.DeploymentSecretTypeManifestAndVars, f.Manifest.Name)
 
 	eJobName := fmt.Sprintf("vi-%s", f.Manifest.Name)
 
@@ -221,7 +216,7 @@ func (f *JobFactory) BPMConfigsJob() (*ejv1.ExtendedJob, error) {
 }
 
 func (f *JobFactory) gatheringContainer(cmd, instanceGroupName string) corev1.Container {
-	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+	interpolatedManifestSecretName := names.CalculateIGSecretName(
 		names.DeploymentSecretTypeManifestAndVars,
 		f.Manifest.Name,
 		VarInterpolationContainerName,
@@ -265,19 +260,14 @@ func (f *JobFactory) gatheringContainer(cmd, instanceGroupName string) corev1.Co
 }
 
 func (f *JobFactory) gatheringJob(name string, secretType names.DeploymentSecretType, containers []corev1.Container) (*ejv1.ExtendedJob, error) {
-	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+	interpolatedManifestSecretName := names.CalculateIGSecretName(
 		names.DeploymentSecretTypeManifestAndVars,
 		f.Manifest.Name,
 		VarInterpolationContainerName,
 		true,
 	)
 
-	outputSecretNamePrefix, _ := names.CalculateEJobOutputSecretPrefixAndName(
-		secretType,
-		f.Manifest.Name,
-		"",
-		false,
-	)
+	outputSecretNamePrefix := names.CalculateIGSecretPrefix(secretType, f.Manifest.Name)
 
 	initContainers := []corev1.Container{}
 	doneSpecCopyingReleases := map[string]bool{}

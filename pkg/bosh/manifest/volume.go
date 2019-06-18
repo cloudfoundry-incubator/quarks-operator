@@ -66,13 +66,13 @@ const (
 )
 
 func generateDefaultDisks(manifestName string, instanceGroup *InstanceGroup, namespace string) BPMResourceDisks {
-	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+	interpolatedManifestSecretName := names.CalculateIGSecretName(
 		names.DeploymentSecretTypeManifestAndVars,
 		manifestName,
 		VarInterpolationContainerName,
 		true,
 	)
-	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+	resolvedPropertiesSecretName := names.CalculateIGSecretName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
 		manifestName,
 		instanceGroup.Name,

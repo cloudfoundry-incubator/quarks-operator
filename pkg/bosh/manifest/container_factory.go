@@ -103,8 +103,8 @@ func (c *ContainerFactory) JobsToInitContainers(
 		boshPreStartInitContainers = append(boshPreStartInitContainers, boshPreStartInitContainer)
 	}
 
-	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+	resolvedPropertiesSecretName := names.CalculateIGSecretName(
+		names.DeploymentSecretTypeInstanceGroupResolvedProperties, // ig-resolved
 		c.manifestName,
 		c.instanceGroupName,
 		true,

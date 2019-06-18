@@ -109,7 +109,7 @@ func (r *ResolverImpl) ResolveManifest(instance *bdc.BOSHDeployment, namespace s
 // ReadDesiredManifest reads the versioned secret created by the variable interpolation job
 // and unmarshals it into a Manifest object
 func (r *ResolverImpl) ReadDesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*Manifest, error) {
-	_, secretName := names.CalculateEJobOutputSecretPrefixAndName(
+	secretName := names.CalculateIGSecretName(
 		names.DeploymentSecretTypeManifestAndVars,
 		boshDeploymentName,
 		VarInterpolationContainerName,

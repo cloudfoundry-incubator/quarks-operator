@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	btg "github.com/viovanov/bosh-template-go"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 )
@@ -120,6 +120,8 @@ func NewDataGatherer(log *zap.SugaredLogger, basedir, namespace string, manifest
 }
 
 // BPMConfigs returns a map of all BOSH jobs in the instance group
+// The output will be persisted by ExtendedJob as 'bpm.yaml' in the
+// `<deployment-name>.bpm.<instance-group>-v<version>` secret.
 func (dg *DataGatherer) BPMConfigs() (bpm.Configs, error) {
 	bpm := bpm.Configs{}
 
@@ -135,7 +137,10 @@ func (dg *DataGatherer) BPMConfigs() (bpm.Configs, error) {
 	return bpm, nil
 }
 
-// ResolvedProperties returns the manifest including the gathered data
+// ResolvedProperties returns a manifest for a specific instance group only.
+// That manifest includes the gathered data from BPM and links.
+// The output will be persisted by ExtendedJob as 'properties.yaml' in the
+// `<deployment-name>.ig-resolved.<instance-group>-v<version>` secret.
 func (dg *DataGatherer) ResolvedProperties() (Manifest, error) {
 	err := dg.gatherData()
 	if err != nil {
@@ -171,7 +176,7 @@ func (dg *DataGatherer) gatherData() error {
 	return nil
 }
 
-// CollectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
+// collectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
 func (dg *DataGatherer) collectReleaseSpecsAndProviderLinks() error {
 	for _, instanceGroup := range dg.manifest.InstanceGroups {
 		for jobIdx, job := range instanceGroup.Jobs {
