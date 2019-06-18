@@ -143,7 +143,7 @@ var _ = Describe("ContainerFactory", func() {
 	})
 
 	JustBeforeEach(func() {
-		containerFactory = NewContainerFactory("fake-manifest", "fake-ig", releaseImageProvider, bpmConfigs)
+		containerFactory = NewContainerFactory("fake-manifest", "fake-ig", "v1", releaseImageProvider, bpmConfigs)
 	})
 
 	Context("JobsToContainers", func() {
@@ -276,7 +276,7 @@ var _ = Describe("ContainerFactory", func() {
 					},
 				},
 			}
-			containerFactory = NewContainerFactory("fake-manifest", "fake-ig", releaseImageProvider, bpmConfigsWithError)
+			containerFactory = NewContainerFactory("fake-manifest", "fake-ig", "v1", releaseImageProvider, bpmConfigsWithError)
 			actWithError := func() ([]corev1.Container, error) {
 				return containerFactory.JobsToContainers(jobs, []corev1.VolumeMount{}, BPMResourceDisks{})
 			}

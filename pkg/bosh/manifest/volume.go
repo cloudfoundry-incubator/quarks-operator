@@ -65,18 +65,13 @@ const (
 	UnrestrictedVolumeBaseName = "bpm-unrestricted-volume"
 )
 
-func generateDefaultDisks(manifestName string, instanceGroup *InstanceGroup, namespace string) BPMResourceDisks {
-	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeManifestAndVars,
-		manifestName,
-		VarInterpolationContainerName,
-		true,
-	)
-	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
+func generateDefaultDisks(manifestName string, instanceGroup *InstanceGroup, version string, namespace string) BPMResourceDisks {
+	desiredManifestName := names.DesiredManifestName(manifestName, version)
+	resolvedPropertiesSecretName := names.CalculateIGSecretName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
 		manifestName,
 		instanceGroup.Name,
-		true,
+		version,
 	)
 
 	defaultDisks := BPMResourceDisks{
@@ -124,10 +119,10 @@ func generateDefaultDisks(manifestName string, instanceGroup *InstanceGroup, nam
 		},
 		{
 			Volume: &corev1.Volume{
-				Name: generateVolumeName(interpolatedManifestSecretName),
+				Name: generateVolumeName(desiredManifestName),
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
-						SecretName: interpolatedManifestSecretName,
+						SecretName: desiredManifestName,
 					},
 				},
 			},

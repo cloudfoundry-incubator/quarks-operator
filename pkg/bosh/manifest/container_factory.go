@@ -21,15 +21,17 @@ const (
 type ContainerFactory struct {
 	manifestName         string
 	instanceGroupName    string
+	version              string
 	releaseImageProvider ReleaseImageProvider
 	bpmConfigs           bpm.Configs
 }
 
 // NewContainerFactory returns a new ContainerFactory for a BOSH instant group
-func NewContainerFactory(manifestName string, instanceGroupName string, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactory {
+func NewContainerFactory(manifestName string, instanceGroupName string, version string, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactory {
 	return &ContainerFactory{
 		manifestName:         manifestName,
 		instanceGroupName:    instanceGroupName,
+		version:              version,
 		releaseImageProvider: releaseImageProvider,
 		bpmConfigs:           bpmConfigs,
 	}
@@ -103,11 +105,11 @@ func (c *ContainerFactory) JobsToInitContainers(
 		boshPreStartInitContainers = append(boshPreStartInitContainers, boshPreStartInitContainer)
 	}
 
-	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+	resolvedPropertiesSecretName := names.CalculateIGSecretName(
+		names.DeploymentSecretTypeInstanceGroupResolvedProperties, // ig-resolved
 		c.manifestName,
 		c.instanceGroupName,
-		true,
+		c.version,
 	)
 
 	initContainers := flattenContainers(

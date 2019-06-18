@@ -552,7 +552,7 @@ After creating a `BOSHDeployment` named `nats-deployment`, with one Instance Gro
   nats-deployment.ig-resolved.nats-v1
   nats-deployment.var-nats-password
   nats-deployment.with-ops
-  nats-deployment.with-vars.interpolation-v1
+  nats-deployment.desired-manifest-v1
   ```
 
 - `StatefulSets`

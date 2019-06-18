@@ -26,10 +26,14 @@ import (
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
+type DesiredManifest interface {
+	ReadDesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error)
+}
+
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 
 // NewBPMReconciler returns a new reconcile.Reconciler
-func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc, kubeConverter *bdm.KubeConverter) reconcile.Reconciler {
+func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver DesiredManifest, srf setReferenceFunc, kubeConverter *bdm.KubeConverter) reconcile.Reconciler {
 	return &ReconcileBPM{
 		ctx:           ctx,
 		config:        config,
@@ -47,7 +51,7 @@ type ReconcileBPM struct {
 	config        *config.Config
 	client        client.Client
 	scheme        *runtime.Scheme
-	resolver      bdm.Resolver
+	resolver      DesiredManifest
 	setReference  setReferenceFunc
 	kubeConverter *bdm.KubeConverter
 }

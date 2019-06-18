@@ -28,7 +28,6 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 	ctx = ctxlog.NewContextWithRecorder(ctx, "generated-variable-reconciler", mgr.GetRecorder("generated-variable-recorder"))
 	r := NewGeneratedVariableReconciler(
 		ctx, config, mgr,
-		bdm.NewResolver(mgr.GetClient(), func() bdm.Interpolator { return bdm.NewInterpolator() }),
 		controllerutil.SetControllerReference,
 		bdm.NewKubeConverter(config.Namespace),
 	)

@@ -9,14 +9,18 @@ import (
 )
 
 // WaitForInstanceGroup blocks until all selected pods of the instance group are running. It fails after the timeout.
-func (m *Machine) WaitForInstanceGroup(namespace string, deployment string, igName string, version string) error {
+func (m *Machine) WaitForInstanceGroup(namespace string, deployment string, igName string, version string, count int) error {
 	labels := labels.Set(map[string]string{
 		bdm.LabelDeploymentName:    deployment,
 		bdm.LabelInstanceGroupName: igName,
 		bdm.LabelDeploymentVersion: version,
 	}).String()
 	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
-		return m.PodsRunning(namespace, labels)
+		n, err := m.PodCount(namespace, labels)
+		if err != nil {
+			return false, err
+		}
+		return n == count, nil
 	})
 }
 

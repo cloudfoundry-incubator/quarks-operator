@@ -19,35 +19,29 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
-// Resolver resolves references from CRD to a BOSH manifest
-type Resolver interface {
-	ResolveManifest(instance *bdc.BOSHDeployment, namespace string) (*Manifest, error)
-	ReadDesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*Manifest, error)
-}
-
-// ResolverImpl implements Resolver interface
-type ResolverImpl struct {
+// Resolver resolves references from bdpl CRD to a BOSH manifest
+type Resolver struct {
 	client               client.Client
 	versionedSecretStore versionedsecretstore.VersionedSecretStore
 	newInterpolatorFunc  func() Interpolator
 }
 
-var _ Resolver = &ResolverImpl{}
-
 // NewInterpolatorFunc returns a fresh Interpolator
 type NewInterpolatorFunc func() Interpolator
 
 // NewResolver constructs a resolver
-func NewResolver(client client.Client, f NewInterpolatorFunc) *ResolverImpl {
-	return &ResolverImpl{
+func NewResolver(client client.Client, f NewInterpolatorFunc) *Resolver {
+	return &Resolver{
 		client:               client,
 		newInterpolatorFunc:  f,
 		versionedSecretStore: versionedsecretstore.NewVersionedSecretStore(client),
 	}
 }
 
-// ResolveManifest returns manifest referenced by our CRD
-func (r *ResolverImpl) ResolveManifest(instance *bdc.BOSHDeployment, namespace string) (*Manifest, error) {
+// ResolveManifest returns manifest referenced by our bdpl CRD
+// The resulting manifest has variables interpolated and ops files applied.
+// It is the 'with-ops' manifest.
+func (r *Resolver) ResolveManifest(instance *bdc.BOSHDeployment, namespace string) (*Manifest, error) {
 	interpolator := r.newInterpolatorFunc()
 	spec := instance.Spec
 	manifest := &Manifest{}
@@ -106,34 +100,8 @@ func (r *ResolverImpl) ResolveManifest(instance *bdc.BOSHDeployment, namespace s
 	return manifest, err
 }
 
-// ReadDesiredManifest reads the versioned secret created by the variable interpolation job
-// and unmarshals it into a Manifest object
-func (r *ResolverImpl) ReadDesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*Manifest, error) {
-	_, secretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeManifestAndVars,
-		boshDeploymentName,
-		VarInterpolationContainerName,
-		false,
-	)
-
-	secret, err := r.versionedSecretStore.Latest(ctx, namespace, secretName)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to read versioned secret for desired manifest")
-	}
-
-	manifestData := secret.Data["manifest.yaml"]
-
-	manifest := &Manifest{}
-	err = yaml.Unmarshal(manifestData, manifest)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to unmarshal manifest from secret '%s'", secretName)
-	}
-
-	return manifest, nil
-}
-
 // getRefData resolves different manifest reference types and returns manifest data
-func (r *ResolverImpl) getRefData(namespace string, manifestType string, manifestRef string, refKey string) (string, error) {
+func (r *Resolver) getRefData(namespace string, manifestType string, manifestRef string, refKey string) (string, error) {
 	var (
 		refData string
 		ok      bool
@@ -179,7 +147,7 @@ func (r *ResolverImpl) getRefData(namespace string, manifestType string, manifes
 }
 
 // ImplicitVariables returns a list of all implicit variables in a manifest
-func (r *ResolverImpl) ImplicitVariables(m *Manifest, rawManifest string) []string {
+func (r *Resolver) ImplicitVariables(m *Manifest, rawManifest string) []string {
 	varMap := make(map[string]bool)
 
 	// Collect all variables

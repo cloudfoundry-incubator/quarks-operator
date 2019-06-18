@@ -59,7 +59,7 @@ func ContainsSecretName(names []string, name string) bool {
 		return false
 	}
 	for _, k := range names {
-		if strings.Index(k, unversioned) > -1 {
+		if strings.Contains(k, unversioned) {
 			return true
 		}
 	}

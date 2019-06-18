@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
@@ -38,7 +37,6 @@ var _ = Describe("ReconcileGeneratedVariable", func() {
 		recorder              *record.FakeRecorder
 		request               reconcile.Request
 		ctx                   context.Context
-		resolver              fakes.FakeResolver
 		log                   *zap.SugaredLogger
 		config                *cfcfg.Config
 		client                *cfakes.FakeClient
@@ -51,7 +49,6 @@ var _ = Describe("ReconcileGeneratedVariable", func() {
 		manager = &cfakes.FakeManager{}
 		manager.GetSchemeReturns(scheme.Scheme)
 		manager.GetRecorderReturns(recorder)
-		resolver = fakes.FakeResolver{}
 
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo-with-ops", Namespace: "default"}}
 
@@ -109,7 +106,7 @@ variables:
 	})
 
 	JustBeforeEach(func() {
-		reconciler = cfd.NewGeneratedVariableReconciler(ctx, config, manager, &resolver, controllerutil.SetControllerReference, bdm.NewKubeConverter(config.Namespace))
+		reconciler = cfd.NewGeneratedVariableReconciler(ctx, config, manager, controllerutil.SetControllerReference, bdm.NewKubeConverter(config.Namespace))
 	})
 
 	Describe("Reconcile", func() {
