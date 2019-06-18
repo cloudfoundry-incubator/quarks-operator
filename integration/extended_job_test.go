@@ -53,7 +53,7 @@ var _ = Describe("ExtendedJob", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+			jobs, err := env.CollectJobs(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob), 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
 			Expect(jobs).To(HaveLen(1))
 		})
@@ -64,7 +64,7 @@ var _ = Describe("ExtendedJob", func() {
 				Expect(err).NotTo(HaveOccurred())
 				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-				jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+				jobs, err := env.CollectJobs(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob), 1)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
 				Expect(jobs).To(HaveLen(1))
 
@@ -86,7 +86,7 @@ var _ = Describe("ExtendedJob", func() {
 						Expect(err).NotTo(HaveOccurred())
 						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-						jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+						jobs, err := env.CollectJobs(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob), 1)
 						Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
 						Expect(jobs).To(HaveLen(1))
 
@@ -107,7 +107,7 @@ var _ = Describe("ExtendedJob", func() {
 						Expect(err).NotTo(HaveOccurred())
 						defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-						jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+						jobs, err := env.CollectJobs(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob), 1)
 						Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
 						Expect(jobs).To(HaveLen(1))
 
@@ -130,7 +130,7 @@ var _ = Describe("ExtendedJob", func() {
 				Expect(err).NotTo(HaveOccurred())
 				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-				jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+				jobs, err := env.CollectJobs(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob), 1)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
 				Expect(jobs).To(HaveLen(1))
 
@@ -169,7 +169,7 @@ var _ = Describe("ExtendedJob", func() {
 				Expect(err).NotTo(HaveOccurred())
 				tearDowns = append(tearDowns, tearDownEJ)
 
-				_, err = env.WaitForJobExists(env.Namespace, "extendedjob=true")
+				_, err = env.WaitForJobExists(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob))
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -188,7 +188,7 @@ var _ = Describe("ExtendedJob", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					By("checking if job is running")
-					jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+					jobs, err := env.CollectJobs(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob), 1)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(jobs).To(HaveLen(1))
 				})
@@ -221,7 +221,7 @@ var _ = Describe("ExtendedJob", func() {
 				Expect(err).NotTo(HaveOccurred())
 				tearDowns = append(tearDowns, tearDownEJ)
 
-				_, err = env.WaitForJobExists(env.Namespace, "extendedjob=true")
+				_, err = env.WaitForJobExists(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob))
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
@@ -263,7 +263,7 @@ var _ = Describe("ExtendedJob", func() {
 					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 					By("waiting for the job to start")
-					_, err = env.WaitForJobExists(env.Namespace, "extendedjob=true")
+					_, err = env.WaitForJobExists(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob))
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})
@@ -288,7 +288,7 @@ var _ = Describe("ExtendedJob", func() {
 					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 					By("waiting for the job to start")
-					_, err = env.WaitForJobExists(env.Namespace, "extendedjob=true")
+					_, err = env.WaitForJobExists(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob))
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})
@@ -313,7 +313,7 @@ var _ = Describe("ExtendedJob", func() {
 					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 					By("waiting for the job to start")
-					_, err = env.WaitForJobExists(env.Namespace, "extendedjob=true")
+					_, err = env.WaitForJobExists(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob))
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})
@@ -330,7 +330,7 @@ var _ = Describe("ExtendedJob", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			exists, err := env.WaitForJobExists(env.Namespace, "extendedjob=true")
+			exists, err := env.WaitForJobExists(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeFalse())
 
@@ -341,7 +341,7 @@ var _ = Describe("ExtendedJob", func() {
 			err = env.UpdateExtendedJob(env.Namespace, *latest)
 			Expect(err).NotTo(HaveOccurred())
 
-			exists, err = env.WaitForJobExists(env.Namespace, "extendedjob=true")
+			exists, err = env.WaitForJobExists(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeFalse())
 		})
@@ -352,7 +352,7 @@ var _ = Describe("ExtendedJob", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+			jobs, err := env.CollectJobs(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob), 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
 			Expect(jobs).To(HaveLen(1))
 		})
@@ -372,7 +372,7 @@ var _ = Describe("ExtendedJob", func() {
 			err = env.UpdateExtendedJob(env.Namespace, *latest)
 			Expect(err).NotTo(HaveOccurred())
 
-			jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+			jobs, err := env.CollectJobs(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob), 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
 			Expect(jobs).To(HaveLen(1))
 
@@ -397,7 +397,7 @@ var _ = Describe("ExtendedJob", func() {
 				Expect(err).NotTo(HaveOccurred(), "error waiting for pods")
 
 				By("waiting for the job")
-				_, err = env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+				_, err = env.CollectJobs(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob), 1)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
 			})
 		})
@@ -415,7 +415,7 @@ var _ = Describe("ExtendedJob", func() {
 				Expect(err).NotTo(HaveOccurred())
 				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-				exists, err := env.WaitForJobExists(env.Namespace, "extendedjob=true")
+				exists, err := env.WaitForJobExists(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(exists).To(BeFalse())
 			})
@@ -442,12 +442,12 @@ var _ = Describe("ExtendedJob", func() {
 				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 				By("waiting for the job")
-				_, err = env.CollectJobs(env.Namespace, "extendedjob=true", 1)
+				_, err = env.CollectJobs(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob), 1)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
 
-				_, err = env.DeleteJobs(env.Namespace, "extendedjob=true")
+				_, err = env.DeleteJobs(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob))
 				Expect(err).NotTo(HaveOccurred())
-				Expect(env.WaitForJobsDeleted(env.Namespace, "extendedjob=true")).To(Succeed())
+				Expect(env.WaitForJobsDeleted(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob))).To(Succeed())
 			})
 
 			It("should start a job for a matched pod", func() {
@@ -481,7 +481,7 @@ var _ = Describe("ExtendedJob", func() {
 				}
 
 				By("waiting for the jobs")
-				jobs, err := env.CollectJobs(env.Namespace, "extendedjob=true", 4)
+				jobs, err := env.CollectJobs(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob), 4)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
 				Expect(jobs).To(HaveLen(4))
 				Expect(env.ContainJob(jobs, "extendedjob-foo")).To(Equal(true))
