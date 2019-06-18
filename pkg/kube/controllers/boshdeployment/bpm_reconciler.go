@@ -220,10 +220,12 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 
 	// Create a persistent volume claims for containers of the instance group
 	// Right now, only one pvc is being created at /var/vcap/store
-	for _, pvc := range resources.Disks {
-		err := r.createPersistentVolumeClaim(ctx, pvc)
-		if err != nil {
-			return log.WithEvent(instance, "ApplyPersistentVolumeClaimError").Errorf(ctx, "Failed to apply PersistentVolumeClaim for instance group '%s' : %v", instanceGroupName, err)
+	for _, disk := range resources.Disks {
+		if disk.PersistentVolumeClaim != nil {
+			err := r.createPersistentVolumeClaim(ctx, *disk.PersistentVolumeClaim)
+			if err != nil {
+				return log.WithEvent(instance, "ApplyPersistentVolumeClaimError").Errorf(ctx, "Failed to apply PersistentVolumeClaim for instance group '%s' : %v", instanceGroupName, err)
+			}
 		}
 	}
 

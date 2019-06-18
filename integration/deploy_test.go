@@ -126,7 +126,7 @@ var _ = Describe("Deploy", func() {
 		})
 	})
 
-	FContext("when BPM has pre-start hooks configured", func() {
+	Context("when BPM has pre-start hooks configured", func() {
 		It("should run pre-start script in an init container", func() {
 
 			By("Checking is minikube is present")
