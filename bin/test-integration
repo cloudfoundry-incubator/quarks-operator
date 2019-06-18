@@ -15,6 +15,8 @@ if [ -z ${TEST_NAMESPACE+x} ]; then
   export TEST_NAMESPACE
 fi
 
+export DOCKER_IMAGE_TAG="v0.2.2-183.g2b92831"
+
 echo "Test logs are here: /tmp/cf-operator-tests-*.log"
 
 bin/apply-crds
