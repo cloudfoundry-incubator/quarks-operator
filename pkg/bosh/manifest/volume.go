@@ -268,6 +268,11 @@ func generateBPMDisks(manifestName string, instanceGroup *InstanceGroup, bpmConf
 		}
 
 		if hasPersistentDisk {
+			if instanceGroup.PersistentDisk == nil || *instanceGroup.PersistentDisk <= 0 {
+				return bpmDisks, fmt.Errorf("job '%s' wants to use persistent disk"+
+					" but instance group '%s' doesn't have any persistent disk declaration", job.Name, instanceGroup.Name)
+			}
+
 			// Specify the job sub-path inside of the instance group PVC
 			persistentVolumeClaim := generatePersistentVolumeClaim(manifestName, instanceGroup, namespace)
 
@@ -293,6 +298,7 @@ func generateBPMDisks(manifestName string, instanceGroup *InstanceGroup, bpmConf
 			bpmDisks = append(bpmDisks, bpmPersistentDisk)
 		}
 	}
+
 	return bpmDisks, nil
 }
 

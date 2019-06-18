@@ -488,4 +488,34 @@ const GardenRunc = `
       logging:
         format:
           timestamp: "rfc3339"
-  `
+`
+
+// PersistentDiskRelease contains persistent disk declaration
+const PersistentDiskRelease = `
+name: bpm
+
+releases:
+- name: bpm
+  version: 1.0.4
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 36.g03b4653-30.80-7.0.0_316.gcf9fe4a7
+
+instance_groups:
+- name: bpm
+  instances: 1
+  jobs:
+  - name: test-server
+    release: bpm
+    properties:
+      bosh_containerization:
+        ports:
+        - name: test-server
+          protocol: TCP
+          internal: 1337
+        - name: alt-test-server
+          protocol: TCP
+          internal: 1338
+  persistent_disk: 1024
+`

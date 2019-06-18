@@ -13,7 +13,7 @@ processes:
     memory: 1G
     open_files: 1024
   ephemeral_disk: true
-  persistent_disk: true
+  persistent_disk: false
   unsafe:
     unrestricted_volumes:
     - path: /dev/log
@@ -30,6 +30,31 @@ processes:
 `
 
 const DefaultBPMConfig = `
+processes:
+- name: test-server
+  executable: /var/vcap/packages/test-server/bin/test-server
+  args:
+    - --port
+    - 1337
+  env:
+    BPM: SWEET
+  limits:
+    memory: 1G
+    open_files: 1024
+  ephemeral_disk: true
+  persistent_disk: false
+  additional_volumes:
+  - path: /var/vcap/data/shared
+    writable: true
+  - path: /var/vcap/store/foo
+    writable: true
+  unsafe:
+    unrestricted_volumes:
+    - path: /dev/log
+      mount_only: true
+`
+
+const EnablePersistentDiskBPMConfig = `
 processes:
 - name: test-server
   executable: /var/vcap/packages/test-server/bin/test-server
