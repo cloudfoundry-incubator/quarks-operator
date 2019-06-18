@@ -3,7 +3,6 @@ package manifest
 import (
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -21,30 +20,34 @@ const (
 // ContainerFactory builds Kubernetes containers from BOSH jobs
 type ContainerFactory struct {
 	manifestName         string
-	igName               string
+	instanceGroupName    string
 	releaseImageProvider ReleaseImageProvider
 	bpmConfigs           bpm.Configs
 }
 
 // NewContainerFactory returns a new ContainerFactory for a BOSH instant group
-func NewContainerFactory(manifestName string, igName string, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactory {
+func NewContainerFactory(manifestName string, instanceGroupName string, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactory {
 	return &ContainerFactory{
 		manifestName:         manifestName,
-		igName:               igName,
+		instanceGroupName:    instanceGroupName,
 		releaseImageProvider: releaseImageProvider,
 		bpmConfigs:           bpmConfigs,
 	}
 }
 
 // JobsToInitContainers creates a list of Containers for corev1.PodSpec InitContainers field
-func (c *ContainerFactory) JobsToInitContainers(jobs []Job, hasPersistentDisk bool) ([]corev1.Container, error) {
+func (containerFactory *ContainerFactory) JobsToInitContainers(
+	jobs []Job,
+	defaultVolumeMounts []corev1.VolumeMount,
+	bpmDisks BPMResourceDisks,
+) ([]corev1.Container, error) {
 	copyingSpecsInitContainers := make([]corev1.Container, 0)
 	boshPreStartInitContainers := make([]corev1.Container, 0)
 	bpmPreStartInitContainers := make([]corev1.Container, 0)
 
 	copyingSpecsUniq := map[string]struct{}{}
 	for _, job := range jobs {
-		jobImage, err := c.releaseImageProvider.GetReleaseImage(c.igName, job.Name)
+		jobImage, err := containerFactory.releaseImageProvider.GetReleaseImage(containerFactory.instanceGroupName, job.Name)
 		if err != nil {
 			return []corev1.Container{}, err
 		}
@@ -56,40 +59,61 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job, hasPersistentDisk bo
 			copyingSpecsInitContainers = append(copyingSpecsInitContainers, copyingSpecsInitContainer)
 		}
 
-		// Setup the BOSH pre-start init containers.
-		boshPreStartInitContainers = append(boshPreStartInitContainers, boshPreStartInitContainer(job.Name, jobImage, hasPersistentDisk))
-
-		// Setup the BPM pre-start init containers.
-		bpmConfig, ok := c.bpmConfigs[job.Name]
+		// Setup the BPM pre-start init containers before the BOSH pre-start init container in order to
+		// collect all the extra BPM volumes and pass them to the BOSH pre-start init container.
+		bpmConfig, ok := containerFactory.bpmConfigs[job.Name]
 		if !ok {
 			return []corev1.Container{}, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
 		}
+
+		jobDisks := bpmDisks.Filter("job_name", job.Name)
+		var ephemeralMount *corev1.VolumeMount
+		ephemeralDisks := jobDisks.Filter("ephemeral", "true")
+		if len(ephemeralDisks) > 0 {
+			ephemeralMount = ephemeralDisks[0].VolumeMount
+		}
+
 		for _, process := range bpmConfig.Processes {
 			if process.Hooks.PreStart != "" {
-				container := bpmPrestartInitContainer(process, jobImage)
-
-				bpmVolumes, err := generateBPMVolumes(process, job.Name)
-				if err != nil {
-					return []corev1.Container{}, err
+				processDisks := jobDisks.Filter("process_name", process.Name)
+				bpmVolumeMounts := make([]corev1.VolumeMount, 0)
+				for _, processDisk := range processDisks {
+					bpmVolumeMounts = append(bpmVolumeMounts, *processDisk.VolumeMount)
 				}
-				container.VolumeMounts = append(instanceGroupVolumeMounts(), bpmVolumes...)
+				processVolumeMounts := append(defaultVolumeMounts, bpmVolumeMounts...)
+				if ephemeralMount != nil {
+					processVolumeMounts = append(processVolumeMounts, *ephemeralMount)
+				}
+				container := generateBPMPrestartInitContainer(
+					process,
+					jobImage,
+					processVolumeMounts,
+				)
 
 				bpmPreStartInitContainers = append(bpmPreStartInitContainers, container)
 			}
 		}
+
+		// Setup the BOSH pre-start init container for the job.
+		boshPreStartInitContainer := generateBOSHPreStartInitContainer(
+			job.Name,
+			jobImage,
+			append(defaultVolumeMounts, bpmDisks.VolumeMounts()...),
+		)
+		boshPreStartInitContainers = append(boshPreStartInitContainers, boshPreStartInitContainer)
 	}
 
 	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
-		c.manifestName,
-		c.igName,
+		containerFactory.manifestName,
+		containerFactory.instanceGroupName,
 		true,
 	)
 
 	initContainers := flattenContainers(
 		copyingSpecsInitContainers,
-		templateRenderingContainer(c.igName, resolvedPropertiesSecretName),
-		createDirContainer(c.igName, jobs),
+		templateRenderingContainer(containerFactory.instanceGroupName, resolvedPropertiesSecretName),
+		createDirContainer(containerFactory.instanceGroupName, jobs),
 		boshPreStartInitContainers,
 		bpmPreStartInitContainers,
 	)
@@ -98,20 +122,24 @@ func (c *ContainerFactory) JobsToInitContainers(jobs []Job, hasPersistentDisk bo
 }
 
 // JobsToContainers creates a list of Containers for corev1.PodSpec Containers field
-func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, error) {
+func (containerFactory *ContainerFactory) JobsToContainers(
+	jobs []Job,
+	defaultVolumeMounts []corev1.VolumeMount,
+	bpmDisks BPMResourceDisks,
+) ([]corev1.Container, error) {
 	var containers []corev1.Container
 
 	if len(jobs) == 0 {
-		return nil, fmt.Errorf("instance group %s has no jobs defined", c.igName)
+		return nil, fmt.Errorf("instance group %s has no jobs defined", containerFactory.instanceGroupName)
 	}
 
 	for _, job := range jobs {
-		jobImage, err := c.releaseImageProvider.GetReleaseImage(c.igName, job.Name)
+		jobImage, err := containerFactory.releaseImageProvider.GetReleaseImage(containerFactory.instanceGroupName, job.Name)
 		if err != nil {
 			return []corev1.Container{}, err
 		}
 
-		bpmConfig, ok := c.bpmConfigs[job.Name]
+		bpmConfig, ok := containerFactory.bpmConfigs[job.Name]
 		if !ok {
 			return nil, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
 		}
@@ -120,98 +148,36 @@ func (c *ContainerFactory) JobsToContainers(jobs []Job) ([]corev1.Container, err
 			return nil, errors.New("bpm info has no processes")
 		}
 
+		jobDisks := bpmDisks.Filter("job_name", job.Name)
+		var ephemeralMount *corev1.VolumeMount
+		ephemeralDisks := jobDisks.Filter("ephemeral", "true")
+		if len(ephemeralDisks) > 0 {
+			ephemeralMount = ephemeralDisks[0].VolumeMount
+		}
+
 		for _, process := range bpmConfig.Processes {
-			container := bpmProcessContainer(
+			processDisks := jobDisks.Filter("process_name", process.Name)
+			bpmVolumeMounts := make([]corev1.VolumeMount, 0)
+			for _, processDisk := range processDisks {
+				bpmVolumeMounts = append(bpmVolumeMounts, *processDisk.VolumeMount)
+			}
+			processVolumeMounts := append(defaultVolumeMounts, bpmVolumeMounts...)
+			if ephemeralMount != nil {
+				processVolumeMounts = append(processVolumeMounts, *ephemeralMount)
+			}
+
+			container := generateBPMProcessContainer(
 				fmt.Sprintf("%s-%s", job.Name, process.Name),
 				jobImage,
 				process,
+				processVolumeMounts,
 				job.Properties.BOSHContainerization.Run.HealthChecks,
 			)
-
-			bpmVolumes, err := generateBPMVolumes(process, job.Name)
-			if err != nil {
-				return []corev1.Container{}, err
-			}
-			container.VolumeMounts = append(instanceGroupVolumeMounts(), bpmVolumes...)
 
 			containers = append(containers, container)
 		}
 	}
 	return containers, nil
-}
-
-// generateBPMVolumes defines any other volumes required to be mounted,
-// based on the bpm process schema definition. This looks for:
-// - ephemeral_disk (boolean)
-// - persistent_disk (boolean)
-// - additional_volumes (list of volumes)
-func generateBPMVolumes(bpmProcess bpm.Process, jobName string) ([]corev1.VolumeMount, error) {
-	var bpmVolumes []corev1.VolumeMount
-
-	r, _ := regexp.Compile(AdditionalVolumesRegex)
-	rS, _ := regexp.Compile(AdditionalVolumesVcapStoreRegex)
-	// Process all ephemeral_disk
-	if bpmProcess.EphemeralDisk {
-		bpmEphemeralDisk := corev1.VolumeMount{
-			Name:      fmt.Sprintf("%s-%s", VolumeEphemeralDirName, jobName),
-			MountPath: fmt.Sprintf("%s%s", VolumeEphemeralDirMountPath, jobName),
-		}
-		bpmVolumes = append(bpmVolumes, bpmEphemeralDisk)
-	}
-
-	// TODO: skip this, while we need to figure it out a better way
-	// to define persistenVolumeClaims for jobs
-	// if bpmProcess.PersistentDisk {
-	// }
-
-	// Process all additional_volumes
-	for i, additionalVolume := range bpmProcess.AdditionalVolumes {
-		match := r.MatchString(additionalVolume.Path)
-		if !match {
-			return []corev1.VolumeMount{}, errors.Errorf("The %s path, must be a path inside"+
-				" /var/vcap/data, /var/vcap/store or /var/vcap/sys/run, for a path outside these,"+
-				" you must use the unrestricted_volumes key", additionalVolume.Path)
-		}
-
-		matchVcapStore := rS.MatchString(additionalVolume.Path)
-		// TODO: skip additional volumes under /var/vcap/store
-		// while we need to figure it out a better way to define
-		// persistenVolumeClaims for jobs
-		if matchVcapStore {
-			continue
-		}
-		// TODO: How to map the following bpm volume schema fields
-		// - allow_executions
-		// - mount_only
-		// into a corev1.VolumeMount
-		bpmAdditionalVolume := corev1.VolumeMount{
-			Name:      fmt.Sprintf("%s-%s-%b", AdditionalVolume, jobName, i),
-			ReadOnly:  !additionalVolume.Writable,
-			MountPath: additionalVolume.Path,
-		}
-		bpmVolumes = append(bpmVolumes, bpmAdditionalVolume)
-	}
-
-	// Process the unsafe configuration
-	for i, unrestrictedVolumes := range bpmProcess.Unsafe.UnrestrictedVolumes {
-		matchVcapStore := rS.MatchString(unrestrictedVolumes.Path)
-
-		// TODO: skip unrestricted volumes under /var/vcap/store
-		// while we need to figure it out a better way to define
-		// persistenVolumeClaims for jobs
-		if matchVcapStore {
-			continue
-		}
-		uVolume := corev1.VolumeMount{
-			Name:      fmt.Sprintf("%s-%s-%b", UnrestrictedVolume, jobName, i),
-			ReadOnly:  !unrestrictedVolumes.Writable,
-			MountPath: unrestrictedVolumes.Path,
-		}
-		bpmVolumes = append(bpmVolumes, uVolume)
-
-	}
-
-	return bpmVolumes, nil
 }
 
 // jobSpecCopierContainer will return a corev1.Container{} with the populated field
@@ -234,9 +200,9 @@ func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 	}
 }
 
-func templateRenderingContainer(igName string, secretName string) corev1.Container {
+func templateRenderingContainer(instanceGroupName string, secretName string) corev1.Container {
 	return corev1.Container{
-		Name:  names.Sanitize(fmt.Sprintf("renderer-%s", igName)),
+		Name:  names.Sanitize(fmt.Sprintf("renderer-%s", instanceGroupName)),
 		Image: GetOperatorDockerImage(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -249,18 +215,18 @@ func templateRenderingContainer(igName string, secretName string) corev1.Contain
 			},
 			{
 				Name:      generateVolumeName(secretName),
-				MountPath: fmt.Sprintf("/var/run/secrets/resolved-properties/%s", igName),
+				MountPath: fmt.Sprintf("/var/run/secrets/resolved-properties/%s", instanceGroupName),
 				ReadOnly:  true,
 			},
 		},
 		Env: []corev1.EnvVar{
 			{
 				Name:  EnvInstanceGroupName,
-				Value: igName,
+				Value: instanceGroupName,
 			},
 			{
 				Name:  EnvBOSHManifestPath,
-				Value: fmt.Sprintf("/var/run/secrets/resolved-properties/%s/properties.yaml", igName),
+				Value: fmt.Sprintf("/var/run/secrets/resolved-properties/%s/properties.yaml", instanceGroupName),
 			},
 			{
 				Name:  EnvJobsDir,
@@ -300,43 +266,51 @@ func createDirContainer(name string, jobs []Job) corev1.Container {
 	}
 }
 
-func boshPreStartInitContainer(jobName string, jobImage string, hasPersistentDisk bool) corev1.Container {
+func generateBOSHPreStartInitContainer(
+	jobName string,
+	jobImage string,
+	volumeMounts []corev1.VolumeMount,
+) corev1.Container {
 	boshPreStart := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "pre-start")
-	c := corev1.Container{
+	return corev1.Container{
 		Name:         names.Sanitize(fmt.Sprintf("bosh-pre-start-%s", jobName)),
 		Image:        jobImage,
-		VolumeMounts: instanceGroupVolumeMounts(),
+		VolumeMounts: volumeMounts,
 		Command:      []string{"/bin/sh", "-c"},
 		Args:         []string{fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s"; fi`, boshPreStart)},
 	}
-	if hasPersistentDisk {
-		persistentDisk := corev1.VolumeMount{
-			Name:      VolumeStoreDirName,
-			MountPath: VolumeStoreDirMountPath,
-		}
-		c.VolumeMounts = append(c.VolumeMounts, persistentDisk)
-	}
-	return c
 }
 
-func bpmPrestartInitContainer(process bpm.Process, jobImage string) corev1.Container {
+func generateBPMPrestartInitContainer(
+	process bpm.Process,
+	jobImage string,
+	volumeMounts []corev1.VolumeMount,
+) corev1.Container {
 	return corev1.Container{
-		Name:    names.Sanitize(fmt.Sprintf("bpm-pre-start-%s", process.Name)),
-		Image:   jobImage,
-		Command: []string{process.Hooks.PreStart},
+		Name:         names.Sanitize(fmt.Sprintf("bpm-pre-start-%s", process.Name)),
+		Image:        jobImage,
+		VolumeMounts: volumeMounts,
+		Command:      []string{process.Hooks.PreStart},
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &process.Unsafe.Privileged,
 		},
 	}
 }
 
-func bpmProcessContainer(name string, jobImage string, process bpm.Process, healthchecks map[string]HealthCheck) corev1.Container {
+func generateBPMProcessContainer(
+	name string,
+	jobImage string,
+	process bpm.Process,
+	volumeMounts []corev1.VolumeMount,
+	healthchecks map[string]HealthCheck,
+) corev1.Container {
 	container := corev1.Container{
-		Name:       names.Sanitize(name),
-		Image:      jobImage,
-		Command:    []string{process.Executable},
-		Args:       process.Args,
-		WorkingDir: process.Workdir,
+		Name:         names.Sanitize(name),
+		Image:        jobImage,
+		VolumeMounts: volumeMounts,
+		Command:      []string{process.Executable},
+		Args:         process.Args,
+		WorkingDir:   process.Workdir,
 		SecurityContext: &corev1.SecurityContext{
 			Capabilities: &corev1.Capabilities{
 				Add: capability(process.Capabilities),
@@ -369,27 +343,6 @@ func capability(s []string) []corev1.Capability {
 		capabilities[capabilityIndex] = corev1.Capability(capability)
 	}
 	return capabilities
-}
-
-func instanceGroupVolumeMounts() []corev1.VolumeMount {
-	return []corev1.VolumeMount{
-		{
-			Name:      VolumeRenderingDataName,
-			MountPath: VolumeRenderingDataMountPath,
-		},
-		{
-			Name:      VolumeJobsDirName,
-			MountPath: VolumeJobsDirMountPath,
-		},
-		{
-			Name:      VolumeDataDirName,
-			MountPath: VolumeDataDirMountPath,
-		},
-		{
-			Name:      VolumeSysDirName,
-			MountPath: VolumeSysDirMountPath,
-		},
-	}
 }
 
 // flattenContainers will flatten the containers parameter. Each argument passed to

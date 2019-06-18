@@ -2,13 +2,10 @@ package manifest
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
-	"strings"
 
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
@@ -41,38 +38,89 @@ type BPMResources struct {
 	InstanceGroups []essv1.ExtendedStatefulSet
 	Errands        []ejv1.ExtendedJob
 	Services       []corev1.Service
-	Disks          []corev1.PersistentVolumeClaim
+	Disks          BPMResourceDisks
+}
+
+// BPMResourceDisk represents a converted BPM disk to k8s resources.
+type BPMResourceDisk struct {
+	PersistentVolumeClaim *corev1.PersistentVolumeClaim
+	Volume                *corev1.Volume
+	VolumeMount           *corev1.VolumeMount
+
+	Labels map[string]string
+}
+
+// MatchesFilter returns true if the disk matches the filter with one of its labels.
+func (disk *BPMResourceDisk) MatchesFilter(filterKey, filterValue string) bool {
+	labelValue, exists := disk.Labels[filterKey]
+	if !exists {
+		return false
+	}
+	return labelValue == filterValue
+}
+
+// BPMResourceDisks represents a slice of BPMResourceDisk.
+type BPMResourceDisks []BPMResourceDisk
+
+// Filter filters BPMResourceDisks on its labels.
+func (disks BPMResourceDisks) Filter(filterKey, filterValue string) BPMResourceDisks {
+	filtered := make(BPMResourceDisks, 0)
+	for _, disk := range disks {
+		if disk.MatchesFilter(filterKey, filterValue) {
+			filtered = append(filtered, disk)
+		}
+	}
+	return filtered
+}
+
+// VolumeMounts returns a slice of VolumeMount of each BPMResourceDisk contained in BPMResourceDisks.
+func (disks BPMResourceDisks) VolumeMounts() []corev1.VolumeMount {
+	volumeMounts := make([]corev1.VolumeMount, 0)
+	for _, disk := range disks {
+		if disk.VolumeMount != nil {
+			volumeMounts = append(volumeMounts, *disk.VolumeMount)
+		}
+	}
+	return volumeMounts
+}
+
+// Volumes returns a slice of Volume of each BPMResourceDisk contained in BPMResourceDisks.
+func (disks BPMResourceDisks) Volumes() []corev1.Volume {
+	volumes := make([]corev1.Volume, 0)
+	for _, disk := range disks {
+		if disk.Volume != nil {
+			volumes = append(volumes, *disk.Volume)
+		}
+	}
+	return volumes
 }
 
 // BPMResources uses BOSH Process Manager information to create k8s container specs from single BOSH instance group.
 // It returns extended stateful sets, services and extended jobs.
 func (kc *KubeConverter) BPMResources(manifestName string, version string, instanceGroup *InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) (*BPMResources, error) {
-	res := &BPMResources{}
-
 	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(manifestName, instanceGroup.Name, version)
+
+	defaultDisks := generateDefaultDisks(manifestName, instanceGroup, kc.namespace)
+
+	bpmDisks, err := generateBPMDisks(manifestName, instanceGroup, bpmConfigs)
+	if err != nil {
+		return nil, err
+	}
+
+	allDisks := append(defaultDisks, bpmDisks...)
+
+	res := &BPMResources{
+		Disks: allDisks,
+	}
 
 	cfac := NewContainerFactory(manifestName, instanceGroup.Name, releaseImageProvider, bpmConfigs)
 
-	// Create a persistent volume claim if specified in spec.
-	if instanceGroup.PersistentDisk != nil && *instanceGroup.PersistentDisk > 0 {
-		// Annotations are added to specify the volume name and mount path.
-		annotations := map[string]string{
-			"volume-name":       VolumeStoreDirName,
-			"volume-mount-path": VolumeStoreDirMountPath,
-		}
-		persistentVolumeClaim := kc.diskToPersistentVolumeClaims(cfac, manifestName, instanceGroup, annotations)
-		res.Disks = append(res.Disks, *persistentVolumeClaim)
-	}
-
 	switch instanceGroup.LifeCycle {
 	case "service", "":
-		convertedExtStatefulSet, err := kc.serviceToExtendedSts(manifestName, instanceGroup, cfac)
+		convertedExtStatefulSet, err := kc.serviceToExtendedSts(cfac, manifestName, instanceGroup, defaultDisks, bpmDisks)
 		if err != nil {
 			return nil, err
 		}
-
-		// Add volumes spec to pod spec and container spec of pvc's in extendedstatefulset
-		kc.addPVCSpecs(cfac, &convertedExtStatefulSet, manifestName, instanceGroup, res.Disks)
 
 		services, err := kc.serviceToKubeServices(manifestName, instanceGroup, &convertedExtStatefulSet)
 		if err != nil {
@@ -84,13 +132,10 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 
 		res.InstanceGroups = append(res.InstanceGroups, convertedExtStatefulSet)
 	case "errand":
-		convertedEJob, err := kc.errandToExtendedJob(manifestName, instanceGroup, cfac)
+		convertedEJob, err := kc.errandToExtendedJob(cfac, manifestName, instanceGroup, defaultDisks, bpmDisks)
 		if err != nil {
 			return nil, err
 		}
-
-		// Add volumes spec to pod spec and container spec of pvc's in extendedJob
-		kc.addPVCSpecs(cfac, &convertedEJob, manifestName, instanceGroup, res.Disks)
 
 		res.Errands = append(res.Errands, convertedEJob)
 	}
@@ -99,54 +144,59 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 }
 
 // serviceToExtendedSts will generate an ExtendedStatefulSet
-func (kc *KubeConverter) serviceToExtendedSts(manifestName string, ig *InstanceGroup, cfac *ContainerFactory) (essv1.ExtendedStatefulSet, error) {
-	igName := ig.Name
-
-	hasPersistentDisk := (ig.PersistentDisk != nil && *ig.PersistentDisk > 0)
-	listOfInitContainers, err := cfac.JobsToInitContainers(ig.Jobs, hasPersistentDisk)
+func (kc *KubeConverter) serviceToExtendedSts(
+	cfac *ContainerFactory,
+	manifestName string,
+	instanceGroup *InstanceGroup,
+	defaultDisks BPMResourceDisks,
+	bpmDisks BPMResourceDisks,
+) (essv1.ExtendedStatefulSet, error) {
+	defaultVolumeMounts := defaultDisks.VolumeMounts()
+	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
 	if err != nil {
 		return essv1.ExtendedStatefulSet{}, err
 	}
 
-	volumes := igVolumes(manifestName, ig.Name)
-
-	containers, err := cfac.JobsToContainers(ig.Jobs)
+	containers, err := cfac.JobsToContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
 	if err != nil {
 		return essv1.ExtendedStatefulSet{}, err
 	}
 
-	bpmVolumes := bpmVolumes(cfac, ig, manifestName)
+	defaultVolumes := defaultDisks.Volumes()
+	bpmVolumes := bpmDisks.Volumes()
+	volumes := make([]corev1.Volume, 0, len(defaultVolumes)+len(bpmVolumes))
+	volumes = append(volumes, defaultVolumes...)
 	volumes = append(volumes, bpmVolumes...)
 
 	extSts := essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        fmt.Sprintf("%s-%s", manifestName, names.Sanitize(igName)),
+			Name:        fmt.Sprintf("%s-%s", manifestName, names.Sanitize(instanceGroup.Name)),
 			Namespace:   kc.namespace,
-			Labels:      ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
-			Annotations: ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
+			Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
 		Spec: essv1.ExtendedStatefulSetSpec{
 			UpdateOnConfigChange: true,
 			Template: v1beta2.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        igName,
-					Labels:      ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
-					Annotations: ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
+					Name:        instanceGroup.Name,
+					Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+					Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 				},
 				Spec: v1beta2.StatefulSetSpec{
-					Replicas: util.Int32(int32(ig.Instances)),
+					Replicas: util.Int32(int32(instanceGroup.Instances)),
 					Selector: &metav1.LabelSelector{
-						MatchLabels: ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+						MatchLabels: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
 					},
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:        igName,
-							Labels:      ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
-							Annotations: ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
+							Name:        instanceGroup.Name,
+							Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+							Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 						},
 						Spec: corev1.PodSpec{
 							Volumes:        volumes,
-							InitContainers: listOfInitContainers,
+							InitContainers: initContainers,
 							Containers:     containers,
 							SecurityContext: &corev1.PodSecurityContext{
 								FSGroup: &admGroupID,
@@ -161,13 +211,11 @@ func (kc *KubeConverter) serviceToExtendedSts(manifestName string, ig *InstanceG
 }
 
 // serviceToKubeServices will generate Services which expose ports for InstanceGroup's jobs
-func (kc *KubeConverter) serviceToKubeServices(manifestName string, ig *InstanceGroup, eSts *essv1.ExtendedStatefulSet) ([]corev1.Service, error) {
+func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGroup *InstanceGroup, eSts *essv1.ExtendedStatefulSet) ([]corev1.Service, error) {
 	var services []corev1.Service
-	igName := ig.Name
-
 	// Collect ports to be exposed for each job
 	ports := []corev1.ServicePort{}
-	for _, job := range ig.Jobs {
+	for _, job := range instanceGroup.Jobs {
 		for _, port := range job.Properties.BOSHContainerization.Ports {
 			ports = append(ports, corev1.ServicePort{
 				Name:     port.Name,
@@ -182,15 +230,15 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, ig *Instance
 		return services, nil
 	}
 
-	for i := 0; i < ig.Instances; i++ {
-		if len(ig.AZs) == 0 {
+	for i := 0; i < instanceGroup.Instances; i++ {
+		if len(instanceGroup.AZs) == 0 {
 			services = append(services, corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      names.ServiceName(manifestName, igName, len(services)),
+					Name:      names.ServiceName(manifestName, instanceGroup.Name, len(services)),
 					Namespace: kc.namespace,
 					Labels: map[string]string{
 						LabelDeploymentName:    manifestName,
-						LabelInstanceGroupName: igName,
+						LabelInstanceGroupName: instanceGroup.Name,
 						essv1.LabelAZIndex:     strconv.Itoa(0),
 						essv1.LabelPodOrdinal:  strconv.Itoa(i),
 					},
@@ -198,20 +246,20 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, ig *Instance
 				Spec: corev1.ServiceSpec{
 					Ports: ports,
 					Selector: map[string]string{
-						LabelInstanceGroupName: igName,
+						LabelInstanceGroupName: instanceGroup.Name,
 						essv1.LabelAZIndex:     strconv.Itoa(0),
 						essv1.LabelPodOrdinal:  strconv.Itoa(i),
 					},
 				},
 			})
 		}
-		for azIndex := range ig.AZs {
+		for azIndex := range instanceGroup.AZs {
 			services = append(services, corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      names.ServiceName(manifestName, igName, len(services)),
+					Name:      names.ServiceName(manifestName, instanceGroup.Name, len(services)),
 					Namespace: kc.namespace,
 					Labels: map[string]string{
-						LabelInstanceGroupName: igName,
+						LabelInstanceGroupName: instanceGroup.Name,
 						essv1.LabelAZIndex:     strconv.Itoa(azIndex),
 						essv1.LabelPodOrdinal:  strconv.Itoa(i),
 					},
@@ -219,7 +267,7 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, ig *Instance
 				Spec: corev1.ServiceSpec{
 					Ports: ports,
 					Selector: map[string]string{
-						LabelInstanceGroupName: igName,
+						LabelInstanceGroupName: instanceGroup.Name,
 						essv1.LabelAZIndex:     strconv.Itoa(azIndex),
 						essv1.LabelPodOrdinal:  strconv.Itoa(i),
 					},
@@ -230,15 +278,15 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, ig *Instance
 
 	headlessService := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        names.ServiceName(manifestName, igName, -1),
+			Name:        names.ServiceName(manifestName, instanceGroup.Name, -1),
 			Namespace:   kc.namespace,
-			Labels:      ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
-			Annotations: ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
+			Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: ports,
 			Selector: map[string]string{
-				LabelInstanceGroupName: igName,
+				LabelInstanceGroupName: instanceGroup.Name,
 			},
 			ClusterIP: "None",
 		},
@@ -247,53 +295,58 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, ig *Instance
 	services = append(services, headlessService)
 
 	// Set headlessService to govern StatefulSet
-	eSts.Spec.Template.Spec.ServiceName = names.ServiceName(manifestName, igName, -1)
+	eSts.Spec.Template.Spec.ServiceName = names.ServiceName(manifestName, instanceGroup.Name, -1)
 
 	return services, nil
 }
 
 // errandToExtendedJob will generate an ExtendedJob
-func (kc *KubeConverter) errandToExtendedJob(manifestName string, ig *InstanceGroup, cfac *ContainerFactory) (ejv1.ExtendedJob, error) {
-	igName := ig.Name
-
-	hasPersistentDisk := (ig.PersistentDisk != nil && *ig.PersistentDisk > 0)
-	listOfInitContainers, err := cfac.JobsToInitContainers(ig.Jobs, hasPersistentDisk)
+func (kc *KubeConverter) errandToExtendedJob(
+	cfac *ContainerFactory,
+	manifestName string,
+	instanceGroup *InstanceGroup,
+	defaultDisks BPMResourceDisks,
+	bpmDisks BPMResourceDisks,
+) (ejv1.ExtendedJob, error) {
+	defaultVolumeMounts := defaultDisks.VolumeMounts()
+	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
 	if err != nil {
 		return ejv1.ExtendedJob{}, err
 	}
 
-	volumes := igVolumes(manifestName, ig.Name)
-
-	containers, err := cfac.JobsToContainers(ig.Jobs)
+	containers, err := cfac.JobsToContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
 	if err != nil {
 		return ejv1.ExtendedJob{}, err
 	}
 
-	bpmVolumes := bpmVolumes(cfac, ig, manifestName)
-	volumes = append(volumes, bpmVolumes...)
-
-	podLabels := ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels
+	podLabels := instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels
 	// Controller will delete successful job
 	podLabels["delete"] = "pod"
 
+	defaultVolumes := defaultDisks.Volumes()
+	bpmVolumes := bpmDisks.Volumes()
+	volumes := make([]corev1.Volume, 0, len(defaultVolumes)+len(bpmVolumes))
+	volumes = append(volumes, defaultVolumes...)
+	volumes = append(volumes, bpmVolumes...)
+
 	eJob := ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        fmt.Sprintf("%s-%s", manifestName, igName),
+			Name:        fmt.Sprintf("%s-%s", manifestName, instanceGroup.Name),
 			Namespace:   kc.namespace,
-			Labels:      ig.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
-			Annotations: ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
+			Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
 		Spec: ejv1.ExtendedJobSpec{
 			UpdateOnConfigChange: true,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        igName,
+					Name:        instanceGroup.Name,
 					Labels:      podLabels,
-					Annotations: ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
+					Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 				},
 				Spec: corev1.PodSpec{
 					Containers:     containers,
-					InitContainers: listOfInitContainers,
+					InitContainers: initContainers,
 					Volumes:        volumes,
 					SecurityContext: &corev1.PodSecurityContext{
 						FSGroup: &admGroupID,
@@ -303,182 +356,4 @@ func (kc *KubeConverter) errandToExtendedJob(manifestName string, ig *InstanceGr
 		},
 	}
 	return eJob, nil
-}
-
-func (kc *KubeConverter) diskToPersistentVolumeClaims(cfac *ContainerFactory, manifestName string, ig *InstanceGroup, annotations map[string]string) *corev1.PersistentVolumeClaim {
-	// spec of a persistent volumeclaim
-	persistentVolumeClaim := &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        fmt.Sprintf("%s-%s-%s", manifestName, ig.Name, "pvc"),
-			Namespace:   kc.namespace,
-			Annotations: annotations,
-		},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceName(corev1.ResourceStorage): resource.MustParse(fmt.Sprintf("%d%s", *ig.PersistentDisk, "Mi")),
-				},
-			},
-		},
-	}
-
-	// add storage class if specified
-	if ig.PersistentDiskType != "" {
-		persistentVolumeClaim.Spec.StorageClassName = &ig.PersistentDiskType
-	}
-
-	return persistentVolumeClaim
-}
-
-func (kc *KubeConverter) addPVCSpecs(cfac *ContainerFactory, kubeObject interface{}, manifestName string, ig *InstanceGroup, disks []corev1.PersistentVolumeClaim) {
-
-	claimName := fmt.Sprintf("%s-%s-%s", manifestName, ig.Name, "pvc")
-
-	switch kubeObject := kubeObject.(type) {
-	case *essv1.ExtendedStatefulSet:
-		kubeObject.Spec.Template.Spec.Template.Spec = kc.addVolumeSpecs(&kubeObject.Spec.Template.Spec.Template.Spec, disks, claimName)
-	case *ejv1.ExtendedJob:
-		kubeObject.Spec.Template.Spec = kc.addVolumeSpecs(&kubeObject.Spec.Template.Spec, disks, claimName)
-	}
-}
-
-func (kc *KubeConverter) addVolumeSpecs(podSpec *corev1.PodSpec, disks []corev1.PersistentVolumeClaim, claimName string) corev1.PodSpec {
-	for _, disk := range disks {
-
-		// add volumeMount specs to container of Extendedstatefulset
-		volumeMountSpec := corev1.VolumeMount{
-			Name:      disk.GetAnnotations()["volume-name"],
-			MountPath: disk.GetAnnotations()["volume-mount-path"],
-		}
-
-		for containerIndex, container := range podSpec.Containers {
-			podSpec.Containers[containerIndex].VolumeMounts = append(container.VolumeMounts, volumeMountSpec)
-		}
-
-		// add volume spec to pod volumes of Extendedstatefulset
-		pvcVolume := corev1.Volume{
-			Name: disk.GetAnnotations()["volume-name"],
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: claimName,
-				},
-			},
-		}
-		podSpec.Volumes = append(podSpec.Volumes, pvcVolume)
-	}
-	return *podSpec
-}
-
-func bpmVolumes(cfac *ContainerFactory, ig *InstanceGroup, manifestName string) []corev1.Volume {
-	var bpmVolumes []corev1.Volume
-
-	r, _ := regexp.Compile(AdditionalVolumesVcapStoreRegex)
-
-	for _, job := range ig.Jobs {
-		bpmConfig := cfac.bpmConfigs[job.Name]
-		for _, process := range bpmConfig.Processes {
-			if process.EphemeralDisk {
-				eD := corev1.Volume{
-					Name:         fmt.Sprintf("%s-%s", VolumeEphemeralDirName, job.Name),
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-				}
-				bpmVolumes = append(bpmVolumes, eD)
-			}
-
-			// TODO: skip this, while we need to figure it out a better way
-			// to define persistenVolumeClaims for jobs
-			// if process.PersistentDisk {
-			// }
-
-			for i, additionalVolume := range process.AdditionalVolumes {
-				matchVcapStore := r.MatchString(additionalVolume.Path)
-				if matchVcapStore {
-					continue
-				}
-				aV := corev1.Volume{
-					Name:         fmt.Sprintf("%s-%s-%b", AdditionalVolume, job.Name, i),
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-				}
-				bpmVolumes = append(bpmVolumes, aV)
-			}
-
-			for i, unrestrictedVolumes := range process.Unsafe.UnrestrictedVolumes {
-				matchVcapStore := r.MatchString(unrestrictedVolumes.Path)
-				if matchVcapStore {
-					continue
-				}
-				uV := corev1.Volume{
-					Name:         fmt.Sprintf("%s-%s-%b", UnrestrictedVolume, job.Name, i),
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-				}
-				bpmVolumes = append(bpmVolumes, uV)
-			}
-		}
-	}
-	return bpmVolumes
-}
-
-func igVolumes(manifestName, igName string) []corev1.Volume {
-	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeManifestAndVars,
-		manifestName,
-		VarInterpolationContainerName,
-		true,
-	)
-	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
-		manifestName,
-		igName,
-		true,
-	)
-
-	return []corev1.Volume{
-		{
-			Name:         VolumeRenderingDataName,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name:         VolumeJobsDirName,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		// for ephemeral job data
-		// https://bosh.io/docs/vm-config/#jobs-and-packages
-		{
-			Name:         VolumeDataDirName,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name:         VolumeSysDirName,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-		},
-		{
-			Name: generateVolumeName(interpolatedManifestSecretName),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: interpolatedManifestSecretName,
-				},
-			},
-		},
-		{
-			Name: generateVolumeName(resolvedPropertiesSecretName),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: resolvedPropertiesSecretName,
-				},
-			},
-		},
-	}
-}
-
-// generateVolumeName generate volume name based on secret name
-func generateVolumeName(secretName string) string {
-	nameSlices := strings.Split(secretName, ".")
-	volName := ""
-	if len(nameSlices) > 1 {
-		volName = nameSlices[1]
-	} else {
-		volName = nameSlices[0]
-	}
-	return volName
 }

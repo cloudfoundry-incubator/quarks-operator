@@ -2,6 +2,7 @@ package manifest_test
 
 import (
 	"fmt"
+	"path"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,6 +19,8 @@ var _ = Describe("ContainerFactory", func() {
 		bpmConfigs           bpm.Configs
 		releaseImageProvider *fakes.FakeReleaseImageProvider
 		jobs                 []Job
+		defaultVolumeMounts  []corev1.VolumeMount
+		bpmDisks             BPMResourceDisks
 	)
 
 	BeforeEach(func() {
@@ -27,6 +30,115 @@ var _ = Describe("ContainerFactory", func() {
 		jobs = []Job{
 			Job{Name: "fake-job"},
 			Job{Name: "other-job"},
+		}
+
+		defaultVolumeMounts = []corev1.VolumeMount{
+			{
+				Name:             VolumeSysDirName,
+				ReadOnly:         false,
+				MountPath:        VolumeSysDirMountPath,
+				SubPath:          "",
+				MountPropagation: nil,
+			},
+		}
+
+		bpmDisks = BPMResourceDisks{
+			{
+				Volume: &corev1.Volume{
+					Name:         fmt.Sprintf("%s-%s", VolumeEphemeralDirName, "fake-job"),
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				},
+				VolumeMount: &corev1.VolumeMount{
+					Name:      fmt.Sprintf("%s-%s", VolumeEphemeralDirName, "fake-job"),
+					MountPath: path.Join(VolumeEphemeralDirMountPath, "fake-job"),
+				},
+				Labels: map[string]string{
+					"job_name":  "fake-job",
+					"ephemeral": "true",
+				},
+			},
+			{
+				Volume: &corev1.Volume{
+					Name:         fmt.Sprintf("%s-%s", VolumeEphemeralDirName, "other-job"),
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				},
+				VolumeMount: &corev1.VolumeMount{
+					Name:      fmt.Sprintf("%s-%s", VolumeEphemeralDirName, "other-job"),
+					MountPath: path.Join(VolumeEphemeralDirMountPath, "other-job"),
+				},
+				Labels: map[string]string{
+					"job_name":  "other-job",
+					"ephemeral": "true",
+				},
+			},
+			{
+				Volume: &corev1.Volume{
+					Name:         "bpm-additional-volume-fake-job-fake-process-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				},
+				VolumeMount: &corev1.VolumeMount{
+					Name:             "bpm-additional-volume-fake-job-fake-process-0",
+					ReadOnly:         false,
+					MountPath:        "/var/vcap/data/shared/foo",
+					SubPath:          "",
+					MountPropagation: nil,
+				},
+				Labels: map[string]string{
+					"job_name":     "fake-job",
+					"process_name": "fake-process",
+				},
+			},
+			{
+				Volume: &corev1.Volume{
+					Name:         "bpm-additional-volume-fake-job-fake-process-1",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				},
+				VolumeMount: &corev1.VolumeMount{
+					Name:             "bpm-additional-volume-fake-job-fake-process-1",
+					ReadOnly:         false,
+					MountPath:        "/var/vcap/store/foobar",
+					SubPath:          "",
+					MountPropagation: nil,
+				},
+				Labels: map[string]string{
+					"job_name":     "fake-job",
+					"process_name": "fake-process",
+				},
+			},
+			{
+				Volume: &corev1.Volume{
+					Name:         "bpm-unrestricted-volume-fake-job-fake-process-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				},
+				VolumeMount: &corev1.VolumeMount{
+					Name:             "bpm-unrestricted-volume-fake-job-fake-process-0",
+					ReadOnly:         false,
+					MountPath:        "/",
+					SubPath:          "",
+					MountPropagation: nil,
+				},
+				Labels: map[string]string{
+					"job_name":     "fake-job",
+					"process_name": "fake-process",
+				},
+			},
+			{
+				Volume: &corev1.Volume{
+					Name:         "bpm-unrestricted-volume-fake-job-fake-process-1",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				},
+				VolumeMount: &corev1.VolumeMount{
+					Name:             "bpm-unrestricted-volume-fake-job-fake-process-1",
+					ReadOnly:         false,
+					MountPath:        "/etc",
+					SubPath:          "",
+					MountPropagation: nil,
+				},
+				Labels: map[string]string{
+					"job_name":     "fake-job",
+					"process_name": "fake-process",
+				},
+			},
 		}
 	})
 
@@ -75,6 +187,14 @@ var _ = Describe("ContainerFactory", func() {
 							Env:            map[string]string{"a": "1", "b": "2"},
 							EphemeralDisk:  true,
 							PersistentDisk: true,
+							Unsafe: bpm.Unsafe{
+								UnrestrictedVolumes: []bpm.Volume{
+									{
+										Path:     "/etc/other-job/fake-process",
+										Writable: false,
+									},
+								},
+							},
 						},
 					},
 				},
@@ -82,10 +202,10 @@ var _ = Describe("ContainerFactory", func() {
 		})
 
 		act := func() ([]corev1.Container, error) {
-			return containerFactory.JobsToContainers(jobs)
+			return containerFactory.JobsToContainers(jobs, defaultVolumeMounts, bpmDisks)
 		}
 
-		It("adds the sys volume", func() {
+		It("adds the default volume mounts passed", func() {
 			containers, err := act()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(containers).To(HaveLen(2))
@@ -97,7 +217,6 @@ var _ = Describe("ContainerFactory", func() {
 					SubPath:          "",
 					MountPropagation: nil,
 				}))
-
 		})
 
 		It("adds the ephemeral_disk volume", func() {
@@ -107,7 +226,7 @@ var _ = Describe("ContainerFactory", func() {
 				corev1.VolumeMount{
 					Name:             "bpm-ephemeral-disk-fake-job",
 					ReadOnly:         false,
-					MountPath:        fmt.Sprintf("%s%s", VolumeEphemeralDirMountPath, "fake-job"),
+					MountPath:        fmt.Sprintf("%s/%s", VolumeEphemeralDirMountPath, "fake-job"),
 					SubPath:          "",
 					MountPropagation: nil,
 				}))
@@ -115,7 +234,7 @@ var _ = Describe("ContainerFactory", func() {
 				corev1.VolumeMount{
 					Name:             "bpm-ephemeral-disk-other-job",
 					ReadOnly:         false,
-					MountPath:        fmt.Sprintf("%s%s", VolumeEphemeralDirMountPath, "other-job"),
+					MountPath:        fmt.Sprintf("%s/%s", VolumeEphemeralDirMountPath, "other-job"),
 					SubPath:          "",
 					MountPropagation: nil,
 				}))
@@ -126,7 +245,7 @@ var _ = Describe("ContainerFactory", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(containers[0].VolumeMounts).To(ContainElement(
 				corev1.VolumeMount{
-					Name:             "bpm-additional-volume-fake-job-0",
+					Name:             "bpm-additional-volume-fake-job-fake-process-0",
 					ReadOnly:         false,
 					MountPath:        "/var/vcap/data/shared/foo",
 					SubPath:          "",
@@ -134,7 +253,7 @@ var _ = Describe("ContainerFactory", func() {
 				}))
 			Expect(containers[0].VolumeMounts).ToNot(ContainElement(
 				corev1.VolumeMount{
-					Name:             "bpm-additional-volume-fake-job-1",
+					Name:             "bpm-additional-volume-fake-job-fake-process-1",
 					ReadOnly:         true,
 					MountPath:        "/var/vcap/store/foobar",
 					SubPath:          "",
@@ -159,7 +278,7 @@ var _ = Describe("ContainerFactory", func() {
 			}
 			containerFactory = NewContainerFactory("fake-manifest", "fake-ig", releaseImageProvider, bpmConfigsWithError)
 			actWithError := func() ([]corev1.Container, error) {
-				return containerFactory.JobsToContainers(jobs)
+				return containerFactory.JobsToContainers(jobs, []corev1.VolumeMount{}, BPMResourceDisks{})
 			}
 			_, err := actWithError()
 			Expect(err).To(HaveOccurred())
@@ -170,7 +289,7 @@ var _ = Describe("ContainerFactory", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(containers[0].VolumeMounts).To(ContainElement(
 				corev1.VolumeMount{
-					Name:             "bpm-unrestricted-volume-fake-job-0",
+					Name:             "bpm-unrestricted-volume-fake-job-fake-process-0",
 					ReadOnly:         false,
 					MountPath:        "/",
 					SubPath:          "",
@@ -178,7 +297,7 @@ var _ = Describe("ContainerFactory", func() {
 				}))
 			Expect(containers[0].VolumeMounts).To(ContainElement(
 				corev1.VolumeMount{
-					Name:             "bpm-unrestricted-volume-fake-job-1",
+					Name:             "bpm-unrestricted-volume-fake-job-fake-process-1",
 					ReadOnly:         false,
 					MountPath:        "/etc",
 					SubPath:          "",
@@ -189,7 +308,7 @@ var _ = Describe("ContainerFactory", func() {
 		It("ensures the amount of volume mounts is correct", func() {
 			containers, err := act()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(len(containers[0].VolumeMounts)).To(Equal(8))
+			Expect(len(containers[0].VolumeMounts)).To(Equal(6))
 		})
 
 		It("adds linux capabilities to containers", func() {
@@ -207,8 +326,8 @@ var _ = Describe("ContainerFactory", func() {
 	})
 
 	Context("JobsToInitContainers", func() {
-		act := func(hasPersistentDisk bool) ([]corev1.Container, error) {
-			return containerFactory.JobsToInitContainers(jobs, hasPersistentDisk)
+		act := func() ([]corev1.Container, error) {
+			return containerFactory.JobsToInitContainers(jobs, defaultVolumeMounts, bpmDisks)
 		}
 
 		Context("when multiple jobs are configured", func() {
@@ -220,7 +339,7 @@ var _ = Describe("ContainerFactory", func() {
 			})
 
 			It("generates per job directories", func() {
-				containers, err := act(false)
+				containers, err := act()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(containers).To(HaveLen(5))
 				Expect(containers[2].Name).To(Equal("create-dirs-fake-ig"))
@@ -229,31 +348,15 @@ var _ = Describe("ContainerFactory", func() {
 			})
 
 			It("generates one BOSH pre-start init container per job", func() {
-				containers, err := act(false)
+				containers, err := act()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(containers).To(HaveLen(5))
 				Expect(containers[3].Name).To(Equal("bosh-pre-start-fake-job"))
 				Expect(containers[3].Args).To(ContainElement(`if [ -x "/var/vcap/jobs/fake-job/bin/pre-start" ]; then "/var/vcap/jobs/fake-job/bin/pre-start"; fi`))
-				Expect(containers[3].VolumeMounts).To(HaveLen(4))
+				Expect(containers[3].VolumeMounts).To(HaveLen(7))
 				Expect(containers[4].Name).To(Equal("bosh-pre-start-other-job"))
 				Expect(containers[4].Args).To(ContainElement(`if [ -x "/var/vcap/jobs/other-job/bin/pre-start" ]; then "/var/vcap/jobs/other-job/bin/pre-start"; fi`))
-				Expect(containers[4].VolumeMounts).To(HaveLen(4))
-			})
-
-			It("generates BOSH pre-start init containers with persistent disk mounted on /var/vcap/store", func() {
-				containers, err := act(true)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(containers).To(HaveLen(5))
-				Expect(containers[3].Name).To(Equal("bosh-pre-start-fake-job"))
-				Expect(containers[3].Args).To(ContainElement(`if [ -x "/var/vcap/jobs/fake-job/bin/pre-start" ]; then "/var/vcap/jobs/fake-job/bin/pre-start"; fi`))
-				Expect(containers[3].VolumeMounts).To(HaveLen(5))
-				Expect(containers[3].VolumeMounts[4].Name).To(Equal("store-dir"))
-				Expect(containers[3].VolumeMounts[4].MountPath).To(Equal("/var/vcap/store"))
-				Expect(containers[4].Name).To(Equal("bosh-pre-start-other-job"))
-				Expect(containers[4].Args).To(ContainElement(`if [ -x "/var/vcap/jobs/other-job/bin/pre-start" ]; then "/var/vcap/jobs/other-job/bin/pre-start"; fi`))
-				Expect(containers[4].VolumeMounts).To(HaveLen(5))
-				Expect(containers[4].VolumeMounts[4].Name).To(Equal("store-dir"))
-				Expect(containers[4].VolumeMounts[4].MountPath).To(Equal("/var/vcap/store"))
+				Expect(containers[4].VolumeMounts).To(HaveLen(7))
 			})
 		})
 
@@ -296,41 +399,41 @@ var _ = Describe("ContainerFactory", func() {
 			})
 
 			It("adds the pre start init container", func() {
-				containers, err := act(false)
+				containers, err := act()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(containers).To(HaveLen(6))
 				Expect(containers[5].Command).To(ContainElement("fake-cmd"))
 			})
 
 			It("generates hook init containers with bpm volumes for ephemeral disk", func() {
-				containers, err := act(false)
+				containers, err := act()
 				Expect(err).ToNot(HaveOccurred())
-				Expect(containers[5].VolumeMounts).To(HaveLen(7))
+				Expect(containers[5].VolumeMounts).To(HaveLen(6))
 				Expect(containers[5].VolumeMounts).To(ContainElement(
 					corev1.VolumeMount{
 						Name:             "bpm-ephemeral-disk-fake-job",
 						ReadOnly:         false,
-						MountPath:        fmt.Sprintf("%s%s", VolumeEphemeralDirMountPath, "fake-job"),
+						MountPath:        fmt.Sprintf("%s/%s", VolumeEphemeralDirMountPath, "fake-job"),
 						SubPath:          "",
 						MountPropagation: nil,
 					}))
 			})
 
 			It("generates hook init containers with bpm additional volumes", func() {
-				containers, err := act(false)
+				containers, err := act()
 				Expect(err).ToNot(HaveOccurred())
-				Expect(containers[5].VolumeMounts).To(HaveLen(7))
+				Expect(containers[5].VolumeMounts).To(HaveLen(6))
 				Expect(containers[5].VolumeMounts).To(ContainElement(
 					corev1.VolumeMount{
-						Name:             "bpm-additional-volume-fake-job-0",
+						Name:             "bpm-additional-volume-fake-job-fake-process-0",
 						ReadOnly:         false,
-						MountPath:        "/var/vcap/data/shared",
+						MountPath:        "/var/vcap/data/shared/foo",
 						SubPath:          "",
 						MountPropagation: nil,
 					}))
 				Expect(containers[5].VolumeMounts).ToNot(ContainElement(
 					corev1.VolumeMount{
-						Name:             "bpm-additional-volume-fake-job-1",
+						Name:             "bpm-additional-volume-fake-job-fake-process-1",
 						ReadOnly:         true,
 						MountPath:        "/var/vcap/store/foobar",
 						SubPath:          "",
@@ -339,27 +442,26 @@ var _ = Describe("ContainerFactory", func() {
 			})
 
 			It("generates hook init containers with bpm unrestricted volumes", func() {
-				containers, err := act(false)
+				containers, err := act()
 				Expect(err).ToNot(HaveOccurred())
-				Expect(containers[5].VolumeMounts).To(HaveLen(7))
+				Expect(containers[5].VolumeMounts).To(HaveLen(6))
 				Expect(containers[5].VolumeMounts).To(ContainElement(
 					corev1.VolumeMount{
-						Name:             "bpm-unrestricted-volume-fake-job-0",
-						ReadOnly:         true,
-						MountPath:        "/etc",
+						Name:             "bpm-unrestricted-volume-fake-job-fake-process-0",
+						ReadOnly:         false,
+						MountPath:        "/",
 						SubPath:          "",
 						MountPropagation: nil,
 					}))
 				Expect(containers[5].VolumeMounts).ToNot(ContainElement(
 					corev1.VolumeMount{
-						Name:             "bpm-unrestricted-volume-fake-job-1",
+						Name:             "bpm-unrestricted-volume-other-job-fake-process-0",
 						ReadOnly:         true,
-						MountPath:        "/var/vcap/store/foobar",
+						MountPath:        "/etc/other-job/fake-process",
 						SubPath:          "",
 						MountPropagation: nil,
 					}))
 			})
-
 		})
 	})
 })
