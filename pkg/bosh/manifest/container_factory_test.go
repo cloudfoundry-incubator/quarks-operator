@@ -367,6 +367,21 @@ var _ = Describe("ContainerFactory", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(containers[1].Env).To(HaveLen(2))
 		})
+
+		Context("with lifecycle events", func() {
+			It("creates a preStop handler per job", func() {
+				containers, err := act()
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(containers[0].Lifecycle).ToNot(BeNil())
+				Expect(containers[0].Lifecycle.PreStop).ToNot(BeNil())
+				Expect(containers[0].Lifecycle.PreStop.Exec.Command).To(ContainElement(ContainSubstring("/var/vcap/jobs/fake-job/bin/drain/")))
+
+				Expect(containers[1].Lifecycle).ToNot(BeNil())
+				Expect(containers[1].Lifecycle.PreStop).ToNot(BeNil())
+				Expect(containers[1].Lifecycle.PreStop.Exec.Command).To(ContainElement(ContainSubstring("/var/vcap/jobs/other-job/bin/drain/")))
+			})
+		})
 	})
 
 	Context("JobsToInitContainers", func() {

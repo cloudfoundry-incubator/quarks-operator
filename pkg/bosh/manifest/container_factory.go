@@ -185,7 +185,8 @@ func (c *ContainerFactory) JobsToContainers(
 			}
 
 			container := bpmProcessContainer(
-				fmt.Sprintf("%s-%s", job.Name, process.Name),
+				job.Name,
+				process.Name,
 				jobImage,
 				process,
 				processVolumeMounts,
@@ -316,12 +317,14 @@ func bpmPreStartInitContainer(
 }
 
 func bpmProcessContainer(
-	name string,
+	jobName string,
+	processName string,
 	jobImage string,
 	process bpm.Process,
 	volumeMounts []corev1.VolumeMount,
 	healthchecks map[string]HealthCheck,
 ) corev1.Container {
+	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
 	container := corev1.Container{
 		Name:         names.Sanitize(name),
 		Image:        jobImage,
@@ -334,6 +337,46 @@ func bpmProcessContainer(
 				Add: capability(process.Capabilities),
 			},
 			Privileged: &process.Unsafe.Privileged,
+		},
+		Lifecycle: &corev1.Lifecycle{},
+	}
+
+	// Setup the job drain script handler.
+	drainGlob := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "drain", "*")
+	container.Lifecycle.PreStop = &corev1.Handler{
+		Exec: &corev1.ExecAction{
+			Command: []string{
+				"sh",
+				"-c",
+				`for s in $(ls ` + drainGlob + `); do
+					(
+						echo "Running drain script $s"
+						while true; do
+							out=$($s)
+							status=$?
+
+							if [ "$status" -ne "0" ]; then
+								echo "$s FAILED with exit code $status"
+								exit $status
+							fi
+
+							if [ "$out" -lt "0" ]; then
+								echo "Sleeping dynamic draining wait time for $s..."
+								sleep ${out:1}
+								echo "Running $s again"
+							else
+								echo "Sleeping static draining wait time for $s..."
+								sleep $out
+								echo "$s done"
+								exit 0
+							fi
+						done
+					)&
+				done
+				echo "Waiting..."
+				wait
+				echo "Done"`,
+			},
 		},
 	}
 
