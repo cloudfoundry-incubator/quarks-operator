@@ -70,23 +70,39 @@ Go 1.12.2 and install the tool chain:
 
     make tools
 
-### Prepare
+### Dependencies
+
+Run with libraries fetched via go modules:
 
     export GO111MODULE=on
 
-    # set to IP reachable from k8s API
-    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip -4 a s dev `ip r l 0/0 | cut -f5 -d' '` | grep -oP 'inet \K\S+(?=/)')
+Or with a vendor folder, using GO111MODULE=off, this also speeds up docker builds
 
-    # optionally, using vendor/ with GO111MODULE=off speeds up docker builds
-    go mod vendor
     export GO111MODULE=off
+    go mod vendor
+
+Or by checking out the versioned vendor git sub module
+
+    git submodule update --init
+
+### Prepare
+
+Setup environment variables, most importantly `CF_OPERATOR_WEBHOOK_SERVICE_HOST`.
+
+    # set to IP reachable from k8s API, e.g. on Linux:
+    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip -4 a s dev `ip r l 0/0 | tail -1 | cut -f5 -d' '` | grep -oP 'inet \K\S+(?=/)')
 
     # optionally, if using minikube, build the image directly on minikube's docker
     # eval `minikube docker-env`
 
 ### Start Operator Locally
 
+This will build the image and tag it with `$DOCKER_IMAGE_TAG`. If not set, the version will be calculated from Git information.
+Afterwards the operator is started out-of-cluster.
+
     make up
+
+Build and use the helm charts to run the operator in-cluster.
 
 ### Run Integration tests
 

@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,8 +49,13 @@ type Owner interface {
 	ListConfigsOwnedBy(context.Context, apis.Object) ([]apis.Object, error)
 }
 
+type Resolver interface {
+	WithOpsManifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, error)
+	LatestVersion(ctx context.Context, namespace string, manifestName string) string
+}
+
 // NewDeploymentReconciler returns a new reconcile.Reconciler
-func NewDeploymentReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc) reconcile.Reconciler {
+func NewDeploymentReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver Resolver, srf setReferenceFunc) reconcile.Reconciler {
 
 	return &ReconcileBOSHDeployment{
 		ctx:          ctx,
@@ -68,7 +74,7 @@ type ReconcileBOSHDeployment struct {
 	config       *config.Config
 	client       client.Client
 	scheme       *runtime.Scheme
-	resolver     bdm.Resolver
+	resolver     Resolver
 	setReference setReferenceFunc
 	owner        Owner
 }
@@ -107,7 +113,8 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Generate all the kube objects we need for the manifest
 	log.Debug(ctx, "Converting bosh manifest to kube objects")
-	jobFactory := bdm.NewJobFactory(*manifest, instance.GetNamespace())
+	version := r.resolver.LatestVersion(ctx, request.Namespace, manifest.Name)
+	jobFactory := bdm.NewJobFactory(*manifest, instance.GetNamespace(), version)
 
 	// Apply the "Variable Interpolation" ExtendedJob
 	eJob, err := jobFactory.VariableInterpolationJob()
@@ -154,9 +161,9 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 // createManifestWithOps creates a secret containing the deployment manifest with ops files applied
 func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, instance *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
 	log.Debug(ctx, "Resolving manifest")
-	manifest, err := r.resolver.ResolveManifest(instance, instance.GetNamespace())
+	manifest, err := r.resolver.WithOpsManifest(instance, instance.GetNamespace())
 	if err != nil {
-		return nil, log.WithEvent(instance, "ResolveManifestError").Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
+		return nil, log.WithEvent(instance, "WithOpsManifestError").Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
 	}
 
 	// Replace the name with the name of the BOSHDeployment resource

@@ -42,6 +42,22 @@ func (s DeploymentSecretType) String() string {
 		"bpm"}[s]
 }
 
+// DesiredManifestPrefix returns the prefix of the desired manifest's name:
+func DesiredManifestPrefix(deploymentName string) string {
+	return Sanitize(deploymentName) + "."
+}
+
+// DesiredManifestName returns the versioned name of the desired manifest
+// secret, e.g. 'test.desired-manifest-v1'
+func DesiredManifestName(deploymentName string, version string) string {
+	finalName := DesiredManifestPrefix(deploymentName) + "desired-manifest"
+	if version != "" {
+		finalName = fmt.Sprintf("%s-v%s", finalName, version)
+	}
+
+	return finalName
+}
+
 // CalculateSecretName generates a Secret name for a given name and a deployment
 func CalculateSecretName(secretType DeploymentSecretType, deploymentName, name string) string {
 	if name == "" {
@@ -60,18 +76,26 @@ func CalculateSecretName(secretType DeploymentSecretType, deploymentName, name s
 	return truncateMD5(secretName)
 }
 
-// CalculateEJobOutputSecretPrefixAndName generates a Secret prefix for the output
-// of an Extended Job given a name, and calculates the final Secret name,
-// given an instance group name
-func CalculateEJobOutputSecretPrefixAndName(secretType DeploymentSecretType, deploymentName string, igName string, versioned bool) (string, string) {
-	prefix := CalculateSecretName(secretType, deploymentName, "")
-	finalName := fmt.Sprintf("%s.%s", prefix, Sanitize(igName))
+// CalculateIGSecretName returns the name of a k8s secret:
+// `<deployment-name>.<secretType>.<instance-group>-v<version>` secret.
+//
+// These secrets are created by ExtendedJob and mounted on containers, e.g.
+// for the template rendering.
+func CalculateIGSecretName(secretType DeploymentSecretType, deploymentName string, igName string, version string) string {
+	prefix := CalculateIGSecretPrefix(secretType, deploymentName)
+	finalName := prefix + Sanitize(igName)
 
-	if versioned {
-		finalName = fmt.Sprintf("%s-v1", finalName)
+	if version != "" {
+		finalName = fmt.Sprintf("%s-v%s", finalName, version)
 	}
 
-	return prefix + ".", finalName
+	return finalName
+}
+
+// CalculateIGSecretPrefix returns the prefix used for our k8s secrets:
+// `<deployment-name>.<secretType>.
+func CalculateIGSecretPrefix(secretType DeploymentSecretType, deploymentName string) string {
+	return CalculateSecretName(secretType, deploymentName, "") + "."
 }
 
 var allowedKubeChars = regexp.MustCompile("[^-a-z0-9]*")

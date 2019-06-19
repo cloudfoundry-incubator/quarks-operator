@@ -15,12 +15,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
-const (
-	// VarInterpolationContainerName is the name of the container that performs
-	// variable interpolation for a manifest
-	VarInterpolationContainerName = "interpolation"
-)
-
 var (
 	vcapUserID int64 = 1000
 	admGroupID int64 = 1000
@@ -100,7 +94,7 @@ func (disks BPMResourceDisks) Volumes() []corev1.Volume {
 func (kc *KubeConverter) BPMResources(manifestName string, version string, instanceGroup *InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) (*BPMResources, error) {
 	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(manifestName, instanceGroup.Name, version)
 
-	defaultDisks := generateDefaultDisks(manifestName, instanceGroup, kc.namespace)
+	defaultDisks := generateDefaultDisks(manifestName, instanceGroup, version, kc.namespace)
 
 	bpmDisks, err := generateBPMDisks(manifestName, instanceGroup, bpmConfigs)
 	if err != nil {
@@ -113,7 +107,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 		Disks: allDisks,
 	}
 
-	cfac := NewContainerFactory(manifestName, instanceGroup.Name, releaseImageProvider, bpmConfigs)
+	cfac := NewContainerFactory(manifestName, instanceGroup.Name, version, releaseImageProvider, bpmConfigs)
 
 	switch instanceGroup.LifeCycle {
 	case "service", "":

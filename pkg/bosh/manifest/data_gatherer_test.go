@@ -130,7 +130,7 @@ var _ = Describe("DataGatherer", func() {
 			})
 		})
 
-		Describe("EnrichedManifest", func() {
+		Describe("ResolvedProperties", func() {
 			BeforeEach(func() {
 				m = env.ElaboratedBOSHManifest()
 				ig = "redis-slave"

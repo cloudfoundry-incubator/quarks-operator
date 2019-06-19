@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,13 +23,12 @@ import (
 var _ reconcile.Reconciler = &ReconcileGeneratedVariable{}
 
 // NewGeneratedVariableReconciler returns a new reconcile.Reconciler
-func NewGeneratedVariableReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc, kubeConverter *bdm.KubeConverter) reconcile.Reconciler {
+func NewGeneratedVariableReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, srf setReferenceFunc, kubeConverter *bdm.KubeConverter) reconcile.Reconciler {
 	return &ReconcileGeneratedVariable{
 		ctx:           ctx,
 		config:        config,
 		client:        mgr.GetClient(),
 		scheme:        mgr.GetScheme(),
-		resolver:      resolver,
 		setReference:  srf,
 		kubeConverter: kubeConverter,
 	}
@@ -41,7 +40,6 @@ type ReconcileGeneratedVariable struct {
 	config        *config.Config
 	client        client.Client
 	scheme        *runtime.Scheme
-	resolver      bdm.Resolver
 	setReference  setReferenceFunc
 	kubeConverter *bdm.KubeConverter
 }

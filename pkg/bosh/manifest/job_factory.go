@@ -27,19 +27,25 @@ const (
 	EnvBaseDir = "BASE_DIR"
 	// EnvVariablesDir is a key for the container Env used to lookup the variables dir
 	EnvVariablesDir = "VARIABLES_DIR"
+	// VarInterpolationContainerName is the name of the container that
+	// performs variable interpolation for a manifest. It's also part of
+	// the output secret's name
+	VarInterpolationContainerName = "desired-manifest"
 )
 
 // JobFactory creates Jobs for a given manifest
 type JobFactory struct {
-	Manifest  Manifest
-	Namespace string
+	Manifest            Manifest
+	Namespace           string
+	desiredManifestName string
 }
 
 // NewJobFactory returns a new JobFactory
-func NewJobFactory(manifest Manifest, namespace string) *JobFactory {
+func NewJobFactory(manifest Manifest, namespace string, version string) *JobFactory {
 	return &JobFactory{
-		Manifest:  manifest,
-		Namespace: namespace,
+		Manifest:            manifest,
+		Namespace:           namespace,
+		desiredManifestName: names.DesiredManifestName(manifest.Name, version),
 	}
 }
 
@@ -124,14 +130,7 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 		return nil, errors.Wrap(err, "could not calculate manifest SHA1")
 	}
 
-	outputSecretPrefix, _ := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeManifestAndVars,
-		f.Manifest.Name,
-		VarInterpolationContainerName,
-		false,
-	)
-
-	eJobName := fmt.Sprintf("vi-%s", f.Manifest.Name)
+	eJobName := fmt.Sprintf("dm-%s", f.Manifest.Name)
 
 	// Construct the var interpolation job
 	job := &ejv1.ExtendedJob{
@@ -175,7 +174,7 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 				},
 			},
 			Output: &ejv1.Output{
-				NamePrefix: outputSecretPrefix,
+				NamePrefix: names.DesiredManifestPrefix(f.Manifest.Name),
 				SecretLabels: map[string]string{
 					bdv1.LabelDeploymentName:       f.Manifest.Name,
 					bdv1.LabelManifestSHA1:         manifestSignature,
@@ -221,20 +220,13 @@ func (f *JobFactory) BPMConfigsJob() (*ejv1.ExtendedJob, error) {
 }
 
 func (f *JobFactory) gatheringContainer(cmd, instanceGroupName string) corev1.Container {
-	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeManifestAndVars,
-		f.Manifest.Name,
-		VarInterpolationContainerName,
-		true,
-	)
-
 	return corev1.Container{
 		Name:  names.Sanitize(instanceGroupName),
 		Image: GetOperatorDockerImage(),
 		Args:  []string{"util", cmd},
 		VolumeMounts: []corev1.VolumeMount{
 			{
-				Name:      generateVolumeName(interpolatedManifestSecretName),
+				Name:      generateVolumeName(f.desiredManifestName),
 				MountPath: "/var/run/secrets/deployment/",
 				ReadOnly:  true,
 			},
@@ -265,19 +257,7 @@ func (f *JobFactory) gatheringContainer(cmd, instanceGroupName string) corev1.Co
 }
 
 func (f *JobFactory) gatheringJob(name string, secretType names.DeploymentSecretType, containers []corev1.Container) (*ejv1.ExtendedJob, error) {
-	_, interpolatedManifestSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeManifestAndVars,
-		f.Manifest.Name,
-		VarInterpolationContainerName,
-		true,
-	)
-
-	outputSecretNamePrefix, _ := names.CalculateEJobOutputSecretPrefixAndName(
-		secretType,
-		f.Manifest.Name,
-		"",
-		false,
-	)
+	outputSecretNamePrefix := names.CalculateIGSecretPrefix(secretType, f.Manifest.Name)
 
 	initContainers := []corev1.Container{}
 	doneSpecCopyingReleases := map[string]bool{}
@@ -340,10 +320,10 @@ func (f *JobFactory) gatheringJob(name string, secretType names.DeploymentSecret
 					// Volumes for secrets
 					Volumes: []corev1.Volume{
 						{
-							Name: generateVolumeName(interpolatedManifestSecretName),
+							Name: generateVolumeName(f.desiredManifestName),
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
-									SecretName: interpolatedManifestSecretName,
+									SecretName: f.desiredManifestName,
 								},
 							},
 						},

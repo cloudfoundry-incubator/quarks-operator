@@ -28,7 +28,7 @@ var _ = Describe("Resolver", func() {
 		validOpsPath      string
 		invalidOpsPath    string
 
-		resolver         bdm.Resolver
+		resolver         *bdm.Resolver
 		client           client.Client
 		interpolator     *fakes.FakeInterpolator
 		remoteFileServer *ghttp.Server
@@ -233,7 +233,7 @@ instance_groups:
 				},
 			}
 
-			manifest, err := resolver.ResolveManifest(deployment, "default")
+			manifest, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -263,7 +263,7 @@ instance_groups:
 				},
 			}
 
-			manifest, err := resolver.ResolveManifest(deployment, "default")
+			manifest, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -289,7 +289,7 @@ instance_groups:
 				},
 			}
 
-			manifest, err := resolver.ResolveManifest(deployment, "default")
+			manifest, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -333,7 +333,7 @@ instance_groups:
 				},
 			}
 
-			manifest, err := resolver.ResolveManifest(deployment, "default")
+			manifest, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -387,7 +387,7 @@ instance_groups:
 				},
 			}
 
-			manifest, err := resolver.ResolveManifest(deployment, "default")
+			manifest, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -414,7 +414,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(deployment, "default")
+			_, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve manifest"))
 		})
@@ -428,7 +428,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(deployment, "default")
+			_, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("doesn't contain key manifest"))
 		})
@@ -442,7 +442,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(deployment, "default")
+			_, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("yaml: unmarshal errors"))
 		})
@@ -457,7 +457,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(deployment, "default")
+			_, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unrecognized manifest ref type"))
 		})
@@ -477,7 +477,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(deployment, "default")
+			_, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from configmap"))
 		})
@@ -497,7 +497,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(deployment, "default")
+			_, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("doesn't contain key ops"))
 		})
@@ -519,7 +519,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(deployment, "default")
+			_, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to build ops"))
 		})
@@ -540,7 +540,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(deployment, "default")
+			_, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to interpolate"))
 		})
@@ -561,7 +561,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(deployment, "default")
+			_, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unrecognized ops ref type"))
 		})
@@ -585,7 +585,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(deployment, "default")
+			_, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from configmap"))
 		})
@@ -609,7 +609,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(deployment, "default")
+			_, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from secret"))
 		})
@@ -637,7 +637,7 @@ instance_groups:
 					},
 				},
 			}
-			_, err := resolver.ResolveManifest(deployment, "default")
+			_, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from secret"))
@@ -656,7 +656,7 @@ instance_groups:
 					Ops: []bdc.Ops{},
 				},
 			}
-			m, err := resolver.ResolveManifest(deployment, "default")
+			m, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(m.Variables[1].Options.CommonName).To(Equal("example.com"))

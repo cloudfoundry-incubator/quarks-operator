@@ -15,11 +15,12 @@ var _ = Describe("JobFactory", func() {
 		factory *manifest.JobFactory
 		m       manifest.Manifest
 		env     testing.Catalog
+		version string
 	)
 
 	BeforeEach(func() {
 		m = env.DefaultBOSHManifest()
-		factory = manifest.NewJobFactory(m, "namespace")
+		factory = manifest.NewJobFactory(m, "namespace", version)
 	})
 
 	Describe("DataGatheringJob", func() {

@@ -65,7 +65,7 @@ var _ = Describe("kube converter", func() {
 					Expect(eJob.Name).To(Equal("foo-deployment-redis-slave"))
 					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
 					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, m.InstanceGroups[0].Name))
-					Expect(eJob.GetAnnotations()).To(HaveKeyWithValue(manifest.AnnotationDeploymentVersion, "1"))
+					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentVersion, "1"))
 					Expect(eJob.GetLabels()).To(HaveKeyWithValue("custom-label", "foo"))
 					Expect(eJob.GetAnnotations()).To(HaveKeyWithValue("custom-annotation", "bar"))
 
@@ -114,7 +114,7 @@ var _ = Describe("kube converter", func() {
 					Expect(extStS.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, "diego-cell")))
 					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
 					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, "diego-cell"))
-					Expect(extStS.GetAnnotations()).To(HaveKeyWithValue(manifest.AnnotationDeploymentVersion, "1"))
+					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentVersion, "1"))
 
 					stS := extStS.Spec.Template.Spec.Template
 					Expect(stS.Name).To(Equal("diego-cell"))
