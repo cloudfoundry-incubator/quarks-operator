@@ -264,7 +264,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					switch object := object.(type) {
 					case *ejv1.ExtendedJob:
 						eJob := object
-						if strings.HasPrefix(eJob.Name, "vi-") {
+						if strings.HasPrefix(eJob.Name, "dm-") {
 							return errors.New("fake-error")
 						}
 					}

@@ -130,7 +130,7 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 		return nil, errors.Wrap(err, "could not calculate manifest SHA1")
 	}
 
-	eJobName := fmt.Sprintf("vi-%s", f.Manifest.Name)
+	eJobName := fmt.Sprintf("dm-%s", f.Manifest.Name)
 
 	// Construct the var interpolation job
 	job := &ejv1.ExtendedJob{
