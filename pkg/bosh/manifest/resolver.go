@@ -38,10 +38,10 @@ func NewResolver(client client.Client, f NewInterpolatorFunc) *Resolver {
 	}
 }
 
-// ResolveManifest returns manifest referenced by our bdpl CRD
+// WithOpsManifest returns manifest referenced by our bdpl CRD
 // The resulting manifest has variables interpolated and ops files applied.
 // It is the 'with-ops' manifest.
-func (r *Resolver) ResolveManifest(instance *bdc.BOSHDeployment, namespace string) (*Manifest, error) {
+func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace string) (*Manifest, error) {
 	interpolator := r.newInterpolatorFunc()
 	spec := instance.Spec
 	manifest := &Manifest{}

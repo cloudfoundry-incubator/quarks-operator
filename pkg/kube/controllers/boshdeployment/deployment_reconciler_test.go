@@ -144,7 +144,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 	})
 
 	JustBeforeEach(func() {
-		resolver.ResolveManifestReturns(manifest, nil)
+		resolver.WithOpsManifestReturns(manifest, nil)
 		reconciler = cfd.NewDeploymentReconciler(ctx, config, manager,
 			&resolver, controllerutil.SetControllerReference,
 		)
@@ -173,21 +173,21 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles an error when resolving the BOSHDeployment", func() {
-				resolver.ResolveManifestReturns(nil, fmt.Errorf("resolver error"))
+				resolver.WithOpsManifestReturns(nil, fmt.Errorf("resolver error"))
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("resolver error"))
 
 				// check for events
-				Expect(<-recorder.Events).To(ContainSubstring("ResolveManifestError"))
+				Expect(<-recorder.Events).To(ContainSubstring("WithOpsManifestError"))
 			})
 		})
 
 		Context("when the manifest can be resolved", func() {
 			It("handles an error when resolving manifest", func() {
 				manifest = &bdm.Manifest{}
-				resolver.ResolveManifestReturns(manifest, errors.New("fake-error"))
+				resolver.WithOpsManifestReturns(manifest, errors.New("fake-error"))
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())

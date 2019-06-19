@@ -24,17 +24,17 @@ type FakeResolver struct {
 	latestVersionReturnsOnCall map[int]struct {
 		result1 string
 	}
-	ResolveManifestStub        func(*v1alpha1.BOSHDeployment, string) (*manifest.Manifest, error)
-	resolveManifestMutex       sync.RWMutex
-	resolveManifestArgsForCall []struct {
+	WithOpsManifestStub        func(*v1alpha1.BOSHDeployment, string) (*manifest.Manifest, error)
+	withOpsManifestMutex       sync.RWMutex
+	withOpsManifestArgsForCall []struct {
 		arg1 *v1alpha1.BOSHDeployment
 		arg2 string
 	}
-	resolveManifestReturns struct {
+	withOpsManifestReturns struct {
 		result1 *manifest.Manifest
 		result2 error
 	}
-	resolveManifestReturnsOnCall map[int]struct {
+	withOpsManifestReturnsOnCall map[int]struct {
 		result1 *manifest.Manifest
 		result2 error
 	}
@@ -104,65 +104,65 @@ func (fake *FakeResolver) LatestVersionReturnsOnCall(i int, result1 string) {
 	}{result1}
 }
 
-func (fake *FakeResolver) ResolveManifest(arg1 *v1alpha1.BOSHDeployment, arg2 string) (*manifest.Manifest, error) {
-	fake.resolveManifestMutex.Lock()
-	ret, specificReturn := fake.resolveManifestReturnsOnCall[len(fake.resolveManifestArgsForCall)]
-	fake.resolveManifestArgsForCall = append(fake.resolveManifestArgsForCall, struct {
+func (fake *FakeResolver) WithOpsManifest(arg1 *v1alpha1.BOSHDeployment, arg2 string) (*manifest.Manifest, error) {
+	fake.withOpsManifestMutex.Lock()
+	ret, specificReturn := fake.withOpsManifestReturnsOnCall[len(fake.withOpsManifestArgsForCall)]
+	fake.withOpsManifestArgsForCall = append(fake.withOpsManifestArgsForCall, struct {
 		arg1 *v1alpha1.BOSHDeployment
 		arg2 string
 	}{arg1, arg2})
-	fake.recordInvocation("ResolveManifest", []interface{}{arg1, arg2})
-	fake.resolveManifestMutex.Unlock()
-	if fake.ResolveManifestStub != nil {
-		return fake.ResolveManifestStub(arg1, arg2)
+	fake.recordInvocation("WithOpsManifest", []interface{}{arg1, arg2})
+	fake.withOpsManifestMutex.Unlock()
+	if fake.WithOpsManifestStub != nil {
+		return fake.WithOpsManifestStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.resolveManifestReturns
+	fakeReturns := fake.withOpsManifestReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *FakeResolver) ResolveManifestCallCount() int {
-	fake.resolveManifestMutex.RLock()
-	defer fake.resolveManifestMutex.RUnlock()
-	return len(fake.resolveManifestArgsForCall)
+func (fake *FakeResolver) WithOpsManifestCallCount() int {
+	fake.withOpsManifestMutex.RLock()
+	defer fake.withOpsManifestMutex.RUnlock()
+	return len(fake.withOpsManifestArgsForCall)
 }
 
-func (fake *FakeResolver) ResolveManifestCalls(stub func(*v1alpha1.BOSHDeployment, string) (*manifest.Manifest, error)) {
-	fake.resolveManifestMutex.Lock()
-	defer fake.resolveManifestMutex.Unlock()
-	fake.ResolveManifestStub = stub
+func (fake *FakeResolver) WithOpsManifestCalls(stub func(*v1alpha1.BOSHDeployment, string) (*manifest.Manifest, error)) {
+	fake.withOpsManifestMutex.Lock()
+	defer fake.withOpsManifestMutex.Unlock()
+	fake.WithOpsManifestStub = stub
 }
 
-func (fake *FakeResolver) ResolveManifestArgsForCall(i int) (*v1alpha1.BOSHDeployment, string) {
-	fake.resolveManifestMutex.RLock()
-	defer fake.resolveManifestMutex.RUnlock()
-	argsForCall := fake.resolveManifestArgsForCall[i]
+func (fake *FakeResolver) WithOpsManifestArgsForCall(i int) (*v1alpha1.BOSHDeployment, string) {
+	fake.withOpsManifestMutex.RLock()
+	defer fake.withOpsManifestMutex.RUnlock()
+	argsForCall := fake.withOpsManifestArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeResolver) ResolveManifestReturns(result1 *manifest.Manifest, result2 error) {
-	fake.resolveManifestMutex.Lock()
-	defer fake.resolveManifestMutex.Unlock()
-	fake.ResolveManifestStub = nil
-	fake.resolveManifestReturns = struct {
+func (fake *FakeResolver) WithOpsManifestReturns(result1 *manifest.Manifest, result2 error) {
+	fake.withOpsManifestMutex.Lock()
+	defer fake.withOpsManifestMutex.Unlock()
+	fake.WithOpsManifestStub = nil
+	fake.withOpsManifestReturns = struct {
 		result1 *manifest.Manifest
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeResolver) ResolveManifestReturnsOnCall(i int, result1 *manifest.Manifest, result2 error) {
-	fake.resolveManifestMutex.Lock()
-	defer fake.resolveManifestMutex.Unlock()
-	fake.ResolveManifestStub = nil
-	if fake.resolveManifestReturnsOnCall == nil {
-		fake.resolveManifestReturnsOnCall = make(map[int]struct {
+func (fake *FakeResolver) WithOpsManifestReturnsOnCall(i int, result1 *manifest.Manifest, result2 error) {
+	fake.withOpsManifestMutex.Lock()
+	defer fake.withOpsManifestMutex.Unlock()
+	fake.WithOpsManifestStub = nil
+	if fake.withOpsManifestReturnsOnCall == nil {
+		fake.withOpsManifestReturnsOnCall = make(map[int]struct {
 			result1 *manifest.Manifest
 			result2 error
 		})
 	}
-	fake.resolveManifestReturnsOnCall[i] = struct {
+	fake.withOpsManifestReturnsOnCall[i] = struct {
 		result1 *manifest.Manifest
 		result2 error
 	}{result1, result2}
@@ -173,8 +173,8 @@ func (fake *FakeResolver) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.latestVersionMutex.RLock()
 	defer fake.latestVersionMutex.RUnlock()
-	fake.resolveManifestMutex.RLock()
-	defer fake.resolveManifestMutex.RUnlock()
+	fake.withOpsManifestMutex.RLock()
+	defer fake.withOpsManifestMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

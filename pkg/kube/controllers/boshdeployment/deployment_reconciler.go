@@ -50,7 +50,7 @@ type Owner interface {
 }
 
 type Resolver interface {
-	ResolveManifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, error)
+	WithOpsManifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, error)
 	LatestVersion(ctx context.Context, namespace string, manifestName string) string
 }
 
@@ -161,9 +161,9 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 // createManifestWithOps creates a secret containing the deployment manifest with ops files applied
 func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, instance *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
 	log.Debug(ctx, "Resolving manifest")
-	manifest, err := r.resolver.ResolveManifest(instance, instance.GetNamespace())
+	manifest, err := r.resolver.WithOpsManifest(instance, instance.GetNamespace())
 	if err != nil {
-		return nil, log.WithEvent(instance, "ResolveManifestError").Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
+		return nil, log.WithEvent(instance, "WithOpsManifestError").Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
 	}
 
 	// Replace the name with the name of the BOSHDeployment resource
