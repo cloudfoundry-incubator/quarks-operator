@@ -381,7 +381,7 @@ var _ = Describe("kube converter", func() {
 			var bpmConfigs []bpm.Configs
 
 			BeforeEach(func() {
-				m = *env.BOSHManifestWithPersistentDisk()
+				m = *env.BOSHManifestWithBPMRelease()
 
 				c, err := bpm.NewConfig([]byte(boshreleases.EnablePersistentDiskBPMConfig))
 				Expect(err).ShouldNot(HaveOccurred())
@@ -429,7 +429,7 @@ var _ = Describe("kube converter", func() {
 			var bpmConfigs []bpm.Configs
 
 			BeforeEach(func() {
-				m = *env.BOSHManifestWithPersistentDisk()
+				m = *env.BOSHManifestWithBPMRelease()
 
 				c, err := bpm.NewConfig([]byte(boshreleases.EnablePersistentDiskBPMConfig))
 				Expect(err).ShouldNot(HaveOccurred())
@@ -471,7 +471,7 @@ var _ = Describe("kube converter", func() {
 			})
 
 			It("handles error when instance group doesn't have persistent disk declaration", func() {
-				m = *env.BOSHManifestWithBPMRelease()
+				m = *env.BOSHManifestWithoutPersistentDisk()
 
 				_, err := act(bpmConfigs[0], m.InstanceGroups[0])
 				Expect(err).Should(HaveOccurred())

@@ -414,6 +414,7 @@ instance_groups:
         - name: alt-test-server
           protocol: TCP
           internal: 1338
+  persistent_disk: 1024
 `
 
 // CFRouting uses the cf-routing release
@@ -490,8 +491,8 @@ const GardenRunc = `
           timestamp: "rfc3339"
 `
 
-// PersistentDiskRelease contains persistent disk declaration
-const PersistentDiskRelease = `
+// BPMReleaseWithoutPersistentDisk doesn't container persistent disk declaration
+const BPMReleaseWithoutPersistentDisk = `
 name: bpm
 
 releases:
@@ -517,5 +518,4 @@ instance_groups:
         - name: alt-test-server
           protocol: TCP
           internal: 1338
-  persistent_disk: 1024
 `

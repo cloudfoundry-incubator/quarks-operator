@@ -120,9 +120,9 @@ func (c *Catalog) BOSHManifestWithBPMRelease() *manifest.Manifest {
 	return m
 }
 
-// BOSHManifestWithPersistentDisk returns a manifest with persistent disk declaration
-func (c *Catalog) BOSHManifestWithPersistentDisk() *manifest.Manifest {
-	m, err := manifest.LoadYAML([]byte(bm.PersistentDiskRelease))
+// BOSHManifestWithoutPersistentDisk returns a manifest with persistent disk declaration
+func (c *Catalog) BOSHManifestWithoutPersistentDisk() *manifest.Manifest {
+	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithoutPersistentDisk))
 	if err != nil {
 		panic(err)
 	}
