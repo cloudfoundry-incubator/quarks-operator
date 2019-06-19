@@ -96,7 +96,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 
 	defaultDisks := generateDefaultDisks(manifestName, instanceGroup, version, kc.namespace)
 
-	bpmDisks, err := generateBPMDisks(manifestName, instanceGroup, bpmConfigs)
+	bpmDisks, err := generateBPMDisks(manifestName, instanceGroup, bpmConfigs, kc.namespace)
 	if err != nil {
 		return nil, err
 	}

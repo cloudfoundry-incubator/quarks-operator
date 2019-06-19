@@ -74,6 +74,11 @@ func (c *ContainerFactory) JobsToInitContainers(
 		if len(ephemeralDisks) > 0 {
 			ephemeralMount = ephemeralDisks[0].VolumeMount
 		}
+		var persistentDiskMount *corev1.VolumeMount
+		persistentDiskDisks := jobDisks.Filter("persistent", "true")
+		if len(persistentDiskDisks) > 0 {
+			persistentDiskMount = persistentDiskDisks[0].VolumeMount
+		}
 
 		for _, process := range bpmConfig.Processes {
 			if process.Hooks.PreStart != "" {
@@ -85,6 +90,9 @@ func (c *ContainerFactory) JobsToInitContainers(
 				processVolumeMounts := append(defaultVolumeMounts, bpmVolumeMounts...)
 				if ephemeralMount != nil {
 					processVolumeMounts = append(processVolumeMounts, *ephemeralMount)
+				}
+				if persistentDiskMount != nil {
+					processVolumeMounts = append(processVolumeMounts, *persistentDiskMount)
 				}
 				container := bpmPreStartInitContainer(
 					process,
@@ -156,6 +164,11 @@ func (c *ContainerFactory) JobsToContainers(
 		if len(ephemeralDisks) > 0 {
 			ephemeralMount = ephemeralDisks[0].VolumeMount
 		}
+		var persistentDiskMount *corev1.VolumeMount
+		persistentDiskDisks := jobDisks.Filter("persistent", "true")
+		if len(persistentDiskDisks) > 0 {
+			persistentDiskMount = persistentDiskDisks[0].VolumeMount
+		}
 
 		for _, process := range bpmConfig.Processes {
 			processDisks := jobDisks.Filter("process_name", process.Name)
@@ -166,6 +179,9 @@ func (c *ContainerFactory) JobsToContainers(
 			processVolumeMounts := append(defaultVolumeMounts, bpmVolumeMounts...)
 			if ephemeralMount != nil {
 				processVolumeMounts = append(processVolumeMounts, *ephemeralMount)
+			}
+			if persistentDiskMount != nil {
+				processVolumeMounts = append(processVolumeMounts, *persistentDiskMount)
 			}
 
 			container := bpmProcessContainer(
