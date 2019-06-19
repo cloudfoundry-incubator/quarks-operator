@@ -417,7 +417,7 @@ instance_groups:
   persistent_disk: 1024
 `
 
-// CFRouting uses the cf-routing release
+// CFRouting BOSH release is being tested for BOSH pre hook
 const CFRouting = `
 name: routing
 
@@ -431,7 +431,7 @@ releases:
 
 instance_groups:
 - name: route_registrar
-  instances: 1
+  instances: 2
   jobs:
   - name: route_registrar
     release: routing

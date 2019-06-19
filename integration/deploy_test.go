@@ -129,7 +129,7 @@ var _ = Describe("Deploy", func() {
 	Context("when BPM has pre-start hooks configured", func() {
 		It("should run pre-start script in an init container", func() {
 
-			By("Checking is minikube is present")
+			By("Checking if minikube is present")
 			_, err := exec.Command("type -a minikube").Output()
 			if err == nil {
 				Skip("Skipping because this test is not supported in minikube")
@@ -156,6 +156,34 @@ var _ = Describe("Deploy", func() {
 			pod := pods.Items[1]
 			Expect(pod.Spec.InitContainers).To(HaveLen(5))
 			Expect(pod.Spec.InitContainers[4].Command[0]).To(Equal("/var/vcap/jobs/garden/bin/bpm-pre-start"))
+		})
+	})
+
+	Context("when BOSH has pre-start hooks configured", func() {
+		It("should run pre-start script in an init container", func() {
+
+			tearDown, err := env.CreateConfigMap(env.Namespace, corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: "cfrouting-manifest"},
+				Data:       map[string]string{"manifest": bm.CFRouting},
+			})
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test-bph", "cfrouting-manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			By("checking for pod")
+			err = env.WaitForPod(env.Namespace, "test-bph-route-registrar-v1-1")
+			Expect(err).NotTo(HaveOccurred())
+
+			By("checking for containers")
+			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=route_registrar")
+			Expect(len(pods.Items)).To(Equal(2))
+
+			pod := pods.Items[1]
+			Expect(pod.Spec.InitContainers).To(HaveLen(4))
+			Expect(pod.Spec.InitContainers[3].Name).To(Equal("bosh-pre-start-route-registrar"))
 		})
 	})
 
