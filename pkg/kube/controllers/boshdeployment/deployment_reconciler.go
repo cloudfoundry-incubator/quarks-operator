@@ -206,7 +206,7 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 // createEJob creates a an EJob and sets ownership
 func (r *ReconcileBOSHDeployment) createEJob(ctx context.Context, instance *bdv1.BOSHDeployment, eJob *ejv1.ExtendedJob) error {
 	if err := r.setReference(instance, eJob, r.scheme); err != nil {
-		return fmt.Errorf("Failed to set ownerReference for ExtendedJob '%s': %v", eJob.GetName(), err)
+		return fmt.Errorf("failed to set ownerReference for ExtendedJob '%s': %v", eJob.GetName(), err)
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
