@@ -27,11 +27,9 @@ const (
 )
 
 var (
-	cliPath      string
-	stopOperator environment.StopFunc
-	nsIndex      int
-	nsTeardown   environment.TearDownFunc
-	namespace    string
+	nsIndex    int
+	nsTeardown environment.TearDownFunc
+	namespace  string
 )
 
 func FailAndCollectDebugInfo(description string, callerSkip ...int) {
