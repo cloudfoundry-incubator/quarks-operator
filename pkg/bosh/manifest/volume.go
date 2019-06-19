@@ -195,7 +195,7 @@ func generateBPMDisks(manifestName string, instanceGroup *InstanceGroup, bpmConf
 			for i, additionalVolume := range process.AdditionalVolumes {
 				match := rAdditionalVolumes.MatchString(additionalVolume.Path)
 				if !match {
-					return nil, fmt.Errorf("The %s path, must be a path inside"+
+					return nil, fmt.Errorf("the %s path, must be a path inside"+
 						" /var/vcap/data, /var/vcap/store or /var/vcap/sys/run, for a path outside these,"+
 						" you must use the unrestricted_volumes key", additionalVolume.Path)
 				}
@@ -225,7 +225,7 @@ func generateBPMDisks(manifestName string, instanceGroup *InstanceGroup, bpmConf
 			for i, unrestrictedVolume := range process.Unsafe.UnrestrictedVolumes {
 				match := rAdditionalVolumes.MatchString(unrestrictedVolume.Path)
 				if match {
-					return nil, fmt.Errorf("The %s path, must be a path outside"+
+					return nil, fmt.Errorf("the %s path, must be a path outside"+
 						" /var/vcap/data, /var/vcap/store or /var/vcap/sys/run, for a path inside these,"+
 						" you must use the additional_volumes key", unrestrictedVolume.Path)
 				}

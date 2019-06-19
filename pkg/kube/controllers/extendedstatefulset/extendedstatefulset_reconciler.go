@@ -22,7 +22,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
-	podutil "code.cloudfoundry.org/cf-operator/pkg/kube/util/pod"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
@@ -276,37 +275,6 @@ func (r *ReconcileExtendedStatefulSet) getActualStatefulSet(ctx context.Context,
 	}
 
 	return result, maxVersion, nil
-}
-
-// isStatefulSetReady returns true if one owned Pod is running
-func (r *ReconcileExtendedStatefulSet) isStatefulSetReady(ctx context.Context, statefulSet *v1beta2.StatefulSet) (bool, error) {
-	labelsSelector := labels.Set{
-		v1beta2.StatefulSetRevisionLabel: statefulSet.Status.CurrentRevision,
-	}
-
-	podList := &corev1.PodList{}
-	err := r.client.List(
-		ctx,
-		&client.ListOptions{
-			Namespace:     statefulSet.Namespace,
-			LabelSelector: labelsSelector.AsSelector(),
-		},
-		podList,
-	)
-	if err != nil {
-		return false, err
-	}
-
-	for _, pod := range podList.Items {
-		if metav1.IsControlledBy(&pod, statefulSet) {
-			if podutil.IsPodReady(&pod) {
-				ctxlog.Debug(ctx, "Pod '", statefulSet.Name, "' owned by StatefulSet '", statefulSet.Name, "' is running.")
-				return true, nil
-			}
-		}
-	}
-
-	return false, nil
 }
 
 // generateSingleStatefulSet creates a StatefulSet from one zone
