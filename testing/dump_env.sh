@@ -26,10 +26,19 @@ function get_containers_of_pod() {
   kubectl get pods "${POD}" --namespace "${NS}" --output=jsonpath='{.spec.containers[*].name}'
 }
 
+function get_init_containers_of_pod() {
+  kubectl get pods "${POD}" --namespace "${NS}" --output=jsonpath='{.spec.initContainers[*].name}'
+}
+
 function retrieve_container_kube_logs() {
   printf " Kube logs"
   kubectl logs "${POD}" --namespace "${NS}" --container "${CONTAINER}"            > "${CONTAINER_DIR}/kube.log"
   kubectl logs "${POD}" --namespace "${NS}" --container "${CONTAINER}" --previous > "${CONTAINER_DIR}/kube-previous.log"
+}
+
+function retrieve_init_container_kube_logs() {
+  printf " Kube logs"
+  kubectl logs "${POD}" --namespace "${NS}" --container "${INITCONTAINER}"            > "${INIT_CONTAINER_DIR}/kube.log"
 }
 
 function get_all_resources() {
@@ -95,11 +104,23 @@ for POD in "${PODS[@]}"; do
   # Iterate over containers and dump logs.
   CONTAINERS=($(get_containers_of_pod))
   for CONTAINER in "${CONTAINERS[@]}"; do
-    printf "  - \e[0;32m${CONTAINER}\e[0m logs:"
+    printf "  container - \e[0;32m${CONTAINER}\e[0m logs:"
 
     CONTAINER_DIR="${POD_DIR}/${CONTAINER}"
     mkdir -p ${CONTAINER_DIR}
     retrieve_container_kube_logs 2> /dev/null || true
+
+    printf "\n"
+  done
+
+  # Iterate over initContainers and dump logs.
+  INITCONTAINERS=($(get_init_containers_of_pod))
+  for INITCONTAINER in "${INITCONTAINERS[@]}"; do
+    printf "  initContainer - \e[0;32m${INITCONTAINER}\e[0m logs:"
+
+    INIT_CONTAINER_DIR="${POD_DIR}/init-containers/${INITCONTAINER}"
+    mkdir -p ${INIT_CONTAINER_DIR}
+    retrieve_init_container_kube_logs 2> /dev/null || true
 
     printf "\n"
   done

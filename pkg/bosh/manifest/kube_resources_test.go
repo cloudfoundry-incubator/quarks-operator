@@ -84,7 +84,7 @@ var _ = Describe("kube converter", func() {
 					// Test init containers in the extended job
 					Expect(specCopierInitContainer.Name).To(Equal("spec-copier-redis"))
 					Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
-					Expect(specCopierInitContainer.Command[0]).To(Equal("bash"))
+					Expect(specCopierInitContainer.Command[0]).To(Equal("/bin/sh"))
 					Expect(rendererInitContainer.Image).To(Equal("/:"))
 					Expect(rendererInitContainer.Name).To(Equal("renderer-redis-slave"))
 
@@ -130,7 +130,7 @@ var _ = Describe("kube converter", func() {
 					// Test init containers in the extended statefulSet
 					Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3"))
 					Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
-					Expect(specCopierInitContainer.Command[0]).To(Equal("bash"))
+					Expect(specCopierInitContainer.Command[0]).To(Equal("/bin/sh"))
 					Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3"))
 					Expect(rendererInitContainer.Image).To(Equal("/:"))
 					Expect(rendererInitContainer.Name).To(Equal("renderer-diego-cell"))

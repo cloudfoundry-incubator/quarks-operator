@@ -461,7 +461,7 @@ var _ = Describe("ContainerFactory", func() {
 				containers, err := act()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(containers).To(HaveLen(6))
-				Expect(containers[5].Command).To(ContainElement("fake-cmd"))
+				Expect(containers[5].Args).To(ContainElement("fake-cmd"))
 			})
 
 			It("generates hook init containers with bpm volumes for ephemeral disk", func() {
