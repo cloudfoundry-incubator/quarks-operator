@@ -407,10 +407,9 @@ var _ = Describe("kube converter", func() {
 					Expect(stS.Spec.Containers[0].VolumeMounts[9].SubPath).To(Equal("test-server"))
 
 					// Test share pod spec volumes
-					Expect(len(stS.Spec.Volumes)).To(Equal(12))
-
-					Expect(stS.Spec.Volumes[11].Name).To(Equal("store-dir"))
-					Expect(stS.Spec.Volumes[11].PersistentVolumeClaim.ClaimName).To(Equal("bpm-bpm-pvc"))
+					Expect(len(stS.Spec.Volumes)).To(Equal(11))
+					Expect(stS.Spec.Volumes[6].Name).To(Equal("store-dir"))
+					Expect(stS.Spec.Volumes[6].PersistentVolumeClaim.ClaimName).To(Equal("bpm-bpm-pvc"))
 
 					// Test disks
 					disks := resources.Disks
@@ -455,10 +454,9 @@ var _ = Describe("kube converter", func() {
 				Expect(stS.Spec.Containers[0].VolumeMounts[9].SubPath).To(Equal("test-server"))
 
 				// Test share pod spec volumes
-				Expect(len(stS.Spec.Volumes)).To(Equal(12))
-
-				Expect(stS.Spec.Volumes[11].Name).To(Equal("store-dir"))
-				Expect(stS.Spec.Volumes[11].PersistentVolumeClaim.ClaimName).To(Equal("bpm-bpm-pvc"))
+				Expect(len(stS.Spec.Volumes)).To(Equal(11))
+				Expect(stS.Spec.Volumes[6].Name).To(Equal("store-dir"))
+				Expect(stS.Spec.Volumes[6].PersistentVolumeClaim.ClaimName).To(Equal("bpm-bpm-pvc"))
 
 				// Test disks
 				disks := resources.Disks

@@ -273,18 +273,8 @@ func generateBPMDisks(manifestName string, instanceGroup *InstanceGroup, bpmConf
 					" but instance group '%s' doesn't have any persistent disk declaration", job.Name, instanceGroup.Name)
 			}
 
-			// Specify the job sub-path inside of the instance group PVC
-			persistentVolumeClaim := generatePersistentVolumeClaim(manifestName, instanceGroup, namespace)
-
+			// Specify the job sub-path inside of the instance group PV
 			bpmPersistentDisk := BPMResourceDisk{
-				Volume: &corev1.Volume{
-					Name: VolumeStoreDirName,
-					VolumeSource: corev1.VolumeSource{
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: persistentVolumeClaim.Name,
-						},
-					},
-				},
 				VolumeMount: &corev1.VolumeMount{
 					Name:      fmt.Sprintf("%s-%s", VolumeStoreDirName, job.Name),
 					MountPath: path.Join(VolumeStoreDirMountPath, job.Name),
@@ -315,7 +305,7 @@ func generateVolumeName(secretName string) string {
 }
 
 func generatePersistentVolumeClaim(manifestName string, instanceGroup *InstanceGroup, namespace string) corev1.PersistentVolumeClaim {
-	// Spec of a persistent volumeclaim.
+	// Spec of a persistentVolumeClaim
 	persistentVolumeClaim := corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s-%s", manifestName, instanceGroup.Name, "pvc"),

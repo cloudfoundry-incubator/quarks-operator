@@ -72,10 +72,6 @@ var _ = Describe("ContainerFactory", func() {
 				},
 			},
 			{
-				Volume: &corev1.Volume{
-					Name:         fmt.Sprintf("%s-%s", VolumeStoreDirName, "fake-job"),
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-				},
 				VolumeMount: &corev1.VolumeMount{
 					Name:      fmt.Sprintf("%s-%s", VolumeStoreDirName, "fake-job"),
 					MountPath: path.Join(VolumeStoreDirMountPath, "fake-job"),
@@ -87,10 +83,6 @@ var _ = Describe("ContainerFactory", func() {
 				},
 			},
 			{
-				Volume: &corev1.Volume{
-					Name:         fmt.Sprintf("%s-%s", VolumeStoreDirName, "other-job"),
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-				},
 				VolumeMount: &corev1.VolumeMount{
 					Name:      fmt.Sprintf("%s-%s", VolumeStoreDirName, "other-job"),
 					MountPath: path.Join(VolumeStoreDirMountPath, "other-job"),
