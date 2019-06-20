@@ -102,7 +102,7 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 	if !reflect.DeepEqual(ejv1.Output{}, ej.Spec.Output) && ej.Spec.Output != nil {
 		if instance.Status.Succeeded == 1 || (instance.Status.Failed == 1 && ej.Spec.Output.WriteOnFailure) {
 			ctxlog.WithEvent(&ej, "PersistingOutput").Infof(ctx, "Persisting output of job '%s'", instance.Name)
-			err = r.persistOutput(ctx, instance, ej.Spec.Output)
+			err = r.persistOutput(ctx, instance, ej)
 			if err != nil {
 				ctxlog.WithEvent(instance, "PersistOutputError").Errorf(ctx, "Could not persist output: '%s'", err)
 				return reconcile.Result{}, err
@@ -165,7 +165,10 @@ func (r *ReconcileJob) jobPod(ctx context.Context, name string, namespace string
 	return &list.Items[0], nil
 }
 
-func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job, conf *ejv1.Output) error {
+func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job, ejob ejv1.ExtendedJob) error {
+
+	conf := ejob.Spec.Output
+
 	pod, err := r.jobPod(ctx, instance.GetName(), instance.GetNamespace())
 	if err != nil {
 		return errors.Wrap(err, "failed to persist output")
@@ -206,7 +209,7 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 		if conf.Versioned {
 
 			// Use secretName as versioned secret name prefix: <secretName>-v<version>
-			err = r.versionedSecretStore.Create(ctx, instance.GetNamespace(), secretName, data, secretLabels, "created by extendedJob")
+			err = r.versionedSecretStore.Create(ctx, instance.GetNamespace(), ejob, secretName, data, secretLabels, "created by extendedJob")
 			if err != nil {
 				return errors.Wrap(err, "could not create secret")
 			}

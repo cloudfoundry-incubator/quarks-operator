@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	corev1 "k8s.io/api/core/v1"
@@ -48,7 +49,7 @@ var _ VersionedSecretStore = &VersionedSecretStoreImpl{}
 // the Custom Resource Definition that generated it.
 type VersionedSecretStore interface {
 	SetSecretReferences(ctx context.Context, namespace string, podSpec *corev1.PodSpec) error
-	Create(ctx context.Context, namespace string, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error
+	Create(ctx context.Context, namespace string, ejob ejv1.ExtendedJob, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error
 	Get(ctx context.Context, namespace string, secretName string, version int) (*corev1.Secret, error)
 	Latest(ctx context.Context, namespace string, secretName string) (*corev1.Secret, error)
 	List(ctx context.Context, namespace string, secretName string) ([]corev1.Secret, error)
@@ -126,7 +127,7 @@ func (p VersionedSecretStoreImpl) SetSecretReferences(ctx context.Context, names
 }
 
 // Create creates a new version of the secret from secret data
-func (p VersionedSecretStoreImpl) Create(ctx context.Context, namespace string, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error {
+func (p VersionedSecretStoreImpl) Create(ctx context.Context, namespace string, eJob ejv1.ExtendedJob, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error {
 	currentVersion, err := p.getGreatestVersion(ctx, namespace, secretName)
 	if err != nil {
 		return err
@@ -141,6 +142,9 @@ func (p VersionedSecretStoreImpl) Create(ctx context.Context, namespace string, 
 		return err
 	}
 
+	isBlockOwnerDeletion := false
+	isController := false
+
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generatedSecretName,
@@ -148,6 +152,16 @@ func (p VersionedSecretStoreImpl) Create(ctx context.Context, namespace string, 
 			Labels:    labels,
 			Annotations: map[string]string{
 				AnnotationSourceDescription: sourceDescription,
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Name:               "ExtendedJob",
+					APIVersion:         "fissile.cloudfoundry.org/v1alpha1",
+					BlockOwnerDeletion: &isBlockOwnerDeletion,
+					UID:                eJob.GetUID(),
+					Kind:               "ExtendedJob",
+					Controller:         &isController,
+				},
 			},
 		},
 		StringData: secretData,
