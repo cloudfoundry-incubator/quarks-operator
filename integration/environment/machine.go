@@ -656,7 +656,7 @@ func (m *Machine) CheckExtendedStatefulSetVersion(namespace string, name string,
 	return false, err
 }
 
-// UpdateExtendedStatefulSet creates a ExtendedStatefulSet custom resource and returns a function to delete it
+// UpdateExtendedStatefulSet updates a ExtendedStatefulSet custom resource and returns a function to delete it
 func (m *Machine) UpdateExtendedStatefulSet(namespace string, ess essv1.ExtendedStatefulSet) (*essv1.ExtendedStatefulSet, TearDownFunc, error) {
 	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
 	d, err := client.Update(&ess)

@@ -11,7 +11,6 @@ import (
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 var _ = Describe("ExtendedStatefulSet", func() {
@@ -36,7 +35,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 	AfterEach(func() {
 		Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
 		Expect(env.WaitForPVCsDelete(env.Namespace)).To(Succeed())
-		Expect(env.WaitForPVsDelete(labels.Set(map[string]string{"cf-operator-tests": "true"}).String())).To(Succeed())
 	})
 
 	Context("when correctly setup", func() {

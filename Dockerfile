@@ -6,9 +6,7 @@ RUN cd /go/src/code.cloudfoundry.org/cf-operator && \
     make build && \
     cp -p binaries/cf-operator /usr/local/bin/cf-operator
 
-FROM opensuse/leap:15.1
-RUN zypper -n in system-user-nobody ruby
-RUN gem install bosh-template
+FROM cfcontainerization/cf-operator-base
 USER nobody
 COPY --from=build /usr/local/bin/cf-operator /usr/local/bin/cf-operator
 ENTRYPOINT ["cf-operator"]
