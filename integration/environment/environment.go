@@ -205,7 +205,7 @@ func getNamespace(node int32) string {
 }
 
 func getWebhookServicePort(node int32) (int32, error) {
-	port := int64(2998)
+	port := int64(29980)
 	portString, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_PORT")
 	if found {
 		var err error

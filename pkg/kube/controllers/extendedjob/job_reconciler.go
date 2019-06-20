@@ -206,7 +206,15 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 		if conf.Versioned {
 
 			// Use secretName as versioned secret name prefix: <secretName>-v<version>
-			err = r.versionedSecretStore.Create(ctx, instance.GetNamespace(), secretName, data, secretLabels, "created by extendedJob")
+			err = r.versionedSecretStore.Create(
+				ctx,
+				instance.GetNamespace(),
+				instance.Name,
+				instance.UID,
+				secretName,
+				data,
+				secretLabels,
+				"created by extendedJob")
 			if err != nil {
 				return errors.Wrap(err, "could not create secret")
 			}
