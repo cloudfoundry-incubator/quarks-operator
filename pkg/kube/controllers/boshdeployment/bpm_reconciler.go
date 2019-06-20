@@ -26,10 +26,14 @@ import (
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
+type DesiredManifest interface {
+	ReadDesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error)
+}
+
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 
 // NewBPMReconciler returns a new reconcile.Reconciler
-func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver bdm.Resolver, srf setReferenceFunc, kubeConverter *bdm.KubeConverter) reconcile.Reconciler {
+func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver DesiredManifest, srf setReferenceFunc, kubeConverter *bdm.KubeConverter) reconcile.Reconciler {
 	return &ReconcileBPM{
 		ctx:           ctx,
 		config:        config,
@@ -47,7 +51,7 @@ type ReconcileBPM struct {
 	config        *config.Config
 	client        client.Client
 	scheme        *runtime.Scheme
-	resolver      bdm.Resolver
+	resolver      DesiredManifest
 	setReference  setReferenceFunc
 	kubeConverter *bdm.KubeConverter
 }
@@ -170,7 +174,7 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 
 // deployInstanceGroups create or update ExtendedJobs and ExtendedStatefulSets for instance groups
 func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.BOSHDeployment, instanceGroupName string, resources *bdm.BPMResources) error {
-	log.Debugf(ctx, "Creating extendedJobs and extendedStatefulSets for secret group '%s'", instanceGroupName)
+	log.Debugf(ctx, "Creating extendedJobs and extendedStatefulSets for instance group '%s'", instanceGroupName)
 
 	for _, eJob := range resources.Errands {
 		if eJob.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
@@ -255,6 +259,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 }
 
 func (r *ReconcileBPM) createPersistentVolumeClaim(ctx context.Context, persistentVolumeClaim corev1.PersistentVolumeClaim) error {
+	log.Debugf(ctx, "Creating persistentVolumeClaim '%s'", persistentVolumeClaim.Name)
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.client, persistentVolumeClaim.DeepCopy(), func(obj runtime.Object) error {
 		if existingPVC, ok := obj.(*corev1.PersistentVolumeClaim); ok {

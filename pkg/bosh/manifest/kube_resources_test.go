@@ -65,7 +65,7 @@ var _ = Describe("kube converter", func() {
 					Expect(eJob.Name).To(Equal("foo-deployment-redis-slave"))
 					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
 					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, m.InstanceGroups[0].Name))
-					Expect(eJob.GetAnnotations()).To(HaveKeyWithValue(manifest.AnnotationDeploymentVersion, "1"))
+					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentVersion, "1"))
 					Expect(eJob.GetLabels()).To(HaveKeyWithValue("custom-label", "foo"))
 					Expect(eJob.GetAnnotations()).To(HaveKeyWithValue("custom-annotation", "bar"))
 
@@ -79,7 +79,7 @@ var _ = Describe("kube converter", func() {
 					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[4].Name).To(Equal("bpm-additional-volume-redis-server-test-server-0"))
 					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[5].Name).To(Equal("bpm-additional-volume-redis-server-test-server-1"))
 					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[6].Name).To(Equal("bpm-unrestricted-volume-redis-server-test-server-0"))
-					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[7].Name).To(Equal("bpm-ephemeral-disk-redis-server"))
+					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[7].Name).To(Equal("bpm-ephemeral-disk"))
 
 					// Test init containers in the extended job
 					Expect(specCopierInitContainer.Name).To(Equal("spec-copier-redis"))
@@ -114,7 +114,7 @@ var _ = Describe("kube converter", func() {
 					Expect(extStS.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, "diego-cell")))
 					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
 					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, "diego-cell"))
-					Expect(extStS.GetAnnotations()).To(HaveKeyWithValue(manifest.AnnotationDeploymentVersion, "1"))
+					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentVersion, "1"))
 
 					stS := extStS.Spec.Template.Spec.Template
 					Expect(stS.Name).To(Equal("diego-cell"))
@@ -136,43 +136,38 @@ var _ = Describe("kube converter", func() {
 					Expect(rendererInitContainer.Name).To(Equal("renderer-diego-cell"))
 
 					// Test shared volume setup
-					Expect(len(stS.Spec.Containers[0].VolumeMounts)).To(Equal(9))
+					Expect(len(stS.Spec.Containers[0].VolumeMounts)).To(Equal(8))
 					Expect(stS.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
 					Expect(stS.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-					Expect(stS.Spec.Containers[0].VolumeMounts[4].Name).To(Equal("store-dir"))
-					Expect(stS.Spec.Containers[0].VolumeMounts[4].MountPath).To(Equal("/var/vcap/store"))
-					Expect(stS.Spec.Containers[0].VolumeMounts[5].Name).To(Equal("bpm-additional-volume-cflinuxfs3-rootfs-setup-test-server-0"))
-					Expect(stS.Spec.Containers[0].VolumeMounts[5].MountPath).To(Equal("/var/vcap/data/shared"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[4].Name).To(Equal("bpm-additional-volume-cflinuxfs3-rootfs-setup-test-server-0"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[4].MountPath).To(Equal("/var/vcap/data/shared"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[4].ReadOnly).To(Equal(false))
+					Expect(stS.Spec.Containers[0].VolumeMounts[5].Name).To(Equal("bpm-additional-volume-cflinuxfs3-rootfs-setup-test-server-1"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[5].MountPath).To(Equal("/var/vcap/store/foo"))
 					Expect(stS.Spec.Containers[0].VolumeMounts[5].ReadOnly).To(Equal(false))
-					Expect(stS.Spec.Containers[0].VolumeMounts[6].Name).To(Equal("bpm-additional-volume-cflinuxfs3-rootfs-setup-test-server-1"))
-					Expect(stS.Spec.Containers[0].VolumeMounts[6].MountPath).To(Equal("/var/vcap/store/foo"))
-					Expect(stS.Spec.Containers[0].VolumeMounts[6].ReadOnly).To(Equal(false))
-					Expect(stS.Spec.Containers[0].VolumeMounts[7].Name).To(Equal("bpm-unrestricted-volume-cflinuxfs3-rootfs-setup-test-server-0"))
-					Expect(stS.Spec.Containers[0].VolumeMounts[7].MountPath).To(Equal("/dev/log"))
-					Expect(stS.Spec.Containers[0].VolumeMounts[8].Name).To(Equal("bpm-ephemeral-disk-cflinuxfs3-rootfs-setup"))
-					Expect(stS.Spec.Containers[0].VolumeMounts[8].MountPath).To(Equal("/var/vcap/data/cflinuxfs3-rootfs-setup"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[6].Name).To(Equal("bpm-unrestricted-volume-cflinuxfs3-rootfs-setup-test-server-0"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[6].MountPath).To(Equal("/dev/log"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[7].Name).To(Equal("bpm-ephemeral-disk"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[7].MountPath).To(Equal("/var/vcap/data/cflinuxfs3-rootfs-setup"))
 					Expect(specCopierInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
 					Expect(specCopierInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 					Expect(rendererInitContainer.VolumeMounts[0].Name).To(Equal("rendering-data"))
 					Expect(rendererInitContainer.VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 
 					// Test share pod spec volumes
-					Expect(len(stS.Spec.Volumes)).To(Equal(11))
+					Expect(len(stS.Spec.Volumes)).To(Equal(10))
 
-					Expect(stS.Spec.Volumes[6].Name).To(Equal("store-dir"))
-					Expect(stS.Spec.Volumes[6].PersistentVolumeClaim.ClaimName).To(Equal("foo-deployment-diego-cell-pvc"))
+					Expect(stS.Spec.Volumes[6].Name).To(Equal("bpm-additional-volume-cflinuxfs3-rootfs-setup-test-server-0"))
+					Expect(stS.Spec.Volumes[6].EmptyDir).To(Equal(&corev1.EmptyDirVolumeSource{}))
 
-					Expect(stS.Spec.Volumes[7].Name).To(Equal("bpm-additional-volume-cflinuxfs3-rootfs-setup-test-server-0"))
+					Expect(stS.Spec.Volumes[7].Name).To(Equal("bpm-additional-volume-cflinuxfs3-rootfs-setup-test-server-1"))
 					Expect(stS.Spec.Volumes[7].EmptyDir).To(Equal(&corev1.EmptyDirVolumeSource{}))
 
-					Expect(stS.Spec.Volumes[8].Name).To(Equal("bpm-additional-volume-cflinuxfs3-rootfs-setup-test-server-1"))
+					Expect(stS.Spec.Volumes[8].Name).To(Equal("bpm-unrestricted-volume-cflinuxfs3-rootfs-setup-test-server-0"))
 					Expect(stS.Spec.Volumes[8].EmptyDir).To(Equal(&corev1.EmptyDirVolumeSource{}))
 
-					Expect(stS.Spec.Volumes[9].Name).To(Equal("bpm-unrestricted-volume-cflinuxfs3-rootfs-setup-test-server-0"))
+					Expect(stS.Spec.Volumes[9].Name).To(Equal("bpm-ephemeral-disk"))
 					Expect(stS.Spec.Volumes[9].EmptyDir).To(Equal(&corev1.EmptyDirVolumeSource{}))
-
-					Expect(stS.Spec.Volumes[10].Name).To(Equal("bpm-ephemeral-disk-cflinuxfs3-rootfs-setup"))
-					Expect(stS.Spec.Volumes[10].EmptyDir).To(Equal(&corev1.EmptyDirVolumeSource{}))
 
 					// Test the renderer container setup
 					Expect(rendererInitContainer.Env[0].Name).To(Equal("INSTANCE_GROUP_NAME"))
@@ -374,6 +369,109 @@ var _ = Describe("kube converter", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(resources.InstanceGroups).To(HaveLen(1))
 				})
+			})
+		})
+
+		Context("when the instance group contains a persistent disk declaration", func() {
+			var bpmConfigs []bpm.Configs
+
+			BeforeEach(func() {
+				m = *env.BOSHManifestWithBPMRelease()
+
+				c, err := bpm.NewConfig([]byte(boshreleases.EnablePersistentDiskBPMConfig))
+				Expect(err).ShouldNot(HaveOccurred())
+
+				bpmConfigs = []bpm.Configs{
+					{"test-server": c},
+				}
+
+			})
+
+			Context("when the lifecycle is set to service", func() {
+				It("converts the disks and volume declarations", func() {
+					resources, err := act(bpmConfigs[0], m.InstanceGroups[0])
+					Expect(err).ShouldNot(HaveOccurred())
+
+					extStS := resources.InstanceGroups[0]
+					stS := extStS.Spec.Template.Spec.Template
+
+					// Test shared volume setup
+					Expect(len(stS.Spec.Containers[0].VolumeMounts)).To(Equal(9))
+					Expect(stS.Spec.Containers[0].VolumeMounts[8].Name).To(Equal("store-dir"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[8].MountPath).To(Equal("/var/vcap/store/test-server"))
+					Expect(stS.Spec.Containers[0].VolumeMounts[8].SubPath).To(Equal("test-server"))
+
+					// Test share pod spec volumes
+					Expect(len(stS.Spec.Volumes)).To(Equal(11))
+					Expect(stS.Spec.Volumes[10].Name).To(Equal("store-dir"))
+					Expect(stS.Spec.Volumes[10].PersistentVolumeClaim.ClaimName).To(Equal("bpm-bpm-pvc"))
+
+					// Test disks
+					disks := resources.Disks
+					Expect(disks[10].PersistentVolumeClaim).NotTo(Equal(nil))
+					Expect(disks[10].VolumeMount.Name).To(Equal("store-dir"))
+					Expect(disks[10].VolumeMount.MountPath).To(Equal("/var/vcap/store/test-server"))
+
+					persistentDisks := disks.Filter("persistent", "true")
+					Expect(persistentDisks[0].VolumeMount.Name).To(Equal("store-dir"))
+					Expect(persistentDisks[0].VolumeMount.MountPath).To(Equal("/var/vcap/store/test-server"))
+					Expect(persistentDisks[0].VolumeMount.SubPath).To(Equal("test-server"))
+				})
+			})
+		})
+
+		Context("when the job contains a persistent disk declaration", func() {
+			var bpmConfigs []bpm.Configs
+
+			BeforeEach(func() {
+				m = *env.BOSHManifestWithBPMRelease()
+
+				c, err := bpm.NewConfig([]byte(boshreleases.EnablePersistentDiskBPMConfig))
+				Expect(err).ShouldNot(HaveOccurred())
+
+				bpmConfigs = []bpm.Configs{
+					{"test-server": c},
+				}
+
+			})
+
+			It("converts the disks and volume declarations when instance group has persistent disk declaration", func() {
+				resources, err := act(bpmConfigs[0], m.InstanceGroups[0])
+				Expect(err).ShouldNot(HaveOccurred())
+
+				extStS := resources.InstanceGroups[0]
+				stS := extStS.Spec.Template.Spec.Template
+
+				// Test shared volume setup
+				Expect(len(stS.Spec.Containers[0].VolumeMounts)).To(Equal(9))
+				Expect(stS.Spec.Containers[0].VolumeMounts[8].Name).To(Equal("store-dir"))
+				Expect(stS.Spec.Containers[0].VolumeMounts[8].MountPath).To(Equal("/var/vcap/store/test-server"))
+				Expect(stS.Spec.Containers[0].VolumeMounts[8].SubPath).To(Equal("test-server"))
+
+				// Test share pod spec volumes
+				Expect(len(stS.Spec.Volumes)).To(Equal(11))
+				Expect(stS.Spec.Volumes[10].Name).To(Equal("store-dir"))
+				Expect(stS.Spec.Volumes[10].PersistentVolumeClaim.ClaimName).To(Equal("bpm-bpm-pvc"))
+
+				// Test disks
+				disks := resources.Disks
+				Expect(disks[10].PersistentVolumeClaim).NotTo(Equal(nil))
+				Expect(disks[10].VolumeMount.Name).To(Equal("store-dir"))
+				Expect(disks[10].VolumeMount.MountPath).To(Equal("/var/vcap/store/test-server"))
+
+				persistentDisks := disks.Filter("persistent", "true")
+				Expect(persistentDisks[0].VolumeMount.Name).To(Equal("store-dir"))
+				Expect(persistentDisks[0].VolumeMount.MountPath).To(Equal("/var/vcap/store/test-server"))
+				Expect(persistentDisks[0].VolumeMount.SubPath).To(Equal("test-server"))
+			})
+
+			It("handles error when instance group doesn't have persistent disk declaration", func() {
+				m = *env.BOSHManifestWithoutPersistentDisk()
+
+				_, err := act(bpmConfigs[0], m.InstanceGroups[0])
+				Expect(err).Should(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("job '%s' wants to use persistent disk"+
+					" but instance group '%s' doesn't have any persistent disk declaration", "test-server", "bpm")))
 			})
 		})
 	})

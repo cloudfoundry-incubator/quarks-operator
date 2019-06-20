@@ -24,16 +24,14 @@ var (
 	// LabelInstanceGroup is a label for persisted secrets, identifying
 	// the instance group they belong to
 	LabelInstanceGroup = fmt.Sprintf("%s/instance-group", apis.GroupName)
-)
 
-const (
 	// LabelExtendedJob key for label used to identify extendedjob. Value
 	// is set to true if the batchv1.Job is from an ExtendedJob
-	LabelExtendedJob = "extendedjob"
+	LabelExtendedJob = fmt.Sprintf("%s/extendedjob", apis.GroupName)
 	// LabelEJobName key for label on a batchv1.Job's pod, which is set to the ExtendedJob's name
-	LabelEJobName = "ejob-name"
+	LabelEJobName = fmt.Sprintf("%s/ejob-name", apis.GroupName)
 	// LabelTriggeringPod key for label, which is set to the UID of the pod that triggered an ExtendedJob
-	LabelTriggeringPod = "triggering-pod"
+	LabelTriggeringPod = fmt.Sprintf("%s/triggering-pod", apis.GroupName)
 )
 
 // ExtendedJobSpec defines the desired state of ExtendedJob

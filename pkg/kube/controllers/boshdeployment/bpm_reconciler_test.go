@@ -40,7 +40,7 @@ var _ = Describe("ReconcileBPM", func() {
 		recorder                  *record.FakeRecorder
 		request                   reconcile.Request
 		ctx                       context.Context
-		resolver                  fakes.FakeResolver
+		resolver                  fakes.FakeDesiredManifest
 		manifest                  *bdm.Manifest
 		log                       *zap.SugaredLogger
 		config                    *cfcfg.Config
@@ -56,7 +56,7 @@ var _ = Describe("ReconcileBPM", func() {
 		manager = &cfakes.FakeManager{}
 		manager.GetSchemeReturns(scheme.Scheme)
 		manager.GetRecorderReturns(recorder)
-		resolver = fakes.FakeResolver{}
+		resolver = fakes.FakeDesiredManifest{}
 		size := 1024
 
 		manifest = &bdm.Manifest{
@@ -114,7 +114,7 @@ var _ = Describe("ReconcileBPM", func() {
 
 		manifestWithVars = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo.with-vars.interpolation-v1",
+				Name:      "foo.desired-manifest-v1",
 				Namespace: "default",
 				Labels: map[string]string{
 					bdv1.LabelDeploymentName:             "foo",
@@ -225,7 +225,6 @@ variables: []
 	})
 
 	JustBeforeEach(func() {
-		resolver.ResolveManifestReturns(manifest, nil)
 		resolver.ReadDesiredManifestReturns(manifest, nil)
 		reconciler = cfd.NewBPMReconciler(ctx, config, manager, &resolver,
 			controllerutil.SetControllerReference, bdm.NewKubeConverter(config.Namespace),

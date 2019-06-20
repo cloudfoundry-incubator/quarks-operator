@@ -2,10 +2,12 @@ package kube_test
 
 import (
 	b64 "encoding/base64"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
 
 	. "github.com/onsi/ginkgo"
@@ -43,10 +45,10 @@ var _ = Describe("Examples", func() {
 				err = kubectlHelper.Wait(namespace, "ready", "pod/foo-pod-1")
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.WaitLabelFilter(namespace, "ready", "pod", "ejob-name=ready-triggered-sleep")
+				err = kubectlHelper.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("%s=ready-triggered-sleep", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", "ejob-name=ready-triggered-sleep")
+				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=ready-triggered-sleep", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -72,7 +74,7 @@ var _ = Describe("Examples", func() {
 				err = kubectlHelper.DeleteResource(namespace, "pod", "foo-pod-1")
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", "ejob-name=delete-triggered-sleep")
+				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=delete-triggered-sleep", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -183,10 +185,10 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
-				err = kubectlHelper.WaitLabelFilter(namespace, "ready", "pod", "ejob-name=deletes-pod-1")
+				err = kubectlHelper.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("%s=deletes-pod-1", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.WaitLabelFilter(namespace, "terminate", "pod", "ejob-name=deletes-pod-1")
+				err = kubectlHelper.WaitLabelFilter(namespace, "terminate", "pod", fmt.Sprintf("%s=deletes-pod-1", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -199,10 +201,10 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
-				err = kubectlHelper.WaitLabelFilter(namespace, "ready", "pod", "ejob-name=one-time-sleep")
+				err = kubectlHelper.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("%s=one-time-sleep", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", "ejob-name=one-time-sleep")
+				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=one-time-sleep", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -215,14 +217,14 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
-				err = kubectlHelper.WaitLabelFilter(namespace, "ready", "pod", "ejob-name=auto-errand-sleep-again")
+				err = kubectlHelper.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", "ejob-name=auto-errand-sleep-again")
+				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Delete the pod")
-				err = kubectlHelper.DeleteLabelFilter(namespace, "pod", "ejob-name=auto-errand-sleep-again")
+				err = kubectlHelper.DeleteLabelFilter(namespace, "pod", fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Update the config change")
@@ -231,10 +233,10 @@ var _ = Describe("Examples", func() {
 				err = kubectlHelper.Apply(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.WaitLabelFilter(namespace, "ready", "pod", "ejob-name=auto-errand-sleep-again")
+				err = kubectlHelper.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", "ejob-name=auto-errand-sleep-again")
+				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -254,10 +256,10 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
-				err = kubectlHelper.WaitLabelFilter(namespace, "ready", "pod", "ejob-name=manual-sleep")
+				err = kubectlHelper.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("%s=manual-sleep", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", "ejob-name=manual-sleep")
+				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=manual-sleep", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -270,7 +272,7 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
-				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", "ejob-name=myfoo")
+				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=myfoo", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for secret")

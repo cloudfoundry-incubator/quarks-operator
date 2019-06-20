@@ -24,7 +24,7 @@ var _ = Describe("Deploy", func() {
 	})
 
 	Context("when using the default configuration", func() {
-		podName := "test-nats-v1-0"
+		podName := "test-nats-v1-1"
 		stsName := "test-nats-v1"
 		headlessSvcName := "test-nats"
 		clusterIpSvcName := "test-nats-0"
@@ -129,7 +129,7 @@ var _ = Describe("Deploy", func() {
 	Context("when BPM has pre-start hooks configured", func() {
 		It("should run pre-start script in an init container", func() {
 
-			By("Checking is minikube is present")
+			By("Checking if minikube is present")
 			_, err := exec.Command("type -a minikube").Output()
 			if err == nil {
 				Skip("Skipping because this test is not supported in minikube")
@@ -159,6 +159,34 @@ var _ = Describe("Deploy", func() {
 		})
 	})
 
+	Context("when BOSH has pre-start hooks configured", func() {
+		It("should run pre-start script in an init container", func() {
+
+			tearDown, err := env.CreateConfigMap(env.Namespace, corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: "cfrouting-manifest"},
+				Data:       map[string]string{"manifest": bm.CFRouting},
+			})
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test-bph", "cfrouting-manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			By("checking for pod")
+			err = env.WaitForPod(env.Namespace, "test-bph-route-registrar-v1-1")
+			Expect(err).NotTo(HaveOccurred())
+
+			By("checking for containers")
+			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=route_registrar")
+			Expect(len(pods.Items)).To(Equal(2))
+
+			pod := pods.Items[1]
+			Expect(pod.Spec.InitContainers).To(HaveLen(4))
+			Expect(pod.Spec.InitContainers[3].Name).To(Equal("bosh-pre-start-route-registrar"))
+		})
+	})
+
 	Context("when job name contains an underscore", func() {
 		var tearDowns []environment.TearDownFunc
 
@@ -179,12 +207,12 @@ var _ = Describe("Deploy", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			By("waiting for deployment to succeed, by checking for a pod")
-			err = env.WaitForPod(env.Namespace, "test-bdpl-route-registrar-v1-0")
+			err = env.WaitForPod(env.Namespace, "test-bdpl-route-registrar-v1-1")
 			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 
 			By("checking for containers")
 			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=route_registrar")
-			Expect(len(pods.Items)).To(Equal(1))
+			Expect(len(pods.Items)).To(Equal(2))
 			Expect(pods.Items[0].Spec.Containers).To(HaveLen(1))
 			Expect(pods.Items[0].Spec.Containers[0].Name).To(Equal("route-registrar-route-registrar"))
 		})
@@ -262,7 +290,7 @@ var _ = Describe("Deploy", func() {
 				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 			})
 
-			It("should update the deployment", func() {
+			It("should update the deployment and respect the instance count", func() {
 				ops, err := env.GetConfigMap(env.Namespace, "bosh-ops")
 				Expect(err).NotTo(HaveOccurred())
 				ops.Data["ops"] = `- type: replace
@@ -272,15 +300,11 @@ var _ = Describe("Deploy", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				By("checking if the deployment was updated")
-				err = env.WaitForPod(env.Namespace, "test-nats-v2-0")
+				err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "2", 2)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 
-				// TODO pass some time so v1 disappears, idea: check for v2 only
-				time.Sleep(60 * time.Second)
-
-				pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=nats")
+				pods, _ := env.GetInstanceGroupPods(env.Namespace, "test", "nats", "2")
 				Expect(len(pods.Items)).To(Equal(2))
-
 			})
 		})
 	})
@@ -325,7 +349,7 @@ var _ = Describe("Deploy", func() {
 			By("checking for events")
 			events, err := env.GetBOSHDeploymentEvents(env.Namespace, boshDeployment.ObjectMeta.Name, string(boshDeployment.ObjectMeta.UID))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(env.ContainExpectedEvent(events, "ResolveManifestError", "failed to interpolate")).To(BeTrue())
+			Expect(env.ContainExpectedEvent(events, "WithOpsManifestError", "failed to interpolate")).To(BeTrue())
 		})
 
 		It("failed to deploy a empty manifest", func() {

@@ -11,6 +11,7 @@ import (
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
 )
 
 var _ = Describe("Lifecycle", func() {
@@ -87,6 +88,29 @@ var _ = Describe("Lifecycle", func() {
 			// Check link address
 			Expect(env.WaitForPodLogMsg(env.Namespace, "testcr-nats-v1-0", fmt.Sprintf("Trying to connect to route on %s.%s.svc.cluster.local:4223", clusterIPService.Name, env.Namespace))).To(BeNil(), "error getting logs for connecting nats route")
 			Expect(env.WaitForPodLogMatchRegexp(env.Namespace, "testcr-nats-v1-0", fmt.Sprintf(`%s:4223 - [\w:]+ - Route connection created`, clusterIPService.Spec.ClusterIP))).To(BeNil(), "error getting logs for resolving nats route address")
+		})
+
+		It("executes the job's drain scripts", func() {
+			cm := env.DefaultBOSHManifestConfigMap("manifest")
+			cm.Data["manifest"] = bm.Drains
+			tearDown, err := env.CreateConfigMap(env.Namespace, cm)
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, boshDeployment)
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			err = env.WaitForPod(env.Namespace, "testcr-drains-v1-0")
+			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from initial deployment")
+
+			Expect(env.WaitForPodContainerLogMsg(env.Namespace, "testcr-drains-v1-0", "delaying-drain-job-drain-watch", "ls: cannot access '/tmp/drain_logs': No such file or directory")).To(BeNil(), "error getting logs from drain_watch process")
+
+			go env.DeleteBOSHDeployment(env.Namespace, boshDeployment.Name)
+
+			// Check for files created by the drain scripts
+			Expect(env.WaitForPodContainerLogMsg(env.Namespace, "testcr-drains-v1-0", "delaying-drain-job-drain-watch", "delaying-drain-job.log")).To(BeNil(), "error finding file created by drain script")
+			Expect(env.WaitForPodContainerLogMsg(env.Namespace, "testcr-drains-v1-0", "failing-drain-job-drain-watch", "failing-drain-job.log")).To(BeNil(), "error finding file created by drain script")
 		})
 	})
 

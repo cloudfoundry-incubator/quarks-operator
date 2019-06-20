@@ -111,6 +111,24 @@ func (c *Catalog) BOSHManifestCFRouting() *manifest.Manifest {
 	return m
 }
 
+// BOSHManifestWithBPMRelease returns a manifest with single BPM configuration
+func (c *Catalog) BOSHManifestWithBPMRelease() *manifest.Manifest {
+	m, err := manifest.LoadYAML([]byte(bm.BPMRelease))
+	if err != nil {
+		panic(err)
+	}
+	return m
+}
+
+// BOSHManifestWithoutPersistentDisk returns a manifest with persistent disk declaration
+func (c *Catalog) BOSHManifestWithoutPersistentDisk() *manifest.Manifest {
+	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithoutPersistentDisk))
+	if err != nil {
+		panic(err)
+	}
+	return m
+}
+
 // DefaultBOSHManifestConfigMap for tests
 func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{

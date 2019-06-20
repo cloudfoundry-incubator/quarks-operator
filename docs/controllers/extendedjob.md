@@ -36,7 +36,7 @@ E.g. when a `Pod` is created, deleted, transitioned to **ready** or a
 The execution of `ExtendedJob` can be limited to pods with certain labels.
 
 A separate native k8s `Job` is started for every pod that changes. The `Job`
-has a label `triggering-pod: uid` to identify which pod it is running for.
+has a label `fissile.cloudfoundry.org/triggering-pod: uid` to identify which pod it is running for.
 
 `ExtendedJob` does not trigger for pods from other `Jobs`. This is done by checking if
 a pod has a label `job-name`. The `job-name` label is [assigned by Kubernetes](https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/) to `Job` `Pods`.

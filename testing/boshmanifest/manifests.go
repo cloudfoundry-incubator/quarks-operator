@@ -122,6 +122,26 @@ instance_groups:
           internal: 4223
 `
 
+// Drains is a small manifest with jobs that include drain scripts
+const Drains = `---
+name: my-manifest
+releases:
+- name: cf-operator-testing
+  version: "0.0.2"
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 36.g03b4653-30.80-7.0.0_332.g0d8469bb
+instance_groups:
+- name: drains
+  instances: 1
+  jobs:
+  - name: failing-drain-job
+    release: cf-operator-testing
+  - name: delaying-drain-job
+    release: cf-operator-testing
+`
+
 const Elaborated = `name: foo-deployment
 stemcells:
 - alias: default
@@ -414,9 +434,10 @@ instance_groups:
         - name: alt-test-server
           protocol: TCP
           internal: 1338
+  persistent_disk: 1024
 `
 
-// CFRouting uses the cf-routing release
+// CFRouting BOSH release is being tested for BOSH pre hook
 const CFRouting = `
 name: routing
 
@@ -430,7 +451,7 @@ releases:
 
 instance_groups:
 - name: route_registrar
-  instances: 1
+  instances: 2
   jobs:
   - name: route_registrar
     release: routing
@@ -488,4 +509,33 @@ const GardenRunc = `
       logging:
         format:
           timestamp: "rfc3339"
-  `
+`
+
+// BPMReleaseWithoutPersistentDisk doesn't container persistent disk declaration
+const BPMReleaseWithoutPersistentDisk = `
+name: bpm
+
+releases:
+- name: bpm
+  version: 1.0.4
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 36.g03b4653-30.80-7.0.0_316.gcf9fe4a7
+
+instance_groups:
+- name: bpm
+  instances: 1
+  jobs:
+  - name: test-server
+    release: bpm
+    properties:
+      bosh_containerization:
+        ports:
+        - name: test-server
+          protocol: TCP
+          internal: 1337
+        - name: alt-test-server
+          protocol: TCP
+          internal: 1338
+`

@@ -1,15 +1,11 @@
 package environment
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
-	"go.uber.org/zap/zaptest/observer"
 	"k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -99,34 +95,6 @@ func (m *Machine) WaitForPods(namespace string, labels string) error {
 func (m *Machine) WaitForPodFailures(namespace string, labels string) error {
 	return wait.PollImmediate(5*time.Second, m.pollTimeout, func() (bool, error) {
 		return m.PodsFailing(namespace, labels)
-	})
-}
-
-// WaitForPodLogMsg searches pod test logs for at least one occurrence of msg.
-func (m *Machine) WaitForPodLogMsg(namespace string, podName string, msg string) error {
-	return wait.Poll(5*time.Second, m.pollTimeout, func() (bool, error) {
-		logs, err := m.GetPodLogs(namespace, podName)
-		return strings.Contains(logs, msg), err
-	})
-}
-
-// WaitForPodLogMatchRegexp searches pod test logs for at least one occurrence of Regexp.
-func (m *Machine) WaitForPodLogMatchRegexp(namespace string, podName string, regExp string) error {
-	r, _ := regexp.Compile(regExp)
-
-	return wait.Poll(5*time.Second, m.pollTimeout, func() (bool, error) {
-		logs, err := m.GetPodLogs(namespace, podName)
-		return r.MatchString(logs), err
-	})
-}
-
-// WaitForLogMsg searches zap test logs for at least one occurrence of msg.
-// When using this, tests should use FlushLog() to remove log messages from
-// other tests.
-func (m *Machine) WaitForLogMsg(logs *observer.ObservedLogs, msg string) error {
-	return wait.Poll(5*time.Second, m.pollTimeout, func() (bool, error) {
-		n := logs.FilterMessageSnippet(msg).Len()
-		return n > 0, nil
 	})
 }
 
@@ -405,6 +373,18 @@ func (m *Machine) PodsRunning(namespace string, labels string) (bool, error) {
 	return true, nil
 }
 
+// PodCount returns the number of matching pods
+func (m *Machine) PodCount(namespace string, labels string) (int, error) {
+	pods, err := m.Clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{
+		LabelSelector: labels,
+	})
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed to query for pod by labels: %v", labels)
+	}
+
+	return len(pods.Items), nil
+}
+
 // GetPods returns all the pods selected by labels
 func (m *Machine) GetPods(namespace string, labels string) (*corev1.PodList, error) {
 	pods, err := m.Clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{
@@ -676,7 +656,7 @@ func (m *Machine) CheckExtendedStatefulSetVersion(namespace string, name string,
 	return false, err
 }
 
-// UpdateExtendedStatefulSet creates a ExtendedStatefulSet custom resource and returns a function to delete it
+// UpdateExtendedStatefulSet updates a ExtendedStatefulSet custom resource and returns a function to delete it
 func (m *Machine) UpdateExtendedStatefulSet(namespace string, ess essv1.ExtendedStatefulSet) (*essv1.ExtendedStatefulSet, TearDownFunc, error) {
 	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
 	d, err := client.Update(&ess)
@@ -953,27 +933,6 @@ func (m *Machine) ExtendedJobExists(namespace string, name string) (bool, error)
 	}
 
 	return true, nil
-}
-
-// GetPodLogs gets pod logs
-func (m *Machine) GetPodLogs(namespace, podName string) (string, error) {
-	podLogOpts := corev1.PodLogOptions{}
-
-	req := m.Clientset.CoreV1().Pods(namespace).GetLogs(podName, &podLogOpts)
-	podLogs, err := req.Stream()
-	if err != nil {
-		return "", errors.Wrapf(err, "error opening log stream for pod")
-	}
-	defer podLogs.Close()
-
-	buf := new(bytes.Buffer)
-	_, err = io.Copy(buf, podLogs)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to copy bytes from the pod log to a buffer")
-	}
-	str := buf.String()
-
-	return str, nil
 }
 
 // TearDownAll calls all passed in tear down functions in order

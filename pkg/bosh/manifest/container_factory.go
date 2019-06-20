@@ -21,15 +21,17 @@ const (
 type ContainerFactory struct {
 	manifestName         string
 	instanceGroupName    string
+	version              string
 	releaseImageProvider ReleaseImageProvider
 	bpmConfigs           bpm.Configs
 }
 
 // NewContainerFactory returns a new ContainerFactory for a BOSH instant group
-func NewContainerFactory(manifestName string, instanceGroupName string, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactory {
+func NewContainerFactory(manifestName string, instanceGroupName string, version string, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactory {
 	return &ContainerFactory{
 		manifestName:         manifestName,
 		instanceGroupName:    instanceGroupName,
+		version:              version,
 		releaseImageProvider: releaseImageProvider,
 		bpmConfigs:           bpmConfigs,
 	}
@@ -72,6 +74,11 @@ func (c *ContainerFactory) JobsToInitContainers(
 		if len(ephemeralDisks) > 0 {
 			ephemeralMount = ephemeralDisks[0].VolumeMount
 		}
+		var persistentDiskMount *corev1.VolumeMount
+		persistentDiskDisks := jobDisks.Filter("persistent", "true")
+		if len(persistentDiskDisks) > 0 {
+			persistentDiskMount = persistentDiskDisks[0].VolumeMount
+		}
 
 		for _, process := range bpmConfig.Processes {
 			if process.Hooks.PreStart != "" {
@@ -83,6 +90,9 @@ func (c *ContainerFactory) JobsToInitContainers(
 				processVolumeMounts := append(defaultVolumeMounts, bpmVolumeMounts...)
 				if ephemeralMount != nil {
 					processVolumeMounts = append(processVolumeMounts, *ephemeralMount)
+				}
+				if persistentDiskMount != nil {
+					processVolumeMounts = append(processVolumeMounts, *persistentDiskMount)
 				}
 				container := bpmPreStartInitContainer(
 					process,
@@ -103,11 +113,11 @@ func (c *ContainerFactory) JobsToInitContainers(
 		boshPreStartInitContainers = append(boshPreStartInitContainers, boshPreStartInitContainer)
 	}
 
-	_, resolvedPropertiesSecretName := names.CalculateEJobOutputSecretPrefixAndName(
-		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+	resolvedPropertiesSecretName := names.CalculateIGSecretName(
+		names.DeploymentSecretTypeInstanceGroupResolvedProperties, // ig-resolved
 		c.manifestName,
 		c.instanceGroupName,
-		true,
+		c.version,
 	)
 
 	initContainers := flattenContainers(
@@ -154,6 +164,11 @@ func (c *ContainerFactory) JobsToContainers(
 		if len(ephemeralDisks) > 0 {
 			ephemeralMount = ephemeralDisks[0].VolumeMount
 		}
+		var persistentDiskMount *corev1.VolumeMount
+		persistentDiskDisks := jobDisks.Filter("persistent", "true")
+		if len(persistentDiskDisks) > 0 {
+			persistentDiskMount = persistentDiskDisks[0].VolumeMount
+		}
 
 		for _, process := range bpmConfig.Processes {
 			processDisks := jobDisks.Filter("process_name", process.Name)
@@ -165,9 +180,13 @@ func (c *ContainerFactory) JobsToContainers(
 			if ephemeralMount != nil {
 				processVolumeMounts = append(processVolumeMounts, *ephemeralMount)
 			}
+			if persistentDiskMount != nil {
+				processVolumeMounts = append(processVolumeMounts, *persistentDiskMount)
+			}
 
 			container := bpmProcessContainer(
-				fmt.Sprintf("%s-%s", job.Name, process.Name),
+				job.Name,
+				process.Name,
 				jobImage,
 				process,
 				processVolumeMounts,
@@ -298,12 +317,14 @@ func bpmPreStartInitContainer(
 }
 
 func bpmProcessContainer(
-	name string,
+	jobName string,
+	processName string,
 	jobImage string,
 	process bpm.Process,
 	volumeMounts []corev1.VolumeMount,
 	healthchecks map[string]HealthCheck,
 ) corev1.Container {
+	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
 	container := corev1.Container{
 		Name:         names.Sanitize(name),
 		Image:        jobImage,
@@ -316,6 +337,46 @@ func bpmProcessContainer(
 				Add: capability(process.Capabilities),
 			},
 			Privileged: &process.Unsafe.Privileged,
+		},
+		Lifecycle: &corev1.Lifecycle{},
+	}
+
+	// Setup the job drain script handler.
+	drainGlob := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "drain", "*")
+	container.Lifecycle.PreStop = &corev1.Handler{
+		Exec: &corev1.ExecAction{
+			Command: []string{
+				"sh",
+				"-c",
+				`for s in $(ls ` + drainGlob + `); do
+					(
+						echo "Running drain script $s"
+						while true; do
+							out=$($s)
+							status=$?
+
+							if [ "$status" -ne "0" ]; then
+								echo "$s FAILED with exit code $status"
+								exit $status
+							fi
+
+							if [ "$out" -lt "0" ]; then
+								echo "Sleeping dynamic draining wait time for $s..."
+								sleep ${out:1}
+								echo "Running $s again"
+							else
+								echo "Sleeping static draining wait time for $s..."
+								sleep $out
+								echo "$s done"
+								exit 0
+							fi
+						done
+					)&
+				done
+				echo "Waiting..."
+				wait
+				echo "Done"`,
+			},
 		},
 	}
 
