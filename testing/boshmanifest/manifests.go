@@ -451,7 +451,7 @@ releases:
 
 instance_groups:
 - name: route_registrar
-  instances: 2
+  instances: 1
   jobs:
   - name: route_registrar
     release: routing
