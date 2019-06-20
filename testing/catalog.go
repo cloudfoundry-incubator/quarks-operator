@@ -102,6 +102,15 @@ func (c *Catalog) BOSHManifestWithMultiBPMProcesses() *manifest.Manifest {
 	return m
 }
 
+// BOSHManifestWithMultiBPMProcessesAndPersistentDisk returns a manifest with multi BPM configuration and persistent disk
+func (c *Catalog) BOSHManifestWithMultiBPMProcessesAndPersistentDisk() *manifest.Manifest {
+	m, err := manifest.LoadYAML([]byte(bm.WithMultiBPMProcessesAndPersistentDisk))
+	if err != nil {
+		panic(err)
+	}
+	return m
+}
+
 // BOSHManifestCFRouting returns a manifest for the CF routing release with an underscore in the name
 func (c *Catalog) BOSHManifestCFRouting() *manifest.Manifest {
 	m, err := manifest.LoadYAML([]byte(bm.CFRouting))

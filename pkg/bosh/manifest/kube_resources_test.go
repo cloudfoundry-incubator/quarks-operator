@@ -478,6 +478,56 @@ var _ = Describe("kube converter", func() {
 				Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("job '%s' wants to use persistent disk"+
 					" but instance group '%s' doesn't have any persistent disk declaration", "test-server", "bpm")))
 			})
+
+			Context("when multiple BPM processes exist", func() {
+				var (
+					bpmConfigs []bpm.Configs
+					bpmConfig1 bpm.Config
+					bpmConfig2 bpm.Config
+				)
+
+				BeforeEach(func() {
+					var err error
+					m = *env.BOSHManifestWithMultiBPMProcessesAndPersistentDisk()
+
+					bpmConfig1, err = bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
+					Expect(err).ShouldNot(HaveOccurred())
+					bpmConfig2, err = bpm.NewConfig([]byte(boshreleases.MultiProcessBPMConfigWithPersistentDisk))
+					Expect(err).ShouldNot(HaveOccurred())
+
+					bpmConfigs = []bpm.Configs{
+						{
+							"fake-errand-a": bpmConfig1,
+							"fake-errand-b": bpmConfig2,
+						},
+						{
+							"fake-job-a": bpmConfig1,
+							"fake-job-b": bpmConfig1,
+							"fake-job-c": bpmConfig2,
+						},
+						{
+							"fake-job-a": bpmConfig1,
+							"fake-job-b": bpmConfig1,
+							"fake-job-c": bpmConfig2,
+							"fake-job-d": bpmConfig2,
+						},
+					}
+				})
+
+				It("converts correct disks and volume declarations", func() {
+					resources, err := act(bpmConfigs[0], m.InstanceGroups[0])
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(resources.Errands).To(HaveLen(1))
+					containers := resources.Errands[0].Spec.Template.Spec.Containers
+
+					// Test shared volume setup
+					Expect(containers[1].VolumeMounts[6].Name).To(Equal("bpm-ephemeral-disk-fake-errand-b"))
+					Expect(containers[1].VolumeMounts[6].MountPath).To(Equal("/var/vcap/data/fake-errand-b"))
+					Expect(containers[1].VolumeMounts[7].Name).To(Equal("store-dir-fake-errand-b"))
+					Expect(containers[1].VolumeMounts[7].MountPath).To(Equal("/var/vcap/store/fake-errand-b"))
+					Expect(containers[1].VolumeMounts[7].SubPath).To(Equal("fake-errand-b"))
+				})
+			})
 		})
 	})
 })

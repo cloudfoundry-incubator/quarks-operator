@@ -193,7 +193,7 @@ func (c *ContainerFactory) JobsToContainers(
 				job.Properties.BOSHContainerization.Run.HealthChecks,
 			)
 
-			containers = append(containers, container)
+			containers = append(containers, *container.DeepCopy())
 		}
 	}
 	return containers, nil
