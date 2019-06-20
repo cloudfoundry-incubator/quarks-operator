@@ -11,7 +11,7 @@ steps:
   commands:
   - git config user.email "cf-containerization@cloudfoundry.org"
   - git config user.name "cfcontainerizationbot"
-  - git submodule update --recursive --remote
+  - git submodule update --init --recursive
 
 - name: build-and-test-integration
   image: cfcontainerization/drone-ci-image
@@ -27,7 +27,13 @@ steps:
   - export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
   - make build vet lint test-unit build-image
   - . bin/include/versioning && kind load docker-image cfcontainerization/cf-operator:$VERSION_TAG
+  # Replace kind's default storage class, because it has trouble with sub-paths
+  - kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+  - "kubectl patch storageclass standard -p '{\"metadata\": {\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\", \"storageclass.beta.kubernetes.io/is-default-class\":\"false\"}}}'"
+  - "kubectl patch storageclass local-path -p '{\"metadata\": {\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"true\", \"storageclass.beta.kubernetes.io/is-default-class\":\"true\"}}}'"
+  # Kube can reach us on the docker0 interface
   - export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip -4 addr show docker0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+  # Run integration tests
   - make test-integration
 
 # services:
