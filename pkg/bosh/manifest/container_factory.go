@@ -100,7 +100,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 					processVolumeMounts,
 				)
 
-				bpmPreStartInitContainers = append(bpmPreStartInitContainers, container)
+				bpmPreStartInitContainers = append(bpmPreStartInitContainers, *container.DeepCopy())
 			}
 		}
 
@@ -110,7 +110,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 			jobImage,
 			append(defaultVolumeMounts, bpmDisks.VolumeMounts()...),
 		)
-		boshPreStartInitContainers = append(boshPreStartInitContainers, boshPreStartInitContainer)
+		boshPreStartInitContainers = append(boshPreStartInitContainers, *boshPreStartInitContainer.DeepCopy())
 	}
 
 	resolvedPropertiesSecretName := names.CalculateIGSecretName(
@@ -193,7 +193,7 @@ func (c *ContainerFactory) JobsToContainers(
 				job.Properties.BOSHContainerization.Run.HealthChecks,
 			)
 
-			containers = append(containers, container)
+			containers = append(containers, *container.DeepCopy())
 		}
 	}
 	return containers, nil

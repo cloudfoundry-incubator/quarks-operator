@@ -73,7 +73,7 @@ var _ = Describe("ContainerFactory", func() {
 			},
 			{
 				VolumeMount: &corev1.VolumeMount{
-					Name:      fmt.Sprintf("%s-%s", VolumeStoreDirName, "fake-job"),
+					Name:      VolumeStoreDirName,
 					MountPath: path.Join(VolumeStoreDirMountPath, "fake-job"),
 					SubPath:   "fake-job",
 				},
@@ -84,7 +84,7 @@ var _ = Describe("ContainerFactory", func() {
 			},
 			{
 				VolumeMount: &corev1.VolumeMount{
-					Name:      fmt.Sprintf("%s-%s", VolumeStoreDirName, "other-job"),
+					Name:      VolumeStoreDirName,
 					MountPath: path.Join(VolumeStoreDirMountPath, "other-job"),
 					SubPath:   "other-job",
 				},
@@ -268,7 +268,7 @@ var _ = Describe("ContainerFactory", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(containers[0].VolumeMounts).To(ContainElement(
 				corev1.VolumeMount{
-					Name:             "store-dir-fake-job",
+					Name:             "store-dir",
 					ReadOnly:         false,
 					MountPath:        fmt.Sprintf("%s/%s", VolumeStoreDirMountPath, "fake-job"),
 					SubPath:          "fake-job",
@@ -276,7 +276,7 @@ var _ = Describe("ContainerFactory", func() {
 				}))
 			Expect(containers[1].VolumeMounts).To(ContainElement(
 				corev1.VolumeMount{
-					Name:             "store-dir-other-job",
+					Name:             "store-dir",
 					ReadOnly:         false,
 					MountPath:        fmt.Sprintf("%s/%s", VolumeStoreDirMountPath, "other-job"),
 					SubPath:          "other-job",
