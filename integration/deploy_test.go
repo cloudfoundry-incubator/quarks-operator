@@ -29,7 +29,7 @@ var _ = Describe("Deploy", func() {
 		headlessSvcName := "test-nats"
 		clusterIpSvcName := "test-nats-0"
 
-		FIt("should deploy a pod and create services", func() {
+		It("should deploy a pod and create services", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
