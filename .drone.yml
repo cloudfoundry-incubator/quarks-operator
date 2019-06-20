@@ -1,0 +1,47 @@
+---
+kind: pipeline
+name: cf-operator
+
+clone:
+  depth: 5
+
+steps:
+- name: submodules
+  image: docker:git
+  commands:
+  - git config user.email "cf-containerization@cloudfoundry.org"
+  - git config user.name "cfcontainerizationbot"
+  - git submodule update --recursive --remote
+
+- name: build-and-test-integration
+  image: cfcontainerization/drone-ci-image
+  privileged: true
+  volumes:
+  - name: var-lib-docker
+    path: /var/lib/docker
+  commands:
+  - "dockerd --host=unix:///var/run/docker.sock > /var/log/docker.log 2>&1 &"
+  - echo "wait a bit for docker to come online"
+  - sleep 5
+  - kind create cluster --image kindest/node:v1.13.6
+  - export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
+  - make build vet lint test-unit build-image
+  - . bin/include/versioning && kind load docker-image cfcontainerization/cf-operator:$VERSION_TAG
+  - export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip -4 addr show docker0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+  - make test-integration
+
+# services:
+# - name: docker
+#   image: docker:18.09.6-dind
+#   privileged: true
+volumes:
+- name: var-lib-docker
+  temp: {}
+
+trigger:
+  branch:
+  - master
+  event:
+    include:
+    - push
+    - pull_request
