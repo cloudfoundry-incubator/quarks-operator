@@ -303,6 +303,8 @@ func (f *JobFactory) gatheringJob(name string, secretType names.DeploymentSecret
 		}
 	}
 
+	fmt.Println(outputSecretNamePrefix, "-----------------------------------------------------------------------------------------------------------")
+
 	job := &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

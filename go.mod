@@ -44,6 +44,7 @@ require (
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3 // indirect
 	github.com/spf13/viper v1.2.1
+	github.com/urfave/cli v1.20.0 // indirect
 	github.com/viovanov/bosh-template-go v0.0.0-20190531194715-753a0fd8d6cb
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect

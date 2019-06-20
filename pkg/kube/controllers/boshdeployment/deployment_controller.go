@@ -6,6 +6,8 @@ import (
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -39,7 +41,33 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	}
 
 	// Watch for changes to primary resource BOSHDeployment
-	err = c.Watch(&source.Kind{Type: &bdv1.BOSHDeployment{}}, &handler.EnqueueRequestForObject{})
+	boshDeploymentPredicates := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool { return true },
+		DeleteFunc: func(e event.DeleteEvent) bool {
+
+			// Delete secrets
+
+			secretLabelsSet := labels.Set{
+				bdv1.LabelDeploymentName: e.Object.(*bdv1.BOSHDeployment).GetName(),
+			}
+
+			secrets := &corev1.SecretList{}
+			if err := mgr.GetClient().List(ctx, &client.ListOptions{
+				Namespace:     config.Namespace,
+				LabelSelector: secretLabelsSet.AsSelector(),
+			}, secrets); err != nil {
+				fmt.Println("not able to list secrets, returned")
+				return false
+			}
+
+			// delete the `secrets`
+
+			return true
+		},
+		GenericFunc: func(e event.GenericEvent) bool { return true },
+		UpdateFunc:  func(e event.UpdateEvent) bool { return true },
+	}
+	err = c.Watch(&source.Kind{Type: &bdv1.BOSHDeployment{}}, &handler.EnqueueRequestForObject{}, boshDeploymentPredicates)
 	if err != nil {
 		return err
 	}
