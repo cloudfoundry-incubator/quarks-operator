@@ -24,12 +24,12 @@ var _ = Describe("Deploy", func() {
 	})
 
 	Context("when using the default configuration", func() {
-		podName := "test-nats-v1-0"
+		podName := "test-nats-v1-1"
 		stsName := "test-nats-v1"
 		headlessSvcName := "test-nats"
 		clusterIpSvcName := "test-nats-0"
 
-		It("should deploy a pod and create services", func() {
+		FIt("should deploy a pod and create services", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
