@@ -139,27 +139,6 @@ func generateDefaultDisks(manifestName string, instanceGroup *InstanceGroup, ver
 		},
 	}
 
-	// Create a persistent volume claim if specified in spec.
-	if instanceGroup.PersistentDisk != nil && *instanceGroup.PersistentDisk > 0 {
-		persistentVolumeClaim := generatePersistentVolumeClaim(manifestName, instanceGroup, namespace)
-		persistentDisk := BPMResourceDisk{
-			PersistentVolumeClaim: &persistentVolumeClaim,
-			Volume: &corev1.Volume{
-				Name: VolumeStoreDirName,
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: persistentVolumeClaim.Name,
-					},
-				},
-			},
-			VolumeMount: &corev1.VolumeMount{
-				Name:      VolumeStoreDirName,
-				MountPath: VolumeStoreDirMountPath,
-			},
-		}
-		defaultDisks = append(defaultDisks, persistentDisk)
-	}
-
 	return defaultDisks
 }
 
@@ -199,10 +178,7 @@ func generateBPMDisks(manifestName string, instanceGroup *InstanceGroup, bpmConf
 						Name:         volumeName,
 						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 					},
-					// TODO: How to map the following bpm volume schema fields:
-					// - allow_executions
-					// - mount_only
-					// into a corev1.VolumeMount.
+
 					VolumeMount: &corev1.VolumeMount{
 						Name:      volumeName,
 						ReadOnly:  !additionalVolume.Writable,
@@ -244,14 +220,14 @@ func generateBPMDisks(manifestName string, instanceGroup *InstanceGroup, bpmConf
 		}
 
 		if hasEphemeralDisk {
-			ephemeralDiskName := fmt.Sprintf("%s-%s", VolumeEphemeralDirName, job.Name)
+
 			ephemeralDisk := BPMResourceDisk{
 				Volume: &corev1.Volume{
-					Name:         ephemeralDiskName,
+					Name:         VolumeEphemeralDirName,
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 				},
 				VolumeMount: &corev1.VolumeMount{
-					Name:      ephemeralDiskName,
+					Name:      VolumeEphemeralDirName,
 					MountPath: path.Join(VolumeEphemeralDirMountPath, job.Name),
 				},
 				Labels: map[string]string{
@@ -268,10 +244,21 @@ func generateBPMDisks(manifestName string, instanceGroup *InstanceGroup, bpmConf
 					" but instance group '%s' doesn't have any persistent disk declaration", job.Name, instanceGroup.Name)
 			}
 
+			persistentVolumeClaim := generatePersistentVolumeClaim(manifestName, instanceGroup, namespace)
+
 			// Specify the job sub-path inside of the instance group PV
 			bpmPersistentDisk := BPMResourceDisk{
+				PersistentVolumeClaim: &persistentVolumeClaim,
+				Volume: &corev1.Volume{
+					Name: VolumeStoreDirName,
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: persistentVolumeClaim.Name,
+						},
+					},
+				},
 				VolumeMount: &corev1.VolumeMount{
-					Name:      fmt.Sprintf("%s-%s", VolumeStoreDirName, job.Name),
+					Name:      VolumeStoreDirName,
 					MountPath: path.Join(VolumeStoreDirMountPath, job.Name),
 					SubPath:   job.Name,
 				},
