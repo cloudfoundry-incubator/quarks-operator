@@ -226,7 +226,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 	// Right now, only one pvc is being created at /var/vcap/store
 	for _, disk := range resources.Disks {
 		if disk.PersistentVolumeClaim != nil {
-			err := r.createPersistentVolumeClaim(ctx, *disk.PersistentVolumeClaim)
+			err := r.createPersistentVolumeClaim(ctx, disk.PersistentVolumeClaim)
 			if err != nil {
 				return log.WithEvent(instance, "ApplyPersistentVolumeClaimError").Errorf(ctx, "Failed to apply PersistentVolumeClaim for instance group '%s' : %v", instanceGroupName, err)
 			}
@@ -258,19 +258,19 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 	return nil
 }
 
-func (r *ReconcileBPM) createPersistentVolumeClaim(ctx context.Context, persistentVolumeClaim corev1.PersistentVolumeClaim) error {
+func (r *ReconcileBPM) createPersistentVolumeClaim(ctx context.Context, persistentVolumeClaim *corev1.PersistentVolumeClaim) error {
 	log.Debugf(ctx, "Creating persistentVolumeClaim '%s'", persistentVolumeClaim.Name)
 
-	_, err := controllerutil.CreateOrUpdate(ctx, r.client, persistentVolumeClaim.DeepCopy(), func(obj runtime.Object) error {
-		if existingPVC, ok := obj.(*corev1.PersistentVolumeClaim); ok {
-			persistentVolumeClaim.ObjectMeta.ResourceVersion = existingPVC.ObjectMeta.ResourceVersion
-			persistentVolumeClaim.DeepCopyInto(existingPVC)
+	// Create only if PVC doesn't not exist
+	err := r.client.Create(ctx, persistentVolumeClaim)
+	if err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			log.Debugf(ctx, "Skip creating PersistentVolumeClaim '%s' because it already exists", persistentVolumeClaim.Name)
 			return nil
 		}
-		return fmt.Errorf("object is not an Persistent Volume Claim")
-	})
-	if err != nil {
 		return err
+
 	}
+
 	return nil
 }
