@@ -16,7 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = Describe("ExtendedSecret", func() {
+var _ = FDescribe("ExtendedSecret", func() {
 	var (
 		extendedSecret es.ExtendedSecret
 	)
