@@ -238,7 +238,7 @@ var _ = Describe("Deploy", func() {
 				tearDowns = append(tearDowns, tearDown)
 
 				By("waiting for deployment to succeed, by checking for a pod")
-				err = env.WaitForPod(env.Namespace, "test-nats-v1-0")
+				err = env.WaitForPod(env.Namespace, "test-nats-v1-1")
 				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 			})
 

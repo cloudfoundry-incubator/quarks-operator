@@ -257,7 +257,18 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				err := store.Create(ctx, namespace, secretNamePrefix, map[string]string{"manifest": `{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`}, secretLabels, exampleSourceDescription)
+				err := store.Create(
+					ctx,
+					namespace,
+					"some-owner",
+					types.UID("d3d423b7-a57f-43b0-8305-79d484154e4f"),
+					secretNamePrefix,
+					map[string]string{
+						"manifest": `{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`,
+					},
+					secretLabels,
+					exampleSourceDescription,
+				)
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -283,15 +294,37 @@ name: fake-deployment-v4
 					return nil
 				})
 
-				err := store.Create(ctx, namespace, secretNamePrefix, map[string]string{"manifest": `{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`}, secretLabels, exampleSourceDescription)
+				err := store.Create(
+					ctx,
+					namespace,
+					"some-owner",
+					types.UID("d3d423b7-a57f-43b0-8305-79d484154e4f"),
+					secretNamePrefix,
+					map[string]string{
+						"manifest": `{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`,
+					},
+					secretLabels,
+					exampleSourceDescription,
+				)
 				Expect(err).ToNot(HaveOccurred())
 			})
-		})
+		}) 
 
 		Context("when the deployment name exceeds a length of 253 characters", func() {
 			It("should fail to create a new version", func() {
 				store = NewVersionedSecretStore(client)
-				err := store.Create(ctx, namespace, strings.Repeat("foobar", 42), map[string]string{"manifest": `{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`}, secretLabels, exampleSourceDescription)
+				err := store.Create(
+					ctx,
+					namespace,
+					"some-owner",
+					types.UID("d3d423b7-a57f-43b0-8305-79d484154e4f"),
+					strings.Repeat("foobar", 42),
+					map[string]string{
+						"manifest": `{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`,
+					}, 
+					secretLabels,
+					exampleSourceDescription,
+				)
 				Expect(err).To(HaveOccurred())
 			})
 		})

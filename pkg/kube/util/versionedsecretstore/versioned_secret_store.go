@@ -12,8 +12,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/apimachinery/pkg/types"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 )
@@ -48,7 +50,7 @@ var _ VersionedSecretStore = &VersionedSecretStoreImpl{}
 // the Custom Resource Definition that generated it.
 type VersionedSecretStore interface {
 	SetSecretReferences(ctx context.Context, namespace string, podSpec *corev1.PodSpec) error
-	Create(ctx context.Context, namespace string, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error
+	Create(ctx context.Context, namespace , ownerName string, ownerID types.UID, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error
 	Get(ctx context.Context, namespace string, secretName string, version int) (*corev1.Secret, error)
 	Latest(ctx context.Context, namespace string, secretName string) (*corev1.Secret, error)
 	List(ctx context.Context, namespace string, secretName string) ([]corev1.Secret, error)
@@ -126,7 +128,7 @@ func (p VersionedSecretStoreImpl) SetSecretReferences(ctx context.Context, names
 }
 
 // Create creates a new version of the secret from secret data
-func (p VersionedSecretStoreImpl) Create(ctx context.Context, namespace string, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error {
+func (p VersionedSecretStoreImpl) Create(ctx context.Context, namespace , ownerName string, ownerID types.UID, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error {
 	currentVersion, err := p.getGreatestVersion(ctx, namespace, secretName)
 	if err != nil {
 		return err
@@ -146,6 +148,16 @@ func (p VersionedSecretStoreImpl) Create(ctx context.Context, namespace string, 
 			Name:      generatedSecretName,
 			Namespace: namespace,
 			Labels:    labels,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "fissile.cloudfoundry.org/v1alpha1",
+					Kind:               "ExtendedJob",
+					Name:               ownerName,
+					UID:                ownerID,
+					BlockOwnerDeletion: util.Bool(false),
+					Controller:         util.Bool(true),
+				},
+			},
 			Annotations: map[string]string{
 				AnnotationSourceDescription: sourceDescription,
 			},
