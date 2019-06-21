@@ -179,7 +179,14 @@ var _ = Describe("ExtendedJob", func() {
 					eJob, err := env.GetExtendedJob(env.Namespace, ej.Name)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(eJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
-					Expect(env.WaitForLogMsg(env.ObservedLogs, "Deleting succeeded job")).ToNot(HaveOccurred())
+
+					By("Check for job deletion")
+					jobs, err := env.CollectJobs(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob), 1)
+					Expect(err).NotTo(HaveOccurred(), "error waiting for jobs from extendedjob")
+					Expect(jobs).To(HaveLen(1))
+
+					err = env.WaitForJobDeletion(env.Namespace, jobs[0].Name)
+					Expect(err).ToNot(HaveOccurred())
 
 					By("modifying config")
 					c, _ := env.GetConfigMap(env.Namespace, configMap.Name)
@@ -188,7 +195,7 @@ var _ = Describe("ExtendedJob", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					By("checking if job is running")
-					jobs, err := env.CollectJobs(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob), 1)
+					jobs, err = env.CollectJobs(env.Namespace, fmt.Sprintf("%s=true", ejv1.LabelExtendedJob), 1)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(jobs).To(HaveLen(1))
 				})
