@@ -3,6 +3,9 @@ package manifest
 import (
 	"fmt"
 
+	"github.com/ghodss/yaml"
+	corev1 "k8s.io/api/core/v1"
+
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 )
 
@@ -109,10 +112,33 @@ var (
 	LabelDeploymentVersion = fmt.Sprintf("%s/deployment-version", apis.GroupName)
 )
 
-// AgentSettings from BOSH deployment manifest. These annotations and labels are added to kube resources
+// AgentSettings from BOSH deployment manifest.
+// These annotations and labels are added to kube resources.
+// Affinity is added into the pod's definition.
 type AgentSettings struct {
 	Annotations map[string]string `yaml:"annotations,omitempty"`
 	Labels      map[string]string `yaml:"labels,omitempty"`
+	Affinity    Affinity          `json:"affinity,omitempty" yaml:"affinity,omitempty"`
+}
+
+type Affinity corev1.Affinity
+
+// UnmarshalYAML Override Affinity.UnmarshalYAML
+func (a *Affinity) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var c map[string]interface{}
+
+	// Re-marshal to get origin YAML string
+	if err := unmarshal(&c); err != nil {
+		return err
+	}
+
+	yamlByte, err := yaml.Marshal(c)
+	if err != nil {
+		return fmt.Errorf("error marshaling 'JobProperties' into JSON: %v", err)
+	}
+
+	// Unmarshal to apply json tags
+	return yaml.Unmarshal(yamlByte, a)
 }
 
 // Set overrides labels and annotations with operator-owned metadata
