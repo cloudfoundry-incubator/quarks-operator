@@ -13,7 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-var _ = Describe("ExtendedStatefulSet", func() {
+var _ = FDescribe("ExtendedStatefulSet", func() {
 	var (
 		extendedStatefulSet                estsv1.ExtendedStatefulSet
 		wrongExtendedStatefulSet           estsv1.ExtendedStatefulSet
@@ -182,8 +182,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 		It("Should append the volumeManagement persistent volume claim always even when spec is updated", func() {
 
-			Skip(":")
-
 			By("Creating an ExtendedStatefulSet")
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
 			Expect(err).NotTo(HaveOccurred())
@@ -338,8 +336,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 		It("Should append the voluMemanagement persistent volume claim when the replicas are increased twice", func() {
 
-			Skip(":")
-
 			By("Creating an ExtendedStatefulSet")
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
 			Expect(err).NotTo(HaveOccurred())
@@ -474,8 +470,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 		It("Should append the volumeManagement persistent volume claim when the replicas are decreased twice", func() {
 
-			Skip(":")
-
 			By("Creating an ExtendedStatefulSet")
 			*extendedStatefulSet.Spec.Template.Spec.Replicas = 4
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
@@ -596,7 +590,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 		})
 
 		It("VolumeManagement statefulset should be created and deleted after actual statefulset is ready", func() {
-			Skip(":")
 
 			By("Creating an ExtendedStatefulSet")
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
@@ -631,7 +624,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 		})
 
 		It("should access same volume from different versions at the same time", func() {
-			Skip(":")
 
 			By("Adding volume write command to pod spec template")
 			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].Image = "opensuse"
