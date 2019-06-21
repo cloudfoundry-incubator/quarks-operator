@@ -110,11 +110,13 @@ var (
 	LabelDeploymentVersion = fmt.Sprintf("%s/deployment-version", apis.GroupName)
 )
 
-// AgentSettings from BOSH deployment manifest. These annotations and labels are added to kube resources
+// AgentSettings from BOSH deployment manifest.
+// These annotations and labels are added to kube resources.
+// Affinity is added into the pod's definition.
 type AgentSettings struct {
 	Annotations map[string]string `yaml:"annotations,omitempty"`
 	Labels      map[string]string `yaml:"labels,omitempty"`
-	Affinity    bc.Affinity
+	Affinity    bc.Affinity       `json:"affinity,omitempty" yaml:"affinity,omitempty"`
 }
 
 // Set overrides labels and annotations with operator-owned metadata

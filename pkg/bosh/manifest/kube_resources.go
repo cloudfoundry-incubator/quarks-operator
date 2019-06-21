@@ -195,6 +195,11 @@ func (kc *KubeConverter) serviceToExtendedSts(
 							SecurityContext: &corev1.PodSecurityContext{
 								FSGroup: &admGroupID,
 							},
+							Affinity: &corev1.Affinity{
+								NodeAffinity:    instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity.NodeAffinity,
+								PodAffinity:     instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity.PodAffinity,
+								PodAntiAffinity: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity.PodAntiAffinity,
+							},
 						},
 					},
 				},
@@ -344,6 +349,11 @@ func (kc *KubeConverter) errandToExtendedJob(
 					Volumes:        volumes,
 					SecurityContext: &corev1.PodSecurityContext{
 						FSGroup: &admGroupID,
+					},
+					Affinity: &corev1.Affinity{
+						NodeAffinity:    instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity.NodeAffinity,
+						PodAffinity:     instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity.PodAffinity,
+						PodAntiAffinity: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity.PodAntiAffinity,
 					},
 				},
 			},
