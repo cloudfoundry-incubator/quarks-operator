@@ -45,8 +45,7 @@ type Settings struct {
 	Affinity Affinity
 }
 
-type Affinity struct {
-}
+type Affinity corev1.Affinity
 
 // BOSHContainerization represents the special 'bosh_containerization'
 // property key. It contains all kubernetes structures we need to add to the BOSH manifest.
