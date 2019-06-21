@@ -19,6 +19,8 @@ steps:
   volumes:
   - name: var-lib-docker
     path: /var/lib/docker
+  environment:
+    NODES: "50"
   commands:
   - "dockerd --host=unix:///var/run/docker.sock > /var/log/docker.log 2>&1 &"
   - echo "wait a bit for docker to come online"
