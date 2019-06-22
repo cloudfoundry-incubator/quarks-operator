@@ -18,7 +18,7 @@ import (
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
 )
 
-var _ = Describe("Deploy", func() {
+var _ = FDescribe("Deploy", func() {
 	AfterEach(func() {
 		Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed(), fmt.Sprintf("error waiting for pod deletion in namespace '%s'", env.Namespace))
 	})

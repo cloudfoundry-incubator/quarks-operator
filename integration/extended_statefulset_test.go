@@ -13,7 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-var _ = FDescribe("ExtendedStatefulSet", func() {
+var _ = Describe("ExtendedStatefulSet", func() {
 	var (
 		extendedStatefulSet                estsv1.ExtendedStatefulSet
 		wrongExtendedStatefulSet           estsv1.ExtendedStatefulSet

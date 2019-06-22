@@ -14,7 +14,7 @@ import (
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
 )
 
-var _ = FDescribe("Lifecycle", func() {
+var _ = Describe("Lifecycle", func() {
 	var (
 		boshDeployment bdv1.BOSHDeployment
 	)
