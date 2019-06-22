@@ -135,12 +135,6 @@ var _ = FDescribe("Deploy", func() {
 				Skip("Skipping because this test is not supported in minikube")
 			}
 
-			By("Checking if kind is present")
-			_, err = exec.Command("type -a kind").Output()
-			if err == nil {
-				Skip("Skipping because this test is not supported in kind")
-			}
-
 			tearDown, err := env.CreateConfigMap(env.Namespace, corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{Name: "garden-manifest"},
 				Data:       map[string]string{"manifest": bm.GardenRunc},
