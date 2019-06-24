@@ -554,7 +554,7 @@ const GardenRunc = `
           timestamp: "rfc3339"
 `
 
-// BPMReleaseWithoutPersistentDisk doesn't container persistent disk declaration
+// BPMReleaseWithoutPersistentDisk doesn't contain persistent disk declaration
 const BPMReleaseWithoutPersistentDisk = `
 name: bpm
 
@@ -634,4 +634,105 @@ instance_groups:
   - name: fake-job-d
     release: fake-release
   persistent_disk: 1024
+`
+
+// BPMReleaseWithAffinity contains affinity information
+const BPMReleaseWithAffinity = `
+name: bpm
+
+releases:
+- name: bpm
+  version: 1.0.4
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 36.g03b4653-30.80-7.0.0_316.gcf9fe4a7
+
+instance_groups:
+- name: bpm1
+  instances: 1
+  jobs:
+  - name: test-server
+    release: bpm
+    properties:
+      bosh_containerization:
+        ports:
+        - name: test-server
+          protocol: TCP
+          internal: 1337
+        - name: alt-test-server
+          protocol: TCP
+          internal: 1338
+  env:
+    bosh:
+      agent:
+        settings:
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: kubernetes.io/unit-test-az-name
+                    operator: In
+                    values:
+                    - unit-test-az1
+                    - unit-test-az2
+- name: bpm2
+  instances: 1
+  jobs:
+  - name: test-server
+    release: bpm
+    properties:
+      bosh_containerization:
+        ports:
+        - name: test-server
+          protocol: TCP
+          internal: 1337
+        - name: alt-test-server
+          protocol: TCP
+          internal: 1338
+  env:
+    bosh:
+      agent:
+        settings:
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                  - key: security
+                    operator: In
+                    values:
+                    - S1
+                topologyKey: failure-domain.beta.kubernetes.io/zone
+- name: bpm3
+  instances: 1
+  jobs:
+  - name: test-server
+    release: bpm
+    properties:
+      bosh_containerization:
+        ports:
+        - name: test-server
+          protocol: TCP
+          internal: 1337
+        - name: alt-test-server
+          protocol: TCP
+          internal: 1338
+  env:
+    bosh:
+      agent:
+        settings:
+          affinity:
+            podAntiAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                      - key: security
+                        operator: In
+                        values:
+                        - S2
+                  topologyKey: failure-domain.beta.kubernetes.io/zone
 `

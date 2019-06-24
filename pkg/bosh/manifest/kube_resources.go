@@ -195,17 +195,18 @@ func (kc *KubeConverter) serviceToExtendedSts(
 							SecurityContext: &corev1.PodSecurityContext{
 								FSGroup: &admGroupID,
 							},
-							Affinity: &corev1.Affinity{
-								NodeAffinity:    instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity.NodeAffinity,
-								PodAffinity:     instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity.PodAffinity,
-								PodAntiAffinity: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity.PodAntiAffinity,
-							},
 						},
 					},
 				},
 			},
 		},
 	}
+
+	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity != nil {
+		affinity := corev1.Affinity(*instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity)
+		extSts.Spec.Template.Spec.Template.Spec.Affinity = &affinity
+	}
+
 	return extSts, nil
 }
 
@@ -353,14 +354,14 @@ func (kc *KubeConverter) errandToExtendedJob(
 					SecurityContext: &corev1.PodSecurityContext{
 						FSGroup: &admGroupID,
 					},
-					Affinity: &corev1.Affinity{
-						NodeAffinity:    instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity.NodeAffinity,
-						PodAffinity:     instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity.PodAffinity,
-						PodAntiAffinity: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity.PodAntiAffinity,
-					},
 				},
 			},
 		},
+	}
+
+	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity != nil {
+		affinity := corev1.Affinity(*instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity)
+		eJob.Spec.Template.Spec.Affinity = &affinity
 	}
 	return eJob, nil
 }

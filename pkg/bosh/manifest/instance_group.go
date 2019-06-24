@@ -116,7 +116,7 @@ var (
 type AgentSettings struct {
 	Annotations map[string]string `yaml:"annotations,omitempty"`
 	Labels      map[string]string `yaml:"labels,omitempty"`
-	Affinity    bc.Affinity       `json:"affinity,omitempty" yaml:"affinity,omitempty"`
+	Affinity    *bc.Affinity      `json:"affinity,omitempty" yaml:"affinity,omitempty"`
 }
 
 // Set overrides labels and annotations with operator-owned metadata
