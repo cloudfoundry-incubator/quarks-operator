@@ -2,10 +2,10 @@ package manifest_test
 
 import (
 	"fmt"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
@@ -101,6 +101,9 @@ var _ = Describe("kube converter", func() {
 					Expect(rendererInitContainer.Env[0].Value).To(Equal("redis-slave"))
 					Expect(rendererInitContainer.VolumeMounts[1].Name).To(Equal("jobs-dir"))
 					Expect(rendererInitContainer.VolumeMounts[1].MountPath).To(Equal("/var/vcap/jobs"))
+
+					// Test affinity
+					Expect(eJob.Spec.Template.Spec.Affinity).To(BeNil())
 				})
 			})
 
@@ -262,6 +265,9 @@ var _ = Describe("kube converter", func() {
 						},
 					}))
 					Expect(headlessService.Spec.ClusterIP).To(Equal("None"))
+
+					// Test affinity
+					Expect(stS.Spec.Affinity).To(BeNil())
 				})
 			})
 		})
@@ -522,6 +528,98 @@ var _ = Describe("kube converter", func() {
 					Expect(containers[1].VolumeMounts[6].MountPath).To(Equal("/var/vcap/store/fake-errand-b"))
 					Expect(containers[1].VolumeMounts[6].SubPath).To(Equal("fake-errand-b"))
 				})
+			})
+		})
+
+		Context("when affinity is provided", func() {
+			var bpmConfigs []bpm.Configs
+
+			BeforeEach(func() {
+				m = *env.BPMReleaseWithAffinity()
+
+				c, err := bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
+				Expect(err).ShouldNot(HaveOccurred())
+
+				bpmConfigs = []bpm.Configs{
+					{"test-server": c},
+				}
+
+			})
+
+			It("adds affinity into the pod's definition", func() {
+				r1, err := act(bpmConfigs[0], m.InstanceGroups[0])
+				Expect(err).ShouldNot(HaveOccurred())
+
+				// Test node affinity
+				ig1 := r1.InstanceGroups[0]
+				Expect(ig1.Spec.Template.Spec.Template.Spec.Affinity.NodeAffinity).To(Equal(&corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{
+								MatchExpressions: []corev1.NodeSelectorRequirement{
+									{
+										Key:      "kubernetes.io/unit-test-az-name",
+										Operator: "In",
+										Values: []string{
+											"unit-test-az1",
+											"unit-test-az2",
+										},
+									},
+								},
+							},
+						},
+					},
+				}))
+
+				r2, err := act(bpmConfigs[0], m.InstanceGroups[1])
+				Expect(err).ShouldNot(HaveOccurred())
+
+				// Test pod affinity
+				ig2 := r2.InstanceGroups[0]
+				Expect(ig2.Spec.Template.Spec.Template.Spec.Affinity.PodAffinity).To(Equal(&corev1.PodAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+						{
+							LabelSelector: &metav1.LabelSelector{
+								MatchExpressions: []metav1.LabelSelectorRequirement{
+									{
+										Key:      "security",
+										Operator: "In",
+										Values: []string{
+											"S1",
+										},
+									},
+								},
+							},
+							TopologyKey: "failure-domain.beta.kubernetes.io/zone",
+						},
+					},
+				}))
+
+				r3, err := act(bpmConfigs[0], m.InstanceGroups[2])
+				Expect(err).ShouldNot(HaveOccurred())
+
+				// Test pod anti-affinity
+				ig3 := r3.InstanceGroups[0]
+				Expect(ig3.Spec.Template.Spec.Template.Spec.Affinity.PodAntiAffinity).To(Equal(&corev1.PodAntiAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+						{
+							Weight: 100,
+							PodAffinityTerm: corev1.PodAffinityTerm{
+								LabelSelector: &metav1.LabelSelector{
+									MatchExpressions: []metav1.LabelSelectorRequirement{
+										{
+											Key:      "security",
+											Operator: "In",
+											Values: []string{
+												"S2",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}))
 			})
 		})
 	})
