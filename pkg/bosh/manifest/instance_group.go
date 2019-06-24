@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ghodss/yaml"
+	goyaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
@@ -118,7 +119,7 @@ var (
 type AgentSettings struct {
 	Annotations map[string]string `yaml:"annotations,omitempty"`
 	Labels      map[string]string `yaml:"labels,omitempty"`
-	Affinity    Affinity          `json:"affinity,omitempty" yaml:"affinity,omitempty"`
+	Affinity    *Affinity         `json:"affinity,omitempty" yaml:"affinity,omitempty"`
 }
 
 type Affinity corev1.Affinity
@@ -132,7 +133,7 @@ func (a *Affinity) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	yamlByte, err := yaml.Marshal(c)
+	yamlByte, err := goyaml.Marshal(c)
 	if err != nil {
 		return fmt.Errorf("error marshaling 'JobProperties' into JSON: %v", err)
 	}
