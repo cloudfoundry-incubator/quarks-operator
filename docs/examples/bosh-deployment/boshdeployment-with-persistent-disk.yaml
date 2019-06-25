@@ -18,7 +18,6 @@ data:
     - name: nats
       instances: 1
       persistent_disk: 4096
-      persistent_disk_type: "hostpath-containerization"
       jobs:
       - name: nats
         release: nats
@@ -27,6 +26,10 @@ data:
             user: admin
             password: ((nats_password))
           bosh_containerization:
+            bpm:
+              processes:
+              - name: nats
+                persistent_disk: true
             ports:
             - name: "nats"
               protocol: "TCP"

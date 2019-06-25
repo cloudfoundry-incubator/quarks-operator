@@ -3,6 +3,7 @@
 binaries
 # Temp dir for generated kube files
 /_tmp
+/helm
 
 # Created by https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 ### Emacs ###
