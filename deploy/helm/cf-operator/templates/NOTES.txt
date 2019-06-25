@@ -1,0 +1,42 @@
+{{- $charI := (and (not .Release.IsInstall) .Values.customResources.createEtcdClusterCRD) -}}
+{{- if and .Release.IsInstall .Values.customResources.enableInstallation -}}
+
+The {{ .Release.Name }} chart installed the following CRD´s:
+
+- boshdeployments.fissile.cloudfoundry.org
+- extendedjobs.fissile.cloudfoundry.org
+- extendedsecrets.fissile.cloudfoundry.org
+- extendedstatefulsets.fissile.cloudfoundry.org
+
+You can always verify if the CRD´s are installed, by running:
+ $ kubectl get crds
+
+
+{{- else -}}
+
+The {{ .Release.Name }} chart, did not installed any CRD´s. Please, make sure the cf-operator CRD´s are in place.
+You can always verify if the CRD´s are installed, by running:
+ $ kubectl get crds
+
+
+{{- end -}}
+
+
+{{- if and .Release.IsInstall }}
+
+Interacting with the cf-operator pod
+
+1. Check the cf-operator pod status
+  kubectl -n {{ .Release.Namespace }} get pods
+
+2. Tail the cf-operator pod logs
+  export OPERATOR_POD=$(kubectl get pods -l name=cf-operator --namespace {{ .Release.Namespace }} --output name)
+  kubectl -n {{ .Release.Namespace }} logs $OPERATOR_POD -f
+
+3. Apply one of the BOSH deployment manifest examples
+  kubectl -n {{ .Release.Namespace }} create -f docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml
+
+4. See the cf-operator in action!
+  watch -c "kubectl -n cf-operator2 get pods"
+
+{{- end -}}
