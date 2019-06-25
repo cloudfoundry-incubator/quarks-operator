@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
 	btg "github.com/viovanov/bosh-template-go"
 	"go.uber.org/zap"
@@ -339,9 +340,12 @@ func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string) error {
 				return err
 			}
 
-			// Overwrite Processes if BPM.Processes exists in BOSHContainerization.
+			// Merge processes if they also exist in BOSHContainerization
 			if currentJob.Properties.BOSHContainerization.BPM != nil && len(currentJob.Properties.BOSHContainerization.BPM.Processes) > 0 {
-				renderedBPM.Processes = overwriteBPMProcesses(renderedBPM.Processes, currentJob.Properties.BOSHContainerization.BPM.Processes)
+				renderedBPM.Processes, err = mergeBPMProcesses(renderedBPM.Processes, currentJob.Properties.BOSHContainerization.BPM.Processes)
+				if err != nil {
+					return errors.Wrapf(err, "failed to merge bpm information from bosh_containerization for job '%s'", currentJob.Name)
+				}
 			}
 
 			jobIndexBPM[i] = renderedBPM
@@ -475,18 +479,21 @@ func lookUpJobRelease(releases []*Release, jobRelease string) bool {
 	return false
 }
 
-// overwriteBPMProcesses will return new processes slice which be overwritten with preset processes
-func overwriteBPMProcesses(renderedProcesses []bpm.Process, presetProcesses []bpm.Process) []bpm.Process {
+// mergeBPMProcesses will return new processes slice which be overwritten with preset processes
+func mergeBPMProcesses(renderedProcesses []bpm.Process, presetProcesses []bpm.Process) ([]bpm.Process, error) {
 	for _, process := range presetProcesses {
 		index, exist := indexOfBPMProcess(renderedProcesses, process.Name)
 		if exist {
-			renderedProcesses[index] = process
+			err := mergo.MergeWithOverwrite(&renderedProcesses[index], process)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to merge bpm process information")
+			}
 		} else {
 			renderedProcesses = append(renderedProcesses, process)
 		}
 	}
 
-	return renderedProcesses
+	return renderedProcesses, nil
 }
 
 // indexOfBPMProcess will return the first index at which a given process name can be found in the []bpm.Process.
