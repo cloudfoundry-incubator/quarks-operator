@@ -155,7 +155,8 @@ var _ = Describe("Deploy", func() {
 			Expect(len(pods.Items)).To(Equal(2))
 			pod := pods.Items[1]
 			Expect(pod.Spec.InitContainers).To(HaveLen(5))
-			Expect(pod.Spec.InitContainers[4].Command[0]).To(Equal("/var/vcap/jobs/garden/bin/bpm-pre-start"))
+			Expect(pod.Spec.InitContainers[4].Args).To(ContainElement("/var/vcap/jobs/garden/bin/bpm-pre-start"))
+			Expect(pod.Spec.InitContainers[4].Command[0]).To(Equal("/bin/sh"))
 		})
 	})
 
