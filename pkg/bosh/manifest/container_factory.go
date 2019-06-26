@@ -212,9 +212,11 @@ func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 			},
 		},
 		Command: []string{
-			"bash",
-			"-c",
-			fmt.Sprintf(`mkdir -p "%s" && cp -ar %s/* "%s"`, inContainerReleasePath, VolumeJobsSrcDirMountPath, inContainerReleasePath),
+			"/bin/sh",
+		},
+		Args: []string{
+			"-xc",
+			fmt.Sprintf("mkdir -p %s && cp -ar %s/* %s", inContainerReleasePath, VolumeJobsSrcDirMountPath, inContainerReleasePath),
 		},
 	}
 }
@@ -252,7 +254,13 @@ func templateRenderingContainer(instanceGroupName string, secretName string) cor
 				Value: VolumeRenderingDataMountPath,
 			},
 		},
-		Args: []string{"util", "template-render"},
+		Command: []string{
+			"/bin/sh",
+		},
+		Args: []string{
+			"-xc",
+			"cf-operator util template-render",
+		},
 	}
 }
 
@@ -276,9 +284,14 @@ func createDirContainer(name string, jobs []Job) corev1.Container {
 				MountPath: VolumeSysDirMountPath,
 			},
 		},
-		Env:     []corev1.EnvVar{},
-		Command: []string{"/bin/sh", "-c"},
-		Args:    []string{fmt.Sprintf("mkdir -p %s", strings.Join(dirs, " "))},
+		Env: []corev1.EnvVar{},
+		Command: []string{
+			"/bin/sh",
+		},
+		Args: []string{
+			"-xc",
+			fmt.Sprintf("mkdir -p %s", strings.Join(dirs, " ")),
+		},
 		SecurityContext: &corev1.SecurityContext{
 			RunAsUser: &vcapUserID,
 		},
@@ -295,8 +308,13 @@ func boshPreStartInitContainer(
 		Name:         names.Sanitize(fmt.Sprintf("bosh-pre-start-%s", jobName)),
 		Image:        jobImage,
 		VolumeMounts: volumeMounts,
-		Command:      []string{"/bin/sh", "-c"},
-		Args:         []string{fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s"; fi`, boshPreStart)},
+		Command: []string{
+			"/bin/sh",
+		},
+		Args: []string{
+			"-xc",
+			fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s"; fi`, boshPreStart),
+		},
 	}
 }
 
@@ -309,7 +327,13 @@ func bpmPreStartInitContainer(
 		Name:         names.Sanitize(fmt.Sprintf("bpm-pre-start-%s", process.Name)),
 		Image:        jobImage,
 		VolumeMounts: volumeMounts,
-		Command:      []string{process.Hooks.PreStart},
+		Command: []string{
+			"/bin/sh",
+		},
+		Args: []string{
+			"-xc",
+			process.Hooks.PreStart,
+		},
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &process.Unsafe.Privileged,
 		},

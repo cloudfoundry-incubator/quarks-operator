@@ -151,6 +151,9 @@ func (k *Kubectl) PVCExists(namespace string, pvcName string) (bool, error) {
 	cmd := exec.Command("kubectl", "--namespace", namespace, "get", "pvc", pvcName)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		if strings.Contains(string(out), "no matching resources found") {
+			return false, nil
+		}
 		return false, errors.Wrapf(err, string(out))
 	}
 	if strings.Contains(string(out), pvcName) {

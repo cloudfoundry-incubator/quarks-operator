@@ -34,7 +34,9 @@ var _ = Describe("ExtendedStatefulSet", func() {
 
 	AfterEach(func() {
 		Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed())
-		Expect(env.WaitForPVCsDelete(env.Namespace)).To(Succeed())
+		// Skipping wait for PVCs to be deleted until the following is fixed
+		// https://www.pivotaltracker.com/story/show/166896791
+		// Expect(env.WaitForPVCsDelete(env.Namespace)).To(Succeed())
 	})
 
 	Context("when correctly setup", func() {

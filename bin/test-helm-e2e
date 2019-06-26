@@ -27,6 +27,6 @@ kubectl get customresourcedefinitions
 # Build the required helm charts to run the cf-operator
 ./bin/build-helm
 
-NODES=${NODES:-5}
+NODES=${NODES:-3}
 FLAKE_ATTEMPTS=${FLAKE_ATTEMPTS:-3}
 ginkgo --nodes="$NODES" --flakeAttempts="$FLAKE_ATTEMPTS" e2e/kube/
