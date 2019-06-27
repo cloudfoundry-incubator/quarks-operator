@@ -29,7 +29,6 @@ var _ = Describe("ExtendedJob", func() {
 	}
 
 	AfterEach(func() {
-		Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed(), fmt.Sprintf("error waiting for pod deletion in namespace '%s'", env.Namespace))
 		env.FlushLog()
 	})
 

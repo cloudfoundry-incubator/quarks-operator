@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/spf13/afero"
@@ -27,6 +29,9 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
+
+	gomegaConfig "github.com/onsi/ginkgo/config"
+	. "github.com/onsi/gomega"
 )
 
 // StopFunc is used to clean up the environment
@@ -36,21 +41,44 @@ type StopFunc func()
 // cluster used in the tests
 type Environment struct {
 	Machine
+
 	testing.Catalog
 	mgr        manager.Manager
 	kubeConfig *rest.Config
 	stop       chan struct{}
 
+	ID           int
+	Teardown     func(wasFailure bool)
 	Log          *zap.SugaredLogger
 	Config       *config.Config
 	ObservedLogs *observer.ObservedLogs
 	Namespace    string
 }
 
-// NewEnvironment returns a new struct
-func NewEnvironment() *Environment {
+var (
+	namespaceCounter int32
+)
+
+// SetupNamespace creates a namespace that's meant to be used for one
+// test, and then destroyed
+func SetupNamespace() *Environment {
+	atomic.AddInt32(&namespaceCounter, 1)
+	namespaceID := gomegaConfig.GinkgoConfig.ParallelNode*100 + int(namespaceCounter)
+
+	env := newEnvironment(namespaceID)
+	err := env.setup()
+	if err != nil {
+		Expect(err).NotTo(HaveOccurred())
+	}
+
+	return env
+}
+
+// newEnvironment returns a new struct
+func newEnvironment(namespaceCounter int) *Environment {
 	return &Environment{
-		Namespace: "",
+		ID:        namespaceCounter,
+		Namespace: getNamespace(namespaceCounter),
 		Config: &config.Config{
 			CtxTimeOut: 10 * time.Second,
 			Fs:         afero.NewOsFs(),
@@ -63,27 +91,47 @@ func NewEnvironment() *Environment {
 }
 
 // Setup prepares the test environment by loading config and finally starting the operator
-func (e *Environment) Setup(node int32) (TearDownFunc, StopFunc, error) {
+func (e *Environment) setup() error {
 	err := e.setupKube()
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	err = e.startKubeClients(e.kubeConfig)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	namespace := getNamespace(node)
-
-	nsTeardown, err := e.CreateNamespace(namespace)
+	nsTeardown, err := e.CreateNamespace(e.Namespace)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	err = e.setupCFOperator(namespace, node)
+	e.Teardown = func(wasFailure bool) {
+		if wasFailure {
+			fmt.Println("Collecting debug information...")
+			out, err := exec.Command("../testing/dump_env.sh", e.Namespace).CombinedOutput()
+			if err != nil {
+				fmt.Println("Failed to run the `dump_env.sh` script", err)
+			}
+			fmt.Println(string(out))
+		}
+
+		err := nsTeardown()
+		if err != nil {
+			Expect(err).NotTo(HaveOccurred())
+		}
+
+		if e.stop != nil {
+			close(e.stop)
+		}
+
+		e.removeWebhookCache()
+	}
+
+	err = e.setupCFOperator(e.Namespace)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	e.stop = e.startOperator()
@@ -92,18 +140,15 @@ func (e *Environment) Setup(node int32) (TearDownFunc, StopFunc, error) {
 		strconv.Itoa(int(e.Config.WebhookServerPort)),
 		1*time.Minute)
 	if err != nil {
-		return nsTeardown, nil, err
+		return err
 	}
 
-	return nsTeardown, func() {
-		if e.stop != nil {
-			close(e.stop)
-		}
-	}, nil
+	return nil
 }
 
-func (e *Environment) RemoveWebhookCache(node int32) {
-	os.RemoveAll(path.Join(controllers.WebhookConfigDir, controllers.WebhookConfigPrefix+getNamespace(node)))
+// removeWebhookCache removes the local webhook config temp folder
+func (e *Environment) removeWebhookCache() {
+	os.RemoveAll(path.Join(controllers.WebhookConfigDir, controllers.WebhookConfigPrefix+getNamespace(e.ID)))
 }
 
 // FlushLog flushes the zap log
@@ -147,14 +192,14 @@ func (e *Environment) startKubeClients(kubeConfig *rest.Config) (err error) {
 	return
 }
 
-func (e *Environment) setupCFOperator(namespace string, node int32) (err error) {
+func (e *Environment) setupCFOperator(namespace string) (err error) {
 	whh, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_HOST")
 	if !found {
 		return fmt.Errorf("no webhook host set. Please set CF_OPERATOR_WEBHOOK_SERVICE_HOST to the host/ip the operator runs on and try again")
 	}
 	e.Config.WebhookServerHost = whh
 
-	port, err := getWebhookServicePort(node)
+	port, err := getWebhookServicePort(e.ID)
 	if err != nil {
 		return err
 	}
@@ -162,7 +207,6 @@ func (e *Environment) setupCFOperator(namespace string, node int32) (err error) 
 
 	e.Namespace = namespace
 	e.Config.Namespace = namespace
-	log.Printf("Running integration tests on node %d in namespace %s, using webhook port: %d", node, namespace, port)
 
 	operatorDockerImageOrg, found := os.LookupEnv("DOCKER_IMAGE_ORG")
 	if !found {
@@ -183,7 +227,7 @@ func (e *Environment) setupCFOperator(namespace string, node int32) (err error) 
 	manifest.DockerImageRepository = operatorDockerImageRepo
 	manifest.DockerImageTag = operatorDockerImageTag
 
-	e.ObservedLogs, e.Log = helper.NewTestLoggerWithPath(fmt.Sprintf("/tmp/cf-operator-tests-%d.log", node))
+	e.ObservedLogs, e.Log = helper.NewTestLoggerWithPath(fmt.Sprintf("/tmp/cf-operator-tests-%d.log", e.ID))
 	ctx := ctxlog.NewParentContext(e.Log)
 	e.mgr, err = operator.NewManager(ctx, e.Config, e.kubeConfig, manager.Options{Namespace: e.Namespace})
 
@@ -196,16 +240,16 @@ func (e *Environment) startOperator() chan struct{} {
 	return stop
 }
 
-func getNamespace(node int32) string {
+func getNamespace(namespaceCounter int) string {
 	ns, found := os.LookupEnv("TEST_NAMESPACE")
 	if !found {
 		ns = "default"
 	}
-	return ns + "-" + strconv.Itoa(int(node))
+	return ns + "-" + strconv.Itoa(int(namespaceCounter))
 }
 
-func getWebhookServicePort(node int32) (int32, error) {
-	port := int64(29980)
+func getWebhookServicePort(namespaceCounter int) (int32, error) {
+	port := int64(40000)
 	portString, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_PORT")
 	if found {
 		var err error
@@ -214,5 +258,5 @@ func getWebhookServicePort(node int32) (int32, error) {
 			return -1, err
 		}
 	}
-	return int32(port) + node, nil
+	return int32(port) + int32(namespaceCounter), nil
 }

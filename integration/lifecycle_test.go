@@ -19,10 +19,6 @@ var _ = Describe("Lifecycle", func() {
 		boshDeployment bdv1.BOSHDeployment
 	)
 
-	AfterEach(func() {
-		Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed(), fmt.Sprintf("error waiting for pod deletion in namespace '%s'", env.Namespace))
-	})
-
 	Context("when correctly setup", func() {
 		BeforeEach(func() {
 			boshDeployment = env.DefaultBOSHDeployment("testcr", "manifest")
