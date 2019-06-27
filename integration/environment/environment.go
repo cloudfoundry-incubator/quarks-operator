@@ -208,7 +208,7 @@ func (e *Environment) setupCFOperator(namespace string) (err error) {
 	if shouldForwardPort {
 		go func() {
 			cmd := exec.Command(
-				"ssh", "-fNT", "-i", "identity", "-o",
+				"ssh", "-fNT", "-i", "/tmp/cf-operator-tunnel-identity", "-o",
 				"UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-R",
 				fmt.Sprintf("%s:%[2]d:localhost:%[2]d", whh, port),
 				fmt.Sprintf("%s@%s", sshUser, whh))
