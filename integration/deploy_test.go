@@ -1,7 +1,6 @@
 package integration_test
 
 import (
-	"fmt"
 	"os/exec"
 	"strings"
 	"time"
@@ -19,10 +18,6 @@ import (
 )
 
 var _ = Describe("Deploy", func() {
-	AfterEach(func() {
-		Expect(env.WaitForPodsDelete(env.Namespace)).To(Succeed(), fmt.Sprintf("error waiting for pod deletion in namespace '%s'", env.Namespace))
-	})
-
 	Context("when using the default configuration", func() {
 		podName := "test-nats-v1-1"
 		stsName := "test-nats-v1"
