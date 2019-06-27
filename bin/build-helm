@@ -6,6 +6,11 @@ GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 . "${GIT_ROOT}/bin/include/versioning"
 . "${GIT_ROOT}/.envrc"
 
+if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
+  DOCKER_IMAGE_TAG=${VERSION_TAG}
+  export DOCKER_IMAGE_TAG
+fi
+
 output_dir=${GIT_ROOT}/helm
 filename="${output_dir}/${ARTIFACT_NAME}-${ARTIFACT_VERSION}.tgz"
 
