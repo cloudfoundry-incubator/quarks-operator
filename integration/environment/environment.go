@@ -204,7 +204,7 @@ func (e *Environment) setupCFOperator(namespace string) (err error) {
 		return err
 	}
 
-	sshUser, shouldForwardPort := os.LookupEnv("ssh_user")
+	sshUser, shouldForwardPort := os.LookupEnv("ssh_server_user")
 	if shouldForwardPort {
 		go func() {
 			cmd := exec.Command(
