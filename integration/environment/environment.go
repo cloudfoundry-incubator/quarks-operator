@@ -203,6 +203,23 @@ func (e *Environment) setupCFOperator(namespace string) (err error) {
 	if err != nil {
 		return err
 	}
+
+	sshUser, shouldForwardPort := os.LookupEnv("ssh_user")
+	if shouldForwardPort {
+		go func() {
+			cmd := exec.Command(
+				"ssh", "-fNT", "-i", "identity", "-o",
+				"UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-R",
+				fmt.Sprintf("%s:%[2]d:localhost:%[2]d", whh, port),
+				fmt.Sprintf("%s@%s", sshUser, whh))
+
+			stdOutput, err := cmd.CombinedOutput()
+			if err != nil {
+				fmt.Printf("SSH TUNNEL FAILED: %f\nOUTPUT: %s", err, string(stdOutput))
+			}
+		}()
+	}
+
 	e.Config.WebhookServerPort = port
 
 	e.Namespace = namespace
