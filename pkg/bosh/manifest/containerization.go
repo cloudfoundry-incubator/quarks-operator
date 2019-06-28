@@ -15,6 +15,7 @@ type BOSHContainerization struct {
 	BPM       *bpm.Config        `yaml:"bpm,omitempty"`
 	Ports     []Port             `yaml:"ports"`
 	Run       RunConfig          `yaml:"run"`
+	Patches   []string           `yaml:"patches"`
 }
 
 // Port represents the port to be opened up for this job

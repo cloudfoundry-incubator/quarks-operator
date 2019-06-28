@@ -29,9 +29,8 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
-
 	gomegaConfig "github.com/onsi/ginkgo/config"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega"
 )
 
 // StopFunc is used to clean up the environment
@@ -68,7 +67,7 @@ func SetupNamespace() *Environment {
 	env := newEnvironment(namespaceID)
 	err := env.setup()
 	if err != nil {
-		Expect(err).NotTo(HaveOccurred())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	}
 
 	return env
@@ -119,7 +118,7 @@ func (e *Environment) setup() error {
 
 		err := nsTeardown()
 		if err != nil {
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		}
 
 		if e.stop != nil {
