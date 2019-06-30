@@ -122,6 +122,48 @@ instance_groups:
           internal: 4223
 `
 
+// NatsSmallWithPatch is a manifest that patches the prestart hook to loop forever
+const NatsSmallWithPatch = `---
+name: my-manifest
+releases:
+- name: nats
+  version: "26"
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
+instance_groups:
+- name: nats
+  instances: 1
+  jobs:
+  - name: nats
+    release: nats
+    properties:
+      nats:
+        user: admin
+        password: changeme
+        debug: true
+      bosh_containerization:
+        patches:
+        - |
+          cd /var/vcap
+          ls -lahR
+          tee -a /var/vcap/all-releases/jobs-src/nats/nats/templates/pre-start.erb << EOT
+          while :
+          do
+            echo "this file was patched"
+            sleep 1
+          done
+          EOT
+        ports:
+        - name: "nats"
+          protocol: "TCP"
+          internal: 4222
+        - name: "nats-routes"
+          protocol: "TCP"
+          internal: 4223
+`
+
 // Drains is a small manifest with jobs that include drain scripts
 const Drains = `---
 name: my-manifest
