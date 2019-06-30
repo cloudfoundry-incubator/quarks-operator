@@ -98,6 +98,14 @@ func (m *Machine) WaitForPodFailures(namespace string, labels string) error {
 	})
 }
 
+// WaitForInitContainerRunning blocks until a pod's init container is running.
+// It fails after the timeout.
+func (m *Machine) WaitForInitContainerRunning(namespace, podName, containerName string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.InitContainerRunning(namespace, podName, containerName)
+	})
+}
+
 // WaitForStatefulSetDelete blocks until the specified statefulset is deleted
 func (m *Machine) WaitForStatefulSetDelete(namespace string, name string) error {
 	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
@@ -313,6 +321,29 @@ func (m *Machine) PodRunning(namespace string, name string) (bool, error) {
 	if pod.Status.Phase == corev1.PodRunning {
 		return true, nil
 	}
+	return false, nil
+}
+
+// InitContainerRunning returns true if the pod by that name has a specific init container that is in state running
+func (m *Machine) InitContainerRunning(namespace, podName, containerName string) (bool, error) {
+	pod, err := m.Clientset.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "failed to query for pod by name: %s", podName)
+	}
+
+	for _, containerStatus := range pod.Status.InitContainerStatuses {
+		if containerStatus.Name != containerName {
+			continue
+		}
+
+		if containerStatus.State.Running != nil {
+			return true, nil
+		}
+	}
+
 	return false, nil
 }
 

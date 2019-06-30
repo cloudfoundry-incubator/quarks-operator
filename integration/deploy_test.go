@@ -87,6 +87,32 @@ var _ = Describe("Deploy", func() {
 
 	})
 
+	Context("when using patches", func() {
+		podName := "test-nats-v1-0"
+
+		It("it should run them", func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: "manifest"},
+				Data: map[string]string{
+					"manifest": bm.NatsSmallWithPatch,
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test", "manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			By("checking for init container")
+
+			err = env.WaitForInitContainerRunning(env.Namespace, podName, "bosh-pre-start-nats")
+			Expect(err).NotTo(HaveOccurred(), "error waiting for pre-start init container from pod")
+
+			Expect(env.WaitForPodContainerLogMsg(env.Namespace, podName, "bosh-pre-start-nats", "this file was patched")).To(BeNil(), "error getting logs from drain_watch process")
+		})
+	})
+
 	Context("when using multiple processes in BPM", func() {
 		It("should add multiple containers to a pod", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, corev1.ConfigMap{

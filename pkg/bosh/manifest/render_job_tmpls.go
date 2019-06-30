@@ -1,9 +1,11 @@
 package manifest
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -39,6 +41,14 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 
 			if err != nil {
 				return errors.Wrapf(err, "failed to load job spec file %s", job.Name)
+			}
+
+			// Run patches for the current job
+			for idx, patch := range job.Properties.BOSHContainerization.Patches {
+				err := runPatch(patch, idx)
+				if err != nil {
+					return errors.Wrapf(err, "failed to run patch %d for job %s", idx, job.Name)
+				}
 			}
 
 			// Find job instance that's being rendered
@@ -89,5 +99,61 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 			}
 		}
 	}
+	return nil
+}
+
+func runPatch(patch string, idx int) error {
+	// Save the patch to a temporary location
+	tmpFile, err := ioutil.TempFile(os.TempDir(), "patch-")
+	if err != nil {
+		return errors.Wrap(err, "failed to create a temp file for a patch")
+	}
+	// Cleanup once we're done
+	defer os.Remove(tmpFile.Name())
+	// Write patch contents
+	if _, err = tmpFile.Write([]byte(patch)); err != nil {
+		return errors.Wrap(err, "failed to write patch to file")
+	}
+	// Close the patch file
+	if err := tmpFile.Close(); err != nil {
+		return errors.Wrap(err, "failed to close patch file")
+	}
+
+	// Run the patch
+	cmd := exec.Command("/bin/bash", tmpFile.Name())
+
+	errReader, err := cmd.StderrPipe()
+	if err != nil {
+		return errors.Wrap(err, "failed to get stderr pipe")
+	}
+	outReader, err := cmd.StdoutPipe()
+	if err != nil {
+		return errors.Wrap(err, "failed to get stdout pipe")
+	}
+
+	errScanner := bufio.NewScanner(errReader)
+	go func() {
+		for errScanner.Scan() {
+			fmt.Printf("patch-err-%d | %s\n", idx, errScanner.Text())
+		}
+	}()
+
+	outScanner := bufio.NewScanner(outReader)
+	go func() {
+		for outScanner.Scan() {
+			fmt.Printf("patch-out-%d | %s\n", idx, outScanner.Text())
+		}
+	}()
+
+	err = cmd.Start()
+	if err != nil {
+		return errors.Wrapf(err, "failed to start patch script %d", idx)
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		return errors.Wrapf(err, "failed to wait for patch script %d", idx)
+	}
+
 	return nil
 }
