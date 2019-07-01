@@ -19,6 +19,7 @@ check-scripts:
 
 ############ BUILD TARGETS ############
 
+.PHONY: build
 build:
 	bin/build
 
