@@ -40,18 +40,9 @@ func AddTrigger(ctx context.Context, config *config.Config, mgr manager.Manager)
 			pod := e.Object.(*corev1.Pod)
 			shouldProcessEvent := pod.Status.Phase == "Pending"
 			if shouldProcessEvent {
-				ctxlog.WithEvent(pod, "Predicates").DebugJSON(ctx,
-					"ejob: create predicate for trigger controller",
-					ctxlog.ReconcileEventsFromSource{
-						ReconciliationObjectName: e.Meta.GetName(),
-						ReconciliationObjectKind: "corev1.Pod",
-						PredicateObjectName:      e.Meta.GetName(),
-						PredicateObjectKind:      "corev1.Pod",
-						Namespace:                e.Meta.GetNamespace(),
-						Type:                     "predicate",
-						Message: fmt.Sprintf("Filter passed for %s, existing pod is in Pending status",
-							e.Meta.GetName()),
-					},
+				ctxlog.WithPredicateEvent(pod).DebugPredicate(
+					ctx, e.Meta, "corev1.Pod",
+					fmt.Sprintf("Trigger eJob's create predicate passed for %s, existing pod is in Pending status", e.Meta.GetName()),
 				)
 			}
 			return shouldProcessEvent
@@ -70,18 +61,9 @@ func AddTrigger(ctx context.Context, config *config.Config, mgr manager.Manager)
 			if shouldProcessEvent {
 				pod := e.ObjectOld.(*corev1.Pod)
 
-				ctxlog.WithEvent(pod, "Predicates").DebugJSON(ctx,
-					"ejob: update predicate for trigger controller",
-					ctxlog.ReconcileEventsFromSource{
-						ReconciliationObjectName: e.MetaOld.GetName(),
-						ReconciliationObjectKind: "corev1.Pod",
-						PredicateObjectName:      e.MetaOld.GetName(),
-						PredicateObjectKind:      "corev1.Pod",
-						Namespace:                e.MetaOld.GetNamespace(),
-						Type:                     "predicate",
-						Message: fmt.Sprintf("Filter passed for %s, existing pod is in Pending status",
-							e.MetaOld.GetName()),
-					},
+				ctxlog.WithPredicateEvent(pod).DebugPredicate(
+					ctx, e.MetaOld, "corev1.Pod",
+					fmt.Sprintf("Trigger eJob's update predicate passed for %s, existing pod is in Pending status", e.MetaOld.GetName()),
 				)
 			}
 

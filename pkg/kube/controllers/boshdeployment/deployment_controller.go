@@ -2,7 +2,6 @@ package boshdeployment
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
@@ -86,17 +85,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.WithEvent(a.Object, "Mapping").DebugJSON(ctx,
-					"Enqueuing reconcile requests in response to events",
-					ctxlog.ReconcileEventsFromSource{
-						ReconciliationObjectName: reconciliation.Name,
-						ReconciliationObjectKind: "BOSHDeployment",
-						PredicateObjectName:      a.Meta.GetName(),
-						PredicateObjectKind:      bdv1.ConfigMapType,
-						Namespace:                reconciliation.Namespace,
-						Type:                     "mapping",
-						Message:                  fmt.Sprintf("fan-out updates from %s, type %s into %s", a.Meta.GetName(), bdv1.ConfigMapType, reconciliation.Name),
-					})
+				ctxlog.WithMappingEvent(a.Object).DebugMapping(ctx, reconciliation, "BOSHDeployment", a.Meta.GetName(), bdv1.ConfigMapType)
 			}
 
 			return reconciles
@@ -146,17 +135,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.WithEvent(a.Object, "Mapping").DebugJSON(ctx,
-					"Enqueuing reconcile requests in response to events",
-					ctxlog.ReconcileEventsFromSource{
-						ReconciliationObjectName: reconciliation.Name,
-						ReconciliationObjectKind: "BOSHDeployment",
-						PredicateObjectName:      a.Meta.GetName(),
-						PredicateObjectKind:      bdv1.SecretType,
-						Namespace:                reconciliation.Namespace,
-						Type:                     "mapping",
-						Message:                  fmt.Sprintf("fan-out updates from %s, type %s into %s", a.Meta.GetName(), bdv1.SecretType, reconciliation.Name),
-					})
+				ctxlog.WithMappingEvent(a.Object).DebugMapping(ctx, reconciliation, "BOSHDeployment", a.Meta.GetName(), bdv1.SecretType)
 			}
 
 			return reconciles

@@ -53,18 +53,10 @@ func AddJob(ctx context.Context, config *config.Config, mgr manager.Manager) err
 
 			shouldProcessEvent := o.Status.Succeeded == 1 || o.Status.Failed == 1
 			if shouldProcessEvent {
-				ctxlog.WithEvent(o, "Predicates").DebugJSON(ctx,
-					"ejob: update predicate for job controller",
-					ctxlog.ReconcileEventsFromSource{
-						ReconciliationObjectName: e.MetaNew.GetName(),
-						ReconciliationObjectKind: "batchv1.Job",
-						PredicateObjectName:      e.MetaNew.GetName(),
-						PredicateObjectKind:      "batchv1.Job",
-						Namespace:                e.MetaNew.GetNamespace(),
-						Type:                     "predicate",
-						Message: fmt.Sprintf("Filter passed for %s, existing batchv1.Job has changed to a final state, either succeeded or failed",
-							e.MetaNew.GetName()),
-					},
+				ctxlog.WithPredicateEvent(o).DebugPredicate(
+					ctx, e.MetaNew, "batchv1.Job",
+					fmt.Sprintf("EJob job-output update predicate passed for %s, existing batchv1.Job has changed to a final state, either succeeded or failed",
+						e.MetaNew.GetName()),
 				)
 			}
 
