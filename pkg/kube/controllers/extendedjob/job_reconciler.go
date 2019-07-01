@@ -102,7 +102,7 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 	if !reflect.DeepEqual(ejv1.Output{}, ej.Spec.Output) && ej.Spec.Output != nil {
 		if instance.Status.Succeeded == 1 || (instance.Status.Failed == 1 && ej.Spec.Output.WriteOnFailure) {
 			ctxlog.WithEvent(&ej, "PersistingOutput").Infof(ctx, "Persisting output of job '%s'", instance.Name)
-			err = r.persistOutput(ctx, instance, ej.Spec.Output)
+			err = r.persistOutput(ctx, instance, ej)
 			if err != nil {
 				ctxlog.WithEvent(instance, "PersistOutputError").Errorf(ctx, "Could not persist output: '%s'", err)
 				return reconcile.Result{}, err
@@ -165,7 +165,8 @@ func (r *ReconcileJob) jobPod(ctx context.Context, name string, namespace string
 	return &list.Items[0], nil
 }
 
-func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job, conf *ejv1.Output) error {
+func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job, ejob ejv1.ExtendedJob) error {
+
 	pod, err := r.jobPod(ctx, instance.GetName(), instance.GetNamespace())
 	if err != nil {
 		return errors.Wrap(err, "failed to persist output")
@@ -185,7 +186,7 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 		}
 
 		// Create secret and persist the output
-		secretName := conf.NamePrefix + c.Name
+		secretName := ejob.Spec.Output.NamePrefix + c.Name
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
@@ -193,7 +194,7 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 			},
 		}
 
-		secretLabels := conf.SecretLabels
+		secretLabels := ejob.Spec.Output.SecretLabels
 		if secretLabels == nil {
 			secretLabels = map[string]string{}
 		}
@@ -203,14 +204,14 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 			secretLabels[ejv1.LabelInstanceGroup] = ig
 		}
 
-		if conf.Versioned {
+		if ejob.Spec.Output.Versioned {
 
 			// Use secretName as versioned secret name prefix: <secretName>-v<version>
 			err = r.versionedSecretStore.Create(
 				ctx,
 				instance.GetNamespace(),
-				instance.Name,
-				instance.UID,
+				ejob.GetName(),
+				ejob.GetUID(),
 				secretName,
 				data,
 				secretLabels,
