@@ -291,6 +291,7 @@ var _ = Describe("Deploy", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					By("checking if the deployment was updated")
+					// TODO this does not ensure v2-0 is up or v2 is terminating while v3 is starting..
 					err = env.WaitForPod(env.Namespace, "test-nats-v2-1")
 					Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 				})
@@ -323,6 +324,7 @@ var _ = Describe("Deploy", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				By("checking if the deployment was updated")
+				// TODO if sequence numbers are not deterministic WaitForInstanceGroup should support matchers (>=2)
 				err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "2", 2)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 

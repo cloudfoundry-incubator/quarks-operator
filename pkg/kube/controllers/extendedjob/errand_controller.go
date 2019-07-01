@@ -73,7 +73,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 
 			enqueueForManualErrand := n.Spec.Trigger.Strategy == ejv1.TriggerNow && o.Spec.Trigger.Strategy == ejv1.TriggerManual
 
-			// enqueuing for auto-errand when referenced secrets changed
+			// enqueuing for auto-errand when referenced secrets changed, or a newer version of a versioned secret is available
 			enqueueForConfigChange := n.IsAutoErrand() && n.Spec.UpdateOnConfigChange && hasConfigsChanged(o, n)
 
 			shouldProcessEvent := enqueueForManualErrand || enqueueForConfigChange
@@ -103,7 +103,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 	}
 
 	// Watch config maps referenced by resource ExtendedJob,
-	// trigger auto errand if UpdateOnConfigChange=true and config data changed
+	// trigger auto errand if UpdateOnConfigChange=true and config data changed.
 	p = predicate.Funcs{
 		CreateFunc:  func(e event.CreateEvent) bool { return false },
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
@@ -153,7 +153,8 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 	}
 
 	// Watch secrets referenced by resource ExtendedJob
-	// trigger auto errand if UpdateOnConfigChange=true and config data changed
+	// trigger auto errand if UpdateOnConfigChange=true and config data changed.
+	// This includes changes to any version of a referenced 'versioned secret'.
 	p = predicate.Funcs{
 		// Only enqueuing versioned secret which has versionedSecret label
 		CreateFunc: func(e event.CreateEvent) bool {
@@ -161,6 +162,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			ok := vss.IsVersionedSecret(*o)
 			// Skip initial version since it will trigger twice if the job has been created with
 			// `Strategy: Once` and secrets are created afterwards
+			// TODO if we don't care about gap-less version sequences, we could drop this?
 			if ok && vss.IsInitialVersion(*o) {
 				return false
 			}

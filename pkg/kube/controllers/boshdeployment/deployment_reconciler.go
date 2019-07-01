@@ -113,10 +113,13 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Generate all the kube objects we need for the manifest
 	log.Debug(ctx, "Converting bosh manifest to kube objects")
+	// Use latest desired manifest version for dg/bpm jobs
+	// TODO start with invalid v0
 	version := r.resolver.LatestVersion(ctx, request.Namespace, manifest.Name)
 	jobFactory := bdm.NewJobFactory(*manifest, instance.GetNamespace(), version)
 
 	// Apply the "Variable Interpolation" ExtendedJob
+	// TODO `version` is not needed, will create latest+1 via eJobs `versioned: true`
 	eJob, err := jobFactory.VariableInterpolationJob()
 	if err != nil {
 		return reconcile.Result{}, log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "Failed to build variable interpolation eJob: %v", err)
@@ -130,6 +133,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Apply the "Data Gathering" ExtendedJob
+	// TODO `version` should be the version latest+1 created by `VariableInterpolationJob`, instead of hard coded
 	eJob, err = jobFactory.DataGatheringJob()
 	if err != nil {
 		return reconcile.Result{}, log.WithEvent(instance, "DataGatheringError").Errorf(ctx, "Failed to build data gathering eJob: %v", err)
@@ -143,6 +147,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Apply the "BPM Configs" ExtendedJob
+	// TODO `version` should be the version latest+1 created by `VariableInterpolationJob`, instead of hard coded
 	eJob, err = jobFactory.BPMConfigsJob()
 	if err != nil {
 		return reconcile.Result{}, log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to build BPM configs eJob: %v", err)
