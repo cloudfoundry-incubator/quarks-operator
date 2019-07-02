@@ -22,20 +22,24 @@ func NewGetter(log *zap.SugaredLogger) Getter {
 	return &getter{
 		log: log,
 
-		inClusterConfig:   rest.InClusterConfig,
-		lookupEnv:         os.LookupEnv,
-		currentUser:       user.Current,
-		defaultRESTConfig: clientcmd.DefaultClientConfig.ClientConfig,
+		inClusterConfig:          rest.InClusterConfig,
+		stat:                     os.Stat,
+		restConfigFromKubeConfig: clientcmd.NewNonInteractiveDeferredLoadingClientConfig,
+		lookupEnv:                os.LookupEnv,
+		currentUser:              user.Current,
+		defaultRESTConfig:        clientcmd.DefaultClientConfig.ClientConfig,
 	}
 }
 
 type getter struct {
 	log *zap.SugaredLogger
 
-	inClusterConfig   func() (*rest.Config, error)
-	lookupEnv         func(key string) (string, bool)
-	currentUser       func() (*user.User, error)
-	defaultRESTConfig func() (*rest.Config, error)
+	inClusterConfig          func() (*rest.Config, error)
+	stat                     func(name string) (os.FileInfo, error)
+	restConfigFromKubeConfig func(loader clientcmd.ClientConfigLoader, overrides *clientcmd.ConfigOverrides) clientcmd.ClientConfig
+	lookupEnv                func(key string) (string, bool)
+	currentUser              func() (*user.User, error)
+	defaultRESTConfig        func() (*rest.Config, error)
 }
 
 func (g *getter) Get(configPath string) (*rest.Config, error) {
@@ -60,7 +64,7 @@ func (g *getter) Get(configPath string) (*rest.Config, error) {
 		}
 
 		homeFile := filepath.Join(usr.HomeDir, ".kube", "config")
-		_, err = os.Stat(homeFile)
+		_, err = g.stat(homeFile)
 		if err != nil {
 			if !os.IsNotExist(err) {
 				return nil, &getConfigError{err}
@@ -80,7 +84,7 @@ func (g *getter) Get(configPath string) (*rest.Config, error) {
 	}
 
 	paths := filepath.SplitList(configPath)
-	c, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(&clientcmd.ClientConfigLoadingRules{Precedence: paths}, &clientcmd.ConfigOverrides{}).ClientConfig()
+	c, err := g.restConfigFromKubeConfig(&clientcmd.ClientConfigLoadingRules{Precedence: paths}, &clientcmd.ConfigOverrides{}).ClientConfig()
 	if err != nil {
 		return nil, &getConfigError{err}
 	}

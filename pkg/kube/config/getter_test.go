@@ -2,13 +2,14 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"os/user"
 	"path/filepath"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
-
+	"github.com/spf13/afero/mem"
 	"go.uber.org/zap"
 	"k8s.io/client-go/rest"
 )
@@ -25,9 +26,9 @@ var _ = Describe("Getter", func() {
 	type getCase struct {
 		getter getter
 
-		customConfigPath string
-		expectedConfig   *rest.Config
-		expectedErr      error
+		configPath     string
+		expectedConfig *rest.Config
+		expectedErr    error
 	}
 
 	DescribeTable(
@@ -37,7 +38,7 @@ var _ = Describe("Getter", func() {
 			defer logger.Sync()
 			c.getter.log = logger.Sugar()
 
-			actualConfig, actualErr := c.getter.Get(c.customConfigPath)
+			actualConfig, actualErr := c.getter.Get(c.configPath)
 			if c.expectedConfig == nil {
 				Expect(actualConfig).To(BeNil())
 			} else {
@@ -92,7 +93,7 @@ var _ = Describe("Getter", func() {
 			},
 		),
 		Entry(
-			"should fail when reading the config from ~/.kube fails",
+			"should fail when stating the config from ~/.kube fails",
 			getCase{
 				getter: getter{
 					lookupEnv: func(_ string) (string, bool) {
@@ -101,84 +102,12 @@ var _ = Describe("Getter", func() {
 					currentUser: func() (*user.User, error) {
 						return &user.User{HomeDir: filepath.Join("home", "johndoe")}, nil
 					},
-				},
-				expectedErr: &getConfigError{fmt.Errorf("error from readFile that isn't NotExist")},
-			},
-		),
-		Entry(
-			"should fail when creating the output rest config from ~/.kube fails",
-			getCase{
-				getter: getter{
-					lookupEnv: func(_ string) (string, bool) {
-						return "", false
-					},
-					currentUser: func() (*user.User, error) {
-						return &user.User{HomeDir: filepath.Join("home", "johndoe")}, nil
+					stat: func(name string) (os.FileInfo, error) {
+						Expect(name).To(Equal(filepath.Join("home", "johndoe", ".kube", "config")))
+						return &mem.FileInfo{}, fmt.Errorf("error from stat that isn't NotExist")
 					},
 				},
-				expectedErr: &getConfigError{fmt.Errorf("error from restConfigFromKubeConfig")},
-			},
-		),
-		Entry(
-			"should succeed when creating the output rest config from ~/.kube",
-			getCase{
-				getter: getter{
-					lookupEnv: func(_ string) (string, bool) {
-						return "", false
-					},
-					currentUser: func() (*user.User, error) {
-						return &user.User{HomeDir: filepath.Join("home", "johndoe")}, nil
-					},
-				},
-				expectedConfig: &rest.Config{Host: "home.kube.config.com"},
-			},
-		),
-		Entry(
-			"should fail when reading the config from the provided config path fails",
-			getCase{
-				getter:           getter{},
-				customConfigPath: filepath.Join("path", "to", ".kube", "config"),
-				expectedErr:      &getConfigError{fmt.Errorf("error from readFile that isn't NotExist")},
-			},
-		),
-		Entry(
-			"should fail when creating the output rest config from the provided config path fails",
-			getCase{
-				getter:           getter{},
-				customConfigPath: filepath.Join("path", "to", ".kube", "config"),
-				expectedErr:      &getConfigError{fmt.Errorf("error from restConfigFromKubeConfig")},
-			},
-		),
-		Entry(
-			"should succeed when creating the output rest config from the provided config path",
-			getCase{
-				getter:           getter{},
-				customConfigPath: filepath.Join("path", "to", ".kube", "config"),
-				expectedConfig:   &rest.Config{Host: "provided.kube.config.com"},
-			},
-		),
-		Entry(
-			"should fail when creating the output rest config fails using the default REST config",
-			getCase{
-				getter: getter{
-					defaultRESTConfig: func() (*rest.Config, error) {
-						return nil, fmt.Errorf("error from defaultRESTConfig")
-					},
-				},
-				customConfigPath: filepath.Join("path", "to", ".kube", "config"),
-				expectedErr:      &getConfigError{fmt.Errorf("error from defaultRESTConfig")},
-			},
-		),
-		Entry(
-			"should succeed when creating the output rest config using the default REST config",
-			getCase{
-				getter: getter{
-					defaultRESTConfig: func() (*rest.Config, error) {
-						return &rest.Config{Host: "default.rest.config.com"}, nil
-					},
-				},
-				customConfigPath: filepath.Join("path", "to", ".kube", "config"),
-				expectedConfig:   &rest.Config{Host: "default.rest.config.com"},
+				expectedErr: &getConfigError{fmt.Errorf("error from stat that isn't NotExist")},
 			},
 		),
 	)
