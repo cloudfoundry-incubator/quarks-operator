@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	machinerytypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
@@ -154,7 +155,54 @@ func (f *WebhookConfig) setupCertificate(ctx context.Context) error {
 	return nil
 }
 
-func (f *WebhookConfig) generateWebhookServerConfig(ctx context.Context, webhooks []*admission.Webhook) error {
+func (f *WebhookConfig) generateValidationWebhookServerConfig(ctx context.Context, webhooks []webhook.Webhook) error {
+	if len(f.CaCertificate) == 0 {
+		return fmt.Errorf("can not create a webhook server config with an empty ca certificate")
+	}
+
+	config := &admissionregistrationv1beta1.ValidatingWebhookConfiguration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      f.ConfigName,
+			Namespace: f.config.Namespace,
+		},
+	}
+
+	for _, webhook := range webhooks {
+		admissionWebhook, ok := webhook.(*admission.Webhook)
+		if !ok {
+			return errors.New("webhook is not an admission webhook")
+		}
+
+		url := url.URL{
+			Scheme: "https",
+			Host:   net.JoinHostPort(f.config.WebhookServerHost, strconv.Itoa(int(f.config.WebhookServerPort))),
+			Path:   admissionWebhook.Path,
+		}
+		urlString := url.String()
+		wh := admissionregistrationv1beta1.Webhook{
+			Name:              webhook.GetName(),
+			Rules:             admissionWebhook.Rules,
+			FailurePolicy:     admissionWebhook.FailurePolicy,
+			NamespaceSelector: admissionWebhook.NamespaceSelector,
+			ClientConfig: admissionregistrationv1beta1.WebhookClientConfig{
+				CABundle: f.CaCertificate,
+				URL:      &urlString,
+			},
+		}
+
+		config.Webhooks = append(config.Webhooks, wh)
+	}
+
+	f.client.Delete(ctx, config)
+	err := f.client.Create(ctx, config)
+	if err != nil {
+		return errors.Wrap(err, "generating the webhook configuration")
+	}
+
+	return nil
+}
+
+func (f *WebhookConfig) generateMutationWebhookServerConfig(ctx context.Context, webhooks []webhook.Webhook) error {
 	if len(f.CaCertificate) == 0 {
 		return fmt.Errorf("can not create a webhook server config with an empty ca certificate")
 	}
@@ -167,17 +215,23 @@ func (f *WebhookConfig) generateWebhookServerConfig(ctx context.Context, webhook
 	}
 
 	for _, webhook := range webhooks {
+
+		admissionWebhook, ok := webhook.(*admission.Webhook)
+		if !ok {
+			return errors.New("webhook is not an admission webhook")
+		}
+
 		url := url.URL{
 			Scheme: "https",
 			Host:   net.JoinHostPort(f.config.WebhookServerHost, strconv.Itoa(int(f.config.WebhookServerPort))),
-			Path:   webhook.Path,
+			Path:   admissionWebhook.Path,
 		}
 		urlString := url.String()
 		wh := admissionregistrationv1beta1.Webhook{
 			Name:              webhook.GetName(),
-			Rules:             webhook.Rules,
-			FailurePolicy:     webhook.FailurePolicy,
-			NamespaceSelector: webhook.NamespaceSelector,
+			Rules:             admissionWebhook.Rules,
+			FailurePolicy:     admissionWebhook.FailurePolicy,
+			NamespaceSelector: admissionWebhook.NamespaceSelector,
 			ClientConfig: admissionregistrationv1beta1.WebhookClientConfig{
 				CABundle: f.CaCertificate,
 				URL:      &urlString,
