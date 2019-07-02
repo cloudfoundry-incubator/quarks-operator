@@ -352,7 +352,7 @@ var _ = Describe("Deploy", func() {
 	})
 
 	Context("when data provided by the user is incorrect", func() {
-		FIt("fails to create the resource if the validator gets an error when applying ops files", func() {
+		It("fails to create the resource if the validator gets an error when applying ops files", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
@@ -365,19 +365,14 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			boshDeployment, tearDown, err := env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment("test", "manifest", "bosh-ops", "bosh-ops-secret"))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(`Expected to find exactly one matching array item for path '/instance_groups/name=api' but found 0`))
-			Expect(err.Error()).To(ContainSubstring(`"admission webhook \"validate-boshdeployment.fissile.cloudfoundry.org\" denied the request:`))
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment("test", "manifest", "bosh-ops", "bosh-ops-secret"))
+			Expect(err).To(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-
-			By("checking for events")
-			events, err := env.GetBOSHDeploymentEvents(env.Namespace, boshDeployment.ObjectMeta.Name, string(boshDeployment.ObjectMeta.UID))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(env.ContainExpectedEvent(events, "WithOpsManifestError", "failed to interpolate")).To(BeTrue())
+			Expect(err.Error()).To(ContainSubstring(`Expected to find exactly one matching array item for path '/instance_groups/name=api' but found 0`))
+			Expect(err.Error()).To(ContainSubstring(`admission webhook "validate-boshdeployment.fissile.cloudfoundry.org" denied the request:`))
 		})
 
-		It("failed to deploy a empty manifest", func() {
+		It("failed to deploy an empty manifest", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
@@ -400,7 +395,7 @@ var _ = Describe("Deploy", func() {
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 		})
 
-		It("failed to deploy due to a empty manifest ref", func() {
+		It("failed to deploy due to an empty manifest ref", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
@@ -422,7 +417,7 @@ var _ = Describe("Deploy", func() {
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 		})
 
-		It("failed to deploy due to a empty ops ref", func() {
+		It("failed to deploy due to an empty ops ref", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
