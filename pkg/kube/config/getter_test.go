@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"os/user"
 	"path/filepath"
 
@@ -102,10 +101,6 @@ var _ = Describe("Getter", func() {
 					currentUser: func() (*user.User, error) {
 						return &user.User{HomeDir: filepath.Join("home", "johndoe")}, nil
 					},
-					readFile: func(filename string) ([]byte, error) {
-						Expect(filename).To(Equal(filepath.Join("home", "johndoe", ".kube", "config")))
-						return nil, fmt.Errorf("error from readFile that isn't NotExist")
-					},
 				},
 				expectedErr: &getConfigError{fmt.Errorf("error from readFile that isn't NotExist")},
 			},
@@ -119,14 +114,6 @@ var _ = Describe("Getter", func() {
 					},
 					currentUser: func() (*user.User, error) {
 						return &user.User{HomeDir: filepath.Join("home", "johndoe")}, nil
-					},
-					readFile: func(filename string) ([]byte, error) {
-						Expect(filename).To(Equal(filepath.Join("home", "johndoe", ".kube", "config")))
-						return []byte{0xaa, 0xcc, 0xff}, nil
-					},
-					restConfigFromKubeConfig: func(configBytes []byte) (*rest.Config, error) {
-						Expect(configBytes).To(Equal([]byte{0xaa, 0xcc, 0xff}))
-						return nil, fmt.Errorf("error from restConfigFromKubeConfig")
 					},
 				},
 				expectedErr: &getConfigError{fmt.Errorf("error from restConfigFromKubeConfig")},
@@ -142,14 +129,6 @@ var _ = Describe("Getter", func() {
 					currentUser: func() (*user.User, error) {
 						return &user.User{HomeDir: filepath.Join("home", "johndoe")}, nil
 					},
-					readFile: func(filename string) ([]byte, error) {
-						Expect(filename).To(Equal(filepath.Join("home", "johndoe", ".kube", "config")))
-						return []byte{0x00, 0x10, 0x20}, nil
-					},
-					restConfigFromKubeConfig: func(configBytes []byte) (*rest.Config, error) {
-						Expect(configBytes).To(Equal([]byte{0x00, 0x10, 0x20}))
-						return &rest.Config{Host: "home.kube.config.com"}, nil
-					},
 				},
 				expectedConfig: &rest.Config{Host: "home.kube.config.com"},
 			},
@@ -157,12 +136,7 @@ var _ = Describe("Getter", func() {
 		Entry(
 			"should fail when reading the config from the provided config path fails",
 			getCase{
-				getter: getter{
-					readFile: func(filename string) ([]byte, error) {
-						Expect(filename).To(Equal(filepath.Join("path", "to", ".kube", "config")))
-						return nil, fmt.Errorf("error from readFile that isn't NotExist")
-					},
-				},
+				getter:           getter{},
 				customConfigPath: filepath.Join("path", "to", ".kube", "config"),
 				expectedErr:      &getConfigError{fmt.Errorf("error from readFile that isn't NotExist")},
 			},
@@ -170,16 +144,7 @@ var _ = Describe("Getter", func() {
 		Entry(
 			"should fail when creating the output rest config from the provided config path fails",
 			getCase{
-				getter: getter{
-					readFile: func(filename string) ([]byte, error) {
-						Expect(filename).To(Equal(filepath.Join("path", "to", ".kube", "config")))
-						return []byte{0xaa, 0xcc, 0xff}, nil
-					},
-					restConfigFromKubeConfig: func(configBytes []byte) (*rest.Config, error) {
-						Expect(configBytes).To(Equal([]byte{0xaa, 0xcc, 0xff}))
-						return nil, fmt.Errorf("error from restConfigFromKubeConfig")
-					},
-				},
+				getter:           getter{},
 				customConfigPath: filepath.Join("path", "to", ".kube", "config"),
 				expectedErr:      &getConfigError{fmt.Errorf("error from restConfigFromKubeConfig")},
 			},
@@ -187,16 +152,7 @@ var _ = Describe("Getter", func() {
 		Entry(
 			"should succeed when creating the output rest config from the provided config path",
 			getCase{
-				getter: getter{
-					readFile: func(filename string) ([]byte, error) {
-						Expect(filename).To(Equal(filepath.Join("path", "to", ".kube", "config")))
-						return []byte{0x00, 0x10, 0x20}, nil
-					},
-					restConfigFromKubeConfig: func(configBytes []byte) (*rest.Config, error) {
-						Expect(configBytes).To(Equal([]byte{0x00, 0x10, 0x20}))
-						return &rest.Config{Host: "provided.kube.config.com"}, nil
-					},
-				},
+				getter:           getter{},
 				customConfigPath: filepath.Join("path", "to", ".kube", "config"),
 				expectedConfig:   &rest.Config{Host: "provided.kube.config.com"},
 			},
@@ -205,10 +161,6 @@ var _ = Describe("Getter", func() {
 			"should fail when creating the output rest config fails using the default REST config",
 			getCase{
 				getter: getter{
-					readFile: func(filename string) ([]byte, error) {
-						Expect(filename).To(Equal(filepath.Join("path", "to", ".kube", "config")))
-						return nil, os.ErrNotExist
-					},
 					defaultRESTConfig: func() (*rest.Config, error) {
 						return nil, fmt.Errorf("error from defaultRESTConfig")
 					},
@@ -221,10 +173,6 @@ var _ = Describe("Getter", func() {
 			"should succeed when creating the output rest config using the default REST config",
 			getCase{
 				getter: getter{
-					readFile: func(filename string) ([]byte, error) {
-						Expect(filename).To(Equal(filepath.Join("path", "to", ".kube", "config")))
-						return nil, os.ErrNotExist
-					},
 					defaultRESTConfig: func() (*rest.Config, error) {
 						return &rest.Config{Host: "default.rest.config.com"}, nil
 					},
