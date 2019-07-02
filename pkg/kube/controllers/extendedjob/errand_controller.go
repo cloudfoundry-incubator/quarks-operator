@@ -44,7 +44,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			eJob := e.Object.(*ejv1.ExtendedJob)
 			shouldProcessEvent := eJob.Spec.Trigger.Strategy == ejv1.TriggerNow || eJob.Spec.Trigger.Strategy == ejv1.TriggerOnce
 			if shouldProcessEvent {
-				ctxlog.WithPredicateEvent(eJob).DebugPredicate(
+				ctxlog.NewPredicateEvent(eJob).Debug(
 					ctx, e.Meta, ejv1.LabelExtendedJob,
 					fmt.Sprintf("Errand eJob's create predicate passed for %s, existing extendedJob spec.Trigger.Strategy  matches the values 'now' or 'once'",
 						e.Meta.GetName()),
@@ -70,7 +70,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 
 			shouldProcessEvent := enqueueForManualErrand || enqueueForConfigChange
 			if shouldProcessEvent {
-				ctxlog.WithPredicateEvent(o).DebugPredicate(
+				ctxlog.NewPredicateEvent(o).Debug(
 					ctx, e.MetaNew, ejv1.LabelExtendedJob,
 					fmt.Sprintf("Errand eJob's update predicate passed for %s, a change in it´s referenced secrets have been detected",
 						e.MetaNew.GetName()),
@@ -117,7 +117,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.WithMappingEvent(a.Object).DebugMapping(ctx, reconciliation, "ExtendedJob", a.Meta.GetName(), bdv1.ConfigMapType)
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "ExtendedJob", a.Meta.GetName(), bdv1.ConfigMapType)
 			}
 			return reconciles
 		}),
@@ -168,7 +168,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.WithMappingEvent(a.Object).DebugMapping(ctx, reconciliation, "ExtendedJob", a.Meta.GetName(), bdv1.SecretType)
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "ExtendedJob", a.Meta.GetName(), bdv1.SecretType)
 			}
 
 			return reconciles

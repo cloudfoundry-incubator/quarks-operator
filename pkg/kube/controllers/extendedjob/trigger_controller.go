@@ -40,7 +40,7 @@ func AddTrigger(ctx context.Context, config *config.Config, mgr manager.Manager)
 			pod := e.Object.(*corev1.Pod)
 			shouldProcessEvent := pod.Status.Phase == "Pending"
 			if shouldProcessEvent {
-				ctxlog.WithPredicateEvent(pod).DebugPredicate(
+				ctxlog.NewPredicateEvent(pod).Debug(
 					ctx, e.Meta, "corev1.Pod",
 					fmt.Sprintf("Trigger eJob's create predicate passed for %s, existing pod is in Pending status", e.Meta.GetName()),
 				)
@@ -61,7 +61,7 @@ func AddTrigger(ctx context.Context, config *config.Config, mgr manager.Manager)
 			if shouldProcessEvent {
 				pod := e.ObjectOld.(*corev1.Pod)
 
-				ctxlog.WithPredicateEvent(pod).DebugPredicate(
+				ctxlog.NewPredicateEvent(pod).Debug(
 					ctx, e.MetaOld, "corev1.Pod",
 					fmt.Sprintf("Trigger eJob's update predicate passed for %s, existing pod is in Pending status", e.MetaOld.GetName()),
 				)

@@ -53,7 +53,7 @@ func AddJob(ctx context.Context, config *config.Config, mgr manager.Manager) err
 
 			shouldProcessEvent := o.Status.Succeeded == 1 || o.Status.Failed == 1
 			if shouldProcessEvent {
-				ctxlog.WithPredicateEvent(o).DebugPredicate(
+				ctxlog.NewPredicateEvent(o).Debug(
 					ctx, e.MetaNew, "batchv1.Job",
 					fmt.Sprintf("EJob job-output update predicate passed for %s, existing batchv1.Job has changed to a final state, either succeeded or failed",
 						e.MetaNew.GetName()),

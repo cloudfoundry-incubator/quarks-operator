@@ -44,7 +44,7 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 			o := e.Object.(*corev1.Secret)
 			shouldProcessEvent := isBPMInfoSecret(o)
 			if shouldProcessEvent {
-				ctxlog.WithPredicateEvent(o).DebugPredicate(
+				ctxlog.NewPredicateEvent(o).Debug(
 					ctx, e.Meta, bdv1.SecretType,
 					fmt.Sprintf("Create predicate passed for %s, existing secret with label %s, value %s",
 						e.Meta.GetName(), bdv1.LabelDeploymentSecretType, o.GetLabels()[bdv1.LabelDeploymentSecretType]),
@@ -59,7 +59,7 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 			o := e.ObjectNew.(*corev1.Secret)
 			shouldProcessEvent := isBPMInfoSecret(o)
 			if shouldProcessEvent {
-				ctxlog.WithPredicateEvent(o).DebugPredicate(
+				ctxlog.NewPredicateEvent(o).Debug(
 					ctx, e.MetaNew, bdv1.SecretType,
 					fmt.Sprintf("Update predicate passed for %s, new secret with label %s, value %s",
 						e.MetaNew.GetName(), bdv1.LabelDeploymentSecretType, o.GetLabels()[bdv1.LabelDeploymentSecretType]),
