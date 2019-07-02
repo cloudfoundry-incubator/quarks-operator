@@ -33,6 +33,7 @@ steps:
   - "kubectl patch storageclass local-path -p '{\"metadata\": {\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"true\", \"storageclass.beta.kubernetes.io/is-default-class\":\"true\"}}}'"
   # Kube can reach us on the docker0 interface
   - export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip -4 addr show docker0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+  - export OPERATOR_TEST_STORAGE_CLASS="local-path"
   # Run integration tests
   - make test-integration
 

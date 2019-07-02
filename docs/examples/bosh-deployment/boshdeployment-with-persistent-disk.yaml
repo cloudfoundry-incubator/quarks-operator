@@ -18,6 +18,7 @@ data:
     - name: nats
       instances: 1
       persistent_disk: 4096
+      persistent_disk_type: ((operator_test_storage_class))
       jobs:
       - name: nats
         release: nats
