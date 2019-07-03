@@ -430,7 +430,6 @@ var _ = Describe("Deploy", func() {
 	})
 
 	Context("when the BOSHDeployment cannot be resolved", func() {
-
 		It("should not create the resource and the validation hook should return an error message", func() {
 			_, _, err := env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test", "foo-baz"))
 			Expect(err).To(HaveOccurred())
