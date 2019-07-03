@@ -313,7 +313,6 @@ var _ = Describe("Deploy", func() {
 			})
 
 			It("should update the deployment and respect the instance count", func() {
-				Skip("this test is flaky and causing the failures in the entire namespace")
 				ops, err := env.GetConfigMap(env.Namespace, "bosh-ops")
 				Expect(err).NotTo(HaveOccurred())
 				ops.Data["ops"] = `- type: replace
