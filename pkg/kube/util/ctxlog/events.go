@@ -8,13 +8,30 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-type event struct {
+type Event struct {
 	object runtime.Object
 	reason string
 }
+
+type PredicateEvent struct {
+	Event
+}
+
+type MappingEvent struct {
+	Event
+}
+
+const (
+	// ReasonPredicates is used for controller predicate related logging
+	ReasonPredicates = "Predicates"
+	// ReasonMapping is used for controller EnqueueRequestsFromMapFunc related logging
+	ReasonMapping = "Mapping"
+)
 
 // ReconcileEventsFromSource for defining useful logs when defining
 // a mapping between a watched object and a
@@ -29,33 +46,70 @@ type ReconcileEventsFromSource struct {
 	Type                     string `json:"type"`
 }
 
-// EventLogger adds events and writes logs
-type EventLogger interface {
-	Infof(context.Context, string, ...interface{})
-	Debugf(context.Context, string, ...interface{})
-	DebugJSON(context.Context, string, interface{})
-	Errorf(context.Context, string, ...interface{}) error
-	Error(context.Context, ...interface{}) error
-}
-
 // WithEvent returns a struct to provide event enhanced logging methods
-func WithEvent(object runtime.Object, reason string) EventLogger {
-	return event{object: object, reason: reason}
+func WithEvent(object runtime.Object, reason string) Event {
+	return Event{object: object, reason: reason}
 }
 
-// DebugJSON logs and adds an info event in json format
-func (ev event) DebugJSON(ctx context.Context, format string, objectInfo interface{}) {
-	log := ExtractLogger(ctx)
+// NewPredicateEvent returns a log event with the 'predicate' reason
+func NewPredicateEvent(object runtime.Object) PredicateEvent {
+	return PredicateEvent{Event{object: object, reason: ReasonPredicates}}
+}
 
+// NewMappingEvent returns a log event with the 'mapping' reason
+func NewMappingEvent(object runtime.Object) MappingEvent {
+	return MappingEvent{Event{object: object, reason: ReasonMapping}}
+}
+
+// Debug is used for predicate logging in the controllers
+func (ev PredicateEvent) Debug(ctx context.Context, meta metav1.Object, resource string, msg string) {
+	ev.DebugJSON(
+		ctx,
+		ReconcileEventsFromSource{
+			ReconciliationObjectName: meta.GetName(),
+			ReconciliationObjectKind: resource,
+			PredicateObjectName:      meta.GetName(),
+			PredicateObjectKind:      resource,
+			Namespace:                meta.GetNamespace(),
+			Type:                     ev.reason,
+			Message:                  msg,
+		},
+	)
+}
+
+// Debug is used for logging in EnqueueRequestsFromMapFunc
+func (ev MappingEvent) Debug(ctx context.Context, reconciliation reconcile.Request, crd string, objName string, objType string) {
+	ev.DebugJSON(
+		ctx,
+		ReconcileEventsFromSource{
+			ReconciliationObjectName: reconciliation.Name,
+			ReconciliationObjectKind: crd,
+			PredicateObjectName:      objName,
+			PredicateObjectKind:      objType,
+			Namespace:                reconciliation.Namespace,
+			Type:                     ev.reason,
+			Message:                  fmt.Sprintf("Enqueuing reconcile requests: fan-out updates from %s, type %s into %s", objName, objType, reconciliation.Name),
+		},
+	)
+}
+
+// DebugJSON logs a message and adds an info event in json format
+func (ev Event) DebugJSON(ctx context.Context, objectInfo interface{}) {
 	jsonData, _ := json.Marshal(objectInfo)
-	log.Debug(format, string(jsonData))
-
 	recorder := ExtractRecorder(ctx)
-	recorder.Event(ev.object, corev1.EventTypeNormal, ev.reason, fmt.Sprintf("%s %s", format, string(jsonData)))
+	recorder.Event(ev.object, corev1.EventTypeNormal, ev.reason, string(jsonData))
+
+	// treat JSON data as a string map and extract message
+	var result map[string]string
+	json.Unmarshal([]byte(jsonData), &result)
+	if msg, ok := result["message"]; ok {
+		log := ExtractLogger(ctx)
+		log.Debug(msg)
+	}
 }
 
 // Debugf logs and adds an info event
-func (ev event) Debugf(ctx context.Context, format string, v ...interface{}) {
+func (ev Event) Debugf(ctx context.Context, format string, v ...interface{}) {
 	log := ExtractLogger(ctx)
 	log.Debugf(format, v...)
 
@@ -69,7 +123,7 @@ func GenReconcilePredicatesObject(ns string, t string, msg string, rKind string,
 }
 
 // Infof logs and adds an info event
-func (ev event) Infof(ctx context.Context, format string, v ...interface{}) {
+func (ev Event) Infof(ctx context.Context, format string, v ...interface{}) {
 	log := ExtractLogger(ctx)
 	log.Infof(format, v...)
 
@@ -84,20 +138,20 @@ func (ev event) Infof(ctx context.Context, format string, v ...interface{}) {
 // should be in UpperCamelCase format (starting with a capital letter). "reason" will be used
 // to automate handling of events, so imagine people writing switch statements to handle them.
 // You want to make that easy.
-func (ev event) Errorf(ctx context.Context, format string, v ...interface{}) error {
+func (ev Event) Errorf(ctx context.Context, format string, v ...interface{}) error {
 	msg := fmt.Sprintf(format, v...)
 
 	return ev.logAndError(ctx, msg)
 }
 
 // Error uses the stored zap logger and recorder
-func (ev event) Error(ctx context.Context, parts ...interface{}) error {
+func (ev Event) Error(ctx context.Context, parts ...interface{}) error {
 	msg := fmt.Sprint(parts...)
 
 	return ev.logAndError(ctx, msg)
 }
 
-func (ev event) logAndError(ctx context.Context, msg string) error {
+func (ev Event) logAndError(ctx context.Context, msg string) error {
 	log := ExtractLogger(ctx)
 	log.Error(msg)
 

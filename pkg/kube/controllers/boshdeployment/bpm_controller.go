@@ -4,12 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
-	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -18,6 +12,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // AddBPM creates a new BPM Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -43,18 +44,10 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 			o := e.Object.(*corev1.Secret)
 			shouldProcessEvent := isBPMInfoSecret(o)
 			if shouldProcessEvent {
-				ctxlog.WithEvent(o, "Predicates").DebugJSON(ctx,
-					"Filter for create events",
-					ctxlog.ReconcileEventsFromSource{
-						ReconciliationObjectName: e.Meta.GetName(),
-						ReconciliationObjectKind: bdv1.SecretType,
-						PredicateObjectName:      e.Meta.GetName(),
-						PredicateObjectKind:      bdv1.SecretType,
-						Namespace:                e.Meta.GetNamespace(),
-						Type:                     "predicate",
-						Message: fmt.Sprintf("Filter passed for %s, existing secret with label %s, value %s",
-							e.Meta.GetName(), bdv1.LabelDeploymentSecretType, o.GetLabels()[bdv1.LabelDeploymentSecretType]),
-					},
+				ctxlog.NewPredicateEvent(o).Debug(
+					ctx, e.Meta, bdv1.SecretType,
+					fmt.Sprintf("Create predicate passed for %s, existing secret with label %s, value %s",
+						e.Meta.GetName(), bdv1.LabelDeploymentSecretType, o.GetLabels()[bdv1.LabelDeploymentSecretType]),
 				)
 			}
 
@@ -66,18 +59,10 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 			o := e.ObjectNew.(*corev1.Secret)
 			shouldProcessEvent := isBPMInfoSecret(o)
 			if shouldProcessEvent {
-				ctxlog.WithEvent(o, "Predicates").DebugJSON(ctx,
-					"Filter for update events",
-					ctxlog.ReconcileEventsFromSource{
-						ReconciliationObjectName: e.MetaNew.GetName(),
-						ReconciliationObjectKind: bdv1.SecretType,
-						PredicateObjectName:      e.MetaNew.GetName(),
-						PredicateObjectKind:      bdv1.SecretType,
-						Namespace:                e.MetaNew.GetNamespace(),
-						Type:                     "predicate",
-						Message: fmt.Sprintf("Filter passed for %s, new secret with label %s, value %s",
-							e.MetaNew.GetName(), bdv1.LabelDeploymentSecretType, o.GetLabels()[bdv1.LabelDeploymentSecretType]),
-					},
+				ctxlog.NewPredicateEvent(o).Debug(
+					ctx, e.MetaNew, bdv1.SecretType,
+					fmt.Sprintf("Update predicate passed for %s, new secret with label %s, value %s",
+						e.MetaNew.GetName(), bdv1.LabelDeploymentSecretType, o.GetLabels()[bdv1.LabelDeploymentSecretType]),
 				)
 			}
 
