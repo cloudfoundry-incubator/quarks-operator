@@ -14,7 +14,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
@@ -25,6 +24,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
@@ -33,7 +33,7 @@ const (
 	// HTTPReadyzEndpoint route
 	HTTPReadyzEndpoint = "/readyz"
 	// WebhookConfigPrefix is the prefix for the dir containing the webhook SSL certs
-	WebhookConfigPrefix = "cf-operator-mutating-hook-"
+	WebhookConfigPrefix = "cf-operator-hook-"
 	// WebhookConfigDir contains the dir with the webhook SSL certs
 	WebhookConfigDir = "/tmp"
 )
@@ -57,7 +57,11 @@ var addToSchemes = runtime.SchemeBuilder{
 	essv1.AddToScheme,
 }
 
-var addHookFuncs = []func(*zap.SugaredLogger, *config.Config, manager.Manager, *webhook.Server) (*admission.Webhook, error){
+var addValidatingHookFuncs = []func(*zap.SugaredLogger, *config.Config, manager.Manager) (webhook.Webhook, error){
+	boshdeployment.AddBOSHDeploymentValidator,
+}
+
+var addMutatingHookFuncs = []func(*zap.SugaredLogger, *config.Config, manager.Manager) (webhook.Webhook, error){
 	extendedstatefulset.AddPod,
 }
 
@@ -82,16 +86,14 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 
 	webhookConfig := NewWebhookConfig(m.GetClient(), config, generator, WebhookConfigPrefix+config.Namespace)
 
-	disableConfigInstaller := true
 	hookServer, err := webhook.NewServer("cf-operator", m, webhook.ServerOptions{
 		Port:                          config.WebhookServerPort,
 		CertDir:                       webhookConfig.CertDir,
-		DisableWebhookConfigInstaller: &disableConfigInstaller,
+		DisableWebhookConfigInstaller: util.Bool(true),
 		BootstrapOptions: &webhook.BootstrapOptions{
-			MutatingWebhookConfigName: webhookConfig.ConfigName,
-			Host:                      &config.WebhookServerHost,
-			// The user should probably be able to use a service instead.
-			// Service: ??
+			MutatingWebhookConfigName:   webhookConfig.ConfigName,
+			ValidatingWebhookConfigName: webhookConfig.ConfigName,
+			Host:                        &config.WebhookServerHost,
 		},
 	})
 
@@ -102,13 +104,27 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 	hookServer.Handle(HTTPReadyzEndpoint, ordinaryHTTPHandler())
 
 	log := ctxlog.ExtractLogger(ctx)
-	webhooks := []*admission.Webhook{}
-	for _, f := range addHookFuncs {
-		wh, err := f(log, config, m, hookServer)
+	validatingWebhooks := []webhook.Webhook{}
+	for _, f := range addValidatingHookFuncs {
+		wh, err := f(log, config, m)
 		if err != nil {
 			return err
 		}
-		webhooks = append(webhooks, wh)
+		validatingWebhooks = append(validatingWebhooks, wh)
+	}
+
+	mutatingWebhooks := []webhook.Webhook{}
+	for _, f := range addMutatingHookFuncs {
+		wh, err := f(log, config, m)
+		if err != nil {
+			return err
+		}
+		mutatingWebhooks = append(mutatingWebhooks, wh)
+	}
+
+	err = hookServer.Register(append(validatingWebhooks, mutatingWebhooks...)...)
+	if err != nil {
+		return errors.Wrap(err, "unable to register hooks  with the admission server")
 	}
 
 	err = setOperatorNamespaceLabel(ctx, config, m.GetClient())
@@ -116,14 +132,24 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 		return errors.Wrap(err, "setting the operator namespace label")
 	}
 
+	ctxlog.Info(ctx, "generating webhook certificates")
 	err = webhookConfig.setupCertificate(ctx)
 	if err != nil {
 		return errors.Wrap(err, "setting up the webhook server certificate")
 	}
-	err = webhookConfig.generateWebhookServerConfig(ctx, webhooks)
+
+	ctxlog.Info(ctx, "generating validating webhook server configuration")
+	err = webhookConfig.generateValidationWebhookServerConfig(ctx, validatingWebhooks)
+	if err != nil {
+		return errors.Wrap(err, "generating the validating webhook server configuration")
+	}
+
+	ctxlog.Info(ctx, "generating mutating webhook server configuration")
+	err = webhookConfig.generateMutationWebhookServerConfig(ctx, mutatingWebhooks)
 	if err != nil {
 		return errors.Wrap(err, "generating the webhook server configuration")
 	}
+
 	return err
 }
 

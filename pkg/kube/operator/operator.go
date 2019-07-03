@@ -3,6 +3,7 @@ package operator
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -14,10 +15,10 @@ import (
 )
 
 // NewManager adds schemes, controllers and starts the manager
-func NewManager(ctx context.Context, config *config.Config, cfg *rest.Config, options manager.Options) (mgr manager.Manager, err error) {
-	mgr, err = manager.New(cfg, options)
+func NewManager(ctx context.Context, config *config.Config, cfg *rest.Config, options manager.Options) (manager.Manager, error) {
+	mgr, err := manager.New(cfg, options)
 	if err != nil {
-		return
+		return nil, errors.Wrap(err, "failed to initialize new manager")
 	}
 
 	log := ctxlog.ExtractLogger(ctx)
@@ -26,16 +27,22 @@ func NewManager(ctx context.Context, config *config.Config, cfg *rest.Config, op
 	config.Namespace = options.Namespace
 
 	// Setup Scheme for all resources
-	if err = controllers.AddToScheme(mgr.GetScheme()); err != nil {
-		return
+	err = controllers.AddToScheme(mgr.GetScheme())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to add manager scheme to controllers")
 	}
 
 	// Setup Hooks for all resources
-	if err = controllers.AddHooks(ctx, config, mgr, credsgen.NewInMemoryGenerator(log)); err != nil {
-		return
+	err = controllers.AddHooks(ctx, config, mgr, credsgen.NewInMemoryGenerator(log))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to setup hooks")
 	}
 
 	// Setup all Controllers
 	err = controllers.AddToManager(ctx, config, mgr)
-	return
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to add controllers to manager")
+	}
+
+	return mgr, nil
 }

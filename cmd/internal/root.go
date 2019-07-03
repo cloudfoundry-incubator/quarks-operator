@@ -12,12 +12,14 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/version"
+	"github.com/directxman12/zapr"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" // from https://github.com/kubernetes/client-go/issues/345
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	crlog "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
 
@@ -66,12 +68,15 @@ var rootCmd = &cobra.Command{
 
 		mgr, err := operator.NewManager(ctx, config, restConfig, manager.Options{Namespace: cfOperatorNamespace})
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("Failed to initialize new Operator Manager: %v", err)
 		}
 
 		ctxlog.Info(ctx, "Waiting for configurations to be applied into a BOSHDeployment resource...")
 
-		log.Fatal(mgr.Start(signals.SetupSignalHandler()))
+		err = mgr.Start(signals.SetupSignalHandler())
+		if err != nil {
+			log.Fatalf("Failed to start Operator Manager: %v", err)
+		}
 	},
 	TraverseChildren: true,
 }
@@ -132,6 +137,10 @@ func newLogger(options ...zap.Option) *zap.SugaredLogger {
 	if err != nil {
 		golog.Fatalf("cannot initialize ZAP logger: %v", err)
 	}
+
+	// Make controller-runtime log using our logger
+	crlog.SetLogger(zapr.NewLogger(logger))
+
 	return logger.Sugar()
 }
 
