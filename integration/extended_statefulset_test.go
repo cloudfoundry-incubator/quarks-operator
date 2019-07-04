@@ -633,7 +633,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 		It("should access same volume from different versions at the same time", func() {
 
 			By("Adding volume write command to pod spec template")
-			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].Image = "opensuse"
+			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].Image = "opensuse/leap:15.1"
 			extendedStatefulSet.Spec.Template.Spec.Template.Spec.Containers[0].Command = []string{"/bin/bash", "-c", "echo present > /etc/random/presentFile ; sleep 3600"}
 
 			By("Creating an ExtendedStatefulSet")
