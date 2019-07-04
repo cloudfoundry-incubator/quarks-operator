@@ -14,15 +14,38 @@ import (
 type Manifest struct {
 	InstanceGroups []*InstanceGroup `yaml:"instance_groups,omitempty"`
 }
+
 type InstanceGroup struct {
 	Jobs []Job `yaml:"jobs"`
+	// for env.bosh.agent.settings.affinity
+	Env Env `yaml:"env,omitempty"`
 }
+
 type Job struct {
 	Properties JobProperties `yaml:"properties,omitempty"`
 }
 
 type JobProperties struct {
 	BOSHContainerization BOSHContainerization `yaml:"bosh_containerization"`
+}
+
+type Env struct {
+	BOSH BOSH `yaml:"bosh,omitempty"`
+}
+
+type BOSH struct {
+	Agent Agent `yaml:"agent,omitempty"`
+}
+
+type Agent struct {
+	Settings Settings `yaml:"settings,omitempty"`
+}
+
+type Settings struct {
+	Affinity Affinity
+}
+
+type Affinity struct {
 }
 
 // BOSHContainerization represents the special 'bosh_containerization'
