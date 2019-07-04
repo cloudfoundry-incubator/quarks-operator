@@ -1,6 +1,9 @@
 package storage_kube_test
 
 import (
+	"fmt"
+	"log"
+	"os"
 	"testing"
 
 	"code.cloudfoundry.org/cf-operator/e2e/kube/e2ehelper"
@@ -23,7 +26,12 @@ var (
 
 var _ = BeforeEach(func() {
 	var err error
-	nsTeardown, err = e2ehelper.SetUpEnvironment()
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	chartPath := fmt.Sprintf("%s%s", dir, "/../../../helm/cf-operator")
+	namespace, nsTeardown, err = e2ehelper.SetUpEnvironment(chartPath)
 	Expect(err).ToNot(HaveOccurred())
 })
 

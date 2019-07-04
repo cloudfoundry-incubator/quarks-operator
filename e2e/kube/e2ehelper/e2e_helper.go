@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"strconv"
@@ -30,7 +29,7 @@ var (
 // SetUpEnvironment ensures helm binary can run,
 // being able to reach tiller, and eventually it
 // will install the cf-operator chart.
-func SetUpEnvironment() (environment.TearDownFunc, error) {
+func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error) {
 	var crdExist bool
 
 	// Ensure tiller is there, if not
@@ -42,39 +41,35 @@ func SetUpEnvironment() (environment.TearDownFunc, error) {
 			if strings.Contains(err.StdOut, "could not find tiller") {
 				_, err := RunBinary(helmCmd, "init", "--wait")
 				if err != nil {
-					return nil, err
+					return "", nil, err
 				}
 			}
 		default:
-			return nil, err
+			return "", nil, err
 		}
-	}
-
-	dir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	crdExist, err = ClusterCrdsExist()
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	namespace, err = GetTestNamespace()
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	fmt.Println("Setting up test ns '" + namespace + "'...")
 
 	if crdExist {
-		_, err = RunBinary(helmCmd, "install", fmt.Sprintf("%s%s", dir, "/../../../helm/cf-operator"),
+		// TODO: find relative path here
+		_, err = RunBinary(helmCmd, "install", chartPath,
 			"--name", fmt.Sprintf("%s-%s", cfOperatorRelease, namespace),
 			"--namespace", namespace,
 			"--timeout", installTimeOutInSecs,
 			"--set", "customResources.enableInstallation=false",
 			"--wait")
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 	}
 
@@ -92,9 +87,10 @@ func SetUpEnvironment() (environment.TearDownFunc, error) {
 		return nil
 	}
 
-	return teardownFunc, nil
+	return namespace, teardownFunc, nil
 }
 
+// ClusterCrdsExist verify if cf-operator CRDs are already in place
 func ClusterCrdsExist() (bool, error) {
 	customResource := &ClusterCrd{}
 	stdOutput, err := RunBinary(kubeCtlCmd, "get", "crds", "-o=json")

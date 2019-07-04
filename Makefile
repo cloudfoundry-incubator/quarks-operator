@@ -31,7 +31,7 @@ build-helm:
 
 ############ TEST TARGETS ############
 
-test: vet lint test-unit test-integration test-cli-e2e test-helm-e2e
+test: vet lint test-unit test-integration test-cli-e2e test-helm-e2e test-storage
 
 test-unit:
 	bin/test-unit
@@ -45,6 +45,8 @@ test-cli-e2e:
 test-helm-e2e:
 	bin/test-helm-e2e
 
+test-storage:
+	bin/test-storage
 ############ GENERATE TARGETS ############
 
 generate: gen-kube gen-fakes
