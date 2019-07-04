@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+command="${1}"
+if [ -z "${command}" ] || [[ "${command}" != "apply" ]] && [[ "${command}" != "delete" ]]; then
+  >&2 echo "The first argument should be either 'apply' or 'delete'"
+  exit 1
+fi
+
+: "${GIT_ROOT:=$(git rev-parse --show-toplevel)}"
+source "${GIT_ROOT}/bin/include/versioning"
+source "${GIT_ROOT}/.envrc"
+
+set -o errexit -o nounset
+
+if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
+  DOCKER_IMAGE_TAG=${VERSION_TAG}
+  export DOCKER_IMAGE_TAG
+fi
+
+kubectl apply -f - <<EOT
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cf-operator
+EOT
+
+helm template \
+  --name cf-operator \
+  --namespace cf-operator \
+  "${GIT_ROOT}/deploy/helm/cf-operator/" \
+  --set "image.tag=${DOCKER_IMAGE_TAG}" \
+  --set "env.CF_OPERATOR_NAMESPACE=${CF_OPERATOR_NAMESPACE}" \
+  | kubectl "${command}" -f - --namespace cf-operator
