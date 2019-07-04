@@ -9,13 +9,13 @@ import (
 // BOSHContainerization represents the special 'bosh_containerization'
 // property key
 type BOSHContainerization struct {
-	Consumes  map[string]JobLink `yaml:"consumes"`
-	Instances []JobInstance      `yaml:"instances"`
-	Release   string             `yaml:"release"`
-	BPM       *bpm.Config        `yaml:"bpm,omitempty"`
-	Ports     []Port             `yaml:"ports"`
-	Run       RunConfig          `yaml:"run"`
-	Patches   []string           `yaml:"patches"`
+	Consumes         map[string]JobLink `yaml:"consumes"`
+	Instances        []JobInstance      `yaml:"instances"`
+	Release          string             `yaml:"release"`
+	BPM              *bpm.Config        `yaml:"bpm,omitempty"`
+	Ports            []Port             `yaml:"ports"`
+	Run              RunConfig          `yaml:"run"`
+	PreRenderScripts []string           `yaml:"pre_render_scripts"`
 }
 
 // Port represents the port to be opened up for this job

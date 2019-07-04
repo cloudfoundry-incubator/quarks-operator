@@ -87,7 +87,7 @@ var _ = Describe("Deploy", func() {
 
 	})
 
-	Context("when using patches", func() {
+	Context("when using pre-render scripts", func() {
 		podName := "test-nats-v1-0"
 
 		It("it should run them", func() {
