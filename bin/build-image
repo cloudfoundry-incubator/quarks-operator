@@ -9,16 +9,26 @@ if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
   export DOCKER_IMAGE_TAG
 fi
 
-set +e
+set -o errexit
+
+export GOOS=linux
+export GOARCH=amd64
+export BINARY_NAME=cf-operator-linux-amd64
+
+"${GIT_ROOT}/bin/build"
+
+docker build "${GIT_ROOT}" \
+  --file "${GIT_ROOT}/Dockerfile" \
+  --tag "${OPERATOR_DOCKER_ORGANIZATION}/cf-operator:${DOCKER_IMAGE_TAG}"
+
+docker save "${OPERATOR_DOCKER_ORGANIZATION}/cf-operator:${DOCKER_IMAGE_TAG}"\
+  --output "${GIT_ROOT}/binaries/cf-operator-image.tgz"
 
 if type -a minikube >/dev/null 2>/dev/null; then
   if ! dockerenv=$(minikube docker-env); then
-    echo "Error: Could not retrieve docker settings from minikube."
-    exit 1
+    echo "Minikube not running. Skipping loading image into Minikube's Docker daemon..."
+    exit 0
   fi
   eval "${dockerenv}"
+  docker load --input "${GIT_ROOT}/binaries/cf-operator-image.tgz"
 fi
-
-set -e
-
-docker build "${GIT_ROOT}" -f "${GIT_ROOT}/Dockerfile" --build-arg GO111MODULE="${GO111MODULE:-on}" -t "${OPERATOR_DOCKER_ORGANIZATION}/cf-operator:${DOCKER_IMAGE_TAG}"
