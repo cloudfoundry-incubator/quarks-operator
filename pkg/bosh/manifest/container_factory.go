@@ -216,7 +216,7 @@ func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 		},
 		Args: []string{
 			"-xc",
-			fmt.Sprintf("mkdir -p %s && cp -ar %s/* %s", inContainerReleasePath, VolumeJobsSrcDirMountPath, inContainerReleasePath),
+			fmt.Sprintf("mkdir -p %s && cp -ar %s/* %s && chown vcap:vcap %s -R", inContainerReleasePath, VolumeJobsSrcDirMountPath, inContainerReleasePath, inContainerReleasePath),
 		},
 	}
 }

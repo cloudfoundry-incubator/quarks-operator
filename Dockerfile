@@ -7,5 +7,8 @@ RUN cd /go/src/code.cloudfoundry.org/cf-operator && \
     cp -p binaries/cf-operator /usr/local/bin/cf-operator
 
 FROM cfcontainerization/cf-operator-base
+RUN groupadd -g 1000 vcap && \
+    useradd -r -u 1000 -g vcap vcap
+USER vcap
 COPY --from=build /usr/local/bin/cf-operator /usr/local/bin/cf-operator
 ENTRYPOINT ["cf-operator"]
