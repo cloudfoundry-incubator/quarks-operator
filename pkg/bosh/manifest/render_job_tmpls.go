@@ -43,11 +43,11 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 				return errors.Wrapf(err, "failed to load job spec file %s", job.Name)
 			}
 
-			// Run patches for the current job
-			for idx, patch := range job.Properties.BOSHContainerization.Patches {
-				err := runPatch(patch, idx)
+			// Run pre-render scripts for the current job.
+			for idx, script := range job.Properties.BOSHContainerization.PreRenderScripts {
+				err := runPreRenderScript(script, idx)
 				if err != nil {
-					return errors.Wrapf(err, "failed to run patch %d for job %s", idx, job.Name)
+					return errors.Wrapf(err, "failed to run pre-render script %d for job %s", idx, job.Name)
 				}
 			}
 
@@ -102,24 +102,21 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 	return nil
 }
 
-func runPatch(patch string, idx int) error {
-	// Save the patch to a temporary location
-	tmpFile, err := ioutil.TempFile(os.TempDir(), "patch-")
+func runPreRenderScript(script string, idx int) error {
+	// Save the script to a temporary location.
+	tmpFile, err := ioutil.TempFile(os.TempDir(), "script-")
 	if err != nil {
-		return errors.Wrap(err, "failed to create a temp file for a patch")
+		return errors.Wrap(err, "failed to create a temp file for the pre-render script")
 	}
-	// Cleanup once we're done
 	defer os.Remove(tmpFile.Name())
-	// Write patch contents
-	if _, err = tmpFile.Write([]byte(patch)); err != nil {
-		return errors.Wrap(err, "failed to write patch to file")
-	}
-	// Close the patch file
-	if err := tmpFile.Close(); err != nil {
-		return errors.Wrap(err, "failed to close patch file")
+	defer tmpFile.Close()
+
+	// Write the pre-render script contents.
+	if _, err = tmpFile.Write([]byte(script)); err != nil {
+		return errors.Wrap(err, "failed to write pre-render script to file")
 	}
 
-	// Run the patch
+	// Run the pre-render script.
 	cmd := exec.Command("/bin/bash", tmpFile.Name())
 
 	errReader, err := cmd.StderrPipe()
@@ -134,25 +131,23 @@ func runPatch(patch string, idx int) error {
 	errScanner := bufio.NewScanner(errReader)
 	go func() {
 		for errScanner.Scan() {
-			fmt.Printf("patch-err-%d | %s\n", idx, errScanner.Text())
+			fmt.Printf("pre-render-err-%d | %s\n", idx, errScanner.Text())
 		}
 	}()
 
 	outScanner := bufio.NewScanner(outReader)
 	go func() {
 		for outScanner.Scan() {
-			fmt.Printf("patch-out-%d | %s\n", idx, outScanner.Text())
+			fmt.Printf("pre-render-out-%d | %s\n", idx, outScanner.Text())
 		}
 	}()
 
-	err = cmd.Start()
-	if err != nil {
-		return errors.Wrapf(err, "failed to start patch script %d", idx)
+	if err := cmd.Start(); err != nil {
+		return errors.Wrapf(err, "failed to start pre-render script %d", idx)
 	}
 
-	err = cmd.Wait()
-	if err != nil {
-		return errors.Wrapf(err, "failed to wait for patch script %d", idx)
+	if err := cmd.Wait(); err != nil {
+		return errors.Wrapf(err, "failed to wait for pre-render script %d", idx)
 	}
 
 	return nil

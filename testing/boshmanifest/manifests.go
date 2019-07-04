@@ -144,7 +144,7 @@ instance_groups:
         password: changeme
         debug: true
       bosh_containerization:
-        patches:
+        pre_render_scripts:
         - |
           cd /var/vcap
           ls -lahR
