@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
@@ -39,8 +38,7 @@ func (r *Resolver) ReadDesiredManifest(ctx context.Context, boshDeploymentName, 
 
 	manifestData := secret.Data["manifest.yaml"]
 
-	manifest := &Manifest{}
-	err = yaml.Unmarshal(manifestData, manifest)
+	manifest, err := LoadYAML(manifestData)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to unmarshal manifest from secret '%s'", secretName)
 	}

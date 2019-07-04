@@ -15,19 +15,20 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 )
 
 // JobProviderLinks provides links to other jobs, indexed by provider type and name
-type JobProviderLinks map[string]map[string]JobLink
+type JobProviderLinks map[string]map[string]bc.JobLink
 
 // Lookup returns a link for a type and name, used when links are consumed
-func (jpl JobProviderLinks) Lookup(provider *JobSpecProvider) (JobLink, bool) {
+func (jpl JobProviderLinks) Lookup(provider *JobSpecProvider) (bc.JobLink, bool) {
 	link, ok := jpl[provider.Type][provider.Name]
 	return link, ok
 }
 
 // Add another job to the lookup map
-func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstance) error {
+func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []bc.JobInstance) error {
 	var properties map[string]interface{}
 
 	for _, link := range spec.Provides {
@@ -76,12 +77,12 @@ func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstan
 		}
 
 		if _, ok := jpl[linkType]; !ok {
-			jpl[linkType] = map[string]JobLink{}
+			jpl[linkType] = map[string]bc.JobLink{}
 		}
 
 		// construct the jobProviderLinks of the current job that provides
 		// a link
-		jpl[linkType][linkName] = JobLink{
+		jpl[linkType][linkName] = bc.JobLink{
 			Instances:  jobsInstances,
 			Properties: properties,
 		}
@@ -399,10 +400,10 @@ func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[st
 
 		// generate the job.properties.bosh_containerization.consumes struct with the links information from providers.
 		if currentJob.Properties.BOSHContainerization.Consumes == nil {
-			currentJob.Properties.BOSHContainerization.Consumes = map[string]JobLink{}
+			currentJob.Properties.BOSHContainerization.Consumes = map[string]bc.JobLink{}
 		}
 
-		currentJob.Properties.BOSHContainerization.Consumes[providerName] = JobLink{
+		currentJob.Properties.BOSHContainerization.Consumes[providerName] = bc.JobLink{
 			Instances:  link.Instances,
 			Properties: link.Properties,
 		}

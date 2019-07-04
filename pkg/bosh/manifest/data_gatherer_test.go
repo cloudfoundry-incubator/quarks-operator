@@ -11,6 +11,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
@@ -143,7 +144,7 @@ var _ = Describe("DataGatherer", func() {
 				//Check JobInstance for the redis-server job
 				jobInstancesRedis := manifest.InstanceGroups[0].Jobs[0].Properties.BOSHContainerization.Instances
 
-				compareToFakeRedis := []JobInstance{
+				compareToFakeRedis := []bc.JobInstance{
 					{Address: "foo-deployment-redis-slave-0.default.svc.cluster.local", AZ: "z1", ID: "redis-slave-0-redis-server", Index: 0, Instance: 0, Name: "redis-slave-redis-server"},
 					{Address: "foo-deployment-redis-slave-1.default.svc.cluster.local", AZ: "z2", ID: "redis-slave-1-redis-server", Index: 1, Instance: 0, Name: "redis-slave-redis-server"},
 					{Address: "foo-deployment-redis-slave-2.default.svc.cluster.local", AZ: "z1", ID: "redis-slave-2-redis-server", Index: 2, Instance: 1, Name: "redis-slave-redis-server"},
@@ -186,7 +187,7 @@ var _ = Describe("DataGatherer", func() {
 
 					// doppler instance_group, with doppler job, only provides doppler link
 					jobBoshContainerizationConsumes := manifest.InstanceGroups[0].Jobs[0].Properties.BOSHContainerization.Consumes
-					var emptyJobBoshContainerizationConsumes map[string]JobLink
+					var emptyJobBoshContainerizationConsumes map[string]bc.JobLink
 					Expect(jobBoshContainerizationConsumes).To(BeEquivalentTo(emptyJobBoshContainerizationConsumes))
 				})
 			})

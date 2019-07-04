@@ -6,6 +6,8 @@ import (
 
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
+
+	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 )
 
 // JobSpecFilename is the name of the job spec manifest in an unpacked BOSH release
@@ -85,8 +87,8 @@ func (j *Job) sysDirs(name string) []string {
 
 // JobProperties represents the properties map of a Job
 type JobProperties struct {
-	BOSHContainerization `yaml:"bosh_containerization"`
-	Properties           map[string]interface{} `yaml:",inline"`
+	BOSHContainerization bc.BOSHContainerization `yaml:"-"`
+	Properties           map[string]interface{}  `yaml:",inline"`
 }
 
 // ToMap returns a complete map with all properties, including the
