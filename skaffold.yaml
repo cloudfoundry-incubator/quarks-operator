@@ -4,8 +4,9 @@ build:
   artifacts:
   - image: cfcontainerization/cf-operator
     context: .
-    docker:
-      dockerfile: Dockerfile
+    custom:
+      buildCommand: bin/build-image
+      dependencies: {}
   local:
     push: false
   tagPolicy:
@@ -15,7 +16,7 @@ deploy:
     releases:
     - name: cf-operator
       chartPath: deploy/helm/cf-operator
-      namespace: scf
       setValueTemplates:
         image.tag: "{{ .DIGEST }}"
+        env.CF_OPERATOR_NAMESPACE: "{{ .CF_OPERATOR_NAMESPACE }}"
       wait: true

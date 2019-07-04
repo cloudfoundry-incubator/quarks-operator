@@ -27,3 +27,6 @@ serviceAccount:
   cfOperatorServiceAccount:
     create: true
     name:
+
+env:
+  CF_OPERATOR_NAMESPACE: ~
