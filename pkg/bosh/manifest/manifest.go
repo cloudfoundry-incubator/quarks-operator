@@ -137,6 +137,7 @@ func LoadYAML(data []byte) (*Manifest, error) {
 		for j, job := range ig.Jobs {
 			m.InstanceGroups[i].Jobs[j].Properties.BOSHContainerization = job.Properties.BOSHContainerization
 		}
+		m.InstanceGroups[i].Env.AgentEnvBoshConfig.Agent.Settings.Affinity = ig.Env.BOSH.Agent.Settings.Affinity
 	}
 
 	return m, nil
