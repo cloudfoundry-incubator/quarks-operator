@@ -11,11 +11,12 @@ require (
 	github.com/cppforlife/go-patch v0.0.0-20171006213518-250da0e0e68c
 	github.com/cpuguy83/go-md2man v1.0.10 // indirect
 	github.com/dchest/uniuri v0.0.0-20160212164326-8902c56451e9
+	github.com/directxman12/zapr v0.1.1
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-logr/logr v0.1.0 // indirect
 	github.com/go-logr/zapr v0.1.0 // indirect
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
-	github.com/gogo/protobuf v1.1.1
+	github.com/gogo/protobuf v1.1.1 // indirect
 	github.com/golang/groupcache v0.0.0-20180924190550-6f2cf27854a4 // indirect
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c // indirect
 	github.com/google/certificate-transparency-go v1.0.21 // indirect
@@ -53,7 +54,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20181017192945-9dcd33a902f4 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
 	google.golang.org/appengine v1.2.0 // indirect
-	gopkg.in/inf.v0 v0.9.1
+	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 	k8s.io/api v0.0.0-20190222213804-5cb15d344471
 	k8s.io/apiextensions-apiserver v0.0.0-20190508191920-007dc40467c5 // indirect

@@ -45,18 +45,10 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 			shouldProcessEvent := isManifestWithOps(o.Name)
 
 			if shouldProcessEvent {
-				ctxlog.WithEvent(o, "Predicates").DebugJSON(ctx,
-					"Filter for create events",
-					ctxlog.ReconcileEventsFromSource{
-						ReconciliationObjectName: e.Meta.GetName(),
-						ReconciliationObjectKind: bdv1.SecretType,
-						PredicateObjectName:      e.Meta.GetName(),
-						PredicateObjectKind:      bdv1.SecretType,
-						Namespace:                e.Meta.GetNamespace(),
-						Type:                     "predicate",
-						Message: fmt.Sprintf("Filter passed for %s, existing secret with the %s suffix",
-							e.Meta.GetName(), names.DeploymentSecretTypeManifestWithOps.String()),
-					},
+				ctxlog.NewPredicateEvent(o).Debug(
+					ctx, e.Meta, bdv1.SecretType,
+					fmt.Sprintf("Create predicate passed for %s, existing secret with the %s suffix",
+						e.Meta.GetName(), names.DeploymentSecretTypeManifestWithOps.String()),
 				)
 			}
 
@@ -70,18 +62,10 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 			shouldProcessEvent := isManifestWithOps(newSecret.Name) && !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
 
 			if shouldProcessEvent {
-				ctxlog.WithEvent(newSecret, "Predicates").DebugJSON(ctx,
-					"Filter for update events",
-					ctxlog.ReconcileEventsFromSource{
-						ReconciliationObjectName: e.MetaNew.GetName(),
-						ReconciliationObjectKind: bdv1.SecretType,
-						PredicateObjectName:      e.MetaNew.GetName(),
-						PredicateObjectKind:      bdv1.SecretType,
-						Namespace:                e.MetaNew.GetNamespace(),
-						Type:                     "predicate",
-						Message: fmt.Sprintf("Filter passed for %s, existing secret with the %s suffix has been updated",
-							e.MetaNew.GetName(), names.DeploymentSecretTypeManifestWithOps.String()),
-					},
+				ctxlog.NewPredicateEvent(newSecret).Debug(
+					ctx, e.MetaNew, bdv1.SecretType,
+					fmt.Sprintf("Update predicate passed for %s, existing secret with the %s suffix has been updated",
+						e.MetaNew.GetName(), names.DeploymentSecretTypeManifestWithOps.String()),
 				)
 			}
 

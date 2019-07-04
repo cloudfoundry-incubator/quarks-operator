@@ -313,7 +313,6 @@ var _ = Describe("Deploy", func() {
 			})
 
 			It("should update the deployment and respect the instance count", func() {
-				Skip("this test is flaky and causing the failures in the entire namespace")
 				ops, err := env.GetConfigMap(env.Namespace, "bosh-ops")
 				Expect(err).NotTo(HaveOccurred())
 				ops.Data["ops"] = `- type: replace
@@ -352,7 +351,7 @@ var _ = Describe("Deploy", func() {
 	})
 
 	Context("when data provided by the user is incorrect", func() {
-		It("failed to deploy if an error occurred when applying ops files", func() {
+		It("fails to create the resource if the validator gets an error when applying ops files", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
@@ -365,17 +364,14 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			boshDeployment, tearDown, err := env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment("test", "manifest", "bosh-ops", "bosh-ops-secret"))
-			Expect(err).NotTo(HaveOccurred())
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment("test", "manifest", "bosh-ops", "bosh-ops-secret"))
+			Expect(err).To(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-
-			By("checking for events")
-			events, err := env.GetBOSHDeploymentEvents(env.Namespace, boshDeployment.ObjectMeta.Name, string(boshDeployment.ObjectMeta.UID))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(env.ContainExpectedEvent(events, "WithOpsManifestError", "failed to interpolate")).To(BeTrue())
+			Expect(err.Error()).To(ContainSubstring(`Expected to find exactly one matching array item for path '/instance_groups/name=api' but found 0`))
+			Expect(err.Error()).To(ContainSubstring(`admission webhook "validate-boshdeployment.fissile.cloudfoundry.org" denied the request:`))
 		})
 
-		It("failed to deploy a empty manifest", func() {
+		It("failed to deploy an empty manifest", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
@@ -398,7 +394,7 @@ var _ = Describe("Deploy", func() {
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 		})
 
-		It("failed to deploy due to a empty manifest ref", func() {
+		It("failed to deploy due to an empty manifest ref", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
@@ -420,7 +416,7 @@ var _ = Describe("Deploy", func() {
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 		})
 
-		It("failed to deploy due to a empty ops ref", func() {
+		It("failed to deploy due to an empty ops ref", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
@@ -429,6 +425,15 @@ var _ = Describe("Deploy", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("spec.ops.ref in body should be at least 1 chars long"))
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+		})
+	})
+
+	Context("when the BOSHDeployment cannot be resolved", func() {
+		It("should not create the resource and the validation hook should return an error message", func() {
+			_, _, err := env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test", "foo-baz"))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring(`admission webhook "validate-boshdeployment.fissile.cloudfoundry.org" denied the request:`))
+			Expect(err.Error()).To(ContainSubstring(`ConfigMap "foo-baz" not found`))
 		})
 	})
 })

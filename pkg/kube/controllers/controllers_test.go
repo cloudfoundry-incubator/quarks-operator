@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
@@ -16,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/record"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	gfakes "code.cloudfoundry.org/cf-operator/pkg/credsgen/fakes"
@@ -50,17 +52,25 @@ var _ = Describe("Controllers", func() {
 			config    *config.Config
 			generator *gfakes.FakeGenerator
 			env       testing.Catalog
+			recorder  *record.FakeRecorder
 		)
 
 		BeforeEach(func() {
-			controllers.AddToScheme(scheme.Scheme)
+
 			client = &cfakes.FakeClient{}
+			recorder = record.NewFakeRecorder(20)
 			restMapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{})
 			restMapper.Add(schema.GroupVersionKind{Group: "", Kind: "Pod", Version: "v1"}, meta.RESTScopeNamespace)
+			restMapper.Add(schema.GroupVersionKind{Group: "fissile.cloudfoundry.org", Kind: "BOSHDeployment", Version: "v1alpha1"}, meta.RESTScopeNamespace)
 
 			manager = &cfakes.FakeManager{}
+
+			controllers.AddToScheme(scheme.Scheme)
+
 			manager.GetSchemeReturns(scheme.Scheme)
+
 			manager.GetClientReturns(client)
+			manager.GetRecorderReturns(recorder)
 			manager.GetRESTMapperReturns(restMapper)
 
 			generator = &gfakes.FakeGenerator{}
@@ -94,7 +104,7 @@ var _ = Describe("Controllers", func() {
 
 		Context("if there is no cert secret yet", func() {
 			It("generates and persists the certificates on disk and in a secret", func() {
-				file := "/tmp/cf-operator-mutating-hook-" + config.Namespace + "/key.pem"
+				file := "/tmp/cf-operator-hook-" + config.Namespace + "/key.pem"
 				Expect(afero.Exists(config.Fs, file)).To(BeFalse())
 
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
@@ -110,7 +120,7 @@ var _ = Describe("Controllers", func() {
 
 				Expect(afero.Exists(config.Fs, file)).To(BeTrue())
 				Expect(generator.GenerateCertificateCallCount()).To(Equal(2)) // Generate CA and certificate
-				Expect(client.CreateCallCount()).To(Equal(2))                 // Persist secret and the webhook config
+				Expect(client.CreateCallCount()).To(Equal(3))                 // Persist secret and the 2 webhook configs (Validating and Mutating)
 			})
 		})
 
@@ -143,21 +153,40 @@ var _ = Describe("Controllers", func() {
 			It("does not overwrite the existing secret", func() {
 				err := controllers.AddHooks(ctx, config, manager, generator)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(client.CreateCallCount()).To(Equal(1)) // webhook config
+				Expect(client.CreateCallCount()).To(Equal(2)) // webhook config for Mutation and Validation
 			})
 
 			It("generates the webhook configuration", func() {
 				client.CreateCalls(func(context context.Context, object runtime.Object) error {
-					config := object.(*admissionregistrationv1beta1.MutatingWebhookConfiguration)
-					Expect(config.Name).To(Equal("cf-operator-mutating-hook-" + config.Namespace))
-					Expect(len(config.Webhooks)).To(Equal(1))
+					// We should be getting 2 Create calls - one for the
+					// Validation webhook, one for the Mutating Webhook
 
-					wh := config.Webhooks[0]
-					Expect(wh.Name).To(Equal("mutatepods.example.com"))
-					Expect(*wh.ClientConfig.URL).To(Equal("https://foo.com:1234/mutate-pods"))
-					Expect(wh.ClientConfig.CABundle).To(ContainSubstring("the-ca-cert"))
-					Expect(*wh.FailurePolicy).To(Equal(admissionregistrationv1beta1.Fail))
-					return nil
+					switch object.(type) {
+					case *admissionregistrationv1beta1.MutatingWebhookConfiguration:
+						config := object.(*admissionregistrationv1beta1.MutatingWebhookConfiguration)
+						Expect(config.Name).To(Equal("cf-operator-hook-" + config.Namespace))
+						Expect(len(config.Webhooks)).To(Equal(1))
+
+						wh := config.Webhooks[0]
+						Expect(wh.Name).To(Equal("mutate-pods.fissile.cloudfoundry.org"))
+						Expect(*wh.ClientConfig.URL).To(Equal("https://foo.com:1234/mutate-pods"))
+						Expect(wh.ClientConfig.CABundle).To(ContainSubstring("the-ca-cert"))
+						Expect(*wh.FailurePolicy).To(Equal(admissionregistrationv1beta1.Fail))
+						return nil
+					case *admissionregistrationv1beta1.ValidatingWebhookConfiguration:
+						config := object.(*admissionregistrationv1beta1.ValidatingWebhookConfiguration)
+						Expect(config.Name).To(Equal("cf-operator-hook-" + config.Namespace))
+						Expect(len(config.Webhooks)).To(Equal(1))
+
+						wh := config.Webhooks[0]
+						Expect(wh.Name).To(Equal("validate-boshdeployment.fissile.cloudfoundry.org"))
+						Expect(*wh.ClientConfig.URL).To(Equal("https://foo.com:1234/validate-boshdeployment"))
+						Expect(wh.ClientConfig.CABundle).To(ContainSubstring("the-ca-cert"))
+						Expect(*wh.FailurePolicy).To(Equal(admissionregistrationv1beta1.Fail))
+						return nil
+					default:
+						return errors.New("unexpected type")
+					}
 				})
 				err := controllers.AddHooks(ctx, config, manager, generator)
 				Expect(err).ToNot(HaveOccurred())
