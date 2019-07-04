@@ -45,4 +45,4 @@ ginkgo \
   --slowSpecThreshold=50 \
   --flakeAttempts="$FLAKE_ATTEMPTS" \
   $COV_ARG \
-  integration/
+  integration/storage
