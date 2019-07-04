@@ -1,3 +1,5 @@
+// Package manifest represents a valid BOSH manifest and provides funcs to load
+// it, marshal it and access its fields.
 package manifest
 
 import (
@@ -7,14 +9,9 @@ import (
 
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
-)
 
-// Link with name for rendering
-type Link struct {
-	Name       string        `yaml:"name"`
-	Instances  []JobInstance `yaml:"instances"`
-	Properties interface{}   `yaml:"properties"`
-}
+	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
+)
 
 // Feature from BOSH deployment manifest
 type Feature struct {
@@ -130,12 +127,28 @@ func LoadYAML(data []byte) (*Manifest, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal BOSH deployment manifest")
 	}
+
+	bcm, err := bc.LoadKubeYAML(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal BOSHContainerization from deployment manifest")
+	}
+
+	for i, ig := range bcm.InstanceGroups {
+		for j, job := range ig.Jobs {
+			m.InstanceGroups[i].Jobs[j].Properties.BOSHContainerization = job.Properties.BOSHContainerization
+		}
+	}
+
 	return m, nil
+}
+
+func (m *Manifest) Marshal() ([]byte, error) {
+	return yaml.Marshal(m)
 }
 
 // SHA1 calculates the SHA1 of the manifest
 func (m *Manifest) SHA1() (string, error) {
-	manifestBytes, err := yaml.Marshal(m)
+	manifestBytes, err := m.Marshal()
 	if err != nil {
 		return "", err
 	}

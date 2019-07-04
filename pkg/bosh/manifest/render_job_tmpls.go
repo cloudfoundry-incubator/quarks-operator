@@ -10,6 +10,8 @@ import (
 
 	"github.com/pkg/errors"
 	btg "github.com/viovanov/bosh-template-go"
+
+	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 )
 
 // RenderJobTemplates will render templates for all jobs of the instance group
@@ -52,7 +54,7 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 			}
 
 			// Find job instance that's being rendered
-			var currentJobInstance *JobInstance
+			var currentJobInstance *bc.JobInstance
 			for _, instance := range job.Properties.BOSHContainerization.Instances {
 				if instance.Index == specIndex {
 					currentJobInstance = &instance

@@ -1,13 +1,32 @@
-package manifest
+// Package containerization loads the kubernetes specifics parts, like
+// BOSHContainerization, from the BOSH manifest.
+package containerization
 
 import (
+	yaml "gopkg.in/yaml.v2"
+
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 )
 
+// Manifest is a BOSH deployment manifest
+type Manifest struct {
+	InstanceGroups []*InstanceGroup `yaml:"instance_groups,omitempty"`
+}
+type InstanceGroup struct {
+	Jobs []Job `yaml:"jobs"`
+}
+type Job struct {
+	Properties JobProperties `yaml:"properties,omitempty"`
+}
+
+type JobProperties struct {
+	BOSHContainerization BOSHContainerization `yaml:"bosh_containerization"`
+}
+
 // BOSHContainerization represents the special 'bosh_containerization'
-// property key
+// property key. It contains all kubernetes structures we need to add to the BOSH manifest.
 type BOSHContainerization struct {
 	Consumes         map[string]JobLink `yaml:"consumes"`
 	Instances        []JobInstance      `yaml:"instances"`
@@ -53,4 +72,15 @@ type HealthCheck struct {
 // RunConfig describes the runtime configuration for this job
 type RunConfig struct {
 	HealthChecks map[string]HealthCheck `yaml:"healthcheck"`
+}
+
+// LoadKubeYAML is a special loader, since the YAML is already compatible to
+// k8s structures without further transformation.
+func LoadKubeYAML(data []byte) (*Manifest, error) {
+	m := &Manifest{}
+	err := yaml.Unmarshal(data, m)
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
 }
