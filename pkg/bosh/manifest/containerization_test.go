@@ -6,7 +6,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	yaml "gopkg.in/yaml.v2"
 
 	//. "github.com/onsi/gomega/gstruct"
 
@@ -15,7 +14,7 @@ import (
 
 var _ = Describe("BOSHContainerization", func() {
 	var (
-		m Manifest
+		m *Manifest
 	)
 
 	BeforeEach(func() {
@@ -24,8 +23,7 @@ var _ = Describe("BOSHContainerization", func() {
 		boshManifestBytes, err := ioutil.ReadFile(manifest_path)
 		Expect(err).ToNot(HaveOccurred())
 
-		m = Manifest{}
-		err = yaml.Unmarshal(boshManifestBytes, &m)
+		m, err = LoadYAML(boshManifestBytes)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
