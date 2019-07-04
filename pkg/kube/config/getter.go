@@ -83,8 +83,16 @@ func (g *getter) Get(configPath string) (*rest.Config, error) {
 		configPath = homeFile
 	}
 
-	paths := filepath.SplitList(configPath)
-	c, err := g.restConfigFromKubeConfig(&clientcmd.ClientConfigLoadingRules{Precedence: paths}, &clientcmd.ConfigOverrides{}).ClientConfig()
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	if len(configPath) > 0 {
+		paths := filepath.SplitList(configPath)
+		if len(paths) == 1 {
+			loadingRules.ExplicitPath = paths[0]
+		} else {
+			loadingRules.Precedence = paths
+		}
+	}
+	c, err := g.restConfigFromKubeConfig(loadingRules, &clientcmd.ConfigOverrides{}).ClientConfig()
 	if err != nil {
 		return nil, &getConfigError{err}
 	}

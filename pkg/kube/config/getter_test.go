@@ -6,12 +6,14 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"code.cloudfoundry.org/cf-operator/pkg/kube/config/fake"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/afero/mem"
 	"go.uber.org/zap"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var _ = Describe("Getter", func() {
@@ -93,6 +95,27 @@ var _ = Describe("Getter", func() {
 			},
 		),
 		Entry(
+			"should succeed when using the config from ~/.kube",
+			getCase{
+				getter: getter{
+					lookupEnv: func(_ string) (string, bool) {
+						return "", false
+					},
+					currentUser: func() (*user.User, error) {
+						return &user.User{HomeDir: filepath.Join("home", "johndoe")}, nil
+					},
+					stat: func(name string) (os.FileInfo, error) {
+						Expect(name).To(Equal(filepath.Join("home", "johndoe", ".kube", "config")))
+						return &mem.FileInfo{}, nil
+					},
+					restConfigFromKubeConfig: func(loader clientcmd.ClientConfigLoader, overrides *clientcmd.ConfigOverrides) clientcmd.ClientConfig {
+						return &fake.FakeClientConfig{}
+					},
+				},
+				expectedConfig: &rest.Config{Host: "another.cluster.config.com"},
+			},
+		),
+		Entry(
 			"should fail when stating the config from ~/.kube fails",
 			getCase{
 				getter: getter{
@@ -108,6 +131,88 @@ var _ = Describe("Getter", func() {
 					},
 				},
 				expectedErr: &getConfigError{fmt.Errorf("error from stat that isn't NotExist")},
+			},
+		),
+		Entry(
+			"should succeed when creating the output rest config using the default REST config",
+			getCase{
+				getter: getter{
+					lookupEnv: func(_ string) (string, bool) {
+						return "", false
+					},
+					currentUser: func() (*user.User, error) {
+						return &user.User{HomeDir: filepath.Join("home", "johndoe")}, nil
+					},
+					stat: func(filename string) (os.FileInfo, error) {
+						Expect(filename).To(Equal(filepath.Join("home", "johndoe", ".kube", "config")))
+						return &mem.FileInfo{}, os.ErrNotExist
+					},
+					defaultRESTConfig: func() (*rest.Config, error) {
+						return &rest.Config{Host: "default.rest.config.com"}, nil
+					},
+				},
+				expectedConfig: &rest.Config{Host: "default.rest.config.com"},
+			},
+		),
+		Entry(
+			"should fail when using the default REST config fails",
+			getCase{
+				getter: getter{
+					lookupEnv: func(_ string) (string, bool) {
+						return "", false
+					},
+					currentUser: func() (*user.User, error) {
+						return &user.User{HomeDir: filepath.Join("home", "johndoe")}, nil
+					},
+					stat: func(filename string) (os.FileInfo, error) {
+						Expect(filename).To(Equal(filepath.Join("home", "johndoe", ".kube", "config")))
+						return &mem.FileInfo{}, os.ErrNotExist
+					},
+					defaultRESTConfig: func() (*rest.Config, error) {
+						return &rest.Config{}, fmt.Errorf("error from defaultRESTConfig")
+					},
+				}, expectedErr: &getConfigError{fmt.Errorf("error from defaultRESTConfig")},
+			},
+		),
+		Entry(
+			"should succeed when using the config from configPath",
+			getCase{
+				configPath: "/config/path",
+				getter: getter{
+					restConfigFromKubeConfig: func(loader clientcmd.ClientConfigLoader, overrides *clientcmd.ConfigOverrides) clientcmd.ClientConfig {
+						Expect(loader.GetExplicitFile()).To(Equal("/config/path"))
+						return &fake.FakeClientConfig{}
+					},
+				},
+				expectedConfig: &rest.Config{Host: "another.cluster.config.com"},
+			},
+		),
+		Entry(
+			"should succeed when using the config from configPath which has multi configs",
+			getCase{
+				configPath: fmt.Sprintf("/config/path1%s/config/path2", string(os.PathListSeparator)),
+				getter: getter{
+					restConfigFromKubeConfig: func(loader clientcmd.ClientConfigLoader, overrides *clientcmd.ConfigOverrides) clientcmd.ClientConfig {
+						Expect(loader.GetLoadingPrecedence()).To(Equal([]string{"/config/path1", "/config/path2"}))
+						Expect(loader.GetExplicitFile()).To(BeEmpty())
+						return &fake.FakeClientConfig{}
+					},
+				},
+				expectedConfig: &rest.Config{Host: "another.cluster.config.com"},
+			},
+		),
+		Entry(
+			"should fail when getting ClientConfig from configPath fails",
+			getCase{
+				configPath: "/config/path",
+				getter: getter{
+					restConfigFromKubeConfig: func(loader clientcmd.ClientConfigLoader, overrides *clientcmd.ConfigOverrides) clientcmd.ClientConfig {
+						return &fake.FakeClientConfig{
+							ExpectedClientConfigError: true,
+						}
+					},
+				},
+				expectedErr: &getConfigError{fmt.Errorf("error from ClientConfig")},
 			},
 		),
 	)
