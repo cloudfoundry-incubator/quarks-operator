@@ -19,10 +19,9 @@ instance_groups:
               healthcheck:
                 doppler:
                   readiness:
-                    handler:
-                      exec:
-                        command:
-                        - "curl --silent --fail --head http://${HOSTNAME}:8080/health"
+                    exec:
+                      command:
+                      - "curl --silent --fail --head http://${HOSTNAME}:8080/health"
             bpm:
               processes:
                 - name: doppler
@@ -283,10 +282,9 @@ instance_groups:
               healthcheck:
                 doppler:
                   liveness:
-                    handler:
-                      exec:
-                        command:
-                        - "curl --silent --fail --head http://${HOSTNAME}:8080/health"
+                    exec:
+                      command:
+                      - "curl --silent --fail --head http://${HOSTNAME}:8080/health"
             bpm:
               processes:
                 - name: loggregator_trafficcontroller

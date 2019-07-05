@@ -3,6 +3,8 @@ package manifest
 import (
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
+
 	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 )
@@ -116,7 +118,7 @@ var (
 type AgentSettings struct {
 	Annotations map[string]string `yaml:"annotations,omitempty"`
 	Labels      map[string]string `yaml:"labels,omitempty"`
-	Affinity    *bc.Affinity      `json:"affinity,omitempty" yaml:"affinity,omitempty"`
+	Affinity    *corev1.Affinity  `json:"affinity,omitempty" yaml:"affinity,omitempty"`
 }
 
 // Set overrides labels and annotations with operator-owned metadata
