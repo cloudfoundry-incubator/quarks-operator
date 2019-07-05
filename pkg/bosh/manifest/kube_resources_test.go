@@ -306,7 +306,7 @@ var _ = Describe("kube converter", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(resources.Errands).To(HaveLen(1))
 				containers := resources.Errands[0].Spec.Template.Spec.Containers
-				Expect(containers).To(HaveLen(3))
+				Expect(containers).To(HaveLen(4))
 				Expect(containers[0].Name).To(Equal("fake-errand-a-test-server"))
 				Expect(containers[0].Command[0]).To(ContainSubstring("bin/test-server"))
 				Expect(containers[0].Args).To(HaveLen(2))
@@ -328,7 +328,7 @@ var _ = Describe("kube converter", func() {
 				resources, err = act(bpmConfigs[1], m.InstanceGroups[1])
 				Expect(err).ShouldNot(HaveOccurred())
 				containers = resources.InstanceGroups[0].Spec.Template.Spec.Template.Spec.Containers
-				Expect(containers).To(HaveLen(4))
+				Expect(containers).To(HaveLen(5))
 				Expect(containers[0].Name).To(Equal("fake-job-a-test-server"))
 				Expect(containers[1].Name).To(Equal("fake-job-b-test-server"))
 				Expect(containers[2].Name).To(Equal("fake-job-c-test-server"))
@@ -338,7 +338,7 @@ var _ = Describe("kube converter", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(resources.InstanceGroups).To(HaveLen(1))
 				containers = resources.InstanceGroups[0].Spec.Template.Spec.Template.Spec.Containers
-				Expect(containers).To(HaveLen(6))
+				Expect(containers).To(HaveLen(7))
 				Expect(containers[0].Name).To(Equal("fake-job-a-test-server"))
 				Expect(containers[1].Name).To(Equal("fake-job-b-test-server"))
 				Expect(containers[2].Name).To(Equal("fake-job-c-test-server"))
