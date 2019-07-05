@@ -201,7 +201,7 @@ var _ = Describe("Deploy", func() {
 			By("checking for containers")
 			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=route_registrar")
 			Expect(len(pods.Items)).To(Equal(2))
-			Expect(pods.Items[0].Spec.Containers).To(HaveLen(1))
+			Expect(pods.Items[0].Spec.Containers).To(HaveLen(2))
 			Expect(pods.Items[0].Spec.Containers[0].Name).To(Equal("route-registrar-route-registrar"))
 		})
 	})
