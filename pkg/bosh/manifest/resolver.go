@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -75,7 +74,7 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 	// Interpolate manifest with ops if exist
 	ops := spec.Ops
 	if len(ops) == 0 {
-		err = yaml.Unmarshal([]byte(m), manifest)
+		manifest, err := LoadYAML([]byte(m))
 		return manifest, err
 	}
 

@@ -16,7 +16,9 @@ func (m *Machine) WaitForInstanceGroup(namespace string, deployment string, igNa
 		bdm.LabelDeploymentVersion: version,
 	}).String()
 	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
-		n, err := m.PodCount(namespace, labels)
+		n, err := m.PodCount(namespace, labels, func(pod corev1.Pod) bool {
+			return pod.Status.Phase == corev1.PodRunning
+		})
 		if err != nil {
 			return false, err
 		}

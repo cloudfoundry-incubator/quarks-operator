@@ -18,12 +18,14 @@ import (
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // AddExtendedStatefulSet creates a new ExtendedStatefulSet controller and adds it to the Manager
 func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-statefulset-reconciler", mgr.GetRecorder("ext-statefulset-recorder"))
-	r := NewReconciler(ctx, config, mgr, controllerutil.SetControllerReference)
+	store := vss.NewVersionedSecretStore(mgr.GetClient())
+	r := NewReconciler(ctx, config, mgr, controllerutil.SetControllerReference, store)
 
 	// Create a new controller
 	c, err := controller.New("ext-statefulset-controller", mgr, controller.Options{Reconciler: r})

@@ -138,6 +138,15 @@ func (c *Catalog) BOSHManifestWithoutPersistentDisk() *manifest.Manifest {
 	return m
 }
 
+// BPMReleaseWithAffinity returns a manifest with affinity
+func (c *Catalog) BPMReleaseWithAffinity() *manifest.Manifest {
+	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithAffinity))
+	if err != nil {
+		panic(err)
+	}
+	return m
+}
+
 // DefaultBOSHManifestConfigMap for tests
 func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
