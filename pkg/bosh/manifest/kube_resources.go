@@ -323,6 +323,7 @@ func (kc *KubeConverter) errandToExtendedJob(
 	volumes = append(volumes, defaultVolumes...)
 	volumes = append(volumes, bpmVolumes...)
 
+	// Errand EJob
 	eJob := ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        fmt.Sprintf("%s-%s", manifestName, instanceGroup.Name),
@@ -331,7 +332,9 @@ func (kc *KubeConverter) errandToExtendedJob(
 			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
 		Spec: ejv1.ExtendedJobSpec{
-			UpdateOnConfigChange: true,
+			Trigger: ejv1.Trigger{
+				Strategy: ejv1.TriggerManual,
+			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        instanceGroup.Name,
