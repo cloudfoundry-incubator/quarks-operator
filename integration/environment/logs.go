@@ -71,6 +71,16 @@ func (m *Machine) WaitForPodLogMatchRegexp(namespace string, podName string, reg
 	})
 }
 
+// WaitForPodContainerLogMatchRegexp searches a pod's container test logs for at least one occurrence of Regexp.
+func (m *Machine) WaitForPodContainerLogMatchRegexp(namespace string, podName string, containerName string, regExp string) error {
+	r, _ := regexp.Compile(regExp)
+
+	return wait.Poll(5*time.Second, m.pollTimeout, func() (bool, error) {
+		logs, err := m.GetPodContainerLogs(namespace, podName, containerName)
+		return r.MatchString(logs), err
+	})
+}
+
 // WaitForLogMsg searches zap test logs for at least one occurrence of msg.
 // When using this, tests should use FlushLog() to remove log messages from
 // other tests.

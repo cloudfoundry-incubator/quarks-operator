@@ -231,7 +231,7 @@ var _ = Describe("ContainerFactory", func() {
 		It("adds the default volume mounts passed", func() {
 			containers, err := act()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(containers).To(HaveLen(2))
+			Expect(containers).To(HaveLen(3))
 			Expect(containers[0].VolumeMounts).To(ContainElement(
 				corev1.VolumeMount{
 					Name:             VolumeSysDirName,

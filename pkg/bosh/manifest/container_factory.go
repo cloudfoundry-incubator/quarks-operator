@@ -197,7 +197,46 @@ func (c *ContainerFactory) JobsToContainers(
 			containers = append(containers, *container.DeepCopy())
 		}
 	}
+
+	logsTailer := logsTailerContainer(c.instanceGroupName)
+	containers = append(containers, logsTailer)
+
 	return containers, nil
+}
+
+// logsTailerContainer is a container that tails all logs in /var/vcap/sys/log
+func logsTailerContainer(instanceGroupName string) corev1.Container {
+
+	rootUserID := int64(0)
+
+	return corev1.Container{
+		Name:  "logs",
+		Image: GetOperatorDockerImage(),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      VolumeSysDirName,
+				MountPath: VolumeSysDirMountPath,
+			},
+		},
+		Command: []string{
+			"/bin/sh",
+		},
+		Args: []string{
+			"-c",
+			`
+MONITORDIR="/var/vcap/sys/log/"
+find "${MONITORDIR}" -type f -exec tail -n 0 -f "$file" {} + &
+inotifywait -m -r -e create --format '%w%f' "${MONITORDIR}" | while read NEWFILE
+do
+  pkill tail
+  find "${MONITORDIR}" -type f -exec tail -n 0 -f "$file" {} + &
+done
+`,
+		},
+		SecurityContext: &corev1.SecurityContext{
+			RunAsUser: &rootUserID,
+		},
+	}
 }
 
 // jobSpecCopierContainer will return a corev1.Container{} with the populated field
