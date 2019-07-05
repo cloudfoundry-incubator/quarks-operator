@@ -9,15 +9,6 @@ if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
   export DOCKER_IMAGE_TAG
 fi
 
-set +e
-
-if type -a minikube >/dev/null 2>/dev/null; then
-  if ! dockerenv=$(minikube docker-env); then
-    echo "Error: Could not retrieve docker settings from minikube."
-    exit 1
-  fi
-  eval "${dockerenv}"
-fi
 
 set -e
 
