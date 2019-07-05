@@ -29,6 +29,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	cfcfg "code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 )
 
@@ -54,7 +55,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 	})
 
 	JustBeforeEach(func() {
-		reconciler = exssc.NewReconciler(ctx, config, manager, controllerutil.SetControllerReference)
+		reconciler = exssc.NewReconciler(ctx, config, manager, controllerutil.SetControllerReference, vss.NewVersionedSecretStore(manager.GetClient()))
 	})
 
 	Describe("Reconcile", func() {
