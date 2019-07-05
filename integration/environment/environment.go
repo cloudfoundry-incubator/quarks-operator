@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
@@ -275,4 +276,26 @@ func getWebhookServicePort(namespaceCounter int) (int32, error) {
 		}
 	}
 	return int32(port) + int32(namespaceCounter), nil
+}
+
+// DeleteNamespace removes existing ns
+func DeleteNamespace(ns string, kubeCtlCmd string) error {
+	fmt.Printf("Cleaning up namespace %s \n", ns)
+
+	_, err := RunBinary(kubeCtlCmd, "delete", "--ignore-not-found", "namespace", ns)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// RunBinary executes a binary cmd and returns the stdOutput
+func RunBinary(binaryName string, args ...string) ([]byte, error) {
+	cmd := exec.Command(binaryName, args...)
+	stdOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		return stdOutput, errors.Wrapf(err, "%s cmd, failed with the following error: %s", cmd.Args, string(stdOutput))
+	}
+	return stdOutput, nil
 }

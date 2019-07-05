@@ -1,4 +1,4 @@
-package integration_test
+package storage_test
 
 import (
 	"fmt"
@@ -9,9 +9,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestIntegration(t *testing.T) {
+func TestStorage(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Integration Suite")
+	RunSpecs(t, "Integration Storage Suite")
 }
 
 var (

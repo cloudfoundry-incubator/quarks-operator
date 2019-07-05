@@ -32,4 +32,7 @@ kubectl get customresourcedefinitions
 
 NODES=${NODES:-3}
 FLAKE_ATTEMPTS=${FLAKE_ATTEMPTS:-3}
-ginkgo --nodes="$NODES" --flakeAttempts="$FLAKE_ATTEMPTS" e2e/kube/
+ginkgo \
+  --nodes="$NODES" \
+  --flakeAttempts="$FLAKE_ATTEMPTS" \
+  e2e/kube/
