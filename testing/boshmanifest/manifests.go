@@ -61,15 +61,13 @@ instance_groups:
           healthcheck:
             test-server:
               readiness:
-                handler:
-                  exec:
-                    command:
-                    - "curl --silent --fail --head http://${HOSTNAME}:8080/health"
+                exec:
+                  command:
+                  - "curl --silent --fail --head http://${HOSTNAME}:8080/health"
               liveness:
-                handler:
-                  exec:
-                    command:
-                    - "curl --silent --fail --head http://${HOSTNAME}:8080"
+                exec:
+                  command:
+                  - "curl --silent --fail --head http://${HOSTNAME}:8080"
         ports:
         - name: "rep-server"
           protocol: "TCP"
