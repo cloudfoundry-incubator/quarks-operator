@@ -17,12 +17,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
+	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 const (
@@ -43,26 +41,15 @@ var _ reconcile.Reconciler = &ReconcileExtendedStatefulSet{}
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
-// Owner bundles funcs to manage ownership on referenced configmaps and secrets
-type Owner interface {
-	Update(context.Context, apis.Object, []apis.Object, []apis.Object) error
-	RemoveOwnerReferences(context.Context, apis.Object, []apis.Object) error
-	ListConfigs(context.Context, string, corev1.PodSpec) ([]apis.Object, error)
-	ListConfigsOwnedBy(context.Context, apis.Object) ([]apis.Object, error)
-}
-
 // NewReconciler returns a new reconcile.Reconciler
-func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, srf setReferenceFunc) reconcile.Reconciler {
-	versionedSecretStore := versionedsecretstore.NewVersionedSecretStore(mgr.GetClient())
-
+func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, srf setReferenceFunc, store vss.VersionedSecretStore) reconcile.Reconciler {
 	return &ReconcileExtendedStatefulSet{
 		ctx:                  ctx,
 		config:               config,
 		client:               mgr.GetClient(),
 		scheme:               mgr.GetScheme(),
 		setReference:         srf,
-		owner:                owner.NewOwner(mgr.GetClient(), mgr.GetScheme()),
-		versionedSecretStore: versionedSecretStore,
+		versionedSecretStore: store,
 	}
 }
 
@@ -73,8 +60,7 @@ type ReconcileExtendedStatefulSet struct {
 	scheme               *runtime.Scheme
 	setReference         setReferenceFunc
 	config               *config.Config
-	owner                Owner
-	versionedSecretStore versionedsecretstore.VersionedSecretStore
+	versionedSecretStore vss.VersionedSecretStore
 }
 
 // Reconcile reads that state of the cluster for a ExtendedStatefulSet object
@@ -132,13 +118,11 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		// If it doesn't exist, create it
 		ctxlog.Info(ctx, "StatefulSet '", desiredStatefulSet.Name, "' owned by ExtendedStatefulSet '", request.NamespacedName, "' not found, will be created.")
 
-		// Record the template before creating the StatefulSet, so we don't include default values such as
-		// `ImagePullPolicy`, `TerminationMessagePath`, etc. in the signature.
-		originalTemplate := exStatefulSet.Spec.Template.DeepCopy()
+		r.versionedSecretStore.SetSecretReferences(ctx, request.Namespace, &exStatefulSet.Spec.Template.Spec.Template.Spec)
+
 		if err := r.createStatefulSet(ctx, exStatefulSet, &desiredStatefulSet); err != nil {
 			return reconcile.Result{}, ctxlog.WithEvent(exStatefulSet, "CreateStatefulSetError").Error(ctx, "Could not create StatefulSet for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 		}
-		exStatefulSet.Spec.Template = *originalTemplate
 	}
 
 	return reconcile.Result{}, nil
