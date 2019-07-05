@@ -87,7 +87,7 @@ func (j *Job) sysDirs(name string) []string {
 
 // JobProperties represents the properties map of a Job
 type JobProperties struct {
-	BOSHContainerization bc.BOSHContainerization `yaml:"-"`
+	BOSHContainerization bc.BOSHContainerization `yaml:"bosh_containerization"`
 	Properties           map[string]interface{}  `yaml:",inline"`
 }
 
