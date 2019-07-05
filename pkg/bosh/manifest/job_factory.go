@@ -41,11 +41,12 @@ type JobFactory struct {
 }
 
 // NewJobFactory returns a new JobFactory
-func NewJobFactory(manifest Manifest, namespace string, version string) *JobFactory {
+func NewJobFactory(manifest Manifest, namespace string) *JobFactory {
 	return &JobFactory{
-		Manifest:            manifest,
-		Namespace:           namespace,
-		desiredManifestName: names.DesiredManifestName(manifest.Name, version),
+		Manifest:  manifest,
+		Namespace: namespace,
+		// ExtendedJob will always pick the latest version for versioned secrets
+		desiredManifestName: names.DesiredManifestName(manifest.Name, "1"),
 	}
 }
 

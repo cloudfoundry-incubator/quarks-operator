@@ -113,8 +113,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Generate all the kube objects we need for the manifest
 	log.Debug(ctx, "Converting bosh manifest to kube objects")
-	version := r.resolver.LatestVersion(ctx, request.Namespace, manifest.Name)
-	jobFactory := bdm.NewJobFactory(*manifest, instance.GetNamespace(), version)
+	jobFactory := bdm.NewJobFactory(*manifest, instance.GetNamespace())
 
 	// Apply the "Variable Interpolation" ExtendedJob
 	eJob, err := jobFactory.VariableInterpolationJob()
