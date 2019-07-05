@@ -45,8 +45,12 @@ test-cli-e2e:
 test-helm-e2e:
 	bin/test-helm-e2e
 
-test-storage:
-	bin/test-storage
+test-helm-e2e-storage:
+	bin/test-helm-e2e-storage
+
+test-integration-storage:
+	bin/test-integration-storage
+
 ############ GENERATE TARGETS ############
 
 generate: gen-kube gen-fakes

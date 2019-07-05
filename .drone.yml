@@ -35,7 +35,7 @@ steps:
   - export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip -4 addr show docker0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
   - export OPERATOR_TEST_STORAGE_CLASS="local-path"
   # Run integration tests
-  - make test-integration
+  - make test-integration test-integration-storage
 
 # services:
 # - name: docker

@@ -53,7 +53,7 @@ var _ = Describe("DeployWithStorage", func() {
 			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=bpm")
 			Expect(len(pods.Items)).To(Equal(1))
 			pod := pods.Items[0]
-			Expect(pod.Spec.Containers).To(HaveLen(2))
+			Expect(pod.Spec.Containers).To(HaveLen(3))
 
 		})
 	})

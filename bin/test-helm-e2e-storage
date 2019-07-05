@@ -33,4 +33,4 @@ FLAKE_ATTEMPTS=${FLAKE_ATTEMPTS:-3}
 ginkgo \
   --nodes="$NODES" \
   --flakeAttempts="$FLAKE_ATTEMPTS" \
-  e2e/kube/
+  e2e/kube/storage

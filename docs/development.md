@@ -1,18 +1,18 @@
 # Development
 
-- [Development](#development)
-  - [Makefile](#makefile)
-    - [General Targets](#general-targets)
-    - [Build Targets](#build-targets)
-    - [Test Targets](#test-targets)
-    - [Generate Targets](#generate-targets)
-  - [CI](#ci)
-  - [Publishing](#publishing)
-  - [Creating a new Resource and Controller](#creating-a-new-resource-and-controller)
-    - [Testing](#testing)
-  - [Create-Or-Update pattern](#create-or-update-pattern)
-  - [Logging and Events](#logging-and-events)
-  - [Versioning](#versioning)
+- [Development](#Development)
+  - [Makefile](#Makefile)
+    - [General Targets](#General-Targets)
+    - [Build Targets](#Build-Targets)
+    - [Test Targets](#Test-Targets)
+    - [Generate Targets](#Generate-Targets)
+  - [CI](#CI)
+  - [Publishing](#Publishing)
+  - [Creating a new Resource and Controller](#Creating-a-new-Resource-and-Controller)
+    - [Testing](#Testing)
+  - [Create-Or-Update pattern](#Create-Or-Update-pattern)
+  - [Logging and Events](#Logging-and-Events)
+  - [Versioning](#Versioning)
 
 ## Makefile
 
@@ -40,13 +40,15 @@ The following are the make targets available and their actions.
 
 ### Test Targets
 
-| Name               | Action                                             |
-| ------------------ | -------------------------------------------------- |
-| `test`             | runs unit,integration and e2e tests.               |
-| `test-unit`        | runs unit tests only.                              |
-| `test-integration` | runs integration tests only.                       |
-| `test-cli-e2e`     | runs end to end tests for CLI.                     |
-| `test-helm-e2e`    | runs end to end tests on k8s using `helm install`. |
+| Name                       | Action                                             |
+| -------------------------- | -------------------------------------------------- |
+| `test`                     | runs unit,integration and e2e tests.               |
+| `test-unit`                | runs unit tests only.                              |
+| `test-integration`         | runs integration tests only.                       |
+| `test-cli-e2e`             | runs end to end tests for CLI.                     |
+| `test-helm-e2e`            | runs end to end tests on k8s using `helm install`. |
+| `test-integration-storage` | runs storage related integration tests.            |
+| `test-helm-e2e-storage`    | runs storage related end to end tests.             |
 
 ### Generate Targets
 
