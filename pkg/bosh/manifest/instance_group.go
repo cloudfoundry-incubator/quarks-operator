@@ -3,6 +3,9 @@ package manifest
 import (
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
+
+	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 )
 
@@ -26,8 +29,8 @@ type InstanceGroup struct {
 	Env                AgentEnv               `yaml:"env,omitempty"`
 }
 
-func (ig *InstanceGroup) jobInstances(namespace string, deploymentName string, jobName string, spec JobSpec) []JobInstance {
-	var jobsInstances []JobInstance
+func (ig *InstanceGroup) jobInstances(namespace string, deploymentName string, jobName string, spec JobSpec) []bc.JobInstance {
+	var jobsInstances []bc.JobInstance
 	for i := 0; i < ig.Instances; i++ {
 
 		// TODO: Understand whether there are negative side-effects to using this
@@ -46,7 +49,7 @@ func (ig *InstanceGroup) jobInstances(namespace string, deploymentName string, j
 			// TODO: not allowed to hardcode svc.cluster.local
 			address := fmt.Sprintf("%s.%s.svc.cluster.local", serviceName, namespace)
 
-			jobsInstances = append(jobsInstances, JobInstance{
+			jobsInstances = append(jobsInstances, bc.JobInstance{
 				Address:  address,
 				AZ:       az,
 				ID:       id,
@@ -109,10 +112,13 @@ var (
 	LabelDeploymentVersion = fmt.Sprintf("%s/deployment-version", apis.GroupName)
 )
 
-// AgentSettings from BOSH deployment manifest. These annotations and labels are added to kube resources
+// AgentSettings from BOSH deployment manifest.
+// These annotations and labels are added to kube resources.
+// Affinity is added into the pod's definition.
 type AgentSettings struct {
 	Annotations map[string]string `yaml:"annotations,omitempty"`
 	Labels      map[string]string `yaml:"labels,omitempty"`
+	Affinity    *corev1.Affinity  `json:"affinity,omitempty" yaml:"affinity,omitempty"`
 }
 
 // Set overrides labels and annotations with operator-owned metadata

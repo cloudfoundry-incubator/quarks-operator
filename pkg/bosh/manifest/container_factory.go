@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
@@ -346,7 +347,7 @@ func bpmProcessContainer(
 	jobImage string,
 	process bpm.Process,
 	volumeMounts []corev1.VolumeMount,
-	healthchecks map[string]HealthCheck,
+	healthchecks map[string]bc.HealthCheck,
 ) corev1.Container {
 	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
 	container := corev1.Container{

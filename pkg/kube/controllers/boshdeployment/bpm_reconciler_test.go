@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
@@ -86,8 +87,8 @@ var _ = Describe("ReconcileBPM", func() {
 								Properties: map[string]interface{}{
 									"password": "((foo_password))",
 								},
-								BOSHContainerization: bdm.BOSHContainerization{
-									Ports: []bdm.Port{
+								BOSHContainerization: bc.BOSHContainerization{
+									Ports: []bc.Port{
 										{
 											Name:     "foo",
 											Protocol: "TCP",

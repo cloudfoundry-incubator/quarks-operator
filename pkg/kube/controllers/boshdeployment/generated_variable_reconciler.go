@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -78,8 +77,7 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 
 	// Unmarshal the manifest
 	log.Debug(ctx, "Unmarshaling BOSHDeployment manifest from manifest with ops secret")
-	manifest := &bdm.Manifest{}
-	err = yaml.Unmarshal([]byte(manifestContents), manifest)
+	manifest, err := bdm.LoadYAML([]byte(manifestContents))
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(manifestSecret, "BadManifestError").Errorf(ctx, "Failed to unmarshal manifest from secret '%s': %v", request.NamespacedName, err)

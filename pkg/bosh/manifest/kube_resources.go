@@ -189,6 +189,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 							Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 						},
 						Spec: corev1.PodSpec{
+							Affinity:       instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity,
 							Volumes:        volumes,
 							InitContainers: initContainers,
 							Containers:     containers,
@@ -201,6 +202,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 			},
 		},
 	}
+
 	return extSts, nil
 }
 
@@ -351,6 +353,11 @@ func (kc *KubeConverter) errandToExtendedJob(
 				},
 			},
 		},
+	}
+
+	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity != nil {
+		affinity := corev1.Affinity(*instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity)
+		eJob.Spec.Template.Spec.Affinity = &affinity
 	}
 	return eJob, nil
 }
