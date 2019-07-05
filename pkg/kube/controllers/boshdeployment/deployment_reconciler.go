@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	yaml "gopkg.in/yaml.v2"
-
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -113,8 +111,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Generate all the kube objects we need for the manifest
 	log.Debug(ctx, "Converting bosh manifest to kube objects")
-	version := r.resolver.LatestVersion(ctx, request.Namespace, manifest.Name)
-	jobFactory := bdm.NewJobFactory(*manifest, instance.GetNamespace(), version)
+	jobFactory := bdm.NewJobFactory(*manifest, instance.GetNamespace())
 
 	// Apply the "Variable Interpolation" ExtendedJob
 	eJob, err := jobFactory.VariableInterpolationJob()
@@ -172,7 +169,7 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 	log.Debug(ctx, "Creating manifest secret with ops")
 
 	// Create manifest with ops as variable interpolation job input.
-	manifestBytes, err := yaml.Marshal(manifest)
+	manifestBytes, err := manifest.Marshal()
 	if err != nil {
 		return nil, log.WithEvent(instance, "ManifestWithOpsUnmarshalError").Errorf(ctx, "Error unmarshaling the manifest %s: %s", instance.GetName(), err)
 	}

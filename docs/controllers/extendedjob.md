@@ -78,6 +78,9 @@ One-off jobs run directly when created, just like native k8s jobs.
 They are created with `trigger.strategy: once` and switch to `done` when
 finished.
 
+If a versioned secret is referenced in the pod spec of an eJob, the most recent
+version of that secret will be used when the batchv1.Job is created.
+
 #### Restarting on Config Change
 
 Just like an `ExtendedStatefulSet`, a **one-off** `ExtendedJob` can

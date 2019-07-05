@@ -41,11 +41,12 @@ type JobFactory struct {
 }
 
 // NewJobFactory returns a new JobFactory
-func NewJobFactory(manifest Manifest, namespace string, version string) *JobFactory {
+func NewJobFactory(manifest Manifest, namespace string) *JobFactory {
 	return &JobFactory{
-		Manifest:            manifest,
-		Namespace:           namespace,
-		desiredManifestName: names.DesiredManifestName(manifest.Name, version),
+		Manifest:  manifest,
+		Namespace: namespace,
+		// ExtendedJob will always pick the latest version for versioned secrets
+		desiredManifestName: names.DesiredManifestName(manifest.Name, "1"),
 	}
 }
 
@@ -132,7 +133,7 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 
 	eJobName := fmt.Sprintf("dm-%s", f.Manifest.Name)
 
-	// Construct the var interpolation job
+	// Construct the var interpolation auto-errand eJob
 	job := &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      eJobName,
@@ -142,6 +143,19 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 			},
 		},
 		Spec: ejv1.ExtendedJobSpec{
+			Output: &ejv1.Output{
+				NamePrefix: names.DesiredManifestPrefix(f.Manifest.Name),
+				SecretLabels: map[string]string{
+					bdv1.LabelDeploymentName:       f.Manifest.Name,
+					bdv1.LabelManifestSHA1:         manifestSignature,
+					bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeManifestWithOps.String(),
+					ejv1.LabelReferencedJobName:    fmt.Sprintf("data-gathering-%s", f.Manifest.Name),
+				},
+				Versioned: true,
+			},
+			Trigger: ejv1.Trigger{
+				Strategy: ejv1.TriggerOnce,
+			},
 			UpdateOnConfigChange: true,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -172,19 +186,6 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 					},
 					Volumes: volumes,
 				},
-			},
-			Output: &ejv1.Output{
-				NamePrefix: names.DesiredManifestPrefix(f.Manifest.Name),
-				SecretLabels: map[string]string{
-					bdv1.LabelDeploymentName:       f.Manifest.Name,
-					bdv1.LabelManifestSHA1:         manifestSignature,
-					bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeManifestWithOps.String(),
-					ejv1.LabelReferencedJobName:    fmt.Sprintf("data-gathering-%s", f.Manifest.Name),
-				},
-				Versioned: true,
-			},
-			Trigger: ejv1.Trigger{
-				Strategy: ejv1.TriggerOnce,
 			},
 		},
 	}
@@ -283,6 +284,7 @@ func (f *JobFactory) gatheringJob(name string, secretType names.DeploymentSecret
 		}
 	}
 
+	// Construct the "BPM configs" or "data gathering" auto-errand eJob
 	job := &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

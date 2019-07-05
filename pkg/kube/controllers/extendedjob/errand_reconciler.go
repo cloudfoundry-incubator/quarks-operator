@@ -16,7 +16,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
+	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 var _ reconcile.Reconciler = &ErrandReconciler{}
@@ -27,16 +27,15 @@ func NewErrandReconciler(
 	config *config.Config,
 	mgr manager.Manager,
 	f setOwnerReferenceFunc,
+	store vss.VersionedSecretStore,
 ) reconcile.Reconciler {
-	versionedSecretStore := versionedsecretstore.NewVersionedSecretStore(mgr.GetClient())
-
 	return &ErrandReconciler{
 		ctx:                  ctx,
 		client:               mgr.GetClient(),
 		config:               config,
 		scheme:               mgr.GetScheme(),
 		setOwnerReference:    f,
-		versionedSecretStore: versionedSecretStore,
+		versionedSecretStore: store,
 	}
 }
 
@@ -47,7 +46,7 @@ type ErrandReconciler struct {
 	config               *config.Config
 	scheme               *runtime.Scheme
 	setOwnerReference    setOwnerReferenceFunc
-	versionedSecretStore versionedsecretstore.VersionedSecretStore
+	versionedSecretStore vss.VersionedSecretStore
 }
 
 // Reconcile starts jobs for extended jobs of the type errand with Run being set to 'now' manually
@@ -116,6 +115,8 @@ func (r *ErrandReconciler) createJob(ctx context.Context, eJob ejv1.ExtendedJob)
 		template.Labels = map[string]string{}
 	}
 	template.Labels[ejv1.LabelEJobName] = eJob.Name
+
+	r.versionedSecretStore.SetSecretReferences(ctx, eJob.Namespace, &template.Spec)
 
 	name, err := names.JobName(eJob.Name, "")
 	if err != nil {

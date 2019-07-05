@@ -189,6 +189,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 							Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 						},
 						Spec: corev1.PodSpec{
+							Affinity:       instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity,
 							Volumes:        volumes,
 							InitContainers: initContainers,
 							Containers:     containers,
@@ -201,6 +202,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 			},
 		},
 	}
+
 	return extSts, nil
 }
 
@@ -323,6 +325,7 @@ func (kc *KubeConverter) errandToExtendedJob(
 	volumes = append(volumes, defaultVolumes...)
 	volumes = append(volumes, bpmVolumes...)
 
+	// Errand EJob
 	eJob := ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        fmt.Sprintf("%s-%s", manifestName, instanceGroup.Name),
@@ -331,7 +334,9 @@ func (kc *KubeConverter) errandToExtendedJob(
 			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
 		Spec: ejv1.ExtendedJobSpec{
-			UpdateOnConfigChange: true,
+			Trigger: ejv1.Trigger{
+				Strategy: ejv1.TriggerManual,
+			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        instanceGroup.Name,
@@ -348,6 +353,11 @@ func (kc *KubeConverter) errandToExtendedJob(
 				},
 			},
 		},
+	}
+
+	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity != nil {
+		affinity := corev1.Affinity(*instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity)
+		eJob.Spec.Template.Spec.Affinity = &affinity
 	}
 	return eJob, nil
 }

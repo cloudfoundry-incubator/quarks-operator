@@ -312,21 +312,35 @@ var _ = Describe("Deploy", func() {
 				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 			})
 
-			It("should update the deployment and respect the instance count", func() {
+			scaleDeployment := func(n string) {
 				ops, err := env.GetConfigMap(env.Namespace, "bosh-ops")
 				Expect(err).NotTo(HaveOccurred())
 				ops.Data["ops"] = `- type: replace
   path: /instance_groups/name=nats?/instances
-  value: 2`
+  value: ` + n
 				_, _, err = env.UpdateConfigMap(env.Namespace, *ops)
 				Expect(err).NotTo(HaveOccurred())
+			}
+
+			It("should update the deployment and respect the instance count", func() {
+				scaleDeployment("2")
 
 				By("checking if the deployment was updated")
-				err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "2", 2)
+				err := env.WaitForInstanceGroup(env.Namespace, "test", "nats", "2", 2)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 
 				pods, _ := env.GetInstanceGroupPods(env.Namespace, "test", "nats", "2")
 				Expect(len(pods.Items)).To(Equal(2))
+
+				By("updating the deployment again")
+				scaleDeployment("3")
+
+				By("checking if the deployment was again updated")
+				err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "4", 3)
+				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
+
+				pods, _ = env.GetInstanceGroupPods(env.Namespace, "test", "nats", "4")
+				Expect(len(pods.Items)).To(Equal(3))
 			})
 		})
 	})

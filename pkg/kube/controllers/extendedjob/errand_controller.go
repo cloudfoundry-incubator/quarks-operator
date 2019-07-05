@@ -30,7 +30,8 @@ import (
 func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	f := controllerutil.SetControllerReference
 	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-job-errand-reconciler", mgr.GetRecorder("ext-job-errand-recorder"))
-	r := NewErrandReconciler(ctx, config, mgr, f)
+	store := vss.NewVersionedSecretStore(mgr.GetClient())
+	r := NewErrandReconciler(ctx, config, mgr, f, store)
 	c, err := controller.New("ext-job-errand-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err

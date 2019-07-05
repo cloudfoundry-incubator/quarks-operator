@@ -27,6 +27,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
@@ -73,6 +74,7 @@ var _ = Describe("ErrandReconciler", func() {
 				config,
 				mgr,
 				setOwnerReference,
+				vss.NewVersionedSecretStore(mgr.GetClient()),
 			)
 		})
 
