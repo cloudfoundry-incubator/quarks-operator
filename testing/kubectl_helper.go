@@ -2,11 +2,15 @@ package testing
 
 import (
 	"bytes"
+	"io/ioutil"
 	"os/exec"
 	"runtime/debug"
 	"strings"
 	"time"
 
+	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
+	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -52,6 +56,23 @@ func (k *Kubectl) DeleteNamespace(name string) error {
 // Create creates the resource using kubectl command
 func (k *Kubectl) Create(namespace string, yamlFilePath string) error {
 	cmd := exec.Command("kubectl", "--namespace", namespace, "create", "-f", yamlFilePath)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return errors.Wrapf(err, string(out))
+	}
+	return nil
+}
+
+// CreateSecretFromLiteral creates a generic type secret using kubectl command
+func (k *Kubectl) CreateSecretFromLiteral(namespace string, secretName string, literalValues map[string]string) error {
+
+	literalValuesCmd := ""
+
+	for key, value := range literalValues {
+		literalValuesCmd = literalValuesCmd + "--from-literal=" + key + "=" + value + " "
+	}
+
+	cmd := exec.Command("kubectl", "--namespace", namespace, "create", "secret", "generic", secretName, literalValuesCmd)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return errors.Wrapf(err, string(out))
@@ -291,4 +312,42 @@ func (k *Kubectl) SecretCheckData(namespace string, secretName string, fieldPath
 		return nil
 	}
 	return nil
+}
+
+// AddTestStorageClassToVolumeClaimTemplates adds storage class to the example and returns the new file temporary path
+func (k *Kubectl) AddTestStorageClassToVolumeClaimTemplates(filePath string, class string) (string, error) {
+
+	extendedStatefulSet := essv1.ExtendedStatefulSet{}
+	extendedStatefulSetBytes, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+	err = yaml.Unmarshal(extendedStatefulSetBytes, &extendedStatefulSet)
+	if err != nil {
+		return "", err
+	}
+
+	if extendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates != nil {
+		volumeClaimTemplates := extendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates
+		for volumeClaimTemplateIndex := range volumeClaimTemplates {
+			volumeClaimTemplates[volumeClaimTemplateIndex].Spec.StorageClassName = util.String(class)
+		}
+		extendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates = volumeClaimTemplates
+	} else {
+		return "", errors.New("No volumeclaimtemplates present in the yaml")
+	}
+
+	extendedStatefulSetBytes, err = yaml.Marshal(&extendedStatefulSet)
+	if err != nil {
+		return "", err
+	}
+
+	tmpFilePath := "/tmp/example.yaml"
+
+	err = ioutil.WriteFile(tmpFilePath, extendedStatefulSetBytes, 0644)
+	if err != nil {
+		return "", err
+	}
+
+	return tmpFilePath, nil
 }

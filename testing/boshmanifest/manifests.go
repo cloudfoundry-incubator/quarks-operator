@@ -475,6 +475,7 @@ instance_groups:
           protocol: TCP
           internal: 1338
   persistent_disk: 1024
+  persistent_disk_type: ((operator_test_storage_class))
 `
 
 // CFRouting BOSH release is being tested for BOSH pre hook
