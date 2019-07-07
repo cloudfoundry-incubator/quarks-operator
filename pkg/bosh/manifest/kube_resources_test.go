@@ -559,11 +559,11 @@ var _ = Describe("kube converter", func() {
 							{
 								MatchExpressions: []corev1.NodeSelectorRequirement{
 									{
-										Key:      "kubernetes.io/unit-test-az-name",
+										Key:      "beta.kubernetes.io/os",
 										Operator: "In",
 										Values: []string{
-											"unit-test-az1",
-											"unit-test-az2",
+											"linux",
+											"darwin",
 										},
 									},
 								},
@@ -583,15 +583,15 @@ var _ = Describe("kube converter", func() {
 							LabelSelector: &metav1.LabelSelector{
 								MatchExpressions: []metav1.LabelSelectorRequirement{
 									{
-										Key:      "security",
+										Key:      "instance-name",
 										Operator: "In",
 										Values: []string{
-											"S1",
+											"bpm2",
 										},
 									},
 								},
 							},
-							TopologyKey: "failure-domain.beta.kubernetes.io/zone",
+							TopologyKey: "beta.kubernetes.io/os",
 						},
 					},
 				}))
@@ -609,14 +609,15 @@ var _ = Describe("kube converter", func() {
 								LabelSelector: &metav1.LabelSelector{
 									MatchExpressions: []metav1.LabelSelectorRequirement{
 										{
-											Key:      "security",
+											Key:      "instance-name",
 											Operator: "In",
 											Values: []string{
-												"S2",
+												"bpm3",
 											},
 										},
 									},
 								},
+								TopologyKey: "beta.kubernetes.io/os",
 							},
 						},
 					},

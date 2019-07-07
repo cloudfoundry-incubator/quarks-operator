@@ -146,6 +146,16 @@ func (c *Catalog) BPMReleaseWithAffinity() *manifest.Manifest {
 	return m
 }
 
+// BPMReleaseWithAffinityConfigMap for tests
+func (c *Catalog) BPMReleaseWithAffinityConfigMap(name string) corev1.ConfigMap {
+	return corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Data: map[string]string{
+			"manifest": bm.BPMReleaseWithAffinity,
+		},
+	}
+}
+
 // DefaultBOSHManifestConfigMap for tests
 func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
