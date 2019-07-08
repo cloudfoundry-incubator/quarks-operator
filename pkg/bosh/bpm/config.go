@@ -48,7 +48,8 @@ type Process struct {
 
 // Config represent a BPM configuration
 type Config struct {
-	Processes []Process `yaml:"processes,omitempty" json:"processes,omitempty"`
+	Processes           []Process `yaml:"processes,omitempty" json:"processes,omitempty"`
+	UnsupportedTemplate bool      `json:"unsupported_template"`
 }
 
 // Configs holds a collection of BPM configurations by their according job

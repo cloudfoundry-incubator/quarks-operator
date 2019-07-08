@@ -355,7 +355,7 @@ func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string) error {
 		firstJobIndexBPM := jobIndexBPM[0]
 		for _, jobBPMInstance := range jobIndexBPM {
 			if !reflect.DeepEqual(jobBPMInstance, firstJobIndexBPM) {
-				dg.log.Warnf("found different BPM job indexes for job %s in manifest %s, this is NOT SUPPORTED", currentJob.Name, dg.manifest.Name)
+				firstJobIndexBPM.UnsupportedTemplate = true
 			}
 		}
 		currentJob.Properties.BOSHContainerization.BPM = &firstJobIndexBPM
