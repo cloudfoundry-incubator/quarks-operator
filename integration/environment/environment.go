@@ -244,7 +244,8 @@ func (e *Environment) setupCFOperator(namespace string) (err error) {
 	manifest.DockerImageRepository = operatorDockerImageRepo
 	manifest.DockerImageTag = operatorDockerImageTag
 
-	e.ObservedLogs, e.Log = helper.NewTestLoggerWithPath(fmt.Sprintf("/tmp/cf-operator-tests-%d.log", e.ID))
+	loggerPath := helper.LogfilePath(fmt.Sprintf("cf-operator-tests-%d.log", e.ID))
+	e.ObservedLogs, e.Log = helper.NewTestLoggerWithPath(loggerPath)
 	ctx := ctxlog.NewParentContext(e.Log)
 	e.mgr, err = operator.NewManager(ctx, e.Config, e.kubeConfig, manager.Options{Namespace: e.Namespace})
 
