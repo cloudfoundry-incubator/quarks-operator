@@ -23,11 +23,6 @@ instance_groups:
   properties:
     foo:
       app_domain: "((app_domain))"
-    bosh_containerization:
-      ports:
-      - name: "redis"
-        protocol: "TCP"
-        internal: 6379
   env:
     bosh:
       agent:
@@ -339,12 +334,27 @@ instance_groups:
         - name: "redis"
           protocol: "TCP"
           internal: 6379
+        pre_render_scripts:
+        - |
+          touch /tmp
         bpm:
           processes:
           - name: redis
             executable: /another/command
             limits:
-            open_files: 100000
+              open_files: 100000
+            hooks:
+              pre_start: /var/vcap/jobs/pxc-mysql/bin/cleanup-socket
+            env:
+              # Add xtrabackup, pxc binaries, and socat to PATH
+              PATH: /usr/bin:/bin:/var/vcap/packages/percona-xtrabackup/bin:/var/vcap/packages/pxc/bin:/var/vcap/packages/socat/bin
+            persistent_disk: true
+            ephemeral_disk: true
+            additional_volumes:
+            - path: /var/vcap/sys/run/pxc-mysql
+              writable: true
+            - path: /var/vcap/store/mysql_audit_logs
+              writable: true
   vm_type: medium
   stemcell: default
   persistent_disk_type: medium
