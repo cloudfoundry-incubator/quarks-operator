@@ -49,11 +49,18 @@ The node index starts at 1 and is used as following to generate names:
 
 		namespace: $TEST_NAMESPACE + <node_index>
 		webhook port: $CF_OPERATOR_WEBHOOK_SERVICE_PORT + <node_index>
-		log file: /tmp/cf-operator-tests-<node_index>.log
+		log file: $CF_OPERATOR_TESTING_TMP/cf-operator-tests-<node_index>.log
 
 Integration tests use the `TEST_NAMESPACE` environment variable as a base to
 calculate the namespace name. Test namespaces are deleted automatically once
 the tests are completed.
+
+`CF_OPERATOR_TESTING_TMP` can be used to set a tmp directory for storing logs
+and other files generated during testing. If this variable is not set `/tmp`
+will be used instead.
+
+Generated files will be cleand up after the test run unless `SKIP_CF_OPERATOR_TESTING_TMP_CLEANUP`
+is set to `true`.
 
 ### Setup Webhook Host
 
