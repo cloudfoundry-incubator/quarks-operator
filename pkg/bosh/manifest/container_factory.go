@@ -99,6 +99,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 					process,
 					jobImage,
 					processVolumeMounts,
+					job.Properties.BOSHContainerization.Debug,
 				)
 
 				bpmPreStartInitContainers = append(bpmPreStartInitContainers, *container.DeepCopy())
@@ -110,6 +111,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 			job.Name,
 			jobImage,
 			append(defaultVolumeMounts, bpmDisks.VolumeMounts()...),
+			job.Properties.BOSHContainerization.Debug,
 		)
 		boshPreStartInitContainers = append(boshPreStartInitContainers, *boshPreStartInitContainer.DeepCopy())
 	}
@@ -342,8 +344,14 @@ func boshPreStartInitContainer(
 	jobName string,
 	jobImage string,
 	volumeMounts []corev1.VolumeMount,
+	debug bool,
 ) corev1.Container {
 	boshPreStart := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "pre-start")
+	debugScript := ""
+	if debug {
+		debugScript = ` || ( echo "Debug window 1hr" ; sleep 3600 ) `
+	}
+
 	return corev1.Container{
 		Name:         names.Sanitize(fmt.Sprintf("bosh-pre-start-%s", jobName)),
 		Image:        jobImage,
@@ -353,7 +361,7 @@ func boshPreStartInitContainer(
 		},
 		Args: []string{
 			"-xc",
-			fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s"; fi`, boshPreStart),
+			fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s"%s; fi`, boshPreStart, debugScript),
 		},
 	}
 }
@@ -362,7 +370,13 @@ func bpmPreStartInitContainer(
 	process bpm.Process,
 	jobImage string,
 	volumeMounts []corev1.VolumeMount,
+	debug bool,
 ) corev1.Container {
+	debugScript := ""
+	if debug {
+		debugScript = ` || ( echo "Debug window 1hr" ; sleep 3600 ) `
+	}
+
 	return corev1.Container{
 		Name:         names.Sanitize(fmt.Sprintf("bpm-pre-start-%s", process.Name)),
 		Image:        jobImage,
@@ -372,7 +386,7 @@ func bpmPreStartInitContainer(
 		},
 		Args: []string{
 			"-xc",
-			process.Hooks.PreStart,
+			fmt.Sprintf("%s%s", process.Hooks.PreStart, debugScript),
 		},
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &process.Unsafe.Privileged,
