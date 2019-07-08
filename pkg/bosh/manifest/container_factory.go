@@ -157,10 +157,6 @@ func (c *ContainerFactory) JobsToContainers(
 			return nil, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
 		}
 
-		if len(bpmConfig.Processes) < 1 {
-			return nil, errors.New("bpm info has no processes")
-		}
-
 		jobDisks := bpmDisks.Filter("job_name", job.Name)
 		var ephemeralMount *corev1.VolumeMount
 		ephemeralDisks := jobDisks.Filter("ephemeral", "true")
