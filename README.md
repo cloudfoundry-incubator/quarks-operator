@@ -1,4 +1,5 @@
 # cf-operator
+
 [![godoc](https://godoc.org/code.cloudfoundry.org/cf-operator?status.svg)](https://godoc.org/code.cloudfoundry.org/cf-operator)
 [![master](https://ci.flintstone.cf.cloud.ibm.com/api/v1/teams/quarks/pipelines/cf-operator/badge)](https://ci.flintstone.cf.cloud.ibm.com/teams/quarks/pipelines/cf-operator)
 [![go report card](https://goreportcard.com/badge/code.cloudfoundry.org/cf-operator)](https://goreportcard.com/report/code.cloudfoundry.org/cf-operator)
@@ -18,103 +19,117 @@ It's implemented as a k8s operator, an active controller component which acts up
 * Backlog: [Pivotal Tracker](https://www.pivotaltracker.com/n/projects/2192232)
 * Docker: https://hub.docker.com/r/cfcontainerization/cf-operator/tags
 
-
 ## Requirements
 
-A working kubernetes cluster.
+- A working Kubernetes cluster
+- Helm binary
+- Go 1.12.2 and install the tool chain: `make tools`
 
-## Install
 
-The alpha release of cf-operator has to be built from source. The helm chart is not working yet.
+## Dependencies
 
-    git checkout v0.1.0
+Run with libraries fetched via go modules:
 
-We need to build the binary, which can run out of cluster:
+```bash
+export GO111MODULE=on
+```
 
+Or with a vendor folder, using GO111MODULE=off, this also speeds up docker builds
+
+```bash
+export GO111MODULE=off
+go mod vendor
+```
+
+Or by checking out the versioned vendor git sub module
+
+```bash
+git submodule update --init
+```
+
+## Installing
+
+### **Using the helm chart**
+
+The `cf-operator` can be installed via `helm`. Make sure you have a running Kubernetes cluster and that tiller is reachable.
+
+Use this if you've never installed the operator before
+
+```bash
+helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com/cf-operators/helm-charts/cf-operator-v0.3.0%2B1.g551e559.tgz
+```
+
+Use this if the custom resources have already been created by a previous CF Operator installation
+
+```bash
+helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com/cf-operators/helm-charts/cf-operator-v0.3.0%2B1.g551e559.tgz --set "customResources.enableInstallation=false"
+````
+
+For more information about the `cf-operator` helm chart and how to configure it, please refer to [deploy/helm/cf-operator/README.md](deploy/helm/cf-operator/README.md)
+
+### **Build it from source**
+
+Follow this steps to build a proper docker image and generate a deployable helm chart:
+
+1. Checkout the latest stable release / or run it from develop branch
+
+    ```bash
+    git checkout v0.3.0
+    ```
+
+2. Build the cf-operator binary, this will be embedded later on the docker image
+
+    ```bash
     bin/build
+    ```
 
-When starting the operator it needs to be reachable from the kubernetes API, so the web hooks work.
+3. Build the docker image
 
-    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=<your-public-ip>
+    When running in minikube, please run: `eval $(minikube docker-env)`, to build the image
+    directly on minikube docker.
 
-We need to tell the operator which docker image it can use for template rendering:
+    ```bash
+    bin/build-image
+    ```
 
-    export DOCKER_IMAGE_TAG=v0.1.0
-    export OPERATOR_DOCKER_ORGANIZATION=cfcontainerization
+    _**Note**_: This will automatically generate a docker image tag based on your current commit, tag and SHA.
 
-For template rendering the operators docker image needs to be accessible to the cluster:
+4. Apply Kubernetes Custom Resources
 
-    docker build . -t $DOCKER_ORGANIZATION/cf-operator:$DOCKER_IMAGE_TAG
-
-Apply the custom resource definitions to the cluster:
-
+    ```bash
     bin/apply-crds
+    ```
 
-Optionally create a namespace for the operator to work in:
+5. Generated helm charts with a proper docker image tag, org and repository
 
-    kubectl create namespace test
-    export CF_OPERATOR_NAMESPACE=test
+    ```bash
+    bin/build-helm
+    ```
 
-Finally run the operator
+    _**Note**_: This will generate a new directory under the base dir, named `helm/`
 
-    binaries/cf-operator
+6. Install the helm chart
 
+    ```bash
+    helm install --name cf-operator-test --namespace cf-operator-test helm/cf-operator --set customResources.enableInstallation=false
+    ```
+
+    _**Note**_: The cf-operator will be available under the `cf-operator-test` namespace, running as a pod.
+
+## Using your fresh installation
+
+With a running `cf-operator` pod, you can try one of the files (see [docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml](docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml) ), as follows:
+
+```bash
+kubectl -n cf-operator-test create -f docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml
+```
+
+The above will spam two pods in your `cf-operator-test` namespace, running the BOSH nats release.
 
 ## Development
 
 For more information see [docs/development.md](docs/development.md) and [docs/testing.md](docs/testing.md)
 
-### Requirements
+## Running Tests
 
-Go 1.12.2 and install the tool chain:
-
-    make tools
-
-### Dependencies
-
-Run with libraries fetched via go modules:
-
-    export GO111MODULE=on
-
-Or with a vendor folder, using GO111MODULE=off, this also speeds up docker builds
-
-    export GO111MODULE=off
-    go mod vendor
-
-Or by checking out the versioned vendor git sub module
-
-    git submodule update --init
-
-### Prepare
-
-Setup environment variables, most importantly `CF_OPERATOR_WEBHOOK_SERVICE_HOST`.
-
-    # set to IP reachable from k8s API, e.g. on Linux:
-    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip -4 a s dev `ip r l 0/0 | tail -1 | cut -f5 -d' '` | grep -oP 'inet \K\S+(?=/)')
-
-    # optionally, if using minikube, build the image directly on minikube's docker
-    # eval `minikube docker-env`
-
-### Start Operator Locally
-
-This will build the image and tag it with `$DOCKER_IMAGE_TAG`. If not set, the version will be calculated from Git information.
-Afterwards the operator is started out-of-cluster.
-
-    make up
-
-Build and use the helm charts to run the operator in-cluster.
-
-### Run Integration tests
-
-See [docs/testing.md](docs/testing.md#Integration)
-
-### Test with Example Data
-    kubectl apply -f docs/examples/fissile_v1alpha1_boshdeployment_cr.yaml
-    kubectl get boshdeployments.fissile.cloudfoundry.org
-    kubectl get pods --watch
-
-    # clean up
-    kubectl delete configmap bosh-manifest
-    kubectl delete configmap bosh-ops
-    kubectl delete secret bosh-ops-secret
-    kubectl delete boshdeployments.fissile.cloudfoundry.org example-boshdeployment
+See [docs/testing.md](docs/testing.md)
