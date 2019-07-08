@@ -25,6 +25,9 @@ bin/apply-crds
 
 kubectl get customresourcedefinitions
 
+# Build the required helm charts to run the cf-operator
+./bin/build-helm
+
 GOVER_FILE=${GOVER_FILE:-gover-integration.coverprofile}
 
 pkgs="code.cloudfoundry.org/cf-operator/cmd/...,\
