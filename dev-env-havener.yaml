@@ -29,16 +29,22 @@
 
 name: cf-operator-quarks
 releases:
-- chart_name: cf-operator
-  chart_namespace: quarks
-  chart_location: deploy/helm/cf-operator/
+- name: cf-operator
+  namespace: quarks
+  location: deploy/helm/cf-operator/
   overrides:
     image:
-      tag: (( shell . bin/include/versioning && echo "${VERSION_TAG}" ))
-      repository: cf-operator
-      org: cfcontainerization
+      tag: (( env DOCKER_IMAGE_TAG ))
+      repository: (( env DOCKER_REPOSITORY ))
+      org: (( env DOCKER_ORGANIZATION ))
     customResources:
-      enableInstallation: false
+      enableInstallation: (( env CRDS_ENABLED ))
+
+env:
+  DOCKER_IMAGE_TAG: (( shell . bin/include/versioning && echo "${VERSION_TAG}" ))
+  DOCKER_REPOSITORY: cf-operator
+  DOCKER_ORGANIZATION: cfcontainerization
+  CRDS_ENABLED: false
 
 before:
 - cmd: /bin/bash
@@ -59,7 +65,7 @@ before:
     eval `minikube docker-env`
 
     . bin/include/versioning
-    echo "Tag for docker image is ${VERSION_TAG}"
+    echo "Tag for docker image is ${DOCKER_IMAGE_TAG}"
 
     ./bin/build-image
     ./bin/apply-crds
@@ -76,4 +82,14 @@ after:
   - |
     #!/bin/bash
     export RELEASE_NAMESPACE="quarks"
+    echo -e "\nCurrent generated mutating webhooks"
+    kubectl -n "${RELEASE_NAMESPACE}" get mutatingwebhookconfigurations
+
+    echo -e "\nCurrent generated validation webhooks"
+    kubectl -n "${RELEASE_NAMESPACE}" get validatingwebhookconfigurations
+
+    echo -e "\nCurrent generated CRDs webhooks"
+    kubectl -n "${RELEASE_NAMESPACE}" get customresourcedefinitions
+
+    echo -e "\nCurrent pods"
     kubectl -n "${RELEASE_NAMESPACE}" get pods
