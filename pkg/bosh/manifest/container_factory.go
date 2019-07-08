@@ -347,9 +347,12 @@ func boshPreStartInitContainer(
 	debug bool,
 ) corev1.Container {
 	boshPreStart := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "pre-start")
-	debugScript := ""
+
+	var script string
 	if debug {
-		debugScript = ` || ( echo "Debug window 1hr" ; sleep 3600 ) `
+		script = fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s" || ( echo "Debug window 1hr" ; sleep 3600 ); fi`, boshPreStart)
+	} else {
+		script = fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s"; fi`, boshPreStart)
 	}
 
 	return corev1.Container{
@@ -361,7 +364,7 @@ func boshPreStartInitContainer(
 		},
 		Args: []string{
 			"-xc",
-			fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s"%s; fi`, boshPreStart, debugScript),
+			script,
 		},
 	}
 }
@@ -372,9 +375,12 @@ func bpmPreStartInitContainer(
 	volumeMounts []corev1.VolumeMount,
 	debug bool,
 ) corev1.Container {
-	debugScript := ""
+
+	var script string
 	if debug {
-		debugScript = ` || ( echo "Debug window 1hr" ; sleep 3600 ) `
+		script = fmt.Sprintf(`%s || ( echo "Debug window 1hr" ; sleep 3600)`, process.Hooks.PreStart)
+	} else {
+		script = process.Hooks.PreStart
 	}
 
 	return corev1.Container{
@@ -386,7 +392,7 @@ func bpmPreStartInitContainer(
 		},
 		Args: []string{
 			"-xc",
-			fmt.Sprintf("%s%s", process.Hooks.PreStart, debugScript),
+			script,
 		},
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &process.Unsafe.Privileged,
