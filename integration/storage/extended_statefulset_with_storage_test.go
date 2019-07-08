@@ -195,7 +195,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 		})
 
 		It("Should append the voluMemanagement persistent volume claim when the replicas are increased twice", func() {
-			Skip("this test takes too long, skipping until we fix it")
+
 			By("Creating an ExtendedStatefulSet")
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
 			Expect(err).NotTo(HaveOccurred())
@@ -215,7 +215,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Updating the ExtendedStatefulSet to v2")
-			Expect(env.WaitForLogMsg(env.ObservedLogs, "Updating ExtendedStatefulSet")).To(Succeed())
 			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ess).NotTo(Equal(nil))
@@ -265,7 +264,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Updating the statefulSet to v3")
-			Expect(env.WaitForLogMsg(env.ObservedLogs, "Updating ExtendedStatefulSet")).To(Succeed())
 			essUpdated, err = env.GetExtendedStatefulSet(env.Namespace, essUpdated.GetName())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(essUpdated).NotTo(Equal(nil))
@@ -331,7 +329,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 		})
 
 		It("Should append the volumeManagement persistent volume claim when the replicas are decreased twice", func() {
-			Skip("this test takes too long, skipping until we fix it")
 
 			By("Creating an ExtendedStatefulSet")
 			*extendedStatefulSet.Spec.Template.Spec.Replicas = 4
@@ -353,7 +350,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Updating the ExtendedStatefulSet to v2")
-			Expect(env.WaitForLogMsg(env.ObservedLogs, "Updating ExtendedStatefulSet")).To(Succeed())
 			ess, err = env.GetExtendedStatefulSet(env.Namespace, ess.GetName())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ess).NotTo(Equal(nil))
@@ -417,7 +413,6 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Updating the statefulSet to v3")
-			Expect(env.WaitForLogMsg(env.ObservedLogs, "Updating ExtendedStatefulSet")).To(Succeed())
 			essUpdated, err = env.GetExtendedStatefulSet(env.Namespace, essUpdated.GetName())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(essUpdated).NotTo(Equal(nil))
