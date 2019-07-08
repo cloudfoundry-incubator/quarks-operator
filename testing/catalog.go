@@ -5,7 +5,6 @@ package testing
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/spf13/afero"
@@ -167,6 +166,16 @@ func (c *Catalog) DefaultSecret(name string) corev1.Secret {
 	}
 }
 
+// StorageClassSecret for tests
+func (c *Catalog) StorageClassSecret(name string, class string) corev1.Secret {
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		StringData: map[string]string{
+			"value": class,
+		},
+	}
+}
+
 // DefaultConfigMap for tests
 func (c *Catalog) DefaultConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
@@ -274,25 +283,25 @@ func (c *Catalog) WrongExtendedStatefulSet(name string) essv1.ExtendedStatefulSe
 }
 
 // ExtendedStatefulSetWithPVC for use in tests
-func (c *Catalog) ExtendedStatefulSetWithPVC(name, pvcName string) essv1.ExtendedStatefulSet {
+func (c *Catalog) ExtendedStatefulSetWithPVC(name, pvcName string, storageClassName string) essv1.ExtendedStatefulSet {
 	return essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 		Spec: essv1.ExtendedStatefulSetSpec{
-			Template: c.StatefulSetWithPVC(name, pvcName),
+			Template: c.StatefulSetWithPVC(name, pvcName, storageClassName),
 		},
 	}
 }
 
 // WrongExtendedStatefulSetWithPVC for use in tests
-func (c *Catalog) WrongExtendedStatefulSetWithPVC(name, pvcName string) essv1.ExtendedStatefulSet {
+func (c *Catalog) WrongExtendedStatefulSetWithPVC(name, pvcName string, storageClassName string) essv1.ExtendedStatefulSet {
 	return essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 		Spec: essv1.ExtendedStatefulSetSpec{
-			Template: c.WrongStatefulSetWithPVC(name, pvcName),
+			Template: c.WrongStatefulSetWithPVC(name, pvcName, storageClassName),
 		},
 	}
 }
@@ -330,7 +339,7 @@ func (c *Catalog) DefaultStatefulSet(name string) v1beta2.StatefulSet {
 }
 
 // StatefulSetWithPVC for use in tests
-func (c *Catalog) StatefulSetWithPVC(name, pvcName string) v1beta2.StatefulSet {
+func (c *Catalog) StatefulSetWithPVC(name, pvcName string, storageClassName string) v1beta2.StatefulSet {
 	labels := map[string]string{
 		"test-run-reference": name,
 		"testpod":            "yes",
@@ -347,13 +356,13 @@ func (c *Catalog) StatefulSetWithPVC(name, pvcName string) v1beta2.StatefulSet {
 			},
 			ServiceName:          name,
 			Template:             c.PodTemplateWithLabelsAndMount(name, labels, pvcName),
-			VolumeClaimTemplates: c.DefaultVolumeClaimTemplates(pvcName),
+			VolumeClaimTemplates: c.DefaultVolumeClaimTemplates(pvcName, storageClassName),
 		},
 	}
 }
 
 // WrongStatefulSetWithPVC for use in tests
-func (c *Catalog) WrongStatefulSetWithPVC(name, pvcName string) v1beta2.StatefulSet {
+func (c *Catalog) WrongStatefulSetWithPVC(name, pvcName string, storageClassName string) v1beta2.StatefulSet {
 	labels := map[string]string{
 		"wrongpod":           "yes",
 		"test-run-reference": name,
@@ -370,18 +379,13 @@ func (c *Catalog) WrongStatefulSetWithPVC(name, pvcName string) v1beta2.Stateful
 			},
 			ServiceName:          name,
 			Template:             c.WrongPodTemplateWithLabelsAndMount(name, labels, pvcName),
-			VolumeClaimTemplates: c.DefaultVolumeClaimTemplates(pvcName),
+			VolumeClaimTemplates: c.DefaultVolumeClaimTemplates(pvcName, storageClassName),
 		},
 	}
 }
 
 // DefaultVolumeClaimTemplates for use in tests
-func (c *Catalog) DefaultVolumeClaimTemplates(name string) []corev1.PersistentVolumeClaim {
-	var storageClassName *string
-
-	if class, ok := os.LookupEnv("OPERATOR_TEST_STORAGE_CLASS"); ok {
-		storageClassName = &class
-	}
+func (c *Catalog) DefaultVolumeClaimTemplates(name string, storageClassName string) []corev1.PersistentVolumeClaim {
 
 	return []corev1.PersistentVolumeClaim{
 		{
@@ -389,7 +393,7 @@ func (c *Catalog) DefaultVolumeClaimTemplates(name string) []corev1.PersistentVo
 				Name: name,
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
-				StorageClassName: storageClassName,
+				StorageClassName: &storageClassName,
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					"ReadWriteOnce",
 				},

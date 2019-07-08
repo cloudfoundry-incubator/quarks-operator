@@ -2,6 +2,7 @@ package storage_test
 
 import (
 	"fmt"
+	"os"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -35,7 +36,9 @@ var _ = Describe("ExtendedStatefulSet", func() {
 		BeforeEach(func() {
 
 			essName := fmt.Sprintf("testess-%s", helper.RandString(5))
-			extendedStatefulSet = env.ExtendedStatefulSetWithPVC(essName, "pvc")
+			storageClass, ok := os.LookupEnv("OPERATOR_TEST_STORAGE_CLASS")
+			Expect(ok).To(BeTrue())
+			extendedStatefulSet = env.ExtendedStatefulSetWithPVC(essName, "pvc", storageClass)
 
 		})
 		It("Should append the volumeManagement persistent volume claim always even when spec is updated", func() {

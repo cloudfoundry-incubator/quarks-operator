@@ -26,6 +26,7 @@ var (
 
 var _ = BeforeEach(func() {
 	var err error
+
 	dir, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
