@@ -3,6 +3,7 @@ package testhelper
 import (
 	"fmt"
 	"os"
+	"path"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -10,9 +11,9 @@ import (
 )
 
 // NewTestLogger returns a ZAP logger for assertions, which also logs to
-// /tmp/cf-operator-tests.log
+// <tmpdir>/cf-operator-tests.log
 func NewTestLogger() (obs *observer.ObservedLogs, log *zap.SugaredLogger) {
-	return NewTestLoggerWithPath("/tmp/cf-operator-tests.log")
+	return NewTestLoggerWithPath(LogfilePath("cf-operator-tests.log"))
 }
 
 // NewTestLoggerWithPath returns a logger which logs to path
@@ -36,4 +37,13 @@ func NewTestLoggerWithPath(path string) (obs *observer.ObservedLogs, log *zap.Su
 
 	log = zap.New(zapcore.NewTee(memCore, fileCore)).Sugar()
 	return
+}
+
+// LogfilePath returns the path for the given filename in the testing tmp directory
+func LogfilePath(filename string) string {
+	tmpDir := os.Getenv("CF_OPERATOR_TESTING_TMP")
+	if tmpDir == "" {
+		tmpDir = "/tmp"
+	}
+	return path.Join(tmpDir, filename)
 }

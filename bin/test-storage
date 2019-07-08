@@ -3,6 +3,7 @@ set -eu
 
 GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
 . "${GIT_ROOT}/bin/include/versioning"
+. "${GIT_ROOT}/bin/include/testing"
 . "${GIT_ROOT}/.envrc"
 
 if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
@@ -15,7 +16,10 @@ if [ -z ${TEST_NAMESPACE+x} ]; then
   export TEST_NAMESPACE
 fi
 
-echo "Test logs are here: /tmp/cf-operator-tests-*.log"
+: "${CF_OPERATOR_TESTING_TMP:=/tmp}"
+echo "Test logs are here: ${CF_OPERATOR_TESTING_TMP}/cf-operator-tests-*.log"
+setup_testing_tmp
+trap cleanup_testing_tmp EXIT
 
 bin/apply-crds
 

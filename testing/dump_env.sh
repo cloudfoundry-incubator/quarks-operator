@@ -51,19 +51,20 @@ function get_all_events() {
   kubectl get events --namespace "${NS}" --output=yaml > "${NAMESPACE_DIR}/events.yaml"
 }
 
-NAMESPACE_DIR="/tmp/env_dumps/${NS}"
+OUTPUT_BASE="${CF_OPERATOR_TESTING_TMP:-/tmp}"
+NAMESPACE_DIR="/${OUTPUT_BASE}/env_dumps/${NS}"
 if [ -e "$NAMESPACE_DIR" ]; then
   i=1
-  while [ -e "/tmp/env_dumps/${NS}-$i" ]; do
+  while [ -e "/${OUTPUT_BASE}/env_dumps/${NS}-$i" ]; do
     let i++
   done
-  NAMESPACE_DIR="/tmp/env_dumps/${NS}-$i"
+  NAMESPACE_DIR="/${OUTPUT_BASE}/env_dumps/${NS}-$i"
 fi
 
 printf "Output directory: $(basename $NAMESPACE_DIR)...\n"
 SECRETS_DIR="${NAMESPACE_DIR}/secrets"
 CONFIGMAPS_DIR="${NAMESPACE_DIR}/configmaps"
-mkdir -p /tmp/env_dumps
+mkdir -p ${OUTPUT_BASE}/env_dumps
 mkdir -p ${SECRETS_DIR}
 mkdir -p ${CONFIGMAPS_DIR}
 
