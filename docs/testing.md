@@ -1,6 +1,6 @@
-# Testing
+# Tests description
 
-Based on upstreams documentation https://github.com/thtanaka/kubernetes/blob/master/docs/devel/testing.md we use three levels of testing: unit, integration and e2e.
+Based on upstreams documentation https://github.com/thtanaka/kubernetes/blob/master/docs/devel/testing.md we use three levels of testing: `unit`, `integration` and `e2e`.
 
 Before starting, run `make tools` to install the required dependencies.
 
@@ -27,7 +27,9 @@ While unit testing we:
 
 Ruby gem for template rendering
 
-    gem install bosh-template
+```bash
+gem install bosh-template
+```
 
 ## Integration
 
@@ -47,9 +49,11 @@ Each Ginkgo test node has a separate namespace, log file and webhook server port
 
 The node index starts at 1 and is used as following to generate names:
 
-		namespace: $TEST_NAMESPACE + <node_index>
-		webhook port: $CF_OPERATOR_WEBHOOK_SERVICE_PORT + <node_index>
-		log file: $CF_OPERATOR_TESTING_TMP/cf-operator-tests-<node_index>.log
+```bash
+namespace: $TEST_NAMESPACE + <node_index>
+webhook port: $CF_OPERATOR_WEBHOOK_SERVICE_PORT + <node_index>
+log file: $CF_OPERATOR_TESTING_TMP/cf-operator-tests-<node_index>.log
+```
 
 Integration tests use the `TEST_NAMESPACE` environment variable as a base to
 calculate the namespace name. Test namespaces are deleted automatically once
@@ -62,25 +66,17 @@ will be used instead.
 Generated files will be cleand up after the test run unless `SKIP_CF_OPERATOR_TESTING_TMP_CLEANUP`
 is set to `true`.
 
-### Setup Webhook Host
+### **Mutating Webhook Configuration**
 
 Extended StatefulSet requires a k8s webhook to mutate the volumes of a pod.
 Kubernetes will call back to the operator for certain requests and use the
 modified pod manifest, which is returned.
 
 The cf-operator integration tests use `CF_OPERATOR_WEBHOOK_SERVICE_PORT` as a
-base value to calculate the port number to listen to on
-`CF_OPERATOR_WEBHOOK_SERVICE_HOST`.
+base value to calculate the port number to listen to on `CF_OPERATOR_WEBHOOK_SERVICE_HOST`.
 
 The tests use a `mutatingwebhookconfiguration` to configure Kubernetes to
 connect to this address. The address needs to be reachable from the cluster.
-
-In case of minikube, the following one liner exports the IP of the host bridge
-interface used by minikube:
-
-    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(minikube ssh -- "cat /etc/resolv.conf | grep nameserver | awk '{ printf \$2 }'")
-
-### Mutatingwebhookconfiguration
 
 The configuration only applies to a single namespace, by using a selector. It contains the URL of the webhooks, build from
 `CF_OPERATOR_WEBHOOK_SERVICE_HOST` and the calculated port.
@@ -92,28 +88,6 @@ being used in integration tests, since they delete the test namespaces.
 
 Currently only the CI scripts for integration tests clean up unused mutatingwebhookconfigurations.
 
-		kubectl get mutatingwebhookconfiguration -oname | xargs -n 1 kubectl delete
-
-### Upload Operator Image
-
-Template rendering for BOSH jobs is done at deployment time by the operator
-binary. Therefore the operator docker image needs to be made available to
-Kubernetes cluster.
-
-For running integration tests locally against minikube, we switch to minikubes
-docker daemon, build the binary, copy it to a docker image and finally start
-the tests:
-
-    eval `minikube docker-env`
-    bin/build; bin/build-nobuild-image
-    bin/test-integration
-
-The image source can be configured by these environment variables:
-
-    DOCKER_IMAGE_ORG
-    DOCKER_IMAGE_REPOSITORY
-    DOCKER_IMAGE_TAG
-
 ## End-to-End
 
 The e2e tests are meant to test acceptance scenarios. They are written from an end user perspective.
@@ -123,3 +97,88 @@ The e2e CLI test exercise different command line options and commands which don'
 The CLI tests build the operator binary themselves.
 
 The second type of e2e tests use `helm` to install the CF operator into the k8s cluster and use the files from `docs/examples` for testing.
+
+
+# Running tests in minikube
+
+Prior to running the tests, is highly recommended to execute the following steps:
+
+_**Note**_: This steps are aimed to run on a `minikube` environment.
+
+1. Start `minikube`
+
+    ```bash
+    minikube start
+    ```
+
+2. Switch to minikube docker daemon
+
+    ```bash
+    eval $(minikube docker-env)
+    ```
+
+    _**Note**_: Template rendering for BOSH jobs is done at deployment time by the operator
+    binary. Therefore the operator docker image needs to be made available to
+    Kubernetes cluster.
+
+
+3. Export the `CF_OPERATOR_WEBHOOK_SERVICE_HOST` env variable
+
+    ```bash
+    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(minikube ssh -- "cat /etc/resolv.conf | grep nameserver | awk '{ printf \$2 }'")
+    ```
+
+    _**Note**_: You can also find the correct IP, by running `ip addr`. The IP address under `vboxnet1` is the IP that you need.
+
+4. Export the `OPERATOR_TEST_STORAGE_CLASS` env variable
+
+    ```bash
+    export OPERATOR_TEST_STORAGE_CLASS=standard
+    ```
+
+    _**Note**_: Require for the PVC test creation, in minikube.
+
+5. Ensure `GO111MODULE` is set
+
+    ```bash
+    export GO111MODULE=on
+    ```
+
+6. Build the `cf-operator` binary
+    ```bash
+    bin/build
+    ```
+
+7. Build the `cf-operator` docker image
+    ```bash
+    bin/build-image
+    ```
+
+# Make targets
+
+## test
+
+Target that runs all types of test.
+
+## test-unit
+
+Target that only runs the unit tests.
+
+## test-integration
+
+Target that only runs the integration tests, without any
+spec related to storage.
+
+## test-cli-e2e
+
+Target that only runs e2e tests of the CLI commands.
+
+## test-helm-e2e
+
+Target that only runs the e2e tests, without any spec
+related to storage.
+
+## test-storage
+
+Target that runs specs related to storage, from both integration
+and e2e tests.

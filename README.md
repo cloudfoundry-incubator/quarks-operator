@@ -34,19 +34,6 @@ Run with libraries fetched via go modules:
 export GO111MODULE=on
 ```
 
-Or with a vendor folder, using GO111MODULE=off, this also speeds up docker builds
-
-```bash
-export GO111MODULE=off
-go mod vendor
-```
-
-Or by checking out the versioned vendor git sub module
-
-```bash
-git submodule update --init
-```
-
 ## Installing
 
 ### **Using the helm chart**
