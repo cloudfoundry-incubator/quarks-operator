@@ -215,6 +215,7 @@ func (r *ReconcileBOSHDeployment) createEJob(ctx context.Context, instance *bdv1
 	_, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
 		if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
 			eJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
+			eJob.Spec.Trigger.Strategy = existingEJob.Spec.Trigger.Strategy
 			eJob.DeepCopyInto(existingEJob)
 			return nil
 		}

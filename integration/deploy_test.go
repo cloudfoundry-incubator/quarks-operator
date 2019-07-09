@@ -302,10 +302,10 @@ var _ = Describe("Deploy", func() {
 				scaleDeployment("3")
 
 				By("checking if the deployment was again updated")
-				err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "4", 3)
+				err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "3", 3)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 
-				pods, _ = env.GetInstanceGroupPods(env.Namespace, "test", "nats", "4")
+				pods, _ = env.GetInstanceGroupPods(env.Namespace, "test", "nats", "3")
 				Expect(len(pods.Items)).To(Equal(3))
 			})
 		})
