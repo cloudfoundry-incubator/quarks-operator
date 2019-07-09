@@ -49,7 +49,6 @@ type Owner interface {
 
 type Resolver interface {
 	WithOpsManifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, error)
-	LatestVersion(ctx context.Context, namespace string, manifestName string) string
 }
 
 // NewDeploymentReconciler returns a new reconcile.Reconciler

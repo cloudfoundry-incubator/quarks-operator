@@ -37,6 +37,27 @@ func NewResolver(client client.Client, f NewInterpolatorFunc) *Resolver {
 	}
 }
 
+// DesiredManifest reads the versioned secret created by the variable interpolation job
+// and unmarshals it into a Manifest object
+func (r *Resolver) DesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*Manifest, error) {
+	// unversioned desired manifest name
+	secretName := names.DesiredManifestName(boshDeploymentName, "")
+
+	secret, err := r.versionedSecretStore.Latest(ctx, namespace, secretName)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read versioned secret for desired manifest")
+	}
+
+	manifestData := secret.Data["manifest.yaml"]
+
+	manifest, err := LoadYAML(manifestData)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to unmarshal manifest from secret '%s'", secretName)
+	}
+
+	return manifest, nil
+}
+
 // WithOpsManifest returns manifest referenced by our bdpl CRD
 // The resulting manifest has variables interpolated and ops files applied.
 // It is the 'with-ops' manifest.
@@ -49,7 +70,7 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 		err error
 	)
 
-	m, err = r.getRefData(namespace, spec.Manifest.Type, spec.Manifest.Ref, bdc.ManifestSpecName)
+	m, err = r.resourceData(namespace, spec.Manifest.Type, spec.Manifest.Ref, bdc.ManifestSpecName)
 	if err != nil {
 		return manifest, err
 	}
@@ -61,9 +82,9 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 	}
 
 	// Interpolate implicit variables
-	vars := r.ImplicitVariables(manifest, m)
+	vars := r.implicitVariables(manifest, m)
 	for _, v := range vars {
-		varData, err := r.getRefData(namespace, bdc.SecretType, names.CalculateSecretName(names.DeploymentSecretTypeImplicitVariable, instance.GetName(), v), bdc.ImplicitVariableKeyName)
+		varData, err := r.resourceData(namespace, bdc.SecretType, names.CalculateSecretName(names.DeploymentSecretTypeImplicitVariable, instance.GetName(), v), bdc.ImplicitVariableKeyName)
 		if err != nil {
 			return manifest, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
 		}
@@ -79,7 +100,7 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 	}
 
 	for _, op := range ops {
-		opsData, err := r.getRefData(namespace, op.Type, op.Ref, bdc.OpsSpecName)
+		opsData, err := r.resourceData(namespace, op.Type, op.Ref, bdc.OpsSpecName)
 		if err != nil {
 			return manifest, err
 		}
@@ -99,54 +120,54 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 	return manifest, err
 }
 
-// getRefData resolves different manifest reference types and returns manifest data
-func (r *Resolver) getRefData(namespace string, manifestType string, manifestRef string, refKey string) (string, error) {
+// resourceData resolves different manifest reference types and returns the resource's data
+func (r *Resolver) resourceData(namespace string, resType string, name string, key string) (string, error) {
 	var (
-		refData string
-		ok      bool
+		data string
+		ok   bool
 	)
 
-	switch manifestType {
+	switch resType {
 	case bdc.ConfigMapType:
 		opsConfig := &corev1.ConfigMap{}
-		err := r.client.Get(context.TODO(), types.NamespacedName{Name: manifestRef, Namespace: namespace}, opsConfig)
+		err := r.client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, opsConfig)
 		if err != nil {
-			return refData, errors.Wrapf(err, "failed to retrieve %s from configmap '%s/%s' via client.Get", refKey, namespace, manifestRef)
+			return data, errors.Wrapf(err, "failed to retrieve %s from configmap '%s/%s' via client.Get", key, namespace, name)
 		}
-		refData, ok = opsConfig.Data[refKey]
+		data, ok = opsConfig.Data[key]
 		if !ok {
-			return refData, fmt.Errorf("configMap '%s/%s' doesn't contain key %s", namespace, manifestRef, refKey)
+			return data, fmt.Errorf("configMap '%s/%s' doesn't contain key %s", namespace, name, key)
 		}
 	case bdc.SecretType:
 		opsSecret := &corev1.Secret{}
-		err := r.client.Get(context.TODO(), types.NamespacedName{Name: manifestRef, Namespace: namespace}, opsSecret)
+		err := r.client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, opsSecret)
 		if err != nil {
-			return refData, errors.Wrapf(err, "failed to retrieve %s from secret '%s/%s' via client.Get", refKey, namespace, manifestRef)
+			return data, errors.Wrapf(err, "failed to retrieve %s from secret '%s/%s' via client.Get", key, namespace, name)
 		}
-		encodedData, ok := opsSecret.Data[refKey]
+		encodedData, ok := opsSecret.Data[key]
 		if !ok {
-			return refData, fmt.Errorf("secret '%s/%s' doesn't contain key %s", namespace, manifestRef, refKey)
+			return data, fmt.Errorf("secret '%s/%s' doesn't contain key %s", namespace, name, key)
 		}
-		refData = string(encodedData)
+		data = string(encodedData)
 	case bdc.URLType:
-		httpResponse, err := http.Get(manifestRef)
+		httpResponse, err := http.Get(name)
 		if err != nil {
-			return refData, errors.Wrapf(err, "failed to resolve %s from url '%s' via http.Get", refKey, manifestRef)
+			return data, errors.Wrapf(err, "failed to resolve %s from url '%s' via http.Get", key, name)
 		}
 		body, err := ioutil.ReadAll(httpResponse.Body)
 		if err != nil {
-			return refData, errors.Wrapf(err, "failed to read %s response body '%s' via ioutil", refKey, manifestRef)
+			return data, errors.Wrapf(err, "failed to read %s response body '%s' via ioutil", key, name)
 		}
-		refData = string(body)
+		data = string(body)
 	default:
-		return refData, fmt.Errorf("unrecognized %s ref type %s", refKey, manifestRef)
+		return data, fmt.Errorf("unrecognized %s ref type %s", key, name)
 	}
 
-	return refData, nil
+	return data, nil
 }
 
-// ImplicitVariables returns a list of all implicit variables in a manifest
-func (r *Resolver) ImplicitVariables(m *Manifest, rawManifest string) []string {
+// implicitVariables returns a list of all implicit variables in a manifest
+func (r *Resolver) implicitVariables(m *Manifest, rawManifest string) []string {
 	varMap := make(map[string]bool)
 
 	// Collect all variables
