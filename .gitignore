@@ -54,9 +54,6 @@ smex-items
 company-statistics-cache.el
 # anaconda-mode
 anaconda-mode/
-### Go ###
-# go modules support is still experimental, avoid checksum errors:
-go.sum
 # Binaries for programs and plugins
 *.exe
 *.exe~

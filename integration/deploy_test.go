@@ -32,7 +32,7 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			By("checking for intance group pods")
+			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "1", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
@@ -75,8 +75,8 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			By("checking for intance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "1", 2)
+			By("checking for instance group pods")
+			err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "1", 3)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			sts, err := env.GetStatefulSet(env.Namespace, stsName)
@@ -116,7 +116,7 @@ var _ = Describe("Deploy", func() {
 		It("should run pre-start script in an init container", func() {
 
 			By("Checking if minikube is present")
-			_, err := exec.Command("type -a minikube").Output()
+			_, err := exec.Command("/bin/sh", "-c", "kubectl config view | grep minikube").Output()
 			if err == nil {
 				Skip("Skipping because this test is not supported in minikube")
 			}
@@ -132,7 +132,7 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			By("checking for intance group pods")
+			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, "test-bdpl", "garden-runc", "1", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
@@ -160,7 +160,7 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			By("checking for intance group pods")
+			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, "test-bph", "route_registrar", "1", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
@@ -193,7 +193,7 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
-			By("checking for intance group pods")
+			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, "test-bdpl", "route_registrar", "1", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
@@ -224,7 +224,7 @@ var _ = Describe("Deploy", func() {
 				Expect(err).NotTo(HaveOccurred())
 				tearDowns = append(tearDowns, tearDown)
 
-				By("checking for intance group pods")
+				By("checking for instance group pods")
 				err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "1", 2)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 			})
@@ -241,8 +241,8 @@ var _ = Describe("Deploy", func() {
 					_, _, err = env.UpdateBOSHDeployment(env.Namespace, *bdm)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("checking for intance group updated pods")
-					err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "2", 2)
+					By("checking for instance group updated pods")
+					err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "2", 1)
 					Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 				})
 			})
@@ -255,7 +255,7 @@ var _ = Describe("Deploy", func() {
 					_, _, err = env.UpdateConfigMap(env.Namespace, *cm)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("checking for intance group updated pods")
+					By("checking for instance group updated pods")
 					err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "2", 2)
 					Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 				})
@@ -272,7 +272,7 @@ var _ = Describe("Deploy", func() {
 				Expect(err).NotTo(HaveOccurred())
 				tearDowns = append(tearDowns, tearDown)
 
-				By("checking for intance group pods")
+				By("checking for instance group pods")
 				err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "1", 1)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 			})
@@ -290,7 +290,7 @@ var _ = Describe("Deploy", func() {
 			It("should update the deployment and respect the instance count", func() {
 				scaleDeployment("2")
 
-				By("checking for intance group updated pods")
+				By("checking for instance group updated pods")
 				err := env.WaitForInstanceGroup(env.Namespace, "test", "nats", "2", 2)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
@@ -300,11 +300,7 @@ var _ = Describe("Deploy", func() {
 				By("updating the deployment again")
 				scaleDeployment("3")
 
-				By("checking for intance group updated pods")
-				err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "3", 1)
-				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
-
-				By("checking for intance group updated pods")
+				By("checking for instance group updated pods")
 				err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "4", 3)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 

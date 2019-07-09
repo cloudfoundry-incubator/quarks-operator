@@ -37,7 +37,7 @@ var _ = Describe("DeployWithStorage", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			By("checking for intance group pods")
+			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, "test-bdpl", "bpm", "1", 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
