@@ -1,12 +1,8 @@
 # Development
 
 - [Development](#development)
-  - [Makefile](#makefile)
-    - [General Targets](#general-targets)
-    - [Build Targets](#build-targets)
-    - [Test Targets](#test-targets)
-    - [Generate Targets](#generate-targets)
-  - [CI](#ci)
+  - [Requirements](#requirements)
+  - [Dependencies](#dependencies)
   - [Publishing](#publishing)
   - [Creating a new Resource and Controller](#creating-a-new-resource-and-controller)
     - [Testing](#testing)
@@ -14,53 +10,19 @@
   - [Logging and Events](#logging-and-events)
   - [Versioning](#versioning)
 
-## Makefile
+## Requirements
 
-The following are the make targets available and their actions.
+- A working Kubernetes cluster
+- Helm binary
+- Go 1.12.2 and install the tool chain: `make tools`
 
-### General Targets
+## Dependencies
 
-| Name            | Action                                                                               |
-| --------------- | ------------------------------------------------------------------------------------ |
-| `all`           | install dependencies, run tests and builds `cf-operator` binary.                     |
-| `up`            | starts the operator using the binary created by `build` make target.                 |
-| `vet`           | runs the code analyzing tool `vet` to identify problems in the source code.          |
-| `lint`          | runs `go lint`to identify style mistakes.                                            |
-| `tools`         | installs go dependencies required to `cf-operator`.                                  |
-| `check-scripts` | runs `shellcheck` to identify syntax, semmantic and subtle caveats in shell scripts. |
+Run with libraries fetched via go modules:
 
-
-### Build Targets
-
-| Name          | Action                                  |
-| ------------- | --------------------------------------- |
-| `build`       | builds the `cf-operator` binary.        |
-| `build-image` | builds the `cf-operator` docker image.  |
-| `build-helm`  | builds the `cf-operator` helm tar file. |
-
-### Test Targets
-
-| Name               | Action                                             |
-| ------------------ | -------------------------------------------------- |
-| `test`             | runs unit,integration and e2e tests.               |
-| `test-unit`        | runs unit tests only.                              |
-| `test-integration` | runs integration tests only.                       |
-| `test-cli-e2e`     | runs end to end tests for CLI.                     |
-| `test-helm-e2e`    | runs end to end tests on k8s using `helm install`. |
-
-### Generate Targets
-
-| Name               | Action                                             |
-| ------------------ | -------------------------------------------------- |
-| `generate`         | runs `gen-kube` and `gen-fakes`.                   |
-| `gen-kube`         | generates kube client,informers, lister code.      |
-| `gen-fakes`        | generates fake objects for unit testing.           |
-| `gen-command-docs` | generates docs for all commands.                   |
-| `verify-gen-kube`  | informs if you need to run `gen-kube` make target. |
-
-## CI
-
-Our Concourse pipeline definitions are kept in the [cf-operator-ci](https://github.com/cloudfoundry-incubator/cf-operator-ci) repo.
+```bash
+export GO111MODULE=on
+```
 
 ## Publishing
 

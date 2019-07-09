@@ -1,4 +1,19 @@
-# Tests description
+# Testing
+
+- [Testing](#testing)
+  - [Tests description](#tests-description)
+  - [Unit](#unit)
+  - [Integration](#integration)
+  - [End-to-End](#end-to-end)
+  - [Running tests in minikube](#running-tests-in-minikube)
+  - [Makefile](#makefile)
+    - [General Targets](#general-targets)
+    - [Build Targets](#build-targets)
+    - [Test Targets](#test-targets)
+    - [Generate Targets](#generate-targets)
+  - [CI](#ci)
+
+## Tests description
 
 Based on upstreams documentation https://github.com/thtanaka/kubernetes/blob/master/docs/devel/testing.md we use three levels of testing: `unit`, `integration` and `e2e`.
 
@@ -98,12 +113,9 @@ The CLI tests build the operator binary themselves.
 
 The second type of e2e tests use `helm` to install the CF operator into the k8s cluster and use the files from `docs/examples` for testing.
 
+## Running tests in minikube
 
-# Running tests in minikube
-
-Prior to running the tests, is highly recommended to execute the following steps:
-
-_**Note**_: This steps are aimed to run on a `minikube` environment.
+The following steps are necessary to have a proper environment setup, where all types of tests can be executed:
 
 1. Start `minikube`
 
@@ -144,41 +156,75 @@ _**Note**_: This steps are aimed to run on a `minikube` environment.
     export GO111MODULE=on
     ```
 
+    _**Note**_: When you have a vendor folder (either from the submodule or manually created) settings this to `off` speeds up the `build-image` target.
+
 6. Build the `cf-operator` binary
+
     ```bash
     bin/build
     ```
 
 7. Build the `cf-operator` docker image
+
     ```bash
     bin/build-image
     ```
 
-# Make targets
+_**Note**_: Consider setting `DOCKER_IMAGE_TAG` to a fixed variable. This will avoid rebuilding the docker image everytime, when doing changes in files not related to the `cf-operator`
+binary.
 
-## test
+_**Note**_: When not running in CI, nothing ensures a proper cleanup of resources after the deletion of the `cf-operator` in the environment. You can make sure to manually verify that none
+old resources will interfere with a future installation, by:
 
-Target that runs all types of test.
+```bash
+# Deleting old mutating webhooks configurations
+kubectl get mutatingwebhookconfiguration -oname | xargs -n 1 kubectl delete
+```
 
-## test-unit
+## Makefile
 
-Target that only runs the unit tests.
+The following are the make targets available and their actions.
 
-## test-integration
+### General Targets
 
-Target that only runs the integration tests, without any
-spec related to storage.
+| Name            | Action                                                                               |
+| --------------- | ------------------------------------------------------------------------------------ |
+| `all`           | install dependencies, run tests and builds `cf-operator` binary.                     |
+| `up`            | starts the operator using the binary created by `build` make target.                 |
+| `vet`           | runs the code analyzing tool `vet` to identify problems in the source code.          |
+| `lint`          | runs `go lint`to identify style mistakes.                                            |
+| `tools`         | installs go dependencies required to `cf-operator`.                                  |
+| `check-scripts` | runs `shellcheck` to identify syntax, semmantic and subtle caveats in shell scripts. |
 
-## test-cli-e2e
+### Build Targets
 
-Target that only runs e2e tests of the CLI commands.
+| Name          | Action                                  |
+| ------------- | --------------------------------------- |
+| `build`       | builds the `cf-operator` binary.        |
+| `build-image` | builds the `cf-operator` docker image.  |
+| `build-helm`  | builds the `cf-operator` helm tar file. |
 
-## test-helm-e2e
+### Test Targets
 
-Target that only runs the e2e tests, without any spec
-related to storage.
+| Name               | Action                                             |
+| ------------------ | -------------------------------------------------- |
+| `test`             | runs unit,integration and e2e tests.               |
+| `test-unit`        | runs unit tests only.                              |
+| `test-integration` | runs integration tests only.                       |
+| `test-cli-e2e`     | runs end to end tests for CLI.                     |
+| `test-helm-e2e`    | runs end to end tests on k8s using `helm install`. |
+| `test-storage`     | runs storages specs for both e2e and integration   |
 
-## test-storage
+### Generate Targets
 
-Target that runs specs related to storage, from both integration
-and e2e tests.
+| Name               | Action                                             |
+| ------------------ | -------------------------------------------------- |
+| `generate`         | runs `gen-kube` and `gen-fakes`.                   |
+| `gen-kube`         | generates kube client,informers, lister code.      |
+| `gen-fakes`        | generates fake objects for unit testing.           |
+| `gen-command-docs` | generates docs for all commands.                   |
+| `verify-gen-kube`  | informs if you need to run `gen-kube` make target. |
+
+## CI
+
+Our Concourse pipeline definitions are kept in the [cf-operator-ci](https://github.com/cloudfoundry-incubator/cf-operator-ci) repo.

@@ -19,21 +19,6 @@ It's implemented as a k8s operator, an active controller component which acts up
 * Backlog: [Pivotal Tracker](https://www.pivotaltracker.com/n/projects/2192232)
 * Docker: https://hub.docker.com/r/cfcontainerization/cf-operator/tags
 
-## Requirements
-
-- A working Kubernetes cluster
-- Helm binary
-- Go 1.12.2 and install the tool chain: `make tools`
-
-
-## Dependencies
-
-Run with libraries fetched via go modules:
-
-```bash
-export GO111MODULE=on
-```
-
 ## Installing
 
 ### **Using the helm chart**
@@ -54,55 +39,6 @@ helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com
 
 For more information about the `cf-operator` helm chart and how to configure it, please refer to [deploy/helm/cf-operator/README.md](deploy/helm/cf-operator/README.md)
 
-### **Build it from source**
-
-Follow this steps to build a proper docker image and generate a deployable helm chart:
-
-1. Checkout the latest stable release / or run it from develop branch
-
-    ```bash
-    git checkout v0.3.0
-    ```
-
-2. Build the cf-operator binary, this will be embedded later on the docker image
-
-    ```bash
-    bin/build
-    ```
-
-3. Build the docker image
-
-    When running in minikube, please run: `eval $(minikube docker-env)`, to build the image
-    directly on minikube docker.
-
-    ```bash
-    bin/build-image
-    ```
-
-    _**Note**_: This will automatically generate a docker image tag based on your current commit, tag and SHA.
-
-4. Apply Kubernetes Custom Resources
-
-    ```bash
-    bin/apply-crds
-    ```
-
-5. Generated helm charts with a proper docker image tag, org and repository
-
-    ```bash
-    bin/build-helm
-    ```
-
-    _**Note**_: This will generate a new directory under the base dir, named `helm/`
-
-6. Install the helm chart
-
-    ```bash
-    helm install --name cf-operator-test --namespace cf-operator-test helm/cf-operator --set customResources.enableInstallation=false
-    ```
-
-    _**Note**_: The cf-operator will be available under the `cf-operator-test` namespace, running as a pod.
-
 ## Using your fresh installation
 
 With a running `cf-operator` pod, you can try one of the files (see [docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml](docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml) ), as follows:
@@ -113,10 +49,10 @@ kubectl -n cf-operator-test create -f docs/examples/bosh-deployment/boshdeployme
 
 The above will spam two pods in your `cf-operator-test` namespace, running the BOSH nats release.
 
-## Development
+## Development and Tests
 
-For more information see [docs/development.md](docs/development.md) and [docs/testing.md](docs/testing.md)
+For more information about the operator development, see [docs/development.md](docs/development.md)
 
-## Running Tests
+For more information about testing, see [docs/testing.md](docs/testing.md)
 
-See [docs/testing.md](docs/testing.md)
+For more information about building the operator from source, see [docs/building.md](docs/building.md)
