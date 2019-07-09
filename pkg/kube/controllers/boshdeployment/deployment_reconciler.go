@@ -3,6 +3,7 @@ package boshdeployment
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -21,19 +22,6 @@ import (
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
-)
-
-// State of instance
-const (
-	CreatedState              = "Created"
-	UpdatedState              = "Updated"
-	OpsAppliedState           = "OpsApplied"
-	VariableGeneratedState    = "VariableGenerated"
-	VariableInterpolatedState = "VariableInterpolated"
-	DataGatheredState         = "DataGathered"
-	BPMConfigsCreatedState    = "BPMConfigsCreatedState"
-	DeployingState            = "Deploying"
-	DeployedState             = "Deployed"
 )
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
@@ -189,12 +177,17 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 	}
 
 	// Apply the secret
-	_, err = controllerutil.CreateOrUpdate(ctx, r.client, manifestSecret, func(obj runtime.Object) error {
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, manifestSecret, func(obj runtime.Object) error {
 		if s, ok := obj.(*corev1.Secret); ok {
-			s.Data = map[string][]byte{}
-			s.StringData = map[string]string{
-				"manifest.yaml": string(manifestBytes),
+			originalManifest, ok := s.Data["manifest.yaml"]
+			// Update only when manifest has been changed
+			if !ok || !reflect.DeepEqual(originalManifest, manifestBytes) {
+				s.Data = map[string][]byte{}
+				s.StringData = map[string]string{
+					"manifest.yaml": string(manifestBytes),
+				}
 			}
+
 			return nil
 		}
 		return fmt.Errorf("object is not a Secret")
@@ -202,6 +195,8 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 	if err != nil {
 		return nil, log.WithEvent(instance, "ManifestWithOpsApplyError").Errorf(ctx, "Failed to apply Secret '%s': %v", manifestSecretName, err)
 	}
+
+	log.Debugf(ctx, "Manifest secret '%s' has been %s", manifestSecret.Name, op)
 
 	return manifest, nil
 }
@@ -212,7 +207,7 @@ func (r *ReconcileBOSHDeployment) createEJob(ctx context.Context, instance *bdv1
 		return fmt.Errorf("failed to set ownerReference for ExtendedJob '%s': %v", eJob.GetName(), err)
 	}
 
-	_, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
 		if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
 			eJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
 			eJob.Spec.Trigger.Strategy = existingEJob.Spec.Trigger.Strategy
@@ -221,5 +216,8 @@ func (r *ReconcileBOSHDeployment) createEJob(ctx context.Context, instance *bdv1
 		}
 		return fmt.Errorf("object is not an ExtendedJob")
 	})
+
+	log.Debugf(ctx, "ExtendedJob '%s' has been %s", eJob.Name, op)
+
 	return err
 }
