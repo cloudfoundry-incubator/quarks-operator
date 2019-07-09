@@ -88,6 +88,11 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 	log.Debug(ctx, "Converting bosh manifest to kube objects")
 	secrets := r.kubeConverter.Variables(manifest.Name, manifest.Variables)
 
+	if len(secrets) == 0 {
+		log.Debug(ctx, "Skip generate variable extendedSecrets: there are no variables")
+		return reconcile.Result{}, nil
+	}
+
 	// Create/update all explicit BOSH Variables
 	err = r.generateVariableSecrets(ctx, manifestSecret, secrets)
 	if err != nil {
@@ -101,7 +106,6 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 // generateVariableSecrets create variables extendedSecrets
 func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context, manifestSecret *corev1.Secret, variables []esv1.ExtendedSecret) error {
 	log.Debug(ctx, "Creating ExtendedSecrets for explicit variables")
-	var err error
 	for _, variable := range variables {
 		// Set the "manifest with ops" secret as the owner for the ExtendedSecrets
 		// The "manifest with ops" secret is owned by the actual BOSHDeployment, so everything
@@ -112,7 +116,7 @@ func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context
 			return err
 		}
 
-		_, err = controllerutil.CreateOrUpdate(ctx, r.client, variable.DeepCopy(), func(obj runtime.Object) error {
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, variable.DeepCopy(), func(obj runtime.Object) error {
 			s, ok := obj.(*esv1.ExtendedSecret)
 			if !ok {
 				return fmt.Errorf("object is not an ExtendedSecret")
@@ -123,6 +127,8 @@ func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context
 		if err != nil {
 			return errors.Wrapf(err, "creating or updating ExtendedSecret '%s'", variable.Name)
 		}
+
+		log.Debugf(ctx, "ExtendedSecret '%s' has been %s", variable.Name, op)
 	}
 
 	return nil
