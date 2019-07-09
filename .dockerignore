@@ -1,5 +1,3 @@
 binaries/
 build/
 tmp/
-
-go.sum

@@ -99,6 +99,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 					process,
 					jobImage,
 					processVolumeMounts,
+					job.Properties.BOSHContainerization.Debug,
 				)
 
 				bpmPreStartInitContainers = append(bpmPreStartInitContainers, *container.DeepCopy())
@@ -110,6 +111,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 			job.Name,
 			jobImage,
 			append(defaultVolumeMounts, bpmDisks.VolumeMounts()...),
+			job.Properties.BOSHContainerization.Debug,
 		)
 		boshPreStartInitContainers = append(boshPreStartInitContainers, *boshPreStartInitContainer.DeepCopy())
 	}
@@ -153,10 +155,6 @@ func (c *ContainerFactory) JobsToContainers(
 		bpmConfig, ok := c.bpmConfigs[job.Name]
 		if !ok {
 			return nil, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
-		}
-
-		if len(bpmConfig.Processes) < 1 {
-			return nil, errors.New("bpm info has no processes")
 		}
 
 		jobDisks := bpmDisks.Filter("job_name", job.Name)
@@ -342,8 +340,17 @@ func boshPreStartInitContainer(
 	jobName string,
 	jobImage string,
 	volumeMounts []corev1.VolumeMount,
+	debug bool,
 ) corev1.Container {
 	boshPreStart := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "pre-start")
+
+	var script string
+	if debug {
+		script = fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s" || ( echo "Debug window 1hr" ; sleep 3600 ); fi`, boshPreStart)
+	} else {
+		script = fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s"; fi`, boshPreStart)
+	}
+
 	return corev1.Container{
 		Name:         names.Sanitize(fmt.Sprintf("bosh-pre-start-%s", jobName)),
 		Image:        jobImage,
@@ -353,7 +360,7 @@ func boshPreStartInitContainer(
 		},
 		Args: []string{
 			"-xc",
-			fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s"; fi`, boshPreStart),
+			script,
 		},
 	}
 }
@@ -362,7 +369,16 @@ func bpmPreStartInitContainer(
 	process bpm.Process,
 	jobImage string,
 	volumeMounts []corev1.VolumeMount,
+	debug bool,
 ) corev1.Container {
+
+	var script string
+	if debug {
+		script = fmt.Sprintf(`%s || ( echo "Debug window 1hr" ; sleep 3600)`, process.Hooks.PreStart)
+	} else {
+		script = process.Hooks.PreStart
+	}
+
 	return corev1.Container{
 		Name:         names.Sanitize(fmt.Sprintf("bpm-pre-start-%s", process.Name)),
 		Image:        jobImage,
@@ -372,7 +388,7 @@ func bpmPreStartInitContainer(
 		},
 		Args: []string{
 			"-xc",
-			process.Hooks.PreStart,
+			script,
 		},
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &process.Unsafe.Privileged,
