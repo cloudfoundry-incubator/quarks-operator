@@ -40,10 +40,9 @@ var _ = Describe("Lifecycle", func() {
 			Expect(env.ObservedLogs.TakeAll())
 			Expect(env.WaitForLogMsg(env.ObservedLogs, "Considering 3 extended jobs for pod testcr-nats-v1-1/ready")).To(Succeed(), "error getting logs for waiting pod-1/ready")
 
-			err = env.WaitForPod(env.Namespace, "testcr-nats-v1-0")
-			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from initial deployment")
-			err = env.WaitForPod(env.Namespace, "testcr-nats-v1-1")
-			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from initial deployment")
+			By("checking for instance group pods")
+			err = env.WaitForInstanceGroup(env.Namespace, "testcr", "nats", "1", 2)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			// check for services
 			headlessService, err := env.GetService(env.Namespace, "testcr-nats")
@@ -97,8 +96,9 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			err = env.WaitForPod(env.Namespace, "testcr-drains-v1-0")
-			Expect(err).NotTo(HaveOccurred(), "error waiting for pod from initial deployment")
+			By("checking for instance group pods")
+			err = env.WaitForInstanceGroup(env.Namespace, "testcr", "drains", "1", 1)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			Expect(env.WaitForPodContainerLogMsg(env.Namespace, "testcr-drains-v1-0", "delaying-drain-job-drain-watch", "ls: cannot access '/tmp/drain_logs': No such file or directory")).To(BeNil(), "error getting logs from drain_watch process")
 
@@ -109,5 +109,4 @@ var _ = Describe("Lifecycle", func() {
 			Expect(env.WaitForPodContainerLogMsg(env.Namespace, "testcr-drains-v1-0", "failing-drain-job-drain-watch", "failing-drain-job.log")).To(BeNil(), "error finding file created by drain script")
 		})
 	})
-
 })

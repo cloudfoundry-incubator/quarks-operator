@@ -178,6 +178,8 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 		if err != nil {
 			return errors.Wrap(err, "getting pod output")
 		}
+		// Put full job output in debug log
+		ctxlog.Debug(ctx, string(result))
 
 		var data map[string]string
 		err = json.Unmarshal(result, &data)
