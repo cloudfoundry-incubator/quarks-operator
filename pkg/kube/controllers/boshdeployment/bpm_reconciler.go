@@ -27,7 +27,7 @@ import (
 )
 
 type DesiredManifest interface {
-	ReadDesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error)
+	DesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error)
 }
 
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
@@ -90,7 +90,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "GetBOSHDeploymentLabel").Errorf(ctx, "There's no label for a BOSH Deployment name on the Instance Group BPM versioned bpmSecret '%s'", request.NamespacedName)
 	}
-	manifest, err := r.resolver.ReadDesiredManifest(ctx, boshDeploymentName, request.Namespace)
+	manifest, err := r.resolver.DesiredManifest(ctx, boshDeploymentName, request.Namespace)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "DesiredManifestReadError").Errorf(ctx, "Failed to read desired manifest '%s': %v", request.NamespacedName, err)

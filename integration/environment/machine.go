@@ -1031,3 +1031,24 @@ func (m *Machine) SubsetsExist(namespace string, endpointsName string) (bool, er
 
 	return true, nil
 }
+
+// GetNodes gets nodes
+func (m *Machine) GetNodes() ([]corev1.Node, error) {
+	nodes := []corev1.Node{}
+
+	nodeList, err := m.Clientset.CoreV1().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nodes, nil
+		}
+		return nodes, errors.Wrapf(err, "failed to query for nodes")
+	}
+
+	if len(nodeList.Items) == 0 {
+		return nodes, nil
+	}
+
+	nodes = nodeList.Items
+
+	return nodes, nil
+}

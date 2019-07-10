@@ -10,18 +10,18 @@ import (
 )
 
 type FakeDesiredManifest struct {
-	ReadDesiredManifestStub        func(context.Context, string, string) (*manifest.Manifest, error)
-	readDesiredManifestMutex       sync.RWMutex
-	readDesiredManifestArgsForCall []struct {
+	DesiredManifestStub        func(context.Context, string, string) (*manifest.Manifest, error)
+	desiredManifestMutex       sync.RWMutex
+	desiredManifestArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
 	}
-	readDesiredManifestReturns struct {
+	desiredManifestReturns struct {
 		result1 *manifest.Manifest
 		result2 error
 	}
-	readDesiredManifestReturnsOnCall map[int]struct {
+	desiredManifestReturnsOnCall map[int]struct {
 		result1 *manifest.Manifest
 		result2 error
 	}
@@ -29,66 +29,66 @@ type FakeDesiredManifest struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeDesiredManifest) ReadDesiredManifest(arg1 context.Context, arg2 string, arg3 string) (*manifest.Manifest, error) {
-	fake.readDesiredManifestMutex.Lock()
-	ret, specificReturn := fake.readDesiredManifestReturnsOnCall[len(fake.readDesiredManifestArgsForCall)]
-	fake.readDesiredManifestArgsForCall = append(fake.readDesiredManifestArgsForCall, struct {
+func (fake *FakeDesiredManifest) DesiredManifest(arg1 context.Context, arg2 string, arg3 string) (*manifest.Manifest, error) {
+	fake.desiredManifestMutex.Lock()
+	ret, specificReturn := fake.desiredManifestReturnsOnCall[len(fake.desiredManifestArgsForCall)]
+	fake.desiredManifestArgsForCall = append(fake.desiredManifestArgsForCall, struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
 	}{arg1, arg2, arg3})
-	fake.recordInvocation("ReadDesiredManifest", []interface{}{arg1, arg2, arg3})
-	fake.readDesiredManifestMutex.Unlock()
-	if fake.ReadDesiredManifestStub != nil {
-		return fake.ReadDesiredManifestStub(arg1, arg2, arg3)
+	fake.recordInvocation("DesiredManifest", []interface{}{arg1, arg2, arg3})
+	fake.desiredManifestMutex.Unlock()
+	if fake.DesiredManifestStub != nil {
+		return fake.DesiredManifestStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.readDesiredManifestReturns
+	fakeReturns := fake.desiredManifestReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *FakeDesiredManifest) ReadDesiredManifestCallCount() int {
-	fake.readDesiredManifestMutex.RLock()
-	defer fake.readDesiredManifestMutex.RUnlock()
-	return len(fake.readDesiredManifestArgsForCall)
+func (fake *FakeDesiredManifest) DesiredManifestCallCount() int {
+	fake.desiredManifestMutex.RLock()
+	defer fake.desiredManifestMutex.RUnlock()
+	return len(fake.desiredManifestArgsForCall)
 }
 
-func (fake *FakeDesiredManifest) ReadDesiredManifestCalls(stub func(context.Context, string, string) (*manifest.Manifest, error)) {
-	fake.readDesiredManifestMutex.Lock()
-	defer fake.readDesiredManifestMutex.Unlock()
-	fake.ReadDesiredManifestStub = stub
+func (fake *FakeDesiredManifest) DesiredManifestCalls(stub func(context.Context, string, string) (*manifest.Manifest, error)) {
+	fake.desiredManifestMutex.Lock()
+	defer fake.desiredManifestMutex.Unlock()
+	fake.DesiredManifestStub = stub
 }
 
-func (fake *FakeDesiredManifest) ReadDesiredManifestArgsForCall(i int) (context.Context, string, string) {
-	fake.readDesiredManifestMutex.RLock()
-	defer fake.readDesiredManifestMutex.RUnlock()
-	argsForCall := fake.readDesiredManifestArgsForCall[i]
+func (fake *FakeDesiredManifest) DesiredManifestArgsForCall(i int) (context.Context, string, string) {
+	fake.desiredManifestMutex.RLock()
+	defer fake.desiredManifestMutex.RUnlock()
+	argsForCall := fake.desiredManifestArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *FakeDesiredManifest) ReadDesiredManifestReturns(result1 *manifest.Manifest, result2 error) {
-	fake.readDesiredManifestMutex.Lock()
-	defer fake.readDesiredManifestMutex.Unlock()
-	fake.ReadDesiredManifestStub = nil
-	fake.readDesiredManifestReturns = struct {
+func (fake *FakeDesiredManifest) DesiredManifestReturns(result1 *manifest.Manifest, result2 error) {
+	fake.desiredManifestMutex.Lock()
+	defer fake.desiredManifestMutex.Unlock()
+	fake.DesiredManifestStub = nil
+	fake.desiredManifestReturns = struct {
 		result1 *manifest.Manifest
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeDesiredManifest) ReadDesiredManifestReturnsOnCall(i int, result1 *manifest.Manifest, result2 error) {
-	fake.readDesiredManifestMutex.Lock()
-	defer fake.readDesiredManifestMutex.Unlock()
-	fake.ReadDesiredManifestStub = nil
-	if fake.readDesiredManifestReturnsOnCall == nil {
-		fake.readDesiredManifestReturnsOnCall = make(map[int]struct {
+func (fake *FakeDesiredManifest) DesiredManifestReturnsOnCall(i int, result1 *manifest.Manifest, result2 error) {
+	fake.desiredManifestMutex.Lock()
+	defer fake.desiredManifestMutex.Unlock()
+	fake.DesiredManifestStub = nil
+	if fake.desiredManifestReturnsOnCall == nil {
+		fake.desiredManifestReturnsOnCall = make(map[int]struct {
 			result1 *manifest.Manifest
 			result2 error
 		})
 	}
-	fake.readDesiredManifestReturnsOnCall[i] = struct {
+	fake.desiredManifestReturnsOnCall[i] = struct {
 		result1 *manifest.Manifest
 		result2 error
 	}{result1, result2}
@@ -97,8 +97,8 @@ func (fake *FakeDesiredManifest) ReadDesiredManifestReturnsOnCall(i int, result1
 func (fake *FakeDesiredManifest) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.readDesiredManifestMutex.RLock()
-	defer fake.readDesiredManifestMutex.RUnlock()
+	fake.desiredManifestMutex.RLock()
+	defer fake.desiredManifestMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
