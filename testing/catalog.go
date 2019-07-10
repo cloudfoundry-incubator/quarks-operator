@@ -815,6 +815,19 @@ func (c *Catalog) DefaultBOSHDeploymentWithOps(name, manifestRef string, opsRef 
 	}
 }
 
+// DefaultBOSHDeploymentWithUnsupportedOps fissile deployment CR with ops
+func (c *Catalog) DefaultBOSHDeploymentWithUnsupportedOps(name, manifestRef string, opsRef string) bdv1.BOSHDeployment {
+	return bdv1.BOSHDeployment{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Spec: bdv1.BOSHDeploymentSpec{
+			Manifest: bdv1.Manifest{Ref: manifestRef, Type: bdv1.ConfigMapType},
+			Ops: []bdv1.Ops{
+				{Ref: opsRef, Type: bdv1.SecretType},
+			},
+		},
+	}
+}
+
 // WrongTypeBOSHDeployment fissile deployment CR containing wrong type
 func (c *Catalog) WrongTypeBOSHDeployment(name, manifestRef string) bdv1.BOSHDeployment {
 	return bdv1.BOSHDeployment{

@@ -443,7 +443,6 @@ var _ = Describe("Deploy", func() {
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment("test", "manifest", "bosh-ops", "bosh-ops-secret"))
 			Expect(err).To(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-			Expect(err.Error()).To(ContainSubstring(`Expected to find exactly one matching array item for path '/instance_groups/name=api' but found 0`))
 			Expect(err.Error()).To(ContainSubstring(`admission webhook "validate-boshdeployment.fissile.cloudfoundry.org" denied the request:`))
 		})
 
@@ -500,6 +499,79 @@ var _ = Describe("Deploy", func() {
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeploymentWithOps("test", "manifest", ""))
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("spec.ops.ref in body should be at least 1 chars long"))
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+		})
+
+		It("failed to deploy due to a not existing ops ref", func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			// use a not created configmap name, so that we will hit errors while resources do not exist.
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeploymentWithOps("test", "manifest", "bosh-ops-unknown"))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Timeout reached. Resource bosh-ops-unknown does not exist"))
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+		})
+
+		It("failed to deploy if the ops ref is not a configmap", func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			tearDown, err = env.CreateSecret(env.Namespace, env.InterpolateOpsIncorrectSecret("bosh-ops"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeploymentWithUnsupportedOps("test", "manifest", "bosh-ops"))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("resource type secret, is not supported under spec.ops"))
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+		})
+
+		It("failed to deploy if the ops resource is not available before timeout", func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest2"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			go func() {
+				// Ginkgo panics to prevent subsequent assertions from running.
+				// Normally Ginkgo rescues this panic so you shouldn't see it.
+				// But, if you make an assertion in a goroutine, Ginkgo can't capture the panic.
+				// To circumvent this, you should call defer GinkgoRecover() at the very top of the goroutine
+				defer GinkgoRecover()
+				_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeploymentWithOps("test", "manifest2", "bosh-ops2"))
+				Expect(err).To(HaveOccurred())
+				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			}()
+
+			time.Sleep(8 * time.Second)
+
+			// Generate the right ops resource, so that the above goroutine will not end in error
+			tearDown, err = env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops2"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+		})
+
+		It("does not failed to deploy if the ops ref is created on time", func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			go func() {
+				// Ginkgo panics to prevent subsequent assertions from running.
+				// Normally Ginkgo rescues this panic so you shouldn't see it.
+				// But, if you make an assertion in a goroutine, Ginkgo can't capture the panic.
+				// To circumvent this, you should call defer GinkgoRecover() at the very top of the goroutine
+				defer GinkgoRecover()
+				_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeploymentWithOps("test", "manifest", "bosh-ops"))
+				Expect(err).NotTo(HaveOccurred())
+				defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			}()
+
+			// Generate the right ops resource, so that the above goroutine will not end in error
+			tearDown, err = env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops"))
+			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 		})
 	})
