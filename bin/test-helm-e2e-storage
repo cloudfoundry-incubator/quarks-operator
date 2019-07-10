@@ -1,0 +1,38 @@
+#!/bin/bash
+set -euo pipefail
+
+GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
+. "${GIT_ROOT}/bin/include/versioning"
+
+if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
+  DOCKER_IMAGE_TAG=${VERSION_TAG}
+  export DOCKER_IMAGE_TAG
+fi
+
+if [ -z ${TEST_NAMESPACE+x} ]; then
+  TEST_NAMESPACE="test-storage$(date +%s)"
+  export TEST_NAMESPACE
+
+  remove_namespaces() {
+    namespaces=$(kubectl get ns -o=jsonpath="{..name}" | tr '[[:space:]]' '\n' | grep "$TEST_NAMESPACE")
+    for ns in $namespaces; do
+      echo "Deleting namespace $ns..."
+      kubectl delete namespace --wait=false --grace-period=60 "$ns"
+    done
+  }
+  trap remove_namespaces EXIT
+fi
+
+# Add all required CRD´s
+bin/apply-crds
+kubectl get customresourcedefinitions
+
+# Build the required helm charts to run the cf-operator
+./bin/build-helm
+
+NODES=${NODES:-3}
+FLAKE_ATTEMPTS=${FLAKE_ATTEMPTS:-3}
+ginkgo \
+  --nodes="$NODES" \
+  --flakeAttempts="$FLAKE_ATTEMPTS" \
+  e2e/kube/storage

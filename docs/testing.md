@@ -206,14 +206,16 @@ The following are the make targets available and their actions.
 
 ### Test Targets
 
-| Name               | Action                                             |
-| ------------------ | -------------------------------------------------- |
-| `test`             | runs unit,integration and e2e tests.               |
-| `test-unit`        | runs unit tests only.                              |
-| `test-integration` | runs integration tests only.                       |
-| `test-cli-e2e`     | runs end to end tests for CLI.                     |
-| `test-helm-e2e`    | runs end to end tests on k8s using `helm install`. |
-| `test-storage`     | runs storages specs for both e2e and integration   |
+| Name                       | Action                                             |
+| -------------------------- | -------------------------------------------------- |
+| `test`                     | runs unit,integration and e2e tests.               |
+| `test-unit`                | runs unit tests only.                              |
+| `test-integration`         | runs integration tests only.                       |
+| `test-cli-e2e`             | runs end to end tests for CLI.                     |
+| `test-helm-e2e`            | runs end to end tests on k8s using `helm install`. |
+| `test-integration-storage  | runs integration storage tests.                    |
+| `test-helm-e2e-storage`    | runs e2e storage tests.                            |
+
 
 ### Generate Targets
 
