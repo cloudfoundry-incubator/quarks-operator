@@ -1,6 +1,21 @@
 # Testing
 
-Based on upstreams documentation https://github.com/thtanaka/kubernetes/blob/master/docs/devel/testing.md we use three levels of testing: unit, integration and e2e.
+- [Testing](#testing)
+  - [Tests description](#tests-description)
+  - [Unit](#unit)
+  - [Integration](#integration)
+  - [End-to-End](#end-to-end)
+  - [Running tests in minikube](#running-tests-in-minikube)
+  - [Makefile](#makefile)
+    - [General Targets](#general-targets)
+    - [Build Targets](#build-targets)
+    - [Test Targets](#test-targets)
+    - [Generate Targets](#generate-targets)
+  - [CI](#ci)
+
+## Tests description
+
+Based on upstreams documentation https://github.com/thtanaka/kubernetes/blob/master/docs/devel/testing.md we use three levels of testing: `unit`, `integration` and `e2e`.
 
 Before starting, run `make tools` to install the required dependencies.
 
@@ -27,7 +42,9 @@ While unit testing we:
 
 Ruby gem for template rendering
 
-    gem install bosh-template
+```bash
+gem install bosh-template
+```
 
 ## Integration
 
@@ -47,9 +64,11 @@ Each Ginkgo test node has a separate namespace, log file and webhook server port
 
 The node index starts at 1 and is used as following to generate names:
 
-		namespace: $TEST_NAMESPACE + <node_index>
-		webhook port: $CF_OPERATOR_WEBHOOK_SERVICE_PORT + <node_index>
-		log file: $CF_OPERATOR_TESTING_TMP/cf-operator-tests-<node_index>.log
+```bash
+namespace: $TEST_NAMESPACE + <node_index>
+webhook port: $CF_OPERATOR_WEBHOOK_SERVICE_PORT + <node_index>
+log file: $CF_OPERATOR_TESTING_TMP/cf-operator-tests-<node_index>.log
+```
 
 Integration tests use the `TEST_NAMESPACE` environment variable as a base to
 calculate the namespace name. Test namespaces are deleted automatically once
@@ -62,25 +81,17 @@ will be used instead.
 Generated files will be cleand up after the test run unless `SKIP_CF_OPERATOR_TESTING_TMP_CLEANUP`
 is set to `true`.
 
-### Setup Webhook Host
+### **Mutating Webhook Configuration**
 
 Extended StatefulSet requires a k8s webhook to mutate the volumes of a pod.
 Kubernetes will call back to the operator for certain requests and use the
 modified pod manifest, which is returned.
 
 The cf-operator integration tests use `CF_OPERATOR_WEBHOOK_SERVICE_PORT` as a
-base value to calculate the port number to listen to on
-`CF_OPERATOR_WEBHOOK_SERVICE_HOST`.
+base value to calculate the port number to listen to on `CF_OPERATOR_WEBHOOK_SERVICE_HOST`.
 
 The tests use a `mutatingwebhookconfiguration` to configure Kubernetes to
 connect to this address. The address needs to be reachable from the cluster.
-
-In case of minikube, the following one liner exports the IP of the host bridge
-interface used by minikube:
-
-    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(minikube ssh -- "cat /etc/resolv.conf | grep nameserver | awk '{ printf \$2 }'")
-
-### Mutatingwebhookconfiguration
 
 The configuration only applies to a single namespace, by using a selector. It contains the URL of the webhooks, build from
 `CF_OPERATOR_WEBHOOK_SERVICE_HOST` and the calculated port.
@@ -92,28 +103,6 @@ being used in integration tests, since they delete the test namespaces.
 
 Currently only the CI scripts for integration tests clean up unused mutatingwebhookconfigurations.
 
-		kubectl get mutatingwebhookconfiguration -oname | xargs -n 1 kubectl delete
-
-### Upload Operator Image
-
-Template rendering for BOSH jobs is done at deployment time by the operator
-binary. Therefore the operator docker image needs to be made available to
-Kubernetes cluster.
-
-For running integration tests locally against minikube, we switch to minikubes
-docker daemon, build the binary, copy it to a docker image and finally start
-the tests:
-
-    eval `minikube docker-env`
-    bin/build; bin/build-nobuild-image
-    bin/test-integration
-
-The image source can be configured by these environment variables:
-
-    DOCKER_IMAGE_ORG
-    DOCKER_IMAGE_REPOSITORY
-    DOCKER_IMAGE_TAG
-
 ## End-to-End
 
 The e2e tests are meant to test acceptance scenarios. They are written from an end user perspective.
@@ -123,3 +112,119 @@ The e2e CLI test exercise different command line options and commands which don'
 The CLI tests build the operator binary themselves.
 
 The second type of e2e tests use `helm` to install the CF operator into the k8s cluster and use the files from `docs/examples` for testing.
+
+## Running tests in minikube
+
+The following steps are necessary to have a proper environment setup, where all types of tests can be executed:
+
+1. Start `minikube`
+
+    ```bash
+    minikube start
+    ```
+
+2. Switch to minikube docker daemon
+
+    ```bash
+    eval $(minikube docker-env)
+    ```
+
+    _**Note**_: Template rendering for BOSH jobs is done at deployment time by the operator
+    binary. Therefore the operator docker image needs to be made available to
+    Kubernetes cluster.
+
+
+3. Export the `CF_OPERATOR_WEBHOOK_SERVICE_HOST` env variable
+
+    ```bash
+    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(minikube ssh -- "cat /etc/resolv.conf | grep nameserver | awk '{ printf \$2 }'")
+    ```
+
+    _**Note**_: You can also find the correct IP, by running `ip addr`. The IP address under `vboxnet1` is the IP that you need.
+
+4. Export the `OPERATOR_TEST_STORAGE_CLASS` env variable
+
+    ```bash
+    export OPERATOR_TEST_STORAGE_CLASS=standard
+    ```
+
+    _**Note**_: Require for the PVC test creation, in minikube.
+
+5. Ensure `GO111MODULE` is set
+
+    ```bash
+    export GO111MODULE=on
+    ```
+
+    _**Note**_: When you have a vendor folder (either from the submodule or manually created) settings this to `off` speeds up the `build-image` target.
+
+6. Build the `cf-operator` binary
+
+    ```bash
+    bin/build
+    ```
+
+7. Build the `cf-operator` docker image
+
+    ```bash
+    bin/build-image
+    ```
+
+_**Note**_: Consider setting `DOCKER_IMAGE_TAG` to a fixed variable. This will avoid rebuilding the docker image everytime, when doing changes in files not related to the `cf-operator`
+binary.
+
+_**Note**_: When not running in CI, nothing ensures a proper cleanup of resources after the deletion of the `cf-operator` in the environment. You can make sure to manually verify that none
+old resources will interfere with a future installation, by:
+
+```bash
+# Deleting old mutating webhooks configurations
+kubectl get mutatingwebhookconfiguration -oname | xargs -n 1 kubectl delete
+```
+
+## Makefile
+
+The following are the make targets available and their actions.
+
+### General Targets
+
+| Name            | Action                                                                               |
+| --------------- | ------------------------------------------------------------------------------------ |
+| `all`           | install dependencies, run tests and builds `cf-operator` binary.                     |
+| `up`            | starts the operator using the binary created by `build` make target.                 |
+| `vet`           | runs the code analyzing tool `vet` to identify problems in the source code.          |
+| `lint`          | runs `go lint`to identify style mistakes.                                            |
+| `tools`         | installs go dependencies required to `cf-operator`.                                  |
+| `check-scripts` | runs `shellcheck` to identify syntax, semmantic and subtle caveats in shell scripts. |
+
+### Build Targets
+
+| Name          | Action                                  |
+| ------------- | --------------------------------------- |
+| `build`       | builds the `cf-operator` binary.        |
+| `build-image` | builds the `cf-operator` docker image.  |
+| `build-helm`  | builds the `cf-operator` helm tar file. |
+
+### Test Targets
+
+| Name               | Action                                             |
+| ------------------ | -------------------------------------------------- |
+| `test`             | runs unit,integration and e2e tests.               |
+| `test-unit`        | runs unit tests only.                              |
+| `test-integration` | runs integration tests only.                       |
+| `test-cli-e2e`     | runs end to end tests for CLI.                     |
+| `test-helm-e2e`    | runs end to end tests on k8s using `helm install`. |
+| `test-storage`     | runs storages specs for both e2e and integration   |
+
+### Generate Targets
+
+| Name               | Action                                             |
+| ------------------ | -------------------------------------------------- |
+| `generate`         | runs `gen-kube` and `gen-fakes`.                   |
+| `gen-kube`         | generates kube client,informers, lister code.      |
+| `gen-fakes`        | generates fake objects for unit testing.           |
+| `gen-command-docs` | generates docs for all commands.                   |
+| `verify-gen-kube`  | informs if you need to run `gen-kube` make target. |
+
+## CI
+
+Our Concourse pipeline definitions are kept in the [cf-operator-ci](https://github.com/cloudfoundry-incubator/cf-operator-ci) repo.
