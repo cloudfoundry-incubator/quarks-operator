@@ -47,8 +47,7 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 
 			// Run pre-render scripts for the current job.
 			for idx, script := range job.Properties.BOSHContainerization.PreRenderScripts {
-				err := runPreRenderScript(script, idx)
-				if err != nil {
+				if err := runPreRenderScript(script, idx, false); err != nil {
 					return errors.Wrapf(err, "failed to run pre-render script %d for job %s", idx, job.Name)
 				}
 			}
@@ -104,7 +103,7 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 	return nil
 }
 
-func runPreRenderScript(script string, idx int) error {
+func runPreRenderScript(script string, idx int, silent bool) error {
 	// Save the script to a temporary location.
 	tmpFile, err := ioutil.TempFile(os.TempDir(), "script-")
 	if err != nil {
@@ -121,35 +120,33 @@ func runPreRenderScript(script string, idx int) error {
 	// Run the pre-render script.
 	cmd := exec.Command("/bin/bash", tmpFile.Name())
 
-	errReader, err := cmd.StderrPipe()
-	if err != nil {
-		return errors.Wrap(err, "failed to get stderr pipe")
-	}
-	outReader, err := cmd.StdoutPipe()
-	if err != nil {
-		return errors.Wrap(err, "failed to get stdout pipe")
-	}
-
-	errScanner := bufio.NewScanner(errReader)
-	go func() {
-		for errScanner.Scan() {
-			fmt.Printf("pre-render-err-%d | %s\n", idx, errScanner.Text())
+	if !silent {
+		errReader, err := cmd.StderrPipe()
+		if err != nil {
+			return errors.Wrap(err, "failed to get stderr pipe")
 		}
-	}()
-
-	outScanner := bufio.NewScanner(outReader)
-	go func() {
-		for outScanner.Scan() {
-			fmt.Printf("pre-render-out-%d | %s\n", idx, outScanner.Text())
+		outReader, err := cmd.StdoutPipe()
+		if err != nil {
+			return errors.Wrap(err, "failed to get stdout pipe")
 		}
-	}()
 
-	if err := cmd.Start(); err != nil {
-		return errors.Wrapf(err, "failed to start pre-render script %d", idx)
+		errScanner := bufio.NewScanner(errReader)
+		go func() {
+			for errScanner.Scan() {
+				fmt.Printf("pre-render-err-%d | %s\n", idx, errScanner.Text())
+			}
+		}()
+
+		outScanner := bufio.NewScanner(outReader)
+		go func() {
+			for outScanner.Scan() {
+				fmt.Printf("pre-render-out-%d | %s\n", idx, outScanner.Text())
+			}
+		}()
 	}
 
-	if err := cmd.Wait(); err != nil {
-		return errors.Wrapf(err, "failed to wait for pre-render script %d", idx)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "failed to run pre-render script %d", idx)
 	}
 
 	return nil
