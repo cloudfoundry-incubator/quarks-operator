@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
-
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -291,7 +290,7 @@ func (r *ReconcileExtendedSecret) createSecret(ctx context.Context, instance *es
 		return errors.Wrapf(err, "error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.GetName(), instance.GetName(), instance.GetNamespace())
 	}
 
-	_, err := controllerutil.CreateOrUpdate(ctx, r.client, secret.DeepCopy(), func(obj runtime.Object) error {
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, secret.DeepCopy(), func(obj runtime.Object) error {
 		s, ok := obj.(*corev1.Secret)
 		if !ok {
 			return fmt.Errorf("object is not a Secret")
@@ -302,6 +301,8 @@ func (r *ReconcileExtendedSecret) createSecret(ctx context.Context, instance *es
 	if err != nil {
 		return errors.Wrapf(err, "could not create or update secret '%s'", secret.GetName())
 	}
+
+	ctxlog.Debugf(ctx, "Secret '%s' has been %s", secret.Name, op)
 
 	return nil
 }

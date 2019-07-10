@@ -34,8 +34,24 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 	}
 
 	// Watch for changes to primary resource ExtendedStatefulSet
-	// Trigger when extendedStatefulSet is created or spec update
-	err = c.Watch(&source.Kind{Type: &estsv1.ExtendedStatefulSet{}}, &handler.EnqueueRequestForObject{})
+	// Trigger when
+	// - create event of extendedStatefulSet which have no children resources
+	// - update event of extendedStatefulSet
+	p := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			o := e.Object.(*estsv1.ExtendedStatefulSet)
+			sts, err := listStatefulSets(ctx, mgr.GetClient(), o)
+			if err != nil {
+				ctxlog.Errorf(ctx, "Failed to list StatefulSets owned by ExtendedStatefulSet '%s': %s", o.Name, err)
+			}
+
+			return len(sts) == 0
+		},
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+		UpdateFunc:  func(e event.UpdateEvent) bool { return true },
+	}
+	err = c.Watch(&source.Kind{Type: &estsv1.ExtendedStatefulSet{}}, &handler.EnqueueRequestForObject{}, p)
 	if err != nil {
 		return err
 	}
