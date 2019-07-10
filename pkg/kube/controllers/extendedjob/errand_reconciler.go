@@ -77,7 +77,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		eJob.Spec.Trigger.Strategy = ejv1.TriggerManual
 		err = r.client.Update(ctx, eJob)
 		if err != nil {
-			ctxlog.WithEvent(eJob, "UpdateError").Errorf(ctx, "Failed to revert to 'trigger.strategy=manual' on job '%s': %s", eJob.Name, err)
+			err = ctxlog.WithEvent(eJob, "UpdateError").Errorf(ctx, "Failed to revert to 'trigger.strategy=manual' on job '%s': %s", eJob.Name, err)
 			return result, err
 		}
 	}
@@ -100,8 +100,8 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		eJob.Spec.Trigger.Strategy = ejv1.TriggerDone
 		err = r.client.Update(ctx, eJob)
 		if err != nil {
-			ctxlog.WithEvent(eJob, "UpdateError").Errorf(ctx, "Failed to traverse to 'trigger.strategy=done' on job '%s': %s", eJob.Name, err)
-			return result, err
+			err = ctxlog.WithEvent(eJob, "UpdateError").Errorf(ctx, "Failed to traverse to 'trigger.strategy=done' on job '%s': %s", eJob.Name, err)
+			return reconcile.Result{Requeue: false}, err
 		}
 	}
 
