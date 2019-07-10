@@ -95,7 +95,7 @@ func (r *ReconcileStatefulSetCleanup) listStatefulSetVersions(ctx context.Contex
 
 	versions := map[int]bool{}
 
-	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
+	statefulSets, err := listStatefulSets(ctx, r.client, exStatefulSet)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (r *ReconcileStatefulSetCleanup) listStatefulSetVersions(ctx context.Contex
 func (r *ReconcileStatefulSetCleanup) cleanupStatefulSets(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet, maxAvailableVersion int) error {
 	ctxlog.WithEvent(exStatefulSet, "CleanupStatefulSets").Infof(ctx, "Cleaning up StatefulSets for ExtendedStatefulSet '%s' less than version %d.", exStatefulSet.Name, maxAvailableVersion)
 
-	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
+	statefulSets, err := listStatefulSets(ctx, r.client, exStatefulSet)
 	if err != nil {
 		return errors.Wrapf(err, "couldn't list StatefulSets for cleanup")
 	}
@@ -156,34 +156,6 @@ func (r *ReconcileStatefulSetCleanup) cleanupStatefulSets(ctx context.Context, e
 	}
 
 	return nil
-}
-
-// listStatefulSets gets all StatefulSets owned by the ExtendedStatefulSet
-func (r *ReconcileStatefulSetCleanup) listStatefulSets(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet) ([]v1beta2.StatefulSet, error) {
-	ctxlog.Debug(ctx, "Listing StatefulSets owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
-
-	result := []v1beta2.StatefulSet{}
-
-	allStatefulSets := &v1beta2.StatefulSetList{}
-	err := r.client.List(
-		ctx,
-		&client.ListOptions{
-			Namespace:     exStatefulSet.Namespace,
-			LabelSelector: labels.Everything(),
-		},
-		allStatefulSets)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, statefulSet := range allStatefulSets.Items {
-		if metav1.IsControlledBy(&statefulSet, exStatefulSet) {
-			result = append(result, statefulSet)
-			ctxlog.Debugf(ctx, "StatefulSet '%s' owned by ExtendedStatefulSet '%s'.", statefulSet.Name, exStatefulSet.Name)
-		}
-	}
-
-	return result, nil
 }
 
 // isStatefulSetReady returns true if at least one pod owned by the StatefulSet is running

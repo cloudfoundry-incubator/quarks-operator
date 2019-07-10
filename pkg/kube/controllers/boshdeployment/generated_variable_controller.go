@@ -38,7 +38,7 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 		return err
 	}
 
-	// Watch Secrets of manifest with ops
+	// Watch Secrets which contain manifest with ops
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*corev1.Secret)

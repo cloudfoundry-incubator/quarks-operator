@@ -87,7 +87,6 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 
 	switch reconcileType {
 	case ReconcileForBOSHDeployment:
-		log.Debugf(ctx, "Listing BOSHDeployments in namespace '%s'", namespace)
 		boshDeployments, err := listBOSHDeployments(ctx, client, namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to list BOSHDeployments for ConfigMap reconciles")
@@ -108,7 +107,6 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			}
 		}
 	case ReconcileForExtendedJob:
-		log.Debugf(ctx, "Listing ExtendedJobs in namespace '%s'", namespace)
 		extendedJobs, err := listExtendedJobs(ctx, client, namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to list ExtendedJobs for ConfigMap reconciles")
@@ -132,7 +130,6 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			}
 		}
 	case ReconcileForExtendedStatefulSet:
-		log.Debugf(ctx, "Listing ExtendedStatefulSets in namespace '%s'", namespace)
 		extendedStatefulSets, err := listExtendedStatefulSets(ctx, client, namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to list ExtendedStatefulSets for ConfigMap reconciles")
