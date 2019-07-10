@@ -1079,7 +1079,7 @@ var _ = Describe("Manifest", func() {
 
 				ig := manifest.InstanceGroups[0]
 				Expect(ig.Name).To(Equal("bpm1"))
-				Expect(ig.Instances).To(Equal(1))
+				Expect(ig.Instances).To(Equal(2))
 
 				affinity := ig.Env.AgentEnvBoshConfig.Agent.Settings.Affinity
 				Expect(affinity).ToNot(BeNil())
@@ -1089,7 +1089,7 @@ var _ = Describe("Manifest", func() {
 				Expect(selectors.MatchFields).To(BeNil())
 				Expect(selectors.MatchExpressions).To(HaveLen(1))
 				match := selectors.MatchExpressions[0]
-				Expect(match.Key).To(Equal("kubernetes.io/unit-test-az-name"))
+				Expect(match.Key).To(Equal("beta.kubernetes.io/os"))
 				Expect(match.Values).To(HaveLen(2))
 			})
 
