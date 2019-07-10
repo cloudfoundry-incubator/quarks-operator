@@ -226,7 +226,7 @@ variables: []
 	})
 
 	JustBeforeEach(func() {
-		resolver.ReadDesiredManifestReturns(manifest, nil)
+		resolver.DesiredManifestReturns(manifest, nil)
 		reconciler = cfd.NewBPMReconciler(ctx, config, manager, &resolver,
 			controllerutil.SetControllerReference, bdm.NewKubeConverter(config.Namespace),
 		)

@@ -2,7 +2,6 @@
 package fakes
 
 import (
-	context "context"
 	sync "sync"
 
 	manifest "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
@@ -11,19 +10,6 @@ import (
 )
 
 type FakeResolver struct {
-	LatestVersionStub        func(context.Context, string, string) string
-	latestVersionMutex       sync.RWMutex
-	latestVersionArgsForCall []struct {
-		arg1 context.Context
-		arg2 string
-		arg3 string
-	}
-	latestVersionReturns struct {
-		result1 string
-	}
-	latestVersionReturnsOnCall map[int]struct {
-		result1 string
-	}
 	WithOpsManifestStub        func(*v1alpha1.BOSHDeployment, string) (*manifest.Manifest, error)
 	withOpsManifestMutex       sync.RWMutex
 	withOpsManifestArgsForCall []struct {
@@ -40,68 +26,6 @@ type FakeResolver struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
-}
-
-func (fake *FakeResolver) LatestVersion(arg1 context.Context, arg2 string, arg3 string) string {
-	fake.latestVersionMutex.Lock()
-	ret, specificReturn := fake.latestVersionReturnsOnCall[len(fake.latestVersionArgsForCall)]
-	fake.latestVersionArgsForCall = append(fake.latestVersionArgsForCall, struct {
-		arg1 context.Context
-		arg2 string
-		arg3 string
-	}{arg1, arg2, arg3})
-	fake.recordInvocation("LatestVersion", []interface{}{arg1, arg2, arg3})
-	fake.latestVersionMutex.Unlock()
-	if fake.LatestVersionStub != nil {
-		return fake.LatestVersionStub(arg1, arg2, arg3)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.latestVersionReturns
-	return fakeReturns.result1
-}
-
-func (fake *FakeResolver) LatestVersionCallCount() int {
-	fake.latestVersionMutex.RLock()
-	defer fake.latestVersionMutex.RUnlock()
-	return len(fake.latestVersionArgsForCall)
-}
-
-func (fake *FakeResolver) LatestVersionCalls(stub func(context.Context, string, string) string) {
-	fake.latestVersionMutex.Lock()
-	defer fake.latestVersionMutex.Unlock()
-	fake.LatestVersionStub = stub
-}
-
-func (fake *FakeResolver) LatestVersionArgsForCall(i int) (context.Context, string, string) {
-	fake.latestVersionMutex.RLock()
-	defer fake.latestVersionMutex.RUnlock()
-	argsForCall := fake.latestVersionArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
-}
-
-func (fake *FakeResolver) LatestVersionReturns(result1 string) {
-	fake.latestVersionMutex.Lock()
-	defer fake.latestVersionMutex.Unlock()
-	fake.LatestVersionStub = nil
-	fake.latestVersionReturns = struct {
-		result1 string
-	}{result1}
-}
-
-func (fake *FakeResolver) LatestVersionReturnsOnCall(i int, result1 string) {
-	fake.latestVersionMutex.Lock()
-	defer fake.latestVersionMutex.Unlock()
-	fake.LatestVersionStub = nil
-	if fake.latestVersionReturnsOnCall == nil {
-		fake.latestVersionReturnsOnCall = make(map[int]struct {
-			result1 string
-		})
-	}
-	fake.latestVersionReturnsOnCall[i] = struct {
-		result1 string
-	}{result1}
 }
 
 func (fake *FakeResolver) WithOpsManifest(arg1 *v1alpha1.BOSHDeployment, arg2 string) (*manifest.Manifest, error) {
@@ -171,8 +95,6 @@ func (fake *FakeResolver) WithOpsManifestReturnsOnCall(i int, result1 *manifest.
 func (fake *FakeResolver) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.latestVersionMutex.RLock()
-	defer fake.latestVersionMutex.RUnlock()
 	fake.withOpsManifestMutex.RLock()
 	defer fake.withOpsManifestMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
