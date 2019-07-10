@@ -658,7 +658,7 @@ releases:
 
 instance_groups:
 - name: bpm1
-  instances: 1
+  instances: 2
   jobs:
   - name: test-server
     release: bpm
@@ -680,13 +680,14 @@ instance_groups:
               requiredDuringSchedulingIgnoredDuringExecution:
                 nodeSelectorTerms:
                 - matchExpressions:
-                  - key: kubernetes.io/unit-test-az-name
+                  - key: beta.kubernetes.io/os
                     operator: In
                     values:
-                    - unit-test-az1
-                    - unit-test-az2
+                    - linux
+                    - darwin
+  persistent_disk: 10
 - name: bpm2
-  instances: 1
+  instances: 2
   jobs:
   - name: test-server
     release: bpm
@@ -703,18 +704,21 @@ instance_groups:
     bosh:
       agent:
         settings:
+          labels:
+            instance-name: bpm2
           affinity:
             podAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:
               - labelSelector:
                   matchExpressions:
-                  - key: security
+                  - key: instance-name
                     operator: In
                     values:
-                    - S1
-                topologyKey: failure-domain.beta.kubernetes.io/zone
+                    - bpm2
+                topologyKey: beta.kubernetes.io/os
+  persistent_disk: 10
 - name: bpm3
-  instances: 1
+  instances: 2
   jobs:
   - name: test-server
     release: bpm
@@ -731,6 +735,8 @@ instance_groups:
     bosh:
       agent:
         settings:
+          labels:
+            instance-name: bpm3
           affinity:
             podAntiAffinity:
               preferredDuringSchedulingIgnoredDuringExecution:
@@ -738,9 +744,10 @@ instance_groups:
                   podAffinityTerm:
                     labelSelector:
                       matchExpressions:
-                      - key: security
+                      - key: instance-name
                         operator: In
                         values:
-                        - S2
-                  topologyKey: failure-domain.beta.kubernetes.io/zone
+                        - bpm3
+                    topologyKey: beta.kubernetes.io/os
+  persistent_disk: 10
 `
