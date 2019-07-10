@@ -255,6 +255,13 @@ func (dg *DataGatherer) renderBPM() error {
 
 // renderJobBPM per job and add its value to the jobInstances.BPM field.
 func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string) error {
+	// Run pre-render scripts for the current job.
+	for idx, script := range currentJob.Properties.BOSHContainerization.PreRenderScripts {
+		if err := runPreRenderScript(script, idx, true); err != nil {
+			return errors.Wrapf(err, "failed to run pre-render script %d for job %s", idx, currentJob.Name)
+		}
+	}
+
 	// Location of the current job job.MF file.
 	jobSpecFile := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "job.MF")
 
