@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -185,10 +185,11 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 			return log.WithEvent(instance, "ExtendedJobForDeploymentError").Errorf(ctx, "Failed to set reference for ExtendedJob instance group '%s' : %v", instanceGroupName, err)
 		}
 
-		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
 			if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
 				eJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
 				eJob.DeepCopyInto(existingEJob)
+
 				return nil
 			}
 			return fmt.Errorf("object is not an ExtendedJob")
@@ -196,6 +197,8 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 		if err != nil {
 			return log.WithEvent(instance, "ApplyExtendedJobError").Errorf(ctx, "Failed to apply ExtendedJob for instance group '%s' : %v", instanceGroupName, err)
 		}
+
+		log.Debugf(ctx, "ExtendedJob '%s' has been %s", eJob.Name, op)
 	}
 
 	for _, svc := range resources.Services {
@@ -207,7 +210,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 			return log.WithEvent(instance, "ServiceForDeploymentError").Errorf(ctx, "Failed to set reference for Service instance group '%s' : %v", instanceGroupName, err)
 		}
 
-		_, err := controllerutil.CreateOrUpdate(ctx, r.client, svc.DeepCopy(), func(obj runtime.Object) error {
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, svc.DeepCopy(), func(obj runtime.Object) error {
 			if existingSvc, ok := obj.(*corev1.Service); ok {
 				// Should keep current ClusterIP and ResourceVersion when update
 				svc.Spec.ClusterIP = existingSvc.Spec.ClusterIP
@@ -220,6 +223,8 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 		if err != nil {
 			return log.WithEvent(instance, "ApplyServiceError").Errorf(ctx, "Failed to apply Service for instance group '%s' : %v", instanceGroupName, err)
 		}
+
+		log.Debugf(ctx, "Service '%s' has been %s", svc.Name, op)
 	}
 
 	// Create a persistent volume claims for containers of the instance group
@@ -242,10 +247,11 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 			return log.WithEvent(instance, "ExtendedStatefulSetForDeploymentError").Errorf(ctx, "Failed to set reference for ExtendedStatefulSet instance group '%s' : %v", instanceGroupName, err)
 		}
 
-		_, err := controllerutil.CreateOrUpdate(ctx, r.client, eSts.DeepCopy(), func(obj runtime.Object) error {
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, eSts.DeepCopy(), func(obj runtime.Object) error {
 			if existingSts, ok := obj.(*estsv1.ExtendedStatefulSet); ok {
 				eSts.ObjectMeta.ResourceVersion = existingSts.ObjectMeta.ResourceVersion
 				eSts.DeepCopyInto(existingSts)
+
 				return nil
 			}
 			return fmt.Errorf("object is not an ExtendStatefulSet")
@@ -253,6 +259,8 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 		if err != nil {
 			return log.WithEvent(instance, "ApplyExtendedStatefulSetError").Errorf(ctx, "Failed to apply ExtendedStatefulSet for instance group '%s' : %v", instanceGroupName, err)
 		}
+
+		log.Debugf(ctx, "ExtendStatefulSet '%s' has been %s", eSts.Name, op)
 	}
 
 	return nil

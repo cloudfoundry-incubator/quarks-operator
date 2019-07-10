@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -189,38 +188,6 @@ func (r *ReconcileExtendedStatefulSet) createStatefulSet(ctx context.Context, ex
 	return nil
 }
 
-// listStatefulSets gets all StatefulSets owned by the ExtendedStatefulSet
-func (r *ReconcileExtendedStatefulSet) listStatefulSets(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet) ([]v1beta2.StatefulSet, error) {
-	ctxlog.Debug(ctx, "Listing StatefulSets owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
-
-	result := []v1beta2.StatefulSet{}
-
-	// Get owned resources
-	// Go through each StatefulSet
-	allStatefulSets := &v1beta2.StatefulSetList{}
-	err := r.client.List(
-		ctx,
-		&client.ListOptions{
-			Namespace:     exStatefulSet.Namespace,
-			LabelSelector: labels.Everything(),
-		},
-		allStatefulSets)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, statefulSet := range allStatefulSets.Items {
-		if metav1.IsControlledBy(&statefulSet, exStatefulSet) {
-			result = append(result, statefulSet)
-			ctxlog.Debug(ctx, "StatefulSet '", statefulSet.Name, "' owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
-		} else {
-			ctxlog.Debug(ctx, "StatefulSet '", statefulSet.Name, "' is not owned by ExtendedStatefulSet '", exStatefulSet.Name, "', ignoring.")
-		}
-	}
-
-	return result, nil
-}
-
 // getActualStatefulSet gets the latest (by version) StatefulSet owned by the ExtendedStatefulSet
 func (r *ReconcileExtendedStatefulSet) getActualStatefulSet(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet) (*v1beta2.StatefulSet, int, error) {
 	// Default response is an empty StatefulSet with version '0' and an empty signature
@@ -234,7 +201,7 @@ func (r *ReconcileExtendedStatefulSet) getActualStatefulSet(ctx context.Context,
 	maxVersion := 0
 
 	// Get all owned StatefulSets
-	statefulSets, err := r.listStatefulSets(ctx, exStatefulSet)
+	statefulSets, err := listStatefulSets(ctx, r.client, exStatefulSet)
 	if err != nil {
 		return nil, 0, err
 	}
