@@ -283,7 +283,20 @@ func getWebhookServicePort(namespaceCounter int) (int32, error) {
 func DeleteNamespace(ns string, kubeCtlCmd string) error {
 	fmt.Printf("Cleaning up namespace %s \n", ns)
 
-	_, err := RunBinary(kubeCtlCmd, "delete", "--ignore-not-found", "namespace", ns)
+	_, err := RunBinary(kubeCtlCmd, "delete", "--wait=false", "--ignore-not-found", "namespace", ns)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// DeleteWebhook removes existing mutatingwebhookconfiguration
+func DeleteWebhook(ns string, kubeCtlCmd string) error {
+	webHookName := fmt.Sprintf("%s-%s", "cf-operator-hook", ns)
+	fmt.Printf("Cleaning up mutatingwebhookconfiguration %s \n", webHookName)
+
+	_, err := RunBinary(kubeCtlCmd, "delete", "--ignore-not-found", "mutatingwebhookconfiguration", webHookName)
 	if err != nil {
 		return err
 	}
