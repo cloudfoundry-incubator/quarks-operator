@@ -11,11 +11,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
-
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 	"k8s.io/client-go/rest"
@@ -275,47 +273,4 @@ func getWebhookServicePort(namespaceCounter int) (int32, error) {
 		}
 	}
 	return int32(port) + int32(namespaceCounter), nil
-}
-
-// DeleteNamespace removes existing ns
-func DeleteNamespace(ns string, kubeCtlCmd string) error {
-	fmt.Printf("Cleaning up namespace %s \n", ns)
-
-	_, err := RunBinary(kubeCtlCmd, "delete", "--wait=false", "--ignore-not-found", "namespace", ns)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// DeleteWebhooks removes existing webhookconfiguration and validatingwebhookconfiguration
-func DeleteWebhooks(ns string, kubeCtlCmd string) error {
-	var messages string
-	webHookName := fmt.Sprintf("%s-%s", "cf-operator-hook", ns)
-
-	_, err := RunBinary(kubeCtlCmd, "delete", "--ignore-not-found", "mutatingwebhookconfiguration", webHookName)
-	if err != nil {
-		messages = fmt.Sprintf("%v%v\n", messages, err.Error())
-	}
-
-	_, err = RunBinary(kubeCtlCmd, "delete", "--ignore-not-found", "validatingwebhookconfiguration", webHookName)
-	if err != nil {
-		messages = fmt.Sprintf("%v%v\n", messages, err.Error())
-	}
-
-	if messages != "" {
-		return errors.New(messages)
-	}
-	return nil
-}
-
-// RunBinary executes a binary cmd and returns the stdOutput
-func RunBinary(binaryName string, args ...string) ([]byte, error) {
-	cmd := exec.Command(binaryName, args...)
-	stdOutput, err := cmd.CombinedOutput()
-	if err != nil {
-		return stdOutput, errors.Wrapf(err, "%s cmd, failed with the following error: %s", cmd.Args, string(stdOutput))
-	}
-	return stdOutput, nil
 }
