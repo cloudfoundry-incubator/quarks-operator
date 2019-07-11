@@ -80,7 +80,7 @@ func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error
 			messages = fmt.Sprintf("%v%v\n", messages, err.Error())
 		}
 
-		err = environment.DeleteWebhook(namespace, kubeCtlCmd)
+		err = environment.DeleteWebhooks(namespace, kubeCtlCmd)
 		if err != nil {
 			messages = fmt.Sprintf("%v%v\n", messages, err.Error())
 		}

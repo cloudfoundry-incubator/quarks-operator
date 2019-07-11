@@ -40,6 +40,15 @@ data:
       path: /instance_groups/name=nats?/instances
       value: 2
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nats-manifest.var-customed-password
+type: Opaque
+stringData:
+  password: customed_password
+
+---
 apiVersion: fissile.cloudfoundry.org/v1alpha1
 kind: BOSHDeployment
 metadata:
@@ -51,12 +60,3 @@ spec:
   ops:
   - ref: ops-foo
     type: configmap
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: nats-manifest.var-customed-password
-type: Opaque
-stringData:
-  password: customed_password
-

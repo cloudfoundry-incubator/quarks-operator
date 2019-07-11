@@ -66,6 +66,7 @@ before:
 
     export RELEASE_NAMESPACE="quarks"
     kubectl -n "${RELEASE_NAMESPACE}" delete mutatingwebhookconfiguration cf-operator-hook-quarks --ignore-not-found=true
+    kubectl -n "${RELEASE_NAMESPACE}" delete validatingwebhookconfiguration cf-operator-hook-quarks --ignore-not-found=true
     kubectl -n "${RELEASE_NAMESPACE}" delete secret cf-operator-webhook-server-cert --ignore-not-found=true
 
 after:

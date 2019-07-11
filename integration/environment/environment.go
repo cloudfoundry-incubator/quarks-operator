@@ -291,16 +291,24 @@ func DeleteNamespace(ns string, kubeCtlCmd string) error {
 	return nil
 }
 
-// DeleteWebhook removes existing mutatingwebhookconfiguration
-func DeleteWebhook(ns string, kubeCtlCmd string) error {
+// DeleteWebhooks removes existing webhookconfiguration and validatingwebhookconfiguration
+func DeleteWebhooks(ns string, kubeCtlCmd string) error {
+	var messages string
 	webHookName := fmt.Sprintf("%s-%s", "cf-operator-hook", ns)
-	fmt.Printf("Cleaning up mutatingwebhookconfiguration %s \n", webHookName)
 
 	_, err := RunBinary(kubeCtlCmd, "delete", "--ignore-not-found", "mutatingwebhookconfiguration", webHookName)
 	if err != nil {
-		return err
+		messages = fmt.Sprintf("%v%v\n", messages, err.Error())
 	}
 
+	_, err = RunBinary(kubeCtlCmd, "delete", "--ignore-not-found", "validatingwebhookconfiguration", webHookName)
+	if err != nil {
+		messages = fmt.Sprintf("%v%v\n", messages, err.Error())
+	}
+
+	if messages != "" {
+		return errors.New(messages)
+	}
 	return nil
 }
 
