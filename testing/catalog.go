@@ -196,7 +196,7 @@ func (c *Catalog) DefaultConfigMap(name string) corev1.ConfigMap {
 	}
 }
 
-// DefaultBOSHDeployment fissile deployment CR
+// DefaultBOSHDeployment a deployment CR
 func (c *Catalog) DefaultBOSHDeployment(name, manifestRef string) bdv1.BOSHDeployment {
 	return bdv1.BOSHDeployment{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
@@ -794,7 +794,7 @@ func (c *Catalog) Sleep1hPodSpec() corev1.PodSpec {
 	}
 }
 
-// EmptyBOSHDeployment empty fissile deployment CR
+// EmptyBOSHDeployment empty deployment CR
 func (c *Catalog) EmptyBOSHDeployment(name, manifestRef string) bdv1.BOSHDeployment {
 	return bdv1.BOSHDeployment{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
@@ -802,7 +802,7 @@ func (c *Catalog) EmptyBOSHDeployment(name, manifestRef string) bdv1.BOSHDeploym
 	}
 }
 
-// DefaultBOSHDeploymentWithOps fissile deployment CR with ops
+// DefaultBOSHDeploymentWithOps a deployment CR with ops
 func (c *Catalog) DefaultBOSHDeploymentWithOps(name, manifestRef string, opsRef string) bdv1.BOSHDeployment {
 	return bdv1.BOSHDeployment{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
@@ -815,20 +815,7 @@ func (c *Catalog) DefaultBOSHDeploymentWithOps(name, manifestRef string, opsRef 
 	}
 }
 
-// DefaultBOSHDeploymentWithUnsupportedOps fissile deployment CR with ops
-func (c *Catalog) DefaultBOSHDeploymentWithUnsupportedOps(name, manifestRef string, opsRef string) bdv1.BOSHDeployment {
-	return bdv1.BOSHDeployment{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Spec: bdv1.BOSHDeploymentSpec{
-			Manifest: bdv1.Manifest{Ref: manifestRef, Type: bdv1.ConfigMapType},
-			Ops: []bdv1.Ops{
-				{Ref: opsRef, Type: bdv1.SecretType},
-			},
-		},
-	}
-}
-
-// WrongTypeBOSHDeployment fissile deployment CR containing wrong type
+// WrongTypeBOSHDeployment a deployment CR containing wrong type
 func (c *Catalog) WrongTypeBOSHDeployment(name, manifestRef string) bdv1.BOSHDeployment {
 	return bdv1.BOSHDeployment{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
@@ -838,7 +825,7 @@ func (c *Catalog) WrongTypeBOSHDeployment(name, manifestRef string) bdv1.BOSHDep
 	}
 }
 
-// BOSHDeploymentWithWrongTypeOps fissile deployment CR with wrong type ops
+// BOSHDeploymentWithWrongTypeOps a deployment CR with wrong type ops
 func (c *Catalog) BOSHDeploymentWithWrongTypeOps(name, manifestRef string, opsRef string) bdv1.BOSHDeployment {
 	return bdv1.BOSHDeployment{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
@@ -851,7 +838,7 @@ func (c *Catalog) BOSHDeploymentWithWrongTypeOps(name, manifestRef string, opsRe
 	}
 }
 
-// InterpolateBOSHDeployment fissile deployment CR
+// InterpolateBOSHDeployment a deployment CR
 func (c *Catalog) InterpolateBOSHDeployment(name, manifestRef, opsRef string, secretRef string) bdv1.BOSHDeployment {
 	return bdv1.BOSHDeployment{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
