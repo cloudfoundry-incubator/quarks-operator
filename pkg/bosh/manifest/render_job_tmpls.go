@@ -78,11 +78,12 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 					},
 
 					&btg.InstanceInfo{
-						Address: currentJobInstance.Address,
-						AZ:      currentJobInstance.AZ,
-						ID:      currentJobInstance.ID,
-						Index:   currentJobInstance.Index,
-						Name:    currentJobInstance.Name,
+						Address:   currentJobInstance.Address,
+						AZ:        currentJobInstance.AZ,
+						Bootstrap: currentJobInstance.Index == 0,
+						ID:        currentJobInstance.ID,
+						Index:     currentJobInstance.Index,
+						Name:      currentJobInstance.Name,
 					},
 
 					filepath.Join(jobSrcDir, JobSpecFilename),

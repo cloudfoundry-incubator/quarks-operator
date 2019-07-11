@@ -315,6 +315,7 @@ func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string) error {
 				&btg.InstanceInfo{
 					Address:    jobInstance.Address,
 					AZ:         jobInstance.AZ,
+					Bootstrap:  jobInstance.Index == 0,
 					ID:         jobInstance.ID,
 					Index:      jobInstance.Index,
 					Deployment: dg.manifest.Name,
