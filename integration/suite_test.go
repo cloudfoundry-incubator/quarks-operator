@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"code.cloudfoundry.org/cf-operator/integration/environment"
+	cmdHelper "code.cloudfoundry.org/cf-operator/testing"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -17,7 +19,6 @@ func TestIntegration(t *testing.T) {
 var (
 	env              *environment.Environment
 	namespacesToNuke []string
-	kubeCtlCmd       = "kubectl"
 )
 
 var _ = BeforeEach(func() {
@@ -32,11 +33,11 @@ var _ = AfterEach(func() {
 var _ = AfterSuite(func() {
 	// Nuking all namespaces at the end of the run
 	for _, namespace := range namespacesToNuke {
-		err := environment.DeleteNamespace(namespace, kubeCtlCmd)
+		err := cmdHelper.DeleteNamespace(namespace)
 		if err != nil {
 			fmt.Printf("WARNING: failed to delete namespace %s: %v\n", namespace, err)
 		}
-		err = environment.DeleteWebhooks(namespace, kubeCtlCmd)
+		err = cmdHelper.DeleteWebhooks(namespace)
 		if err != nil {
 			fmt.Printf("WARNING: failed to delete mutatingwebhookconfiguration in %s: %v\n", namespace, err)
 		}

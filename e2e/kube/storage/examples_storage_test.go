@@ -34,11 +34,11 @@ var _ = Describe("Examples", func() {
 				literalValues := map[string]string{
 					"value": class,
 				}
-				err := kubectlHelper.CreateSecretFromLiteral(namespace, "nats-deployment.var-implicit-operator-test-storage-class", literalValues)
+				err := testing.CreateSecretFromLiteral(namespace, "nats-deployment.var-implicit-operator-test-storage-class", literalValues)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Creating bosh deployment")
-				err = kubectlHelper.Create(namespace, yamlFilePath)
+				err = testing.Create(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
@@ -60,11 +60,11 @@ var _ = Describe("Examples", func() {
 				class, ok := os.LookupEnv("OPERATOR_TEST_STORAGE_CLASS")
 				Expect(ok).To(Equal(true))
 
-				exampleTmpFilePath, err := kubectlHelper.AddTestStorageClassToVolumeClaimTemplates(yamlFilePath, class)
+				exampleTmpFilePath, err := testing.AddTestStorageClassToVolumeClaimTemplates(yamlFilePath, class)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Creating exstatefulset pvcs")
-				err = kubectlHelper.Create(namespace, exampleTmpFilePath)
+				err = testing.Create(namespace, exampleTmpFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")

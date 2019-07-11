@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"code.cloudfoundry.org/cf-operator/e2e/kube/e2ehelper"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
 
@@ -32,14 +31,14 @@ var _ = Describe("Examples", func() {
 				yamlFilePath := examplesDir + "extended-job/exjob_trigger_ready.yaml"
 
 				By("Creating exjob_trigger")
-				err := kubectlHelper.Create(namespace, yamlFilePath)
+				err := testing.Create(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				yamlPodFilePath := examplesDir + "extended-job/pod.yaml"
 
 				By("Creating pod")
 				kubectlHelper = testing.NewKubectl()
-				err = kubectlHelper.Create(namespace, yamlPodFilePath)
+				err = testing.Create(namespace, yamlPodFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Waiting for the pods to run")
@@ -57,14 +56,14 @@ var _ = Describe("Examples", func() {
 				yamlFilePath := examplesDir + "extended-job/exjob_trigger_deleted.yaml"
 
 				By("Creating exjob_trigger")
-				err := kubectlHelper.Create(namespace, yamlFilePath)
+				err := testing.Create(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				yamlPodFilePath := examplesDir + "extended-job/pod.yaml"
 
 				By("Creating pod")
 				kubectlHelper = testing.NewKubectl()
-				err = kubectlHelper.Create(namespace, yamlPodFilePath)
+				err = testing.Create(namespace, yamlPodFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Waiting for the pods to run")
@@ -72,7 +71,7 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Deleting the pod created")
-				err = kubectlHelper.DeleteResource(namespace, "pod", "foo-pod-1")
+				err = testing.DeleteResource(namespace, "pod", "foo-pod-1")
 				Expect(err).ToNot(HaveOccurred())
 
 				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=delete-triggered-sleep", ejv1.LabelEJobName))
@@ -84,7 +83,7 @@ var _ = Describe("Examples", func() {
 
 				By("Creating exstatefulset configs")
 				kubectlHelper := testing.NewKubectl()
-				err := kubectlHelper.Create(namespace, yamlFilePath)
+				err := testing.Create(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
@@ -97,7 +96,7 @@ var _ = Describe("Examples", func() {
 				yamlUpdatedFilePath := examplesDir + "extended-statefulset/exstatefulset_configs_updated.yaml"
 
 				By("Updating the config value used by pods")
-				err = kubectlHelper.Apply(namespace, yamlUpdatedFilePath)
+				err = testing.Apply(namespace, yamlUpdatedFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
@@ -120,7 +119,7 @@ var _ = Describe("Examples", func() {
 
 				By("Creating bosh deployment")
 				kubectlHelper := testing.NewKubectl()
-				err := kubectlHelper.Create(namespace, yamlFilePath)
+				err := testing.Create(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
@@ -132,13 +131,13 @@ var _ = Describe("Examples", func() {
 
 			})
 
-			When("when restarting operator", func() {
+			FWhen("restarting operator", func() {
 				It("should not create unexpected resources", func() {
 					yamlFilePath := examplesDir + "bosh-deployment/boshdeployment.yaml"
 
 					By("Creating bosh deployment")
 					kubectlHelper := testing.NewKubectl()
-					err := kubectlHelper.Create(namespace, yamlFilePath)
+					err := testing.Create(namespace, yamlFilePath)
 					Expect(err).ToNot(HaveOccurred())
 
 					By("Checking for pods")
@@ -148,7 +147,7 @@ var _ = Describe("Examples", func() {
 					err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1")
 					Expect(err).ToNot(HaveOccurred())
 
-					err = kubectlHelper.RestartOperator(namespace)
+					err = testing.RestartOperator(namespace)
 					Expect(err).ToNot(HaveOccurred())
 
 					By("Checking for pods")
@@ -176,7 +175,7 @@ var _ = Describe("Examples", func() {
 
 				By("Creating bosh deployment")
 				kubectlHelper := testing.NewKubectl()
-				err := kubectlHelper.Create(namespace, yamlFilePath)
+				err := testing.Create(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
@@ -187,10 +186,10 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking the value in the config file")
-				outFile, err := kubectlHelper.RunCommandWithOutput(namespace, "nats-deployment-nats-v1-1", "awk 'NR == 18 {print substr($2,2,64)}' /var/vcap/jobs/nats/config/nats.conf")
+				outFile, err := testing.RunCommandWithOutput(namespace, "nats-deployment-nats-v1-1", "awk 'NR == 18 {print substr($2,2,64)}' /var/vcap/jobs/nats/config/nats.conf")
 				Expect(err).ToNot(HaveOccurred())
 
-				outSecret, err := kubectlHelper.GetSecretData(namespace, "nats-deployment.var-customed-password", "go-template={{.data.password}}")
+				outSecret, err := testing.GetSecretData(namespace, "nats-deployment.var-customed-password", "go-template={{.data.password}}")
 				Expect(err).ToNot(HaveOccurred())
 				outSecretDecoded, _ := b64.StdEncoding.DecodeString(string(outSecret))
 				Expect(string(outSecretDecoded)).To(Equal(strings.TrimSuffix(outFile, "\n")))
@@ -201,7 +200,7 @@ var _ = Describe("Examples", func() {
 
 				By("Creating exjob")
 				kubectlHelper := testing.NewKubectl()
-				err := kubectlHelper.Create(namespace, yamlFilePath)
+				err := testing.Create(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
@@ -217,7 +216,7 @@ var _ = Describe("Examples", func() {
 
 				By("Creating exjob")
 				kubectlHelper := testing.NewKubectl()
-				err := kubectlHelper.Create(namespace, yamlFilePath)
+				err := testing.Create(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
@@ -233,7 +232,7 @@ var _ = Describe("Examples", func() {
 
 				By("Creating exjob")
 				kubectlHelper := testing.NewKubectl()
-				err := kubectlHelper.Create(namespace, yamlFilePath)
+				err := testing.Create(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
@@ -244,13 +243,13 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Delete the pod")
-				err = kubectlHelper.DeleteLabelFilter(namespace, "pod", fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName))
+				err = testing.DeleteLabelFilter(namespace, "pod", fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Update the config change")
 				yamlFilePath = examplesDir + "extended-job/exjob_auto-errand-updating_updated.yaml"
 
-				err = kubectlHelper.Apply(namespace, yamlFilePath)
+				err = testing.Apply(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				err = kubectlHelper.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName))
@@ -265,14 +264,14 @@ var _ = Describe("Examples", func() {
 
 				By("Creating exjob")
 				kubectlHelper := testing.NewKubectl()
-				err := kubectlHelper.Create(namespace, yamlFilePath)
+				err := testing.Create(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Updating exjob to trigger now")
 
 				yamlFilePath = examplesDir + "extended-job/exjob_errand_updated.yaml"
 
-				err = kubectlHelper.Apply(namespace, yamlFilePath)
+				err = testing.Apply(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
@@ -288,7 +287,7 @@ var _ = Describe("Examples", func() {
 
 				By("Creating exjob")
 				kubectlHelper := testing.NewKubectl()
-				err := kubectlHelper.Create(namespace, yamlFilePath)
+				err := testing.Create(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
@@ -300,7 +299,7 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking the secret data created")
-				outSecret, err := kubectlHelper.GetSecretData(namespace, "foo-json", "go-template={{.data.foo}}")
+				outSecret, err := testing.GetSecretData(namespace, "foo-json", "go-template={{.data.foo}}")
 				Expect(err).ToNot(HaveOccurred())
 				outSecretDecoded, _ := b64.StdEncoding.DecodeString(string(outSecret))
 				Expect(string(outSecretDecoded)).To(Equal("1"))
@@ -310,12 +309,11 @@ var _ = Describe("Examples", func() {
 				yamlFilePath := examplesDir + "extended-secret/password.yaml"
 
 				By("Creating an ExtendedSecret")
-				kubectlHelper := testing.NewKubectl()
-				err := kubectlHelper.Create(namespace, yamlFilePath)
+				err := testing.Create(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking the generated password")
-				err = kubectlHelper.SecretCheckData(namespace, "gen-secret1", ".data.password")
+				err = testing.SecretCheckData(namespace, "gen-secret1", ".data.password")
 				Expect(err).ToNot(HaveOccurred())
 			})
 
