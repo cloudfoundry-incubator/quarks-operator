@@ -1,7 +1,7 @@
 #
 #
-# The dev-env-havener.yaml packs a development flow 
-# for a running minikube into a single configuration file. 
+# The dev-env-havener.yaml packs a development flow
+# for a running minikube into a single configuration file.
 # This flow involves:
 # - compiling a binary
 # - building a Docker img using the above binary
@@ -34,7 +34,7 @@ releases:
   chart_location: deploy/helm/cf-operator/
   overrides:
     image:
-      tag: (( shell . bin/include/versioning && echo "${VERSION_TAG}" )) 
+      tag: (( shell . bin/include/versioning && echo "${VERSION_TAG}" ))
       repository: cf-operator
       org: cfcontainerization
     customResources:
@@ -65,7 +65,7 @@ before:
     ./bin/apply-crds
 
     export RELEASE_NAMESPACE="quarks"
-    kubectl -n "${RELEASE_NAMESPACE}" delete mutatingwebhookconfiguration cf-operator-mutating-hook-quarks --ignore-not-found=true
+    kubectl -n "${RELEASE_NAMESPACE}" delete mutatingwebhookconfiguration cf-operator-hook-quarks --ignore-not-found=true
     kubectl -n "${RELEASE_NAMESPACE}" delete secret cf-operator-webhook-server-cert --ignore-not-found=true
 
 after:

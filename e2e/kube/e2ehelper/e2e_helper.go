@@ -9,9 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	"code.cloudfoundry.org/cf-operator/integration/environment"
 	"github.com/onsi/ginkgo/config"
 	"github.com/pkg/errors"
+
+	"code.cloudfoundry.org/cf-operator/integration/environment"
 )
 
 const (
@@ -39,7 +40,7 @@ func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error
 		switch err := err.(type) {
 		case *CustomError:
 			if strings.Contains(err.StdOut, "could not find tiller") {
-				_, err := RunBinary(helmCmd, "init", "--wait")
+				_, err := environment.RunBinary(helmCmd, "init", "--wait")
 				if err != nil {
 					return "", nil, err
 				}
@@ -54,15 +55,15 @@ func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error
 		return "", nil, err
 	}
 
-	namespace, err = GetTestNamespace()
+	namespace, err = CreateTestNamespace()
 	if err != nil {
 		return "", nil, err
 	}
-	fmt.Println("Setting up test ns '" + namespace + "'...")
+	fmt.Println("Setting up in test namespace '" + namespace + "'...")
 
 	if crdExist {
 		// TODO: find relative path here
-		_, err = RunBinary(helmCmd, "install", chartPath,
+		_, err = environment.RunBinary(helmCmd, "install", chartPath,
 			"--name", fmt.Sprintf("%s-%s", cfOperatorRelease, namespace),
 			"--namespace", namespace,
 			"--timeout", installTimeOutInSecs,
@@ -74,16 +75,32 @@ func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error
 	}
 
 	teardownFunc := func() error {
-		err = DeleteOperatorResources(namespace)
+		var messages string
+		err = DeleteWebhookSecret(namespace)
 		if err != nil {
-			return err
+			messages = fmt.Sprintf("%v%v\n", messages, err.Error())
 		}
 
-		_, err := RunBinary(helmCmd, "delete", fmt.Sprintf("%s-%s", cfOperatorRelease, namespace), "--purge")
+		err = environment.DeleteWebhook(namespace, kubeCtlCmd)
 		if err != nil {
-			return err
+			messages = fmt.Sprintf("%v%v\n", messages, err.Error())
 		}
 
+		_, err := environment.RunBinary(helmCmd, "delete", fmt.Sprintf("%s-%s", cfOperatorRelease, namespace), "--purge")
+		if err != nil {
+			messages = fmt.Sprintf("%v%v\n", messages, err.Error())
+		}
+
+		err = environment.DeleteNamespace(namespace, kubeCtlCmd)
+		if err != nil {
+			messages = fmt.Sprintf("%v%v\n", messages, err.Error())
+		}
+
+		if messages != "" {
+			fmt.Printf("Failures while cleaning up test environment for '%s':\n %v", namespace, messages)
+			return errors.New(messages)
+		}
+		fmt.Println("Cleaned up test environment for '" + namespace + "'")
 		return nil
 	}
 
@@ -93,7 +110,7 @@ func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error
 // ClusterCrdsExist verify if cf-operator CRDs are already in place
 func ClusterCrdsExist() (bool, error) {
 	customResource := &ClusterCrd{}
-	stdOutput, err := RunBinary(kubeCtlCmd, "get", "crds", "-o=json")
+	stdOutput, err := environment.RunBinary(kubeCtlCmd, "get", "crds", "-o=json")
 	if err != nil {
 		return false, err
 	}
@@ -129,18 +146,8 @@ func RunHelmBinaryWithCustomErr(binaryName string, args ...string) error {
 	return nil
 }
 
-// RunBinary executes a desire binary and returns the stdOutput
-func RunBinary(binaryName string, args ...string) ([]byte, error) {
-	cmd := exec.Command(binaryName, args...)
-	stdOutput, err := cmd.CombinedOutput()
-	if err != nil {
-		return stdOutput, errors.Wrapf(err, "%s cmd, failed with the following error: %s", cmd.Args, string(stdOutput))
-	}
-	return stdOutput, nil
-}
-
-// GetTestNamespace generates a namespace based on a env variable
-func GetTestNamespace() (string, error) {
+// CreateTestNamespace generates a namespace based on a env variable
+func CreateTestNamespace() (string, error) {
 	prefix, found := os.LookupEnv("TEST_NAMESPACE")
 	if !found {
 		prefix = "default"
@@ -148,7 +155,7 @@ func GetTestNamespace() (string, error) {
 	namespace := prefix + "-" + strconv.Itoa(config.GinkgoConfig.ParallelNode) + "-" + strconv.Itoa(int(nsIndex))
 	nsIndex++
 
-	_, err := RunBinary(kubeCtlCmd, "create", "ns", namespace)
+	_, err := environment.RunBinary(kubeCtlCmd, "create", "ns", namespace)
 	if err != nil {
 		return "", err
 	}
@@ -156,22 +163,12 @@ func GetTestNamespace() (string, error) {
 	return namespace, nil
 }
 
-// DeleteOperatorResources removes left overs from the cf-operator chart,
-// like the webhook server certificate secret and the mutatingwebhookconfiguration,
-// in a specific namespace
-func DeleteOperatorResources(ns string) error {
-	_, err := RunBinary(kubeCtlCmd, "--namespace", ns, "delete", "secret", "cf-operator-webhook-server-cert", "--ignore-not-found")
-	if err != nil {
-		return err
-	}
+// DeleteWebhookSecret removes left overs from the cf-operator chart,
+// like the webhook server certificate secret in a specific namespace
+func DeleteWebhookSecret(ns string) error {
+	_, err := environment.RunBinary(kubeCtlCmd, "--namespace", ns, "delete", "secret", "cf-operator-webhook-server-cert", "--ignore-not-found")
 
-	webHookName := fmt.Sprintf("%s-%s", "cf-operator-mutating-hook-", ns)
-	_, err = RunBinary(kubeCtlCmd, "delete", "mutatingwebhookconfiguration", webHookName, "--ignore-not-found")
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // CustomError containing stdOuput of a binary execution

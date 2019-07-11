@@ -291,6 +291,19 @@ func DeleteNamespace(ns string, kubeCtlCmd string) error {
 	return nil
 }
 
+// DeleteWebhook removes existing mutatingwebhookconfiguration
+func DeleteWebhook(ns string, kubeCtlCmd string) error {
+	webHookName := fmt.Sprintf("%s-%s", "cf-operator-hook", ns)
+	fmt.Printf("Cleaning up mutatingwebhookconfiguration %s \n", webHookName)
+
+	_, err := RunBinary(kubeCtlCmd, "delete", "--ignore-not-found", "mutatingwebhookconfiguration", webHookName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // RunBinary executes a binary cmd and returns the stdOutput
 func RunBinary(binaryName string, args ...string) ([]byte, error) {
 	cmd := exec.Command(binaryName, args...)

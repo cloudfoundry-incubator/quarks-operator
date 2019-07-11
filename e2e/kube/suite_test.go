@@ -7,18 +7,17 @@ import (
 	"os/exec"
 	"testing"
 
-	"code.cloudfoundry.org/cf-operator/e2e/kube/e2ehelper"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"code.cloudfoundry.org/cf-operator/e2e/kube/e2ehelper"
 	"code.cloudfoundry.org/cf-operator/integration/environment"
 )
 
 var (
-	nsIndex    int
-	nsTeardown environment.TearDownFunc
-	namespace  string
+	nsIndex   int
+	teardown  environment.TearDownFunc
+	namespace string
 )
 
 func FailAndCollectDebugInfo(description string, callerSkip ...int) {
@@ -47,12 +46,12 @@ var _ = BeforeEach(func() {
 		log.Fatal(err)
 	}
 	chartPath := fmt.Sprintf("%s%s", dir, "/../../helm/cf-operator")
-	namespace, nsTeardown, err = e2ehelper.SetUpEnvironment(chartPath)
+	namespace, teardown, err = e2ehelper.SetUpEnvironment(chartPath)
 	Expect(err).ToNot(HaveOccurred())
 })
 
 var _ = AfterEach(func() {
-	if nsTeardown != nil {
-		nsTeardown()
+	if teardown != nil {
+		teardown()
 	}
 })
