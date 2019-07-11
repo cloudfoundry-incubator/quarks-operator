@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"code.cloudfoundry.org/cf-operator/e2e/kube/e2ehelper"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
 
@@ -129,6 +130,45 @@ var _ = Describe("Examples", func() {
 				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1")
 				Expect(err).ToNot(HaveOccurred())
 
+			})
+
+			When("when restarting operator", func() {
+				It("should not create unexpected resources", func() {
+					yamlFilePath := examplesDir + "bosh-deployment/boshdeployment.yaml"
+
+					By("Creating bosh deployment")
+					kubectlHelper := testing.NewKubectl()
+					err := kubectlHelper.Create(namespace, yamlFilePath)
+					Expect(err).ToNot(HaveOccurred())
+
+					By("Checking for pods")
+					err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-0")
+					Expect(err).ToNot(HaveOccurred())
+
+					err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1")
+					Expect(err).ToNot(HaveOccurred())
+
+					err = kubectlHelper.RestartOperator(namespace)
+					Expect(err).ToNot(HaveOccurred())
+
+					By("Checking for pods")
+					err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v2-0")
+					Expect(err).To(HaveOccurred(), "error unexpected new version of instance group is created")
+
+					By("Checking for secrets")
+					exist, err := kubectlHelper.SecretExists(namespace, "nats-deployment.bpm.nats-v2")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(exist).To(BeFalse(), "error unexpected bpm info secret is created")
+
+					exist, err = kubectlHelper.SecretExists(namespace, "nats-deployment.desired-manifest-v2")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(exist).To(BeFalse(), "error unexpected desire manifest is created")
+
+					exist, err = kubectlHelper.SecretExists(namespace, "nats-deployment.ig-resolved.nats-v2")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(exist).To(BeFalse(), "error unexpected properties secret is created")
+
+				})
 			})
 
 			It("bosh-deployment with a custom variable example must work", func() {
