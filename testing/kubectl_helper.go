@@ -2,12 +2,14 @@ package testing
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os/exec"
 	"runtime/debug"
 	"strings"
 	"time"
 
+	"code.cloudfoundry.org/cf-operator/e2e/kube/e2ehelper"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"github.com/ghodss/yaml"
@@ -350,4 +352,32 @@ func (k *Kubectl) AddTestStorageClassToVolumeClaimTemplates(filePath string, cla
 	}
 
 	return tmpFilePath, nil
+}
+
+// RestartOperator restart Operator Deployment
+func (k *Kubectl) RestartOperator(namespace string) error {
+	deploymentName := fmt.Sprintf("deploymment/%s-%s", e2ehelper.CFOperatorRelease, namespace)
+	fmt.Println("Restarting '" + deploymentName + "'...")
+
+	cmd := exec.Command("kubectl", "patch", deploymentName,
+		"--namespace", namespace, "--patch", "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"dummy-date\":\"`date +'%s'`\"}}}}}")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return errors.Wrapf(err, string(out))
+	}
+
+	return nil
+}
+
+// PodExists returns true if the pod by that name is in state running
+func (k *Kubectl) PodExists(namespace string, podName string) (bool, error) {
+	cmd := exec.Command("kubectl", "--namespace", namespace, "get", "pod", podName)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return false, errors.Wrapf(err, string(out))
+	}
+	if strings.Contains(string(out), podName) {
+		return true, nil
+	}
+	return false, nil
 }

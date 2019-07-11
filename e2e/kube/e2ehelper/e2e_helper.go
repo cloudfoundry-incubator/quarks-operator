@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	cfOperatorRelease    = "cf-operator"
+	CFOperatorRelease    = "cf-operator"
 	installTimeOutInSecs = "600"
 	helmCmd              = "helm"
 	kubeCtlCmd           = "kubectl"
@@ -63,7 +63,7 @@ func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error
 
 	// TODO: find relative path here
 	_, err = environment.RunBinary(helmCmd, "install", chartPath,
-		"--name", fmt.Sprintf("%s-%s", cfOperatorRelease, namespace),
+		"--name", fmt.Sprintf("%s-%s", CFOperatorRelease, namespace),
 		"--namespace", namespace,
 		"--timeout", installTimeOutInSecs,
 
@@ -85,7 +85,7 @@ func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error
 			messages = fmt.Sprintf("%v%v\n", messages, err.Error())
 		}
 
-		_, err := environment.RunBinary(helmCmd, "delete", fmt.Sprintf("%s-%s", cfOperatorRelease, namespace), "--purge")
+		_, err := environment.RunBinary(helmCmd, "delete", fmt.Sprintf("%s-%s", CFOperatorRelease, namespace), "--purge")
 		if err != nil {
 			messages = fmt.Sprintf("%v%v\n", messages, err.Error())
 		}
