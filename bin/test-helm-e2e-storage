@@ -12,15 +12,6 @@ fi
 if [ -z ${TEST_NAMESPACE+x} ]; then
   TEST_NAMESPACE="test-storage$(date +%s)"
   export TEST_NAMESPACE
-
-  remove_namespaces() {
-    namespaces=$(kubectl get ns -o=jsonpath="{..name}" | tr '[[:space:]]' '\n' | grep "$TEST_NAMESPACE")
-    for ns in $namespaces; do
-      echo "Deleting namespace $ns..."
-      kubectl delete namespace --wait=false --grace-period=60 "$ns"
-    done
-  }
-  trap remove_namespaces EXIT
 fi
 
 # Add all required CRD´s
