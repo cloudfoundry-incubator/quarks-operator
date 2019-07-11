@@ -512,7 +512,7 @@ instance_groups:
           processes:
           - name: route_registrar
             executable: sleep
-            args: ["10"]
+            args: ["1000"]
       route_registrar:
         routes: []
       nats:
