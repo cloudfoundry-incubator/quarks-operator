@@ -81,7 +81,7 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 						Address: currentJobInstance.Address,
 						AZ:      currentJobInstance.AZ,
 						ID:      currentJobInstance.ID,
-						Index:   string(currentJobInstance.Index),
+						Index:   currentJobInstance.Index,
 						Name:    currentJobInstance.Name,
 					},
 

@@ -6,14 +6,15 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
-// templateRenderCmd represents the template-render command
+var hostnameRegex = regexp.MustCompile(`-(\d+)(-|\.|\z)`)
+
+// templateRenderCmd is the template-render command.
 var templateRenderCmd = &cobra.Command{
 	Use:   "template-render [flags]",
 	Short: "Renders a bosh manifest",
@@ -33,8 +34,8 @@ This will render a provided manifest instance-group
 
 		specIndex := viper.GetInt("spec-index")
 		if specIndex < 0 {
-			// calculate index following the formula specified in
-			// docs/rendering_templates.md
+			// Calculate index following the formula specified in
+			// docs/rendering_templates.md.
 			azIndex := viper.GetInt("az-index")
 			if azIndex < 0 {
 				return fmt.Errorf("required parameter 'az-index' not set")
@@ -45,17 +46,19 @@ This will render a provided manifest instance-group
 			}
 			podOrdinal := viper.GetInt("pod-ordinal")
 			if podOrdinal < 0 {
-				// Infer ordinal from hostname
+				// Infer ordinal from hostname.
 				hostname, err := os.Hostname()
-				r, _ := regexp.Compile(`-(\d+)(-|\.|\z)`)
 				if err != nil {
-					return errors.Wrap(err, "getting the hostname")
+					return err
 				}
-				match := r.FindStringSubmatch(hostname)
+				match := hostnameRegex.FindStringSubmatch(hostname)
 				if len(match) < 2 {
-					return fmt.Errorf("can not extract the pod ordinal from hostname '%s'", hostname)
+					return fmt.Errorf("cannot extract the pod ordinal from hostname '%s'", hostname)
 				}
-				podOrdinal, _ = strconv.Atoi(match[1])
+				podOrdinal, err = strconv.Atoi(match[1])
+				if err != nil {
+					return err
+				}
 			}
 
 			specIndex = (azIndex-1)*replicas + podOrdinal
