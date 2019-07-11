@@ -126,7 +126,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 	initContainers := flattenContainers(
 		copyingSpecsInitContainers,
 		templateRenderingContainer(c.instanceGroupName, resolvedPropertiesSecretName),
-		createDirContainer(c.instanceGroupName, jobs),
+		createDirContainer(jobs),
 		boshPreStartInitContainers,
 		bpmPreStartInitContainers,
 	)
@@ -261,7 +261,7 @@ func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 
 func templateRenderingContainer(instanceGroupName string, secretName string) corev1.Container {
 	return corev1.Container{
-		Name:  names.Sanitize(fmt.Sprintf("renderer-%s", instanceGroupName)),
+		Name:  "template-render",
 		Image: GetOperatorDockerImage(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -302,7 +302,7 @@ func templateRenderingContainer(instanceGroupName string, secretName string) cor
 	}
 }
 
-func createDirContainer(name string, jobs []Job) corev1.Container {
+func createDirContainer(jobs []Job) corev1.Container {
 	dirs := []string{}
 	for _, job := range jobs {
 		jobDirs := append(job.dataDirs(job.Name), job.sysDirs(job.Name)...)
@@ -310,7 +310,7 @@ func createDirContainer(name string, jobs []Job) corev1.Container {
 	}
 
 	return corev1.Container{
-		Name:  names.Sanitize(fmt.Sprintf("create-dirs-%s", name)),
+		Name:  "create-dirs",
 		Image: GetOperatorDockerImage(),
 		VolumeMounts: []corev1.VolumeMount{
 			{

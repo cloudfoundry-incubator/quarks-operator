@@ -87,7 +87,7 @@ var _ = Describe("kube converter", func() {
 					Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
 					Expect(specCopierInitContainer.Command[0]).To(Equal("/bin/sh"))
 					Expect(rendererInitContainer.Image).To(Equal("/:"))
-					Expect(rendererInitContainer.Name).To(Equal("renderer-redis-slave"))
+					Expect(rendererInitContainer.Name).To(Equal("template-render"))
 
 					// Test shared volume setup
 					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("rendering-data"))
@@ -137,7 +137,7 @@ var _ = Describe("kube converter", func() {
 					Expect(specCopierInitContainer.Command[0]).To(Equal("/bin/sh"))
 					Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3"))
 					Expect(rendererInitContainer.Image).To(Equal("/:"))
-					Expect(rendererInitContainer.Name).To(Equal("renderer-diego-cell"))
+					Expect(rendererInitContainer.Name).To(Equal("template-render"))
 
 					// Test shared volume setup
 					Expect(len(stS.Spec.Containers[0].VolumeMounts)).To(Equal(8))
