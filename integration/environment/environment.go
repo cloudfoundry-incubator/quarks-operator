@@ -283,7 +283,7 @@ func getWebhookServicePort(namespaceCounter int) (int32, error) {
 func DeleteNamespace(ns string, kubeCtlCmd string) error {
 	fmt.Printf("Cleaning up namespace %s \n", ns)
 
-	_, err := RunBinary(kubeCtlCmd, "delete", "--ignore-not-found", "namespace", ns)
+	_, err := RunBinary(kubeCtlCmd, "delete", "--wait=false", "--ignore-not-found", "namespace", ns)
 	if err != nil {
 		return err
 	}

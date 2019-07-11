@@ -61,17 +61,16 @@ func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error
 	}
 	fmt.Println("Setting up in test namespace '" + namespace + "'...")
 
-	if crdExist {
-		// TODO: find relative path here
-		_, err = environment.RunBinary(helmCmd, "install", chartPath,
-			"--name", fmt.Sprintf("%s-%s", cfOperatorRelease, namespace),
-			"--namespace", namespace,
-			"--timeout", installTimeOutInSecs,
-			"--set", "customResources.enableInstallation=false",
-			"--wait")
-		if err != nil {
-			return "", nil, err
-		}
+	// TODO: find relative path here
+	_, err = environment.RunBinary(helmCmd, "install", chartPath,
+		"--name", fmt.Sprintf("%s-%s", cfOperatorRelease, namespace),
+		"--namespace", namespace,
+		"--timeout", installTimeOutInSecs,
+
+		"--set", fmt.Sprintf("customResources.enableInstallation=%s", strconv.FormatBool(!crdExist)),
+		"--wait")
+	if err != nil {
+		return "", nil, err
 	}
 
 	teardownFunc := func() error {
