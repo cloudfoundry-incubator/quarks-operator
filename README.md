@@ -49,6 +49,19 @@ kubectl -n cf-operator-test create -f docs/examples/bosh-deployment/boshdeployme
 
 The above will spam two pods in your `cf-operator-test` namespace, running the BOSH nats release.
 
+You can access the `cf-operator` logs by following the operator pod's output:
+
+```bash
+kubectl logs -f -n cf-operator cf-operator
+```
+
+Or look at the k8s event log:
+
+```bash
+kubectl get events -n cf-operator --watch
+```
+
+
 ## Development and Tests
 
 For more information about the operator development, see [docs/development.md](docs/development.md)

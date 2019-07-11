@@ -81,16 +81,17 @@ will be used instead.
 Generated files will be cleand up after the test run unless `SKIP_CF_OPERATOR_TESTING_TMP_CLEANUP`
 is set to `true`.
 
-### **Mutating Webhook Configuration**
+### **Webhook Configuration**
 
 Extended StatefulSet requires a k8s webhook to mutate the volumes of a pod.
 Kubernetes will call back to the operator for certain requests and use the
 modified pod manifest, which is returned.
+CF-Operator also uses a validating webhook to check the BOSH deployment custom resource.
 
 The cf-operator integration tests use `CF_OPERATOR_WEBHOOK_SERVICE_PORT` as a
 base value to calculate the port number to listen to on `CF_OPERATOR_WEBHOOK_SERVICE_HOST`.
 
-The tests use a `mutatingwebhookconfiguration` to configure Kubernetes to
+The tests use a `mutatingwebhookconfiguration` and a `validatingwebhookconfiguration` to configure Kubernetes to
 connect to this address. The address needs to be reachable from the cluster.
 
 The configuration only applies to a single namespace, by using a selector. It contains the URL of the webhooks, build from
@@ -101,7 +102,7 @@ The certificates and keys are written to disk, so the webhook server can use
 them.  They are also cached in a k8s secret for production, but that is not
 being used in integration tests, since they delete the test namespaces.
 
-Currently only the CI scripts for integration tests clean up unused mutatingwebhookconfigurations.
+Tests suites should clean up their, namespace dependant, webhook configuration automatically.
 
 ## End-to-End
 

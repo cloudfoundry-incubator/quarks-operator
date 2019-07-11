@@ -36,7 +36,7 @@ var _ = AfterSuite(func() {
 		if err != nil {
 			fmt.Printf("WARNING: failed to delete namespace %s: %v\n", namespace, err)
 		}
-		err = environment.DeleteWebhook(namespace, kubeCtlCmd)
+		err = environment.DeleteWebhooks(namespace, kubeCtlCmd)
 		if err != nil {
 			fmt.Printf("WARNING: failed to delete mutatingwebhookconfiguration in %s: %v\n", namespace, err)
 		}
