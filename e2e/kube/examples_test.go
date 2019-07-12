@@ -229,9 +229,7 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Updating exjob to trigger now")
-
 				yamlFilePath = examplesDir + "extended-job/exjob_errand_updated.yaml"
-
 				err = kubectlHelper.Apply(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
