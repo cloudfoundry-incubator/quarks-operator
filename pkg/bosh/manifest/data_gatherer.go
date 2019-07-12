@@ -37,8 +37,7 @@ func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []bc.JobIns
 			// generate a nested struct of map[string]interface{} when
 			// a property is of the form foo.bar
 			if strings.Contains(property, ".") {
-				propertyStruct := spec.RetrieveNestedProperty(property)
-				properties = propertyStruct
+				spec.RetrieveNestedProperty(properties, property)
 			} else {
 				properties[property] = spec.RetrievePropertyDefault(property)
 			}
@@ -46,10 +45,8 @@ func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []bc.JobIns
 		// Override default spec values with explicit settings from the
 		// current bosh deployment manifest, this should be done under each
 		// job, inside a `properties` key.
-		for propertyName := range properties {
-			if explicitSetting, ok := job.Property(propertyName); ok {
-				properties[propertyName] = explicitSetting
-			}
+		for _, propertyName := range link.Properties {
+			mergeNestedExplicitProperty(properties, job, propertyName)
 		}
 		linkName := link.Name
 		linkType := link.Type
@@ -445,26 +442,31 @@ func (job Job) Property(propertyName string) (interface{}, bool) {
 	return pointer, true
 }
 
-// RetrieveNestedProperty will generate an nested struct
-// based on a string of the type foo.bar
-func (js JobSpec) RetrieveNestedProperty(propertyName string) map[string]interface{} {
-	var anStruct map[string]interface{}
-	var previous map[string]interface{}
+// RetrieveNestedProperty will generate a nested struct
+// based on a string of the type foo.bar in the provided map
+// It overrides existing property paths that are not of the correct type.
+func (js JobSpec) RetrieveNestedProperty(properties map[string]interface{}, propertyName string) {
 	items := strings.Split(propertyName, ".")
-	for i := len(items) - 1; i >= 0; i-- {
-		if i == (len(items) - 1) {
-			previous = map[string]interface{}{
-				items[i]: js.RetrievePropertyDefault(propertyName),
-			}
-		} else {
-			anStruct = map[string]interface{}{
-				items[i]: previous,
-			}
-			previous = anStruct
+	currentLevel := properties
 
+	for idx, gram := range items {
+		if idx == len(items)-1 {
+			currentLevel[gram] = js.RetrievePropertyDefault(propertyName)
+			return
 		}
+
+		// Path doesn't exist, create it
+		if _, ok := currentLevel[gram]; !ok {
+			currentLevel[gram] = map[string]interface{}{}
+		}
+
+		// This is not the leaf, and we must make sure we have a map
+		if _, ok := currentLevel[gram].(map[string]interface{}); !ok {
+			currentLevel[gram] = map[string]interface{}{}
+		}
+
+		currentLevel = currentLevel[gram].(map[string]interface{})
 	}
-	return anStruct
 }
 
 // RetrievePropertyDefault return the default value of the spec property
@@ -486,6 +488,34 @@ func lookUpJobRelease(releases []*Release, jobRelease string) bool {
 	}
 
 	return false
+}
+
+// mergeNestedExplicitProperty merges an explicitly set Job property into an existing
+// map of properties
+func mergeNestedExplicitProperty(properties map[string]interface{}, job Job, propertyName string) {
+	items := strings.Split(propertyName, ".")
+	currentLevel := properties
+
+	for idx, gram := range items {
+		if idx == len(items)-1 {
+			if value, ok := job.Property(propertyName); ok {
+				currentLevel[gram] = value
+			}
+			return
+		}
+
+		// Path doesn't exist, create it
+		if _, ok := currentLevel[gram]; !ok {
+			currentLevel[gram] = map[string]interface{}{}
+		}
+
+		// This is not the leaf, and we must make sure we have a map
+		if _, ok := currentLevel[gram].(map[string]interface{}); !ok {
+			currentLevel[gram] = map[string]interface{}{}
+		}
+
+		currentLevel = currentLevel[gram].(map[string]interface{})
+	}
 }
 
 // mergeBPMProcesses will return new processes slice which be overwritten with preset processes
