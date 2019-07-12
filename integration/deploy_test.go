@@ -443,7 +443,6 @@ var _ = Describe("Deploy", func() {
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment("test", "manifest", "bosh-ops", "bosh-ops-secret"))
 			Expect(err).To(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-			Expect(err.Error()).To(ContainSubstring(`Expected to find exactly one matching array item for path '/instance_groups/name=api' but found 0`))
 			Expect(err.Error()).To(ContainSubstring(`admission webhook "validate-boshdeployment.fissile.cloudfoundry.org" denied the request:`))
 		})
 
@@ -502,6 +501,56 @@ var _ = Describe("Deploy", func() {
 			Expect(err.Error()).To(ContainSubstring("spec.ops.ref in body should be at least 1 chars long"))
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 		})
+
+		It("failed to deploy due to a not existing ops ref", func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			// use a not created configmap name, so that we will hit errors while resources do not exist.
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeploymentWithOps("test", "manifest", "bosh-ops-unknown"))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Timeout reached. Resource bosh-ops-unknown does not exist"))
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+		})
+
+		It("failed to deploy if the ops resource is not available before timeout", func(done Done) {
+			ch := make(chan environment.ChanResult)
+
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			go env.CreateBOSHDeploymentUsingChan(ch, env.Namespace, env.DefaultBOSHDeploymentWithOps("test", "manifest", "bosh-ops"))
+
+			time.Sleep(8 * time.Second)
+
+			// Generate the right ops resource, so that the above goroutine will not end in error
+			tearDown, err = env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops"))
+			Expect(err).NotTo(HaveOccurred())
+
+			chanReceived := <-ch
+			Expect(chanReceived.Error).To(HaveOccurred())
+			close(done)
+		}, 10)
+
+		It("does not failed to deploy if the ops ref is created on time", func(done Done) {
+			ch := make(chan environment.ChanResult)
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			go env.CreateBOSHDeploymentUsingChan(ch, env.Namespace, env.DefaultBOSHDeploymentWithOps("test", "manifest", "bosh-ops"))
+
+			// Generate the right ops resource, so that the above goroutine will not end in error
+			tearDown, err = env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			chanReceived := <-ch
+			Expect(chanReceived.Error).NotTo(HaveOccurred())
+			close(done)
+		}, 5)
 	})
 
 	Context("when the BOSHDeployment cannot be resolved", func() {

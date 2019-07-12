@@ -38,6 +38,12 @@ type Machine struct {
 // TearDownFunc tears down the resource
 type TearDownFunc func() error
 
+// ChanResult holds different fields that can be
+// sent through a channel
+type ChanResult struct {
+	Error error
+}
+
 // CreateNamespace creates a namespace, it doesn't return an error if the namespace exists
 func (m *Machine) CreateNamespace(namespace string) (TearDownFunc, error) {
 	client := m.Clientset.CoreV1().Namespaces()
@@ -577,6 +583,15 @@ func (m *Machine) DeleteSecrets(namespace string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// CreateBOSHDeploymentUsingChan creates a BOSHDeployment custom resource and returns an error via a channel
+func (m *Machine) CreateBOSHDeploymentUsingChan(outputChannel chan ChanResult, namespace string, deployment bdv1.BOSHDeployment) {
+	client := m.VersionedClientset.BoshdeploymentV1alpha1().BOSHDeployments(namespace)
+	_, err := client.Create(&deployment)
+	outputChannel <- ChanResult{
+		Error: err,
+	}
 }
 
 // CreateBOSHDeployment creates a BOSHDeployment custom resource and returns a function to delete it
