@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	//. "github.com/onsi/gomega/gstruct"
+	"github.com/go-test/deep"
 	"go.uber.org/zap"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
@@ -168,7 +168,7 @@ var _ = Describe("DataGatherer", func() {
 					jobConsumesFromDoppler, consumeFromDopplerExists := jobBoshContainerizationConsumes["doppler"]
 					Expect(consumeFromDopplerExists).To(BeTrue())
 					expectedProperties := map[string]interface{}{
-						"doppler": map[interface{}]interface{}{
+						"doppler": map[string]interface{}{
 							"grpc_port": 7765,
 						},
 						"fooprop": 10001,
@@ -178,7 +178,8 @@ var _ = Describe("DataGatherer", func() {
 						Expect(instance.Address).To(Equal(fmt.Sprintf("cf-doppler-%v.default.svc.cluster.local", i)))
 						Expect(instance.ID).To(Equal(fmt.Sprintf("doppler-%v-doppler", i)))
 					}
-					Expect(jobConsumesFromDoppler.Properties).To(BeEquivalentTo(expectedProperties))
+
+					Expect(deep.Equal(jobConsumesFromDoppler.Properties, expectedProperties)).To(HaveLen(0))
 				})
 
 				It("has an empty consumes list if the job does not consume a link", func() {

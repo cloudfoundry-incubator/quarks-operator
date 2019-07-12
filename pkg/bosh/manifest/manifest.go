@@ -143,6 +143,7 @@ func LoadYAML(data []byte) (*Manifest, error) {
 	return m, nil
 }
 
+// Marshal serializes a Manifest into yaml
 func (m *Manifest) Marshal() ([]byte, error) {
 	return yaml.Marshal(m)
 }
