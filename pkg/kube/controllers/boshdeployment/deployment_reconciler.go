@@ -200,9 +200,11 @@ func (r *ReconcileBOSHDeployment) createEJob(ctx context.Context, instance *bdv1
 
 	op, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
 		if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
-			eJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
-			eJob.Spec.Trigger.Strategy = existingEJob.Spec.Trigger.Strategy
-			eJob.DeepCopyInto(existingEJob)
+			if shouldEJobUpdate(existingEJob, eJob) {
+				eJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
+				eJob.Spec.Trigger.Strategy = existingEJob.Spec.Trigger.Strategy
+				eJob.DeepCopyInto(existingEJob)
+			}
 			return nil
 		}
 		return fmt.Errorf("object is not an ExtendedJob")
@@ -211,4 +213,28 @@ func (r *ReconcileBOSHDeployment) createEJob(ctx context.Context, instance *bdv1
 	log.Debugf(ctx, "ExtendedJob '%s' has been %s", eJob.Name, op)
 
 	return err
+}
+
+// shouldEJobUpdate determine if EJob should be updated
+func shouldEJobUpdate(oldEJob, newEJob *ejv1.ExtendedJob) bool {
+	if !reflect.DeepEqual(oldEJob.Labels, newEJob.Labels) {
+		return true
+	}
+	if !reflect.DeepEqual(oldEJob.Annotations, newEJob.Annotations) {
+		return true
+	}
+	if !reflect.DeepEqual(oldEJob.Spec.Output, newEJob.Spec.Output) {
+		return true
+	}
+	if !reflect.DeepEqual(oldEJob.Spec.Template, newEJob.Spec.Template) {
+		return true
+	}
+	if !reflect.DeepEqual(oldEJob.Spec.Trigger.PodState, newEJob.Spec.Trigger.PodState) {
+		return true
+	}
+	if oldEJob.Spec.UpdateOnConfigChange != newEJob.Spec.UpdateOnConfigChange {
+		return true
+	}
+
+	return false
 }

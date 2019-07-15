@@ -133,7 +133,7 @@ var _ = Describe("Examples", func() {
 
 			When("restarting operator", func() {
 				It("should not create unexpected resources", func() {
-					yamlFilePath := examplesDir + "bosh-deployment/boshdeployment.yaml"
+					yamlFilePath := examplesDir + "bosh-deployment/boshdeployment-with-custom-variable.yaml"
 
 					By("Creating bosh deployment")
 					kubectlHelper := testing.NewKubectl()
@@ -152,7 +152,7 @@ var _ = Describe("Examples", func() {
 
 					By("Checking for pods not created")
 					err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v2-0")
-					Expect(err).To(HaveOccurred(), "error unexpected new version of instance group is created")
+					Expect(err).To(HaveOccurred(), "error unexpected version of instance group is created")
 
 					By("Checking for secrets not created")
 					exist, err := kubectlHelper.SecretExists(namespace, "nats-deployment.bpm.nats-v2")
