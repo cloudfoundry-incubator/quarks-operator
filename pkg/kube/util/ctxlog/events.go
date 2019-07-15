@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -67,7 +68,7 @@ func NewMappingEvent(object runtime.Object) MappingEvent {
 
 // Debug is used for predicate logging in the controllers
 func (ev PredicateEvent) Debug(ctx context.Context, meta metav1.Object, resource string, msg string) {
-	ev.DebugJSON(
+	ev.debugJSON(
 		ctx,
 		ReconcileEventsFromSource{
 			ReconciliationObjectName: meta.GetName(),
@@ -83,7 +84,7 @@ func (ev PredicateEvent) Debug(ctx context.Context, meta metav1.Object, resource
 
 // Debug is used for logging in EnqueueRequestsFromMapFunc
 func (ev MappingEvent) Debug(ctx context.Context, reconciliation reconcile.Request, crd string, objName string, objType string) {
-	ev.DebugJSON(
+	ev.debugJSON(
 		ctx,
 		ReconcileEventsFromSource{
 			ReconciliationObjectName: reconciliation.Name,
@@ -97,8 +98,8 @@ func (ev MappingEvent) Debug(ctx context.Context, reconciliation reconcile.Reque
 	)
 }
 
-// DebugJSON logs a message and adds an info event in json format
-func (ev Event) DebugJSON(ctx context.Context, objectInfo interface{}) {
+// debugJSON logs a message and adds an info event in json format
+func (ev Event) debugJSON(ctx context.Context, objectInfo interface{}) {
 	jsonData, _ := json.Marshal(objectInfo)
 	recorder := ExtractRecorder(ctx)
 	recorder.Event(ev.object, corev1.EventTypeNormal, ev.reason, string(jsonData))
@@ -107,28 +108,23 @@ func (ev Event) DebugJSON(ctx context.Context, objectInfo interface{}) {
 	var result map[string]string
 	json.Unmarshal([]byte(jsonData), &result)
 	if msg, ok := result["message"]; ok {
-		log := ExtractLogger(ctx)
+		log := ExtractLoggerWithOptions(ctx, zap.AddCallerSkip(1))
 		log.Debug(msg)
 	}
 }
 
 // Debugf logs and adds an info event
 func (ev Event) Debugf(ctx context.Context, format string, v ...interface{}) {
-	log := ExtractLogger(ctx)
+	log := ExtractLoggerWithOptions(ctx, zap.AddCallerSkip(1))
 	log.Debugf(format, v...)
 
 	recorder := ExtractRecorder(ctx)
 	recorder.Eventf(ev.object, corev1.EventTypeNormal, ev.reason, format, v...)
 }
 
-// GenReconcilePredicatesObject ...
-func GenReconcilePredicatesObject(ns string, t string, msg string, rKind string, pKind string) ReconcileEventsFromSource {
-	return ReconcileEventsFromSource{}
-}
-
 // Infof logs and adds an info event
 func (ev Event) Infof(ctx context.Context, format string, v ...interface{}) {
-	log := ExtractLogger(ctx)
+	log := ExtractLoggerWithOptions(ctx, zap.AddCallerSkip(1))
 	log.Infof(format, v...)
 
 	recorder := ExtractRecorder(ctx)
@@ -156,7 +152,7 @@ func (ev Event) Error(ctx context.Context, parts ...interface{}) error {
 }
 
 func (ev Event) logAndError(ctx context.Context, msg string) error {
-	log := ExtractLogger(ctx)
+	log := ExtractLoggerWithOptions(ctx, zap.AddCallerSkip(1))
 	log.Error(msg)
 
 	recorder := ExtractRecorder(ctx)

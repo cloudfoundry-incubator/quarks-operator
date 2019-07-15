@@ -34,6 +34,12 @@ func NewContextWithRecorder(ctx context.Context, name string, recorder record.Ev
 	return context.WithValue(ctx, ctxLoggerKey, log)
 }
 
+// ExtractLoggerWithOptions returns a logger with different options than the parent
+func ExtractLoggerWithOptions(ctx context.Context, options ...zap.Option) *zap.SugaredLogger {
+	log := ExtractLogger(ctx)
+	return log.Desugar().WithOptions(options...).Sugar()
+}
+
 // ExtractLogger returns the logger from the context
 func ExtractLogger(ctx context.Context) *zap.SugaredLogger {
 	log, ok := ctx.Value(ctxLoggerKey).(*zap.SugaredLogger)
