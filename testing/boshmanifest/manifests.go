@@ -686,6 +686,7 @@ instance_groups:
                     - linux
                     - darwin
   persistent_disk: 10
+  persistent_disk_type: ((operator_test_storage_class))
 - name: bpm2
   instances: 2
   jobs:
@@ -717,6 +718,7 @@ instance_groups:
                     - bpm2
                 topologyKey: beta.kubernetes.io/os
   persistent_disk: 10
+  persistent_disk_type: ((operator_test_storage_class))
 - name: bpm3
   instances: 2
   jobs:
@@ -750,4 +752,5 @@ instance_groups:
                         - bpm3
                     topologyKey: beta.kubernetes.io/os
   persistent_disk: 10
+  persistent_disk_type: ((operator_test_storage_class))
 `
