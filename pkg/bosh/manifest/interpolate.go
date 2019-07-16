@@ -46,10 +46,11 @@ func InterpolateVariables(log *zap.SugaredLogger, boshManifestBytes []byte, vari
 						log.Fatal(errors.Wrapf(err, "could not read variables variable"))
 					}
 
-					// Find variable type is password, set password value directly
-					if varFileName == "password" {
+					// If variable type is password, set password value directly
+					switch varFileName {
+					case "password":
 						staticVars[variable.Name()] = string(varBytes)
-					} else {
+					default:
 						staticVars[variable.Name()] = mergeStaticVar(staticVars[variable.Name()], varFileName, string(varBytes))
 					}
 				}

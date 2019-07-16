@@ -5,6 +5,7 @@ package manifest
 import (
 	"crypto/sha1"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -219,4 +220,40 @@ func (m *Manifest) InstanceGroupByName(name string) (*InstanceGroup, error) {
 	}
 
 	return nil, errors.Errorf("can't find instance group '%s' in manifest", name)
+}
+
+// ImplicitVariables returns a list of all implicit variables in a manifest
+func (m *Manifest) ImplicitVariables() ([]string, error) {
+	varMap := make(map[string]bool)
+
+	manifestBytes, err := m.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	rawManifest := string(manifestBytes)
+
+	// Collect all variables
+	varRegexp := regexp.MustCompile(`\(\((!?[-/\.\w\pL]+)\)\)`)
+	for _, match := range varRegexp.FindAllStringSubmatch(rawManifest, -1) {
+		// Remove subfields from the match, e.g. ca.private_key -> ca
+		fieldRegexp := regexp.MustCompile(`[^\.]+`)
+		main := fieldRegexp.FindString(match[1])
+
+		varMap[main] = true
+	}
+
+	// Remove the explicit ones
+	for _, v := range m.Variables {
+		varMap[v.Name] = false
+	}
+
+	names := []string{}
+	for k, v := range varMap {
+		if v {
+			names = append(names, k)
+		}
+	}
+
+	return names, nil
 }

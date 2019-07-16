@@ -22,7 +22,7 @@ var _ = Describe("DeployWithStorage", func() {
 			storageClass, ok := os.LookupEnv("OPERATOR_TEST_STORAGE_CLASS")
 			Expect(ok).To(Equal(true))
 
-			tearDown, err := env.CreateSecret(env.Namespace, env.StorageClassSecret("test-bdpl.var-implicit-operator-test-storage-class", storageClass))
+			tearDown, err := env.CreateSecret(env.Namespace, env.StorageClassSecret("test-bdpl.var-operator-test-storage-class", storageClass))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
@@ -74,7 +74,7 @@ var _ = Describe("DeployWithStorage", func() {
 			storageClass, ok := os.LookupEnv("OPERATOR_TEST_STORAGE_CLASS")
 			Expect(ok).To(Equal(true))
 
-			tearDown, err := env.CreateSecret(env.Namespace, env.StorageClassSecret("bpm-affinity.var-implicit-operator-test-storage-class", storageClass))
+			tearDown, err := env.CreateSecret(env.Namespace, env.StorageClassSecret("bpm-affinity.var-operator-test-storage-class", storageClass))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 

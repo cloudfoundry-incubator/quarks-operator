@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -81,23 +80,8 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 		return manifest, errors.Wrapf(err, "failed to unmarshal manifest")
 	}
 
-	// Interpolate implicit variables
-	vars := r.implicitVariables(manifest, m)
-	for _, v := range vars {
-		varData, err := r.resourceData(namespace, bdc.SecretType, names.CalculateSecretName(names.DeploymentSecretTypeImplicitVariable, instance.GetName(), v), bdc.ImplicitVariableKeyName)
-		if err != nil {
-			return manifest, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
-		}
-
-		m = strings.Replace(m, fmt.Sprintf("((%s))", v), varData, -1)
-	}
-
-	// Interpolate manifest with ops if exist
+	// Interpolate manifest with ops
 	ops := spec.Ops
-	if len(ops) == 0 {
-		manifest, err := LoadYAML([]byte(m))
-		return manifest, err
-	}
 
 	for _, op := range ops {
 		opsData, err := r.resourceData(namespace, op.Type, op.Ref, bdc.OpsSpecName)
@@ -110,12 +94,40 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 		}
 	}
 
-	bytes, err := interpolator.Interpolate([]byte(m))
-	if err != nil {
-		return manifest, errors.Wrapf(err, "failed to interpolate %#v", m)
+	bytes := []byte(m)
+	if len(ops) != 0 {
+		bytes, err = interpolator.Interpolate([]byte(m))
+		if err != nil {
+			return manifest, errors.Wrapf(err, "failed to interpolate %#v", m)
+		}
 	}
 
+	// Reload the manifest after interpolation, and apply implicit variables
 	manifest, err = LoadYAML(bytes)
+	if err != nil {
+		return manifest, errors.Wrapf(err, "failed to load yaml after applying ops %#v", m)
+	}
+	m = string(bytes)
+
+	// Interpolate implicit variables
+	vars, err := manifest.ImplicitVariables()
+	if err != nil {
+		return manifest, errors.Wrapf(err, "failed to list implicit variables")
+	}
+
+	for _, v := range vars {
+		varData, err := r.resourceData(namespace, bdc.SecretType, names.CalculateSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), v), bdc.ImplicitVariableKeyName)
+		if err != nil {
+			return manifest, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
+		}
+
+		m = strings.Replace(m, fmt.Sprintf("((%s))", v), varData, -1)
+	}
+
+	manifest, err = LoadYAML([]byte(m))
+	if err != nil {
+		return manifest, errors.Wrapf(err, "failed to load yaml after interpolating implicit variables %#v", m)
+	}
 
 	return manifest, err
 }
@@ -164,33 +176,4 @@ func (r *Resolver) resourceData(namespace string, resType string, name string, k
 	}
 
 	return data, nil
-}
-
-// implicitVariables returns a list of all implicit variables in a manifest
-func (r *Resolver) implicitVariables(m *Manifest, rawManifest string) []string {
-	varMap := make(map[string]bool)
-
-	// Collect all variables
-	varRegexp := regexp.MustCompile(`\(\((!?[-/\.\w\pL]+)\)\)`)
-	for _, match := range varRegexp.FindAllStringSubmatch(rawManifest, -1) {
-		// Remove subfields from the match, e.g. ca.private_key -> ca
-		fieldRegexp := regexp.MustCompile(`[^\.]+`)
-		main := fieldRegexp.FindString(match[1])
-
-		varMap[main] = true
-	}
-
-	// Remove the explicit ones
-	for _, v := range m.Variables {
-		varMap[v.Name] = false
-	}
-
-	names := []string{}
-	for k, v := range varMap {
-		if v {
-			names = append(names, k)
-		}
-	}
-
-	return names
 }

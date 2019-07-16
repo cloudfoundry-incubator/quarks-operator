@@ -81,7 +81,10 @@ var _ = Describe("JobFactory", func() {
 			for _, p := range podSpec.Containers[0].VolumeMounts {
 				mountPaths = append(mountPaths, p.MountPath)
 			}
-			Expect(mountPaths).To(ConsistOf("/var/run/secrets/deployment/", "/var/run/secrets/variables/adminpass"))
+			Expect(mountPaths).To(ConsistOf(
+				"/var/run/secrets/deployment/",
+				"/var/run/secrets/variables/adminpass",
+			))
 		})
 	})
 })
