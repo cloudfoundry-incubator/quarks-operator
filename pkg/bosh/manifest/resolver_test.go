@@ -126,7 +126,7 @@ variables:
 			},
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-deployment.var-implicit-system-domain",
+					Name:      "foo-deployment.var-system-domain",
 					Namespace: "default",
 				},
 				Data: map[string][]byte{"value": []byte("example.com")},

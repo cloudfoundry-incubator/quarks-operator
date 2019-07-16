@@ -1,32 +1,32 @@
 # Transforming BOSH concepts to Kubernetes
 
-- [Transforming BOSH concepts to Kubernetes](#transforming-bosh-concepts-to-kubernetes)
-  - [Open Questions](#open-questions)
-  - [Missing Features](#missing-features)
-  - [High-level Direction](#high-level-direction)
-  - [Deployment Lifecycle](#deployment-lifecycle)
-  - [Example Deployment Manifest Conversion Details](#example-deployment-manifest-conversion-details)
-  - [BPM](#bpm)
-    - [Entrypoint & Environment Variables](#entrypoint--environment-variables)
-    - [Resources](#resources)
-    - [Health checks](#health-checks)
-    - [Hooks](#hooks)
-  - [Conversion Details](#conversion-details)
-    - [Calculation of docker image location for releases](#calculation-of-docker-image-location-for-releases)
-    - [Variables to Extended Secrets](#variables-to-extended-secrets)
-    - [Instance Groups to Extended StatefulSets and Jobs](#instance-groups-to-extended-statefulsets-and-jobs)
-      - [BOSH Services vs BOSH Errands](#bosh-services-vs-bosh-errands)
-  - [Miscellaneous](#miscellaneous)
-    - [Dealing with AZs](#dealing-with-azs)
-    - [Support for active/passive pod replicas](#support-for-activepassive-pod-replicas)
-    - [Ephemeral Disks](#ephemeral-disks)
-    - [Credentials for Docker Registries](#credentials-for-docker-registries)
-    - [Running manual errands](#running-manual-errands)
-    - [Readiness and Liveness Probes](#readiness-and-liveness-probes)
-    - [Persistent Disks](#persistent-disks)
-    - [Manual ("implicit") variables](#manual-%22implicit%22-variables)
-  - [Flow](#flow)
-  - [Naming Conventions](#naming-conventions)
+- [Transforming BOSH concepts to Kubernetes](#Transforming-BOSH-concepts-to-Kubernetes)
+  - [Open Questions](#Open-Questions)
+  - [Missing Features](#Missing-Features)
+  - [High-level Direction](#High-level-Direction)
+  - [Deployment Lifecycle](#Deployment-Lifecycle)
+  - [Example Deployment Manifest Conversion Details](#Example-Deployment-Manifest-Conversion-Details)
+  - [BPM](#BPM)
+    - [Entrypoint & Environment Variables](#Entrypoint--Environment-Variables)
+    - [Resources](#Resources)
+    - [Health checks](#Health-checks)
+    - [Hooks](#Hooks)
+  - [Conversion Details](#Conversion-Details)
+    - [Calculation of docker image location for releases](#Calculation-of-docker-image-location-for-releases)
+    - [Variables to Extended Secrets](#Variables-to-Extended-Secrets)
+    - [Instance Groups to Extended StatefulSets and Jobs](#Instance-Groups-to-Extended-StatefulSets-and-Jobs)
+      - [BOSH Services vs BOSH Errands](#BOSH-Services-vs-BOSH-Errands)
+  - [Miscellaneous](#Miscellaneous)
+    - [Dealing with AZs](#Dealing-with-AZs)
+    - [Support for active/passive pod replicas](#Support-for-activepassive-pod-replicas)
+    - [Ephemeral Disks](#Ephemeral-Disks)
+    - [Credentials for Docker Registries](#Credentials-for-Docker-Registries)
+    - [Running manual errands](#Running-manual-errands)
+    - [Readiness and Liveness Probes](#Readiness-and-Liveness-Probes)
+    - [Persistent Disks](#Persistent-Disks)
+    - [Manual ("implicit") variables](#Manual-%22implicit%22-variables)
+  - [Flow](#Flow)
+  - [Naming Conventions](#Naming-Conventions)
 
 ## Open Questions
 
@@ -339,17 +339,17 @@ The following subsections describe the mapping of BPM configuration into contain
 
 ### Resources
 
-| Bosh                          | Kube Pod Container                                              |
-| ----------------------------- | --------------------------------------------------------------- |
-| `workdir`                     | `workingDir`. Not implemented yet.                              |
-| `hooks`                       | `initContainers`. and container hooks. Not implemented yet.     |
-| `process.capabilities`        | `container.SecurityContext.Capabilities`.                       |
-| `limits`                      | `container.Resources.Limits`. Not implemented yet.              |
-| `ephemeral_disk`              | `emptyDir`. volumes.                                            |
-| `persistent_disk`             | `PersistentVolumeClaims`. Not yet implemented.                  |
-| `additional_volumes`          | `emptyDir`. Paths under /var/vcap/store are currently ignored.  |
-| `unsafe.unrestricted_volumes` | `emptyDir`. Paths under /var/vcap/store are currently ignored.  |
-| `unsafe.privileged`           | `container.SecurityContext.Privileged`.                         |
+| Bosh                          | Kube Pod Container                                             |
+| ----------------------------- | -------------------------------------------------------------- |
+| `workdir`                     | `workingDir`. Not implemented yet.                             |
+| `hooks`                       | `initContainers`. and container hooks. Not implemented yet.    |
+| `process.capabilities`        | `container.SecurityContext.Capabilities`.                      |
+| `limits`                      | `container.Resources.Limits`. Not implemented yet.             |
+| `ephemeral_disk`              | `emptyDir`. volumes.                                           |
+| `persistent_disk`             | `PersistentVolumeClaims`. Not yet implemented.                 |
+| `additional_volumes`          | `emptyDir`. Paths under /var/vcap/store are currently ignored. |
+| `unsafe.unrestricted_volumes` | `emptyDir`. Paths under /var/vcap/store are currently ignored. |
+| `unsafe.privileged`           | `container.SecurityContext.Privileged`.                        |
 
 ### Health checks
 
@@ -494,7 +494,7 @@ BOSH deployment manifests support two different types of variables, implicit and
 "Implicit" variables just appear in the document within double parentheses without any declaration. These variables have to be provided by the user prior to creating the BOSH deployment. The variables have to be provided as a secret with the `value` key holding the variable content. The secret name has to follow the scheme
 
 ```text
-<deployment-name>.var-implicit-<variable-name>
+<deployment-name>.var-<variable-name>
 ```
 
 Example:
@@ -504,7 +504,7 @@ Example:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: nats-deployment.var-implicit-system-domain
+  name: nats-deployment.var-system-domain
 type: Opaque
 stringData:
   value: example.com

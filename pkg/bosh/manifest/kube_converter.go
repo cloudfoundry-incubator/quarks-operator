@@ -24,7 +24,7 @@ func (kc *KubeConverter) Variables(manifestName string, variables []Variable) []
 	secrets := []esv1.ExtendedSecret{}
 
 	for _, v := range variables {
-		secretName := names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, manifestName, v.Name)
+		secretName := names.CalculateSecretName(names.DeploymentSecretTypeVariable, manifestName, v.Name)
 		s := esv1.ExtendedSecret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
@@ -47,11 +47,11 @@ func (kc *KubeConverter) Variables(manifestName string, variables []Variable) []
 			}
 			if v.Options.CA != "" {
 				certRequest.CARef = esv1.SecretReference{
-					Name: names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, manifestName, v.Options.CA),
+					Name: names.CalculateSecretName(names.DeploymentSecretTypeVariable, manifestName, v.Options.CA),
 					Key:  "certificate",
 				}
 				certRequest.CAKeyRef = esv1.SecretReference{
-					Name: names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, manifestName, v.Options.CA),
+					Name: names.CalculateSecretName(names.DeploymentSecretTypeVariable, manifestName, v.Options.CA),
 					Key:  "private_key",
 				}
 			}
