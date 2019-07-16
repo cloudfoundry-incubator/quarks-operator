@@ -310,6 +310,53 @@ var _ = Describe("Deploy", func() {
 		})
 	})
 
+	Context("when updating a deployemnt with multiple instance groups", func() {
+		It("it should only update correctly and have correct secret versions in volume mounts", func() {
+
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMapWithTwoInstanceGroups("fooconfigmap"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test", "fooconfigmap"))
+			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			By("checking for nats instance group pods")
+			err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "1", 2)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
+
+			By("checking for route_registrar instance group pods")
+			err = env.WaitForInstanceGroup(env.Namespace, "test", "route_registrar", "1", 2)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
+
+			By("Updating the deployment")
+			cm, err := env.GetConfigMap(env.Namespace, "fooconfigmap")
+			Expect(err).NotTo(HaveOccurred())
+			cm.Data["manifest"] = strings.Replace(cm.Data["manifest"], "changeme", "dont", -1)
+			_, _, err = env.UpdateConfigMap(env.Namespace, *cm)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("checking for updated nats instance group pods")
+			err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "2", 2)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
+
+			By("checking for updated route_registrar instance group pods")
+			err = env.WaitForInstanceGroup(env.Namespace, "test", "route_registrar", "2", 2)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
+
+			By("Checking volume mounts with secret versions")
+			pod, err := env.GetPod(env.Namespace, "test-nats-v2-1")
+			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal("test.desired-manifest-v2"))
+			Expect(pod.Spec.Volumes[5].Secret.SecretName).To(Equal("test.ig-resolved.nats-v2"))
+			Expect(pod.Spec.InitContainers[1].VolumeMounts[2].Name).To(Equal("ig-resolved"))
+
+			pod, err = env.GetPod(env.Namespace, "test-route-registrar-v2-0")
+			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal("test.desired-manifest-v2"))
+			Expect(pod.Spec.Volumes[5].Secret.SecretName).To(Equal("test.ig-resolved.route-registrar-v2"))
+			Expect(pod.Spec.InitContainers[1].VolumeMounts[2].Name).To(Equal("ig-resolved"))
+		})
+	})
+
 	Context("when using a custom reconciler configuration", func() {
 		It("should use the context timeout (1ns)", func() {
 			env.Config.CtxTimeOut = 1 * time.Nanosecond

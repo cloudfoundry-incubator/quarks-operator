@@ -219,6 +219,16 @@ func (c *Catalog) InterpolateOpsConfigMap(name string) corev1.ConfigMap {
 	}
 }
 
+// BOSHManifestConfigMapWithTwoInstanceGroups for tests
+func (c *Catalog) BOSHManifestConfigMapWithTwoInstanceGroups(name string) corev1.ConfigMap {
+	return corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Data: map[string]string{
+			"manifest": bm.BOSHManifestWithTwoInstanceGroups,
+		},
+	}
+}
+
 // InterpolateOpsSecret for ops interpolate secret tests
 func (c *Catalog) InterpolateOpsSecret(name string) corev1.Secret {
 	return corev1.Secret{
