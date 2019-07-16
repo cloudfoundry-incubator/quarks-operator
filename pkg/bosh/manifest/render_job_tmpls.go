@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,7 +18,18 @@ import (
 // RenderJobTemplates will render templates for all jobs of the instance group
 // https://bosh.io/docs/create-release/#job-specs
 // boshManifest is a resolved manifest for a single instance group
-func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir string, instanceGroupName string, specIndex int) error {
+func RenderJobTemplates(
+	boshManifestPath string,
+	jobsDir string,
+	jobsOutputDir string,
+	instanceGroupName string,
+	specIndex int,
+	podIP net.IP,
+) error {
+
+	if podIP == nil {
+		return fmt.Errorf("the pod IP is empty")
+	}
 
 	// Loading deployment manifest file
 	resolvedYML, err := ioutil.ReadFile(boshManifestPath)
@@ -83,6 +95,7 @@ func RenderJobTemplates(boshManifestPath string, jobsDir string, jobsOutputDir s
 						Bootstrap: currentJobInstance.Index == 0,
 						ID:        currentJobInstance.ID,
 						Index:     currentJobInstance.Index,
+						IP:        podIP.String(),
 						Name:      currentJobInstance.Name,
 					},
 
