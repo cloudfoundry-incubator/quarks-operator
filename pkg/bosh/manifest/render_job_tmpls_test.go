@@ -2,6 +2,7 @@ package manifest_test
 
 import (
 	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
 
@@ -17,17 +18,39 @@ var _ = Describe("Trender", func() {
 		jobsDir            string
 		instanceGroupName  string
 		index              int
+		podIP              net.IP
 	)
 
-	Context("When flag values and manifest file are specified", func() {
+	Context("when podIP is nil", func() {
+		BeforeEach(func() {
+			deploymentManifest = "../../../testing/assets/ig-resolved.mysql-v1.yml"
+			jobsDir = "../../../testing/assets"
+			instanceGroupName = "mysql0"
+			index = 0
+			podIP = nil
+		})
+
+		act := func() error {
+			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP)
+		}
+
+		It("fails", func() {
+			err := act()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("the pod IP is empty"))
+		})
+	})
+
+	Context("when flag values and manifest file are specified", func() {
 		BeforeEach(func() {
 			deploymentManifest = "../../../testing/assets/gatherManifest.yml"
 			jobsDir = "../../../testing/assets"
 			instanceGroupName = "log-api"
+			podIP = net.ParseIP("172.17.0.13")
 		})
 
 		act := func() error {
-			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index)
+			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP)
 		}
 
 		Context("with an invalid instance index", func() {
@@ -82,6 +105,7 @@ var _ = Describe("Trender", func() {
 			jobsDir = "../../../testing/assets"
 			instanceGroupName = "mysql0"
 			index = 0
+			podIP = net.ParseIP("172.17.0.13")
 		})
 
 		AfterEach(func() {
@@ -90,7 +114,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		It("renders the job erb files correctly", func() {
-			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index)
+			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP)
 			Expect(err).ToNot(HaveOccurred())
 
 			drainFile := filepath.Join(jobsDir, "pxc-mysql", "bin/drain")

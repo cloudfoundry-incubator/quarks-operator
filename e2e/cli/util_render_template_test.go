@@ -29,7 +29,15 @@ var _ = Describe("render-template", func() {
 	})
 
 	act := func(manifestPath string) (session *gexec.Session, err error) {
-		args := []string{"util", "template-render", "-m", manifestPath, "-j", assetPath, "-g", "log-api", "--spec-index", "0", "-d", tmpDir}
+		args := []string{
+			"util", "template-render",
+			"-m", manifestPath,
+			"-j", assetPath,
+			"-g", "log-api",
+			"--spec-index", "0",
+			"-d", tmpDir,
+			"--pod-ip", "10.10.50.50",
+		}
 		cmd := exec.Command(cliPath, args...)
 		session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 		return

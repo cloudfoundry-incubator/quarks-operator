@@ -291,6 +291,14 @@ func templateRenderingContainer(instanceGroupName string, secretName string) cor
 				Name:  EnvJobsDir,
 				Value: VolumeRenderingDataMountPath,
 			},
+			{
+				Name: PodIPEnvVar,
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "status.podIP",
+					},
+				},
+			},
 		},
 		Command: []string{
 			"/bin/sh",
