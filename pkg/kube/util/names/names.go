@@ -22,12 +22,10 @@ const (
 	DeploymentSecretTypeManifestWithOps DeploymentSecretType = iota
 	// DeploymentSecretTypeManifestAndVars is a manifest whose variables have been interpolated
 	DeploymentSecretTypeManifestAndVars
-	// DeploymentSecretTypeGeneratedVariable is a BOSH variable generated using an ExtendedSecret
-	DeploymentSecretTypeGeneratedVariable
+	// DeploymentSecretTypeVariable is a BOSH variable generated using an ExtendedSecret
+	DeploymentSecretTypeVariable
 	// DeploymentSecretTypeInstanceGroupResolvedProperties is a YAML file containing all properties needed to render an Instance Group
 	DeploymentSecretTypeInstanceGroupResolvedProperties
-	// DeploymentSecretTypeImplicitVariable is a BOSH variable provided by the user as a Secret
-	DeploymentSecretTypeImplicitVariable
 	// DeploymentSecretBpmInformation is a YAML file containing the BPM information for one instance group
 	DeploymentSecretBpmInformation
 )
@@ -38,7 +36,6 @@ func (s DeploymentSecretType) String() string {
 		"with-vars",
 		"var",
 		"ig-resolved",
-		"var-implicit",
 		"bpm"}[s]
 }
 

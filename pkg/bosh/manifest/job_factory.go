@@ -83,7 +83,7 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 	// We need a volume and a mount for each input variable
 	for _, variable := range f.Manifest.Variables {
 		varName := variable.Name
-		varSecretName := names.CalculateSecretName(names.DeploymentSecretTypeGeneratedVariable, f.Manifest.Name, varName)
+		varSecretName := names.CalculateSecretName(names.DeploymentSecretTypeVariable, f.Manifest.Name, varName)
 
 		// The volume definition
 		vol := corev1.Volume{
