@@ -15,32 +15,39 @@ type Manifest struct {
 	InstanceGroups []*InstanceGroup `json:"instance_groups,omitempty"`
 }
 
+// InstanceGroup has been added to navigate to the containerization fields
 type InstanceGroup struct {
 	Jobs []Job `json:"jobs"`
 	// for env.bosh.agent.settings.affinity
 	Env Env `json:"env,omitempty"`
 }
 
+// Job has been added to navigate to the containerization fields
 type Job struct {
 	Properties JobProperties `json:"properties,omitempty"`
 }
 
+// JobProperties has been added to navigate to the containerization fields
 type JobProperties struct {
 	BOSHContainerization BOSHContainerization `json:"bosh_containerization"`
 }
 
+// Env has been added to navigate to the containerization fields
 type Env struct {
 	BOSH BOSH `json:"bosh,omitempty"`
 }
 
+// BOSH has been added to navigate to the containerization fields
 type BOSH struct {
 	Agent Agent `json:"agent,omitempty"`
 }
 
+// Agent has been added to navigate to the containerization fields
 type Agent struct {
 	Settings Settings `json:"settings,omitempty"`
 }
 
+// Settings has been added to make the k8s native Affinity field accessible
 type Settings struct {
 	Affinity *corev1.Affinity `json:"affinity,omitempty" yaml:"affinity,omitempty"`
 }

@@ -39,6 +39,7 @@ func GetPodCondition(
 	return -1, nil
 }
 
+// LookupEnv returns a value for a given key from k8s EnvVar arrays
 func LookupEnv(env []corev1.EnvVar, name string) (string, bool) {
 	for _, v := range env {
 		if v.Name == name {

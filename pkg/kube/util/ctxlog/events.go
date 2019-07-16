@@ -13,15 +13,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+// Event holds information about a k8s events we create via
+// controller-runtime's event recorder
 type Event struct {
 	object runtime.Object
 	reason string
 }
 
+// PredicateEvent is used to debug controller predicates
 type PredicateEvent struct {
 	Event
 }
 
+// MappingEvent is used to debug EnqueueRequestsFromMapFunc in controllers
 type MappingEvent struct {
 	Event
 }
