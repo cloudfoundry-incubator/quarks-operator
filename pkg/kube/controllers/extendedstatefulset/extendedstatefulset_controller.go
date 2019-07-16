@@ -103,52 +103,5 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 	if err != nil {
 		return err
 	}
-
-	// Watch Secrets referenced by the ExtendedStatefulSet
-	secretPredicates := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			secret := e.Object.(*corev1.Secret)
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, secret)
-			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", secret.Name, err)
-			}
-
-			// The Secret should reference at least one ExtendedStatefulSet in order for us to consider it
-			return len(reconciles) > 1
-		},
-		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
-		GenericFunc: func(e event.GenericEvent) bool { return false },
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			oldSecret := e.ObjectOld.(*corev1.Secret)
-			newSecret := e.ObjectNew.(*corev1.Secret)
-
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, newSecret)
-			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", newSecret.Name, err)
-			}
-
-			return len(reconciles) > 1 && !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
-		},
-	}
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
-			secret := a.Object.(*corev1.Secret)
-
-			if reference.SkipReconciles(ctx, mgr.GetClient(), secret) {
-				return []reconcile.Request{}
-			}
-
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, secret)
-			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", secret.Name, err)
-			}
-
-			return reconciles
-		}),
-	}, secretPredicates)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
