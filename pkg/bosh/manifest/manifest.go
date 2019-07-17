@@ -211,6 +211,58 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 	return "", fmt.Errorf("release '%s' not found", job.Release)
 }
 
+// GetJobOS returns the stemcell layer OS used for a Job
+// This is used for matching addon placement rules
+func (m *Manifest) GetJobOS(instanceGroupName, jobName string) (string, error) {
+	var instanceGroup *InstanceGroup
+	for i := range m.InstanceGroups {
+		if m.InstanceGroups[i].Name == instanceGroupName {
+			instanceGroup = m.InstanceGroups[i]
+			break
+		}
+	}
+	if instanceGroup == nil {
+		return "", fmt.Errorf("instance group '%s' not found", instanceGroupName)
+	}
+
+	var stemcell *Stemcell
+	for i := range m.Stemcells {
+		if m.Stemcells[i].Alias == instanceGroup.Stemcell {
+			stemcell = m.Stemcells[i]
+		}
+	}
+
+	var job *Job
+	for i := range instanceGroup.Jobs {
+		if instanceGroup.Jobs[i].Name == jobName {
+			job = &instanceGroup.Jobs[i]
+			break
+		}
+	}
+	if job == nil {
+		return "", fmt.Errorf("job '%s' not found in instance group '%s'", jobName, instanceGroupName)
+	}
+
+	for i := range m.Releases {
+		if m.Releases[i].Name == job.Release {
+			release := m.Releases[i]
+
+			var stemcellOS string
+
+			if release.Stemcell != nil {
+				stemcellOS = release.Stemcell.OS
+			} else {
+				if stemcell == nil {
+					return "", fmt.Errorf("stemcell OS could not be resolved for instance group %s", instanceGroup.Name)
+				}
+				stemcellOS = stemcell.OS
+			}
+			return stemcellOS, nil
+		}
+	}
+	return "", fmt.Errorf("release '%s' not found", job.Release)
+}
+
 // InstanceGroupByName returns the instance group identified by the given name
 func (m *Manifest) InstanceGroupByName(name string) (*InstanceGroup, error) {
 	for _, instanceGroup := range m.InstanceGroups {
@@ -256,4 +308,36 @@ func (m *Manifest) ImplicitVariables() ([]string, error) {
 	}
 
 	return names, nil
+}
+
+// ApplyAddons goes through all defined addons and adds jobs to matched instance groups
+func (m *Manifest) ApplyAddons() error {
+	for _, addon := range m.AddOns {
+		for _, ig := range m.InstanceGroups {
+			include, err := m.addOnPlacementMatch(ig, addon.Include)
+			if err != nil {
+				return errors.Wrap(err, "failed to process include placement matches")
+			}
+			exclude, err := m.addOnPlacementMatch(ig, addon.Exclude)
+			if err != nil {
+				return errors.Wrap(err, "failed to process exclude placement matches")
+			}
+
+			if exclude || !include {
+				continue
+			}
+
+			for _, addonJob := range addon.Jobs {
+				ig.Jobs = append(ig.Jobs, Job{
+					Name:    addonJob.Name,
+					Release: addonJob.Release,
+					Properties: JobProperties{
+						Properties: addonJob.Properties,
+					},
+				})
+			}
+		}
+	}
+
+	return nil
 }
