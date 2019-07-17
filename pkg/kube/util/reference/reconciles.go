@@ -67,7 +67,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			return false, errors.Wrap(err, "error listing references")
 		}
 
-		if versionedSecret {
+		if versionedSecret && reconcileType != ReconcileForExtendedStatefulSet {
 			keys := make([]string, len(objectReferences))
 			i := 0
 			for k := range objectReferences {
