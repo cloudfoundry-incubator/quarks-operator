@@ -10,6 +10,10 @@ type matcher func(*InstanceGroup, *AddOnPlacementRules) (bool, error)
 
 // jobMatch matches stemcell rules for addon placement
 func (m *Manifest) stemcellMatch(instanceGroup *InstanceGroup, rules *AddOnPlacementRules) (bool, error) {
+	if instanceGroup == nil || rules == nil {
+		return false, nil
+	}
+
 	osList := map[string]bool{}
 
 	for _, job := range instanceGroup.Jobs {
@@ -32,6 +36,10 @@ func (m *Manifest) stemcellMatch(instanceGroup *InstanceGroup, rules *AddOnPlace
 
 // jobMatch matches job rules for addon placement
 func (m *Manifest) jobMatch(instanceGroup *InstanceGroup, rules *AddOnPlacementRules) (bool, error) {
+	if instanceGroup == nil || rules == nil {
+		return false, nil
+	}
+
 	jobList := map[string]bool{}
 
 	for _, job := range instanceGroup.Jobs {
@@ -51,6 +59,10 @@ func (m *Manifest) jobMatch(instanceGroup *InstanceGroup, rules *AddOnPlacementR
 
 // instanceGroupMatch matches instance group rules for addon placement
 func (m *Manifest) instanceGroupMatch(instanceGroup *InstanceGroup, rules *AddOnPlacementRules) (bool, error) {
+	if instanceGroup == nil || rules == nil {
+		return false, nil
+	}
+
 	for _, ig := range rules.InstanceGroup {
 		if ig == instanceGroup.Name {
 			return true, nil
