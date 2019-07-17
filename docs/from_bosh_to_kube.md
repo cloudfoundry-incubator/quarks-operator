@@ -433,7 +433,7 @@ releases:
     version: 28.g837c5b3-30.263-7.0.0_233.gde0accd0
 ```
 
-The stemcell information (name, and stemcell and fissile version) are taken from the `stemcells` entry that matches the instance group's stemcell alias. The registry URL including the organization, the release name, and the version com from the `releases` entry that's referenced from the job.
+The stemcell information (name, and stemcell and fissile version) are taken from the `stemcells` entry that matches the instance group's stemcell alias. The registry URL including the organization, the release name, and the version come from the `releases` entry that's referenced from the job.
 
 > **Note:**
 >
