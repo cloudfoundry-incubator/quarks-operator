@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Resolver", func() {
+var _ = Describe("Interpolator", func() {
 	var (
 		baseManifest     []byte
 		ops              []byte
