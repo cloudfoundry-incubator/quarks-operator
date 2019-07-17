@@ -159,7 +159,7 @@ instance_groups:
     # If a property is changed, the operator runs rendering in an ExtendedJob, and the
     # template's secret is (re)generated.
     # All properties are input to this ExtendedJob that does rendering.
-    # Some properties can reference variables, which are generated. The cf-operator
+    # Some properties can reference variables, which can be generated. The cf-operator
     # collects values for all properties before starting the rendering process.
     properties:
       domain: "mycf.com"
@@ -294,9 +294,40 @@ instance_groups:
           labels: {}
           # Annotations to add to the resources representing the instance group
           annotations: {}
-# Addons are not currently supported by the cf-operator.
-# A warning is logged if this is set.
-addons: []
+# Each addon job is added to the desired manifest before it's persisted
+# Not all placement rules are supported, see below for more details.
+addons:
+  # The name of the addon is not used by the operator.
+  # TODO: investigate whether it's useful to  set this in an annotation of the instance group sts/pod
+- name: foo
+  # All jobs are added to instance groups based on placement rules before the desired manifest is persisted
+  jobs:
+  - name: metron
+    release: loggregator-release
+    properties:
+      loggregator:
+        metron:
+          log_level: debug
+  include:
+    # Supported
+    stemcell:
+    - os: opensuse
+    # Not supported, addons are used per-deployment
+    deployments: []
+    # Supported
+    jobs:
+      name: cloud_controller_ng
+      release: capi-release
+    # Supported
+    instance_groups:
+    - api
+    - diego-cell
+    # Not supported
+    networks: []
+    # Not supported
+    teams: []
+  # The same matchers are supported as the "include" key
+  exclude: {}
 # Deprecated - the cf-operator does not support this key.
 # An error is thrown if this is set.
 properties: {}
