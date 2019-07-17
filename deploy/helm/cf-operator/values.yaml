@@ -14,10 +14,6 @@ tolerations: []
 
 affinity: {}
 
-operator:
-  webhook:
-    port: 2999
-
 customResources:
   enableInstallation: true
 
