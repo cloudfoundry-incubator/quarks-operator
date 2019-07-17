@@ -1140,6 +1140,50 @@ var _ = Describe("Manifest", func() {
 			})
 		})
 
+		Describe("Marshal", func() {
+			orgText := boshmanifest.BPMReleaseWithAffinity
+			var m1 *Manifest
+
+			BeforeEach(func() {
+				var err error
+				m1, err = LoadYAML([]byte(orgText))
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("converts k8s tags to lowercase", func() {
+				text, err := m1.Marshal()
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(orgText).To(ContainSubstring("requiredDuringSchedulingIgnoredDuringExecution"))
+				Expect(text).To(ContainSubstring("requiredduringschedulingignoredduringexecution"))
+			})
+
+			It("retains affinity data", func() {
+				text, err := m1.Marshal()
+				Expect(err).NotTo(HaveOccurred())
+
+				By("loading marshalled manifest again")
+				manifest, err := LoadYAML(text)
+				Expect(err).NotTo(HaveOccurred())
+
+				ig := manifest.InstanceGroups[0]
+				Expect(ig.Name).To(Equal("bpm1"))
+				Expect(ig.Instances).To(Equal(2))
+
+				affinity := ig.Env.AgentEnvBoshConfig.Agent.Settings.Affinity
+				Expect(affinity).ToNot(BeNil())
+				Expect(affinity.NodeAffinity).ToNot(BeNil())
+				Expect(affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms).To(HaveLen(1))
+				selectors := affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0]
+				Expect(selectors.MatchFields).To(HaveLen(0))
+
+				Expect(selectors.MatchExpressions).To(HaveLen(1))
+				match := selectors.MatchExpressions[0]
+				Expect(match.Key).To(Equal("beta.kubernetes.io/os"))
+				Expect(match.Values).To(HaveLen(2))
+			})
+		})
+
 		Describe("GetReleaseImage", func() {
 			BeforeEach(func() {
 				*manifest = env.DefaultBOSHManifest()

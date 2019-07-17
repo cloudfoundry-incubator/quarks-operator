@@ -356,8 +356,7 @@ func (kc *KubeConverter) errandToExtendedJob(
 	}
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity != nil {
-		affinity := corev1.Affinity(*instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity)
-		eJob.Spec.Template.Spec.Affinity = &affinity
+		eJob.Spec.Template.Spec.Affinity = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity
 	}
 	return eJob, nil
 }
