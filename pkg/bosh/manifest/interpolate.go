@@ -90,20 +90,6 @@ func InterpolateVariables(log *zap.SugaredLogger, boshManifestBytes []byte, vari
 		return errors.Wrapf(err, "could not evaluate variables")
 	}
 
-	// Apply addons
-	manifestWithVars, err := LoadYAML(yamlBytes)
-	if err != nil {
-		return errors.Wrapf(err, "could not reload manifest after applying variables")
-	}
-	err = manifestWithVars.ApplyAddons()
-	if err != nil {
-		return errors.Wrapf(err, "failed to apply addons")
-	}
-	yamlBytes, err = manifestWithVars.Marshal()
-	if err != nil {
-		return errors.Wrapf(err, "failed to marshal manifest after applying addons")
-	}
-
 	jsonBytes, err := json.Marshal(map[string]string{
 		DesiredManifestKeyName: string(yamlBytes),
 	})

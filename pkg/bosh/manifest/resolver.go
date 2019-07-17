@@ -71,13 +71,13 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 
 	m, err = r.resourceData(namespace, spec.Manifest.Type, spec.Manifest.Ref, bdc.ManifestSpecName)
 	if err != nil {
-		return manifest, err
+		return nil, err
 	}
 
 	// Get the deployment name from the manifest
 	manifest, err = LoadYAML([]byte(m))
 	if err != nil {
-		return manifest, errors.Wrapf(err, "failed to unmarshal manifest")
+		return nil, errors.Wrapf(err, "failed to unmarshal manifest")
 	}
 
 	// Interpolate manifest with ops
@@ -86,11 +86,11 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 	for _, op := range ops {
 		opsData, err := r.resourceData(namespace, op.Type, op.Ref, bdc.OpsSpecName)
 		if err != nil {
-			return manifest, err
+			return nil, err
 		}
 		err = interpolator.BuildOps([]byte(opsData))
 		if err != nil {
-			return manifest, errors.Wrapf(err, "failed to build ops with: %#v", opsData)
+			return nil, errors.Wrapf(err, "failed to build ops with: %#v", opsData)
 		}
 	}
 
@@ -98,27 +98,27 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 	if len(ops) != 0 {
 		bytes, err = interpolator.Interpolate([]byte(m))
 		if err != nil {
-			return manifest, errors.Wrapf(err, "failed to interpolate %#v", m)
+			return nil, errors.Wrapf(err, "failed to interpolate %#v", m)
 		}
 	}
 
 	// Reload the manifest after interpolation, and apply implicit variables
 	manifest, err = LoadYAML(bytes)
 	if err != nil {
-		return manifest, errors.Wrapf(err, "failed to load yaml after applying ops %#v", m)
+		return nil, errors.Wrapf(err, "failed to load yaml after applying ops %#v", m)
 	}
 	m = string(bytes)
 
 	// Interpolate implicit variables
 	vars, err := manifest.ImplicitVariables()
 	if err != nil {
-		return manifest, errors.Wrapf(err, "failed to list implicit variables")
+		return nil, errors.Wrapf(err, "failed to list implicit variables")
 	}
 
 	for _, v := range vars {
 		varData, err := r.resourceData(namespace, bdc.SecretType, names.CalculateSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), v), bdc.ImplicitVariableKeyName)
 		if err != nil {
-			return manifest, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
+			return nil, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
 		}
 
 		m = strings.Replace(m, fmt.Sprintf("((%s))", v), varData, -1)
@@ -126,7 +126,13 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 
 	manifest, err = LoadYAML([]byte(m))
 	if err != nil {
-		return manifest, errors.Wrapf(err, "failed to load yaml after interpolating implicit variables %#v", m)
+		return nil, errors.Wrapf(err, "failed to load yaml after interpolating implicit variables %#v", m)
+	}
+
+	// Apply addons
+	err = manifest.ApplyAddons()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to apply addons")
 	}
 
 	return manifest, err
