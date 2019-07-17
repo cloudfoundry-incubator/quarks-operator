@@ -14,7 +14,7 @@ func (m *Manifest) stemcellMatch(instanceGroup *InstanceGroup, rules *AddOnPlace
 		return false, nil
 	}
 
-	osList := map[string]bool{}
+	osList := map[string]struct{}{}
 
 	for _, job := range instanceGroup.Jobs {
 		os, err := m.GetJobOS(instanceGroup.Name, job.Name)
@@ -22,7 +22,7 @@ func (m *Manifest) stemcellMatch(instanceGroup *InstanceGroup, rules *AddOnPlace
 			return false, errors.Wrap(err, "failed to calculate OS for BOSH job")
 		}
 
-		osList[os] = true
+		osList[os] = struct{}{}
 	}
 
 	for _, s := range rules.Stemcell {
@@ -40,12 +40,12 @@ func (m *Manifest) jobMatch(instanceGroup *InstanceGroup, rules *AddOnPlacementR
 		return false, nil
 	}
 
-	jobList := map[string]bool{}
+	jobList := map[string]struct{}{}
 
 	for _, job := range instanceGroup.Jobs {
 		// We keep a map with keys release:job, so we can quickly determine later if
 		// a job exists or not
-		jobList[fmt.Sprintf("%s:%s", job.Release, job.Name)] = true
+		jobList[fmt.Sprintf("%s:%s", job.Release, job.Name)] = struct{}{}
 	}
 
 	for _, job := range rules.Jobs {
