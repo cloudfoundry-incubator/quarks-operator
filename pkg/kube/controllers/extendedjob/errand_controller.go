@@ -20,7 +20,6 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
@@ -181,8 +180,8 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 
 // hasConfigsChanged return true if object's config references changed
 func hasConfigsChanged(oldEJob, newEJob *ejv1.ExtendedJob) bool {
-	oldConfigMaps, oldSecrets := owner.GetConfigNamesFromSpec(oldEJob.Spec.Template.Spec)
-	newConfigMaps, newSecrets := owner.GetConfigNamesFromSpec(newEJob.Spec.Template.Spec)
+	oldConfigMaps, oldSecrets := vss.GetConfigNamesFromSpec(oldEJob.Spec.Template.Spec)
+	newConfigMaps, newSecrets := vss.GetConfigNamesFromSpec(newEJob.Spec.Template.Spec)
 
 	if reflect.DeepEqual(oldConfigMaps, newConfigMaps) && reflect.DeepEqual(oldSecrets, newSecrets) {
 		return false
