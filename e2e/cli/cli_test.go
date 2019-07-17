@@ -207,6 +207,7 @@ var _ = Describe("CLI", func() {
   -h, --help                help for template-render
   -j, --jobs-dir string     \(JOBS_DIR\) path to the jobs dir.
   -d, --output-dir string   \(OUTPUT_DIR\) path to output dir. \(default "/var/vcap/jobs"\)
+      --pod-ip string       \(POD_IP\) pod IP
       --pod-ordinal int     \(POD_ORDINAL\) pod ordinal \(default -1\)
       --replicas int        \(REPLICAS\) number of replicas \(default -1\)
       --spec-index int      \(SPEC_INDEX\) index of the instance spec \(default -1\)
@@ -214,7 +215,15 @@ var _ = Describe("CLI", func() {
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
-			session, err := act("util", "template-render", "--az-index=1", "--replicas=1", "--pod-ordinal=1", "-m", "foo.txt", "-g", "log-api")
+			session, err := act(
+				"util", "template-render",
+				"--az-index=1",
+				"--replicas=1",
+				"--pod-ordinal=1",
+				"-m", "foo.txt",
+				"-g", "log-api",
+				"--pod-ip", "127.0.0.1",
+			)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Err).Should(Say("open foo.txt: no such file or directory"))
 		})
@@ -229,7 +238,14 @@ var _ = Describe("CLI", func() {
 			})
 
 			It("accepts the bosh-manifest-path as an environment variable", func() {
-				session, err := act("util", "template-render", "--az-index=1", "--replicas=1", "--pod-ordinal=1", "-g", "log-api")
+				session, err := act(
+					"util", "template-render",
+					"--az-index=1",
+					"--replicas=1",
+					"--pod-ordinal=1",
+					"-g", "log-api",
+					"--pod-ip", "127.0.0.1",
+				)
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Err).Should(Say("open bar.txt: no such file or directory"))
 			})
