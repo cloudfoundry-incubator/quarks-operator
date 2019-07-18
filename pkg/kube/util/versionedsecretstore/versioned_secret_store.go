@@ -17,7 +17,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 )
 
 var (
@@ -74,7 +73,7 @@ func NewVersionedSecretStore(client client.Client) VersionedSecretStoreImpl {
 
 // SetSecretReferences update versioned secret references in pod spec
 func (p VersionedSecretStoreImpl) SetSecretReferences(ctx context.Context, namespace string, podSpec *corev1.PodSpec) error {
-	_, secretsInSpec := owner.GetConfigNamesFromSpec(*podSpec)
+	_, secretsInSpec := GetConfigNamesFromSpec(*podSpec)
 	for secretNameInSpec := range secretsInSpec {
 
 		versionedSecretPrefix := NamePrefix(secretNameInSpec)
