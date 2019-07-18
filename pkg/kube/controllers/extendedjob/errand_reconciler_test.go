@@ -163,7 +163,7 @@ var _ = Describe("ErrandReconciler", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(result.Requeue).To(BeFalse())
 
-					Expect(logs.FilterMessageSnippet("Skip 'fake-ejob' triggered manually: already running").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Skip 'fake-ejob': already running").Len()).To(Equal(1))
 					Expect(client.CreateCallCount()).To(Equal(1))
 				})
 			})
@@ -199,7 +199,7 @@ var _ = Describe("ErrandReconciler", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(obj.Items).To(HaveLen(1))
 
-					client.Get(
+					err = client.Get(
 						context.Background(),
 						types.NamespacedName{
 							Name:      eJob.Name,
@@ -207,6 +207,7 @@ var _ = Describe("ErrandReconciler", func() {
 						},
 						&eJob,
 					)
+					Expect(err).NotTo(HaveOccurred())
 					Expect(eJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerManual))
 				})
 			})
@@ -233,7 +234,7 @@ var _ = Describe("ErrandReconciler", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(obj.Items).To(HaveLen(1))
 
-					client.Get(
+					err = client.Get(
 						context.Background(),
 						types.NamespacedName{
 							Name:      eJob.Name,
@@ -241,6 +242,7 @@ var _ = Describe("ErrandReconciler", func() {
 						},
 						&eJob,
 					)
+					Expect(err).ToNot(HaveOccurred())
 					Expect(eJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
 
 				})
@@ -268,7 +270,7 @@ var _ = Describe("ErrandReconciler", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(obj.Items).To(HaveLen(1))
 
-					client.Get(
+					err = client.Get(
 						context.Background(),
 						types.NamespacedName{
 							Name:      eJob.Name,
@@ -276,6 +278,7 @@ var _ = Describe("ErrandReconciler", func() {
 						},
 						&eJob,
 					)
+					Expect(err).ToNot(HaveOccurred())
 					Expect(eJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
 
 				})

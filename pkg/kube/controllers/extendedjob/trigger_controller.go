@@ -15,6 +15,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // AddTrigger creates a new ExtendedJob controller and adds it to the Manager
@@ -22,7 +23,8 @@ func AddTrigger(ctx context.Context, config *config.Config, mgr manager.Manager)
 	query := NewQuery()
 	f := controllerutil.SetControllerReference
 	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-job-trigger-reconciler", mgr.GetRecorder("ext-job-trigger-recorder"))
-	r := NewTriggerReconciler(ctx, config, mgr, query, f)
+	store := vss.NewVersionedSecretStore(mgr.GetClient())
+	r := NewTriggerReconciler(ctx, config, mgr, query, f, store)
 	c, err := controller.New("ext-job-trigger-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err

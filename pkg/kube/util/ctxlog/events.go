@@ -52,6 +52,12 @@ type ReconcileEventsFromSource struct {
 }
 
 // WithEvent returns a struct to provide event enhanced logging methods
+// 'object' is the object this event is about. Event will make a reference-- or you may also
+// pass a reference to the object directly.
+// 'reason' is the reason this event is generated. 'reason' should be short and unique; it
+// should be in UpperCamelCase format (starting with a capital letter). "reason" will be used
+// to automate handling of events, so imagine people writing switch statements to handle them.
+// You want to make that easy.
 func WithEvent(object runtime.Object, reason string) Event {
 	return Event{object: object, reason: reason}
 }
@@ -132,12 +138,6 @@ func (ev Event) Infof(ctx context.Context, format string, v ...interface{}) {
 }
 
 // Errorf uses the stored zap logger and the recorder to log an error, it returns an error like fmt.Errorf
-// 'object' is the object this event is about. Event will make a reference-- or you may also
-// pass a reference to the object directly.
-// 'reason' is the reason this event is generated. 'reason' should be short and unique; it
-// should be in UpperCamelCase format (starting with a capital letter). "reason" will be used
-// to automate handling of events, so imagine people writing switch statements to handle them.
-// You want to make that easy.
 func (ev Event) Errorf(ctx context.Context, format string, v ...interface{}) error {
 	msg := fmt.Sprintf(format, v...)
 
