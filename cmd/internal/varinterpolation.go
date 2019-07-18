@@ -45,7 +45,7 @@ func init() {
 func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string) (err error) {
 	defer func() {
 		if err != nil {
-			time.Sleep(time.Second * 5)
+			time.Sleep(debugGracePeriod)
 		}
 	}()
 

@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -30,7 +31,7 @@ inside a bosh manifest file.
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		defer func() {
 			if err != nil {
-				time.Sleep(time.Second * 5)
+				time.Sleep(debugGracePeriod)
 			}
 		}()
 

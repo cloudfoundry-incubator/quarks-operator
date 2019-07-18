@@ -69,7 +69,6 @@ func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []bc.JobIns
 
 		if providers, ok := jpl[linkType]; ok {
 			if _, ok := providers[linkName]; ok {
-
 				// If this comes from an addon, it will inevitably cause
 				// conflicts. So in this case, we simply ignore the error
 				if job.Properties.BOSHContainerization.IsAddon {
