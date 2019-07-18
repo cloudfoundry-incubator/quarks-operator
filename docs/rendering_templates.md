@@ -19,7 +19,7 @@ You can read more about BOSH templates on [bosh.io](https://bosh.io/docs/jobs/#t
 
 ## Flow
 
-![rendering-flow](https://docs.google.com/drawings/d/e/2PACX-1vRVULT7NVp932sCdONuhUmOR2wrYdm9Axy_lZAb_FrCT7w-f0hjLnZT4_8uDRCWJ3zZeEBl7rYGryS-/pub?w=1439&h=1684)
+![rendering-flow](https://docs.google.com/drawings/d/e/2PACX-1vRhPrJuMLVXNuFsym_BZdR_RCpknl1eEBwmECLmP8EJLhI4M1HISBbgfA9rfATeEgZW3hwZMPcWxjCI/pub?w=1749&h=1867)
 
 The following points describe each process that involves working with BOSH Job Templates, from beginning to end.
 
