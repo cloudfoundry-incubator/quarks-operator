@@ -1,24 +1,23 @@
-## cf-operator util data-gather
+## cf-operator util bpm-configs
 
-Gathers data of a bosh manifest
+Prints the BPM configs for all BOSH jobs of an instance group
 
 ### Synopsis
 
-Gathers data of a manifest.
+Prints the BPM configs for all BOSH jobs of an instance group.
 
-This will retrieve information of an instance-group
-inside a bosh manifest file.
-
+This command calculates and prints the BPM configurations for all all BOSH jobs of a given
+instance group.
 
 
 ```
-cf-operator util data-gather [flags]
+cf-operator util bpm-configs [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for data-gather
+  -h, --help   help for bpm-configs
 ```
 
 ### Options inherited from parent commands

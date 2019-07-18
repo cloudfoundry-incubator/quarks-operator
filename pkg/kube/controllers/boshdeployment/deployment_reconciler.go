@@ -15,25 +15,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 )
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
-
-// Owner bundles funcs to manage ownership on referenced configmaps and secrets
-type Owner interface {
-	RemoveOwnerReferences(context.Context, apis.Object, []apis.Object) error
-	ListConfigsOwnedBy(context.Context, apis.Object) ([]apis.Object, error)
-}
 
 type Resolver interface {
 	WithOpsManifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, error)
@@ -49,7 +41,6 @@ func NewDeploymentReconciler(ctx context.Context, config *config.Config, mgr man
 		scheme:       mgr.GetScheme(),
 		resolver:     resolver,
 		setReference: srf,
-		owner:        owner.NewOwner(mgr.GetClient(), mgr.GetScheme()),
 	}
 }
 
@@ -61,7 +52,6 @@ type ReconcileBOSHDeployment struct {
 	scheme       *runtime.Scheme
 	resolver     Resolver
 	setReference setReferenceFunc
-	owner        Owner
 }
 
 // Reconcile starts the deployment process for a BOSHDeployment and deploys ExtendedJobs to generate required properties for instance groups and rendered BPM

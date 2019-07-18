@@ -6,21 +6,23 @@ import (
 	"os"
 	"time"
 
+	"github.com/go-logr/zapr"
+	"github.com/spf13/afero"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"go.uber.org/zap"
+
+	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" // from https://github.com/kubernetes/client-go/issues/345
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
+
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	kubeConfig "code.cloudfoundry.org/cf-operator/pkg/kube/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/version"
-	"github.com/directxman12/zapr"
-	"github.com/spf13/afero"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"go.uber.org/zap"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" // from https://github.com/kubernetes/client-go/issues/345
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	crlog "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
 
 var (
@@ -50,18 +52,18 @@ var rootCmd = &cobra.Command{
 		log.Infof("Starting cf-operator %s with namespace %s", version.Version, cfOperatorNamespace)
 		log.Infof("cf-operator docker image: %s", manifest.GetOperatorDockerImage())
 
-		operatorWebhookHost := viper.GetString("operator-webhook-service-host")
-		operatorWebhookPort := viper.GetInt32("operator-webhook-service-port")
+		host := viper.GetString("operator-webhook-service-host")
+		port := viper.GetInt32("operator-webhook-service-port")
 
-		if operatorWebhookHost == "" {
+		if host == "" {
 			log.Fatal("required flag 'operator-webhook-service-host' not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST)")
 		}
 
 		config := &config.Config{
 			CtxTimeOut:        10 * time.Second,
 			Namespace:         cfOperatorNamespace,
-			WebhookServerHost: operatorWebhookHost,
-			WebhookServerPort: operatorWebhookPort,
+			WebhookServerHost: host,
+			WebhookServerPort: port,
 			Fs:                afero.NewOsFs(),
 		}
 		ctx := ctxlog.NewParentContext(log)
@@ -98,6 +100,7 @@ func init() {
 	pf := rootCmd.PersistentFlags()
 
 	pf.StringP("kubeconfig", "c", "", "Path to a kubeconfig, not required in-cluster")
+	pf.StringP("log-level", "l", "debug", "Only print log messages from this level onward")
 	pf.StringP("cf-operator-namespace", "n", "default", "Namespace to watch for BOSH deployments")
 	pf.StringP("docker-image-org", "o", "cfcontainerization", "Dockerhub organization that provides the operator docker image")
 	pf.StringP("docker-image-repository", "r", "cf-operator", "Dockerhub repository that provides the operator docker image")
@@ -105,6 +108,7 @@ func init() {
 	pf.StringP("operator-webhook-service-port", "p", "2999", "Port the webhook server listens on")
 	pf.StringP("docker-image-tag", "t", version.Version, "Tag of the operator docker image")
 	viper.BindPFlag("kubeconfig", pf.Lookup("kubeconfig"))
+	viper.BindPFlag("log-level", pf.Lookup("log-level"))
 	viper.BindPFlag("cf-operator-namespace", pf.Lookup("cf-operator-namespace"))
 	viper.BindPFlag("docker-image-org", pf.Lookup("docker-image-org"))
 	viper.BindPFlag("docker-image-repository", pf.Lookup("docker-image-repository"))
@@ -114,6 +118,7 @@ func init() {
 
 	argToEnv := map[string]string{
 		"kubeconfig":                    "KUBECONFIG",
+		"log-level":                     "LOG_LEVEL",
 		"cf-operator-namespace":         "CF_OPERATOR_NAMESPACE",
 		"docker-image-org":              "DOCKER_IMAGE_ORG",
 		"docker-image-repository":       "DOCKER_IMAGE_REPOSITORY",
@@ -132,14 +137,20 @@ func init() {
 
 // newLogger returns a new zap logger
 func newLogger(options ...zap.Option) *zap.SugaredLogger {
+	level := viper.GetString("log-level")
+	l := zap.DebugLevel
+	l.Set(level)
 
-	logger, err := zap.NewDevelopment(options...)
+	cfg := zap.NewDevelopmentConfig()
+	cfg.Development = false
+	cfg.Level = zap.NewAtomicLevelAt(l)
+	logger, err := cfg.Build(options...)
 	if err != nil {
 		golog.Fatalf("cannot initialize ZAP logger: %v", err)
 	}
 
 	// Make controller-runtime log using our logger
-	crlog.SetLogger(zapr.NewLogger(logger))
+	crlog.SetLogger(zapr.NewLogger(logger.Named("cr")))
 
 	return logger.Sugar()
 }

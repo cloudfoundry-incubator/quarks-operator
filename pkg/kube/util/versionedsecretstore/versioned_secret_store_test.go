@@ -14,7 +14,6 @@ import (
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/owner"
 	. "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 	"code.cloudfoundry.org/cf-operator/testing"
 	. "github.com/onsi/ginkgo"
@@ -172,7 +171,7 @@ name: fake-deployment-v4
 				Expect(err).ToNot(HaveOccurred())
 
 				// Only one secret reference and it latest version
-				_, secretsInSpec := owner.GetConfigNamesFromSpec(*podSpec)
+				_, secretsInSpec := GetConfigNamesFromSpec(*podSpec)
 				Expect(len(secretsInSpec)).To(Equal(1))
 				Expect(secretsInSpec).To(HaveKey(secretV1.Name))
 			})
@@ -214,7 +213,7 @@ name: fake-deployment-v4
 				Expect(err).ToNot(HaveOccurred())
 
 				// Only one secret reference and it latest version
-				_, secretsInSpec := owner.GetConfigNamesFromSpec(*podSpec)
+				_, secretsInSpec := GetConfigNamesFromSpec(*podSpec)
 				Expect(len(secretsInSpec)).To(Equal(1))
 				Expect(secretsInSpec).To(HaveKey(secretV2.Name))
 			})
@@ -308,7 +307,7 @@ name: fake-deployment-v4
 				)
 				Expect(err).ToNot(HaveOccurred())
 			})
-		}) 
+		})
 
 		Context("when the deployment name exceeds a length of 253 characters", func() {
 			It("should fail to create a new version", func() {
@@ -321,7 +320,7 @@ name: fake-deployment-v4
 					strings.Repeat("foobar", 42),
 					map[string]string{
 						"manifest": `{"instance_groups":[{"instances":3,"name":"diego"},{"instances":2,"name":"mysql"}]}`,
-					}, 
+					},
 					secretLabels,
 					exampleSourceDescription,
 				)

@@ -198,7 +198,7 @@ func (k *Kubectl) Wait(namespace string, requiredStatus string, resourceName str
 
 // CheckWait check's if the condition is satisfied
 func (k *Kubectl) CheckWait(namespace string, requiredStatus string, resourceName string) (bool, error) {
-	cmd := exec.Command("kubectl", "--namespace", namespace, "wait", "--for=condition="+requiredStatus, resourceName)
+	cmd := exec.Command("kubectl", "--namespace", namespace, "wait", "--for=condition="+requiredStatus, resourceName, "--timeout=60s")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		if strings.Contains(string(out), "Error from server (NotFound)") {
