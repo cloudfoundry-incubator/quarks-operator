@@ -172,7 +172,7 @@ func generateBPMDisks(manifestName string, instanceGroup *InstanceGroup, bpmConf
 						" /var/vcap/data, /var/vcap/store or /var/vcap/sys/run, for a path outside these,"+
 						" you must use the unrestricted_volumes key", additionalVolume.Path)
 				}
-				volumeName := fmt.Sprintf("%s-%s-%s-%b", AdditionalVolumeBaseName, job.Name, process.Name, i)
+				volumeName := names.Sanitize(fmt.Sprintf("%s-%s-%s-%b", AdditionalVolumeBaseName, job.Name, process.Name, i))
 				additionalDisk := BPMResourceDisk{
 					Volume: &corev1.Volume{
 						Name:         volumeName,
@@ -193,13 +193,7 @@ func generateBPMDisks(manifestName string, instanceGroup *InstanceGroup, bpmConf
 			}
 
 			for i, unrestrictedVolume := range process.Unsafe.UnrestrictedVolumes {
-				match := rAdditionalVolumes.MatchString(unrestrictedVolume.Path)
-				if match {
-					return nil, fmt.Errorf("the %s path, must be a path outside"+
-						" /var/vcap/data, /var/vcap/store or /var/vcap/sys/run, for a path inside these,"+
-						" you must use the additional_volumes key", unrestrictedVolume.Path)
-				}
-				volumeName := fmt.Sprintf("%s-%s-%s-%b", UnrestrictedVolumeBaseName, job.Name, process.Name, i)
+				volumeName := names.Sanitize(fmt.Sprintf("%s-%s-%s-%b", UnrestrictedVolumeBaseName, job.Name, process.Name, i))
 				unrestrictedDisk := BPMResourceDisk{
 					Volume: &corev1.Volume{
 						Name:         volumeName,
@@ -283,14 +277,14 @@ func generateVolumeName(secretName string) string {
 	} else {
 		volName = nameSlices[0]
 	}
-	return volName
+	return names.Sanitize(volName)
 }
 
 func generatePersistentVolumeClaim(manifestName string, instanceGroup *InstanceGroup, namespace string) corev1.PersistentVolumeClaim {
 	// Spec of a persistentVolumeClaim
 	persistentVolumeClaim := corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s-%s", manifestName, instanceGroup.Name, "pvc"),
+			Name:      names.Sanitize(fmt.Sprintf("%s-%s-%s", manifestName, instanceGroup.Name, "pvc")),
 			Namespace: namespace,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
