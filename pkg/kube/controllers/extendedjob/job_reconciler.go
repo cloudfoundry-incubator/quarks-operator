@@ -101,11 +101,13 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 	// Persist output if needed
 	if !reflect.DeepEqual(ejv1.Output{}, ej.Spec.Output) && ej.Spec.Output != nil {
 		if instance.Status.Succeeded == 1 || (instance.Status.Failed == 1 && ej.Spec.Output.WriteOnFailure) {
-			ctxlog.WithEvent(&ej, "PersistingOutput").Infof(ctx, "Persisting output of job '%s'", instance.Name)
+			ctxlog.WithEvent(&ej, "ExtendedJob").Infof(ctx, "Persisting output of job '%s'", instance.Name)
 			err = r.persistOutput(ctx, instance, ej)
 			if err != nil {
 				ctxlog.WithEvent(instance, "PersistOutputError").Errorf(ctx, "Could not persist output: '%s'", err)
-				return reconcile.Result{}, err
+				return reconcile.Result{
+					Requeue: false,
+				}, err
 			}
 		} else if instance.Status.Failed == 1 && !ej.Spec.Output.WriteOnFailure {
 			ctxlog.WithEvent(&ej, "FailedPersistingOutput").Infof(ctx, "Will not persist output of job '%s' because it failed", instance.Name)
@@ -178,17 +180,16 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 		if err != nil {
 			return errors.Wrap(err, "getting pod output")
 		}
-		// Put full job output in debug log
-		ctxlog.Debug(ctx, string(result))
+
+		// Create secret
+		secretName := ejob.Spec.Output.NamePrefix + c.Name
 
 		var data map[string]string
 		err = json.Unmarshal(result, &data)
 		if err != nil {
-			return errors.Wrap(err, "invalid output format")
+			return ctxlog.WithEvent(&ejob, "ExtendedJob").Errorf(ctx, "invalid JSON output was emitted for container '%s', secret '%s' cannot be created", instance.GetName(), secretName)
 		}
 
-		// Create secret and persist the output
-		secretName := ejob.Spec.Output.NamePrefix + c.Name
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
@@ -196,6 +197,7 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 			},
 		}
 
+		// Persist the output in secret
 		secretLabels := ejob.Spec.Output.SecretLabels
 		if secretLabels == nil {
 			secretLabels = map[string]string{}
