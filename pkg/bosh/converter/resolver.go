@@ -45,14 +45,14 @@ func (r *Resolver) DesiredManifest(ctx context.Context, boshDeploymentName, name
 
 	secret, err := r.versionedSecretStore.Latest(ctx, namespace, secretName)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read versioned secret for desired manifest")
+		return nil, errors.Wrapf(err, "failed to read latest versioned secret %s for bosh deployment %s", secretName, boshDeploymentName)
 	}
 
 	manifestData := secret.Data["manifest.yaml"]
 
 	manifest, err := bdm.LoadYAML(manifestData)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to unmarshal manifest from secret '%s'", secretName)
+		return nil, errors.Wrapf(err, "Failed to unmarshal manifest from secret %s for boshdeployment %s", secretName, boshDeploymentName)
 	}
 
 	return manifest, nil
@@ -72,13 +72,13 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 
 	m, err = r.resourceData(namespace, spec.Manifest.Type, spec.Manifest.Ref, bdc.ManifestSpecName)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
 	}
 
 	// Get the deployment name from the manifest
 	manifest, err = bdm.LoadYAML([]byte(m))
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal manifest")
+		return nil, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
 	}
 
 	// Interpolate manifest with ops
@@ -87,11 +87,11 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 	for _, op := range ops {
 		opsData, err := r.resourceData(namespace, op.Type, op.Ref, bdc.OpsSpecName)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
 		}
 		err = interpolator.BuildOps([]byte(opsData))
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to build ops with: %#v", opsData)
+			return nil, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
 		}
 	}
 
@@ -99,14 +99,14 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 	if len(ops) != 0 {
 		bytes, err = interpolator.Interpolate([]byte(m))
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to interpolate %#v", m)
+			return nil, errors.Wrapf(err, "Failed to interpolate %#v in interpolation task", m)
 		}
 	}
 
 	// Reload the manifest after interpolation, and apply implicit variables
 	manifest, err = bdm.LoadYAML(bytes)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load yaml after applying ops %#v", m)
+		return nil, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying ops %#v", m)
 	}
 	m = string(bytes)
 

@@ -83,7 +83,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			ctxlog.Debug(ctx, "Skip reconcile: ExtendedStatefulSet not found")
+			ctxlog.Debug(ctx, "Skip ExtendedStatefulset reconcile: ExtendedStatefulSet not found")
 			return reconcile.Result{}, nil
 		}
 
@@ -211,7 +211,7 @@ func (r *ReconcileExtendedStatefulSet) getActualStatefulSet(ctx context.Context,
 	for _, ss := range statefulSets {
 		strVersion := ss.Annotations[estsv1.AnnotationVersion]
 		if strVersion == "" {
-			return nil, 0, errors.New(fmt.Sprintf("The statefulset '%s' does not have the annotation('%s'), a version could not be retrieved.", ss.Name, estsv1.AnnotationVersion))
+			return nil, 0, errors.Errorf("The statefulset %s does not have the annotation(%s), a version could not be retrieved.", ss.Name, estsv1.AnnotationVersion)
 		}
 
 		version, err := strconv.Atoi(strVersion)

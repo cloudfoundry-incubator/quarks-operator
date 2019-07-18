@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -33,7 +34,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 	r := NewErrandReconciler(ctx, config, mgr, f, store)
 	c, err := controller.New("ext-job-errand-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Adding Errand controller to manager failed.")
 	}
 
 	// Trigger when
@@ -83,7 +84,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 
 	err = c.Watch(&source.Kind{Type: &ejv1.ExtendedJob{}}, &handler.EnqueueRequestForObject{}, p)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Watching Extended jobs failed in Errand controller.")
 	}
 
 	// Watch config maps referenced by resource ExtendedJob,

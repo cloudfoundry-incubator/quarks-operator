@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -35,7 +36,7 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 	// Create a new controller
 	c, err := controller.New("bpm-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Adding BPM controller to manager failed.")
 	}
 
 	// We have to watch the versioned secret for each Instance Group
@@ -76,7 +77,7 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, p)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Watching secrets failed in BPM controller.")
 	}
 
 	return nil

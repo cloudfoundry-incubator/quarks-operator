@@ -14,13 +14,15 @@ import (
 var _ = Describe("JobFactory", func() {
 	var (
 		factory *converter.JobFactory
-		m       manifest.Manifest
+		m       *manifest.Manifest
 		env     testing.Catalog
+		err     error
 	)
 
 	BeforeEach(func() {
-		m = env.DefaultBOSHManifest()
-		factory = converter.NewJobFactory(m, "namespace")
+		m, err = env.DefaultBOSHManifest()
+		Expect(err).NotTo(HaveOccurred())
+		factory = converter.NewJobFactory(*m, "namespace")
 	})
 
 	Describe("InstanceGroupManifestJob", func() {

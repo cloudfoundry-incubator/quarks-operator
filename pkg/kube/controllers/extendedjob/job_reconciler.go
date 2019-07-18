@@ -3,7 +3,6 @@ package extendedjob
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -95,7 +94,7 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 	ej := ejv1.ExtendedJob{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: parentName, Namespace: instance.GetNamespace()}, &ej)
 	if err != nil {
-		return reconcile.Result{}, errors.Wrap(err, "getting parent ExtendedJob")
+		return reconcile.Result{}, errors.Wrapf(err, "getting parent ExtendedJob in Job Reconciler for job %s", instance.GetName())
 	}
 
 	// Persist output if needed
@@ -159,10 +158,10 @@ func (r *ReconcileJob) jobPod(ctx context.Context, name string, namespace string
 		},
 		list)
 	if err != nil {
-		return nil, errors.Wrap(err, "listing job's pods")
+		return nil, errors.Wrapf(err, "Listing job's %s pods failed.", name)
 	}
 	if len(list.Items) == 0 {
-		return nil, errors.Errorf("job does not own any pods?")
+		return nil, errors.Errorf("Job %s does not own any pods?", name)
 	}
 	return &list.Items[0], nil
 }
@@ -171,14 +170,14 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 
 	pod, err := r.jobPod(ctx, instance.GetName(), instance.GetNamespace())
 	if err != nil {
-		return errors.Wrap(err, "failed to persist output")
+		return errors.Wrapf(err, "failed to persist output for ejob %s", ejob.GetName())
 	}
 
 	// Iterate over the pod's containers and store the output
 	for _, c := range pod.Spec.Containers {
 		result, err := r.podLogGetter.Get(instance.GetNamespace(), pod.Name, c.Name)
 		if err != nil {
-			return errors.Wrap(err, "getting pod output")
+			return errors.Wrapf(err, "getting pod output for container %s in jobPod %s", c.Name, pod.GetName())
 		}
 
 		// Create secret
@@ -221,13 +220,13 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 				secretLabels,
 				"created by extendedJob")
 			if err != nil {
-				return errors.Wrap(err, "could not create secret")
+				return errors.Wrapf(err, "could not create persisted output secret for ejob %s", ejob.GetName())
 			}
 		} else {
 			op, err := controllerutil.CreateOrUpdate(ctx, r.client, secret, func(obj runtime.Object) error {
 				s, ok := obj.(*corev1.Secret)
 				if !ok {
-					return fmt.Errorf("object is not a Secret")
+					return errors.Errorf("object is not a Secret")
 				}
 
 				s.SetLabels(secretLabels)
@@ -235,7 +234,7 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 				return nil
 			})
 			if err != nil {
-				return errors.Wrapf(err, "creating or updating Secret '%s'", secret.Name)
+				return errors.Wrapf(err, "creating or updating Secret '%s' for ejob %s", secret.Name, ejob.GetName())
 			}
 
 			ctxlog.Debugf(ctx, "Output secret '%s' has been %s", secret.Name, op)

@@ -52,13 +52,13 @@ func RenderJobTemplates(
 			jobSpec, err := job.loadSpec(jobsDir)
 
 			if err != nil {
-				return errors.Wrapf(err, "failed to load job spec file %s", job.Name)
+				return errors.Wrapf(err, "failed to load job spec file %s for instance group %s", job.Name, instanceGroupName)
 			}
 
 			// Run pre-render scripts for the current job.
 			for idx, script := range job.Properties.BOSHContainerization.PreRenderScripts {
 				if err := runPreRenderScript(script, idx, false); err != nil {
-					return errors.Wrapf(err, "failed to run pre-render script %d for job %s", idx, job.Name)
+					return errors.Wrapf(err, "failed to run pre-render script %d for job %s for instance group %s", idx, job.Name, instanceGroupName)
 				}
 			}
 
@@ -71,7 +71,7 @@ func RenderJobTemplates(
 				}
 			}
 			if currentJobInstance == nil {
-				return fmt.Errorf("no instance found for spec index '%d'", specIndex)
+				return errors.Errorf("no instance found for spec index '%d'", specIndex)
 			}
 
 			// Loop over templates for rendering files

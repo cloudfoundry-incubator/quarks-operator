@@ -2,7 +2,6 @@ package kube_test
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"testing"
@@ -42,9 +41,8 @@ var _ = BeforeEach(func() {
 	var err error
 
 	dir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-	}
+	Expect(err).ToNot(HaveOccurred())
+
 	chartPath := fmt.Sprintf("%s%s", dir, "/../../helm/cf-operator")
 	namespace, teardown, err = e2ehelper.SetUpEnvironment(chartPath)
 	Expect(err).ToNot(HaveOccurred())

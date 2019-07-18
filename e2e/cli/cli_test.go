@@ -117,7 +117,7 @@ var _ = Describe("CLI", func() {
 		It("accepts the bosh-manifest-path as a parameter", func() {
 			session, err := act("util", "variable-interpolation", "-m", "foo.txt")
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Err).Should(Say("no such file: foo.txt"))
+			Eventually(session.Err).Should(Say("variable-interpolation command failed. bosh-manifest-path file foo.txt doesn't exist"))
 		})
 
 		Context("using env variables for parameters", func() {
@@ -132,7 +132,7 @@ var _ = Describe("CLI", func() {
 			It("accepts the bosh-manifest-path as an environment variable", func() {
 				session, err := act("util", "variable-interpolation")
 				Expect(err).ToNot(HaveOccurred())
-				Eventually(session.Err).Should(Say("no such file: bar.txt"))
+				Eventually(session.Err).Should(Say("variable-interpolation command failed. bosh-manifest-path file bar.txt doesn't exist"))
 			})
 		})
 	})

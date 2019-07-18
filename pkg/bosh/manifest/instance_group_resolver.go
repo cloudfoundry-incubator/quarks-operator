@@ -1,7 +1,6 @@
 package manifest
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -136,7 +135,7 @@ func (dg *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 			if spec.Provides != nil {
 				err := dg.jobProviderLinks.Add(job, spec, jobsInstances)
 				if err != nil {
-					return err
+					return errors.Wrapf(err, "Collecting release spec and provider links failed for %s", job.Name)
 				}
 			}
 		}
@@ -157,7 +156,7 @@ func (dg *InstanceGroupResolver) processConsumers() error {
 
 		err := generateJobConsumersData(job, dg.jobReleaseSpecs, dg.jobProviderLinks)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "Generate Job Consumes data failed for instance group %s", dg.instanceGroup.Name)
 		}
 	}
 
@@ -170,7 +169,7 @@ func (dg *InstanceGroupResolver) renderBPM() error {
 
 		err := dg.renderJobBPM(job, dg.baseDir)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "Rendering BPM failed for instance group %s", dg.instanceGroup.Name)
 		}
 	}
 
@@ -197,11 +196,11 @@ func (dg *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) e
 	// We're looking for a template in the spec, whose result is a file "bpm.yml".
 	yamlFile, err := ioutil.ReadFile(jobSpecFile)
 	if err != nil {
-		return errors.Wrap(err, "failed to read the job spec file")
+		return errors.Wrapf(err, "failed to read the job spec file %s in job %s", jobSpecFile, currentJob.Name)
 	}
 	err = yaml.Unmarshal(yamlFile, &jobSpec)
 	if err != nil {
-		return errors.Wrap(err, "failed to unmarshal the job spec file")
+		return errors.Wrapf(err, "failed to unmarshal the job spec file %s in job %s", jobSpecFile, currentJob.Name)
 	}
 
 	var bpmSource string
@@ -216,7 +215,7 @@ func (dg *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) e
 		// Render bpm.yml.erb for each job instance.
 		erbFilePath := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "templates", bpmSource)
 		if _, err := os.Stat(erbFilePath); err != nil {
-			return err
+			return errors.Wrapf(err, "os.Stat failed for %s", erbFilePath)
 		}
 
 		// Get current job.bosh_containerization.instances, which will be required by the renderer to generate
@@ -254,23 +253,23 @@ func (dg *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) e
 			// when we calling the *.Render().
 			tmpfile, err := ioutil.TempFile("", "rendered.*.yml")
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "Creation of tmp file %s failed", tmpfile.Name())
 			}
 			defer os.Remove(tmpfile.Name())
 
 			if err := renderPointer.Render(erbFilePath, tmpfile.Name()); err != nil {
-				return err
+				return errors.Wrapf(err, "Rendering file %s failed", erbFilePath)
 			}
 
 			bpmBytes, err := ioutil.ReadFile(tmpfile.Name())
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "Reading of tmp file %s failed", tmpfile.Name())
 			}
 
 			// Parse a rendered bpm.yml into the bpm Config struct.
 			renderedBPM, err := bpm.NewConfig(bpmBytes)
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "Rendering bpm.yaml into bpm config %s failed", string(bpmBytes))
 			}
 
 			// Merge processes if they also exist in BOSHContainerization
@@ -292,7 +291,7 @@ func (dg *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) e
 		}
 		currentJob.Properties.BOSHContainerization.BPM = &firstJobIndexBPM
 	} else if currentJob.Properties.BOSHContainerization.BPM == nil {
-		return fmt.Errorf("can't find BPM template for job %s", currentJob.Name)
+		return errors.Errorf("can't find BPM template for job %s", currentJob.Name)
 	}
 
 	return nil
@@ -318,7 +317,7 @@ func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[st
 
 		link, hasLink := jobProviderLinks.Lookup(&provider)
 		if !hasLink && !provider.Optional {
-			return fmt.Errorf("cannot resolve non-optional link for provider %s", providerName)
+			return errors.Errorf("cannot resolve non-optional link for provider %s in job %s", providerName, currentJob.Name)
 		}
 
 		// generate the job.properties.bosh_containerization.consumes struct with the links information from providers.
@@ -392,7 +391,6 @@ func (js JobSpec) RetrievePropertyDefault(propertyName string) interface{} {
 	if property, ok := js.Properties[propertyName]; ok {
 		return property.Default
 	}
-
 	return nil
 }
 
@@ -404,7 +402,6 @@ func lookUpJobRelease(releases []*Release, jobRelease string) bool {
 			return true
 		}
 	}
-
 	return false
 }
 
@@ -443,13 +440,12 @@ func mergeBPMProcesses(renderedProcesses []bpm.Process, presetProcesses []bpm.Pr
 		if exist {
 			err := mergo.MergeWithOverwrite(&renderedProcesses[index], process)
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to merge bpm process information")
+				return nil, errors.Wrapf(err, "Failed to merge bpm process information for preset process %s", process.Name)
 			}
 		} else {
 			renderedProcesses = append(renderedProcesses, process)
 		}
 	}
-
 	return renderedProcesses, nil
 }
 
@@ -461,6 +457,5 @@ func indexOfBPMProcess(processes []bpm.Process, processName string) (int, bool) 
 			return i, true
 		}
 	}
-
 	return -1, false
 }

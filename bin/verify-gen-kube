@@ -32,6 +32,6 @@ if [[ $ret -eq 0 ]]
 then
   echo "${DIFFROOT} up to date."
 else
-  echo "${DIFFROOT} is out of date. Please run 'make gen-kube'"
+  echo "[Error] ${DIFFROOT} is out of date. Please run 'make gen-kube'."
   exit 1
 fi

@@ -37,22 +37,22 @@ func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error
 			if strings.Contains(err.StdOut, "could not find tiller") {
 				err := testing.RunHelmBinaryWithCustomErr("init", "--wait")
 				if err != nil {
-					return "", nil, err
+					return "", nil, errors.Wrapf(err, "%s Helm init --wait command failed.", e2eFailedMessage)
 				}
 			}
 		default:
-			return "", nil, err
+			return "", nil, errors.Wrapf(err, "%s Helm version -s command failed", e2eFailedMessage)
 		}
 	}
 
 	crdExist, err = ClusterCrdsExist()
 	if err != nil {
-		return "", nil, err
+		return "", nil, errors.Wrapf(err, "%s Checking cluster crd's existence failed.", e2eFailedMessage)
 	}
 
 	namespace, err = CreateTestNamespace()
 	if err != nil {
-		return "", nil, err
+		return "", nil, errors.Wrapf(err, "%s Creating test namespace failed.", e2eFailedMessage)
 	}
 	fmt.Println("Setting up in test namespace '" + namespace + "'...")
 
@@ -64,7 +64,7 @@ func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error
 		"--set", fmt.Sprintf("customResources.enableInstallation=%s", strconv.FormatBool(!crdExist)),
 		"--wait")
 	if err != nil {
-		return "", nil, err
+		return "", nil, errors.Wrapf(err, "%s Helm install command failed.", e2eFailedMessage)
 	}
 
 	teardownFunc := func() error {
@@ -115,7 +115,7 @@ func ClusterCrdsExist() (bool, error) {
 	if len(customResource.Items) > 0 {
 		for _, crdName := range crds {
 			if !customResource.ContainsElement(crdName) {
-				return false, fmt.Errorf("missing CRD in cluster CRDs %+v, %s not found", customResource.Items, crdName)
+				return false, fmt.Errorf("missing CRDs in cluster: %s not found", crdName)
 			}
 		}
 

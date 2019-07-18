@@ -18,19 +18,21 @@ import (
 
 var _ = Describe("kube converter", func() {
 	var (
-		m   manifest.Manifest
+		m   *manifest.Manifest
 		env testing.Catalog
+		err error
 	)
 
 	Context("BPMResources", func() {
 		act := func(bpmConfigs bpm.Configs, instanceGroup *manifest.InstanceGroup) (*converter.BPMResources, error) {
 			kubeConverter := converter.NewKubeConverter("foo")
-			resources, err := kubeConverter.BPMResources(m.Name, "1", instanceGroup, &m, bpmConfigs)
+			resources, err := kubeConverter.BPMResources(m.Name, "1", instanceGroup, m, bpmConfigs)
 			return resources, err
 		}
 
 		BeforeEach(func() {
-			m = env.DefaultBOSHManifest()
+			m, err = env.DefaultBOSHManifest()
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		Context("when BPM is missing in configs", func() {
@@ -283,7 +285,8 @@ var _ = Describe("kube converter", func() {
 
 			BeforeEach(func() {
 				var err error
-				m = *env.BOSHManifestWithMultiBPMProcesses()
+				m, err = env.BOSHManifestWithMultiBPMProcesses()
+				Expect(err).NotTo(HaveOccurred())
 
 				bpmConfig1, err = bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
 				Expect(err).ShouldNot(HaveOccurred())
@@ -360,7 +363,8 @@ var _ = Describe("kube converter", func() {
 			var bpmConfigs []bpm.Configs
 
 			BeforeEach(func() {
-				m = *env.BOSHManifestCFRouting()
+				m, err = env.BOSHManifestCFRouting()
+				Expect(err).NotTo(HaveOccurred())
 
 				c, err := bpm.NewConfig([]byte(boshreleases.CFRouting))
 				Expect(err).ShouldNot(HaveOccurred())
@@ -384,7 +388,8 @@ var _ = Describe("kube converter", func() {
 			var bpmConfigs []bpm.Configs
 
 			BeforeEach(func() {
-				m = *env.BOSHManifestWithBPMRelease()
+				m, err = env.BOSHManifestWithBPMRelease()
+				Expect(err).NotTo(HaveOccurred())
 
 				c, err := bpm.NewConfig([]byte(boshreleases.EnablePersistentDiskBPMConfig))
 				Expect(err).ShouldNot(HaveOccurred())
@@ -432,7 +437,8 @@ var _ = Describe("kube converter", func() {
 			var bpmConfigs []bpm.Configs
 
 			BeforeEach(func() {
-				m = *env.BOSHManifestWithBPMRelease()
+				m, err = env.BOSHManifestWithBPMRelease()
+				Expect(err).NotTo(HaveOccurred())
 
 				c, err := bpm.NewConfig([]byte(boshreleases.EnablePersistentDiskBPMConfig))
 				Expect(err).ShouldNot(HaveOccurred())
@@ -474,7 +480,8 @@ var _ = Describe("kube converter", func() {
 			})
 
 			It("handles error when instance group doesn't have persistent disk declaration", func() {
-				m = *env.BOSHManifestWithoutPersistentDisk()
+				m, err = env.BOSHManifestWithoutPersistentDisk()
+				Expect(err).NotTo(HaveOccurred())
 
 				_, err := act(bpmConfigs[0], m.InstanceGroups[0])
 				Expect(err).Should(HaveOccurred())
@@ -491,7 +498,8 @@ var _ = Describe("kube converter", func() {
 
 				BeforeEach(func() {
 					var err error
-					m = *env.BOSHManifestWithMultiBPMProcessesAndPersistentDisk()
+					m, err = env.BOSHManifestWithMultiBPMProcessesAndPersistentDisk()
+					Expect(err).NotTo(HaveOccurred())
 
 					bpmConfig1, err = bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
 					Expect(err).ShouldNot(HaveOccurred())
@@ -537,7 +545,8 @@ var _ = Describe("kube converter", func() {
 			var bpmConfigs []bpm.Configs
 
 			BeforeEach(func() {
-				m = *env.BPMReleaseWithAffinity()
+				m, err = env.BPMReleaseWithAffinity()
+				Expect(err).NotTo(HaveOccurred())
 
 				c, err := bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
 				Expect(err).ShouldNot(HaveOccurred())
