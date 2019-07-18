@@ -332,12 +332,16 @@ func (m *Manifest) ApplyAddons() error {
 					Name:    addonJob.Name,
 					Release: addonJob.Release,
 					Properties: JobProperties{
+						BOSHContainerization: bc.BOSHContainerization{ IsAddon: true },
 						Properties: addonJob.Properties,
 					},
 				})
 			}
 		}
 	}
+
+	// Remove addons after applying them, so we don't end up applying them again
+	m.AddOns = nil
 
 	return nil
 }

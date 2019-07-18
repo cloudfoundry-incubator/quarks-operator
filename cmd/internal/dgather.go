@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -27,7 +28,13 @@ This will retrieve information of an instance-group
 inside a bosh manifest file.
 
 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		defer func() {
+			if err != nil {
+				time.Sleep(debugGracePeriod)
+			}
+		}()
+
 		// Store original stdout i
 		origStdOut := os.Stdout
 

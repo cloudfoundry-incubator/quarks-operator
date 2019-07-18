@@ -360,3 +360,19 @@ func (kc *KubeConverter) errandToExtendedJob(
 	}
 	return eJob, nil
 }
+
+func deduplicateVolumeMounts(volumeMounts []corev1.VolumeMount) []corev1.VolumeMount {
+	result := []corev1.VolumeMount{}
+	uniqueMounts := map[string]struct{}{}
+
+	for _, volumeMount := range volumeMounts {
+		if _, ok := uniqueMounts[volumeMount.MountPath]; ok {
+			continue
+		}
+
+		uniqueMounts[volumeMount.MountPath] = struct{}{}
+		result = append(result, volumeMount)
+	}
+
+	return result
+}

@@ -26,7 +26,8 @@ import (
 )
 
 var (
-	log *zap.SugaredLogger
+	log              *zap.SugaredLogger
+	debugGracePeriod = time.Second * 5
 )
 
 var rootCmd = &cobra.Command{

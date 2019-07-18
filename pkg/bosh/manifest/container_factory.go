@@ -362,7 +362,7 @@ func boshPreStartInitContainer(
 	return corev1.Container{
 		Name:         names.Sanitize(fmt.Sprintf("bosh-pre-start-%s", jobName)),
 		Image:        jobImage,
-		VolumeMounts: volumeMounts,
+		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
 		Command: []string{
 			"/bin/sh",
 		},
@@ -390,7 +390,7 @@ func bpmPreStartInitContainer(
 	return corev1.Container{
 		Name:         names.Sanitize(fmt.Sprintf("bpm-pre-start-%s", process.Name)),
 		Image:        jobImage,
-		VolumeMounts: volumeMounts,
+		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
 		Command: []string{
 			"/bin/sh",
 		},
@@ -416,7 +416,7 @@ func bpmProcessContainer(
 	container := corev1.Container{
 		Name:         names.Sanitize(name),
 		Image:        jobImage,
-		VolumeMounts: volumeMounts,
+		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
 		Command:      []string{process.Executable},
 		Args:         process.Args,
 		WorkingDir:   process.Workdir,

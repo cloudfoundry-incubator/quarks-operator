@@ -69,6 +69,12 @@ func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []bc.JobIns
 
 		if providers, ok := jpl[linkType]; ok {
 			if _, ok := providers[linkName]; ok {
+				// If this comes from an addon, it will inevitably cause
+				// conflicts. So in this case, we simply ignore the error
+				if job.Properties.BOSHContainerization.IsAddon {
+					continue
+				}
+
 				return fmt.Errorf("multiple providers for link: name=%s type=%s", linkName, linkType)
 			}
 		}
@@ -380,15 +386,6 @@ func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[st
 		providerName := provider.Name
 
 		if currentJob.Consumes != nil {
-			// Deployment manifest can intentionally prevent link resolution as long as the link is optional
-			// Continue to the next job if this one does not consumes links.
-			if _, ok := currentJob.Consumes[providerName]; !ok {
-				if provider.Optional {
-					continue
-				}
-				return fmt.Errorf("mandatory link of consumer %s is explicitly set to nil", providerName)
-			}
-
 			// When the job defines a consumes property in the manifest, use it instead of the one
 			// from currentJobSpecData.Consumes.
 			if _, ok := currentJob.Consumes[providerName]; ok {

@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -26,7 +27,13 @@ var bpmConfigsCmd = &cobra.Command{
 This command calculates and prints the BPM configurations for all all BOSH jobs of a given
 instance group.
 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		defer func() {
+			if err != nil {
+				time.Sleep(debugGracePeriod)
+			}
+		}()
+
 		// Store original stdout i
 		origStdOut := os.Stdout
 
