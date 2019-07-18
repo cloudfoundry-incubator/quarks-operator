@@ -63,6 +63,7 @@ type BOSHContainerization struct {
 	Run              RunConfig          `json:"run"`
 	PreRenderScripts []string           `json:"pre_render_scripts" yaml:"pre_render_scripts"`
 	Debug            bool               `json:"debug" yaml:"debug"`
+	IsAddon          bool               `json:"is_addon" yaml:"is_addon"`
 }
 
 // Port represents the port to be opened up for this job

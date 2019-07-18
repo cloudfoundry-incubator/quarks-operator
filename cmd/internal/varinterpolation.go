@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"github.com/pkg/errors"
@@ -41,7 +42,13 @@ func init() {
 
 }
 
-func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string) error {
+func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string) (err error) {
+	defer func() {
+		if err != nil {
+			time.Sleep(time.Second * 5)
+		}
+	}()
+
 	log = newLogger()
 	defer log.Sync()
 

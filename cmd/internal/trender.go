@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -23,7 +24,13 @@ var templateRenderCmd = &cobra.Command{
 
 This will render a provided manifest instance-group
 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		defer func() {
+			if err != nil {
+				time.Sleep(time.Second * 5)
+			}
+		}()
+
 		boshManifestPath := viper.GetString("bosh-manifest-path")
 		jobsDir := viper.GetString("jobs-dir")
 		outputDir := viper.GetString("output-dir")
