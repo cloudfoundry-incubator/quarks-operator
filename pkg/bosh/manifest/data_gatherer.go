@@ -387,15 +387,6 @@ func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[st
 		providerName := provider.Name
 
 		if currentJob.Consumes != nil {
-			// Deployment manifest can intentionally prevent link resolution as long as the link is optional
-			// Continue to the next job if this one does not consumes links.
-			if _, ok := currentJob.Consumes[providerName]; !ok {
-				if provider.Optional {
-					continue
-				}
-				return fmt.Errorf("mandatory link of consumer %s is explicitly set to nil", providerName)
-			}
-
 			// When the job defines a consumes property in the manifest, use it instead of the one
 			// from currentJobSpecData.Consumes.
 			if _, ok := currentJob.Consumes[providerName]; ok {
