@@ -84,6 +84,108 @@ releases:
   url: hub.docker.com/cfcontainerization
   sha1: 6466c44827c3493645ca34b084e7c21de23272b4`
 
+const WithAddons = `name: foo-deployment
+addons:
+- name: test
+  include:
+    stemcell:
+    - os: opensuse-42.3
+    - os: opensuse-15.0
+  jobs:
+  - name: addon-job
+    release: redis
+- name: test2
+  include:
+    stemcell:
+    - os: opensuse-42.3
+  exclude:
+    instance_groups:
+    - diego-cell
+  jobs:
+  - name: addon-job2
+    release: redis
+stemcells:
+- alias: default
+  os: opensuse-42.3
+  version: 28.g837c5b3-30.263-7.0.0_234.gcd7d1132
+instance_groups:
+- name: redis-slave
+  instances: 2
+  lifecycle: errand
+  azs: [z1, z2]
+  jobs:
+  - name: redis-server
+    release: redis
+    properties: {}
+  vm_type: medium
+  stemcell: default
+  persistent_disk_type: medium
+  networks:
+  - name: default
+  properties:
+    foo:
+      app_domain: "((app_domain))"
+  env:
+    bosh:
+      agent:
+        settings:
+          labels:
+            custom-label: foo
+          annotations:
+            custom-annotation: bar
+- name: diego-cell
+  azs:
+  - z1
+  - z2
+  instances: 2
+  lifecycle: service
+  persistent_disk: 1024
+  persistent_disk_type: "standard"
+  vm_type: small-highmem
+  vm_extensions:
+  - 100GB_ephemeral_disk
+  stemcell: default
+  networks:
+  - name: default
+  jobs:
+  - name: cflinuxfs3-rootfs-setup
+    release: cflinuxfs3
+    properties:
+      foo:
+        domain: "((system_domain))"
+      bosh_containerization:
+        run:
+          healthcheck:
+            test-server:
+              readiness:
+                exec:
+                  command:
+                  - "curl --silent --fail --head http://${HOSTNAME}:8080/health"
+              liveness:
+                exec:
+                  command:
+                  - "curl --silent --fail --head http://${HOSTNAME}:8080"
+        ports:
+        - name: "rep-server"
+          protocol: "TCP"
+          internal: 1801
+variables:
+- name: "adminpass"
+  type: "password"
+  options: {is_ca: true, common_name: "some-ca"}
+releases:
+- name: cflinuxfs3
+  version: 0.62.0
+  url: hub.docker.com/cfcontainerization
+  sha1: 6466c44827c3493645ca34b084e7c21de23272b4
+  stemcell:
+    os: opensuse-15.0
+    version: 28.g837c5b3-30.263-7.0.0_233.gde0accd0
+- name: redis
+  version: 36.15.0
+  url: hub.docker.com/cfcontainerization
+  sha1: 6466c44827c3493645ca34b084e7c21de23272b4`
+
 // NatsSmall is a small manifest to start nats
 const NatsSmall = `---
 name: my-manifest
