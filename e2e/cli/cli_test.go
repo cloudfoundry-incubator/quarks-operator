@@ -34,6 +34,7 @@ var _ = Describe("CLI", func() {
   -t, --docker-image-tag string                \(DOCKER_IMAGE_TAG\) Tag of the operator docker image \(default "\d+.\d+.\d+"\)
   -h, --help                                   help for cf-operator
   -c, --kubeconfig string                      \(KUBECONFIG\) Path to a kubeconfig, not required in-cluster
+  -l, --log-level string                       \(LOG_LEVEL\) Only print log messages from this level onward \(default "debug"\)
   -w, --operator-webhook-service-host string   \(CF_OPERATOR_WEBHOOK_SERVICE_HOST\) Hostname/IP under which the webhook server can be reached from the cluster
   -p, --operator-webhook-service-port string   \(CF_OPERATOR_WEBHOOK_SERVICE_PORT\) Port the webhook server listens on \(default "2999"\)`))
 		})
