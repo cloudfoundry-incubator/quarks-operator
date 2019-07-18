@@ -299,6 +299,19 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 			Expect(reconcile.Result{}).To(Equal(result))
 		})
 
+		It("Skips generation of a secret when extendedSecret's `generated` status is true", func() {
+			secret.Labels = map[string]string{
+				esv1.LabelKind: esv1.GeneratedSecretKind,
+			}
+			es.Status.Generated = true
+
+			result, err := reconciler.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(client.CreateCallCount()).To(Equal(0))
+			Expect(client.UpdateCallCount()).To(Equal(0))
+			Expect(reconcile.Result{}).To(Equal(result))
+		})
+
 		It("Regenerate generation of a secret when existing secret has `generated` label", func() {
 			secret.Labels = map[string]string{
 				esv1.LabelKind: esv1.GeneratedSecretKind,
@@ -315,7 +328,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 			result, err := reconciler.Reconcile(request)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(client.CreateCallCount()).To(Equal(0))
-			Expect(client.UpdateCallCount()).To(Equal(1))
+			Expect(client.UpdateCallCount()).To(Equal(2))
 			Expect(reconcile.Result{}).To(Equal(result))
 		})
 	})
