@@ -3,7 +3,7 @@
 function setup_testing_tmp {
   if [ -z "${CF_OPERATOR_TESTING_TMP}" ]
   then
-    echo "\$CF_OPERATOR_TESTING_TMP not set. aborting."
+    echo "[Error] Env variable \$CF_OPERATOR_TESTING_TMP is not set. Please set to continue."
     exit 1
   fi
 

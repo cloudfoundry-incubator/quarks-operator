@@ -2,7 +2,6 @@ package boshdeployment
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -120,7 +119,7 @@ func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context
 		op, err := controllerutil.CreateOrUpdate(ctx, r.client, variable.DeepCopy(), func(obj runtime.Object) error {
 			s, ok := obj.(*esv1.ExtendedSecret)
 			if !ok {
-				return fmt.Errorf("object is not an ExtendedSecret")
+				return errors.Errorf("object is not an ExtendedSecret")
 			}
 			s.Spec = variable.Spec
 			return nil

@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"k8s.io/api/apps/v1beta2"
 	batchv1 "k8s.io/api/batch/v1"
@@ -25,6 +26,10 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
 	"k8s.io/apimachinery/pkg/labels"
+)
+
+const (
+	manifestFailedMessage = "Loading bosh manifest spec failed."
 )
 
 // NewContext returns a non-nil empty context, for usage when it is unclear
@@ -48,102 +53,102 @@ func (c *Catalog) DefaultConfig() *config.Config {
 }
 
 // DefaultBOSHManifest for tests
-func (c *Catalog) DefaultBOSHManifest() manifest.Manifest {
+func (c *Catalog) DefaultBOSHManifest() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.Default))
 	if err != nil {
-		panic(err)
+		return &manifest.Manifest{}, errors.Wrapf(err, "Loading default manifest spec failed.")
 	}
-	return *m
+	return m, nil
 }
 
 // ElaboratedBOSHManifest for data gathering tests
-func (c *Catalog) ElaboratedBOSHManifest() *manifest.Manifest {
+func (c *Catalog) ElaboratedBOSHManifest() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.Elaborated))
 	if err != nil {
-		panic(err)
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
 	}
-	return m
+	return m, nil
 }
 
 // BOSHManifestWithProviderAndConsumer for data gathering tests
-func (c *Catalog) BOSHManifestWithProviderAndConsumer() *manifest.Manifest {
+func (c *Catalog) BOSHManifestWithProviderAndConsumer() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.WithProviderAndConsumer))
 	if err != nil {
-		panic(err)
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
 	}
-	return m
+	return m, nil
 }
 
 // BOSHManifestWithOverriddenBPMInfo for data gathering tests
-func (c *Catalog) BOSHManifestWithOverriddenBPMInfo() *manifest.Manifest {
+func (c *Catalog) BOSHManifestWithOverriddenBPMInfo() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.WithOverriddenBPMInfo))
 	if err != nil {
-		panic(err)
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
 	}
-	return m
+	return m, nil
 }
 
 // BOSHManifestWithAbsentBPMInfo for data gathering tests
-func (c *Catalog) BOSHManifestWithAbsentBPMInfo() *manifest.Manifest {
+func (c *Catalog) BOSHManifestWithAbsentBPMInfo() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.WithAbsentBPMInfo))
 	if err != nil {
-		panic(err)
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
 	}
-	return m
+	return m, nil
 }
 
 // BOSHManifestWithMultiBPMProcesses returns a manifest with multi BPM configuration
-func (c *Catalog) BOSHManifestWithMultiBPMProcesses() *manifest.Manifest {
+func (c *Catalog) BOSHManifestWithMultiBPMProcesses() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.WithMultiBPMProcesses))
 	if err != nil {
-		panic(err)
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
 	}
-	return m
+	return m, nil
 }
 
 // BOSHManifestWithMultiBPMProcessesAndPersistentDisk returns a manifest with multi BPM configuration and persistent disk
-func (c *Catalog) BOSHManifestWithMultiBPMProcessesAndPersistentDisk() *manifest.Manifest {
+func (c *Catalog) BOSHManifestWithMultiBPMProcessesAndPersistentDisk() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.WithMultiBPMProcessesAndPersistentDisk))
 	if err != nil {
-		panic(err)
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
 	}
-	return m
+	return m, nil
 }
 
 // BOSHManifestCFRouting returns a manifest for the CF routing release with an underscore in the name
-func (c *Catalog) BOSHManifestCFRouting() *manifest.Manifest {
+func (c *Catalog) BOSHManifestCFRouting() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.CFRouting))
 	if err != nil {
-		panic(err)
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
 	}
-	return m
+	return m, nil
 }
 
 // BOSHManifestWithBPMRelease returns a manifest with single BPM configuration
-func (c *Catalog) BOSHManifestWithBPMRelease() *manifest.Manifest {
+func (c *Catalog) BOSHManifestWithBPMRelease() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.BPMRelease))
 	if err != nil {
-		panic(err)
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
 	}
-	return m
+	return m, nil
 }
 
 // BOSHManifestWithoutPersistentDisk returns a manifest with persistent disk declaration
-func (c *Catalog) BOSHManifestWithoutPersistentDisk() *manifest.Manifest {
+func (c *Catalog) BOSHManifestWithoutPersistentDisk() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithoutPersistentDisk))
 	if err != nil {
-		panic(err)
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
 	}
-	return m
+	return m, nil
 }
 
 // BPMReleaseWithAffinity returns a manifest with affinity
-func (c *Catalog) BPMReleaseWithAffinity() *manifest.Manifest {
+func (c *Catalog) BPMReleaseWithAffinity() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithAffinity))
 	if err != nil {
-		panic(err)
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
 	}
-	return m
+	return m, nil
 }
 
 // BPMReleaseWithAffinityConfigMap for tests

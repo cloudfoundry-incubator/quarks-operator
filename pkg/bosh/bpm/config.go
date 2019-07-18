@@ -1,6 +1,7 @@
 package bpm
 
 import (
+	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 )
 
@@ -60,7 +61,7 @@ func NewConfig(data []byte) (Config, error) {
 	config := Config{}
 	err := yaml.Unmarshal(data, &config)
 	if err != nil {
-		return Config{}, err
+		return Config{}, errors.Wrapf(err, "Unmarshalling data %s failed", string(data))
 	}
 	return config, nil
 }

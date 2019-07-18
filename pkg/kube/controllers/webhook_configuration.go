@@ -157,7 +157,7 @@ func (f *WebhookConfig) setupCertificate(ctx context.Context) error {
 
 func (f *WebhookConfig) generateValidationWebhookServerConfig(ctx context.Context, webhooks []webhook.Webhook) error {
 	if len(f.CaCertificate) == 0 {
-		return fmt.Errorf("can not create a webhook server config with an empty ca certificate")
+		return errors.Errorf("can not create a webhook server config with an empty ca certificate")
 	}
 
 	config := &admissionregistrationv1beta1.ValidatingWebhookConfiguration{

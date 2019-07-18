@@ -162,7 +162,7 @@ function parse_cmd() {
         VERBOSE=1
         ;;
       *)
-        echo "ERROR: Invalid argument ${OPTION}"
+        echo "[Error] Invalid argument ${OPTION}."
         usage
         exit 1
         ;;
@@ -184,7 +184,7 @@ if [ -z "${NAMESPACE:-}" ]; then
   if [ -n "${CF_OPERATOR_NAMESPACE:-}" ]; then
     NAMESPACE=${CF_OPERATOR_NAMESPACE:-}
   else
-    echo "ERROR: CF_OPERATOR_NAMESPACE env var is not set, either set it, or specify it via --namespace "
+    echo "[Error] CF_OPERATOR_NAMESPACE env var is not set. Please set it or specify it via --namespace to continue."
     usage
     exit 1
   fi

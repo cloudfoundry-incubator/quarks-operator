@@ -194,7 +194,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 
 				return nil
 			}
-			return fmt.Errorf("object is not an ExtendedJob")
+			return errors.Errorf("object is not an ExtendedJob")
 		})
 		if err != nil {
 			return log.WithEvent(instance, "ApplyExtendedJobError").Errorf(ctx, "Failed to apply ExtendedJob for instance group '%s' : %v", instanceGroupName, err)
@@ -258,7 +258,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 
 				return nil
 			}
-			return fmt.Errorf("object is not an ExtendStatefulSet")
+			return errors.Errorf("object is not an ExtendStatefulSet")
 		})
 		if err != nil {
 			return log.WithEvent(instance, "ApplyExtendedStatefulSetError").Errorf(ctx, "Failed to apply ExtendedStatefulSet for instance group '%s' : %v", instanceGroupName, err)

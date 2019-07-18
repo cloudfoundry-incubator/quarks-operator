@@ -23,6 +23,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 		env testing.Catalog
 		dg  *InstanceGroupResolver
 		ig  string
+		err error
 	)
 
 	Context("Job", func() {
@@ -51,7 +52,8 @@ var _ = Describe("InstanceGroupResolver", func() {
 			})
 
 			It("should find a property value in the manifest job properties section (proper manifest example)", func() {
-				m = env.BOSHManifestWithProviderAndConsumer()
+				m, err = env.BOSHManifestWithProviderAndConsumer()
+				Expect(err).NotTo(HaveOccurred())
 				job := m.InstanceGroups[0].Jobs[0]
 
 				value, ok := job.Property("doppler.grpc_port")
@@ -70,7 +72,8 @@ var _ = Describe("InstanceGroupResolver", func() {
 
 		Describe("BPMConfig", func() {
 			BeforeEach(func() {
-				m = env.BOSHManifestWithProviderAndConsumer()
+				m, err = env.BOSHManifestWithProviderAndConsumer()
+				Expect(err).NotTo(HaveOccurred())
 				ig = "log-api"
 			})
 
@@ -91,7 +94,8 @@ var _ = Describe("InstanceGroupResolver", func() {
 
 			Context("when manifest presets overridden bpm info", func() {
 				BeforeEach(func() {
-					m = env.BOSHManifestWithOverriddenBPMInfo()
+					m, err = env.BOSHManifestWithOverriddenBPMInfo()
+					Expect(err).NotTo(HaveOccurred())
 					ig = "redis-slave"
 				})
 
@@ -107,7 +111,8 @@ var _ = Describe("InstanceGroupResolver", func() {
 
 			Context("when manifest presets absent bpm info", func() {
 				BeforeEach(func() {
-					m = env.BOSHManifestWithAbsentBPMInfo()
+					m, err = env.BOSHManifestWithAbsentBPMInfo()
+					Expect(err).NotTo(HaveOccurred())
 					ig = "redis-slave"
 				})
 
@@ -126,7 +131,8 @@ var _ = Describe("InstanceGroupResolver", func() {
 
 		Describe("Manifest", func() {
 			BeforeEach(func() {
-				m = env.ElaboratedBOSHManifest()
+				m, err = env.ElaboratedBOSHManifest()
+				Expect(err).NotTo(HaveOccurred())
 				ig = "redis-slave"
 			})
 
@@ -148,7 +154,8 @@ var _ = Describe("InstanceGroupResolver", func() {
 
 			Context("when resolving links between providers and consumers", func() {
 				BeforeEach(func() {
-					m = env.BOSHManifestWithProviderAndConsumer()
+					m, err = env.BOSHManifestWithProviderAndConsumer()
+					Expect(err).NotTo(HaveOccurred())
 					ig = "log-api"
 				})
 
