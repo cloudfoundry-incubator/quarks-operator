@@ -337,7 +337,6 @@ func createDirContainer(jobs []bdm.Job) corev1.Container {
 				MountPath: VolumeSysDirMountPath,
 			},
 		},
-		Env: []corev1.EnvVar{},
 		Command: []string{
 			"/bin/sh",
 		},
@@ -428,12 +427,16 @@ func bpmProcessContainer(
 		Args:         process.Args,
 		WorkingDir:   process.Workdir,
 		SecurityContext: &corev1.SecurityContext{
-			Capabilities: &corev1.Capabilities{
-				Add: capability(process.Capabilities),
-			},
 			Privileged: &process.Unsafe.Privileged,
 		},
 		Lifecycle: &corev1.Lifecycle{},
+	}
+
+	// Only set when desired capabilities is not empty
+	if len(process.Capabilities) != 0 {
+		container.SecurityContext.Capabilities = &corev1.Capabilities{
+			Add: capability(process.Capabilities),
+		}
 	}
 
 	// Setup the job drain script handler.
