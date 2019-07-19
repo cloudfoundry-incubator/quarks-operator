@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
@@ -33,7 +34,7 @@ type DesiredManifest interface {
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 
 // NewBPMReconciler returns a new reconcile.Reconciler
-func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver DesiredManifest, srf setReferenceFunc, kubeConverter *bdm.KubeConverter) reconcile.Reconciler {
+func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver DesiredManifest, srf setReferenceFunc, kubeConverter *converter.KubeConverter) reconcile.Reconciler {
 	return &ReconcileBPM{
 		ctx:           ctx,
 		config:        config,
@@ -53,7 +54,7 @@ type ReconcileBPM struct {
 	scheme        *runtime.Scheme
 	resolver      DesiredManifest
 	setReference  setReferenceFunc
-	kubeConverter *bdm.KubeConverter
+	kubeConverter *converter.KubeConverter
 }
 
 // Reconcile reconciles an Instance Group BPM versioned secret read the corresponding
@@ -133,8 +134,8 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm.Manifest) (*bdm.BPMResources, error) {
-	resources := &bdm.BPMResources{}
+func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm.Manifest) (*converter.BPMResources, error) {
+	resources := &converter.BPMResources{}
 	bpmConfigs := bpm.Configs{}
 
 	instanceGroupName, ok := bpmSecret.Labels[ejv1.LabelInstanceGroup]
@@ -173,7 +174,7 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 }
 
 // deployInstanceGroups create or update ExtendedJobs and ExtendedStatefulSets for instance groups
-func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.BOSHDeployment, instanceGroupName string, resources *bdm.BPMResources) error {
+func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.BOSHDeployment, instanceGroupName string, resources *converter.BPMResources) error {
 	log.Debugf(ctx, "Creating extendedJobs and extendedStatefulSets for instance group '%s'", instanceGroupName)
 
 	for _, eJob := range resources.Errands {

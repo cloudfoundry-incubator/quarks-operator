@@ -1,4 +1,4 @@
-package manifest
+package converter
 
 var (
 	// DockerImageOrganization is the organization which provides the operator image

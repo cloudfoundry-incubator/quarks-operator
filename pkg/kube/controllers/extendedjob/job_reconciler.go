@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
@@ -204,7 +204,7 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 		}
 
 		secretLabels[ejv1.LabelPersistentSecretContainer] = c.Name
-		if ig, ok := podutil.LookupEnv(c.Env, manifest.EnvInstanceGroupName); ok {
+		if ig, ok := podutil.LookupEnv(c.Env, converter.EnvInstanceGroupName); ok {
 			secretLabels[ejv1.LabelInstanceGroup] = ig
 		}
 

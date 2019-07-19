@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
@@ -82,7 +83,7 @@ func init() {
 	utilCmd.AddCommand(templateRenderCmd)
 
 	templateRenderCmd.Flags().StringP("jobs-dir", "j", "", "path to the jobs dir.")
-	templateRenderCmd.Flags().StringP("output-dir", "d", manifest.VolumeJobsDirMountPath, "path to output dir.")
+	templateRenderCmd.Flags().StringP("output-dir", "d", converter.VolumeJobsDirMountPath, "path to output dir.")
 	templateRenderCmd.Flags().IntP("spec-index", "", -1, "index of the instance spec")
 	templateRenderCmd.Flags().IntP("az-index", "", -1, "az index")
 	templateRenderCmd.Flags().IntP("pod-ordinal", "", -1, "pod ordinal")
@@ -105,7 +106,7 @@ func init() {
 		"az-index":                "AZ_INDEX",
 		"pod-ordinal":             "POD_ORDINAL",
 		"replicas":                "REPLICAS",
-		"pod-ip":                  manifest.PodIPEnvVar,
+		"pod-ip":                  converter.PodIPEnvVar,
 	}
 	AddEnvToUsage(templateRenderCmd, argToEnv)
 }

@@ -22,7 +22,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
@@ -240,9 +240,9 @@ func (e *Environment) setupCFOperator(namespace string) (err error) {
 		return fmt.Errorf("required environment variable DOCKER_IMAGE_TAG not set")
 	}
 
-	manifest.DockerImageOrganization = operatorDockerImageOrg
-	manifest.DockerImageRepository = operatorDockerImageRepo
-	manifest.DockerImageTag = operatorDockerImageTag
+	converter.DockerImageOrganization = operatorDockerImageOrg
+	converter.DockerImageRepository = operatorDockerImageRepo
+	converter.DockerImageTag = operatorDockerImageTag
 
 	loggerPath := helper.LogfilePath(fmt.Sprintf("cf-operator-tests-%d.log", e.ID))
 	e.ObservedLogs, e.Log = helper.NewTestLoggerWithPath(loggerPath)

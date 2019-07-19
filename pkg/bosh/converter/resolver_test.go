@@ -1,20 +1,22 @@
-package manifest_test
+package converter_test
 
 import (
 	"net/http"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
-	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 	"github.com/pkg/errors"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeClient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 )
 
 var _ = Describe("Resolver", func() {
@@ -28,7 +30,7 @@ var _ = Describe("Resolver", func() {
 		validOpsPath      string
 		invalidOpsPath    string
 
-		resolver         *bdm.Resolver
+		resolver         *converter.Resolver
 		client           client.Client
 		interpolator     *fakes.FakeInterpolator
 		remoteFileServer *ghttp.Server
@@ -204,10 +206,10 @@ instance_groups:
   value: values`))
 
 		interpolator = &fakes.FakeInterpolator{}
-		newInterpolatorFunc := func() bdm.Interpolator {
+		newInterpolatorFunc := func() converter.Interpolator {
 			return interpolator
 		}
-		resolver = bdm.NewResolver(client, newInterpolatorFunc)
+		resolver = converter.NewResolver(client, newInterpolatorFunc)
 	})
 
 	Describe("ResolveCRD", func() {

@@ -1,8 +1,7 @@
 package operator_test
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -10,11 +9,11 @@ import (
 var _ = Describe("operator", func() {
 	Describe("GetOperatorDockerImage", func() {
 		It("returns the location of the docker image", func() {
-			manifest.DockerImageTag = "1.2.3"
-			manifest.DockerImageOrganization = "foo"
-			manifest.DockerImageRepository = "bar"
+			converter.DockerImageTag = "1.2.3"
+			converter.DockerImageOrganization = "foo"
+			converter.DockerImageRepository = "bar"
 
-			Expect(manifest.GetOperatorDockerImage()).To(Equal("foo/bar:1.2.3"))
+			Expect(converter.GetOperatorDockerImage()).To(Equal("foo/bar:1.2.3"))
 		})
 	})
 })

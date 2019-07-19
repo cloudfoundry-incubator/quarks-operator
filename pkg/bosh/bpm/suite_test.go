@@ -9,5 +9,5 @@ import (
 
 func TestManifest(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "bpm Suite")
+	RunSpecs(t, "BOSH BPM Suite")
 }

@@ -6,10 +6,9 @@ set -e
 counterfeiter -o pkg/kube/controllers/fakes/manager.go vendor/sigs.k8s.io/controller-runtime/pkg/manager Manager
 counterfeiter -o pkg/kube/controllers/fakes/client.go vendor/sigs.k8s.io/controller-runtime/pkg/client Client
 counterfeiter -o pkg/kube/controllers/fakes/query.go pkg/kube/controllers/extendedjob Query
-counterfeiter -o pkg/kube/controllers/fakes/owner.go pkg/kube/controllers/extendedjob Owner
 counterfeiter -o pkg/kube/controllers/fakes/pod_log_getter.go pkg/kube/controllers/extendedjob PodLogGetter
-counterfeiter -o pkg/bosh/manifest/fakes/release_image_provider.go pkg/bosh/manifest/ ReleaseImageProvider
-counterfeiter -o pkg/bosh/manifest/fakes/resolver.go pkg/kube/controllers/boshdeployment Resolver
+counterfeiter -o pkg/bosh/converter/fakes/release_image_provider.go pkg/bosh/converter/ ReleaseImageProvider
+counterfeiter -o pkg/bosh/converter/fakes/resolver.go pkg/kube/controllers/boshdeployment Resolver
+counterfeiter -o pkg/bosh/converter/fakes/interpolator.go pkg/bosh/converter/ Interpolator
 counterfeiter -o pkg/bosh/manifest/fakes/desired_manifest.go pkg/kube/controllers/boshdeployment DesiredManifest
-counterfeiter -o pkg/bosh/manifest/fakes/interpolator.go pkg/bosh/manifest/ Interpolator
 counterfeiter -o pkg/credsgen/fakes/generator.go pkg/credsgen/ Generator

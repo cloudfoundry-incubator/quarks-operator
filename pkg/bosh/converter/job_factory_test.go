@@ -1,10 +1,11 @@
-package manifest_test
+package converter_test
 
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
@@ -12,14 +13,14 @@ import (
 
 var _ = Describe("JobFactory", func() {
 	var (
-		factory *manifest.JobFactory
+		factory *converter.JobFactory
 		m       manifest.Manifest
 		env     testing.Catalog
 	)
 
 	BeforeEach(func() {
 		m = env.DefaultBOSHManifest()
-		factory = manifest.NewJobFactory(m, "namespace")
+		factory = converter.NewJobFactory(m, "namespace")
 	})
 
 	Describe("DataGatheringJob", func() {

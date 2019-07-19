@@ -1,8 +1,9 @@
-package manifest
+package converter
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
@@ -20,7 +21,7 @@ func NewKubeConverter(namespace string) *KubeConverter {
 }
 
 // Variables returns extended secrets for a list of BOSH variables
-func (kc *KubeConverter) Variables(manifestName string, variables []Variable) []esv1.ExtendedSecret {
+func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable) []esv1.ExtendedSecret {
 	secrets := []esv1.ExtendedSecret{}
 
 	for _, v := range variables {
@@ -30,8 +31,8 @@ func (kc *KubeConverter) Variables(manifestName string, variables []Variable) []
 				Name:      secretName,
 				Namespace: kc.namespace,
 				Labels: map[string]string{
-					"variableName":      v.Name,
-					LabelDeploymentName: manifestName,
+					"variableName":          v.Name,
+					bdm.LabelDeploymentName: manifestName,
 				},
 			},
 			Spec: esv1.ExtendedSecretSpec{

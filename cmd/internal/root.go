@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	kubeConfig "code.cloudfoundry.org/cf-operator/pkg/kube/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
@@ -46,12 +46,12 @@ var rootCmd = &cobra.Command{
 		}
 
 		cfOperatorNamespace := viper.GetString("cf-operator-namespace")
-		manifest.DockerImageOrganization = viper.GetString("docker-image-org")
-		manifest.DockerImageRepository = viper.GetString("docker-image-repository")
-		manifest.DockerImageTag = viper.GetString("docker-image-tag")
+		converter.DockerImageOrganization = viper.GetString("docker-image-org")
+		converter.DockerImageRepository = viper.GetString("docker-image-repository")
+		converter.DockerImageTag = viper.GetString("docker-image-tag")
 
 		log.Infof("Starting cf-operator %s with namespace %s", version.Version, cfOperatorNamespace)
-		log.Infof("cf-operator docker image: %s", manifest.GetOperatorDockerImage())
+		log.Infof("cf-operator docker image: %s", converter.GetOperatorDockerImage())
 
 		host := viper.GetString("operator-webhook-service-host")
 		port := viper.GetInt32("operator-webhook-service-port")

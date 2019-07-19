@@ -1,4 +1,4 @@
-package manifest_test
+package converter_test
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
@@ -22,8 +23,8 @@ var _ = Describe("kube converter", func() {
 	)
 
 	Context("BPMResources", func() {
-		act := func(bpmConfigs bpm.Configs, instanceGroup *manifest.InstanceGroup) (*manifest.BPMResources, error) {
-			kubeConverter := manifest.NewKubeConverter("foo")
+		act := func(bpmConfigs bpm.Configs, instanceGroup *manifest.InstanceGroup) (*converter.BPMResources, error) {
+			kubeConverter := converter.NewKubeConverter("foo")
 			resources, err := kubeConverter.BPMResources(m.Name, "1", instanceGroup, &m, bpmConfigs)
 			return resources, err
 		}

@@ -1,4 +1,4 @@
-package manifest
+package converter
 
 import (
 	"fmt"
@@ -6,11 +6,13 @@ import (
 	"regexp"
 	"strings"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
 const (
@@ -31,13 +33,9 @@ const (
 
 	// VolumeDataDirName is the volume name for the data directory.
 	VolumeDataDirName = "data-dir"
-	// VolumeDataDirMountPath is the mount path for the data directory.
-	VolumeDataDirMountPath = "/var/vcap/data"
 
 	// VolumeSysDirName is the volume name for the sys directory.
 	VolumeSysDirName = "sys-dir"
-	// VolumeSysDirMountPath is the mount path for the sys directory.
-	VolumeSysDirMountPath = "/var/vcap/sys"
 
 	// VolumeStoreDirName is the volume name for the store directory.
 	VolumeStoreDirName = "store-dir"
@@ -65,7 +63,7 @@ const (
 	UnrestrictedVolumeBaseName = "bpm-unrestricted-volume"
 )
 
-func generateDefaultDisks(manifestName string, instanceGroup *InstanceGroup, version string, namespace string) BPMResourceDisks {
+func generateDefaultDisks(manifestName string, instanceGroup *bdm.InstanceGroup, version string, namespace string) BPMResourceDisks {
 	desiredManifestName := names.DesiredManifestName(manifestName, version)
 	resolvedPropertiesSecretName := names.CalculateIGSecretName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
@@ -148,7 +146,7 @@ func generateDefaultDisks(manifestName string, instanceGroup *InstanceGroup, ver
 // - persistent_disk (boolean)
 // - additional_volumes (list of volumes)
 // - unrestricted_volumes (list of volumes)
-func generateBPMDisks(manifestName string, instanceGroup *InstanceGroup, bpmConfigs bpm.Configs, namespace string) (BPMResourceDisks, error) {
+func generateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (BPMResourceDisks, error) {
 	bpmDisks := make(BPMResourceDisks, 0)
 
 	rAdditionalVolumes := regexp.MustCompile(AdditionalVolumesRegex)
@@ -280,7 +278,7 @@ func generateVolumeName(secretName string) string {
 	return names.Sanitize(volName)
 }
 
-func generatePersistentVolumeClaim(manifestName string, instanceGroup *InstanceGroup, namespace string) corev1.PersistentVolumeClaim {
+func generatePersistentVolumeClaim(manifestName string, instanceGroup *bdm.InstanceGroup, namespace string) corev1.PersistentVolumeClaim {
 	// Spec of a persistentVolumeClaim
 	persistentVolumeClaim := corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{

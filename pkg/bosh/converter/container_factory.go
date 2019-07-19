@@ -1,4 +1,4 @@
-package manifest
+package converter
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
@@ -16,6 +17,12 @@ import (
 const (
 	// EnvJobsDir is a key for the container Env used to lookup the jobs dir
 	EnvJobsDir = "JOBS_DIR"
+
+	// VolumeDataDirMountPath is the mount path for the data directory.
+	VolumeDataDirMountPath = bdm.DataDir
+
+	// VolumeSysDirMountPath is the mount path for the sys directory.
+	VolumeSysDirMountPath = bdm.SysDir
 )
 
 // ContainerFactory builds Kubernetes containers from BOSH jobs
@@ -40,7 +47,7 @@ func NewContainerFactory(manifestName string, instanceGroupName string, version 
 
 // JobsToInitContainers creates a list of Containers for corev1.PodSpec InitContainers field
 func (c *ContainerFactory) JobsToInitContainers(
-	jobs []Job,
+	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
 	bpmDisks BPMResourceDisks,
 ) ([]corev1.Container, error) {
@@ -136,7 +143,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 
 // JobsToContainers creates a list of Containers for corev1.PodSpec Containers field
 func (c *ContainerFactory) JobsToContainers(
-	jobs []Job,
+	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
 	bpmDisks BPMResourceDisks,
 ) ([]corev1.Container, error) {
@@ -310,10 +317,10 @@ func templateRenderingContainer(instanceGroupName string, secretName string) cor
 	}
 }
 
-func createDirContainer(jobs []Job) corev1.Container {
+func createDirContainer(jobs []bdm.Job) corev1.Container {
 	dirs := []string{}
 	for _, job := range jobs {
-		jobDirs := append(job.dataDirs(job.Name), job.sysDirs(job.Name)...)
+		jobDirs := append(job.DataDirs(), job.SysDirs()...)
 		dirs = append(dirs, jobDirs...)
 	}
 
