@@ -34,7 +34,7 @@ var _ = Describe("Examples", func() {
 				literalValues := map[string]string{
 					"value": class,
 				}
-				err := testing.CreateSecretFromLiteral(namespace, "nats-deployment.var-implicit-operator-test-storage-class", literalValues)
+				err := testing.CreateSecretFromLiteral(namespace, "nats-deployment.var-operator-test-storage-class", literalValues)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Creating bosh deployment")

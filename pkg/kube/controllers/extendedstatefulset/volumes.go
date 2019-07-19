@@ -180,7 +180,7 @@ func (r *ReconcileStatefulSetCleanup) isVolumeManagementStatefulSetReady(ctx con
 // deleteVolumeManagementStatefulSet deletes the statefulSet created for volume management
 func (r *ReconcileStatefulSetCleanup) deleteVolumeManagementStatefulSet(ctx context.Context, extendedstatefulset *essv1a1.ExtendedStatefulSet) error {
 
-	statefulSets, err := listStatefulSets(ctx, r.client, extendedstatefulset)
+	statefulSets, err := listStatefulSetsFromInformer(ctx, r.client, extendedstatefulset)
 	if err != nil {
 		return err
 	}

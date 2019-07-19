@@ -4,8 +4,9 @@ import (
 	"context"
 	"reflect"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	appsv1beta2client "k8s.io/client-go/kubernetes/typed/apps/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -18,6 +19,7 @@ import (
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
@@ -33,6 +35,11 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 		return err
 	}
 
+	client, err := appsv1beta2client.NewForConfig(mgr.GetConfig())
+	if err != nil {
+		return errors.Wrap(err, "Could not get kube client")
+	}
+
 	// Watch for changes to primary resource ExtendedStatefulSet
 	// Trigger when
 	// - create event of extendedStatefulSet which have no children resources
@@ -40,7 +47,7 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*estsv1.ExtendedStatefulSet)
-			sts, err := listStatefulSets(ctx, mgr.GetClient(), o)
+			sts, err := listStatefulSetsFromAPIClient(ctx, client, o)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to list StatefulSets owned by ExtendedStatefulSet '%s': %s", o.Name, err)
 			}
