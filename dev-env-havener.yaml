@@ -45,6 +45,7 @@ env:
   DOCKER_REPOSITORY: cf-operator
   DOCKER_ORGANIZATION: cfcontainerization
   CRDS_ENABLED: false
+  GO111MODULE: (( shell echo "${GO111MODULE}" ))
 
 before:
 - cmd: /bin/bash
@@ -54,7 +55,7 @@ before:
     #!/bin/bash
     set -euo pipefail
 
-    export GO111MODULE=on
+    export GO111MODULE=${GO111MODULE:-on}
 
     if ! hash minikube 2>/dev/null; then
       echo -e "Required tool minikube is not installed."
