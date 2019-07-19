@@ -1,11 +1,11 @@
-package manifest
+package converter
 
 import (
 	"fmt"
 
 	"github.com/cppforlife/go-patch/patch"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // Interpolator renders BOSH manifests by operations files

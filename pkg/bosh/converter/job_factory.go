@@ -1,20 +1,20 @@
-package manifest
+package converter
 
 import (
 	"fmt"
 	"path/filepath"
 
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
 const (
-	// DesiredManifestKeyName is the name of the key in desired manifest secret
-	DesiredManifestKeyName = "manifest.yaml"
 	// EnvInstanceGroupName is a key for the container Env identifying the
 	// instance group that container is started for
 	EnvInstanceGroupName = "INSTANCE_GROUP_NAME"
@@ -37,13 +37,13 @@ const (
 
 // JobFactory creates Jobs for a given manifest
 type JobFactory struct {
-	Manifest            Manifest
+	Manifest            bdm.Manifest
 	Namespace           string
 	desiredManifestName string
 }
 
 // NewJobFactory returns a new JobFactory
-func NewJobFactory(manifest Manifest, namespace string) *JobFactory {
+func NewJobFactory(manifest bdm.Manifest, namespace string) *JobFactory {
 	return &JobFactory{
 		Manifest:  manifest,
 		Namespace: namespace,
@@ -177,7 +177,7 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 							Env: []corev1.EnvVar{
 								{
 									Name:  EnvBOSHManifestPath,
-									Value: filepath.Join("/var/run/secrets/deployment/", DesiredManifestKeyName),
+									Value: filepath.Join("/var/run/secrets/deployment/", bdm.DesiredManifestKeyName),
 								},
 								{
 									Name:  EnvVariablesDir,
@@ -241,7 +241,7 @@ func (f *JobFactory) gatheringContainer(cmd, instanceGroupName string) corev1.Co
 		Env: []corev1.EnvVar{
 			{
 				Name:  EnvBOSHManifestPath,
-				Value: filepath.Join("/var/run/secrets/deployment/", DesiredManifestKeyName),
+				Value: filepath.Join("/var/run/secrets/deployment/", bdm.DesiredManifestKeyName),
 			},
 			{
 				Name:  EnvCFONamespace,

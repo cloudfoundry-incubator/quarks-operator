@@ -1,4 +1,4 @@
-package manifest_test
+package converter_test
 
 import (
 	"fmt"
@@ -9,8 +9,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	fakes "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
+	. "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	fakes "code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
 var _ = Describe("ContainerFactory", func() {
@@ -18,7 +19,7 @@ var _ = Describe("ContainerFactory", func() {
 		containerFactory     *ContainerFactory
 		bpmConfigs           bpm.Configs
 		releaseImageProvider *fakes.FakeReleaseImageProvider
-		jobs                 []Job
+		jobs                 []bdm.Job
 		defaultVolumeMounts  []corev1.VolumeMount
 		bpmDisks             BPMResourceDisks
 	)
@@ -27,9 +28,9 @@ var _ = Describe("ContainerFactory", func() {
 		releaseImageProvider = &fakes.FakeReleaseImageProvider{}
 		releaseImageProvider.GetReleaseImageReturns("", nil)
 
-		jobs = []Job{
-			Job{Name: "fake-job"},
-			Job{Name: "other-job"},
+		jobs = []bdm.Job{
+			bdm.Job{Name: "fake-job"},
+			bdm.Job{Name: "other-job"},
 		}
 
 		defaultVolumeMounts = []corev1.VolumeMount{

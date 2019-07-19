@@ -1,4 +1,4 @@
-package manifest
+package converter
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
@@ -91,7 +92,7 @@ func (disks BPMResourceDisks) Volumes() []corev1.Volume {
 
 // BPMResources uses BOSH Process Manager information to create k8s container specs from single BOSH instance group.
 // It returns extended stateful sets, services and extended jobs.
-func (kc *KubeConverter) BPMResources(manifestName string, version string, instanceGroup *InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) (*BPMResources, error) {
+func (kc *KubeConverter) BPMResources(manifestName string, version string, instanceGroup *bdm.InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) (*BPMResources, error) {
 	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(manifestName, instanceGroup.Name, version)
 
 	defaultDisks := generateDefaultDisks(manifestName, instanceGroup, version, kc.namespace)
@@ -141,7 +142,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 func (kc *KubeConverter) serviceToExtendedSts(
 	cfac *ContainerFactory,
 	manifestName string,
-	instanceGroup *InstanceGroup,
+	instanceGroup *bdm.InstanceGroup,
 	defaultDisks BPMResourceDisks,
 	bpmDisks BPMResourceDisks,
 ) (essv1.ExtendedStatefulSet, error) {
@@ -207,7 +208,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 }
 
 // serviceToKubeServices will generate Services which expose ports for InstanceGroup's jobs
-func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGroup *InstanceGroup, eSts *essv1.ExtendedStatefulSet) ([]corev1.Service, error) {
+func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGroup *bdm.InstanceGroup, eSts *essv1.ExtendedStatefulSet) ([]corev1.Service, error) {
 	var services []corev1.Service
 	// Collect ports to be exposed for each job
 	ports := []corev1.ServicePort{}
@@ -233,18 +234,18 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGrou
 					Name:      names.ServiceName(manifestName, instanceGroup.Name, len(services)),
 					Namespace: kc.namespace,
 					Labels: map[string]string{
-						LabelDeploymentName:    manifestName,
-						LabelInstanceGroupName: instanceGroup.Name,
-						essv1.LabelAZIndex:     strconv.Itoa(0),
-						essv1.LabelPodOrdinal:  strconv.Itoa(i),
+						bdm.LabelDeploymentName:    manifestName,
+						bdm.LabelInstanceGroupName: instanceGroup.Name,
+						essv1.LabelAZIndex:         strconv.Itoa(0),
+						essv1.LabelPodOrdinal:      strconv.Itoa(i),
 					},
 				},
 				Spec: corev1.ServiceSpec{
 					Ports: ports,
 					Selector: map[string]string{
-						LabelInstanceGroupName: instanceGroup.Name,
-						essv1.LabelAZIndex:     strconv.Itoa(0),
-						essv1.LabelPodOrdinal:  strconv.Itoa(i),
+						bdm.LabelInstanceGroupName: instanceGroup.Name,
+						essv1.LabelAZIndex:         strconv.Itoa(0),
+						essv1.LabelPodOrdinal:      strconv.Itoa(i),
 					},
 				},
 			})
@@ -255,17 +256,17 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGrou
 					Name:      names.ServiceName(manifestName, instanceGroup.Name, len(services)),
 					Namespace: kc.namespace,
 					Labels: map[string]string{
-						LabelInstanceGroupName: instanceGroup.Name,
-						essv1.LabelAZIndex:     strconv.Itoa(azIndex),
-						essv1.LabelPodOrdinal:  strconv.Itoa(i),
+						bdm.LabelInstanceGroupName: instanceGroup.Name,
+						essv1.LabelAZIndex:         strconv.Itoa(azIndex),
+						essv1.LabelPodOrdinal:      strconv.Itoa(i),
 					},
 				},
 				Spec: corev1.ServiceSpec{
 					Ports: ports,
 					Selector: map[string]string{
-						LabelInstanceGroupName: instanceGroup.Name,
-						essv1.LabelAZIndex:     strconv.Itoa(azIndex),
-						essv1.LabelPodOrdinal:  strconv.Itoa(i),
+						bdm.LabelInstanceGroupName: instanceGroup.Name,
+						essv1.LabelAZIndex:         strconv.Itoa(azIndex),
+						essv1.LabelPodOrdinal:      strconv.Itoa(i),
 					},
 				},
 			})
@@ -282,7 +283,7 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGrou
 		Spec: corev1.ServiceSpec{
 			Ports: ports,
 			Selector: map[string]string{
-				LabelInstanceGroupName: instanceGroup.Name,
+				bdm.LabelInstanceGroupName: instanceGroup.Name,
 			},
 			ClusterIP: "None",
 		},
@@ -300,7 +301,7 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGrou
 func (kc *KubeConverter) errandToExtendedJob(
 	cfac *ContainerFactory,
 	manifestName string,
-	instanceGroup *InstanceGroup,
+	instanceGroup *bdm.InstanceGroup,
 	defaultDisks BPMResourceDisks,
 	bpmDisks BPMResourceDisks,
 ) (ejv1.ExtendedJob, error) {

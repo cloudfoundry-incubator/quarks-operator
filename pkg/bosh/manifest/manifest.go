@@ -14,6 +14,11 @@ import (
 	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 )
 
+const (
+	// DesiredManifestKeyName is the name of the key in desired manifest secret
+	DesiredManifestKeyName = "manifest.yaml"
+)
+
 // Feature from BOSH deployment manifest
 type Feature struct {
 	ConvergeVariables    bool  `yaml:"converge_variables"`

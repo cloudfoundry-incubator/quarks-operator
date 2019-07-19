@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
@@ -29,7 +29,7 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 	r := NewGeneratedVariableReconciler(
 		ctx, config, mgr,
 		controllerutil.SetControllerReference,
-		bdm.NewKubeConverter(config.Namespace),
+		converter.NewKubeConverter(config.Namespace),
 	)
 
 	// Create a new controller

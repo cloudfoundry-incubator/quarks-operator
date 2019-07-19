@@ -1,4 +1,4 @@
-package manifest
+package converter
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
@@ -38,7 +39,7 @@ func NewResolver(client client.Client, f NewInterpolatorFunc) *Resolver {
 
 // DesiredManifest reads the versioned secret created by the variable interpolation job
 // and unmarshals it into a Manifest object
-func (r *Resolver) DesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*Manifest, error) {
+func (r *Resolver) DesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error) {
 	// unversioned desired manifest name
 	secretName := names.DesiredManifestName(boshDeploymentName, "")
 
@@ -49,7 +50,7 @@ func (r *Resolver) DesiredManifest(ctx context.Context, boshDeploymentName, name
 
 	manifestData := secret.Data["manifest.yaml"]
 
-	manifest, err := LoadYAML(manifestData)
+	manifest, err := bdm.LoadYAML(manifestData)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to unmarshal manifest from secret '%s'", secretName)
 	}
@@ -60,10 +61,10 @@ func (r *Resolver) DesiredManifest(ctx context.Context, boshDeploymentName, name
 // WithOpsManifest returns manifest referenced by our bdpl CRD
 // The resulting manifest has variables interpolated and ops files applied.
 // It is the 'with-ops' manifest.
-func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace string) (*Manifest, error) {
+func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace string) (*bdm.Manifest, error) {
 	interpolator := r.newInterpolatorFunc()
 	spec := instance.Spec
-	manifest := &Manifest{}
+	manifest := &bdm.Manifest{}
 	var (
 		m   string
 		err error
@@ -75,7 +76,7 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 	}
 
 	// Get the deployment name from the manifest
-	manifest, err = LoadYAML([]byte(m))
+	manifest, err = bdm.LoadYAML([]byte(m))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal manifest")
 	}
@@ -103,7 +104,7 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 	}
 
 	// Reload the manifest after interpolation, and apply implicit variables
-	manifest, err = LoadYAML(bytes)
+	manifest, err = bdm.LoadYAML(bytes)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load yaml after applying ops %#v", m)
 	}
@@ -124,7 +125,7 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 		m = strings.Replace(m, fmt.Sprintf("((%s))", v), varData, -1)
 	}
 
-	manifest, err = LoadYAML([]byte(m))
+	manifest, err = bdm.LoadYAML([]byte(m))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load yaml after interpolating implicit variables %#v", m)
 	}

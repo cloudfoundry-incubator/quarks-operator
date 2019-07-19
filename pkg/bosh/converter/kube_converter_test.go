@@ -1,10 +1,11 @@
-package manifest_test
+package converter_test
 
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
@@ -23,7 +24,7 @@ var _ = Describe("kube converter", func() {
 		})
 
 		act := func() []esv1.ExtendedSecret {
-			kubeConverter := manifest.NewKubeConverter("foo")
+			kubeConverter := converter.NewKubeConverter("foo")
 			return kubeConverter.Variables(m.Name, m.Variables)
 		}
 

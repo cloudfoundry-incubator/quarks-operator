@@ -4,7 +4,7 @@ package fakes
 import (
 	sync "sync"
 
-	manifest "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	converter "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 )
 
 type FakeInterpolator struct {
@@ -195,4 +195,4 @@ func (fake *FakeInterpolator) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ manifest.Interpolator = new(FakeInterpolator)
+var _ converter.Interpolator = new(FakeInterpolator)

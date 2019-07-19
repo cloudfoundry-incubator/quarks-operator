@@ -22,7 +22,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
@@ -225,24 +225,22 @@ func (e *Environment) setupCFOperator(namespace string) (err error) {
 	e.Namespace = namespace
 	e.Config.Namespace = namespace
 
-	operatorDockerImageOrg, found := os.LookupEnv("DOCKER_IMAGE_ORG")
+	dockerImageOrg, found := os.LookupEnv("DOCKER_IMAGE_ORG")
 	if !found {
-		operatorDockerImageOrg = "cfcontainerization"
+		dockerImageOrg = "cfcontainerization"
 	}
 
-	operatorDockerImageRepo, found := os.LookupEnv("DOCKER_IMAGE_REPOSITORY")
+	dockerImageRepo, found := os.LookupEnv("DOCKER_IMAGE_REPOSITORY")
 	if !found {
-		operatorDockerImageRepo = "cf-operator"
+		dockerImageRepo = "cf-operator"
 	}
 
-	operatorDockerImageTag, found := os.LookupEnv("DOCKER_IMAGE_TAG")
+	dockerImageTag, found := os.LookupEnv("DOCKER_IMAGE_TAG")
 	if !found {
 		return fmt.Errorf("required environment variable DOCKER_IMAGE_TAG not set")
 	}
 
-	manifest.DockerImageOrganization = operatorDockerImageOrg
-	manifest.DockerImageRepository = operatorDockerImageRepo
-	manifest.DockerImageTag = operatorDockerImageTag
+	converter.SetupOperatorDockerImage(dockerImageOrg, dockerImageRepo, dockerImageTag)
 
 	loggerPath := helper.LogfilePath(fmt.Sprintf("cf-operator-tests-%d.log", e.ID))
 	e.ObservedLogs, e.Log = helper.NewTestLoggerWithPath(loggerPath)

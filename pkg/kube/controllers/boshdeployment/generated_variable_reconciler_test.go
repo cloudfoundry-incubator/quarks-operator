@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
@@ -106,7 +106,7 @@ variables:
 	})
 
 	JustBeforeEach(func() {
-		reconciler = cfd.NewGeneratedVariableReconciler(ctx, config, manager, controllerutil.SetControllerReference, bdm.NewKubeConverter(config.Namespace))
+		reconciler = cfd.NewGeneratedVariableReconciler(ctx, config, manager, controllerutil.SetControllerReference, converter.NewKubeConverter(config.Namespace))
 	})
 
 	Describe("Reconcile", func() {

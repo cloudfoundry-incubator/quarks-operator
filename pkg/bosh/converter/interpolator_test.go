@@ -1,9 +1,10 @@
-package manifest_test
+package converter_test
 
 import (
-	ipl "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	ipl "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 )
 
 var _ = Describe("Interpolator", func() {

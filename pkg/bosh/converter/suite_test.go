@@ -1,4 +1,4 @@
-package manifest_test
+package converter_test
 
 import (
 	"testing"
@@ -9,5 +9,5 @@ import (
 
 func TestManifest(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "BOSH Manifest Suite")
+	RunSpecs(t, "BOSH Converter Suite")
 }

@@ -10,8 +10,16 @@ import (
 	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 )
 
-// JobSpecFilename is the name of the job spec manifest in an unpacked BOSH release
-const JobSpecFilename = "job.MF"
+const (
+	// DataDir the mount path for the data directory.
+	DataDir = "/var/vcap/data"
+
+	// SysDir the mount path for the sys directory.
+	SysDir = "/var/vcap/sys"
+
+	// JobSpecFilename is the name of the job spec manifest in an unpacked BOSH release
+	JobSpecFilename = "job.MF"
+)
 
 // JobSpec describes the contents of "job.MF" files
 type JobSpec struct {
@@ -70,18 +78,20 @@ func (j *Job) loadSpec(baseDir string) (*JobSpec, error) {
 	return &jobSpec, nil
 }
 
-func (j *Job) dataDirs(name string) []string {
+// DataDirs returns all data dirs a BOSH job expects
+func (j *Job) DataDirs() []string {
 	return []string{
-		filepath.Join(VolumeDataDirMountPath, name),
-		filepath.Join(VolumeDataDirMountPath, "sys", "log", name),
-		filepath.Join(VolumeDataDirMountPath, "sys", "run", name),
+		filepath.Join(DataDir, j.Name),
+		filepath.Join(DataDir, "sys", "log", j.Name),
+		filepath.Join(DataDir, "sys", "run", j.Name),
 	}
 }
 
-func (j *Job) sysDirs(name string) []string {
+// SysDirs returns all sys dirs a BOSH job expects
+func (j *Job) SysDirs() []string {
 	return []string{
-		filepath.Join(VolumeSysDirMountPath, "log", name),
-		filepath.Join(VolumeSysDirMountPath, "run", name),
+		filepath.Join(SysDir, "log", j.Name),
+		filepath.Join(SysDir, "run", j.Name),
 	}
 }
 

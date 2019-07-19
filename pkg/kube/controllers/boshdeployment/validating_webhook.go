@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
@@ -131,7 +131,7 @@ func (v *Validator) Handle(ctx context.Context, req types.Request) types.Respons
 	}
 
 	log.Debug(ctx, "Resolving manifest")
-	resolver := bdm.NewResolver(v.client, func() bdm.Interpolator { return bdm.NewInterpolator() })
+	resolver := converter.NewResolver(v.client, func() converter.Interpolator { return converter.NewInterpolator() })
 
 	for _, opsItem := range boshDeployment.Spec.Ops {
 		resourceExist, msg := v.OpsResourceExist(ctx, opsItem, boshDeployment.Namespace)
