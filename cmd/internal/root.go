@@ -46,9 +46,11 @@ var rootCmd = &cobra.Command{
 		}
 
 		cfOperatorNamespace := viper.GetString("cf-operator-namespace")
-		converter.DockerImageOrganization = viper.GetString("docker-image-org")
-		converter.DockerImageRepository = viper.GetString("docker-image-repository")
-		converter.DockerImageTag = viper.GetString("docker-image-tag")
+		converter.SetupOperatorDockerImage(
+			viper.GetString("docker-image-org"),
+			viper.GetString("docker-image-repository"),
+			viper.GetString("docker-image-tag"),
+		)
 
 		log.Infof("Starting cf-operator %s with namespace %s", version.Version, cfOperatorNamespace)
 		log.Infof("cf-operator docker image: %s", converter.GetOperatorDockerImage())
