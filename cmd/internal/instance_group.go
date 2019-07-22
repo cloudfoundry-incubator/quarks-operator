@@ -18,14 +18,14 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
-// dataGatherCmd represents the dataGather command
-var dataGatherCmd = &cobra.Command{
-	Use:   "data-gather [flags]",
-	Short: "Gathers data of a bosh manifest",
-	Long: `Gathers data of a manifest.
+// instanceGroupCmd command to create an instance group manifest where all
+// properties are resolved
+var instanceGroupCmd = &cobra.Command{
+	Use:   "instance-group [flags]",
+	Short: "Resolves instance group properties of a BOSH manifest",
+	Long: `Resolves instance group properties of a BOSH manifest.
 
-This will retrieve information of an instance-group
-inside a bosh manifest file.
+This will resolve the properties of an instance group and return a manifest for that instance group.
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
@@ -76,17 +76,17 @@ inside a bosh manifest file.
 			return err
 		}
 
-		dg, err := manifest.NewDataGatherer(log, baseDir, namespace, *m, instanceGroupName)
+		dg, err := manifest.NewInstanceGroupResolver(baseDir, namespace, *m, instanceGroupName)
 		if err != nil {
 			return err
 		}
 
-		resolvedProperties, err := dg.ResolvedProperties()
+		manifest, err := dg.Manifest()
 		if err != nil {
 			return err
 		}
 
-		propertiesBytes, err := yaml.Marshal(resolvedProperties)
+		propertiesBytes, err := yaml.Marshal(manifest)
 		if err != nil {
 			return err
 		}
@@ -106,7 +106,7 @@ inside a bosh manifest file.
 		io.Copy(&buf, r)
 
 		if buf.Len() > 0 {
-			return errors.Errorf("unexpected data sent to stdOut, during the data-gather cmd: %s", buf.String())
+			return errors.Errorf("unexpected data sent to stdOut, during the instance-group cmd: %s", buf.String())
 		}
 		// Write to an original stdOut
 		// without any undesired data
@@ -128,5 +128,5 @@ inside a bosh manifest file.
 }
 
 func init() {
-	utilCmd.AddCommand(dataGatherCmd)
+	utilCmd.AddCommand(instanceGroupCmd)
 }

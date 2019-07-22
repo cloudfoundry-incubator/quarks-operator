@@ -75,7 +75,7 @@ instance group.
 			return err
 		}
 
-		dg, err := manifest.NewDataGatherer(log, baseDir, namespace, *m, instanceGroupName)
+		dg, err := manifest.NewInstanceGroupResolver(baseDir, namespace, *m, instanceGroupName)
 		if err != nil {
 			return err
 		}

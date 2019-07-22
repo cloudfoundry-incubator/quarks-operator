@@ -105,16 +105,16 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Apply the "Data Gathering" ExtendedJob
-	eJob, err = jobFactory.DataGatheringJob()
+	eJob, err = jobFactory.InstanceGroupManifestJob()
 	if err != nil {
-		return reconcile.Result{}, log.WithEvent(instance, "DataGatheringError").Errorf(ctx, "Failed to build data gathering eJob: %v", err)
+		return reconcile.Result{}, log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "Failed to build data gathering eJob: %v", err)
 
 	}
 	log.Debug(ctx, "Creating data gathering ExtendedJob")
 	err = r.createEJob(ctx, instance, eJob)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(instance, "DataGatheringError").Errorf(ctx, "Failed to create data gathering ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "Failed to create data gathering ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	// Apply the "BPM Configs" ExtendedJob

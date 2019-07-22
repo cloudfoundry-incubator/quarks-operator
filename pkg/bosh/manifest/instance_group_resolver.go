@@ -11,92 +11,15 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
 	btg "github.com/viovanov/bosh-template-go"
-	"go.uber.org/zap"
 	yaml "gopkg.in/yaml.v2"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 )
 
-// JobProviderLinks provides links to other jobs, indexed by provider type and name
-type JobProviderLinks map[string]map[string]bc.JobLink
-
-// Lookup returns a link for a type and name, used when links are consumed
-func (jpl JobProviderLinks) Lookup(provider *JobSpecProvider) (bc.JobLink, bool) {
-	link, ok := jpl[provider.Type][provider.Name]
-	return link, ok
-}
-
-// Add another job to the lookup map
-func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []bc.JobInstance) error {
-	var properties map[string]interface{}
-
-	for _, link := range spec.Provides {
-		properties = map[string]interface{}{}
-		for _, property := range link.Properties {
-			// generate a nested struct of map[string]interface{} when
-			// a property is of the form foo.bar
-			if strings.Contains(property, ".") {
-				spec.RetrieveNestedProperty(properties, property)
-			} else {
-				properties[property] = spec.RetrievePropertyDefault(property)
-			}
-		}
-		// Override default spec values with explicit settings from the
-		// current bosh deployment manifest, this should be done under each
-		// job, inside a `properties` key.
-		for _, propertyName := range link.Properties {
-			mergeNestedExplicitProperty(properties, job, propertyName)
-		}
-		linkName := link.Name
-		linkType := link.Type
-
-		// instance_group.job can override the link name through the
-		// instance_group.job.provides, via the "as" key
-		if job.Provides != nil {
-			if value, ok := job.Provides[linkName]; ok {
-				switch value := value.(type) {
-				case map[interface{}]interface{}:
-					if overrideLinkName, ok := value["as"]; ok {
-						linkName = fmt.Sprintf("%v", overrideLinkName)
-					}
-				default:
-					return fmt.Errorf("unexpected type detected: %T, should have been a map", value)
-				}
-
-			}
-		}
-
-		if providers, ok := jpl[linkType]; ok {
-			if _, ok := providers[linkName]; ok {
-				// If this comes from an addon, it will inevitably cause
-				// conflicts. So in this case, we simply ignore the error
-				if job.Properties.BOSHContainerization.IsAddon {
-					continue
-				}
-
-				return fmt.Errorf("multiple providers for link: name=%s type=%s", linkName, linkType)
-			}
-		}
-
-		if _, ok := jpl[linkType]; !ok {
-			jpl[linkType] = map[string]bc.JobLink{}
-		}
-
-		// construct the jobProviderLinks of the current job that provides
-		// a link
-		jpl[linkType][linkName] = bc.JobLink{
-			Instances:  jobsInstances,
-			Properties: properties,
-		}
-	}
-	return nil
-}
-
-// DataGatherer gathers data for jobs in the manifest, it handles links and returns a deployment manifest
+// InstanceGroupResolver gathers data for jobs in the manifest, it handles links and returns a deployment manifest
 // that only has information pertinent to an instance group.
-type DataGatherer struct {
-	log           *zap.SugaredLogger
+type InstanceGroupResolver struct {
 	baseDir       string
 	manifest      Manifest
 	namespace     string
@@ -106,15 +29,14 @@ type DataGatherer struct {
 	jobProviderLinks JobProviderLinks
 }
 
-// NewDataGatherer returns a data gatherer with logging for a given input manifest and instance group
-func NewDataGatherer(log *zap.SugaredLogger, basedir, namespace string, manifest Manifest, instanceGroupName string) (*DataGatherer, error) {
+// NewInstanceGroupResolver returns a data gatherer with logging for a given input manifest and instance group
+func NewInstanceGroupResolver(basedir, namespace string, manifest Manifest, instanceGroupName string) (*InstanceGroupResolver, error) {
 	ig, err := (&manifest).InstanceGroupByName(instanceGroupName)
 	if err != nil {
 		return nil, err
 	}
 
-	return &DataGatherer{
-		log:              log,
+	return &InstanceGroupResolver{
 		baseDir:          basedir,
 		manifest:         manifest,
 		namespace:        namespace,
@@ -127,10 +49,10 @@ func NewDataGatherer(log *zap.SugaredLogger, basedir, namespace string, manifest
 // BPMConfigs returns a map of all BOSH jobs in the instance group
 // The output will be persisted by ExtendedJob as 'bpm.yaml' in the
 // `<deployment-name>.bpm.<instance-group>-v<version>` secret.
-func (dg *DataGatherer) BPMConfigs() (bpm.Configs, error) {
+func (dg *InstanceGroupResolver) BPMConfigs() (bpm.Configs, error) {
 	bpm := bpm.Configs{}
 
-	err := dg.gatherData()
+	err := dg.resolveManifest()
 	if err != nil {
 		return bpm, err
 	}
@@ -142,12 +64,12 @@ func (dg *DataGatherer) BPMConfigs() (bpm.Configs, error) {
 	return bpm, nil
 }
 
-// ResolvedProperties returns a manifest for a specific instance group only.
+// Manifest returns a manifest for a specific instance group only.
 // That manifest includes the gathered data from BPM and links.
 // The output will be persisted by ExtendedJob as 'properties.yaml' in the
 // `<deployment-name>.ig-resolved.<instance-group>-v<version>` secret.
-func (dg *DataGatherer) ResolvedProperties() (Manifest, error) {
-	err := dg.gatherData()
+func (dg *InstanceGroupResolver) Manifest() (Manifest, error) {
+	err := dg.resolveManifest()
 	if err != nil {
 		return Manifest{}, err
 	}
@@ -155,14 +77,14 @@ func (dg *DataGatherer) ResolvedProperties() (Manifest, error) {
 	return dg.manifest, nil
 }
 
-// gatherData collects bpm and link information and enriches the manifest accordingly
+// resolveManifest collects bpm and link information and enriches the manifest accordingly
 //
 // Data gathered:
 // * job spec information
 // * job properties
 // * bosh links
 // * bpm yaml file data
-func (dg *DataGatherer) gatherData() error {
+func (dg *InstanceGroupResolver) resolveManifest() error {
 	err := dg.collectReleaseSpecsAndProviderLinks()
 	if err != nil {
 		return err
@@ -182,7 +104,7 @@ func (dg *DataGatherer) gatherData() error {
 }
 
 // collectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
-func (dg *DataGatherer) collectReleaseSpecsAndProviderLinks() error {
+func (dg *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 	for _, instanceGroup := range dg.manifest.InstanceGroups {
 		for jobIdx, job := range instanceGroup.Jobs {
 			// make sure a map entry exists for the current job release
@@ -225,7 +147,7 @@ func (dg *DataGatherer) collectReleaseSpecsAndProviderLinks() error {
 }
 
 // ProcessConsumers will generate a proper context for links and render the required ERB files
-func (dg *DataGatherer) processConsumers() error {
+func (dg *InstanceGroupResolver) processConsumers() error {
 	for i := range dg.instanceGroup.Jobs {
 		job := &dg.instanceGroup.Jobs[i]
 
@@ -243,7 +165,7 @@ func (dg *DataGatherer) processConsumers() error {
 	return nil
 }
 
-func (dg *DataGatherer) renderBPM() error {
+func (dg *InstanceGroupResolver) renderBPM() error {
 	for i := range dg.instanceGroup.Jobs {
 		job := &dg.instanceGroup.Jobs[i]
 
@@ -257,7 +179,7 @@ func (dg *DataGatherer) renderBPM() error {
 }
 
 // renderJobBPM per job and add its value to the jobInstances.BPM field.
-func (dg *DataGatherer) renderJobBPM(currentJob *Job, baseDir string) error {
+func (dg *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) error {
 	// Run pre-render scripts for the current job.
 	for idx, script := range currentJob.Properties.BOSHContainerization.PreRenderScripts {
 		if err := runPreRenderScript(script, idx, true); err != nil {

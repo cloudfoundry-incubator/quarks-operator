@@ -137,16 +137,16 @@ var _ = Describe("CLI", func() {
 		})
 	})
 
-	Describe("data-gather", func() {
+	Describe("instance-group", func() {
 		It("lists its flags incl. ENV binding", func() {
-			session, err := act("util", "data-gather", "-h")
+			session, err := act("util", "instance-group", "-h")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
-  -h, --help * help for data-gather`))
+  -h, --help * help for instance-group`))
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
-			session, err := act("util", "data-gather", "--base-dir=.", "-m", "foo.txt", "-g", "log-api")
+			session, err := act("util", "instance-group", "--base-dir=.", "-m", "foo.txt", "-g", "log-api")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Err).Should(Say("open foo.txt: no such file or directory"))
 		})
@@ -161,7 +161,7 @@ var _ = Describe("CLI", func() {
 			})
 
 			It("accepts the bosh-manifest-path as an environment variable", func() {
-				session, err := act("util", "data-gather", "--base-dir=.", "-g", "log-api")
+				session, err := act("util", "instance-group", "--base-dir=.", "-g", "log-api")
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Err).Should(Say("open bar.txt: no such file or directory"))
 			})

@@ -559,7 +559,7 @@ After creating a `BOSHDeployment` named `nats-deployment`, with one Instance Gro
 
   ```text
   bpm-configs-nats-deployment
-  data-gathering-nats-deployment
+  ig-nats-deployment
   var-interpolation-nats-deployment
   ```
 
