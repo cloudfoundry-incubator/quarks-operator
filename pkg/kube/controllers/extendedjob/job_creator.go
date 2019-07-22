@@ -45,8 +45,6 @@ type jobCreatorImpl struct {
 // createJob Creates Job to complete ExJob.
 // Return retry if one of references is not present.
 func (j jobCreatorImpl) createJob(ctx context.Context, eJob ejv1.ExtendedJob, podName string, podUID string) (retry bool, err error) {
-	retry = false
-
 	template := eJob.Spec.Template.DeepCopy()
 
 	if template.Labels == nil {
