@@ -151,7 +151,7 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 					bdv1.LabelDeploymentName:       f.Manifest.Name,
 					bdv1.LabelManifestSHA1:         manifestSignature,
 					bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeManifestWithOps.String(),
-					ejv1.LabelReferencedJobName:    fmt.Sprintf("data-gathering-%s", f.Manifest.Name),
+					ejv1.LabelReferencedJobName:    fmt.Sprintf("instance-group-%s", f.Manifest.Name),
 				},
 				Versioned: true,
 			},
@@ -194,17 +194,17 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 	return job, nil
 }
 
-// DataGatheringJob generates the Data Gathering Job for a manifest
-func (f *JobFactory) DataGatheringJob() (*ejv1.ExtendedJob, error) {
+// InstanceGroupManifestJob generates the job to create an instance group manifest
+func (f *JobFactory) InstanceGroupManifestJob() (*ejv1.ExtendedJob, error) {
 	containers := make([]corev1.Container, len(f.Manifest.InstanceGroups))
 
 	for idx, ig := range f.Manifest.InstanceGroups {
 		// One container per Instance Group
 		// There will be one secret generated for each of these containers
-		containers[idx] = f.gatheringContainer("data-gather", ig.Name)
+		containers[idx] = f.gatheringContainer("instance-group", ig.Name)
 	}
 
-	eJobName := fmt.Sprintf("dg-%s", f.Manifest.Name)
+	eJobName := fmt.Sprintf("ig-%s", f.Manifest.Name)
 	return f.gatheringJob(eJobName, names.DeploymentSecretTypeInstanceGroupResolvedProperties, containers)
 }
 
@@ -234,7 +234,7 @@ func (f *JobFactory) gatheringContainer(cmd, instanceGroupName string) corev1.Co
 				ReadOnly:  true,
 			},
 			{
-				Name:      generateVolumeName("data-gathering"),
+				Name:      generateVolumeName("instance-group"),
 				MountPath: VolumeRenderingDataMountPath,
 			},
 		},
@@ -266,7 +266,7 @@ func (f *JobFactory) gatheringJob(name string, secretType names.DeploymentSecret
 	doneSpecCopyingReleases := map[string]bool{}
 	for _, ig := range f.Manifest.InstanceGroups {
 		// Iterate through each Job to find all releases so we can copy all
-		// sources to /var/vcap/data-gathering
+		// sources to /var/vcap/instance-group
 		for _, boshJob := range ig.Jobs {
 			// If we've already generated an init container for this release, skip
 			releaseName := boshJob.Release
@@ -282,7 +282,7 @@ func (f *JobFactory) gatheringJob(name string, secretType names.DeploymentSecret
 			}
 			// Create an init container that copies sources
 			// TODO: destination should also contain release name, to prevent overwrites
-			initContainers = append(initContainers, jobSpecCopierContainer(releaseName, releaseImage, generateVolumeName("data-gathering")))
+			initContainers = append(initContainers, jobSpecCopierContainer(releaseName, releaseImage, generateVolumeName("instance-group")))
 		}
 	}
 
@@ -332,7 +332,7 @@ func (f *JobFactory) gatheringJob(name string, secretType names.DeploymentSecret
 							},
 						},
 						{
-							Name: generateVolumeName("data-gathering"),
+							Name: generateVolumeName("instance-group"),
 							VolumeSource: corev1.VolumeSource{
 								EmptyDir: &corev1.EmptyDirVolumeSource{},
 							},

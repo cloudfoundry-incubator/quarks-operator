@@ -80,7 +80,7 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 	if !canBeGenerated {
-		ctxlog.WithEvent(instance, "SkipReconcile").Infof(ctx, "Skip reconcile: secret '%s' already exists and it's not generated", instance.Spec.SecretName)
+		ctxlog.WithEvent(instance, "SkipReconcile").Infof(ctx, "Skip reconcile: secret '%s' already exists", instance.Spec.SecretName)
 		return reconcile.Result{}, nil
 	}
 
@@ -119,7 +119,28 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
-	return reconcile.Result{}, nil
+	return reconcile.Result{}, r.updateExSecret(ctx, instance)
+}
+
+func (r *ReconcileExtendedSecret) updateExSecret(ctx context.Context, instance *esv1.ExtendedSecret) error {
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, instance.DeepCopy(), func(obj runtime.Object) error {
+		es, ok := obj.(*esv1.ExtendedSecret)
+		if !ok {
+			return fmt.Errorf("object is not a ExtendedSecret")
+		}
+
+		if !es.Status.Generated {
+			es.Status.Generated = true
+		}
+		return nil
+	})
+	if err != nil {
+		return errors.Wrapf(err, "could not create or update ExtendedSecret '%s'", instance.GetName())
+	}
+
+	ctxlog.Debugf(ctx, "ExtendedSecret '%s' has been %s", instance.Name, op)
+
+	return nil
 }
 
 func (r *ReconcileExtendedSecret) createPasswordSecret(ctx context.Context, instance *esv1.ExtendedSecret) error {
@@ -269,6 +290,11 @@ func (r *ReconcileExtendedSecret) canBeGenerated(ctx context.Context, instance *
 	}
 
 	if secretLabels[esv1.LabelKind] != esv1.GeneratedSecretKind {
+		return false, nil
+	}
+
+	// Skip generation when instance has generated secret and its `generated` status is true
+	if instance.Status.Generated {
 		return false, nil
 	}
 

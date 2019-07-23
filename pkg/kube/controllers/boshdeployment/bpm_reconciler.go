@@ -3,6 +3,7 @@ package boshdeployment
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/pkg/errors"
@@ -250,8 +251,10 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 
 		op, err := controllerutil.CreateOrUpdate(ctx, r.client, eSts.DeepCopy(), func(obj runtime.Object) error {
 			if existingSts, ok := obj.(*estsv1.ExtendedStatefulSet); ok {
-				eSts.ObjectMeta.ResourceVersion = existingSts.ObjectMeta.ResourceVersion
-				eSts.DeepCopyInto(existingSts)
+				if shouldESTSUpdate(existingSts, &eSts) {
+					eSts.ObjectMeta.ResourceVersion = existingSts.ObjectMeta.ResourceVersion
+					eSts.DeepCopyInto(existingSts)
+				}
 
 				return nil
 			}
@@ -282,4 +285,19 @@ func (r *ReconcileBPM) createPersistentVolumeClaim(ctx context.Context, persiste
 	}
 
 	return nil
+}
+
+// shouldESTSUpdate determine if ESTS should be updated
+func shouldESTSUpdate(oldESTS, newESTS *estsv1.ExtendedStatefulSet) bool {
+	if !reflect.DeepEqual(oldESTS.Labels, newESTS.Labels) {
+		return true
+	}
+	if !reflect.DeepEqual(oldESTS.Annotations, newESTS.Annotations) {
+		return true
+	}
+	if !reflect.DeepEqual(oldESTS.Spec, newESTS.Spec) {
+		return true
+	}
+
+	return false
 }

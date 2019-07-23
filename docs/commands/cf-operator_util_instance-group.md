@@ -1,4 +1,4 @@
-## cf-operator util data-gather
+## cf-operator util instance-group
 
 Gathers data of a bosh manifest
 
@@ -12,13 +12,13 @@ inside a bosh manifest file.
 
 
 ```
-cf-operator util data-gather [flags]
+cf-operator util instance-group [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for data-gather
+  -h, --help   help for instance-group
 ```
 
 ### Options inherited from parent commands

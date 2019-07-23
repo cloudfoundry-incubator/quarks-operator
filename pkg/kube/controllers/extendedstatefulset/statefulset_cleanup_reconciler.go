@@ -95,7 +95,7 @@ func (r *ReconcileStatefulSetCleanup) listStatefulSetVersions(ctx context.Contex
 
 	versions := map[int]bool{}
 
-	statefulSets, err := listStatefulSets(ctx, r.client, exStatefulSet)
+	statefulSets, err := listStatefulSetsFromInformer(ctx, r.client, exStatefulSet)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (r *ReconcileStatefulSetCleanup) listStatefulSetVersions(ctx context.Contex
 func (r *ReconcileStatefulSetCleanup) cleanupStatefulSets(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet, maxAvailableVersion int) error {
 	ctxlog.WithEvent(exStatefulSet, "CleanupStatefulSets").Infof(ctx, "Cleaning up StatefulSets for ExtendedStatefulSet '%s' less than version %d.", exStatefulSet.Name, maxAvailableVersion)
 
-	statefulSets, err := listStatefulSets(ctx, r.client, exStatefulSet)
+	statefulSets, err := listStatefulSetsFromInformer(ctx, r.client, exStatefulSet)
 	if err != nil {
 		return errors.Wrapf(err, "couldn't list StatefulSets for cleanup")
 	}

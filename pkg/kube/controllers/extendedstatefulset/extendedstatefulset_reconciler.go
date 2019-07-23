@@ -201,7 +201,7 @@ func (r *ReconcileExtendedStatefulSet) getActualStatefulSet(ctx context.Context,
 	maxVersion := 0
 
 	// Get all owned StatefulSets
-	statefulSets, err := listStatefulSets(ctx, r.client, exStatefulSet)
+	statefulSets, err := listStatefulSetsFromInformer(ctx, r.client, exStatefulSet)
 	if err != nil {
 		return nil, 0, err
 	}

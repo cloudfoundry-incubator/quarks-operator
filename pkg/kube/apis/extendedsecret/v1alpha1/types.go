@@ -62,7 +62,8 @@ type ExtendedSecretSpec struct {
 
 // ExtendedSecretStatus defines the observed state of ExtendedSecret
 type ExtendedSecretStatus struct {
-	SecretStatus []string `json:"secretStatus"`
+	// Indicates if the secret has already been generated
+	Generated bool `json:"generated"`
 }
 
 // +genclient

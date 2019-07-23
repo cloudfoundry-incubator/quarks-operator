@@ -4,12 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
-
-	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -18,13 +14,11 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	podutil "code.cloudfoundry.org/cf-operator/pkg/kube/util/pod"
+	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 var _ reconcile.Reconciler = &TriggerReconciler{}
-
-type setOwnerReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // NewTriggerReconciler returns a new reconcile to start jobs triggered by pods
 func NewTriggerReconciler(
@@ -33,7 +27,10 @@ func NewTriggerReconciler(
 	mgr manager.Manager,
 	query Query,
 	f setOwnerReferenceFunc,
+	store vss.VersionedSecretStore,
 ) reconcile.Reconciler {
+	jc := NewJobCreator(mgr.GetClient(), mgr.GetScheme(), f, store)
+
 	return &TriggerReconciler{
 		ctx:               ctx,
 		client:            mgr.GetClient(),
@@ -41,6 +38,7 @@ func NewTriggerReconciler(
 		query:             query,
 		scheme:            mgr.GetScheme(),
 		setOwnerReference: f,
+		jobCreator:        jc,
 	}
 }
 
@@ -52,6 +50,7 @@ type TriggerReconciler struct {
 	query             Query
 	scheme            *runtime.Scheme
 	setOwnerReference setOwnerReferenceFunc
+	jobCreator        JobCreator
 }
 
 // Reconcile creates jobs for extended jobs which match the request's pod.
@@ -101,7 +100,13 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 
 	for _, eJob := range eJobs.Items {
 		if r.query.MatchState(eJob, podState) && r.query.Match(eJob, *pod) {
-			err := r.createJob(ctx, eJob, podName, string(pod.UID))
+			_, err := r.jobCreator.createJob(ctx, eJob, podName, string(pod.UID))
+			if err != nil {
+				ctxlog.WithEvent(&eJob, "CreateJob").Infof(ctx, "Failed to create job for '%s' via pod %s: %s", eJob.Name, podEvent, err)
+				continue
+			}
+
+			ctxlog.WithEvent(&eJob, "CreateJob").Infof(ctx, "Created job for '%s' via pod %s", eJob.Name, podEvent)
 			if err != nil {
 				if apierrors.IsAlreadyExists(err) {
 					ctxlog.Debugf(ctx, "Skip '%s' triggered by pod %s: already running", eJob.Name, podEvent)
@@ -110,44 +115,7 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 				}
 				continue
 			}
-			ctxlog.WithEvent(&eJob, "CreateJob").Infof(ctx, "Created job for '%s' via pod %s", eJob.Name, podEvent)
 		}
 	}
 	return
-}
-
-func (r *TriggerReconciler) createJob(ctx context.Context, eJob ejv1.ExtendedJob, podName string, podUID string) error {
-	template := eJob.Spec.Template.DeepCopy()
-
-	if template.Labels == nil {
-		template.Labels = map[string]string{}
-	}
-	template.Labels[ejv1.LabelEJobName] = eJob.Name
-	template.Labels[ejv1.LabelTriggeringPod] = podUID
-
-	name, err := names.JobName(eJob.Name, podName)
-	if err != nil {
-		return errors.Wrapf(err, "could not generate job name for eJob '%s'", eJob.Name)
-	}
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: eJob.Namespace,
-			Labels:    map[string]string{ejv1.LabelExtendedJob: "true"},
-		},
-		Spec: batchv1.JobSpec{Template: *template},
-	}
-
-	err = r.setOwnerReference(&eJob, job, r.scheme)
-	if err != nil {
-		ctxlog.WithEvent(&eJob, "SetOwnerReferenceError").Errorf(ctx, "failed to set owner reference on job for '%s' via pod %s: %s", eJob.Name, podName, err)
-		return err
-	}
-
-	err = r.client.Create(ctx, job)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

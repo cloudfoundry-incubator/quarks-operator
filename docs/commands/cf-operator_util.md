@@ -32,7 +32,7 @@ Calls a utility subcommand.
 
 * [cf-operator](cf-operator.md)	 - cf-operator manages BOSH deployments on Kubernetes
 * [cf-operator util bpm-configs](cf-operator_util_bpm-configs.md)	 - Prints the BPM configs for all BOSH jobs of an instance group
-* [cf-operator util data-gather](cf-operator_util_data-gather.md)	 - Gathers data of a bosh manifest
+* [cf-operator util instance-group](cf-operator_util_instance-group.md)	 - Gathers data of a bosh manifest
 * [cf-operator util template-render](cf-operator_util_template-render.md)	 - Renders a bosh manifest
 * [cf-operator util variable-interpolation](cf-operator_util_variable-interpolation.md)	 - Interpolate variables
 

@@ -3,22 +3,21 @@ package extendedjob_test
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
-
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	crc "sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
@@ -42,7 +41,6 @@ var _ = Describe("ErrandReconciler", func() {
 			request    reconcile.Request
 			reconciler reconcile.Reconciler
 
-			runtimeObjects             []runtime.Object
 			eJob                       ejv1.ExtendedJob
 			setOwnerReferenceCallCount int
 		)
@@ -57,8 +55,12 @@ var _ = Describe("ErrandReconciler", func() {
 		}
 
 		ejobGetStub := func(ctx context.Context, nn types.NamespacedName, obj runtime.Object) error {
-			eJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
-			return nil
+			switch obj.(type) {
+			case *ejv1.ExtendedJob:
+				eJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+				return nil
+			}
+			return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 		}
 
 		setOwnerReference := func(owner, object metav1.Object, scheme *runtime.Scheme) error {
@@ -163,7 +165,7 @@ var _ = Describe("ErrandReconciler", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(result.Requeue).To(BeFalse())
 
-					Expect(logs.FilterMessageSnippet("Skip 'fake-ejob' triggered manually: already running").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Skip 'fake-ejob': already running").Len()).To(Equal(1))
 					Expect(client.CreateCallCount()).To(Equal(1))
 				})
 			})
@@ -171,18 +173,14 @@ var _ = Describe("ErrandReconciler", func() {
 		})
 
 		Context("when extended job is reconciled", func() {
-			var (
-				client crc.Client
-			)
+			var client fakes.FakeClient
 
 			Context("and the errand is a manual errand", func() {
 				BeforeEach(func() {
 					eJob = env.ErrandExtendedJob("fake-pod")
-					runtimeObjects = []runtime.Object{
-						&eJob,
-					}
-					client = fake.NewFakeClient(runtimeObjects...)
-					mgr.GetClientReturns(client)
+					client = fakes.FakeClient{}
+					mgr.GetClientReturns(&client)
+					client.GetCalls(ejobGetStub)
 
 					request = newRequest(eJob)
 				})
@@ -190,94 +188,160 @@ var _ = Describe("ErrandReconciler", func() {
 				It("should set run back and create a job", func() {
 					Expect(eJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerNow))
 
+					client.CreateCalls(func(context context.Context, object runtime.Object) error {
+						switch object.(type) {
+						case *batchv1.Job:
+							job := object.(*batchv1.Job)
+							Expect(reflect.DeepEqual(job.Spec.Template.Spec, eJob.Spec.Template.Spec)).To(BeTrue())
+							return nil
+						}
+
+						return nil
+					})
+					client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+						switch object.(type) {
+						case *ejv1.ExtendedJob:
+							job := object.(*ejv1.ExtendedJob)
+							Expect(job.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerManual))
+						}
+						return nil
+					})
+
 					result, err := act()
 					Expect(err).ToNot(HaveOccurred())
 					Expect(result.Requeue).To(BeFalse())
-
-					obj := &batchv1.JobList{}
-					err = client.List(context.Background(), &crc.ListOptions{}, obj)
-					Expect(err).ToNot(HaveOccurred())
-					Expect(obj.Items).To(HaveLen(1))
-
-					client.Get(
-						context.Background(),
-						types.NamespacedName{
-							Name:      eJob.Name,
-							Namespace: eJob.Namespace,
-						},
-						&eJob,
-					)
-					Expect(eJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerManual))
 				})
 			})
 
 			Context("and the errand is an auto-errand", func() {
 				BeforeEach(func() {
 					eJob = env.AutoErrandExtendedJob("fake-pod")
-					runtimeObjects = []runtime.Object{
-						&eJob,
-					}
-					client = fake.NewFakeClient(runtimeObjects...)
-					mgr.GetClientReturns(client)
+					client = fakes.FakeClient{}
+					mgr.GetClientReturns(&client)
+					client.GetCalls(ejobGetStub)
 
 					request = newRequest(eJob)
 				})
 
 				It("should set the trigger strategy to done and immediately trigger the job", func() {
+					client.CreateCalls(func(context context.Context, object runtime.Object) error {
+						switch object.(type) {
+						case *batchv1.Job:
+							job := object.(*batchv1.Job)
+							Expect(reflect.DeepEqual(job.Spec.Template.Spec, eJob.Spec.Template.Spec)).To(BeTrue())
+							return nil
+						}
+
+						return nil
+					})
+					client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+						switch object.(type) {
+						case *ejv1.ExtendedJob:
+							job := object.(*ejv1.ExtendedJob)
+							Expect(job.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
+						}
+						return nil
+					})
+
 					result, err := act()
 					Expect(err).ToNot(HaveOccurred())
 					Expect(result.Requeue).To(BeFalse())
-
-					obj := &batchv1.JobList{}
-					err = client.List(context.Background(), &crc.ListOptions{}, obj)
-					Expect(err).ToNot(HaveOccurred())
-					Expect(obj.Items).To(HaveLen(1))
-
-					client.Get(
-						context.Background(),
-						types.NamespacedName{
-							Name:      eJob.Name,
-							Namespace: eJob.Namespace,
-						},
-						&eJob,
-					)
-					Expect(eJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
-
 				})
 			})
 
 			Context("and the auto-errand is updated on config change", func() {
+				var (
+					configMap *corev1.ConfigMap
+					secret    *corev1.Secret
+				)
+
 				BeforeEach(func() {
+					c1 := env.DefaultConfigMap("config1")
+					configMap = &c1
+					s1 := env.DefaultSecret("secret1")
+					secret = &s1
+
 					eJob = env.AutoErrandExtendedJob("fake-pod")
+					eJob.Spec.Template = env.ConfigPodTemplate()
 					eJob.Spec.UpdateOnConfigChange = true
 					eJob.Spec.Trigger.Strategy = ejv1.TriggerOnce
-					runtimeObjects = []runtime.Object{&eJob}
-					client = fake.NewFakeClient(runtimeObjects...)
-					mgr.GetClientReturns(client)
+					client = fakes.FakeClient{}
+					mgr.GetClientReturns(&client)
 
 					request = newRequest(eJob)
 				})
 
 				It("should trigger the job", func() {
+					client.GetCalls(func(ctx context.Context, nn types.NamespacedName, obj runtime.Object) error {
+						switch obj.(type) {
+						case *ejv1.ExtendedJob:
+							eJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+							return nil
+						case *corev1.ConfigMap:
+							configMap.DeepCopyInto(obj.(*corev1.ConfigMap))
+							return nil
+						case *corev1.Secret:
+							secret.DeepCopyInto(obj.(*corev1.Secret))
+							return nil
+						}
+						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+					})
+
+					client.CreateCalls(func(context context.Context, object runtime.Object) error {
+						switch object.(type) {
+						case *batchv1.Job:
+							job := object.(*batchv1.Job)
+							Expect(reflect.DeepEqual(job.Spec.Template.Spec, eJob.Spec.Template.Spec)).To(BeTrue())
+							return nil
+						}
+
+						return nil
+					})
+					client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+						switch object.(type) {
+						case *ejv1.ExtendedJob:
+							job := object.(*ejv1.ExtendedJob)
+							Expect(job.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
+						}
+						return nil
+					})
+
 					result, err := act()
 					Expect(err).ToNot(HaveOccurred())
 					Expect(result.Requeue).To(BeFalse())
+				})
 
-					obj := &batchv1.JobList{}
-					err = client.List(context.Background(), &crc.ListOptions{}, obj)
+				It("should skip when references are missing", func() {
+					client.GetCalls(func(ctx context.Context, nn types.NamespacedName, obj runtime.Object) error {
+						switch obj.(type) {
+						case *ejv1.ExtendedJob:
+							eJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+							return nil
+						}
+						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+					})
+
+					result, err := act()
 					Expect(err).ToNot(HaveOccurred())
-					Expect(obj.Items).To(HaveLen(1))
+					Expect(result.Requeue).To(BeTrue())
+					Expect(logs.FilterMessageSnippet("Skip create job due to configMap 'config1' not found").Len()).To(Equal(1))
 
-					client.Get(
-						context.Background(),
-						types.NamespacedName{
-							Name:      eJob.Name,
-							Namespace: eJob.Namespace,
-						},
-						&eJob,
-					)
-					Expect(eJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
+					client.GetCalls(func(ctx context.Context, nn types.NamespacedName, obj runtime.Object) error {
+						switch obj.(type) {
+						case *ejv1.ExtendedJob:
+							eJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+							return nil
+						case *corev1.ConfigMap:
+							configMap.DeepCopyInto(obj.(*corev1.ConfigMap))
+							return nil
+						}
+						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+					})
 
+					result, err = act()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(result.Requeue).To(BeTrue())
+					Expect(logs.FilterMessageSnippet("Skip create job due to secret 'secret1' not found").Len()).To(Equal(1))
 				})
 			})
 		})
