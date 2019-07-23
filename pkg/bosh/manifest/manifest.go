@@ -9,9 +9,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
-
-	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -21,10 +19,10 @@ const (
 
 // Feature from BOSH deployment manifest
 type Feature struct {
-	ConvergeVariables    bool  `yaml:"converge_variables"`
-	RandomizeAzPlacement *bool `yaml:"randomize_az_placement,omitempty"`
-	UseDNSAddresses      *bool `yaml:"use_dns_addresses,omitempty"`
-	UseTmpfsJobConfig    *bool `yaml:"use_tmpfs_job_config,omitempty"`
+	ConvergeVariables    bool  `json:"converge_variables"`
+	RandomizeAzPlacement *bool `json:"randomize_az_placement,omitempty"`
+	UseDNSAddresses      *bool `json:"use_dns_addresses,omitempty"`
+	UseTmpfsJobConfig    *bool `json:"use_tmpfs_job_config,omitempty"`
 }
 
 // AuthType from BOSH deployment manifest
@@ -38,92 +36,92 @@ const (
 
 // VariableOptions from BOSH deployment manifest
 type VariableOptions struct {
-	CommonName       string     `yaml:"common_name"`
-	AlternativeNames []string   `yaml:"alternative_names,omitempty"`
-	IsCA             bool       `yaml:"is_ca"`
-	CA               string     `yaml:"ca,omitempty"`
-	ExtendedKeyUsage []AuthType `yaml:"extended_key_usage,omitempty"`
+	CommonName       string     `json:"common_name"`
+	AlternativeNames []string   `json:"alternative_names,omitempty"`
+	IsCA             bool       `json:"is_ca"`
+	CA               string     `json:"ca,omitempty"`
+	ExtendedKeyUsage []AuthType `json:"extended_key_usage,omitempty"`
 }
 
 // Variable from BOSH deployment manifest
 type Variable struct {
-	Name    string           `yaml:"name"`
-	Type    string           `yaml:"type"`
-	Options *VariableOptions `yaml:"options,omitempty"`
+	Name    string           `json:"name"`
+	Type    string           `json:"type"`
+	Options *VariableOptions `json:"options,omitempty"`
 }
 
 // Stemcell from BOSH deployment manifest
 type Stemcell struct {
-	Alias   string `yaml:"alias"`
-	OS      string `yaml:"os,omitempty"`
-	Version string `yaml:"version"`
-	Name    string `yaml:"name,omitempty"`
+	Alias   string `json:"alias"`
+	OS      string `json:"os,omitempty"`
+	Version string `json:"version"`
+	Name    string `json:"name,omitempty"`
 }
 
 // ReleaseStemcell from BOSH deployment manifest
 type ReleaseStemcell struct {
-	OS      string `yaml:"os"`
-	Version string `yaml:"version"`
+	OS      string `json:"os"`
+	Version string `json:"version"`
 }
 
 // Release from BOSH deployment manifest
 type Release struct {
-	Name     string           `yaml:"name"`
-	Version  string           `yaml:"version"`
-	URL      string           `yaml:"url,omitempty"`
-	SHA1     string           `yaml:"sha1,omitempty"`
-	Stemcell *ReleaseStemcell `yaml:"stemcell,omitempty"`
+	Name     string           `json:"name"`
+	Version  string           `json:"version"`
+	URL      string           `json:"url,omitempty"`
+	SHA1     string           `json:"sha1,omitempty"`
+	Stemcell *ReleaseStemcell `json:"stemcell,omitempty"`
 }
 
 // AddOnJob from BOSH deployment manifest
 type AddOnJob struct {
-	Name       string                 `yaml:"name"`
-	Release    string                 `yaml:"release"`
-	Properties map[string]interface{} `yaml:"properties,omitempty"`
+	Name       string                 `json:"name"`
+	Release    string                 `json:"release"`
+	Properties map[string]interface{} `json:"properties,omitempty"`
 }
 
 // AddOnStemcell from BOSH deployment manifest
 type AddOnStemcell struct {
-	OS string `yaml:"os"`
+	OS string `json:"os"`
 }
 
 // AddOnPlacementJob from BOSH deployment manifest
 type AddOnPlacementJob struct {
-	Name    string `yaml:"name"`
-	Release string `yaml:"release"`
+	Name    string `json:"name"`
+	Release string `json:"release"`
 }
 
 // AddOnPlacementRules from BOSH deployment manifest
 type AddOnPlacementRules struct {
-	Stemcell      []*AddOnStemcell     `yaml:"stemcell,omitempty"`
-	Deployments   []string             `yaml:"deployments,omitempty"`
-	Jobs          []*AddOnPlacementJob `yaml:"release,omitempty"`
-	InstanceGroup []string             `yaml:"instance_groups,omitempty"`
-	Networks      []string             `yaml:"networks,omitempty"`
-	Teams         []string             `yaml:"teams,omitempty"`
+	Stemcell      []*AddOnStemcell     `json:"stemcell,omitempty"`
+	Deployments   []string             `json:"deployments,omitempty"`
+	Jobs          []*AddOnPlacementJob `json:"release,omitempty"`
+	InstanceGroup []string             `json:"instance_groups,omitempty"`
+	Networks      []string             `json:"networks,omitempty"`
+	Teams         []string             `json:"teams,omitempty"`
 }
 
 // AddOn from BOSH deployment manifest
 type AddOn struct {
-	Name    string               `yaml:"name"`
-	Jobs    []AddOnJob           `yaml:"jobs"`
-	Include *AddOnPlacementRules `yaml:"include,omitempty"`
-	Exclude *AddOnPlacementRules `yaml:"exclude,omitempty"`
+	Name    string               `json:"name"`
+	Jobs    []AddOnJob           `json:"jobs"`
+	Include *AddOnPlacementRules `json:"include,omitempty"`
+	Exclude *AddOnPlacementRules `json:"exclude,omitempty"`
 }
 
 // Manifest is a BOSH deployment manifest
 type Manifest struct {
-	Name           string                   `yaml:"name"`
-	DirectorUUID   string                   `yaml:"director_uuid"`
-	InstanceGroups []*InstanceGroup         `yaml:"instance_groups,omitempty"`
-	Features       *Feature                 `yaml:"features,omitempty"`
-	Tags           map[string]string        `yaml:"tags,omitempty"`
-	Releases       []*Release               `yaml:"releases,omitempty"`
-	Stemcells      []*Stemcell              `yaml:"stemcells,omitempty"`
-	AddOns         []*AddOn                 `yaml:"addons,omitempty"`
-	Properties     []map[string]interface{} `yaml:"properties,omitempty"`
-	Variables      []Variable               `yaml:"variables,omitempty"`
-	Update         *Update                  `yaml:"update,omitempty"`
+	Name           string                   `json:"name"`
+	DirectorUUID   string                   `json:"director_uuid"`
+	InstanceGroups []*InstanceGroup         `json:"instance_groups,omitempty"`
+	Features       *Feature                 `json:"features,omitempty"`
+	Tags           map[string]string        `json:"tags,omitempty"`
+	Releases       []*Release               `json:"releases,omitempty"`
+	Stemcells      []*Stemcell              `json:"stemcells,omitempty"`
+	AddOns         []*AddOn                 `json:"addons,omitempty"`
+	Properties     []map[string]interface{} `json:"properties,omitempty"`
+	Variables      []Variable               `json:"variables,omitempty"`
+	Update         *Update                  `json:"update,omitempty"`
 }
 
 // LoadYAML returns a new BOSH deployment manifest from a yaml representation
@@ -132,18 +130,6 @@ func LoadYAML(data []byte) (*Manifest, error) {
 	err := yaml.Unmarshal(data, m)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal BOSH deployment manifest")
-	}
-
-	bcm, err := bc.LoadKubeYAML(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal BOSHContainerization from deployment manifest")
-	}
-
-	for i, ig := range bcm.InstanceGroups {
-		for j, job := range ig.Jobs {
-			m.InstanceGroups[i].Jobs[j].Properties.BOSHContainerization = job.Properties.BOSHContainerization
-		}
-		m.InstanceGroups[i].Env.AgentEnvBoshConfig.Agent.Settings.Affinity = ig.Env.BOSH.Agent.Settings.Affinity
 	}
 
 	return m, nil
@@ -337,8 +323,8 @@ func (m *Manifest) ApplyAddons() error {
 					Name:    addonJob.Name,
 					Release: addonJob.Release,
 					Properties: JobProperties{
-						BOSHContainerization: bc.BOSHContainerization{ IsAddon: true },
-						Properties: addonJob.Properties,
+						BOSHContainerization: BOSHContainerization{IsAddon: true},
+						Properties:           addonJob.Properties,
 					},
 				})
 			}

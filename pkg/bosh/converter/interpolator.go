@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/cppforlife/go-patch/patch"
+	"gopkg.in/yaml.v2"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
 )
 
 // Interpolator renders BOSH manifests by operations files
@@ -85,7 +85,7 @@ func (i *InterpolatorImpl) interpolateRoot(obj interface{}) (interface{}, error)
 
 func (i *InterpolatorImpl) interpolate(node interface{}) (interface{}, error) {
 	switch typedNode := node.(type) {
-	case map[interface{}]interface{}:
+	case map[string]interface{}:
 		for k, v := range typedNode {
 			evaluatedValue, err := i.interpolate(v)
 			if err != nil {
@@ -97,8 +97,13 @@ func (i *InterpolatorImpl) interpolate(node interface{}) (interface{}, error) {
 				return nil, err
 			}
 
+			stringKey, ok := evaluatedKey.(string)
+			if !ok { 
+				return nil, errors.Errorf("interpolator only supports string keys, not '%T'", evaluatedKey)
+			}
+
 			delete(typedNode, k) // delete in case key has changed
-			typedNode[evaluatedKey] = evaluatedValue
+			typedNode[stringKey] = evaluatedValue
 		}
 
 	case []interface{}:
