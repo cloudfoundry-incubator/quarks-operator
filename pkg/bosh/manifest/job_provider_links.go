@@ -47,6 +47,14 @@ func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstan
 					if overrideLinkName, ok := value["as"]; ok {
 						linkName = fmt.Sprintf("%v", overrideLinkName)
 					}
+				case string:
+					// As defined in the BOSH documentation, an explicit value of "nil" for
+					// the provider means the link is "blocked"
+					// https://bosh.io/docs/links/#blocking-link-provider
+					if value == "nil" {
+						continue
+					}
+					return fmt.Errorf("unexpected string detected: %v, can only be 'nil' to block the link", value)
 				default:
 					return fmt.Errorf("unexpected type detected: %T, should have been a map", value)
 				}
