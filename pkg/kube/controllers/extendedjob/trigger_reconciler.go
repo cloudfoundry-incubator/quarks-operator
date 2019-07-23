@@ -107,14 +107,6 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 			}
 
 			ctxlog.WithEvent(&eJob, "CreateJob").Infof(ctx, "Created job for '%s' via pod %s", eJob.Name, podEvent)
-			if err != nil {
-				if apierrors.IsAlreadyExists(err) {
-					ctxlog.Debugf(ctx, "Skip '%s' triggered by pod %s: already running", eJob.Name, podEvent)
-				} else {
-					ctxlog.WithEvent(&eJob, "CreateJob").Infof(ctx, "Failed to create job for '%s' via pod %s: %s", eJob.Name, podEvent, err)
-				}
-				continue
-			}
 		}
 	}
 	return
