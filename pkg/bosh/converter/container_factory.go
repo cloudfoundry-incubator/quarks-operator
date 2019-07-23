@@ -22,6 +22,9 @@ const (
 
 	// VolumeSysDirMountPath is the mount path for the sys directory.
 	VolumeSysDirMountPath = bdm.SysDir
+
+	// EnvLogsDir is the path from where to tail file logs
+	EnvLogsDir = "LOGS_DIR"
 )
 
 // ContainerFactory builds Kubernetes containers from BOSH jobs
@@ -222,20 +225,15 @@ func logsTailerContainer(instanceGroupName string) corev1.Container {
 				MountPath: VolumeSysDirMountPath,
 			},
 		},
-		Command: []string{
-			"/bin/sh",
-		},
 		Args: []string{
-			"-c",
-			`
-MONITORDIR="/var/vcap/sys/log/"
-find "${MONITORDIR}" -type f -exec tail -n 0 -f "$file" {} + &
-inotifywait -m -r -e create --format '%w%f' "${MONITORDIR}" | while read NEWFILE
-do
-  pkill tail
-  find "${MONITORDIR}" -type f -exec tail -n 0 -f "$file" {} + &
-done
-`,
+			"util",
+			"tail-logs",
+		},
+		Env: []corev1.EnvVar{
+			{
+				Name:  EnvLogsDir,
+				Value: "/var/vcap/sys/log",
+			},
 		},
 		SecurityContext: &corev1.SecurityContext{
 			RunAsUser: &rootUserID,
