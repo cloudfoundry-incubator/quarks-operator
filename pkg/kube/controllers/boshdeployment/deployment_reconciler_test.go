@@ -24,7 +24,6 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
@@ -83,8 +82,8 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 								Properties: map[string]interface{}{
 									"password": "((foo_password))",
 								},
-								BOSHContainerization: bc.BOSHContainerization{
-									Ports: []bc.Port{
+								BOSHContainerization: bdm.BOSHContainerization{
+									Ports: []bdm.Port{
 										{
 											Name:     "foo",
 											Protocol: "TCP",

@@ -1,6 +1,7 @@
 package manifest_test
 
 import (
+	"encoding/json"
 	"fmt"
 
 	. "github.com/onsi/ginkgo"
@@ -10,7 +11,6 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
 
@@ -56,7 +56,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 
 				value, ok := job.Property("doppler.grpc_port")
 				Expect(ok).To(BeTrue())
-				Expect(value).To(BeEquivalentTo(7765))
+				Expect(value).To(BeEquivalentTo(json.Number("7765")))
 			})
 		})
 	})
@@ -137,7 +137,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 				//Check JobInstance for the redis-server job
 				jobInstancesRedis := manifest.InstanceGroups[0].Jobs[0].Properties.BOSHContainerization.Instances
 
-				compareToFakeRedis := []bc.JobInstance{
+				compareToFakeRedis := []JobInstance{
 					{Address: "foo-deployment-redis-slave-0.default.svc.cluster.local", AZ: "z1", ID: "redis-slave-0-redis-server", Index: 0, Instance: 0, Name: "redis-slave-redis-server"},
 					{Address: "foo-deployment-redis-slave-1.default.svc.cluster.local", AZ: "z2", ID: "redis-slave-1-redis-server", Index: 1, Instance: 0, Name: "redis-slave-redis-server"},
 					{Address: "foo-deployment-redis-slave-2.default.svc.cluster.local", AZ: "z1", ID: "redis-slave-2-redis-server", Index: 2, Instance: 1, Name: "redis-slave-redis-server"},
@@ -162,9 +162,9 @@ var _ = Describe("InstanceGroupResolver", func() {
 					Expect(consumeFromDopplerExists).To(BeTrue())
 					expectedProperties := map[string]interface{}{
 						"doppler": map[string]interface{}{
-							"grpc_port": 7765,
+							"grpc_port": json.Number("7765"),
 						},
-						"fooprop": 10001,
+						"fooprop": json.Number("10001"),
 					}
 					for i, instance := range jobConsumesFromDoppler.Instances {
 						Expect(instance.Index).To(Equal(i))
@@ -181,7 +181,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 
 					// doppler instance_group, with doppler job, only provides doppler link
 					jobBoshContainerizationConsumes := manifest.InstanceGroups[0].Jobs[0].Properties.BOSHContainerization.Consumes
-					var emptyJobBoshContainerizationConsumes map[string]bc.JobLink
+					var emptyJobBoshContainerizationConsumes map[string]JobLink
 					Expect(jobBoshContainerizationConsumes).To(BeEquivalentTo(emptyJobBoshContainerizationConsumes))
 				})
 			})
