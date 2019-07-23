@@ -47,7 +47,7 @@ With a running `cf-operator` pod, you can try one of the files (see [docs/exampl
 kubectl -n cf-operator-test create -f docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml
 ```
 
-The above will spam two pods in your `cf-operator-test` namespace, running the BOSH nats release.
+The above will spawn two pods in your `cf-operator-test` namespace (which needs to be created upfront), running the BOSH nats release.
 
 You can access the `cf-operator` logs by following the operator pod's output:
 
