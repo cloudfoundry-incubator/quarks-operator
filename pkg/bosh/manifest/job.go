@@ -1,13 +1,13 @@
 package manifest
 
 import (
+	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"path/filepath"
 
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
-
-	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -52,11 +52,35 @@ type JobSpecLink struct {
 
 // Job from BOSH deployment manifest
 type Job struct {
-	Name       string                 `yaml:"name"`
-	Release    string                 `yaml:"release"`
-	Consumes   map[string]interface{} `yaml:"consumes,omitempty"`
-	Provides   map[string]interface{} `yaml:"provides,omitempty"`
-	Properties JobProperties          `yaml:"properties,omitempty"`
+	Name       string                 `json:"name"`
+	Release    string                 `json:"release"`
+	Consumes   map[string]interface{} `json:"consumes,omitempty"`
+	Provides   map[string]interface{} `json:"provides,omitempty"`
+	Properties JobProperties          `json:"properties,omitempty"`
+}
+
+// JobProperties represents the properties map of a Job
+type JobProperties struct {
+	BOSHContainerization BOSHContainerization   `json:"bosh_containerization"`
+	Properties           map[string]interface{} `json:"-"`
+}
+
+// MarshalJSON is implemented to support inlining Properties
+func (p *JobProperties) MarshalJSON() ([]byte, error) {
+	return json.Marshal(p.ToMap())
+}
+
+// UnmarshalJSON is implemented to support inlining properties
+func (p *JobProperties) UnmarshalJSON(b []byte) error {
+	var j map[string]interface{}
+	d := json.NewDecoder(bytes.NewReader(b))
+	d.UseNumber()
+	err := d.Decode(&j)
+	if err != nil {
+		return err
+	}
+
+	return p.FromMap(j)
 }
 
 func (j *Job) specDir(baseDir string) string {
@@ -71,7 +95,11 @@ func (j *Job) loadSpec(baseDir string) (*JobSpec, error) {
 	}
 
 	jobSpec := JobSpec{}
-	if err := yaml.Unmarshal([]byte(jobMfBytes), &jobSpec); err != nil {
+	// Make sure to use json.Number when unmarshaling
+	if err := yaml.Unmarshal([]byte(jobMfBytes), &jobSpec, func(d *json.Decoder) *json.Decoder {
+		d.UseNumber()
+		return d
+	}); err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal")
 	}
 
@@ -95,12 +123,6 @@ func (j *Job) SysDirs() []string {
 	}
 }
 
-// JobProperties represents the properties map of a Job
-type JobProperties struct {
-	BOSHContainerization bc.BOSHContainerization `yaml:"bosh_containerization"`
-	Properties           map[string]interface{}  `yaml:",inline"`
-}
-
 // ToMap returns a complete map with all properties, including the
 // bosh_containerization key
 func (p *JobProperties) ToMap() map[string]interface{} {
@@ -113,4 +135,26 @@ func (p *JobProperties) ToMap() map[string]interface{} {
 	result["bosh_containerization"] = p.BOSHContainerization
 
 	return result
+}
+
+// FromMap populates a JobProperties based on a map
+func (p *JobProperties) FromMap(properties map[string]interface{}) error {
+	// **Important** We have to use the sigs yaml parser here - this
+	// struct contains kube objects
+	quarksBytes, err := yaml.Marshal(properties["bosh_containerization"])
+	if err != nil {
+		return err
+	}
+
+	quarks := BOSHContainerization{}
+	err = yaml.Unmarshal(quarksBytes, &quarks)
+	if err != nil {
+		return err
+	}
+
+	p.Properties = properties
+	delete(p.Properties, "bosh_containerization")
+	p.BOSHContainerization = quarks
+
+	return nil
 }

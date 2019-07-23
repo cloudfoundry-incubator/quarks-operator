@@ -446,7 +446,7 @@ instance_groups:
 			}
 			_, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("yaml: unmarshal errors"))
+			Expect(err.Error()).To(ContainSubstring("cannot unmarshal string into Go value of type manifest.Manifest"))
 		})
 
 		It("throws an error if containing unsupported manifest type", func() {

@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"sigs.k8s.io/yaml"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	yaml "gopkg.in/yaml.v2"
 )
 
 var _ = Describe("Trender", func() {
@@ -86,7 +86,7 @@ var _ = Describe("Trender", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Check fields if they are rendered
-				values := bpmYml["processes"][0].(map[interface{}]interface{})["env"].(map[interface{}]interface{})
+				values := bpmYml["processes"][0].(map[string]interface{})["env"].(map[string]interface{})
 				Expect(values["AGENT_UDP_ADDRESS"]).To(Equal("127.0.0.1:3457"))
 				Expect(values["TRAFFIC_CONTROLLER_OUTGOING_DROPSONDE_PORT"]).To(Equal("8081"))
 				Expect(values["FOOBARWITHLINKINSTANCESAZ"]).To(Equal("z1"))

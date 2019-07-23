@@ -10,7 +10,6 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
@@ -196,7 +195,7 @@ func (c *ContainerFactory) JobsToContainers(
 				jobImage,
 				process,
 				processVolumeMounts,
-				job.Properties.BOSHContainerization.Run.HealthChecks,
+				job.Properties.BOSHContainerization.Run.HealthCheck,
 			)
 
 			containers = append(containers, *container.DeepCopy())
@@ -416,7 +415,7 @@ func bpmProcessContainer(
 	jobImage string,
 	process bpm.Process,
 	volumeMounts []corev1.VolumeMount,
-	healthchecks map[string]bc.HealthCheck,
+	healthchecks map[string]bdm.HealthCheck,
 ) corev1.Container {
 	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
 	container := corev1.Container{

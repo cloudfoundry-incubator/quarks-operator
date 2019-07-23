@@ -5,32 +5,31 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 )
 
 // InstanceGroup from BOSH deployment manifest
 type InstanceGroup struct {
-	Name               string                 `yaml:"name"`
-	Instances          int                    `yaml:"instances"`
-	AZs                []string               `yaml:"azs"`
-	Jobs               []Job                  `yaml:"jobs"`
-	VMType             string                 `yaml:"vm_type,omitempty"`
-	VMExtensions       []string               `yaml:"vm_extensions,omitempty"`
-	VMResources        *VMResource            `yaml:"vm_resources"`
-	Stemcell           string                 `yaml:"stemcell"`
-	PersistentDisk     *int                   `yaml:"persistent_disk,omitempty"`
-	PersistentDiskType string                 `yaml:"persistent_disk_type,omitempty"`
-	Networks           []*Network             `yaml:"networks,omitempty"`
-	Update             *Update                `yaml:"update,omitempty"`
-	MigratedFrom       []*MigratedFrom        `yaml:"migrated_from,omitempty"`
-	LifeCycle          string                 `yaml:"lifecycle,omitempty"`
-	Properties         map[string]interface{} `yaml:"properties,omitempty"`
-	Env                AgentEnv               `yaml:"env,omitempty"`
+	Name               string                 `json:"name"`
+	Instances          int                    `json:"instances"`
+	AZs                []string               `json:"azs"`
+	Jobs               []Job                  `json:"jobs"`
+	VMType             string                 `json:"vm_type,omitempty"`
+	VMExtensions       []string               `json:"vm_extensions,omitempty"`
+	VMResources        *VMResource            `json:"vm_resources"`
+	Stemcell           string                 `json:"stemcell"`
+	PersistentDisk     *int                   `json:"persistent_disk,omitempty"`
+	PersistentDiskType string                 `json:"persistent_disk_type,omitempty"`
+	Networks           []*Network             `json:"networks,omitempty"`
+	Update             *Update                `json:"update,omitempty"`
+	MigratedFrom       []*MigratedFrom        `json:"migrated_from,omitempty"`
+	LifeCycle          string                 `json:"lifecycle,omitempty"`
+	Properties         map[string]interface{} `json:"properties,omitempty"`
+	Env                AgentEnv               `json:"env,omitempty"`
 }
 
-func (ig *InstanceGroup) jobInstances(namespace string, deploymentName string, jobName string, spec JobSpec) []bc.JobInstance {
-	var jobsInstances []bc.JobInstance
+func (ig *InstanceGroup) jobInstances(namespace string, deploymentName string, jobName string, spec JobSpec) []JobInstance {
+	var jobsInstances []JobInstance
 	for i := 0; i < ig.Instances; i++ {
 
 		// TODO: Understand whether there are negative side-effects to using this
@@ -49,7 +48,7 @@ func (ig *InstanceGroup) jobInstances(namespace string, deploymentName string, j
 			// TODO: not allowed to hardcode svc.cluster.local
 			address := fmt.Sprintf("%s.%s.svc.cluster.local", serviceName, namespace)
 
-			jobsInstances = append(jobsInstances, bc.JobInstance{
+			jobsInstances = append(jobsInstances, JobInstance{
 				Address:  address,
 				AZ:       az,
 				ID:       id,
@@ -64,43 +63,43 @@ func (ig *InstanceGroup) jobInstances(namespace string, deploymentName string, j
 
 // VMResource from BOSH deployment manifest
 type VMResource struct {
-	CPU               int `yaml:"cpu"`
-	RAM               int `yaml:"ram"`
-	EphemeralDiskSize int `yaml:"ephemeral_disk_size"`
+	CPU               int `json:"cpu"`
+	RAM               int `json:"ram"`
+	EphemeralDiskSize int `json:"ephemeral_disk_size"`
 }
 
 // Network from BOSH deployment manifest
 type Network struct {
-	Name      string   `yaml:"name"`
-	StaticIps []string `yaml:"static_ips,omitempty"`
-	Default   []string `yaml:"default,omitempty"`
+	Name      string   `json:"name"`
+	StaticIps []string `json:"static_ips,omitempty"`
+	Default   []string `json:"default,omitempty"`
 }
 
 // Update from BOSH deployment manifest
 type Update struct {
-	Canaries        int     `yaml:"canaries"`
-	MaxInFlight     string  `yaml:"max_in_flight"`
-	CanaryWatchTime string  `yaml:"canary_watch_time"`
-	UpdateWatchTime string  `yaml:"update_watch_time"`
-	Serial          bool    `yaml:"serial,omitempty"`
-	VMStrategy      *string `yaml:"vm_strategy,omitempty"`
+	Canaries        int     `json:"canaries"`
+	MaxInFlight     string  `json:"max_in_flight"`
+	CanaryWatchTime string  `json:"canary_watch_time"`
+	UpdateWatchTime string  `json:"update_watch_time"`
+	Serial          bool    `json:"serial,omitempty"`
+	VMStrategy      *string `json:"vm_strategy,omitempty"`
 }
 
 // MigratedFrom from BOSH deployment manifest
 type MigratedFrom struct {
-	Name string `yaml:"name"`
-	Az   string `yaml:"az,omitempty"`
+	Name string `json:"name"`
+	Az   string `json:"az,omitempty"`
 }
 
 // IPv6 from BOSH deployment manifest
 type IPv6 struct {
-	Enable bool `yaml:"enable"`
+	Enable bool `json:"enable"`
 }
 
 // JobDir from BOSH deployment manifest
 type JobDir struct {
-	Tmpfs     *bool  `yaml:"tmpfs,omitempty"`
-	TmpfsSize string `yaml:"tmpfs_size,omitempty"`
+	Tmpfs     *bool  `json:"tmpfs,omitempty"`
+	TmpfsSize string `json:"tmpfs_size,omitempty"`
 }
 
 var (
@@ -116,9 +115,9 @@ var (
 // These annotations and labels are added to kube resources.
 // Affinity is added into the pod's definition.
 type AgentSettings struct {
-	Annotations map[string]string `yaml:"annotations,omitempty"`
-	Labels      map[string]string `yaml:"labels,omitempty"`
-	Affinity    *corev1.Affinity  `json:"affinity,omitempty" yaml:"affinity,omitempty"`
+	Annotations map[string]string `json:"annotations,omitempty"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	Affinity    *corev1.Affinity  `json:"affinity,omitempty"`
 }
 
 // Set overrides labels and annotations with operator-owned metadata
@@ -133,25 +132,30 @@ func (as *AgentSettings) Set(manifestName, igName, version string) {
 
 // Agent from BOSH deployment manifest
 type Agent struct {
-	Settings AgentSettings `yaml:"settings,omitempty"`
-	Tmpfs    *bool         `yaml:"tmpfs,omitempty"`
+	Settings AgentSettings `json:"settings,omitempty"`
+	Tmpfs    *bool         `json:"tmpfs,omitempty"`
+}
+
+// Settings has been added to make the k8s native Affinity field accessible
+type Settings struct {
+	Affinity *corev1.Affinity `json:"affinity,omitempty" yaml:"affinity,omitempty"`
 }
 
 // AgentEnvBoshConfig from BOSH deployment manifest
 type AgentEnvBoshConfig struct {
-	Password              string  `yaml:"password,omitempty"`
-	KeepRootPassword      string  `yaml:"keep_root_password,omitempty"`
-	RemoveDevTools        *bool   `yaml:"remove_dev_tools,omitempty"`
-	RemoveStaticLibraries *bool   `yaml:"remove_static_libraries,omitempty"`
-	SwapSize              *int    `yaml:"swap_size,omitempty"`
-	IPv6                  IPv6    `yaml:"ipv6,omitempty"`
-	JobDir                *JobDir `yaml:"job_dir,omitempty"`
-	Agent                 Agent   `yaml:"agent,omitempty"`
+	Password              string  `json:"password,omitempty"`
+	KeepRootPassword      string  `json:"keep_root_password,omitempty"`
+	RemoveDevTools        *bool   `json:"remove_dev_tools,omitempty"`
+	RemoveStaticLibraries *bool   `json:"remove_static_libraries,omitempty"`
+	SwapSize              *int    `json:"swap_size,omitempty"`
+	IPv6                  IPv6    `json:"ipv6,omitempty"`
+	JobDir                *JobDir `json:"job_dir,omitempty"`
+	Agent                 Agent   `json:"agent,omitempty"`
 }
 
 // AgentEnv from BOSH deployment manifest
 type AgentEnv struct {
-	PersistentDiskFS           string             `yaml:"persistent_disk_fs,omitempty"`
-	PersistentDiskMountOptions []string           `yaml:"persistent_disk_mount_options,omitempty"`
-	AgentEnvBoshConfig         AgentEnvBoshConfig `yaml:"bosh,omitempty"`
+	PersistentDiskFS           string             `json:"persistent_disk_fs,omitempty"`
+	PersistentDiskMountOptions []string           `json:"persistent_disk_mount_options,omitempty"`
+	AgentEnvBoshConfig         AgentEnvBoshConfig `json:"bosh,omitempty"`
 }
