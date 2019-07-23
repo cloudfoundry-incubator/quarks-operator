@@ -9,13 +9,13 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
-var _ = Describe("data-gather", func() {
+var _ = Describe("instance-group", func() {
 	var (
 		manifestPath string
 	)
 
 	act := func(manifestPath string) (session *gexec.Session, err error) {
-		args := []string{"util", "data-gather", "-m", manifestPath, "-b", assetPath, "-g", "log-api"}
+		args := []string{"util", "instance-group", "-m", manifestPath, "-b", assetPath, "-g", "log-api"}
 		cmd := exec.Command(cliPath, args...)
 		session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 		return
