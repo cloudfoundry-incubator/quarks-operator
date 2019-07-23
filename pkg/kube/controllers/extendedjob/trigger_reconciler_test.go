@@ -26,6 +26,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	cfcfg "code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
@@ -82,11 +83,12 @@ var _ = Describe("TriggerReconciler", func() {
 				mgr,
 				query,
 				setOwnerReference,
+				vss.NewVersionedSecretStore(mgr.GetClient()),
 			)
 		})
 
-		act := func() {
-			reconciler.Reconcile(request)
+		act := func() (reconcile.Result, error) {
+			return reconciler.Reconcile(request)
 		}
 
 		BeforeEach(func() {
@@ -125,7 +127,9 @@ var _ = Describe("TriggerReconciler", func() {
 				})
 
 				It("should log and return", func() {
-					act()
+					_, err := act()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("fake-error"))
 					Expect(logs.FilterMessageSnippet("Failed to get the pod: fake-error").Len()).To(Equal(1))
 					Expect(query.MatchCallCount()).To(Equal(0))
 				})
@@ -137,7 +141,9 @@ var _ = Describe("TriggerReconciler", func() {
 				})
 
 				It("should log list failure and return", func() {
-					act()
+					_, err := act()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("fake-error"))
 					Expect(logs.FilterMessage("Failed to query extended jobs: fake-error").Len()).To(Equal(1))
 					Expect(query.MatchCallCount()).To(Equal(0))
 				})
@@ -156,7 +162,8 @@ var _ = Describe("TriggerReconciler", func() {
 				})
 
 				It("should log create error and continue with next job", func() {
-					act()
+					_, err := act()
+					Expect(err).ToNot(HaveOccurred())
 					Expect(client.CreateCallCount()).To(Equal(2))
 					Expect(logs.FilterMessageSnippet("Failed to create job for 'foo' via pod fake-pod/ready: fake-error").Len()).To(Equal(1))
 					Expect(logs.FilterMessageSnippet("Failed to create job for 'bar' via pod fake-pod/ready: fake-error").Len()).To(Equal(1))
@@ -177,10 +184,11 @@ var _ = Describe("TriggerReconciler", func() {
 			})
 
 			It("should not create jobs", func() {
-				act()
+				_, err := act()
+				Expect(err).NotTo(HaveOccurred())
 				Expect(query.MatchCallCount()).To(Equal(0))
 				obj := &batchv1.JobList{}
-				err := client.List(ctx, &crc.ListOptions{}, obj)
+				err = client.List(ctx, &crc.ListOptions{}, obj)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(obj.Items).To(HaveLen(0))
 			})
@@ -218,10 +226,11 @@ var _ = Describe("TriggerReconciler", func() {
 
 			Context("when pod matches label selector", func() {
 				It("should create jobs", func() {
-					act()
+					_, err := act()
+					Expect(err).NotTo(HaveOccurred())
 
 					obj := &batchv1.JobList{}
-					err := client.List(ctx, &crc.ListOptions{}, obj)
+					err = client.List(ctx, &crc.ListOptions{}, obj)
 					Expect(err).ToNot(HaveOccurred())
 
 					jobs := obj.Items
@@ -247,9 +256,12 @@ var _ = Describe("TriggerReconciler", func() {
 						mgr,
 						query,
 						setOwnerReferenceFail,
+						vss.NewVersionedSecretStore(mgr.GetClient()),
 					)
-					act()
-					Expect(logs.FilterMessageSnippet("failed to set owner reference on job for 'foo' via pod fake-pod: fake-error").Len()).To(Equal(1))
+
+					_, err := act()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(logs.FilterMessageSnippet("failed to set owner reference on job for 'foo': fake-error").Len()).To(Equal(2))
 					Expect(logs.FilterMessageSnippet("Created job for 'foo' via pod fake-pod/deleted").Len()).To(Equal(0))
 				})
 			})

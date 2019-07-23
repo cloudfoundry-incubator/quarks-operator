@@ -3,10 +3,7 @@ package extendedjob
 import (
 	"context"
 
-	"github.com/pkg/errors"
-	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -15,7 +12,6 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
@@ -29,24 +25,26 @@ func NewErrandReconciler(
 	f setOwnerReferenceFunc,
 	store vss.VersionedSecretStore,
 ) reconcile.Reconciler {
+	jc := NewJobCreator(mgr.GetClient(), mgr.GetScheme(), f, store)
+
 	return &ErrandReconciler{
-		ctx:                  ctx,
-		client:               mgr.GetClient(),
-		config:               config,
-		scheme:               mgr.GetScheme(),
-		setOwnerReference:    f,
-		versionedSecretStore: store,
+		ctx:               ctx,
+		client:            mgr.GetClient(),
+		config:            config,
+		scheme:            mgr.GetScheme(),
+		setOwnerReference: f,
+		jobCreator:        jc,
 	}
 }
 
 // ErrandReconciler implements the Reconciler interface
 type ErrandReconciler struct {
-	ctx                  context.Context
-	client               client.Client
-	config               *config.Config
-	scheme               *runtime.Scheme
-	setOwnerReference    setOwnerReferenceFunc
-	versionedSecretStore vss.VersionedSecretStore
+	ctx               context.Context
+	client            client.Client
+	config            *config.Config
+	scheme            *runtime.Scheme
+	setOwnerReference setOwnerReferenceFunc
+	jobCreator        JobCreator
 }
 
 // Reconcile starts jobs for extended jobs of the type errand with Run being set to 'now' manually
@@ -82,17 +80,16 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 	}
 
-	err = r.createJob(ctx, *eJob)
+	retry, err := r.jobCreator.createJob(ctx, *eJob, "", "")
 	if err != nil {
-		if apierrors.IsAlreadyExists(err) {
-			ctxlog.WithEvent(eJob, "AlreadyRunning").Infof(ctx, "Skip '%s' triggered manually: already running", eJob.Name)
-			// we don't want to requeue the job
-			err = nil
-		} else {
-			ctxlog.WithEvent(eJob, "CreateJobError").Errorf(ctx, "Failed to create job '%s': %s", eJob.Name, err)
-		}
+		err = ctxlog.WithEvent(eJob, "CreateJobError").Errorf(ctx, "Failed to create job '%s': %s", eJob.Name, err)
 		return result, err
 	}
+	if retry {
+		result.Requeue = true
+		return result, nil
+	}
+
 	ctxlog.WithEvent(eJob, "CreateJob").Infof(ctx, "Created errand job for '%s'", eJob.Name)
 
 	if eJob.Spec.Trigger.Strategy == ejv1.TriggerOnce {
@@ -106,41 +103,4 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 	}
 
 	return result, err
-}
-
-func (r *ErrandReconciler) createJob(ctx context.Context, eJob ejv1.ExtendedJob) error {
-	template := eJob.Spec.Template.DeepCopy()
-
-	if template.Labels == nil {
-		template.Labels = map[string]string{}
-	}
-	template.Labels[ejv1.LabelEJobName] = eJob.Name
-
-	r.versionedSecretStore.SetSecretReferences(ctx, eJob.Namespace, &template.Spec)
-
-	name, err := names.JobName(eJob.Name, "")
-	if err != nil {
-		return errors.Wrapf(err, "could not generate job name for eJob '%s'", eJob.Name)
-	}
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: eJob.Namespace,
-			Labels:    map[string]string{ejv1.LabelExtendedJob: "true"},
-		},
-		Spec: batchv1.JobSpec{Template: *template},
-	}
-
-	err = r.setOwnerReference(&eJob, job, r.scheme)
-	if err != nil {
-		ctxlog.WithEvent(&eJob, "SetOwnerReferenceError").Errorf(ctx, "failed to set owner reference on job for '%s': %s", eJob.Name, err)
-		return err
-	}
-
-	err = r.client.Create(ctx, job)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
