@@ -33,7 +33,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Name", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Name", manifest)).To(Equal(
-						`yaml:"name"`,
+						`json:"name"`,
 					))
 				})
 			})
@@ -41,7 +41,7 @@ var _ = Describe("Manifest", func() {
 			Describe("DirectorUUID", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("DirectorUUID", manifest)).To(Equal(
-						`yaml:"director_uuid"`,
+						`json:"director_uuid"`,
 					))
 				})
 			})
@@ -49,7 +49,7 @@ var _ = Describe("Manifest", func() {
 			Describe("InstanceGroups", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("InstanceGroups", manifest)).To(Equal(
-						`yaml:"instance_groups,omitempty"`,
+						`json:"instance_groups,omitempty"`,
 					))
 				})
 			})
@@ -57,7 +57,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Features", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Features", manifest)).To(Equal(
-						`yaml:"features,omitempty"`,
+						`json:"features,omitempty"`,
 					))
 				})
 			})
@@ -65,7 +65,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Tags", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Tags", manifest)).To(Equal(
-						`yaml:"tags,omitempty"`,
+						`json:"tags,omitempty"`,
 					))
 				})
 			})
@@ -73,7 +73,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Releases", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Releases", manifest)).To(Equal(
-						`yaml:"releases,omitempty"`,
+						`json:"releases,omitempty"`,
 					))
 				})
 			})
@@ -81,7 +81,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Stemcells", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Stemcells", manifest)).To(Equal(
-						`yaml:"stemcells,omitempty"`,
+						`json:"stemcells,omitempty"`,
 					))
 				})
 			})
@@ -89,7 +89,7 @@ var _ = Describe("Manifest", func() {
 			Describe("AddOns", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("AddOns", manifest)).To(Equal(
-						`yaml:"addons,omitempty"`,
+						`json:"addons,omitempty"`,
 					))
 				})
 			})
@@ -97,7 +97,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Properties", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Properties", manifest)).To(Equal(
-						`yaml:"properties,omitempty"`,
+						`json:"properties,omitempty"`,
 					))
 				})
 			})
@@ -105,7 +105,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Variables", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Variables", manifest)).To(Equal(
-						`yaml:"variables,omitempty"`,
+						`json:"variables,omitempty"`,
 					))
 				})
 			})
@@ -113,7 +113,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Update", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Update", manifest)).To(Equal(
-						`yaml:"update,omitempty"`,
+						`json:"update,omitempty"`,
 					))
 				})
 			})
@@ -129,7 +129,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Name", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Name", addOn)).To(Equal(
-						`yaml:"name"`,
+						`json:"name"`,
 					))
 				})
 			})
@@ -137,7 +137,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Jobs", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Jobs", addOn)).To(Equal(
-						`yaml:"jobs"`,
+						`json:"jobs"`,
 					))
 				})
 			})
@@ -145,7 +145,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Include", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Include", addOn)).To(Equal(
-						`yaml:"include,omitempty"`,
+						`json:"include,omitempty"`,
 					))
 				})
 			})
@@ -153,7 +153,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Exclude", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Exclude", addOn)).To(Equal(
-						`yaml:"exclude,omitempty"`,
+						`json:"exclude,omitempty"`,
 					))
 				})
 			})
@@ -169,7 +169,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Stemcell", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Stemcell", addOnPlacementRule)).To(Equal(
-						`yaml:"stemcell,omitempty"`,
+						`json:"stemcell,omitempty"`,
 					))
 				})
 			})
@@ -177,7 +177,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Deployments", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Deployments", addOnPlacementRule)).To(Equal(
-						`yaml:"deployments,omitempty"`,
+						`json:"deployments,omitempty"`,
 					))
 				})
 			})
@@ -185,7 +185,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Jobs", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Jobs", addOnPlacementRule)).To(Equal(
-						`yaml:"release,omitempty"`,
+						`json:"release,omitempty"`,
 					))
 				})
 			})
@@ -193,7 +193,7 @@ var _ = Describe("Manifest", func() {
 			Describe("InstanceGroup", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("InstanceGroup", addOnPlacementRule)).To(Equal(
-						`yaml:"instance_groups,omitempty"`,
+						`json:"instance_groups,omitempty"`,
 					))
 				})
 			})
@@ -201,7 +201,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Networks", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Networks", addOnPlacementRule)).To(Equal(
-						`yaml:"networks,omitempty"`,
+						`json:"networks,omitempty"`,
 					))
 				})
 			})
@@ -209,7 +209,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Teams", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Teams", addOnPlacementRule)).To(Equal(
-						`yaml:"teams,omitempty"`,
+						`json:"teams,omitempty"`,
 					))
 				})
 			})
@@ -225,7 +225,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Name", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Name", addOnPlacementJob)).To(Equal(
-						`yaml:"name"`,
+						`json:"name"`,
 					))
 				})
 			})
@@ -233,7 +233,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Release", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Release", addOnPlacementJob)).To(Equal(
-						`yaml:"release"`,
+						`json:"release"`,
 					))
 				})
 			})
@@ -249,7 +249,7 @@ var _ = Describe("Manifest", func() {
 			Describe("OS", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("OS", addOnStemcell)).To(Equal(
-						`yaml:"os"`,
+						`json:"os"`,
 					))
 				})
 			})
@@ -265,7 +265,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Name", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Name", addOnJob)).To(Equal(
-						`yaml:"name"`,
+						`json:"name"`,
 					))
 				})
 			})
@@ -273,7 +273,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Release", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Release", addOnJob)).To(Equal(
-						`yaml:"release"`,
+						`json:"release"`,
 					))
 				})
 			})
@@ -281,7 +281,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Properties", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Properties", addOnJob)).To(Equal(
-						`yaml:"properties,omitempty"`,
+						`json:"properties,omitempty"`,
 					))
 				})
 			})
@@ -297,7 +297,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Name", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Name", release)).To(Equal(
-						`yaml:"name"`,
+						`json:"name"`,
 					))
 				})
 			})
@@ -305,7 +305,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Version", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Version", release)).To(Equal(
-						`yaml:"version"`,
+						`json:"version"`,
 					))
 				})
 			})
@@ -313,7 +313,7 @@ var _ = Describe("Manifest", func() {
 			Describe("URL", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("URL", release)).To(Equal(
-						`yaml:"url,omitempty"`,
+						`json:"url,omitempty"`,
 					))
 				})
 			})
@@ -321,7 +321,7 @@ var _ = Describe("Manifest", func() {
 			Describe("SHA1", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("SHA1", release)).To(Equal(
-						`yaml:"sha1,omitempty"`,
+						`json:"sha1,omitempty"`,
 					))
 				})
 			})
@@ -329,7 +329,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Stemcell", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Stemcell", release)).To(Equal(
-						`yaml:"stemcell,omitempty"`,
+						`json:"stemcell,omitempty"`,
 					))
 				})
 			})
@@ -345,7 +345,7 @@ var _ = Describe("Manifest", func() {
 			Describe("OS", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("OS", releaseStemcell)).To(Equal(
-						`yaml:"os"`,
+						`json:"os"`,
 					))
 				})
 			})
@@ -353,7 +353,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Version", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Version", releaseStemcell)).To(Equal(
-						`yaml:"version"`,
+						`json:"version"`,
 					))
 				})
 			})
@@ -369,7 +369,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Alias", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Alias", stemcell)).To(Equal(
-						`yaml:"alias"`,
+						`json:"alias"`,
 					))
 				})
 			})
@@ -377,7 +377,7 @@ var _ = Describe("Manifest", func() {
 			Describe("OS", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("OS", stemcell)).To(Equal(
-						`yaml:"os,omitempty"`,
+						`json:"os,omitempty"`,
 					))
 				})
 			})
@@ -385,7 +385,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Version", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Version", stemcell)).To(Equal(
-						`yaml:"version"`,
+						`json:"version"`,
 					))
 				})
 			})
@@ -393,7 +393,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Name", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Name", stemcell)).To(Equal(
-						`yaml:"name,omitempty"`,
+						`json:"name,omitempty"`,
 					))
 				})
 			})
@@ -409,7 +409,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Name", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Name", variable)).To(Equal(
-						`yaml:"name"`,
+						`json:"name"`,
 					))
 				})
 			})
@@ -417,7 +417,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Type", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Type", variable)).To(Equal(
-						`yaml:"type"`,
+						`json:"type"`,
 					))
 				})
 			})
@@ -425,7 +425,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Options", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Options", variable)).To(Equal(
-						`yaml:"options,omitempty"`,
+						`json:"options,omitempty"`,
 					))
 				})
 			})
@@ -441,7 +441,7 @@ var _ = Describe("Manifest", func() {
 			Describe("CommonName", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("CommonName", variableOption)).To(Equal(
-						`yaml:"common_name"`,
+						`json:"common_name"`,
 					))
 				})
 			})
@@ -449,7 +449,7 @@ var _ = Describe("Manifest", func() {
 			Describe("AlternativeNames", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("AlternativeNames", variableOption)).To(Equal(
-						`yaml:"alternative_names,omitempty"`,
+						`json:"alternative_names,omitempty"`,
 					))
 				})
 			})
@@ -457,7 +457,7 @@ var _ = Describe("Manifest", func() {
 			Describe("IsCA", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("IsCA", variableOption)).To(Equal(
-						`yaml:"is_ca"`,
+						`json:"is_ca"`,
 					))
 				})
 			})
@@ -465,7 +465,7 @@ var _ = Describe("Manifest", func() {
 			Describe("CA", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("CA", variableOption)).To(Equal(
-						`yaml:"ca,omitempty"`,
+						`json:"ca,omitempty"`,
 					))
 				})
 			})
@@ -473,7 +473,7 @@ var _ = Describe("Manifest", func() {
 			Describe("ExtendedKeyUsage", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("ExtendedKeyUsage", variableOption)).To(Equal(
-						`yaml:"extended_key_usage,omitempty"`,
+						`json:"extended_key_usage,omitempty"`,
 					))
 				})
 			})
@@ -489,7 +489,7 @@ var _ = Describe("Manifest", func() {
 			Describe("ConvergeVariables", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("ConvergeVariables", feature)).To(Equal(
-						`yaml:"converge_variables"`,
+						`json:"converge_variables"`,
 					))
 				})
 			})
@@ -497,7 +497,7 @@ var _ = Describe("Manifest", func() {
 			Describe("RandomizeAzPlacement", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("RandomizeAzPlacement", feature)).To(Equal(
-						`yaml:"randomize_az_placement,omitempty"`,
+						`json:"randomize_az_placement,omitempty"`,
 					))
 				})
 			})
@@ -505,7 +505,7 @@ var _ = Describe("Manifest", func() {
 			Describe("UseDNSAddresses", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("UseDNSAddresses", feature)).To(Equal(
-						`yaml:"use_dns_addresses,omitempty"`,
+						`json:"use_dns_addresses,omitempty"`,
 					))
 				})
 			})
@@ -513,7 +513,7 @@ var _ = Describe("Manifest", func() {
 			Describe("UseTmpfsJobConfig", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("UseTmpfsJobConfig", feature)).To(Equal(
-						`yaml:"use_tmpfs_job_config,omitempty"`,
+						`json:"use_tmpfs_job_config,omitempty"`,
 					))
 				})
 			})
@@ -529,7 +529,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Name", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Name", instanceGroup)).To(Equal(
-						`yaml:"name"`,
+						`json:"name"`,
 					))
 				})
 			})
@@ -537,7 +537,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Instances", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Instances", instanceGroup)).To(Equal(
-						`yaml:"instances"`,
+						`json:"instances"`,
 					))
 				})
 			})
@@ -545,7 +545,7 @@ var _ = Describe("Manifest", func() {
 			Describe("AZs", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("AZs", instanceGroup)).To(Equal(
-						`yaml:"azs"`,
+						`json:"azs"`,
 					))
 				})
 			})
@@ -553,7 +553,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Jobs", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Jobs", instanceGroup)).To(Equal(
-						`yaml:"jobs"`,
+						`json:"jobs"`,
 					))
 				})
 			})
@@ -561,7 +561,7 @@ var _ = Describe("Manifest", func() {
 			Describe("VMType", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("VMType", instanceGroup)).To(Equal(
-						`yaml:"vm_type,omitempty"`,
+						`json:"vm_type,omitempty"`,
 					))
 				})
 			})
@@ -569,7 +569,7 @@ var _ = Describe("Manifest", func() {
 			Describe("VMExtensions", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("VMExtensions", instanceGroup)).To(Equal(
-						`yaml:"vm_extensions,omitempty"`,
+						`json:"vm_extensions,omitempty"`,
 					))
 				})
 			})
@@ -577,7 +577,7 @@ var _ = Describe("Manifest", func() {
 			Describe("VMResources", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("VMResources", instanceGroup)).To(Equal(
-						`yaml:"vm_resources"`,
+						`json:"vm_resources"`,
 					))
 				})
 			})
@@ -585,7 +585,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Stemcell", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Stemcell", instanceGroup)).To(Equal(
-						`yaml:"stemcell"`,
+						`json:"stemcell"`,
 					))
 				})
 			})
@@ -593,7 +593,7 @@ var _ = Describe("Manifest", func() {
 			Describe("PersistentDisk", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("PersistentDisk", instanceGroup)).To(Equal(
-						`yaml:"persistent_disk,omitempty"`,
+						`json:"persistent_disk,omitempty"`,
 					))
 				})
 			})
@@ -601,7 +601,7 @@ var _ = Describe("Manifest", func() {
 			Describe("PersistentDiskType", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("PersistentDiskType", instanceGroup)).To(Equal(
-						`yaml:"persistent_disk_type,omitempty"`,
+						`json:"persistent_disk_type,omitempty"`,
 					))
 				})
 			})
@@ -609,7 +609,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Networks", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Networks", instanceGroup)).To(Equal(
-						`yaml:"networks,omitempty"`,
+						`json:"networks,omitempty"`,
 					))
 				})
 			})
@@ -617,7 +617,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Update", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Update", instanceGroup)).To(Equal(
-						`yaml:"update,omitempty"`,
+						`json:"update,omitempty"`,
 					))
 				})
 			})
@@ -625,7 +625,7 @@ var _ = Describe("Manifest", func() {
 			Describe("MigratedFrom", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("MigratedFrom", instanceGroup)).To(Equal(
-						`yaml:"migrated_from,omitempty"`,
+						`json:"migrated_from,omitempty"`,
 					))
 				})
 			})
@@ -633,7 +633,7 @@ var _ = Describe("Manifest", func() {
 			Describe("LifeCycle", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("LifeCycle", instanceGroup)).To(Equal(
-						`yaml:"lifecycle,omitempty"`,
+						`json:"lifecycle,omitempty"`,
 					))
 				})
 			})
@@ -641,7 +641,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Properties", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Properties", instanceGroup)).To(Equal(
-						`yaml:"properties,omitempty"`,
+						`json:"properties,omitempty"`,
 					))
 				})
 			})
@@ -649,7 +649,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Env", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Env", instanceGroup)).To(Equal(
-						`yaml:"env,omitempty"`,
+						`json:"env,omitempty"`,
 					))
 				})
 			})
@@ -665,7 +665,7 @@ var _ = Describe("Manifest", func() {
 			Describe("PersistentDiskFS", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("PersistentDiskFS", agentEnv)).To(Equal(
-						`yaml:"persistent_disk_fs,omitempty"`,
+						`json:"persistent_disk_fs,omitempty"`,
 					))
 				})
 			})
@@ -673,7 +673,7 @@ var _ = Describe("Manifest", func() {
 			Describe("PersistentDiskMountOptions", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("PersistentDiskMountOptions", agentEnv)).To(Equal(
-						`yaml:"persistent_disk_mount_options,omitempty"`,
+						`json:"persistent_disk_mount_options,omitempty"`,
 					))
 				})
 			})
@@ -681,7 +681,7 @@ var _ = Describe("Manifest", func() {
 			Describe("AgentEnvBoshConfig", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("AgentEnvBoshConfig", agentEnv)).To(Equal(
-						`yaml:"bosh,omitempty"`,
+						`json:"bosh,omitempty"`,
 					))
 				})
 			})
@@ -697,7 +697,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Password", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Password", agentEnvBoshConfig)).To(Equal(
-						`yaml:"password,omitempty"`,
+						`json:"password,omitempty"`,
 					))
 				})
 			})
@@ -705,7 +705,7 @@ var _ = Describe("Manifest", func() {
 			Describe("KeepRootPassword", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("KeepRootPassword", agentEnvBoshConfig)).To(Equal(
-						`yaml:"keep_root_password,omitempty"`,
+						`json:"keep_root_password,omitempty"`,
 					))
 				})
 			})
@@ -713,7 +713,7 @@ var _ = Describe("Manifest", func() {
 			Describe("RemoveDevTools", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("RemoveDevTools", agentEnvBoshConfig)).To(Equal(
-						`yaml:"remove_dev_tools,omitempty"`,
+						`json:"remove_dev_tools,omitempty"`,
 					))
 				})
 			})
@@ -721,7 +721,7 @@ var _ = Describe("Manifest", func() {
 			Describe("RemoveStaticLibraries", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("RemoveStaticLibraries", agentEnvBoshConfig)).To(Equal(
-						`yaml:"remove_static_libraries,omitempty"`,
+						`json:"remove_static_libraries,omitempty"`,
 					))
 				})
 			})
@@ -729,7 +729,7 @@ var _ = Describe("Manifest", func() {
 			Describe("SwapSize", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("SwapSize", agentEnvBoshConfig)).To(Equal(
-						`yaml:"swap_size,omitempty"`,
+						`json:"swap_size,omitempty"`,
 					))
 				})
 			})
@@ -737,7 +737,7 @@ var _ = Describe("Manifest", func() {
 			Describe("IPv6", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("IPv6", agentEnvBoshConfig)).To(Equal(
-						`yaml:"ipv6,omitempty"`,
+						`json:"ipv6,omitempty"`,
 					))
 				})
 			})
@@ -745,7 +745,7 @@ var _ = Describe("Manifest", func() {
 			Describe("JobDir", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("JobDir", agentEnvBoshConfig)).To(Equal(
-						`yaml:"job_dir,omitempty"`,
+						`json:"job_dir,omitempty"`,
 					))
 				})
 			})
@@ -753,7 +753,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Agent", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Agent", agentEnvBoshConfig)).To(Equal(
-						`yaml:"agent,omitempty"`,
+						`json:"agent,omitempty"`,
 					))
 				})
 			})
@@ -769,7 +769,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Settings", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Settings", agent)).To(Equal(
-						`yaml:"settings,omitempty"`,
+						`json:"settings,omitempty"`,
 					))
 				})
 			})
@@ -777,7 +777,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Tmpfs", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Tmpfs", agent)).To(Equal(
-						`yaml:"tmpfs,omitempty"`,
+						`json:"tmpfs,omitempty"`,
 					))
 				})
 			})
@@ -793,7 +793,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Settings", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Annotations", agentSettings)).To(Equal(
-						`yaml:"annotations,omitempty"`,
+						`json:"annotations,omitempty"`,
 					))
 				})
 			})
@@ -801,7 +801,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Tmpfs", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Labels", agentSettings)).To(Equal(
-						`yaml:"labels,omitempty"`,
+						`json:"labels,omitempty"`,
 					))
 				})
 			})
@@ -817,7 +817,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Tmpfs", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Tmpfs", jobDir)).To(Equal(
-						`yaml:"tmpfs,omitempty"`,
+						`json:"tmpfs,omitempty"`,
 					))
 				})
 			})
@@ -825,7 +825,7 @@ var _ = Describe("Manifest", func() {
 			Describe("TmpfsSize", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("TmpfsSize", jobDir)).To(Equal(
-						`yaml:"tmpfs_size,omitempty"`,
+						`json:"tmpfs_size,omitempty"`,
 					))
 				})
 			})
@@ -841,7 +841,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Enable", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Enable", ipv6)).To(Equal(
-						`yaml:"enable"`,
+						`json:"enable"`,
 					))
 				})
 			})
@@ -857,7 +857,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Name", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Name", migratedFrom)).To(Equal(
-						`yaml:"name"`,
+						`json:"name"`,
 					))
 				})
 			})
@@ -865,7 +865,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Az", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Az", migratedFrom)).To(Equal(
-						`yaml:"az,omitempty"`,
+						`json:"az,omitempty"`,
 					))
 				})
 			})
@@ -881,7 +881,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Canaries", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Canaries", update)).To(Equal(
-						`yaml:"canaries"`,
+						`json:"canaries"`,
 					))
 				})
 			})
@@ -889,7 +889,7 @@ var _ = Describe("Manifest", func() {
 			Describe("MaxInFlight", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("MaxInFlight", update)).To(Equal(
-						`yaml:"max_in_flight"`,
+						`json:"max_in_flight"`,
 					))
 				})
 			})
@@ -897,7 +897,7 @@ var _ = Describe("Manifest", func() {
 			Describe("CanaryWatchTime", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("CanaryWatchTime", update)).To(Equal(
-						`yaml:"canary_watch_time"`,
+						`json:"canary_watch_time"`,
 					))
 				})
 			})
@@ -905,7 +905,7 @@ var _ = Describe("Manifest", func() {
 			Describe("UpdateWatchTime", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("UpdateWatchTime", update)).To(Equal(
-						`yaml:"update_watch_time"`,
+						`json:"update_watch_time"`,
 					))
 				})
 			})
@@ -913,7 +913,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Serial", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Serial", update)).To(Equal(
-						`yaml:"serial,omitempty"`,
+						`json:"serial,omitempty"`,
 					))
 				})
 			})
@@ -921,7 +921,7 @@ var _ = Describe("Manifest", func() {
 			Describe("VMStrategy", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("VMStrategy", update)).To(Equal(
-						`yaml:"vm_strategy,omitempty"`,
+						`json:"vm_strategy,omitempty"`,
 					))
 				})
 			})
@@ -937,7 +937,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Name", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Name", network)).To(Equal(
-						`yaml:"name"`,
+						`json:"name"`,
 					))
 				})
 			})
@@ -945,7 +945,7 @@ var _ = Describe("Manifest", func() {
 			Describe("StaticIps", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("StaticIps", network)).To(Equal(
-						`yaml:"static_ips,omitempty"`,
+						`json:"static_ips,omitempty"`,
 					))
 				})
 			})
@@ -953,7 +953,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Default", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Default", network)).To(Equal(
-						`yaml:"default,omitempty"`,
+						`json:"default,omitempty"`,
 					))
 				})
 			})
@@ -969,7 +969,7 @@ var _ = Describe("Manifest", func() {
 			Describe("CPU", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("CPU", vmResource)).To(Equal(
-						`yaml:"cpu"`,
+						`json:"cpu"`,
 					))
 				})
 			})
@@ -977,7 +977,7 @@ var _ = Describe("Manifest", func() {
 			Describe("RAM", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("RAM", vmResource)).To(Equal(
-						`yaml:"ram"`,
+						`json:"ram"`,
 					))
 				})
 			})
@@ -985,7 +985,7 @@ var _ = Describe("Manifest", func() {
 			Describe("EphemeralDiskSize", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("EphemeralDiskSize", vmResource)).To(Equal(
-						`yaml:"ephemeral_disk_size"`,
+						`json:"ephemeral_disk_size"`,
 					))
 				})
 			})
@@ -1001,7 +1001,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Name", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Name", job)).To(Equal(
-						`yaml:"name"`,
+						`json:"name"`,
 					))
 				})
 			})
@@ -1009,7 +1009,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Release", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Release", job)).To(Equal(
-						`yaml:"release"`,
+						`json:"release"`,
 					))
 				})
 			})
@@ -1017,7 +1017,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Consumes", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Consumes", job)).To(Equal(
-						`yaml:"consumes,omitempty"`,
+						`json:"consumes,omitempty"`,
 					))
 				})
 			})
@@ -1025,7 +1025,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Provides", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Provides", job)).To(Equal(
-						`yaml:"provides,omitempty"`,
+						`json:"provides,omitempty"`,
 					))
 				})
 			})
@@ -1033,7 +1033,7 @@ var _ = Describe("Manifest", func() {
 			Describe("Properties", func() {
 				It("contains desired values", func() {
 					Expect(getStructTagForName("Properties", job)).To(Equal(
-						`yaml:"properties,omitempty"`,
+						`json:"properties,omitempty"`,
 					))
 				})
 			})
@@ -1060,7 +1060,7 @@ var _ = Describe("Manifest", func() {
 				Expect(ig.Name).To(Equal("redis-slave"))
 				Expect(ig.Instances).To(Equal(2))
 				Expect(ig.Properties).To(HaveLen(1))
-				Expect(ig.Properties["foo"]).To(Equal(map[interface{}]interface{}{"app_domain": "((app_domain))"}))
+				Expect(ig.Properties["foo"]).To(Equal(map[string]interface{}{"app_domain": "((app_domain))"}))
 
 				settings := ig.Env.AgentEnvBoshConfig.Agent.Settings
 				Expect(settings.Labels).To(Equal(map[string]string{"custom-label": "foo"}))
@@ -1100,7 +1100,7 @@ var _ = Describe("Manifest", func() {
 				ig := manifest.InstanceGroups[1]
 				job := ig.Jobs[0]
 
-				Expect(job.Consumes["doppler"]).To(Equal(map[interface{}]interface{}{"from": "doppler"}))
+				Expect(job.Consumes["doppler"]).To(Equal(map[string]interface{}{"from": "doppler"}))
 				Expect(job.Properties.BOSHContainerization.Consumes).To(HaveLen(0))
 			})
 
@@ -1114,7 +1114,7 @@ var _ = Describe("Manifest", func() {
 				Expect(job.Properties.Properties).To(HaveLen(1))
 				props := job.Properties.Properties["foo"]
 				Expect(props).To(HaveLen(1))
-				Expect(props).To(Equal(map[interface{}]interface{}{"app_domain": "((app_domain))"}))
+				Expect(props).To(Equal(map[string]interface{}{"app_domain": "((app_domain))"}))
 
 				bc := job.Properties.BOSHContainerization
 				Expect(bc).ToNot(BeNil())
@@ -1155,7 +1155,7 @@ var _ = Describe("Manifest", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(orgText).To(ContainSubstring("requiredDuringSchedulingIgnoredDuringExecution"))
-				Expect(text).To(ContainSubstring("requiredduringschedulingignoredduringexecution"))
+				Expect(text).To(ContainSubstring("requiredDuringSchedulingIgnoredDuringExecution"))
 			})
 
 			It("retains affinity data", func() {
@@ -1181,6 +1181,26 @@ var _ = Describe("Manifest", func() {
 				match := selectors.MatchExpressions[0]
 				Expect(match.Key).To(Equal("beta.kubernetes.io/os"))
 				Expect(match.Values).To(HaveLen(2))
+			})
+
+			It("retains healthcheck data", func() {
+				defaultText := boshmanifest.Default
+				m1, err := LoadYAML([]byte(defaultText))
+				text, err := m1.Marshal()
+				Expect(err).NotTo(HaveOccurred())
+
+				By("loading marshalled manifest again")
+				manifest, err := LoadYAML(text)
+				Expect(err).NotTo(HaveOccurred())
+
+				hc := m1.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Run.HealthCheck
+				Expect(hc).ToNot(BeNil())
+				Expect(hc["test-server"].ReadinessProbe.Handler.Exec.Command).To(ContainElement("curl --silent --fail --head http://${HOSTNAME}:8080/health"))
+
+				hc = manifest.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Run.HealthCheck
+				Expect(hc).ToNot(BeNil())
+				Expect(hc["test-server"].ReadinessProbe.Handler.Exec.Command).To(ContainElement("curl --silent --fail --head http://${HOSTNAME}:8080/health"))
+
 			})
 		})
 

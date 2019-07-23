@@ -1,56 +1,10 @@
-// Package containerization loads the kubernetes specifics parts, like
-// BOSHContainerization, from the BOSH manifest.
-package containerization
+package manifest
 
 import (
-	"github.com/ghodss/yaml"
-
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 )
-
-// Manifest is a BOSH deployment manifest
-type Manifest struct {
-	InstanceGroups []*InstanceGroup `json:"instance_groups,omitempty"`
-}
-
-// InstanceGroup has been added to navigate to the containerization fields
-type InstanceGroup struct {
-	Jobs []Job `json:"jobs"`
-	// for env.bosh.agent.settings.affinity
-	Env Env `json:"env,omitempty"`
-}
-
-// Job has been added to navigate to the containerization fields
-type Job struct {
-	Properties JobProperties `json:"properties,omitempty"`
-}
-
-// JobProperties has been added to navigate to the containerization fields
-type JobProperties struct {
-	BOSHContainerization BOSHContainerization `json:"bosh_containerization"`
-}
-
-// Env has been added to navigate to the containerization fields
-type Env struct {
-	BOSH BOSH `json:"bosh,omitempty"`
-}
-
-// BOSH has been added to navigate to the containerization fields
-type BOSH struct {
-	Agent Agent `json:"agent,omitempty"`
-}
-
-// Agent has been added to navigate to the containerization fields
-type Agent struct {
-	Settings Settings `json:"settings,omitempty"`
-}
-
-// Settings has been added to make the k8s native Affinity field accessible
-type Settings struct {
-	Affinity *corev1.Affinity `json:"affinity,omitempty" yaml:"affinity,omitempty"`
-}
 
 // BOSHContainerization represents the special 'bosh_containerization'
 // property key. It contains all kubernetes structures we need to add to the BOSH manifest.
@@ -92,24 +46,15 @@ type JobLink struct {
 	Properties map[string]interface{} `json:"properties"`
 }
 
+
+
 // HealthCheck defines liveness and readiness probes for a container
 type HealthCheck struct {
-	ReadinessProbe *corev1.Probe `json:"readiness"`
-	LivenessProbe  *corev1.Probe `json:"liveness"`
+	ReadinessProbe *corev1.Probe `json:"readiness" yaml:"readiness"`
+	LivenessProbe  *corev1.Probe `json:"liveness"  yaml:"liveness"`
 }
 
 // RunConfig describes the runtime configuration for this job
 type RunConfig struct {
-	HealthChecks map[string]HealthCheck `json:"healthcheck"`
-}
-
-// LoadKubeYAML is a special loader, since the YAML is already compatible to
-// k8s structures without further transformation.
-func LoadKubeYAML(data []byte) (*Manifest, error) {
-	m := &Manifest{}
-	err := yaml.Unmarshal(data, m)
-	if err != nil {
-		return nil, err
-	}
-	return m, nil
+	HealthCheck map[string]HealthCheck `json:"healthcheck" yaml:"healthcheck"`
 }

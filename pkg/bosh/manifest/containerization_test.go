@@ -7,8 +7,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	//. "github.com/onsi/gomega/gstruct"
-
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
@@ -31,7 +29,7 @@ var _ = Describe("BOSHContainerization", func() {
 		ig, err := m.InstanceGroupByName("doppler")
 		Expect(err).ToNot(HaveOccurred())
 
-		healthchecks := ig.Jobs[0].Properties.BOSHContainerization.Run.HealthChecks
+		healthchecks := ig.Jobs[0].Properties.BOSHContainerization.Run.HealthCheck
 		Expect(len(healthchecks)).To(Equal(1))
 		Expect(healthchecks["doppler"].ReadinessProbe.Exec.Command[0]).To(Equal("curl --silent --fail --head http://${HOSTNAME}:8080/health"))
 		Expect(healthchecks["doppler"].LivenessProbe).To(BeNil())
@@ -41,7 +39,7 @@ var _ = Describe("BOSHContainerization", func() {
 		ig, err := m.InstanceGroupByName("log-api")
 		Expect(err).ToNot(HaveOccurred())
 
-		healthchecks := ig.Jobs[0].Properties.BOSHContainerization.Run.HealthChecks
+		healthchecks := ig.Jobs[0].Properties.BOSHContainerization.Run.HealthCheck
 		Expect(len(healthchecks)).To(Equal(1))
 		Expect(healthchecks["doppler"].LivenessProbe.Exec.Command[0]).To(Equal("curl --silent --fail --head http://${HOSTNAME}:8080/health"))
 		Expect(healthchecks["doppler"].ReadinessProbe).To(BeNil())

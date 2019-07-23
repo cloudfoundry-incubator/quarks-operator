@@ -14,7 +14,6 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 )
 
 // InstanceGroupResolver gathers data for jobs in the manifest, it handles links and returns a deployment manifest
@@ -311,7 +310,7 @@ func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[st
 			// When the job defines a consumes property in the manifest, use it instead of the one
 			// from currentJobSpecData.Consumes.
 			if _, ok := currentJob.Consumes[providerName]; ok {
-				if value, ok := currentJob.Consumes[providerName].(map[interface{}]interface{})["from"]; ok {
+				if value, ok := currentJob.Consumes[providerName].(map[string]interface{})["from"]; ok {
 					providerName = value.(string)
 				}
 			}
@@ -324,10 +323,10 @@ func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[st
 
 		// generate the job.properties.bosh_containerization.consumes struct with the links information from providers.
 		if currentJob.Properties.BOSHContainerization.Consumes == nil {
-			currentJob.Properties.BOSHContainerization.Consumes = map[string]bc.JobLink{}
+			currentJob.Properties.BOSHContainerization.Consumes = map[string]JobLink{}
 		}
 
-		currentJob.Properties.BOSHContainerization.Consumes[providerName] = bc.JobLink{
+		currentJob.Properties.BOSHContainerization.Consumes[providerName] = JobLink{
 			Instances:  link.Instances,
 			Properties: link.Properties,
 		}

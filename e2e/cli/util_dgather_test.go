@@ -32,7 +32,8 @@ var _ = Describe("instance-group", func() {
 
 			Eventually(session).Should(gexec.Exit(0))
 			output := session.Out.Contents()
-			Expect(output).Should(ContainSubstring(`"properties.yaml":"name: cf`))
+			Expect(output).Should(ContainSubstring(`"properties.yaml":"`))
+			Expect(output).Should(ContainSubstring(`name: cf`))
 
 			var yml map[string]interface{}
 			err = json.Unmarshal(output, &yml)

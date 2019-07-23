@@ -3,21 +3,19 @@ package manifest
 import (
 	"fmt"
 	"strings"
-
-	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
 )
 
 // JobProviderLinks provides links to other jobs, indexed by provider type and name
-type JobProviderLinks map[string]map[string]bc.JobLink
+type JobProviderLinks map[string]map[string]JobLink
 
 // Lookup returns a link for a type and name, used when links are consumed
-func (jpl JobProviderLinks) Lookup(provider *JobSpecProvider) (bc.JobLink, bool) {
+func (jpl JobProviderLinks) Lookup(provider *JobSpecProvider) (JobLink, bool) {
 	link, ok := jpl[provider.Type][provider.Name]
 	return link, ok
 }
 
 // Add another job to the lookup map
-func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []bc.JobInstance) error {
+func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstance) error {
 	var properties map[string]interface{}
 
 	for _, link := range spec.Provides {
@@ -45,7 +43,7 @@ func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []bc.JobIns
 		if job.Provides != nil {
 			if value, ok := job.Provides[linkName]; ok {
 				switch value := value.(type) {
-				case map[interface{}]interface{}:
+				case map[string]interface{}:
 					if overrideLinkName, ok := value["as"]; ok {
 						linkName = fmt.Sprintf("%v", overrideLinkName)
 					}
@@ -69,12 +67,12 @@ func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []bc.JobIns
 		}
 
 		if _, ok := jpl[linkType]; !ok {
-			jpl[linkType] = map[string]bc.JobLink{}
+			jpl[linkType] = map[string]JobLink{}
 		}
 
 		// construct the jobProviderLinks of the current job that provides
 		// a link
-		jpl[linkType][linkName] = bc.JobLink{
+		jpl[linkType][linkName] = JobLink{
 			Instances:  jobsInstances,
 			Properties: properties,
 		}

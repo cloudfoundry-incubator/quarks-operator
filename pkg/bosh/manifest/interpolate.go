@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/cppforlife/go-patch/patch"
+	"gopkg.in/yaml.v2"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	yaml "gopkg.in/yaml.v2"
 
 	boshtpl "github.com/cloudfoundry/bosh-cli/director/template"
 )
