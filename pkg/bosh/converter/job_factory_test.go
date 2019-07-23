@@ -23,12 +23,12 @@ var _ = Describe("JobFactory", func() {
 		factory = converter.NewJobFactory(m, "namespace")
 	})
 
-	Describe("DataGatheringJob", func() {
+	Describe("InstanceGroupManifestJob", func() {
 		It("creates init containers", func() {
-			job, err := factory.DataGatheringJob()
+			job, err := factory.InstanceGroupManifestJob()
 			Expect(err).ToNot(HaveOccurred())
 			jobDG := job.Spec.Template.Spec
-			// Test init containers in the datagathering job
+			// Test init containers in the ig manifest job
 			Expect(jobDG.InitContainers[0].Name).To(Equal("spec-copier-redis"))
 			Expect(jobDG.InitContainers[1].Name).To(Equal("spec-copier-cflinuxfs3"))
 			Expect(jobDG.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))

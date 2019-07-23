@@ -7,24 +7,21 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/go-test/deep"
-	"go.uber.org/zap"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bc "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/containerization"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
 
 const assetPath = "../../../testing/assets"
 
-var _ = Describe("DataGatherer", func() {
+var _ = Describe("InstanceGroupResolver", func() {
 
 	var (
 		m   *Manifest
 		env testing.Catalog
-		log *zap.SugaredLogger
-		dg  *DataGatherer
+		dg  *InstanceGroupResolver
 		ig  string
 	)
 
@@ -64,14 +61,10 @@ var _ = Describe("DataGatherer", func() {
 		})
 	})
 
-	Context("DataGatherer", func() {
-		BeforeEach(func() {
-			_, log = helper.NewTestLogger()
-		})
-
+	Context("InstanceGroupResolver", func() {
 		JustBeforeEach(func() {
 			var err error
-			dg, err = manifest.NewDataGatherer(log, assetPath, "default", *m, ig)
+			dg, err = manifest.NewInstanceGroupResolver(assetPath, "default", *m, ig)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -131,14 +124,14 @@ var _ = Describe("DataGatherer", func() {
 			})
 		})
 
-		Describe("ResolvedProperties", func() {
+		Describe("Manifest", func() {
 			BeforeEach(func() {
 				m = env.ElaboratedBOSHManifest()
 				ig = "redis-slave"
 			})
 
 			It("should gather all data for each job spec file", func() {
-				manifest, err := dg.ResolvedProperties()
+				manifest, err := dg.Manifest()
 				Expect(err).ToNot(HaveOccurred())
 
 				//Check JobInstance for the redis-server job
@@ -160,7 +153,7 @@ var _ = Describe("DataGatherer", func() {
 				})
 
 				It("resolves all required data if the job consumes a link", func() {
-					manifest, err := dg.ResolvedProperties()
+					manifest, err := dg.Manifest()
 					Expect(err).ToNot(HaveOccurred())
 
 					// log-api instance_group, with loggregator_trafficcontroller job, consumes a link from doppler job
@@ -183,7 +176,7 @@ var _ = Describe("DataGatherer", func() {
 				})
 
 				It("has an empty consumes list if the job does not consume a link", func() {
-					manifest, err := dg.ResolvedProperties()
+					manifest, err := dg.Manifest()
 					Expect(err).ToNot(HaveOccurred())
 
 					// doppler instance_group, with doppler job, only provides doppler link
