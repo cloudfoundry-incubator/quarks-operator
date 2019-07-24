@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"sigs.k8s.io/yaml"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
@@ -86,7 +85,7 @@ This will resolve the properties of an instance group and return a manifest for 
 			return err
 		}
 
-		propertiesBytes, err := yaml.Marshal(manifest)
+		propertiesBytes, err := manifest.Marshal()
 		if err != nil {
 			return err
 		}

@@ -4,6 +4,7 @@ package manifest
 
 import (
 	"crypto/sha1"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -127,7 +128,10 @@ type Manifest struct {
 // LoadYAML returns a new BOSH deployment manifest from a yaml representation
 func LoadYAML(data []byte) (*Manifest, error) {
 	m := &Manifest{}
-	err := yaml.Unmarshal(data, m)
+	err := yaml.Unmarshal(data, m, func(opt *json.Decoder) *json.Decoder {
+		opt.UseNumber()
+		return opt
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal BOSH deployment manifest")
 	}

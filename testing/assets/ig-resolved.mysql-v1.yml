@@ -11,8 +11,30 @@ instance_groups:
       bosh_containerization:
         consumes:
           galera-agent:
-            instances: []
-            properties: {}
+            instances:
+            - address: scf-dev-api-0.scf.svc.cluster.local
+              az: z1
+              id: api-0-cloud_controller_ng
+              index: 0
+              instance: 0
+              ip: ""
+              name: api-cloud_controller_ng
+              networks: null
+            - address: scf-dev-api-1.scf.svc.cluster.local
+              az: z2
+              id: api-1-cloud_controller_ng
+              index: 1
+              instance: 0
+              ip: ""
+              name: api-cloud_controller_ng
+              networks: null
+            properties:
+              port: 22
+              cc:
+                resource_pool:
+                  maximum_size: 999999
+                  maximum_size2: 1000000                  
+                  maximum_size3: 1000001
           mysql:
             instances:
             - address: pxc-deployment-mysql-0.pxc.svc.cluster.local
@@ -24,7 +46,9 @@ instance_groups:
               networks: {}
               ip: ""
             properties:
-              port: 3306
+              foo:
+                bar: 8335
+              port: 123987
               pxc_enabled: true
         instances:
         - address: pxc-deployment-mysql-0.pxc.svc.cluster.local

@@ -46,8 +46,6 @@ type JobLink struct {
 	Properties map[string]interface{} `json:"properties"`
 }
 
-
-
 // HealthCheck defines liveness and readiness probes for a container
 type HealthCheck struct {
 	ReadinessProbe *corev1.Probe `json:"readiness" yaml:"readiness"`
