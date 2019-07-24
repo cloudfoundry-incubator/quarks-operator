@@ -61,6 +61,15 @@ func (m *Machine) WaitForPodContainerLogMsg(namespace, podName, containerName, m
 	})
 }
 
+// PodContainsLogMsg searches pod test logs for at least one occurrence of msg, but it will
+// have a shorter timeout(10secs). This is for tests where one does not expect to see a log.
+func (m *Machine) PodContainsLogMsg(namespace, podName, containerName, msg string) error {
+	return wait.Poll(5*time.Second, 10*time.Second, func() (bool, error) {
+		logs, err := m.GetPodContainerLogs(namespace, podName, containerName)
+		return strings.Contains(logs, msg), err
+	})
+}
+
 // WaitForPodLogMatchRegexp searches pod test logs for at least one occurrence of Regexp.
 func (m *Machine) WaitForPodLogMatchRegexp(namespace string, podName string, regExp string) error {
 	r, _ := regexp.Compile(regExp)
