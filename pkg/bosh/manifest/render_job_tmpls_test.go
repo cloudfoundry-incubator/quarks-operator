@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"sigs.k8s.io/yaml"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"sigs.k8s.io/yaml"
 )
 
 var _ = Describe("Trender", func() {
@@ -121,8 +121,14 @@ var _ = Describe("Trender", func() {
 			Expect(drainFile).Should(BeAnExistingFile())
 
 			content, err := ioutil.ReadFile(drainFile)
+
 			Expect(err).ToNot(HaveOccurred())
-			Expect(content).To(ContainSubstring("#!/usr/bin/env bash"))
+			Expect(string(content)).To(ContainSubstring("#!/usr/bin/env bash"))
+			Expect(string(content)).To(ContainSubstring("foo=8335xx"))
+			Expect(string(content)).To(ContainSubstring("bar=123987xx"))
+			Expect(string(content)).To(ContainSubstring("maximum_size: 999999size"))
+			Expect(string(content)).To(ContainSubstring("maximum_size2: 1000000size"))
+			Expect(string(content)).To(ContainSubstring("maximum_size3: 1000001size"))
 		})
 	})
 })

@@ -147,7 +147,10 @@ func (p *JobProperties) FromMap(properties map[string]interface{}) error {
 	}
 
 	quarks := BOSHContainerization{}
-	err = yaml.Unmarshal(quarksBytes, &quarks)
+	err = yaml.Unmarshal(quarksBytes, &quarks, func(opt *json.Decoder) *json.Decoder {
+		opt.UseNumber()
+		return opt
+	})
 	if err != nil {
 		return err
 	}
