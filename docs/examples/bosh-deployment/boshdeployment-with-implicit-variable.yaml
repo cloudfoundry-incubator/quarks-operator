@@ -56,6 +56,6 @@ metadata:
   name: nats-deployment
 spec:
   manifest:
-    ref: nats-manifest
+    name: nats-manifest
     type: configmap
 

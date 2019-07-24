@@ -84,35 +84,35 @@ func NewValidator(log *zap.SugaredLogger, config *config.Config) admission.Handl
 // OpsResourceExist verify if a resource exist in the namespace,
 // it will check its existence during 5 seconds,
 // otherwise it will timeout.
-func (v *Validator) OpsResourceExist(ctx context.Context, specOpsResource bdv1.Ops, ns string) (bool, string) {
+func (v *Validator) OpsResourceExist(ctx context.Context, specOpsResource bdv1.ResourceReference, ns string) (bool, string) {
 	timeOut := time.After(v.pollTimeout)
 	tick := time.NewTicker(v.pollInterval)
 	defer tick.Stop()
 
 	switch specOpsResource.Type {
-	case "configmap":
-		key := ktype.NamespacedName{Namespace: string(ns), Name: specOpsResource.Ref}
+	case bdv1.ConfigMapReference:
+		key := ktype.NamespacedName{Namespace: string(ns), Name: specOpsResource.Name}
 		for {
 			select {
 			case <-timeOut:
-				return false, fmt.Sprintf("Timeout reached. Resource %s does not exist", specOpsResource.Ref)
+				return false, fmt.Sprintf("Timeout reached. Resource %s does not exist", specOpsResource.Name)
 			case <-tick.C:
 				err := v.client.Get(ctx, key, &corev1.ConfigMap{})
 				if err == nil {
-					return true, fmt.Sprintf("configmap %s, exists", specOpsResource.Ref)
+					return true, fmt.Sprintf("configmap %s, exists", specOpsResource.Name)
 				}
 			}
 		}
-	case "secret":
-		key := ktype.NamespacedName{Namespace: string(ns), Name: specOpsResource.Ref}
+	case bdv1.SecretReference:
+		key := ktype.NamespacedName{Namespace: string(ns), Name: specOpsResource.Name}
 		for {
 			select {
 			case <-timeOut:
-				return false, fmt.Sprintf("Timeout reached. Resource %s does not exist", specOpsResource.Ref)
+				return false, fmt.Sprintf("Timeout reached. Resource %s does not exist", specOpsResource.Name)
 			case <-tick.C:
 				err := v.client.Get(ctx, key, &corev1.Secret{})
 				if err == nil {
-					return true, fmt.Sprintf("secret %s, exists", specOpsResource.Ref)
+					return true, fmt.Sprintf("secret %s, exists", specOpsResource.Name)
 				}
 			}
 		}

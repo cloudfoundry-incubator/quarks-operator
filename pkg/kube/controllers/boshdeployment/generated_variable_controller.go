@@ -49,7 +49,7 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 
 			if shouldProcessEvent {
 				ctxlog.NewPredicateEvent(o).Debug(
-					ctx, e.Meta, bdv1.SecretType,
+					ctx, e.Meta, bdv1.SecretReference.String(),
 					fmt.Sprintf("Create predicate passed for %s, existing secret with the %s suffix",
 						e.Meta.GetName(), names.DeploymentSecretTypeManifestWithOps.String()),
 				)
@@ -66,7 +66,7 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 
 			if shouldProcessEvent {
 				ctxlog.NewPredicateEvent(newSecret).Debug(
-					ctx, e.MetaNew, bdv1.SecretType,
+					ctx, e.MetaNew, bdv1.SecretReference.String(),
 					fmt.Sprintf("Update predicate passed for %s, existing secret with the %s suffix has been updated",
 						e.MetaNew.GetName(), names.DeploymentSecretTypeManifestWithOps.String()),
 				)

@@ -14,6 +14,7 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
@@ -70,7 +71,7 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 		err error
 	)
 
-	m, err = r.resourceData(namespace, spec.Manifest.Type, spec.Manifest.Ref, bdc.ManifestSpecName)
+	m, err = r.resourceData(namespace, spec.Manifest.Type, spec.Manifest.Name, bdc.ManifestSpecName)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
 	}
@@ -85,7 +86,7 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 	ops := spec.Ops
 
 	for _, op := range ops {
-		opsData, err := r.resourceData(namespace, op.Type, op.Ref, bdc.OpsSpecName)
+		opsData, err := r.resourceData(namespace, op.Type, op.Name, bdc.OpsSpecName)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
 		}
@@ -117,7 +118,7 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 	}
 
 	for _, v := range vars {
-		varData, err := r.resourceData(namespace, bdc.SecretType, names.CalculateSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), v), bdc.ImplicitVariableKeyName)
+		varData, err := r.resourceData(namespace, bdc.SecretReference, names.CalculateSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), v), bdc.ImplicitVariableKeyName)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
 		}
@@ -140,14 +141,14 @@ func (r *Resolver) WithOpsManifest(instance *bdc.BOSHDeployment, namespace strin
 }
 
 // resourceData resolves different manifest reference types and returns the resource's data
-func (r *Resolver) resourceData(namespace string, resType string, name string, key string) (string, error) {
+func (r *Resolver) resourceData(namespace string, resType bdv1.ReferenceType, name string, key string) (string, error) {
 	var (
 		data string
 		ok   bool
 	)
 
 	switch resType {
-	case bdc.ConfigMapType:
+	case bdc.ConfigMapReference:
 		opsConfig := &corev1.ConfigMap{}
 		err := r.client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, opsConfig)
 		if err != nil {
@@ -157,7 +158,7 @@ func (r *Resolver) resourceData(namespace string, resType string, name string, k
 		if !ok {
 			return data, fmt.Errorf("configMap '%s/%s' doesn't contain key %s", namespace, name, key)
 		}
-	case bdc.SecretType:
+	case bdc.SecretReference:
 		opsSecret := &corev1.Secret{}
 		err := r.client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, opsSecret)
 		if err != nil {
@@ -168,7 +169,7 @@ func (r *Resolver) resourceData(namespace string, resType string, name string, k
 			return data, fmt.Errorf("secret '%s/%s' doesn't contain key %s", namespace, name, key)
 		}
 		data = string(encodedData)
-	case bdc.URLType:
+	case bdc.URLReference:
 		httpResponse, err := http.Get(name)
 		if err != nil {
 			return data, errors.Wrapf(err, "failed to resolve %s from url '%s' via http.Get", key, name)

@@ -32,7 +32,7 @@ spec:
                 type:
                   type: string
                   enum: ["configmap", "secret", "url"]
-                ref:
+                name:
                   type: string
                   minLength: 1
             ops:
@@ -44,7 +44,7 @@ spec:
                   type:
                     type: string
                     enum: ["configmap", "secret", "url"]
-                  ref:
+                  name:
                     type: string
                     minLength: 1
 {{- end }}

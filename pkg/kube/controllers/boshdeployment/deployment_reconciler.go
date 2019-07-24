@@ -185,7 +185,7 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 		return nil, log.WithEvent(instance, "ManifestWithOpsApplyError").Errorf(ctx, "Failed to apply Secret '%s': %v", manifestSecretName, err)
 	}
 
-	log.Debugf(ctx, "Manifest secret '%s' has been %s", manifestSecret.Name, op)
+	log.Debugf(ctx, "ResourceReference secret '%s' has been %s", manifestSecret.Name, op)
 
 	return manifest, nil
 }

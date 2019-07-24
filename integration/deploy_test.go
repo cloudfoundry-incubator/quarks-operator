@@ -237,7 +237,7 @@ var _ = Describe("Deploy", func() {
 
 					bdm, err := env.GetBOSHDeployment(env.Namespace, "test")
 					Expect(err).NotTo(HaveOccurred())
-					bdm.Spec.Ops = []bdv1.Ops{{Ref: "test-ops", Type: bdv1.ConfigMapType}}
+					bdm.Spec.Ops = []bdv1.Ops{{Ref: "test-ops", Type: bdv1.ConfigMapReference}}
 					_, _, err = env.UpdateBOSHDeployment(env.Namespace, *bdm)
 					Expect(err).NotTo(HaveOccurred())
 

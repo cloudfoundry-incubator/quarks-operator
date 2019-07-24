@@ -28,13 +28,13 @@ func GetSecretsReferencedBy(object interface{}) (map[string]bool, error) {
 func getSecretRefFromBdpl(object bdv1.BOSHDeployment) map[string]bool {
 	result := map[string]bool{}
 
-	if object.Spec.Manifest.Type == bdv1.SecretType {
-		result[object.Spec.Manifest.Ref] = true
+	if object.Spec.Manifest.Type == bdv1.SecretReference {
+		result[object.Spec.Manifest.Name] = true
 	}
 
 	for _, ops := range object.Spec.Ops {
-		if ops.Type == bdv1.SecretType {
-			result[ops.Ref] = true
+		if ops.Type == bdv1.SecretReference {
+			result[ops.Name] = true
 		}
 	}
 

@@ -88,7 +88,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "BOSHDeployment", a.Meta.GetName(), bdv1.ConfigMapType)
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "BOSHDeployment", a.Meta.GetName(), bdv1.ConfigMapReference.String())
 			}
 
 			return reconciles
@@ -138,7 +138,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "BOSHDeployment", a.Meta.GetName(), bdv1.SecretType)
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "BOSHDeployment", a.Meta.GetName(), bdv1.SecretReference.String())
 			}
 
 			return reconciles

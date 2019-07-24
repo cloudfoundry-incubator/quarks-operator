@@ -115,8 +115,8 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Namespace: "default",
 			},
 			Spec: bdv1.BOSHDeploymentSpec{
-				Manifest: bdv1.Manifest{
-					Ref:  "dummy-manifest",
+				Manifest: bdv1.ResourceReference{
+					Name: "dummy-manifest",
 					Type: "configmap",
 				},
 				Ops: []bdv1.Ops{
