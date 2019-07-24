@@ -3,13 +3,17 @@
 package manifest
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"regexp"
 	"strings"
 
+	guuid "github.com/google/uuid"
 	"github.com/pkg/errors"
+	goyaml "gopkg.in/yaml.v2"
 	"sigs.k8s.io/yaml"
 )
 
@@ -139,9 +143,112 @@ func LoadYAML(data []byte) (*Manifest, error) {
 	return m, nil
 }
 
+// duplicateYamlValues is a struct used for size compression
+// in Marshal function  to store the yaml values of
+// significant size and which occur more than once.
+type duplicateYamlValues struct {
+	Value         string
+	UUID          string
+	YamlKeyMarker string
+}
+
 // Marshal serializes a BOSH manifest into yaml
 func (m *Manifest) Marshal() ([]byte, error) {
-	return yaml.Marshal(m)
+
+	marshalledManifest, err := yaml.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+
+	// UnMarshalling the manifest to interface{}interface{} so that it is easy to loop.
+	manifestInterfaceMap := map[interface{}]interface{}{}
+	err = goyaml.Unmarshal(marshalledManifest, &manifestInterfaceMap)
+	if err != nil {
+		return nil, err
+	}
+
+	duplicateValues := []duplicateYamlValues{}
+	duplicateValues = markDuplicateValues(reflect.ValueOf(manifestInterfaceMap), duplicateValues)
+
+	marshalledManifest, err = goyaml.Marshal(&manifestInterfaceMap)
+	if err != nil {
+		return nil, err
+	}
+
+	// Remove quotes over anchor values as reflect in go adds quotes to strings.
+	for _, duplicateValue := range duplicateValues {
+		marshalledManifest = bytes.ReplaceAll(marshalledManifest, []byte("'*"+duplicateValue.UUID+"'"), []byte("*"+duplicateValue.UUID))
+	}
+
+	// Replace the YamlKeyMaker to an anchor
+	for _, value := range duplicateValues {
+		marshalledManifest = bytes.ReplaceAll(marshalledManifest, []byte(value.YamlKeyMarker+"="+value.UUID+": "), []byte(value.YamlKeyMarker+":"+" &"+value.UUID+" "))
+	}
+
+	return marshalledManifest, nil
+}
+
+// markDuplicateValues will store the duplicate values in the
+// duplicateValues struct and change the manifest to include anchors.
+// Ex :-  key1-UUID1: |-
+//		  		data
+//		  key2: *UUID1
+// Later in the marshal function, the above gets changed to
+// Ex :-  key1: &UUID |-
+//		  		data
+//		  key2: *UUID1
+//
+func markDuplicateValues(value reflect.Value, duplicateValues []duplicateYamlValues) []duplicateYamlValues {
+
+	// Get the element is the value is a pointer
+	if value.Kind() == reflect.Ptr || value.Kind() == reflect.Interface {
+		value = value.Elem()
+	}
+
+	switch value.Kind() {
+	case reflect.Array, reflect.Slice:
+		for i := 0; i < value.Len(); i++ {
+			duplicateValues = markDuplicateValues(value.Index(i), duplicateValues)
+		}
+	case reflect.Map:
+
+		for _, k := range value.MapKeys() {
+			valueField := value.MapIndex(k)
+			if valueField.Kind() == reflect.Ptr || valueField.Kind() == reflect.Interface {
+				valueField = valueField.Elem()
+			}
+
+			// Consider the strings which are big enough only.
+			if valueField.Kind() == reflect.String && valueField.String() != "" && valueField.IsValid() && len(valueField.String()) > 64 {
+
+				foundValue := false
+				for _, duplicateValue := range duplicateValues {
+					if duplicateValue.Value == valueField.String() {
+						value.SetMapIndex(reflect.ValueOf(k.Interface().(string)), reflect.ValueOf(string("*"+duplicateValue.UUID)))
+						foundValue = true
+					}
+				}
+
+				if foundValue == false {
+					newKey := guuid.New().String()
+					value.SetMapIndex(reflect.ValueOf(k), reflect.Value{})
+					newMapKey := k.Interface().(string) + string("=") + newKey
+
+					value.SetMapIndex(k, reflect.Value{})
+					value.SetMapIndex(reflect.ValueOf(newMapKey), valueField)
+					duplicateValue := duplicateYamlValues{
+						UUID:          newKey,
+						Value:         valueField.String(),
+						YamlKeyMarker: k.Interface().(string),
+					}
+					duplicateValues = append(duplicateValues, duplicateValue)
+				}
+			} else {
+				duplicateValues = markDuplicateValues(value.MapIndex(k), duplicateValues)
+			}
+		}
+	}
+	return duplicateValues
 }
 
 // SHA1 calculates the SHA1 of the manifest
