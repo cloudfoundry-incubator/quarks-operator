@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/cppforlife/go-patch/patch"
-	"gopkg.in/yaml.v2"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
@@ -60,17 +59,6 @@ func InterpolateVariables(log *zap.SugaredLogger, boshManifestBytes []byte, vari
 				return errors.Wrapf(err, "could not read directory  %s", variable.Name())
 			}
 
-			// Re-unmarshal staticVars
-			bytes, err := yaml.Marshal(staticVars)
-			if err != nil {
-				return errors.Wrapf(err, "could not marshal variables: %s", string(bytes))
-			}
-
-			err = yaml.Unmarshal(bytes, &staticVars)
-			if err != nil {
-				return errors.Wrapf(err, "could not unmarshal variables: %s", string(bytes))
-			}
-
 			vars = append(vars, staticVars)
 		}
 	}
@@ -109,11 +97,11 @@ func InterpolateVariables(log *zap.SugaredLogger, boshManifestBytes []byte, vari
 
 func mergeStaticVar(staticVar interface{}, field string, value string) interface{} {
 	if staticVar == nil {
-		staticVar = map[string]interface{}{
+		staticVar = map[interface{}]interface{}{
 			field: value,
 		}
 	} else {
-		staticVarMap := staticVar.(map[string]interface{})
+		staticVarMap := staticVar.(map[interface{}]interface{})
 		staticVarMap[field] = value
 		staticVar = staticVarMap
 	}
