@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
 
+maximum_size: <%= link("galera-agent").p("cc.resource_pool.maximum_size") %>size
+maximum_size2: <%= link("galera-agent").p("cc.resource_pool.maximum_size2") %>size
+maximum_size3: <%= link("galera-agent").p("cc.resource_pool.maximum_size3") %>size
+
+<% if_link('mysql') do |mysql_link| %>
+foo=<%= mysql_link.p("foo.bar") %>xx
+bar=<%= mysql_link.p("port") %>xx
+<% end %>
+
 <% if p('pxc_enabled') == true %>
 set -e -o pipefail
 

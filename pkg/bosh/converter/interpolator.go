@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/cppforlife/go-patch/patch"
-	"gopkg.in/yaml.v2"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 )
 
 // Interpolator renders BOSH manifests by operations files
@@ -98,7 +98,7 @@ func (i *InterpolatorImpl) interpolate(node interface{}) (interface{}, error) {
 			}
 
 			stringKey, ok := evaluatedKey.(string)
-			if !ok { 
+			if !ok {
 				return nil, errors.Errorf("interpolator only supports string keys, not '%T'", evaluatedKey)
 			}
 
