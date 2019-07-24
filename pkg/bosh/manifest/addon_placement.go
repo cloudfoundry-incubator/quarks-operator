@@ -19,7 +19,7 @@ func (m *Manifest) stemcellMatch(instanceGroup *InstanceGroup, rules *AddOnPlace
 	for _, job := range instanceGroup.Jobs {
 		os, err := m.GetJobOS(instanceGroup.Name, job.Name)
 		if err != nil {
-			return false, errors.Wrap(err, "failed to calculate OS for BOSH job")
+			return false, errors.Wrapf(err, "failed to calculate OS for BOSH job %s in instanceGroup %s", job.Name, instanceGroup.Name)
 		}
 
 		osList[os] = struct{}{}
@@ -85,7 +85,7 @@ func (m *Manifest) addOnPlacementMatch(instanceGroup *InstanceGroup, rules *AddO
 	for _, matcher := range matchers {
 		matched, err := matcher(instanceGroup, rules)
 		if err != nil {
-			return false, errors.Wrap(err, "failed to process match")
+			return false, errors.Wrapf(err, "failed to process match for instance group %s", instanceGroup.Name)
 		}
 
 		matchResult = matchResult || matched

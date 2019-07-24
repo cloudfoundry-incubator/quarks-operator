@@ -3,6 +3,7 @@ package extendedstatefulset
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	"k8s.io/api/apps/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -24,7 +25,7 @@ func AddStatefulSetCleanup(ctx context.Context, config *config.Config, mgr manag
 	// Create a new controller
 	c, err := controller.New("statefulset-cleanup-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Adding StatefulSet cleanup controller to manager failed.")
 	}
 
 	// Watch StatefulSets owned by the ExtendedStatefulSet
@@ -54,7 +55,7 @@ func AddStatefulSetCleanup(ctx context.Context, config *config.Config, mgr manag
 		OwnerType:    &estsv1.ExtendedStatefulSet{},
 	}, statefulSetPredicates)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Watching Statefulset failed in Statefulset cleanup controller.")
 	}
 
 	return nil

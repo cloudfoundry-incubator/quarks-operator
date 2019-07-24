@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -195,7 +196,7 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 // createEJob creates a an EJob and sets ownership
 func (r *ReconcileBOSHDeployment) createEJob(ctx context.Context, instance *bdv1.BOSHDeployment, eJob *ejv1.ExtendedJob) error {
 	if err := r.setReference(instance, eJob, r.scheme); err != nil {
-		return fmt.Errorf("failed to set ownerReference for ExtendedJob '%s': %v", eJob.GetName(), err)
+		return errors.Errorf("failed to set ownerReference for ExtendedJob '%s': %v", eJob.GetName(), err)
 	}
 
 	op, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
@@ -207,7 +208,7 @@ func (r *ReconcileBOSHDeployment) createEJob(ctx context.Context, instance *bdv1
 			}
 			return nil
 		}
-		return fmt.Errorf("object is not an ExtendedJob")
+		return errors.Errorf("Failed to create/update ejob for bosh deployment %s : object is not an ExtendedJob", instance.GetName())
 	})
 
 	log.Debugf(ctx, "ExtendedJob '%s' has been %s", eJob.Name, op)

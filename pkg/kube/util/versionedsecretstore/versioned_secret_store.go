@@ -267,7 +267,7 @@ func (p VersionedSecretStoreImpl) listSecrets(ctx context.Context, namespace str
 		Namespace:     namespace,
 		LabelSelector: secretLabelsSet.AsSelector(),
 	}, secrets); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Failed to list secrets with labels %s", secretLabelsSet.String())
 	}
 
 	result := []corev1.Secret{}
@@ -309,12 +309,12 @@ func generateSecretName(namePrefix string, version int) (string, error) {
 	// Check for Kubernetes name requirements (length)
 	const maxChars = 253
 	if len(proposedName) > maxChars {
-		return "", fmt.Errorf("secret name exceeds maximum number of allowed characters (actual=%d, allowed=%d)", len(proposedName), maxChars)
+		return "", errors.Errorf("secret name exceeds maximum number of allowed characters (actual=%d, allowed=%d)", len(proposedName), maxChars)
 	}
 
 	// Check for Kubernetes name requirements (characters)
 	if re := regexp.MustCompile(`[^a-z0-9.-]`); re.MatchString(proposedName) {
-		return "", fmt.Errorf("secret name contains invalid characters, only lower case, dot and dash are allowed")
+		return "", errors.Errorf("secret name contains invalid characters, only lower case, dot and dash are allowed")
 	}
 
 	return proposedName, nil

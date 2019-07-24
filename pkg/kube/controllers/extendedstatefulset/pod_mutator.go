@@ -90,20 +90,20 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 		// Fetch extendedStatefulSet
 		statefulSet, err := m.fetchStatefulset(ctx, pod.Name)
 		if err != nil {
-			return errors.Wrapf(err, "Couldn't fetch Statefulset")
+			return errors.Wrapf(err, "Couldn't fetch Statefulset of pod %s", pod.Name)
 		}
 
 		// Fetch extendedStatefulSet
 		extendedStatefulSet, err := m.fetchExtendedStatefulset(ctx, pod.Name)
 		if err != nil {
-			return errors.Wrapf(err, "Couldn't fetch ExtendedStatefulset")
+			return errors.Wrapf(err, "Couldn't fetch ExtendedStatefulset of pod %s", pod.Name)
 		}
 
 		// Check if it has volumeClaimTemplates
 		if extendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates != nil {
 			err := m.addPersistentVolumeClaims(ctx, statefulSet, extendedStatefulSet, pod)
 			if err != nil {
-				return errors.Wrapf(err, "Adding volume spec has failed for pod.")
+				return errors.Wrapf(err, "Adding volume spec has failed for pod %s", pod.Name)
 			}
 		}
 	}
@@ -131,7 +131,7 @@ func (m *PodMutator) addPersistentVolumeClaims(ctx context.Context, statefulSet 
 	persistentVolumeClaimList := &corev1.PersistentVolumeClaimList{}
 	err := m.client.List(ctx, opts, persistentVolumeClaimList)
 	if err != nil {
-		return errors.Wrapf(err, "Couldn't fetch PVC's")
+		return errors.Wrapf(err, "Couldn't fetch PVC's.")
 	}
 
 	// Get VolumeClaimTemplates list

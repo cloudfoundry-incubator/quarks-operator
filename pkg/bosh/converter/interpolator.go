@@ -1,8 +1,6 @@
 package converter
 
 import (
-	"fmt"
-
 	"github.com/cppforlife/go-patch/patch"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -30,12 +28,12 @@ func (i *InterpolatorImpl) BuildOps(opsBytes []byte) error {
 	var opDefs []patch.OpDefinition
 	err := yaml.Unmarshal(opsBytes, &opDefs)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("deserializing ops data '%s'", opsBytes))
+		return errors.Wrapf(err, "Unmarshalling ops data %s failed", string(opsBytes))
 	}
 
 	ops, err := patch.NewOpsFromDefinitions(opDefs)
 	if err != nil {
-		return errors.Wrap(err, "building ops")
+		return errors.Wrapf(err, "Building ops from opDefs failed")
 	}
 	i.ops = append(i.ops, ops)
 	return nil
@@ -49,14 +47,14 @@ func (i *InterpolatorImpl) Interpolate(manifestBytes []byte) ([]byte, error) {
 
 	err := yaml.Unmarshal(manifestBytes, &obj)
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, errors.Wrapf(err, "Unmarshalling manifest obj %s failed in interpolator", string(manifestBytes))
 	}
 
 	// Apply ops
 	if i.ops != nil {
 		obj, err = i.ops.Apply(obj)
 		if err != nil {
-			return []byte{}, err
+			return []byte{}, errors.Wrapf(err, "Applying ops on manifest obj failed in interpolator")
 		}
 	}
 
@@ -68,7 +66,7 @@ func (i *InterpolatorImpl) Interpolate(manifestBytes []byte) ([]byte, error) {
 
 	bytes, err := yaml.Marshal(obj)
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, errors.Wrapf(err, "Marshalling manifest object in interpolator failed.")
 	}
 
 	return bytes, nil

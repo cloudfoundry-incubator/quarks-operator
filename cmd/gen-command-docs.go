@@ -4,7 +4,6 @@ import (
 	"log"
 
 	cmd "code.cloudfoundry.org/cf-operator/cmd/internal"
-
 	"github.com/spf13/cobra/doc"
 )
 

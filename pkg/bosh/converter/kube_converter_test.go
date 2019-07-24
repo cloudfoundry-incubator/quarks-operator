@@ -13,13 +13,15 @@ import (
 
 var _ = Describe("kube converter", func() {
 	var (
-		m   manifest.Manifest
+		m   *manifest.Manifest
 		env testing.Catalog
+		err error
 	)
 
 	Describe("Variables", func() {
 		BeforeEach(func() {
-			m = env.DefaultBOSHManifest()
+			m, err = env.DefaultBOSHManifest()
+			Expect(err).NotTo(HaveOccurred())
 			format.TruncatedDiff = false
 		})
 

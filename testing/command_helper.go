@@ -72,7 +72,7 @@ func (k *Kubectl) WaitForSecret(namespace string, secretName string) error {
 func (k *Kubectl) SecretExists(namespace string, secretName string) (bool, error) {
 	out, err := runBinary(kubeCtlCmd, "--namespace", namespace, "get", "secret", secretName)
 	if err != nil {
-		return false, err
+		return false, errors.Wrapf(err, "Getting secret %s failed. %s", secretName, string(out))
 	}
 	if strings.Contains(string(out), secretName) {
 		return true, nil
@@ -94,7 +94,7 @@ func (k *Kubectl) pvcExists(namespace string, pvcName string) (bool, error) {
 		if strings.Contains(string(out), "no matching resources found") {
 			return false, nil
 		}
-		return false, err
+		return false, errors.Wrapf(err, "Getting pvc %s failed. %s", pvcName, string(out))
 	}
 	if strings.Contains(string(out), pvcName) {
 		return true, nil
@@ -109,7 +109,7 @@ func (k *Kubectl) Wait(namespace string, requiredStatus string, resourceName str
 	})
 
 	if err != nil {
-		return errors.Wrapf(err, "current stack: %s", string(debug.Stack()))
+		return errors.Wrapf(err, string(debug.Stack()))
 	}
 
 	return nil
@@ -123,7 +123,7 @@ func (k *Kubectl) checkWait(namespace string, requiredStatus string, resourceNam
 		if strings.Contains(string(out), "Error from server (NotFound)") {
 			return false, nil
 		}
-		return false, err
+		return false, errors.Wrapf(err, "Kubectl wait failed for %s with status %s. %s", resourceName, requiredStatus, string(out))
 	}
 	return true, nil
 }
@@ -153,7 +153,7 @@ func (k *Kubectl) checkPodReadyLabelFilter(namespace string, resourceName string
 		if strings.Contains(string(out), "no matching resources found") {
 			return false, nil
 		}
-		return false, err
+		return false, errors.Wrapf(err, "Kubectl wait failed for %s with status %s. %s", resourceName, requiredStatus, string(out))
 	}
 	return true, nil
 }
@@ -175,7 +175,8 @@ func (k *Kubectl) checkPodCompleteLabelFilter(namespace string, labelName string
 func (k *Kubectl) checkPodTerminateLabelFilter(namespace string, labelName string) (bool, error) {
 	out, err := runBinary(kubeCtlCmd, "--namespace", namespace, "get", "pod", "-l", labelName)
 	if err != nil {
-		return false, err
+		return false, errors.Wrapf(err, "Kubectl get pod failed with label %s failed. %s", labelName, string(out))
+
 	}
 	if string(out) == "No resources found.\n" {
 		return true, nil
@@ -187,7 +188,7 @@ func (k *Kubectl) checkPodTerminateLabelFilter(namespace string, labelName strin
 func CreateNamespace(name string) error {
 	_, err := runBinary(kubeCtlCmd, "create", "namespace", name)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Deleting namespace %s failed", name)
 	}
 	return nil
 }
@@ -198,7 +199,7 @@ func DeleteNamespace(ns string) error {
 
 	_, err := runBinary(kubeCtlCmd, "delete", "--wait=false", "--ignore-not-found", "namespace", ns)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Deleting namespace %s failed", ns)
 	}
 
 	return nil
@@ -208,7 +209,7 @@ func DeleteNamespace(ns string) error {
 func Create(namespace string, yamlFilePath string) error {
 	_, err := runBinary(kubeCtlCmd, "--namespace", namespace, "create", "-f", yamlFilePath)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Creating yaml spec %s failed.", yamlFilePath)
 	}
 	return nil
 }
@@ -223,7 +224,7 @@ func CreateSecretFromLiteral(namespace string, secretName string, literalValues 
 
 	_, err := runBinary(kubeCtlCmd, "--namespace", namespace, "create", "secret", "generic", secretName, literalValuesCmd)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Creating secret %s failed from literal value.", secretName)
 	}
 	return nil
 }
@@ -262,7 +263,7 @@ func DeleteResource(namespace string, resourceName string, name string) error {
 		if strings.Contains(string(out), "Error from server (NotFound)") {
 			return nil
 		}
-		return err
+		return errors.Wrapf(err, "Deleting resource %s failed. %s", resourceName, string(out))
 	}
 	return nil
 }
@@ -271,7 +272,7 @@ func DeleteResource(namespace string, resourceName string, name string) error {
 func DeleteLabelFilter(namespace string, resourceName string, labelName string) error {
 	_, err := runBinary(kubeCtlCmd, "--namespace", namespace, "delete", resourceName, "-l", labelName)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Deleting resource %s with label %s failed.", resourceName, labelName)
 	}
 	return nil
 }
@@ -281,7 +282,7 @@ func SecretCheckData(namespace string, secretName string, fieldPath string) erro
 	fetchCommand := "go-template=\"{{" + fieldPath + "}}\""
 	out, err := runBinary(kubeCtlCmd, "--namespace", namespace, "get", "secret", secretName, "-o", fetchCommand)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Getting secret %s with go template %s failed. %s", secretName, fieldPath, string(out))
 	}
 	if len(string(out)) > 0 {
 		return nil
@@ -295,11 +296,11 @@ func AddTestStorageClassToVolumeClaimTemplates(filePath string, class string) (s
 	extendedStatefulSet := essv1.ExtendedStatefulSet{}
 	extendedStatefulSetBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "Reading file %s failed.", filePath)
 	}
 	err = yaml.Unmarshal(extendedStatefulSetBytes, &extendedStatefulSet)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "Unmarshalling extendedstatefulset from file %s failed.", filePath)
 	}
 
 	if extendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates != nil {
@@ -309,19 +310,19 @@ func AddTestStorageClassToVolumeClaimTemplates(filePath string, class string) (s
 		}
 		extendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates = volumeClaimTemplates
 	} else {
-		return "", errors.New("No volumeclaimtemplates present in the yaml")
+		return "", errors.Errorf("No volumeclaimtemplates present in the %s yaml", filePath)
 	}
 
 	extendedStatefulSetBytes, err = yaml.Marshal(&extendedStatefulSet)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "Marshing extendedstatfulset %s failed", extendedStatefulSet.GetName())
 	}
 
 	tmpFilePath := "/tmp/example.yaml"
 
 	err = ioutil.WriteFile(tmpFilePath, extendedStatefulSetBytes, 0644)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "Writing extendedstatefulset %s to file %s failed.", extendedStatefulSet.GetName(), tmpFilePath)
 	}
 
 	return tmpFilePath, nil
@@ -363,12 +364,12 @@ func RunCommandWithOutput(namespace string, podName string, commandInPod string)
 func GetSecretData(namespace string, secretName string, templatePath string) ([]byte, error) {
 	out, err := runBinary(kubeCtlCmd, "--namespace", namespace, "get", "secret", secretName, "-o", templatePath)
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, errors.Wrapf(err, "Getting secret %s failed with template Path %s.", secretName, templatePath)
 	}
 	if len(string(out)) > 0 {
 		return out, nil
 	}
-	return []byte{}, errors.Wrapf(err, "Output is empty")
+	return []byte{}, errors.Wrapf(err, "Output is empty for secret %s with template Path %s.", secretName, templatePath)
 }
 
 // GetCRDs returns all CRDs

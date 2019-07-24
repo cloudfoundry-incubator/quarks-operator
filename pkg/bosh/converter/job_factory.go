@@ -130,7 +130,7 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 	// Calculate the signature of the manifest, to label things
 	manifestSignature, err := f.Manifest.SHA1()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not calculate manifest SHA1")
+		return nil, errors.Wrapf(err, "Generation of Variable interpolation job failed.")
 	}
 
 	eJobName := fmt.Sprintf("dm-%s", f.Manifest.Name)
@@ -278,7 +278,7 @@ func (f *JobFactory) gatheringJob(name string, secretType names.DeploymentSecret
 			// Get the docker image for the release
 			releaseImage, err := (&f.Manifest).GetReleaseImage(ig.Name, boshJob.Name)
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to calculate release image for data gathering")
+				return nil, errors.Wrapf(err, "Generation of gathering job failed for manifest %s", f.Manifest.Name)
 			}
 			// Create an init container that copies sources
 			// TODO: destination should also contain release name, to prevent overwrites

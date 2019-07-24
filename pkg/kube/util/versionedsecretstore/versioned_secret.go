@@ -1,7 +1,6 @@
 package versionedsecretstore
 
 import (
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -48,7 +47,7 @@ func VersionFromName(name string) (int, error) {
 		return number, nil
 	}
 
-	return -1, fmt.Errorf("invalid secret name %s, it does not match the naming schema", name)
+	return -1, errors.Errorf("invalid secret name %s, it does not match the naming schema", name)
 }
 
 // ContainsSecretName checks a list of secret names for our secret's name
@@ -80,7 +79,7 @@ func IsInitialVersion(secret corev1.Secret) bool {
 func Version(secret corev1.Secret) (int, error) {
 	version, ok := secret.Labels[LabelVersion]
 	if !ok {
-		return -1, fmt.Errorf("secret '%s' has no version label", secret.Name)
+		return -1, errors.Errorf("secret '%s' has no version label", secret.Name)
 	}
 
 	number, err := strconv.Atoi(version)

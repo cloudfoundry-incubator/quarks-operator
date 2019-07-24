@@ -31,7 +31,7 @@ build-helm:
 
 ############ TEST TARGETS ############
 
-test: vet lint test-unit test-integration test-cli-e2e test-helm-e2e test-storage
+test: vet lint test-unit test-integration test-integration-storage test-helm-e2e test-helm-e2e-storage test-cli-e2e
 
 test-unit:
 	bin/test-unit

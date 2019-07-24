@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -34,13 +35,13 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	// Create a new controller
 	c, err := controller.New("boshdeployment-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Adding Bosh deployment controller to manager failed.")
 	}
 
 	// Watch for changes to primary resource BOSHDeployment
 	err = c.Watch(&source.Kind{Type: &bdv1.BOSHDeployment{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Watching bosh deployment failed in bosh deployment controller.")
 	}
 
 	// Watch ConfigMaps referenced by the BOSHDeployment
@@ -92,7 +93,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		}),
 	}, configMapPredicates)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Watching configmaps failed in bosh deployment controller.")
 	}
 
 	// Watch Secrets referenced by the BOSHDeployment
@@ -142,7 +143,8 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		}),
 	}, secretPredicates)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Watching secrets failed in bosh deployment controller.")
+
 	}
 
 	return nil
