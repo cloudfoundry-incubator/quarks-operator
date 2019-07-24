@@ -14,8 +14,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/testing"
 )
 
-const assetPath = "../../../testing/assets"
-
 var _ = Describe("InstanceGroupResolver", func() {
 
 	var (

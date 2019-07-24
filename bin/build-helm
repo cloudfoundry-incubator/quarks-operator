@@ -22,7 +22,7 @@ if [ -z ${DOCKER_IMAGE_REPOSITORY} ]; then
 fi
 
 perl -pi -e "s|repository: .*|repository: ${DOCKER_IMAGE_REPOSITORY}|g" "${output_dir}/cf-operator/values.yaml"
-perl -pi -e "s|org: .*|org: ${OPERATOR_DOCKER_ORGANIZATION}|g" "${output_dir}/cf-operator/values.yaml"
+perl -pi -e "s|org: .*|org: ${DOCKER_IMAGE_ORG}|g" "${output_dir}/cf-operator/values.yaml"
 perl -pi -e "s|tag: .*|tag: ${DOCKER_IMAGE_TAG}|g" "${output_dir}/cf-operator/values.yaml"
 
 tar -C "${output_dir}" -czvf "${filename}" cf-operator
