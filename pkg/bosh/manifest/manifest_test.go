@@ -1043,6 +1043,7 @@ var _ = Describe("Manifest", func() {
 	Describe("Functions", func() {
 		var (
 			env t.Catalog
+			err error
 		)
 
 		manifest := &Manifest{}
@@ -1206,7 +1207,8 @@ var _ = Describe("Manifest", func() {
 
 		Describe("GetReleaseImage", func() {
 			BeforeEach(func() {
-				*manifest = env.DefaultBOSHManifest()
+				manifest, err = env.DefaultBOSHManifest()
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("reports an error if the instance group was not found", func() {
@@ -1250,7 +1252,8 @@ var _ = Describe("Manifest", func() {
 
 		Describe("InstanceGroupByName", func() {
 			BeforeEach(func() {
-				*manifest = env.DefaultBOSHManifest()
+				manifest, err = env.DefaultBOSHManifest()
+				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("returns an error if the instance group does not exist", func() {

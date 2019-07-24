@@ -149,7 +149,7 @@ func (c *ContainerFactory) JobsToContainers(
 	var containers []corev1.Container
 
 	if len(jobs) == 0 {
-		return nil, fmt.Errorf("instance group %s has no jobs defined", c.instanceGroupName)
+		return nil, errors.Errorf("instance group %s has no jobs defined", c.instanceGroupName)
 	}
 
 	for _, job := range jobs {

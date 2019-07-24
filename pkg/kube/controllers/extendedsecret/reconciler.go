@@ -70,7 +70,7 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		}
 		// Error reading the object - requeue the request.
 		ctxlog.Info(ctx, "Error reading the object")
-		return reconcile.Result{}, err
+		return reconcile.Result{}, errors.Wrap(err, "Error reading extendedsecret in ExtendedSecret reconcile.")
 	}
 
 	// Check if secret could be generated when secret was already created
@@ -91,28 +91,28 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		err = r.createPasswordSecret(ctx, instance)
 		if err != nil {
 			ctxlog.Info(ctx, "Error generating password secret: "+err.Error())
-			return reconcile.Result{}, errors.Wrap(err, "generating password secret")
+			return reconcile.Result{}, errors.Wrap(err, "generating password secret failed.")
 		}
 	case esv1.RSAKey:
 		ctxlog.Info(ctx, "Generating RSA Key")
 		err = r.createRSASecret(ctx, instance)
 		if err != nil {
 			ctxlog.Info(ctx, "Error generating RSA key secret: "+err.Error())
-			return reconcile.Result{}, errors.Wrap(err, "generating RSA key secret")
+			return reconcile.Result{}, errors.Wrap(err, "generating RSA key secret failed.")
 		}
 	case esv1.SSHKey:
 		ctxlog.Info(ctx, "Generating SSH Key")
 		err = r.createSSHSecret(ctx, instance)
 		if err != nil {
 			ctxlog.Info(ctx, "Error generating SSH key secret: "+err.Error())
-			return reconcile.Result{}, errors.Wrap(err, "generating SSH key secret")
+			return reconcile.Result{}, errors.Wrap(err, "generating SSH key secret failed.")
 		}
 	case esv1.Certificate:
 		ctxlog.Info(ctx, "Generating certificate")
 		err = r.createCertificateSecret(ctx, instance)
 		if err != nil {
 			ctxlog.Info(ctx, "Error generating certificate secret: "+err.Error())
-			return reconcile.Result{}, errors.Wrap(err, "generating certificate secret")
+			return reconcile.Result{}, errors.Wrap(err, "generating certificate secret.")
 		}
 	default:
 		err = ctxlog.WithEvent(instance, "InvalidTypeError").Errorf(ctx, "Invalid type: %s", instance.Spec.Type)

@@ -11,9 +11,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	gomegaConfig "github.com/onsi/ginkgo/config"
+	"github.com/onsi/gomega"
+	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
+
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 	"k8s.io/client-go/rest"
@@ -28,9 +32,9 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 	"code.cloudfoundry.org/cf-operator/testing"
-	gomegaConfig "github.com/onsi/ginkgo/config"
-	"github.com/onsi/gomega"
 )
+
+const envFailedMessage = "Integration env setup failed."
 
 // StopFunc is used to clean up the environment
 type StopFunc func()
@@ -92,17 +96,17 @@ func newEnvironment(namespaceCounter int) *Environment {
 func (e *Environment) setup() error {
 	err := e.setupKube()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "%s Setting up Kube failed.", envFailedMessage)
 	}
 
 	err = e.startKubeClients(e.kubeConfig)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "%s Starting kube clients failed.", envFailedMessage)
 	}
 
 	nsTeardown, err := e.CreateNamespace(e.Namespace)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Integration setup failed. Creating namespace %s failed", e.Namespace)
 	}
 
 	e.Teardown = func(wasFailure bool) {
@@ -129,7 +133,7 @@ func (e *Environment) setup() error {
 
 	err = e.setupCFOperator(e.Namespace)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "%s Setting up CF Operator failed.", envFailedMessage)
 	}
 
 	e.stop = e.startOperator()
@@ -138,7 +142,7 @@ func (e *Environment) setup() error {
 		strconv.Itoa(int(e.Config.WebhookServerPort)),
 		1*time.Minute)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Integration setup failed. Waiting for port %d failed.", e.Config.WebhookServerPort)
 	}
 
 	return nil
@@ -193,7 +197,7 @@ func (e *Environment) startKubeClients(kubeConfig *rest.Config) (err error) {
 func (e *Environment) setupCFOperator(namespace string) (err error) {
 	whh, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_HOST")
 	if !found {
-		return fmt.Errorf("no webhook host set. Please set CF_OPERATOR_WEBHOOK_SERVICE_HOST to the host/ip the operator runs on and try again")
+		return errors.Errorf("Please set CF_OPERATOR_WEBHOOK_SERVICE_HOST to the host/ip the operator runs on and try again")
 	}
 	e.Config.WebhookServerHost = whh
 
@@ -235,7 +239,7 @@ func (e *Environment) setupCFOperator(namespace string) (err error) {
 
 	dockerImageTag, found := os.LookupEnv("DOCKER_IMAGE_TAG")
 	if !found {
-		return fmt.Errorf("required environment variable DOCKER_IMAGE_TAG not set")
+		return errors.Errorf("required environment variable DOCKER_IMAGE_TAG not set")
 	}
 
 	converter.SetupOperatorDockerImage(dockerImageOrg, dockerImageRepo, dockerImageTag)
@@ -269,7 +273,7 @@ func getWebhookServicePort(namespaceCounter int) (int32, error) {
 		var err error
 		port, err = strconv.ParseInt(portString, 10, 32)
 		if err != nil {
-			return -1, err
+			return -1, errors.Wrapf(err, "Parsing portSting %s failed", portString)
 		}
 	}
 	return int32(port) + int32(namespaceCounter), nil

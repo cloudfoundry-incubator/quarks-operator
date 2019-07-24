@@ -3,6 +3,7 @@ package extendedsecret
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -31,7 +32,7 @@ func Add(ctx context.Context, config *config.Config, mgr manager.Manager) error 
 	// Create a new controller
 	c, err := controller.New("extendedsecret-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Adding extended secret controller to manager failed.")
 	}
 
 	// Watch for changes to ExtendedSecrets
@@ -40,7 +41,7 @@ func Add(ctx context.Context, config *config.Config, mgr manager.Manager) error 
 			o := e.Object.(*es.ExtendedSecret)
 			secrets, err := listSecrets(ctx, mgr.GetClient(), o)
 			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to list StatefulSets owned by ExtendedStatefulSet '%s': %s", o.Name, err)
+				ctxlog.Errorf(ctx, "Failed to list StatefulSets owned by ExtendedStatefulSet '%s': %s in extendedsecret reconciler", o.Name, err)
 			}
 
 			return len(secrets) == 0
@@ -51,7 +52,7 @@ func Add(ctx context.Context, config *config.Config, mgr manager.Manager) error 
 	}
 	err = c.Watch(&source.Kind{Type: &es.ExtendedSecret{}}, &handler.EnqueueRequestForObject{}, p)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Watching extended secrets failed in extendedsecret controller.")
 	}
 
 	return nil

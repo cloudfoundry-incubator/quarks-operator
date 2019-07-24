@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
+
 	corev1 "k8s.io/api/core/v1"
 	appsv1beta2client "k8s.io/client-go/kubernetes/typed/apps/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -32,7 +33,7 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 	// Create a new controller
 	c, err := controller.New("ext-statefulset-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Adding Extendedstatefulset controller to manager failed.")
 	}
 
 	client, err := appsv1beta2client.NewForConfig(mgr.GetConfig())
@@ -108,7 +109,7 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 		}),
 	}, configMapPredicates)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Watching configmaps failed in Extendedstatefulset controller failed.")
 	}
 
 	// Watch Secrets referenced by the ExtendedStatefulSet
@@ -154,7 +155,7 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 		}),
 	}, secretPredicates)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Watching secrets failed in Extendedstatefulset controller failed.")
 	}
 
 	return nil

@@ -17,7 +17,7 @@ func (g InMemoryGenerator) GenerateRSAKey(name string) (credsgen.RSAKey, error) 
 	// generate private key
 	private, err := rsa.GenerateKey(rand.Reader, g.Bits)
 	if err != nil {
-		return credsgen.RSAKey{}, errors.Wrap(err, "generating private key")
+		return credsgen.RSAKey{}, errors.Wrapf(err, "Generating private key failed for secret name %s", name)
 	}
 	privateBlock := &pem.Block{
 		Type:  "RSA PRIVATE KEY",

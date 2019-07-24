@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if ! hash helm 2>/dev/null; then
-  echo "[Error] Please install the helm binary"
+  echo "[Error] Helm binary is missing. Please install the helm binary."
   exit 1
 fi
 
