@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -17,7 +18,7 @@ func (g InMemoryGenerator) GenerateSSHKey(name string) (credsgen.SSHKey, error) 
 	// generate private key
 	private, err := rsa.GenerateKey(rand.Reader, g.Bits)
 	if err != nil {
-		return credsgen.SSHKey{}, err
+		return credsgen.SSHKey{}, errors.Wrapf(err, "Generating ssh key failed for secret %s", name)
 	}
 	privateBlock := &pem.Block{
 		Type:  "RSA PRIVATE KEY",

@@ -42,7 +42,7 @@ func InterpolateVariables(log *zap.SugaredLogger, boshManifestBytes []byte, vari
 					}
 					varBytes, err := ioutil.ReadFile(path)
 					if err != nil {
-						log.Fatal(errors.Wrapf(err, "could not read variables variable"))
+						return errors.Wrapf(err, "could not read variables variable %s", variable.Name())
 					}
 
 					// If variable type is password, set password value directly

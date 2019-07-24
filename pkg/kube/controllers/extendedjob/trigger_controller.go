@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -27,7 +28,7 @@ func AddTrigger(ctx context.Context, config *config.Config, mgr manager.Manager)
 	r := NewTriggerReconciler(ctx, config, mgr, query, f, store)
 	c, err := controller.New("ext-job-trigger-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Adding trigger controller to manager failed.")
 	}
 
 	p := predicate.Funcs{

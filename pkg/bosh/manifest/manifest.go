@@ -133,7 +133,7 @@ func LoadYAML(data []byte) (*Manifest, error) {
 		return opt
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal BOSH deployment manifest")
+		return nil, errors.Wrapf(err, "failed to unmarshal BOSH deployment manifest %s", string(data))
 	}
 
 	return m, nil
@@ -148,7 +148,7 @@ func (m *Manifest) Marshal() ([]byte, error) {
 func (m *Manifest) SHA1() (string, error) {
 	manifestBytes, err := m.Marshal()
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "YAML marshalling manifest %s failed.", m.Name)
 	}
 
 	return fmt.Sprintf("%x", sha1.Sum(manifestBytes)), nil
@@ -164,7 +164,7 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 		}
 	}
 	if instanceGroup == nil {
-		return "", fmt.Errorf("instance group '%s' not found", instanceGroupName)
+		return "", errors.Errorf("instance group '%s' not found.", instanceGroupName)
 	}
 
 	var stemcell *Stemcell
@@ -182,7 +182,7 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 		}
 	}
 	if job == nil {
-		return "", fmt.Errorf("job '%s' not found in instance group '%s'", jobName, instanceGroupName)
+		return "", errors.Errorf("job '%s' not found in instance group '%s'", jobName, instanceGroupName)
 	}
 
 	for i := range m.Releases {
@@ -196,14 +196,14 @@ func (m *Manifest) GetReleaseImage(instanceGroupName, jobName string) (string, e
 				stemcellVersion = release.Stemcell.OS + "-" + release.Stemcell.Version
 			} else {
 				if stemcell == nil {
-					return "", fmt.Errorf("stemcell could not be resolved for instance group %s", instanceGroup.Name)
+					return "", errors.Errorf("stemcell could not be resolved for instance group %s", instanceGroup.Name)
 				}
 				stemcellVersion = stemcell.OS + "-" + stemcell.Version
 			}
 			return fmt.Sprintf("%s/%s:%s-%s", name, release.Name, stemcellVersion, release.Version), nil
 		}
 	}
-	return "", fmt.Errorf("release '%s' not found", job.Release)
+	return "", errors.Errorf("release '%s' not found", job.Release)
 }
 
 // GetJobOS returns the stemcell layer OS used for a Job

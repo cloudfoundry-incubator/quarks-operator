@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -35,7 +36,7 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 	// Create a new controller
 	c, err := controller.New("generated-variable-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Adding generated variable controller to manager failed.")
 	}
 
 	// Watch Secrets which contain manifest with ops
@@ -78,7 +79,7 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 	// All we have to do is create secrets for explicit variables.
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, p)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Watching secrets in generated variable controller.")
 	}
 
 	return nil

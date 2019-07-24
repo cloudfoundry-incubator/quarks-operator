@@ -523,7 +523,7 @@ instance_groups:
 			}
 			_, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to build ops"))
+			Expect(err.Error()).To(ContainSubstring("Interpolation failed for bosh deployment"))
 		})
 
 		It("throws an error if interpolate a missing key into a manifest", func() {
@@ -544,7 +544,7 @@ instance_groups:
 			}
 			_, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to interpolate"))
+			Expect(err.Error()).To(ContainSubstring("Failed to interpolate"))
 		})
 
 		It("throws an error if containing unsupported ops type", func() {

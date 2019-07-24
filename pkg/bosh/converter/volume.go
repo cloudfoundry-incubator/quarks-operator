@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -166,7 +167,7 @@ func generateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpm
 			for i, additionalVolume := range process.AdditionalVolumes {
 				match := rAdditionalVolumes.MatchString(additionalVolume.Path)
 				if !match {
-					return nil, fmt.Errorf("the %s path, must be a path inside"+
+					return nil, errors.Errorf("the %s path, must be a path inside"+
 						" /var/vcap/data, /var/vcap/store or /var/vcap/sys/run, for a path outside these,"+
 						" you must use the unrestricted_volumes key", additionalVolume.Path)
 				}
@@ -232,7 +233,7 @@ func generateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpm
 
 		if hasPersistentDisk {
 			if instanceGroup.PersistentDisk == nil || *instanceGroup.PersistentDisk <= 0 {
-				return bpmDisks, fmt.Errorf("job '%s' wants to use persistent disk"+
+				return bpmDisks, errors.Errorf("job '%s' wants to use persistent disk"+
 					" but instance group '%s' doesn't have any persistent disk declaration", job.Name, instanceGroup.Name)
 			}
 

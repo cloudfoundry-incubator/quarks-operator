@@ -91,7 +91,7 @@ func (j *Job) loadSpec(baseDir string) (*JobSpec, error) {
 	jobMFFilePath := filepath.Join(j.specDir(baseDir), JobSpecFilename)
 	jobMfBytes, err := ioutil.ReadFile(jobMFFilePath)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read file")
+		return nil, errors.Wrapf(err, "failed to read file in path %s", jobMFFilePath)
 	}
 
 	jobSpec := JobSpec{}
@@ -100,7 +100,7 @@ func (j *Job) loadSpec(baseDir string) (*JobSpec, error) {
 		d.UseNumber()
 		return d
 	}); err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal")
+		return nil, errors.Wrapf(err, "failed to unmarshal file %s", jobMFFilePath)
 	}
 
 	return &jobSpec, nil

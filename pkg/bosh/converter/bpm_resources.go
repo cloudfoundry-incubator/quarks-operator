@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/pkg/errors"
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -99,7 +100,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 
 	bpmDisks, err := generateBPMDisks(manifestName, instanceGroup, bpmConfigs, kc.namespace)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Generate of BPM disks failed for manifest name %s, instance group %s.", manifestName, instanceGroup.Name)
 	}
 
 	allDisks := append(defaultDisks, bpmDisks...)
@@ -117,10 +118,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 			return nil, err
 		}
 
-		services, err := kc.serviceToKubeServices(manifestName, instanceGroup, &convertedExtStatefulSet)
-		if err != nil {
-			return nil, err
-		}
+		services := kc.serviceToKubeServices(manifestName, instanceGroup, &convertedExtStatefulSet)
 		if len(services) != 0 {
 			res.Services = append(res.Services, services...)
 		}
@@ -149,12 +147,12 @@ func (kc *KubeConverter) serviceToExtendedSts(
 	defaultVolumeMounts := defaultDisks.VolumeMounts()
 	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
 	if err != nil {
-		return essv1.ExtendedStatefulSet{}, err
+		return essv1.ExtendedStatefulSet{}, errors.Wrapf(err, "Generating extendstatefulset failed for manifest %s", manifestName)
 	}
 
 	containers, err := cfac.JobsToContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
 	if err != nil {
-		return essv1.ExtendedStatefulSet{}, err
+		return essv1.ExtendedStatefulSet{}, errors.Wrapf(err, "Generating extendstatefulset failed for manifest %s", manifestName)
 	}
 
 	defaultVolumes := defaultDisks.Volumes()
@@ -208,7 +206,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 }
 
 // serviceToKubeServices will generate Services which expose ports for InstanceGroup's jobs
-func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGroup *bdm.InstanceGroup, eSts *essv1.ExtendedStatefulSet) ([]corev1.Service, error) {
+func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGroup *bdm.InstanceGroup, eSts *essv1.ExtendedStatefulSet) []corev1.Service {
 	var services []corev1.Service
 	// Collect ports to be exposed for each job
 	ports := []corev1.ServicePort{}
@@ -224,7 +222,7 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGrou
 	}
 
 	if len(ports) == 0 {
-		return services, nil
+		return services
 	}
 
 	for i := 0; i < instanceGroup.Instances; i++ {
@@ -294,7 +292,7 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGrou
 	// Set headlessService to govern StatefulSet
 	eSts.Spec.Template.Spec.ServiceName = names.ServiceName(manifestName, instanceGroup.Name, -1)
 
-	return services, nil
+	return services
 }
 
 // errandToExtendedJob will generate an ExtendedJob
@@ -308,12 +306,12 @@ func (kc *KubeConverter) errandToExtendedJob(
 	defaultVolumeMounts := defaultDisks.VolumeMounts()
 	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
 	if err != nil {
-		return ejv1.ExtendedJob{}, err
+		return ejv1.ExtendedJob{}, errors.Wrapf(err, "Generating extended job failed for manifest %s", manifestName)
 	}
 
 	containers, err := cfac.JobsToContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
 	if err != nil {
-		return ejv1.ExtendedJob{}, err
+		return ejv1.ExtendedJob{}, errors.Wrapf(err, "Generating extended job failed for manifest %s", manifestName)
 	}
 
 	podLabels := instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels

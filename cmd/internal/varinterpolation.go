@@ -12,6 +12,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	vInterpolateFailedMessage = "variable-interpolation command failed."
+)
+
 type initCmd struct {
 }
 
@@ -56,23 +60,23 @@ func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string)
 	variablesDir := filepath.Clean(viper.GetString("variables-dir"))
 
 	if _, err := os.Stat(boshManifestPath); os.IsNotExist(err) {
-		return errors.Errorf("no such file: %s", boshManifestPath)
+		return errors.Errorf("%s bosh-manifest-path file doesn't exist : %s", vInterpolateFailedMessage, boshManifestPath)
 	}
 
 	info, err := os.Stat(variablesDir)
 
 	if os.IsNotExist(err) {
-		return errors.Errorf("directory %s doesn't exist", variablesDir)
+		return errors.Errorf("%s %s doesn't exist", vInterpolateFailedMessage, variablesDir)
 	} else if err != nil {
-		return errors.Errorf("error on dir stat: %s", variablesDir)
+		return errors.Errorf("%s Error on dir stat %s", vInterpolateFailedMessage, variablesDir)
 	} else if !info.IsDir() {
-		return errors.Errorf("path %s is not a directory", variablesDir)
+		return errors.Errorf("%s %s is not a directory", vInterpolateFailedMessage, variablesDir)
 	}
 
 	// Read files
 	boshManifestBytes, err := ioutil.ReadFile(boshManifestPath)
 	if err != nil {
-		return errors.Wrapf(err, "could not read manifest variable")
+		return errors.Wrapf(err, "%s Reading file specified in the bosh-manifest-path flag failed", vInterpolateFailedMessage)
 	}
 
 	return manifest.InterpolateVariables(log, boshManifestBytes, variablesDir)

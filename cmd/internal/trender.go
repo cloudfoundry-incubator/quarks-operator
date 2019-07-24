@@ -1,18 +1,22 @@
 package cmd
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"regexp"
 	"strconv"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+)
+
+const (
+	tRenderFailedMessage = "template-render command failed."
 )
 
 var hostnameRegex = regexp.MustCompile(`-(\d+)(-|\.|\z)`)
@@ -38,7 +42,7 @@ This will render a provided manifest instance-group
 
 		instanceGroupName := viper.GetString("instance-group-name")
 		if len(instanceGroupName) == 0 {
-			return fmt.Errorf("instance-group-name cannot be empty")
+			return errors.Errorf("%s instance-group-name flag is empty.", tRenderFailedMessage)
 		}
 
 		specIndex := viper.GetInt("spec-index")
@@ -47,29 +51,28 @@ This will render a provided manifest instance-group
 			// docs/rendering_templates.md.
 			azIndex := viper.GetInt("az-index")
 			if azIndex < 0 {
-				return fmt.Errorf("required parameter 'az-index' not set")
+				return errors.Errorf("%s az-index is negative. %d", tRenderFailedMessage, azIndex)
 			}
 			replicas := viper.GetInt("replicas")
 			if replicas < 0 {
-				return fmt.Errorf("required parameter 'replicas' not set")
+				return errors.Errorf("%s replicas flag is empty.", tRenderFailedMessage)
 			}
 			podOrdinal := viper.GetInt("pod-ordinal")
 			if podOrdinal < 0 {
 				// Infer ordinal from hostname.
 				hostname, err := os.Hostname()
 				if err != nil {
-					return err
+					return errors.Wrapf(err, "%s Failed to get hostname from os.Hostname()", tRenderFailedMessage)
 				}
 				match := hostnameRegex.FindStringSubmatch(hostname)
 				if len(match) < 2 {
-					return fmt.Errorf("cannot extract the pod ordinal from hostname '%s'", hostname)
+					return errors.Errorf("%s Cannot extract podOrdinal flag value from hostname %s", tRenderFailedMessage, hostname)
 				}
 				podOrdinal, err = strconv.Atoi(match[1])
 				if err != nil {
-					return err
+					return errors.Wrapf(err, "%s String to int conversion failed from hostname for calculatinf podOrdinal flag value %s", tRenderFailedMessage, hostname)
 				}
 			}
-
 			specIndex = (azIndex-1)*replicas + podOrdinal
 		}
 

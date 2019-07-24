@@ -140,7 +140,7 @@ func JobName(eJobName, podName string) (string, error) {
 
 	hashID, err := randSuffix(name)
 	if err != nil {
-		return "", errors.Wrap(err, "could not randomize job suffix")
+		return "", errors.Wrapf(err, "could not randomize job suffix for name %s", name)
 	}
 	return fmt.Sprintf("%s-%s", name, hashID), nil
 }
@@ -190,7 +190,7 @@ func randSuffix(str string) (string, error) {
 	a := fnv.New64()
 	_, err = a.Write([]byte(str + string(randBytes)))
 	if err != nil {
-		return "", errors.Wrap(err, "could not write hash")
+		return "", errors.Wrapf(err, "could not write hash for str %s", str)
 	}
 
 	return hex.EncodeToString(a.Sum(nil)), nil

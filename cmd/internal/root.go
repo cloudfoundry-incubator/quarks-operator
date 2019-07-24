@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-logr/zapr"
+	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -25,6 +26,10 @@ import (
 	crlog "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
+const (
+	cfFailedMessage = "cf-operator command failed."
+)
+
 var (
 	log              *zap.SugaredLogger
 	debugGracePeriod = time.Second * 5
@@ -33,16 +38,16 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "cf-operator",
 	Short: "cf-operator manages BOSH deployments on Kubernetes",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		log = newLogger(zap.AddCallerSkip(1))
 		defer log.Sync()
 
 		restConfig, err := kubeConfig.NewGetter(log).Get(viper.GetString("kubeconfig"))
 		if err != nil {
-			log.Fatal(err)
+			return errors.Wrapf(err, "%s Couldn't fetch Kubeconfig. Ensure kubeconfig is present to continue.", cfFailedMessage)
 		}
 		if err := kubeConfig.NewChecker(log).Check(restConfig); err != nil {
-			log.Fatal(err)
+			return errors.Wrapf(err, "%s Couldn't check Kubeconfig. Ensure kubeconfig is correct to continue.", cfFailedMessage)
 		}
 
 		cfOperatorNamespace := viper.GetString("cf-operator-namespace")
@@ -59,7 +64,7 @@ var rootCmd = &cobra.Command{
 		port := viper.GetInt32("operator-webhook-service-port")
 
 		if host == "" {
-			log.Fatal("required flag 'operator-webhook-service-host' not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST)")
+			return errors.Errorf("%s operator-webhook-service-host flag is not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST).", cfFailedMessage)
 		}
 
 		config := &config.Config{
@@ -73,15 +78,16 @@ var rootCmd = &cobra.Command{
 
 		mgr, err := operator.NewManager(ctx, config, restConfig, manager.Options{Namespace: cfOperatorNamespace})
 		if err != nil {
-			log.Fatalf("Failed to initialize new Operator Manager: %v", err)
+			return errors.Wrapf(err, cfFailedMessage)
 		}
 
 		ctxlog.Info(ctx, "Waiting for configurations to be applied into a BOSHDeployment resource...")
 
 		err = mgr.Start(signals.SetupSignalHandler())
 		if err != nil {
-			log.Fatalf("Failed to start Operator Manager: %v", err)
+			return errors.Wrapf(err, "%s Failed to start cf-operator manager", cfFailedMessage)
 		}
+		return nil
 	},
 	TraverseChildren: true,
 }
