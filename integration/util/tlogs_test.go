@@ -3,9 +3,10 @@ package util_test
 import (
 	"fmt"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+
 	"code.cloudfoundry.org/cf-operator/integration/environment"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -25,7 +26,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 			do echo "nats-msg-line" >> /var/vcap/sys/log/nats/nats.log; sleep 5;
 			done`)
 
-			testPod := env.CreatePodWithTailLogsContainer(podName, scriptCreateDirs, parentCName, sidecarCName, manifest.GetOperatorDockerImage())
+			testPod := env.CreatePodWithTailLogsContainer(podName, scriptCreateDirs, parentCName, sidecarCName, converter.GetOperatorDockerImage())
 
 			tearDown, err := env.CreatePod(env.Namespace, testPod)
 			Expect(err).NotTo(HaveOccurred())
@@ -51,7 +52,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 			echo "doppler-msg-line" >> /var/vcap/sys/log/doppler/doppler.log; sleep 5;
 			done`)
 
-			testPod := env.CreatePodWithTailLogsContainer(podName, scriptCreateDirs, parentCName, sidecarCName, manifest.GetOperatorDockerImage())
+			testPod := env.CreatePodWithTailLogsContainer(podName, scriptCreateDirs, parentCName, sidecarCName, converter.GetOperatorDockerImage())
 
 			tearDown, err := env.CreatePod(env.Namespace, testPod)
 			Expect(err).NotTo(HaveOccurred())
@@ -76,7 +77,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 			echo "nats-error-msg-line" >> /var/vcap/sys/log/nats/nats.err; sleep 5;
 			done`)
 
-			testPod := env.CreatePodWithTailLogsContainer(podName, scriptCreateDirs, parentCName, sidecarCName, manifest.GetOperatorDockerImage())
+			testPod := env.CreatePodWithTailLogsContainer(podName, scriptCreateDirs, parentCName, sidecarCName, converter.GetOperatorDockerImage())
 
 			tearDown, err := env.CreatePod(env.Namespace, testPod)
 			Expect(err).NotTo(HaveOccurred())
@@ -96,7 +97,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 			do sleep 5;
 			done`)
 
-			testPod := env.CreatePodWithTailLogsContainer(podName, scriptCreateDirs, parentCName, sidecarCName, manifest.GetOperatorDockerImage())
+			testPod := env.CreatePodWithTailLogsContainer(podName, scriptCreateDirs, parentCName, sidecarCName, converter.GetOperatorDockerImage())
 
 			tearDown, err := env.CreatePod(env.Namespace, testPod)
 			Expect(err).NotTo(HaveOccurred())
