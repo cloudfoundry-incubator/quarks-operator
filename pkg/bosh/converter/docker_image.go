@@ -13,6 +13,9 @@ type DockerSource struct {
 // GetName returns the name of the docker image
 // More info: https://kubernetes.io/docs/concepts/containers/images
 func (d DockerSource) GetName() string {
+	if d.Organization == "" {
+		return d.Repository + ":" + d.Tag
+	}
 	return d.Organization + "/" + d.Repository + ":" + d.Tag
 }
 
