@@ -18,7 +18,6 @@ func TestUtil(t *testing.T) {
 var (
 	env              *environment.Environment
 	namespacesToNuke []string
-	kubeCtlCmd       = "kubectl"
 )
 
 var _ = BeforeEach(func() {

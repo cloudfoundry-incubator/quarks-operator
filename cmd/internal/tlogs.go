@@ -5,22 +5,15 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/gonvenience/bunt"
-	colorful "github.com/lucasb-eyer/go-colorful"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/hpcloud/tail"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"k8s.io/client-go/kubernetes"
 )
-
-var clientThing *kubernetes.Clientset
-var nene []string
 
 // dataGatherCmd represents the dataGather command
 var tailLogsCmd = &cobra.Command{
@@ -39,7 +32,7 @@ the LOGS_DIR env variable.
 }
 
 // TailLogsFromDir will stream to the pod
-// stdOut all file logs per line in the
+// STDOUT all file logs per line in the
 // following syntax:
 // timestampt, file name, message
 //
@@ -58,12 +51,106 @@ func TailLogsFromDir() error {
 		return err
 	}
 
-	fileList, err := WaitForFilesToAppear(monitorDir)
+	// Get any existing subDir, so that it
+	// can be added to the watcher.
+	// If no subdirs exists, it will add
+	// the current parent dir, for future watch
+	listDir, err := getSubDirs(monitorDir)
 	if err != nil {
 		return err
 	}
 
-	err = LogTailors(fileList)
+	// will host all files to be tail
+	fileList := make(chan string)
+	done := make(chan bool)
+
+	// regex for files that should be tailed
+	fileNameRegex := regexp.MustCompile(`(.*log)$`)
+
+	// add all already existing files
+	// to the list of files to be tailed
+	go func() {
+		if err := addExistingFiles(monitorDir, fileNameRegex, fileList); err != nil {
+			log.Error(err)
+		}
+	}()
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return err
+	}
+	defer watcher.Close()
+
+	// Start a Go routine to process watcher
+	// events, which can include:
+	// - new directory added -> needs to be watched
+	// - new file added -> needs to be tailed
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return // events channel was closed
+				}
+
+				if event.Op&fsnotify.Create == fsnotify.Create {
+					info, err := os.Stat(event.Name)
+					switch {
+					case err == nil && info.IsDir():
+						watcher.Add(event.Name)
+
+					case err == nil && !info.IsDir():
+						if isValidFile(event.Name, fileNameRegex) {
+							fileList <- event.Name
+						}
+					}
+				}
+
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return // events channel was closed
+				}
+
+				log.Error(err)
+			}
+		}
+	}()
+
+	// Add watcher for each of the initially
+	// identified subDirs
+	for _, dir := range listDir {
+		if err = watcher.Add(dir); err != nil {
+			log.Error(err)
+		}
+	}
+
+	// Start the log tailing to process each file,
+	// either existing or new ones.
+	if err := LogTailors(fileList); err != nil {
+		return err
+	}
+
+	// Block indefinitely
+	<-done
+	return nil
+}
+
+func init() {
+	utilCmd.AddCommand(tailLogsCmd)
+}
+
+func addExistingFiles(monitDir string, fileRegex *regexp.Regexp, fileList chan string) error {
+	err := filepath.Walk(monitDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() && isValidFile(path, fileRegex) {
+			fileList <- path
+		}
+
+		return nil
+	})
 
 	if err != nil {
 		return err
@@ -72,78 +159,59 @@ func TailLogsFromDir() error {
 	return nil
 }
 
-func init() {
-	utilCmd.AddCommand(tailLogsCmd)
-}
-
-// WaitForFilesToAppear use a ticker to wait until files appear
-// under the specified dir, it will timeout after some time.
-func WaitForFilesToAppear(monitorDir string) ([]string, error) {
-	timeOut := time.After(120 * time.Second)
-	tick := time.NewTicker(500 * time.Millisecond)
-	defer tick.Stop()
-
-	for {
-		select {
-		case <-timeOut:
-			return nil, fmt.Errorf("timeout waiting for logs to appear under %s", monitorDir)
-		case <-tick.C:
-			list, err := GetTreeFiles(monitorDir)
-			if err != nil {
-				return nil, err
-			}
-			if len(list) > 0 {
-				return list, nil
-			}
-		}
-	}
-}
-
-// GetTreeFiles will return a list of *.log files
-// under an specific path.
-func GetTreeFiles(path string) ([]string, error) {
-	var files []string
-	var fileNameRegex = regexp.MustCompile(`(.*log)$`)
-
+func getSubDirs(path string) ([]string, error) {
+	var listDirs []string
 	err := filepath.Walk(path,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
-			if !info.IsDir() && IsValidFile(info.Name(), fileNameRegex) {
-				files = append(files, path)
+			if info.IsDir() {
+				listDirs = append(listDirs, path)
 			}
 			return nil
 		})
 	if err != nil {
 		return nil, err
 	}
-	return files, nil
+
+	return listDirs, nil
 }
 
-// IsValidFile returns file names that follow the "*.log"
+// isValidFile returns file names that follow the "*.log"
 // naming convention
-func IsValidFile(fileName string, fileRegex *regexp.Regexp) bool {
+func isValidFile(fileName string, fileRegex *regexp.Regexp) bool {
 	match := fileRegex.FindStringSubmatch(fileName)
-	if len(match) > 0 {
-		return true
-	}
-	return false
+	return len(match) > 0
 }
 
 // LogTailors stream logs per file from a channel
-// into stdOut of the pod where it runs.
-func LogTailors(files []string) error {
-	wg := &sync.WaitGroup{}
+// into STDOUT of the pod where it runs.
+func LogTailors(files chan string) error {
 	output := make(chan StdOutMsg)
-	errors := make(chan error, len(files))
+	errors := make(chan error)
+	done := make(chan bool)
 
-	wg.Add(len(files))
-	for i, file := range files {
+	// Routine for streaming lines into
+	// pod STDOUT
+	go func() {
+		PrintOutput(output)
+	}()
+
+	// Routine for logging errors
+	go func() {
+		for err := range errors {
+			log.Error(err)
+		}
+	}()
+
+	var i = 0
+	for file := range files {
 		go func(fileName string, id int) {
-			defer wg.Done()
 			t, err := tail.TailFile(fileName, tail.Config{Follow: true})
-			errors <- err
+			if err != nil {
+				errors <- err
+			}
 
 			for line := range t.Lines {
 				outputMsg := StdOutMsg{
@@ -155,71 +223,50 @@ func LogTailors(files []string) error {
 				output <- outputMsg
 			}
 		}(file, i)
+
+		i++
 	}
 
-	go func() {
-		PrintOutput(output, len(files))
-	}()
-
-	wg.Wait()
-	close(errors)
-	close(output)
-
-	if err := errorsFromChannel("tailing files failed.", errors); err != nil {
-		return err
-	}
-
+	<-done
 	return nil
 }
 
-// Receive all errors from the error channel,
-// and return them as a single multiline error.
-func errorsFromChannel(errorCtx string, e chan error) error {
-	errors := []string{}
-	for err := range e {
-		if err != nil {
-			errors = append(errors, err.Error())
-		}
-	}
-
-	switch len(errors) {
-	case 0:
-		return nil
-	default:
-		return fmt.Errorf("%v", strings.Join(errors, "\n"))
-	}
-
-}
-
-// Force colors to be seen in the pod
-// stdOutput
+// Force colors to be seen in the pod STDOUT
+// even though it is not a terminal
 func init() {
 	bunt.ColorSetting = bunt.ON
 }
 
-// PrintOutput ensures that all logs send to stdOut stream
+// PrintOutput ensures that all logs send to STDOUT stream
 // will be displayed on an specific way:
 // - an specific color per file logs
 // - added italics font, for the file name
-func PrintOutput(messages chan StdOutMsg, items int) {
-	var colors []colorful.Color
-	colors = bunt.RandomTerminalFriendlyColors(items)
+func PrintOutput(messages chan StdOutMsg) {
+	colors := bunt.RandomTerminalFriendlyColors(64)
 
 	for msg := range messages {
-		humanReadableTime := fmt.Sprintf("%04d/%02d/%02d %02d:%02d:%02d", msg.Timestamp.Year(), msg.Timestamp.Month(), msg.Timestamp.Day(), msg.Timestamp.Hour(), msg.Timestamp.Minute(), msg.Timestamp.Second())
+		idx := msg.ID % len(colors)
+		color := colors[idx]
 
-		fmt.Printf("%s, %s, %s\n",
-			bunt.Style(humanReadableTime, bunt.Foreground(colors[msg.ID])),
-			bunt.Style(msg.Origin, bunt.Foreground(colors[msg.ID]), bunt.Italic()),
-			bunt.Style(msg.Message, bunt.Foreground(colors[msg.ID])),
+		line := bunt.Sprintf("%04d/%02d/%02d %02d:%02d:%02d, _%s_, %s",
+			msg.Timestamp.Year(),
+			msg.Timestamp.Month(),
+			msg.Timestamp.Day(),
+			msg.Timestamp.Hour(),
+			msg.Timestamp.Minute(),
+			msg.Timestamp.Second(),
+			msg.Origin,
+			msg.Message,
 		)
+
+		fmt.Println(bunt.Style(line, bunt.Foreground(color)))
 	}
 }
 
 // StdOutMsg serves as an struct
 // where a msg corresponding a file can be store.
 // It also stores a file ID, which will help on assigning
-// an specific color to that file logs, when sending to stdOut
+// an specific color to that file logs, when sending to STDOUT
 type StdOutMsg struct {
 	Timestamp time.Time
 	Origin    string
