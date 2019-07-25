@@ -2,9 +2,9 @@
 package fakes
 
 import (
-	sync "sync"
+	"sync"
 
-	converter "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 )
 
 type FakeReleaseImageProvider struct {

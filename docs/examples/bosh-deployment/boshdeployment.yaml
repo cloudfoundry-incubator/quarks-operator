@@ -55,5 +55,5 @@ spec:
     name: nats-manifest
     type: configmap
   ops:
-  - ref: ops-foo
+  - name: ops-foo
     type: configmap

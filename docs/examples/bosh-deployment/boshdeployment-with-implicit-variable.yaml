@@ -58,4 +58,3 @@ spec:
   manifest:
     name: nats-manifest
     type: configmap
-

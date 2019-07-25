@@ -117,7 +117,7 @@ func (v *Validator) OpsResourceExist(ctx context.Context, specOpsResource bdv1.R
 			}
 		}
 	default:
-		// We only support configmaps so far
+		// We only support configmaps and secrets so far
 		return false, fmt.Sprintf("resource type %s, is not supported under spec.ops", specOpsResource.Type)
 	}
 }
@@ -155,7 +155,7 @@ func (v *Validator) Handle(ctx context.Context, req admission.Request) admission
 		}
 	}
 
-	_, err = resolver.WithOpsManifest(boshDeployment, boshDeployment.GetNamespace())
+	_, _, err = resolver.WithOpsManifest(boshDeployment, boshDeployment.GetNamespace())
 	if err != nil {
 		return admission.Response{
 			AdmissionResponse: v1beta1.AdmissionResponse{

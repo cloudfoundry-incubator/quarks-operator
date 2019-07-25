@@ -27,7 +27,7 @@ spec:
           properties:
             manifest:
               type: object
-              required: [type, ref]
+              required: [type, name]
               properties:
                 type:
                   type: string
@@ -39,7 +39,7 @@ spec:
               type: array
               items:
                 type: object
-                required: [type, ref]
+                required: [type, name]
                 properties:
                   type:
                     type: string

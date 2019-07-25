@@ -38,6 +38,12 @@ func getSecretRefFromBdpl(object bdv1.BOSHDeployment) map[string]bool {
 		}
 	}
 
+	for _, iv := range object.Spec.ImplicitVariables {
+		if iv.Type == bdv1.SecretReference {
+			result[iv.Name] = true
+		}
+	}
+
 	return result
 }
 

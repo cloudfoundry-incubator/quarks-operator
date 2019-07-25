@@ -823,8 +823,8 @@ func (c *Catalog) DefaultBOSHDeploymentWithOps(name, manifestRef string, opsRef 
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: bdv1.BOSHDeploymentSpec{
 			Manifest: bdv1.ResourceReference{Name: manifestRef, Type: bdv1.ConfigMapReference},
-			Ops: []bdv1.Ops{
-				{Ref: opsRef, Type: bdv1.ConfigMapReference},
+			Ops: []bdv1.ResourceReference{
+				{Name: opsRef, Type: bdv1.ConfigMapReference},
 			},
 		},
 	}
@@ -846,8 +846,8 @@ func (c *Catalog) BOSHDeploymentWithWrongTypeOps(name, manifestRef string, opsRe
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: bdv1.BOSHDeploymentSpec{
 			Manifest: bdv1.ResourceReference{Name: manifestRef, Type: bdv1.ConfigMapReference},
-			Ops: []bdv1.Ops{
-				{Ref: opsRef, Type: "wrong-type"},
+			Ops: []bdv1.ResourceReference{
+				{Name: opsRef, Type: "wrong-type"},
 			},
 		},
 	}
@@ -859,9 +859,9 @@ func (c *Catalog) InterpolateBOSHDeployment(name, manifestRef, opsRef string, se
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: bdv1.BOSHDeploymentSpec{
 			Manifest: bdv1.ResourceReference{Name: manifestRef, Type: bdv1.ConfigMapReference},
-			Ops: []bdv1.Ops{
-				{Ref: opsRef, Type: bdv1.ConfigMapReference},
-				{Ref: secretRef, Type: bdv1.SecretReference},
+			Ops: []bdv1.ResourceReference{
+				{Name: opsRef, Type: bdv1.ConfigMapReference},
+				{Name: secretRef, Type: bdv1.SecretReference},
 			},
 		},
 	}

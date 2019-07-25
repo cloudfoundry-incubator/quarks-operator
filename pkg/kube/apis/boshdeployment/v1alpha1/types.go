@@ -12,32 +12,22 @@ import (
 // It's used as input for the Kube code generator
 // Run "make generate" after modifying this file
 
+// ReferenceType lists all the types of Reference we can supports
+type ReferenceType = string
+
 // Valid values for ref types
 const (
+	// ConfigMapReference represents ConfigMap reference
+	ConfigMapReference ReferenceType = "configmap"
+	// SecretReference represents Secret reference
+	SecretReference ReferenceType = "secret"
+	// URLReference represents URL reference
+	URLReference ReferenceType = "url"
+
 	ManifestSpecName        string = "manifest"
 	OpsSpecName             string = "ops"
 	ImplicitVariableKeyName string = "value"
 )
-
-// ReferenceType lists all the types of Reference we can supports
-type ReferenceType int
-
-const (
-	// ConfigMapReference represents ConfigMap reference
-	ConfigMapReference ReferenceType = iota
-	// SecretReference represents Secret reference
-	SecretReference
-	// URLReference represents URL reference
-	URLReference
-)
-
-func (r ReferenceType) String() string {
-	return [...]string{
-		"configmap",
-		"secret",
-		"url",
-	}[r]
-}
 
 var (
 	// LabelDeploymentName is the label key for manifest name

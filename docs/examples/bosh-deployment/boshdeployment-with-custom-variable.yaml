@@ -2,10 +2,10 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: nats-deployment.var-customed-password
+  name: nats-deployment.var-custom-password
 type: Opaque
 stringData:
-  password: customed_password
+  password: custom_password
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -31,9 +31,9 @@ data:
         properties:
           nats:
             user: admin
-            password: ((customed_password))
+            password: ((custom_password))
     variables:
-    - name: customed_password
+    - name: custom_password
       type: password
 ---
 apiVersion: v1
@@ -55,5 +55,5 @@ spec:
     name: nats-manifest
     type: configmap
   ops:
-  - ref: ops-foo
+  - name: ops-foo
     type: configmap

@@ -88,7 +88,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "BOSHDeployment", a.Meta.GetName(), bdv1.ConfigMapReference.String())
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "BOSHDeployment", a.Meta.GetName(), bdv1.ConfigMapReference)
 			}
 
 			return reconciles
@@ -121,7 +121,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", newSecret.Name, err)
 			}
 
-			return len(reconciles) > 1 && !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
+			return len(reconciles) > 0 && !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
 		},
 	}
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
@@ -138,7 +138,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "BOSHDeployment", a.Meta.GetName(), bdv1.SecretReference.String())
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "BOSHDeployment", a.Meta.GetName(), bdv1.SecretReference)
 			}
 
 			return reconciles
