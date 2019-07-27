@@ -83,18 +83,19 @@ func (dg *InstanceGroupResolver) Manifest() (Manifest, error) {
 // * bosh links
 // * bpm yaml file data
 func (dg *InstanceGroupResolver) resolveManifest() error {
-	err := dg.collectReleaseSpecsAndProviderLinks()
-	if err != nil {
+	if err := runPreRenderScripts(dg.instanceGroup, true); err != nil {
 		return err
 	}
 
-	err = dg.processConsumers()
-	if err != nil {
+	if err := dg.collectReleaseSpecsAndProviderLinks(); err != nil {
 		return err
 	}
 
-	err = dg.renderBPM()
-	if err != nil {
+	if err := dg.processConsumers(); err != nil {
+		return err
+	}
+
+	if err := dg.renderBPM(); err != nil {
 		return err
 	}
 
@@ -178,13 +179,6 @@ func (dg *InstanceGroupResolver) renderBPM() error {
 
 // renderJobBPM per job and add its value to the jobInstances.BPM field.
 func (dg *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) error {
-	// Run pre-render scripts for the current job.
-	for idx, script := range currentJob.Properties.BOSHContainerization.PreRenderScripts {
-		if err := runPreRenderScript(script, idx, true); err != nil {
-			return errors.Wrapf(err, "failed to run pre-render script %d for job %s", idx, currentJob.Name)
-		}
-	}
-
 	// Location of the current job job.MF file.
 	jobSpecFile := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "job.MF")
 

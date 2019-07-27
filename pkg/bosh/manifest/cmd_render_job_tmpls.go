@@ -47,19 +47,17 @@ func RenderJobTemplates(
 			continue
 		}
 
+		// Run all pre-render scripts first.
+		if err := runPreRenderScripts(instanceGroup, false); err != nil {
+			return err
+		}
+
 		// Render all files for all jobs included in this instance_group.
 		for _, job := range instanceGroup.Jobs {
 			jobSpec, err := job.loadSpec(jobsDir)
 
 			if err != nil {
 				return errors.Wrapf(err, "failed to load job spec file %s for instance group %s", job.Name, instanceGroupName)
-			}
-
-			// Run pre-render scripts for the current job.
-			for idx, script := range job.Properties.BOSHContainerization.PreRenderScripts {
-				if err := runPreRenderScript(script, idx, false); err != nil {
-					return errors.Wrapf(err, "failed to run pre-render script %d for job %s for instance group %s", idx, job.Name, instanceGroupName)
-				}
 			}
 
 			// Find job instance that's being rendered
@@ -115,50 +113,58 @@ func RenderJobTemplates(
 	return nil
 }
 
-func runPreRenderScript(script string, idx int, silent bool) error {
-	// Save the script to a temporary location.
-	tmpFile, err := ioutil.TempFile(os.TempDir(), "script-")
-	if err != nil {
-		return errors.Wrap(err, "failed to create a temp file for the pre-render script")
-	}
-	defer os.Remove(tmpFile.Name())
-	defer tmpFile.Close()
-
-	// Write the pre-render script contents.
-	if _, err = tmpFile.Write([]byte(script)); err != nil {
-		return errors.Wrap(err, "failed to write pre-render script to file")
-	}
-
-	// Run the pre-render script.
-	cmd := exec.Command("/bin/bash", tmpFile.Name())
-
-	if !silent {
-		errReader, err := cmd.StderrPipe()
-		if err != nil {
-			return errors.Wrap(err, "failed to get stderr pipe")
-		}
-		outReader, err := cmd.StdoutPipe()
-		if err != nil {
-			return errors.Wrap(err, "failed to get stdout pipe")
-		}
-
-		errScanner := bufio.NewScanner(errReader)
-		go func() {
-			for errScanner.Scan() {
-				fmt.Printf("pre-render-err-%d | %s\n", idx, errScanner.Text())
+func runPreRenderScripts(instanceGroup *InstanceGroup, silent bool) error {
+	for _, job := range instanceGroup.Jobs {
+		for idx, script := range job.Properties.BOSHContainerization.PreRenderScripts {
+			createErr := func(err error) error {
+				return errors.Wrapf(err, "failed to run pre-render script %d for job %s for instance group %s", idx, job.Name, instanceGroup.Name)
 			}
-		}()
 
-		outScanner := bufio.NewScanner(outReader)
-		go func() {
-			for outScanner.Scan() {
-				fmt.Printf("pre-render-out-%d | %s\n", idx, outScanner.Text())
+			// Save the script to a temporary location.
+			tmpFile, err := ioutil.TempFile(os.TempDir(), "script-")
+			if err != nil {
+				return createErr(err)
 			}
-		}()
-	}
+			defer os.Remove(tmpFile.Name())
+			defer tmpFile.Close()
 
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "failed to run pre-render script %d", idx)
+			// Write the pre-render script contents.
+			if _, err = tmpFile.Write([]byte(script)); err != nil {
+				return createErr(err)
+			}
+
+			// Run the pre-render script.
+			cmd := exec.Command("/bin/bash", tmpFile.Name())
+
+			if !silent {
+				errReader, err := cmd.StderrPipe()
+				if err != nil {
+					return createErr(err)
+				}
+				outReader, err := cmd.StdoutPipe()
+				if err != nil {
+					return createErr(err)
+				}
+
+				errScanner := bufio.NewScanner(errReader)
+				go func() {
+					for errScanner.Scan() {
+						fmt.Printf("pre-render-err-%d | %s\n", idx, errScanner.Text())
+					}
+				}()
+
+				outScanner := bufio.NewScanner(outReader)
+				go func() {
+					for outScanner.Scan() {
+						fmt.Printf("pre-render-out-%d | %s\n", idx, outScanner.Text())
+					}
+				}()
+			}
+
+			if err := cmd.Run(); err != nil {
+				return createErr(err)
+			}
+		}
 	}
 
 	return nil
