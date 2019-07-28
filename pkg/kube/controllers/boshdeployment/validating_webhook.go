@@ -5,11 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/api/admission/v1beta1"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
@@ -17,52 +12,58 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ktype "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/builder"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 )
 
-const (
-	admissionWebhookName = "validate-boshdeployment.fissile.cloudfoundry.org"
-	admissionWebHookPath = "/validate-boshdeployment"
-)
-
-// AddBOSHDeploymentValidator creates a validating hook for BOSHDeployment and adds it to the Manager
-func AddBOSHDeploymentValidator(log *zap.SugaredLogger, config *config.Config, mgr manager.Manager) (webhook.Webhook, error) {
+// NewBOSHDeploymentValidator creates a validating hook for BOSHDeployment and adds it to the Manager
+func NewBOSHDeploymentValidator(log *zap.SugaredLogger, config *config.Config) *wh.OperatorWebhook {
 	log.Info("Setting up validator for BOSHDeployment")
 
 	boshDeploymentValidator := NewValidator(log, config)
 
-	validatingWebhook, err := builder.NewWebhookBuilder().
-		Name(admissionWebhookName).
-		Path(admissionWebHookPath).
-		Validating().
-		NamespaceSelector(&metav1.LabelSelector{
+	globalScopeType := admissionregistrationv1beta1.ScopeType("*")
+	return &wh.OperatorWebhook{
+		FailurePolicy: admissionregistrationv1beta1.Fail,
+		Rules: []admissionregistrationv1beta1.RuleWithOperations{
+			{
+				Rule: admissionregistrationv1beta1.Rule{
+					APIGroups:   []string{"fissile.cloudfoundry.org"},
+					APIVersions: []string{"v1alpha1"},
+					Resources:   []string{"boshdeployments"},
+					Scope:       &globalScopeType,
+				},
+				Operations: []admissionregistrationv1beta1.OperationType{
+					"CREATE",
+					"UPDATE",
+				},
+			},
+		},
+		Path: "/validate-boshdeployment",
+		Name: "validate-boshdeployment.fissile.cloudfoundry.org",
+		NamespaceSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"cf-operator-ns": config.Namespace,
 			},
-		}).
-		ForType(&bdv1.BOSHDeployment{}).
-		Handlers(boshDeploymentValidator).
-		WithManager(mgr).
-		FailurePolicy(admissionregistrationv1beta1.Fail).
-		Build()
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't build a new validating webhook")
+		},
+		Webhook: &admission.Webhook{
+			Handler: boshDeploymentValidator,
+		},
 	}
-
-	return validatingWebhook, nil
 }
 
-// Validator represents a validator for BOSHDeployments
+// Validator s
 type Validator struct {
 	log          *zap.SugaredLogger
 	config       *config.Config
 	client       client.Client
-	decoder      types.Decoder
+	decoder      *admission.Decoder
 	pollTimeout  time.Duration
 	pollInterval time.Duration
 }
@@ -81,7 +82,7 @@ func NewValidator(log *zap.SugaredLogger, config *config.Config) admission.Handl
 }
 
 // OpsResourceExist verify if a resource exist in the namespace,
-// it will check it´s existance during 5 seconds,
+// it will check its existence during 5 seconds,
 // otherwise it will timeout.
 func (v *Validator) OpsResourceExist(ctx context.Context, specOpsResource bdv1.Ops, ns string) (bool, string) {
 	timeOut := time.After(v.pollTimeout)
@@ -121,13 +122,20 @@ func (v *Validator) OpsResourceExist(ctx context.Context, specOpsResource bdv1.O
 	}
 }
 
-// Handle validates a BOSHDeployment
-func (v *Validator) Handle(ctx context.Context, req types.Request) types.Response {
+//Handle validates a BOSHDeployment
+func (v *Validator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	boshDeployment := &bdv1.BOSHDeployment{}
 
 	err := v.decoder.Decode(req, boshDeployment)
 	if err != nil {
-		return types.Response{}
+		return admission.Response{
+			AdmissionResponse: v1beta1.AdmissionResponse{
+				Allowed: false,
+				Result: &metav1.Status{
+					Message: fmt.Sprintf("Failed to decode BOSHDeployment: %s", err.Error()),
+				},
+			},
+		}
 	}
 
 	log.Debug(ctx, "Resolving manifest")
@@ -136,8 +144,8 @@ func (v *Validator) Handle(ctx context.Context, req types.Request) types.Respons
 	for _, opsItem := range boshDeployment.Spec.Ops {
 		resourceExist, msg := v.OpsResourceExist(ctx, opsItem, boshDeployment.Namespace)
 		if !resourceExist {
-			return types.Response{
-				Response: &v1beta1.AdmissionResponse{
+			return admission.Response{
+				AdmissionResponse: v1beta1.AdmissionResponse{
 					Allowed: false,
 					Result: &metav1.Status{
 						Message: msg,
@@ -149,8 +157,8 @@ func (v *Validator) Handle(ctx context.Context, req types.Request) types.Respons
 
 	_, err = resolver.WithOpsManifest(boshDeployment, boshDeployment.GetNamespace())
 	if err != nil {
-		return types.Response{
-			Response: &v1beta1.AdmissionResponse{
+		return admission.Response{
+			AdmissionResponse: v1beta1.AdmissionResponse{
 				Allowed: false,
 				Result: &metav1.Status{
 					Message: fmt.Sprintf("Failed to resolve manifest: %s", err.Error()),
@@ -159,14 +167,14 @@ func (v *Validator) Handle(ctx context.Context, req types.Request) types.Respons
 		}
 	}
 
-	return types.Response{
-		Response: &v1beta1.AdmissionResponse{
+	return admission.Response{
+		AdmissionResponse: v1beta1.AdmissionResponse{
 			Allowed: true,
 		},
 	}
 }
 
-// podAnnotator implements inject.Client.
+// Validator implements inject.Client.
 // A client will be automatically injected.
 var _ inject.Client = &Validator{}
 
@@ -176,12 +184,12 @@ func (v *Validator) InjectClient(c client.Client) error {
 	return nil
 }
 
-// podAnnotator implements inject.Decoder.
+// Validator implements inject.Decoder.
 // A decoder will be automatically injected.
-var _ inject.Decoder = &Validator{}
+var _ admission.DecoderInjector = &Validator{}
 
 // InjectDecoder injects the decoder.
-func (v *Validator) InjectDecoder(d types.Decoder) error {
+func (v *Validator) InjectDecoder(d *admission.Decoder) error {
 	v.decoder = d
 	return nil
 }

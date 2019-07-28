@@ -26,7 +26,7 @@ import (
 // AddGeneratedVariable creates a new generated variable Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manager.Manager) error {
-	ctx = ctxlog.NewContextWithRecorder(ctx, "generated-variable-reconciler", mgr.GetRecorder("generated-variable-recorder"))
+	ctx = ctxlog.NewContextWithRecorder(ctx, "generated-variable-reconciler", mgr.GetEventRecorderFor("generated-variable-recorder"))
 	r := NewGeneratedVariableReconciler(
 		ctx, config, mgr,
 		controllerutil.SetControllerReference,
@@ -34,7 +34,9 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 	)
 
 	// Create a new controller
-	c, err := controller.New("generated-variable-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("generated-variable-controller", mgr, controller.Options{
+		Reconciler: r,
+	})
 	if err != nil {
 		return errors.Wrap(err, "Adding generated variable controller to manager failed.")
 	}

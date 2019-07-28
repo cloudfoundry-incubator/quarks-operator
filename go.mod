@@ -15,31 +15,23 @@ require (
 	github.com/directxman12/zapr v0.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/ghodss/yaml v1.0.0 // indirect
-	github.com/go-logr/logr v0.1.0 // indirect
 	github.com/go-logr/zapr v0.1.0
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/go-test/deep v1.0.1
-	github.com/gogo/protobuf v1.1.1 // indirect
 	github.com/golang/groupcache v0.0.0-20180924190550-6f2cf27854a4 // indirect
 	github.com/gonvenience/bunt v1.1.1
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c // indirect
 	github.com/google/certificate-transparency-go v1.0.21 // indirect
-	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf // indirect
 	github.com/google/uuid v1.0.0
-	github.com/googleapis/gnostic v0.2.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
 	github.com/hashicorp/golang-lru v0.5.0 // indirect
 	github.com/hpcloud/tail v1.0.0
 	github.com/imdario/mergo v0.3.6
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jmoiron/sqlx v1.2.0 // indirect
-	github.com/json-iterator/go v1.1.5 // indirect
 	github.com/kisielk/sqlstruct v0.0.0-20150923205031-648daed35d49 // indirect
-	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mattn/go-sqlite3 v1.10.0 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742 // indirect
 	github.com/nkovacs/streamquote v1.0.0 // indirect
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/onsi/ginkgo v1.8.0
@@ -48,29 +40,23 @@ require (
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.2 // indirect
-	github.com/spf13/afero v1.1.2
+	github.com/spf13/afero v1.2.2
 	github.com/spf13/cast v1.3.0 // indirect
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3 // indirect
 	github.com/spf13/viper v1.2.1
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/viovanov/bosh-template-go v0.0.0-20190728084045-8dc619f31ddc
-	go.uber.org/atomic v1.3.2 // indirect
-	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
 	golang.org/x/crypto v0.0.0-20190611184440-5c40567a22f8
 	golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3
 	golang.org/x/oauth2 v0.0.0-20181017192945-9dcd33a902f4 // indirect
-	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
 	google.golang.org/appengine v1.2.0 // indirect
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
-	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.2.2
-	k8s.io/api v0.0.0-20190222213804-5cb15d344471
-	k8s.io/apimachinery v0.0.0-20190221213512-86fb29eff628
-	k8s.io/client-go v2.0.0-alpha.0.0.20190507014756-65905f29c17c+incompatible
-	k8s.io/klog v0.1.0 // indirect
+	k8s.io/api v0.0.0-20190409021203-6e4e0e4f393b
+	k8s.io/apimachinery v0.0.0-20190404173353-6a84e37a896d
+	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/kube-openapi v0.0.0-20181024003938-96e8bb74ecdd // indirect
-	sigs.k8s.io/controller-runtime v0.1.10
+	sigs.k8s.io/controller-runtime v0.2.0-beta.4
 	sigs.k8s.io/yaml v1.1.0
 )

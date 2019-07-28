@@ -116,11 +116,9 @@ func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context
 			return err
 		}
 
-		op, err := controllerutil.CreateOrUpdate(ctx, r.client, variable.DeepCopy(), func(obj runtime.Object) error {
-			s, ok := obj.(*esv1.ExtendedSecret)
-			if !ok {
-				return errors.Errorf("object is not an ExtendedSecret")
-			}
+		obj := variable.DeepCopy()
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
+			s := obj
 			s.Spec = variable.Spec
 			return nil
 		})

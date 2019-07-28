@@ -2,7 +2,6 @@ package boshdeployment
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -169,20 +168,19 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 	}
 
 	// Apply the secret
-	op, err := controllerutil.CreateOrUpdate(ctx, r.client, manifestSecret, func(obj runtime.Object) error {
-		if s, ok := obj.(*corev1.Secret); ok {
-			originalManifest, ok := s.Data["manifest.yaml"]
-			// Update only when manifest has been changed
-			if !ok || !reflect.DeepEqual(originalManifest, manifestBytes) {
-				s.Data = map[string][]byte{}
-				s.StringData = map[string]string{
-					"manifest.yaml": string(manifestBytes),
-				}
+	obj := manifestSecret
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
+		s := obj
+		originalManifest, ok := s.Data["manifest.yaml"]
+		// Update only when manifest has been changed
+		if !ok || !reflect.DeepEqual(originalManifest, manifestBytes) {
+			s.Data = map[string][]byte{}
+			s.StringData = map[string]string{
+				"manifest.yaml": string(manifestBytes),
 			}
-
-			return nil
 		}
-		return fmt.Errorf("object is not a Secret")
+
+		return nil
 	})
 	if err != nil {
 		return nil, log.WithEvent(instance, "ManifestWithOpsApplyError").Errorf(ctx, "Failed to apply Secret '%s': %v", manifestSecretName, err)
@@ -199,16 +197,15 @@ func (r *ReconcileBOSHDeployment) createEJob(ctx context.Context, instance *bdv1
 		return errors.Errorf("failed to set ownerReference for ExtendedJob '%s': %v", eJob.GetName(), err)
 	}
 
-	op, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
-		if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
-			if shouldEJobUpdate(existingEJob, eJob) {
-				eJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
-				eJob.Spec.Trigger.Strategy = existingEJob.Spec.Trigger.Strategy
-				eJob.DeepCopyInto(existingEJob)
-			}
-			return nil
+	obj := eJob.DeepCopy()
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
+		existingEJob := obj
+		if shouldEJobUpdate(existingEJob, eJob) {
+			eJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
+			eJob.Spec.Trigger.Strategy = existingEJob.Spec.Trigger.Strategy
+			eJob.DeepCopyInto(existingEJob)
 		}
-		return errors.Errorf("Failed to create/update ejob for bosh deployment %s : object is not an ExtendedJob", instance.GetName())
+		return nil
 	})
 
 	log.Debugf(ctx, "ExtendedJob '%s' has been %s", eJob.Name, op)

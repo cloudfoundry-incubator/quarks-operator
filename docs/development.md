@@ -169,36 +169,39 @@ export GO111MODULE=on
 A pattern that comes up quite often is that an object needs to be updated if it already exists or created if it doesn't. `controller-runtime` provides the `controller-util` package which has a `CreateOrUpdate` function that can help with that. It takes a skeleton object and a reconcile function that is called in both the create and the update case:
 
 ```go
-tempManifestSecret := &corev1.Secret{
+obj := &corev1.Secret{
   ObjectMeta: metav1.ObjectMeta{
     Name:      tempManifestSecretName,
     Namespace: instance.GetNamespace(),
   },
 }
-_, err = controllerutil.CreateOrUpdate(ctx, r.client, tempManifestSecret, func(obj runtime.Object) error {
-  s, ok := obj.(*corev1.Secret)
+_, err = controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
   if !ok {
     return fmt.Errorf("object is not a Secret")
   }
-  s.Data = map[string][]byte{}
-  s.StringData = map[string]string{
+  obj.Data = map[string][]byte{}
+  obj.StringData = map[string]string{
     "manifest.yaml": string(tempManifestBytes),
   }
   return nil
 })
 ```
 
-Care must be taken when persisting objects that are already in their final state because they will be overwritten with the existing state if there already is such an object in the system. The following example shows one way to solve this:
+Care must be taken, CreateOrUpdate will `Get` the resource and overwrite content in `obj`. The following example shows one way to solve this:
 
 ```go
-_, err = controllerutil.CreateOrUpdate(ctx, r.client, varIntEJob.DeepCopy(), func(obj runtime.Object) error {
-  ejob, ok := obj.(*ejv1.ExtendedJob)
-  if !ok {
-    return fmt.Errorf("object is not an ExtendedJob")
-  }
-  dataGatheringEJob.DeepCopyInto(ejob)
+existingObj := obj.DeepCopy()
+_, err = controllerutil.CreateOrUpdate(ctx, r.client, existingObj, func() error {
+  obj.DeepCopyInto(existingObj)
   return nil
 })
+```
+
+Content in `obj` will not be overwritten, when the `Get` fails and the obj is created.
+So this works for the initial `Create`, but will never update the obj with new content.
+
+```go
+_, err = controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error { return nil })
 ```
 
 ## Logging and Events
@@ -215,7 +218,7 @@ This is how it's set up for reconcilers:
 // after logger is available
 ctx := ctxlog.NewParentContext(log)
 // adding named log and event recorder in controllers
-ctx = ctxlog.NewContextWithRecorder(ctx, "example-reconciler", mgr.GetRecorder("example-recorder"))
+ctx = ctxlog.NewContextWithRecorder(ctx, "example-reconciler", mgr.GetEventRecorderFor("example-recorder"))
 // adding timeout in reconcilers
 ctx, cancel := context.WithTimeout(ctx, timeout)
 defer cancle()

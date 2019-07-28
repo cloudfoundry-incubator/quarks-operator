@@ -60,23 +60,29 @@ var rootCmd = &cobra.Command{
 		log.Infof("Starting cf-operator %s with namespace %s", version.Version, cfOperatorNamespace)
 		log.Infof("cf-operator docker image: %s", converter.GetOperatorDockerImage())
 
-		host := viper.GetString("operator-webhook-service-host")
-		port := viper.GetInt32("operator-webhook-service-port")
+		operatorWebhookHost := viper.GetString("operator-webhook-service-host")
+		operatorWebhookPort := viper.GetInt32("operator-webhook-service-port")
 
-		if host == "" {
-			return errors.Errorf("%s operator-webhook-service-host flag is not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST).", cfFailedMessage)
+		if operatorWebhookHost == "" {
+			log.Fatal("required flag 'operator-webhook-service-host' not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST)")
 		}
 
 		config := &config.Config{
 			CtxTimeOut:        10 * time.Second,
 			Namespace:         cfOperatorNamespace,
-			WebhookServerHost: host,
-			WebhookServerPort: port,
+			WebhookServerHost: operatorWebhookHost,
+			WebhookServerPort: operatorWebhookPort,
 			Fs:                afero.NewOsFs(),
 		}
 		ctx := ctxlog.NewParentContext(log)
 
-		mgr, err := operator.NewManager(ctx, config, restConfig, manager.Options{Namespace: cfOperatorNamespace})
+		mgr, err := operator.NewManager(ctx, config, restConfig, manager.Options{
+			Namespace:          cfOperatorNamespace,
+			MetricsBindAddress: "0",
+			LeaderElection:     false,
+			Port:               int(operatorWebhookPort),
+			Host:               "0.0.0.0",
+		})
 		if err != nil {
 			return errors.Wrapf(err, cfFailedMessage)
 		}

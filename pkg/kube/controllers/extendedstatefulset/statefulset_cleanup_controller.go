@@ -19,7 +19,7 @@ import (
 
 // AddStatefulSetCleanup creates a new statefulset cleanup controller and adds it to the Manager
 func AddStatefulSetCleanup(ctx context.Context, config *config.Config, mgr manager.Manager) error {
-	ctx = ctxlog.NewContextWithRecorder(ctx, "statefulset-cleanup-reconciler", mgr.GetRecorder("statefulset-cleanup-recorder"))
+	ctx = ctxlog.NewContextWithRecorder(ctx, "statefulset-cleanup-reconciler", mgr.GetEventRecorderFor("statefulset-cleanup-recorder"))
 	r := NewStatefulSetCleanupReconciler(ctx, config, mgr)
 
 	// Create a new controller

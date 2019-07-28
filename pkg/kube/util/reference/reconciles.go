@@ -194,7 +194,7 @@ func SkipReconciles(ctx context.Context, client crc.Client, object apis.Object) 
 func listBOSHDeployments(ctx context.Context, client crc.Client, namespace string) (*bdv1.BOSHDeploymentList, error) {
 	log.Debugf(ctx, "Listing BOSHDeployments in namespace '%s'", namespace)
 	result := &bdv1.BOSHDeploymentList{}
-	err := client.List(ctx, &crc.ListOptions{}, result)
+	err := client.List(ctx, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list BOSHDeployments")
 	}
@@ -205,7 +205,7 @@ func listBOSHDeployments(ctx context.Context, client crc.Client, namespace strin
 func listExtendedStatefulSets(ctx context.Context, client crc.Client, namespace string) (*estsv1.ExtendedStatefulSetList, error) {
 	log.Debugf(ctx, "Listing ExtendedStatefulSets in namespace '%s'", namespace)
 	result := &estsv1.ExtendedStatefulSetList{}
-	err := client.List(ctx, &crc.ListOptions{}, result)
+	err := client.List(ctx, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list ExtendedStatefulSets")
 	}
@@ -216,7 +216,7 @@ func listExtendedStatefulSets(ctx context.Context, client crc.Client, namespace 
 func listExtendedJobs(ctx context.Context, client crc.Client, namespace string) (*ejobv1.ExtendedJobList, error) {
 	log.Debugf(ctx, "Listing ExtendedJobs in namespace '%s'", namespace)
 	result := &ejobv1.ExtendedJobList{}
-	err := client.List(ctx, &crc.ListOptions{}, result)
+	err := client.List(ctx, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list ExtendedJobs")
 	}

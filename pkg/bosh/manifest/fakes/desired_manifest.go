@@ -2,11 +2,11 @@
 package fakes
 
 import (
-	context "context"
-	sync "sync"
+	"context"
+	"sync"
 
-	manifest "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	boshdeployment "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 )
 
 type FakeDesiredManifest struct {

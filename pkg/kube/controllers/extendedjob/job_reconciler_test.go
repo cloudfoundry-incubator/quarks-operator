@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	cclient "sigs.k8s.io/controller-runtime/pkg/client"
+	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
@@ -62,7 +62,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 			}
 			return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 		})
-		client.ListCalls(func(context context.Context, options *cclient.ListOptions, object runtime.Object) error {
+		client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
 			switch object := object.(type) {
 			case *corev1.PodList:
 				list := corev1.PodList{
@@ -120,7 +120,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 			})
 
 			It("adds configured labels to the generated secrets", func() {
-				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 					secret := object.(*corev1.Secret)
 					Expect(secret.ObjectMeta.Labels["key"]).To(Equal("value"))
 					return nil
@@ -136,7 +136,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 				secretLabels[bdv1.LabelDeploymentName] = "fake-deployment"
 				ejob.Spec.Output.SecretLabels = secretLabels
 
-				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 					secret := object.(*corev1.Secret)
 					secretName := secret.GetName()
 
@@ -184,7 +184,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 			})
 
 			It("does persist the output", func() {
-				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 					secret := object.(*corev1.Secret)
 					Expect(secret.GetName()).To(Equal("foo-busybox"))
 					return nil

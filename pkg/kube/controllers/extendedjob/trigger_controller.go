@@ -23,7 +23,7 @@ import (
 func AddTrigger(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	query := NewQuery()
 	f := controllerutil.SetControllerReference
-	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-job-trigger-reconciler", mgr.GetRecorder("ext-job-trigger-recorder"))
+	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-job-trigger-reconciler", mgr.GetEventRecorderFor("ext-job-trigger-recorder"))
 	store := vss.NewVersionedSecretStore(mgr.GetClient())
 	r := NewTriggerReconciler(ctx, config, mgr, query, f, store)
 	c, err := controller.New("ext-job-trigger-controller", mgr, controller.Options{Reconciler: r})

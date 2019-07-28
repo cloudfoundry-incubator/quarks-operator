@@ -25,7 +25,7 @@ import (
 
 // Add creates a new ExtendedSecrets Controller and adds it to the Manager
 func Add(ctx context.Context, config *config.Config, mgr manager.Manager) error {
-	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-secret-reconciler", mgr.GetRecorder("ext-secret-recorder"))
+	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-secret-reconciler", mgr.GetEventRecorderFor("ext-secret-recorder"))
 	log := ctxlog.ExtractLogger(ctx)
 	r := NewReconciler(ctx, config, mgr, credsgen.NewInMemoryGenerator(log), controllerutil.SetControllerReference)
 
@@ -69,13 +69,11 @@ func listSecrets(ctx context.Context, client crc.Client, exSecret *es.ExtendedSe
 	result := []corev1.Secret{}
 
 	allSecrets := &corev1.SecretList{}
-	err := client.List(
-		ctx,
-		&crc.ListOptions{
-			Namespace:     exSecret.Namespace,
-			LabelSelector: secretLabelsSet.AsSelector(),
-		},
-		allSecrets)
+	err := client.List(ctx, allSecrets,
+		func(options *crc.ListOptions) {
+			options.Namespace = exSecret.Namespace
+			options.LabelSelector = secretLabelsSet.AsSelector()
+		})
 	if err != nil {
 		return nil, err
 	}

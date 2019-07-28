@@ -1,42 +1,47 @@
 package extendedstatefulset
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/builder"
 )
 
-// AddPod creates a new hook for working with Pods and adds it to the Manager
-func AddPod(log *zap.SugaredLogger, config *config.Config, mgr manager.Manager) (webhook.Webhook, error) {
-	log.Info("Creating the ExtendedStatefulSet Pod controller")
-	log.Info("Setting up pod webhooks")
+// NewExtendedStatefulsetPodMutator creates a pod mutator for managing volumes
+func NewExtendedStatefulsetPodMutator(log *zap.SugaredLogger, config *config.Config) *wh.OperatorWebhook {
+	log.Info("Setting up mutator for pods")
 
-	podMutator := NewPodMutator(log, config, mgr, controllerutil.SetControllerReference)
+	extendedStatefulSetMutator := NewPodMutator(log, config)
 
-	mutatingWebhook, err := builder.NewWebhookBuilder().
-		Name("mutate-pods.fissile.cloudfoundry.org").
-		Path("/mutate-pods").
-		Mutating().
-		NamespaceSelector(&metav1.LabelSelector{
+	globalScopeType := admissionregistrationv1beta1.ScopeType("*")
+	return &wh.OperatorWebhook{
+		FailurePolicy: admissionregistrationv1beta1.Fail,
+		Rules: []admissionregistrationv1beta1.RuleWithOperations{
+			{
+				Rule: admissionregistrationv1beta1.Rule{
+					APIGroups:   []string{""},
+					APIVersions: []string{"v1"},
+					Resources:   []string{"pods"},
+					Scope:       &globalScopeType,
+				},
+				Operations: []admissionregistrationv1beta1.OperationType{
+					"CREATE",
+					"UPDATE",
+				},
+			},
+		},
+		Path: "/mutate-pods",
+		Name: "mutate-pods.fissile.cloudfoundry.org",
+		NamespaceSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"cf-operator-ns": config.Namespace,
 			},
-		}).
-		ForType(&corev1.Pod{}).
-		Handlers(podMutator).
-		WithManager(mgr).
-		FailurePolicy(admissionregistrationv1beta1.Fail).
-		Build()
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't build a new webhook")
+		},
+		Webhook: &admission.Webhook{
+			Handler: extendedStatefulSetMutator,
+		},
 	}
-
-	return mutatingWebhook, nil
 }

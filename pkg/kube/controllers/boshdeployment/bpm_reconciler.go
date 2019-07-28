@@ -2,11 +2,9 @@ package boshdeployment
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"time"
 
-	"sigs.k8s.io/yaml"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -16,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/yaml"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
@@ -187,14 +186,13 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 			return log.WithEvent(instance, "ExtendedJobForDeploymentError").Errorf(ctx, "Failed to set reference for ExtendedJob instance group '%s' : %v", instanceGroupName, err)
 		}
 
-		op, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob.DeepCopy(), func(obj runtime.Object) error {
-			if existingEJob, ok := obj.(*ejv1.ExtendedJob); ok {
-				eJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
-				eJob.DeepCopyInto(existingEJob)
+		obj := eJob.DeepCopy()
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
+			existingEJob := obj
+			eJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
+			eJob.DeepCopyInto(existingEJob)
 
-				return nil
-			}
-			return errors.Errorf("object is not an ExtendedJob")
+			return nil
 		})
 		if err != nil {
 			return log.WithEvent(instance, "ApplyExtendedJobError").Errorf(ctx, "Failed to apply ExtendedJob for instance group '%s' : %v", instanceGroupName, err)
@@ -212,15 +210,14 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 			return log.WithEvent(instance, "ServiceForDeploymentError").Errorf(ctx, "Failed to set reference for Service instance group '%s' : %v", instanceGroupName, err)
 		}
 
-		op, err := controllerutil.CreateOrUpdate(ctx, r.client, svc.DeepCopy(), func(obj runtime.Object) error {
-			if existingSvc, ok := obj.(*corev1.Service); ok {
-				// Should keep current ClusterIP and ResourceVersion when update
-				svc.Spec.ClusterIP = existingSvc.Spec.ClusterIP
-				svc.ObjectMeta.ResourceVersion = existingSvc.ObjectMeta.ResourceVersion
-				svc.DeepCopyInto(existingSvc)
-				return nil
-			}
-			return fmt.Errorf("object is not a Service")
+		obj := svc.DeepCopy()
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
+			existingSvc := obj
+			// Should keep current ClusterIP and ResourceVersion when update
+			svc.Spec.ClusterIP = existingSvc.Spec.ClusterIP
+			svc.ObjectMeta.ResourceVersion = existingSvc.ObjectMeta.ResourceVersion
+			svc.DeepCopyInto(existingSvc)
+			return nil
 		})
 		if err != nil {
 			return log.WithEvent(instance, "ApplyServiceError").Errorf(ctx, "Failed to apply Service for instance group '%s' : %v", instanceGroupName, err)
@@ -249,16 +246,15 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 			return log.WithEvent(instance, "ExtendedStatefulSetForDeploymentError").Errorf(ctx, "Failed to set reference for ExtendedStatefulSet instance group '%s' : %v", instanceGroupName, err)
 		}
 
-		op, err := controllerutil.CreateOrUpdate(ctx, r.client, eSts.DeepCopy(), func(obj runtime.Object) error {
-			if existingSts, ok := obj.(*estsv1.ExtendedStatefulSet); ok {
-				if shouldESTSUpdate(existingSts, &eSts) {
-					eSts.ObjectMeta.ResourceVersion = existingSts.ObjectMeta.ResourceVersion
-					eSts.DeepCopyInto(existingSts)
-				}
-
-				return nil
+		obj := eSts.DeepCopy()
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
+			existingSts := obj
+			if shouldESTSUpdate(existingSts, &eSts) {
+				eSts.ObjectMeta.ResourceVersion = existingSts.ObjectMeta.ResourceVersion
+				eSts.DeepCopyInto(existingSts)
 			}
-			return errors.Errorf("object is not an ExtendStatefulSet")
+
+			return nil
 		})
 		if err != nil {
 			return log.WithEvent(instance, "ApplyExtendedStatefulSetError").Errorf(ctx, "Failed to apply ExtendedStatefulSet for instance group '%s' : %v", instanceGroupName, err)
