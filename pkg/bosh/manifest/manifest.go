@@ -161,7 +161,7 @@ func (m *Manifest) Marshal() ([]byte, error) {
 	}
 
 	// UnMarshalling the manifest to interface{}interface{} so that it is easy to loop.
-	manifestInterfaceMap := map[interface{}]interface{}{}
+	manifestInterfaceMap := goyaml.MapSlice{}
 	err = goyaml.Unmarshal(marshalledManifest, &manifestInterfaceMap)
 	if err != nil {
 		return nil, err

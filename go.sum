@@ -214,6 +214,8 @@ github.com/viovanov/bosh-template-go v0.0.0-20190711161810-4888a47ca2b7 h1:QEs93
 github.com/viovanov/bosh-template-go v0.0.0-20190711161810-4888a47ca2b7/go.mod h1:c6vU7jEbBrrJjP52K6N/Lfk4tHlL2+ev7H6LJ82pq/I=
 github.com/viovanov/bosh-template-go v0.0.0-20190711164142-409a5c63db67 h1:xCouh2jRznXWqzyt6QsHVg/1wjcKmdgMQ1ga7qnebwQ=
 github.com/viovanov/bosh-template-go v0.0.0-20190711164142-409a5c63db67/go.mod h1:c6vU7jEbBrrJjP52K6N/Lfk4tHlL2+ev7H6LJ82pq/I=
+github.com/viovanov/bosh-template-go v0.0.0-20190728084045-8dc619f31ddc h1:BsZd1ECtUe6qnFBpHLGtleIlCpkRwakPf7F333voZbA=
+github.com/viovanov/bosh-template-go v0.0.0-20190728084045-8dc619f31ddc/go.mod h1:c6vU7jEbBrrJjP52K6N/Lfk4tHlL2+ev7H6LJ82pq/I=
 go.uber.org/atomic v1.3.2 h1:2Oa65PReHzfn29GpvgsYwloV9AVFHPDk8tYxt2c2tr4=
 go.uber.org/atomic v1.3.2/go.mod h1:gD2HeocX3+yG+ygLZcrzQJaqmWj9AIm7n08wl/qW/PE=
 go.uber.org/multierr v1.1.0 h1:HoEmRHQPVSqub6w2z2d2EOVs2fjyFRGyofhKuyDq0QI=
