@@ -166,43 +166,21 @@ export GO111MODULE=on
 
 ## Create-Or-Update pattern
 
-A pattern that comes up quite often is that an object needs to be updated if it already exists or created if it doesn't. `controller-runtime` provides the `controller-util` package which has a `CreateOrUpdate` function that can help with that. It takes a skeleton object and a reconcile function that is called in both the create and the update case:
+A pattern that comes up quite often is that an object needs to be updated if it already exists or created if it doesn't. `controller-runtime` provides the `controller-util` package which has a `CreateOrUpdate` function that can help with that. The object's desired state must be reconciled with the existing state inside the passed in callback MutateFn - `type MutateFn func() error`. The MutateFn is called regardless of creating or updating an object.
 
 ```go
-obj := &corev1.Secret{
-  ObjectMeta: metav1.ObjectMeta{
-    Name:      tempManifestSecretName,
-    Namespace: instance.GetNamespace(),
-  },
-}
+obj := someSecret.DeepCopy()
+
 _, err = controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-  if !ok {
-    return fmt.Errorf("object is not a Secret")
-  }
-  obj.Data = map[string][]byte{}
-  obj.StringData = map[string]string{
-    "manifest.yaml": string(tempManifestBytes),
-  }
+  if !reflect.DeepEqual(obj.Data, someSecret.Data) {
+    obj.Data = someSecret.Data
+  } 
+  
   return nil
 })
 ```
 
-Care must be taken, CreateOrUpdate will `Get` the resource and overwrite content in `obj`. The following example shows one way to solve this:
-
-```go
-existingObj := obj.DeepCopy()
-_, err = controllerutil.CreateOrUpdate(ctx, r.client, existingObj, func() error {
-  obj.DeepCopyInto(existingObj)
-  return nil
-})
-```
-
-Content in `obj` will not be overwritten, when the `Get` fails and the obj is created.
-So this works for the initial `Create`, but will never update the obj with new content.
-
-```go
-_, err = controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error { return nil })
-```
+Care must be taken when persisting objects that are already in their final state because they will be overwritten with the existing state if there already is such an object in the system. The above example performs a `DeepCopy` of the object in question to get around this problem.
 
 ## Logging and Events
 
@@ -221,7 +199,7 @@ ctx := ctxlog.NewParentContext(log)
 ctx = ctxlog.NewContextWithRecorder(ctx, "example-reconciler", mgr.GetEventRecorderFor("example-recorder"))
 // adding timeout in reconcilers
 ctx, cancel := context.WithTimeout(ctx, timeout)
-defer cancle()
+defer cancel()
 ```
 
 The `ctxlog` package provides several logging functions. `Infof`, `Errorf`, `Error` and such wrap the corresponding zap log methods.

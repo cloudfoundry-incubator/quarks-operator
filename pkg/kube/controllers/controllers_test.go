@@ -53,13 +53,11 @@ var _ = Describe("Controllers", func() {
 			config    *config.Config
 			generator *gfakes.FakeGenerator
 			env       testing.Catalog
-			// recorder  *record.FakeRecorder
 		)
 
 		BeforeEach(func() {
 
 			client = &cfakes.FakeClient{}
-			//recorder = record.NewFakeRecorder(20)
 			restMapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{})
 			restMapper.Add(schema.GroupVersionKind{Group: "", Kind: "Pod", Version: "v1"}, meta.RESTScopeNamespace)
 			restMapper.Add(schema.GroupVersionKind{Group: "fissile.cloudfoundry.org", Kind: "BOSHDeployment", Version: "v1alpha1"}, meta.RESTScopeNamespace)

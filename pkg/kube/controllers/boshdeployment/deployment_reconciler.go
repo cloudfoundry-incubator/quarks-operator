@@ -168,14 +168,13 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 	}
 
 	// Apply the secret
-	obj := manifestSecret
+	obj := manifestSecret.DeepCopy()
 	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-		s := obj
-		originalManifest, ok := s.Data["manifest.yaml"]
+		originalManifest, ok := obj.Data["manifest.yaml"]
 		// Update only when manifest has been changed
 		if !ok || !reflect.DeepEqual(originalManifest, manifestBytes) {
-			s.Data = map[string][]byte{}
-			s.StringData = map[string]string{
+			obj.Data = map[string][]byte{}
+			obj.StringData = map[string]string{
 				"manifest.yaml": string(manifestBytes),
 			}
 		}
@@ -199,11 +198,10 @@ func (r *ReconcileBOSHDeployment) createEJob(ctx context.Context, instance *bdv1
 
 	obj := eJob.DeepCopy()
 	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-		existingEJob := obj
-		if shouldEJobUpdate(existingEJob, eJob) {
-			eJob.ObjectMeta.ResourceVersion = existingEJob.ObjectMeta.ResourceVersion
-			eJob.Spec.Trigger.Strategy = existingEJob.Spec.Trigger.Strategy
-			eJob.DeepCopyInto(existingEJob)
+		if shouldEJobUpdate(obj, eJob) {
+			obj.ObjectMeta.ResourceVersion = eJob.ObjectMeta.ResourceVersion
+			obj.Spec.Trigger.Strategy = eJob.Spec.Trigger.Strategy
+			eJob.DeepCopyInto(obj)
 		}
 		return nil
 	})

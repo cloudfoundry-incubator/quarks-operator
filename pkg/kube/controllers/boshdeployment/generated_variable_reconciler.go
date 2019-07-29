@@ -118,8 +118,7 @@ func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context
 
 		obj := variable.DeepCopy()
 		op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-			s := obj
-			s.Spec = variable.Spec
+			obj.Spec = variable.Spec
 			return nil
 		})
 		if err != nil {

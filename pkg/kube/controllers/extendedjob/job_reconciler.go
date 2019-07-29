@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -144,13 +143,8 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 // jobPod gets the job's pod. Only single-pod jobs are supported when persisting the output, so we just get the first one.
 func (r *ReconcileJob) jobPod(ctx context.Context, name string, namespace string) (*corev1.Pod, error) {
-	_, err := labels.Parse("job-name=" + name)
-	if err != nil {
-		return nil, err
-	}
-
 	list := &corev1.PodList{}
-	err = r.client.List(
+	err := r.client.List(
 		ctx,
 		list,
 		client.InNamespace(namespace),
@@ -224,10 +218,8 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 		} else {
 			obj := secret
 			op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-				s := obj
-
-				s.SetLabels(secretLabels)
-				s.StringData = data
+				obj.SetLabels(secretLabels)
+				obj.StringData = data
 				return nil
 			})
 			if err != nil {

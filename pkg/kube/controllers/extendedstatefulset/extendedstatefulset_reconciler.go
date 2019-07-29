@@ -73,7 +73,6 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	// Fetch the ExtendedStatefulSet we need to reconcile
 	exStatefulSet := &estsv1.ExtendedStatefulSet{}
 
-	//
 	var runtimeObject = r.obj
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.

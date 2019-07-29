@@ -28,6 +28,6 @@ type OperatorWebhook struct {
 	// Note: if you are using mutating webhook with multiple handlers, it's your responsibility to
 	// ensure the handlers are not generating conflicting JSON patches.
 	Handler admission.Handler
-
+	// Webhook contains the Admission webhook information that we register with the controller runtime.
 	Webhook *webhook.Admission
 }

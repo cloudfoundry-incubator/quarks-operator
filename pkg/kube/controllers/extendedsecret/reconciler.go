@@ -124,11 +124,7 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 func (r *ReconcileExtendedSecret) updateExSecret(ctx context.Context, instance *esv1.ExtendedSecret) error {
 	obj := instance.DeepCopy()
 	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-		es := obj
-
-		if !es.Status.Generated {
-			es.Status.Generated = true
-		}
+		obj.Status.Generated = true
 		return nil
 	})
 	if err != nil {
@@ -315,8 +311,7 @@ func (r *ReconcileExtendedSecret) createSecret(ctx context.Context, instance *es
 
 	obj := secret.DeepCopy()
 	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-		s := obj
-		secret.DeepCopyInto(s)
+		secret.DeepCopyInto(obj)
 		return nil
 	})
 	if err != nil {
