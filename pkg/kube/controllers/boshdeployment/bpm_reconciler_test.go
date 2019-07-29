@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -44,6 +45,7 @@ var _ = Describe("ReconcileBPM", func() {
 		ctx                       context.Context
 		resolver                  fakes.FakeDesiredManifest
 		manifest                  *bdm.Manifest
+		logs                      *observer.ObservedLogs
 		log                       *zap.SugaredLogger
 		config                    *cfcfg.Config
 		client                    *cfakes.FakeClient
@@ -110,7 +112,7 @@ var _ = Describe("ReconcileBPM", func() {
 			},
 		}
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
-		_, log = helper.NewTestLogger()
+		logs, log = helper.NewTestLogger()
 		ctx = ctxlog.NewParentContext(log)
 		ctx = ctxlog.NewContextWithRecorder(ctx, "TestRecorder", recorder)
 
@@ -245,9 +247,10 @@ variables: []
 					return nil
 				})
 
-				_, err := reconciler.Reconcile(request)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to get Instance Group BPM versioned secret 'default/foo.bpm.fakepod-v1'"))
+				result, err := reconciler.Reconcile(request)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result.RequeueAfter).To(Equal(5 * time.Second))
+				Expect(logs.FilterMessageSnippet("Failed to get Instance Group BPM versioned secret 'default/foo.bpm.fakepod-v1'").Len()).To(Equal(1))
 			})
 
 			It("handles an error when applying BPM info", func() {
