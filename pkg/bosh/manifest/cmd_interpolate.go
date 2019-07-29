@@ -8,11 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	boshtpl "github.com/cloudfoundry/bosh-cli/director/template"
 	"github.com/cppforlife/go-patch/patch"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-
-	boshtpl "github.com/cloudfoundry/bosh-cli/director/template"
 )
 
 // InterpolateVariables reads explicit secrets from a folder and writes an interpolated manifest to STDOUT
@@ -74,6 +73,16 @@ func InterpolateVariables(log *zap.SugaredLogger, boshManifestBytes []byte, vari
 	}
 
 	yamlBytes, err := tpl.Evaluate(multiVars, op, evalOpts)
+	if err != nil {
+		return errors.Wrapf(err, "could not evaluate variables")
+	}
+
+	m, err := LoadYAML(yamlBytes)
+	if err != nil {
+		return errors.Wrapf(err, "could not evaluate variables")
+	}
+
+	yamlBytes, err = m.Marshal()
 	if err != nil {
 		return errors.Wrapf(err, "could not evaluate variables")
 	}

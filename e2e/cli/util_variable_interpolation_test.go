@@ -33,24 +33,11 @@ var _ = Describe("variable-interpolation", func() {
 			varsDir = filepath.Join(wd, assetPath+"/vars")
 		})
 
-		// TODO these three tests are meant to test different things?
-		It("should show a interpolated manifest with variables files", func() {
+		It("should show a encoded format", func() {
 			session, err := act(manifestPath, varsDir)
 			Expect(err).ToNot(HaveOccurred())
 
-			Eventually(session.Out).Should(Say(`{"manifest.yaml":"instance-group:\\n  key1: |\\n    baz\\n  key2: |\\n    foo\\n  key3: |\\n    bar\\npassword: |\\n  fake-password\\n"}`))
-		})
-
-		It("should show a json format", func() {
-			session, err := act(manifestPath, varsDir)
-			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out).Should(Say(`{"manifest.yaml":"instance-group:\\n  key1: |\\n    baz\n  key2: |\\n    foo\\n  key3: |\\n    bar\\npassword: |\\n  fake-password\\n"}`))
-		})
-
-		It("should show a encode format", func() {
-			session, err := act(manifestPath, varsDir)
-			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out).Should(Say(`{"manifest.yaml":"instance-group:\\n  key1: |\\n    baz\\n  key2: |\\n    foo\\n  key3: |\\n    bar\\npassword: |\\n  fake-password\n"}`))
+			Eventually(session.Out).Should(Say(`{"manifest.yaml":"director_uuid: \\"\\"\\ninstance_groups:\\n- azs: null\\n  env:\\n    bosh:\\n      agent:\\n        settings: {}\\n      ipv6:\\n        enable: false\\n  instances: 0\\n  jobs: null\\n  name: \|\\n    baz\\n  stemcell: \\"\\"\\n  vm_resources: null\\n- azs: null\\n  env:\\n    bosh:\\n      agent:\\n        settings: {}\\n      ipv6:\\n        enable: false\\n  instances: 0\\n  jobs: null\\n  name: \|\\n    foo\\n  stemcell: \\"\\"\\n  vm_resources: null\\n- azs: null\\n  env:\\n    bosh:\\n      agent:\\n        settings: {}\\n      ipv6:\\n        enable: false\\n  instances: 0\\n  jobs: null\\n  name: \|\\n    bar\\n  stemcell: \\"\\"\\n  vm_resources: null\\nname: \|\\n  fake-password\\n"}`))
 		})
 	})
 })

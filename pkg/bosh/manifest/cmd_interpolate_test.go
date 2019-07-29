@@ -1,9 +1,10 @@
 package manifest_test
 
 import (
-	"go.uber.org/zap"
 	"io/ioutil"
 	"os"
+
+	"go.uber.org/zap"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -23,11 +24,11 @@ var _ = Describe("InterpolateVariables", func() {
 		_, log = helper.NewTestLogger()
 		baseManifest = []byte(`
 ---
-password: ((password1))
-instance-group:
-  key1: ((value1.key1))
-  key2: ((value2.key2))
-  key3: ((value2.key3))
+name: ((password1))
+instance_groups:
+- name: ((value1.key1))
+- name: ((value2.key2))
+- name: ((value2.key3))
 `)
 		varDir = assetPath + "/vars"
 
@@ -58,7 +59,8 @@ instance-group:
 	It("returns interpolated manifest", func() {
 		stdOut, err := invoke("")
 		Expect(err).To(BeNil())
-		Expect(stdOut).To(Equal(`{"manifest.yaml":"instance-group:\n  key1: |\n    baz\n  key2: |\n    foo\n  key3: |\n    bar\npassword: |\n  fake-password\n"}`))
+
+		Expect(stdOut).To(Equal(`{"manifest.yaml":"director_uuid: \"\"\ninstance_groups:\n- azs: null\n  env:\n    bosh:\n      agent:\n        settings: {}\n      ipv6:\n        enable: false\n  instances: 0\n  jobs: null\n  name: |\n    baz\n  stemcell: \"\"\n  vm_resources: null\n- azs: null\n  env:\n    bosh:\n      agent:\n        settings: {}\n      ipv6:\n        enable: false\n  instances: 0\n  jobs: null\n  name: |\n    foo\n  stemcell: \"\"\n  vm_resources: null\n- azs: null\n  env:\n    bosh:\n      agent:\n        settings: {}\n      ipv6:\n        enable: false\n  instances: 0\n  jobs: null\n  name: |\n    bar\n  stemcell: \"\"\n  vm_resources: null\nname: |\n  fake-password\n"}`))
 	})
 
 	It("raises error when variablesDir is not directory", func() {

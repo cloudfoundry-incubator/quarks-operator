@@ -12,9 +12,9 @@ require (
 	github.com/cpuguy83/go-md2man v1.0.10 // indirect
 	github.com/daaku/go.zipexe v1.0.1 // indirect
 	github.com/dchest/uniuri v0.0.0-20160212164326-8902c56451e9
-	github.com/directxman12/zapr v0.1.1
+	github.com/directxman12/zapr v0.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
-	github.com/ghodss/yaml v1.0.0
+	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-logr/logr v0.1.0 // indirect
 	github.com/go-logr/zapr v0.1.0
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
@@ -54,7 +54,7 @@ require (
 	github.com/spf13/pflag v1.0.3 // indirect
 	github.com/spf13/viper v1.2.1
 	github.com/stretchr/objx v0.2.0 // indirect
-	github.com/viovanov/bosh-template-go v0.0.0-20190711164142-409a5c63db67
+	github.com/viovanov/bosh-template-go v0.0.0-20190728084045-8dc619f31ddc
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
