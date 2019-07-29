@@ -67,13 +67,7 @@ var rootCmd = &cobra.Command{
 			log.Fatal("%s operator-webhook-service-host flag is not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST).", cfFailedMessage)
 		}
 
-		config := &config.Config{
-			CtxTimeOut:        10 * time.Second,
-			Namespace:         cfOperatorNamespace,
-			WebhookServerHost: host,
-			WebhookServerPort: port,
-			Fs:                afero.NewOsFs(),
-		}
+		config := config.NewConfig(cfOperatorNamespace, host, port, afero.NewOsFs())
 		ctx := ctxlog.NewParentContext(log)
 
 		mgr, err := operator.NewManager(ctx, config, restConfig, manager.Options{
