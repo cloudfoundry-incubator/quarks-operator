@@ -18,6 +18,7 @@ type Quarks struct {
 	PreRenderScripts []string           `json:"pre_render_scripts" yaml:"pre_render_scripts"`
 	Debug            bool               `json:"debug" yaml:"debug"`
 	IsAddon          bool               `json:"is_addon" yaml:"is_addon"`
+	Envs             []corev1.EnvVar    `json:"envs" yaml:"envs"`
 }
 
 // Port represents the port to be opened up for this job
