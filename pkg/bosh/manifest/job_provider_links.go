@@ -15,7 +15,7 @@ func (jpl JobProviderLinks) Lookup(provider *JobSpecProvider) (JobLink, bool) {
 }
 
 // Add another job to the lookup map
-func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstance) error {
+func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstance, linkAddress string) error {
 	var properties map[string]interface{}
 
 	for _, link := range spec.Provides {
@@ -81,6 +81,7 @@ func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstan
 		// construct the jobProviderLinks of the current job that provides
 		// a link
 		jpl[linkType][linkName] = JobLink{
+			Address:    linkAddress,
 			Instances:  jobsInstances,
 			Properties: properties,
 		}

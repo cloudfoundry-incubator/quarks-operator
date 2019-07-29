@@ -63,8 +63,6 @@ require (
 	github.com/spf13/viper v1.2.1
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/viovanov/bosh-template-go v0.0.0-20190728084045-8dc619f31ddc
-	go.uber.org/atomic v1.3.2
-	go.uber.org/multierr v1.1.0
 	go.uber.org/zap v1.9.1
 	golang.org/x/crypto v0.0.0-20190611184440-5c40567a22f8
 	golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3
