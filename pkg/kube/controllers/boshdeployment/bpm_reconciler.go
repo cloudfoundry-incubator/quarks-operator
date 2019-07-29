@@ -188,7 +188,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 
 		obj := eJob.DeepCopy()
 		op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-			obj.ObjectMeta.ResourceVersion = eJob.ObjectMeta.ResourceVersion
+			eJob.ObjectMeta.ResourceVersion = obj.ObjectMeta.ResourceVersion
 			eJob.DeepCopyInto(obj)
 			return nil
 		})
@@ -210,9 +210,9 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 
 		obj := svc.DeepCopy()
 		op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-			// Should keep current ClusterIP and ResourceVersion when update
-			obj.Spec.ClusterIP = svc.Spec.ClusterIP
-			obj.ObjectMeta.ResourceVersion = svc.ObjectMeta.ResourceVersion
+			// Should keep the existing ClusterIP and ResourceVersion when updating
+			svc.Spec.ClusterIP = obj.Spec.ClusterIP
+			svc.ObjectMeta.ResourceVersion = obj.ObjectMeta.ResourceVersion
 			svc.DeepCopyInto(obj)
 			return nil
 		})
@@ -246,7 +246,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 		obj := eSts.DeepCopy()
 		op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
 			if shouldESTSUpdate(obj, &eSts) {
-				obj.ObjectMeta.ResourceVersion = eSts.ObjectMeta.ResourceVersion
+				eSts.ObjectMeta.ResourceVersion = obj.ObjectMeta.ResourceVersion
 				eSts.DeepCopyInto(obj)
 			}
 

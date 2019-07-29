@@ -60,18 +60,18 @@ var rootCmd = &cobra.Command{
 		log.Infof("Starting cf-operator %s with namespace %s", version.Version, cfOperatorNamespace)
 		log.Infof("cf-operator docker image: %s", converter.GetOperatorDockerImage())
 
-		operatorWebhookHost := viper.GetString("operator-webhook-service-host")
-		operatorWebhookPort := viper.GetInt32("operator-webhook-service-port")
+		host := viper.GetString("operator-webhook-service-host")
+		port := viper.GetInt32("operator-webhook-service-port")
 
-		if operatorWebhookHost == "" {
+		if host == "" {
 			log.Fatal("%s operator-webhook-service-host flag is not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST).", cfFailedMessage)
 		}
 
 		config := &config.Config{
 			CtxTimeOut:        10 * time.Second,
 			Namespace:         cfOperatorNamespace,
-			WebhookServerHost: operatorWebhookHost,
-			WebhookServerPort: operatorWebhookPort,
+			WebhookServerHost: host,
+			WebhookServerPort: port,
 			Fs:                afero.NewOsFs(),
 		}
 		ctx := ctxlog.NewParentContext(log)
@@ -80,7 +80,7 @@ var rootCmd = &cobra.Command{
 			Namespace:          cfOperatorNamespace,
 			MetricsBindAddress: "0",
 			LeaderElection:     false,
-			Port:               int(operatorWebhookPort),
+			Port:               int(port),
 			Host:               "0.0.0.0",
 		})
 		if err != nil {
@@ -165,7 +165,7 @@ func newLogger(options ...zap.Option) *zap.SugaredLogger {
 	}
 
 	// Make controller-runtime log using our logger
-	crlog.SetLogger(zapr.NewLogger(logger.Named("cr")))
+	crlog.SetLogger(zapr.NewLogger(logger))
 
 	return logger.Sugar()
 }
