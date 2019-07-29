@@ -198,13 +198,17 @@ var _ = Describe("ErrandReconciler", func() {
 
 						return nil
 					})
-					client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
-						switch job := object.(type) {
-						case *ejv1.ExtendedJob:
-							Expect(job.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerManual))
-						}
-						return nil
-					})
+
+					callQueue := helper.NewCallQueue(
+						func(context context.Context, object runtime.Object) error {
+							switch ejob := object.(type) {
+							case *ejv1.ExtendedJob:
+								Expect(ejob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerManual))
+							}
+							return nil
+						},
+					)
+					client.UpdateCalls(callQueue.Calls)
 
 					result, err := act()
 					Expect(err).ToNot(HaveOccurred())
@@ -232,13 +236,17 @@ var _ = Describe("ErrandReconciler", func() {
 
 						return nil
 					})
-					client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
-						switch job := object.(type) {
-						case *ejv1.ExtendedJob:
-							Expect(job.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
-						}
-						return nil
-					})
+
+					callQueue := helper.NewCallQueue(
+						func(context context.Context, object runtime.Object) error {
+							switch ejob := object.(type) {
+							case *ejv1.ExtendedJob:
+								Expect(ejob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
+							}
+							return nil
+						},
+					)
+					client.UpdateCalls(callQueue.Calls)
 
 					result, err := act()
 					Expect(err).ToNot(HaveOccurred())
@@ -293,13 +301,17 @@ var _ = Describe("ErrandReconciler", func() {
 
 						return nil
 					})
-					client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
-						switch job := object.(type) {
-						case *ejv1.ExtendedJob:
-							Expect(job.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
-						}
-						return nil
-					})
+
+					callQueue := helper.NewCallQueue(
+						func(context context.Context, object runtime.Object) error {
+							switch ejob := object.(type) {
+							case *ejv1.ExtendedJob:
+								Expect(ejob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
+							}
+							return nil
+						},
+					)
+					client.UpdateCalls(callQueue.Calls)
 
 					result, err := act()
 					Expect(err).ToNot(HaveOccurred())

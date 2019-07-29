@@ -3,6 +3,7 @@ package boshdeployment
 import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	"context"
+	"time"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -18,6 +19,7 @@ import (
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/meltdown"
 )
 
 var _ reconcile.Reconciler = &ReconcileGeneratedVariable{}
@@ -67,6 +69,11 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, err
 	}
 
+	if meltdown.InWindow(time.Now(), r.config.MeltdownDuration, manifestSecret.ObjectMeta.Annotations) {
+		log.WithEvent(manifestSecret, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, delaying reconciles for %s", manifestSecret.Name, r.config.MeltdownDuration)
+		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
+	}
+
 	var manifestContents string
 
 	// Get the manifest yaml
@@ -99,6 +106,13 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(manifestSecret, "VariableGenerationError").Errorf(ctx, "Failed to generate variables for bosh manifest '%s': %v", manifest.Name, err)
+	}
+
+	meltdown.SetLastReconcile(&manifestSecret.ObjectMeta, time.Now())
+	err = r.client.Update(ctx, manifestSecret)
+	if err != nil {
+		err = log.WithEvent(manifestSecret, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on ops applied manifest secret '%s' (%v): %s", manifestSecret.Name, manifestSecret.ResourceVersion, err)
+		return reconcile.Result{Requeue: false}, nil
 	}
 
 	return reconcile.Result{}, nil

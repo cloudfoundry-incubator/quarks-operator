@@ -43,6 +43,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		return errors.Wrap(err, "Adding Bosh deployment controller to manager failed.")
 	}
 
+	// TODO this should not trigger on meltdown
 	// Watch for changes to primary resource BOSHDeployment
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {

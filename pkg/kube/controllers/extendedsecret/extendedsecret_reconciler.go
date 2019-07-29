@@ -22,6 +22,7 @@ import (
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/meltdown"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
@@ -97,6 +98,11 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, errors.Wrap(err, "Error reading extendedSecret")
 	}
 
+	if meltdown.InWindow(time.Now(), r.config.MeltdownDuration, instance.ObjectMeta.Annotations) {
+		ctxlog.WithEvent(instance, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, delaying reconciles for %s", instance.Name, r.config.MeltdownDuration)
+		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
+	}
+
 	// Check if secret could be generated when secret was already created
 	canBeGenerated, err := r.canBeGenerated(ctx, instance)
 	if err != nil {
@@ -152,6 +158,7 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 
 func (r *ReconcileExtendedSecret) updateExSecret(ctx context.Context, instance *esv1.ExtendedSecret) error {
 	instance.Status.Generated = true
+	meltdown.SetLastReconcile(&instance.ObjectMeta, time.Now())
 	op, err := controllerutil.CreateOrUpdate(ctx, r.client, instance, mutate.ESecMutateFn(instance))
 	if err != nil {
 		return errors.Wrapf(err, "could not create or update ExtendedSecret '%s'", instance.GetName())

@@ -84,8 +84,10 @@ func newEnvironment(namespaceCounter int) *Environment {
 		ID:        namespaceCounter,
 		Namespace: getNamespace(namespaceCounter),
 		Config: &config.Config{
-			CtxTimeOut: 10 * time.Second,
-			Fs:         afero.NewOsFs(),
+			CtxTimeOut:           10 * time.Second,
+			MeltdownDuration:     1 * time.Second,
+			MeltdownRequeueAfter: 500 * time.Millisecond,
+			Fs:                   afero.NewOsFs(),
 		},
 		Machine: Machine{
 			pollTimeout:  300 * time.Second,

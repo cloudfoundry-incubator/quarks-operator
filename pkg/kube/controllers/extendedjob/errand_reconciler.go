@@ -14,6 +14,7 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/meltdown"
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
@@ -84,6 +85,11 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
+	if meltdown.InWindow(time.Now(), r.config.MeltdownDuration, eJob.ObjectMeta.Annotations) {
+		ctxlog.WithEvent(eJob, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, delaying reconciles for %s", eJob.Name, r.config.MeltdownDuration)
+		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
+	}
+
 	if eJob.Spec.Trigger.Strategy == ejv1.TriggerNow {
 		// Set Strategy back to manual for errand jobs.
 		eJob.Spec.Trigger.Strategy = ejv1.TriggerManual
@@ -106,11 +112,21 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	ctxlog.WithEvent(eJob, "CreateJob").Infof(ctx, "Created errand job for '%s'", eJob.Name)
 
+	meltdown.SetLastReconcile(&eJob.ObjectMeta, time.Now())
+
 	if eJob.Spec.Trigger.Strategy == ejv1.TriggerOnce {
 		// Traverse Strategy into the final 'done' state.
 		eJob.Spec.Trigger.Strategy = ejv1.TriggerDone
 		if err := r.client.Update(ctx, eJob); err != nil {
-			return reconcile.Result{Requeue: false}, ctxlog.WithEvent(eJob, "UpdateError").Errorf(ctx, "Failed to traverse to 'trigger.strategy=done' on job '%s': %s", eJob.Name, err)
+			ctxlog.WithEvent(eJob, "UpdateError").Errorf(ctx, "Failed to traverse to 'trigger.strategy=done' on job '%s': %s", eJob.Name, err)
+			return reconcile.Result{Requeue: false}, nil
+		}
+	} else {
+		// multiple updates to one resource result in 'object has been modified', so if update was not done for trigger=once, let's update last_reconcile here
+		err := r.client.Update(ctx, eJob)
+		if err != nil {
+			err = ctxlog.WithEvent(eJob, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on job '%s' (%v): %s", eJob.Name, eJob.ResourceVersion, err)
+			return reconcile.Result{Requeue: false}, nil
 		}
 	}
 
