@@ -166,40 +166,21 @@ export GO111MODULE=on
 
 ## Create-Or-Update pattern
 
-A pattern that comes up quite often is that an object needs to be updated if it already exists or created if it doesn't. `controller-runtime` provides the `controller-util` package which has a `CreateOrUpdate` function that can help with that. It takes a skeleton object and a reconcile function that is called in both the create and the update case:
+A pattern that comes up quite often is that an object needs to be updated if it already exists or created if it doesn't. `controller-runtime` provides the `controller-util` package which has a `CreateOrUpdate` function that can help with that. The object's desired state must be reconciled with the existing state inside the passed in callback MutateFn - `type MutateFn func() error`. The MutateFn is called regardless of creating or updating an object.
 
 ```go
-tempManifestSecret := &corev1.Secret{
-  ObjectMeta: metav1.ObjectMeta{
-    Name:      tempManifestSecretName,
-    Namespace: instance.GetNamespace(),
-  },
-}
-_, err = controllerutil.CreateOrUpdate(ctx, r.client, tempManifestSecret, func(obj runtime.Object) error {
-  s, ok := obj.(*corev1.Secret)
-  if !ok {
-    return fmt.Errorf("object is not a Secret")
-  }
-  s.Data = map[string][]byte{}
-  s.StringData = map[string]string{
-    "manifest.yaml": string(tempManifestBytes),
-  }
+obj := someSecret.DeepCopy()
+
+_, err = controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
+  if !reflect.DeepEqual(obj.Data, someSecret.Data) {
+    obj.Data = someSecret.Data
+  } 
+  
   return nil
 })
 ```
 
-Care must be taken when persisting objects that are already in their final state because they will be overwritten with the existing state if there already is such an object in the system. The following example shows one way to solve this:
-
-```go
-_, err = controllerutil.CreateOrUpdate(ctx, r.client, varIntEJob.DeepCopy(), func(obj runtime.Object) error {
-  ejob, ok := obj.(*ejv1.ExtendedJob)
-  if !ok {
-    return fmt.Errorf("object is not an ExtendedJob")
-  }
-  dataGatheringEJob.DeepCopyInto(ejob)
-  return nil
-})
-```
+Care must be taken when persisting objects that are already in their final state because they will be overwritten with the existing state if there already is such an object in the system. The above example performs a `DeepCopy` of the object in question to get around this problem.
 
 ## Logging and Events
 
@@ -215,10 +196,10 @@ This is how it's set up for reconcilers:
 // after logger is available
 ctx := ctxlog.NewParentContext(log)
 // adding named log and event recorder in controllers
-ctx = ctxlog.NewContextWithRecorder(ctx, "example-reconciler", mgr.GetRecorder("example-recorder"))
+ctx = ctxlog.NewContextWithRecorder(ctx, "example-reconciler", mgr.GetEventRecorderFor("example-recorder"))
 // adding timeout in reconcilers
 ctx, cancel := context.WithTimeout(ctx, timeout)
-defer cancle()
+defer cancel()
 ```
 
 The `ctxlog` package provides several logging functions. `Infof`, `Errorf`, `Error` and such wrap the corresponding zap log methods.

@@ -17,7 +17,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/record"
+	crc "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	gfakes "code.cloudfoundry.org/cf-operator/pkg/credsgen/fakes"
@@ -52,13 +53,11 @@ var _ = Describe("Controllers", func() {
 			config    *config.Config
 			generator *gfakes.FakeGenerator
 			env       testing.Catalog
-			recorder  *record.FakeRecorder
 		)
 
 		BeforeEach(func() {
 
 			client = &cfakes.FakeClient{}
-			recorder = record.NewFakeRecorder(20)
 			restMapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{})
 			restMapper.Add(schema.GroupVersionKind{Group: "", Kind: "Pod", Version: "v1"}, meta.RESTScopeNamespace)
 			restMapper.Add(schema.GroupVersionKind{Group: "fissile.cloudfoundry.org", Kind: "BOSHDeployment", Version: "v1alpha1"}, meta.RESTScopeNamespace)
@@ -70,8 +69,10 @@ var _ = Describe("Controllers", func() {
 			manager.GetSchemeReturns(scheme.Scheme)
 
 			manager.GetClientReturns(client)
-			manager.GetRecorderReturns(recorder)
+			//manager.GetRecorderReturns(recorder)
 			manager.GetRESTMapperReturns(restMapper)
+
+			manager.GetWebhookServerReturns(&webhook.Server{})
 
 			generator = &gfakes.FakeGenerator{}
 			generator.GenerateCertificateReturns(credsgen.Certificate{Certificate: []byte("thecert")}, nil)
@@ -81,7 +82,7 @@ var _ = Describe("Controllers", func() {
 		})
 
 		It("sets the operator namespace label", func() {
-			client.UpdateCalls(func(_ context.Context, object runtime.Object) error {
+			client.UpdateCalls(func(_ context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
 				ns := object.(*unstructured.Unstructured)
 				labels := ns.GetLabels()
 
@@ -104,7 +105,7 @@ var _ = Describe("Controllers", func() {
 
 		Context("if there is no cert secret yet", func() {
 			It("generates and persists the certificates on disk and in a secret", func() {
-				file := "/tmp/cf-operator-hook-" + config.Namespace + "/key.pem"
+				file := "/tmp/cf-operator-hook-" + config.Namespace + "/tls.key"
 				Expect(afero.Exists(config.Fs, file)).To(BeFalse())
 
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
@@ -157,7 +158,7 @@ var _ = Describe("Controllers", func() {
 			})
 
 			It("generates the webhook configuration", func() {
-				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 					// We should be getting 2 Create calls - one for the
 					// Validation webhook, one for the Mutating Webhook
 

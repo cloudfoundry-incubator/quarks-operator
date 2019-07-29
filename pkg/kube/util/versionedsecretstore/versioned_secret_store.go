@@ -263,10 +263,13 @@ func (p VersionedSecretStoreImpl) listSecrets(ctx context.Context, namespace str
 	}
 
 	secrets := &corev1.SecretList{}
-	if err := p.client.List(ctx, &client.ListOptions{
-		Namespace:     namespace,
-		LabelSelector: secretLabelsSet.AsSelector(),
-	}, secrets); err != nil {
+
+	if err := p.client.List(
+		ctx,
+		secrets,
+		client.InNamespace(namespace),
+		client.MatchingLabels(secretLabelsSet),
+	); err != nil {
 		return nil, errors.Wrapf(err, "Failed to list secrets with labels %s", secretLabelsSet.String())
 	}
 

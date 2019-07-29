@@ -155,7 +155,7 @@ name: fake-deployment-v4
 			})
 
 			It("should replace references with a new versioned secret if there is one version", func() {
-				client.ListCalls(func(_ context.Context, options *crc.ListOptions, object runtime.Object) error {
+				client.ListCalls(func(_ context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
 					switch object := object.(type) {
 					case *corev1.SecretList:
 						object.Items = []corev1.Secret{
@@ -196,7 +196,7 @@ name: fake-deployment-v4
 
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
-				client.ListCalls(func(_ context.Context, options *crc.ListOptions, object runtime.Object) error {
+				client.ListCalls(func(_ context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
 					switch object := object.(type) {
 					case *corev1.SecretList:
 						object.Items = []corev1.Secret{
@@ -223,7 +223,7 @@ name: fake-deployment-v4
 				podSpec.Containers[0].EnvFrom[0].SecretRef.Name = secretV1.GetName()
 				podSpec.Volumes[0].VolumeSource.Secret.SecretName = secretV1.GetName()
 
-				client.ListCalls(func(_ context.Context, options *crc.ListOptions, object runtime.Object) error {
+				client.ListCalls(func(_ context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
 					switch object := object.(type) {
 					case *corev1.SecretList:
 						object.Items = []corev1.Secret{
@@ -247,7 +247,7 @@ name: fake-deployment-v4
 	Describe("Create", func() {
 		Context("when there is no versioned manifest", func() {
 			It("should create the first version", func() {
-				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 					switch object := object.(type) {
 					case *corev1.Secret:
 						Expect(object.GetName()).To(Equal(fmt.Sprintf("%s-v%d", secretNamePrefix, 1)))
@@ -284,7 +284,7 @@ name: fake-deployment-v4
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
 
-				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 					switch object := object.(type) {
 					case *corev1.Secret:
 						Expect(object.GetName()).To(Equal(fmt.Sprintf("%s-v%d", secretNamePrefix, 1)))
@@ -332,7 +332,7 @@ name: fake-deployment-v4
 	Describe("Delete", func() {
 		Context("when a manifest with multiple version exists", func() {
 			It("should get rid of all versions of a manifest", func() {
-				client.ListCalls(func(context context.Context, opts *crc.ListOptions, object runtime.Object) error {
+				client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
 					switch object := object.(type) {
 					case *corev1.SecretList:
 						secrets := &corev1.SecretList{}
@@ -363,7 +363,7 @@ name: fake-deployment-v4
 	Describe("Decorate", func() {
 		Context("when there is a manifest with multiple versions", func() {
 			It("should decorate the latest version with the provided key and value", func() {
-				client.ListCalls(func(context context.Context, opts *crc.ListOptions, object runtime.Object) error {
+				client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
 					switch object := object.(type) {
 					case *corev1.SecretList:
 						secrets := &corev1.SecretList{}
@@ -386,7 +386,7 @@ name: fake-deployment-v4
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
 
-				client.UpdateCalls(func(_ context.Context, object runtime.Object) error {
+				client.UpdateCalls(func(_ context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
 					switch object := object.(type) {
 					case *corev1.Secret:
 						Expect(object.Labels).To(HaveKeyWithValue("foo", "bar"))
@@ -405,7 +405,7 @@ name: fake-deployment-v4
 	Describe("List", func() {
 		Context("when there is a manifest with multiple versions", func() {
 			It("should list all versions of a manifest", func() {
-				client.ListCalls(func(context context.Context, opts *crc.ListOptions, object runtime.Object) error {
+				client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
 					switch object := object.(type) {
 					case *corev1.SecretList:
 						secrets := &corev1.SecretList{}
@@ -428,7 +428,7 @@ name: fake-deployment-v4
 	Describe("Find/Latest", func() {
 		Context("when there is a manifest with multiple versions", func() {
 			BeforeEach(func() {
-				client.ListCalls(func(context context.Context, opts *crc.ListOptions, object runtime.Object) error {
+				client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
 					switch object := object.(type) {
 					case *corev1.SecretList:
 						secrets := &corev1.SecretList{}
@@ -491,7 +491,7 @@ name: fake-deployment-v4
 	Describe("VersionCount", func() {
 		Context("when manifest versions exist", func() {
 			It("should count the number of versions", func() {
-				client.ListCalls(func(context context.Context, opts *crc.ListOptions, object runtime.Object) error {
+				client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
 					switch object := object.(type) {
 					case *corev1.SecretList:
 						secrets := &corev1.SecretList{}
@@ -511,7 +511,7 @@ name: fake-deployment-v4
 		})
 		Context("when manifest versions exist", func() {
 			It("should count the number of versions", func() {
-				client.ListCalls(func(context context.Context, opts *crc.ListOptions, object runtime.Object) error {
+				client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
 					switch object := object.(type) {
 					case *corev1.SecretList:
 						secrets := &corev1.SecretList{}

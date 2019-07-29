@@ -57,7 +57,7 @@ var _ = Describe("ReconcileBPM", func() {
 		recorder = record.NewFakeRecorder(20)
 		manager = &cfakes.FakeManager{}
 		manager.GetSchemeReturns(scheme.Scheme)
-		manager.GetRecorderReturns(recorder)
+		manager.GetEventRecorderForReturns(recorder)
 		resolver = fakes.FakeDesiredManifest{}
 		size := 1024
 
@@ -207,7 +207,7 @@ variables: []
 
 			return nil
 		})
-		client.ListCalls(func(context context.Context, options *crc.ListOptions, object runtime.Object) error {
+		client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
 			switch object := object.(type) {
 			case *corev1.SecretList:
 				secretList := corev1.SecretList{}
@@ -284,7 +284,7 @@ variables: []
 					return nil
 				})
 
-				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 					return errors.New("fake-error")
 				})
 
@@ -294,7 +294,7 @@ variables: []
 			})
 
 			It("creates instance groups and updates bpm configs created state to deploying state successfully", func() {
-				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+				client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
 					switch object.(type) {
 					}
 					return nil

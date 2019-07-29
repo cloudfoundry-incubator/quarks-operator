@@ -25,7 +25,7 @@ import (
 // AddDeployment creates a new BOSHDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manager) error {
-	ctx = ctxlog.NewContextWithRecorder(ctx, "boshdeployment-reconciler", mgr.GetRecorder("boshdeployment-recorder"))
+	ctx = ctxlog.NewContextWithRecorder(ctx, "boshdeployment-reconciler", mgr.GetEventRecorderFor("boshdeployment-recorder"))
 	r := NewDeploymentReconciler(
 		ctx, config, mgr,
 		converter.NewResolver(mgr.GetClient(), func() converter.Interpolator { return converter.NewInterpolator() }),
@@ -33,7 +33,9 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	)
 
 	// Create a new controller
-	c, err := controller.New("boshdeployment-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("boshdeployment-controller", mgr, controller.Options{
+		Reconciler: r,
+	})
 	if err != nil {
 		return errors.Wrap(err, "Adding Bosh deployment controller to manager failed.")
 	}

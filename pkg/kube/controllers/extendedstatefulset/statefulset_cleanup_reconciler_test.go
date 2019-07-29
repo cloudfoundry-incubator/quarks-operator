@@ -141,7 +141,7 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 				}
 				return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 			})
-			client.ListCalls(func(context context.Context, options *crc.ListOptions, object runtime.Object) error {
+			client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
 				switch object := object.(type) {
 				case *v1beta2.StatefulSetList:
 					list := v1beta2.StatefulSetList{
@@ -194,7 +194,7 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 				}
 				return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 			})
-			client.ListCalls(func(context context.Context, options *crc.ListOptions, object runtime.Object) error {
+			client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
 				switch object.(type) {
 				case *v1beta2.StatefulSetList:
 					return errors.New("some error")
@@ -262,7 +262,7 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 				}
 				return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 			})
-			client.ListCalls(func(context context.Context, options *crc.ListOptions, object runtime.Object) error {
+			client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
 				switch object := object.(type) {
 				case *v1beta2.StatefulSetList:
 					list := v1beta2.StatefulSetList{
@@ -307,7 +307,7 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 				}
 				return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 			})
-			client.ListCalls(func(context context.Context, options *crc.ListOptions, object runtime.Object) error {
+			client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
 				switch object := object.(type) {
 				case *v1beta2.StatefulSetList:
 					list := v1beta2.StatefulSetList{
@@ -360,7 +360,7 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 				}
 				return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 			})
-			client.ListCalls(func(context context.Context, options *crc.ListOptions, object runtime.Object) error {
+			client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
 				switch object := object.(type) {
 				case *v1beta2.StatefulSetList:
 					list := v1beta2.StatefulSetList{

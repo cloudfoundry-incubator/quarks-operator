@@ -20,17 +20,9 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	BoshdeploymentV1alpha1() boshdeploymentv1alpha1.BoshdeploymentV1alpha1Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Boshdeployment() boshdeploymentv1alpha1.BoshdeploymentV1alpha1Interface
 	ExtendedjobV1alpha1() extendedjobv1alpha1.ExtendedjobV1alpha1Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Extendedjob() extendedjobv1alpha1.ExtendedjobV1alpha1Interface
 	ExtendedsecretV1alpha1() extendedsecretv1alpha1.ExtendedsecretV1alpha1Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Extendedsecret() extendedsecretv1alpha1.ExtendedsecretV1alpha1Interface
 	ExtendedstatefulsetV1alpha1() extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Extendedstatefulset() extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -48,20 +40,8 @@ func (c *Clientset) BoshdeploymentV1alpha1() boshdeploymentv1alpha1.Boshdeployme
 	return c.boshdeploymentV1alpha1
 }
 
-// Deprecated: Boshdeployment retrieves the default version of BoshdeploymentClient.
-// Please explicitly pick a version.
-func (c *Clientset) Boshdeployment() boshdeploymentv1alpha1.BoshdeploymentV1alpha1Interface {
-	return c.boshdeploymentV1alpha1
-}
-
 // ExtendedjobV1alpha1 retrieves the ExtendedjobV1alpha1Client
 func (c *Clientset) ExtendedjobV1alpha1() extendedjobv1alpha1.ExtendedjobV1alpha1Interface {
-	return c.extendedjobV1alpha1
-}
-
-// Deprecated: Extendedjob retrieves the default version of ExtendedjobClient.
-// Please explicitly pick a version.
-func (c *Clientset) Extendedjob() extendedjobv1alpha1.ExtendedjobV1alpha1Interface {
 	return c.extendedjobV1alpha1
 }
 
@@ -70,20 +50,8 @@ func (c *Clientset) ExtendedsecretV1alpha1() extendedsecretv1alpha1.Extendedsecr
 	return c.extendedsecretV1alpha1
 }
 
-// Deprecated: Extendedsecret retrieves the default version of ExtendedsecretClient.
-// Please explicitly pick a version.
-func (c *Clientset) Extendedsecret() extendedsecretv1alpha1.ExtendedsecretV1alpha1Interface {
-	return c.extendedsecretV1alpha1
-}
-
 // ExtendedstatefulsetV1alpha1 retrieves the ExtendedstatefulsetV1alpha1Client
 func (c *Clientset) ExtendedstatefulsetV1alpha1() extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Interface {
-	return c.extendedstatefulsetV1alpha1
-}
-
-// Deprecated: Extendedstatefulset retrieves the default version of ExtendedstatefulsetClient.
-// Please explicitly pick a version.
-func (c *Clientset) Extendedstatefulset() extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Interface {
 	return c.extendedstatefulsetV1alpha1
 }
 

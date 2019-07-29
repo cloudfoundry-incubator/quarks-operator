@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
@@ -113,7 +114,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		})
 
 		It("generates passwords", func() {
-			client.CreateCalls(func(context context.Context, object runtime.Object) error {
+			client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 				secret := object.(*corev1.Secret)
 				Expect(secret.StringData["password"]).To(Equal("securepassword"))
 				Expect(secret.GetName()).To(Equal("generated-secret"))
@@ -136,7 +137,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		})
 
 		It("generates RSA keys", func() {
-			client.CreateCalls(func(context context.Context, object runtime.Object) error {
+			client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 				secret := object.(*corev1.Secret)
 				Expect(secret.Data["private_key"]).To(Equal([]byte("private")))
 				Expect(secret.Data["public_key"]).To(Equal([]byte("public")))
@@ -164,7 +165,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		})
 
 		It("generates SSH keys", func() {
-			client.CreateCalls(func(context context.Context, object runtime.Object) error {
+			client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 				secret := object.(*corev1.Secret)
 				Expect(secret.Data["private_key"]).To(Equal([]byte("private")))
 				Expect(secret.Data["public_key"]).To(Equal([]byte("public")))
@@ -223,7 +224,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 
 				return credsgen.Certificate{Certificate: []byte("the_cert"), PrivateKey: []byte("private_key"), IsCA: false}, nil
 			})
-			client.CreateCalls(func(context context.Context, object runtime.Object) error {
+			client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 				secret := object.(*corev1.Secret)
 				Expect(secret.Data["certificate"]).To(Equal([]byte("the_cert")))
 				Expect(secret.Data["private_key"]).To(Equal([]byte("private_key")))
@@ -317,7 +318,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 				esv1.LabelKind: esv1.GeneratedSecretKind,
 			}
 
-			client.CreateCalls(func(context context.Context, object runtime.Object) error {
+			client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 				secret := object.(*corev1.Secret)
 				Expect(secret.StringData["password"]).To(Equal(password))
 				Expect(secret.GetName()).To(Equal("generated-secret"))

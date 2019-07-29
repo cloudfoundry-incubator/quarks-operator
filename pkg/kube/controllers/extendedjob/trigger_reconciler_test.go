@@ -64,7 +64,7 @@ var _ = Describe("TriggerReconciler", func() {
 			return nil
 		}
 
-		jobListStub := func(ctx context.Context, ops *crc.ListOptions, obj runtime.Object) error {
+		jobListStub := func(ctx context.Context, obj runtime.Object, _ ...crc.ListOptionFunc) error {
 			if list, ok := obj.(*v1alpha1.ExtendedJobList); ok {
 				list.Items = jobList
 			}
@@ -127,9 +127,7 @@ var _ = Describe("TriggerReconciler", func() {
 				})
 
 				It("should log and return", func() {
-					_, err := act()
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("fake-error"))
+					act()
 					Expect(logs.FilterMessageSnippet("Failed to get the pod: fake-error").Len()).To(Equal(1))
 					Expect(query.MatchCallCount()).To(Equal(0))
 				})
@@ -141,9 +139,7 @@ var _ = Describe("TriggerReconciler", func() {
 				})
 
 				It("should log list failure and return", func() {
-					_, err := act()
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("fake-error"))
+					act()
 					Expect(logs.FilterMessage("Failed to query extended jobs: fake-error").Len()).To(Equal(1))
 					Expect(query.MatchCallCount()).To(Equal(0))
 				})
@@ -162,8 +158,7 @@ var _ = Describe("TriggerReconciler", func() {
 				})
 
 				It("should log create error and continue with next job", func() {
-					_, err := act()
-					Expect(err).ToNot(HaveOccurred())
+					act()
 					Expect(client.CreateCallCount()).To(Equal(2))
 					Expect(logs.FilterMessageSnippet("Failed to create job for 'foo' via pod fake-pod/ready: fake-error").Len()).To(Equal(1))
 					Expect(logs.FilterMessageSnippet("Failed to create job for 'bar' via pod fake-pod/ready: fake-error").Len()).To(Equal(1))
@@ -184,11 +179,10 @@ var _ = Describe("TriggerReconciler", func() {
 			})
 
 			It("should not create jobs", func() {
-				_, err := act()
-				Expect(err).NotTo(HaveOccurred())
+				act()
 				Expect(query.MatchCallCount()).To(Equal(0))
 				obj := &batchv1.JobList{}
-				err = client.List(ctx, &crc.ListOptions{}, obj)
+				err := client.List(ctx, obj)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(obj.Items).To(HaveLen(0))
 			})
@@ -226,11 +220,10 @@ var _ = Describe("TriggerReconciler", func() {
 
 			Context("when pod matches label selector", func() {
 				It("should create jobs", func() {
-					_, err := act()
-					Expect(err).NotTo(HaveOccurred())
+					act()
 
 					obj := &batchv1.JobList{}
-					err = client.List(ctx, &crc.ListOptions{}, obj)
+					err := client.List(ctx, obj)
 					Expect(err).ToNot(HaveOccurred())
 
 					jobs := obj.Items

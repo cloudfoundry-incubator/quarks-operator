@@ -85,7 +85,7 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 	}
 
 	eJobs := &ejv1.ExtendedJobList{}
-	err = r.client.List(ctx, &client.ListOptions{}, eJobs)
+	err = r.client.List(ctx, eJobs)
 	if err != nil {
 		ctxlog.Infof(ctx, "Failed to query extended jobs: %s", err)
 		return

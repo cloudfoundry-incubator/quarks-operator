@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
@@ -188,7 +189,7 @@ var _ = Describe("ErrandReconciler", func() {
 				It("should set run back and create a job", func() {
 					Expect(eJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerNow))
 
-					client.CreateCalls(func(context context.Context, object runtime.Object) error {
+					client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 						switch object.(type) {
 						case *batchv1.Job:
 							job := object.(*batchv1.Job)
@@ -198,7 +199,7 @@ var _ = Describe("ErrandReconciler", func() {
 
 						return nil
 					})
-					client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+					client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
 						switch object.(type) {
 						case *ejv1.ExtendedJob:
 							job := object.(*ejv1.ExtendedJob)
@@ -224,7 +225,7 @@ var _ = Describe("ErrandReconciler", func() {
 				})
 
 				It("should set the trigger strategy to done and immediately trigger the job", func() {
-					client.CreateCalls(func(context context.Context, object runtime.Object) error {
+					client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 						switch object.(type) {
 						case *batchv1.Job:
 							job := object.(*batchv1.Job)
@@ -234,7 +235,7 @@ var _ = Describe("ErrandReconciler", func() {
 
 						return nil
 					})
-					client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+					client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
 						switch object.(type) {
 						case *ejv1.ExtendedJob:
 							job := object.(*ejv1.ExtendedJob)
@@ -287,7 +288,7 @@ var _ = Describe("ErrandReconciler", func() {
 						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 					})
 
-					client.CreateCalls(func(context context.Context, object runtime.Object) error {
+					client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 						switch object.(type) {
 						case *batchv1.Job:
 							job := object.(*batchv1.Job)
@@ -297,7 +298,7 @@ var _ = Describe("ErrandReconciler", func() {
 
 						return nil
 					})
-					client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+					client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
 						switch object.(type) {
 						case *ejv1.ExtendedJob:
 							job := object.(*ejv1.ExtendedJob)

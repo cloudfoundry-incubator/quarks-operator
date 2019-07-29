@@ -11,12 +11,14 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/go-logr/zapr"
 	gomegaConfig "github.com/onsi/ginkgo/config"
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
+	crlog "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
@@ -246,15 +248,28 @@ func (e *Environment) setupCFOperator(namespace string) (err error) {
 
 	loggerPath := helper.LogfilePath(fmt.Sprintf("cf-operator-tests-%d.log", e.ID))
 	e.ObservedLogs, e.Log = helper.NewTestLoggerWithPath(loggerPath)
+	crlog.SetLogger(zapr.NewLogger(e.Log.Desugar()))
+
 	ctx := ctxlog.NewParentContext(e.Log)
-	e.mgr, err = operator.NewManager(ctx, e.Config, e.kubeConfig, manager.Options{Namespace: e.Namespace})
+	e.mgr, err = operator.NewManager(ctx, e.Config, e.kubeConfig, manager.Options{
+		Namespace:          e.Namespace,
+		MetricsBindAddress: "0",
+		LeaderElection:     false,
+		Port:               int(e.Config.WebhookServerPort),
+		Host:               "0.0.0.0",
+	})
 
 	return
 }
 
 func (e *Environment) startOperator() chan struct{} {
 	stop := make(chan struct{})
-	go e.mgr.Start(stop)
+	go func() {
+		err := e.mgr.Start(stop)
+		if err != nil {
+			panic(err)
+		}
+	}()
 	return stop
 }
 

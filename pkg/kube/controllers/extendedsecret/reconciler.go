@@ -2,7 +2,6 @@ package extendedsecret
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -123,15 +122,9 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 }
 
 func (r *ReconcileExtendedSecret) updateExSecret(ctx context.Context, instance *esv1.ExtendedSecret) error {
-	op, err := controllerutil.CreateOrUpdate(ctx, r.client, instance.DeepCopy(), func(obj runtime.Object) error {
-		es, ok := obj.(*esv1.ExtendedSecret)
-		if !ok {
-			return fmt.Errorf("object is not a ExtendedSecret")
-		}
-
-		if !es.Status.Generated {
-			es.Status.Generated = true
-		}
+	obj := instance.DeepCopy()
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
+		obj.Status.Generated = true
 		return nil
 	})
 	if err != nil {
@@ -316,12 +309,9 @@ func (r *ReconcileExtendedSecret) createSecret(ctx context.Context, instance *es
 		return errors.Wrapf(err, "error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.GetName(), instance.GetName(), instance.GetNamespace())
 	}
 
-	op, err := controllerutil.CreateOrUpdate(ctx, r.client, secret.DeepCopy(), func(obj runtime.Object) error {
-		s, ok := obj.(*corev1.Secret)
-		if !ok {
-			return fmt.Errorf("object is not a Secret")
-		}
-		secret.DeepCopyInto(s)
+	obj := secret.DeepCopy()
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
+		secret.DeepCopyInto(obj)
 		return nil
 	})
 	if err != nil {

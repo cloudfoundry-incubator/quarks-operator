@@ -2,16 +2,16 @@
 package fakes
 
 import (
-	sync "sync"
+	"sync"
 
-	meta "k8s.io/apimachinery/pkg/api/meta"
-	runtime "k8s.io/apimachinery/pkg/runtime"
-	rest "k8s.io/client-go/rest"
-	record "k8s.io/client-go/tools/record"
-	cache "sigs.k8s.io/controller-runtime/pkg/cache"
-	client "sigs.k8s.io/controller-runtime/pkg/client"
-	manager "sigs.k8s.io/controller-runtime/pkg/manager"
-	types "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 type FakeManager struct {
@@ -26,15 +26,15 @@ type FakeManager struct {
 	addReturnsOnCall map[int]struct {
 		result1 error
 	}
-	GetAdmissionDecoderStub        func() types.Decoder
-	getAdmissionDecoderMutex       sync.RWMutex
-	getAdmissionDecoderArgsForCall []struct {
+	GetAPIReaderStub        func() client.Reader
+	getAPIReaderMutex       sync.RWMutex
+	getAPIReaderArgsForCall []struct {
 	}
-	getAdmissionDecoderReturns struct {
-		result1 types.Decoder
+	getAPIReaderReturns struct {
+		result1 client.Reader
 	}
-	getAdmissionDecoderReturnsOnCall map[int]struct {
-		result1 types.Decoder
+	getAPIReaderReturnsOnCall map[int]struct {
+		result1 client.Reader
 	}
 	GetCacheStub        func() cache.Cache
 	getCacheMutex       sync.RWMutex
@@ -66,6 +66,17 @@ type FakeManager struct {
 	getConfigReturnsOnCall map[int]struct {
 		result1 *rest.Config
 	}
+	GetEventRecorderForStub        func(string) record.EventRecorder
+	getEventRecorderForMutex       sync.RWMutex
+	getEventRecorderForArgsForCall []struct {
+		arg1 string
+	}
+	getEventRecorderForReturns struct {
+		result1 record.EventRecorder
+	}
+	getEventRecorderForReturnsOnCall map[int]struct {
+		result1 record.EventRecorder
+	}
 	GetFieldIndexerStub        func() client.FieldIndexer
 	getFieldIndexerMutex       sync.RWMutex
 	getFieldIndexerArgsForCall []struct {
@@ -86,17 +97,6 @@ type FakeManager struct {
 	getRESTMapperReturnsOnCall map[int]struct {
 		result1 meta.RESTMapper
 	}
-	GetRecorderStub        func(string) record.EventRecorder
-	getRecorderMutex       sync.RWMutex
-	getRecorderArgsForCall []struct {
-		arg1 string
-	}
-	getRecorderReturns struct {
-		result1 record.EventRecorder
-	}
-	getRecorderReturnsOnCall map[int]struct {
-		result1 record.EventRecorder
-	}
 	GetSchemeStub        func() *runtime.Scheme
 	getSchemeMutex       sync.RWMutex
 	getSchemeArgsForCall []struct {
@@ -106,6 +106,16 @@ type FakeManager struct {
 	}
 	getSchemeReturnsOnCall map[int]struct {
 		result1 *runtime.Scheme
+	}
+	GetWebhookServerStub        func() *webhook.Server
+	getWebhookServerMutex       sync.RWMutex
+	getWebhookServerArgsForCall []struct {
+	}
+	getWebhookServerReturns struct {
+		result1 *webhook.Server
+	}
+	getWebhookServerReturnsOnCall map[int]struct {
+		result1 *webhook.Server
 	}
 	SetFieldsStub        func(interface{}) error
 	setFieldsMutex       sync.RWMutex
@@ -193,55 +203,55 @@ func (fake *FakeManager) AddReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeManager) GetAdmissionDecoder() types.Decoder {
-	fake.getAdmissionDecoderMutex.Lock()
-	ret, specificReturn := fake.getAdmissionDecoderReturnsOnCall[len(fake.getAdmissionDecoderArgsForCall)]
-	fake.getAdmissionDecoderArgsForCall = append(fake.getAdmissionDecoderArgsForCall, struct {
+func (fake *FakeManager) GetAPIReader() client.Reader {
+	fake.getAPIReaderMutex.Lock()
+	ret, specificReturn := fake.getAPIReaderReturnsOnCall[len(fake.getAPIReaderArgsForCall)]
+	fake.getAPIReaderArgsForCall = append(fake.getAPIReaderArgsForCall, struct {
 	}{})
-	fake.recordInvocation("GetAdmissionDecoder", []interface{}{})
-	fake.getAdmissionDecoderMutex.Unlock()
-	if fake.GetAdmissionDecoderStub != nil {
-		return fake.GetAdmissionDecoderStub()
+	fake.recordInvocation("GetAPIReader", []interface{}{})
+	fake.getAPIReaderMutex.Unlock()
+	if fake.GetAPIReaderStub != nil {
+		return fake.GetAPIReaderStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.getAdmissionDecoderReturns
+	fakeReturns := fake.getAPIReaderReturns
 	return fakeReturns.result1
 }
 
-func (fake *FakeManager) GetAdmissionDecoderCallCount() int {
-	fake.getAdmissionDecoderMutex.RLock()
-	defer fake.getAdmissionDecoderMutex.RUnlock()
-	return len(fake.getAdmissionDecoderArgsForCall)
+func (fake *FakeManager) GetAPIReaderCallCount() int {
+	fake.getAPIReaderMutex.RLock()
+	defer fake.getAPIReaderMutex.RUnlock()
+	return len(fake.getAPIReaderArgsForCall)
 }
 
-func (fake *FakeManager) GetAdmissionDecoderCalls(stub func() types.Decoder) {
-	fake.getAdmissionDecoderMutex.Lock()
-	defer fake.getAdmissionDecoderMutex.Unlock()
-	fake.GetAdmissionDecoderStub = stub
+func (fake *FakeManager) GetAPIReaderCalls(stub func() client.Reader) {
+	fake.getAPIReaderMutex.Lock()
+	defer fake.getAPIReaderMutex.Unlock()
+	fake.GetAPIReaderStub = stub
 }
 
-func (fake *FakeManager) GetAdmissionDecoderReturns(result1 types.Decoder) {
-	fake.getAdmissionDecoderMutex.Lock()
-	defer fake.getAdmissionDecoderMutex.Unlock()
-	fake.GetAdmissionDecoderStub = nil
-	fake.getAdmissionDecoderReturns = struct {
-		result1 types.Decoder
+func (fake *FakeManager) GetAPIReaderReturns(result1 client.Reader) {
+	fake.getAPIReaderMutex.Lock()
+	defer fake.getAPIReaderMutex.Unlock()
+	fake.GetAPIReaderStub = nil
+	fake.getAPIReaderReturns = struct {
+		result1 client.Reader
 	}{result1}
 }
 
-func (fake *FakeManager) GetAdmissionDecoderReturnsOnCall(i int, result1 types.Decoder) {
-	fake.getAdmissionDecoderMutex.Lock()
-	defer fake.getAdmissionDecoderMutex.Unlock()
-	fake.GetAdmissionDecoderStub = nil
-	if fake.getAdmissionDecoderReturnsOnCall == nil {
-		fake.getAdmissionDecoderReturnsOnCall = make(map[int]struct {
-			result1 types.Decoder
+func (fake *FakeManager) GetAPIReaderReturnsOnCall(i int, result1 client.Reader) {
+	fake.getAPIReaderMutex.Lock()
+	defer fake.getAPIReaderMutex.Unlock()
+	fake.GetAPIReaderStub = nil
+	if fake.getAPIReaderReturnsOnCall == nil {
+		fake.getAPIReaderReturnsOnCall = make(map[int]struct {
+			result1 client.Reader
 		})
 	}
-	fake.getAdmissionDecoderReturnsOnCall[i] = struct {
-		result1 types.Decoder
+	fake.getAPIReaderReturnsOnCall[i] = struct {
+		result1 client.Reader
 	}{result1}
 }
 
@@ -401,6 +411,66 @@ func (fake *FakeManager) GetConfigReturnsOnCall(i int, result1 *rest.Config) {
 	}{result1}
 }
 
+func (fake *FakeManager) GetEventRecorderFor(arg1 string) record.EventRecorder {
+	fake.getEventRecorderForMutex.Lock()
+	ret, specificReturn := fake.getEventRecorderForReturnsOnCall[len(fake.getEventRecorderForArgsForCall)]
+	fake.getEventRecorderForArgsForCall = append(fake.getEventRecorderForArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("GetEventRecorderFor", []interface{}{arg1})
+	fake.getEventRecorderForMutex.Unlock()
+	if fake.GetEventRecorderForStub != nil {
+		return fake.GetEventRecorderForStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.getEventRecorderForReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeManager) GetEventRecorderForCallCount() int {
+	fake.getEventRecorderForMutex.RLock()
+	defer fake.getEventRecorderForMutex.RUnlock()
+	return len(fake.getEventRecorderForArgsForCall)
+}
+
+func (fake *FakeManager) GetEventRecorderForCalls(stub func(string) record.EventRecorder) {
+	fake.getEventRecorderForMutex.Lock()
+	defer fake.getEventRecorderForMutex.Unlock()
+	fake.GetEventRecorderForStub = stub
+}
+
+func (fake *FakeManager) GetEventRecorderForArgsForCall(i int) string {
+	fake.getEventRecorderForMutex.RLock()
+	defer fake.getEventRecorderForMutex.RUnlock()
+	argsForCall := fake.getEventRecorderForArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeManager) GetEventRecorderForReturns(result1 record.EventRecorder) {
+	fake.getEventRecorderForMutex.Lock()
+	defer fake.getEventRecorderForMutex.Unlock()
+	fake.GetEventRecorderForStub = nil
+	fake.getEventRecorderForReturns = struct {
+		result1 record.EventRecorder
+	}{result1}
+}
+
+func (fake *FakeManager) GetEventRecorderForReturnsOnCall(i int, result1 record.EventRecorder) {
+	fake.getEventRecorderForMutex.Lock()
+	defer fake.getEventRecorderForMutex.Unlock()
+	fake.GetEventRecorderForStub = nil
+	if fake.getEventRecorderForReturnsOnCall == nil {
+		fake.getEventRecorderForReturnsOnCall = make(map[int]struct {
+			result1 record.EventRecorder
+		})
+	}
+	fake.getEventRecorderForReturnsOnCall[i] = struct {
+		result1 record.EventRecorder
+	}{result1}
+}
+
 func (fake *FakeManager) GetFieldIndexer() client.FieldIndexer {
 	fake.getFieldIndexerMutex.Lock()
 	ret, specificReturn := fake.getFieldIndexerReturnsOnCall[len(fake.getFieldIndexerArgsForCall)]
@@ -505,66 +575,6 @@ func (fake *FakeManager) GetRESTMapperReturnsOnCall(i int, result1 meta.RESTMapp
 	}{result1}
 }
 
-func (fake *FakeManager) GetRecorder(arg1 string) record.EventRecorder {
-	fake.getRecorderMutex.Lock()
-	ret, specificReturn := fake.getRecorderReturnsOnCall[len(fake.getRecorderArgsForCall)]
-	fake.getRecorderArgsForCall = append(fake.getRecorderArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.recordInvocation("GetRecorder", []interface{}{arg1})
-	fake.getRecorderMutex.Unlock()
-	if fake.GetRecorderStub != nil {
-		return fake.GetRecorderStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.getRecorderReturns
-	return fakeReturns.result1
-}
-
-func (fake *FakeManager) GetRecorderCallCount() int {
-	fake.getRecorderMutex.RLock()
-	defer fake.getRecorderMutex.RUnlock()
-	return len(fake.getRecorderArgsForCall)
-}
-
-func (fake *FakeManager) GetRecorderCalls(stub func(string) record.EventRecorder) {
-	fake.getRecorderMutex.Lock()
-	defer fake.getRecorderMutex.Unlock()
-	fake.GetRecorderStub = stub
-}
-
-func (fake *FakeManager) GetRecorderArgsForCall(i int) string {
-	fake.getRecorderMutex.RLock()
-	defer fake.getRecorderMutex.RUnlock()
-	argsForCall := fake.getRecorderArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *FakeManager) GetRecorderReturns(result1 record.EventRecorder) {
-	fake.getRecorderMutex.Lock()
-	defer fake.getRecorderMutex.Unlock()
-	fake.GetRecorderStub = nil
-	fake.getRecorderReturns = struct {
-		result1 record.EventRecorder
-	}{result1}
-}
-
-func (fake *FakeManager) GetRecorderReturnsOnCall(i int, result1 record.EventRecorder) {
-	fake.getRecorderMutex.Lock()
-	defer fake.getRecorderMutex.Unlock()
-	fake.GetRecorderStub = nil
-	if fake.getRecorderReturnsOnCall == nil {
-		fake.getRecorderReturnsOnCall = make(map[int]struct {
-			result1 record.EventRecorder
-		})
-	}
-	fake.getRecorderReturnsOnCall[i] = struct {
-		result1 record.EventRecorder
-	}{result1}
-}
-
 func (fake *FakeManager) GetScheme() *runtime.Scheme {
 	fake.getSchemeMutex.Lock()
 	ret, specificReturn := fake.getSchemeReturnsOnCall[len(fake.getSchemeArgsForCall)]
@@ -614,6 +624,58 @@ func (fake *FakeManager) GetSchemeReturnsOnCall(i int, result1 *runtime.Scheme) 
 	}
 	fake.getSchemeReturnsOnCall[i] = struct {
 		result1 *runtime.Scheme
+	}{result1}
+}
+
+func (fake *FakeManager) GetWebhookServer() *webhook.Server {
+	fake.getWebhookServerMutex.Lock()
+	ret, specificReturn := fake.getWebhookServerReturnsOnCall[len(fake.getWebhookServerArgsForCall)]
+	fake.getWebhookServerArgsForCall = append(fake.getWebhookServerArgsForCall, struct {
+	}{})
+	fake.recordInvocation("GetWebhookServer", []interface{}{})
+	fake.getWebhookServerMutex.Unlock()
+	if fake.GetWebhookServerStub != nil {
+		return fake.GetWebhookServerStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.getWebhookServerReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeManager) GetWebhookServerCallCount() int {
+	fake.getWebhookServerMutex.RLock()
+	defer fake.getWebhookServerMutex.RUnlock()
+	return len(fake.getWebhookServerArgsForCall)
+}
+
+func (fake *FakeManager) GetWebhookServerCalls(stub func() *webhook.Server) {
+	fake.getWebhookServerMutex.Lock()
+	defer fake.getWebhookServerMutex.Unlock()
+	fake.GetWebhookServerStub = stub
+}
+
+func (fake *FakeManager) GetWebhookServerReturns(result1 *webhook.Server) {
+	fake.getWebhookServerMutex.Lock()
+	defer fake.getWebhookServerMutex.Unlock()
+	fake.GetWebhookServerStub = nil
+	fake.getWebhookServerReturns = struct {
+		result1 *webhook.Server
+	}{result1}
+}
+
+func (fake *FakeManager) GetWebhookServerReturnsOnCall(i int, result1 *webhook.Server) {
+	fake.getWebhookServerMutex.Lock()
+	defer fake.getWebhookServerMutex.Unlock()
+	fake.GetWebhookServerStub = nil
+	if fake.getWebhookServerReturnsOnCall == nil {
+		fake.getWebhookServerReturnsOnCall = make(map[int]struct {
+			result1 *webhook.Server
+		})
+	}
+	fake.getWebhookServerReturnsOnCall[i] = struct {
+		result1 *webhook.Server
 	}{result1}
 }
 
@@ -742,22 +804,24 @@ func (fake *FakeManager) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.addMutex.RLock()
 	defer fake.addMutex.RUnlock()
-	fake.getAdmissionDecoderMutex.RLock()
-	defer fake.getAdmissionDecoderMutex.RUnlock()
+	fake.getAPIReaderMutex.RLock()
+	defer fake.getAPIReaderMutex.RUnlock()
 	fake.getCacheMutex.RLock()
 	defer fake.getCacheMutex.RUnlock()
 	fake.getClientMutex.RLock()
 	defer fake.getClientMutex.RUnlock()
 	fake.getConfigMutex.RLock()
 	defer fake.getConfigMutex.RUnlock()
+	fake.getEventRecorderForMutex.RLock()
+	defer fake.getEventRecorderForMutex.RUnlock()
 	fake.getFieldIndexerMutex.RLock()
 	defer fake.getFieldIndexerMutex.RUnlock()
 	fake.getRESTMapperMutex.RLock()
 	defer fake.getRESTMapperMutex.RUnlock()
-	fake.getRecorderMutex.RLock()
-	defer fake.getRecorderMutex.RUnlock()
 	fake.getSchemeMutex.RLock()
 	defer fake.getSchemeMutex.RUnlock()
+	fake.getWebhookServerMutex.RLock()
+	defer fake.getWebhookServerMutex.RUnlock()
 	fake.setFieldsMutex.RLock()
 	defer fake.setFieldsMutex.RUnlock()
 	fake.startMutex.RLock()
