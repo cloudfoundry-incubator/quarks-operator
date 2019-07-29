@@ -1,6 +1,7 @@
 package manifest
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -105,6 +106,9 @@ func (dg *InstanceGroupResolver) resolveManifest() error {
 // collectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
 func (dg *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 	for _, instanceGroup := range dg.manifest.InstanceGroups {
+		serviceName := fmt.Sprintf("%s-%s", dg.manifest.Name, instanceGroup.Name)
+		linkAddress := fmt.Sprintf("%s.%s.svc.cluster.local", serviceName, dg.namespace)
+
 		for jobIdx, job := range instanceGroup.Jobs {
 			// make sure a map entry exists for the current job release
 			if _, ok := dg.jobReleaseSpecs[job.Release]; !ok {
@@ -134,7 +138,7 @@ func (dg *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 			// Create a list of fully evaluated links provided by the current job
 			// These is specified in the job release job.MF file
 			if spec.Provides != nil {
-				err := dg.jobProviderLinks.Add(job, spec, jobsInstances)
+				err := dg.jobProviderLinks.Add(job, spec, jobsInstances, linkAddress)
 				if err != nil {
 					return errors.Wrapf(err, "Collecting release spec and provider links failed for %s", job.Name)
 				}
@@ -320,6 +324,7 @@ func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[st
 		}
 
 		currentJob.Properties.BOSHContainerization.Consumes[providerName] = JobLink{
+			Address:    link.Address,
 			Instances:  link.Instances,
 			Properties: link.Properties,
 		}

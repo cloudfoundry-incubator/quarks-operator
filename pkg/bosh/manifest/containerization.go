@@ -42,6 +42,7 @@ type JobInstance struct {
 // JobLink describes links inside a job properties
 // bosh_containerization.
 type JobLink struct {
+	Address    string                 `json:"address"`
 	Instances  []JobInstance          `json:"instances"`
 	Properties map[string]interface{} `json:"properties"`
 }

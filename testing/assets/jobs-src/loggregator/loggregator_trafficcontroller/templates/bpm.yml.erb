@@ -20,7 +20,8 @@ processes:
       TRAFFIC_CONTROLLER_METRIC_EMITTER_INTERVAL: "<%= p('metric_emitter.interval') %>"
       TRAFFIC_CONTROLLER_HEALTH_ADDR: "<%= p('traffic_controller.health_addr') %>"
       TRAFFIC_CONTROLLER_DISABLE_ACCESS_CONTROL: "<%= p("traffic_controller.disable_access_control") %>"
-      
+
+      FOOBARWITHLINKADDRESS: <%= link('doppler').address %>
       FOOBARWITHLINKVALUES: <%= link('doppler').p("fooprop") %>
       FOOBARWITHLINKNESTEDVALUES: <%= link('doppler').p("doppler.grpc_port") %>
       FOOBARWITHLINKINSTANCESINDEX: <%= link('doppler').instances[0].index %>
