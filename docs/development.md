@@ -3,8 +3,8 @@
 - [Development](#development)
   - [Requirements](#requirements)
   - [Dependencies](#dependencies)
-  - [Publishing](#publishing)
   - [Creating a new Resource and Controller](#creating-a-new-resource-and-controller)
+    - [Reconcile Results](#reconcile-results)
     - [Testing](#testing)
   - [Create-Or-Update pattern](#create-or-update-pattern)
   - [Logging and Events](#logging-and-events)
@@ -25,8 +25,6 @@ Run with libraries fetched via go modules:
 ```bash
 export GO111MODULE=on
 ```
-
-## Publishing
 
 ## Creating a new Resource and Controller
 
@@ -159,6 +157,17 @@ export GO111MODULE=on
 - create a custom resource definition in `deploy/helm/cf-operator/templates/`
 - add the custom resource definition to `bin/apply-crds`
 
+### Reconcile Results
+
+	// RequeueOnError will requeue if reconcile also returns an error
+	RequeueOnError = reconcile.Result{}
+	// Requeue will requeue the request, behaviour is different than returning an error
+	Requeue = reconcile.Result{Requeue: true}
+	// RequeueAfterDefault requeues after the default, unless reconcile also returns an error
+	RequeueAfterDefault = reconcile.Result{RequeueAfter: config.RequeueAfter}
+	// NoRequeue does not requeue, unless reconcile also returns an error
+	NoRequeue = reconcile.Result{Requeue: false}
+
 ### Testing
 
 - create functions in `env/machine`
@@ -174,8 +183,8 @@ obj := someSecret.DeepCopy()
 _, err = controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
   if !reflect.DeepEqual(obj.Data, someSecret.Data) {
     obj.Data = someSecret.Data
-  } 
-  
+  }
+
   return nil
 })
 ```
