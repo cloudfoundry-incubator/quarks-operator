@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
+	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -54,7 +55,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		recorder = record.NewFakeRecorder(20)
 		manager = &cfakes.FakeManager{}
 		manager.GetSchemeReturns(scheme.Scheme)
-		manager.GetRecorderReturns(recorder)
+		manager.GetEventRecorderForReturns(recorder)
 		resolver = fakes.FakeResolver{}
 
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
@@ -222,14 +223,14 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 					return nil
 				})
-				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+				client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
 					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
 						object.DeepCopyInto(instance)
 					}
 					return nil
 				})
-				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 					switch object.(type) {
 					case *corev1.Secret:
 						return errors.New("fake-error")
@@ -254,14 +255,14 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 					return nil
 				})
-				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+				client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
 					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
 						object.DeepCopyInto(instance)
 					}
 					return nil
 				})
-				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 					switch object := object.(type) {
 					case *ejv1.ExtendedJob:
 						eJob := object
@@ -288,14 +289,14 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 					return nil
 				})
-				client.UpdateCalls(func(context context.Context, object runtime.Object) error {
+				client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
 					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
 						object.DeepCopyInto(instance)
 					}
 					return nil
 				})
-				client.CreateCalls(func(context context.Context, object runtime.Object) error {
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 					switch object := object.(type) {
 					case *ejv1.ExtendedJob:
 						eJob := object

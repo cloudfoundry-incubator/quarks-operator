@@ -18,13 +18,11 @@ func listStatefulSetsFromInformer(ctx context.Context, client crc.Client, exStat
 	ctxlog.Debug(ctx, "Listing StatefulSets owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
 
 	allStatefulSets := &v1beta2.StatefulSetList{}
-	err := client.List(
-		ctx,
-		&crc.ListOptions{
-			Namespace:     exStatefulSet.Namespace,
-			LabelSelector: labels.Everything(),
-		},
-		allStatefulSets)
+	err := client.List(ctx, allStatefulSets,
+		func(options *crc.ListOptions) {
+			options.Namespace = exStatefulSet.Namespace
+			options.LabelSelector = labels.Everything()
+		})
 	if err != nil {
 		return nil, err
 	}

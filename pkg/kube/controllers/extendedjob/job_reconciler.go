@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -144,19 +143,13 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 // jobPod gets the job's pod. Only single-pod jobs are supported when persisting the output, so we just get the first one.
 func (r *ReconcileJob) jobPod(ctx context.Context, name string, namespace string) (*corev1.Pod, error) {
-	selector, err := labels.Parse("job-name=" + name)
-	if err != nil {
-		return nil, err
-	}
-
 	list := &corev1.PodList{}
-	err = r.client.List(
+	err := r.client.List(
 		ctx,
-		&client.ListOptions{
-			Namespace:     namespace,
-			LabelSelector: selector,
-		},
-		list)
+		list,
+		client.InNamespace(namespace),
+		client.MatchingLabels(map[string]string{"job-name": name}),
+	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Listing job's %s pods failed.", name)
 	}
@@ -223,14 +216,10 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 				return errors.Wrapf(err, "could not create persisted output secret for ejob %s", ejob.GetName())
 			}
 		} else {
-			op, err := controllerutil.CreateOrUpdate(ctx, r.client, secret, func(obj runtime.Object) error {
-				s, ok := obj.(*corev1.Secret)
-				if !ok {
-					return errors.Errorf("object is not a Secret")
-				}
-
-				s.SetLabels(secretLabels)
-				s.StringData = data
+			obj := secret
+			op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
+				obj.SetLabels(secretLabels)
+				obj.StringData = data
 				return nil
 			})
 			if err != nil {

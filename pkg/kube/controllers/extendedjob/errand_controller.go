@@ -29,7 +29,7 @@ import (
 // trigger strategy matches
 func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	f := controllerutil.SetControllerReference
-	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-job-errand-reconciler", mgr.GetRecorder("ext-job-errand-recorder"))
+	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-job-errand-reconciler", mgr.GetEventRecorderFor("ext-job-errand-recorder"))
 	store := vss.NewVersionedSecretStore(mgr.GetClient())
 	r := NewErrandReconciler(ctx, config, mgr, f, store)
 	c, err := controller.New("ext-job-errand-controller", mgr, controller.Options{Reconciler: r})

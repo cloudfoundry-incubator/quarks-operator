@@ -64,7 +64,7 @@ var rootCmd = &cobra.Command{
 		port := viper.GetInt32("operator-webhook-service-port")
 
 		if host == "" {
-			return errors.Errorf("%s operator-webhook-service-host flag is not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST).", cfFailedMessage)
+			log.Fatal("%s operator-webhook-service-host flag is not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST).", cfFailedMessage)
 		}
 
 		config := &config.Config{
@@ -76,7 +76,13 @@ var rootCmd = &cobra.Command{
 		}
 		ctx := ctxlog.NewParentContext(log)
 
-		mgr, err := operator.NewManager(ctx, config, restConfig, manager.Options{Namespace: cfOperatorNamespace})
+		mgr, err := operator.NewManager(ctx, config, restConfig, manager.Options{
+			Namespace:          cfOperatorNamespace,
+			MetricsBindAddress: "0",
+			LeaderElection:     false,
+			Port:               int(port),
+			Host:               "0.0.0.0",
+		})
 		if err != nil {
 			return errors.Wrapf(err, cfFailedMessage)
 		}
@@ -159,7 +165,7 @@ func newLogger(options ...zap.Option) *zap.SugaredLogger {
 	}
 
 	// Make controller-runtime log using our logger
-	crlog.SetLogger(zapr.NewLogger(logger.Named("cr")))
+	crlog.SetLogger(zapr.NewLogger(logger))
 
 	return logger.Sugar()
 }

@@ -26,7 +26,7 @@ import (
 
 // AddExtendedStatefulSet creates a new ExtendedStatefulSet controller and adds it to the Manager
 func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr manager.Manager) error {
-	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-statefulset-reconciler", mgr.GetRecorder("ext-statefulset-recorder"))
+	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-statefulset-reconciler", mgr.GetEventRecorderFor("ext-statefulset-recorder"))
 	store := vss.NewVersionedSecretStore(mgr.GetClient())
 	r := NewReconciler(ctx, config, mgr, controllerutil.SetControllerReference, store)
 

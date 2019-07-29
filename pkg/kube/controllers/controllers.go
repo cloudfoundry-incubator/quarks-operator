@@ -13,7 +13,6 @@ import (
 	machinerytypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
@@ -24,9 +23,9 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 )
 
 const (
@@ -57,12 +56,12 @@ var addToSchemes = runtime.SchemeBuilder{
 	essv1.AddToScheme,
 }
 
-var addValidatingHookFuncs = []func(*zap.SugaredLogger, *config.Config, manager.Manager) (webhook.Webhook, error){
-	boshdeployment.AddBOSHDeploymentValidator,
+var validatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.OperatorWebhook{
+	boshdeployment.NewBOSHDeploymentValidator,
 }
 
-var addMutatingHookFuncs = []func(*zap.SugaredLogger, *config.Config, manager.Manager) (webhook.Webhook, error){
-	extendedstatefulset.AddPod,
+var mutatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.OperatorWebhook{
+	extendedstatefulset.NewExtendedStatefulsetPodMutator,
 }
 
 // AddToManager adds all Controllers to the Manager
@@ -84,52 +83,32 @@ func AddToScheme(s *runtime.Scheme) error {
 func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, generator credsgen.Generator) error {
 	ctxlog.Infof(ctx, "Setting up webhook server on %s:%d", config.WebhookServerHost, config.WebhookServerPort)
 
-	webhookConfig := NewWebhookConfig(m.GetClient(), config, generator, WebhookConfigPrefix+config.Namespace)
-
-	hookServer, err := webhook.NewServer("cf-operator", m, webhook.ServerOptions{
-		Port:                          config.WebhookServerPort,
-		CertDir:                       webhookConfig.CertDir,
-		DisableWebhookConfigInstaller: util.Bool(true),
-		BootstrapOptions: &webhook.BootstrapOptions{
-			MutatingWebhookConfigName:   webhookConfig.ConfigName,
-			ValidatingWebhookConfigName: webhookConfig.ConfigName,
-			Host:                        &config.WebhookServerHost,
-		},
-	})
-
-	if err != nil {
-		return errors.Wrap(err, "unable to create a new webhook server")
-	}
-
-	hookServer.Handle(HTTPReadyzEndpoint, ordinaryHTTPHandler())
-
-	log := ctxlog.ExtractLogger(ctx)
-	validatingWebhooks := []webhook.Webhook{}
-	for _, f := range addValidatingHookFuncs {
-		wh, err := f(log, config, m)
-		if err != nil {
-			return err
-		}
-		validatingWebhooks = append(validatingWebhooks, wh)
-	}
-
-	mutatingWebhooks := []webhook.Webhook{}
-	for _, f := range addMutatingHookFuncs {
-		wh, err := f(log, config, m)
-		if err != nil {
-			return err
-		}
-		mutatingWebhooks = append(mutatingWebhooks, wh)
-	}
-
-	err = hookServer.Register(append(validatingWebhooks, mutatingWebhooks...)...)
-	if err != nil {
-		return errors.Wrap(err, "unable to register hooks  with the admission server")
-	}
-
-	err = setOperatorNamespaceLabel(ctx, config, m.GetClient())
+	ctxlog.Info(ctx, "Setting a cf-operator namespace label")
+	err := setOperatorNamespaceLabel(ctx, config, m.GetClient())
 	if err != nil {
 		return errors.Wrap(err, "setting the operator namespace label")
+	}
+
+	webhookConfig := NewWebhookConfig(m.GetClient(), config, generator, WebhookConfigPrefix+config.Namespace)
+
+	hookServer := m.GetWebhookServer()
+	hookServer.CertDir = webhookConfig.CertDir
+
+	hookServer.Register(HTTPReadyzEndpoint, ordinaryHTTPHandler())
+
+	validatingWebhooks := make([]*wh.OperatorWebhook, len(validatingHookFuncs))
+	log := ctxlog.ExtractLogger(ctx)
+	for idx, f := range validatingHookFuncs {
+		hook := f(log, config)
+		validatingWebhooks[idx] = hook
+		hookServer.Register(hook.Path, hook.Webhook)
+	}
+
+	mutatingWebhooks := make([]*wh.OperatorWebhook, len(mutatingHookFuncs))
+	for idx, f := range mutatingHookFuncs {
+		hook := f(log, config)
+		mutatingWebhooks[idx] = hook
+		hookServer.Register(hook.Path, hook.Webhook)
 	}
 
 	ctxlog.Info(ctx, "generating webhook certificates")
@@ -150,7 +129,7 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 		return errors.Wrap(err, "generating the webhook server configuration")
 	}
 
-	return err
+	return nil
 }
 
 func ordinaryHTTPHandler() http.Handler {

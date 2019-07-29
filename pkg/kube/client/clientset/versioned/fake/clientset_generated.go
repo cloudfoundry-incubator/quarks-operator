@@ -71,18 +71,8 @@ func (c *Clientset) BoshdeploymentV1alpha1() boshdeploymentv1alpha1.Boshdeployme
 	return &fakeboshdeploymentv1alpha1.FakeBoshdeploymentV1alpha1{Fake: &c.Fake}
 }
 
-// Boshdeployment retrieves the BoshdeploymentV1alpha1Client
-func (c *Clientset) Boshdeployment() boshdeploymentv1alpha1.BoshdeploymentV1alpha1Interface {
-	return &fakeboshdeploymentv1alpha1.FakeBoshdeploymentV1alpha1{Fake: &c.Fake}
-}
-
 // ExtendedjobV1alpha1 retrieves the ExtendedjobV1alpha1Client
 func (c *Clientset) ExtendedjobV1alpha1() extendedjobv1alpha1.ExtendedjobV1alpha1Interface {
-	return &fakeextendedjobv1alpha1.FakeExtendedjobV1alpha1{Fake: &c.Fake}
-}
-
-// Extendedjob retrieves the ExtendedjobV1alpha1Client
-func (c *Clientset) Extendedjob() extendedjobv1alpha1.ExtendedjobV1alpha1Interface {
 	return &fakeextendedjobv1alpha1.FakeExtendedjobV1alpha1{Fake: &c.Fake}
 }
 
@@ -91,17 +81,7 @@ func (c *Clientset) ExtendedsecretV1alpha1() extendedsecretv1alpha1.Extendedsecr
 	return &fakeextendedsecretv1alpha1.FakeExtendedsecretV1alpha1{Fake: &c.Fake}
 }
 
-// Extendedsecret retrieves the ExtendedsecretV1alpha1Client
-func (c *Clientset) Extendedsecret() extendedsecretv1alpha1.ExtendedsecretV1alpha1Interface {
-	return &fakeextendedsecretv1alpha1.FakeExtendedsecretV1alpha1{Fake: &c.Fake}
-}
-
 // ExtendedstatefulsetV1alpha1 retrieves the ExtendedstatefulsetV1alpha1Client
 func (c *Clientset) ExtendedstatefulsetV1alpha1() extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Interface {
-	return &fakeextendedstatefulsetv1alpha1.FakeExtendedstatefulsetV1alpha1{Fake: &c.Fake}
-}
-
-// Extendedstatefulset retrieves the ExtendedstatefulsetV1alpha1Client
-func (c *Clientset) Extendedstatefulset() extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Interface {
 	return &fakeextendedstatefulsetv1alpha1.FakeExtendedstatefulsetV1alpha1{Fake: &c.Fake}
 }

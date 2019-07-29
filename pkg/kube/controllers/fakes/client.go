@@ -2,20 +2,21 @@
 package fakes
 
 import (
-	context "context"
-	sync "sync"
+	"context"
+	"sync"
 
-	runtime "k8s.io/apimachinery/pkg/runtime"
-	types "k8s.io/apimachinery/pkg/types"
-	client "sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type FakeClient struct {
-	CreateStub        func(context.Context, runtime.Object) error
+	CreateStub        func(context.Context, runtime.Object, ...client.CreateOptionFunc) error
 	createMutex       sync.RWMutex
 	createArgsForCall []struct {
 		arg1 context.Context
 		arg2 runtime.Object
+		arg3 []client.CreateOptionFunc
 	}
 	createReturns struct {
 		result1 error
@@ -49,17 +50,31 @@ type FakeClient struct {
 	getReturnsOnCall map[int]struct {
 		result1 error
 	}
-	ListStub        func(context.Context, *client.ListOptions, runtime.Object) error
+	ListStub        func(context.Context, runtime.Object, ...client.ListOptionFunc) error
 	listMutex       sync.RWMutex
 	listArgsForCall []struct {
 		arg1 context.Context
-		arg2 *client.ListOptions
-		arg3 runtime.Object
+		arg2 runtime.Object
+		arg3 []client.ListOptionFunc
 	}
 	listReturns struct {
 		result1 error
 	}
 	listReturnsOnCall map[int]struct {
+		result1 error
+	}
+	PatchStub        func(context.Context, runtime.Object, client.Patch, ...client.PatchOptionFunc) error
+	patchMutex       sync.RWMutex
+	patchArgsForCall []struct {
+		arg1 context.Context
+		arg2 runtime.Object
+		arg3 client.Patch
+		arg4 []client.PatchOptionFunc
+	}
+	patchReturns struct {
+		result1 error
+	}
+	patchReturnsOnCall map[int]struct {
 		result1 error
 	}
 	StatusStub        func() client.StatusWriter
@@ -72,11 +87,12 @@ type FakeClient struct {
 	statusReturnsOnCall map[int]struct {
 		result1 client.StatusWriter
 	}
-	UpdateStub        func(context.Context, runtime.Object) error
+	UpdateStub        func(context.Context, runtime.Object, ...client.UpdateOptionFunc) error
 	updateMutex       sync.RWMutex
 	updateArgsForCall []struct {
 		arg1 context.Context
 		arg2 runtime.Object
+		arg3 []client.UpdateOptionFunc
 	}
 	updateReturns struct {
 		result1 error
@@ -88,17 +104,18 @@ type FakeClient struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeClient) Create(arg1 context.Context, arg2 runtime.Object) error {
+func (fake *FakeClient) Create(arg1 context.Context, arg2 runtime.Object, arg3 ...client.CreateOptionFunc) error {
 	fake.createMutex.Lock()
 	ret, specificReturn := fake.createReturnsOnCall[len(fake.createArgsForCall)]
 	fake.createArgsForCall = append(fake.createArgsForCall, struct {
 		arg1 context.Context
 		arg2 runtime.Object
-	}{arg1, arg2})
-	fake.recordInvocation("Create", []interface{}{arg1, arg2})
+		arg3 []client.CreateOptionFunc
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("Create", []interface{}{arg1, arg2, arg3})
 	fake.createMutex.Unlock()
 	if fake.CreateStub != nil {
-		return fake.CreateStub(arg1, arg2)
+		return fake.CreateStub(arg1, arg2, arg3...)
 	}
 	if specificReturn {
 		return ret.result1
@@ -113,17 +130,17 @@ func (fake *FakeClient) CreateCallCount() int {
 	return len(fake.createArgsForCall)
 }
 
-func (fake *FakeClient) CreateCalls(stub func(context.Context, runtime.Object) error) {
+func (fake *FakeClient) CreateCalls(stub func(context.Context, runtime.Object, ...client.CreateOptionFunc) error) {
 	fake.createMutex.Lock()
 	defer fake.createMutex.Unlock()
 	fake.CreateStub = stub
 }
 
-func (fake *FakeClient) CreateArgsForCall(i int) (context.Context, runtime.Object) {
+func (fake *FakeClient) CreateArgsForCall(i int) (context.Context, runtime.Object, []client.CreateOptionFunc) {
 	fake.createMutex.RLock()
 	defer fake.createMutex.RUnlock()
 	argsForCall := fake.createArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeClient) CreateReturns(result1 error) {
@@ -273,18 +290,18 @@ func (fake *FakeClient) GetReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeClient) List(arg1 context.Context, arg2 *client.ListOptions, arg3 runtime.Object) error {
+func (fake *FakeClient) List(arg1 context.Context, arg2 runtime.Object, arg3 ...client.ListOptionFunc) error {
 	fake.listMutex.Lock()
 	ret, specificReturn := fake.listReturnsOnCall[len(fake.listArgsForCall)]
 	fake.listArgsForCall = append(fake.listArgsForCall, struct {
 		arg1 context.Context
-		arg2 *client.ListOptions
-		arg3 runtime.Object
+		arg2 runtime.Object
+		arg3 []client.ListOptionFunc
 	}{arg1, arg2, arg3})
 	fake.recordInvocation("List", []interface{}{arg1, arg2, arg3})
 	fake.listMutex.Unlock()
 	if fake.ListStub != nil {
-		return fake.ListStub(arg1, arg2, arg3)
+		return fake.ListStub(arg1, arg2, arg3...)
 	}
 	if specificReturn {
 		return ret.result1
@@ -299,13 +316,13 @@ func (fake *FakeClient) ListCallCount() int {
 	return len(fake.listArgsForCall)
 }
 
-func (fake *FakeClient) ListCalls(stub func(context.Context, *client.ListOptions, runtime.Object) error) {
+func (fake *FakeClient) ListCalls(stub func(context.Context, runtime.Object, ...client.ListOptionFunc) error) {
 	fake.listMutex.Lock()
 	defer fake.listMutex.Unlock()
 	fake.ListStub = stub
 }
 
-func (fake *FakeClient) ListArgsForCall(i int) (context.Context, *client.ListOptions, runtime.Object) {
+func (fake *FakeClient) ListArgsForCall(i int) (context.Context, runtime.Object, []client.ListOptionFunc) {
 	fake.listMutex.RLock()
 	defer fake.listMutex.RUnlock()
 	argsForCall := fake.listArgsForCall[i]
@@ -331,6 +348,69 @@ func (fake *FakeClient) ListReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.listReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeClient) Patch(arg1 context.Context, arg2 runtime.Object, arg3 client.Patch, arg4 ...client.PatchOptionFunc) error {
+	fake.patchMutex.Lock()
+	ret, specificReturn := fake.patchReturnsOnCall[len(fake.patchArgsForCall)]
+	fake.patchArgsForCall = append(fake.patchArgsForCall, struct {
+		arg1 context.Context
+		arg2 runtime.Object
+		arg3 client.Patch
+		arg4 []client.PatchOptionFunc
+	}{arg1, arg2, arg3, arg4})
+	fake.recordInvocation("Patch", []interface{}{arg1, arg2, arg3, arg4})
+	fake.patchMutex.Unlock()
+	if fake.PatchStub != nil {
+		return fake.PatchStub(arg1, arg2, arg3, arg4...)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.patchReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeClient) PatchCallCount() int {
+	fake.patchMutex.RLock()
+	defer fake.patchMutex.RUnlock()
+	return len(fake.patchArgsForCall)
+}
+
+func (fake *FakeClient) PatchCalls(stub func(context.Context, runtime.Object, client.Patch, ...client.PatchOptionFunc) error) {
+	fake.patchMutex.Lock()
+	defer fake.patchMutex.Unlock()
+	fake.PatchStub = stub
+}
+
+func (fake *FakeClient) PatchArgsForCall(i int) (context.Context, runtime.Object, client.Patch, []client.PatchOptionFunc) {
+	fake.patchMutex.RLock()
+	defer fake.patchMutex.RUnlock()
+	argsForCall := fake.patchArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+}
+
+func (fake *FakeClient) PatchReturns(result1 error) {
+	fake.patchMutex.Lock()
+	defer fake.patchMutex.Unlock()
+	fake.PatchStub = nil
+	fake.patchReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeClient) PatchReturnsOnCall(i int, result1 error) {
+	fake.patchMutex.Lock()
+	defer fake.patchMutex.Unlock()
+	fake.PatchStub = nil
+	if fake.patchReturnsOnCall == nil {
+		fake.patchReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.patchReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
@@ -387,17 +467,18 @@ func (fake *FakeClient) StatusReturnsOnCall(i int, result1 client.StatusWriter) 
 	}{result1}
 }
 
-func (fake *FakeClient) Update(arg1 context.Context, arg2 runtime.Object) error {
+func (fake *FakeClient) Update(arg1 context.Context, arg2 runtime.Object, arg3 ...client.UpdateOptionFunc) error {
 	fake.updateMutex.Lock()
 	ret, specificReturn := fake.updateReturnsOnCall[len(fake.updateArgsForCall)]
 	fake.updateArgsForCall = append(fake.updateArgsForCall, struct {
 		arg1 context.Context
 		arg2 runtime.Object
-	}{arg1, arg2})
-	fake.recordInvocation("Update", []interface{}{arg1, arg2})
+		arg3 []client.UpdateOptionFunc
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("Update", []interface{}{arg1, arg2, arg3})
 	fake.updateMutex.Unlock()
 	if fake.UpdateStub != nil {
-		return fake.UpdateStub(arg1, arg2)
+		return fake.UpdateStub(arg1, arg2, arg3...)
 	}
 	if specificReturn {
 		return ret.result1
@@ -412,17 +493,17 @@ func (fake *FakeClient) UpdateCallCount() int {
 	return len(fake.updateArgsForCall)
 }
 
-func (fake *FakeClient) UpdateCalls(stub func(context.Context, runtime.Object) error) {
+func (fake *FakeClient) UpdateCalls(stub func(context.Context, runtime.Object, ...client.UpdateOptionFunc) error) {
 	fake.updateMutex.Lock()
 	defer fake.updateMutex.Unlock()
 	fake.UpdateStub = stub
 }
 
-func (fake *FakeClient) UpdateArgsForCall(i int) (context.Context, runtime.Object) {
+func (fake *FakeClient) UpdateArgsForCall(i int) (context.Context, runtime.Object, []client.UpdateOptionFunc) {
 	fake.updateMutex.RLock()
 	defer fake.updateMutex.RUnlock()
 	argsForCall := fake.updateArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeClient) UpdateReturns(result1 error) {
@@ -459,6 +540,8 @@ func (fake *FakeClient) Invocations() map[string][][]interface{} {
 	defer fake.getMutex.RUnlock()
 	fake.listMutex.RLock()
 	defer fake.listMutex.RUnlock()
+	fake.patchMutex.RLock()
+	defer fake.patchMutex.RUnlock()
 	fake.statusMutex.RLock()
 	defer fake.statusMutex.RUnlock()
 	fake.updateMutex.RLock()
