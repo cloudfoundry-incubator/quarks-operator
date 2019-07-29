@@ -50,6 +50,7 @@ var _ VersionedSecretStore = &VersionedSecretStoreImpl{}
 type VersionedSecretStore interface {
 	SetSecretReferences(ctx context.Context, namespace string, podSpec *corev1.PodSpec) error
 	Create(ctx context.Context, namespace string, ownerName string, ownerID types.UID, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error
+	CreateTargetVersion(ctx context.Context, namespace string, ownerName string, ownerID types.UID, secretName string, version int, secretData map[string]string, labels map[string]string, sourceDescription string) error
 	Get(ctx context.Context, namespace string, secretName string, version int) (*corev1.Secret, error)
 	Latest(ctx context.Context, namespace string, secretName string) (*corev1.Secret, error)
 	List(ctx context.Context, namespace string, secretName string) ([]corev1.Secret, error)
@@ -134,10 +135,21 @@ func (p VersionedSecretStoreImpl) Create(ctx context.Context, namespace string, 
 	}
 
 	version := currentVersion + 1
-	labels[LabelVersion] = strconv.Itoa(version)
+
+	return p.CreateTargetVersion(ctx, namespace, ownerName, ownerID, secretName, version, secretData, labels, sourceDescription)
+}
+
+// CreateTargetVersion creates the target version of the secret from secret data
+func (p VersionedSecretStoreImpl) CreateTargetVersion(ctx context.Context, namespace string, ownerName string, ownerID types.UID, secretName string, targetVersion int, secretData map[string]string, labels map[string]string, sourceDescription string) error {
+	// Set default targetVersion as 1
+	if targetVersion == 0 {
+		targetVersion = 1
+	}
+
+	labels[LabelVersion] = strconv.Itoa(targetVersion)
 	labels[LabelSecretKind] = VersionSecretKind
 
-	generatedSecretName, err := generateSecretName(secretName, version)
+	generatedSecretName, err := generateSecretName(secretName, targetVersion)
 	if err != nil {
 		return err
 	}

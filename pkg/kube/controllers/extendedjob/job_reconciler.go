@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"strconv"
 
 	"github.com/pkg/errors"
 
@@ -173,6 +174,15 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 		return errors.Wrapf(err, "failed to persist output for ejob %s", ejob.GetName())
 	}
 
+	// Find target version of containers' output only when output as secret version
+	targetVersion := 0
+	if ejob.Spec.Output.Versioned {
+		targetVersion, err = r.findTargetVersion(ctx, instance.Namespace, pod, ejob.Spec.Output.NamePrefix)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Iterate over the pod's containers and store the output
 	for _, c := range pod.Spec.Containers {
 		result, err := r.podLogGetter.Get(instance.GetNamespace(), pod.Name, c.Name)
@@ -208,14 +218,13 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 		}
 
 		if ejob.Spec.Output.Versioned {
-
-			// Use secretName as versioned secret name prefix: <secretName>-v<version>
-			err = r.versionedSecretStore.Create(
+			err = r.createVersionedSecret(
 				ctx,
 				instance.GetNamespace(),
 				ejob.GetName(),
 				ejob.GetUID(),
 				secretName,
+				targetVersion,
 				data,
 				secretLabels,
 				"created by extendedJob")
@@ -243,4 +252,84 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 	}
 
 	return nil
+}
+
+func (r *ReconcileJob) createVersionedSecret(ctx context.Context, namespace string, eJobName string, eJobID types.UID, secretName string, targetVersion int, data map[string]string, labels map[string]string, sourceDescription string) (err error) {
+	// Use secretName as versioned secret name prefix: <secretName>-v<version>
+	if targetVersion != 0 {
+		err = r.versionedSecretStore.CreateTargetVersion(
+			ctx,
+			namespace,
+			eJobName,
+			eJobID,
+			secretName,
+			targetVersion,
+			data,
+			labels,
+			sourceDescription)
+	} else {
+		err = r.versionedSecretStore.Create(
+			ctx,
+			namespace,
+			eJobName,
+			eJobID,
+			secretName,
+			data,
+			labels,
+			sourceDescription)
+	}
+
+	return
+}
+
+// findTargetVersion returns latest version which need to be overridden if current output secret has more then 2 different latest version secret
+// otherwise returns zero
+func (r *ReconcileJob) findTargetVersion(ctx context.Context, namespace string, pod *corev1.Pod, namePrefix string) (int, error) {
+	targetVersion := 0
+	versions := map[string]bool{}
+
+	// Check current versions of output secrets
+	for _, c := range pod.Spec.Containers {
+		secretName := namePrefix + c.Name
+		s, err := r.versionedSecretStore.Latest(ctx, namespace, secretName)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				// TODO find a way to handle new containers when EJob updates
+				// not found reason:
+				// - new EJob creation
+				// - new containers spec when EJob updates
+				versions["0"] = true
+				continue
+			}
+			return targetVersion, errors.Wrapf(err, "Getting versioned secret %s failed.", secretName)
+		}
+
+		if version, ok := s.Labels[versionedsecretstore.LabelVersion]; ok {
+			versions[version] = true
+		}
+	}
+
+	latestVersion := getLatestVersion(versions)
+	// Need to override latest versioned secret if versions contain two items
+	if len(versions) > 1 {
+		targetVersion = latestVersion
+		ctxlog.Debug(ctx, "Set secret version as '%d' only if partial", targetVersion)
+	}
+
+	return targetVersion, nil
+}
+
+func getLatestVersion(versions map[string]bool) (version int) {
+
+	for ver := range versions {
+		number, err := strconv.Atoi(ver)
+		if err != nil {
+			return version
+		}
+		if number > version {
+			version = number
+		}
+	}
+
+	return
 }
