@@ -325,7 +325,7 @@ var _ = Describe("ErrandReconciler", func() {
 					result, err := act()
 					Expect(err).ToNot(HaveOccurred())
 					Expect(result.Requeue).To(BeTrue())
-					Expect(logs.FilterMessageSnippet("Skip create job due to configMap 'config1' not found").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Skip create job 'fake-pod' due to configMap 'config1' not found").Len()).To(Equal(1))
 
 					client.GetCalls(func(ctx context.Context, nn types.NamespacedName, obj runtime.Object) error {
 						switch obj.(type) {
@@ -342,7 +342,7 @@ var _ = Describe("ErrandReconciler", func() {
 					result, err = act()
 					Expect(err).ToNot(HaveOccurred())
 					Expect(result.Requeue).To(BeTrue())
-					Expect(logs.FilterMessageSnippet("Skip create job due to secret 'secret1' not found").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Skip create job 'fake-pod' due to secret 'secret1' not found").Len()).To(Equal(1))
 				})
 			})
 		})

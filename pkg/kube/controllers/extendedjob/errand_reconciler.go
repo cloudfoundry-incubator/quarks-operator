@@ -86,8 +86,8 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		return result, err
 	}
 	if retry {
-		result.Requeue = true
-		return result, nil
+		ctxlog.Infof(ctx, "Retrying to create job '%s'", eJob.Name)
+		return reconcile.Result{Requeue: true}, nil
 	}
 
 	ctxlog.WithEvent(eJob, "CreateJob").Infof(ctx, "Created errand job for '%s'", eJob.Name)
