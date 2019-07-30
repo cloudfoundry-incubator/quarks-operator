@@ -240,16 +240,17 @@ instance_groups:
         debug: true
       quarks:
         pre_render_scripts:
-        - |
-          cd /var/vcap
-          ls -lahR
-          tee -a /var/vcap/all-releases/jobs-src/nats/nats/templates/pre-start.erb << EOT
-          while :
-          do
-            echo "this file was patched"
-            sleep 1
-          done
-          EOT
+          jobs:
+          - |
+            cd /var/vcap
+            ls -lahR
+            tee -a /var/vcap/all-releases/jobs-src/nats/nats/templates/pre-start.erb << EOT
+            while :
+            do
+              echo "this file was patched"
+              sleep 1
+            done
+            EOT
         ports:
         - name: "nats"
           protocol: "TCP"
@@ -437,8 +438,9 @@ instance_groups:
           protocol: "TCP"
           internal: 6379
         pre_render_scripts:
-        - |
-          touch /tmp
+          jobs:
+          - |
+            touch /tmp
         bpm:
           processes:
           - name: redis
@@ -950,7 +952,7 @@ instance_groups:
         - internal: 4223
           name: nats-routes
           protocol: TCP
-        pre_render_scripts: null
+        pre_render_scripts: ~
         release: ""
         run:
           healthcheck:
@@ -978,7 +980,7 @@ instance_groups:
         instances: null
         is_addon: true
         ports: null
-        pre_render_scripts: null
+        pre_render_scripts: ~
         release: ""
         run:
           healthcheck: null
@@ -1227,7 +1229,7 @@ instance_groups:
         instances: null
         is_addon: true
         ports: null
-        pre_render_scripts: null
+        pre_render_scripts: ~
         release: ""
         run:
           healthcheck: null
@@ -1849,7 +1851,7 @@ instance_groups:
         instances: null
         is_addon: true
         ports: null
-        pre_render_scripts: null
+        pre_render_scripts: ~
         release: ""
         run:
           healthcheck: null
@@ -2035,26 +2037,27 @@ instance_groups:
           name: mysql
           protocol: TCP
         pre_render_scripts:
-        - |-
-          #!/usr/bin/env bash
+          bpm:
+          - |-
+            #!/usr/bin/env bash
 
-          set -o errexit
+            set -o errexit
 
-          # Patch pre-start-setup.erb to play nice with BPM's persistent disk. Instead of checking for the
-          # existence of the directory /var/vcap/store/mysql, it checks for the existence of the file
-          # /var/vcap/store/mysql/setup_succeeded, which is also created in a command from this patch.
-          patch /var/vcap/all-releases/jobs-src/cf-mysql/mysql/templates/pre-start-setup.erb <<'EOT'
-          82,84c82,84
-          < if ! test -d ${datadir}; then
-          <   log "pre-start setup script: making ${datadir} and running /var/vcap/packages/mariadb/scripts/mysql_install_db"
-          <   mkdir -p ${datadir}
-          ---
-          > setup_control_file="${datadir}/setup_succeeded"
-          > if ! test -e "${setup_control_file}"; then
-          >   log "pre-start setup script: running /var/vcap/packages/mariadb/scripts/mysql_install_db"
-          89a90
-          >   touch "${setup_control_file}"
-          EOT
+            # Patch pre-start-setup.erb to play nice with BPM's persistent disk. Instead of checking for the
+            # existence of the directory /var/vcap/store/mysql, it checks for the existence of the file
+            # /var/vcap/store/mysql/setup_succeeded, which is also created in a command from this patch.
+            patch /var/vcap/all-releases/jobs-src/cf-mysql/mysql/templates/pre-start-setup.erb <<'EOT'
+            82,84c82,84
+            < if ! test -d ${datadir}; then
+            <   log "pre-start setup script: making ${datadir} and running /var/vcap/packages/mariadb/scripts/mysql_install_db"
+            <   mkdir -p ${datadir}
+            ---
+            > setup_control_file="${datadir}/setup_succeeded"
+            > if ! test -e "${setup_control_file}"; then
+            >   log "pre-start setup script: running /var/vcap/packages/mariadb/scripts/mysql_install_db"
+            89a90
+            >   touch "${setup_control_file}"
+            EOT
         release: ""
         run:
           healthcheck: null
@@ -2338,7 +2341,7 @@ instance_groups:
         instances: null
         is_addon: true
         ports: null
-        pre_render_scripts: null
+        pre_render_scripts: ~
         release: ""
         run:
           healthcheck: null

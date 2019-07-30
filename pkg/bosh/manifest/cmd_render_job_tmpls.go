@@ -13,6 +13,12 @@ import (
 	btg "github.com/viovanov/bosh-template-go"
 )
 
+const (
+	typeBPM        = "bpm"
+	typeIGResolver = "ig_resolver"
+	typeJobs       = "jobs"
+)
+
 // RenderJobTemplates will render templates for all jobs of the instance group
 // https://bosh.io/docs/create-release/#job-specs
 // boshManifest is a resolved manifest for a single instance group
@@ -113,59 +119,85 @@ func RenderJobTemplates(
 	return nil
 }
 
-func runPreRenderScripts(instanceGroup *InstanceGroup, silent bool) error {
-	for _, job := range instanceGroup.Jobs {
-		for idx, script := range job.Properties.Quarks.PreRenderScripts {
-			createErr := func(err error) error {
-				return errors.Wrapf(err, "failed to run pre-render script %d for job %s for instance group %s", idx, job.Name, instanceGroup.Name)
-			}
+func runRenderScript(
+	jobName string,
+	scriptType string,
+	scripts []string,
+	igName string,
+	silent bool,
+) error {
+	for idx, script := range scripts {
+		createErr := func(err error) error {
+			return errors.Wrapf(err, "failed to run %s pre-render script %d, for job %s inside instance group %s", scriptType, idx, jobName, igName)
+		}
 
-			// Save the script to a temporary location.
-			tmpFile, err := ioutil.TempFile(os.TempDir(), "script-")
+		// Save the script to a temporary location.
+		tmpFile, err := ioutil.TempFile(os.TempDir(), "script-")
+		if err != nil {
+			return createErr(err)
+		}
+		defer os.Remove(tmpFile.Name())
+		defer tmpFile.Close()
+
+		// Write the pre-render script contents.
+		if _, err = tmpFile.Write([]byte(script)); err != nil {
+			return createErr(err)
+		}
+
+		// Run the pre-render script.
+		cmd := exec.Command("/bin/bash", tmpFile.Name())
+
+		if !silent {
+			errReader, err := cmd.StderrPipe()
 			if err != nil {
 				return createErr(err)
 			}
-			defer os.Remove(tmpFile.Name())
-			defer tmpFile.Close()
-
-			// Write the pre-render script contents.
-			if _, err = tmpFile.Write([]byte(script)); err != nil {
+			outReader, err := cmd.StdoutPipe()
+			if err != nil {
 				return createErr(err)
 			}
 
-			// Run the pre-render script.
-			cmd := exec.Command("/bin/bash", tmpFile.Name())
-
-			if !silent {
-				errReader, err := cmd.StderrPipe()
-				if err != nil {
-					return createErr(err)
+			errScanner := bufio.NewScanner(errReader)
+			go func() {
+				for errScanner.Scan() {
+					fmt.Printf("pre-render-err-%d | %s\n", idx, errScanner.Text())
 				}
-				outReader, err := cmd.StdoutPipe()
-				if err != nil {
-					return createErr(err)
+			}()
+
+			outScanner := bufio.NewScanner(outReader)
+			go func() {
+				for outScanner.Scan() {
+					fmt.Printf("pre-render-out-%d | %s\n", idx, outScanner.Text())
 				}
+			}()
+		}
 
-				errScanner := bufio.NewScanner(errReader)
-				go func() {
-					for errScanner.Scan() {
-						fmt.Printf("pre-render-err-%d | %s\n", idx, errScanner.Text())
-					}
-				}()
+		if err := cmd.Run(); err != nil {
+			return createErr(err)
+		}
+	}
+	return nil
+}
+func runPreRenderScripts(instanceGroup *InstanceGroup, silent bool) error {
+	for _, job := range instanceGroup.Jobs {
 
-				outScanner := bufio.NewScanner(outReader)
-				go func() {
-					for outScanner.Scan() {
-						fmt.Printf("pre-render-out-%d | %s\n", idx, outScanner.Text())
-					}
-				}()
+		jobScripts := job.Properties.Quarks.PreRenderScripts
+
+		if len(jobScripts.BPM) > 0 {
+			if err := runRenderScript(job.Name, typeBPM, jobScripts.BPM, instanceGroup.Name, silent); err != nil {
+				return err
 			}
-
-			if err := cmd.Run(); err != nil {
-				return createErr(err)
+		}
+		if len(jobScripts.IgResolver) > 0 {
+			if err := runRenderScript(job.Name, typeIGResolver, jobScripts.IgResolver, instanceGroup.Name, silent); err != nil {
+				return err
+			}
+		}
+		if len(jobScripts.Jobs) > 0 {
+			if err := runRenderScript(job.Name, typeJobs, jobScripts.Jobs, instanceGroup.Name, silent); err != nil {
+				return err
 			}
 		}
 	}
-
 	return nil
 }

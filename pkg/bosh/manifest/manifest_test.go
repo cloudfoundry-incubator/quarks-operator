@@ -1120,7 +1120,8 @@ var _ = Describe("Manifest", func() {
 				bc := job.Properties.Quarks
 				Expect(bc).ToNot(BeNil())
 				Expect(bc.Ports).To(HaveLen(1))
-				Expect(bc.PreRenderScripts).To(HaveLen(1))
+				Expect(bc.PreRenderScripts.Jobs).To(HaveLen(1))
+				Expect(bc.PreRenderScripts.BPM).To(BeNil())
 
 				Expect(bc.BPM.Processes).To(HaveLen(1))
 				proc := bc.BPM.Processes[0]
