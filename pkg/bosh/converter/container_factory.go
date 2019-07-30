@@ -451,7 +451,7 @@ func bpmProcessContainer(
 		Lifecycle: &corev1.Lifecycle{},
 	}
 
-	// Only set when desired capabilities is not empty
+	// Only set when desired capabilities is not empty.
 	if len(process.Capabilities) != 0 {
 		container.SecurityContext.Capabilities = &corev1.Capabilities{
 			Add: capability(process.Capabilities),
