@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
@@ -42,7 +43,7 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Waiting for the pods to run")
-				err = kubectlHelper.Wait(namespace, "ready", "pod/foo-pod-1")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/foo-pod-1", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
 				err = kubectlHelper.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("%s=ready-triggered-sleep", ejv1.LabelEJobName))
@@ -67,7 +68,7 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Waiting for the pods to run")
-				err = kubectlHelper.Wait(namespace, "ready", "pod/foo-pod-1")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/foo-pod-1", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Deleting the pod created")
@@ -87,10 +88,10 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
-				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v1-0")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v1-0", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v1-1")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v1-1", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
 				yamlUpdatedFilePath := examplesDir + "extended-statefulset/exstatefulset_configs_updated.yaml"
@@ -100,10 +101,10 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
-				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v3-0")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v3-0", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v3-1")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v3-1", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking the updated value in the env")
@@ -123,10 +124,10 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
-				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-0")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-0", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
 			})
@@ -141,17 +142,17 @@ var _ = Describe("Examples", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					By("Checking for pods")
-					err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-0")
+					err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-0", kubectlHelper.PollTimeout)
 					Expect(err).ToNot(HaveOccurred())
 
-					err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1")
+					err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1", kubectlHelper.PollTimeout)
 					Expect(err).ToNot(HaveOccurred())
 
 					err = testing.RestartOperator(namespace)
 					Expect(err).ToNot(HaveOccurred())
 
 					By("Checking for pods not created")
-					err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v2-0")
+					err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v2-0", 10*time.Second)
 					Expect(err).To(HaveOccurred(), "error unexpected version of instance group is created")
 
 					By("Checking for secrets not created")
@@ -178,10 +179,10 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
-				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-0")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-0", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking the value in the config file")
