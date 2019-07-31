@@ -70,7 +70,7 @@ func (j jobCreatorImpl) createJob(ctx context.Context, eJob ejv1.ExtendedJob, po
 		err = j.client.Get(ctx, types.NamespacedName{Name: configMapName, Namespace: eJob.Namespace}, configMap)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
-				ctxlog.Debugf(ctx, "Skip create job due to configMap '%s' not found", configMapName)
+				ctxlog.Debugf(ctx, "Skip create job '%s' due to configMap '%s' not found", eJob.Name, configMapName)
 				// we want to requeue the job without error
 				retry = true
 				err = nil
@@ -89,7 +89,7 @@ func (j jobCreatorImpl) createJob(ctx context.Context, eJob ejv1.ExtendedJob, po
 		err = j.client.Get(ctx, types.NamespacedName{Name: secretName, Namespace: eJob.Namespace}, secret)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
-				ctxlog.Debugf(ctx, "Skip create job due to secret '%s' not found", secretName)
+				ctxlog.Debugf(ctx, "Skip create job '%s' due to secret '%s' not found", eJob.Name, secretName)
 				// we want to requeue the job without error
 				retry = true
 				err = nil

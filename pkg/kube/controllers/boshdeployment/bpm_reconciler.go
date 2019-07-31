@@ -77,11 +77,8 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 		}
 
 		// Error reading the object - requeue the request.
-		return reconcile.Result{
-				Requeue:      true,
-				RequeueAfter: time.Second * 5,
-			},
-			log.WithEvent(bpmSecret, "GetBPMSecret").Errorf(ctx, "Failed to get Instance Group BPM versioned secret '%s': %v", request.NamespacedName, err)
+		log.WithEvent(bpmSecret, "GetBPMSecret").Errorf(ctx, "Failed to get Instance Group BPM versioned secret '%s': %v", request.NamespacedName, err)
+		return reconcile.Result{RequeueAfter: time.Second * 5}, nil
 	}
 
 	// Get the label from the BPM Secret and read the corresponding desired manifest

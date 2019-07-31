@@ -56,9 +56,9 @@ var _ = Describe("ErrandReconciler", func() {
 		}
 
 		ejobGetStub := func(ctx context.Context, nn types.NamespacedName, obj runtime.Object) error {
-			switch obj.(type) {
+			switch obj := obj.(type) {
 			case *ejv1.ExtendedJob:
-				eJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+				eJob.DeepCopyInto(obj)
 				return nil
 			}
 			return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
@@ -274,24 +274,24 @@ var _ = Describe("ErrandReconciler", func() {
 
 				It("should trigger the job", func() {
 					client.GetCalls(func(ctx context.Context, nn types.NamespacedName, obj runtime.Object) error {
-						switch obj.(type) {
+						switch obj := obj.(type) {
 						case *ejv1.ExtendedJob:
-							eJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+							eJob.DeepCopyInto(obj)
 							return nil
 						case *corev1.ConfigMap:
-							configMap.DeepCopyInto(obj.(*corev1.ConfigMap))
+							configMap.DeepCopyInto(obj)
 							return nil
 						case *corev1.Secret:
-							secret.DeepCopyInto(obj.(*corev1.Secret))
+							secret.DeepCopyInto(obj)
 							return nil
 						}
 						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 					})
 
-					client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
-						switch object.(type) {
+					client.CreateCalls(func(context context.Context, obj runtime.Object, _ ...crc.CreateOptionFunc) error {
+						switch obj := obj.(type) {
 						case *batchv1.Job:
-							job := object.(*batchv1.Job)
+							job := obj
 							Expect(reflect.DeepEqual(job.Spec.Template.Spec, eJob.Spec.Template.Spec)).To(BeTrue())
 							return nil
 						}
@@ -314,9 +314,9 @@ var _ = Describe("ErrandReconciler", func() {
 
 				It("should skip when references are missing", func() {
 					client.GetCalls(func(ctx context.Context, nn types.NamespacedName, obj runtime.Object) error {
-						switch obj.(type) {
+						switch obj := obj.(type) {
 						case *ejv1.ExtendedJob:
-							eJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+							eJob.DeepCopyInto(obj)
 							return nil
 						}
 						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
@@ -325,15 +325,15 @@ var _ = Describe("ErrandReconciler", func() {
 					result, err := act()
 					Expect(err).ToNot(HaveOccurred())
 					Expect(result.Requeue).To(BeTrue())
-					Expect(logs.FilterMessageSnippet("Skip create job due to configMap 'config1' not found").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Skip create job 'fake-pod' due to configMap 'config1' not found").Len()).To(Equal(1))
 
 					client.GetCalls(func(ctx context.Context, nn types.NamespacedName, obj runtime.Object) error {
-						switch obj.(type) {
+						switch obj := obj.(type) {
 						case *ejv1.ExtendedJob:
-							eJob.DeepCopyInto(obj.(*ejv1.ExtendedJob))
+							eJob.DeepCopyInto(obj)
 							return nil
 						case *corev1.ConfigMap:
-							configMap.DeepCopyInto(obj.(*corev1.ConfigMap))
+							configMap.DeepCopyInto(obj)
 							return nil
 						}
 						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
@@ -342,7 +342,7 @@ var _ = Describe("ErrandReconciler", func() {
 					result, err = act()
 					Expect(err).ToNot(HaveOccurred())
 					Expect(result.Requeue).To(BeTrue())
-					Expect(logs.FilterMessageSnippet("Skip create job due to secret 'secret1' not found").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Skip create job 'fake-pod' due to secret 'secret1' not found").Len()).To(Equal(1))
 				})
 			})
 		})

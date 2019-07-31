@@ -162,9 +162,8 @@ var _ = Describe("Controllers", func() {
 					// We should be getting 2 Create calls - one for the
 					// Validation webhook, one for the Mutating Webhook
 
-					switch object.(type) {
+					switch config := object.(type) {
 					case *admissionregistrationv1beta1.MutatingWebhookConfiguration:
-						config := object.(*admissionregistrationv1beta1.MutatingWebhookConfiguration)
 						Expect(config.Name).To(Equal("cf-operator-hook-" + config.Namespace))
 						Expect(len(config.Webhooks)).To(Equal(1))
 
@@ -175,7 +174,6 @@ var _ = Describe("Controllers", func() {
 						Expect(*wh.FailurePolicy).To(Equal(admissionregistrationv1beta1.Fail))
 						return nil
 					case *admissionregistrationv1beta1.ValidatingWebhookConfiguration:
-						config := object.(*admissionregistrationv1beta1.ValidatingWebhookConfiguration)
 						Expect(config.Name).To(Equal("cf-operator-hook-" + config.Namespace))
 						Expect(len(config.Webhooks)).To(Equal(1))
 

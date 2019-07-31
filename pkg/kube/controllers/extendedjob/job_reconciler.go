@@ -103,9 +103,7 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 			err = r.persistOutput(ctx, instance, ej)
 			if err != nil {
 				ctxlog.WithEvent(instance, "PersistOutputError").Errorf(ctx, "Could not persist output: '%s'", err)
-				return reconcile.Result{
-					Requeue: false,
-				}, err
+				return reconcile.Result{Requeue: false}, nil
 			}
 		} else if instance.Status.Failed == 1 && !ej.Spec.Output.WriteOnFailure {
 			ctxlog.WithEvent(&ej, "FailedPersistingOutput").Infof(ctx, "Will not persist output of job '%s' because it failed", instance.Name)
