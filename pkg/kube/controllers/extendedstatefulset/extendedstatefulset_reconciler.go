@@ -60,7 +60,6 @@ type ReconcileExtendedStatefulSet struct {
 	setReference         setReferenceFunc
 	config               *config.Config
 	versionedSecretStore vss.VersionedSecretStore
-	obj                  runtime.Object
 }
 
 // Reconcile reads that state of the cluster for a ExtendedStatefulSet object
@@ -72,8 +71,6 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 
 	// Fetch the ExtendedStatefulSet we need to reconcile
 	exStatefulSet := &estsv1.ExtendedStatefulSet{}
-
-	var runtimeObject = r.obj
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
@@ -95,7 +92,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	}
 
 	// Get the current StatefulSet.
-	currentStatefulSet, currentVersion, err := r.getCurrentStatefulSet(ctx, exStatefulSet, runtimeObject)
+	currentStatefulSet, currentVersion, err := r.getCurrentStatefulSet(ctx, exStatefulSet)
 	if err != nil {
 		return reconcile.Result{}, ctxlog.WithEvent(exStatefulSet, "StatefulSetNotFound").Error(ctx, "Could not retrieve latest StatefulSet owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 	}
@@ -192,7 +189,7 @@ func (r *ReconcileExtendedStatefulSet) createStatefulSet(ctx context.Context, ex
 }
 
 // getCurrentStatefulSet gets the latest (by version) StatefulSet owned by the ExtendedStatefulSet
-func (r *ReconcileExtendedStatefulSet) getCurrentStatefulSet(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet, obj runtime.Object) (*v1beta2.StatefulSet, int, error) {
+func (r *ReconcileExtendedStatefulSet) getCurrentStatefulSet(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet) (*v1beta2.StatefulSet, int, error) {
 	// Default response is an empty StatefulSet with version '0' and an empty signature
 	result := &v1beta2.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
