@@ -42,10 +42,10 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
-				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-0")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-0", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pvc")
@@ -68,10 +68,10 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
-				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v1-0")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v1-0", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v1-1")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v1-1", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
 				err = kubectlHelper.WaitForPVC(namespace, "pvc-volume-management-example-extendedstatefulset-0")

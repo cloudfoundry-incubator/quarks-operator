@@ -29,7 +29,7 @@ const (
 type Kubectl struct {
 	Log          *zap.SugaredLogger
 	Namespace    string
-	pollTimeout  time.Duration
+	PollTimeout  time.Duration
 	pollInterval time.Duration
 }
 
@@ -37,14 +37,14 @@ type Kubectl struct {
 func NewKubectl() *Kubectl {
 	return &Kubectl{
 		Namespace:    "",
-		pollTimeout:  300 * time.Second,
+		PollTimeout:  300 * time.Second,
 		pollInterval: 500 * time.Millisecond,
 	}
 }
 
 // RunCommandWithCheckString runs the command specified helperin the container
 func (k *Kubectl) RunCommandWithCheckString(namespace string, podName string, commandInPod string, result string) error {
-	return wait.PollImmediate(k.pollInterval, k.pollTimeout, func() (bool, error) {
+	return wait.PollImmediate(k.pollInterval, k.PollTimeout, func() (bool, error) {
 		return k.checkString(namespace, podName, commandInPod, result)
 	})
 }
@@ -63,7 +63,7 @@ func (k *Kubectl) checkString(namespace string, podName string, commandInPod str
 
 // WaitForSecret blocks until the secret is available. It fails after the timeout.
 func (k *Kubectl) WaitForSecret(namespace string, secretName string) error {
-	return wait.PollImmediate(k.pollInterval, k.pollTimeout, func() (bool, error) {
+	return wait.PollImmediate(k.pollInterval, k.PollTimeout, func() (bool, error) {
 		return k.SecretExists(namespace, secretName)
 	})
 }
@@ -82,7 +82,7 @@ func (k *Kubectl) SecretExists(namespace string, secretName string) (bool, error
 
 // WaitForPVC blocks until the pvc is available. It fails after the timeout.
 func (k *Kubectl) WaitForPVC(namespace string, pvcName string) error {
-	return wait.PollImmediate(k.pollInterval, k.pollTimeout, func() (bool, error) {
+	return wait.PollImmediate(k.pollInterval, k.PollTimeout, func() (bool, error) {
 		return k.pvcExists(namespace, pvcName)
 	})
 }
@@ -103,8 +103,8 @@ func (k *Kubectl) pvcExists(namespace string, pvcName string) (bool, error) {
 }
 
 // Wait waits for the condition on the resource using kubectl command
-func (k *Kubectl) Wait(namespace string, requiredStatus string, resourceName string) error {
-	err := wait.PollImmediate(k.pollInterval, k.pollTimeout, func() (bool, error) {
+func (k *Kubectl) Wait(namespace string, requiredStatus string, resourceName string, customTimeout time.Duration) error {
+	err := wait.PollImmediate(k.pollInterval, customTimeout, func() (bool, error) {
 		return k.checkWait(namespace, requiredStatus, resourceName)
 	})
 
@@ -131,15 +131,15 @@ func (k *Kubectl) checkWait(namespace string, requiredStatus string, resourceNam
 // WaitLabelFilter waits for the condition on the resource based on label using kubectl command
 func (k *Kubectl) WaitLabelFilter(namespace string, requiredStatus string, resourceName string, labelName string) error {
 	if requiredStatus == "complete" {
-		return wait.PollImmediate(k.pollInterval, k.pollTimeout, func() (bool, error) {
+		return wait.PollImmediate(k.pollInterval, k.PollTimeout, func() (bool, error) {
 			return k.checkPodCompleteLabelFilter(namespace, labelName)
 		})
 	} else if requiredStatus == "terminate" {
-		return wait.PollImmediate(k.pollInterval, k.pollTimeout, func() (bool, error) {
+		return wait.PollImmediate(k.pollInterval, k.PollTimeout, func() (bool, error) {
 			return k.checkPodTerminateLabelFilter(namespace, labelName)
 		})
 	} else if requiredStatus == "ready" {
-		return wait.PollImmediate(k.pollInterval, k.pollTimeout, func() (bool, error) {
+		return wait.PollImmediate(k.pollInterval, k.PollTimeout, func() (bool, error) {
 			return k.checkPodReadyLabelFilter(namespace, resourceName, labelName, requiredStatus)
 		})
 	}
