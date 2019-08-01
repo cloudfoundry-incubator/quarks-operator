@@ -8,7 +8,7 @@ instance_groups:
   - name: pxc-mysql
     release: pxc
     properties:
-      bosh_containerization:
+      quarks:
         consumes:
           galera-agent:
             instances:

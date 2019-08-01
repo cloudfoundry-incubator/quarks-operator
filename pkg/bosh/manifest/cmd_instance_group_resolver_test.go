@@ -140,7 +140,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				//Check JobInstance for the redis-server job
-				jobInstancesRedis := manifest.InstanceGroups[0].Jobs[0].Properties.BOSHContainerization.Instances
+				jobInstancesRedis := manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Instances
 
 				compareToFakeRedis := []JobInstance{
 					{Address: "foo-deployment-redis-slave-0.default.svc.cluster.local", AZ: "z1", ID: "redis-slave-0-redis-server", Index: 0, Instance: 0, Name: "redis-slave-redis-server"},
@@ -163,8 +163,8 @@ var _ = Describe("InstanceGroupResolver", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					// log-api instance_group, with loggregator_trafficcontroller job, consumes a link from doppler job
-					jobBoshContainerizationConsumes := manifest.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Consumes
-					jobConsumesFromDoppler, consumeFromDopplerExists := jobBoshContainerizationConsumes["doppler"]
+					jobQuarksConsumes := manifest.InstanceGroups[1].Jobs[0].Properties.Quarks.Consumes
+					jobConsumesFromDoppler, consumeFromDopplerExists := jobQuarksConsumes["doppler"]
 					Expect(consumeFromDopplerExists).To(BeTrue())
 					expectedProperties := map[string]interface{}{
 						"doppler": map[string]interface{}{
@@ -186,9 +186,9 @@ var _ = Describe("InstanceGroupResolver", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					// doppler instance_group, with doppler job, only provides doppler link
-					jobBoshContainerizationConsumes := manifest.InstanceGroups[0].Jobs[0].Properties.BOSHContainerization.Consumes
-					var emptyJobBoshContainerizationConsumes map[string]JobLink
-					Expect(jobBoshContainerizationConsumes).To(BeEquivalentTo(emptyJobBoshContainerizationConsumes))
+					jobQuarksConsumes := manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Consumes
+					var emptyJobQuarksConsumes map[string]JobLink
+					Expect(jobQuarksConsumes).To(BeEquivalentTo(emptyJobQuarksConsumes))
 				})
 			})
 		})

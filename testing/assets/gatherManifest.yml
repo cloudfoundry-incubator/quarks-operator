@@ -14,7 +14,7 @@ instance_groups:
             as: doppler
             shared: true
         properties:
-          bosh_containerization:
+          quarks:
             run:
               healthcheck:
                 doppler:
@@ -277,7 +277,7 @@ instance_groups:
           doppler:
             from: doppler
         properties:
-          bosh_containerization:
+          quarks:
             run:
               healthcheck:
                 doppler:

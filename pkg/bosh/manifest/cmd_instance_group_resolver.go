@@ -57,7 +57,7 @@ func (dg *InstanceGroupResolver) BPMConfigs() (bpm.Configs, error) {
 	}
 
 	for _, job := range dg.instanceGroup.Jobs {
-		bpm[job.Name] = *job.Properties.BOSHContainerization.BPM
+		bpm[job.Name] = *job.Properties.Quarks.BPM
 	}
 
 	return bpm, nil
@@ -129,11 +129,11 @@ func (dg *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 
 			// Generate instance spec for each ig instance
 			// This will be stored inside the current job under
-			// job.properties.bosh_containerization
+			// job.properties.quarks
 			jobsInstances := instanceGroup.jobInstances(dg.namespace, dg.manifest.Name, job.Name, spec)
 
-			// set jobs.properties.bosh_containerization.instances with the ig instances
-			instanceGroup.Jobs[jobIdx].Properties.BOSHContainerization.Instances = jobsInstances
+			// set jobs.properties.quarks.instances with the ig instances
+			instanceGroup.Jobs[jobIdx].Properties.Quarks.Instances = jobsInstances
 
 			// Create a list of fully evaluated links provided by the current job
 			// These is specified in the job release job.MF file
@@ -156,7 +156,7 @@ func (dg *InstanceGroupResolver) processConsumers() error {
 
 		// Verify that the current job release exists on the manifest releases block
 		if lookUpJobRelease(dg.manifest.Releases, job.Release) {
-			job.Properties.BOSHContainerization.Release = job.Release
+			job.Properties.Quarks.Release = job.Release
 		}
 
 		err := generateJobConsumersData(job, dg.jobReleaseSpecs, dg.jobProviderLinks)
@@ -216,9 +216,9 @@ func (dg *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) e
 			return errors.Wrapf(err, "os.Stat failed for %s", erbFilePath)
 		}
 
-		// Get current job.bosh_containerization.instances, which will be required by the renderer to generate
+		// Get current job.quarks.instances, which will be required by the renderer to generate
 		// the render.InstanceInfo struct.
-		jobInstances := currentJob.Properties.BOSHContainerization.Instances
+		jobInstances := currentJob.Properties.Quarks.Instances
 		if jobInstances == nil {
 			return nil
 		}
@@ -270,11 +270,11 @@ func (dg *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) e
 				return errors.Wrapf(err, "Rendering bpm.yaml into bpm config %s failed", string(bpmBytes))
 			}
 
-			// Merge processes if they also exist in BOSHContainerization
-			if currentJob.Properties.BOSHContainerization.BPM != nil && len(currentJob.Properties.BOSHContainerization.BPM.Processes) > 0 {
-				renderedBPM.Processes, err = mergeBPMProcesses(renderedBPM.Processes, currentJob.Properties.BOSHContainerization.BPM.Processes)
+			// Merge processes if they also exist in Quarks
+			if currentJob.Properties.Quarks.BPM != nil && len(currentJob.Properties.Quarks.BPM.Processes) > 0 {
+				renderedBPM.Processes, err = mergeBPMProcesses(renderedBPM.Processes, currentJob.Properties.Quarks.BPM.Processes)
 				if err != nil {
-					return errors.Wrapf(err, "failed to merge bpm information from bosh_containerization for job '%s'", currentJob.Name)
+					return errors.Wrapf(err, "failed to merge bpm information from quarks for job '%s'", currentJob.Name)
 				}
 			}
 
@@ -287,8 +287,8 @@ func (dg *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) e
 				firstJobIndexBPM.UnsupportedTemplate = true
 			}
 		}
-		currentJob.Properties.BOSHContainerization.BPM = &firstJobIndexBPM
-	} else if currentJob.Properties.BOSHContainerization.BPM == nil {
+		currentJob.Properties.Quarks.BPM = &firstJobIndexBPM
+	} else if currentJob.Properties.Quarks.BPM == nil {
 		return errors.Errorf("can't find BPM template for job %s", currentJob.Name)
 	}
 
@@ -296,7 +296,7 @@ func (dg *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) e
 }
 
 // generateJobConsumersData will populate a job with its corresponding provider links
-// under properties.bosh_containerization.consumes
+// under properties.quarks.consumes
 func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks JobProviderLinks) error {
 	currentJobSpecData := jobReleaseSpecs[currentJob.Release][currentJob.Name]
 	for _, provider := range currentJobSpecData.Consumes {
@@ -318,12 +318,12 @@ func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[st
 			return errors.Errorf("cannot resolve non-optional link for provider %s in job %s", providerName, currentJob.Name)
 		}
 
-		// generate the job.properties.bosh_containerization.consumes struct with the links information from providers.
-		if currentJob.Properties.BOSHContainerization.Consumes == nil {
-			currentJob.Properties.BOSHContainerization.Consumes = map[string]JobLink{}
+		// generate the job.properties.quarks.consumes struct with the links information from providers.
+		if currentJob.Properties.Quarks.Consumes == nil {
+			currentJob.Properties.Quarks.Consumes = map[string]JobLink{}
 		}
 
-		currentJob.Properties.BOSHContainerization.Consumes[providerName] = JobLink{
+		currentJob.Properties.Quarks.Consumes[providerName] = JobLink{
 			Address:    link.Address,
 			Instances:  link.Instances,
 			Properties: link.Properties,

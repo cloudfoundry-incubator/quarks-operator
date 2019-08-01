@@ -90,7 +90,7 @@ var _ = Describe("ReconcileBPM", func() {
 								Properties: map[string]interface{}{
 									"password": "((foo_password))",
 								},
-								BOSHContainerization: bdm.BOSHContainerization{
+								Quarks: bdm.Quarks{
 									Ports: []bdm.Port{
 										{
 											Name:     "foo",
@@ -134,7 +134,7 @@ instance_groups:
   jobs:
   - name: foo
     properties:
-      bosh_containerization:
+      quarks:
         bpm: {}
         consumes: {}
         instances: []

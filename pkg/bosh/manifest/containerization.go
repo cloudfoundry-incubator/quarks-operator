@@ -6,9 +6,9 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 )
 
-// BOSHContainerization represents the special 'bosh_containerization'
+// Quarks represents the special 'quarks'
 // property key. It contains all kubernetes structures we need to add to the BOSH manifest.
-type BOSHContainerization struct {
+type Quarks struct {
 	Consumes         map[string]JobLink `json:"consumes"`
 	Instances        []JobInstance      `json:"instances"`
 	Release          string             `json:"release"`
@@ -40,7 +40,7 @@ type JobInstance struct {
 }
 
 // JobLink describes links inside a job properties
-// bosh_containerization.
+// quarks.
 type JobLink struct {
 	Address    string                 `json:"address"`
 	Instances  []JobInstance          `json:"instances"`

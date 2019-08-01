@@ -36,7 +36,7 @@ data:
           nats:
             user: admin
             password: ((nats_password))
-          bosh_containerization:
+          quarks:
             bpm:
               processes:
               - name: nats

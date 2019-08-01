@@ -83,7 +83,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 								Properties: map[string]interface{}{
 									"password": "((foo_password))",
 								},
-								BOSHContainerization: bdm.BOSHContainerization{
+								Quarks: bdm.Quarks{
 									Ports: []bdm.Port{
 										{
 											Name:     "foo",

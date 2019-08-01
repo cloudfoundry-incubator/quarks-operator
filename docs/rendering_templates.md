@@ -58,7 +58,7 @@ Two containers are run for each instance group in the deployment manifest, using
 
     > **Note:**
     >
-    > Link instance specs are stored in the `bosh_containerization` property key for each job in the instance group.
+    > Link instance specs are stored in the `quarks` property key for each job in the instance group.
 
   - a `Secret` named `<deployment-name>.bpm.<instance-group>-v<version>`
 
@@ -70,7 +70,7 @@ Two containers are run for each instance group in the deployment manifest, using
   
     > **Note:**
     >
-    > The BPM information is stored under the `bosh_containerization` property, for each BOSH Job.
+    > The BPM information is stored under the `quarks` property, for each BOSH Job.
     >
     > **Important:**
     >

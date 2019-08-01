@@ -165,7 +165,7 @@ instance_groups:
       domain: "mycf.com"
       admin_password: "((adminpass))"
       # Extra information specific to the cf-operator
-      bosh_containerization:
+      quarks:
         run:
           # Hints for pod replica count
           scaling:
@@ -385,7 +385,7 @@ The following subsections describe the mapping of BPM configuration into contain
 ### Health checks
 
 BPM doesn't provide information for health checks and relies on monit instead.
-CF-Operator provides health checks via the [bosh_containerization](https://github.com/cloudfoundry-incubator/cf-operator/blob/master/pkg/bosh/manifest/containerization.go#L11) property key in the deployment manifest.
+CF-Operator provides health checks via the [quarks](https://github.com/cloudfoundry-incubator/cf-operator/blob/master/pkg/bosh/manifest/containerization.go#L11) property key in the deployment manifest.
 
 In Kubernetes, we use [liveness and readiness probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/) for healthchecks.
 
@@ -487,7 +487,7 @@ We support manual triggers - you can learn more in the [ExtendedJob docs](contro
 
 ### Readiness and Liveness Probes
 
-When the deployment manifest declares health check information for jobs, via the `bosh_containerization` section, we configure those in Kubernetes.
+When the deployment manifest declares health check information for jobs, via the `quarks` section, we configure those in Kubernetes.
 
 The probes are defined per BPM process.
 
@@ -498,7 +498,7 @@ instance_groups:
 - name: "api-az1"
   process.
     properties:
-      bosh_containerization:
+      quarks:
         run:
           healthcheck:
             bpm-process-name:

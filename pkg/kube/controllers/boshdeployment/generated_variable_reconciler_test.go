@@ -75,7 +75,7 @@ instance_groups:
     release: bar
     properties:
       password: ((foo_password))
-      bosh_containerization:
+      quarks:
         ports:
         - name: foo
           protocol: TCP
