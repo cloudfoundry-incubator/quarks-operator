@@ -24,6 +24,7 @@ var (
 
 // ReleaseImageProvider interface to provide the docker release image for a BOSH job
 // This lookup is currently implemented by the manifest model.
+// go:generate counterfeiter -o fakes/fake_release_image_provider.go . ReleaseImageProvider
 type ReleaseImageProvider interface {
 	// GetReleaseImage returns the release image for an job in an instance group
 	GetReleaseImage(instanceGroupName, jobName string) (string, error)

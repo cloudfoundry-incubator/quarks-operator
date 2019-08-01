@@ -189,10 +189,32 @@ var _ = Describe("Examples", func() {
 				outFile, err := testing.RunCommandWithOutput(namespace, "nats-deployment-nats-v1-1", "awk 'NR == 18 {print substr($2,2,17)}' /var/vcap/jobs/nats/config/nats.conf")
 				Expect(err).ToNot(HaveOccurred())
 
-				outSecret, err := testing.GetSecretData(namespace, "nats-deployment.var-customed-password", "go-template={{.data.password}}")
+				outSecret, err := testing.GetSecretData(namespace, "nats-deployment.var-custom-password", "go-template={{.data.password}}")
 				Expect(err).ToNot(HaveOccurred())
 				outSecretDecoded, _ := b64.StdEncoding.DecodeString(string(outSecret))
-				Expect(string(outSecretDecoded)).To(Equal(strings.TrimSuffix(outFile, "\n")))
+				Expect(strings.TrimSuffix(outFile, "\n")).To(ContainSubstring(string(outSecretDecoded)))
+			})
+
+			It("bosh-deployment with a implicit variable example must work", func() {
+				yamlFilePath := examplesDir + "bosh-deployment/boshdeployment-with-implicit-variable.yaml"
+
+				By("Creating bosh deployment")
+				kubectlHelper := testing.NewKubectl()
+				err := testing.Create(namespace, yamlFilePath)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Checking for pods")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-0", kubectlHelper.PollTimeout)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Updating implicit variable")
+				implicitVariablePath := examplesDir + "bosh-deployment/implicit-variable-updated.yaml"
+				err = testing.Apply(namespace, implicitVariablePath)
+
+				Expect(err).ToNot(HaveOccurred())
+				By("Checking for new pods")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v2-0", kubectlHelper.PollTimeout)
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("extended-job auto errand delete example must work", func() {
@@ -325,7 +347,7 @@ var _ = Describe("Examples", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 				// If this testcase fails that means a test case is missing for an example in the docs folder
-				Expect(countFile).To(Equal(23))
+				Expect(countFile).To(Equal(24))
 			})
 		})
 	})

@@ -206,7 +206,7 @@ func (c *Catalog) DefaultBOSHDeployment(name, manifestRef string) bdv1.BOSHDeplo
 	return bdv1.BOSHDeployment{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: bdv1.BOSHDeploymentSpec{
-			Manifest: bdv1.Manifest{Ref: manifestRef, Type: bdv1.ConfigMapType},
+			Manifest: bdv1.ResourceReference{Name: manifestRef, Type: bdv1.ConfigMapReference},
 		},
 	}
 }
@@ -822,9 +822,9 @@ func (c *Catalog) DefaultBOSHDeploymentWithOps(name, manifestRef string, opsRef 
 	return bdv1.BOSHDeployment{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: bdv1.BOSHDeploymentSpec{
-			Manifest: bdv1.Manifest{Ref: manifestRef, Type: bdv1.ConfigMapType},
-			Ops: []bdv1.Ops{
-				{Ref: opsRef, Type: bdv1.ConfigMapType},
+			Manifest: bdv1.ResourceReference{Name: manifestRef, Type: bdv1.ConfigMapReference},
+			Ops: []bdv1.ResourceReference{
+				{Name: opsRef, Type: bdv1.ConfigMapReference},
 			},
 		},
 	}
@@ -835,7 +835,7 @@ func (c *Catalog) WrongTypeBOSHDeployment(name, manifestRef string) bdv1.BOSHDep
 	return bdv1.BOSHDeployment{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: bdv1.BOSHDeploymentSpec{
-			Manifest: bdv1.Manifest{Ref: manifestRef, Type: "wrong-type"},
+			Manifest: bdv1.ResourceReference{Name: manifestRef, Type: "wrong-type"},
 		},
 	}
 }
@@ -845,9 +845,9 @@ func (c *Catalog) BOSHDeploymentWithWrongTypeOps(name, manifestRef string, opsRe
 	return bdv1.BOSHDeployment{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: bdv1.BOSHDeploymentSpec{
-			Manifest: bdv1.Manifest{Ref: manifestRef, Type: bdv1.ConfigMapType},
-			Ops: []bdv1.Ops{
-				{Ref: opsRef, Type: "wrong-type"},
+			Manifest: bdv1.ResourceReference{Name: manifestRef, Type: bdv1.ConfigMapReference},
+			Ops: []bdv1.ResourceReference{
+				{Name: opsRef, Type: "wrong-type"},
 			},
 		},
 	}
@@ -858,10 +858,10 @@ func (c *Catalog) InterpolateBOSHDeployment(name, manifestRef, opsRef string, se
 	return bdv1.BOSHDeployment{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: bdv1.BOSHDeploymentSpec{
-			Manifest: bdv1.Manifest{Ref: manifestRef, Type: bdv1.ConfigMapType},
-			Ops: []bdv1.Ops{
-				{Ref: opsRef, Type: bdv1.ConfigMapType},
-				{Ref: secretRef, Type: bdv1.SecretType},
+			Manifest: bdv1.ResourceReference{Name: manifestRef, Type: bdv1.ConfigMapReference},
+			Ops: []bdv1.ResourceReference{
+				{Name: opsRef, Type: bdv1.ConfigMapReference},
+				{Name: secretRef, Type: bdv1.SecretReference},
 			},
 		},
 	}

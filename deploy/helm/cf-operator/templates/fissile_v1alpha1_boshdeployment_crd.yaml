@@ -27,24 +27,24 @@ spec:
           properties:
             manifest:
               type: object
-              required: [type, ref]
+              required: [type, name]
               properties:
                 type:
                   type: string
                   enum: ["configmap", "secret", "url"]
-                ref:
+                name:
                   type: string
                   minLength: 1
             ops:
               type: array
               items:
                 type: object
-                required: [type, ref]
+                required: [type, name]
                 properties:
                   type:
                     type: string
                     enum: ["configmap", "secret", "url"]
-                  ref:
+                  name:
                     type: string
                     minLength: 1
 {{- end }}

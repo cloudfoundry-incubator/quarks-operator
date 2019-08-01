@@ -118,7 +118,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "ExtendedJob", a.Meta.GetName(), bdv1.ConfigMapType)
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "ExtendedJob", a.Meta.GetName(), bdv1.ConfigMapReference)
 			}
 			return reconciles
 		}),
@@ -169,7 +169,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "ExtendedJob", a.Meta.GetName(), bdv1.SecretType)
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "ExtendedJob", a.Meta.GetName(), bdv1.SecretReference)
 			}
 
 			return reconciles

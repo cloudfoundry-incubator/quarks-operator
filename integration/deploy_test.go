@@ -237,7 +237,7 @@ var _ = Describe("Deploy", func() {
 
 					bdm, err := env.GetBOSHDeployment(env.Namespace, "test")
 					Expect(err).NotTo(HaveOccurred())
-					bdm.Spec.Ops = []bdv1.Ops{{Ref: "test-ops", Type: bdv1.ConfigMapType}}
+					bdm.Spec.Ops = []bdv1.ResourceReference{{Name: "test-ops", Type: bdv1.ConfigMapReference}}
 					_, _, err = env.UpdateBOSHDeployment(env.Namespace, *bdm)
 					Expect(err).NotTo(HaveOccurred())
 
@@ -404,7 +404,7 @@ var _ = Describe("Deploy", func() {
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.EmptyBOSHDeployment("test", "manifest"))
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("spec.manifest.type in body should be one of"))
-			Expect(err.Error()).To(ContainSubstring("spec.manifest.ref in body should be at least 1 chars long"))
+			Expect(err.Error()).To(ContainSubstring("spec.manifest.name in body should be at least 1 chars long"))
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 		})
 
@@ -426,7 +426,7 @@ var _ = Describe("Deploy", func() {
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test", ""))
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("spec.manifest.ref in body should be at least 1 chars long"))
+			Expect(err.Error()).To(ContainSubstring("spec.manifest.name in body should be at least 1 chars long"))
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 		})
 
@@ -448,7 +448,7 @@ var _ = Describe("Deploy", func() {
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeploymentWithOps("test", "manifest", ""))
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("spec.ops.ref in body should be at least 1 chars long"))
+			Expect(err.Error()).To(ContainSubstring("spec.ops.name in body should be at least 1 chars long"))
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 		})
 

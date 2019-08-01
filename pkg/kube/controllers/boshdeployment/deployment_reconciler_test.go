@@ -115,17 +115,17 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Namespace: "default",
 			},
 			Spec: bdv1.BOSHDeploymentSpec{
-				Manifest: bdv1.Manifest{
-					Ref:  "dummy-manifest",
+				Manifest: bdv1.ResourceReference{
+					Name: "dummy-manifest",
 					Type: "configmap",
 				},
-				Ops: []bdv1.Ops{
+				Ops: []bdv1.ResourceReference{
 					{
-						Ref:  "bar",
+						Name: "bar",
 						Type: "configmap",
 					},
 					{
-						Ref:  "baz",
+						Name: "baz",
 						Type: "secret",
 					},
 				},
@@ -146,7 +146,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 	})
 
 	JustBeforeEach(func() {
-		resolver.WithOpsManifestReturns(manifest, nil)
+		resolver.WithOpsManifestReturns(manifest, []string{}, nil)
 		reconciler = cfd.NewDeploymentReconciler(ctx, config, manager,
 			&resolver, controllerutil.SetControllerReference,
 		)
@@ -175,7 +175,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles an error when resolving the BOSHDeployment", func() {
-				resolver.WithOpsManifestReturns(nil, fmt.Errorf("resolver error"))
+				resolver.WithOpsManifestReturns(nil, []string{}, fmt.Errorf("resolver error"))
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
@@ -189,7 +189,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		Context("when the manifest can be resolved", func() {
 			It("handles an error when resolving manifest", func() {
 				manifest = &bdm.Manifest{}
-				resolver.WithOpsManifestReturns(manifest, errors.New("fake-error"))
+				resolver.WithOpsManifestReturns(manifest, []string{}, errors.New("fake-error"))
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())

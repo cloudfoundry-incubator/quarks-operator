@@ -12,13 +12,20 @@ import (
 // It's used as input for the Kube code generator
 // Run "make generate" after modifying this file
 
+// ReferenceType lists all the types of Reference we can supports
+type ReferenceType = string
+
 // Valid values for ref types
 const (
+	// ConfigMapReference represents ConfigMap reference
+	ConfigMapReference ReferenceType = "configmap"
+	// SecretReference represents Secret reference
+	SecretReference ReferenceType = "secret"
+	// URLReference represents URL reference
+	URLReference ReferenceType = "url"
+
 	ManifestSpecName        string = "manifest"
 	OpsSpecName             string = "ops"
-	ConfigMapType           string = "configmap"
-	SecretType              string = "secret"
-	URLType                 string = "url"
 	ImplicitVariableKeyName string = "value"
 )
 
@@ -35,20 +42,15 @@ var (
 
 // BOSHDeploymentSpec defines the desired state of BOSHDeployment
 type BOSHDeploymentSpec struct {
-	Manifest Manifest `json:"manifest"`
-	Ops      []Ops    `json:"ops,omitempty"`
+	Manifest          ResourceReference   `json:"manifest"`
+	Ops               []ResourceReference `json:"ops,omitempty"`
+	ImplicitVariables []ResourceReference `json:"implicitVariables,omitempty"`
 }
 
-// Manifest defines the manifest type and location
-type Manifest struct {
-	Type string `json:"type"`
-	Ref  string `json:"ref"`
-}
-
-// Ops defines the ops type and location
-type Ops struct {
-	Type string `json:"type"`
-	Ref  string `json:"ref"`
+// ResourceReference defines the resource reference type and location
+type ResourceReference struct {
+	Name string        `json:"name"`
+	Type ReferenceType `json:"type"`
 }
 
 // BOSHDeploymentStatus defines the observed state of BOSHDeployment
@@ -77,10 +79,4 @@ type BOSHDeploymentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []BOSHDeployment `json:"items"`
-}
-
-// ToBeDeleted checks whether this BOSHDeployment has been marked for deletion
-func (e *BOSHDeployment) ToBeDeleted() bool {
-	// IsZero means that the object hasn't been marked for deletion
-	return !e.GetDeletionTimestamp().IsZero()
 }

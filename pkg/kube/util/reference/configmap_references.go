@@ -28,13 +28,19 @@ func GetConfigMapsReferencedBy(object interface{}) (map[string]bool, error) {
 func getConfMapRefFromBdpl(object bdv1.BOSHDeployment) map[string]bool {
 	result := map[string]bool{}
 
-	if object.Spec.Manifest.Type == bdv1.ConfigMapType {
-		result[object.Spec.Manifest.Ref] = true
+	if object.Spec.Manifest.Type == bdv1.ConfigMapReference {
+		result[object.Spec.Manifest.Name] = true
 	}
 
 	for _, ops := range object.Spec.Ops {
-		if ops.Type == bdv1.ConfigMapType {
-			result[ops.Ref] = true
+		if ops.Type == bdv1.ConfigMapReference {
+			result[ops.Name] = true
+		}
+	}
+
+	for _, iv := range object.Spec.ImplicitVariables {
+		if iv.Type == bdv1.ConfigMapReference {
+			result[iv.Name] = true
 		}
 	}
 

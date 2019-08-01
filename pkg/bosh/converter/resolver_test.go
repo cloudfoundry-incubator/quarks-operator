@@ -30,7 +30,7 @@ var _ = Describe("Resolver", func() {
 		validOpsPath      string
 		invalidOpsPath    string
 
-		resolver         *converter.Resolver
+		resolver         *converter.ResolverImpl
 		client           client.Client
 		interpolator     *fakes.FakeInterpolator
 		remoteFileServer *ghttp.Server
@@ -216,9 +216,9 @@ instance_groups:
 		It("works for valid CRs by using config map", func() {
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.ConfigMapType,
-						Ref:  "base-manifest",
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "base-manifest",
 					},
 				},
 			}
@@ -235,20 +235,21 @@ instance_groups:
 				},
 			}
 
-			manifest, err := resolver.WithOpsManifest(deployment, "default")
+			manifest, implicitVars, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
 			Expect(len(manifest.InstanceGroups)).To(Equal(2))
 			Expect(manifest).To(Equal(expectedManifest))
+			Expect(len(implicitVars)).To(Equal(0))
 		})
 
 		It("works for valid CRs by using secret", func() {
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.SecretType,
-						Ref:  "opaque-manifest",
+					Manifest: bdc.ResourceReference{
+						Type: bdc.SecretReference,
+						Name: "opaque-manifest",
 					},
 				},
 			}
@@ -265,20 +266,21 @@ instance_groups:
 				},
 			}
 
-			manifest, err := resolver.WithOpsManifest(deployment, "default")
+			manifest, implicitVars, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
 			Expect(len(manifest.InstanceGroups)).To(Equal(2))
 			Expect(manifest).To(Equal(expectedManifest))
+			Expect(len(implicitVars)).To(Equal(0))
 		})
 
 		It("works for valid CRs by using URL", func() {
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.URLType,
-						Ref:  remoteFileServer.URL() + validManifestPath,
+					Manifest: bdc.ResourceReference{
+						Type: bdc.URLReference,
+						Name: remoteFileServer.URL() + validManifestPath,
 					},
 				},
 			}
@@ -291,12 +293,13 @@ instance_groups:
 				},
 			}
 
-			manifest, err := resolver.WithOpsManifest(deployment, "default")
+			manifest, implicitVars, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
 			Expect(len(manifest.InstanceGroups)).To(Equal(1))
 			Expect(manifest).To(Equal(expectedManifest))
+			Expect(len(implicitVars)).To(Equal(0))
 		})
 
 		It("works for valid CRs containing one ops", func() {
@@ -310,14 +313,14 @@ instance_groups:
 
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.ConfigMapType,
-						Ref:  "base-manifest",
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "base-manifest",
 					},
-					Ops: []bdc.Ops{
+					Ops: []bdc.ResourceReference{
 						{
-							Type: bdc.ConfigMapType,
-							Ref:  "replace-ops",
+							Type: bdc.ConfigMapReference,
+							Name: "replace-ops",
 						},
 					},
 				},
@@ -335,7 +338,7 @@ instance_groups:
 				},
 			}
 
-			manifest, err := resolver.WithOpsManifest(deployment, "default")
+			manifest, implicitVars, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -345,6 +348,7 @@ instance_groups:
 			Expect(interpolator.BuildOpsCallCount()).To(Equal(1))
 			opsBytes := interpolator.BuildOpsArgsForCall(0)
 			Expect(string(opsBytes)).To(Equal(replaceOpsStr))
+			Expect(len(implicitVars)).To(Equal(0))
 		})
 
 		It("works for valid CRs containing multi ops", func() {
@@ -356,26 +360,26 @@ instance_groups:
 
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.ConfigMapType,
-						Ref:  "base-manifest",
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "base-manifest",
 					},
-					Ops: []bdc.Ops{
+					Ops: []bdc.ResourceReference{
 						{
-							Type: bdc.ConfigMapType,
-							Ref:  "replace-ops",
+							Type: bdc.ConfigMapReference,
+							Name: "replace-ops",
 						},
 						{
-							Type: bdc.SecretType,
-							Ref:  "opaque-ops",
+							Type: bdc.SecretReference,
+							Name: "opaque-ops",
 						},
 						{
-							Type: bdc.URLType,
-							Ref:  remoteFileServer.URL() + validOpsPath,
+							Type: bdc.URLReference,
+							Name: remoteFileServer.URL() + validOpsPath,
 						},
 						{
-							Type: bdc.ConfigMapType,
-							Ref:  "remove-ops",
+							Type: bdc.ConfigMapReference,
+							Name: "remove-ops",
 						},
 					},
 				},
@@ -389,7 +393,7 @@ instance_groups:
 				},
 			}
 
-			manifest, err := resolver.WithOpsManifest(deployment, "default")
+			manifest, implicitVars, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -405,18 +409,19 @@ instance_groups:
 			Expect(string(opsBytes)).To(Equal(urlOpsStr))
 			opsBytes = interpolator.BuildOpsArgsForCall(3)
 			Expect(string(opsBytes)).To(Equal(removeOpsStr))
+			Expect(len(implicitVars)).To(Equal(0))
 		})
 
 		It("throws an error if the manifest can not be found", func() {
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.ConfigMapType,
-						Ref:  "not-existing",
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "not-existing",
 					},
 				},
 			}
-			_, err := resolver.WithOpsManifest(deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve manifest"))
 		})
@@ -424,13 +429,13 @@ instance_groups:
 		It("throws an error if the CR is empty", func() {
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.ConfigMapType,
-						Ref:  "empty-ref",
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "empty-ref",
 					},
 				},
 			}
-			_, err := resolver.WithOpsManifest(deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("doesn't contain key manifest"))
 		})
@@ -438,13 +443,13 @@ instance_groups:
 		It("throws an error on invalid yaml", func() {
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.ConfigMapType,
-						Ref:  "invalid-yaml",
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "invalid-yaml",
 					},
 				},
 			}
-			_, err := resolver.WithOpsManifest(deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("cannot unmarshal string into Go value of type manifest.Manifest"))
 		})
@@ -453,13 +458,12 @@ instance_groups:
 			interpolator.InterpolateReturns(nil, errors.New("fake-error"))
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: "unsupported_type",
-						Ref:  "base-manifest",
+					Manifest: bdc.ResourceReference{
+						Name: "base-manifest",
 					},
 				},
 			}
-			_, err := resolver.WithOpsManifest(deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unrecognized manifest ref type"))
 		})
@@ -467,19 +471,19 @@ instance_groups:
 		It("throws an error if ops configMap can not be found", func() {
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.ConfigMapType,
-						Ref:  "base-manifest",
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "base-manifest",
 					},
-					Ops: []bdc.Ops{
+					Ops: []bdc.ResourceReference{
 						{
-							Type: bdc.ConfigMapType,
-							Ref:  "not-existing",
+							Type: bdc.ConfigMapReference,
+							Name: "not-existing",
 						},
 					},
 				},
 			}
-			_, err := resolver.WithOpsManifest(deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from configmap"))
 		})
@@ -487,19 +491,19 @@ instance_groups:
 		It("throws an error if ops configMap is empty", func() {
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.ConfigMapType,
-						Ref:  "base-manifest",
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "base-manifest",
 					},
-					Ops: []bdc.Ops{
+					Ops: []bdc.ResourceReference{
 						{
-							Type: bdc.ConfigMapType,
-							Ref:  "empty-ref",
+							Type: bdc.ConfigMapReference,
+							Name: "empty-ref",
 						},
 					},
 				},
 			}
-			_, err := resolver.WithOpsManifest(deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("doesn't contain key ops"))
 		})
@@ -509,19 +513,19 @@ instance_groups:
 
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.ConfigMapType,
-						Ref:  "base-manifest",
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "base-manifest",
 					},
-					Ops: []bdc.Ops{
+					Ops: []bdc.ResourceReference{
 						{
-							Type: bdc.ConfigMapType,
-							Ref:  "invalid-ops",
+							Type: bdc.ConfigMapReference,
+							Name: "invalid-ops",
 						},
 					},
 				},
 			}
-			_, err := resolver.WithOpsManifest(deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Interpolation failed for bosh deployment"))
 		})
@@ -530,19 +534,19 @@ instance_groups:
 			interpolator.InterpolateReturns(nil, errors.New("fake-error"))
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.ConfigMapType,
-						Ref:  "base-manifest",
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "base-manifest",
 					},
-					Ops: []bdc.Ops{
+					Ops: []bdc.ResourceReference{
 						{
-							Type: bdc.ConfigMapType,
-							Ref:  "missing-key",
+							Type: bdc.ConfigMapReference,
+							Name: "missing-key",
 						},
 					},
 				},
 			}
-			_, err := resolver.WithOpsManifest(deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Failed to interpolate"))
 		})
@@ -551,19 +555,18 @@ instance_groups:
 			interpolator.InterpolateReturns(nil, errors.New("fake-error"))
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.ConfigMapType,
-						Ref:  "base-manifest",
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "base-manifest",
 					},
-					Ops: []bdc.Ops{
+					Ops: []bdc.ResourceReference{
 						{
-							Type: "unsupported_type",
-							Ref:  "variables",
+							Name: "variables",
 						},
 					},
 				},
 			}
-			_, err := resolver.WithOpsManifest(deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unrecognized ops ref type"))
 		})
@@ -571,23 +574,23 @@ instance_groups:
 		It("throws an error if one config map can not be found when contains multi-ops", func() {
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.ConfigMapType,
-						Ref:  "base-manifest",
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "base-manifest",
 					},
-					Ops: []bdc.Ops{
+					Ops: []bdc.ResourceReference{
 						{
-							Type: bdc.SecretType,
-							Ref:  "opaque-ops",
+							Type: bdc.SecretReference,
+							Name: "opaque-ops",
 						},
 						{
-							Type: bdc.ConfigMapType,
-							Ref:  "not-existing",
+							Type: bdc.ConfigMapReference,
+							Name: "not-existing",
 						},
 					},
 				},
 			}
-			_, err := resolver.WithOpsManifest(deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from configmap"))
 		})
@@ -595,23 +598,23 @@ instance_groups:
 		It("throws an error if one secret can not be found when contains multi-ops", func() {
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.ConfigMapType,
-						Ref:  "base-manifest",
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "base-manifest",
 					},
-					Ops: []bdc.Ops{
+					Ops: []bdc.ResourceReference{
 						{
-							Type: bdc.SecretType,
-							Ref:  "not-existing",
+							Type: bdc.SecretReference,
+							Name: "not-existing",
 						},
 						{
-							Type: bdc.ConfigMapType,
-							Ref:  "replace-ops",
+							Type: bdc.ConfigMapReference,
+							Name: "replace-ops",
 						},
 					},
 				},
 			}
-			_, err := resolver.WithOpsManifest(deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from secret"))
 		})
@@ -619,27 +622,27 @@ instance_groups:
 		It("throws an error if one url ref can not be found when contains multi-ops", func() {
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.ConfigMapType,
-						Ref:  "base-manifest",
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "base-manifest",
 					},
-					Ops: []bdc.Ops{
+					Ops: []bdc.ResourceReference{
 						{
-							Type: bdc.ConfigMapType,
-							Ref:  "replace-ops",
+							Type: bdc.ConfigMapReference,
+							Name: "replace-ops",
 						},
 						{
-							Type: bdc.SecretType,
-							Ref:  "ops-secret",
+							Type: bdc.SecretReference,
+							Name: "ops-secret",
 						},
 						{
-							Type: bdc.URLType,
-							Ref:  remoteFileServer.URL() + "/not-found-ops.yml",
+							Type: bdc.URLReference,
+							Name: remoteFileServer.URL() + "/not-found-ops.yml",
 						},
 					},
 				},
 			}
-			_, err := resolver.WithOpsManifest(deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from secret"))
@@ -651,17 +654,19 @@ instance_groups:
 					Name: "foo-deployment",
 				},
 				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.Manifest{
-						Type: bdc.ConfigMapType,
-						Ref:  "manifest-with-vars",
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "manifest-with-vars",
 					},
-					Ops: []bdc.Ops{},
+					Ops: []bdc.ResourceReference{},
 				},
 			}
-			m, err := resolver.WithOpsManifest(deployment, "default")
+			m, implicitVars, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(m.Variables[1].Options.CommonName).To(Equal("example.com"))
+			Expect(len(implicitVars)).To(Equal(1))
+			Expect(implicitVars[0]).To(Equal("foo-deployment.var-system-domain"))
 		})
 	})
 })
