@@ -32,7 +32,10 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-job-errand-reconciler", mgr.GetEventRecorderFor("ext-job-errand-recorder"))
 	store := vss.NewVersionedSecretStore(mgr.GetClient())
 	r := NewErrandReconciler(ctx, config, mgr, f, store)
-	c, err := controller.New("ext-job-errand-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("ext-job-errand-controller", mgr, controller.Options{
+		Reconciler:              r,
+		MaxConcurrentReconciles: config.MaxExtendedJobWorkers,
+	})
 	if err != nil {
 		return errors.Wrap(err, "Adding Errand controller to manager failed.")
 	}
