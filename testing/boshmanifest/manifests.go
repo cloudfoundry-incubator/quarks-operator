@@ -51,7 +51,7 @@ instance_groups:
     properties:
       foo:
         domain: "((system_domain))"
-      bosh_containerization:
+      quarks:
         run:
           healthcheck:
             test-server:
@@ -153,7 +153,7 @@ instance_groups:
     properties:
       foo:
         domain: "((system_domain))"
-      bosh_containerization:
+      quarks:
         run:
           healthcheck:
             test-server:
@@ -207,7 +207,7 @@ instance_groups:
         user: admin
         password: changeme
         debug: true
-      bosh_containerization:
+      quarks:
         ports:
         - name: "nats"
           protocol: "TCP"
@@ -238,7 +238,7 @@ instance_groups:
         user: admin
         password: changeme
         debug: true
-      bosh_containerization:
+      quarks:
         pre_render_scripts:
         - |
           cd /var/vcap
@@ -431,7 +431,7 @@ instance_groups:
     properties:
       foo:
         app_domain: "((app_domain))"
-      bosh_containerization:
+      quarks:
         ports:
         - name: "redis"
           protocol: "TCP"
@@ -486,7 +486,7 @@ instance_groups:
     properties:
       foo:
         app_domain: "((app_domain))"
-      bosh_containerization:
+      quarks:
         ports:
         - name: "redis"
           protocol: "TCP"
@@ -578,7 +578,7 @@ instance_groups:
   - name: test-server
     release: bpm
     properties:
-      bosh_containerization:
+      quarks:
         ports:
         - name: test-server
           protocol: TCP
@@ -609,7 +609,7 @@ instance_groups:
   - name: route_registrar
     release: routing
     properties:
-      bosh_containerization:
+      quarks:
         bpm:
           processes:
           - name: route_registrar
@@ -683,7 +683,7 @@ instance_groups:
   - name: test-server
     release: bpm
     properties:
-      bosh_containerization:
+      quarks:
         ports:
         - name: test-server
           protocol: TCP
@@ -765,7 +765,7 @@ instance_groups:
   - name: test-server
     release: bpm
     properties:
-      bosh_containerization:
+      quarks:
         ports:
         - name: test-server
           protocol: TCP
@@ -795,7 +795,7 @@ instance_groups:
   - name: test-server
     release: bpm
     properties:
-      bosh_containerization:
+      quarks:
         ports:
         - name: test-server
           protocol: TCP
@@ -827,7 +827,7 @@ instance_groups:
   - name: test-server
     release: bpm
     properties:
-      bosh_containerization:
+      quarks:
         ports:
         - name: test-server
           protocol: TCP
@@ -884,7 +884,7 @@ instance_groups:
         user: admin
         password: changeme
         debug: true
-      bosh_containerization:
+      quarks:
         ports:
         - name: "nats"
           protocol: "TCP"
@@ -898,7 +898,7 @@ instance_groups:
   - name: route_registrar
     release: routing
     properties:
-      bosh_containerization:
+      quarks:
         bpm:
           processes:
           - name: route_registrar
@@ -938,7 +938,7 @@ instance_groups:
   jobs:
   - name: nats
     properties:
-      bosh_containerization:
+      quarks:
         consumes: null
         debug: false
         instances: null
@@ -972,7 +972,7 @@ instance_groups:
     release: nats
   - name: loggregator_agent
     properties:
-      bosh_containerization:
+      quarks:
         consumes: null
         debug: false
         instances: null
@@ -1221,7 +1221,7 @@ instance_groups:
     release: loggregator-agent
   - name: loggr-forwarder-agent
     properties:
-      bosh_containerization:
+      quarks:
         consumes: null
         debug: false
         instances: null
@@ -1843,7 +1843,7 @@ instance_groups:
     release: loggregator-agent
   - name: loggr-forwarder-agent
     properties:
-      bosh_containerization:
+      quarks:
         consumes: null
         debug: false
         instances: null
@@ -1986,7 +1986,7 @@ instance_groups:
   jobs:
   - name: mysql
     properties:
-      bosh_containerization:
+      quarks:
         bpm:
           processes:
           - args:
@@ -2332,7 +2332,7 @@ instance_groups:
     release: loggregator-agent
   - name: loggr-forwarder-agent
     properties:
-      bosh_containerization:
+      quarks:
         consumes: null
         debug: false
         instances: null

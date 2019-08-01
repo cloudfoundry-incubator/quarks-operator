@@ -62,7 +62,7 @@ func RenderJobTemplates(
 
 			// Find job instance that's being rendered
 			var currentJobInstance *JobInstance
-			for _, instance := range job.Properties.BOSHContainerization.Instances {
+			for _, instance := range job.Properties.Quarks.Instances {
 				if instance.Index == specIndex {
 					currentJobInstance = &instance
 					break
@@ -115,7 +115,7 @@ func RenderJobTemplates(
 
 func runPreRenderScripts(instanceGroup *InstanceGroup, silent bool) error {
 	for _, job := range instanceGroup.Jobs {
-		for idx, script := range job.Properties.BOSHContainerization.PreRenderScripts {
+		for idx, script := range job.Properties.Quarks.PreRenderScripts {
 			createErr := func(err error) error {
 				return errors.Wrapf(err, "failed to run pre-render script %d for job %s for instance group %s", idx, job.Name, instanceGroup.Name)
 			}

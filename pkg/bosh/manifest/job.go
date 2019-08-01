@@ -61,8 +61,8 @@ type Job struct {
 
 // JobProperties represents the properties map of a Job
 type JobProperties struct {
-	BOSHContainerization BOSHContainerization   `json:"bosh_containerization"`
-	Properties           map[string]interface{} `json:"-"`
+	Quarks     Quarks                 `json:"quarks"`
+	Properties map[string]interface{} `json:"-"`
 }
 
 // MarshalJSON is implemented to support inlining Properties
@@ -124,7 +124,7 @@ func (j *Job) SysDirs() []string {
 }
 
 // ToMap returns a complete map with all properties, including the
-// bosh_containerization key
+// quarks key
 func (p *JobProperties) ToMap() map[string]interface{} {
 	result := map[string]interface{}{}
 
@@ -132,7 +132,7 @@ func (p *JobProperties) ToMap() map[string]interface{} {
 		result[k] = v
 	}
 
-	result["bosh_containerization"] = p.BOSHContainerization
+	result["quarks"] = p.Quarks
 
 	return result
 }
@@ -141,12 +141,12 @@ func (p *JobProperties) ToMap() map[string]interface{} {
 func (p *JobProperties) FromMap(properties map[string]interface{}) error {
 	// **Important** We have to use the sigs yaml parser here - this
 	// struct contains kube objects
-	quarksBytes, err := yaml.Marshal(properties["bosh_containerization"])
+	quarksBytes, err := yaml.Marshal(properties["quarks"])
 	if err != nil {
 		return err
 	}
 
-	quarks := BOSHContainerization{}
+	quarks := Quarks{}
 	err = yaml.Unmarshal(quarksBytes, &quarks, func(opt *json.Decoder) *json.Decoder {
 		opt.UseNumber()
 		return opt
@@ -156,8 +156,8 @@ func (p *JobProperties) FromMap(properties map[string]interface{}) error {
 	}
 
 	p.Properties = properties
-	delete(p.Properties, "bosh_containerization")
-	p.BOSHContainerization = quarks
+	delete(p.Properties, "quarks")
+	p.Quarks = quarks
 
 	return nil
 }

@@ -1102,7 +1102,7 @@ var _ = Describe("Manifest", func() {
 				job := ig.Jobs[0]
 
 				Expect(job.Consumes["doppler"]).To(Equal(map[string]interface{}{"from": "doppler"}))
-				Expect(job.Properties.BOSHContainerization.Consumes).To(HaveLen(0))
+				Expect(job.Properties.Quarks.Consumes).To(HaveLen(0))
 			})
 
 			It("bpm fields are populated", func() {
@@ -1117,7 +1117,7 @@ var _ = Describe("Manifest", func() {
 				Expect(props).To(HaveLen(1))
 				Expect(props).To(Equal(map[string]interface{}{"app_domain": "((app_domain))"}))
 
-				bc := job.Properties.BOSHContainerization
+				bc := job.Properties.Quarks
 				Expect(bc).ToNot(BeNil())
 				Expect(bc.Ports).To(HaveLen(1))
 				Expect(bc.PreRenderScripts).To(HaveLen(1))
@@ -1227,11 +1227,11 @@ var _ = Describe("Manifest", func() {
 				manifest, err := LoadYAML(text)
 				Expect(err).NotTo(HaveOccurred())
 
-				hc := m1.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Run.HealthCheck
+				hc := m1.InstanceGroups[1].Jobs[0].Properties.Quarks.Run.HealthCheck
 				Expect(hc).ToNot(BeNil())
 				Expect(hc["test-server"].ReadinessProbe.Handler.Exec.Command).To(ContainElement("curl --silent --fail --head http://${HOSTNAME}:8080/health"))
 
-				hc = manifest.InstanceGroups[1].Jobs[0].Properties.BOSHContainerization.Run.HealthCheck
+				hc = manifest.InstanceGroups[1].Jobs[0].Properties.Quarks.Run.HealthCheck
 				Expect(hc).ToNot(BeNil())
 				Expect(hc["test-server"].ReadinessProbe.Handler.Exec.Command).To(ContainElement("curl --silent --fail --head http://${HOSTNAME}:8080/health"))
 

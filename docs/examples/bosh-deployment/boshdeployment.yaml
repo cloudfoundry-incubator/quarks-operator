@@ -34,7 +34,7 @@ data:
           nats:
             user: admin
             password: ((nats_password))
-          bosh_containerization:
+          quarks:
             ports:
             - name: "nats"
               protocol: "TCP"

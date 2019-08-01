@@ -475,7 +475,7 @@ func (m *Manifest) ApplyAddons() error {
 					Name:    addonJob.Name,
 					Release: addonJob.Release,
 					Properties: JobProperties{
-						BOSHContainerization: BOSHContainerization{IsAddon: true},
+						Quarks: Quarks{IsAddon: true},
 						Properties:           addonJob.Properties,
 					},
 				})

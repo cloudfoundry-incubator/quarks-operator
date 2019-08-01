@@ -212,7 +212,7 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGrou
 	// Collect ports to be exposed for each job
 	ports := []corev1.ServicePort{}
 	for _, job := range instanceGroup.Jobs {
-		for _, port := range job.Properties.BOSHContainerization.Ports {
+		for _, port := range job.Properties.Quarks.Ports {
 			ports = append(ports, corev1.ServicePort{
 				Name:     port.Name,
 				Protocol: corev1.Protocol(port.Protocol),

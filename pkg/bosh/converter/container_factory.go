@@ -108,7 +108,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 					process,
 					jobImage,
 					processVolumeMounts,
-					job.Properties.BOSHContainerization.Debug,
+					job.Properties.Quarks.Debug,
 				)
 
 				bpmPreStartInitContainers = append(bpmPreStartInitContainers, *container.DeepCopy())
@@ -120,7 +120,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 			job.Name,
 			jobImage,
 			append(defaultVolumeMounts, bpmDisks.VolumeMounts()...),
-			job.Properties.BOSHContainerization.Debug,
+			job.Properties.Quarks.Debug,
 		)
 		boshPreStartInitContainers = append(boshPreStartInitContainers, *boshPreStartInitContainer.DeepCopy())
 	}
@@ -198,7 +198,7 @@ func (c *ContainerFactory) JobsToContainers(
 				jobImage,
 				process,
 				processVolumeMounts,
-				job.Properties.BOSHContainerization.Run.HealthCheck,
+				job.Properties.Quarks.Run.HealthCheck,
 			)
 
 			containers = append(containers, *container.DeepCopy())
