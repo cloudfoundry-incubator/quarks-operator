@@ -15,14 +15,14 @@ import (
 )
 
 const (
-	// EnvJobsDir is a key for the container Env used to lookup the jobs dir
+	// EnvJobsDir is a key for the container Env used to lookup the jobs dir.
 	EnvJobsDir = "JOBS_DIR"
 
-	// EnvLogsDir is the path from where to tail file logs
+	// EnvLogsDir is the path from where to tail file logs.
 	EnvLogsDir = "LOGS_DIR"
 )
 
-// ContainerFactory builds Kubernetes containers from BOSH jobs
+// ContainerFactory builds Kubernetes containers from BOSH jobs.
 type ContainerFactory struct {
 	manifestName         string
 	instanceGroupName    string
@@ -32,7 +32,7 @@ type ContainerFactory struct {
 	bpmConfigs           bpm.Configs
 }
 
-// NewContainerFactory returns a new ContainerFactory for a BOSH instant group
+// NewContainerFactory returns a new ContainerFactory for a BOSH instant group.
 func NewContainerFactory(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactory {
 	return &ContainerFactory{
 		manifestName:         manifestName,
@@ -44,7 +44,7 @@ func NewContainerFactory(manifestName string, instanceGroupName string, version 
 	}
 }
 
-// JobsToInitContainers creates a list of Containers for corev1.PodSpec InitContainers field
+// JobsToInitContainers creates a list of Containers for corev1.PodSpec InitContainers field.
 func (c *ContainerFactory) JobsToInitContainers(
 	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
@@ -142,7 +142,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 	return initContainers, nil
 }
 
-// JobsToContainers creates a list of Containers for corev1.PodSpec Containers field
+// JobsToContainers creates a list of Containers for corev1.PodSpec Containers field.
 func (c *ContainerFactory) JobsToContainers(
 	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
@@ -177,7 +177,7 @@ func (c *ContainerFactory) JobsToContainers(
 			persistentDiskMount = persistentDiskDisks[0].VolumeMount
 		}
 
-		for _, process := range bpmConfig.Processes {
+		for processIndex, process := range bpmConfig.Processes {
 			processDisks := jobDisks.Filter("process_name", process.Name)
 			bpmVolumeMounts := make([]corev1.VolumeMount, 0)
 			for _, processDisk := range processDisks {
@@ -191,6 +191,18 @@ func (c *ContainerFactory) JobsToContainers(
 				processVolumeMounts = append(processVolumeMounts, *persistentDiskMount)
 			}
 
+			// The post-start script should be executed only once per job, so we set it up in the first
+			// process container.
+			var postStartHandler *corev1.Handler
+			if processIndex == 0 {
+				var command []string
+				condition := job.Properties.BOSHContainerization.PostStart.Condition
+				if condition != nil && condition.Exec != nil {
+					command = condition.Exec.Command
+				}
+				postStartHandler = createPostStartHandler(job.Name, command)
+			}
+
 			container := bpmProcessContainer(
 				job.Name,
 				process.Name,
@@ -200,6 +212,7 @@ func (c *ContainerFactory) JobsToContainers(
 				job.Properties.Quarks.Run.HealthCheck,
 				job.Properties.Quarks.Envs,
 				job.Properties.Quarks.Privileged,
+				postStartHandler,
 			)
 
 			containers = append(containers, *container.DeepCopy())
@@ -217,9 +230,8 @@ func (c *ContainerFactory) JobsToContainers(
 	return containers, nil
 }
 
-// logsTailerContainer is a container that tails all logs in /var/vcap/sys/log
+// logsTailerContainer is a container that tails all logs in /var/vcap/sys/log.
 func logsTailerContainer(instanceGroupName string) corev1.Container {
-
 	rootUserID := int64(0)
 
 	return corev1.Container{
@@ -247,7 +259,7 @@ func logsTailerContainer(instanceGroupName string) corev1.Container {
 	}
 }
 
-// jobSpecCopierContainer will return a corev1.Container{} with the populated field
+// jobSpecCopierContainer will return a corev1.Container{} with the populated field.
 func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName string) corev1.Container {
 	inContainerReleasePath := filepath.Join(VolumeRenderingDataMountPath, "jobs-src", releaseName)
 	return corev1.Container{
@@ -422,6 +434,62 @@ func bpmPreStartInitContainer(
 	}
 }
 
+// The post-start logic should be executed after the pod is ready in order to mimic the BOSH
+// post-start behaviour. For that, we wait for the condition to happen.
+// TODO: move this script to be created on an init container so whenever it fails, it's output does
+// not polute the kubectl get pods.
+func createPostStartHandler(jobName string, condition []string) *corev1.Handler {
+	postStartScript := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "post-start")
+
+	var conditionBlock string
+	if condition != nil {
+		var conditionArr strings.Builder
+		for _, c := range condition {
+			fmt.Fprintf(&conditionArr, "'%s'\n", c)
+		}
+		conditionBlock = fmt.Sprintf(`
+echo "running post-start condition..."
+retry_interval=5
+timeout=$(( 15 * 60 ))
+counter=$(( $timeout / $retry_interval ))
+command=(
+%s
+)
+until (( $counter == 0 )); do
+	"${command[@]}" && break
+	sleep $retry_interval
+	(( counter-- ))
+done
+if (( $counter == 0 )); then exit 1; fi`, conditionArr.String())
+	}
+
+	handlerScript := fmt.Sprintf(`
+set -o errexit -o nounset
+
+printf "checking for %[1]s post-start script... "
+if [[ -x "%[1]s" ]]; then
+	echo "exists"
+else
+	echo "does not exist; skipping..."
+	exit 0
+fi
+
+%[2]s
+
+echo "running post-start script %[1]s..."
+"%[1]s"`, postStartScript, conditionBlock)
+
+	return &corev1.Handler{
+		Exec: &corev1.ExecAction{
+			Command: []string{
+				"bash",
+				"-c",
+				handlerScript,
+			},
+		},
+	}
+}
+
 func bpmProcessContainer(
 	jobName string,
 	processName string,
@@ -431,6 +499,7 @@ func bpmProcessContainer(
 	healthchecks map[string]bdm.HealthCheck,
 	arbitraryEnvs []corev1.EnvVar,
 	privileged bool,
+	postStartHandler *corev1.Handler,
 ) corev1.Container {
 	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
 	privilegedContainer := process.Unsafe.Privileged || privileged
@@ -456,6 +525,10 @@ func bpmProcessContainer(
 		container.SecurityContext.Capabilities = &corev1.Capabilities{
 			Add: capability(process.Capabilities),
 		}
+	}
+
+	if postStartHandler != nil {
+		container.Lifecycle.PostStart = postStartHandler
 	}
 
 	// Setup the job drain script handler.
@@ -514,7 +587,7 @@ echo "Done"`,
 	return container
 }
 
-// capability converts string slice into Capability slice of kubernetes
+// capability converts string slice into Capability slice of kubernetes.
 func capability(s []string) []corev1.Capability {
 	capabilities := make([]corev1.Capability, len(s))
 	for capabilityIndex, capability := range s {
