@@ -662,6 +662,12 @@ instance_groups:
                 networks: {}
                 ip: ""
             release: loggregator
+            envs:
+            - name: TRAFFIC_CONTROLLER_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
           cc:
             internal_service_hostname: cloud-controller-ng.service.cf.internal
             mutual_tls:

@@ -199,6 +199,7 @@ func (c *ContainerFactory) JobsToContainers(
 				process,
 				processVolumeMounts,
 				job.Properties.Quarks.Run.HealthCheck,
+				job.Properties.Quarks.Envs,
 			)
 
 			containers = append(containers, *container.DeepCopy())
@@ -414,6 +415,7 @@ func bpmProcessContainer(
 	process bpm.Process,
 	volumeMounts []corev1.VolumeMount,
 	healthchecks map[string]bdm.HealthCheck,
+	arbitraryEnvs []corev1.EnvVar,
 ) corev1.Container {
 	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
 	container := corev1.Container{
@@ -475,9 +477,7 @@ func bpmProcessContainer(
 		},
 	}
 
-	for name, value := range process.Env {
-		container.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
-	}
+	container.Env = generateEnv(process.Env, arbitraryEnvs)
 
 	for name, hc := range healthchecks {
 		if name == process.Name {
@@ -523,5 +523,24 @@ func flattenContainers(containers ...interface{}) []corev1.Container {
 			result = append(result, v)
 		}
 	}
+	return result
+}
+
+// generateEnv returns new slice of corev1.EnvVar
+func generateEnv(envs map[string]string, overrides []corev1.EnvVar) []corev1.EnvVar {
+	result := make([]corev1.EnvVar, 0, len(envs))
+	overridesMap := make(map[string]corev1.EnvVar)
+
+	for _, override := range overrides {
+		overridesMap[override.Name] = override
+	}
+	for name, value := range envs {
+		if override, ok := overridesMap[name]; ok {
+			result = append(result, override)
+		} else {
+			result = append(result, corev1.EnvVar{Name: name, Value: value})
+		}
+	}
+
 	return result
 }
