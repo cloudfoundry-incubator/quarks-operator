@@ -196,7 +196,7 @@ func (c *ContainerFactory) JobsToContainers(
 			var postStartHandler *corev1.Handler
 			if processIndex == 0 {
 				var command []string
-				condition := job.Properties.BOSHContainerization.PostStart.Condition
+				condition := job.Properties.Quarks.PostStart.Condition
 				if condition != nil && condition.Exec != nil {
 					command = condition.Exec.Command
 				}
