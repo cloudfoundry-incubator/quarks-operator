@@ -409,7 +409,6 @@ func bpmPreStartInitContainer(
 	debug bool,
 	privileged bool,
 ) corev1.Container {
-
 	var script string
 	if debug {
 		script = fmt.Sprintf(`%s || ( echo "Debug window 1hr" ; sleep 3600)`, process.Hooks.PreStart)
@@ -513,6 +512,7 @@ func bpmProcessContainer(
 		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
 		Command:      []string{"/usr/bin/dumb-init", "--"},
 		Args:         append([]string{process.Executable}, process.Args...),
+		Env:          generateEnv(process.Env, arbitraryEnvs),
 		WorkingDir:   workdir,
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privilegedContainer,
@@ -571,8 +571,6 @@ echo "Done"`,
 			},
 		},
 	}
-
-	container.Env = generateEnv(process.Env, arbitraryEnvs)
 
 	for name, hc := range healthchecks {
 		if name == process.Name {
