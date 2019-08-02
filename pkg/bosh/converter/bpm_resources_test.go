@@ -79,7 +79,8 @@ var _ = Describe("kube converter", func() {
 					// Test containers in the extended job
 					Expect(eJob.Spec.Template.Spec.Containers[0].Name).To(Equal("redis-server-test-server"))
 					Expect(eJob.Spec.Template.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
-					Expect(eJob.Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server"}))
+					Expect(eJob.Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"/usr/bin/dumb-init"}))
+					Expect(eJob.Spec.Template.Spec.Containers[0].Args).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server", "--port", "1337"}))
 					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[4].Name).To(Equal("data-dir"))
 					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[5].Name).To(Equal("store-dir"))
 					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[6].Name).To(Equal("bpm-unrestricted-volume-redis-server-test-server-0"))
@@ -88,7 +89,12 @@ var _ = Describe("kube converter", func() {
 					// Test init containers in the extended job
 					Expect(specCopierInitContainer.Name).To(Equal("spec-copier-redis"))
 					Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
-					Expect(specCopierInitContainer.Command[0]).To(Equal("/bin/sh"))
+					Expect(specCopierInitContainer.Command).To(Equal([]string{"/usr/bin/dumb-init"}))
+					Expect(specCopierInitContainer.Args).To(Equal([]string{
+						"/bin/sh",
+						"-xc",
+						"mkdir -p /var/vcap/all-releases/jobs-src/redis && cp -ar /var/vcap/jobs-src/* /var/vcap/all-releases/jobs-src/redis && chown vcap:vcap /var/vcap/all-releases/jobs-src/redis -R",
+					}))
 					Expect(rendererInitContainer.Image).To(Equal("/:"))
 					Expect(rendererInitContainer.Name).To(Equal("template-render"))
 
@@ -131,13 +137,19 @@ var _ = Describe("kube converter", func() {
 
 					// Test containers in the extended statefulSet
 					Expect(stS.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
-					Expect(stS.Spec.Containers[0].Command).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server"}))
+					Expect(stS.Spec.Containers[0].Command).To(Equal([]string{"/usr/bin/dumb-init"}))
+					Expect(stS.Spec.Containers[0].Args).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server", "--port", "1337"}))
 					Expect(stS.Spec.Containers[0].Name).To(Equal("cflinuxfs3-rootfs-setup-test-server"))
 
 					// Test init containers in the extended statefulSet
 					Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3"))
 					Expect(specCopierInitContainer.Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
-					Expect(specCopierInitContainer.Command[0]).To(Equal("/bin/sh"))
+					Expect(specCopierInitContainer.Command).To(Equal([]string{"/usr/bin/dumb-init"}))
+					Expect(specCopierInitContainer.Args).To(Equal([]string{
+						"/bin/sh",
+						"-xc",
+						"mkdir -p /var/vcap/all-releases/jobs-src/cflinuxfs3 && cp -ar /var/vcap/jobs-src/* /var/vcap/all-releases/jobs-src/cflinuxfs3 && chown vcap:vcap /var/vcap/all-releases/jobs-src/cflinuxfs3 -R",
+					}))
 					Expect(specCopierInitContainer.Name).To(Equal("spec-copier-cflinuxfs3"))
 					Expect(rendererInitContainer.Image).To(Equal("/:"))
 					Expect(rendererInitContainer.Name).To(Equal("template-render"))
@@ -310,19 +322,15 @@ var _ = Describe("kube converter", func() {
 				containers := resources.Errands[0].Spec.Template.Spec.Containers
 				Expect(containers).To(HaveLen(4))
 				Expect(containers[0].Name).To(Equal("fake-errand-a-test-server"))
-				Expect(containers[0].Command[0]).To(ContainSubstring("bin/test-server"))
-				Expect(containers[0].Args).To(HaveLen(2))
-				Expect(containers[0].Args[0]).To(Equal("--port"))
-				Expect(containers[0].Args[1]).To(Equal("1337"))
+				Expect(containers[0].Command).To(Equal([]string{"/usr/bin/dumb-init"}))
+				Expect(containers[0].Args).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server", "--port", "1337"}))
 				Expect(containers[0].Env).To(HaveLen(1))
 				Expect(containers[0].Env[0].Name).To(Equal("BPM"))
 				Expect(containers[0].Env[0].Value).To(Equal("SWEET"))
 				Expect(containers[1].Name).To(Equal("fake-errand-b-test-server"))
 				Expect(containers[2].Name).To(Equal("fake-errand-b-alt-test-server"))
-				Expect(containers[2].Command[0]).To(ContainSubstring("bin/test-server"))
-				Expect(containers[2].Args).To(HaveLen(3))
-				Expect(containers[2].Args[0]).To(Equal("--port"))
-				Expect(containers[2].Args[1]).To(Equal("1338"))
+				Expect(containers[2].Command).To(Equal([]string{"/usr/bin/dumb-init"}))
+				Expect(containers[2].Args).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server", "--port", "1338", "--ignore-signals"}))
 				Expect(containers[2].Env).To(HaveLen(1))
 				Expect(containers[2].Env[0].Name).To(Equal("BPM"))
 				Expect(containers[2].Env[0].Value).To(Equal("CONTAINED"))
