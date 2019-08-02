@@ -2,6 +2,7 @@ package extendedjob
 
 import (
 	"context"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -87,7 +88,9 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 	}
 	if retry {
 		ctxlog.Infof(ctx, "Retrying to create job '%s'", eJob.Name)
-		return reconcile.Result{Requeue: true}, nil
+		result.Requeue = true
+		result.RequeueAfter = time.Second * 5
+		return result, nil
 	}
 
 	ctxlog.WithEvent(eJob, "CreateJob").Infof(ctx, "Created errand job for '%s'", eJob.Name)

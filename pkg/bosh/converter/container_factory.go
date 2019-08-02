@@ -252,9 +252,10 @@ func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 			},
 		},
 		Command: []string{
-			"/bin/sh",
+			"/usr/bin/dumb-init",
 		},
 		Args: []string{
+			"/bin/sh",
 			"-xc",
 			fmt.Sprintf("mkdir -p %s && cp -ar %s/* %s && chown vcap:vcap %s -R", inContainerReleasePath, VolumeJobsSrcDirMountPath, inContainerReleasePath, inContainerReleasePath),
 		},
@@ -303,9 +304,10 @@ func templateRenderingContainer(instanceGroupName string, secretName string) cor
 			},
 		},
 		Command: []string{
-			"/bin/sh",
+			"/usr/bin/dumb-init",
 		},
 		Args: []string{
+			"/bin/sh",
 			"-xc",
 			"cf-operator util template-render",
 		},
@@ -333,9 +335,10 @@ func createDirContainer(jobs []bdm.Job) corev1.Container {
 			},
 		},
 		Command: []string{
-			"/bin/sh",
+			"/usr/bin/dumb-init",
 		},
 		Args: []string{
+			"/bin/sh",
 			"-xc",
 			fmt.Sprintf("mkdir -p %s", strings.Join(dirs, " ")),
 		},
@@ -366,9 +369,10 @@ func boshPreStartInitContainer(
 		Image:        jobImage,
 		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
 		Command: []string{
-			"/bin/sh",
+			"/usr/bin/dumb-init",
 		},
 		Args: []string{
+			"/bin/sh",
 			"-xc",
 			script,
 		},
@@ -399,9 +403,10 @@ func bpmPreStartInitContainer(
 		Image:        jobImage,
 		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
 		Command: []string{
-			"/bin/sh",
+			"/usr/bin/dumb-init",
 		},
 		Args: []string{
+			"/bin/sh",
 			"-xc",
 			script,
 		},
@@ -427,8 +432,8 @@ func bpmProcessContainer(
 		Name:         names.Sanitize(name),
 		Image:        jobImage,
 		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
-		Command:      []string{process.Executable},
-		Args:         process.Args,
+		Command:      []string{"/usr/bin/dumb-init"},
+		Args:         append([]string{process.Executable}, process.Args...),
 		WorkingDir:   process.Workdir,
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privilegedContainer,
@@ -448,6 +453,7 @@ func bpmProcessContainer(
 	container.Lifecycle.PreStop = &corev1.Handler{
 		Exec: &corev1.ExecAction{
 			Command: []string{
+				"/usr/bin/dumb-init",
 				"sh",
 				"-c",
 				`for s in $(ls ` + drainGlob + `); do
