@@ -141,8 +141,12 @@ var _ = Describe("Deploy", func() {
 			Expect(len(pods.Items)).To(Equal(2))
 			pod := pods.Items[1]
 			Expect(pod.Spec.InitContainers).To(HaveLen(5))
-			Expect(pod.Spec.InitContainers[4].Args).To(ContainElement("/var/vcap/jobs/garden/bin/bpm-pre-start"))
-			Expect(pod.Spec.InitContainers[4].Command[0]).To(Equal("/bin/sh"))
+			Expect(pod.Spec.InitContainers[4].Command).To(Equal([]string{"/usr/bin/dumb-init"}))
+			Expect(pod.Spec.InitContainers[4].Args).To(Equal([]string{
+				"/bin/sh",
+				"-xc",
+				"/var/vcap/jobs/garden/bin/bpm-pre-start",
+			}))
 		})
 	})
 
@@ -346,11 +350,13 @@ var _ = Describe("Deploy", func() {
 
 			By("Checking volume mounts with secret versions")
 			pod, err := env.GetPod(env.Namespace, "test-nats-v2-1")
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal("test.desired-manifest-v2"))
 			Expect(pod.Spec.Volumes[5].Secret.SecretName).To(Equal("test.ig-resolved.nats-v2"))
 			Expect(pod.Spec.InitContainers[1].VolumeMounts[2].Name).To(Equal("ig-resolved"))
 
 			pod, err = env.GetPod(env.Namespace, "test-route-registrar-v2-0")
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal("test.desired-manifest-v2"))
 			Expect(pod.Spec.Volumes[5].Secret.SecretName).To(Equal("test.ig-resolved.route-registrar-v2"))
 			Expect(pod.Spec.InitContainers[1].VolumeMounts[2].Name).To(Equal("ig-resolved"))
@@ -478,6 +484,7 @@ var _ = Describe("Deploy", func() {
 			// Generate the right ops resource, so that the above goroutine will not end in error
 			tearDown, err = env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops"))
 			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			chanReceived := <-ch
 			Expect(chanReceived.Error).To(HaveOccurred())
