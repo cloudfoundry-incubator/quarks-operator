@@ -30,7 +30,10 @@ func Add(ctx context.Context, config *config.Config, mgr manager.Manager) error 
 	r := NewReconciler(ctx, config, mgr, credsgen.NewInMemoryGenerator(log), controllerutil.SetControllerReference)
 
 	// Create a new controller
-	c, err := controller.New("extendedsecret-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("extendedsecret-controller", mgr, controller.Options{
+		Reconciler:              r,
+		MaxConcurrentReconciles: config.MaxExtendedSecretWorkers,
+	})
 	if err != nil {
 		return errors.Wrap(err, "Adding extended secret controller to manager failed.")
 	}

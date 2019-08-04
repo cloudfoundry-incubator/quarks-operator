@@ -26,7 +26,10 @@ func AddTrigger(ctx context.Context, config *config.Config, mgr manager.Manager)
 	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-job-trigger-reconciler", mgr.GetEventRecorderFor("ext-job-trigger-recorder"))
 	store := vss.NewVersionedSecretStore(mgr.GetClient())
 	r := NewTriggerReconciler(ctx, config, mgr, query, f, store)
-	c, err := controller.New("ext-job-trigger-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("ext-job-trigger-controller", mgr, controller.Options{
+		Reconciler:              r,
+		MaxConcurrentReconciles: config.MaxExtendedJobWorkers,
+	})
 	if err != nil {
 		return errors.Wrap(err, "Adding trigger controller to manager failed.")
 	}

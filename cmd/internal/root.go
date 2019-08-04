@@ -67,7 +67,16 @@ var rootCmd = &cobra.Command{
 			log.Fatal("%s operator-webhook-service-host flag is not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST).", cfFailedMessage)
 		}
 
-		config := config.NewConfig(cfOperatorNamespace, host, port, afero.NewOsFs())
+		config := config.NewConfig(
+			cfOperatorNamespace,
+			host,
+			port,
+			afero.NewOsFs(),
+			viper.GetInt("max-boshdeployment-workers"),
+			viper.GetInt("max-extendedjob-workers"),
+			viper.GetInt("max-extendedsecret-workers"),
+			viper.GetInt("max-extendedstatefulset-workers"),
+		)
 		ctx := ctxlog.NewParentContext(log)
 
 		mgr, err := operator.NewManager(ctx, config, restConfig, manager.Options{
@@ -116,6 +125,10 @@ func init() {
 	pf.StringP("operator-webhook-service-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")
 	pf.StringP("operator-webhook-service-port", "p", "2999", "Port the webhook server listens on")
 	pf.StringP("docker-image-tag", "t", version.Version, "Tag of the operator docker image")
+	pf.Int("max-boshdeployment-workers", 1, "Maximum of number concurrently running BOSHDeployment controller")
+	pf.Int("max-extendedjob-workers", 1, "Maximum of number concurrently running ExtendedJob controller")
+	pf.Int("max-extendedsecret-workers", 5, "Maximum of number concurrently running ExtendedSecret controller")
+	pf.Int("max-extendedstatefulset-workers", 1, "Maximum of number concurrently running ExtendedStatefulSet controller")
 	viper.BindPFlag("kubeconfig", pf.Lookup("kubeconfig"))
 	viper.BindPFlag("log-level", pf.Lookup("log-level"))
 	viper.BindPFlag("cf-operator-namespace", pf.Lookup("cf-operator-namespace"))
@@ -124,16 +137,24 @@ func init() {
 	viper.BindPFlag("operator-webhook-service-host", pf.Lookup("operator-webhook-service-host"))
 	viper.BindPFlag("operator-webhook-service-port", pf.Lookup("operator-webhook-service-port"))
 	viper.BindPFlag("docker-image-tag", rootCmd.PersistentFlags().Lookup("docker-image-tag"))
+	viper.BindPFlag("max-boshdeployment-workers", pf.Lookup("max-boshdeployment-workers"))
+	viper.BindPFlag("max-extendedjob-workers", pf.Lookup("max-extendedjob-workers"))
+	viper.BindPFlag("max-extendedsecret-workers", pf.Lookup("max-extendedsecret-workers"))
+	viper.BindPFlag("max-extendedstatefulset-workers", rootCmd.PersistentFlags().Lookup("max-extendedstatefulset-workers"))
 
 	argToEnv := map[string]string{
-		"kubeconfig":                    "KUBECONFIG",
-		"log-level":                     "LOG_LEVEL",
-		"cf-operator-namespace":         "CF_OPERATOR_NAMESPACE",
-		"docker-image-org":              "DOCKER_IMAGE_ORG",
-		"docker-image-repository":       "DOCKER_IMAGE_REPOSITORY",
-		"operator-webhook-service-host": "CF_OPERATOR_WEBHOOK_SERVICE_HOST",
-		"operator-webhook-service-port": "CF_OPERATOR_WEBHOOK_SERVICE_PORT",
-		"docker-image-tag":              "DOCKER_IMAGE_TAG",
+		"kubeconfig":                      "KUBECONFIG",
+		"log-level":                       "LOG_LEVEL",
+		"cf-operator-namespace":           "CF_OPERATOR_NAMESPACE",
+		"docker-image-org":                "DOCKER_IMAGE_ORG",
+		"docker-image-repository":         "DOCKER_IMAGE_REPOSITORY",
+		"operator-webhook-service-host":   "CF_OPERATOR_WEBHOOK_SERVICE_HOST",
+		"operator-webhook-service-port":   "CF_OPERATOR_WEBHOOK_SERVICE_PORT",
+		"docker-image-tag":                "DOCKER_IMAGE_TAG",
+		"max-boshdeployment-workers":      "MAX_BOSHDEPLOYMENT_WORKERS",
+		"max-extendedjob-workers":         "MAX_EXTENDEDJOB_WORKERS",
+		"max-extendedsecret-workers":      "MAX_EXTENDEDSECRET_WORKERS",
+		"max-extendedstatefulset-workers": "MAX_EXTENDEDSTATEFULSET_WORKERS",
 	}
 
 	// Add env variables to help

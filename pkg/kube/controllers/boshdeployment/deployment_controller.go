@@ -34,7 +34,8 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 
 	// Create a new controller
 	c, err := controller.New("boshdeployment-controller", mgr, controller.Options{
-		Reconciler: r,
+		Reconciler:              r,
+		MaxConcurrentReconciles: config.MaxBoshDeploymentWorkers,
 	})
 	if err != nil {
 		return errors.Wrap(err, "Adding Bosh deployment controller to manager failed.")
