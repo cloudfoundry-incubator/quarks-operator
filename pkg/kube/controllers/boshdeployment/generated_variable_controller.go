@@ -35,7 +35,8 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 
 	// Create a new controller
 	c, err := controller.New("generated-variable-controller", mgr, controller.Options{
-		Reconciler: r,
+		Reconciler:              r,
+		MaxConcurrentReconciles: config.MaxBoshDeploymentWorkers,
 	})
 	if err != nil {
 		return errors.Wrap(err, "Adding generated variable controller to manager failed.")

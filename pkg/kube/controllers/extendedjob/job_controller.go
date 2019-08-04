@@ -32,7 +32,10 @@ func AddJob(ctx context.Context, config *config.Config, mgr manager.Manager) err
 	if err != nil {
 		return err
 	}
-	jobController, err := controller.New("ext-job-job-controller", mgr, controller.Options{Reconciler: jobReconciler})
+	jobController, err := controller.New("ext-job-job-controller", mgr, controller.Options{
+		Reconciler:              jobReconciler,
+		MaxConcurrentReconciles: config.MaxExtendedJobWorkers,
+	})
 	if err != nil {
 		return err
 	}

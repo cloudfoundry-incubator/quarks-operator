@@ -34,7 +34,10 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 	)
 
 	// Create a new controller
-	c, err := controller.New("bpm-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("bpm-controller", mgr, controller.Options{
+		Reconciler:              r,
+		MaxConcurrentReconciles: config.MaxBoshDeploymentWorkers,
+	})
 	if err != nil {
 		return errors.Wrap(err, "Adding BPM controller to manager failed.")
 	}
