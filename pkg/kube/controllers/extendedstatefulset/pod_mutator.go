@@ -13,7 +13,6 @@ import (
 
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	mTypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -25,12 +24,10 @@ import (
 
 // PodMutator changes pod definitions
 type PodMutator struct {
-	client       client.Client
-	scheme       *runtime.Scheme
-	setReference setReferenceFunc
-	log          *zap.SugaredLogger
-	config       *config.Config
-	decoder      *admission.Decoder
+	client  client.Client
+	log     *zap.SugaredLogger
+	config  *config.Config
+	decoder *admission.Decoder
 }
 
 // Implement admission.Handler so the controller can handle admission request.

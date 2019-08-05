@@ -14,8 +14,9 @@ import (
 	"go.uber.org/zap"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" // from https://github.com/kubernetes/client-go/issues/345
+	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	kubeConfig "code.cloudfoundry.org/cf-operator/pkg/kube/config"
@@ -23,7 +24,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/version"
-	crlog "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 const (

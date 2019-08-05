@@ -346,11 +346,13 @@ var _ = Describe("Deploy", func() {
 
 			By("Checking volume mounts with secret versions")
 			pod, err := env.GetPod(env.Namespace, "test-nats-v2-1")
+			Expect(err).NotTo(HaveOccurred())
 			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal("test.desired-manifest-v2"))
 			Expect(pod.Spec.Volumes[5].Secret.SecretName).To(Equal("test.ig-resolved.nats-v2"))
 			Expect(pod.Spec.InitContainers[1].VolumeMounts[2].Name).To(Equal("ig-resolved"))
 
 			pod, err = env.GetPod(env.Namespace, "test-route-registrar-v2-0")
+			Expect(err).NotTo(HaveOccurred())
 			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal("test.desired-manifest-v2"))
 			Expect(pod.Spec.Volumes[5].Secret.SecretName).To(Equal("test.ig-resolved.route-registrar-v2"))
 			Expect(pod.Spec.InitContainers[1].VolumeMounts[2].Name).To(Equal("ig-resolved"))
@@ -476,7 +478,7 @@ var _ = Describe("Deploy", func() {
 			time.Sleep(8 * time.Second)
 
 			// Generate the right ops resource, so that the above goroutine will not end in error
-			tearDown, err = env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops"))
+			_, err = env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops"))
 			Expect(err).NotTo(HaveOccurred())
 
 			chanReceived := <-ch
