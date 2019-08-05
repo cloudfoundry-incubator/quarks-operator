@@ -71,19 +71,12 @@ func (r *ResolverImpl) DesiredManifest(ctx context.Context, boshDeploymentName, 
 func (r *ResolverImpl) WithOpsManifest(instance *bdc.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
 	interpolator := r.newInterpolatorFunc()
 	spec := instance.Spec
-	manifest := &bdm.Manifest{}
 	var (
 		m   string
 		err error
 	)
 
 	m, err = r.resourceData(namespace, spec.Manifest.Type, spec.Manifest.Name, bdc.ManifestSpecName)
-	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
-	}
-
-	// Get the deployment name from the manifest
-	manifest, err = bdm.LoadYAML([]byte(m))
 	if err != nil {
 		return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
 	}
@@ -111,7 +104,7 @@ func (r *ResolverImpl) WithOpsManifest(instance *bdc.BOSHDeployment, namespace s
 	}
 
 	// Reload the manifest after interpolation, and apply implicit variables
-	manifest, err = bdm.LoadYAML(bytes)
+	manifest, err := bdm.LoadYAML(bytes)
 	if err != nil {
 		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying ops %#v", m)
 	}

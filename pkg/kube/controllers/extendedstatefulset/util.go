@@ -34,7 +34,6 @@ func listStatefulSetsFromInformer(ctx context.Context, client crc.Client, exStat
 func listStatefulSetsFromAPIClient(ctx context.Context, client appsv1beta2client.AppsV1beta2Interface, exStatefulSet *estsv1.ExtendedStatefulSet) ([]v1beta2.StatefulSet, error) {
 	ctxlog.Debug(ctx, "Listing StatefulSets owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
 
-	allStatefulSets := &v1beta2.StatefulSetList{}
 	allStatefulSets, err := client.StatefulSets(exStatefulSet.Namespace).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
