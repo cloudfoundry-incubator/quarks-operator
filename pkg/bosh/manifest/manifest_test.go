@@ -1150,6 +1150,7 @@ var _ = Describe("Manifest", func() {
 			BeforeEach(func() {
 				var err error
 				m1, err = LoadYAML([]byte(orgText))
+				Expect(err).NotTo(HaveOccurred())
 				largeManifest, err = LoadYAML([]byte(largeText))
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -1220,6 +1221,7 @@ var _ = Describe("Manifest", func() {
 			It("retains healthcheck data", func() {
 				defaultText := boshmanifest.Default
 				m1, err := LoadYAML([]byte(defaultText))
+				Expect(err).NotTo(HaveOccurred())
 				text, err := m1.Marshal()
 				Expect(err).NotTo(HaveOccurred())
 
