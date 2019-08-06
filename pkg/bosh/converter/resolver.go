@@ -20,7 +20,6 @@ import (
 )
 
 // Resolver interface to provide a BOSH manifest resolved references from bdpl CRD
-// go:generate counterfeiter -o fakes/fake_resolver.go . Resolver
 type Resolver interface {
 	WithOpsManifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
 }
