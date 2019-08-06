@@ -6,7 +6,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 func TestExtendedJob(t *testing.T) {
@@ -16,5 +17,5 @@ func TestExtendedJob(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	// setup logging for controller-runtime
-	logf.SetLogger(logf.ZapLogger(true))
+	logf.SetLogger(zap.Logger(true))
 })

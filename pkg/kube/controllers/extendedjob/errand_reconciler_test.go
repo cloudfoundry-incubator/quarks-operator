@@ -190,9 +190,8 @@ var _ = Describe("ErrandReconciler", func() {
 					Expect(eJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerNow))
 
 					client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
-						switch object.(type) {
+						switch job := object.(type) {
 						case *batchv1.Job:
-							job := object.(*batchv1.Job)
 							Expect(reflect.DeepEqual(job.Spec.Template.Spec, eJob.Spec.Template.Spec)).To(BeTrue())
 							return nil
 						}
@@ -200,9 +199,8 @@ var _ = Describe("ErrandReconciler", func() {
 						return nil
 					})
 					client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
-						switch object.(type) {
+						switch job := object.(type) {
 						case *ejv1.ExtendedJob:
-							job := object.(*ejv1.ExtendedJob)
 							Expect(job.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerManual))
 						}
 						return nil
@@ -226,9 +224,8 @@ var _ = Describe("ErrandReconciler", func() {
 
 				It("should set the trigger strategy to done and immediately trigger the job", func() {
 					client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
-						switch object.(type) {
+						switch job := object.(type) {
 						case *batchv1.Job:
-							job := object.(*batchv1.Job)
 							Expect(reflect.DeepEqual(job.Spec.Template.Spec, eJob.Spec.Template.Spec)).To(BeTrue())
 							return nil
 						}
@@ -236,9 +233,8 @@ var _ = Describe("ErrandReconciler", func() {
 						return nil
 					})
 					client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
-						switch object.(type) {
+						switch job := object.(type) {
 						case *ejv1.ExtendedJob:
-							job := object.(*ejv1.ExtendedJob)
 							Expect(job.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
 						}
 						return nil
@@ -289,9 +285,8 @@ var _ = Describe("ErrandReconciler", func() {
 					})
 
 					client.CreateCalls(func(context context.Context, obj runtime.Object, _ ...crc.CreateOptionFunc) error {
-						switch obj := obj.(type) {
+						switch job := obj.(type) {
 						case *batchv1.Job:
-							job := obj
 							Expect(reflect.DeepEqual(job.Spec.Template.Spec, eJob.Spec.Template.Spec)).To(BeTrue())
 							return nil
 						}
@@ -299,9 +294,8 @@ var _ = Describe("ErrandReconciler", func() {
 						return nil
 					})
 					client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
-						switch object.(type) {
+						switch job := object.(type) {
 						case *ejv1.ExtendedJob:
-							job := object.(*ejv1.ExtendedJob)
 							Expect(job.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
 						}
 						return nil

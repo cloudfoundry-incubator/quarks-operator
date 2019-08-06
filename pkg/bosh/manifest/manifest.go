@@ -200,96 +200,96 @@ func (m *Manifest) Marshal() ([]byte, error) {
 //
 func markDuplicateValues(value reflect.Value, duplicateValues []duplicateYamlValues) []duplicateYamlValues {
 
-    // Get the element is the value is a pointer
-    if value.Kind() == reflect.Ptr || value.Kind() == reflect.Interface {
-        value = value.Elem()
-    }
+	// Get the element is the value is a pointer
+	if value.Kind() == reflect.Ptr || value.Kind() == reflect.Interface {
+		value = value.Elem()
+	}
 
-    switch value.Kind() {
+	switch value.Kind() {
 
-    case reflect.Array, reflect.Slice:
-        for i := 0; i < value.Len(); i++ {
-            duplicateValues = markDuplicateValues(value.Index(i), duplicateValues)
-        }
-    case reflect.Struct:
-        valueKeyField := value.Field(0)
-        valueField := value.Field(1)
+	case reflect.Array, reflect.Slice:
+		for i := 0; i < value.Len(); i++ {
+			duplicateValues = markDuplicateValues(value.Index(i), duplicateValues)
+		}
+	case reflect.Struct:
+		valueKeyField := value.Field(0)
+		valueField := value.Field(1)
 
-        valueFieldO := valueField
-        if valueField.Kind() == reflect.Ptr || valueField.Kind() == reflect.Interface {
-            valueField = valueField.Elem()
-        }
-        if valueField.Kind() == reflect.String {
-            if valueField.String() != "" && valueField.IsValid() && len(valueField.String()) > 64 {
+		valueFieldO := valueField
+		if valueField.Kind() == reflect.Ptr || valueField.Kind() == reflect.Interface {
+			valueField = valueField.Elem()
+		}
+		if valueField.Kind() == reflect.String {
+			if valueField.String() != "" && valueField.IsValid() && len(valueField.String()) > 64 {
 
-                foundValue := false
-                for _, duplicateValue := range duplicateValues {
-                    if duplicateValue.Value == valueField.String() {
-                        valueFieldO.Set(reflect.ValueOf("*" + duplicateValue.UUID))
-                        foundValue = true
-                    }
-                }
+				foundValue := false
+				for _, duplicateValue := range duplicateValues {
+					if duplicateValue.Value == valueField.String() {
+						valueFieldO.Set(reflect.ValueOf("*" + duplicateValue.UUID))
+						foundValue = true
+					}
+				}
 
-                if foundValue == false {
-                    newKey := guuid.New().String()
-                    newMapKey := valueKeyField.Interface().(string) + string("=") + newKey
-                    valueFieldO.Set(valueField)
+				if !foundValue {
+					newKey := guuid.New().String()
+					newMapKey := valueKeyField.Interface().(string) + string("=") + newKey
+					valueFieldO.Set(valueField)
 
-                    duplicateValue := duplicateYamlValues{
-                        UUID:          newKey,
-                        Value:         valueField.String(),
-                        YamlKeyMarker: valueKeyField.Interface().(string),
-                    }
-                    valueKeyField.Set(reflect.ValueOf(newMapKey))
+					duplicateValue := duplicateYamlValues{
+						UUID:          newKey,
+						Value:         valueField.String(),
+						YamlKeyMarker: valueKeyField.Interface().(string),
+					}
+					valueKeyField.Set(reflect.ValueOf(newMapKey))
 
-                    duplicateValues = append(duplicateValues, duplicateValue)
-                }
-            }
-        } else {
-            duplicateValues = markDuplicateValues(valueField, duplicateValues)
-        }
+					duplicateValues = append(duplicateValues, duplicateValue)
+				}
+			}
+		} else {
+			duplicateValues = markDuplicateValues(valueField, duplicateValues)
+		}
 
-    case reflect.Map:
+	case reflect.Map:
 
-        for _, k := range value.MapKeys() {
-            valueField := value.MapIndex(k)
-            if valueField.Kind() == reflect.Ptr || valueField.Kind() == reflect.Interface {
-                valueField = valueField.Elem()
-            }
+		for _, k := range value.MapKeys() {
+			valueField := value.MapIndex(k)
+			if valueField.Kind() == reflect.Ptr || valueField.Kind() == reflect.Interface {
+				valueField = valueField.Elem()
+			}
 
-            // Consider the strings which are big enough only.
-            if valueField.Kind() == reflect.String {
-                if valueField.String() != "" && valueField.IsValid() {
+			// Consider the strings which are big enough only.
+			if valueField.Kind() == reflect.String {
+				if valueField.String() != "" && valueField.IsValid() {
 
-                    foundValue := false
-                    for _, duplicateValue := range duplicateValues {
-                        if duplicateValue.Value == valueField.String() {
-                            value.SetMapIndex(reflect.ValueOf(k.Interface().(string)), reflect.ValueOf(string("*"+duplicateValue.UUID)))
-                            foundValue = true
-                        }
-                    }
+					foundValue := false
+					for _, duplicateValue := range duplicateValues {
+						if duplicateValue.Value == valueField.String() {
+							value.SetMapIndex(reflect.ValueOf(k.Interface().(string)), reflect.ValueOf(string("*"+duplicateValue.UUID)))
+							foundValue = true
+						}
+					}
 
-                    if foundValue == false {
-                        newKey := guuid.New().String()
-                        value.SetMapIndex(reflect.ValueOf(k), reflect.Value{})
-                        newMapKey := k.Interface().(string) + string("=") + newKey
+					if !foundValue {
+						newKey := guuid.New().String()
+						value.SetMapIndex(reflect.ValueOf(k), reflect.Value{})
+						newMapKey := k.Interface().(string) + string("=") + newKey
 
-                        value.SetMapIndex(k, reflect.Value{})
-                        value.SetMapIndex(reflect.ValueOf(newMapKey), valueField)
-                        duplicateValue := duplicateYamlValues{
-                            UUID:          newKey,
-                            Value:         valueField.String(),
-                            YamlKeyMarker: k.Interface().(string),
-                        }
-                        duplicateValues = append(duplicateValues, duplicateValue)
-                    }
-                }
-            } else {
-                duplicateValues = markDuplicateValues(value.MapIndex(k), duplicateValues)
-            }
-        }
-    }
-    return duplicateValues
+						value.SetMapIndex(k, reflect.Value{})
+						value.SetMapIndex(reflect.ValueOf(newMapKey), valueField)
+						duplicateValue := duplicateYamlValues{
+							UUID:          newKey,
+							Value:         valueField.String(),
+							YamlKeyMarker: k.Interface().(string),
+						}
+						duplicateValues = append(duplicateValues, duplicateValue)
+					}
+				}
+			} else {
+				duplicateValues = markDuplicateValues(value.MapIndex(k), duplicateValues)
+			}
+		}
+	}
+	return duplicateValues
 }
 
 // SHA1 calculates the SHA1 of the manifest
@@ -475,8 +475,8 @@ func (m *Manifest) ApplyAddons() error {
 					Name:    addonJob.Name,
 					Release: addonJob.Release,
 					Properties: JobProperties{
-						Quarks: Quarks{IsAddon: true},
-						Properties:           addonJob.Properties,
+						Quarks:     Quarks{IsAddon: true},
+						Properties: addonJob.Properties,
 					},
 				})
 			}

@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/afero"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
-	crlog "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
