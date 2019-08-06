@@ -17,6 +17,9 @@ tools:
 check-scripts:
 	bin/check-scripts
 
+staticcheck:
+    bin/staticcheck
+
 ############ BUILD TARGETS ############
 
 .PHONY: build
