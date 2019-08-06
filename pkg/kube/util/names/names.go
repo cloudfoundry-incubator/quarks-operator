@@ -160,6 +160,11 @@ func OrdinalFromPodName(name string) int {
 	return podOrdinal
 }
 
+// PrivateKeySecretName returns a Secret name for a given ExtendedSecret
+func PrivateKeySecretName(extendedSecretName string) string {
+	return extendedSecretName + "csr-private-key"
+}
+
 func randSuffix(str string) (string, error) {
 	randBytes := make([]byte, 16)
 	_, err := rand.Read(randBytes)

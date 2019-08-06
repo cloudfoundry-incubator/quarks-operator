@@ -2,9 +2,12 @@ package extendedsecret
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	"strconv"
 
 	"github.com/pkg/errors"
+	certv1 "k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,6 +23,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
@@ -192,6 +196,11 @@ func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance 
 }
 
 func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, instance *esv1.ExtendedSecret) error {
+	if len(instance.Spec.Request.CertificateRequest.SignerType) == 0 {
+		// TODO asserts instance will update
+		instance.Spec.Request.CertificateRequest.SignerType = esv1.LocalSigner
+	}
+
 	var request credsgen.CertificateGenerationRequest
 	if instance.Spec.Request.CertificateRequest.IsCA {
 		// Generate self-signed root CA certificate
@@ -239,28 +248,56 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 		}
 	}
 
-	// Generate certificate
-	cert, err := r.generator.GenerateCertificate(instance.GetName(), request)
-	if err != nil {
-		return err
-	}
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Spec.SecretName,
-			Namespace: instance.GetNamespace(),
-		},
-		StringData: map[string]string{
-			"certificate": string(cert.Certificate),
-			"private_key": string(cert.PrivateKey),
-			"is_ca":       strconv.FormatBool(instance.Spec.Request.CertificateRequest.IsCA),
-		},
-	}
+	switch instance.Spec.Request.CertificateRequest.SignerType {
+	case esv1.ExternalSigner:
+		// create CertificateSigningRequest
+		csr, key, err := r.generator.GenerateCertificateSigningRequest(request)
+		if err != nil {
+			return err
+		}
 
-	if len(request.CA.Certificate) > 0 {
-		secret.StringData["ca"] = string(request.CA.Certificate)
-	}
+		err = r.createCertificateSigningRequest(ctx, instance, csr, key)
+		if err != nil {
+			return err
+		}
 
-	return r.createSecret(ctx, instance, secret)
+		// create private key Secret
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      names.PrivateKeySecretName(instance.Spec.SecretName),
+				Namespace: instance.GetNamespace(),
+			},
+			StringData: map[string]string{
+				"private_key": string(key),
+			},
+		}
+		return r.createSecret(ctx, instance, secret)
+	case esv1.LocalSigner:
+		// Generate certificate
+		cert, err := r.generator.GenerateCertificate(instance.GetName(), request)
+		if err != nil {
+			return err
+		}
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      instance.Spec.SecretName,
+				Namespace: instance.GetNamespace(),
+			},
+			StringData: map[string]string{
+				"certificate": string(cert.Certificate),
+				"private_key": string(cert.PrivateKey),
+				"is_ca":       strconv.FormatBool(instance.Spec.Request.CertificateRequest.IsCA),
+			},
+		}
+
+		if len(request.CA.Certificate) > 0 {
+			secret.StringData["ca"] = string(request.CA.Certificate)
+		}
+
+		return r.createSecret(ctx, instance, secret)
+	default:
+		return fmt.Errorf("unrecognized signer type: %s", instance.Spec.Request.CertificateRequest.SignerType)
+	}
 }
 
 func (r *ReconcileExtendedSecret) canBeGenerated(ctx context.Context, instance *esv1.ExtendedSecret) (bool, error) {
@@ -313,6 +350,43 @@ func (r *ReconcileExtendedSecret) createSecret(ctx context.Context, instance *es
 	}
 
 	ctxlog.Debugf(ctx, "Secret '%s' has been %s", secret.Name, op)
+
+	return nil
+}
+
+// createCertificateSigningRequest creates CertificateSigningRequest Object
+func (r *ReconcileExtendedSecret) createCertificateSigningRequest(ctx context.Context, instance *esv1.ExtendedSecret, csr, privateKey []byte) error {
+	buf := make([]byte, base64.StdEncoding.EncodedLen(len(csr)))
+	base64.StdEncoding.Encode(buf, csr)
+
+	csrObj := &certv1.CertificateSigningRequest{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Spec.SecretName,
+			Namespace: instance.GetNamespace(),
+			Labels:    instance.Labels,
+		},
+		Spec: certv1.CertificateSigningRequestSpec{
+			Request: buf,
+			Usages:  instance.Spec.Request.CertificateRequest.Usages,
+		},
+	}
+
+	if err := r.setReference(instance, csrObj, r.scheme); err != nil {
+		return errors.Wrapf(err, "error setting owner for certificateSigningRequest '%s' to ExtendedSecret '%s' in namespace '%s'", csrObj.Name, instance.Name, instance.GetNamespace())
+	}
+
+	obj := csrObj.DeepCopy()
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
+		obj.OwnerReferences = csrObj.OwnerReferences
+		obj.Labels = csrObj.Labels
+		obj.Spec = csrObj.Spec
+		return nil
+	})
+	if err != nil {
+		return errors.Wrapf(err, "could not create or update certificateSigningRequest '%s'", csrObj.Name)
+	}
+
+	ctxlog.Debugf(ctx, "CertificateSigningRequest '%s' has been %s", csrObj.Name, op)
 
 	return nil
 }

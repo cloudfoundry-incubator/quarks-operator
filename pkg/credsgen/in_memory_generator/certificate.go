@@ -38,6 +38,25 @@ func (g InMemoryGenerator) GenerateCertificate(name string, request credsgen.Cer
 	return certificate, nil
 }
 
+// GenerateCertificateSigningRequest Generates certificate signing request and private key
+func (g InMemoryGenerator) GenerateCertificateSigningRequest(request credsgen.CertificateGenerationRequest) ([]byte, []byte, error) {
+	var csReq, privateKey []byte
+
+	// Generate certificate request
+	certReq := &csr.CertificateRequest{KeyRequest: &csr.BasicKeyRequest{A: g.Algorithm, S: g.Bits}}
+
+	certReq.Hosts = append(certReq.Hosts, request.CommonName)
+	certReq.Hosts = append(certReq.Hosts, request.AlternativeNames...)
+	certReq.CN = certReq.Hosts[0]
+
+	sslValidator := &csr.Generator{Validator: genkey.Validator}
+	csReq, privateKey, err := sslValidator.ProcessRequest(certReq)
+	if err != nil {
+		return csReq, privateKey, err
+	}
+	return csReq, privateKey, nil
+}
+
 // generateCertificate Generate a local-issued certificate and private key
 func (g InMemoryGenerator) generateCertificate(request credsgen.CertificateGenerationRequest) (credsgen.Certificate, error) {
 	if !request.CA.IsCA {
@@ -55,9 +74,7 @@ func (g InMemoryGenerator) generateCertificate(request credsgen.CertificateGener
 	certReq.Hosts = append(certReq.Hosts, request.AlternativeNames...)
 	certReq.CN = certReq.Hosts[0]
 
-	var signingReq []byte
-	sslValidator := &csr.Generator{Validator: genkey.Validator}
-	signingReq, privateKey, err := sslValidator.ProcessRequest(certReq)
+	signingReq, privateKey, err := g.GenerateCertificateSigningRequest(request)
 	if err != nil {
 		return credsgen.Certificate{}, err
 	}
@@ -115,4 +132,5 @@ func (g InMemoryGenerator) generateCACertificate(request credsgen.CertificateGen
 	}
 
 	return cert, nil
+
 }
