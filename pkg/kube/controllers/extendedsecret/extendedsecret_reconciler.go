@@ -2,7 +2,6 @@ package extendedsecret
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"strconv"
 
@@ -28,8 +27,8 @@ import (
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
-// NewReconciler returns a new Reconciler
-func NewReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, generator credsgen.Generator, srf setReferenceFunc) reconcile.Reconciler {
+// NewExtendedSecretReconciler returns a new Reconciler
+func NewExtendedSecretReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, generator credsgen.Generator, srf setReferenceFunc) reconcile.Reconciler {
 	return &ReconcileExtendedSecret{
 		ctx:          ctx,
 		config:       config,
@@ -74,7 +73,7 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		}
 		// Error reading the object - requeue the request.
 		ctxlog.Info(ctx, "Error reading the object")
-		return reconcile.Result{}, errors.Wrap(err, "Error reading extendedsecret in ExtendedSecret reconcile.")
+		return reconcile.Result{}, errors.Wrap(err, "Error reading extendedSecret")
 	}
 
 	// Check if secret could be generated when secret was already created
@@ -84,7 +83,7 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 	if !canBeGenerated {
-		ctxlog.WithEvent(instance, "SkipReconcile").Infof(ctx, "Skip reconcile: secret '%s' already exists", instance.Spec.SecretName)
+		ctxlog.WithEvent(instance, "SkipReconcile").Infof(ctx, "Skip reconcile: extendedSecret '%s' is already generated", instance.Name)
 		return reconcile.Result{}, nil
 	}
 
@@ -197,7 +196,6 @@ func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance 
 
 func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, instance *esv1.ExtendedSecret) error {
 	if len(instance.Spec.Request.CertificateRequest.SignerType) == 0 {
-		// TODO asserts instance will update
 		instance.Spec.Request.CertificateRequest.SignerType = esv1.LocalSigner
 	}
 
@@ -250,28 +248,30 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 
 	switch instance.Spec.Request.CertificateRequest.SignerType {
 	case esv1.ExternalSigner:
-		// create CertificateSigningRequest
+		ctxlog.Info(ctx, "Generating certificate signing request and its key")
 		csr, key, err := r.generator.GenerateCertificateSigningRequest(request)
 		if err != nil {
 			return err
 		}
 
-		err = r.createCertificateSigningRequest(ctx, instance, csr, key)
-		if err != nil {
-			return err
-		}
-
-		// create private key Secret
+		// private key Secret which will be merged to certificate Secret later
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      names.PrivateKeySecretName(instance.Spec.SecretName),
+				Name:      names.PrivateKeySecretName(instance.Name),
 				Namespace: instance.GetNamespace(),
 			},
 			StringData: map[string]string{
 				"private_key": string(key),
+				"is_ca":       strconv.FormatBool(instance.Spec.Request.CertificateRequest.IsCA),
 			},
 		}
-		return r.createSecret(ctx, instance, secret)
+
+		err = r.createSecret(ctx, instance, secret)
+		if err != nil {
+			return err
+		}
+
+		return r.createCertificateSigningRequest(ctx, instance, csr)
 	case esv1.LocalSigner:
 		// Generate certificate
 		cert, err := r.generator.GenerateCertificate(instance.GetName(), request)
@@ -301,6 +301,11 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 }
 
 func (r *ReconcileExtendedSecret) canBeGenerated(ctx context.Context, instance *esv1.ExtendedSecret) (bool, error) {
+	// Skip secret generation when instance has generated secret and its `generated` status is true
+	if instance.Status.Generated {
+		return false, nil
+	}
+
 	secretName := instance.Spec.SecretName
 
 	existingSecret := &corev1.Secret{}
@@ -321,16 +326,13 @@ func (r *ReconcileExtendedSecret) canBeGenerated(ctx context.Context, instance *
 		return false, nil
 	}
 
-	// Skip generation when instance has generated secret and its `generated` status is true
-	if instance.Status.Generated {
-		return false, nil
-	}
-
 	return true, nil
 }
 
 // createSecret applies common properties(labels and ownerReferences) to the secret and creates it
 func (r *ReconcileExtendedSecret) createSecret(ctx context.Context, instance *esv1.ExtendedSecret, secret *corev1.Secret) error {
+	ctxlog.Debugf(ctx, "Creating secret '%s'", secret.Name)
+
 	secretLabels := secret.GetLabels()
 	if secretLabels == nil {
 		secretLabels = map[string]string{}
@@ -355,18 +357,25 @@ func (r *ReconcileExtendedSecret) createSecret(ctx context.Context, instance *es
 }
 
 // createCertificateSigningRequest creates CertificateSigningRequest Object
-func (r *ReconcileExtendedSecret) createCertificateSigningRequest(ctx context.Context, instance *esv1.ExtendedSecret, csr, privateKey []byte) error {
-	buf := make([]byte, base64.StdEncoding.EncodedLen(len(csr)))
-	base64.StdEncoding.Encode(buf, csr)
+func (r *ReconcileExtendedSecret) createCertificateSigningRequest(ctx context.Context, instance *esv1.ExtendedSecret, csr []byte) error {
+	csrName := instance.Name
+	ctxlog.Debugf(ctx, "Creating certificateSigningRequest '%s'", csrName)
+
+	annotations := instance.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	annotations[esv1.AnnotationCertSecretName] = instance.Spec.SecretName
+	annotations[esv1.AnnotationExSecretNamespace] = instance.Namespace
 
 	csrObj := &certv1.CertificateSigningRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Spec.SecretName,
-			Namespace: instance.GetNamespace(),
-			Labels:    instance.Labels,
+			Name:        csrName,
+			Labels:      instance.Labels,
+			Annotations: annotations,
 		},
 		Spec: certv1.CertificateSigningRequestSpec{
-			Request: buf,
+			Request: csr,
 			Usages:  instance.Spec.Request.CertificateRequest.Usages,
 		},
 	}
@@ -375,18 +384,18 @@ func (r *ReconcileExtendedSecret) createCertificateSigningRequest(ctx context.Co
 		return errors.Wrapf(err, "error setting owner for certificateSigningRequest '%s' to ExtendedSecret '%s' in namespace '%s'", csrObj.Name, instance.Name, instance.GetNamespace())
 	}
 
-	obj := csrObj.DeepCopy()
-	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-		obj.OwnerReferences = csrObj.OwnerReferences
-		obj.Labels = csrObj.Labels
-		obj.Spec = csrObj.Spec
-		return nil
-	})
+	// CSR spec is immutable after the request is created
+	err := r.client.Get(ctx, types.NamespacedName{Name: csrObj.Name}, instance)
 	if err != nil {
-		return errors.Wrapf(err, "could not create or update certificateSigningRequest '%s'", csrObj.Name)
+		if apierrors.IsNotFound(err) {
+			err = r.client.Create(ctx, csrObj)
+			if err != nil {
+				return errors.Wrapf(err, "could not create certificateSigningRequest '%s'", csrObj.Name)
+			}
+			return nil
+		}
+		return errors.Wrapf(err, "could not get certificateSigningRequest '%s'", csrObj.Name)
 	}
-
-	ctxlog.Debugf(ctx, "CertificateSigningRequest '%s' has been %s", csrObj.Name, op)
 
 	return nil
 }

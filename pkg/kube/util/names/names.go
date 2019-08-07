@@ -162,7 +162,7 @@ func OrdinalFromPodName(name string) int {
 
 // PrivateKeySecretName returns a Secret name for a given ExtendedSecret
 func PrivateKeySecretName(extendedSecretName string) string {
-	return extendedSecretName + "csr-private-key"
+	return extendedSecretName + "-csr-private-key"
 }
 
 func randSuffix(str string) (string, error) {

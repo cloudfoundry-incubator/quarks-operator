@@ -36,6 +36,10 @@ const (
 var (
 	// LabelKind is the label key for secret kind
 	LabelKind = fmt.Sprintf("%s/secret-kind", apis.GroupName)
+	// AnnotationCertSecretName is the annotation key for certificate secret name
+	AnnotationCertSecretName = fmt.Sprintf("%s/cert-secret-name", apis.GroupName)
+	// AnnotationExSecretNamespace is the annotation key for ex-secret-namespace
+	AnnotationExSecretNamespace = fmt.Sprintf("%s/ex-secret-namespace", apis.GroupName)
 )
 
 const (

@@ -38,8 +38,10 @@ func (g InMemoryGenerator) GenerateCertificate(name string, request credsgen.Cer
 	return certificate, nil
 }
 
-// GenerateCertificateSigningRequest Generates certificate signing request and private key
+// GenerateCertificateSigningRequest Generates a certificate signing request and private key
 func (g InMemoryGenerator) GenerateCertificateSigningRequest(request credsgen.CertificateGenerationRequest) ([]byte, []byte, error) {
+	cfssllog.Level = cfssllog.LevelWarning
+
 	var csReq, privateKey []byte
 
 	// Generate certificate request
