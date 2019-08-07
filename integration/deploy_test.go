@@ -141,7 +141,7 @@ var _ = Describe("Deploy", func() {
 			Expect(len(pods.Items)).To(Equal(2))
 			pod := pods.Items[1]
 			Expect(pod.Spec.InitContainers).To(HaveLen(5))
-			Expect(pod.Spec.InitContainers[4].Command).To(Equal([]string{"/usr/bin/dumb-init"}))
+			Expect(pod.Spec.InitContainers[4].Command).To(Equal([]string{"/usr/bin/dumb-init", "--"}))
 			Expect(pod.Spec.InitContainers[4].Args).To(Equal([]string{
 				"/bin/sh",
 				"-xc",
