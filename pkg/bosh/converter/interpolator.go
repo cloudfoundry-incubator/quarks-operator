@@ -7,7 +7,6 @@ import (
 )
 
 // Interpolator renders BOSH manifests by operations files
-// go:generate counterfeiter -o fakes/fake_interpolator.go . Interpolator
 type Interpolator interface {
 	BuildOps(opsBytes []byte) error
 	Interpolate(manifestBytes []byte) ([]byte, error)
