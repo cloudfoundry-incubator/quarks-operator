@@ -1,15 +1,19 @@
 # ExtendedStatefulSet
 
-- [ExtendedStatefulSet](#extendedstatefulset)
-  - [Description](#description)
-  - [Features](#features)
-    - [Scaling Restrictions (not implemented)](#scaling-restrictions-not-implemented)
-    - [Automatic Restart of Containers](#automatic-restart-of-containers)
-    - [Extended Upgrade Support](#extended-upgrade-support)
-    - [Detects if StatefulSet versions are running](#detects-if-statefulset-versions-are-running)
-    - [Volume Management](#volume-management)
-    - [AZ Support](#az-support)
-  - [`ExtendedStatefulSet` Examples](#extendedstatefulset-examples)
+- [ExtendedStatefulSet](#ExtendedStatefulSet)
+  - [Description](#Description)
+  - [Features](#Features)
+    - [Scaling Restrictions (not implemented)](#Scaling-Restrictions-not-implemented)
+    - [Automatic Restart of Containers](#Automatic-Restart-of-Containers)
+    - [Exposing ExtendedStatefulSets Publicly](#Exposing-ExtendedStatefulSets-Publicly)
+      - [Cluster IP](#Cluster-IP)
+      - [Load Balancer](#Load-Balancer)
+      - [Ingress](#Ingress)
+    - [Extended Upgrade Support](#Extended-Upgrade-Support)
+    - [Detects if StatefulSet versions are running](#Detects-if-StatefulSet-versions-are-running)
+    - [Volume Management](#Volume-Management)
+    - [AZ Support](#AZ-Support)
+  - [`ExtendedStatefulSet` Examples](#ExtendedStatefulSet-Examples)
 
 ## Description
 
@@ -23,6 +27,48 @@ Ability to set restrictions on how scaling can occur: min, max, odd replicas.
 
 When an env value or mount changes due to a `ConfigMap` or `Secret` change, containers are restarted.
 The operator watches all the `ConfigMaps` and `Secrets` referenced by the `StatefulSet`, and automatically performs the update, without extra workarounds.
+
+### Exposing ExtendedStatefulSets Publicly
+
+Exposing extendedstatefulsets is similar to exposing statefulsets in kubernetes. For every instance group in the BOSH manifest, a corresponding extendedstatefulset is created. A kubernetes service makes use of labels to select the pods which should be in the service. We need to use two labels to group the pods of a single instance group.
+
+1. fissile.cloudfoundry.org/instance-group-name: ((instanceGroupName))
+2. fissile.cloudfoundry.org/deployment-name: ((deploymentName))
+
+#### Cluster IP
+
+Following is the example which creates a service with type ClusterIp for a single instance group named nats in deployment nats-deployment for exposing port 4222.
+
+```
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats-service
+spec:
+  type: ClusterIP
+  selector:
+    fissile.cloudfoundry.org/instance-group-name: nats
+    fissile.cloudfoundry.org/deployment-name: nats-deployment
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 4222
+```
+
+Complete example can be found [here](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/examples/bosh-deployment/boshdeployment-with-service.yaml).
+
+Though, by default, quarks creates three services of type ClusterIp as defined [here](https://github.com/cloudfoundry-incubator/cf-operator/blob/master/docs/from_bosh_to_kube.md#naming-conventions) for any instance group.
+
+#### Load Balancer
+
+For creating a service type LoadBalancer, we just need to change the .spec.type to LoadBalancer in the above example. The LoadBalancer Ingress is your public ip specified in the output of this command `kubectl describe service nats-service`.
+
+#### Ingress
+
+Ingress doesn't use any labels but just sits on top of services and acts as a smart router. You can create services of different types based on the above examples and use them as values in the ingress kubernetes spec. An example of Ingress can be found [here](https://kubernetes.io/docs/tasks/access-application-cluster/ingress-minikube/#create-an-ingress-resource)
+
+For more information about kubernetes services, we recommend you to read [this](https://kubernetes.io/docs/concepts/services-networking/service/).
 
 ### Extended Upgrade Support
 
