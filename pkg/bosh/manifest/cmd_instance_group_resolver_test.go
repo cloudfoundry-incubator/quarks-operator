@@ -143,10 +143,10 @@ var _ = Describe("InstanceGroupResolver", func() {
 				jobInstancesRedis := manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Instances
 
 				compareToFakeRedis := []JobInstance{
-					{Address: "foo-deployment-redis-slave-0.default.svc.cluster.local", AZ: "z1", ID: "redis-slave-0-redis-server", Index: 0, Instance: 0, Name: "redis-slave-redis-server"},
-					{Address: "foo-deployment-redis-slave-1.default.svc.cluster.local", AZ: "z2", ID: "redis-slave-1-redis-server", Index: 1, Instance: 0, Name: "redis-slave-redis-server"},
-					{Address: "foo-deployment-redis-slave-2.default.svc.cluster.local", AZ: "z1", ID: "redis-slave-2-redis-server", Index: 2, Instance: 1, Name: "redis-slave-redis-server"},
-					{Address: "foo-deployment-redis-slave-3.default.svc.cluster.local", AZ: "z2", ID: "redis-slave-3-redis-server", Index: 3, Instance: 1, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-0.default.svc.cluster.local", AZ: "z1", ID: "foo-deployment-redis-slave-0", Index: 0, Instance: 0, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-1.default.svc.cluster.local", AZ: "z2", ID: "foo-deployment-redis-slave-1", Index: 1, Instance: 0, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-2.default.svc.cluster.local", AZ: "z1", ID: "foo-deployment-redis-slave-2", Index: 2, Instance: 1, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-3.default.svc.cluster.local", AZ: "z2", ID: "foo-deployment-redis-slave-3", Index: 3, Instance: 1, Name: "redis-slave-redis-server"},
 				}
 				Expect(jobInstancesRedis).To(BeEquivalentTo(compareToFakeRedis))
 			})
@@ -175,7 +175,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 					for i, instance := range jobConsumesFromDoppler.Instances {
 						Expect(instance.Index).To(Equal(i))
 						Expect(instance.Address).To(Equal(fmt.Sprintf("cf-doppler-%v.default.svc.cluster.local", i)))
-						Expect(instance.ID).To(Equal(fmt.Sprintf("doppler-%v-doppler", i)))
+						Expect(instance.ID).To(Equal(fmt.Sprintf("cf-doppler-%d", i)))
 					}
 
 					Expect(deep.Equal(jobConsumesFromDoppler.Properties, expectedProperties)).To(HaveLen(0))

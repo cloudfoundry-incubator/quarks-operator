@@ -31,8 +31,9 @@ func NewJobCreator(client crc.Client, scheme *runtime.Scheme, f setOwnerReferenc
 	}
 }
 
+// JobCreator is the interface that wraps the basic Create method.
 type JobCreator interface {
-	createJob(ctx context.Context, eJob ejv1.ExtendedJob, podName string, podUID string) (retry bool, err error)
+	Create(ctx context.Context, eJob ejv1.ExtendedJob, podName string, podUID string) (retry bool, err error)
 }
 
 type jobCreatorImpl struct {
@@ -42,9 +43,9 @@ type jobCreatorImpl struct {
 	store             vss.VersionedSecretStore
 }
 
-// createJob Creates Job to complete ExJob.
-// Return retry if one of references is not present.
-func (j jobCreatorImpl) createJob(ctx context.Context, eJob ejv1.ExtendedJob, podName string, podUID string) (retry bool, err error) {
+// Create satisfies the JobCreator interface. It creates a Job to complete ExJob. It returns the
+// retry if one of the references are not present.
+func (j jobCreatorImpl) Create(ctx context.Context, eJob ejv1.ExtendedJob, podName string, podUID string) (retry bool, err error) {
 	template := eJob.Spec.Template.DeepCopy()
 
 	if template.Labels == nil {

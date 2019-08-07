@@ -45,13 +45,11 @@ var _ = Describe("ContainerFactory", func() {
 
 		bpmDisks = BPMResourceDisks{
 			{
-				Volume: &corev1.Volume{
-					Name:         fmt.Sprintf("%s-%s", VolumeEphemeralDirName, "fake-job"),
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-				},
+
 				VolumeMount: &corev1.VolumeMount{
-					Name:      fmt.Sprintf("%s-%s", VolumeEphemeralDirName, "fake-job"),
-					MountPath: path.Join(VolumeEphemeralDirMountPath, "fake-job"),
+					Name:      VolumeDataDirName,
+					MountPath: path.Join(VolumeDataDirMountPath, "fake-job"),
+					SubPath:   "fake-job",
 				},
 				Labels: map[string]string{
 					"job_name":  "fake-job",
@@ -59,13 +57,10 @@ var _ = Describe("ContainerFactory", func() {
 				},
 			},
 			{
-				Volume: &corev1.Volume{
-					Name:         fmt.Sprintf("%s-%s", VolumeEphemeralDirName, "other-job"),
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-				},
 				VolumeMount: &corev1.VolumeMount{
-					Name:      fmt.Sprintf("%s-%s", VolumeEphemeralDirName, "other-job"),
-					MountPath: path.Join(VolumeEphemeralDirMountPath, "other-job"),
+					Name:      VolumeDataDirName,
+					MountPath: path.Join(VolumeDataDirMountPath, "other-job"),
+					SubPath:   "other-job",
 				},
 				Labels: map[string]string{
 					"job_name":  "other-job",
@@ -102,7 +97,7 @@ var _ = Describe("ContainerFactory", func() {
 				VolumeMount: &corev1.VolumeMount{
 					Name:             "bpm-additional-volume-fake-job-fake-process-0",
 					ReadOnly:         false,
-					MountPath:        "/var/vcap/data/shared/foo",
+					MountPath:        "/some/shared/foo",
 					SubPath:          "",
 					MountPropagation: nil,
 				},
@@ -248,18 +243,18 @@ var _ = Describe("ContainerFactory", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(containers[0].VolumeMounts).To(ContainElement(
 				corev1.VolumeMount{
-					Name:             "bpm-ephemeral-disk-fake-job",
+					Name:             "data-dir",
 					ReadOnly:         false,
-					MountPath:        fmt.Sprintf("%s/%s", VolumeEphemeralDirMountPath, "fake-job"),
-					SubPath:          "",
+					MountPath:        fmt.Sprintf("%s/%s", VolumeDataDirMountPath, "fake-job"),
+					SubPath:          "fake-job",
 					MountPropagation: nil,
 				}))
 			Expect(containers[1].VolumeMounts).To(ContainElement(
 				corev1.VolumeMount{
-					Name:             "bpm-ephemeral-disk-other-job",
+					Name:             "data-dir",
 					ReadOnly:         false,
-					MountPath:        fmt.Sprintf("%s/%s", VolumeEphemeralDirMountPath, "other-job"),
-					SubPath:          "",
+					MountPath:        fmt.Sprintf("%s/%s", VolumeDataDirMountPath, "other-job"),
+					SubPath:          "other-job",
 					MountPropagation: nil,
 				}))
 		})
@@ -292,7 +287,7 @@ var _ = Describe("ContainerFactory", func() {
 				corev1.VolumeMount{
 					Name:             "bpm-additional-volume-fake-job-fake-process-0",
 					ReadOnly:         false,
-					MountPath:        "/var/vcap/data/shared/foo",
+					MountPath:        "/some/shared/foo",
 					SubPath:          "",
 					MountPropagation: nil,
 				}))
@@ -471,10 +466,10 @@ var _ = Describe("ContainerFactory", func() {
 				Expect(containers[5].VolumeMounts).To(HaveLen(7))
 				Expect(containers[5].VolumeMounts).To(ContainElement(
 					corev1.VolumeMount{
-						Name:             "bpm-ephemeral-disk-fake-job",
+						Name:             "data-dir",
 						ReadOnly:         false,
-						MountPath:        fmt.Sprintf("%s/%s", VolumeEphemeralDirMountPath, "fake-job"),
-						SubPath:          "",
+						MountPath:        fmt.Sprintf("%s/%s", VolumeDataDirMountPath, "fake-job"),
+						SubPath:          "fake-job",
 						MountPropagation: nil,
 					}))
 			})
@@ -487,7 +482,7 @@ var _ = Describe("ContainerFactory", func() {
 					corev1.VolumeMount{
 						Name:             "bpm-additional-volume-fake-job-fake-process-0",
 						ReadOnly:         false,
-						MountPath:        "/var/vcap/data/shared/foo",
+						MountPath:        "/some/shared/foo",
 						SubPath:          "",
 						MountPropagation: nil,
 					}))
