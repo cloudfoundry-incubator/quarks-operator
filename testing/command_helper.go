@@ -61,6 +61,25 @@ func (k *Kubectl) checkString(namespace string, podName string, commandInPod str
 	return false, nil
 }
 
+// WaitForService blocks until the service is available. It fails after the timeout.
+func (k *Kubectl) WaitForService(namespace string, serviceName string) error {
+	return wait.PollImmediate(k.pollInterval, k.PollTimeout, func() (bool, error) {
+		return k.ServiceExists(namespace, serviceName)
+	})
+}
+
+// ServiceExists returns true if the pod by that name is in state running
+func (k *Kubectl) ServiceExists(namespace string, serviceName string) (bool, error) {
+	out, err := runBinary(kubeCtlCmd, "--namespace", namespace, "get", "service", serviceName)
+	if err != nil {
+		return false, errors.Wrapf(err, "Getting service %s failed. %s", serviceName, string(out))
+	}
+	if strings.Contains(string(out), serviceName) {
+		return true, nil
+	}
+	return false, nil
+}
+
 // WaitForSecret blocks until the secret is available. It fails after the timeout.
 func (k *Kubectl) WaitForSecret(namespace string, secretName string) error {
 	return wait.PollImmediate(k.pollInterval, k.PollTimeout, func() (bool, error) {
@@ -360,16 +379,16 @@ func RunCommandWithOutput(namespace string, podName string, commandInPod string)
 	return "", err
 }
 
-// GetSecretData fetches the specified output by the given templatePath
-func GetSecretData(namespace string, secretName string, templatePath string) ([]byte, error) {
-	out, err := runBinary(kubeCtlCmd, "--namespace", namespace, "get", "secret", secretName, "-o", templatePath)
+// GetDate fetches the specified output by the given templatePath
+func GetData(namespace string, resourceName string, name string, templatePath string) ([]byte, error) {
+	out, err := runBinary(kubeCtlCmd, "--namespace", namespace, "get", resourceName, name, "-o", templatePath)
 	if err != nil {
-		return []byte{}, errors.Wrapf(err, "Getting secret %s failed with template Path %s.", secretName, templatePath)
+		return []byte{}, errors.Wrapf(err, "Getting  %s failed with template Path %s.", name, templatePath)
 	}
 	if len(string(out)) > 0 {
 		return out, nil
 	}
-	return []byte{}, errors.Wrapf(err, "Output is empty for secret %s with template Path %s.", secretName, templatePath)
+	return []byte{}, errors.Wrapf(err, "Output is empty for %s with template Path %s.", name, templatePath)
 }
 
 // GetCRDs returns all CRDs
