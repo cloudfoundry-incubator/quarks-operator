@@ -264,7 +264,7 @@ const Drains = `---
 name: my-manifest
 releases:
 - name: cf-operator-testing
-  version: "0.0.5"
+  version: "0.0.6"
   url: docker.io/cfcontainerization
   stemcell:
     os: opensuse-42.3
