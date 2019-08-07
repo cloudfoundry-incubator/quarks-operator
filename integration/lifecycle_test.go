@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"fmt"
+	"sync"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -102,13 +103,25 @@ var _ = Describe("Lifecycle", func() {
 			err = env.WaitForPodReady(env.Namespace, "testcr-drains-v1-0")
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(env.WaitForPodContainerLogMsg(env.Namespace, "testcr-drains-v1-0", "delaying-drain-job-drain-watch", "ls: cannot access '/tmp/drain_logs': No such file or directory")).To(BeNil(), "error getting logs from drain_watch process")
+			// Expect(env.WaitForPodContainerLogMsg(env.Namespace, "testcr-drains-v1-0", "delaying-drain-job-drain-watch", "ls: cannot access '/tmp/drain_logs': No such file or directory")).To(BeNil(), "error getting logs from drain_watch process")
 
+			// Check for files created by the drain scripts.
+			var preAssertionWg, postAssertionWg sync.WaitGroup
+			preAssertionWg.Add(2)
+			postAssertionWg.Add(2)
+			go func() {
+				preAssertionWg.Done()
+				Expect(env.WaitForPodContainerLogMsg(env.Namespace, "testcr-drains-v1-0", "delaying-drain-job-drain-watch", "delaying-drain-job.log")).To(BeNil(), "error finding file created by drain script")
+				postAssertionWg.Done()
+			}()
+			go func() {
+				preAssertionWg.Done()
+				Expect(env.WaitForPodContainerLogMsg(env.Namespace, "testcr-drains-v1-0", "failing-drain-job-drain-watch", "failing-drain-job.log")).To(BeNil(), "error finding file created by drain script")
+				postAssertionWg.Done()
+			}()
+			preAssertionWg.Wait()
 			go env.DeleteBOSHDeployment(env.Namespace, boshDeployment.Name)
-
-			// Check for files created by the drain scripts
-			Expect(env.WaitForPodContainerLogMsg(env.Namespace, "testcr-drains-v1-0", "delaying-drain-job-drain-watch", "delaying-drain-job.log")).To(BeNil(), "error finding file created by drain script")
-			Expect(env.WaitForPodContainerLogMsg(env.Namespace, "testcr-drains-v1-0", "failing-drain-job-drain-watch", "failing-drain-job.log")).To(BeNil(), "error finding file created by drain script")
+			postAssertionWg.Wait()
 		})
 	})
 })
