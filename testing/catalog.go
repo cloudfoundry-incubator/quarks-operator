@@ -971,6 +971,7 @@ func (c *Catalog) OutputExtendedJob(name string, template corev1.PodTemplateSpec
 // DefaultExtendedJobWithSucceededJob returns an ExtendedJob and a Job owned by it
 func (c *Catalog) DefaultExtendedJobWithSucceededJob(name string) (*ejv1.ExtendedJob, *batchv1.Job, *corev1.Pod) {
 	ejob := c.DefaultExtendedJob(name)
+	backoffLimit := int32(2)
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name + "-job",
@@ -982,6 +983,7 @@ func (c *Catalog) DefaultExtendedJobWithSucceededJob(name string) (*ejv1.Extende
 				},
 			},
 		},
+		Spec:   batchv1.JobSpec{BackoffLimit: &backoffLimit},
 		Status: batchv1.JobStatus{Succeeded: 1},
 	}
 	pod := c.DefaultPod(name + "-pod")

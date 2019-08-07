@@ -75,6 +75,7 @@ var _ = Describe("Examples", func() {
 				err = testing.DeleteResource(namespace, "pod", "foo-pod-1")
 				Expect(err).ToNot(HaveOccurred())
 
+				By("Waiting for the jobpod to complete")
 				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=delete-triggered-sleep", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 			})
@@ -219,7 +220,7 @@ var _ = Describe("Examples", func() {
 				outFile, err := testing.RunCommandWithOutput(namespace, "nats-deployment-nats-v1-1", "awk 'NR == 18 {print substr($2,2,17)}' /var/vcap/jobs/nats/config/nats.conf")
 				Expect(err).ToNot(HaveOccurred())
 
-				outSecret, err := testing.GetData(namespace,"secret", "nats-deployment.var-custom-password", "go-template={{.data.password}}")
+				outSecret, err := testing.GetData(namespace, "secret", "nats-deployment.var-custom-password", "go-template={{.data.password}}")
 				Expect(err).ToNot(HaveOccurred())
 				outSecretDecoded, _ := b64.StdEncoding.DecodeString(string(outSecret))
 				Expect(strings.TrimSuffix(outFile, "\n")).To(ContainSubstring(string(outSecretDecoded)))

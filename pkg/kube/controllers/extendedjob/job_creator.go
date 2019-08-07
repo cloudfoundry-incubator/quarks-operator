@@ -103,13 +103,19 @@ func (j jobCreatorImpl) Create(ctx context.Context, eJob ejv1.ExtendedJob, podNa
 	if err != nil {
 		return false, errors.Wrapf(err, "could not generate job name for eJob '%s'", eJob.Name)
 	}
+
+	backoffLimit := int32(2)
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: eJob.Namespace,
 			Labels:    map[string]string{ejv1.LabelExtendedJob: "true"},
 		},
-		Spec: batchv1.JobSpec{Template: *template},
+		Spec: batchv1.JobSpec{
+			Template:     *template,
+			BackoffLimit: &backoffLimit,
+		},
 	}
 
 	err = j.setOwnerReference(&eJob, job, j.scheme)

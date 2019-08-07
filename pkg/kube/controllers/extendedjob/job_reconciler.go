@@ -98,7 +98,7 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 	// Persist output if needed
 	if !reflect.DeepEqual(ejv1.Output{}, ej.Spec.Output) && ej.Spec.Output != nil {
-		if instance.Status.Succeeded == 1 || (instance.Status.Failed == 1 && ej.Spec.Output.WriteOnFailure) {
+		if instance.Status.Succeeded == 1 || (instance.Status.Failed >= (*instance.Spec.BackoffLimit+1) && ej.Spec.Output.WriteOnFailure) {
 			ctxlog.WithEvent(&ej, "ExtendedJob").Infof(ctx, "Persisting output of job '%s'", instance.Name)
 			err = r.persistOutput(ctx, instance, ej)
 			if err != nil {
@@ -154,7 +154,25 @@ func (r *ReconcileJob) jobPod(ctx context.Context, name string, namespace string
 	if len(list.Items) == 0 {
 		return nil, errors.Errorf("Job %s does not own any pods?", name)
 	}
-	return &list.Items[0], nil
+
+	// If there is only one jobpod, then return index 0 pod
+	latestPod := list.Items[0]
+	if len(list.Items) > 1 {
+		// If there are more than one jobpods, then return the latest
+		// created jobpod. There will be multiple jobpods when jobpods
+		// fail. Kubernetes job creates new jobpods if the jobpod
+		// created previously fails
+		latestTimeStamp := list.Items[0].GetCreationTimestamp().UTC()
+		for podIndex, pod := range list.Items {
+			if latestTimeStamp.Before(pod.GetCreationTimestamp().UTC()) {
+				latestTimeStamp = pod.GetCreationTimestamp().UTC()
+				latestPod = list.Items[podIndex]
+			}
+		}
+	}
+
+	ctxlog.Infof(ctx, "Considering job pod %s for persisting output", latestPod.GetName())
+	return &latestPod, nil
 }
 
 func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job, ejob ejv1.ExtendedJob) error {
