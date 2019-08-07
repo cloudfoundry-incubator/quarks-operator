@@ -443,37 +443,38 @@ func bpmProcessContainer(
 	container.Lifecycle.PreStop = &corev1.Handler{
 		Exec: &corev1.ExecAction{
 			Command: []string{
-				"/usr/bin/dumb-init",
-				"sh",
+				"/bin/sh",
 				"-c",
-				`for s in $(ls ` + drainGlob + `); do
-					(
-						echo "Running drain script $s"
-						while true; do
-							out=$($s)
-							status=$?
+				`
+shopt -s nullglob
+for s in ` + drainGlob + `; do
+	(
+		echo "Running drain script $s"
+		while true; do
+			out=$($s)
+			status=$?
 
-							if [ "$status" -ne "0" ]; then
-								echo "$s FAILED with exit code $status"
-								exit $status
-							fi
+			if [ "$status" -ne "0" ]; then
+				echo "$s FAILED with exit code $status"
+				exit $status
+			fi
 
-							if [ "$out" -lt "0" ]; then
-								echo "Sleeping dynamic draining wait time for $s..."
-								sleep ${out:1}
-								echo "Running $s again"
-							else
-								echo "Sleeping static draining wait time for $s..."
-								sleep $out
-								echo "$s done"
-								exit 0
-							fi
-						done
-					)&
-				done
-				echo "Waiting..."
-				wait
-				echo "Done"`,
+			if [ "$out" -lt "0" ]; then
+				echo "Sleeping dynamic draining wait time for $s..."
+				sleep ${out:1}
+				echo "Running $s again"
+			else
+				echo "Sleeping static draining wait time for $s..."
+				sleep $out
+				echo "$s done"
+				exit 0
+			fi
+		done
+	)&
+done
+echo "Waiting for subprocesses to finish..."
+wait
+echo "Done"`,
 			},
 		},
 	}
