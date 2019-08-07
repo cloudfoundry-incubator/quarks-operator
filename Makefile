@@ -18,7 +18,7 @@ check-scripts:
 	bin/check-scripts
 
 staticcheck:
-    bin/staticcheck
+	bin/staticcheck
 
 ############ BUILD TARGETS ############
 
