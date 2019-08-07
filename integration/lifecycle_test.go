@@ -99,7 +99,7 @@ var _ = Describe("Lifecycle", func() {
 			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, "testcr", "drains", "1", 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
-			err = env.WaitForPod(env.Namespace, "testcr-drains-v1-0")
+			err = env.WaitForPodReady(env.Namespace, "testcr-drains-v1-0")
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(env.WaitForPodContainerLogMsg(env.Namespace, "testcr-drains-v1-0", "delaying-drain-job-drain-watch", "ls: cannot access '/tmp/drain_logs': No such file or directory")).To(BeNil(), "error getting logs from drain_watch process")
