@@ -395,6 +395,20 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 			})
 
+			It("API server signed certificate example must work", func() {
+				yamlFilePath := examplesDir + "extended-secret/certificate.yaml"
+
+				By("Creating an ExtendedSecret")
+				err := testing.Create(namespace, yamlFilePath)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Checking the generated certificate")
+				err = kubectlHelper.WaitForSecret(namespace, "gen-certificate")
+				Expect(err).ToNot(HaveOccurred())
+				err = testing.SecretCheckData(namespace, "gen-certificate", ".data.certificate")
+				Expect(err).ToNot(HaveOccurred())
+			})
+
 			It("Test cases must be written for all example use cases in docs", func() {
 				countFile := 0
 				err := filepath.Walk(examplesDir, func(path string, info os.FileInfo, err error) error {

@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: nats-deployment.var-nats-ca
+  name: cert-ca
 type: Opaque
 stringData:
   certificate: |-
@@ -98,15 +98,15 @@ spec:
     certificate:
       CAKeyRef:
         Key: private_key
-        Name: nats-deployment.var-nats-ca
+        Name: cert-ca
       CARef:
         Key: certificate
-        Name: nats-deployment.var-nats-ca
+        Name: cert-ca
       alternativeNames:
         - foo.com
         - '*.foo.com'
       commonName: routerSSL
       isCA: false
       signerType: external
-  secretName: nats-deployment.var-nats-cert
+  secretName: gen-certificate
   type: certificate

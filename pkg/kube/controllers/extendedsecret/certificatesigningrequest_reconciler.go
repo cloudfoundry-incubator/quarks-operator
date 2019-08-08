@@ -119,7 +119,7 @@ func (r *ReconcileCertificateSigningRequest) Reconcile(request reconcile.Request
 
 	err = r.approveRequest(ctx, instance.Name)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, errors.Wrap(err, "approving cert request failed")
 	}
 
 	return reconcile.Result{}, nil
@@ -180,7 +180,7 @@ func (r *ReconcileCertificateSigningRequest) getSecret(ctx context.Context, name
 	secret := &corev1.Secret{}
 	err := r.client.Get(ctx, types.NamespacedName{Name: secretName, Namespace: namespace}, secret)
 	if err != nil {
-		return secret, errors.Wrapf(err, "Error getting secret '%s/%s'", namespace, secretName)
+		return secret, errors.Wrapf(err, "could not get secret '%s/%s'", namespace, secretName)
 	}
 	return secret, nil
 }
@@ -191,7 +191,7 @@ func (r *ReconcileCertificateSigningRequest) deleteSecret(ctx context.Context, s
 
 	err := r.client.Delete(ctx, secret)
 	if err != nil {
-		return errors.Wrapf(err, "Error deleting secret '%s/%s'", secret.Namespace, secret.Name)
+		return errors.Wrapf(err, "could not delete secret '%s/%s'", secret.Namespace, secret.Name)
 	}
 
 	return nil
