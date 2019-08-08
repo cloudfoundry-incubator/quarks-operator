@@ -78,14 +78,15 @@ func (r *ReconcileCertificateSigningRequest) Reconcile(request reconcile.Request
 			ctxlog.WithEvent(instance, "NotFoundError").Errorf(ctx, "failed to lookup cert secret name from certificateSigningRequest '%s' annotations", instance.Name)
 			return reconcile.Result{}, nil
 		}
-		namespace, ok := annotations[esv1.AnnotationExSecretNamespace]
+		namespace, ok := annotations[esv1.AnnotationESecNamespace]
 		if !ok {
 			ctxlog.WithEvent(instance, "NotFoundError").Errorf(ctx, "failed to lookup exSecret namespace from certificateSigningRequest '%s' annotations", instance.Name)
 			return reconcile.Result{}, nil
 		}
 
-		privatekeySecret, err := r.getSecret(ctx, namespace, names.PrivateKeySecretName(instance.Name))
+		privatekeySecret, err := r.getSecret(ctx, namespace, names.CsrPrivateKeySecretName(instance.Name))
 		if err != nil {
+			ctxlog.Errorf(ctx, "Failed to get the CSR private key secret: %v", err.Error())
 			return reconcile.Result{}, err
 		}
 		certSecret := &corev1.Secret{
@@ -106,20 +107,21 @@ func (r *ReconcileCertificateSigningRequest) Reconcile(request reconcile.Request
 
 		err = r.createSecret(ctx, certSecret)
 		if err != nil {
+			ctxlog.Errorf(ctx, "Failed to create the approved certificate secret: %v", err.Error())
 			return reconcile.Result{}, err
 		}
 
 		err = r.deleteSecret(ctx, privatekeySecret)
 		if err != nil {
+			ctxlog.Errorf(ctx, "Failed to delete the CSR private key secret: %v", err.Error())
 			return reconcile.Result{}, err
 		}
-
-		return reconcile.Result{}, nil
-	}
-
-	err = r.approveRequest(ctx, instance.Name)
-	if err != nil {
-		return reconcile.Result{}, errors.Wrap(err, "approving cert request failed")
+	} else {
+		err = r.approveRequest(ctx, instance.Name)
+		if err != nil {
+			ctxlog.Errorf(ctx, "Failed to approve certificate signing request: %v", err.Error())
+			return reconcile.Result{}, errors.Wrap(err, "approving cert request failed")
+		}
 	}
 
 	return reconcile.Result{}, nil

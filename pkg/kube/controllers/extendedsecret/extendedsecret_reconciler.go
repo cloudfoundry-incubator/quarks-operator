@@ -257,7 +257,7 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 		// private key Secret which will be merged to certificate Secret later
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      names.PrivateKeySecretName(instance.Name),
+				Name:      names.CsrPrivateKeySecretName(instance.Name),
 				Namespace: instance.GetNamespace(),
 			},
 			StringData: map[string]string{
@@ -366,7 +366,7 @@ func (r *ReconcileExtendedSecret) createCertificateSigningRequest(ctx context.Co
 		annotations = map[string]string{}
 	}
 	annotations[esv1.AnnotationCertSecretName] = instance.Spec.SecretName
-	annotations[esv1.AnnotationExSecretNamespace] = instance.Namespace
+	annotations[esv1.AnnotationESecNamespace] = instance.Namespace
 
 	csrObj := &certv1.CertificateSigningRequest{
 		ObjectMeta: metav1.ObjectMeta{

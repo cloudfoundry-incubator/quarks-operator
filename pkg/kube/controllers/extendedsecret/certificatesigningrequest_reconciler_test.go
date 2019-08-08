@@ -51,8 +51,8 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 				Name:      "foo",
 				Namespace: "default",
 				Annotations: map[string]string{
-					esv1.AnnotationCertSecretName:    "fake-cert",
-					esv1.AnnotationExSecretNamespace: "fake-namespace",
+					esv1.AnnotationCertSecretName: "fake-cert",
+					esv1.AnnotationESecNamespace:  "fake-namespace",
 				},
 			},
 			Spec: certv1.CertificateSigningRequestSpec{
@@ -61,7 +61,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 		}
 		privateKeySecret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      names.PrivateKeySecretName(csr.Name),
+				Name:      names.CsrPrivateKeySecretName(csr.Name),
 				Namespace: "fake-namespace",
 			},
 			Data: map[string][]byte{
@@ -84,7 +84,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 				csr.DeepCopyInto(object)
 				return nil
 			case *corev1.Secret:
-				if nn.Name == names.PrivateKeySecretName(csr.Name) {
+				if nn.Name == names.CsrPrivateKeySecretName(csr.Name) {
 					privateKeySecret.DeepCopyInto(object)
 					return nil
 				}
@@ -227,7 +227,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 			client.DeleteCalls(func(context context.Context, object runtime.Object, opts ...crc.DeleteOptionFunc) error {
 				switch object := object.(type) {
 				case *corev1.Secret:
-					Expect(object.GetName()).To(Equal(names.PrivateKeySecretName(csr.Name)))
+					Expect(object.GetName()).To(Equal(names.CsrPrivateKeySecretName(csr.Name)))
 					return nil
 				}
 				return nil
@@ -284,7 +284,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 					csr.DeepCopyInto(object)
 					return nil
 				case *corev1.Secret:
-					if nn.Name == names.PrivateKeySecretName(csr.Name) {
+					if nn.Name == names.CsrPrivateKeySecretName(csr.Name) {
 						return apierrors.NewNotFound(schema.GroupResource{}, "not found")
 					}
 					return nil

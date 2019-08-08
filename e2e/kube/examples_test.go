@@ -419,7 +419,7 @@ var _ = Describe("Examples", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 				// If this testcase fails that means a test case is missing for an example in the docs folder
-				Expect(countFile).To(Equal(26))
+				Expect(countFile).To(Equal(27))
 			})
 		})
 	})

@@ -160,8 +160,8 @@ func OrdinalFromPodName(name string) int {
 	return podOrdinal
 }
 
-// PrivateKeySecretName returns a Secret name for a given ExtendedSecret
-func PrivateKeySecretName(extendedSecretName string) string {
+// CsrPrivateKeySecretName returns a Secret name for a given ExtendedSecret
+func CsrPrivateKeySecretName(extendedSecretName string) string {
 	return extendedSecretName + "-csr-private-key"
 }
 

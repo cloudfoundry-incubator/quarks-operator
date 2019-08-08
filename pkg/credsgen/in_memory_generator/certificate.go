@@ -70,12 +70,6 @@ func (g InMemoryGenerator) generateCertificate(request credsgen.CertificateGener
 	}
 
 	// Generate certificate
-	certReq := &csr.CertificateRequest{KeyRequest: &csr.BasicKeyRequest{A: g.Algorithm, S: g.Bits}}
-
-	certReq.Hosts = append(certReq.Hosts, request.CommonName)
-	certReq.Hosts = append(certReq.Hosts, request.AlternativeNames...)
-	certReq.CN = certReq.Hosts[0]
-
 	signingReq, privateKey, err := g.GenerateCertificateSigningRequest(request)
 	if err != nil {
 		return credsgen.Certificate{}, err
