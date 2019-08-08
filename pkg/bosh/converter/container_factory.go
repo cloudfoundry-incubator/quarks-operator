@@ -26,16 +26,18 @@ type ContainerFactory struct {
 	manifestName         string
 	instanceGroupName    string
 	version              string
+	disableLogSidecar    bool
 	releaseImageProvider ReleaseImageProvider
 	bpmConfigs           bpm.Configs
 }
 
 // NewContainerFactory returns a new ContainerFactory for a BOSH instant group
-func NewContainerFactory(manifestName string, instanceGroupName string, version string, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactory {
+func NewContainerFactory(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactory {
 	return &ContainerFactory{
 		manifestName:         manifestName,
 		instanceGroupName:    instanceGroupName,
 		version:              version,
+		disableLogSidecar:    disableLogSidecar,
 		releaseImageProvider: releaseImageProvider,
 		bpmConfigs:           bpmConfigs,
 	}
@@ -203,8 +205,13 @@ func (c *ContainerFactory) JobsToContainers(
 		}
 	}
 
-	logsTailer := logsTailerContainer(c.instanceGroupName)
-	containers = append(containers, logsTailer)
+	// When disableLogSidecar is true, it will stop
+	// appending the sidecar, default behaviour is to
+	// colocate it always in the pod.
+	if !c.disableLogSidecar {
+		logsTailer := logsTailerContainer(c.instanceGroupName)
+		containers = append(containers, logsTailer)
+	}
 
 	return containers, nil
 }

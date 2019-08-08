@@ -109,7 +109,9 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 		Disks: allDisks,
 	}
 
-	cfac := NewContainerFactory(manifestName, instanceGroup.Name, version, releaseImageProvider, bpmConfigs)
+	disableLogSideCar := instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.DisableLogSidecar
+
+	cfac := NewContainerFactory(manifestName, instanceGroup.Name, version, disableLogSideCar, releaseImageProvider, bpmConfigs)
 
 	switch instanceGroup.LifeCycle {
 	case "service", "":
