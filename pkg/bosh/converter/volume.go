@@ -3,6 +3,7 @@ package converter
 import (
 	"fmt"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -34,19 +35,18 @@ const (
 
 	// VolumeDataDirName is the volume name for the data directory.
 	VolumeDataDirName = "data-dir"
+	// VolumeDataDirMountPath is the mount path for the ephemeral (data) directory.
+	VolumeDataDirMountPath = bdm.DataDir
 
 	// VolumeSysDirName is the volume name for the sys directory.
 	VolumeSysDirName = "sys-dir"
+	// VolumeSysDirMountPath is the mount path for the sys directory.
+	VolumeSysDirMountPath = bdm.SysDir
 
 	// VolumeStoreDirName is the volume name for the store directory.
 	VolumeStoreDirName = "store-dir"
 	// VolumeStoreDirMountPath is the mount path for the store directory.
 	VolumeStoreDirMountPath = "/var/vcap/store"
-
-	// VolumeEphemeralDirName is the volume name for the ephemeral disk directory.
-	VolumeEphemeralDirName = "bpm-ephemeral-disk"
-	// VolumeEphemeralDirMountPath is the mount path for the ephemeral directory.
-	VolumeEphemeralDirMountPath = "/var/vcap/data"
 
 	// AdditionalVolumeBaseName helps in building an additional volume name together with
 	// the index under the additional_volumes bpm list inside the bpm process schema.
@@ -164,24 +164,42 @@ func generateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpm
 				hasPersistentDisk = true
 			}
 
-			for i, additionalVolume := range process.AdditionalVolumes {
+			for _, additionalVolume := range process.AdditionalVolumes {
 				match := rAdditionalVolumes.MatchString(additionalVolume.Path)
 				if !match {
 					return nil, errors.Errorf("the %s path, must be a path inside"+
 						" /var/vcap/data, /var/vcap/store or /var/vcap/sys/run, for a path outside these,"+
 						" you must use the unrestricted_volumes key", additionalVolume.Path)
 				}
-				volumeName := names.Sanitize(fmt.Sprintf("%s-%s-%s-%b", AdditionalVolumeBaseName, job.Name, process.Name, i))
-				additionalDisk := BPMResourceDisk{
-					Volume: &corev1.Volume{
-						Name:         volumeName,
-						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-					},
 
+				var (
+					err        error
+					volumeName string
+					subPath    string
+				)
+				if strings.HasPrefix(additionalVolume.Path, VolumeDataDirMountPath) {
+					volumeName = VolumeDataDirName
+					subPath, err = filepath.Rel(VolumeDataDirMountPath, additionalVolume.Path)
+				}
+				if strings.HasPrefix(additionalVolume.Path, VolumeStoreDirMountPath) {
+					volumeName = VolumeStoreDirName
+					subPath, err = filepath.Rel(VolumeStoreDirMountPath, additionalVolume.Path)
+				}
+				if strings.HasPrefix(additionalVolume.Path, VolumeSysDirMountPath) {
+					volumeName = VolumeSysDirName
+					subPath, err = filepath.Rel(VolumeDataDirMountPath, additionalVolume.Path)
+				}
+
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to calculate subpath for additional volume mount '%s'", additionalVolume.Path)
+				}
+
+				additionalDisk := BPMResourceDisk{
 					VolumeMount: &corev1.VolumeMount{
 						Name:      volumeName,
 						ReadOnly:  !additionalVolume.Writable,
 						MountPath: additionalVolume.Path,
+						SubPath:   subPath,
 					},
 					Labels: map[string]string{
 						"job_name":     job.Name,
@@ -215,13 +233,10 @@ func generateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpm
 		if hasEphemeralDisk {
 
 			ephemeralDisk := BPMResourceDisk{
-				Volume: &corev1.Volume{
-					Name:         VolumeEphemeralDirName,
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-				},
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeEphemeralDirName,
-					MountPath: path.Join(VolumeEphemeralDirMountPath, job.Name),
+					Name:      VolumeDataDirName,
+					MountPath: path.Join(VolumeDataDirMountPath, job.Name),
+					SubPath:   job.Name,
 				},
 				Labels: map[string]string{
 					"job_name":  job.Name,

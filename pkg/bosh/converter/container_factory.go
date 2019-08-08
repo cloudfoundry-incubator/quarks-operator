@@ -17,12 +17,6 @@ const (
 	// EnvJobsDir is a key for the container Env used to lookup the jobs dir
 	EnvJobsDir = "JOBS_DIR"
 
-	// VolumeDataDirMountPath is the mount path for the data directory.
-	VolumeDataDirMountPath = bdm.DataDir
-
-	// VolumeSysDirMountPath is the mount path for the sys directory.
-	VolumeSysDirMountPath = bdm.SysDir
-
 	// EnvLogsDir is the path from where to tail file logs
 	EnvLogsDir = "LOGS_DIR"
 )
@@ -109,6 +103,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 					jobImage,
 					processVolumeMounts,
 					job.Properties.Quarks.Debug,
+					job.Properties.Quarks.Privileged,
 				)
 
 				bpmPreStartInitContainers = append(bpmPreStartInitContainers, *container.DeepCopy())
@@ -121,6 +116,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 			jobImage,
 			append(defaultVolumeMounts, bpmDisks.VolumeMounts()...),
 			job.Properties.Quarks.Debug,
+			job.Properties.Quarks.Privileged,
 		)
 		boshPreStartInitContainers = append(boshPreStartInitContainers, *boshPreStartInitContainer.DeepCopy())
 	}
@@ -200,6 +196,7 @@ func (c *ContainerFactory) JobsToContainers(
 				processVolumeMounts,
 				job.Properties.Quarks.Run.HealthCheck,
 				job.Properties.Quarks.Envs,
+				job.Properties.Quarks.Privileged,
 			)
 
 			containers = append(containers, *container.DeepCopy())
@@ -254,10 +251,9 @@ func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 				MountPath: VolumeRenderingDataMountPath,
 			},
 		},
-		Command: []string{
-			"/bin/sh",
-		},
+		Command: []string{"/usr/bin/dumb-init", "--"},
 		Args: []string{
+			"/bin/sh",
 			"-xc",
 			fmt.Sprintf("mkdir -p %s && cp -ar %s/* %s && chown vcap:vcap %s -R", inContainerReleasePath, VolumeJobsSrcDirMountPath, inContainerReleasePath, inContainerReleasePath),
 		},
@@ -305,10 +301,9 @@ func templateRenderingContainer(instanceGroupName string, secretName string) cor
 				},
 			},
 		},
-		Command: []string{
-			"/bin/sh",
-		},
+		Command: []string{"/usr/bin/dumb-init", "--"},
 		Args: []string{
+			"/bin/sh",
 			"-xc",
 			"cf-operator util template-render",
 		},
@@ -335,10 +330,9 @@ func createDirContainer(jobs []bdm.Job) corev1.Container {
 				MountPath: VolumeSysDirMountPath,
 			},
 		},
-		Command: []string{
-			"/bin/sh",
-		},
+		Command: []string{"/usr/bin/dumb-init", "--"},
 		Args: []string{
+			"/bin/sh",
 			"-xc",
 			fmt.Sprintf("mkdir -p %s", strings.Join(dirs, " ")),
 		},
@@ -353,6 +347,7 @@ func boshPreStartInitContainer(
 	jobImage string,
 	volumeMounts []corev1.VolumeMount,
 	debug bool,
+	privileged bool,
 ) corev1.Container {
 	boshPreStart := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "pre-start")
 
@@ -367,12 +362,14 @@ func boshPreStartInitContainer(
 		Name:         names.Sanitize(fmt.Sprintf("bosh-pre-start-%s", jobName)),
 		Image:        jobImage,
 		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
-		Command: []string{
-			"/bin/sh",
-		},
+		Command:      []string{"/usr/bin/dumb-init", "--"},
 		Args: []string{
+			"/bin/sh",
 			"-xc",
 			script,
+		},
+		SecurityContext: &corev1.SecurityContext{
+			Privileged: &privileged,
 		},
 	}
 }
@@ -382,6 +379,7 @@ func bpmPreStartInitContainer(
 	jobImage string,
 	volumeMounts []corev1.VolumeMount,
 	debug bool,
+	privileged bool,
 ) corev1.Container {
 
 	var script string
@@ -391,19 +389,19 @@ func bpmPreStartInitContainer(
 		script = process.Hooks.PreStart
 	}
 
+	privilegedContainer := process.Unsafe.Privileged || privileged
 	return corev1.Container{
 		Name:         names.Sanitize(fmt.Sprintf("bpm-pre-start-%s", process.Name)),
 		Image:        jobImage,
 		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
-		Command: []string{
-			"/bin/sh",
-		},
+		Command:      []string{"/usr/bin/dumb-init", "--"},
 		Args: []string{
+			"/bin/sh",
 			"-xc",
 			script,
 		},
 		SecurityContext: &corev1.SecurityContext{
-			Privileged: &process.Unsafe.Privileged,
+			Privileged: &privilegedContainer,
 		},
 	}
 }
@@ -416,17 +414,19 @@ func bpmProcessContainer(
 	volumeMounts []corev1.VolumeMount,
 	healthchecks map[string]bdm.HealthCheck,
 	arbitraryEnvs []corev1.EnvVar,
+	privileged bool,
 ) corev1.Container {
 	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
+	privilegedContainer := process.Unsafe.Privileged || privileged
 	container := corev1.Container{
 		Name:         names.Sanitize(name),
 		Image:        jobImage,
 		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
-		Command:      []string{process.Executable},
-		Args:         process.Args,
+		Command:      []string{"/usr/bin/dumb-init", "--"},
+		Args:         append([]string{process.Executable}, process.Args...),
 		WorkingDir:   process.Workdir,
 		SecurityContext: &corev1.SecurityContext{
-			Privileged: &process.Unsafe.Privileged,
+			Privileged: &privilegedContainer,
 		},
 		Lifecycle: &corev1.Lifecycle{},
 	}
@@ -443,36 +443,38 @@ func bpmProcessContainer(
 	container.Lifecycle.PreStop = &corev1.Handler{
 		Exec: &corev1.ExecAction{
 			Command: []string{
-				"sh",
+				"/bin/sh",
 				"-c",
-				`for s in $(ls ` + drainGlob + `); do
-					(
-						echo "Running drain script $s"
-						while true; do
-							out=$($s)
-							status=$?
+				`
+shopt -s nullglob
+for s in ` + drainGlob + `; do
+	(
+		echo "Running drain script $s"
+		while true; do
+			out=$($s)
+			status=$?
 
-							if [ "$status" -ne "0" ]; then
-								echo "$s FAILED with exit code $status"
-								exit $status
-							fi
+			if [ "$status" -ne "0" ]; then
+				echo "$s FAILED with exit code $status"
+				exit $status
+			fi
 
-							if [ "$out" -lt "0" ]; then
-								echo "Sleeping dynamic draining wait time for $s..."
-								sleep ${out:1}
-								echo "Running $s again"
-							else
-								echo "Sleeping static draining wait time for $s..."
-								sleep $out
-								echo "$s done"
-								exit 0
-							fi
-						done
-					)&
-				done
-				echo "Waiting..."
-				wait
-				echo "Done"`,
+			if [ "$out" -lt "0" ]; then
+				echo "Sleeping dynamic draining wait time for $s..."
+				sleep ${out:1}
+				echo "Running $s again"
+			else
+				echo "Sleeping static draining wait time for $s..."
+				sleep $out
+				echo "$s done"
+				exit 0
+			fi
+		done
+	)&
+done
+echo "Waiting for subprocesses to finish..."
+wait
+echo "Done"`,
 			},
 		},
 	}

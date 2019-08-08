@@ -141,8 +141,12 @@ var _ = Describe("Deploy", func() {
 			Expect(len(pods.Items)).To(Equal(2))
 			pod := pods.Items[1]
 			Expect(pod.Spec.InitContainers).To(HaveLen(5))
-			Expect(pod.Spec.InitContainers[4].Args).To(ContainElement("/var/vcap/jobs/garden/bin/bpm-pre-start"))
-			Expect(pod.Spec.InitContainers[4].Command[0]).To(Equal("/bin/sh"))
+			Expect(pod.Spec.InitContainers[4].Command).To(Equal([]string{"/usr/bin/dumb-init", "--"}))
+			Expect(pod.Spec.InitContainers[4].Args).To(Equal([]string{
+				"/bin/sh",
+				"-xc",
+				"/var/vcap/jobs/garden/bin/bpm-pre-start",
+			}))
 		})
 	})
 
@@ -480,6 +484,7 @@ var _ = Describe("Deploy", func() {
 			// Generate the right ops resource, so that the above goroutine will not end in error
 			_, err = env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops"))
 			Expect(err).NotTo(HaveOccurred())
+			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			chanReceived := <-ch
 			Expect(chanReceived.Error).To(HaveOccurred())
