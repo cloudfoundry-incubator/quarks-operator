@@ -100,8 +100,7 @@ func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconci
 
 	for _, eJob := range eJobs.Items {
 		if r.query.MatchState(eJob, podState) && r.query.Match(eJob, *pod) {
-			_, err := r.jobCreator.createJob(ctx, eJob, podName, string(pod.UID))
-			if err != nil {
+			if _, err := r.jobCreator.Create(ctx, eJob, podName, string(pod.UID)); err != nil {
 				ctxlog.WithEvent(&eJob, "CreateJob").Infof(ctx, "Failed to create job for '%s' via pod %s: %s", eJob.Name, podEvent, err)
 				continue
 			}
