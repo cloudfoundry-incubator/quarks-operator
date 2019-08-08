@@ -19,6 +19,7 @@ type Quarks struct {
 	Debug            bool               `json:"debug" yaml:"debug"`
 	IsAddon          bool               `json:"is_addon" yaml:"is_addon"`
 	Envs             []corev1.EnvVar    `json:"envs" yaml:"envs"`
+	Privileged       bool               `json:"privileged"`
 }
 
 // Port represents the port to be opened up for this job

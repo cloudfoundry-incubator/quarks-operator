@@ -115,6 +115,36 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 			})
 
+			It("bosh-deployment service example must work", func() {
+				yamlFilePath := examplesDir + "bosh-deployment/boshdeployment-with-service.yaml"
+
+				By("Creating bosh deployment")
+				kubectlHelper := testing.NewKubectl()
+				err := testing.Create(namespace, yamlFilePath)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Checking for pods")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-0", kubectlHelper.PollTimeout)
+				Expect(err).ToNot(HaveOccurred())
+
+				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1", kubectlHelper.PollTimeout)
+				Expect(err).ToNot(HaveOccurred())
+
+				err = kubectlHelper.WaitForService(namespace, "nats-service")
+				Expect(err).ToNot(HaveOccurred())
+
+				ip0, err := testing.GetData(namespace, "pod", "nats-deployment-nats-v1-0", "go-template={{.status.podIP}}")
+				Expect(err).ToNot(HaveOccurred())
+
+				ip1, err := testing.GetData(namespace, "pod", "nats-deployment-nats-v1-1", "go-template={{.status.podIP}}")
+				Expect(err).ToNot(HaveOccurred())
+
+				out, err := testing.GetData(namespace, "endpoints", "nats-service", "go-template=\"{{(index .subsets 0).addresses}}\"")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out).To(ContainSubstring(string(ip0)))
+				Expect(out).To(ContainSubstring(string(ip1)))
+			})
+
 			It("bosh-deployment example must work", func() {
 				yamlFilePath := examplesDir + "bosh-deployment/boshdeployment.yaml"
 
@@ -189,7 +219,7 @@ var _ = Describe("Examples", func() {
 				outFile, err := testing.RunCommandWithOutput(namespace, "nats-deployment-nats-v1-1", "awk 'NR == 18 {print substr($2,2,17)}' /var/vcap/jobs/nats/config/nats.conf")
 				Expect(err).ToNot(HaveOccurred())
 
-				outSecret, err := testing.GetSecretData(namespace, "nats-deployment.var-custom-password", "go-template={{.data.password}}")
+				outSecret, err := testing.GetData(namespace,"secret", "nats-deployment.var-custom-password", "go-template={{.data.password}}")
 				Expect(err).ToNot(HaveOccurred())
 				outSecretDecoded, _ := b64.StdEncoding.DecodeString(string(outSecret))
 				Expect(strings.TrimSuffix(outFile, "\n")).To(ContainSubstring(string(outSecretDecoded)))
@@ -319,7 +349,7 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking the secret data created")
-				outSecret, err := testing.GetSecretData(namespace, "foo-json", "go-template={{.data.foo}}")
+				outSecret, err := testing.GetData(namespace, "secret", "foo-json", "go-template={{.data.foo}}")
 				Expect(err).ToNot(HaveOccurred())
 				outSecretDecoded, _ := b64.StdEncoding.DecodeString(string(outSecret))
 				Expect(string(outSecretDecoded)).To(Equal("1"))
@@ -347,7 +377,7 @@ var _ = Describe("Examples", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 				// If this testcase fails that means a test case is missing for an example in the docs folder
-				Expect(countFile).To(Equal(24))
+				Expect(countFile).To(Equal(25))
 			})
 		})
 	})

@@ -89,6 +89,13 @@ func (m *Machine) WaitForPod(namespace string, name string) error {
 	})
 }
 
+// WaitForPodReady blocks until the pod is ready. It fails after the timeout.
+func (m *Machine) WaitForPodReady(namespace string, name string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		return m.PodReady(namespace, name)
+	})
+}
+
 // WaitForPods blocks until all selected pods are running. It fails after the timeout.
 func (m *Machine) WaitForPods(namespace string, labels string) error {
 	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
@@ -326,6 +333,29 @@ func (m *Machine) PodRunning(namespace string, name string) (bool, error) {
 	if pod.Status.Phase == corev1.PodRunning {
 		return true, nil
 	}
+	return false, nil
+}
+
+// PodReady returns true if the pod by that name is ready.
+func (m *Machine) PodReady(namespace string, name string) (bool, error) {
+	pod, err := m.Clientset.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "failed to query for pod by name: %s", name)
+	}
+
+	if pod.Status.Phase != corev1.PodRunning {
+		return false, nil
+	}
+
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
+			return true, nil
+		}
+	}
+
 	return false, nil
 }
 

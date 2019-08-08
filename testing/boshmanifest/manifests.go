@@ -264,11 +264,11 @@ const Drains = `---
 name: my-manifest
 releases:
 - name: cf-operator-testing
-  version: "0.0.2"
+  version: "0.0.6"
   url: docker.io/cfcontainerization
   stemcell:
     os: opensuse-42.3
-    version: 36.g03b4653-30.80-7.0.0_332.g0d8469bb
+    version: 36.g03b4653-30.80-7.0.0_346.ge9dd9ff3
 instance_groups:
 - name: drains
   instances: 1
