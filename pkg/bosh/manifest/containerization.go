@@ -15,7 +15,7 @@ type Quarks struct {
 	BPM              *bpm.Config        `json:"bpm,omitempty" yaml:"bpm,omitempty"`
 	Ports            []Port             `json:"ports"`
 	Run              RunConfig          `json:"run"`
-	PreRenderScripts []string           `json:"pre_render_scripts" yaml:"pre_render_scripts"`
+	PreRenderScripts PreRenderScripts   `json:"pre_render_scripts" yaml:"pre_render_scripts"`
 	Debug            bool               `json:"debug" yaml:"debug"`
 	IsAddon          bool               `json:"is_addon" yaml:"is_addon"`
 	Envs             []corev1.EnvVar    `json:"envs" yaml:"envs"`
@@ -58,4 +58,12 @@ type HealthCheck struct {
 // RunConfig describes the runtime configuration for this job
 type RunConfig struct {
 	HealthCheck map[string]HealthCheck `json:"healthcheck" yaml:"healthcheck"`
+}
+
+// PreRender describes the different types of scripts
+// that can be run inside a job
+type PreRenderScripts struct {
+	BPM        []string `json:"bpm" yaml:"bpm"`
+	IgResolver []string `json:"ig_resolver" yaml:"ig_resolver"`
+	Jobs       []string `json:"jobs" yaml:"jobs"`
 }
