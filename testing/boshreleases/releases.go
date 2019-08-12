@@ -1,5 +1,6 @@
 package boshreleases
 
+// MultiProcessBPMConfig is a BOSH Job configuration with multi processes
 const MultiProcessBPMConfig = `
 processes:
 - name: test-server
@@ -29,6 +30,7 @@ processes:
     BPM: CONTAINED
 `
 
+// DefaultBPMConfig is a BOSH Job configuration with default values
 const DefaultBPMConfig = `
 processes:
 - name: test-server
@@ -54,6 +56,7 @@ processes:
       mount_only: true
 `
 
+// EnablePersistentDiskBPMConfig is a BOSH Job configuration with persistent disks
 const EnablePersistentDiskBPMConfig = `
 processes:
 - name: test-server
@@ -79,6 +82,7 @@ processes:
       mount_only: true
 `
 
+// MultiProcessBPMConfigWithPersistentDisk is a BOSH Job configuration with multi processes and persistent disks
 const MultiProcessBPMConfigWithPersistentDisk = `
 processes:
 - name: test-server
@@ -109,6 +113,7 @@ processes:
   persistent_disk: true
 `
 
+// CFRouting is a BOSH Job configuration that specify cf route job
 const CFRouting = `
 processes:
   - name: route_registrar

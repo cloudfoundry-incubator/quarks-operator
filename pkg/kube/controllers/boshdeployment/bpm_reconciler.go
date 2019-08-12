@@ -26,6 +26,7 @@ import (
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
+// DesiredManifest unmarshals desired manifest from the manifest secret
 type DesiredManifest interface {
 	DesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error)
 }

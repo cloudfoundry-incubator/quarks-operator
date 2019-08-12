@@ -33,7 +33,7 @@ const (
 	VersionSecretKind = "versionedSecret"
 )
 
-var _ VersionedSecretStore = &VersionedSecretStoreImpl{}
+var _ VersionedSecretStore = &VersionedSecretImpl{}
 
 // VersionedSecretStore is the interface to version secrets in Kubernetes
 //
@@ -58,21 +58,21 @@ type VersionedSecretStore interface {
 	Decorate(ctx context.Context, namespace string, secretName string, key string, value string) error
 }
 
-// VersionedSecretStoreImpl contains the required fields to persist a secret
-type VersionedSecretStoreImpl struct {
+// VersionedSecretImpl contains the required fields to persist a secret
+type VersionedSecretImpl struct {
 	client client.Client
 }
 
 // NewVersionedSecretStore returns a VersionedSecretStore implementation to be used
 // when working with desired secret secrets
-func NewVersionedSecretStore(client client.Client) VersionedSecretStoreImpl {
-	return VersionedSecretStoreImpl{
+func NewVersionedSecretStore(client client.Client) VersionedSecretImpl {
+	return VersionedSecretImpl{
 		client,
 	}
 }
 
 // SetSecretReferences update versioned secret references in pod spec
-func (p VersionedSecretStoreImpl) SetSecretReferences(ctx context.Context, namespace string, podSpec *corev1.PodSpec) error {
+func (p VersionedSecretImpl) SetSecretReferences(ctx context.Context, namespace string, podSpec *corev1.PodSpec) error {
 	_, secretsInSpec := GetConfigNamesFromSpec(*podSpec)
 	for secretNameInSpec := range secretsInSpec {
 
@@ -127,7 +127,7 @@ func (p VersionedSecretStoreImpl) SetSecretReferences(ctx context.Context, names
 }
 
 // Create creates a new version of the secret from secret data
-func (p VersionedSecretStoreImpl) Create(ctx context.Context, namespace string, ownerName string, ownerID types.UID, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error {
+func (p VersionedSecretImpl) Create(ctx context.Context, namespace string, ownerName string, ownerID types.UID, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error {
 	currentVersion, err := p.getGreatestVersion(ctx, namespace, secretName)
 	if err != nil {
 		return err
@@ -168,7 +168,7 @@ func (p VersionedSecretStoreImpl) Create(ctx context.Context, namespace string, 
 }
 
 // Get returns a specific version of the secret
-func (p VersionedSecretStoreImpl) Get(ctx context.Context, namespace string, deploymentName string, version int) (*corev1.Secret, error) {
+func (p VersionedSecretImpl) Get(ctx context.Context, namespace string, deploymentName string, version int) (*corev1.Secret, error) {
 	name, err := generateSecretName(deploymentName, version)
 	if err != nil {
 		return nil, err
@@ -184,7 +184,7 @@ func (p VersionedSecretStoreImpl) Get(ctx context.Context, namespace string, dep
 }
 
 // Latest returns the latest version of the secret
-func (p VersionedSecretStoreImpl) Latest(ctx context.Context, namespace string, secretName string) (*corev1.Secret, error) {
+func (p VersionedSecretImpl) Latest(ctx context.Context, namespace string, secretName string) (*corev1.Secret, error) {
 	latestVersion, err := p.getGreatestVersion(ctx, namespace, secretName)
 	if err != nil {
 		return nil, err
@@ -193,7 +193,7 @@ func (p VersionedSecretStoreImpl) Latest(ctx context.Context, namespace string, 
 }
 
 // List returns all versions of the secret
-func (p VersionedSecretStoreImpl) List(ctx context.Context, namespace string, secretName string) ([]corev1.Secret, error) {
+func (p VersionedSecretImpl) List(ctx context.Context, namespace string, secretName string) ([]corev1.Secret, error) {
 	secrets, err := p.listSecrets(ctx, namespace, secretName)
 	if err != nil {
 		return nil, err
@@ -203,7 +203,7 @@ func (p VersionedSecretStoreImpl) List(ctx context.Context, namespace string, se
 }
 
 // VersionCount returns the number of versions for this secret
-func (p VersionedSecretStoreImpl) VersionCount(ctx context.Context, namespace string, secretName string) (int, error) {
+func (p VersionedSecretImpl) VersionCount(ctx context.Context, namespace string, secretName string) (int, error) {
 	list, err := p.listSecrets(ctx, namespace, secretName)
 	if err != nil {
 		return 0, err
@@ -213,7 +213,7 @@ func (p VersionedSecretStoreImpl) VersionCount(ctx context.Context, namespace st
 }
 
 // Decorate adds a label to the latest version of the secret
-func (p VersionedSecretStoreImpl) Decorate(ctx context.Context, namespace string, secretName string, key string, value string) error {
+func (p VersionedSecretImpl) Decorate(ctx context.Context, namespace string, secretName string, key string, value string) error {
 	version, err := p.getGreatestVersion(ctx, namespace, secretName)
 	if err != nil {
 		return err
@@ -242,7 +242,7 @@ func (p VersionedSecretStoreImpl) Decorate(ctx context.Context, namespace string
 
 // Delete removes all versions of the secret and therefore the
 // secret itself.
-func (p VersionedSecretStoreImpl) Delete(ctx context.Context, namespace string, secretName string) error {
+func (p VersionedSecretImpl) Delete(ctx context.Context, namespace string, secretName string) error {
 	list, err := p.listSecrets(ctx, namespace, secretName)
 	if err != nil {
 		return err
@@ -257,7 +257,7 @@ func (p VersionedSecretStoreImpl) Delete(ctx context.Context, namespace string, 
 	return nil
 }
 
-func (p VersionedSecretStoreImpl) listSecrets(ctx context.Context, namespace string, secretName string) ([]corev1.Secret, error) {
+func (p VersionedSecretImpl) listSecrets(ctx context.Context, namespace string, secretName string) ([]corev1.Secret, error) {
 	secretLabelsSet := labels.Set{
 		LabelSecretKind: VersionSecretKind,
 	}
@@ -285,7 +285,7 @@ func (p VersionedSecretStoreImpl) listSecrets(ctx context.Context, namespace str
 	return result, nil
 }
 
-func (p VersionedSecretStoreImpl) getGreatestVersion(ctx context.Context, namespace string, secretName string) (int, error) {
+func (p VersionedSecretImpl) getGreatestVersion(ctx context.Context, namespace string, secretName string) (int, error) {
 	list, err := p.listSecrets(ctx, namespace, secretName)
 	if err != nil {
 		return -1, err

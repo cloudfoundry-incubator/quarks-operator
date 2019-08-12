@@ -1,6 +1,7 @@
 // Package boshmanifest contains text assets for BOSH manifests and ops files
 package boshmanifest
 
+// Default is the default BOSH manifest for tests
 const Default = `name: foo-deployment
 stemcells:
 - alias: default
@@ -84,6 +85,7 @@ releases:
   url: hub.docker.com/cfcontainerization
   sha1: 6466c44827c3493645ca34b084e7c21de23272b4`
 
+// WithAddons is a BOSH manifest with addons for tests
 const WithAddons = `name: foo-deployment
 addons:
 - name: test
@@ -280,6 +282,7 @@ instance_groups:
     release: cf-operator-testing
 `
 
+// Elaborated is a manifest with multi BOSH job specifications
 const Elaborated = `name: foo-deployment
 stemcells:
 - alias: default
@@ -334,6 +337,7 @@ releases:
   url: hub.docker.com/cfcontainerization
   sha1: 6466c44827c3493645ca34b084e7c21de23272b4`
 
+// WithProviderAndConsumer is a manifest with providers and consumers
 const WithProviderAndConsumer = `---
 name: cf
 manifest_version: v7.7.0
@@ -415,6 +419,7 @@ stemcells:
   version: "250.17"
 `
 
+// WithOverriddenBPMInfo is a manifest with overridden BPM Infos
 const WithOverriddenBPMInfo = `---
 name: foo-deployment
 stemcells:
@@ -471,6 +476,7 @@ releases:
   sha1: 6466c44827c3493645ca34b084e7c21de23272b4
 `
 
+// WithAbsentBPMInfo is a manifest with an absent BPM info
 const WithAbsentBPMInfo = `---
 name: foo-deployment
 stemcells:
@@ -511,6 +517,7 @@ releases:
   sha1: 6466c44827c3493645ca34b084e7c21de23272b4
 `
 
+// WithMultiBPMProcesses is a manifest with multi BPM processes
 const WithMultiBPMProcesses = `---
 name: my-manifest
 releases:
@@ -695,6 +702,7 @@ instance_groups:
           internal: 1338
 `
 
+// WithMultiBPMProcessesAndPersistentDisk is a BOSH manifest with multi BPM Processes and persistent disk definition
 const WithMultiBPMProcessesAndPersistentDisk = `---
 name: my-manifest
 releases:
