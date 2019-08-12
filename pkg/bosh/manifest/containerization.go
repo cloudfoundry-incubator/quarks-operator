@@ -6,8 +6,8 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 )
 
-// Quarks represents the special 'quarks'
-// property key. It contains all kubernetes structures we need to add to the BOSH manifest.
+// Quarks represents the special 'quarks' property key.
+// It contains all kubernetes structures we need to add to the BOSH manifest.
 type Quarks struct {
 	Consumes         map[string]JobLink `json:"consumes"`
 	Instances        []JobInstance      `json:"instances"`
@@ -22,14 +22,14 @@ type Quarks struct {
 	Privileged       bool               `json:"privileged"`
 }
 
-// Port represents the port to be opened up for this job
+// Port represents the port to be opened up for this job.
 type Port struct {
 	Name     string `json:"name"`
 	Protocol string `json:"protocol"`
 	Internal int    `json:"internal"`
 }
 
-// JobInstance for data gathering
+// JobInstance for data gathering.
 type JobInstance struct {
 	Address  string                 `json:"address"`
 	AZ       string                 `json:"az"`
@@ -41,21 +41,20 @@ type JobInstance struct {
 	IP       string                 `json:"ip"`
 }
 
-// JobLink describes links inside a job properties
-// quarks.
+// JobLink describes links inside a job properties quarks.
 type JobLink struct {
 	Address    string                 `json:"address"`
 	Instances  []JobInstance          `json:"instances"`
 	Properties map[string]interface{} `json:"properties"`
 }
 
-// HealthCheck defines liveness and readiness probes for a container
+// HealthCheck defines liveness and readiness probes for a container.
 type HealthCheck struct {
 	ReadinessProbe *corev1.Probe `json:"readiness" yaml:"readiness"`
 	LivenessProbe  *corev1.Probe `json:"liveness"  yaml:"liveness"`
 }
 
-// RunConfig describes the runtime configuration for this job
+// RunConfig describes the runtime configuration for this job.
 type RunConfig struct {
 	HealthCheck map[string]HealthCheck `json:"healthcheck" yaml:"healthcheck"`
 }
