@@ -216,7 +216,7 @@ func CreateNamespace(name string) error {
 func DeleteNamespace(ns string) error {
 	fmt.Printf("Cleaning up namespace %s \n", ns)
 
-	_, err := runBinary(kubeCtlCmd, "delete", "--wait=false", "--ignore-not-found", "namespace", ns)
+	_, err := runBinary(kubeCtlCmd, "delete", "--wait=false", "--ignore-not-found", "--grace-period=30", "namespace", ns)
 	if err != nil {
 		return errors.Wrapf(err, "Deleting namespace %s failed", ns)
 	}
