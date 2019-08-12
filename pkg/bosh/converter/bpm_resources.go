@@ -225,7 +225,6 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGrou
 				Port:     int32(port.Internal),
 			})
 		}
-
 	}
 
 	if len(ports) == 0 {

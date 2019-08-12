@@ -225,14 +225,12 @@ func (dg *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) e
 
 		jobIndexBPM := make([]bpm.Config, len(jobInstances))
 		for i, jobInstance := range jobInstances {
-
 			properties := currentJob.Properties.ToMap()
 
 			renderPointer := btg.NewERBRenderer(
 				&btg.EvaluationContext{
 					Properties: properties,
 				},
-
 				&btg.InstanceInfo{
 					Address:    jobInstance.Address,
 					AZ:         jobInstance.AZ,
@@ -242,7 +240,6 @@ func (dg *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) e
 					Deployment: dg.manifest.Name,
 					Name:       jobInstance.Name,
 				},
-
 				jobSpecFile,
 			)
 

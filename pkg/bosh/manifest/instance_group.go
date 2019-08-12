@@ -8,7 +8,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 )
 
-// InstanceGroup from BOSH deployment manifest
+// InstanceGroup from BOSH deployment manifest.
 type InstanceGroup struct {
 	Name               string                 `json:"name"`
 	Instances          int                    `json:"instances"`
@@ -61,21 +61,21 @@ func (ig *InstanceGroup) jobInstances(namespace string, deploymentName string, j
 	return jobsInstances
 }
 
-// VMResource from BOSH deployment manifest
+// VMResource from BOSH deployment manifest.
 type VMResource struct {
 	CPU               int `json:"cpu"`
 	RAM               int `json:"ram"`
 	EphemeralDiskSize int `json:"ephemeral_disk_size"`
 }
 
-// Network from BOSH deployment manifest
+// Network from BOSH deployment manifest.
 type Network struct {
 	Name      string   `json:"name"`
 	StaticIps []string `json:"static_ips,omitempty"`
 	Default   []string `json:"default,omitempty"`
 }
 
-// Update from BOSH deployment manifest
+// Update from BOSH deployment manifest.
 type Update struct {
 	Canaries        int     `json:"canaries"`
 	MaxInFlight     string  `json:"max_in_flight"`
@@ -85,29 +85,29 @@ type Update struct {
 	VMStrategy      *string `json:"vm_strategy,omitempty"`
 }
 
-// MigratedFrom from BOSH deployment manifest
+// MigratedFrom from BOSH deployment manifest.
 type MigratedFrom struct {
 	Name string `json:"name"`
 	Az   string `json:"az,omitempty"`
 }
 
-// IPv6 from BOSH deployment manifest
+// IPv6 from BOSH deployment manifest.
 type IPv6 struct {
 	Enable bool `json:"enable"`
 }
 
-// JobDir from BOSH deployment manifest
+// JobDir from BOSH deployment manifest.
 type JobDir struct {
 	Tmpfs     *bool  `json:"tmpfs,omitempty"`
 	TmpfsSize string `json:"tmpfs_size,omitempty"`
 }
 
 var (
-	// LabelDeploymentName is the name of a label for the deployment name
+	// LabelDeploymentName is the name of a label for the deployment name.
 	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
-	// LabelInstanceGroupName is the name of a label for an instance group name
+	// LabelInstanceGroupName is the name of a label for an instance group name.
 	LabelInstanceGroupName = fmt.Sprintf("%s/instance-group-name", apis.GroupName)
-	// LabelDeploymentVersion is the name of a label for the deployment's version
+	// LabelDeploymentVersion is the name of a label for the deployment's version.
 	LabelDeploymentVersion = fmt.Sprintf("%s/deployment-version", apis.GroupName)
 )
 
@@ -121,7 +121,7 @@ type AgentSettings struct {
 	DisableLogSidecar bool              `json:"disable_log_sidecar,omitempty" yaml:"disable_log_sidecar,omitempty"`
 }
 
-// Set overrides labels and annotations with operator-owned metadata
+// Set overrides labels and annotations with operator-owned metadata.
 func (as *AgentSettings) Set(manifestName, igName, version string) {
 	if as.Labels == nil {
 		as.Labels = map[string]string{}
@@ -131,18 +131,18 @@ func (as *AgentSettings) Set(manifestName, igName, version string) {
 	as.Labels[LabelDeploymentVersion] = version
 }
 
-// Agent from BOSH deployment manifest
+// Agent from BOSH deployment manifest.
 type Agent struct {
 	Settings AgentSettings `json:"settings,omitempty"`
 	Tmpfs    *bool         `json:"tmpfs,omitempty"`
 }
 
-// Settings has been added to make the k8s native Affinity field accessible
+// Settings has been added to make the k8s native Affinity field accessible.
 type Settings struct {
 	Affinity *corev1.Affinity `json:"affinity,omitempty" yaml:"affinity,omitempty"`
 }
 
-// AgentEnvBoshConfig from BOSH deployment manifest
+// AgentEnvBoshConfig from BOSH deployment manifest.
 type AgentEnvBoshConfig struct {
 	Password              string  `json:"password,omitempty"`
 	KeepRootPassword      string  `json:"keep_root_password,omitempty"`
@@ -154,7 +154,7 @@ type AgentEnvBoshConfig struct {
 	Agent                 Agent   `json:"agent,omitempty"`
 }
 
-// AgentEnv from BOSH deployment manifest
+// AgentEnv from BOSH deployment manifest.
 type AgentEnv struct {
 	PersistentDiskFS           string             `json:"persistent_disk_fs,omitempty"`
 	PersistentDiskMountOptions []string           `json:"persistent_disk_mount_options,omitempty"`
