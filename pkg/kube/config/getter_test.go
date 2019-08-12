@@ -6,7 +6,7 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/config/fake"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/config/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -109,7 +109,7 @@ var _ = Describe("Getter", func() {
 						return &mem.FileInfo{}, nil
 					},
 					restConfigFromKubeConfig: func(loader clientcmd.ClientConfigLoader, overrides *clientcmd.ConfigOverrides) clientcmd.ClientConfig {
-						return &fake.FakeClientConfig{}
+						return &fakes.FakeClientConfig{}
 					},
 				},
 				expectedConfig: &rest.Config{Host: "another.cluster.config.com"},
@@ -181,7 +181,7 @@ var _ = Describe("Getter", func() {
 				getter: getter{
 					restConfigFromKubeConfig: func(loader clientcmd.ClientConfigLoader, overrides *clientcmd.ConfigOverrides) clientcmd.ClientConfig {
 						Expect(loader.GetExplicitFile()).To(Equal("/config/path"))
-						return &fake.FakeClientConfig{}
+						return &fakes.FakeClientConfig{}
 					},
 				},
 				expectedConfig: &rest.Config{Host: "another.cluster.config.com"},
@@ -195,7 +195,7 @@ var _ = Describe("Getter", func() {
 					restConfigFromKubeConfig: func(loader clientcmd.ClientConfigLoader, overrides *clientcmd.ConfigOverrides) clientcmd.ClientConfig {
 						Expect(loader.GetLoadingPrecedence()).To(Equal([]string{"/config/path1", "/config/path2"}))
 						Expect(loader.GetExplicitFile()).To(BeEmpty())
-						return &fake.FakeClientConfig{}
+						return &fakes.FakeClientConfig{}
 					},
 				},
 				expectedConfig: &rest.Config{Host: "another.cluster.config.com"},
@@ -207,7 +207,7 @@ var _ = Describe("Getter", func() {
 				configPath: "/config/path",
 				getter: getter{
 					restConfigFromKubeConfig: func(loader clientcmd.ClientConfigLoader, overrides *clientcmd.ConfigOverrides) clientcmd.ClientConfig {
-						return &fake.FakeClientConfig{
+						return &fakes.FakeClientConfig{
 							ExpectedClientConfigError: true,
 						}
 					},

@@ -24,6 +24,7 @@ type Config struct {
 	MaxExtendedStatefulSetWorkers int
 }
 
+// NewConfig returns a new Config for a Manager of Controllers
 func NewConfig(namespace string, host string, port int32, fs afero.Fs, maxBoshDeploymentWorkers, maxExtendedJobWorkers, maxExtendedSecretWorkers, maxExtendedStatefulSetWorkers int) *Config {
 	return &Config{
 		CtxTimeOut:                    CtxTimeOut,

@@ -20,6 +20,7 @@ import (
 )
 
 const (
+	// CFOperatorRelease is the default cf-operator release name
 	CFOperatorRelease = "cf-operator"
 	helmCmd           = "helm"
 	kubeCtlCmd        = "kubectl"
@@ -379,7 +380,7 @@ func RunCommandWithOutput(namespace string, podName string, commandInPod string)
 	return "", err
 }
 
-// GetDate fetches the specified output by the given templatePath
+// GetData fetches the specified output by the given templatePath
 func GetData(namespace string, resourceName string, name string, templatePath string) ([]byte, error) {
 	out, err := runBinary(kubeCtlCmd, "--namespace", namespace, "get", resourceName, name, "-o", templatePath)
 	if err != nil {

@@ -57,7 +57,7 @@ type RunConfig struct {
 	HealthCheck map[string]HealthCheck `json:"healthcheck" yaml:"healthcheck"`
 }
 
-// PreRender describes the different types of scripts
+// PreRenderScripts describes the different types of scripts
 // that can be run inside a job
 type PreRenderScripts struct {
 	BPM        []string `json:"bpm" yaml:"bpm"`
