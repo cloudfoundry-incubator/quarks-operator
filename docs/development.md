@@ -178,18 +178,20 @@ export GO111MODULE=on
 A pattern that comes up quite often is that an object needs to be updated if it already exists or created if it doesn't. `controller-runtime` provides the `controller-util` package which has a `CreateOrUpdate` function that can help with that. The object's desired state must be reconciled with the existing state inside the passed in callback MutateFn - `type MutateFn func() error`. The MutateFn is called regardless of creating or updating an object.
 
 ```go
-obj := someSecret.DeepCopy()
+_, err = controllerutil.CreateOrUpdate(ctx, r.client, someSecret, secretMutateFn(someSecret, someSecret.StringData, someSecret.Labels, someSecret.Annotations))
 
-_, err = controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-  if !reflect.DeepEqual(obj.Data, someSecret.Data) {
-    obj.Data = someSecret.Data
-  }
-
-  return nil
-})
+func secretMutateFn(s *corev1.Secret, secretData map[string]string, labels map[string]string, annotations map[string]string) controllerutil.MutateFn {
+	return func() error {
+		s.Labels = labels
+		s.Annotations = annotations
+		s.StringData = secretData
+		return nil
+	}
+}
 ```
 
-Care must be taken when persisting objects that are already in their final state because they will be overwritten with the existing state if there already is such an object in the system. The above example performs a `DeepCopy` of the object in question to get around this problem.
+- Care must be taken when persisting objects that are already in their final state because they will be overwritten with the existing state if there already is such an object in the system.
+- `CreateOrUpdate`s should not use blindly `DeepCopyInto` or `DeepCopy` all the time, but make more precise changes.
 
 ## Logging and Events
 
