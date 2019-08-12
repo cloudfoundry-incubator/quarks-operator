@@ -192,41 +192,20 @@ func (r *ReconcileBOSHDeployment) createEJob(ctx context.Context, instance *bdv1
 		return errors.Errorf("failed to set ownerReference for ExtendedJob '%s': %v", eJob.GetName(), err)
 	}
 
-	obj := eJob.DeepCopy()
-	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-		if shouldEJobUpdate(obj, eJob) {
-			eJob.ObjectMeta.ResourceVersion = obj.ObjectMeta.ResourceVersion
-			eJob.Spec.Trigger.Strategy = obj.Spec.Trigger.Strategy
-			eJob.DeepCopyInto(obj)
-		}
-		return nil
-	})
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob, eJobMutateFn(eJob, eJob.Spec))
 
 	log.Debugf(ctx, "ExtendedJob '%s' has been %s", eJob.Name, op)
 
 	return err
 }
 
-// shouldEJobUpdate determine if EJob should be updated
-func shouldEJobUpdate(oldEJob, newEJob *ejv1.ExtendedJob) bool {
-	if !reflect.DeepEqual(oldEJob.Labels, newEJob.Labels) {
-		return true
+func eJobMutateFn(eJob *ejv1.ExtendedJob, spec ejv1.ExtendedJobSpec) controllerutil.MutateFn {
+	return func() error {
+		// Does not reset Spec.Trigger.Strategy
+		eJob.Spec.Output = spec.Output
+		eJob.Spec.Template = spec.Template
+		eJob.Spec.Trigger.PodState = spec.Trigger.PodState
+		eJob.Spec.UpdateOnConfigChange = spec.UpdateOnConfigChange
+		return nil
 	}
-	if !reflect.DeepEqual(oldEJob.Annotations, newEJob.Annotations) {
-		return true
-	}
-	if !reflect.DeepEqual(oldEJob.Spec.Output, newEJob.Spec.Output) {
-		return true
-	}
-	if !reflect.DeepEqual(oldEJob.Spec.Template, newEJob.Spec.Template) {
-		return true
-	}
-	if !reflect.DeepEqual(oldEJob.Spec.Trigger.PodState, newEJob.Spec.Trigger.PodState) {
-		return true
-	}
-	if oldEJob.Spec.UpdateOnConfigChange != newEJob.Spec.UpdateOnConfigChange {
-		return true
-	}
-
-	return false
 }

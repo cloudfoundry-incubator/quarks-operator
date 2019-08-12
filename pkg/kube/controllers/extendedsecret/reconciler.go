@@ -164,9 +164,9 @@ func (r *ReconcileExtendedSecret) createRSASecret(ctx context.Context, instance 
 			Name:      instance.Spec.SecretName,
 			Namespace: instance.GetNamespace(),
 		},
-		Data: map[string][]byte{
-			"private_key": key.PrivateKey,
-			"public_key":  key.PublicKey,
+		StringData: map[string]string{
+			"private_key": string(key.PrivateKey),
+			"public_key":  string(key.PublicKey),
 		},
 	}
 
@@ -183,10 +183,10 @@ func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance 
 			Name:      instance.Spec.SecretName,
 			Namespace: instance.GetNamespace(),
 		},
-		Data: map[string][]byte{
-			"private_key":            key.PrivateKey,
-			"public_key":             key.PublicKey,
-			"public_key_fingerprint": []byte(key.Fingerprint),
+		StringData: map[string]string{
+			"private_key":            string(key.PrivateKey),
+			"public_key":             string(key.PublicKey),
+			"public_key_fingerprint": key.Fingerprint,
 		},
 	}
 
@@ -251,15 +251,15 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 			Name:      instance.Spec.SecretName,
 			Namespace: instance.GetNamespace(),
 		},
-		Data: map[string][]byte{
-			"certificate": cert.Certificate,
-			"private_key": cert.PrivateKey,
-			"is_ca":       []byte(strconv.FormatBool(instance.Spec.Request.CertificateRequest.IsCA)),
+		StringData: map[string]string{
+			"certificate": string(cert.Certificate),
+			"private_key": string(cert.PrivateKey),
+			"is_ca":       strconv.FormatBool(instance.Spec.Request.CertificateRequest.IsCA),
 		},
 	}
 
 	if len(request.CA.Certificate) > 0 {
-		secret.Data["ca"] = request.CA.Certificate
+		secret.StringData["ca"] = string(request.CA.Certificate)
 	}
 
 	return r.createSecret(ctx, instance, secret)
@@ -310,10 +310,7 @@ func (r *ReconcileExtendedSecret) createSecret(ctx context.Context, instance *es
 	}
 
 	obj := secret.DeepCopy()
-	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-		secret.DeepCopyInto(obj)
-		return nil
-	})
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, secretMutateFn(secret, secret.StringData, secret.Labels, secret.Annotations))
 	if err != nil {
 		return errors.Wrapf(err, "could not create or update secret '%s'", secret.GetName())
 	}
@@ -321,4 +318,13 @@ func (r *ReconcileExtendedSecret) createSecret(ctx context.Context, instance *es
 	ctxlog.Debugf(ctx, "Secret '%s' has been %s", secret.Name, op)
 
 	return nil
+}
+
+func secretMutateFn(s *corev1.Secret, secretData map[string]string, labels map[string]string, annotations map[string]string) controllerutil.MutateFn {
+	return func() error {
+		s.Labels = labels
+		s.Annotations = annotations
+		s.StringData = secretData
+		return nil
+	}
 }

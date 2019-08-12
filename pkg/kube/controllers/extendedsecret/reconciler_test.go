@@ -139,8 +139,8 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		It("generates RSA keys", func() {
 			client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 				secret := object.(*corev1.Secret)
-				Expect(secret.Data["private_key"]).To(Equal([]byte("private")))
-				Expect(secret.Data["public_key"]).To(Equal([]byte("public")))
+				Expect(secret.StringData["private_key"]).To(Equal("private"))
+				Expect(secret.StringData["public_key"]).To(Equal("public"))
 				Expect(secret.GetName()).To(Equal("generated-secret"))
 				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, esv1.GeneratedSecretKind))
 				return nil
@@ -167,9 +167,9 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 		It("generates SSH keys", func() {
 			client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 				secret := object.(*corev1.Secret)
-				Expect(secret.Data["private_key"]).To(Equal([]byte("private")))
-				Expect(secret.Data["public_key"]).To(Equal([]byte("public")))
-				Expect(secret.Data["public_key_fingerprint"]).To(Equal([]byte("fingerprint")))
+				Expect(secret.StringData["private_key"]).To(Equal("private"))
+				Expect(secret.StringData["public_key"]).To(Equal("public"))
+				Expect(secret.StringData["public_key_fingerprint"]).To(Equal("fingerprint"))
 				Expect(secret.GetName()).To(Equal("generated-secret"))
 				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, esv1.GeneratedSecretKind))
 				return nil
@@ -226,9 +226,9 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 			})
 			client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 				secret := object.(*corev1.Secret)
-				Expect(secret.Data["certificate"]).To(Equal([]byte("the_cert")))
-				Expect(secret.Data["private_key"]).To(Equal([]byte("private_key")))
-				Expect(secret.Data["ca"]).To(Equal([]byte("theca")))
+				Expect(secret.StringData["certificate"]).To(Equal("the_cert"))
+				Expect(secret.StringData["private_key"]).To(Equal("private_key"))
+				Expect(secret.StringData["ca"]).To(Equal("theca"))
 				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, esv1.GeneratedSecretKind))
 				return nil
 			})
@@ -329,7 +329,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 			result, err := reconciler.Reconcile(request)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(client.CreateCallCount()).To(Equal(0))
-			Expect(client.UpdateCallCount()).To(Equal(2))
+			Expect(client.UpdateCallCount()).To(Equal(1))
 			Expect(reconcile.Result{}).To(Equal(result))
 		})
 	})
