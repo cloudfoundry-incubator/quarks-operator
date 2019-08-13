@@ -153,12 +153,9 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 		return nil, errors.New("Couldn't find bpm.yaml key in manifest secret")
 	}
 
-	instanceGroup := &bdm.InstanceGroup{}
-	for _, ig := range manifest.InstanceGroups {
-		if ig.Name == instanceGroupName {
-			instanceGroup = ig
-			break
-		}
+	instanceGroup, err := manifest.InstanceGroupByName(instanceGroupName)
+	if err != nil {
+		return nil, err
 	}
 
 	resources, err := r.kubeConverter.BPMResources(manifest.Name, version, instanceGroup, manifest, bpmConfigs)
