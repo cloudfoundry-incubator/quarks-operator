@@ -1,11 +1,14 @@
 package manifest
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
 // InstanceGroup from BOSH deployment manifest.
@@ -28,12 +31,48 @@ type InstanceGroup struct {
 	Env                AgentEnv               `json:"env,omitempty"`
 }
 
-func (ig *InstanceGroup) jobInstances(namespace string, deploymentName string, jobName string, spec JobSpec) []JobInstance {
+// NameSanitized returns the sanitized instance group name.
+func (ig *InstanceGroup) NameSanitized() string {
+	return names.Sanitize(ig.Name)
+}
+
+// ExtendedStatefulsetName constructs the ests name.
+func (ig *InstanceGroup) ExtendedStatefulsetName(deploymentName string) string {
+	ign := ig.NameSanitized()
+	return fmt.Sprintf("%s-%s", deploymentName, ign)
+}
+
+// HeadlessServiceName constructs the headless service name for the instance group.
+func (ig *InstanceGroup) HeadlessServiceName(deploymentName string) string {
+	return ig.serviceName(deploymentName, 63)
+}
+
+// IndexedServiceName constructs an indexed service name. It's used to construct the other service
+// names other than the headless service.
+func (ig *InstanceGroup) IndexedServiceName(deploymentName string, index int) string {
+	sn := ig.serviceName(deploymentName, 53)
+	return fmt.Sprintf("%s-%d", sn, index)
+}
+
+func (ig *InstanceGroup) serviceName(deploymentName string, maxLength int) string {
+	estsn := ig.ExtendedStatefulsetName(deploymentName)
+	if len(estsn) > maxLength {
+		sumHex := md5.Sum([]byte(estsn))
+		sum := hex.EncodeToString(sumHex[:])
+		estsn = fmt.Sprintf("%s-%s", estsn[:maxLength-len(sum)-1], sum)
+	}
+	return estsn
+}
+
+func (ig *InstanceGroup) jobInstances(
+	deploymentName string,
+	jobName string,
+	spec JobSpec,
+) []JobInstance {
 	var jobsInstances []JobInstance
 	for i := 0; i < ig.Instances; i++ {
-
 		// TODO: Understand whether there are negative side-effects to using this
-		// default
+		// default or not.
 		azs := []string{""}
 		if len(ig.AZs) > 0 {
 			azs = ig.AZs
@@ -41,11 +80,8 @@ func (ig *InstanceGroup) jobInstances(namespace string, deploymentName string, j
 
 		for _, az := range azs {
 			index := len(jobsInstances)
-			name := fmt.Sprintf("%s-%s", ig.Name, jobName)
-			// All jobs in same instance group will use same service
-			serviceName := fmt.Sprintf("%s-%s-%d", deploymentName, ig.Name, index)
-			// TODO: not allowed to hardcode svc.cluster.local
-			address := fmt.Sprintf("%s.%s.svc.cluster.local", serviceName, namespace)
+			address := ig.IndexedServiceName(deploymentName, index)
+			name := fmt.Sprintf("%s-%s", ig.NameSanitized(), jobName)
 
 			jobsInstances = append(jobsInstances, JobInstance{
 				Address:  address,
