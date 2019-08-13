@@ -161,7 +161,7 @@ var _ = Describe("ContainerFactory", func() {
 	})
 
 	JustBeforeEach(func() {
-		containerFactory = NewContainerFactory("fake-manifest", "fake-ig", "v1", releaseImageProvider, bpmConfigs)
+		containerFactory = NewContainerFactory("fake-manifest", "fake-ig", "v1", false, releaseImageProvider, bpmConfigs)
 	})
 
 	Context("JobsToContainers", func() {
@@ -316,7 +316,7 @@ var _ = Describe("ContainerFactory", func() {
 					},
 				},
 			}
-			containerFactory = NewContainerFactory("fake-manifest", "fake-ig", "v1", releaseImageProvider, bpmConfigsWithError)
+			containerFactory = NewContainerFactory("fake-manifest", "fake-ig", "v1", false, releaseImageProvider, bpmConfigsWithError)
 			actWithError := func() ([]corev1.Container, error) {
 				return containerFactory.JobsToContainers(jobs, []corev1.VolumeMount{}, BPMResourceDisks{})
 			}
@@ -376,6 +376,77 @@ var _ = Describe("ContainerFactory", func() {
 				Expect(containers[1].Lifecycle).ToNot(BeNil())
 				Expect(containers[1].Lifecycle.PreStop).ToNot(BeNil())
 				Expect(containers[1].Lifecycle.PreStop.Exec.Command).To(ContainElement(ContainSubstring("/var/vcap/jobs/other-job/bin/drain/")))
+			})
+		})
+
+		Context("with logging sidecar container", func() {
+			var (
+				igJobs        []bdm.Job
+				bpmJobConfigs bpm.Configs
+			)
+			BeforeEach(func() {
+				igJobs = []bdm.Job{
+					bdm.Job{
+						Name: "foo",
+					},
+				}
+
+				bpmJobConfigs = bpm.Configs{
+					"foo": bpm.Config{
+						Processes: []bpm.Process{
+							bpm.Process{},
+						},
+					},
+				}
+			})
+			It("enables it by default", func() {
+				ig := bdm.InstanceGroup{
+					Name: "fake-ig",
+					Env: bdm.AgentEnv{
+						AgentEnvBoshConfig: bdm.AgentEnvBoshConfig{
+							Agent: bdm.Agent{},
+						},
+					},
+					Jobs: igJobs,
+				}
+
+				disableSideCar := ig.Env.AgentEnvBoshConfig.Agent.Settings.DisableLogSidecar
+
+				containerFactory := NewContainerFactory("fake-manifest", ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
+				act := func() ([]corev1.Container, error) {
+					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, BPMResourceDisks{})
+				}
+				containers, err := act()
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(len(containers)).To(Equal(2))
+			})
+
+			It("disables it if specified", func() {
+				ig := bdm.InstanceGroup{
+					Name: "fake-ig",
+					Env: bdm.AgentEnv{
+						AgentEnvBoshConfig: bdm.AgentEnvBoshConfig{
+							Agent: bdm.Agent{
+								Settings: bdm.AgentSettings{
+									DisableLogSidecar: true,
+								},
+							},
+						},
+					},
+					Jobs: igJobs,
+				}
+
+				disableSideCar := ig.Env.AgentEnvBoshConfig.Agent.Settings.DisableLogSidecar
+
+				containerFactory := NewContainerFactory("fake-manifest", ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
+				act := func() ([]corev1.Container, error) {
+					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, BPMResourceDisks{})
+				}
+				containers, err := act()
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(len(containers)).To(Equal(1))
 			})
 		})
 	})

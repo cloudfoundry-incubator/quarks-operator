@@ -98,7 +98,7 @@ func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 	// Persist output if needed
 	if !reflect.DeepEqual(ejv1.Output{}, ej.Spec.Output) && ej.Spec.Output != nil {
-		if instance.Status.Succeeded == 1 || (instance.Status.Failed >= (*instance.Spec.BackoffLimit+1) && ej.Spec.Output.WriteOnFailure) {
+		if instance.Status.Succeeded == 1 || instance.Status.Failed > *instance.Spec.BackoffLimit && ej.Spec.Output.WriteOnFailure {
 			ctxlog.WithEvent(&ej, "ExtendedJob").Infof(ctx, "Persisting output of job '%s'", instance.Name)
 			err = r.persistOutput(ctx, instance, ej)
 			if err != nil {

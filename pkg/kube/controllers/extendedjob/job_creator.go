@@ -13,6 +13,7 @@ import (
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
@@ -104,7 +105,7 @@ func (j jobCreatorImpl) Create(ctx context.Context, eJob ejv1.ExtendedJob, podNa
 		return false, errors.Wrapf(err, "could not generate job name for eJob '%s'", eJob.Name)
 	}
 
-	backoffLimit := int32(2)
+	backoffLimit := util.Int32(2)
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -114,7 +115,7 @@ func (j jobCreatorImpl) Create(ctx context.Context, eJob ejv1.ExtendedJob, podNa
 		},
 		Spec: batchv1.JobSpec{
 			Template:     *template,
-			BackoffLimit: &backoffLimit,
+			BackoffLimit: backoffLimit,
 		},
 	}
 

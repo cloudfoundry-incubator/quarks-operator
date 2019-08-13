@@ -226,6 +226,33 @@ var _ = Describe("Examples", func() {
 				Expect(strings.TrimSuffix(outFile, "\n")).To(ContainSubstring(string(outSecretDecoded)))
 			})
 
+			It("bosh-deployment with a custom variable and logging sidecar disable example must work", func() {
+				yamlFilePath := examplesDir + "bosh-deployment/boshdeployment-with-custom-variable-disable-sidecar.yaml"
+
+				By("Creating bosh deployment")
+				kubectlHelper := testing.NewKubectl()
+				err := testing.Create(namespace, yamlFilePath)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Checking for pods")
+				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-0", kubectlHelper.PollTimeout)
+				Expect(err).ToNot(HaveOccurred())
+
+				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1", kubectlHelper.PollTimeout)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Ensure only one container exists")
+				containerName, err := testing.GetData(namespace, "pod", "nats-deployment-nats-v1-0", "jsonpath={range .spec.containers[*]}{.name}")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(containerName).To(ContainSubstring("nats-nats"))
+				Expect(containerName).ToNot(ContainSubstring("logs"))
+
+				containerName, err = testing.GetData(namespace, "pod", "nats-deployment-nats-v1-1", "jsonpath={range .spec.containers[*]}{.name}")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(containerName).To(ContainSubstring("nats-nats"))
+				Expect(containerName).ToNot(ContainSubstring("logs"))
+			})
+
 			It("bosh-deployment with a implicit variable example must work", func() {
 				yamlFilePath := examplesDir + "bosh-deployment/boshdeployment-with-implicit-variable.yaml"
 
@@ -378,7 +405,7 @@ var _ = Describe("Examples", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 				// If this testcase fails that means a test case is missing for an example in the docs folder
-				Expect(countFile).To(Equal(25))
+				Expect(countFile).To(Equal(26))
 			})
 		})
 	})

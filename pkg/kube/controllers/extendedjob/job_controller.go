@@ -54,7 +54,7 @@ func AddJob(ctx context.Context, config *config.Config, mgr manager.Manager) err
 				return false
 			}
 
-			shouldProcessEvent := o.Status.Succeeded == 1 || o.Status.Failed >= (*o.Spec.BackoffLimit+1)
+			shouldProcessEvent := o.Status.Succeeded == 1 || o.Status.Failed > *o.Spec.BackoffLimit
 			if shouldProcessEvent {
 				ctxlog.NewPredicateEvent(o).Debug(
 					ctx, e.MetaNew, "batchv1.Job",
