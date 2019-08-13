@@ -42,7 +42,6 @@ func (ig *InstanceGroup) jobInstances(namespace string, deploymentName string, j
 		for _, az := range azs {
 			index := len(jobsInstances)
 			name := fmt.Sprintf("%s-%s", ig.Name, jobName)
-			id := fmt.Sprintf("%s-%s-%d", deploymentName, ig.Name, index)
 			// All jobs in same instance group will use same service
 			serviceName := fmt.Sprintf("%s-%s-%d", deploymentName, ig.Name, index)
 			// TODO: not allowed to hardcode svc.cluster.local
@@ -51,7 +50,6 @@ func (ig *InstanceGroup) jobInstances(namespace string, deploymentName string, j
 			jobsInstances = append(jobsInstances, JobInstance{
 				Address:  address,
 				AZ:       az,
-				ID:       id,
 				Index:    index,
 				Instance: i,
 				Name:     name,
