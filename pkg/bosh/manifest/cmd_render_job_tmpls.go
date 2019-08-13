@@ -28,8 +28,13 @@ func RenderJobTemplates(
 	jobsOutputDir string,
 	instanceGroupName string,
 	specIndex int,
+	podName string,
 	podIP net.IP,
 ) error {
+
+	if podName == "" {
+		return fmt.Errorf("the pod name is empty")
+	}
 
 	if podIP == nil {
 		return fmt.Errorf("the pod IP is empty")
@@ -95,7 +100,7 @@ func RenderJobTemplates(
 						Address:   currentJobInstance.Address,
 						AZ:        currentJobInstance.AZ,
 						Bootstrap: currentJobInstance.Index == 0,
-						ID:        currentJobInstance.ID,
+						ID:        podName,
 						Index:     currentJobInstance.Index,
 						IP:        podIP.String(),
 						Name:      currentJobInstance.Name,
