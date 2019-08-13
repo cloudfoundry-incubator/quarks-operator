@@ -2,7 +2,6 @@ package boshdeployment
 
 import (
 	"context"
-	"reflect"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -20,6 +19,7 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
@@ -156,6 +156,9 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 			Name:      manifestSecretName,
 			Namespace: instance.GetNamespace(),
 		},
+		StringData: map[string]string{
+			"manifest.yaml": string(manifestBytes),
+		},
 	}
 
 	// Set ownership reference
@@ -164,19 +167,7 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 	}
 
 	// Apply the secret
-	obj := manifestSecret.DeepCopy()
-	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-		originalManifest, ok := obj.Data["manifest.yaml"]
-		// Update only when manifest has been changed
-		if !ok || !reflect.DeepEqual(originalManifest, manifestBytes) {
-			obj.Data = map[string][]byte{}
-			obj.StringData = map[string]string{
-				"manifest.yaml": string(manifestBytes),
-			}
-		}
-
-		return nil
-	})
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, manifestSecret, mutate.SecretMutateFn(manifestSecret))
 	if err != nil {
 		return nil, log.WithEvent(instance, "ManifestWithOpsApplyError").Errorf(ctx, "Failed to apply Secret '%s': %v", manifestSecretName, err)
 	}
@@ -192,20 +183,12 @@ func (r *ReconcileBOSHDeployment) createEJob(ctx context.Context, instance *bdv1
 		return errors.Errorf("failed to set ownerReference for ExtendedJob '%s': %v", eJob.GetName(), err)
 	}
 
-	op, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob, eJobMutateFn(eJob, eJob.Spec))
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob, mutate.EJobMutateFn(eJob))
+	if err != nil {
+		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", eJob.Name)
+	}
 
 	log.Debugf(ctx, "ExtendedJob '%s' has been %s", eJob.Name, op)
 
 	return err
-}
-
-func eJobMutateFn(eJob *ejv1.ExtendedJob, spec ejv1.ExtendedJobSpec) controllerutil.MutateFn {
-	return func() error {
-		// Does not reset Spec.Trigger.Strategy
-		eJob.Spec.Output = spec.Output
-		eJob.Spec.Template = spec.Template
-		eJob.Spec.Trigger.PodState = spec.Trigger.PodState
-		eJob.Spec.UpdateOnConfigChange = spec.UpdateOnConfigChange
-		return nil
-	}
 }

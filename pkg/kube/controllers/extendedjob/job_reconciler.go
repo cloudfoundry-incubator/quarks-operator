@@ -22,6 +22,7 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	podutil "code.cloudfoundry.org/cf-operator/pkg/kube/util/pod"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
@@ -232,12 +233,9 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 				return errors.Wrapf(err, "could not create persisted output secret for ejob %s", ejob.GetName())
 			}
 		} else {
-			obj := secret
-			op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-				obj.SetLabels(secretLabels)
-				obj.StringData = data
-				return nil
-			})
+			secret.StringData = data
+			secret.Labels = secretLabels
+			op, err := controllerutil.CreateOrUpdate(ctx, r.client, secret, mutate.SecretMutateFn(secret))
 			if err != nil {
 				return errors.Wrapf(err, "creating or updating Secret '%s' for ejob %s", secret.Name, ejob.GetName())
 			}

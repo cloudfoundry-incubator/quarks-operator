@@ -20,9 +20,9 @@ import (
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
@@ -179,7 +179,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 			return log.WithEvent(instance, "ExtendedJobForDeploymentError").Errorf(ctx, "Failed to set reference for ExtendedJob instance group '%s' : %v", instanceGroupName, err)
 		}
 
-		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &eJob, errandMutateFn(&eJob, eJob.Spec, eJob.Labels, eJob.Annotations))
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &eJob, mutate.EJobMutateFn(&eJob))
 		if err != nil {
 			return log.WithEvent(instance, "ApplyExtendedJobError").Errorf(ctx, "Failed to apply ExtendedJob for instance group '%s' : %v", instanceGroupName, err)
 		}
@@ -196,7 +196,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 			return log.WithEvent(instance, "ServiceForDeploymentError").Errorf(ctx, "Failed to set reference for Service instance group '%s' : %v", instanceGroupName, err)
 		}
 
-		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &svc, serviceMutateFn(&svc, svc.Spec, svc.Labels, svc.Annotations))
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &svc, mutate.ServiceMutateFn(&svc))
 		if err != nil {
 			return log.WithEvent(instance, "ApplyServiceError").Errorf(ctx, "Failed to apply Service for instance group '%s' : %v", instanceGroupName, err)
 		}
@@ -224,7 +224,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 			return log.WithEvent(instance, "ExtendedStatefulSetForDeploymentError").Errorf(ctx, "Failed to set reference for ExtendedStatefulSet instance group '%s' : %v", instanceGroupName, err)
 		}
 
-		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &eSts, instanceGroupMutateFn(&eSts, eSts.Spec, eSts.Labels, eSts.Annotations))
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &eSts, mutate.EStsMutateFn(&eSts))
 		if err != nil {
 			return log.WithEvent(instance, "ApplyExtendedStatefulSetError").Errorf(ctx, "Failed to apply ExtendedStatefulSet for instance group '%s' : %v", instanceGroupName, err)
 		}
@@ -250,33 +250,4 @@ func (r *ReconcileBPM) createPersistentVolumeClaim(ctx context.Context, persiste
 	}
 
 	return nil
-}
-
-func errandMutateFn(eJob *ejv1.ExtendedJob, spec ejv1.ExtendedJobSpec, labels map[string]string, annotations map[string]string) controllerutil.MutateFn {
-	return func() error {
-		eJob.Labels = labels
-		eJob.Annotations = annotations
-		eJob.Spec = spec
-		return nil
-	}
-}
-
-func serviceMutateFn(svc *corev1.Service, spec corev1.ServiceSpec, labels map[string]string, annotations map[string]string) controllerutil.MutateFn {
-	return func() error {
-		svc.Labels = labels
-		svc.Annotations = annotations
-		// Should keep the existing ClusterIP
-		svc.Spec.Ports = spec.Ports
-		svc.Spec.Selector = spec.Selector
-		return nil
-	}
-}
-
-func instanceGroupMutateFn(eSts *essv1.ExtendedStatefulSet, spec essv1.ExtendedStatefulSetSpec, labels map[string]string, annotations map[string]string) controllerutil.MutateFn {
-	return func() error {
-		eSts.Labels = labels
-		eSts.Annotations = annotations
-		eSts.Spec = spec
-		return nil
-	}
 }
