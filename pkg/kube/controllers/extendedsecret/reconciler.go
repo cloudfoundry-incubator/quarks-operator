@@ -19,6 +19,7 @@ import (
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 )
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
@@ -122,11 +123,8 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 }
 
 func (r *ReconcileExtendedSecret) updateExSecret(ctx context.Context, instance *esv1.ExtendedSecret) error {
-	obj := instance.DeepCopy()
-	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-		obj.Status.Generated = true
-		return nil
-	})
+	instance.Status.Generated = true
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, instance, mutate.ESecMutateFn(instance))
 	if err != nil {
 		return errors.Wrapf(err, "could not create or update ExtendedSecret '%s'", instance.GetName())
 	}
@@ -309,8 +307,7 @@ func (r *ReconcileExtendedSecret) createSecret(ctx context.Context, instance *es
 		return errors.Wrapf(err, "error setting owner for secret '%s' to ExtendedSecret '%s' in namespace '%s'", secret.GetName(), instance.GetName(), instance.GetNamespace())
 	}
 
-	obj := secret.DeepCopy()
-	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, secretMutateFn(secret, secret.StringData, secret.Labels, secret.Annotations))
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, secret, mutate.SecretMutateFn(secret))
 	if err != nil {
 		return errors.Wrapf(err, "could not create or update secret '%s'", secret.GetName())
 	}
@@ -318,13 +315,4 @@ func (r *ReconcileExtendedSecret) createSecret(ctx context.Context, instance *es
 	ctxlog.Debugf(ctx, "Secret '%s' has been %s", secret.Name, op)
 
 	return nil
-}
-
-func secretMutateFn(s *corev1.Secret, secretData map[string]string, labels map[string]string, annotations map[string]string) controllerutil.MutateFn {
-	return func() error {
-		s.Labels = labels
-		s.Annotations = annotations
-		s.StringData = secretData
-		return nil
-	}
 }
