@@ -14,7 +14,6 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
 var (
@@ -170,7 +169,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 
 	extSts := essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        fmt.Sprintf("%s-%s", manifestName, names.Sanitize(instanceGroup.Name)),
+			Name:        instanceGroup.ExtendedStatefulsetName(manifestName),
 			Namespace:   kc.namespace,
 			Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
 			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
@@ -179,7 +178,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 			UpdateOnConfigChange: true,
 			Template: v1beta2.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        instanceGroup.Name,
+					Name:        instanceGroup.NameSanitized(),
 					Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
 					Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 				},
@@ -190,8 +189,8 @@ func (kc *KubeConverter) serviceToExtendedSts(
 					},
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:        instanceGroup.Name,
 							Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+							Name:        instanceGroup.NameSanitized(),
 							Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 						},
 						Spec: corev1.PodSpec{
@@ -202,6 +201,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 							SecurityContext: &corev1.PodSecurityContext{
 								FSGroup: &admGroupID,
 							},
+							Subdomain: instanceGroup.HeadlessServiceName(manifestName),
 						},
 					},
 				},
@@ -235,7 +235,7 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGrou
 		if len(instanceGroup.AZs) == 0 {
 			services = append(services, corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      names.ServiceName(manifestName, instanceGroup.Name, len(services)),
+					Name:      instanceGroup.IndexedServiceName(manifestName, len(services)),
 					Namespace: kc.namespace,
 					Labels: map[string]string{
 						bdm.LabelDeploymentName:    manifestName,
@@ -257,7 +257,7 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGrou
 		for azIndex := range instanceGroup.AZs {
 			services = append(services, corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      names.ServiceName(manifestName, instanceGroup.Name, len(services)),
+					Name:      instanceGroup.IndexedServiceName(manifestName, len(services)),
 					Namespace: kc.namespace,
 					Labels: map[string]string{
 						bdm.LabelInstanceGroupName: instanceGroup.Name,
@@ -279,7 +279,7 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGrou
 
 	headlessService := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        names.ServiceName(manifestName, instanceGroup.Name, -1),
+			Name:        instanceGroup.HeadlessServiceName(manifestName),
 			Namespace:   kc.namespace,
 			Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
 			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
@@ -295,8 +295,8 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGrou
 
 	services = append(services, headlessService)
 
-	// Set headlessService to govern StatefulSet
-	eSts.Spec.Template.Spec.ServiceName = names.ServiceName(manifestName, instanceGroup.Name, -1)
+	// Set headlessService to govern StatefulSet.
+	eSts.Spec.Template.Spec.ServiceName = headlessService.ObjectMeta.Name
 
 	return services
 }

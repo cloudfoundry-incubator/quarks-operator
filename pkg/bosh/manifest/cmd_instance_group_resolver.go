@@ -1,7 +1,6 @@
 package manifest
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -106,8 +105,7 @@ func (dg *InstanceGroupResolver) resolveManifest() error {
 // collectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
 func (dg *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 	for _, instanceGroup := range dg.manifest.InstanceGroups {
-		serviceName := fmt.Sprintf("%s-%s", dg.manifest.Name, instanceGroup.Name)
-		linkAddress := fmt.Sprintf("%s.%s.svc.cluster.local", serviceName, dg.namespace)
+		serviceName := instanceGroup.HeadlessServiceName(dg.manifest.Name)
 
 		for jobIdx, job := range instanceGroup.Jobs {
 			// make sure a map entry exists for the current job release
@@ -130,7 +128,7 @@ func (dg *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 			// Generate instance spec for each ig instance
 			// This will be stored inside the current job under
 			// job.properties.quarks
-			jobsInstances := instanceGroup.jobInstances(dg.namespace, dg.manifest.Name, job.Name, spec)
+			jobsInstances := instanceGroup.jobInstances(dg.manifest.Name, job.Name, spec)
 
 			// set jobs.properties.quarks.instances with the ig instances
 			instanceGroup.Jobs[jobIdx].Properties.Quarks.Instances = jobsInstances
@@ -138,7 +136,7 @@ func (dg *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 			// Create a list of fully evaluated links provided by the current job
 			// These is specified in the job release job.MF file
 			if spec.Provides != nil {
-				err := dg.jobProviderLinks.Add(job, spec, jobsInstances, linkAddress)
+				err := dg.jobProviderLinks.Add(job, spec, jobsInstances, serviceName)
 				if err != nil {
 					return errors.Wrapf(err, "Collecting release spec and provider links failed for %s", job.Name)
 				}

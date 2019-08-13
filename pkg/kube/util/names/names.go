@@ -55,6 +55,9 @@ func DesiredManifestName(deploymentName string, version string) string {
 	return finalName
 }
 
+var secretNameRegex = regexp.MustCompile("[^-][a-z0-9-]*.[a-z0-9-]*[^-]")
+var secretPartRegex = regexp.MustCompile("[a-z0-9-]*")
+
 // CalculateSecretName generates a Secret name for a given name and a deployment
 func CalculateSecretName(secretType DeploymentSecretType, deploymentName, name string) string {
 	if name == "" {
@@ -63,12 +66,9 @@ func CalculateSecretName(secretType DeploymentSecretType, deploymentName, name s
 		name = fmt.Sprintf("%s-%s", secretType, name)
 	}
 
-	nameRegex := regexp.MustCompile("[^-][a-z0-9-]*.[a-z0-9-]*[^-]")
-	partRegex := regexp.MustCompile("[a-z0-9-]*")
-
-	deploymentName = partRegex.FindString(strings.Replace(deploymentName, "_", "-", -1))
-	variableName := partRegex.FindString(strings.Replace(name, "_", "-", -1))
-	secretName := nameRegex.FindString(deploymentName + "." + variableName)
+	deploymentName = secretPartRegex.FindString(strings.Replace(deploymentName, "_", "-", -1))
+	variableName := secretPartRegex.FindString(strings.Replace(name, "_", "-", -1))
+	secretName := secretNameRegex.FindString(deploymentName + "." + variableName)
 
 	return truncateMD5(secretName)
 }
@@ -145,32 +145,12 @@ func JobName(eJobName, podName string) (string, error) {
 	return fmt.Sprintf("%s-%s", name, hashID), nil
 }
 
-// ServiceName returns a unique, short name for a given instance
-func ServiceName(deploymentName, instanceName string, index int) string {
-	var serviceName string
-	if index == -1 {
-		serviceName = fmt.Sprintf("%s-%s", deploymentName, instanceName)
-	} else {
-		serviceName = fmt.Sprintf("%s-%s-%d", deploymentName, instanceName, index)
-	}
-
-	if len(serviceName) > 63 {
-		// names are limited to 63 characters so we recalculate the name as
-		// <name trimmed to 31 characters>-<md5 hash of name>-headless
-		sumHex := md5.Sum([]byte(serviceName))
-		sum := hex.EncodeToString(sumHex[:])
-		serviceName = fmt.Sprintf("%s-%s", serviceName[:31], sum)
-	}
-
-	return serviceName
-}
+var podOrdinalRegex = regexp.MustCompile(`(.*)-([0-9]+)$`)
 
 // OrdinalFromPodName returns ordinal from pod name
 func OrdinalFromPodName(name string) int {
 	podOrdinal := -1
-	r := regexp.MustCompile(`(.*)-([0-9]+)$`)
-
-	match := r.FindStringSubmatch(name)
+	match := podOrdinalRegex.FindStringSubmatch(name)
 	if len(match) < 3 {
 		return podOrdinal
 	}
