@@ -132,26 +132,25 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 }
 
 func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm.Manifest) (*converter.BPMResources, error) {
-	resources := &converter.BPMResources{}
-	bpmConfigs := bpm.Configs{}
 
 	instanceGroupName, ok := bpmSecret.Labels[ejv1.LabelInstanceGroup]
 	if !ok {
-		return resources, errors.Errorf("Missing container label for bpm information secret '%s'", bpmSecret.Name)
+		return nil, errors.Errorf("Missing container label for bpm information secret '%s'", bpmSecret.Name)
 	}
 
 	version, ok := bpmSecret.Labels[vss.LabelVersion]
 	if !ok {
-		return resources, errors.Errorf("Missing version label for bpm information secret '%s'", bpmSecret.Name)
+		return nil, errors.Errorf("Missing version label for bpm information secret '%s'", bpmSecret.Name)
 	}
 
+	var bpmConfigs bpm.Configs
 	if val, ok := bpmSecret.Data["bpm.yaml"]; ok {
 		err := yaml.Unmarshal(val, &bpmConfigs)
 		if err != nil {
-			return resources, err
+			return nil, err
 		}
 	} else {
-		return resources, errors.New("Couldn't find bpm.yaml key in manifest secret")
+		return nil, errors.New("Couldn't find bpm.yaml key in manifest secret")
 	}
 
 	instanceGroup := &bdm.InstanceGroup{}
