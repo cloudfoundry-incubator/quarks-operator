@@ -18,8 +18,30 @@ var _ = Describe("Trender", func() {
 		jobsDir            string
 		instanceGroupName  string
 		index              int
+		podName            string
 		podIP              net.IP
 	)
+
+	Context("when podName is empty", func() {
+		BeforeEach(func() {
+			deploymentManifest = "../../../testing/assets/ig-resolved.mysql-v1.yml"
+			jobsDir = "../../../testing/assets"
+			instanceGroupName = "mysql0"
+			index = 0
+			podName = ""
+			podIP = net.ParseIP("1.2.3.4")
+		})
+
+		act := func() error {
+			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podName, podIP)
+		}
+
+		It("fails", func() {
+			err := act()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("the pod name is empty"))
+		})
+	})
 
 	Context("when podIP is nil", func() {
 		BeforeEach(func() {
@@ -27,11 +49,12 @@ var _ = Describe("Trender", func() {
 			jobsDir = "../../../testing/assets"
 			instanceGroupName = "mysql0"
 			index = 0
+			podName = "mysql-pod-name"
 			podIP = nil
 		})
 
 		act := func() error {
-			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP)
+			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podName, podIP)
 		}
 
 		It("fails", func() {
@@ -46,11 +69,12 @@ var _ = Describe("Trender", func() {
 			deploymentManifest = "../../../testing/assets/gatherManifest.yml"
 			jobsDir = "../../../testing/assets"
 			instanceGroupName = "log-api"
+			podName = "log-api-pod-name"
 			podIP = net.ParseIP("172.17.0.13")
 		})
 
 		act := func() error {
-			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP)
+			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podName, podIP)
 		}
 
 		Context("with an invalid instance index", func() {
@@ -105,6 +129,7 @@ var _ = Describe("Trender", func() {
 			jobsDir = "../../../testing/assets"
 			instanceGroupName = "mysql0"
 			index = 0
+			podName = "mysql-pod-name"
 			podIP = net.ParseIP("172.17.0.13")
 		})
 
@@ -114,7 +139,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		It("renders the job erb files correctly", func() {
-			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP)
+			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podName, podIP)
 			Expect(err).ToNot(HaveOccurred())
 
 			drainFile := filepath.Join(jobsDir, "pxc-mysql", "bin/drain")
