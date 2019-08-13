@@ -94,20 +94,20 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	// Get the actual StatefulSet
-	actualStatefulSet, actualVersion, err := r.getActualStatefulSet(ctx, exStatefulSet, runtimeObject)
+	// Get the current StatefulSet.
+	currentStatefulSet, currentVersion, err := r.getCurrentStatefulSet(ctx, exStatefulSet, runtimeObject)
 	if err != nil {
 		return reconcile.Result{}, ctxlog.WithEvent(exStatefulSet, "StatefulSetNotFound").Error(ctx, "Could not retrieve latest StatefulSet owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 	}
 
 	// Calculate the desired statefulSets
-	desiredStatefulSets, desiredVersion, err := r.calculateDesiredStatefulSets(exStatefulSet, actualVersion)
+	desiredStatefulSets, desiredVersion, err := r.calculateDesiredStatefulSets(exStatefulSet, currentVersion)
 	if err != nil {
 		return reconcile.Result{}, ctxlog.WithEvent(exStatefulSet, "CalculationError").Error(ctx, "Could not calculate StatefulSet owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 	}
 
 	if exStatefulSet.Spec.Template.Spec.VolumeClaimTemplates != nil {
-		err := r.alterVolumeManagementStatefulSet(ctx, actualVersion, desiredVersion, exStatefulSet, actualStatefulSet)
+		err := r.alterVolumeManagementStatefulSet(ctx, currentVersion, desiredVersion, exStatefulSet, currentStatefulSet)
 		if err != nil {
 			ctxlog.Error(ctx, "Alteration of VolumeManagement statefulset failed for ExtendedStatefulset ", exStatefulSet.Name, " in namespace ", exStatefulSet.Namespace, ".", err)
 			return reconcile.Result{}, err
@@ -191,8 +191,8 @@ func (r *ReconcileExtendedStatefulSet) createStatefulSet(ctx context.Context, ex
 	return nil
 }
 
-// getActualStatefulSet gets the latest (by version) StatefulSet owned by the ExtendedStatefulSet
-func (r *ReconcileExtendedStatefulSet) getActualStatefulSet(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet, obj runtime.Object) (*v1beta2.StatefulSet, int, error) {
+// getCurrentStatefulSet gets the latest (by version) StatefulSet owned by the ExtendedStatefulSet
+func (r *ReconcileExtendedStatefulSet) getCurrentStatefulSet(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet, obj runtime.Object) (*v1beta2.StatefulSet, int, error) {
 	// Default response is an empty StatefulSet with version '0' and an empty signature
 	result := &v1beta2.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
