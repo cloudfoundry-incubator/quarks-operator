@@ -82,12 +82,12 @@ var _ = Describe("InstanceGroupResolver", func() {
 				bpm := bpmConfigs["loggregator_trafficcontroller"]
 				Expect(bpm).ToNot(BeNil())
 				Expect(bpm.Processes[0].Executable).To(Equal("/var/vcap/packages/loggregator_trafficcontroller/trafficcontroller"))
-				Expect(bpm.Processes[0].Env["FOOBARWITHLINKADDRESS"]).To(Equal("cf-doppler.default.svc.cluster.local"))
+				Expect(bpm.Processes[0].Env["FOOBARWITHLINKADDRESS"]).To(Equal("cf-doppler"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHLINKVALUES"]).To(Equal("10001"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHLINKNESTEDVALUES"]).To(Equal("7765"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHLINKINSTANCESAZ"]).To(Equal("z1"))
-				Expect(bpm.Processes[0].Env["FOOBARWITHLINKINSTANCESADDRESS"]).To(Equal("cf-doppler-0.default.svc.cluster.local"))
-				Expect(bpm.Processes[0].Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-0.default.svc.cluster.local"))
+				Expect(bpm.Processes[0].Env["FOOBARWITHLINKINSTANCESADDRESS"]).To(Equal("cf-doppler-0"))
+				Expect(bpm.Processes[0].Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-0"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECDEPLOYMENT"]).To(Equal("cf"))
 			})
 
@@ -143,10 +143,10 @@ var _ = Describe("InstanceGroupResolver", func() {
 				jobInstancesRedis := manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Instances
 
 				compareToFakeRedis := []JobInstance{
-					{Address: "foo-deployment-redis-slave-0.default.svc.cluster.local", AZ: "z1", ID: "foo-deployment-redis-slave-0", Index: 0, Instance: 0, Name: "redis-slave-redis-server"},
-					{Address: "foo-deployment-redis-slave-1.default.svc.cluster.local", AZ: "z2", ID: "foo-deployment-redis-slave-1", Index: 1, Instance: 0, Name: "redis-slave-redis-server"},
-					{Address: "foo-deployment-redis-slave-2.default.svc.cluster.local", AZ: "z1", ID: "foo-deployment-redis-slave-2", Index: 2, Instance: 1, Name: "redis-slave-redis-server"},
-					{Address: "foo-deployment-redis-slave-3.default.svc.cluster.local", AZ: "z2", ID: "foo-deployment-redis-slave-3", Index: 3, Instance: 1, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-0", AZ: "z1", Index: 0, Instance: 0, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-1", AZ: "z2", Index: 1, Instance: 0, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-2", AZ: "z1", Index: 2, Instance: 1, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-3", AZ: "z2", Index: 3, Instance: 1, Name: "redis-slave-redis-server"},
 				}
 				Expect(jobInstancesRedis).To(BeEquivalentTo(compareToFakeRedis))
 			})
@@ -174,8 +174,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 					}
 					for i, instance := range jobConsumesFromDoppler.Instances {
 						Expect(instance.Index).To(Equal(i))
-						Expect(instance.Address).To(Equal(fmt.Sprintf("cf-doppler-%v.default.svc.cluster.local", i)))
-						Expect(instance.ID).To(Equal(fmt.Sprintf("cf-doppler-%d", i)))
+						Expect(instance.Address).To(Equal(fmt.Sprintf("cf-doppler-%v", i)))
 					}
 
 					Expect(deep.Equal(jobConsumesFromDoppler.Properties, expectedProperties)).To(HaveLen(0))
