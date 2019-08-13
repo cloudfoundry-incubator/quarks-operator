@@ -164,6 +164,27 @@ func generateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpm
 				hasPersistentDisk = true
 			}
 
+			// Because we use subpaths for data, store or sys mounts, we want to
+			// treat unrestricted volumes as additional volumes
+			// /var/vcap/jobs is already mounted everywhere for quarks, so we ignore anything in there
+			filteredUnrestrictedVolumes := []bpm.Volume{}
+			for _, unrestrictedVolume := range process.Unsafe.UnrestrictedVolumes {
+				if strings.HasPrefix(unrestrictedVolume.Path, VolumeJobsDirMountPath) {
+					continue
+				}
+
+				if strings.HasPrefix(unrestrictedVolume.Path, VolumeDataDirMountPath) ||
+					strings.HasPrefix(unrestrictedVolume.Path, VolumeStoreDirMountPath) ||
+					strings.HasPrefix(unrestrictedVolume.Path, VolumeSysDirMountPath) {
+					// Add it to additional volumes
+					process.AdditionalVolumes = append(process.AdditionalVolumes, unrestrictedVolume)
+					continue
+				}
+
+				filteredUnrestrictedVolumes = append(filteredUnrestrictedVolumes, unrestrictedVolume)
+			}
+			process.Unsafe.UnrestrictedVolumes = filteredUnrestrictedVolumes
+
 			for _, additionalVolume := range process.AdditionalVolumes {
 				match := rAdditionalVolumes.MatchString(additionalVolume.Path)
 				if !match {
