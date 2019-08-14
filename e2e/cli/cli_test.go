@@ -213,6 +213,7 @@ var _ = Describe("CLI", func() {
   -j, --jobs-dir string     \(JOBS_DIR\) path to the jobs dir.
   -d, --output-dir string   \(OUTPUT_DIR\) path to output dir. \(default "/var/vcap/jobs"\)
       --pod-ip string       \(POD_IP\) pod IP
+      --pod-name string     \(POD_NAME\) pod name
       --pod-ordinal int     \(POD_ORDINAL\) pod ordinal \(default -1\)
       --replicas int        \(REPLICAS\) number of replicas \(default -1\)
       --spec-index int      \(SPEC_INDEX\) index of the instance spec \(default -1\)
@@ -225,6 +226,7 @@ var _ = Describe("CLI", func() {
 				"--az-index=1",
 				"--replicas=1",
 				"--pod-ordinal=1",
+				"--pod-name", "log-api-0",
 				"-m", "foo.txt",
 				"-g", "log-api",
 				"--pod-ip", "127.0.0.1",
@@ -248,6 +250,7 @@ var _ = Describe("CLI", func() {
 					"--az-index=1",
 					"--replicas=1",
 					"--pod-ordinal=1",
+					"--pod-name", "log-api-0",
 					"-g", "log-api",
 					"--pod-ip", "127.0.0.1",
 				)
