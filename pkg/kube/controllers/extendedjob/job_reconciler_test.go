@@ -11,6 +11,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -40,7 +41,8 @@ var _ = Describe("ReconcileExtendedJob", func() {
 		podLogGetter *cfakes.FakePodLogGetter
 		ejob         *ejapi.ExtendedJob
 		job          *batchv1.Job
-		pod          *corev1.Pod
+		pod1         *corev1.Pod
+		pod2         *corev1.Pod
 		env          testing.Catalog
 	)
 
@@ -66,7 +68,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 			switch object := object.(type) {
 			case *corev1.PodList:
 				list := corev1.PodList{
-					Items: []corev1.Pod{*pod},
+					Items: []corev1.Pod{*pod1},
 				}
 				list.DeepCopyInto(object)
 			case *corev1.SecretList:
@@ -84,7 +86,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 		ctx := ctxlog.NewParentContext(log)
 		config := &config.Config{CtxTimeOut: 10 * time.Second}
 		reconciler, _ = ej.NewJobReconciler(ctx, config, manager, podLogGetter)
-		ejob, job, pod = env.DefaultExtendedJobWithSucceededJob("foo")
+		ejob, job, pod1 = env.DefaultExtendedJobWithSucceededJob("foo")
 	})
 
 	Context("With a succeeded Job", func() {
@@ -175,18 +177,34 @@ var _ = Describe("ReconcileExtendedJob", func() {
 			})
 		})
 
-		Context("when WriteOnFailure is not set", func() {
+		Context("when WriteOnFailure is set", func() {
 			JustBeforeEach(func() {
 				ejob.Spec.Output = &ejapi.Output{
 					NamePrefix:     "foo-",
 					WriteOnFailure: true,
 				}
+				pod2 = pod1.DeepCopy()
+				pod2.SetName("foo-job-latest")
+				pod2.SetCreationTimestamp(metav1.Now())
+				pod2.Spec.Containers[0].Name = "busybox-latest"
+				job.Status.Failed = 3
 			})
 
-			It("does persist the output", func() {
+			It("does persist the output of the latest pod", func() {
 				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 					secret := object.(*corev1.Secret)
-					Expect(secret.GetName()).To(Equal("foo-busybox"))
+					Expect(secret.GetName()).To(Equal("foo-busybox-latest"))
+					return nil
+				})
+
+				client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
+					switch object := object.(type) {
+					case *corev1.PodList:
+						list := corev1.PodList{
+							Items: []corev1.Pod{*pod1, *pod2},
+						}
+						list.DeepCopyInto(object)
+					}
 					return nil
 				})
 

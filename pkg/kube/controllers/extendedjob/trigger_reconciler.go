@@ -57,8 +57,8 @@ type TriggerReconciler struct {
 // When there are multiple extendedjobs, multiple jobs can run for the same
 // pod.
 func (r *TriggerReconciler) Reconcile(request reconcile.Request) (result reconcile.Result, err error) {
-	podName := request.NamespacedName.Name
 
+	podName := request.NamespacedName.Name
 	pod := &corev1.Pod{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.

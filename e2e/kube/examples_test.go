@@ -75,6 +75,7 @@ var _ = Describe("Examples", func() {
 				err = testing.DeleteResource(namespace, "pod", "foo-pod-1")
 				Expect(err).ToNot(HaveOccurred())
 
+				By("Waiting for the jobpod to complete")
 				err = kubectlHelper.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=delete-triggered-sleep", ejv1.LabelEJobName))
 				Expect(err).ToNot(HaveOccurred())
 			})
