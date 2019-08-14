@@ -15,9 +15,14 @@
 
 `ExtendedSecret` supports generating the following:
 
-- certificates
-- passwords
-- rsa keys
+| Secret Type                     | spec.type     | certificate.signerType | certificate.isCA    |
+| ------------------------------- | ------------- | ---------------------- | ------------------- |
+| `passwords`                     | `password`    | not set                | not set             |
+| `rsa keys`                      | `rsa`         | not set                | not set             |
+| `ssh keys`                      | `ssh`         | not set                | not set             |
+| `self-signed root certificates` | `certificate` | `local`                | `true`              |
+| `self-signed certificates`      | `certificate` | `local`                | `false`             |
+| `cluster-signed certificates`   | `certificate` | `cluster`              | `false`             |
 
 > **Note:**
 >
@@ -35,7 +40,7 @@ The developer can specify policies for rotation (e.g. automatic or not) and how 
 
 ### Auto-approving Certificates
 
-A certificate `ExtendedSecret` can be signed by the Kube API Server. The ExtendedSecret Controller is be responsible for generating certificate signing request and creating CertificateSigningRequest:
+A certificate `ExtendedSecret` can be signed by the Kube API Server. The ExtendedSecret Controller is be responsible for generating certificate signing request and approving the request:
 
 ```yaml
 apiVersion: certificates.k8s.io/v1beta1

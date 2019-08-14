@@ -1,94 +1,4 @@
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cert-ca
-type: Opaque
-stringData:
-  certificate: |-
-    -----BEGIN CERTIFICATE-----
-    MIIE9jCCAt6gAwIBAgIUEtrf/IIROoFcpubnPMMaNc00cwIwDQYJKoZIhvcNAQEN
-    BQAwEzERMA8GA1UEAxMIcm91dGVyQ0EwHhcNMTkwODA3MDQxNjAwWhcNMjAwODA2
-    MDQxNjAwWjATMREwDwYDVQQDEwhyb3V0ZXJDQTCCAiIwDQYJKoZIhvcNAQEBBQAD
-    ggIPADCCAgoCggIBAMs548l/BVFJivKZzXyv4koxHNI7suvyod6TroTE/xYDs13w
-    wk0oI7jrQ2/bz94ospcAoFDEWDA3PLzaueHJ4DG942pwp5nrq0bWrskf3i6dYqfK
-    defZ5huB769YKG+w1da4jkesohwIHtBU/sOu+lSXUpbvCnEAUjKhKbKee/8vUQWI
-    s1s2mLqsxC3jiBFXaeoo6m/uPZYYwsWgTG3OMOjskpOIGsIp3HU+F8NeNoBcuTFu
-    k2+GVBqHAiif1Tcoc4YXZst0v16sQL+WWmbb3d/mT4raqeWu/ni1X5ZOrNGn9wzN
-    EvUTDX4RmWAvj0FscYOvcxOh+ZacjVSrfjCksZGem+R+1XWR6qQHZQ77OGtMPe+6
-    9LBtxPpIPRF9+79iQwDiqFm1abG0os8A3HM0465qTU3UkBy8UuBCEM2BTEr9518/
-    qnttnQHKRlK7YaSVU4pMJBeFJXG3uYp1GYZw4Zt5WMxy/AQpCrbNXl0IYnjLqFqY
-    bkbPyr+HwdiEbuXbmYRXHWvaCh4A3zG746+4fb4lc4ZfVvqWtEZ2NiTGFcnA2XWa
-    3x+6GYHdYkss0jv6TRTG48Pjz+E0XhRyinfsM1/zlhJJmCkUnnJ4LS0+CUTqxeNu
-    TJH6CBSITu36eV/E7shcbouyGZsUYbw6QskdtjkCHX+kvf5XSofcPr33r3dlAgMB
-    AAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQW
-    BBTYpwJh/DRIAuvenjUPumY5rh9WjTANBgkqhkiG9w0BAQ0FAAOCAgEADl7RHiIg
-    4eDXmMAtayY50oxpGg9LJ9I41pBXqyH4PpeWHLoBz0vL42rUP8wp0ytoTCeOwXYt
-    BXWSwPKoJk618KfAExyT5gLaGXI9DgyoPMOp/Je83bGTt34avtxEFfmPxCGeLblf
-    V1nhVrEN5HFfBo3ZT9Ha5cWnzCx0b1GVyPRNHK4+uoteQVFaBDzm3vR+vE6Yxz0d
-    lmisZqm0d0vPjIN7FPJ74w9To4u/dGRRY2rSXeFpvsfiamhFxO2XP/oGS15Npx8s
-    iQcW6Ej59pdSIt76XGxJsElETCIbZchEFoTkNqmUuG0mQeMkk9SmQ9CXsGcnke/k
-    Mr88m+wCj5MTmWYzHLC2iDFLsFrIttwZ3Zxis8nFe6WXHekjjNV34WKD/oO0TPXJ
-    OzvQaFJEj8vd6j3C3vdrYQB2XWEeXox0xtd3B2I67Aomuy3iGiaT6YuTQ0ZhsUqP
-    J0LQE92fzBt2OcrDADD73M+RtSd1MNJsPl8/YXQ8AHPJaSJYEGSKhRp61rxSrj1U
-    TDruqFpyGFmpfYMDks7AxjKoJWMtgy/jJbWW5eFtSpgoQGEgo8Jd6uN6e2A/A8nS
-    ZYkcJSPIHSmmCAq5aTVpzMMBxZ9VsnkGUIMVV8nm760Olz0SMj+FumrKttu2CnPa
-    HZ7jr6SMopUidvDZRCpvXrIjZhdPbGYsv3g=
-    -----END CERTIFICATE-----
-  is_ca: "true"
-  private_key: |-
-    -----BEGIN RSA PRIVATE KEY-----
-    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
-    -----END RSA PRIVATE KEY-----
----
 apiVersion: fissile.cloudfoundry.org/v1alpha1
 kind: ExtendedSecret
 metadata:
@@ -96,17 +6,11 @@ metadata:
 spec:
   request:
     certificate:
-      CAKeyRef:
-        Key: private_key
-        Name: cert-ca
-      CARef:
-        Key: certificate
-        Name: cert-ca
       alternativeNames:
         - foo.com
         - '*.foo.com'
       commonName: routerSSL
       isCA: false
-      signerType: external
+      signerType: cluster
   secretName: gen-certificate
   type: certificate

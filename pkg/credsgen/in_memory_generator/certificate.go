@@ -85,7 +85,7 @@ func (g InMemoryGenerator) generateCertificate(request credsgen.CertificateGener
 		return credsgen.Certificate{}, errors.Wrap(err, "Parsing CA private key failed.")
 	}
 
-	//Sign certificate
+	// Sign certificate
 	signingProfile := &config.SigningProfile{
 		Usage:        []string{"server auth", "client auth"},
 		Expiry:       time.Duration(g.Expiry*24) * time.Hour,

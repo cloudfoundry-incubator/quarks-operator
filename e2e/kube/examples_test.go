@@ -170,17 +170,17 @@ var _ = Describe("Examples", func() {
 					By("Creating bosh deployment")
 					kubectlHelper := testing.NewKubectl()
 					err := testing.Create(namespace, yamlFilePath)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred(), "error creating instance")
 
 					By("Checking for pods")
 					err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-0", kubectlHelper.PollTimeout)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred(), "error waiting for pod/nats-deployment-nats-v1-0")
 
 					err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1", kubectlHelper.PollTimeout)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred(), "error waiting for pod/nats-deployment-nats-v1-1")
 
 					err = testing.RestartOperator(namespace)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred(), "error restarting cf-operator")
 
 					By("Checking for pods not created")
 					err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v2-0", 10*time.Second)
@@ -188,15 +188,15 @@ var _ = Describe("Examples", func() {
 
 					By("Checking for secrets not created")
 					exist, err := kubectlHelper.SecretExists(namespace, "nats-deployment.bpm.nats-v2")
-					Expect(err).To(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred(), "error getting secret/nats-deployment.bpm.nats-v2")
 					Expect(exist).To(BeFalse(), "error unexpected bpm info secret is created")
 
 					exist, err = kubectlHelper.SecretExists(namespace, "nats-deployment.desired-manifest-v2")
-					Expect(err).To(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred(), "error getting secret/nats-deployment.desired-manifest-v2")
 					Expect(exist).To(BeFalse(), "error unexpected desire manifest is created")
 
 					exist, err = kubectlHelper.SecretExists(namespace, "nats-deployment.ig-resolved.nats-v2")
-					Expect(err).To(HaveOccurred())
+					Expect(err).ToNot(HaveOccurred(), "error getting secret/nats-deployment.ig-resolved.nats-v2")
 					Expect(exist).To(BeFalse(), "error unexpected properties secret is created")
 				})
 			})
@@ -404,9 +404,9 @@ var _ = Describe("Examples", func() {
 
 				By("Checking the generated certificate")
 				err = kubectlHelper.WaitForSecret(namespace, "gen-certificate")
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred(), "error waiting for secret")
 				err = testing.SecretCheckData(namespace, "gen-certificate", ".data.certificate")
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred(), "error getting for secret")
 			})
 
 			It("Test cases must be written for all example use cases in docs", func() {

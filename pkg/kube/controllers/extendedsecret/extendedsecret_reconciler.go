@@ -199,57 +199,15 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 		instance.Spec.Request.CertificateRequest.SignerType = esv1.LocalSigner
 	}
 
-	var request credsgen.CertificateGenerationRequest
-	if instance.Spec.Request.CertificateRequest.IsCA {
-		// Generate self-signed root CA certificate
-		request = credsgen.CertificateGenerationRequest{
-			IsCA:       instance.Spec.Request.CertificateRequest.IsCA,
-			CommonName: instance.Spec.Request.CertificateRequest.CommonName,
-		}
-	} else {
-		// Get CA certificate
-		caSecret := &corev1.Secret{}
-		caNamespacedName := types.NamespacedName{
-			Namespace: instance.Namespace,
-			Name:      instance.Spec.Request.CertificateRequest.CARef.Name,
-		}
-		err := r.client.Get(ctx, caNamespacedName, caSecret)
-		if err != nil {
-			return errors.Wrap(err, "getting CA secret")
-		}
-		ca := caSecret.Data[instance.Spec.Request.CertificateRequest.CARef.Key]
-
-		// Get CA key
-		if instance.Spec.Request.CertificateRequest.CAKeyRef.Name != instance.Spec.Request.CertificateRequest.CARef.Name {
-			caSecret = &corev1.Secret{}
-			caNamespacedName = types.NamespacedName{
-				Namespace: instance.Namespace,
-				Name:      instance.Spec.Request.CertificateRequest.CAKeyRef.Name,
-			}
-			err = r.client.Get(ctx, caNamespacedName, caSecret)
-			if err != nil {
-				return errors.Wrap(err, "getting CA Key secret")
-			}
-		}
-		key := caSecret.Data[instance.Spec.Request.CertificateRequest.CAKeyRef.Key]
-
-		// Build the generation request
-		request = credsgen.CertificateGenerationRequest{
-			IsCA:             instance.Spec.Request.CertificateRequest.IsCA,
-			CommonName:       instance.Spec.Request.CertificateRequest.CommonName,
-			AlternativeNames: instance.Spec.Request.CertificateRequest.AlternativeNames,
-			CA: credsgen.Certificate{
-				IsCA:        true,
-				PrivateKey:  key,
-				Certificate: ca,
-			},
-		}
+	generationRequest, err := r.generateCertificateGenerationRequest(ctx, instance.Namespace, instance.Spec.Request.CertificateRequest)
+	if err != nil {
+		return errors.Wrap(err, "generating certificate generation request")
 	}
 
 	switch instance.Spec.Request.CertificateRequest.SignerType {
-	case esv1.ExternalSigner:
+	case esv1.ClusterSigner:
 		ctxlog.Info(ctx, "Generating certificate signing request and its key")
-		csr, key, err := r.generator.GenerateCertificateSigningRequest(request)
+		csr, key, err := r.generator.GenerateCertificateSigningRequest(generationRequest)
 		if err != nil {
 			return err
 		}
@@ -257,7 +215,7 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 		// private key Secret which will be merged to certificate Secret later
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      names.CsrPrivateKeySecretName(instance.Name),
+				Name:      names.CsrPrivateKeySecretName(names.CSRName(instance.Namespace, instance.Name)),
 				Namespace: instance.GetNamespace(),
 			},
 			StringData: map[string]string{
@@ -274,7 +232,7 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 		return r.createCertificateSigningRequest(ctx, instance, csr)
 	case esv1.LocalSigner:
 		// Generate certificate
-		cert, err := r.generator.GenerateCertificate(instance.GetName(), request)
+		cert, err := r.generator.GenerateCertificate(instance.GetName(), generationRequest)
 		if err != nil {
 			return err
 		}
@@ -290,8 +248,8 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 			},
 		}
 
-		if len(request.CA.Certificate) > 0 {
-			secret.StringData["ca"] = string(request.CA.Certificate)
+		if len(generationRequest.CA.Certificate) > 0 {
+			secret.StringData["ca"] = string(generationRequest.CA.Certificate)
 		}
 
 		return r.createSecret(ctx, instance, secret)
@@ -356,9 +314,72 @@ func (r *ReconcileExtendedSecret) createSecret(ctx context.Context, instance *es
 	return nil
 }
 
+// generateCertificateGenerationRequest generates CertificateGenerationRequest for certificate
+func (r *ReconcileExtendedSecret) generateCertificateGenerationRequest(ctx context.Context, namespace string, certificateRequest esv1.CertificateRequest) (credsgen.CertificateGenerationRequest, error) {
+	var request credsgen.CertificateGenerationRequest
+	if certificateRequest.IsCA {
+		// Generate self-signed root CA certificate
+		request = credsgen.CertificateGenerationRequest{
+			IsCA:       certificateRequest.IsCA,
+			CommonName: certificateRequest.CommonName,
+		}
+	} else {
+		switch certificateRequest.SignerType {
+		case esv1.ClusterSigner:
+			// Generate cluster-signed CA certificate
+			request = credsgen.CertificateGenerationRequest{
+				CommonName:       certificateRequest.CommonName,
+				AlternativeNames: certificateRequest.AlternativeNames,
+			}
+		case esv1.LocalSigner:
+			// Get CA certificate
+			caSecret := &corev1.Secret{}
+			caNamespacedName := types.NamespacedName{
+				Namespace: namespace,
+				Name:      certificateRequest.CARef.Name,
+			}
+			err := r.client.Get(ctx, caNamespacedName, caSecret)
+			if err != nil {
+				return request, errors.Wrap(err, "getting CA secret")
+			}
+			ca := caSecret.Data[certificateRequest.CARef.Key]
+
+			// Get CA key
+			if certificateRequest.CAKeyRef.Name != certificateRequest.CARef.Name {
+				caSecret = &corev1.Secret{}
+				caNamespacedName = types.NamespacedName{
+					Namespace: namespace,
+					Name:      certificateRequest.CAKeyRef.Name,
+				}
+				err = r.client.Get(ctx, caNamespacedName, caSecret)
+				if err != nil {
+					return request, errors.Wrap(err, "getting CA Key secret")
+				}
+			}
+			key := caSecret.Data[certificateRequest.CAKeyRef.Key]
+
+			// Generate local-issued CA certificate
+			request = credsgen.CertificateGenerationRequest{
+				IsCA:             certificateRequest.IsCA,
+				CommonName:       certificateRequest.CommonName,
+				AlternativeNames: certificateRequest.AlternativeNames,
+				CA: credsgen.Certificate{
+					IsCA:        true,
+					PrivateKey:  key,
+					Certificate: ca,
+				},
+			}
+		default:
+			return request, fmt.Errorf("unrecognized signer type: %s", certificateRequest.SignerType)
+		}
+	}
+
+	return request, nil
+}
+
 // createCertificateSigningRequest creates CertificateSigningRequest Object
 func (r *ReconcileExtendedSecret) createCertificateSigningRequest(ctx context.Context, instance *esv1.ExtendedSecret, csr []byte) error {
-	csrName := instance.Name
+	csrName := names.CSRName(instance.Namespace, instance.Name)
 	ctxlog.Debugf(ctx, "Creating certificateSigningRequest '%s'", csrName)
 
 	annotations := instance.GetAnnotations()

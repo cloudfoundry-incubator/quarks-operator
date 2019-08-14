@@ -160,9 +160,14 @@ func OrdinalFromPodName(name string) int {
 	return podOrdinal
 }
 
-// CsrPrivateKeySecretName returns a Secret name for a given ExtendedSecret
-func CsrPrivateKeySecretName(extendedSecretName string) string {
-	return extendedSecretName + "-csr-private-key"
+// CSRName returns a CertificateSigningRequest name for a given ExtendedSecret
+func CSRName(namespace, extendedSecretName string) string {
+	return fmt.Sprintf("%s-%s", truncate(namespace, 19), truncate(extendedSecretName, 19))
+}
+
+// CsrPrivateKeySecretName returns a Secret name for a given CertificateSigningRequest private key
+func CsrPrivateKeySecretName(csrName string) string {
+	return csrName + "-csr-private-key"
 }
 
 func randSuffix(str string) (string, error) {

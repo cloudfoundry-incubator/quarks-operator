@@ -29,8 +29,10 @@ type SignerType = string
 
 // Valid values for signer types
 const (
-	LocalSigner    SignerType = "local"
-	ExternalSigner SignerType = "external"
+	// LocalSigner defines the local as certificate signer
+	LocalSigner SignerType = "local"
+	// ClusterSigner defines the cluster as certificate signer
+	ClusterSigner SignerType = "cluster"
 )
 
 var (
