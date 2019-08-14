@@ -1,3 +1,5 @@
 binaries/
 build/
 tmp/
+
+Dockerfile
