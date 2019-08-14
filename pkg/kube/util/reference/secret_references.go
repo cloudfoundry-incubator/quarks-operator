@@ -1,21 +1,24 @@
 package reference
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejobv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 )
 
 // GetSecretsReferencedBy returns a list of all names for Secrets referenced by the object
-// The object can be an ExtendedStatefulSet, an ExtendedeJob or a BOSHDeployment
-func GetSecretsReferencedBy(object interface{}) (map[string]bool, error) {
-	// Figure out the type of object
+// The object can be an ExtendedStatefulSet, an ExtendedJob or a BOSHDeployment
+func GetSecretsReferencedBy(client crc.Client, object interface{}) (map[string]bool, error) {
 	switch object := object.(type) {
 	case bdv1.BOSHDeployment:
-		return getSecretRefFromBdpl(object), nil
+		return getSecretRefFromBdpl(client, object)
 	case ejobv1.ExtendedJob:
 		return getSecretRefFromEJob(object), nil
 	case estsv1.ExtendedStatefulSet:
@@ -25,7 +28,7 @@ func GetSecretsReferencedBy(object interface{}) (map[string]bool, error) {
 	}
 }
 
-func getSecretRefFromBdpl(object bdv1.BOSHDeployment) map[string]bool {
+func getSecretRefFromBdpl(client crc.Client, object bdv1.BOSHDeployment) (map[string]bool, error) {
 	result := map[string]bool{}
 
 	if object.Spec.Manifest.Type == bdv1.SecretReference {
@@ -38,13 +41,17 @@ func getSecretRefFromBdpl(object bdv1.BOSHDeployment) map[string]bool {
 		}
 	}
 
-	for _, iv := range object.Spec.ImplicitVariables {
-		if iv.Type == bdv1.SecretReference {
-			result[iv.Name] = true
-		}
+	// Include secrets of implicit vars
+	resolver := converter.NewResolver(client, func() converter.Interpolator { return converter.NewInterpolator() })
+	_, implicitVars, err := resolver.WithOpsManifest(&object, object.Namespace)
+	if err != nil {
+		return map[string]bool{}, errors.Wrap(err, fmt.Sprintf("Failed to load the with-ops manifest for BOSHDeployment '%s/%s'", object.Namespace, object.Name))
+	}
+	for _, iv := range implicitVars {
+		result[iv] = true
 	}
 
-	return result
+	return result, nil
 }
 
 func getSecretRefFromESts(object estsv1.ExtendedStatefulSet) map[string]bool {

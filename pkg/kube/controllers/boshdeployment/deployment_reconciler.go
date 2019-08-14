@@ -130,7 +130,6 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 }
 
 // createManifestWithOps creates a secret containing the deployment manifest with ops files applied
-// and updates implicit variables if needed
 func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, instance *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
 	log.Debug(ctx, "Resolving manifest")
 	manifest, err := r.resolver.WithOpsManifest(instance, instance.GetNamespace())

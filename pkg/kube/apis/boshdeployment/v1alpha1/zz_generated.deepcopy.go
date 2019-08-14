@@ -83,11 +83,6 @@ func (in *BOSHDeploymentSpec) DeepCopyInto(out *BOSHDeploymentSpec) {
 		*out = make([]ResourceReference, len(*in))
 		copy(*out, *in)
 	}
-	if in.ImplicitVariables != nil {
-		in, out := &in.ImplicitVariables, &out.ImplicitVariables
-		*out = make([]ResourceReference, len(*in))
-		copy(*out, *in)
-	}
 	return
 }
 

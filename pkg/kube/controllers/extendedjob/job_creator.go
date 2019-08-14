@@ -81,7 +81,7 @@ func (j jobCreatorImpl) Create(ctx context.Context, eJob ejv1.ExtendedJob, podNa
 		}
 	}
 
-	secrets, err := reference.GetSecretsReferencedBy(eJob)
+	secrets, err := reference.GetSecretsReferencedBy(j.client, eJob)
 	if err != nil {
 		return
 	}
