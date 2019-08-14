@@ -19,19 +19,18 @@ import (
 	podutil "code.cloudfoundry.org/cf-operator/pkg/kube/util/pod"
 )
 
-// alterVolumeManagementStatefulSet creates the volumeManagement statefulSet for persistent volume claim creation
-func (r *ReconcileExtendedStatefulSet) alterVolumeManagementStatefulSet(ctx context.Context, actualVersion int, desiredVersion int, exStatefulSet *essv1a1.ExtendedStatefulSet, actualStatefulSet *v1beta2.StatefulSet) error {
-
-	// Create volumeManagement statefulSet if it is the first time extendedStatefulSet is created
-	if actualVersion == 0 && actualVersion != desiredVersion {
-		err := r.createVolumeManagementStatefulSets(ctx, exStatefulSet, actualStatefulSet)
+// alterVolumeManagementStatefulSet creates the volumeManagement statefulSet for persistent volume claim creation.
+func (r *ReconcileExtendedStatefulSet) alterVolumeManagementStatefulSet(ctx context.Context, currentVersion int, desiredVersion int, exStatefulSet *essv1a1.ExtendedStatefulSet, currentStatefulSet *v1beta2.StatefulSet) error {
+	// Create volumeManagement statefulSet if it is the first time extendedStatefulSet is created.
+	if currentVersion == 0 && currentVersion != desiredVersion {
+		err := r.createVolumeManagementStatefulSets(ctx, exStatefulSet, currentStatefulSet)
 		if err != nil {
 			return errors.Wrapf(err, "Creation of volumeManagement statefulSets failed.")
 		}
 	} else {
-		replicaDifference := r.getReplicaDifference(exStatefulSet, actualStatefulSet)
+		replicaDifference := r.getReplicaDifference(exStatefulSet, currentStatefulSet)
 		if replicaDifference > 0 {
-			err := r.createVolumeManagementStatefulSets(ctx, exStatefulSet, actualStatefulSet)
+			err := r.createVolumeManagementStatefulSets(ctx, exStatefulSet, currentStatefulSet)
 			if err != nil {
 				return errors.Wrapf(err, "Creation of VolumeManagement StatefulSets failed")
 			}

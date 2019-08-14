@@ -133,7 +133,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 // and updates implicit variables if needed
 func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, instance *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
 	log.Debug(ctx, "Resolving manifest")
-	manifest, implicitVars, err := r.resolver.WithOpsManifest(instance, instance.GetNamespace())
+	manifest, _, err := r.resolver.WithOpsManifest(instance, instance.GetNamespace())
 	if err != nil {
 		return nil, log.WithEvent(instance, "WithOpsManifestError").Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
 	}
@@ -184,14 +184,6 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 
 	log.Debugf(ctx, "ResourceReference secret '%s' has been %s", manifestSecret.Name, op)
 
-	// Update implicit variables if needed
-	if len(implicitVars) != 0 {
-		err = r.updateImplicitVariables(ctx, instance, implicitVars)
-		if err != nil {
-			return manifest, log.WithEvent(instance, "ImplicitVariablesError").Errorf(ctx, "failed to update BOSHDeployment '%s' for implicit variables: %v", instance.Name, err)
-		}
-	}
-
 	return manifest, nil
 }
 
@@ -212,31 +204,6 @@ func (r *ReconcileBOSHDeployment) createEJob(ctx context.Context, instance *bdv1
 	})
 
 	log.Debugf(ctx, "ExtendedJob '%s' has been %s", eJob.Name, op)
-
-	return err
-}
-
-// updateImplicitVariables updates deployment spec for implicit variables
-func (r *ReconcileBOSHDeployment) updateImplicitVariables(ctx context.Context, instance *bdv1.BOSHDeployment, implicitVariables []string) error {
-	ivs := make([]bdv1.ResourceReference, len(implicitVariables))
-	for i, v := range implicitVariables {
-		// Set implicit variable as secret
-		r := bdv1.ResourceReference{
-			Type: bdv1.SecretReference,
-			Name: v,
-		}
-		ivs[i] = r
-	}
-	instance.Spec.ImplicitVariables = ivs
-
-	log.Debug(ctx, "Updating BOSHDeployment for implicit variables")
-	obj := instance.DeepCopy()
-	op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-		obj.Spec.ImplicitVariables = instance.Spec.ImplicitVariables
-		return nil
-	})
-
-	log.Debugf(ctx, "BOSHDeployment '%s' has been %s", instance.Name, op)
 
 	return err
 }

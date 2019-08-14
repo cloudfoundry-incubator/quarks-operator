@@ -76,9 +76,10 @@ This will render a provided manifest instance-group
 			specIndex = (azIndex-1)*replicas + podOrdinal
 		}
 
+		podName := viper.GetString("pod-name")
 		podIP := net.ParseIP(viper.GetString("pod-ip"))
 
-		return manifest.RenderJobTemplates(boshManifestPath, jobsDir, outputDir, instanceGroupName, specIndex, podIP)
+		return manifest.RenderJobTemplates(boshManifestPath, jobsDir, outputDir, instanceGroupName, specIndex, podName, podIP)
 	},
 }
 
@@ -91,6 +92,7 @@ func init() {
 	templateRenderCmd.Flags().IntP("az-index", "", -1, "az index")
 	templateRenderCmd.Flags().IntP("pod-ordinal", "", -1, "pod ordinal")
 	templateRenderCmd.Flags().IntP("replicas", "", -1, "number of replicas")
+	templateRenderCmd.Flags().StringP("pod-name", "", "", "pod name")
 	templateRenderCmd.Flags().StringP("pod-ip", "", "", "pod IP")
 
 	viper.BindPFlag("jobs-dir", templateRenderCmd.Flags().Lookup("jobs-dir"))
@@ -99,6 +101,7 @@ func init() {
 	viper.BindPFlag("spec-index", templateRenderCmd.Flags().Lookup("spec-index"))
 	viper.BindPFlag("pod-ordinal", templateRenderCmd.Flags().Lookup("pod-ordinal"))
 	viper.BindPFlag("replicas", templateRenderCmd.Flags().Lookup("replicas"))
+	viper.BindPFlag("pod-name", templateRenderCmd.Flags().Lookup("pod-name"))
 	viper.BindPFlag("pod-ip", templateRenderCmd.Flags().Lookup("pod-ip"))
 
 	argToEnv := map[string]string{
@@ -109,6 +112,7 @@ func init() {
 		"az-index":                "AZ_INDEX",
 		"pod-ordinal":             "POD_ORDINAL",
 		"replicas":                "REPLICAS",
+		"pod-name":                converter.PodNameEnvVar,
 		"pod-ip":                  converter.PodIPEnvVar,
 	}
 	AddEnvToUsage(templateRenderCmd, argToEnv)

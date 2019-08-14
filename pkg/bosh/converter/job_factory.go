@@ -31,7 +31,9 @@ const (
 	// performs variable interpolation for a manifest. It's also part of
 	// the output secret's name
 	VarInterpolationContainerName = "desired-manifest"
-	// PodIPEnvVar is the environment variable containing status.podIP used to render BOSH spec.IP.
+	// PodNameEnvVar is the environment variable containing metadata.name used to render BOSH spec.id.
+	PodNameEnvVar = "POD_NAME"
+	// PodIPEnvVar is the environment variable containing status.podIP used to render BOSH spec.ip.
 	PodIPEnvVar = "POD_IP"
 )
 
