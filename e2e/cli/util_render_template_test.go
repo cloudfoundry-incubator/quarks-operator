@@ -37,6 +37,7 @@ var _ = Describe("render-template", func() {
 			"--spec-index", "0",
 			"-d", tmpDir,
 			"--pod-ip", "10.10.50.50",
+			"--pod-name", "log-api-0",
 		}
 		cmd := exec.Command(cliPath, args...)
 		session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)

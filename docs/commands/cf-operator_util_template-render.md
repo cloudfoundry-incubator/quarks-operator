@@ -20,6 +20,8 @@ cf-operator util template-render [flags]
   -h, --help                help for template-render
   -j, --jobs-dir string     (JOBS_DIR) path to the jobs dir.
   -d, --output-dir string   (OUTPUT_DIR) path to output dir. (default "/var/vcap/jobs")
+      --pod-ip string       (POD_IP) pod IP
+      --pod-name string     (POD_NAME) pod name
       --pod-ordinal int     (POD_ORDINAL) pod ordinal (default -1)
       --replicas int        (REPLICAS) number of replicas (default -1)
       --spec-index int      (SPEC_INDEX) index of the instance spec (default -1)
