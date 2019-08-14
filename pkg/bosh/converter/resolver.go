@@ -21,7 +21,7 @@ import (
 
 // Resolver interface to provide a BOSH manifest resolved references from bdpl CRD
 type Resolver interface {
-	WithOpsManifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
+	WithOpsManifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, error)
 }
 
 // ResolverImpl resolves references from bdpl CRD to a BOSH manifest
@@ -67,7 +67,7 @@ func (r *ResolverImpl) DesiredManifest(ctx context.Context, boshDeploymentName, 
 // WithOpsManifest returns manifest and a list of implicit variables referenced by our bdpl CRD
 // The resulting manifest has variables interpolated and ops files applied.
 // It is the 'with-ops' manifest.
-func (r *ResolverImpl) WithOpsManifest(instance *bdc.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
+func (r *ResolverImpl) WithOpsManifest(instance *bdc.BOSHDeployment, namespace string) (*bdm.Manifest, error) {
 	interpolator := r.newInterpolatorFunc()
 	spec := instance.Spec
 	var (
@@ -77,7 +77,7 @@ func (r *ResolverImpl) WithOpsManifest(instance *bdc.BOSHDeployment, namespace s
 
 	m, err = r.resourceData(namespace, spec.Manifest.Type, spec.Manifest.Name, bdc.ManifestSpecName)
 	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
+		return nil, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
 	}
 
 	// Interpolate manifest with ops
@@ -86,11 +86,11 @@ func (r *ResolverImpl) WithOpsManifest(instance *bdc.BOSHDeployment, namespace s
 	for _, op := range ops {
 		opsData, err := r.resourceData(namespace, op.Type, op.Name, bdc.OpsSpecName)
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
+			return nil, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
 		}
 		err = interpolator.BuildOps([]byte(opsData))
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
+			return nil, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
 		}
 	}
 
@@ -98,21 +98,21 @@ func (r *ResolverImpl) WithOpsManifest(instance *bdc.BOSHDeployment, namespace s
 	if len(ops) != 0 {
 		bytes, err = interpolator.Interpolate([]byte(m))
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Failed to interpolate %#v in interpolation task", m)
+			return nil, errors.Wrapf(err, "Failed to interpolate %#v in interpolation task", m)
 		}
 	}
 
 	// Reload the manifest after interpolation, and apply implicit variables
 	manifest, err := bdm.LoadYAML(bytes)
 	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying ops %#v", m)
+		return nil, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying ops %#v", m)
 	}
 	m = string(bytes)
 
 	// Interpolate implicit variables
 	vars, err := manifest.ImplicitVariables()
 	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "failed to list implicit variables")
+		return nil, errors.Wrapf(err, "failed to list implicit variables")
 	}
 
 	varSecrets := make([]string, len(vars))
@@ -120,7 +120,7 @@ func (r *ResolverImpl) WithOpsManifest(instance *bdc.BOSHDeployment, namespace s
 		varSecretName := names.CalculateSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), v)
 		varData, err := r.resourceData(namespace, bdc.SecretReference, varSecretName, bdc.ImplicitVariableKeyName)
 		if err != nil {
-			return nil, varSecrets, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
+			return nil, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
 		}
 
 		varSecrets[i] = varSecretName
@@ -129,16 +129,16 @@ func (r *ResolverImpl) WithOpsManifest(instance *bdc.BOSHDeployment, namespace s
 
 	manifest, err = bdm.LoadYAML([]byte(m))
 	if err != nil {
-		return nil, varSecrets, errors.Wrapf(err, "failed to load yaml after interpolating implicit variables %#v", m)
+		return nil, errors.Wrapf(err, "failed to load yaml after interpolating implicit variables %#v", m)
 	}
 
 	// Apply addons
 	err = manifest.ApplyAddons()
 	if err != nil {
-		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
+		return nil, errors.Wrapf(err, "failed to apply addons")
 	}
 
-	return manifest, varSecrets, err
+	return manifest, err
 }
 
 // resourceData resolves different manifest reference types and returns the resource's data
