@@ -42,9 +42,8 @@ var (
 
 // BOSHDeploymentSpec defines the desired state of BOSHDeployment
 type BOSHDeploymentSpec struct {
-	Manifest          ResourceReference   `json:"manifest"`
-	Ops               []ResourceReference `json:"ops,omitempty"`
-	ImplicitVariables []ResourceReference `json:"implicitVariables,omitempty"`
+	Manifest ResourceReference   `json:"manifest"`
+	Ops      []ResourceReference `json:"ops,omitempty"`
 }
 
 // ResourceReference defines the resource reference type and location
