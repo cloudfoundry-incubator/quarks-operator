@@ -155,7 +155,7 @@ func (v *Validator) Handle(ctx context.Context, req admission.Request) admission
 		}
 	}
 
-	_, err = resolver.WithOpsManifest(boshDeployment, boshDeployment.GetNamespace())
+	_, _, err = resolver.WithOpsManifest(boshDeployment, boshDeployment.GetNamespace())
 	if err != nil {
 		return admission.Response{
 			AdmissionResponse: v1beta1.AdmissionResponse{
