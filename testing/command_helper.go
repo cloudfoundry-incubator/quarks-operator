@@ -92,6 +92,9 @@ func (k *Kubectl) WaitForSecret(namespace string, secretName string) error {
 func (k *Kubectl) SecretExists(namespace string, secretName string) (bool, error) {
 	out, err := runBinary(kubeCtlCmd, "--namespace", namespace, "get", "secret", secretName)
 	if err != nil {
+		if strings.Contains(string(out), "Error from server (NotFound)") {
+			return false, nil
+		}
 		return false, errors.Wrapf(err, "Getting secret %s failed. %s", secretName, string(out))
 	}
 	if strings.Contains(string(out), secretName) {

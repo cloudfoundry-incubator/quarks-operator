@@ -36,11 +36,11 @@ func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable
 				},
 			},
 			Spec: esv1.ExtendedSecretSpec{
-				Type:       esv1.Type(v.Type),
+				Type:       v.Type,
 				SecretName: secretName,
 			},
 		}
-		if esv1.Type(v.Type) == esv1.Certificate {
+		if v.Type == esv1.Certificate {
 			certRequest := esv1.CertificateRequest{
 				CommonName:       v.Options.CommonName,
 				AlternativeNames: v.Options.AlternativeNames,

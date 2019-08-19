@@ -43,6 +43,7 @@ type RSAKey struct {
 type Generator interface {
 	GeneratePassword(name string, request PasswordGenerationRequest) string
 	GenerateCertificate(name string, request CertificateGenerationRequest) (Certificate, error)
+	GenerateCertificateSigningRequest(request CertificateGenerationRequest) ([]byte, []byte, error)
 	GenerateSSHKey(name string) (SSHKey, error)
 	GenerateRSAKey(name string) (RSAKey, error)
 }

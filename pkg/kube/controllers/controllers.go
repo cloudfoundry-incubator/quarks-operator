@@ -44,7 +44,8 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 	extendedjob.AddTrigger,
 	extendedjob.AddErrand,
 	extendedjob.AddJob,
-	extendedsecret.Add,
+	extendedsecret.AddExtendedSecret,
+	extendedsecret.AddCertificateSigningRequest,
 	extendedstatefulset.AddExtendedStatefulSet,
 	extendedstatefulset.AddStatefulSetCleanup,
 }
