@@ -49,30 +49,14 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 
 	// Watch ConfigMaps referenced by the BOSHDeployment
 	configMapPredicates := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			configMap := e.Object.(*corev1.ConfigMap)
-
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, configMap)
-			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s': %v", configMap.Name, err)
-			}
-
-			// The ConfigMap should reference at least one BOSHDeployment in order for us to consider it
-			return len(reconciles) > 0
-		},
+		CreateFunc:  func(e event.CreateEvent) bool { return true },
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			oldConfigMap := e.ObjectOld.(*corev1.ConfigMap)
 			newConfigMap := e.ObjectNew.(*corev1.ConfigMap)
 
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, newConfigMap)
-			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s': %v", newConfigMap.Name, err)
-			}
-
-			// The ConfigMap should reference at least one BOSHDeployment in order for us to consider it
-			return len(reconciles) > 0 && !reflect.DeepEqual(oldConfigMap.Data, newConfigMap.Data)
+			return !reflect.DeepEqual(oldConfigMap.Data, newConfigMap.Data)
 		},
 	}
 	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestsFromMapFunc{
@@ -117,12 +101,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			oldSecret := e.ObjectOld.(*corev1.Secret)
 			newSecret := e.ObjectNew.(*corev1.Secret)
 
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, newSecret)
-			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", newSecret.Name, err)
-			}
-
-			return len(reconciles) > 0 && !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
+			return !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
 		},
 	}
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{

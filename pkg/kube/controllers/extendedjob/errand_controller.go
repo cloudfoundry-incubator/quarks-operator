@@ -99,11 +99,8 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectOld.(*corev1.ConfigMap)
 			n := e.ObjectNew.(*corev1.ConfigMap)
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedJob, n)
-			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s': %s", n.Name, err)
-			}
-			return len(reconciles) > 0 && !reflect.DeepEqual(o.Data, n.Data)
+
+			return !reflect.DeepEqual(o.Data, n.Data)
 		},
 	}
 
@@ -150,11 +147,8 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectOld.(*corev1.Secret)
 			n := e.ObjectNew.(*corev1.Secret)
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedJob, n)
-			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secrets '%s': %s", n.Name, err)
-			}
-			return len(reconciles) > 0 && !reflect.DeepEqual(o.Data, n.Data)
+
+			return !reflect.DeepEqual(o.Data, n.Data)
 		},
 	}
 
