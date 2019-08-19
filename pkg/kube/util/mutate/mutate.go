@@ -67,8 +67,12 @@ func ESecMutateFn(eSec *esv1.ExtendedSecret) controllerutil.MutateFn {
 	return func() error {
 		eSec.Labels = updated.Labels
 		eSec.Annotations = updated.Annotations
-		eSec.Spec = updated.Spec
-		eSec.Status.Generated = updated.Status.Generated
+		// Update only when spec has been changed
+		if !reflect.DeepEqual(eSec.Spec, updated.Spec) {
+			eSec.Spec = updated.Spec
+			eSec.Status.Generated = updated.Status.Generated
+		}
+
 		return nil
 	}
 }

@@ -329,7 +329,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 			result, err := reconciler.Reconcile(request)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(client.CreateCallCount()).To(Equal(0))
-			Expect(client.UpdateCallCount()).To(Equal(2))
+			Expect(client.UpdateCallCount()).To(Equal(1))
 			Expect(reconcile.Result{}).To(Equal(result))
 		})
 	})
