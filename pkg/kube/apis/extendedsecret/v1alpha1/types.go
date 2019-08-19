@@ -86,6 +86,7 @@ type ExtendedSecretSpec struct {
 
 // ExtendedSecretStatus defines the observed state of ExtendedSecret
 type ExtendedSecretStatus struct {
+	LastReconcile *metav1.Time `json:"lastReconcile"`
 	// Indicates if the secret has already been generated
 	Generated bool `json:"generated"`
 }

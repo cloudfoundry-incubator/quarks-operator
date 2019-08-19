@@ -77,8 +77,8 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			log.WithEvent(instance, "GetBOSHDeploymentError").Errorf(ctx, "Failed to get BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	if meltdown.InWindow(time.Now(), r.config.MeltdownDuration, instance.ObjectMeta.Annotations) {
-		log.WithEvent(instance, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, delaying reconciles for %s", instance.Name, r.config.MeltdownDuration)
+	if meltdown.NewWindow(r.config.MeltdownDuration, instance.Status.LastReconcile).Contains(time.Now()) {
+		log.WithEvent(instance, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", instance.Name, r.config.MeltdownRequeueAfter)
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
@@ -133,8 +133,11 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to create BPM configs ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	meltdown.SetLastReconcile(&instance.ObjectMeta, time.Now())
-	err = r.client.Update(ctx, instance)
+	// Update status of bdpl with the timestamp of the last reconcile
+	now := metav1.Now()
+	instance.Status.LastReconcile = &now
+
+	err = r.client.Status().Update(ctx, instance)
 	if err != nil {
 		err = log.WithEvent(instance, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on bdpl '%s' (%v): %s", instance.Name, instance.ResourceVersion, err)
 		return reconcile.Result{Requeue: false}, nil

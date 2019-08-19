@@ -93,8 +93,8 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	if meltdown.InWindow(time.Now(), r.config.MeltdownDuration, exStatefulSet.ObjectMeta.Annotations) {
-		ctxlog.WithEvent(exStatefulSet, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, delaying reconciles for %s", exStatefulSet.Name, r.config.MeltdownDuration)
+	if meltdown.NewWindow(r.config.MeltdownDuration, exStatefulSet.Status.LastReconcile).Contains(time.Now()) {
+		ctxlog.WithEvent(exStatefulSet, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", exStatefulSet.Name, r.config.MeltdownRequeueAfter)
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
@@ -131,10 +131,11 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		}
 	}
 
-	meltdown.SetLastReconcile(&exStatefulSet.ObjectMeta, time.Now())
-	err = r.client.Update(ctx, exStatefulSet)
+	now := metav1.Now()
+	exStatefulSet.Status.LastReconcile = &now
+	err = r.client.Status().Update(ctx, exStatefulSet)
 	if err != nil {
-		err = ctxlog.WithEvent(exStatefulSet, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on ExtendedStatefulSet '%s' (%v): %s", exStatefulSet.Name, exStatefulSet.ResourceVersion, err)
+		err = ctxlog.WithEvent(exStatefulSet, "UpdateStatusError").Errorf(ctx, "Failed to update reconcile timestamp on ExtendedStatefulSet '%s' (%v): %s", exStatefulSet.Name, exStatefulSet.ResourceVersion, err)
 		return reconcile.Result{Requeue: false}, nil
 	}
 

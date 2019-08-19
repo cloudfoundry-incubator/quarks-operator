@@ -28,6 +28,9 @@ func ApplyCRD(client extv1client.ApiextensionsV1beta1Interface, crdName, kind, p
 					Storage: true,
 				},
 			},
+			Subresources: &extv1.CustomResourceSubresources{
+				Status: &extv1.CustomResourceSubresourceStatus{},
+			},
 			Scope: extv1.NamespaceScoped,
 			Names: extv1.CustomResourceDefinitionNames{
 				Kind:       kind,

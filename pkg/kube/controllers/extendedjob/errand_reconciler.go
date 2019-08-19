@@ -6,6 +6,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -85,8 +86,8 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
-	if meltdown.InWindow(time.Now(), r.config.MeltdownDuration, eJob.ObjectMeta.Annotations) {
-		ctxlog.WithEvent(eJob, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, delaying reconciles for %s", eJob.Name, r.config.MeltdownDuration)
+	if meltdown.NewWindow(r.config.MeltdownDuration, eJob.Status.LastReconcile).Contains(time.Now()) {
+		ctxlog.WithEvent(eJob, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", eJob.Name, r.config.MeltdownRequeueAfter)
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
@@ -112,8 +113,6 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	ctxlog.WithEvent(eJob, "CreateJob").Infof(ctx, "Created errand job for '%s'", eJob.Name)
 
-	meltdown.SetLastReconcile(&eJob.ObjectMeta, time.Now())
-
 	if eJob.Spec.Trigger.Strategy == ejv1.TriggerOnce {
 		// Traverse Strategy into the final 'done' state.
 		eJob.Spec.Trigger.Strategy = ejv1.TriggerDone
@@ -121,13 +120,14 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 			ctxlog.WithEvent(eJob, "UpdateError").Errorf(ctx, "Failed to traverse to 'trigger.strategy=done' on job '%s': %s", eJob.Name, err)
 			return reconcile.Result{Requeue: false}, nil
 		}
-	} else {
-		// multiple updates to one resource result in 'object has been modified', so if update was not done for trigger=once, let's update last_reconcile here
-		err := r.client.Update(ctx, eJob)
-		if err != nil {
-			err = ctxlog.WithEvent(eJob, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on job '%s' (%v): %s", eJob.Name, eJob.ResourceVersion, err)
-			return reconcile.Result{Requeue: false}, nil
-		}
+	}
+
+	now := metav1.Now()
+	eJob.Status.LastReconcile = &now
+	err := r.client.Status().Update(ctx, eJob)
+	if err != nil {
+		err = ctxlog.WithEvent(eJob, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on job '%s' (%v): %s", eJob.Name, eJob.ResourceVersion, err)
+		return reconcile.Result{Requeue: false}, nil
 	}
 
 	return reconcile.Result{}, nil

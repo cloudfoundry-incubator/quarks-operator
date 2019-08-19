@@ -17,6 +17,8 @@ spec:
         - ests
   scope: Namespaced
   version: v1alpha1
+  subresources:
+    status: {}
   validation:
     # openAPIV3Schema is the schema for validating custom objects.
     openAPIV3Schema:

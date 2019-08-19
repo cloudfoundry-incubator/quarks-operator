@@ -1,9 +1,10 @@
 package boshdeployment
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	"context"
 	"time"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -69,8 +70,8 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, err
 	}
 
-	if meltdown.InWindow(time.Now(), r.config.MeltdownDuration, manifestSecret.ObjectMeta.Annotations) {
-		log.WithEvent(manifestSecret, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, delaying reconciles for %s", manifestSecret.Name, r.config.MeltdownDuration)
+	if meltdown.NewAnnotationWindow(r.config.MeltdownDuration, manifestSecret.ObjectMeta.Annotations).Contains(time.Now()) {
+		log.WithEvent(manifestSecret, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", manifestSecret.Name, r.config.MeltdownRequeueAfter)
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 

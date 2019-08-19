@@ -71,7 +71,8 @@ type Output struct {
 
 // ExtendedJobStatus defines the observed state of ExtendedJob
 type ExtendedJobStatus struct {
-	Nodes []string `json:"nodes"`
+	LastReconcile *metav1.Time `json:"lastReconcile"`
+	Nodes         []string     `json:"nodes"`
 }
 
 // +genclient

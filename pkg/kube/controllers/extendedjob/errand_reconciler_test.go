@@ -159,6 +159,7 @@ var _ = Describe("ErrandReconciler", func() {
 				BeforeEach(func() {
 					client.UpdateReturns(nil)
 					client.CreateReturns(apierrors.NewAlreadyExists(schema.GroupResource{}, "fake-error"))
+					client.StatusCalls(func() crc.StatusWriter { return &fakes.FakeStatusWriter{} })
 				})
 
 				It("should log skip message and not requeue", func() {
@@ -182,6 +183,7 @@ var _ = Describe("ErrandReconciler", func() {
 					client = fakes.FakeClient{}
 					mgr.GetClientReturns(&client)
 					client.GetCalls(ejobGetStub)
+					client.StatusCalls(func() crc.StatusWriter { return &fakes.FakeStatusWriter{} })
 
 					request = newRequest(eJob)
 				})
@@ -222,6 +224,7 @@ var _ = Describe("ErrandReconciler", func() {
 					client = fakes.FakeClient{}
 					mgr.GetClientReturns(&client)
 					client.GetCalls(ejobGetStub)
+					client.StatusCalls(func() crc.StatusWriter { return &fakes.FakeStatusWriter{} })
 
 					request = newRequest(eJob)
 				})
@@ -272,6 +275,7 @@ var _ = Describe("ErrandReconciler", func() {
 					eJob.Spec.Trigger.Strategy = ejv1.TriggerOnce
 					client = fakes.FakeClient{}
 					mgr.GetClientReturns(&client)
+					client.StatusCalls(func() crc.StatusWriter { return &fakes.FakeStatusWriter{} })
 
 					request = newRequest(eJob)
 				})

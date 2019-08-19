@@ -98,8 +98,8 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, errors.Wrap(err, "Error reading extendedSecret")
 	}
 
-	if meltdown.InWindow(time.Now(), r.config.MeltdownDuration, instance.ObjectMeta.Annotations) {
-		ctxlog.WithEvent(instance, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, delaying reconciles for %s", instance.Name, r.config.MeltdownDuration)
+	if meltdown.NewWindow(r.config.MeltdownDuration, instance.Status.LastReconcile).Contains(time.Now()) {
+		ctxlog.WithEvent(instance, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", instance.Name, r.config.MeltdownRequeueAfter)
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
@@ -158,13 +158,19 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 
 func (r *ReconcileExtendedSecret) updateExSecret(ctx context.Context, instance *esv1.ExtendedSecret) error {
 	instance.Status.Generated = true
-	meltdown.SetLastReconcile(&instance.ObjectMeta, time.Now())
 	op, err := controllerutil.CreateOrUpdate(ctx, r.client, instance, mutate.ESecMutateFn(instance))
 	if err != nil {
 		return errors.Wrapf(err, "could not create or update ExtendedSecret '%s'", instance.GetName())
 	}
 
 	ctxlog.Debugf(ctx, "ExtendedSecret '%s' has been %s", instance.Name, op)
+
+	now := metav1.Now()
+	instance.Status.LastReconcile = &now
+	err = r.client.Status().Update(ctx, instance)
+	if err != nil {
+		return errors.Wrapf(err, "could not create or update ExtendedSecret status '%s'", instance.GetName())
+	}
 
 	return nil
 }

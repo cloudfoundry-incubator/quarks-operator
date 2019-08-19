@@ -13,19 +13,39 @@ import (
 // successful reconcile
 var AnnotationLastReconcile = fmt.Sprintf("%s/last-reconcile", apis.GroupName)
 
-// InWindow returns true if the given time is in the meltdown window
-func InWindow(now time.Time, duration time.Duration, annotations map[string]string) bool {
+// Window represents a time window starting at start and ending at duration
+type Window struct {
+	Start    time.Time
+	Duration time.Duration
+}
+
+// Contains returns true if the given time is in the specified time window
+func (w Window) Contains(now time.Time) bool {
+	if now.Before(w.Start) {
+		return false
+	}
+	windowEnd := w.Start.Add(w.Duration)
+	return now.Before(windowEnd)
+}
+
+// NewWindow returns a new time window starting at lastReconcile, ending after duration
+func NewWindow(duration time.Duration, lastReconcile *metav1.Time) Window {
+	if lastReconcile != nil {
+		start := lastReconcile.Time
+		return Window{Start: start, Duration: duration}
+	}
+	return Window{}
+}
+
+// NewAnnotationWindow returns a window starting at lastReconcile contained in
+// annotations, ending after duration
+func NewAnnotationWindow(duration time.Duration, annotations map[string]string) Window {
 	if ts, ok := annotations[AnnotationLastReconcile]; ok {
-		if windowStart, err := time.Parse(time.RFC3339, ts); err == nil {
-			if now.Before(windowStart) {
-				// should not happen
-				return false
-			}
-			windowEnd := windowStart.Add(duration)
-			return now.Before(windowEnd)
+		if start, err := time.Parse(time.RFC3339, ts); err == nil {
+			return Window{Start: start, Duration: duration}
 		}
 	}
-	return false
+	return Window{}
 }
 
 // SetLastReconcile annotation in object meta to the given time
