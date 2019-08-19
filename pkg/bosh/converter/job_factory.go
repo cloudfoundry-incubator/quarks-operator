@@ -63,70 +63,23 @@ func (f *JobFactory) VariableInterpolationJob() (*ejv1.ExtendedJob, error) {
 
 	// Prepare Volumes and Volume mounts
 
-	// This is a volume for the "not interpolated" manifest,
-	// that has the ops files applied, but still contains '((vars))'
-	volumes := []corev1.Volume{
-		{
-			Name: generateVolumeName(manifestSecretName),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: manifestSecretName,
-				},
-			},
-		},
-	}
-	// Volume mount for the manifest
-	volumeMounts := []corev1.VolumeMount{
-		{
-			Name:      generateVolumeName(manifestSecretName),
-			MountPath: "/var/run/secrets/deployment/",
-			ReadOnly:  true,
-		},
-	}
+	volumes := []corev1.Volume{*withOpsVolume(manifestSecretName)}
+	volumeMounts := []corev1.VolumeMount{withOpsVolumeMount(manifestSecretName)}
 
 	// We need a volume and a mount for each input variable
 	for _, variable := range f.Manifest.Variables {
 		varName := variable.Name
 		varSecretName := names.CalculateSecretName(names.DeploymentSecretTypeVariable, f.Manifest.Name, varName)
 
-		// The volume definition
-		vol := corev1.Volume{
-			Name: generateVolumeName(varSecretName),
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: varSecretName,
-				},
-			},
-		}
-		volumes = append(volumes, vol)
+		volumes = append(volumes, variableVolume(varSecretName))
 
-		// And the volume mount
-		volMount := corev1.VolumeMount{
-			Name:      generateVolumeName(varSecretName),
-			MountPath: "/var/run/secrets/variables/" + varName,
-			ReadOnly:  true,
-		}
-		volumeMounts = append(volumeMounts, volMount)
+		volumeMounts = append(volumeMounts, variableVolumeMount(varSecretName, varName))
 	}
 
 	// If there are no variables, mount an empty dir for variables
 	if len(f.Manifest.Variables) == 0 {
-		// The volume definition
-		vol := corev1.Volume{
-			Name: generateVolumeName("no-vars"),
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		}
-		volumes = append(volumes, vol)
-
-		// And the volume mount
-		volMount := corev1.VolumeMount{
-			Name:      generateVolumeName("no-vars"),
-			MountPath: "/var/run/secrets/variables/",
-			ReadOnly:  true,
-		}
-		volumeMounts = append(volumeMounts, volMount)
+		volumes = append(volumes, noVarsVolume())
+		volumeMounts = append(volumeMounts, noVarsVolumeMount())
 	}
 
 	// Calculate the signature of the manifest, to label things
@@ -230,15 +183,8 @@ func (f *JobFactory) gatheringContainer(cmd, instanceGroupName string) corev1.Co
 		Image: GetOperatorDockerImage(),
 		Args:  []string{"util", cmd},
 		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      generateVolumeName(f.desiredManifestName),
-				MountPath: "/var/run/secrets/deployment/",
-				ReadOnly:  true,
-			},
-			{
-				Name:      generateVolumeName("instance-group"),
-				MountPath: VolumeRenderingDataMountPath,
-			},
+			withOpsVolumeMount(f.desiredManifestName),
+			releaseSourceVolumeMount(),
 		},
 		Env: []corev1.EnvVar{
 			{
@@ -284,7 +230,7 @@ func (f *JobFactory) gatheringJob(name string, secretType names.DeploymentSecret
 			}
 			// Create an init container that copies sources
 			// TODO: destination should also contain release name, to prevent overwrites
-			initContainers = append(initContainers, jobSpecCopierContainer(releaseName, releaseImage, generateVolumeName("instance-group")))
+			initContainers = append(initContainers, jobSpecCopierContainer(releaseName, releaseImage, generateVolumeName(releaseSourceName)))
 		}
 	}
 
@@ -325,20 +271,8 @@ func (f *JobFactory) gatheringJob(name string, secretType names.DeploymentSecret
 					Containers: containers,
 					// Volumes for secrets
 					Volumes: []corev1.Volume{
-						{
-							Name: generateVolumeName(f.desiredManifestName),
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName: f.desiredManifestName,
-								},
-							},
-						},
-						{
-							Name: generateVolumeName("instance-group"),
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
-						},
+						*withOpsVolume(f.desiredManifestName),
+						releaseSourceVolume(),
 					},
 				},
 			},

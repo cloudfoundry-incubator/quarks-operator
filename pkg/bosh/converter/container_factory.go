@@ -223,14 +223,9 @@ func logsTailerContainer(instanceGroupName string) corev1.Container {
 	rootUserID := int64(0)
 
 	return corev1.Container{
-		Name:  "logs",
-		Image: GetOperatorDockerImage(),
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      VolumeSysDirName,
-				MountPath: VolumeSysDirMountPath,
-			},
-		},
+		Name:         "logs",
+		Image:        GetOperatorDockerImage(),
+		VolumeMounts: []corev1.VolumeMount{*sysDirVolumeMount()},
 		Args: []string{
 			"util",
 			"tail-logs",
@@ -273,19 +268,9 @@ func templateRenderingContainer(instanceGroupName string, secretName string) cor
 		Name:  "template-render",
 		Image: GetOperatorDockerImage(),
 		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      VolumeRenderingDataName,
-				MountPath: VolumeRenderingDataMountPath,
-			},
-			{
-				Name:      VolumeJobsDirName,
-				MountPath: VolumeJobsDirMountPath,
-			},
-			{
-				Name:      generateVolumeName(secretName),
-				MountPath: fmt.Sprintf("/var/run/secrets/resolved-properties/%s", instanceGroupName),
-				ReadOnly:  true,
-			},
+			*renderingVolumeMount(),
+			*jobsDirVolumeMount(),
+			resolvedPropertiesVolumeMount(secretName, instanceGroupName),
 		},
 		Env: []corev1.EnvVar{
 			{
@@ -294,7 +279,7 @@ func templateRenderingContainer(instanceGroupName string, secretName string) cor
 			},
 			{
 				Name:  EnvBOSHManifestPath,
-				Value: fmt.Sprintf("/var/run/secrets/resolved-properties/%s/properties.yaml", instanceGroupName),
+				Value: fmt.Sprintf(resolvedPropertiesFormat+"/properties.yaml", instanceGroupName),
 			},
 			{
 				Name:  EnvJobsDir,
@@ -334,19 +319,10 @@ func createDirContainer(jobs []bdm.Job) corev1.Container {
 	}
 
 	return corev1.Container{
-		Name:  "create-dirs",
-		Image: GetOperatorDockerImage(),
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      VolumeDataDirName,
-				MountPath: VolumeDataDirMountPath,
-			},
-			{
-				Name:      VolumeSysDirName,
-				MountPath: VolumeSysDirMountPath,
-			},
-		},
-		Command: []string{"/usr/bin/dumb-init", "--"},
+		Name:         "create-dirs",
+		Image:        GetOperatorDockerImage(),
+		VolumeMounts: []corev1.VolumeMount{*dataDirVolumeMount(), *sysDirVolumeMount()},
+		Command:      []string{"/usr/bin/dumb-init", "--"},
 		Args: []string{
 			"/bin/sh",
 			"-xc",
