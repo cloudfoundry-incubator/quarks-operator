@@ -477,6 +477,14 @@ var _ = Describe("Manifest", func() {
 					))
 				})
 			})
+
+			Describe("SignerType", func() {
+				It("contains desired values", func() {
+					Expect(getStructTagForName("SignerType", variableOption)).To(Equal(
+						`json:"signer_type,omitempty"`,
+					))
+				})
+			})
 		})
 
 		Describe("Feature", func() {
