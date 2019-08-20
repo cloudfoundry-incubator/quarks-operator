@@ -129,6 +129,9 @@ var _ = Describe("kube converter", func() {
 					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, "diego-cell"))
 					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentVersion, "1"))
 
+					// Test ESts spec
+					Expect(extStS.Spec.Zones).To(Equal(m.InstanceGroups[1].AZs))
+
 					stS := extStS.Spec.Template.Spec.Template
 					Expect(stS.Name).To(Equal("diego-cell"))
 
