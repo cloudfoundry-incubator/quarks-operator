@@ -1148,96 +1148,115 @@ var _ = Describe("Manifest", func() {
 			var m1 *Manifest
 			var largeManifest *Manifest
 
-			BeforeEach(func() {
-				var err error
-				m1, err = LoadYAML([]byte(orgText))
-				Expect(err).NotTo(HaveOccurred())
-				largeManifest, err = LoadYAML([]byte(largeText))
-				Expect(err).NotTo(HaveOccurred())
+			Context("with a manifest with large values", func() {
+				BeforeEach(func() {
+					var err error
+					largeManifest, err = LoadYAML([]byte(largeText))
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("should produce the same result when run multiple times", func() {
+					result1, err := largeManifest.Marshal()
+					Expect(err).NotTo(HaveOccurred())
+					result2, err := largeManifest.Marshal()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(result1).To(Equal(result2))
+				})
+
+				It("should marshal correctly and resolve anchors", func() {
+					marshalledLargeManifest, err := largeManifest.Marshal()
+					Expect(err).NotTo(HaveOccurred())
+
+					uncompressed_size := len([]byte(largeText))
+					compressed_size := len([]byte(marshalledLargeManifest))
+					Expect(compressed_size < uncompressed_size).To(BeTrue())
+
+					By("Unmarshalling the large manifest")
+
+					largeManifest, err = LoadYAML(marshalledLargeManifest)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(largeManifest.InstanceGroups[0].Jobs[1].Properties.Properties["loggregator"].(map[string]interface{})["tls"].(map[string]interface{})["agent"].(map[string]interface{})["cert"]).To(Equal("-----BEGIN CERTIFICATE-----\nMIIFOzC" +
+						"CAyOgAwIBAgIUUkyFTjBNZJyp4xFMwq9vImhV/OUwDQYJKoZIhvcNAQEN\nBQAwGDEWMBQGA1UEAxMNbG9nZ3JlZ2F0b3JDQTAeFw0xOTA3MjUwNjA2MDBaFw0y\nMDA3MjQwNjA2MDBaMBExDzANBgNVBAMTBm1ldHJvbjCCAiIwDQYJKoZIhvcNAQEB\nBQADggIPADCCAgoCggIBANRWsOAZNcCZghQsXr" +
+						"QKaHOpdgibljN5K0ZeCXwsKbOa\nXoM8aNB5I+XxHFLYkB6zm5cXv8n6UHeiFaemxjSMT7shO/yTyYq6MpfSdHM1Eops\nLOrKCqXDwi+hxvQmTKxtmVb/Ja6RqnsVDaIkLL/DN803De8yEwPexxYWHMIKwSaY\nWaVYgZugp89HGzcoeX+N2WXmPOrqMi2OZ1ZC0+lUpUjC0EJYBn+oYF234VQSsCIi\nh++" +
+						"AAFbgnzBV4xl8/NeGP1Xqqu57qlz3tFyFoj+k8iFa6Buz5Dv1+JAt+8MERplY\nnIDlHEfmD5TI9cPVDHnBp7Gth+Fv4s5RcnFLOUR+xWvIJ9XiqJUXtFaN0sTIC/DV\nIocg92NQDOLsCRNJV47jV4c1biMvV0AICZdlMebRRJRAgfd3Um4CriOnvYNsoFuC\nee10BeyiP1FPJz6dUeTXRgDq9aYlZf59Q6" +
+						"3b0zaT1IYK0eHmTzlKduLn04dL5p/T\nvJIR6nSaHKdi6/XTKDnT3KuuDb/rYPPTHGprFW0czt/w0u3CSJFnoH5r9kbVZn7j\n4xMZoY3JPz8nzPU9tW6pNenc/vMWp5DYe2IlyiwkbUM5xAPKO9DxSxnn/aussuyB\nKJErotN20YGOZcGVskc5DwqrntWZFL1pFQf1IgcBzCjM6TomDHkp5Jn6Lqvad9xH\n" +
+						"AgMBAAGjgYMwgYAwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMAwGA1Ud\nEwEB/wQCMAAwHQYDVR0OBBYEFPHm52ztGFbCDLj65PEj81S058jNMB8GA1UdIwQY\nMBaAFBAuxNhA1yte0Ftw+0MRngdKVLnYMBEGA1UdEQQKMAiCBm1ldHJvbjANBgkq\nhkiG9w0BAQ0FAAOCAgEAFIVP3POc1jf" +
+						"9mhTD2o9A2u+pm+LL8VBjPeA7X0PkFT3R\nVwG5CbAQqmY9giNBCV00RruYNE1qrlsM06kQnHbglqAIlEMFz50M9yzyYvKxw4uQ\nFSnSdEdl1rgF0G82Q2IA0jFCxZ8sz/GzGROBHbNv5FQs7leNYmykvUKkLJdwBskn\nCsZ7PA1V9mKMogD3BbqH3lB7nRwRmA1LMOSu50l6PJAH+gdTnVzV2QF6B9shJ+" +
+						"dT\nTSzsL2GSjoAv0/F1jAVUbmroNyoZ7/KoAecRRedzGnpWDrRUsvktlGOhGpjd9f3S\nQWIn0KjvOiJVUygXBbvgJ8X5bGTyUgxKa02N4OaMHT18hPVjyhD5nzgq/hGrbjvf\ntFSEwgKan2080XjOeVubFhxcMVTp3gD6Q0EAsTuxaw1SYkbqXxb6rRBeIWkMavN/\ncRsgaLj16uNKXxHHRRQm0BV029u" +
+						"dogqOQVqDwOlMDFFFSQmMgx1kWzcU4leyiaZT\nfrmOKKy0K6czUQ/tE4Bt9/7SLPIysMCDSxE4sPefS+m030LpaVgGidiEmc/Fs9pW\n/15rKzOePCVXG7IBzkNJmb0SRdCrG8sPn56O5Gc5EiULZJL24FJzRysToxf7RhFz\n2tZ5jxFlhSjRZLTxXAJirEcjAgzrpX+47D/UuWcQiuNdbSZk4MZuCFEbY" +
+						"Vho9C8=\n-----END CERTIFICATE-----\n"))
+					Expect(largeManifest.InstanceGroups[0].Jobs[3].Properties.Properties["tls"].(map[string]interface{})["ca_cert"]).To(Equal("-----BEGIN CERTIFICATE-----\nMIIFADCCAuigAwIBAgIUPVdppFi6U3l893jVxiW0gr760jUwDQYJKoZIhvcNAQEN\nBQAwGDEWMBQGA1" +
+						"UEAxMNbG9nZ3JlZ2F0b3JDQTAeFw0xOTA3MjUwNjA2MDBaFw0y\nMDA3MjQwNjA2MDBaMBgxFjAUBgNVBAMTDWxvZ2dyZWdhdG9yQ0EwggIiMA0GCSqG\nSIb3DQEBAQUAA4ICDwAwggIKAoICAQCU8UVt42KUxm38od42zhsV3O/8g3eBmUem\n7IRER844NRHlci+nnVvemFdA81bbbDsgocljVhbFnGB1ELb" +
+						"hNyEnqGrsk88Qou1s\nR/3wiSwg59TmLre4Kk2JbmRqzHcYJW22A4wUGspdjhchFMmstRryBCEV84IPHNH0\naZ2SJQHsciB0mag/avvPbQ9F76uJC/eA5mG0KqH23QC1nARCmcfKrmkeXD8qFmki\njH0nStrFVAlRX7SjNAd2N+64uVzisGO0lze+V8o7MAr7pJxzmPfGs0QYhFpFHgcO\nrOEvNW1HTanc8a" +
+						"n338DDlZSSqdVqdBhRXXFSP75+D0y8UNajVxXzUvOJ3rZfNbFV\nLlnOTHW/ItiOJjzodUfhE3jzjv4DqvKIk/Mrp0HVpgH5niGWgF4LIAav7cK7fVgd\nxACtuUAhAsL3RFddvz8sY4ixm8O0jvAUerCRPnjnA+Uj/1i7XX9cjmIVfcxwjcfH\nmLFSnXtX6+w4m4tWEIN/BptwLdfnMB2DzRXbDQE7m+vxITf" +
+						"BLaY/vK5NA8lil/n8\nFISPtLczIORvjkRrwPKLv435EUxd0EIJFVj7wKaWZDPmtIwOHex1n12BTzlfToig\nFrJi/KwwF4+GwnfERkJkd6JafB7/28Gqp6+UzXcKphBOjGDhaAu7/NlOteRsRLHs\nM0DxqcMh3QIDAQABo0IwQDAOBgNVHQ8BAf8EBAMCAQYwDwYDVR0TAQH/BAUwAwEB\n/zAdBgNVHQ4EFg" +
+						"QUEC7E2EDXK17QW3D7QxGeB0pUudgwDQYJKoZIhvcNAQENBQAD\nggIBAGUcEEk1dKdn73IapvFhrDKHNYSLEGgIVpyvnwjwi4EyXzHNhmGMnHJkAYRg\nKaWBfao8ngYawfEtFpvz1pdpOW+Ul8bMtcC+mJlxI/E/Od0WWNE6QRNdWsoH5JSj\nef+SepxE6ztMfzayC4Tmp85vT1TWi7/2maHuefosAKiwovt" +
+						"csnr54Y6GJkozY2Hd\n46V185MuDK14BeS9Yne9XWSDOdjZH20kRHtoRbxRz15krFmbbpIyek2mss2nVV2d\nt1pUK4er6R4y3QHBn7QBq5kAxiKhFY6yA88+uhX2jf4u5uroG0CHGdZmKlGrb4N/\nfC/1BSBo16V6EOZAy35ktlg4oSCbeJmDXYwZzVvOpQGPRqB7lfDM1bZcv8vdxrXn\nYALcq7OVkRFeCy" +
+						"9HDEvwARfQ1axTZM+tKrcQav7dIKNGr4inzg9tNBhtORlZudhi\nAfpHyEr6rMFk8t63Q45MXMp5L9x4ThyPjyfo17BwhfjY47ibbHvo4vy9O/vbcw4i\nNASFM8VUwtFO9Ip3GAVtUZR4V+i77SsDo3B8546T/KDP2cBjnP+sSjUvtpAGLDFJ\nHa4RWJN4IE+DdVIcipKT2yCzI3Xr8NUO+Q+h7wVgtE8e2sN" +
+						"rsM5X76ILtZBlOfPy\njVdYnn9gIxqS6iWHiGfAHf4Bs+shXicXye88TfeNDnHvLw/Q\n-----END CERTIFICATE-----\n"))
+				})
 			})
 
-			It("should marshal correctly and resolve anchors", func() {
-				marshalledLargeManifest, err := largeManifest.Marshal()
-				Expect(err).NotTo(HaveOccurred())
+			Context("with a regular manifest", func() {
+				BeforeEach(func() {
+					var err error
+					m1, err = LoadYAML([]byte(orgText))
+					Expect(err).NotTo(HaveOccurred())
+				})
 
-				By("Unmarshalling the large manifest")
+				It("converts k8s tags to lowercase", func() {
+					text, err := m1.Marshal()
+					Expect(err).NotTo(HaveOccurred())
 
-				largeManifest, err = LoadYAML(marshalledLargeManifest)
-				Expect(err).NotTo(HaveOccurred())
+					Expect(orgText).To(ContainSubstring("requiredDuringSchedulingIgnoredDuringExecution"))
+					Expect(text).To(ContainSubstring("requiredDuringSchedulingIgnoredDuringExecution"))
+				})
 
-				Expect(largeManifest.InstanceGroups[0].Jobs[1].Properties.Properties["loggregator"].(map[string]interface{})["tls"].(map[string]interface{})["agent"].(map[string]interface{})["cert"]).To(Equal("-----BEGIN CERTIFICATE-----\nMIIFOzC" +
-					"CAyOgAwIBAgIUUkyFTjBNZJyp4xFMwq9vImhV/OUwDQYJKoZIhvcNAQEN\nBQAwGDEWMBQGA1UEAxMNbG9nZ3JlZ2F0b3JDQTAeFw0xOTA3MjUwNjA2MDBaFw0y\nMDA3MjQwNjA2MDBaMBExDzANBgNVBAMTBm1ldHJvbjCCAiIwDQYJKoZIhvcNAQEB\nBQADggIPADCCAgoCggIBANRWsOAZNcCZghQsXr" +
-					"QKaHOpdgibljN5K0ZeCXwsKbOa\nXoM8aNB5I+XxHFLYkB6zm5cXv8n6UHeiFaemxjSMT7shO/yTyYq6MpfSdHM1Eops\nLOrKCqXDwi+hxvQmTKxtmVb/Ja6RqnsVDaIkLL/DN803De8yEwPexxYWHMIKwSaY\nWaVYgZugp89HGzcoeX+N2WXmPOrqMi2OZ1ZC0+lUpUjC0EJYBn+oYF234VQSsCIi\nh++" +
-					"AAFbgnzBV4xl8/NeGP1Xqqu57qlz3tFyFoj+k8iFa6Buz5Dv1+JAt+8MERplY\nnIDlHEfmD5TI9cPVDHnBp7Gth+Fv4s5RcnFLOUR+xWvIJ9XiqJUXtFaN0sTIC/DV\nIocg92NQDOLsCRNJV47jV4c1biMvV0AICZdlMebRRJRAgfd3Um4CriOnvYNsoFuC\nee10BeyiP1FPJz6dUeTXRgDq9aYlZf59Q6" +
-					"3b0zaT1IYK0eHmTzlKduLn04dL5p/T\nvJIR6nSaHKdi6/XTKDnT3KuuDb/rYPPTHGprFW0czt/w0u3CSJFnoH5r9kbVZn7j\n4xMZoY3JPz8nzPU9tW6pNenc/vMWp5DYe2IlyiwkbUM5xAPKO9DxSxnn/aussuyB\nKJErotN20YGOZcGVskc5DwqrntWZFL1pFQf1IgcBzCjM6TomDHkp5Jn6Lqvad9xH\n" +
-					"AgMBAAGjgYMwgYAwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMAwGA1Ud\nEwEB/wQCMAAwHQYDVR0OBBYEFPHm52ztGFbCDLj65PEj81S058jNMB8GA1UdIwQY\nMBaAFBAuxNhA1yte0Ftw+0MRngdKVLnYMBEGA1UdEQQKMAiCBm1ldHJvbjANBgkq\nhkiG9w0BAQ0FAAOCAgEAFIVP3POc1jf" +
-					"9mhTD2o9A2u+pm+LL8VBjPeA7X0PkFT3R\nVwG5CbAQqmY9giNBCV00RruYNE1qrlsM06kQnHbglqAIlEMFz50M9yzyYvKxw4uQ\nFSnSdEdl1rgF0G82Q2IA0jFCxZ8sz/GzGROBHbNv5FQs7leNYmykvUKkLJdwBskn\nCsZ7PA1V9mKMogD3BbqH3lB7nRwRmA1LMOSu50l6PJAH+gdTnVzV2QF6B9shJ+" +
-					"dT\nTSzsL2GSjoAv0/F1jAVUbmroNyoZ7/KoAecRRedzGnpWDrRUsvktlGOhGpjd9f3S\nQWIn0KjvOiJVUygXBbvgJ8X5bGTyUgxKa02N4OaMHT18hPVjyhD5nzgq/hGrbjvf\ntFSEwgKan2080XjOeVubFhxcMVTp3gD6Q0EAsTuxaw1SYkbqXxb6rRBeIWkMavN/\ncRsgaLj16uNKXxHHRRQm0BV029u" +
-					"dogqOQVqDwOlMDFFFSQmMgx1kWzcU4leyiaZT\nfrmOKKy0K6czUQ/tE4Bt9/7SLPIysMCDSxE4sPefS+m030LpaVgGidiEmc/Fs9pW\n/15rKzOePCVXG7IBzkNJmb0SRdCrG8sPn56O5Gc5EiULZJL24FJzRysToxf7RhFz\n2tZ5jxFlhSjRZLTxXAJirEcjAgzrpX+47D/UuWcQiuNdbSZk4MZuCFEbY" +
-					"Vho9C8=\n-----END CERTIFICATE-----\n"))
-				Expect(largeManifest.InstanceGroups[0].Jobs[3].Properties.Properties["tls"].(map[string]interface{})["ca_cert"]).To(Equal("-----BEGIN CERTIFICATE-----\nMIIFADCCAuigAwIBAgIUPVdppFi6U3l893jVxiW0gr760jUwDQYJKoZIhvcNAQEN\nBQAwGDEWMBQGA1" +
-					"UEAxMNbG9nZ3JlZ2F0b3JDQTAeFw0xOTA3MjUwNjA2MDBaFw0y\nMDA3MjQwNjA2MDBaMBgxFjAUBgNVBAMTDWxvZ2dyZWdhdG9yQ0EwggIiMA0GCSqG\nSIb3DQEBAQUAA4ICDwAwggIKAoICAQCU8UVt42KUxm38od42zhsV3O/8g3eBmUem\n7IRER844NRHlci+nnVvemFdA81bbbDsgocljVhbFnGB1ELb" +
-					"hNyEnqGrsk88Qou1s\nR/3wiSwg59TmLre4Kk2JbmRqzHcYJW22A4wUGspdjhchFMmstRryBCEV84IPHNH0\naZ2SJQHsciB0mag/avvPbQ9F76uJC/eA5mG0KqH23QC1nARCmcfKrmkeXD8qFmki\njH0nStrFVAlRX7SjNAd2N+64uVzisGO0lze+V8o7MAr7pJxzmPfGs0QYhFpFHgcO\nrOEvNW1HTanc8a" +
-					"n338DDlZSSqdVqdBhRXXFSP75+D0y8UNajVxXzUvOJ3rZfNbFV\nLlnOTHW/ItiOJjzodUfhE3jzjv4DqvKIk/Mrp0HVpgH5niGWgF4LIAav7cK7fVgd\nxACtuUAhAsL3RFddvz8sY4ixm8O0jvAUerCRPnjnA+Uj/1i7XX9cjmIVfcxwjcfH\nmLFSnXtX6+w4m4tWEIN/BptwLdfnMB2DzRXbDQE7m+vxITf" +
-					"BLaY/vK5NA8lil/n8\nFISPtLczIORvjkRrwPKLv435EUxd0EIJFVj7wKaWZDPmtIwOHex1n12BTzlfToig\nFrJi/KwwF4+GwnfERkJkd6JafB7/28Gqp6+UzXcKphBOjGDhaAu7/NlOteRsRLHs\nM0DxqcMh3QIDAQABo0IwQDAOBgNVHQ8BAf8EBAMCAQYwDwYDVR0TAQH/BAUwAwEB\n/zAdBgNVHQ4EFg" +
-					"QUEC7E2EDXK17QW3D7QxGeB0pUudgwDQYJKoZIhvcNAQENBQAD\nggIBAGUcEEk1dKdn73IapvFhrDKHNYSLEGgIVpyvnwjwi4EyXzHNhmGMnHJkAYRg\nKaWBfao8ngYawfEtFpvz1pdpOW+Ul8bMtcC+mJlxI/E/Od0WWNE6QRNdWsoH5JSj\nef+SepxE6ztMfzayC4Tmp85vT1TWi7/2maHuefosAKiwovt" +
-					"csnr54Y6GJkozY2Hd\n46V185MuDK14BeS9Yne9XWSDOdjZH20kRHtoRbxRz15krFmbbpIyek2mss2nVV2d\nt1pUK4er6R4y3QHBn7QBq5kAxiKhFY6yA88+uhX2jf4u5uroG0CHGdZmKlGrb4N/\nfC/1BSBo16V6EOZAy35ktlg4oSCbeJmDXYwZzVvOpQGPRqB7lfDM1bZcv8vdxrXn\nYALcq7OVkRFeCy" +
-					"9HDEvwARfQ1axTZM+tKrcQav7dIKNGr4inzg9tNBhtORlZudhi\nAfpHyEr6rMFk8t63Q45MXMp5L9x4ThyPjyfo17BwhfjY47ibbHvo4vy9O/vbcw4i\nNASFM8VUwtFO9Ip3GAVtUZR4V+i77SsDo3B8546T/KDP2cBjnP+sSjUvtpAGLDFJ\nHa4RWJN4IE+DdVIcipKT2yCzI3Xr8NUO+Q+h7wVgtE8e2sN" +
-					"rsM5X76ILtZBlOfPy\njVdYnn9gIxqS6iWHiGfAHf4Bs+shXicXye88TfeNDnHvLw/Q\n-----END CERTIFICATE-----\n"))
-			})
+				It("retains affinity data", func() {
+					text, err := m1.Marshal()
+					Expect(err).NotTo(HaveOccurred())
 
-			It("converts k8s tags to lowercase", func() {
-				text, err := m1.Marshal()
-				Expect(err).NotTo(HaveOccurred())
+					By("loading marshalled manifest again")
+					manifest, err := LoadYAML(text)
+					Expect(err).NotTo(HaveOccurred())
 
-				Expect(orgText).To(ContainSubstring("requiredDuringSchedulingIgnoredDuringExecution"))
-				Expect(text).To(ContainSubstring("requiredDuringSchedulingIgnoredDuringExecution"))
-			})
+					ig := manifest.InstanceGroups[0]
+					Expect(ig.Name).To(Equal("bpm1"))
+					Expect(ig.Instances).To(Equal(2))
 
-			It("retains affinity data", func() {
-				text, err := m1.Marshal()
-				Expect(err).NotTo(HaveOccurred())
+					affinity := ig.Env.AgentEnvBoshConfig.Agent.Settings.Affinity
+					Expect(affinity).ToNot(BeNil())
+					Expect(affinity.NodeAffinity).ToNot(BeNil())
+					Expect(affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms).To(HaveLen(1))
+					selectors := affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0]
+					Expect(selectors.MatchFields).To(HaveLen(0))
 
-				By("loading marshalled manifest again")
-				manifest, err := LoadYAML(text)
-				Expect(err).NotTo(HaveOccurred())
+					Expect(selectors.MatchExpressions).To(HaveLen(1))
+					match := selectors.MatchExpressions[0]
+					Expect(match.Key).To(Equal("beta.kubernetes.io/os"))
+					Expect(match.Values).To(HaveLen(2))
+				})
 
-				ig := manifest.InstanceGroups[0]
-				Expect(ig.Name).To(Equal("bpm1"))
-				Expect(ig.Instances).To(Equal(2))
+				It("retains healthcheck data", func() {
+					defaultText := boshmanifest.Default
+					m1, err := LoadYAML([]byte(defaultText))
+					Expect(err).NotTo(HaveOccurred())
+					text, err := m1.Marshal()
+					Expect(err).NotTo(HaveOccurred())
 
-				affinity := ig.Env.AgentEnvBoshConfig.Agent.Settings.Affinity
-				Expect(affinity).ToNot(BeNil())
-				Expect(affinity.NodeAffinity).ToNot(BeNil())
-				Expect(affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms).To(HaveLen(1))
-				selectors := affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0]
-				Expect(selectors.MatchFields).To(HaveLen(0))
+					By("loading marshalled manifest again")
+					manifest, err := LoadYAML(text)
+					Expect(err).NotTo(HaveOccurred())
 
-				Expect(selectors.MatchExpressions).To(HaveLen(1))
-				match := selectors.MatchExpressions[0]
-				Expect(match.Key).To(Equal("beta.kubernetes.io/os"))
-				Expect(match.Values).To(HaveLen(2))
-			})
+					hc := m1.InstanceGroups[1].Jobs[0].Properties.Quarks.Run.HealthCheck
+					Expect(hc).ToNot(BeNil())
+					Expect(hc["test-server"].ReadinessProbe.Handler.Exec.Command).To(ContainElement("curl --silent --fail --head http://${HOSTNAME}:8080/health"))
 
-			It("retains healthcheck data", func() {
-				defaultText := boshmanifest.Default
-				m1, err := LoadYAML([]byte(defaultText))
-				Expect(err).NotTo(HaveOccurred())
-				text, err := m1.Marshal()
-				Expect(err).NotTo(HaveOccurred())
-
-				By("loading marshalled manifest again")
-				manifest, err := LoadYAML(text)
-				Expect(err).NotTo(HaveOccurred())
-
-				hc := m1.InstanceGroups[1].Jobs[0].Properties.Quarks.Run.HealthCheck
-				Expect(hc).ToNot(BeNil())
-				Expect(hc["test-server"].ReadinessProbe.Handler.Exec.Command).To(ContainElement("curl --silent --fail --head http://${HOSTNAME}:8080/health"))
-
-				hc = manifest.InstanceGroups[1].Jobs[0].Properties.Quarks.Run.HealthCheck
-				Expect(hc).ToNot(BeNil())
-				Expect(hc["test-server"].ReadinessProbe.Handler.Exec.Command).To(ContainElement("curl --silent --fail --head http://${HOSTNAME}:8080/health"))
-
+					hc = manifest.InstanceGroups[1].Jobs[0].Properties.Quarks.Run.HealthCheck
+					Expect(hc).ToNot(BeNil())
+					Expect(hc["test-server"].ReadinessProbe.Handler.Exec.Command).To(ContainElement("curl --silent --fail --head http://${HOSTNAME}:8080/health"))
+				})
 			})
 		})
 

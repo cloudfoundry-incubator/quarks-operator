@@ -4,14 +4,15 @@ package manifest
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"reflect"
 	"regexp"
 	"strings"
 
-	guuid "github.com/google/uuid"
 	"github.com/pkg/errors"
 	goyaml "gopkg.in/yaml.v2"
 	"sigs.k8s.io/yaml"
@@ -129,6 +130,14 @@ type Manifest struct {
 	Update         *Update                  `json:"update,omitempty"`
 }
 
+// duplicateYamlValue is a struct used for size compression
+// in Marshal function  to store the yaml values of
+// significant size and which occur more than once.
+type duplicateYamlValue struct {
+	Hash          string
+	YamlKeyMarker string
+}
+
 // LoadYAML returns a new BOSH deployment manifest from a yaml representation
 func LoadYAML(data []byte) (*Manifest, error) {
 	m := &Manifest{}
@@ -141,15 +150,6 @@ func LoadYAML(data []byte) (*Manifest, error) {
 	}
 
 	return m, nil
-}
-
-// duplicateYamlValues is a struct used for size compression
-// in Marshal function  to store the yaml values of
-// significant size and which occur more than once.
-type duplicateYamlValues struct {
-	Value         string
-	UUID          string
-	YamlKeyMarker string
 }
 
 // Marshal serializes a BOSH manifest into yaml
@@ -167,7 +167,7 @@ func (m *Manifest) Marshal() ([]byte, error) {
 		return nil, err
 	}
 
-	duplicateValues := []duplicateYamlValues{}
+	duplicateValues := map[string]duplicateYamlValue{}
 	duplicateValues = markDuplicateValues(reflect.ValueOf(manifestInterfaceMap), duplicateValues)
 
 	marshalledManifest, err = goyaml.Marshal(&manifestInterfaceMap)
@@ -176,13 +176,11 @@ func (m *Manifest) Marshal() ([]byte, error) {
 	}
 
 	// Remove quotes over anchor values as reflect in go adds quotes to strings.
-	for _, duplicateValue := range duplicateValues {
-		marshalledManifest = bytes.ReplaceAll(marshalledManifest, []byte("'*"+duplicateValue.UUID+"'"), []byte("*"+duplicateValue.UUID))
-	}
-
-	// Replace the YamlKeyMaker to an anchor
-	for _, value := range duplicateValues {
-		marshalledManifest = bytes.ReplaceAll(marshalledManifest, []byte(value.YamlKeyMarker+"="+value.UUID+": "), []byte(value.YamlKeyMarker+":"+" &"+value.UUID+" "))
+	for _, v := range duplicateValues {
+		marshalledManifest = bytes.ReplaceAll(marshalledManifest,
+			[]byte(fmt.Sprintf("'*%s'", v.Hash)), []byte("*"+v.Hash))
+		marshalledManifest = bytes.ReplaceAll(marshalledManifest,
+			[]byte(fmt.Sprintf("%s=%s: ", v.YamlKeyMarker, v.Hash)), []byte(fmt.Sprintf("%s: &%s ", v.YamlKeyMarker, v.Hash)))
 	}
 
 	return marshalledManifest, nil
@@ -190,7 +188,7 @@ func (m *Manifest) Marshal() ([]byte, error) {
 
 // markDuplicateValues will store the duplicate values in the
 // duplicateValues struct and change the manifest to include anchors.
-// Ex :-  key1-UUID1: |-
+// Ex :-  key1=UUID1: |-
 //		  		data
 //		  key2: *UUID1
 // Later in the marshal function, the above gets changed to
@@ -198,9 +196,8 @@ func (m *Manifest) Marshal() ([]byte, error) {
 //		  		data
 //		  key2: *UUID1
 //
-func markDuplicateValues(value reflect.Value, duplicateValues []duplicateYamlValues) []duplicateYamlValues {
-
-	// Get the element is the value is a pointer
+func markDuplicateValues(value reflect.Value, duplicateValues map[string]duplicateYamlValue) map[string]duplicateYamlValue {
+	// Get the element if the value is a pointer
 	if value.Kind() == reflect.Ptr || value.Kind() == reflect.Interface {
 		value = value.Elem()
 	}
@@ -221,28 +218,25 @@ func markDuplicateValues(value reflect.Value, duplicateValues []duplicateYamlVal
 		}
 		if valueField.Kind() == reflect.String {
 			if valueField.String() != "" && valueField.IsValid() && len(valueField.String()) > 64 {
+				h := crypto.SHA1.New()
+				h.Write([]byte(valueField.String()))
+				sum := h.Sum(nil)
+				sha1 := hex.EncodeToString(sum[:])
 
-				foundValue := false
-				for _, duplicateValue := range duplicateValues {
-					if duplicateValue.Value == valueField.String() {
-						valueFieldO.Set(reflect.ValueOf("*" + duplicateValue.UUID))
-						foundValue = true
-					}
-				}
-
-				if !foundValue {
-					newKey := guuid.New().String()
-					newMapKey := valueKeyField.Interface().(string) + string("=") + newKey
+				_, foundValue := duplicateValues[sha1]
+				if foundValue {
+					valueFieldO.Set(reflect.ValueOf("*" + sha1))
+				} else {
+					newMapKey := fmt.Sprintf("%s=%s", valueKeyField.Interface().(string), sha1)
 					valueFieldO.Set(valueField)
 
-					duplicateValue := duplicateYamlValues{
-						UUID:          newKey,
-						Value:         valueField.String(),
+					duplicateValue := duplicateYamlValue{
+						Hash:          sha1,
 						YamlKeyMarker: valueKeyField.Interface().(string),
 					}
 					valueKeyField.Set(reflect.ValueOf(newMapKey))
 
-					duplicateValues = append(duplicateValues, duplicateValue)
+					duplicateValues[sha1] = duplicateValue
 				}
 			}
 		} else {
@@ -250,7 +244,6 @@ func markDuplicateValues(value reflect.Value, duplicateValues []duplicateYamlVal
 		}
 
 	case reflect.Map:
-
 		for _, k := range value.MapKeys() {
 			valueField := value.MapIndex(k)
 			if valueField.Kind() == reflect.Ptr || valueField.Kind() == reflect.Interface {
@@ -260,28 +253,24 @@ func markDuplicateValues(value reflect.Value, duplicateValues []duplicateYamlVal
 			// Consider the strings which are big enough only.
 			if valueField.Kind() == reflect.String {
 				if valueField.String() != "" && valueField.IsValid() {
+					h := crypto.SHA1.New()
+					h.Write([]byte(valueField.String()))
+					sum := h.Sum(nil)
+					sha1 := hex.EncodeToString(sum[:])
 
-					foundValue := false
-					for _, duplicateValue := range duplicateValues {
-						if duplicateValue.Value == valueField.String() {
-							value.SetMapIndex(reflect.ValueOf(k.Interface().(string)), reflect.ValueOf(string("*"+duplicateValue.UUID)))
-							foundValue = true
-						}
-					}
-
-					if !foundValue {
-						newKey := guuid.New().String()
-						value.SetMapIndex(reflect.ValueOf(k), reflect.Value{})
-						newMapKey := k.Interface().(string) + string("=") + newKey
+					_, foundValue := duplicateValues[sha1]
+					if foundValue {
+						value.SetMapIndex(k, reflect.ValueOf(string("*"+sha1)))
+					} else {
+						newMapKey := fmt.Sprintf("%s=%s", k.Interface().(string), sha1)
 
 						value.SetMapIndex(k, reflect.Value{})
 						value.SetMapIndex(reflect.ValueOf(newMapKey), valueField)
-						duplicateValue := duplicateYamlValues{
-							UUID:          newKey,
-							Value:         valueField.String(),
+						duplicateValue := duplicateYamlValue{
+							Hash:          sha1,
 							YamlKeyMarker: k.Interface().(string),
 						}
-						duplicateValues = append(duplicateValues, duplicateValue)
+						duplicateValues[sha1] = duplicateValue
 					}
 				}
 			} else {
