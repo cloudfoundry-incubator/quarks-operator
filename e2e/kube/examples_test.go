@@ -409,6 +409,37 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred(), "error getting for secret")
 			})
 
+			It("Self signed certificate example must work", func() {
+				caYamlFilePath := examplesDir + "extended-secret/loggregator-ca-cert.yaml"
+				certYamlFilePath := examplesDir + "extended-secret/loggregator-tls-agent-cert.yaml"
+
+				By("Creating ExtendedSecrets")
+				err := testing.Create(namespace, caYamlFilePath)
+				Expect(err).ToNot(HaveOccurred())
+				err = testing.Create(namespace, certYamlFilePath)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("Checking the generated certificates")
+				err = kubectlHelper.WaitForSecret(namespace, "example.var-loggregator-ca")
+				Expect(err).ToNot(HaveOccurred(), "error waiting for ca secret")
+				err = kubectlHelper.WaitForSecret(namespace, "example.var-loggregator-tls-agent")
+				Expect(err).ToNot(HaveOccurred(), "error waiting for cert secret")
+
+				By("Checking the generated certificates")
+				outSecret, err := testing.GetData(namespace, "secret", "example.var-loggregator-ca", "go-template={{.data.certificate}}")
+				Expect(err).ToNot(HaveOccurred())
+				rootPEM, _ := b64.StdEncoding.DecodeString(string(outSecret))
+
+				outSecret, err = testing.GetData(namespace, "secret", "example.var-loggregator-tls-agent", "go-template={{.data.certificate}}")
+				Expect(err).ToNot(HaveOccurred())
+				certPEM, _ := b64.StdEncoding.DecodeString(string(outSecret))
+
+				By("Verify the certificates")
+				dnsName := "metron"
+				err = testing.CertificateVerify(rootPEM, certPEM, dnsName)
+				Expect(err).ToNot(HaveOccurred(), "error verifying certificates")
+			})
+
 			It("Test cases must be written for all example use cases in docs", func() {
 				countFile := 0
 				err := filepath.Walk(examplesDir, func(path string, info os.FileInfo, err error) error {
@@ -419,7 +450,7 @@ var _ = Describe("Examples", func() {
 				})
 				Expect(err).NotTo(HaveOccurred())
 				// If this testcase fails that means a test case is missing for an example in the docs folder
-				Expect(countFile).To(Equal(27))
+				Expect(countFile).To(Equal(29))
 			})
 		})
 	})
