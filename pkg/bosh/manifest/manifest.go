@@ -46,6 +46,7 @@ type VariableOptions struct {
 	IsCA             bool       `json:"is_ca"`
 	CA               string     `json:"ca,omitempty"`
 	ExtendedKeyUsage []AuthType `json:"extended_key_usage,omitempty"`
+	SignerType       string     `json:"signer_type,omitempty"`
 }
 
 // Variable from BOSH deployment manifest
