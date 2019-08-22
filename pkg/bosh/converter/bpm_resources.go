@@ -175,6 +175,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
 		Spec: essv1.ExtendedStatefulSetSpec{
+			Zones:                instanceGroup.AZs,
 			UpdateOnConfigChange: true,
 			Template: v1beta2.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{

@@ -146,7 +146,7 @@ func (r *ReconcileExtendedStatefulSet) generateVolumeManagementSingleStatefulSet
 		statefulSet.Spec.Template.SetLabels(podLabels)
 		statefulSet.Spec.Template.SetAnnotations(podAnnotations)
 
-		statefulSet = r.updateAffinity(statefulSet, exStatefulSet.Spec.ZoneNodeLabel, zoneIndex, zoneName)
+		statefulSet = r.updateAffinity(statefulSet, exStatefulSet.Spec.ZoneNodeLabel, zoneName)
 	}
 
 	// Set updated properties
