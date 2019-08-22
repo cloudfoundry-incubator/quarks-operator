@@ -2,6 +2,7 @@ package extendedjob
 
 import (
 	"context"
+	"time"
 
 	"github.com/pkg/errors"
 	batchv1 "k8s.io/api/batch/v1"
@@ -10,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
@@ -124,15 +126,29 @@ func (j jobCreatorImpl) Create(ctx context.Context, eJob ejv1.ExtendedJob, podNa
 		return false, ctxlog.WithEvent(&eJob, "SetOwnerReferenceError").Errorf(ctx, "failed to set owner reference on job for '%s': %s", eJob.Name, err)
 	}
 
-	err = j.client.Create(ctx, job)
-	if err != nil {
-		if apierrors.IsAlreadyExists(err) {
-			ctxlog.WithEvent(&eJob, "AlreadyRunning").Infof(ctx, "Skip '%s': already running", eJob.Name)
-			// we don't want to requeue the job
-			return retry, nil
-		}
-		retry = true
-	}
+	var errOnCreate error
+	err = wait.ExponentialBackoff(
+		wait.Backoff{
+			Duration: time.Second,
+			Steps:    3,
+			Factor:   1,
+		},
+		func() (bool, error) {
+			errOnCreate = j.client.Create(ctx, job)
+			if errOnCreate != nil {
+				if apierrors.IsAlreadyExists(errOnCreate) {
+					ctxlog.WithEvent(&eJob, "AlreadyRunning").Infof(ctx, "Skip '%s': already running", eJob.Name)
+					return true, nil
+				}
+				ctxlog.Debugf(ctx, "Retrying to create job for '%s' due to: %s", eJob.Name, errOnCreate)
+				// Don't return the error. This will cause the ExponentialBackoff to stop.
+				return false, nil
+			}
 
+			return true, nil
+		})
+	if err != nil {
+		err = errors.Wrapf(errOnCreate, "Timed out waiting for the job creation.")
+	}
 	return
 }

@@ -159,9 +159,9 @@ var _ = Describe("TriggerReconciler", func() {
 
 				It("should log create error and continue with next job", func() {
 					act()
-					Expect(client.CreateCallCount()).To(Equal(2))
-					Expect(logs.FilterMessageSnippet("Failed to create job for 'foo' via pod fake-pod/ready: fake-error").Len()).To(Equal(1))
-					Expect(logs.FilterMessageSnippet("Failed to create job for 'bar' via pod fake-pod/ready: fake-error").Len()).To(Equal(1))
+					Expect(client.CreateCallCount()).To(Equal(6))
+					Expect(logs.FilterMessageSnippet("Failed to create job for 'foo' via pod fake-pod/ready").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Failed to create job for 'bar' via pod fake-pod/ready").Len()).To(Equal(1))
 				})
 			})
 		})

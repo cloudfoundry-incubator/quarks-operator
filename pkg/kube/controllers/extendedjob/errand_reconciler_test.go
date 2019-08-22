@@ -149,9 +149,9 @@ var _ = Describe("ErrandReconciler", func() {
 
 				It("should log create error and requeue", func() {
 					_, err := act()
-					Expect(logs.FilterMessageSnippet("Failed to create job 'fake-ejob': fake-error").Len()).To(Equal(1))
+					Expect(logs.FilterMessageSnippet("Failed to create job 'fake-ejob'").Len()).To(Equal(1))
 					Expect(err).To(HaveOccurred())
-					Expect(client.CreateCallCount()).To(Equal(1))
+					Expect(client.CreateCallCount()).To(Equal(3))
 				})
 			})
 
