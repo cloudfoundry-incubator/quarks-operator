@@ -260,7 +260,7 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(exStatefulSet *
 
 	// Update available-zone specified properties
 	if zoneName != "" {
-		// Reset name prefix with zoneIndex
+		// Override name prefix with zoneIndex
 		statefulSetNamePrefix = fmt.Sprintf("%s-z%d", exStatefulSet.GetName(), zoneIndex)
 
 		labels[estsv1.LabelAZIndex] = strconv.Itoa(zoneIndex)
@@ -277,7 +277,7 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(exStatefulSet *
 
 		podAnnotations[estsv1.AnnotationZones] = string(zonesBytes)
 
-		statefulSet = r.updateAffinity(statefulSet, exStatefulSet.Spec.ZoneNodeLabel, zoneIndex, zoneName)
+		statefulSet = r.updateAffinity(statefulSet, exStatefulSet.Spec.ZoneNodeLabel, zoneName)
 	}
 
 	// Set az-index as 0 for single zoneName
@@ -299,7 +299,7 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(exStatefulSet *
 }
 
 // updateAffinity Update current statefulSet Affinity from AZ specification
-func (r *ReconcileExtendedStatefulSet) updateAffinity(statefulSet *v1beta2.StatefulSet, zoneNodeLabel string, zoneIndex int, zoneName string) *v1beta2.StatefulSet {
+func (r *ReconcileExtendedStatefulSet) updateAffinity(statefulSet *v1beta2.StatefulSet, zoneNodeLabel string, zoneName string) *v1beta2.StatefulSet {
 	nodeInZoneSelector := corev1.NodeSelectorRequirement{
 		Key:      zoneNodeLabel,
 		Operator: corev1.NodeSelectorOpIn,
