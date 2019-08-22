@@ -3,6 +3,7 @@ package v1alpha1
 import (
 	"fmt"
 
+	certv1 "k8s.io/api/certificates/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
@@ -12,20 +13,35 @@ import (
 // It's used as input for the Kube code generator
 // Run "make generate" after modifying this file
 
-// Type defines the type of the generated secret
-type Type string
+// SecretType defines the type of the generated secret
+type SecretType = string
 
-// Valid values for ref types
+// Valid values for secret types
 const (
-	Password    Type = "password"
-	Certificate Type = "certificate"
-	SSHKey      Type = "ssh"
-	RSAKey      Type = "rsa"
+	Password    SecretType = "password"
+	Certificate SecretType = "certificate"
+	SSHKey      SecretType = "ssh"
+	RSAKey      SecretType = "rsa"
+)
+
+// SignerType defines the type of the certificate signer
+type SignerType = string
+
+// Valid values for signer types
+const (
+	// LocalSigner defines the local as certificate signer
+	LocalSigner SignerType = "local"
+	// ClusterSigner defines the cluster as certificate signer
+	ClusterSigner SignerType = "cluster"
 )
 
 var (
 	// LabelKind is the label key for secret kind
 	LabelKind = fmt.Sprintf("%s/secret-kind", apis.GroupName)
+	// AnnotationCertSecretName is the annotation key for certificate secret name
+	AnnotationCertSecretName = fmt.Sprintf("%s/cert-secret-name", apis.GroupName)
+	// AnnotationESecNamespace is the annotation key for ex-secret-namespace
+	AnnotationESecNamespace = fmt.Sprintf("%s/ex-secret-namespace", apis.GroupName)
 )
 
 const (
@@ -41,11 +57,13 @@ type SecretReference struct {
 
 // CertificateRequest specifies the details for the certificate generation
 type CertificateRequest struct {
-	CommonName       string          `json:"commonName"`
-	AlternativeNames []string        `json:"alternativeNames"`
-	IsCA             bool            `json:"isCA"`
-	CARef            SecretReference `json:"CARef"`
-	CAKeyRef         SecretReference `json:"CAKeyRef"`
+	CommonName       string            `json:"commonName"`
+	AlternativeNames []string          `json:"alternativeNames"`
+	IsCA             bool              `json:"isCA"`
+	CARef            SecretReference   `json:"CARef"`
+	CAKeyRef         SecretReference   `json:"CAKeyRef"`
+	SignerType       SignerType        `json:"signerType,omitempty"`
+	Usages           []certv1.KeyUsage `json:"usages,omitempty"`
 }
 
 // Request specifies details for the secret generation
@@ -55,9 +73,9 @@ type Request struct {
 
 // ExtendedSecretSpec defines the desired state of ExtendedSecret
 type ExtendedSecretSpec struct {
-	Type       Type    `json:"type"`
-	Request    Request `json:"request"`
-	SecretName string  `json:"secretName"`
+	Type       SecretType `json:"type"`
+	Request    Request    `json:"request"`
+	SecretName string     `json:"secretName"`
 }
 
 // ExtendedSecretStatus defines the observed state of ExtendedSecret

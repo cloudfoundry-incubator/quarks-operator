@@ -22,6 +22,21 @@ type FakeGenerator struct {
 		result1 credsgen.Certificate
 		result2 error
 	}
+	GenerateCertificateSigningRequestStub        func(credsgen.CertificateGenerationRequest) ([]byte, []byte, error)
+	generateCertificateSigningRequestMutex       sync.RWMutex
+	generateCertificateSigningRequestArgsForCall []struct {
+		arg1 credsgen.CertificateGenerationRequest
+	}
+	generateCertificateSigningRequestReturns struct {
+		result1 []byte
+		result2 []byte
+		result3 error
+	}
+	generateCertificateSigningRequestReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 []byte
+		result3 error
+	}
 	GeneratePasswordStub        func(string, credsgen.PasswordGenerationRequest) string
 	generatePasswordMutex       sync.RWMutex
 	generatePasswordArgsForCall []struct {
@@ -126,6 +141,72 @@ func (fake *FakeGenerator) GenerateCertificateReturnsOnCall(i int, result1 creds
 		result1 credsgen.Certificate
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *FakeGenerator) GenerateCertificateSigningRequest(arg1 credsgen.CertificateGenerationRequest) ([]byte, []byte, error) {
+	fake.generateCertificateSigningRequestMutex.Lock()
+	ret, specificReturn := fake.generateCertificateSigningRequestReturnsOnCall[len(fake.generateCertificateSigningRequestArgsForCall)]
+	fake.generateCertificateSigningRequestArgsForCall = append(fake.generateCertificateSigningRequestArgsForCall, struct {
+		arg1 credsgen.CertificateGenerationRequest
+	}{arg1})
+	fake.recordInvocation("GenerateCertificateSigningRequest", []interface{}{arg1})
+	fake.generateCertificateSigningRequestMutex.Unlock()
+	if fake.GenerateCertificateSigningRequestStub != nil {
+		return fake.GenerateCertificateSigningRequestStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2, ret.result3
+	}
+	fakeReturns := fake.generateCertificateSigningRequestReturns
+	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
+}
+
+func (fake *FakeGenerator) GenerateCertificateSigningRequestCallCount() int {
+	fake.generateCertificateSigningRequestMutex.RLock()
+	defer fake.generateCertificateSigningRequestMutex.RUnlock()
+	return len(fake.generateCertificateSigningRequestArgsForCall)
+}
+
+func (fake *FakeGenerator) GenerateCertificateSigningRequestCalls(stub func(credsgen.CertificateGenerationRequest) ([]byte, []byte, error)) {
+	fake.generateCertificateSigningRequestMutex.Lock()
+	defer fake.generateCertificateSigningRequestMutex.Unlock()
+	fake.GenerateCertificateSigningRequestStub = stub
+}
+
+func (fake *FakeGenerator) GenerateCertificateSigningRequestArgsForCall(i int) credsgen.CertificateGenerationRequest {
+	fake.generateCertificateSigningRequestMutex.RLock()
+	defer fake.generateCertificateSigningRequestMutex.RUnlock()
+	argsForCall := fake.generateCertificateSigningRequestArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeGenerator) GenerateCertificateSigningRequestReturns(result1 []byte, result2 []byte, result3 error) {
+	fake.generateCertificateSigningRequestMutex.Lock()
+	defer fake.generateCertificateSigningRequestMutex.Unlock()
+	fake.GenerateCertificateSigningRequestStub = nil
+	fake.generateCertificateSigningRequestReturns = struct {
+		result1 []byte
+		result2 []byte
+		result3 error
+	}{result1, result2, result3}
+}
+
+func (fake *FakeGenerator) GenerateCertificateSigningRequestReturnsOnCall(i int, result1 []byte, result2 []byte, result3 error) {
+	fake.generateCertificateSigningRequestMutex.Lock()
+	defer fake.generateCertificateSigningRequestMutex.Unlock()
+	fake.GenerateCertificateSigningRequestStub = nil
+	if fake.generateCertificateSigningRequestReturnsOnCall == nil {
+		fake.generateCertificateSigningRequestReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 []byte
+			result3 error
+		})
+	}
+	fake.generateCertificateSigningRequestReturnsOnCall[i] = struct {
+		result1 []byte
+		result2 []byte
+		result3 error
+	}{result1, result2, result3}
 }
 
 func (fake *FakeGenerator) GeneratePassword(arg1 string, arg2 credsgen.PasswordGenerationRequest) string {
@@ -320,6 +401,8 @@ func (fake *FakeGenerator) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.generateCertificateMutex.RLock()
 	defer fake.generateCertificateMutex.RUnlock()
+	fake.generateCertificateSigningRequestMutex.RLock()
+	defer fake.generateCertificateSigningRequestMutex.RUnlock()
 	fake.generatePasswordMutex.RLock()
 	defer fake.generatePasswordMutex.RUnlock()
 	fake.generateRSAKeyMutex.RLock()

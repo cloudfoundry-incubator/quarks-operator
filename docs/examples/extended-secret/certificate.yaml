@@ -1,0 +1,16 @@
+---
+apiVersion: fissile.cloudfoundry.org/v1alpha1
+kind: ExtendedSecret
+metadata:
+  name: generate-certificate
+spec:
+  request:
+    certificate:
+      alternativeNames:
+        - foo.com
+        - '*.foo.com'
+      commonName: routerSSL
+      isCA: false
+      signerType: cluster
+  secretName: gen-certificate
+  type: certificate

@@ -75,7 +75,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 	})
 
 	JustBeforeEach(func() {
-		reconciler = escontroller.NewReconciler(ctx, config, manager, generator, setReferenceFunc)
+		reconciler = escontroller.NewExtendedSecretReconciler(ctx, config, manager, generator, setReferenceFunc)
 	})
 
 	Context("if the resource can not be resolved", func() {

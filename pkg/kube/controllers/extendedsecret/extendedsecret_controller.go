@@ -23,11 +23,11 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
-// Add creates a new ExtendedSecrets Controller and adds it to the Manager
-func Add(ctx context.Context, config *config.Config, mgr manager.Manager) error {
+// AddExtendedSecret creates a new ExtendedSecrets Controller and adds it to the Manager
+func AddExtendedSecret(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-secret-reconciler", mgr.GetEventRecorderFor("ext-secret-recorder"))
 	log := ctxlog.ExtractLogger(ctx)
-	r := NewReconciler(ctx, config, mgr, credsgen.NewInMemoryGenerator(log), controllerutil.SetControllerReference)
+	r := NewExtendedSecretReconciler(ctx, config, mgr, credsgen.NewInMemoryGenerator(log), controllerutil.SetControllerReference)
 
 	// Create a new controller
 	c, err := controller.New("extendedsecret-controller", mgr, controller.Options{

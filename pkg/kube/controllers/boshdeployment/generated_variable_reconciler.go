@@ -1,6 +1,7 @@
 package boshdeployment
 
 import (
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	"context"
 
 	"github.com/pkg/errors"
@@ -116,11 +117,7 @@ func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context
 			return err
 		}
 
-		obj := variable.DeepCopy()
-		op, err := controllerutil.CreateOrUpdate(ctx, r.client, obj, func() error {
-			obj.Spec = variable.Spec
-			return nil
-		})
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &variable, mutate.ESecMutateFn(&variable))
 		if err != nil {
 			return errors.Wrapf(err, "creating or updating ExtendedSecret '%s'", variable.Name)
 		}
