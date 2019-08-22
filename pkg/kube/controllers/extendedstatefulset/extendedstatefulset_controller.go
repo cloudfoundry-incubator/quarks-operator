@@ -117,16 +117,7 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 
 	// Watch Secrets referenced by the ExtendedStatefulSet
 	secretPredicates := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			secret := e.Object.(*corev1.Secret)
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, secret)
-			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", secret.Name, err)
-			}
-
-			// The Secret should reference at least one ExtendedStatefulSet in order for us to consider it
-			return len(reconciles) > 1
-		},
+		CreateFunc:  func(e event.CreateEvent) bool { return false },
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
