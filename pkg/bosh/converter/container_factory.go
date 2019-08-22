@@ -3,6 +3,7 @@ package converter
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -563,5 +564,9 @@ func generateEnv(envs map[string]string, overrides []corev1.EnvVar) []corev1.Env
 		}
 	}
 
+	if len(result) == 0 {
+		return nil
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
 	return result
 }
