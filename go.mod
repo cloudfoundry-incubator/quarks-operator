@@ -38,9 +38,12 @@ require (
 	github.com/spf13/viper v1.3.2
 	github.com/viovanov/bosh-template-go v0.0.0-20190801125410-a195ef3de03a
 	go.uber.org/zap v1.10.0
-	golang.org/x/crypto v0.0.0-20190611184440-5c40567a22f8
-	golang.org/x/net v0.0.0-20190514140710-3ec191127204
+	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
+	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
 	golang.org/x/oauth2 v0.0.0-20181017192945-9dcd33a902f4 // indirect
+	golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a // indirect
+	golang.org/x/text v0.3.2 // indirect
+	golang.org/x/tools v0.0.0-20190823170909-c4a336ef6a2f // indirect
 	google.golang.org/appengine v1.2.0 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 	k8s.io/api v0.0.0-20190409021203-6e4e0e4f393b
