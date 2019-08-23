@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 
+	"code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
@@ -132,6 +133,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 	)
 
 	initContainers := flattenContainers(
+		containerRunCopier(),
 		copyingSpecsInitContainers,
 		templateRenderingContainer(c.instanceGroupName, resolvedPropertiesSecretName),
 		createDirContainer(jobs),
@@ -193,14 +195,19 @@ func (c *ContainerFactory) JobsToContainers(
 
 			// The post-start script should be executed only once per job, so we set it up in the first
 			// process container.
-			var postStartHandler *corev1.Handler
+			var postStart postStart
 			if processIndex == 0 {
-				var command []string
-				condition := job.Properties.Quarks.PostStart.Condition
-				if condition != nil && condition.Exec != nil {
-					command = condition.Exec.Command
+				conditionProperty := job.Properties.Quarks.PostStart.Condition
+				if conditionProperty != nil && conditionProperty.Exec != nil && len(conditionProperty.Exec.Command) > 0 {
+					postStart.condition = &containerrun.Command{
+						Name: conditionProperty.Exec.Command[0],
+						Arg:  conditionProperty.Exec.Command[1:],
+					}
 				}
-				postStartHandler = createPostStartHandler(job.Name, command)
+
+				postStart.command = &containerrun.Command{
+					Name: filepath.Join(VolumeJobsDirMountPath, job.Name, "bin", "post-start"),
+				}
 			}
 
 			container := bpmProcessContainer(
@@ -212,7 +219,7 @@ func (c *ContainerFactory) JobsToContainers(
 				job.Properties.Quarks.Run.HealthCheck,
 				job.Properties.Quarks.Envs,
 				job.Properties.Quarks.Privileged,
-				postStartHandler,
+				postStart,
 			)
 
 			containers = append(containers, *container.DeepCopy())
@@ -255,6 +262,30 @@ func logsTailerContainer(instanceGroupName string) corev1.Container {
 		},
 		SecurityContext: &corev1.SecurityContext{
 			RunAsUser: &rootUserID,
+		},
+	}
+}
+
+func containerRunCopier() corev1.Container {
+	dstDir := fmt.Sprintf("%s/container-run", VolumeRenderingDataMountPath)
+	return corev1.Container{
+		Name:  "container-run-copier",
+		Image: GetOperatorDockerImage(),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      VolumeRenderingDataName,
+				MountPath: VolumeRenderingDataMountPath,
+			},
+		},
+		Command: []string{"/usr/bin/dumb-init", "--"},
+		Args: []string{
+			"/bin/sh",
+			"-c",
+			fmt.Sprintf(`
+				set -o errexit
+				mkdir -p '%[1]s'
+				cp /usr/local/bin/container-run '%[1]s'/container-run
+			`, dstDir),
 		},
 	}
 }
@@ -433,60 +464,8 @@ func bpmPreStartInitContainer(
 	}
 }
 
-// The post-start logic should be executed after the pod is ready in order to mimic the BOSH
-// post-start behaviour. For that, we wait for the condition to happen.
-// TODO: move this script to be created on an init container so whenever it fails, it's output does
-// not polute the kubectl get pods.
-func createPostStartHandler(jobName string, condition []string) *corev1.Handler {
-	postStartScript := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "post-start")
-
-	var conditionBlock string
-	if condition != nil {
-		var conditionArr strings.Builder
-		for _, c := range condition {
-			fmt.Fprintf(&conditionArr, "'%s'\n", c)
-		}
-		conditionBlock = fmt.Sprintf(`
-echo "running post-start condition..."
-retry_interval=5
-timeout=$(( 15 * 60 ))
-counter=$(( $timeout / $retry_interval ))
-command=(
-%s
-)
-until (( $counter == 0 )); do
-	"${command[@]}" && break
-	sleep $retry_interval
-	(( counter-- ))
-done
-if (( $counter == 0 )); then exit 1; fi`, conditionArr.String())
-	}
-
-	handlerScript := fmt.Sprintf(`
-set -o errexit -o nounset
-
-printf "checking for %[1]s post-start script... "
-if [[ -x "%[1]s" ]]; then
-	echo "exists"
-else
-	echo "does not exist; skipping..."
-	exit 0
-fi
-
-%[2]s
-
-echo "running post-start script %[1]s..."
-"%[1]s"`, postStartScript, conditionBlock)
-
-	return &corev1.Handler{
-		Exec: &corev1.ExecAction{
-			Command: []string{
-				"bash",
-				"-c",
-				handlerScript,
-			},
-		},
-	}
+type postStart struct {
+	command, condition *containerrun.Command
 }
 
 func bpmProcessContainer(
@@ -498,7 +477,7 @@ func bpmProcessContainer(
 	healthchecks map[string]bdm.HealthCheck,
 	arbitraryEnvs []corev1.EnvVar,
 	privileged bool,
-	postStartHandler *corev1.Handler,
+	postStart postStart,
 ) corev1.Container {
 	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
 	privilegedContainer := process.Unsafe.Privileged || privileged
@@ -506,12 +485,13 @@ func bpmProcessContainer(
 	if workdir == "" {
 		workdir = filepath.Join(VolumeJobsDirMountPath, jobName)
 	}
+	command, args := generateBPMCommand(&process, postStart)
 	container := corev1.Container{
 		Name:         names.Sanitize(name),
 		Image:        jobImage,
 		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
-		Command:      []string{"/usr/bin/dumb-init", "--"},
-		Args:         append([]string{process.Executable}, process.Args...),
+		Command:      command,
+		Args:         args,
 		Env:          generateEnv(process.Env, arbitraryEnvs),
 		WorkingDir:   workdir,
 		SecurityContext: &corev1.SecurityContext{
@@ -525,10 +505,6 @@ func bpmProcessContainer(
 		container.SecurityContext.Capabilities = &corev1.Capabilities{
 			Add: capability(process.Capabilities),
 		}
-	}
-
-	if postStartHandler != nil {
-		container.Lifecycle.PostStart = postStartHandler
 	}
 
 	// Setup the job drain script handler.
@@ -617,6 +593,29 @@ func flattenContainers(containers ...interface{}) []corev1.Container {
 		}
 	}
 	return result
+}
+
+// generateArgs generates the bpm container arguments.
+func generateBPMCommand(
+	process *bpm.Process,
+	postStart postStart,
+) ([]string, []string) {
+	command := []string{"/usr/bin/dumb-init", "--"}
+	args := []string{fmt.Sprintf("%s/container-run/container-run", VolumeRenderingDataMountPath)}
+	if postStart.command != nil {
+		args = append(args, "--post-start-name", postStart.command.Name)
+		if postStart.condition != nil {
+			args = append(args, "--post-start-condition-name", postStart.condition.Name)
+			for _, arg := range postStart.condition.Arg {
+				args = append(args, "--post-start-condition-arg", arg)
+			}
+		}
+	}
+	args = append(args, "--")
+	args = append(args, process.Executable)
+	args = append(args, process.Args...)
+
+	return command, args
 }
 
 // generateEnv returns new slice of corev1.EnvVar
