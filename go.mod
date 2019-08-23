@@ -44,7 +44,7 @@ require (
 	github.com/spf13/pflag v1.0.3 // indirect
 	github.com/spf13/viper v1.2.1
 	github.com/viovanov/bosh-template-go v0.0.0-20190801125410-a195ef3de03a
-	go.uber.org/zap v1.9.1
+	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20190611184440-5c40567a22f8
 	golang.org/x/net v0.0.0-20190514140710-3ec191127204
 	golang.org/x/oauth2 v0.0.0-20181017192945-9dcd33a902f4 // indirect
