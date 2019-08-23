@@ -1,5 +1,8 @@
 package containerrun
 
+//go:generate mockgen -destination=./mocks/mock_containerrun.go -package=mocks code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun Runner,Process,OSProcess,ExecCommandContext
+//go:generate mockgen -destination=./mocks/mock_context.go -package=mocks context Context
+
 import (
 	"context"
 	"fmt"
@@ -313,4 +316,9 @@ func (pr *ProcessRegistry) HandleSignals(sigs <-chan os.Signal, errors chan<- er
 	for _, err := range pr.SignalAll(sig) {
 		errors <- err
 	}
+}
+
+// ExecCommandContext wraps exec.CommandContext.
+type ExecCommandContext interface {
+	CommandContext(ctx context.Context, name string, arg ...string) *exec.Cmd
 }

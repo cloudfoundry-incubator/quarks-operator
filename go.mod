@@ -16,6 +16,7 @@ require (
 	github.com/go-test/deep v1.0.3
 	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20180924190550-6f2cf27854a4 // indirect
+	github.com/golang/mock v1.3.1
 	github.com/gonvenience/bunt v1.1.1
 	github.com/google/certificate-transparency-go v1.0.21 // indirect
 	github.com/google/gofuzz v1.0.0 // indirect
