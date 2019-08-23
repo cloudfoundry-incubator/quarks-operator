@@ -8,7 +8,7 @@ import (
 
 const (
 	// CtxTimeOut is the default context.Context timeout
-	CtxTimeOut = 10 * time.Second
+	CtxTimeOut = 30 * time.Second
 )
 
 // Config controls the behaviour of different controllers
