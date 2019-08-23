@@ -13,7 +13,7 @@ require (
 	github.com/dchest/uniuri v0.0.0-20160212164326-8902c56451e9
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-logr/logr v0.1.0
-	github.com/go-logr/zapr v0.1.0
+	github.com/go-logr/zapr v0.1.1
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/go-test/deep v1.0.1
 	github.com/gogo/protobuf v1.2.1 // indirect
