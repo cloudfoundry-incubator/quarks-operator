@@ -82,9 +82,9 @@ type Release struct {
 
 // AddOnJob from BOSH deployment manifest
 type AddOnJob struct {
-	Name       string                 `json:"name"`
-	Release    string                 `json:"release"`
-	Properties map[string]interface{} `json:"properties,omitempty"`
+	Name       string        `json:"name"`
+	Release    string        `json:"release"`
+	Properties JobProperties `json:"properties,omitempty"`
 }
 
 // AddOnStemcell from BOSH deployment manifest
@@ -461,14 +461,15 @@ func (m *Manifest) ApplyAddons() error {
 			}
 
 			for _, addonJob := range addon.Jobs {
-				ig.Jobs = append(ig.Jobs, Job{
-					Name:    addonJob.Name,
-					Release: addonJob.Release,
-					Properties: JobProperties{
-						Quarks:     Quarks{IsAddon: true},
-						Properties: addonJob.Properties,
-					},
-				})
+				addedJob := Job{
+					Name:       addonJob.Name,
+					Release:    addonJob.Release,
+					Properties: addonJob.Properties,
+				}
+
+				addedJob.Properties.Quarks.IsAddon = true
+
+				ig.Jobs = append(ig.Jobs, addedJob)
 			}
 		}
 	}
