@@ -37,6 +37,10 @@ Here's a state diagram that tries to explain the process of reconciling a `BOSHD
 
 ![deployment-state](https://docs.google.com/drawings/d/e/2PACX-1vTsCO5USd8AJIk_uHMRKl0NABuW85uVGJNebNvgI0Hz_9jhle6fcynLTcHh8cxW6lMgaV_DWyPEvm2-/pub?w=3161&h=2376)
 
+And another one with individual controllers up to the creation of the ExtendedStatefulSet custom resource.
+
+![custom-resources-flow](https://drive.google.com/uc?export=view&id=1IF_KCp8m2Nd-mdNwKCQkEtCIA31tsY-i)
+
 ### Deployment Reconciler
 
 #### Watches for
