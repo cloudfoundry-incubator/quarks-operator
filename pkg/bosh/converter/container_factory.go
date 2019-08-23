@@ -433,13 +433,17 @@ func bpmProcessContainer(
 ) corev1.Container {
 	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
 	privilegedContainer := process.Unsafe.Privileged || privileged
+	workdir := process.Workdir
+	if workdir == "" {
+		workdir = filepath.Join(VolumeJobsDirMountPath, jobName)
+	}
 	container := corev1.Container{
 		Name:         names.Sanitize(name),
 		Image:        jobImage,
 		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
 		Command:      []string{"/usr/bin/dumb-init", "--"},
 		Args:         append([]string{process.Executable}, process.Args...),
-		WorkingDir:   process.Workdir,
+		WorkingDir:   workdir,
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privilegedContainer,
 		},
