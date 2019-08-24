@@ -12,7 +12,7 @@ import (
 
 var _ = Describe("NewContainerRunCmd", func() {
 	It("constructs a new command", func() {
-		cmd := NewContainerRunCmd(nil, nil, nil, Stdio{})
+		cmd := NewContainerRunCmd(nil, nil, nil, nil, Stdio{})
 		Expect(cmd).ToNot(Equal(nil))
 	})
 
@@ -21,6 +21,7 @@ var _ = Describe("NewContainerRunCmd", func() {
 		run := func(
 			_ Runner,
 			_ Runner,
+			_ Checker,
 			_ Stdio,
 			_ []string,
 			_ string,
@@ -30,7 +31,7 @@ var _ = Describe("NewContainerRunCmd", func() {
 		) error {
 			return expectedErr
 		}
-		cmd := NewContainerRunCmd(run, nil, nil, Stdio{})
+		cmd := NewContainerRunCmd(run, nil, nil, nil, Stdio{})
 		origArgs := os.Args[:]
 		os.Args = os.Args[:1]
 		err := cmd.Execute()
@@ -42,6 +43,7 @@ var _ = Describe("NewContainerRunCmd", func() {
 		run := func(
 			_ Runner,
 			_ Runner,
+			_ Checker,
 			_ Stdio,
 			_ []string,
 			_ string,
@@ -51,7 +53,7 @@ var _ = Describe("NewContainerRunCmd", func() {
 		) error {
 			return nil
 		}
-		cmd := NewContainerRunCmd(run, nil, nil, Stdio{})
+		cmd := NewContainerRunCmd(run, nil, nil, nil, Stdio{})
 		origArgs := os.Args[:]
 		os.Args = os.Args[:1]
 		err := cmd.Execute()

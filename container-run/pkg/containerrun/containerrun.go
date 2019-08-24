@@ -1,6 +1,6 @@
 package containerrun
 
-//go:generate mockgen -destination=./mocks/mock_containerrun.go -package=mocks code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun Runner,Process,OSProcess,ExecCommandContext
+//go:generate mockgen -destination=./mocks/mock_containerrun.go -package=mocks code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun Runner,Checker,Process,OSProcess,ExecCommandContext
 //go:generate mockgen -destination=./mocks/mock_context.go -package=mocks context Context
 
 import (
@@ -24,6 +24,7 @@ const (
 type CmdRun func(
 	runner Runner,
 	conditionRunner Runner,
+	commandChecker Checker,
 	stdio Stdio,
 	args []string,
 	postStartCommandName string,
@@ -36,6 +37,7 @@ type CmdRun func(
 func Run(
 	runner Runner,
 	conditionRunner Runner,
+	commandChecker Checker,
 	stdio Stdio,
 	args []string,
 	postStartCommandName string,
@@ -63,20 +65,9 @@ func Run(
 		return &runErr{err}
 	}
 	processRegistry.Register(process)
-	go func() {
-		if err := process.Wait(); err != nil {
-			errors <- err
-			return
-		}
-		done <- struct{}{}
-	}()
 
 	if postStartCommandName != "" {
-		if _, err := os.Stat(postStartCommandName); err != nil {
-			if !os.IsNotExist(err) {
-				return &runErr{err}
-			}
-		} else {
+		if commandChecker.Check(postStartCommandName) {
 			go func() {
 				ctx, cancel := context.WithTimeout(context.Background(), postStartTimeout)
 				defer cancel()
@@ -113,13 +104,21 @@ func Run(
 		}
 	}
 
+	go func() {
+		if err := process.Wait(); err != nil {
+			errors <- err
+			return
+		}
+		done <- struct{}{}
+	}()
+
 	go processRegistry.HandleSignals(sigs, errors)
 
 	select {
 	case <-done:
 		return nil
 	case err := <-errors:
-		return err
+		return &runErr{err}
 	}
 }
 
@@ -316,6 +315,35 @@ func (pr *ProcessRegistry) HandleSignals(sigs <-chan os.Signal, errors chan<- er
 	for _, err := range pr.SignalAll(sig) {
 		errors <- err
 	}
+}
+
+// Checker is the interface that wraps the basic Check method.
+type Checker interface {
+	Check(command string) bool
+}
+
+// CommandChecker satisfies the Checker interface.
+type CommandChecker struct {
+	osStat       func(string) (os.FileInfo, error)
+	execLookPath func(file string) (string, error)
+}
+
+// NewCommandChecker constructs a new CommandChecker.
+func NewCommandChecker(
+	osStat func(string) (os.FileInfo, error),
+	execLookPath func(file string) (string, error),
+) *CommandChecker {
+	return &CommandChecker{
+		osStat: osStat,
+		execLookPath: execLookPath,
+	}
+}
+
+// Check checks if command exists as a file or in $PATH.
+func (cc *CommandChecker) Check(command string) bool {
+	_, statErr := os.Stat(command)
+	_, lookPathErr := exec.LookPath(command)
+	return statErr == nil || lookPathErr == nil
 }
 
 // ExecCommandContext wraps exec.CommandContext.
