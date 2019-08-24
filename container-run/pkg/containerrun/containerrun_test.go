@@ -19,6 +19,102 @@ import (
 	. "code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun/mocks"
 )
 
+var _ = Describe("Run", func() {
+	commandLine := []string{"bash", "-c", "echo foo"}
+	command := Command{
+		Name: commandLine[0],
+		Arg:  commandLine[1:],
+	}
+	stdio := Stdio{}
+
+	var ctrl *gomock.Controller
+
+	BeforeEach(func() {
+		ctrl = gomock.NewController(GinkgoT())
+	})
+
+	AfterEach(func() {
+		ctrl.Finish()
+	})
+
+	It("fails when args is empty", func() {
+		err := Run(nil, nil, nil, stdio, []string{}, "", []string{}, "", []string{})
+		Expect(err.Error()).To(Equal("failed to run container: a command is required"))
+	})
+
+	It("fails when runner.Run fails", func() {
+		runner := NewMockRunner(ctrl)
+		runner.EXPECT().
+			Run(command, stdio).
+			Return(nil, fmt.Errorf(`¯\_(ツ)_/¯`)).
+			Times(1)
+		err := Run(runner, nil, nil, stdio, commandLine, "", []string{}, "", []string{})
+		Expect(err.Error()).To(Equal(`failed to run container: ¯\_(ツ)_/¯`))
+	})
+
+	It("fails when process.Wait fails", func() {
+		process := NewMockProcess(ctrl)
+		process.EXPECT().
+			Wait().
+			Return(fmt.Errorf(`¯\_(ツ)_/¯`)).
+			Times(1)
+		process.EXPECT().
+			Signal(gomock.Any()).
+			Return(nil).
+			AnyTimes()
+		runner := NewMockRunner(ctrl)
+		runner.EXPECT().
+			Run(command, stdio).
+			Return(process, nil).
+			Times(1)
+		err := Run(runner, nil, nil, stdio, commandLine, "", []string{}, "", []string{})
+		Expect(err.Error()).To(Equal(`failed to run container: ¯\_(ツ)_/¯`))
+	})
+
+	It("succeeds when process.Wait succeeds", func() {
+		process := NewMockProcess(ctrl)
+		process.EXPECT().
+			Wait().
+			Return(nil).
+			Times(1)
+		process.EXPECT().
+			Signal(gomock.Any()).
+			Return(nil).
+			AnyTimes()
+		runner := NewMockRunner(ctrl)
+		runner.EXPECT().
+			Run(command, stdio).
+			Return(process, nil).
+			Times(1)
+		err := Run(runner, nil, nil, stdio, commandLine, "", []string{}, "", []string{})
+		Expect(err).ToNot(HaveOccurred())
+	})
+
+	It("skips post start when the command does not exist", func() {
+		postStartCmd := "does_not_exist"
+		process := NewMockProcess(ctrl)
+		process.EXPECT().
+			Wait().
+			Return(nil).
+			Times(1)
+		process.EXPECT().
+			Signal(gomock.Any()).
+			Return(nil).
+			AnyTimes()
+		runner := NewMockRunner(ctrl)
+		runner.EXPECT().
+			Run(command, stdio).
+			Return(process, nil).
+			Times(1)
+		checker := NewMockChecker(ctrl)
+		checker.EXPECT().
+			Check(postStartCmd).
+			Times(1)
+		err := Run(runner, nil, checker, stdio, commandLine, postStartCmd, []string{}, "", []string{})
+		Expect(err).ToNot(HaveOccurred())
+	})
+})
+
 var _ = Describe("ProcessRegistry", func() {
 	Context("NewProcessRegistry", func() {
 		It("constructs a new ProcessRegistry", func() {

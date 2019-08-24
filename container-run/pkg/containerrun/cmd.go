@@ -13,6 +13,7 @@ func NewContainerRunCmd(
 	run CmdRun,
 	runner Runner,
 	conditionRunner Runner,
+	commandChecker Checker,
 	stdio Stdio,
 ) *cobra.Command {
 	var postStartCommandName string
@@ -29,6 +30,7 @@ func NewContainerRunCmd(
 			return run(
 				runner,
 				conditionRunner,
+				commandChecker,
 				stdio,
 				args,
 				postStartCommandName,
@@ -51,9 +53,10 @@ func NewContainerRunCmd(
 func NewDefaultContainerRunCmd() *cobra.Command {
 	runner := NewContainerRunner()
 	conditionRunner := NewConditionRunner(time.Sleep, exec.CommandContext)
+	commandChecker := NewCommandChecker(os.Stat, exec.LookPath)
 	stdio := Stdio{
 		Out: os.Stdout,
 		Err: os.Stderr,
 	}
-	return NewContainerRunCmd(Run, runner, conditionRunner, stdio)
+	return NewContainerRunCmd(Run, runner, conditionRunner, commandChecker, stdio)
 }
