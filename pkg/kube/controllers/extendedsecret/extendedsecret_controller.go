@@ -17,7 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	credsgen "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
-	es "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
@@ -41,7 +40,7 @@ func AddExtendedSecret(ctx context.Context, config *config.Config, mgr manager.M
 	// Watch for changes to ExtendedSecrets
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			o := e.Object.(*es.ExtendedSecret)
+			o := e.Object.(*esv1.ExtendedSecret)
 			secrets, err := listSecrets(ctx, mgr.GetClient(), o)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to list StatefulSets owned by ExtendedStatefulSet '%s': %s in extendedsecret reconciler", o.Name, err)
@@ -53,7 +52,7 @@ func AddExtendedSecret(ctx context.Context, config *config.Config, mgr manager.M
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc:  func(e event.UpdateEvent) bool { return true },
 	}
-	err = c.Watch(&source.Kind{Type: &es.ExtendedSecret{}}, &handler.EnqueueRequestForObject{}, p)
+	err = c.Watch(&source.Kind{Type: &esv1.ExtendedSecret{}}, &handler.EnqueueRequestForObject{}, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching extended secrets failed in extendedsecret controller.")
 	}
@@ -62,7 +61,7 @@ func AddExtendedSecret(ctx context.Context, config *config.Config, mgr manager.M
 }
 
 // listSecrets gets all Secrets owned by the ExtendedSecret
-func listSecrets(ctx context.Context, client crc.Client, exSecret *es.ExtendedSecret) ([]corev1.Secret, error) {
+func listSecrets(ctx context.Context, client crc.Client, exSecret *esv1.ExtendedSecret) ([]corev1.Secret, error) {
 	ctxlog.Debug(ctx, "Listing StatefulSets owned by ExtendedStatefulSet '", exSecret.Name, "'.")
 
 	secretLabelsSet := labels.Set{

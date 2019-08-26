@@ -19,10 +19,7 @@ var _ = Describe("Examples", func() {
 
 	Describe("when examples are specified in the docs", func() {
 
-		var (
-			kubectlHelper *testing.Kubectl
-		)
-		kubectlHelper = testing.NewKubectl()
+		kubectlHelper := testing.NewKubectl()
 
 		const examplesDir = "../../docs/examples/"
 

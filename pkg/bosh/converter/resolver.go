@@ -13,7 +13,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
@@ -67,7 +66,7 @@ func (r *ResolverImpl) DesiredManifest(ctx context.Context, boshDeploymentName, 
 // WithOpsManifest returns manifest and a list of implicit variables referenced by our bdpl CRD
 // The resulting manifest has variables interpolated and ops files applied.
 // It is the 'with-ops' manifest.
-func (r *ResolverImpl) WithOpsManifest(instance *bdc.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
+func (r *ResolverImpl) WithOpsManifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
 	interpolator := r.newInterpolatorFunc()
 	spec := instance.Spec
 	var (
@@ -75,7 +74,7 @@ func (r *ResolverImpl) WithOpsManifest(instance *bdc.BOSHDeployment, namespace s
 		err error
 	)
 
-	m, err = r.resourceData(namespace, spec.Manifest.Type, spec.Manifest.Name, bdc.ManifestSpecName)
+	m, err = r.resourceData(namespace, spec.Manifest.Type, spec.Manifest.Name, bdv1.ManifestSpecName)
 	if err != nil {
 		return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
 	}
@@ -84,7 +83,7 @@ func (r *ResolverImpl) WithOpsManifest(instance *bdc.BOSHDeployment, namespace s
 	ops := spec.Ops
 
 	for _, op := range ops {
-		opsData, err := r.resourceData(namespace, op.Type, op.Name, bdc.OpsSpecName)
+		opsData, err := r.resourceData(namespace, op.Type, op.Name, bdv1.OpsSpecName)
 		if err != nil {
 			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
 		}
@@ -118,7 +117,7 @@ func (r *ResolverImpl) WithOpsManifest(instance *bdc.BOSHDeployment, namespace s
 	varSecrets := make([]string, len(vars))
 	for i, v := range vars {
 		varSecretName := names.CalculateSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), v)
-		varData, err := r.resourceData(namespace, bdc.SecretReference, varSecretName, bdc.ImplicitVariableKeyName)
+		varData, err := r.resourceData(namespace, bdv1.SecretReference, varSecretName, bdv1.ImplicitVariableKeyName)
 		if err != nil {
 			return nil, varSecrets, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
 		}
@@ -149,7 +148,7 @@ func (r *ResolverImpl) resourceData(namespace string, resType bdv1.ReferenceType
 	)
 
 	switch resType {
-	case bdc.ConfigMapReference:
+	case bdv1.ConfigMapReference:
 		opsConfig := &corev1.ConfigMap{}
 		err := r.client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, opsConfig)
 		if err != nil {
@@ -159,7 +158,7 @@ func (r *ResolverImpl) resourceData(namespace string, resType bdv1.ReferenceType
 		if !ok {
 			return data, fmt.Errorf("configMap '%s/%s' doesn't contain key %s", namespace, name, key)
 		}
-	case bdc.SecretReference:
+	case bdv1.SecretReference:
 		opsSecret := &corev1.Secret{}
 		err := r.client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, opsSecret)
 		if err != nil {
@@ -170,7 +169,7 @@ func (r *ResolverImpl) resourceData(namespace string, resType bdv1.ReferenceType
 			return data, fmt.Errorf("secret '%s/%s' doesn't contain key %s", namespace, name, key)
 		}
 		data = string(encodedData)
-	case bdc.URLReference:
+	case bdv1.URLReference:
 		httpResponse, err := http.Get(name)
 		if err != nil {
 			return data, errors.Wrapf(err, "failed to resolve %s from url '%s' via http.Get", key, name)
