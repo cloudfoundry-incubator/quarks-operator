@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -25,6 +26,16 @@ var _ = Describe("Run", func() {
 		Name: commandLine[0],
 		Arg:  commandLine[1:],
 	}
+	postStartLine := []string{"bash", "-c", "echo bar"}
+	postStart := Command{
+		Name: postStartLine[0],
+		Arg:  postStartLine[1:],
+	}
+	postStartConditionLine := []string{"bash", "-c", "echo baz"}
+	postStartCondition := Command{
+		Name: postStartConditionLine[0],
+		Arg:  postStartConditionLine[1:],
+	}
 	stdio := Stdio{}
 
 	var ctrl *gomock.Controller
@@ -39,6 +50,7 @@ var _ = Describe("Run", func() {
 
 	It("fails when args is empty", func() {
 		err := Run(nil, nil, nil, stdio, []string{}, "", []string{}, "", []string{})
+		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("failed to run container: a command is required"))
 	})
 
@@ -49,6 +61,7 @@ var _ = Describe("Run", func() {
 			Return(nil, fmt.Errorf(`¯\_(ツ)_/¯`)).
 			Times(1)
 		err := Run(runner, nil, nil, stdio, commandLine, "", []string{}, "", []string{})
+		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal(`failed to run container: ¯\_(ツ)_/¯`))
 	})
 
@@ -68,6 +81,7 @@ var _ = Describe("Run", func() {
 			Return(process, nil).
 			Times(1)
 		err := Run(runner, nil, nil, stdio, commandLine, "", []string{}, "", []string{})
+		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal(`failed to run container: ¯\_(ツ)_/¯`))
 	})
 
@@ -91,7 +105,6 @@ var _ = Describe("Run", func() {
 	})
 
 	It("skips post start when the command does not exist", func() {
-		postStartCmd := "does_not_exist"
 		process := NewMockProcess(ctrl)
 		process.EXPECT().
 			Wait().
@@ -108,10 +121,231 @@ var _ = Describe("Run", func() {
 			Times(1)
 		checker := NewMockChecker(ctrl)
 		checker.EXPECT().
-			Check(postStartCmd).
+			Check(postStart.Name).
+			Return(false).
 			Times(1)
-		err := Run(runner, nil, checker, stdio, commandLine, postStartCmd, []string{}, "", []string{})
+		err := Run(runner, nil, checker, stdio, commandLine, postStart.Name, postStart.Arg, "", []string{})
 		Expect(err).ToNot(HaveOccurred())
+	})
+
+	Context("With post-start condition", func() {
+		It("fails when post-start RunContext fails", func() {
+			expectedErr := fmt.Errorf(`¯\_(ツ)_/¯`)
+			process := NewMockProcess(ctrl)
+			process.EXPECT().
+				Wait().
+				// Wait as we return an error from post-start.
+				Do(func() { time.Sleep(time.Second) }).
+				Return(nil).
+				AnyTimes()
+			process.EXPECT().
+				Signal(gomock.Any()).
+				Return(nil).
+				AnyTimes()
+			runner := NewMockRunner(ctrl)
+			gomock.InOrder(
+				runner.EXPECT().
+					Run(command, stdio).
+					Return(process, nil).
+					Times(1),
+				runner.EXPECT().
+					RunContext(gomock.Any(), gomock.Any(), stdio).
+					Return(nil, expectedErr).
+					Times(1),
+			)
+			checker := NewMockChecker(ctrl)
+			checker.EXPECT().
+				Check(postStart.Name).
+				Return(true).
+				Times(1)
+			conditionRunner := NewMockRunner(ctrl)
+			err := Run(runner, conditionRunner, checker, stdio, commandLine, postStart.Name, postStart.Arg, "", []string{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Errorf("failed to run container: %v", expectedErr).Error()))
+		})
+
+		It("fails when post-start Wait fails", func() {
+			expectedErr := fmt.Errorf(`¯\_(ツ)_/¯`)
+			process := NewMockProcess(ctrl)
+			process.EXPECT().
+				Wait().
+				// Wait as we return an error from post-start.
+				Do(func() { time.Sleep(time.Second) }).
+				Return(nil).
+				AnyTimes()
+			process.EXPECT().
+				Signal(gomock.Any()).
+				Return(nil).
+				AnyTimes()
+			postStartProcess := NewMockProcess(ctrl)
+			postStartProcess.EXPECT().
+				Wait().
+				Return(expectedErr).
+				Times(1)
+			postStartProcess.EXPECT().
+				Signal(gomock.Any()).
+				Return(nil).
+				AnyTimes()
+			runner := NewMockRunner(ctrl)
+			gomock.InOrder(
+				runner.EXPECT().
+					Run(command, stdio).
+					Return(process, nil).
+					Times(1),
+				runner.EXPECT().
+					RunContext(gomock.Any(), gomock.Any(), stdio).
+					Return(postStartProcess, nil).
+					Times(1),
+			)
+			checker := NewMockChecker(ctrl)
+			checker.EXPECT().
+				Check(postStart.Name).
+				Return(true).
+				Times(1)
+			conditionRunner := NewMockRunner(ctrl)
+			err := Run(runner, conditionRunner, checker, stdio, commandLine, postStart.Name, postStart.Arg, "", []string{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Errorf("failed to run container: %v", expectedErr).Error()))
+		})
+
+		It("succeeds when main and post-start commands succeed", func() {
+			var postStartWg sync.WaitGroup
+			postStartWg.Add(1)
+			process := NewMockProcess(ctrl)
+			process.EXPECT().
+				Wait().
+				Do(postStartWg.Wait).
+				Return(nil).
+				AnyTimes()
+			process.EXPECT().
+				Signal(gomock.Any()).
+				Return(nil).
+				AnyTimes()
+			postStartProcess := NewMockProcess(ctrl)
+			postStartProcess.EXPECT().
+				Wait().
+				Do(postStartWg.Done).
+				Return(nil).
+				Times(1)
+			postStartProcess.EXPECT().
+				Signal(gomock.Any()).
+				Return(nil).
+				AnyTimes()
+			runner := NewMockRunner(ctrl)
+			gomock.InOrder(
+				runner.EXPECT().
+					Run(command, stdio).
+					Return(process, nil).
+					Times(1),
+				runner.EXPECT().
+					RunContext(gomock.Any(), gomock.Any(), stdio).
+					Do(func(ctx context.Context, _ Command, _ Stdio) {
+						_, ok := ctx.Deadline()
+						Expect(ok).To(Equal(true))
+					}).
+					Return(postStartProcess, nil).
+					Times(1),
+			)
+			checker := NewMockChecker(ctrl)
+			checker.EXPECT().
+				Check(postStart.Name).
+				Return(true).
+				Times(1)
+			conditionRunner := NewMockRunner(ctrl)
+			err := Run(runner, conditionRunner, checker, stdio, commandLine, postStart.Name, postStart.Arg, "", []string{})
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	Context("With post-start condition", func() {
+		It("fails when the condition fails", func() {
+			expectedErr := fmt.Errorf(`¯\_(ツ)_/¯`)
+			process := NewMockProcess(ctrl)
+			process.EXPECT().
+				Wait().
+				// Wait as we return an error from post-start.
+				Do(func() { time.Sleep(time.Second) }).
+				Return(nil).
+				AnyTimes()
+			process.EXPECT().
+				Signal(gomock.Any()).
+				Return(nil).
+				AnyTimes()
+			runner := NewMockRunner(ctrl)
+			runner.EXPECT().
+				Run(command, stdio).
+				Return(process, nil).
+				Times(1)
+			checker := NewMockChecker(ctrl)
+			checker.EXPECT().
+				Check(postStart.Name).
+				Return(true).
+				Times(1)
+			conditionRunner := NewMockRunner(ctrl)
+			conditionRunner.EXPECT().
+				RunContext(gomock.Any(), postStartCondition, gomock.Any()).
+				Return(nil, expectedErr).
+				Times(1)
+			err := Run(runner, conditionRunner, checker, stdio, commandLine, postStart.Name, postStart.Arg, postStartCondition.Name, postStartCondition.Arg)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(fmt.Errorf("failed to run container: %v", expectedErr).Error()))
+		})
+
+		It("succeeds when main and post-start commands succeed", func() {
+			var postStartWg sync.WaitGroup
+			postStartWg.Add(1)
+			process := NewMockProcess(ctrl)
+			process.EXPECT().
+				Wait().
+				Do(postStartWg.Wait).
+				Return(nil).
+				AnyTimes()
+			process.EXPECT().
+				Signal(gomock.Any()).
+				Return(nil).
+				AnyTimes()
+			postStartProcess := NewMockProcess(ctrl)
+			postStartProcess.EXPECT().
+				Wait().
+				Do(postStartWg.Done).
+				Return(nil).
+				Times(1)
+			postStartProcess.EXPECT().
+				Signal(gomock.Any()).
+				Return(nil).
+				AnyTimes()
+			runner := NewMockRunner(ctrl)
+			gomock.InOrder(
+				runner.EXPECT().
+					Run(command, stdio).
+					Return(process, nil).
+					Times(1),
+				runner.EXPECT().
+					RunContext(gomock.Any(), gomock.Any(), stdio).
+					Do(func(ctx context.Context, _ Command, _ Stdio) {
+						_, ok := ctx.Deadline()
+						Expect(ok).To(Equal(true))
+					}).
+					Return(postStartProcess, nil).
+					Times(1),
+			)
+			checker := NewMockChecker(ctrl)
+			checker.EXPECT().
+				Check(postStart.Name).
+				Return(true).
+				Times(1)
+			conditionRunner := NewMockRunner(ctrl)
+			conditionRunner.EXPECT().
+				RunContext(gomock.Any(), postStartCondition, gomock.Any()).
+				Do(func(ctx context.Context, _ Command, _ Stdio) {
+					_, ok := ctx.Deadline()
+					Expect(ok).To(Equal(true))
+				}).
+				Return(nil, nil).
+				Times(1)
+			err := Run(runner, conditionRunner, checker, stdio, commandLine, postStart.Name, postStart.Arg, postStartCondition.Name, postStartCondition.Arg)
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 })
 
