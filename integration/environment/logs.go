@@ -59,7 +59,7 @@ func (m *Machine) WaitForPodLogMsg(namespace string, podName string, msg string)
 
 // WaitForPodContainerLogMsg searches pod test logs for at least one occurrence of msg.
 func (m *Machine) WaitForPodContainerLogMsg(namespace, podName, containerName, msg string) error {
-	return wait.PollImmediate(pollInterval, m.pollTimeout, func() (bool, error) {
+	return wait.PollImmediate(100*time.Millisecond, m.pollTimeout, func() (bool, error) {
 		logs, err := m.GetPodContainerLogs(namespace, podName, containerName)
 		return strings.Contains(logs, msg), err
 	})
