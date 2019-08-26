@@ -73,14 +73,20 @@ var _ = Describe("kube converter", func() {
 					Expect(eJob.GetLabels()).To(HaveKeyWithValue("custom-label", "foo"))
 					Expect(eJob.GetAnnotations()).To(HaveKeyWithValue("custom-annotation", "bar"))
 
-					specCopierInitContainer := eJob.Spec.Template.Spec.InitContainers[0]
-					rendererInitContainer := eJob.Spec.Template.Spec.InitContainers[1]
+					specCopierInitContainer := eJob.Spec.Template.Spec.InitContainers[1]
+					rendererInitContainer := eJob.Spec.Template.Spec.InitContainers[2]
 
 					// Test containers in the extended job
 					Expect(eJob.Spec.Template.Spec.Containers[0].Name).To(Equal("redis-server-test-server"))
 					Expect(eJob.Spec.Template.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/redis:opensuse-42.3-28.g837c5b3-30.263-7.0.0_234.gcd7d1132-36.15.0"))
 					Expect(eJob.Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"/usr/bin/dumb-init", "--"}))
-					Expect(eJob.Spec.Template.Spec.Containers[0].Args).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server", "--port", "1337"}))
+					Expect(eJob.Spec.Template.Spec.Containers[0].Args).To(Equal([]string{
+						"/var/vcap/all-releases/container-run/container-run",
+						"--post-start-name", "/var/vcap/jobs/redis-server/bin/post-start",
+						"--",
+						"/var/vcap/packages/test-server/bin/test-server",
+						"--port", "1337",
+					}))
 					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[4].Name).To(Equal("data-dir"))
 					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[5].Name).To(Equal("store-dir"))
 					Expect(eJob.Spec.Template.Spec.Containers[0].VolumeMounts[6].Name).To(Equal("bpm-unrestricted-volume-redis-server-test-server-0"))
@@ -135,13 +141,19 @@ var _ = Describe("kube converter", func() {
 					stS := extStS.Spec.Template.Spec.Template
 					Expect(stS.Name).To(Equal("diego-cell"))
 
-					specCopierInitContainer := stS.Spec.InitContainers[0]
-					rendererInitContainer := stS.Spec.InitContainers[1]
+					specCopierInitContainer := stS.Spec.InitContainers[1]
+					rendererInitContainer := stS.Spec.InitContainers[2]
 
 					// Test containers in the extended statefulSet
 					Expect(stS.Spec.Containers[0].Image).To(Equal("hub.docker.com/cfcontainerization/cflinuxfs3:opensuse-15.0-28.g837c5b3-30.263-7.0.0_233.gde0accd0-0.62.0"))
 					Expect(stS.Spec.Containers[0].Command).To(Equal([]string{"/usr/bin/dumb-init", "--"}))
-					Expect(stS.Spec.Containers[0].Args).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server", "--port", "1337"}))
+					Expect(stS.Spec.Containers[0].Args).To(Equal([]string{
+						"/var/vcap/all-releases/container-run/container-run",
+						"--post-start-name", "/var/vcap/jobs/cflinuxfs3-rootfs-setup/bin/post-start",
+						"--",
+						"/var/vcap/packages/test-server/bin/test-server",
+						"--port", "1337",
+					}))
 					Expect(stS.Spec.Containers[0].Name).To(Equal("cflinuxfs3-rootfs-setup-test-server"))
 
 					// Test init containers in the extended statefulSet
@@ -326,14 +338,26 @@ var _ = Describe("kube converter", func() {
 				Expect(containers).To(HaveLen(4))
 				Expect(containers[0].Name).To(Equal("fake-errand-a-test-server"))
 				Expect(containers[0].Command).To(Equal([]string{"/usr/bin/dumb-init", "--"}))
-				Expect(containers[0].Args).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server", "--port", "1337"}))
+				Expect(containers[0].Args).To(Equal([]string{
+					"/var/vcap/all-releases/container-run/container-run",
+					"--post-start-name", "/var/vcap/jobs/fake-errand-a/bin/post-start",
+					"--",
+					"/var/vcap/packages/test-server/bin/test-server",
+					"--port", "1337",
+				}))
 				Expect(containers[0].Env).To(HaveLen(1))
 				Expect(containers[0].Env[0].Name).To(Equal("BPM"))
 				Expect(containers[0].Env[0].Value).To(Equal("SWEET"))
 				Expect(containers[1].Name).To(Equal("fake-errand-b-test-server"))
 				Expect(containers[2].Name).To(Equal("fake-errand-b-alt-test-server"))
 				Expect(containers[2].Command).To(Equal([]string{"/usr/bin/dumb-init", "--"}))
-				Expect(containers[2].Args).To(Equal([]string{"/var/vcap/packages/test-server/bin/test-server", "--port", "1338", "--ignore-signals"}))
+				Expect(containers[2].Args).To(Equal([]string{
+					"/var/vcap/all-releases/container-run/container-run",
+					"--",
+					"/var/vcap/packages/test-server/bin/test-server",
+					"--port", "1338",
+					"--ignore-signals",
+				}))
 				Expect(containers[2].Env).To(HaveLen(1))
 				Expect(containers[2].Env[0].Name).To(Equal("BPM"))
 				Expect(containers[2].Env[0].Value).To(Equal("CONTAINED"))
