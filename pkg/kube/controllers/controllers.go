@@ -41,7 +41,6 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 	boshdeployment.AddDeployment,
 	boshdeployment.AddGeneratedVariable,
 	boshdeployment.AddBPM,
-	extendedjob.AddTrigger,
 	extendedjob.AddErrand,
 	extendedjob.AddJob,
 	extendedsecret.AddExtendedSecret,

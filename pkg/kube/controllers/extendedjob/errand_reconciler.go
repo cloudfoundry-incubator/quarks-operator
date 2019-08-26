@@ -76,7 +76,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 	}
 
-	if retry, err := r.jobCreator.Create(ctx, *eJob, "", ""); err != nil {
+	if retry, err := r.jobCreator.Create(ctx, *eJob); err != nil {
 		return reconcile.Result{}, ctxlog.WithEvent(eJob, "CreateJobError").Errorf(ctx, "Failed to create job '%s': %s", eJob.Name, err)
 	} else if retry {
 		ctxlog.Infof(ctx, "Retrying to create job '%s'", eJob.Name)

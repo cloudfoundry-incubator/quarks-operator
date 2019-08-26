@@ -127,16 +127,11 @@ func GetStatefulSetName(name string) string {
 	return statefulSetName
 }
 
-// JobName returns a unique, short name for a given eJob, pod(if exists) combination
-// k8s allows 63 chars, but the pod will have -\d{6} appended
-// So we return max 56 chars: name19(-podname19)-suffix16
-func JobName(eJobName, podName string) (string, error) {
-	name := ""
-	if podName == "" {
-		name = truncate(eJobName, 39)
-	} else {
-		name = fmt.Sprintf("%s-%s", truncate(eJobName, 19), truncate(podName, 19))
-	}
+// JobName returns a unique, short name for a given eJob k8s allows 63 chars,
+// but the job's pod will have -\d{6} (=7 chars) appended.  So we return max 56
+// chars: name39-suffix16
+func JobName(eJobName string) (string, error) {
+	name := truncate(eJobName, 39)
 
 	hashID, err := randSuffix(name)
 	if err != nil {

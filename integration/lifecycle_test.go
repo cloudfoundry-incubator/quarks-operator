@@ -36,11 +36,6 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			// Check pods
-			Expect(env.WaitForLogMsg(env.ObservedLogs, "Considering 3 extended jobs for pod testcr-nats-v1-0/ready")).To(Succeed(), "error getting logs for waiting pod-0/ready")
-			Expect(env.ObservedLogs.TakeAll())
-			Expect(env.WaitForLogMsg(env.ObservedLogs, "Considering 3 extended jobs for pod testcr-nats-v1-1/ready")).To(Succeed(), "error getting logs for waiting pod-1/ready")
-
 			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, "testcr", "nats", "1", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
