@@ -85,11 +85,11 @@ func (r *ResolverImpl) WithOpsManifest(instance *bdv1.BOSHDeployment, namespace 
 	for _, op := range ops {
 		opsData, err := r.resourceData(namespace, op.Type, op.Name, bdv1.OpsSpecName)
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
+			return nil, []string{}, errors.Wrapf(err, "Failed to get resource data for interpolation of bosh deployment '%s' and ops '%s'", instance.GetName(), op.Name)
 		}
 		err = interpolator.BuildOps([]byte(opsData))
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
+			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' and ops '%s'", instance.GetName(), op.Name)
 		}
 	}
 
@@ -97,7 +97,7 @@ func (r *ResolverImpl) WithOpsManifest(instance *bdv1.BOSHDeployment, namespace 
 	if len(ops) != 0 {
 		bytes, err = interpolator.Interpolate([]byte(m))
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Failed to interpolate %#v in interpolation task", m)
+			return nil, []string{}, errors.Wrapf(err, "Failed to interpolate '%s' in interpolation task", instance.Name)
 		}
 	}
 
