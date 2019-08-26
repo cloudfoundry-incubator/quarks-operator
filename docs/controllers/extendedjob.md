@@ -3,9 +3,6 @@
 - [ExtendedJob](#extendedjob)
   - [Description](#description)
   - [Features](#features)
-    - [Triggered Jobs](#triggered-jobs)
-      - [State](#state)
-      - [Labels](#labels)
     - [Errand Jobs](#errand-jobs)
     - [One-Off Jobs / Auto-Errands](#one-off-jobs--auto-errands)
       - [Restarting on Config Change](#restarting-on-config-change)
@@ -18,47 +15,12 @@
 An `ExtendedJob` allows the developer to run jobs when something interesting happens. It also allows the developer to store the output of the job into a `Secret`.
 The job started by an `ExtendedJob` is deleted automatically after it succeeds.
 
-There are three different kinds of `ExtendedJob`:
+There are two different kinds of `ExtendedJob`:
 
-- **triggered jobs**: a job is created when an event occurs (e.g. a pod is created)
 - **one-offs**: automatically runs once after it's created
 - **errands**: needs to be run manually by a user
 
 ## Features
-
-### Triggered Jobs
-
-An `ExtendedJob` can be triggered when something interesting happens to a pod.
-
-E.g. when a `Pod` is created, deleted, transitioned to **ready** or a
-**notReady** state.
-
-The execution of `ExtendedJob` can be limited to pods with certain labels.
-
-A separate native k8s `Job` is started for every pod that changes. The `Job`
-has a label `fissile.cloudfoundry.org/triggering-pod: uid` to identify which pod it is running for.
-
-`ExtendedJob` does not trigger for pods from other `Jobs`. This is done by checking if
-a pod has a label `job-name`. The `job-name` label is [assigned by Kubernetes](https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/) to `Job` `Pods`.
-
-#### State
-
-The `when` trigger can be used to run a `Job` when the state of a `Pod` changes.
-Possible values are `ready`, `notready`, `created` and `deleted`.
-
-The `when` field is required for triggered jobs.
-
-Look [here](https://github.com/cloudfoundry-incubator/cf-operator/blob/master/docs/examples/extended-job/exjob_trigger_ready.yaml) for a full example that uses this type of trigger.
-
-#### Labels
-
-The `selector` trigger can be used run a `Job` for pods with a matching label.
-It supports matching against a list of labels via `matchLabels`.
-It can also match by expressions if `matchExpressions` are given.
-
-If multiple selectors are given, all must match to include the pod.
-
-Look [here](https://github.com/cloudfoundry-incubator/cf-operator/blob/master/docs/examples/extended-job/exjob_trigger_ready.yaml) for a full example that uses this type of selector.
 
 ### Errand Jobs
 
