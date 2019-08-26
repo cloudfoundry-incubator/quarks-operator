@@ -12,7 +12,6 @@ import (
 var _ = Describe("Names", func() {
 	type test struct {
 		arg1   string
-		arg2   string
 		result string
 		n      int
 	}
@@ -23,16 +22,13 @@ var _ = Describe("Names", func() {
 		tests := []test{
 			{arg1: "ab1", result: "ab1", n: 20},
 			{arg1: "a-b1", result: "a-b1-", n: 21},
-			{arg1: "a-b1", arg2: "pod", result: "a-b1-pod-", n: 25},
-			{arg1: long31, arg2: "", result: "a123456789012345678901234567890-", n: 48},
-			{arg1: long31, arg2: "pod", result: "a123456789012345678-pod", n: 40},
-			{arg1: long31, arg2: long31, result: "a123456789012345678-a123456789012345678-", n: 56},
-			{arg1: long63, arg2: "", result: long63[:39] + "-", n: 56},
+			{arg1: long31, result: "a123456789012345678901234567890-", n: 48},
+			{arg1: long63, result: long63[:39] + "-", n: 56},
 		}
 
 		It("produces valid k8s job names", func() {
 			for _, t := range tests {
-				r, err := names.JobName(t.arg1, t.arg2)
+				r, err := names.JobName(t.arg1)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(r).To(ContainSubstring(t.result), fmt.Sprintf("%#v", t))
 				Expect(r).To(HaveLen(t.n), fmt.Sprintf("%#v", t))

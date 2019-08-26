@@ -25,7 +25,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -867,103 +866,16 @@ func (c *Catalog) InterpolateBOSHDeployment(name, manifestRef, opsRef string, se
 	}
 }
 
-// LabelTriggeredExtendedJob allows customization of labels triggers
-func (c *Catalog) LabelTriggeredExtendedJob(name string, state ejv1.PodState, ml labels.Set, me []*ejv1.Requirement, cmd []string) *ejv1.ExtendedJob {
-	return &ejv1.ExtendedJob{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Spec: ejv1.ExtendedJobSpec{
-			Trigger: ejv1.Trigger{
-				Strategy: "podstate",
-				PodState: &ejv1.PodStateTrigger{
-					When: state,
-					Selector: &ejv1.Selector{
-						MatchLabels:      &ml,
-						MatchExpressions: me,
-					},
-				},
-			},
-			Template: c.CmdPodTemplate(cmd),
-		},
-	}
-}
-
 // DefaultExtendedJob default values
 func (c *Catalog) DefaultExtendedJob(name string) *ejv1.ExtendedJob {
-	return c.LabelTriggeredExtendedJob(
-		name,
-		ejv1.PodStateReady,
-		map[string]string{"key": "value"},
-		[]*ejv1.Requirement{},
-		[]string{"sleep", "1"},
-	)
-}
-
-// LongRunningExtendedJob has a longer sleep time
-func (c *Catalog) LongRunningExtendedJob(name string) *ejv1.ExtendedJob {
-	return c.LabelTriggeredExtendedJob(
-		name,
-		ejv1.PodStateReady,
-		map[string]string{"key": "value"},
-		[]*ejv1.Requirement{},
-		[]string{"sleep", "15"},
-	)
-}
-
-// OnDeleteExtendedJob runs for deleted pods
-func (c *Catalog) OnDeleteExtendedJob(name string) *ejv1.ExtendedJob {
-	return c.LabelTriggeredExtendedJob(
-		name,
-		ejv1.PodStateDeleted,
-		map[string]string{"key": "value"},
-		[]*ejv1.Requirement{},
-		[]string{"sleep", "1"},
-	)
-}
-
-// MatchExpressionExtendedJob uses Matchexpressions for matching
-func (c *Catalog) MatchExpressionExtendedJob(name string) *ejv1.ExtendedJob {
-	return c.LabelTriggeredExtendedJob(
-		name,
-		ejv1.PodStateReady,
-		map[string]string{},
-		[]*ejv1.Requirement{
-			{Key: "env", Operator: "in", Values: []string{"production"}},
-		},
-		[]string{"sleep", "1"},
-	)
-}
-
-// ComplexMatchExtendedJob uses MatchLabels and MatchExpressions
-func (c *Catalog) ComplexMatchExtendedJob(name string) *ejv1.ExtendedJob {
-	return c.LabelTriggeredExtendedJob(
-		name,
-		ejv1.PodStateReady,
-		map[string]string{"key": "value"},
-		[]*ejv1.Requirement{
-			{Key: "env", Operator: "in", Values: []string{"production"}},
-		},
-		[]string{"sleep", "1"},
-	)
-}
-
-// OutputExtendedJob persists its output
-func (c *Catalog) OutputExtendedJob(name string, template corev1.PodTemplateSpec) *ejv1.ExtendedJob {
+	cmd := []string{"sleep", "1"}
 	return &ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec: ejv1.ExtendedJobSpec{
 			Trigger: ejv1.Trigger{
-				Strategy: "podstate",
-				PodState: &ejv1.PodStateTrigger{
-					When:     "ready",
-					Selector: &ejv1.Selector{MatchLabels: &labels.Set{"key": "value"}},
-				},
+				Strategy: ejv1.TriggerNow,
 			},
-			Template: template,
-			Output: &ejv1.Output{
-				NamePrefix:   name + "-output-",
-				OutputType:   "json",
-				SecretLabels: map[string]string{"label-key": "label-value", "label-key2": "label-value2"},
-			},
+			Template: c.CmdPodTemplate(cmd),
 		},
 	}
 }

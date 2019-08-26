@@ -52,7 +52,6 @@ func EJobMutateFn(eJob *ejv1.ExtendedJob) controllerutil.MutateFn {
 		}
 		eJob.Spec.Output = updated.Spec.Output
 		eJob.Spec.Template = updated.Spec.Template
-		eJob.Spec.Trigger.PodState = updated.Spec.Trigger.PodState
 		eJob.Spec.UpdateOnConfigChange = updated.Spec.UpdateOnConfigChange
 		return nil
 	}
