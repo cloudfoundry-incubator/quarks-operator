@@ -6,15 +6,17 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	pkg "code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
 )
 
 // NewContainerRunCmd constructs a new container-run command.
 func NewContainerRunCmd(
-	run CmdRun,
-	runner Runner,
-	conditionRunner Runner,
-	commandChecker Checker,
-	stdio Stdio,
+	run pkg.CmdRun,
+	runner pkg.Runner,
+	conditionRunner pkg.Runner,
+	commandChecker pkg.Checker,
+	stdio pkg.Stdio,
 ) *cobra.Command {
 	var postStartCommandName string
 	var postStartCommandArgs []string
@@ -51,12 +53,12 @@ func NewContainerRunCmd(
 
 // NewDefaultContainerRunCmd constructs a new container-run command with the default dependencies.
 func NewDefaultContainerRunCmd() *cobra.Command {
-	runner := NewContainerRunner()
-	conditionRunner := NewConditionRunner(time.Sleep, exec.CommandContext)
-	commandChecker := NewCommandChecker(os.Stat, exec.LookPath)
-	stdio := Stdio{
+	runner := pkg.NewContainerRunner()
+	conditionRunner := pkg.NewConditionRunner(time.Sleep, exec.CommandContext)
+	commandChecker := pkg.NewCommandChecker(os.Stat, exec.LookPath)
+	stdio := pkg.Stdio{
 		Out: os.Stdout,
 		Err: os.Stderr,
 	}
-	return NewContainerRunCmd(Run, runner, conditionRunner, commandChecker, stdio)
+	return NewContainerRunCmd(pkg.Run, runner, conditionRunner, commandChecker, stdio)
 }

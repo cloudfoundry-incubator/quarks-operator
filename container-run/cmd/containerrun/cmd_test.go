@@ -7,22 +7,23 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
+	. "code.cloudfoundry.org/cf-operator/container-run/cmd/containerrun"
+	pkg "code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
 )
 
 var _ = Describe("NewContainerRunCmd", func() {
 	It("constructs a new command", func() {
-		cmd := NewContainerRunCmd(nil, nil, nil, nil, Stdio{})
+		cmd := NewContainerRunCmd(nil, nil, nil, nil, pkg.Stdio{})
 		Expect(cmd).ToNot(Equal(nil))
 	})
 
 	It("fails when the run argument returns an error", func() {
 		expectedErr := fmt.Errorf("failed")
 		run := func(
-			_ Runner,
-			_ Runner,
-			_ Checker,
-			_ Stdio,
+			_ pkg.Runner,
+			_ pkg.Runner,
+			_ pkg.Checker,
+			_ pkg.Stdio,
 			_ []string,
 			_ string,
 			_ []string,
@@ -31,7 +32,7 @@ var _ = Describe("NewContainerRunCmd", func() {
 		) error {
 			return expectedErr
 		}
-		cmd := NewContainerRunCmd(run, nil, nil, nil, Stdio{})
+		cmd := NewContainerRunCmd(run, nil, nil, nil, pkg.Stdio{})
 		origArgs := os.Args[:]
 		os.Args = os.Args[:1]
 		err := cmd.Execute()
@@ -41,10 +42,10 @@ var _ = Describe("NewContainerRunCmd", func() {
 
 	It("succeeds when the run argument returns no error", func() {
 		run := func(
-			_ Runner,
-			_ Runner,
-			_ Checker,
-			_ Stdio,
+			_ pkg.Runner,
+			_ pkg.Runner,
+			_ pkg.Checker,
+			_ pkg.Stdio,
 			_ []string,
 			_ string,
 			_ []string,
@@ -53,7 +54,7 @@ var _ = Describe("NewContainerRunCmd", func() {
 		) error {
 			return nil
 		}
-		cmd := NewContainerRunCmd(run, nil, nil, nil, Stdio{})
+		cmd := NewContainerRunCmd(run, nil, nil, nil, pkg.Stdio{})
 		origArgs := os.Args[:]
 		os.Args = os.Args[:1]
 		err := cmd.Execute()
