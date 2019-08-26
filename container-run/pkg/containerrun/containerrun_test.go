@@ -345,6 +345,53 @@ var _ = Describe("ContainerProcess", func() {
 	})
 })
 
+var _ = Describe("CommandChecker", func() {
+	Context("NewCommandChecker", func() {
+		It("constructs a new CommandChecker", func() {
+			cc := NewCommandChecker(nil, nil)
+			Expect(cc).ToNot(BeNil())
+		})
+	})
+
+	Context("Check", func() {
+		It("returns false when the command does not exist as a file neither in the $PATH", func() {
+			osStat := func(string) (os.FileInfo, error) {
+				return nil, os.ErrNotExist
+			}
+			execLookPath := func(file string) (string, error) {
+				return "", exec.ErrNotFound
+			}
+			cc := NewCommandChecker(osStat, execLookPath)
+			exists := cc.Check("a_command")
+			Expect(exists).To(Equal(false))
+		})
+
+		It("returns true when the command exists as a file", func() {
+			osStat := func(string) (os.FileInfo, error) {
+				return nil, nil
+			}
+			execLookPath := func(file string) (string, error) {
+				return "", exec.ErrNotFound
+			}
+			cc := NewCommandChecker(osStat, execLookPath)
+			exists := cc.Check("a_command")
+			Expect(exists).To(Equal(true))
+		})
+
+		It("returns true when the command exists in the $PATH", func() {
+			osStat := func(string) (os.FileInfo, error) {
+				return nil, os.ErrNotExist
+			}
+			execLookPath := func(file string) (string, error) {
+				return "", nil
+			}
+			cc := NewCommandChecker(osStat, execLookPath)
+			exists := cc.Check("a_command")
+			Expect(exists).To(Equal(true))
+		})
+	})
+})
+
 var _ = Describe("ContainerRunner", func() {
 	Context("NewContainerRunner", func() {
 		It("constructs a new ContainerRunner", func() {

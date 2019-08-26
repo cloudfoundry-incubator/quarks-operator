@@ -334,15 +334,15 @@ func NewCommandChecker(
 	execLookPath func(file string) (string, error),
 ) *CommandChecker {
 	return &CommandChecker{
-		osStat: osStat,
+		osStat:       osStat,
 		execLookPath: execLookPath,
 	}
 }
 
 // Check checks if command exists as a file or in $PATH.
 func (cc *CommandChecker) Check(command string) bool {
-	_, statErr := os.Stat(command)
-	_, lookPathErr := exec.LookPath(command)
+	_, statErr := cc.osStat(command)
+	_, lookPathErr := cc.execLookPath(command)
 	return statErr == nil || lookPathErr == nil
 }
 
