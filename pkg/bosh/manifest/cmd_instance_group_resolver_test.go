@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-test/deep"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
@@ -64,7 +63,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 	Context("InstanceGroupResolver", func() {
 		JustBeforeEach(func() {
 			var err error
-			dg, err = manifest.NewInstanceGroupResolver(assetPath, "default", *m, ig)
+			dg, err = NewInstanceGroupResolver(assetPath, "default", *m, ig)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
