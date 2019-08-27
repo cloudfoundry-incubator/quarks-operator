@@ -16,6 +16,7 @@ RUN if [ "${GO111MODULE}" = "on" ]; then go mod download; fi
 COPY . .
 RUN make build && \
     cp -p binaries/cf-operator /usr/local/bin/cf-operator
+RUN ./bin/build-container-run /usr/local/bin
 
 FROM cfcontainerization/cf-operator-base@sha256:2bb233fea55317729ebba6636976459e56d3c6605eaf3c54774449e9507341a5
 RUN groupadd -g 1000 vcap && \
@@ -23,4 +24,5 @@ RUN groupadd -g 1000 vcap && \
 USER vcap
 COPY --from=dumb-init /usr/bin/dumb-init /usr/bin/dumb-init
 COPY --from=build /usr/local/bin/cf-operator /usr/local/bin/cf-operator
+COPY --from=build /usr/local/bin/container-run /usr/local/bin/container-run
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "cf-operator"]

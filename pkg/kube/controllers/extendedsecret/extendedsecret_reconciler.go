@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/pkg/errors"
 	certv1 "k8s.io/api/certificates/v1beta1"
@@ -47,6 +48,26 @@ type ReconcileExtendedSecret struct {
 	scheme       *runtime.Scheme
 	setReference setReferenceFunc
 	config       *config.Config
+}
+
+type caNotReadyError struct {
+	message string
+}
+
+func newCaNotReadyError(message string) *caNotReadyError {
+	return &caNotReadyError{message: message}
+}
+
+// Error returns the error message
+func (e *caNotReadyError) Error() string {
+	return e.message
+}
+
+func isCaNotReady(o interface{}) bool {
+	err := o.(error)
+	err = errors.Cause(err)
+	_, ok := err.(*caNotReadyError)
+	return ok
 }
 
 // Reconcile reads that state of the cluster for a ExtendedSecret object and makes changes based on the state read
@@ -114,6 +135,10 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		ctxlog.Info(ctx, "Generating certificate")
 		err = r.createCertificateSecret(ctx, instance)
 		if err != nil {
+			if isCaNotReady(err) {
+				ctxlog.Info(ctx, fmt.Sprintf("CA for secret '%s' is not ready yet: %s", instance.Name, err))
+				return reconcile.Result{RequeueAfter: time.Second * 5}, nil
+			}
 			ctxlog.Info(ctx, "Error generating certificate secret: "+err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "generating certificate secret.")
 		}
@@ -340,6 +365,9 @@ func (r *ReconcileExtendedSecret) generateCertificateGenerationRequest(ctx conte
 			}
 			err := r.client.Get(ctx, caNamespacedName, caSecret)
 			if err != nil {
+				if apierrors.IsNotFound(err) {
+					return request, newCaNotReadyError("CA secret not found")
+				}
 				return request, errors.Wrap(err, "getting CA secret")
 			}
 			ca := caSecret.Data[certificateRequest.CARef.Key]
@@ -353,6 +381,9 @@ func (r *ReconcileExtendedSecret) generateCertificateGenerationRequest(ctx conte
 				}
 				err = r.client.Get(ctx, caNamespacedName, caSecret)
 				if err != nil {
+					if apierrors.IsNotFound(err) {
+						return request, newCaNotReadyError("CA key secret not found")
+					}
 					return request, errors.Wrap(err, "getting CA Key secret")
 				}
 			}

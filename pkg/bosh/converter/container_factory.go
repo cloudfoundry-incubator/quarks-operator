@@ -9,20 +9,21 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 
+	"code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
 const (
-	// EnvJobsDir is a key for the container Env used to lookup the jobs dir
+	// EnvJobsDir is a key for the container Env used to lookup the jobs dir.
 	EnvJobsDir = "JOBS_DIR"
 
-	// EnvLogsDir is the path from where to tail file logs
+	// EnvLogsDir is the path from where to tail file logs.
 	EnvLogsDir = "LOGS_DIR"
 )
 
-// ContainerFactory builds Kubernetes containers from BOSH jobs
+// ContainerFactory builds Kubernetes containers from BOSH jobs.
 type ContainerFactory struct {
 	manifestName         string
 	instanceGroupName    string
@@ -32,7 +33,7 @@ type ContainerFactory struct {
 	bpmConfigs           bpm.Configs
 }
 
-// NewContainerFactory returns a new ContainerFactory for a BOSH instant group
+// NewContainerFactory returns a new ContainerFactory for a BOSH instant group.
 func NewContainerFactory(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactory {
 	return &ContainerFactory{
 		manifestName:         manifestName,
@@ -44,7 +45,7 @@ func NewContainerFactory(manifestName string, instanceGroupName string, version 
 	}
 }
 
-// JobsToInitContainers creates a list of Containers for corev1.PodSpec InitContainers field
+// JobsToInitContainers creates a list of Containers for corev1.PodSpec InitContainers field.
 func (c *ContainerFactory) JobsToInitContainers(
 	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
@@ -132,6 +133,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 	)
 
 	initContainers := flattenContainers(
+		containerRunCopier(),
 		copyingSpecsInitContainers,
 		templateRenderingContainer(c.instanceGroupName, resolvedPropertiesSecretName),
 		createDirContainer(jobs),
@@ -142,7 +144,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 	return initContainers, nil
 }
 
-// JobsToContainers creates a list of Containers for corev1.PodSpec Containers field
+// JobsToContainers creates a list of Containers for corev1.PodSpec Containers field.
 func (c *ContainerFactory) JobsToContainers(
 	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
@@ -177,7 +179,7 @@ func (c *ContainerFactory) JobsToContainers(
 			persistentDiskMount = persistentDiskDisks[0].VolumeMount
 		}
 
-		for _, process := range bpmConfig.Processes {
+		for processIndex, process := range bpmConfig.Processes {
 			processDisks := jobDisks.Filter("process_name", process.Name)
 			bpmVolumeMounts := make([]corev1.VolumeMount, 0)
 			for _, processDisk := range processDisks {
@@ -191,6 +193,23 @@ func (c *ContainerFactory) JobsToContainers(
 				processVolumeMounts = append(processVolumeMounts, *persistentDiskMount)
 			}
 
+			// The post-start script should be executed only once per job, so we set it up in the first
+			// process container.
+			var postStart postStart
+			if processIndex == 0 {
+				conditionProperty := job.Properties.Quarks.PostStart.Condition
+				if conditionProperty != nil && conditionProperty.Exec != nil && len(conditionProperty.Exec.Command) > 0 {
+					postStart.condition = &containerrun.Command{
+						Name: conditionProperty.Exec.Command[0],
+						Arg:  conditionProperty.Exec.Command[1:],
+					}
+				}
+
+				postStart.command = &containerrun.Command{
+					Name: filepath.Join(VolumeJobsDirMountPath, job.Name, "bin", "post-start"),
+				}
+			}
+
 			container := bpmProcessContainer(
 				job.Name,
 				process.Name,
@@ -200,6 +219,7 @@ func (c *ContainerFactory) JobsToContainers(
 				job.Properties.Quarks.Run.HealthCheck,
 				job.Properties.Quarks.Envs,
 				job.Properties.Quarks.Privileged,
+				postStart,
 			)
 
 			containers = append(containers, *container.DeepCopy())
@@ -217,9 +237,8 @@ func (c *ContainerFactory) JobsToContainers(
 	return containers, nil
 }
 
-// logsTailerContainer is a container that tails all logs in /var/vcap/sys/log
+// logsTailerContainer is a container that tails all logs in /var/vcap/sys/log.
 func logsTailerContainer(instanceGroupName string) corev1.Container {
-
 	rootUserID := int64(0)
 
 	return corev1.Container{
@@ -247,7 +266,31 @@ func logsTailerContainer(instanceGroupName string) corev1.Container {
 	}
 }
 
-// jobSpecCopierContainer will return a corev1.Container{} with the populated field
+func containerRunCopier() corev1.Container {
+	dstDir := fmt.Sprintf("%s/container-run", VolumeRenderingDataMountPath)
+	return corev1.Container{
+		Name:  "container-run-copier",
+		Image: GetOperatorDockerImage(),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      VolumeRenderingDataName,
+				MountPath: VolumeRenderingDataMountPath,
+			},
+		},
+		Command: []string{"/usr/bin/dumb-init", "--"},
+		Args: []string{
+			"/bin/sh",
+			"-c",
+			fmt.Sprintf(`
+				set -o errexit
+				mkdir -p '%[1]s'
+				cp /usr/local/bin/container-run '%[1]s'/container-run
+			`, dstDir),
+		},
+	}
+}
+
+// jobSpecCopierContainer will return a corev1.Container{} with the populated field.
 func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName string) corev1.Container {
 	inContainerReleasePath := filepath.Join(VolumeRenderingDataMountPath, "jobs-src", releaseName)
 	return corev1.Container{
@@ -397,7 +440,6 @@ func bpmPreStartInitContainer(
 	debug bool,
 	privileged bool,
 ) corev1.Container {
-
 	var script string
 	if debug {
 		script = fmt.Sprintf(`%s || ( echo "Debug window 1hr" ; sleep 3600)`, process.Hooks.PreStart)
@@ -422,6 +464,10 @@ func bpmPreStartInitContainer(
 	}
 }
 
+type postStart struct {
+	command, condition *containerrun.Command
+}
+
 func bpmProcessContainer(
 	jobName string,
 	processName string,
@@ -431,6 +477,7 @@ func bpmProcessContainer(
 	healthchecks map[string]bdm.HealthCheck,
 	arbitraryEnvs []corev1.EnvVar,
 	privileged bool,
+	postStart postStart,
 ) corev1.Container {
 	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
 	privilegedContainer := process.Unsafe.Privileged || privileged
@@ -438,12 +485,14 @@ func bpmProcessContainer(
 	if workdir == "" {
 		workdir = filepath.Join(VolumeJobsDirMountPath, jobName)
 	}
+	command, args := generateBPMCommand(&process, postStart)
 	container := corev1.Container{
 		Name:         names.Sanitize(name),
 		Image:        jobImage,
 		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
-		Command:      []string{"/usr/bin/dumb-init", "--"},
-		Args:         append([]string{process.Executable}, process.Args...),
+		Command:      command,
+		Args:         args,
+		Env:          generateEnv(process.Env, arbitraryEnvs),
 		WorkingDir:   workdir,
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privilegedContainer,
@@ -451,7 +500,7 @@ func bpmProcessContainer(
 		Lifecycle: &corev1.Lifecycle{},
 	}
 
-	// Only set when desired capabilities is not empty
+	// Only set when desired capabilities is not empty.
 	if len(process.Capabilities) != 0 {
 		container.SecurityContext.Capabilities = &corev1.Capabilities{
 			Add: capability(process.Capabilities),
@@ -499,8 +548,6 @@ echo "Done"`,
 		},
 	}
 
-	container.Env = generateEnv(process.Env, arbitraryEnvs)
-
 	for name, hc := range healthchecks {
 		if name == process.Name {
 			if hc.ReadinessProbe != nil {
@@ -514,7 +561,7 @@ echo "Done"`,
 	return container
 }
 
-// capability converts string slice into Capability slice of kubernetes
+// capability converts string slice into Capability slice of kubernetes.
 func capability(s []string) []corev1.Capability {
 	capabilities := make([]corev1.Capability, len(s))
 	for capabilityIndex, capability := range s {
@@ -546,6 +593,29 @@ func flattenContainers(containers ...interface{}) []corev1.Container {
 		}
 	}
 	return result
+}
+
+// generateArgs generates the bpm container arguments.
+func generateBPMCommand(
+	process *bpm.Process,
+	postStart postStart,
+) ([]string, []string) {
+	command := []string{"/usr/bin/dumb-init", "--"}
+	args := []string{fmt.Sprintf("%s/container-run/container-run", VolumeRenderingDataMountPath)}
+	if postStart.command != nil {
+		args = append(args, "--post-start-name", postStart.command.Name)
+		if postStart.condition != nil {
+			args = append(args, "--post-start-condition-name", postStart.condition.Name)
+			for _, arg := range postStart.condition.Arg {
+				args = append(args, "--post-start-condition-arg", arg)
+			}
+		}
+	}
+	args = append(args, "--")
+	args = append(args, process.Executable)
+	args = append(args, process.Args...)
+
+	return command, args
 }
 
 // generateEnv returns new slice of corev1.EnvVar

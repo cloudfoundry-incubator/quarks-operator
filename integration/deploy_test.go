@@ -140,9 +140,9 @@ var _ = Describe("Deploy", func() {
 			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=garden-runc")
 			Expect(len(pods.Items)).To(Equal(2))
 			pod := pods.Items[1]
-			Expect(pod.Spec.InitContainers).To(HaveLen(5))
-			Expect(pod.Spec.InitContainers[4].Command).To(Equal([]string{"/usr/bin/dumb-init", "--"}))
-			Expect(pod.Spec.InitContainers[4].Args).To(Equal([]string{
+			Expect(pod.Spec.InitContainers).To(HaveLen(6))
+			Expect(pod.Spec.InitContainers[5].Command).To(Equal([]string{"/usr/bin/dumb-init", "--"}))
+			Expect(pod.Spec.InitContainers[5].Args).To(Equal([]string{
 				"/bin/sh",
 				"-xc",
 				"/var/vcap/jobs/garden/bin/bpm-pre-start",
@@ -173,8 +173,8 @@ var _ = Describe("Deploy", func() {
 			Expect(len(pods.Items)).To(Equal(2))
 
 			pod := pods.Items[1]
-			Expect(pod.Spec.InitContainers).To(HaveLen(4))
-			Expect(pod.Spec.InitContainers[3].Name).To(Equal("bosh-pre-start-route-registrar"))
+			Expect(pod.Spec.InitContainers).To(HaveLen(5))
+			Expect(pod.Spec.InitContainers[4].Name).To(Equal("bosh-pre-start-route-registrar"))
 		})
 	})
 
@@ -353,13 +353,13 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal("test.desired-manifest-v2"))
 			Expect(pod.Spec.Volumes[5].Secret.SecretName).To(Equal("test.ig-resolved.nats-v2"))
-			Expect(pod.Spec.InitContainers[1].VolumeMounts[2].Name).To(Equal("ig-resolved"))
+			Expect(pod.Spec.InitContainers[2].VolumeMounts[2].Name).To(Equal("ig-resolved"))
 
 			pod, err = env.GetPod(env.Namespace, "test-route-registrar-v2-0")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal("test.desired-manifest-v2"))
 			Expect(pod.Spec.Volumes[5].Secret.SecretName).To(Equal("test.ig-resolved.route-registrar-v2"))
-			Expect(pod.Spec.InitContainers[1].VolumeMounts[2].Name).To(Equal("ig-resolved"))
+			Expect(pod.Spec.InitContainers[2].VolumeMounts[2].Name).To(Equal("ig-resolved"))
 		})
 	})
 

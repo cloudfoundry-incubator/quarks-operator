@@ -43,7 +43,7 @@ fi
 
 NODES=${NODES:-3}
 FLAKE_ATTEMPTS=${FLAKE_ATTEMPTS:-3}
-ginkgo \
+ginkgo ${FOCUS:+ --focus "$FOCUS"} \
   --randomizeAllSpecs \
   --nodes="$NODES" \
   --slowSpecThreshold=50 \
