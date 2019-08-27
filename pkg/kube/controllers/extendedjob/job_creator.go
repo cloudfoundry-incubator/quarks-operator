@@ -34,7 +34,7 @@ func NewJobCreator(client crc.Client, scheme *runtime.Scheme, f setOwnerReferenc
 
 // JobCreator is the interface that wraps the basic Create method.
 type JobCreator interface {
-	Create(ctx context.Context, eJob ejv1.ExtendedJob, podName string, podUID string) (retry bool, err error)
+	Create(ctx context.Context, eJob ejv1.ExtendedJob) (retry bool, err error)
 }
 
 type jobCreatorImpl struct {
@@ -46,16 +46,13 @@ type jobCreatorImpl struct {
 
 // Create satisfies the JobCreator interface. It creates a Job to complete ExJob. It returns the
 // retry if one of the references are not present.
-func (j jobCreatorImpl) Create(ctx context.Context, eJob ejv1.ExtendedJob, podName string, podUID string) (retry bool, err error) {
+func (j jobCreatorImpl) Create(ctx context.Context, eJob ejv1.ExtendedJob) (retry bool, err error) {
 	template := eJob.Spec.Template.DeepCopy()
 
 	if template.Labels == nil {
 		template.Labels = map[string]string{}
 	}
 	template.Labels[ejv1.LabelEJobName] = eJob.Name
-	if len(podUID) != 0 {
-		template.Labels[ejv1.LabelTriggeringPod] = podUID
-	}
 
 	err = j.store.SetSecretReferences(ctx, eJob.Namespace, &template.Spec)
 	if err != nil {
@@ -100,7 +97,7 @@ func (j jobCreatorImpl) Create(ctx context.Context, eJob ejv1.ExtendedJob, podNa
 		}
 	}
 
-	name, err := names.JobName(eJob.Name, podName)
+	name, err := names.JobName(eJob.Name)
 	if err != nil {
 		return false, errors.Wrapf(err, "could not generate job name for eJob '%s'", eJob.Name)
 	}

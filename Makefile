@@ -1,5 +1,8 @@
 #!/usr/bin/env make
 
+MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
+MAKEFILE_DIR := $(patsubst %/,%,$(dir $(MAKEFILE_PATH)))
+
 all: tools build test
 
 up:
@@ -22,9 +25,12 @@ staticcheck:
 
 ############ BUILD TARGETS ############
 
-.PHONY: build
+.PHONY: build build-container-run
 build:
 	bin/build
+
+build-container-run:
+	bin/build-container-run $(MAKEFILE_DIR)/binaries
 
 build-image:
 	bin/build-image

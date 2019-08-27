@@ -10,6 +10,7 @@ Don't alter this file, it was generated.
 package v1alpha1
 
 import (
+	v1beta1 "k8s.io/api/certificates/v1beta1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -23,6 +24,11 @@ func (in *CertificateRequest) DeepCopyInto(out *CertificateRequest) {
 	}
 	out.CARef = in.CARef
 	out.CAKeyRef = in.CAKeyRef
+	if in.Usages != nil {
+		in, out := &in.Usages, &out.Usages
+		*out = make([]v1beta1.KeyUsage, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

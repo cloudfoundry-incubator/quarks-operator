@@ -49,10 +49,12 @@ func getStatefulSetsOwnedBy(ctx context.Context, exStatefulSet *estsv1.ExtendedS
 	for _, statefulSet := range statefulSets {
 		if metav1.IsControlledBy(&statefulSet, exStatefulSet) {
 			result = append(result, statefulSet)
-			ctxlog.Debug(ctx, "StatefulSet '", statefulSet.Name, "' owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
-		} else {
-			ctxlog.Debug(ctx, "StatefulSet '", statefulSet.Name, "' is not owned by ExtendedStatefulSet '", exStatefulSet.Name, "', ignoring.")
+			ctxlog.Debug(ctx, "Found StatefulSet '", statefulSet.Name, "' owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
 		}
+	}
+
+	if len(result) == 0 {
+		ctxlog.Debug(ctx, "Did not find any StatefulSet owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
 	}
 
 	return result, nil
