@@ -44,4 +44,4 @@ spec:
               path: /readyz
               port: 2999
               scheme: "HTTPS"
-            initialDelaySeconds: {{ .Values.readinessProbeDelay }}
+            initialDelaySeconds: 2

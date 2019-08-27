@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/onsi/ginkgo/config"
 	"github.com/pkg/errors"
@@ -63,11 +64,13 @@ func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error
 		"--namespace", namespace,
 		"--timeout", installTimeOutInSecs,
 		"--set", fmt.Sprintf("customResources.enableInstallation=%s", strconv.FormatBool(!crdExist)),
-		"--set", "readinessProbeDelay=30",
 		"--wait")
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "%s Helm install command failed.", e2eFailedMessage)
 	}
+
+	// Add sleep for workaround for CI timeouts
+	time.Sleep(10* time.Second)
 
 	teardownFunc := func() error {
 		var messages string
