@@ -75,66 +75,28 @@ func generateDefaultDisks(manifestName string, instanceGroup *bdm.InstanceGroup,
 
 	defaultDisks := BPMResourceDisks{
 		{
-			Volume: &corev1.Volume{
-				Name:         VolumeRenderingDataName,
-				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-			},
-			VolumeMount: &corev1.VolumeMount{
-				Name:      VolumeRenderingDataName,
-				MountPath: VolumeRenderingDataMountPath,
-			},
+			Volume:      renderingVolume(),
+			VolumeMount: renderingVolumeMount(),
 		},
 		{
-			Volume: &corev1.Volume{
-				Name:         VolumeJobsDirName,
-				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-			},
-			VolumeMount: &corev1.VolumeMount{
-				Name:      VolumeJobsDirName,
-				MountPath: VolumeJobsDirMountPath,
-			},
+			Volume:      jobsDirVolume(),
+			VolumeMount: jobsDirVolumeMount(),
 		},
 		{
 			// For ephemeral job data.
 			// https://bosh.io/docs/vm-config/#jobs-and-packages
-			Volume: &corev1.Volume{
-				Name:         VolumeDataDirName,
-				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-			},
-			VolumeMount: &corev1.VolumeMount{
-				Name:      VolumeDataDirName,
-				MountPath: VolumeDataDirMountPath,
-			},
+			Volume:      dataDirVolume(),
+			VolumeMount: dataDirVolumeMount(),
 		},
 		{
-			Volume: &corev1.Volume{
-				Name:         VolumeSysDirName,
-				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-			},
-			VolumeMount: &corev1.VolumeMount{
-				Name:      VolumeSysDirName,
-				MountPath: VolumeSysDirMountPath,
-			},
+			Volume:      sysDirVolume(),
+			VolumeMount: sysDirVolumeMount(),
 		},
 		{
-			Volume: &corev1.Volume{
-				Name: generateVolumeName(desiredManifestName),
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: desiredManifestName,
-					},
-				},
-			},
+			Volume: withOpsVolume(desiredManifestName),
 		},
 		{
-			Volume: &corev1.Volume{
-				Name: generateVolumeName(resolvedPropertiesSecretName),
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: resolvedPropertiesSecretName,
-					},
-				},
-			},
+			Volume: resolvedPropertiesVolume(resolvedPropertiesSecretName),
 		},
 	}
 
@@ -301,18 +263,6 @@ func generateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpm
 	}
 
 	return bpmDisks, nil
-}
-
-// generateVolumeName generate volume name based on secret name
-func generateVolumeName(secretName string) string {
-	nameSlices := strings.Split(secretName, ".")
-	volName := ""
-	if len(nameSlices) > 1 {
-		volName = nameSlices[1]
-	} else {
-		volName = nameSlices[0]
-	}
-	return names.Sanitize(volName)
 }
 
 func generatePersistentVolumeClaim(manifestName string, instanceGroup *bdm.InstanceGroup, namespace string) corev1.PersistentVolumeClaim {
