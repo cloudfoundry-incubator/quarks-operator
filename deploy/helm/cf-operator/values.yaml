@@ -23,5 +23,3 @@ serviceAccount:
   cfOperatorServiceAccount:
     create: true
     name:
-
-readinessProbeDelay: 2
