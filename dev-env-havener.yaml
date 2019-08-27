@@ -72,8 +72,8 @@ before:
     ./bin/apply-crds
 
     export RELEASE_NAMESPACE="scf"
-    kubectl -n "${RELEASE_NAMESPACE}" delete mutatingwebhookconfiguration cf-operator-hook-${RELEASE_NAMESPACE} --ignore-not-found=true
-    kubectl -n "${RELEASE_NAMESPACE}" delete validatingwebhookconfiguration cf-operator-hook-${RELEASE_NAMESPACE} --ignore-not-found=true
+    kubectl delete mutatingwebhookconfiguration cf-operator-hook-${RELEASE_NAMESPACE} --ignore-not-found=true
+    kubectl delete validatingwebhookconfiguration cf-operator-hook-${RELEASE_NAMESPACE} --ignore-not-found=true
     kubectl -n "${RELEASE_NAMESPACE}" delete secret cf-operator-webhook-server-cert --ignore-not-found=true
 
 after:
@@ -84,13 +84,13 @@ after:
     #!/bin/bash
     export RELEASE_NAMESPACE="scf"
     echo -e "\nCurrent generated mutating webhooks"
-    kubectl -n "${RELEASE_NAMESPACE}" get mutatingwebhookconfigurations
+    kubectl get mutatingwebhookconfigurations
 
     echo -e "\nCurrent generated validation webhooks"
-    kubectl -n "${RELEASE_NAMESPACE}" get validatingwebhookconfigurations
+    kubectl get validatingwebhookconfigurations
 
     echo -e "\nCurrent generated CRDs webhooks"
-    kubectl -n "${RELEASE_NAMESPACE}" get customresourcedefinitions
+    kubectl get customresourcedefinitions
 
     echo -e "\nCurrent pods"
     kubectl -n "${RELEASE_NAMESPACE}" get pods
