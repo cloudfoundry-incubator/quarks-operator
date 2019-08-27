@@ -62,7 +62,7 @@ func AddExtendedSecret(ctx context.Context, config *config.Config, mgr manager.M
 
 // listSecrets gets all Secrets owned by the ExtendedSecret
 func listSecrets(ctx context.Context, client crc.Client, exSecret *esv1.ExtendedSecret) ([]corev1.Secret, error) {
-	ctxlog.Debug(ctx, "Listing StatefulSets owned by ExtendedStatefulSet '", exSecret.Name, "'.")
+	ctxlog.Debug(ctx, "Listing Secrets owned by ExtendedSecret '", exSecret.Name, "'.")
 
 	secretLabelsSet := labels.Set{
 		esv1.LabelKind: esv1.GeneratedSecretKind,
@@ -83,10 +83,12 @@ func listSecrets(ctx context.Context, client crc.Client, exSecret *esv1.Extended
 	for _, secret := range allSecrets.Items {
 		if metav1.IsControlledBy(&secret, exSecret) {
 			result = append(result, secret)
-			ctxlog.Debug(ctx, "Secret '", secret.Name, "' owned by ExtendedSecret '", exSecret.Name, "'.")
-		} else {
-			ctxlog.Debug(ctx, "Secret '", secret.Name, "' is not owned by ExtendedSecret '", exSecret.Name, "', ignoring.")
+			ctxlog.Debug(ctx, "Found Secret '", secret.Name, "' owned by ExtendedSecret '", exSecret.Name, "'.")
 		}
+	}
+
+	if len(result) == 0 {
+		ctxlog.Debug(ctx, "Did not find any Secret owned by ExtendedSecret '", exSecret.Name, "'.")
 	}
 
 	return result, nil
