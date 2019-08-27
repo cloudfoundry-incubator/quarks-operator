@@ -39,6 +39,20 @@ helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com
 
 For more information about the `cf-operator` helm chart and how to configure it, please refer to [deploy/helm/cf-operator/README.md](deploy/helm/cf-operator/README.md)
 
+### Recovering from a crash
+
+If the operator pod crashes, it cannot be restarted in the same namespace before the existing mutating webhook configuration for that namespace is removed.
+The operator uses mutating webhooks to modify pods on the fly and Kubernetes fails to create pods if the webhook server is unreachable.
+The webhook configurations are installed cluster wide and don't belong to a single namespace, just like custom resources.
+
+To remove the webhook configurations for the cf-operator namespace run:
+
+```bash
+CF_OPERATOR_NAMESPACE=cf-operator
+kubectl delete mutatingwebhookconfiguration "cf-operator-hook-$CF_OPERATOR_NAMESPACE"
+kubectl delete validatingwebhookconfiguration "cf-operator-hook-$CF_OPERATOR_NAMESPACE"
+```
+
 ## Using your fresh installation
 
 With a running `cf-operator` pod, you can try one of the files (see [docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml](docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml) ), as follows:
