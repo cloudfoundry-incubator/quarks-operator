@@ -14,13 +14,14 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
 // Resolver interface to provide a BOSH manifest resolved references from bdpl CRD
 type Resolver interface {
-	WithOpsManifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
+	WithOpsManifest(ctx context.Context, instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
 }
 
 // ResolverImpl resolves references from bdpl CRD to a BOSH manifest
@@ -66,8 +67,9 @@ func (r *ResolverImpl) DesiredManifest(ctx context.Context, boshDeploymentName, 
 // WithOpsManifest returns manifest and a list of implicit variables referenced by our bdpl CRD
 // The resulting manifest has variables interpolated and ops files applied.
 // It is the 'with-ops' manifest.
-func (r *ResolverImpl) WithOpsManifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
-	interpolator := r.newInterpolatorFunc()
+func (r *ResolverImpl) WithOpsManifest(ctx context.Context, instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
+	log.Debugf(ctx, "Calculating manifest with ops files applied '%s'", instance.Name)
+
 	spec := instance.Spec
 	var (
 		m   string
@@ -81,8 +83,11 @@ func (r *ResolverImpl) WithOpsManifest(instance *bdv1.BOSHDeployment, namespace 
 
 	// Interpolate manifest with ops
 	ops := spec.Ops
+	bytes := []byte(m)
 
 	for _, op := range ops {
+		interpolator := r.newInterpolatorFunc()
+
 		opsData, err := r.resourceData(namespace, op.Type, op.Name, bdv1.OpsSpecName)
 		if err != nil {
 			return nil, []string{}, errors.Wrapf(err, "Failed to get resource data for interpolation of bosh deployment '%s' and ops '%s'", instance.GetName(), op.Name)
@@ -91,14 +96,14 @@ func (r *ResolverImpl) WithOpsManifest(instance *bdv1.BOSHDeployment, namespace 
 		if err != nil {
 			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' and ops '%s'", instance.GetName(), op.Name)
 		}
-	}
 
-	bytes := []byte(m)
-	if len(ops) != 0 {
-		bytes, err = interpolator.Interpolate([]byte(m))
+		bytes, err = interpolator.Interpolate(bytes)
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Failed to interpolate '%s' in interpolation task", instance.Name)
+			return nil, []string{}, errors.Wrapf(err, "Failed to interpolate ops '%s' for manifest '%s'", op.Name, instance.Name)
 		}
+
+		// Calculate a diff for the ops file we've just applied, then log it as a debug message
+		log.Debugf(ctx, "Applied ops file '%s' for deployment '%s'", op.Name, instance.Name)
 	}
 
 	// Reload the manifest after interpolation, and apply implicit variables

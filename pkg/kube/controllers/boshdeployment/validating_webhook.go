@@ -125,6 +125,7 @@ func (v *Validator) OpsResourceExist(ctx context.Context, specOpsResource bdv1.R
 //Handle validates a BOSHDeployment
 func (v *Validator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	boshDeployment := &bdv1.BOSHDeployment{}
+	ctx = log.NewParentContext(v.log)
 
 	err := v.decoder.Decode(req, boshDeployment)
 	if err != nil {
@@ -155,7 +156,7 @@ func (v *Validator) Handle(ctx context.Context, req admission.Request) admission
 		}
 	}
 
-	_, _, err = resolver.WithOpsManifest(boshDeployment, boshDeployment.GetNamespace())
+	_, _, err = resolver.WithOpsManifest(ctx, boshDeployment, boshDeployment.GetNamespace())
 	if err != nil {
 		return admission.Response{
 			AdmissionResponse: v1beta1.AdmissionResponse{
