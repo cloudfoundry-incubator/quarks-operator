@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -168,7 +167,7 @@ func (r *ReconcileStatefulSetCleanup) isStatefulSetReady(ctx context.Context, st
 	podList := &corev1.PodList{}
 	err := r.client.List(ctx,
 		podList,
-		func(options *crc.ListOptions) {
+		func(options *client.ListOptions) {
 			options.Namespace = statefulSet.Namespace
 			options.LabelSelector = labelsSelector.AsSelector()
 		},

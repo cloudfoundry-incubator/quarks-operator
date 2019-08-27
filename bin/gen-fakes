@@ -5,7 +5,6 @@ set -e
 
 counterfeiter -o pkg/kube/controllers/fakes/manager.go vendor/sigs.k8s.io/controller-runtime/pkg/manager Manager
 counterfeiter -o pkg/kube/controllers/fakes/client.go vendor/sigs.k8s.io/controller-runtime/pkg/client Client
-counterfeiter -o pkg/kube/controllers/fakes/query.go pkg/kube/controllers/extendedjob Query
 counterfeiter -o pkg/kube/controllers/fakes/pod_log_getter.go pkg/kube/controllers/extendedjob PodLogGetter
 counterfeiter -o pkg/bosh/converter/fakes/release_image_provider.go pkg/bosh/converter/ ReleaseImageProvider
 counterfeiter -o pkg/bosh/converter/fakes/resolver.go pkg/bosh/converter/ Resolver
