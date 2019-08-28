@@ -10,7 +10,6 @@ import (
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ktype "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -81,44 +80,68 @@ func NewValidator(log *zap.SugaredLogger, config *config.Config) admission.Handl
 	}
 }
 
-// OpsResourceExist verify if a resource exist in the namespace,
+// OpsResourcesExist verify if a resource exist in the namespace,
 // it will check its existence during 5 seconds,
 // otherwise it will timeout.
-func (v *Validator) OpsResourceExist(ctx context.Context, specOpsResource bdv1.ResourceReference, ns string) (bool, string) {
+func (v *Validator) OpsResourcesExist(ctx context.Context, specOpsResource []bdv1.ResourceReference, ns string) (bool, string) {
 	timeOut := time.After(v.pollTimeout)
 	tick := time.NewTicker(v.pollInterval)
 	defer tick.Stop()
 
-	switch specOpsResource.Type {
-	case bdv1.ConfigMapReference:
-		key := ktype.NamespacedName{Namespace: string(ns), Name: specOpsResource.Name}
-		for {
-			select {
-			case <-timeOut:
-				return false, fmt.Sprintf("Timeout reached. Resource %s does not exist", specOpsResource.Name)
-			case <-tick.C:
-				err := v.client.Get(ctx, key, &corev1.ConfigMap{})
-				if err == nil {
-					return true, fmt.Sprintf("configmap %s, exists", specOpsResource.Name)
-				}
+	for {
+		missingResources := []string{}
+		configMaps := &corev1.ConfigMapList{}
+		secrets := &corev1.SecretList{}
+
+		select {
+		case <-timeOut:
+			return false, fmt.Sprintf("Timeout reached. Resources %#v do not exist", missingResources)
+		case <-tick.C:
+			// List all configmaps
+			err := v.client.List(ctx, configMaps, client.InNamespace(ns))
+			if err == nil {
+				return true, fmt.Sprintf("error listing configMaps in namespace '%s'", ns)
+			}
+
+			// List all secrets
+			err = v.client.List(ctx, secrets, client.InNamespace(ns))
+			if err == nil {
+				return true, fmt.Sprintf("error listing secrets in namespace '%s'", ns)
 			}
 		}
-	case bdv1.SecretReference:
-		key := ktype.NamespacedName{Namespace: string(ns), Name: specOpsResource.Name}
-		for {
-			select {
-			case <-timeOut:
-				return false, fmt.Sprintf("Timeout reached. Resource %s does not exist", specOpsResource.Name)
-			case <-tick.C:
-				err := v.client.Get(ctx, key, &corev1.Secret{})
-				if err == nil {
-					return true, fmt.Sprintf("secret %s, exists", specOpsResource.Name)
+
+		// Check to see if all references exist
+		allExist := true
+		for _, ref := range specOpsResource {
+			found := false
+			switch ref.Type {
+			case bdv1.ConfigMapReference:
+				for _, configMap := range configMaps.Items {
+					if configMap.Name == ref.Name {
+						found = true
+						break
+					}
+				}
+
+			case bdv1.SecretReference:
+				for _, secret := range secrets.Items {
+					if secret.Name == ref.Name {
+						found = true
+						break
+					}
 				}
 			}
+
+			if !found {
+				missingResources = append(missingResources, fmt.Sprintf("%s/%s", ref.Type, ref.Name))
+				allExist = false
+			}
+
 		}
-	default:
-		// We only support configmaps and secrets so far
-		return false, fmt.Sprintf("resource type %s, is not supported under spec.ops", specOpsResource.Type)
+
+		if allExist {
+			return true, "all references exist"
+		}
 	}
 }
 
@@ -139,23 +162,21 @@ func (v *Validator) Handle(ctx context.Context, req admission.Request) admission
 		}
 	}
 
-	log.Debug(ctx, "Resolving manifest")
+	log.Infof(ctx, "Verifying dependencies for deployment '%s'", boshDeployment.Name)
 	resolver := converter.NewResolver(v.client, func() converter.Interpolator { return converter.NewInterpolator() })
-
-	for _, opsItem := range boshDeployment.Spec.Ops {
-		resourceExist, msg := v.OpsResourceExist(ctx, opsItem, boshDeployment.Namespace)
-		if !resourceExist {
-			return admission.Response{
-				AdmissionResponse: v1beta1.AdmissionResponse{
-					Allowed: false,
-					Result: &metav1.Status{
-						Message: msg,
-					},
+	resourceExist, msg := v.OpsResourcesExist(ctx, boshDeployment.Spec.Ops, boshDeployment.Namespace)
+	if !resourceExist {
+		return admission.Response{
+			AdmissionResponse: v1beta1.AdmissionResponse{
+				Allowed: false,
+				Result: &metav1.Status{
+					Message: msg,
 				},
-			}
+			},
 		}
 	}
 
+	log.Infof(ctx, "Resolving deployment '%s'", boshDeployment.Name)
 	_, _, err = resolver.WithOpsManifest(ctx, boshDeployment, boshDeployment.GetNamespace())
 	if err != nil {
 		return admission.Response{
