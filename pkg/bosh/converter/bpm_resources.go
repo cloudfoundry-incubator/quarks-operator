@@ -177,7 +177,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 		},
 		Spec: essv1.ExtendedStatefulSetSpec{
 			Zones:                instanceGroup.AZs,
-			UpdateOnConfigChange: true,
+			UpdateOnConfigChange: false,
 			Template: v1beta2.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        instanceGroup.NameSanitized(),
