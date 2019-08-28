@@ -17,8 +17,9 @@ import (
 )
 
 var (
-	vcapUserID int64 = 1000
-	admGroupID int64 = 1000
+	rootUserID = int64(0)
+	vcapUserID = int64(1000)
+	admGroupID = int64(1000)
 )
 
 // ReleaseImageProvider interface to provide the docker release image for a BOSH job
