@@ -3,6 +3,8 @@ ADD https://github.com/Yelp/dumb-init/releases/download/v1.2.2/dumb-init_1.2.2_a
 RUN chmod +x /usr/bin/dumb-init
 
 FROM golang:1.12.2 AS build
+ARG GOPROXY
+ENV GOPROXY $GOPROXY
 ARG GO111MODULE="on"
 ENV GO111MODULE $GO111MODULE
 

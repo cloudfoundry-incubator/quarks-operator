@@ -12,4 +12,5 @@ ginkgo -p -r \
   -failOnPending \
   --trace \
   $COV_ARG \
-  -skipPackage integration,e2e
+  -skipPackage integration,e2e \
+  -race
