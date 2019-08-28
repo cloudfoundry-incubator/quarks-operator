@@ -107,7 +107,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 					jobImage,
 					processVolumeMounts,
 					job.Properties.Quarks.Debug,
-					job.Properties.Quarks.Privileged,
+					job.Properties.Quarks.Run.SecurityContext.DeepCopy(),
 				)
 
 				bpmPreStartInitContainers = append(bpmPreStartInitContainers, *container.DeepCopy())
@@ -120,7 +120,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 			jobImage,
 			append(defaultVolumeMounts, bpmDisks.VolumeMounts()...),
 			job.Properties.Quarks.Debug,
-			job.Properties.Quarks.Privileged,
+			job.Properties.Quarks.Run.SecurityContext.DeepCopy(),
 		)
 		boshPreStartInitContainers = append(boshPreStartInitContainers, *boshPreStartInitContainer.DeepCopy())
 	}
@@ -218,7 +218,7 @@ func (c *ContainerFactory) JobsToContainers(
 				processVolumeMounts,
 				job.Properties.Quarks.Run.HealthCheck,
 				job.Properties.Quarks.Envs,
-				job.Properties.Quarks.Privileged,
+				job.Properties.Quarks.Run.SecurityContext.DeepCopy(),
 				postStart,
 			)
 
@@ -239,8 +239,6 @@ func (c *ContainerFactory) JobsToContainers(
 
 // logsTailerContainer is a container that tails all logs in /var/vcap/sys/log.
 func logsTailerContainer(instanceGroupName string) corev1.Container {
-	rootUserID := int64(0)
-
 	return corev1.Container{
 		Name:         "logs",
 		Image:        GetOperatorDockerImage(),
@@ -382,7 +380,7 @@ func boshPreStartInitContainer(
 	jobImage string,
 	volumeMounts []corev1.VolumeMount,
 	debug bool,
-	privileged bool,
+	securityContext *corev1.SecurityContext,
 ) corev1.Container {
 	boshPreStart := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "pre-start")
 
@@ -392,6 +390,11 @@ func boshPreStartInitContainer(
 	} else {
 		script = fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s"; fi`, boshPreStart)
 	}
+
+	if securityContext == nil {
+		securityContext = &corev1.SecurityContext{}
+	}
+	securityContext.RunAsUser = &rootUserID
 
 	return corev1.Container{
 		Name:         names.Sanitize(fmt.Sprintf("bosh-pre-start-%s", jobName)),
@@ -403,9 +406,7 @@ func boshPreStartInitContainer(
 			"-xc",
 			script,
 		},
-		SecurityContext: &corev1.SecurityContext{
-			Privileged: &privileged,
-		},
+		SecurityContext: securityContext,
 	}
 }
 
@@ -414,7 +415,7 @@ func bpmPreStartInitContainer(
 	jobImage string,
 	volumeMounts []corev1.VolumeMount,
 	debug bool,
-	privileged bool,
+	securityContext *corev1.SecurityContext,
 ) corev1.Container {
 	var script string
 	if debug {
@@ -423,7 +424,19 @@ func bpmPreStartInitContainer(
 		script = process.Hooks.PreStart
 	}
 
-	privilegedContainer := process.Unsafe.Privileged || privileged
+	if securityContext == nil {
+		securityContext = &corev1.SecurityContext{}
+	}
+	if securityContext.Capabilities == nil && len(process.Capabilities) > 0 {
+		securityContext.Capabilities = &corev1.Capabilities{
+			Add: capability(process.Capabilities),
+		}
+	}
+	if securityContext.Privileged == nil {
+		securityContext.Privileged = &process.Unsafe.Privileged
+	}
+	securityContext.RunAsUser = &rootUserID
+
 	return corev1.Container{
 		Name:         names.Sanitize(fmt.Sprintf("bpm-pre-start-%s", process.Name)),
 		Image:        jobImage,
@@ -434,9 +447,7 @@ func bpmPreStartInitContainer(
 			"-xc",
 			script,
 		},
-		SecurityContext: &corev1.SecurityContext{
-			Privileged: &privilegedContainer,
-		},
+		SecurityContext: securityContext,
 	}
 }
 
@@ -452,35 +463,41 @@ func bpmProcessContainer(
 	volumeMounts []corev1.VolumeMount,
 	healthchecks map[string]bdm.HealthCheck,
 	arbitraryEnvs []corev1.EnvVar,
-	privileged bool,
+	securityContext *corev1.SecurityContext,
 	postStart postStart,
 ) corev1.Container {
 	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
-	privilegedContainer := process.Unsafe.Privileged || privileged
+
+	if securityContext == nil {
+		securityContext = &corev1.SecurityContext{}
+	}
+	if securityContext.Capabilities == nil && len(process.Capabilities) > 0 {
+		securityContext.Capabilities = &corev1.Capabilities{
+			Add: capability(process.Capabilities),
+		}
+	}
+	if securityContext.Privileged == nil {
+		securityContext.Privileged = &process.Unsafe.Privileged
+	}
+	if securityContext.RunAsUser == nil {
+		securityContext.RunAsUser = &rootUserID
+	}
+
 	workdir := process.Workdir
 	if workdir == "" {
 		workdir = filepath.Join(VolumeJobsDirMountPath, jobName)
 	}
 	command, args := generateBPMCommand(&process, postStart)
 	container := corev1.Container{
-		Name:         names.Sanitize(name),
-		Image:        jobImage,
-		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
-		Command:      command,
-		Args:         args,
-		Env:          generateEnv(process.Env, arbitraryEnvs),
-		WorkingDir:   workdir,
-		SecurityContext: &corev1.SecurityContext{
-			Privileged: &privilegedContainer,
-		},
-		Lifecycle: &corev1.Lifecycle{},
-	}
-
-	// Only set when desired capabilities is not empty.
-	if len(process.Capabilities) != 0 {
-		container.SecurityContext.Capabilities = &corev1.Capabilities{
-			Add: capability(process.Capabilities),
-		}
+		Name:            names.Sanitize(name),
+		Image:           jobImage,
+		VolumeMounts:    deduplicateVolumeMounts(volumeMounts),
+		Command:         command,
+		Args:            args,
+		Env:             generateEnv(process.Env, arbitraryEnvs),
+		WorkingDir:      workdir,
+		SecurityContext: securityContext,
+		Lifecycle:       &corev1.Lifecycle{},
 	}
 
 	// Setup the job drain script handler.
