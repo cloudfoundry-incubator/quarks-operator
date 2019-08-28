@@ -13,7 +13,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejobv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
@@ -27,8 +26,6 @@ const (
 	ReconcileForBOSHDeployment ReconcileType = iota
 	// ReconcileForExtendedJob represents the ExtendedJob CRD
 	ReconcileForExtendedJob
-	// ReconcileForExtendedStatefulSet represents the ExtendedStatefulSet CRD
-	ReconcileForExtendedStatefulSet
 )
 
 func (r ReconcileType) String() string {
@@ -67,7 +64,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			return false, errors.Wrap(err, "error listing references")
 		}
 
-		if versionedSecret && reconcileType != ReconcileForExtendedStatefulSet {
+		if versionedSecret {
 			keys := make([]string, len(objectReferences))
 			i := 0
 			for k := range objectReferences {
@@ -129,26 +126,6 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 					}})
 			}
 		}
-	case ReconcileForExtendedStatefulSet:
-		extendedStatefulSets, err := listExtendedStatefulSets(ctx, client, namespace)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to list ExtendedStatefulSets for ConfigMap reconciles")
-		}
-
-		for _, extendedStatefulSet := range extendedStatefulSets.Items {
-			isRef, err := objReferencedBy(extendedStatefulSet)
-			if err != nil {
-				return nil, err
-			}
-
-			if isRef {
-				result = append(result, reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Name:      extendedStatefulSet.Name,
-						Namespace: extendedStatefulSet.Namespace,
-					}})
-			}
-		}
 	default:
 		return nil, fmt.Errorf("unkown reconcile type %s", reconcileType.String())
 	}
@@ -197,17 +174,6 @@ func listBOSHDeployments(ctx context.Context, client crc.Client, namespace strin
 	err := client.List(ctx, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list BOSHDeployments")
-	}
-
-	return result, nil
-}
-
-func listExtendedStatefulSets(ctx context.Context, client crc.Client, namespace string) (*estsv1.ExtendedStatefulSetList, error) {
-	log.Debugf(ctx, "Listing ExtendedStatefulSets in namespace '%s'", namespace)
-	result := &estsv1.ExtendedStatefulSetList{}
-	err := client.List(ctx, result)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to list ExtendedStatefulSets")
 	}
 
 	return result, nil
