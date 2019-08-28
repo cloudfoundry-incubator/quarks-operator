@@ -140,20 +140,24 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(ess).NotTo(Equal(nil))
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			By("Checking for pod")
-			err = env.WaitForPods(env.Namespace, "referencedpod=yes")
-			Expect(err).NotTo(HaveOccurred())
+			err = env.WaitForPod(env.Namespace, ess.GetName()+"-v1-0")
+			Expect(err).NotTo(HaveOccurred(), "error waiting for v1 pods")
 
-			By("Updating one ConfigMap and one Secret")
+			By("Updating the ConfigMap")
 			cm1, err := env.GetConfigMap(env.Namespace, configMap1.Name)
-			Expect(err).ToNot(HaveOccurred())
-			s2, err := env.GetSecret(env.Namespace, secret2.Name)
 			Expect(err).ToNot(HaveOccurred())
 
 			cm1.Data["key1"] = "modified"
 			_, tearDown, err = env.UpdateConfigMap(env.Namespace, *cm1)
 			Expect(err).ToNot(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			err = env.WaitForPod(env.Namespace, ess.GetName()+"-v2-0")
+			Expect(err).NotTo(HaveOccurred(), "error waiting for v2 pods")
+
+			By("Updating the Secret")
+			s2, err := env.GetSecret(env.Namespace, secret2.Name)
+			Expect(err).ToNot(HaveOccurred())
 
 			if s2.StringData == nil {
 				s2.StringData = make(map[string]string)
@@ -163,12 +167,8 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			By("Checking new generation of statefulSet appears")
-			err = env.WaitForPods(env.Namespace, "referencedpod=yes")
-			Expect(err).NotTo(HaveOccurred())
-
-			err = env.WaitForPod(env.Namespace, ess.GetName()+"-v1-0")
-			Expect(err).NotTo(HaveOccurred())
+			err = env.WaitForPod(env.Namespace, ess.GetName()+"-v3-0")
+			Expect(err).NotTo(HaveOccurred(), "error waiting for v3 pods")
 		})
 	})
 })

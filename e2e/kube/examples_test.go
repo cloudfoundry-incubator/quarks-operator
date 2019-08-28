@@ -34,10 +34,10 @@ var _ = Describe("Examples", func() {
 
 				By("Checking for pods")
 				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v1-0", kubectlHelper.PollTimeout)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred(), "error waiting for v1 pods")
 
 				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v1-1", kubectlHelper.PollTimeout)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred(), "error waiting for v1 pods")
 
 				yamlUpdatedFilePath := examplesDir + "extended-statefulset/exstatefulset_configs_updated.yaml"
 
@@ -47,17 +47,17 @@ var _ = Describe("Examples", func() {
 
 				By("Checking for pods")
 				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v3-0", kubectlHelper.PollTimeout)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred(), "error waiting for v3 pods")
 
 				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v3-1", kubectlHelper.PollTimeout)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred(), "error waiting for v3 pods")
 
 				By("Checking the updated value in the env")
 				err = kubectlHelper.RunCommandWithCheckString(namespace, "example-extendedstatefulset-v3-0", "env", "SPECIAL_KEY=value1Updated")
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred(), "error checking the updated value")
 
 				err = kubectlHelper.RunCommandWithCheckString(namespace, "example-extendedstatefulset-v3-1", "env", "SPECIAL_KEY=value1Updated")
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred(), "error checking the updated value")
 			})
 
 			It("bosh-deployment service example must work", func() {
