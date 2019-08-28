@@ -20,7 +20,6 @@ type Quarks struct {
 	Debug            bool               `json:"debug" yaml:"debug"`
 	IsAddon          bool               `json:"is_addon" yaml:"is_addon"`
 	Envs             []corev1.EnvVar    `json:"envs" yaml:"envs"`
-	Privileged       bool               `json:"privileged"`
 }
 
 // Port represents the port to be opened up for this job.
@@ -55,7 +54,8 @@ type HealthCheck struct {
 
 // RunConfig describes the runtime configuration for this job.
 type RunConfig struct {
-	HealthCheck map[string]HealthCheck `json:"healthcheck" yaml:"healthcheck"`
+	HealthCheck     map[string]HealthCheck  `json:"healthcheck" yaml:"healthcheck"`
+	SecurityContext *corev1.SecurityContext `json:"security_context" yaml:"security_context"`
 }
 
 // PreRenderScripts describes the different types of scripts that can be run inside a job.
