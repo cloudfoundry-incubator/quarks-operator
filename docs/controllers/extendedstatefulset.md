@@ -17,6 +17,10 @@
 
 ## Description
 
+The ExtendedStatefulSet reconciler creates the actual StatefulSets of the deployment.
+
+![flow-deploy](quarks_deployment_flow-Deploy.png)
+
 ## Features
 
 ### Scaling Restrictions (not implemented)
@@ -168,7 +172,7 @@ If zones are set for an `ExtendedStatefulSet`, the following occurs:
   CF_OPERATOR_AZ="zone name"
   AZ_INDEX=="zone index"
   ```
-  
+
 ## `ExtendedStatefulSet` Examples
 
 See https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/examples/extended-statefulset

@@ -11,6 +11,10 @@
 
 ## Description
 
+ExtendedSecret generates passwords, keys and certificates and stores them in k8s secrets.
+
+![flow-extended-secret](quarks_deployment_flow-ExtendedSecret.png)
+
 ## Types
 
 `ExtendedSecret` supports generating the following:

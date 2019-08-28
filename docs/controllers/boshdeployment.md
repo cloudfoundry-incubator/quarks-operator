@@ -27,7 +27,8 @@ The ops files modify the deployment manifest. For example, ops files can be used
 A deployment is represented by the `boshdeployments.fissile.cloudfoundry.org` (`bdpl`) custom resource, defined in [`boshdeployment_crd.yaml`](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/deploy/helm/cf-operator/templates/fissile_v1alpha1_boshdeployment_crd.yaml).
 This [bdpl custom resource](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/examples/bosh-deployment/boshdeployment.yaml) contains references to config maps or secrets containing the actual manifests content.
 
-After creating the bdpl resource on Kubernetes, i.e. via `kubectl apply`, the CF operator will start reconciliation, which will [eventually result in the deployment](https://docs.google.com/drawings/d/126ExNqPxDg1LcB14pbtS5S-iJzLYPyXZ5Jr9vTfFqXA/edit?usp=sharing) of the BOSH release on Kubernetes.
+After creating the bdpl resource on Kubernetes, i.e. via `kubectl apply`, the CF operator will start reconciliation, which will eventually result in the deployment
+of the BOSH release on Kubernetes.
 
 ## Reconcilers
 
@@ -36,10 +37,15 @@ We use 3 controllers, and 3 separate reconciliation loops to deal with `BOSHDepl
 Here's a state diagram that tries to explain the process of reconciling a `BOSHDeployment`.
 
 ![deployment-state](https://docs.google.com/drawings/d/e/2PACX-1vTsCO5USd8AJIk_uHMRKl0NABuW85uVGJNebNvgI0Hz_9jhle6fcynLTcHh8cxW6lMgaV_DWyPEvm2-/pub?w=3161&h=2376)
+[edit](https://docs.google.com/drawings/d/126ExNqPxDg1LcB14pbtS5S-iJzLYPyXZ5Jr9vTfFqXA/edit?usp=sharing)
 
-And another one with individual controllers up to the creation of the ExtendedStatefulSet custom resource.
+### Rendering manifests
 
-![custom-resources-flow](https://drive.google.com/uc?export=view&id=1IF_KCp8m2Nd-mdNwKCQkEtCIA31tsY-i)
+![flow-render](quarks_deployment_flow-Render.png)
+
+### Converting To Kubernetes Resources
+
+![flow-to-kube](quarks_deployment_flow-ToKube.png)
 
 ### Deployment Reconciler
 
