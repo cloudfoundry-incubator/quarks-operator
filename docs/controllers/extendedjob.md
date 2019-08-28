@@ -20,6 +20,8 @@ There are two different kinds of `ExtendedJob`:
 - **one-offs**: automatically runs once after it's created
 - **errands**: needs to be run manually by a user
 
+![flow-extended-job](quarks_deployment_flow-ExtendedJob.png)
+
 ## Features
 
 ### Errand Jobs
