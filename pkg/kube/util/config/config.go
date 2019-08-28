@@ -23,10 +23,11 @@ type Config struct {
 	MaxExtendedJobWorkers         int
 	MaxExtendedSecretWorkers      int
 	MaxExtendedStatefulSetWorkers int
+	ApplyCRD                      bool
 }
 
 // NewConfig returns a new Config for a Manager of Controllers
-func NewConfig(namespace string, provider string, host string, port int32, fs afero.Fs, maxBoshDeploymentWorkers, maxExtendedJobWorkers, maxExtendedSecretWorkers, maxExtendedStatefulSetWorkers int) *Config {
+func NewConfig(namespace string, provider string, host string, port int32, fs afero.Fs, maxBoshDeploymentWorkers, maxExtendedJobWorkers, maxExtendedSecretWorkers, maxExtendedStatefulSetWorkers int, applyCRD bool) *Config {
 	return &Config{
 		CtxTimeOut:                    CtxTimeOut,
 		Namespace:                     namespace,
@@ -38,5 +39,6 @@ func NewConfig(namespace string, provider string, host string, port int32, fs af
 		MaxExtendedJobWorkers:         maxExtendedJobWorkers,
 		MaxExtendedSecretWorkers:      maxExtendedSecretWorkers,
 		MaxExtendedStatefulSetWorkers: maxExtendedStatefulSetWorkers,
+		ApplyCRD:                      applyCRD,
 	}
 }

@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-
+	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -53,6 +53,7 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 }
 
 var addToSchemes = runtime.SchemeBuilder{
+	extv1.AddToScheme,
 	bdv1.AddToScheme,
 	ejv1.AddToScheme,
 	esv1.AddToScheme,
