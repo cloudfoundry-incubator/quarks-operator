@@ -1,12 +1,12 @@
 package containerrun_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -19,6 +19,22 @@ import (
 	. "code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
 	. "code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun/mocks"
 )
+
+type mutexBuffer struct {
+	b bytes.Buffer
+	sync.Mutex
+}
+
+func (mb *mutexBuffer) Write(p []byte) (n int, err error) {
+	mb.Lock()
+	defer mb.Unlock()
+	return mb.b.Write(p)
+}
+func (mb *mutexBuffer) String() string {
+	mb.Lock()
+	defer mb.Unlock()
+	return mb.b.String()
+}
 
 var _ = Describe("Run", func() {
 	commandLine := []string{"bash", "-c", "echo foo"}
@@ -657,7 +673,7 @@ var _ = Describe("ContainerRunner", func() {
 				Name: "bash",
 				Arg:  []string{"-c", ">&1 echo foo; >&2 echo bar"},
 			}
-			var stdout, stderr strings.Builder
+			var stdout, stderr mutexBuffer
 			stdio := Stdio{
 				Out: &stdout,
 				Err: &stderr,
@@ -697,7 +713,7 @@ var _ = Describe("ContainerRunner", func() {
 				Name: "bash",
 				Arg:  []string{"-c", ">&1 echo foo; >&2 echo bar"},
 			}
-			var stdout, stderr strings.Builder
+			var stdout, stderr mutexBuffer
 			stdio := Stdio{
 				Out: &stdout,
 				Err: &stderr,
