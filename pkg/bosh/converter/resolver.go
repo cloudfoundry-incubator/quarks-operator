@@ -22,6 +22,7 @@ import (
 // Resolver interface to provide a BOSH manifest resolved references from bdpl CRD
 type Resolver interface {
 	WithOpsManifest(ctx context.Context, instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
+	WithOpsManifestDetailed(ctx context.Context, instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
 }
 
 // ResolverImpl resolves references from bdpl CRD to a BOSH manifest
@@ -68,7 +69,86 @@ func (r *ResolverImpl) DesiredManifest(ctx context.Context, boshDeploymentName, 
 // The resulting manifest has variables interpolated and ops files applied.
 // It is the 'with-ops' manifest.
 func (r *ResolverImpl) WithOpsManifest(ctx context.Context, instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
-	log.Debugf(ctx, "Calculating manifest with ops files applied '%s'", instance.Name)
+	log.Debugf(ctx, "Calculating manifest with ops files applied for deployment '%s'", instance.Name)
+
+	interpolator := r.newInterpolatorFunc()
+	spec := instance.Spec
+	var (
+		m   string
+		err error
+	)
+
+	m, err = r.resourceData(namespace, spec.Manifest.Type, spec.Manifest.Name, bdv1.ManifestSpecName)
+	if err != nil {
+		return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
+	}
+
+	// Interpolate manifest with ops
+	ops := spec.Ops
+
+	for _, op := range ops {
+		opsData, err := r.resourceData(namespace, op.Type, op.Name, bdv1.OpsSpecName)
+		if err != nil {
+			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
+		}
+		err = interpolator.BuildOps([]byte(opsData))
+		if err != nil {
+			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", instance.GetName())
+		}
+	}
+
+	bytes := []byte(m)
+	if len(ops) != 0 {
+		bytes, err = interpolator.Interpolate([]byte(m))
+		if err != nil {
+			return nil, []string{}, errors.Wrapf(err, "Failed to interpolate %#v in interpolation task", m)
+		}
+	}
+
+	// Reload the manifest after interpolation, and apply implicit variables
+	manifest, err := bdm.LoadYAML(bytes)
+	if err != nil {
+		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying ops %#v", m)
+	}
+	m = string(bytes)
+
+	// Interpolate implicit variables
+	vars, err := manifest.ImplicitVariables()
+	if err != nil {
+		return nil, []string{}, errors.Wrapf(err, "failed to list implicit variables")
+	}
+
+	varSecrets := make([]string, len(vars))
+	for i, v := range vars {
+		varSecretName := names.CalculateSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), v)
+		varData, err := r.resourceData(namespace, bdv1.SecretReference, varSecretName, bdv1.ImplicitVariableKeyName)
+		if err != nil {
+			return nil, varSecrets, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
+		}
+
+		varSecrets[i] = varSecretName
+		m = strings.Replace(m, fmt.Sprintf("((%s))", v), varData, -1)
+	}
+
+	manifest, err = bdm.LoadYAML([]byte(m))
+	if err != nil {
+		return nil, varSecrets, errors.Wrapf(err, "failed to load yaml after interpolating implicit variables %#v", m)
+	}
+
+	// Apply addons
+	err = manifest.ApplyAddons()
+	if err != nil {
+		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
+	}
+
+	return manifest, varSecrets, err
+}
+
+// WithOpsManifestDetailed returns manifest and a list of implicit variables referenced by our bdpl CRD
+// The resulting manifest has variables interpolated and ops files applied.
+// It is the 'with-ops' manifest. This variant processes each ops file individually, so it's more debuggable - but slower.
+func (r *ResolverImpl) WithOpsManifestDetailed(ctx context.Context, instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
+	log.Debugf(ctx, "Calculating manifest with ops files applied for deployment '%s'", instance.Name)
 
 	spec := instance.Spec
 	var (
