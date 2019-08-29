@@ -2,6 +2,7 @@
 package fakes
 
 import (
+	"context"
 	"sync"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
@@ -10,11 +11,12 @@ import (
 )
 
 type FakeResolver struct {
-	WithOpsManifestStub        func(*v1alpha1.BOSHDeployment, string) (*manifest.Manifest, []string, error)
+	WithOpsManifestStub        func(context.Context, *v1alpha1.BOSHDeployment, string) (*manifest.Manifest, []string, error)
 	withOpsManifestMutex       sync.RWMutex
 	withOpsManifestArgsForCall []struct {
-		arg1 *v1alpha1.BOSHDeployment
-		arg2 string
+		arg1 context.Context
+		arg2 *v1alpha1.BOSHDeployment
+		arg3 string
 	}
 	withOpsManifestReturns struct {
 		result1 *manifest.Manifest
@@ -26,21 +28,39 @@ type FakeResolver struct {
 		result2 []string
 		result3 error
 	}
+	WithOpsManifestDetailedStub        func(context.Context, *v1alpha1.BOSHDeployment, string) (*manifest.Manifest, []string, error)
+	withOpsManifestDetailedMutex       sync.RWMutex
+	withOpsManifestDetailedArgsForCall []struct {
+		arg1 context.Context
+		arg2 *v1alpha1.BOSHDeployment
+		arg3 string
+	}
+	withOpsManifestDetailedReturns struct {
+		result1 *manifest.Manifest
+		result2 []string
+		result3 error
+	}
+	withOpsManifestDetailedReturnsOnCall map[int]struct {
+		result1 *manifest.Manifest
+		result2 []string
+		result3 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeResolver) WithOpsManifest(arg1 *v1alpha1.BOSHDeployment, arg2 string) (*manifest.Manifest, []string, error) {
+func (fake *FakeResolver) WithOpsManifest(arg1 context.Context, arg2 *v1alpha1.BOSHDeployment, arg3 string) (*manifest.Manifest, []string, error) {
 	fake.withOpsManifestMutex.Lock()
 	ret, specificReturn := fake.withOpsManifestReturnsOnCall[len(fake.withOpsManifestArgsForCall)]
 	fake.withOpsManifestArgsForCall = append(fake.withOpsManifestArgsForCall, struct {
-		arg1 *v1alpha1.BOSHDeployment
-		arg2 string
-	}{arg1, arg2})
-	fake.recordInvocation("WithOpsManifest", []interface{}{arg1, arg2})
+		arg1 context.Context
+		arg2 *v1alpha1.BOSHDeployment
+		arg3 string
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("WithOpsManifest", []interface{}{arg1, arg2, arg3})
 	fake.withOpsManifestMutex.Unlock()
 	if fake.WithOpsManifestStub != nil {
-		return fake.WithOpsManifestStub(arg1, arg2)
+		return fake.WithOpsManifestStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2, ret.result3
@@ -55,17 +75,17 @@ func (fake *FakeResolver) WithOpsManifestCallCount() int {
 	return len(fake.withOpsManifestArgsForCall)
 }
 
-func (fake *FakeResolver) WithOpsManifestCalls(stub func(*v1alpha1.BOSHDeployment, string) (*manifest.Manifest, []string, error)) {
+func (fake *FakeResolver) WithOpsManifestCalls(stub func(context.Context, *v1alpha1.BOSHDeployment, string) (*manifest.Manifest, []string, error)) {
 	fake.withOpsManifestMutex.Lock()
 	defer fake.withOpsManifestMutex.Unlock()
 	fake.WithOpsManifestStub = stub
 }
 
-func (fake *FakeResolver) WithOpsManifestArgsForCall(i int) (*v1alpha1.BOSHDeployment, string) {
+func (fake *FakeResolver) WithOpsManifestArgsForCall(i int) (context.Context, *v1alpha1.BOSHDeployment, string) {
 	fake.withOpsManifestMutex.RLock()
 	defer fake.withOpsManifestMutex.RUnlock()
 	argsForCall := fake.withOpsManifestArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeResolver) WithOpsManifestReturns(result1 *manifest.Manifest, result2 []string, result3 error) {
@@ -97,11 +117,81 @@ func (fake *FakeResolver) WithOpsManifestReturnsOnCall(i int, result1 *manifest.
 	}{result1, result2, result3}
 }
 
+func (fake *FakeResolver) WithOpsManifestDetailed(arg1 context.Context, arg2 *v1alpha1.BOSHDeployment, arg3 string) (*manifest.Manifest, []string, error) {
+	fake.withOpsManifestDetailedMutex.Lock()
+	ret, specificReturn := fake.withOpsManifestDetailedReturnsOnCall[len(fake.withOpsManifestDetailedArgsForCall)]
+	fake.withOpsManifestDetailedArgsForCall = append(fake.withOpsManifestDetailedArgsForCall, struct {
+		arg1 context.Context
+		arg2 *v1alpha1.BOSHDeployment
+		arg3 string
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("WithOpsManifestDetailed", []interface{}{arg1, arg2, arg3})
+	fake.withOpsManifestDetailedMutex.Unlock()
+	if fake.WithOpsManifestDetailedStub != nil {
+		return fake.WithOpsManifestDetailedStub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2, ret.result3
+	}
+	fakeReturns := fake.withOpsManifestDetailedReturns
+	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
+}
+
+func (fake *FakeResolver) WithOpsManifestDetailedCallCount() int {
+	fake.withOpsManifestDetailedMutex.RLock()
+	defer fake.withOpsManifestDetailedMutex.RUnlock()
+	return len(fake.withOpsManifestDetailedArgsForCall)
+}
+
+func (fake *FakeResolver) WithOpsManifestDetailedCalls(stub func(context.Context, *v1alpha1.BOSHDeployment, string) (*manifest.Manifest, []string, error)) {
+	fake.withOpsManifestDetailedMutex.Lock()
+	defer fake.withOpsManifestDetailedMutex.Unlock()
+	fake.WithOpsManifestDetailedStub = stub
+}
+
+func (fake *FakeResolver) WithOpsManifestDetailedArgsForCall(i int) (context.Context, *v1alpha1.BOSHDeployment, string) {
+	fake.withOpsManifestDetailedMutex.RLock()
+	defer fake.withOpsManifestDetailedMutex.RUnlock()
+	argsForCall := fake.withOpsManifestDetailedArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *FakeResolver) WithOpsManifestDetailedReturns(result1 *manifest.Manifest, result2 []string, result3 error) {
+	fake.withOpsManifestDetailedMutex.Lock()
+	defer fake.withOpsManifestDetailedMutex.Unlock()
+	fake.WithOpsManifestDetailedStub = nil
+	fake.withOpsManifestDetailedReturns = struct {
+		result1 *manifest.Manifest
+		result2 []string
+		result3 error
+	}{result1, result2, result3}
+}
+
+func (fake *FakeResolver) WithOpsManifestDetailedReturnsOnCall(i int, result1 *manifest.Manifest, result2 []string, result3 error) {
+	fake.withOpsManifestDetailedMutex.Lock()
+	defer fake.withOpsManifestDetailedMutex.Unlock()
+	fake.WithOpsManifestDetailedStub = nil
+	if fake.withOpsManifestDetailedReturnsOnCall == nil {
+		fake.withOpsManifestDetailedReturnsOnCall = make(map[int]struct {
+			result1 *manifest.Manifest
+			result2 []string
+			result3 error
+		})
+	}
+	fake.withOpsManifestDetailedReturnsOnCall[i] = struct {
+		result1 *manifest.Manifest
+		result2 []string
+		result3 error
+	}{result1, result2, result3}
+}
+
 func (fake *FakeResolver) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.withOpsManifestMutex.RLock()
 	defer fake.withOpsManifestMutex.RUnlock()
+	fake.withOpsManifestDetailedMutex.RLock()
+	defer fake.withOpsManifestDetailedMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

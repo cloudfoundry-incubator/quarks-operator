@@ -55,7 +55,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			objectReferences, err = GetConfigMapsReferencedBy(parent)
 			name = object.Name
 		case *corev1.Secret:
-			objectReferences, err = GetSecretsReferencedBy(client, parent)
+			objectReferences, err = GetSecretsReferencedBy(ctx, client, parent)
 			name = object.Name
 			versionedSecret = vss.IsVersionedSecret(*object)
 
