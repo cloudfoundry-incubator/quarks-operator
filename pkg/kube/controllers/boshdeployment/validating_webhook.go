@@ -3,6 +3,7 @@ package boshdeployment
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -88,31 +89,40 @@ func (v *Validator) OpsResourcesExist(ctx context.Context, specOpsResource []bdv
 	tick := time.NewTicker(v.pollInterval)
 	defer tick.Stop()
 
+	missingResources := map[string]bool{}
+
 	for {
-		missingResources := []string{}
 		configMaps := &corev1.ConfigMapList{}
 		secrets := &corev1.SecretList{}
 
 		select {
 		case <-timeOut:
-			return false, fmt.Sprintf("Timeout reached. Resources %#v do not exist", missingResources)
+			missingResourcesNames := []string{}
+			for k, v := range missingResources {
+				if v {
+					missingResourcesNames = append(missingResourcesNames, k)
+				}
+			}
+			return false, fmt.Sprintf("Timeout reached. Resources '%s' do not exist", strings.Join(missingResourcesNames, " "))
 		case <-tick.C:
 			// List all configmaps
 			err := v.client.List(ctx, configMaps, client.InNamespace(ns))
-			if err == nil {
-				return true, fmt.Sprintf("error listing configMaps in namespace '%s'", ns)
+			if err != nil {
+				return false, fmt.Sprintf("error listing configMaps in namespace '%s': %v", ns, err)
 			}
 
 			// List all secrets
 			err = v.client.List(ctx, secrets, client.InNamespace(ns))
-			if err == nil {
-				return true, fmt.Sprintf("error listing secrets in namespace '%s'", ns)
+			if err != nil {
+				return false, fmt.Sprintf("error listing secrets in namespace '%s': %v", ns, err)
 			}
 		}
 
 		// Check to see if all references exist
 		allExist := true
 		for _, ref := range specOpsResource {
+			resourceName := fmt.Sprintf("%s/%s", ref.Type, ref.Name)
+
 			found := false
 			switch ref.Type {
 			case bdv1.ConfigMapReference:
@@ -132,8 +142,9 @@ func (v *Validator) OpsResourcesExist(ctx context.Context, specOpsResource []bdv
 				}
 			}
 
+			missingResources[resourceName] = !found
+
 			if !found {
-				missingResources = append(missingResources, fmt.Sprintf("%s/%s", ref.Type, ref.Name))
 				allExist = false
 			}
 
