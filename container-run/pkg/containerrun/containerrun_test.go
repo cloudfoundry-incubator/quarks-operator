@@ -3,10 +3,10 @@ package containerrun_test
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -655,20 +655,36 @@ var _ = Describe("ContainerRunner", func() {
 			cr := NewContainerRunner()
 			cmd := Command{
 				Name: "bash",
-				Arg:  []string{"-c", ">&1 echo foo; >&2 echo bar"},
+				Arg:  []string{"-c", ">&1 echo foo; >&2 echo bar; sleep 0.01"},
 			}
-			var stdout, stderr strings.Builder
+			stdoutReader, stdoutWriter := io.Pipe()
+			stderrReader, stderrWriter := io.Pipe()
 			stdio := Stdio{
-				Out: &stdout,
-				Err: &stderr,
+				Out: stdoutWriter,
+				Err: stderrWriter,
 			}
 			p, err := cr.Run(cmd, stdio)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(p).ToNot(BeNil())
+			var wg sync.WaitGroup
+			wg.Add(2)
+			go func() {
+				stdout, err := ioutil.ReadAll(stdoutReader)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(stdout)).To(Equal("foo\n"))
+				wg.Done()
+			}()
+			go func() {
+				stderr, err := ioutil.ReadAll(stderrReader)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(stderr)).To(Equal("bar\n"))
+				wg.Done()
+			}()
 			err = p.Wait()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(stdout.String()).To(Equal("foo\n"))
-			Expect(stderr.String()).To(Equal("bar\n"))
+			stdoutWriter.Close()
+			stderrWriter.Close()
+			wg.Wait()
 		})
 	})
 
@@ -695,20 +711,36 @@ var _ = Describe("ContainerRunner", func() {
 			ctx := context.Background()
 			cmd := Command{
 				Name: "bash",
-				Arg:  []string{"-c", ">&1 echo foo; >&2 echo bar"},
+				Arg:  []string{"-c", ">&1 echo foo; >&2 echo bar; sleep 0.01"},
 			}
-			var stdout, stderr strings.Builder
+			stdoutReader, stdoutWriter := io.Pipe()
+			stderrReader, stderrWriter := io.Pipe()
 			stdio := Stdio{
-				Out: &stdout,
-				Err: &stderr,
+				Out: stdoutWriter,
+				Err: stderrWriter,
 			}
 			p, err := cr.RunContext(ctx, cmd, stdio)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(p).ToNot(BeNil())
+			var wg sync.WaitGroup
+			wg.Add(2)
+			go func() {
+				stdout, err := ioutil.ReadAll(stdoutReader)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(stdout)).To(Equal("foo\n"))
+				wg.Done()
+			}()
+			go func() {
+				stderr, err := ioutil.ReadAll(stderrReader)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(stderr)).To(Equal("bar\n"))
+				wg.Done()
+			}()
 			err = p.Wait()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(stdout.String()).To(Equal("foo\n"))
-			Expect(stderr.String()).To(Equal("bar\n"))
+			stdoutWriter.Close()
+			stderrWriter.Close()
+			wg.Wait()
 		})
 	})
 })
