@@ -28,6 +28,7 @@ var _ = Describe("CLI", func() {
 			session, err := act("help")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
+      --apply-crd                              \(APPLY_CRD\) If true, apply CRDs on start \(default true\)
   -n, --cf-operator-namespace string           \(CF_OPERATOR_NAMESPACE\) Namespace to watch for BOSH deployments \(default "default"\)
   -o, --docker-image-org string                \(DOCKER_IMAGE_ORG\) Dockerhub organization that provides the operator docker image \(default "cfcontainerization"\)
   -r, --docker-image-repository string         \(DOCKER_IMAGE_REPOSITORY\) Dockerhub repository that provides the operator docker image \(default "cf-operator"\)
@@ -60,6 +61,7 @@ var _ = Describe("CLI", func() {
 			session, err := act()
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+ with namespace`))
+			Eventually(session.Err).Should(Say(`Applying CRD...`))
 		})
 
 		Context("when specifying namespace", func() {
@@ -84,6 +86,32 @@ var _ = Describe("CLI", func() {
 					session, err := act("--cf-operator-namespace", "switch-test")
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+ with namespace switch-test`))
+				})
+			})
+		})
+
+		Context("when disabling apply-crd", func() {
+			Context("via environment variables", func() {
+				BeforeEach(func() {
+					os.Setenv("APPLY_CRD", "false")
+				})
+
+				AfterEach(func() {
+					os.Setenv("APPLY_CRD", "")
+				})
+
+				It("should not apply CRDs", func() {
+					session, err := act()
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(session.Err).ShouldNot(Say(`Applying CRD...`))
+				})
+			})
+
+			Context("via using switches", func() {
+				It("should not apply CRDs", func() {
+					session, err := act("--apply-crd", "false")
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(session.Err).ShouldNot(Say(`Applying CRD...`))
 				})
 			})
 		})
