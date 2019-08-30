@@ -149,10 +149,12 @@ var (
 // These annotations and labels are added to kube resources.
 // Affinity is added into the pod's definition.
 type AgentSettings struct {
-	Annotations       map[string]string `json:"annotations,omitempty"`
-	Labels            map[string]string `json:"labels,omitempty"`
-	Affinity          *corev1.Affinity  `json:"affinity,omitempty"`
-	DisableLogSidecar bool              `json:"disable_log_sidecar,omitempty" yaml:"disable_log_sidecar,omitempty"`
+	Annotations                  map[string]string `json:"annotations,omitempty"`
+	Labels                       map[string]string `json:"labels,omitempty"`
+	Affinity                     *corev1.Affinity  `json:"affinity,omitempty"`
+	DisableLogSidecar            bool              `json:"disable_log_sidecar,omitempty" yaml:"disable_log_sidecar,omitempty"`
+	ServiceAccountName           string            `json:"serviceAccountName,omitempty" yaml:"serviceAccountName,omitempty"`
+	AutomountServiceAccountToken *bool             `json:"automountServiceAccountToken,omitempty" yaml:"automountServiceAccountToken,omitempty"`
 }
 
 // Set overrides labels and annotations with operator-owned metadata.
@@ -169,11 +171,6 @@ func (as *AgentSettings) Set(manifestName, igName, version string) {
 type Agent struct {
 	Settings AgentSettings `json:"settings,omitempty"`
 	Tmpfs    *bool         `json:"tmpfs,omitempty"`
-}
-
-// Settings has been added to make the k8s native Affinity field accessible.
-type Settings struct {
-	Affinity *corev1.Affinity `json:"affinity,omitempty" yaml:"affinity,omitempty"`
 }
 
 // AgentEnvBoshConfig from BOSH deployment manifest.
