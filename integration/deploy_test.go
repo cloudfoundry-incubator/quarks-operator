@@ -466,7 +466,7 @@ var _ = Describe("Deploy", func() {
 			// use a not created configmap name, so that we will hit errors while resources do not exist.
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeploymentWithOps("test", "manifest", "bosh-ops-unknown"))
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Timeout reached. Resource bosh-ops-unknown does not exist"))
+			Expect(err.Error()).To(ContainSubstring("Timeout reached. Resources 'configmap/bosh-ops-unknown' do not exist"))
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 		})
 

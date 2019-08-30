@@ -1,6 +1,7 @@
 package reference
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -15,20 +16,20 @@ import (
 
 // GetSecretsReferencedBy returns a list of all names for Secrets referenced by the object
 // The object can be an ExtendedStatefulSet, an ExtendedJob or a BOSHDeployment
-func GetSecretsReferencedBy(client crc.Client, object interface{}) (map[string]bool, error) {
+func GetSecretsReferencedBy(ctx context.Context, client crc.Client, object interface{}) (map[string]bool, error) {
 	switch object := object.(type) {
 	case bdv1.BOSHDeployment:
-		return getSecretRefFromBdpl(client, object)
+		return getSecretRefFromBdpl(ctx, client, object)
 	case ejobv1.ExtendedJob:
 		return getSecretRefFromEJob(object), nil
 	case estsv1.ExtendedStatefulSet:
 		return getSecretRefFromESts(object), nil
 	default:
-		return nil, errors.New("can't get secret references for unkown type; supported types are BOSHDeployment, ExtendedJob and ExtendedStatefulSet")
+		return nil, errors.New("can't get secret references for unknown type; supported types are BOSHDeployment, ExtendedJob and ExtendedStatefulSet")
 	}
 }
 
-func getSecretRefFromBdpl(client crc.Client, object bdv1.BOSHDeployment) (map[string]bool, error) {
+func getSecretRefFromBdpl(ctx context.Context, client crc.Client, object bdv1.BOSHDeployment) (map[string]bool, error) {
 	result := map[string]bool{}
 
 	if object.Spec.Manifest.Type == bdv1.SecretReference {
@@ -43,7 +44,7 @@ func getSecretRefFromBdpl(client crc.Client, object bdv1.BOSHDeployment) (map[st
 
 	// Include secrets of implicit vars
 	resolver := converter.NewResolver(client, func() converter.Interpolator { return converter.NewInterpolator() })
-	_, implicitVars, err := resolver.WithOpsManifest(&object, object.Namespace)
+	_, implicitVars, err := resolver.WithOpsManifest(ctx, &object, object.Namespace)
 	if err != nil {
 		return map[string]bool{}, errors.Wrap(err, fmt.Sprintf("Failed to load the with-ops manifest for BOSHDeployment '%s/%s'", object.Namespace, object.Name))
 	}

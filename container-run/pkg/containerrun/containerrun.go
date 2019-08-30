@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -283,6 +284,7 @@ type Stdio struct {
 // ProcessRegistry handles all the processes.
 type ProcessRegistry struct {
 	processes []Process
+	sync.Mutex
 }
 
 // NewProcessRegistry constructs a new ProcessRegistry.
@@ -294,12 +296,16 @@ func NewProcessRegistry() *ProcessRegistry {
 
 // Register registers a process in the registry and returns how many processes are registered.
 func (pr *ProcessRegistry) Register(p Process) int {
+	pr.Lock()
+	defer pr.Unlock()
 	pr.processes = append(pr.processes, p)
 	return len(pr.processes)
 }
 
 // SignalAll sends a signal to all registered processes.
 func (pr *ProcessRegistry) SignalAll(sig os.Signal) []error {
+	pr.Lock()
+	defer pr.Unlock()
 	errors := make([]error, 0)
 	for _, p := range pr.processes {
 		if err := p.Signal(sig); err != nil {

@@ -78,7 +78,7 @@ func (j jobCreatorImpl) Create(ctx context.Context, eJob ejv1.ExtendedJob) (retr
 		}
 	}
 
-	secrets, err := reference.GetSecretsReferencedBy(j.client, eJob)
+	secrets, err := reference.GetSecretsReferencedBy(ctx, j.client, eJob)
 	if err != nil {
 		return
 	}
