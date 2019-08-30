@@ -73,7 +73,6 @@ To avoid this issue, set the `customResources.enableInstallation` in the `values
 | `rbacEnable`                                      | install required RBAC service account, roles and rolebindings                     | `true`                                         |
 | `serviceAccount.cfOperatorServiceAccount.create`  | Will set the value of `cf-operator.serviceAccountName` to the current chart name  | `true`                                         |
 | `serviceAccount.cfOperatorServiceAccount.name`    | If the above is not set, it will set the `cf-operator.serviceAccountName`         |                                                |
-| `operator.webhook.port`                           | The cf-operator mutating webhook port                                             | `2999`                                         |
 
 
 ## RBAC

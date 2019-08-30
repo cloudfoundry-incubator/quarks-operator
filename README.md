@@ -58,10 +58,10 @@ kubectl delete validatingwebhookconfiguration "cf-operator-hook-$CF_OPERATOR_NAM
 With a running `cf-operator` pod, you can try one of the files (see [docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml](docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml) ), as follows:
 
 ```bash
-kubectl -n cf-operator-test create -f docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml
+kubectl -n cf-operator create -f docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml
 ```
 
-The above will spawn two pods in your `cf-operator-test` namespace (which needs to be created upfront), running the BOSH nats release.
+The above will spawn two pods in your `cf-operator` namespace (which needs to be created upfront), running the BOSH nats release.
 
 You can access the `cf-operator` logs by following the operator pod's output:
 
@@ -75,6 +75,7 @@ Or look at the k8s event log:
 kubectl get events -n cf-operator --watch
 ```
 
+For now deployments have to be in the namespace the operator is running in.
 
 ## Development and Tests
 
