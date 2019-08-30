@@ -3,6 +3,10 @@ kind: Service
 metadata:
   name: cf-operator-webhook
 spec:
+{{- if .Values.provider.gke.externalIP }}
+  type: LoadBalancer
+  loadBalancerIP: "{{ .Values.provider.gke.externalIP }}"
+{{- end }}
   selector:
     name: cf-operator
   ports:

@@ -23,3 +23,8 @@ serviceAccount:
   cfOperatorServiceAccount:
     create: true
     name:
+
+provider:
+  gke:
+    # workaround: api server is unable to connect to the webhook service
+    externalIP:

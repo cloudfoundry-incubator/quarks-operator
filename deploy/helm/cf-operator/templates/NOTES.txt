@@ -37,6 +37,6 @@ Interacting with the cf-operator pod
   kubectl -n {{ .Release.Namespace }} create -f docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml
 
 4. See the cf-operator in action!
-  watch -c "kubectl -n cf-operator2 get pods"
+  watch -c "kubectl -n cf-operator get pods"
 
 {{- end -}}

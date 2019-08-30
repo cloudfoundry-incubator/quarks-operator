@@ -39,6 +39,10 @@ spec:
               value: "{{ .Values.image.repository }}"
             - name: DOCKER_IMAGE_TAG
               value: "{{ .Values.image.tag }}"
+            {{- if .Values.provider.gke.externalIP }}
+            - name: CF_OPERATOR_WEBHOOK_SERVICE_HOST
+              value: "{{ .Values.provider.gke.externalIP }}"
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /readyz
