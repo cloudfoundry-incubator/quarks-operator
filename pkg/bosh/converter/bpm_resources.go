@@ -211,6 +211,14 @@ func (kc *KubeConverter) serviceToExtendedSts(
 		},
 	}
 
+	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName != "" {
+		extSts.Spec.Template.Spec.Template.Spec.ServiceAccountName = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName
+	}
+
+	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.AutomountServiceAccountToken != nil {
+		extSts.Spec.Template.Spec.Template.Spec.AutomountServiceAccountToken = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.AutomountServiceAccountToken
+	}
+
 	return extSts, nil
 }
 
@@ -365,6 +373,15 @@ func (kc *KubeConverter) errandToExtendedJob(
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity != nil {
 		eJob.Spec.Template.Spec.Affinity = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity
 	}
+
+	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName != "" {
+		eJob.Spec.Template.Spec.ServiceAccountName = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName
+	}
+
+	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.AutomountServiceAccountToken != nil {
+		eJob.Spec.Template.Spec.AutomountServiceAccountToken = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.AutomountServiceAccountToken
+	}
+
 	return eJob, nil
 }
 
