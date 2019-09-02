@@ -22,8 +22,10 @@ import (
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
-// AddBPM creates a new BPM Controller and adds it to the Manager. The Manager will set fields on the Controller
-// and Start it when the Manager is Started.
+// AddBPM creates a new BPM controller to watch for BPM configs and instance
+// group manifests.  It will reconcile those into k8s resources
+// (ExtendedStatefulSet, ExtendedJob), which represent BOSH instance groups and
+// BOSH errands.
 func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "bpm-reconciler", mgr.GetEventRecorderFor("bpm-recorder"))
 	r := NewBPMReconciler(
