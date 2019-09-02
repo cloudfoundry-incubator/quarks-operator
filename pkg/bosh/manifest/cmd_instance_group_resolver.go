@@ -83,7 +83,7 @@ func (dg *InstanceGroupResolver) Manifest() (Manifest, error) {
 // * bosh links
 // * bpm yaml file data
 func (dg *InstanceGroupResolver) resolveManifest() error {
-	if err := runPreRenderScripts(dg.instanceGroup, true); err != nil {
+	if err := runPreRenderScripts(dg.instanceGroup); err != nil {
 		return err
 	}
 
