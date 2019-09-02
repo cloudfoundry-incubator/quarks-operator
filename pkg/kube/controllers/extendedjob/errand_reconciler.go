@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,6 +18,21 @@ import (
 )
 
 var _ reconcile.Reconciler = &ErrandReconciler{}
+
+const (
+	// EnvKubeAz is set by available zone name
+	EnvKubeAz = "KUBE_AZ"
+	// EnvBoshAz is set by available zone name
+	EnvBoshAz = "BOSH_AZ"
+	// EnvReplicas describes the number of replicas in the ExtendedStatefulSet
+	EnvReplicas = "REPLICAS"
+	// EnvCfOperatorAz is set by available zone name
+	EnvCfOperatorAz = "CF_OPERATOR_AZ"
+	// EnvCfOperatorAzIndex is set by available zone index
+	EnvCfOperatorAzIndex = "AZ_INDEX"
+	// EnvPodOrdinal is the pod's index
+	EnvPodOrdinal = "POD_ORDINAL"
+)
 
 // NewErrandReconciler returns a new reconciler for errand jobs.
 func NewErrandReconciler(
@@ -76,6 +92,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 	}
 
+	r.injectContainerEnv(&eJob.Spec.Template.Spec)
 	if retry, err := r.jobCreator.Create(ctx, *eJob); err != nil {
 		return reconcile.Result{}, ctxlog.WithEvent(eJob, "CreateJobError").Errorf(ctx, "Failed to create job '%s': %s", eJob.Name, err)
 	} else if retry {
@@ -98,4 +115,42 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 	}
 
 	return reconcile.Result{}, nil
+}
+
+// injectContainerEnv injects AZ info to container envs
+// errands always have an AZ_INDEX of 1
+func (r *ErrandReconciler) injectContainerEnv(podSpec *corev1.PodSpec) {
+
+	containers := []*corev1.Container{}
+	for i := 0; i < len(podSpec.Containers); i++ {
+		containers = append(containers, &podSpec.Containers[i])
+	}
+	for i := 0; i < len(podSpec.InitContainers); i++ {
+		containers = append(containers, &podSpec.InitContainers[i])
+	}
+	for _, container := range containers {
+		envs := container.Env
+
+		// Default to zone 1, with 1 replica
+		envs = upsertEnvs(envs, EnvCfOperatorAzIndex, "1")
+		envs = upsertEnvs(envs, EnvReplicas, "1")
+		envs = upsertEnvs(envs, EnvPodOrdinal, "0")
+
+		container.Env = envs
+	}
+}
+
+func upsertEnvs(envs []corev1.EnvVar, name string, value string) []corev1.EnvVar {
+	for idx, env := range envs {
+		if env.Name == name {
+			envs[idx].Value = value
+			return envs
+		}
+	}
+
+	envs = append(envs, corev1.EnvVar{
+		Name:  name,
+		Value: value,
+	})
+	return envs
 }
