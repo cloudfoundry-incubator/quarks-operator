@@ -3,7 +3,6 @@ package boshdeployment
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -60,21 +59,7 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			oldSecret := e.ObjectOld.(*corev1.Secret)
-			newSecret := e.ObjectNew.(*corev1.Secret)
-			shouldProcessEvent := isManifestWithOps(newSecret.Name) && !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
-
-			if shouldProcessEvent {
-				ctxlog.NewPredicateEvent(newSecret).Debug(
-					ctx, e.MetaNew, bdv1.SecretReference,
-					fmt.Sprintf("Update predicate passed for %s, existing secret with the %s suffix has been updated",
-						e.MetaNew.GetName(), names.DeploymentSecretTypeManifestWithOps.String()),
-				)
-			}
-
-			return shouldProcessEvent
-		},
+		UpdateFunc:  func(e event.UpdateEvent) bool { return false },
 	}
 
 	// This is a manifest with ops files secret that has changed.
