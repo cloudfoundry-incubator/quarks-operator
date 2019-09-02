@@ -59,19 +59,7 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			o := e.ObjectNew.(*corev1.Secret)
-			shouldProcessEvent := isBPMInfoSecret(o)
-			if shouldProcessEvent {
-				ctxlog.NewPredicateEvent(o).Debug(
-					ctx, e.MetaNew, bdv1.SecretReference,
-					fmt.Sprintf("Update predicate passed for %s, new secret with label %s, value %s",
-						e.MetaNew.GetName(), bdv1.LabelDeploymentSecretType, o.GetLabels()[bdv1.LabelDeploymentSecretType]),
-				)
-			}
-
-			return shouldProcessEvent
-		},
+		UpdateFunc:  func(e event.UpdateEvent) bool { return false },
 	}
 
 	// We have to watch the BPM secret. It gives us information about how to
