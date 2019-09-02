@@ -46,6 +46,7 @@ func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable
 				AlternativeNames: v.Options.AlternativeNames,
 				IsCA:             v.Options.IsCA,
 				SignerType:       v.Options.SignerType,
+				ServiceRef:       v.Options.ServiceRef,
 			}
 			if len(certRequest.SignerType) == 0 {
 				certRequest.SignerType = esv1.LocalSigner

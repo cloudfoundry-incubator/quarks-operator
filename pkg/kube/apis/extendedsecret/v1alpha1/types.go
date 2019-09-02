@@ -55,15 +55,21 @@ type SecretReference struct {
 	Key  string
 }
 
+// ServiceReference specifies a reference to a service
+type ServiceReference struct {
+	Name string
+}
+
 // CertificateRequest specifies the details for the certificate generation
 type CertificateRequest struct {
-	CommonName       string            `json:"commonName"`
-	AlternativeNames []string          `json:"alternativeNames"`
-	IsCA             bool              `json:"isCA"`
-	CARef            SecretReference   `json:"CARef"`
-	CAKeyRef         SecretReference   `json:"CAKeyRef"`
-	SignerType       SignerType        `json:"signerType,omitempty"`
-	Usages           []certv1.KeyUsage `json:"usages,omitempty"`
+	CommonName       string             `json:"commonName"`
+	AlternativeNames []string           `json:"alternativeNames"`
+	IsCA             bool               `json:"isCA"`
+	CARef            SecretReference    `json:"CARef"`
+	CAKeyRef         SecretReference    `json:"CAKeyRef"`
+	SignerType       SignerType         `json:"signerType,omitempty"`
+	Usages           []certv1.KeyUsage  `json:"usages,omitempty"`
+	ServiceRef       []ServiceReference `json:"serviceRef,omitempty"`
 }
 
 // Request specifies details for the secret generation
