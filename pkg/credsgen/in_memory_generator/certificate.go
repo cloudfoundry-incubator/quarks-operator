@@ -2,6 +2,8 @@ package inmemorygenerator
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"time"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
@@ -14,6 +16,10 @@ import (
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/local"
 	"github.com/pkg/errors"
+)
+
+const (
+	inClusterKubeCACertPath = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 )
 
 // GenerateCertificate generates a certificate using Cloudflare's TLS toolkit
@@ -121,6 +127,18 @@ func (g InMemoryGenerator) generateCACertificate(request credsgen.CertificateGen
 	if err != nil {
 		return credsgen.Certificate{}, err
 	}
+
+	// If available, concatenate the CA cert with the in-cluster
+	// Kubernetes ca cert
+	if _, err := os.Stat(inClusterKubeCACertPath); err == nil {
+		inClusterCABytes, err := ioutil.ReadFile(inClusterKubeCACertPath)
+		if err != nil {
+			return credsgen.Certificate{}, errors.Wrap(err, "failed to read in-cluster config")
+		}
+
+		ca = append(append(ca, []byte("\n")...), inClusterCABytes...)
+	}
+
 	cert := credsgen.Certificate{
 		IsCA:        true,
 		Certificate: ca,

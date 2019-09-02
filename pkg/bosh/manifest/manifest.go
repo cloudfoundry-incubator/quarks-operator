@@ -16,6 +16,8 @@ import (
 	"github.com/pkg/errors"
 	goyaml "gopkg.in/yaml.v2"
 	"sigs.k8s.io/yaml"
+
+	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 )
 
 const (
@@ -42,12 +44,13 @@ const (
 
 // VariableOptions from BOSH deployment manifest
 type VariableOptions struct {
-	CommonName       string     `json:"common_name"`
-	AlternativeNames []string   `json:"alternative_names,omitempty"`
-	IsCA             bool       `json:"is_ca"`
-	CA               string     `json:"ca,omitempty"`
-	ExtendedKeyUsage []AuthType `json:"extended_key_usage,omitempty"`
-	SignerType       string     `json:"signer_type,omitempty"`
+	CommonName       string                  `json:"common_name"`
+	AlternativeNames []string                `json:"alternative_names,omitempty"`
+	IsCA             bool                    `json:"is_ca"`
+	CA               string                  `json:"ca,omitempty"`
+	ExtendedKeyUsage []AuthType              `json:"extended_key_usage,omitempty"`
+	SignerType       string                  `json:"signer_type,omitempty"`
+	ServiceRef       []esv1.ServiceReference `json:"serviceRef,omitempty"`
 }
 
 // Variable from BOSH deployment manifest
@@ -106,6 +109,7 @@ type AddOnPlacementRules struct {
 	InstanceGroup []string             `json:"instance_groups,omitempty"`
 	Networks      []string             `json:"networks,omitempty"`
 	Teams         []string             `json:"teams,omitempty"`
+	Lifecycle     string               `json:"lifecycle,omitempty"`
 }
 
 // AddOn from BOSH deployment manifest
