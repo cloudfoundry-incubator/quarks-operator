@@ -22,7 +22,8 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
-// AddExtendedSecret creates a new ExtendedSecrets Controller and adds it to the Manager
+// AddExtendedSecret creates a new ExtendedSecrets controller to watch for the
+// custom resource and reconcile it into k8s secrets.
 func AddExtendedSecret(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-secret-reconciler", mgr.GetEventRecorderFor("ext-secret-recorder"))
 	log := ctxlog.ExtractLogger(ctx)
