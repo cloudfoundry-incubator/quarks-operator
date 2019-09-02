@@ -27,7 +27,7 @@ require (
 	github.com/kisielk/sqlstruct v0.0.0-20150923205031-648daed35d49 // indirect
 	github.com/mattn/go-sqlite3 v1.10.0 // indirect
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
-	github.com/onsi/ginkgo v1.10.0
+	github.com/onsi/ginkgo v1.10.1
 	github.com/onsi/gomega v1.6.0
 	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/pkg/errors v0.8.1
