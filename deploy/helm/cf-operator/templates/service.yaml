@@ -6,6 +6,6 @@ spec:
   selector:
     name: cf-operator
   ports:
-  - port: 2999
+  - port: 443
     targetPort: 2999
     name: cf-operator-webhook

@@ -166,27 +166,47 @@ func (f *WebhookConfig) generateValidationWebhookServerConfig(ctx context.Contex
 		},
 	}
 
-	for _, webhook := range webhooks {
-		ctxlog.Debugf(ctx, "Calculating validation webhook '%s'", webhook.Name)
+	if f.config.Provider != "gke" {
+		for _, webhook := range webhooks {
+			ctxlog.Debugf(ctx, "Calculating validation webhook '%s'", webhook.Name)
 
-		url := url.URL{
-			Scheme: "https",
-			Host:   net.JoinHostPort(f.config.WebhookServerHost, strconv.Itoa(int(f.config.WebhookServerPort))),
-			Path:   webhook.Path,
+			wh := admissionregistrationv1beta1.Webhook{
+				Name:              webhook.Name,
+				Rules:             webhook.Rules,
+				FailurePolicy:     &webhook.FailurePolicy,
+				NamespaceSelector: webhook.NamespaceSelector,
+				ClientConfig: admissionregistrationv1beta1.WebhookClientConfig{
+					CABundle: f.CaCertificate,
+					Service: &admissionregistrationv1beta1.ServiceReference{
+						Name:      "cf-operator-webhook",
+						Namespace: f.config.Namespace,
+						Path:      &webhook.Path,
+					},
+				},
+			}
+			config.Webhooks = append(config.Webhooks, wh)
 		}
-		urlString := url.String()
-		wh := admissionregistrationv1beta1.Webhook{
-			Name:              webhook.Name,
-			Rules:             webhook.Rules,
-			FailurePolicy:     &webhook.FailurePolicy,
-			NamespaceSelector: webhook.NamespaceSelector,
-			ClientConfig: admissionregistrationv1beta1.WebhookClientConfig{
-				CABundle: f.CaCertificate,
-				URL:      &urlString,
-			},
+	} else {
+		for _, webhook := range webhooks {
+			ctxlog.Debugf(ctx, "Calculating validation webhook '%s'", webhook.Name)
+			url := url.URL{
+				Scheme: "https",
+				Host:   net.JoinHostPort(f.config.WebhookServerHost, strconv.Itoa(int(f.config.WebhookServerPort))),
+				Path:   webhook.Path,
+			}
+			urlString := url.String()
+			wh := admissionregistrationv1beta1.Webhook{
+				Name:              webhook.Name,
+				Rules:             webhook.Rules,
+				FailurePolicy:     &webhook.FailurePolicy,
+				NamespaceSelector: webhook.NamespaceSelector,
+				ClientConfig: admissionregistrationv1beta1.WebhookClientConfig{
+					CABundle: f.CaCertificate,
+					URL:      &urlString,
+				},
+			}
+			config.Webhooks = append(config.Webhooks, wh)
 		}
-
-		config.Webhooks = append(config.Webhooks, wh)
 	}
 
 	ctxlog.Debugf(ctx, "Creating validation webhook config '%s'", config.Name)
@@ -211,27 +231,46 @@ func (f *WebhookConfig) generateMutationWebhookServerConfig(ctx context.Context,
 		},
 	}
 
-	for _, webhook := range webhooks {
-		ctxlog.Debugf(ctx, "Calculating mutating webhook '%s'", webhook.Name)
-
-		url := url.URL{
-			Scheme: "https",
-			Host:   net.JoinHostPort(f.config.WebhookServerHost, strconv.Itoa(int(f.config.WebhookServerPort))),
-			Path:   webhook.Path,
+	if f.config.Provider != "gke" {
+		for _, webhook := range webhooks {
+			ctxlog.Debugf(ctx, "Calculating mutating webhook '%s'", webhook.Name)
+			wh := admissionregistrationv1beta1.Webhook{
+				Name:              webhook.Name,
+				Rules:             webhook.Rules,
+				FailurePolicy:     &webhook.FailurePolicy,
+				NamespaceSelector: webhook.NamespaceSelector,
+				ClientConfig: admissionregistrationv1beta1.WebhookClientConfig{
+					Service: &admissionregistrationv1beta1.ServiceReference{
+						Name:      "cf-operator-webhook",
+						Namespace: f.config.Namespace,
+						Path:      &webhook.Path,
+					},
+					CABundle: f.CaCertificate,
+				},
+			}
+			config.Webhooks = append(config.Webhooks, wh)
 		}
-		urlString := url.String()
-		wh := admissionregistrationv1beta1.Webhook{
-			Name:              webhook.Name,
-			Rules:             webhook.Rules,
-			FailurePolicy:     &webhook.FailurePolicy,
-			NamespaceSelector: webhook.NamespaceSelector,
-			ClientConfig: admissionregistrationv1beta1.WebhookClientConfig{
-				CABundle: f.CaCertificate,
-				URL:      &urlString,
-			},
+	} else {
+		for _, webhook := range webhooks {
+			ctxlog.Debugf(ctx, "Calculating mutating webhook '%s'", webhook.Name)
+			url := url.URL{
+				Scheme: "https",
+				Host:   net.JoinHostPort(f.config.WebhookServerHost, strconv.Itoa(int(f.config.WebhookServerPort))),
+				Path:   webhook.Path,
+			}
+			urlString := url.String()
+			wh := admissionregistrationv1beta1.Webhook{
+				Name:              webhook.Name,
+				Rules:             webhook.Rules,
+				FailurePolicy:     &webhook.FailurePolicy,
+				NamespaceSelector: webhook.NamespaceSelector,
+				ClientConfig: admissionregistrationv1beta1.WebhookClientConfig{
+					CABundle: f.CaCertificate,
+					URL:      &urlString,
+				},
+			}
+			config.Webhooks = append(config.Webhooks, wh)
 		}
-
-		config.Webhooks = append(config.Webhooks, wh)
 	}
 
 	ctxlog.Debugf(ctx, "Creating mutating webhook config '%s'", config.Name)

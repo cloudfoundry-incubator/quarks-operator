@@ -62,6 +62,7 @@ var rootCmd = &cobra.Command{
 
 		host := viper.GetString("operator-webhook-service-host")
 		port := viper.GetInt32("operator-webhook-service-port")
+		provider := viper.GetString("provider")
 
 		if host == "" {
 			log.Fatal("%s operator-webhook-service-host flag is not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST).", cfFailedMessage)
@@ -69,6 +70,7 @@ var rootCmd = &cobra.Command{
 
 		config := config.NewConfig(
 			cfOperatorNamespace,
+			provider,
 			host,
 			port,
 			afero.NewOsFs(),
@@ -125,6 +127,7 @@ func init() {
 	pf.StringP("operator-webhook-service-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")
 	pf.StringP("operator-webhook-service-port", "p", "2999", "Port the webhook server listens on")
 	pf.StringP("docker-image-tag", "t", version.Version, "Tag of the operator docker image")
+	pf.StringP("provider", "v", "", "Cloud Provider where cf-operator is being deployed")
 	pf.Int("max-boshdeployment-workers", 1, "Maximum of number concurrently running BOSHDeployment controller")
 	pf.Int("max-extendedjob-workers", 1, "Maximum of number concurrently running ExtendedJob controller")
 	pf.Int("max-extendedsecret-workers", 5, "Maximum of number concurrently running ExtendedSecret controller")
@@ -136,6 +139,7 @@ func init() {
 	viper.BindPFlag("docker-image-repository", pf.Lookup("docker-image-repository"))
 	viper.BindPFlag("operator-webhook-service-host", pf.Lookup("operator-webhook-service-host"))
 	viper.BindPFlag("operator-webhook-service-port", pf.Lookup("operator-webhook-service-port"))
+	viper.BindPFlag("provider", pf.Lookup("provider"))
 	viper.BindPFlag("docker-image-tag", rootCmd.PersistentFlags().Lookup("docker-image-tag"))
 	viper.BindPFlag("max-boshdeployment-workers", pf.Lookup("max-boshdeployment-workers"))
 	viper.BindPFlag("max-extendedjob-workers", pf.Lookup("max-extendedjob-workers"))
@@ -150,6 +154,7 @@ func init() {
 		"docker-image-repository":         "DOCKER_IMAGE_REPOSITORY",
 		"operator-webhook-service-host":   "CF_OPERATOR_WEBHOOK_SERVICE_HOST",
 		"operator-webhook-service-port":   "CF_OPERATOR_WEBHOOK_SERVICE_PORT",
+		"provider":                        "PROVIDER",
 		"docker-image-tag":                "DOCKER_IMAGE_TAG",
 		"max-boshdeployment-workers":      "MAX_BOSHDEPLOYMENT_WORKERS",
 		"max-extendedjob-workers":         "MAX_EXTENDEDJOB_WORKERS",

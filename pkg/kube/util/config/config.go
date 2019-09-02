@@ -15,6 +15,7 @@ const (
 type Config struct {
 	CtxTimeOut                    time.Duration
 	Namespace                     string
+	Provider                      string
 	WebhookServerHost             string
 	WebhookServerPort             int32
 	Fs                            afero.Fs
@@ -25,10 +26,11 @@ type Config struct {
 }
 
 // NewConfig returns a new Config for a Manager of Controllers
-func NewConfig(namespace string, host string, port int32, fs afero.Fs, maxBoshDeploymentWorkers, maxExtendedJobWorkers, maxExtendedSecretWorkers, maxExtendedStatefulSetWorkers int) *Config {
+func NewConfig(namespace string, provider string, host string, port int32, fs afero.Fs, maxBoshDeploymentWorkers, maxExtendedJobWorkers, maxExtendedSecretWorkers, maxExtendedStatefulSetWorkers int) *Config {
 	return &Config{
 		CtxTimeOut:                    CtxTimeOut,
 		Namespace:                     namespace,
+		Provider:                      provider,
 		WebhookServerHost:             host,
 		WebhookServerPort:             port,
 		Fs:                            fs,
