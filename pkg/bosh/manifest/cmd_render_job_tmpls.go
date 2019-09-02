@@ -2,6 +2,7 @@ package manifest
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -59,7 +60,7 @@ func RenderJobTemplates(
 		}
 
 		// Run all pre-render scripts first.
-		if err := runPreRenderScripts(instanceGroup, false); err != nil {
+		if err := runPreRenderScripts(instanceGroup); err != nil {
 			return err
 		}
 
@@ -129,7 +130,6 @@ func runRenderScript(
 	scriptType string,
 	scripts []string,
 	igName string,
-	silent bool,
 ) error {
 	for idx, script := range scripts {
 		createErr := func(err error) error {
@@ -152,54 +152,55 @@ func runRenderScript(
 		// Run the pre-render script.
 		cmd := exec.Command("/bin/bash", tmpFile.Name())
 
-		if !silent {
-			errReader, err := cmd.StderrPipe()
-			if err != nil {
-				return createErr(err)
-			}
-			outReader, err := cmd.StdoutPipe()
-			if err != nil {
-				return createErr(err)
-			}
-
-			errScanner := bufio.NewScanner(errReader)
-			go func() {
-				for errScanner.Scan() {
-					fmt.Printf("pre-render-err-%d | %s\n", idx, errScanner.Text())
-				}
-			}()
-
-			outScanner := bufio.NewScanner(outReader)
-			go func() {
-				for outScanner.Scan() {
-					fmt.Printf("pre-render-out-%d | %s\n", idx, outScanner.Text())
-				}
-			}()
+		errReader, err := cmd.StderrPipe()
+		if err != nil {
+			return createErr(err)
+		}
+		outReader, err := cmd.StdoutPipe()
+		if err != nil {
+			return createErr(err)
 		}
 
+		outBuffer := bytes.NewBufferString("")
+		errBuffer := bytes.NewBufferString("")
+
+		errScanner := bufio.NewScanner(errReader)
+		go func() {
+			for errScanner.Scan() {
+				errBuffer.Write([]byte(fmt.Sprintf("%s\n", errScanner.Text())))
+			}
+		}()
+
+		outScanner := bufio.NewScanner(outReader)
+		go func() {
+			for outScanner.Scan() {
+				errBuffer.Write([]byte(fmt.Sprintf("%s\n", outScanner.Text())))
+			}
+		}()
+
 		if err := cmd.Run(); err != nil {
-			return createErr(err)
+			return createErr(errors.Wrapf(err, "stdout:\n%s\n\nstderr:\n%s", outBuffer.String(), errBuffer.String()))
 		}
 	}
 	return nil
 }
-func runPreRenderScripts(instanceGroup *InstanceGroup, silent bool) error {
+func runPreRenderScripts(instanceGroup *InstanceGroup) error {
 	for _, job := range instanceGroup.Jobs {
 
 		jobScripts := job.Properties.Quarks.PreRenderScripts
 
 		if len(jobScripts.BPM) > 0 {
-			if err := runRenderScript(job.Name, typeBPM, jobScripts.BPM, instanceGroup.Name, silent); err != nil {
+			if err := runRenderScript(job.Name, typeBPM, jobScripts.BPM, instanceGroup.Name); err != nil {
 				return err
 			}
 		}
 		if len(jobScripts.IgResolver) > 0 {
-			if err := runRenderScript(job.Name, typeIGResolver, jobScripts.IgResolver, instanceGroup.Name, silent); err != nil {
+			if err := runRenderScript(job.Name, typeIGResolver, jobScripts.IgResolver, instanceGroup.Name); err != nil {
 				return err
 			}
 		}
 		if len(jobScripts.Jobs) > 0 {
-			if err := runRenderScript(job.Name, typeJobs, jobScripts.Jobs, instanceGroup.Name, silent); err != nil {
+			if err := runRenderScript(job.Name, typeJobs, jobScripts.Jobs, instanceGroup.Name); err != nil {
 				return err
 			}
 		}
