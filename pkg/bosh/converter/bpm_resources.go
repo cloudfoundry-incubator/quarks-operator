@@ -131,7 +131,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 		}
 
 		res.InstanceGroups = append(res.InstanceGroups, convertedExtStatefulSet)
-	case "errand":
+	case "errand", "auto-errand":
 		convertedEJob, err := kc.errandToExtendedJob(cfac, manifestName, instanceGroup, defaultDisks, bpmDisks)
 		if err != nil {
 			return nil, err
@@ -340,6 +340,11 @@ func (kc *KubeConverter) errandToExtendedJob(
 	volumes = append(volumes, defaultVolumes...)
 	volumes = append(volumes, bpmVolumes...)
 
+	strategy := ejv1.TriggerManual
+	if instanceGroup.LifeCycle == "auto-errand" {
+		strategy = ejv1.TriggerOnce
+	}
+
 	// Errand EJob
 	eJob := ejv1.ExtendedJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -349,8 +354,9 @@ func (kc *KubeConverter) errandToExtendedJob(
 			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
 		Spec: ejv1.ExtendedJobSpec{
+
 			Trigger: ejv1.Trigger{
-				Strategy: ejv1.TriggerManual,
+				Strategy: strategy,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -359,6 +365,7 @@ func (kc *KubeConverter) errandToExtendedJob(
 					Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 				},
 				Spec: corev1.PodSpec{
+					RestartPolicy:  corev1.RestartPolicyOnFailure,
 					Containers:     containers,
 					InitContainers: initContainers,
 					Volumes:        volumes,

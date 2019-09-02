@@ -172,6 +172,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 
 	for _, eJob := range resources.Errands {
 		if eJob.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
+			log.Debugf(ctx, "Skipping EJob definition '%s' for instance group '%s' because of missmatching '%s' label", eJob.Name, instance.Name, bdm.LabelInstanceGroupName)
 			continue
 		}
 
@@ -189,6 +190,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 
 	for _, svc := range resources.Services {
 		if svc.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
+			log.Debugf(ctx, "Skipping Service definition '%s' for instance group '%s' because of missmatching '%s' label", svc.Name, instance.Name, bdm.LabelInstanceGroupName)
 			continue
 		}
 
@@ -217,6 +219,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 
 	for _, eSts := range resources.InstanceGroups {
 		if eSts.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
+			log.Debugf(ctx, "Skipping ESts definition '%s' for instance group '%s' because of missmatching '%s' label", eSts.Name, instance.Name, bdm.LabelInstanceGroupName)
 			continue
 		}
 
