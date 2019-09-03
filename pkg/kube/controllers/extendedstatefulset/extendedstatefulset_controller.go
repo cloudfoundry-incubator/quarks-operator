@@ -24,7 +24,8 @@ import (
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
-// AddExtendedStatefulSet creates a new ExtendedStatefulSet controller and adds it to the Manager
+// AddExtendedStatefulSet creates a new ExtendedStatefulSet controller to watch for the custom resource and
+// reconcile it into statefulsets.
 func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-statefulset-reconciler", mgr.GetEventRecorderFor("ext-statefulset-recorder"))
 	store := vss.NewVersionedSecretStore(mgr.GetClient())

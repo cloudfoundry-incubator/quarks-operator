@@ -22,8 +22,9 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
 )
 
-// AddDeployment creates a new BOSHDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
-// and Start it when the Manager is Started.
+// AddDeployment creates a new BOSHDeployment controller to watch for
+// BOSHDeployment manifest custom resources and start the rendering, which will
+// finally produce the "desired manifest", the instance group manifests and the BPM configs.
 func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "boshdeployment-reconciler", mgr.GetEventRecorderFor("boshdeployment-recorder"))
 	r := NewDeploymentReconciler(
