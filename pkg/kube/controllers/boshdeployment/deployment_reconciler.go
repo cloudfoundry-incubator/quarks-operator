@@ -76,7 +76,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Apply the "with-ops" manifest secret
-	log.Debug(ctx, "Creating with-ops manifest Secret")
+	log.Debug(ctx, "Creating with-ops manifest secret")
 	manifest, err := r.createManifestWithOps(ctx, instance)
 	if err != nil {
 		return reconcile.Result{},
@@ -87,33 +87,33 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	log.Debug(ctx, "Converting bosh manifest to kube objects")
 	jobFactory := converter.NewJobFactory(*manifest, instance.GetNamespace())
 
-	// Apply the "Variable Interpolation" ExtendedJob
+	// Apply the "Variable Interpolation" ExtendedJob, which creates the desired manifest secret
 	eJob, err := jobFactory.VariableInterpolationJob()
 	if err != nil {
-		return reconcile.Result{}, log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "Failed to build variable interpolation eJob: %v", err)
+		return reconcile.Result{}, log.WithEvent(instance, "DesiredManifestError").Errorf(ctx, "Failed to build the desired manifest eJob: %v", err)
 	}
 
-	log.Debug(ctx, "Creating variable interpolation ExtendedJob")
+	log.Debug(ctx, "Creating desired manifest ExtendedJob")
 	err = r.createEJob(ctx, instance, eJob)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(instance, "VarInterpolationError").Errorf(ctx, "Failed to create variable interpolation ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(instance, "DesiredManifestError").Errorf(ctx, "Failed to create desired manifest ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	// Apply the "Data Gathering" ExtendedJob
+	// Apply the "Data Gathering" ExtendedJob, which creates instance group manifests (ig-resolved) secrets
 	eJob, err = jobFactory.InstanceGroupManifestJob()
 	if err != nil {
-		return reconcile.Result{}, log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "Failed to build data gathering eJob: %v", err)
+		return reconcile.Result{}, log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "Failed to build instance group manifest eJob: %v", err)
 
 	}
-	log.Debug(ctx, "Creating data gathering ExtendedJob")
+	log.Debug(ctx, "Creating instance group manifest ExtendedJob")
 	err = r.createEJob(ctx, instance, eJob)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "Failed to create data gathering ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "Failed to create instance group manifest ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	// Apply the "BPM Configs" ExtendedJob
+	// Apply the "BPM Configs" ExtendedJob, which creates BPM config secrets
 	eJob, err = jobFactory.BPMConfigsJob()
 	if err != nil {
 		return reconcile.Result{}, log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to build BPM configs eJob: %v", err)
@@ -142,7 +142,7 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 
 	log.Debug(ctx, "Creating manifest secret with ops")
 
-	// Create manifest with ops as variable interpolation job input.
+	// Create manifest with ops, which will be used as a base for variable interpolation in desired manifest job input.
 	manifestBytes, err := manifest.Marshal()
 	if err != nil {
 		return nil, log.WithEvent(instance, "ManifestWithOpsUnmarshalError").Errorf(ctx, "Error unmarshaling the manifest %s: %s", instance.GetName(), err)

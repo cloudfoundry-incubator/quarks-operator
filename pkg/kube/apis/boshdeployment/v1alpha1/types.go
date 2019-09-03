@@ -36,8 +36,6 @@ var (
 	LabelDeploymentSecretType = fmt.Sprintf("%s/secret-name", apis.GroupName)
 	// LabelManifestSHA1 is the label key for manifest SHA1
 	LabelManifestSHA1 = fmt.Sprintf("%s/manifestsha1", apis.GroupName)
-	// AnnotationManifestSHA1 is the annotation key for manifest SHA1
-	AnnotationManifestSHA1 = fmt.Sprintf("%s/manifestsha1", apis.GroupName)
 )
 
 // BOSHDeploymentSpec defines the desired state of BOSHDeployment
