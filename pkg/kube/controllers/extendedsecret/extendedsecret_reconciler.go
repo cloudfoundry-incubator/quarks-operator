@@ -235,6 +235,7 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 			service.Name+"."+service.Namespace,
 			"*."+service.Name,
 			"*."+service.Name+"."+service.Namespace,
+			service.Spec.ClusterIP,
 			service.Spec.LoadBalancerIP,
 			service.Spec.ExternalName,
 		), service.Spec.ExternalIPs...)
