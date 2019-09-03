@@ -20,7 +20,8 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
-// AddJob creates a new ExtendedJob controller and adds it to the Manager
+// AddJob creates a new Job controller to collect the output from jobs, persist
+// that output as a secret and delete the k8s job afterwards.
 func AddJob(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	client, err := corev1client.NewForConfig(mgr.GetConfig())
 	if err != nil {

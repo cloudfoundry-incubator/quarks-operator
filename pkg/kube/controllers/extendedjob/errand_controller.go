@@ -25,8 +25,8 @@ import (
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
-// AddErrand creates a new ExtendedJob controller to start errands when their
-// trigger strategy matches
+// AddErrand creates a new ExtendedJob controller to start errands, when their
+// trigger strategy matches 'now' or 'once', or their configuration changed.
 func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	f := controllerutil.SetControllerReference
 	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-job-errand-reconciler", mgr.GetEventRecorderFor("ext-job-errand-recorder"))

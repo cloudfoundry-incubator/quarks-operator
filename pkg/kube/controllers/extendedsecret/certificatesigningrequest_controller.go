@@ -19,7 +19,8 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
-// AddCertificateSigningRequest creates a new CertificateSigningRequest Controller and adds it to the Manager
+// AddCertificateSigningRequest creates a new CertificateSigningRequest controller to watch for new and changed
+// certificate signing request. Reconciliation will approve them and create a secret.
 func AddCertificateSigningRequest(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "csr-reconciler", mgr.GetEventRecorderFor("csr-recorder"))
 	certClient, err := certv1client.NewForConfig(mgr.GetConfig())
