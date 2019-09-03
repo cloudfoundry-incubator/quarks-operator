@@ -37,6 +37,9 @@ const (
 	WebhookConfigDir = "/tmp"
 )
 
+// Theses funcs construct controllers and add them to the controller-runtime
+// manager. The manager will set fields on the controllers and start them, when
+// itself is started.
 var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager) error{
 	boshdeployment.AddDeployment,
 	boshdeployment.AddGeneratedVariable,
