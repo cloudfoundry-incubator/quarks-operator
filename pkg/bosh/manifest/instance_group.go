@@ -26,7 +26,7 @@ type InstanceGroup struct {
 	Networks           []*Network             `json:"networks,omitempty"`
 	Update             *Update                `json:"update,omitempty"`
 	MigratedFrom       []*MigratedFrom        `json:"migrated_from,omitempty"`
-	LifeCycle          string                 `json:"lifecycle,omitempty"`
+	LifeCycle          InstanceGroupType      `json:"lifecycle,omitempty"`
 	Properties         map[string]interface{} `json:"properties,omitempty"`
 	Env                AgentEnv               `json:"env,omitempty"`
 }

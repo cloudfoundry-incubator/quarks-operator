@@ -119,7 +119,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 	)
 
 	switch instanceGroup.LifeCycle {
-	case "service", "":
+	case bdm.IGTypeService, "":
 		convertedExtStatefulSet, err := kc.serviceToExtendedSts(cfac, manifestName, instanceGroup, defaultDisks, bpmDisks)
 		if err != nil {
 			return nil, err
@@ -131,7 +131,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 		}
 
 		res.InstanceGroups = append(res.InstanceGroups, convertedExtStatefulSet)
-	case "errand", "auto-errand":
+	case bdm.IGTypeErrand, bdm.IGTypeAutoErrand:
 		convertedEJob, err := kc.errandToExtendedJob(cfac, manifestName, instanceGroup, defaultDisks, bpmDisks)
 		if err != nil {
 			return nil, err
@@ -341,7 +341,7 @@ func (kc *KubeConverter) errandToExtendedJob(
 	volumes = append(volumes, bpmVolumes...)
 
 	strategy := ejv1.TriggerManual
-	if instanceGroup.LifeCycle == "auto-errand" {
+	if instanceGroup.LifeCycle == bdm.IGTypeAutoErrand {
 		strategy = ejv1.TriggerOnce
 	}
 
@@ -354,7 +354,6 @@ func (kc *KubeConverter) errandToExtendedJob(
 			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
 		Spec: ejv1.ExtendedJobSpec{
-
 			Trigger: ejv1.Trigger{
 				Strategy: strategy,
 			},

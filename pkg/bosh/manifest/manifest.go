@@ -36,10 +36,18 @@ type Feature struct {
 // AuthType from BOSH deployment manifest
 type AuthType string
 
+// InstanceGroupType represents instance groups types
+type InstanceGroupType string
+
 // AuthType values from BOSH deployment manifest
 const (
 	ClientAuth AuthType = "client_auth"
 	ServerAuth AuthType = "server_auth"
+
+	IGTypeService    InstanceGroupType = "service"
+	IGTypeErrand     InstanceGroupType = "errand"
+	IGTypeAutoErrand InstanceGroupType = "auto-errand"
+	IGTypeDefault    InstanceGroupType = ""
 )
 
 // VariableOptions from BOSH deployment manifest
@@ -109,7 +117,7 @@ type AddOnPlacementRules struct {
 	InstanceGroup []string             `json:"instance_groups,omitempty"`
 	Networks      []string             `json:"networks,omitempty"`
 	Teams         []string             `json:"teams,omitempty"`
-	Lifecycle     string               `json:"lifecycle,omitempty"`
+	Lifecycle     InstanceGroupType    `json:"lifecycle,omitempty"`
 }
 
 // AddOn from BOSH deployment manifest

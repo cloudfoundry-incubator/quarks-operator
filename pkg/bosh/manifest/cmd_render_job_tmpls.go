@@ -2,13 +2,13 @@ package manifest
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	btg "github.com/viovanov/bosh-template-go"
@@ -161,20 +161,19 @@ func runRenderScript(
 			return createErr(err)
 		}
 
-		outBuffer := bytes.NewBufferString("")
-		errBuffer := bytes.NewBufferString("")
+		var outBuffer, errBuffer strings.Builder
 
 		errScanner := bufio.NewScanner(errReader)
 		go func() {
 			for errScanner.Scan() {
-				errBuffer.Write([]byte(fmt.Sprintf("%s\n", errScanner.Text())))
+				fmt.Fprintf(&errBuffer, "%s\n", errScanner.Text())
 			}
 		}()
 
 		outScanner := bufio.NewScanner(outReader)
 		go func() {
 			for outScanner.Scan() {
-				errBuffer.Write([]byte(fmt.Sprintf("%s\n", outScanner.Text())))
+				fmt.Fprintf(&outBuffer, "%s\n", outScanner.Text())
 			}
 		}()
 
