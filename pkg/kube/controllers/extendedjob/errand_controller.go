@@ -50,7 +50,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			if shouldProcessEvent {
 				ctxlog.NewPredicateEvent(eJob).Debug(
 					ctx, e.Meta, ejv1.LabelExtendedJob,
-					fmt.Sprintf("Errand eJob's create predicate passed for %s, existing extendedJob spec.Trigger.Strategy  matches the values 'now' or 'once'",
+					fmt.Sprintf("Create predicate passed for '%s', existing extendedJob spec.Trigger.Strategy  matches the values 'now' or 'once'",
 						e.Meta.GetName()),
 				)
 			}
@@ -76,7 +76,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			if shouldProcessEvent {
 				ctxlog.NewPredicateEvent(o).Debug(
 					ctx, e.MetaNew, ejv1.LabelExtendedJob,
-					fmt.Sprintf("Errand eJob's update predicate passed for %s, a change in it´s referenced secrets have been detected",
+					fmt.Sprintf("Update predicate passed for '%s', a change in it´s referenced secrets have been detected",
 						e.MetaNew.GetName()),
 				)
 			}

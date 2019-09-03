@@ -2,6 +2,7 @@ package boshdeployment
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -43,7 +44,25 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	}
 
 	// Watch for changes to primary resource BOSHDeployment
-	err = c.Watch(&source.Kind{Type: &bdv1.BOSHDeployment{}}, &handler.EnqueueRequestForObject{})
+	p := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			ctxlog.NewPredicateEvent(e.Object).Debug(
+				ctx, e.Meta, "bdv1.BOSHDeployment",
+				fmt.Sprintf("Create predicate passed for '%s'", e.Meta.GetName()),
+			)
+			return true
+		},
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
+				ctx, e.MetaNew, "bdv1.BOSHDeployment",
+				fmt.Sprintf("Update predicate passed for '%s'", e.MetaNew.GetName()),
+			)
+			return true
+		},
+	}
+	err = c.Watch(&source.Kind{Type: &bdv1.BOSHDeployment{}}, &handler.EnqueueRequestForObject{}, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching bosh deployment failed in bosh deployment controller.")
 	}
