@@ -73,9 +73,6 @@ var (
 											Raw: []byte(`"now"`),
 										},
 										{
-											Raw: []byte(`"podstate"`),
-										},
-										{
 											Raw: []byte(`"done"`),
 										},
 									},
