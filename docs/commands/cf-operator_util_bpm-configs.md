@@ -23,7 +23,7 @@ cf-operator util bpm-configs [flags]
 ### Options inherited from parent commands
 
 ```
-      --apply-crd                              (APPLY_CRD) If true, apply CRDs on start (default true)
+      --apply-crd                              (APPLY_CRD) If true, apply CRDs on start
   -b, --base-dir string                        (BASE_DIR) a path to the base directory
   -m, --bosh-manifest-path string              (BOSH_MANIFEST_PATH) path to the bosh manifest file
   -n, --cf-operator-namespace string           (CF_OPERATOR_NAMESPACE) Namespace to watch for BOSH deployments (default "default")

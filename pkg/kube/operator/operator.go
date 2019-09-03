@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
+	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	extv1client "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -18,6 +20,15 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/crd"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
+
+type resource struct {
+	name         string
+	kind         string
+	plural       string
+	shortNames   []string
+	groupVersion schema.GroupVersion
+	validation   *extv1.CustomResourceValidation
+}
 
 // NewManager adds schemes, controllers and starts the manager
 func NewManager(ctx context.Context, config *config.Config, cfg *rest.Config, options manager.Options) (manager.Manager, error) {
@@ -58,68 +69,58 @@ func ApplyCRDs(config *rest.Config) error {
 	if err != nil {
 		return errors.Wrap(err, "Could not get kube client")
 	}
-	err = crd.ApplyCRD(
-		exClient,
-		bdv1.BOSHDeploymentResourceName,
-		bdv1.BOSHDeploymentResourceKind,
-		bdv1.BOSHDeploymentResourcePlural,
-		bdv1.BOSHDeploymentResourceShortNames,
-		bdv1.SchemeGroupVersion,
-		&bdv1.BOSHDeploymentValidation,
-	)
-	if err != nil {
-		return errors.Wrapf(err, "failed to apply CRD '%s'", bdv1.BOSHDeploymentResourceName)
-	}
-	err = crd.WaitForCRDReady(exClient, bdv1.BOSHDeploymentResourceName)
-	if err != nil {
-		return errors.Wrapf(err, "failed to wait for CRD '%s' ready", bdv1.BOSHDeploymentResourceName)
+
+	for _, res := range []resource{
+		{
+			bdv1.BOSHDeploymentResourceName,
+			bdv1.BOSHDeploymentResourceKind,
+			bdv1.BOSHDeploymentResourcePlural,
+			bdv1.BOSHDeploymentResourceShortNames,
+			bdv1.SchemeGroupVersion,
+			&bdv1.BOSHDeploymentValidation,
+		},
+		{
+			ejv1.ExtendedJobResourceName,
+			ejv1.ExtendedJobResourceKind,
+			ejv1.ExtendedJobResourcePlural,
+			ejv1.ExtendedJobResourceShortNames,
+			ejv1.SchemeGroupVersion,
+			&ejv1.ExtendedJobValidation,
+		},
+		{
+			esv1.ExtendedSecretResourceName,
+			esv1.ExtendedSecretResourceKind,
+			esv1.ExtendedSecretResourcePlural,
+			esv1.ExtendedSecretResourceShortNames,
+			esv1.SchemeGroupVersion,
+			nil,
+		},
+		{
+			essv1.ExtendedStatefulSetResourceName,
+			essv1.ExtendedStatefulSetResourceKind,
+			essv1.ExtendedStatefulSetResourcePlural,
+			essv1.ExtendedStatefulSetResourceShortNames,
+			essv1.SchemeGroupVersion,
+			&essv1.ExtendedJobValidation,
+		},
+	} {
+		err = crd.ApplyCRD(
+			exClient,
+			res.name,
+			res.kind,
+			res.plural,
+			res.shortNames,
+			res.groupVersion,
+			res.validation,
+		)
+		if err != nil {
+			return errors.Wrapf(err, "failed to apply CRD '%s'", res.name)
+		}
+		err = crd.WaitForCRDReady(exClient, res.name)
+		if err != nil {
+			return errors.Wrapf(err, "failed to wait for CRD '%s' ready", res.name)
+		}
 	}
 
-	err = crd.ApplyCRD(
-		exClient,
-		ejv1.ExtendedJobResourceName,
-		ejv1.ExtendedJobResourceKind,
-		ejv1.ExtendedJobResourcePlural,
-		ejv1.ExtendedJobResourceShortNames,
-		ejv1.SchemeGroupVersion,
-		&ejv1.ExtendedJobValidation,
-	)
-	if err != nil {
-		return errors.Wrapf(err, "failed to apply CRD '%s'", ejv1.ExtendedJobResourceName)
-	}
-	err = crd.WaitForCRDReady(exClient, ejv1.ExtendedJobResourceName)
-	if err != nil {
-		return errors.Wrapf(err, "failed to wait for CRD '%s' ready", ejv1.ExtendedJobResourceName)
-	}
-
-	err = crd.ApplyCRD(
-		exClient,
-		esv1.ExtendedSecretResourceName,
-		esv1.ExtendedSecretResourceKind,
-		esv1.ExtendedSecretResourcePlural,
-		esv1.ExtendedSecretResourceShortNames,
-		esv1.SchemeGroupVersion,
-		nil,
-	)
-	if err != nil {
-		return errors.Wrapf(err, "failed to apply CRD '%s'", esv1.ExtendedSecretResourceName)
-	}
-	err = crd.WaitForCRDReady(exClient, esv1.ExtendedSecretResourceName)
-	if err != nil {
-		return errors.Wrapf(err, "failed to wait for CRD '%s' ready", esv1.ExtendedSecretResourceName)
-	}
-
-	err = crd.ApplyCRD(
-		exClient,
-		essv1.ExtendedStatefulSetResourceName,
-		essv1.ExtendedStatefulSetResourceKind,
-		essv1.ExtendedStatefulSetResourcePlural,
-		essv1.ExtendedStatefulSetResourceShortNames,
-		essv1.SchemeGroupVersion,
-		&essv1.ExtendedJobValidation,
-	)
-	if err != nil {
-		return errors.Wrapf(err, "failed to apply CRD '%s'", essv1.ExtendedStatefulSetResourceName)
-	}
-	return crd.WaitForCRDReady(exClient, essv1.ExtendedStatefulSetResourceName)
+	return nil
 }
