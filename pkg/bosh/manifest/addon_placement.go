@@ -74,9 +74,16 @@ func (m *Manifest) instanceGroupMatch(instanceGroup *InstanceGroup, rules *AddOn
 
 // addOnPlacementMatch returns true if any placement rule of the addon matches the instance group
 func (m *Manifest) addOnPlacementMatch(instanceGroup *InstanceGroup, rules *AddOnPlacementRules) (bool, error) {
-	if (instanceGroup.LifeCycle == "errand" ||
-		instanceGroup.LifeCycle == "auto-errand") &&
-		(rules == nil || rules.Lifecycle != "errand") {
+	// This check is special, not a matcher. Lifecycle always needs to match
+	if (instanceGroup.LifeCycle == IGTypeErrand ||
+		instanceGroup.LifeCycle == IGTypeAutoErrand) &&
+		(rules == nil || rules.Lifecycle != IGTypeErrand) {
+		return false, nil
+	}
+
+	if (instanceGroup.LifeCycle == IGTypeService ||
+		instanceGroup.LifeCycle == IGTypeDefault) &&
+		(rules != nil && rules.Lifecycle != IGTypeDefault && rules.Lifecycle != IGTypeService) {
 		return false, nil
 	}
 

@@ -121,14 +121,17 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 // errands always have an AZ_INDEX of 1
 func (r *ErrandReconciler) injectContainerEnv(podSpec *corev1.PodSpec) {
 
-	containers := []*corev1.Container{}
-	for i := 0; i < len(podSpec.Containers); i++ {
-		containers = append(containers, &podSpec.Containers[i])
+	for _, container := range podSpec.Containers {
+		envs := container.Env
+
+		// Default to zone 1, with 1 replica
+		envs = upsertEnvs(envs, EnvCfOperatorAzIndex, "1")
+		envs = upsertEnvs(envs, EnvReplicas, "1")
+		envs = upsertEnvs(envs, EnvPodOrdinal, "0")
+
+		container.Env = envs
 	}
-	for i := 0; i < len(podSpec.InitContainers); i++ {
-		containers = append(containers, &podSpec.InitContainers[i])
-	}
-	for _, container := range containers {
+	for _, container := range podSpec.InitContainers {
 		envs := container.Env
 
 		// Default to zone 1, with 1 replica

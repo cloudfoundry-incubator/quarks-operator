@@ -106,6 +106,14 @@ addons:
   jobs:
   - name: addon-job2
     release: redis
+- name: test3
+  include:
+    stemcell:
+    - os: opensuse-42.3
+    lifecycle: errand
+  jobs:
+  - name: addon-job3
+    release: redis
 stemcells:
 - alias: default
   os: opensuse-42.3
@@ -113,7 +121,6 @@ stemcells:
 instance_groups:
 - name: redis-slave
   instances: 2
-  lifecycle: errand
   azs: [z1, z2]
   jobs:
   - name: redis-server
@@ -171,6 +178,30 @@ instance_groups:
         - name: "rep-server"
           protocol: "TCP"
           internal: 1801
+- name: redis-slave-errand
+  instances: 2
+  lifecycle: errand
+  azs: [z1, z2]
+  jobs:
+  - name: redis-server
+    release: redis
+    properties: {}
+  vm_type: medium
+  stemcell: default
+  persistent_disk_type: medium
+  networks:
+  - name: default
+  properties:
+    foo:
+      app_domain: "((app_domain))"
+  env:
+    bosh:
+      agent:
+        settings:
+          labels:
+            custom-label: foo
+          annotations:
+            custom-annotation: bar
 variables:
 - name: "adminpass"
   type: "password"

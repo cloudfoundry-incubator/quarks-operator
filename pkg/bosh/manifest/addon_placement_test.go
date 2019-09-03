@@ -17,7 +17,7 @@ var _ = Describe("Addons", func() {
 		err = manifest.ApplyAddons()
 		Expect(err).NotTo(HaveOccurred())
 
-		Expect(manifest.InstanceGroups).To(HaveLen(2))
+		Expect(manifest.InstanceGroups).To(HaveLen(3))
 		Expect(manifest.InstanceGroups[0].Jobs).To(HaveLen(3))
 		Expect(manifest.InstanceGroups[0].Jobs[0].Name).To(Equal("redis-server"))
 		Expect(manifest.InstanceGroups[0].Jobs[1].Name).To(Equal("addon-job"))
@@ -25,5 +25,8 @@ var _ = Describe("Addons", func() {
 		Expect(manifest.InstanceGroups[1].Jobs).To(HaveLen(2))
 		Expect(manifest.InstanceGroups[1].Jobs[0].Name).To(Equal("cflinuxfs3-rootfs-setup"))
 		Expect(manifest.InstanceGroups[1].Jobs[1].Name).To(Equal("addon-job"))
+		Expect(manifest.InstanceGroups[2].Jobs).To(HaveLen(2))
+		Expect(manifest.InstanceGroups[2].Jobs[0].Name).To(Equal("redis-server"))
+		Expect(manifest.InstanceGroups[2].Jobs[1].Name).To(Equal("addon-job3"))
 	})
 })
