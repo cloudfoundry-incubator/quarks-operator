@@ -157,7 +157,7 @@ func OrdinalFromPodName(name string) int {
 
 // CSRName returns a CertificateSigningRequest name for a given ExtendedSecret
 func CSRName(namespace, extendedSecretName string) string {
-	return fmt.Sprintf("%s-%s", truncate(namespace, 19), truncate(extendedSecretName, 19))
+	return fmt.Sprintf("%s-%s", truncate(namespace, 19), Sanitize(truncate(extendedSecretName, 19)))
 }
 
 // CsrPrivateKeySecretName returns a Secret name for a given CertificateSigningRequest private key
