@@ -60,7 +60,7 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 			if len(sts) == 0 {
 				ctxlog.NewPredicateEvent(e.Object).Debug(
 					ctx, e.Meta, "estsv1.ExtendedStatefulSet",
-					fmt.Sprintf("ExtendedStatefulSet's create predicate passed for %s", e.Meta.GetName()),
+					fmt.Sprintf("Create predicate passed for '%s'", e.Meta.GetName()),
 				)
 				return true
 			}
@@ -72,7 +72,7 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
 				ctx, e.MetaNew, "estsv1.ExtendedStatefulSet",
-				fmt.Sprintf("ExtendedStatefulSet's update predicate passed for %s", e.MetaNew.GetName()),
+				fmt.Sprintf("Update predicate passed for '%s'", e.MetaNew.GetName()),
 			)
 			return true
 		},

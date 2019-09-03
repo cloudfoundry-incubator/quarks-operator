@@ -48,7 +48,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		CreateFunc: func(e event.CreateEvent) bool {
 			ctxlog.NewPredicateEvent(e.Object).Debug(
 				ctx, e.Meta, "bdv1.BOSHDeployment",
-				fmt.Sprintf("BOSHDeployment's create predicate passed for %s", e.Meta.GetName()),
+				fmt.Sprintf("Create predicate passed for '%s'", e.Meta.GetName()),
 			)
 			return true
 		},
@@ -57,7 +57,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
 				ctx, e.MetaNew, "bdv1.BOSHDeployment",
-				fmt.Sprintf("BOSHDeployment's update passed for %s", e.MetaNew.GetName()),
+				fmt.Sprintf("Update predicate passed for '%s'", e.MetaNew.GetName()),
 			)
 			return true
 		},
