@@ -84,10 +84,16 @@ func (f *WebhookConfig) setupCertificate(ctx context.Context) error {
 			return err
 		}
 
+		commonName := f.config.WebhookServerHost
+		// If provider is GKE, use service address
+		if f.config.Provider == "gke" {
+			commonName = "cf-operator-webhook." + f.config.Namespace + ".svc"
+		}
+
 		// Generate Certificate
 		request := credsgen.CertificateGenerationRequest{
 			IsCA:       false,
-			CommonName: f.config.WebhookServerHost,
+			CommonName: commonName,
 			CA: credsgen.Certificate{
 				IsCA:        true,
 				PrivateKey:  caCert.PrivateKey,
@@ -169,26 +175,31 @@ func (f *WebhookConfig) generateValidationWebhookServerConfig(ctx context.Contex
 	for _, webhook := range webhooks {
 		ctxlog.Debugf(ctx, "Calculating validation webhook '%s'", webhook.Name)
 
-		url := url.URL{
-			Scheme: "https",
-			Host:   net.JoinHostPort(f.config.WebhookServerHost, strconv.Itoa(int(f.config.WebhookServerPort))),
-			Path:   webhook.Path,
-		}
-		urlString := url.String()
-		wh := admissionregistrationv1beta1.Webhook{
-			Name:              webhook.Name,
-			Rules:             webhook.Rules,
-			FailurePolicy:     &webhook.FailurePolicy,
-			NamespaceSelector: webhook.NamespaceSelector,
-			ClientConfig: admissionregistrationv1beta1.WebhookClientConfig{
+		if f.config.Provider == "gke" {
+			clientConfig := admissionregistrationv1beta1.WebhookClientConfig{
+				CABundle: f.CaCertificate,
+				Service: &admissionregistrationv1beta1.ServiceReference{
+					Name:      "cf-operator-webhook",
+					Namespace: f.config.Namespace,
+					Path:      &webhook.Path,
+				},
+			}
+			config.Webhooks = append(config.Webhooks, f.newWebhook(webhook, clientConfig))
+		} else {
+			url := url.URL{
+				Scheme: "https",
+				Host:   net.JoinHostPort(f.config.WebhookServerHost, strconv.Itoa(int(f.config.WebhookServerPort))),
+				Path:   webhook.Path,
+			}
+			urlString := url.String()
+
+			clientConfig := admissionregistrationv1beta1.WebhookClientConfig{
 				CABundle: f.CaCertificate,
 				URL:      &urlString,
-			},
+			}
+			config.Webhooks = append(config.Webhooks, f.newWebhook(webhook, clientConfig))
 		}
-
-		config.Webhooks = append(config.Webhooks, wh)
 	}
-
 	ctxlog.Debugf(ctx, "Creating validation webhook config '%s'", config.Name)
 	f.client.Delete(ctx, config)
 	err := f.client.Create(ctx, config)
@@ -214,24 +225,30 @@ func (f *WebhookConfig) generateMutationWebhookServerConfig(ctx context.Context,
 	for _, webhook := range webhooks {
 		ctxlog.Debugf(ctx, "Calculating mutating webhook '%s'", webhook.Name)
 
-		url := url.URL{
-			Scheme: "https",
-			Host:   net.JoinHostPort(f.config.WebhookServerHost, strconv.Itoa(int(f.config.WebhookServerPort))),
-			Path:   webhook.Path,
-		}
-		urlString := url.String()
-		wh := admissionregistrationv1beta1.Webhook{
-			Name:              webhook.Name,
-			Rules:             webhook.Rules,
-			FailurePolicy:     &webhook.FailurePolicy,
-			NamespaceSelector: webhook.NamespaceSelector,
-			ClientConfig: admissionregistrationv1beta1.WebhookClientConfig{
+		if f.config.Provider == "gke" {
+			clientConfig := admissionregistrationv1beta1.WebhookClientConfig{
+				Service: &admissionregistrationv1beta1.ServiceReference{
+					Name:      "cf-operator-webhook",
+					Namespace: f.config.Namespace,
+					Path:      &webhook.Path,
+				},
+				CABundle: f.CaCertificate,
+			}
+			config.Webhooks = append(config.Webhooks, f.newWebhook(webhook, clientConfig))
+		} else {
+			url := url.URL{
+				Scheme: "https",
+				Host:   net.JoinHostPort(f.config.WebhookServerHost, strconv.Itoa(int(f.config.WebhookServerPort))),
+				Path:   webhook.Path,
+			}
+			urlString := url.String()
+
+			clientConfig := admissionregistrationv1beta1.WebhookClientConfig{
 				CABundle: f.CaCertificate,
 				URL:      &urlString,
-			},
+			}
+			config.Webhooks = append(config.Webhooks, f.newWebhook(webhook, clientConfig))
 		}
-
-		config.Webhooks = append(config.Webhooks, wh)
 	}
 
 	ctxlog.Debugf(ctx, "Creating mutating webhook config '%s'", config.Name)
@@ -270,4 +287,15 @@ func (f *WebhookConfig) writeSecretFiles() error {
 	}
 
 	return nil
+}
+
+func (f *WebhookConfig) newWebhook(webhook *webhook.OperatorWebhook, clientConfig admissionregistrationv1beta1.WebhookClientConfig) admissionregistrationv1beta1.Webhook {
+	wh := admissionregistrationv1beta1.Webhook{
+		Name:              webhook.Name,
+		Rules:             webhook.Rules,
+		FailurePolicy:     &webhook.FailurePolicy,
+		NamespaceSelector: webhook.NamespaceSelector,
+		ClientConfig:      clientConfig,
+	}
+	return wh
 }

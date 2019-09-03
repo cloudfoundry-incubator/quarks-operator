@@ -39,6 +39,10 @@ spec:
               value: "{{ .Values.image.repository }}"
             - name: DOCKER_IMAGE_TAG
               value: "{{ .Values.image.tag }}"
+            {{- if .Values.provider }}
+            - name: PROVIDER
+              value: "{{ .Values.provider }}"
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /readyz

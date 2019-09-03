@@ -28,6 +28,8 @@ import (
 
 const (
 	cfFailedMessage = "cf-operator command failed."
+	// Port on which the controller-runtime manager listens
+	managerPort = 2999
 )
 
 var (
@@ -60,17 +62,20 @@ var rootCmd = &cobra.Command{
 		log.Infof("Starting cf-operator %s with namespace %s", version.Version, cfOperatorNamespace)
 		log.Infof("cf-operator docker image: %s", converter.GetOperatorDockerImage())
 
-		host := viper.GetString("operator-webhook-service-host")
-		port := viper.GetInt32("operator-webhook-service-port")
+		serviceHost := viper.GetString("operator-webhook-service-host")
+		// Port on which the cf operator webhook kube service listens to.
+		servicePort := viper.GetInt32("operator-webhook-service-port")
+		provider := viper.GetString("provider")
 
-		if host == "" {
+		if serviceHost == "" && provider == "" {
 			log.Fatal("%s operator-webhook-service-host flag is not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST).", cfFailedMessage)
 		}
 
 		config := config.NewConfig(
 			cfOperatorNamespace,
-			host,
-			port,
+			provider,
+			serviceHost,
+			servicePort,
 			afero.NewOsFs(),
 			viper.GetInt("max-boshdeployment-workers"),
 			viper.GetInt("max-extendedjob-workers"),
@@ -83,7 +88,7 @@ var rootCmd = &cobra.Command{
 			Namespace:          cfOperatorNamespace,
 			MetricsBindAddress: "0",
 			LeaderElection:     false,
-			Port:               int(port),
+			Port:               managerPort,
 			Host:               "0.0.0.0",
 		})
 		if err != nil {
@@ -125,6 +130,7 @@ func init() {
 	pf.StringP("operator-webhook-service-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")
 	pf.StringP("operator-webhook-service-port", "p", "2999", "Port the webhook server listens on")
 	pf.StringP("docker-image-tag", "t", version.Version, "Tag of the operator docker image")
+	pf.StringP("provider", "x", "", "Cloud Provider where cf-operator is being deployed")
 	pf.Int("max-boshdeployment-workers", 1, "Maximum of number concurrently running BOSHDeployment controller")
 	pf.Int("max-extendedjob-workers", 1, "Maximum of number concurrently running ExtendedJob controller")
 	pf.Int("max-extendedsecret-workers", 5, "Maximum of number concurrently running ExtendedSecret controller")
@@ -136,6 +142,7 @@ func init() {
 	viper.BindPFlag("docker-image-repository", pf.Lookup("docker-image-repository"))
 	viper.BindPFlag("operator-webhook-service-host", pf.Lookup("operator-webhook-service-host"))
 	viper.BindPFlag("operator-webhook-service-port", pf.Lookup("operator-webhook-service-port"))
+	viper.BindPFlag("provider", pf.Lookup("provider"))
 	viper.BindPFlag("docker-image-tag", rootCmd.PersistentFlags().Lookup("docker-image-tag"))
 	viper.BindPFlag("max-boshdeployment-workers", pf.Lookup("max-boshdeployment-workers"))
 	viper.BindPFlag("max-extendedjob-workers", pf.Lookup("max-extendedjob-workers"))
@@ -150,6 +157,7 @@ func init() {
 		"docker-image-repository":         "DOCKER_IMAGE_REPOSITORY",
 		"operator-webhook-service-host":   "CF_OPERATOR_WEBHOOK_SERVICE_HOST",
 		"operator-webhook-service-port":   "CF_OPERATOR_WEBHOOK_SERVICE_PORT",
+		"provider":                        "PROVIDER",
 		"docker-image-tag":                "DOCKER_IMAGE_TAG",
 		"max-boshdeployment-workers":      "MAX_BOSHDEPLOYMENT_WORKERS",
 		"max-extendedjob-workers":         "MAX_EXTENDEDJOB_WORKERS",

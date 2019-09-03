@@ -2,6 +2,7 @@ package extendedstatefulset
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -56,12 +57,25 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to list StatefulSets owned by ExtendedStatefulSet '%s': %s", o.Name, err)
 			}
+			if len(sts) == 0 {
+				ctxlog.NewPredicateEvent(e.Object).Debug(
+					ctx, e.Meta, "estsv1.ExtendedStatefulSet",
+					fmt.Sprintf("Create predicate passed for '%s'", e.Meta.GetName()),
+				)
+				return true
+			}
 
-			return len(sts) == 0
+			return false
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
-		UpdateFunc:  func(e event.UpdateEvent) bool { return true },
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
+				ctx, e.MetaNew, "estsv1.ExtendedStatefulSet",
+				fmt.Sprintf("Update predicate passed for '%s'", e.MetaNew.GetName()),
+			)
+			return true
+		},
 	}
 	err = c.Watch(&source.Kind{Type: &estsv1.ExtendedStatefulSet{}}, &handler.EnqueueRequestForObject{}, p)
 	if err != nil {
@@ -93,6 +107,9 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s': %v", config.Name, err)
 			}
 
+			for _, reconciliation := range reconciles {
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "ExtendedStatefulSet", a.Meta.GetName(), "config-maps")
+			}
 			return reconciles
 		}),
 	}, configMapPredicates)
@@ -123,6 +140,10 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, secret)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", secret.Name, err)
+			}
+
+			for _, reconciliation := range reconciles {
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "ExtendedStatefulSet", a.Meta.GetName(), "secret")
 			}
 
 			return reconciles
