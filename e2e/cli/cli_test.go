@@ -61,7 +61,7 @@ var _ = Describe("CLI", func() {
 			session, err := act()
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+ with namespace`))
-			Eventually(session.Err).Should(Say(`Applying CRD...`))
+			Eventually(session.Err).ShouldNot(Say(`Applying CRD...`))
 		})
 
 		Context("when specifying namespace", func() {
@@ -93,7 +93,7 @@ var _ = Describe("CLI", func() {
 		Context("when disabling apply-crd", func() {
 			Context("via environment variables", func() {
 				BeforeEach(func() {
-					os.Setenv("APPLY_CRD", "false")
+					os.Setenv("APPLY_CRD", "true")
 				})
 
 				AfterEach(func() {
@@ -103,15 +103,15 @@ var _ = Describe("CLI", func() {
 				It("should not apply CRDs", func() {
 					session, err := act()
 					Expect(err).ToNot(HaveOccurred())
-					Eventually(session.Err).ShouldNot(Say(`Applying CRD...`))
+					Eventually(session.Err).Should(Say(`Applying CRD...`))
 				})
 			})
 
 			Context("via using switches", func() {
 				It("should not apply CRDs", func() {
-					session, err := act("--apply-crd", "false")
+					session, err := act("--apply-crd")
 					Expect(err).ToNot(HaveOccurred())
-					Eventually(session.Err).ShouldNot(Say(`Applying CRD...`))
+					Eventually(session.Err).Should(Say(`Applying CRD...`))
 				})
 			})
 		})
