@@ -671,6 +671,11 @@ func (c *Catalog) CmdPodTemplate(cmd []string) corev1.PodTemplateSpec {
 					Name:    "busybox",
 					Image:   "busybox",
 					Command: cmd,
+					Env: []corev1.EnvVar{
+						{Name: "REPLICAS", Value: "1"},
+						{Name: "AZ_INDEX", Value: "1"},
+						{Name: "POD_ORDINAL", Value: "0"},
+					},
 				},
 			},
 		},
@@ -712,6 +717,11 @@ func (c *Catalog) ConfigPodTemplate() corev1.PodTemplateSpec {
 					Name:    "busybox",
 					Image:   "busybox",
 					Command: []string{"sleep", "1"},
+					Env: []corev1.EnvVar{
+						{Name: "REPLICAS", Value: "1"},
+						{Name: "AZ_INDEX", Value: "1"},
+						{Name: "POD_ORDINAL", Value: "0"},
+					},
 				},
 			},
 		},
