@@ -275,7 +275,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to create variable interpolation ExtendedJob for BOSHDeployment 'default/foo': creating or updating ExtendedJob 'dm-foo': fake-error"))
+				Expect(err.Error()).To(ContainSubstring("failed to create desired manifest ExtendedJob for BOSHDeployment 'default/foo': creating or updating ExtendedJob 'dm-foo': fake-error"))
 			})
 
 			It("handles an errors when creating data gathering eJob", func() {
@@ -309,7 +309,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to create data gathering ExtendedJob for BOSHDeployment 'default/foo': creating or updating ExtendedJob 'ig-foo': fake-error"))
+				Expect(err.Error()).To(ContainSubstring("failed to create instance group manifest ExtendedJob for BOSHDeployment 'default/foo': creating or updating ExtendedJob 'ig-foo': fake-error"))
 			})
 		})
 	})

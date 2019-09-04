@@ -220,6 +220,27 @@ func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance 
 }
 
 func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, instance *esv1.ExtendedSecret) error {
+	for _, serviceRef := range instance.Spec.Request.CertificateRequest.ServiceRef {
+		service := &corev1.Service{}
+
+		err := r.client.Get(ctx, types.NamespacedName{Namespace: r.config.Namespace, Name: serviceRef.Name}, service)
+
+		if err != nil {
+			return errors.Wrapf(err, "Failed to get service reference '%s' for ExtendedSecret '%s'", serviceRef.Name, instance.Name)
+		}
+
+		instance.Spec.Request.CertificateRequest.AlternativeNames = append(append(
+			instance.Spec.Request.CertificateRequest.AlternativeNames,
+			service.Name,
+			service.Name+"."+service.Namespace,
+			"*."+service.Name,
+			"*."+service.Name+"."+service.Namespace,
+			service.Spec.ClusterIP,
+			service.Spec.LoadBalancerIP,
+			service.Spec.ExternalName,
+		), service.Spec.ExternalIPs...)
+	}
+
 	if len(instance.Spec.Request.CertificateRequest.SignerType) == 0 {
 		instance.Spec.Request.CertificateRequest.SignerType = esv1.LocalSigner
 	}

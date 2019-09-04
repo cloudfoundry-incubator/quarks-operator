@@ -121,6 +121,7 @@ func (g InMemoryGenerator) generateCACertificate(request credsgen.CertificateGen
 	if err != nil {
 		return credsgen.Certificate{}, err
 	}
+
 	cert := credsgen.Certificate{
 		IsCA:        true,
 		Certificate: ca,

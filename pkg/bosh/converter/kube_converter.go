@@ -3,6 +3,8 @@ package converter
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	certv1 "k8s.io/api/certificates/v1beta1"
+
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
@@ -41,11 +43,35 @@ func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable
 			},
 		}
 		if v.Type == esv1.Certificate {
+
+			usages := []certv1.KeyUsage{}
+
+			for _, keyUsage := range v.Options.ExtendedKeyUsage {
+				if keyUsage == bdm.ClientAuth {
+					usages = append(usages, certv1.UsageClientAuth)
+				}
+				if keyUsage == bdm.ServerAuth {
+					usages = append(usages, certv1.UsageServerAuth)
+				}
+			}
+
+			if v.Options.IsCA {
+				usages = append(usages,
+					certv1.UsageSigning,
+					certv1.UsageDigitalSignature,
+					certv1.UsageAny,
+					certv1.UsageCertSign,
+					certv1.UsageCodeSigning,
+					certv1.UsageDigitalSignature)
+			}
+
 			certRequest := esv1.CertificateRequest{
 				CommonName:       v.Options.CommonName,
 				AlternativeNames: v.Options.AlternativeNames,
 				IsCA:             v.Options.IsCA,
 				SignerType:       v.Options.SignerType,
+				ServiceRef:       v.Options.ServiceRef,
+				Usages:           usages,
 			}
 			if len(certRequest.SignerType) == 0 {
 				certRequest.SignerType = esv1.LocalSigner

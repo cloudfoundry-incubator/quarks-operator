@@ -2,6 +2,7 @@ package boshdeployment
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -22,8 +23,9 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
 )
 
-// AddDeployment creates a new BOSHDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
-// and Start it when the Manager is Started.
+// AddDeployment creates a new BOSHDeployment controller to watch for
+// BOSHDeployment manifest custom resources and start the rendering, which will
+// finally produce the "desired manifest", the instance group manifests and the BPM configs.
 func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "boshdeployment-reconciler", mgr.GetEventRecorderFor("boshdeployment-recorder"))
 	r := NewDeploymentReconciler(
@@ -42,7 +44,25 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	}
 
 	// Watch for changes to primary resource BOSHDeployment
-	err = c.Watch(&source.Kind{Type: &bdv1.BOSHDeployment{}}, &handler.EnqueueRequestForObject{})
+	p := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			ctxlog.NewPredicateEvent(e.Object).Debug(
+				ctx, e.Meta, "bdv1.BOSHDeployment",
+				fmt.Sprintf("Create predicate passed for '%s'", e.Meta.GetName()),
+			)
+			return true
+		},
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
+				ctx, e.MetaNew, "bdv1.BOSHDeployment",
+				fmt.Sprintf("Update predicate passed for '%s'", e.MetaNew.GetName()),
+			)
+			return true
+		},
+	}
+	err = c.Watch(&source.Kind{Type: &bdv1.BOSHDeployment{}}, &handler.EnqueueRequestForObject{}, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching bosh deployment failed in bosh deployment controller.")
 	}
