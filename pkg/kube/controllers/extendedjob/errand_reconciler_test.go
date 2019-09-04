@@ -3,9 +3,9 @@ package extendedjob_test
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
+	"github.com/go-test/deep"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
@@ -192,7 +192,7 @@ var _ = Describe("ErrandReconciler", func() {
 					client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 						switch job := object.(type) {
 						case *batchv1.Job:
-							Expect(reflect.DeepEqual(job.Spec.Template.Spec, eJob.Spec.Template.Spec)).To(BeTrue())
+							Expect(deep.Equal(job.Spec.Template.Spec, eJob.Spec.Template.Spec)).To(HaveLen(0))
 							return nil
 						}
 
@@ -226,7 +226,7 @@ var _ = Describe("ErrandReconciler", func() {
 					client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
 						switch job := object.(type) {
 						case *batchv1.Job:
-							Expect(reflect.DeepEqual(job.Spec.Template.Spec, eJob.Spec.Template.Spec)).To(BeTrue())
+							Expect(deep.Equal(job.Spec.Template.Spec, eJob.Spec.Template.Spec)).To(HaveLen(0))
 							return nil
 						}
 
@@ -287,7 +287,7 @@ var _ = Describe("ErrandReconciler", func() {
 					client.CreateCalls(func(context context.Context, obj runtime.Object, _ ...crc.CreateOptionFunc) error {
 						switch job := obj.(type) {
 						case *batchv1.Job:
-							Expect(reflect.DeepEqual(job.Spec.Template.Spec, eJob.Spec.Template.Spec)).To(BeTrue())
+							Expect(deep.Equal(job.Spec.Template.Spec, eJob.Spec.Template.Spec)).To(HaveLen(0))
 							return nil
 						}
 
