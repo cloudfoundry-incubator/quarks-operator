@@ -1,14 +1,26 @@
 package v1alpha1
 
 import (
-	apis "code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"fmt"
+
+	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	apis "code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 )
 
 // This file looks almost the same for all controllers
 // Modify the addKnownTypes function, then run `make generate`
+
+const (
+	// BOSHDeploymentResourceKind is the kind name of BOSHDeployment
+	BOSHDeploymentResourceKind = "BOSHDeployment"
+	// BOSHDeploymentResourcePlural is the plural name of BOSHDeployment
+	BOSHDeploymentResourcePlural = "boshdeployments"
+)
 
 var (
 	schemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
@@ -16,10 +28,91 @@ var (
 	// AddToScheme is used for schema registrations in the controller package
 	// and also in the generated kube code
 	AddToScheme = schemeBuilder.AddToScheme
-)
 
-// SchemeGroupVersion is group version used to register these objects
-var SchemeGroupVersion = schema.GroupVersion{Group: apis.GroupName, Version: "v1alpha1"}
+	// BOSHDeploymentResourceShortNames is the short names of BOSHDeployment
+	BOSHDeploymentResourceShortNames = []string{"bdpl", "bdpls"}
+	// BOSHDeploymentValidation is the validation method for BOSHDeployment
+	BOSHDeploymentValidation = extv1.CustomResourceValidation{
+		OpenAPIV3Schema: &extv1.JSONSchemaProps{
+			Type: "object",
+			Properties: map[string]extv1.JSONSchemaProps{
+				"spec": {
+					Type: "object",
+					Properties: map[string]extv1.JSONSchemaProps{
+						"manifest": {
+							Type: "object",
+							Properties: map[string]extv1.JSONSchemaProps{
+								"name": {
+									Type:      "string",
+									MinLength: util.Int64(1),
+								},
+								"type": {
+									Type: "string",
+									Enum: []extv1.JSON{
+										{
+											Raw: []byte(`"configmap"`),
+										},
+										{
+											Raw: []byte(`"secret"`),
+										},
+										{
+											Raw: []byte(`"url"`),
+										},
+									},
+								},
+							},
+							Required: []string{
+								"type",
+								"name",
+							},
+						},
+						"ops": {
+							Type: "array",
+							Items: &extv1.JSONSchemaPropsOrArray{
+								Schema: &extv1.JSONSchemaProps{
+									Type: "object",
+									Properties: map[string]extv1.JSONSchemaProps{
+										"name": {
+											Type:      "string",
+											MinLength: util.Int64(1),
+										},
+										"type": {
+											Type: "string",
+											Enum: []extv1.JSON{
+												{
+													Raw: []byte(`"configmap"`),
+												},
+												{
+													Raw: []byte(`"secret"`),
+												},
+												{
+													Raw: []byte(`"url"`),
+												},
+											},
+										},
+									},
+									Required: []string{
+										"type",
+										"name",
+									},
+								},
+							},
+						},
+					},
+					Required: []string{
+						"manifest",
+					},
+				},
+			},
+		},
+	}
+
+	// BOSHDeploymentResourceName is the resource name of BOSHDeployment
+	BOSHDeploymentResourceName = fmt.Sprintf("%s.%s", BOSHDeploymentResourcePlural, apis.GroupName)
+
+	// SchemeGroupVersion is group version used to register these objects
+	SchemeGroupVersion = schema.GroupVersion{Group: apis.GroupName, Version: "v1alpha1"}
+)
 
 // Kind takes an unqualified kind and returns back a Group qualified GroupKind
 func Kind(kind string) schema.GroupKind {

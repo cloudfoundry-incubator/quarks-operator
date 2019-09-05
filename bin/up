@@ -15,6 +15,6 @@ if [ -z "$SKIP_IMAGE" ]; then
 fi
 
 bin/build
-bin/apply-crds
+
 echo "watching namespace ${CF_OPERATOR_NAMESPACE}"
 binaries/cf-operator

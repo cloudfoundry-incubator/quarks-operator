@@ -40,7 +40,7 @@ func EStsMutateFn(eSts *essv1.ExtendedStatefulSet) controllerutil.MutateFn {
 
 // EJobMutateFn returns MutateFn which mutates ExtendedJob including:
 // - labels, annotations
-// - spec.output, spec.Template, spec.trigger.podState, spec.updateOnConfigChange
+// - spec.output, spec.Template, spec.updateOnConfigChange
 func EJobMutateFn(eJob *ejv1.ExtendedJob) controllerutil.MutateFn {
 	updated := eJob.DeepCopy()
 	return func() error {

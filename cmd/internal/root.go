@@ -81,8 +81,17 @@ var rootCmd = &cobra.Command{
 			viper.GetInt("max-extendedjob-workers"),
 			viper.GetInt("max-extendedsecret-workers"),
 			viper.GetInt("max-extendedstatefulset-workers"),
+			viper.GetBool("apply-crd"),
 		)
 		ctx := ctxlog.NewParentContext(log)
+
+		if viper.GetBool("apply-crd") {
+			ctxlog.Info(ctx, "Applying CRDs...")
+			err := operator.ApplyCRDs(restConfig)
+			if err != nil {
+				return errors.Wrap(err, "failed to apply crds")
+			}
+		}
 
 		mgr, err := operator.NewManager(ctx, config, restConfig, manager.Options{
 			Namespace:          cfOperatorNamespace,
@@ -135,6 +144,7 @@ func init() {
 	pf.Int("max-extendedjob-workers", 1, "Maximum of number concurrently running ExtendedJob controller")
 	pf.Int("max-extendedsecret-workers", 5, "Maximum of number concurrently running ExtendedSecret controller")
 	pf.Int("max-extendedstatefulset-workers", 1, "Maximum of number concurrently running ExtendedStatefulSet controller")
+	pf.Bool("apply-crd", false, "If true, apply CRDs on start")
 	viper.BindPFlag("kubeconfig", pf.Lookup("kubeconfig"))
 	viper.BindPFlag("log-level", pf.Lookup("log-level"))
 	viper.BindPFlag("cf-operator-namespace", pf.Lookup("cf-operator-namespace"))
@@ -148,6 +158,7 @@ func init() {
 	viper.BindPFlag("max-extendedjob-workers", pf.Lookup("max-extendedjob-workers"))
 	viper.BindPFlag("max-extendedsecret-workers", pf.Lookup("max-extendedsecret-workers"))
 	viper.BindPFlag("max-extendedstatefulset-workers", rootCmd.PersistentFlags().Lookup("max-extendedstatefulset-workers"))
+	viper.BindPFlag("apply-crd", rootCmd.PersistentFlags().Lookup("apply-crd"))
 
 	argToEnv := map[string]string{
 		"kubeconfig":                      "KUBECONFIG",
@@ -163,6 +174,7 @@ func init() {
 		"max-extendedjob-workers":         "MAX_EXTENDEDJOB_WORKERS",
 		"max-extendedsecret-workers":      "MAX_EXTENDEDSECRET_WORKERS",
 		"max-extendedstatefulset-workers": "MAX_EXTENDEDSTATEFULSET_WORKERS",
+		"apply-crd":                       "APPLY_CRD",
 	}
 
 	// Add env variables to help
