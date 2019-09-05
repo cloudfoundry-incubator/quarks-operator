@@ -18,7 +18,7 @@ type InterpolatorImpl struct {
 }
 
 // NewInterpolator constructs an interpolator
-func NewInterpolator() *InterpolatorImpl {
+func NewInterpolator() Interpolator {
 	return &InterpolatorImpl{}
 }
 

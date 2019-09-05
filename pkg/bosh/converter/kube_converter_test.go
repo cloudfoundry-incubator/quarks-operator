@@ -1,6 +1,7 @@
 package converter_test
 
 import (
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"
@@ -26,7 +27,7 @@ var _ = Describe("kube converter", func() {
 		})
 
 		act := func() ([]esv1.ExtendedSecret, error) {
-			kubeConverter := converter.NewKubeConverter("foo")
+			kubeConverter := converter.NewKubeConverter("foo", factory.NewContainerFactory)
 			return kubeConverter.Variables(m.Name, m.Variables)
 		}
 

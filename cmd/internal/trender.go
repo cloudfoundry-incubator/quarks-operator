@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
 	"net"
 	"os"
 	"regexp"
@@ -112,8 +113,8 @@ func init() {
 		"az-index":                "AZ_INDEX",
 		"pod-ordinal":             "POD_ORDINAL",
 		"replicas":                "REPLICAS",
-		"pod-name":                converter.PodNameEnvVar,
-		"pod-ip":                  converter.PodIPEnvVar,
+		"pod-name":                factory.PodNameEnvVar,
+		"pod-ip":                  factory.PodIPEnvVar,
 	}
 	AddEnvToUsage(templateRenderCmd, argToEnv)
 }

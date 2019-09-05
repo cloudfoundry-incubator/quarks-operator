@@ -109,7 +109,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 		Disks: allDisks,
 	}
 
-	cfac := NewContainerFactory(
+	cfac := kc.newContainerFactoryFunc(
 		manifestName,
 		instanceGroup.Name,
 		version,
@@ -145,7 +145,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 
 // serviceToExtendedSts will generate an ExtendedStatefulSet
 func (kc *KubeConverter) serviceToExtendedSts(
-	cfac *ContainerFactory,
+	cfac ContainerFactory,
 	manifestName string,
 	instanceGroup *bdm.InstanceGroup,
 	defaultDisks BPMResourceDisks,
@@ -313,7 +313,7 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGrou
 
 // errandToExtendedJob will generate an ExtendedJob
 func (kc *KubeConverter) errandToExtendedJob(
-	cfac *ContainerFactory,
+	cfac ContainerFactory,
 	manifestName string,
 	instanceGroup *bdm.InstanceGroup,
 	defaultDisks BPMResourceDisks,

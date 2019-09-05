@@ -1,6 +1,7 @@
 package boshdeployment_test
 
 import (
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
 	"context"
 	"errors"
 	"time"
@@ -231,7 +232,7 @@ variables: []
 	JustBeforeEach(func() {
 		resolver.DesiredManifestReturns(manifest, nil)
 		reconciler = cfd.NewBPMReconciler(ctx, config, manager, &resolver,
-			controllerutil.SetControllerReference, converter.NewKubeConverter(config.Namespace),
+			controllerutil.SetControllerReference, converter.NewKubeConverter(config.Namespace, factory.NewContainerFactory),
 		)
 	})
 

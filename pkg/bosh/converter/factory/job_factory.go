@@ -1,6 +1,7 @@
-package converter
+package factory
 
 import (
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"fmt"
 	"path/filepath"
 
@@ -37,27 +38,20 @@ const (
 	PodIPEnvVar = "POD_IP"
 )
 
-// JobFactory creates Jobs for a given manifest
-type JobFactory interface {
-	VariableInterpolationJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error)
-	InstanceGroupManifestJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error)
-	BPMConfigsJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error)
-}
-
-// ConcreteJobFactory a concrete implementation of JobFactory
-type ConcreteJobFactory struct {
+// JobFactory is a concrete implementation of JobFactory
+type JobFactory struct {
 	Namespace string
 }
 
-// NewConcreteJobFactory returns a concrete implementation of JobFactory
-func NewConcreteJobFactory(namespace string) JobFactory {
-	return &ConcreteJobFactory{
+// NewJobFactory returns a concrete implementation of JobFactory
+func NewJobFactory(namespace string) *JobFactory {
+	return &JobFactory{
 		Namespace: namespace,
 	}
 }
 
 // VariableInterpolationJob returns an extended job to interpolate variables
-func (f *ConcreteJobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error) {
+func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error) {
 	args := []string{"util", "variable-interpolation"}
 
 	// This is the source manifest, that still has the '((vars))'
@@ -65,22 +59,22 @@ func (f *ConcreteJobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*e
 
 	// Prepare Volumes and Volume mounts
 
-	volumes := []corev1.Volume{*withOpsVolume(manifestSecretName)}
-	volumeMounts := []corev1.VolumeMount{withOpsVolumeMount(manifestSecretName)}
+	volumes := []corev1.Volume{*converter.withOpsVolume(manifestSecretName)}
+	volumeMounts := []corev1.VolumeMount{converter.withOpsVolumeMount(manifestSecretName)}
 
 	// We need a volume and a mount for each input variable
 	for _, variable := range manifest.Variables {
 		varName := variable.Name
 		varSecretName := names.CalculateSecretName(names.DeploymentSecretTypeVariable, manifest.Name, varName)
 
-		volumes = append(volumes, variableVolume(varSecretName))
-		volumeMounts = append(volumeMounts, variableVolumeMount(varSecretName, varName))
+		volumes = append(volumes, converter.variableVolume(varSecretName))
+		volumeMounts = append(volumeMounts, converter.variableVolumeMount(varSecretName, varName))
 	}
 
 	// If there are no variables, mount an empty dir for variables
 	if len(manifest.Variables) == 0 {
-		volumes = append(volumes, noVarsVolume())
-		volumeMounts = append(volumeMounts, noVarsVolumeMount())
+		volumes = append(volumes, converter.noVarsVolume())
+		volumeMounts = append(volumeMounts, converter.noVarsVolumeMount())
 	}
 
 	eJobName := fmt.Sprintf("dm-%s", manifest.Name)
@@ -120,7 +114,7 @@ func (f *ConcreteJobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*e
 					Containers: []corev1.Container{
 						{
 							Name:         VarInterpolationContainerName,
-							Image:        GetOperatorDockerImage(),
+							Image:        converter.GetOperatorDockerImage(),
 							Args:         args,
 							VolumeMounts: volumeMounts,
 							Env: []corev1.EnvVar{
@@ -144,7 +138,7 @@ func (f *ConcreteJobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*e
 }
 
 // InstanceGroupManifestJob generates the job to create an instance group manifest
-func (f *ConcreteJobFactory) InstanceGroupManifestJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error) {
+func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error) {
 	containers := make([]corev1.Container, len(manifest.InstanceGroups))
 
 	// ExtendedJob will always pick the latest version for versioned secrets
@@ -161,7 +155,7 @@ func (f *ConcreteJobFactory) InstanceGroupManifestJob(manifest bdm.Manifest) (*e
 }
 
 // BPMConfigsJob returns an extended job to calculate BPM information
-func (f *ConcreteJobFactory) BPMConfigsJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error) {
+func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error) {
 	containers := make([]corev1.Container, len(manifest.InstanceGroups))
 	desiredManifestName := names.DesiredManifestName(manifest.Name, "1")
 
@@ -175,14 +169,14 @@ func (f *ConcreteJobFactory) BPMConfigsJob(manifest bdm.Manifest) (*ejv1.Extende
 	return f.gatheringJob(eJobName, manifest, desiredManifestName, names.DeploymentSecretBpmInformation, containers)
 }
 
-func (f *ConcreteJobFactory) gatheringContainer(cmd, desiredManifestName string, instanceGroupName string) corev1.Container {
+func (f *JobFactory) gatheringContainer(cmd, desiredManifestName string, instanceGroupName string) corev1.Container {
 	return corev1.Container{
 		Name:  names.Sanitize(instanceGroupName),
-		Image: GetOperatorDockerImage(),
+		Image: converter.GetOperatorDockerImage(),
 		Args:  []string{"util", cmd},
 		VolumeMounts: []corev1.VolumeMount{
-			withOpsVolumeMount(desiredManifestName),
-			releaseSourceVolumeMount(),
+			converter.withOpsVolumeMount(desiredManifestName),
+			converter.releaseSourceVolumeMount(),
 		},
 		Env: []corev1.EnvVar{
 			{
@@ -195,7 +189,7 @@ func (f *ConcreteJobFactory) gatheringContainer(cmd, desiredManifestName string,
 			},
 			{
 				Name:  EnvBaseDir,
-				Value: VolumeRenderingDataMountPath,
+				Value: converter.VolumeRenderingDataMountPath,
 			},
 			{
 				Name:  EnvInstanceGroupName,
@@ -205,7 +199,7 @@ func (f *ConcreteJobFactory) gatheringContainer(cmd, desiredManifestName string,
 	}
 }
 
-func (f *ConcreteJobFactory) gatheringJob(name string, manifest bdm.Manifest, desiredManifestName string, secretType names.DeploymentSecretType, containers []corev1.Container) (*ejv1.ExtendedJob, error) {
+func (f *JobFactory) gatheringJob(name string, manifest bdm.Manifest, desiredManifestName string, secretType names.DeploymentSecretType, containers []corev1.Container) (*ejv1.ExtendedJob, error) {
 	outputSecretNamePrefix := names.CalculateIGSecretPrefix(secretType, manifest.Name)
 
 	initContainers := []corev1.Container{}
@@ -228,7 +222,7 @@ func (f *ConcreteJobFactory) gatheringJob(name string, manifest bdm.Manifest, de
 			}
 			// Create an init container that copies sources
 			// TODO: destination should also contain release name, to prevent overwrites
-			initContainers = append(initContainers, jobSpecCopierContainer(releaseName, releaseImage, generateVolumeName(releaseSourceName)))
+			initContainers = append(initContainers, jobSpecCopierContainer(releaseName, releaseImage, converter.generateVolumeName(converter.releaseSourceName)))
 		}
 	}
 
@@ -269,8 +263,8 @@ func (f *ConcreteJobFactory) gatheringJob(name string, manifest bdm.Manifest, de
 					Containers: containers,
 					// Volumes for secrets
 					Volumes: []corev1.Volume{
-						*withOpsVolume(desiredManifestName),
-						releaseSourceVolume(),
+						*converter.withOpsVolume(desiredManifestName),
+						converter.releaseSourceVolume(),
 					},
 				},
 			},

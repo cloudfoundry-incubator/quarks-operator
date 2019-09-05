@@ -1,6 +1,7 @@
 package boshdeployment_test
 
 import (
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
 	"context"
 	"time"
 
@@ -107,7 +108,7 @@ variables:
 	})
 
 	JustBeforeEach(func() {
-		reconciler = cfd.NewGeneratedVariableReconciler(ctx, config, manager, controllerutil.SetControllerReference, converter.NewKubeConverter(config.Namespace))
+		reconciler = cfd.NewGeneratedVariableReconciler(ctx, config, manager, controllerutil.SetControllerReference, converter.NewKubeConverter(config.Namespace, factory.NewContainerFactory))
 	})
 
 	Describe("Reconcile", func() {

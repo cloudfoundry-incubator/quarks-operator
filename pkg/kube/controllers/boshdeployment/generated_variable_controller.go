@@ -1,6 +1,7 @@
 package boshdeployment
 
 import (
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
 	"context"
 	"fmt"
 	"strings"
@@ -29,7 +30,7 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 	r := NewGeneratedVariableReconciler(
 		ctx, config, mgr,
 		controllerutil.SetControllerReference,
-		converter.NewKubeConverter(config.Namespace),
+		converter.NewKubeConverter(config.Namespace, factory.NewContainerFactory),
 	)
 
 	// Create a new controller

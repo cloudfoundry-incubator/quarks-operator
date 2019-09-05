@@ -2,9 +2,9 @@
 package fakes
 
 import (
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
 	"sync"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 )
@@ -270,4 +270,4 @@ func (fake *FakeJobFactory) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ converter.JobFactory = new(FakeJobFactory)
+var _ factory.JobFactory = new(FakeJobFactory)

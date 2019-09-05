@@ -1,6 +1,7 @@
-package converter_test
+package factory_test
 
 import (
+	"errors"
 	"fmt"
 	"path"
 
@@ -10,13 +11,13 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
-	fakes "code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
 var _ = Describe("ContainerFactory", func() {
 	var (
-		containerFactory     *ContainerFactory
+		containerFactory     ContainerFactory
 		bpmConfigs           bpm.Configs
 		releaseImageProvider *fakes.FakeReleaseImageProvider
 		jobs                 []bdm.Job
@@ -161,7 +162,7 @@ var _ = Describe("ContainerFactory", func() {
 	})
 
 	JustBeforeEach(func() {
-		containerFactory = NewContainerFactory("fake-manifest", "fake-ig", "v1", false, releaseImageProvider, bpmConfigs)
+		containerFactory = NewConcreteContainerFactory("fake-manifest", "fake-ig", "v1", false, releaseImageProvider, bpmConfigs)
 	})
 
 	Context("JobsToContainers", func() {
@@ -316,7 +317,7 @@ var _ = Describe("ContainerFactory", func() {
 					},
 				},
 			}
-			containerFactory = NewContainerFactory("fake-manifest", "fake-ig", "v1", false, releaseImageProvider, bpmConfigsWithError)
+			containerFactory = NewConcreteContainerFactory("fake-manifest", "fake-ig", "v1", false, releaseImageProvider, bpmConfigsWithError)
 			actWithError := func() ([]corev1.Container, error) {
 				return containerFactory.JobsToContainers(jobs, []corev1.VolumeMount{}, BPMResourceDisks{})
 			}
@@ -358,10 +359,24 @@ var _ = Describe("ContainerFactory", func() {
 			Expect(string(containers[1].SecurityContext.Capabilities.Add[1])).To(Equal("AUDIT_CONTROL"))
 		})
 
-		It("adds all environment variales to containers", func() {
+		It("adds all environment variables to containers", func() {
 			containers, err := act()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(containers[1].Env).To(HaveLen(2))
+		})
+
+		It("handles an error when jobs is empty", func() {
+			jobs = []bdm.Job{}
+			_, err := act()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("instance group 'fake-ig' has no jobs defined"))
+		})
+
+		It("handles an error when getting release image fails", func() {
+			releaseImageProvider.GetReleaseImageReturns("", errors.New("fake-release-image-error"))
+			_, err := act()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("fake-release-image-error"))
 		})
 
 		Context("with lifecycle events", func() {
@@ -376,6 +391,42 @@ var _ = Describe("ContainerFactory", func() {
 				Expect(containers[1].Lifecycle).ToNot(BeNil())
 				Expect(containers[1].Lifecycle.PreStop).ToNot(BeNil())
 				Expect(containers[1].Lifecycle.PreStop.Exec.Command).To(ContainElement(ContainSubstring("/var/vcap/jobs/other-job/bin/drain/")))
+			})
+
+			It("creates a postStart condition command", func() {
+				jobs = []bdm.Job{
+					bdm.Job{
+						Name: "fake-job",
+						Properties: bdm.JobProperties{
+							Quarks: bdm.Quarks{
+								PostStart: bdm.PostStart{
+									Condition: &bdm.PostStartCondition{
+										Exec: &corev1.ExecAction{
+											Command: []string{"sh", "-c", "fake_health_check"},
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+
+				containers, err := act()
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(containers[0].Args).ShouldNot(BeNil())
+				Expect(containers[0].Args).Should(ConsistOf(
+					"/var/vcap/all-releases/container-run/container-run",
+					"--post-start-name",
+					"/var/vcap/jobs/fake-job/bin/post-start",
+					"--post-start-condition-name",
+					"sh",
+					"--post-start-condition-arg",
+					"-c",
+					"--post-start-condition-arg",
+					"fake_health_check",
+					"--",
+					""))
 			})
 		})
 
@@ -412,7 +463,7 @@ var _ = Describe("ContainerFactory", func() {
 
 				disableSideCar := ig.Env.AgentEnvBoshConfig.Agent.Settings.DisableLogSidecar
 
-				containerFactory := NewContainerFactory("fake-manifest", ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
+				containerFactory := NewConcreteContainerFactory("fake-manifest", ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
 				act := func() ([]corev1.Container, error) {
 					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, BPMResourceDisks{})
 				}
@@ -439,7 +490,7 @@ var _ = Describe("ContainerFactory", func() {
 
 				disableSideCar := ig.Env.AgentEnvBoshConfig.Agent.Settings.DisableLogSidecar
 
-				containerFactory := NewContainerFactory("fake-manifest", ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
+				containerFactory := NewConcreteContainerFactory("fake-manifest", ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
 				act := func() ([]corev1.Container, error) {
 					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, BPMResourceDisks{})
 				}
@@ -483,6 +534,58 @@ var _ = Describe("ContainerFactory", func() {
 				Expect(containers[5].Name).To(Equal("bosh-pre-start-other-job"))
 				Expect(containers[5].Args).To(ContainElement(`if [ -x "/var/vcap/jobs/other-job/bin/pre-start" ]; then "/var/vcap/jobs/other-job/bin/pre-start"; fi`))
 				Expect(containers[5].VolumeMounts).To(HaveLen(9))
+			})
+
+			It("generates one BOSH pre-start init container with debug window", func() {
+				jobs = []bdm.Job{
+					bdm.Job{Name: "fake-job",
+						Properties: bdm.JobProperties{
+							Quarks: bdm.Quarks{
+								Debug: true,
+							},
+						}},
+				}
+				containers, err := act()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(containers).To(HaveLen(5))
+				Expect(containers[4].Name).To(Equal("bosh-pre-start-fake-job"))
+				Expect(containers[4].Args).To(ContainElement(`if [ -x "/var/vcap/jobs/fake-job/bin/pre-start" ]; then "/var/vcap/jobs/fake-job/bin/pre-start" || ( echo "Debug window 1hr" ; sleep 3600 ); fi`))
+			})
+
+			It("generates one BPM pre-start init container with debug window", func() {
+				jobs = []bdm.Job{
+					bdm.Job{Name: "fake-job",
+						Properties: bdm.JobProperties{
+							Quarks: bdm.Quarks{
+								Debug: true,
+							},
+						}},
+				}
+
+				bpmConfigs["fake-job"] = bpm.Config{
+					Processes: []bpm.Process{
+						{
+							Name: "fake-job",
+							Hooks: bpm.Hooks{
+								PreStart: "fake_cleanup",
+							},
+							Capabilities: []string{"SYS_TIME"},
+						},
+					},
+				}
+				containers, err := act()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(containers).To(HaveLen(6))
+				Expect(containers[5].Name).To(Equal("bpm-pre-start-fake-job"))
+				Expect(containers[5].Args).To(ContainElement(`fake_cleanup || ( echo "Debug window 1hr" ; sleep 3600 )`))
+				Expect(containers[5].SecurityContext.Capabilities.Add).To(ContainElement(corev1.Capability("SYS_TIME")))
+			})
+
+			It("handles an error when getting release image fails", func() {
+				releaseImageProvider.GetReleaseImageReturns("", errors.New("fake-release-image-error"))
+				_, err := act()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("fake-release-image-error"))
 			})
 		})
 
