@@ -159,6 +159,7 @@ var _ = Describe("ErrandReconciler", func() {
 				BeforeEach(func() {
 					client.UpdateReturns(nil)
 					client.CreateReturns(apierrors.NewAlreadyExists(schema.GroupResource{}, "fake-error"))
+					client.StatusCalls(func() crc.StatusWriter { return &fakes.FakeStatusWriter{} })
 				})
 
 				It("should log skip message and not requeue", func() {
@@ -182,6 +183,7 @@ var _ = Describe("ErrandReconciler", func() {
 					client = fakes.FakeClient{}
 					mgr.GetClientReturns(&client)
 					client.GetCalls(ejobGetStub)
+					client.StatusCalls(func() crc.StatusWriter { return &fakes.FakeStatusWriter{} })
 
 					request = newRequest(eJob)
 				})
@@ -198,13 +200,17 @@ var _ = Describe("ErrandReconciler", func() {
 
 						return nil
 					})
-					client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
-						switch job := object.(type) {
-						case *ejv1.ExtendedJob:
-							Expect(job.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerManual))
-						}
-						return nil
-					})
+
+					callQueue := helper.NewCallQueue(
+						func(context context.Context, object runtime.Object) error {
+							switch ejob := object.(type) {
+							case *ejv1.ExtendedJob:
+								Expect(ejob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerManual))
+							}
+							return nil
+						},
+					)
+					client.UpdateCalls(callQueue.Calls)
 
 					result, err := act()
 					Expect(err).ToNot(HaveOccurred())
@@ -218,6 +224,7 @@ var _ = Describe("ErrandReconciler", func() {
 					client = fakes.FakeClient{}
 					mgr.GetClientReturns(&client)
 					client.GetCalls(ejobGetStub)
+					client.StatusCalls(func() crc.StatusWriter { return &fakes.FakeStatusWriter{} })
 
 					request = newRequest(eJob)
 				})
@@ -232,13 +239,17 @@ var _ = Describe("ErrandReconciler", func() {
 
 						return nil
 					})
-					client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
-						switch job := object.(type) {
-						case *ejv1.ExtendedJob:
-							Expect(job.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
-						}
-						return nil
-					})
+
+					callQueue := helper.NewCallQueue(
+						func(context context.Context, object runtime.Object) error {
+							switch ejob := object.(type) {
+							case *ejv1.ExtendedJob:
+								Expect(ejob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
+							}
+							return nil
+						},
+					)
+					client.UpdateCalls(callQueue.Calls)
 
 					result, err := act()
 					Expect(err).ToNot(HaveOccurred())
@@ -264,6 +275,7 @@ var _ = Describe("ErrandReconciler", func() {
 					eJob.Spec.Trigger.Strategy = ejv1.TriggerOnce
 					client = fakes.FakeClient{}
 					mgr.GetClientReturns(&client)
+					client.StatusCalls(func() crc.StatusWriter { return &fakes.FakeStatusWriter{} })
 
 					request = newRequest(eJob)
 				})
@@ -293,13 +305,17 @@ var _ = Describe("ErrandReconciler", func() {
 
 						return nil
 					})
-					client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
-						switch job := object.(type) {
-						case *ejv1.ExtendedJob:
-							Expect(job.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
-						}
-						return nil
-					})
+
+					callQueue := helper.NewCallQueue(
+						func(context context.Context, object runtime.Object) error {
+							switch ejob := object.(type) {
+							case *ejv1.ExtendedJob:
+								Expect(ejob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerDone))
+							}
+							return nil
+						},
+					)
+					client.UpdateCalls(callQueue.Calls)
 
 					result, err := act()
 					Expect(err).ToNot(HaveOccurred())

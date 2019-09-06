@@ -22,6 +22,7 @@ import (
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/meltdown"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
@@ -97,6 +98,11 @@ func (r *ReconcileExtendedSecret) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, errors.Wrap(err, "Error reading extendedSecret")
 	}
 
+	if meltdown.NewWindow(r.config.MeltdownDuration, instance.Status.LastReconcile).Contains(time.Now()) {
+		ctxlog.WithEvent(instance, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", instance.Name, r.config.MeltdownRequeueAfter)
+		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
+	}
+
 	// Check if secret could be generated when secret was already created
 	canBeGenerated, err := r.canBeGenerated(ctx, instance)
 	if err != nil {
@@ -158,6 +164,13 @@ func (r *ReconcileExtendedSecret) updateExSecret(ctx context.Context, instance *
 	}
 
 	ctxlog.Debugf(ctx, "ExtendedSecret '%s' has been %s", instance.Name, op)
+
+	now := metav1.Now()
+	instance.Status.LastReconcile = &now
+	err = r.client.Status().Update(ctx, instance)
+	if err != nil {
+		return errors.Wrapf(err, "could not create or update ExtendedSecret status '%s'", instance.GetName())
+	}
 
 	return nil
 }

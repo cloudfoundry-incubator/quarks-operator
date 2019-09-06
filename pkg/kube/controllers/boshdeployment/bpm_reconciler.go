@@ -22,6 +22,7 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/meltdown"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
@@ -81,6 +82,11 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 		return reconcile.Result{RequeueAfter: time.Second * 5}, nil
 	}
 
+	if meltdown.NewAnnotationWindow(r.config.MeltdownDuration, bpmSecret.ObjectMeta.Annotations).Contains(time.Now()) {
+		log.WithEvent(bpmSecret, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", bpmSecret.Name, r.config.MeltdownRequeueAfter)
+		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
+	}
+
 	// Get the label from the BPM Secret and read the corresponding desired manifest
 	var boshDeploymentName string
 	var ok bool
@@ -126,6 +132,13 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "InstanceGroupStartError").Errorf(ctx, "Failed to start : %v", err)
+	}
+
+	meltdown.SetLastReconcile(&bpmSecret.ObjectMeta, time.Now())
+	err = r.client.Update(ctx, bpmSecret)
+	if err != nil {
+		err = log.WithEvent(bpmSecret, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on BPM versioned secret '%s' (%v): %s", bpmSecret.Name, bpmSecret.ResourceVersion, err)
+		return reconcile.Result{Requeue: false}, nil
 	}
 
 	return reconcile.Result{}, nil

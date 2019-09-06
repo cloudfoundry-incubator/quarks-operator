@@ -6,6 +6,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -14,6 +15,7 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/meltdown"
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
@@ -84,6 +86,11 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
+	if meltdown.NewWindow(r.config.MeltdownDuration, eJob.Status.LastReconcile).Contains(time.Now()) {
+		ctxlog.WithEvent(eJob, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", eJob.Name, r.config.MeltdownRequeueAfter)
+		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
+	}
+
 	if eJob.Spec.Trigger.Strategy == ejv1.TriggerNow {
 		// Set Strategy back to manual for errand jobs.
 		eJob.Spec.Trigger.Strategy = ejv1.TriggerManual
@@ -110,8 +117,17 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 		// Traverse Strategy into the final 'done' state.
 		eJob.Spec.Trigger.Strategy = ejv1.TriggerDone
 		if err := r.client.Update(ctx, eJob); err != nil {
-			return reconcile.Result{Requeue: false}, ctxlog.WithEvent(eJob, "UpdateError").Errorf(ctx, "Failed to traverse to 'trigger.strategy=done' on job '%s': %s", eJob.Name, err)
+			ctxlog.WithEvent(eJob, "UpdateError").Errorf(ctx, "Failed to traverse to 'trigger.strategy=done' on job '%s': %s", eJob.Name, err)
+			return reconcile.Result{Requeue: false}, nil
 		}
+	}
+
+	now := metav1.Now()
+	eJob.Status.LastReconcile = &now
+	err := r.client.Status().Update(ctx, eJob)
+	if err != nil {
+		err = ctxlog.WithEvent(eJob, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on job '%s' (%v): %s", eJob.Name, eJob.ResourceVersion, err)
+		return reconcile.Result{Requeue: false}, nil
 	}
 
 	return reconcile.Result{}, nil

@@ -50,6 +50,10 @@ func EJobMutateFn(eJob *ejv1.ExtendedJob) controllerutil.MutateFn {
 		if len(eJob.Spec.Trigger.Strategy) == 0 {
 			eJob.Spec.Trigger.Strategy = updated.Spec.Trigger.Strategy
 		}
+		// Does not reset Annotations
+		if eJob.ObjectMeta.Annotations == nil {
+			eJob.ObjectMeta.Annotations = updated.ObjectMeta.Annotations
+		}
 		eJob.Spec.Output = updated.Spec.Output
 		eJob.Spec.Template = updated.Spec.Template
 		eJob.Spec.UpdateOnConfigChange = updated.Spec.UpdateOnConfigChange
