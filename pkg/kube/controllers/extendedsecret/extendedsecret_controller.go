@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -65,18 +64,14 @@ func AddExtendedSecret(ctx context.Context, config *config.Config, mgr manager.M
 func listSecrets(ctx context.Context, client crc.Client, exSecret *esv1.ExtendedSecret) ([]corev1.Secret, error) {
 	ctxlog.Debug(ctx, "Listing Secrets owned by ExtendedSecret '", exSecret.Name, "'.")
 
-	secretLabelsSet := labels.Set{
-		esv1.LabelKind: esv1.GeneratedSecretKind,
-	}
-
+	secretLabels := map[string]string{esv1.LabelKind: esv1.GeneratedSecretKind}
 	result := []corev1.Secret{}
 
 	allSecrets := &corev1.SecretList{}
 	err := client.List(ctx, allSecrets,
-		func(options *crc.ListOptions) {
-			options.Namespace = exSecret.Namespace
-			options.LabelSelector = secretLabelsSet.AsSelector()
-		})
+		crc.InNamespace(exSecret.Namespace),
+		crc.MatchingLabels(secretLabels),
+	)
 	if err != nil {
 		return nil, err
 	}

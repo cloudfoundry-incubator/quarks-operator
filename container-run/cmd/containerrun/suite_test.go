@@ -9,5 +9,5 @@ import (
 
 func TestContainerrun(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "containerrun cmd Suite")
+	RunSpecs(t, "ContainerRun CMD Suite")
 }

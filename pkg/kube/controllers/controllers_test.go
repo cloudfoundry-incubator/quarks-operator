@@ -82,7 +82,7 @@ var _ = Describe("Controllers", func() {
 		})
 
 		It("sets the operator namespace label", func() {
-			client.UpdateCalls(func(_ context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
+			client.UpdateCalls(func(_ context.Context, object runtime.Object, _ ...crc.UpdateOption) error {
 				ns := object.(*unstructured.Unstructured)
 				labels := ns.GetLabels()
 
@@ -158,7 +158,7 @@ var _ = Describe("Controllers", func() {
 			})
 
 			It("generates the webhook configuration", func() {
-				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 					// We should be getting 2 Create calls - one for the
 					// Validation webhook, one for the Mutating Webhook
 

@@ -191,7 +191,7 @@ var _ = Describe("ErrandReconciler", func() {
 				It("should set run back and create a job", func() {
 					Expect(eJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerNow))
 
-					client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
+					client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 						switch job := object.(type) {
 						case *batchv1.Job:
 							Expect(deep.Equal(job.Spec.Template.Spec, eJob.Spec.Template.Spec)).To(HaveLen(0))
@@ -230,7 +230,7 @@ var _ = Describe("ErrandReconciler", func() {
 				})
 
 				It("should set the trigger strategy to done and immediately trigger the job", func() {
-					client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
+					client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 						switch job := object.(type) {
 						case *batchv1.Job:
 							Expect(deep.Equal(job.Spec.Template.Spec, eJob.Spec.Template.Spec)).To(HaveLen(0))
@@ -296,7 +296,7 @@ var _ = Describe("ErrandReconciler", func() {
 						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 					})
 
-					client.CreateCalls(func(context context.Context, obj runtime.Object, _ ...crc.CreateOptionFunc) error {
+					client.CreateCalls(func(context context.Context, obj runtime.Object, _ ...crc.CreateOption) error {
 						switch job := obj.(type) {
 						case *batchv1.Job:
 							Expect(deep.Equal(job.Spec.Template.Spec, eJob.Spec.Template.Spec)).To(HaveLen(0))

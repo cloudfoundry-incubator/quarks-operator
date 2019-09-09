@@ -141,7 +141,7 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 				}
 				return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 			})
-			client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
+			client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
 				switch object := object.(type) {
 				case *v1beta2.StatefulSetList:
 					list := v1beta2.StatefulSetList{
@@ -194,7 +194,7 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 				}
 				return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 			})
-			client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
+			client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
 				switch object.(type) {
 				case *v1beta2.StatefulSetList:
 					return errors.New("some error")
@@ -262,7 +262,7 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 				}
 				return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 			})
-			client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
+			client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
 				switch object := object.(type) {
 				case *v1beta2.StatefulSetList:
 					list := v1beta2.StatefulSetList{
@@ -307,7 +307,7 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 				}
 				return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 			})
-			client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
+			client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
 				switch object := object.(type) {
 				case *v1beta2.StatefulSetList:
 					list := v1beta2.StatefulSetList{
@@ -328,7 +328,7 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 				}
 				return nil
 			})
-			client.DeleteCalls(func(context context.Context, object runtime.Object, opts ...crc.DeleteOptionFunc) error {
+			client.DeleteCalls(func(context context.Context, object runtime.Object, opts ...crc.DeleteOption) error {
 				switch object := object.(type) {
 				case *v1beta2.StatefulSet:
 					Expect(object.GetName()).To(Equal(fmt.Sprintf("%s-v%d", "foo", 1)))
@@ -360,7 +360,7 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 				}
 				return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 			})
-			client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
+			client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
 				switch object := object.(type) {
 				case *v1beta2.StatefulSetList:
 					list := v1beta2.StatefulSetList{
@@ -381,7 +381,7 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 				}
 				return nil
 			})
-			client.DeleteCalls(func(context context.Context, object runtime.Object, opts ...crc.DeleteOptionFunc) error {
+			client.DeleteCalls(func(context context.Context, object runtime.Object, opts ...crc.DeleteOption) error {
 				switch object.(type) {
 				case *v1beta2.StatefulSet:
 					return errors.New("some error")

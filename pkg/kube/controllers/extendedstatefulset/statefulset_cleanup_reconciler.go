@@ -9,9 +9,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -34,7 +33,7 @@ func NewStatefulSetCleanupReconciler(ctx context.Context, config *config.Config,
 // ReconcileStatefulSetCleanup reconciles an ExtendedStatefulSet object when references changes
 type ReconcileStatefulSetCleanup struct {
 	ctx    context.Context
-	client client.Client
+	client crc.Client
 	scheme *runtime.Scheme
 	config *config.Config
 }
@@ -149,7 +148,7 @@ func (r *ReconcileStatefulSetCleanup) cleanupStatefulSets(ctx context.Context, e
 		}
 
 		ctxlog.Debugf(ctx, "Deleting StatefulSet '%s'", statefulSet.Name)
-		err = r.client.Delete(ctx, &statefulSet, client.PropagationPolicy(metav1.DeletePropagationBackground))
+		err = r.client.Delete(ctx, &statefulSet, crc.PropagationPolicy(metav1.DeletePropagationBackground))
 		if err != nil {
 			return ctxlog.WithEvent(exStatefulSet, "DeleteError").Errorf(ctx, "Could not delete StatefulSet '%s': %v", statefulSet.Name, err)
 		}
@@ -160,17 +159,13 @@ func (r *ReconcileStatefulSetCleanup) cleanupStatefulSets(ctx context.Context, e
 
 // isStatefulSetReady returns true if at least one pod owned by the StatefulSet is running
 func (r *ReconcileStatefulSetCleanup) isStatefulSetReady(ctx context.Context, statefulSet *v1beta2.StatefulSet) (bool, error) {
-	labelsSelector := labels.Set{
-		v1beta2.StatefulSetRevisionLabel: statefulSet.Status.CurrentRevision,
-	}
+	podLabels := map[string]string{v1beta2.StatefulSetRevisionLabel: statefulSet.Status.CurrentRevision}
 
 	podList := &corev1.PodList{}
 	err := r.client.List(ctx,
 		podList,
-		func(options *client.ListOptions) {
-			options.Namespace = statefulSet.Namespace
-			options.LabelSelector = labelsSelector.AsSelector()
-		},
+		crc.InNamespace(statefulSet.Namespace),
+		crc.MatchingLabels(podLabels),
 	)
 
 	if err != nil {
