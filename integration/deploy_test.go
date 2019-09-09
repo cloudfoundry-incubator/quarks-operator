@@ -114,7 +114,6 @@ var _ = Describe("Deploy", func() {
 
 	Context("when BPM has pre-start hooks configured", func() {
 		It("should run pre-start script in an init container", func() {
-
 			By("Checking if minikube is present")
 			_, err := exec.Command("/bin/sh", "-c", "kubectl config view | grep minikube").Output()
 			if err == nil {
@@ -152,7 +151,6 @@ var _ = Describe("Deploy", func() {
 
 	Context("when BOSH has pre-start hooks configured", func() {
 		It("should run pre-start script in an init container", func() {
-
 			tearDown, err := env.CreateConfigMap(env.Namespace, corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{Name: "cfrouting-manifest"},
 				Data:       map[string]string{"manifest": bm.CFRouting},
@@ -242,6 +240,7 @@ var _ = Describe("Deploy", func() {
 					bdm, err := env.GetBOSHDeployment(env.Namespace, "test")
 					Expect(err).NotTo(HaveOccurred())
 					bdm.Spec.Ops = []bdv1.ResourceReference{{Name: "test-ops", Type: bdv1.ConfigMapReference}}
+
 					_, _, err = env.UpdateBOSHDeployment(env.Namespace, *bdm)
 					Expect(err).NotTo(HaveOccurred())
 
@@ -316,7 +315,6 @@ var _ = Describe("Deploy", func() {
 
 	Context("when updating a deployemnt with multiple instance groups", func() {
 		It("it should only update correctly and have correct secret versions in volume mounts", func() {
-
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMapWithTwoInstanceGroups("fooconfigmap"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)

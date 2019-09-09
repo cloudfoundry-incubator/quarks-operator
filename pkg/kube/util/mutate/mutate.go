@@ -40,7 +40,7 @@ func EStsMutateFn(eSts *essv1.ExtendedStatefulSet) controllerutil.MutateFn {
 
 // EJobMutateFn returns MutateFn which mutates ExtendedJob including:
 // - labels, annotations
-// - spec.output, spec.Template, spec.trigger.podState, spec.updateOnConfigChange
+// - spec.output, spec.Template, spec.updateOnConfigChange
 func EJobMutateFn(eJob *ejv1.ExtendedJob) controllerutil.MutateFn {
 	updated := eJob.DeepCopy()
 	return func() error {
@@ -49,6 +49,10 @@ func EJobMutateFn(eJob *ejv1.ExtendedJob) controllerutil.MutateFn {
 		// Does not reset Spec.Trigger.Strategy
 		if len(eJob.Spec.Trigger.Strategy) == 0 {
 			eJob.Spec.Trigger.Strategy = updated.Spec.Trigger.Strategy
+		}
+		// Does not reset Annotations
+		if eJob.ObjectMeta.Annotations == nil {
+			eJob.ObjectMeta.Annotations = updated.ObjectMeta.Annotations
 		}
 		eJob.Spec.Output = updated.Spec.Output
 		eJob.Spec.Template = updated.Spec.Template

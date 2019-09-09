@@ -69,7 +69,6 @@ before:
     echo "Tag for docker image is ${DOCKER_IMAGE_TAG}"
 
     ./bin/build-image
-    ./bin/apply-crds
 
     export RELEASE_NAMESPACE="scf"
     kubectl delete mutatingwebhookconfiguration cf-operator-hook-${RELEASE_NAMESPACE} --ignore-not-found=true

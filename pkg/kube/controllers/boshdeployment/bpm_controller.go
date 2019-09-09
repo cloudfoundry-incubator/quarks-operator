@@ -67,7 +67,6 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 	// We have to watch the BPM secret. It gives us information about how to
 	// start containers for each process.
 	// The BPM secret is annotated with the name of the BOSHDeployment.
-
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching secrets failed in BPM controller.")

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/pkg/errors"
 	"k8s.io/api/apps/v1beta2"
@@ -19,6 +20,7 @@ import (
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/meltdown"
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
 
@@ -91,6 +93,11 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
+	if meltdown.NewWindow(r.config.MeltdownDuration, exStatefulSet.Status.LastReconcile).Contains(time.Now()) {
+		ctxlog.WithEvent(exStatefulSet, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", exStatefulSet.Name, r.config.MeltdownRequeueAfter)
+		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
+	}
+
 	// Get the current StatefulSet.
 	currentStatefulSet, currentVersion, err := r.getCurrentStatefulSet(ctx, exStatefulSet)
 	if err != nil {
@@ -122,6 +129,14 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		if err := r.createStatefulSet(ctx, exStatefulSet, &desiredStatefulSet); err != nil {
 			return reconcile.Result{}, ctxlog.WithEvent(exStatefulSet, "CreateStatefulSetError").Error(ctx, "Could not create StatefulSet for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 		}
+	}
+
+	now := metav1.Now()
+	exStatefulSet.Status.LastReconcile = &now
+	err = r.client.Status().Update(ctx, exStatefulSet)
+	if err != nil {
+		err = ctxlog.WithEvent(exStatefulSet, "UpdateStatusError").Errorf(ctx, "Failed to update reconcile timestamp on ExtendedStatefulSet '%s' (%v): %s", exStatefulSet.Name, exStatefulSet.ResourceVersion, err)
+		return reconcile.Result{Requeue: false}, nil
 	}
 
 	return reconcile.Result{}, nil

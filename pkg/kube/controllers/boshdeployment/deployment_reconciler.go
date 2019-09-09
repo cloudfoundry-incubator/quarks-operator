@@ -2,6 +2,7 @@ package boshdeployment
 
 import (
 	"context"
+	"time"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -19,6 +20,7 @@ import (
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/meltdown"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
@@ -75,6 +77,11 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			log.WithEvent(instance, "GetBOSHDeploymentError").Errorf(ctx, "Failed to get BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
+	if meltdown.NewWindow(r.config.MeltdownDuration, instance.Status.LastReconcile).Contains(time.Now()) {
+		log.WithEvent(instance, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", instance.Name, r.config.MeltdownRequeueAfter)
+		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
+	}
+
 	// Apply the "with-ops" manifest secret
 	log.Debug(ctx, "Creating with-ops manifest secret")
 	manifest, err := r.createManifestWithOps(ctx, instance)
@@ -124,6 +131,16 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to create BPM configs ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
+	}
+
+	// Update status of bdpl with the timestamp of the last reconcile
+	now := metav1.Now()
+	instance.Status.LastReconcile = &now
+
+	err = r.client.Status().Update(ctx, instance)
+	if err != nil {
+		err = log.WithEvent(instance, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on bdpl '%s' (%v): %s", instance.Name, instance.ResourceVersion, err)
+		return reconcile.Result{Requeue: false}, nil
 	}
 
 	return reconcile.Result{}, nil

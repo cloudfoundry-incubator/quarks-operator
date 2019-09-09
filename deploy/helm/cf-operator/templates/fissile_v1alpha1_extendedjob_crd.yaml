@@ -18,6 +18,8 @@ spec:
         - ejobs
   scope: Namespaced
   version: v1alpha1
+  subresources:
+    status: {}
   validation:
     # openAPIV3Schema is the schema for validating custom objects.
     openAPIV3Schema:
@@ -43,7 +45,7 @@ spec:
               properties:
                 strategy:
                   type: string
-                  enum: ["manual", "once", "now", "podstate", "done"]
+                  enum: ["manual", "once", "now", "done"]
                 when:
                   type: string
                   enum: ["ready", "notready", "created", "deleted"]
