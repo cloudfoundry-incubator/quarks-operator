@@ -5,7 +5,6 @@ import (
 
 	"k8s.io/api/apps/v1beta2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	appsv1beta2client "k8s.io/client-go/kubernetes/typed/apps/v1beta2"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -19,10 +18,8 @@ func listStatefulSetsFromInformer(ctx context.Context, client crc.Client, exStat
 
 	allStatefulSets := &v1beta2.StatefulSetList{}
 	err := client.List(ctx, allStatefulSets,
-		func(options *crc.ListOptions) {
-			options.Namespace = exStatefulSet.Namespace
-			options.LabelSelector = labels.Everything()
-		})
+		crc.InNamespace(exStatefulSet.Namespace),
+	)
 	if err != nil {
 		return nil, err
 	}

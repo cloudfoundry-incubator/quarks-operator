@@ -2,21 +2,21 @@
 package fakes
 
 import (
-	context "context"
-	sync "sync"
+	"context"
+	"sync"
 
-	runtime "k8s.io/apimachinery/pkg/runtime"
-	client "sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type FakeStatusWriter struct {
-	PatchStub        func(context.Context, runtime.Object, client.Patch, ...client.PatchOptionFunc) error
+	PatchStub        func(context.Context, runtime.Object, client.Patch, ...client.PatchOption) error
 	patchMutex       sync.RWMutex
 	patchArgsForCall []struct {
 		arg1 context.Context
 		arg2 runtime.Object
 		arg3 client.Patch
-		arg4 []client.PatchOptionFunc
+		arg4 []client.PatchOption
 	}
 	patchReturns struct {
 		result1 error
@@ -24,12 +24,12 @@ type FakeStatusWriter struct {
 	patchReturnsOnCall map[int]struct {
 		result1 error
 	}
-	UpdateStub        func(context.Context, runtime.Object, ...client.UpdateOptionFunc) error
+	UpdateStub        func(context.Context, runtime.Object, ...client.UpdateOption) error
 	updateMutex       sync.RWMutex
 	updateArgsForCall []struct {
 		arg1 context.Context
 		arg2 runtime.Object
-		arg3 []client.UpdateOptionFunc
+		arg3 []client.UpdateOption
 	}
 	updateReturns struct {
 		result1 error
@@ -41,14 +41,14 @@ type FakeStatusWriter struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeStatusWriter) Patch(arg1 context.Context, arg2 runtime.Object, arg3 client.Patch, arg4 ...client.PatchOptionFunc) error {
+func (fake *FakeStatusWriter) Patch(arg1 context.Context, arg2 runtime.Object, arg3 client.Patch, arg4 ...client.PatchOption) error {
 	fake.patchMutex.Lock()
 	ret, specificReturn := fake.patchReturnsOnCall[len(fake.patchArgsForCall)]
 	fake.patchArgsForCall = append(fake.patchArgsForCall, struct {
 		arg1 context.Context
 		arg2 runtime.Object
 		arg3 client.Patch
-		arg4 []client.PatchOptionFunc
+		arg4 []client.PatchOption
 	}{arg1, arg2, arg3, arg4})
 	fake.recordInvocation("Patch", []interface{}{arg1, arg2, arg3, arg4})
 	fake.patchMutex.Unlock()
@@ -68,13 +68,13 @@ func (fake *FakeStatusWriter) PatchCallCount() int {
 	return len(fake.patchArgsForCall)
 }
 
-func (fake *FakeStatusWriter) PatchCalls(stub func(context.Context, runtime.Object, client.Patch, ...client.PatchOptionFunc) error) {
+func (fake *FakeStatusWriter) PatchCalls(stub func(context.Context, runtime.Object, client.Patch, ...client.PatchOption) error) {
 	fake.patchMutex.Lock()
 	defer fake.patchMutex.Unlock()
 	fake.PatchStub = stub
 }
 
-func (fake *FakeStatusWriter) PatchArgsForCall(i int) (context.Context, runtime.Object, client.Patch, []client.PatchOptionFunc) {
+func (fake *FakeStatusWriter) PatchArgsForCall(i int) (context.Context, runtime.Object, client.Patch, []client.PatchOption) {
 	fake.patchMutex.RLock()
 	defer fake.patchMutex.RUnlock()
 	argsForCall := fake.patchArgsForCall[i]
@@ -104,13 +104,13 @@ func (fake *FakeStatusWriter) PatchReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeStatusWriter) Update(arg1 context.Context, arg2 runtime.Object, arg3 ...client.UpdateOptionFunc) error {
+func (fake *FakeStatusWriter) Update(arg1 context.Context, arg2 runtime.Object, arg3 ...client.UpdateOption) error {
 	fake.updateMutex.Lock()
 	ret, specificReturn := fake.updateReturnsOnCall[len(fake.updateArgsForCall)]
 	fake.updateArgsForCall = append(fake.updateArgsForCall, struct {
 		arg1 context.Context
 		arg2 runtime.Object
-		arg3 []client.UpdateOptionFunc
+		arg3 []client.UpdateOption
 	}{arg1, arg2, arg3})
 	fake.recordInvocation("Update", []interface{}{arg1, arg2, arg3})
 	fake.updateMutex.Unlock()
@@ -130,13 +130,13 @@ func (fake *FakeStatusWriter) UpdateCallCount() int {
 	return len(fake.updateArgsForCall)
 }
 
-func (fake *FakeStatusWriter) UpdateCalls(stub func(context.Context, runtime.Object, ...client.UpdateOptionFunc) error) {
+func (fake *FakeStatusWriter) UpdateCalls(stub func(context.Context, runtime.Object, ...client.UpdateOption) error) {
 	fake.updateMutex.Lock()
 	defer fake.updateMutex.Unlock()
 	fake.UpdateStub = stub
 }
 
-func (fake *FakeStatusWriter) UpdateArgsForCall(i int) (context.Context, runtime.Object, []client.UpdateOptionFunc) {
+func (fake *FakeStatusWriter) UpdateArgsForCall(i int) (context.Context, runtime.Object, []client.UpdateOption) {
 	fake.updateMutex.RLock()
 	defer fake.updateMutex.RUnlock()
 	argsForCall := fake.updateArgsForCall[i]

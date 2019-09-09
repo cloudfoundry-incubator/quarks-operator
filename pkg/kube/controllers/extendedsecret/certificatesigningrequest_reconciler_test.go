@@ -211,7 +211,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 				Certificate: []byte("fake-issued-certificate"),
 			}
 
-			client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
+			client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 				switch object := object.(type) {
 				case *corev1.Secret:
 					Expect(object.Name).To(Equal("fake-cert"))
@@ -224,7 +224,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 				return apierrors.NewBadRequest("fake-error")
 			})
 
-			client.DeleteCalls(func(context context.Context, object runtime.Object, opts ...crc.DeleteOptionFunc) error {
+			client.DeleteCalls(func(context context.Context, object runtime.Object, opts ...crc.DeleteOption) error {
 				switch object := object.(type) {
 				case *corev1.Secret:
 					Expect(object.GetName()).To(Equal(names.CsrPrivateKeySecretName(csr.Name)))
@@ -301,7 +301,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 		})
 
 		It("handles an error when creating certificate secret", func() {
-			client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
+			client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 				return apierrors.NewBadRequest("fake-error")
 			})
 
@@ -314,7 +314,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 		})
 
 		It("handles an error when deleting private key secret", func() {
-			client.DeleteCalls(func(context context.Context, object runtime.Object, opts ...crc.DeleteOptionFunc) error {
+			client.DeleteCalls(func(context context.Context, object runtime.Object, opts ...crc.DeleteOption) error {
 				return apierrors.NewBadRequest("fake-error")
 			})
 

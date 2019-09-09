@@ -223,14 +223,14 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 					return nil
 				})
-				client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
+				client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOption) error {
 					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
 						object.DeepCopyInto(instance)
 					}
 					return nil
 				})
-				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 					switch object.(type) {
 					case *corev1.Secret:
 						return errors.New("fake-error")
@@ -255,14 +255,14 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 					return nil
 				})
-				client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
+				client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOption) error {
 					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
 						object.DeepCopyInto(instance)
 					}
 					return nil
 				})
-				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 					switch object := object.(type) {
 					case *ejv1.ExtendedJob:
 						eJob := object
@@ -289,14 +289,14 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 					return nil
 				})
-				client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
+				client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOption) error {
 					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
 						object.DeepCopyInto(instance)
 					}
 					return nil
 				})
-				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 					switch object := object.(type) {
 					case *ejv1.ExtendedJob:
 						eJob := object

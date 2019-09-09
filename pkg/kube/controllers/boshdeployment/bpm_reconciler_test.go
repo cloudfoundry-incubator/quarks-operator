@@ -209,7 +209,7 @@ variables: []
 
 			return nil
 		})
-		client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOptionFunc) error {
+		client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
 			switch object := object.(type) {
 			case *corev1.SecretList:
 				secretList := corev1.SecretList{}
@@ -287,7 +287,7 @@ variables: []
 					return nil
 				})
 
-				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 					return errors.New("fake-error")
 				})
 
@@ -297,7 +297,7 @@ variables: []
 			})
 
 			It("creates instance groups and updates bpm configs created state to deploying state successfully", func() {
-				client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOptionFunc) error {
+				client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOption) error {
 					switch object.(type) {
 					}
 					return nil

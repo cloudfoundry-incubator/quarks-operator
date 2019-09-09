@@ -125,7 +125,7 @@ variables:
 
 					return nil
 				})
-				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOptionFunc) error {
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 					switch object.(type) {
 					case *esv1.ExtendedSecret:
 						return errors.New("fake-error")
