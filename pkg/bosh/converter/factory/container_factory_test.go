@@ -1,12 +1,12 @@
 package factory_test
 
 import (
-	"errors"
 	"fmt"
 	"path"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"

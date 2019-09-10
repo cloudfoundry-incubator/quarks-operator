@@ -98,12 +98,12 @@ func (kc *KubeConverter) serviceToExtendedSts(
 	defaultVolumeMounts := defaultDisks.VolumeMounts()
 	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
 	if err != nil {
-		return essv1.ExtendedStatefulSet{}, errors.Wrapf(err, "Generating extendstatefulset failed for manifest %s", manifestName)
+		return essv1.ExtendedStatefulSet{}, errors.Wrapf(err, "building initContainers failed for instance group %s", instanceGroup.Name)
 	}
 
 	containers, err := cfac.JobsToContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
 	if err != nil {
-		return essv1.ExtendedStatefulSet{}, errors.Wrapf(err, "Generating extendstatefulset failed for manifest %s", manifestName)
+		return essv1.ExtendedStatefulSet{}, errors.Wrapf(err, "building containers failed for instance group %s", instanceGroup.Name)
 	}
 
 	defaultVolumes := defaultDisks.Volumes()
@@ -266,12 +266,12 @@ func (kc *KubeConverter) errandToExtendedJob(
 	defaultVolumeMounts := defaultDisks.VolumeMounts()
 	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
 	if err != nil {
-		return ejv1.ExtendedJob{}, errors.Wrapf(err, "Generating extended job failed for manifest %s", manifestName)
+		return ejv1.ExtendedJob{}, errors.Wrapf(err, "building initContainers failed for instance group %s", instanceGroup.Name)
 	}
 
 	containers, err := cfac.JobsToContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
 	if err != nil {
-		return ejv1.ExtendedJob{}, errors.Wrapf(err, "Generating extended job failed for manifest %s", manifestName)
+		return ejv1.ExtendedJob{}, errors.Wrapf(err, "building containers failed for instance group %s", instanceGroup.Name)
 	}
 
 	podLabels := instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels
