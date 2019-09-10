@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	cvfakes "code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	mfakes "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
@@ -34,8 +34,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
-	cvfakes "code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 )
 
 var _ = Describe("ReconcileBPM", func() {
@@ -46,7 +44,7 @@ var _ = Describe("ReconcileBPM", func() {
 		request                   reconcile.Request
 		ctx                       context.Context
 		resolver                  mfakes.FakeDesiredManifest
-		jobFactory cvfakes.FakeJobFactory
+		kubeConverter             cvfakes.FakeKubeConverter
 		manifest                  *bdm.Manifest
 		logs                      *observer.ObservedLogs
 		log                       *zap.SugaredLogger
@@ -64,7 +62,7 @@ var _ = Describe("ReconcileBPM", func() {
 		manager.GetSchemeReturns(scheme.Scheme)
 		manager.GetEventRecorderForReturns(recorder)
 		resolver = mfakes.FakeDesiredManifest{}
-		jobFactory = cvfakes.FakeJobFactory{}
+		kubeConverter = cvfakes.FakeKubeConverter{}
 		size := 1024
 
 		manifest = &bdm.Manifest{
@@ -235,7 +233,7 @@ variables: []
 	JustBeforeEach(func() {
 		resolver.DesiredManifestReturns(manifest, nil)
 		reconciler = cfd.NewBPMReconciler(ctx, config, manager, &resolver,
-			controllerutil.SetControllerReference, converter.NewKubeConverter(config.Namespace,  jobFactory, factory.NewContainerFactory),
+			controllerutil.SetControllerReference, &kubeConverter,
 		)
 	})
 

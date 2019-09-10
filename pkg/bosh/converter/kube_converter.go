@@ -27,6 +27,7 @@ type ContainerFactory interface {
 	JobsToContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks disk.BPMResourceDisks) ([]corev1.Container, error)
 }
 
+// NewContainerFactoryFunc returns ContainerFactory from single BOSH instance group.
 type NewContainerFactoryFunc func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) ContainerFactory
 
 // VolumeFactory builds Kubernetes containers from BOSH jobs.

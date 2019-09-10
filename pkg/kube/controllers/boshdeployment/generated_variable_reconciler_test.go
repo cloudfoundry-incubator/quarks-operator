@@ -1,7 +1,6 @@
 package boshdeployment_test
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
 	"context"
 	"time"
 
@@ -21,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
@@ -42,6 +41,7 @@ var _ = Describe("ReconcileGeneratedVariable", func() {
 		log                   *zap.SugaredLogger
 		config                *cfcfg.Config
 		client                *cfakes.FakeClient
+		kubeConverter         *fakes.FakeKubeConverter
 		manifestWithOpsSecret *corev1.Secret
 	)
 
@@ -105,10 +105,12 @@ variables:
 		})
 
 		manager.GetClientReturns(client)
+
+		kubeConverter = &fakes.FakeKubeConverter{}
 	})
 
 	JustBeforeEach(func() {
-		reconciler = cfd.NewGeneratedVariableReconciler(ctx, config, manager, controllerutil.SetControllerReference, converter.NewKubeConverter(config.Namespace, factory.NewContainerFactory))
+		reconciler = cfd.NewGeneratedVariableReconciler(ctx, config, manager, controllerutil.SetControllerReference, kubeConverter)
 	})
 
 	Describe("Reconcile", func() {

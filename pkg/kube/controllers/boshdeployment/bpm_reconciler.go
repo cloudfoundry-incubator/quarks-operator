@@ -20,6 +20,7 @@ import (
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/meltdown"
@@ -32,10 +33,16 @@ type DesiredManifest interface {
 	DesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error)
 }
 
+// KubeConverter converts k8s resources from single BOSH manifest
+type KubeConverter interface {
+	BPMResources(manifestName string, version string, instanceGroup *bdm.InstanceGroup, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) (*converter.BPMResources, error)
+	Variables(manifestName string, variables []bdm.Variable) []esv1.ExtendedSecret
+}
+
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 
 // NewBPMReconciler returns a new reconcile.Reconciler
-func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver DesiredManifest, srf setReferenceFunc, kubeConverter *converter.KubeConverter) reconcile.Reconciler {
+func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver DesiredManifest, srf setReferenceFunc, kubeConverter KubeConverter) reconcile.Reconciler {
 	return &ReconcileBPM{
 		ctx:           ctx,
 		config:        config,
@@ -55,7 +62,7 @@ type ReconcileBPM struct {
 	scheme        *runtime.Scheme
 	resolver      DesiredManifest
 	setReference  setReferenceFunc
-	kubeConverter *converter.KubeConverter
+	kubeConverter KubeConverter
 }
 
 // Reconcile reconciles an Instance Group BPM versioned secret read the corresponding

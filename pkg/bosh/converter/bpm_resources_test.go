@@ -1,7 +1,6 @@
 package converter_test
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
 	"fmt"
 
 	. "github.com/onsi/ginkgo"
@@ -11,6 +10,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
@@ -19,14 +19,21 @@ import (
 
 var _ = Describe("kube converter", func() {
 	var (
-		m   *manifest.Manifest
-		env testing.Catalog
-		err error
+		m                *manifest.Manifest
+		volumeFactory    *fakes.FakeVolumeFactory
+		containerFactory *fakes.FakeContainerFactory
+		env              testing.Catalog
+		err              error
 	)
 
 	Context("BPMResources", func() {
 		act := func(bpmConfigs bpm.Configs, instanceGroup *manifest.InstanceGroup) (*converter.BPMResources, error) {
-			kubeConverter := converter.NewKubeConverter("foo", factory.NewContainerFactory)
+			kubeConverter := converter.NewKubeConverter(
+				"foo",
+				volumeFactory,
+				func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) converter.ContainerFactory {
+					return containerFactory
+				})
 			resources, err := kubeConverter.BPMResources(m.Name, "1", instanceGroup, m, bpmConfigs)
 			return resources, err
 		}
@@ -34,6 +41,9 @@ var _ = Describe("kube converter", func() {
 		BeforeEach(func() {
 			m, err = env.DefaultBOSHManifest()
 			Expect(err).NotTo(HaveOccurred())
+
+			volumeFactory = &fakes.FakeVolumeFactory{}
+			containerFactory = &fakes.FakeContainerFactory{}
 		})
 
 		Context("when BPM is missing in configs", func() {
