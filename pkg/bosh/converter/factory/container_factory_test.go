@@ -10,19 +10,20 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	. "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	. "code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
 var _ = Describe("ContainerFactory", func() {
 	var (
-		containerFactory     ContainerFactory
+		containerFactory     *ContainerFactory
 		bpmConfigs           bpm.Configs
 		releaseImageProvider *fakes.FakeReleaseImageProvider
 		jobs                 []bdm.Job
 		defaultVolumeMounts  []corev1.VolumeMount
-		bpmDisks             BPMResourceDisks
+		bpmDisks             disk.BPMResourceDisks
 	)
 
 	BeforeEach(func() {
@@ -44,7 +45,7 @@ var _ = Describe("ContainerFactory", func() {
 			},
 		}
 
-		bpmDisks = BPMResourceDisks{
+		bpmDisks = disk.BPMResourceDisks{
 			{
 
 				VolumeMount: &corev1.VolumeMount{
@@ -162,7 +163,7 @@ var _ = Describe("ContainerFactory", func() {
 	})
 
 	JustBeforeEach(func() {
-		containerFactory = NewConcreteContainerFactory("fake-manifest", "fake-ig", "v1", false, releaseImageProvider, bpmConfigs)
+		containerFactory = NewContainerFactory("fake-manifest", "fake-ig", "v1", false, releaseImageProvider, bpmConfigs)
 	})
 
 	Context("JobsToContainers", func() {
@@ -317,9 +318,9 @@ var _ = Describe("ContainerFactory", func() {
 					},
 				},
 			}
-			containerFactory = NewConcreteContainerFactory("fake-manifest", "fake-ig", "v1", false, releaseImageProvider, bpmConfigsWithError)
+			containerFactory = NewContainerFactory("fake-manifest", "fake-ig", "v1", false, releaseImageProvider, bpmConfigsWithError)
 			actWithError := func() ([]corev1.Container, error) {
-				return containerFactory.JobsToContainers(jobs, []corev1.VolumeMount{}, BPMResourceDisks{})
+				return containerFactory.JobsToContainers(jobs, []corev1.VolumeMount{}, disk.BPMResourceDisks{})
 			}
 			_, err := actWithError()
 			Expect(err).To(HaveOccurred())
@@ -463,9 +464,9 @@ var _ = Describe("ContainerFactory", func() {
 
 				disableSideCar := ig.Env.AgentEnvBoshConfig.Agent.Settings.DisableLogSidecar
 
-				containerFactory := NewConcreteContainerFactory("fake-manifest", ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
+				containerFactory := NewContainerFactory("fake-manifest", ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
 				act := func() ([]corev1.Container, error) {
-					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, BPMResourceDisks{})
+					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, disk.BPMResourceDisks{})
 				}
 				containers, err := act()
 
@@ -490,9 +491,9 @@ var _ = Describe("ContainerFactory", func() {
 
 				disableSideCar := ig.Env.AgentEnvBoshConfig.Agent.Settings.DisableLogSidecar
 
-				containerFactory := NewConcreteContainerFactory("fake-manifest", ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
+				containerFactory := NewContainerFactory("fake-manifest", ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
 				act := func() ([]corev1.Container, error) {
-					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, BPMResourceDisks{})
+					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, disk.BPMResourceDisks{})
 				}
 				containers, err := act()
 

@@ -5,6 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 
+	. "code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
@@ -12,7 +13,7 @@ import (
 
 var _ = Describe("JobFactory", func() {
 	var (
-		factory JobFactory
+		factory *JobFactory
 		m       *manifest.Manifest
 		env     testing.Catalog
 		err     error
@@ -21,7 +22,7 @@ var _ = Describe("JobFactory", func() {
 	BeforeEach(func() {
 		m, err = env.DefaultBOSHManifest()
 		Expect(err).NotTo(HaveOccurred())
-		factory = NewConcreteJobFactory("namespace")
+		factory = NewJobFactory("namespace")
 	})
 
 	Describe("InstanceGroupManifestJob", func() {

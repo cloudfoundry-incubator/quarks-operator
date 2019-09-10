@@ -3,12 +3,12 @@ package converter
 import (
 	"fmt"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	certv1 "k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
@@ -16,22 +16,30 @@ import (
 
 // KubeConverter represents a Manifest in kube resources
 type KubeConverter struct {
-	namespace string
-	newContainerFactoryFunc  NewContainerFactoryFunc
+	namespace               string
+	volumeFactory           VolumeFactory
+	newContainerFactoryFunc NewContainerFactoryFunc
+}
+
+// ContainerFactory builds Kubernetes containers from BOSH jobs.
+type ContainerFactory interface {
+	JobsToInitContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks disk.BPMResourceDisks) ([]corev1.Container, error)
+	JobsToContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks disk.BPMResourceDisks) ([]corev1.Container, error)
 }
 
 type NewContainerFactoryFunc func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) ContainerFactory
 
-// ContainerFactory builds Kubernetes containers from BOSH jobs.
-type ContainerFactory interface {
-	JobsToInitContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks BPMResourceDisks) ([]corev1.Container, error)
-	JobsToContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks BPMResourceDisks) ([]corev1.Container, error)
+// VolumeFactory builds Kubernetes containers from BOSH jobs.
+type VolumeFactory interface {
+	GenerateDefaultDisks(manifestName string, instanceGroup *bdm.InstanceGroup, version string, namespace string) disk.BPMResourceDisks
+	GenerateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (disk.BPMResourceDisks, error)
 }
 
 // NewKubeConverter converts a Manifest into kube resources
-func NewKubeConverter(namespace string, newContainerFactoryFunc NewContainerFactoryFunc) *KubeConverter {
+func NewKubeConverter(namespace string, volumeFactory VolumeFactory, newContainerFactoryFunc NewContainerFactoryFunc) *KubeConverter {
 	return &KubeConverter{
-		namespace: namespace,
+		namespace:               namespace,
+		volumeFactory:           volumeFactory,
 		newContainerFactoryFunc: newContainerFactoryFunc,
 	}
 }

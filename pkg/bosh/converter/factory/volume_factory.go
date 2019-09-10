@@ -1,4 +1,4 @@
-package converter
+package factory
 
 import (
 	"fmt"
@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
@@ -62,9 +63,31 @@ const (
 
 	// UnrestrictedVolumeBaseName is the volume name for the unrestricted ones.
 	UnrestrictedVolumeBaseName = "bpm-unrestricted-volume"
+
+	secretsPath         = "/var/run/secrets/variables/"
+	withOpsManifestPath = "/var/run/secrets/deployment/"
+	// releaseSourceName is the folder for release sources
+	releaseSourceName        = "instance-group"
+	resolvedPropertiesFormat = "/var/run/secrets/resolved-properties/%s"
 )
 
-func generateDefaultDisks(manifestName string, instanceGroup *bdm.InstanceGroup, version string, namespace string) BPMResourceDisks {
+// VolumeFactory is a concrete implementation of VolumeFactory
+type VolumeFactory struct {
+}
+
+// NewVolumeFactory returns a concrete implementation of VolumeFactory
+func NewVolumeFactory() *VolumeFactory {
+	return &VolumeFactory{}
+}
+
+// GenerateDefaultDisks defines default disks. This looks for:
+// - the rendering data volume
+// - the the jobs volume
+// - the ephemeral (data) volume
+// - the sys volume
+// - the "not interpolated" manifest volume
+// - resolved properties data volume
+func (f *VolumeFactory) GenerateDefaultDisks(manifestName string, instanceGroup *bdm.InstanceGroup, version string, namespace string) disk.BPMResourceDisks {
 	desiredManifestName := names.DesiredManifestName(manifestName, version)
 	resolvedPropertiesSecretName := names.CalculateIGSecretName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
@@ -73,7 +96,7 @@ func generateDefaultDisks(manifestName string, instanceGroup *bdm.InstanceGroup,
 		version,
 	)
 
-	defaultDisks := BPMResourceDisks{
+	defaultDisks := disk.BPMResourceDisks{
 		{
 			Volume:      renderingVolume(),
 			VolumeMount: renderingVolumeMount(),
@@ -103,14 +126,14 @@ func generateDefaultDisks(manifestName string, instanceGroup *bdm.InstanceGroup,
 	return defaultDisks
 }
 
-// generateBPMDisks defines any other volumes required to be mounted,
+// GenerateBPMDisks defines any other volumes required to be mounted,
 // based on the bpm process schema definition. This looks for:
 // - ephemeral_disk (boolean)
 // - persistent_disk (boolean)
 // - additional_volumes (list of volumes)
 // - unrestricted_volumes (list of volumes)
-func generateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (BPMResourceDisks, error) {
-	bpmDisks := make(BPMResourceDisks, 0)
+func (f *VolumeFactory) GenerateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (disk.BPMResourceDisks, error) {
+	bpmDisks := make(disk.BPMResourceDisks, 0)
 
 	rAdditionalVolumes := regexp.MustCompile(AdditionalVolumesRegex)
 
@@ -177,7 +200,7 @@ func generateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpm
 					return nil, errors.Wrapf(err, "failed to calculate subpath for additional volume mount '%s'", additionalVolume.Path)
 				}
 
-				additionalDisk := BPMResourceDisk{
+				additionalDisk := disk.BPMResourceDisk{
 					VolumeMount: &corev1.VolumeMount{
 						Name:      volumeName,
 						ReadOnly:  !additionalVolume.Writable,
@@ -194,7 +217,7 @@ func generateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpm
 
 			for i, unrestrictedVolume := range process.Unsafe.UnrestrictedVolumes {
 				volumeName := names.Sanitize(fmt.Sprintf("%s-%s-%s-%b", UnrestrictedVolumeBaseName, job.Name, process.Name, i))
-				unrestrictedDisk := BPMResourceDisk{
+				unrestrictedDisk := disk.BPMResourceDisk{
 					Volume: &corev1.Volume{
 						Name:         volumeName,
 						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
@@ -215,7 +238,7 @@ func generateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpm
 
 		if hasEphemeralDisk {
 
-			ephemeralDisk := BPMResourceDisk{
+			ephemeralDisk := disk.BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
 					Name:      VolumeDataDirName,
 					MountPath: path.Join(VolumeDataDirMountPath, job.Name),
@@ -238,7 +261,7 @@ func generateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpm
 			persistentVolumeClaim := generatePersistentVolumeClaim(manifestName, instanceGroup, namespace)
 
 			// Specify the job sub-path inside of the instance group PV
-			bpmPersistentDisk := BPMResourceDisk{
+			bpmPersistentDisk := disk.BPMResourceDisk{
 				PersistentVolumeClaim: &persistentVolumeClaim,
 				Volume: &corev1.Volume{
 					Name: VolumeStoreDirName,
@@ -288,4 +311,187 @@ func generatePersistentVolumeClaim(manifestName string, instanceGroup *bdm.Insta
 	}
 
 	return persistentVolumeClaim
+}
+
+// withOpsVolume is a volume for the "not interpolated" manifest,
+// that has the ops files applied, but still contains '((vars))'
+func withOpsVolume(name string) *corev1.Volume {
+	return &corev1.Volume{
+		Name: generateVolumeName(name),
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: name,
+			},
+		},
+	}
+}
+
+// withOpsVolumeMount mount for the with-ops manifest
+func withOpsVolumeMount(name string) corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      generateVolumeName(name),
+		MountPath: withOpsManifestPath,
+		ReadOnly:  true,
+	}
+}
+
+// variableVolume gives the volume definition for the variables content
+func variableVolume(name string) corev1.Volume {
+	return corev1.Volume{
+		Name: generateVolumeName(name),
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: name,
+			},
+		},
+	}
+}
+
+// variableVolumeMount is the volume mount to file 'varName' for a variables content
+func variableVolumeMount(name string, varName string) corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      generateVolumeName(name),
+		MountPath: secretsPath + varName,
+		ReadOnly:  true,
+	}
+}
+
+// noVarsVolume returns an EmptyVolume
+func noVarsVolume() corev1.Volume {
+	return corev1.Volume{
+		Name: generateVolumeName("no-vars"),
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+}
+
+// noVarsVolumeMount returns the corresponding VolumeMount
+func noVarsVolumeMount() corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      generateVolumeName("no-vars"),
+		MountPath: secretsPath,
+		ReadOnly:  true,
+	}
+}
+
+func releaseSourceVolume() corev1.Volume {
+	return corev1.Volume{
+		Name: generateVolumeName(releaseSourceName),
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+}
+
+func releaseSourceVolumeMount() corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      generateVolumeName(releaseSourceName),
+		MountPath: VolumeRenderingDataMountPath,
+	}
+}
+
+func renderingVolume() *corev1.Volume {
+	return &corev1.Volume{
+		Name:         VolumeRenderingDataName,
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}
+}
+
+func renderingVolumeMount() *corev1.VolumeMount {
+	return &corev1.VolumeMount{
+		Name:      VolumeRenderingDataName,
+		MountPath: VolumeRenderingDataMountPath,
+	}
+}
+
+func jobsDirVolume() *corev1.Volume {
+	return &corev1.Volume{
+		Name:         VolumeJobsDirName,
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}
+}
+
+func jobsDirVolumeMount() *corev1.VolumeMount {
+	return &corev1.VolumeMount{
+		Name:      VolumeJobsDirName,
+		MountPath: VolumeJobsDirMountPath,
+	}
+}
+
+func resolvedPropertiesVolume(name string) *corev1.Volume {
+	return &corev1.Volume{
+		Name: generateVolumeName(name),
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: name,
+			},
+		},
+	}
+}
+
+func resolvedPropertiesVolumeMount(name string, instanceGroupName string) corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      generateVolumeName(name),
+		MountPath: fmt.Sprintf(resolvedPropertiesFormat, instanceGroupName),
+		ReadOnly:  true,
+	}
+}
+
+// For ephemeral job data.
+// https://bosh.io/docs/vm-config/#jobs-and-packages
+func dataDirVolume() *corev1.Volume {
+	return &corev1.Volume{
+		Name:         VolumeDataDirName,
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}
+}
+
+func dataDirVolumeMount() *corev1.VolumeMount {
+	return &corev1.VolumeMount{
+		Name:      VolumeDataDirName,
+		MountPath: VolumeDataDirMountPath,
+	}
+}
+
+func sysDirVolume() *corev1.Volume {
+	return &corev1.Volume{
+		Name:         VolumeSysDirName,
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}
+}
+
+func sysDirVolumeMount() *corev1.VolumeMount {
+	return &corev1.VolumeMount{
+		Name:      VolumeSysDirName,
+		MountPath: VolumeSysDirMountPath,
+	}
+}
+
+func deduplicateVolumeMounts(volumeMounts []corev1.VolumeMount) []corev1.VolumeMount {
+	result := []corev1.VolumeMount{}
+	uniqueMounts := map[string]struct{}{}
+
+	for _, volumeMount := range volumeMounts {
+		if _, ok := uniqueMounts[volumeMount.MountPath]; ok {
+			continue
+		}
+
+		uniqueMounts[volumeMount.MountPath] = struct{}{}
+		result = append(result, volumeMount)
+	}
+
+	return result
+}
+
+// generateVolumeName generate volume name based on secret name
+func generateVolumeName(secretName string) string {
+	nameSlices := strings.Split(secretName, ".")
+	volName := ""
+	if len(nameSlices) > 1 {
+		volName = nameSlices[1]
+	} else {
+		volName = nameSlices[0]
+	}
+	return names.Sanitize(volName)
 }

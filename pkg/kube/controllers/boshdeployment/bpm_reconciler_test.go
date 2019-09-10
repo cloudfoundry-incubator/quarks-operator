@@ -1,7 +1,6 @@
 package boshdeployment_test
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
 	"context"
 	"errors"
 	"time"
@@ -25,7 +24,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
+	mfakes "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
@@ -35,6 +34,8 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
+	cvfakes "code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 )
 
 var _ = Describe("ReconcileBPM", func() {
@@ -44,7 +45,8 @@ var _ = Describe("ReconcileBPM", func() {
 		recorder                  *record.FakeRecorder
 		request                   reconcile.Request
 		ctx                       context.Context
-		resolver                  fakes.FakeDesiredManifest
+		resolver                  mfakes.FakeDesiredManifest
+		jobFactory cvfakes.FakeJobFactory
 		manifest                  *bdm.Manifest
 		logs                      *observer.ObservedLogs
 		log                       *zap.SugaredLogger
@@ -61,7 +63,8 @@ var _ = Describe("ReconcileBPM", func() {
 		manager = &cfakes.FakeManager{}
 		manager.GetSchemeReturns(scheme.Scheme)
 		manager.GetEventRecorderForReturns(recorder)
-		resolver = fakes.FakeDesiredManifest{}
+		resolver = mfakes.FakeDesiredManifest{}
+		jobFactory = cvfakes.FakeJobFactory{}
 		size := 1024
 
 		manifest = &bdm.Manifest{
@@ -232,7 +235,7 @@ variables: []
 	JustBeforeEach(func() {
 		resolver.DesiredManifestReturns(manifest, nil)
 		reconciler = cfd.NewBPMReconciler(ctx, config, manager, &resolver,
-			controllerutil.SetControllerReference, converter.NewKubeConverter(config.Namespace, factory.NewContainerFactory),
+			controllerutil.SetControllerReference, converter.NewKubeConverter(config.Namespace,  jobFactory, factory.NewContainerFactory),
 		)
 	})
 

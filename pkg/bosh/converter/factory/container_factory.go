@@ -1,7 +1,6 @@
 package factory
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -12,8 +11,15 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+)
+
+var (
+	rootUserID = int64(0)
+	vcapUserID = int64(1000)
 )
 
 const (
@@ -50,7 +56,7 @@ func NewContainerFactory(manifestName string, instanceGroupName string, version 
 func (c *ContainerFactory) JobsToInitContainers(
 	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
-	bpmDisks converter.BPMResourceDisks,
+	bpmDisks disk.BPMResourceDisks,
 ) ([]corev1.Container, error) {
 	copyingSpecsInitContainers := make([]corev1.Container, 0)
 	boshPreStartInitContainers := make([]corev1.Container, 0)
@@ -66,7 +72,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 		// One copying specs init container for each release.
 		if _, done := copyingSpecsUniq[job.Release]; !done {
 			copyingSpecsUniq[job.Release] = struct{}{}
-			copyingSpecsInitContainer := jobSpecCopierContainer(job.Release, jobImage, converter.VolumeRenderingDataName)
+			copyingSpecsInitContainer := jobSpecCopierContainer(job.Release, jobImage, VolumeRenderingDataName)
 			copyingSpecsInitContainers = append(copyingSpecsInitContainers, copyingSpecsInitContainer)
 		}
 
@@ -149,7 +155,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 func (c *ContainerFactory) JobsToContainers(
 	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
-	bpmDisks converter.BPMResourceDisks,
+	bpmDisks disk.BPMResourceDisks,
 ) ([]corev1.Container, error) {
 	var containers []corev1.Container
 
@@ -207,7 +213,7 @@ func (c *ContainerFactory) JobsToContainers(
 				}
 
 				postStart.command = &containerrun.Command{
-					Name: filepath.Join(converter.VolumeJobsDirMountPath, job.Name, "bin", "post-start"),
+					Name: filepath.Join(VolumeJobsDirMountPath, job.Name, "bin", "post-start"),
 				}
 			}
 
@@ -243,7 +249,7 @@ func logsTailerContainer(instanceGroupName string) corev1.Container {
 	return corev1.Container{
 		Name:         "logs",
 		Image:        converter.GetOperatorDockerImage(),
-		VolumeMounts: []corev1.VolumeMount{*converter.sysDirVolumeMount()},
+		VolumeMounts: []corev1.VolumeMount{*sysDirVolumeMount()},
 		Args: []string{
 			"util",
 			"tail-logs",
@@ -255,20 +261,20 @@ func logsTailerContainer(instanceGroupName string) corev1.Container {
 			},
 		},
 		SecurityContext: &corev1.SecurityContext{
-			RunAsUser: &converter.rootUserID,
+			RunAsUser: &rootUserID,
 		},
 	}
 }
 
 func containerRunCopier() corev1.Container {
-	dstDir := fmt.Sprintf("%s/container-run", converter.VolumeRenderingDataMountPath)
+	dstDir := fmt.Sprintf("%s/container-run", VolumeRenderingDataMountPath)
 	return corev1.Container{
 		Name:  "container-run-copier",
 		Image: converter.GetOperatorDockerImage(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
-				Name:      converter.VolumeRenderingDataName,
-				MountPath: converter.VolumeRenderingDataMountPath,
+				Name:      VolumeRenderingDataName,
+				MountPath: VolumeRenderingDataMountPath,
 			},
 		},
 		Command: []string{"/usr/bin/dumb-init", "--"},
@@ -286,21 +292,21 @@ func containerRunCopier() corev1.Container {
 
 // jobSpecCopierContainer will return a corev1.Container{} with the populated field.
 func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName string) corev1.Container {
-	inContainerReleasePath := filepath.Join(converter.VolumeRenderingDataMountPath, "jobs-src", releaseName)
+	inContainerReleasePath := filepath.Join(VolumeRenderingDataMountPath, "jobs-src", releaseName)
 	return corev1.Container{
 		Name:  names.Sanitize(fmt.Sprintf("spec-copier-%s", releaseName)),
 		Image: jobImage,
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      volumeMountName,
-				MountPath: converter.VolumeRenderingDataMountPath,
+				MountPath: VolumeRenderingDataMountPath,
 			},
 		},
 		Command: []string{"/usr/bin/dumb-init", "--"},
 		Args: []string{
 			"/bin/sh",
 			"-xc",
-			fmt.Sprintf("mkdir -p %s && cp -ar %s/* %s && chown vcap:vcap %s -R", inContainerReleasePath, converter.VolumeJobsSrcDirMountPath, inContainerReleasePath, inContainerReleasePath),
+			fmt.Sprintf("mkdir -p %s && cp -ar %s/* %s && chown vcap:vcap %s -R", inContainerReleasePath, VolumeJobsSrcDirMountPath, inContainerReleasePath, inContainerReleasePath),
 		},
 	}
 }
@@ -310,9 +316,9 @@ func templateRenderingContainer(instanceGroupName string, secretName string) cor
 		Name:  "template-render",
 		Image: converter.GetOperatorDockerImage(),
 		VolumeMounts: []corev1.VolumeMount{
-			*converter.renderingVolumeMount(),
-			*converter.jobsDirVolumeMount(),
-			converter.resolvedPropertiesVolumeMount(secretName, instanceGroupName),
+			*renderingVolumeMount(),
+			*jobsDirVolumeMount(),
+			resolvedPropertiesVolumeMount(secretName, instanceGroupName),
 		},
 		Env: []corev1.EnvVar{
 			{
@@ -321,11 +327,11 @@ func templateRenderingContainer(instanceGroupName string, secretName string) cor
 			},
 			{
 				Name:  EnvBOSHManifestPath,
-				Value: fmt.Sprintf(converter.resolvedPropertiesFormat+"/properties.yaml", instanceGroupName),
+				Value: fmt.Sprintf(resolvedPropertiesFormat+"/properties.yaml", instanceGroupName),
 			},
 			{
 				Name:  EnvJobsDir,
-				Value: converter.VolumeRenderingDataMountPath,
+				Value: VolumeRenderingDataMountPath,
 			},
 			{
 				Name: PodNameEnvVar,
@@ -363,7 +369,7 @@ func createDirContainer(jobs []bdm.Job) corev1.Container {
 	return corev1.Container{
 		Name:         "create-dirs",
 		Image:        converter.GetOperatorDockerImage(),
-		VolumeMounts: []corev1.VolumeMount{*converter.dataDirVolumeMount(), *converter.sysDirVolumeMount()},
+		VolumeMounts: []corev1.VolumeMount{*dataDirVolumeMount(), *sysDirVolumeMount()},
 		Command:      []string{"/usr/bin/dumb-init", "--"},
 		Args: []string{
 			"/bin/sh",
@@ -371,7 +377,7 @@ func createDirContainer(jobs []bdm.Job) corev1.Container {
 			fmt.Sprintf("mkdir -p %s", strings.Join(dirs, " ")),
 		},
 		SecurityContext: &corev1.SecurityContext{
-			RunAsUser: &converter.vcapUserID,
+			RunAsUser: &vcapUserID,
 		},
 	}
 }
@@ -383,7 +389,7 @@ func boshPreStartInitContainer(
 	debug bool,
 	securityContext *corev1.SecurityContext,
 ) corev1.Container {
-	boshPreStart := filepath.Join(converter.VolumeJobsDirMountPath, jobName, "bin", "pre-start")
+	boshPreStart := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "pre-start")
 
 	var script string
 	if debug {
@@ -395,12 +401,12 @@ func boshPreStartInitContainer(
 	if securityContext == nil {
 		securityContext = &corev1.SecurityContext{}
 	}
-	securityContext.RunAsUser = &converter.rootUserID
+	securityContext.RunAsUser = &rootUserID
 
 	return corev1.Container{
 		Name:         names.Sanitize(fmt.Sprintf("bosh-pre-start-%s", jobName)),
 		Image:        jobImage,
-		VolumeMounts: converter.deduplicateVolumeMounts(volumeMounts),
+		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
 		Command:      []string{"/usr/bin/dumb-init", "--"},
 		Args: []string{
 			"/bin/sh",
@@ -436,12 +442,12 @@ func bpmPreStartInitContainer(
 	if securityContext.Privileged == nil {
 		securityContext.Privileged = &process.Unsafe.Privileged
 	}
-	securityContext.RunAsUser = &converter.rootUserID
+	securityContext.RunAsUser = &rootUserID
 
 	return corev1.Container{
 		Name:         names.Sanitize(fmt.Sprintf("bpm-pre-start-%s", process.Name)),
 		Image:        jobImage,
-		VolumeMounts: converter.deduplicateVolumeMounts(volumeMounts),
+		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
 		Command:      []string{"/usr/bin/dumb-init", "--"},
 		Args: []string{
 			"/bin/sh",
@@ -481,18 +487,18 @@ func bpmProcessContainer(
 		securityContext.Privileged = &process.Unsafe.Privileged
 	}
 	if securityContext.RunAsUser == nil {
-		securityContext.RunAsUser = &converter.rootUserID
+		securityContext.RunAsUser = &rootUserID
 	}
 
 	workdir := process.Workdir
 	if workdir == "" {
-		workdir = filepath.Join(converter.VolumeJobsDirMountPath, jobName)
+		workdir = filepath.Join(VolumeJobsDirMountPath, jobName)
 	}
 	command, args := generateBPMCommand(&process, postStart)
 	container := corev1.Container{
 		Name:            names.Sanitize(name),
 		Image:           jobImage,
-		VolumeMounts:    converter.deduplicateVolumeMounts(volumeMounts),
+		VolumeMounts:    deduplicateVolumeMounts(volumeMounts),
 		Command:         command,
 		Args:            args,
 		Env:             generateEnv(process.Env, arbitraryEnvs),
@@ -502,7 +508,7 @@ func bpmProcessContainer(
 	}
 
 	// Setup the job drain script handler.
-	drainGlob := filepath.Join(converter.VolumeJobsDirMountPath, jobName, "bin", "drain", "*")
+	drainGlob := filepath.Join(VolumeJobsDirMountPath, jobName, "bin", "drain", "*")
 	container.Lifecycle.PreStop = &corev1.Handler{
 		Exec: &corev1.ExecAction{
 			Command: []string{
@@ -595,7 +601,7 @@ func generateBPMCommand(
 	postStart postStart,
 ) ([]string, []string) {
 	command := []string{"/usr/bin/dumb-init", "--"}
-	args := []string{fmt.Sprintf("%s/container-run/container-run", converter.VolumeRenderingDataMountPath)}
+	args := []string{fmt.Sprintf("%s/container-run/container-run", VolumeRenderingDataMountPath)}
 	if postStart.command != nil {
 		args = append(args, "--post-start-name", postStart.command.Name)
 		if postStart.condition != nil {

@@ -12,7 +12,7 @@ var _ = Describe("Interpolator", func() {
 		baseManifest     []byte
 		ops              []byte
 		expectedManifest []byte
-		interpolator    ipl.Interpolator
+		interpolator     ipl.Interpolator
 	)
 
 	BeforeEach(func() {

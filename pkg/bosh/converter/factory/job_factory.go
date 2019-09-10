@@ -59,22 +59,22 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*ejv1.Exte
 
 	// Prepare Volumes and Volume mounts
 
-	volumes := []corev1.Volume{*converter.withOpsVolume(manifestSecretName)}
-	volumeMounts := []corev1.VolumeMount{converter.withOpsVolumeMount(manifestSecretName)}
+	volumes := []corev1.Volume{*withOpsVolume(manifestSecretName)}
+	volumeMounts := []corev1.VolumeMount{withOpsVolumeMount(manifestSecretName)}
 
 	// We need a volume and a mount for each input variable
 	for _, variable := range manifest.Variables {
 		varName := variable.Name
 		varSecretName := names.CalculateSecretName(names.DeploymentSecretTypeVariable, manifest.Name, varName)
 
-		volumes = append(volumes, converter.variableVolume(varSecretName))
-		volumeMounts = append(volumeMounts, converter.variableVolumeMount(varSecretName, varName))
+		volumes = append(volumes, variableVolume(varSecretName))
+		volumeMounts = append(volumeMounts, variableVolumeMount(varSecretName, varName))
 	}
 
 	// If there are no variables, mount an empty dir for variables
 	if len(manifest.Variables) == 0 {
-		volumes = append(volumes, converter.noVarsVolume())
-		volumeMounts = append(volumeMounts, converter.noVarsVolumeMount())
+		volumes = append(volumes, noVarsVolume())
+		volumeMounts = append(volumeMounts, noVarsVolumeMount())
 	}
 
 	eJobName := fmt.Sprintf("dm-%s", manifest.Name)
@@ -175,8 +175,8 @@ func (f *JobFactory) gatheringContainer(cmd, desiredManifestName string, instanc
 		Image: converter.GetOperatorDockerImage(),
 		Args:  []string{"util", cmd},
 		VolumeMounts: []corev1.VolumeMount{
-			converter.withOpsVolumeMount(desiredManifestName),
-			converter.releaseSourceVolumeMount(),
+			withOpsVolumeMount(desiredManifestName),
+			releaseSourceVolumeMount(),
 		},
 		Env: []corev1.EnvVar{
 			{
@@ -189,7 +189,7 @@ func (f *JobFactory) gatheringContainer(cmd, desiredManifestName string, instanc
 			},
 			{
 				Name:  EnvBaseDir,
-				Value: converter.VolumeRenderingDataMountPath,
+				Value: VolumeRenderingDataMountPath,
 			},
 			{
 				Name:  EnvInstanceGroupName,
@@ -222,7 +222,7 @@ func (f *JobFactory) gatheringJob(name string, manifest bdm.Manifest, desiredMan
 			}
 			// Create an init container that copies sources
 			// TODO: destination should also contain release name, to prevent overwrites
-			initContainers = append(initContainers, jobSpecCopierContainer(releaseName, releaseImage, converter.generateVolumeName(converter.releaseSourceName)))
+			initContainers = append(initContainers, jobSpecCopierContainer(releaseName, releaseImage, generateVolumeName(releaseSourceName)))
 		}
 	}
 
@@ -263,8 +263,8 @@ func (f *JobFactory) gatheringJob(name string, manifest bdm.Manifest, desiredMan
 					Containers: containers,
 					// Volumes for secrets
 					Volumes: []corev1.Volume{
-						*converter.withOpsVolume(desiredManifestName),
-						converter.releaseSourceVolume(),
+						*withOpsVolume(desiredManifestName),
+						releaseSourceVolume(),
 					},
 				},
 			},

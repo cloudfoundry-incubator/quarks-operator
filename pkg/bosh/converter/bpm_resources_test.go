@@ -446,16 +446,9 @@ var _ = Describe("kube converter", func() {
 					Expect(stS.Spec.Volumes[7].Name).To(Equal("store-dir"))
 					Expect(stS.Spec.Volumes[7].PersistentVolumeClaim.ClaimName).To(Equal("bpm-bpm-pvc"))
 
-					// Test disks
-					disks := resources.Disks
-					Expect(disks[10].PersistentVolumeClaim).NotTo(Equal(nil))
-					Expect(disks[10].VolumeMount.Name).To(Equal("store-dir"))
-					Expect(disks[10].VolumeMount.MountPath).To(Equal("/var/vcap/store/test-server"))
-
-					persistentDisks := disks.Filter("persistent", "true")
-					Expect(persistentDisks[0].VolumeMount.Name).To(Equal("store-dir"))
-					Expect(persistentDisks[0].VolumeMount.MountPath).To(Equal("/var/vcap/store/test-server"))
-					Expect(persistentDisks[0].VolumeMount.SubPath).To(Equal("test-server"))
+					// Test pvcs
+					pvcs := resources.PersistentVolumeClaims
+					Expect(pvcs[0]).NotTo(Equal(nil))
 				})
 			})
 		})
@@ -494,16 +487,9 @@ var _ = Describe("kube converter", func() {
 				Expect(stS.Spec.Volumes[7].Name).To(Equal("store-dir"))
 				Expect(stS.Spec.Volumes[7].PersistentVolumeClaim.ClaimName).To(Equal("bpm-bpm-pvc"))
 
-				// Test disks
-				disks := resources.Disks
-				Expect(disks[10].PersistentVolumeClaim).NotTo(Equal(nil))
-				Expect(disks[10].VolumeMount.Name).To(Equal("store-dir"))
-				Expect(disks[10].VolumeMount.MountPath).To(Equal("/var/vcap/store/test-server"))
-
-				persistentDisks := disks.Filter("persistent", "true")
-				Expect(persistentDisks[0].VolumeMount.Name).To(Equal("store-dir"))
-				Expect(persistentDisks[0].VolumeMount.MountPath).To(Equal("/var/vcap/store/test-server"))
-				Expect(persistentDisks[0].VolumeMount.SubPath).To(Equal("test-server"))
+				// Test pvcs
+				pvcs := resources.PersistentVolumeClaims
+				Expect(pvcs[0]).NotTo(Equal(nil))
 			})
 
 			It("handles error when instance group doesn't have persistent disk declaration", func() {

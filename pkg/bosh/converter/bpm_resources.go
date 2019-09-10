@@ -10,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
@@ -17,8 +18,6 @@ import (
 )
 
 var (
-	rootUserID = int64(0)
-	vcapUserID = int64(1000)
 	admGroupID = int64(1000)
 )
 
@@ -31,64 +30,10 @@ type ReleaseImageProvider interface {
 
 // BPMResources contains BPM related k8s resources, which were converted from BOSH objects
 type BPMResources struct {
-	InstanceGroups []essv1.ExtendedStatefulSet
-	Errands        []ejv1.ExtendedJob
-	Services       []corev1.Service
-	Disks          BPMResourceDisks
-}
-
-// BPMResourceDisk represents a converted BPM disk to k8s resources.
-type BPMResourceDisk struct {
-	PersistentVolumeClaim *corev1.PersistentVolumeClaim
-	Volume                *corev1.Volume
-	VolumeMount           *corev1.VolumeMount
-
-	Labels map[string]string
-}
-
-// MatchesFilter returns true if the disk matches the filter with one of its labels.
-func (disk *BPMResourceDisk) MatchesFilter(filterKey, filterValue string) bool {
-	labelValue, exists := disk.Labels[filterKey]
-	if !exists {
-		return false
-	}
-	return labelValue == filterValue
-}
-
-// BPMResourceDisks represents a slice of BPMResourceDisk.
-type BPMResourceDisks []BPMResourceDisk
-
-// Filter filters BPMResourceDisks on its labels.
-func (disks BPMResourceDisks) Filter(filterKey, filterValue string) BPMResourceDisks {
-	filtered := make(BPMResourceDisks, 0)
-	for _, disk := range disks {
-		if disk.MatchesFilter(filterKey, filterValue) {
-			filtered = append(filtered, disk)
-		}
-	}
-	return filtered
-}
-
-// VolumeMounts returns a slice of VolumeMount of each BPMResourceDisk contained in BPMResourceDisks.
-func (disks BPMResourceDisks) VolumeMounts() []corev1.VolumeMount {
-	volumeMounts := make([]corev1.VolumeMount, 0)
-	for _, disk := range disks {
-		if disk.VolumeMount != nil {
-			volumeMounts = append(volumeMounts, *disk.VolumeMount)
-		}
-	}
-	return volumeMounts
-}
-
-// Volumes returns a slice of Volume of each BPMResourceDisk contained in BPMResourceDisks.
-func (disks BPMResourceDisks) Volumes() []corev1.Volume {
-	volumes := make([]corev1.Volume, 0)
-	for _, disk := range disks {
-		if disk.Volume != nil {
-			volumes = append(volumes, *disk.Volume)
-		}
-	}
-	return volumes
+	InstanceGroups         []essv1.ExtendedStatefulSet
+	Errands                []ejv1.ExtendedJob
+	Services               []corev1.Service
+	PersistentVolumeClaims []corev1.PersistentVolumeClaim
 }
 
 // BPMResources uses BOSH Process Manager information to create k8s container specs from single BOSH instance group.
@@ -96,9 +41,8 @@ func (disks BPMResourceDisks) Volumes() []corev1.Volume {
 func (kc *KubeConverter) BPMResources(manifestName string, version string, instanceGroup *bdm.InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) (*BPMResources, error) {
 	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(manifestName, instanceGroup.Name, version)
 
-	defaultDisks := generateDefaultDisks(manifestName, instanceGroup, version, kc.namespace)
-
-	bpmDisks, err := generateBPMDisks(manifestName, instanceGroup, bpmConfigs, kc.namespace)
+	defaultDisks := kc.volumeFactory.GenerateDefaultDisks(manifestName, instanceGroup, version, kc.namespace)
+	bpmDisks, err := kc.volumeFactory.GenerateBPMDisks(manifestName, instanceGroup, bpmConfigs, kc.namespace)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Generate of BPM disks failed for manifest name %s, instance group %s.", manifestName, instanceGroup.Name)
 	}
@@ -106,7 +50,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 	allDisks := append(defaultDisks, bpmDisks...)
 
 	res := &BPMResources{
-		Disks: allDisks,
+		PersistentVolumeClaims: allDisks.PVCs(),
 	}
 
 	cfac := kc.newContainerFactoryFunc(
@@ -148,8 +92,8 @@ func (kc *KubeConverter) serviceToExtendedSts(
 	cfac ContainerFactory,
 	manifestName string,
 	instanceGroup *bdm.InstanceGroup,
-	defaultDisks BPMResourceDisks,
-	bpmDisks BPMResourceDisks,
+	defaultDisks disk.BPMResourceDisks,
+	bpmDisks disk.BPMResourceDisks,
 ) (essv1.ExtendedStatefulSet, error) {
 	defaultVolumeMounts := defaultDisks.VolumeMounts()
 	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
@@ -316,8 +260,8 @@ func (kc *KubeConverter) errandToExtendedJob(
 	cfac ContainerFactory,
 	manifestName string,
 	instanceGroup *bdm.InstanceGroup,
-	defaultDisks BPMResourceDisks,
-	bpmDisks BPMResourceDisks,
+	defaultDisks disk.BPMResourceDisks,
+	bpmDisks disk.BPMResourceDisks,
 ) (ejv1.ExtendedJob, error) {
 	defaultVolumeMounts := defaultDisks.VolumeMounts()
 	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
@@ -389,20 +333,4 @@ func (kc *KubeConverter) errandToExtendedJob(
 	}
 
 	return eJob, nil
-}
-
-func deduplicateVolumeMounts(volumeMounts []corev1.VolumeMount) []corev1.VolumeMount {
-	result := []corev1.VolumeMount{}
-	uniqueMounts := map[string]struct{}{}
-
-	for _, volumeMount := range volumeMounts {
-		if _, ok := uniqueMounts[volumeMount.MountPath]; ok {
-			continue
-		}
-
-		uniqueMounts[volumeMount.MountPath] = struct{}{}
-		result = append(result, volumeMount)
-	}
-
-	return result
 }
