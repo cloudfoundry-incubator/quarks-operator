@@ -32,7 +32,7 @@ type NewContainerFactoryFunc func(manifestName string, instanceGroupName string,
 
 // VolumeFactory builds Kubernetes containers from BOSH jobs.
 type VolumeFactory interface {
-	GenerateDefaultDisks(manifestName string, instanceGroup *bdm.InstanceGroup, version string, namespace string) disk.BPMResourceDisks
+	GenerateDefaultDisks(manifestName string, instanceGroupName string, version string, namespace string) disk.BPMResourceDisks
 	GenerateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (disk.BPMResourceDisks, error)
 }
 

@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/factory"
 	"net"
 	"os"
 	"regexp"

@@ -1,5 +1,10 @@
 package util
 
+// Int returns a pointer to the int value provided
+func Int(v int) *int {
+	return &v
+}
+
 // Int32 returns a pointer to the int32 value provided
 func Int32(v int32) *int32 {
 	return &v

@@ -1,7 +1,7 @@
 package extendedjob
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/factory"
 	"context"
 	"encoding/json"
 	"reflect"

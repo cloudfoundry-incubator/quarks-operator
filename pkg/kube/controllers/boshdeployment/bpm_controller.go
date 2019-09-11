@@ -16,7 +16,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/factory"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"

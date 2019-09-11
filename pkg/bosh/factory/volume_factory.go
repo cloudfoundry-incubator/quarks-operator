@@ -87,12 +87,12 @@ func NewVolumeFactory() *VolumeFactory {
 // - the sys volume
 // - the "not interpolated" manifest volume
 // - resolved properties data volume
-func (f *VolumeFactory) GenerateDefaultDisks(manifestName string, instanceGroup *bdm.InstanceGroup, version string, namespace string) disk.BPMResourceDisks {
+func (f *VolumeFactory) GenerateDefaultDisks(manifestName string, instanceGroupName string, version string, namespace string) disk.BPMResourceDisks {
 	desiredManifestName := names.DesiredManifestName(manifestName, version)
 	resolvedPropertiesSecretName := names.CalculateIGSecretName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
 		manifestName,
-		instanceGroup.Name,
+		instanceGroupName,
 		version,
 	)
 
@@ -237,7 +237,6 @@ func (f *VolumeFactory) GenerateBPMDisks(manifestName string, instanceGroup *bdm
 		}
 
 		if hasEphemeralDisk {
-
 			ephemeralDisk := disk.BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
 					Name:      VolumeDataDirName,

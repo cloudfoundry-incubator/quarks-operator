@@ -5,7 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 
-	. "code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
+	. "code.cloudfoundry.org/cf-operator/pkg/bosh/factory"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"

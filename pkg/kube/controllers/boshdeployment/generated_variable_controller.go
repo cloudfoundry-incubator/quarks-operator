@@ -2,7 +2,7 @@ package boshdeployment
 
 import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/factory"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/factory"
 	"context"
 	"fmt"
 	"strings"

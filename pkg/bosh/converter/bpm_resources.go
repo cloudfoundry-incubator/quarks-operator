@@ -41,7 +41,7 @@ type BPMResources struct {
 func (kc *KubeConverter) BPMResources(manifestName string, version string, instanceGroup *bdm.InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) (*BPMResources, error) {
 	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(manifestName, instanceGroup.Name, version)
 
-	defaultDisks := kc.volumeFactory.GenerateDefaultDisks(manifestName, instanceGroup, version, kc.namespace)
+	defaultDisks := kc.volumeFactory.GenerateDefaultDisks(manifestName, instanceGroup.Name, version, kc.namespace)
 	bpmDisks, err := kc.volumeFactory.GenerateBPMDisks(manifestName, instanceGroup, bpmConfigs, kc.namespace)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Generate of BPM disks failed for manifest name %s, instance group %s.", manifestName, instanceGroup.Name)

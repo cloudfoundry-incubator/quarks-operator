@@ -27,11 +27,11 @@ type FakeVolumeFactory struct {
 		result1 disk.BPMResourceDisks
 		result2 error
 	}
-	GenerateDefaultDisksStub        func(string, *manifest.InstanceGroup, string, string) disk.BPMResourceDisks
+	GenerateDefaultDisksStub        func(string, string, string, string) disk.BPMResourceDisks
 	generateDefaultDisksMutex       sync.RWMutex
 	generateDefaultDisksArgsForCall []struct {
 		arg1 string
-		arg2 *manifest.InstanceGroup
+		arg2 string
 		arg3 string
 		arg4 string
 	}
@@ -111,12 +111,12 @@ func (fake *FakeVolumeFactory) GenerateBPMDisksReturnsOnCall(i int, result1 disk
 	}{result1, result2}
 }
 
-func (fake *FakeVolumeFactory) GenerateDefaultDisks(arg1 string, arg2 *manifest.InstanceGroup, arg3 string, arg4 string) disk.BPMResourceDisks {
+func (fake *FakeVolumeFactory) GenerateDefaultDisks(arg1 string, arg2 string, arg3 string, arg4 string) disk.BPMResourceDisks {
 	fake.generateDefaultDisksMutex.Lock()
 	ret, specificReturn := fake.generateDefaultDisksReturnsOnCall[len(fake.generateDefaultDisksArgsForCall)]
 	fake.generateDefaultDisksArgsForCall = append(fake.generateDefaultDisksArgsForCall, struct {
 		arg1 string
-		arg2 *manifest.InstanceGroup
+		arg2 string
 		arg3 string
 		arg4 string
 	}{arg1, arg2, arg3, arg4})
@@ -138,13 +138,13 @@ func (fake *FakeVolumeFactory) GenerateDefaultDisksCallCount() int {
 	return len(fake.generateDefaultDisksArgsForCall)
 }
 
-func (fake *FakeVolumeFactory) GenerateDefaultDisksCalls(stub func(string, *manifest.InstanceGroup, string, string) disk.BPMResourceDisks) {
+func (fake *FakeVolumeFactory) GenerateDefaultDisksCalls(stub func(string, string, string, string) disk.BPMResourceDisks) {
 	fake.generateDefaultDisksMutex.Lock()
 	defer fake.generateDefaultDisksMutex.Unlock()
 	fake.GenerateDefaultDisksStub = stub
 }
 
-func (fake *FakeVolumeFactory) GenerateDefaultDisksArgsForCall(i int) (string, *manifest.InstanceGroup, string, string) {
+func (fake *FakeVolumeFactory) GenerateDefaultDisksArgsForCall(i int) (string, string, string, string) {
 	fake.generateDefaultDisksMutex.RLock()
 	defer fake.generateDefaultDisksMutex.RUnlock()
 	argsForCall := fake.generateDefaultDisksArgsForCall[i]
