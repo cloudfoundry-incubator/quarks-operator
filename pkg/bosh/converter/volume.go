@@ -193,7 +193,7 @@ func generateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpm
 			}
 
 			for i, unrestrictedVolume := range process.Unsafe.UnrestrictedVolumes {
-				volumeName := names.Sanitize(fmt.Sprintf("%s-%s-%s-%b", UnrestrictedVolumeBaseName, job.Name, process.Name, i))
+				volumeName := names.Sanitize("%s-%s-%s-%b", UnrestrictedVolumeBaseName, job.Name, process.Name, i)
 				unrestrictedDisk := BPMResourceDisk{
 					Volume: &corev1.Volume{
 						Name:         volumeName,
@@ -269,7 +269,7 @@ func generatePersistentVolumeClaim(manifestName string, instanceGroup *bdm.Insta
 	// Spec of a persistentVolumeClaim
 	persistentVolumeClaim := corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      names.Sanitize(fmt.Sprintf("%s-%s-%s", manifestName, instanceGroup.Name, "pvc")),
+			Name:      names.Sanitize("%s-%s-%s", manifestName, instanceGroup.Name, "pvc"),
 			Namespace: namespace,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{

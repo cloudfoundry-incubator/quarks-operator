@@ -287,7 +287,7 @@ func containerRunCopier() corev1.Container {
 func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName string) corev1.Container {
 	inContainerReleasePath := filepath.Join(VolumeRenderingDataMountPath, "jobs-src", releaseName)
 	return corev1.Container{
-		Name:  names.Sanitize(fmt.Sprintf("spec-copier-%s", releaseName)),
+		Name:  names.Sanitize("spec-copier-%s", releaseName),
 		Image: jobImage,
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -397,7 +397,7 @@ func boshPreStartInitContainer(
 	securityContext.RunAsUser = &rootUserID
 
 	return corev1.Container{
-		Name:         names.Sanitize(fmt.Sprintf("bosh-pre-start-%s", jobName)),
+		Name:         names.Sanitize("bosh-pre-start-%s", jobName),
 		Image:        jobImage,
 		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
 		Command:      []string{"/usr/bin/dumb-init", "--"},
@@ -438,7 +438,7 @@ func bpmPreStartInitContainer(
 	securityContext.RunAsUser = &rootUserID
 
 	return corev1.Container{
-		Name:         names.Sanitize(fmt.Sprintf("bpm-pre-start-%s", process.Name)),
+		Name:         names.Sanitize("bpm-pre-start-%s", process.Name),
 		Image:        jobImage,
 		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
 		Command:      []string{"/usr/bin/dumb-init", "--"},
@@ -466,7 +466,7 @@ func bpmProcessContainer(
 	securityContext *corev1.SecurityContext,
 	postStart postStart,
 ) corev1.Container {
-	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
+	name := names.Sanitize("%s-%s", jobName, processName)
 
 	if securityContext == nil {
 		securityContext = &corev1.SecurityContext{}

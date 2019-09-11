@@ -97,8 +97,11 @@ func CalculateIGSecretPrefix(secretType DeploymentSecretType, deploymentName str
 
 var allowedKubeChars = regexp.MustCompile("[^-a-z0-9]*")
 
-// Sanitize produces valid k8s names, i.e. for containers: [a-z0-9]([-a-z0-9]*[a-z0-9])?
-func Sanitize(name string) string {
+// Sanitize produces valid k8s names, i.e. for containers: [a-z0-9]([-a-z0-9]*[a-z0-9])?. It has the
+// same signature as fmt.Sprintf and can be used to format strings according to the documentation of
+// the fmt package (https://godoc.org/fmt).
+func Sanitize(format string, a ...interface{}) string {
+	name := fmt.Sprintf(format, a...)
 	name = strings.Replace(name, "_", "-", -1)
 	name = strings.ToLower(name)
 	name = allowedKubeChars.ReplaceAllLiteralString(name, "")

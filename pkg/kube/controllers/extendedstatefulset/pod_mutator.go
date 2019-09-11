@@ -3,7 +3,6 @@ package extendedstatefulset
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -157,7 +156,7 @@ func (m *PodMutator) addVolumeSpec(pod *corev1.Pod, volumeClaimTemplatesMap map[
 			_, foundVolumeClaimTemplate := volumeClaimTemplatesMap[volumeMount.Name]
 			if foundVolumeClaimTemplate {
 				podOrdinal := names.OrdinalFromPodName(pod.GetName())
-				persistentVolumeClaim := names.Sanitize(fmt.Sprintf("%s-%s-%s-%d", volumeMount.Name, "volume-management", getNameWithOutVersion(statefulSet.Name, 1), podOrdinal))
+				persistentVolumeClaim := names.Sanitize("%s-%s-%s-%d", volumeMount.Name, "volume-management", getNameWithOutVersion(statefulSet.Name, 1), podOrdinal)
 
 				volume, foundVolume := volumeMap[volumeMount.Name]
 				if !foundVolume {
