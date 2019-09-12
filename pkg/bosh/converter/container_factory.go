@@ -57,7 +57,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 
 	copyingSpecsUniq := map[string]struct{}{}
 	for _, job := range jobs {
-		jobImage, err := c.releaseImageProvider.GetReleaseImage(c.instanceGroupName, job.Name)
+		releaseImage, err := c.releaseImageProvider.GetReleaseImage(c.instanceGroupName, job.Name)
 		if err != nil {
 			return []corev1.Container{}, err
 		}
@@ -65,8 +65,9 @@ func (c *ContainerFactory) JobsToInitContainers(
 		// One copying specs init container for each release.
 		if _, done := copyingSpecsUniq[job.Release]; !done {
 			copyingSpecsUniq[job.Release] = struct{}{}
-			copyingSpecsInitContainer := jobSpecCopierContainer(job.Release, jobImage, VolumeRenderingDataName)
-			copyingSpecsInitContainers = append(copyingSpecsInitContainers, copyingSpecsInitContainer)
+			jobSpecCopier := jobSpecCopierContainer(job.Release, releaseImage, VolumeRenderingDataName)
+			packagesCopier := packagesCopierContainer(job.Release, releaseImage)
+			copyingSpecsInitContainers = append(copyingSpecsInitContainers, jobSpecCopier, packagesCopier)
 		}
 
 		// Setup the BPM pre-start init containers before the BOSH pre-start init container in order to
@@ -104,7 +105,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 				}
 				container := bpmPreStartInitContainer(
 					process,
-					jobImage,
+					releaseImage,
 					processVolumeMounts,
 					job.Properties.Quarks.Debug,
 					job.Properties.Quarks.Run.SecurityContext.DeepCopy(),
@@ -117,7 +118,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 		// Setup the BOSH pre-start init container for the job.
 		boshPreStartInitContainer := boshPreStartInitContainer(
 			job.Name,
-			jobImage,
+			releaseImage,
 			append(defaultVolumeMounts, bpmDisks.VolumeMounts()...),
 			job.Properties.Quarks.Debug,
 			job.Properties.Quarks.Run.SecurityContext.DeepCopy(),
@@ -157,7 +158,7 @@ func (c *ContainerFactory) JobsToContainers(
 	}
 
 	for _, job := range jobs {
-		jobImage, err := c.releaseImageProvider.GetReleaseImage(c.instanceGroupName, job.Name)
+		releaseImage, err := c.releaseImageProvider.GetReleaseImage(c.instanceGroupName, job.Name)
 		if err != nil {
 			return []corev1.Container{}, err
 		}
@@ -213,7 +214,7 @@ func (c *ContainerFactory) JobsToContainers(
 			container := bpmProcessContainer(
 				job.Name,
 				process.Name,
-				jobImage,
+				releaseImage,
 				process,
 				processVolumeMounts,
 				job.Properties.Quarks.Run.HealthCheck,
@@ -284,11 +285,15 @@ func containerRunCopier() corev1.Container {
 }
 
 // jobSpecCopierContainer will return a corev1.Container{} with the populated field.
-func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName string) corev1.Container {
+func jobSpecCopierContainer(
+	releaseName string,
+	releaseImage string,
+	volumeMountName string,
+) corev1.Container {
 	inContainerReleasePath := filepath.Join(VolumeRenderingDataMountPath, "jobs-src", releaseName)
 	return corev1.Container{
 		Name:  names.Sanitize("spec-copier-%s", releaseName),
-		Image: jobImage,
+		Image: releaseImage,
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      volumeMountName,
@@ -300,6 +305,28 @@ func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 			"/bin/sh",
 			"-xc",
 			fmt.Sprintf("mkdir -p %s && cp -ar %s/* %s && chown vcap:vcap %s -R", inContainerReleasePath, VolumeJobsSrcDirMountPath, inContainerReleasePath, inContainerReleasePath),
+		},
+	}
+}
+
+// packagesCopierContainer is an init container that copies the packages of a release into a shared
+// volume that gets mounted as /var/vcap/packages in the main containers.
+func packagesCopierContainer(releaseName string, releaseImage string) corev1.Container {
+	const mountPath = "/mnt/packages"
+	return corev1.Container{
+		Name:  names.Sanitize("packages-copier-%s", releaseName),
+		Image: releaseImage,
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      VolumePackagesDirName,
+				MountPath: mountPath,
+			},
+		},
+		Command: []string{"/usr/bin/dumb-init", "--"},
+		Args: []string{
+			"/bin/sh",
+			"-xc",
+			fmt.Sprintf("(cd %s; tar cf - .) | (cd %s; tar xvf -)", VolumePackagesDirMountPath, mountPath),
 		},
 	}
 }
@@ -377,7 +404,7 @@ func createDirContainer(jobs []bdm.Job) corev1.Container {
 
 func boshPreStartInitContainer(
 	jobName string,
-	jobImage string,
+	releaseImage string,
 	volumeMounts []corev1.VolumeMount,
 	debug bool,
 	securityContext *corev1.SecurityContext,
@@ -398,7 +425,7 @@ func boshPreStartInitContainer(
 
 	return corev1.Container{
 		Name:         names.Sanitize("bosh-pre-start-%s", jobName),
-		Image:        jobImage,
+		Image:        releaseImage,
 		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
 		Command:      []string{"/usr/bin/dumb-init", "--"},
 		Args: []string{
@@ -412,7 +439,7 @@ func boshPreStartInitContainer(
 
 func bpmPreStartInitContainer(
 	process bpm.Process,
-	jobImage string,
+	releaseImage string,
 	volumeMounts []corev1.VolumeMount,
 	debug bool,
 	securityContext *corev1.SecurityContext,
@@ -439,7 +466,7 @@ func bpmPreStartInitContainer(
 
 	return corev1.Container{
 		Name:         names.Sanitize("bpm-pre-start-%s", process.Name),
-		Image:        jobImage,
+		Image:        releaseImage,
 		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
 		Command:      []string{"/usr/bin/dumb-init", "--"},
 		Args: []string{
@@ -458,7 +485,7 @@ type postStart struct {
 func bpmProcessContainer(
 	jobName string,
 	processName string,
-	jobImage string,
+	releaseImage string,
 	process bpm.Process,
 	volumeMounts []corev1.VolumeMount,
 	healthchecks map[string]bdm.HealthCheck,
@@ -490,7 +517,7 @@ func bpmProcessContainer(
 	command, args := generateBPMCommand(&process, postStart)
 	container := corev1.Container{
 		Name:            names.Sanitize(name),
-		Image:           jobImage,
+		Image:           releaseImage,
 		VolumeMounts:    deduplicateVolumeMounts(volumeMounts),
 		Command:         command,
 		Args:            args,

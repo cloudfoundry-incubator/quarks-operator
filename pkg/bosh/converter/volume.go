@@ -38,6 +38,11 @@ const (
 	// VolumeDataDirMountPath is the mount path for the ephemeral (data) directory.
 	VolumeDataDirMountPath = bdm.DataDir
 
+	// VolumePackagesDirName is the volume name for the packages directory.
+	VolumePackagesDirName = "packages-dir"
+	// VolumePackagesDirMountPath is the mount path for the ephemeral packages directory.
+	VolumePackagesDirMountPath = "/var/vcap/packages"
+
 	// VolumeSysDirName is the volume name for the sys directory.
 	VolumeSysDirName = "sys-dir"
 	// VolumeSysDirMountPath is the mount path for the sys directory.
@@ -87,6 +92,10 @@ func generateDefaultDisks(manifestName string, instanceGroup *bdm.InstanceGroup,
 			// https://bosh.io/docs/vm-config/#jobs-and-packages
 			Volume:      dataDirVolume(),
 			VolumeMount: dataDirVolumeMount(),
+		},
+		{
+			Volume:      packagesVolume(),
+			VolumeMount: packagesVolumeMount(),
 		},
 		{
 			Volume:      sysDirVolume(),

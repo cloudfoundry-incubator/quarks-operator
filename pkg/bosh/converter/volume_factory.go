@@ -158,6 +158,22 @@ func dataDirVolumeMount() *corev1.VolumeMount {
 	}
 }
 
+func packagesVolume() *corev1.Volume {
+	return &corev1.Volume{
+		Name:         VolumePackagesDirName,
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}
+}
+
+func packagesVolumeMount() *corev1.VolumeMount {
+	return &corev1.VolumeMount{
+		Name:      VolumePackagesDirName,
+		MountPath: VolumePackagesDirMountPath,
+		// TODO: /var/vcap/packages should be read-only.
+		// ReadOnly:  true,
+	}
+}
+
 func sysDirVolume() *corev1.Volume {
 	return &corev1.Volume{
 		Name:         VolumeSysDirName,
