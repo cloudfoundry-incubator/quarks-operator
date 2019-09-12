@@ -1,6 +1,8 @@
 package converter
 
 import (
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	certv1 "k8s.io/api/certificates/v1beta1"
@@ -23,7 +25,7 @@ func NewKubeConverter(namespace string) *KubeConverter {
 }
 
 // Variables returns extended secrets for a list of BOSH variables
-func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable) []esv1.ExtendedSecret {
+func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable) ([]esv1.ExtendedSecret, error) {
 	secrets := []esv1.ExtendedSecret{}
 
 	for _, v := range variables {
@@ -43,6 +45,9 @@ func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable
 			},
 		}
 		if v.Type == esv1.Certificate {
+			if v.Options == nil {
+				return secrets, fmt.Errorf("Invalid certificate ExtendedSecret: missing options key")
+			}
 
 			usages := []certv1.KeyUsage{}
 
@@ -91,5 +96,5 @@ func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable
 		secrets = append(secrets, s)
 	}
 
-	return secrets
+	return secrets, nil
 }

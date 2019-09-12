@@ -95,7 +95,12 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 
 	// Convert the manifest to kube objects
 	log.Debug(ctx, "Converting bosh manifest to kube objects")
-	secrets := r.kubeConverter.Variables(manifest.Name, manifest.Variables)
+	secrets, err := r.kubeConverter.Variables(manifest.Name, manifest.Variables)
+	if err != nil {
+		return reconcile.Result{},
+			log.WithEvent(manifestSecret, "BadManifestError").Error(ctx, errors.Wrap(err, "Failed to generate variables"))
+
+	}
 
 	if len(secrets) == 0 {
 		log.Debug(ctx, "Skip generate variable extendedSecrets: there are no variables")
