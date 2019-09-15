@@ -127,7 +127,7 @@ var _ = Describe("VolumeFactory", func() {
 			}
 
 			disks, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(disks).Should(HaveLen(1))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
@@ -172,7 +172,7 @@ var _ = Describe("VolumeFactory", func() {
 			}
 
 			disks, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(disks).Should(HaveLen(1))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
@@ -202,15 +202,16 @@ var _ = Describe("VolumeFactory", func() {
 				"fake-job": bpm.Config{
 					Processes: []bpm.Process{
 						{
+							Name: "fake-process",
 							AdditionalVolumes: []bpm.Volume{
 								{
 									Path: "/var/vcap/data/add1",
 								},
 								{
-									Path: "/var/vcap/data/add2",
+									Path: "/var/vcap/store/add2",
 								},
 								{
-									Path: "/var/vcap/sys/add3",
+									Path: "/var/vcap/sys/run/add3",
 								},
 							},
 						},
@@ -219,9 +220,192 @@ var _ = Describe("VolumeFactory", func() {
 			}
 
 			disks, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 
-			Expect(disks).Should(HaveLen(1))
+			Expect(disks).Should(HaveLen(3))
+			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
+				VolumeMount: &corev1.VolumeMount{
+					Name:      VolumeDataDirName,
+					ReadOnly:  true,
+					MountPath: "/var/vcap/data/add1",
+					SubPath:   "add1",
+				},
+				Labels: map[string]string{
+					"job_name":     "fake-job",
+					"process_name": "fake-process",
+				},
+			}))
+			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
+				VolumeMount: &corev1.VolumeMount{
+					Name:      VolumeStoreDirName,
+					ReadOnly:  true,
+					MountPath: "/var/vcap/store/add2",
+					SubPath:   "add2",
+				},
+				Labels: map[string]string{
+					"job_name":     "fake-job",
+					"process_name": "fake-process",
+				},
+			}))
+			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
+				VolumeMount: &corev1.VolumeMount{
+					Name:      VolumeSysDirName,
+					ReadOnly:  true,
+					MountPath: "/var/vcap/sys/run/add3",
+					SubPath:   "run/add3",
+				},
+				Labels: map[string]string{
+					"job_name":     "fake-job",
+					"process_name": "fake-process",
+				},
+			}))
+		})
+
+		It("creates unrestricted volumes", func() {
+			bpmConfigs = &bpm.Configs{
+				"fake-job": bpm.Config{
+					Processes: []bpm.Process{
+						{
+							Name: "fake-process",
+							Unsafe: bpm.Unsafe{
+								UnrestrictedVolumes: []bpm.Volume{
+									{
+										Path: "/var/vcap/data/add1",
+									},
+									{
+										Path: "/var/vcap/store/add2",
+									},
+									{
+										Path: "/var/vcap/sys/run/add3",
+									},
+									{
+										Path: "/unrestricted/fake-path",
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			disks, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			Expect(disks).Should(HaveLen(4))
+			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
+				VolumeMount: &corev1.VolumeMount{
+					Name:      VolumeDataDirName,
+					ReadOnly:  true,
+					MountPath: "/var/vcap/data/add1",
+					SubPath:   "add1",
+				},
+				Labels: map[string]string{
+					"job_name":     "fake-job",
+					"process_name": "fake-process",
+				},
+			}))
+			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
+				VolumeMount: &corev1.VolumeMount{
+					Name:      VolumeStoreDirName,
+					ReadOnly:  true,
+					MountPath: "/var/vcap/store/add2",
+					SubPath:   "add2",
+				},
+				Labels: map[string]string{
+					"job_name":     "fake-job",
+					"process_name": "fake-process",
+				},
+			}))
+			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
+				VolumeMount: &corev1.VolumeMount{
+					Name:      VolumeSysDirName,
+					ReadOnly:  true,
+					MountPath: "/var/vcap/sys/run/add3",
+					SubPath:   "run/add3",
+				},
+				Labels: map[string]string{
+					"job_name":     "fake-job",
+					"process_name": "fake-process",
+				},
+			}))
+			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
+				Volume: &corev1.Volume{
+					Name:         "bpm-unrestricted-volume-fake-job-fake-process-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				},
+				VolumeMount: &corev1.VolumeMount{
+					Name:      "bpm-unrestricted-volume-fake-job-fake-process-0",
+					ReadOnly:  true,
+					MountPath: "/unrestricted/fake-path",
+				},
+				Labels: map[string]string{
+					"job_name":     "fake-job",
+					"process_name": "fake-process",
+				},
+			}))
+		})
+
+		It("skips unrestricted job volume already mounted", func() {
+			bpmConfigs = &bpm.Configs{
+				"fake-job": bpm.Config{
+					Processes: []bpm.Process{
+						{
+							Name: "fake-process",
+							Unsafe: bpm.Unsafe{
+								UnrestrictedVolumes: []bpm.Volume{
+									{
+										Path: "/var/vcap/jobs/fake-unrestricted",
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			disks, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			Expect(disks).Should(HaveLen(0))
+		})
+
+		It("handles error when persistent disk wasn't declared", func() {
+			bpmConfigs = &bpm.Configs{
+				"fake-job": bpm.Config{
+					Processes: []bpm.Process{
+						{
+							PersistentDisk: true,
+						},
+					},
+				},
+			}
+
+			_, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
+			Expect(err).Should(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("instance group 'fake-instance-group-name' doesn't have any persistent disk declaration"))
+		})
+
+		It("handles error when additional volume wasn't a path inside '/var/vcap/'", func() {
+			bpmConfigs = &bpm.Configs{
+				"fake-job": bpm.Config{
+					Processes: []bpm.Process{
+						{
+							Name: "fake-process",
+							AdditionalVolumes: []bpm.Volume{
+								{
+									Path: "/sys/add1",
+								},
+							},
+						},
+					},
+				},
+			}
+
+			_, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
+			Expect(err).Should(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring(fmt.Sprintf("the '%s' path, must be a path inside"+
+				" '/var/vcap/data', '/var/vcap/store' or '/var/vcap/sys/run', for a path outside these,"+
+				" you must use the unrestricted_volumes key", "/sys/add1")))
 		})
 	})
 })

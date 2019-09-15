@@ -173,8 +173,8 @@ func (f *VolumeFactory) GenerateBPMDisks(manifestName string, instanceGroup *bdm
 			for _, additionalVolume := range process.AdditionalVolumes {
 				match := rAdditionalVolumes.MatchString(additionalVolume.Path)
 				if !match {
-					return nil, errors.Errorf("the %s path, must be a path inside"+
-						" /var/vcap/data, /var/vcap/store or /var/vcap/sys/run, for a path outside these,"+
+					return nil, errors.Errorf("the '%s' path, must be a path inside"+
+						" '/var/vcap/data', '/var/vcap/store' or '/var/vcap/sys/run', for a path outside these,"+
 						" you must use the unrestricted_volumes key", additionalVolume.Path)
 				}
 
@@ -193,7 +193,7 @@ func (f *VolumeFactory) GenerateBPMDisks(manifestName string, instanceGroup *bdm
 				}
 				if strings.HasPrefix(additionalVolume.Path, VolumeSysDirMountPath) {
 					volumeName = VolumeSysDirName
-					subPath, err = filepath.Rel(VolumeDataDirMountPath, additionalVolume.Path)
+					subPath, err = filepath.Rel(VolumeSysDirMountPath, additionalVolume.Path)
 				}
 
 				if err != nil {
