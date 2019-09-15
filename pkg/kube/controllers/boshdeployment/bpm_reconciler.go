@@ -120,6 +120,11 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 			log.WithEvent(bpmSecret, "BPMApplyingError").Errorf(ctx, "Failed to apply BPM information: %v", err)
 	}
 
+	if resources == nil {
+		log.WithEvent(bpmSecret, "SkipReconcile").Infof(ctx, "Skip reconcile: BPM resources not found")
+		return reconcile.Result{}, nil
+	}
+
 	// Start the instance groups referenced by this BPM secret
 	instanceName, ok := bpmSecret.Labels[bdv1.LabelDeploymentName]
 	if !ok {
@@ -138,7 +143,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	err = r.deployInstanceGroups(ctx, instance, instanceGroupName, resources)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(bpmSecret, "InstanceGroupStartError").Errorf(ctx, "Failed to start : %v", err)
+			log.WithEvent(bpmSecret, "InstanceGroupStartError").Errorf(ctx, "Failed to start: %v", err)
 	}
 
 	meltdown.SetLastReconcile(&bpmSecret.ObjectMeta, time.Now())

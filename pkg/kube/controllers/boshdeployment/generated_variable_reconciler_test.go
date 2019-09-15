@@ -107,6 +107,7 @@ variables:
 		manager.GetClientReturns(client)
 
 		kubeConverter = &fakes.FakeKubeConverter{}
+		kubeConverter.VariablesReturns([]esv1.ExtendedSecret{})
 	})
 
 	JustBeforeEach(func() {
@@ -116,6 +117,14 @@ variables:
 	Describe("Reconcile", func() {
 		Context("when manifest with ops is created", func() {
 			It("handles an error when generating variables", func() {
+				kubeConverter.VariablesReturns([]esv1.ExtendedSecret{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "fake-variable",
+						},
+					},
+				})
+
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object := object.(type) {
 					case *corev1.Secret:

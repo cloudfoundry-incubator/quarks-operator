@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	cvfakes "code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	mfakes "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
@@ -63,6 +64,8 @@ var _ = Describe("ReconcileBPM", func() {
 		manager.GetEventRecorderForReturns(recorder)
 		resolver = mfakes.FakeDesiredManifest{}
 		kubeConverter = cvfakes.FakeKubeConverter{}
+
+		kubeConverter.BPMResourcesReturns(&converter.BPMResources{}, nil)
 		size := 1024
 
 		manifest = &bdm.Manifest{
@@ -256,6 +259,7 @@ variables: []
 			})
 
 			It("handles an error when applying BPM info", func() {
+				kubeConverter.BPMResourcesReturns(&converter.BPMResources{}, errors.New("fake-error"))
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object := object.(type) {
 					case *corev1.Secret:
@@ -273,6 +277,19 @@ variables: []
 			})
 
 			It("handles an error when deploying instance groups", func() {
+				kubeConverter.BPMResourcesReturns(&converter.BPMResources{
+					Services: []corev1.Service{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "fake-bpm-svc",
+								Labels: map[string]string{
+									bdm.LabelInstanceGroupName: "fakepod",
+								},
+							},
+						},
+					},
+				}, nil)
+
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object := object.(type) {
 					case *corev1.Secret:
@@ -295,7 +312,7 @@ variables: []
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to start : failed to apply Service for instance group 'fakepod'"))
+				Expect(err.Error()).To(ContainSubstring("failed to start: failed to apply Service for instance group 'fakepod'"))
 			})
 
 			It("creates instance groups and updates bpm configs created state to deploying state successfully", func() {
