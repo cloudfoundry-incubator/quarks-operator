@@ -68,7 +68,7 @@ var rootCmd = &cobra.Command{
 		provider := viper.GetString("provider")
 
 		if serviceHost == "" && provider == "" {
-			log.Fatal("%s operator-webhook-service-host flag is not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST).", cfFailedMessage)
+			log.Fatalf("%s operator-webhook-service-host flag is not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST).", cfFailedMessage)
 		}
 
 		config := config.NewConfig(
