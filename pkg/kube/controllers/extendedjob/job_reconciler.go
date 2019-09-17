@@ -1,7 +1,7 @@
 package extendedjob
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/factory"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"context"
 	"encoding/json"
 	"reflect"
@@ -213,7 +213,7 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 		}
 
 		secretLabels[ejv1.LabelPersistentSecretContainer] = c.Name
-		if ig, ok := podutil.LookupEnv(c.Env, factory.EnvInstanceGroupName); ok {
+		if ig, ok := podutil.LookupEnv(c.Env, converter.EnvInstanceGroupName); ok {
 			secretLabels[ejv1.LabelInstanceGroup] = ig
 		}
 

@@ -1,4 +1,4 @@
-package factory
+package converter
 
 import (
 	"fmt"
@@ -11,7 +11,6 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
@@ -30,19 +29,19 @@ const (
 	EnvLogsDir = "LOGS_DIR"
 )
 
-// ContainerFactory is a concrete implementation of ContainerFactor.
-type ContainerFactory struct {
+// ContainerFactoryImpl is a concrete implementation of ContainerFactor.
+type ContainerFactoryImpl struct {
 	manifestName         string
 	instanceGroupName    string
 	version              string
 	disableLogSidecar    bool
-	releaseImageProvider converter.ReleaseImageProvider
+	releaseImageProvider ReleaseImageProvider
 	bpmConfigs           bpm.Configs
 }
 
 // NewContainerFactory returns a concrete implementation of ContainerFactory.
-func NewContainerFactory(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactory {
-	return &ContainerFactory{
+func NewContainerFactory(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactoryImpl {
+	return &ContainerFactoryImpl{
 		manifestName:         manifestName,
 		instanceGroupName:    instanceGroupName,
 		version:              version,
@@ -53,7 +52,7 @@ func NewContainerFactory(manifestName string, instanceGroupName string, version 
 }
 
 // JobsToInitContainers creates a list of Containers for corev1.PodSpec InitContainers field.
-func (c *ContainerFactory) JobsToInitContainers(
+func (c *ContainerFactoryImpl) JobsToInitContainers(
 	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
 	bpmDisks disk.BPMResourceDisks,
@@ -152,7 +151,7 @@ func (c *ContainerFactory) JobsToInitContainers(
 }
 
 // JobsToContainers creates a list of Containers for corev1.PodSpec Containers field.
-func (c *ContainerFactory) JobsToContainers(
+func (c *ContainerFactoryImpl) JobsToContainers(
 	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
 	bpmDisks disk.BPMResourceDisks,
@@ -248,7 +247,7 @@ func (c *ContainerFactory) JobsToContainers(
 func logsTailerContainer(instanceGroupName string) corev1.Container {
 	return corev1.Container{
 		Name:         "logs",
-		Image:        converter.GetOperatorDockerImage(),
+		Image:        GetOperatorDockerImage(),
 		VolumeMounts: []corev1.VolumeMount{*sysDirVolumeMount()},
 		Args: []string{
 			"util",
@@ -270,7 +269,7 @@ func containerRunCopier() corev1.Container {
 	dstDir := fmt.Sprintf("%s/container-run", VolumeRenderingDataMountPath)
 	return corev1.Container{
 		Name:  "container-run-copier",
-		Image: converter.GetOperatorDockerImage(),
+		Image: GetOperatorDockerImage(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      VolumeRenderingDataName,
@@ -314,7 +313,7 @@ func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 func templateRenderingContainer(instanceGroupName string, secretName string) corev1.Container {
 	return corev1.Container{
 		Name:  "template-render",
-		Image: converter.GetOperatorDockerImage(),
+		Image: GetOperatorDockerImage(),
 		VolumeMounts: []corev1.VolumeMount{
 			*renderingVolumeMount(),
 			*jobsDirVolumeMount(),
@@ -368,7 +367,7 @@ func createDirContainer(jobs []bdm.Job) corev1.Container {
 
 	return corev1.Container{
 		Name:         "create-dirs",
-		Image:        converter.GetOperatorDockerImage(),
+		Image:        GetOperatorDockerImage(),
 		VolumeMounts: []corev1.VolumeMount{*dataDirVolumeMount(), *sysDirVolumeMount()},
 		Command:      []string{"/usr/bin/dumb-init", "--"},
 		Args: []string{

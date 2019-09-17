@@ -107,7 +107,7 @@ variables:
 		manager.GetClientReturns(client)
 
 		kubeConverter = &fakes.FakeKubeConverter{}
-		kubeConverter.VariablesReturns([]esv1.ExtendedSecret{})
+		kubeConverter.VariablesReturns([]esv1.ExtendedSecret{}, nil)
 	})
 
 	JustBeforeEach(func() {
@@ -123,7 +123,7 @@ variables:
 							Name: "fake-variable",
 						},
 					},
-				})
+				}, nil)
 
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object := object.(type) {

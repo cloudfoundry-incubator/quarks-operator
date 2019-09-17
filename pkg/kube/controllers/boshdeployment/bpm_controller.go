@@ -16,7 +16,6 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/factory"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
@@ -36,9 +35,9 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 		controllerutil.SetControllerReference,
 		converter.NewKubeConverter(
 			config.Namespace,
-			factory.NewVolumeFactory(),
+			converter.NewVolumeFactory(),
 			func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) converter.ContainerFactory {
-				return factory.NewContainerFactory(manifestName, instanceGroupName, version, disableLogSidecar, releaseImageProvider, bpmConfigs)
+				return converter.NewContainerFactory(manifestName, instanceGroupName, version, disableLogSidecar, releaseImageProvider, bpmConfigs)
 			}),
 	)
 

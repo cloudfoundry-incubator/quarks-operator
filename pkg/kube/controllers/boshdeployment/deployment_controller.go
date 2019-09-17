@@ -1,7 +1,6 @@
 package boshdeployment
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/factory"
 	"context"
 	"fmt"
 	"reflect"
@@ -32,7 +31,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	r := NewDeploymentReconciler(
 		ctx, config, mgr,
 		converter.NewResolver(mgr.GetClient(), func() converter.Interpolator { return converter.NewInterpolator() }),
-		factory.NewJobFactory(config.Namespace),
+		converter.NewJobFactory(config.Namespace),
 		controllerutil.SetControllerReference,
 	)
 

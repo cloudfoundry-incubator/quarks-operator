@@ -1,4 +1,4 @@
-package factory
+package converter
 
 import (
 	"fmt"
@@ -71,13 +71,13 @@ const (
 	resolvedPropertiesFormat = "/var/run/secrets/resolved-properties/%s"
 )
 
-// VolumeFactory is a concrete implementation of VolumeFactory
-type VolumeFactory struct {
+// VolumeFactoryImpl is a concrete implementation of VolumeFactoryImpl
+type VolumeFactoryImpl struct {
 }
 
 // NewVolumeFactory returns a concrete implementation of VolumeFactory
-func NewVolumeFactory() *VolumeFactory {
-	return &VolumeFactory{}
+func NewVolumeFactory() *VolumeFactoryImpl {
+	return &VolumeFactoryImpl{}
 }
 
 // GenerateDefaultDisks defines default disks. This looks for:
@@ -87,7 +87,7 @@ func NewVolumeFactory() *VolumeFactory {
 // - the sys volume
 // - the "not interpolated" manifest volume
 // - resolved properties data volume
-func (f *VolumeFactory) GenerateDefaultDisks(manifestName string, instanceGroupName string, version string, namespace string) disk.BPMResourceDisks {
+func (f *VolumeFactoryImpl) GenerateDefaultDisks(manifestName string, instanceGroupName string, version string, namespace string) disk.BPMResourceDisks {
 	desiredManifestName := names.DesiredManifestName(manifestName, version)
 	resolvedPropertiesSecretName := names.CalculateIGSecretName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
@@ -132,7 +132,7 @@ func (f *VolumeFactory) GenerateDefaultDisks(manifestName string, instanceGroupN
 // - persistent_disk (boolean)
 // - additional_volumes (list of volumes)
 // - unrestricted_volumes (list of volumes)
-func (f *VolumeFactory) GenerateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (disk.BPMResourceDisks, error) {
+func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (disk.BPMResourceDisks, error) {
 	bpmDisks := make(disk.BPMResourceDisks, 0)
 
 	rAdditionalVolumes := regexp.MustCompile(AdditionalVolumesRegex)

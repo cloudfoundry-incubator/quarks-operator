@@ -1,4 +1,4 @@
-package factory_test
+package converter_test
 
 import (
 	"fmt"
@@ -10,8 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	. "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
-	. "code.cloudfoundry.org/cf-operator/pkg/bosh/factory"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
@@ -20,7 +20,7 @@ import (
 
 var _ = Describe("VolumeFactory", func() {
 	var (
-		factory       *VolumeFactory
+		factory       *VolumeFactoryImpl
 		manifestName  string
 		version       string
 		namespace     string

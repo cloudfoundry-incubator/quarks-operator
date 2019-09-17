@@ -36,7 +36,7 @@ type DesiredManifest interface {
 // KubeConverter converts k8s resources from single BOSH manifest
 type KubeConverter interface {
 	BPMResources(manifestName string, version string, instanceGroup *bdm.InstanceGroup, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) (*converter.BPMResources, error)
-	Variables(manifestName string, variables []bdm.Variable) []esv1.ExtendedSecret
+	Variables(manifestName string, variables []bdm.Variable) ([]esv1.ExtendedSecret, error)
 }
 
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}

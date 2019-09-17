@@ -1,4 +1,4 @@
-package factory_test
+package converter_test
 
 import (
 	"fmt"
@@ -10,15 +10,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	. "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
-	. "code.cloudfoundry.org/cf-operator/pkg/bosh/factory"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
 var _ = Describe("ContainerFactory", func() {
 	var (
-		containerFactory     *ContainerFactory
+		containerFactory     *ContainerFactoryImpl
 		bpmConfigs           bpm.Configs
 		releaseImageProvider *fakes.FakeReleaseImageProvider
 		jobs                 []bdm.Job

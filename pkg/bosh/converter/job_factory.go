@@ -1,7 +1,6 @@
-package factory
+package converter
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"fmt"
 	"path/filepath"
 
@@ -114,7 +113,7 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*ejv1.Exte
 					Containers: []corev1.Container{
 						{
 							Name:         VarInterpolationContainerName,
-							Image:        converter.GetOperatorDockerImage(),
+							Image:        GetOperatorDockerImage(),
 							Args:         args,
 							VolumeMounts: volumeMounts,
 							Env: []corev1.EnvVar{
@@ -172,7 +171,7 @@ func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, er
 func (f *JobFactory) gatheringContainer(cmd, desiredManifestName string, instanceGroupName string) corev1.Container {
 	return corev1.Container{
 		Name:  names.Sanitize(instanceGroupName),
-		Image: converter.GetOperatorDockerImage(),
+		Image: GetOperatorDockerImage(),
 		Args:  []string{"util", cmd},
 		VolumeMounts: []corev1.VolumeMount{
 			withOpsVolumeMount(desiredManifestName),

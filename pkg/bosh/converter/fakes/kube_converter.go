@@ -29,7 +29,7 @@ type FakeKubeConverter struct {
 		result1 *converter.BPMResources
 		result2 error
 	}
-	VariablesStub        func(string, []manifest.Variable) []v1alpha1.ExtendedSecret
+	VariablesStub        func(string, []manifest.Variable) ([]v1alpha1.ExtendedSecret, error)
 	variablesMutex       sync.RWMutex
 	variablesArgsForCall []struct {
 		arg1 string
@@ -37,9 +37,11 @@ type FakeKubeConverter struct {
 	}
 	variablesReturns struct {
 		result1 []v1alpha1.ExtendedSecret
+		result2 error
 	}
 	variablesReturnsOnCall map[int]struct {
 		result1 []v1alpha1.ExtendedSecret
+		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -112,7 +114,7 @@ func (fake *FakeKubeConverter) BPMResourcesReturnsOnCall(i int, result1 *convert
 	}{result1, result2}
 }
 
-func (fake *FakeKubeConverter) Variables(arg1 string, arg2 []manifest.Variable) []v1alpha1.ExtendedSecret {
+func (fake *FakeKubeConverter) Variables(arg1 string, arg2 []manifest.Variable) ([]v1alpha1.ExtendedSecret, error) {
 	var arg2Copy []manifest.Variable
 	if arg2 != nil {
 		arg2Copy = make([]manifest.Variable, len(arg2))
@@ -130,10 +132,10 @@ func (fake *FakeKubeConverter) Variables(arg1 string, arg2 []manifest.Variable) 
 		return fake.VariablesStub(arg1, arg2)
 	}
 	if specificReturn {
-		return ret.result1
+		return ret.result1, ret.result2
 	}
 	fakeReturns := fake.variablesReturns
-	return fakeReturns.result1
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *FakeKubeConverter) VariablesCallCount() int {
@@ -142,7 +144,7 @@ func (fake *FakeKubeConverter) VariablesCallCount() int {
 	return len(fake.variablesArgsForCall)
 }
 
-func (fake *FakeKubeConverter) VariablesCalls(stub func(string, []manifest.Variable) []v1alpha1.ExtendedSecret) {
+func (fake *FakeKubeConverter) VariablesCalls(stub func(string, []manifest.Variable) ([]v1alpha1.ExtendedSecret, error)) {
 	fake.variablesMutex.Lock()
 	defer fake.variablesMutex.Unlock()
 	fake.VariablesStub = stub
@@ -155,27 +157,30 @@ func (fake *FakeKubeConverter) VariablesArgsForCall(i int) (string, []manifest.V
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeKubeConverter) VariablesReturns(result1 []v1alpha1.ExtendedSecret) {
+func (fake *FakeKubeConverter) VariablesReturns(result1 []v1alpha1.ExtendedSecret, result2 error) {
 	fake.variablesMutex.Lock()
 	defer fake.variablesMutex.Unlock()
 	fake.VariablesStub = nil
 	fake.variablesReturns = struct {
 		result1 []v1alpha1.ExtendedSecret
-	}{result1}
+		result2 error
+	}{result1, result2}
 }
 
-func (fake *FakeKubeConverter) VariablesReturnsOnCall(i int, result1 []v1alpha1.ExtendedSecret) {
+func (fake *FakeKubeConverter) VariablesReturnsOnCall(i int, result1 []v1alpha1.ExtendedSecret, result2 error) {
 	fake.variablesMutex.Lock()
 	defer fake.variablesMutex.Unlock()
 	fake.VariablesStub = nil
 	if fake.variablesReturnsOnCall == nil {
 		fake.variablesReturnsOnCall = make(map[int]struct {
 			result1 []v1alpha1.ExtendedSecret
+			result2 error
 		})
 	}
 	fake.variablesReturnsOnCall[i] = struct {
 		result1 []v1alpha1.ExtendedSecret
-	}{result1}
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeKubeConverter) Invocations() map[string][][]interface{} {

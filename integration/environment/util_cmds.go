@@ -4,7 +4,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/factory"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 )
 
 var (
@@ -31,8 +31,8 @@ func (m *Machine) CreatePodWithTailLogsContainer(podName string, parentPodCmd st
 					Image: dockerImg,
 					VolumeMounts: []corev1.VolumeMount{
 						{
-							Name:      factory.VolumeSysDirName,
-							MountPath: factory.VolumeSysDirMountPath,
+							Name:      converter.VolumeSysDirName,
+							MountPath: converter.VolumeSysDirMountPath,
 						},
 					},
 					Command: []string{
@@ -48,8 +48,8 @@ func (m *Machine) CreatePodWithTailLogsContainer(podName string, parentPodCmd st
 					Image: dockerImg,
 					VolumeMounts: []corev1.VolumeMount{
 						{
-							Name:      factory.VolumeSysDirName,
-							MountPath: factory.VolumeSysDirMountPath,
+							Name:      converter.VolumeSysDirName,
+							MountPath: converter.VolumeSysDirMountPath,
 						},
 					},
 					Args: []string{
@@ -66,7 +66,7 @@ func (m *Machine) CreatePodWithTailLogsContainer(podName string, parentPodCmd st
 			},
 			Volumes: []corev1.Volume{
 				{
-					Name:         factory.VolumeSysDirName,
+					Name:         converter.VolumeSysDirName,
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 				},
 			},
