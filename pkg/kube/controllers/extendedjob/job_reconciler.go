@@ -1,10 +1,11 @@
 package extendedjob
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"context"
 	"encoding/json"
 	"reflect"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 
 	"github.com/pkg/errors"
 
@@ -57,7 +58,6 @@ type ReconcileJob struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileJob) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-
 	instance := &batchv1.Job{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
@@ -177,7 +177,6 @@ func (r *ReconcileJob) jobPod(ctx context.Context, name string, namespace string
 }
 
 func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job, ejob ejv1.ExtendedJob) error {
-
 	pod, err := r.jobPod(ctx, instance.GetName(), instance.GetNamespace())
 	if err != nil {
 		return errors.Wrapf(err, "failed to persist output for ejob %s", ejob.GetName())
@@ -187,7 +186,7 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 	for _, c := range pod.Spec.Containers {
 		result, err := r.podLogGetter.Get(instance.GetNamespace(), pod.Name, c.Name)
 		if err != nil {
-			return errors.Wrapf(err, "getting pod output for container %s in jobPod %s", c.Name, pod.GetName())
+			return errors.Wrapf(err, "getting output for container '%s/%s'", pod.GetName(), c.Name)
 		}
 
 		// Create secret
@@ -196,7 +195,9 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 		var data map[string]string
 		err = json.Unmarshal(result, &data)
 		if err != nil {
-			return ctxlog.WithEvent(&ejob, "ExtendedJob").Errorf(ctx, "invalid JSON output was emitted for container '%s', secret '%s' cannot be created", instance.GetName(), secretName)
+			return ctxlog.WithEvent(&ejob, "ExtendedJob").Errorf(ctx,
+				"secret '%s' cannot be created. Invalid JSON output was emitted by container '%s/%s': '%s'",
+				secretName, pod.GetName(), instance.GetName(), result)
 		}
 
 		secret := &corev1.Secret{
@@ -218,7 +219,6 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 		}
 
 		if ejob.Spec.Output.Versioned {
-
 			// Use secretName as versioned secret name prefix: <secretName>-v<version>
 			err = r.versionedSecretStore.Create(
 				ctx,
@@ -230,7 +230,7 @@ func (r *ReconcileJob) persistOutput(ctx context.Context, instance *batchv1.Job,
 				secretLabels,
 				"created by extendedJob")
 			if err != nil {
-				return errors.Wrapf(err, "could not create persisted output secret for ejob %s", ejob.GetName())
+				return errors.Wrapf(err, "could not persist ejob's %s output to a secret", ejob.GetName())
 			}
 		} else {
 			secret.StringData = data
