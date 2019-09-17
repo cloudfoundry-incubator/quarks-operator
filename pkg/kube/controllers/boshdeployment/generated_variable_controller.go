@@ -1,6 +1,7 @@
 package boshdeployment
 
 import (
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"context"
 	"fmt"
 	"strings"
@@ -29,7 +30,12 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 	r := NewGeneratedVariableReconciler(
 		ctx, config, mgr,
 		controllerutil.SetControllerReference,
-		converter.NewKubeConverter(config.Namespace),
+		converter.NewKubeConverter(
+			config.Namespace,
+			converter.NewVolumeFactory(),
+			func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) converter.ContainerFactory {
+				return converter.NewContainerFactory(manifestName, instanceGroupName, version, disableLogSidecar, releaseImageProvider, bpmConfigs)
+			}),
 	)
 
 	// Create a new controller

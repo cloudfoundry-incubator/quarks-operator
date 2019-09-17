@@ -25,13 +25,20 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
+// JobFactory creates Jobs for a given manifest
+type JobFactory interface {
+	VariableInterpolationJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error)
+	InstanceGroupManifestJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error)
+	BPMConfigsJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error)
+}
+
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // NewDeploymentReconciler returns a new reconcile.Reconciler
-func NewDeploymentReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver converter.Resolver, srf setReferenceFunc) reconcile.Reconciler {
+func NewDeploymentReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver converter.Resolver, jobFactory JobFactory, srf setReferenceFunc) reconcile.Reconciler {
 
 	return &ReconcileBOSHDeployment{
 		ctx:          ctx,
@@ -40,6 +47,7 @@ func NewDeploymentReconciler(ctx context.Context, config *config.Config, mgr man
 		scheme:       mgr.GetScheme(),
 		resolver:     resolver,
 		setReference: srf,
+		jobFactory:   jobFactory,
 	}
 }
 
@@ -51,6 +59,7 @@ type ReconcileBOSHDeployment struct {
 	scheme       *runtime.Scheme
 	resolver     converter.Resolver
 	setReference setReferenceFunc
+	jobFactory   JobFactory
 }
 
 // Reconcile starts the deployment process for a BOSHDeployment and deploys ExtendedJobs to generate required properties for instance groups and rendered BPM
@@ -90,12 +99,10 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			log.WithEvent(instance, "WithOpsManifestError").Errorf(ctx, "Failed to create with-ops manifest secret for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	// Generate all the kube objects we need for the manifest
-	log.Debug(ctx, "Converting bosh manifest to kube objects")
-	jobFactory := converter.NewJobFactory(*manifest, instance.GetNamespace())
+	log.Debug(ctx, "Rendering manifest")
 
 	// Apply the "Variable Interpolation" ExtendedJob, which creates the desired manifest secret
-	eJob, err := jobFactory.VariableInterpolationJob()
+	eJob, err := r.jobFactory.VariableInterpolationJob(*manifest)
 	if err != nil {
 		return reconcile.Result{}, log.WithEvent(instance, "DesiredManifestError").Errorf(ctx, "Failed to build the desired manifest eJob: %v", err)
 	}
@@ -108,7 +115,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Apply the "Data Gathering" ExtendedJob, which creates instance group manifests (ig-resolved) secrets
-	eJob, err = jobFactory.InstanceGroupManifestJob()
+	eJob, err = r.jobFactory.InstanceGroupManifestJob(*manifest)
 	if err != nil {
 		return reconcile.Result{}, log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "Failed to build instance group manifest eJob: %v", err)
 
@@ -121,7 +128,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Apply the "BPM Configs" ExtendedJob, which creates BPM config secrets
-	eJob, err = jobFactory.BPMConfigsJob()
+	eJob, err = r.jobFactory.BPMConfigsJob(*manifest)
 	if err != nil {
 		return reconcile.Result{}, log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to build BPM configs eJob: %v", err)
 
@@ -162,7 +169,7 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 	// Create manifest with ops, which will be used as a base for variable interpolation in desired manifest job input.
 	manifestBytes, err := manifest.Marshal()
 	if err != nil {
-		return nil, log.WithEvent(instance, "ManifestWithOpsUnmarshalError").Errorf(ctx, "Error unmarshaling the manifest %s: %s", instance.GetName(), err)
+		return nil, log.WithEvent(instance, "ManifestWithOpsMarshalError").Errorf(ctx, "Error marshaling the manifest %s: %s", instance.GetName(), err)
 	}
 
 	manifestSecretName := names.CalculateSecretName(names.DeploymentSecretTypeManifestWithOps, manifest.Name, "")

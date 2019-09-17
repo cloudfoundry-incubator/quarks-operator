@@ -2,6 +2,8 @@ package extendedsecret
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -50,7 +52,18 @@ func AddExtendedSecret(ctx context.Context, config *config.Config, mgr manager.M
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
-		UpdateFunc:  func(e event.UpdateEvent) bool { return true },
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			o := e.ObjectOld.(*esv1.ExtendedSecret)
+			n := e.ObjectNew.(*esv1.ExtendedSecret)
+			if !reflect.DeepEqual(o.Spec, n.Spec) {
+				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
+					ctx, e.MetaNew, "esv1.ExtendedSecret",
+					fmt.Sprintf("Update predicate passed for '%s'", e.MetaNew.GetName()),
+				)
+				return true
+			}
+			return false
+		},
 	}
 	err = c.Watch(&source.Kind{Type: &esv1.ExtendedSecret{}}, &handler.EnqueueRequestForObject{}, p)
 	if err != nil {
