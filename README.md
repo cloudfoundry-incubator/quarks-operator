@@ -28,13 +28,13 @@ The `cf-operator` can be installed via `helm`. Make sure you have a running Kube
 Use this if you've never installed the operator before
 
 ```bash
-helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com/cf-operators/helm-charts/cf-operator-v0.3.0%2B1.g551e559.tgz
+helm install --namespace cf-operator --name cf-operator https://cf-operators.s3.amazonaws.com/release/helm-charts/cf-operator-v0.4.0%2B1.g3d277af0.tgz
 ```
 
 Use this if the custom resources have already been created by a previous CF Operator installation
 
 ```bash
-helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com/cf-operators/helm-charts/cf-operator-v0.3.0%2B1.g551e559.tgz --set "customResources.enableInstallation=false"
+helm install --namespace cf-operator --name cf-operator https://cf-operators.s3.amazonaws.com/release/helm-charts/cf-operator-v0.4.0%2B1.g3d277af0.tgz --set "customResources.enableInstallation=false"
 ````
 
 For more information about the `cf-operator` helm chart and how to configure it, please refer to [deploy/helm/cf-operator/README.md](deploy/helm/cf-operator/README.md)
