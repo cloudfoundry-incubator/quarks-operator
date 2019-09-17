@@ -15,7 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
@@ -26,7 +25,7 @@ import (
 var _ reconcile.Reconciler = &ReconcileGeneratedVariable{}
 
 // NewGeneratedVariableReconciler returns a new reconcile.Reconciler
-func NewGeneratedVariableReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, srf setReferenceFunc, kubeConverter *converter.KubeConverter) reconcile.Reconciler {
+func NewGeneratedVariableReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, srf setReferenceFunc, kubeConverter KubeConverter) reconcile.Reconciler {
 	return &ReconcileGeneratedVariable{
 		ctx:           ctx,
 		config:        config,
@@ -44,7 +43,7 @@ type ReconcileGeneratedVariable struct {
 	client        client.Client
 	scheme        *runtime.Scheme
 	setReference  setReferenceFunc
-	kubeConverter *converter.KubeConverter
+	kubeConverter KubeConverter
 }
 
 // Reconcile creates or updates variables extendedSecrets

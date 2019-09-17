@@ -5,7 +5,10 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"
 
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
@@ -13,9 +16,11 @@ import (
 
 var _ = Describe("kube converter", func() {
 	var (
-		m   *manifest.Manifest
-		env testing.Catalog
-		err error
+		m                *manifest.Manifest
+		volumeFactory    *fakes.FakeVolumeFactory
+		containerFactory *fakes.FakeContainerFactory
+		env              testing.Catalog
+		err              error
 	)
 
 	Describe("Variables", func() {
@@ -26,7 +31,12 @@ var _ = Describe("kube converter", func() {
 		})
 
 		act := func() ([]esv1.ExtendedSecret, error) {
-			kubeConverter := converter.NewKubeConverter("foo")
+			kubeConverter := converter.NewKubeConverter(
+				"foo",
+				volumeFactory,
+				func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) converter.ContainerFactory {
+					return containerFactory
+				})
 			return kubeConverter.Variables(m.Name, m.Variables)
 		}
 
