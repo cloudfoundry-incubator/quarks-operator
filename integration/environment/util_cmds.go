@@ -1,10 +1,10 @@
 package environment
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 )
 
 var (

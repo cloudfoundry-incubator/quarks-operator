@@ -5,7 +5,10 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"
 
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
@@ -13,9 +16,11 @@ import (
 
 var _ = Describe("kube converter", func() {
 	var (
-		m   *manifest.Manifest
-		env testing.Catalog
-		err error
+		m                *manifest.Manifest
+		volumeFactory    *fakes.FakeVolumeFactory
+		containerFactory *fakes.FakeContainerFactory
+		env              testing.Catalog
+		err              error
 	)
 
 	Describe("Variables", func() {
@@ -25,8 +30,13 @@ var _ = Describe("kube converter", func() {
 			format.TruncatedDiff = false
 		})
 
-		act := func() []esv1.ExtendedSecret {
-			kubeConverter := converter.NewKubeConverter("foo")
+		act := func() ([]esv1.ExtendedSecret, error) {
+			kubeConverter := converter.NewKubeConverter(
+				"foo",
+				volumeFactory,
+				func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) converter.ContainerFactory {
+					return containerFactory
+				})
 			return kubeConverter.Variables(m.Name, m.Variables)
 		}
 
@@ -35,7 +45,8 @@ var _ = Describe("kube converter", func() {
 				m.Name = "-abc_123.?!\"§$&/()=?"
 				m.Variables[0].Name = "def-456.?!\"§$&/()=?-"
 
-				variables := act()
+				variables, err := act()
+				Expect(err).NotTo(HaveOccurred())
 				Expect(variables[0].Name).To(Equal("abc-123.var-def-456"))
 			})
 
@@ -43,12 +54,14 @@ var _ = Describe("kube converter", func() {
 				m.Name = "foo"
 				m.Variables[0].Name = "this-is-waaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaay-too-long"
 
-				variables := act()
+				variables, err := act()
+				Expect(err).NotTo(HaveOccurred())
 				Expect(variables[0].Name).To(Equal("foo.var-this-is-waaaaaaaaaaaaaa5bffdb0302ac051d11f52d2606254a5f"))
 			})
 
 			It("converts password variables", func() {
-				variables := act()
+				variables, err := act()
+				Expect(err).NotTo(HaveOccurred())
 				Expect(len(variables)).To(Equal(1))
 
 				var1 := variables[0]
@@ -62,7 +75,8 @@ var _ = Describe("kube converter", func() {
 					Name: "adminkey",
 					Type: "rsa",
 				}
-				variables := act()
+				variables, err := act()
+				Expect(err).NotTo(HaveOccurred())
 				Expect(variables).To(HaveLen(1))
 
 				var1 := variables[0]
@@ -77,7 +91,8 @@ var _ = Describe("kube converter", func() {
 					Name: "adminkey",
 					Type: "ssh",
 				}
-				variables := act()
+				variables, err := act()
+				Expect(err).NotTo(HaveOccurred())
 				Expect(variables).To(HaveLen(1))
 
 				var1 := variables[0]
@@ -85,6 +100,15 @@ var _ = Describe("kube converter", func() {
 				Expect(var1.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
 				Expect(var1.Spec.Type).To(Equal(esv1.SSHKey))
 				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminkey"))
+			})
+
+			It("raises an error when the options are missing for a certificate variable", func() {
+				m.Variables[0] = manifest.Variable{
+					Name: "foo-cert",
+					Type: "certificate",
+				}
+				_, err := act()
+				Expect(err).To(HaveOccurred())
 			})
 
 			It("converts certificate variables", func() {
@@ -99,7 +123,8 @@ var _ = Describe("kube converter", func() {
 						ExtendedKeyUsage: []manifest.AuthType{manifest.ClientAuth},
 					},
 				}
-				variables := act()
+				variables, err := act()
+				Expect(err).NotTo(HaveOccurred())
 				Expect(variables).To(HaveLen(1))
 
 				var1 := variables[0]
