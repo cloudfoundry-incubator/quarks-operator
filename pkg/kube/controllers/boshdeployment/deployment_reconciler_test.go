@@ -43,11 +43,15 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		request    reconcile.Request
 		ctx        context.Context
 		resolver   fakes.FakeResolver
+		jobFactory fakes.FakeJobFactory
 		manifest   *bdm.Manifest
 		log        *zap.SugaredLogger
 		config     *cfcfg.Config
 		client     *cfakes.FakeClient
 		instance   *bdv1.BOSHDeployment
+		dmEJob     *ejv1.ExtendedJob
+		igEJob     *ejv1.ExtendedJob
+		bpmEJob    *ejv1.ExtendedJob
 	)
 
 	BeforeEach(func() {
@@ -57,10 +61,11 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		manager.GetSchemeReturns(scheme.Scheme)
 		manager.GetEventRecorderForReturns(recorder)
 		resolver = fakes.FakeResolver{}
+		jobFactory = fakes.FakeJobFactory{}
 
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 		manifest = &bdm.Manifest{
-			Name: "fake-manifest",
+			Name: "foo",
 			Releases: []*bdm.Release{
 				{
 					Name:    "bar",
@@ -104,6 +109,21 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				},
 			},
 		}
+		dmEJob = &ejv1.ExtendedJob{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: fmt.Sprintf("dm-%s", manifest.Name),
+			},
+		}
+		igEJob = &ejv1.ExtendedJob{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: fmt.Sprintf("ig-%s", manifest.Name),
+			},
+		}
+		bpmEJob = &ejv1.ExtendedJob{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: fmt.Sprintf("bpm-%s", manifest.Name),
+			},
+		}
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
 		_, log = helper.NewTestLogger()
 		ctx = ctxlog.NewParentContext(log)
@@ -137,6 +157,8 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			switch object := object.(type) {
 			case *bdv1.BOSHDeployment:
 				instance.DeepCopyInto(object)
+			case *ejv1.ExtendedJob:
+				return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 			}
 
 			return nil
@@ -148,7 +170,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 	JustBeforeEach(func() {
 		resolver.WithOpsManifestReturns(manifest, []string{}, nil)
 		reconciler = cfd.NewDeploymentReconciler(ctx, config, manager,
-			&resolver, controllerutil.SetControllerReference,
+			&resolver, &jobFactory, controllerutil.SetControllerReference,
 		)
 	})
 
@@ -197,7 +219,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles an error when setting the owner reference on the object", func() {
-				reconciler = cfd.NewDeploymentReconciler(ctx, config, manager, &resolver,
+				reconciler = cfd.NewDeploymentReconciler(ctx, config, manager, &resolver, &jobFactory,
 					func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 						return fmt.Errorf("some error")
 					},
@@ -208,7 +230,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Expect(err.Error()).To(ContainSubstring("failed to set ownerReference for Secret 'foo.with-ops': some error"))
 			})
 
-			It("handles an errors when creating manifest secret with ops ", func() {
+			It("handles an error when creating manifest secret with ops ", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
@@ -244,24 +266,25 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Expect(err.Error()).To(ContainSubstring("failed to create with-ops manifest secret for BOSHDeployment 'default/foo': failed to apply Secret 'foo.with-ops': fake-error"))
 			})
 
-			It("handles an errors when creating variable interpolation eJob", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-					switch object := object.(type) {
-					case *bdv1.BOSHDeployment:
-						instance.DeepCopyInto(object)
-					case *ejv1.ExtendedJob:
-						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
-					}
+			It("handles an error when building desired manifest eJob", func() {
+				jobFactory.VariableInterpolationJobReturns(dmEJob, errors.New("fake-error"))
 
-					return nil
-				})
-				client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOption) error {
-					switch object := object.(type) {
-					case *bdv1.BOSHDeployment:
-						object.DeepCopyInto(instance)
-					}
-					return nil
-				})
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to build the desired manifest eJob"))
+			})
+
+			It("handles an error when building desired manifest eJob", func() {
+				jobFactory.VariableInterpolationJobReturns(dmEJob, errors.New("fake-error"))
+
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to build the desired manifest eJob"))
+			})
+
+			It("handles an error when creating desired manifest eJob", func() {
+				jobFactory.VariableInterpolationJobReturns(dmEJob, nil)
+
 				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 					switch object := object.(type) {
 					case *ejv1.ExtendedJob:
@@ -278,24 +301,19 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Expect(err.Error()).To(ContainSubstring("failed to create desired manifest ExtendedJob for BOSHDeployment 'default/foo': creating or updating ExtendedJob 'dm-foo': fake-error"))
 			})
 
-			It("handles an errors when creating data gathering eJob", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-					switch object := object.(type) {
-					case *bdv1.BOSHDeployment:
-						instance.DeepCopyInto(object)
-					case *ejv1.ExtendedJob:
-						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
-					}
+			It("handles an error when building instance group manifest eJob", func() {
+				jobFactory.VariableInterpolationJobReturns(dmEJob, nil)
+				jobFactory.InstanceGroupManifestJobReturns(dmEJob, errors.New("fake-error"))
 
-					return nil
-				})
-				client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOption) error {
-					switch object := object.(type) {
-					case *bdv1.BOSHDeployment:
-						object.DeepCopyInto(instance)
-					}
-					return nil
-				})
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to build instance group manifest eJob"))
+			})
+
+			It("handles an error when creating instance group manifest eJob", func() {
+				jobFactory.VariableInterpolationJobReturns(dmEJob, nil)
+				jobFactory.InstanceGroupManifestJobReturns(igEJob, nil)
+
 				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 					switch object := object.(type) {
 					case *ejv1.ExtendedJob:
@@ -310,6 +328,37 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to create instance group manifest ExtendedJob for BOSHDeployment 'default/foo': creating or updating ExtendedJob 'ig-foo': fake-error"))
+			})
+
+			It("handles an error when building BPM configs eJob", func() {
+				jobFactory.VariableInterpolationJobReturns(dmEJob, nil)
+				jobFactory.InstanceGroupManifestJobReturns(dmEJob, nil)
+				jobFactory.BPMConfigsJobReturns(dmEJob, errors.New("fake-error"))
+
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to build BPM configs eJob"))
+			})
+
+			It("handles an error when creating BPM configs eJob", func() {
+				jobFactory.VariableInterpolationJobReturns(dmEJob, nil)
+				jobFactory.InstanceGroupManifestJobReturns(igEJob, nil)
+				jobFactory.BPMConfigsJobReturns(bpmEJob, nil)
+
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
+					switch object := object.(type) {
+					case *ejv1.ExtendedJob:
+						eJob := object
+						if strings.HasPrefix(eJob.Name, "bpm-") {
+							return errors.New("fake-error")
+						}
+					}
+					return nil
+				})
+
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to create BPM configs ExtendedJob for BOSHDeployment 'default/foo': creating or updating ExtendedJob 'bpm-foo': fake-error"))
 			})
 		})
 	})

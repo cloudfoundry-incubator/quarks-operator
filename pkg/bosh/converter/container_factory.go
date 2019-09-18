@@ -11,8 +11,14 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+)
+
+var (
+	rootUserID = int64(0)
+	vcapUserID = int64(1000)
 )
 
 const (
@@ -23,8 +29,8 @@ const (
 	EnvLogsDir = "LOGS_DIR"
 )
 
-// ContainerFactory builds Kubernetes containers from BOSH jobs.
-type ContainerFactory struct {
+// ContainerFactoryImpl is a concrete implementation of ContainerFactor.
+type ContainerFactoryImpl struct {
 	manifestName         string
 	instanceGroupName    string
 	version              string
@@ -33,9 +39,9 @@ type ContainerFactory struct {
 	bpmConfigs           bpm.Configs
 }
 
-// NewContainerFactory returns a new ContainerFactory for a BOSH instant group.
-func NewContainerFactory(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactory {
-	return &ContainerFactory{
+// NewContainerFactory returns a concrete implementation of ContainerFactory.
+func NewContainerFactory(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactoryImpl {
+	return &ContainerFactoryImpl{
 		manifestName:         manifestName,
 		instanceGroupName:    instanceGroupName,
 		version:              version,
@@ -46,10 +52,10 @@ func NewContainerFactory(manifestName string, instanceGroupName string, version 
 }
 
 // JobsToInitContainers creates a list of Containers for corev1.PodSpec InitContainers field.
-func (c *ContainerFactory) JobsToInitContainers(
+func (c *ContainerFactoryImpl) JobsToInitContainers(
 	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
-	bpmDisks BPMResourceDisks,
+	bpmDisks disk.BPMResourceDisks,
 ) ([]corev1.Container, error) {
 	copyingSpecsInitContainers := make([]corev1.Container, 0)
 	boshPreStartInitContainers := make([]corev1.Container, 0)
@@ -145,15 +151,15 @@ func (c *ContainerFactory) JobsToInitContainers(
 }
 
 // JobsToContainers creates a list of Containers for corev1.PodSpec Containers field.
-func (c *ContainerFactory) JobsToContainers(
+func (c *ContainerFactoryImpl) JobsToContainers(
 	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
-	bpmDisks BPMResourceDisks,
+	bpmDisks disk.BPMResourceDisks,
 ) ([]corev1.Container, error) {
 	var containers []corev1.Container
 
 	if len(jobs) == 0 {
-		return nil, errors.Errorf("instance group %s has no jobs defined", c.instanceGroupName)
+		return nil, errors.Errorf("instance group '%s' has no jobs defined", c.instanceGroupName)
 	}
 
 	for _, job := range jobs {
@@ -419,7 +425,7 @@ func bpmPreStartInitContainer(
 ) corev1.Container {
 	var script string
 	if debug {
-		script = fmt.Sprintf(`%s || ( echo "Debug window 1hr" ; sleep 3600)`, process.Hooks.PreStart)
+		script = fmt.Sprintf(`%s || ( echo "Debug window 1hr" ; sleep 3600 )`, process.Hooks.PreStart)
 	} else {
 		script = process.Hooks.PreStart
 	}
