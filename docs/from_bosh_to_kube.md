@@ -36,6 +36,7 @@
 ## Missing Features
 
 1. Canary support in ExtendedStatefulSets
+1. Missing support for the `allow_executions` flag in bpm configs
 
 ## High-level Direction
 
@@ -544,7 +545,7 @@ stringData:
 
 ### Pre_render_scripts
 
-Similar to what can be achieved in SCF v1, with the [patches](https://github.com/SUSE/scf/tree/develop/container-host-files/etc/scf/config/scripts/patches) scripts, the `cf-operator` is able to support this behaviour. Basically, it allows the user to execute a custom script during runtime of the job container for a specific `instance_group`. Because patching during runtime is always a great feature to have, for a variety of reasons, users can specify this via the `quarks.pre_render_scripts` key. 
+Similar to what can be achieved in SCF v1, with the [patches](https://github.com/SUSE/scf/tree/develop/container-host-files/etc/scf/config/scripts/patches) scripts, the `cf-operator` is able to support this behaviour. Basically, it allows the user to execute a custom script during runtime of the job container for a specific `instance_group`. Because patching during runtime is always a great feature to have, for a variety of reasons, users can specify this via the `quarks.pre_render_scripts` key.
 
 Keep it mind, that the script should belong to a type, to avoid running all scripts as a whole. Currently supported types are:
 
