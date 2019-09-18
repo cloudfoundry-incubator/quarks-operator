@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -37,6 +38,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 		reconciler   reconcile.Reconciler
 		request      reconcile.Request
 		log          *zap.SugaredLogger
+		logs         *observer.ObservedLogs
 		client       *cfakes.FakeClient
 		podLogGetter *cfakes.FakePodLogGetter
 		ejob         *ejapi.ExtendedJob
@@ -50,7 +52,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 		controllers.AddToScheme(scheme.Scheme)
 		manager = &cfakes.FakeManager{}
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-		_, log = helper.NewTestLogger()
+		logs, log = helper.NewTestLogger()
 
 		client = &cfakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
@@ -212,6 +214,24 @@ var _ = Describe("ReconcileExtendedJob", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(client.CreateCallCount()).To(Equal(1))
 				Expect(reconcile.Result{}).To(Equal(result))
+			})
+		})
+	})
+
+	Context("Job returns invalid JSON", func() {
+		Context("when output persistence is configured", func() {
+			JustBeforeEach(func() {
+				ejob.Spec.Output = &ejapi.Output{NamePrefix: "foo-"}
+			})
+
+			BeforeEach(func() {
+				podLogGetter.GetReturns([]byte(`invalid json`), nil)
+			})
+
+			It("logs the error", func() {
+				reconciler.Reconcile(request)
+				Expect(logs.FilterMessageSnippet(
+					"Could not persist output: 'secret 'foo-busybox' cannot be created. Invalid JSON output was emitted by container 'foo-pod/foo-job': 'invalid json'").Len()).To(Equal(1))
 			})
 		})
 	})
