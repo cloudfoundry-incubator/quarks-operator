@@ -239,13 +239,13 @@ func Create(namespace string, yamlFilePath string) error {
 
 // CreateSecretFromLiteral creates a generic type secret using kubectl command
 func CreateSecretFromLiteral(namespace string, secretName string, literalValues map[string]string) error {
-	cmd := []string{"--namespace", namespace, "create", "secret", "generic", secretName}
+	args := []string{"--namespace", namespace, "create", "secret", "generic", secretName}
 
 	for key, value := range literalValues {
-		cmd = append(cmd, fmt.Sprintf("--from-literal=%s=%s", key, value))
+		args = append(args, fmt.Sprintf("--from-literal=%s=%s", key, value))
 	}
 
-	_, err := runBinary(kubeCtlCmd, cmd...)
+	_, err := runBinary(kubeCtlCmd, args...)
 	if err != nil {
 		return errors.Wrapf(err, "Creating secret %s failed from literal value.", secretName)
 	}
