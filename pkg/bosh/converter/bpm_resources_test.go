@@ -321,7 +321,8 @@ var _ = Describe("kube converter", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(resources.Errands).To(HaveLen(1))
 
-				_, err = act(bpmConfigs[1], m.InstanceGroups[1])
+				resources, err = act(bpmConfigs[1], m.InstanceGroups[1])
+				Expect(resources.InstanceGroups).To(HaveLen(1))
 				Expect(err).ShouldNot(HaveOccurred())
 
 				resources, err = act(bpmConfigs[2], m.InstanceGroups[2])
