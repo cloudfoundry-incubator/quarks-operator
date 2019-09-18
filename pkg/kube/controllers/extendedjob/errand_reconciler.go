@@ -126,7 +126,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 	eJob.Status.LastReconcile = &now
 	err := r.client.Status().Update(ctx, eJob)
 	if err != nil {
-		err = ctxlog.WithEvent(eJob, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on job '%s' (%v): %s", eJob.Name, eJob.ResourceVersion, err)
+		ctxlog.WithEvent(eJob, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on job '%s' (%v): %s", eJob.Name, eJob.ResourceVersion, err)
 		return reconcile.Result{Requeue: false}, nil
 	}
 

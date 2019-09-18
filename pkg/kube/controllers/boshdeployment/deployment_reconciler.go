@@ -146,7 +146,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	err = r.client.Status().Update(ctx, instance)
 	if err != nil {
-		err = log.WithEvent(instance, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on bdpl '%s' (%v): %s", instance.Name, instance.ResourceVersion, err)
+		log.WithEvent(instance, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on bdpl '%s' (%v): %s", instance.Name, instance.ResourceVersion, err)
 		return reconcile.Result{Requeue: false}, nil
 	}
 

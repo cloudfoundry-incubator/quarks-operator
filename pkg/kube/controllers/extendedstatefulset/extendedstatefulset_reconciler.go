@@ -135,7 +135,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	exStatefulSet.Status.LastReconcile = &now
 	err = r.client.Status().Update(ctx, exStatefulSet)
 	if err != nil {
-		err = ctxlog.WithEvent(exStatefulSet, "UpdateStatusError").Errorf(ctx, "Failed to update reconcile timestamp on ExtendedStatefulSet '%s' (%v): %s", exStatefulSet.Name, exStatefulSet.ResourceVersion, err)
+		ctxlog.WithEvent(exStatefulSet, "UpdateStatusError").Errorf(ctx, "Failed to update reconcile timestamp on ExtendedStatefulSet '%s' (%v): %s", exStatefulSet.Name, exStatefulSet.ResourceVersion, err)
 		return reconcile.Result{Requeue: false}, nil
 	}
 
