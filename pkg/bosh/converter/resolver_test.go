@@ -127,12 +127,33 @@ variables:
       common_name: ((system_domain))
 `},
 			},
+			&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "manifest-with-multiline-implicit-var",
+					Namespace: "default",
+				},
+				Data: map[string]string{bdc.ManifestSpecName: `---
+name: foo
+instance_groups:
+  - name: component1
+    instances: 1
+    properties:
+      ca: ((implicit_ca))
+`},
+			},
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo-deployment.var-system-domain",
 					Namespace: "default",
 				},
 				Data: map[string][]byte{"value": []byte("example.com")},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-deployment.var-implicit-ca",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{"value": []byte("complicated\n'multiline'\nstring")},
 			},
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -668,6 +689,27 @@ instance_groups:
 			Expect(m.Variables[1].Options.CommonName).To(Equal("example.com"))
 			Expect(len(implicitVars)).To(Equal(1))
 			Expect(implicitVars[0]).To(Equal("foo-deployment.var-system-domain"))
+		})
+
+		It("handles multi-line implicit vars", func() {
+			deployment := &bdc.BOSHDeployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo-deployment",
+				},
+				Spec: bdc.BOSHDeploymentSpec{
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "manifest-with-multiline-implicit-var",
+					},
+					Ops: []bdc.ResourceReference{},
+				},
+			}
+			m, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(implicitVars)).To(Equal(1))
+			Expect(implicitVars[0]).To(Equal("foo-deployment.var-implicit-ca"))
+			Expect(m.InstanceGroups[0].Properties["ca"]).To(Equal("complicated\n'multiline'\nstring"))
 		})
 	})
 })
