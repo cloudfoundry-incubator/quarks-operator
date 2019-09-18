@@ -127,7 +127,9 @@ func (r *ResolverImpl) WithOpsManifest(ctx context.Context, instance *bdv1.BOSHD
 		}
 
 		varSecrets[i] = varSecretName
-		m = strings.Replace(m, fmt.Sprintf("((%s))", v), varData, -1)
+		// Prepare string for yaml multiline flow scalar syntax
+		escapedData := strings.ReplaceAll(strings.ReplaceAll(varData, "'", "''"), "\n", "\n\n")
+		m = strings.Replace(m, fmt.Sprintf("((%s))", v), fmt.Sprintf("'%s'", escapedData), -1)
 	}
 
 	manifest, err = bdm.LoadYAML([]byte(m))
@@ -208,7 +210,9 @@ func (r *ResolverImpl) WithOpsManifestDetailed(ctx context.Context, instance *bd
 		}
 
 		varSecrets[i] = varSecretName
-		m = strings.Replace(m, fmt.Sprintf("((%s))", v), varData, -1)
+		// Prepare string for yaml multiline flow scalar syntax
+		escapedData := strings.ReplaceAll(strings.ReplaceAll(varData, "'", "''"), "\n", "\n\n")
+		m = strings.Replace(m, fmt.Sprintf("((%s))", v), fmt.Sprintf("'%s'", escapedData), -1)
 	}
 
 	manifest, err = bdm.LoadYAML([]byte(m))
