@@ -149,7 +149,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	meltdown.SetLastReconcile(&bpmSecret.ObjectMeta, time.Now())
 	err = r.client.Update(ctx, bpmSecret)
 	if err != nil {
-		err = log.WithEvent(bpmSecret, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on BPM versioned secret '%s' (%v): %s", bpmSecret.Name, bpmSecret.ResourceVersion, err)
+		log.WithEvent(bpmSecret, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on BPM versioned secret '%s' (%v): %s", bpmSecret.Name, bpmSecret.ResourceVersion, err)
 		return reconcile.Result{Requeue: false}, nil
 	}
 

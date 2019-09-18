@@ -67,7 +67,7 @@ func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable
 		}
 		if v.Type == esv1.Certificate {
 			if v.Options == nil {
-				return secrets, fmt.Errorf("Invalid certificate ExtendedSecret: missing options key")
+				return secrets, fmt.Errorf("invalid certificate ExtendedSecret: missing options key")
 			}
 
 			usages := []certv1.KeyUsage{}
