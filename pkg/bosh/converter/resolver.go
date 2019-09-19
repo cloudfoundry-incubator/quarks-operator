@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -110,7 +111,6 @@ func (r *ResolverImpl) WithOpsManifest(ctx context.Context, instance *bdv1.BOSHD
 	if err != nil {
 		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying ops %#v", m)
 	}
-	m = string(bytes)
 
 	// Interpolate implicit variables
 	vars, err := manifest.ImplicitVariables()
@@ -127,14 +127,7 @@ func (r *ResolverImpl) WithOpsManifest(ctx context.Context, instance *bdv1.BOSHD
 		}
 
 		varSecrets[i] = varSecretName
-		// Prepare string for yaml multiline flow scalar syntax
-		escapedData := strings.ReplaceAll(strings.ReplaceAll(varData, "'", "''"), "\n", "\n\n")
-		m = strings.Replace(m, fmt.Sprintf("((%s))", v), fmt.Sprintf("'%s'", escapedData), -1)
-	}
-
-	manifest, err = bdm.LoadYAML([]byte(m))
-	if err != nil {
-		return nil, varSecrets, errors.Wrapf(err, "failed to load yaml after interpolating implicit variables %#v", m)
+		manifest = r.replaceVar(manifest, v, varData)
 	}
 
 	// Apply addons
@@ -193,7 +186,6 @@ func (r *ResolverImpl) WithOpsManifestDetailed(ctx context.Context, instance *bd
 	if err != nil {
 		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying ops %#v", m)
 	}
-	m = string(bytes)
 
 	// Interpolate implicit variables
 	vars, err := manifest.ImplicitVariables()
@@ -210,14 +202,7 @@ func (r *ResolverImpl) WithOpsManifestDetailed(ctx context.Context, instance *bd
 		}
 
 		varSecrets[i] = varSecretName
-		// Prepare string for yaml multiline flow scalar syntax
-		escapedData := strings.ReplaceAll(strings.ReplaceAll(varData, "'", "''"), "\n", "\n\n")
-		m = strings.Replace(m, fmt.Sprintf("((%s))", v), fmt.Sprintf("'%s'", escapedData), -1)
-	}
-
-	manifest, err = bdm.LoadYAML([]byte(m))
-	if err != nil {
-		return nil, varSecrets, errors.Wrapf(err, "failed to load yaml after interpolating implicit variables %#v", m)
+		manifest = r.replaceVar(manifest, v, varData)
 	}
 
 	// Apply addons
@@ -227,6 +212,59 @@ func (r *ResolverImpl) WithOpsManifestDetailed(ctx context.Context, instance *bd
 	}
 
 	return manifest, varSecrets, err
+}
+
+func (r *ResolverImpl) replaceVar(manifest *bdm.Manifest, name, value string) *bdm.Manifest {
+	original := reflect.ValueOf(manifest)
+	replaced := reflect.New(original.Type()).Elem()
+
+	r.replaceVarRecursive(replaced, original, name, value)
+
+	return replaced.Interface().(*bdm.Manifest)
+}
+
+func (r *ResolverImpl) replaceVarRecursive(copy, v reflect.Value, varName, varValue string) {
+	switch v.Kind() {
+	case reflect.Ptr:
+		if !v.Elem().IsValid() {
+			return
+		}
+		copy.Set(reflect.New(v.Elem().Type()))
+		r.replaceVarRecursive(copy.Elem(), reflect.Indirect(v), varName, varValue)
+
+	case reflect.Interface:
+		originalValue := v.Elem()
+		copyValue := reflect.New(originalValue.Type()).Elem()
+		r.replaceVarRecursive(copyValue, originalValue, varName, varValue)
+		copy.Set(copyValue)
+
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i++ {
+			r.replaceVarRecursive(copy.Field(i), v.Field(i), varName, varValue)
+		}
+
+	case reflect.Slice:
+		copy.Set(reflect.MakeSlice(v.Type(), v.Len(), v.Cap()))
+		for i := 0; i < v.Len(); i++ {
+			r.replaceVarRecursive(copy.Index(i), v.Index(i), varName, varValue)
+		}
+
+	case reflect.Map:
+		copy.Set(reflect.MakeMap(v.Type()))
+		for _, key := range v.MapKeys() {
+			originalValue := v.MapIndex(key)
+			copyValue := reflect.New(originalValue.Type()).Elem()
+			r.replaceVarRecursive(copyValue, originalValue, varName, varValue)
+			copy.SetMapIndex(key, copyValue)
+		}
+
+	case reflect.String:
+		replaced := strings.Replace(v.String(), fmt.Sprintf("((%s))", varName), varValue, -1)
+		copy.SetString(replaced)
+
+	default:
+		copy.Set(v)
+	}
 }
 
 // resourceData resolves different manifest reference types and returns the resource's data
