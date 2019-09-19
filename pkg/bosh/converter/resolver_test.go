@@ -141,6 +141,20 @@ instance_groups:
       ca: ((implicit_ca))
 `},
 			},
+			&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "manifest-with-embedded-implicit-var",
+					Namespace: "default",
+				},
+				Data: map[string]string{bdc.ManifestSpecName: `---
+name: foo
+instance_groups:
+  - name: component1
+    instances: 1
+    properties:
+      host: 'foo.((system_domain))'
+`},
+			},
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo-deployment.var-system-domain",
@@ -710,6 +724,27 @@ instance_groups:
 			Expect(len(implicitVars)).To(Equal(1))
 			Expect(implicitVars[0]).To(Equal("foo-deployment.var-implicit-ca"))
 			Expect(m.InstanceGroups[0].Properties["ca"]).To(Equal("complicated\n'multiline'\nstring"))
+		})
+
+		It("handles embedded variables", func() {
+			deployment := &bdc.BOSHDeployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo-deployment",
+				},
+				Spec: bdc.BOSHDeploymentSpec{
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "manifest-with-embedded-implicit-var",
+					},
+					Ops: []bdc.ResourceReference{},
+				},
+			}
+			m, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(implicitVars)).To(Equal(1))
+			Expect(implicitVars[0]).To(Equal("foo-deployment.var-system-domain"))
+			Expect(m.InstanceGroups[0].Properties["host"]).To(Equal("foo.example.com"))
 		})
 	})
 })
