@@ -157,9 +157,9 @@ func (v *Validator) OpsResourcesExist(ctx context.Context, specOpsResource []bdv
 }
 
 //Handle validates a BOSHDeployment
-func (v *Validator) Handle(ctx context.Context, req admission.Request) admission.Response {
+func (v *Validator) Handle(_ context.Context, req admission.Request) admission.Response {
 	boshDeployment := &bdv1.BOSHDeployment{}
-	ctx = log.NewParentContext(v.log)
+	ctx := log.NewParentContext(v.log)
 
 	err := v.decoder.Decode(req, boshDeployment)
 	if err != nil {

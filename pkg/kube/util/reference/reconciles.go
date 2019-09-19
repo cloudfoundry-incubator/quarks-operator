@@ -136,6 +136,10 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 		}
 
 		for _, extendedStatefulSet := range extendedStatefulSets.Items {
+			if !extendedStatefulSet.Spec.UpdateOnConfigChange {
+				continue
+			}
+
 			isRef, err := objReferencedBy(extendedStatefulSet)
 			if err != nil {
 				return nil, err

@@ -173,6 +173,11 @@ If zones are set for an `ExtendedStatefulSet`, the following occurs:
   AZ_INDEX=="zone index"
   ```
 
+### Restarting on Config Change
+
+`ExtendedStatefulSets` can be automatically updated when the environment/mounts have changed due to a referenced
+`ConfigMap` or a `Secret` being updated. This behavior is controlled by the `updateOnConfigChange` flag which defaults to `false`.
+
 ## `ExtendedStatefulSet` Examples
 
 See https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/examples/extended-statefulset

@@ -116,7 +116,7 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 	meltdown.SetLastReconcile(&manifestSecret.ObjectMeta, time.Now())
 	err = r.client.Update(ctx, manifestSecret)
 	if err != nil {
-		err = log.WithEvent(manifestSecret, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on ops applied manifest secret '%s' (%v): %s", manifestSecret.Name, manifestSecret.ResourceVersion, err)
+		log.WithEvent(manifestSecret, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on ops applied manifest secret '%s' (%v): %s", manifestSecret.Name, manifestSecret.ResourceVersion, err)
 		return reconcile.Result{Requeue: false}, nil
 	}
 
