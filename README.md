@@ -31,16 +31,24 @@ For more information about the `cf-operator` helm chart and how to configure it,
 
 ### Recovering from a crash
 
-If the operator pod crashes, it cannot be restarted in the same namespace before the existing mutating webhook configuration for that namespace is removed.
+If the operator pod crashes, it cannot be restarted in the same namespace before the existing mutating webhook configuration for that namespace is temporarily patched.
 The operator uses mutating webhooks to modify pods on the fly and Kubernetes fails to create pods if the webhook server is unreachable.
 The webhook configurations are installed cluster wide and don't belong to a single namespace, just like custom resources.
 
-To remove the webhook configurations for the cf-operator namespace run:
+To patch the webhook configurations for the cf-operator namespace run:
 
 ```bash
 CF_OPERATOR_NAMESPACE=cf-operator
-kubectl delete mutatingwebhookconfiguration "cf-operator-hook-$CF_OPERATOR_NAMESPACE"
-kubectl delete validatingwebhookconfiguration "cf-operator-hook-$CF_OPERATOR_NAMESPACE"
+kubectl patch mutatingwebhookconfigurations "cf-operator-hook-$CF_OPERATOR_NAMESPACE" -p '
+webhooks:
+- name: mutate-pods.fissile.cloudfoundry.org
+  objectSelector:
+    matchExpressions:
+    - key: name
+      operator: NotIn
+      values:
+      - "cf-operator"
+'
 ```
 
 ## Using your fresh installation
