@@ -333,19 +333,24 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 				esv1.LabelKind: esv1.GeneratedSecretKind,
 			}
 
-			client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
-				secret := object.(*corev1.Secret)
-				Expect(secret.StringData["password"]).To(Equal(password))
-				Expect(secret.GetName()).To(Equal("generated-secret"))
-				Expect(secret.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, esv1.GeneratedSecretKind))
+			client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOption) error {
+				switch object := object.(type) {
+				case *esv1.ExtendedSecret:
+					Expect(object.Status.Generated).To(Equal(true))
+				case *corev1.Secret:
+					Expect(object.StringData["password"]).To(Equal(password))
+					Expect(object.GetName()).To(Equal("mysecret"))
+					Expect(object.GetLabels()).To(HaveKeyWithValue(esv1.LabelKind, esv1.GeneratedSecretKind))
+				}
 				return nil
 			})
 
 			result, err := reconciler.Reconcile(request)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(client.CreateCallCount()).To(Equal(0))
-			Expect(client.UpdateCallCount()).To(Equal(1))
+			Expect(client.UpdateCallCount()).To(Equal(2))
 			Expect(reconcile.Result{}).To(Equal(result))
+
 		})
 	})
 })
