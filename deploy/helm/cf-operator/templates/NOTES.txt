@@ -1,5 +1,4 @@
 {{- $charI := (and (not .Release.IsInstall) .Values.customResources.createEtcdClusterCRD) -}}
-{{- if and .Release.IsInstall .Values.customResources.enableInstallation -}}
 
 The {{ .Release.Name }} chart installed the following CRD´s:
 
@@ -11,15 +10,6 @@ The {{ .Release.Name }} chart installed the following CRD´s:
 You can always verify if the CRD´s are installed, by running:
  $ kubectl get crds
 
-
-{{- else -}}
-
-The {{ .Release.Name }} chart, did not installed any CRD´s. Please, make sure the cf-operator CRD´s are in place.
-You can always verify if the CRD´s are installed, by running:
- $ kubectl get crds
-
-
-{{- end -}}
 
 
 {{- if and .Release.IsInstall }}
