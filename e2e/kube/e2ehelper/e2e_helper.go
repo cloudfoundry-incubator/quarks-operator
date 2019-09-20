@@ -28,8 +28,6 @@ var (
 // being able to reach tiller, and eventually it
 // will install the cf-operator chart.
 func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error) {
-	var crdExist bool
-
 	// Ensure tiller is there, if not
 	// then create it, via "init"
 	err := testing.RunHelmBinaryWithCustomErr("version", "-s")
@@ -47,11 +45,6 @@ func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error
 		}
 	}
 
-	crdExist, err = ClusterCrdsExist()
-	if err != nil {
-		return "", nil, errors.Wrapf(err, "%s Checking cluster crd's existence failed.", e2eFailedMessage)
-	}
-
 	namespace, err = CreateTestNamespace()
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "%s Creating test namespace failed.", e2eFailedMessage)
@@ -63,7 +56,6 @@ func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error
 		"--name", fmt.Sprintf("%s-%s", testing.CFOperatorRelease, namespace),
 		"--namespace", namespace,
 		"--timeout", installTimeOutInSecs,
-		"--set", fmt.Sprintf("customResources.enableInstallation=%s", strconv.FormatBool(!crdExist)),
 		"--wait")
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "%s Helm install command failed.", e2eFailedMessage)

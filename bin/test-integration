@@ -21,7 +21,6 @@ echo "Test logs are here: ${CF_OPERATOR_TESTING_TMP}/cf-operator-tests.log"
 setup_testing_tmp
 trap cleanup_testing_tmp EXIT
 
-bin/apply-crds
 
 kubectl get customresourcedefinitions
 

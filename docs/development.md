@@ -26,6 +26,18 @@ Run with libraries fetched via go modules:
 export GO111MODULE=on
 ```
 
+## Custom Resource Definitions (CRDs)
+
+Kubernetes allows developers to extend the objects its APIs process and store using Custom Resource Definitions (CRDs). We are creating four [CRDs](../docs/crds): 
+
+- BOSHDeployment
+- ExtendedJob
+- ExtendedSecret
+- ExtendedStatefulSet
+
+The CRDs are also defined in code and applied automatically when cf-operator starts. If you are editing CRDs, you should update changes to this YAML files in sync.
+
+
 ## Creating a new Resource and Controller
 
 - create a new directory: `./pkg/kube/apis/<group_name>/<version>`
@@ -155,7 +167,6 @@ export GO111MODULE=on
 - add the new resource to `addToSchemes` in `pkg/controllers/controller.go`.
 - add the new controller to `addToManagerFuncs` in the same file.
 - create a custom resource definition in `deploy/helm/cf-operator/templates/`
-- add the custom resource definition to `bin/apply-crds`
 
 ### Reconcile Results
 
