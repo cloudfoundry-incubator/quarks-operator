@@ -43,7 +43,7 @@ The docker image is only referenced from the helm chart and not mentioned in the
 
 ## Checklist
 
-### Mayor Release
+### Major Release
 
 0. Create version branch
 0. Create a new release pipeline for that branch
