@@ -84,3 +84,5 @@ For more information about the operator development, see [docs/development.md](d
 For more information about testing, see [docs/testing.md](docs/testing.md)
 
 For more information about building the operator from source, see [docs/building.md](docs/building.md)
+
+For more information about how to develop a BOSH release using Quars and SCF, see the [SCFv3 docs](https://github.com/SUSE/scf/blob/v3-develop/dev/scf/docs/bosh-author.md)
