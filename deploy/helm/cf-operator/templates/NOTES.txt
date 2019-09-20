@@ -1,6 +1,4 @@
-{{- $charI := (and (not .Release.IsInstall) .Values.customResources.createEtcdClusterCRD) -}}
-
-The {{ .Release.Name }} chart installed the following CRD´s:
+Running the operator will install the following CRD´s:
 
 - boshdeployments.fissile.cloudfoundry.org
 - extendedjobs.fissile.cloudfoundry.org
