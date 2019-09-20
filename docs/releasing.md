@@ -35,7 +35,7 @@ Running the 'release' job will take the latest artificats, which passed through 
 * to the body
 * as Github assets for downloading
 
-The version numbers (v0.0.0-build.SHA) of these assets are taken from the info on S3.
+The version numbers (v0.0.0-<number-of-commits>.<commit-SHA>) of these assets are taken from the info on S3.
 They have to match the Github tag, else the release job will fail.
 The assets will be copied into a 'release' folder on S3.
 
