@@ -28,7 +28,7 @@ var _ = Describe("CLI", func() {
 			session, err := act("help")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
-      --apply-crd                              \(APPLY_CRD\) If true, apply CRDs on start
+      --apply-crd                              \(APPLY_CRD\) If true, apply CRDs on start \(default true\)
   -n, --cf-operator-namespace string           \(CF_OPERATOR_NAMESPACE\) Namespace to watch for BOSH deployments \(default "default"\)
   -o, --docker-image-org string                \(DOCKER_IMAGE_ORG\) Dockerhub organization that provides the operator docker image \(default "cfcontainerization"\)
   -r, --docker-image-repository string         \(DOCKER_IMAGE_REPOSITORY\) Dockerhub repository that provides the operator docker image \(default "cf-operator"\)

@@ -31,13 +31,7 @@ Follow this steps to build a proper docker image and generate a deployable helm 
 
     _**Note**_: This will automatically generate a docker image tag based on your current commit, tag and SHA.
 
-4. Apply Kubernetes Custom Resources
-
-    ```bash
-    bin/apply-crds
-    ```
-
-5. Generated helm charts with a proper docker image tag, org and repository
+4. Generated helm charts with a proper docker image tag, org and repository
 
     ```bash
     bin/build-helm
@@ -45,10 +39,10 @@ Follow this steps to build a proper docker image and generate a deployable helm 
 
     _**Note**_: This will generate a new directory under the base dir, named `helm/`
 
-6. Install the helm chart
+5. Install the helm chart(apply Kubernetes Custom Resources)
 
     ```bash
-    helm install --name cf-operator-test --namespace cf-operator-test helm/cf-operator --set customResources.enableInstallation=false
+    helm install --name cf-operator-test --namespace cf-operator-test helm/cf-operator
     ```
 
     _**Note**_: The cf-operator will be available under the `cf-operator-test` namespace, running as a pod.

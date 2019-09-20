@@ -14,10 +14,6 @@ if [ -z ${TEST_NAMESPACE+x} ]; then
   export TEST_NAMESPACE
 fi
 
-# Add all required CRD´s
-bin/apply-crds
-kubectl get customresourcedefinitions
-
 # Build the required helm charts to run the cf-operator
 ./bin/build-helm
 

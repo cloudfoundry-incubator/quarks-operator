@@ -12,8 +12,6 @@ To install the latest stable helm chart, with the `cf-operator` as the release n
 $ helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com/cf-operators/helm-charts/cf-operator-v0.2.2%2B47.g24492ea.tgz
 ```
 
-
-
 ## Installing the chart from develop branch
 
 To install the helm chart directly from the [cf-operator repository](https://github.com/cloudfoundry-incubator/cf-operator) (any branch), the following parameters in the `values.yaml` need to be set in advance:
@@ -56,11 +54,6 @@ To delete the helm chart:
 $ helm delete cf-operator --purge
 ```
 
-__Note__: The Custom Resources defined in this chart, will not be deleted via `helm delete <release-name>`.
-If you will retrigger a helm installation of this chart, Kubernetes will complain that the CRD´s already exist.
-To avoid this issue, set the `customResources.enableInstallation` in the `values.yaml` to `false`.
-
-
 ## Configuration
 
 | Parameter                                         | Description                                                                       | Default                                        |
@@ -69,7 +62,6 @@ To avoid this issue, set the `customResources.enableInstallation` in the `values
 | `image.org`                                       | docker hub organization for the cf-operator image                                 | `cfcontainerization`                           |
 | `image.tag`                                       | docker image tag                                                                  | `foobar`                                       |
 | `image.pullPolicy`                                | Kubernetes image pullPolicy                                                       | `IfNotPresent`                                 |
-| `customResources.enableInstallation`              | Install cf-operator Custom Resources                                              | `true`                                         |
 | `rbacEnable`                                      | install required RBAC service account, roles and rolebindings                     | `true`                                         |
 | `serviceAccount.cfOperatorServiceAccount.create`  | Will set the value of `cf-operator.serviceAccountName` to the current chart name  | `true`                                         |
 | `serviceAccount.cfOperatorServiceAccount.name`    | If the above is not set, it will set the `cf-operator.serviceAccountName`         |                                                |
@@ -93,12 +85,7 @@ The `cf-operator` watches four different types of custom resources:
 - ExtendedSecret
 - ExtendedStatefulset
 
-The `cf-operator` requires this CRD´s to be installed in the cluster, in order to work as expected. By default, the chart will install them in your cluster.
-To disable the installation of the custom resources:
-
-```bash
-$ helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com/cf-operators/helm-charts/cf-operator-v0.2.2%2B47.g24492ea.tgz --set customResources.enableInstallation=false
-```
+The `cf-operator` requires this CRD´s to be installed in the cluster, in order to work as expected. By default, the `cf-operator` applies CRDs in your cluster automatically.
 
 To verify if the CRD´s are installed:
 
