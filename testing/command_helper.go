@@ -201,7 +201,7 @@ func (k *Kubectl) checkPodTerminateLabelFilter(namespace string, labelName strin
 		return false, errors.Wrapf(err, "Kubectl get pod failed with label %s failed. %s", labelName, string(out))
 
 	}
-	if string(out) == "No resources found.\n" {
+	if strings.HasPrefix(string(out), "No resources found") {
 		return true, nil
 	}
 	return false, nil
