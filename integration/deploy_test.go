@@ -285,7 +285,6 @@ var _ = Describe("Deploy", func() {
 										Error: err,
 									}
 									return
-								} else {
 								}
 								time.Sleep(200 * time.Millisecond)
 							case <-stopChan:
