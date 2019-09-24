@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -17,6 +19,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
@@ -35,7 +38,7 @@ type DesiredManifest interface {
 
 // KubeConverter converts k8s resources from single BOSH manifest
 type KubeConverter interface {
-	BPMResources(manifestName string, version string, instanceGroup *bdm.InstanceGroup, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) (*converter.BPMResources, error)
+	BPMResources(manifestName string, dns manifest.DomainNameService, version string, instanceGroup *bdm.InstanceGroup, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) (*converter.BPMResources, error)
 	Variables(manifestName string, variables []bdm.Variable) ([]esv1.ExtendedSecret, error)
 }
 
@@ -114,7 +117,32 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 			log.WithEvent(bpmSecret, "LabelMissingError").Errorf(ctx, "Missing container label for bpm information bpmSecret '%s'", request.NamespacedName)
 	}
 
-	resources, err := r.applyBPMResources(bpmSecret, manifest)
+	// Start the instance groups referenced by this BPM secret
+	instanceName, ok := bpmSecret.Labels[bdv1.LabelDeploymentName]
+	if !ok {
+		return reconcile.Result{},
+			log.WithEvent(bpmSecret, "LabelMissingError").Errorf(ctx, "Missing deployment mame label for bpm information bpmSecret '%s'", request.NamespacedName)
+	}
+
+	instance := &bdv1.BOSHDeployment{}
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: instanceName}, instance)
+	if err != nil {
+		return reconcile.Result{},
+			log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get BoshDeployment instance '%s': %v", instanceName, err)
+	}
+
+	dns := manifest.DNS(request.Namespace)
+
+	err = dns.Reconcile(ctx, r.client, func(object v1.Object) error {
+		return r.setReference(instance, object, r.scheme)
+	})
+
+	if err != nil {
+		return reconcile.Result{},
+			log.WithEvent(bpmSecret, "DnsReconcileError").Errorf(ctx, "Failed to reconcile dns: %v", err)
+	}
+
+	resources, err := r.applyBPMResources(bpmSecret, manifest, dns)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "BPMApplyingError").Errorf(ctx, "Failed to apply BPM information: %v", err)
@@ -125,21 +153,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 		return reconcile.Result{}, nil
 	}
 
-	// Start the instance groups referenced by this BPM secret
-	instanceName, ok := bpmSecret.Labels[bdv1.LabelDeploymentName]
-	if !ok {
-		return reconcile.Result{},
-			log.WithEvent(bpmSecret, "LabelMissingError").Errorf(ctx, "Missing deployment mame label for bpm information bpmSecret '%s'", request.NamespacedName)
-	}
-
 	// Deploy instance groups
-	instance := &bdv1.BOSHDeployment{}
-	err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: instanceName}, instance)
-	if err != nil {
-		return reconcile.Result{},
-			log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get BoshDeployment instance '%s': %v", instanceName, err)
-	}
-
 	err = r.deployInstanceGroups(ctx, instance, instanceGroupName, resources)
 	if err != nil {
 		return reconcile.Result{},
@@ -156,7 +170,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm.Manifest) (*converter.BPMResources, error) {
+func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm.Manifest, dns manifest.DomainNameService) (*converter.BPMResources, error) {
 
 	instanceGroupName, ok := bpmSecret.Labels[ejv1.LabelInstanceGroup]
 	if !ok {
@@ -183,7 +197,7 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 		return nil, err
 	}
 
-	resources, err := r.kubeConverter.BPMResources(manifest.Name, version, instanceGroup, manifest, bpmConfigs)
+	resources, err := r.kubeConverter.BPMResources(manifest.Name, dns, version, instanceGroup, manifest, bpmConfigs)
 	if err != nil {
 		return resources, err
 	}
