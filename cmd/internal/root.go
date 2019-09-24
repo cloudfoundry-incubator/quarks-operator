@@ -144,7 +144,7 @@ func init() {
 	pf.Int("max-extendedjob-workers", 1, "Maximum of number concurrently running ExtendedJob controller")
 	pf.Int("max-extendedsecret-workers", 5, "Maximum of number concurrently running ExtendedSecret controller")
 	pf.Int("max-extendedstatefulset-workers", 1, "Maximum of number concurrently running ExtendedStatefulSet controller")
-	pf.Bool("apply-crd", false, "If true, apply CRDs on start")
+	pf.Bool("apply-crd", true, "If true, apply CRDs on start")
 	viper.BindPFlag("kubeconfig", pf.Lookup("kubeconfig"))
 	viper.BindPFlag("log-level", pf.Lookup("log-level"))
 	viper.BindPFlag("cf-operator-namespace", pf.Lookup("cf-operator-namespace"))
