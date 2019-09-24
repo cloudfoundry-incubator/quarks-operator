@@ -21,10 +21,8 @@ echo "Test logs are here: ${CF_OPERATOR_TESTING_TMP}/cf-operator-tests-*.log"
 setup_testing_tmp
 trap cleanup_testing_tmp EXIT
 
-kubectl get customresourcedefinitions
 
-# Build the required helm charts to run the cf-operator
-./bin/build-helm
+kubectl get customresourcedefinitions
 
 GOVER_FILE=${GOVER_FILE:-gover-integration.coverprofile}
 
@@ -44,7 +42,7 @@ fi
 
 NODES=${NODES:-3}
 FLAKE_ATTEMPTS=${FLAKE_ATTEMPTS:-3}
-ginkgo \
+ginkgo ${FOCUS:+ --focus "$FOCUS"} \
   --randomizeAllSpecs \
   --nodes="$NODES" \
   --slowSpecThreshold=50 \
