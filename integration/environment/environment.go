@@ -191,16 +191,16 @@ func (e *Environment) AllLogMessages() (msgs []string) {
 func (e *Environment) NodeIP() (string, error) {
 	nodes, err := e.Clientset.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
-		return "", errors.Wrap(err, "Getting the list of nodes")
+		return "", errors.Wrap(err, "getting the list of nodes")
 	}
 
 	if len(nodes.Items) == 0 {
-		return "", fmt.Errorf("Got an empty list of nodes")
+		return "", fmt.Errorf("got an empty list of nodes")
 	}
 
 	addresses := nodes.Items[0].Status.Addresses
 	if len(addresses) == 0 {
-		return "", fmt.Errorf("Node has an empty list of addresses")
+		return "", fmt.Errorf("node has an empty list of addresses")
 	}
 
 	return addresses[0].Address, nil
