@@ -20,7 +20,7 @@ import (
 type InstanceGroupResolver struct {
 	baseDir       string
 	manifest      Manifest
-	namespace     string
+	dns           DomainNameService
 	instanceGroup *InstanceGroup
 
 	jobReleaseSpecs  map[string]map[string]JobSpec
@@ -37,7 +37,7 @@ func NewInstanceGroupResolver(basedir, namespace string, manifest Manifest, inst
 	return &InstanceGroupResolver{
 		baseDir:          basedir,
 		manifest:         manifest,
-		namespace:        namespace,
+		dns:              manifest.DNS(namespace),
 		instanceGroup:    ig,
 		jobReleaseSpecs:  map[string]map[string]JobSpec{},
 		jobProviderLinks: JobProviderLinks{},
@@ -105,7 +105,7 @@ func (dg *InstanceGroupResolver) resolveManifest() error {
 // collectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
 func (dg *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 	for _, instanceGroup := range dg.manifest.InstanceGroups {
-		serviceName := instanceGroup.HeadlessServiceName(dg.manifest.Name)
+		serviceName := dg.dns.HeadlessServiceName(instanceGroup.Name, dg.manifest.Name)
 
 		for jobIdx, job := range instanceGroup.Jobs {
 			// make sure a map entry exists for the current job release

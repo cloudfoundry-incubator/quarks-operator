@@ -12,14 +12,15 @@ import (
 )
 
 type FakeKubeConverter struct {
-	BPMResourcesStub        func(string, string, *manifest.InstanceGroup, converter.ReleaseImageProvider, bpm.Configs) (*converter.BPMResources, error)
+	BPMResourcesStub        func(string, manifest.DomainNameService, string, *manifest.InstanceGroup, converter.ReleaseImageProvider, bpm.Configs) (*converter.BPMResources, error)
 	bPMResourcesMutex       sync.RWMutex
 	bPMResourcesArgsForCall []struct {
 		arg1 string
-		arg2 string
-		arg3 *manifest.InstanceGroup
-		arg4 converter.ReleaseImageProvider
-		arg5 bpm.Configs
+		arg2 manifest.DomainNameService
+		arg3 string
+		arg4 *manifest.InstanceGroup
+		arg5 converter.ReleaseImageProvider
+		arg6 bpm.Configs
 	}
 	bPMResourcesReturns struct {
 		result1 *converter.BPMResources
@@ -47,20 +48,21 @@ type FakeKubeConverter struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeKubeConverter) BPMResources(arg1 string, arg2 string, arg3 *manifest.InstanceGroup, arg4 converter.ReleaseImageProvider, arg5 bpm.Configs) (*converter.BPMResources, error) {
+func (fake *FakeKubeConverter) BPMResources(arg1 string, arg2 manifest.DomainNameService, arg3 string, arg4 *manifest.InstanceGroup, arg5 converter.ReleaseImageProvider, arg6 bpm.Configs) (*converter.BPMResources, error) {
 	fake.bPMResourcesMutex.Lock()
 	ret, specificReturn := fake.bPMResourcesReturnsOnCall[len(fake.bPMResourcesArgsForCall)]
 	fake.bPMResourcesArgsForCall = append(fake.bPMResourcesArgsForCall, struct {
 		arg1 string
-		arg2 string
-		arg3 *manifest.InstanceGroup
-		arg4 converter.ReleaseImageProvider
-		arg5 bpm.Configs
-	}{arg1, arg2, arg3, arg4, arg5})
-	fake.recordInvocation("BPMResources", []interface{}{arg1, arg2, arg3, arg4, arg5})
+		arg2 manifest.DomainNameService
+		arg3 string
+		arg4 *manifest.InstanceGroup
+		arg5 converter.ReleaseImageProvider
+		arg6 bpm.Configs
+	}{arg1, arg2, arg3, arg4, arg5, arg6})
+	fake.recordInvocation("BPMResources", []interface{}{arg1, arg2, arg3, arg4, arg5, arg6})
 	fake.bPMResourcesMutex.Unlock()
 	if fake.BPMResourcesStub != nil {
-		return fake.BPMResourcesStub(arg1, arg2, arg3, arg4, arg5)
+		return fake.BPMResourcesStub(arg1, arg2, arg3, arg4, arg5, arg6)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -75,17 +77,17 @@ func (fake *FakeKubeConverter) BPMResourcesCallCount() int {
 	return len(fake.bPMResourcesArgsForCall)
 }
 
-func (fake *FakeKubeConverter) BPMResourcesCalls(stub func(string, string, *manifest.InstanceGroup, converter.ReleaseImageProvider, bpm.Configs) (*converter.BPMResources, error)) {
+func (fake *FakeKubeConverter) BPMResourcesCalls(stub func(string, manifest.DomainNameService, string, *manifest.InstanceGroup, converter.ReleaseImageProvider, bpm.Configs) (*converter.BPMResources, error)) {
 	fake.bPMResourcesMutex.Lock()
 	defer fake.bPMResourcesMutex.Unlock()
 	fake.BPMResourcesStub = stub
 }
 
-func (fake *FakeKubeConverter) BPMResourcesArgsForCall(i int) (string, string, *manifest.InstanceGroup, converter.ReleaseImageProvider, bpm.Configs) {
+func (fake *FakeKubeConverter) BPMResourcesArgsForCall(i int) (string, manifest.DomainNameService, string, *manifest.InstanceGroup, converter.ReleaseImageProvider, bpm.Configs) {
 	fake.bPMResourcesMutex.RLock()
 	defer fake.bPMResourcesMutex.RUnlock()
 	argsForCall := fake.bPMResourcesArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5, argsForCall.arg6
 }
 
 func (fake *FakeKubeConverter) BPMResourcesReturns(result1 *converter.BPMResources, result2 error) {
