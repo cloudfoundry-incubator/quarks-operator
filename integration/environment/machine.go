@@ -2,6 +2,7 @@ package environment
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -594,6 +595,27 @@ func (m *Machine) GetService(namespace string, name string) (*corev1.Service, er
 	}
 
 	return svc, nil
+}
+
+// CreateService creates a Service in the given namespace
+func (m *Machine) CreateService(namespace string, service corev1.Service) (TearDownFunc, error) {
+	client := m.Clientset.CoreV1().Services(namespace)
+	_, err := client.Create(&service)
+	return func() error {
+		err := client.Delete(service.GetName(), &metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}, err
+}
+
+// WaitForPortReachable blocks until the endpoint is reachable
+func (m *Machine) WaitForPortReachable(protocol, uri string) error {
+	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+		_, err := net.Dial(protocol, uri)
+		return err == nil, nil
+	})
 }
 
 // GetEndpoints gets target Endpoints
