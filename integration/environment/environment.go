@@ -7,7 +7,9 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -116,7 +118,20 @@ func (e *Environment) setup() error {
 	e.Teardown = func(wasFailure bool) {
 		if wasFailure {
 			fmt.Println("Collecting debug information...")
-			out, err := exec.Command("../testing/dump_env.sh", e.Namespace).CombinedOutput()
+
+			// try to find our dump_env script
+			n := 1
+			_, filename, _, _ := runtime.Caller(1)
+			if idx := strings.Index(filename, "integration/"); idx >= 0 {
+				n = strings.Count(filename[idx:], "/")
+			}
+			var dots []string
+			for i := 0; i < n; i++ {
+				dots = append(dots, "..")
+			}
+			dumpCmd := path.Join(append(dots, "testing/dump_env.sh")...)
+
+			out, err := exec.Command(dumpCmd, e.Namespace).CombinedOutput()
 			if err != nil {
 				fmt.Println("Failed to run the `dump_env.sh` script", err)
 			}
