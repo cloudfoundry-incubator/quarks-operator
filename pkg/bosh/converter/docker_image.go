@@ -1,34 +1,17 @@
 package converter
 
-// DockerSource describes a docker image on docker hub
-type DockerSource struct {
-	// Organization is the organization which provides the operator image
-	Organization string
-	// Repository is the repository which provides the operator image
-	Repository string
-	// Tag is the tag of the operator image
-	Tag string
-}
+import "code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 
-// GetName returns the name of the docker image
-// More info: https://kubernetes.io/docs/concepts/containers/images
-func (d DockerSource) GetName() string {
-	return d.Organization + "/" + d.Repository + ":" + d.Tag
-}
-
-// OperatorDockerImage is the location of the operators own docker image
-var OperatorDockerImage = &DockerSource{}
+// operatorDockerImage is the location of the operators own docker image
+var operatorDockerImage = ""
 
 // SetupOperatorDockerImage initializes the package scoped variable
-func SetupOperatorDockerImage(org, repo, tag string) {
-	OperatorDockerImage = &DockerSource{
-		Organization: org,
-		Repository:   repo,
-		Tag:          tag,
-	}
+func SetupOperatorDockerImage(org, repo, tag string) (err error) {
+	operatorDockerImage, err = names.GetDockerSourceName(org, repo, tag)
+	return err
 }
 
 // GetOperatorDockerImage returns the image name of the operator docker image
 func GetOperatorDockerImage() string {
-	return OperatorDockerImage.GetName()
+	return operatorDockerImage
 }
