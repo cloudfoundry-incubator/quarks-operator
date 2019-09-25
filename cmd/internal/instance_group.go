@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -61,6 +60,11 @@ This will resolve the properties of an instance group and return a manifest for 
 			return errors.Errorf("%s cf-operator-namespace flag is empty.", dGatherFailedMessage)
 		}
 
+		outputFilePath := viper.GetString("output-file-path")
+		if len(outputFilePath) == 0 {
+			return errors.Errorf("%s output-file-path flag is empty.", dGatherFailedMessage)
+		}
+
 		instanceGroupName := viper.GetString("instance-group-name")
 		if len(instanceGroupName) == 0 {
 			return errors.Errorf("%s instance-group-name flag is empty.", dGatherFailedMessage)
@@ -108,19 +112,9 @@ This will resolve the properties of an instance group and return a manifest for 
 		if buf.Len() > 0 {
 			return errors.Errorf("unexpected data sent to stdOut, during the instance-group cmd: %s", buf.String())
 		}
-		// Write to an original stdOut
-		// without any undesired data
-		f := bufio.NewWriter(os.Stdout)
-
-		// Ensure bufio.NewWriter will send
-		// data at the very end of this func
-		// Therefore, we can tail=1 in other
-		// containers, and we will get the
-		// correct data.
-		defer f.Flush()
-		_, err = f.Write(jsonBytes)
+		err = ioutil.WriteFile(outputFilePath, jsonBytes, 0644)
 		if err != nil {
-			return errors.Wrapf(err, "%s Writing resolvedProperties json into a file returned by dg.ResolvedProperties() failed.", dGatherFailedMessage)
+			return errors.Wrapf(err, "%s Writing json into a output file failed.", dGatherFailedMessage)
 		}
 
 		return nil

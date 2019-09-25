@@ -180,7 +180,7 @@ var _ = Describe("CLI", func() {
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
-			session, err := act("util", "instance-group", "--base-dir=.", "-m", "foo.txt", "-g", "log-api")
+			session, err := act("util", "instance-group", "--base-dir=.", "-m", "foo.txt", "-g", "log-api", "--output-file-path", "./output.json")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Err).Should(Say("open foo.txt: no such file or directory"))
 		})
@@ -195,7 +195,7 @@ var _ = Describe("CLI", func() {
 			})
 
 			It("accepts the bosh-manifest-path as an environment variable", func() {
-				session, err := act("util", "instance-group", "--base-dir=.", "-g", "log-api")
+				session, err := act("util", "instance-group", "--base-dir=.", "-g", "log-api", "--output-file-path", "./output.json")
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Err).Should(Say("open bar.txt: no such file or directory"))
 			})
@@ -211,7 +211,7 @@ var _ = Describe("CLI", func() {
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
-			session, err := act("util", "bpm-configs", "--base-dir=.", "-m", "foo.txt", "-g", "log-api")
+			session, err := act("util", "bpm-configs", "--base-dir=.", "-m", "foo.txt", "-g", "log-api", "--output-file-path", "./output.json")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Err).Should(Say("open foo.txt: no such file or directory"))
 		})
@@ -226,7 +226,7 @@ var _ = Describe("CLI", func() {
 			})
 
 			It("accepts the bosh-manifest-path as an environment variable", func() {
-				session, err := act("util", "bpm-configs", "--base-dir=.", "-g", "log-api")
+				session, err := act("util", "bpm-configs", "--base-dir=.", "-g", "log-api", "--output-file-path", "./output.json")
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Err).Should(Say("open bar.txt: no such file or directory"))
 			})

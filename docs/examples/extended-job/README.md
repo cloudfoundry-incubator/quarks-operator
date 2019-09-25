@@ -9,7 +9,7 @@
 
 ### exjob_output.yaml
 
-This creates a `Secret` with the STDOUT from the container.
+This creates a `Secret` from the /mnt/quarks/output.json file in the container volume mount /mnt/quarks.
 
 ### exjob_errand.yaml
 

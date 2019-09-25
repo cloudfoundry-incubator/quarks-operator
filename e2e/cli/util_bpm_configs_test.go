@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"os/exec"
 
 	. "github.com/onsi/ginkgo"
@@ -18,7 +19,7 @@ var _ = Describe("bpm-configs", func() {
 	)
 
 	act := func(manifestPath string) (session *gexec.Session, err error) {
-		args := []string{"util", "bpm-configs", "-m", manifestPath, "-b", assetPath, "-g", "log-api"}
+		args := []string{"util", "bpm-configs", "-m", manifestPath, "-b", assetPath, "-g", "log-api", "--output-file-path", assetPath + "/output.json"}
 		cmd := exec.Command(cliPath, args...)
 		session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 		return
@@ -35,9 +36,11 @@ var _ = Describe("bpm-configs", func() {
 
 			Eventually(session).Should(gexec.Exit(0))
 
-			output := session.Out.Contents()
-			jsonOutput := map[string]string{}
-			err = json.Unmarshal(output, &jsonOutput)
+			var jsonOutput map[string]string
+			dataBytes, err := ioutil.ReadFile(assetPath + "/output.json")
+			Expect(err).ToNot(HaveOccurred())
+
+			err = json.Unmarshal(dataBytes, &jsonOutput)
 			Expect(err).ToNot(HaveOccurred())
 
 			configs := bpm.Configs{}

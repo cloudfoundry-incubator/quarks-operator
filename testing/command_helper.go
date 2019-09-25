@@ -58,6 +58,25 @@ func (k *Kubectl) checkString(namespace string, podName string, commandInPod str
 	return false, nil
 }
 
+// WaitForPod blocks until the pod is available. It fails after the timeout.
+func (k *Kubectl) WaitForPod(namespace string, labelName string, podName string) error {
+	return wait.PollImmediate(k.pollInterval, k.PollTimeout, func() (bool, error) {
+		return k.PodExists(namespace, labelName, podName)
+	})
+}
+
+// PodExists returns true if the pod by that label is present
+func (k *Kubectl) PodExists(namespace string, labelName string, podName string) (bool, error) {
+	out, err := runBinary(kubeCtlCmd, "--namespace", namespace, "get", "pod", "-l", labelName)
+	if err != nil {
+		return false, errors.Wrapf(err, "Getting pod %s failed. %s", labelName, string(out))
+	}
+	if strings.Contains(string(out), podName) {
+		return true, nil
+	}
+	return false, nil
+}
+
 // WaitForService blocks until the service is available. It fails after the timeout.
 func (k *Kubectl) WaitForService(namespace string, serviceName string) error {
 	return wait.PollImmediate(k.pollInterval, k.PollTimeout, func() (bool, error) {
@@ -168,10 +187,10 @@ func (k *Kubectl) WaitLabelFilter(namespace string, requiredStatus string, resou
 // checkPodReadyLabelFilter checks is the pod status is completed
 func (k *Kubectl) checkPodReadyLabelFilter(namespace string, resourceName string, labelName string, requiredStatus string) (bool, error) {
 	out, err := runBinary(kubeCtlCmd, "--namespace", namespace, "wait", resourceName, "-l", labelName, "--for=condition="+requiredStatus)
+	if strings.Contains(string(out), "no matching resources found") {
+		return false, nil
+	}
 	if err != nil {
-		if strings.Contains(string(out), "no matching resources found") {
-			return false, nil
-		}
 		return false, errors.Wrapf(err, "Kubectl wait failed for %s with status %s. %s", resourceName, requiredStatus, string(out))
 	}
 	return true, nil

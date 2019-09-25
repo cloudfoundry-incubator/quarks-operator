@@ -27,6 +27,10 @@ const (
 	EnvBaseDir = "BASE_DIR"
 	// EnvVariablesDir is a key for the container Env used to lookup the variables dir
 	EnvVariablesDir = "VARIABLES_DIR"
+	// EnvOutputFilePath is path where json output is to be redirected
+	EnvOutputFilePath = "OUTPUT_FILE_PATH"
+	// EnvOutputFilePathValue is the value of filepath of json output file
+	EnvOutputFilePathValue = "/mnt/quarks/output.json"
 	// VarInterpolationContainerName is the name of the container that
 	// performs variable interpolation for a manifest. It's also part of
 	// the output secret's name
@@ -125,6 +129,10 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*ejv1.Exte
 									Name:  EnvVariablesDir,
 									Value: "/var/run/secrets/variables/",
 								},
+								{
+									Name:  EnvOutputFilePath,
+									Value: EnvOutputFilePathValue,
+								},
 							},
 						},
 					},
@@ -193,6 +201,10 @@ func (f *JobFactory) gatheringContainer(cmd, desiredManifestName string, instanc
 			{
 				Name:  EnvInstanceGroupName,
 				Value: instanceGroupName,
+			},
+			{
+				Name:  EnvOutputFilePath,
+				Value: EnvOutputFilePathValue,
 			},
 		},
 	}

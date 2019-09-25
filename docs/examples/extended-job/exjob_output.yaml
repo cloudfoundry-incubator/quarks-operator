@@ -8,7 +8,8 @@ spec:
       containers:
         - name: json
           image: busybox
-          command: ["echo", '{"foo": "1", "bar": "baz"}']
+          command: ["/bin/sh"]
+          args: ["-c","json='{\"foo\": \"1\", \"bar\": \"baz\"}' && echo $json >> /mnt/quarks/output.json"]
       restartPolicy: Never
       terminationGracePeriodSeconds: 1
   trigger:
