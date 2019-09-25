@@ -25,11 +25,7 @@ It's implemented as a k8s operator, an active controller component which acts up
 
 The `cf-operator` can be installed via `helm`. Make sure you have a running Kubernetes cluster and that tiller is reachable.
 
-Use this if you've never installed the operator
-
-```bash
-helm install --namespace cf-operator --name cf-operator https://cf-operators.s3.amazonaws.com/release/helm-charts/cf-operator-v0.4.0%2B1.g3d277af0.tgz
-```
+See the [releases page](https://github.com/cloudfoundry-incubator/cf-operator/releases) for up-to-date instructions on how to install the operator.
 
 For more information about the `cf-operator` helm chart and how to configure it, please refer to [deploy/helm/cf-operator/README.md](deploy/helm/cf-operator/README.md)
 
@@ -45,6 +41,21 @@ To remove the webhook configurations for the cf-operator namespace run:
 CF_OPERATOR_NAMESPACE=cf-operator
 kubectl delete mutatingwebhookconfiguration "cf-operator-hook-$CF_OPERATOR_NAMESPACE"
 kubectl delete validatingwebhookconfiguration "cf-operator-hook-$CF_OPERATOR_NAMESPACE"
+```
+
+From **Kubernetes 1.15** onwards, it is possible to instead patch the webhook configurations for the cf-operator namespace via:
+```bash
+CF_OPERATOR_NAMESPACE=cf-operator
+kubectl patch mutatingwebhookconfigurations "cf-operator-hook-$CF_OPERATOR_NAMESPACE" -p '
+webhooks:
+- name: mutate-pods.fissile.cloudfoundry.org
+  objectSelector:
+    matchExpressions:
+    - key: name
+      operator: NotIn
+      values:
+      - "cf-operator"
+'
 ```
 
 ## Using your fresh installation
