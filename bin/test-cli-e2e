@@ -27,8 +27,4 @@ if [ -z ${TEST_NAMESPACE+x} ]; then
   kubectl create namespace "$TEST_NAMESPACE"
 fi
 
-bin/apply-crds
-
-kubectl get customresourcedefinitions
-
 ginkgo e2e/cli

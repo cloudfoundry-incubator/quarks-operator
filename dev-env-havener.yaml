@@ -37,8 +37,6 @@ releases:
       tag: (( env DOCKER_IMAGE_TAG ))
       repository: (( env DOCKER_REPOSITORY ))
       org: (( env DOCKER_ORGANIZATION ))
-    customResources:
-      enableInstallation: (( env CRDS_ENABLED ))
 
 env:
   DOCKER_IMAGE_TAG: (( shell . bin/include/versioning && echo "${VERSION_TAG}" ))
