@@ -308,6 +308,9 @@ var _ = Describe("Deploy", func() {
 					err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "2", 2)
 					Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
+					err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "1", 0)
+					Expect(err).NotTo(HaveOccurred(), "error waiting for old pods to vanish")
+
 					// Stop the watcher if it's still running
 					close(stopChan)
 
