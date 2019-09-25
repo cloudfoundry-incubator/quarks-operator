@@ -9,15 +9,19 @@ import (
 
 type expectFunc func(context.Context, runtime.Object) error
 
+// CallQueue represents a list of expected function calls
 type CallQueue struct {
 	n     int
 	calls []expectFunc
 }
 
+// NewCallQueue returns a new list of expected functions
 func NewCallQueue(funcs ...expectFunc) CallQueue {
 	return CallQueue{calls: funcs}
 }
 
+// Calls can be used with counterfeiters *Calls functions
+// to set the stub functions
 func (q *CallQueue) Calls(context context.Context, object runtime.Object, _ ...crc.UpdateOption) error {
 	n := q.n
 	if n >= len(q.calls) {

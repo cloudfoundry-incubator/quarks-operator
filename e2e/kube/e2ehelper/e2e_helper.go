@@ -10,7 +10,6 @@ import (
 	"github.com/onsi/ginkgo/config"
 	"github.com/pkg/errors"
 
-	"code.cloudfoundry.org/cf-operator/integration/environment"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
 
@@ -24,10 +23,13 @@ var (
 	namespace string
 )
 
+// TearDownFunc tears down the resource
+type TearDownFunc func() error
+
 // SetUpEnvironment ensures helm binary can run,
 // being able to reach tiller, and eventually it
 // will install the cf-operator chart.
-func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error) {
+func SetUpEnvironment(chartPath string) (string, TearDownFunc, error) {
 	// Ensure tiller is there, if not
 	// then create it, via "init"
 	err := testing.RunHelmBinaryWithCustomErr("version", "-s")
@@ -62,7 +64,7 @@ func SetUpEnvironment(chartPath string) (string, environment.TearDownFunc, error
 	}
 
 	// Add sleep for workaround for CI timeouts
-	time.Sleep(10* time.Second)
+	time.Sleep(10 * time.Second)
 
 	teardownFunc := func() error {
 		var messages string

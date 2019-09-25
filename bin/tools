@@ -1,6 +1,9 @@
 #!/bin/bash
-set -e
+export GO111MODULE=on
 
+pushd ~
 go get -u golang.org/x/lint/golint
 go get -u github.com/maxbrunsfeld/counterfeiter
 go get -u github.com/onsi/ginkgo/ginkgo
+go get -u honnef.co/go/tools/...
+popd

@@ -10,8 +10,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"code.cloudfoundry.org/cf-operator/integration/environment"
 )
 
 func TestKubeStorage(t *testing.T) {
@@ -20,7 +18,7 @@ func TestKubeStorage(t *testing.T) {
 }
 
 var (
-	nsTeardown environment.TearDownFunc
+	nsTeardown e2ehelper.TearDownFunc
 	namespace  string
 )
 

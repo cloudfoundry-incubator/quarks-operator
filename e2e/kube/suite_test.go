@@ -10,12 +10,11 @@ import (
 	. "github.com/onsi/gomega"
 
 	"code.cloudfoundry.org/cf-operator/e2e/kube/e2ehelper"
-	"code.cloudfoundry.org/cf-operator/integration/environment"
 )
 
 var (
 	nsIndex   int
-	teardown  environment.TearDownFunc
+	teardown  e2ehelper.TearDownFunc
 	namespace string
 )
 
