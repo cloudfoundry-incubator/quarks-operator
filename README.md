@@ -25,11 +25,7 @@ It's implemented as a k8s operator, an active controller component which acts up
 
 The `cf-operator` can be installed via `helm`. Make sure you have a running Kubernetes cluster and that tiller is reachable.
 
-Use this if you've never installed the operator
-
-```bash
-helm install --namespace cf-operator --name cf-operator https://cf-operators.s3.amazonaws.com/release/helm-charts/cf-operator-v0.4.0%2B1.g3d277af0.tgz
-```
+See the [releases page](https://github.com/cloudfoundry-incubator/cf-operator/releases) for up-to-date instructions on how to install the operator.
 
 For more information about the `cf-operator` helm chart and how to configure it, please refer to [deploy/helm/cf-operator/README.md](deploy/helm/cf-operator/README.md)
 
