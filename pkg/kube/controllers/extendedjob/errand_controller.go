@@ -17,10 +17,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
 	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
 )
@@ -118,7 +118,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "ExtendedJob", a.Meta.GetName(), bdv1.ConfigMapReference)
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "ExtendedJob", a.Meta.GetName(), names.ConfigMap)
 			}
 			return reconciles
 		}),
@@ -166,7 +166,7 @@ func AddErrand(ctx context.Context, config *config.Config, mgr manager.Manager) 
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "ExtendedJob", a.Meta.GetName(), bdv1.SecretReference)
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "ExtendedJob", a.Meta.GetName(), names.Secret)
 			}
 
 			return reconciles

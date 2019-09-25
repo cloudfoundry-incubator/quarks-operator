@@ -20,7 +20,6 @@ import (
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	ejapi "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	ej "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
@@ -137,7 +136,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 			It("creates versioned manifest secret and persists the output", func() {
 				ejob.Spec.Output.Versioned = true
 				secretLabels := ejob.Spec.Output.SecretLabels
-				secretLabels[bdv1.LabelDeploymentName] = "fake-deployment"
+				secretLabels["fake-label"] = "fake-deployment"
 				ejob.Spec.Output.SecretLabels = secretLabels
 
 				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
@@ -145,7 +144,7 @@ var _ = Describe("ReconcileExtendedJob", func() {
 					secretName := secret.GetName()
 
 					Expect(secret.Labels).To(HaveKeyWithValue("key", "value"))
-					Expect(secret.Labels).To(HaveKeyWithValue(bdv1.LabelDeploymentName, "fake-deployment"))
+					Expect(secret.Labels).To(HaveKeyWithValue("fake-label", "fake-deployment"))
 					Expect(secret.Labels).To(HaveKeyWithValue(versionedsecretstore.LabelSecretKind, "versionedSecret"))
 					Expect(secret.Labels).To(HaveKeyWithValue(versionedsecretstore.LabelVersion, "1"))
 					Expect(secretName).To(Equal("foo-busybox-v1"))
