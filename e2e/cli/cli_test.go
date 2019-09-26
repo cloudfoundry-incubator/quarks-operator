@@ -36,10 +36,10 @@ var _ = Describe("CLI", func() {
   -h, --help                                   help for cf-operator
   -c, --kubeconfig string                      \(KUBECONFIG\) Path to a kubeconfig, not required in-cluster
   -l, --log-level string                       \(LOG_LEVEL\) Only print log messages from this level onward \(default "debug"\)
-      --max-boshdeployment-workers int         \(MAX_BOSHDEPLOYMENT_WORKERS\) Maximum of number concurrently running BOSHDeployment controller \(default 1\)
-      --max-extendedjob-workers int            \(MAX_EXTENDEDJOB_WORKERS\) Maximum of number concurrently running ExtendedJob controller \(default 1\)
-      --max-extendedsecret-workers int         \(MAX_EXTENDEDSECRET_WORKERS\) Maximum of number concurrently running ExtendedSecret controller \(default 5\)
-      --max-extendedstatefulset-workers int    \(MAX_EXTENDEDSTATEFULSET_WORKERS\) Maximum of number concurrently running ExtendedStatefulSet controller \(default 1\)
+      --max-boshdeployment-workers int         \(MAX_BOSHDEPLOYMENT_WORKERS\) Maximum number of workers concurrently running BOSHDeployment controller \(default 1\)
+      --max-extendedjob-workers int            \(MAX_EXTENDEDJOB_WORKERS\) Maximum number of workers concurrently running ExtendedJob controller \(default 1\)
+      --max-extendedsecret-workers int         \(MAX_EXTENDEDSECRET_WORKERS\) Maximum number of workers concurrently running ExtendedSecret controller \(default 5\)
+      --max-extendedstatefulset-workers int    \(MAX_EXTENDEDSTATEFULSET_WORKERS\) Maximum number of workers concurrently running ExtendedStatefulSet controller \(default 1\)
   -w, --operator-webhook-service-host string   \(CF_OPERATOR_WEBHOOK_SERVICE_HOST\) Hostname/IP under which the webhook server can be reached from the cluster
   -p, --operator-webhook-service-port string   \(CF_OPERATOR_WEBHOOK_SERVICE_PORT\) Port the webhook server listens on \(default "2999"\)`))
 		})
