@@ -4,7 +4,9 @@
   - [Description](#Description)
   - [ExtendedStatefulset Component](#extendedstatefulset-component)
     - [ExtendedStatefulset Controller](#extendedstatefulset-controller)
-      - [Highlights](#highlights)
+      - [Watches](#watches-in-sts-controller)
+      - [Reconciliation](#reconciliation-in-sts-controller)
+      - [Highlights](#highlights-in-sts-controller)
         - [Scaling Restrictions (not implemented)](#Scaling-Restrictions-not-implemented)
         - [Automatic Restart of Containers](#Automatic-Restart-of-Containers)
         - [Exposing ExtendedStatefulSets Publicly](#Exposing-ExtendedStatefulSets-Publicly)
@@ -16,6 +18,8 @@
         - [Volume Management](#Volume-Management)
         - [AZ Support](#AZ-Support)
     - [Statefulset Cleanup Controller](#statefulset-cleanup-controller)
+      - [Watches](#watches-in-cleanup-controller)
+      - [Reconciliation](#reconciliation-in-cleanup-controller)
   - [`ExtendedStatefulSet` Examples](#ExtendedStatefulSet-Examples)
 
 ## Description
@@ -36,17 +40,17 @@ The following, is a **ExtendedStatefulset** component diagram that covers the se
 
 This controller will generate a Kubernetes statefulset for each instance_group defined in the BOSH manifest. This Statefulset will also include a set of Kubernetes services, so that each component can be accessed on specific ports.
 
-#### Watches
+#### Watches in sts controller
 
 - `ExtendedStatefulset`: Creation
 - `Configmaps`: Update
 - `Secrets`: Update
 
-#### Reconciliation
+#### Reconciliation in sts controller
 
 Will generate versioned statefulsets with the require data to make all jobs of the instance_group runnable.
 
-#### Highlights
+#### Highlights in sts controller
 
 ##### Scaling Restrictions (not implemented)
 
@@ -207,11 +211,11 @@ If zones are set for an `ExtendedStatefulSet`, the following occurs:
 
 ![estscleanup-controller-flow](quarks_stscleanupcontroller_flow.png)
 
-#### Watches
+#### Watches in cleanup controller
 
 - `StatefulSet`: Creation/Update
 
-#### Reconciliation
+#### Reconciliation in cleanup controller
 
 It will delete statefulsets with old versions, only after the new statefulset version instances,are up and running.
 

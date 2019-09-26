@@ -4,10 +4,15 @@
   - [Description](#description)
   - [ExtendedSecret Component](#extendedsecret-component)
     - [ExtendedSecret Controller](#extendedsecret-controller)
-      - [Highlights](#highlights)
+      - [Watches](#watches-in-esec-controller)
+      - [Reconciliation](#reconciliation-in-esec-controller)
+      - [Highlights](#highlights-in-esec-controller)
         - [Types](#highlights)
         - [Policies](#policies)
     - [CertificateSigningRequest Controller](#certificatesigningrequest-controller)
+      - [Watches](#watches-in-csr-controller)
+      - [Reconciliation](#reconciliation-in-csr-controller)
+      - [Highlights](#highlights-in-csr-controller)
   - [Relationship with the BDPL component](#relationship-with-the-bdpl-component)
   - [`ExtendedSecret` Examples](#extendedsecret-examples)
 
@@ -29,16 +34,16 @@ The following, is a **ExtendedSecret** component diagram that covers the set of 
 
 The ExtendedSecret Controller will get a list of all variables referenced in a BOSH manifest with ops files applied, and will use this list of variables to generate the pertinent ExtendedSecret instances.
 
-#### Watches
+#### Watches in esec controller
 
 - `ExtendedSecret`: Creation
 
-#### Reconciliation
+#### Reconciliation in esec controller
 
 - generates Kubernetes secret of specific types(see Types under Highlights).
 - generate a Certificate Signing Request against the cluster API.
 
-#### Highlights
+#### Highlights in esec controller
 
 ##### Types
 
@@ -81,15 +86,15 @@ spec:
 
 ![certsr-controller-flow](quarks_certsrcontroller_flow.png)
 
-#### Watches
+#### Watches in CSR controller
 
 - `Certificate Signing Request`: Creation
 
-#### Reconciliation
+#### Reconciliation in CSR controller
 
 - once the request is approved by Kubernetes API, will generate a certificate stored in a Kubernetes secret, that is recognized by the cluster.
 
-#### Highlights
+#### Highlights in CSR controller
 
 The CertificateSigningRequest controller watches for `CertificateSigningRequest` and approves ExtendedSecret-owned CSRs and persists the generated certificate.
 

@@ -4,7 +4,13 @@
   - [Description](#description)
   - [ExtendedJob Component](#extendedjob-component)
     - [Errand Controller](#errand-controller)
+      - [Watches](#watches-in-errand-controller)
+      - [Reconciliation](#reconciliation-in-errand-controller)
+      - [Highlights](#highlights-in-errand-controller)
     - [Job Controller](#job-controller)
+      - [Watches](#watches-in-job-controller)
+      - [Reconciliation](#reconciliation-in-job-controller)
+      - [Highlights](#highlights-in-job-controller)
   - [Relationship with the BDPL component](#relationship-with-the-bdpl-component)
   - [ExtendedJob Examples](#extendedjob-examples)
 
@@ -33,18 +39,18 @@ The following, is a **ExtendedJob** component diagram that covers the set of con
 
 This is the controller responsible of implementing Errands, this will led to the generation of a Kubernetes job, in order to complete a task.
 
-#### Watches
+#### Watches in Errand controller
 
 - `ExtendedJob` resources: Create and Update
 - `ConfigMaps`: Update
 - `Secrets`: Create and Update
 
-#### Reconciliation
+#### Reconciliation in Errand controller
 
 - When an `ExtendedJob` instance is generated, it will create Kubernetes Job.
 - The generation of new Kubernetes Jobs, will serve also as the trigger for the `Job Controller`, to start the Reconciliation.
 
-#### Highlights
+#### Highlights in Errand controller
 
 ##### Errands
 
@@ -77,15 +83,15 @@ automatically be restarted if its environment/mounts have changed, due to a
 
 This is an auxiliary controller that relies on the Errand Controller output. It will be watching for Kubernetes Jobs that Succeded or Failed, and eventually it will generate Kubernetes secrets.
 
-#### Watches
+#### Watches in job controller
 
 - `Jobs`: Succedded or Failed
 
-#### Reconciliation
+#### Reconciliation in job controller
 
 - Generate Kubernetes secrets(versioned them)
 
-#### Highlights
+#### Highlights in job controller
 
 ##### Persisted Output
 
