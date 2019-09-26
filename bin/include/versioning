@@ -16,7 +16,7 @@ GIT_DIRTY=${GIT_SHA:-$(echo "${GIT_DESCRIBE}" | awk -F - '{ print $4 }' )}
 GIT_TAG=${GIT_TAG:-$(echo "${GIT_DESCRIBE}" | awk -F - '{ print $1 }' )}
 [ -z "$(git status --porcelain)" ] || GIT_TAG=${GIT_TAG}-dirty
 
-ARTIFACT_NAME=${ARTIFACT_NAME:-$(basename "$(git config --get remote.origin.url)" .git | sed s/^scf-//)}
+ARTIFACT_NAME=${ARTIFACT_NAME:-$(basename "$(git config --get remote.origin.url)" .git)}
 ARTIFACT_VERSION=${GIT_TAG}+${GIT_COMMITS}.${GIT_SHA}
 
 APP_VERSION=${ARTIFACT_NAME}-${ARTIFACT_VERSION}
