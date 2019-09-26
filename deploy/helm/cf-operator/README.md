@@ -33,10 +33,10 @@ $ echo "Tag for docker image is ${VERSION_TAG}"
 $ ./bin/build-image
 ```
 
-Once you set the `image.tag` in the `values.yaml`, run a `helm install`:
+Either set the `image.tag` in the `values.yaml`, or pass the `$VERSION_TAG` to `helm install`:
 
 ```bash
-$ helm install deploy/helm/cf-operator/ --namespace cf-operator --name cf-operator --set image.tag=<the-image-tag>
+$ helm install deploy/helm/cf-operator/ --namespace cf-operator --name cf-operator --set image.tag=$VERSION_TAG
 ```
 
 ### For a local development with minikube and havener:
