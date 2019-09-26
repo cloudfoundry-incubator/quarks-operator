@@ -90,7 +90,7 @@ var _ = Describe("CLI", func() {
 			})
 		})
 
-		Context("when disabling apply-crd", func() {
+		Context("when enabling apply-crd", func() {
 			Context("via environment variables", func() {
 				BeforeEach(func() {
 					os.Setenv("APPLY_CRD", "true")
@@ -100,7 +100,7 @@ var _ = Describe("CLI", func() {
 					os.Setenv("APPLY_CRD", "")
 				})
 
-				It("should not apply CRDs", func() {
+				It("should apply CRDs", func() {
 					session, err := act()
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(session.Err).Should(Say(`Applying CRD...`))
@@ -108,7 +108,7 @@ var _ = Describe("CLI", func() {
 			})
 
 			Context("via using switches", func() {
-				It("should not apply CRDs", func() {
+				It("should apply CRDs", func() {
 					session, err := act("--apply-crd")
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(session.Err).Should(Say(`Applying CRD...`))
