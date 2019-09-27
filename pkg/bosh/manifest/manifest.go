@@ -4,6 +4,7 @@ package manifest
 
 import (
 	"bytes"
+	"context"
 	"crypto"
 	"crypto/sha1"
 	"encoding/hex"
@@ -18,6 +19,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 )
 
 const (
@@ -52,13 +54,14 @@ const (
 
 // VariableOptions from BOSH deployment manifest
 type VariableOptions struct {
-	CommonName       string                  `json:"common_name"`
-	AlternativeNames []string                `json:"alternative_names,omitempty"`
-	IsCA             bool                    `json:"is_ca"`
-	CA               string                  `json:"ca,omitempty"`
-	ExtendedKeyUsage []AuthType              `json:"extended_key_usage,omitempty"`
-	SignerType       string                  `json:"signer_type,omitempty"`
-	ServiceRef       []esv1.ServiceReference `json:"serviceRef,omitempty"`
+	CommonName                  string                  `json:"common_name"`
+	AlternativeNames            []string                `json:"alternative_names,omitempty"`
+	IsCA                        bool                    `json:"is_ca"`
+	CA                          string                  `json:"ca,omitempty"`
+	ExtendedKeyUsage            []AuthType              `json:"extended_key_usage,omitempty"`
+	SignerType                  string                  `json:"signer_type,omitempty"`
+	ServiceRef                  []esv1.ServiceReference `json:"serviceRef,omitempty"`
+	ActivateEKSWorkaroundForSAN bool                    `json:"activateEKSWorkaroundForSAN,omitempty"`
 }
 
 // Variable from BOSH deployment manifest
@@ -456,19 +459,20 @@ func (m *Manifest) ImplicitVariables() ([]string, error) {
 }
 
 // ApplyAddons goes through all defined addons and adds jobs to matched instance groups
-func (m *Manifest) ApplyAddons() error {
+func (m *Manifest) ApplyAddons(ctx context.Context) error {
 	for _, addon := range m.AddOns {
 		for _, ig := range m.InstanceGroups {
-			include, err := m.addOnPlacementMatch(ig, addon.Include)
+			include, err := m.addOnPlacementMatch(ctx, "inclusion", ig, addon.Include)
 			if err != nil {
 				return errors.Wrap(err, "failed to process include placement matches")
 			}
-			exclude, err := m.addOnPlacementMatch(ig, addon.Exclude)
+			exclude, err := m.addOnPlacementMatch(ctx, "exclusion", ig, addon.Exclude)
 			if err != nil {
 				return errors.Wrap(err, "failed to process exclude placement matches")
 			}
 
 			if exclude || !include {
+				ctxlog.Debugf(ctx, "Addon '%s' doesn't match instance group '%s'", addon.Name, ig.Name)
 				continue
 			}
 
@@ -481,6 +485,7 @@ func (m *Manifest) ApplyAddons() error {
 
 				addedJob.Properties.Quarks.IsAddon = true
 
+				ctxlog.Debugf(ctx, "Applying addon job '%s/%s' to instance group '%s'", addon.Name, addonJob.Name, ig.Name)
 				ig.Jobs = append(ig.Jobs, addedJob)
 			}
 		}

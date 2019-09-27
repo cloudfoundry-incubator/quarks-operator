@@ -131,7 +131,7 @@ func (r *ResolverImpl) WithOpsManifest(ctx context.Context, instance *bdv1.BOSHD
 	}
 
 	// Apply addons
-	err = manifest.ApplyAddons()
+	err = manifest.ApplyAddons(ctx)
 	if err != nil {
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}
@@ -206,7 +206,7 @@ func (r *ResolverImpl) WithOpsManifestDetailed(ctx context.Context, instance *bd
 	}
 
 	// Apply addons
-	err = manifest.ApplyAddons()
+	err = manifest.ApplyAddons(ctx)
 	if err != nil {
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}
@@ -234,6 +234,9 @@ func (r *ResolverImpl) replaceVarRecursive(copy, v reflect.Value, varName, varVa
 
 	case reflect.Interface:
 		originalValue := v.Elem()
+		if !originalValue.IsValid() {
+			return
+		}
 		copyValue := reflect.New(originalValue.Type()).Elem()
 		r.replaceVarRecursive(copyValue, originalValue, varName, varValue)
 		copy.Set(copyValue)
