@@ -7,7 +7,9 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -116,7 +118,20 @@ func (e *Environment) setup() error {
 	e.Teardown = func(wasFailure bool) {
 		if wasFailure {
 			fmt.Println("Collecting debug information...")
-			out, err := exec.Command("../testing/dump_env.sh", e.Namespace).CombinedOutput()
+
+			// try to find our dump_env script
+			n := 1
+			_, filename, _, _ := runtime.Caller(1)
+			if idx := strings.Index(filename, "integration/"); idx >= 0 {
+				n = strings.Count(filename[idx:], "/")
+			}
+			var dots []string
+			for i := 0; i < n; i++ {
+				dots = append(dots, "..")
+			}
+			dumpCmd := path.Join(append(dots, "testing/dump_env.sh")...)
+
+			out, err := exec.Command(dumpCmd, e.Namespace).CombinedOutput()
 			if err != nil {
 				fmt.Println("Failed to run the `dump_env.sh` script", err)
 			}
@@ -198,7 +213,8 @@ func (e *Environment) startKubeClients(kubeConfig *rest.Config) (err error) {
 	return
 }
 
-func (e *Environment) setupCFOperator(namespace string) (err error) {
+func (e *Environment) setupCFOperator(namespace string) error {
+	var err error
 	whh, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_HOST")
 	if !found {
 		return errors.Errorf("Please set CF_OPERATOR_WEBHOOK_SERVICE_HOST to the host/ip the operator runs on and try again")
@@ -246,7 +262,10 @@ func (e *Environment) setupCFOperator(namespace string) (err error) {
 		return errors.Errorf("required environment variable DOCKER_IMAGE_TAG not set")
 	}
 
-	converter.SetupOperatorDockerImage(dockerImageOrg, dockerImageRepo, dockerImageTag)
+	err = converter.SetupOperatorDockerImage(dockerImageOrg, dockerImageRepo, dockerImageTag)
+	if err != nil {
+		return err
+	}
 
 	loggerPath := helper.LogfilePath(fmt.Sprintf("cf-operator-tests-%d.log", e.ID))
 	e.ObservedLogs, e.Log = helper.NewTestLoggerWithPath(loggerPath)
@@ -261,7 +280,7 @@ func (e *Environment) setupCFOperator(namespace string) (err error) {
 		Host:               "0.0.0.0",
 	})
 
-	return
+	return err
 }
 
 func (e *Environment) startOperator() chan struct{} {

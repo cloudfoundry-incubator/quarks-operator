@@ -9,7 +9,8 @@ import (
 var _ = Describe("operator", func() {
 	Describe("GetOperatorDockerImage", func() {
 		It("returns the location of the docker image", func() {
-			converter.SetupOperatorDockerImage("foo", "bar", "1.2.3")
+			err := converter.SetupOperatorDockerImage("foo", "bar", "1.2.3")
+			Expect(err).ToNot(HaveOccurred())
 			Expect(converter.GetOperatorDockerImage()).To(Equal("foo/bar:1.2.3"))
 		})
 	})

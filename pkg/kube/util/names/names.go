@@ -18,6 +18,13 @@ import (
 type DeploymentSecretType int
 
 const (
+	// ConfigMap is used in log messages
+	ConfigMap = "configmap"
+	// Secret is used in log messages
+	Secret = "secret"
+)
+
+const (
 	// DeploymentSecretTypeManifestWithOps is a manifest that has ops files applied
 	DeploymentSecretTypeManifestWithOps DeploymentSecretType = iota
 	// DeploymentSecretTypeManifestAndVars is a manifest whose variables have been interpolated

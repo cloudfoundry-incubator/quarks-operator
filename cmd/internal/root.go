@@ -27,7 +27,6 @@ import (
 )
 
 const (
-	cfFailedMessage = "cf-operator command failed."
 	// Port on which the controller-runtime manager listens
 	managerPort = 2999
 )
@@ -36,6 +35,10 @@ var (
 	log              *zap.SugaredLogger
 	debugGracePeriod = time.Second * 5
 )
+
+func wrapError(err error, msg string) error {
+	return errors.Wrap(err, "cf-operator command failed. "+msg)
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "cf-operator",
@@ -46,18 +49,22 @@ var rootCmd = &cobra.Command{
 
 		restConfig, err := kubeConfig.NewGetter(log).Get(viper.GetString("kubeconfig"))
 		if err != nil {
-			return errors.Wrapf(err, "%s Couldn't fetch Kubeconfig. Ensure kubeconfig is present to continue.", cfFailedMessage)
+			return wrapError(err, "Couldn't fetch Kubeconfig. Ensure kubeconfig is present to continue.")
 		}
 		if err := kubeConfig.NewChecker(log).Check(restConfig); err != nil {
-			return errors.Wrapf(err, "%s Couldn't check Kubeconfig. Ensure kubeconfig is correct to continue.", cfFailedMessage)
+			return wrapError(err, "Couldn't check Kubeconfig. Ensure kubeconfig is correct to continue.")
 		}
 
 		cfOperatorNamespace := viper.GetString("cf-operator-namespace")
-		converter.SetupOperatorDockerImage(
+
+		err = converter.SetupOperatorDockerImage(
 			viper.GetString("docker-image-org"),
 			viper.GetString("docker-image-repository"),
 			viper.GetString("docker-image-tag"),
 		)
+		if err != nil {
+			return wrapError(err, "Couldn't parse cf-operator docker image reference.")
+		}
 
 		log.Infof("Starting cf-operator %s with namespace %s", version.Version, cfOperatorNamespace)
 		log.Infof("cf-operator docker image: %s", converter.GetOperatorDockerImage())
@@ -68,7 +75,7 @@ var rootCmd = &cobra.Command{
 		provider := viper.GetString("provider")
 
 		if serviceHost == "" && provider == "" {
-			log.Fatalf("%s operator-webhook-service-host flag is not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST).", cfFailedMessage)
+			return wrapError(errors.New("couldn't determine webhook server"), "operator-webhook-service-host flag is not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST)")
 		}
 
 		config := config.NewConfig(
@@ -89,7 +96,7 @@ var rootCmd = &cobra.Command{
 			ctxlog.Info(ctx, "Applying CRDs...")
 			err := operator.ApplyCRDs(restConfig)
 			if err != nil {
-				return errors.Wrap(err, "failed to apply crds")
+				return wrapError(err, "Couldn't apply CRDs.")
 			}
 		}
 
@@ -101,14 +108,14 @@ var rootCmd = &cobra.Command{
 			Host:               "0.0.0.0",
 		})
 		if err != nil {
-			return errors.Wrapf(err, cfFailedMessage)
+			return wrapError(err, "Failed to create new manager.")
 		}
 
 		ctxlog.Info(ctx, "Waiting for configurations to be applied into a BOSHDeployment resource...")
 
 		err = mgr.Start(signals.SetupSignalHandler())
 		if err != nil {
-			return errors.Wrapf(err, "%s Failed to start cf-operator manager", cfFailedMessage)
+			return wrapError(err, "Failed to start cf-operator manager.")
 		}
 		return nil
 	},
@@ -140,10 +147,10 @@ func init() {
 	pf.StringP("operator-webhook-service-port", "p", "2999", "Port the webhook server listens on")
 	pf.StringP("docker-image-tag", "t", version.Version, "Tag of the operator docker image")
 	pf.StringP("provider", "x", "", "Cloud Provider where cf-operator is being deployed")
-	pf.Int("max-boshdeployment-workers", 1, "Maximum of number concurrently running BOSHDeployment controller")
-	pf.Int("max-extendedjob-workers", 1, "Maximum of number concurrently running ExtendedJob controller")
-	pf.Int("max-extendedsecret-workers", 5, "Maximum of number concurrently running ExtendedSecret controller")
-	pf.Int("max-extendedstatefulset-workers", 1, "Maximum of number concurrently running ExtendedStatefulSet controller")
+	pf.Int("max-boshdeployment-workers", 1, "Maximum number of workers concurrently running BOSHDeployment controller")
+	pf.Int("max-extendedjob-workers", 1, "Maximum number of workers concurrently running ExtendedJob controller")
+	pf.Int("max-extendedsecret-workers", 5, "Maximum number of workers concurrently running ExtendedSecret controller")
+	pf.Int("max-extendedstatefulset-workers", 1, "Maximum number of workers concurrently running ExtendedStatefulSet controller")
 	pf.Bool("apply-crd", true, "If true, apply CRDs on start")
 	viper.BindPFlag("kubeconfig", pf.Lookup("kubeconfig"))
 	viper.BindPFlag("log-level", pf.Lookup("log-level"))

@@ -1,7 +1,6 @@
 package boshdeployment
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"context"
 	"fmt"
 	"strings"
@@ -16,8 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
@@ -55,7 +54,7 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 
 			if shouldProcessEvent {
 				ctxlog.NewPredicateEvent(o).Debug(
-					ctx, e.Meta, bdv1.SecretReference,
+					ctx, e.Meta, names.Secret,
 					fmt.Sprintf("Create predicate passed for %s, existing secret with the %s suffix",
 						e.Meta.GetName(), names.DeploymentSecretTypeManifestWithOps.String()),
 				)

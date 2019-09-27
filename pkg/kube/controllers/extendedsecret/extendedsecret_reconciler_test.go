@@ -23,7 +23,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/scheme"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	escontroller "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	cfcfg "code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
@@ -72,7 +71,7 @@ var _ = Describe("ReconcileExtendedSecret", func() {
 			}
 			return nil
 		})
-		client.StatusCalls(func() crc.StatusWriter { return &fakes.FakeStatusWriter{} })
+		client.StatusCalls(func() crc.StatusWriter { return &cfakes.FakeStatusWriter{} })
 		manager.GetClientReturns(client)
 	})
 

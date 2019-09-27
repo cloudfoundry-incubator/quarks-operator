@@ -57,7 +57,7 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 			shouldProcessEvent := isBPMInfoSecret(o)
 			if shouldProcessEvent {
 				ctxlog.NewPredicateEvent(o).Debug(
-					ctx, e.Meta, bdv1.SecretReference,
+					ctx, e.Meta, names.Secret,
 					fmt.Sprintf("Create predicate passed for %s, existing secret with label %s, value %s",
 						e.Meta.GetName(), bdv1.LabelDeploymentSecretType, o.GetLabels()[bdv1.LabelDeploymentSecretType]),
 				)

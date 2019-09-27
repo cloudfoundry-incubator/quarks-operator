@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,7 +16,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
@@ -107,7 +107,7 @@ var _ = Describe("kube converter", func() {
 				})
 
 				It("converts the instance group to an ExtendedJob when this the lifecycle is set to auto-errand", func() {
-					m.InstanceGroups[0].LifeCycle = bdm.IGTypeAutoErrand
+					m.InstanceGroups[0].LifeCycle = manifest.IGTypeAutoErrand
 					resources, err := act(bpmConfigs[0], m.InstanceGroups[0])
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(resources.Errands).To(HaveLen(1))
