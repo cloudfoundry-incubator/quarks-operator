@@ -234,6 +234,9 @@ func (r *ResolverImpl) replaceVarRecursive(copy, v reflect.Value, varName, varVa
 
 	case reflect.Interface:
 		originalValue := v.Elem()
+		if !originalValue.IsValid() {
+			return
+		}
 		copyValue := reflect.New(originalValue.Type()).Elem()
 		r.replaceVarRecursive(copyValue, originalValue, varName, varValue)
 		copy.Set(copyValue)
