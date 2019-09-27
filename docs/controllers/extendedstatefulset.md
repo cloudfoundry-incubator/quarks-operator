@@ -1,40 +1,69 @@
 # ExtendedStatefulSet
 
-- [ExtendedStatefulSet](#ExtendedStatefulSet)
-  - [Description](#Description)
-  - [Features](#Features)
-    - [Scaling Restrictions (not implemented)](#Scaling-Restrictions-not-implemented)
-    - [Automatic Restart of Containers](#Automatic-Restart-of-Containers)
-    - [Exposing ExtendedStatefulSets Publicly](#Exposing-ExtendedStatefulSets-Publicly)
-      - [Cluster IP](#Cluster-IP)
-      - [Load Balancer](#Load-Balancer)
-      - [Ingress](#Ingress)
-    - [Extended Upgrade Support](#Extended-Upgrade-Support)
-    - [Detects if StatefulSet versions are running](#Detects-if-StatefulSet-versions-are-running)
-    - [Volume Management](#Volume-Management)
-    - [AZ Support](#AZ-Support)
-  - [`ExtendedStatefulSet` Examples](#ExtendedStatefulSet-Examples)
+1. [ExtendedStatefulSet](#ExtendedStatefulSet)
+   1. [Description](#Description)
+   2. [ExtendedStatefulset Component](#extendedstatefulset-component)
+      1. [ExtendedStatefulset Controller](#extendedstatefulset-controller)
+         1. [Watches](#watches-in-sts-controller)
+         2. [Reconciliation](#reconciliation-in-sts-controller)
+         3. [Scaling Restrictions (not implemented)](#scaling-restrictions-not-implemented)
+         4. [Automatic Restart of Containers](#automatic-restart-of-containers)
+         5. [Exposing ExtendedStatefulSets Publicly](#exposing-extendedstatefulsets-publicly)
+         6. [Cluster IP](#cluster-ip)
+         7. [Load Balancer](#load-balancer)
+         8. [Ingress](#ingress)
+         9. [Extended Upgrade Support](#extended-upgrade-support)
+         10. [Detects if StatefulSet versions are running](#detects-if-statefulset-versions-are-running)
+         11. [Volume Management](#volume-management)
+         12. [AZ Support](#az-support)
+      2. [Statefulset Cleanup Controller](#statefulset-cleanup-controller)
+         1. [Watches](#watches-in-cleanup-controller)
+         2. [Reconciliation](#reconciliation-in-cleanup-controller)
+   3. [Relationship with the BPM component](#relationship-with-the-bdpl-component)
+   4. [`ExtendedStatefulSet` Examples](#extendedstatefulset-examples)
 
 ## Description
 
-The ExtendedStatefulSet reconciler creates the actual StatefulSets of the deployment.
+The ExtendedStatefulSet component can be understood as the set of controllers responsible for translating the BOSH manifest `instance_groups` into Kubernetes resources.
 
-![flow-deploy](quarks_deployment_flow-Deploy.png)
+## ExtendedStatefulset Component
 
-## Features
+The **ExtendedStatefulset** component is a categorization of a set of controllers, under the same group. Inside the **ExtendedStatefulset** component, we have a set of 2 controllers together with one separate reconciliation loop per controller.
 
-### Scaling Restrictions (not implemented)
+Figure 1 illustrates a **ExtendedStatefulset** component diagram that covers the set of controllers it uses.
+
+![ests-component-flow](quarks_estscomponent_flow.png)
+*Fig. 1: The ExtendedStatefulset component*
+
+### **_ExtendedStatefulset Controller_**
+
+![ests-controller-flow](quarks_estscontroller_flow.png)
+*Fig. 2: The ExtendedStatefulset controller*
+
+This controller will generate a Kubernetes statefulset for each instance_group defined in the BOSH manifest. This Statefulset will also include a set of Kubernetes services, so that each component can be accessed on specific ports.
+
+#### Watches in sts controller
+
+- `ExtendedStatefulset`: Creation
+- `Configmaps`: Update
+- `Secrets`: Update
+
+#### Reconciliation in sts controller
+
+Will generate versioned statefulsets with the required data to make all jobs of the instance_group runnable.
+
+#### Scaling Restrictions (not implemented)
 
 Ability to set restrictions on how scaling can occur: min, max, odd replicas.
 
-### Automatic Restart of Containers
+#### Automatic Restart of Containers
 
 When an env value or mount changes due to a `ConfigMap` or `Secret` change, containers are restarted.
 The operator watches all the `ConfigMaps` and `Secrets` referenced by the `StatefulSet`, and automatically performs the update, without extra workarounds.
 
-### Exposing ExtendedStatefulSets Publicly
+#### Exposing ExtendedStatefulSets Publicly
 
-Exposing extendedstatefulsets is similar to exposing statefulsets in kubernetes. For every instance group in the BOSH manifest, a corresponding extendedstatefulset is created. A kubernetes service makes use of labels to select the pods which should be in the service. We need to use two labels to group the pods of a single instance group.
+Exposing extendedstatefulsets is similar to exposing statefulsets in kubernetes. A kubernetes service makes use of labels to select the pods which should be in the service. We need to use two labels to group the pods of a single instance group.
 
 1. fissile.cloudfoundry.org/instance-group-name: ((instanceGroupName))
 2. fissile.cloudfoundry.org/deployment-name: ((deploymentName))
@@ -43,7 +72,7 @@ Exposing extendedstatefulsets is similar to exposing statefulsets in kubernetes.
 
 Following is the example which creates a service with type ClusterIp for a single instance group named nats in deployment nats-deployment for exposing port 4222.
 
-```
+```bash
 ---
 apiVersion: v1
 kind: Service
@@ -74,7 +103,7 @@ Ingress doesn't use any labels but just sits on top of services and acts as a sm
 
 For more information about kubernetes services, we recommend you to read [this](https://kubernetes.io/docs/concepts/services-networking/service/).
 
-### Extended Upgrade Support
+#### Extended Upgrade Support
 
 When an update needs to happen, a second `StatefulSet` for the new version is deployed, and both coexist until canary conditions are met. This also allows support for Blue/Green techniques.
 
@@ -86,7 +115,7 @@ Annotated with a version (auto-incremented on each update). The annotation key i
 
 Ability to upgrade even though `StatefulSet` pods are not ready.
 
-### Detects if StatefulSet versions are running
+#### Detects if StatefulSet versions are running
 
 During upgrades, there is more than one `StatefulSet` version for an `ExtendedStatefulSet` resource. The operator lists available versions and keeps track of which are running.
 
@@ -94,7 +123,7 @@ A running version means that at least one pod that belongs to a `StatefulSet` is
 
 The controller continues to reconcile until there's only one version.
 
-### Volume Management
+#### Volume Management
 
 The problem we're solving here is the following:
 
@@ -104,8 +133,9 @@ Our solution is to use a "dummy" `StatefulSet`(with the prefix "volume-managemen
 The final step is to remove the `volumeClaimTemplates` from the actual "desired" `StatefulSets` and mutate the pods so they use the volumes from the "dummy" `StatefulSet`.
 
 ![Volume Claim management across versions](https://docs.google.com/drawings/d/e/2PACX-1vSvQkXe3zZhJYbkVX01mxS4PKa1iQmWyIgdZh1VKtTS1XW1lC14d1_FHLWn2oA7GVgzJCcEorNVXkK_/pub?w=1185&h=1203)
+*Fig. 3: Volume Claim management across versions*
 
-### AZ Support
+#### AZ Support
 
 The `zones` key defines the availability zones the `ExtendedStatefulSet` needs to span.
 
@@ -173,10 +203,30 @@ If zones are set for an `ExtendedStatefulSet`, the following occurs:
   AZ_INDEX=="zone index"
   ```
 
-### Restarting on Config Change
+#### Restarting on Config Change
 
 `ExtendedStatefulSets` can be automatically updated when the environment/mounts have changed due to a referenced
 `ConfigMap` or a `Secret` being updated. This behavior is controlled by the `updateOnConfigChange` flag which defaults to `false`.
+
+### **_Statefulset Cleanup Controller_**
+
+![estscleanup-controller-flow](quarks_stscleanupcontroller_flow.png)
+*Fig. 4: The Statefulset Cleanup controller*
+
+#### Watches in cleanup controller
+
+- `StatefulSet`: Creation/Update
+
+#### Reconciliation in cleanup controller
+
+It will delete statefulsets with old versions, only after the new statefulset version instances are up and running.
+
+## Relationship with the BDPL component
+
+![bpm-ests-relationship](quarks_bpm_and_ests_flow.png)
+*Fig. 5: Relationship with the BPM controller*
+
+Figure 5 illustrates the interaction of the **BPM** Controller with the **ExtendedStatefulset** Controller. Once the BPM controller consumes the data persisted in secrets from the `ExtendedJob` Component, it will use that data to generate new `ExtendedStatefulset` instances. When these resources are generated, the ExtendedStatefulSet controller will be watching and trigger its reconciliation loop.
 
 ## `ExtendedStatefulSet` Examples
 

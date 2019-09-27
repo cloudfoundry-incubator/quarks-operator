@@ -1,21 +1,22 @@
 # BOSHDeployment
 
-- [BOSHDeployment](#boshdeployment)
-  - [Description](#description)
-  - [Reconcilers](#reconcilers)
-    - [Deployment Reconciler](#deployment-reconciler)
-      - [Watches for](#watches-for)
-      - [Creates/updates](#createsupdates)
-    - [Generated Variable Reconciler](#generated-variable-reconciler)
-      - [Watches for](#watches-for-1)
-      - [Creates/updates](#createsupdates-1)
-    - [BPM Reconciler](#bpm-reconciler)
-      - [Watches for](#watches-for-2)
-      - [Creates/updates](#createsupdates-2)
-    - [Updates and Delete](#updates-and-delete)
-    - [Update](#update)
-    - [Delete](#delete)
-  - [`BOSHDeployment` Examples](#boshdeployment-examples)
+1. [BOSHDeployment](#boshdeployment)
+   1. [Description](#description)
+   2. [BDPL Component](#bdpl-component)
+      1. [BOSHDeployment Controller](#boshdeployment-controller)
+         1. [Watches](#watches-in-bdpl-controller)
+         2. [Reconciliation](#reconciliation-in-bdpl-controller)
+         3. [Highlights](#highlights-in-bdpl-controller)
+      2. [Generate Variables Controller](#generate-variables-controller)
+         1. [Watches](#watches-in-gv-controller)
+         2. [Reconciliation](#reconciliation-in-gv-controller)
+         3. [Highlights](#highlights-in-gv-controller)
+      3. [BPM Controller](#bpm-controller)
+         1. [Watches](#watches-in-bpm-controller)
+         2. [Reconciliation](#reconciliation-in-bpm-controller)
+         3. [Highlights](#highlights-in-bpm-controller)
+   3. [BDPL Abstract view](#bdpl-abstract-view)
+   4. [BOSHDeployment resource examples](#boshdeployment-resource-examples)
 
 ## Description
 
@@ -30,92 +31,112 @@ This [bdpl custom resource](https://github.com/cloudfoundry-incubator/cf-operato
 After creating the bdpl resource on Kubernetes, i.e. via `kubectl apply`, the CF operator will start reconciliation, which will eventually result in the deployment
 of the BOSH release on Kubernetes.
 
-## Reconcilers
+## BDPL Component
 
-We use 3 controllers, and 3 separate reconciliation loops to deal with `BOSHDeployments`.
+The **BOSHDeployment** component is a categorization of a set of controllers, under the same group. Inside the **BDPL** component we have a set of 3 controllers together with one separate reconciliation loop per controller to deal with `BOSH deployments`(end user input)
 
-Here's a state diagram that tries to explain the process of reconciling a `BOSHDeployment`.
+Figure 1 is a **BDPL** component diagram that covers the set of controllers it uses and their relationship with other components(e.g. `ExtendedJob`, `ExtendedSecret` and `ExtendedStatefulSet`)
 
-![deployment-state](https://docs.google.com/drawings/d/e/2PACX-1vTsCO5USd8AJIk_uHMRKl0NABuW85uVGJNebNvgI0Hz_9jhle6fcynLTcHh8cxW6lMgaV_DWyPEvm2-/pub?w=3161&h=2376)
-[edit](https://docs.google.com/drawings/d/126ExNqPxDg1LcB14pbtS5S-iJzLYPyXZ5Jr9vTfFqXA/edit?usp=sharing)
+![bdpl-component-flow](quarks_bdplcomponent_flow.png)
+*Fig. 1: The BOSHDeployment component*
 
-### Rendering manifests
+Figure 1 illustrates a couple of things. Firstly, at the very top, we have the `cf-operator` , which is a long running application with a namespaced scope. When the `cf-operator` pod is initialized it will automatically register all controllers with the [Kubernetes Controller Manager](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/).
 
-![flow-render](quarks_deployment_flow-Render.png)
+While at a first glance the above diagram looks complex, it can be explained easily by focusing on each controller´s main functions: `Reconciliation & Watch`.
 
-### Converting To Kubernetes Resources
+### **_BOSHDeployment Controller_**
 
-![flow-to-kube](quarks_deployment_flow-ToKube.png)
+![bdpl-controller-flow](quarks_bdplcontroller_flow.png)
+*Fig. 2: The BOSHDeployment controller*
 
-### Deployment Reconciler
+This is the controller that manages the end user input(a BOSH manifest).
 
-#### Watches for
+#### Watches in BDPL controller
 
-- `BOSHDeployment`
-- `ConfigMap`/`Secret` for ops files and the deployment manifest
+- `BOSHDeployment`: Create
+- `ConfigMaps`: Update
+- `Secrets`: Create and Update
 
-#### Creates/updates
+#### Reconciliation in BDPL controller
 
-- the "With Ops" `Secret`, that contains the deployment manifest, with all ops files applied
-- the "Variable Interpolation"[auto-errand extended job](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/controllers/extendedjob.md#one-off-jobs-auto-errands)
-- the "Data Gathering" auto-errand extended job
-- the "BPM Configs" auto-errand extended job
+- generates `.with-ops` secret, that contains the deployment manifest, with all ops files applied
+- generates `variable interpolation` [**Extendedjob**](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/controllers/extendedjob.md#one-off-jobs-auto-errands) resource
+- generates `data gathering` **ExtendedJob** resource
+- generates `BPM configuration` **ExtendedJob** resource
 
-> **Note**
->
-> The output of the ["Variable Interpolation"](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_variable-interpolation.md) `ExtendedJob` is the input for the "Data Gathering" `ExtendedJob`. This is the "Desired Manifest" `Secret`. (`desired-manifest-v1`)
->
-> The ["Data Gathering"](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_instance-group.md) step generates 2 [Versioned Secrets](extendedjob.md#versioned-secrets) for each Instance Group:
->
-> - Instance Group Resolved Properties (referenced by the Instance Group `ExtendedStatefulSets` and `ExtendedJobs`) (i.e. `ig-resolved.nats-v1`)
-> - Instance Group BPM (watched for by the BPM Reconciler) (i.e. `bpm.nats-v1`)
->
+#### Highlights in BDPL controller
 
-### Generated Variable Reconciler
+Transform the concepts of BOSH into Kubernetes resources:
 
-This reconciler is responsible with auto-generating certificates, passwords and other secrets declared in the manifest. It does this with the help of `ExtendedSecrets`.
+- BOSH errands to ExtendedJobs CRD instances
+- BOSH instance_groups to ExtendedStatefulSet CRD instances
+- BOSH Variables to ExtendedSecrets CRD instance
 
-#### Watches for
+All of the three created *ExtendedJob* instances will eventually persist their STDOUT into new secrets under the same namespace.
 
-- the "with-ops secret" (e.g. `nats-deployment.with-ops`)
+- The output of the [`variable interpolation`](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_variable-interpolation.md) **ExtendedJob** ends up as the `.desired-manifest-v1` **secret**, which is a versioned secret. At the same time this secret serves as the input for the `data gathering` **ExtendedJob**.
+- The output of the [`data gathering`](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_instance-group.md) **ExtendedJob**, ends up
+as the `.ig-resolved.<instance_group_name>-v1` versioned secret.
+- The output of the `BPM configuration` **ExtendedJob**, ends up as the `bpm.<instance_group_name>-v1` versioned secret.
 
-#### Creates/updates
+### **_Generate Variables Controller_**
 
-- `ExtendedSecret` for each explicit variable from the manifest
+![generate-variable-controller-flow](quarks_gvariablecontroller_flow.png)
+*Fig. 3: The Generated Variables controller*
 
-> **Note:** the `Secrets` generated by these `ExtendedSecrets` are referenced by the "Variable Interpolation" `ExtendedJob`.
-> When these get created/updated, the "Variable Interpolation" job is run.
+This is the controller that is responsible for auto-generating certificates, passwords and other secrets declared in the manifest. In other words, it translates all BOSH variables into custom Kubernetes primitive resources. It does this with the help of `ExtendedSecrets`. It watches the `.with-ops` secret, retrieves the list of BOSH variables and triggers the generation of `ExtendedSecrets` per item in that list.
 
-### BPM Reconciler
+#### Watches in GV controller
 
-The BPM reconciler is triggered for each instance group in the desired manifest, since we generate one BPM Info Secret for each. The reconciler starts each Instance Group as its corresponding Secret is created. It *does not wait* for all Secrets to be ready.
+- `Secrets`: Create and Update.
 
-> **Note**
->
-> The Secrets watched by the BPM Reconciler are [Versioned Secrets](extendedjob.md#versioned-secrets).
+#### Reconciliation in GV controller
 
-#### Watches for
+- generates `ExtendedSecrets` resources.
 
-- the [Versioned Secrets](extendedjob.md#versioned-secrets) for Instance Group BPM information
+#### Highlights in GV controller
 
-#### Creates/updates
+The `secrets` resources,  generated by these `ExtendedSecrets` are referenced by the `variable interpolation` **ExtendedJob**. When these secrets are created/updated, the variable interpolation ExtendedJob is run.
 
-- actual BOSH Instance Group `ExtendedStatefulSets` and `ExtendedJobs`
+### **_BPM Controller_**
 
-### Updates and Delete
+![bpm-controller-flow](quarks_bpm-controller_flow.png)
+*Fig. 4: The BPM controller*
 
-### Update
+The BPM controller has the responsibility to generate Kubernetes resources per instance_group. It is triggered for each instance_group in the desired manifest, since we generate one BPM Secret for each. The reconciler starts each instance_group as its corresponding secret is created. It *does not wait* for all secrets to be ready.
+
+#### Watches in BPM controller
+
+- [`versioned secrets`](extendedjob.md#versioned-secrets): Create and Update.
+
+#### Reconciliation in BPM controller
+
+- Render BPM resources per `instance_group`
+- Convert `instance_groups` of the type `services` to `ExtendedStafulSet` resources.
+- Convert `instance_groups` of the type `errand` to `ExtendedJob` resources.
+- Generates Kubernetes services that will expose ports for the `instance_groups`
+- Generate require PVC´s.
+
+#### Highlights in BPM controller
+
+The Secrets watched by the BPM Reconciler are [Versioned Secrets](extendedjob.md#versioned-secrets).
 
 Resources are _applied_ using an **upsert technique** [implementation](https://godoc.org/sigs.k8s.io/controller-runtime/pkg/controller/controllerutil#CreateOrUpdate).
 
 Any resources that are no longer required are deleted.
 
-### Delete
-
 As the `BOSHDeployment` is deleted, all owned resources are automatically deleted in a cascading fashion.
 
 Persistent volumes are left behind.
 
-## `BOSHDeployment` Examples
+## BDPL Abstract view
+
+Figure 5 is a diagram that explains the whole BOSHDeployment component controllers flow, in a more high level perspective.
+
+![deployment-state](https://docs.google.com/drawings/d/e/2PACX-1vTsCO5USd8AJIk_uHMRKl0NABuW85uVGJNebNvgI0Hz_9jhle6fcynLTcHh8cxW6lMgaV_DWyPEvm2-/pub?w=3161&h=2376)
+[edit](https://docs.google.com/drawings/d/126ExNqPxDg1LcB14pbtS5S-iJzLYPyXZ5Jr9vTfFqXA/edit?usp=sharing)
+*Fig. 5: The BOSHDeployment component controllers interactions*
+
+## BOSHDeployment resource examples
 
 See https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/examples/bosh-deployment
