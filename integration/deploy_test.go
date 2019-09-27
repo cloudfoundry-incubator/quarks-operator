@@ -276,17 +276,28 @@ var _ = Describe("Deploy", func() {
 					resultChan := make(chan environment.ChanResult)
 					stopChan := make(chan struct{})
 					watchNats := func(outChan chan environment.ChanResult, stopChan chan struct{}, uri string) {
+						var checkDelay time.Duration = 200 // Time between checks in ms
+						toleranceWindow := 5               // Tolerate errors during a 1s window (5*200ms)
+						inToleranceWindow := false
+
 						for {
+							if inToleranceWindow {
+								toleranceWindow -= 1
+							}
+
 							select {
 							default:
 								_, err := net.Dial("tcp", uri)
 								if err != nil {
-									outChan <- environment.ChanResult{
-										Error: err,
+									inToleranceWindow = true
+									if toleranceWindow < 0 {
+										outChan <- environment.ChanResult{
+											Error: err,
+										}
+										return
 									}
-									return
 								}
-								time.Sleep(200 * time.Millisecond)
+								time.Sleep(checkDelay * time.Millisecond)
 							case <-stopChan:
 								outChan <- environment.ChanResult{
 									Error: nil,
