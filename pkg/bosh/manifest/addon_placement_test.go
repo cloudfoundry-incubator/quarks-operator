@@ -1,6 +1,8 @@
 package manifest_test
 
 import (
+	"context"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -14,7 +16,7 @@ var _ = Describe("Addons", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(manifest).ToNot(BeNil())
 
-		err = manifest.ApplyAddons()
+		err = manifest.ApplyAddons(context.Background())
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(manifest.InstanceGroups).To(HaveLen(3))
