@@ -14,6 +14,7 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
@@ -612,6 +613,25 @@ func (c *Catalog) Sleep1hPodSpec() corev1.PodSpec {
 				Name:    "busybox",
 				Image:   "busybox",
 				Command: []string{"sleep", "3600"},
+			},
+		},
+	}
+}
+
+// NodePortService returns a Service of type NodePort
+func (c *Catalog) NodePortService(name, ig string, targetPort int32) corev1.Service {
+	return corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeNodePort,
+			Selector: map[string]string{
+				"fissile.cloudfoundry.org/instance-group-name": ig,
+			},
+			Ports: []corev1.ServicePort{
+				corev1.ServicePort{
+					Port:       targetPort,
+					TargetPort: intstr.FromInt(int(targetPort)),
+				},
 			},
 		},
 	}

@@ -22,6 +22,7 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 	"k8s.io/client-go/rest"
@@ -184,6 +185,25 @@ func (e *Environment) AllLogMessages() (msgs []string) {
 	}
 
 	return
+}
+
+// NodeIP returns a public IP of a node
+func (e *Environment) NodeIP() (string, error) {
+	nodes, err := e.Clientset.CoreV1().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		return "", errors.Wrap(err, "getting the list of nodes")
+	}
+
+	if len(nodes.Items) == 0 {
+		return "", fmt.Errorf("got an empty list of nodes")
+	}
+
+	addresses := nodes.Items[0].Status.Addresses
+	if len(addresses) == 0 {
+		return "", fmt.Errorf("node has an empty list of addresses")
+	}
+
+	return addresses[0].Address, nil
 }
 
 func (e *Environment) setupKube() (err error) {

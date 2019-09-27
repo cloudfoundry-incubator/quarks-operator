@@ -1,6 +1,8 @@
 package integration_test
 
 import (
+	"fmt"
+	"net"
 	"os/exec"
 	"strings"
 	"time"
@@ -251,16 +253,81 @@ var _ = Describe("Deploy", func() {
 			})
 
 			Context("when updating referenced BOSH deployment manifest", func() {
-				It("should update the deployment", func() {
+				It("should update the deployment with zero downtime", func() {
+					By("Setting up a NodePort service")
+					svc, err := env.GetService(env.Namespace, "test-nats-0")
+					Expect(err).NotTo(HaveOccurred(), "error retrieving clusterIP service")
+
+					tearDown, err := env.CreateService(env.Namespace, env.NodePortService("nats-service", "nats", svc.Spec.Ports[0].Port))
+					defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+					Expect(err).NotTo(HaveOccurred(), "error creating service")
+
+					service, err := env.GetService(env.Namespace, "nats-service")
+					Expect(err).NotTo(HaveOccurred(), "error retrieving service")
+
+					nodeIP, err := env.NodeIP()
+					Expect(err).NotTo(HaveOccurred(), "error retrieving node ip")
+
+					address := fmt.Sprintf("%s:%d", nodeIP, service.Spec.Ports[0].NodePort)
+					err = env.WaitForPortReachable("tcp", address)
+					Expect(err).NotTo(HaveOccurred(), "port not reachable")
+
+					By("Setting up a service watcher")
+					resultChan := make(chan environment.ChanResult)
+					stopChan := make(chan struct{})
+					watchNats := func(outChan chan environment.ChanResult, stopChan chan struct{}, uri string) {
+						var checkDelay time.Duration = 200 // Time between checks in ms
+						toleranceWindow := 5               // Tolerate errors during a 1s window (5*200ms)
+						inToleranceWindow := false
+
+						for {
+							if inToleranceWindow {
+								toleranceWindow -= 1
+							}
+
+							select {
+							default:
+								_, err := net.Dial("tcp", uri)
+								if err != nil {
+									inToleranceWindow = true
+									if toleranceWindow < 0 {
+										outChan <- environment.ChanResult{
+											Error: err,
+										}
+										return
+									}
+								}
+								time.Sleep(checkDelay * time.Millisecond)
+							case <-stopChan:
+								outChan <- environment.ChanResult{
+									Error: nil,
+								}
+								return
+							}
+						}
+					}
+
+					go watchNats(resultChan, stopChan, address)
+
+					By("Triggering an upgrade")
 					cm, err := env.GetConfigMap(env.Namespace, "manifest")
 					Expect(err).NotTo(HaveOccurred())
 					cm.Data["manifest"] = strings.Replace(cm.Data["manifest"], "changeme", "dont", -1)
 					_, _, err = env.UpdateConfigMap(env.Namespace, *cm)
 					Expect(err).NotTo(HaveOccurred())
 
-					By("checking for instance group updated pods")
 					err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "2", 2)
 					Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
+
+					err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "1", 0)
+					Expect(err).NotTo(HaveOccurred(), "error waiting for old pods to vanish")
+
+					// Stop the watcher if it's still running
+					close(stopChan)
+
+					// Collect result
+					result := <-resultChan
+					Expect(result.Error).NotTo(HaveOccurred())
 				})
 			})
 		})
