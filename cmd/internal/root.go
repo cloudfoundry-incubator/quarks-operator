@@ -21,11 +21,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
-	kubeConfig "code.cloudfoundry.org/cf-operator/pkg/kube/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/cf-operator/version"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	kubeConfig "code.cloudfoundry.org/quarks-utils/pkg/kubeconfig"
 )
 
 const (
@@ -99,7 +99,6 @@ var rootCmd = &cobra.Command{
 			viper.GetInt("max-extendedjob-workers"),
 			viper.GetInt("max-extendedsecret-workers"),
 			viper.GetInt("max-extendedstatefulset-workers"),
-			viper.GetBool("apply-crd"),
 		)
 		ctx := ctxlog.NewParentContext(log)
 

@@ -15,9 +15,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	podutil "code.cloudfoundry.org/cf-operator/pkg/kube/util/pod"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	podutil "code.cloudfoundry.org/quarks-utils/pkg/pod"
 )
 
 // NewStatefulSetCleanupReconciler returns a new reconcile.Reconciler

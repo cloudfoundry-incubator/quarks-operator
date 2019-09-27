@@ -17,9 +17,9 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
+	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
 // NewBOSHDeploymentValidator creates a validating hook for BOSHDeployment and adds it to the Manager

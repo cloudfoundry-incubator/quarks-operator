@@ -6,11 +6,11 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"code.cloudfoundry.org/cf-operator/integration/environment"
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	inmemorygenerator "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
 	es "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+	"code.cloudfoundry.org/quarks-utils/testing/machine"
+	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,7 +34,7 @@ var _ = Describe("ExtendedSecret", func() {
 			es, tearDown, err := env.CreateExtendedSecret(env.Namespace, extendedSecret)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(es).NotTo(Equal(nil))
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// check for generated secret
 			secret, err := env.CollectSecret(env.Namespace, "generated-password-secret")
@@ -56,7 +56,7 @@ var _ = Describe("ExtendedSecret", func() {
 			es, tearDown, err := env.CreateExtendedSecret(env.Namespace, extendedSecret)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(es).NotTo(Equal(nil))
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// check for generated secret
 			secret, err := env.CollectSecret(env.Namespace, "generated-rsa-secret")
@@ -79,7 +79,7 @@ var _ = Describe("ExtendedSecret", func() {
 			es, tearDown, err := env.CreateExtendedSecret(env.Namespace, extendedSecret)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(es).NotTo(Equal(nil))
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// check for generated secret
 			secret, err := env.CollectSecret(env.Namespace, "generated-ssh-secret")
@@ -116,7 +116,7 @@ var _ = Describe("ExtendedSecret", func() {
 			}
 			tearDown, err := env.CreateSecret(env.Namespace, casecret)
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// Create an ExtendedSecret
 			var extendedsecret *es.ExtendedSecret
@@ -129,7 +129,7 @@ var _ = Describe("ExtendedSecret", func() {
 			extendedsecret, tearDown, err = env.CreateExtendedSecret(env.Namespace, extendedSecret)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(extendedsecret).NotTo(Equal(nil))
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// check for generated secret
 			secret, err := env.CollectSecret(env.Namespace, "generated-cert-secret")

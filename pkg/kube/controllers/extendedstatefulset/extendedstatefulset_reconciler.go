@@ -18,10 +18,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/meltdown"
-	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
+	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
 const (

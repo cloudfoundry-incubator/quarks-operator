@@ -16,12 +16,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
+	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 var _ = Describe("Mutate", func() {
@@ -127,7 +127,7 @@ var _ = Describe("Mutate", func() {
 				Spec: essv1.ExtendedStatefulSetSpec{
 					Template: appsv1.StatefulSet{
 						Spec: appsv1.StatefulSetSpec{
-							Replicas: util.Int32(1),
+							Replicas: pointers.Int32(1),
 						},
 					},
 				},
@@ -159,7 +159,7 @@ var _ = Describe("Mutate", func() {
 							Spec: essv1.ExtendedStatefulSetSpec{
 								Template: appsv1.StatefulSet{
 									Spec: appsv1.StatefulSetSpec{
-										Replicas: util.Int32(2),
+										Replicas: pointers.Int32(2),
 									},
 								},
 							},

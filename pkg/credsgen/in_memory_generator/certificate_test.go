@@ -11,7 +11,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	inmemorygenerator "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 
 	cfssllog "github.com/cloudflare/cfssl/log"
 	"github.com/pkg/errors"

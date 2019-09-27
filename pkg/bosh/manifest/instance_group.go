@@ -6,7 +6,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 // InstanceGroup from BOSH deployment manifest.

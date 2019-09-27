@@ -15,8 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	essv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	podutil "code.cloudfoundry.org/cf-operator/pkg/kube/util/pod"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	podutil "code.cloudfoundry.org/quarks-utils/pkg/pod"
 )
 
 // alterVolumeManagementStatefulSet creates the volumeManagement statefulSet for persistent volume claim creation.

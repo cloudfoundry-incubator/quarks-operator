@@ -13,9 +13,9 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
+	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 var (
@@ -131,7 +131,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 					Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 				},
 				Spec: v1beta2.StatefulSetSpec{
-					Replicas: util.Int32(int32(instanceGroup.Instances)),
+					Replicas: pointers.Int32(int32(instanceGroup.Instances)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
 					},

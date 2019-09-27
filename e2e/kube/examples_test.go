@@ -6,19 +6,18 @@ import (
 	"path"
 	"strings"
 
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
+	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Examples Directory", func() {
-
 	var (
 		example      string
 		yamlFilePath string
-		kubectl      *testing.Kubectl
+		kubectl      *cmdHelper.Kubectl
 	)
 
 	podWait := func(name string) {
@@ -27,9 +26,9 @@ var _ = Describe("Examples Directory", func() {
 	}
 
 	JustBeforeEach(func() {
-		kubectl = testing.NewKubectl()
+		kubectl = cmdHelper.NewKubectl()
 		yamlFilePath = path.Join(examplesDir, example)
-		err := testing.Create(namespace, yamlFilePath)
+		err := cmdHelper.Create(namespace, yamlFilePath)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -46,7 +45,7 @@ var _ = Describe("Examples Directory", func() {
 			yamlUpdatedFilePath := examplesDir + "extended-statefulset/exstatefulset_configs_updated.yaml"
 
 			By("Updating the config value used by pods")
-			err := testing.Apply(namespace, yamlUpdatedFilePath)
+			err := cmdHelper.Apply(namespace, yamlUpdatedFilePath)
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Checking for pods")
@@ -75,13 +74,13 @@ var _ = Describe("Examples Directory", func() {
 			err := kubectl.WaitForService(namespace, "nats-service")
 			Expect(err).ToNot(HaveOccurred())
 
-			ip0, err := testing.GetData(namespace, "pod", "nats-deployment-nats-v1-0", "go-template={{.status.podIP}}")
+			ip0, err := cmdHelper.GetData(namespace, "pod", "nats-deployment-nats-v1-0", "go-template={{.status.podIP}}")
 			Expect(err).ToNot(HaveOccurred())
 
-			ip1, err := testing.GetData(namespace, "pod", "nats-deployment-nats-v1-1", "go-template={{.status.podIP}}")
+			ip1, err := cmdHelper.GetData(namespace, "pod", "nats-deployment-nats-v1-1", "go-template={{.status.podIP}}")
 			Expect(err).ToNot(HaveOccurred())
 
-			out, err := testing.GetData(namespace, "endpoints", "nats-service", "go-template=\"{{(index .subsets 0).addresses}}\"")
+			out, err := cmdHelper.GetData(namespace, "endpoints", "nats-service", "go-template=\"{{(index .subsets 0).addresses}}\"")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(out).To(ContainSubstring(string(ip0)))
 			Expect(out).To(ContainSubstring(string(ip1)))
@@ -110,10 +109,10 @@ var _ = Describe("Examples Directory", func() {
 			podWait("pod/nats-deployment-nats-v1-1")
 
 			By("Checking the value in the config file")
-			outFile, err := testing.RunCommandWithOutput(namespace, "nats-deployment-nats-v1-1", "awk 'NR == 18 {print substr($2,2,17)}' /var/vcap/jobs/nats/config/nats.conf")
+			outFile, err := cmdHelper.RunCommandWithOutput(namespace, "nats-deployment-nats-v1-1", "awk 'NR == 18 {print substr($2,2,17)}' /var/vcap/jobs/nats/config/nats.conf")
 			Expect(err).ToNot(HaveOccurred())
 
-			outSecret, err := testing.GetData(namespace, "secret", "nats-deployment.var-custom-password", "go-template={{.data.password}}")
+			outSecret, err := cmdHelper.GetData(namespace, "secret", "nats-deployment.var-custom-password", "go-template={{.data.password}}")
 			Expect(err).ToNot(HaveOccurred())
 			outSecretDecoded, _ := b64.StdEncoding.DecodeString(string(outSecret))
 			Expect(strings.TrimSuffix(outFile, "\n")).To(ContainSubstring(string(outSecretDecoded)))
@@ -131,12 +130,12 @@ var _ = Describe("Examples Directory", func() {
 			podWait("pod/nats-deployment-nats-v1-1")
 
 			By("Ensure only one container exists")
-			containerName, err := testing.GetData(namespace, "pod", "nats-deployment-nats-v1-0", "jsonpath={range .spec.containers[*]}{.name}")
+			containerName, err := cmdHelper.GetData(namespace, "pod", "nats-deployment-nats-v1-0", "jsonpath={range .spec.containers[*]}{.name}")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(containerName).To(ContainSubstring("nats-nats"))
 			Expect(containerName).ToNot(ContainSubstring("logs"))
 
-			containerName, err = testing.GetData(namespace, "pod", "nats-deployment-nats-v1-1", "jsonpath={range .spec.containers[*]}{.name}")
+			containerName, err = cmdHelper.GetData(namespace, "pod", "nats-deployment-nats-v1-1", "jsonpath={range .spec.containers[*]}{.name}")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(containerName).To(ContainSubstring("nats-nats"))
 			Expect(containerName).ToNot(ContainSubstring("logs"))
@@ -154,115 +153,11 @@ var _ = Describe("Examples Directory", func() {
 
 			By("Updating implicit variable")
 			implicitVariablePath := examplesDir + "bosh-deployment/implicit-variable-updated.yaml"
-			err := testing.Apply(namespace, implicitVariablePath)
+			err := cmdHelper.Apply(namespace, implicitVariablePath)
 
 			Expect(err).ToNot(HaveOccurred())
 			By("Checking for new pods")
 			podWait("pod/nats-deployment-nats-v2-0")
-		})
-	})
-
-	Context("extended-job auto errand delete example", func() {
-		BeforeEach(func() {
-			example = "extended-job/exjob_auto-errand-deletes-pod.yaml"
-		})
-
-		It("deletes pod after job is done", func() {
-			By("Checking for pods")
-			err := kubectl.WaitForPod(namespace, fmt.Sprintf("%s=deletes-pod-1", ejv1.LabelEJobName), "deletes-pod-1")
-			Expect(err).ToNot(HaveOccurred())
-
-			err = kubectl.WaitLabelFilter(namespace, "terminate", "pod", fmt.Sprintf("%s=deletes-pod-1", ejv1.LabelEJobName))
-			Expect(err).ToNot(HaveOccurred())
-		})
-	})
-
-	Context("extended-job auto errand example", func() {
-		BeforeEach(func() {
-			example = "extended-job/exjob_auto-errand.yaml"
-		})
-
-		It("runs the errand automatically", func() {
-			By("Checking for pods")
-			err := kubectl.WaitForPod(namespace, fmt.Sprintf("%s=one-time-sleep", ejv1.LabelEJobName), "one-time-sleep")
-			Expect(err).ToNot(HaveOccurred())
-
-			err = kubectl.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=one-time-sleep", ejv1.LabelEJobName))
-			Expect(err).ToNot(HaveOccurred())
-		})
-	})
-
-	Context("extended-job auto errand update example", func() {
-		BeforeEach(func() {
-			example = "extended-job/exjob_auto-errand-updating.yaml"
-		})
-
-		It("triggers job again when config is updated", func() {
-			By("Checking for pods")
-
-			err := kubectl.WaitForPod(namespace, fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName), "auto-errand-sleep-again")
-			Expect(err).ToNot(HaveOccurred())
-
-			err = kubectl.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName))
-			Expect(err).ToNot(HaveOccurred())
-
-			By("Delete the pod")
-			err = testing.DeleteLabelFilter(namespace, "pod", fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName))
-			Expect(err).ToNot(HaveOccurred())
-
-			By("Update the config change")
-			yamlFilePath = examplesDir + "extended-job/exjob_auto-errand-updating_updated.yaml"
-
-			err = testing.Apply(namespace, yamlFilePath)
-			Expect(err).ToNot(HaveOccurred())
-
-			err = kubectl.WaitForPod(namespace, fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName), "auto-errand-sleep-again")
-			Expect(err).ToNot(HaveOccurred())
-
-			err = kubectl.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName))
-			Expect(err).ToNot(HaveOccurred())
-		})
-	})
-
-	Context("extended-job errand example", func() {
-		BeforeEach(func() {
-			example = "extended-job/exjob_errand.yaml"
-		})
-
-		It("starts job if trigger is changed manually", func() {
-			By("Updating exjob to trigger now")
-			yamlFilePath = examplesDir + "extended-job/exjob_errand_updated.yaml"
-			err := testing.Apply(namespace, yamlFilePath)
-			Expect(err).ToNot(HaveOccurred())
-
-			By("Checking for pods")
-			err = kubectl.WaitForPod(namespace, fmt.Sprintf("%s=manual-sleep", ejv1.LabelEJobName), "manual-sleep")
-			Expect(err).ToNot(HaveOccurred())
-
-			err = kubectl.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=manual-sleep", ejv1.LabelEJobName))
-			Expect(err).ToNot(HaveOccurred())
-		})
-	})
-
-	Context("extended-job output example", func() {
-		BeforeEach(func() {
-			example = "extended-job/exjob_output.yaml"
-		})
-
-		It("creates a secret from job output", func() {
-			By("Checking for pods")
-			err := kubectl.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=myfoo", ejv1.LabelEJobName))
-			Expect(err).ToNot(HaveOccurred())
-
-			By("Checking for secret")
-			err = kubectl.WaitForSecret(namespace, "foo-json")
-			Expect(err).ToNot(HaveOccurred())
-
-			By("Checking the secret data created")
-			outSecret, err := testing.GetData(namespace, "secret", "foo-json", "go-template={{.data.foo}}")
-			Expect(err).ToNot(HaveOccurred())
-			outSecretDecoded, _ := b64.StdEncoding.DecodeString(string(outSecret))
-			Expect(string(outSecretDecoded)).To(Equal("1"))
 		})
 	})
 
@@ -273,7 +168,7 @@ var _ = Describe("Examples Directory", func() {
 
 		It("generates a password", func() {
 			By("Checking the generated password")
-			err := testing.SecretCheckData(namespace, "gen-secret1", ".data.password")
+			err := cmdHelper.SecretCheckData(namespace, "gen-secret1", ".data.password")
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -287,7 +182,7 @@ var _ = Describe("Examples Directory", func() {
 			By("Checking the generated certificate")
 			err := kubectl.WaitForSecret(namespace, "gen-certificate")
 			Expect(err).ToNot(HaveOccurred(), "error waiting for secret")
-			err = testing.SecretCheckData(namespace, "gen-certificate", ".data.certificate")
+			err = cmdHelper.SecretCheckData(namespace, "gen-certificate", ".data.certificate")
 			Expect(err).ToNot(HaveOccurred(), "error getting for secret")
 		})
 	})
@@ -301,7 +196,7 @@ var _ = Describe("Examples Directory", func() {
 			certYamlFilePath := examplesDir + "extended-secret/loggregator-tls-agent-cert.yaml"
 
 			By("Creating ExtendedSecrets")
-			err := testing.Create(namespace, certYamlFilePath)
+			err := cmdHelper.Create(namespace, certYamlFilePath)
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Checking the generated certificates")
@@ -311,11 +206,11 @@ var _ = Describe("Examples Directory", func() {
 			Expect(err).ToNot(HaveOccurred(), "error waiting for cert secret")
 
 			By("Checking the generated certificates")
-			outSecret, err := testing.GetData(namespace, "secret", "example.var-loggregator-ca", "go-template={{.data.certificate}}")
+			outSecret, err := cmdHelper.GetData(namespace, "secret", "example.var-loggregator-ca", "go-template={{.data.certificate}}")
 			Expect(err).ToNot(HaveOccurred())
 			rootPEM, _ := b64.StdEncoding.DecodeString(string(outSecret))
 
-			outSecret, err = testing.GetData(namespace, "secret", "example.var-loggregator-tls-agent", "go-template={{.data.certificate}}")
+			outSecret, err = cmdHelper.GetData(namespace, "secret", "example.var-loggregator-tls-agent", "go-template={{.data.certificate}}")
 			Expect(err).ToNot(HaveOccurred())
 			certPEM, _ := b64.StdEncoding.DecodeString(string(outSecret))
 

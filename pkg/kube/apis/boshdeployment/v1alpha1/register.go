@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	apis "code.cloudfoundry.org/cf-operator/pkg/kube/apis"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 // This file looks almost the same for all controllers
@@ -44,7 +44,7 @@ var (
 							Properties: map[string]extv1.JSONSchemaProps{
 								"name": {
 									Type:      "string",
-									MinLength: util.Int64(1),
+									MinLength: pointers.Int64(1),
 								},
 								"type": {
 									Type: "string",
@@ -74,7 +74,7 @@ var (
 									Properties: map[string]extv1.JSONSchemaProps{
 										"name": {
 											Type:      "string",
-											MinLength: util.Int64(1),
+											MinLength: pointers.Int64(1),
 										},
 										"type": {
 											Type: "string",

@@ -19,10 +19,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
-	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
 // AddExtendedStatefulSet creates a new ExtendedStatefulSet controller to watch for the custom resource and
