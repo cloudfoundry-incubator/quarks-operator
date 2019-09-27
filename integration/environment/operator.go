@@ -1,42 +1,29 @@
 package environment
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
 	"time"
 
-	"github.com/go-logr/zapr"
 	"github.com/pkg/errors"
 
-	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
-
-// SetupLoggerContext sets up the logger and puts it into a new context
-func (e *Environment) SetupLoggerContext(prefix string) context.Context {
-	loggerPath := helper.LogfilePath(fmt.Sprintf("%s-%d.log", prefix, e.ID))
-	e.ObservedLogs, e.Log = helper.NewTestLoggerWithPath(loggerPath)
-	crlog.SetLogger(zapr.NewLogger(e.Log.Desugar()))
-
-	return ctxlog.NewParentContext(e.Log)
-}
 
 // StartOperator prepares and starts the cf-operator
 func (e *Environment) StartOperator() error {
-	err := e.setupCFOperator()
+	mgr, err := e.setupCFOperator()
 	if err != nil {
 		return errors.Wrapf(err, "Setting up CF Operator failed.")
 	}
 
-	e.Stop = e.startOperator()
+	e.Stop = e.startOperator(mgr)
 	err = helper.WaitForPort(
 		"127.0.0.1",
 		strconv.Itoa(int(e.Config.WebhookServerPort)),
@@ -48,17 +35,17 @@ func (e *Environment) StartOperator() error {
 	return nil
 }
 
-func (e *Environment) setupCFOperator() error {
+func (e *Environment) setupCFOperator() (manager.Manager, error) {
 	var err error
 	whh, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_HOST")
 	if !found {
-		return errors.Errorf("Please set CF_OPERATOR_WEBHOOK_SERVICE_HOST to the host/ip the operator runs on and try again")
+		return nil, errors.Errorf("Please set CF_OPERATOR_WEBHOOK_SERVICE_HOST to the host/ip the operator runs on and try again")
 	}
 	e.Config.WebhookServerHost = whh
 
 	port, err := getWebhookServicePort(e.ID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	sshUser, shouldForwardPort := os.LookupEnv("ssh_server_user")
@@ -94,17 +81,18 @@ func (e *Environment) setupCFOperator() error {
 
 	dockerImageTag, found := os.LookupEnv("DOCKER_IMAGE_TAG")
 	if !found {
-		return errors.Errorf("required environment variable DOCKER_IMAGE_TAG not set")
+		return nil, errors.Errorf("required environment variable DOCKER_IMAGE_TAG not set")
 	}
 
 	err = converter.SetupOperatorDockerImage(dockerImageOrg, dockerImageRepo, dockerImageTag)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	fmt.Printf("cf-operator docker image: %s", converter.GetOperatorDockerImage())
 
 	ctx := e.SetupLoggerContext("cf-operator-tests")
 
-	e.mgr, err = operator.NewManager(ctx, e.Config, e.KubeConfig, manager.Options{
+	mgr, err := operator.NewManager(ctx, e.Config, e.KubeConfig, manager.Options{
 		Namespace:          e.Namespace,
 		MetricsBindAddress: "0",
 		LeaderElection:     false,
@@ -112,13 +100,13 @@ func (e *Environment) setupCFOperator() error {
 		Host:               "0.0.0.0",
 	})
 
-	return err
+	return mgr, err
 }
 
-func (e *Environment) startOperator() chan struct{} {
+func (e *Environment) startOperator(mgr manager.Manager) chan struct{} {
 	stop := make(chan struct{})
 	go func() {
-		err := e.mgr.Start(stop)
+		err := mgr.Start(stop)
 		if err != nil {
 			panic(err)
 		}

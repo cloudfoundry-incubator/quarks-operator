@@ -11,19 +11,14 @@ import (
 	"github.com/pkg/errors"
 
 	appsv1 "k8s.io/api/apps/v1"
-
-	"k8s.io/apimachinery/pkg/util/intstr"
-
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
-
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	corev1 "k8s.io/api/core/v1"
-
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 //DomainNameService abstraction

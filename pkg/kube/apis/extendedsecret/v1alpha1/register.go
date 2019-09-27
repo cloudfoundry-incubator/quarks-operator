@@ -29,7 +29,6 @@ var (
 	// ExtendedSecretResourceShortNames is the short names of ExtendedSecret
 	ExtendedSecretResourceShortNames = []string{"esec", "esecs"}
 
-
 	// ExtendedSecretResourceName is the resource name of ExtendedSecret
 	ExtendedSecretResourceName = fmt.Sprintf("%s.%s", ExtendedSecretResourcePlural, apis.GroupName)
 

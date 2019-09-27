@@ -4,7 +4,6 @@
 package testing
 
 import (
-	"context"
 	"time"
 
 	"github.com/pkg/errors"
@@ -18,20 +17,14 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 const (
 	manifestFailedMessage = "Loading bosh manifest spec failed."
 )
-
-// NewContext returns a non-nil empty context, for usage when it is unclear
-// which context to use.  Mostly used in tests.
-func NewContext() context.Context {
-	return context.TODO()
-}
 
 // Catalog provides several instances for tests
 type Catalog struct{}
@@ -263,7 +256,7 @@ func (c *Catalog) DefaultStatefulSet(name string) v1beta2.StatefulSet {
 			Name: name,
 		},
 		Spec: v1beta2.StatefulSetSpec{
-			Replicas: util.Int32(1),
+			Replicas: pointers.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"testpod": "yes",
@@ -287,7 +280,7 @@ func (c *Catalog) StatefulSetWithPVC(name, pvcName string, storageClassName stri
 			Name: name,
 		},
 		Spec: v1beta2.StatefulSetSpec{
-			Replicas: util.Int32(1),
+			Replicas: pointers.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},
@@ -310,7 +303,7 @@ func (c *Catalog) WrongStatefulSetWithPVC(name, pvcName string, storageClassName
 			Name: name,
 		},
 		Spec: v1beta2.StatefulSetSpec{
-			Replicas: util.Int32(1),
+			Replicas: pointers.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},
@@ -376,7 +369,7 @@ func (c *Catalog) WrongStatefulSet(name string) v1beta2.StatefulSet {
 			Name: name,
 		},
 		Spec: v1beta2.StatefulSetSpec{
-			Replicas: util.Int32(1),
+			Replicas: pointers.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"wrongpod": "yes",
@@ -395,7 +388,7 @@ func (c *Catalog) OwnedReferencesStatefulSet(name string) v1beta2.StatefulSet {
 			Name: name,
 		},
 		Spec: v1beta2.StatefulSetSpec{
-			Replicas: util.Int32(1),
+			Replicas: pointers.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"referencedpod": "yes",
@@ -415,7 +408,7 @@ func (c *Catalog) PodTemplateWithLabelsAndMount(name string, labels map[string]s
 			Labels: labels,
 		},
 		Spec: corev1.PodSpec{
-			TerminationGracePeriodSeconds: util.Int64(1),
+			TerminationGracePeriodSeconds: pointers.Int64(1),
 			Containers: []corev1.Container{
 				{
 					Name:    "busybox",
@@ -438,7 +431,7 @@ func (c *Catalog) WrongPodTemplateWithLabelsAndMount(name string, labels map[str
 			Labels: labels,
 		},
 		Spec: corev1.PodSpec{
-			TerminationGracePeriodSeconds: util.Int64(1),
+			TerminationGracePeriodSeconds: pointers.Int64(1),
 			Containers: []corev1.Container{
 				{
 					Name:  "wrong-container",
@@ -475,7 +468,7 @@ func (c *Catalog) WrongPodTemplate(name string) corev1.PodTemplateSpec {
 			},
 		},
 		Spec: corev1.PodSpec{
-			TerminationGracePeriodSeconds: util.Int64(1),
+			TerminationGracePeriodSeconds: pointers.Int64(1),
 			Containers: []corev1.Container{
 				{
 					Name:  "wrong-container",
@@ -496,7 +489,7 @@ func (c *Catalog) OwnedReferencesPodTemplate(name string) corev1.PodTemplateSpec
 			},
 		},
 		Spec: corev1.PodSpec{
-			TerminationGracePeriodSeconds: util.Int64(1),
+			TerminationGracePeriodSeconds: pointers.Int64(1),
 			Volumes: []corev1.Volume{
 				{
 					Name: "secret1",
@@ -583,16 +576,6 @@ func (c *Catalog) DefaultPod(name string) corev1.Pod {
 	}
 }
 
-// DefaultExJobPod defines a pod with a simple web server and with a output-persist container
-func (c *Catalog) DefaultExJobPod(name string) corev1.Pod {
-	return corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Spec: c.Sleep1hExJobPodSpec(),
-	}
-}
-
 // LabeledPod defines a pod with labels and a simple web server
 func (c *Catalog) LabeledPod(name string, labels map[string]string) corev1.Pod {
 	return corev1.Pod{
@@ -618,29 +601,10 @@ func (c *Catalog) AnnotatedPod(name string, annotations map[string]string) corev
 // Sleep1hPodSpec defines a simple pod that sleeps 60*60s for testing
 func (c *Catalog) Sleep1hPodSpec() corev1.PodSpec {
 	return corev1.PodSpec{
-		TerminationGracePeriodSeconds: util.Int64(1),
+		TerminationGracePeriodSeconds: pointers.Int64(1),
 		Containers: []corev1.Container{
 			{
 				Name:    "busybox",
-				Image:   "busybox",
-				Command: []string{"sleep", "3600"},
-			},
-		},
-	}
-}
-
-// Sleep1hExJobPodSpec defines a simple pod that sleeps 60*60s for testing with a output-persist container
-func (c *Catalog) Sleep1hExJobPodSpec() corev1.PodSpec {
-	return corev1.PodSpec{
-		TerminationGracePeriodSeconds: util.Int64(1),
-		Containers: []corev1.Container{
-			{
-				Name:    "busybox",
-				Image:   "busybox",
-				Command: []string{"sleep", "3600"},
-			},
-			{
-				Name:    "output-persist",
 				Image:   "busybox",
 				Command: []string{"sleep", "3600"},
 			},

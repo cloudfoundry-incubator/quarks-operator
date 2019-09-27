@@ -13,8 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
 // AddStatefulSetCleanup creates a new statefulset cleanup controller and adds it to the manager.

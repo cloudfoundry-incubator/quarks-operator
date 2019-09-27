@@ -24,10 +24,10 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	escontroller "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	cfcfg "code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+	cfcfg "code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
+	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
 
 var _ = Describe("ReconcileCertificateSigningRequest", func() {

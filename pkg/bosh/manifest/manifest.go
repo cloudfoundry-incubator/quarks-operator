@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
 const (

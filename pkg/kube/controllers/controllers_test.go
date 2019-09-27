@@ -24,8 +24,9 @@ import (
 	gfakes "code.cloudfoundry.org/cf-operator/pkg/credsgen/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/cf-operator/testing"
+	cmdhelper "code.cloudfoundry.org/quarks-utils/testing"
 )
 
 var _ = Describe("Controllers", func() {
@@ -78,7 +79,7 @@ var _ = Describe("Controllers", func() {
 			generator.GenerateCertificateReturns(credsgen.Certificate{Certificate: []byte("thecert")}, nil)
 
 			config = env.DefaultConfig()
-			ctx = testing.NewContext()
+			ctx = cmdhelper.NewContext()
 		})
 
 		It("sets the operator namespace label", func() {

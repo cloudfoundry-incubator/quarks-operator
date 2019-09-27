@@ -60,7 +60,7 @@ This is the controller that manages the end user input(a BOSH manifest).
 #### Reconciliation in BDPL controller
 
 - generates `.with-ops` secret, that contains the deployment manifest, with all ops files applied
-- generates `variable interpolation` [**Extendedjob**](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/controllers/extendedjob.md#one-off-jobs-auto-errands) resource
+- generates `variable interpolation` [**Extendedjob**](https://github.com/cloudfoundry-incubator/quarks-job/tree/master/README.md#one-off-jobs-auto-errands) resource
 - generates `data gathering` **ExtendedJob** resource
 - generates `BPM configuration` **ExtendedJob** resource
 

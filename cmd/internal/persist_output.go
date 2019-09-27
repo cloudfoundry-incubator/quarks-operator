@@ -9,9 +9,9 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
-	kubeConfig "code.cloudfoundry.org/cf-operator/pkg/kube/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
+	"code.cloudfoundry.org/quarks-job/pkg/kube/client/clientset/versioned"
+	"code.cloudfoundry.org/quarks-job/pkg/kube/controllers/extendedjob"
+	kubeConfig "code.cloudfoundry.org/quarks-utils/pkg/kubeconfig"
 )
 
 // persistOutputCmd is the persist-output command.

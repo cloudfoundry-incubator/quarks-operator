@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
 
 // GetStatefulSet gets a StatefulSet custom resource
@@ -22,7 +23,7 @@ func (m *Machine) GetStatefulSet(namespace string, name string) (*v1beta1.Statef
 }
 
 // CreateExtendedStatefulSet creates a ExtendedStatefulSet custom resource and returns a function to delete it
-func (m *Machine) CreateExtendedStatefulSet(namespace string, ess esv1.ExtendedStatefulSet) (*esv1.ExtendedStatefulSet, TearDownFunc, error) {
+func (m *Machine) CreateExtendedStatefulSet(namespace string, ess esv1.ExtendedStatefulSet) (*esv1.ExtendedStatefulSet, machine.TearDownFunc, error) {
 	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
 
 	d, err := client.Create(&ess)
@@ -62,7 +63,7 @@ func (m *Machine) GetExtendedStatefulSet(namespace string, name string) (*esv1.E
 
 // CheckExtendedStatefulSet checks extendedstatefulset according to the version
 func (m *Machine) CheckExtendedStatefulSet(namespace string, name string, version int) error {
-	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		return m.CheckExtendedStatefulSetVersion(namespace, name, version)
 	})
 }
@@ -78,7 +79,7 @@ func (m *Machine) CheckExtendedStatefulSetVersion(namespace string, name string,
 }
 
 // UpdateExtendedStatefulSet updates a ExtendedStatefulSet custom resource and returns a function to delete it
-func (m *Machine) UpdateExtendedStatefulSet(namespace string, ess esv1.ExtendedStatefulSet) (*esv1.ExtendedStatefulSet, TearDownFunc, error) {
+func (m *Machine) UpdateExtendedStatefulSet(namespace string, ess esv1.ExtendedStatefulSet) (*esv1.ExtendedStatefulSet, machine.TearDownFunc, error) {
 	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
 	d, err := client.Update(&ess)
 	return d, func() error {
@@ -98,7 +99,7 @@ func (m *Machine) DeleteExtendedStatefulSet(namespace string, name string) error
 
 // WaitForStatefulSetDelete blocks until the specified statefulset is deleted
 func (m *Machine) WaitForStatefulSetDelete(namespace string, name string) error {
-	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		found, err := m.StatefulSetExist(namespace, name)
 		return !found, err
 	})
@@ -118,28 +119,28 @@ func (m *Machine) StatefulSetExist(namespace string, name string) (bool, error) 
 
 // WaitForStatefulSetNewGeneration blocks until at least one StatefulSet is found. It fails after the timeout.
 func (m *Machine) WaitForStatefulSetNewGeneration(namespace string, name string, currentVersion int64) error {
-	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		return m.StatefulSetNewGeneration(namespace, name, currentVersion)
 	})
 }
 
 // WaitForExtendedStatefulSets blocks until at least one ExtendedStatefulSet is found. It fails after the timeout.
 func (m *Machine) WaitForExtendedStatefulSets(namespace string, labels string) error {
-	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		return m.ExtendedStatefulSetExists(namespace, labels)
 	})
 }
 
 // WaitForExtendedStatefulSetAvailable blocks until latest version is available. It fails after the timeout.
 func (m *Machine) WaitForExtendedStatefulSetAvailable(namespace string, name string, version int) error {
-	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		return m.ExtendedStatefulSetAvailable(namespace, name, version)
 	})
 }
 
 // WaitForPV blocks until the pv is running. It fails after the timeout.
 func (m *Machine) WaitForPV(name string) error {
-	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		return m.PVAvailable(name)
 	})
 }
@@ -162,7 +163,7 @@ func (m *Machine) PVAvailable(name string) (bool, error) {
 
 // WaitForPVsDelete blocks until the pv is deleted. It fails after the timeout.
 func (m *Machine) WaitForPVsDelete(labels string) error {
-	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		return m.PVsDeleted(labels)
 	})
 }
@@ -183,7 +184,7 @@ func (m *Machine) PVsDeleted(labels string) (bool, error) {
 
 // WaitForPVCsDelete blocks until the pvc is deleted. It fails after the timeout.
 func (m *Machine) WaitForPVCsDelete(namespace string) error {
-	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		return m.PVCsDeleted(namespace)
 	})
 }
@@ -202,7 +203,7 @@ func (m *Machine) PVCsDeleted(namespace string) (bool, error) {
 
 // WaitForStatefulSet blocks until all statefulset pods are running. It fails after the timeout.
 func (m *Machine) WaitForStatefulSet(namespace string, labels string) error {
-	return wait.PollImmediate(m.pollInterval, m.pollTimeout, func() (bool, error) {
+	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		return m.StatefulSetRunning(namespace, labels)
 	})
 }

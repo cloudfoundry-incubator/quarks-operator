@@ -10,22 +10,19 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	ejobv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 )
 
 // GetSecretsReferencedBy returns a list of all names for Secrets referenced by the object
-// The object can be an ExtendedStatefulSet, an ExtendedJob or a BOSHDeployment
+// The object can be an ExtendedStatefulSet or a BOSHDeployment
 func GetSecretsReferencedBy(ctx context.Context, client crc.Client, object interface{}) (map[string]bool, error) {
 	switch object := object.(type) {
 	case bdv1.BOSHDeployment:
 		return getSecretRefFromBdpl(ctx, client, object)
-	case ejobv1.ExtendedJob:
-		return getSecretRefFromEJob(object), nil
 	case estsv1.ExtendedStatefulSet:
 		return getSecretRefFromESts(object), nil
 	default:
-		return nil, errors.New("can't get secret references for unknown type; supported types are BOSHDeployment, ExtendedJob and ExtendedStatefulSet")
+		return nil, errors.New("can't get secret references for unknown type; supported types are BOSHDeployment and ExtendedStatefulSet")
 	}
 }
 
@@ -57,10 +54,6 @@ func getSecretRefFromBdpl(ctx context.Context, client crc.Client, object bdv1.BO
 
 func getSecretRefFromESts(object estsv1.ExtendedStatefulSet) map[string]bool {
 	return getSecretRefFromPod(object.Spec.Template.Spec.Template.Spec)
-}
-
-func getSecretRefFromEJob(object ejobv1.ExtendedJob) map[string]bool {
-	return getSecretRefFromPod(object.Spec.Template.Spec)
 }
 
 func getSecretRefFromPod(object corev1.PodSpec) map[string]bool {

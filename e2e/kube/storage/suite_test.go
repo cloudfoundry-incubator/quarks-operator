@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"code.cloudfoundry.org/cf-operator/e2e/kube/e2ehelper"
+	"code.cloudfoundry.org/quarks-utils/testing/e2ehelper"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

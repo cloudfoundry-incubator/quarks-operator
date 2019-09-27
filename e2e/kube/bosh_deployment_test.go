@@ -4,7 +4,7 @@ import (
 	"path"
 	"time"
 
-	"code.cloudfoundry.org/cf-operator/testing"
+	"code.cloudfoundry.org/quarks-utils/testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -12,7 +12,6 @@ import (
 
 var _ = Describe("BOSHDeployment", func() {
 	Context("when restarting operator", func() {
-
 		kubectl := testing.NewKubectl()
 
 		BeforeEach(func() {
