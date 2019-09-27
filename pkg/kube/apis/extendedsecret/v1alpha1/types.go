@@ -62,14 +62,15 @@ type ServiceReference struct {
 
 // CertificateRequest specifies the details for the certificate generation
 type CertificateRequest struct {
-	CommonName       string             `json:"commonName"`
-	AlternativeNames []string           `json:"alternativeNames"`
-	IsCA             bool               `json:"isCA"`
-	CARef            SecretReference    `json:"CARef"`
-	CAKeyRef         SecretReference    `json:"CAKeyRef"`
-	SignerType       SignerType         `json:"signerType,omitempty"`
-	Usages           []certv1.KeyUsage  `json:"usages,omitempty"`
-	ServiceRef       []ServiceReference `json:"serviceRef,omitempty"`
+	CommonName                  string             `json:"commonName"`
+	AlternativeNames            []string           `json:"alternativeNames"`
+	IsCA                        bool               `json:"isCA"`
+	CARef                       SecretReference    `json:"CARef"`
+	CAKeyRef                    SecretReference    `json:"CAKeyRef"`
+	SignerType                  SignerType         `json:"signerType,omitempty"`
+	Usages                      []certv1.KeyUsage  `json:"usages,omitempty"`
+	ServiceRef                  []ServiceReference `json:"serviceRef,omitempty"`
+	ActivateEKSWorkaroundForSAN bool               `json:"activateEKSWorkaroundForSAN,omitempty"`
 }
 
 // Request specifies details for the secret generation

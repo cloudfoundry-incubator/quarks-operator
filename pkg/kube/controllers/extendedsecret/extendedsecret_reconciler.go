@@ -233,6 +233,9 @@ func (r *ReconcileExtendedSecret) createSSHSecret(ctx context.Context, instance 
 }
 
 func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, instance *esv1.ExtendedSecret) error {
+
+	serviceIPForEKSWorkaround := ""
+
 	for _, serviceRef := range instance.Spec.Request.CertificateRequest.ServiceRef {
 		service := &corev1.Service{}
 
@@ -240,6 +243,10 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 
 		if err != nil {
 			return errors.Wrapf(err, "Failed to get service reference '%s' for ExtendedSecret '%s'", serviceRef.Name, instance.Name)
+		}
+
+		if serviceIPForEKSWorkaround == "" {
+			serviceIPForEKSWorkaround = service.Spec.ClusterIP
 		}
 
 		instance.Spec.Request.CertificateRequest.AlternativeNames = append(append(
@@ -265,6 +272,16 @@ func (r *ReconcileExtendedSecret) createCertificateSecret(ctx context.Context, i
 
 	switch instance.Spec.Request.CertificateRequest.SignerType {
 	case esv1.ClusterSigner:
+		if instance.Spec.Request.CertificateRequest.ActivateEKSWorkaroundForSAN {
+			if serviceIPForEKSWorkaround == "" {
+				return errors.Errorf("can't activate EKS workaround for ExtendedSecret '%s/%s'; couldn't find a ClusterIP for any service reference", instance.Namespace, instance.Name)
+			}
+
+			ctxlog.Infof(ctx, "Activating EKS workaround for ExtendedSecret '%s/%s'. Using IP '%s' as a common name. See 'https://github.com/awslabs/amazon-eks-ami/issues/341' for more details.", instance.Namespace, instance.Name, serviceIPForEKSWorkaround)
+
+			generationRequest.CommonName = serviceIPForEKSWorkaround
+		}
+
 		ctxlog.Info(ctx, "Generating certificate signing request and its key")
 		csr, key, err := r.generator.GenerateCertificateSigningRequest(generationRequest)
 		if err != nil {
