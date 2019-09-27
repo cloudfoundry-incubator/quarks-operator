@@ -1,18 +1,18 @@
 # ExtendedJob
 
-- [ExtendedJob](#extendedjob)
-  - [Description](#description)
-  - [ExtendedJob Component](#extendedjob-component)
-    - [Errand Controller](#errand-controller)
-      - [Watches](#watches-in-errand-controller)
-      - [Reconciliation](#reconciliation-in-errand-controller)
-      - [Highlights](#highlights-in-errand-controller)
-    - [Job Controller](#job-controller)
-      - [Watches](#watches-in-job-controller)
-      - [Reconciliation](#reconciliation-in-job-controller)
-      - [Highlights](#highlights-in-job-controller)
-  - [Relationship with the BDPL component](#relationship-with-the-bdpl-component)
-  - [ExtendedJob Examples](#extendedjob-examples)
+1. [ExtendedJob](#extendedjob)
+   1. [Description](#description)
+   2. [ExtendedJob Component](#extendedjob-component)
+      1. [Errand Controller](#errand-controller)
+         1. [Watches](#watches-in-errand-controller)
+         2. [Reconciliation](#reconciliation-in-errand-controller)
+         3. [Highlights](#highlights-in-errand-controller)
+      2. [Job Controller](#job-controller)
+         1. [Watches](#watches-in-job-controller)
+         2. [Reconciliation](#reconciliation-in-job-controller)
+         3. [Highlights](#highlights-in-job-controller)
+   3. [Relationship with the BDPL component](#relationship-with-the-bdpl-component)
+   4. [ExtendedJob Examples](#extendedjob-examples)
 
 ## Description
 
@@ -26,18 +26,19 @@ There are two different kinds of `ExtendedJob`:
 
 ## ExtendedJob Component
 
-The **ExtendedJob** component is a categorization of a set of controllers, under the same group. Inside the **ExtendedJob** component, we have a set of 2 controllers together with 2 separate reconciliation loops.
+The **ExtendedJob** component is a categorization of a set of controllers, under the same group. Inside the **ExtendedJob** component we have a set of 2 controllers together with one separate reconciliation loop per controller.
 
-The following, is a **ExtendedJob** component diagram that covers the set of controllers it uses.
+Figure 1, illustrates the **ExtendedJob** component diagram and the set of controllers it uses.
 
 ![flow-extendeds-job](quarks_ejobcomponent_flow.png)
-
+*Fig. 1: The ExtendedJob component*
 
 ### **_Errand Controller_**
 
 ![errand-controller-flow](quarks_ejoberrandcontroller_flow.png)
+*Fig. 2: The Errand controller flow*
 
-This is the controller responsible of implementing Errands, this will led to the generation of a Kubernetes job, in order to complete a task.
+This is the controller responsible for implementing Errands, this will lead to the generation of a Kubernetes job, in order to complete a task.
 
 #### Watches in Errand controller
 
@@ -47,8 +48,8 @@ This is the controller responsible of implementing Errands, this will led to the
 
 #### Reconciliation in Errand controller
 
-- When an `ExtendedJob` instance is generated, it will create Kubernetes Job.
-- The generation of new Kubernetes Jobs, will serve also as the trigger for the `Job Controller`, to start the Reconciliation.
+- When an `ExtendedJob` instance is generated, it will create an associated Kubernetes Job.
+- The generation of new Kubernetes Jobs also serves as the trigger for the `Job Controller`, to start the Reconciliation.
 
 #### Highlights in Errand controller
 
@@ -80,12 +81,13 @@ automatically be restarted if its environment/mounts have changed, due to a
 ### **_Job Controller_**
 
 ![job-controller-flow](quarks_ejobjobcontroller_flow.png)
+*Fig. 3: The Job controller flow*
 
-This is an auxiliary controller that relies on the Errand Controller output. It will be watching for Kubernetes Jobs that Succeded or Failed, and eventually it will generate Kubernetes secrets.
+This is an auxiliary controller that relies on the Errand Controller output. It will be watching for Kubernetes Jobs that Succeeded or Failed, and eventually it will generate Kubernetes secrets.
 
 #### Watches in job controller
 
-- `Jobs`: Succedded or Failed
+- `Jobs`: Succeeded or Failed
 
 #### Reconciliation in job controller
 
@@ -130,8 +132,9 @@ Each versioned secret has the following characteristics:
 ## Relationship with the BDPL component
 
 ![bdpl-ejob-relationship](quarks_bdpl_and_ejob_flow.png)
+*Fig. 4: Relationship between the BDPL controller and the ExtendedJob component*
 
-The above image illustrates the interaction of the **BOSHDeployment** Controller with the **Errand** Controller and how the output of this one, serves as the trigger for the **Job** Controller.
+Figure 4 illustrates the interaction of the **BOSHDeployment** Controller with the **Errand** Controller and how the output of this one serves as the trigger for the **Job** Controller.
 
 ## `ExtendedJob` Examples
 

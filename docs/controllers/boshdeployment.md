@@ -1,22 +1,22 @@
 # BOSHDeployment
 
-- [BOSHDeployment](#boshdeployment)
-  - [Description](#description)
-  - [BDPL Component](#bdpl-component)
-    - [BOSHDeployment Controller](#boshdeployment-controller)
-      - [Watches](#watches-in-bdpl-controller)
-      - [Reconciliation](#reconciliation-in-bdpl-controller)
-      - [Highlights](#highlights-in-bdpl-controller)
-    - [Generate Variables Controller](#generate-variables-controller)
-      - [Watches](#watches-in-gv-controller)
-      - [Reconciliation](#reconciliation-in-gv-controller)
-      - [Highlights](#highlights-in-gv-controller)
-    - [BPM Controller](#bpm-controller)
-      - [Watches](#watches-in-bpm-controller)
-      - [Reconciliation](#reconciliation-in-bpm-controller)
-      - [Highlights](#highlights-in-bpm-controller)
-  - [BDPL Abstract view](#bdpl-abstract-view)
-  - [BOSHDeployment resource examples](#boshdeployment-resource-examples)
+1. [BOSHDeployment](#boshdeployment)
+   1. [Description](#description)
+   2. [BDPL Component](#bdpl-component)
+      1. [BOSHDeployment Controller](#boshdeployment-controller)
+         1. [Watches](#watches-in-bdpl-controller)
+         2. [Reconciliation](#reconciliation-in-bdpl-controller)
+         3. [Highlights](#highlights-in-bdpl-controller)
+      2. [Generate Variables Controller](#generate-variables-controller)
+         1. [Watches](#watches-in-gv-controller)
+         2. [Reconciliation](#reconciliation-in-gv-controller)
+         3. [Highlights](#highlights-in-gv-controller)
+      3. [BPM Controller](#bpm-controller)
+         1. [Watches](#watches-in-bpm-controller)
+         2. [Reconciliation](#reconciliation-in-bpm-controller)
+         3. [Highlights](#highlights-in-bpm-controller)
+   3. [BDPL Abstract view](#bdpl-abstract-view)
+   4. [BOSHDeployment resource examples](#boshdeployment-resource-examples)
 
 ## Description
 
@@ -33,20 +33,21 @@ of the BOSH release on Kubernetes.
 
 ## BDPL Component
 
-The **BOSHDeployment** component is a categorization of a set of controllers, under the same group. Inside the **BDPL** component, we have a set of 3 controllers together with 3 separate reconciliation loops to deal with `BOSH deployments`(end user input)
+The **BOSHDeployment** component is a categorization of a set of controllers, under the same group. Inside the **BDPL** component we have a set of 3 controllers together with one separate reconciliation loop per controller to deal with `BOSH deployments`(end user input)
 
-The following, is a **BDPL** component diagram that covers the set of controllers it uses and their relationship with other components(e.g. `ExtendedJob`, `ExtendedSecret` and `ExtendedStatefulSet`)
-
+Figure 1 is a **BDPL** component diagram that covers the set of controllers it uses and their relationship with other components(e.g. `ExtendedJob`, `ExtendedSecret` and `ExtendedStatefulSet`)
 
 ![bdpl-component-flow](quarks_bdplcomponent_flow.png)
+*Fig. 1: The BOSHDeployment component*
 
-From the above diagram we can understand a couple of things. Firstly, at the very top, we have the `cf-operator` , which is a long running application with a namespaced scope. When the `cf-operator` pod is initialized it will automatically register all controllers into the [Kubernetes Controller Manager](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/).
+Figure 1 illustrates a couple of things. Firstly, at the very top, we have the `cf-operator` , which is a long running application with a namespaced scope. When the `cf-operator` pod is initialized it will automatically register all controllers with the [Kubernetes Controller Manager](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/).
 
-At a first glance the above diagram could look complex, however it can be explained easily if we focus on each controller main functions: `Reconciliation & Watch` 
+While at a first glance the above diagram looks complex, it can be explained easily by focusing on each controller´s main functions: `Reconciliation & Watch`.
 
 ### **_BOSHDeployment Controller_**
 
 ![bdpl-controller-flow](quarks_bdplcontroller_flow.png)
+*Fig. 2: The BOSHDeployment controller*
 
 This is the controller that manages the end user input(a BOSH manifest).
 
@@ -65,15 +66,15 @@ This is the controller that manages the end user input(a BOSH manifest).
 
 #### Highlights in BDPL controller
 
-Transform the concept of BOSH into Kubernetes resources:
+Transform the concepts of BOSH into Kubernetes resources:
 
 - BOSH errands to ExtendedJobs CRD instances
 - BOSH instance_groups to ExtendedStatefulSet CRD instances
 - BOSH Variables to ExtendedSecrets CRD instance
 
-All of the three *ExtendedJob* instances created, will eventually persist their STDOUT into new secrets under the same namespace.
+All of the three created *ExtendedJob* instances will eventually persist their STDOUT into new secrets under the same namespace.
 
-- The output of the [`variable interpolation`](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_variable-interpolation.md) **ExtendedJob** ends up as the `.desired-manifest-v1` **secret**, which is a versioned secret. At the same time, this secret will serve as the input for the `data gathering` **ExtendedJob**.
+- The output of the [`variable interpolation`](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_variable-interpolation.md) **ExtendedJob** ends up as the `.desired-manifest-v1` **secret**, which is a versioned secret. At the same time this secret serves as the input for the `data gathering` **ExtendedJob**.
 - The output of the [`data gathering`](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_instance-group.md) **ExtendedJob**, ends up
 as the `.ig-resolved.<instance_group_name>-v1` versioned secret.
 - The output of the `BPM configuration` **ExtendedJob**, ends up as the `bpm.<instance_group_name>-v1` versioned secret.
@@ -81,8 +82,9 @@ as the `.ig-resolved.<instance_group_name>-v1` versioned secret.
 ### **_Generate Variables Controller_**
 
 ![generate-variable-controller-flow](quarks_gvariablecontroller_flow.png)
+*Fig. 3: The Generated Variables controller*
 
-This is the controller that is responsible of auto-generating certificates, passwords and other secrets declared in the manifest. In other words, it translates all BOSH variables into customize Kubernetes primitive resources. It does this with the help of `ExtendedSecrets`. It watches the `.with-ops` secret, get the list of BOSH variables and triggers the generation of `ExtendedSecrets` per item in that list.
+This is the controller that is responsible for auto-generating certificates, passwords and other secrets declared in the manifest. In other words, it translates all BOSH variables into custom Kubernetes primitive resources. It does this with the help of `ExtendedSecrets`. It watches the `.with-ops` secret, retrieves the list of BOSH variables and triggers the generation of `ExtendedSecrets` per item in that list.
 
 #### Watches in GV controller
 
@@ -94,13 +96,14 @@ This is the controller that is responsible of auto-generating certificates, pass
 
 #### Highlights in GV controller
 
-The `secrets` resources,  generated by these `ExtendedSecrets` are referenced by the `variable interpolation` **ExtendedJob**. When these secrets get created/updated, the `variable interpolation ExtendedJob is run.
+The `secrets` resources,  generated by these `ExtendedSecrets` are referenced by the `variable interpolation` **ExtendedJob**. When these secrets are created/updated, the variable interpolation ExtendedJob is run.
 
 ### **_BPM Controller_**
 
 ![bpm-controller-flow](quarks_bpm-controller_flow.png)
+*Fig. 4: The BPM controller*
 
-The BPM controller is responsible to generate Kubernetes Resources per instance_group. It is triggered for each instance_group in the desired manifest, since we generate one BPM Secret for each. The reconciler starts each instance_group as its corresponding secret is created. It *does not wait* for all secrets to be ready.
+The BPM controller has the responsibility to generate Kubernetes resources per instance_group. It is triggered for each instance_group in the desired manifest, since we generate one BPM Secret for each. The reconciler starts each instance_group as its corresponding secret is created. It *does not wait* for all secrets to be ready.
 
 #### Watches in BPM controller
 
@@ -128,10 +131,11 @@ Persistent volumes are left behind.
 
 ## BDPL Abstract view
 
-The following is another diagram that explains the whole BOSHDeployment component controllers flow, in a more high level perspective.
+Figure 5 is a diagram that explains the whole BOSHDeployment component controllers flow, in a more high level perspective.
 
 ![deployment-state](https://docs.google.com/drawings/d/e/2PACX-1vTsCO5USd8AJIk_uHMRKl0NABuW85uVGJNebNvgI0Hz_9jhle6fcynLTcHh8cxW6lMgaV_DWyPEvm2-/pub?w=3161&h=2376)
 [edit](https://docs.google.com/drawings/d/126ExNqPxDg1LcB14pbtS5S-iJzLYPyXZ5Jr9vTfFqXA/edit?usp=sharing)
+*Fig. 5: The BOSHDeployment component controllers interactions*
 
 ## BOSHDeployment resource examples
 
