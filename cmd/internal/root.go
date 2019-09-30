@@ -80,6 +80,7 @@ var rootCmd = &cobra.Command{
 
 		config := config.NewConfig(
 			cfOperatorNamespace,
+			viper.GetInt("ctx-timeout"),
 			provider,
 			serviceHost,
 			servicePort,
@@ -138,50 +139,54 @@ func Execute() {
 func init() {
 	pf := rootCmd.PersistentFlags()
 
-	pf.StringP("kubeconfig", "c", "", "Path to a kubeconfig, not required in-cluster")
-	pf.StringP("log-level", "l", "debug", "Only print log messages from this level onward")
+	pf.Bool("apply-crd", true, "If true, apply CRDs on start")
+	pf.Int("ctx-timeout", 30, "context timeout for each k8s API request in seconds")
 	pf.StringP("cf-operator-namespace", "n", "default", "Namespace to watch for BOSH deployments")
 	pf.StringP("docker-image-org", "o", "cfcontainerization", "Dockerhub organization that provides the operator docker image")
 	pf.StringP("docker-image-repository", "r", "cf-operator", "Dockerhub repository that provides the operator docker image")
-	pf.StringP("operator-webhook-service-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")
-	pf.StringP("operator-webhook-service-port", "p", "2999", "Port the webhook server listens on")
 	pf.StringP("docker-image-tag", "t", version.Version, "Tag of the operator docker image")
-	pf.StringP("provider", "x", "", "Cloud Provider where cf-operator is being deployed")
+	pf.StringP("kubeconfig", "c", "", "Path to a kubeconfig, not required in-cluster")
+	pf.StringP("log-level", "l", "debug", "Only print log messages from this level onward")
 	pf.Int("max-boshdeployment-workers", 1, "Maximum number of workers concurrently running BOSHDeployment controller")
 	pf.Int("max-extendedjob-workers", 1, "Maximum number of workers concurrently running ExtendedJob controller")
 	pf.Int("max-extendedsecret-workers", 5, "Maximum number of workers concurrently running ExtendedSecret controller")
 	pf.Int("max-extendedstatefulset-workers", 1, "Maximum number of workers concurrently running ExtendedStatefulSet controller")
-	pf.Bool("apply-crd", true, "If true, apply CRDs on start")
-	viper.BindPFlag("kubeconfig", pf.Lookup("kubeconfig"))
-	viper.BindPFlag("log-level", pf.Lookup("log-level"))
+	pf.StringP("operator-webhook-service-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")
+	pf.StringP("operator-webhook-service-port", "p", "2999", "Port the webhook server listens on")
+	pf.StringP("provider", "x", "", "Cloud Provider where cf-operator is being deployed")
+
+	viper.BindPFlag("apply-crd", rootCmd.PersistentFlags().Lookup("apply-crd"))
+	viper.BindPFlag("ctx-timeout", pf.Lookup("ctx-timeout"))
 	viper.BindPFlag("cf-operator-namespace", pf.Lookup("cf-operator-namespace"))
 	viper.BindPFlag("docker-image-org", pf.Lookup("docker-image-org"))
 	viper.BindPFlag("docker-image-repository", pf.Lookup("docker-image-repository"))
-	viper.BindPFlag("operator-webhook-service-host", pf.Lookup("operator-webhook-service-host"))
-	viper.BindPFlag("operator-webhook-service-port", pf.Lookup("operator-webhook-service-port"))
-	viper.BindPFlag("provider", pf.Lookup("provider"))
 	viper.BindPFlag("docker-image-tag", rootCmd.PersistentFlags().Lookup("docker-image-tag"))
+	viper.BindPFlag("kubeconfig", pf.Lookup("kubeconfig"))
+	viper.BindPFlag("log-level", pf.Lookup("log-level"))
 	viper.BindPFlag("max-boshdeployment-workers", pf.Lookup("max-boshdeployment-workers"))
 	viper.BindPFlag("max-extendedjob-workers", pf.Lookup("max-extendedjob-workers"))
 	viper.BindPFlag("max-extendedsecret-workers", pf.Lookup("max-extendedsecret-workers"))
 	viper.BindPFlag("max-extendedstatefulset-workers", rootCmd.PersistentFlags().Lookup("max-extendedstatefulset-workers"))
-	viper.BindPFlag("apply-crd", rootCmd.PersistentFlags().Lookup("apply-crd"))
+	viper.BindPFlag("operator-webhook-service-host", pf.Lookup("operator-webhook-service-host"))
+	viper.BindPFlag("operator-webhook-service-port", pf.Lookup("operator-webhook-service-port"))
+	viper.BindPFlag("provider", pf.Lookup("provider"))
 
 	argToEnv := map[string]string{
-		"kubeconfig":                      "KUBECONFIG",
-		"log-level":                       "LOG_LEVEL",
+		"apply-crd":                       "APPLY_CRD",
+		"ctx-timeout":                     "CTX_TIMEOUT",
 		"cf-operator-namespace":           "CF_OPERATOR_NAMESPACE",
 		"docker-image-org":                "DOCKER_IMAGE_ORG",
 		"docker-image-repository":         "DOCKER_IMAGE_REPOSITORY",
-		"operator-webhook-service-host":   "CF_OPERATOR_WEBHOOK_SERVICE_HOST",
-		"operator-webhook-service-port":   "CF_OPERATOR_WEBHOOK_SERVICE_PORT",
-		"provider":                        "PROVIDER",
 		"docker-image-tag":                "DOCKER_IMAGE_TAG",
+		"kubeconfig":                      "KUBECONFIG",
+		"log-level":                       "LOG_LEVEL",
 		"max-boshdeployment-workers":      "MAX_BOSHDEPLOYMENT_WORKERS",
 		"max-extendedjob-workers":         "MAX_EXTENDEDJOB_WORKERS",
 		"max-extendedsecret-workers":      "MAX_EXTENDEDSECRET_WORKERS",
 		"max-extendedstatefulset-workers": "MAX_EXTENDEDSTATEFULSET_WORKERS",
-		"apply-crd":                       "APPLY_CRD",
+		"operator-webhook-service-host":   "CF_OPERATOR_WEBHOOK_SERVICE_HOST",
+		"operator-webhook-service-port":   "CF_OPERATOR_WEBHOOK_SERVICE_PORT",
+		"provider":                        "PROVIDER",
 	}
 
 	// Add env variables to help
