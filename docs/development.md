@@ -28,7 +28,7 @@ export GO111MODULE=on
 
 ## Custom Resource Definitions (CRDs)
 
-Kubernetes allows developers to extend the objects its APIs process and store using Custom Resource Definitions (CRDs). We are creating four [CRDs](../docs/crds): 
+Kubernetes allows developers to extend the objects its APIs process and store using Custom Resource Definitions (CRDs). We are creating four [CRDs](../docs/crds):
 
 - BOSHDeployment
 - ExtendedJob
@@ -36,7 +36,6 @@ Kubernetes allows developers to extend the objects its APIs process and store us
 - ExtendedStatefulSet
 
 The CRDs are also defined in code and applied automatically when cf-operator starts. If you are editing CRDs, you should update changes to this YAML files in sync.
-
 
 ## Creating a new Resource and Controller
 
@@ -74,7 +73,7 @@ The CRDs are also defined in code and applied automatically when cf-operator sta
 
 - create a directory structure like this for your actual controller code:
 
-  ```
+  ```plain
   .
   +-- pkg
      +-- kube
@@ -128,6 +127,7 @@ The CRDs are also defined in code and applied automatically when cf-operator sta
   ```
 
   **Reconciler:**
+
   ```go
   package myresource
 
@@ -170,14 +170,16 @@ The CRDs are also defined in code and applied automatically when cf-operator sta
 
 ### Reconcile Results
 
-	// RequeueOnError will requeue if reconcile also returns an error
-	RequeueOnError = reconcile.Result{}
-	// Requeue will requeue the request, behaviour is different than returning an error
-	Requeue = reconcile.Result{Requeue: true}
-	// RequeueAfterDefault requeues after the default, unless reconcile also returns an error
-	RequeueAfterDefault = reconcile.Result{RequeueAfter: config.RequeueAfter}
-	// NoRequeue does not requeue, unless reconcile also returns an error
-	NoRequeue = reconcile.Result{Requeue: false}
+```go
+// RequeueOnError will requeue if reconcile also returns an error
+RequeueOnError = reconcile.Result{}
+// Requeue will requeue the request, behaviour is different than returning an error
+Requeue = reconcile.Result{Requeue: true}
+// RequeueAfterDefault requeues after the default, unless reconcile also returns an error
+RequeueAfterDefault = reconcile.Result{RequeueAfter: config.RequeueAfter}
+// NoRequeue does not requeue, unless reconcile also returns an error
+NoRequeue = reconcile.Result{Requeue: false}
+```
 
 ### Testing
 
@@ -192,12 +194,12 @@ A pattern that comes up quite often is that an object needs to be updated if it 
 _, err = controllerutil.CreateOrUpdate(ctx, r.client, someSecret, secretMutateFn(someSecret, someSecret.StringData, someSecret.Labels, someSecret.Annotations))
 
 func secretMutateFn(s *corev1.Secret, secretData map[string]string, labels map[string]string, annotations map[string]string) controllerutil.MutateFn {
-	return func() error {
-		s.Labels = labels
-		s.Annotations = annotations
-		s.StringData = secretData
-		return nil
-	}
+  return func() error {
+    s.Labels = labels
+    s.Annotations = annotations
+    s.StringData = secretData
+    return nil
+  }
 }
 ```
 
@@ -214,7 +216,7 @@ being handled.
 The `ctxlog` module provides a context with a named zap logger and an event recorder to the reconcilers.
 This is how it's set up for reconcilers:
 
-```
+```go
 // after logger is available
 ctx := ctxlog.NewParentContext(log)
 // adding named log and event recorder in controllers
@@ -228,11 +230,12 @@ The `ctxlog` package provides several logging functions. `Infof`, `Errorf`, `Err
 
 The logging functions are also implemented on struct, to add event generation to the logging:
 
-```
+```go
 ctxlog.WithEvent(instance, "Reason").Infof("message: %s", v)
 err := ctxlog.WithEvent(instance, "Reason").Errorf("message: %s", v)
 err := ctxlog.WithEvent(instance, "Reason").Error("part", "part", "part")
 ```
+
 The reason should be camel-case, so switch statements could match it.
 
 Error funcs like `WithEvent().Errorf()` also return an error, with the same message as the log message and event that were generated.

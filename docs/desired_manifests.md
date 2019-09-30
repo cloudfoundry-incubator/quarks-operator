@@ -13,7 +13,7 @@ The _current version_ of the manifest is the greatest version.
 
 These manifests are kept in secrets named using the following rule:
 
-```
+```plain
 <operator-namespace>/<deployment-name>.desired-manifest-v<version>
 ```
 
