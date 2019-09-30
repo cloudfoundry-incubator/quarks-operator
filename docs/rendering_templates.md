@@ -40,34 +40,35 @@ Each init container uses the release's docker image.
 
 The main purpose of the data gathering phase is to compile all information required for all templates to be rendered and for all instance groups to be run:
 
-  - properties
-  - link instances
-  - bpm yaml
+- properties
+- link instances
+- bpm yaml
 
 Two containers are run for each instance group in the deployment manifest, using the image of the CF Operator. These two containers write the following on stdout:
 
-  - A `Secret` named `<deployment-name>.ig-resolved.<instance-group>-v<version>`
+- A `Secret` named `<deployment-name>.ig-resolved.<instance-group>-v<version>`
 
     This is the "Resolved Instance Group Properties" yaml file.
     It contains a deployment manifest structure that only has information pertinent to an instance group.
     It includes:
-      - all job properties for that instance group
-      - all properties for all jobs that are link providers to any of the jobs of that instance group
-      - the rendered contents of each `bpm.yml.erb`, for each job in the instance group
-      - link instance specs for all AZs and replicas; read more about instance keys available for links [here](https://bosh.io/docs/links/#templates)
+
+    - all job properties for that instance group
+    - all properties for all jobs that are link providers to any of the jobs of that instance group
+    - the rendered contents of each `bpm.yml.erb`, for each job in the instance group
+    - link instance specs for all AZs and replicas; read more about instance keys available for links [here](https://bosh.io/docs/links/#templates)
 
     > **Note:**
     >
     > Link instance specs are stored in the `quarks` property key for each job in the instance group.
 
-  - a `Secret` named `<deployment-name>.bpm.<instance-group>-v<version>`
+- a `Secret` named `<deployment-name>.bpm.<instance-group>-v<version>`
 
     Once all properties and link instances are compiled, `bpm.yml.erb` can be rendered for each job and for each AZ and replica of the instance group.
-  
+
     The output of this container is the "BPM Info" yaml file.
     It contains a deployment manifest structure that only has information pertinent to an instance group.
     It includes the rendered contents of each `bpm.yml.erb`, for each job in the instance group.
-  
+
     > **Note:**
     >
     > The BPM information is stored under the `quarks` property, for each BOSH Job.
@@ -193,7 +194,7 @@ bootstrap: <index == 0>
 - Is everything supported in templates, just like BOSH?
 
   It should, yes. All features should work the same (that's the goal).
-  
+
   > **Known Exceptions:**
   >
   > - The use of `spec.ip` in `bpm.yml.erb`
