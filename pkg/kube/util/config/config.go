@@ -7,8 +7,6 @@ import (
 )
 
 const (
-	// CtxTimeOut is the default context.Context timeout
-	CtxTimeOut = 30 * time.Second
 	// MeltdownDuration is the duration of the meltdown period, in which we
 	// postpone further reconciles for the same resource
 	MeltdownDuration = 10 * time.Second
@@ -34,9 +32,9 @@ type Config struct {
 }
 
 // NewConfig returns a new Config for a Manager of Controllers
-func NewConfig(namespace string, provider string, host string, port int32, fs afero.Fs, maxBoshDeploymentWorkers, maxExtendedJobWorkers, maxExtendedSecretWorkers, maxExtendedStatefulSetWorkers int, applyCRD bool) *Config {
+func NewConfig(namespace string, ctxTimeOut int, provider string, host string, port int32, fs afero.Fs, maxBoshDeploymentWorkers, maxExtendedJobWorkers, maxExtendedSecretWorkers, maxExtendedStatefulSetWorkers int, applyCRD bool) *Config {
 	return &Config{
-		CtxTimeOut:                    CtxTimeOut,
+		CtxTimeOut:                    time.Duration(ctxTimeOut) * time.Second,
 		MeltdownDuration:              MeltdownDuration,
 		MeltdownRequeueAfter:          MeltdownRequeueAfter,
 		Namespace:                     namespace,

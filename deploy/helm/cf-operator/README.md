@@ -65,6 +65,7 @@ helm delete cf-operator --purge
 | `rbacEnable`                                      | install required RBAC service account, roles and rolebindings                     | `true`                                         |
 | `serviceAccount.cfOperatorServiceAccount.create`  | Will set the value of `cf-operator.serviceAccountName` to the current chart name  | `true`                                         |
 | `serviceAccount.cfOperatorServiceAccount.name`    | If the above is not set, it will set the `cf-operator.serviceAccountName`         |                                                |
+| `contextTimeout`                                  | Will set the context timeout in seconds, for future K8S API requests              | `30`                                           |
 
 ## RBAC
 
