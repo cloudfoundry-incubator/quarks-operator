@@ -22,7 +22,7 @@ Interacting with the cf-operator pod
   kubectl -n {{ .Release.Namespace }} logs $OPERATOR_POD -f
 
 3. Apply one of the BOSH deployment manifest examples
-  kubectl -n {{ .Release.Namespace }} create -f docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml
+  kubectl -n {{ .Release.Namespace }} apply -f docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml
 
 4. See the cf-operator in action!
   watch -c "kubectl -n {{ .Release.Namespace }} get pods"
