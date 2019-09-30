@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+
 	v13 "k8s.io/api/apps/v1"
 
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -123,6 +125,9 @@ func (dns *boshDomainNameService) HeadlessServiceName(instanceGroupName string, 
 
 // ConfigurePod see interface
 func (dns *boshDomainNameService) ConfigurePod(podSpec *v1.PodSpec) {
+	if dns.localDNSIP == "" {
+		panic("BoshDomainNameService: ConfigurePod called before Reconcile")
+	}
 	podSpec.DNSPolicy = v1.DNSNone
 	podSpec.DNSConfig = &v1.PodDNSConfig{
 		Nameservers: []string{dns.localDNSIP},
@@ -180,7 +185,7 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, c client.Client
 						{
 							Name:  "coredns",
 							Args:  []string{"-conf", "/etc/coredns/Corefile"},
-							Image: "eu.gcr.io/gardener-project/3rd/coredns/coredns:1.4.0",
+							Image: "coredns/coredns:1.6.3",
 							Ports: []v1.ContainerPort{
 								{ContainerPort: 8053, Name: "dns-udp", Protocol: "UDP"},
 								{ContainerPort: 8053, Name: "dns-tcp", Protocol: "TCP"},
@@ -249,6 +254,7 @@ func (dns *boshDomainNameService) rootDNSIP() string {
 func GetNameserverFromResolveConfig(content []byte) string {
 	found := re.FindSubmatch(content)
 	if len(found) == 0 {
+		ctxlog.Errorf(context.TODO(), "No nameserver found in resolve.conf using 1.1.1.1")
 		return "1.1.1.1"
 	}
 	return string(found[1])
