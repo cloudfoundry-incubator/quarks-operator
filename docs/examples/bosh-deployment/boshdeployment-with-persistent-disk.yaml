@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: ops-foo
+  name: ops-scale
 data:
   ops: |
     - type: replace
@@ -61,5 +61,5 @@ spec:
     name: nats-manifest
     type: configmap
   ops:
-  - name: ops-foo
+  - name: ops-scale
     type: configmap

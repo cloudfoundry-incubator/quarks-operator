@@ -63,7 +63,7 @@ webhooks:
 With a running `cf-operator` pod, you can try one of the files (see [docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml](docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml) ), as follows:
 
 ```bash
-kubectl -n cf-operator create -f docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml
+kubectl -n cf-operator apply -f docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml
 ```
 
 The above will spawn two pods in your `cf-operator` namespace (which needs to be created upfront), running the BOSH nats release.
