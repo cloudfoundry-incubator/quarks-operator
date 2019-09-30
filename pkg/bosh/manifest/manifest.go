@@ -176,7 +176,8 @@ func (m *Manifest) DNS(namespace string) DomainNameService {
 			var err error
 			dns, err := NewBoshDomainNameService(namespace, addon)
 			if err != nil {
-				return NewSimpleDomainNameService()
+				ctxlog.Errorf(context.TODO(), "Error loading bosh dns configuration: %s", err.Error())
+				continue
 			}
 			return dns
 		}
@@ -476,37 +477,39 @@ func (m *Manifest) ImplicitVariables() ([]string, error) {
 
 // ApplyAddons goes through all defined addons and adds jobs to matched instance groups
 func (m *Manifest) ApplyAddons(ctx context.Context) error {
-	if !m.AddOnsApplied {
-		for _, addon := range m.AddOns {
-			if addon.Name != BoshDNSAddOnName {
-				for _, ig := range m.InstanceGroups {
-					include, err := m.addOnPlacementMatch(ctx, "inclusion", ig, addon.Include)
-					if err != nil {
-						return errors.Wrap(err, "failed to process include placement matches")
-					}
-					exclude, err := m.addOnPlacementMatch(ctx, "exclusion", ig, addon.Exclude)
-					if err != nil {
-						return errors.Wrap(err, "failed to process exclude placement matches")
-					}
+	if m.AddOnsApplied {
+		return nil
+	}
+	for _, addon := range m.AddOns {
+		if addon.Name == BoshDNSAddOnName {
+			continue
+		}
+		for _, ig := range m.InstanceGroups {
+			include, err := m.addOnPlacementMatch(ctx, "inclusion", ig, addon.Include)
+			if err != nil {
+				return errors.Wrap(err, "failed to process include placement matches")
+			}
+			exclude, err := m.addOnPlacementMatch(ctx, "exclusion", ig, addon.Exclude)
+			if err != nil {
+				return errors.Wrap(err, "failed to process exclude placement matches")
+			}
 
-					if exclude || !include {
-						ctxlog.Debugf(ctx, "Addon '%s' doesn't match instance group '%s'", addon.Name, ig.Name)
-						continue
-					}
+			if exclude || !include {
+				ctxlog.Debugf(ctx, "Addon '%s' doesn't match instance group '%s'", addon.Name, ig.Name)
+				continue
+			}
 
-					for _, addonJob := range addon.Jobs {
-						addedJob := Job{
-							Name:       addonJob.Name,
-							Release:    addonJob.Release,
-							Properties: addonJob.Properties,
-						}
-
-						addedJob.Properties.Quarks.IsAddon = true
-
-						ctxlog.Debugf(ctx, "Applying addon job '%s/%s' to instance group '%s'", addon.Name, addonJob.Name, ig.Name)
-						ig.Jobs = append(ig.Jobs, addedJob)
-					}
+			for _, addonJob := range addon.Jobs {
+				addedJob := Job{
+					Name:       addonJob.Name,
+					Release:    addonJob.Release,
+					Properties: addonJob.Properties,
 				}
+
+				addedJob.Properties.Quarks.IsAddon = true
+
+				ctxlog.Debugf(ctx, "Applying addon job '%s/%s' to instance group '%s'", addon.Name, addonJob.Name, ig.Name)
+				ig.Jobs = append(ig.Jobs, addedJob)
 			}
 		}
 	}
