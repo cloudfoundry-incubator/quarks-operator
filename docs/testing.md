@@ -28,15 +28,15 @@ There is also `ginkgo generate` to create skeleton test files.
 
 While unit testing we:
 
-* test classes in isolation
-* pass all dependencies to the constructor, so we can inject fakes for testing
-* use `counterfeiter` to generate and update fakes
-* don't test private methods, tests are in a separate `_test` package
-* try not to nest ginkgo contexts too deep and keep tests DRY by extracting useful helpers
-* assert incoming messages produce the expected state
-* assert outgoing commands happened, like a file gets written
-* assert all handled error cases are triggered
-* can ignore outgoing queries, which only change internal state
+- test classes in isolation
+- pass all dependencies to the constructor, so we can inject fakes for testing
+- use `counterfeiter` to generate and update fakes
+- don't test private methods, tests are in a separate `_test` package
+- try not to nest ginkgo contexts too deep and keep tests DRY by extracting useful helpers
+- assert incoming messages produce the expected state
+- assert outgoing commands happened, like a file gets written
+- assert all handled error cases are triggered
+- can ignore outgoing queries, which only change internal state
 
 ### Setup Ruby
 
@@ -214,9 +214,8 @@ The following are the make targets available and their actions.
 | `test-integration`         | runs integration tests only.                       |
 | `test-cli-e2e`             | runs end to end tests for CLI.                     |
 | `test-helm-e2e`            | runs end to end tests on k8s using `helm install`. |
-| `test-integration-storage  | runs integration storage tests.                    |
+| `test-integration-storage` | runs integration storage tests.                    |
 | `test-helm-e2e-storage`    | runs e2e storage tests.                            |
-
 
 ### Generate Targets
 

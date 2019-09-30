@@ -42,16 +42,15 @@ instance_groups:
 		}()
 		os.Stdout = w
 
-		go func() {
-			err := InterpolateVariables(log, baseManifest, varDir)
-			if len(expectedErr) != 0 {
-				Expect(err).NotTo(BeNil())
-				Expect(err.Error()).To(ContainSubstring(expectedErr))
-			} else {
-				Expect(err).To(BeNil())
-			}
-			w.Close()
-		}()
+		err := InterpolateVariables(log, baseManifest, varDir)
+		if len(expectedErr) != 0 {
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(ContainSubstring(expectedErr))
+		} else {
+			Expect(err).To(BeNil())
+		}
+		w.Close()
+
 		stdout, err := ioutil.ReadAll(r)
 		return string(stdout), err
 	}

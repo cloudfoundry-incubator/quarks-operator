@@ -11,7 +11,7 @@ That job triggers itself, when a draft release is created.
 We release from release-branches. Each maintained release has a separate pipeline in Concourse.
 To create a new pipeline run this in the CI repository:
 
-```
+```shell
 cd pipelines/cf-operator-release
 ./configure.sh CFO v0.4.x v0.4
 ```
@@ -35,7 +35,7 @@ Running the 'release' job will take the latest artificats, which passed through 
 * to the body
 * as Github assets for downloading
 
-The version numbers (v0.0.0-<number-of-commits>.<commit-SHA>) of these assets are taken from the info on S3.
+The version numbers (`v0.0.0-<number-of-commits>.<commit-SHA>`) of these assets are taken from the info on S3.
 They have to match the Github tag, else the release job will fail.
 The assets will be copied into a 'release' folder on S3.
 
@@ -45,18 +45,18 @@ The docker image is only referenced from the helm chart and not mentioned in the
 
 ### Major Release
 
-0. Create version branch
-0. Create a new release pipeline for that branch
-0. Unpause pipeline
-0. Continue with "Minor Bump"
+1. Create version branch
+1. Create a new release pipeline for that branch
+1. Unpause pipeline
+1. Continue with "Minor Bump"
 
 ### Minor Bump
 
-0. Tag commit with new version
-0. Push commit
-0. Wait for commit to pass release pipeline
-0. Create a draft Github release for that tag, 'release' job triggers
-0. Wait for 'release' job to finish on Concourse
-0. Edit the draft release on Github and publish it
+1. Tag commit with new version
+1. Push commit
+1. Wait for commit to pass release pipeline
+1. Create a draft Github release for that tag, 'release' job triggers
+1. Wait for 'release' job to finish on Concourse
+1. Edit the draft release on Github and publish it
 
 Try not to push to the pipeline again, until step 4 is completed. The 'release' job will always take the most recent artifacts from S3. Maybe pause the 'publish' job manually to avoid accidental updates.
