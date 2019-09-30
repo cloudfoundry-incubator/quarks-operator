@@ -97,7 +97,7 @@ func NewBoshDomainNameService(namespace string, addOn *AddOn) (DomainNameService
 }
 
 // FindServiceNames see interface
-func (dns *boshDomainNameService) FindServiceNames(instanceGroupName string, _ string) []string {
+func (dns *boshDomainNameService) FindServiceNames(instanceGroupName string, deploymentName string) []string {
 	result := make([]string, 0)
 	for _, alias := range dns.aliases {
 		for _, target := range alias.Targets {
@@ -106,23 +106,41 @@ func (dns *boshDomainNameService) FindServiceNames(instanceGroupName string, _ s
 			}
 		}
 	}
+	if len(result) == 0 {
+		result = append(result, serviceName(instanceGroupName, deploymentName, 63))
+	}
 	return result
 }
 
 // HeadlessServiceName see interface
 func (dns *boshDomainNameService) HeadlessServiceName(instanceGroupName string, deploymentName string) string {
-	return dns.FindServiceNames(instanceGroupName, deploymentName)[0]
+	serviceNames := dns.FindServiceNames(instanceGroupName, deploymentName)
+	if len(serviceNames) == 0 {
+		return serviceName(instanceGroupName, deploymentName, 63)
+	}
+	return serviceNames[0]
 }
 
 // ConfigurePod see interface
 func (dns *boshDomainNameService) ConfigurePod(podSpec *v1.PodSpec) {
 	podSpec.DNSPolicy = v1.DNSNone
-	podSpec.DNSConfig = &v1.PodDNSConfig{Nameservers: []string{dns.localDNSIP}}
+	podSpec.DNSConfig = &v1.PodDNSConfig{
+		Nameservers: []string{dns.localDNSIP},
+		Searches:    []string{fmt.Sprintf("%s.svc.cluster.local", dns.namespace), "service.cf.internal"},
+	}
 }
 
 // Reconcile see interface
 func (dns *boshDomainNameService) Reconcile(ctx context.Context, c client.Client, setOwner func(object v12.Object) error) error {
 
+	rewrites := ""
+	for _, alias := range dns.aliases {
+		for _, target := range alias.Targets {
+			serviceName := serviceName(target.InstanceGroup, dns.namespace, 63)
+			rewrites = rewrites + fmt.Sprintf("  rewrite name exact %s %s.%s.svc.cluster.local\n", serviceName, strings.Split(alias.Domain, ".")[0], dns.namespace)
+			rewrites = rewrites + fmt.Sprintf("  rewrite name exact %s.%s %s.%s.svc.cluster.local\n", serviceName, dns.namespace, strings.Split(alias.Domain, ".")[0], dns.namespace)
+		}
+	}
 	metadata := v12.ObjectMeta{
 		Name:      "bosh-dns",
 		Namespace: dns.namespace,
@@ -131,7 +149,7 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, c client.Client
 
 	configMap := v1.ConfigMap{
 		ObjectMeta: metadata,
-		Data:       map[string]string{"Corefile": fmt.Sprintf(corefile, dns.namespace, dns.rootDNSIP())},
+		Data:       map[string]string{"Corefile": fmt.Sprintf(corefile, rewrites, dns.namespace, dns.rootDNSIP())},
 	}
 	service := v1.Service{
 		ObjectMeta: metadata,
@@ -292,6 +310,7 @@ func deploymentMapMutateFn(deployment *v13.Deployment) controllerutil.MutateFn {
 const corefile = `
 .:8053 {
   health
+  %s
   rewrite name substring service.cf.internal %s.svc.cluster.local
   forward . %s
 }
