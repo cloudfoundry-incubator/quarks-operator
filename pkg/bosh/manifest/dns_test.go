@@ -168,8 +168,12 @@ var _ = Describe("kube converter", func() {
 			Expect(diegoAPI).To(ConsistOf("bbs", "bbs1"))
 			uaa := dns.FindServiceNames("uaa", "cf")
 			Expect(uaa).To(ConsistOf("uaa"))
+		})
+		It("returns the default name if there is no alias configured", func() {
+			dns, err := manifest.NewBoshDomainNameService("default", loadAddOn(boshDNSAddOn))
+			Expect(err).NotTo(HaveOccurred())
 			invalid := dns.FindServiceNames("invalid", "cf")
-			Expect(invalid).To(ConsistOf())
+			Expect(invalid).To(ConsistOf("cf-invalid"))
 
 		})
 		It("reads nameserver from resolve.conv", func() {

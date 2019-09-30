@@ -3,9 +3,11 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"runtime/debug"
 	"time"
 
 	"github.com/pkg/errors"
@@ -30,6 +32,16 @@ instance group.
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		defer func() {
 			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				fmt.Fprintf(os.Stderr, "Sleeping ...\n")
+				time.Sleep(debugGracePeriod)
+			}
+		}()
+
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "Recovered in f: %v\n%s\n", r, string(debug.Stack()))
+				fmt.Fprintf(os.Stderr, "Sleeping ...\n")
 				time.Sleep(debugGracePeriod)
 			}
 		}()
