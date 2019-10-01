@@ -231,7 +231,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 									Value: zones[idx],
 								}))
 								Expect(envs).Should(ContainElement(corev1.EnvVar{
-									Name:  exssc.EnvCfOperatorAzIndex,
+									Name:  exssc.EnvCFOperatorAZIndex,
 									Value: strconv.Itoa(idx + 1),
 								}))
 								Expect(envs).Should(ContainElement(corev1.EnvVar{
@@ -334,7 +334,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 									Value: zones[idx],
 								}))
 								Expect(envs).Should(ContainElement(corev1.EnvVar{
-									Name:  exssc.EnvCfOperatorAzIndex,
+									Name:  exssc.EnvCFOperatorAZIndex,
 									Value: strconv.Itoa(idx + 1),
 								}))
 							}

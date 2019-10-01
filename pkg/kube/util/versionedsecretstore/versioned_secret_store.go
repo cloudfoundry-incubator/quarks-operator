@@ -24,6 +24,8 @@ var (
 	LabelSecretKind = fmt.Sprintf("%s/secret-kind", apis.GroupName)
 	// LabelVersion is the label key for secret version
 	LabelVersion = fmt.Sprintf("%s/secret-version", apis.GroupName)
+	// LabelAPIVersion is the lable for kube APIVersion
+	LabelAPIVersion = fmt.Sprintf("%s/v1alpha1", apis.GroupName)
 	// AnnotationSourceDescription is the label key for source description
 	AnnotationSourceDescription = fmt.Sprintf("%s/source-description", apis.GroupName)
 )
@@ -149,7 +151,7 @@ func (p VersionedSecretImpl) Create(ctx context.Context, namespace string, owner
 			Labels:    labels,
 			OwnerReferences: []metav1.OwnerReference{
 				{
-					APIVersion:         "fissile.cloudfoundry.org/v1alpha1",
+					APIVersion:         LabelAPIVersion,
 					Kind:               "ExtendedJob",
 					Name:               ownerName,
 					UID:                ownerID,

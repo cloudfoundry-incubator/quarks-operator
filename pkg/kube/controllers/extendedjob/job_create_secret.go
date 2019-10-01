@@ -5,16 +5,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
-	"time"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
-	podutil "code.cloudfoundry.org/cf-operator/pkg/kube/util/pod"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
+	"github.com/fsnotify/fsnotify"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -23,6 +18,19 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
+	podutil "code.cloudfoundry.org/cf-operator/pkg/kube/util/pod"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
+)
+
+var (
+	// LabelEjobPod is the label present on every jobpod of exjob.
+	LabelEjobPod = fmt.Sprintf("%s/ejob-name", apis.GroupName)
 )
 
 // PersistOutput converts the output files of each container
@@ -32,10 +40,10 @@ func PersistOutput(namespace string) error {
 	// hostname of the container is the pod name in kubernetes
 	podName, err := os.Hostname()
 	if err != nil {
-		return errors.Wrapf(err, "Failed to fetch pod name.")
+		return errors.Wrapf(err, "failed to fetch pod name.")
 	}
 	if podName == "" {
-		return errors.Wrapf(err, "Pod name is empty.")
+		return errors.Wrapf(err, "pod name is empty.")
 	}
 
 	// Authenticate with the cluster
@@ -51,7 +59,7 @@ func PersistOutput(namespace string) error {
 	}
 
 	// Fetch the exjob
-	exjobName := pod.GetLabels()["fissile.cloudfoundry.org/ejob-name"]
+	exjobName := pod.GetLabels()[LabelEjobPod]
 
 	exjobClient := versionedClientSet.ExtendedjobV1alpha1().ExtendedJobs(namespace)
 	exjob, err := exjobClient.Get(exjobName, metav1.GetOptions{})
@@ -80,7 +88,7 @@ func convertOutputToSecret(pod *corev1.Pod, namePrefix string, namespace string,
 			continue
 		}
 
-		filePath := fmt.Sprintf("%s%s%s", "/mnt/quarks/", container.Name, "/output.json")
+		filePath := filepath.Join("/mnt/quarks/", container.Name, "output.json")
 
 		// Go routine to wait for the file to be created
 		go waitForFile(containerIndex, filePath, fileNotifyChannel, errorChannel)
@@ -96,29 +104,61 @@ func convertOutputToSecret(pod *corev1.Pod, namePrefix string, namespace string,
 				return err
 			}
 		case failure := <-errorChannel:
-			return errors.Wrapf(failure, "Failure waiting for output file for container in pod %s", pod.GetName())
+			return errors.Wrapf(failure, "failure waiting for output file for container in pod %s", pod.GetName())
 		}
 	}
 	return nil
 }
 
+// fileExists checks if the file exists
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}
+
 // waitForFile waits for the file to be created
 func waitForFile(containerIndex int, filePath string, fileNotifyChannel chan<- int, errorChannel chan<- error) {
 
-	for {
-		time.Sleep(5 * time.Second)
-		_, err := os.Stat(filePath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			} else {
+	if fileExists(filePath) {
+		fileNotifyChannel <- containerIndex
+	}
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		errorChannel <- err
+	}
+	defer watcher.Close()
+
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					continue
+				}
+				if event.Op == fsnotify.Create && event.Name == filePath {
+					fileNotifyChannel <- containerIndex
+					return
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					continue
+				}
 				errorChannel <- err
-				break
+				return
 			}
 		}
-		fileNotifyChannel <- containerIndex
-		break
+	}()
+
+	err = watcher.Add("/mnt/quarks/json")
+	if err != nil {
+		errorChannel <- err
 	}
+	<-done
 }
 
 // authenticateInCluster authenticates with the in cluster and returns the client
@@ -146,10 +186,13 @@ func createOutputSecret(outputContainer corev1.Container, namePrefix string, nam
 	secretName := namePrefix + outputContainer.Name
 
 	// Fetch json from file
-	filePath := fmt.Sprintf("%s%s%s", "/mnt/quarks/", outputContainer.Name, "/output.json")
-	file, _ := ioutil.ReadFile(filePath)
+	filePath := filepath.Join("/mnt/quarks/", outputContainer.Name, "output.json")
+	file, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return errors.Wrapf(err, "unable to read file %s in container %s in pod %s", filePath, outputContainer.Name, podName)
+	}
 	var data map[string]string
-	err := json.Unmarshal([]byte(file), &data)
+	err = json.Unmarshal([]byte(file), &data)
 	if err != nil {
 		return errors.Wrapf(err, "failed to convert output file %s into json for creating secret %s in pod %s",
 			filePath, secretName, podName)
@@ -188,10 +231,10 @@ func createOutputSecret(outputContainer corev1.Container, namePrefix string, nam
 				// If it exists update it
 				_, err = clientSet.CoreV1().Secrets(namespace).Update(secret)
 				if err != nil {
-					return errors.Wrapf(err, "Failed to update secret %s for container %s in pod %s.", secretName, outputContainer.Name, podName)
+					return errors.Wrapf(err, "failed to update secret %s for container %s in pod %s.", secretName, outputContainer.Name, podName)
 				}
 			} else {
-				return errors.Wrapf(err, "Failed to create secret %s for container %s in pod %s.", secretName, outputContainer.Name, podName)
+				return errors.Wrapf(err, "failed to create secret %s for container %s in pod %s.", secretName, outputContainer.Name, podName)
 			}
 		}
 
@@ -221,7 +264,7 @@ func createVersionSecret(clientSet *kubernetes.Clientset, namespace string, owne
 			Labels:    labels,
 			OwnerReferences: []metav1.OwnerReference{
 				{
-					APIVersion:         "fissile.cloudfoundry.org/v1alpha1",
+					APIVersion:         versionedsecretstore.LabelAPIVersion,
 					Kind:               "ExtendedJob",
 					Name:               ownerName,
 					UID:                ownerID,
@@ -270,7 +313,7 @@ func listSecrets(clientSet *kubernetes.Clientset, namespace string, secretName s
 		LabelSelector: secretLabelsSet.String(),
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to list secrets with labels %s", secretLabelsSet.String())
+		return nil, errors.Wrapf(err, "failed to list secrets with labels %s", secretLabelsSet.String())
 	}
 
 	result := []corev1.Secret{}

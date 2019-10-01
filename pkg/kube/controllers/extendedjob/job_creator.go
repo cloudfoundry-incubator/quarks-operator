@@ -3,6 +3,7 @@ package extendedjob
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 	batchv1 "k8s.io/api/batch/v1"
@@ -93,14 +94,14 @@ func (j jobCreatorImpl) Create(ctx context.Context, eJob ejv1.ExtendedJob, names
 	err = j.client.Create(ctx, serviceAccount)
 	if err != nil {
 		if !apierrors.IsAlreadyExists(err) {
-			return false, errors.Wrapf(err, "Could not create service account for pod in ejob %s.", eJob.Name)
+			return false, errors.Wrapf(err, "could not create service account for pod in ejob %s.", eJob.Name)
 		}
 	}
 
 	err = j.client.Create(ctx, roleBinding)
 	if err != nil {
 		if !apierrors.IsAlreadyExists(err) {
-			return false, errors.Wrapf(err, "Could not create role binding for pod in ejob '%s'", eJob.Name)
+			return false, errors.Wrapf(err, "could not create role binding for pod in ejob '%s'", eJob.Name)
 		}
 	}
 
@@ -127,20 +128,20 @@ func (j jobCreatorImpl) Create(ctx context.Context, eJob ejv1.ExtendedJob, names
 
 		// Add pod volume specs to the pod
 		podVolumeSpec := corev1.Volume{
-			Name:         fmt.Sprintf("%s%s", "output-", container.Name),
+			Name:         names.Sanitize(fmt.Sprintf("%s%s", "output-", container.Name)),
 			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 		}
 		template.Spec.Volumes = append(template.Spec.Volumes, podVolumeSpec)
 
 		// Add container volume specs to continer
 		containerVolumeMountSpec := corev1.VolumeMount{
-			Name:      fmt.Sprintf("%s%s", "output-", container.Name),
+			Name:      names.Sanitize(fmt.Sprintf("%s%s", "output-", container.Name)),
 			MountPath: mountPath,
 		}
 		template.Spec.Containers[containerIndex].VolumeMounts = append(template.Spec.Containers[containerIndex].VolumeMounts, containerVolumeMountSpec)
 
 		// Add container volume spec to output persist container
-		containerVolumeMountSpec.MountPath = fmt.Sprintf("%s%s", mountPath, container.Name)
+		containerVolumeMountSpec.MountPath = filepath.Join(mountPath, container.Name)
 		outputPersistContainer.VolumeMounts = append(outputPersistContainer.VolumeMounts, containerVolumeMountSpec)
 	}
 

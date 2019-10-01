@@ -105,7 +105,7 @@ var _ = Describe("CLI", func() {
 				It("should apply CRDs", func() {
 					session, err := act()
 					Expect(err).ToNot(HaveOccurred())
-					Eventually(session.Err).Should(Say(`Applying CRD...`))
+					Eventually(session.Err).Should(Say(`Applying CRDs...`))
 				})
 			})
 
@@ -113,7 +113,7 @@ var _ = Describe("CLI", func() {
 				It("should apply CRDs", func() {
 					session, err := act("--apply-crd")
 					Expect(err).ToNot(HaveOccurred())
-					Eventually(session.Err).Should(Say(`Applying CRD...`))
+					Eventually(session.Err).Should(Say(`Applying CRDs...`))
 				})
 			})
 		})
@@ -149,7 +149,7 @@ var _ = Describe("CLI", func() {
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
-			session, err := act("util", "variable-interpolation", "-m", "foo.txt")
+			session, err := act("util", "variable-interpolation", "-m", "foo.txt", "--output-file-path", "./output.json")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Err).Should(Say("variable-interpolation command failed. bosh-manifest-path file doesn't exist : foo.txt"))
 		})
@@ -164,7 +164,7 @@ var _ = Describe("CLI", func() {
 			})
 
 			It("accepts the bosh-manifest-path as an environment variable", func() {
-				session, err := act("util", "variable-interpolation")
+				session, err := act("util", "variable-interpolation", "--output-file-path", "./output.json")
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Err).Should(Say("variable-interpolation command failed. bosh-manifest-path file doesn't exist : bar.txt"))
 			})

@@ -7,15 +7,11 @@ import (
 	"github.com/spf13/viper"
 )
 
-const (
-	persistOutputFileFailedMessage = "persist-output command failed."
-)
-
 // persistOutputCmd is the persist-output command.
 var persistOutputCmd = &cobra.Command{
 	Use:   "persist-output [flags]",
 	Short: "Persist a file into a kube secret",
-	Long: `Persists a log file created  by containers in a pod of extendedjob 
+	Long: `Persists a log file created by containers in a pod of extendedjob
 	
 into a versionsed secret or kube native secret using flags specified to this command.
 `,
@@ -23,7 +19,7 @@ into a versionsed secret or kube native secret using flags specified to this com
 
 		namespace := viper.GetString("cf-operator-namespace")
 		if len(namespace) == 0 {
-			return errors.Errorf("%s cf-operator-namespace flag is empty.", persistOutputFileFailedMessage)
+			return errors.Errorf("persist-output command failed. cf-operator-namespace flag is empty.")
 		}
 
 		return extendedjob.PersistOutput(namespace)

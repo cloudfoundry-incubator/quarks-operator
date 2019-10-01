@@ -2,6 +2,7 @@ package manifest_test
 
 import (
 	"io/ioutil"
+	"path/filepath"
 
 	"go.uber.org/zap"
 
@@ -30,8 +31,8 @@ instance_groups:
 - name: ((value2.key2))
 - name: ((value2.key3))
 `)
-		varDir = assetPath + "/vars"
-		outputFilePath = assetPath + "/output.json"
+		varDir = filepath.Join(assetPath, "vars")
+		outputFilePath = filepath.Join(assetPath, "output.json")
 
 	})
 

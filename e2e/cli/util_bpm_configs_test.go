@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"os/exec"
 
+	"path/filepath"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -37,7 +39,7 @@ var _ = Describe("bpm-configs", func() {
 			Eventually(session).Should(gexec.Exit(0))
 
 			var jsonOutput map[string]string
-			dataBytes, err := ioutil.ReadFile(assetPath + "/output.json")
+			dataBytes, err := ioutil.ReadFile(filepath.Join(assetPath, "output.json"))
 			Expect(err).ToNot(HaveOccurred())
 
 			err = json.Unmarshal(dataBytes, &jsonOutput)
