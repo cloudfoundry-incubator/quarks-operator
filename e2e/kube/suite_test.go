@@ -12,6 +12,8 @@ import (
 	"code.cloudfoundry.org/cf-operator/e2e/kube/e2ehelper"
 )
 
+const examplesDir = "../../docs/examples/"
+
 var (
 	nsIndex   int
 	teardown  e2ehelper.TearDownFunc
