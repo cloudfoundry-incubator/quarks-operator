@@ -17,12 +17,9 @@ if [ -z ${TEST_NAMESPACE+x} ]; then
 fi
 
 : "${CF_OPERATOR_TESTING_TMP:=/tmp}"
-echo "Test logs are here: ${CF_OPERATOR_TESTING_TMP}/cf-operator-tests.log"
+echo "Test logs are here: ${CF_OPERATOR_TESTING_TMP}/cf-operator-tests-*.log"
 setup_testing_tmp
 trap cleanup_testing_tmp EXIT
-
-
-kubectl get customresourcedefinitions
 
 GOVER_FILE=${GOVER_FILE:-gover-integration.coverprofile}
 
@@ -48,4 +45,4 @@ ginkgo ${FOCUS:+ --focus "$FOCUS"} \
   --slowSpecThreshold=50 \
   --flakeAttempts="$FLAKE_ATTEMPTS" \
   $COV_ARG \
-  integration/
+  integration/"$1"
