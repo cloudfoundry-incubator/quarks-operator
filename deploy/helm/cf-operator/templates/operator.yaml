@@ -24,9 +24,13 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
           env:
             - name: CF_OPERATOR_NAMESPACE
+              {{- if .Values.operator.watchNamespace }}
+              value: "{{ .Values.operator.watchNamespace }}"
+              {{- else }}
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+              {{- end }}
             - name: CTX_TIMEOUT
               value: "{{ .Values.contextTimeout }}"
             - name: POD_NAME
