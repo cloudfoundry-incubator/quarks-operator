@@ -139,16 +139,7 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, c client.Client
 	const appName = "bosh-dns"
 	const volumenName = "bosh-dns-volume"
 	const coreConfigFile = "Corefile"
-	const udpPort = 8053
 
-	rewrites := ""
-	for _, alias := range dns.aliases {
-		for _, target := range alias.Targets {
-			serviceName := serviceName(target.InstanceGroup, dns.namespace, 63)
-			rewrites = rewrites + fmt.Sprintf("  rewrite name exact %s %s.%s.svc.cluster.local\n", serviceName, strings.Split(alias.Domain, ".")[0], dns.namespace)
-			rewrites = rewrites + fmt.Sprintf("  rewrite name exact %s.%s %s.%s.svc.cluster.local\n", serviceName, dns.namespace, strings.Split(alias.Domain, ".")[0], dns.namespace)
-		}
-	}
 	metadata := metav1.ObjectMeta{
 		Name:      appName,
 		Namespace: dns.namespace,
@@ -157,7 +148,7 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, c client.Client
 
 	configMap := corev1.ConfigMap{
 		ObjectMeta: metadata,
-		Data:       map[string]string{coreConfigFile: fmt.Sprintf(corefile, rewrites, dns.namespace, dns.rootDNSIP())},
+		Data:       map[string]string{coreConfigFile: createCorefile(dns)},
 	}
 	service := corev1.Service{
 		ObjectMeta: metadata,
@@ -313,11 +304,24 @@ func deploymentMapMutateFn(deployment *appsv1.Deployment) controllerutil.MutateF
 	}
 }
 
-const corefile = `
-.:8053 {
-  health
-  %s
-  rewrite name substring service.cf.internal %s.svc.cluster.local
-  forward . %s
+func createCorefile(dns *boshDomainNameService) string {
+	rewrites := ""
+
+	for _, alias := range dns.aliases {
+		for _, target := range alias.Targets {
+			serviceName := serviceName(target.InstanceGroup, dns.namespace, 63)
+			target := fmt.Sprintf("%s.%s.svc.cluster.local", strings.Split(alias.Domain, ".")[0], dns.namespace)
+			rewrites = rewrites + fmt.Sprintf("  rewrite name exact %s    %s\n", serviceName, target)
+			rewrites = rewrites + fmt.Sprintf("  rewrite name exact %s.%s %s\n", serviceName, dns.namespace, target)
+		}
+	}
+
+	return fmt.Sprintf(`
+		.:8053 {
+			health
+			%s
+			rewrite name substring service.cf.internal %s.svc.cluster.local
+			forward . %s
+		}
+	`, rewrites, dns.namespace, dns.rootDNSIP())
 }
-`
