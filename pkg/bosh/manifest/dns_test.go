@@ -140,10 +140,11 @@ const boshDNSAddOn = `
 }
 `
 
-func loadAddOn(data string) *manifest.AddOn {
+func loadAddOn() *manifest.AddOn {
 	var addOn manifest.AddOn
-	err := json.Unmarshal([]byte(data), &addOn)
+	err := json.Unmarshal([]byte(boshDNSAddOn), &addOn)
 	if err != nil {
+		// This should never happen, because boshDNSAddOn is a constant
 		panic("Loading yaml failed")
 	}
 	return &addOn
@@ -154,7 +155,7 @@ var _ = Describe("kube converter", func() {
 	Context("bosh-dns", func() {
 
 		It("loads dns from addons correct", func() {
-			dns, err := manifest.NewBoshDomainNameService("default", loadAddOn(boshDNSAddOn))
+			dns, err := manifest.NewBoshDomainNameService("default", loadAddOn())
 			Expect(err).NotTo(HaveOccurred())
 			services := dns.FindServiceNames("scheduler", "")
 			Expect(services).To(HaveLen(1))
@@ -162,7 +163,7 @@ var _ = Describe("kube converter", func() {
 			Expect(dns.HeadlessServiceName("scheduler", "")).To(Equal("auctioneer"))
 		})
 		It("returns the correct service names", func() {
-			dns, err := manifest.NewBoshDomainNameService("default", loadAddOn(boshDNSAddOn))
+			dns, err := manifest.NewBoshDomainNameService("default", loadAddOn())
 			Expect(err).NotTo(HaveOccurred())
 			diegoAPI := dns.FindServiceNames("diego-api", "cf")
 			Expect(diegoAPI).To(ConsistOf("bbs", "bbs1"))
@@ -170,7 +171,7 @@ var _ = Describe("kube converter", func() {
 			Expect(uaa).To(ConsistOf("uaa"))
 		})
 		It("returns the default name if there is no alias configured", func() {
-			dns, err := manifest.NewBoshDomainNameService("default", loadAddOn(boshDNSAddOn))
+			dns, err := manifest.NewBoshDomainNameService("default", loadAddOn())
 			Expect(err).NotTo(HaveOccurred())
 			invalid := dns.FindServiceNames("invalid", "cf")
 			Expect(invalid).To(ConsistOf("cf-invalid"))
@@ -185,7 +186,7 @@ var _ = Describe("kube converter", func() {
 			Expect(ip).To(Equal("1.1.1.1"))
 		})
 		It("reconciles dns stuff", func() {
-			d, err := manifest.NewBoshDomainNameService("default", loadAddOn(boshDNSAddOn))
+			d, err := manifest.NewBoshDomainNameService("default", loadAddOn())
 			Expect(err).NotTo(HaveOccurred())
 			scheme := runtime.NewScheme()
 			Expect(corev1.AddToScheme(scheme)).To(Succeed())

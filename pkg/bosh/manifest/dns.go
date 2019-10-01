@@ -12,17 +12,17 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 
-	v13 "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"github.com/pkg/errors"
@@ -37,11 +37,11 @@ type DomainNameService interface {
 	// HeadlessServiceName constructs the headless service name for the instance group.
 	HeadlessServiceName(instanceGroupName string, deploymentName string) string
 
-	// Configure DNS inside pod
-	ConfigurePod(podSpec *v1.PodSpec)
+	// DNSSetting get the DNS settings for POD
+	DNSSetting() (corev1.DNSPolicy, *corev1.PodDNSConfig)
 
 	// Reconcile DNS stuff
-	Reconcile(ctx context.Context, c client.Client, setOwner func(object v12.Object) error) error
+	Reconcile(ctx context.Context, c client.Client, setOwner func(object metav1.Object) error) error
 }
 
 // Target of domain alias
@@ -123,20 +123,23 @@ func (dns *boshDomainNameService) HeadlessServiceName(instanceGroupName string, 
 	return serviceNames[0]
 }
 
-// ConfigurePod see interface
-func (dns *boshDomainNameService) ConfigurePod(podSpec *v1.PodSpec) {
+// DNSSetting see interface
+func (dns *boshDomainNameService) DNSSetting() (corev1.DNSPolicy, *corev1.PodDNSConfig) {
 	if dns.localDNSIP == "" {
-		panic("BoshDomainNameService: ConfigurePod called before Reconcile")
+		panic("BoshDomainNameService: DNSSetting called before Reconcile")
 	}
-	podSpec.DNSPolicy = v1.DNSNone
-	podSpec.DNSConfig = &v1.PodDNSConfig{
+	return corev1.DNSNone, &corev1.PodDNSConfig{
 		Nameservers: []string{dns.localDNSIP},
 		Searches:    []string{fmt.Sprintf("%s.svc.cluster.local", dns.namespace), "service.cf.internal"},
 	}
 }
 
 // Reconcile see interface
-func (dns *boshDomainNameService) Reconcile(ctx context.Context, c client.Client, setOwner func(object v12.Object) error) error {
+func (dns *boshDomainNameService) Reconcile(ctx context.Context, c client.Client, setOwner func(object metav1.Object) error) error {
+	const appName = "bosh-dns"
+	const volumenName = "bosh-dns-volume"
+	const coreConfigFile = "Corefile"
+	const udpPort = 8053
 
 	rewrites := ""
 	for _, alias := range dns.aliases {
@@ -146,67 +149,67 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, c client.Client
 			rewrites = rewrites + fmt.Sprintf("  rewrite name exact %s.%s %s.%s.svc.cluster.local\n", serviceName, dns.namespace, strings.Split(alias.Domain, ".")[0], dns.namespace)
 		}
 	}
-	metadata := v12.ObjectMeta{
-		Name:      "bosh-dns",
+	metadata := metav1.ObjectMeta{
+		Name:      appName,
 		Namespace: dns.namespace,
-		Labels:    map[string]string{"app": "bosh-dns"},
+		Labels:    map[string]string{"app": appName},
 	}
 
-	configMap := v1.ConfigMap{
+	configMap := corev1.ConfigMap{
 		ObjectMeta: metadata,
-		Data:       map[string]string{"Corefile": fmt.Sprintf(corefile, rewrites, dns.namespace, dns.rootDNSIP())},
+		Data:       map[string]string{coreConfigFile: fmt.Sprintf(corefile, rewrites, dns.namespace, dns.rootDNSIP())},
 	}
-	service := v1.Service{
+	service := corev1.Service{
 		ObjectMeta: metadata,
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
 				{Name: "dns", Port: 53, Protocol: "UDP", TargetPort: intstr.FromInt(8053)},
 				{Name: "dns-tcp", Port: 53, Protocol: "TCP", TargetPort: intstr.FromInt(8053)},
 				{Name: "metrics", Port: 9153, Protocol: "TCP", TargetPort: intstr.FromInt(9153)},
 			},
-			Selector: map[string]string{"app": "bosh-dns"},
+			Selector: map[string]string{"app": appName},
 			Type:     "ClusterIP",
 		},
 	}
 
 	var mode int32 = 420
-	deployment := v13.Deployment{
+	deployment := appsv1.Deployment{
 		ObjectMeta: metadata,
-		Spec: v13.DeploymentSpec{
-			Selector: &v12.LabelSelector{
-				MatchLabels: map[string]string{"app": "bosh-dns"},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": appName},
 			},
-			Template: v1.PodTemplateSpec{
-				ObjectMeta: v12.ObjectMeta{
-					Labels: map[string]string{"app": "bosh-dns"},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"app": appName},
 				},
-				Spec: v1.PodSpec{
-					Containers: []v1.Container{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
 						{
 							Name:  "coredns",
 							Args:  []string{"-conf", "/etc/coredns/Corefile"},
 							Image: "coredns/coredns:1.6.3",
-							Ports: []v1.ContainerPort{
+							Ports: []corev1.ContainerPort{
 								{ContainerPort: 8053, Name: "dns-udp", Protocol: "UDP"},
 								{ContainerPort: 8053, Name: "dns-tcp", Protocol: "TCP"},
 								{ContainerPort: 9153, Name: "metrics", Protocol: "TCP"},
 							},
-							VolumeMounts: []v1.VolumeMount{
-								{MountPath: "/etc/coredns", Name: "bosh-dns-volume", ReadOnly: true},
+							VolumeMounts: []corev1.VolumeMount{
+								{MountPath: "/etc/coredns", Name: volumenName, ReadOnly: true},
 							},
 						},
 					},
-					Volumes: []v1.Volume{
+					Volumes: []corev1.Volume{
 						{
-							Name: "bosh-dns-volume",
-							VolumeSource: v1.VolumeSource{
-								ConfigMap: &v1.ConfigMapVolumeSource{
+							Name: volumenName,
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
 									DefaultMode: &mode,
-									LocalObjectReference: v1.LocalObjectReference{
-										Name: "bosh-dns",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: appName,
 									},
-									Items: []v1.KeyToPath{
-										{Key: "Corefile", Path: "Corefile"},
+									Items: []corev1.KeyToPath{
+										{Key: coreConfigFile, Path: coreConfigFile},
 									},
 								},
 							},
@@ -216,28 +219,24 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, c client.Client
 			},
 		},
 	}
-	for _, obj := range []v12.Object{&configMap, &deployment, &service} {
-		err := setOwner(obj)
-		if err != nil {
+	for _, obj := range []metav1.Object{&configMap, &deployment, &service} {
+		if err := setOwner(obj); err != nil {
 			return err
 		}
 	}
 
-	_, err := controllerutil.CreateOrUpdate(ctx, c, &configMap, configMapMutateFn(&configMap))
-	if err != nil {
+	if _, err := controllerutil.CreateOrUpdate(ctx, c, &configMap, configMapMutateFn(&configMap)); err != nil {
 		return err
 	}
-	_, err = controllerutil.CreateOrUpdate(ctx, c, &deployment, deploymentMapMutateFn(&deployment))
-	if err != nil {
+	if _, err := controllerutil.CreateOrUpdate(ctx, c, &deployment, deploymentMapMutateFn(&deployment)); err != nil {
 		return err
 	}
-	_, err = controllerutil.CreateOrUpdate(ctx, c, &service, mutate.ServiceMutateFn(&service))
-	if err != nil {
+	if _, err := controllerutil.CreateOrUpdate(ctx, c, &service, mutate.ServiceMutateFn(&service)); err != nil {
 		return err
 	}
 
 	dns.localDNSIP = service.Spec.ClusterIP
-	return err
+	return nil
 }
 
 var re = regexp.MustCompile(`nameserver\s+([\d\.]*)`)
@@ -274,12 +273,13 @@ func (dns *simpleDomainNameService) HeadlessServiceName(instanceGroupName string
 	return serviceName(instanceGroupName, deploymentName, 63)
 }
 
-// ConfigurePod see interface
-func (dns *simpleDomainNameService) ConfigurePod(podSpec *v1.PodSpec) {
+// DNSSetting see interface
+func (dns *simpleDomainNameService) DNSSetting() (corev1.DNSPolicy, *corev1.PodDNSConfig) {
+	return corev1.DNSDefault, nil
 }
 
 // Reconcile see interface
-func (dns *simpleDomainNameService) Reconcile(ctx context.Context, c client.Client, setOwner func(object v12.Object) error) error {
+func (dns *simpleDomainNameService) Reconcile(ctx context.Context, c client.Client, setOwner func(object metav1.Object) error) error {
 	return nil
 }
 
@@ -293,7 +293,7 @@ func serviceName(instanceGroupName string, deploymentName string, maxLength int)
 	return serviceName
 }
 
-func configMapMutateFn(configMap *v1.ConfigMap) controllerutil.MutateFn {
+func configMapMutateFn(configMap *corev1.ConfigMap) controllerutil.MutateFn {
 	updated := configMap.DeepCopy()
 	return func() error {
 		configMap.Labels = updated.Labels
@@ -303,7 +303,7 @@ func configMapMutateFn(configMap *v1.ConfigMap) controllerutil.MutateFn {
 	}
 }
 
-func deploymentMapMutateFn(deployment *v13.Deployment) controllerutil.MutateFn {
+func deploymentMapMutateFn(deployment *appsv1.Deployment) controllerutil.MutateFn {
 	updated := deployment.DeepCopy()
 	return func() error {
 		deployment.Labels = updated.Labels

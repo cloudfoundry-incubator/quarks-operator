@@ -157,7 +157,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 		},
 	}
 
-	dns.ConfigurePod(&extSts.Spec.Template.Spec.Template.Spec)
+	extSts.Spec.Template.Spec.Template.Spec = dns.DNSSetting(extSts.Spec.Template.Spec.Template.Spec)
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName != "" {
 		extSts.Spec.Template.Spec.Template.Spec.ServiceAccountName = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName
@@ -328,7 +328,7 @@ func (kc *KubeConverter) errandToExtendedJob(
 		},
 	}
 
-	dns.ConfigurePod(&eJob.Spec.Template.Spec)
+	eJob.Spec.Template.Spec.DNSPolicy, eJob.Spec.Template.Spec.DNSConfig = dns.DNSSetting()
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity != nil {
 		eJob.Spec.Template.Spec.Affinity = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity
