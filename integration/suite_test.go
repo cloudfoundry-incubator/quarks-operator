@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gexec"
 	"github.com/pkg/errors"
 
 	"code.cloudfoundry.org/cf-operator/integration/environment"
@@ -24,6 +25,7 @@ var (
 	env              *environment.Environment
 	namespacesToNuke []string
 	kubeConfig       *rest.Config
+	qjobCmd          environment.QuarksJobCmd
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -39,13 +41,22 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		fmt.Printf("WARNING: failed to apply CRDs: %v\n", err)
 	}
 
-	return []byte{}
-}, func([]byte) {
+	// Ginkgo node 1 needs to build the quarks job binary
+	qjobCmd = environment.NewQuarksJobCmd()
+	err = qjobCmd.Build()
+	if err != nil {
+		fmt.Printf("WARNING: failed to build quarks-job: %v\n", err)
+	}
+
+	return []byte(qjobCmd.Path)
+}, func(data []byte) {
 	var err error
 	kubeConfig, err = utils.KubeConfig()
 	if err != nil {
 		fmt.Printf("WARNING: failed to get kube config: %v\n", err)
 	}
+	qjobCmd = environment.NewQuarksJobCmd()
+	qjobCmd.Path = string(data)
 })
 
 var _ = BeforeEach(func() {
@@ -60,6 +71,11 @@ var _ = BeforeEach(func() {
 	}
 	namespacesToNuke = append(namespacesToNuke, env.Namespace)
 
+	err = qjobCmd.Start(env.Namespace)
+	if err != nil {
+		fmt.Printf("WARNING: failed to start quarks job operator: %v\n", err)
+	}
+
 	err = env.StartOperator()
 	if err != nil {
 		fmt.Printf("WARNING: failed to start operator: %v\n", err)
@@ -68,9 +84,12 @@ var _ = BeforeEach(func() {
 
 var _ = AfterEach(func() {
 	env.Teardown(CurrentGinkgoTestDescription().Failed)
+	gexec.KillAndWait()
 })
 
 var _ = AfterSuite(func() {
+	gexec.CleanupBuildArtifacts()
+
 	// Nuking all namespaces at the end of the run
 	for _, namespace := range namespacesToNuke {
 		err := cmdHelper.DeleteNamespace(namespace)

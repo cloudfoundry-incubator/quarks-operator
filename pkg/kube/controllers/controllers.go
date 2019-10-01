@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -21,10 +22,9 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
-	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
-	"code.cloudfoundry.org/quarks-job/pkg/kube/controllers/extendedjob"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
@@ -44,8 +44,6 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 	boshdeployment.AddDeployment,
 	boshdeployment.AddGeneratedVariable,
 	boshdeployment.AddBPM,
-	extendedjob.AddErrand,
-	extendedjob.AddJob,
 	extendedsecret.AddExtendedSecret,
 	extendedsecret.AddCertificateSigningRequest,
 	extendedstatefulset.AddExtendedStatefulSet,
