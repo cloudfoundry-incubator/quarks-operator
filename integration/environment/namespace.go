@@ -62,8 +62,8 @@ func (e *Environment) SetupNamespace() error {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		}
 
-		if e.stop != nil {
-			close(e.stop)
+		if e.Stop != nil {
+			close(e.Stop)
 		}
 
 		e.removeWebhookCache()

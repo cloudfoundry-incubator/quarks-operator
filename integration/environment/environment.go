@@ -34,7 +34,6 @@ type Environment struct {
 	testing.Catalog
 	mgr        manager.Manager
 	kubeConfig *rest.Config
-	stop       chan struct{}
 
 	ID           int
 	Teardown     func(wasFailure bool)
@@ -42,6 +41,7 @@ type Environment struct {
 	Config       *config.Config
 	ObservedLogs *observer.ObservedLogs
 	Namespace    string
+	Stop         chan struct{}
 }
 
 var (
