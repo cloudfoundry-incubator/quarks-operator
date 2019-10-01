@@ -8,30 +8,21 @@ import (
 	"runtime"
 	"strings"
 
-	"k8s.io/client-go/kubernetes"
-
-	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
 )
 
-// SetupNamespace creates the namespace and prepares the teardowm
+// SetupNamespace creates the namespace and the clientsets and prepares the teardowm
 func (e *Environment) SetupNamespace() error {
-	var err error
-	e.Clientset, err = kubernetes.NewForConfig(e.KubeConfig)
+	err := e.SetupClientsets()
 	if err != nil {
-		return err
-	}
-
-	e.VersionedClientset, err = versioned.NewForConfig(e.KubeConfig)
-	if err != nil {
-		return err
+		errors.Wrapf(err, "Integration setup failed. Creating clientsets in %s", e.Namespace)
 	}
 
 	nsTeardown, err := e.CreateNamespace(e.Namespace)
 	if err != nil {
-		return errors.Wrapf(err, fmt.Sprintf("Integration setup failed. Creating namespace %s failed", e.Namespace))
+		return errors.Wrapf(err, "Integration setup failed. Creating namespace %s failed", e.Namespace)
 	}
 
 	e.Teardown = func(wasFailure bool) {
