@@ -19,12 +19,12 @@ import (
 // SetupNamespace creates the namespace and prepares the teardowm
 func (e *Environment) SetupNamespace() error {
 	var err error
-	e.Clientset, err = kubernetes.NewForConfig(e.kubeConfig)
+	e.Clientset, err = kubernetes.NewForConfig(e.KubeConfig)
 	if err != nil {
 		return err
 	}
 
-	e.VersionedClientset, err = versioned.NewForConfig(e.kubeConfig)
+	e.VersionedClientset, err = versioned.NewForConfig(e.KubeConfig)
 	if err != nil {
 		return err
 	}

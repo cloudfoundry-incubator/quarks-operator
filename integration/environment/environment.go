@@ -30,13 +30,13 @@ import (
 // cluster used in the tests
 type Environment struct {
 	Machine
-
 	testing.Catalog
-	mgr        manager.Manager
-	kubeConfig *rest.Config
+
+	mgr manager.Manager
 
 	ID           int
 	Teardown     func(wasFailure bool)
+	KubeConfig   *rest.Config
 	Log          *zap.SugaredLogger
 	Config       *config.Config
 	ObservedLogs *observer.ObservedLogs
@@ -94,7 +94,7 @@ func NewEnvironment(kubeConfig *rest.Config) *Environment {
 			pollTimeout:  300 * time.Second,
 			pollInterval: 500 * time.Millisecond,
 		},
-		kubeConfig: kubeConfig,
+		KubeConfig: kubeConfig,
 	}
 }
 

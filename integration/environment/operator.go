@@ -11,7 +11,6 @@ import (
 	"github.com/go-logr/zapr"
 	"github.com/pkg/errors"
 
-	"k8s.io/client-go/rest"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -32,7 +31,7 @@ func (e *Environment) SetupLoggerContext(prefix string) context.Context {
 
 // StartOperator prepares and starts the cf-operator
 func (e *Environment) StartOperator() error {
-	err := e.setupCFOperator(e.Namespace, e.kubeConfig)
+	err := e.setupCFOperator()
 	if err != nil {
 		return errors.Wrapf(err, "Setting up CF Operator failed.")
 	}
@@ -49,7 +48,7 @@ func (e *Environment) StartOperator() error {
 	return nil
 }
 
-func (e *Environment) setupCFOperator(namespace string, kubeConfig *rest.Config) error {
+func (e *Environment) setupCFOperator() error {
 	var err error
 	whh, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_HOST")
 	if !found {
@@ -80,8 +79,7 @@ func (e *Environment) setupCFOperator(namespace string, kubeConfig *rest.Config)
 
 	e.Config.WebhookServerPort = port
 
-	e.Namespace = namespace
-	e.Config.Namespace = namespace
+	e.Config.Namespace = e.Namespace
 
 	dockerImageOrg, found := os.LookupEnv("DOCKER_IMAGE_ORG")
 	if !found {
@@ -105,7 +103,7 @@ func (e *Environment) setupCFOperator(namespace string, kubeConfig *rest.Config)
 
 	ctx := e.SetupLoggerContext("cf-operator-tests")
 
-	e.mgr, err = operator.NewManager(ctx, e.Config, kubeConfig, manager.Options{
+	e.mgr, err = operator.NewManager(ctx, e.Config, e.KubeConfig, manager.Options{
 		Namespace:          e.Namespace,
 		MetricsBindAddress: "0",
 		LeaderElection:     false,
