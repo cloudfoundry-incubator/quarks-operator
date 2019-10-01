@@ -40,7 +40,8 @@ type Catalog struct{}
 func (c *Catalog) DefaultConfig() *config.Config {
 	return &config.Config{
 		CtxTimeOut:        10 * time.Second,
-		Namespace:         "default",
+		OperatorNamespace: "default",
+		Namespace:         "staging",
 		WebhookServerHost: "foo.com",
 		WebhookServerPort: 1234,
 		Fs:                afero.NewMemMapFs(),

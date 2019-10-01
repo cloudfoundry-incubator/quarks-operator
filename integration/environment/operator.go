@@ -71,6 +71,7 @@ func (e *Environment) setupCFOperator(namespace string, kubeConfig *rest.Config)
 	e.Config.WebhookServerPort = port
 
 	e.Namespace = namespace
+	e.Config.OperatorNamespace = namespace
 	e.Config.Namespace = namespace
 
 	dockerImageOrg, found := os.LookupEnv("DOCKER_IMAGE_ORG")
