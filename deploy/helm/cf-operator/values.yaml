@@ -5,6 +5,9 @@ image:
   tag: foobar
   pullPolicy: IfNotPresent
 
+operator:
+  watchNamespace: ""
+
 nameOverride: ""
 fullnameOverride: ""
 
