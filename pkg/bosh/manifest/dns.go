@@ -137,8 +137,11 @@ func (dns *boshDomainNameService) DNSSetting() (corev1.DNSPolicy, *corev1.PodDNS
 // Reconcile see interface
 func (dns *boshDomainNameService) Reconcile(ctx context.Context, c client.Client, setOwner func(object metav1.Object) error) error {
 	const appName = "bosh-dns"
-	const volumenName = "bosh-dns-volume"
+	const volumeName = "bosh-dns-volume"
 	const coreConfigFile = "Corefile"
+	dnsTCPPort := corev1.ContainerPort{ContainerPort: 8053, Name: "dns-tcp", Protocol: "TCP"}
+	dnsUDPPort := corev1.ContainerPort{ContainerPort: 8053, Name: "dns-udp", Protocol: "UDP"}
+	metricsPort := corev1.ContainerPort{ContainerPort: 9153, Name: "metrics", Protocol: "TCP"}
 
 	metadata := metav1.ObjectMeta{
 		Name:      appName,
@@ -154,9 +157,9 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, c client.Client
 		ObjectMeta: metadata,
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
-				{Name: "dns", Port: 53, Protocol: "UDP", TargetPort: intstr.FromInt(8053)},
-				{Name: "dns-tcp", Port: 53, Protocol: "TCP", TargetPort: intstr.FromInt(8053)},
-				{Name: "metrics", Port: 9153, Protocol: "TCP", TargetPort: intstr.FromInt(9153)},
+				{Name: dnsUDPPort.Name, Port: 53, Protocol: dnsUDPPort.Protocol, TargetPort: intstr.FromString(dnsUDPPort.Name)},
+				{Name: dnsTCPPort.Name, Port: 53, Protocol: dnsTCPPort.Protocol, TargetPort: intstr.FromString(dnsTCPPort.Name)},
+				{Name: metricsPort.Name, Port: 9153, Protocol: metricsPort.Protocol, TargetPort: intstr.FromString(metricsPort.Name)},
 			},
 			Selector: map[string]string{"app": appName},
 			Type:     "ClusterIP",
@@ -180,19 +183,15 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, c client.Client
 							Name:  "coredns",
 							Args:  []string{"-conf", "/etc/coredns/Corefile"},
 							Image: "coredns/coredns:1.6.3",
-							Ports: []corev1.ContainerPort{
-								{ContainerPort: 8053, Name: "dns-udp", Protocol: "UDP"},
-								{ContainerPort: 8053, Name: "dns-tcp", Protocol: "TCP"},
-								{ContainerPort: 9153, Name: "metrics", Protocol: "TCP"},
-							},
+							Ports: []corev1.ContainerPort{dnsUDPPort, dnsTCPPort, metricsPort},
 							VolumeMounts: []corev1.VolumeMount{
-								{MountPath: "/etc/coredns", Name: volumenName, ReadOnly: true},
+								{MountPath: "/etc/coredns", Name: volumeName, ReadOnly: true},
 							},
 						},
 					},
 					Volumes: []corev1.Volume{
 						{
-							Name: volumenName,
+							Name: volumeName,
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									DefaultMode: &mode,
