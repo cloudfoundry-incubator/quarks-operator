@@ -157,7 +157,8 @@ func (kc *KubeConverter) serviceToExtendedSts(
 		},
 	}
 
-	extSts.Spec.Template.Spec.Template.Spec = dns.DNSSetting(extSts.Spec.Template.Spec.Template.Spec)
+	spec := &extSts.Spec.Template.Spec.Template.Spec
+	spec.DNSPolicy, spec.DNSConfig = dns.DNSSetting()
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName != "" {
 		extSts.Spec.Template.Spec.Template.Spec.ServiceAccountName = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName
