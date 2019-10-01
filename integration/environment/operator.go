@@ -1,6 +1,7 @@
 package environment
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,7 +11,6 @@ import (
 	"github.com/go-logr/zapr"
 	"github.com/pkg/errors"
 
-	"k8s.io/client-go/rest"
 	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -20,14 +20,23 @@ import (
 	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
 )
 
+// SetupLoggerContext sets up the logger and puts it into a new context
+func (e *Environment) SetupLoggerContext(prefix string) context.Context {
+	loggerPath := helper.LogfilePath(fmt.Sprintf("%s-%d.log", prefix, e.ID))
+	e.ObservedLogs, e.Log = helper.NewTestLoggerWithPath(loggerPath)
+	crlog.SetLogger(zapr.NewLogger(e.Log.Desugar()))
+
+	return ctxlog.NewParentContext(e.Log)
+}
+
 // StartOperator prepares and starts the cf-operator
 func (e *Environment) StartOperator() error {
-	err := e.setupCFOperator(e.Namespace, e.kubeConfig)
+	err := e.setupCFOperator()
 	if err != nil {
 		return errors.Wrapf(err, "Setting up CF Operator failed.")
 	}
 
-	e.stop = e.startOperator()
+	e.Stop = e.startOperator()
 	err = helper.WaitForPort(
 		"127.0.0.1",
 		strconv.Itoa(int(e.Config.WebhookServerPort)),
@@ -39,7 +48,7 @@ func (e *Environment) StartOperator() error {
 	return nil
 }
 
-func (e *Environment) setupCFOperator(namespace string, kubeConfig *rest.Config) error {
+func (e *Environment) setupCFOperator() error {
 	var err error
 	whh, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_HOST")
 	if !found {
@@ -70,9 +79,8 @@ func (e *Environment) setupCFOperator(namespace string, kubeConfig *rest.Config)
 
 	e.Config.WebhookServerPort = port
 
-	e.Namespace = namespace
-	e.Config.OperatorNamespace = namespace
-	e.Config.Namespace = namespace
+	e.Config.OperatorNamespace = e.Namespace
+	e.Config.Namespace = e.Namespace
 
 	dockerImageOrg, found := os.LookupEnv("DOCKER_IMAGE_ORG")
 	if !found {
@@ -94,12 +102,9 @@ func (e *Environment) setupCFOperator(namespace string, kubeConfig *rest.Config)
 		return err
 	}
 
-	loggerPath := helper.LogfilePath(fmt.Sprintf("cf-operator-tests-%d.log", e.ID))
-	e.ObservedLogs, e.Log = helper.NewTestLoggerWithPath(loggerPath)
-	crlog.SetLogger(zapr.NewLogger(e.Log.Desugar()))
+	ctx := e.SetupLoggerContext("cf-operator-tests")
 
-	ctx := ctxlog.NewParentContext(e.Log)
-	e.mgr, err = operator.NewManager(ctx, e.Config, kubeConfig, manager.Options{
+	e.mgr, err = operator.NewManager(ctx, e.Config, e.KubeConfig, manager.Options{
 		Namespace:          e.Namespace,
 		MetricsBindAddress: "0",
 		LeaderElection:     false,
