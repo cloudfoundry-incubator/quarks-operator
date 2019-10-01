@@ -27,7 +27,7 @@ var _ = Describe("instance-group", func() {
 			manifestPath = assetPath + "/gatherManifest.yml"
 		})
 
-		FIt("gathers data to stdout", func() {
+		It("gathers data to stdout", func() {
 			session, err := act(manifestPath)
 			Expect(err).ToNot(HaveOccurred())
 
