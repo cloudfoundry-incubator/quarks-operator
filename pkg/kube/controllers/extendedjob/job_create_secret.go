@@ -45,17 +45,16 @@ func PersistOutput(namespace string) error {
 	}
 
 	// Fetch the pod
-	pod := &corev1.Pod{}
-	pod, err = clientSet.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+	pod, err := clientSet.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch pod %s", podName)
 	}
 
 	// Fetch the exjob
 	exjobName := pod.GetLabels()["fissile.cloudfoundry.org/ejob-name"]
-	exjob := &ejv1.ExtendedJob{}
+
 	exjobClient := versionedClientSet.ExtendedjobV1alpha1().ExtendedJobs(namespace)
-	exjob, err = exjobClient.Get(exjobName, metav1.GetOptions{})
+	exjob, err := exjobClient.Get(exjobName, metav1.GetOptions{})
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch exjob")
 	}
@@ -130,11 +129,15 @@ func authenticateInCluster() (*kubernetes.Clientset, *versioned.Clientset, error
 	}
 
 	clientSet, err := kubernetes.NewForConfig(config)
-	versionedClientSet, err := versioned.NewForConfig(config)
-
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to fetch clientset with incluster config")
+		return nil, nil, errors.Wrapf(err, "failed to create clientset with incluster config")
 	}
+
+	versionedClientSet, err := versioned.NewForConfig(config)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to create versioned clientset with incluster config")
+	}
+
 	return clientSet, versionedClientSet, nil
 }
 
@@ -262,8 +265,6 @@ func listSecrets(clientSet *kubernetes.Clientset, namespace string, secretName s
 	secretLabelsSet := labels.Set{
 		versionedsecretstore.LabelSecretKind: versionedsecretstore.VersionSecretKind,
 	}
-
-	secrets := &corev1.SecretList{}
 
 	secrets, err := clientSet.CoreV1().Secrets(namespace).List(metav1.ListOptions{
 		LabelSelector: secretLabelsSet.String(),
