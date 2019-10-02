@@ -235,7 +235,7 @@ func (dns *boshDomainNameService) rootDNSIP() string {
 func GetNameserverFromResolveConfig(content []byte) string {
 	found := re.FindSubmatch(content)
 	if len(found) == 0 {
-		ctxlog.Errorf(context.TODO(), "No nameserver found in resolve.conf using 1.1.1.1")
+		ctxlog.Errorf(context.Background(), "No nameserver found in resolve.conf using 1.1.1.1")
 		return "1.1.1.1"
 	}
 	return string(found[1])
