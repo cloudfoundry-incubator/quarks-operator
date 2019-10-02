@@ -79,6 +79,7 @@ func (e *Environment) setupCFOperator() error {
 
 	e.Config.WebhookServerPort = port
 
+	e.Config.OperatorNamespace = e.Namespace
 	e.Config.Namespace = e.Namespace
 
 	dockerImageOrg, found := os.LookupEnv("DOCKER_IMAGE_ORG")
