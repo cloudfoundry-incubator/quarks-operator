@@ -248,11 +248,11 @@ func GetNameserverFromResolveConfig(content []byte) string {
 type simpleDomainNameService struct {
 }
 
-var simple DomainNameService = &simpleDomainNameService{}
+var _ DomainNameService = &simpleDomainNameService{}
 
 // NewSimpleDomainNameService emulates old behaviour without bosh dns
 func NewSimpleDomainNameService() DomainNameService {
-	return simple
+	return &simpleDomainNameService{}
 }
 
 // FindServiceNames see interface
