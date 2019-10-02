@@ -306,6 +306,7 @@ instance_groups:
 					},
 				},
 				AddOnsApplied: true,
+				DNS:           bdm.NewSimpleDomainNameService(),
 			}
 
 			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
@@ -338,6 +339,7 @@ instance_groups:
 					},
 				},
 				AddOnsApplied: true,
+				DNS:           bdm.NewSimpleDomainNameService(),
 			}
 
 			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
@@ -366,6 +368,7 @@ instance_groups:
 					},
 				},
 				AddOnsApplied: true,
+				DNS:           bdm.NewSimpleDomainNameService(),
 			}
 
 			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
@@ -412,6 +415,7 @@ instance_groups:
 					},
 				},
 				AddOnsApplied: true,
+				DNS:           bdm.NewSimpleDomainNameService(),
 			}
 
 			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
@@ -468,6 +472,7 @@ instance_groups:
 					},
 				},
 				AddOnsApplied: true,
+				DNS:           bdm.NewSimpleDomainNameService(),
 			}
 
 			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
@@ -762,7 +767,7 @@ instance_groups:
 			m, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
-			dns := m.DNS()
+			dns := m.DNS
 			Expect(dns).NotTo(BeNil())
 			Expect(dns.HeadlessServiceName("singleton-uaa", "scf")).To(Equal("uaa"))
 		})

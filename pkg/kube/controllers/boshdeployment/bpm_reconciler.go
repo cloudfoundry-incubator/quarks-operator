@@ -131,9 +131,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 			log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get BoshDeployment instance '%s': %v", instanceName, err)
 	}
 
-	dns := manifest.DNS()
-
-	err = dns.Reconcile(ctx, request.Namespace, manifest.Name, r.client, func(object v1.Object) error {
+	err = manifest.DNS.Reconcile(ctx, request.Namespace, manifest.Name, r.client, func(object v1.Object) error {
 		return r.setReference(instance, object, r.scheme)
 	})
 
@@ -142,7 +140,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 			log.WithEvent(bpmSecret, "DnsReconcileError").Errorf(ctx, "Failed to reconcile dns: %v", err)
 	}
 
-	resources, err := r.applyBPMResources(bpmSecret, manifest, dns)
+	resources, err := r.applyBPMResources(bpmSecret, manifest)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "BPMApplyingError").Errorf(ctx, "Failed to apply BPM information: %v", err)
@@ -170,7 +168,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm.Manifest, dns manifest.DomainNameService) (*converter.BPMResources, error) {
+func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm.Manifest) (*converter.BPMResources, error) {
 
 	instanceGroupName, ok := bpmSecret.Labels[ejv1.LabelInstanceGroup]
 	if !ok {
@@ -197,7 +195,7 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 		return nil, err
 	}
 
-	resources, err := r.kubeConverter.BPMResources(manifest.Name, dns, version, instanceGroup, manifest, bpmConfigs)
+	resources, err := r.kubeConverter.BPMResources(manifest.Name, manifest.DNS, version, instanceGroup, manifest, bpmConfigs)
 	if err != nil {
 		return resources, err
 	}

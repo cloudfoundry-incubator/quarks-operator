@@ -145,6 +145,7 @@ type Manifest struct {
 	Variables      []Variable               `json:"variables,omitempty"`
 	Update         *Update                  `json:"update,omitempty"`
 	AddOnsApplied  bool                     `json:"addons_applied,omitempty"`
+	DNS            DomainNameService        `json:"-"`
 }
 
 // duplicateYamlValue is a struct used for size compression
@@ -166,11 +167,13 @@ func LoadYAML(data []byte) (*Manifest, error) {
 		return nil, errors.Wrapf(err, "failed to unmarshal BOSH deployment manifest %s", string(data))
 	}
 
+	m.loadDNS()
+
 	return m, nil
 }
 
 // DNS returns the DNS service
-func (m *Manifest) DNS() DomainNameService {
+func (m *Manifest) loadDNS() {
 	for _, addon := range m.AddOns {
 		if addon.Name == BoshDNSAddOnName {
 			var err error
@@ -179,10 +182,11 @@ func (m *Manifest) DNS() DomainNameService {
 				ctxlog.Errorf(context.TODO(), "Error loading bosh dns configuration: %s", err.Error())
 				continue
 			}
-			return dns
+			m.DNS = dns
+			return
 		}
 	}
-	return NewSimpleDomainNameService()
+	m.DNS = NewSimpleDomainNameService()
 }
 
 // Marshal serializes a BOSH manifest into yaml
