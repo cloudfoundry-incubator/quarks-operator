@@ -63,7 +63,7 @@ var _ = Describe("DeployWithStorage", func() {
 		sts2Name := "bpm-affinity-bpm2-v1"
 		sts3Name := "bpm-affinity-bpm3-v1"
 
-		It("should create available resources", func() {
+		FIt("should create available resources", func() {
 			nodes, err := env.GetNodes()
 			Expect(err).NotTo(HaveOccurred(), "error getting nodes")
 			if len(nodes) < 2 {
