@@ -4,11 +4,13 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"regexp"
 	"strings"
+
+	"github.com/mitchellh/mapstructure"
+	"github.com/pkg/errors"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 
@@ -25,7 +27,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
-	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -47,7 +48,7 @@ type DomainNameService interface {
 // Target of domain alias
 type Target struct {
 	Query         string `json:"query"`
-	InstanceGroup string `json:"instance_group"`
+	InstanceGroup string `json:"instance_group" mapstructure:"instance_group"`
 	Deployment    string `json:"deployment"`
 	Network       string `json:"network"`
 	Domain        string `json:"domain"`
@@ -76,12 +77,8 @@ func NewBoshDomainNameService(addOn *AddOn) (DomainNameService, error) {
 	for _, job := range addOn.Jobs {
 		aliases := job.Properties.Properties["aliases"]
 		if aliases != nil {
-			aliasesBytes, err := json.Marshal(aliases)
-			if err != nil {
-				return nil, errors.Wrapf(err, "Loading aliases from manifest")
-			}
 			var a = make([]Alias, 0)
-			err = json.Unmarshal(aliasesBytes, &a)
+			err := mapstructure.Decode(aliases, &a)
 			if err != nil {
 				return nil, errors.Wrapf(err, "Loading aliases from manifest")
 			}
