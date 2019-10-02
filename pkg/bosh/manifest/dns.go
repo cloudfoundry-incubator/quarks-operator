@@ -66,15 +66,9 @@ type boshDomainNameService struct {
 }
 
 var _ DomainNameService = &boshDomainNameService{}
-var simple DomainNameService = &simpleDomainNameService{}
 
 // BoshDNSAddOnName name of bosh dns add on
 const BoshDNSAddOnName = "bosh-dns-aliases"
-
-// NewSimpleDomainNameService emulates old behaviour without bosh dns
-func NewSimpleDomainNameService() DomainNameService {
-	return simple
-}
 
 // NewBoshDomainNameService create a new DomainNameService
 func NewBoshDomainNameService(addOn *AddOn) (DomainNameService, error) {
@@ -252,6 +246,13 @@ func GetNameserverFromResolveConfig(content []byte) string {
 }
 
 type simpleDomainNameService struct {
+}
+
+var simple DomainNameService = &simpleDomainNameService{}
+
+// NewSimpleDomainNameService emulates old behaviour without bosh dns
+func NewSimpleDomainNameService() DomainNameService {
+	return simple
 }
 
 // FindServiceNames see interface
