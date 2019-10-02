@@ -56,6 +56,11 @@ var rootCmd = &cobra.Command{
 		}
 
 		cfOperatorNamespace := viper.GetString("cf-operator-namespace")
+		watchNamespace := viper.GetString("watch-namespace")
+		if watchNamespace == "" {
+			log.Infof("No watch namespace defined. Falling back to the operator namespace.")
+			watchNamespace = cfOperatorNamespace
+		}
 
 		err = converter.SetupOperatorDockerImage(
 			viper.GetString("docker-image-org"),
@@ -66,7 +71,7 @@ var rootCmd = &cobra.Command{
 			return wrapError(err, "Couldn't parse cf-operator docker image reference.")
 		}
 
-		log.Infof("Starting cf-operator %s with namespace %s", version.Version, cfOperatorNamespace)
+		log.Infof("Starting cf-operator %s with namespace %s", version.Version, watchNamespace)
 		log.Infof("cf-operator docker image: %s", converter.GetOperatorDockerImage())
 
 		serviceHost := viper.GetString("operator-webhook-service-host")
@@ -79,6 +84,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		config := config.NewConfig(
+			watchNamespace,
 			cfOperatorNamespace,
 			viper.GetInt("ctx-timeout"),
 			provider,
@@ -102,7 +108,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		mgr, err := operator.NewManager(ctx, config, restConfig, manager.Options{
-			Namespace:          cfOperatorNamespace,
+			Namespace:          watchNamespace,
 			MetricsBindAddress: "0",
 			LeaderElection:     false,
 			Port:               managerPort,
@@ -141,7 +147,7 @@ func init() {
 
 	pf.Bool("apply-crd", true, "If true, apply CRDs on start")
 	pf.Int("ctx-timeout", 30, "context timeout for each k8s API request in seconds")
-	pf.StringP("cf-operator-namespace", "n", "default", "Namespace to watch for BOSH deployments")
+	pf.StringP("cf-operator-namespace", "n", "default", "The operator namespace")
 	pf.StringP("docker-image-org", "o", "cfcontainerization", "Dockerhub organization that provides the operator docker image")
 	pf.StringP("docker-image-repository", "r", "cf-operator", "Dockerhub repository that provides the operator docker image")
 	pf.StringP("docker-image-tag", "t", version.Version, "Tag of the operator docker image")
@@ -154,6 +160,7 @@ func init() {
 	pf.StringP("operator-webhook-service-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")
 	pf.StringP("operator-webhook-service-port", "p", "2999", "Port the webhook server listens on")
 	pf.StringP("provider", "x", "", "Cloud Provider where cf-operator is being deployed")
+	pf.StringP("watch-namespace", "", "", "Namespace to watch for BOSH deployments")
 
 	viper.BindPFlag("apply-crd", rootCmd.PersistentFlags().Lookup("apply-crd"))
 	viper.BindPFlag("ctx-timeout", pf.Lookup("ctx-timeout"))
@@ -170,6 +177,7 @@ func init() {
 	viper.BindPFlag("operator-webhook-service-host", pf.Lookup("operator-webhook-service-host"))
 	viper.BindPFlag("operator-webhook-service-port", pf.Lookup("operator-webhook-service-port"))
 	viper.BindPFlag("provider", pf.Lookup("provider"))
+	viper.BindPFlag("watch-namespace", pf.Lookup("watch-namespace"))
 
 	argToEnv := map[string]string{
 		"apply-crd":                       "APPLY_CRD",
@@ -187,6 +195,7 @@ func init() {
 		"operator-webhook-service-host":   "CF_OPERATOR_WEBHOOK_SERVICE_HOST",
 		"operator-webhook-service-port":   "CF_OPERATOR_WEBHOOK_SERVICE_PORT",
 		"provider":                        "PROVIDER",
+		"watch-namespace":                 "WATCH_NAMESPACE",
 	}
 
 	// Add env variables to help

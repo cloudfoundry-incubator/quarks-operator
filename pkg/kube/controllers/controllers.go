@@ -93,7 +93,7 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 		return errors.Wrap(err, "setting the operator namespace label")
 	}
 
-	webhookConfig := NewWebhookConfig(m.GetClient(), config, generator, WebhookConfigPrefix+config.Namespace)
+	webhookConfig := NewWebhookConfig(m.GetClient(), config, generator, WebhookConfigPrefix+config.OperatorNamespace)
 
 	hookServer := m.GetWebhookServer()
 	hookServer.CertDir = webhookConfig.CertDir
