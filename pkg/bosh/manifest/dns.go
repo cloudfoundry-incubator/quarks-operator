@@ -41,7 +41,7 @@ type DomainNameService interface {
 	DNSSetting() (corev1.DNSPolicy, *corev1.PodDNSConfig)
 
 	// Reconcile DNS stuff
-	Reconcile(ctx context.Context, c client.Client, setOwner func(object metav1.Object) error) error
+	Reconcile(ctx context.Context, namespace string, manifestName string, c client.Client, setOwner func(object metav1.Object) error) error
 }
 
 // Target of domain alias
@@ -61,7 +61,6 @@ type Alias struct {
 
 // boshDomainNameService is used to emulate Bosh DNS
 type boshDomainNameService struct {
-	namespace  string
 	aliases    []Alias
 	localDNSIP string
 }
@@ -78,8 +77,8 @@ func NewSimpleDomainNameService() DomainNameService {
 }
 
 // NewBoshDomainNameService create a new DomainNameService
-func NewBoshDomainNameService(namespace string, addOn *AddOn) (DomainNameService, error) {
-	dns := boshDomainNameService{namespace: namespace}
+func NewBoshDomainNameService(addOn *AddOn) (DomainNameService, error) {
+	dns := boshDomainNameService{}
 	for _, job := range addOn.Jobs {
 		aliases := job.Properties.Properties["aliases"]
 		if aliases != nil {
@@ -128,14 +127,16 @@ func (dns *boshDomainNameService) DNSSetting() (corev1.DNSPolicy, *corev1.PodDNS
 	if dns.localDNSIP == "" {
 		panic("BoshDomainNameService: DNSSetting called before Reconcile")
 	}
+	ndots := "5"
 	return corev1.DNSNone, &corev1.PodDNSConfig{
 		Nameservers: []string{dns.localDNSIP},
-		Searches:    []string{fmt.Sprintf("%s.svc.cluster.local", dns.namespace), "service.cf.internal"},
+		Searches:    []string{"svc.cluster.local", "cluster.local", "service.cf.internal"},
+		Options:     []corev1.PodDNSConfigOption{{Name: "ndots", Value: &ndots}},
 	}
 }
 
 // Reconcile see interface
-func (dns *boshDomainNameService) Reconcile(ctx context.Context, c client.Client, setOwner func(object metav1.Object) error) error {
+func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace string, manifestName string, c client.Client, setOwner func(object metav1.Object) error) error {
 	const appName = "bosh-dns"
 	const volumeName = "bosh-dns-volume"
 	const coreConfigFile = "Corefile"
@@ -145,13 +146,13 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, c client.Client
 
 	metadata := metav1.ObjectMeta{
 		Name:      appName,
-		Namespace: dns.namespace,
+		Namespace: namespace,
 		Labels:    map[string]string{"app": appName},
 	}
 
 	configMap := corev1.ConfigMap{
 		ObjectMeta: metadata,
-		Data:       map[string]string{coreConfigFile: createCorefile(dns)},
+		Data:       map[string]string{coreConfigFile: createCorefile(dns, namespace, manifestName)},
 	}
 	service := corev1.Service{
 		ObjectMeta: metadata,
@@ -265,11 +266,11 @@ func (dns *simpleDomainNameService) HeadlessServiceName(instanceGroupName string
 
 // DNSSetting see interface
 func (dns *simpleDomainNameService) DNSSetting() (corev1.DNSPolicy, *corev1.PodDNSConfig) {
-	return corev1.DNSDefault, nil
+	return corev1.DNSClusterFirst, nil
 }
 
 // Reconcile see interface
-func (dns *simpleDomainNameService) Reconcile(ctx context.Context, c client.Client, setOwner func(object metav1.Object) error) error {
+func (dns *simpleDomainNameService) Reconcile(ctx context.Context, namespace string, manifestName string, c client.Client, setOwner func(object metav1.Object) error) error {
 	return nil
 }
 
@@ -303,24 +304,27 @@ func deploymentMapMutateFn(deployment *appsv1.Deployment) controllerutil.MutateF
 	}
 }
 
-func createCorefile(dns *boshDomainNameService) string {
+func createCorefile(dns *boshDomainNameService, namespace string, manifestName string) string {
 	rewrites := ""
 
+	// Support legacy cf-operator naming convention: <deployment name>-<ig name>
 	for _, alias := range dns.aliases {
+		newDomainName := fmt.Sprintf(`%s.%s.svc.cluster.local.`, strings.Split(alias.Domain, ".")[0], namespace)
 		for _, target := range alias.Targets {
-			serviceName := serviceName(target.InstanceGroup, dns.namespace, 63)
-			target := fmt.Sprintf("%s.%s.svc.cluster.local", strings.Split(alias.Domain, ".")[0], dns.namespace)
-			rewrites = rewrites + fmt.Sprintf("  rewrite name exact %s    %s\n", serviceName, target)
-			rewrites = rewrites + fmt.Sprintf("  rewrite name exact %s.%s %s\n", serviceName, dns.namespace, target)
+			serviceName := serviceName(target.InstanceGroup, manifestName, 63)
+			rewrites = rewrites + fmt.Sprintf(`    rewrite name regex ^%s\.(%s\.(svc\.(cluster\.(local\.)?)?)?)?$ %s`,
+				regexp.QuoteMeta(serviceName), regexp.QuoteMeta(namespace), newDomainName) + "\n"
 		}
 	}
 
+	rewrites = rewrites + fmt.Sprintf(`    rewrite name regex ^([^.]+)\.$    {1}.%s.svc.cluster.local.`, namespace) + "\n"
+
 	return fmt.Sprintf(`
-		.:8053 {
-			health
-			%s
-			rewrite name substring service.cf.internal %s.svc.cluster.local
-			forward . %s
-		}
-	`, rewrites, dns.namespace, dns.rootDNSIP())
+.:8053 {
+    health
+%s
+    rewrite name substring service.cf.internal. %s.svc.cluster.local.
+    forward . %s
+}
+	`, rewrites, namespace, dns.rootDNSIP())
 }

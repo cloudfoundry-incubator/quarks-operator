@@ -131,9 +131,9 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 			log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get BoshDeployment instance '%s': %v", instanceName, err)
 	}
 
-	dns := manifest.DNS(request.Namespace)
+	dns := manifest.DNS()
 
-	err = dns.Reconcile(ctx, r.client, func(object v1.Object) error {
+	err = dns.Reconcile(ctx, request.Namespace, manifest.Name, r.client, func(object v1.Object) error {
 		return r.setReference(instance, object, r.scheme)
 	})
 

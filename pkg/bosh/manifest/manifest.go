@@ -170,11 +170,11 @@ func LoadYAML(data []byte) (*Manifest, error) {
 }
 
 // DNS returns the DNS service
-func (m *Manifest) DNS(namespace string) DomainNameService {
+func (m *Manifest) DNS() DomainNameService {
 	for _, addon := range m.AddOns {
 		if addon.Name == BoshDNSAddOnName {
 			var err error
-			dns, err := NewBoshDomainNameService(namespace, addon)
+			dns, err := NewBoshDomainNameService(addon)
 			if err != nil {
 				ctxlog.Errorf(context.TODO(), "Error loading bosh dns configuration: %s", err.Error())
 				continue
