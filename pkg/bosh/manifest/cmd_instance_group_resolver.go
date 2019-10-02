@@ -37,7 +37,7 @@ func NewInstanceGroupResolver(basedir, namespace string, manifest Manifest, inst
 	return &InstanceGroupResolver{
 		baseDir:          basedir,
 		manifest:         manifest,
-		dns:              manifest.DNS(namespace),
+		dns:              manifest.DNS(),
 		instanceGroup:    ig,
 		jobReleaseSpecs:  map[string]map[string]JobSpec{},
 		jobProviderLinks: JobProviderLinks{},
