@@ -40,7 +40,7 @@ var _ = Describe("kube converter", func() {
 				func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) converter.ContainerFactory {
 					return containerFactory
 				})
-			resources, err := kubeConverter.BPMResources(m.Name, m.DNS(), "1", instanceGroup, m, bpmConfigs)
+			resources, err := kubeConverter.BPMResources(m.Name, m.DNS, "1", instanceGroup, m, bpmConfigs)
 			return resources, err
 		}
 
