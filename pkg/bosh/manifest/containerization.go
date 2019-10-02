@@ -31,12 +31,13 @@ type Port struct {
 
 // JobInstance for data gathering.
 type JobInstance struct {
-	Address  string                 `json:"address"`
-	AZ       string                 `json:"az"`
-	Index    int                    `json:"index"`
-	Instance int                    `json:"instance"`
-	Name     string                 `json:"name"`
-	Network  map[string]interface{} `json:"networks"`
+	Address   string                 `json:"address"`
+	AZ        string                 `json:"az"`
+	Index     int                    `json:"index"`
+	Instance  int                    `json:"instance"`
+	Name      string                 `json:"name"`
+	Bootstrap bool                   `json:"bootstrap"`
+	Network   map[string]interface{} `json:"networks"`
 }
 
 // JobLink describes links inside a job properties quarks.

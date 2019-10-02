@@ -67,7 +67,7 @@ instance_groups:
                       limits:
                         open_files: 65536
                 fingerprint: null
-                bootstrap: 0
+                bootstrap: true
                 networks: {}
                 ip: ""
               - address: doppler-1-doppler.default.svc.cluster.local
@@ -95,7 +95,7 @@ instance_groups:
                       limits:
                         open_files: 65536
                 fingerprint: null
-                bootstrap: 0
+                bootstrap: false
                 networks: {}
                 ip: ""
               - address: doppler-2-doppler.default.svc.cluster.local
@@ -123,7 +123,7 @@ instance_groups:
                       limits:
                         open_files: 65536
                 fingerprint: null
-                bootstrap: 0
+                bootstrap: false
                 networks: {}
                 ip: ""
               - address: doppler-3-doppler.default.svc.cluster.local
@@ -151,7 +151,7 @@ instance_groups:
                       limits:
                         open_files: 65536
                 fingerprint: null
-                bootstrap: 0
+                bootstrap: false
                 networks: {}
                 ip: ""
               - address: doppler-4-doppler.default.svc.cluster.local
@@ -179,7 +179,7 @@ instance_groups:
                       limits:
                         open_files: 65536
                 fingerprint: null
-                bootstrap: 0
+                bootstrap: false
                 networks: {}
                 ip: ""
               - address: doppler-5-doppler.default.svc.cluster.local
@@ -207,7 +207,7 @@ instance_groups:
                       limits:
                         open_files: 65536
                 fingerprint: null
-                bootstrap: 0
+                bootstrap: false
                 networks: {}
                 ip: ""
               - address: doppler-6-doppler.default.svc.cluster.local
@@ -235,7 +235,7 @@ instance_groups:
                       limits:
                         open_files: 65536
                 fingerprint: null
-                bootstrap: 0
+                bootstrap: false
                 networks: {}
                 ip: ""
               - address: doppler-7-doppler.default.svc.cluster.local
@@ -246,7 +246,7 @@ instance_groups:
                 name: doppler-doppler
                 bpm: null
                 fingerprint: null
-                bootstrap: 0
+                bootstrap: false
                 networks: {}
                 ip: ""
             release: loggregator
@@ -343,7 +343,7 @@ instance_groups:
                           limits:
                             open_files: 65536
                     fingerprint: null
-                    bootstrap: 0
+                    bootstrap: true
                     networks: {}
                     ip: ""
                   - address: doppler-1-doppler.default.svc.cluster.local
@@ -371,7 +371,7 @@ instance_groups:
                           limits:
                             open_files: 65536
                     fingerprint: null
-                    bootstrap: 0
+                    bootstrap: false
                     networks: {}
                     ip: ""
                   - address: doppler-2-doppler.default.svc.cluster.local
@@ -399,7 +399,7 @@ instance_groups:
                           limits:
                             open_files: 65536
                     fingerprint: null
-                    bootstrap: 0
+                    bootstrap: false
                     networks: {}
                     ip: ""
                   - address: doppler-3-doppler.default.svc.cluster.local
@@ -427,7 +427,7 @@ instance_groups:
                           limits:
                             open_files: 65536
                     fingerprint: null
-                    bootstrap: 0
+                    bootstrap: false
                     networks: {}
                     ip: ""
                   - address: doppler-4-doppler.default.svc.cluster.local
@@ -455,7 +455,7 @@ instance_groups:
                           limits:
                             open_files: 65536
                     fingerprint: null
-                    bootstrap: 0
+                    bootstrap: false
                     networks: {}
                     ip: ""
                   - address: doppler-5-doppler.default.svc.cluster.local
@@ -483,7 +483,7 @@ instance_groups:
                           limits:
                             open_files: 65536
                     fingerprint: null
-                    bootstrap: 0
+                    bootstrap: false
                     networks: {}
                     ip: ""
                   - address: doppler-6-doppler.default.svc.cluster.local
@@ -511,7 +511,7 @@ instance_groups:
                           limits:
                             open_files: 65536
                     fingerprint: null
-                    bootstrap: 0
+                    bootstrap: false
                     networks: {}
                     ip: ""
                   - address: doppler-7-doppler.default.svc.cluster.local
@@ -522,7 +522,7 @@ instance_groups:
                     name: doppler-doppler
                     bpm: null
                     fingerprint: null
-                    bootstrap: 0
+                    bootstrap: false
                     networks: {}
                     ip: ""
                 properties:
@@ -567,7 +567,7 @@ instance_groups:
                       limits:
                         open_files: 65536
                 fingerprint: null
-                bootstrap: 0
+                bootstrap: true
                 networks: {}
                 ip: ""
               - address: log-api-1-loggregator_trafficcontroller.default.svc.cluster.local
@@ -607,7 +607,7 @@ instance_groups:
                       limits:
                         open_files: 65536
                 fingerprint: null
-                bootstrap: 0
+                bootstrap: false
                 networks: {}
                 ip: ""
               - address: log-api-2-loggregator_trafficcontroller.default.svc.cluster.local
@@ -647,7 +647,7 @@ instance_groups:
                       limits:
                         open_files: 65536
                 fingerprint: null
-                bootstrap: 0
+                bootstrap: false
                 networks: {}
                 ip: ""
               - address: log-api-3-loggregator_trafficcontroller.default.svc.cluster.local
@@ -658,7 +658,7 @@ instance_groups:
                 name: log-api-loggregator_trafficcontroller
                 bpm: null
                 fingerprint: null
-                bootstrap: 0
+                bootstrap: false
                 networks: {}
                 ip: ""
             release: loggregator

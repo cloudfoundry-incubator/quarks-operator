@@ -142,10 +142,10 @@ var _ = Describe("InstanceGroupResolver", func() {
 				jobInstancesRedis := manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Instances
 
 				compareToFakeRedis := []JobInstance{
-					{Address: "foo-deployment-redis-slave-0", AZ: "z1", Index: 0, Instance: 0, Name: "redis-slave-redis-server"},
-					{Address: "foo-deployment-redis-slave-1", AZ: "z2", Index: 1, Instance: 0, Name: "redis-slave-redis-server"},
-					{Address: "foo-deployment-redis-slave-2", AZ: "z1", Index: 2, Instance: 1, Name: "redis-slave-redis-server"},
-					{Address: "foo-deployment-redis-slave-3", AZ: "z2", Index: 3, Instance: 1, Name: "redis-slave-redis-server"},
+					{Address: "foo-deployment-redis-slave-0", AZ: "z1", Index: 0, Instance: 0, Name: "redis-slave-redis-server", Bootstrap: true},
+					{Address: "foo-deployment-redis-slave-1", AZ: "z2", Index: 1, Instance: 0, Name: "redis-slave-redis-server", Bootstrap: false},
+					{Address: "foo-deployment-redis-slave-2", AZ: "z1", Index: 2, Instance: 1, Name: "redis-slave-redis-server", Bootstrap: false},
+					{Address: "foo-deployment-redis-slave-3", AZ: "z2", Index: 3, Instance: 1, Name: "redis-slave-redis-server", Bootstrap: false},
 				}
 				Expect(jobInstancesRedis).To(BeEquivalentTo(compareToFakeRedis))
 			})
