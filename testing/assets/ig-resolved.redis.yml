@@ -1,0 +1,81 @@
+name: redis-deployment
+director_uuid: ""
+instance_groups:
+- name: redis-slave
+  instances: 1
+  azs: [z1, z2]
+  jobs:
+  - name: redis-server
+    release: redis
+    properties:
+      quarks:
+        consumes:
+          redis:
+            instances:
+            - address: foo-deployment-redis-slave-0
+              az: z1
+              bootstrap: true
+              index: 0
+              instance: 0
+              name: redis-slave-redis-server
+              networks: null
+            - address: foo-deployment-redis-slave-1
+              az: z2
+              bootstrap: false
+              index: 1
+              instance: 0
+              name: redis-slave-redis-server
+              networks: null
+            properties:
+              base_dir: /var/vcap/store/redis
+              password: null
+              port: 6379
+        instances:
+        - address: foo-deployment-redis-slave-0
+          az: z1
+          bootstrap: true
+          index: 0
+          instance: 0
+          name: redis-slave-redis-server
+          networks: null
+        - address: foo-deployment-redis-slave-1
+          az: z2
+          bootstrap: false
+          index: 1
+          instance: 0
+          name: redis-slave-redis-server
+          networks: null
+        bpm:
+          processes:
+          - args:
+            - /var/vcap/jobs/redis/config/redis.conf
+            ephemeral_disk: true
+            executable: /var/vcap/packages/redis-4/bin/redis-server
+            hooks:
+              pre_start: /var/vcap/jobs/redis/bin/pre_start.sh
+            limits:
+              open_files: 12500
+            name: redis
+            persistent_disk: true
+            unsafe: {}
+          unsupported_template: false
+        debug: false
+        envs: null
+        replication: true
+        is_addon: false
+        ports: null
+        post_start: {}
+        pre_render_scripts:
+          bpm: null
+          ig_resolver: null
+          jobs: null
+        release: ""
+        run:
+          healthcheck: null
+          security_context: null
+  networks:
+  - name: default
+  persistent_disk_type: medium
+  stemcell: default
+  vm_resources: null
+  vm_type: medium

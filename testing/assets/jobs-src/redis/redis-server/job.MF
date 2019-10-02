@@ -4,8 +4,6 @@ packages: [redis-4]
 templates:
   bpm.yml.erb: config/bpm.yml
   redis.conf.erb: config/redis.conf
-  health_check: bin/health_check
-  pre_start.sh: bin/pre_start.sh
 
 provides:
 - name: redis
