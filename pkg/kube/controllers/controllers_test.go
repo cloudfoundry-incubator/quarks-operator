@@ -105,7 +105,7 @@ var _ = Describe("Controllers", func() {
 
 		Context("if there is no cert secret yet", func() {
 			It("generates and persists the certificates on disk and in a secret", func() {
-				file := "/tmp/cf-operator-hook-" + config.Namespace + "/tls.key"
+				file := "/tmp/cf-operator-hook-" + config.OperatorNamespace + "/tls.key"
 				Expect(afero.Exists(config.Fs, file)).To(BeFalse())
 
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
@@ -131,7 +131,7 @@ var _ = Describe("Controllers", func() {
 					Object: map[string]interface{}{
 						"metadata": map[string]interface{}{
 							"name":      "cf-operator-webhook-server-cert",
-							"namespace": config.Namespace,
+							"namespace": config.OperatorNamespace,
 						},
 						"data": map[string]interface{}{
 							"certificate":    base64.StdEncoding.EncodeToString([]byte("the-cert")),

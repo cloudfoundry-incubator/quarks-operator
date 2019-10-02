@@ -156,4 +156,38 @@ var _ = Describe("Trender", func() {
 			Expect(string(content)).To(ContainSubstring("maximum_size3: 1000001size"))
 		})
 	})
+
+	Context("with an instance index if one", func() {
+		BeforeEach(func() {
+			deploymentManifest = "../../../testing/assets/ig-resolved.redis.yml"
+			jobsDir = "../../../testing/assets"
+			instanceGroupName = "redis-slave"
+
+			// By using index 1, we can make sure that an evaluation of spec.bootstrap
+			// will return false. See https://bosh.io/docs/jobs/#properties-spec for
+			// more information.
+			index = 1
+			podName = "redis-pod-name"
+			podIP = net.ParseIP("172.17.0.13")
+		})
+
+		AfterEach(func() {
+			err := os.RemoveAll(filepath.Join(jobsDir, "redis-server"))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("renders the configuration erb file correctly", func() {
+			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podName, podIP)
+			Expect(err).ToNot(HaveOccurred())
+
+			configFile := filepath.Join(jobsDir, "redis-server", "config/redis.conf")
+			Expect(configFile).Should(BeAnExistingFile())
+
+			content, err := ioutil.ReadFile(configFile)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(content)).To(ContainSubstring("slaveof foo-deployment-redis-slave-0 637"))
+
+		})
+	})
 })

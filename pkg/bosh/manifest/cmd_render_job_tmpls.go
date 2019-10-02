@@ -100,7 +100,7 @@ func RenderJobTemplates(
 					&btg.InstanceInfo{
 						Address:   currentJobInstance.Address,
 						AZ:        currentJobInstance.AZ,
-						Bootstrap: currentJobInstance.Index == 0,
+						Bootstrap: currentJobInstance.Bootstrap,
 						ID:        podName,
 						Index:     currentJobInstance.Index,
 						IP:        podIP.String(),

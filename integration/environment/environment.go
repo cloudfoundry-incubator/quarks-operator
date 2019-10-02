@@ -16,11 +16,13 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
 	"code.cloudfoundry.org/cf-operator/testing"
@@ -30,18 +32,18 @@ import (
 // cluster used in the tests
 type Environment struct {
 	Machine
-
 	testing.Catalog
-	mgr        manager.Manager
-	kubeConfig *rest.Config
-	stop       chan struct{}
+
+	mgr manager.Manager
 
 	ID           int
 	Teardown     func(wasFailure bool)
+	KubeConfig   *rest.Config
 	Log          *zap.SugaredLogger
 	Config       *config.Config
 	ObservedLogs *observer.ObservedLogs
 	Namespace    string
+	Stop         chan struct{}
 }
 
 var (
@@ -94,8 +96,24 @@ func NewEnvironment(kubeConfig *rest.Config) *Environment {
 			pollTimeout:  300 * time.Second,
 			pollInterval: 500 * time.Millisecond,
 		},
-		kubeConfig: kubeConfig,
+		KubeConfig: kubeConfig,
 	}
+}
+
+// SetupClientsets initializes kube clientsets
+func (e *Environment) SetupClientsets() error {
+	var err error
+	e.Clientset, err = kubernetes.NewForConfig(e.KubeConfig)
+	if err != nil {
+		return err
+	}
+
+	e.VersionedClientset, err = versioned.NewForConfig(e.KubeConfig)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // FlushLog flushes the zap log

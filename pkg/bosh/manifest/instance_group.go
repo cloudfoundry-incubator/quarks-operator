@@ -84,11 +84,12 @@ func (ig *InstanceGroup) jobInstances(
 			name := fmt.Sprintf("%s-%s", ig.NameSanitized(), jobName)
 
 			jobsInstances = append(jobsInstances, JobInstance{
-				Address:  address,
-				AZ:       az,
-				Index:    index,
-				Instance: i,
-				Name:     name,
+				Address:   address,
+				AZ:        az,
+				Bootstrap: index == 0,
+				Index:     index,
+				Instance:  i,
+				Name:      name,
 			})
 		}
 	}
