@@ -91,7 +91,7 @@ func convertOutputToSecret(pod *corev1.Pod, namePrefix string, namespace string,
 		filePath := filepath.Join("/mnt/quarks/", container.Name, "output.json")
 
 		// Go routine to wait for the file to be created
-		go waitForFile(containerIndex, filePath, fileNotifyChannel, errorChannel)
+		go waitForFile(containerIndex, filePath, fileNotifyChannel, errorChannel, container.Name)
 	}
 
 	// wait for all the go routines
@@ -120,7 +120,7 @@ func fileExists(filename string) bool {
 }
 
 // waitForFile waits for the file to be created
-func waitForFile(containerIndex int, filePath string, fileNotifyChannel chan<- int, errorChannel chan<- error) {
+func waitForFile(containerIndex int, filePath string, fileNotifyChannel chan<- int, errorChannel chan<- error, containerName string) {
 
 	if fileExists(filePath) {
 		fileNotifyChannel <- containerIndex
@@ -154,7 +154,7 @@ func waitForFile(containerIndex int, filePath string, fileNotifyChannel chan<- i
 		}
 	}()
 
-	err = watcher.Add("/mnt/quarks/json")
+	err = watcher.Add(filepath.Join("/mnt/quarks/", containerName))
 	if err != nil {
 		errorChannel <- err
 	}
