@@ -59,6 +59,7 @@ helm delete cf-operator --purge
 | Parameter                                         | Description                                                                       | Default                                        |
 | ------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------- |
 | `operator.watchNamespace`                         | namespace the operator will watch for BOSH deployments                            | the release namespace                          |
+| `operator.webhookUseServiceReference`             | If true, the webhook server is addressed using a service reference instead of the IP | false                                       |
 | `image.repository`                                | docker hub repository for the cf-operator image                                   | `cf-operator`                                  |
 | `image.org`                                       | docker hub organization for the cf-operator image                                 | `cfcontainerization`                           |
 | `image.tag`                                       | docker image tag                                                                  | `foobar`                                       |
