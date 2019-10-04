@@ -77,9 +77,9 @@ var rootCmd = &cobra.Command{
 		serviceHost := viper.GetString("operator-webhook-service-host")
 		// Port on which the cf operator webhook kube service listens to.
 		servicePort := viper.GetInt32("operator-webhook-service-port")
-		provider := viper.GetString("provider")
+		useServiceRef := viper.GetBool("operator-webhook-use-service-reference")
 
-		if serviceHost == "" && provider == "" {
+		if serviceHost == "" && !useServiceRef {
 			return wrapError(errors.New("couldn't determine webhook server"), "operator-webhook-service-host flag is not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST)")
 		}
 
@@ -87,7 +87,7 @@ var rootCmd = &cobra.Command{
 			watchNamespace,
 			cfOperatorNamespace,
 			viper.GetInt("ctx-timeout"),
-			provider,
+			useServiceRef,
 			serviceHost,
 			servicePort,
 			afero.NewOsFs(),
@@ -159,7 +159,7 @@ func init() {
 	pf.Int("max-extendedstatefulset-workers", 1, "Maximum number of workers concurrently running ExtendedStatefulSet controller")
 	pf.StringP("operator-webhook-service-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")
 	pf.StringP("operator-webhook-service-port", "p", "2999", "Port the webhook server listens on")
-	pf.StringP("provider", "x", "", "Cloud Provider where cf-operator is being deployed")
+	pf.BoolP("operator-webhook-use-service-reference", "x", false, "If true the webhook service is targetted using a service reference instead of a URL")
 	pf.StringP("watch-namespace", "", "", "Namespace to watch for BOSH deployments")
 
 	viper.BindPFlag("apply-crd", rootCmd.PersistentFlags().Lookup("apply-crd"))
@@ -176,26 +176,26 @@ func init() {
 	viper.BindPFlag("max-extendedstatefulset-workers", rootCmd.PersistentFlags().Lookup("max-extendedstatefulset-workers"))
 	viper.BindPFlag("operator-webhook-service-host", pf.Lookup("operator-webhook-service-host"))
 	viper.BindPFlag("operator-webhook-service-port", pf.Lookup("operator-webhook-service-port"))
-	viper.BindPFlag("provider", pf.Lookup("provider"))
+	viper.BindPFlag("operator-webhook-use-service-reference", pf.Lookup("operator-webhook-use-service-reference"))
 	viper.BindPFlag("watch-namespace", pf.Lookup("watch-namespace"))
 
 	argToEnv := map[string]string{
-		"apply-crd":                       "APPLY_CRD",
-		"ctx-timeout":                     "CTX_TIMEOUT",
-		"cf-operator-namespace":           "CF_OPERATOR_NAMESPACE",
-		"docker-image-org":                "DOCKER_IMAGE_ORG",
-		"docker-image-repository":         "DOCKER_IMAGE_REPOSITORY",
-		"docker-image-tag":                "DOCKER_IMAGE_TAG",
-		"kubeconfig":                      "KUBECONFIG",
-		"log-level":                       "LOG_LEVEL",
-		"max-boshdeployment-workers":      "MAX_BOSHDEPLOYMENT_WORKERS",
-		"max-extendedjob-workers":         "MAX_EXTENDEDJOB_WORKERS",
-		"max-extendedsecret-workers":      "MAX_EXTENDEDSECRET_WORKERS",
-		"max-extendedstatefulset-workers": "MAX_EXTENDEDSTATEFULSET_WORKERS",
-		"operator-webhook-service-host":   "CF_OPERATOR_WEBHOOK_SERVICE_HOST",
-		"operator-webhook-service-port":   "CF_OPERATOR_WEBHOOK_SERVICE_PORT",
-		"provider":                        "PROVIDER",
-		"watch-namespace":                 "WATCH_NAMESPACE",
+		"apply-crd":                              "APPLY_CRD",
+		"ctx-timeout":                            "CTX_TIMEOUT",
+		"cf-operator-namespace":                  "CF_OPERATOR_NAMESPACE",
+		"docker-image-org":                       "DOCKER_IMAGE_ORG",
+		"docker-image-repository":                "DOCKER_IMAGE_REPOSITORY",
+		"docker-image-tag":                       "DOCKER_IMAGE_TAG",
+		"kubeconfig":                             "KUBECONFIG",
+		"log-level":                              "LOG_LEVEL",
+		"max-boshdeployment-workers":             "MAX_BOSHDEPLOYMENT_WORKERS",
+		"max-extendedjob-workers":                "MAX_EXTENDEDJOB_WORKERS",
+		"max-extendedsecret-workers":             "MAX_EXTENDEDSECRET_WORKERS",
+		"max-extendedstatefulset-workers":        "MAX_EXTENDEDSTATEFULSET_WORKERS",
+		"operator-webhook-service-host":          "CF_OPERATOR_WEBHOOK_SERVICE_HOST",
+		"operator-webhook-service-port":          "CF_OPERATOR_WEBHOOK_SERVICE_PORT",
+		"operator-webhook-use-service-reference": "CF_OPERATOR_WEBHOOK_USE_SERVICE_REFERENCE",
+		"watch-namespace":                        "WATCH_NAMESPACE",
 	}
 
 	// Add env variables to help
