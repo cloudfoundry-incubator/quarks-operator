@@ -45,10 +45,8 @@ spec:
               value: "{{ .Values.image.repository }}"
             - name: DOCKER_IMAGE_TAG
               value: "{{ .Values.image.tag }}"
-            {{- if .Values.provider }}
-            - name: PROVIDER
-              value: "{{ .Values.provider }}"
-            {{- end }}
+            - name: CF_OPERATOR_WEBHOOK_USE_SERVICE_REFERENCE
+              value: "{{ .Values.operator.webhookUseServiceReference }}"
           readinessProbe:
             httpGet:
               path: /readyz
