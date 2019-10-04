@@ -86,7 +86,7 @@ func (f *WebhookConfig) setupCertificate(ctx context.Context) error {
 
 		commonName := f.config.WebhookServerHost
 		// If provider is GKE, use service address
-		if f.config.Provider == "gke" {
+		if f.config.WebhookUseServiceRef {
 			commonName = "cf-operator-webhook." + f.config.OperatorNamespace + ".svc"
 		}
 
@@ -175,7 +175,7 @@ func (f *WebhookConfig) generateValidationWebhookServerConfig(ctx context.Contex
 	for _, webhook := range webhooks {
 		ctxlog.Debugf(ctx, "Calculating validation webhook '%s'", webhook.Name)
 
-		if f.config.Provider == "gke" {
+		if f.config.WebhookUseServiceRef {
 			clientConfig := admissionregistrationv1beta1.WebhookClientConfig{
 				CABundle: f.CaCertificate,
 				Service: &admissionregistrationv1beta1.ServiceReference{
@@ -225,7 +225,7 @@ func (f *WebhookConfig) generateMutationWebhookServerConfig(ctx context.Context,
 	for _, webhook := range webhooks {
 		ctxlog.Debugf(ctx, "Calculating mutating webhook '%s'", webhook.Name)
 
-		if f.config.Provider == "gke" {
+		if f.config.WebhookUseServiceRef {
 			clientConfig := admissionregistrationv1beta1.WebhookClientConfig{
 				Service: &admissionregistrationv1beta1.ServiceReference{
 					Name:      "cf-operator-webhook",
