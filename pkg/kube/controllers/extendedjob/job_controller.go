@@ -4,10 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	batchv1 "k8s.io/api/batch/v1"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -23,13 +20,9 @@ import (
 // AddJob creates a new Job controller to collect the output from jobs, persist
 // that output as a secret and delete the k8s job afterwards.
 func AddJob(ctx context.Context, config *config.Config, mgr manager.Manager) error {
-	client, err := corev1client.NewForConfig(mgr.GetConfig())
-	if err != nil {
-		return errors.Wrap(err, "Could not get kube client")
-	}
-	podLogGetter := NewPodLogGetter(client)
+
 	ctx = ctxlog.NewContextWithRecorder(ctx, "ext-job-job-reconciler", mgr.GetEventRecorderFor("ext-job-job-recorder"))
-	jobReconciler, err := NewJobReconciler(ctx, config, mgr, podLogGetter)
+	jobReconciler, err := NewJobReconciler(ctx, config, mgr)
 	if err != nil {
 		return err
 	}
@@ -55,7 +48,7 @@ func AddJob(ctx context.Context, config *config.Config, mgr manager.Manager) err
 				return false
 			}
 
-			shouldProcessEvent := o.Status.Succeeded == 1 || o.Status.Failed > *o.Spec.BackoffLimit
+			shouldProcessEvent := o.Status.Succeeded == 1
 			if shouldProcessEvent {
 				ctxlog.NewPredicateEvent(o).Debug(
 					ctx, e.MetaNew, "batchv1.Job",

@@ -17,11 +17,13 @@ func init() {
 
 	utilCmd.PersistentFlags().StringP("bosh-manifest-path", "m", "", "path to the bosh manifest file")
 	utilCmd.PersistentFlags().StringP("instance-group-name", "g", "", "name of the instance group for data gathering")
+	utilCmd.PersistentFlags().StringP("output-file-path", "", "", "Path of the file to which json output is redirected.")
 	utilCmd.PersistentFlags().StringP("base-dir", "b", "", "a path to the base directory")
 	utilCmd.PersistentFlags().StringP("logs-dir", "z", "", "a path from where to tail logs")
 
 	viper.BindPFlag("bosh-manifest-path", utilCmd.PersistentFlags().Lookup("bosh-manifest-path"))
 	viper.BindPFlag("instance-group-name", utilCmd.PersistentFlags().Lookup("instance-group-name"))
+	viper.BindPFlag("output-file-path", utilCmd.PersistentFlags().Lookup("output-file-path"))
 	viper.BindPFlag("base-dir", utilCmd.PersistentFlags().Lookup("base-dir"))
 	viper.BindPFlag("logs-dir", utilCmd.PersistentFlags().Lookup("logs-dir"))
 
@@ -30,6 +32,7 @@ func init() {
 		"bosh-manifest-path":  "BOSH_MANIFEST_PATH",
 		"instance-group-name": "INSTANCE_GROUP_NAME",
 		"logs-dir":            "LOGS_DIR",
+		"output-file-path":    "OUTPUT_FILE_PATH",
 	}
 	AddEnvToUsage(utilCmd, argToEnv)
 

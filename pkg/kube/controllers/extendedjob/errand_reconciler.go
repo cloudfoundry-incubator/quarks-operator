@@ -30,10 +30,12 @@ const (
 	EnvReplicas = "REPLICAS"
 	// EnvCfOperatorAz is set by available zone name
 	EnvCfOperatorAz = "CF_OPERATOR_AZ"
-	// EnvCfOperatorAzIndex is set by available zone index
-	EnvCfOperatorAzIndex = "AZ_INDEX"
+	// EnvCFOperatorAZIndex is set by available zone index
+	EnvCFOperatorAZIndex = "AZ_INDEX"
 	// EnvPodOrdinal is the pod's index
 	EnvPodOrdinal = "POD_ORDINAL"
+	// EnvCFONamespace is the namespace in which cf-operator runs
+	EnvCFONamespace = "CF_OPERATOR_NAMESPACE"
 )
 
 // NewErrandReconciler returns a new reconciler for errand jobs.
@@ -100,7 +102,7 @@ func (r *ErrandReconciler) Reconcile(request reconcile.Request) (reconcile.Resul
 	}
 
 	r.injectContainerEnv(&eJob.Spec.Template.Spec)
-	if retry, err := r.jobCreator.Create(ctx, *eJob); err != nil {
+	if retry, err := r.jobCreator.Create(ctx, *eJob, request.Namespace); err != nil {
 		return reconcile.Result{}, ctxlog.WithEvent(eJob, "CreateJobError").Errorf(ctx, "Failed to create job '%s': %s", eJob.Name, err)
 	} else if retry {
 		ctxlog.Infof(ctx, "Retrying to create job '%s'", eJob.Name)
@@ -148,7 +150,7 @@ func (r *ErrandReconciler) injectContainerEnv(podSpec *corev1.PodSpec) {
 		envs := container.Env
 
 		// Default to zone 1, with 1 replica
-		envs = upsertEnvs(envs, EnvCfOperatorAzIndex, "1")
+		envs = upsertEnvs(envs, EnvCFOperatorAZIndex, "1")
 		envs = upsertEnvs(envs, EnvReplicas, "1")
 		envs = upsertEnvs(envs, EnvPodOrdinal, "0")
 

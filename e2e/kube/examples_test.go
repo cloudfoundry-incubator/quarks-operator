@@ -169,7 +169,7 @@ var _ = Describe("Examples Directory", func() {
 
 		It("deletes pod after job is done", func() {
 			By("Checking for pods")
-			err := kubectl.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("%s=deletes-pod-1", ejv1.LabelEJobName))
+			err := kubectl.WaitForPod(namespace, fmt.Sprintf("%s=deletes-pod-1", ejv1.LabelEJobName), "deletes-pod-1")
 			Expect(err).ToNot(HaveOccurred())
 
 			err = kubectl.WaitLabelFilter(namespace, "terminate", "pod", fmt.Sprintf("%s=deletes-pod-1", ejv1.LabelEJobName))
@@ -184,7 +184,7 @@ var _ = Describe("Examples Directory", func() {
 
 		It("runs the errand automatically", func() {
 			By("Checking for pods")
-			err := kubectl.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("%s=one-time-sleep", ejv1.LabelEJobName))
+			err := kubectl.WaitForPod(namespace, fmt.Sprintf("%s=one-time-sleep", ejv1.LabelEJobName), "one-time-sleep")
 			Expect(err).ToNot(HaveOccurred())
 
 			err = kubectl.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=one-time-sleep", ejv1.LabelEJobName))
@@ -199,7 +199,8 @@ var _ = Describe("Examples Directory", func() {
 
 		It("triggers job again when config is updated", func() {
 			By("Checking for pods")
-			err := kubectl.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName))
+
+			err := kubectl.WaitForPod(namespace, fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName), "auto-errand-sleep-again")
 			Expect(err).ToNot(HaveOccurred())
 
 			err = kubectl.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName))
@@ -215,7 +216,7 @@ var _ = Describe("Examples Directory", func() {
 			err = testing.Apply(namespace, yamlFilePath)
 			Expect(err).ToNot(HaveOccurred())
 
-			err = kubectl.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName))
+			err = kubectl.WaitForPod(namespace, fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName), "auto-errand-sleep-again")
 			Expect(err).ToNot(HaveOccurred())
 
 			err = kubectl.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=auto-errand-sleep-again", ejv1.LabelEJobName))
@@ -235,7 +236,7 @@ var _ = Describe("Examples Directory", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Checking for pods")
-			err = kubectl.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("%s=manual-sleep", ejv1.LabelEJobName))
+			err = kubectl.WaitForPod(namespace, fmt.Sprintf("%s=manual-sleep", ejv1.LabelEJobName), "manual-sleep")
 			Expect(err).ToNot(HaveOccurred())
 
 			err = kubectl.WaitLabelFilter(namespace, "complete", "pod", fmt.Sprintf("%s=manual-sleep", ejv1.LabelEJobName))
