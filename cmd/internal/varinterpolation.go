@@ -57,6 +57,10 @@ func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string)
 	defer log.Sync()
 
 	boshManifestPath := viper.GetString("bosh-manifest-path")
+	outputFilePath := viper.GetString("output-file-path")
+	if len(outputFilePath) == 0 {
+		return errors.Errorf("%s output-file-path flag is empty.", vInterpolateFailedMessage)
+	}
 	variablesDir := filepath.Clean(viper.GetString("variables-dir"))
 
 	if _, err := os.Stat(boshManifestPath); os.IsNotExist(err) {
@@ -79,5 +83,5 @@ func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string)
 		return errors.Wrapf(err, "%s Reading file specified in the bosh-manifest-path flag failed", vInterpolateFailedMessage)
 	}
 
-	return manifest.InterpolateVariables(log, boshManifestBytes, variablesDir)
+	return manifest.InterpolateVariables(log, boshManifestBytes, variablesDir, outputFilePath)
 }

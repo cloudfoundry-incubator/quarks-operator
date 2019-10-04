@@ -24,6 +24,8 @@ var (
 	LabelSecretKind = fmt.Sprintf("%s/secret-kind", apis.GroupName)
 	// LabelVersion is the label key for secret version
 	LabelVersion = fmt.Sprintf("%s/secret-version", apis.GroupName)
+	// LabelAPIVersion is the lable for kube APIVersion
+	LabelAPIVersion = fmt.Sprintf("%s/v1alpha1", apis.GroupName)
 	// AnnotationSourceDescription is the label key for source description
 	AnnotationSourceDescription = fmt.Sprintf("%s/source-description", apis.GroupName)
 )
@@ -137,7 +139,7 @@ func (p VersionedSecretImpl) Create(ctx context.Context, namespace string, owner
 	labels[LabelVersion] = strconv.Itoa(version)
 	labels[LabelSecretKind] = VersionSecretKind
 
-	generatedSecretName, err := generateSecretName(secretName, version)
+	generatedSecretName, err := GenerateSecretName(secretName, version)
 	if err != nil {
 		return err
 	}
@@ -149,7 +151,7 @@ func (p VersionedSecretImpl) Create(ctx context.Context, namespace string, owner
 			Labels:    labels,
 			OwnerReferences: []metav1.OwnerReference{
 				{
-					APIVersion:         "fissile.cloudfoundry.org/v1alpha1",
+					APIVersion:         LabelAPIVersion,
 					Kind:               "ExtendedJob",
 					Name:               ownerName,
 					UID:                ownerID,
@@ -169,7 +171,7 @@ func (p VersionedSecretImpl) Create(ctx context.Context, namespace string, owner
 
 // Get returns a specific version of the secret
 func (p VersionedSecretImpl) Get(ctx context.Context, namespace string, deploymentName string, version int) (*corev1.Secret, error) {
-	name, err := generateSecretName(deploymentName, version)
+	name, err := GenerateSecretName(deploymentName, version)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +221,7 @@ func (p VersionedSecretImpl) Decorate(ctx context.Context, namespace string, sec
 		return err
 	}
 
-	generatedSecretName, err := generateSecretName(secretName, version)
+	generatedSecretName, err := GenerateSecretName(secretName, version)
 	if err != nil {
 		return err
 	}
@@ -306,7 +308,7 @@ func (p VersionedSecretImpl) getGreatestVersion(ctx context.Context, namespace s
 	return greatestVersion, nil
 }
 
-func generateSecretName(namePrefix string, version int) (string, error) {
+func GenerateSecretName(namePrefix string, version int) (string, error) {
 	proposedName := fmt.Sprintf("%s-v%d", namePrefix, version)
 
 	// Check for Kubernetes name requirements (length)

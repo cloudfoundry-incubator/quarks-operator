@@ -33,8 +33,8 @@ const (
 	EnvReplicas = "REPLICAS"
 	// EnvCfOperatorAz is set by available zone name
 	EnvCfOperatorAz = "CF_OPERATOR_AZ"
-	// EnvCfOperatorAzIndex is set by available zone index
-	EnvCfOperatorAzIndex = "AZ_INDEX"
+	// EnvCFOperatorAZIndex is set by available zone index
+	EnvCFOperatorAZIndex = "AZ_INDEX"
 )
 
 // Check that ReconcileExtendedStatefulSet implements the reconcile.Reconciler interface
@@ -368,10 +368,10 @@ func (r *ReconcileExtendedStatefulSet) injectContainerEnv(podSpec *corev1.PodSpe
 			envs = upsertEnvs(envs, EnvKubeAz, zoneName)
 			envs = upsertEnvs(envs, EnvBoshAz, zoneName)
 			envs = upsertEnvs(envs, EnvCfOperatorAz, zoneName)
-			envs = upsertEnvs(envs, EnvCfOperatorAzIndex, strconv.Itoa(zoneIndex+1))
+			envs = upsertEnvs(envs, EnvCFOperatorAZIndex, strconv.Itoa(zoneIndex+1))
 		} else {
 			// Default to zone 1
-			envs = upsertEnvs(envs, EnvCfOperatorAzIndex, "1")
+			envs = upsertEnvs(envs, EnvCFOperatorAZIndex, "1")
 		}
 		envs = upsertEnvs(envs, EnvReplicas, strconv.Itoa(int(*replicas)))
 

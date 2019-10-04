@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -62,6 +61,11 @@ instance group.
 			return errors.Errorf("%s cf-operator-namespace flag is empty.", bpmFailedMessage)
 		}
 
+		outputFilePath := viper.GetString("output-file-path")
+		if len(outputFilePath) == 0 {
+			return errors.Errorf("%s output-file-path flag is empty.", bpmFailedMessage)
+		}
+
 		instanceGroupName := viper.GetString("instance-group-name")
 		if len(instanceGroupName) == 0 {
 			return errors.Errorf("%s instance-group-name flag is empty.", bpmFailedMessage)
@@ -109,21 +113,11 @@ instance group.
 		if buf.Len() > 0 {
 			return errors.Errorf("unexpected data sent to stdout, during the data bpm-configs cmd: %s", buf.String())
 		}
-		// Write to an original stdOut
-		// without any undesired data
-		f := bufio.NewWriter(os.Stdout)
 
-		// Ensure bufio.NewWriter will send
-		// data at the very end of this func
-		// Therefore, we can tail=1 in other
-		// containers, and we will get the
-		// correct data.
-		defer f.Flush()
-		_, err = f.Write(jsonBytes)
+		err = ioutil.WriteFile(outputFilePath, jsonBytes, 0644)
 		if err != nil {
-			return errors.Wrapf(err, "%s Writing bpmConfigs json into a file returned by dg.BPMConfigs() failed.", bpmFailedMessage)
+			return errors.Wrapf(err, "%s Writing bpmConfigs json into a file failed.", bpmFailedMessage)
 		}
-
 		return nil
 	},
 }

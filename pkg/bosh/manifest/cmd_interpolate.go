@@ -1,7 +1,6 @@
 package manifest
 
 import (
-	"bufio"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -14,8 +13,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// InterpolateVariables reads explicit secrets from a folder and writes an interpolated manifest to STDOUT
-func InterpolateVariables(log *zap.SugaredLogger, boshManifestBytes []byte, variablesDir string) error {
+// InterpolateVariables reads explicit secrets from a folder and writes an interpolated manifest to the output.json file in /mnt/quarks volume mount.
+func InterpolateVariables(log *zap.SugaredLogger, boshManifestBytes []byte, variablesDir string, outputFilePath string) error {
 	var vars []boshtpl.Variables
 
 	variables, err := ioutil.ReadDir(variablesDir)
@@ -94,9 +93,7 @@ func InterpolateVariables(log *zap.SugaredLogger, boshManifestBytes []byte, vari
 		return errors.Wrapf(err, "could not marshal json output")
 	}
 
-	f := bufio.NewWriter(os.Stdout)
-	defer f.Flush()
-	_, err = f.Write(jsonBytes)
+	err = ioutil.WriteFile(outputFilePath, jsonBytes, 0644)
 	if err != nil {
 		return err
 	}
