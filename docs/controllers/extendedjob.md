@@ -38,7 +38,7 @@ Figure 1, illustrates the **ExtendedJob** component diagram and the set of contr
 ![errand-controller-flow](quarks_ejoberrandcontroller_flow.png)
 *Fig. 2: The Errand controller flow*
 
-This is the controller responsible for implementing Errands, this will lead to the generation of a Kubernetes job, in order to complete a task.
+This is the controller responsible for implementing **Errands**, this will lead to the generation of a Kubernetes job, in order to complete a task.
 
 #### Watches in Errand controller
 
@@ -58,7 +58,7 @@ This is the controller responsible for implementing Errands, this will lead to t
 - Errands are run manually by the user. They are created by setting `trigger.strategy: manual`.
 
 - After the `ExtendedJob` is created, run an errand by editing and applying the
-manifest, i.e. via `k edit errand1` and change `trigger.strategy: manual` to `trigger.strategy: now`. A `kubectl patch` is also a good way to trigger this type of `ExtendedJob`. After completion, this value is reset to `manual`.
+manifest, i.e. via `kubectl edit errand1` and change `trigger.strategy: manual` to `trigger.strategy: now`. A `kubectl patch` is also a good way to trigger this type of `ExtendedJob`. After completion, this value is reset to `manual`.
 
 ##### Auto-Errands
 
@@ -97,14 +97,11 @@ This is an auxiliary controller that relies on the Errand Controller output. It 
 
 ##### Persisted Output
 
-- The developer can specify a `Secret` where the standard output/error output of
-the `ExtendedJob` is stored.
+- The developer can specify a `Secret` where the standard output/error output of the `ExtendedJob` is stored.
 
-- One secret is created or overwritten per container in the pod. The secrets'
-names are `<namePrefix>-<containerName>`.
+- One secret is created or overwritten per container in the pod. The secrets' names are `<namePrefix>-<containerName>`.
 
-- The only supported output type currently is json with a flat structure, i.e.
-all values being string values.
+- The only supported output type currently is JSON with a flat structure, i.e. all values being string values.
 
 - **Note:** Output of previous runs is overwritten.
 

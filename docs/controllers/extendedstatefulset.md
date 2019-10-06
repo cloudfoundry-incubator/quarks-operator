@@ -40,7 +40,7 @@ Figure 1 illustrates a **ExtendedStatefulset** component diagram that covers the
 ![ests-controller-flow](quarks_estscontroller_flow.png)
 *Fig. 2: The ExtendedStatefulset controller*
 
-This controller will generate a Kubernetes statefulset for each instance_group defined in the BOSH manifest. This Statefulset will also include a set of Kubernetes services, so that each component can be accessed on specific ports.
+This controller will generate a Kubernetes statefulset for each `instance_group` defined in the BOSH manifest. This `Statefulset` will also include a set of Kubernetes services, so that each component can be accessed on specific ports.
 
 #### Watches in sts controller
 
@@ -50,7 +50,7 @@ This controller will generate a Kubernetes statefulset for each instance_group d
 
 #### Reconciliation in sts controller
 
-Will generate versioned statefulsets with the required data to make all jobs of the instance_group runnable.
+Will generate versioned `Statefulsets` with the required data to make all jobs of the `instance_group` runnable.
 
 #### Scaling Restrictions (not implemented)
 
@@ -63,14 +63,14 @@ The operator watches all the `ConfigMaps` and `Secrets` referenced by the `State
 
 #### Exposing ExtendedStatefulSets Publicly
 
-Exposing extendedstatefulsets is similar to exposing statefulsets in kubernetes. A kubernetes service makes use of labels to select the pods which should be in the service. We need to use two labels to group the pods of a single instance group.
+Exposing `extendedstatefulsets` is similar to exposing `statefulsets` in kubernetes. A Kubernetes service makes use of labels to select the pods which should be in the service. We need to use two labels to group the pods of a single instance group.
 
-1. fissile.cloudfoundry.org/instance-group-name: ((instanceGroupName))
-2. fissile.cloudfoundry.org/deployment-name: ((deploymentName))
+1. `fissile.cloudfoundry.org/instance-group-name: ((instanceGroupName))`
+2. `fissile.cloudfoundry.org/deployment-name: ((deploymentName))`
 
 #### Cluster IP
 
-Following is the example which creates a service with type ClusterIp for a single instance group named nats in deployment nats-deployment for exposing port 4222.
+Following is the example which creates a service with type **ClusterIP** for a single instance group named `nats` in deployment `nats-deployment` for exposing port 4222.
 
 ```bash
 ---
@@ -91,17 +91,17 @@ spec:
 
 Complete example can be found [here](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/examples/bosh-deployment/boshdeployment-with-service.yaml).
 
-Though, by default, quarks creates three services of type ClusterIp as defined [here](https://github.com/cloudfoundry-incubator/cf-operator/blob/master/docs/from_bosh_to_kube.md#naming-conventions) for any instance group.
+Though, by default, quarks creates three services of type **ClusterIP** as defined [here](https://github.com/cloudfoundry-incubator/cf-operator/blob/master/docs/from_bosh_to_kube.md#naming-conventions) for any instance group.
 
 #### Load Balancer
 
-For creating a service type LoadBalancer, we just need to change the .spec.type to LoadBalancer in the above example. The LoadBalancer Ingress is your public ip specified in the output of this command `kubectl describe service nats-service`.
+For creating a service type **LoadBalancer**, we just need to change the `.spec.type` to `LoadBalancer` in the above example. The LoadBalancer Ingress is your public IP specified in the output of this command `kubectl describe service nats-service`.
 
 #### Ingress
 
-Ingress doesn't use any labels but just sits on top of services and acts as a smart router. You can create services of different types based on the above examples and use them as values in the ingress kubernetes spec. An example of Ingress can be found [here](https://kubernetes.io/docs/tasks/access-application-cluster/ingress-minikube/#create-an-ingress-resource)
+**Ingress** doesn't use any labels but just sits on top of services and acts as a smart router. You can create services of different types based on the above examples and use them as values in the ingress Kubernetes spec. An example of Ingress can be found [here](https://kubernetes.io/docs/tasks/access-application-cluster/ingress-minikube/#create-an-ingress-resource)
 
-For more information about kubernetes services, we recommend you to read [this](https://kubernetes.io/docs/concepts/services-networking/service/).
+For more information about Kubernetes services, we recommend you to read [this](https://kubernetes.io/docs/concepts/services-networking/service/).
 
 #### Extended Upgrade Support
 
@@ -200,7 +200,7 @@ If zones are set for an `ExtendedStatefulSet`, the following occurs:
   KUBE_AZ="zone name"
   BOSH_AZ="zone name"
   CF_OPERATOR_AZ="zone name"
-  AZ_INDEX=="zone index"
+  AZ_INDEX="zone index"
   ```
 
 #### Restarting on Config Change
