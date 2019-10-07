@@ -307,15 +307,18 @@ func createCorefile(dns *boshDomainNameService, namespace string, manifestName s
 
 	// Support legacy cf-operator naming convention: <deployment name>-<ig name>
 	for _, alias := range dns.aliases {
-		newDomainName := fmt.Sprintf(`%s.%s.svc.cluster.local.`, strings.Split(alias.Domain, ".")[0], namespace)
+		newDomainName := fmt.Sprintf(`%s.%s.svc.cluster.local`, strings.Split(alias.Domain, ".")[0], namespace)
 		for _, target := range alias.Targets {
 			serviceName := serviceName(target.InstanceGroup, manifestName, 63)
-			rewrites = rewrites + fmt.Sprintf(`    rewrite name regex ^%s\.(%s\.(svc\.(cluster\.(local\.)?)?)?)?$ %s`,
+			// For backwards compatibility, e.g. 'scf-nats'
+			rewrites = rewrites + fmt.Sprintf(`    rewrite name exact %s %s`,
+				regexp.QuoteMeta(serviceName), newDomainName) + "\n"
+			rewrites = rewrites + fmt.Sprintf(`    rewrite name exact %s.%s.svc.cluster.local %s`,
 				regexp.QuoteMeta(serviceName), regexp.QuoteMeta(namespace), newDomainName) + "\n"
 		}
 	}
-
-	rewrites = rewrites + fmt.Sprintf(`    rewrite name regex ^([^.]+)\.$    {1}.%s.svc.cluster.local.`, namespace) + "\n"
+	// Kubernetes services should stay resolvable
+	rewrites = rewrites + fmt.Sprintf(`    rewrite name regex ^([^.]+)$    {1}.%s.svc.cluster.local.`, namespace) + "\n"
 
 	return fmt.Sprintf(`
 .:8053 {

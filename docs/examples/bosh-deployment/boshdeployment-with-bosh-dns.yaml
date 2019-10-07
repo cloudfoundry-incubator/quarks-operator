@@ -20,6 +20,13 @@ data:
       - name: bosh-dns-aliases
         properties:
           aliases:
+            - domain: myalias.service.cf.internal
+              targets:
+                - deployment: cf
+                  domain: bosh
+                  instance_group: nats
+                  network: default
+                  query: _
             - domain: nats.service.cf.internal
               targets:
                 - deployment: cf
