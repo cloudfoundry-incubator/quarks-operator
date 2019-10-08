@@ -325,4 +325,46 @@ var _ = Describe("Examples Directory", func() {
 			Expect(err).ToNot(HaveOccurred(), "error verifying certificates")
 		})
 	})
+
+	FContext("bosh dns example", func() {
+		BeforeEach(func() {
+			example = "bosh-deployment/boshdeployment-with-bosh-dns.yaml"
+		})
+
+		It("resolves bosh and k8s domains", func() {
+			By("Getting expected IP")
+			podName := "nats-deployment-nats-v1-0"
+			podWait(fmt.Sprintf("pod/%s", podName))
+			status, err := kubectl.PodStatus(namespace, podName)
+			Expect(err).ToNot(HaveOccurred(), "error reading status")
+			ip := status.PodIP
+
+			By("DNS lookup")
+			resolvableNames := []string{addNamespace("myalias.%s.svc.cluster.local"),
+				addNamespace("myalias.%s.svc.cluster.local."),
+				addNamespace("myalias.%s.svc"),
+				addNamespace("myalias.%s"),
+				addNamespace("nats-deployment-nats.%s"),
+				addNamespace("nats-deployment-nats.%s.svc"),
+				addNamespace("nats-deployment-nats.%s.svc.cluster.local"),
+				"myalias",
+				"myalias.service.cf.internal.",
+				"myalias.service.cf.internal",
+				"nats",
+				"nats.service.cf.internal",
+				"nats.service.cf.internal.",
+				"nats-deployment-nats"}
+
+			for _, name := range resolvableNames {
+				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), ip)
+				Expect(err).ToNot(HaveOccurred())
+
+			}
+		})
+	})
+
 })
+
+func addNamespace(s string) string {
+	return fmt.Sprintf(s, namespace)
+}
