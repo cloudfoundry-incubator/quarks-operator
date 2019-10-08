@@ -356,7 +356,7 @@ var _ = Describe("Examples Directory", func() {
 				"nats-deployment-nats"}
 
 			for _, name := range resolvableNames {
-				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), ip)
+				err = kubectl.RunCommandOnceWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), ip)
 				Expect(err).ToNot(HaveOccurred())
 
 			}
@@ -369,9 +369,8 @@ var _ = Describe("Examples Directory", func() {
 				addNamespace("myalias.%s.svc.")}
 
 			for _, name := range unresolvableNames {
-				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), "NXDOMAIN")
-				Expect(err).ToNot(HaveOccurred())
-
+				err = kubectl.RunCommandOnceWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), ip)
+				Expect(err).To(HaveOccurred()) //TODO right now, this fails because nslookup has a returncode != 0, this is not exactly what we want to check
 			}
 		})
 	})
