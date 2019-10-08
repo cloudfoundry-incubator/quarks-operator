@@ -52,11 +52,16 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 
 	sshUser, shouldForwardPort := os.LookupEnv("ssh_server_user")
 	if shouldForwardPort {
+		var remoteAddr string
+		var ok bool
+		if remoteAddr, ok = os.LookupEnv("ssh_server_listen_address"); !ok {
+			remoteAddr = whh
+		}
 		go func() {
 			cmd := exec.Command(
 				"ssh", "-fNT", "-i", "/tmp/cf-operator-tunnel-identity", "-o",
 				"UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-R",
-				fmt.Sprintf("%s:%[2]d:localhost:%[2]d", whh, port),
+				fmt.Sprintf("%s:%[2]d:localhost:%[2]d", remoteAddr, port),
 				fmt.Sprintf("%s@%s", sshUser, whh))
 
 			stdOutput, err := cmd.CombinedOutput()
