@@ -54,7 +54,7 @@ The docker image is only referenced from the helm chart and not mentioned in the
 
 1. Tag commit with new version
 1. Push commit
-1. Wait for commit to pass release pipeline
+1. Wait for commit to pass release pipeline, 'publish' needs to create the binary and helm chart, before the 'release' job can run
 1. Create a draft Github release for that tag, 'release' job triggers
 1. Wait for 'release' job to finish on Concourse
 1. Edit the draft release on Github and publish it
