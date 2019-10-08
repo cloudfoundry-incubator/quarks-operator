@@ -16,7 +16,7 @@
 
 ## Description
 
-An `ExtendedJob` allows the developer to run jobs when something interesting happens. It also allows the developer to store the output of the job into a `Secret`.
+An `ExtendedJob` allows the developer to run jobs when something interesting happens. It also allows the developer to store the output to a file /mnt/quarks/output.json which is transformed into a `Secret` later.
 The job started by an `ExtendedJob` is deleted automatically after it succeeds.
 
 There are two different kinds of `ExtendedJob`:
@@ -78,23 +78,6 @@ automatically be restarted if its environment/mounts have changed, due to a
 
 - Once `updateOnConfigChange` is enabled, modifying the `data` of any `ConfigMap` or `Secret` referenced by the `template` section of the job will trigger the job again.
 
-### **_Job Controller_**
-
-![job-controller-flow](quarks_ejobjobcontroller_flow.png)
-*Fig. 3: The Job controller flow*
-
-This is an auxiliary controller that relies on the Errand Controller output. It will be watching for Kubernetes Jobs that Succeeded or Failed, and eventually it will generate Kubernetes secrets.
-
-#### Watches in job controller
-
-- `Jobs`: Succeeded or Failed
-
-#### Reconciliation in job controller
-
-- Generate Kubernetes secrets(versioned them)
-
-#### Highlights in job controller
-
 ##### Persisted Output
 
 - The developer can specify a `Secret` where the standard output/error output of the `ExtendedJob` is stored.
@@ -102,6 +85,17 @@ This is an auxiliary controller that relies on the Errand Controller output. It 
 - One secret is created or overwritten per container in the pod. The secrets' names are `<namePrefix>-<containerName>`.
 
 - The only supported output type currently is JSON with a flat structure, i.e. all values being string values.
+
+- The developer should ensure that he/she redirects the JSON output to a file named output.json in /mnt/quarks volume mount at the end of the container script. An example of the command field in the extendedjob spec will look like this 
+
+```
+command: ["/bin/sh"]
+args: ["-c","json='{\"foo\": \"1\", \"bar\": \"baz\"}' && echo $json >> /mnt/quarks/output.json"]
+```
+
+- The secret is created by a side container in extendedjob pod which captures the create event of /mnt/quarks/output.json file.
+
+- Secrets are created for each container in the extended job pod spec.
 
 - **Note:** Output of previous runs is overwritten.
 
@@ -125,6 +119,21 @@ Each versioned secret has the following characteristics:
   - `fissile.cloudfoundry.org/secret-kind` with a value of `versionedSecret`
   - `fissile.cloudfoundry.org/secret-version` with a value set to the `ordinal` of the secret
 - an annotation of `fissile.cloudfoundry.org/source-description` that contains arbitrary information about the creator of the secret
+
+### **_Job Controller_**
+
+![job-controller-flow](quarks_ejobjobcontroller_flow.png)
+*Fig. 3: The Job controller flow*
+
+This is an auxiliary controller that relies on the Errand Controller output. It will be watching for Kubernetes Jobs that have Succeeded and deletes the job. If the jobpod of the succeeded job has a label `delete=pod`, it deletes the job pod too.
+
+#### Watches in job controller
+
+- `Jobs`: Succeeded 
+
+#### Reconciliation in job controller
+
+- Deletes succeeded job and its pod.
 
 ## Relationship with the BDPL component
 
