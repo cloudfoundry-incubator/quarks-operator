@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
@@ -48,7 +50,10 @@ func (k *Kubectl) RunCommandWithCheckString(namespace string, podName string, co
 
 // checkString checks is the string is present in the output of the kubectl command
 func (k *Kubectl) checkString(namespace string, podName string, commandInPod string, result string) (bool, error) {
-	out, err := runBinary(kubeCtlCmd, "--namespace", namespace, "exec", "-it", podName, commandInPod)
+	args := []string{"--namespace", namespace, "exec", "-it", podName, "--"}
+	args = append(args, strings.Split(commandInPod, " ")...)
+
+	out, err := runBinary(kubeCtlCmd, args...)
 	if err != nil {
 		return false, nil
 	}
@@ -75,6 +80,20 @@ func (k *Kubectl) PodExists(namespace string, labelName string, podName string) 
 		return true, nil
 	}
 	return false, nil
+}
+
+// PodStatus returns the status if the pod by that label is present
+func (k *Kubectl) PodStatus(namespace string, podName string) (*v1.PodStatus, error) {
+	out, err := runBinary(kubeCtlCmd, "--namespace", namespace, "get", "pod", podName, "-o", "json")
+	if err != nil {
+		return nil, errors.Wrapf(err, "Getting pod %s failed. %s", podName, string(out))
+	}
+	var pod v1.Pod
+	err = json.Unmarshal(out, &pod)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Invalid json '%s': %s", string(out), err.Error())
+	}
+	return &pod.Status, nil
 }
 
 // WaitForService blocks until the service is available. It fails after the timeout.
