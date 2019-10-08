@@ -360,6 +360,19 @@ var _ = Describe("Examples Directory", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 			}
+
+			By("negativ DNS lookup")
+			unresolvableNames := []string{"myalias.",
+				"myalias.service.",
+				addNamespace("myalias.%s.svc.cluster"),
+				addNamespace("myalias.%s.svc.cluster."),
+				addNamespace("myalias.%s.svc.")}
+
+			for _, name := range unresolvableNames {
+				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), "NXDOMAIN")
+				Expect(err).ToNot(HaveOccurred())
+
+			}
 		})
 	})
 
