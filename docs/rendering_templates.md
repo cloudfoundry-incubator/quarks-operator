@@ -44,7 +44,7 @@ The main purpose of the data gathering phase is to compile all information requi
 - link instances
 - bpm yaml
 
-Two containers are run for each instance group in the deployment manifest, using the image of the CF Operator. These two containers write the following on stdout:
+Two containers are run for each instance group in the deployment manifest, using the image of the CF Operator. These two containers write the following on to a file `output.json` in the volume mount `/mnt/quarks` of the container :
 
 - A `Secret` named `<deployment-name>.ig-resolved.<instance-group>-v<version>`
 
