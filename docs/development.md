@@ -9,8 +9,6 @@
   - [Create-Or-Update pattern](#create-or-update-pattern)
   - [Logging and Events](#logging-and-events)
   - [Versioning](#versioning)
-  - [Releasing](#releasing)
-    - [How to Create a New Release](#how-to-create-a-new-release)
 
 ## Requirements
 
