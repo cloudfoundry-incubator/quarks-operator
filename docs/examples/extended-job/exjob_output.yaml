@@ -9,7 +9,7 @@ spec:
         - name: json
           image: busybox
           command: ["/bin/sh"]
-          args: ["-c","json='{\"foo\": \"1\", \"bar\": \"baz\"}' && sleep 5 && echo $json >> /mnt/quarks/output.json"]
+          args: ["-c","json='{\"foo\": \"1\", \"bar\": \"baz\"}' && sleep 20 && echo $json >> /mnt/quarks/output.json"]
       restartPolicy: Never
       terminationGracePeriodSeconds: 1
   trigger:

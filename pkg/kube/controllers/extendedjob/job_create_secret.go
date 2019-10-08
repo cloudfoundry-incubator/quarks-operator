@@ -6,18 +6,18 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/pkg/errors"
+	"gopkg.in/fsnotify.v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
@@ -33,43 +33,48 @@ var (
 	LabelEjobPod = fmt.Sprintf("%s/ejob-name", apis.GroupName)
 )
 
+// PersistOutputInterface creates a kubernetes secret for each container in the in the extendedjob pod.
+type PersistOutputInterface struct {
+	namespace            string
+	podName              string
+	clientSet            kubernetes.Interface
+	versionedClientSet   versioned.Interface
+	outputFilePathPrefix string
+}
+
+// NewPersistOutputInterface returns a persistoutput interface which can create kubernetes secrets.
+func NewPersistOutputInterface(namespace string, podName string, clientSet kubernetes.Interface, versionedClientSet versioned.Interface, outputFilePathPrefix string) *PersistOutputInterface {
+	return &PersistOutputInterface{
+		namespace:            namespace,
+		podName:              podName,
+		clientSet:            clientSet,
+		versionedClientSet:   versionedClientSet,
+		outputFilePathPrefix: outputFilePathPrefix,
+	}
+}
+
 // PersistOutput converts the output files of each container
 // in the pod related to an ejob into a kubernetes secret.
-func PersistOutput(namespace string) error {
+func (po *PersistOutputInterface) PersistOutput() error {
 
-	// hostname of the container is the pod name in kubernetes
-	podName, err := os.Hostname()
+	// Fetch the pod and job
+	pod, err := po.clientSet.CoreV1().Pods(po.namespace).Get(po.podName, metav1.GetOptions{})
 	if err != nil {
-		return errors.Wrapf(err, "failed to fetch pod name.")
-	}
-	if podName == "" {
-		return errors.Wrapf(err, "pod name is empty.")
+		return errors.Wrapf(err, "failed to fetch pod %s", po.podName)
 	}
 
-	// Authenticate with the cluster
-	clientSet, versionedClientSet, err := authenticateInCluster()
-	if err != nil {
-		return err
-	}
-
-	// Fetch the pod
-	pod, err := clientSet.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
-	if err != nil {
-		return errors.Wrapf(err, "failed to fetch pod %s", podName)
-	}
-
-	// Fetch the exjob
+	// Fetch the exjob and job
 	exjobName := pod.GetLabels()[LabelEjobPod]
 
-	exjobClient := versionedClientSet.ExtendedjobV1alpha1().ExtendedJobs(namespace)
+	exjobClient := po.versionedClientSet.ExtendedjobV1alpha1().ExtendedJobs(po.namespace)
 	exjob, err := exjobClient.Get(exjobName, metav1.GetOptions{})
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch exjob")
 	}
 
-	// convert output if needed
-	if exjob.Spec.Output != nil {
-		err = convertOutputToSecret(pod, exjob.Spec.Output.NamePrefix, namespace, clientSet, exjob)
+	// Persist output if needed
+	if !reflect.DeepEqual(ejv1.Output{}, exjob.Spec.Output) && exjob.Spec.Output != nil {
+		err = po.ConvertOutputToSecretPod(pod, exjob)
 		if err != nil {
 			return err
 		}
@@ -77,62 +82,100 @@ func PersistOutput(namespace string) error {
 	return nil
 }
 
-func convertOutputToSecret(pod *corev1.Pod, namePrefix string, namespace string, clientSet *kubernetes.Clientset, exjob *ejv1.ExtendedJob) error {
-	fileNotifyChannel := make(chan int)
-	errorChannel := make(chan error)
+// ConvertOutputToSecretPod starts goroutine for converting each container
+// output into a secret.
+func (po *PersistOutputInterface) ConvertOutputToSecretPod(pod *corev1.Pod, exjob *ejv1.ExtendedJob) error {
 
-	// Loop over containers and create secrets for each output file for container
-	for containerIndex, container := range pod.Spec.Containers {
+	//fileNotifyChannel := make(chan int)
+	//errorChannel := make(chan error)
+
+	// Loop over containers
+	for _, container := range pod.Spec.Containers {
 
 		if container.Name == "output-persist" {
 			continue
 		}
 
-		filePath := filepath.Join("/mnt/quarks/", container.Name, "output.json")
+		go po.ConvertOutputToSecretContainer(container)
 
-		// Go routine to wait for the file to be created
-		go waitForFile(containerIndex, filePath, fileNotifyChannel, errorChannel, container.Name)
 	}
 
-	// wait for all the go routines
+	/*// wait for all the go routines
 	for i := 0; i < len(pod.Spec.Containers)-1; i++ {
 		select {
 		case containerIndex := <-fileNotifyChannel:
+			getContainerState()
+			// Fetch the pod and job
+			pod, err := po.clientSet.CoreV1().Pods(po.namespace).Get(po.podName, metav1.GetOptions{})
+			if err != nil {
+				return errors.Wrapf(err, "failed to fetch pod %s", po.podName)
+			}
 			outputContainer := pod.Spec.Containers[containerIndex]
-			err := createOutputSecret(outputContainer, namePrefix, namespace, pod.Name, clientSet, exjob)
+			fmt.Println("Container Name", outputContainer.Name, pod.Status.ContainerStatuses[containerIndex].State.Te, pod.Status.ContainerStatuses[containerIndex].Name)
+			err := po.CreateSecret(outputContainer, pod.Name, exjob)
 			if err != nil {
 				return err
 			}
 		case failure := <-errorChannel:
 			return errors.Wrapf(failure, "failure waiting for output file for container in pod %s", pod.GetName())
 		}
+	}*/
+	return nil
+}
+
+// ConvertOutputToSecretContainer converts json output file
+// of the specified container into a secret
+func (po *PersistOutputInterface) ConvertOutputToSecretContainer(container corev1.Container) error {
+	filePath := filepath.Join(po.outputFilePathPrefix, container.Name, "output.json")
+	fileFound, err := po.CheckForOutputFile(filePath, container.Name)
+	if err != nil {
+		return err
+	}
+	if fileFound {
+		_, err := po.GetContainerExitCode(container.Name)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-// fileExists checks if the file exists
-func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
+// GetContainerExitCode returns the exit code of the container
+func (po *PersistOutputInterface) GetContainerExitCode(containerName string) (int, error) {
+
+	// Wait until the container state is terminated
+	for {
+		pod, err := po.clientSet.CoreV1().Pods(po.namespace).Get(po.podName, metav1.GetOptions{})
+		if err != nil {
+			return -1, errors.Wrapf(err, "failed to fetch pod %s", po.podName)
+		}
+		for continerStatusIndex, containerStatus := range pod.Status.ContainerStatuses {
+			if containerStatus.Name == containerName {
+				fmt.Println(pod.Status.ContainerStatuses[continerStatusIndex].State.Terminated)
+				break
+			}
+		}
 	}
-	return !info.IsDir()
+	//return 0, nil
 }
 
-// waitForFile waits for the file to be created
-func waitForFile(containerIndex int, filePath string, fileNotifyChannel chan<- int, errorChannel chan<- error, containerName string) {
+// CheckForOutputFile waits for the output json file to be created
+// in the container
+func (po *PersistOutputInterface) CheckForOutputFile(filePath string, containerName string) (bool, error) {
 
 	if fileExists(filePath) {
-		fileNotifyChannel <- containerIndex
+		return true, nil
 	}
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		errorChannel <- err
+		return false, err
 	}
 	defer watcher.Close()
 
-	done := make(chan bool)
+	createEventFileChannel := make(chan bool)
+	errorEventFileChannel := make(chan error)
+
 	go func() {
 		for {
 			select {
@@ -141,52 +184,38 @@ func waitForFile(containerIndex int, filePath string, fileNotifyChannel chan<- i
 					continue
 				}
 				if event.Op == fsnotify.Create && event.Name == filePath {
-					fileNotifyChannel <- containerIndex
-					return
+					createEventFileChannel <- true
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					continue
 				}
-				errorChannel <- err
-				return
+				errorEventFileChannel <- err
 			}
 		}
 	}()
 
-	err = watcher.Add(filepath.Join("/mnt/quarks/", containerName))
+	err = watcher.Add(filepath.Join(po.outputFilePathPrefix, containerName))
 	if err != nil {
-		errorChannel <- err
+		return false, err
 	}
-	<-done
+
+	select {
+	case fileFound := <-createEventFileChannel:
+		return fileFound, nil
+	case err := <-errorEventFileChannel:
+		return false, err
+	}
 }
 
-// authenticateInCluster authenticates with the in cluster and returns the client
-func authenticateInCluster() (*kubernetes.Clientset, *versioned.Clientset, error) {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to authenticate with incluster config")
-	}
+// CreateSecret converts the output file into json and creates a secret for a given container
+func (po *PersistOutputInterface) CreateSecret(outputContainer corev1.Container, podName string, exjob *ejv1.ExtendedJob) error {
 
-	clientSet, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to create clientset with incluster config")
-	}
-
-	versionedClientSet, err := versioned.NewForConfig(config)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to create versioned clientset with incluster config")
-	}
-
-	return clientSet, versionedClientSet, nil
-}
-
-func createOutputSecret(outputContainer corev1.Container, namePrefix string, namespace string, podName string, clientSet *kubernetes.Clientset, exjob *ejv1.ExtendedJob) error {
-
+	namePrefix := exjob.Spec.Output.NamePrefix
 	secretName := namePrefix + outputContainer.Name
 
 	// Fetch json from file
-	filePath := filepath.Join("/mnt/quarks/", outputContainer.Name, "output.json")
+	filePath := filepath.Join(po.outputFilePathPrefix, outputContainer.Name, "output.json")
 	file, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return errors.Wrapf(err, "unable to read file %s in container %s in pod %s", filePath, outputContainer.Name, podName)
@@ -202,7 +231,7 @@ func createOutputSecret(outputContainer corev1.Container, namePrefix string, nam
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
-			Namespace: namespace,
+			Namespace: po.namespace,
 		},
 	}
 	secretLabels := exjob.Spec.Output.SecretLabels
@@ -216,7 +245,7 @@ func createOutputSecret(outputContainer corev1.Container, namePrefix string, nam
 
 	if exjob.Spec.Output.Versioned {
 		// Use secretName as versioned secret name prefix: <secretName>-v<version>
-		err = createVersionSecret(clientSet, namespace, exjob.GetName(), exjob.GetUID(), secretName, data, secretLabels, "created by extendedjob")
+		err = po.CreateVersionSecret(exjob.GetName(), exjob.GetUID(), secretName, data, secretLabels, "created by extendedjob")
 		if err != nil {
 			return errors.Wrapf(err, "could not persist ejob's %s output to a secret", exjob.GetName())
 		}
@@ -224,12 +253,12 @@ func createOutputSecret(outputContainer corev1.Container, namePrefix string, nam
 		secret.StringData = data
 		secret.Labels = secretLabels
 
-		_, err = clientSet.CoreV1().Secrets(namespace).Create(secret)
+		_, err = po.clientSet.CoreV1().Secrets(po.namespace).Create(secret)
 
 		if err != nil {
 			if apierrors.IsAlreadyExists(err) {
 				// If it exists update it
-				_, err = clientSet.CoreV1().Secrets(namespace).Update(secret)
+				_, err = po.clientSet.CoreV1().Secrets(po.namespace).Update(secret)
 				if err != nil {
 					return errors.Wrapf(err, "failed to update secret %s for container %s in pod %s.", secretName, outputContainer.Name, podName)
 				}
@@ -242,8 +271,9 @@ func createOutputSecret(outputContainer corev1.Container, namePrefix string, nam
 	return nil
 }
 
-func createVersionSecret(clientSet *kubernetes.Clientset, namespace string, ownerName string, ownerID types.UID, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error {
-	currentVersion, err := getGreatestVersion(clientSet, namespace, secretName)
+// CreateVersionSecret create a versioned kubernetes secret given the data.
+func (po *PersistOutputInterface) CreateVersionSecret(ownerName string, ownerID types.UID, secretName string, secretData map[string]string, labels map[string]string, sourceDescription string) error {
+	currentVersion, err := getGreatestVersion(po.clientSet, po.namespace, secretName)
 	if err != nil {
 		return err
 	}
@@ -260,7 +290,7 @@ func createVersionSecret(clientSet *kubernetes.Clientset, namespace string, owne
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generatedSecretName,
-			Namespace: namespace,
+			Namespace: po.namespace,
 			Labels:    labels,
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -279,11 +309,20 @@ func createVersionSecret(clientSet *kubernetes.Clientset, namespace string, owne
 		StringData: secretData,
 	}
 
-	_, err = clientSet.CoreV1().Secrets(namespace).Create(secret)
+	_, err = po.clientSet.CoreV1().Secrets(po.namespace).Create(secret)
 	return err
 }
 
-func getGreatestVersion(clientSet *kubernetes.Clientset, namespace string, secretName string) (int, error) {
+// fileExists checks if the file exists
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}
+
+func getGreatestVersion(clientSet kubernetes.Interface, namespace string, secretName string) (int, error) {
 	list, err := listSecrets(clientSet, namespace, secretName)
 	if err != nil {
 		return -1, err
@@ -304,7 +343,7 @@ func getGreatestVersion(clientSet *kubernetes.Clientset, namespace string, secre
 	return greatestVersion, nil
 }
 
-func listSecrets(clientSet *kubernetes.Clientset, namespace string, secretName string) ([]corev1.Secret, error) {
+func listSecrets(clientSet kubernetes.Interface, namespace string, secretName string) ([]corev1.Secret, error) {
 	secretLabelsSet := labels.Set{
 		versionedsecretstore.LabelSecretKind: versionedsecretstore.VersionSecretKind,
 	}

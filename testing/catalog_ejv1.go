@@ -31,6 +31,28 @@ func (c *Catalog) CmdPodTemplate(cmd []string) corev1.PodTemplateSpec {
 	}
 }
 
+// ExJobPodTemplate returns the spec with a given output-persist container
+func (c *Catalog) ExJobPodTemplate(cmd []string) corev1.PodTemplateSpec {
+	return corev1.PodTemplateSpec{
+		Spec: corev1.PodSpec{
+			RestartPolicy:                 corev1.RestartPolicyNever,
+			TerminationGracePeriodSeconds: util.Int64(1),
+			Containers: []corev1.Container{
+				{
+					Name:    "busybox",
+					Image:   "busybox",
+					Command: cmd,
+				},
+				{
+					Name:    "output-persist",
+					Image:   "busybox",
+					Command: cmd,
+				},
+			},
+		},
+	}
+}
+
 // ConfigPodTemplate returns the spec with a given command for busybox
 func (c *Catalog) ConfigPodTemplate() corev1.PodTemplateSpec {
 	one := int64(1)
@@ -130,7 +152,7 @@ func (c *Catalog) DefaultExtendedJob(name string) *ejv1.ExtendedJob {
 			Trigger: ejv1.Trigger{
 				Strategy: ejv1.TriggerNow,
 			},
-			Template: c.CmdPodTemplate(cmd),
+			Template: c.ExJobPodTemplate(cmd),
 		},
 	}
 }
@@ -153,7 +175,7 @@ func (c *Catalog) DefaultExtendedJobWithSucceededJob(name string) (*ejv1.Extende
 		Spec:   batchv1.JobSpec{BackoffLimit: backoffLimit},
 		Status: batchv1.JobStatus{Succeeded: 1},
 	}
-	pod := c.DefaultPod(name + "-pod")
+	pod := c.DefaultExJobPod(name + "-pod")
 	pod.Labels = map[string]string{
 		"job-name": job.GetName(),
 	}
