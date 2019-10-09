@@ -39,7 +39,7 @@ type DomainNameService interface {
 	HeadlessServiceName(instanceGroupName string) string
 
 	// DNSSetting get the DNS settings for POD
-	DNSSetting() (corev1.DNSPolicy, *corev1.PodDNSConfig)
+	DNSSetting() (corev1.DNSPolicy, *corev1.PodDNSConfig, error)
 
 	// Reconcile DNS stuff
 	Reconcile(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error
@@ -115,16 +115,16 @@ func (dns *boshDomainNameService) HeadlessServiceName(instanceGroupName string) 
 }
 
 // DNSSetting see interface
-func (dns *boshDomainNameService) DNSSetting() (corev1.DNSPolicy, *corev1.PodDNSConfig) {
+func (dns *boshDomainNameService) DNSSetting() (corev1.DNSPolicy, *corev1.PodDNSConfig, error) {
 	if dns.LocalDNSIP == "" {
-		panic("BoshDomainNameService: DNSSetting called before Reconcile")
+		return corev1.DNSNone, nil, errors.New("BoshDomainNameService: DNSSetting called before Reconcile")
 	}
 	ndots := "5"
 	return corev1.DNSNone, &corev1.PodDNSConfig{
 		Nameservers: []string{dns.LocalDNSIP},
 		Searches:    []string{"svc.cluster.local", "cluster.local", "service.cf.internal"},
 		Options:     []corev1.PodDNSConfigOption{{Name: "ndots", Value: &ndots}},
-	}
+	}, nil
 }
 
 // Reconcile see interface
@@ -265,8 +265,8 @@ func (dns *simpleDomainNameService) HeadlessServiceName(instanceGroupName string
 }
 
 // DNSSetting see interface
-func (dns *simpleDomainNameService) DNSSetting() (corev1.DNSPolicy, *corev1.PodDNSConfig) {
-	return corev1.DNSClusterFirst, nil
+func (dns *simpleDomainNameService) DNSSetting() (corev1.DNSPolicy, *corev1.PodDNSConfig, error) {
+	return corev1.DNSClusterFirst, nil, nil
 }
 
 // Reconcile see interface
