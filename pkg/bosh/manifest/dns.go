@@ -5,14 +5,11 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"regexp"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
 
 	appsv1 "k8s.io/api/apps/v1"
 
@@ -222,27 +219,6 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace strin
 	return nil
 }
 
-var re = regexp.MustCompile(`nameserver\s+([\d\.]*)`)
-
-func (dns *boshDomainNameService) rootDNSIP() string {
-	content, err := ioutil.ReadFile("/etc/resolv.conf")
-	if err != nil {
-		content = []byte{}
-	}
-	return GetNameserverFromResolveConfig(content)
-}
-
-// GetNameserverFromResolveConfig read nameserver from resolve.conf
-func GetNameserverFromResolveConfig(content []byte) string {
-	found := re.FindSubmatch(content)
-	if len(found) == 0 {
-		ctxlog.Errorf(context.Background(), "No nameserver found in resolve.conf using 1.1.1.1")
-		return "1.1.1.1"
-	}
-	return string(found[1])
-
-}
-
 type simpleDomainNameService struct {
 	ManifestName string
 }
@@ -327,7 +303,7 @@ func createCorefile(dns *boshDomainNameService, namespace string) string {
     health
 %s
     rewrite name substring service.cf.internal. %s.svc.cluster.local.
-    forward . %s
+    forward . /etc/resolv.conf
 }
-	`, rewrites, namespace, dns.rootDNSIP())
+	`, rewrites, namespace)
 }
