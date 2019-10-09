@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+
 	"github.com/go-logr/zapr"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
@@ -70,6 +72,8 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return wrapError(err, "Couldn't parse cf-operator docker image reference.")
 		}
+
+		manifest.SetupBoshDNSDockerImage(viper.GetString("bosh-dns-docker-image"))
 
 		log.Infof("Starting cf-operator %s with namespace %s", version.Version, watchNamespace)
 		log.Infof("cf-operator docker image: %s", converter.GetOperatorDockerImage())
@@ -151,6 +155,7 @@ func init() {
 	pf.StringP("docker-image-org", "o", "cfcontainerization", "Dockerhub organization that provides the operator docker image")
 	pf.StringP("docker-image-repository", "r", "cf-operator", "Dockerhub repository that provides the operator docker image")
 	pf.StringP("docker-image-tag", "t", version.Version, "Tag of the operator docker image")
+	pf.StringP("bosh-dns-docker-image", "", "coredns/coredns:1.6.3", "The docker image used for emulating bosh DNS (a CoreDNS image)")
 	pf.StringP("kubeconfig", "c", "", "Path to a kubeconfig, not required in-cluster")
 	pf.StringP("log-level", "l", "debug", "Only print log messages from this level onward")
 	pf.Int("max-boshdeployment-workers", 1, "Maximum number of workers concurrently running BOSHDeployment controller")
@@ -168,6 +173,7 @@ func init() {
 	viper.BindPFlag("docker-image-org", pf.Lookup("docker-image-org"))
 	viper.BindPFlag("docker-image-repository", pf.Lookup("docker-image-repository"))
 	viper.BindPFlag("docker-image-tag", rootCmd.PersistentFlags().Lookup("docker-image-tag"))
+	viper.BindPFlag("bosh-dns-docker-image", rootCmd.PersistentFlags().Lookup("bosh-dns-docker-image"))
 	viper.BindPFlag("kubeconfig", pf.Lookup("kubeconfig"))
 	viper.BindPFlag("log-level", pf.Lookup("log-level"))
 	viper.BindPFlag("max-boshdeployment-workers", pf.Lookup("max-boshdeployment-workers"))
@@ -186,6 +192,7 @@ func init() {
 		"docker-image-org":                       "DOCKER_IMAGE_ORG",
 		"docker-image-repository":                "DOCKER_IMAGE_REPOSITORY",
 		"docker-image-tag":                       "DOCKER_IMAGE_TAG",
+		"bosh-dns-docker-image":                  "BOSH_DNS_DOCKER_IMAGE",
 		"kubeconfig":                             "KUBECONFIG",
 		"log-level":                              "LOG_LEVEL",
 		"max-boshdeployment-workers":             "MAX_BOSHDEPLOYMENT_WORKERS",

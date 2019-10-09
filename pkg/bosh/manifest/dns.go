@@ -124,6 +124,13 @@ func (dns *boshDomainNameService) DNSSetting() (corev1.DNSPolicy, *corev1.PodDNS
 	}, nil
 }
 
+var boshDNSDockerImage = ""
+
+// SetupBoshDNSDockerImage initializes the package scoped variable
+func SetupBoshDNSDockerImage(image string) {
+	boshDNSDockerImage = image
+}
+
 // Reconcile see interface
 func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
 	const appName = "bosh-dns"
@@ -172,7 +179,7 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace strin
 						{
 							Name:  "coredns",
 							Args:  []string{"-conf", "/etc/coredns/Corefile"},
-							Image: "coredns/coredns:1.6.3",
+							Image: boshDNSDockerImage,
 							Ports: []corev1.ContainerPort{dnsUDPPort, dnsTCPPort, metricsPort},
 							VolumeMounts: []corev1.VolumeMount{
 								{MountPath: "/etc/coredns", Name: volumeName, ReadOnly: true},
