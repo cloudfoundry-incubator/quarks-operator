@@ -177,7 +177,7 @@ func (m *Manifest) loadDNS() {
 	for _, addon := range m.AddOns {
 		if addon.Name == BoshDNSAddOnName {
 			var err error
-			dns, err := NewBoshDomainNameService(addon)
+			dns, err := NewBoshDomainNameService(addon, m.Name)
 			if err != nil {
 				ctxlog.Errorf(context.TODO(), "Error loading bosh dns configuration: %s", err.Error())
 				continue
@@ -186,7 +186,7 @@ func (m *Manifest) loadDNS() {
 			return
 		}
 	}
-	m.DNS = NewSimpleDomainNameService()
+	m.DNS = NewSimpleDomainNameService(m.Name)
 }
 
 // Marshal serializes a BOSH manifest into yaml

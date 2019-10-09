@@ -306,7 +306,7 @@ instance_groups:
 					},
 				},
 				AddOnsApplied: true,
-				DNS:           bdm.NewSimpleDomainNameService(),
+				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
 			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
@@ -339,7 +339,7 @@ instance_groups:
 					},
 				},
 				AddOnsApplied: true,
-				DNS:           bdm.NewSimpleDomainNameService(),
+				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
 			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
@@ -368,7 +368,7 @@ instance_groups:
 					},
 				},
 				AddOnsApplied: true,
-				DNS:           bdm.NewSimpleDomainNameService(),
+				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
 			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
@@ -415,7 +415,7 @@ instance_groups:
 					},
 				},
 				AddOnsApplied: true,
-				DNS:           bdm.NewSimpleDomainNameService(),
+				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
 			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
@@ -472,7 +472,7 @@ instance_groups:
 					},
 				},
 				AddOnsApplied: true,
-				DNS:           bdm.NewSimpleDomainNameService(),
+				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
 			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
@@ -754,7 +754,7 @@ instance_groups:
 		It("loads dns from addons", func() {
 			deployment := &bdc.BOSHDeployment{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo-deployment",
+					Name: "scf",
 				},
 				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.ResourceReference{
@@ -769,7 +769,7 @@ instance_groups:
 			Expect(err).ToNot(HaveOccurred())
 			dns := m.DNS
 			Expect(dns).NotTo(BeNil())
-			Expect(dns.HeadlessServiceName("singleton-uaa", "scf")).To(Equal("uaa"))
+			Expect(dns.HeadlessServiceName("singleton-uaa")).To(Equal("uaa"))
 		})
 
 		It("handles multi-line implicit vars", func() {

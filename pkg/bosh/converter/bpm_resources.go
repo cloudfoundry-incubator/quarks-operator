@@ -149,7 +149,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 							SecurityContext: &corev1.PodSecurityContext{
 								FSGroup: &admGroupID,
 							},
-							Subdomain: dns.HeadlessServiceName(instanceGroup.Name, manifestName),
+							Subdomain: dns.HeadlessServiceName(instanceGroup.Name),
 						},
 					},
 				},
@@ -236,7 +236,7 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, dns manifest
 		}
 	}
 
-	for i, headlessServiceName := range dns.FindServiceNames(instanceGroup.Name, manifestName) {
+	for i, headlessServiceName := range dns.FindServiceNames(instanceGroup.Name) {
 		headlessService := corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        headlessServiceName,

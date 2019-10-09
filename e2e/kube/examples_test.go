@@ -54,10 +54,10 @@ var _ = Describe("Examples Directory", func() {
 			podWait("pod/example-extendedstatefulset-v2-1")
 
 			By("Checking the updated value in the env")
-			err = kubectl.RunCommandWithCheckString(namespace, "example-extendedstatefulset-v2-0", []string{"env"}, "SPECIAL_KEY=value1Updated")
+			err = kubectl.RunCommandWithCheckString(namespace, "example-extendedstatefulset-v2-0", "env", "SPECIAL_KEY=value1Updated")
 			Expect(err).ToNot(HaveOccurred())
 
-			err = kubectl.RunCommandWithCheckString(namespace, "example-extendedstatefulset-v2-1", []string{"env"}, "SPECIAL_KEY=value1Updated")
+			err = kubectl.RunCommandWithCheckString(namespace, "example-extendedstatefulset-v2-1", "env", "SPECIAL_KEY=value1Updated")
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -357,7 +357,7 @@ var _ = Describe("Examples Directory", func() {
 				"nats-deployment-nats"}
 
 			for _, name := range resolvableNames {
-				err = kubectl.RunCommandWithCheckString(namespace, podName, []string{"nslookup", name}, ip)
+				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), ip)
 				Expect(err).ToNot(HaveOccurred())
 
 			}
@@ -371,7 +371,7 @@ var _ = Describe("Examples Directory", func() {
 				fmt.Sprintf("myalias.%s.svc.", namespace)}
 
 			for _, name := range unresolvableNames {
-				err = kubectl.RunCommandWithCheckString(namespace, podName, []string{"sh", "-c", fmt.Sprintf("nslookup %s || true", name)}, "NXDOMAIN")
+				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s || true", name), "NXDOMAIN")
 				Expect(err).NotTo(HaveOccurred())
 			}
 		})

@@ -102,7 +102,7 @@ func (dg *InstanceGroupResolver) resolveManifest() error {
 // collectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
 func (dg *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 	for _, instanceGroup := range dg.manifest.InstanceGroups {
-		serviceName := dg.manifest.DNS.HeadlessServiceName(instanceGroup.Name, dg.manifest.Name)
+		serviceName := dg.manifest.DNS.HeadlessServiceName(instanceGroup.Name)
 
 		for jobIdx, job := range instanceGroup.Jobs {
 			// make sure a map entry exists for the current job release
