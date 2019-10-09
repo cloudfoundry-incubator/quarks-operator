@@ -177,14 +177,6 @@ var _ = Describe("kube converter", func() {
 			Expect(invalid).To(ConsistOf("cf-invalid"))
 
 		})
-		It("reads nameserver from resolve.conv", func() {
-			ip := manifest.GetNameserverFromResolveConfig([]byte("search wdf.sap.corp global.corp.sap\nnameserver 10.17.122.10\n"))
-			Expect(ip).To(Equal("10.17.122.10"))
-		})
-		It("reads default nameserver from resolve.conv", func() {
-			ip := manifest.GetNameserverFromResolveConfig([]byte(""))
-			Expect(ip).To(Equal("1.1.1.1"))
-		})
 		It("reconciles dns stuff", func() {
 			d, err := manifest.NewBoshDomainNameService(loadAddOn(), "scf")
 			Expect(err).NotTo(HaveOccurred())
