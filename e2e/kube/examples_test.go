@@ -54,10 +54,10 @@ var _ = Describe("Examples Directory", func() {
 			podWait("pod/example-extendedstatefulset-v2-1")
 
 			By("Checking the updated value in the env")
-			err = kubectl.RunCommandWithCheckString(namespace, "example-extendedstatefulset-v2-0", "env", "SPECIAL_KEY=value1Updated")
+			err = kubectl.RunCommandWithCheckString(namespace, "example-extendedstatefulset-v2-0", []string{"env"}, "SPECIAL_KEY=value1Updated")
 			Expect(err).ToNot(HaveOccurred())
 
-			err = kubectl.RunCommandWithCheckString(namespace, "example-extendedstatefulset-v2-1", "env", "SPECIAL_KEY=value1Updated")
+			err = kubectl.RunCommandWithCheckString(namespace, "example-extendedstatefulset-v2-1", []string{"env"}, "SPECIAL_KEY=value1Updated")
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -326,7 +326,7 @@ var _ = Describe("Examples Directory", func() {
 		})
 	})
 
-	FContext("bosh dns example", func() {
+	Context("bosh dns example", func() {
 		BeforeEach(func() {
 			example = "bosh-deployment/boshdeployment-with-bosh-dns.yaml"
 		})
@@ -340,13 +340,14 @@ var _ = Describe("Examples Directory", func() {
 			ip := status.PodIP
 
 			By("DNS lookup")
-			resolvableNames := []string{addNamespace("myalias.%s.svc.cluster.local"),
-				addNamespace("myalias.%s.svc.cluster.local."),
-				addNamespace("myalias.%s.svc"),
-				addNamespace("myalias.%s"),
-				addNamespace("nats-deployment-nats.%s"),
-				addNamespace("nats-deployment-nats.%s.svc"),
-				addNamespace("nats-deployment-nats.%s.svc.cluster.local"),
+			resolvableNames := []string{
+				fmt.Sprintf("myalias.%s.svc.cluster.local", namespace),
+				fmt.Sprintf("myalias.%s.svc.cluster.local.", namespace),
+				fmt.Sprintf("myalias.%s.svc", namespace),
+				fmt.Sprintf("myalias.%s", namespace),
+				fmt.Sprintf("nats-deployment-nats.%s", namespace),
+				fmt.Sprintf("nats-deployment-nats.%s.svc", namespace),
+				fmt.Sprintf("nats-deployment-nats.%s.svc.cluster.local", namespace),
 				"myalias",
 				"myalias.service.cf.internal.",
 				"myalias.service.cf.internal",
@@ -356,27 +357,24 @@ var _ = Describe("Examples Directory", func() {
 				"nats-deployment-nats"}
 
 			for _, name := range resolvableNames {
-				err = kubectl.RunCommandOnceWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), ip)
+				err = kubectl.RunCommandWithCheckString(namespace, podName, []string{"nslookup", name}, ip)
 				Expect(err).ToNot(HaveOccurred())
 
 			}
 
 			By("negativ DNS lookup")
-			unresolvableNames := []string{"myalias.",
+			unresolvableNames := []string{
+				"myalias.",
 				"myalias.service.",
-				addNamespace("myalias.%s.svc.cluster"),
-				addNamespace("myalias.%s.svc.cluster."),
-				addNamespace("myalias.%s.svc.")}
+				fmt.Sprintf("myalias.%s.svc.cluster", namespace),
+				fmt.Sprintf("myalias.%s.svc.cluster.", namespace),
+				fmt.Sprintf("myalias.%s.svc.", namespace)}
 
 			for _, name := range unresolvableNames {
-				err = kubectl.RunCommandOnceWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), ip)
-				Expect(err).To(HaveOccurred()) //TODO right now, this fails because nslookup has a returncode != 0, this is not exactly what we want to check
+				err = kubectl.RunCommandWithCheckString(namespace, podName, []string{"sh", "-c", fmt.Sprintf("nslookup %s || true", name)}, "NXDOMAIN")
+				Expect(err).NotTo(HaveOccurred())
 			}
 		})
 	})
 
 })
-
-func addNamespace(s string) string {
-	return fmt.Sprintf(s, namespace)
-}
