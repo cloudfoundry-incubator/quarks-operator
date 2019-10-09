@@ -33,16 +33,16 @@ import (
 //DomainNameService abstraction
 type DomainNameService interface {
 	// FindServiceNames determines how a service should be named in accordance with the 'bosh-dns'-addon
-	FindServiceNames(instanceGroupName string, deploymentName string) []string
+	FindServiceNames(instanceGroupName string) []string
 
 	// HeadlessServiceName constructs the headless service name for the instance group.
-	HeadlessServiceName(instanceGroupName string, deploymentName string) string
+	HeadlessServiceName(instanceGroupName string) string
 
 	// DNSSetting get the DNS settings for POD
 	DNSSetting() (corev1.DNSPolicy, *corev1.PodDNSConfig)
 
 	// Reconcile DNS stuff
-	Reconcile(ctx context.Context, namespace string, manifestName string, c client.Client, setOwner func(object metav1.Object) error) error
+	Reconcile(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error
 }
 
 // Target of domain alias
@@ -62,8 +62,9 @@ type Alias struct {
 
 // boshDomainNameService is used to emulate Bosh DNS
 type boshDomainNameService struct {
-	aliases    []Alias
-	localDNSIP string
+	Aliases      []Alias
+	LocalDNSIP   string
+	ManifestName string
 }
 
 var _ DomainNameService = &boshDomainNameService{}
@@ -72,8 +73,8 @@ var _ DomainNameService = &boshDomainNameService{}
 const BoshDNSAddOnName = "bosh-dns-aliases"
 
 // NewBoshDomainNameService create a new DomainNameService
-func NewBoshDomainNameService(addOn *AddOn) (DomainNameService, error) {
-	dns := boshDomainNameService{}
+func NewBoshDomainNameService(addOn *AddOn, manifestName string) (DomainNameService, error) {
+	dns := boshDomainNameService{ManifestName: manifestName}
 	for _, job := range addOn.Jobs {
 		aliases := job.Properties.Properties["aliases"]
 		if aliases != nil {
@@ -82,16 +83,16 @@ func NewBoshDomainNameService(addOn *AddOn) (DomainNameService, error) {
 			if err != nil {
 				return nil, errors.Wrapf(err, "Loading aliases from manifest")
 			}
-			dns.aliases = append(dns.aliases, a...)
+			dns.Aliases = append(dns.Aliases, a...)
 		}
 	}
 	return &dns, nil
 }
 
 // FindServiceNames see interface
-func (dns *boshDomainNameService) FindServiceNames(instanceGroupName string, deploymentName string) []string {
+func (dns *boshDomainNameService) FindServiceNames(instanceGroupName string) []string {
 	result := make([]string, 0)
-	for _, alias := range dns.aliases {
+	for _, alias := range dns.Aliases {
 		for _, target := range alias.Targets {
 			if target.InstanceGroup == instanceGroupName {
 				result = append(result, strings.Split(alias.Domain, ".")[0])
@@ -99,35 +100,35 @@ func (dns *boshDomainNameService) FindServiceNames(instanceGroupName string, dep
 		}
 	}
 	if len(result) == 0 {
-		result = append(result, serviceName(instanceGroupName, deploymentName, 63))
+		result = append(result, serviceName(instanceGroupName, dns.ManifestName, 63))
 	}
 	return result
 }
 
 // HeadlessServiceName see interface
-func (dns *boshDomainNameService) HeadlessServiceName(instanceGroupName string, deploymentName string) string {
-	serviceNames := dns.FindServiceNames(instanceGroupName, deploymentName)
+func (dns *boshDomainNameService) HeadlessServiceName(instanceGroupName string) string {
+	serviceNames := dns.FindServiceNames(instanceGroupName)
 	if len(serviceNames) == 0 {
-		return serviceName(instanceGroupName, deploymentName, 63)
+		return serviceName(instanceGroupName, dns.ManifestName, 63)
 	}
 	return serviceNames[0]
 }
 
 // DNSSetting see interface
 func (dns *boshDomainNameService) DNSSetting() (corev1.DNSPolicy, *corev1.PodDNSConfig) {
-	if dns.localDNSIP == "" {
+	if dns.LocalDNSIP == "" {
 		panic("BoshDomainNameService: DNSSetting called before Reconcile")
 	}
 	ndots := "5"
 	return corev1.DNSNone, &corev1.PodDNSConfig{
-		Nameservers: []string{dns.localDNSIP},
+		Nameservers: []string{dns.LocalDNSIP},
 		Searches:    []string{"svc.cluster.local", "cluster.local", "service.cf.internal"},
 		Options:     []corev1.PodDNSConfigOption{{Name: "ndots", Value: &ndots}},
 	}
 }
 
 // Reconcile see interface
-func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace string, manifestName string, c client.Client, setOwner func(object metav1.Object) error) error {
+func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
 	const appName = "bosh-dns"
 	const volumeName = "bosh-dns-volume"
 	const coreConfigFile = "Corefile"
@@ -143,7 +144,7 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace strin
 
 	configMap := corev1.ConfigMap{
 		ObjectMeta: metadata,
-		Data:       map[string]string{coreConfigFile: createCorefile(dns, namespace, manifestName)},
+		Data:       map[string]string{coreConfigFile: createCorefile(dns, namespace)},
 	}
 	service := corev1.Service{
 		ObjectMeta: metadata,
@@ -217,7 +218,7 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace strin
 		return err
 	}
 
-	dns.localDNSIP = service.Spec.ClusterIP
+	dns.LocalDNSIP = service.Spec.ClusterIP
 	return nil
 }
 
@@ -243,23 +244,24 @@ func GetNameserverFromResolveConfig(content []byte) string {
 }
 
 type simpleDomainNameService struct {
+	ManifestName string
 }
 
 var _ DomainNameService = &simpleDomainNameService{}
 
 // NewSimpleDomainNameService emulates old behaviour without bosh dns
-func NewSimpleDomainNameService() DomainNameService {
-	return &simpleDomainNameService{}
+func NewSimpleDomainNameService(manifestName string) DomainNameService {
+	return &simpleDomainNameService{ManifestName: manifestName}
 }
 
 // FindServiceNames see interface
-func (dns *simpleDomainNameService) FindServiceNames(instanceGroupName string, deploymentName string) []string {
-	return []string{serviceName(instanceGroupName, deploymentName, 63)}
+func (dns *simpleDomainNameService) FindServiceNames(instanceGroupName string) []string {
+	return []string{serviceName(instanceGroupName, dns.ManifestName, 63)}
 }
 
 // HeadlessServiceName see interface
-func (dns *simpleDomainNameService) HeadlessServiceName(instanceGroupName string, deploymentName string) string {
-	return serviceName(instanceGroupName, deploymentName, 63)
+func (dns *simpleDomainNameService) HeadlessServiceName(instanceGroupName string) string {
+	return serviceName(instanceGroupName, dns.ManifestName, 63)
 }
 
 // DNSSetting see interface
@@ -268,7 +270,7 @@ func (dns *simpleDomainNameService) DNSSetting() (corev1.DNSPolicy, *corev1.PodD
 }
 
 // Reconcile see interface
-func (dns *simpleDomainNameService) Reconcile(ctx context.Context, namespace string, manifestName string, c client.Client, setOwner func(object metav1.Object) error) error {
+func (dns *simpleDomainNameService) Reconcile(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
 	return nil
 }
 
@@ -302,14 +304,14 @@ func deploymentMapMutateFn(deployment *appsv1.Deployment) controllerutil.MutateF
 	}
 }
 
-func createCorefile(dns *boshDomainNameService, namespace string, manifestName string) string {
+func createCorefile(dns *boshDomainNameService, namespace string) string {
 	rewrites := ""
 
 	// Support legacy cf-operator naming convention: <deployment name>-<ig name>
-	for _, alias := range dns.aliases {
+	for _, alias := range dns.Aliases {
 		newDomainName := fmt.Sprintf(`%s.%s.svc.cluster.local`, strings.Split(alias.Domain, ".")[0], namespace)
 		for _, target := range alias.Targets {
-			serviceName := serviceName(target.InstanceGroup, manifestName, 63)
+			serviceName := serviceName(target.InstanceGroup, dns.ManifestName, 63)
 			// For backwards compatibility, e.g. 'scf-nats'
 			rewrites = rewrites + fmt.Sprintf(`    rewrite name exact %s %s`,
 				regexp.QuoteMeta(serviceName), newDomainName) + "\n"

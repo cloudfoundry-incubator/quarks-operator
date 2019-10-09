@@ -155,25 +155,25 @@ var _ = Describe("kube converter", func() {
 	Context("bosh-dns", func() {
 
 		It("loads dns from addons correct", func() {
-			dns, err := manifest.NewBoshDomainNameService(loadAddOn())
+			dns, err := manifest.NewBoshDomainNameService(loadAddOn(), "")
 			Expect(err).NotTo(HaveOccurred())
-			services := dns.FindServiceNames("scheduler", "")
+			services := dns.FindServiceNames("scheduler")
 			Expect(services).To(HaveLen(1))
 			Expect(services[0]).To(Equal("auctioneer"))
-			Expect(dns.HeadlessServiceName("scheduler", "")).To(Equal("auctioneer"))
+			Expect(dns.HeadlessServiceName("scheduler")).To(Equal("auctioneer"))
 		})
 		It("returns the correct service names", func() {
-			dns, err := manifest.NewBoshDomainNameService(loadAddOn())
+			dns, err := manifest.NewBoshDomainNameService(loadAddOn(), "cf")
 			Expect(err).NotTo(HaveOccurred())
-			diegoAPI := dns.FindServiceNames("diego-api", "cf")
+			diegoAPI := dns.FindServiceNames("diego-api")
 			Expect(diegoAPI).To(ConsistOf("bbs", "bbs1"))
-			uaa := dns.FindServiceNames("uaa", "cf")
+			uaa := dns.FindServiceNames("uaa")
 			Expect(uaa).To(ConsistOf("uaa"))
 		})
 		It("returns the default name if there is no alias configured", func() {
-			dns, err := manifest.NewBoshDomainNameService(loadAddOn())
+			dns, err := manifest.NewBoshDomainNameService(loadAddOn(), "cf")
 			Expect(err).NotTo(HaveOccurred())
-			invalid := dns.FindServiceNames("invalid", "cf")
+			invalid := dns.FindServiceNames("invalid")
 			Expect(invalid).To(ConsistOf("cf-invalid"))
 
 		})
@@ -186,7 +186,7 @@ var _ = Describe("kube converter", func() {
 			Expect(ip).To(Equal("1.1.1.1"))
 		})
 		It("reconciles dns stuff", func() {
-			d, err := manifest.NewBoshDomainNameService(loadAddOn())
+			d, err := manifest.NewBoshDomainNameService(loadAddOn(), "scf")
 			Expect(err).NotTo(HaveOccurred())
 			scheme := runtime.NewScheme()
 			Expect(corev1.AddToScheme(scheme)).To(Succeed())
@@ -194,7 +194,7 @@ var _ = Describe("kube converter", func() {
 
 			client := fake.NewFakeClientWithScheme(scheme)
 			counter := 0
-			err = d.Reconcile(context.TODO(), "default", "scf", client, func(object v1.Object) error {
+			err = d.Reconcile(context.TODO(), "default", client, func(object v1.Object) error {
 				counter++
 				return nil
 			})
@@ -205,25 +205,23 @@ var _ = Describe("kube converter", func() {
 	Context("simple-dns", func() {
 
 		It("returns correct service names", func() {
-			dns := manifest.NewSimpleDomainNameService()
-			services := dns.FindServiceNames("scheduler", "sfc")
+			dns := manifest.NewSimpleDomainNameService("sfc")
+			services := dns.FindServiceNames("scheduler")
 			Expect(services).To(HaveLen(1))
 			Expect(services[0]).To(Equal("sfc-scheduler"))
-			Expect(dns.HeadlessServiceName("scheduler", "sfc")).To(Equal("sfc-scheduler"))
+			Expect(dns.HeadlessServiceName("scheduler")).To(Equal("sfc-scheduler"))
 		})
 		It("shorten long service names", func() {
-			dns := manifest.NewSimpleDomainNameService()
-			Expect(len(dns.HeadlessServiceName(
-				"scheduler-scheduler-scheduler-scheduler-scheduler-scheduler-scheduler-scheduler",
-				"sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-"))).
+			dns := manifest.NewSimpleDomainNameService("sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-")
+			Expect(len(dns.HeadlessServiceName("scheduler-scheduler-scheduler-scheduler-scheduler-scheduler-scheduler-scheduler"))).
 				To(Equal(63))
 		})
 		It("reconciles does nothing", func() {
-			dns := manifest.NewSimpleDomainNameService()
+			dns := manifest.NewSimpleDomainNameService("scf")
 
 			client := fake.NewFakeClientWithScheme(runtime.NewScheme())
 
-			err := dns.Reconcile(context.TODO(), "default", "scf", client, func(object v1.Object) error {
+			err := dns.Reconcile(context.TODO(), "default", client, func(object v1.Object) error {
 				return nil
 			})
 			Expect(err).NotTo(HaveOccurred())
