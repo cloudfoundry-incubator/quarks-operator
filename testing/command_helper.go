@@ -41,32 +41,17 @@ func NewKubectl() *Kubectl {
 	}
 }
 
-// RunCommandOnceWithCheckString runs the command specified helper in the container once
-func (k *Kubectl) RunCommandOnceWithCheckString(namespace string, podName string, commandInPod string, result string) error {
-	found, err := k.checkString(namespace, podName, commandInPod, result)
-
-	if err != nil {
-		return err
-	}
-
-	if !found {
-		return errors.Errorf("'%s' not found in output of command '%s'", result, commandInPod)
-	}
-
-	return nil
-}
-
 // RunCommandWithCheckString runs the command specified helper in the container
-func (k *Kubectl) RunCommandWithCheckString(namespace string, podName string, commandInPod string, result string) error {
+func (k *Kubectl) RunCommandWithCheckString(namespace string, podName string, commandInPod []string, result string) error {
 	return wait.PollImmediate(k.pollInterval, k.PollTimeout, func() (bool, error) {
 		return k.checkString(namespace, podName, commandInPod, result)
 	})
 }
 
 // checkString checks is the string is present in the output of the kubectl command
-func (k *Kubectl) checkString(namespace string, podName string, commandInPod string, result string) (bool, error) {
+func (k *Kubectl) checkString(namespace string, podName string, commandInPod []string, result string) (bool, error) {
 	args := []string{"--namespace", namespace, "exec", "-it", podName, "--"}
-	args = append(args, strings.Split(commandInPod, " ")...)
+	args = append(args, commandInPod...)
 
 	out, err := runBinary(kubeCtlCmd, args...)
 	if err != nil {
