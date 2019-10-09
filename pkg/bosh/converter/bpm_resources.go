@@ -158,7 +158,10 @@ func (kc *KubeConverter) serviceToExtendedSts(
 	}
 
 	spec := &extSts.Spec.Template.Spec.Template.Spec
-	spec.DNSPolicy, spec.DNSConfig = dns.DNSSetting()
+	spec.DNSPolicy, spec.DNSConfig, err = dns.DNSSetting()
+	if err != nil {
+		return essv1.ExtendedStatefulSet{}, err
+	}
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName != "" {
 		extSts.Spec.Template.Spec.Template.Spec.ServiceAccountName = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName
@@ -329,7 +332,11 @@ func (kc *KubeConverter) errandToExtendedJob(
 		},
 	}
 
-	eJob.Spec.Template.Spec.DNSPolicy, eJob.Spec.Template.Spec.DNSConfig = dns.DNSSetting()
+	eJob.Spec.Template.Spec.DNSPolicy, eJob.Spec.Template.Spec.DNSConfig, err = dns.DNSSetting()
+
+	if err != nil {
+		return ejv1.ExtendedJob{}, err
+	}
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity != nil {
 		eJob.Spec.Template.Spec.Affinity = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity
