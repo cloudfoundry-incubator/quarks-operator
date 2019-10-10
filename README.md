@@ -58,6 +58,50 @@ webhooks:
 '
 ```
 
+## Custom Resources
+
+The `cf-operator` watches four different types of custom resources:
+
+- BoshDeployment
+- ExtendedJob
+- ExtendedSecret
+- ExtendedStatefulset
+
+The `cf-operator` requires the according CRDs to be installed in the cluster in order to work as expected. By default, the `cf-operator` applies CRDs in your cluster automatically.
+
+To verify that the CRD´s are installed:
+
+```bash
+$ kubectl get crds
+NAME                                            CREATED AT
+boshdeployments.fissile.cloudfoundry.org        2019-06-25T07:08:37Z
+extendedjobs.fissile.cloudfoundry.org           2019-06-25T07:08:37Z
+extendedsecrets.fissile.cloudfoundry.org        2019-06-25T07:08:37Z
+extendedstatefulsets.fissile.cloudfoundry.org   2019-06-25T07:08:37Z
+```
+
+## Variables
+
+BOSH releases consume two types of variables, explicit and implicit ones.
+
+### Implicit Variables
+
+Implicit variables have to be created before creating a BOSH deployment resource.
+The [previous example](docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml) creates a secret named `nats-deployment.var-custom-password`. That value will be used to fill `((custom-password))` place holders in the BOSH manifest.
+
+The name of the secret has to follow this scheme: '<bosh-deployment-cr.name>.var-<variable-name>'
+
+Missing implicit variables are treated as an error.
+
+### Explicit Variables
+
+Explicit variables are explicitly defined in the [BOSH manifest](https://bosh.io/docs/manifest-v2/#variables). They are generated automatically upon deployment and stored in secrets.
+
+The naming scheme is the same as for implicit variables.
+
+If an explicit variable secret already exists, it will not be generated. This allows users to set their own passwords, etc.
+
+
 ## Using your fresh installation
 
 With a running `cf-operator` pod, you can try one of the files (see [docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml](docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml) ), as follows:
@@ -80,28 +124,15 @@ Or look at the k8s event log:
 kubectl get events -n cf-operator --watch
 ```
 
-For now deployments have to be in the namespace the operator is running in.
+## Modifying the deployment
 
-## Variables
+The main input to the operator is the `BOSH deployment` custom resource and the according manifest config map or secret. Changes to the `Spec` or `Data` fields of either of those will trigger the operator to recalculate the desired state and apply the required changes from the current state.
 
-BOSH releases consume two types of variables, explicit and implicit ones.
+Besides that there are more things the user can change which will trigger an update of the deployment:
 
-### Implicit Variables
-
-Implicit variables have to be created before creating a BOSH deployment resource.
-The [previous example](docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml) creates a secret named `nats-deployment.var-custom-password`. That value will be used to fill `((custom-password))` place holders in the BOSH manifest.
-
-The name of the secret has to follow this scheme: '<bosh-deployment-cr.name>.var-<variable-name>'
-
-Missing implicit variables are treated as an error.
-
-### Explicit Variables
-
-Explicit variables are explicitly defined in the [BOSH manifest](https://bosh.io/docs/manifest-v2/#variables). They are generated automatically upon deployment and stored in secrets.
-
-The naming scheme is the same as for implicit variables.
-
-If an explicit variable secret already exists, it will not be generated. This allows users to set their own passwords, etc.
+* `ops files` can be added or removed from the `BOSH deployment`. Existing `ops file` config maps and secrets can be modified
+* generated secrets for [explicit variables](docs/from_bosh_to_kube.md#variables-to-extended-secrets) can be modified
+* secrets for [implicit variables](docs/from_bosh_to_kube.md#manual-implicit-variables) have to be created by the user beforehand anyway, but can also be changed after the initial deployment
 
 ## Development and Tests
 
