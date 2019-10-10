@@ -84,3 +84,4 @@ tags
 /tmp/
 *.coverprofile
 .envrc
+testing/assets/output.json

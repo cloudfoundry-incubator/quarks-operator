@@ -100,7 +100,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 	bpmDisks disk.BPMResourceDisks,
 ) (essv1.ExtendedStatefulSet, error) {
 	defaultVolumeMounts := defaultDisks.VolumeMounts()
-	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
+	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks, instanceGroup.Properties.Quarks.RequiredService)
 	if err != nil {
 		return essv1.ExtendedStatefulSet{}, errors.Wrapf(err, "building initContainers failed for instance group %s", instanceGroup.Name)
 	}
@@ -181,17 +181,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 func (kc *KubeConverter) serviceToKubeServices(manifestName string, dns manifest.DomainNameService, instanceGroup *bdm.InstanceGroup, eSts *essv1.ExtendedStatefulSet) []corev1.Service {
 	var services []corev1.Service
 	// Collect ports to be exposed for each job
-	ports := []corev1.ServicePort{}
-	for _, job := range instanceGroup.Jobs {
-		for _, port := range job.Properties.Quarks.Ports {
-			ports = append(ports, corev1.ServicePort{
-				Name:     port.Name,
-				Protocol: corev1.Protocol(port.Protocol),
-				Port:     int32(port.Internal),
-			})
-		}
-	}
-
+	ports := instanceGroup.ServicePorts()
 	if len(ports) == 0 {
 		return services
 	}
@@ -277,7 +267,7 @@ func (kc *KubeConverter) errandToExtendedJob(
 	bpmDisks disk.BPMResourceDisks,
 ) (ejv1.ExtendedJob, error) {
 	defaultVolumeMounts := defaultDisks.VolumeMounts()
-	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
+	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks, instanceGroup.Properties.Quarks.RequiredService)
 	if err != nil {
 		return ejv1.ExtendedJob{}, errors.Wrapf(err, "building initContainers failed for instance group %s", instanceGroup.Name)
 	}
