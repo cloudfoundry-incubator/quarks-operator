@@ -27,11 +27,6 @@ into a versionsed secret or kube native secret using flags specified to this com
 			return errors.Errorf("persist-output command failed. cf-operator-namespace flag is empty.")
 		}
 
-		outputVolumePath := viper.GetString("output-volume-path")
-		if len(outputVolumePath) == 0 {
-			return errors.Errorf("persist-output command failed. cf-operator-namespace flag is empty.")
-		}
-
 		// hostname of the container is the pod name in kubernetes
 		podName, err := os.Hostname()
 		if err != nil {
@@ -47,7 +42,7 @@ into a versionsed secret or kube native secret using flags specified to this com
 			return err
 		}
 
-		po := extendedjob.NewPersistOutputInterface(namespace, podName, clientSet, versionedClientSet, outputVolumePath)
+		po := extendedjob.NewPersistOutputInterface(namespace, podName, clientSet, versionedClientSet, "/mnt/quarks")
 
 		return po.PersistOutput()
 	},
@@ -55,15 +50,6 @@ into a versionsed secret or kube native secret using flags specified to this com
 
 func init() {
 	utilCmd.AddCommand(persistOutputCmd)
-
-	persistOutputCmd.Flags().StringP("output-volume-path", "", "/mnt/quarks", "path to the volume mount")
-
-	viper.BindPFlag("output-volume-path", persistOutputCmd.Flags().Lookup("output-volume-path"))
-
-	argToEnv := map[string]string{
-		"output-volume-path": "OUTPUT_VOLUME_PATH",
-	}
-	AddEnvToUsage(persistOutputCmd, argToEnv)
 }
 
 // authenticateInCluster authenticates with the in cluster and returns the client
