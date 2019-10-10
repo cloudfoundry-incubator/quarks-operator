@@ -1,6 +1,8 @@
 package manifest
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -25,22 +27,72 @@ func (instanceGroups InstanceGroups) InstanceGroupByName(name string) (*Instance
 
 // InstanceGroup from BOSH deployment manifest.
 type InstanceGroup struct {
-	Name               string                 `json:"name"`
-	Instances          int                    `json:"instances"`
-	AZs                []string               `json:"azs"`
-	Jobs               []Job                  `json:"jobs"`
-	VMType             string                 `json:"vm_type,omitempty"`
-	VMExtensions       []string               `json:"vm_extensions,omitempty"`
-	VMResources        *VMResource            `json:"vm_resources"`
-	Stemcell           string                 `json:"stemcell"`
-	PersistentDisk     *int                   `json:"persistent_disk,omitempty"`
-	PersistentDiskType string                 `json:"persistent_disk_type,omitempty"`
-	Networks           []*Network             `json:"networks,omitempty"`
-	Update             *Update                `json:"update,omitempty"`
-	MigratedFrom       []*MigratedFrom        `json:"migrated_from,omitempty"`
-	LifeCycle          InstanceGroupType      `json:"lifecycle,omitempty"`
-	Properties         map[string]interface{} `json:"properties,omitempty"`
-	Env                AgentEnv               `json:"env,omitempty"`
+	Name               string                  `json:"name"`
+	Instances          int                     `json:"instances"`
+	AZs                []string                `json:"azs"`
+	Jobs               []Job                   `json:"jobs"`
+	VMType             string                  `json:"vm_type,omitempty"`
+	VMExtensions       []string                `json:"vm_extensions,omitempty"`
+	VMResources        *VMResource             `json:"vm_resources"`
+	Stemcell           string                  `json:"stemcell"`
+	PersistentDisk     *int                    `json:"persistent_disk,omitempty"`
+	PersistentDiskType string                  `json:"persistent_disk_type,omitempty"`
+	Networks           []*Network              `json:"networks,omitempty"`
+	Update             *Update                 `json:"update,omitempty"`
+	MigratedFrom       []*MigratedFrom         `json:"migrated_from,omitempty"`
+	LifeCycle          InstanceGroupType       `json:"lifecycle,omitempty"`
+	Properties         InstanceGroupProperties `json:"properties,omitempty"`
+	Env                AgentEnv                `json:"env,omitempty"`
+}
+
+// InstanceGroupQuarks represents the quark property of a InstanceGroup
+type InstanceGroupQuarks struct {
+	RequiredService *string `json:"required_service,omitempty"`
+}
+
+// InstanceGroupProperties represents the properties map of a InstanceGroup
+type InstanceGroupProperties struct {
+	Properties map[string]interface{}
+	Quarks     InstanceGroupQuarks
+}
+
+func copy(source map[string]interface{}) map[string]interface{} {
+	newMap := make(map[string]interface{})
+	for key, value := range source {
+		newMap[key] = value
+	}
+	return newMap
+}
+
+// MarshalJSON is implemented to support inlining Properties
+func (p *InstanceGroupProperties) MarshalJSON() ([]byte, error) {
+	properties := copy(p.Properties)
+	properties["quarks"] = p.Quarks
+	return json.Marshal(properties)
+}
+
+// UnmarshalJSON is implemented to support inlining properties
+func (p *InstanceGroupProperties) UnmarshalJSON(b []byte) error {
+	d := json.NewDecoder(bytes.NewReader(b))
+	d.UseNumber()
+	err := d.Decode(&p.Properties)
+	if err != nil {
+		return err
+	}
+	if p.Properties != nil {
+		quarks, ok := p.Properties["quarks"]
+		if ok {
+			bytes, err := json.Marshal(quarks)
+			if err != nil {
+				return err
+			}
+			if err = json.Unmarshal(bytes, &p.Quarks); err != nil {
+				return err
+			}
+			delete(p.Properties, "quarks")
+		}
+	}
+	return nil
 }
 
 // NameSanitized returns the sanitized instance group name.
@@ -94,6 +146,22 @@ func (ig *InstanceGroup) jobInstances(
 	return jobsInstances
 }
 
+// ServicePorts returns the service ports used by this instance group
+func (ig *InstanceGroup) ServicePorts() []corev1.ServicePort {
+	// Collect ports to be exposed for each job
+	ports := []corev1.ServicePort{}
+	for _, job := range ig.Jobs {
+		for _, port := range job.Properties.Quarks.Ports {
+			ports = append(ports, corev1.ServicePort{
+				Name:     port.Name,
+				Protocol: corev1.Protocol(port.Protocol),
+				Port:     int32(port.Internal),
+			})
+		}
+	}
+	return ports
+}
+
 // VMResource from BOSH deployment manifest.
 type VMResource struct {
 	CPU               int `json:"cpu"`
@@ -114,7 +182,7 @@ type Update struct {
 	MaxInFlight     string  `json:"max_in_flight"`
 	CanaryWatchTime string  `json:"canary_watch_time"`
 	UpdateWatchTime string  `json:"update_watch_time"`
-	Serial          bool    `json:"serial,omitempty"`
+	Serial          *bool   `json:"serial,omitempty"` // must be pointer, because otherwise default is false
 	VMStrategy      *string `json:"vm_strategy,omitempty"`
 }
 

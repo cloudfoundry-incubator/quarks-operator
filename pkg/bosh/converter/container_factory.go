@@ -57,6 +57,7 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
 	bpmDisks disk.BPMResourceDisks,
+	requiredService *string,
 ) ([]corev1.Container, error) {
 	copyingSpecsInitContainers := make([]corev1.Container, 0)
 	boshPreStartInitContainers := make([]corev1.Container, 0)
@@ -144,11 +145,29 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 		copyingSpecsInitContainers,
 		templateRenderingContainer(c.instanceGroupName, resolvedPropertiesSecretName),
 		createDirContainer(jobs),
+		createWaitContainer(requiredService),
 		boshPreStartInitContainers,
 		bpmPreStartInitContainers,
 	)
 
 	return initContainers, nil
+}
+
+func createWaitContainer(requiredService *string) []corev1.Container {
+	if requiredService == nil {
+		return nil
+	}
+	return []corev1.Container{{
+		Name:    "wait-for",
+		Image:   GetOperatorDockerImage(),
+		Command: []string{"/usr/bin/dumb-init", "--"},
+		Args: []string{
+			"/bin/sh",
+			"-xc",
+			fmt.Sprintf("cf-operator wait %s", *requiredService),
+		},
+	}}
+
 }
 
 // JobsToContainers creates a list of Containers for corev1.PodSpec Containers field.

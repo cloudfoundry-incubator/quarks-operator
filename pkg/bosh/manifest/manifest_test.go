@@ -1068,8 +1068,8 @@ var _ = Describe("Manifest", func() {
 				ig := manifest.InstanceGroups[0]
 				Expect(ig.Name).To(Equal("redis-slave"))
 				Expect(ig.Instances).To(Equal(2))
-				Expect(ig.Properties).To(HaveLen(1))
-				Expect(ig.Properties["foo"]).To(Equal(map[string]interface{}{"app_domain": "((app_domain))"}))
+				Expect(ig.Properties.Properties).To(HaveLen(1))
+				Expect(ig.Properties.Properties["foo"]).To(Equal(map[string]interface{}{"app_domain": "((app_domain))"}))
 
 				settings := ig.Env.AgentEnvBoshConfig.Agent.Settings
 				Expect(settings.Labels).To(Equal(map[string]string{"custom-label": "foo"}))
@@ -1265,6 +1265,21 @@ var _ = Describe("Manifest", func() {
 					Expect(hc).ToNot(BeNil())
 					Expect(hc["test-server"].ReadinessProbe.Handler.Exec.Command).To(ContainElement("curl --silent --fail --head http://${HOSTNAME}:8080/health"))
 				})
+				It("serializes instancegroup quarks", func() {
+					m1.CalculateRequiredServices()
+					text, err := m1.Marshal()
+					Expect(err).NotTo(HaveOccurred())
+					By("loading marshalled manifest again")
+					manifest, err := LoadYAML(text)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(manifest.InstanceGroups).To(HaveLen(3))
+					Expect(manifest.InstanceGroups[0].Properties.Quarks.RequiredService).To(BeNil())
+					expectedRequireService := "bpm-bpm1"
+					Expect(manifest.InstanceGroups[1].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
+					expectedRequireService = "bpm-bpm2"
+					Expect(manifest.InstanceGroups[2].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
+
+				})
 			})
 		})
 
@@ -1329,6 +1344,55 @@ var _ = Describe("Manifest", func() {
 				Expect(found).To(Equal(true))
 				Expect(ig.Name).To(Equal("redis-slave"))
 			})
+		})
+
+		Describe("CalculateRequiredServices", func() {
+			BeforeEach(func() {
+				manifest, err = env.BOSHManifestWithUpdateSerial()
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("calculates first instance group without dependency", func() {
+				manifest.CalculateRequiredServices()
+				Expect(manifest.InstanceGroups).To(HaveLen(4))
+				Expect(manifest.InstanceGroups[0].Properties.Quarks.RequiredService).To(BeNil())
+			})
+
+			It("respects serial=true on instance group as barrier", func() {
+				manifest.CalculateRequiredServices()
+				Expect(manifest.InstanceGroups).To(HaveLen(4))
+				expectedRequireService := "bpm-bpm1"
+				Expect(manifest.InstanceGroups[1].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
+				Expect(manifest.InstanceGroups[2].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
+			})
+
+			It("respects serial=true to wait for the predecessor", func() {
+				manifest.CalculateRequiredServices()
+				Expect(manifest.InstanceGroups).To(HaveLen(4))
+				expectedRequireService := "bpm-bpm3"
+				Expect(manifest.InstanceGroups[3].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
+			})
+
+			It("respects update serial in manifest", func() {
+				manifestWithUpdate, err := env.BOSHManifestWithUpdateSerialInManifest()
+				Expect(err).NotTo(HaveOccurred())
+				manifestWithUpdate.CalculateRequiredServices()
+				Expect(manifestWithUpdate.InstanceGroups).To(HaveLen(2))
+				Expect(manifestWithUpdate.InstanceGroups[0].Properties.Quarks.RequiredService).To(BeNil())
+				Expect(manifestWithUpdate.InstanceGroups[1].Properties.Quarks.RequiredService).To(BeNil())
+			})
+
+			It("doesn't wait for instance groups without ports", func() {
+				manifestWithUpdate, err := env.BOSHManifestWithUpdateSerialAndWithoutPorts()
+				Expect(err).NotTo(HaveOccurred())
+				manifestWithUpdate.CalculateRequiredServices()
+				Expect(manifestWithUpdate.InstanceGroups).To(HaveLen(3))
+				expectedRequireService := "bpm-bpm1"
+				Expect(manifestWithUpdate.InstanceGroups[0].Properties.Quarks.RequiredService).To(BeNil())
+				Expect(manifestWithUpdate.InstanceGroups[1].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
+				Expect(manifestWithUpdate.InstanceGroups[2].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
+			})
+
 		})
 	})
 })

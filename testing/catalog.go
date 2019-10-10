@@ -648,3 +648,30 @@ func (c *Catalog) NodePortService(name, ig string, targetPort int32) corev1.Serv
 		},
 	}
 }
+
+// BOSHManifestWithUpdateSerial returns a manifest with update serial
+func (c *Catalog) BOSHManifestWithUpdateSerial() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithUpdateSerial))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
+}
+
+// BOSHManifestWithUpdateSerialInManifest returns a manifest with update serial in manifest
+func (c *Catalog) BOSHManifestWithUpdateSerialInManifest() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithUpdateSerialInManifest))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
+}
+
+// BOSHManifestWithUpdateSerialAndWithoutPorts returns a manifest with update serial and without ports
+func (c *Catalog) BOSHManifestWithUpdateSerialAndWithoutPorts() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithUpdateSerialAndWithoutPorts))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
+}

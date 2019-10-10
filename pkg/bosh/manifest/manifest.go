@@ -158,6 +158,11 @@ type duplicateYamlValue struct {
 
 // LoadYAML returns a new BOSH deployment manifest from a yaml representation
 func LoadYAML(data []byte) (*Manifest, error) {
+	return LoadYAMLWithName(data, nil)
+}
+
+// LoadYAMLWithName returns a new BOSH deployment manifest from a yaml representation with the given name
+func LoadYAMLWithName(data []byte, name *string) (*Manifest, error) {
 	m := &Manifest{}
 	err := yaml.Unmarshal(data, m, func(opt *json.Decoder) *json.Decoder {
 		opt.UseNumber()
@@ -165,6 +170,9 @@ func LoadYAML(data []byte) (*Manifest, error) {
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal BOSH deployment manifest %s", string(data))
+	}
+	if name != nil {
+		m.Name = *name
 	}
 
 	if err := m.loadDNS(); err != nil {
@@ -190,6 +198,46 @@ func (m *Manifest) loadDNS() error {
 
 	m.DNS = NewSimpleDomainNameService(m.Name)
 	return nil
+}
+
+// CalculateRequiredServices calculates the required services using the update.serial property
+func (m *Manifest) CalculateRequiredServices() {
+	var requiredService *string = nil
+	var requiredSerialService *string = nil
+
+	for _, ig := range m.InstanceGroups {
+		serial := true
+		if m.Update != nil && m.Update.Serial != nil {
+			serial = *m.Update.Serial
+		}
+		if ig.Update != nil && ig.Update.Serial != nil {
+			serial = *ig.Update.Serial
+		}
+
+		//FIXME This is required because eirini is inserted as last instance group in https://github.com/SUSE/scf
+		// Without this condition, eirini would wait for all other instance groups. On the other hand, there are
+		// instance groups, which require eirini. Therefore, without this condition there will be a deadlock
+		// This can be removed, if the position of eirini in scf is fixed.
+		if strings.Contains(ig.Name, "eirini") {
+			continue
+		}
+
+		if serial {
+			ig.Properties.Quarks.RequiredService = requiredService
+		} else {
+			ig.Properties.Quarks.RequiredService = requiredSerialService
+		}
+
+		ports := ig.ServicePorts()
+		if len(ports) > 0 {
+			serviceName := m.DNS.HeadlessServiceName(ig.Name)
+			requiredService = &serviceName
+		}
+
+		if serial {
+			requiredSerialService = requiredService
+		}
+	}
 }
 
 // Marshal serializes a BOSH manifest into yaml
