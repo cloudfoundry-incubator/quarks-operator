@@ -54,5 +54,3 @@ require (
 	sigs.k8s.io/controller-runtime v0.2.2
 	sigs.k8s.io/yaml v1.1.0
 )
-
-go 1.13
