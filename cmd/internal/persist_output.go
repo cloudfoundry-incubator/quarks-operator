@@ -3,13 +3,14 @@ package cmd
 import (
 	"os"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
+	kubeConfig "code.cloudfoundry.org/cf-operator/pkg/kube/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 )
 
 // persistOutputCmd is the persist-output command.
@@ -24,11 +25,6 @@ into a versionsed secret or kube native secret using flags specified to this com
 
 		namespace := viper.GetString("cf-operator-namespace")
 		if len(namespace) == 0 {
-			return errors.Errorf("persist-output command failed. cf-operator-namespace flag is empty.")
-		}
-
-		outputVolumePath := viper.GetString("output-volume-path")
-		if len(outputVolumePath) == 0 {
 			return errors.Errorf("persist-output command failed. cf-operator-namespace flag is empty.")
 		}
 
@@ -47,7 +43,7 @@ into a versionsed secret or kube native secret using flags specified to this com
 			return err
 		}
 
-		po := extendedjob.NewPersistOutputInterface(namespace, podName, clientSet, versionedClientSet, outputVolumePath)
+		po := extendedjob.NewPersistOutputInterface(namespace, podName, clientSet, versionedClientSet, "/mnt/quarks")
 
 		return po.PersistOutput()
 	},
@@ -55,22 +51,17 @@ into a versionsed secret or kube native secret using flags specified to this com
 
 func init() {
 	utilCmd.AddCommand(persistOutputCmd)
-
-	persistOutputCmd.Flags().StringP("output-volume-path", "", "/mnt/quarks", "path to the volume mount")
-
-	viper.BindPFlag("output-volume-path", persistOutputCmd.Flags().Lookup("output-volume-path"))
-
-	argToEnv := map[string]string{
-		"output-volume-path": "OUTPUT_VOLUME_PATH",
-	}
-	AddEnvToUsage(persistOutputCmd, argToEnv)
 }
 
 // authenticateInCluster authenticates with the in cluster and returns the client
 func authenticateInCluster() (*kubernetes.Clientset, *versioned.Clientset, error) {
-	config, err := rest.InClusterConfig()
+
+	config, err := kubeConfig.NewGetter(log).Get("")
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to authenticate with incluster config")
+		return nil, nil, errors.Wrapf(err, "Couldn't fetch Kubeconfig. Ensure kubeconfig is present to continue.")
+	}
+	if err := kubeConfig.NewChecker(log).Check(config); err != nil {
+		return nil, nil, errors.Wrapf(err, "Couldn't check Kubeconfig. Ensure kubeconfig is correct to continue.")
 	}
 
 	clientSet, err := kubernetes.NewForConfig(config)
