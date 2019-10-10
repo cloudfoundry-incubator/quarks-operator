@@ -158,7 +158,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 	}
 
 	spec := &extSts.Spec.Template.Spec.Template.Spec
-	spec.DNSPolicy, spec.DNSConfig, err = dns.DNSSetting()
+	spec.DNSPolicy, spec.DNSConfig, err = dns.DNSSetting(kc.namespace)
 	if err != nil {
 		return essv1.ExtendedStatefulSet{}, err
 	}
@@ -239,29 +239,27 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, dns manifest
 		}
 	}
 
-	for i, headlessServiceName := range dns.FindServiceNames(instanceGroup.Name) {
-		headlessService := corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        headlessServiceName,
-				Namespace:   kc.namespace,
-				Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
-				Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
+	headlessServiceName := dns.HeadlessServiceName(instanceGroup.Name)
+	headlessService := corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        headlessServiceName,
+			Namespace:   kc.namespace,
+			Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: ports,
+			Selector: map[string]string{
+				bdm.LabelInstanceGroupName: instanceGroup.Name,
 			},
-			Spec: corev1.ServiceSpec{
-				Ports: ports,
-				Selector: map[string]string{
-					bdm.LabelInstanceGroupName: instanceGroup.Name,
-				},
-				ClusterIP: "None",
-			},
-		}
-
-		services = append(services, headlessService)
-		if i == 0 {
-			// Set headlessService to govern StatefulSet.
-			eSts.Spec.Template.Spec.ServiceName = headlessServiceName
-		}
+			ClusterIP: "None",
+		},
 	}
+
+	// Set headlessService to govern StatefulSet.
+	eSts.Spec.Template.Spec.ServiceName = headlessServiceName
+
+	services = append(services, headlessService)
 
 	return services
 }
@@ -332,7 +330,7 @@ func (kc *KubeConverter) errandToExtendedJob(
 		},
 	}
 
-	eJob.Spec.Template.Spec.DNSPolicy, eJob.Spec.Template.Spec.DNSConfig, err = dns.DNSSetting()
+	eJob.Spec.Template.Spec.DNSPolicy, eJob.Spec.Template.Spec.DNSConfig, err = dns.DNSSetting(kc.namespace)
 
 	if err != nil {
 		return ejv1.ExtendedJob{}, err

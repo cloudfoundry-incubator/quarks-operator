@@ -769,7 +769,7 @@ instance_groups:
 			Expect(err).ToNot(HaveOccurred())
 			dns := m.DNS
 			Expect(dns).NotTo(BeNil())
-			Expect(dns.HeadlessServiceName("singleton-uaa")).To(Equal("uaa"))
+			Expect(dns.HeadlessServiceName("singleton-uaa")).To(Equal("foo-singleton-uaa"))
 		})
 
 		It("handles multi-line implicit vars", func() {
