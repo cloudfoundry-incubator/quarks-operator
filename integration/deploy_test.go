@@ -381,7 +381,7 @@ var _ = Describe("Deploy", func() {
 	})
 
 	Context("when updating a deployemnt with multiple instance groups", func() {
-		FIt("it should only update correctly and have correct secret versions in volume mounts", func() {
+		It("it should only update correctly and have correct secret versions in volume mounts", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMapWithTwoInstanceGroups("fooconfigmap"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)

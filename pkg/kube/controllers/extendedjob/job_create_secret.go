@@ -296,8 +296,6 @@ func (po *PersistOutputInterface) CreateVersionSecret(exjob *ejv1.ExtendedJob, o
 		return err
 	}
 
-	fmt.Println("Container : ", secretName, secretLabels)
-
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generatedSecretName,

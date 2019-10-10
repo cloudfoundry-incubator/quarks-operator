@@ -48,7 +48,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 var _ = BeforeEach(func() {
 	env = environment.NewEnvironment(kubeConfig)
-	env.Namespace = "rohit"
 	err := env.SetupNamespace()
 	if err != nil {
 		fmt.Printf("WARNING: failed to setup namespace %s: %v\n", env.Namespace, err)
