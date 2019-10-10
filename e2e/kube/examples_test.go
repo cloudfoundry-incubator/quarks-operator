@@ -331,7 +331,7 @@ var _ = Describe("Examples Directory", func() {
 			example = "bosh-deployment/boshdeployment-with-bosh-dns.yaml"
 		})
 
-		It("resolves bosh and k8s domains", func() {
+		It("resolves bosh domains", func() {
 			By("Getting expected IP")
 			podName := "nats-deployment-nats-v1-0"
 			podWait(fmt.Sprintf("pod/%s", podName))
@@ -341,10 +341,6 @@ var _ = Describe("Examples Directory", func() {
 
 			By("DNS lookup")
 			resolvableNames := []string{
-				fmt.Sprintf("myalias.%s.svc.cluster.local", namespace),
-				fmt.Sprintf("myalias.%s.svc.cluster.local.", namespace),
-				fmt.Sprintf("myalias.%s.svc", namespace),
-				fmt.Sprintf("myalias.%s", namespace),
 				fmt.Sprintf("nats-deployment-nats.%s", namespace),
 				fmt.Sprintf("nats-deployment-nats.%s.svc", namespace),
 				fmt.Sprintf("nats-deployment-nats.%s.svc.cluster.local", namespace),
@@ -354,7 +350,8 @@ var _ = Describe("Examples Directory", func() {
 				"nats",
 				"nats.service.cf.internal",
 				"nats.service.cf.internal.",
-				"nats-deployment-nats"}
+				"nats-deployment-nats",
+			}
 
 			for _, name := range resolvableNames {
 				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), ip)
@@ -366,9 +363,7 @@ var _ = Describe("Examples Directory", func() {
 			unresolvableNames := []string{
 				"myalias.",
 				"myalias.service.",
-				fmt.Sprintf("myalias.%s.svc.cluster", namespace),
-				fmt.Sprintf("myalias.%s.svc.cluster.", namespace),
-				fmt.Sprintf("myalias.%s.svc.", namespace)}
+			}
 
 			for _, name := range unresolvableNames {
 				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s || true", name), "NXDOMAIN")

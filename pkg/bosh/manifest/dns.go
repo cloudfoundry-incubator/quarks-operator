@@ -5,7 +5,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
@@ -29,14 +28,11 @@ import (
 
 //DomainNameService abstraction
 type DomainNameService interface {
-	// FindServiceNames determines how a service should be named in accordance with the 'bosh-dns'-addon
-	FindServiceNames(instanceGroupName string) []string
-
 	// HeadlessServiceName constructs the headless service name for the instance group.
 	HeadlessServiceName(instanceGroupName string) string
 
 	// DNSSetting get the DNS settings for POD
-	DNSSetting() (corev1.DNSPolicy, *corev1.PodDNSConfig, error)
+	DNSSetting(namespace string) (corev1.DNSPolicy, *corev1.PodDNSConfig, error)
 
 	// Reconcile DNS stuff
 	Reconcile(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error
@@ -86,41 +82,26 @@ func NewBoshDomainNameService(addOn *AddOn, manifestName string) (DomainNameServ
 	return &dns, nil
 }
 
-// FindServiceNames see interface
-func (dns *boshDomainNameService) FindServiceNames(instanceGroupName string) []string {
-	result := make([]string, 0)
-	for _, alias := range dns.Aliases {
-		for _, target := range alias.Targets {
-			if target.InstanceGroup == instanceGroupName {
-				result = append(result, strings.Split(alias.Domain, ".")[0])
-			}
-		}
-	}
-	if len(result) == 0 {
-		result = append(result, serviceName(instanceGroupName, dns.ManifestName, 63))
-	}
-	return result
-}
-
 // HeadlessServiceName see interface
 func (dns *boshDomainNameService) HeadlessServiceName(instanceGroupName string) string {
-	serviceNames := dns.FindServiceNames(instanceGroupName)
-	if len(serviceNames) == 0 {
-		return serviceName(instanceGroupName, dns.ManifestName, 63)
-	}
-	return serviceNames[0]
+	return serviceName(instanceGroupName, dns.ManifestName, 63)
 }
 
 // DNSSetting see interface
-func (dns *boshDomainNameService) DNSSetting() (corev1.DNSPolicy, *corev1.PodDNSConfig, error) {
+func (dns *boshDomainNameService) DNSSetting(namespace string) (corev1.DNSPolicy, *corev1.PodDNSConfig, error) {
 	if dns.LocalDNSIP == "" {
 		return corev1.DNSNone, nil, errors.New("BoshDomainNameService: DNSSetting called before Reconcile")
 	}
 	ndots := "5"
 	return corev1.DNSNone, &corev1.PodDNSConfig{
 		Nameservers: []string{dns.LocalDNSIP},
-		Searches:    []string{"svc.cluster.local", "cluster.local", "service.cf.internal"},
-		Options:     []corev1.PodDNSConfigOption{{Name: "ndots", Value: &ndots}},
+		Searches: []string{
+			fmt.Sprintf("%s.svc.cluster.local", namespace),
+			"svc.cluster.local",
+			"cluster.local",
+			"service.cf.internal",
+		},
+		Options: []corev1.PodDNSConfigOption{{Name: "ndots", Value: &ndots}},
 	}, nil
 }
 
@@ -237,18 +218,13 @@ func NewSimpleDomainNameService(manifestName string) DomainNameService {
 	return &simpleDomainNameService{ManifestName: manifestName}
 }
 
-// FindServiceNames see interface
-func (dns *simpleDomainNameService) FindServiceNames(instanceGroupName string) []string {
-	return []string{serviceName(instanceGroupName, dns.ManifestName, 63)}
-}
-
 // HeadlessServiceName see interface
 func (dns *simpleDomainNameService) HeadlessServiceName(instanceGroupName string) string {
 	return serviceName(instanceGroupName, dns.ManifestName, 63)
 }
 
 // DNSSetting see interface
-func (dns *simpleDomainNameService) DNSSetting() (corev1.DNSPolicy, *corev1.PodDNSConfig, error) {
+func (dns *simpleDomainNameService) DNSSetting(_ string) (corev1.DNSPolicy, *corev1.PodDNSConfig, error) {
 	return corev1.DNSClusterFirst, nil, nil
 }
 
@@ -265,6 +241,14 @@ func serviceName(instanceGroupName string, deploymentName string, maxLength int)
 		serviceName = fmt.Sprintf("%s-%s", serviceName[:maxLength-len(sum)-1], sum)
 	}
 	return serviceName
+}
+
+const boshDomainSuffix = ".service.cf.internal"
+
+func boshAliasServiceName(domain string) string {
+	svc := strings.TrimSuffix(domain, boshDomainSuffix)
+	svc = strings.ReplaceAll(svc, ".", "-")
+	return svc
 }
 
 func configMapMutateFn(configMap *corev1.ConfigMap) controllerutil.MutateFn {
@@ -288,29 +272,38 @@ func deploymentMapMutateFn(deployment *appsv1.Deployment) controllerutil.MutateF
 }
 
 func createCorefile(dns *boshDomainNameService, namespace string) string {
-	rewrites := ""
+	var config strings.Builder
 
-	// Support legacy cf-operator naming convention: <deployment name>-<ig name>
+	writeln := func(indent int, line string) {
+		fmt.Fprintf(&config, "%s%s\n", strings.Repeat(" ", indent), line)
+	}
+
+	indent := 0
+	writeln(indent, ".:8053 {")
+
+	indent = 4
+	writeln(indent, "errors")
+	writeln(indent, "health")
+
 	for _, alias := range dns.Aliases {
-		newDomainName := fmt.Sprintf(`%s.%s.svc.cluster.local`, strings.Split(alias.Domain, ".")[0], namespace)
 		for _, target := range alias.Targets {
-			serviceName := serviceName(target.InstanceGroup, dns.ManifestName, 63)
-			// For backwards compatibility, e.g. 'scf-nats'
-			rewrites = rewrites + fmt.Sprintf(`    rewrite name exact %s %s`,
-				regexp.QuoteMeta(serviceName), newDomainName) + "\n"
-			rewrites = rewrites + fmt.Sprintf(`    rewrite name exact %s.%s.svc.cluster.local %s`,
-				regexp.QuoteMeta(serviceName), regexp.QuoteMeta(namespace), newDomainName) + "\n"
+			from := alias.Domain
+			if target.Query == "_" {
+				from = strings.Replace(from, "_", target.InstanceGroup, 1)
+			}
+			to := fmt.Sprintf("%s.%s.svc.cluster.local", dns.HeadlessServiceName(target.InstanceGroup), namespace)
+			writeln(indent, fmt.Sprintf("rewrite name exact %s %s", from, to))
 		}
 	}
-	// Kubernetes services should stay resolvable
-	rewrites = rewrites + fmt.Sprintf(`    rewrite name regex ^([^.]+)$    {1}.%s.svc.cluster.local.`, namespace) + "\n"
 
-	return fmt.Sprintf(`
-.:8053 {
-    health
-%s
-    rewrite name substring service.cf.internal. %s.svc.cluster.local.
-    forward . /etc/resolv.conf
-}
-	`, rewrites, namespace)
+	writeln(indent, "forward . /etc/resolv.conf")
+	writeln(indent, "cache 30")
+	writeln(indent, "loop")
+	writeln(indent, "reload")
+	writeln(indent, "loadbalance")
+
+	indent = 0
+	writeln(indent, "}")
+
+	return config.String()
 }
