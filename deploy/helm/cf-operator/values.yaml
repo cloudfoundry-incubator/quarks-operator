@@ -24,5 +24,3 @@ serviceAccount:
   cfOperatorServiceAccount:
     create: true
     name:
-
-provider: ""
