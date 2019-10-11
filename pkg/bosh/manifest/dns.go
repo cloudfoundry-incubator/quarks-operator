@@ -55,8 +55,6 @@ type boshDomainNameService struct {
 	ManifestName string
 }
 
-var _ DomainNameService = &boshDomainNameService{}
-
 // BoshDNSAddOnName name of bosh dns add on
 const BoshDNSAddOnName = "bosh-dns-aliases"
 
@@ -207,8 +205,6 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace strin
 type simpleDomainNameService struct {
 	ManifestName string
 }
-
-var _ DomainNameService = &simpleDomainNameService{}
 
 // NewSimpleDomainNameService emulates old behaviour without bosh dns
 func NewSimpleDomainNameService(manifestName string) DomainNameService {
