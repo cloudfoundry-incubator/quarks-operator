@@ -72,7 +72,7 @@ func (e *Environment) setupCFOperator() error {
 
 			stdOutput, err := cmd.CombinedOutput()
 			if err != nil {
-				fmt.Printf("SSH TUNNEL FAILED: %f\nOUTPUT: %s", err, string(stdOutput))
+				fmt.Printf("SSH TUNNEL FAILED: %s\nOUTPUT: %s", err.Error(), string(stdOutput))
 			}
 		}()
 	}

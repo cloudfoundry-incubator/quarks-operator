@@ -115,6 +115,7 @@ var _ = Describe("ReconcileBPM", func() {
 					Type: "password",
 				},
 			},
+			DNS: bdm.NewSimpleDomainNameService("fake-manifest"),
 		}
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
 		logs, log = helper.NewTestLogger()

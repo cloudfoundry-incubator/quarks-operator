@@ -476,7 +476,7 @@ instance_groups:
         pre_render_scripts:
           jobs:
           - |
-            touch /tmp
+            echo "Hello BOSH container"
         bpm:
           processes:
           - name: redis
