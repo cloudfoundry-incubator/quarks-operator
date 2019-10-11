@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 
 	"github.com/go-logr/zapr"
@@ -68,6 +70,7 @@ var rootCmd = &cobra.Command{
 			viper.GetString("docker-image-org"),
 			viper.GetString("docker-image-repository"),
 			viper.GetString("docker-image-tag"),
+			viper.GetString("docker-image-pull-policy"),
 		)
 		if err != nil {
 			return wrapError(err, "Couldn't parse cf-operator docker image reference.")
@@ -154,6 +157,7 @@ func init() {
 	pf.StringP("docker-image-org", "o", "cfcontainerization", "Dockerhub organization that provides the operator docker image")
 	pf.StringP("docker-image-repository", "r", "cf-operator", "Dockerhub repository that provides the operator docker image")
 	pf.StringP("docker-image-tag", "t", version.Version, "Tag of the operator docker image")
+	pf.StringP("docker-image-pull-policy", "", string(corev1.PullAlways), "Image pull policy")
 	pf.StringP("bosh-dns-docker-image", "", "coredns/coredns:1.6.3", "The docker image used for emulating bosh DNS (a CoreDNS image)")
 	pf.StringP("kubeconfig", "c", "", "Path to a kubeconfig, not required in-cluster")
 	pf.StringP("log-level", "l", "debug", "Only print log messages from this level onward")
@@ -172,6 +176,7 @@ func init() {
 	viper.BindPFlag("docker-image-org", pf.Lookup("docker-image-org"))
 	viper.BindPFlag("docker-image-repository", pf.Lookup("docker-image-repository"))
 	viper.BindPFlag("docker-image-tag", rootCmd.PersistentFlags().Lookup("docker-image-tag"))
+	viper.BindPFlag("docker-image-pull-policy", rootCmd.PersistentFlags().Lookup("docker-image-pull-policy"))
 	viper.BindPFlag("bosh-dns-docker-image", rootCmd.PersistentFlags().Lookup("bosh-dns-docker-image"))
 	viper.BindPFlag("kubeconfig", pf.Lookup("kubeconfig"))
 	viper.BindPFlag("log-level", pf.Lookup("log-level"))
@@ -191,6 +196,7 @@ func init() {
 		"docker-image-org":                       "DOCKER_IMAGE_ORG",
 		"docker-image-repository":                "DOCKER_IMAGE_REPOSITORY",
 		"docker-image-tag":                       "DOCKER_IMAGE_TAG",
+		"docker-image-pull-policy":               "DOCKER_IMAGE_PULL_POLICY",
 		"bosh-dns-docker-image":                  "BOSH_DNS_DOCKER_IMAGE",
 		"kubeconfig":                             "KUBECONFIG",
 		"log-level":                              "LOG_LEVEL",
