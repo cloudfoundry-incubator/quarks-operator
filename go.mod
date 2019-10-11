@@ -4,7 +4,7 @@ require (
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
 	github.com/charlievieth/fs v0.0.0-20170613215519-7dc373669fa1 // indirect
 	github.com/cloudflare/cfssl v0.0.0-20181102015659-ea4033a214e7
-	github.com/cloudfoundry/bosh-cli v5.4.0+incompatible
+	github.com/cloudfoundry/bosh-cli v5.5.1+incompatible
 	github.com/cloudfoundry/bosh-utils v0.0.0-20190206192830-9a0affed2bf1 // indirect
 	github.com/cppforlife/go-patch v0.0.0-20171006213518-250da0e0e68c
 	github.com/daaku/go.zipexe v1.0.1 // indirect
