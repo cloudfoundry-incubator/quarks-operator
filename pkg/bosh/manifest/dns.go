@@ -109,9 +109,11 @@ func SetupBoshDNSDockerImage(image string) {
 
 // Reconcile see interface
 func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
-	const appName = "bosh-dns"
 	const volumeName = "bosh-dns-volume"
 	const coreConfigFile = "Corefile"
+
+	appName := fmt.Sprintf("%s-bosh-dns", dns.ManifestName)
+
 	dnsTCPPort := corev1.ContainerPort{ContainerPort: 8053, Name: "dns-tcp", Protocol: "TCP"}
 	dnsUDPPort := corev1.ContainerPort{ContainerPort: 8053, Name: "dns-udp", Protocol: "UDP"}
 	metricsPort := corev1.ContainerPort{ContainerPort: 9153, Name: "metrics", Protocol: "TCP"}
