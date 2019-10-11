@@ -179,7 +179,7 @@ func (m *Manifest) loadDNS() {
 			var err error
 			dns, err := NewBoshDomainNameService(addon, m.Name)
 			if err != nil {
-				ctxlog.Errorf(context.TODO(), "Error loading bosh dns configuration: %s", err.Error())
+				ctxlog.Errorf(context.Background(), "Error loading bosh dns configuration: %v", err)
 				continue
 			}
 			m.DNS = dns
