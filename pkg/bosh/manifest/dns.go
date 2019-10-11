@@ -140,12 +140,14 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace strin
 	}
 
 	var corefileMode int32 = 420
+	var replicas int32 = 2
 	deployment := appsv1.Deployment{
 		ObjectMeta: metadata,
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": appName},
 			},
+			Replicas: &replicas,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{"app": appName},
