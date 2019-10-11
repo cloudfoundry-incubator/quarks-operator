@@ -139,7 +139,7 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace strin
 		},
 	}
 
-	var mode int32 = 420
+	var corefileMode int32 = 420
 	deployment := appsv1.Deployment{
 		ObjectMeta: metadata,
 		Spec: appsv1.DeploymentSpec{
@@ -167,7 +167,7 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace strin
 							Name: volumeName,
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
-									DefaultMode: &mode,
+									DefaultMode: &corefileMode,
 									LocalObjectReference: corev1.LocalObjectReference{
 										Name: appName,
 									},
