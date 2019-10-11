@@ -1,10 +1,17 @@
 package cmd
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
+	"os"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
+	"k8s.io/client-go/kubernetes"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
+	kubeConfig "code.cloudfoundry.org/cf-operator/pkg/kube/config"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 )
 
 // persistOutputCmd is the persist-output command.
@@ -22,10 +29,54 @@ into a versionsed secret or kube native secret using flags specified to this com
 			return errors.Errorf("persist-output command failed. cf-operator-namespace flag is empty.")
 		}
 
-		return extendedjob.PersistOutput(namespace)
+		// hostname of the container is the pod name in kubernetes
+		podName, err := os.Hostname()
+		if err != nil {
+			return errors.Wrapf(err, "failed to fetch pod name.")
+		}
+		if podName == "" {
+			return errors.Wrapf(err, "pod name is empty.")
+		}
+
+		// Authenticate with the cluster
+		clientSet, versionedClientSet, err := authenticateInCluster()
+		if err != nil {
+			return err
+		}
+
+		po := extendedjob.NewPersistOutputInterface(namespace, podName, clientSet, versionedClientSet, "/mnt/quarks")
+
+		return po.PersistOutput()
 	},
 }
 
 func init() {
 	utilCmd.AddCommand(persistOutputCmd)
+}
+
+// authenticateInCluster authenticates with the in cluster and returns the client
+func authenticateInCluster() (*kubernetes.Clientset, *versioned.Clientset, error) {
+
+	log = newLogger(zap.AddCallerSkip(1))
+	defer log.Sync()
+
+	config, err := kubeConfig.NewGetter(log).Get("")
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "Couldn't fetch Kubeconfig. Ensure kubeconfig is present to continue.")
+	}
+	if err := kubeConfig.NewChecker(log).Check(config); err != nil {
+		return nil, nil, errors.Wrapf(err, "Couldn't check Kubeconfig. Ensure kubeconfig is correct to continue.")
+	}
+
+	clientSet, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to create clientset with incluster config")
+	}
+
+	versionedClientSet, err := versioned.NewForConfig(config)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to create versioned clientset with incluster config")
+	}
+
+	return clientSet, versionedClientSet, nil
 }
