@@ -16,6 +16,7 @@
          10. [Detects if StatefulSet versions are running](#detects-if-statefulset-versions-are-running)
          11. [Volume Management](#volume-management)
          12. [AZ Support](#az-support)
+         13. [Active/passive model](#activepassive-model)
       2. [Statefulset Cleanup Controller](#statefulset-cleanup-controller)
          1. [Watches](#watches-in-cleanup-controller)
          2. [Reconciliation](#reconciliation-in-cleanup-controller)
@@ -72,8 +73,7 @@ Exposing `extendedstatefulsets` is similar to exposing `statefulsets` in kuberne
 
 Following is the example which creates a service with type **ClusterIP** for a single instance group named `nats` in deployment `nats-deployment` for exposing port 4222.
 
-```bash
----
+```yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -202,6 +202,42 @@ If zones are set for an `ExtendedStatefulSet`, the following occurs:
   CF_OPERATOR_AZ="zone name"
   AZ_INDEX="zone index"
   ```
+
+#### Active/passive model
+
+Active/passive model is application model that have multiple running instances, but only one instance is active and all other instances are passive (standby). If the active instance is down, one of the passive instances will be promoted to active immediately.
+
+The `activeProbe` key defines active probe to be performed on a container. The controller examines the active probe periodically to see if the active one is still active. If active pod is down or there isn’t an active pod, the first running pod will be promoted as active and label it as `fissile.cloudfoundry.org/pod-designation: active`.
+
+```yaml
+apiVersion: fissile.cloudfoundry.org/v1alpha1
+kind: ExtendedStatefulSet
+metadata:
+  name: MyExtendedStatefulSet
+spec:
+  activeProbe:
+    busybox:
+      # define a active probe on the container
+      exec:
+        command:
+        - /bin/sh
+        - -c
+        - /root/check-active.sh
+  template:
+    spec:
+      replicas: 2
+      template:
+        spec:
+          containers:
+          - name: busybox
+            image: busybox
+            command:
+            - sleep
+            - "3600"
+  ...
+```
+
+The controller manages this active probing and provides pod designation label to the service's selectors. Any requests sent to the service will then only be sent to the active pod.
 
 #### Restarting on Config Change
 
