@@ -11,6 +11,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
@@ -38,7 +39,7 @@ type BPMResources struct {
 
 // BPMResources uses BOSH Process Manager information to create k8s container specs from single BOSH instance group.
 // It returns extended stateful sets, services and extended jobs.
-func (kc *KubeConverter) BPMResources(manifestName string, version string, instanceGroup *bdm.InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) (*BPMResources, error) {
+func (kc *KubeConverter) BPMResources(manifestName string, dns manifest.DomainNameService, version string, instanceGroup *bdm.InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) (*BPMResources, error) {
 	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(manifestName, instanceGroup.Name, version)
 
 	defaultDisks := kc.volumeFactory.GenerateDefaultDisks(manifestName, instanceGroup.Name, version, kc.namespace)
@@ -64,19 +65,19 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 
 	switch instanceGroup.LifeCycle {
 	case bdm.IGTypeService, "":
-		convertedExtStatefulSet, err := kc.serviceToExtendedSts(cfac, manifestName, instanceGroup, defaultDisks, bpmDisks)
+		convertedExtStatefulSet, err := kc.serviceToExtendedSts(cfac, manifestName, dns, instanceGroup, defaultDisks, bpmDisks)
 		if err != nil {
 			return nil, err
 		}
 
-		services := kc.serviceToKubeServices(manifestName, instanceGroup, &convertedExtStatefulSet)
+		services := kc.serviceToKubeServices(manifestName, dns, instanceGroup, &convertedExtStatefulSet)
 		if len(services) != 0 {
 			res.Services = append(res.Services, services...)
 		}
 
 		res.InstanceGroups = append(res.InstanceGroups, convertedExtStatefulSet)
 	case bdm.IGTypeErrand, bdm.IGTypeAutoErrand:
-		convertedEJob, err := kc.errandToExtendedJob(cfac, manifestName, instanceGroup, defaultDisks, bpmDisks)
+		convertedEJob, err := kc.errandToExtendedJob(cfac, manifestName, dns, instanceGroup, defaultDisks, bpmDisks)
 		if err != nil {
 			return nil, err
 		}
@@ -91,6 +92,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, version string, insta
 func (kc *KubeConverter) serviceToExtendedSts(
 	cfac ContainerFactory,
 	manifestName string,
+	dns manifest.DomainNameService,
 	instanceGroup *bdm.InstanceGroup,
 	defaultDisks disk.BPMResourceDisks,
 	bpmDisks disk.BPMResourceDisks,
@@ -147,12 +149,18 @@ func (kc *KubeConverter) serviceToExtendedSts(
 							SecurityContext: &corev1.PodSecurityContext{
 								FSGroup: &admGroupID,
 							},
-							Subdomain: instanceGroup.HeadlessServiceName(manifestName),
+							Subdomain: dns.HeadlessServiceName(instanceGroup.Name),
 						},
 					},
 				},
 			},
 		},
+	}
+
+	spec := &extSts.Spec.Template.Spec.Template.Spec
+	spec.DNSPolicy, spec.DNSConfig, err = dns.DNSSetting(kc.namespace)
+	if err != nil {
+		return essv1.ExtendedStatefulSet{}, err
 	}
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName != "" {
@@ -167,7 +175,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 }
 
 // serviceToKubeServices will generate Services which expose ports for InstanceGroup's jobs
-func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGroup *bdm.InstanceGroup, eSts *essv1.ExtendedStatefulSet) []corev1.Service {
+func (kc *KubeConverter) serviceToKubeServices(manifestName string, dns manifest.DomainNameService, instanceGroup *bdm.InstanceGroup, eSts *essv1.ExtendedStatefulSet) []corev1.Service {
 	var services []corev1.Service
 	// Collect ports to be exposed for each job
 	ports := []corev1.ServicePort{}
@@ -231,9 +239,10 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGrou
 		}
 	}
 
+	headlessServiceName := dns.HeadlessServiceName(instanceGroup.Name)
 	headlessService := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        instanceGroup.HeadlessServiceName(manifestName),
+			Name:        headlessServiceName,
 			Namespace:   kc.namespace,
 			Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
 			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
@@ -247,10 +256,10 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGrou
 		},
 	}
 
-	services = append(services, headlessService)
-
 	// Set headlessService to govern StatefulSet.
-	eSts.Spec.Template.Spec.ServiceName = headlessService.ObjectMeta.Name
+	eSts.Spec.Template.Spec.ServiceName = headlessServiceName
+
+	services = append(services, headlessService)
 
 	return services
 }
@@ -259,6 +268,7 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, instanceGrou
 func (kc *KubeConverter) errandToExtendedJob(
 	cfac ContainerFactory,
 	manifestName string,
+	dns manifest.DomainNameService,
 	instanceGroup *bdm.InstanceGroup,
 	defaultDisks disk.BPMResourceDisks,
 	bpmDisks disk.BPMResourceDisks,
@@ -318,6 +328,12 @@ func (kc *KubeConverter) errandToExtendedJob(
 				},
 			},
 		},
+	}
+
+	eJob.Spec.Template.Spec.DNSPolicy, eJob.Spec.Template.Spec.DNSConfig, err = dns.DNSSetting(kc.namespace)
+
+	if err != nil {
+		return ejv1.ExtendedJob{}, err
 	}
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity != nil {
