@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+	"text/template"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -124,7 +125,7 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace strin
 
 	configMap := corev1.ConfigMap{
 		ObjectMeta: metadata,
-		Data:       map[string]string{coreConfigFile: createCorefile(dns, namespace)},
+		Data:       map[string]string{coreConfigFile: dns.createCorefile(namespace)},
 	}
 	service := corev1.Service{
 		ObjectMeta: metadata,
@@ -231,6 +232,39 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace strin
 	return nil
 }
 
+func (dns *boshDomainNameService) createCorefile(namespace string) string {
+	rewrites := make([]string, 0)
+	for _, alias := range dns.Aliases {
+		for _, target := range alias.Targets {
+			from := alias.Domain
+			if target.Query == "_" {
+				from = strings.Replace(from, "_", target.InstanceGroup, 1)
+			}
+			to := fmt.Sprintf("%s.%s.svc.cluster.local", dns.HeadlessServiceName(target.InstanceGroup), namespace)
+			rewrites = append(rewrites, fmt.Sprintf("rewrite name exact %s %s", from, to))
+		}
+	}
+
+	tmpl := template.Must(template.New("Corefile").Parse(`
+.:8053 {
+    errors
+    health
+    {{- range $_, $rewrite := .Rewrites }}
+    {{ $rewrite }}
+    {{- end }}
+    forward . /etc/resolv.conf
+    cache 30
+    loop
+    reload
+    loadbalance
+}
+`))
+
+	var config strings.Builder
+	tmpl.Execute(&config, struct{ Rewrites []string }{rewrites})
+	return config.String()
+}
+
 type simpleDomainNameService struct {
 	ManifestName string
 }
@@ -283,41 +317,4 @@ func deploymentMapMutateFn(deployment *appsv1.Deployment) controllerutil.MutateF
 		deployment.Spec = updated.Spec
 		return nil
 	}
-}
-
-func createCorefile(dns *boshDomainNameService, namespace string) string {
-	var config strings.Builder
-
-	writeln := func(indent int, line string) {
-		fmt.Fprintf(&config, "%s%s\n", strings.Repeat(" ", indent), line)
-	}
-
-	indent := 0
-	writeln(indent, ".:8053 {")
-
-	indent = 4
-	writeln(indent, "errors")
-	writeln(indent, "health")
-
-	for _, alias := range dns.Aliases {
-		for _, target := range alias.Targets {
-			from := alias.Domain
-			if target.Query == "_" {
-				from = strings.Replace(from, "_", target.InstanceGroup, 1)
-			}
-			to := fmt.Sprintf("%s.%s.svc.cluster.local", dns.HeadlessServiceName(target.InstanceGroup), namespace)
-			writeln(indent, fmt.Sprintf("rewrite name exact %s %s", from, to))
-		}
-	}
-
-	writeln(indent, "forward . /etc/resolv.conf")
-	writeln(indent, "cache 30")
-	writeln(indent, "loop")
-	writeln(indent, "reload")
-	writeln(indent, "loadbalance")
-
-	indent = 0
-	writeln(indent, "}")
-
-	return config.String()
 }
