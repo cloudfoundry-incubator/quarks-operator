@@ -243,14 +243,6 @@ func serviceName(instanceGroupName string, deploymentName string, maxLength int)
 	return serviceName
 }
 
-const boshDomainSuffix = ".service.cf.internal"
-
-func boshAliasServiceName(domain string) string {
-	svc := strings.TrimSuffix(domain, boshDomainSuffix)
-	svc = strings.ReplaceAll(svc, ".", "-")
-	return svc
-}
-
 func configMapMutateFn(configMap *corev1.ConfigMap) controllerutil.MutateFn {
 	updated := configMap.DeepCopy()
 	return func() error {
