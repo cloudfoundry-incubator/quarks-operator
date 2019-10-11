@@ -26,6 +26,7 @@
     - [Persistent Disks](#Persistent-Disks)
     - [Manual ("implicit") variables](#Manual-%22implicit%22-variables)
     - [Pre_render_scripts](#Pre_render_scripts)
+    - [BOSH DNS](#BOSH-DNS)
   - [Flow](#Flow)
   - [Naming Conventions](#Naming-Conventions)
 
@@ -572,6 +573,29 @@ instance_groups:
             touch /tmp
 
 ```
+
+### BOSH DNS
+
+The BOSH DNS addon is implemented using a separate DNS server (coredns). For each BOSHDeployment, which enables this addon, an additional DNS server is created within the namespace.
+This DNS server rewrites all BOSH dns requests to standard k8s queries (e.g. `api.service.cf.internal` -> `api.<namespace>.svc.cluster.local`) and forwards them to the k8s DNS server. 
+All pods created from the BOSHDeployment are configured to use this DNS server.
+
+Additionally the headless services are created on base of the specified aliases. The following alias
+
+```yaml
+  - domain: blobstore.service.cf.internal
+    targets:
+    - deployment: cf
+      domain: bosh
+      instance_group: singleton-blobstore
+      network: default
+      query: '*'
+```
+
+will create a headless service with the name `blobstore` instead of `<deployment-name>-singleton-blobstore`.
+
+For migration purpose, the DNS service does also a rewrite of all previous headless service names 
+(e.g. `<deployment-name>-singleton-blobstore` is rewritten to `blobstore.<namespace>.svc.cluster.local`).
 
 
 ## Flow

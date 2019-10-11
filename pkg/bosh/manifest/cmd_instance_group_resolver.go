@@ -18,11 +18,9 @@ import (
 // InstanceGroupResolver gathers data for jobs in the manifest, it handles links and returns a deployment manifest
 // that only has information pertinent to an instance group.
 type InstanceGroupResolver struct {
-	baseDir       string
-	manifest      Manifest
-	namespace     string
-	instanceGroup *InstanceGroup
-
+	baseDir          string
+	manifest         Manifest
+	instanceGroup    *InstanceGroup
 	jobReleaseSpecs  map[string]map[string]JobSpec
 	jobProviderLinks JobProviderLinks
 }
@@ -37,7 +35,6 @@ func NewInstanceGroupResolver(basedir, namespace string, manifest Manifest, inst
 	return &InstanceGroupResolver{
 		baseDir:          basedir,
 		manifest:         manifest,
-		namespace:        namespace,
 		instanceGroup:    ig,
 		jobReleaseSpecs:  map[string]map[string]JobSpec{},
 		jobProviderLinks: JobProviderLinks{},
@@ -105,7 +102,7 @@ func (dg *InstanceGroupResolver) resolveManifest() error {
 // collectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
 func (dg *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 	for _, instanceGroup := range dg.manifest.InstanceGroups {
-		serviceName := instanceGroup.HeadlessServiceName(dg.manifest.Name)
+		serviceName := dg.manifest.DNS.HeadlessServiceName(instanceGroup.Name)
 
 		for jobIdx, job := range instanceGroup.Jobs {
 			// make sure a map entry exists for the current job release
