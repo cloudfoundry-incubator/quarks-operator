@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
@@ -55,6 +56,9 @@ func init() {
 
 // authenticateInCluster authenticates with the in cluster and returns the client
 func authenticateInCluster() (*kubernetes.Clientset, *versioned.Clientset, error) {
+
+	log = newLogger(zap.AddCallerSkip(1))
+	defer log.Sync()
 
 	config, err := kubeConfig.NewGetter(log).Get("")
 	if err != nil {
