@@ -162,6 +162,33 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace strin
 							VolumeMounts: []corev1.VolumeMount{
 								{MountPath: "/etc/coredns", Name: volumeName, ReadOnly: true},
 							},
+							ReadinessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path:   "/health",
+										Port:   intstr.FromInt(8080),
+										Scheme: "HTTP",
+									},
+								},
+								FailureThreshold: 3,
+								PeriodSeconds:    10,
+								SuccessThreshold: 1,
+								TimeoutSeconds:   1,
+							},
+							LivenessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path:   "/health",
+										Port:   intstr.FromInt(8080),
+										Scheme: "HTTP",
+									},
+								},
+								FailureThreshold:    5,
+								PeriodSeconds:       10,
+								SuccessThreshold:    1,
+								TimeoutSeconds:      5,
+								InitialDelaySeconds: 60,
+							},
 						},
 					},
 					Volumes: []corev1.Volume{
