@@ -29,9 +29,16 @@ processes:
       FOOBARWITHLINKINSTANCESADDRESS: <%= link('doppler').instances[0].address %>
 
 
+      FOOBARWITHSPECAZ: <%= spec.az %>
+      FOOBARWITHSPECBOOTSTRAP: <%= spec.bootstrap %>
+      FOOBARWITHSPECID: <%= spec.id %>
+      FOOBARWITHSPECINDEX: <%= spec.index %>
+      FOOBARWITHSPECNAME: <%= spec.name %>
+      FOOBARWITHSPECNETWORKS: <%= spec.networks %>
       FOOBARWITHSPECADDRESS: <%= spec.address %>
       FOOBARWITHSPECDEPLOYMENT: <%= spec.deployment %>
       FOOBARWITHSPECIP: <%= spec.ip %>
+
       <% if p("traffic_controller.security_event_logging.enabled") %>
       TRAFFIC_CONTROLLER_SECURITY_EVENT_LOG: "/var/vcap/sys/log/loggregator_trafficcontroller/loggregator_trafficcontroller_security_events.log"
       <% end %>

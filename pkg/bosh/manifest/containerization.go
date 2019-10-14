@@ -37,6 +37,7 @@ type JobInstance struct {
 	Instance  int                    `json:"instance"`
 	Name      string                 `json:"name"`
 	Bootstrap bool                   `json:"bootstrap"`
+	ID        string                 `json:"id"`
 	Network   map[string]interface{} `json:"networks"`
 }
 

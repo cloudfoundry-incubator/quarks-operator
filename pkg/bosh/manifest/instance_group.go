@@ -73,6 +73,7 @@ func (ig *InstanceGroup) jobInstances(
 				Index:     index,
 				Instance:  i,
 				Name:      name,
+				ID:        fmt.Sprintf("%s-%d-%s", ig.NameSanitized(), index, jobName),
 			})
 		}
 	}
