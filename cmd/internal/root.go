@@ -157,7 +157,7 @@ func init() {
 	pf.StringP("docker-image-org", "o", "cfcontainerization", "Dockerhub organization that provides the operator docker image")
 	pf.StringP("docker-image-repository", "r", "cf-operator", "Dockerhub repository that provides the operator docker image")
 	pf.StringP("docker-image-tag", "t", version.Version, "Tag of the operator docker image")
-	pf.StringP("docker-image-pull-policy", "", string(corev1.PullAlways), "Image pull policy")
+	pf.StringP("docker-image-pull-policy", "", string(corev1.PullIfNotPresent), "Image pull policy")
 	pf.StringP("bosh-dns-docker-image", "", "coredns/coredns:1.6.3", "The docker image used for emulating bosh DNS (a CoreDNS image)")
 	pf.StringP("kubeconfig", "c", "", "Path to a kubeconfig, not required in-cluster")
 	pf.StringP("log-level", "l", "debug", "Only print log messages from this level onward")
