@@ -583,6 +583,16 @@ func (c *Catalog) DefaultPod(name string) corev1.Pod {
 	}
 }
 
+// DefaultExJobPod defines a pod with a simple web server and with a output-persist container
+func (c *Catalog) DefaultExJobPod(name string) corev1.Pod {
+	return corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: c.Sleep1hExJobPodSpec(),
+	}
+}
+
 // LabeledPod defines a pod with labels and a simple web server
 func (c *Catalog) LabeledPod(name string, labels map[string]string) corev1.Pod {
 	return corev1.Pod{
@@ -612,6 +622,25 @@ func (c *Catalog) Sleep1hPodSpec() corev1.PodSpec {
 		Containers: []corev1.Container{
 			{
 				Name:    "busybox",
+				Image:   "busybox",
+				Command: []string{"sleep", "3600"},
+			},
+		},
+	}
+}
+
+// Sleep1hExJobPodSpec defines a simple pod that sleeps 60*60s for testing with a output-persist container
+func (c *Catalog) Sleep1hExJobPodSpec() corev1.PodSpec {
+	return corev1.PodSpec{
+		TerminationGracePeriodSeconds: util.Int64(1),
+		Containers: []corev1.Container{
+			{
+				Name:    "busybox",
+				Image:   "busybox",
+				Command: []string{"sleep", "3600"},
+			},
+			{
+				Name:    "output-persist",
 				Image:   "busybox",
 				Command: []string{"sleep", "3600"},
 			},

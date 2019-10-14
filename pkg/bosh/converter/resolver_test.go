@@ -129,6 +129,42 @@ variables:
 			},
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
+					Name:      "manifest-with-dns",
+					Namespace: "default",
+				},
+				Data: map[string]string{bdc.ManifestSpecName: `---
+name: foo
+addons:
+- name: bosh-dns-aliases
+  jobs:
+  - name: bosh-dns-aliases
+    release: bosh-dns-aliases
+    properties:
+      aliases:
+      - domain: 'uaa.service.cf.internal'
+        targets:
+        - query: '_'
+          instance_group: singleton-uaa
+          deployment: cf
+          network: default
+          domain: bosh
+instance_groups:
+  - name: component1
+    instances: 1
+    jobs:
+    - name: job1
+      properties:
+        url: https://uaa.service.cf.internal:8443/test/
+variables:
+  - name: router_ca
+    type: certificate
+    options:
+      is_ca: true
+      common_name: uaa.service.cf.internal
+`},
+			},
+			&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "manifest-with-multiline-implicit-var",
 					Namespace: "default",
 				},
@@ -269,6 +305,8 @@ instance_groups:
 						Instances: 2,
 					},
 				},
+				AddOnsApplied: true,
+				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
 			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
@@ -300,6 +338,8 @@ instance_groups:
 						Instances: 2,
 					},
 				},
+				AddOnsApplied: true,
+				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
 			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
@@ -327,6 +367,8 @@ instance_groups:
 						Instances: 1,
 					},
 				},
+				AddOnsApplied: true,
+				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
 			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
@@ -372,6 +414,8 @@ instance_groups:
 						Instances: 2,
 					},
 				},
+				AddOnsApplied: true,
+				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
 			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
@@ -427,6 +471,8 @@ instance_groups:
 						Instances: 4,
 					},
 				},
+				AddOnsApplied: true,
+				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
 			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
@@ -703,6 +749,27 @@ instance_groups:
 			Expect(m.Variables[1].Options.CommonName).To(Equal("example.com"))
 			Expect(len(implicitVars)).To(Equal(1))
 			Expect(implicitVars[0]).To(Equal("foo-deployment.var-system-domain"))
+		})
+
+		It("loads dns from addons", func() {
+			deployment := &bdc.BOSHDeployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "scf",
+				},
+				Spec: bdc.BOSHDeploymentSpec{
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "manifest-with-dns",
+					},
+					Ops: []bdc.ResourceReference{},
+				},
+			}
+			m, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+
+			Expect(err).ToNot(HaveOccurred())
+			dns := m.DNS
+			Expect(dns).NotTo(BeNil())
+			Expect(dns.HeadlessServiceName("singleton-uaa")).To(Equal("foo-singleton-uaa"))
 		})
 
 		It("handles multi-line implicit vars", func() {

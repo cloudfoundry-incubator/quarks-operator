@@ -29,6 +29,7 @@ var _ = Describe("CLI", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
       --apply-crd                                \(APPLY_CRD\) If true, apply CRDs on start \(default true\)
+      --bosh-dns-docker-image string             \(BOSH_DNS_DOCKER_IMAGE\) The docker image used for emulating bosh DNS \(a CoreDNS image\) \(default "coredns/coredns:\d+.\d+.\d+"\)
   -n, --cf-operator-namespace string             \(CF_OPERATOR_NAMESPACE\) The operator namespace \(default "default"\)
       --ctx-timeout int                          \(CTX_TIMEOUT\) context timeout for each k8s API request in seconds \(default 30\)
   -o, --docker-image-org string                  \(DOCKER_IMAGE_ORG\) Dockerhub organization that provides the operator docker image \(default "cfcontainerization"\)
