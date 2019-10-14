@@ -101,7 +101,7 @@ func ApplyCRDs(config *rest.Config) error {
 			essv1.ExtendedStatefulSetResourcePlural,
 			essv1.ExtendedStatefulSetResourceShortNames,
 			essv1.SchemeGroupVersion,
-			&essv1.ExtendedJobValidation,
+			&essv1.ExtendedStatefulSetValidation,
 		},
 	} {
 		err = crd.ApplyCRD(
