@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,30 +19,8 @@ var _ = Describe("Trender", func() {
 		jobsDir            string
 		instanceGroupName  string
 		index              int
-		podName            string
 		podIP              net.IP
 	)
-
-	Context("when podName is empty", func() {
-		BeforeEach(func() {
-			deploymentManifest = "../../../testing/assets/ig-resolved.mysql-v1.yml"
-			jobsDir = "../../../testing/assets"
-			instanceGroupName = "mysql0"
-			index = 0
-			podName = ""
-			podIP = net.ParseIP("1.2.3.4")
-		})
-
-		act := func() error {
-			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podName, podIP)
-		}
-
-		It("fails", func() {
-			err := act()
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("the pod name is empty"))
-		})
-	})
 
 	Context("when podIP is nil", func() {
 		BeforeEach(func() {
@@ -49,12 +28,11 @@ var _ = Describe("Trender", func() {
 			jobsDir = "../../../testing/assets"
 			instanceGroupName = "mysql0"
 			index = 0
-			podName = "mysql-pod-name"
 			podIP = nil
 		})
 
 		act := func() error {
-			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podName, podIP)
+			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP)
 		}
 
 		It("fails", func() {
@@ -69,12 +47,11 @@ var _ = Describe("Trender", func() {
 			deploymentManifest = "../../../testing/assets/gatherManifest.yml"
 			jobsDir = "../../../testing/assets"
 			instanceGroupName = "log-api"
-			podName = "log-api-pod-name"
 			podIP = net.ParseIP("172.17.0.13")
 		})
 
 		act := func() error {
-			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podName, podIP)
+			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP)
 		}
 
 		Context("with an invalid instance index", func() {
@@ -105,15 +82,32 @@ var _ = Describe("Trender", func() {
 				bpmYmlBytes, err := ioutil.ReadFile(absDestFile)
 				Expect(err).ToNot(HaveOccurred())
 
-				var bpmYml map[string][]interface{}
+				var bpmYml map[string][]bpm.Process
 				err = yaml.Unmarshal(bpmYmlBytes, &bpmYml)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Check fields if they are rendered
-				values := bpmYml["processes"][0].(map[string]interface{})["env"].(map[string]interface{})
-				Expect(values["AGENT_UDP_ADDRESS"]).To(Equal("127.0.0.1:3457"))
-				Expect(values["TRAFFIC_CONTROLLER_OUTGOING_DROPSONDE_PORT"]).To(Equal("8081"))
-				Expect(values["FOOBARWITHLINKINSTANCESAZ"]).To(Equal("z1"))
+				values := bpmYml["processes"][0]
+				Expect(values.Env["AGENT_UDP_ADDRESS"]).To(Equal("127.0.0.1:3457"))
+				Expect(values.Env["TRAFFIC_CONTROLLER_OUTGOING_DROPSONDE_PORT"]).To(Equal("8081"))
+				Expect(values.Env["FOOBARWITHLINKINSTANCESAZ"]).To(Equal("z1"))
+
+				//
+				// The following block of assertions are related to the usage of
+				// the BPM spec object instance in an ERB test file, see
+				// https://bosh.io/docs/jobs/#properties-spec
+				//
+				// When rendering a BPM ERB file for the release templates,the values for an spec object,
+				// willuse the instance at the index provided to the RenderJobTemplates func()
+				Expect(values.Env["FOOBARWITHSPECAZ"]).To(Equal("z1"))
+				Expect(values.Env["FOOBARWITHSPECBOOTSTRAP"]).To(Equal("true"))
+				Expect(values.Env["FOOBARWITHSPECID"]).To(Equal("log-api-0-loggregator_trafficcontroller"))
+				Expect(values.Env["FOOBARWITHSPECINDEX"]).To(Equal("0"))
+				Expect(values.Env["FOOBARWITHSPECNAME"]).To(Equal("log-api-loggregator_trafficcontroller"))
+				Expect(values.Env["FOOBARWITHSPECNETWORKS"]).To(Equal(""))
+				Expect(values.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-0-loggregator_trafficcontroller.default.svc.cluster.local"))
+				Expect(values.Env["FOOBARWITHSPECDEPLOYMENT"]).To(Equal(""))
+				Expect(values.Env["FOOBARWITHSPECIP"]).To(Equal("172.17.0.13"))
 			})
 
 			AfterEach(func() {
@@ -129,7 +123,6 @@ var _ = Describe("Trender", func() {
 			jobsDir = "../../../testing/assets"
 			instanceGroupName = "mysql0"
 			index = 0
-			podName = "mysql-pod-name"
 			podIP = net.ParseIP("172.17.0.13")
 		})
 
@@ -139,7 +132,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		It("renders the job erb files correctly", func() {
-			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podName, podIP)
+			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP)
 			Expect(err).ToNot(HaveOccurred())
 
 			drainFile := filepath.Join(jobsDir, "pxc-mysql", "bin/drain")
@@ -167,7 +160,6 @@ var _ = Describe("Trender", func() {
 			// will return false. See https://bosh.io/docs/jobs/#properties-spec for
 			// more information.
 			index = 1
-			podName = "redis-pod-name"
 			podIP = net.ParseIP("172.17.0.13")
 		})
 
@@ -177,7 +169,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		It("renders the configuration erb file correctly", func() {
-			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podName, podIP)
+			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP)
 			Expect(err).ToNot(HaveOccurred())
 
 			configFile := filepath.Join(jobsDir, "redis-server", "config/redis.conf")

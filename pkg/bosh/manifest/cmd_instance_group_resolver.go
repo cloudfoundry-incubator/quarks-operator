@@ -230,6 +230,7 @@ func (dg *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) e
 					Address:    jobInstance.Address,
 					AZ:         jobInstance.AZ,
 					Bootstrap:  jobInstance.Bootstrap,
+					ID:         jobInstance.ID,
 					Index:      jobInstance.Index,
 					Deployment: dg.manifest.Name,
 					Name:       jobInstance.Name,

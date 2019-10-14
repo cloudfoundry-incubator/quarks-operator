@@ -336,14 +336,6 @@ func templateRenderingContainer(instanceGroupName string, secretName string) cor
 				Value: VolumeRenderingDataMountPath,
 			},
 			{
-				Name: PodNameEnvVar,
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "metadata.name",
-					},
-				},
-			},
-			{
 				Name: PodIPEnvVar,
 				ValueFrom: &corev1.EnvVarSource{
 					FieldRef: &corev1.ObjectFieldSelector{
