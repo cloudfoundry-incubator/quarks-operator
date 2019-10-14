@@ -30,8 +30,8 @@ var (
 	// ExtendedStatefulSetResourceShortNames is the short names of ExtendedStatefulSet
 	ExtendedStatefulSetResourceShortNames = []string{"ests"}
 
-	// ExtendedJobValidation is the validation method for ExtendedJob
-	ExtendedJobValidation = extv1.CustomResourceValidation{
+	// ExtendedStatefulSetValidation is the validation method for ExtendedStatefulSet
+	ExtendedStatefulSetValidation = extv1.CustomResourceValidation{
 		OpenAPIV3Schema: &extv1.JSONSchemaProps{
 			Type: "object",
 			Properties: map[string]extv1.JSONSchemaProps{
