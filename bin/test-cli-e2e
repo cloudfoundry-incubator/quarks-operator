@@ -3,12 +3,8 @@ set -eu
 
 GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
 . "${GIT_ROOT}/bin/include/versioning"
+. "${GIT_ROOT}/bin/include/docker"
 . "${GIT_ROOT}/bin/include/testing"
-
-if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
-  DOCKER_IMAGE_TAG=${VERSION_TAG}
-  export DOCKER_IMAGE_TAG
-fi
 
 : "${CF_OPERATOR_TESTING_TMP:=/tmp}"
 echo "Test logs are here: ${CF_OPERATOR_TESTING_TMP}/cf-operator-tests.log"

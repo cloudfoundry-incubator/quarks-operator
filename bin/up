@@ -3,12 +3,8 @@
 set -e
 
 . ./bin/include/versioning
+. ./bin/include/docker
 . ./.envrc
-
-if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
-  DOCKER_IMAGE_TAG=${VERSION_TAG}
-  export DOCKER_IMAGE_TAG
-fi
 
 if [ -z "$SKIP_IMAGE" ]; then
   bin/build-image
