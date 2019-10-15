@@ -269,6 +269,7 @@ func (dns *boshDomainNameService) createCorefile(namespace string) string {
 }
 
 // simpleDomainNameService emulates old behaviour without BOSH DNS.
+// TODO: Is this implementation of DomainNameService still relevant?
 type simpleDomainNameService struct {
 	ManifestName string
 }
