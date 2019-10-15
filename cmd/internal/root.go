@@ -76,7 +76,7 @@ var rootCmd = &cobra.Command{
 			return wrapError(err, "Couldn't parse cf-operator docker image reference.")
 		}
 
-		manifest.SetupBoshDNSDockerImage(viper.GetString("bosh-dns-docker-image"))
+		manifest.SetBoshDNSDockerImage(viper.GetString("bosh-dns-docker-image"))
 		manifest.SetClusterDomain(viper.GetString("cluster-domain"))
 
 		log.Infof("Starting cf-operator %s with namespace %s", version.Version, watchNamespace)
