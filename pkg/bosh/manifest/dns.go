@@ -246,22 +246,21 @@ func (dns *boshDomainNameService) createCorefile(namespace string) string {
 	}
 
 	tmpl := template.Must(template.New("Corefile").Parse(`
-.:8053 {
-    errors
-    health
-    {{- range $_, $rewrite := .Rewrites }}
-    {{ $rewrite }}
-    {{- end }}
-    forward . /etc/resolv.conf
-    cache 30
-    loop
-    reload
-    loadbalance
-}
-`))
+    .:8053 {
+        errors
+        health
+        {{- range $rewrite := . }}
+        {{ $rewrite }}
+        {{- end }}
+        forward . /etc/resolv.conf
+        cache 30
+        loop
+        reload
+        loadbalance
+    }`))
 
 	var config strings.Builder
-	tmpl.Execute(&config, struct{ Rewrites []string }{rewrites})
+	tmpl.Execute(&config, rewrites)
 	return config.String()
 }
 
