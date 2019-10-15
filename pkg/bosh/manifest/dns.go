@@ -140,7 +140,7 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace strin
 		},
 	}
 
-	var corefileMode int32 = 420
+	var corefileMode int32 = 0644
 	var replicas int32 = 2
 	deployment := appsv1.Deployment{
 		ObjectMeta: metadata,
