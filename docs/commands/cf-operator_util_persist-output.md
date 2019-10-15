@@ -1,24 +1,22 @@
-## cf-operator util variable-interpolation
+## cf-operator util persist-output
 
-Interpolate variables
+Persist a file into a kube secret
 
 ### Synopsis
 
-Interpolate variables of a manifest:
-
-This will interpolate all the variables from a folder and write an
-interpolated manifest to STDOUT
+Persists a log file created by containers in a pod of extendedjob
+	
+into a versionsed secret or kube native secret using flags specified to this command.
 
 
 ```
-cf-operator util variable-interpolation [flags]
+cf-operator util persist-output [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help                   help for variable-interpolation
-  -v, --variables-dir string   (VARIABLES_DIR) path to the variables dir
+  -h, --help   help for persist-output
 ```
 
 ### Options inherited from parent commands
