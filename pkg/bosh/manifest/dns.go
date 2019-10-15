@@ -245,6 +245,7 @@ func (dns *boshDomainNameService) createCorefile(namespace string) string {
 		}
 	}
 
+	// The Corefile values other than the rewrites were based on the default cluster CoreDNS Corefile.
 	tmpl := template.Must(template.New("Corefile").Parse(`
     .:8053 {
         errors
