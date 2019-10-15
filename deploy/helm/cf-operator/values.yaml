@@ -9,6 +9,9 @@ operator:
   watchNamespace: ""
   webhookUseServiceReference: true
 
+cluster:
+  domain: ~
+
 nameOverride: ""
 fullnameOverride: ""
 

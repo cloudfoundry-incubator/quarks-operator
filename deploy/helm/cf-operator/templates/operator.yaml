@@ -27,6 +27,10 @@ spec:
             - name: WATCH_NAMESPACE
               value: "{{ .Values.operator.watchNamespace }}"
             {{- end}}
+            {{- if .Values.cluster.domain }}
+            - name: CLUSTER_DOMAIN
+              value: {{ .Values.cluster.domain | quote }}
+            {{- end }}
             - name: CF_OPERATOR_NAMESPACE
               valueFrom:
                 fieldRef:
