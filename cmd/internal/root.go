@@ -24,8 +24,8 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
-	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/cf-operator/version"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	kubeConfig "code.cloudfoundry.org/quarks-utils/pkg/kubeconfig"
 )
@@ -77,6 +77,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		manifest.SetupBoshDNSDockerImage(viper.GetString("bosh-dns-docker-image"))
+		manifest.SetClusterDomain(viper.GetString("cluster-domain"))
 
 		log.Infof("Starting cf-operator %s with namespace %s", version.Version, watchNamespace)
 		log.Infof("cf-operator docker image: %s", converter.GetOperatorDockerImage())
@@ -154,6 +155,7 @@ func init() {
 	pf.Bool("apply-crd", true, "If true, apply CRDs on start")
 	pf.Int("ctx-timeout", 30, "context timeout for each k8s API request in seconds")
 	pf.StringP("cf-operator-namespace", "n", "default", "The operator namespace")
+	pf.String("cluster-domain", "cluster.local", "The Kubernetes cluster domain")
 	pf.StringP("docker-image-org", "o", "cfcontainerization", "Dockerhub organization that provides the operator docker image")
 	pf.StringP("docker-image-repository", "r", "cf-operator", "Dockerhub repository that provides the operator docker image")
 	pf.StringP("docker-image-tag", "t", version.Version, "Tag of the operator docker image")
@@ -173,6 +175,7 @@ func init() {
 	viper.BindPFlag("apply-crd", rootCmd.PersistentFlags().Lookup("apply-crd"))
 	viper.BindPFlag("ctx-timeout", pf.Lookup("ctx-timeout"))
 	viper.BindPFlag("cf-operator-namespace", pf.Lookup("cf-operator-namespace"))
+	viper.BindPFlag("cluster-domain", pf.Lookup("cluster-domain"))
 	viper.BindPFlag("docker-image-org", pf.Lookup("docker-image-org"))
 	viper.BindPFlag("docker-image-repository", pf.Lookup("docker-image-repository"))
 	viper.BindPFlag("docker-image-tag", rootCmd.PersistentFlags().Lookup("docker-image-tag"))
@@ -193,6 +196,7 @@ func init() {
 		"apply-crd":                              "APPLY_CRD",
 		"ctx-timeout":                            "CTX_TIMEOUT",
 		"cf-operator-namespace":                  "CF_OPERATOR_NAMESPACE",
+		"cluster-domain":                         "CLUSTER_DOMAIN",
 		"docker-image-org":                       "DOCKER_IMAGE_ORG",
 		"docker-image-repository":                "DOCKER_IMAGE_REPOSITORY",
 		"docker-image-tag":                       "DOCKER_IMAGE_TAG",

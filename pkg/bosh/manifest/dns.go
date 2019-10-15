@@ -22,6 +22,16 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
+var (
+	boshDNSDockerImage = ""
+	clusterDomain      = ""
+)
+
+// SetClusterDomain initializes the package scoped clusterDomain variable.
+func SetClusterDomain(domain string) {
+	clusterDomain = domain
+}
+
 // DomainNameService abstraction.
 type DomainNameService interface {
 	// HeadlessServiceName constructs the headless service name for the instance group.
@@ -90,16 +100,14 @@ func (dns *boshDomainNameService) DNSSetting(namespace string) (corev1.DNSPolicy
 	return corev1.DNSNone, &corev1.PodDNSConfig{
 		Nameservers: []string{dns.LocalDNSIP},
 		Searches: []string{
-			fmt.Sprintf("%s.svc.cluster.local", namespace),
-			"svc.cluster.local",
-			"cluster.local",
+			fmt.Sprintf("%s.svc.%s", namespace, clusterDomain),
+			fmt.Sprintf("svc.%s", clusterDomain),
+			clusterDomain,
 			"service.cf.internal",
 		},
 		Options: []corev1.PodDNSConfigOption{{Name: "ndots", Value: &ndots}},
 	}, nil
 }
-
-var boshDNSDockerImage = ""
 
 // SetupBoshDNSDockerImage initializes the package scoped variable.
 func SetupBoshDNSDockerImage(image string) {
@@ -243,7 +251,7 @@ func (dns *boshDomainNameService) createCorefile(namespace string) string {
 			if target.Query == "_" {
 				from = strings.Replace(from, "_", target.InstanceGroup, 1)
 			}
-			to := fmt.Sprintf("%s.%s.svc.cluster.local", dns.HeadlessServiceName(target.InstanceGroup), namespace)
+			to := fmt.Sprintf("%s.%s.svc.%s", dns.HeadlessServiceName(target.InstanceGroup), namespace, clusterDomain)
 			rewrites = append(rewrites, fmt.Sprintf("rewrite name exact %s %s", from, to))
 		}
 	}
