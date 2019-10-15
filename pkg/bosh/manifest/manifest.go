@@ -167,26 +167,29 @@ func LoadYAML(data []byte) (*Manifest, error) {
 		return nil, errors.Wrapf(err, "failed to unmarshal BOSH deployment manifest %s", string(data))
 	}
 
-	m.loadDNS()
+	if err := m.loadDNS(); err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal BOSH deployment manifest %s", string(data))
+	}
 
 	return m, nil
 }
 
 // DNS returns the DNS service
-func (m *Manifest) loadDNS() {
+func (m *Manifest) loadDNS() error {
 	for _, addon := range m.AddOns {
 		if addon.Name == BoshDNSAddOnName {
 			var err error
 			dns, err := NewBoshDomainNameService(addon, m.Name)
 			if err != nil {
-				ctxlog.Errorf(context.Background(), "Error loading bosh dns configuration: %v", err)
-				continue
+				return errors.Wrapf(err, "error loading BOSH DNS configuration")
 			}
 			m.DNS = dns
-			return
+			return nil
 		}
 	}
+
 	m.DNS = NewSimpleDomainNameService(m.Name)
+	return nil
 }
 
 // Marshal serializes a BOSH manifest into yaml
