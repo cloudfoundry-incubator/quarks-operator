@@ -1,24 +1,25 @@
-## cf-operator util variable-interpolation
+## cf-operator util tail-logs
 
-Interpolate variables
+Tail logs from a pod
 
 ### Synopsis
 
-Interpolate variables of a manifest:
+Tail logs from a container in the same pod.
 
-This will interpolate all the variables from a folder and write an
-interpolated manifest to STDOUT
+This will tail all logs under the specified dir.
+The dir can be set using the "-z" flag, or setting
+the LOGS_DIR env variable.
+
 
 
 ```
-cf-operator util variable-interpolation [flags]
+cf-operator util tail-logs [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help                   help for variable-interpolation
-  -v, --variables-dir string   (VARIABLES_DIR) path to the variables dir
+  -h, --help   help for tail-logs
 ```
 
 ### Options inherited from parent commands
