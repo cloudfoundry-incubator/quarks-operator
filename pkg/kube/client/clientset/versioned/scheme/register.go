@@ -9,7 +9,6 @@ package scheme
 
 import (
 	boshdeploymentv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	extendedjobv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	extendedsecretv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	extendedstatefulsetv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,7 +23,6 @@ var Codecs = serializer.NewCodecFactory(Scheme)
 var ParameterCodec = runtime.NewParameterCodec(Scheme)
 var localSchemeBuilder = runtime.SchemeBuilder{
 	boshdeploymentv1alpha1.AddToScheme,
-	extendedjobv1alpha1.AddToScheme,
 	extendedsecretv1alpha1.AddToScheme,
 	extendedstatefulsetv1alpha1.AddToScheme,
 }

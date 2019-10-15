@@ -24,8 +24,9 @@ import (
 	gfakes "code.cloudfoundry.org/cf-operator/pkg/credsgen/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/cf-operator/testing"
+	cmdhelper "code.cloudfoundry.org/quarks-utils/testing"
 )
 
 var _ = Describe("Controllers", func() {
@@ -78,7 +79,7 @@ var _ = Describe("Controllers", func() {
 			generator.GenerateCertificateReturns(credsgen.Certificate{Certificate: []byte("thecert")}, nil)
 
 			config = env.DefaultConfig()
-			ctx = testing.NewContext()
+			ctx = cmdhelper.NewContext()
 		})
 
 		It("sets the operator namespace label", func() {
@@ -105,7 +106,7 @@ var _ = Describe("Controllers", func() {
 
 		Context("if there is no cert secret yet", func() {
 			It("generates and persists the certificates on disk and in a secret", func() {
-				file := "/tmp/cf-operator-hook-" + config.Namespace + "/tls.key"
+				file := "/tmp/cf-operator-hook-" + config.OperatorNamespace + "/tls.key"
 				Expect(afero.Exists(config.Fs, file)).To(BeFalse())
 
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
@@ -131,7 +132,7 @@ var _ = Describe("Controllers", func() {
 					Object: map[string]interface{}{
 						"metadata": map[string]interface{}{
 							"name":      "cf-operator-webhook-server-cert",
-							"namespace": config.Namespace,
+							"namespace": config.OperatorNamespace,
 						},
 						"data": map[string]interface{}{
 							"certificate":    base64.StdEncoding.EncodeToString([]byte("the-cert")),

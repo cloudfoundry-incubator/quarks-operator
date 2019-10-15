@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"code.cloudfoundry.org/cf-operator/e2e/kube/e2ehelper"
+	"code.cloudfoundry.org/quarks-utils/testing/e2ehelper"
 )
 
 const examplesDir = "../../docs/examples/"

@@ -13,8 +13,8 @@ import (
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -144,7 +144,7 @@ var _ = Describe("VolumeFactory", func() {
 		})
 
 		It("creates persistent disk", func() {
-			instanceGroup.PersistentDisk = util.Int(1)
+			instanceGroup.PersistentDisk = pointers.Int(1)
 			instanceGroup.PersistentDiskType = "fake-storage-class"
 			persistentVolumeClaim := corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
@@ -158,7 +158,7 @@ var _ = Describe("VolumeFactory", func() {
 							corev1.ResourceName(corev1.ResourceStorage): resource.MustParse(fmt.Sprintf("%d%s", *instanceGroup.PersistentDisk, "Mi")),
 						},
 					},
-					StorageClassName: util.String("fake-storage-class"),
+					StorageClassName: pointers.String("fake-storage-class"),
 				},
 			}
 			bpmConfigs = &bpm.Configs{

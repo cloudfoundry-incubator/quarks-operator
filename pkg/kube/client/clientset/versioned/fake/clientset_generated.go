@@ -11,8 +11,6 @@ import (
 	clientset "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	boshdeploymentv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1"
 	fakeboshdeploymentv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1/fake"
-	extendedjobv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedjob/v1alpha1"
-	fakeextendedjobv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedjob/v1alpha1/fake"
 	extendedsecretv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedsecret/v1alpha1"
 	fakeextendedsecretv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedsecret/v1alpha1/fake"
 	extendedstatefulsetv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedstatefulset/v1alpha1"
@@ -69,11 +67,6 @@ var _ clientset.Interface = &Clientset{}
 // BoshdeploymentV1alpha1 retrieves the BoshdeploymentV1alpha1Client
 func (c *Clientset) BoshdeploymentV1alpha1() boshdeploymentv1alpha1.BoshdeploymentV1alpha1Interface {
 	return &fakeboshdeploymentv1alpha1.FakeBoshdeploymentV1alpha1{Fake: &c.Fake}
-}
-
-// ExtendedjobV1alpha1 retrieves the ExtendedjobV1alpha1Client
-func (c *Clientset) ExtendedjobV1alpha1() extendedjobv1alpha1.ExtendedjobV1alpha1Interface {
-	return &fakeextendedjobv1alpha1.FakeExtendedjobV1alpha1{Fake: &c.Fake}
 }
 
 // ExtendedsecretV1alpha1 retrieves the ExtendedsecretV1alpha1Client

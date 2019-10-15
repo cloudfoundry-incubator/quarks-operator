@@ -59,6 +59,7 @@ helm delete cf-operator --purge
 | Parameter                                         | Description                                                                       | Default                                        |
 | ------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------- |
 | `operator.watchNamespace`                         | namespace the operator will watch for BOSH deployments                            | the release namespace                          |
+| `operator.webhookUseServiceReference`             | If true, the webhook server is addressed using a service reference instead of the IP | false                                       |
 | `image.repository`                                | docker hub repository for the cf-operator image                                   | `cf-operator`                                  |
 | `image.org`                                       | docker hub organization for the cf-operator image                                 | `cfcontainerization`                           |
 | `image.tag`                                       | docker image tag                                                                  | `foobar`                                       |
@@ -84,26 +85,4 @@ The RBAC resources are enable by default. To disable:
 
 ```bash
 helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com/cf-operators/helm-charts/cf-operator-v0.2.2%2B47.g24492ea.tgz --set rbacEnable=false
-```
-
-## Custom Resources
-
-The `cf-operator` watches four different types of custom resources:
-
-- BoshDeployment
-- ExtendedJob
-- ExtendedSecret
-- ExtendedStatefulset
-
-The `cf-operator` requires this CRD´s to be installed in the cluster, in order to work as expected. By default, the `cf-operator` applies CRDs in your cluster automatically.
-
-To verify if the CRD´s are installed:
-
-```bash
-$ kubectl get crds
-NAME                                            CREATED AT
-boshdeployments.fissile.cloudfoundry.org        2019-06-25T07:08:37Z
-extendedjobs.fissile.cloudfoundry.org           2019-06-25T07:08:37Z
-extendedsecrets.fissile.cloudfoundry.org        2019-06-25T07:08:37Z
-extendedstatefulsets.fissile.cloudfoundry.org   2019-06-25T07:08:37Z
 ```

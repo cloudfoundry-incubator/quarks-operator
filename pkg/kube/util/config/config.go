@@ -20,7 +20,8 @@ type Config struct {
 	MeltdownDuration              time.Duration
 	MeltdownRequeueAfter          time.Duration
 	Namespace                     string
-	Provider                      string
+	OperatorNamespace             string
+	WebhookUseServiceRef          bool
 	WebhookServerHost             string
 	WebhookServerPort             int32
 	Fs                            afero.Fs
@@ -32,13 +33,14 @@ type Config struct {
 }
 
 // NewConfig returns a new Config for a Manager of Controllers
-func NewConfig(namespace string, ctxTimeOut int, provider string, host string, port int32, fs afero.Fs, maxBoshDeploymentWorkers, maxExtendedJobWorkers, maxExtendedSecretWorkers, maxExtendedStatefulSetWorkers int, applyCRD bool) *Config {
+func NewConfig(namespace string, operatorNamespace string, ctxTimeOut int, useServiceRef bool, host string, port int32, fs afero.Fs, maxBoshDeploymentWorkers, maxExtendedJobWorkers, maxExtendedSecretWorkers, maxExtendedStatefulSetWorkers int, applyCRD bool) *Config {
 	return &Config{
 		CtxTimeOut:                    time.Duration(ctxTimeOut) * time.Second,
 		MeltdownDuration:              MeltdownDuration,
 		MeltdownRequeueAfter:          MeltdownRequeueAfter,
 		Namespace:                     namespace,
-		Provider:                      provider,
+		OperatorNamespace:             operatorNamespace,
+		WebhookUseServiceRef:          useServiceRef,
 		WebhookServerHost:             host,
 		WebhookServerPort:             port,
 		Fs:                            fs,

@@ -5,7 +5,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	ejobv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 )
 
@@ -16,8 +15,6 @@ func GetConfigMapsReferencedBy(object interface{}) (map[string]bool, error) {
 	switch object := object.(type) {
 	case bdv1.BOSHDeployment:
 		return getConfMapRefFromBdpl(object), nil
-	case ejobv1.ExtendedJob:
-		return getConfMapRefFromEJob(object), nil
 	case estsv1.ExtendedStatefulSet:
 		return getConfMapRefFromESts(object), nil
 	default:
@@ -43,10 +40,6 @@ func getConfMapRefFromBdpl(object bdv1.BOSHDeployment) map[string]bool {
 
 func getConfMapRefFromESts(object estsv1.ExtendedStatefulSet) map[string]bool {
 	return getConfMapRefFromPod(object.Spec.Template.Spec.Template.Spec)
-}
-
-func getConfMapRefFromEJob(object ejobv1.ExtendedJob) map[string]bool {
-	return getConfMapRefFromPod(object.Spec.Template.Spec)
 }
 
 func getConfMapRefFromPod(object corev1.PodSpec) map[string]bool {

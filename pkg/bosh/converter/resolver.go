@@ -15,9 +15,9 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
+	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
+	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
 // Resolver interface to provide a BOSH manifest resolved references from bdpl CRD

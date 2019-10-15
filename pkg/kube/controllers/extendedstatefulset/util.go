@@ -9,7 +9,7 @@ import (
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
 // listStatefulSetsFromInformer gets StatefulSets cross version owned by the ExtendedStatefulSet from informer

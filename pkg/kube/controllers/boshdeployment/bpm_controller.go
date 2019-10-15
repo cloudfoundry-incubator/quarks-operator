@@ -17,10 +17,10 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
-	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
+	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
 // AddBPM creates a new BPM controller to watch for BPM configs and instance

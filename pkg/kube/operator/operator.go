@@ -10,15 +10,16 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+
 	credsgen "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/crd"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/crd"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
 type resource struct {
@@ -40,7 +41,6 @@ func NewManager(ctx context.Context, config *config.Config, cfg *rest.Config, op
 	log := ctxlog.ExtractLogger(ctx)
 
 	log.Info("Registering Components")
-	config.Namespace = options.Namespace
 
 	// Setup Scheme for all resources
 	err = controllers.AddToScheme(mgr.GetScheme())

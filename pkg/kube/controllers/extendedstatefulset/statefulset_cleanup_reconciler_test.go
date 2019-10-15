@@ -24,10 +24,10 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	exssc "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
-	cfcfg "code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+	cfcfg "code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
+	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
 
 var _ = Describe("ReconcileStatefulSetCleanup", func() {
@@ -64,7 +64,7 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 			Spec: exss.ExtendedStatefulSetSpec{
 				Template: v1beta2.StatefulSet{
 					Spec: v1beta2.StatefulSetSpec{
-						Replicas: util.Int32(1),
+						Replicas: pointers.Int32(1),
 						Template: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
@@ -87,8 +87,8 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 					{
 						Name:               "foo",
 						UID:                "",
-						Controller:         util.Bool(true),
-						BlockOwnerDeletion: util.Bool(true),
+						Controller:         pointers.Bool(true),
+						BlockOwnerDeletion: pointers.Bool(true),
 					},
 				},
 				Annotations: map[string]string{
@@ -108,8 +108,8 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 					{
 						Name:               "foo",
 						UID:                "",
-						Controller:         util.Bool(true),
-						BlockOwnerDeletion: util.Bool(true),
+						Controller:         pointers.Bool(true),
+						BlockOwnerDeletion: pointers.Bool(true),
 					},
 				},
 				Annotations: map[string]string{
@@ -225,8 +225,8 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 						{
 							Name:               "foo-v1",
 							UID:                "",
-							Controller:         util.Bool(true),
-							BlockOwnerDeletion: util.Bool(true),
+							Controller:         pointers.Bool(true),
+							BlockOwnerDeletion: pointers.Bool(true),
 						},
 					},
 					Labels: map[string]string{
@@ -242,8 +242,8 @@ var _ = Describe("ReconcileStatefulSetCleanup", func() {
 						{
 							Name:               "foo-v2",
 							UID:                "",
-							Controller:         util.Bool(true),
-							BlockOwnerDeletion: util.Bool(true),
+							Controller:         pointers.Bool(true),
+							BlockOwnerDeletion: pointers.Bool(true),
 						},
 					},
 					Labels: map[string]string{

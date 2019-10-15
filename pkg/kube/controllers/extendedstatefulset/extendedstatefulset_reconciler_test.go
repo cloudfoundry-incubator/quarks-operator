@@ -24,11 +24,11 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	exssc "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
-	cfcfg "code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+	cfcfg "code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
+	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
+	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
 
 var _ = Describe("ReconcileExtendedStatefulSet", func() {
@@ -90,7 +90,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 								Labels:      map[string]string{existingLabel: existingValue},
 							},
 							Spec: v1beta2.StatefulSetSpec{
-								Replicas: util.Int32(1),
+								Replicas: pointers.Int32(1),
 								Template: corev1.PodTemplateSpec{
 									ObjectMeta: metav1.ObjectMeta{
 										Annotations: map[string]string{existingAnnotation: existingValue},
@@ -388,7 +388,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 					Spec: exss.ExtendedStatefulSetSpec{
 						Template: v1beta2.StatefulSet{
 							Spec: v1beta2.StatefulSetSpec{
-								Replicas: util.Int32(1),
+								Replicas: pointers.Int32(1),
 							},
 						},
 					},
@@ -402,8 +402,8 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							{
 								Name:               "foo",
 								UID:                "foo-uid",
-								Controller:         util.Bool(true),
-								BlockOwnerDeletion: util.Bool(true),
+								Controller:         pointers.Bool(true),
+								BlockOwnerDeletion: pointers.Bool(true),
 							},
 						},
 						Annotations: map[string]string{
@@ -420,8 +420,8 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							{
 								Name:               "foo",
 								UID:                "foo-uid",
-								Controller:         util.Bool(true),
-								BlockOwnerDeletion: util.Bool(true),
+								Controller:         pointers.Bool(true),
+								BlockOwnerDeletion: pointers.Bool(true),
 							},
 						},
 						Annotations: map[string]string{

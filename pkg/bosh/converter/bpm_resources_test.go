@@ -16,11 +16,11 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/cf-operator/testing"
 	"code.cloudfoundry.org/cf-operator/testing/boshreleases"
+	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 var _ = Describe("kube converter", func() {
@@ -40,7 +40,7 @@ var _ = Describe("kube converter", func() {
 				func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) converter.ContainerFactory {
 					return containerFactory
 				})
-			resources, err := kubeConverter.BPMResources(m.Name, "1", instanceGroup, m, bpmConfigs)
+			resources, err := kubeConverter.BPMResources(m.Name, m.DNS, "1", instanceGroup, m, bpmConfigs)
 			return resources, err
 		}
 
@@ -380,7 +380,7 @@ var _ = Describe("kube converter", func() {
 								Name: "fake-pvc",
 							},
 							Spec: corev1.PersistentVolumeClaimSpec{
-								StorageClassName: util.String("fake-storage-class"),
+								StorageClassName: pointers.String("fake-storage-class"),
 								AccessModes: []corev1.PersistentVolumeAccessMode{
 									"ReadWriteOnce",
 								},

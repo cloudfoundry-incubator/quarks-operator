@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
 const (
@@ -144,6 +144,8 @@ type Manifest struct {
 	Properties     []map[string]interface{} `json:"properties,omitempty"`
 	Variables      []Variable               `json:"variables,omitempty"`
 	Update         *Update                  `json:"update,omitempty"`
+	AddOnsApplied  bool                     `json:"addons_applied,omitempty"`
+	DNS            DomainNameService        `json:"-"`
 }
 
 // duplicateYamlValue is a struct used for size compression
@@ -165,7 +167,26 @@ func LoadYAML(data []byte) (*Manifest, error) {
 		return nil, errors.Wrapf(err, "failed to unmarshal BOSH deployment manifest %s", string(data))
 	}
 
+	m.loadDNS()
+
 	return m, nil
+}
+
+// DNS returns the DNS service
+func (m *Manifest) loadDNS() {
+	for _, addon := range m.AddOns {
+		if addon.Name == BoshDNSAddOnName {
+			var err error
+			dns, err := NewBoshDomainNameService(addon, m.Name)
+			if err != nil {
+				ctxlog.Errorf(context.TODO(), "Error loading bosh dns configuration: %s", err.Error())
+				continue
+			}
+			m.DNS = dns
+			return
+		}
+	}
+	m.DNS = NewSimpleDomainNameService(m.Name)
 }
 
 // Marshal serializes a BOSH manifest into yaml
@@ -460,7 +481,13 @@ func (m *Manifest) ImplicitVariables() ([]string, error) {
 
 // ApplyAddons goes through all defined addons and adds jobs to matched instance groups
 func (m *Manifest) ApplyAddons(ctx context.Context) error {
+	if m.AddOnsApplied {
+		return nil
+	}
 	for _, addon := range m.AddOns {
+		if addon.Name == BoshDNSAddOnName {
+			continue
+		}
 		for _, ig := range m.InstanceGroups {
 			include, err := m.addOnPlacementMatch(ctx, "inclusion", ig, addon.Include)
 			if err != nil {
@@ -491,8 +518,8 @@ func (m *Manifest) ApplyAddons(ctx context.Context) error {
 		}
 	}
 
-	// Remove addons after applying them, so we don't end up applying them again
-	m.AddOns = nil
+	// Remember that addons are already applied, so we don't end up applying them again
+	m.AddOnsApplied = true
 
 	return nil
 }

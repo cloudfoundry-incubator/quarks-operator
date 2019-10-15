@@ -1,14 +1,12 @@
 package manifest
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 // InstanceGroup from BOSH deployment manifest.
@@ -42,26 +40,11 @@ func (ig *InstanceGroup) ExtendedStatefulsetName(deploymentName string) string {
 	return fmt.Sprintf("%s-%s", deploymentName, ign)
 }
 
-// HeadlessServiceName constructs the headless service name for the instance group.
-func (ig *InstanceGroup) HeadlessServiceName(deploymentName string) string {
-	return ig.serviceName(deploymentName, 63)
-}
-
 // IndexedServiceName constructs an indexed service name. It's used to construct the other service
 // names other than the headless service.
 func (ig *InstanceGroup) IndexedServiceName(deploymentName string, index int) string {
-	sn := ig.serviceName(deploymentName, 53)
+	sn := serviceName(ig.Name, deploymentName, 53)
 	return fmt.Sprintf("%s-%d", sn, index)
-}
-
-func (ig *InstanceGroup) serviceName(deploymentName string, maxLength int) string {
-	estsn := ig.ExtendedStatefulsetName(deploymentName)
-	if len(estsn) > maxLength {
-		sumHex := md5.Sum([]byte(estsn))
-		sum := hex.EncodeToString(sumHex[:])
-		estsn = fmt.Sprintf("%s-%s", estsn[:maxLength-len(sum)-1], sum)
-	}
-	return estsn
 }
 
 func (ig *InstanceGroup) jobInstances(

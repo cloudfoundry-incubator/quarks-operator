@@ -15,7 +15,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 const (

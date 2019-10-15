@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
 
 var _ = Describe("InterpolateVariables", func() {

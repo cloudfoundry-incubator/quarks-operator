@@ -22,9 +22,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
 // WebhookConfig generates certificates and the configuration for the webhook server
@@ -58,7 +58,7 @@ func NewWebhookConfig(c client.Client, config *config.Config, generator credsgen
 func (f *WebhookConfig) setupCertificate(ctx context.Context) error {
 	secretNamespacedName := machinerytypes.NamespacedName{
 		Name:      "cf-operator-webhook-server-cert",
-		Namespace: f.config.Namespace,
+		Namespace: f.config.OperatorNamespace,
 	}
 
 	// We have to query for the Secret using an unstructured object because the cache for the structured
@@ -86,8 +86,8 @@ func (f *WebhookConfig) setupCertificate(ctx context.Context) error {
 
 		commonName := f.config.WebhookServerHost
 		// If provider is GKE, use service address
-		if f.config.Provider == "gke" {
-			commonName = "cf-operator-webhook." + f.config.Namespace + ".svc"
+		if f.config.WebhookUseServiceRef {
+			commonName = "cf-operator-webhook." + f.config.OperatorNamespace + ".svc"
 		}
 
 		// Generate Certificate
@@ -168,19 +168,19 @@ func (f *WebhookConfig) generateValidationWebhookServerConfig(ctx context.Contex
 	config := &admissionregistrationv1beta1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      f.ConfigName,
-			Namespace: f.config.Namespace,
+			Namespace: f.config.OperatorNamespace,
 		},
 	}
 
 	for _, webhook := range webhooks {
 		ctxlog.Debugf(ctx, "Calculating validation webhook '%s'", webhook.Name)
 
-		if f.config.Provider == "gke" {
+		if f.config.WebhookUseServiceRef {
 			clientConfig := admissionregistrationv1beta1.WebhookClientConfig{
 				CABundle: f.CaCertificate,
 				Service: &admissionregistrationv1beta1.ServiceReference{
 					Name:      "cf-operator-webhook",
-					Namespace: f.config.Namespace,
+					Namespace: f.config.OperatorNamespace,
 					Path:      &webhook.Path,
 				},
 			}
@@ -218,18 +218,18 @@ func (f *WebhookConfig) generateMutationWebhookServerConfig(ctx context.Context,
 	config := admissionregistrationv1beta1.MutatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      f.ConfigName,
-			Namespace: f.config.Namespace,
+			Namespace: f.config.OperatorNamespace,
 		},
 	}
 
 	for _, webhook := range webhooks {
 		ctxlog.Debugf(ctx, "Calculating mutating webhook '%s'", webhook.Name)
 
-		if f.config.Provider == "gke" {
+		if f.config.WebhookUseServiceRef {
 			clientConfig := admissionregistrationv1beta1.WebhookClientConfig{
 				Service: &admissionregistrationv1beta1.ServiceReference{
 					Name:      "cf-operator-webhook",
-					Namespace: f.config.Namespace,
+					Namespace: f.config.OperatorNamespace,
 					Path:      &webhook.Path,
 				},
 				CABundle: f.CaCertificate,

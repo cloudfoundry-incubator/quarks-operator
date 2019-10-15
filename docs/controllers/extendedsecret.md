@@ -34,7 +34,7 @@ Figure 1, illustrates the component and associated set of controllers.
 ![esec-controller-flow](quarks_eseccontroller_flow.png)
 *Fig. 2: The ExtendedSecret controller*
 
-The ExtendedSecret Controller will get a list of all variables referenced in a BOSH manifest with ops files applied, and will use this list of variables to generate the pertinent ExtendedSecret instances.
+The **ExtendedSecret** Controller will get a list of all variables referenced in a BOSH manifest with ops files applied, and will use this list of variables to generate the pertinent `ExtendedSecret` instances.
 
 #### Watches in esec controller
 
@@ -70,7 +70,7 @@ The developer can specify policies for rotation (e.g. automatic or not ) and how
 
 ##### Auto-approving Certificates
 
-A certificate `ExtendedSecret` can be signed by the Kube API Server. The ExtendedSecret Controller is responsible for generating the certificate signing request:
+A certificate `ExtendedSecret` can be signed by the Kube API Server. The **ExtendedSecret** Controller is responsible for generating the certificate signing request:
 
 ```yaml
 apiVersion: certificates.k8s.io/v1beta1
@@ -99,14 +99,14 @@ spec:
 
 #### Highlights in CSR controller
 
-The CertificateSigningRequest controller watches for `CertificateSigningRequest` and approves ExtendedSecret-owned CSRs and persists the generated certificate.
+The CertificateSigningRequest controller watches for `CertificateSigningRequest` and approves `ExtendedSecret`-owned CSRs and persists the generated certificate.
 
 ## Relationship with the BDPL component
 
 ![bdpl-ejob-relationship](quarks_gvc_and_esec_flow.png)
 *Fig. 4: Relationship between the Generated V.  controller and the ExtendedSecret component*
 
-Figure 4 illustrates the interaction of the **Generated Variables** Controller with the **ExtendedSecret** Controller. When reconciling, the Generated Variables Controller lists all variables of a BOSH manifest(basically all BOSH variables) and generates an ExtendedSecret instance per variable, which will trigger the ExtendedSecret controller.
+Figure 4 illustrates the interaction of the **Generated Variables** Controller with the **ExtendedSecret** Controller. When reconciling, the Generated Variables Controller lists all variables of a BOSH manifest(basically all BOSH variables) and generates an `ExtendedSecret` instance per variable, which will trigger the **ExtendedSecret** Controller.
 
 ## `ExtendedSecret` Examples
 

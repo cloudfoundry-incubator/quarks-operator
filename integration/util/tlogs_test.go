@@ -4,8 +4,7 @@ import (
 	"fmt"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
-
-	"code.cloudfoundry.org/cf-operator/integration/environment"
+	"code.cloudfoundry.org/quarks-utils/testing/machine"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -30,7 +29,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 
 			tearDown, err := env.CreatePod(env.Namespace, testPod)
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred())
@@ -56,7 +55,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 
 			tearDown, err := env.CreatePod(env.Namespace, testPod)
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred())
@@ -81,7 +80,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 
 			tearDown, err := env.CreatePod(env.Namespace, testPod)
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred())
@@ -101,7 +100,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 
 			tearDown, err := env.CreatePod(env.Namespace, testPod)
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			err = env.WaitForPod(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred())

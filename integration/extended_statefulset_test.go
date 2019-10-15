@@ -6,9 +6,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"code.cloudfoundry.org/cf-operator/integration/environment"
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	helper "code.cloudfoundry.org/cf-operator/pkg/testhelper"
+	"code.cloudfoundry.org/quarks-utils/testing/machine"
+	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
 
 var _ = Describe("ExtendedStatefulSet", func() {
@@ -44,7 +44,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ess).NotTo(Equal(nil))
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("Checking for pod")
 			err = env.WaitForPods(env.Namespace, "testpod=yes")
@@ -57,7 +57,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, extendedStatefulSet)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ess).NotTo(Equal(nil))
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("Checking for pod")
 			err = env.WaitForPods(env.Namespace, "testpod=yes")
@@ -72,7 +72,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			essUpdated, tearDown, err := env.UpdateExtendedStatefulSet(env.Namespace, *ess)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(essUpdated).NotTo(Equal(nil))
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("Checking for pod")
 			err = env.WaitForPods(env.Namespace, "testpodupdated=yes")
@@ -90,7 +90,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, wrongExtendedStatefulSet)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ess).NotTo(Equal(nil))
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("Checking for pod")
 			err = env.WaitForPodFailures(env.Namespace, "wrongpod=yes")
@@ -105,7 +105,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			essUpdated, tearDown, err := env.UpdateExtendedStatefulSet(env.Namespace, *ess)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(essUpdated).NotTo(Equal(nil))
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("Checking for pod")
 			err = env.WaitForPodFailures(env.Namespace, "testpodupdated=yes")
@@ -121,28 +121,28 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			configMap1 := env.DefaultConfigMap("example1")
 			tearDown, err := env.CreateConfigMap(env.Namespace, configMap1)
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			configMap2 := env.DefaultConfigMap("example2")
 			tearDown, err = env.CreateConfigMap(env.Namespace, configMap2)
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			secret1 := env.DefaultSecret("example1")
 			tearDown, err = env.CreateSecret(env.Namespace, secret1)
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			secret2 := env.DefaultSecret("example2")
 			tearDown, err = env.CreateSecret(env.Namespace, secret2)
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("Creating an ExtendedStatefulSet")
 			ess, tearDown, err := env.CreateExtendedStatefulSet(env.Namespace, ownedReferencesExtendedStatefulSet)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ess).NotTo(Equal(nil))
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("Checking for pod")
 			err = env.WaitForPods(env.Namespace, "referencedpod=yes")
@@ -157,7 +157,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			cm1.Data["key1"] = "modified"
 			_, tearDown, err = env.UpdateConfigMap(env.Namespace, *cm1)
 			Expect(err).ToNot(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			if s2.StringData == nil {
 				s2.StringData = make(map[string]string)
@@ -165,7 +165,7 @@ var _ = Describe("ExtendedStatefulSet", func() {
 			s2.StringData["key1"] = "modified"
 			_, tearDown, err = env.UpdateSecret(env.Namespace, *s2)
 			Expect(err).ToNot(HaveOccurred())
-			defer func(tdf environment.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("Checking new generation of statefulSet appears")
 			err = env.WaitForPods(env.Namespace, "referencedpod=yes")

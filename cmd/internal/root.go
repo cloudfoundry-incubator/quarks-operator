@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+
 	"github.com/go-logr/zapr"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
@@ -19,11 +21,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
-	kubeConfig "code.cloudfoundry.org/cf-operator/pkg/kube/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/cf-operator/version"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	kubeConfig "code.cloudfoundry.org/quarks-utils/pkg/kubeconfig"
 )
 
 const (
@@ -56,6 +58,11 @@ var rootCmd = &cobra.Command{
 		}
 
 		cfOperatorNamespace := viper.GetString("cf-operator-namespace")
+		watchNamespace := viper.GetString("watch-namespace")
+		if watchNamespace == "" {
+			log.Infof("No watch namespace defined. Falling back to the operator namespace.")
+			watchNamespace = cfOperatorNamespace
+		}
 
 		err = converter.SetupOperatorDockerImage(
 			viper.GetString("docker-image-org"),
@@ -66,22 +73,25 @@ var rootCmd = &cobra.Command{
 			return wrapError(err, "Couldn't parse cf-operator docker image reference.")
 		}
 
-		log.Infof("Starting cf-operator %s with namespace %s", version.Version, cfOperatorNamespace)
+		manifest.SetupBoshDNSDockerImage(viper.GetString("bosh-dns-docker-image"))
+
+		log.Infof("Starting cf-operator %s with namespace %s", version.Version, watchNamespace)
 		log.Infof("cf-operator docker image: %s", converter.GetOperatorDockerImage())
 
 		serviceHost := viper.GetString("operator-webhook-service-host")
 		// Port on which the cf operator webhook kube service listens to.
 		servicePort := viper.GetInt32("operator-webhook-service-port")
-		provider := viper.GetString("provider")
+		useServiceRef := viper.GetBool("operator-webhook-use-service-reference")
 
-		if serviceHost == "" && provider == "" {
+		if serviceHost == "" && !useServiceRef {
 			return wrapError(errors.New("couldn't determine webhook server"), "operator-webhook-service-host flag is not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST)")
 		}
 
 		config := config.NewConfig(
+			watchNamespace,
 			cfOperatorNamespace,
 			viper.GetInt("ctx-timeout"),
-			provider,
+			useServiceRef,
 			serviceHost,
 			servicePort,
 			afero.NewOsFs(),
@@ -89,7 +99,6 @@ var rootCmd = &cobra.Command{
 			viper.GetInt("max-extendedjob-workers"),
 			viper.GetInt("max-extendedsecret-workers"),
 			viper.GetInt("max-extendedstatefulset-workers"),
-			viper.GetBool("apply-crd"),
 		)
 		ctx := ctxlog.NewParentContext(log)
 
@@ -102,7 +111,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		mgr, err := operator.NewManager(ctx, config, restConfig, manager.Options{
-			Namespace:          cfOperatorNamespace,
+			Namespace:          watchNamespace,
 			MetricsBindAddress: "0",
 			LeaderElection:     false,
 			Port:               managerPort,
@@ -141,10 +150,11 @@ func init() {
 
 	pf.Bool("apply-crd", true, "If true, apply CRDs on start")
 	pf.Int("ctx-timeout", 30, "context timeout for each k8s API request in seconds")
-	pf.StringP("cf-operator-namespace", "n", "default", "Namespace to watch for BOSH deployments")
+	pf.StringP("cf-operator-namespace", "n", "default", "The operator namespace")
 	pf.StringP("docker-image-org", "o", "cfcontainerization", "Dockerhub organization that provides the operator docker image")
 	pf.StringP("docker-image-repository", "r", "cf-operator", "Dockerhub repository that provides the operator docker image")
 	pf.StringP("docker-image-tag", "t", version.Version, "Tag of the operator docker image")
+	pf.StringP("bosh-dns-docker-image", "", "coredns/coredns:1.6.3", "The docker image used for emulating bosh DNS (a CoreDNS image)")
 	pf.StringP("kubeconfig", "c", "", "Path to a kubeconfig, not required in-cluster")
 	pf.StringP("log-level", "l", "debug", "Only print log messages from this level onward")
 	pf.Int("max-boshdeployment-workers", 1, "Maximum number of workers concurrently running BOSHDeployment controller")
@@ -153,7 +163,8 @@ func init() {
 	pf.Int("max-extendedstatefulset-workers", 1, "Maximum number of workers concurrently running ExtendedStatefulSet controller")
 	pf.StringP("operator-webhook-service-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")
 	pf.StringP("operator-webhook-service-port", "p", "2999", "Port the webhook server listens on")
-	pf.StringP("provider", "x", "", "Cloud Provider where cf-operator is being deployed")
+	pf.BoolP("operator-webhook-use-service-reference", "x", false, "If true the webhook service is targetted using a service reference instead of a URL")
+	pf.StringP("watch-namespace", "", "", "Namespace to watch for BOSH deployments")
 
 	viper.BindPFlag("apply-crd", rootCmd.PersistentFlags().Lookup("apply-crd"))
 	viper.BindPFlag("ctx-timeout", pf.Lookup("ctx-timeout"))
@@ -161,6 +172,7 @@ func init() {
 	viper.BindPFlag("docker-image-org", pf.Lookup("docker-image-org"))
 	viper.BindPFlag("docker-image-repository", pf.Lookup("docker-image-repository"))
 	viper.BindPFlag("docker-image-tag", rootCmd.PersistentFlags().Lookup("docker-image-tag"))
+	viper.BindPFlag("bosh-dns-docker-image", rootCmd.PersistentFlags().Lookup("bosh-dns-docker-image"))
 	viper.BindPFlag("kubeconfig", pf.Lookup("kubeconfig"))
 	viper.BindPFlag("log-level", pf.Lookup("log-level"))
 	viper.BindPFlag("max-boshdeployment-workers", pf.Lookup("max-boshdeployment-workers"))
@@ -169,24 +181,27 @@ func init() {
 	viper.BindPFlag("max-extendedstatefulset-workers", rootCmd.PersistentFlags().Lookup("max-extendedstatefulset-workers"))
 	viper.BindPFlag("operator-webhook-service-host", pf.Lookup("operator-webhook-service-host"))
 	viper.BindPFlag("operator-webhook-service-port", pf.Lookup("operator-webhook-service-port"))
-	viper.BindPFlag("provider", pf.Lookup("provider"))
+	viper.BindPFlag("operator-webhook-use-service-reference", pf.Lookup("operator-webhook-use-service-reference"))
+	viper.BindPFlag("watch-namespace", pf.Lookup("watch-namespace"))
 
 	argToEnv := map[string]string{
-		"apply-crd":                       "APPLY_CRD",
-		"ctx-timeout":                     "CTX_TIMEOUT",
-		"cf-operator-namespace":           "CF_OPERATOR_NAMESPACE",
-		"docker-image-org":                "DOCKER_IMAGE_ORG",
-		"docker-image-repository":         "DOCKER_IMAGE_REPOSITORY",
-		"docker-image-tag":                "DOCKER_IMAGE_TAG",
-		"kubeconfig":                      "KUBECONFIG",
-		"log-level":                       "LOG_LEVEL",
-		"max-boshdeployment-workers":      "MAX_BOSHDEPLOYMENT_WORKERS",
-		"max-extendedjob-workers":         "MAX_EXTENDEDJOB_WORKERS",
-		"max-extendedsecret-workers":      "MAX_EXTENDEDSECRET_WORKERS",
-		"max-extendedstatefulset-workers": "MAX_EXTENDEDSTATEFULSET_WORKERS",
-		"operator-webhook-service-host":   "CF_OPERATOR_WEBHOOK_SERVICE_HOST",
-		"operator-webhook-service-port":   "CF_OPERATOR_WEBHOOK_SERVICE_PORT",
-		"provider":                        "PROVIDER",
+		"apply-crd":                              "APPLY_CRD",
+		"ctx-timeout":                            "CTX_TIMEOUT",
+		"cf-operator-namespace":                  "CF_OPERATOR_NAMESPACE",
+		"docker-image-org":                       "DOCKER_IMAGE_ORG",
+		"docker-image-repository":                "DOCKER_IMAGE_REPOSITORY",
+		"docker-image-tag":                       "DOCKER_IMAGE_TAG",
+		"bosh-dns-docker-image":                  "BOSH_DNS_DOCKER_IMAGE",
+		"kubeconfig":                             "KUBECONFIG",
+		"log-level":                              "LOG_LEVEL",
+		"max-boshdeployment-workers":             "MAX_BOSHDEPLOYMENT_WORKERS",
+		"max-extendedjob-workers":                "MAX_EXTENDEDJOB_WORKERS",
+		"max-extendedsecret-workers":             "MAX_EXTENDEDSECRET_WORKERS",
+		"max-extendedstatefulset-workers":        "MAX_EXTENDEDSTATEFULSET_WORKERS",
+		"operator-webhook-service-host":          "CF_OPERATOR_WEBHOOK_SERVICE_HOST",
+		"operator-webhook-service-port":          "CF_OPERATOR_WEBHOOK_SERVICE_PORT",
+		"operator-webhook-use-service-reference": "CF_OPERATOR_WEBHOOK_USE_SERVICE_REFERENCE",
+		"watch-namespace":                        "WATCH_NAMESPACE",
 	}
 
 	// Add env variables to help

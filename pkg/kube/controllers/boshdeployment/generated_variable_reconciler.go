@@ -17,9 +17,9 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/meltdown"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
 )
 
 var _ reconcile.Reconciler = &ReconcileGeneratedVariable{}

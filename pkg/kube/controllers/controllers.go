@@ -16,16 +16,16 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	ejv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedjob"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
+	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/quarks-job/pkg/kube/controllers/extendedjob"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
 const (
@@ -93,7 +93,7 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 		return errors.Wrap(err, "setting the operator namespace label")
 	}
 
-	webhookConfig := NewWebhookConfig(m.GetClient(), config, generator, WebhookConfigPrefix+config.Namespace)
+	webhookConfig := NewWebhookConfig(m.GetClient(), config, generator, WebhookConfigPrefix+config.OperatorNamespace)
 
 	hookServer := m.GetWebhookServer()
 	hookServer.CertDir = webhookConfig.CertDir

@@ -4,7 +4,7 @@ import (
 	"go.uber.org/zap"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

@@ -10,12 +10,12 @@ GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 GIT_DESCRIBE=$(git describe --tags --long || (git tag -a v0.0.0 -m "tag v0.0.0"; git describe --tags --long))
 GIT_BRANCH=${GIT_BRANCH:-$(git name-rev --name-only HEAD)}
 
-GIT_COMMITS=${GIT_COMMITS:-$(echo "${GIT_DESCRIBE}" | awk -F - '{ print $2 }')}
-GIT_SHA=${GIT_SHA:-$(echo "${GIT_DESCRIBE}" | awk -F - '{ print $3 }' )}
+GIT_COMMITS=$(echo "${GIT_DESCRIBE}" | awk -F - '{ print $2 }')
+GIT_SHA=$(echo "${GIT_DESCRIBE}" | awk -F - '{ print $3 }' )
 GIT_TAG=$(echo "${GIT_DESCRIBE}" | awk -F - '{ print $1 }')
 [ -z "$(git status --porcelain)" ] || GIT_TAG=${GIT_TAG}-dirty
 
-ARTIFACT_NAME=${ARTIFACT_NAME:-$(basename "$(git config --get remote.origin.url)" .git)}
+ARTIFACT_NAME=$(basename "$(git config --get remote.origin.url)" .git)
 ARTIFACT_VERSION=${GIT_TAG}+${GIT_COMMITS}.${GIT_SHA}
 
 VERSION_TAG=${ARTIFACT_VERSION//+/-}

@@ -1,25 +1,69 @@
 package storage_kube_test
 
 import (
+	"io/ioutil"
 	"os"
 
-	"code.cloudfoundry.org/cf-operator/testing"
+	"github.com/pkg/errors"
+
+	"sigs.k8s.io/yaml"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
+	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 )
+
+// AddTestStorageClassToVolumeClaimTemplates adds storage class to the example and returns the new file temporary path
+func AddTestStorageClassToVolumeClaimTemplates(filePath string, class string) (string, error) {
+	extendedStatefulSet := essv1.ExtendedStatefulSet{}
+	extendedStatefulSetBytes, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return "", errors.Wrapf(err, "Reading file %s failed.", filePath)
+	}
+	err = yaml.Unmarshal(extendedStatefulSetBytes, &extendedStatefulSet)
+	if err != nil {
+		return "", errors.Wrapf(err, "Unmarshalling extendedstatefulset from file %s failed.", filePath)
+	}
+
+	if extendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates != nil {
+		volumeClaimTemplates := extendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates
+		for volumeClaimTemplateIndex := range volumeClaimTemplates {
+			volumeClaimTemplates[volumeClaimTemplateIndex].Spec.StorageClassName = pointers.String(class)
+		}
+		extendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates = volumeClaimTemplates
+	} else {
+		return "", errors.Errorf("No volumeclaimtemplates present in the %s yaml", filePath)
+	}
+
+	extendedStatefulSetBytes, err = yaml.Marshal(&extendedStatefulSet)
+	if err != nil {
+		return "", errors.Wrapf(err, "Marshing extendedstatfulset %s failed", extendedStatefulSet.GetName())
+	}
+
+	tmpFilePath := "/tmp/example.yaml"
+
+	err = ioutil.WriteFile(tmpFilePath, extendedStatefulSetBytes, 0644)
+	if err != nil {
+		return "", errors.Wrapf(err, "Writing extendedstatefulset %s to file %s failed.", extendedStatefulSet.GetName(), tmpFilePath)
+	}
+
+	return tmpFilePath, nil
+}
 
 var _ = Describe("Examples", func() {
 
 	Describe("when storage related examples are specified in the docs", func() {
 
 		var (
-			kubectlHelper *testing.Kubectl
+			kubectlHelper *cmdHelper.Kubectl
 		)
 		const examplesDir = "../../../docs/examples/"
 
 		BeforeEach(func() {
-			kubectlHelper = testing.NewKubectl()
+			kubectlHelper = cmdHelper.NewKubectl()
 		})
 
 		Context("all storage related examples with storage must be working", func() {
@@ -34,11 +78,11 @@ var _ = Describe("Examples", func() {
 				literalValues := map[string]string{
 					"value": class,
 				}
-				err := testing.CreateSecretFromLiteral(namespace, "nats-deployment.var-operator-test-storage-class", literalValues)
+				err := cmdHelper.CreateSecretFromLiteral(namespace, "nats-deployment.var-operator-test-storage-class", literalValues)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Creating bosh deployment")
-				err = testing.Create(namespace, yamlFilePath)
+				err = cmdHelper.Create(namespace, yamlFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
@@ -60,11 +104,11 @@ var _ = Describe("Examples", func() {
 				class, ok := os.LookupEnv("OPERATOR_TEST_STORAGE_CLASS")
 				Expect(ok).To(Equal(true))
 
-				exampleTmpFilePath, err := testing.AddTestStorageClassToVolumeClaimTemplates(yamlFilePath, class)
+				exampleTmpFilePath, err := AddTestStorageClassToVolumeClaimTemplates(yamlFilePath, class)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Creating exstatefulset pvcs")
-				err = testing.Create(namespace, exampleTmpFilePath)
+				err = cmdHelper.Create(namespace, exampleTmpFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")

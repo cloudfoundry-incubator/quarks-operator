@@ -20,11 +20,11 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/config"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/meltdown"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error

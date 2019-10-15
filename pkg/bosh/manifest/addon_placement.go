@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
 type matcher func(*InstanceGroup, *AddOnPlacementRules) (bool, error)

@@ -12,10 +12,9 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	ejobv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedjob/v1alpha1"
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	log "code.cloudfoundry.org/cf-operator/pkg/kube/util/ctxlog"
-	vss "code.cloudfoundry.org/cf-operator/pkg/kube/util/versionedsecretstore"
+	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
 // ReconcileType lists all the types of reconciliations we can return,
@@ -25,8 +24,6 @@ type ReconcileType int
 const (
 	// ReconcileForBOSHDeployment represents the BOSHDeployment CRD
 	ReconcileForBOSHDeployment ReconcileType = iota
-	// ReconcileForExtendedJob represents the ExtendedJob CRD
-	ReconcileForExtendedJob
 	// ReconcileForExtendedStatefulSet represents the ExtendedStatefulSet CRD
 	ReconcileForExtendedStatefulSet
 )
@@ -34,12 +31,11 @@ const (
 func (r ReconcileType) String() string {
 	return [...]string{
 		"BOSHDeployment",
-		"ExtendedJob",
 		"ExtendedStatefulSet",
 	}[r]
 }
 
-// GetReconciles returns reconciliation requests for the BOSHDeployments, ExtendedJobs or ExtendedStatefulSets
+// GetReconciles returns reconciliation requests for the BOSHDeployments or ExtendedStatefulSets
 // that reference an object. The object can be a ConfigMap or a Secret
 func GetReconciles(ctx context.Context, client crc.Client, reconcileType ReconcileType, object apis.Object) ([]reconcile.Request, error) {
 	objReferencedBy := func(parent interface{}) (bool, error) {
@@ -103,29 +99,6 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 					NamespacedName: types.NamespacedName{
 						Name:      boshDeployment.Name,
 						Namespace: boshDeployment.Namespace,
-					}})
-			}
-		}
-	case ReconcileForExtendedJob:
-		extendedJobs, err := listExtendedJobs(ctx, client, namespace)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to list ExtendedJobs for ConfigMap reconciles")
-		}
-
-		for _, eJob := range extendedJobs.Items {
-			if !(eJob.Spec.UpdateOnConfigChange && eJob.IsAutoErrand()) {
-				continue
-			}
-			isRef, err := objReferencedBy(eJob)
-			if err != nil {
-				return nil, err
-			}
-
-			if isRef {
-				result = append(result, reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Name:      eJob.Name,
-						Namespace: eJob.Namespace,
 					}})
 			}
 		}
@@ -212,17 +185,6 @@ func listExtendedStatefulSets(ctx context.Context, client crc.Client, namespace 
 	err := client.List(ctx, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list ExtendedStatefulSets")
-	}
-
-	return result, nil
-}
-
-func listExtendedJobs(ctx context.Context, client crc.Client, namespace string) (*ejobv1.ExtendedJobList, error) {
-	log.Debugf(ctx, "Listing ExtendedJobs in namespace '%s'", namespace)
-	result := &ejobv1.ExtendedJobList{}
-	err := client.List(ctx, result)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to list ExtendedJobs")
 	}
 
 	return result, nil
