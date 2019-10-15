@@ -237,6 +237,9 @@ func (dns *boshDomainNameService) createCorefile(namespace string) string {
 	for _, alias := range dns.Aliases {
 		for _, target := range alias.Targets {
 			from := alias.Domain
+			// Underscore (_) - represents a subdomain and can be used to match the subdomain in the
+			// target hostname.
+			// https://bosh.io/docs/dns/#aliases
 			if target.Query == "_" {
 				from = strings.Replace(from, "_", target.InstanceGroup, 1)
 			}
