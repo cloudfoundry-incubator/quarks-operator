@@ -22,19 +22,19 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
-//DomainNameService abstraction
+// DomainNameService abstraction.
 type DomainNameService interface {
 	// HeadlessServiceName constructs the headless service name for the instance group.
 	HeadlessServiceName(instanceGroupName string) string
 
-	// DNSSetting get the DNS settings for POD
+	// DNSSetting get the DNS settings for POD.
 	DNSSetting(namespace string) (corev1.DNSPolicy, *corev1.PodDNSConfig, error)
 
-	// Reconcile DNS stuff
+	// Reconcile DNS stuff.
 	Reconcile(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error
 }
 
-// Target of domain alias
+// Target of domain alias.
 type Target struct {
 	Query         string `json:"query"`
 	InstanceGroup string `json:"instance_group" mapstructure:"instance_group"`
@@ -43,23 +43,23 @@ type Target struct {
 	Domain        string `json:"domain"`
 }
 
-// Alias of domain alias
+// Alias of domain alias.
 type Alias struct {
 	Domain  string   `json:"domain"`
 	Targets []Target `json:"targets"`
 }
 
-// boshDomainNameService is used to emulate Bosh DNS
+// boshDomainNameService is used to emulate Bosh DNS.
 type boshDomainNameService struct {
 	Aliases      []Alias
 	LocalDNSIP   string
 	ManifestName string
 }
 
-// BoshDNSAddOnName name of bosh dns add on
+// BoshDNSAddOnName name of bosh dns addon.
 const BoshDNSAddOnName = "bosh-dns-aliases"
 
-// NewBoshDomainNameService create a new DomainNameService
+// NewBoshDomainNameService create a new DomainNameService.
 func NewBoshDomainNameService(addOn *AddOn, manifestName string) (DomainNameService, error) {
 	dns := boshDomainNameService{ManifestName: manifestName}
 	for _, job := range addOn.Jobs {
@@ -76,12 +76,12 @@ func NewBoshDomainNameService(addOn *AddOn, manifestName string) (DomainNameServ
 	return &dns, nil
 }
 
-// HeadlessServiceName see interface
+// HeadlessServiceName see interface.
 func (dns *boshDomainNameService) HeadlessServiceName(instanceGroupName string) string {
 	return serviceName(instanceGroupName, dns.ManifestName, 63)
 }
 
-// DNSSetting see interface
+// DNSSetting see interface.
 func (dns *boshDomainNameService) DNSSetting(namespace string) (corev1.DNSPolicy, *corev1.PodDNSConfig, error) {
 	if dns.LocalDNSIP == "" {
 		return corev1.DNSNone, nil, errors.New("BoshDomainNameService: DNSSetting called before Reconcile")
@@ -101,12 +101,12 @@ func (dns *boshDomainNameService) DNSSetting(namespace string) (corev1.DNSPolicy
 
 var boshDNSDockerImage = ""
 
-// SetupBoshDNSDockerImage initializes the package scoped variable
+// SetupBoshDNSDockerImage initializes the package scoped variable.
 func SetupBoshDNSDockerImage(image string) {
 	boshDNSDockerImage = image
 }
 
-// Reconcile see interface
+// Reconcile see interface.
 func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
 	const volumeName = "bosh-dns-volume"
 	const coreConfigFile = "Corefile"
@@ -268,26 +268,27 @@ func (dns *boshDomainNameService) createCorefile(namespace string) string {
 	return config.String()
 }
 
+// simpleDomainNameService emulates old behaviour without BOSH DNS.
 type simpleDomainNameService struct {
 	ManifestName string
 }
 
-// NewSimpleDomainNameService emulates old behaviour without bosh dns
+// NewSimpleDomainNameService creates a new simpleDomainNameService.
 func NewSimpleDomainNameService(manifestName string) DomainNameService {
 	return &simpleDomainNameService{ManifestName: manifestName}
 }
 
-// HeadlessServiceName see interface
+// HeadlessServiceName see interface.
 func (dns *simpleDomainNameService) HeadlessServiceName(instanceGroupName string) string {
 	return serviceName(instanceGroupName, dns.ManifestName, 63)
 }
 
-// DNSSetting see interface
+// DNSSetting see interface.
 func (dns *simpleDomainNameService) DNSSetting(_ string) (corev1.DNSPolicy, *corev1.PodDNSConfig, error) {
 	return corev1.DNSClusterFirst, nil, nil
 }
 
-// Reconcile see interface
+// Reconcile see interface.
 func (dns *simpleDomainNameService) Reconcile(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
 	return nil
 }
