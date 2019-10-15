@@ -1,0 +1,17 @@
+#!/bin/bash
+
+if [ -z ${DOCKER_IMAGE_ORG+x} ]; then
+  DOCKER_IMAGE_ORG="cfcontainerization"
+  export DOCKER_IMAGE_ORG
+fi
+
+if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
+  DOCKER_IMAGE_TAG=${VERSION_TAG}
+  export DOCKER_IMAGE_TAG
+fi
+
+if [ -z ${DOCKER_IMAGE_REPOSITORY} ]; then
+    DOCKER_IMAGE_REPOSITORY="cf-operator"
+    export DOCKER_IMAGE_REPOSITORY
+fi
+
