@@ -27,6 +27,11 @@ var (
 	clusterDomain      = ""
 )
 
+// SetBoshDNSDockerImage initializes the package scoped boshDNSDockerImage variable.
+func SetBoshDNSDockerImage(image string) {
+	boshDNSDockerImage = image
+}
+
 // SetClusterDomain initializes the package scoped clusterDomain variable.
 func SetClusterDomain(domain string) {
 	clusterDomain = domain
@@ -107,11 +112,6 @@ func (dns *boshDomainNameService) DNSSetting(namespace string) (corev1.DNSPolicy
 		},
 		Options: []corev1.PodDNSConfigOption{{Name: "ndots", Value: &ndots}},
 	}, nil
-}
-
-// SetupBoshDNSDockerImage initializes the package scoped variable.
-func SetupBoshDNSDockerImage(image string) {
-	boshDNSDockerImage = image
 }
 
 // Reconcile see interface.
