@@ -248,25 +248,26 @@ func (dns *boshDomainNameService) createCorefile(namespace string) string {
 		}
 	}
 
-	// The Corefile values other than the rewrites were based on the default cluster CoreDNS Corefile.
-	tmpl := template.Must(template.New("Corefile").Parse(`
-    .:8053 {
-        errors
-        health
-        {{- range $rewrite := . }}
-        {{ $rewrite }}
-        {{- end }}
-        forward . /etc/resolv.conf
-        cache 30
-        loop
-        reload
-        loadbalance
-    }`))
-
+	tmpl := template.Must(template.New("Corefile").Parse(corefileTemplate))
 	var config strings.Builder
 	tmpl.Execute(&config, rewrites)
 	return config.String()
 }
+
+// The Corefile values other than the rewrites were based on the default cluster CoreDNS Corefile.
+const corefileTemplate = `
+.:8053 {
+	errors
+	health
+	{{- range $rewrite := . }}
+	{{ $rewrite }}
+	{{- end }}
+	forward . /etc/resolv.conf
+	cache 30
+	loop
+	reload
+	loadbalance
+}`
 
 // simpleDomainNameService emulates old behaviour without BOSH DNS.
 // TODO: Is this implementation of DomainNameService still relevant?
