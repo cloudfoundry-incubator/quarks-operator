@@ -1,6 +1,8 @@
 package converter
 
 import (
+	corev1 "k8s.io/api/core/v1"
+
 	"code.cloudfoundry.org/quarks-job/pkg/kube/controllers/extendedjob"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
@@ -9,7 +11,7 @@ import (
 var operatorDockerImage = ""
 
 // SetupOperatorDockerImage initializes the package scoped variable
-func SetupOperatorDockerImage(org, repo, tag string) error {
+func SetupOperatorDockerImage(org, repo, tag, pullPolicy string) error {
 	var err error
 	operatorDockerImage, err = names.GetDockerSourceName(org, repo, tag)
 	if err != nil {
@@ -18,10 +20,19 @@ func SetupOperatorDockerImage(org, repo, tag string) error {
 
 	// setup quarks job docker image, too.
 	// will have to change this once the persist command is moved to quarks-job
-	return extendedjob.SetupOperatorDockerImage(org, repo, tag)
+	err = extendedjob.SetupOperatorDockerImage(org, repo, tag)
+	if err != nil {
+		return err
+	}
+	return extendedjob.SetupOperatorImagePullPolicy(pullPolicy)
 }
 
 // GetOperatorDockerImage returns the image name of the operator docker image
 func GetOperatorDockerImage() string {
 	return operatorDockerImage
+}
+
+// GetOperatorImagePullPolicy returns the image pull policy to be used for generated pods
+func GetOperatorImagePullPolicy() corev1.PullPolicy {
+	return extendedjob.GetOperatorImagePullPolicy()
 }

@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/pkg/errors"
 
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -84,7 +86,7 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 		return nil, errors.Errorf("required environment variable DOCKER_IMAGE_TAG not set")
 	}
 
-	err = converter.SetupOperatorDockerImage(dockerImageOrg, dockerImageRepo, dockerImageTag)
+	err = converter.SetupOperatorDockerImage(dockerImageOrg, dockerImageRepo, dockerImageTag, string(corev1.PullAlways))
 	if err != nil {
 		return nil, err
 	}
