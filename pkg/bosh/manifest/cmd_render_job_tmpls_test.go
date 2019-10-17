@@ -92,13 +92,12 @@ var _ = Describe("Trender", func() {
 				Expect(values.Env["TRAFFIC_CONTROLLER_OUTGOING_DROPSONDE_PORT"]).To(Equal("8081"))
 				Expect(values.Env["FOOBARWITHLINKINSTANCESAZ"]).To(Equal("z1"))
 
-				//
 				// The following block of assertions are related to the usage of
 				// the BPM spec object instance in an ERB test file, see
 				// https://bosh.io/docs/jobs/#properties-spec
 				//
 				// When rendering a BPM ERB file for the release templates,the values for an spec object,
-				// willuse the instance at the index provided to the RenderJobTemplates func()
+				// will use the instance at the index provided to the RenderJobTemplates func().
 				Expect(values.Env["FOOBARWITHSPECAZ"]).To(Equal("z1"))
 				Expect(values.Env["FOOBARWITHSPECBOOTSTRAP"]).To(Equal("true"))
 				Expect(values.Env["FOOBARWITHSPECID"]).To(Equal("log-api-0-loggregator_trafficcontroller"))

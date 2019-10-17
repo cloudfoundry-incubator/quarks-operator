@@ -89,7 +89,6 @@ var _ = Describe("InstanceGroupResolver", func() {
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-0"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECDEPLOYMENT"]).To(Equal("cf"))
 
-				//
 				// The following block of assertions are related to the usage of
 				// the BPM spec object instance in an ERB test file, see
 				// https://bosh.io/docs/jobs/#properties-spec
@@ -97,7 +96,6 @@ var _ = Describe("InstanceGroupResolver", func() {
 				// When rendering the bpm.yml.erb file, the values for an spec object, will
 				// always use the instance at index 0 of Properties.Quarks.Instances
 				// We do not support different indexes in BPM data.
-				//
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECAZ"]).To(Equal("z1"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECBOOTSTRAP"]).To(Equal("true"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECID"]).To(Equal("log-api-0-loggregator_trafficcontroller"))
