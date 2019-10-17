@@ -182,4 +182,33 @@ var _ = Describe("Trender", func() {
 
 		})
 	})
+
+	Context("when spec.id is used in a bosh release", func() {
+		BeforeEach(func() {
+			deploymentManifest = "../../../testing/assets/ig-resolved.app-autoscaler.yml"
+			jobsDir = "../../../testing/assets"
+			instanceGroupName = "asmetrics"
+			index = 0
+			podIP = net.ParseIP("172.17.0.13")
+		})
+
+		AfterEach(func() {
+			err := os.RemoveAll(filepath.Join(jobsDir, "metricsserver"))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("usage of spec field in an ERB template should work", func() {
+			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP)
+			Expect(err).ToNot(HaveOccurred())
+
+			configFile := filepath.Join(jobsDir, "metricsserver", "config/metricsserver.yml")
+			Expect(configFile).Should(BeAnExistingFile())
+
+			content, err := ioutil.ReadFile(configFile)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(content)).To(ContainSubstring("node_index: 0"))
+
+		})
+	})
 })

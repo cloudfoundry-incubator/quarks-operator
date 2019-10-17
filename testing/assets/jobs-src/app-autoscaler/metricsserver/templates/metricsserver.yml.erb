@@ -1,0 +1,72 @@
+  <%
+  def p_arr(property)
+    p(property,nil) || []
+  end
+
+  instance_metrics_db_scheme = p('autoscaler.instancemetrics_db.db_scheme')
+  instance_metrics_db_address = p('autoscaler.instancemetrics_db.address')
+  instance_metrics_db_port = p('autoscaler.instancemetrics_db.port')
+  instance_metrics_db_role = p_arr('autoscaler.instancemetrics_db.roles').find { |role| role['tag'] == 'instancemetricsdb' or role['tag'] == 'default' } 
+  instance_metrics_db_database = p_arr('autoscaler.instancemetrics_db.databases').find { |database| database['tag'] == 'instancemetricsdb' or database['tag'] == 'default' } 
+  instance_metrics_db_url = instance_metrics_db_scheme + "://" + instance_metrics_db_role['name'] + ":" + instance_metrics_db_role['password'] + "@" + instance_metrics_db_address + ":" + instance_metrics_db_port.to_s + "/" + instance_metrics_db_database['name'] + "?sslmode=" + p('autoscaler.instancemetrics_db.sslmode') 
+  unless p('autoscaler.instancemetrics_db.tls.ca') == ""
+    instance_metrics_db_url = instance_metrics_db_url + "&sslrootcert=/var/vcap/jobs/metricsserver/config/certs/appinstancemetrics_db/ca.crt"
+  end
+
+  policy_db_scheme = p('autoscaler.policy_db.db_scheme')
+  policy_db_address = p('autoscaler.policy_db.address')
+  policy_db_port = p('autoscaler.policy_db.port')
+  policy_db_role = p_arr('autoscaler.policy_db.roles').find { |role| role['tag'] == 'policydb' or role['tag'] == 'default'  }
+  policy_db_database = p_arr('autoscaler.policy_db.databases').find { |database| database['tag'] == 'policydb' or database['tag'] == 'default' }
+  policy_db_url = policy_db_scheme + "://" + policy_db_role['name'] + ":" + policy_db_role['password'] + "@" + policy_db_address + ":" + policy_db_port.to_s + "/" + policy_db_database['name'] + "?sslmode=" + p('autoscaler.policy_db.sslmode') 
+  unless p('autoscaler.policy_db.tls.ca') == ""
+    policy_db_url = policy_db_url + "&sslrootcert=/var/vcap/jobs/metricsserver/config/certs/policy_db/ca.crt"
+  end
+
+  sorted_instances=link("metricsserver").instances.sort_by {|i|i.address}
+  nodeIndex=sorted_instances.index(sorted_instances.find{|i|i.id == spec.id})
+  addrs=sorted_instances.map{|i| "'#{i.address}'"}
+  nodeAddrs="[" + addrs.join(",") +"]"  
+
+%>
+
+logging:
+  level: <%= p("autoscaler.metricsserver.logging.level") %>
+http_client_timeout: <%= p("autoscaler.metricsserver.http_client_timeout") %>
+node_addrs: <%= nodeAddrs %>
+node_index: <%= nodeIndex %>
+db:
+  policy_db:
+    url: <%= policy_db_url %>
+    max_open_connections: <%= p("autoscaler.policy_db_connection_config.max_open_connections") %>
+    max_idle_connections: <%= p("autoscaler.policy_db_connection_config.max_idle_connections") %>
+    connection_max_lifetime: <%= p("autoscaler.policy_db_connection_config.connection_max_lifetime") %>
+  instance_metrics_db:
+    url: <%= instance_metrics_db_url %>
+    max_open_connections: <%= p("autoscaler.instancemetrics_db_connection_config.max_open_connections") %>
+    max_idle_connections: <%= p("autoscaler.instancemetrics_db_connection_config.max_idle_connections") %>
+    connection_max_lifetime: <%= p("autoscaler.instancemetrics_db_connection_config.connection_max_lifetime") %>
+collector:
+  port: <%= p("autoscaler.metricsserver.collector.port") %>
+  keep_alive_time: <%= p("autoscaler.metricsserver.collector.keep_alive_time") %>
+  refresh_interval: <%= p("autoscaler.metricsserver.collector.refresh_interval") %>
+  collect_interval: <%= p("autoscaler.metricsserver.collector.collect_interval") %>
+  save_interval: <%= p("autoscaler.metricsserver.collector.save_interval") %>
+  persist_metrics: <%= p("autoscaler.metricsserver.collector.persist_metrics") %>
+  envelope_processor_count: <%= p("autoscaler.metricsserver.collector.envelope_processor_count") %>
+  metric_cache_size_per_app: <%= p("autoscaler.metricsserver.collector.metric_cache_size_per_app") %>
+  envelope_channel_size: <%= p("autoscaler.metricsserver.collector.envelope_channel_size") %>
+  metric_channel_size: <%= p("autoscaler.metricsserver.collector.metric_channel_size") %>
+  tls:
+    key_file: /var/vcap/jobs/metricsserver/config/certs/metricsserver/server.key
+    cert_file: /var/vcap/jobs/metricsserver/config/certs/metricsserver/server.crt
+    ca_file: /var/vcap/jobs/metricsserver/config/certs/metricsserver/ca.crt
+
+server:
+  port:  <%= p("autoscaler.metricsserver.server.port") %>
+  tls:
+    key_file: /var/vcap/jobs/metricsserver/config/certs/metricsserver/server.key
+    cert_file: /var/vcap/jobs/metricsserver/config/certs/metricsserver/server.crt
+    ca_file: /var/vcap/jobs/metricsserver/config/certs/metricsserver/ca.crt
+health:
+  port: <%= p("autoscaler.metricsserver.health.port") %>
