@@ -1,0 +1,146 @@
+---
+name: metricsserver
+templates:
+  metricsserver.yml.erb: config/metricsserver.yml
+  
+packages:
+  - java
+  - db
+  - metricsserver
+  - common
+
+provides:
+- name: metricsserver
+  type: metricsserver
+  properties:
+  - autoscaler.metricsserver.server.port
+  - autoscaler.metricsserver.collector.port
+
+consumes:
+- name: metricsserver
+  type: metricsserver
+
+properties:
+  autoscaler.policy_db.address:
+    description: "IP address on which the policydb server will listen"
+    default: "autoscalerpostgres.service.cf.internal"
+  autoscaler.policy_db.databases:
+    description: "The list of databases used in policydb database including name"
+  autoscaler.policy_db.db_scheme:
+    description: "Database scheme to be used to access policydb"
+  autoscaler.policy_db.port:
+    description: "Port on which the policydb server will listen"
+  autoscaler.policy_db.roles:
+    description: "The list of database roles used in policydb database including name/password"
+  autoscaler.policy_db.tls.ca:
+    default: ''
+    description: 'PEM-encoded ca certificate of tls database server'
+  autoscaler.policy_db.sslmode:
+    default: disable
+    description: "The sslmode to connect to postgres server"
+
+  autoscaler.instancemetrics_db.address:
+    description: "IP address on which the instancemetricsdb server will listen"
+    default: "autoscalerpostgres.service.cf.internal"
+  autoscaler.instancemetrics_db.databases:
+    description: "The list of databases used in instancemetricsdb database including name"
+  autoscaler.instancemetrics_db.db_scheme:
+    description: "Database scheme to be used to access instancemetricsdb"
+  autoscaler.instancemetrics_db.port:
+    description: "Port on which the instancemetricsdb server will listen"
+  autoscaler.instancemetrics_db.roles:
+    description: "The list of database roles used in instancemetricsdb database including name/password"
+  autoscaler.instancemetrics_db.tls.ca:
+    default: ''
+    description: 'PEM-encoded ca certificate of tls database server'
+  autoscaler.instancemetrics_db.sslmode:
+    default: disable
+    description: "The sslmode to connect to postgres server"
+
+
+  autoscaler.instancemetrics_db_connection_config.max_open_connections:
+    default: 100
+  autoscaler.instancemetrics_db_connection_config.max_idle_connections:
+    default: 10
+  autoscaler.instancemetrics_db_connection_config.connection_max_lifetime:
+    default: 60s
+
+  autoscaler.policy_db_connection_config.max_open_connections:
+    default: 100
+  autoscaler.policy_db_connection_config.max_idle_connections:
+    default: 10
+  autoscaler.policy_db_connection_config.connection_max_lifetime:
+    default: 60s
+
+  autoscaler.metricsserver.require_consul:
+    description: "Whether to start consul agent"
+    default: false
+  autoscaler.metricsserver.logging.level:
+    description: "The level of logging"
+    default: "info"
+
+  autoscaler.metricsserver.server.port:
+    description: "The listening port of http server"
+    default: 6103
+  autoscaler.metricsserver.http_client_timeout:
+    description: "Http client timeout for metricsserver to communicate with other autoscaler components"
+    default: 60s
+  autoscaler.metricsserver.ca_cert:
+    description: "PEM-encoded CA certificate"
+  autoscaler.metricsserver.server_cert:
+    description: "PEM-encoded server certificate"
+  autoscaler.metricsserver.server_key:
+    description: "PEM-encoded server key"
+  autoscaler.metricsserver.collector.port:
+    description: "The listening port of websocket server"
+    default: 7103
+  autoscaler.metricsserver.collector.keep_alive_time:
+    description: "Keep alive duration of the websocket between metricsserver and emitter"
+    default: 60s
+  autoscaler.metricsserver.collector.refresh_interval:
+    description: "The time interval to refresh app policies from policy database"
+    default: 60s
+  autoscaler.metricsserver.collector.collect_interval:
+    description: "The time interval to collect container metrics from loggregator"
+    default: 30s
+  autoscaler.metricsserver.collector.save_interval:
+    description: "The time interval to save metrics in database"
+    default: 5s
+  autoscaler.metricsserver.collector.persist_metrics:
+    description: "Whether to persist instancemetrics into database"
+    default: true
+  autoscaler.metricsserver.collector.envelope_processor_count:
+    description: "The envelope processor count to convert envelopes to app instance metrics"
+    default: 5
+  autoscaler.metricsserver.collector.metric_cache_size_per_app:
+    description: "The instance metrics cache size for each application"
+    default: 1000
+  autoscaler.metricsserver.collector.envelope_channel_size:
+    description: "The size of envelop channel to transport envelopes from websocket server to an envelope processor"
+    default: 1000
+  autoscaler.metricsserver.collector.metric_channel_size:
+    description: "The size of channel to transport instance metric from envelope processors to cache"
+    default: 1000
+  
+  autoscaler.metricsserver.health.port:
+    description: "The listening port of health endpoint"
+    default: 6303
+
+  autoscaler.metricsserver.hooks.pre_start:
+    description: "Script to run before starting metricsserver"
+    default: ''
+    example: |
+      #!/bin/bash
+      echo "Going to start metricsserver"
+      echo "metricsserver data directory is ${DATA_DIR}"
+      echo "metricsserver port is ${PORT}"
+      echo "metricsserver directory is ${PACKAGE_DIR}"
+  autoscaler.metricsserver.hooks.post_start:
+    description: "Script to run after metricsserver has started"
+    default: ''
+  autoscaler.metricsserver.hooks.pre_stop:
+    description: "Script to run before stopping metricsserver"
+    default: ''
+  autoscaler.metricsserver.hooks.post_stop:
+    description: "Script to run after metricsserver has stopped"
+    default: ''

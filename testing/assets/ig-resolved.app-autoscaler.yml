@@ -1,0 +1,62 @@
+name: app-autoscaler-deployment
+director_uuid: ""
+instance_groups:
+- name: asmetrics
+  instances: 1
+  azs: []
+  jobs:
+  - name: metricsserver
+    release: app-autoscaler
+    properties:
+      autoscaler:
+        cf: fake
+        policy_db:
+          address: fake-addr
+          db_scheme: fake
+          port: 8080
+          roles:
+          - name: postgres
+            password: ss
+            tag: default
+          databases:
+          - name: fake
+            tag: default
+        instancemetrics_db:
+          address: fake-addr
+          db_scheme: fake
+          port: 8089
+          roles:
+          - name: postgres
+            password: ss
+            tag: default
+          databases:
+          - name: fake
+            tag: default
+      quarks:
+        consumes:
+          metricsserver:
+            instances:
+            - address: asmetrics-app-autoscaler-deployment
+              az: z1
+              id: asmetrics-0-metricsserver
+              index: 0
+              instance: 0
+              ip: ""
+              name: asmetrics-metricsserver
+              index: 0
+              networks: null
+        instances:
+        - address: asmetrics-app-autoscaler-deployment
+          az: z1
+          id: asmetrics-0-metricsserver
+          index: 0
+          instance: 0
+          name: asmetrics-metricsserver
+          networks: null
+          ip: ""
+  networks:
+  - name: default
+  persistent_disk_type: medium
+  stemcell: default
+  vm_resources: null
+  vm_type: medium
