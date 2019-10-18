@@ -3,7 +3,6 @@ package integration_test
 import (
 	"fmt"
 	"net"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -116,29 +115,23 @@ var _ = Describe("Deploy", func() {
 
 	Context("when BPM has pre-start hooks configured", func() {
 		It("should run pre-start script in an init container", func() {
-			By("Checking if minikube is present")
-			_, err := exec.Command("/bin/sh", "-c", "kubectl config view | grep minikube").Output()
-			if err == nil {
-				Skip("Skipping because this test is not supported in minikube")
-			}
-
 			tearDown, err := env.CreateConfigMap(env.Namespace, corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Name: "garden-manifest"},
-				Data:       map[string]string{"manifest": bm.GardenRunc},
+				ObjectMeta: metav1.ObjectMeta{Name: "diego-manifest"},
+				Data:       map[string]string{"manifest": bm.Diego},
 			})
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test-bdpl", "garden-manifest"))
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test-bdpl", "diego-manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, "test-bdpl", "garden-runc", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, "test-bdpl", "file_server", "1", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for containers")
-			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=garden-runc")
+			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=file_server")
 			Expect(len(pods.Items)).To(Equal(2))
 			pod := pods.Items[1]
 			Expect(pod.Spec.InitContainers).To(HaveLen(6))
@@ -146,7 +139,7 @@ var _ = Describe("Deploy", func() {
 			Expect(pod.Spec.InitContainers[5].Args).To(Equal([]string{
 				"/bin/sh",
 				"-xc",
-				"/var/vcap/jobs/garden/bin/bpm-pre-start",
+				"/var/vcap/jobs/file_server/bin/bpm-pre-start",
 			}))
 		})
 	})
