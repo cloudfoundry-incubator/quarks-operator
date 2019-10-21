@@ -7,7 +7,7 @@ NS="$1"
 echo "Collecting environment information for namespace ${NS}"
 
 function get_resources() {
-  kubectl get $1 --namespace "${NS}" --output=jsonpath='{.items[*].metadata.name}'
+  kubectl get "$1" --namespace "${NS}" --output=jsonpath='{.items[*].metadata.name}'
 }
 
 function describe_resource() {
