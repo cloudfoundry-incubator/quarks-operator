@@ -86,7 +86,7 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 		return nil, errors.Errorf("required environment variable DOCKER_IMAGE_TAG not set")
 	}
 
-	err = converter.SetupOperatorDockerImage(dockerImageOrg, dockerImageRepo, dockerImageTag, string(corev1.PullAlways))
+	err = converter.SetupOperatorDockerImage(dockerImageOrg, dockerImageRepo, dockerImageTag, corev1.PullAlways)
 	if err != nil {
 		return nil, err
 	}
