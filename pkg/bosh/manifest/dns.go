@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -20,6 +21,10 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
+)
+
+const (
+	cfDomain = "service.cf.internal"
 )
 
 var (
@@ -108,7 +113,7 @@ func (dns *boshDomainNameService) DNSSetting(namespace string) (corev1.DNSPolicy
 			fmt.Sprintf("%s.svc.%s", namespace, clusterDomain),
 			fmt.Sprintf("svc.%s", clusterDomain),
 			clusterDomain,
-			"service.cf.internal",
+			cfDomain,
 		},
 		Options: []corev1.PodDNSConfigOption{{Name: "ndots", Value: &ndots}},
 	}, nil
@@ -252,7 +257,7 @@ func (dns *boshDomainNameService) createCorefile(namespace string) string {
 				from = strings.Replace(from, "_", target.InstanceGroup, 1)
 			}
 			to := fmt.Sprintf("%s.%s.svc.%s", dns.HeadlessServiceName(target.InstanceGroup), namespace, clusterDomain)
-			rewrites = append(rewrites, fmt.Sprintf("rewrite name exact %s %s", from, to))
+			rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
 		}
 	}
 
@@ -275,6 +280,31 @@ const corefileTemplate = `
 	loop
 	reload
 	loadbalance
+}`
+
+func dnsTemplate(from, to, queryType string) string {
+	matchPrefix := ""
+	if queryType == "*" {
+		matchPrefix = `(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*`
+	}
+	return fmt.Sprintf(cnameTemplate, regexp.QuoteMeta(from), matchPrefix, to, from)
+}
+
+const cnameTemplate = `
+template IN A %[4]s {
+	match ^%[2]s%[1]s\.$
+	answer "{{ .Name }} 60 IN CNAME %[3]s"
+	upstream
+}
+template IN AAAA %[4]s {
+	match ^%[2]s%[1]s\.$
+	answer "{{ .Name }} 60 IN CNAME %[3]s"
+	upstream
+}
+template IN CNAME %[4]s {
+	match ^%[2]s%[1]s\.$
+	answer "{{ .Name }} 60 IN CNAME %[3]s"
+	upstream
 }`
 
 // simpleDomainNameService emulates old behaviour without BOSH DNS.
