@@ -23,9 +23,9 @@ import (
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
-	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
 	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
@@ -190,9 +190,9 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 		return nil, errors.New("Couldn't find bpm.yaml key in manifest secret")
 	}
 
-	instanceGroup, err := manifest.InstanceGroupByName(instanceGroupName)
-	if err != nil {
-		return nil, err
+	instanceGroup, found := manifest.InstanceGroups.InstanceGroupByName(instanceGroupName)
+	if !found {
+		return nil, errors.Errorf("instance group '%s' not found", instanceGroupName)
 	}
 
 	resources, err := r.kubeConverter.BPMResources(manifest.Name, manifest.DNS, version, instanceGroup, manifest, bpmConfigs)

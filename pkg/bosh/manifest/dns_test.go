@@ -155,7 +155,7 @@ var _ = Describe("kube converter", func() {
 	Context("bosh-dns", func() {
 
 		It("reconciles dns stuff", func() {
-			d, err := manifest.NewBoshDomainNameService(loadAddOn(), "scf")
+			d, err := manifest.NewBoshDomainNameService(loadAddOn(), "scf", nil)
 			Expect(err).NotTo(HaveOccurred())
 			scheme := runtime.NewScheme()
 			Expect(corev1.AddToScheme(scheme)).To(Succeed())

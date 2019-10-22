@@ -27,9 +27,9 @@ type InstanceGroupResolver struct {
 
 // NewInstanceGroupResolver returns a data gatherer with logging for a given input manifest and instance group
 func NewInstanceGroupResolver(basedir, namespace string, manifest Manifest, instanceGroupName string) (*InstanceGroupResolver, error) {
-	ig, err := (&manifest).InstanceGroupByName(instanceGroupName)
-	if err != nil {
-		return nil, err
+	ig, found := manifest.InstanceGroups.InstanceGroupByName(instanceGroupName)
+	if !found {
+		return nil, errors.Errorf("instance group '%s' not found", instanceGroupName)
 	}
 
 	return &InstanceGroupResolver{
