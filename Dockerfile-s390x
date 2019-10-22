@@ -4,7 +4,7 @@ FROM s390x/alpine AS dumb-init
 ADD https://github.com/Yelp/dumb-init/releases/download/v1.2.2/dumb-init_1.2.2_s390x /usr/bin/dumb-init
 RUN chmod +x /usr/bin/dumb-init
 
-FROM s390x/golang:1.12 AS build
+FROM s390x/golang:1.13.3 AS build
 ARG GO111MODULE="on"
 ENV GO111MODULE $GO111MODULE
 
@@ -18,7 +18,7 @@ RUN if [ "${GO111MODULE}" = "on" ]; then go mod download; fi
 COPY . .
 RUN make build && \
     cp -p binaries/cf-operator /usr/local/bin/cf-operator
- 
+
 FROM cfcontainerization/quarkz:$quarkz_base_version
 RUN groupadd -g 1000 vcap && \
     useradd -r -u 1000 -g vcap vcap

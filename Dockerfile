@@ -2,7 +2,7 @@ FROM alpine AS dumb-init
 ADD https://github.com/Yelp/dumb-init/releases/download/v1.2.2/dumb-init_1.2.2_amd64 /usr/bin/dumb-init
 RUN chmod +x /usr/bin/dumb-init
 
-FROM golang:1.12.2 AS build
+FROM golang:1.13.3 AS build
 ARG GOPROXY
 ENV GOPROXY $GOPROXY
 ARG GO111MODULE="on"
