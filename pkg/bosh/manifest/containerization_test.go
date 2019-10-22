@@ -27,8 +27,8 @@ var _ = Describe("Quarks", func() {
 	})
 
 	It("parses the readiness probe in the run configuration", func() {
-		ig, err := m.InstanceGroupByName("doppler")
-		Expect(err).ToNot(HaveOccurred())
+		ig, found := m.InstanceGroups.InstanceGroupByName("doppler")
+		Expect(found).To(Equal(true))
 
 		healthchecks := ig.Jobs[0].Properties.Quarks.Run.HealthCheck
 		Expect(len(healthchecks)).To(Equal(1))
@@ -37,8 +37,8 @@ var _ = Describe("Quarks", func() {
 	})
 
 	It("parses the liveness probe in the run configuration", func() {
-		ig, err := m.InstanceGroupByName("log-api")
-		Expect(err).ToNot(HaveOccurred())
+		ig, found := m.InstanceGroups.InstanceGroupByName("log-api")
+		Expect(found).To(Equal(true))
 
 		healthchecks := ig.Jobs[0].Properties.Quarks.Run.HealthCheck
 		Expect(len(healthchecks)).To(Equal(1))
@@ -47,8 +47,8 @@ var _ = Describe("Quarks", func() {
 	})
 
 	It("parses the arbitrary envs in the bosh containerization", func() {
-		ig, err := m.InstanceGroupByName("log-api")
-		Expect(err).ToNot(HaveOccurred())
+		ig, found := m.InstanceGroups.InstanceGroupByName("log-api")
+		Expect(found).To(Equal(true))
 
 		envs := ig.Jobs[0].Properties.Quarks.Envs
 		Expect(len(envs)).To(Equal(1))
