@@ -153,7 +153,7 @@ func init() {
 	pf.Int("max-extendedstatefulset-workers", 1, "Maximum number of workers concurrently running ExtendedStatefulSet controller")
 	pf.StringP("operator-webhook-service-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")
 	pf.StringP("operator-webhook-service-port", "p", "2999", "Port the webhook server listens on")
-	pf.BoolP("operator-webhook-use-service-reference", "x", false, "If true the webhook service is targetted using a service reference instead of a URL")
+	pf.BoolP("operator-webhook-use-service-reference", "x", false, "If true the webhook service is targeted using a service reference instead of a URL")
 
 	for _, name := range []string{
 		"bosh-dns-docker-image",
