@@ -33,7 +33,7 @@ data:
                   domain: bosh
                   instance_group: nats
                   network: default
-                  query: *
+                  query: "*"
     instance_groups:
     - name: nats
       instances: 1
