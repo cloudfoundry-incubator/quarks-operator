@@ -261,8 +261,7 @@ var _ = Describe("Examples Directory", func() {
 			By("Getting expected IP")
 			podName := "nats-deployment-nats-v1-0"
 			podWait(fmt.Sprintf("pod/%s", podName))
-			serviceName := "nats-deployment-nats"
-			service, err := kubectl.Service(namespace, serviceName)
+			podStatus, err := kubectl.PodStatus(namespace, podName)
 			Expect(err).ToNot(HaveOccurred())
 
 			By("DNS lookup")
@@ -274,7 +273,7 @@ var _ = Describe("Examples Directory", func() {
 			}
 
 			for _, name := range wildcardNames {
-				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), service.Spec.ClusterIP)
+				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), podStatus.PodIP)
 				Expect(err).ToNot(HaveOccurred())
 			}
 
