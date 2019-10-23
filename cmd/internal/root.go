@@ -70,7 +70,7 @@ var rootCmd = &cobra.Command{
 			viper.GetString("docker-image-org"),
 			viper.GetString("docker-image-repository"),
 			viper.GetString("docker-image-tag"),
-			viper.GetString("docker-image-pull-policy"),
+			corev1.PullPolicy(viper.GetString("docker-image-pull-policy")),
 		)
 		if err != nil {
 			return wrapError(err, "Couldn't parse cf-operator docker image reference.")

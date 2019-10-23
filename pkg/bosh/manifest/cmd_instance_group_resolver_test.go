@@ -98,7 +98,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 				// We do not support different indexes in BPM data.
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECAZ"]).To(Equal("z1"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECBOOTSTRAP"]).To(Equal("true"))
-				Expect(bpm.Processes[0].Env["FOOBARWITHSPECID"]).To(Equal("log-api-0-loggregator_trafficcontroller"))
+				Expect(bpm.Processes[0].Env["FOOBARWITHSPECID"]).To(Equal("log-api-0"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECINDEX"]).To(Equal("0"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECNAME"]).To(Equal("log-api-loggregator_trafficcontroller"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECNETWORKS"]).To(Equal(""))
@@ -112,10 +112,10 @@ var _ = Describe("InstanceGroupResolver", func() {
 				// Check JobInstance for the loggregator_trafficcontroller job
 				jobInstancesRedis := m.InstanceGroups[1].Jobs[0].Properties.Quarks.Instances
 				o := []JobInstance{
-					{Address: "cf-log-api-0", AZ: "z1", Index: 0, Instance: 0, Name: "log-api-loggregator_trafficcontroller", Bootstrap: true, ID: "log-api-0-loggregator_trafficcontroller"},
-					{Address: "cf-log-api-1", AZ: "z2", Index: 1, Instance: 0, Name: "log-api-loggregator_trafficcontroller", Bootstrap: false, ID: "log-api-1-loggregator_trafficcontroller"},
-					{Address: "cf-log-api-2", AZ: "z1", Index: 2, Instance: 1, Name: "log-api-loggregator_trafficcontroller", Bootstrap: false, ID: "log-api-2-loggregator_trafficcontroller"},
-					{Address: "cf-log-api-3", AZ: "z2", Index: 3, Instance: 1, Name: "log-api-loggregator_trafficcontroller", Bootstrap: false, ID: "log-api-3-loggregator_trafficcontroller"},
+					{Address: "cf-log-api-0", AZ: "z1", Index: 0, Instance: 0, Name: "log-api-loggregator_trafficcontroller", Bootstrap: true, ID: "log-api-0"},
+					{Address: "cf-log-api-1", AZ: "z2", Index: 1, Instance: 0, Name: "log-api-loggregator_trafficcontroller", Bootstrap: false, ID: "log-api-1"},
+					{Address: "cf-log-api-2", AZ: "z1", Index: 2, Instance: 1, Name: "log-api-loggregator_trafficcontroller", Bootstrap: false, ID: "log-api-2"},
+					{Address: "cf-log-api-3", AZ: "z2", Index: 3, Instance: 1, Name: "log-api-loggregator_trafficcontroller", Bootstrap: false, ID: "log-api-3"},
 				}
 				Expect(jobInstancesRedis).To(BeEquivalentTo(o))
 
@@ -173,10 +173,10 @@ var _ = Describe("InstanceGroupResolver", func() {
 				jobInstancesRedis := manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Instances
 
 				compareToFakeRedis := []JobInstance{
-					{Address: "foo-deployment-redis-slave-0", AZ: "z1", Index: 0, Instance: 0, Name: "redis-slave-redis-server", Bootstrap: true, ID: "redis-slave-0-redis-server"},
-					{Address: "foo-deployment-redis-slave-1", AZ: "z2", Index: 1, Instance: 0, Name: "redis-slave-redis-server", Bootstrap: false, ID: "redis-slave-1-redis-server"},
-					{Address: "foo-deployment-redis-slave-2", AZ: "z1", Index: 2, Instance: 1, Name: "redis-slave-redis-server", Bootstrap: false, ID: "redis-slave-2-redis-server"},
-					{Address: "foo-deployment-redis-slave-3", AZ: "z2", Index: 3, Instance: 1, Name: "redis-slave-redis-server", Bootstrap: false, ID: "redis-slave-3-redis-server"},
+					{Address: "foo-deployment-redis-slave-0", AZ: "z1", Index: 0, Instance: 0, Name: "redis-slave-redis-server", Bootstrap: true, ID: "redis-slave-0"},
+					{Address: "foo-deployment-redis-slave-1", AZ: "z2", Index: 1, Instance: 0, Name: "redis-slave-redis-server", Bootstrap: false, ID: "redis-slave-1"},
+					{Address: "foo-deployment-redis-slave-2", AZ: "z1", Index: 2, Instance: 1, Name: "redis-slave-redis-server", Bootstrap: false, ID: "redis-slave-2"},
+					{Address: "foo-deployment-redis-slave-3", AZ: "z2", Index: 3, Instance: 1, Name: "redis-slave-redis-server", Bootstrap: false, ID: "redis-slave-3"},
 				}
 				Expect(jobInstancesRedis).To(BeEquivalentTo(compareToFakeRedis))
 			})

@@ -32,7 +32,7 @@
 
 ## Open Questions
 
-1. How do we rename thing going from one version to the next?
+1. How do we rename things going from one version to the next?
 
 ## Missing Features
 
