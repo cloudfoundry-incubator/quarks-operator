@@ -226,38 +226,62 @@ var _ = Describe("Examples Directory", func() {
 			example = "bosh-deployment/boshdeployment-with-bosh-dns.yaml"
 		})
 
-		It("resolves bosh domains", func() {
+		It("resolves BOSH DNS placeholder aliases", func() {
 			By("Getting expected IP")
 			podName := "nats-deployment-nats-v1-0"
 			podWait(fmt.Sprintf("pod/%s", podName))
-			status, err := kubectl.PodStatus(namespace, podName)
-			Expect(err).ToNot(HaveOccurred(), "error reading status")
-			ip := status.PodIP
+			serviceName := "nats-deployment-nats-0"
+			service, err := kubectl.Service(namespace, serviceName)
+			Expect(err).ToNot(HaveOccurred())
 
 			By("DNS lookup")
-			resolvableNames := []string{
-				fmt.Sprintf("nats-deployment-nats.%s", namespace),
-				fmt.Sprintf("nats-deployment-nats.%s.svc", namespace),
-				fmt.Sprintf("nats-deployment-nats.%s.svc.cluster.local", namespace),
-				"myalias",
-				"myalias.service.cf.internal.",
-				"myalias.service.cf.internal",
-				"nats",
-				"nats.service.cf.internal",
-				"nats.service.cf.internal.",
-				"nats-deployment-nats",
+			placeholderNames := []string{
+				"nats-0.myplaceholderalias.service.cf.internal.",
+				"nats-0.myplaceholderalias.service.cf.internal",
 			}
 
-			for _, name := range resolvableNames {
-				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), ip)
+			for _, name := range placeholderNames {
+				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), service.Spec.ClusterIP)
 				Expect(err).ToNot(HaveOccurred())
-
 			}
 
 			By("negativ DNS lookup")
 			unresolvableNames := []string{
-				"myalias.",
-				"myalias.service.",
+				"myplaceholderalias.",
+				"myplaceholderalias.service.",
+			}
+
+			for _, name := range unresolvableNames {
+				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s || true", name), "NXDOMAIN")
+				Expect(err).NotTo(HaveOccurred())
+			}
+		})
+
+		It("resolves BOSH DNS wildcard aliases", func() {
+			By("Getting expected IP")
+			podName := "nats-deployment-nats-v1-0"
+			podWait(fmt.Sprintf("pod/%s", podName))
+			serviceName := "nats-deployment-nats"
+			service, err := kubectl.Service(namespace, serviceName)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("DNS lookup")
+			wildcardNames := []string{
+				"nats.service.cf.internal.",
+				"nats.service.cf.internal",
+				"foo.nats.service.cf.internal.",
+				"foo.nats.service.cf.internal",
+			}
+
+			for _, name := range wildcardNames {
+				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), service.Spec.ClusterIP)
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			By("negativ DNS lookup")
+			unresolvableNames := []string{
+				"myplaceholderalias.",
+				"myplaceholderalias.service.",
 			}
 
 			for _, name := range unresolvableNames {

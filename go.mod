@@ -2,7 +2,7 @@ module code.cloudfoundry.org/cf-operator
 
 require (
 	code.cloudfoundry.org/quarks-job v0.0.0-20191021175601-bdc351853d01
-	code.cloudfoundry.org/quarks-utils v0.0.0-20191016133247-981877d2ae58
+	code.cloudfoundry.org/quarks-utils v0.0.0-20191023062321-8b3f0648c777
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
 	github.com/charlievieth/fs v0.0.0-20170613215519-7dc373669fa1 // indirect
 	github.com/cloudflare/cfssl v0.0.0-20181102015659-ea4033a214e7

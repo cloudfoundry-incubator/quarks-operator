@@ -15,6 +15,8 @@ code.cloudfoundry.org/quarks-utils v0.0.0-20191011134804-e632c6624b94 h1:ycJDhzl
 code.cloudfoundry.org/quarks-utils v0.0.0-20191011134804-e632c6624b94/go.mod h1:pz+JWJd3D4wfK2xPImLwPL7x+n17NpBp6vdpZ68iINI=
 code.cloudfoundry.org/quarks-utils v0.0.0-20191016133247-981877d2ae58 h1:hedQMRZ3T3GEEGOzRayGpXGq+8erjmj7aqTcXa6i28Y=
 code.cloudfoundry.org/quarks-utils v0.0.0-20191016133247-981877d2ae58/go.mod h1:H6fVNegFsTZqOU2Cggvue8X5vfAdeGDKemikmwc7RBc=
+code.cloudfoundry.org/quarks-utils v0.0.0-20191023062321-8b3f0648c777 h1:31XesOfCca1crf09ynEBtpSv5EE79OZ05pca7Vu94vo=
+code.cloudfoundry.org/quarks-utils v0.0.0-20191023062321-8b3f0648c777/go.mod h1:H6fVNegFsTZqOU2Cggvue8X5vfAdeGDKemikmwc7RBc=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/DATA-DOG/go-sqlmock v1.3.3 h1:CWUqKXe0s8A2z6qCgkP4Kru7wC11YoAnoupUKFDnH08=
