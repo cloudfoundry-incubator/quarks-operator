@@ -19,6 +19,8 @@ spec:
           ports:
           - containerPort: 60000
             name: metrics
+          - containerPort: 2999
+            name: operator-webhook
           command:
           - cf-operator
           imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
@@ -51,8 +53,17 @@ spec:
               value: "{{ .Values.image.tag }}"
             - name: DOCKER_IMAGE_PULL_POLICY
               value: "{{ .Values.image.pullPolicy }}"
+            {{- if .Values.operator.webhook.host }}
+            - name: CF_OPERATOR_WEBHOOK_SERVICE_HOST
+              value: {{ .Values.operator.webhook.host | quote }}
+            {{- end }}
+              value: {{ .Release.Name }}-webhook
+            - name: CF_OPERATOR_WEBHOOK_SERVICE_PORT
+              value: {{ .Values.operator.webhook.host | quote }}
+            {{- if .Values.operator.webhook.useServiceReference  }}
             - name: CF_OPERATOR_WEBHOOK_USE_SERVICE_REFERENCE
-              value: "{{ .Values.operator.webhookUseServiceReference }}"
+              value: "{{ .Values.operator.webhook.useServiceReference }}"
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /readyz

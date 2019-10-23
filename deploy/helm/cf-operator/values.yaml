@@ -7,7 +7,10 @@ image:
 
 operator:
   watchNamespace: ""
-  webhookUseServiceReference: true
+  webhook:
+    host: ~
+    port: "2999"
+    useServiceReference: false
 
 cluster:
   domain: ~
