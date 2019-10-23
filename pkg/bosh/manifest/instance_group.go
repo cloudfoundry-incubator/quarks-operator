@@ -9,6 +9,20 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
+// InstanceGroups represents a slice of pointers of InstanceGroup.
+type InstanceGroups []*InstanceGroup
+
+// InstanceGroupByName returns the instance group identified by the given name. The second return
+// parameter indicates if the instance group was found.
+func (instanceGroups InstanceGroups) InstanceGroupByName(name string) (*InstanceGroup, bool) {
+	for _, instanceGroup := range instanceGroups {
+		if instanceGroup.Name == name {
+			return instanceGroup, true
+		}
+	}
+	return nil, false
+}
+
 // InstanceGroup from BOSH deployment manifest.
 type InstanceGroup struct {
 	Name               string                 `json:"name"`

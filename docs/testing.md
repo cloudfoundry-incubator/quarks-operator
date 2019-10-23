@@ -78,6 +78,10 @@ the tests are completed.
 and other files generated during testing. If this variable is not set `/tmp`
 will be used instead.
 
+The tests will create some NodePort services; normally the test can detect an IP
+address automatically. `CF_OPERATOR_NODE_IP` can set to the node IP of any
+arbitrary node to override this (e.g. for OpenStack Kubernetes clusters).
+
 Generated files will be cleand up after the test run unless `SKIP_CF_OPERATOR_TESTING_TMP_CLEANUP`
 is set to `true`.
 

@@ -71,26 +71,29 @@ type Alias struct {
 
 // boshDomainNameService is used to emulate Bosh DNS.
 type boshDomainNameService struct {
-	Aliases      []Alias
-	LocalDNSIP   string
-	ManifestName string
+	Aliases        []Alias
+	LocalDNSIP     string
+	ManifestName   string
+	InstanceGroups InstanceGroups
 }
 
 // BoshDNSAddOnName name of bosh dns addon.
 const BoshDNSAddOnName = "bosh-dns-aliases"
 
 // NewBoshDomainNameService create a new DomainNameService.
-func NewBoshDomainNameService(addOn *AddOn, manifestName string) (DomainNameService, error) {
-	dns := boshDomainNameService{ManifestName: manifestName}
+func NewBoshDomainNameService(addOn *AddOn, manifestName string, instanceGroups InstanceGroups) (DomainNameService, error) {
+	dns := boshDomainNameService{
+		ManifestName:   manifestName,
+		InstanceGroups: instanceGroups,
+	}
 	for _, job := range addOn.Jobs {
-		aliases := job.Properties.Properties["aliases"]
-		if aliases != nil {
-			var a = make([]Alias, 0)
-			err := mapstructure.Decode(aliases, &a)
-			if err != nil {
-				return nil, errors.Wrapf(err, "Loading aliases from manifest")
+		aliasesProperty := job.Properties.Properties["aliases"]
+		if aliasesProperty != nil {
+			aliases := make([]Alias, 0)
+			if err := mapstructure.Decode(aliasesProperty, &aliases); err != nil {
+				return nil, errors.Wrapf(err, "failed to load aliases from manifest")
 			}
-			dns.Aliases = append(dns.Aliases, a...)
+			dns.Aliases = append(dns.Aliases, aliases...)
 		}
 	}
 	return &dns, nil
@@ -136,9 +139,14 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace strin
 		Labels:    map[string]string{"app": appName},
 	}
 
+	corefile, err := dns.createCorefile(namespace)
+	if err != nil {
+		return err
+	}
+
 	configMap := corev1.ConfigMap{
 		ObjectMeta: metadata,
-		Data:       map[string]string{coreConfigFile: dns.createCorefile(namespace)},
+		Data:       map[string]string{coreConfigFile: corefile},
 	}
 	service := corev1.Service{
 		ObjectMeta: metadata,
@@ -245,26 +253,38 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace strin
 	return nil
 }
 
-func (dns *boshDomainNameService) createCorefile(namespace string) string {
+func (dns *boshDomainNameService) createCorefile(namespace string) (string, error) {
 	rewrites := make([]string, 0)
 	for _, alias := range dns.Aliases {
 		for _, target := range alias.Targets {
-			from := alias.Domain
-			// Underscore (_) - represents a subdomain and can be used to match the subdomain in the
-			// target hostname.
-			// https://bosh.io/docs/dns/#aliases
+			// Implement BOSH DNS placeholder alias: https://bosh.io/docs/dns/#placeholder-alias.
 			if target.Query == "_" {
-				from = strings.Replace(from, "_", target.InstanceGroup, 1)
+				instanceGroup, found := dns.InstanceGroups.InstanceGroupByName(target.InstanceGroup)
+				if !found {
+					continue
+				}
+				for i := 0; i < instanceGroup.Instances; i++ {
+					id := fmt.Sprintf("%s-%d", target.InstanceGroup, i)
+					from := strings.Replace(alias.Domain, "_", id, 1)
+					serviceName := instanceGroup.IndexedServiceName(dns.ManifestName, i)
+					to := fmt.Sprintf("%s.%s.svc.%s", serviceName, namespace, clusterDomain)
+					rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
+				}
+			} else {
+				from := alias.Domain
+				to := fmt.Sprintf("%s.%s.svc.%s", dns.HeadlessServiceName(target.InstanceGroup), namespace, clusterDomain)
+				rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
 			}
-			to := fmt.Sprintf("%s.%s.svc.%s", dns.HeadlessServiceName(target.InstanceGroup), namespace, clusterDomain)
-			rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
 		}
 	}
 
 	tmpl := template.Must(template.New("Corefile").Parse(corefileTemplate))
 	var config strings.Builder
-	tmpl.Execute(&config, rewrites)
-	return config.String()
+	if err := tmpl.Execute(&config, rewrites); err != nil {
+		return "", errors.Wrapf(err, "failed to generate Corefile")
+	}
+
+	return config.String(), nil
 }
 
 // The Corefile values other than the rewrites were based on the default cluster CoreDNS Corefile.

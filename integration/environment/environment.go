@@ -2,6 +2,7 @@ package environment
 
 import (
 	"fmt"
+	"os"
 	"sync/atomic"
 	"time"
 
@@ -75,6 +76,11 @@ func (e *Environment) SetupClientsets() error {
 
 // NodeIP returns a public IP of a node
 func (e *Environment) NodeIP() (string, error) {
+	if override, ok := os.LookupEnv("CF_OPERATOR_NODE_IP"); ok {
+		// The user has specified a particular node IP to use; return that.
+		return override, nil
+	}
+
 	nodes, err := e.Clientset.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		return "", errors.Wrap(err, "getting the list of nodes")

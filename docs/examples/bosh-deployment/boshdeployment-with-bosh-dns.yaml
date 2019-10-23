@@ -20,7 +20,7 @@ data:
       - name: bosh-dns-aliases
         properties:
           aliases:
-            - domain: myalias.service.cf.internal
+            - domain: _.myplaceholderalias.service.cf.internal
               targets:
                 - deployment: cf
                   domain: bosh
@@ -33,7 +33,7 @@ data:
                   domain: bosh
                   instance_group: nats
                   network: default
-                  query: _
+                  query: "*"
     instance_groups:
     - name: nats
       instances: 1

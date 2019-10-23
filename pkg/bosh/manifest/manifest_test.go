@@ -1320,13 +1320,13 @@ var _ = Describe("Manifest", func() {
 			})
 
 			It("returns an error if the instance group does not exist", func() {
-				_, err := manifest.InstanceGroupByName("foo")
-				Expect(err).To(HaveOccurred())
+				_, found := manifest.InstanceGroups.InstanceGroupByName("foo")
+				Expect(found).To(Equal(false))
 			})
 
 			It("returns the instance group if it exists", func() {
-				ig, err := manifest.InstanceGroupByName("redis-slave")
-				Expect(err).ToNot(HaveOccurred())
+				ig, found := manifest.InstanceGroups.InstanceGroupByName("redis-slave")
+				Expect(found).To(Equal(true))
 				Expect(ig.Name).To(Equal("redis-slave"))
 			})
 		})
