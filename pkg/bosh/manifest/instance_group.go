@@ -148,12 +148,13 @@ var (
 // These annotations and labels are added to kube resources.
 // Affinity is added into the pod's definition.
 type AgentSettings struct {
-	Annotations                  map[string]string `json:"annotations,omitempty"`
-	Labels                       map[string]string `json:"labels,omitempty"`
-	Affinity                     *corev1.Affinity  `json:"affinity,omitempty"`
-	DisableLogSidecar            bool              `json:"disable_log_sidecar,omitempty" yaml:"disable_log_sidecar,omitempty"`
-	ServiceAccountName           string            `json:"serviceAccountName,omitempty" yaml:"serviceAccountName,omitempty"`
-	AutomountServiceAccountToken *bool             `json:"automountServiceAccountToken,omitempty" yaml:"automountServiceAccountToken,omitempty"`
+	Annotations                  map[string]string             `json:"annotations,omitempty"`
+	Labels                       map[string]string             `json:"labels,omitempty"`
+	Affinity                     *corev1.Affinity              `json:"affinity,omitempty"`
+	DisableLogSidecar            bool                          `json:"disable_log_sidecar,omitempty" yaml:"disable_log_sidecar,omitempty"`
+	ServiceAccountName           string                        `json:"serviceAccountName,omitempty" yaml:"serviceAccountName,omitempty"`
+	AutomountServiceAccountToken *bool                         `json:"automountServiceAccountToken,omitempty" yaml:"automountServiceAccountToken,omitempty"`
+	ImagePullSecrets             []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 }
 
 // Set overrides labels and annotations with operator-owned metadata.

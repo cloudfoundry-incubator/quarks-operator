@@ -303,6 +303,9 @@ instance_groups:
           serviceAccountName: kubecf
           # automountServiceAccountToken indicates whether a service account token should be automatically mounted
           automountServiceAccountToken: false
+          # ImagePullSecrets is an optional list of references to secrets to use for pulling any of the images.
+          # This field in PodSpec can be automated by setting the imagePullSecrets in a serviceAccount.
+          ImagePullSecrets: {}
 # Each addon job is added to the desired manifest before it's persisted
 # Not all placement rules are supported, see below for more details.
 addons:
