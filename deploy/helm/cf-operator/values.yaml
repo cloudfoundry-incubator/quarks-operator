@@ -8,9 +8,10 @@ image:
 operator:
   watchNamespace: ""
   webhook:
+    endpoint: ~
     host: ~
     port: "2999"
-    useServiceReference: false
+    useServiceReference: true
 
 cluster:
   domain: ~

@@ -47,7 +47,7 @@ var _ = Describe("CLI", func() {
       --operator-namespace string                \(OPERATOR_NAMESPACE\) The operator namespace \(default "default"\)
   -w, --operator-webhook-service-host string     \(CF_OPERATOR_WEBHOOK_SERVICE_HOST\) Hostname/IP under which the webhook server can be reached from the cluster
   -p, --operator-webhook-service-port string     \(CF_OPERATOR_WEBHOOK_SERVICE_PORT\) Port the webhook server listens on \(default "2999"\)
-  -x, --operator-webhook-use-service-reference   \(CF_OPERATOR_WEBHOOK_USE_SERVICE_REFERENCE\) If true the webhook service is targetted using a service reference instead of a URL
+  -x, --operator-webhook-use-service-reference   \(CF_OPERATOR_WEBHOOK_USE_SERVICE_REFERENCE\) If true the webhook service is targeted using a service reference instead of a URL
       --watch-namespace string                   \(WATCH_NAMESPACE\) Namespace to watch for BOSH deployments`))
 		})
 
