@@ -3,8 +3,10 @@ kind: Service
 metadata:
   name: cf-operator-webhook
 spec:
+  {{- if or .Values.operator.webhook.useServiceReference (not .Values.operator.webhook.endpoint) }}
   selector:
     name: cf-operator
+  {{- end }}
   ports:
   - port: 443
     targetPort: 2999

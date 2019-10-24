@@ -59,9 +59,9 @@ helm delete cf-operator --purge
 | Parameter                                         | Description                                                                          | Default                                        |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------- |
 | `operator.watchNamespace`                         | namespace the operator will watch for BOSH deployments                               | the release namespace                          |
-| `operator.webhook.host`                           | Hostname/IP under which the webhook server can be reached from the cluster           | the IP of service `cf-operator-webhook `       |
+| `operator.webhook.endpoint`                       | Hostname/IP under which the webhook server can be reached from the cluster           | the IP of service `cf-operator-webhook `       |
 | `operator.webhook.port`                           | Port the webhook server listens on                                                   | 2999                                           |
-| `operator.webhook.useServiceReference`            | If true, the webhook server is addressed using a service reference instead of the IP | false                                          |
+| `operator.webhook.useServiceReference`            | If true, the webhook server is addressed using a service reference instead of the IP | `true`                                          |
 | `image.repository`                                | docker hub repository for the cf-operator image                                      | `cf-operator`                                  |
 | `image.org`                                       | docker hub organization for the cf-operator image                                    | `cfcontainerization`                           |
 | `image.tag`                                       | docker image tag                                                                     | `foobar`                                       |
@@ -73,7 +73,7 @@ helm delete cf-operator --purge
 
 > **Note:**
 >
-> `operator.webhook.useServiceReference` will override `operator.webhook.host` configuration
+> `operator.webhook.useServiceReference` will override `operator.webhook.endpoint` configuration
 >
 
 ## Watched namespace
