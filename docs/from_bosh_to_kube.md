@@ -297,6 +297,12 @@ instance_groups:
           labels: {}
           # Annotations to add to the resources representing the instance group
           annotations: {}
+          # disableLogSidecar is an option to disable log sidecar
+          disableLogSidecar: false
+          # serviceAccountName is the name of the ServiceAccount to use to run this pod.
+          serviceAccountName: kubecf
+          # automountServiceAccountToken indicates whether a service account token should be automatically mounted
+          automountServiceAccountToken: false
 # Each addon job is added to the desired manifest before it's persisted
 # Not all placement rules are supported, see below for more details.
 addons:
