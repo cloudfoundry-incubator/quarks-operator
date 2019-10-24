@@ -149,7 +149,8 @@ func (kc *KubeConverter) serviceToExtendedSts(
 							SecurityContext: &corev1.PodSecurityContext{
 								FSGroup: &admGroupID,
 							},
-							Subdomain: dns.HeadlessServiceName(instanceGroup.Name),
+							Subdomain:        dns.HeadlessServiceName(instanceGroup.Name),
+							ImagePullSecrets: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ImagePullSecrets,
 						},
 					},
 				},
@@ -325,6 +326,7 @@ func (kc *KubeConverter) errandToExtendedJob(
 					SecurityContext: &corev1.PodSecurityContext{
 						FSGroup: &admGroupID,
 					},
+					ImagePullSecrets: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ImagePullSecrets,
 				},
 			},
 		},
