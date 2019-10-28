@@ -4,12 +4,8 @@ set -o errexit
 
 GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
 . "${GIT_ROOT}/bin/include/versioning"
+. "${GIT_ROOT}/bin/include/docker"
 . "${GIT_ROOT}/.envrc"
-
-if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
-  DOCKER_IMAGE_TAG=${VERSION_TAG}
-  export DOCKER_IMAGE_TAG
-fi
 
 image="${DOCKER_IMAGE_ORG}/cf-operator:${DOCKER_IMAGE_TAG}"
 

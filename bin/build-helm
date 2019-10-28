@@ -4,22 +4,14 @@ set -euo pipefail
 
 GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 . "${GIT_ROOT}/bin/include/versioning"
+. "${GIT_ROOT}/bin/include/docker"
 . "${GIT_ROOT}/.envrc"
-
-if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
-  DOCKER_IMAGE_TAG=${VERSION_TAG}
-  export DOCKER_IMAGE_TAG
-fi
 
 output_dir=${GIT_ROOT}/helm
 filename="${output_dir}/${ARTIFACT_NAME}-${ARTIFACT_VERSION}.tgz"
 
 [ -d "${output_dir}" ] && rm -r "${output_dir}"
 cp -r "${GIT_ROOT}/deploy/helm" "${output_dir}"
-
-if [ -z ${DOCKER_IMAGE_REPOSITORY} ]; then
-    DOCKER_IMAGE_REPOSITORY="cf-operator"
-fi
 
 perl -pi -e "s|repository: .*|repository: ${DOCKER_IMAGE_REPOSITORY}|g" "${output_dir}/cf-operator/values.yaml"
 perl -pi -e "s|org: .*|org: ${DOCKER_IMAGE_ORG}|g" "${output_dir}/cf-operator/values.yaml"
