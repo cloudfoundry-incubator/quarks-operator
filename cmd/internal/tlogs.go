@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"time"
 
+	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 	"github.com/gonvenience/bunt"
 
 	"github.com/fsnotify/fsnotify"
@@ -39,7 +40,7 @@ the LOGS_DIR env variable.
 // This only tail logs from files names
 // in the form *.log
 func TailLogsFromDir() error {
-	log = newLogger()
+	log = cmd.Logger()
 	defer log.Sync()
 
 	monitorDir := viper.GetString("logs-dir")

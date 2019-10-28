@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/viper"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
 
 const dGatherFailedMessage = "instance-group command failed."
@@ -27,7 +28,7 @@ var instanceGroupCmd = &cobra.Command{
 This will resolve the properties of an instance group and return a manifest for that instance group.
 
 `,
-	RunE: func(cmd *cobra.Command, args []string) (err error) {
+	RunE: func(_ *cobra.Command, args []string) (err error) {
 		defer func() {
 			if err != nil {
 				time.Sleep(debugGracePeriod)
@@ -43,7 +44,7 @@ This will resolve the properties of an instance group and return a manifest for 
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		log = newLogger()
+		log = cmd.Logger()
 		defer log.Sync()
 		boshManifestPath := viper.GetString("bosh-manifest-path")
 		if len(boshManifestPath) == 0 {

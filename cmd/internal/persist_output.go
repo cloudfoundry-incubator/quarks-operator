@@ -11,6 +11,7 @@ import (
 
 	"code.cloudfoundry.org/quarks-job/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/quarks-job/pkg/kube/controllers/extendedjob"
+	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 	kubeConfig "code.cloudfoundry.org/quarks-utils/pkg/kubeconfig"
 )
 
@@ -22,7 +23,7 @@ var persistOutputCmd = &cobra.Command{
 	
 into a versionsed secret or kube native secret using flags specified to this command.
 `,
-	RunE: func(cmd *cobra.Command, args []string) (err error) {
+	RunE: func(_ *cobra.Command, args []string) (err error) {
 
 		namespace := viper.GetString("cf-operator-namespace")
 		if len(namespace) == 0 {
@@ -57,7 +58,7 @@ func init() {
 // authenticateInCluster authenticates with the in cluster and returns the client
 func authenticateInCluster() (*kubernetes.Clientset, *versioned.Clientset, error) {
 
-	log = newLogger(zap.AddCallerSkip(1))
+	log = cmd.Logger(zap.AddCallerSkip(1))
 	defer log.Sync()
 
 	config, err := kubeConfig.NewGetter(log).Get("")

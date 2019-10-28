@@ -3,6 +3,8 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
 
 // UtilCmd represents the util subcommand
@@ -34,6 +36,5 @@ func init() {
 		"logs-dir":            "LOGS_DIR",
 		"output-file-path":    "OUTPUT_FILE_PATH",
 	}
-	AddEnvToUsage(utilCmd, argToEnv)
-
+	cmd.AddEnvToUsage(utilCmd, argToEnv)
 }

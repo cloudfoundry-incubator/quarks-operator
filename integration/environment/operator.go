@@ -7,10 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/pkg/errors"
 
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
@@ -95,7 +94,6 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("cf-operator docker image: %s", converter.GetOperatorDockerImage())
 
 	ctx := e.SetupLoggerContext("cf-operator-tests")
 
