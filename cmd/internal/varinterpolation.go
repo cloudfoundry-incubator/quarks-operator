@@ -6,10 +6,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
 
 const (
@@ -42,18 +44,18 @@ func init() {
 	argToEnv := map[string]string{
 		"variables-dir": "VARIABLES_DIR",
 	}
-	AddEnvToUsage(variableInterpolationCmd, argToEnv)
+	cmd.AddEnvToUsage(variableInterpolationCmd, argToEnv)
 
 }
 
-func (i *initCmd) runVariableInterpolationCmd(cmd *cobra.Command, args []string) (err error) {
+func (i *initCmd) runVariableInterpolationCmd(_ *cobra.Command, args []string) (err error) {
 	defer func() {
 		if err != nil {
 			time.Sleep(debugGracePeriod)
 		}
 	}()
 
-	log = newLogger()
+	log = cmd.Logger()
 	defer log.Sync()
 
 	boshManifestPath := viper.GetString("bosh-manifest-path")

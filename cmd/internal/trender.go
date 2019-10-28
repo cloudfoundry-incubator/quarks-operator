@@ -13,6 +13,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
 
 const (
@@ -111,5 +112,5 @@ func init() {
 		"replicas":                "REPLICAS",
 		"pod-ip":                  converter.PodIPEnvVar,
 	}
-	AddEnvToUsage(templateRenderCmd, argToEnv)
+	cmd.AddEnvToUsage(templateRenderCmd, argToEnv)
 }

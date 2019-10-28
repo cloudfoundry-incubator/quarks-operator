@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
 
 const bpmFailedMessage = "bpm-configs command failed."
@@ -29,7 +30,7 @@ var bpmConfigsCmd = &cobra.Command{
 This command calculates and prints the BPM configurations for all all BOSH jobs of a given
 instance group.
 `,
-	RunE: func(cmd *cobra.Command, args []string) (err error) {
+	RunE: func(_ *cobra.Command, args []string) (err error) {
 		defer func() {
 			if r := recover(); r != nil {
 				err = fmt.Errorf("recovered in f: %v\n%s", r, string(debug.Stack()))
@@ -50,7 +51,7 @@ instance group.
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 
-		log = newLogger()
+		log = cmd.Logger()
 		defer log.Sync()
 
 		boshManifestPath := viper.GetString("bosh-manifest-path")
