@@ -15,6 +15,9 @@ import (
 	kubeConfig "code.cloudfoundry.org/quarks-utils/pkg/kubeconfig"
 )
 
+// TODO this will be removed once master is passing tests
+const persistNamespace = "operator-namespace"
+
 // persistOutputCmd is the persist-output command.
 var persistOutputCmd = &cobra.Command{
 	Use:   "persist-output [flags]",
@@ -25,7 +28,7 @@ into a versionsed secret or kube native secret using flags specified to this com
 `,
 	RunE: func(_ *cobra.Command, args []string) (err error) {
 
-		namespace := viper.GetString("cf-operator-namespace")
+		namespace := viper.GetString(persistNamespace)
 		if len(namespace) == 0 {
 			return errors.Errorf("persist-output command failed. cf-operator-namespace flag is empty.")
 		}
@@ -52,7 +55,14 @@ into a versionsed secret or kube native secret using flags specified to this com
 }
 
 func init() {
-	utilCmd.AddCommand(persistOutputCmd)
+	rootCmd.AddCommand(persistOutputCmd)
+	pf := rootCmd.PersistentFlags()
+
+	pf.StringP(persistNamespace, "", "default", "The operator namespace")
+	viper.BindPFlag(persistNamespace, pf.Lookup(persistNamespace))
+
+	argToEnv := map[string]string{persistNamespace: "OPERATOR_NAMESPACE"}
+	cmd.AddEnvToUsage(rootCmd, argToEnv)
 }
 
 // authenticateInCluster authenticates with the in cluster and returns the client
