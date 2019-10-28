@@ -44,6 +44,7 @@ var _ = Describe("CLI", func() {
       --max-extendedjob-workers int              \(MAX_EXTENDEDJOB_WORKERS\) Maximum number of workers concurrently running ExtendedJob controller \(default 1\)
       --max-extendedsecret-workers int           \(MAX_EXTENDEDSECRET_WORKERS\) Maximum number of workers concurrently running ExtendedSecret controller \(default 5\)
       --max-extendedstatefulset-workers int      \(MAX_EXTENDEDSTATEFULSET_WORKERS\) Maximum number of workers concurrently running ExtendedStatefulSet controller \(default 1\)
+      --operator-namespace string                \(OPERATOR_NAMESPACE\) The operator namespace \(default "default"\)
   -w, --operator-webhook-service-host string     \(CF_OPERATOR_WEBHOOK_SERVICE_HOST\) Hostname/IP under which the webhook server can be reached from the cluster
   -p, --operator-webhook-service-port string     \(CF_OPERATOR_WEBHOOK_SERVICE_PORT\) Port the webhook server listens on \(default "2999"\)
   -x, --operator-webhook-use-service-reference   \(CF_OPERATOR_WEBHOOK_USE_SERVICE_REFERENCE\) If true the webhook service is targetted using a service reference instead of a URL
@@ -54,9 +55,10 @@ var _ = Describe("CLI", func() {
 			session, err := act("help")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Available Commands:
-  help        Help about any command
-  util        Calls a utility subcommand
-  version     Print the version number
+  help     \s* Help about any command
+  persist-output Persist a file into a kube secret
+  util     \s* Calls a utility subcommand
+  version  \s* Print the version number
 
 `))
 		})
