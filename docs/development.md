@@ -297,6 +297,15 @@ kind load docker-image cfcontainerization/cf-operator:$DOCKER_IMAGE_TAG
 kind load docker-image cfcontainerization/quarks-job:$QUARKS_JOB_IMAGE_TAG
 ```
 
+### Use a Local QuarksJob Image in Integration Tests with Kubernetes for Docker Desktop
+
+To use a local docker image export `QUARKS_JOB_IMAGE_TAG` and make sure the image is available to the cluster, e.g. for kind:
+
+```
+docker tag <cf-operator-tag> cfcontainerization/cf-operator:$DOCKER_IMAGE_TAG
+docker tag <quarks-job-tag> cfcontainerization/quarks-job:$QUARKS_JOB_IMAGE_TAG
+```
+
 ### Merging PRs
 
 * In PR reviews, make sure only reviewed branches of dependencies are used.

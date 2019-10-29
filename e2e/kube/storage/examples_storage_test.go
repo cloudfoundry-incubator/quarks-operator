@@ -4,12 +4,11 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/pkg/errors"
-
 	"sigs.k8s.io/yaml"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
@@ -86,17 +85,17 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
-				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-0", kubectlHelper.PollTimeout)
+				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-0", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1", kubectlHelper.PollTimeout)
+				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-1", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pvcs")
-				err = kubectlHelper.WaitForPVC(namespace, "nats-deployment-nats-pvc-volume-management-nats-deployment-nats-0")
+				err = kubectlHelper.WaitForPVC(namespace, "nats-deployment-nats-pvc-nats-deployment-nats-0")
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.WaitForPVC(namespace, "nats-deployment-nats-pvc-volume-management-nats-deployment-nats-1")
+				err = kubectlHelper.WaitForPVC(namespace, "nats-deployment-nats-pvc-nats-deployment-nats-1")
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -115,16 +114,16 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
-				err = kubectlHelper.Wait(namespace, "ready", "pod/example-quarks-statefulset-v1-0", kubectlHelper.PollTimeout)
+				err = kubectlHelper.Wait(namespace, "ready", "pod/example-quarks-statefulset-0", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.Wait(namespace, "ready", "pod/example-quarks-statefulset-v1-1", kubectlHelper.PollTimeout)
+				err = kubectlHelper.Wait(namespace, "ready", "pod/example-quarks-statefulset-1", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.WaitForPVC(namespace, "pvc-volume-management-example-quarks-statefulset-0")
+				err = kubectlHelper.WaitForPVC(namespace, "pvc-example-quarks-statefulset-0")
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.WaitForPVC(namespace, "pvc-volume-management-example-quarks-statefulset-1")
+				err = kubectlHelper.WaitForPVC(namespace, "pvc-example-quarks-statefulset-1")
 				Expect(err).ToNot(HaveOccurred())
 
 				// Delete the temporary file

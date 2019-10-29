@@ -57,9 +57,9 @@ var _ = Describe("DeployWithStorage", func() {
 	})
 
 	Context("when specifying affinity", func() {
-		sts1Name := "bpm-affinity-bpm1-v1"
-		sts2Name := "bpm-affinity-bpm2-v1"
-		sts3Name := "bpm-affinity-bpm3-v1"
+		sts1Name := "bpm-affinity-bpm1"
+		sts2Name := "bpm-affinity-bpm2"
+		sts3Name := "bpm-affinity-bpm3"
 
 		It("should create available resources", func() {
 			nodes, err := env.GetNodes()

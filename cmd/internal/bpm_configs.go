@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
 	"sigs.k8s.io/yaml"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
@@ -34,6 +35,7 @@ instance group.
 		baseDirFlagViperBind(cmd.Flags())
 		instanceGroupFlagViperBind(cmd.Flags())
 		outputFilePathFlagViperBind(cmd.Flags())
+		initialRolloutFlagViperBind(cmd.Flags())
 	},
 
 	RunE: func(_ *cobra.Command, args []string) (err error) {
@@ -91,7 +93,8 @@ instance group.
 			return errors.Wrap(err, bpmFailedMessage)
 		}
 
-		bpmInfo, err := igr.BPMInfo()
+		initialRollout := viper.GetBool("initial-rollout")
+		bpmInfo, err := igr.BPMInfo(initialRollout)
 		if err != nil {
 			return errors.Wrap(err, bpmFailedMessage)
 		}
@@ -126,5 +129,6 @@ func init() {
 	baseDirFlagCobraSet(pf, argToEnv)
 	instanceGroupFlagCobraSet(pf, argToEnv)
 	outputFilePathFlagCobraSet(pf, argToEnv)
+	initialRolloutFlagCobraSet(pf, argToEnv)
 	cmd.AddEnvToUsage(bpmConfigsCmd, argToEnv)
 }
