@@ -103,13 +103,6 @@ func (in *ExtendedStatefulSetStatus) DeepCopyInto(out *ExtendedStatefulSetStatus
 		in, out := &in.LastReconcile, &out.LastReconcile
 		*out = (*in).DeepCopy()
 	}
-	if in.Versions != nil {
-		in, out := &in.Versions, &out.Versions
-		*out = make(map[int]bool, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
 	return
 }
 

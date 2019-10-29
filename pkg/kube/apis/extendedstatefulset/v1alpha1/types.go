@@ -48,9 +48,8 @@ type ExtendedStatefulSetSpec struct {
 
 // ExtendedStatefulSetStatus defines the observed state of ExtendedStatefulSet
 type ExtendedStatefulSetStatus struct {
+	// Timestamp for the last reconcile
 	LastReconcile *metav1.Time `json:"lastReconcile"`
-	// Map of version number keys and values that keeps track of if version is running
-	Versions map[int]bool `json:"versions"`
 }
 
 // +genclient
