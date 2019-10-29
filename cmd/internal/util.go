@@ -86,3 +86,12 @@ func outputFilePathFlagCobraSet(pf *flag.FlagSet, argToEnv map[string]string) {
 func outputFilePathFlagViperBind(pf *flag.FlagSet) {
 	viper.BindPFlag("output-file-path", pf.Lookup("output-file-path"))
 }
+
+func initialRolloutFlagCobraSet(pf *flag.FlagSet, argToEnv map[string]string) {
+	pf.BoolP("initial-rollout", "", true, "Initial rollout of bosh deployment.")
+	argToEnv["initial-rollout"] = "INITIAL_ROLLOUT"
+}
+
+func initialRolloutFlagViperBind(pf *flag.FlagSet) {
+	viper.BindPFlag("initial-rollout", pf.Lookup("initial-rollout"))
+}

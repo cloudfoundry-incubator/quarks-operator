@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+
 	"k8s.io/api/admission/v1beta1"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -16,7 +17,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -189,7 +192,7 @@ func (v *Validator) Handle(_ context.Context, req admission.Request) admission.R
 	}
 
 	log.Infof(ctx, "Resolving deployment '%s'", boshDeployment.Name)
-	_, _, err = resolver.WithOpsManifestDetailed(ctx, boshDeployment, boshDeployment.GetNamespace())
+	manifest, _, err := resolver.WithOpsManifestDetailed(ctx, boshDeployment, boshDeployment.GetNamespace())
 	if err != nil {
 		return admission.Response{
 			AdmissionResponse: v1beta1.AdmissionResponse{
@@ -200,12 +203,33 @@ func (v *Validator) Handle(_ context.Context, req admission.Request) admission.R
 			},
 		}
 	}
-
+	err = validateUpdateBlock(*manifest)
+	if err != nil {
+		return admission.Response{
+			AdmissionResponse: v1beta1.AdmissionResponse{
+				Allowed: false,
+				Result: &metav1.Status{
+					Message: fmt.Sprintf("Failed to validate update block: %s", err.Error()),
+				},
+			},
+		}
+	}
 	return admission.Response{
 		AdmissionResponse: v1beta1.AdmissionResponse{
 			Allowed: true,
 		},
 	}
+}
+
+func validateUpdateBlock(manifest manifest.Manifest) error {
+	if manifest.Update == nil {
+		return nil
+	}
+	if _, err := statefulset.ExtractWatchTime(manifest.Update.CanaryWatchTime, "canary_watch_time"); err != nil {
+		return err
+	}
+	_, err := statefulset.ExtractWatchTime(manifest.Update.UpdateWatchTime, "update_watch_time")
+	return err
 }
 
 // Validator implements inject.Client.

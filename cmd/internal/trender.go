@@ -33,6 +33,7 @@ This will render a provided manifest instance-group
 	PreRun: func(cmd *cobra.Command, args []string) {
 		boshManifestFlagViperBind(cmd.Flags())
 		instanceGroupFlagViperBind(cmd.Flags())
+		initialRolloutFlagViperBind(cmd.Flags())
 	},
 
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
@@ -87,9 +88,10 @@ This will render a provided manifest instance-group
 			specIndex = (azIndex-1)*replicas + podOrdinal
 		}
 
+		initialRollout := viper.GetBool("initial-rollout")
 		podIP := net.ParseIP(viper.GetString("pod-ip"))
 
-		return manifest.RenderJobTemplates(boshManifestPath, jobsDir, outputDir, instanceGroupName, specIndex, podIP, replicas)
+		return manifest.RenderJobTemplates(boshManifestPath, jobsDir, outputDir, instanceGroupName, specIndex, podIP, replicas, initialRollout)
 	},
 }
 
@@ -125,5 +127,6 @@ func init() {
 
 	boshManifestFlagCobraSet(pf, argToEnv)
 	instanceGroupFlagCobraSet(pf, argToEnv)
+	initialRolloutFlagCobraSet(pf, argToEnv)
 	cmd.AddEnvToUsage(templateRenderCmd, argToEnv)
 }

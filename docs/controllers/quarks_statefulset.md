@@ -14,9 +14,8 @@
          8. [Ingress](#ingress)
          9. [Extended Upgrade Support](#extended-upgrade-support)
          10. [Detects if StatefulSet versions are running](#detects-if-statefulset-versions-are-running)
-         11. [Volume Management](#volume-management)
-         12. [AZ Support](#az-support)
-         13. [Active/passive model](#activepassive-model)
+         11. [AZ Support](#az-support)
+         12. [Active/passive model](#activepassive-model)
       2. [Statefulset Cleanup Controller](#statefulset-cleanup-controller)
          1. [Watches](#watches-in-cleanup-controller)
          2. [Reconciliation](#reconciliation-in-cleanup-controller)
@@ -123,18 +122,6 @@ A running version means that at least one pod that belongs to a `StatefulSet` is
 
 The controller continues to reconcile until there's only one version.
 
-#### Volume Management
-
-The problem we're solving here is the following:
-
-When we create an `QuarksStatefulSet`, the version associated to it is **v1**. After an update, the `QuarksStatefulSet` moves on to **v2** with a Blue/Green update strategy. The task is to replace the new `PersistentVolumeClaims` from the **v2** `StatefulSet` with the `PVCs` of **v1**. This is not something that the `StatefulSet` controller supports - it's always trying to recreate the replaced `PVCs` and reattach them to pods.
-
-Our solution is to use a "dummy" `StatefulSet`(with the prefix "volume-management-") with the same replica count as the `QuarksStatefulSet` replica count. We then wait for this "dummy" `StatefulSet` to generate the volumes that we need.
-The final step is to remove the `volumeClaimTemplates` from the actual "desired" `StatefulSets` and mutate the pods so they use the volumes from the "dummy" `StatefulSet`.
-
-![Volume Claim management across versions](https://docs.google.com/drawings/d/e/2PACX-1vSvQkXe3zZhJYbkVX01mxS4PKa1iQmWyIgdZh1VKtTS1XW1lC14d1_FHLWn2oA7GVgzJCcEorNVXkK_/pub?w=1185&h=1203)
-*Fig. 3: Volume Claim management across versions*
-
 #### AZ Support
 
 The `zones` key defines the availability zones the `QuarksStatefulSet` needs to span.
@@ -174,10 +161,10 @@ affinity:
 
 If zones are set for an `QuarksStatefulSet`, the following occurs:
 
-- The name of each created `StatefulSet` is generated as `<quarks statefulset name>-z<index of az>-v<statefulset version>`.
+- The name of each created `StatefulSet` is generated as `<quarks statefulset name>-z<index of az>`.
 
   ```text
-  myquarksstatefulset-z0-v1
+  myquarksstatefulset-z0
   ```
 
 - The `StatefulSet` and its `Pods` are labeled with the following:

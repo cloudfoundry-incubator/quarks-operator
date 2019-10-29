@@ -2,25 +2,39 @@ package integration_test
 
 import (
 	"fmt"
+	"time"
+
+	v1 "k8s.io/api/core/v1"
+
+	"code.cloudfoundry.org/quarks-utils/pkg/pod"
+
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
 
 var _ = Describe("QuarksStatefulSet", func() {
 	var (
-		quarksStatefulSet                qstsv1a1.QuarksStatefulSet
-		wrongQuarksStatefulSet           qstsv1a1.QuarksStatefulSet
-		ownedReferencesQuarksStatefulSet qstsv1a1.QuarksStatefulSet
+		quarksStatefulSet                   qstsv1a1.QuarksStatefulSet
+		quarksStatefulSetWith2Replicas      *qstsv1a1.QuarksStatefulSet
+		wrongQuarksStatefulSet              qstsv1a1.QuarksStatefulSet
+		wrongQuarksStatefulSetWith2Replicas *qstsv1a1.QuarksStatefulSet
+		ownedReferencesQuarksStatefulSet    qstsv1a1.QuarksStatefulSet
 	)
 
 	BeforeEach(func() {
 		qStsName := fmt.Sprintf("test-qsts-%s", helper.RandString(5))
 		quarksStatefulSet = env.DefaultQuarksStatefulSet(qStsName)
+
+		quarksStatefulSetWith2Replicas = quarksStatefulSet.DeepCopy()
+		quarksStatefulSetWith2Replicas.Spec.Template.Spec.Replicas = pointers.Int32(2)
 
 		wrongEssName := fmt.Sprintf("wrong-test-qsts-%s", helper.RandString(5))
 		wrongQuarksStatefulSet = env.WrongQuarksStatefulSet(wrongEssName)
@@ -28,6 +42,10 @@ var _ = Describe("QuarksStatefulSet", func() {
 		ownedRefEssName := fmt.Sprintf("owned-ref-test-qsts-%s", helper.RandString(5))
 		ownedReferencesQuarksStatefulSet = env.OwnedReferencesQuarksStatefulSet(ownedRefEssName)
 
+		wrongQuarksStatefulSetWith2Replicas = wrongQuarksStatefulSet.DeepCopy()
+		wrongQuarksStatefulSetWith2Replicas.Spec.Template.Spec.Replicas = pointers.Int32(2)
+		wrongQuarksStatefulSetWith2Replicas.Spec.Template.Annotations[statefulset.AnnotationUpdateWatchTime] = "30000"
+		delete(wrongQuarksStatefulSetWith2Replicas.Spec.Template.Annotations, statefulset.AnnotationCanaryWatchTime)
 	})
 
 	AfterEach(func() {
@@ -100,6 +118,22 @@ var _ = Describe("QuarksStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(qSts).NotTo(Equal(nil))
 
+			sts, err := env.GetStatefulSet(env.Namespace, qSts.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sts.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-rollout", "Canary"))
+
+			err = wait.PollImmediate(5*time.Second, 35*time.Second, func() (bool, error) {
+				sts, err := env.GetStatefulSet(env.Namespace, qSts.GetName())
+				if err != nil {
+					return false, err
+				}
+				if sts.Annotations["quarks.cloudfoundry.org/canary-rollout"] == "Failed" {
+					return true, nil
+				}
+				return false, nil
+			})
+			Expect(err).NotTo(HaveOccurred())
+
 			By("Updating the QuarksStatefulSet")
 			qSts.Spec.Template.Spec.Template.ObjectMeta.Labels["testpodupdated"] = "yes"
 			qStsUpdated, tearDown, err := env.UpdateQuarksStatefulSet(env.Namespace, *qSts)
@@ -112,7 +146,7 @@ var _ = Describe("QuarksStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Checking that old statefulset is not deleted")
-			_, err = env.GetStatefulSet(env.Namespace, qSts.GetName()+"-v1")
+			_, err = env.GetStatefulSet(env.Namespace, qSts.GetName())
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -172,8 +206,95 @@ var _ = Describe("QuarksStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Two update events for one configMap and one secret
-			err = env.WaitForPod(env.Namespace, qSts.GetName()+"-v3-0")
+			err = env.WaitForPod(env.Namespace, qSts.GetName()+"-0")
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should timeout when scaling after update-watch-time", func() {
+			By("Creating an QuarksStatefulSet")
+			qSts, tearDown, err := env.CreateQuarksStatefulSet(env.Namespace, *wrongQuarksStatefulSetWith2Replicas)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(qSts).NotTo(Equal(nil))
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			By("Checking for pod")
+			err = env.WaitForPodFailures(env.Namespace, "wrongpod=yes")
+			Expect(err).NotTo(HaveOccurred())
+
+			qSts, err = env.GetQuarksStatefulSet(env.Namespace, qSts.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(qSts).NotTo(Equal(nil))
+
+			sts, err := env.GetStatefulSet(env.Namespace, qSts.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sts.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-rollout", "CanaryUpscale"))
+
+			err = waitForState(env.Namespace, qSts.Name, "Failed")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Rollout should stop on failure and recover when fixed", func() {
+			By("Creating an QuarksStatefulSet")
+			qSts, tearDown, err := env.CreateQuarksStatefulSet(env.Namespace, *quarksStatefulSetWith2Replicas)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(qSts).NotTo(Equal(nil))
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			err = env.WaitForPods(env.Namespace, "testpod=yes")
+			Expect(err).NotTo(HaveOccurred())
+
+			err = waitForState(env.Namespace, qSts.Name, "Done")
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Break the QuarksStatefulSet")
+			qSts, err = env.GetQuarksStatefulSet(env.Namespace, qSts.Name)
+			Expect(err).NotTo(HaveOccurred())
+			brokenQuarksStatefulSet := qSts.DeepCopy()
+			brokenQuarksStatefulSet.Spec.Template = env.WrongStatefulSet(brokenQuarksStatefulSet.Name)
+			brokenQuarksStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(2)
+			qSts, _, err = env.UpdateQuarksStatefulSet(env.Namespace, *brokenQuarksStatefulSet)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = env.WaitForPodFailures(env.Namespace, "wrongpod=yes")
+			Expect(err).NotTo(HaveOccurred())
+
+			err = waitForState(env.Namespace, qSts.Name, "Failed")
+			Expect(err).NotTo(HaveOccurred())
+
+			running, err := env.PodsRunning(env.Namespace, "testpod=yes")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(running).To(BeTrue())
+
+			By("Repair the QuarksStatefulSet")
+			qSts, err = env.GetQuarksStatefulSet(env.Namespace, qSts.Name)
+			Expect(err).NotTo(HaveOccurred())
+			repairedQuarksStatefulSet := qSts.DeepCopy()
+			repairedQuarksStatefulSet.Spec.Template = env.DefaultStatefulSet(brokenQuarksStatefulSet.Name)
+			repairedQuarksStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(2)
+			qSts, _, err = env.UpdateQuarksStatefulSet(env.Namespace, *repairedQuarksStatefulSet)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = waitForState(env.Namespace, qSts.Name, "Done")
+			Expect(err).NotTo(HaveOccurred())
+
+			count, err := env.PodCount(env.Namespace, "testpod=yes", func(p v1.Pod) bool {
+				return pod.IsPodReady(&p)
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(count).To(Equal(2))
 		})
 	})
 })
+
+func waitForState(namespace string, name string, state string) error {
+	return wait.PollImmediate(5*time.Second, 35*time.Second, func() (bool, error) {
+		sts, err := env.GetStatefulSet(namespace, name)
+		if err != nil {
+			return false, err
+		}
+		if sts.Annotations["quarks.cloudfoundry.org/canary-rollout"] == state {
+			return true, nil
+		}
+		return false, nil
+	})
+}

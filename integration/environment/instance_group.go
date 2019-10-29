@@ -6,18 +6,23 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 )
 
 // WaitForInstanceGroup blocks until all selected pods of the instance group are running. It fails after the timeout.
 func (m *Machine) WaitForInstanceGroup(namespace string, deployment string, igName string, version string, count int) error {
+	return m.WaitForInstanceGroupVersionAllReplicas(namespace, deployment, igName, count, version)
+}
+
+// WaitForInstanceGroupVersionAllReplicas blocks until all selected pods of the instance group are running. It fails after the timeout.
+func (m *Machine) WaitForInstanceGroupVersionAllReplicas(namespace string, deployment string, igName string, count int, versions ...string) error {
 	labels := labels.Set(map[string]string{
 		bdm.LabelDeploymentName:    deployment,
 		bdm.LabelInstanceGroupName: igName,
-		bdm.LabelDeploymentVersion: version,
 	}).String()
 	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		n, err := m.PodCount(namespace, labels, func(pod corev1.Pod) bool {
-			return pod.Status.Phase == corev1.PodRunning
+			return pod.Status.Phase == corev1.PodRunning && contains(versions, pod.Annotations[v1alpha1.AnnotationVersion])
 		})
 		if err != nil {
 			return false, err
@@ -27,11 +32,19 @@ func (m *Machine) WaitForInstanceGroup(namespace string, deployment string, igNa
 }
 
 // GetInstanceGroupPods returns all pods from a specific instance group version
-func (m *Machine) GetInstanceGroupPods(namespace string, deployment string, igName string, version string) (*corev1.PodList, error) {
+func (m *Machine) GetInstanceGroupPods(namespace string, deployment string, igName string) (*corev1.PodList, error) {
 	labels := labels.Set(map[string]string{
 		bdm.LabelDeploymentName:    deployment,
 		bdm.LabelInstanceGroupName: igName,
-		bdm.LabelDeploymentVersion: version,
 	}).String()
 	return m.GetPods(namespace, labels)
+}
+
+func contains(versions []string, version string) bool {
+	for _, a := range versions {
+		if a == version {
+			return true
+		}
+	}
+	return false
 }

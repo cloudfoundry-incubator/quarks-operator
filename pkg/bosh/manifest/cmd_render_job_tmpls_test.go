@@ -6,10 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+
 	"sigs.k8s.io/yaml"
 )
 
@@ -34,7 +36,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		act := func() error {
-			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas)
+			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas, true)
 		}
 
 		It("fails", func() {
@@ -54,7 +56,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		act := func() error {
-			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas)
+			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas, true)
 		}
 
 		Context("with an invalid instance index", func() {
@@ -135,7 +137,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		It("renders the job erb files correctly", func() {
-			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas)
+			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			drainFile := filepath.Join(jobsDir, "pxc-mysql", "bin/drain")
@@ -173,7 +175,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		It("renders the configuration erb file correctly", func() {
-			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas)
+			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			configFile := filepath.Join(jobsDir, "redis-server", "config/redis.conf")
@@ -203,7 +205,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		It("usage of spec field in an ERB template should work", func() {
-			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas)
+			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			configFile := filepath.Join(jobsDir, "metricsserver", "config/metricsserver.yml")

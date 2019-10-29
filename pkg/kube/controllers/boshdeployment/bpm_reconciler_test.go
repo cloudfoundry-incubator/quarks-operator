@@ -165,7 +165,7 @@ variables: []
 
 		bpmInformation = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo.bpm.fakepod-v1",
+				Name:      "foo.bpm.fakepod",
 				Namespace: "default",
 				Labels: map[string]string{
 					bdv1.LabelDeploymentName:             "foo",
@@ -187,7 +187,7 @@ variables: []
 
 		bpmInformationNoProcesses = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo.bpm.fakepod-v1",
+				Name:      "foo.bpm.fakepod",
 				Namespace: "default",
 				Labels: map[string]string{
 					bdv1.LabelDeploymentName:             "foo",
@@ -231,7 +231,7 @@ variables: []
 
 		manager.GetClientReturns(client)
 
-		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo.bpm.fakepod-v1", Namespace: "default"}}
+		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo.bpm.fakepod", Namespace: "default"}}
 	})
 
 	JustBeforeEach(func() {
@@ -256,7 +256,7 @@ variables: []
 				result, err := reconciler.Reconcile(request)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result.RequeueAfter).To(Equal(5 * time.Second))
-				Expect(logs.FilterMessageSnippet("Failed to get Instance Group BPM versioned secret 'default/foo.bpm.fakepod-v1'").Len()).To(Equal(1))
+				Expect(logs.FilterMessageSnippet("Failed to get Instance Group BPM versioned secret 'default/foo.bpm.fakepod'").Len()).To(Equal(1))
 			})
 
 			It("handles an error when applying BPM info", func() {
