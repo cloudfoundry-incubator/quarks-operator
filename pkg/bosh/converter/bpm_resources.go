@@ -6,6 +6,8 @@ import (
 
 	"github.com/pkg/errors"
 	"k8s.io/api/apps/v1beta2"
+	batchv1 "k8s.io/api/batch/v1"
+	batchv1b1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -312,42 +314,46 @@ func (kc *KubeConverter) errandToExtendedJob(
 			Trigger: ejv1.Trigger{
 				Strategy: strategy,
 			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        instanceGroup.Name,
-					Labels:      podLabels,
-					Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
-				},
-				Spec: corev1.PodSpec{
-					RestartPolicy:  corev1.RestartPolicyOnFailure,
-					Containers:     containers,
-					InitContainers: initContainers,
-					Volumes:        volumes,
-					SecurityContext: &corev1.PodSecurityContext{
-						FSGroup: &admGroupID,
+			Template: batchv1b1.JobTemplateSpec{
+				Spec: batchv1.JobSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:        instanceGroup.Name,
+							Labels:      podLabels,
+							Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
+						},
+						Spec: corev1.PodSpec{
+							RestartPolicy:  corev1.RestartPolicyOnFailure,
+							Containers:     containers,
+							InitContainers: initContainers,
+							Volumes:        volumes,
+							SecurityContext: &corev1.PodSecurityContext{
+								FSGroup: &admGroupID,
+							},
+							ImagePullSecrets: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ImagePullSecrets,
+						},
 					},
-					ImagePullSecrets: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ImagePullSecrets,
 				},
 			},
 		},
 	}
 
-	eJob.Spec.Template.Spec.DNSPolicy, eJob.Spec.Template.Spec.DNSConfig, err = dns.DNSSetting(kc.namespace)
+	eJob.Spec.Template.Spec.Template.Spec.DNSPolicy, eJob.Spec.Template.Spec.Template.Spec.DNSConfig, err = dns.DNSSetting(kc.namespace)
 
 	if err != nil {
 		return ejv1.ExtendedJob{}, err
 	}
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity != nil {
-		eJob.Spec.Template.Spec.Affinity = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity
+		eJob.Spec.Template.Spec.Template.Spec.Affinity = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity
 	}
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName != "" {
-		eJob.Spec.Template.Spec.ServiceAccountName = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName
+		eJob.Spec.Template.Spec.Template.Spec.ServiceAccountName = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName
 	}
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.AutomountServiceAccountToken != nil {
-		eJob.Spec.Template.Spec.AutomountServiceAccountToken = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.AutomountServiceAccountToken
+		eJob.Spec.Template.Spec.Template.Spec.AutomountServiceAccountToken = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.AutomountServiceAccountToken
 	}
 
 	return eJob, nil
