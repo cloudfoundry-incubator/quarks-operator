@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -501,6 +503,29 @@ var _ = Describe("ContainerFactory", func() {
 				Expect(len(containers)).To(Equal(1))
 			})
 		})
+
+		It("sets k8s resource requests", func() {
+			jobs = []bdm.Job{
+				bdm.Job{
+					Name: "fake-job",
+					Properties: bdm.JobProperties{
+						Quarks: bdm.Quarks{
+							Run: bdm.RunConfig{
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										corev1.ResourceName(corev1.ResourceMemory): resource.MustParse("128Mi"),
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			containers, err := act()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(containers[0].Resources.Requests.Memory().String()).To(Equal("128Mi"))
+		})
+
 	})
 
 	Context("JobsToInitContainers", func() {

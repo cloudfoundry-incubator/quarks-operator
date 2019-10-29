@@ -226,6 +226,7 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 				job.Properties.Quarks.Run.HealthCheck,
 				job.Properties.Quarks.Envs,
 				job.Properties.Quarks.Run.SecurityContext.DeepCopy(),
+				job.Properties.Quarks.Run.Resources,
 				postStart,
 			)
 
@@ -467,6 +468,7 @@ func bpmProcessContainer(
 	healthchecks map[string]bdm.HealthCheck,
 	arbitraryEnvs []corev1.EnvVar,
 	securityContext *corev1.SecurityContext,
+	resources corev1.ResourceRequirements,
 	postStart postStart,
 ) corev1.Container {
 	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
@@ -501,6 +503,7 @@ func bpmProcessContainer(
 		WorkingDir:      workdir,
 		SecurityContext: securityContext,
 		Lifecycle:       &corev1.Lifecycle{},
+		Resources:       resources,
 	}
 
 	// Setup the job drain script handler.
