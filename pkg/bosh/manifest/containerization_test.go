@@ -17,9 +17,9 @@ var _ = Describe("Quarks", func() {
 	)
 
 	BeforeEach(func() {
-		manifest_path := path.Join(assetPath, "gatherManifest.yml")
+		manifestPath := path.Join(assetPath, "gatherManifest.yml")
 
-		boshManifestBytes, err := ioutil.ReadFile(manifest_path)
+		boshManifestBytes, err := ioutil.ReadFile(manifestPath)
 		Expect(err).ToNot(HaveOccurred())
 
 		m, err = LoadYAML(boshManifestBytes)
@@ -61,5 +61,14 @@ var _ = Describe("Quarks", func() {
 				},
 			},
 		}))
+	})
+
+	It("parses the resource requests in the run configuration", func() {
+		ig, found := m.InstanceGroups.InstanceGroupByName("doppler")
+		Expect(found).To(Equal(true))
+		requests := ig.Jobs[0].Properties.Quarks.Run.Resources.Requests
+		Expect(requests).ToNot(BeNil())
+		Expect(requests.Memory().String()).To(Equal("128Mi"))
+		Expect(requests.Cpu().String()).To(Equal("2m"))
 	})
 })

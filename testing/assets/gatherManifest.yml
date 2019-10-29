@@ -16,6 +16,10 @@ instance_groups:
         properties:
           quarks:
             run:
+              resources:
+                requests:
+                  cpu: "2m"
+                  memory: "128Mi"
               healthcheck:
                 doppler:
                   readiness:
