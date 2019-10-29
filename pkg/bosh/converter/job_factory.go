@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	batchv1 "k8s.io/api/batch/v1"
+	batchv1b1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -105,39 +107,43 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*ejv1.Exte
 				Strategy: ejv1.TriggerOnce,
 			},
 			UpdateOnConfigChange: true,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: eJobName,
-					Labels: map[string]string{
-						"delete": "pod",
-					},
-				},
-				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyOnFailure,
-					Containers: []corev1.Container{
-						{
-							Name:            VarInterpolationContainerName,
-							Image:           GetOperatorDockerImage(),
-							ImagePullPolicy: GetOperatorImagePullPolicy(),
-							Args:            args,
-							VolumeMounts:    volumeMounts,
-							Env: []corev1.EnvVar{
-								{
-									Name:  EnvBOSHManifestPath,
-									Value: filepath.Join("/var/run/secrets/deployment/", bdm.DesiredManifestKeyName),
-								},
-								{
-									Name:  EnvVariablesDir,
-									Value: "/var/run/secrets/variables/",
-								},
-								{
-									Name:  EnvOutputFilePath,
-									Value: EnvOutputFilePathValue,
-								},
+			Template: batchv1b1.JobTemplateSpec{
+				Spec: batchv1.JobSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: eJobName,
+							Labels: map[string]string{
+								"delete": "pod",
 							},
 						},
+						Spec: corev1.PodSpec{
+							RestartPolicy: corev1.RestartPolicyOnFailure,
+							Containers: []corev1.Container{
+								{
+									Name:            VarInterpolationContainerName,
+									Image:           GetOperatorDockerImage(),
+									ImagePullPolicy: GetOperatorImagePullPolicy(),
+									Args:            args,
+									VolumeMounts:    volumeMounts,
+									Env: []corev1.EnvVar{
+										{
+											Name:  EnvBOSHManifestPath,
+											Value: filepath.Join("/var/run/secrets/deployment/", bdm.DesiredManifestKeyName),
+										},
+										{
+											Name:  EnvVariablesDir,
+											Value: "/var/run/secrets/variables/",
+										},
+										{
+											Name:  EnvOutputFilePath,
+											Value: EnvOutputFilePathValue,
+										},
+									},
+								},
+							},
+							Volumes: volumes,
+						},
 					},
-					Volumes: volumes,
 				},
 			},
 		},
@@ -261,23 +267,27 @@ func (f *JobFactory) gatheringJob(name string, manifest bdm.Manifest, desiredMan
 				Strategy: ejv1.TriggerOnce,
 			},
 			UpdateOnConfigChange: true,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: name,
-					Labels: map[string]string{
-						"delete": "pod",
-					},
-				},
-				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyOnFailure,
-					// Init Container to copy contents
-					InitContainers: initContainers,
-					// Container to run data gathering
-					Containers: containers,
-					// Volumes for secrets
-					Volumes: []corev1.Volume{
-						*withOpsVolume(desiredManifestName),
-						releaseSourceVolume(),
+			Template: batchv1b1.JobTemplateSpec{
+				Spec: batchv1.JobSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: name,
+							Labels: map[string]string{
+								"delete": "pod",
+							},
+						},
+						Spec: corev1.PodSpec{
+							RestartPolicy: corev1.RestartPolicyOnFailure,
+							// Init Container to copy contents
+							InitContainers: initContainers,
+							// Container to run data gathering
+							Containers: containers,
+							// Volumes for secrets
+							Volumes: []corev1.Volume{
+								*withOpsVolume(desiredManifestName),
+								releaseSourceVolume(),
+							},
+						},
 					},
 				},
 			},

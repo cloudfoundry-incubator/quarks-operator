@@ -103,7 +103,7 @@ var _ = Describe("kube converter", func() {
 					Expect(eJob.GetAnnotations()).To(HaveKeyWithValue("custom-annotation", "bar"))
 
 					// Test affinity
-					Expect(eJob.Spec.Template.Spec.Affinity).To(BeNil())
+					Expect(eJob.Spec.Template.Spec.Template.Spec.Affinity).To(BeNil())
 				})
 
 				It("converts the instance group to an ExtendedJob when this the lifecycle is set to auto-errand", func() {
@@ -146,9 +146,9 @@ var _ = Describe("kube converter", func() {
 
 					// Test AgentEnvBoshConfig
 					eJob := resources.Errands[0]
-					Expect(*eJob.Spec.Template.Spec.Affinity).To(Equal(affinityCase))
-					Expect(eJob.Spec.Template.Spec.ServiceAccountName).To(Equal(serviceAccount))
-					Expect(*eJob.Spec.Template.Spec.AutomountServiceAccountToken).To(Equal(automountServiceAccountToken))
+					Expect(*eJob.Spec.Template.Spec.Template.Spec.Affinity).To(Equal(affinityCase))
+					Expect(eJob.Spec.Template.Spec.Template.Spec.ServiceAccountName).To(Equal(serviceAccount))
+					Expect(*eJob.Spec.Template.Spec.Template.Spec.AutomountServiceAccountToken).To(Equal(automountServiceAccountToken))
 				})
 			})
 
@@ -453,7 +453,7 @@ var _ = Describe("kube converter", func() {
 					resources, err := act(bpmConfigs[0], m.InstanceGroups[0])
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(resources.Errands).To(HaveLen(1))
-					containers := resources.Errands[0].Spec.Template.Spec.Containers
+					containers := resources.Errands[0].Spec.Template.Spec.Template.Spec.Containers
 
 					// Test shared volume setup
 					Expect(containers[0].VolumeMounts[0].Name).To(Equal("fake-volume-name"))

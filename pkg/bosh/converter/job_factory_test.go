@@ -31,10 +31,10 @@ var _ = Describe("JobFactory", func() {
 			Expect(err).ToNot(HaveOccurred())
 			jobDG := job.Spec.Template.Spec
 			// Test init containers in the ig manifest job
-			Expect(jobDG.InitContainers[0].Name).To(Equal("spec-copier-redis"))
-			Expect(jobDG.InitContainers[1].Name).To(Equal("spec-copier-cflinuxfs3"))
-			Expect(jobDG.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-			Expect(jobDG.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+			Expect(jobDG.Template.Spec.InitContainers[0].Name).To(Equal("spec-copier-redis"))
+			Expect(jobDG.Template.Spec.InitContainers[1].Name).To(Equal("spec-copier-cflinuxfs3"))
+			Expect(jobDG.Template.Spec.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+			Expect(jobDG.Template.Spec.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 		})
 
 		It("handles an error when getting release image", func() {
@@ -54,7 +54,7 @@ var _ = Describe("JobFactory", func() {
 		BeforeEach(func() {
 			var err error
 			job, err = factory.BPMConfigsJob(*m)
-			spec = job.Spec.Template.Spec
+			spec = job.Spec.Template.Spec.Template.Spec
 
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -79,7 +79,7 @@ var _ = Describe("JobFactory", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(job.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
 
-			podSpec := job.Spec.Template.Spec
+			podSpec := job.Spec.Template.Spec.Template.Spec
 
 			volumes := []string{}
 			for _, v := range podSpec.Volumes {
