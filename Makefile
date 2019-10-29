@@ -73,6 +73,7 @@ gen-fakes:
 	bin/gen-fakes
 
 gen-command-docs:
+	rm -f docs/commands/*
 	go run cmd/gen-command-docs.go
 
 verify-gen-kube:
