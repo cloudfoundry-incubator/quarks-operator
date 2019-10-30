@@ -160,7 +160,7 @@ func (m *PodMutator) addVolumeSpec(pod *corev1.Pod, volumeClaimTemplatesMap map[
 			_, foundVolumeClaimTemplate := volumeClaimTemplatesMap[volumeMount.Name]
 			if foundVolumeClaimTemplate {
 				podOrdinal := names.OrdinalFromPodName(pod.GetName())
-				persistentVolumeClaim := names.Sanitize(fmt.Sprintf("%s-%s-%s-%d", volumeMount.Name, "volume-management", extendedStatefulSetName, podOrdinal))
+				persistentVolumeClaim := fmt.Sprintf("%s-%s-%s-%d", volumeMount.Name, "volume-management", extendedStatefulSetName, podOrdinal)
 
 				volume, foundVolume := volumeMap[volumeMount.Name]
 				if !foundVolume {
