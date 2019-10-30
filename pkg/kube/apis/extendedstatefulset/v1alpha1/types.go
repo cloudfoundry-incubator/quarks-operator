@@ -27,6 +27,8 @@ var (
 	LabelAZName = fmt.Sprintf("%s/az-name", apis.GroupName)
 	// LabelPodOrdinal is the index of pod ordinal
 	LabelPodOrdinal = fmt.Sprintf("%s/pod-ordinal", apis.GroupName)
+	// LabelEStsName is the name of the ExtendedStatefulSet owns this resource
+	LabelEStsName = fmt.Sprintf("%s/extendedstatefulset-name", apis.GroupName)
 )
 
 // ExtendedStatefulSetSpec defines the desired state of ExtendedStatefulSet

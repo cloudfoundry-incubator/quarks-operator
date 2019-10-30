@@ -292,8 +292,8 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(exStatefulSet *
 		statefulSet = r.updateAffinity(statefulSet, exStatefulSet.Spec.ZoneNodeLabel, zoneName)
 	}
 
-	// Set az-index as 0 for single zoneName
 	podLabels[estsv1.LabelAZIndex] = strconv.Itoa(zoneIndex)
+	podLabels[estsv1.LabelEStsName] = exStatefulSet.GetName()
 
 	statefulSet.Spec.Template.SetLabels(podLabels)
 	statefulSet.Spec.Template.SetAnnotations(podAnnotations)

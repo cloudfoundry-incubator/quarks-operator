@@ -82,17 +82,28 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 
 	// Check if it is a volumeManagement statefulSet pod
 	if !isVolumeManagementStatefulSetPod(pod.Name) {
-
-		// Fetch extendedStatefulSet
-		statefulSet, err := m.fetchStatefulset(ctx, pod.Name)
-		if err != nil {
-			return errors.Wrapf(err, "Couldn't fetch Statefulset of pod %s", pod.Name)
+		// Get metadata from labels
+		labels := pod.GetLabels()
+		if labels == nil {
+			labels = map[string]string{}
 		}
 
 		// Fetch extendedStatefulSet
-		extendedStatefulSet, err := m.fetchExtendedStatefulset(ctx, pod.Name)
+		extendedStatefulSetName, ok := labels[essv1a1.LabelEStsName]
+		if !ok {
+			return errors.Errorf("Couldn't fetch name of ExtendedStatefulSet %s", pod.Name)
+		}
+
+		// Fetch extendedStatefulSet
+		statefulSet, err := m.fetchStatefulSet(ctx, pod.Name)
 		if err != nil {
-			return errors.Wrapf(err, "Couldn't fetch ExtendedStatefulset of pod %s", pod.Name)
+			return errors.Wrapf(err, "Couldn't fetch StatefulSet of pod %s", pod.Name)
+		}
+
+		// Fetch extendedStatefulSet
+		extendedStatefulSet, err := m.fetchExtendedStatefulSet(ctx, extendedStatefulSetName)
+		if err != nil {
+			return errors.Wrapf(err, "Couldn't fetch ExtendedStatefulSet of pod %s", pod.Name)
 		}
 
 		// Check if it has volumeClaimTemplates
@@ -198,8 +209,8 @@ func isVolumeManagementStatefulSetPod(podName string) bool {
 	return strings.HasPrefix(podName, "volume-management")
 }
 
-// fetchExtendedStatefulset fetches the extendedstatefulset of the pod
-func (m *PodMutator) fetchStatefulset(ctx context.Context, podName string) (*v1beta2.StatefulSet, error) {
+// fetchExtendedStatefulSet fetches the extendedStatefulSet of the pod
+func (m *PodMutator) fetchStatefulSet(ctx context.Context, podName string) (*v1beta2.StatefulSet, error) {
 	statefulSet := &v1beta2.StatefulSet{}
 	statefulSetName := getNameWithOutVersion(podName, 1)
 	key := mTypes.NamespacedName{Namespace: m.config.Namespace, Name: statefulSetName}
@@ -210,10 +221,9 @@ func (m *PodMutator) fetchStatefulset(ctx context.Context, podName string) (*v1b
 	return statefulSet, nil
 }
 
-// fetchExtendedStatefulset fetches the extendedstatefulset of the pod
-func (m *PodMutator) fetchExtendedStatefulset(ctx context.Context, podName string) (*essv1a1.ExtendedStatefulSet, error) {
+// fetchExtendedStatefulSet fetches the extendedStatefulSet of the pod
+func (m *PodMutator) fetchExtendedStatefulSet(ctx context.Context, extendedStatefulSetName string) (*essv1a1.ExtendedStatefulSet, error) {
 	extendedStatefulSet := &essv1a1.ExtendedStatefulSet{}
-	extendedStatefulSetName := getNameWithOutVersion(podName, 2)
 	key := mTypes.NamespacedName{Namespace: m.config.Namespace, Name: extendedStatefulSetName}
 	err := m.client.Get(ctx, key, extendedStatefulSet)
 	if err != nil {
@@ -222,7 +232,7 @@ func (m *PodMutator) fetchExtendedStatefulset(ctx context.Context, podName strin
 	return extendedStatefulSet, nil
 }
 
-// isStatefulSetPod check is it is extendedstatefulset Pod
+// isStatefulSetPod check is it is extendedStatefulSet Pod
 func isStatefulSetPod(labels map[string]string) bool {
 	if _, exists := labels["statefulset.kubernetes.io/pod-name"]; exists {
 		return true
