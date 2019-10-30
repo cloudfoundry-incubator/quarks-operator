@@ -243,15 +243,6 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 		log.Debugf(ctx, "Service '%s' has been %s", svc.Name, op)
 	}
 
-	// Create a persistent volume claims for containers of the instance group
-	// Right now, only one pvc is being created at /var/vcap/store
-	for _, persistentVolumeClaim := range resources.PersistentVolumeClaims {
-		err := r.createPersistentVolumeClaim(ctx, &persistentVolumeClaim)
-		if err != nil {
-			return log.WithEvent(instance, "ApplyPersistentVolumeClaimError").Errorf(ctx, "Failed to apply PersistentVolumeClaim for instance group '%s' : %v", instanceGroupName, err)
-		}
-	}
-
 	for _, eSts := range resources.InstanceGroups {
 		if eSts.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
 			log.Debugf(ctx, "Skipping ESts definition '%s' for instance group '%s' because of missmatching '%s' label", eSts.Name, instance.Name, bdm.LabelInstanceGroupName)
