@@ -188,7 +188,7 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 					subPath, err = filepath.Rel(VolumeDataDirMountPath, additionalVolume.Path)
 				}
 				if strings.HasPrefix(additionalVolume.Path, VolumeStoreDirMountPath) {
-					volumeName = VolumeStoreDirName
+					volumeName = generatePersistentVolumeClaim(manifestName, instanceGroup, namespace).Name
 					subPath, err = filepath.Rel(VolumeStoreDirMountPath, additionalVolume.Path)
 				}
 				if strings.HasPrefix(additionalVolume.Path, VolumeSysDirMountPath) {
@@ -263,7 +263,7 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 			bpmPersistentDisk := disk.BPMResourceDisk{
 				PersistentVolumeClaim: &persistentVolumeClaim,
 				Volume: &corev1.Volume{
-					Name: VolumeStoreDirName,
+					Name: persistentVolumeClaim.Name,
 					VolumeSource: corev1.VolumeSource{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 							ClaimName: persistentVolumeClaim.Name,
@@ -271,7 +271,7 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 					},
 				},
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeStoreDirName,
+					Name:      persistentVolumeClaim.Name,
 					MountPath: path.Join(VolumeStoreDirMountPath, job.Name),
 					SubPath:   job.Name,
 				},
