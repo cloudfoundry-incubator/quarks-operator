@@ -15,7 +15,6 @@ GIT_SHA=$(echo "${GIT_DESCRIBE}" | awk -F - '{ print $3 }' )
 GIT_TAG=$(echo "${GIT_DESCRIBE}" | awk -F - '{ print $1 }')
 [ -z "$(git status --porcelain)" ] || GIT_TAG=${GIT_TAG}-dirty
 
-ARTIFACT_NAME=$(basename "$(git config --get remote.origin.url)" .git)
 ARTIFACT_VERSION=${GIT_TAG}+${GIT_COMMITS}.${GIT_SHA}
 
 VERSION_TAG=${ARTIFACT_VERSION//+/-}

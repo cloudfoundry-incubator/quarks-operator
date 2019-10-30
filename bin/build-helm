@@ -8,7 +8,7 @@ GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 . "${GIT_ROOT}/.envrc"
 
 output_dir=${GIT_ROOT}/helm
-filename="${output_dir}/${ARTIFACT_NAME}-${ARTIFACT_VERSION}.tgz"
+filename="${output_dir}/cf-operator-${ARTIFACT_VERSION}.tgz"
 
 [ -d "${output_dir}" ] && rm -r "${output_dir}"
 cp -r "${GIT_ROOT}/deploy/helm" "${output_dir}"
@@ -17,6 +17,17 @@ perl -pi -e "s|repository: .*|repository: ${DOCKER_IMAGE_REPOSITORY}|g" "${outpu
 perl -pi -e "s|org: .*|org: ${DOCKER_IMAGE_ORG}|g" "${output_dir}/cf-operator/values.yaml"
 perl -pi -e "s|tag: .*|tag: ${DOCKER_IMAGE_TAG}|g" "${output_dir}/cf-operator/values.yaml"
 perl -pi -e "s|version: .*|version: ${VERSION_TAG}|g" "${output_dir}/cf-operator/Chart.yaml"
+
+repo="https://cf-operators.s3.amazonaws.com/helm-charts/"
+qj="quarks-job-v0.0.0%2B0.gb5dc240.tgz"
+pushd "$output_dir/cf-operator"
+  #helm repo add quarks https://cf-operators.s3.amazonaws.com/helm-charts/
+  #helm dependency update
+  mkdir charts
+  curl -LO "$repo$qj"
+  tar xfz "$qj" -C charts
+  rm "$qj"
+popd
 
 tar -C "${output_dir}" -czvf "${filename}" cf-operator
 
