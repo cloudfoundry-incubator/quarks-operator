@@ -19,6 +19,7 @@ import (
 var (
 	rootUserID = int64(0)
 	vcapUserID = int64(1000)
+	entrypoint = []string{"/usr/bin/dumb-init", "--"}
 )
 
 const (
@@ -278,7 +279,7 @@ func containerRunCopier() corev1.Container {
 				MountPath: VolumeRenderingDataMountPath,
 			},
 		},
-		Command: []string{"/usr/bin/dumb-init", "--"},
+		Command: entrypoint,
 		Args: []string{
 			"/bin/sh",
 			"-c",
@@ -303,7 +304,7 @@ func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 				MountPath: VolumeRenderingDataMountPath,
 			},
 		},
-		Command: []string{"/usr/bin/dumb-init", "--"},
+		Command: entrypoint,
 		Args: []string{
 			"/bin/sh",
 			"-xc",
@@ -344,7 +345,7 @@ func templateRenderingContainer(instanceGroupName string, secretName string) cor
 				},
 			},
 		},
-		Command: []string{"/usr/bin/dumb-init", "--"},
+		Command: entrypoint,
 		Args: []string{
 			"/bin/sh",
 			"-xc",
@@ -365,7 +366,7 @@ func createDirContainer(jobs []bdm.Job) corev1.Container {
 		Image:           GetOperatorDockerImage(),
 		ImagePullPolicy: GetOperatorImagePullPolicy(),
 		VolumeMounts:    []corev1.VolumeMount{*dataDirVolumeMount(), *sysDirVolumeMount()},
-		Command:         []string{"/usr/bin/dumb-init", "--"},
+		Command:         entrypoint,
 		Args: []string{
 			"/bin/sh",
 			"-xc",
@@ -402,7 +403,7 @@ func boshPreStartInitContainer(
 		Name:         names.Sanitize(fmt.Sprintf("bosh-pre-start-%s", jobName)),
 		Image:        jobImage,
 		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
-		Command:      []string{"/usr/bin/dumb-init", "--"},
+		Command:      entrypoint,
 		Args: []string{
 			"/bin/sh",
 			"-xc",
@@ -443,7 +444,7 @@ func bpmPreStartInitContainer(
 		Name:         names.Sanitize(fmt.Sprintf("bpm-pre-start-%s", process.Name)),
 		Image:        jobImage,
 		VolumeMounts: deduplicateVolumeMounts(volumeMounts),
-		Command:      []string{"/usr/bin/dumb-init", "--"},
+		Command:      entrypoint,
 		Args: []string{
 			"/bin/sh",
 			"-xc",
