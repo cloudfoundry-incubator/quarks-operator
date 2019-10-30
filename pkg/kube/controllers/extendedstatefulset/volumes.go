@@ -193,7 +193,8 @@ func (r *ReconcileStatefulSetCleanup) isVolumeManagementStatefulSetReady(ctx con
 		if err != nil {
 			return false, errors.Wrapf(err, "failed to query for pod by name: %v", podName)
 		}
-		if !podutil.IsPodReady(pod) {
+		_, condition := podutil.GetPodCondition(&pod.Status, corev1.PodInitialized)
+		if condition == nil || condition.Status != corev1.ConditionTrue {
 			return false, nil
 		}
 	}
