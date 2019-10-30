@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(waitCmd)
+	utilCmd.AddCommand(waitCmd)
 }
 
 var waitCmd = &cobra.Command{

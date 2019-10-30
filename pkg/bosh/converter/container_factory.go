@@ -164,7 +164,7 @@ func createWaitContainer(requiredService *string) []corev1.Container {
 		Args: []string{
 			"/bin/sh",
 			"-xc",
-			fmt.Sprintf("cf-operator wait %s", *requiredService),
+			fmt.Sprintf("cf-operator util wait %s", *requiredService),
 		},
 	}}
 

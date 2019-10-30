@@ -547,7 +547,7 @@ var _ = Describe("ContainerFactory", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(containers).To(HaveLen(7))
 				Expect(containers[4].Name).To(Equal("wait-for"))
-				Expect(containers[4].Args).To(ContainElement(`cf-operator wait required-service`))
+				Expect(containers[4].Args).To(ContainElement(`cf-operator util wait required-service`))
 			})
 
 			It("generates per job directories", func() {
