@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path"
 	"strconv"
 	"strings"
 
@@ -153,6 +154,29 @@ func (r *ReconcileExtendedStatefulSet) generateVolumeManagementSingleStatefulSet
 	statefulSet.SetName(fmt.Sprintf("%s-%s", "volume-management", statefulSetNamePrefix))
 	statefulSet.SetLabels(labels)
 	statefulSet.SetAnnotations(annotations)
+
+	statefulSet.Spec.PodManagementPolicy = v1beta2.ParallelPodManagement
+
+	// Generate dummy volumeMounts
+	// "volumeClaimTemplates: [...] Every claim in this list must have at least one matching (by name) volumeMount in one container in the template."
+	// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#statefulsetspec-v1-apps
+	volumeMounts := make([]corev1.VolumeMount, 0, len(statefulSet.Spec.VolumeClaimTemplates))
+	for _, pvc := range statefulSet.Spec.VolumeClaimTemplates {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      pvc.Name,
+			MountPath: path.Join("/mnt", pvc.Name),
+		})
+	}
+
+	statefulSet.Spec.Template.Spec.InitContainers = []corev1.Container{}
+	statefulSet.Spec.Template.Spec.Containers = []corev1.Container{
+		{
+			Name:         "volume-management",
+			VolumeMounts: volumeMounts,
+			Image:        "busybox",
+			Command:      []string{"sleep", "60"},
+		},
+	}
 
 	return statefulSet, nil
 }
