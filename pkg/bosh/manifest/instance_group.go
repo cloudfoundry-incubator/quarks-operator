@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/mitchellh/mapstructure"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
@@ -47,7 +49,7 @@ type InstanceGroup struct {
 
 // InstanceGroupQuarks represents the quark property of a InstanceGroup
 type InstanceGroupQuarks struct {
-	RequiredService *string `json:"required_service,omitempty"`
+	RequiredService *string `json:"required_service,omitempty" mapstructure:"required_service"`
 }
 
 // InstanceGroupProperties represents the properties map of a InstanceGroup
@@ -80,14 +82,11 @@ func (p *InstanceGroupProperties) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	if p.Properties != nil {
+
 		quarks, ok := p.Properties["quarks"]
 		if ok {
-			bytes, err := json.Marshal(quarks)
-			if err != nil {
-				return err
-			}
-			if err = json.Unmarshal(bytes, &p.Quarks); err != nil {
-				return err
+			if err := mapstructure.Decode(quarks, &p.Quarks); err != nil {
+				return errors.Wrapf(err, "failed to quarks properties from instance group")
 			}
 			delete(p.Properties, "quarks")
 		}
