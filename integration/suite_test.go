@@ -88,8 +88,6 @@ var _ = AfterEach(func() {
 })
 
 var _ = AfterSuite(func() {
-	gexec.CleanupBuildArtifacts()
-
 	// Nuking all namespaces at the end of the run
 	for _, namespace := range namespacesToNuke {
 		err := cmdHelper.DeleteNamespace(namespace)
