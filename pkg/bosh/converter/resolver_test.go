@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
@@ -262,6 +264,28 @@ instance_groups:
 				},
 				Data: map[string][]byte{bdc.OpsSpecName: []byte(opaqueOpsStr)},
 			},
+			&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "manifest-with-resources",
+					Namespace: "default",
+				},
+				Data: map[string]string{bdc.ManifestSpecName: `---
+instance_groups:
+  - name: componentWithResources
+    instances: 1
+    properties:
+      ca: ((implicit_ca))
+    jobs:
+    - name: job1
+      properties:
+        quarks:
+          run:
+            resources:
+              requests:
+                memory: 128Mi
+                cpu: 5m
+`},
+			},
 		)
 
 		remoteFileServer = ghttp.NewServer()
@@ -492,6 +516,55 @@ instance_groups:
 			opsBytes = interpolator.BuildOpsArgsForCall(3)
 			Expect(string(opsBytes)).To(Equal(removeOpsStr))
 			Expect(len(implicitVars)).To(Equal(0))
+		})
+
+		It("works for resource requirements", func() {
+			deployment := &bdc.BOSHDeployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo-deployment",
+				},
+				Spec: bdc.BOSHDeploymentSpec{
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "manifest-with-resources",
+					},
+				},
+			}
+			expectedManifest = &bdm.Manifest{
+				InstanceGroups: []*bdm.InstanceGroup{
+					{
+						Name:      "componentWithResources",
+						Instances: 1,
+						Jobs: []bdm.Job{
+							{
+								Properties: bdm.JobProperties{
+									Quarks: bdm.Quarks{
+										Run: bdm.RunConfig{
+											Resources: corev1.ResourceRequirements{
+												Requests: corev1.ResourceList{
+													corev1.ResourceMemory: resource.MustParse("128Mi"),
+													corev1.ResourceCPU:    resource.MustParse("5m"),
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				AddOnsApplied: true,
+				DNS:           bdm.NewSimpleDomainNameService(""),
+			}
+
+			manifest, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(manifest).ToNot(Equal(nil))
+			Expect(len(manifest.InstanceGroups)).To(Equal(1))
+			resourceList := manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Run.Resources.Requests
+			Expect(resourceList.Memory().String()).To(Equal("128Mi"))
+			Expect(resourceList.Cpu().String()).To(Equal("5m"))
 		})
 
 		It("throws an error if the manifest can not be found", func() {

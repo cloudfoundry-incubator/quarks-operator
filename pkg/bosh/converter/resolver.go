@@ -222,7 +222,6 @@ func (r *ResolverImpl) replaceVar(manifest *bdm.Manifest, name, value string) *b
 
 	return replaced.Interface().(*bdm.Manifest)
 }
-
 func (r *ResolverImpl) replaceVarRecursive(copy, v reflect.Value, varName, varValue string) {
 	switch v.Kind() {
 	case reflect.Ptr:
@@ -242,6 +241,11 @@ func (r *ResolverImpl) replaceVarRecursive(copy, v reflect.Value, varName, varVa
 		copy.Set(copyValue)
 
 	case reflect.Struct:
+		deepCopy := v.MethodByName("DeepCopy")
+		if (deepCopy != reflect.Value{}) {
+			values := deepCopy.Call([]reflect.Value{})
+			copy.Set(values[0])
+		}
 		for i := 0; i < v.NumField(); i++ {
 			r.replaceVarRecursive(copy.Field(i), v.Field(i), varName, varValue)
 		}
@@ -262,11 +266,14 @@ func (r *ResolverImpl) replaceVarRecursive(copy, v reflect.Value, varName, varVa
 		}
 
 	case reflect.String:
-		replaced := strings.Replace(v.String(), fmt.Sprintf("((%s))", varName), varValue, -1)
-		copy.SetString(replaced)
-
+		if copy.CanSet() {
+			replaced := strings.Replace(v.String(), fmt.Sprintf("((%s))", varName), varValue, -1)
+			copy.SetString(replaced)
+		}
 	default:
-		copy.Set(v)
+		if copy.CanSet() {
+			copy.Set(v)
+		}
 	}
 }
 

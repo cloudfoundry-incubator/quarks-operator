@@ -17,8 +17,8 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
