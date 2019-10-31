@@ -10,9 +10,10 @@ import (
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	mTypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -21,6 +22,9 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
+
+// statefulSetKind is the kind name of statefulSet
+const statefulSetKind = "StatefulSet"
 
 // PodMutator changes pod definitions
 type PodMutator struct {
@@ -82,26 +86,14 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 
 	// Check if it is a volumeManagement statefulSet pod
 	if !isVolumeManagementStatefulSetPod(pod.Name) {
-		// Get metadata from labels
-		labels := pod.GetLabels()
-		if labels == nil {
-			labels = map[string]string{}
-		}
-
-		// Fetch extendedStatefulSet
-		extendedStatefulSetName, ok := labels[essv1a1.LabelEStsName]
-		if !ok {
-			return errors.Errorf("Couldn't fetch name of ExtendedStatefulSet %s", pod.Name)
-		}
-
-		// Fetch extendedStatefulSet
-		statefulSet, err := m.fetchStatefulSet(ctx, pod.Name)
+		// Fetch statefulSet
+		statefulSet, err := m.fetchStatefulSet(ctx, pod.GetOwnerReferences())
 		if err != nil {
 			return errors.Wrapf(err, "Couldn't fetch StatefulSet of pod %s", pod.Name)
 		}
 
 		// Fetch extendedStatefulSet
-		extendedStatefulSet, err := m.fetchExtendedStatefulSet(ctx, extendedStatefulSetName)
+		extendedStatefulSet, err := m.fetchExtendedStatefulSet(ctx, pod.Labels)
 		if err != nil {
 			return errors.Wrapf(err, "Couldn't fetch ExtendedStatefulSet of pod %s", pod.Name)
 		}
@@ -154,13 +146,13 @@ func (m *PodMutator) addPersistentVolumeClaims(ctx context.Context, statefulSet 
 		volumeMap[volume.Name] = volume
 	}
 
-	m.addVolumeSpec(pod, volumeClaimTemplatesMap, volumeMap, statefulSet)
+	m.addVolumeSpec(pod, volumeClaimTemplatesMap, volumeMap, extendedStatefulSet.Name)
 
 	return nil
 }
 
 // addVolumeSpec adds volume spec to the pod container volumes spec
-func (m *PodMutator) addVolumeSpec(pod *corev1.Pod, volumeClaimTemplatesMap map[string]corev1.PersistentVolumeClaim, volumeMap map[string]corev1.Volume, statefulSet *v1beta2.StatefulSet) {
+func (m *PodMutator) addVolumeSpec(pod *corev1.Pod, volumeClaimTemplatesMap map[string]corev1.PersistentVolumeClaim, volumeMap map[string]corev1.Volume, extendedStatefulSetName string) {
 
 	for _, container := range pod.Spec.Containers {
 		for _, volumeMount := range container.VolumeMounts {
@@ -168,7 +160,7 @@ func (m *PodMutator) addVolumeSpec(pod *corev1.Pod, volumeClaimTemplatesMap map[
 			_, foundVolumeClaimTemplate := volumeClaimTemplatesMap[volumeMount.Name]
 			if foundVolumeClaimTemplate {
 				podOrdinal := names.OrdinalFromPodName(pod.GetName())
-				persistentVolumeClaim := names.Sanitize(fmt.Sprintf("%s-%s-%s-%d", volumeMount.Name, "volume-management", getNameWithOutVersion(statefulSet.Name, 1), podOrdinal))
+				persistentVolumeClaim := names.Sanitize(fmt.Sprintf("%s-%s-%s-%d", volumeMount.Name, "volume-management", extendedStatefulSetName, podOrdinal))
 
 				volume, foundVolume := volumeMap[volumeMount.Name]
 				if !foundVolume {
@@ -196,23 +188,22 @@ func (m *PodMutator) addVolumeSpec(pod *corev1.Pod, volumeClaimTemplatesMap map[
 	}
 }
 
-// getNameWithOutVersion returns name removing the version index
-func getNameWithOutVersion(name string, offset int) string {
-	nameSplit := strings.Split(name, "-")
-	nameSplit = nameSplit[0 : len(nameSplit)-offset]
-	name = strings.Join(nameSplit, "-")
-	return name
-}
-
 // isVolumeManagementStatefulSetPod checks if it is pod of the volumeManagement statefulSet
 func isVolumeManagementStatefulSetPod(podName string) bool {
 	return strings.HasPrefix(podName, "volume-management")
 }
 
 // fetchExtendedStatefulSet fetches the extendedStatefulSet of the pod
-func (m *PodMutator) fetchStatefulSet(ctx context.Context, podName string) (*v1beta2.StatefulSet, error) {
+func (m *PodMutator) fetchStatefulSet(ctx context.Context, ownerReferences []metav1.OwnerReference) (*v1beta2.StatefulSet, error) {
+	// Find statefulSet name from ownerReferences
+	statefulSetName := ""
+	for _, ref := range ownerReferences {
+		if ref.Kind == statefulSetKind {
+			statefulSetName = ref.Name
+		}
+	}
+
 	statefulSet := &v1beta2.StatefulSet{}
-	statefulSetName := getNameWithOutVersion(podName, 1)
 	key := mTypes.NamespacedName{Namespace: m.config.Namespace, Name: statefulSetName}
 	err := m.client.Get(ctx, key, statefulSet)
 	if err != nil {
@@ -222,7 +213,13 @@ func (m *PodMutator) fetchStatefulSet(ctx context.Context, podName string) (*v1b
 }
 
 // fetchExtendedStatefulSet fetches the extendedStatefulSet of the pod
-func (m *PodMutator) fetchExtendedStatefulSet(ctx context.Context, extendedStatefulSetName string) (*essv1a1.ExtendedStatefulSet, error) {
+func (m *PodMutator) fetchExtendedStatefulSet(ctx context.Context, podLabels map[string]string) (*essv1a1.ExtendedStatefulSet, error) {
+	// Find extendedStatefulSet name from labels
+	extendedStatefulSetName, ok := podLabels[essv1a1.LabelEStsName]
+	if !ok {
+		return &essv1a1.ExtendedStatefulSet{}, errors.New("Couldn't fetch name of extendedStatefulSet from pod labels")
+	}
+
 	extendedStatefulSet := &essv1a1.ExtendedStatefulSet{}
 	key := mTypes.NamespacedName{Namespace: m.config.Namespace, Name: extendedStatefulSetName}
 	err := m.client.Get(ctx, key, extendedStatefulSet)
@@ -234,7 +231,7 @@ func (m *PodMutator) fetchExtendedStatefulSet(ctx context.Context, extendedState
 
 // isStatefulSetPod check is it is extendedStatefulSet Pod
 func isStatefulSetPod(labels map[string]string) bool {
-	if _, exists := labels["statefulset.kubernetes.io/pod-name"]; exists {
+	if _, exists := labels[appsv1.StatefulSetPodNameLabel]; exists {
 		return true
 	}
 	return false

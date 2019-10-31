@@ -124,8 +124,9 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		// If it doesn't exist, create it
 		ctxlog.Info(ctx, "StatefulSet '", desiredStatefulSet.Name, "' owned by ExtendedStatefulSet '", request.NamespacedName, "' not found, will be created.")
 
-		r.versionedSecretStore.SetSecretReferences(ctx, request.Namespace, &exStatefulSet.Spec.Template.Spec.Template.Spec)
-
+		if err = r.versionedSecretStore.SetSecretReferences(ctx, request.Namespace, &exStatefulSet.Spec.Template.Spec.Template.Spec); err != nil {
+			return reconcile.Result{}, ctxlog.WithEvent(exStatefulSet, "UpdateVersionedSecretReferencesError").Error(ctx, "Could not update versioned secret references in pod spec for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+		}
 		if err := r.createStatefulSet(ctx, exStatefulSet, &desiredStatefulSet); err != nil {
 			return reconcile.Result{}, ctxlog.WithEvent(exStatefulSet, "CreateStatefulSetError").Error(ctx, "Could not create StatefulSet for ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 		}
