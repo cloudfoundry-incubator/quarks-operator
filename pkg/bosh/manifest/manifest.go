@@ -202,8 +202,8 @@ func (m *Manifest) loadDNS() error {
 
 // CalculateRequiredServices calculates the required services using the update.serial property
 func (m *Manifest) CalculateRequiredServices() {
-	var requiredService *string = nil
-	var requiredSerialService *string = nil
+	var requiredService *string
+	var requiredSerialService *string
 
 	for _, ig := range m.InstanceGroups {
 		serial := true
@@ -212,14 +212,6 @@ func (m *Manifest) CalculateRequiredServices() {
 		}
 		if ig.Update != nil && ig.Update.Serial != nil {
 			serial = *ig.Update.Serial
-		}
-
-		//FIXME This is required because eirini is inserted as last instance group in https://github.com/SUSE/scf
-		// Without this condition, eirini would wait for all other instance groups. On the other hand, there are
-		// instance groups, which require eirini. Therefore, without this condition there will be a deadlock
-		// This can be removed, if the position of eirini in scf is fixed.
-		if strings.Contains(ig.Name, "eirini") {
-			continue
 		}
 
 		if serial {
