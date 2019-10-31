@@ -282,11 +282,24 @@ func (dg *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) e
 				firstJobIndexBPM.UnsupportedTemplate = true
 			}
 		}
+		err = validateBPMProcesses(firstJobIndexBPM.Processes)
+		if err != nil {
+			return errors.Wrapf(err, "invalid BPM process for job %s", currentJob.Name)
+		}
 		currentJob.Properties.Quarks.BPM = &firstJobIndexBPM
 	} else if currentJob.Properties.Quarks.BPM == nil {
 		return errors.Errorf("can't find BPM template for job %s", currentJob.Name)
 	}
 
+	return nil
+}
+
+func validateBPMProcesses(processes []bpm.Process) error {
+	for _, process := range processes {
+		if process.Executable == "" {
+			return errors.Errorf("no executable specified for process %s", process.Name)
+		}
+	}
 	return nil
 }
 

@@ -382,6 +382,28 @@ var _ = Describe("ContainerFactory", func() {
 			Expect(err.Error()).To(ContainSubstring("fake-release-image-error"))
 		})
 
+		It("adds k8s resource requests from bpm config", func() {
+			jobs = []bdm.Job{
+				{Name: "fake-job"},
+			}
+
+			bpmConfigs["fake-job"] = bpm.Config{
+				Processes: []bpm.Process{
+					{
+						Name: "fake-job",
+						Requests: corev1.ResourceList{
+							corev1.ResourceName(corev1.ResourceMemory): resource.MustParse("128Mi"),
+							corev1.ResourceName(corev1.ResourceCPU):    resource.MustParse("5m"),
+						},
+					},
+				},
+			}
+			containers, err := act()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(containers[0].Resources.Requests.Memory().String()).To(Equal("128Mi"))
+			Expect(containers[0].Resources.Requests.Cpu().String()).To(Equal("5m"))
+		})
+
 		Context("with lifecycle events", func() {
 			It("creates a preStop handler per job", func() {
 				containers, err := act()
@@ -502,28 +524,6 @@ var _ = Describe("ContainerFactory", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(containers)).To(Equal(1))
 			})
-		})
-
-		It("sets k8s resource requests", func() {
-			jobs = []bdm.Job{
-				bdm.Job{
-					Name: "fake-job",
-					Properties: bdm.JobProperties{
-						Quarks: bdm.Quarks{
-							Run: bdm.RunConfig{
-								Resources: corev1.ResourceRequirements{
-									Requests: corev1.ResourceList{
-										corev1.ResourceName(corev1.ResourceMemory): resource.MustParse("128Mi"),
-									},
-								},
-							},
-						},
-					},
-				},
-			}
-			containers, err := act()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(containers[0].Resources.Requests.Memory().String()).To(Equal("128Mi"))
 		})
 
 	})

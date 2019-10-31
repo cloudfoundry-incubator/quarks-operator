@@ -59,6 +59,15 @@ func (c *Catalog) ElaboratedBOSHManifest() (*manifest.Manifest, error) {
 	return m, nil
 }
 
+// BoshManifestWithResources for data gathering tests
+func (c *Catalog) BoshManifestWithResources() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.WithResources))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
+}
+
 // BOSHManifestWithProviderAndConsumer for data gathering tests
 func (c *Catalog) BOSHManifestWithProviderAndConsumer() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.WithProviderAndConsumer))
