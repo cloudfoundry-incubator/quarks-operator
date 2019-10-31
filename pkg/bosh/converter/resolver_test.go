@@ -4,8 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
@@ -279,8 +277,9 @@ instance_groups:
     - name: job1
       properties:
         quarks:
-          run:
-            resources:
+          bpm:
+            processes:
+            - name: xxx
               requests:
                 memory: 128Mi
                 cpu: 5m
@@ -530,39 +529,13 @@ instance_groups:
 					},
 				},
 			}
-			expectedManifest = &bdm.Manifest{
-				InstanceGroups: []*bdm.InstanceGroup{
-					{
-						Name:      "componentWithResources",
-						Instances: 1,
-						Jobs: []bdm.Job{
-							{
-								Properties: bdm.JobProperties{
-									Quarks: bdm.Quarks{
-										Run: bdm.RunConfig{
-											Resources: corev1.ResourceRequirements{
-												Requests: corev1.ResourceList{
-													corev1.ResourceMemory: resource.MustParse("128Mi"),
-													corev1.ResourceCPU:    resource.MustParse("5m"),
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				AddOnsApplied: true,
-				DNS:           bdm.NewSimpleDomainNameService(""),
-			}
 
 			manifest, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
 			Expect(len(manifest.InstanceGroups)).To(Equal(1))
-			resourceList := manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Run.Resources.Requests
+			resourceList := manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.BPM.Processes[0].Requests
 			Expect(resourceList.Memory().String()).To(Equal("128Mi"))
 			Expect(resourceList.Cpu().String()).To(Equal("5m"))
 		})

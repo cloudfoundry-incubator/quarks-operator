@@ -170,8 +170,38 @@ var _ = Describe("InstanceGroupResolver", func() {
 					Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Empty bpm configs about job '%s'", ig)))
 				})
 			})
-		})
 
+			Context("with process resources", func() {
+				BeforeEach(func() {
+					m, err = env.BoshManifestWithResources()
+					Expect(err).NotTo(HaveOccurred())
+					ig = "doppler"
+				})
+
+				It("returns the bpm with resources for process", func() {
+					bpmConfigs, err := dg.BPMConfigs()
+					Expect(err).ToNot(HaveOccurred())
+
+					bpm := bpmConfigs["doppler"]
+					Expect(bpm).NotTo(BeNil())
+					Expect(bpm.Processes[0].Requests.Memory().String()).To(Equal("128Mi"))
+					Expect(bpm.Processes[0].Requests.Cpu().String()).To(Equal("5m"))
+				})
+			})
+			Context("with process resources", func() {
+				BeforeEach(func() {
+					m, err = env.BoshManifestWithResources()
+					Expect(err).NotTo(HaveOccurred())
+					ig = "log-api"
+				})
+
+				It("raises an error for bpm process without executable", func() {
+					_, err := dg.BPMConfigs()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("invalid BPM process"))
+				})
+			})
+		})
 		Describe("Manifest", func() {
 			BeforeEach(func() {
 				m, err = env.ElaboratedBOSHManifest()

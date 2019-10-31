@@ -56,9 +56,8 @@ type HealthCheck struct {
 
 // RunConfig describes the runtime configuration for this job.
 type RunConfig struct {
-	HealthCheck     map[string]HealthCheck      `json:"healthcheck" yaml:"healthcheck"`
-	SecurityContext *corev1.SecurityContext     `json:"security_context" yaml:"security_context"`
-	Resources       corev1.ResourceRequirements `json:"resources" yaml:"resources"`
+	HealthCheck     map[string]HealthCheck  `json:"healthcheck" yaml:"healthcheck"`
+	SecurityContext *corev1.SecurityContext `json:"security_context" yaml:"security_context"`
 }
 
 // PreRenderScripts describes the different types of scripts that can be run inside a job.
