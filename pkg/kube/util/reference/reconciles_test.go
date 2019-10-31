@@ -59,25 +59,25 @@ var _ = Describe("GetReconciles", func() {
 			})
 
 			It("triggers a reconcile when a ConfigRef changes", func() {
-				requests, err := reference.GetReconciles(context.Background(), client, reference.ReconcileForExtendedStatefulSet, &configMap1)
+				requests, err := reference.GetReconciles(context.Background(), client, reference.ReconcileForExtendedStatefulSet, &configMap1, false)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(requests)).To(Equal(1))
 			})
 
 			It("triggers a reconcile when a ConfigKeyRef changes", func() {
-				requests, err := reference.GetReconciles(context.Background(), client, reference.ReconcileForExtendedStatefulSet, &configMap2)
+				requests, err := reference.GetReconciles(context.Background(), client, reference.ReconcileForExtendedStatefulSet, &configMap2, false)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(requests)).To(Equal(1))
 			})
 
 			It("triggers a reconcile when a SecretRef changes", func() {
-				requests, err := reference.GetReconciles(context.Background(), client, reference.ReconcileForExtendedStatefulSet, &secret1)
+				requests, err := reference.GetReconciles(context.Background(), client, reference.ReconcileForExtendedStatefulSet, &secret1, false)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(requests)).To(Equal(1))
 			})
 
 			It("triggers a reconcile when a SecretKeyRef changes", func() {
-				requests, err := reference.GetReconciles(context.Background(), client, reference.ReconcileForExtendedStatefulSet, &secret2)
+				requests, err := reference.GetReconciles(context.Background(), client, reference.ReconcileForExtendedStatefulSet, &secret2, false)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(requests)).To(Equal(1))
 			})
@@ -89,7 +89,7 @@ var _ = Describe("GetReconciles", func() {
 			})
 
 			It("doesn't trigger a reconcile when a referenced configmap changes", func() {
-				requests, err := reference.GetReconciles(context.Background(), client, reference.ReconcileForExtendedStatefulSet, &configMap1)
+				requests, err := reference.GetReconciles(context.Background(), client, reference.ReconcileForExtendedStatefulSet, &configMap1, false)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(requests)).To(Equal(0))
 			})

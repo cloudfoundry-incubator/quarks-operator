@@ -37,7 +37,7 @@ func (r ReconcileType) String() string {
 
 // GetReconciles returns reconciliation requests for the BOSHDeployments or ExtendedStatefulSets
 // that reference an object. The object can be a ConfigMap or a Secret
-func GetReconciles(ctx context.Context, client crc.Client, reconcileType ReconcileType, object apis.Object) ([]reconcile.Request, error) {
+func GetReconciles(ctx context.Context, client crc.Client, reconcileType ReconcileType, object apis.Object, versionCheck bool) ([]reconcile.Request, error) {
 	objReferencedBy := func(parent interface{}) (bool, error) {
 		var (
 			objectReferences map[string]bool
@@ -63,7 +63,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			return false, errors.Wrap(err, "error listing references")
 		}
 
-		if versionedSecret && reconcileType != ReconcileForExtendedStatefulSet {
+		if versionedSecret {
 			keys := make([]string, len(objectReferences))
 			i := 0
 			for k := range objectReferences {
@@ -71,6 +71,10 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 				i++
 			}
 			ok := vss.ContainsSecretName(keys, name)
+			if versionCheck && ok {
+				ok := vss.ContainsOutdatedSecretVersion(keys, name)
+				return ok, nil
+			}
 			return ok, nil
 		}
 
