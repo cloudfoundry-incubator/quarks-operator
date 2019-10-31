@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -13,6 +14,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -93,6 +95,12 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
+	// Update labels of versioned secrets in exstendedstatefulset spec
+	err = r.UpdateVersions(ctx, exStatefulSet)
+	if err != nil {
+		return reconcile.Result{}, ctxlog.WithEvent(exStatefulSet, "IncrementVersionError").Error(ctx, "Could not update labels of versioned secrets in ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+	}
+
 	if meltdown.NewWindow(r.config.MeltdownDuration, exStatefulSet.Status.LastReconcile).Contains(time.Now()) {
 		ctxlog.WithEvent(exStatefulSet, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", exStatefulSet.Name, r.config.MeltdownRequeueAfter)
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
@@ -141,6 +149,31 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	}
 
 	return reconcile.Result{}, nil
+}
+
+// UpdateVersions updates the versions of all versioned secret
+// mounted as volumes in exsts
+func (r *ReconcileExtendedStatefulSet) UpdateVersions(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet) error {
+
+	secret := &corev1.Secret{}
+	volumes := exStatefulSet.Spec.Template.Spec.Template.Spec.Volumes
+	for volumeIndex, volume := range volumes {
+		if volume.VolumeSource.Secret != nil {
+			if err := r.client.Get(ctx, types.NamespacedName{Name: volume.Secret.SecretName, Namespace: exStatefulSet.GetNamespace()}, secret); err != nil {
+				return err
+			}
+			if vss.IsVersionedSecret(*secret) {
+				secretNameSplitted := strings.Split(secret.GetName(), "-")
+				latestSecret, err := r.versionedSecretStore.Latest(ctx, r.config.Namespace, strings.Join(secretNameSplitted[0:len(secretNameSplitted)-1], "-"))
+				if err != nil {
+					return errors.Wrapf(err, "failed to read latest versioned secret %s for ExtendedStatefulSet %s", secret.GetName(), exStatefulSet.GetName())
+				}
+				exStatefulSet.Spec.Template.Spec.Template.Spec.Volumes[volumeIndex].Secret.SecretName = latestSecret.GetName()
+			}
+		}
+	}
+	exStatefulSet.Spec.Template.Spec.Template.Spec.Volumes = volumes
+	return nil
 }
 
 // calculateDesiredStatefulSets generates the desired StatefulSets that should exist
