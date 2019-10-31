@@ -32,7 +32,7 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.4.0
 	github.com/viovanov/bosh-template-go v0.0.0-20191023111642-ee2aa128a9cf
-	go.uber.org/zap v1.11.0
+	go.uber.org/zap v1.12.0
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
 	gopkg.in/yaml.v2 v2.2.4
 	k8s.io/api v0.0.0-20190409021203-6e4e0e4f393b
