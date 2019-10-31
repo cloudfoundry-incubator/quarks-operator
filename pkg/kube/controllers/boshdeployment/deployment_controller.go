@@ -18,8 +18,8 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
@@ -93,7 +93,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 				return []reconcile.Request{}
 			}
 
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, config)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, config, false)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for config '%s': %v", config.Name, err)
 			}
@@ -113,7 +113,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	secretPredicates := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			secret := e.Object.(*corev1.Secret)
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, secret)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, secret, false)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", secret.Name, err)
 			}
@@ -138,7 +138,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 				return []reconcile.Request{}
 			}
 
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, secret)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, secret, false)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", secret.Name, err)
 			}

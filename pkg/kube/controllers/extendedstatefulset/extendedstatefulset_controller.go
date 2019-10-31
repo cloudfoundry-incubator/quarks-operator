@@ -19,8 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
@@ -107,7 +107,7 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 				return []reconcile.Request{}
 			}
 
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, config)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, config, false)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s': %v", config.Name, err)
 			}
@@ -124,7 +124,22 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 
 	// Watch Secrets referenced by the ExtendedStatefulSet
 	secretPredicates := predicate.Funcs{
-		CreateFunc:  func(e event.CreateEvent) bool { return false },
+		CreateFunc: func(e event.CreateEvent) bool {
+
+			o := e.Object.(*corev1.Secret)
+			shouldProcessEvent := vss.IsVersionedSecret(*o)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, o, true)
+			if err != nil {
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", o.Name, err)
+			}
+
+			if shouldProcessEvent && len(reconciles) > 0 {
+				return true
+			}
+
+			return false
+
+		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -142,7 +157,7 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 				return []reconcile.Request{}
 			}
 
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, secret)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForExtendedStatefulSet, secret, false)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", secret.Name, err)
 			}
