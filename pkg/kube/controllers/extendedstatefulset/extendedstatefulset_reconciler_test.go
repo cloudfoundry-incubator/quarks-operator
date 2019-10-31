@@ -193,6 +193,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							Expect(podLabels).Should(HaveKeyWithValue(existingLabel, existingValue))
 							Expect(podLabels).Should(HaveKeyWithValue(exss.LabelAZIndex, strconv.Itoa(idx)))
 							Expect(podLabels).Should(HaveKeyWithValue(exss.LabelAZName, zones[idx]))
+							Expect(podLabels).Should(HaveKeyWithValue(exss.LabelEStsName, ess.Name))
 
 							podAnnotations := ss.Spec.Template.GetAnnotations()
 							Expect(podAnnotations).Should(HaveKeyWithValue(existingAnnotation, existingValue))
@@ -296,6 +297,7 @@ var _ = Describe("ReconcileExtendedStatefulSet", func() {
 							Expect(podLabels).Should(HaveKeyWithValue(existingLabel, existingValue))
 							Expect(podLabels).Should(HaveKeyWithValue(exss.LabelAZIndex, strconv.Itoa(idx)))
 							Expect(podLabels).Should(HaveKeyWithValue(exss.LabelAZName, zones[idx]))
+							Expect(podLabels).Should(HaveKeyWithValue(exss.LabelEStsName, ess.Name))
 
 							podAnnotations := ss.Spec.Template.GetAnnotations()
 							Expect(podAnnotations).Should(HaveKeyWithValue(existingAnnotation, existingValue))
