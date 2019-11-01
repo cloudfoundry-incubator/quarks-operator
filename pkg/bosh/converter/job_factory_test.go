@@ -1,14 +1,11 @@
 package converter_test
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
-
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/testing"
-	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("JobFactory", func() {
@@ -27,14 +24,14 @@ var _ = Describe("JobFactory", func() {
 
 	Describe("InstanceGroupManifestJob", func() {
 		It("creates init containers", func() {
-			job, err := factory.InstanceGroupManifestJob(*m)
+			eJob, err := factory.InstanceGroupManifestJob(*m)
 			Expect(err).ToNot(HaveOccurred())
-			jobDG := job.Spec.Template.Spec
-			// Test init containers in the ig manifest job
-			Expect(jobDG.Template.Spec.InitContainers[0].Name).To(Equal("spec-copier-redis"))
-			Expect(jobDG.Template.Spec.InitContainers[1].Name).To(Equal("spec-copier-cflinuxfs3"))
-			Expect(jobDG.Template.Spec.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-			Expect(jobDG.Template.Spec.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+			jobIG := eJob.Spec.Template.Spec
+			// Test init containers in the ig manifest eJob
+			Expect(jobIG.Template.Spec.InitContainers[0].Name).To(Equal("spec-copier-redis"))
+			Expect(jobIG.Template.Spec.InitContainers[1].Name).To(Equal("spec-copier-cflinuxfs3"))
+			Expect(jobIG.Template.Spec.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+			Expect(jobIG.Template.Spec.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 		})
 
 		It("handles an error when getting release image", func() {
@@ -43,23 +40,23 @@ var _ = Describe("JobFactory", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Generation of gathering job failed for manifest"))
 		})
+
+		It("does not generate the instance group containers when its instances is zero", func() {
+			m.InstanceGroups[0].Instances = 0
+			eJob, err := factory.InstanceGroupManifestJob(*m)
+			Expect(err).ToNot(HaveOccurred())
+			jobIG := eJob.Spec.Template.Spec
+			Expect(len(jobIG.Template.Spec.InitContainers)).To(BeNumerically("<", 2))
+			Expect(len(jobIG.Template.Spec.Containers)).To(BeNumerically("<", 2))
+		})
 	})
 
 	Describe("BPMConfigsJob", func() {
-		var (
-			job  *ejv1.ExtendedJob
-			spec corev1.PodSpec
-		)
-
-		BeforeEach(func() {
-			var err error
-			job, err = factory.BPMConfigsJob(*m)
-			spec = job.Spec.Template.Spec.Template.Spec
-
-			Expect(err).ToNot(HaveOccurred())
-		})
-
 		It("has one spec-copier init container per instance group", func() {
+			job, err := factory.BPMConfigsJob(*m)
+			Expect(err).ToNot(HaveOccurred())
+
+			spec := job.Spec.Template.Spec.Template.Spec
 			Expect(job.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
 
 			Expect(len(spec.InitContainers)).To(Equal(len(m.InstanceGroups)))
@@ -67,9 +64,23 @@ var _ = Describe("JobFactory", func() {
 		})
 
 		It("has one bpm-configs container per instance group", func() {
+			job, err := factory.BPMConfigsJob(*m)
+			Expect(err).ToNot(HaveOccurred())
+
+			spec := job.Spec.Template.Spec.Template.Spec
 			Expect(len(spec.Containers)).To(Equal(len(m.InstanceGroups)))
 			Expect(spec.Containers[0].Name).To(Equal(m.InstanceGroups[0].Name))
 			Expect(spec.Containers[0].Args).To(Equal([]string{"util", "bpm-configs"}))
+		})
+
+		It("does not generate the instance group containers when its instances is zero", func() {
+			m.InstanceGroups[0].Instances = 0
+			job, err := factory.BPMConfigsJob(*m)
+			Expect(err).ToNot(HaveOccurred())
+
+			spec := job.Spec.Template.Spec.Template.Spec
+			Expect(len(spec.InitContainers)).To(BeNumerically("<", 2))
+			Expect(len(spec.Containers)).To(BeNumerically("<", 2))
 		})
 	})
 

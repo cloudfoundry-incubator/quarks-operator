@@ -153,15 +153,17 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*ejv1.Exte
 
 // InstanceGroupManifestJob generates the job to create an instance group manifest
 func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error) {
-	containers := make([]corev1.Container, len(manifest.InstanceGroups))
+	containers := []corev1.Container{}
 
 	// ExtendedJob will always pick the latest version for versioned secrets
 	desiredManifestName := names.DesiredManifestName(manifest.Name, "1")
 
-	for idx, ig := range manifest.InstanceGroups {
-		// One container per Instance Group
-		// There will be one secret generated for each of these containers
-		containers[idx] = f.gatheringContainer("instance-group", desiredManifestName, ig.Name)
+	for _, ig := range manifest.InstanceGroups {
+		if ig.Instances != 0 {
+			// One container per Instance Group
+			// There will be one secret generated for each of these containers
+			containers = append(containers, f.gatheringContainer("instance-group", desiredManifestName, ig.Name))
+		}
 	}
 
 	eJobName := fmt.Sprintf("ig-%s", manifest.Name)
@@ -170,13 +172,15 @@ func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest) (*ejv1.Exte
 
 // BPMConfigsJob returns an extended job to calculate BPM information
 func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error) {
-	containers := make([]corev1.Container, len(manifest.InstanceGroups))
+	containers := []corev1.Container{}
 	desiredManifestName := names.DesiredManifestName(manifest.Name, "1")
 
-	for idx, ig := range manifest.InstanceGroups {
-		// One container per Instance Group
-		// There will be one secret generated for each of these containers
-		containers[idx] = f.gatheringContainer("bpm-configs", desiredManifestName, ig.Name)
+	for _, ig := range manifest.InstanceGroups {
+		if ig.Instances != 0 {
+			// One container per Instance Group
+			// There will be one secret generated for each of these containers
+			containers = append(containers, f.gatheringContainer("bpm-configs", desiredManifestName, ig.Name))
+		}
 	}
 
 	eJobName := fmt.Sprintf("bpm-%s", manifest.Name)
@@ -224,6 +228,9 @@ func (f *JobFactory) gatheringJob(name string, manifest bdm.Manifest, desiredMan
 	initContainers := []corev1.Container{}
 	doneSpecCopyingReleases := map[string]bool{}
 	for _, ig := range manifest.InstanceGroups {
+		if ig.Instances == 0 {
+			continue
+		}
 		// Iterate through each Job to find all releases so we can copy all
 		// sources to /var/vcap/instance-group
 		for _, boshJob := range ig.Jobs {
