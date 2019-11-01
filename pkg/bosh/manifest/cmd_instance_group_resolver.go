@@ -53,6 +53,9 @@ func (dg *InstanceGroupResolver) BPMConfigs() (bpm.Configs, error) {
 	}
 
 	for _, job := range dg.instanceGroup.Jobs {
+		if job.Properties.Quarks.BPM == nil {
+			return bpm, errors.Errorf("Empty bpm configs about job '%s'", job.Name)
+		}
 		bpm[job.Name] = *job.Properties.Quarks.BPM
 	}
 
