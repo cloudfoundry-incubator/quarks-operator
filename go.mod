@@ -30,7 +30,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v0.0.5
-	github.com/spf13/viper v1.4.0
+	github.com/spf13/viper v1.5.0
 	github.com/viovanov/bosh-template-go v0.0.0-20191023111642-ee2aa128a9cf
 	go.uber.org/zap v1.12.0
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
