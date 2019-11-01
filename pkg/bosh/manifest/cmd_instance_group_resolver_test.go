@@ -156,6 +156,20 @@ var _ = Describe("InstanceGroupResolver", func() {
 					Expect(bpm.Processes[1].Executable).To(Equal("/absent-process-command"))
 				})
 			})
+
+			Context("when manifest presets zero instances for the job", func() {
+				BeforeEach(func() {
+					m, err = env.BOSHManifestWithZeroInstances()
+					Expect(err).NotTo(HaveOccurred())
+					ig = "nats"
+				})
+
+				It("reports an error if the job had empty bpm configs", func() {
+					_, err := dg.BPMConfigs()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Empty bpm configs about job '%s'", ig)))
+				})
+			})
 		})
 
 		Describe("Manifest", func() {

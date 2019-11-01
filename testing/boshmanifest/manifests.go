@@ -548,6 +548,37 @@ releases:
   sha1: 6466c44827c3493645ca34b084e7c21de23272b4
 `
 
+// WithZeroInstances is a manifest with zero instances
+const WithZeroInstances = `---
+name: nats-manifest
+update:
+  serial: false
+releases:
+- name: nats
+  version: "26"
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
+instance_groups:
+- name: nats
+  jobs:
+  - name: nats
+    release: nats
+    properties:
+      nats:
+        user: admin
+        password: 123456
+      quarks:
+        ports:
+        - name: "nats1"
+          protocol: "TCP"
+          internal: 4222
+        - name: "nats1-routes"
+          protocol: TCP
+          internal: 4223
+`
+
 // WithMultiBPMProcesses is a manifest with multi BPM processes
 const WithMultiBPMProcesses = `---
 name: my-manifest

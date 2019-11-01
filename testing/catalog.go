@@ -140,6 +140,15 @@ func (c *Catalog) BPMReleaseWithAffinity() (*manifest.Manifest, error) {
 	return m, nil
 }
 
+// BOSHManifestWithZeroInstances for data gathering tests
+func (c *Catalog) BOSHManifestWithZeroInstances() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.WithZeroInstances))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
+}
+
 // BPMReleaseWithAffinityConfigMap for tests
 func (c *Catalog) BPMReleaseWithAffinityConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
