@@ -61,23 +61,6 @@ func (m *Machine) GetExtendedStatefulSet(namespace string, name string) (*esv1.E
 	return d, err
 }
 
-// CheckExtendedStatefulSet checks extendedstatefulset according to the version
-func (m *Machine) CheckExtendedStatefulSet(namespace string, name string, version int) error {
-	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
-		return m.CheckExtendedStatefulSetVersion(namespace, name, version)
-	})
-}
-
-// CheckExtendedStatefulSetVersion returns true if the version status is true
-func (m *Machine) CheckExtendedStatefulSetVersion(namespace string, name string, version int) (bool, error) {
-	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
-	d, err := client.Get(name, metav1.GetOptions{})
-	if d.Status.Versions[version] && len(d.Status.Versions) == 1 {
-		return true, nil
-	}
-	return false, err
-}
-
 // UpdateExtendedStatefulSet updates a ExtendedStatefulSet custom resource and returns a function to delete it
 func (m *Machine) UpdateExtendedStatefulSet(namespace string, ess esv1.ExtendedStatefulSet) (*esv1.ExtendedStatefulSet, machine.TearDownFunc, error) {
 	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
@@ -128,13 +111,6 @@ func (m *Machine) WaitForStatefulSetNewGeneration(namespace string, name string,
 func (m *Machine) WaitForExtendedStatefulSets(namespace string, labels string) error {
 	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		return m.ExtendedStatefulSetExists(namespace, labels)
-	})
-}
-
-// WaitForExtendedStatefulSetAvailable blocks until latest version is available. It fails after the timeout.
-func (m *Machine) WaitForExtendedStatefulSetAvailable(namespace string, name string, version int) error {
-	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
-		return m.ExtendedStatefulSetAvailable(namespace, name, version)
 	})
 }
 
@@ -252,30 +228,3 @@ func (m *Machine) StatefulSetNewGeneration(namespace string, name string, versio
 	return false, nil
 }
 
-// ExtendedStatefulSetAvailable returns true if current version is available
-func (m *Machine) ExtendedStatefulSetAvailable(namespace string, name string, version int) (bool, error) {
-	latestVersion := version
-
-	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
-
-	ess, err := client.Get(name, metav1.GetOptions{})
-	if err != nil {
-		return false, errors.Wrapf(err, "failed to query for extendedStatefulSet by name: %v", name)
-	}
-
-	if len(ess.Status.Versions) == 0 {
-		return false, nil
-	}
-
-	for n := range ess.Status.Versions {
-		if n > latestVersion {
-			latestVersion = n
-		}
-	}
-
-	if ess.Status.Versions[latestVersion] {
-		return true, nil
-	}
-
-	return false, nil
-}

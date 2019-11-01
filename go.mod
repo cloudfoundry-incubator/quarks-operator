@@ -26,13 +26,13 @@ require (
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/onsi/ginkgo v1.10.2
-	github.com/onsi/gomega v1.6.0
+	github.com/onsi/gomega v1.7.1
 	github.com/pkg/errors v0.8.1
 	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.4.0
 	github.com/viovanov/bosh-template-go v0.0.0-20191023111642-ee2aa128a9cf
-	go.uber.org/zap v1.11.0
+	go.uber.org/zap v1.12.0
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
 	gopkg.in/yaml.v2 v2.2.4
 	k8s.io/api v0.0.0-20190409021203-6e4e0e4f393b

@@ -27,6 +27,8 @@ var (
 	LabelAZName = fmt.Sprintf("%s/az-name", apis.GroupName)
 	// LabelPodOrdinal is the index of pod ordinal
 	LabelPodOrdinal = fmt.Sprintf("%s/pod-ordinal", apis.GroupName)
+	// LabelEStsName is the name of the ExtendedStatefulSet owns this resource
+	LabelEStsName = fmt.Sprintf("%s/extendedstatefulset-name", apis.GroupName)
 )
 
 // ExtendedStatefulSetSpec defines the desired state of ExtendedStatefulSet
@@ -46,9 +48,8 @@ type ExtendedStatefulSetSpec struct {
 
 // ExtendedStatefulSetStatus defines the observed state of ExtendedStatefulSet
 type ExtendedStatefulSetStatus struct {
+	// Timestamp for the last reconcile
 	LastReconcile *metav1.Time `json:"lastReconcile"`
-	// Map of version number keys and values that keeps track of if version is running
-	Versions map[int]bool `json:"versions"`
 }
 
 // +genclient
