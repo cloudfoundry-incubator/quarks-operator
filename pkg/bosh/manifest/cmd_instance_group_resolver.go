@@ -41,25 +41,33 @@ func NewInstanceGroupResolver(basedir string, manifest Manifest, instanceGroupNa
 	}, nil
 }
 
-// BPMConfigs returns a map of all BOSH jobs in the instance group
+// BPMInfo returns a map of all BOSH jobs in the instance group
 // The output will be persisted by ExtendedJob as 'bpm.yaml' in the
 // `<deployment-name>.bpm.<instance-group>-v<version>` secret.
-func (dg *InstanceGroupResolver) BPMConfigs() (bpm.Configs, error) {
-	bpm := bpm.Configs{}
+func (dg *InstanceGroupResolver) BPMInfo() (BPMInfo, error) {
+
+	bpmInfo := BPMInfo{}
 
 	err := dg.resolveManifest()
 	if err != nil {
-		return bpm, err
+		return bpmInfo, err
 	}
 
+	bpmInfo.Configs = bpm.Configs{}
 	for _, job := range dg.instanceGroup.Jobs {
 		if job.Properties.Quarks.BPM == nil {
-			return bpm, errors.Errorf("Empty bpm configs about job '%s'", job.Name)
+			return bpmInfo, errors.Errorf("Empty bpm configs about job '%s'", job.Name)
 		}
-		bpm[job.Name] = *job.Properties.Quarks.BPM
+		bpmInfo.Configs[job.Name] = *job.Properties.Quarks.BPM
 	}
 
-	return bpm, nil
+	bpmInfo.InstanceGroup.Name = dg.instanceGroup.Name
+	bpmInfo.InstanceGroup.AZs = dg.instanceGroup.AZs
+	bpmInfo.InstanceGroup.Instances = dg.instanceGroup.Instances
+	bpmInfo.InstanceGroup.Env = dg.instanceGroup.Env
+	bpmInfo.Variables = dg.manifest.Variables
+
+	return bpmInfo, nil
 }
 
 // Manifest returns a manifest for a specific instance group only.

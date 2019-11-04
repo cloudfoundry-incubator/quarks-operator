@@ -75,10 +75,10 @@ var _ = Describe("InstanceGroupResolver", func() {
 			})
 
 			It("returns the bpm config for all jobs", func() {
-				bpmConfigs, err := dg.BPMConfigs()
+				bpmInfo, err := dg.BPMInfo()
 				Expect(err).ToNot(HaveOccurred())
 
-				bpm := bpmConfigs["loggregator_trafficcontroller"]
+				bpm := bpmInfo.Configs["loggregator_trafficcontroller"]
 				Expect(bpm).ToNot(BeNil())
 				Expect(bpm.Processes[0].Executable).To(Equal("/var/vcap/packages/loggregator_trafficcontroller/trafficcontroller"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHLINKADDRESS"]).To(Equal("cf-doppler"))
@@ -129,10 +129,10 @@ var _ = Describe("InstanceGroupResolver", func() {
 				})
 
 				It("returns overwritten bpm config", func() {
-					bpmConfigs, err := dg.BPMConfigs()
+					bpmInfo, err := dg.BPMInfo()
 					Expect(err).ToNot(HaveOccurred())
 
-					bpm := bpmConfigs["redis-server"]
+					bpm := bpmInfo.Configs["redis-server"]
 					Expect(bpm).ToNot(BeNil())
 					Expect(bpm.Processes[0].Executable).To(Equal("/another/command"))
 				})
@@ -146,10 +146,10 @@ var _ = Describe("InstanceGroupResolver", func() {
 				})
 
 				It("returns merged bpm config", func() {
-					bpmConfigs, err := dg.BPMConfigs()
+					bpmInfo, err := dg.BPMInfo()
 					Expect(err).ToNot(HaveOccurred())
 
-					bpm := bpmConfigs["redis-server"]
+					bpm := bpmInfo.Configs["redis-server"]
 					Expect(bpm).ToNot(BeNil())
 					Expect(bpm.Processes[0].Executable).To(Equal("/var/vcap/packages/redis-4/bin/redis-server"))
 					Expect(bpm.Processes[1].Name).To(Equal("absent-process"))
