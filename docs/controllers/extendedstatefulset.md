@@ -66,8 +66,8 @@ The operator watches all the `ConfigMaps` and `Secrets` referenced by the `State
 
 Exposing `extendedstatefulsets` is similar to exposing `statefulsets` in kubernetes. A Kubernetes service makes use of labels to select the pods which should be in the service. We need to use two labels to group the pods of a single instance group.
 
-1. `fissile.cloudfoundry.org/instance-group-name: ((instanceGroupName))`
-2. `fissile.cloudfoundry.org/deployment-name: ((deploymentName))`
+1. `quarks.cloudfoundry.org/instance-group-name: ((instanceGroupName))`
+2. `quarks.cloudfoundry.org/deployment-name: ((deploymentName))`
 
 #### Cluster IP
 
@@ -81,8 +81,8 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    fissile.cloudfoundry.org/instance-group-name: nats
-    fissile.cloudfoundry.org/deployment-name: nats-deployment
+    quarks.cloudfoundry.org/instance-group-name: nats
+    quarks.cloudfoundry.org/deployment-name: nats-deployment
   ports:
     - protocol: TCP
       port: 80
@@ -111,7 +111,7 @@ When an update needs to happen, a second `StatefulSet` for the new version is de
 >
 > This could make integration with [Istio](https://istio.io/) easier and (more) seamless.
 
-Annotated with a version (auto-incremented on each update). The annotation key is `fissile.cloudfoundry.org/version`.
+Annotated with a version (auto-incremented on each update). The annotation key is `quarks.cloudfoundry.org/version`.
 
 Ability to upgrade even though `StatefulSet` pods are not ready.
 
@@ -183,14 +183,14 @@ If zones are set for an `ExtendedStatefulSet`, the following occurs:
 - The `StatefulSet` and its `Pods` are labeled with the following:
 
   ```yaml
-  fissile.cloudfoundry.org/az-index: "0"
-  fissile.cloudfoundry.org/az-name: "us-central1-a"
+  quarks.cloudfoundry.org/az-index: "0"
+  quarks.cloudfoundry.org/az-name: "us-central1-a"
   ```
 
 - The `StatefulSet` and its `Pods` are annotated with an **ordered** JSON array of all the availability zones:
 
   ```yaml
-  fissile.cloudfoundry.org/zones: '["us-central1-a", "us-central1-b"]'
+  quarks.cloudfoundry.org/zones: '["us-central1-a", "us-central1-b"]'
   ```
 
 - As defined above, each pod is modified to contain affinity rules.
@@ -207,7 +207,7 @@ If zones are set for an `ExtendedStatefulSet`, the following occurs:
 
 Active/passive model is application model that have multiple running instances, but only one instance is active and all other instances are passive (standby). If the active instance is down, one of the passive instances will be promoted to active immediately.
 
-The `activeProbe` key defines active probe to be performed on a container. The controller examines the active probe periodically to see if the active one is still active. If active pod is down or there isn’t an active pod, the first running pod will be promoted as active and label it as `fissile.cloudfoundry.org/pod-designation: active`.
+The `activeProbe` key defines active probe to be performed on a container. The controller examines the active probe periodically to see if the active one is still active. If active pod is down or there isn’t an active pod, the first running pod will be promoted as active and label it as `quarks.cloudfoundry.org/pod-designation: active`.
 
 ```yaml
 apiVersion: fissile.cloudfoundry.org/v1alpha1

@@ -11,10 +11,10 @@ const (
 	// e.g.:
 	//
 	//   ---
-	//   apiVersion: fissile.cloudfoundry.org/v1alpha1
+	//   apiVersion: quarks.cloudfoundry.org/v1alpha1
 	//   kind: BOSHDeployment
 	//   ...
-	GroupName = "fissile.cloudfoundry.org"
+	GroupName = "quarks.cloudfoundry.org"
 )
 
 // Object is used as a helper interface when passing Kubernetes resources

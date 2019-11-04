@@ -131,7 +131,7 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for containers")
-			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=file_server")
+			pods, _ := env.GetPods(env.Namespace, "quarks.cloudfoundry.org/instance-group-name=file_server")
 			Expect(len(pods.Items)).To(Equal(2))
 			pod := pods.Items[1]
 			Expect(pod.Spec.InitContainers).To(HaveLen(6))
@@ -162,7 +162,7 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for containers")
-			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=route_registrar")
+			pods, _ := env.GetPods(env.Namespace, "quarks.cloudfoundry.org/instance-group-name=route_registrar")
 			Expect(len(pods.Items)).To(Equal(2))
 
 			pod := pods.Items[1]
@@ -195,7 +195,7 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for containers")
-			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=route_registrar")
+			pods, _ := env.GetPods(env.Namespace, "quarks.cloudfoundry.org/instance-group-name=route_registrar")
 			Expect(len(pods.Items)).To(Equal(2))
 			Expect(pods.Items[0].Spec.Containers).To(HaveLen(2))
 			Expect(pods.Items[0].Spec.Containers[0].Name).To(Equal("route-registrar-route-registrar"))

@@ -31,7 +31,7 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			// Create fissile custom resource
+			// Create BOSHDeployment resource
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, boshDeployment)
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
