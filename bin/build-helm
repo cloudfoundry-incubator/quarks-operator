@@ -5,7 +5,6 @@ set -euo pipefail
 GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 . "${GIT_ROOT}/bin/include/versioning"
 . "${GIT_ROOT}/bin/include/docker"
-. "${GIT_ROOT}/.envrc"
 
 output_dir=${GIT_ROOT}/helm
 filename="${output_dir}/cf-operator-${ARTIFACT_VERSION}.tgz"
