@@ -263,20 +263,3 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 
 	return nil
 }
-
-func (r *ReconcileBPM) createPersistentVolumeClaim(ctx context.Context, persistentVolumeClaim *corev1.PersistentVolumeClaim) error {
-	log.Debugf(ctx, "Creating persistentVolumeClaim '%s'", persistentVolumeClaim.Name)
-
-	// Create only if PVC doesn't not exist
-	err := r.client.Create(ctx, persistentVolumeClaim)
-	if err != nil {
-		if apierrors.IsAlreadyExists(err) {
-			log.Debugf(ctx, "Skip creating PersistentVolumeClaim '%s' because it already exists", persistentVolumeClaim.Name)
-			return nil
-		}
-		return err
-
-	}
-
-	return nil
-}
