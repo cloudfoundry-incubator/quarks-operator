@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+
 	"github.com/pkg/errors"
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
@@ -169,20 +171,22 @@ func (r *ReconcileExtendedStatefulSet) generateVolumeManagementSingleStatefulSet
 	}
 
 	statefulSet.Spec.Template.Spec.InitContainers = []corev1.Container{}
-	statefulSet.Spec.Template.Spec.Containers = []corev1.Container{
-		{
-			Name:         "volume-management",
-			VolumeMounts: volumeMounts,
-			Image:        "busybox",
-			Command:      []string{"sleep", "60"},
+	statefulSet.Spec.Template.Spec.Containers = []corev1.Container{{
+		Name:            "volume-management",
+		VolumeMounts:    volumeMounts,
+		Image:           converter.GetOperatorDockerImage(),
+		ImagePullPolicy: converter.GetOperatorImagePullPolicy(),
+		Args: []string{
+			"util",
+			"sleep",
 		},
-	}
+	}}
 
 	return statefulSet, nil
 }
 
-// isVolumeManagementStatefulSetReady checks if all the statefulSet pods are ready
-func (r *ReconcileStatefulSetCleanup) isVolumeManagementStatefulSetReady(ctx context.Context, statefulSet *v1beta2.StatefulSet) (bool, error) {
+// isVolumeManagementStatefulSetInitialized checks if all the statefulSet pods are initialized
+func (r *ReconcileStatefulSetCleanup) isVolumeManagementStatefulSetInitialized(ctx context.Context, statefulSet *v1beta2.StatefulSet) (bool, error) {
 	pod := &corev1.Pod{}
 
 	replicaCount := int(*statefulSet.Spec.Replicas)
@@ -210,7 +214,7 @@ func (r *ReconcileStatefulSetCleanup) deleteVolumeManagementStatefulSet(ctx cont
 	}
 	for index := range statefulSets {
 		if isVolumeManagementStatefulSet(statefulSets[index].Name) {
-			ok, err := r.isVolumeManagementStatefulSetReady(ctx, &statefulSets[index])
+			ok, err := r.isVolumeManagementStatefulSetInitialized(ctx, &statefulSets[index])
 			if err != nil {
 				return err
 			}
