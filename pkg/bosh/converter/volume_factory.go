@@ -186,7 +186,7 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 					subPath, err = filepath.Rel(VolumeDataDirMountPath, additionalVolume.Path)
 				}
 				if strings.HasPrefix(additionalVolume.Path, VolumeStoreDirMountPath) {
-					volumeName = generatePersistentVolumeClaim(manifestName, instanceGroup, namespace).Name
+					volumeName = generatePersistentVolumeClaimName(manifestName, instanceGroup.Name)
 					subPath, err = filepath.Rel(VolumeStoreDirMountPath, additionalVolume.Path)
 				}
 				if strings.HasPrefix(additionalVolume.Path, VolumeSysDirMountPath) {
@@ -289,7 +289,7 @@ func generatePersistentVolumeClaim(manifestName string, instanceGroup *bdm.Insta
 	// Spec of a persistentVolumeClaim
 	persistentVolumeClaim := corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      names.Sanitize(fmt.Sprintf("%s-%s-%s", manifestName, instanceGroup.Name, "pvc")),
+			Name:      generatePersistentVolumeClaimName(manifestName, instanceGroup.Name),
 			Namespace: namespace,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -308,6 +308,10 @@ func generatePersistentVolumeClaim(manifestName string, instanceGroup *bdm.Insta
 	}
 
 	return persistentVolumeClaim
+}
+
+func generatePersistentVolumeClaimName(manifestName string, instanceGroupName string) string {
+	return names.Sanitize(fmt.Sprintf("%s-%s-%s", manifestName, instanceGroupName, "pvc"))
 }
 
 // withOpsVolume is a volume for the "not interpolated" manifest,
