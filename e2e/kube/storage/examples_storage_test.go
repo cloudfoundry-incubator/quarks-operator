@@ -92,8 +92,11 @@ var _ = Describe("Examples", func() {
 				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
-				By("Checking for pvc")
-				err = kubectlHelper.WaitForPVC(namespace, "nats-deployment-nats-pvc")
+				By("Checking for pvcs")
+				err = kubectlHelper.WaitForPVC(namespace, "nats-deployment-nats-pvc-volume-management-nats-deployment-nats-0")
+				Expect(err).ToNot(HaveOccurred())
+
+				err = kubectlHelper.WaitForPVC(namespace, "nats-deployment-nats-pvc-volume-management-nats-deployment-nats-1")
 				Expect(err).ToNot(HaveOccurred())
 			})
 
