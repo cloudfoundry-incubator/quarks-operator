@@ -12,7 +12,7 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"sigs.k8s.io/yaml"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
 var _ = Describe("bpm-configs", func() {
@@ -32,7 +32,7 @@ var _ = Describe("bpm-configs", func() {
 			manifestPath = assetPath + "/gatherManifest.yml"
 		})
 
-		It("prints the bpm configs to stdout", func() {
+		It("prints the bpm configs to a file", func() {
 			session, err := act(manifestPath)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -45,11 +45,11 @@ var _ = Describe("bpm-configs", func() {
 			err = json.Unmarshal(dataBytes, &jsonOutput)
 			Expect(err).ToNot(HaveOccurred())
 
-			configs := bpm.Configs{}
-			err = yaml.Unmarshal([]byte(jsonOutput["bpm.yaml"]), &configs)
+			bpmInfo := manifest.BPMInfo{}
+			err = yaml.Unmarshal([]byte(jsonOutput["bpm.yaml"]), &bpmInfo)
 			Expect(err).ToNot(HaveOccurred())
 
-			config := configs["loggregator_trafficcontroller"]
+			config := bpmInfo.Configs["loggregator_trafficcontroller"]
 			Expect(len(config.Processes)).To(Equal(1))
 			Expect(config.Processes[0].Executable).To(Equal("/var/vcap/packages/loggregator_trafficcontroller/trafficcontroller"))
 		})

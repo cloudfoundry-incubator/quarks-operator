@@ -101,12 +101,12 @@ instance group.
 			return errors.Wrapf(err, bpmFailedMessage)
 		}
 
-		bpmConfigs, err := dg.BPMConfigs()
+		bpmInfo, err := dg.BPMInfo()
 		if err != nil {
 			return errors.Wrapf(err, bpmFailedMessage)
 		}
 
-		bpmBytes, err := yaml.Marshal(bpmConfigs)
+		bpmBytes, err := yaml.Marshal(bpmInfo)
 		if err != nil {
 			return errors.Wrapf(err, "%s YAML marshalling bpmConfigs spec returned by dg.BPMConfigs() failed.", bpmFailedMessage)
 		}
