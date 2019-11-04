@@ -11,6 +11,7 @@
     - [Resources](#Resources)
     - [Health checks](#Health-checks)
     - [Hooks](#Hooks)
+    - [Misc](#Misc)
   - [Conversion Details](#Conversion-Details)
     - [Calculation of docker image location for releases](#Calculation-of-docker-image-location-for-releases)
     - [Variables to Extended Secrets](#Variables-to-Extended-Secrets)
@@ -412,7 +413,7 @@ In addition, there are configuration variables that are not available in Bosh bu
 
 | Job spec in Manifest                                    | Kube Pod Container                    | Description |
 | ------------------------------------------------------- | --------------------------------------|------------------------ |
-| `properties.quarks.bpm.processes[n].requests.cpu`       | `container.Resources.Requests.cpu`.   | [Guaranteed CPU](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#resource-requests-and-limits-of-pod-and-container) |
+| `properties.quarks.bpm.processes[n].requests.cpu`       | `container.Resources.Requests.cpu`    | [Guaranteed CPU](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#resource-requests-and-limits-of-pod-and-container) |
 | `properties.quarks.bpm.processes[n].requests.memory`    | `container.Resources.Requests.memory` | [Guaranteed memory](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#resource-requests-and-limits-of-pod-and-container) |
 
 
