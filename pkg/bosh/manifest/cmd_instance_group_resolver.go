@@ -162,7 +162,7 @@ func (dg *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 			// Generate instance spec for each ig instance
 			// This will be stored inside the current job under
 			// job.properties.quarks
-			jobsInstances := instanceGroup.jobInstances(dg.manifest.Name, job.Name, spec)
+			jobsInstances := instanceGroup.jobInstances(dg.manifest.Name, job.Name)
 
 			// set jobs.properties.quarks.instances with the ig instances
 			instanceGroup.Jobs[jobIdx].Properties.Quarks.Instances = jobsInstances
@@ -177,7 +177,6 @@ func (dg *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 			}
 		}
 	}
-
 	return nil
 }
 

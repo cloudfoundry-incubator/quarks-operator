@@ -105,7 +105,7 @@ func (ig *InstanceGroup) ExtendedStatefulsetName(deploymentName string) string {
 	return fmt.Sprintf("%s-%s", deploymentName, ign)
 }
 
-// IndexedServiceName constructs an indexed service name. It's used to construct the other service
+// IndexedServiceName constructs an indexed service name. It's used to construct the service
 // names other than the headless service.
 func (ig *InstanceGroup) IndexedServiceName(deploymentName string, index int) string {
 	sn := serviceName(ig.Name, deploymentName, 53)
@@ -115,7 +115,6 @@ func (ig *InstanceGroup) IndexedServiceName(deploymentName string, index int) st
 func (ig *InstanceGroup) jobInstances(
 	deploymentName string,
 	jobName string,
-	spec JobSpec,
 ) []JobInstance {
 	var jobsInstances []JobInstance
 	for i := 0; i < ig.Instances; i++ {

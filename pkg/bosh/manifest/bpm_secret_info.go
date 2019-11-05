@@ -4,7 +4,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 )
 
-// BPMInfo contains custome information about
+// BPMInfo contains custom information about
 // instance group which matters for exsts pods
 // such as AZ's, instance group count and BPM Configs
 type BPMInfo struct {

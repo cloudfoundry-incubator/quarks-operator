@@ -81,7 +81,7 @@ This will render a provided manifest instance-group
 				}
 				podOrdinal, err = strconv.Atoi(match[1])
 				if err != nil {
-					return errors.Wrapf(err, "%s String to int conversion failed from hostname for calculatinf podOrdinal flag value %s", tRenderFailedMessage, hostname)
+					return errors.Wrapf(err, "%s String to int conversion failed from hostname for calculating podOrdinal flag value %s", tRenderFailedMessage, hostname)
 				}
 			}
 			specIndex = (azIndex-1)*replicas + podOrdinal
