@@ -23,11 +23,11 @@ spec:
             name: webhook
           command:
           - cf-operator
-          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy | quote }}
           env:
-            {{- if .Values.operator.watchNamespace }}
+            {{- if .Values.global.operator.watchNamespace }}
             - name: WATCH_NAMESPACE
-              value: "{{ .Values.operator.watchNamespace }}"
+              value: "{{ .Values.global.operator.watchNamespace }}"
             {{- end}}
             {{- if .Values.cluster.domain }}
             - name: CLUSTER_DOMAIN
@@ -38,7 +38,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: CTX_TIMEOUT
-              value: "{{ .Values.contextTimeout }}"
+              value: "{{ .Values.global.contextTimeout }}"
             - name: POD_NAME
               valueFrom:
                 fieldRef:
@@ -52,7 +52,7 @@ spec:
             - name: DOCKER_IMAGE_TAG
               value: "{{ .Values.image.tag }}"
             - name: DOCKER_IMAGE_PULL_POLICY
-              value: "{{ .Values.image.pullPolicy }}"
+              value: "{{ .Values.global.image.pullPolicy }}"
             {{- if and .Values.operator.webhook.endpoint (not .Values.operator.webhook.useServiceReference) }}
             - name: CF_OPERATOR_WEBHOOK_SERVICE_HOST
               value: {{ .Values.operator.webhook.endpoint | quote }}

@@ -58,18 +58,18 @@ helm delete cf-operator --purge
 
 | Parameter                                         | Description                                                                          | Default                                        |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------- |
-| `operator.watchNamespace`                         | namespace the operator will watch for BOSH deployments                               | the release namespace                          |
+| `image.repository`                                | Docker hub repository for the cf-operator image                                      | `cf-operator`                                  |
+| `image.org`                                       | Docker hub organization for the cf-operator image                                    | `cfcontainerization`                           |
+| `image.tag`                                       | Docker image tag                                                                     | `foobar`                                       |
+| `global.contextTimeout`                           | Will set the context timeout in seconds, for future K8S API requests                 | `30`                                           |
+| `global.image.pullPolicy`                         | Kubernetes image pullPolicy                                                          | `IfNotPresent`                                 |
+| `global.operator.watchNamespace`                  | Namespace the operator will watch for BOSH deployments                               | the release namespace                          |
+| `global.rbacEnable`                               | Install required RBAC service account, roles and rolebindings                        | `true`                                         |
 | `operator.webhook.endpoint`                       | Hostname/IP under which the webhook server can be reached from the cluster           | the IP of service `cf-operator-webhook `       |
 | `operator.webhook.port`                           | Port the webhook server listens on                                                   | 2999                                           |
-| `operator.webhook.useServiceReference`            | If true, the webhook server is addressed using a service reference instead of the IP | `true`                                          |
-| `image.repository`                                | docker hub repository for the cf-operator image                                      | `cf-operator`                                  |
-| `image.org`                                       | docker hub organization for the cf-operator image                                    | `cfcontainerization`                           |
-| `image.tag`                                       | docker image tag                                                                     | `foobar`                                       |
-| `image.pullPolicy`                                | Kubernetes image pullPolicy                                                          | `IfNotPresent`                                 |
-| `rbacEnable`                                      | install required RBAC service account, roles and rolebindings                        | `true`                                         |
+| `operator.webhook.useServiceReference`            | If true, the webhook server is addressed using a service reference instead of the IP | `true`                                         |
 | `serviceAccount.cfOperatorServiceAccount.create`  | Will set the value of `cf-operator.serviceAccountName` to the current chart name     | `true`                                         |
 | `serviceAccount.cfOperatorServiceAccount.name`    | If the above is not set, it will set the `cf-operator.serviceAccountName`            |                                                |
-| `contextTimeout`                                  | Will set the context timeout in seconds, for future K8S API requests                 | `30`                                           |
 
 > **Note:**
 >
@@ -78,10 +78,10 @@ helm delete cf-operator --purge
 
 ## Watched namespace
 
-By default the operator will watch for BOSH deployments in the same namespace as it has been deployed to. Optionally, the watched namespace can be changed to something else using the `operator.watchNamespace` value, e.g.
+By default the operator will watch for BOSH deployments in the same namespace as it has been deployed to. Optionally, the watched namespace can be changed to something else using the `global.operator.watchNamespace` value, e.g.
 
 ```bash
-$ helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com/cf-operators/helm-charts/cf-operator-v0.2.2%2B47.g24492ea.tgz --set operator.watchNamespace=staging
+$ helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com/cf-operators/helm-charts/cf-operator-v0.2.2%2B47.g24492ea.tgz --set global.operator.watchNamespace=staging
 ```
 
 ## RBAC
@@ -91,5 +91,5 @@ By default, the helm chart will install RBAC ClusterRole and ClusterRoleBinding 
 The RBAC resources are enable by default. To disable:
 
 ```bash
-helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com/cf-operators/helm-charts/cf-operator-v0.2.2%2B47.g24492ea.tgz --set rbacEnable=false
+helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com/cf-operators/helm-charts/cf-operator-v0.2.2%2B47.g24492ea.tgz --set global.rbacEnable=false
 ```

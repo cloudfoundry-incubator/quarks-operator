@@ -1,6 +1,8 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 code.cloudfoundry.org/quarks-job v0.0.0-20191028122144-b5dc24039577 h1:BRt1yXLb9y9Jss8CRdktLAgqZn9PTN6b2o/GB5j5VYA=
 code.cloudfoundry.org/quarks-job v0.0.0-20191028122144-b5dc24039577/go.mod h1:oPUO3zM/AbjdHBcQXWn+yUfHq0nEqUoNXIvTb9/V3hg=
+code.cloudfoundry.org/quarks-job v0.0.0-20191105155809-54988ad6d8ff h1:i0fx+vmEcF8+dVIl7m/bePEfErXYmiDk+lSl/UAR6EE=
+code.cloudfoundry.org/quarks-job v0.0.0-20191105155809-54988ad6d8ff/go.mod h1:oPUO3zM/AbjdHBcQXWn+yUfHq0nEqUoNXIvTb9/V3hg=
 code.cloudfoundry.org/quarks-utils v0.0.0-20191028091215-830d8d07ee67 h1:n/yH3UyKOEZFuykJYHQk3fjihZELMREwUAuXX0YXSNc=
 code.cloudfoundry.org/quarks-utils v0.0.0-20191028091215-830d8d07ee67/go.mod h1:H6fVNegFsTZqOU2Cggvue8X5vfAdeGDKemikmwc7RBc=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
