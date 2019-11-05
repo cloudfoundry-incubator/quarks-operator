@@ -14,6 +14,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
+	quarksutils "code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
 
 const dGatherFailedMessage = "instance-group command failed."
@@ -28,6 +29,13 @@ var instanceGroupCmd = &cobra.Command{
 This will resolve the properties of an instance group and return a manifest for that instance group.
 
 `,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		quarksutils.BOSHManifestFlagViperBind(cmd.Flags())
+		quarksutils.BaseDirFlagViperBind(cmd.Flags())
+		quarksutils.InstanceGroupFlagViperBind(cmd.Flags())
+		quarksutils.OutputFilePathFlagViperBind(cmd.Flags())
+	},
+
 	RunE: func(_ *cobra.Command, args []string) (err error) {
 		defer func() {
 			if err != nil {
@@ -46,14 +54,15 @@ This will resolve the properties of an instance group and return a manifest for 
 
 		log = cmd.Logger()
 		defer log.Sync()
-		boshManifestPath := viper.GetString("bosh-manifest-path")
-		if len(boshManifestPath) == 0 {
-			return errors.Errorf("%s bosh-manifest-path flag is empty.", dGatherFailedMessage)
+
+		boshManifestPath, err := quarksutils.BOSHManifestFlagValidation(dGatherFailedMessage)
+		if err != nil {
+			return err
 		}
 
-		baseDir := viper.GetString("base-dir")
-		if len(baseDir) == 0 {
-			return errors.Errorf("%s base-dir flag is empty.", dGatherFailedMessage)
+		baseDir, err := quarksutils.BaseDirFlagValidation(dGatherFailedMessage)
+		if err != nil {
+			return err
 		}
 
 		namespace := viper.GetString("cf-operator-namespace")
@@ -61,14 +70,14 @@ This will resolve the properties of an instance group and return a manifest for 
 			return errors.Errorf("%s cf-operator-namespace flag is empty.", dGatherFailedMessage)
 		}
 
-		outputFilePath := viper.GetString("output-file-path")
-		if len(outputFilePath) == 0 {
-			return errors.Errorf("%s output-file-path flag is empty.", dGatherFailedMessage)
+		outputFilePath, err := quarksutils.OutputFilePathFlagValidation(dGatherFailedMessage)
+		if err != nil {
+			return err
 		}
 
-		instanceGroupName := viper.GetString("instance-group-name")
-		if len(instanceGroupName) == 0 {
-			return errors.Errorf("%s instance-group-name flag is empty.", dGatherFailedMessage)
+		instanceGroupName, err := quarksutils.InstanceGroupFlagValidation(dGatherFailedMessage)
+		if err != nil {
+			return err
 		}
 
 		boshManifestBytes, err := ioutil.ReadFile(boshManifestPath)
@@ -124,4 +133,13 @@ This will resolve the properties of an instance group and return a manifest for 
 
 func init() {
 	utilCmd.AddCommand(instanceGroupCmd)
+
+	pf := instanceGroupCmd.PersistentFlags()
+	argToEnv := map[string]string{}
+
+	quarksutils.BOSHManifestFlagCobraSet(pf, argToEnv)
+	quarksutils.BaseDirFlagCobraSet(pf, argToEnv)
+	quarksutils.InstanceGroupFlagCobraSet(pf, argToEnv)
+	quarksutils.OutputFilePathFlagCobraSet(pf, argToEnv)
+	quarksutils.AddEnvToUsage(instanceGroupCmd, argToEnv)
 }
