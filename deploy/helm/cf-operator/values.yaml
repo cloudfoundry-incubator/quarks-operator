@@ -3,10 +3,8 @@ image:
   repository: cf-operator
   org: cfcontainerization
   tag: foobar
-  pullPolicy: IfNotPresent
 
 operator:
-  watchNamespace: ""
   webhook:
     endpoint: ~
     host: ~
@@ -17,6 +15,7 @@ cluster:
   domain: ~
 
 nameOverride: ""
+
 fullnameOverride: ""
 
 nodeSelector: {}
@@ -25,9 +24,21 @@ tolerations: []
 
 affinity: {}
 
-rbacEnable: true
-
 serviceAccount:
   cfOperatorServiceAccount:
     create: true
     name:
+
+global:
+  contextTimeout: 30
+  image:
+    pullPolicy: IfNotPresent
+  operator:
+    watchNamespace: ""
+  rbacEnable: true
+
+quarks-job:
+  serviceAccount:
+    quarksJobServiceAccount:
+      create: true
+      name:
