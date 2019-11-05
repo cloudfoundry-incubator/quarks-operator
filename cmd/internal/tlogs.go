@@ -138,6 +138,14 @@ func TailLogsFromDir() error {
 
 func init() {
 	utilCmd.AddCommand(tailLogsCmd)
+
+	tailLogsCmd.Flags().StringP("logs-dir", "z", "", "a path from where to tail logs")
+	viper.BindPFlag("logs-dir", tailLogsCmd.Flags().Lookup("logs-dir"))
+
+	argToEnv := map[string]string{
+		"logs-dir": "LOGS_DIR",
+	}
+	cmd.AddEnvToUsage(tailLogsCmd, argToEnv)
 }
 
 func addExistingFiles(monitDir string, fileRegex *regexp.Regexp, fileList chan string) error {

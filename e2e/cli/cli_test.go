@@ -136,10 +136,7 @@ var _ = Describe("CLI", func() {
 			session, err := act("util")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
-  -b, --base-dir string              \(BASE_DIR\) a path to the base directory
-  -m, --bosh-manifest-path string    \(BOSH_MANIFEST_PATH\) path to the bosh manifest file
-  -h, --help                         help for util
-  -g, --instance-group-name string   \(INSTANCE_GROUP_NAME\) name of the instance group for data gathering`))
+  -h, --help   help for util`))
 		})
 	})
 
@@ -148,8 +145,10 @@ var _ = Describe("CLI", func() {
 			session, err := act("util", "variable-interpolation", "-h")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
-  -h, --help                   help for variable-interpolation
-  -v, --variables-dir string   \(VARIABLES_DIR\) path to the variables dir`))
+  -m, --bosh-manifest-path string   \(BOSH_MANIFEST_PATH\) path to the bosh manifest file
+  -h, --help                        help for variable-interpolation
+      --output-file-path string     \(OUTPUT_FILE_PATH\) Path of the file to which json output is redirected.
+  -v, --variables-dir string        \(VARIABLES_DIR\) path to the variables dir`))
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
@@ -180,7 +179,11 @@ var _ = Describe("CLI", func() {
 			session, err := act("util", "instance-group", "-h")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
-  -h, --help * help for instance-group`))
+  -b, --base-dir string              \(BASE_DIR\) a path to the base directory
+  -m, --bosh-manifest-path string    \(BOSH_MANIFEST_PATH\) path to the bosh manifest file
+  -h, --help                         help for instance-group
+  -g, --instance-group-name string   \(INSTANCE_GROUP_NAME\) name of the instance group for data gathering
+      --output-file-path string      \(OUTPUT_FILE_PATH\) Path of the file to which json output is redirected.`))
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
@@ -211,7 +214,11 @@ var _ = Describe("CLI", func() {
 			session, err := act("util", "bpm-configs", "-h")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
-  -h, --help * help for bpm-configs`))
+  -b, --base-dir string              \(BASE_DIR\) a path to the base directory
+  -m, --bosh-manifest-path string    \(BOSH_MANIFEST_PATH\) path to the bosh manifest file
+  -h, --help                         help for bpm-configs
+  -g, --instance-group-name string   \(INSTANCE_GROUP_NAME\) name of the instance group for data gathering
+      --output-file-path string      \(OUTPUT_FILE_PATH\) Path of the file to which json output is redirected.`))
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
@@ -242,14 +249,16 @@ var _ = Describe("CLI", func() {
 			session, err := act("util", "template-render", "-h")
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out).Should(Say(`Flags:
-      --az-index int        \(AZ_INDEX\) az index \(default -1\)
-  -h, --help                help for template-render
-  -j, --jobs-dir string     \(JOBS_DIR\) path to the jobs dir.
-  -d, --output-dir string   \(OUTPUT_DIR\) path to output dir. \(default "/var/vcap/jobs"\)
-      --pod-ip string       \(POD_IP\) pod IP
-      --pod-ordinal int     \(POD_ORDINAL\) pod ordinal \(default -1\)
-      --replicas int        \(REPLICAS\) number of replicas \(default -1\)
-      --spec-index int      \(SPEC_INDEX\) index of the instance spec \(default -1\)
+      --az-index int                 \(AZ_INDEX\) az index \(default -1\)
+  -m, --bosh-manifest-path string    \(BOSH_MANIFEST_PATH\) path to the bosh manifest file
+  -h, --help                         help for template-render
+  -g, --instance-group-name string   \(INSTANCE_GROUP_NAME\) name of the instance group for data gathering
+  -j, --jobs-dir string              \(JOBS_DIR\) path to the jobs dir.
+  -d, --output-dir string            \(OUTPUT_DIR\) path to output dir. \(default "/var/vcap/jobs"\)
+      --pod-ip string                \(POD_IP\) pod IP
+      --pod-ordinal int              \(POD_ORDINAL\) pod ordinal \(default -1\)
+      --replicas int                 \(REPLICAS\) number of replicas \(default -1\)
+      --spec-index int               \(SPEC_INDEX\) index of the instance spec \(default -1\)
 `))
 		})
 

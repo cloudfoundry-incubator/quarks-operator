@@ -17,6 +17,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
+	quarksutils "code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
 
 const bpmFailedMessage = "bpm-configs command failed."
@@ -30,6 +31,13 @@ var bpmConfigsCmd = &cobra.Command{
 This command calculates and prints the BPM configurations for all all BOSH jobs of a given
 instance group.
 `,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		quarksutils.BOSHManifestFlagViperBind(cmd.Flags())
+		quarksutils.BaseDirFlagViperBind(cmd.Flags())
+		quarksutils.InstanceGroupFlagViperBind(cmd.Flags())
+		quarksutils.OutputFilePathFlagViperBind(cmd.Flags())
+	},
+
 	RunE: func(_ *cobra.Command, args []string) (err error) {
 		defer func() {
 			if r := recover(); r != nil {
@@ -54,14 +62,14 @@ instance group.
 		log = cmd.Logger()
 		defer log.Sync()
 
-		boshManifestPath := viper.GetString("bosh-manifest-path")
-		if len(boshManifestPath) == 0 {
-			return errors.Errorf("%s bosh-manifest-path flag is empty.", bpmFailedMessage)
+		boshManifestPath, err := quarksutils.BOSHManifestFlagValidation(bpmFailedMessage)
+		if err != nil {
+			return err
 		}
 
-		baseDir := viper.GetString("base-dir")
-		if len(baseDir) == 0 {
-			return errors.Errorf("%s base-dir flag is empty.", bpmFailedMessage)
+		baseDir, err := quarksutils.BaseDirFlagValidation(bpmFailedMessage)
+		if err != nil {
+			return err
 		}
 
 		namespace := viper.GetString("cf-operator-namespace")
@@ -69,14 +77,14 @@ instance group.
 			return errors.Errorf("%s cf-operator-namespace flag is empty.", bpmFailedMessage)
 		}
 
-		outputFilePath := viper.GetString("output-file-path")
-		if len(outputFilePath) == 0 {
-			return errors.Errorf("%s output-file-path flag is empty.", bpmFailedMessage)
+		outputFilePath, err := quarksutils.OutputFilePathFlagValidation(bpmFailedMessage)
+		if err != nil {
+			return err
 		}
 
-		instanceGroupName := viper.GetString("instance-group-name")
-		if len(instanceGroupName) == 0 {
-			return errors.Errorf("%s instance-group-name flag is empty.", bpmFailedMessage)
+		instanceGroupName, err := quarksutils.InstanceGroupFlagValidation(bpmFailedMessage)
+		if err != nil {
+			return err
 		}
 
 		boshManifestBytes, err := ioutil.ReadFile(boshManifestPath)
@@ -132,4 +140,13 @@ instance group.
 
 func init() {
 	utilCmd.AddCommand(bpmConfigsCmd)
+	pf := bpmConfigsCmd.Flags()
+
+	argToEnv := map[string]string{}
+
+	quarksutils.BOSHManifestFlagCobraSet(pf, argToEnv)
+	quarksutils.BaseDirFlagCobraSet(pf, argToEnv)
+	quarksutils.InstanceGroupFlagCobraSet(pf, argToEnv)
+	quarksutils.OutputFilePathFlagCobraSet(pf, argToEnv)
+	quarksutils.AddEnvToUsage(bpmConfigsCmd, argToEnv)
 }
