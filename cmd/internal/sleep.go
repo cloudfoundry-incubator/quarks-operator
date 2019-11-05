@@ -25,7 +25,6 @@ func Sleep() error {
 	for {
 		time.Sleep(time.Hour * 24)
 	}
-	return nil
 }
 
 func init() {
