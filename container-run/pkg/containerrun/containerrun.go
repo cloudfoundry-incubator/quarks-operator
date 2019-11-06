@@ -269,8 +269,12 @@ func (p *ContainerProcess) Signal(sig os.Signal) error {
 
 // Wait waits for the process.
 func (p *ContainerProcess) Wait() error {
-	if _, err := p.process.Wait(); err != nil {
-		return fmt.Errorf("failed to wait for process: %v", err)
+	state, err := p.process.Wait()
+	if err != nil {
+		return fmt.Errorf("failed to run process: %v", err)
+	} else if !state.Success() {
+		err := &exec.ExitError{ProcessState: state}
+		return fmt.Errorf("failed to run process: %v", err)
 	}
 	return nil
 }
