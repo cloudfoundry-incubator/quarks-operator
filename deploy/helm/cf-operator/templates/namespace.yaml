@@ -1,7 +1,7 @@
-{{- if .Values.operator.watchNamespace }}
+{{- if .Values.global.operator.watchNamespace }}
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ .Values.operator.watchNamespace }}
+  name: {{ .Values.global.operator.watchNamespace }}
 {{- end }}
