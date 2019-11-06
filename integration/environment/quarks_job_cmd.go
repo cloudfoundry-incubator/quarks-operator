@@ -30,7 +30,7 @@ func (q *QuarksJobCmd) Start(namespace string) error {
 		"-n", namespace,
 		"-o", "cfcontainerization",
 		"-r", "quarks-job",
-		"-t", "v0.0.0-0.gb5dc240",
+		"-t", "v0.0.0-0.g8e68c67",
 	)
 	_, err := gexec.Start(cmd, ginkgo.GinkgoWriter, ginkgo.GinkgoWriter)
 	return err

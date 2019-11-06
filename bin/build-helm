@@ -18,7 +18,7 @@ perl -pi -e "s|tag: .*|tag: ${DOCKER_IMAGE_TAG}|g" "${output_dir}/cf-operator/va
 perl -pi -e "s|version: .*|version: ${VERSION_TAG}|g" "${output_dir}/cf-operator/Chart.yaml"
 
 repo="https://cf-operators.s3.amazonaws.com/helm-charts/"
-qj="quarks-job-v0.0.0%2B0.gb5dc240.tgz"
+qj="quarks-job-v0.0.0%2B0.g8e68c67.tgz"
 pushd "$output_dir/cf-operator"
   #helm repo add quarks https://cf-operators.s3.amazonaws.com/helm-charts/
   #helm dependency update
