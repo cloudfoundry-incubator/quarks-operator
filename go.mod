@@ -34,7 +34,7 @@ require (
 	github.com/viovanov/bosh-template-go v0.0.0-20191023111642-ee2aa128a9cf
 	go.uber.org/zap v1.12.0
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
-	gopkg.in/yaml.v2 v2.2.4
+	gopkg.in/yaml.v2 v2.2.5
 	k8s.io/api v0.0.0-20190409021203-6e4e0e4f393b
 	k8s.io/apiextensions-apiserver v0.0.0-20190409022649-727a075fdec8
 	k8s.io/apimachinery v0.0.0-20190404173353-6a84e37a896d

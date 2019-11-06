@@ -8,6 +8,7 @@
     - [Testing](#testing)
   - [Create-Or-Update pattern](#create-or-update-pattern)
   - [Logging and Events](#logging-and-events)
+  - [Standalone Components](#standalone-components)
   - [Versioning](#versioning)
 
 ## Requirements
@@ -239,6 +240,50 @@ The reason should be camel-case, so switch statements could match it.
 Error funcs like `WithEvent().Errorf()` also return an error, with the same message as the log message and event that were generated.
 
 Calling `WarningEvent` just creates a warning event, without logging.
+
+## Standalone Components
+
+The cf-operator uses quarks-job as an external component.
+The quarks-job operator is run in a separate process.
+
+When using jobs that capture output, quarks-job needs to know its docker image, to run the `persist-output` command in a container.
+
+### References in cf-operator
+
+References to quarks job:
+
+* as a library, for the API type, via git commit sha in `go.mod`:
+    'b5dc240'
+* the docker image for integration tests is set in `integration/environment/quarks_job_cmd.go`:
+    'cfcontainerization/quarks-job:v0.0.0-0.gb5dc240'
+* releases and e2e test use the helm sub chart, added in `bin/build-helm`:
+    'https://cf-operators.s3.amazonaws.com/helm-charts/quarks-job-v0.0.0%2B0.gb5dc240.tgz'
+
+### Update Dependencies
+
+To update a dependency in a project use `go get`, e.g.:
+
+```
+go get -t -u code.cloudfoundry.org/quarks-job@aad515c
+```
+
+Using the git commit sha prevents caching problems, which might occur with branch names.
+
+### Local development and 'replace'
+
+When working locally with multiple repositories it's helpful to replace github dependencies with local directories. The `go mod edit -replace` will modify the `go.mod` file to point to a local dir, e.g. '../quarks-job' instead:
+
+```
+case "`basename $PWD`" in
+    go mod edit -replace code.cloudfoundry.org/quarks-utils=../quarks-utils
+    go mod edit -replace code.cloudfoundry.org/quarks-job=../quarks-job
+esac
+```
+
+### Merging PRs
+
+* In PR reviews, make sure only reviewed branches of dependencies are used.
+* If several PRs across repos belong together, be careful to merge them together and in order, so that the master branches stay compatible if one of the merges fails.
 
 ## Versioning
 
