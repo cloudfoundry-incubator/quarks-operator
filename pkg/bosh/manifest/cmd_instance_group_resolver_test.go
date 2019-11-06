@@ -63,7 +63,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 	Context("InstanceGroupResolver", func() {
 		JustBeforeEach(func() {
 			var err error
-			dg, err = NewInstanceGroupResolver(assetPath, "default", *m, ig)
+			dg, err = NewInstanceGroupResolver(assetPath, *m, ig)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
