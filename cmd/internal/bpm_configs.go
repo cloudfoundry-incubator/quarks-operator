@@ -96,7 +96,7 @@ instance group.
 			return errors.Wrapf(err, "%s Loading bosh manifest file failed. Please check the file contents and try again.", bpmFailedMessage)
 		}
 
-		dg, err := manifest.NewInstanceGroupResolver(baseDir, namespace, *m, instanceGroupName)
+		dg, err := manifest.NewInstanceGroupResolver(baseDir, *m, instanceGroupName)
 		if err != nil {
 			return errors.Wrapf(err, bpmFailedMessage)
 		}
