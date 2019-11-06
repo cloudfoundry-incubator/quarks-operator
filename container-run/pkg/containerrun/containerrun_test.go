@@ -553,26 +553,25 @@ var _ = Describe("ContainerProcess", func() {
 
 		It("fails if the underlying process fails to wait", func() {
 			p := NewMockOSProcess(ctrl)
-			cp := NewContainerProcess(p)
-
 			p.EXPECT().
 				Wait().
 				Return(nil, fmt.Errorf(`¯\_(ツ)_/¯`)).
 				Times(1)
 
+			cp := NewContainerProcess(p)
 			err := cp.Wait()
-			Expect(err).To(Equal(fmt.Errorf(`failed to wait for process: ¯\_(ツ)_/¯`)))
+			Expect(err).To(Equal(fmt.Errorf(`failed to run process: ¯\_(ツ)_/¯`)))
 		})
 
 		It("succeeds when the underlying process succeeds waiting", func() {
+			state := &os.ProcessState{}
 			p := NewMockOSProcess(ctrl)
-			cp := NewContainerProcess(p)
-
 			p.EXPECT().
 				Wait().
-				Return(nil, nil).
+				Return(state, nil).
 				Times(1)
 
+			cp := NewContainerProcess(p)
 			err := cp.Wait()
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -649,6 +648,23 @@ var _ = Describe("ContainerRunner", func() {
 			p, err := cr.Run(cmd, stdio)
 			Expect(err).To(Equal(expectedErr))
 			Expect(p).To(BeNil())
+		})
+
+		It("fails when the command exits 1", func() {
+			cr := NewContainerRunner()
+			cmd := Command{
+				Name: "bash",
+				Arg:  []string{"-c", "exit 1"},
+			}
+			stdio := Stdio{
+				Out: ioutil.Discard,
+				Err: ioutil.Discard,
+			}
+			p, err := cr.Run(cmd, stdio)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p).ToNot(BeNil())
+			err = p.Wait()
+			Expect(err.Error()).To(Equal("failed to run process: exit status 1"))
 		})
 
 		It("succeeds", func() {
