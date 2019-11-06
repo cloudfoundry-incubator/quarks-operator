@@ -1,6 +1,6 @@
 # Temporary Build Files
 /cf-operator
-binaries
+/binaries
 # Temp dir for generated kube files
 /_tmp
 /helm
@@ -81,5 +81,6 @@ tags
 ### IDEA ###
 .idea/
 
+/tmp/
 *.coverprofile
-.envrc.local
+.envrc
