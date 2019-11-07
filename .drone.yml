@@ -26,7 +26,7 @@ steps:
   - kind create cluster --image kindest/node:v1.13.6
   - export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
   - make build vet lint test-unit build-image
-  - . bin/include/versioning && kind load docker-image cfcontainerization/cf-operator:$VERSION_TAG
+  - . bin/include/versioning && kind load docker-image cfcontainerization/cf-operator:$ARTIFACT_VERSION
   # Replace kind's default storage class, because it has trouble with sub-paths
   - kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
   - "kubectl patch storageclass standard -p '{\"metadata\": {\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\", \"storageclass.beta.kubernetes.io/is-default-class\":\"false\"}}}'"

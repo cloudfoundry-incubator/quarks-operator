@@ -22,20 +22,20 @@ To install the helm chart directly from the [cf-operator repository](https://git
 | `image.org`                                       | docker hub organization for the cf-operator image                    | `cfcontainerization`                           |
 | `image.tag`                                       | docker image tag                                                     | `foobar`                                       |
 
-### For a local development with minikube, you can generate the image first and then use the `$VERSION_TAG` environment variable into the `image.tag`:
+### For a local development with minikube, you can generate the image first and then use the `$ARTIFACT_VERSION` environment variable into the `image.tag`:
 
 ```bash
 export GO111MODULE=on
 eval `minikube docker-env`
 . bin/include/versioning
-echo "Tag for docker image is ${VERSION_TAG}"
+echo "Tag for docker image is ${ARTIFACT_VERSION}"
 ./bin/build-image
 ```
 
-Either set the `image.tag` in the `values.yaml`, or pass the `$VERSION_TAG` to `helm install`:
+Either set the `image.tag` in the `values.yaml`, or pass the `$ARTIFACT_VERSION` to `helm install`:
 
 ```bash
-helm install deploy/helm/cf-operator/ --namespace cf-operator --name cf-operator --set image.tag=$VERSION_TAG
+helm install deploy/helm/cf-operator/ --namespace cf-operator --name cf-operator --set image.tag=$ARTIFACT_VERSION
 ```
 
 ### For a local development with minikube and havener

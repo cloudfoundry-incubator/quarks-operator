@@ -39,7 +39,7 @@ releases:
       org: (( env DOCKER_ORGANIZATION ))
 
 env:
-  DOCKER_IMAGE_TAG: (( shell . bin/include/versioning && echo "${VERSION_TAG}" ))
+  DOCKER_IMAGE_TAG: (( shell . bin/include/versioning && echo "${ARTIFACT_VERSION}" ))
   DOCKER_REPOSITORY: cf-operator
   DOCKER_ORGANIZATION: cfcontainerization
   CRDS_ENABLED: false

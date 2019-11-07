@@ -6,7 +6,7 @@ if [ -z ${DOCKER_IMAGE_ORG+x} ]; then
 fi
 
 if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
-  DOCKER_IMAGE_TAG=${VERSION_TAG}
+  DOCKER_IMAGE_TAG="$ARTIFACT_VERSION"
   export DOCKER_IMAGE_TAG
 fi
 
