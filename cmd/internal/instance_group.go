@@ -1,11 +1,8 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
 	"io/ioutil"
-	"os"
 	"time"
 
 	"github.com/pkg/errors"
@@ -41,15 +38,6 @@ This will resolve the properties of an instance group and return a manifest for 
 				time.Sleep(debugGracePeriod)
 			}
 		}()
-
-		// Store original stdout i
-		origStdOut := os.Stdout
-
-		// Dump everything before the JSON bytes buffer creation
-		// into w, while we do not want any sort of noise coming
-		// into stdout, beside the JSON bytes
-		r, w, _ := os.Pipe()
-		os.Stdout = w
 
 		log = cmd.Logger()
 		defer log.Sync()
@@ -111,16 +99,6 @@ This will resolve the properties of an instance group and return a manifest for 
 			return errors.Wrapf(err, "%s JSON marshalling instance group manifest failed.", dGatherFailedMessage)
 		}
 
-		// Close w, and restore the original stdOut
-		w.Close()
-		os.Stdout = origStdOut
-
-		var buf bytes.Buffer
-		io.Copy(&buf, r)
-
-		if buf.Len() > 0 {
-			return errors.Errorf("unexpected data sent to stdOut, during the instance-group cmd: %s", buf.String())
-		}
 		err = ioutil.WriteFile(outputFilePath, jsonBytes, 0644)
 		if err != nil {
 			return errors.Wrapf(err, "%s Writing json into a output file failed.", dGatherFailedMessage)
