@@ -1,10 +1,8 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"runtime/debug"
@@ -48,15 +46,6 @@ instance group.
 				time.Sleep(debugGracePeriod)
 			}
 		}()
-
-		// Store original stdout i
-		origStdOut := os.Stdout
-
-		// Dump everything before the JSON bytes buffer creation
-		// into w, while we do not want any sort of noise coming
-		// into stdout, beside the JSON bytes
-		r, w, _ := os.Pipe()
-		os.Stdout = w
 
 		log = cmd.Logger()
 		defer log.Sync()
@@ -116,17 +105,6 @@ instance group.
 		})
 		if err != nil {
 			return errors.Wrapf(err, "%s JSON marshalling bpmConfigs spec returned by dg.BPMConfigs() failed.", bpmFailedMessage)
-		}
-
-		// Close w, and restore the original stdOut
-		w.Close()
-		os.Stdout = origStdOut
-
-		var buf bytes.Buffer
-		io.Copy(&buf, r)
-
-		if buf.Len() > 0 {
-			return errors.Errorf("unexpected data sent to stdout, during the data bpm-configs cmd: %s", buf.String())
 		}
 
 		err = ioutil.WriteFile(outputFilePath, jsonBytes, 0644)
