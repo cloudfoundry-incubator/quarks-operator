@@ -15,7 +15,7 @@ cp -r "${GIT_ROOT}/deploy/helm" "${output_dir}"
 perl -pi -e "s|repository: .*|repository: ${DOCKER_IMAGE_REPOSITORY}|g" "${output_dir}/cf-operator/values.yaml"
 perl -pi -e "s|org: .*|org: ${DOCKER_IMAGE_ORG}|g" "${output_dir}/cf-operator/values.yaml"
 perl -pi -e "s|tag: .*|tag: ${DOCKER_IMAGE_TAG}|g" "${output_dir}/cf-operator/values.yaml"
-perl -pi -e "s|version: .*|version: ${VERSION_TAG}|g" "${output_dir}/cf-operator/Chart.yaml"
+perl -pi -e "s|version: .*|version: ${ARTIFACT_VERSION}|g" "${output_dir}/cf-operator/Chart.yaml"
 
 repo="https://cf-operators.s3.amazonaws.com/helm-charts/"
 qj="quarks-job-v0.0.0%2B0.g8e68c67.tgz"
