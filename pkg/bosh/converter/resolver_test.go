@@ -133,7 +133,7 @@ variables:
 					Namespace: "default",
 				},
 				Data: map[string]string{bdc.ManifestSpecName: `---
-name: foo
+name: manifest-with-dns
 addons:
 - name: bosh-dns-aliases
   jobs:
@@ -815,7 +815,7 @@ instance_groups:
 			Expect(err).ToNot(HaveOccurred())
 			dns := m.DNS
 			Expect(dns).NotTo(BeNil())
-			Expect(dns.HeadlessServiceName("singleton-uaa")).To(Equal("scf-singleton-uaa"))
+			Expect(dns.HeadlessServiceName("singleton-uaa")).To(Equal("manifest-with-dns-singleton-uaa"))
 		})
 
 		It("handles multi-line implicit vars", func() {

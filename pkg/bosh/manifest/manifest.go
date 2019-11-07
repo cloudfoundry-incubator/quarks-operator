@@ -158,11 +158,6 @@ type duplicateYamlValue struct {
 
 // LoadYAML returns a new BOSH deployment manifest from a yaml representation
 func LoadYAML(data []byte) (*Manifest, error) {
-	return LoadYAMLWithName(data, nil)
-}
-
-// LoadYAMLWithName returns a new BOSH deployment manifest from a yaml representation with the given name
-func LoadYAMLWithName(data []byte, name *string) (*Manifest, error) {
 	m := &Manifest{}
 	err := yaml.Unmarshal(data, m, func(opt *json.Decoder) *json.Decoder {
 		opt.UseNumber()
@@ -170,9 +165,6 @@ func LoadYAMLWithName(data []byte, name *string) (*Manifest, error) {
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal BOSH deployment manifest %s", string(data))
-	}
-	if name != nil {
-		m.Name = *name
 	}
 
 	if err := m.loadDNS(); err != nil {
