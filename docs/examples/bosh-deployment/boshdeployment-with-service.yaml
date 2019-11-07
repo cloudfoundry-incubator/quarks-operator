@@ -6,8 +6,8 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    fissile.cloudfoundry.org/instance-group-name: nats
-    fissile.cloudfoundry.org/deployment-name: nats-deployment
+    quarks.cloudfoundry.org/instance-group-name: nats
+    quarks.cloudfoundry.org/deployment-name: nats-deployment
   ports:
     - protocol: TCP
       port: 80
@@ -50,7 +50,7 @@ data:
     - name: nats_password
       type: password
 ---
-apiVersion: fissile.cloudfoundry.org/v1alpha1
+apiVersion: quarks.cloudfoundry.org/v1alpha1
 kind: BOSHDeployment
 metadata:
   name: nats-deployment

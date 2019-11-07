@@ -34,7 +34,7 @@ func NewBOSHDeploymentValidator(log *zap.SugaredLogger, config *config.Config) *
 		Rules: []admissionregistrationv1beta1.RuleWithOperations{
 			{
 				Rule: admissionregistrationv1beta1.Rule{
-					APIGroups:   []string{"fissile.cloudfoundry.org"},
+					APIGroups:   []string{"quarks.cloudfoundry.org"},
 					APIVersions: []string{"v1alpha1"},
 					Resources:   []string{"boshdeployments"},
 					Scope:       &globalScopeType,
@@ -46,7 +46,7 @@ func NewBOSHDeploymentValidator(log *zap.SugaredLogger, config *config.Config) *
 			},
 		},
 		Path: "/validate-boshdeployment",
-		Name: "validate-boshdeployment.fissile.cloudfoundry.org",
+		Name: "validate-boshdeployment.quarks.cloudfoundry.org",
 		NamespaceSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"cf-operator-ns": config.Namespace,

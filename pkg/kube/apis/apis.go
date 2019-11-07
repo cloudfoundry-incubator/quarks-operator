@@ -3,6 +3,8 @@ package apis
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 const (
@@ -11,10 +13,10 @@ const (
 	// e.g.:
 	//
 	//   ---
-	//   apiVersion: fissile.cloudfoundry.org/v1alpha1
+	//   apiVersion: quarks.cloudfoundry.org/v1alpha1
 	//   kind: BOSHDeployment
 	//   ...
-	GroupName = "fissile.cloudfoundry.org"
+	GroupName = names.GroupName
 )
 
 // Object is used as a helper interface when passing Kubernetes resources

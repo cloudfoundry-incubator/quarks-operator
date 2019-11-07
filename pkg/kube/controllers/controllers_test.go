@@ -61,7 +61,7 @@ var _ = Describe("Controllers", func() {
 			client = &cfakes.FakeClient{}
 			restMapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{})
 			restMapper.Add(schema.GroupVersionKind{Group: "", Kind: "Pod", Version: "v1"}, meta.RESTScopeNamespace)
-			restMapper.Add(schema.GroupVersionKind{Group: "fissile.cloudfoundry.org", Kind: "BOSHDeployment", Version: "v1alpha1"}, meta.RESTScopeNamespace)
+			restMapper.Add(schema.GroupVersionKind{Group: "quarks.cloudfoundry.org", Kind: "BOSHDeployment", Version: "v1alpha1"}, meta.RESTScopeNamespace)
 
 			manager = &cfakes.FakeManager{}
 
@@ -169,7 +169,7 @@ var _ = Describe("Controllers", func() {
 						Expect(len(config.Webhooks)).To(Equal(1))
 
 						wh := config.Webhooks[0]
-						Expect(wh.Name).To(Equal("mutate-pods.fissile.cloudfoundry.org"))
+						Expect(wh.Name).To(Equal("mutate-pods.quarks.cloudfoundry.org"))
 						Expect(*wh.ClientConfig.URL).To(Equal("https://foo.com:1234/mutate-pods"))
 						Expect(wh.ClientConfig.CABundle).To(ContainSubstring("the-ca-cert"))
 						Expect(*wh.FailurePolicy).To(Equal(admissionregistrationv1beta1.Fail))
@@ -179,7 +179,7 @@ var _ = Describe("Controllers", func() {
 						Expect(len(config.Webhooks)).To(Equal(1))
 
 						wh := config.Webhooks[0]
-						Expect(wh.Name).To(Equal("validate-boshdeployment.fissile.cloudfoundry.org"))
+						Expect(wh.Name).To(Equal("validate-boshdeployment.quarks.cloudfoundry.org"))
 						Expect(*wh.ClientConfig.URL).To(Equal("https://foo.com:1234/validate-boshdeployment"))
 						Expect(wh.ClientConfig.CABundle).To(ContainSubstring("the-ca-cert"))
 						Expect(*wh.FailurePolicy).To(Equal(admissionregistrationv1beta1.Fail))

@@ -52,7 +52,7 @@ data:
     - name: nats_password
       type: password
 ---
-apiVersion: fissile.cloudfoundry.org/v1alpha1
+apiVersion: quarks.cloudfoundry.org/v1alpha1
 kind: BOSHDeployment
 metadata:
   name: nats-deployment

@@ -1,4 +1,4 @@
-apiVersion: fissile.cloudfoundry.org/v1alpha1
+apiVersion: quarks.cloudfoundry.org/v1alpha1
 kind: ExtendedStatefulSet
 metadata:
   name: example-extendedstatefulset
