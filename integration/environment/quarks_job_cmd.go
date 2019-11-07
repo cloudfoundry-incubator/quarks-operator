@@ -1,6 +1,7 @@
 package environment
 
 import (
+	"os"
 	"os/exec"
 
 	"github.com/onsi/ginkgo"
@@ -30,8 +31,16 @@ func (q *QuarksJobCmd) Start(namespace string) error {
 		"-n", namespace,
 		"-o", "cfcontainerization",
 		"-r", "quarks-job",
-		"-t", "v0.0.0-0.g8e68c67",
+		"-t", quarksJobTag(),
 	)
 	_, err := gexec.Start(cmd, ginkgo.GinkgoWriter, ginkgo.GinkgoWriter)
 	return err
+}
+
+func quarksJobTag() string {
+	version, found := os.LookupEnv("QUARKS_JOB_IMAGE_TAG")
+	if !found {
+		version = "dev"
+	}
+	return version
 }
