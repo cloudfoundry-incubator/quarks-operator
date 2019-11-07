@@ -1,0 +1,15 @@
+#!/bin/bash
+
+quarks_job_release="v0.0.0-0.g8e68c67"
+
+# QUARKS_JOB_IMAGE_TAG is used for integration tests
+if [ -z ${QUARKS_JOB_IMAGE_TAG+x} ]; then
+  QUARKS_JOB_IMAGE_TAG="$quarks_job_release"
+  export QUARKS_JOB_IMAGE_TAG
+fi
+
+# QUARKS_JOB_HELM_VERSION is used to build helm charts including sub-charts
+if [ -z ${QUARKS_JOB_HELM_VERSION+x} ]; then
+  QUARKS_JOB_HELM_VERSION="$quarks_job_release"
+  export QUARKS_JOB_HELM_VERSION
+fi
