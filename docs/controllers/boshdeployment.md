@@ -25,7 +25,7 @@ A BOSH deployment is created from a deployment manifest and optionally ops files
 The deployment manifest is based on a vanilla BOSH deployment manifest.
 The ops files modify the deployment manifest. For example, ops files can be used to replace release tarballs with [docker images](https://ci.flintstone.cf.cloud.ibm.com/teams/containerization/pipelines/release-images), thus enabling deployment on Kubernetes.
 
-A deployment is represented by the `boshdeployments.fissile.cloudfoundry.org` (`bdpl`) custom resource, defined in [`boshdeployment_crd.yaml`](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/deploy/helm/cf-operator/templates/fissile_v1alpha1_boshdeployment_crd.yaml).
+A deployment is represented by the `boshdeployments.quarks.cloudfoundry.org` (`bdpl`) custom resource, defined in [`boshdeployment_crd.yaml`](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/crds/quarks_v1alpha1_boshdeployment_crd.yaml).
 This [bdpl custom resource](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/examples/bosh-deployment/boshdeployment.yaml) contains references to config maps or secrets containing the actual manifests content.
 
 The name of the `bdpl` resource has to match the [deployment name](https://bosh.io/docs/manifest-v2/#deployment) in the BOSH manifest.
