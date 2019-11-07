@@ -177,8 +177,9 @@ func (r *ReconcileExtendedStatefulSet) generateVolumeManagementSingleStatefulSet
 		Image:           converter.GetOperatorDockerImage(),
 		ImagePullPolicy: converter.GetOperatorImagePullPolicy(),
 		Args: []string{
-			"util",
-			"sleep",
+			"ruby",
+			"-e",
+			"sleep()",
 		},
 	}}
 
