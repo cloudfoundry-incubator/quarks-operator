@@ -13,7 +13,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	quarksutils "code.cloudfoundry.org/quarks-utils/pkg/cmd"
+	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
 
 const (
@@ -31,8 +31,8 @@ var templateRenderCmd = &cobra.Command{
 This will render a provided manifest instance-group
 `,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		quarksutils.BOSHManifestFlagViperBind(cmd.Flags())
-		quarksutils.InstanceGroupFlagViperBind(cmd.Flags())
+		boshManifestFlagViperBind(cmd.Flags())
+		instanceGroupFlagViperBind(cmd.Flags())
 	},
 
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
@@ -42,7 +42,7 @@ This will render a provided manifest instance-group
 			}
 		}()
 
-		boshManifestPath, err := quarksutils.BOSHManifestFlagValidation(tRenderFailedMessage)
+		boshManifestPath, err := boshManifestFlagValidation(tRenderFailedMessage)
 		if err != nil {
 			return err
 		}
@@ -50,7 +50,7 @@ This will render a provided manifest instance-group
 		jobsDir := viper.GetString("jobs-dir")
 		outputDir := viper.GetString("output-dir")
 
-		instanceGroupName, err := quarksutils.InstanceGroupFlagValidation(tRenderFailedMessage)
+		instanceGroupName, err := instanceGroupFlagValidation(tRenderFailedMessage)
 		if err != nil {
 			return err
 		}
@@ -122,7 +122,7 @@ func init() {
 		"pod-ip":                  converter.PodIPEnvVar,
 	}
 
-	quarksutils.BOSHManifestFlagCobraSet(pf, argToEnv)
-	quarksutils.InstanceGroupFlagCobraSet(pf, argToEnv)
-	quarksutils.AddEnvToUsage(templateRenderCmd, argToEnv)
+	boshManifestFlagCobraSet(pf, argToEnv)
+	instanceGroupFlagCobraSet(pf, argToEnv)
+	cmd.AddEnvToUsage(templateRenderCmd, argToEnv)
 }

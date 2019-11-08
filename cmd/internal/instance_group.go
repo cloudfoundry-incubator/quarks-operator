@@ -14,7 +14,6 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
-	quarksutils "code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
 
 const dGatherFailedMessage = "instance-group command failed."
@@ -30,10 +29,10 @@ This will resolve the properties of an instance group and return a manifest for 
 
 `,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		quarksutils.BOSHManifestFlagViperBind(cmd.Flags())
-		quarksutils.BaseDirFlagViperBind(cmd.Flags())
-		quarksutils.InstanceGroupFlagViperBind(cmd.Flags())
-		quarksutils.OutputFilePathFlagViperBind(cmd.Flags())
+		boshManifestFlagViperBind(cmd.Flags())
+		baseDirFlagViperBind(cmd.Flags())
+		instanceGroupFlagViperBind(cmd.Flags())
+		outputFilePathFlagViperBind(cmd.Flags())
 	},
 
 	RunE: func(_ *cobra.Command, args []string) (err error) {
@@ -55,12 +54,12 @@ This will resolve the properties of an instance group and return a manifest for 
 		log = cmd.Logger()
 		defer log.Sync()
 
-		boshManifestPath, err := quarksutils.BOSHManifestFlagValidation(dGatherFailedMessage)
+		boshManifestPath, err := boshManifestFlagValidation(dGatherFailedMessage)
 		if err != nil {
 			return err
 		}
 
-		baseDir, err := quarksutils.BaseDirFlagValidation(dGatherFailedMessage)
+		baseDir, err := baseDirFlagValidation(dGatherFailedMessage)
 		if err != nil {
 			return err
 		}
@@ -70,12 +69,12 @@ This will resolve the properties of an instance group and return a manifest for 
 			return errors.Errorf("%s cf-operator-namespace flag is empty.", dGatherFailedMessage)
 		}
 
-		outputFilePath, err := quarksutils.OutputFilePathFlagValidation(dGatherFailedMessage)
+		outputFilePath, err := outputFilePathFlagValidation(dGatherFailedMessage)
 		if err != nil {
 			return err
 		}
 
-		instanceGroupName, err := quarksutils.InstanceGroupFlagValidation(dGatherFailedMessage)
+		instanceGroupName, err := instanceGroupFlagValidation(dGatherFailedMessage)
 		if err != nil {
 			return err
 		}
@@ -137,9 +136,9 @@ func init() {
 	pf := instanceGroupCmd.PersistentFlags()
 	argToEnv := map[string]string{}
 
-	quarksutils.BOSHManifestFlagCobraSet(pf, argToEnv)
-	quarksutils.BaseDirFlagCobraSet(pf, argToEnv)
-	quarksutils.InstanceGroupFlagCobraSet(pf, argToEnv)
-	quarksutils.OutputFilePathFlagCobraSet(pf, argToEnv)
-	quarksutils.AddEnvToUsage(instanceGroupCmd, argToEnv)
+	boshManifestFlagCobraSet(pf, argToEnv)
+	baseDirFlagCobraSet(pf, argToEnv)
+	instanceGroupFlagCobraSet(pf, argToEnv)
+	outputFilePathFlagCobraSet(pf, argToEnv)
+	cmd.AddEnvToUsage(instanceGroupCmd, argToEnv)
 }
