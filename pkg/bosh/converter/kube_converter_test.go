@@ -9,7 +9,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
 
@@ -29,7 +29,7 @@ var _ = Describe("kube converter", func() {
 			format.TruncatedDiff = false
 		})
 
-		act := func() ([]esv1.ExtendedSecret, error) {
+		act := func() ([]qsv1a1.QuarksSecret, error) {
 			kubeConverter := converter.NewKubeConverter(
 				"foo",
 				volumeFactory,
@@ -65,7 +65,7 @@ var _ = Describe("kube converter", func() {
 
 				var1 := variables[0]
 				Expect(var1.Name).To(Equal("foo-deployment.var-adminpass"))
-				Expect(var1.Spec.Type).To(Equal(esv1.Password))
+				Expect(var1.Spec.Type).To(Equal(qsv1a1.Password))
 				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminpass"))
 			})
 
@@ -81,7 +81,7 @@ var _ = Describe("kube converter", func() {
 				var1 := variables[0]
 				Expect(var1.Name).To(Equal("foo-deployment.var-adminkey"))
 				Expect(var1.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
-				Expect(var1.Spec.Type).To(Equal(esv1.RSAKey))
+				Expect(var1.Spec.Type).To(Equal(qsv1a1.RSAKey))
 				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminkey"))
 			})
 
@@ -97,7 +97,7 @@ var _ = Describe("kube converter", func() {
 				var1 := variables[0]
 				Expect(var1.Name).To(Equal("foo-deployment.var-adminkey"))
 				Expect(var1.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
-				Expect(var1.Spec.Type).To(Equal(esv1.SSHKey))
+				Expect(var1.Spec.Type).To(Equal(qsv1a1.SSHKey))
 				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminkey"))
 			})
 
@@ -129,7 +129,7 @@ var _ = Describe("kube converter", func() {
 				var1 := variables[0]
 				Expect(var1.Name).To(Equal("foo-deployment.var-foo-cert"))
 				Expect(var1.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
-				Expect(var1.Spec.Type).To(Equal(esv1.Certificate))
+				Expect(var1.Spec.Type).To(Equal(qsv1a1.Certificate))
 				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-foo-cert"))
 				request := var1.Spec.Request.CertificateRequest
 				Expect(request.CommonName).To(Equal("example.com"))

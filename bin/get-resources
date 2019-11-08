@@ -7,7 +7,7 @@ CMD_LIST=""
 i=0
 
 DESIRED_RESOURCES="configmaps,persistentvolumeclaims,pods,secrets,services,deployments, \
-  statefulsets,jobs,boshdeployments, extendedjobs,extendedsecrets,extendedstatefulsets"
+  statefulsets,jobs,boshdeployments, quarksjobs,quarkssecrets,quarksstatefulsets"
 
 function usage() {
   echo "Usage: $0 [options]"
@@ -16,12 +16,12 @@ function usage() {
   echo "                  Optional: specify the namespace to monitor resources (default: CF_OPERATOR_NAMESPACE env var)"
   echo "   -bdpl|--boshdeployment"
   echo "                  Optional: get a boshdeployment and related objects"
-  echo "   -ejob|--extendedjobs"
-  echo "                  Optional: get a extendedjobs and related objects"
-  echo "   -esec|--extendedsecrets"
-  echo "                  Optional: get a extendedsecrets and related objects"
-  echo "   -ests|--extendedstatefulsets"
-  echo "                  Optional: get a extendedstatefulsets and related objects"
+  echo "   -qjob|--quarksjobs"
+  echo "                  Optional: get a quarksjobs and related objects"
+  echo "   -qsec|--quarkssecrets"
+  echo "                  Optional: get a quarkssecrets and related objects"
+  echo "   -qsts|--quarksstatefulsets"
+  echo "                  Optional: get a quarksstatefulsets and related objects"
   echo "   -v|--verbose"
   echo "                  Optional: enable verbose mode(default: disable)"
   echo "   -h|--help"
@@ -91,9 +91,9 @@ function monitor_ns_resources(){
   statefulsets apps
   jobs batch
   boshdeployments quarks.cloudfoundry.org
-  extendedjobs quarks.cloudfoundry.org
-  extendedsecrets quarks.cloudfoundry.org
-  extendedstatefulsets quarks.cloudfoundry.org
+  quarksjobs quarks.cloudfoundry.org
+  quarkssecrets quarks.cloudfoundry.org
+  quarksstatefulsets quarks.cloudfoundry.org
 EOL
 execute_kube_cmd
 wait
@@ -109,13 +109,13 @@ function select_resource(){
        boshdeployments)
             monitor_ns_resource "${DESIREDRESOURCE}"
             ;;
-       extendedjobs)
+       quarksjobs)
             monitor_ns_resource "${DESIREDRESOURCE}"
             ;;
-       extendedsecrets)
+       quarkssecrets)
             monitor_ns_resource "${DESIREDRESOURCE}"
             ;;
-       extendedstatefulsets)
+       quarksstatefulsets)
             monitor_ns_resource "${DESIREDRESOURCE}"
             ;;
        *)
@@ -149,14 +149,14 @@ function parse_cmd() {
       -bdpl | --boshdeployments)
         DESIREDRESOURCE="boshdeployments"
         ;;
-      -ejob | --extendedjobs)
-        DESIREDRESOURCE="extendedjobs"
+      -qjob | --quarksjobs)
+        DESIREDRESOURCE="quarksjobs"
         ;;
-      -esec | --extendedsecrets)
-        DESIREDRESOURCE="extendedsecrets"
+      -qsec | --quarkssecrets)
+        DESIREDRESOURCE="quarkssecrets"
         ;;
-      -ests | --extendedstatefulsets)
-        DESIREDRESOURCE="extendedstatefulsets"
+      -qsts | --quarksstatefulsets)
+        DESIREDRESOURCE="quarksstatefulsets"
         ;;
       -v | --verbose)
         VERBOSE=1

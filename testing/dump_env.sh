@@ -83,7 +83,7 @@ for SECRET in "${SECRETS[@]}"; do
 done
 
 # Iterate over jobs, Extended*
-for i in jobs ests ejobs esecs sts; do
+for i in jobs qsts qjobs qsecs sts; do
   RESOURCES=($(get_resources "$i"))
   for RESOURCE in "${RESOURCES[@]}"; do
     printf "$i \e[0;32m$RESOURCE\e[0m\n"

@@ -41,9 +41,8 @@ var _ = Describe("CLI", func() {
   -c, --kubeconfig string                        \(KUBECONFIG\) Path to a kubeconfig, not required in-cluster
   -l, --log-level string                         \(LOG_LEVEL\) Only print log messages from this level onward \(default "debug"\)
       --max-boshdeployment-workers int           \(MAX_BOSHDEPLOYMENT_WORKERS\) Maximum number of workers concurrently running BOSHDeployment controller \(default 1\)
-      --max-extendedjob-workers int              \(MAX_EXTENDEDJOB_WORKERS\) Maximum number of workers concurrently running ExtendedJob controller \(default 1\)
-      --max-extendedsecret-workers int           \(MAX_EXTENDEDSECRET_WORKERS\) Maximum number of workers concurrently running ExtendedSecret controller \(default 5\)
-      --max-extendedstatefulset-workers int      \(MAX_EXTENDEDSTATEFULSET_WORKERS\) Maximum number of workers concurrently running ExtendedStatefulSet controller \(default 1\)
+      --max-quarks-secret-workers int            \(MAX_QUARKS_SECRET_WORKERS\) Maximum number of workers concurrently running QuarksSecret controller \(default 5\)
+      --max-quarks-statefulset-workers int       \(MAX_QUARKS_STATEFULSET_WORKERS\) Maximum number of workers concurrently running QuarksStatefulSet controller \(default 1\)
   -w, --operator-webhook-service-host string     \(CF_OPERATOR_WEBHOOK_SERVICE_HOST\) Hostname/IP under which the webhook server can be reached from the cluster
   -p, --operator-webhook-service-port string     \(CF_OPERATOR_WEBHOOK_SERVICE_PORT\) Port the webhook server listens on \(default "2999"\)
   -x, --operator-webhook-use-service-reference   \(CF_OPERATOR_WEBHOOK_USE_SERVICE_REFERENCE\) If true the webhook service is targeted using a service reference instead of a URL

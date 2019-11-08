@@ -4,6 +4,7 @@
 # Temp dir for generated kube files
 /_tmp
 /helm
+/vendor
 
 # Created by https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 ### Emacs ###

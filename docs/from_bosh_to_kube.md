@@ -52,7 +52,7 @@
 
 ## Deployment Lifecycle
 
-Please read the [documentation for the `BOSHDeployment` controller](controllers/boshdeployment.md).
+Please read the [documentation for the `BOSHDeployment` controller](controllers/bosh_deployment.md).
 
 ## Example Deployment Manifest Conversion Details
 
@@ -490,7 +490,7 @@ BOSH Auto-Errands (supported only by the operator) are converted to `ExtendedJob
 
 ### Dealing with AZs
 
-`ExtendedStatefulSets` support AZs. You can learn more about this in [the docs](controllers/extendedstatefulset.md#az-support).
+`ExtendedStatefulSets` support AZs. You can learn more about this in [the docs](controllers/quarksstatefulset.md#az-support).
 
 ### Support for active/passive pod replicas
 

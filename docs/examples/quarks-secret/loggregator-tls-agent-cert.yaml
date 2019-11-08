@@ -1,0 +1,19 @@
+apiVersion: quarks.cloudfoundry.org/v1alpha1
+kind: QuarksSecret
+metadata:
+  name: example.var-loggregator-tls-agent
+spec:
+  request:
+    certificate:
+      CAKeyRef:
+        Key: private_key
+        Name: example.var-loggregator-ca
+      CARef:
+        Key: certificate
+        Name: example.var-loggregator-ca
+      alternativeNames: null
+      commonName: metron
+      isCA: false
+      signerType: local
+  secretName: example.var-loggregator-tls-agent
+  type: certificate

@@ -16,8 +16,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
-	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
@@ -115,16 +115,16 @@ var _ = Describe("Mutate", func() {
 
 	Describe("EStsMutateFn", func() {
 		var (
-			eSts *essv1.ExtendedStatefulSet
+			eSts *qstsv1a1.QuarksStatefulSet
 		)
 
 		BeforeEach(func() {
-			eSts = &essv1.ExtendedStatefulSet{
+			eSts = &qstsv1a1.QuarksStatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "default",
 				},
-				Spec: essv1.ExtendedStatefulSetSpec{
+				Spec: qstsv1a1.QuarksStatefulSetSpec{
 					Template: appsv1.StatefulSet{
 						Spec: appsv1.StatefulSetSpec{
 							Replicas: pointers.Int32(1),
@@ -134,8 +134,8 @@ var _ = Describe("Mutate", func() {
 			}
 		})
 
-		Context("when the extendedStatefulSet is not found", func() {
-			It("creates the extendedStatefulSet", func() {
+		Context("when the quarksStatefulSet is not found", func() {
+			It("creates the quarksStatefulSet", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
@@ -146,17 +146,17 @@ var _ = Describe("Mutate", func() {
 			})
 		})
 
-		Context("when the extendedStatefulSet is found", func() {
-			It("updates the extendedStatefulSet when spec is changed", func() {
+		Context("when the quarksStatefulSet is found", func() {
+			It("updates the quarksStatefulSet when spec is changed", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object := object.(type) {
-					case *essv1.ExtendedStatefulSet:
-						existing := &essv1.ExtendedStatefulSet{
+					case *qstsv1a1.QuarksStatefulSet:
+						existing := &qstsv1a1.QuarksStatefulSet{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      "foo",
 								Namespace: "default",
 							},
-							Spec: essv1.ExtendedStatefulSetSpec{
+							Spec: qstsv1a1.QuarksStatefulSetSpec{
 								Template: appsv1.StatefulSet{
 									Spec: appsv1.StatefulSetSpec{
 										Replicas: pointers.Int32(2),
@@ -176,10 +176,10 @@ var _ = Describe("Mutate", func() {
 				Expect(ops).To(Equal(controllerutil.OperationResultUpdated))
 			})
 
-			It("does not update the extendedStatefulSet when nothing is changed", func() {
+			It("does not update the quarksStatefulSet when nothing is changed", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object.(type) {
-					case *essv1.ExtendedStatefulSet:
+					case *qstsv1a1.QuarksStatefulSet:
 						object = eSts.DeepCopy()
 
 						return nil
@@ -298,24 +298,24 @@ var _ = Describe("Mutate", func() {
 
 	Describe("ESecMutateFn", func() {
 		var (
-			eSec *esv1.ExtendedSecret
+			eSec *qsv1a1.QuarksSecret
 		)
 
 		BeforeEach(func() {
-			eSec = &esv1.ExtendedSecret{
+			eSec = &qsv1a1.QuarksSecret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "default",
 				},
-				Spec: esv1.ExtendedSecretSpec{
-					Type:       esv1.Password,
+				Spec: qsv1a1.QuarksSecretSpec{
+					Type:       qsv1a1.Password,
 					SecretName: "dummy-secret",
 				},
 			}
 		})
 
-		Context("when the extendedSecret is not found", func() {
-			It("creates the extendedSecret", func() {
+		Context("when the quarksSecret is not found", func() {
+			It("creates the quarksSecret", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
@@ -326,18 +326,18 @@ var _ = Describe("Mutate", func() {
 			})
 		})
 
-		Context("when the extendedSecret is found", func() {
-			It("updates the extendedSecret when spec is changed", func() {
+		Context("when the quarksSecret is found", func() {
+			It("updates the quarksSecret when spec is changed", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object := object.(type) {
-					case *esv1.ExtendedSecret:
-						existing := &esv1.ExtendedSecret{
+					case *qsv1a1.QuarksSecret:
+						existing := &qsv1a1.QuarksSecret{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      "foo",
 								Namespace: "default",
 							},
-							Spec: esv1.ExtendedSecretSpec{
-								Type:       esv1.Password,
+							Spec: qsv1a1.QuarksSecretSpec{
+								Type:       qsv1a1.Password,
 								SecretName: "initial-secret",
 							},
 						}
@@ -353,10 +353,10 @@ var _ = Describe("Mutate", func() {
 				Expect(ops).To(Equal(controllerutil.OperationResultUpdated))
 			})
 
-			It("does not update the extendedSecret when nothing is changed", func() {
+			It("does not update the quarksSecret when nothing is changed", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object.(type) {
-					case *esv1.ExtendedSecret:
+					case *qsv1a1.QuarksSecret:
 						object = eSec.DeepCopy()
 
 						return nil

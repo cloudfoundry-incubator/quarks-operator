@@ -10,7 +10,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
@@ -45,13 +45,13 @@ func NewKubeConverter(namespace string, volumeFactory VolumeFactory, newContaine
 	}
 }
 
-// Variables returns extended secrets for a list of BOSH variables
-func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable) ([]esv1.ExtendedSecret, error) {
-	secrets := []esv1.ExtendedSecret{}
+// Variables returns quarks secrets for a list of BOSH variables
+func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable) ([]qsv1a1.QuarksSecret, error) {
+	secrets := []qsv1a1.QuarksSecret{}
 
 	for _, v := range variables {
 		secretName := names.CalculateSecretName(names.DeploymentSecretTypeVariable, manifestName, v.Name)
-		s := esv1.ExtendedSecret{
+		s := qsv1a1.QuarksSecret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
 				Namespace: kc.namespace,
@@ -60,14 +60,14 @@ func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable
 					bdm.LabelDeploymentName: manifestName,
 				},
 			},
-			Spec: esv1.ExtendedSecretSpec{
+			Spec: qsv1a1.QuarksSecretSpec{
 				Type:       v.Type,
 				SecretName: secretName,
 			},
 		}
-		if v.Type == esv1.Certificate {
+		if v.Type == qsv1a1.Certificate {
 			if v.Options == nil {
-				return secrets, fmt.Errorf("invalid certificate ExtendedSecret: missing options key")
+				return secrets, fmt.Errorf("invalid certificate QuarksSecret: missing options key")
 			}
 
 			usages := []certv1.KeyUsage{}
@@ -91,7 +91,7 @@ func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable
 					certv1.UsageDigitalSignature)
 			}
 
-			certRequest := esv1.CertificateRequest{
+			certRequest := qsv1a1.CertificateRequest{
 				CommonName:                  v.Options.CommonName,
 				AlternativeNames:            v.Options.AlternativeNames,
 				IsCA:                        v.Options.IsCA,
@@ -101,14 +101,14 @@ func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable
 				Usages:                      usages,
 			}
 			if len(certRequest.SignerType) == 0 {
-				certRequest.SignerType = esv1.LocalSigner
+				certRequest.SignerType = qsv1a1.LocalSigner
 			}
 			if v.Options.CA != "" {
-				certRequest.CARef = esv1.SecretReference{
+				certRequest.CARef = qsv1a1.SecretReference{
 					Name: names.CalculateSecretName(names.DeploymentSecretTypeVariable, manifestName, v.Options.CA),
 					Key:  "certificate",
 				}
-				certRequest.CAKeyRef = esv1.SecretReference{
+				certRequest.CAKeyRef = qsv1a1.SecretReference{
 					Name: names.CalculateSecretName(names.DeploymentSecretTypeVariable, manifestName, v.Options.CA),
 					Key:  "private_key",
 				}

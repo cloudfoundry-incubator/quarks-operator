@@ -12,7 +12,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
@@ -24,18 +24,18 @@ type ReconcileType int
 const (
 	// ReconcileForBOSHDeployment represents the BOSHDeployment CRD
 	ReconcileForBOSHDeployment ReconcileType = iota
-	// ReconcileForExtendedStatefulSet represents the ExtendedStatefulSet CRD
-	ReconcileForExtendedStatefulSet
+	// ReconcileForQuarksStatefulSet represents the QuarksStatefulSet CRD
+	ReconcileForQuarksStatefulSet
 )
 
 func (r ReconcileType) String() string {
 	return [...]string{
 		"BOSHDeployment",
-		"ExtendedStatefulSet",
+		"QuarksStatefulSet",
 	}[r]
 }
 
-// GetReconciles returns reconciliation requests for the BOSHDeployments or ExtendedStatefulSets
+// GetReconciles returns reconciliation requests for the BOSHDeployments or QuarksStatefulSets
 // that reference an object. The object can be a ConfigMap or a Secret
 func GetReconciles(ctx context.Context, client crc.Client, reconcileType ReconcileType, object apis.Object, versionCheck bool) ([]reconcile.Request, error) {
 	objReferencedBy := func(parent interface{}) (bool, error) {
@@ -106,18 +106,18 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 					}})
 			}
 		}
-	case ReconcileForExtendedStatefulSet:
-		extendedStatefulSets, err := listExtendedStatefulSets(ctx, client, namespace)
+	case ReconcileForQuarksStatefulSet:
+		quarksStatefulSets, err := listQuarksStatefulSets(ctx, client, namespace)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to list ExtendedStatefulSets for ConfigMap reconciles")
+			return nil, errors.Wrap(err, "failed to list QuarksStatefulSets for ConfigMap reconciles")
 		}
 
-		for _, extendedStatefulSet := range extendedStatefulSets.Items {
-			if !extendedStatefulSet.Spec.UpdateOnConfigChange {
+		for _, quarksStatefulSet := range quarksStatefulSets.Items {
+			if !quarksStatefulSet.Spec.UpdateOnConfigChange {
 				continue
 			}
 
-			isRef, err := objReferencedBy(extendedStatefulSet)
+			isRef, err := objReferencedBy(quarksStatefulSet)
 			if err != nil {
 				return nil, err
 			}
@@ -125,8 +125,8 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			if isRef {
 				result = append(result, reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      extendedStatefulSet.Name,
-						Namespace: extendedStatefulSet.Namespace,
+						Name:      quarksStatefulSet.Name,
+						Namespace: quarksStatefulSet.Namespace,
 					}})
 			}
 		}
@@ -183,12 +183,12 @@ func listBOSHDeployments(ctx context.Context, client crc.Client, namespace strin
 	return result, nil
 }
 
-func listExtendedStatefulSets(ctx context.Context, client crc.Client, namespace string) (*estsv1.ExtendedStatefulSetList, error) {
-	log.Debugf(ctx, "Listing ExtendedStatefulSets in namespace '%s'", namespace)
-	result := &estsv1.ExtendedStatefulSetList{}
+func listQuarksStatefulSets(ctx context.Context, client crc.Client, namespace string) (*qstsv1a1.QuarksStatefulSetList, error) {
+	log.Debugf(ctx, "Listing QuarksStatefulSets in namespace '%s'", namespace)
+	result := &qstsv1a1.QuarksStatefulSetList{}
 	err := client.List(ctx, result)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to list ExtendedStatefulSets")
+		return nil, errors.Wrap(err, "failed to list QuarksStatefulSets")
 	}
 
 	return result, nil

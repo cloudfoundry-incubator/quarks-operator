@@ -1,0 +1,13 @@
+apiVersion: quarks.cloudfoundry.org/v1alpha1
+kind: QuarksSecret
+metadata:
+  name: example.var-loggregator-ca
+spec:
+  request:
+    certificate:
+      alternativeNames: null
+      commonName: loggregatorCA
+      isCA: true
+      signerType: local
+  secretName: example.var-loggregator-ca
+  type: certificate

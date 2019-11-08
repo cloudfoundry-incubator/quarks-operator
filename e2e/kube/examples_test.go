@@ -32,31 +32,31 @@ var _ = Describe("Examples Directory", func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 
-	Context("extended-statefulset configs examples", func() {
+	Context("quarks-statefulset configs examples", func() {
 		BeforeEach(func() {
-			example = "extended-statefulset/exstatefulset_configs.yaml"
+			example = "quarks-statefulset/qstatefulset_configs.yaml"
 		})
 
 		It("creates and updates statefulsets", func() {
 			By("Checking for pods")
-			podWait("pod/example-extendedstatefulset-v1-0")
-			podWait("pod/example-extendedstatefulset-v1-1")
+			podWait("pod/example-quarks-statefulset-v1-0")
+			podWait("pod/example-quarks-statefulset-v1-1")
 
-			yamlUpdatedFilePath := examplesDir + "extended-statefulset/exstatefulset_configs_updated.yaml"
+			yamlUpdatedFilePath := examplesDir + "quarks-statefulset/qstatefulset_configs_updated.yaml"
 
 			By("Updating the config value used by pods")
 			err := cmdHelper.Apply(namespace, yamlUpdatedFilePath)
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Checking for pods")
-			podWait("pod/example-extendedstatefulset-v2-0")
-			podWait("pod/example-extendedstatefulset-v2-1")
+			podWait("pod/example-quarks-statefulset-v2-0")
+			podWait("pod/example-quarks-statefulset-v2-1")
 
 			By("Checking the updated value in the env")
-			err = kubectl.RunCommandWithCheckString(namespace, "example-extendedstatefulset-v2-0", "env", "SPECIAL_KEY=value1Updated")
+			err = kubectl.RunCommandWithCheckString(namespace, "example-quarks-statefulset-v2-0", "env", "SPECIAL_KEY=value1Updated")
 			Expect(err).ToNot(HaveOccurred())
 
-			err = kubectl.RunCommandWithCheckString(namespace, "example-extendedstatefulset-v2-1", "env", "SPECIAL_KEY=value1Updated")
+			err = kubectl.RunCommandWithCheckString(namespace, "example-quarks-statefulset-v2-1", "env", "SPECIAL_KEY=value1Updated")
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -164,9 +164,9 @@ var _ = Describe("Examples Directory", func() {
 		})
 	})
 
-	Context("extended-secret example", func() {
+	Context("quarks-secret example", func() {
 		BeforeEach(func() {
-			example = "extended-secret/password.yaml"
+			example = "quarks-secret/password.yaml"
 		})
 
 		It("generates a password", func() {
@@ -178,7 +178,7 @@ var _ = Describe("Examples Directory", func() {
 
 	Context("API server signed certificate example", func() {
 		BeforeEach(func() {
-			example = "extended-secret/certificate.yaml"
+			example = "quarks-secret/certificate.yaml"
 		})
 
 		It("creates a signed cert", func() {
@@ -192,11 +192,11 @@ var _ = Describe("Examples Directory", func() {
 
 	Context("self signed certificate example", func() {
 		BeforeEach(func() {
-			example = "extended-secret/loggregator-ca-cert.yaml"
+			example = "quarks-secret/loggregator-ca-cert.yaml"
 		})
 
 		It("creates a self-signed certificate", func() {
-			certYamlFilePath := examplesDir + "extended-secret/loggregator-tls-agent-cert.yaml"
+			certYamlFilePath := examplesDir + "quarks-secret/loggregator-tls-agent-cert.yaml"
 
 			By("Creating ExtendedSecrets")
 			err := cmdHelper.Create(namespace, certYamlFilePath)

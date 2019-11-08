@@ -24,8 +24,8 @@ import (
 	gfakes "code.cloudfoundry.org/cf-operator/pkg/credsgen/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/cf-operator/testing"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	cmdhelper "code.cloudfoundry.org/quarks-utils/testing"
 )
 
@@ -39,8 +39,8 @@ var _ = Describe("Controllers", func() {
 				kinds = append(kinds, k.Kind)
 			}
 			Expect(kinds).To(ContainElement("BOSHDeployment"))
-			Expect(kinds).To(ContainElement("ExtendedSecret"))
-			Expect(kinds).To(ContainElement("ExtendedStatefulSet"))
+			Expect(kinds).To(ContainElement("QuarksSecret"))
+			Expect(kinds).To(ContainElement("QuarksStatefulSet"))
 		})
 	})
 

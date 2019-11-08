@@ -6,7 +6,7 @@
       - [Extract Job Spec and Templates from Image](#extract-job-spec-and-templates-from-image)
       - [Calculation of Required Properties for an Instance Group and BPM Info](#calculation-of-required-properties-for-an-instance-group-and-bpm-info)
     - [Run](#run)
-      - [Create ExtendedStatefulSet and ExtendedJobs](#create-extendedstatefulset-and-extendedjobs)
+      - [Create ExtendedStatefulSet and ExtendedJobs](#create-quarks-statefulset-and-quarks-jobs)
       - [Render Templates](#render-templates)
       - [Run the entrypoints](#run-the-entrypoints)
   - [Details](#details)

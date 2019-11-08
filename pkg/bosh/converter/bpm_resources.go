@@ -15,7 +15,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
@@ -33,7 +33,7 @@ type ReleaseImageProvider interface {
 
 // BPMResources contains BPM related k8s resources, which were converted from BOSH objects
 type BPMResources struct {
-	InstanceGroups         []essv1.ExtendedStatefulSet
+	InstanceGroups         []qstsv1a1.QuarksStatefulSet
 	Errands                []ejv1.ExtendedJob
 	Services               []corev1.Service
 	PersistentVolumeClaims []corev1.PersistentVolumeClaim
@@ -91,7 +91,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, dns manifest.DomainNa
 	return res, nil
 }
 
-// serviceToExtendedSts will generate an ExtendedStatefulSet
+// serviceToExtendedSts will generate an QuarksStatefulSet
 func (kc *KubeConverter) serviceToExtendedSts(
 	cfac ContainerFactory,
 	manifestName string,
@@ -99,16 +99,16 @@ func (kc *KubeConverter) serviceToExtendedSts(
 	instanceGroup *bdm.InstanceGroup,
 	defaultDisks disk.BPMResourceDisks,
 	bpmDisks disk.BPMResourceDisks,
-) (essv1.ExtendedStatefulSet, error) {
+) (qstsv1a1.QuarksStatefulSet, error) {
 	defaultVolumeMounts := defaultDisks.VolumeMounts()
 	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks, instanceGroup.Properties.Quarks.RequiredService)
 	if err != nil {
-		return essv1.ExtendedStatefulSet{}, errors.Wrapf(err, "building initContainers failed for instance group %s", instanceGroup.Name)
+		return qstsv1a1.QuarksStatefulSet{}, errors.Wrapf(err, "building initContainers failed for instance group %s", instanceGroup.Name)
 	}
 
 	containers, err := cfac.JobsToContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
 	if err != nil {
-		return essv1.ExtendedStatefulSet{}, errors.Wrapf(err, "building containers failed for instance group %s", instanceGroup.Name)
+		return qstsv1a1.QuarksStatefulSet{}, errors.Wrapf(err, "building containers failed for instance group %s", instanceGroup.Name)
 	}
 
 	defaultVolumes := defaultDisks.Volumes()
@@ -123,14 +123,14 @@ func (kc *KubeConverter) serviceToExtendedSts(
 	volumeClaims = append(volumeClaims, defaultVolumeClaims...)
 	volumeClaims = append(volumeClaims, bpmVolumeClaims...)
 
-	extSts := essv1.ExtendedStatefulSet{
+	extSts := qstsv1a1.QuarksStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        instanceGroup.ExtendedStatefulsetName(manifestName),
 			Namespace:   kc.namespace,
 			Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
 			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
-		Spec: essv1.ExtendedStatefulSetSpec{
+		Spec: qstsv1a1.QuarksStatefulSetSpec{
 			Zones:                instanceGroup.AZs,
 			UpdateOnConfigChange: true,
 			Template: v1beta2.StatefulSet{
@@ -171,7 +171,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 	spec := &extSts.Spec.Template.Spec.Template.Spec
 	spec.DNSPolicy, spec.DNSConfig, err = dns.DNSSetting(kc.namespace)
 	if err != nil {
-		return essv1.ExtendedStatefulSet{}, err
+		return qstsv1a1.QuarksStatefulSet{}, err
 	}
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName != "" {
@@ -186,7 +186,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 }
 
 // serviceToKubeServices will generate Services which expose ports for InstanceGroup's jobs
-func (kc *KubeConverter) serviceToKubeServices(manifestName string, dns manifest.DomainNameService, instanceGroup *bdm.InstanceGroup, eSts *essv1.ExtendedStatefulSet) []corev1.Service {
+func (kc *KubeConverter) serviceToKubeServices(manifestName string, dns manifest.DomainNameService, instanceGroup *bdm.InstanceGroup, eSts *qstsv1a1.QuarksStatefulSet) []corev1.Service {
 	var services []corev1.Service
 	// Collect ports to be exposed for each job
 	ports := instanceGroup.ServicePorts()
@@ -203,16 +203,16 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, dns manifest
 					Labels: map[string]string{
 						bdm.LabelDeploymentName:    manifestName,
 						bdm.LabelInstanceGroupName: instanceGroup.Name,
-						essv1.LabelAZIndex:         strconv.Itoa(0),
-						essv1.LabelPodOrdinal:      strconv.Itoa(i),
+						qstsv1a1.LabelAZIndex:      strconv.Itoa(0),
+						qstsv1a1.LabelPodOrdinal:   strconv.Itoa(i),
 					},
 				},
 				Spec: corev1.ServiceSpec{
 					Ports: ports,
 					Selector: map[string]string{
 						bdm.LabelInstanceGroupName: instanceGroup.Name,
-						essv1.LabelAZIndex:         strconv.Itoa(0),
-						essv1.LabelPodOrdinal:      strconv.Itoa(i),
+						qstsv1a1.LabelAZIndex:      strconv.Itoa(0),
+						qstsv1a1.LabelPodOrdinal:   strconv.Itoa(i),
 					},
 				},
 			})
@@ -224,16 +224,16 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, dns manifest
 					Namespace: kc.namespace,
 					Labels: map[string]string{
 						bdm.LabelInstanceGroupName: instanceGroup.Name,
-						essv1.LabelAZIndex:         strconv.Itoa(azIndex),
-						essv1.LabelPodOrdinal:      strconv.Itoa(i),
+						qstsv1a1.LabelAZIndex:      strconv.Itoa(azIndex),
+						qstsv1a1.LabelPodOrdinal:   strconv.Itoa(i),
 					},
 				},
 				Spec: corev1.ServiceSpec{
 					Ports: ports,
 					Selector: map[string]string{
 						bdm.LabelInstanceGroupName: instanceGroup.Name,
-						essv1.LabelAZIndex:         strconv.Itoa(azIndex),
-						essv1.LabelPodOrdinal:      strconv.Itoa(i),
+						qstsv1a1.LabelAZIndex:      strconv.Itoa(azIndex),
+						qstsv1a1.LabelPodOrdinal:   strconv.Itoa(i),
 					},
 				},
 			})

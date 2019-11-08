@@ -7,8 +7,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
-	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
 )
 
@@ -25,10 +25,10 @@ func BoshDeploymentMutateFn(boshDeployment *bdv1.BOSHDeployment) controllerutil.
 	}
 }
 
-// EStsMutateFn returns MutateFn which mutates ExtendedStatefulSet including:
+// EStsMutateFn returns MutateFn which mutates QuarksStatefulSet including:
 // - labels, annotations
 // - spec
-func EStsMutateFn(eSts *essv1.ExtendedStatefulSet) controllerutil.MutateFn {
+func EStsMutateFn(eSts *qstsv1a1.QuarksStatefulSet) controllerutil.MutateFn {
 	updated := eSts.DeepCopy()
 	return func() error {
 		eSts.Labels = updated.Labels
@@ -61,11 +61,11 @@ func EJobMutateFn(eJob *ejv1.ExtendedJob) controllerutil.MutateFn {
 	}
 }
 
-// ESecMutateFn returns MutateFn which mutates ExtendedSecret including:
+// ESecMutateFn returns MutateFn which mutates QuarksSecret including:
 // - labels, annotations
 // - spec
 // - status.generated
-func ESecMutateFn(eSec *esv1.ExtendedSecret) controllerutil.MutateFn {
+func ESecMutateFn(eSec *qsv1a1.QuarksSecret) controllerutil.MutateFn {
 	updated := eSec.DeepCopy()
 	return func() error {
 		eSec.Labels = updated.Labels
