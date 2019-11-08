@@ -50,7 +50,7 @@ var _ = Describe("VolumeFactory", func() {
 		It("creates default disks", func() {
 			disks := factory.GenerateDefaultDisks(manifestName, instanceGroup.Name, version, namespace)
 
-			Expect(disks).Should(HaveLen(6))
+			Expect(disks).Should(HaveLen(5))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
 				Volume: &corev1.Volume{
 					Name:         VolumeRenderingDataName,
@@ -89,16 +89,6 @@ var _ = Describe("VolumeFactory", func() {
 				VolumeMount: &corev1.VolumeMount{
 					Name:      VolumeSysDirName,
 					MountPath: VolumeSysDirMountPath,
-				},
-			}))
-			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
-				Volume: &corev1.Volume{
-					Name: fmt.Sprintf("desired-manifest-v%s", version),
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{
-							SecretName: fmt.Sprintf("%s.desired-manifest-v%s", manifestName, version),
-						},
-					},
 				},
 			}))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
