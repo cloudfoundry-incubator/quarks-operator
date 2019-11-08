@@ -20,6 +20,7 @@ var _ = Describe("Trender", func() {
 		instanceGroupName  string
 		index              int
 		podIP              net.IP
+		replicas           int
 	)
 
 	Context("when podIP is nil", func() {
@@ -29,10 +30,11 @@ var _ = Describe("Trender", func() {
 			instanceGroupName = "mysql0"
 			index = 0
 			podIP = nil
+			replicas = 1
 		})
 
 		act := func() error {
-			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP)
+			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas)
 		}
 
 		It("fails", func() {
@@ -48,10 +50,11 @@ var _ = Describe("Trender", func() {
 			jobsDir = "../../../testing/assets"
 			instanceGroupName = "log-api"
 			podIP = net.ParseIP("172.17.0.13")
+			replicas = 1
 		})
 
 		act := func() error {
-			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP)
+			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas)
 		}
 
 		Context("with an invalid instance index", func() {
@@ -62,7 +65,7 @@ var _ = Describe("Trender", func() {
 			It("fails", func() {
 				err := act()
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("no instance found"))
+				Expect(err.Error()).To(ContainSubstring("no job instance found"))
 			})
 		})
 
@@ -100,11 +103,11 @@ var _ = Describe("Trender", func() {
 				// will use the instance at the index provided to the RenderJobTemplates func().
 				Expect(values.Env["FOOBARWITHSPECAZ"]).To(Equal("z1"))
 				Expect(values.Env["FOOBARWITHSPECBOOTSTRAP"]).To(Equal("true"))
-				Expect(values.Env["FOOBARWITHSPECID"]).To(Equal("log-api-0-loggregator_trafficcontroller"))
+				Expect(values.Env["FOOBARWITHSPECID"]).To(Equal("log-api-0"))
 				Expect(values.Env["FOOBARWITHSPECINDEX"]).To(Equal("0"))
 				Expect(values.Env["FOOBARWITHSPECNAME"]).To(Equal("log-api-loggregator_trafficcontroller"))
 				Expect(values.Env["FOOBARWITHSPECNETWORKS"]).To(Equal(""))
-				Expect(values.Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-0-loggregator_trafficcontroller.default.svc.cluster.local"))
+				Expect(values.Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-0"))
 				Expect(values.Env["FOOBARWITHSPECDEPLOYMENT"]).To(Equal(""))
 				Expect(values.Env["FOOBARWITHSPECIP"]).To(Equal("172.17.0.13"))
 			})
@@ -123,6 +126,7 @@ var _ = Describe("Trender", func() {
 			instanceGroupName = "mysql0"
 			index = 0
 			podIP = net.ParseIP("172.17.0.13")
+			replicas = 1
 		})
 
 		AfterEach(func() {
@@ -131,7 +135,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		It("renders the job erb files correctly", func() {
-			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP)
+			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas)
 			Expect(err).ToNot(HaveOccurred())
 
 			drainFile := filepath.Join(jobsDir, "pxc-mysql", "bin/drain")
@@ -160,6 +164,7 @@ var _ = Describe("Trender", func() {
 			// more information.
 			index = 1
 			podIP = net.ParseIP("172.17.0.13")
+			replicas = 1
 		})
 
 		AfterEach(func() {
@@ -168,7 +173,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		It("renders the configuration erb file correctly", func() {
-			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP)
+			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas)
 			Expect(err).ToNot(HaveOccurred())
 
 			configFile := filepath.Join(jobsDir, "redis-server", "config/redis.conf")
@@ -189,6 +194,7 @@ var _ = Describe("Trender", func() {
 			instanceGroupName = "asmetrics"
 			index = 0
 			podIP = net.ParseIP("172.17.0.13")
+			replicas = 1
 		})
 
 		AfterEach(func() {
@@ -197,7 +203,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		It("usage of spec field in an ERB template should work", func() {
-			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP)
+			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas)
 			Expect(err).ToNot(HaveOccurred())
 
 			configFile := filepath.Join(jobsDir, "metricsserver", "config/metricsserver.yml")
