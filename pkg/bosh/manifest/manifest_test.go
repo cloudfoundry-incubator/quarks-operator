@@ -1084,7 +1084,7 @@ var _ = Describe("Manifest", func() {
 				manifest, err := LoadYAML([]byte(boshmanifest.BPMReleaseWithAffinity))
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(manifest.Name).To(Equal("bpm"))
+				Expect(manifest.Name).To(Equal("bpm-affinity"))
 
 				ig := manifest.InstanceGroups[0]
 				Expect(ig.Name).To(Equal("bpm1"))
@@ -1265,6 +1265,7 @@ var _ = Describe("Manifest", func() {
 					Expect(hc).ToNot(BeNil())
 					Expect(hc["test-server"].ReadinessProbe.Handler.Exec.Command).To(ContainElement("curl --silent --fail --head http://${HOSTNAME}:8080/health"))
 				})
+
 				It("serializes instancegroup quarks", func() {
 					m1.CalculateRequiredServices()
 					text, err := m1.Marshal()
@@ -1274,9 +1275,9 @@ var _ = Describe("Manifest", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(manifest.InstanceGroups).To(HaveLen(3))
 					Expect(manifest.InstanceGroups[0].Properties.Quarks.RequiredService).To(BeNil())
-					expectedRequireService := "bpm-bpm1"
+					expectedRequireService := "bpm-affinity-bpm1"
 					Expect(manifest.InstanceGroups[1].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
-					expectedRequireService = "bpm-bpm2"
+					expectedRequireService = "bpm-affinity-bpm2"
 					Expect(manifest.InstanceGroups[2].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
 
 				})
