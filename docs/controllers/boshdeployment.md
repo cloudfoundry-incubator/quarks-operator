@@ -28,6 +28,8 @@ The ops files modify the deployment manifest. For example, ops files can be used
 A deployment is represented by the `boshdeployments.fissile.cloudfoundry.org` (`bdpl`) custom resource, defined in [`boshdeployment_crd.yaml`](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/deploy/helm/cf-operator/templates/fissile_v1alpha1_boshdeployment_crd.yaml).
 This [bdpl custom resource](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/examples/bosh-deployment/boshdeployment.yaml) contains references to config maps or secrets containing the actual manifests content.
 
+The name of the `bdpl` resource has to match the [deployment name](https://bosh.io/docs/manifest-v2/#deployment) in the BOSH manifest.
+
 After creating the `bdpl` resource on Kubernetes, i.e. via `kubectl apply`, the CF operator will start reconciliation, which will eventually result in the deployment
 of the BOSH release on Kubernetes.
 

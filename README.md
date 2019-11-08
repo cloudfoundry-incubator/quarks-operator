@@ -62,10 +62,10 @@ webhooks:
 
 The `cf-operator` watches four different types of custom resources:
 
-- BoshDeployment
-- ExtendedJob
-- ExtendedSecret
-- ExtendedStatefulset
+- [BoshDeployment](docs/controllers/boshdeployment.md)
+- [ExtendedJob](https://github.com/cloudfoundry-incubator/quarks-job/blob/master/docs/extendedjob.md)
+- [ExtendedSecret](docs/controllers/extendedsecret.md)
+- [ExtendedStatefulset](docs/controllers/extendedstatefulset.md)
 
 The `cf-operator` requires the according CRDs to be installed in the cluster in order to work as expected. By default, the `cf-operator` applies CRDs in your cluster automatically.
 

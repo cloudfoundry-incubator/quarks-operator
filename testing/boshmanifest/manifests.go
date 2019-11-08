@@ -221,7 +221,7 @@ releases:
 
 // NatsSmall is a small manifest to start nats
 const NatsSmall = `---
-name: my-manifest
+name: test
 releases:
 - name: nats
   version: "26"
@@ -252,7 +252,7 @@ instance_groups:
 
 // NatsSmallWithPatch is a manifest that patches the prestart hook to loop forever
 const NatsSmallWithPatch = `---
-name: my-manifest
+name: test
 releases:
 - name: nats
   version: "26"
@@ -725,7 +725,7 @@ instance_groups:
 
 // BPMRelease utilizing the test server to open two tcp ports
 const BPMRelease = `
-name: bpm
+name: test-bdpl
 
 releases:
 - name: bpm
@@ -906,7 +906,7 @@ instance_groups:
 
 // BPMReleaseWithAffinity contains affinity information
 const BPMReleaseWithAffinity = `
-name: bpm
+name: bpm-affinity
 
 releases:
 - name: bpm
