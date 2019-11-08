@@ -30,6 +30,7 @@ func RenderJobTemplates(
 	instanceGroupName string,
 	specIndex int,
 	podIP net.IP,
+	replicas int,
 ) error {
 	if podIP == nil {
 		return fmt.Errorf("the pod IP is empty")
@@ -40,79 +41,93 @@ func RenderJobTemplates(
 	if err != nil {
 		return errors.Wrapf(err, "couldn't read manifest file %s", boshManifestPath)
 	}
+
 	boshManifest, err := LoadYAML(resolvedYML)
 	if err != nil {
 		return errors.Wrapf(err, "failed to load BOSH deployment manifest %s", boshManifestPath)
 	}
 
-	// Loop over instancegroups
+	currentInstanceGroup := &InstanceGroup{}
+
 	for _, instanceGroup := range boshManifest.InstanceGroups {
+		if instanceGroupName == instanceGroup.Name {
+			currentInstanceGroup = instanceGroup
+			currentInstanceGroup.Instances = replicas
+			break
+		}
+	}
 
-		// Filter based on the instance group name
-		if instanceGroup.Name != instanceGroupName {
-			continue
+	// Generate Job Instances Spec
+	for jobIdx, job := range currentInstanceGroup.Jobs {
+		// Generate instance spec for each ig instance
+		// This will be stored inside the current job under
+		// job.properties.quarks
+		jobsInstances := currentInstanceGroup.jobInstances(boshManifest.Name, job.Name)
+
+		// set jobs.properties.quarks.instances with the ig instances
+		currentInstanceGroup.Jobs[jobIdx].Properties.Quarks.Instances = jobsInstances
+	}
+
+	// Run all pre-render scripts first.
+	if err := runPreRenderScripts(currentInstanceGroup); err != nil {
+		return err
+	}
+
+	// Render all files for all jobs included in this instance_group.
+	for _, job := range currentInstanceGroup.Jobs {
+
+		jobSpec, err := job.loadSpec(jobsDir)
+
+		if err != nil {
+			return errors.Wrapf(err, "failed to load job spec file %s for instance group %s", job.Name, instanceGroupName)
 		}
 
-		// Run all pre-render scripts first.
-		if err := runPreRenderScripts(instanceGroup); err != nil {
-			return err
+		// Find job instance that's being rendered
+		var currentJobInstance *JobInstance
+		for _, instance := range job.Properties.Quarks.Instances {
+			if instance.Index == specIndex {
+				currentJobInstance = &instance
+				break
+			}
+		}
+		if currentJobInstance == nil {
+			return errors.Errorf("no job instance found for spec index '%d'", specIndex)
 		}
 
-		// Render all files for all jobs included in this instance_group.
-		for _, job := range instanceGroup.Jobs {
-			jobSpec, err := job.loadSpec(jobsDir)
+		// Loop over templates for rendering them
+		jobSrcDir := job.specDir(jobsDir)
+		for source, destination := range jobSpec.Templates {
+			absDest := filepath.Join(jobsOutputDir, job.Name, destination)
+			os.MkdirAll(filepath.Dir(absDest), 0755)
 
+			properties := job.Properties.ToMap()
+
+			renderPointer := btg.NewERBRenderer(
+				&btg.EvaluationContext{
+					Properties: properties,
+				},
+
+				&btg.InstanceInfo{
+					Address:   currentJobInstance.Address,
+					AZ:        currentJobInstance.AZ,
+					Bootstrap: currentJobInstance.Bootstrap,
+					ID:        currentJobInstance.ID,
+					Index:     currentJobInstance.Index,
+					IP:        podIP.String(),
+					Name:      currentJobInstance.Name,
+				},
+
+				filepath.Join(jobSrcDir, JobSpecFilename),
+			)
+
+			// Create the destination file
+			absDestFile, err := os.Create(absDest)
 			if err != nil {
-				return errors.Wrapf(err, "failed to load job spec file %s for instance group %s", job.Name, instanceGroupName)
+				return err
 			}
-
-			// Find job instance that's being rendered
-			var currentJobInstance *JobInstance
-			for _, instance := range job.Properties.Quarks.Instances {
-				if instance.Index == specIndex {
-					currentJobInstance = &instance
-					break
-				}
-			}
-			if currentJobInstance == nil {
-				return errors.Errorf("no instance found for spec index '%d'", specIndex)
-			}
-
-			// Loop over templates for rendering files
-			jobSrcDir := job.specDir(jobsDir)
-			for source, destination := range jobSpec.Templates {
-				absDest := filepath.Join(jobsOutputDir, job.Name, destination)
-				os.MkdirAll(filepath.Dir(absDest), 0755)
-
-				properties := job.Properties.ToMap()
-
-				renderPointer := btg.NewERBRenderer(
-					&btg.EvaluationContext{
-						Properties: properties,
-					},
-
-					&btg.InstanceInfo{
-						Address:   currentJobInstance.Address,
-						AZ:        currentJobInstance.AZ,
-						Bootstrap: currentJobInstance.Bootstrap,
-						ID:        currentJobInstance.ID,
-						Index:     currentJobInstance.Index,
-						IP:        podIP.String(),
-						Name:      currentJobInstance.Name,
-					},
-
-					filepath.Join(jobSrcDir, JobSpecFilename),
-				)
-
-				// Create the destination file
-				absDestFile, err := os.Create(absDest)
-				if err != nil {
-					return err
-				}
-				defer absDestFile.Close()
-				if err = renderPointer.Render(filepath.Join(jobSrcDir, "templates", source), absDestFile.Name()); err != nil {
-					return err
-				}
+			defer absDestFile.Close()
+			if err = renderPointer.Render(filepath.Join(jobSrcDir, "templates", source), absDestFile.Name()); err != nil {
+				return err
 			}
 		}
 	}

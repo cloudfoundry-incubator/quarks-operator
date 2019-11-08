@@ -38,22 +38,14 @@ instance_groups:
             instances:
             - address: asmetrics-app-autoscaler-deployment
               az: z1
-              id: asmetrics-0-metricsserver
+              id: asmetrics-0
               index: 0
               instance: 0
               ip: ""
               name: asmetrics-metricsserver
               index: 0
               networks: null
-        instances:
-        - address: asmetrics-app-autoscaler-deployment
-          az: z1
-          id: asmetrics-0-metricsserver
-          index: 0
-          instance: 0
-          name: asmetrics-metricsserver
-          networks: null
-          ip: ""
+        instances: null
   networks:
   - name: default
   persistent_disk_type: medium

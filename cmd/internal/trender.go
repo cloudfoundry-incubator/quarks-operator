@@ -55,6 +55,11 @@ This will render a provided manifest instance-group
 			return err
 		}
 
+		replicas := viper.GetInt("replicas")
+		if replicas < 0 {
+			return errors.Errorf("%s replicas flag is empty.", tRenderFailedMessage)
+		}
+
 		specIndex := viper.GetInt("spec-index")
 		if specIndex < 0 {
 			// Calculate index following the formula specified in
@@ -62,10 +67,6 @@ This will render a provided manifest instance-group
 			azIndex := viper.GetInt("az-index")
 			if azIndex < 0 {
 				return errors.Errorf("%s az-index is negative. %d", tRenderFailedMessage, azIndex)
-			}
-			replicas := viper.GetInt("replicas")
-			if replicas < 0 {
-				return errors.Errorf("%s replicas flag is empty.", tRenderFailedMessage)
 			}
 			podOrdinal := viper.GetInt("pod-ordinal")
 			if podOrdinal < 0 {
@@ -88,7 +89,7 @@ This will render a provided manifest instance-group
 
 		podIP := net.ParseIP(viper.GetString("pod-ip"))
 
-		return manifest.RenderJobTemplates(boshManifestPath, jobsDir, outputDir, instanceGroupName, specIndex, podIP)
+		return manifest.RenderJobTemplates(boshManifestPath, jobsDir, outputDir, instanceGroupName, specIndex, podIP, replicas)
 	},
 }
 
