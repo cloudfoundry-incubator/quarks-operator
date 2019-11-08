@@ -74,6 +74,16 @@ var _ = Describe("InstanceGroupResolver", func() {
 				ig = "log-api"
 			})
 
+			It("it should have info about instances, azs", func() {
+				bpmInfo, err := dg.BPMInfo()
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(bpmInfo).ToNot(BeNil())
+				Expect(bpmInfo.InstanceGroup.Name).To(Equal("log-api"))
+				Expect(bpmInfo.InstanceGroup.Instances).To(Equal(2))
+				Expect(bpmInfo.InstanceGroup.AZs).To(Equal([]string{"z1", "z2"}))
+			})
+
 			It("returns the bpm config for all jobs", func() {
 				bpmInfo, err := dg.BPMInfo()
 				Expect(err).ToNot(HaveOccurred())
@@ -103,22 +113,6 @@ var _ = Describe("InstanceGroupResolver", func() {
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECNAME"]).To(Equal("log-api-loggregator_trafficcontroller"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECNETWORKS"]).To(Equal(""))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-0"))
-			})
-
-			It("validate instance spec object", func() {
-				m, err := dg.Manifest()
-				Expect(err).ToNot(HaveOccurred())
-
-				// Check JobInstance for the loggregator_trafficcontroller job
-				jobInstancesRedis := m.InstanceGroups[1].Jobs[0].Properties.Quarks.Instances
-				o := []JobInstance{
-					{Address: "cf-log-api-0", AZ: "z1", Index: 0, Instance: 0, Name: "log-api-loggregator_trafficcontroller", Bootstrap: true, ID: "log-api-0"},
-					{Address: "cf-log-api-1", AZ: "z2", Index: 1, Instance: 0, Name: "log-api-loggregator_trafficcontroller", Bootstrap: false, ID: "log-api-1"},
-					{Address: "cf-log-api-2", AZ: "z1", Index: 2, Instance: 1, Name: "log-api-loggregator_trafficcontroller", Bootstrap: false, ID: "log-api-2"},
-					{Address: "cf-log-api-3", AZ: "z2", Index: 3, Instance: 1, Name: "log-api-loggregator_trafficcontroller", Bootstrap: false, ID: "log-api-3"},
-				}
-				Expect(jobInstancesRedis).To(BeEquivalentTo(o))
-
 			})
 
 			Context("when manifest presets overridden bpm info", func() {
@@ -165,7 +159,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 				})
 
 				It("reports an error if the job had empty bpm configs", func() {
-					_, err := dg.BPMConfigs()
+					_, err := dg.BPMInfo()
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Empty bpm configs about job '%s'", ig)))
 				})
@@ -179,10 +173,10 @@ var _ = Describe("InstanceGroupResolver", func() {
 				})
 
 				It("returns the bpm with resources for process", func() {
-					bpmConfigs, err := dg.BPMConfigs()
+					bpmInfo, err := dg.BPMInfo()
 					Expect(err).ToNot(HaveOccurred())
 
-					bpm := bpmConfigs["doppler"]
+					bpm := bpmInfo.Configs["doppler"]
 					Expect(bpm).NotTo(BeNil())
 					Expect(bpm.Processes[0].Requests.Memory().String()).To(Equal("128Mi"))
 					Expect(bpm.Processes[0].Requests.Cpu().String()).To(Equal("5m"))
@@ -196,7 +190,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 				})
 
 				It("raises an error for bpm process without executable", func() {
-					_, err := dg.BPMConfigs()
+					_, err := dg.BPMInfo()
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("invalid BPM process"))
 				})
@@ -209,59 +203,62 @@ var _ = Describe("InstanceGroupResolver", func() {
 				ig = "redis-slave"
 			})
 
-			It("should gather all data for each job spec file", func() {
+			It("should not have info about job instances, instance count, azs", func() {
 				manifest, err := dg.Manifest()
 				Expect(err).ToNot(HaveOccurred())
 
 				//Check JobInstance for the redis-server job
-				jobInstancesRedis := manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Instances
-
-				compareToFakeRedis := []JobInstance{
-					{Address: "foo-deployment-redis-slave-0", AZ: "z1", Index: 0, Instance: 0, Name: "redis-slave-redis-server", Bootstrap: true, ID: "redis-slave-0"},
-					{Address: "foo-deployment-redis-slave-1", AZ: "z2", Index: 1, Instance: 0, Name: "redis-slave-redis-server", Bootstrap: false, ID: "redis-slave-1"},
-					{Address: "foo-deployment-redis-slave-2", AZ: "z1", Index: 2, Instance: 1, Name: "redis-slave-redis-server", Bootstrap: false, ID: "redis-slave-2"},
-					{Address: "foo-deployment-redis-slave-3", AZ: "z2", Index: 3, Instance: 1, Name: "redis-slave-redis-server", Bootstrap: false, ID: "redis-slave-3"},
-				}
-				Expect(jobInstancesRedis).To(BeEquivalentTo(compareToFakeRedis))
+				Expect(manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Instances).To(BeNil())
+				Expect(manifest.InstanceGroups[0].Instances).To(Equal(0))
+				Expect(manifest.InstanceGroups[0].AZs).To(BeNil())
 			})
 
 			Context("when resolving links between providers and consumers", func() {
-				BeforeEach(func() {
-					m, err = env.BOSHManifestWithProviderAndConsumer()
-					Expect(err).NotTo(HaveOccurred())
-					ig = "log-api"
+				Context("when the job consumes a link", func() {
+					BeforeEach(func() {
+						m, err = env.BOSHManifestWithProviderAndConsumer()
+						Expect(err).NotTo(HaveOccurred())
+						ig = "log-api"
+					})
+
+					It("resolves all required data if the job consumes a link", func() {
+						m, err := dg.Manifest()
+						Expect(err).ToNot(HaveOccurred())
+
+						instanceGroup, ok := m.InstanceGroups.InstanceGroupByName(ig)
+						Expect(ok).To(BeTrue())
+
+						jobQuarksConsumes := instanceGroup.Jobs[0].Properties.Quarks.Consumes
+						jobConsumesFromDoppler, consumeFromDopplerExists := jobQuarksConsumes["doppler"]
+						Expect(consumeFromDopplerExists).To(BeTrue())
+						expectedProperties := map[string]interface{}{
+							"doppler": map[string]interface{}{
+								"grpc_port": json.Number("7765"),
+							},
+							"fooprop": json.Number("10001"),
+						}
+
+						Expect(deep.Equal(jobConsumesFromDoppler.Properties, expectedProperties)).To(HaveLen(0))
+					})
 				})
 
-				It("resolves all required data if the job consumes a link", func() {
-					manifest, err := dg.Manifest()
-					Expect(err).ToNot(HaveOccurred())
+				Context("when the job does not consume a link", func() {
+					BeforeEach(func() {
+						m, err = env.BOSHManifestWithProviderAndConsumer()
+						Expect(err).NotTo(HaveOccurred())
+						ig = "doppler"
+					})
+					It("has an empty consumes list if the job does not consume a link", func() {
+						m, err := dg.Manifest()
+						Expect(err).ToNot(HaveOccurred())
 
-					// log-api instance_group, with loggregator_trafficcontroller job, consumes a link from doppler job
-					jobQuarksConsumes := manifest.InstanceGroups[1].Jobs[0].Properties.Quarks.Consumes
-					jobConsumesFromDoppler, consumeFromDopplerExists := jobQuarksConsumes["doppler"]
-					Expect(consumeFromDopplerExists).To(BeTrue())
-					expectedProperties := map[string]interface{}{
-						"doppler": map[string]interface{}{
-							"grpc_port": json.Number("7765"),
-						},
-						"fooprop": json.Number("10001"),
-					}
-					for i, instance := range jobConsumesFromDoppler.Instances {
-						Expect(instance.Index).To(Equal(i))
-						Expect(instance.Address).To(Equal(fmt.Sprintf("cf-doppler-%v", i)))
-					}
+						ig, ok := m.InstanceGroups.InstanceGroupByName(ig)
+						Expect(ok).To(BeTrue())
 
-					Expect(deep.Equal(jobConsumesFromDoppler.Properties, expectedProperties)).To(HaveLen(0))
-				})
-
-				It("has an empty consumes list if the job does not consume a link", func() {
-					manifest, err := dg.Manifest()
-					Expect(err).ToNot(HaveOccurred())
-
-					// doppler instance_group, with doppler job, only provides doppler link
-					jobQuarksConsumes := manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Consumes
-					var emptyJobQuarksConsumes map[string]JobLink
-					Expect(jobQuarksConsumes).To(BeEquivalentTo(emptyJobQuarksConsumes))
+						jobQuarksConsumes := ig.Jobs[0].Properties.Quarks.Consumes
+						var emptyJobQuarksConsumes map[string]JobLink
+						Expect(jobQuarksConsumes).To(BeEquivalentTo(emptyJobQuarksConsumes))
+					})
 				})
 			})
 		})
