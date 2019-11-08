@@ -12,7 +12,6 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
-	quarksutils "code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
 
 const (
@@ -29,8 +28,8 @@ This will interpolate all the variables from a folder and write an
 interpolated manifest to STDOUT
 `,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		quarksutils.BOSHManifestFlagViperBind(cmd.Flags())
-		quarksutils.OutputFilePathFlagViperBind(cmd.Flags())
+		boshManifestFlagViperBind(cmd.Flags())
+		outputFilePathFlagViperBind(cmd.Flags())
 	},
 	RunE: func(_ *cobra.Command, args []string) (err error) {
 		defer func() {
@@ -42,11 +41,11 @@ interpolated manifest to STDOUT
 		log = cmd.Logger()
 		defer log.Sync()
 
-		boshManifestPath, err := quarksutils.BOSHManifestFlagValidation(vInterpolateFailedMessage)
+		boshManifestPath, err := boshManifestFlagValidation(vInterpolateFailedMessage)
 		if err != nil {
 			return err
 		}
-		outputFilePath, err := quarksutils.OutputFilePathFlagValidation(vInterpolateFailedMessage)
+		outputFilePath, err := outputFilePathFlagValidation(vInterpolateFailedMessage)
 		if err != nil {
 			return err
 		}
@@ -88,9 +87,9 @@ func init() {
 	}
 
 	pf := variableInterpolationCmd.Flags()
-	quarksutils.BOSHManifestFlagCobraSet(pf, argToEnv)
-	quarksutils.OutputFilePathFlagCobraSet(pf, argToEnv)
+	boshManifestFlagCobraSet(pf, argToEnv)
+	outputFilePathFlagCobraSet(pf, argToEnv)
 
-	quarksutils.AddEnvToUsage(variableInterpolationCmd, argToEnv)
+	cmd.AddEnvToUsage(variableInterpolationCmd, argToEnv)
 
 }

@@ -17,7 +17,6 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
-	quarksutils "code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
 
 const bpmFailedMessage = "bpm-configs command failed."
@@ -32,10 +31,10 @@ This command calculates and prints the BPM configurations for all all BOSH jobs 
 instance group.
 `,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		quarksutils.BOSHManifestFlagViperBind(cmd.Flags())
-		quarksutils.BaseDirFlagViperBind(cmd.Flags())
-		quarksutils.InstanceGroupFlagViperBind(cmd.Flags())
-		quarksutils.OutputFilePathFlagViperBind(cmd.Flags())
+		boshManifestFlagViperBind(cmd.Flags())
+		baseDirFlagViperBind(cmd.Flags())
+		instanceGroupFlagViperBind(cmd.Flags())
+		outputFilePathFlagViperBind(cmd.Flags())
 	},
 
 	RunE: func(_ *cobra.Command, args []string) (err error) {
@@ -62,12 +61,12 @@ instance group.
 		log = cmd.Logger()
 		defer log.Sync()
 
-		boshManifestPath, err := quarksutils.BOSHManifestFlagValidation(bpmFailedMessage)
+		boshManifestPath, err := boshManifestFlagValidation(bpmFailedMessage)
 		if err != nil {
 			return err
 		}
 
-		baseDir, err := quarksutils.BaseDirFlagValidation(bpmFailedMessage)
+		baseDir, err := baseDirFlagValidation(bpmFailedMessage)
 		if err != nil {
 			return err
 		}
@@ -77,12 +76,12 @@ instance group.
 			return errors.Errorf("%s cf-operator-namespace flag is empty.", bpmFailedMessage)
 		}
 
-		outputFilePath, err := quarksutils.OutputFilePathFlagValidation(bpmFailedMessage)
+		outputFilePath, err := outputFilePathFlagValidation(bpmFailedMessage)
 		if err != nil {
 			return err
 		}
 
-		instanceGroupName, err := quarksutils.InstanceGroupFlagValidation(bpmFailedMessage)
+		instanceGroupName, err := instanceGroupFlagValidation(bpmFailedMessage)
 		if err != nil {
 			return err
 		}
@@ -144,9 +143,9 @@ func init() {
 
 	argToEnv := map[string]string{}
 
-	quarksutils.BOSHManifestFlagCobraSet(pf, argToEnv)
-	quarksutils.BaseDirFlagCobraSet(pf, argToEnv)
-	quarksutils.InstanceGroupFlagCobraSet(pf, argToEnv)
-	quarksutils.OutputFilePathFlagCobraSet(pf, argToEnv)
-	quarksutils.AddEnvToUsage(bpmConfigsCmd, argToEnv)
+	boshManifestFlagCobraSet(pf, argToEnv)
+	baseDirFlagCobraSet(pf, argToEnv)
+	instanceGroupFlagCobraSet(pf, argToEnv)
+	outputFilePathFlagCobraSet(pf, argToEnv)
+	cmd.AddEnvToUsage(bpmConfigsCmd, argToEnv)
 }
