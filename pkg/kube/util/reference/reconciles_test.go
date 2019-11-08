@@ -10,7 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
@@ -20,7 +20,7 @@ import (
 var _ = Describe("GetReconciles", func() {
 	Context("when getting reconciles for Ests", func() {
 		var (
-			ests    estsv1.ExtendedStatefulSet
+			ests    qstsv1a1.QuarksStatefulSet
 			manager *cfakes.FakeManager
 
 			configMap1 corev1.ConfigMap
@@ -36,7 +36,7 @@ var _ = Describe("GetReconciles", func() {
 			manager = &cfakes.FakeManager{}
 			manager.GetSchemeReturns(scheme.Scheme)
 
-			ests = env.OwnedReferencesExtendedStatefulSet("foo")
+			ests = env.OwnedReferencesQuarksStatefulSet("foo")
 			configMap1 = env.DefaultConfigMap("example1")
 			configMap2 = env.DefaultConfigMap("example2")
 			secret1 = env.DefaultSecret("example1")

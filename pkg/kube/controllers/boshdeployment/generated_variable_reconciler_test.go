@@ -22,7 +22,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
@@ -107,7 +107,7 @@ variables:
 		manager.GetClientReturns(client)
 
 		kubeConverter = &fakes.FakeKubeConverter{}
-		kubeConverter.VariablesReturns([]esv1.ExtendedSecret{}, nil)
+		kubeConverter.VariablesReturns([]qsv1a1.QuarksSecret{}, nil)
 	})
 
 	JustBeforeEach(func() {
@@ -117,7 +117,7 @@ variables:
 	Describe("Reconcile", func() {
 		Context("when manifest with ops is created", func() {
 			It("handles an error when generating variables", func() {
-				kubeConverter.VariablesReturns([]esv1.ExtendedSecret{
+				kubeConverter.VariablesReturns([]qsv1a1.QuarksSecret{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "fake-variable",
@@ -131,7 +131,7 @@ variables:
 						if nn.Name == "foo-with-ops" {
 							manifestWithOpsSecret.DeepCopyInto(object)
 						}
-					case *esv1.ExtendedSecret:
+					case *qsv1a1.QuarksSecret:
 						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 					}
 
@@ -139,7 +139,7 @@ variables:
 				})
 				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 					switch object.(type) {
-					case *esv1.ExtendedSecret:
+					case *qsv1a1.QuarksSecret:
 						return errors.New("fake-error")
 					}
 					return nil

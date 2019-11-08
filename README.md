@@ -64,8 +64,8 @@ The `cf-operator` watches four different types of custom resources:
 
 - [BoshDeployment](docs/controllers/boshdeployment.md)
 - [ExtendedJob](https://github.com/cloudfoundry-incubator/quarks-job/blob/master/docs/extendedjob.md)
-- [ExtendedSecret](docs/controllers/extendedsecret.md)
-- [ExtendedStatefulset](docs/controllers/extendedstatefulset.md)
+- [ExtendedSecret](docs/controllers/quarks_secret.md)
+- [ExtendedStatefulset](docs/controllers/quarks_statefulset.md)
 
 The `cf-operator` requires the according CRDs to be installed in the cluster in order to work as expected. By default, the `cf-operator` applies CRDs in your cluster automatically.
 
@@ -75,9 +75,9 @@ To verify that the CRD´s are installed:
 $ kubectl get crds
 NAME                                            CREATED AT
 boshdeployments.quarks.cloudfoundry.org        2019-06-25T07:08:37Z
-extendedjobs.quarks.cloudfoundry.org           2019-06-25T07:08:37Z
-extendedsecrets.quarks.cloudfoundry.org        2019-06-25T07:08:37Z
-extendedstatefulsets.quarks.cloudfoundry.org   2019-06-25T07:08:37Z
+quarksjobs.quarks.cloudfoundry.org           2019-06-25T07:08:37Z
+quarkssecrets.quarks.cloudfoundry.org        2019-06-25T07:08:37Z
+quarksstatefulsets.quarks.cloudfoundry.org   2019-06-25T07:08:37Z
 ```
 
 ## Variables
@@ -131,7 +131,7 @@ The main input to the operator is the `BOSH deployment` custom resource and the 
 Besides that there are more things the user can change which will trigger an update of the deployment:
 
 * `ops files` can be added or removed from the `BOSH deployment`. Existing `ops file` config maps and secrets can be modified
-* generated secrets for [explicit variables](docs/from_bosh_to_kube.md#variables-to-extended-secrets) can be modified
+* generated secrets for [explicit variables](docs/from_bosh_to_kube.md#variables-to-quarks-secrets) can be modified
 * secrets for [implicit variables](docs/from_bosh_to_kube.md#manual-implicit-variables) have to be created by the user beforehand anyway, but can also be changed after the initial deployment
 
 ## Development and Tests

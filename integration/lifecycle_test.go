@@ -10,7 +10,7 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
@@ -59,8 +59,8 @@ var _ = Describe("Lifecycle", func() {
 			Expect(clusterIPService.Spec.Ports)
 			Expect(clusterIPService.Spec.Selector).To(Equal(map[string]string{
 				bdm.LabelInstanceGroupName: "nats",
-				essv1.LabelAZIndex:         "0",
-				essv1.LabelPodOrdinal:      "0",
+				qstsv1a1.LabelAZIndex:      "0",
+				qstsv1a1.LabelPodOrdinal:   "0",
 			}))
 			Expect(clusterIPService.Spec.Ports[0].Name).To(Equal("nats"))
 			Expect(clusterIPService.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))

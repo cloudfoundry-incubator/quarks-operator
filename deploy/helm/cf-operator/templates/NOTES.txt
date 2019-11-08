@@ -1,9 +1,9 @@
 Running the operator will install the following CRD´s:
 
 - boshdeployments.quarks.cloudfoundry.org
-- extendedjobs.quarks.cloudfoundry.org
-- extendedsecrets.quarks.cloudfoundry.org
-- extendedstatefulsets.quarks.cloudfoundry.org
+- quarksjobs.quarks.cloudfoundry.org
+- quarksecrets.quarks.cloudfoundry.org
+- quarkstatefulsets.quarks.cloudfoundry.org
 
 You can always verify if the CRD´s are installed, by running:
  $ kubectl get crds

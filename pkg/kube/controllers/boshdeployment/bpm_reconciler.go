@@ -26,6 +26,7 @@ import (
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
 	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	exsts "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
+	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -238,7 +239,7 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 
 // deployInstanceGroups create or update ExtendedJobs and ExtendedStatefulSets for instance groups
 func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.BOSHDeployment, instanceGroupName string, resources *converter.BPMResources) error {
-	log.Debugf(ctx, "Creating extendedJobs and extendedStatefulSets for instance group '%s'", instanceGroupName)
+	log.Debugf(ctx, "Creating quarksJobs and quarksStatefulSets for instance group '%s'", instanceGroupName)
 
 	for _, eJob := range resources.Errands {
 		if eJob.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
@@ -283,12 +284,12 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 		}
 
 		if err := r.setReference(instance, &eSts, r.scheme); err != nil {
-			return log.WithEvent(instance, "ExtendedStatefulSetForDeploymentError").Errorf(ctx, "Failed to set reference for ExtendedStatefulSet instance group '%s' : %v", instanceGroupName, err)
+			return log.WithEvent(instance, "ExtendedStatefulSetForDeploymentError").Errorf(ctx, "Failed to set reference for QuarksStatefulSet instance group '%s' : %v", instanceGroupName, err)
 		}
 
 		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &eSts, mutate.EStsMutateFn(&eSts))
 		if err != nil {
-			return log.WithEvent(instance, "ApplyExtendedStatefulSetError").Errorf(ctx, "Failed to apply ExtendedStatefulSet for instance group '%s' : %v", instanceGroupName, err)
+			return log.WithEvent(instance, "ApplyExtendedStatefulSetError").Errorf(ctx, "Failed to apply QuarksStatefulSet for instance group '%s' : %v", instanceGroupName, err)
 		}
 
 		log.Debugf(ctx, "ExtendStatefulSet '%s' has been %s", eSts.Name, op)

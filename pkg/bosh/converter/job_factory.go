@@ -55,7 +55,7 @@ func NewJobFactory(namespace string) *JobFactory {
 	}
 }
 
-// VariableInterpolationJob returns an extended job to interpolate variables
+// VariableInterpolationJob returns an quarks job to interpolate variables
 func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error) {
 	args := []string{"util", "variable-interpolation"}
 
@@ -170,7 +170,7 @@ func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest) (*ejv1.Exte
 	return f.gatheringJob(eJobName, manifest, desiredManifestName, names.DeploymentSecretTypeInstanceGroupResolvedProperties, containers)
 }
 
-// BPMConfigsJob returns an extended job to calculate BPM information
+// BPMConfigsJob returns an quarks job to calculate BPM information
 func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error) {
 	containers := []corev1.Container{}
 	desiredManifestName := names.DesiredManifestName(manifest.Name, "1")

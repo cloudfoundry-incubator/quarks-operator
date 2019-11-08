@@ -5,20 +5,20 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 )
 
 // GetConfigMapsReferencedBy returns a list of all names for ConfigMaps referenced by the object
-// The object can be an ExtendedStatefulSet, an ExtendedeJob or a BOSHDeployment
+// The object can be an QuarksStatefulSet, an ExtendedeJob or a BOSHDeployment
 func GetConfigMapsReferencedBy(object interface{}) (map[string]bool, error) {
 	// Figure out the type of object
 	switch object := object.(type) {
 	case bdv1.BOSHDeployment:
 		return getConfMapRefFromBdpl(object), nil
-	case estsv1.ExtendedStatefulSet:
+	case qstsv1a1.QuarksStatefulSet:
 		return getConfMapRefFromESts(object), nil
 	default:
-		return nil, errors.New("can't get config map references for unkown type; supported types are BOSHDeployment, ExtendedJob and ExtendedStatefulSet")
+		return nil, errors.New("can't get config map references for unkown type; supported types are BOSHDeployment and QuarksStatefulSet")
 	}
 }
 
@@ -38,7 +38,7 @@ func getConfMapRefFromBdpl(object bdv1.BOSHDeployment) map[string]bool {
 	return result
 }
 
-func getConfMapRefFromESts(object estsv1.ExtendedStatefulSet) map[string]bool {
+func getConfMapRefFromESts(object qstsv1a1.QuarksStatefulSet) map[string]bool {
 	return getConfMapRefFromPod(object.Spec.Template.Spec.Template.Spec)
 }
 

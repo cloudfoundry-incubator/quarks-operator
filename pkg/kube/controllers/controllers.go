@@ -17,11 +17,11 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
-	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedsecret"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarkssecret"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarksstatefulset"
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -44,18 +44,18 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 	boshdeployment.AddDeployment,
 	boshdeployment.AddGeneratedVariable,
 	boshdeployment.AddBPM,
-	extendedsecret.AddExtendedSecret,
-	extendedsecret.AddCertificateSigningRequest,
-	extendedstatefulset.AddExtendedStatefulSet,
-	extendedstatefulset.AddStatefulSetCleanup,
+	quarkssecret.AddQuarksSecret,
+	quarkssecret.AddCertificateSigningRequest,
+	quarksstatefulset.AddQuarksStatefulSet,
+	quarksstatefulset.AddStatefulSetCleanup,
 }
 
 var addToSchemes = runtime.SchemeBuilder{
 	extv1.AddToScheme,
 	bdv1.AddToScheme,
 	ejv1.AddToScheme,
-	esv1.AddToScheme,
-	essv1.AddToScheme,
+	qsv1a1.AddToScheme,
+	qstsv1a1.AddToScheme,
 }
 
 var validatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.OperatorWebhook{
@@ -63,7 +63,7 @@ var validatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.Operato
 }
 
 var mutatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.OperatorWebhook{
-	extendedstatefulset.NewExtendedStatefulsetPodMutator,
+	quarksstatefulset.NewQuarksStatefulSetPodMutator,
 }
 
 // AddToManager adds all Controllers to the Manager
