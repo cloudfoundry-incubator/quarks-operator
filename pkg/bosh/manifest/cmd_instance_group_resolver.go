@@ -80,7 +80,33 @@ func (dg *InstanceGroupResolver) Manifest() (Manifest, error) {
 		return Manifest{}, err
 	}
 
-	return dg.manifest, nil
+	// Filter igManifest to contain only relevant fields
+	igJobs := []Job{}
+	for _, job := range dg.instanceGroup.Jobs {
+
+		igQuarks := Quarks{}
+		igQuarks.Consumes = job.Properties.Quarks.Consumes
+		igQuarks.PreRenderScripts = job.Properties.Quarks.PreRenderScripts
+
+		igJobProperties := JobProperties{}
+		igJobProperties.Properties = job.Properties.Properties
+		igJobProperties.Quarks = igQuarks
+
+		igJob := Job{}
+		igJob.Name = job.Name
+		igJob.Release = job.Release
+		igJob.Properties = igJobProperties
+
+		igJobs = append(igJobs, igJob)
+	}
+
+	ig := &InstanceGroup{Name: dg.instanceGroup.Name, Jobs: igJobs}
+
+	igManifest := Manifest{}
+	igManifest.Name = dg.manifest.Name
+	igManifest.InstanceGroups = []*InstanceGroup{ig}
+
+	return igManifest, nil
 }
 
 // resolveManifest collects bpm and link information and enriches the manifest accordingly
