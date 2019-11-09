@@ -41,7 +41,7 @@ var _ = Describe("variable-interpolation", func() {
 			dataBytes, err := ioutil.ReadFile(filepath.Join(assetPath, "output.json"))
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(string(dataBytes)).To(Equal(`{"manifest.yaml":"director_uuid: \"\"\ninstance_groups:\n- azs: null\n  env:\n    bosh:\n      agent:\n        settings: {}\n      ipv6:\n        enable: false\n  instances: 0\n  jobs: null\n  name: |\n    baz\n  stemcell: \"\"\n  vm_resources: null\n- azs: null\n  env:\n    bosh:\n      agent:\n        settings: {}\n      ipv6:\n        enable: false\n  instances: 0\n  jobs: null\n  name: |\n    foo\n  stemcell: \"\"\n  vm_resources: null\n- azs: null\n  env:\n    bosh:\n      agent:\n        settings: {}\n      ipv6:\n        enable: false\n  instances: 0\n  jobs: null\n  name: |\n    bar\n  stemcell: \"\"\n  vm_resources: null\nname: |\n  fake-password\n"}`))
+			Expect(string(dataBytes)).To(Equal(`{"manifest.yaml":"director_uuid: \"\"\ninstance_groups:\n- azs: null\n  env:\n    bosh:\n      agent:\n        settings: {}\n      ipv6:\n        enable: false\n  instances: 0\n  jobs: null\n  name: |\n    baz\n  properties:\n    quarks: {}\n  stemcell: \"\"\n  vm_resources: null\n- azs: null\n  env:\n    bosh:\n      agent:\n        settings: {}\n      ipv6:\n        enable: false\n  instances: 0\n  jobs: null\n  name: |\n    foo\n  properties:\n    quarks: {}\n  stemcell: \"\"\n  vm_resources: null\n- azs: null\n  env:\n    bosh:\n      agent:\n        settings: {}\n      ipv6:\n        enable: false\n  instances: 0\n  jobs: null\n  name: |\n    bar\n  properties:\n    quarks: {}\n  stemcell: \"\"\n  vm_resources: null\nname: |\n  fake-password\n"}`))
 		})
 	})
 })

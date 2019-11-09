@@ -192,6 +192,38 @@ func (m *Manifest) loadDNS() error {
 	return nil
 }
 
+// CalculateRequiredServices calculates the required services using the update.serial property
+func (m *Manifest) CalculateRequiredServices() {
+	var requiredService *string
+	var requiredSerialService *string
+
+	for _, ig := range m.InstanceGroups {
+		serial := true
+		if m.Update != nil && m.Update.Serial != nil {
+			serial = *m.Update.Serial
+		}
+		if ig.Update != nil && ig.Update.Serial != nil {
+			serial = *ig.Update.Serial
+		}
+
+		if serial {
+			ig.Properties.Quarks.RequiredService = requiredService
+		} else {
+			ig.Properties.Quarks.RequiredService = requiredSerialService
+		}
+
+		ports := ig.ServicePorts()
+		if len(ports) > 0 {
+			serviceName := m.DNS.HeadlessServiceName(ig.Name)
+			requiredService = &serviceName
+		}
+
+		if serial {
+			requiredSerialService = requiredService
+		}
+	}
+}
+
 // Marshal serializes a BOSH manifest into yaml
 func (m *Manifest) Marshal() ([]byte, error) {
 

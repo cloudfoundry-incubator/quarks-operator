@@ -14,10 +14,8 @@ import (
 )
 
 var _ = Describe("DeployWithStorage", func() {
-
 	Context("when using multiple processes in BPM", func() {
 		It("should add multiple containers to a pod", func() {
-
 			By("Creating a secret for implicit variable")
 			storageClass, ok := os.LookupEnv("OPERATOR_TEST_STORAGE_CLASS")
 			Expect(ok).To(Equal(true))

@@ -122,12 +122,12 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test-bdpl", "diego-manifest"))
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("diego", "diego-manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, "test-bdpl", "file_server", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, "diego", "file_server", "1", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for containers")
@@ -186,12 +186,12 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
-			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test-bdpl", "router-manifest"))
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("routing", "router-manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, "test-bdpl", "route_registrar", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, "routing", "route_registrar", "1", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for containers")
@@ -375,20 +375,21 @@ var _ = Describe("Deploy", func() {
 
 	Context("when updating a deployemnt with multiple instance groups", func() {
 		It("it should only update correctly and have correct secret versions in volume mounts", func() {
+			manifestName := "bosh-manifest-two-instance-groups"
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMapWithTwoInstanceGroups("fooconfigmap"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test", "fooconfigmap"))
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment(manifestName, "fooconfigmap"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("checking for nats instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, manifestName, "nats", "1", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for route_registrar instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, "test", "route_registrar", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, manifestName, "route_registrar", "1", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("Updating the deployment")
@@ -399,24 +400,24 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("checking for updated nats instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "2", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, manifestName, "nats", "2", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for updated route_registrar instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, "test", "route_registrar", "2", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, manifestName, "route_registrar", "2", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("Checking volume mounts with secret versions")
-			pod, err := env.GetPod(env.Namespace, "test-nats-v2-1")
+			pod, err := env.GetPod(env.Namespace, manifestName+"-nats-v2-1")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal("test.desired-manifest-v2"))
-			Expect(pod.Spec.Volumes[5].Secret.SecretName).To(Equal("test.ig-resolved.nats-v2"))
+			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal(manifestName + ".desired-manifest-v2"))
+			Expect(pod.Spec.Volumes[5].Secret.SecretName).To(Equal(manifestName + ".ig-resolved.nats-v2"))
 			Expect(pod.Spec.InitContainers[2].VolumeMounts[2].Name).To(Equal("ig-resolved"))
 
-			pod, err = env.GetPod(env.Namespace, "test-route-registrar-v2-0")
+			pod, err = env.GetPod(env.Namespace, manifestName+"-route-registrar-v2-0")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal("test.desired-manifest-v2"))
-			Expect(pod.Spec.Volumes[5].Secret.SecretName).To(Equal("test.ig-resolved.route-registrar-v2"))
+			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal(manifestName + ".desired-manifest-v2"))
+			Expect(pod.Spec.Volumes[5].Secret.SecretName).To(Equal(manifestName + ".ig-resolved.route-registrar-v2"))
 			Expect(pod.Spec.InitContainers[2].VolumeMounts[2].Name).To(Equal("ig-resolved"))
 		})
 	})
