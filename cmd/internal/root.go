@@ -85,9 +85,9 @@ var rootCmd = &cobra.Command{
 		cfg.WebhookServerPort = servicePort
 		cfg.WebhookUseServiceRef = useServiceRef
 		cfg.MaxBoshDeploymentWorkers = viper.GetInt("max-boshdeployment-workers")
-		cfg.MaxExtendedJobWorkers = viper.GetInt("max-extendedjob-workers")
-		cfg.MaxExtendedSecretWorkers = viper.GetInt("max-extendedsecret-workers")
-		cfg.MaxExtendedStatefulSetWorkers = viper.GetInt("max-extendedstatefulset-workers")
+		cfg.MaxQuarksJobWorkers = viper.GetInt("max-extendedjob-workers")
+		cfg.MaxQuarksSecretWorkers = viper.GetInt("max-extendedsecret-workers")
+		cfg.MaxQuarksStatefulSetWorkers = viper.GetInt("max-extendedstatefulset-workers")
 
 		cmd.CtxTimeOut(cfg)
 
