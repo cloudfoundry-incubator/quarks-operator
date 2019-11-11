@@ -28,6 +28,13 @@ var instanceGroupCmd = &cobra.Command{
 This will resolve the properties of an instance group and return a manifest for that instance group.
 
 `,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		boshManifestFlagViperBind(cmd.Flags())
+		baseDirFlagViperBind(cmd.Flags())
+		instanceGroupFlagViperBind(cmd.Flags())
+		outputFilePathFlagViperBind(cmd.Flags())
+	},
+
 	RunE: func(_ *cobra.Command, args []string) (err error) {
 		defer func() {
 			if err != nil {
@@ -46,14 +53,15 @@ This will resolve the properties of an instance group and return a manifest for 
 
 		log = cmd.Logger()
 		defer log.Sync()
-		boshManifestPath := viper.GetString("bosh-manifest-path")
-		if len(boshManifestPath) == 0 {
-			return errors.Errorf("%s bosh-manifest-path flag is empty.", dGatherFailedMessage)
+
+		boshManifestPath, err := boshManifestFlagValidation(dGatherFailedMessage)
+		if err != nil {
+			return err
 		}
 
-		baseDir := viper.GetString("base-dir")
-		if len(baseDir) == 0 {
-			return errors.Errorf("%s base-dir flag is empty.", dGatherFailedMessage)
+		baseDir, err := baseDirFlagValidation(dGatherFailedMessage)
+		if err != nil {
+			return err
 		}
 
 		namespace := viper.GetString("cf-operator-namespace")
@@ -61,14 +69,14 @@ This will resolve the properties of an instance group and return a manifest for 
 			return errors.Errorf("%s cf-operator-namespace flag is empty.", dGatherFailedMessage)
 		}
 
-		outputFilePath := viper.GetString("output-file-path")
-		if len(outputFilePath) == 0 {
-			return errors.Errorf("%s output-file-path flag is empty.", dGatherFailedMessage)
+		outputFilePath, err := outputFilePathFlagValidation(dGatherFailedMessage)
+		if err != nil {
+			return err
 		}
 
-		instanceGroupName := viper.GetString("instance-group-name")
-		if len(instanceGroupName) == 0 {
-			return errors.Errorf("%s instance-group-name flag is empty.", dGatherFailedMessage)
+		instanceGroupName, err := instanceGroupFlagValidation(dGatherFailedMessage)
+		if err != nil {
+			return err
 		}
 
 		boshManifestBytes, err := ioutil.ReadFile(boshManifestPath)
@@ -124,4 +132,13 @@ This will resolve the properties of an instance group and return a manifest for 
 
 func init() {
 	utilCmd.AddCommand(instanceGroupCmd)
+
+	pf := instanceGroupCmd.PersistentFlags()
+	argToEnv := map[string]string{}
+
+	boshManifestFlagCobraSet(pf, argToEnv)
+	baseDirFlagCobraSet(pf, argToEnv)
+	instanceGroupFlagCobraSet(pf, argToEnv)
+	outputFilePathFlagCobraSet(pf, argToEnv)
+	cmd.AddEnvToUsage(instanceGroupCmd, argToEnv)
 }

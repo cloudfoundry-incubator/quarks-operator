@@ -18,7 +18,7 @@ var _ = Describe("variable-interpolation", func() {
 	)
 
 	act := func(manifestPath, varsDir string) (session *gexec.Session, err error) {
-		args := []string{"util", "-m", manifestPath, "variable-interpolation", "-v", varsDir, "--output-file-path", filepath.Join(assetPath, "output.json")}
+		args := []string{"util", "variable-interpolation", "-m", manifestPath, "-v", varsDir, "--output-file-path", filepath.Join(assetPath, "output.json")}
 		cmd := exec.Command(cliPath, args...)
 		session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 		return

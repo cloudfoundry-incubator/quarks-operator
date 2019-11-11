@@ -30,6 +30,11 @@ var templateRenderCmd = &cobra.Command{
 
 This will render a provided manifest instance-group
 `,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		boshManifestFlagViperBind(cmd.Flags())
+		instanceGroupFlagViperBind(cmd.Flags())
+	},
+
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		defer func() {
 			if err != nil {
@@ -37,13 +42,17 @@ This will render a provided manifest instance-group
 			}
 		}()
 
-		boshManifestPath := viper.GetString("bosh-manifest-path")
+		boshManifestPath, err := boshManifestFlagValidation(tRenderFailedMessage)
+		if err != nil {
+			return err
+		}
+
 		jobsDir := viper.GetString("jobs-dir")
 		outputDir := viper.GetString("output-dir")
 
-		instanceGroupName := viper.GetString("instance-group-name")
-		if len(instanceGroupName) == 0 {
-			return errors.Errorf("%s instance-group-name flag is empty.", tRenderFailedMessage)
+		instanceGroupName, err := instanceGroupFlagValidation(tRenderFailedMessage)
+		if err != nil {
+			return err
 		}
 
 		specIndex := viper.GetInt("spec-index")
@@ -84,23 +93,23 @@ This will render a provided manifest instance-group
 }
 
 func init() {
+	pf := templateRenderCmd.Flags()
 	utilCmd.AddCommand(templateRenderCmd)
+	pf.StringP("jobs-dir", "j", "", "path to the jobs dir.")
+	pf.StringP("output-dir", "d", converter.VolumeJobsDirMountPath, "path to output dir.")
+	pf.IntP("spec-index", "", -1, "index of the instance spec")
+	pf.IntP("az-index", "", -1, "az index")
+	pf.IntP("pod-ordinal", "", -1, "pod ordinal")
+	pf.IntP("replicas", "", -1, "number of replicas")
+	pf.StringP("pod-ip", "", "", "pod IP")
 
-	templateRenderCmd.Flags().StringP("jobs-dir", "j", "", "path to the jobs dir.")
-	templateRenderCmd.Flags().StringP("output-dir", "d", converter.VolumeJobsDirMountPath, "path to output dir.")
-	templateRenderCmd.Flags().IntP("spec-index", "", -1, "index of the instance spec")
-	templateRenderCmd.Flags().IntP("az-index", "", -1, "az index")
-	templateRenderCmd.Flags().IntP("pod-ordinal", "", -1, "pod ordinal")
-	templateRenderCmd.Flags().IntP("replicas", "", -1, "number of replicas")
-	templateRenderCmd.Flags().StringP("pod-ip", "", "", "pod IP")
-
-	viper.BindPFlag("jobs-dir", templateRenderCmd.Flags().Lookup("jobs-dir"))
-	viper.BindPFlag("output-dir", templateRenderCmd.Flags().Lookup("output-dir"))
-	viper.BindPFlag("az-index", templateRenderCmd.Flags().Lookup("az-index"))
-	viper.BindPFlag("spec-index", templateRenderCmd.Flags().Lookup("spec-index"))
-	viper.BindPFlag("pod-ordinal", templateRenderCmd.Flags().Lookup("pod-ordinal"))
-	viper.BindPFlag("replicas", templateRenderCmd.Flags().Lookup("replicas"))
-	viper.BindPFlag("pod-ip", templateRenderCmd.Flags().Lookup("pod-ip"))
+	viper.BindPFlag("jobs-dir", pf.Lookup("jobs-dir"))
+	viper.BindPFlag("output-dir", pf.Lookup("output-dir"))
+	viper.BindPFlag("az-index", pf.Lookup("az-index"))
+	viper.BindPFlag("spec-index", pf.Lookup("spec-index"))
+	viper.BindPFlag("pod-ordinal", pf.Lookup("pod-ordinal"))
+	viper.BindPFlag("replicas", pf.Lookup("replicas"))
+	viper.BindPFlag("pod-ip", pf.Lookup("pod-ip"))
 
 	argToEnv := map[string]string{
 		"jobs-dir":                "JOBS_DIR",
@@ -112,5 +121,8 @@ func init() {
 		"replicas":                "REPLICAS",
 		"pod-ip":                  converter.PodIPEnvVar,
 	}
+
+	boshManifestFlagCobraSet(pf, argToEnv)
+	instanceGroupFlagCobraSet(pf, argToEnv)
 	cmd.AddEnvToUsage(templateRenderCmd, argToEnv)
 }
