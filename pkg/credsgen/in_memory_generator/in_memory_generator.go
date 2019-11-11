@@ -16,5 +16,5 @@ type InMemoryGenerator struct {
 
 // NewInMemoryGenerator creates a default InMemoryGenerator
 func NewInMemoryGenerator(log *zap.SugaredLogger) *InMemoryGenerator {
-	return &InMemoryGenerator{Bits: 4096, Expiry: 365, Algorithm: "rsa", log: log}
+	return &InMemoryGenerator{Bits: 2048, Expiry: 365, Algorithm: "rsa", log: log}
 }
