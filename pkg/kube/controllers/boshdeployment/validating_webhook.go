@@ -20,6 +20,7 @@ import (
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 // NewBOSHDeploymentValidator creates a validating hook for BOSHDeployment and adds it to the Manager
@@ -34,7 +35,7 @@ func NewBOSHDeploymentValidator(log *zap.SugaredLogger, config *config.Config) *
 		Rules: []admissionregistrationv1beta1.RuleWithOperations{
 			{
 				Rule: admissionregistrationv1beta1.Rule{
-					APIGroups:   []string{"quarks.cloudfoundry.org"},
+					APIGroups:   []string{names.GroupName},
 					APIVersions: []string{"v1alpha1"},
 					Resources:   []string{"boshdeployments"},
 					Scope:       &globalScopeType,
@@ -46,7 +47,7 @@ func NewBOSHDeploymentValidator(log *zap.SugaredLogger, config *config.Config) *
 			},
 		},
 		Path: "/validate-boshdeployment",
-		Name: "validate-boshdeployment.quarks.cloudfoundry.org",
+		Name: "validate-boshdeployment." + names.GroupName,
 		NamespaceSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"cf-operator-ns": config.Namespace,
