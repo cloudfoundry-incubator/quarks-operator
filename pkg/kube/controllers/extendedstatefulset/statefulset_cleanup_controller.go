@@ -26,7 +26,7 @@ func AddStatefulSetCleanup(ctx context.Context, config *config.Config, mgr manag
 	// Create a new controller
 	c, err := controller.New("statefulset-cleanup-controller", mgr, controller.Options{
 		Reconciler:              r,
-		MaxConcurrentReconciles: config.MaxExtendedStatefulSetWorkers,
+		MaxConcurrentReconciles: config.MaxQuarksStatefulSetWorkers,
 	})
 	if err != nil {
 		return errors.Wrap(err, "Adding StatefulSet cleanup controller to manager failed.")

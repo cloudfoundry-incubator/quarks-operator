@@ -32,7 +32,7 @@ func AddCertificateSigningRequest(ctx context.Context, config *config.Config, mg
 	// Create a new controller
 	c, err := controller.New("certificatesigningrequest-controller", mgr, controller.Options{
 		Reconciler:              r,
-		MaxConcurrentReconciles: config.MaxExtendedSecretWorkers,
+		MaxConcurrentReconciles: config.MaxQuarksSecretWorkers,
 	})
 	if err != nil {
 		return errors.Wrap(err, "Adding certificate signing request controller to manager failed.")
