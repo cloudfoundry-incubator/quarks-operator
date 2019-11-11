@@ -46,7 +46,7 @@ data:
       path: /instance_groups/name=nats?/instances
       value: 2
 ---
-apiVersion: fissile.cloudfoundry.org/v1alpha1
+apiVersion: quarks.cloudfoundry.org/v1alpha1
 kind: BOSHDeployment
 metadata:
   name: nats-deployment

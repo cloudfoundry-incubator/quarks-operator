@@ -34,7 +34,7 @@ rules:
   - get
   - create
 - apiGroups:
-  - fissile.cloudfoundry.org
+  - quarks.cloudfoundry.org
   resources:
   - '*'
   - boshdeployments

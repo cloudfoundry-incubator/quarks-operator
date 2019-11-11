@@ -90,10 +90,10 @@ function monitor_ns_resources(){
   deployments apps
   statefulsets apps
   jobs batch
-  boshdeployments fissile.cloudfoundry.org
-  extendedjobs fissile.cloudfoundry.org
-  extendedsecrets fissile.cloudfoundry.org
-  extendedstatefulsets fissile.cloudfoundry.org
+  boshdeployments quarks.cloudfoundry.org
+  extendedjobs quarks.cloudfoundry.org
+  extendedsecrets quarks.cloudfoundry.org
+  extendedstatefulsets quarks.cloudfoundry.org
 EOL
 execute_kube_cmd
 wait

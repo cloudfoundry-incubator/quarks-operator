@@ -14,10 +14,8 @@ import (
 )
 
 var _ = Describe("DeployWithStorage", func() {
-
 	Context("when using multiple processes in BPM", func() {
 		It("should add multiple containers to a pod", func() {
-
 			By("Creating a secret for implicit variable")
 			storageClass, ok := os.LookupEnv("OPERATOR_TEST_STORAGE_CLASS")
 			Expect(ok).To(Equal(true))
@@ -50,7 +48,7 @@ var _ = Describe("DeployWithStorage", func() {
 			Expect(svc.Spec.Ports[1].Port).To(Equal(int32(1338)))
 
 			By("checking for containers")
-			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=bpm")
+			pods, _ := env.GetPods(env.Namespace, "quarks.cloudfoundry.org/instance-group-name=bpm")
 			Expect(len(pods.Items)).To(Equal(1))
 			pod := pods.Items[0]
 			Expect(pod.Spec.Containers).To(HaveLen(3))

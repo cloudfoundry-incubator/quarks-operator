@@ -26,12 +26,13 @@ type FakeContainerFactory struct {
 		result1 []v1.Container
 		result2 error
 	}
-	JobsToInitContainersStub        func([]manifest.Job, []v1.VolumeMount, disk.BPMResourceDisks) ([]v1.Container, error)
+	JobsToInitContainersStub        func([]manifest.Job, []v1.VolumeMount, disk.BPMResourceDisks, *string) ([]v1.Container, error)
 	jobsToInitContainersMutex       sync.RWMutex
 	jobsToInitContainersArgsForCall []struct {
 		arg1 []manifest.Job
 		arg2 []v1.VolumeMount
 		arg3 disk.BPMResourceDisks
+		arg4 *string
 	}
 	jobsToInitContainersReturns struct {
 		result1 []v1.Container
@@ -120,7 +121,7 @@ func (fake *FakeContainerFactory) JobsToContainersReturnsOnCall(i int, result1 [
 	}{result1, result2}
 }
 
-func (fake *FakeContainerFactory) JobsToInitContainers(arg1 []manifest.Job, arg2 []v1.VolumeMount, arg3 disk.BPMResourceDisks) ([]v1.Container, error) {
+func (fake *FakeContainerFactory) JobsToInitContainers(arg1 []manifest.Job, arg2 []v1.VolumeMount, arg3 disk.BPMResourceDisks, arg4 *string) ([]v1.Container, error) {
 	var arg1Copy []manifest.Job
 	if arg1 != nil {
 		arg1Copy = make([]manifest.Job, len(arg1))
@@ -137,11 +138,12 @@ func (fake *FakeContainerFactory) JobsToInitContainers(arg1 []manifest.Job, arg2
 		arg1 []manifest.Job
 		arg2 []v1.VolumeMount
 		arg3 disk.BPMResourceDisks
-	}{arg1Copy, arg2Copy, arg3})
-	fake.recordInvocation("JobsToInitContainers", []interface{}{arg1Copy, arg2Copy, arg3})
+		arg4 *string
+	}{arg1Copy, arg2Copy, arg3, arg4})
+	fake.recordInvocation("JobsToInitContainers", []interface{}{arg1Copy, arg2Copy, arg3, arg4})
 	fake.jobsToInitContainersMutex.Unlock()
 	if fake.JobsToInitContainersStub != nil {
-		return fake.JobsToInitContainersStub(arg1, arg2, arg3)
+		return fake.JobsToInitContainersStub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -156,17 +158,17 @@ func (fake *FakeContainerFactory) JobsToInitContainersCallCount() int {
 	return len(fake.jobsToInitContainersArgsForCall)
 }
 
-func (fake *FakeContainerFactory) JobsToInitContainersCalls(stub func([]manifest.Job, []v1.VolumeMount, disk.BPMResourceDisks) ([]v1.Container, error)) {
+func (fake *FakeContainerFactory) JobsToInitContainersCalls(stub func([]manifest.Job, []v1.VolumeMount, disk.BPMResourceDisks, *string) ([]v1.Container, error)) {
 	fake.jobsToInitContainersMutex.Lock()
 	defer fake.jobsToInitContainersMutex.Unlock()
 	fake.JobsToInitContainersStub = stub
 }
 
-func (fake *FakeContainerFactory) JobsToInitContainersArgsForCall(i int) ([]manifest.Job, []v1.VolumeMount, disk.BPMResourceDisks) {
+func (fake *FakeContainerFactory) JobsToInitContainersArgsForCall(i int) ([]manifest.Job, []v1.VolumeMount, disk.BPMResourceDisks, *string) {
 	fake.jobsToInitContainersMutex.RLock()
 	defer fake.jobsToInitContainersMutex.RUnlock()
 	argsForCall := fake.jobsToInitContainersArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *FakeContainerFactory) JobsToInitContainersReturns(result1 []v1.Container, result2 error) {

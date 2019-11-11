@@ -48,7 +48,7 @@ From **Kubernetes 1.15** onwards, it is possible to instead patch the webhook co
 CF_OPERATOR_NAMESPACE=cf-operator
 kubectl patch mutatingwebhookconfigurations "cf-operator-hook-$CF_OPERATOR_NAMESPACE" -p '
 webhooks:
-- name: mutate-pods.fissile.cloudfoundry.org
+- name: mutate-pods.quarks.cloudfoundry.org
   objectSelector:
     matchExpressions:
     - key: name
@@ -62,10 +62,10 @@ webhooks:
 
 The `cf-operator` watches four different types of custom resources:
 
-- BoshDeployment
-- ExtendedJob
-- ExtendedSecret
-- ExtendedStatefulset
+- [BoshDeployment](docs/controllers/boshdeployment.md)
+- [ExtendedJob](https://github.com/cloudfoundry-incubator/quarks-job/blob/master/docs/extendedjob.md)
+- [ExtendedSecret](docs/controllers/extendedsecret.md)
+- [ExtendedStatefulset](docs/controllers/extendedstatefulset.md)
 
 The `cf-operator` requires the according CRDs to be installed in the cluster in order to work as expected. By default, the `cf-operator` applies CRDs in your cluster automatically.
 
@@ -74,10 +74,10 @@ To verify that the CRD´s are installed:
 ```bash
 $ kubectl get crds
 NAME                                            CREATED AT
-boshdeployments.fissile.cloudfoundry.org        2019-06-25T07:08:37Z
-extendedjobs.fissile.cloudfoundry.org           2019-06-25T07:08:37Z
-extendedsecrets.fissile.cloudfoundry.org        2019-06-25T07:08:37Z
-extendedstatefulsets.fissile.cloudfoundry.org   2019-06-25T07:08:37Z
+boshdeployments.quarks.cloudfoundry.org        2019-06-25T07:08:37Z
+extendedjobs.quarks.cloudfoundry.org           2019-06-25T07:08:37Z
+extendedsecrets.quarks.cloudfoundry.org        2019-06-25T07:08:37Z
+extendedstatefulsets.quarks.cloudfoundry.org   2019-06-25T07:08:37Z
 ```
 
 ## Variables
