@@ -34,7 +34,7 @@ func NewExtendedStatefulsetPodMutator(log *zap.SugaredLogger, config *config.Con
 			},
 		},
 		Path: "/mutate-pods",
-		Name: "mutate-pods.fissile.cloudfoundry.org",
+		Name: "mutate-pods.quarks.cloudfoundry.org",
 		NamespaceSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"cf-operator-ns": config.Namespace,

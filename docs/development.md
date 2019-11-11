@@ -269,15 +269,32 @@ go get -t -u code.cloudfoundry.org/quarks-job@aad515c
 
 Using the git commit sha prevents caching problems, which might occur with branch names.
 
-### Local development and 'replace'
+### Local Development And go mod 'replace'
 
 When working locally with multiple repositories it's helpful to replace github dependencies with local directories. The `go mod edit -replace` will modify the `go.mod` file to point to a local dir, e.g. '../quarks-job' instead:
 
 ```
-case "`basename $PWD`" in
-    go mod edit -replace code.cloudfoundry.org/quarks-utils=../quarks-utils
-    go mod edit -replace code.cloudfoundry.org/quarks-job=../quarks-job
-esac
+go mod edit -replace code.cloudfoundry.org/quarks-utils=../quarks-utils
+go mod edit -replace code.cloudfoundry.org/quarks-job=../quarks-job
+```
+
+### Building Docker Image When Using go mod 'replace'
+
+The modified libraries are not visible to the container. As a workaround a vendor folder can be used, which is also faster:
+
+```
+GO111MODULE=on go mod vendor
+GO111MODULE=off make build-image
+rm -fr vendor
+```
+
+### Use a Local QuarksJob Image in Integration Tests
+
+To use a local docker image export `QUARKS_JOB_IMAGE_TAG` and make sure the image is available to the cluster, e.g. for kind:
+
+```
+kind load docker-image cfcontainerization/cf-operator:$DOCKER_IMAGE_TAG
+kind load docker-image cfcontainerization/quarks-job:$QUARKS_JOB_IMAGE_TAG
 ```
 
 ### Merging PRs

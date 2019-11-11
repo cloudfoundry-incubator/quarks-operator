@@ -13,9 +13,8 @@ GIT_BRANCH=${GIT_BRANCH:-$(git name-rev --name-only HEAD)}
 GIT_COMMITS=$(echo "${GIT_DESCRIBE}" | awk -F - '{ print $2 }')
 GIT_SHA=$(echo "${GIT_DESCRIBE}" | awk -F - '{ print $3 }' )
 GIT_TAG=$(echo "${GIT_DESCRIBE}" | awk -F - '{ print $1 }')
-[ -z "$(git status --porcelain)" ] || GIT_TAG=${GIT_TAG}-dirty
+[ -z "$(git status --porcelain)" ] || GIT_TAG="${GIT_TAG}-dirty"
 
-ARTIFACT_VERSION=${GIT_TAG}+${GIT_COMMITS}.${GIT_SHA}
+ARTIFACT_VERSION="${GIT_TAG}-${GIT_COMMITS}.${GIT_SHA}"
 
-VERSION_TAG=${ARTIFACT_VERSION//+/-}
 set +o errexit +o nounset +o xtrace

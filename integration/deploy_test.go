@@ -131,7 +131,7 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for containers")
-			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=file_server")
+			pods, _ := env.GetPods(env.Namespace, "quarks.cloudfoundry.org/instance-group-name=file_server")
 			Expect(len(pods.Items)).To(Equal(2))
 			pod := pods.Items[1]
 			Expect(pod.Spec.InitContainers).To(HaveLen(6))
@@ -162,7 +162,7 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for containers")
-			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=route_registrar")
+			pods, _ := env.GetPods(env.Namespace, "quarks.cloudfoundry.org/instance-group-name=route_registrar")
 			Expect(len(pods.Items)).To(Equal(2))
 
 			pod := pods.Items[1]
@@ -195,7 +195,7 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for containers")
-			pods, _ := env.GetPods(env.Namespace, "fissile.cloudfoundry.org/instance-group-name=route_registrar")
+			pods, _ := env.GetPods(env.Namespace, "quarks.cloudfoundry.org/instance-group-name=route_registrar")
 			Expect(len(pods.Items)).To(Equal(2))
 			Expect(pods.Items[0].Spec.Containers).To(HaveLen(2))
 			Expect(pods.Items[0].Spec.Containers[0].Name).To(Equal("route-registrar-route-registrar"))
@@ -458,7 +458,7 @@ var _ = Describe("Deploy", func() {
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment("test", "manifest", "bosh-ops", "bosh-ops-secret"))
 			Expect(err).To(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
-			Expect(err.Error()).To(ContainSubstring(`admission webhook "validate-boshdeployment.fissile.cloudfoundry.org" denied the request:`))
+			Expect(err.Error()).To(ContainSubstring(`admission webhook "validate-boshdeployment.quarks.cloudfoundry.org" denied the request:`))
 		})
 
 		It("failed to deploy an empty manifest", func() {
@@ -573,7 +573,7 @@ var _ = Describe("Deploy", func() {
 		It("should not create the resource and the validation hook should return an error message", func() {
 			_, _, err := env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test", "foo-baz"))
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(`admission webhook "validate-boshdeployment.fissile.cloudfoundry.org" denied the request:`))
+			Expect(err.Error()).To(ContainSubstring(`admission webhook "validate-boshdeployment.quarks.cloudfoundry.org" denied the request:`))
 			Expect(err.Error()).To(ContainSubstring(`ConfigMap "foo-baz" not found`))
 		})
 	})

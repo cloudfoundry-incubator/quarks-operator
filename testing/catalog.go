@@ -637,7 +637,7 @@ func (c *Catalog) NodePortService(name, ig string, targetPort int32) corev1.Serv
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceTypeNodePort,
 			Selector: map[string]string{
-				"fissile.cloudfoundry.org/instance-group-name": ig,
+				"quarks.cloudfoundry.org/instance-group-name": ig,
 			},
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
