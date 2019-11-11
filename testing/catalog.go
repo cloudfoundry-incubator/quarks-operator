@@ -19,6 +19,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
@@ -637,7 +638,7 @@ func (c *Catalog) NodePortService(name, ig string, targetPort int32) corev1.Serv
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceTypeNodePort,
 			Selector: map[string]string{
-				"quarks.cloudfoundry.org/instance-group-name": ig,
+				names.GroupName + "/instance-group-name": ig,
 			},
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
