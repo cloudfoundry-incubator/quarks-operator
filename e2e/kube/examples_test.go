@@ -148,6 +148,9 @@ var _ = Describe("Examples Directory", func() {
 		})
 
 		It("updates deployment when implicit variable changes", func() {
+
+			Skip("Skipping this test as this is related to secret rotation and secret rotation is not yet supported in `cf-operator`.")
+
 			By("Checking for pods")
 			podWait("pod/nats-deployment-nats-v1-0")
 
