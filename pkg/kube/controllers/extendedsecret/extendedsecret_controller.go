@@ -33,7 +33,7 @@ func AddExtendedSecret(ctx context.Context, config *config.Config, mgr manager.M
 	// Create a new controller
 	c, err := controller.New("extendedsecret-controller", mgr, controller.Options{
 		Reconciler:              r,
-		MaxConcurrentReconciles: config.MaxExtendedSecretWorkers,
+		MaxConcurrentReconciles: config.MaxQuarksSecretWorkers,
 	})
 	if err != nil {
 		return errors.Wrap(err, "Adding extended secret controller to manager failed.")

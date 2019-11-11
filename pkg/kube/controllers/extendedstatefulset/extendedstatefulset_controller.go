@@ -35,7 +35,7 @@ func AddExtendedStatefulSet(ctx context.Context, config *config.Config, mgr mana
 	// Create a new controller
 	c, err := controller.New("ext-statefulset-controller", mgr, controller.Options{
 		Reconciler:              r,
-		MaxConcurrentReconciles: config.MaxExtendedStatefulSetWorkers,
+		MaxConcurrentReconciles: config.MaxQuarksStatefulSetWorkers,
 	})
 	if err != nil {
 		return errors.Wrap(err, "Adding Extendedstatefulset controller to manager failed.")
