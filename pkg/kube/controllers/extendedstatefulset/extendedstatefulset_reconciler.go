@@ -19,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -107,7 +108,7 @@ func (r *ReconcileExtendedStatefulSet) Reconcile(request reconcile.Request) (rec
 	}
 
 	// Get the current StatefulSet.
-	currentStatefulSet, currentVersion, err := r.getCurrentStatefulSet(ctx, exStatefulSet)
+	currentStatefulSet, currentVersion, err := GetMaxStatefulSetVersion(ctx, r.client, exStatefulSet)
 	if err != nil {
 		return reconcile.Result{}, ctxlog.WithEvent(exStatefulSet, "StatefulSetNotFound").Error(ctx, "Could not retrieve latest StatefulSet owned by ExtendedStatefulSet '", request.NamespacedName, "': ", err)
 	}
@@ -237,46 +238,6 @@ func (r *ReconcileExtendedStatefulSet) createStatefulSet(ctx context.Context, ex
 	return nil
 }
 
-// getCurrentStatefulSet gets the latest (by version) StatefulSet owned by the ExtendedStatefulSet
-func (r *ReconcileExtendedStatefulSet) getCurrentStatefulSet(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet) (*v1beta2.StatefulSet, int, error) {
-	// Default response is an empty StatefulSet with version '0' and an empty signature
-	result := &v1beta2.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{
-				estsv1.AnnotationVersion: "0",
-			},
-		},
-	}
-	maxVersion := 0
-
-	// Get all owned StatefulSets
-	statefulSets, err := listStatefulSetsFromInformer(ctx, r.client, exStatefulSet)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	ctxlog.Debug(ctx, "Getting the latest StatefulSet owned by ExtendedStatefulSet '", exStatefulSet.Name, "'.")
-
-	for _, ss := range statefulSets {
-		strVersion := ss.Annotations[estsv1.AnnotationVersion]
-		if strVersion == "" {
-			return nil, 0, errors.Errorf("The statefulset %s does not have the annotation(%s), a version could not be retrieved.", ss.Name, estsv1.AnnotationVersion)
-		}
-
-		version, err := strconv.Atoi(strVersion)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		if ss.Annotations != nil && version > maxVersion {
-			result = &ss
-			maxVersion = version
-		}
-	}
-
-	return result, maxVersion, nil
-}
-
 // generateSingleStatefulSet creates a StatefulSet from one zone
 func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(exStatefulSet *estsv1.ExtendedStatefulSet, template *v1beta2.StatefulSet, zoneIndex int, zoneName string, version int) (*v1beta2.StatefulSet, error) {
 	statefulSet := template.DeepCopy()
@@ -286,6 +247,8 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(exStatefulSet *
 	if labels == nil {
 		labels = make(map[string]string)
 	}
+	labels[manifest.LabelDeploymentVersion] = strconv.Itoa(version)
+	statefulSet.SetLabels(labels)
 
 	annotations := statefulSet.GetAnnotations()
 	if annotations == nil {
@@ -328,6 +291,7 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(exStatefulSet *
 
 	podLabels[estsv1.LabelAZIndex] = strconv.Itoa(zoneIndex)
 	podLabels[estsv1.LabelEStsName] = exStatefulSet.GetName()
+	podLabels[manifest.LabelDeploymentVersion] = fmt.Sprintf("%d", version)
 
 	statefulSet.Spec.Template.SetLabels(podLabels)
 	statefulSet.Spec.Template.SetAnnotations(podAnnotations)
@@ -339,6 +303,9 @@ func (r *ReconcileExtendedStatefulSet) generateSingleStatefulSet(exStatefulSet *
 	// Set updated properties
 	statefulSet.SetName(fmt.Sprintf("%s-v%d", statefulSetNamePrefix, version))
 	statefulSet.SetLabels(labels)
+	statefulSet.Spec.Selector = &metav1.LabelSelector{
+		MatchLabels: labels,
+	}
 	statefulSet.SetAnnotations(annotations)
 
 	return statefulSet, nil
