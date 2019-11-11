@@ -41,10 +41,11 @@ type BPMResources struct {
 
 // BPMResources uses BOSH Process Manager information to create k8s container specs from single BOSH instance group.
 // It returns extended stateful sets, services and extended jobs.
-func (kc *KubeConverter) BPMResources(manifestName string, dns manifest.DomainNameService, version string, instanceGroup *bdm.InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) (*BPMResources, error) {
-	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(manifestName, instanceGroup.Name, version)
+func (kc *KubeConverter) BPMResources(manifestName string, dns manifest.DomainNameService, exstsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*BPMResources, error) {
 
-	defaultDisks := kc.volumeFactory.GenerateDefaultDisks(manifestName, instanceGroup.Name, version, kc.namespace)
+	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(manifestName, instanceGroup.Name, exstsVersion)
+
+	defaultDisks := kc.volumeFactory.GenerateDefaultDisks(manifestName, instanceGroup.Name, igResolvedSecretVersion, kc.namespace)
 	bpmDisks, err := kc.volumeFactory.GenerateBPMDisks(manifestName, instanceGroup, bpmConfigs, kc.namespace)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Generate of BPM disks failed for manifest name %s, instance group %s.", manifestName, instanceGroup.Name)
@@ -59,7 +60,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, dns manifest.DomainNa
 	cfac := kc.newContainerFactoryFunc(
 		manifestName,
 		instanceGroup.Name,
-		version,
+		igResolvedSecretVersion,
 		instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.DisableLogSidecar,
 		releaseImageProvider,
 		bpmConfigs,

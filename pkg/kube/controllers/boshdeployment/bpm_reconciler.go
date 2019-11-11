@@ -2,6 +2,7 @@ package boshdeployment
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,12 +24,15 @@ import (
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	exsts "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
-	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
+	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
 // DesiredManifest unmarshals desired manifest from the manifest secret
@@ -38,7 +42,7 @@ type DesiredManifest interface {
 
 // KubeConverter converts k8s resources from single BOSH manifest
 type KubeConverter interface {
-	BPMResources(manifestName string, dns manifest.DomainNameService, version string, instanceGroup *bdm.InstanceGroup, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) (*converter.BPMResources, error)
+	BPMResources(manifestName string, dns manifest.DomainNameService, exstsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*converter.BPMResources, error)
 	Variables(manifestName string, variables []bdm.Variable) ([]esv1.ExtendedSecret, error)
 }
 
@@ -47,25 +51,27 @@ var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 // NewBPMReconciler returns a new reconcile.Reconciler
 func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver DesiredManifest, srf setReferenceFunc, kubeConverter KubeConverter) reconcile.Reconciler {
 	return &ReconcileBPM{
-		ctx:           ctx,
-		config:        config,
-		client:        mgr.GetClient(),
-		scheme:        mgr.GetScheme(),
-		resolver:      resolver,
-		setReference:  srf,
-		kubeConverter: kubeConverter,
+		ctx:                  ctx,
+		config:               config,
+		client:               mgr.GetClient(),
+		scheme:               mgr.GetScheme(),
+		resolver:             resolver,
+		setReference:         srf,
+		kubeConverter:        kubeConverter,
+		versionedSecretStore: versionedsecretstore.NewVersionedSecretStore(mgr.GetClient()),
 	}
 }
 
 // ReconcileBPM reconciles an Instance Group BPM versioned secret
 type ReconcileBPM struct {
-	ctx           context.Context
-	config        *config.Config
-	client        client.Client
-	scheme        *runtime.Scheme
-	resolver      DesiredManifest
-	setReference  setReferenceFunc
-	kubeConverter KubeConverter
+	ctx                  context.Context
+	config               *config.Config
+	client               client.Client
+	scheme               *runtime.Scheme
+	resolver             DesiredManifest
+	setReference         setReferenceFunc
+	kubeConverter        KubeConverter
+	versionedSecretStore versionedsecretstore.VersionedSecretStore
 }
 
 // Reconcile reconciles an Instance Group BPM versioned secret read the corresponding
@@ -175,11 +181,6 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 		return nil, errors.Errorf("Missing container label for bpm information secret '%s'", bpmSecret.Name)
 	}
 
-	version, ok := bpmSecret.Labels[vss.LabelVersion]
-	if !ok {
-		return nil, errors.Errorf("Missing version label for bpm information secret '%s'", bpmSecret.Name)
-	}
-
 	var bpmInfo bdm.BPMInfo
 	if val, ok := bpmSecret.Data["bpm.yaml"]; ok {
 		err := yaml.Unmarshal(val, &bpmInfo)
@@ -195,7 +196,39 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 		return nil, errors.Errorf("instance group '%s' not found", instanceGroupName)
 	}
 
-	resources, err := r.kubeConverter.BPMResources(manifest.Name, manifest.DNS, version, instanceGroup, manifest, bpmInfo.Configs)
+	// Fetch exsts version
+	exstendedStatefulSet := &essv1.ExtendedStatefulSet{}
+	exstendedStatefulSetName := instanceGroup.ExtendedStatefulsetName(manifest.Name)
+	err := r.client.Get(r.ctx, types.NamespacedName{Namespace: r.config.Namespace, Name: exstendedStatefulSetName}, exstendedStatefulSet)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, errors.Errorf("Failed to get ExtendedStatefulSet instance '%s': %v", exstendedStatefulSetName, err)
+		}
+	}
+	_, exstsVersion, err := exsts.GetMaxStatefulSetVersion(r.ctx, r.client, exstendedStatefulSet)
+	if err != nil {
+		return nil, err
+	}
+	exstsVersion = exstsVersion + 1
+	exstsVersionString := strconv.Itoa(exstsVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch ig resolved secret version
+	igResolvedSecretName := names.CalculateIGSecretName(
+		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+		manifest.Name,
+		instanceGroupName,
+		"",
+	)
+	igResolvedSecret, err := r.versionedSecretStore.Latest(r.ctx, r.config.Namespace, igResolvedSecretName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read latest versioned secret %s for bosh deployment %s", igResolvedSecretName, manifest.Name)
+	}
+	igResolvedSecretVersion := igResolvedSecret.GetLabels()[versionedsecretstore.LabelVersion]
+
+	resources, err := r.kubeConverter.BPMResources(manifest.Name, manifest.DNS, exstsVersionString, instanceGroup, manifest, bpmInfo.Configs, igResolvedSecretVersion)
 	if err != nil {
 		return resources, err
 	}
