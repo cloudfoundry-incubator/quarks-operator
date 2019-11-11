@@ -178,7 +178,7 @@ var _ = Describe("VolumeFactory", func() {
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
 				PersistentVolumeClaim: &persistentVolumeClaim,
 				Volume: &corev1.Volume{
-					Name: VolumeStoreDirName,
+					Name: "fake-manifest-name-fake-instance-group-name-pvc",
 					VolumeSource: corev1.VolumeSource{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 							ClaimName: persistentVolumeClaim.Name,
@@ -186,7 +186,7 @@ var _ = Describe("VolumeFactory", func() {
 					},
 				},
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeStoreDirName,
+					Name:      "fake-manifest-name-fake-instance-group-name-pvc",
 					MountPath: path.Join(VolumeStoreDirMountPath, "fake-job"),
 					SubPath:   "fake-job",
 				},
@@ -219,6 +219,7 @@ var _ = Describe("VolumeFactory", func() {
 				},
 			}
 
+			instanceGroup.PersistentDisk = pointers.Int(42)
 			disks, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -237,7 +238,7 @@ var _ = Describe("VolumeFactory", func() {
 			}))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeStoreDirName,
+					Name:      "fake-manifest-name-fake-instance-group-name-pvc",
 					ReadOnly:  true,
 					MountPath: "/var/vcap/store/add2",
 					SubPath:   "add2",
@@ -288,6 +289,8 @@ var _ = Describe("VolumeFactory", func() {
 				},
 			}
 
+			instanceGroup.PersistentDisk = pointers.Int(42)
+
 			disks, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -306,7 +309,7 @@ var _ = Describe("VolumeFactory", func() {
 			}))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeStoreDirName,
+					Name:      "fake-manifest-name-fake-instance-group-name-pvc",
 					ReadOnly:  true,
 					MountPath: "/var/vcap/store/add2",
 					SubPath:   "add2",

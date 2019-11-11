@@ -44,8 +44,6 @@ const (
 	// VolumeSysDirMountPath is the mount path for the sys directory.
 	VolumeSysDirMountPath = bdm.SysDir
 
-	// VolumeStoreDirName is the volume name for the store directory.
-	VolumeStoreDirName = "store-dir"
 	// VolumeStoreDirMountPath is the mount path for the store directory.
 	VolumeStoreDirMountPath = "/var/vcap/store"
 
@@ -188,7 +186,7 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 					subPath, err = filepath.Rel(VolumeDataDirMountPath, additionalVolume.Path)
 				}
 				if strings.HasPrefix(additionalVolume.Path, VolumeStoreDirMountPath) {
-					volumeName = VolumeStoreDirName
+					volumeName = generatePersistentVolumeClaimName(manifestName, instanceGroup.Name)
 					subPath, err = filepath.Rel(VolumeStoreDirMountPath, additionalVolume.Path)
 				}
 				if strings.HasPrefix(additionalVolume.Path, VolumeSysDirMountPath) {
@@ -263,7 +261,7 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 			bpmPersistentDisk := disk.BPMResourceDisk{
 				PersistentVolumeClaim: &persistentVolumeClaim,
 				Volume: &corev1.Volume{
-					Name: VolumeStoreDirName,
+					Name: persistentVolumeClaim.Name,
 					VolumeSource: corev1.VolumeSource{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 							ClaimName: persistentVolumeClaim.Name,
@@ -271,7 +269,7 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 					},
 				},
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeStoreDirName,
+					Name:      persistentVolumeClaim.Name,
 					MountPath: path.Join(VolumeStoreDirMountPath, job.Name),
 					SubPath:   job.Name,
 				},
@@ -291,7 +289,7 @@ func generatePersistentVolumeClaim(manifestName string, instanceGroup *bdm.Insta
 	// Spec of a persistentVolumeClaim
 	persistentVolumeClaim := corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      names.Sanitize(fmt.Sprintf("%s-%s-%s", manifestName, instanceGroup.Name, "pvc")),
+			Name:      generatePersistentVolumeClaimName(manifestName, instanceGroup.Name),
 			Namespace: namespace,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -310,6 +308,10 @@ func generatePersistentVolumeClaim(manifestName string, instanceGroup *bdm.Insta
 	}
 
 	return persistentVolumeClaim
+}
+
+func generatePersistentVolumeClaimName(manifestName string, instanceGroupName string) string {
+	return names.Sanitize(fmt.Sprintf("%s-%s-%s", manifestName, instanceGroupName, "pvc"))
 }
 
 // withOpsVolume is a volume for the "not interpolated" manifest,

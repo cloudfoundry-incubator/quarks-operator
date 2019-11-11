@@ -116,6 +116,12 @@ func (kc *KubeConverter) serviceToExtendedSts(
 	volumes = append(volumes, defaultVolumes...)
 	volumes = append(volumes, bpmVolumes...)
 
+	defaultVolumeClaims := defaultDisks.PVCs()
+	bpmVolumeClaims := bpmDisks.PVCs()
+	volumeClaims := make([]corev1.PersistentVolumeClaim, 0, len(defaultVolumeClaims)+len(bpmVolumeClaims))
+	volumeClaims = append(volumeClaims, defaultVolumeClaims...)
+	volumeClaims = append(volumeClaims, bpmVolumeClaims...)
+
 	extSts := essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        instanceGroup.ExtendedStatefulsetName(manifestName),
@@ -155,6 +161,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 							ImagePullSecrets: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ImagePullSecrets,
 						},
 					},
+					VolumeClaimTemplates: volumeClaims,
 				},
 			},
 		},

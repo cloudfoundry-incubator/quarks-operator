@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path"
 	"strconv"
 	"strings"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 
 	"github.com/pkg/errors"
 	"k8s.io/api/apps/v1beta2"
@@ -154,11 +157,37 @@ func (r *ReconcileExtendedStatefulSet) generateVolumeManagementSingleStatefulSet
 	statefulSet.SetLabels(labels)
 	statefulSet.SetAnnotations(annotations)
 
+	statefulSet.Spec.PodManagementPolicy = v1beta2.ParallelPodManagement
+
+	// Generate dummy volumeMounts
+	// "volumeClaimTemplates: [...] Every claim in this list must have at least one matching (by name) volumeMount in one container in the template."
+	// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#statefulsetspec-v1-apps
+	volumeMounts := make([]corev1.VolumeMount, 0, len(statefulSet.Spec.VolumeClaimTemplates))
+	for _, pvc := range statefulSet.Spec.VolumeClaimTemplates {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      pvc.Name,
+			MountPath: path.Join("/mnt", pvc.Name),
+		})
+	}
+
+	statefulSet.Spec.Template.Spec.InitContainers = []corev1.Container{}
+	statefulSet.Spec.Template.Spec.Containers = []corev1.Container{{
+		Name:            "volume-management",
+		VolumeMounts:    volumeMounts,
+		Image:           converter.GetOperatorDockerImage(),
+		ImagePullPolicy: converter.GetOperatorImagePullPolicy(),
+		Args: []string{
+			"ruby",
+			"-e",
+			"sleep()",
+		},
+	}}
+
 	return statefulSet, nil
 }
 
-// isVolumeManagementStatefulSetReady checks if all the statefulSet pods are ready
-func (r *ReconcileStatefulSetCleanup) isVolumeManagementStatefulSetReady(ctx context.Context, statefulSet *v1beta2.StatefulSet) (bool, error) {
+// isVolumeManagementStatefulSetInitialized checks if all the statefulSet pods are initialized
+func (r *ReconcileStatefulSetCleanup) isVolumeManagementStatefulSetInitialized(ctx context.Context, statefulSet *v1beta2.StatefulSet) (bool, error) {
 	pod := &corev1.Pod{}
 
 	replicaCount := int(*statefulSet.Spec.Replicas)
@@ -169,7 +198,8 @@ func (r *ReconcileStatefulSetCleanup) isVolumeManagementStatefulSetReady(ctx con
 		if err != nil {
 			return false, errors.Wrapf(err, "failed to query for pod by name: %v", podName)
 		}
-		if !podutil.IsPodReady(pod) {
+		_, condition := podutil.GetPodCondition(&pod.Status, corev1.PodInitialized)
+		if condition == nil || condition.Status != corev1.ConditionTrue {
 			return false, nil
 		}
 	}
@@ -185,7 +215,7 @@ func (r *ReconcileStatefulSetCleanup) deleteVolumeManagementStatefulSet(ctx cont
 	}
 	for index := range statefulSets {
 		if isVolumeManagementStatefulSet(statefulSets[index].Name) {
-			ok, err := r.isVolumeManagementStatefulSetReady(ctx, &statefulSets[index])
+			ok, err := r.isVolumeManagementStatefulSetInitialized(ctx, &statefulSets[index])
 			if err != nil {
 				return err
 			}
