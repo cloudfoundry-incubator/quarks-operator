@@ -56,20 +56,21 @@ helm delete cf-operator --purge
 
 ## Configuration
 
-| Parameter                                         | Description                                                                          | Default                                        |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------- |
-| `image.repository`                                | Docker hub repository for the cf-operator image                                      | `cf-operator`                                  |
-| `image.org`                                       | Docker hub organization for the cf-operator image                                    | `cfcontainerization`                           |
-| `image.tag`                                       | Docker image tag                                                                     | `foobar`                                       |
-| `global.contextTimeout`                           | Will set the context timeout in seconds, for future K8S API requests                 | `30`                                           |
-| `global.image.pullPolicy`                         | Kubernetes image pullPolicy                                                          | `IfNotPresent`                                 |
-| `global.operator.watchNamespace`                  | Namespace the operator will watch for BOSH deployments                               | the release namespace                          |
-| `global.rbacEnable`                               | Install required RBAC service account, roles and rolebindings                        | `true`                                         |
-| `operator.webhook.endpoint`                       | Hostname/IP under which the webhook server can be reached from the cluster           | the IP of service `cf-operator-webhook `       |
-| `operator.webhook.port`                           | Port the webhook server listens on                                                   | 2999                                           |
-| `operator.webhook.useServiceReference`            | If true, the webhook server is addressed using a service reference instead of the IP | `true`                                         |
-| `serviceAccount.cfOperatorServiceAccount.create`  | Will set the value of `cf-operator.serviceAccountName` to the current chart name     | `true`                                         |
-| `serviceAccount.cfOperatorServiceAccount.name`    | If the above is not set, it will set the `cf-operator.serviceAccountName`            |                                                |
+| Parameter                                         | Description                                                                                       | Default                                        |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `image.repository`                                | Docker hub repository for the cf-operator image                                                   | `cf-operator`                                  |
+| `image.org`                                       | Docker hub organization for the cf-operator image                                                 | `cfcontainerization`                           |
+| `image.tag`                                       | Docker image tag                                                                                  | `foobar`                                       |
+| `global.contextTimeout`                           | Will set the context timeout in seconds, for future K8S API requests                              | `30`                                           |
+| `global.image.pullPolicy`                         | Kubernetes image pullPolicy                                                                       | `IfNotPresent`                                 |
+| `global.image.credentials`                        | Kubernetes image pull secret credentials (map with keys `servername`, `username`, and `password`) | `nil`                                          |
+| `global.operator.watchNamespace`                  | Namespace the operator will watch for BOSH deployments                                            | the release namespace                          |
+| `global.rbacEnable`                               | Install required RBAC service account, roles and rolebindings                                     | `true`                                         |
+| `operator.webhook.endpoint`                       | Hostname/IP under which the webhook server can be reached from the cluster                        | the IP of service `cf-operator-webhook `       |
+| `operator.webhook.port`                           | Port the webhook server listens on                                                                | 2999                                           |
+| `operator.webhook.useServiceReference`            | If true, the webhook server is addressed using a service reference instead of the IP              | `true`                                         |
+| `serviceAccount.cfOperatorServiceAccount.create`  | Will set the value of `cf-operator.serviceAccountName` to the current chart name                  | `true`                                         |
+| `serviceAccount.cfOperatorServiceAccount.name`    | If the above is not set, it will set the `cf-operator.serviceAccountName`                         |                                                |
 
 > **Note:**
 >

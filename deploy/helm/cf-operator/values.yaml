@@ -33,6 +33,7 @@ global:
   contextTimeout: 30
   image:
     pullPolicy: IfNotPresent
+    credentials: ~
   operator:
     watchNamespace: ""
   rbacEnable: true
