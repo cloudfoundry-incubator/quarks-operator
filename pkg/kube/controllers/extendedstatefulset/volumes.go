@@ -176,7 +176,7 @@ func (r *ReconcileExtendedStatefulSet) generateVolumeManagementSingleStatefulSet
 		VolumeMounts:    volumeMounts,
 		Image:           converter.GetOperatorDockerImage(),
 		ImagePullPolicy: converter.GetOperatorImagePullPolicy(),
-		Args: []string{
+		Command: []string{
 			"ruby",
 			"-e",
 			"sleep()",
