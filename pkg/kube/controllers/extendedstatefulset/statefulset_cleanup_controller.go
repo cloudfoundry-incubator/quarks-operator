@@ -2,6 +2,7 @@ package extendedstatefulset
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"k8s.io/api/apps/v1beta2"
@@ -42,7 +43,14 @@ func AddStatefulSetCleanup(ctx context.Context, config *config.Config, mgr manag
 			enqueueForVolumeManagementStatefulSet := isVolumeManagementStatefulSet(newStatefulSet.Name) && newStatefulSet.Status.ReadyReplicas > 0 && newStatefulSet.Status.ReadyReplicas == newStatefulSet.Status.CurrentReplicas
 			enqueueForVersionStatefulSet := newStatefulSet.Status.ReadyReplicas > 0
 
-			return enqueueForVersionStatefulSet || enqueueForVolumeManagementStatefulSet
+			if enqueueForVersionStatefulSet || enqueueForVolumeManagementStatefulSet {
+				ctxlog.NewPredicateEvent(e.Object).Debug(
+					ctx, e.Meta, "v1beta2.StatefulSet",
+					fmt.Sprintf("Create predicate passed for '%s'", e.Meta.GetName()),
+				)
+				return true
+			}
+			return false
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
@@ -51,7 +59,14 @@ func AddStatefulSetCleanup(ctx context.Context, config *config.Config, mgr manag
 			enqueueForVolumeManagementStatefulSet := isVolumeManagementStatefulSet(newStatefulSet.Name) && newStatefulSet.Status.ReadyReplicas > 0 && newStatefulSet.Status.ReadyReplicas == newStatefulSet.Status.CurrentReplicas
 			enqueueForVersionStatefulSet := newStatefulSet.Status.ReadyReplicas > 0
 
-			return enqueueForVersionStatefulSet || enqueueForVolumeManagementStatefulSet
+			if enqueueForVersionStatefulSet || enqueueForVolumeManagementStatefulSet {
+				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
+					ctx, e.MetaNew, "v1beta2.StatefulSet",
+					fmt.Sprintf("Update predicate passed for '%s'", e.MetaNew.GetName()),
+				)
+				return true
+			}
+			return false
 		},
 	}
 	err = c.Watch(&source.Kind{Type: &v1beta2.StatefulSet{}}, &handler.EnqueueRequestForOwner{

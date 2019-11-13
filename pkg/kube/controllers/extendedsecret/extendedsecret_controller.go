@@ -47,8 +47,14 @@ func AddExtendedSecret(ctx context.Context, config *config.Config, mgr manager.M
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to list StatefulSets owned by ExtendedStatefulSet '%s': %s in extendedsecret reconciler", o.Name, err)
 			}
-
-			return len(secrets) == 0
+			if len(secrets) == 0 {
+				ctxlog.NewPredicateEvent(e.Object).Debug(
+					ctx, e.Meta, "esv1.ExtendedSecret",
+					fmt.Sprintf("Create predicate passed for '%s'", e.Meta.GetName()),
+				)
+				return true
+			}
+			return false
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
