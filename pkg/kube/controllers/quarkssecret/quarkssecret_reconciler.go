@@ -158,7 +158,7 @@ func (r *ReconcileQuarksSecret) Reconcile(request reconcile.Request) (reconcile.
 
 func (r *ReconcileQuarksSecret) updateQSecret(ctx context.Context, instance *qsv1a1.QuarksSecret) error {
 	instance.Status.Generated = true
-	op, err := controllerutil.CreateOrUpdate(ctx, r.client, instance, mutate.ESecMutateFn(instance))
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, instance, mutate.QuarksSecretMutateFn(instance))
 	if err != nil {
 		return errors.Wrapf(err, "could not create or update QuarksSecret '%s'", instance.GetName())
 	}

@@ -29,8 +29,8 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	cfcfg "code.cloudfoundry.org/quarks-utils/pkg/config"
-	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
@@ -49,9 +49,9 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		config     *cfcfg.Config
 		client     *cfakes.FakeClient
 		instance   *bdv1.BOSHDeployment
-		dmEJob     *ejv1.ExtendedJob
-		igEJob     *ejv1.ExtendedJob
-		bpmEJob    *ejv1.ExtendedJob
+		dmQJob     *qjv1a1.QuarksJob
+		igQJob     *qjv1a1.QuarksJob
+		bpmQJob    *qjv1a1.QuarksJob
 	)
 
 	BeforeEach(func() {
@@ -109,17 +109,17 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				},
 			},
 		}
-		dmEJob = &ejv1.ExtendedJob{
+		dmQJob = &qjv1a1.QuarksJob{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("dm-%s", manifest.Name),
 			},
 		}
-		igEJob = &ejv1.ExtendedJob{
+		igQJob = &qjv1a1.QuarksJob{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("ig-%s", manifest.Name),
 			},
 		}
-		bpmEJob = &ejv1.ExtendedJob{
+		bpmQJob = &qjv1a1.QuarksJob{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("bpm-%s", manifest.Name),
 			},
@@ -157,7 +157,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			switch object := object.(type) {
 			case *bdv1.BOSHDeployment:
 				instance.DeepCopyInto(object)
-			case *ejv1.ExtendedJob:
+			case *qjv1a1.QuarksJob:
 				return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 			}
 
@@ -235,7 +235,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
 						instance.DeepCopyInto(object)
-					case *ejv1.ExtendedJob:
+					case *qjv1a1.QuarksJob:
 						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 					case *corev1.Secret:
 						if nn.Name == "foo.with-ops" {
@@ -266,30 +266,30 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Expect(err.Error()).To(ContainSubstring("failed to create with-ops manifest secret for BOSHDeployment 'default/foo': failed to apply Secret 'foo.with-ops': fake-error"))
 			})
 
-			It("handles an error when building desired manifest eJob", func() {
-				jobFactory.VariableInterpolationJobReturns(dmEJob, errors.New("fake-error"))
+			It("handles an error when building desired manifest qJob", func() {
+				jobFactory.VariableInterpolationJobReturns(dmQJob, errors.New("fake-error"))
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to build the desired manifest eJob"))
+				Expect(err.Error()).To(ContainSubstring("failed to build the desired manifest qJob"))
 			})
 
-			It("handles an error when building desired manifest eJob", func() {
-				jobFactory.VariableInterpolationJobReturns(dmEJob, errors.New("fake-error"))
+			It("handles an error when building desired manifest qJob", func() {
+				jobFactory.VariableInterpolationJobReturns(dmQJob, errors.New("fake-error"))
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to build the desired manifest eJob"))
+				Expect(err.Error()).To(ContainSubstring("failed to build the desired manifest qJob"))
 			})
 
-			It("handles an error when creating desired manifest eJob", func() {
-				jobFactory.VariableInterpolationJobReturns(dmEJob, nil)
+			It("handles an error when creating desired manifest qJob", func() {
+				jobFactory.VariableInterpolationJobReturns(dmQJob, nil)
 
 				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 					switch object := object.(type) {
-					case *ejv1.ExtendedJob:
-						eJob := object
-						if strings.HasPrefix(eJob.Name, "dm-") {
+					case *qjv1a1.QuarksJob:
+						qJob := object
+						if strings.HasPrefix(qJob.Name, "dm-") {
 							return errors.New("fake-error")
 						}
 					}
@@ -298,27 +298,27 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to create desired manifest ExtendedJob for BOSHDeployment 'default/foo': creating or updating ExtendedJob 'dm-foo': fake-error"))
+				Expect(err.Error()).To(ContainSubstring("failed to create desired manifest qJob for BOSHDeployment 'default/foo': creating or updating QuarksJob 'dm-foo': fake-error"))
 			})
 
-			It("handles an error when building instance group manifest eJob", func() {
-				jobFactory.VariableInterpolationJobReturns(dmEJob, nil)
-				jobFactory.InstanceGroupManifestJobReturns(dmEJob, errors.New("fake-error"))
+			It("handles an error when building instance group manifest qJob", func() {
+				jobFactory.VariableInterpolationJobReturns(dmQJob, nil)
+				jobFactory.InstanceGroupManifestJobReturns(dmQJob, errors.New("fake-error"))
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to build instance group manifest eJob"))
+				Expect(err.Error()).To(ContainSubstring("failed to build instance group manifest qJob"))
 			})
 
-			It("handles an error when creating instance group manifest eJob", func() {
-				jobFactory.VariableInterpolationJobReturns(dmEJob, nil)
-				jobFactory.InstanceGroupManifestJobReturns(igEJob, nil)
+			It("handles an error when creating instance group manifest qJob", func() {
+				jobFactory.VariableInterpolationJobReturns(dmQJob, nil)
+				jobFactory.InstanceGroupManifestJobReturns(igQJob, nil)
 
 				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 					switch object := object.(type) {
-					case *ejv1.ExtendedJob:
-						eJob := object
-						if strings.HasPrefix(eJob.Name, "ig-") {
+					case *qjv1a1.QuarksJob:
+						qJob := object
+						if strings.HasPrefix(qJob.Name, "ig-") {
 							return errors.New("fake-error")
 						}
 					}
@@ -327,29 +327,29 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to create instance group manifest ExtendedJob for BOSHDeployment 'default/foo': creating or updating ExtendedJob 'ig-foo': fake-error"))
+				Expect(err.Error()).To(ContainSubstring("failed to create instance group manifest qJob for BOSHDeployment 'default/foo': creating or updating QuarksJob 'ig-foo': fake-error"))
 			})
 
-			It("handles an error when building BPM configs eJob", func() {
-				jobFactory.VariableInterpolationJobReturns(dmEJob, nil)
-				jobFactory.InstanceGroupManifestJobReturns(dmEJob, nil)
-				jobFactory.BPMConfigsJobReturns(dmEJob, errors.New("fake-error"))
+			It("handles an error when building BPM configs qJob", func() {
+				jobFactory.VariableInterpolationJobReturns(dmQJob, nil)
+				jobFactory.InstanceGroupManifestJobReturns(dmQJob, nil)
+				jobFactory.BPMConfigsJobReturns(dmQJob, errors.New("fake-error"))
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to build BPM configs eJob"))
+				Expect(err.Error()).To(ContainSubstring("failed to build BPM configs qJob"))
 			})
 
-			It("handles an error when creating BPM configs eJob", func() {
-				jobFactory.VariableInterpolationJobReturns(dmEJob, nil)
-				jobFactory.InstanceGroupManifestJobReturns(igEJob, nil)
-				jobFactory.BPMConfigsJobReturns(bpmEJob, nil)
+			It("handles an error when creating BPM configs qJob", func() {
+				jobFactory.VariableInterpolationJobReturns(dmQJob, nil)
+				jobFactory.InstanceGroupManifestJobReturns(igQJob, nil)
+				jobFactory.BPMConfigsJobReturns(bpmQJob, nil)
 
 				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 					switch object := object.(type) {
-					case *ejv1.ExtendedJob:
-						eJob := object
-						if strings.HasPrefix(eJob.Name, "bpm-") {
+					case *qjv1a1.QuarksJob:
+						qJob := object
+						if strings.HasPrefix(qJob.Name, "bpm-") {
 							return errors.New("fake-error")
 						}
 					}
@@ -358,7 +358,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to create BPM configs ExtendedJob for BOSHDeployment 'default/foo': creating or updating ExtendedJob 'bpm-foo': fake-error"))
+				Expect(err.Error()).To(ContainSubstring("failed to create BPM configs qJob for BOSHDeployment 'default/foo': creating or updating QuarksJob 'bpm-foo': fake-error"))
 			})
 		})
 	})

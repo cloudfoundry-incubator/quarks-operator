@@ -16,7 +16,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
-	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
@@ -34,16 +34,15 @@ type ReleaseImageProvider interface {
 // BPMResources contains BPM related k8s resources, which were converted from BOSH objects
 type BPMResources struct {
 	InstanceGroups         []qstsv1a1.QuarksStatefulSet
-	Errands                []ejv1.ExtendedJob
+	Errands                []qjv1a1.QuarksJob
 	Services               []corev1.Service
 	PersistentVolumeClaims []corev1.PersistentVolumeClaim
 }
 
 // BPMResources uses BOSH Process Manager information to create k8s container specs from single BOSH instance group.
-// It returns extended stateful sets, services and extended jobs.
-func (kc *KubeConverter) BPMResources(manifestName string, dns manifest.DomainNameService, exstsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*BPMResources, error) {
-
-	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(manifestName, instanceGroup.Name, exstsVersion)
+// It returns quarks stateful sets, services and quarks jobs.
+func (kc *KubeConverter) BPMResources(manifestName string, dns manifest.DomainNameService, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*BPMResources, error) {
+	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(manifestName, instanceGroup.Name, qStsVersion)
 
 	defaultDisks := kc.volumeFactory.GenerateDefaultDisks(manifestName, instanceGroup.Name, igResolvedSecretVersion, kc.namespace)
 	bpmDisks, err := kc.volumeFactory.GenerateBPMDisks(manifestName, instanceGroup, bpmConfigs, kc.namespace)
@@ -68,7 +67,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, dns manifest.DomainNa
 
 	switch instanceGroup.LifeCycle {
 	case bdm.IGTypeService, "":
-		convertedExtStatefulSet, err := kc.serviceToExtendedSts(cfac, manifestName, dns, instanceGroup, defaultDisks, bpmDisks)
+		convertedExtStatefulSet, err := kc.serviceToQuarksStatefulSet(cfac, manifestName, dns, instanceGroup, defaultDisks, bpmDisks)
 		if err != nil {
 			return nil, err
 		}
@@ -80,19 +79,19 @@ func (kc *KubeConverter) BPMResources(manifestName string, dns manifest.DomainNa
 
 		res.InstanceGroups = append(res.InstanceGroups, convertedExtStatefulSet)
 	case bdm.IGTypeErrand, bdm.IGTypeAutoErrand:
-		convertedEJob, err := kc.errandToExtendedJob(cfac, manifestName, dns, instanceGroup, defaultDisks, bpmDisks)
+		convertedQJob, err := kc.errandToQuarksJob(cfac, manifestName, dns, instanceGroup, defaultDisks, bpmDisks)
 		if err != nil {
 			return nil, err
 		}
 
-		res.Errands = append(res.Errands, convertedEJob)
+		res.Errands = append(res.Errands, convertedQJob)
 	}
 
 	return res, nil
 }
 
-// serviceToExtendedSts will generate an QuarksStatefulSet
-func (kc *KubeConverter) serviceToExtendedSts(
+// serviceToQuarksStatefulSet will generate an QuarksStatefulSet
+func (kc *KubeConverter) serviceToQuarksStatefulSet(
 	cfac ContainerFactory,
 	manifestName string,
 	dns manifest.DomainNameService,
@@ -125,7 +124,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 
 	extSts := qstsv1a1.QuarksStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        instanceGroup.ExtendedStatefulsetName(manifestName),
+			Name:        instanceGroup.QuarksStatefulSetName(manifestName),
 			Namespace:   kc.namespace,
 			Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
 			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
@@ -186,7 +185,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 }
 
 // serviceToKubeServices will generate Services which expose ports for InstanceGroup's jobs
-func (kc *KubeConverter) serviceToKubeServices(manifestName string, dns manifest.DomainNameService, instanceGroup *bdm.InstanceGroup, eSts *qstsv1a1.QuarksStatefulSet) []corev1.Service {
+func (kc *KubeConverter) serviceToKubeServices(manifestName string, dns manifest.DomainNameService, instanceGroup *bdm.InstanceGroup, qSts *qstsv1a1.QuarksStatefulSet) []corev1.Service {
 	var services []corev1.Service
 	// Collect ports to be exposed for each job
 	ports := instanceGroup.ServicePorts()
@@ -258,31 +257,31 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, dns manifest
 	}
 
 	// Set headlessService to govern StatefulSet.
-	eSts.Spec.Template.Spec.ServiceName = headlessServiceName
+	qSts.Spec.Template.Spec.ServiceName = headlessServiceName
 
 	services = append(services, headlessService)
 
 	return services
 }
 
-// errandToExtendedJob will generate an ExtendedJob
-func (kc *KubeConverter) errandToExtendedJob(
+// errandToQuarksJob will generate an QuarksJob
+func (kc *KubeConverter) errandToQuarksJob(
 	cfac ContainerFactory,
 	manifestName string,
 	dns manifest.DomainNameService,
 	instanceGroup *bdm.InstanceGroup,
 	defaultDisks disk.BPMResourceDisks,
 	bpmDisks disk.BPMResourceDisks,
-) (ejv1.ExtendedJob, error) {
+) (qjv1a1.QuarksJob, error) {
 	defaultVolumeMounts := defaultDisks.VolumeMounts()
 	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks, instanceGroup.Properties.Quarks.RequiredService)
 	if err != nil {
-		return ejv1.ExtendedJob{}, errors.Wrapf(err, "building initContainers failed for instance group %s", instanceGroup.Name)
+		return qjv1a1.QuarksJob{}, errors.Wrapf(err, "building initContainers failed for instance group %s", instanceGroup.Name)
 	}
 
 	containers, err := cfac.JobsToContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks)
 	if err != nil {
-		return ejv1.ExtendedJob{}, errors.Wrapf(err, "building containers failed for instance group %s", instanceGroup.Name)
+		return qjv1a1.QuarksJob{}, errors.Wrapf(err, "building containers failed for instance group %s", instanceGroup.Name)
 	}
 
 	podLabels := instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels
@@ -295,21 +294,20 @@ func (kc *KubeConverter) errandToExtendedJob(
 	volumes = append(volumes, defaultVolumes...)
 	volumes = append(volumes, bpmVolumes...)
 
-	strategy := ejv1.TriggerManual
+	strategy := qjv1a1.TriggerManual
 	if instanceGroup.LifeCycle == bdm.IGTypeAutoErrand {
-		strategy = ejv1.TriggerOnce
+		strategy = qjv1a1.TriggerOnce
 	}
 
-	// Errand EJob
-	eJob := ejv1.ExtendedJob{
+	qJob := qjv1a1.QuarksJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        fmt.Sprintf("%s-%s", manifestName, instanceGroup.Name),
 			Namespace:   kc.namespace,
 			Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
 			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
-		Spec: ejv1.ExtendedJobSpec{
-			Trigger: ejv1.Trigger{
+		Spec: qjv1a1.QuarksJobSpec{
+			Trigger: qjv1a1.Trigger{
 				Strategy: strategy,
 			},
 			Template: batchv1b1.JobTemplateSpec{
@@ -336,23 +334,23 @@ func (kc *KubeConverter) errandToExtendedJob(
 		},
 	}
 
-	eJob.Spec.Template.Spec.Template.Spec.DNSPolicy, eJob.Spec.Template.Spec.Template.Spec.DNSConfig, err = dns.DNSSetting(kc.namespace)
+	qJob.Spec.Template.Spec.Template.Spec.DNSPolicy, qJob.Spec.Template.Spec.Template.Spec.DNSConfig, err = dns.DNSSetting(kc.namespace)
 
 	if err != nil {
-		return ejv1.ExtendedJob{}, err
+		return qjv1a1.QuarksJob{}, err
 	}
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity != nil {
-		eJob.Spec.Template.Spec.Template.Spec.Affinity = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity
+		qJob.Spec.Template.Spec.Template.Spec.Affinity = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity
 	}
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName != "" {
-		eJob.Spec.Template.Spec.Template.Spec.ServiceAccountName = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName
+		qJob.Spec.Template.Spec.Template.Spec.ServiceAccountName = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName
 	}
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.AutomountServiceAccountToken != nil {
-		eJob.Spec.Template.Spec.Template.Spec.AutomountServiceAccountToken = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.AutomountServiceAccountToken
+		qJob.Spec.Template.Spec.Template.Spec.AutomountServiceAccountToken = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.AutomountServiceAccountToken
 	}
 
-	return eJob, nil
+	return qJob, nil
 }

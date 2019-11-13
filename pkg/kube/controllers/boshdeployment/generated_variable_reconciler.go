@@ -125,9 +125,9 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 
 // generateVariableSecrets create variables quarksSecrets
 func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context, manifestSecret *corev1.Secret, variables []qsv1a1.QuarksSecret) error {
-	log.Debug(ctx, "Creating ExtendedSecrets for explicit variables")
+	log.Debug(ctx, "Creating QuarksSecrets for explicit variables")
 	for _, variable := range variables {
-		// Set the "manifest with ops" secret as the owner for the ExtendedSecrets
+		// Set the "manifest with ops" secret as the owner for the QuarksSecrets
 		// The "manifest with ops" secret is owned by the actual BOSHDeployment, so everything
 		// should be garbage collected properly.
 
@@ -136,7 +136,7 @@ func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context
 			return err
 		}
 
-		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &variable, mutate.ESecMutateFn(&variable))
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &variable, mutate.QuarksSecretMutateFn(&variable))
 		if err != nil {
 			return errors.Wrapf(err, "creating or updating QuarksSecret '%s'", variable.Name)
 		}

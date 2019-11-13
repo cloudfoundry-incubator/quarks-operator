@@ -38,7 +38,7 @@ The **QuarksSecret** Controller will get a list of all variables referenced in a
 
 #### Watches in quarks secret controller
 
-- `ExtendedSecret`: Creation
+- `QuarksSecret`: Creation
 
 #### Reconciliation in quarks secret controller
 
@@ -49,7 +49,7 @@ The **QuarksSecret** Controller will get a list of all variables referenced in a
 
 ##### Types
 
-Depending on the `spec.type`, `ExtendedSecret` supports generating the following:
+Depending on the `spec.type`, `QuarksSecret` supports generating the following:
 
 | Secret Type                     | spec.type     | certificate.signerType | certificate.isCA    |
 | ------------------------------- | ------------- | ---------------------- | ------------------- |
@@ -70,7 +70,7 @@ The developer can specify policies for rotation (e.g. automatic or not ) and how
 
 ##### Auto-approving Certificates
 
-A certificate `ExtendedSecret` can be signed by the Kube API Server. The **ExtendedSecret** Controller is responsible for generating the certificate signing request:
+A certificate `QuarksSecret` can be signed by the Kube API Server. The **QuarksSecret** Controller is responsible for generating the certificate signing request:
 
 ```yaml
 apiVersion: certificates.k8s.io/v1beta1
@@ -99,15 +99,15 @@ spec:
 
 #### Highlights in CSR controller
 
-The CertificateSigningRequest controller watches for `CertificateSigningRequest` and approves `ExtendedSecret`-owned CSRs and persists the generated certificate.
+The CertificateSigningRequest controller watches for `CertificateSigningRequest` and approves `QuarksSecret`-owned CSRs and persists the generated certificate.
 
 ## Relationship with the BDPL component
 
 ![bdpl-qjob-relationship](quarks_gvc_and_qsec_flow.png)
-*Fig. 4: Relationship between the Generated V.  controller and the ExtendedSecret component*
+*Fig. 4: Relationship between the Generated V.  controller and the QuarksSecret component*
 
-Figure 4 illustrates the interaction of the **Generated Variables** Controller with the **ExtendedSecret** Controller. When reconciling, the Generated Variables Controller lists all variables of a BOSH manifest(basically all BOSH variables) and generates an `ExtendedSecret` instance per variable, which will trigger the **ExtendedSecret** Controller.
+Figure 4 illustrates the interaction of the **Generated Variables** Controller with the **QuarksSecret** Controller. When reconciling, the Generated Variables Controller lists all variables of a BOSH manifest(basically all BOSH variables) and generates an `QuarksSecret` instance per variable, which will trigger the **QuarksSecret** Controller.
 
-## `ExtendedSecret` Examples
+## `QuarksSecret` Examples
 
 See https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/examples/quarks-secret

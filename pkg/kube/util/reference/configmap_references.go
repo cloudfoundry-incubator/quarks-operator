@@ -9,7 +9,7 @@ import (
 )
 
 // GetConfigMapsReferencedBy returns a list of all names for ConfigMaps referenced by the object
-// The object can be an QuarksStatefulSet, an ExtendedeJob or a BOSHDeployment
+// The object can be an QuarksStatefulSet or a BOSHDeployment
 func GetConfigMapsReferencedBy(object interface{}) (map[string]bool, error) {
 	// Figure out the type of object
 	switch object := object.(type) {

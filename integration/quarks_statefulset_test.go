@@ -171,7 +171,8 @@ var _ = Describe("QuarksStatefulSet", func() {
 			err = env.WaitForPods(env.Namespace, "referencedpod=yes")
 			Expect(err).NotTo(HaveOccurred())
 
-			err = env.WaitForPod(env.Namespace, qSts.GetName()+"-v1-0")
+			// Two update events for one configMap and one secret
+			err = env.WaitForPod(env.Namespace, qSts.GetName()+"-v3-0")
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})

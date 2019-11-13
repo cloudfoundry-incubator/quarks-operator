@@ -68,8 +68,8 @@ var (
 		},
 	}
 
-	// ExtendedStatefulSetResourceName is the resource name of QuarksStatefulSet
-	ExtendedStatefulSetResourceName = fmt.Sprintf("%s.%s", QuarksStatefulSetResourcePlural, apis.GroupName)
+	// QuarksStatefulSetResourceName is the resource name of QuarksStatefulSet
+	QuarksStatefulSetResourceName = fmt.Sprintf("%s.%s", QuarksStatefulSetResourcePlural, apis.GroupName)
 
 	// SchemeGroupVersion is group version used to register these objects
 	SchemeGroupVersion = schema.GroupVersion{Group: apis.GroupName, Version: "v1alpha1"}

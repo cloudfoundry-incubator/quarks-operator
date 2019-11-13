@@ -119,16 +119,16 @@ var _ = Describe("QuarksSecret", func() {
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// Create an quarksSecret
-			var qSecret *qsv1a1.QuarksSecret
+			var qs *qsv1a1.QuarksSecret
 			qSecret.Spec.SecretName = "generated-cert-secret"
 			qSecret.Spec.Type = "certificate"
 			qSecret.Spec.Request.CertificateRequest.CommonName = "example.com"
 			qSecret.Spec.Request.CertificateRequest.CARef = qsv1a1.SecretReference{Name: "mysecret", Key: "ca"}
 			qSecret.Spec.Request.CertificateRequest.CAKeyRef = qsv1a1.SecretReference{Name: "mysecret", Key: "key"}
 			qSecret.Spec.Request.CertificateRequest.AlternativeNames = []string{"qux.com"}
-			qSecret, tearDown, err = env.CreateQuarksSecret(env.Namespace, *qSecret)
+			qs, tearDown, err = env.CreateQuarksSecret(env.Namespace, qSecret)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(qSecret).NotTo(Equal(nil))
+			Expect(qs).NotTo(Equal(nil))
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			// check for generated secret

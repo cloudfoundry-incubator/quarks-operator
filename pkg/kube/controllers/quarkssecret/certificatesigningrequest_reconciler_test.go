@@ -264,7 +264,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 			Expect(client.DeleteCallCount()).To(Equal(0))
 		})
 
-		It("Skips reconcile when getting exSecret's namespace", func() {
+		It("Skips reconcile when getting quarksSecret's namespace", func() {
 			csr.Annotations = map[string]string{
 				qsv1a1.AnnotationCertSecretName: "fake-cert",
 			}

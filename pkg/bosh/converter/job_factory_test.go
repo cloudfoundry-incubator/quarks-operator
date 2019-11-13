@@ -24,10 +24,10 @@ var _ = Describe("JobFactory", func() {
 
 	Describe("InstanceGroupManifestJob", func() {
 		It("creates init containers", func() {
-			eJob, err := factory.InstanceGroupManifestJob(*m)
+			qJob, err := factory.InstanceGroupManifestJob(*m)
 			Expect(err).ToNot(HaveOccurred())
-			jobIG := eJob.Spec.Template.Spec
-			// Test init containers in the ig manifest eJob
+			jobIG := qJob.Spec.Template.Spec
+			// Test init containers in the ig manifest qJob
 			Expect(jobIG.Template.Spec.InitContainers[0].Name).To(Equal("spec-copier-redis"))
 			Expect(jobIG.Template.Spec.InitContainers[1].Name).To(Equal("spec-copier-cflinuxfs3"))
 			Expect(jobIG.Template.Spec.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
@@ -43,9 +43,9 @@ var _ = Describe("JobFactory", func() {
 
 		It("does not generate the instance group containers when its instances is zero", func() {
 			m.InstanceGroups[0].Instances = 0
-			eJob, err := factory.InstanceGroupManifestJob(*m)
+			qJob, err := factory.InstanceGroupManifestJob(*m)
 			Expect(err).ToNot(HaveOccurred())
-			jobIG := eJob.Spec.Template.Spec
+			jobIG := qJob.Spec.Template.Spec
 			Expect(len(jobIG.Template.Spec.InitContainers)).To(BeNumerically("<", 2))
 			Expect(len(jobIG.Template.Spec.Containers)).To(BeNumerically("<", 2))
 		})

@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestExtendedStatefulSet(t *testing.T) {
+func TestQuarksStatefulSet(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "ExtendedStatefulSet Suite")
+	RunSpecs(t, "QuarksStatefulSet Suite")
 }

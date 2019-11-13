@@ -23,7 +23,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarkssecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarksstatefulset"
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
-	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
@@ -53,7 +53,7 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 var addToSchemes = runtime.SchemeBuilder{
 	extv1.AddToScheme,
 	bdv1.AddToScheme,
-	ejv1.AddToScheme,
+	qjv1a1.AddToScheme,
 	qsv1a1.AddToScheme,
 	qstsv1a1.AddToScheme,
 }

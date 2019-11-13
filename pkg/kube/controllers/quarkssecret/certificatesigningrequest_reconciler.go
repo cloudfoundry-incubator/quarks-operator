@@ -80,7 +80,7 @@ func (r *ReconcileCertificateSigningRequest) Reconcile(request reconcile.Request
 		}
 		namespace, ok := annotations[qev1a1.AnnotationQSecNamespace]
 		if !ok {
-			ctxlog.WithEvent(instance, "NotFoundError").Errorf(ctx, "failed to lookup exSecret namespace from certificateSigningRequest '%s' annotations", instance.Name)
+			ctxlog.WithEvent(instance, "NotFoundError").Errorf(ctx, "failed to lookup quarksSecret namespace from certificateSigningRequest '%s' annotations", instance.Name)
 			return reconcile.Result{}, nil
 		}
 

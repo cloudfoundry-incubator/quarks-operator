@@ -43,7 +43,7 @@ func NewInstanceGroupResolver(basedir string, manifest Manifest, instanceGroupNa
 
 // BPMInfo returns an instance of BPMInfo which consists info about instances,
 // azs, env, variables and a map of all BOSH jobs in the instance group.
-// The output will be persisted by ExtendedJob as 'bpm.yaml' in the
+// The output will be persisted by QuarksJob as 'bpm.yaml' in the
 // `<deployment-name>.bpm.<instance-group>-v<version>` secret.
 func (dg *InstanceGroupResolver) BPMInfo() (BPMInfo, error) {
 	bpmInfo := BPMInfo{}
@@ -72,7 +72,7 @@ func (dg *InstanceGroupResolver) BPMInfo() (BPMInfo, error) {
 
 // Manifest returns a manifest for a specific instance group only.
 // That manifest includes the gathered data from BPM and links.
-// The output will be persisted by ExtendedJob as 'properties.yaml' in the
+// The output will be persisted by QuarksJob as 'properties.yaml' in the
 // `<deployment-name>.ig-resolved.<instance-group>-v<version>` secret.
 func (dg *InstanceGroupResolver) Manifest() (Manifest, error) {
 	err := dg.resolveManifest()

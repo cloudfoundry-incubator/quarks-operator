@@ -198,7 +198,7 @@ var _ = Describe("Examples Directory", func() {
 		It("creates a self-signed certificate", func() {
 			certYamlFilePath := examplesDir + "quarks-secret/loggregator-tls-agent-cert.yaml"
 
-			By("Creating ExtendedSecrets")
+			By("Creating QuarksSecrets")
 			err := cmdHelper.Create(namespace, certYamlFilePath)
 			Expect(err).ToNot(HaveOccurred())
 

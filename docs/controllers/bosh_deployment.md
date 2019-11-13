@@ -37,7 +37,7 @@ of the BOSH release on Kubernetes.
 
 The **BOSHDeployment** component is a categorization of a set of controllers, under the same group. Inside the **BDPL** component we have a set of 3 controllers together with one separate reconciliation loop per controller to deal with `BOSH deployments`(end user input)
 
-Figure 1 is a **BDPL** component diagram that covers the set of controllers it uses and their relationship with other components(e.g. `ExtendedJob`, `ExtendedSecret` and `ExtendedStatefulSet`)
+Figure 1 is a **BDPL** component diagram that covers the set of controllers it uses and their relationship with other components(e.g. `QuarksJob`, `QuarksSecret` and `QuarksStatefulSet`)
 
 ![bdpl-component-flow](quarks_bdplcomponent_flow.png)
 *Fig. 1: The BOSHDeployment component*
@@ -62,31 +62,31 @@ This is the controller that manages the end user input(a BOSH manifest).
 #### Reconciliation in BDPL controller
 
 - generates `.with-ops` secret, that contains the deployment manifest, with all ops files applied
-- generates `variable interpolation` [**Extendedjob**](https://github.com/cloudfoundry-incubator/quarks-job/tree/master/README.md#one-off-jobs-auto-errands) resource
-- generates `data gathering` **ExtendedJob** resource
-- generates `BPM configuration` **ExtendedJob** resource
+- generates `variable interpolation` [**QuarksJob**](https://github.com/cloudfoundry-incubator/quarks-job/tree/master/README.md#one-off-jobs-auto-errands) resource
+- generates `data gathering` **QuarksJob** resource
+- generates `BPM configuration` **QuarksJob** resource
 
 #### Highlights in BDPL controller
 
 Transform the concepts of BOSH into Kubernetes resources:
 
-- BOSH `errands` to `ExtendedJob` CRD instances
-- BOSH `instance_groups` to `ExtendedStatefulSet` CRD instances
-- BOSH `variables` to `ExtendedSecret` CRD instance
+- BOSH `errands` to `QuarksJob` CRD instances
+- BOSH `instance_groups` to `QuarksStatefulSet` CRD instances
+- BOSH `variables` to `QuarksSecret` CRD instance
 
-All of the three created *ExtendedJob* instances will eventually persist their STDOUT into new secrets under the same namespace.
+All of the three created *QuarksJob* instances will eventually persist their STDOUT into new secrets under the same namespace.
 
-- The output of the [`variable interpolation`](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_variable-interpolation.md) **ExtendedJob** ends up as the `.desired-manifest-v1` **secret**, which is a versioned secret. At the same time this secret serves as the input for the `data gathering` **ExtendedJob**.
-- The output of the [`data gathering`](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_instance-group.md) **ExtendedJob**, ends up
+- The output of the [`variable interpolation`](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_variable-interpolation.md) **QuarksJob** ends up as the `.desired-manifest-v1` **secret**, which is a versioned secret. At the same time this secret serves as the input for the `data gathering` **QuarksJob**.
+- The output of the [`data gathering`](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/commands/cf-operator_util_instance-group.md) **QuarksJob**, ends up
 as the `.ig-resolved.<instance_group_name>-v1` versioned secret.
-- The output of the `BPM configuration` **ExtendedJob**, ends up as the `bpm.<instance_group_name>-v1` versioned secret.
+- The output of the `BPM configuration` **QuarksJob**, ends up as the `bpm.<instance_group_name>-v1` versioned secret.
 
 ### **_Generate Variables Controller_**
 
 ![generate-variable-controller-flow](quarks_gvariablecontroller_flow.png)
 *Fig. 3: The Generated Variables controller*
 
-This is the controller that is responsible for auto-generating certificates, passwords and other secrets declared in the manifest. In other words, it translates all BOSH variables into custom Kubernetes primitive resources. It does this with the help of `ExtendedSecrets`. It watches the `.with-ops` secret, retrieves the list of BOSH variables and triggers the generation of `ExtendedSecrets` per item in that list.
+This is the controller that is responsible for auto-generating certificates, passwords and other secrets declared in the manifest. In other words, it translates all BOSH variables into custom Kubernetes primitive resources. It does this with the help of `QuarksSecrets`. It watches the `.with-ops` secret, retrieves the list of BOSH variables and triggers the generation of `QuarksSecrets` per item in that list.
 
 #### Watches in GV controller
 
@@ -94,11 +94,11 @@ This is the controller that is responsible for auto-generating certificates, pas
 
 #### Reconciliation in GV controller
 
-- generates `ExtendedSecrets` resources.
+- generates `QuarksSecrets` resources.
 
 #### Highlights in GV controller
 
-The `secrets` resources,  generated by these `ExtendedSecrets` are referenced by the `variable interpolation` **ExtendedJob**. When these secrets are created/updated, the variable interpolation ExtendedJob is run.
+The `secrets` resources,  generated by these `QuarksSecrets` are referenced by the `variable interpolation` **QuarksJob**. When these secrets are created/updated, the variable interpolation QuarksJob is run.
 
 ### **_BPM Controller_**
 
@@ -109,19 +109,19 @@ The BPM controller has the responsibility to generate Kubernetes resources per `
 
 #### Watches in BPM controller
 
-- [`versioned secrets`](extendedjob.md#versioned-secrets): Create and Update.
+- [`versioned secrets`](https://github.com/cloudfoundry-incubator/quarks-job/blob/master/docs/quarksjob.md#versioned-secrets): Create and Update.
 
 #### Reconciliation in BPM controller
 
 - Render BPM resources per `instance_group`
-- Convert `instance_groups` of the type `services` to `ExtendedStafulSet` resources.
-- Convert `instance_groups` of the type `errand` to `ExtendedJob` resources.
+- Convert `instance_groups` of the type `services` to `QuarksStafulSet` resources.
+- Convert `instance_groups` of the type `errand` to `QuarksJob` resources.
 - Generates Kubernetes services that will expose ports for the `instance_groups`
 - Generate require PVC´s.
 
 #### Highlights in BPM controller
 
-The **Secrets** watched by the BPM Reconciler are [Versioned Secrets](extendedjob.md#versioned-secrets).
+The **Secrets** watched by the BPM Reconciler are [Versioned Secrets](https://github.com/cloudfoundry-incubator/quarks-job/blob/master/docs/quarksjob.md#versioned-secrets).
 
 Resources are _applied_ using an **upsert technique** [implementation](https://godoc.org/sigs.k8s.io/controller-runtime/pkg/controller/controllerutil#CreateOrUpdate).
 

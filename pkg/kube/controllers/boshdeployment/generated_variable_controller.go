@@ -22,8 +22,8 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
-// AddGeneratedVariable creates a new generated variable controller to watch for the intermidiate "with-ops" manifest and
-// reconcile it into one ExtendedSecret for each explicit variable.
+// AddGeneratedVariable creates a new generated variable controller to watch for the intermediate "with-ops" manifest and
+// reconcile it into one QuarksSecret for each explicit variable.
 func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "generated-variable-reconciler", mgr.GetEventRecorderFor("generated-variable-recorder"))
 	r := NewGeneratedVariableReconciler(

@@ -49,7 +49,7 @@ func AddQuarksSecret(ctx context.Context, config *config.Config, mgr manager.Man
 			}
 			if len(secrets) == 0 {
 				ctxlog.NewPredicateEvent(e.Object).Debug(
-					ctx, e.Meta, "esv1.ExtendedSecret",
+					ctx, e.Meta, "qsv1a1.QuarksSecret",
 					fmt.Sprintf("Create predicate passed for '%s'", e.Meta.GetName()),
 				)
 				return true
@@ -80,15 +80,15 @@ func AddQuarksSecret(ctx context.Context, config *config.Config, mgr manager.Man
 }
 
 // listSecrets gets all Secrets owned by the QuarksSecret
-func listSecrets(ctx context.Context, client crc.Client, exSecret *qsv1a1.QuarksSecret) ([]corev1.Secret, error) {
-	ctxlog.Debug(ctx, "Listing Secrets owned by QuarksSecret '", exSecret.Name, "'.")
+func listSecrets(ctx context.Context, client crc.Client, qSecret *qsv1a1.QuarksSecret) ([]corev1.Secret, error) {
+	ctxlog.Debug(ctx, "Listing Secrets owned by QuarksSecret '", qSecret.Name, "'.")
 
 	secretLabels := map[string]string{qsv1a1.LabelKind: qsv1a1.GeneratedSecretKind}
 	result := []corev1.Secret{}
 
 	allSecrets := &corev1.SecretList{}
 	err := client.List(ctx, allSecrets,
-		crc.InNamespace(exSecret.Namespace),
+		crc.InNamespace(qSecret.Namespace),
 		crc.MatchingLabels(secretLabels),
 	)
 	if err != nil {
@@ -96,14 +96,14 @@ func listSecrets(ctx context.Context, client crc.Client, exSecret *qsv1a1.Quarks
 	}
 
 	for _, secret := range allSecrets.Items {
-		if metav1.IsControlledBy(&secret, exSecret) {
+		if metav1.IsControlledBy(&secret, qSecret) {
 			result = append(result, secret)
-			ctxlog.Debug(ctx, "Found Secret '", secret.Name, "' owned by QuarksSecret '", exSecret.Name, "'.")
+			ctxlog.Debug(ctx, "Found Secret '", secret.Name, "' owned by QuarksSecret '", qSecret.Name, "'.")
 		}
 	}
 
 	if len(result) == 0 {
-		ctxlog.Debug(ctx, "Did not find any Secret owned by QuarksSecret '", exSecret.Name, "'.")
+		ctxlog.Debug(ctx, "Did not find any Secret owned by QuarksSecret '", qSecret.Name, "'.")
 	}
 
 	return result, nil

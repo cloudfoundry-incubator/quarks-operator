@@ -30,7 +30,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	cfcfg "code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
@@ -171,7 +171,7 @@ variables: []
 					bdv1.LabelDeploymentName:             "foo",
 					versionedsecretstore.LabelSecretKind: "versionedSecret",
 					versionedsecretstore.LabelVersion:    "1",
-					ejv1.LabelInstanceGroup:              "fakepod",
+					qjv1a1.LabelInstanceGroup:            "fakepod",
 				},
 			},
 			Data: map[string][]byte{
@@ -193,7 +193,7 @@ variables: []
 					bdv1.LabelDeploymentName:             "foo",
 					versionedsecretstore.LabelSecretKind: "versionedSecret",
 					versionedsecretstore.LabelVersion:    "1",
-					ejv1.LabelInstanceGroup:              "fakepod",
+					qjv1a1.LabelInstanceGroup:            "fakepod",
 				},
 			},
 			Data: map[string][]byte{

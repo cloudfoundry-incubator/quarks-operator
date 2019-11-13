@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	estsv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -97,19 +96,19 @@ func (r *ReconcileQuarksStatefulSet) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, err
 	}
 
-	// Update labels of versioned secrets in exstendedstatefulset spec
-	err = r.UpdateVersions(ctx, exStatefulSet)
+	// Update labels of versioned secrets in quarksStatefulSet spec
+	err = r.UpdateVersions(ctx, qStatefulSet)
 	if err != nil {
-		return reconcile.Result{}, ctxlog.WithEvent(exStatefulSet, "IncrementVersionError").Error(ctx, "Could not update labels of versioned secrets in ExtendedStatefulSet '", request.NamespacedName, "': ", err)
+		return reconcile.Result{}, ctxlog.WithEvent(qStatefulSet, "IncrementVersionError").Error(ctx, "Could not update labels of versioned secrets in QuarksStatefulSet '", request.NamespacedName, "': ", err)
 	}
 
-	if meltdown.NewWindow(r.config.MeltdownDuration, exStatefulSet.Status.LastReconcile).Contains(time.Now()) {
-		ctxlog.WithEvent(exStatefulSet, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", exStatefulSet.Name, r.config.MeltdownRequeueAfter)
+	if meltdown.NewWindow(r.config.MeltdownDuration, qStatefulSet.Status.LastReconcile).Contains(time.Now()) {
+		ctxlog.WithEvent(qStatefulSet, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", qStatefulSet.Name, r.config.MeltdownRequeueAfter)
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
 	// Get the current StatefulSet.
-	currentStatefulSet, currentVersion, err := GetMaxStatefulSetVersion(ctx, r.client, exStatefulSet)
+	currentStatefulSet, currentVersion, err := GetMaxStatefulSetVersion(ctx, r.client, qStatefulSet)
 	if err != nil {
 		return reconcile.Result{}, ctxlog.WithEvent(qStatefulSet, "StatefulSetNotFound").Error(ctx, "Could not retrieve latest StatefulSet owned by QuarksStatefulSet '", request.NamespacedName, "': ", err)
 	}
@@ -154,27 +153,27 @@ func (r *ReconcileQuarksStatefulSet) Reconcile(request reconcile.Request) (recon
 }
 
 // UpdateVersions updates the versions of all versioned secret
-// mounted as volumes in exsts
-func (r *ReconcileExtendedStatefulSet) UpdateVersions(ctx context.Context, exStatefulSet *estsv1.ExtendedStatefulSet) error {
+// mounted as volumes in QuarksStatefulSet
+func (r *ReconcileQuarksStatefulSet) UpdateVersions(ctx context.Context, qStatefulSet *qstsv1a1.QuarksStatefulSet) error {
 
 	secret := &corev1.Secret{}
-	volumes := exStatefulSet.Spec.Template.Spec.Template.Spec.Volumes
+	volumes := qStatefulSet.Spec.Template.Spec.Template.Spec.Volumes
 	for volumeIndex, volume := range volumes {
 		if volume.VolumeSource.Secret != nil {
-			if err := r.client.Get(ctx, types.NamespacedName{Name: volume.Secret.SecretName, Namespace: exStatefulSet.GetNamespace()}, secret); err != nil {
+			if err := r.client.Get(ctx, types.NamespacedName{Name: volume.Secret.SecretName, Namespace: qStatefulSet.GetNamespace()}, secret); err != nil {
 				return err
 			}
 			if vss.IsVersionedSecret(*secret) {
 				secretNameSplitted := strings.Split(secret.GetName(), "-")
 				latestSecret, err := r.versionedSecretStore.Latest(ctx, r.config.Namespace, strings.Join(secretNameSplitted[0:len(secretNameSplitted)-1], "-"))
 				if err != nil {
-					return errors.Wrapf(err, "failed to read latest versioned secret %s for ExtendedStatefulSet %s", secret.GetName(), exStatefulSet.GetName())
+					return errors.Wrapf(err, "failed to read latest versioned secret %s for QuarksStatefulSet %s", secret.GetName(), qStatefulSet.GetName())
 				}
-				exStatefulSet.Spec.Template.Spec.Template.Spec.Volumes[volumeIndex].Secret.SecretName = latestSecret.GetName()
+				qStatefulSet.Spec.Template.Spec.Template.Spec.Volumes[volumeIndex].Secret.SecretName = latestSecret.GetName()
 			}
 		}
 	}
-	exStatefulSet.Spec.Template.Spec.Template.Spec.Volumes = volumes
+	qStatefulSet.Spec.Template.Spec.Template.Spec.Volumes = volumes
 	return nil
 }
 
@@ -290,8 +289,8 @@ func (r *ReconcileQuarksStatefulSet) generateSingleStatefulSet(qStatefulSet *qst
 		statefulSet = r.updateAffinity(statefulSet, qStatefulSet.Spec.ZoneNodeLabel, zoneName)
 	}
 
-	podLabels[estsv1.LabelAZIndex] = strconv.Itoa(zoneIndex)
-	podLabels[estsv1.LabelEStsName] = exStatefulSet.GetName()
+	podLabels[qstsv1a1.LabelAZIndex] = strconv.Itoa(zoneIndex)
+	podLabels[qstsv1a1.LabelQStsName] = qStatefulSet.GetName()
 	podLabels[manifest.LabelDeploymentVersion] = fmt.Sprintf("%d", version)
 
 	statefulSet.Spec.Template.SetLabels(podLabels)

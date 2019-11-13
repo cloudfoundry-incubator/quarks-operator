@@ -42,14 +42,14 @@ type ReconcileStatefulSetCleanup struct {
 func (r *ReconcileStatefulSetCleanup) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 
 	// Fetch the QuarksStatefulSet we need to reconcile
-	exStatefulSet := &qstsv1a1.QuarksStatefulSet{}
+	qStatefulSet := &qstsv1a1.QuarksStatefulSet{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()
 
 	ctxlog.Info(ctx, "Reconciling QuarksStatefulSet ", request.NamespacedName)
-	err := r.client.Get(ctx, request.NamespacedName, exStatefulSet)
+	err := r.client.Get(ctx, request.NamespacedName, qStatefulSet)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -64,24 +64,24 @@ func (r *ReconcileStatefulSetCleanup) Reconcile(request reconcile.Request) (reco
 	}
 
 	// Cleanup volumeManagement statefulSet once it's all pods are ready
-	err = r.deleteVolumeManagementStatefulSet(ctx, exStatefulSet)
+	err = r.deleteVolumeManagementStatefulSet(ctx, qStatefulSet)
 	if err != nil {
 		ctxlog.Error(ctx, "Could not delete volumeManagement statefulSet of QuarksStatefulSet '", request.NamespacedName, "': ", err)
 		return reconcile.Result{}, err
 	}
 
-	statefulSetVersions, err := r.listStatefulSetVersions(ctx, exStatefulSet)
+	statefulSetVersions, err := r.listStatefulSetVersions(ctx, qStatefulSet)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	maxAvailableVersion := exStatefulSet.GetMaxAvailableVersion(statefulSetVersions)
+	maxAvailableVersion := qStatefulSet.GetMaxAvailableVersion(statefulSetVersions)
 
 	// Clean up versions when there is more than one version
 	if len(statefulSetVersions) > 1 {
-		err = r.cleanupStatefulSets(ctx, exStatefulSet, maxAvailableVersion)
+		err = r.cleanupStatefulSets(ctx, qStatefulSet, maxAvailableVersion)
 		if err != nil {
-			return reconcile.Result{}, ctxlog.WithEvent(exStatefulSet, "CleanupError").Error(ctx, "Could not cleanup StatefulSets owned by QuarksStatefulSet '", request.NamespacedName, "': ", err)
+			return reconcile.Result{}, ctxlog.WithEvent(qStatefulSet, "CleanupError").Error(ctx, "Could not cleanup StatefulSets owned by QuarksStatefulSet '", request.NamespacedName, "': ", err)
 		}
 	}
 

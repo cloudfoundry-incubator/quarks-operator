@@ -12,7 +12,7 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
@@ -56,7 +56,7 @@ func NewJobFactory(namespace string) *JobFactory {
 }
 
 // VariableInterpolationJob returns an quarks job to interpolate variables
-func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error) {
+func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error) {
 	args := []string{"util", "variable-interpolation"}
 
 	// This is the source manifest, that still has the '((vars))'
@@ -82,36 +82,36 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*ejv1.Exte
 		volumeMounts = append(volumeMounts, noVarsVolumeMount())
 	}
 
-	eJobName := fmt.Sprintf("dm-%s", manifest.Name)
+	qJobName := fmt.Sprintf("dm-%s", manifest.Name)
 
-	// Construct the var interpolation auto-errand eJob
-	job := &ejv1.ExtendedJob{
+	// Construct the var interpolation auto-errand qJob
+	qJob := &qjv1a1.QuarksJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      eJobName,
+			Name:      qJobName,
 			Namespace: f.Namespace,
 			Labels: map[string]string{
 				bdv1.LabelDeploymentName: manifest.Name,
 			},
 		},
-		Spec: ejv1.ExtendedJobSpec{
-			Output: &ejv1.Output{
+		Spec: qjv1a1.QuarksJobSpec{
+			Output: &qjv1a1.Output{
 				NamePrefix: names.DesiredManifestPrefix(manifest.Name),
 				SecretLabels: map[string]string{
 					bdv1.LabelDeploymentName:       manifest.Name,
 					bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeManifestWithOps.String(),
-					ejv1.LabelReferencedJobName:    fmt.Sprintf("instance-group-%s", manifest.Name),
+					qjv1a1.LabelReferencedJobName:  fmt.Sprintf("instance-group-%s", manifest.Name),
 				},
 				Versioned: true,
 			},
-			Trigger: ejv1.Trigger{
-				Strategy: ejv1.TriggerOnce,
+			Trigger: qjv1a1.Trigger{
+				Strategy: qjv1a1.TriggerOnce,
 			},
 			UpdateOnConfigChange: true,
 			Template: batchv1b1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: eJobName,
+							Name: qJobName,
 							Labels: map[string]string{
 								"delete": "pod",
 							},
@@ -148,14 +148,14 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*ejv1.Exte
 			},
 		},
 	}
-	return job, nil
+	return qJob, nil
 }
 
 // InstanceGroupManifestJob generates the job to create an instance group manifest
-func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error) {
+func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error) {
 	containers := []corev1.Container{}
 
-	// ExtendedJob will always pick the latest version for versioned secrets
+	// QuarksJob will always pick the latest version for versioned secrets
 	desiredManifestName := names.DesiredManifestName(manifest.Name, "1")
 
 	for _, ig := range manifest.InstanceGroups {
@@ -166,12 +166,12 @@ func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest) (*ejv1.Exte
 		}
 	}
 
-	eJobName := fmt.Sprintf("ig-%s", manifest.Name)
-	return f.gatheringJob(eJobName, manifest, desiredManifestName, names.DeploymentSecretTypeInstanceGroupResolvedProperties, containers)
+	qJobName := fmt.Sprintf("ig-%s", manifest.Name)
+	return f.gatheringJob(qJobName, manifest, desiredManifestName, names.DeploymentSecretTypeInstanceGroupResolvedProperties, containers)
 }
 
 // BPMConfigsJob returns an quarks job to calculate BPM information
-func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error) {
+func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error) {
 	containers := []corev1.Container{}
 	desiredManifestName := names.DesiredManifestName(manifest.Name, "1")
 
@@ -183,8 +183,8 @@ func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, er
 		}
 	}
 
-	eJobName := fmt.Sprintf("bpm-%s", manifest.Name)
-	return f.gatheringJob(eJobName, manifest, desiredManifestName, names.DeploymentSecretBpmInformation, containers)
+	qJobName := fmt.Sprintf("bpm-%s", manifest.Name)
+	return f.gatheringJob(qJobName, manifest, desiredManifestName, names.DeploymentSecretBpmInformation, containers)
 }
 
 func (f *JobFactory) gatheringContainer(cmd, desiredManifestName string, instanceGroupName string) corev1.Container {
@@ -222,7 +222,7 @@ func (f *JobFactory) gatheringContainer(cmd, desiredManifestName string, instanc
 	}
 }
 
-func (f *JobFactory) gatheringJob(name string, manifest bdm.Manifest, desiredManifestName string, secretType names.DeploymentSecretType, containers []corev1.Container) (*ejv1.ExtendedJob, error) {
+func (f *JobFactory) gatheringJob(name string, manifest bdm.Manifest, desiredManifestName string, secretType names.DeploymentSecretType, containers []corev1.Container) (*qjv1a1.QuarksJob, error) {
 	outputSecretNamePrefix := names.CalculateIGSecretPrefix(secretType, manifest.Name)
 
 	initContainers := []corev1.Container{}
@@ -252,8 +252,8 @@ func (f *JobFactory) gatheringJob(name string, manifest bdm.Manifest, desiredMan
 		}
 	}
 
-	// Construct the "BPM configs" or "data gathering" auto-errand eJob
-	job := &ejv1.ExtendedJob{
+	// Construct the "BPM configs" or "data gathering" auto-errand qJob
+	qJob := &qjv1a1.QuarksJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: f.Namespace,
@@ -261,8 +261,8 @@ func (f *JobFactory) gatheringJob(name string, manifest bdm.Manifest, desiredMan
 				bdv1.LabelDeploymentName: manifest.Name,
 			},
 		},
-		Spec: ejv1.ExtendedJobSpec{
-			Output: &ejv1.Output{
+		Spec: qjv1a1.QuarksJobSpec{
+			Output: &qjv1a1.Output{
 				NamePrefix: outputSecretNamePrefix,
 				SecretLabels: map[string]string{
 					bdv1.LabelDeploymentName:       manifest.Name,
@@ -270,8 +270,8 @@ func (f *JobFactory) gatheringJob(name string, manifest bdm.Manifest, desiredMan
 				},
 				Versioned: true,
 			},
-			Trigger: ejv1.Trigger{
-				Strategy: ejv1.TriggerOnce,
+			Trigger: qjv1a1.Trigger{
+				Strategy: qjv1a1.TriggerOnce,
 			},
 			UpdateOnConfigChange: true,
 			Template: batchv1b1.JobTemplateSpec{
@@ -300,5 +300,5 @@ func (f *JobFactory) gatheringJob(name string, manifest bdm.Manifest, desiredMan
 			},
 		},
 	}
-	return job, nil
+	return qJob, nil
 }
