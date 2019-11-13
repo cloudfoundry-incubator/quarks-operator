@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -19,6 +20,7 @@ import (
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
@@ -55,7 +57,12 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*corev1.Secret)
 			shouldProcessEvent := isBPMInfoSecret(o)
+
 			if shouldProcessEvent {
+				if metav1.HasAnnotation(o.ObjectMeta, meltdown.AnnotationLastReconcile) {
+					return false
+				}
+
 				ctxlog.NewPredicateEvent(o).Debug(
 					ctx, e.Meta, names.Secret,
 					fmt.Sprintf("Create predicate passed for %s, existing secret with label %s, value %s",
