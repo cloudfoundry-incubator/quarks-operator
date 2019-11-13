@@ -20,7 +20,7 @@ import (
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
-	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
@@ -113,7 +113,7 @@ var _ = Describe("Mutate", func() {
 		})
 	})
 
-	Describe("EStsMutateFn", func() {
+	Describe("QuarksStatefulSetMutateFn", func() {
 		var (
 			eSts *qstsv1a1.QuarksStatefulSet
 		)
@@ -140,7 +140,7 @@ var _ = Describe("Mutate", func() {
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
 
-				ops, err := controllerutil.CreateOrUpdate(ctx, client, eSts, mutate.EStsMutateFn(eSts))
+				ops, err := controllerutil.CreateOrUpdate(ctx, client, eSts, mutate.QuarksStatefulSetMutateFn(eSts))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ops).To(Equal(controllerutil.OperationResultCreated))
 			})
@@ -171,7 +171,7 @@ var _ = Describe("Mutate", func() {
 
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
-				ops, err := controllerutil.CreateOrUpdate(ctx, client, eSts, mutate.EStsMutateFn(eSts))
+				ops, err := controllerutil.CreateOrUpdate(ctx, client, eSts, mutate.QuarksStatefulSetMutateFn(eSts))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ops).To(Equal(controllerutil.OperationResultUpdated))
 			})
@@ -187,56 +187,56 @@ var _ = Describe("Mutate", func() {
 
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
-				ops, err := controllerutil.CreateOrUpdate(ctx, client, eSts, mutate.EStsMutateFn(eSts))
+				ops, err := controllerutil.CreateOrUpdate(ctx, client, eSts, mutate.QuarksStatefulSetMutateFn(eSts))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ops).To(Equal(controllerutil.OperationResultNone))
 			})
 		})
 	})
 
-	Describe("EJobMutateFn", func() {
+	Describe("QuarksJobMutateFn", func() {
 		var (
-			eJob *ejv1.ExtendedJob
+			qJob *qjv1a1.QuarksJob
 		)
 
 		BeforeEach(func() {
-			eJob = &ejv1.ExtendedJob{
+			qJob = &qjv1a1.QuarksJob{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "default",
 				},
-				Spec: ejv1.ExtendedJobSpec{
-					Trigger: ejv1.Trigger{
-						Strategy: ejv1.TriggerOnce,
+				Spec: qjv1a1.QuarksJobSpec{
+					Trigger: qjv1a1.Trigger{
+						Strategy: qjv1a1.TriggerOnce,
 					},
 					UpdateOnConfigChange: true,
 				},
 			}
 		})
 
-		Context("when the extendedJob is not found", func() {
-			It("creates the extendedJob", func() {
+		Context("when the quarksJob is not found", func() {
+			It("creates the quarksJob", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
 
-				ops, err := controllerutil.CreateOrUpdate(ctx, client, eJob, mutate.EJobMutateFn(eJob))
+				ops, err := controllerutil.CreateOrUpdate(ctx, client, qJob, mutate.QuarksJobMutateFn(qJob))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ops).To(Equal(controllerutil.OperationResultCreated))
 			})
 		})
 
-		Context("when the extendedJob is found", func() {
-			It("updates the extendedJob when spec is changed", func() {
+		Context("when the quarksJob is found", func() {
+			It("updates the quarksJob when spec is changed", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object := object.(type) {
-					case *ejv1.ExtendedJob:
-						existing := &ejv1.ExtendedJob{
+					case *qjv1a1.QuarksJob:
+						existing := &qjv1a1.QuarksJob{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      "foo",
 								Namespace: "default",
 							},
-							Spec: ejv1.ExtendedJobSpec{},
+							Spec: qjv1a1.QuarksJobSpec{},
 						}
 						existing.DeepCopyInto(object)
 
@@ -245,23 +245,23 @@ var _ = Describe("Mutate", func() {
 
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
-				ops, err := controllerutil.CreateOrUpdate(ctx, client, eJob, mutate.EJobMutateFn(eJob))
+				ops, err := controllerutil.CreateOrUpdate(ctx, client, qJob, mutate.QuarksJobMutateFn(qJob))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ops).To(Equal(controllerutil.OperationResultUpdated))
 			})
 
-			It("does not update the extendedJob when nothing is changed", func() {
+			It("does not update the quarksJob when nothing is changed", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object.(type) {
-					case *ejv1.ExtendedJob:
-						object = eJob.DeepCopy()
+					case *qjv1a1.QuarksJob:
+						object = qJob.DeepCopy()
 
 						return nil
 					}
 
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
-				ops, err := controllerutil.CreateOrUpdate(ctx, client, eJob, mutate.EJobMutateFn(eJob))
+				ops, err := controllerutil.CreateOrUpdate(ctx, client, qJob, mutate.QuarksJobMutateFn(qJob))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ops).To(Equal(controllerutil.OperationResultNone))
 			})
@@ -269,15 +269,15 @@ var _ = Describe("Mutate", func() {
 			It("does not update trigger strategy", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object := object.(type) {
-					case *ejv1.ExtendedJob:
-						existing := &ejv1.ExtendedJob{
+					case *qjv1a1.QuarksJob:
+						existing := &qjv1a1.QuarksJob{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      "foo",
 								Namespace: "default",
 							},
-							Spec: ejv1.ExtendedJobSpec{
-								Trigger: ejv1.Trigger{
-									Strategy: ejv1.TriggerNow,
+							Spec: qjv1a1.QuarksJobSpec{
+								Trigger: qjv1a1.Trigger{
+									Strategy: qjv1a1.TriggerNow,
 								},
 								UpdateOnConfigChange: true,
 							},
@@ -289,20 +289,20 @@ var _ = Describe("Mutate", func() {
 
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
-				ops, err := controllerutil.CreateOrUpdate(ctx, client, eJob, mutate.EJobMutateFn(eJob))
+				ops, err := controllerutil.CreateOrUpdate(ctx, client, qJob, mutate.QuarksJobMutateFn(qJob))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ops).To(Equal(controllerutil.OperationResultNone))
 			})
 		})
 	})
 
-	Describe("ESecMutateFn", func() {
+	Describe("QuarksSecretMutateFn", func() {
 		var (
-			eSec *qsv1a1.QuarksSecret
+			qSec *qsv1a1.QuarksSecret
 		)
 
 		BeforeEach(func() {
-			eSec = &qsv1a1.QuarksSecret{
+			qSec = &qsv1a1.QuarksSecret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "default",
@@ -320,7 +320,7 @@ var _ = Describe("Mutate", func() {
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
 
-				ops, err := controllerutil.CreateOrUpdate(ctx, client, eSec, mutate.ESecMutateFn(eSec))
+				ops, err := controllerutil.CreateOrUpdate(ctx, client, qSec, mutate.QuarksSecretMutateFn(qSec))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ops).To(Equal(controllerutil.OperationResultCreated))
 			})
@@ -348,7 +348,7 @@ var _ = Describe("Mutate", func() {
 
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
-				ops, err := controllerutil.CreateOrUpdate(ctx, client, eSec, mutate.ESecMutateFn(eSec))
+				ops, err := controllerutil.CreateOrUpdate(ctx, client, qSec, mutate.QuarksSecretMutateFn(qSec))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ops).To(Equal(controllerutil.OperationResultUpdated))
 			})
@@ -357,14 +357,14 @@ var _ = Describe("Mutate", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object.(type) {
 					case *qsv1a1.QuarksSecret:
-						object = eSec.DeepCopy()
+						object = qSec.DeepCopy()
 
 						return nil
 					}
 
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
-				ops, err := controllerutil.CreateOrUpdate(ctx, client, eSec, mutate.ESecMutateFn(eSec))
+				ops, err := controllerutil.CreateOrUpdate(ctx, client, qSec, mutate.QuarksSecretMutateFn(qSec))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ops).To(Equal(controllerutil.OperationResultNone))
 			})

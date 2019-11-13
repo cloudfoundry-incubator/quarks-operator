@@ -30,9 +30,9 @@ export GO111MODULE=on
 Kubernetes allows developers to extend the objects its APIs process and store using Custom Resource Definitions (CRDs). We are creating four [CRDs](../docs/crds):
 
 - BOSHDeployment
-- ExtendedJob
-- ExtendedSecret
-- ExtendedStatefulSet
+- QuarksJob
+- QuarksSecret
+- QuarksStatefulSet
 
 The CRDs are also defined in code and applied automatically when cf-operator starts. If you are editing CRDs, you should update changes to this YAML files in sync.
 

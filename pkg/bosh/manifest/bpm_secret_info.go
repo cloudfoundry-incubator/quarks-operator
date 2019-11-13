@@ -5,7 +5,7 @@ import (
 )
 
 // BPMInfo contains custom information about
-// instance group which matters for exsts pods
+// instance group which matters for quarksStatefulSet pods
 // such as AZ's, instance group count and BPM Configs
 type BPMInfo struct {
 	InstanceGroup BPMInstanceGroup `json:"instance_group,omitempty"`
@@ -13,9 +13,9 @@ type BPMInfo struct {
 	Variables     []Variable       `json:"variables,omitempty"`
 }
 
-// BPMInstanceGroup is a custome instance group spec
+// BPMInstanceGroup is a custom instance group spec
 // that should be included in the BPM secret created
-// by the bpm extendedjob.
+// by the bpm quarksJob.
 type BPMInstanceGroup struct {
 	Name      string   `json:"name"`
 	Instances int      `json:"instances"`

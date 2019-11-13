@@ -6,54 +6,54 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
-	"code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	"code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 )
 
 type FakeJobFactory struct {
-	BPMConfigsJobStub        func(manifest.Manifest) (*v1alpha1.ExtendedJob, error)
+	BPMConfigsJobStub        func(manifest.Manifest) (*v1alpha1.QuarksJob, error)
 	bPMConfigsJobMutex       sync.RWMutex
 	bPMConfigsJobArgsForCall []struct {
 		arg1 manifest.Manifest
 	}
 	bPMConfigsJobReturns struct {
-		result1 *v1alpha1.ExtendedJob
+		result1 *v1alpha1.QuarksJob
 		result2 error
 	}
 	bPMConfigsJobReturnsOnCall map[int]struct {
-		result1 *v1alpha1.ExtendedJob
+		result1 *v1alpha1.QuarksJob
 		result2 error
 	}
-	InstanceGroupManifestJobStub        func(manifest.Manifest) (*v1alpha1.ExtendedJob, error)
+	InstanceGroupManifestJobStub        func(manifest.Manifest) (*v1alpha1.QuarksJob, error)
 	instanceGroupManifestJobMutex       sync.RWMutex
 	instanceGroupManifestJobArgsForCall []struct {
 		arg1 manifest.Manifest
 	}
 	instanceGroupManifestJobReturns struct {
-		result1 *v1alpha1.ExtendedJob
+		result1 *v1alpha1.QuarksJob
 		result2 error
 	}
 	instanceGroupManifestJobReturnsOnCall map[int]struct {
-		result1 *v1alpha1.ExtendedJob
+		result1 *v1alpha1.QuarksJob
 		result2 error
 	}
-	VariableInterpolationJobStub        func(manifest.Manifest) (*v1alpha1.ExtendedJob, error)
+	VariableInterpolationJobStub        func(manifest.Manifest) (*v1alpha1.QuarksJob, error)
 	variableInterpolationJobMutex       sync.RWMutex
 	variableInterpolationJobArgsForCall []struct {
 		arg1 manifest.Manifest
 	}
 	variableInterpolationJobReturns struct {
-		result1 *v1alpha1.ExtendedJob
+		result1 *v1alpha1.QuarksJob
 		result2 error
 	}
 	variableInterpolationJobReturnsOnCall map[int]struct {
-		result1 *v1alpha1.ExtendedJob
+		result1 *v1alpha1.QuarksJob
 		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeJobFactory) BPMConfigsJob(arg1 manifest.Manifest) (*v1alpha1.ExtendedJob, error) {
+func (fake *FakeJobFactory) BPMConfigsJob(arg1 manifest.Manifest) (*v1alpha1.QuarksJob, error) {
 	fake.bPMConfigsJobMutex.Lock()
 	ret, specificReturn := fake.bPMConfigsJobReturnsOnCall[len(fake.bPMConfigsJobArgsForCall)]
 	fake.bPMConfigsJobArgsForCall = append(fake.bPMConfigsJobArgsForCall, struct {
@@ -77,7 +77,7 @@ func (fake *FakeJobFactory) BPMConfigsJobCallCount() int {
 	return len(fake.bPMConfigsJobArgsForCall)
 }
 
-func (fake *FakeJobFactory) BPMConfigsJobCalls(stub func(manifest.Manifest) (*v1alpha1.ExtendedJob, error)) {
+func (fake *FakeJobFactory) BPMConfigsJobCalls(stub func(manifest.Manifest) (*v1alpha1.QuarksJob, error)) {
 	fake.bPMConfigsJobMutex.Lock()
 	defer fake.bPMConfigsJobMutex.Unlock()
 	fake.BPMConfigsJobStub = stub
@@ -90,33 +90,33 @@ func (fake *FakeJobFactory) BPMConfigsJobArgsForCall(i int) manifest.Manifest {
 	return argsForCall.arg1
 }
 
-func (fake *FakeJobFactory) BPMConfigsJobReturns(result1 *v1alpha1.ExtendedJob, result2 error) {
+func (fake *FakeJobFactory) BPMConfigsJobReturns(result1 *v1alpha1.QuarksJob, result2 error) {
 	fake.bPMConfigsJobMutex.Lock()
 	defer fake.bPMConfigsJobMutex.Unlock()
 	fake.BPMConfigsJobStub = nil
 	fake.bPMConfigsJobReturns = struct {
-		result1 *v1alpha1.ExtendedJob
+		result1 *v1alpha1.QuarksJob
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeJobFactory) BPMConfigsJobReturnsOnCall(i int, result1 *v1alpha1.ExtendedJob, result2 error) {
+func (fake *FakeJobFactory) BPMConfigsJobReturnsOnCall(i int, result1 *v1alpha1.QuarksJob, result2 error) {
 	fake.bPMConfigsJobMutex.Lock()
 	defer fake.bPMConfigsJobMutex.Unlock()
 	fake.BPMConfigsJobStub = nil
 	if fake.bPMConfigsJobReturnsOnCall == nil {
 		fake.bPMConfigsJobReturnsOnCall = make(map[int]struct {
-			result1 *v1alpha1.ExtendedJob
+			result1 *v1alpha1.QuarksJob
 			result2 error
 		})
 	}
 	fake.bPMConfigsJobReturnsOnCall[i] = struct {
-		result1 *v1alpha1.ExtendedJob
+		result1 *v1alpha1.QuarksJob
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeJobFactory) InstanceGroupManifestJob(arg1 manifest.Manifest) (*v1alpha1.ExtendedJob, error) {
+func (fake *FakeJobFactory) InstanceGroupManifestJob(arg1 manifest.Manifest) (*v1alpha1.QuarksJob, error) {
 	fake.instanceGroupManifestJobMutex.Lock()
 	ret, specificReturn := fake.instanceGroupManifestJobReturnsOnCall[len(fake.instanceGroupManifestJobArgsForCall)]
 	fake.instanceGroupManifestJobArgsForCall = append(fake.instanceGroupManifestJobArgsForCall, struct {
@@ -140,7 +140,7 @@ func (fake *FakeJobFactory) InstanceGroupManifestJobCallCount() int {
 	return len(fake.instanceGroupManifestJobArgsForCall)
 }
 
-func (fake *FakeJobFactory) InstanceGroupManifestJobCalls(stub func(manifest.Manifest) (*v1alpha1.ExtendedJob, error)) {
+func (fake *FakeJobFactory) InstanceGroupManifestJobCalls(stub func(manifest.Manifest) (*v1alpha1.QuarksJob, error)) {
 	fake.instanceGroupManifestJobMutex.Lock()
 	defer fake.instanceGroupManifestJobMutex.Unlock()
 	fake.InstanceGroupManifestJobStub = stub
@@ -153,33 +153,33 @@ func (fake *FakeJobFactory) InstanceGroupManifestJobArgsForCall(i int) manifest.
 	return argsForCall.arg1
 }
 
-func (fake *FakeJobFactory) InstanceGroupManifestJobReturns(result1 *v1alpha1.ExtendedJob, result2 error) {
+func (fake *FakeJobFactory) InstanceGroupManifestJobReturns(result1 *v1alpha1.QuarksJob, result2 error) {
 	fake.instanceGroupManifestJobMutex.Lock()
 	defer fake.instanceGroupManifestJobMutex.Unlock()
 	fake.InstanceGroupManifestJobStub = nil
 	fake.instanceGroupManifestJobReturns = struct {
-		result1 *v1alpha1.ExtendedJob
+		result1 *v1alpha1.QuarksJob
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeJobFactory) InstanceGroupManifestJobReturnsOnCall(i int, result1 *v1alpha1.ExtendedJob, result2 error) {
+func (fake *FakeJobFactory) InstanceGroupManifestJobReturnsOnCall(i int, result1 *v1alpha1.QuarksJob, result2 error) {
 	fake.instanceGroupManifestJobMutex.Lock()
 	defer fake.instanceGroupManifestJobMutex.Unlock()
 	fake.InstanceGroupManifestJobStub = nil
 	if fake.instanceGroupManifestJobReturnsOnCall == nil {
 		fake.instanceGroupManifestJobReturnsOnCall = make(map[int]struct {
-			result1 *v1alpha1.ExtendedJob
+			result1 *v1alpha1.QuarksJob
 			result2 error
 		})
 	}
 	fake.instanceGroupManifestJobReturnsOnCall[i] = struct {
-		result1 *v1alpha1.ExtendedJob
+		result1 *v1alpha1.QuarksJob
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeJobFactory) VariableInterpolationJob(arg1 manifest.Manifest) (*v1alpha1.ExtendedJob, error) {
+func (fake *FakeJobFactory) VariableInterpolationJob(arg1 manifest.Manifest) (*v1alpha1.QuarksJob, error) {
 	fake.variableInterpolationJobMutex.Lock()
 	ret, specificReturn := fake.variableInterpolationJobReturnsOnCall[len(fake.variableInterpolationJobArgsForCall)]
 	fake.variableInterpolationJobArgsForCall = append(fake.variableInterpolationJobArgsForCall, struct {
@@ -203,7 +203,7 @@ func (fake *FakeJobFactory) VariableInterpolationJobCallCount() int {
 	return len(fake.variableInterpolationJobArgsForCall)
 }
 
-func (fake *FakeJobFactory) VariableInterpolationJobCalls(stub func(manifest.Manifest) (*v1alpha1.ExtendedJob, error)) {
+func (fake *FakeJobFactory) VariableInterpolationJobCalls(stub func(manifest.Manifest) (*v1alpha1.QuarksJob, error)) {
 	fake.variableInterpolationJobMutex.Lock()
 	defer fake.variableInterpolationJobMutex.Unlock()
 	fake.VariableInterpolationJobStub = stub
@@ -216,28 +216,28 @@ func (fake *FakeJobFactory) VariableInterpolationJobArgsForCall(i int) manifest.
 	return argsForCall.arg1
 }
 
-func (fake *FakeJobFactory) VariableInterpolationJobReturns(result1 *v1alpha1.ExtendedJob, result2 error) {
+func (fake *FakeJobFactory) VariableInterpolationJobReturns(result1 *v1alpha1.QuarksJob, result2 error) {
 	fake.variableInterpolationJobMutex.Lock()
 	defer fake.variableInterpolationJobMutex.Unlock()
 	fake.VariableInterpolationJobStub = nil
 	fake.variableInterpolationJobReturns = struct {
-		result1 *v1alpha1.ExtendedJob
+		result1 *v1alpha1.QuarksJob
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeJobFactory) VariableInterpolationJobReturnsOnCall(i int, result1 *v1alpha1.ExtendedJob, result2 error) {
+func (fake *FakeJobFactory) VariableInterpolationJobReturnsOnCall(i int, result1 *v1alpha1.QuarksJob, result2 error) {
 	fake.variableInterpolationJobMutex.Lock()
 	defer fake.variableInterpolationJobMutex.Unlock()
 	fake.VariableInterpolationJobStub = nil
 	if fake.variableInterpolationJobReturnsOnCall == nil {
 		fake.variableInterpolationJobReturnsOnCall = make(map[int]struct {
-			result1 *v1alpha1.ExtendedJob
+			result1 *v1alpha1.QuarksJob
 			result2 error
 		})
 	}
 	fake.variableInterpolationJobReturnsOnCall[i] = struct {
-		result1 *v1alpha1.ExtendedJob
+		result1 *v1alpha1.QuarksJob
 		result2 error
 	}{result1, result2}
 }

@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestExtendedSecret(t *testing.T) {
+func TestQuarksSecret(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "QuarksSecret Suite")
 }

@@ -82,7 +82,7 @@ for SECRET in "${SECRETS[@]}"; do
   get_resource secret "$SECRET" "${SECRETS_DIR}/${SECRET}.yaml"
 done
 
-# Iterate over jobs, Extended*
+# Iterate over jobs, Quarks*
 for i in jobs qsts qjobs qsecs sts; do
   RESOURCES=($(get_resources "$i"))
   for RESOURCE in "${RESOURCES[@]}"; do

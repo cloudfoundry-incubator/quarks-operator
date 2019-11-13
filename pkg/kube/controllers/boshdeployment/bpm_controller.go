@@ -27,7 +27,7 @@ import (
 
 // AddBPM creates a new BPM controller to watch for BPM configs and instance
 // group manifests.  It will reconcile those into k8s resources
-// (QuarksStatefulSet, ExtendedJob), which represent BOSH instance groups and
+// (QuarksStatefulSet, QuarksJob), which represent BOSH instance groups and
 // BOSH errands.
 func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "bpm-reconciler", mgr.GetEventRecorderFor("bpm-recorder"))

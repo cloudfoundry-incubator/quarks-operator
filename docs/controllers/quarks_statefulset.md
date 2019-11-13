@@ -17,7 +17,7 @@
          11. [Volume Management](#volume-management)
          12. [AZ Support](#az-support)
          13. [Active/passive model](#activepassive-model)
-      2. [Statefulset Cleanup Controller](#_statefulset-cleanup-controller_)
+      2. [Statefulset Cleanup Controller](#statefulset-cleanup-controller)
          1. [Watches](#watches-in-cleanup-controller)
          2. [Reconciliation](#reconciliation-in-cleanup-controller)
    3. [Relationship with the BPM component](#relationship-with-the-bdpl-component)

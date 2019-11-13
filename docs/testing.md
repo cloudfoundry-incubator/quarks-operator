@@ -87,7 +87,7 @@ is set to `true`.
 
 ### **Webhook Configuration**
 
-Extended StatefulSet requires a k8s webhook to mutate the volumes of a pod.
+Quarks StatefulSet requires a k8s webhook to mutate the volumes of a pod.
 Kubernetes will call back to the operator for certain requests and use the
 modified pod manifest, which is returned.
 CF-Operator also uses a validating webhook to check the BOSH deployment custom resource.

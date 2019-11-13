@@ -15,7 +15,7 @@ import (
 	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
-	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/crd"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -79,12 +79,12 @@ func ApplyCRDs(config *rest.Config) error {
 			&bdv1.BOSHDeploymentValidation,
 		},
 		{
-			ejv1.ExtendedJobResourceName,
-			ejv1.ExtendedJobResourceKind,
-			ejv1.ExtendedJobResourcePlural,
-			ejv1.ExtendedJobResourceShortNames,
-			ejv1.SchemeGroupVersion,
-			&ejv1.ExtendedJobValidation,
+			qjv1a1.QuarksJobResourceName,
+			qjv1a1.QuarksJobResourceKind,
+			qjv1a1.QuarksJobResourcePlural,
+			qjv1a1.QuarksJobResourceShortNames,
+			qjv1a1.SchemeGroupVersion,
+			&qjv1a1.QuarksJobValidation,
 		},
 		{
 			qsv1a1.QuarksSecretResourceName,
@@ -95,7 +95,7 @@ func ApplyCRDs(config *rest.Config) error {
 			nil,
 		},
 		{
-			qstsv1a1.ExtendedStatefulSetResourceName,
+			qstsv1a1.QuarksStatefulSetResourceName,
 			qstsv1a1.QuarksStatefulSetResourceKind,
 			qstsv1a1.QuarksStatefulSetResourcePlural,
 			qstsv1a1.QuarksStatefulSetResourceShortNames,

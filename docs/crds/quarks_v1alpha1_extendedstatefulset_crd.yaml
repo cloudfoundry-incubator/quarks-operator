@@ -36,6 +36,6 @@ spec:
               description: "Indicates the node label that a node locates"
             zones:
               type: array
-              description: "Indicates the availability zones that the ExtendedStatefulSet needs to span"
+              description: "Indicates the availability zones that the QuarksStatefulSet needs to span"
               items:
                 type: string

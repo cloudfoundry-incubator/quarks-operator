@@ -99,8 +99,8 @@ func (ig *InstanceGroup) NameSanitized() string {
 	return names.Sanitize(ig.Name)
 }
 
-// ExtendedStatefulsetName constructs the ests name.
-func (ig *InstanceGroup) ExtendedStatefulsetName(deploymentName string) string {
+// QuarksStatefulSetName constructs the quarksStatefulSet name.
+func (ig *InstanceGroup) QuarksStatefulSetName(deploymentName string) string {
 	ign := ig.NameSanitized()
 	return fmt.Sprintf("%s-%s", deploymentName, ign)
 }

@@ -9,7 +9,7 @@ import (
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
-	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 )
 
 // BoshDeploymentMutateFn returns MutateFn which mutates BoshDeployment including:
@@ -25,57 +25,57 @@ func BoshDeploymentMutateFn(boshDeployment *bdv1.BOSHDeployment) controllerutil.
 	}
 }
 
-// EStsMutateFn returns MutateFn which mutates QuarksStatefulSet including:
+// QuarksStatefulSetMutateFn returns MutateFn which mutates QuarksStatefulSet including:
 // - labels, annotations
 // - spec
-func EStsMutateFn(eSts *qstsv1a1.QuarksStatefulSet) controllerutil.MutateFn {
-	updated := eSts.DeepCopy()
+func QuarksStatefulSetMutateFn(qSts *qstsv1a1.QuarksStatefulSet) controllerutil.MutateFn {
+	updated := qSts.DeepCopy()
 	return func() error {
-		eSts.Labels = updated.Labels
-		eSts.Annotations = updated.Annotations
-		eSts.Spec = updated.Spec
+		qSts.Labels = updated.Labels
+		qSts.Annotations = updated.Annotations
+		qSts.Spec = updated.Spec
 		return nil
 	}
 }
 
-// EJobMutateFn returns MutateFn which mutates ExtendedJob including:
+// QuarksJobMutateFn returns MutateFn which mutates QuarksJob including:
 // - labels, annotations
 // - spec.output, spec.Template, spec.updateOnConfigChange
-func EJobMutateFn(eJob *ejv1.ExtendedJob) controllerutil.MutateFn {
-	updated := eJob.DeepCopy()
+func QuarksJobMutateFn(qJob *qjv1a1.QuarksJob) controllerutil.MutateFn {
+	updated := qJob.DeepCopy()
 	return func() error {
-		eJob.Labels = updated.Labels
-		eJob.Annotations = updated.Annotations
+		qJob.Labels = updated.Labels
+		qJob.Annotations = updated.Annotations
 		// Does not reset Spec.Trigger.Strategy
-		if len(eJob.Spec.Trigger.Strategy) == 0 {
-			eJob.Spec.Trigger.Strategy = updated.Spec.Trigger.Strategy
+		if len(qJob.Spec.Trigger.Strategy) == 0 {
+			qJob.Spec.Trigger.Strategy = updated.Spec.Trigger.Strategy
 		}
 		// Does not reset Annotations
-		if eJob.ObjectMeta.Annotations == nil {
-			eJob.ObjectMeta.Annotations = updated.ObjectMeta.Annotations
+		if qJob.ObjectMeta.Annotations == nil {
+			qJob.ObjectMeta.Annotations = updated.ObjectMeta.Annotations
 		}
-		eJob.Spec.Output = updated.Spec.Output
-		eJob.Spec.Template = updated.Spec.Template
-		eJob.Spec.UpdateOnConfigChange = updated.Spec.UpdateOnConfigChange
+		qJob.Spec.Output = updated.Spec.Output
+		qJob.Spec.Template = updated.Spec.Template
+		qJob.Spec.UpdateOnConfigChange = updated.Spec.UpdateOnConfigChange
 		return nil
 	}
 }
 
-// ESecMutateFn returns MutateFn which mutates QuarksSecret including:
+// QuarksSecretMutateFn returns MutateFn which mutates QuarksSecret including:
 // - labels, annotations
 // - spec
 // - status.generated
-func ESecMutateFn(eSec *qsv1a1.QuarksSecret) controllerutil.MutateFn {
-	updated := eSec.DeepCopy()
+func QuarksSecretMutateFn(qSec *qsv1a1.QuarksSecret) controllerutil.MutateFn {
+	updated := qSec.DeepCopy()
 	return func() error {
-		eSec.Labels = updated.Labels
-		eSec.Annotations = updated.Annotations
+		qSec.Labels = updated.Labels
+		qSec.Annotations = updated.Annotations
 		// Update only when spec or status has been changed
-		if !reflect.DeepEqual(eSec.Spec, updated.Spec) {
-			eSec.Spec = updated.Spec
+		if !reflect.DeepEqual(qSec.Spec, updated.Spec) {
+			qSec.Spec = updated.Spec
 		}
-		if eSec.Status.Generated != updated.Status.Generated {
-			eSec.Status.Generated = updated.Status.Generated
+		if qSec.Status.Generated != updated.Status.Generated {
+			qSec.Status.Generated = updated.Status.Generated
 		}
 
 		return nil
