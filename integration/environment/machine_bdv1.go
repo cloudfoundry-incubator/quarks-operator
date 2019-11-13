@@ -1,5 +1,8 @@
 package environment
 
+// The functions in this file are only used by the boshdeployment controllers
+// tests. They were split off in preparation for standalone components.
+
 import (
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

@@ -1,5 +1,9 @@
 package environment
 
+// The functions in this file were only used by the extended statefulset
+// components tests, but might be used by others now.  They were split off in
+// preparation for standalone components.
+
 import (
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
@@ -12,7 +16,7 @@ import (
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
 
-// GetStatefulSet gets a StatefulSet custom resource
+// GetStatefulSet gets a StatefulSet by namespace and name
 func (m *Machine) GetStatefulSet(namespace string, name string) (*appsv1.StatefulSet, error) {
 	statefulSet, err := m.Clientset.AppsV1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
@@ -100,7 +104,9 @@ func (m *Machine) StatefulSetExist(namespace string, name string) (bool, error) 
 	return true, nil
 }
 
-// WaitForStatefulSetNewGeneration blocks until at least one StatefulSet is found. It fails after the timeout.
+// WaitForStatefulSetNewGeneration blocks until at least one StatefulSet is
+// found, which has a generation greater than currentVersion. It fails after
+// the timeout.
 func (m *Machine) WaitForStatefulSetNewGeneration(namespace string, name string, currentVersion int64) error {
 	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		return m.StatefulSetNewGeneration(namespace, name, currentVersion)
@@ -178,9 +184,9 @@ func (m *Machine) PVCsDeleted(namespace string) (bool, error) {
 }
 
 // WaitForStatefulSet blocks until all statefulSet pods are running. It fails after the timeout.
-func (m *Machine) WaitForStatefulSet(namespace string, labels string) error {
+func (m *Machine) WaitForStatefulSet(namespace string, name string) error {
 	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
-		return m.StatefulSetRunning(namespace, labels)
+		return m.StatefulSetRunning(namespace, name)
 	})
 }
 
@@ -212,8 +218,8 @@ func (m *Machine) QuarksStatefulSetExists(namespace string, labels string) (bool
 	return len(esss.Items) > 0, nil
 }
 
-// StatefulSetNewGeneration returns true if StatefulSet has new generation
-func (m *Machine) StatefulSetNewGeneration(namespace string, name string, version int64) (bool, error) {
+// StatefulSetNewGeneration returns true if StatefulSet has a new generation greater `generation`
+func (m *Machine) StatefulSetNewGeneration(namespace string, name string, generation int64) (bool, error) {
 	client := m.Clientset.AppsV1().StatefulSets(namespace)
 
 	ss, err := client.Get(name, metav1.GetOptions{})
@@ -221,7 +227,7 @@ func (m *Machine) StatefulSetNewGeneration(namespace string, name string, versio
 		return false, errors.Wrapf(err, "failed to query for statefulSet by name: %v", name)
 	}
 
-	if ss.Status.ObservedGeneration > version {
+	if ss.Status.ObservedGeneration > generation {
 		return true, nil
 	}
 
