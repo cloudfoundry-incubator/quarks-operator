@@ -144,18 +144,22 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 			}
 
 			// Because we use subpaths for data, store or sys mounts, we want to
-			// treat unrestricted volumes as additional volumes
-			// /var/vcap/jobs is already mounted everywhere for quarks, so we ignore anything in there
+			// treat unrestricted volumes as additional volumes.
 			filteredUnrestrictedVolumes := []bpm.Volume{}
 			for _, unrestrictedVolume := range process.Unsafe.UnrestrictedVolumes {
+				// /var/vcap/jobs is already mounted everywhere for quarks, so we ignore anything in there.
 				if strings.HasPrefix(unrestrictedVolume.Path, VolumeJobsDirMountPath) {
 					continue
 				}
 
-				if strings.HasPrefix(unrestrictedVolume.Path, VolumeDataDirMountPath) ||
-					strings.HasPrefix(unrestrictedVolume.Path, VolumeStoreDirMountPath) ||
-					strings.HasPrefix(unrestrictedVolume.Path, VolumeSysDirMountPath) {
-					// Add it to additional volumes
+				// To consider an unrestricted volume to be an additional volume, the prefix must match, but
+				// the volume shouldn't be equal to the known
+				// - /var/vcap/data
+				// - /var/vcap/store
+				// - /var/vcap
+				if (strings.HasPrefix(unrestrictedVolume.Path, VolumeDataDirMountPath) && unrestrictedVolume.Path != VolumeDataDirMountPath) ||
+					(strings.HasPrefix(unrestrictedVolume.Path, VolumeStoreDirMountPath) && unrestrictedVolume.Path != VolumeStoreDirMountPath) ||
+					(strings.HasPrefix(unrestrictedVolume.Path, VolumeSysDirMountPath) && unrestrictedVolume.Path != VolumeSysDirMountPath) {
 					process.AdditionalVolumes = append(process.AdditionalVolumes, unrestrictedVolume)
 					continue
 				}
