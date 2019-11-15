@@ -676,3 +676,12 @@ func (c *Catalog) BOSHManifestWithUpdateSerialAndWithoutPorts() (*manifest.Manif
 	}
 	return m, nil
 }
+
+// BOSHManifestWithNilConsume returns a manifest with a nil consume for the job
+func (c *Catalog) BOSHManifestWithNilConsume() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.WithNilConsume))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
+}
