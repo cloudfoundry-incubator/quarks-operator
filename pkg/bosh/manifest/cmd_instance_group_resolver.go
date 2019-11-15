@@ -84,27 +84,31 @@ func (dg *InstanceGroupResolver) Manifest() (Manifest, error) {
 	igJobs := []Job{}
 	for _, job := range dg.instanceGroup.Jobs {
 
-		igQuarks := Quarks{}
-		igQuarks.Consumes = job.Properties.Quarks.Consumes
-		igQuarks.PreRenderScripts = job.Properties.Quarks.PreRenderScripts
+		igQuarks := Quarks{
+			Consumes:         job.Properties.Quarks.Consumes,
+			PreRenderScripts: job.Properties.Quarks.PreRenderScripts,
+		}
 
-		igJobProperties := JobProperties{}
-		igJobProperties.Properties = job.Properties.Properties
-		igJobProperties.Quarks = igQuarks
+		igJobProperties := JobProperties{
+			Properties: job.Properties.Properties,
+			Quarks:     igQuarks,
+		}
 
-		igJob := Job{}
-		igJob.Name = job.Name
-		igJob.Release = job.Release
-		igJob.Properties = igJobProperties
+		igJob := Job{
+			Name:       job.Name,
+			Release:    job.Release,
+			Properties: igJobProperties,
+		}
 
 		igJobs = append(igJobs, igJob)
 	}
 
 	ig := &InstanceGroup{Name: dg.instanceGroup.Name, Jobs: igJobs}
 
-	igManifest := Manifest{}
-	igManifest.Name = dg.manifest.Name
-	igManifest.InstanceGroups = []*InstanceGroup{ig}
+	igManifest := Manifest{
+		Name:           dg.manifest.Name,
+		InstanceGroups: []*InstanceGroup{ig},
+	}
 
 	return igManifest, nil
 }
