@@ -67,6 +67,9 @@ const (
 	// releaseSourceName is the folder for release sources
 	releaseSourceName        = "instance-group"
 	resolvedPropertiesFormat = "/var/run/secrets/resolved-properties/%s"
+
+	// linksPath is the mount path for the links data.
+	linksPath = "/var/run/secrets/links/"
 )
 
 // VolumeFactoryImpl is a concrete implementation of VolumeFactoryImpl
@@ -495,4 +498,23 @@ func generateVolumeName(secretName string) string {
 		volName = nameSlices[0]
 	}
 	return names.Sanitize(volName)
+}
+
+func linkVolume(secretName string) corev1.Volume {
+	return corev1.Volume{
+		Name: generateVolumeName(secretName),
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: secretName,
+			},
+		},
+	}
+}
+
+func linkVolumeMount(secretName string, providerName string) corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      generateVolumeName(secretName),
+		MountPath: linksPath + providerName,
+		ReadOnly:  true,
+	}
 }
