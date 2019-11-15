@@ -171,7 +171,7 @@ variables: []
 					bdv1.LabelDeploymentName:             "foo",
 					versionedsecretstore.LabelSecretKind: "versionedSecret",
 					versionedsecretstore.LabelVersion:    "1",
-					qjv1a1.LabelInstanceGroup:            "fakepod",
+					qjv1a1.LabelRemoteID:                 "fakepod",
 				},
 			},
 			Data: map[string][]byte{
@@ -193,7 +193,7 @@ variables: []
 					bdv1.LabelDeploymentName:             "foo",
 					versionedsecretstore.LabelSecretKind: "versionedSecret",
 					versionedsecretstore.LabelVersion:    "1",
-					qjv1a1.LabelInstanceGroup:            "fakepod",
+					qjv1a1.LabelRemoteID:                 "fakepod",
 				},
 			},
 			Data: map[string][]byte{

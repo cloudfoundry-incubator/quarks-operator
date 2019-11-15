@@ -18,18 +18,18 @@ import (
 
 const (
 	// EnvInstanceGroupName is a key for the container Env identifying the
-	// instance group that container is started for
+	// instance group that container is started for (CLI)
 	EnvInstanceGroupName = "INSTANCE_GROUP_NAME"
-	// EnvBOSHManifestPath is a key for the container Env pointing to the BOSH manifest
+	// EnvBOSHManifestPath is a key for the container Env pointing to the BOSH manifest (CLI)
 	EnvBOSHManifestPath = "BOSH_MANIFEST_PATH"
 	// EnvCFONamespace is a key for the container Env used to lookup the
-	// namespace CF operator is running in
+	// namespace CF operator is running in (CLI)
 	EnvCFONamespace = "CF_OPERATOR_NAMESPACE"
-	// EnvBaseDir is a key for the container Env used to lookup the base dir
+	// EnvBaseDir is a key for the container Env used to lookup the base dir (CLI)
 	EnvBaseDir = "BASE_DIR"
-	// EnvVariablesDir is a key for the container Env used to lookup the variables dir
+	// EnvVariablesDir is a key for the container Env used to lookup the variables dir (CLI)
 	EnvVariablesDir = "VARIABLES_DIR"
-	// EnvOutputFilePath is path where json output is to be redirected
+	// EnvOutputFilePath is path where json output is to be redirected (CLI)
 	EnvOutputFilePath = "OUTPUT_FILE_PATH"
 	// EnvOutputFilePathValue is the value of filepath of json output file
 	EnvOutputFilePathValue = "/mnt/quarks/output.json"
@@ -37,9 +37,9 @@ const (
 	// performs variable interpolation for a manifest. It's also part of
 	// the output secret's name
 	VarInterpolationContainerName = "desired-manifest"
-	// PodNameEnvVar is the environment variable containing metadata.name used to render BOSH spec.id.
+	// PodNameEnvVar is the environment variable containing metadata.name used to render BOSH spec.id. (CLI)
 	PodNameEnvVar = "POD_NAME"
-	// PodIPEnvVar is the environment variable containing status.podIP used to render BOSH spec.ip.
+	// PodIPEnvVar is the environment variable containing status.podIP used to render BOSH spec.ip. (CLI)
 	PodIPEnvVar = "POD_IP"
 )
 
@@ -209,6 +209,10 @@ func (f *JobFactory) gatheringContainer(cmd, desiredManifestName string, instanc
 			{
 				Name:  EnvBaseDir,
 				Value: VolumeRenderingDataMountPath,
+			},
+			{
+				Name:  qjv1a1.RemoteIDKey,
+				Value: instanceGroupName,
 			},
 			{
 				Name:  EnvInstanceGroupName,

@@ -13,6 +13,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
@@ -345,6 +346,10 @@ func templateRenderingContainer(instanceGroupName string, secretName string) cor
 		Env: []corev1.EnvVar{
 			{
 				Name:  EnvInstanceGroupName,
+				Value: instanceGroupName,
+			},
+			{
+				Name:  qjv1a1.RemoteIDKey,
 				Value: instanceGroupName,
 			},
 			{
