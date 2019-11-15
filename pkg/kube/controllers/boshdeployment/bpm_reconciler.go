@@ -116,7 +116,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 
 	// Apply BPM information
-	instanceGroupName, ok := bpmSecret.Labels[qjv1a1.LabelInstanceGroup]
+	instanceGroupName, ok := bpmSecret.Labels[qjv1a1.LabelRemoteID]
 	if !ok {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "LabelMissingError").Errorf(ctx, "Missing container label for bpm information bpmSecret '%s'", request.NamespacedName)
@@ -175,7 +175,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm.Manifest) (*converter.BPMResources, error) {
 
-	instanceGroupName, ok := bpmSecret.Labels[qjv1a1.LabelInstanceGroup]
+	instanceGroupName, ok := bpmSecret.Labels[qjv1a1.LabelRemoteID]
 	if !ok {
 		return nil, errors.Errorf("Missing container label for bpm information secret '%s'", bpmSecret.Name)
 	}
