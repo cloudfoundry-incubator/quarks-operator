@@ -341,18 +341,7 @@ func validateBPMProcesses(processes []bpm.Process) error {
 func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks JobProviderLinks) error {
 	currentJobSpecData := jobReleaseSpecs[currentJob.Release][currentJob.Name]
 	for _, provider := range currentJobSpecData.Consumes {
-
-		providerName := provider.Name
-
-		if currentJob.Consumes != nil {
-			// When the job defines a consumes property in the manifest, use it instead of the one
-			// from currentJobSpecData.Consumes.
-			if _, ok := currentJob.Consumes[providerName]; ok {
-				if value, ok := currentJob.Consumes[providerName].(map[string]interface{})["from"]; ok {
-					providerName = value.(string)
-				}
-			}
-		}
+		providerName := getProviderNameFromConsumer(*currentJob, provider.Name)
 
 		link, hasLink := jobProviderLinks.Lookup(&provider)
 		if !hasLink && !provider.Optional {
@@ -498,4 +487,36 @@ func indexOfBPMProcess(processes []bpm.Process, processName string) (int, bool) 
 		}
 	}
 	return -1, false
+}
+
+// getProviderNameFromConsumer get the override of the provider to consume.
+// This should match the name defined in the provider's release spec or the name defined by provider's as property
+func getProviderNameFromConsumer(job Job, provider string) string {
+	// When the job defines a consumes property in the manifest, use it instead of the provider
+	// from currentJobSpecData.Consumes.
+	if job.Consumes == nil {
+		return provider
+	}
+
+	consumes, ok := job.Consumes[provider]
+	if !ok {
+		return provider
+	}
+
+	c, ok := consumes.(map[string]interface{})
+	if !ok {
+		return provider
+	}
+
+	override, ok := c["from"]
+	if !ok {
+		return provider
+	}
+
+	providerName, _ := override.(string)
+	if len(providerName) == 0 {
+		return provider
+	}
+
+	return providerName
 }

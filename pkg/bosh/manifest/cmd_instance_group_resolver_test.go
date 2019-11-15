@@ -261,6 +261,25 @@ var _ = Describe("InstanceGroupResolver", func() {
 					})
 				})
 			})
+
+			Context("when specifying consume as nil ", func() {
+				BeforeEach(func() {
+					m, err = env.BOSHManifestWithNilConsume()
+					Expect(err).NotTo(HaveOccurred())
+					ig = "log-api"
+				})
+
+				It("resolves all required data if the job consumes a link", func() {
+					manifest, err := dg.Manifest()
+					Expect(err).ToNot(HaveOccurred())
+
+					// log-api instance_group, with loggregator_trafficcontroller job, consumes nil link from log-cache
+					jobQuarksConsumes := manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Consumes
+					jobConsumesFromLogCache, consumeFromLogCacheExists := jobQuarksConsumes["log-cache"]
+					Expect(consumeFromLogCacheExists).To(BeTrue())
+					Expect(jobConsumesFromLogCache).To(Equal(JobLink{}))
+				})
+			})
 		})
 	})
 })
