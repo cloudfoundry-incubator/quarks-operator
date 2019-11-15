@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
-
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1b1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -159,7 +158,7 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 }
 
 // InstanceGroupManifestJob generates the job to create an instance group manifest
-func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest, initialRollout bool) (*qjv1a1.QuarksJob, error) {
+func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest, linkSecrets map[string]string, initialRollout bool) (*qjv1a1.QuarksJob, error) {
 	containers := []corev1.Container{}
 	ct := containerTemplate{
 		manifestName:   desiredManifestName(manifest.Name),
@@ -170,6 +169,14 @@ func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest, initialRoll
 
 	linkOutputs := map[string]string{}
 
+	// Volume mounts for explicit linking provider links
+	linkVolumes := []corev1.Volume{}
+	linkVolumeMounts := []corev1.VolumeMount{}
+	for secretName, providerName := range linkSecrets {
+		linkVolumes = append(linkVolumes, linkVolume(secretName))
+		linkVolumeMounts = append(linkVolumeMounts, linkVolumeMount(secretName, providerName))
+	}
+
 	for _, ig := range manifest.InstanceGroups {
 		if ig.Instances != 0 {
 			// Additional secret for BOSH links per instance group
@@ -177,13 +184,13 @@ func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest, initialRoll
 			linkOutputs[containerName] = names.EntanglementSecretName(manifest.Name, ig.Name)
 
 			// One container per instance group
-			containers = append(containers, ct.newUtilContainer(ig.Name))
+			containers = append(containers, ct.newUtilContainer(ig.Name, linkVolumeMounts))
 		}
 	}
 
 	qJobName := fmt.Sprintf("ig-%s", manifest.Name)
 
-	qJob, err := f.releaseImageQJob(qJobName, manifest, names.DeploymentSecretTypeInstanceGroupResolvedProperties, containers)
+	qJob, err := f.releaseImageQJob(qJobName, manifest, names.DeploymentSecretTypeInstanceGroupResolvedProperties, containers, linkVolumes)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +205,7 @@ func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest, initialRoll
 }
 
 // BPMConfigsJob returns an quarks job to calculate BPM information
-func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest, initialRollout bool) (*qjv1a1.QuarksJob, error) {
+func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest, linkSecrets map[string]string, initialRollout bool) (*qjv1a1.QuarksJob, error) {
 	containers := []corev1.Container{}
 	ct := containerTemplate{
 		manifestName:   desiredManifestName(manifest.Name),
@@ -207,11 +214,19 @@ func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest, initialRollout bool) (
 		initialRollout: initialRollout,
 	}
 
+	// Volume mounts for explicit linking provider links
+	linkVolumes := []corev1.Volume{}
+	linkVolumeMounts := []corev1.VolumeMount{}
+	for secretName, providerName := range linkSecrets {
+		linkVolumes = append(linkVolumes, linkVolume(secretName))
+		linkVolumeMounts = append(linkVolumeMounts, linkVolumeMount(secretName, providerName))
+	}
+
 	for _, ig := range manifest.InstanceGroups {
 		if ig.Instances != 0 {
 			// One container per instance group
 			// There will be one BPM secret generated for each of these containers
-			container := ct.newUtilContainer(ig.Name)
+			container := ct.newUtilContainer(ig.Name, linkVolumeMounts)
 
 			env := corev1.EnvVar{Name: qjv1a1.RemoteIDKey, Value: ig.Name}
 			container.Env = append(container.Env, env)
@@ -220,7 +235,7 @@ func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest, initialRollout bool) (
 	}
 
 	qJobName := fmt.Sprintf("bpm-%s", manifest.Name)
-	return f.releaseImageQJob(qJobName, manifest, names.DeploymentSecretBpmInformation, containers)
+	return f.releaseImageQJob(qJobName, manifest, names.DeploymentSecretBpmInformation, containers, linkVolumes)
 }
 
 // desiredManifestName returns the sanitized, versioned name of the manifest.
@@ -236,16 +251,16 @@ type containerTemplate struct {
 	initialRollout bool
 }
 
-func (ct *containerTemplate) newUtilContainer(instanceGroupName string) corev1.Container {
+func (ct *containerTemplate) newUtilContainer(instanceGroupName string, linkVolumeMounts []corev1.VolumeMount) corev1.Container {
 	return corev1.Container{
 		Name:            names.Sanitize(instanceGroupName),
 		Image:           GetOperatorDockerImage(),
 		ImagePullPolicy: GetOperatorImagePullPolicy(),
 		Args:            []string{"util", ct.cmd, "--initial-rollout", strconv.FormatBool(ct.initialRollout)},
-		VolumeMounts: []corev1.VolumeMount{
+		VolumeMounts: append(linkVolumeMounts, []corev1.VolumeMount{
 			withOpsVolumeMount(ct.manifestName),
 			releaseSourceVolumeMount(),
-		},
+		}...),
 		Env: []corev1.EnvVar{
 			{
 				Name:  EnvBOSHManifestPath,
@@ -272,7 +287,7 @@ func (ct *containerTemplate) newUtilContainer(instanceGroupName string) corev1.C
 }
 
 // releaseImageQJob collects outputs, like bpm, links or ig manifests, from the BOSH release images
-func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, secretType names.DeploymentSecretType, containers []corev1.Container) (*qjv1a1.QuarksJob, error) {
+func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, secretType names.DeploymentSecretType, containers []corev1.Container, linkVolumes []corev1.Volume) (*qjv1a1.QuarksJob, error) {
 	initContainers := []corev1.Container{}
 	doneSpecCopyingReleases := map[string]bool{}
 	for _, ig := range manifest.InstanceGroups {
@@ -348,10 +363,10 @@ func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, secret
 							// Container to run data gathering
 							Containers: containers,
 							// Volumes for secrets
-							Volumes: []corev1.Volume{
+							Volumes: append(linkVolumes, []corev1.Volume{
 								*withOpsVolume(desiredManifestName(manifest.Name)),
 								releaseSourceVolume(),
-							},
+							}...),
 						},
 					},
 				},

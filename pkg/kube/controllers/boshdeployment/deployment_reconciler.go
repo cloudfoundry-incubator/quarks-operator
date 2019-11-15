@@ -2,15 +2,17 @@ package boshdeployment
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
-
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -29,8 +31,8 @@ import (
 // JobFactory creates Jobs for a given manifest
 type JobFactory interface {
 	VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error)
-	InstanceGroupManifestJob(manifest bdm.Manifest, initialRollout bool) (*qjv1a1.QuarksJob, error)
-	BPMConfigsJob(manifest bdm.Manifest, initialRollout bool) (*qjv1a1.QuarksJob, error)
+	InstanceGroupManifestJob(manifest bdm.Manifest, linkSecrets map[string]string, initialRollout bool) (*qjv1a1.QuarksJob, error)
+	BPMConfigsJob(manifest bdm.Manifest, providerSecrets map[string]string, initialRollout bool) (*qjv1a1.QuarksJob, error)
 }
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
@@ -115,12 +117,20 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			log.WithEvent(instance, "DesiredManifestError").Errorf(ctx, "Failed to create desired manifest qJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	// Apply the "Data Gathering" QuarksJob, which creates instance group manifests (ig-resolved) secrets
-	qJob, err = r.jobFactory.InstanceGroupManifestJob(*manifest, instance.ObjectMeta.Generation == 1)
+	// Handle explicit linking
+	linkSecrets, err := r.listProviderSecrets(instance, *manifest)
 	if err != nil {
-		return reconcile.Result{}, log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "Failed to build instance group manifest qJob: %v", err)
-
+		return reconcile.Result{},
+			log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "Failed to listing link secrets for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
+
+	// Apply the "Instance group manifest" QuarksJob, which creates instance group manifests (ig-resolved) secrets
+	qJob, err = r.jobFactory.InstanceGroupManifestJob(*manifest, linkSecrets, instance.ObjectMeta.Generation == 1)
+	if err != nil {
+		return reconcile.Result{},
+			log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "Failed to build instance group manifest qJob: %v", err)
+	}
+
 	log.Debug(ctx, "Creating instance group manifest QuarksJob")
 	err = r.createQuarksJob(ctx, instance, qJob)
 	if err != nil {
@@ -129,7 +139,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Apply the "BPM Configs" QuarksJob, which creates BPM config secrets
-	qJob, err = r.jobFactory.BPMConfigsJob(*manifest, instance.ObjectMeta.Generation == 1)
+	qJob, err = r.jobFactory.BPMConfigsJob(*manifest, linkSecrets, instance.ObjectMeta.Generation == 1)
 	if err != nil {
 		return reconcile.Result{}, log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to build BPM configs qJob: %v", err)
 
@@ -216,4 +226,94 @@ func (r *ReconcileBOSHDeployment) createQuarksJob(ctx context.Context, instance 
 	log.Debugf(ctx, "QuarksJob '%s' has been %s", qJob.Name, op)
 
 	return err
+}
+
+// listProviderSecrets return a map of secrets containing link providers
+func (r *ReconcileBOSHDeployment) listProviderSecrets(instance *bdv1.BOSHDeployment, manifest bdm.Manifest) (map[string]string, error) {
+	linkSecrets := map[string]string{}
+
+	// find all missing providers in the manifest
+	seekingPs := listMissingProviders(manifest)
+
+	// list secrets and match annotation
+	if len(seekingPs) != 0 {
+		secretLabels := map[string]string{bdv1.LabelDeploymentName: instance.Name}
+		secrets := &corev1.SecretList{}
+		err := r.client.List(r.ctx, secrets, crc.MatchingLabels(secretLabels))
+		if err != nil {
+			return linkSecrets, errors.Wrapf(err, "listing secrets for seeking links from '%s':", instance.Name)
+		}
+
+		for _, s := range secrets.Items {
+			providerName, ok := s.GetAnnotations()[bdv1.AnnotationLinkProviderName]
+			if ok {
+				if dup, ok := seekingPs[providerName]; ok {
+					if dup {
+						return linkSecrets, errors.New(fmt.Sprintf("duplicated secrets of provider: %s", providerName))
+					}
+					linkSecrets[s.Name] = providerName
+					seekingPs[providerName] = true
+				}
+			}
+		}
+	}
+
+	missingPs := make([]string, 0, len(seekingPs))
+	for key, found := range seekingPs {
+		if !found {
+			missingPs = append(missingPs, key)
+		}
+	}
+
+	if len(missingPs) != 0 {
+		return linkSecrets, errors.New(fmt.Sprintf("missing secrets of providers: %s", strings.Join(missingPs, ", ")))
+	}
+
+	return linkSecrets, nil
+}
+
+// listMissingProviders return a list of missing providers in the manifest
+func listMissingProviders(manifest bdm.Manifest) map[string]bool {
+	provideAsNames := map[string]bool{}
+	consumeFromNames := map[string]bool{}
+
+	for _, ig := range manifest.InstanceGroups {
+		for _, job := range ig.Jobs {
+			provideAsNames = listProviderNames(job.Provides, "as")
+			consumeFromNames = listProviderNames(job.Consumes, "from")
+		}
+	}
+
+	// Iterate consumeFromNames and remove providers existing in the manifest
+	for providerName := range consumeFromNames {
+		if _, ok := provideAsNames[providerName]; ok {
+			delete(consumeFromNames, providerName)
+		}
+	}
+
+	return consumeFromNames
+}
+
+// listProviderNames returns a map containing provider names from job provides and consumes
+func listProviderNames(providerProperties map[string]interface{}, providerKey string) map[string]bool {
+	providerNames := map[string]bool{}
+
+	for _, property := range providerProperties {
+		p, ok := property.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		nameVal, ok := p[providerKey]
+		if !ok {
+			continue
+		}
+
+		name, _ := nameVal.(string)
+		if len(name) == 0 {
+			continue
+		}
+		providerNames[name] = false
+	}
+
+	return providerNames
 }
