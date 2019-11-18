@@ -141,7 +141,7 @@ func init() {
 	cmd.KubeConfigFlags(pf, argToEnv)
 	cmd.LoggerFlags(pf, argToEnv)
 	cmd.NamespacesFlags(pf, argToEnv, namespaceArg)
-	cmd.DockerImageFlags(pf, argToEnv, version.Version)
+	cmd.DockerImageFlags(pf, argToEnv, "cf-operator", version.Version)
 	cmd.ApplyCRDsFlags(pf, argToEnv)
 
 	pf.StringP("bosh-dns-docker-image", "", "coredns/coredns:1.6.3", "The docker image used for emulating bosh DNS (a CoreDNS image)")
