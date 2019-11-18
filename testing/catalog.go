@@ -650,6 +650,15 @@ func (c *Catalog) NodePortService(name, ig string, targetPort int32) corev1.Serv
 	}
 }
 
+//BOSHManifestWithGlobalUpdateBlock returns a manifest with a global update block
+func (c *Catalog) BOSHManifestWithGlobalUpdateBlock() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithGlobalUpdateBlock))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
+}
+
 // BOSHManifestWithUpdateSerial returns a manifest with update serial
 func (c *Catalog) BOSHManifestWithUpdateSerial() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithUpdateSerial))

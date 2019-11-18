@@ -2,9 +2,13 @@ package boshdeployment
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 
 	"go.uber.org/zap"
 	"k8s.io/api/admission/v1beta1"
@@ -189,7 +193,7 @@ func (v *Validator) Handle(_ context.Context, req admission.Request) admission.R
 	}
 
 	log.Infof(ctx, "Resolving deployment '%s'", boshDeployment.Name)
-	_, _, err = resolver.WithOpsManifestDetailed(ctx, boshDeployment, boshDeployment.GetNamespace())
+	manifest, _, err := resolver.WithOpsManifestDetailed(ctx, boshDeployment, boshDeployment.GetNamespace())
 	if err != nil {
 		return admission.Response{
 			AdmissionResponse: v1beta1.AdmissionResponse{
@@ -200,12 +204,35 @@ func (v *Validator) Handle(_ context.Context, req admission.Request) admission.R
 			},
 		}
 	}
-
+	err = validateCanaryWatchTime(*manifest)
+	if err != nil {
+		return admission.Response{
+			AdmissionResponse: v1beta1.AdmissionResponse{
+				Allowed: false,
+				Result: &metav1.Status{
+					Message: fmt.Sprintf("Failed to validate canary_watch_time: %s", err.Error()),
+				},
+			},
+		}
+	}
 	return admission.Response{
 		AdmissionResponse: v1beta1.AdmissionResponse{
 			Allowed: true,
 		},
 	}
+}
+
+func validateCanaryWatchTime(manifest manifest.Manifest) error {
+	if manifest.Update == nil || manifest.Update.CanaryWatchTime == "" {
+		return errors.New("no canary_watch_time specified")
+	}
+	canaryWatchTime := manifest.Update.CanaryWatchTime
+	absoluteRegex := regexp.MustCompile(`^\s*(\d+)\s*$`)
+	rangeRegex := regexp.MustCompile(`^\s*(\d+)\s*-\s*(\d+)\s*$`)
+	if absoluteRegex.MatchString(canaryWatchTime) || rangeRegex.MatchString(canaryWatchTime) {
+		return nil
+	}
+	return errors.New("watch time must be an integer or a range of two integers")
 }
 
 // Validator implements inject.Client.

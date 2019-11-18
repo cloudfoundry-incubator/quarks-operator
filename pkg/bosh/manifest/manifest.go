@@ -192,16 +192,13 @@ func (m *Manifest) loadDNS() error {
 	return nil
 }
 
-// CalculateRequiredServices calculates the required services using the update.serial property
-func (m *Manifest) CalculateRequiredServices() {
+// calculateRequiredServices calculates the required services using the update.serial property
+func (m *Manifest) calculateRequiredServices() {
 	var requiredService *string
 	var requiredSerialService *string
 
 	for _, ig := range m.InstanceGroups {
 		serial := true
-		if m.Update != nil && m.Update.Serial != nil {
-			serial = *m.Update.Serial
-		}
 		if ig.Update != nil && ig.Update.Serial != nil {
 			serial = *ig.Update.Serial
 		}
@@ -546,4 +543,25 @@ func (m *Manifest) ApplyAddons(ctx context.Context) error {
 	m.AddOnsApplied = true
 
 	return nil
+}
+
+//ApplyUpdateBlock interprets and propagates information of the 'update'-blocks
+func (m *Manifest) ApplyUpdateBlock() {
+	m.propagateGlobalUpdateBlockToIGs()
+	m.calculateRequiredServices()
+}
+
+func (m *Manifest) propagateGlobalUpdateBlockToIGs() {
+	for _, ig := range m.InstanceGroups {
+		if ig.Update == nil {
+			ig.Update = m.Update
+		} else {
+			if ig.Update.CanaryWatchTime == "" {
+				ig.Update.CanaryWatchTime = m.Update.CanaryWatchTime
+			}
+			if ig.Update.Serial == nil {
+				ig.Update.Serial = m.Update.Serial
+			}
+		}
+	}
 }

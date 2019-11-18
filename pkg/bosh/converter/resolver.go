@@ -135,9 +135,7 @@ func (r *ResolverImpl) WithOpsManifest(ctx context.Context, instance *bdv1.BOSHD
 	if err != nil {
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}
-
-	manifest.CalculateRequiredServices()
-
+	manifest.ApplyUpdateBlock()
 	return manifest, varSecrets, err
 }
 
@@ -213,7 +211,7 @@ func (r *ResolverImpl) WithOpsManifestDetailed(ctx context.Context, instance *bd
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}
 
-	manifest.CalculateRequiredServices()
+	manifest.ApplyUpdateBlock()
 
 	return manifest, varSecrets, err
 }

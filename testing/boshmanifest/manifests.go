@@ -19,6 +19,8 @@ instance_groups:
   vm_type: medium
   stemcell: default
   persistent_disk_type: medium
+  update:
+    canary_watch_time: 20000-1200000
   networks:
   - name: default
   properties:
@@ -41,6 +43,8 @@ instance_groups:
   persistent_disk: 1024
   persistent_disk_type: "standard"
   vm_type: small-highmem
+  update:
+    canary_watch_time: 20000-1200000
   vm_extensions:
   - 100GB_ephemeral_disk
   stemcell: default
@@ -692,6 +696,8 @@ instance_groups:
 - name: fake-ig-1
   instances: 2
   lifecycle: errand
+  update:
+    canary_watch_time: 20000-1200000
   jobs:
   - name: fake-errand-a
     release: fake-release
@@ -702,6 +708,8 @@ instance_groups:
   - name: fake-errand-b
     release: fake-release
 - name: fake-ig-2
+  update:
+    canary_watch_time: 20000-1200000
   instances: 3
   jobs:
   - name: fake-job-a
@@ -711,6 +719,8 @@ instance_groups:
   - name: fake-job-c
     release: fake-release
 - name: fake-ig-3
+  update:
+    canary_watch_time: 20000-1200000
   instances: 1
   jobs:
   - name: fake-job-a
@@ -737,6 +747,8 @@ releases:
 
 instance_groups:
 - name: bpm
+  update:
+    canary_watch_time: 20000-1200000
   instances: 1
   jobs:
   - name: test-server
@@ -765,9 +777,12 @@ releases:
   stemcell:
     os: opensuse-42.3
     version: 36.g03b4653-30.80-7.0.0_332.g0d8469bb
-
+update:
+  canary_watch_time: 20000-1200000
 instance_groups:
 - name: route_registrar
+  update:
+    canary_watch_time: 20000-1200000
   instances: 2
   jobs:
   - name: route_registrar
@@ -807,7 +822,8 @@ const Diego = `
     stemcell:
       os: opensuse-42.3
       version: 36.g03b4653-30.80-7.0.0_332.g0d8469bb
-
+  update:
+    canary_watch_time: 20000-1200000
   instance_groups:
   - name: file_server
     instances: 2
@@ -832,7 +848,8 @@ releases:
   stemcell:
     os: opensuse-42.3
     version: 36.g03b4653-30.80-7.0.0_316.gcf9fe4a7
-
+update:
+  canary_watch_time: 20000-1200000
 instance_groups:
 - name: bpm
   instances: 1
@@ -853,6 +870,8 @@ instance_groups:
 // WithMultiBPMProcessesAndPersistentDisk is a BOSH manifest with multi BPM Processes and persistent disk definition
 const WithMultiBPMProcessesAndPersistentDisk = `---
 name: my-manifest
+update:
+  canary_watch_time: 20000-1200000
 releases:
 - name: fake-release
   version: "26"
@@ -916,8 +935,13 @@ releases:
     os: opensuse-42.3
     version: 36.g03b4653-30.80-7.0.0_316.gcf9fe4a7
 
+update:
+  canary_watch_time: 10000-1100000
+
 instance_groups:
 - name: bpm1
+  update:
+    canary_watch_time: 20000-1200000
   instances: 2
   jobs:
   - name: test-server
@@ -948,6 +972,8 @@ instance_groups:
   persistent_disk: 10
   persistent_disk_type: ((operator_test_storage_class))
 - name: bpm2
+  update:
+    canary_watch_time: 20000-1200000
   instances: 2
   jobs:
   - name: test-server
@@ -980,6 +1006,8 @@ instance_groups:
   persistent_disk: 10
   persistent_disk_type: ((operator_test_storage_class))
 - name: bpm3
+  update:
+    canary_watch_time: 20000-1200000
   instances: 2
   jobs:
   - name: test-server
@@ -1033,6 +1061,8 @@ releases:
     version: 36.g03b4653-30.80-7.0.0_332.g0d8469bb
 instance_groups:
 - name: nats
+  update:
+    canary_watch_time: 20000-1200000
   instances: 2
   jobs:
   - name: nats
@@ -1051,6 +1081,8 @@ instance_groups:
           protocol: "TCP"
           internal: 4223
 - name: route_registrar
+  update:
+    canary_watch_time: 20000-1200000
   instances: 2
   jobs:
   - name: route_registrar
@@ -1077,15 +1109,21 @@ instance_groups:
         ca_cert: ""
         ssl:
           port: 8443
+update:
+  canary_watch_time: 20000-1200000
 `
 
 // ManifestWithLargeValues has large yaml values.
 const ManifestWithLargeValues = `
 director_uuid: ""
+update:
+  canary_watch_time: 20000-1200000
 instance_groups:
 - azs:
   - z1
   - z2
+  update:
+    canary_watch_time: 20000-1200000
   env:
     bosh:
       agent:
@@ -2645,6 +2683,63 @@ instance_groups:
 name: scf-dev
 variables: []`
 
+// BPMReleaseWithGlobalUpdateBlock contains a manifest with a global update block
+const BPMReleaseWithGlobalUpdateBlock = `
+name: bpm
+
+releases:
+- name: bpm
+  version: 1.0.4
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 36.g03b4653-30.80-7.0.0_316.gcf9fe4a7
+update:
+  serial: false
+  canary_watch_time: 20000-1200000
+instance_groups:
+- name: bpm1
+  jobs:
+  - name: test-server
+    release: bpm
+    properties:
+      quarks:
+        ports:
+        - name: test-server
+          protocol: TCP
+          internal: 1337
+- name: bpm2
+  update:
+    serial: true
+  jobs:
+  - name: test-server
+    release: bpm
+    properties:
+      quarks:
+        ports:
+        - name: test-server
+          protocol: TCP
+          internal: 1337
+        - name: alt-test-server
+          protocol: TCP
+          internal: 1338
+- name: bpm3
+  update:
+    canary_watch_time: 10000-9900000
+  jobs:
+  - name: test-server3
+    release: bpm
+    properties:
+      quarks:
+        ports:
+        - name: test-server
+          protocol: TCP
+          internal: 1337
+        - name: alt-test-server
+          protocol: TCP
+          internal: 1338
+`
+
 // BPMReleaseWithUpdateSerial contains a manifest with some dependent instance groups
 const BPMReleaseWithUpdateSerial = `
 name: bpm
@@ -2658,6 +2753,7 @@ releases:
     version: 36.g03b4653-30.80-7.0.0_316.gcf9fe4a7
 update:
   serial: false
+  canary_watch_time: 20000-1200000
 instance_groups:
 - name: bpm1
   update:
@@ -2731,6 +2827,7 @@ releases:
     os: opensuse-42.3
     version: 36.g03b4653-30.80-7.0.0_316.gcf9fe4a7
 update:
+  canary_watch_time: 20000-1200000
   serial: false
 instance_groups:
 - name: bpm1
@@ -2770,6 +2867,7 @@ releases:
     os: opensuse-42.3
     version: 36.g03b4653-30.80-7.0.0_316.gcf9fe4a7
 update:
+  canary_watch_time: 20000-1200000
   serial: true
 instance_groups:
 - name: bpm1

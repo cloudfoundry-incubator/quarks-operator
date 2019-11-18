@@ -123,6 +123,12 @@ func (kc *KubeConverter) serviceToExtendedSts(
 	volumeClaims = append(volumeClaims, defaultVolumeClaims...)
 	volumeClaims = append(volumeClaims, bpmVolumeClaims...)
 
+	statefulSetAnnotations := instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations
+	if statefulSetAnnotations == nil {
+		statefulSetAnnotations = make(map[string]string)
+	}
+	statefulSetAnnotations["quarks.cloudfoundry.org/canary-watch-time"] = instanceGroup.Update.CanaryWatchTime
+
 	extSts := essv1.ExtendedStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        instanceGroup.ExtendedStatefulsetName(manifestName),
@@ -137,7 +143,7 @@ func (kc *KubeConverter) serviceToExtendedSts(
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        instanceGroup.NameSanitized(),
 					Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
-					Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
+					Annotations: statefulSetAnnotations,
 				},
 				Spec: v1beta2.StatefulSetSpec{
 					Replicas: pointers.Int32(int32(instanceGroup.Instances)),

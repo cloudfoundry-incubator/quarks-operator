@@ -263,6 +263,23 @@ var _ = Describe("kube converter", func() {
 					Expect(stS.Spec.Affinity).To(BeNil())
 				})
 			})
+			It("adds the canaryWatchTime of an instance group to an ExtendedStatefulSet", func() {
+				resources, err := act(bpmConfigs[1], m.InstanceGroups[1])
+				Expect(err).ShouldNot(HaveOccurred())
+
+				extStS := resources.InstanceGroups[0]
+				Expect(extStS.Spec.Template.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-watch-time", "20000-1200000"))
+			})
+			It("combines the canaryWatchTime and custom annotations and adds them to ExtendedStatefulSet", func() {
+				m.InstanceGroups[1].Env.AgentEnvBoshConfig.Agent.Settings.Annotations = make(map[string]string)
+				m.InstanceGroups[1].Env.AgentEnvBoshConfig.Agent.Settings.Annotations["custom-annotation"] = "bar"
+				resources, err := act(bpmConfigs[1], m.InstanceGroups[1])
+				Expect(err).ShouldNot(HaveOccurred())
+
+				extStS := resources.InstanceGroups[0]
+				Expect(extStS.Spec.Template.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-watch-time", "20000-1200000"))
+				Expect(extStS.Spec.Template.Annotations).To(HaveKeyWithValue("custom-annotation", "bar"))
+			})
 
 			It("converts the AgentEnvBoshConfig information", func() {
 				serviceAccount := "fake-service-account"
