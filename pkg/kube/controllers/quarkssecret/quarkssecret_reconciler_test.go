@@ -230,40 +230,79 @@ var _ = Describe("ReconcileQuarksSecret", func() {
 				})
 			})
 
-			It("triggers generation of a secret", func() {
-				generator.GenerateCertificateCalls(func(name string, request credsgen.CertificateGenerationRequest) (credsgen.Certificate, error) {
-					Expect(request.CA.Certificate).To(Equal([]byte("theca")))
-					Expect(request.CA.PrivateKey).To(Equal([]byte("the_private_key")))
+			Context("and the generated secret is not a ca", func() {
+				It("triggers generation of a secret", func() {
+					generator.GenerateCertificateCalls(func(name string, request credsgen.CertificateGenerationRequest) (credsgen.Certificate, error) {
+						Expect(request.CA.Certificate).To(Equal([]byte("theca")))
+						Expect(request.CA.PrivateKey).To(Equal([]byte("the_private_key")))
 
-					return credsgen.Certificate{Certificate: []byte("the_cert"), PrivateKey: []byte("private_key"), IsCA: false}, nil
-				})
-				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
-					secret := object.(*corev1.Secret)
-					Expect(secret.StringData["certificate"]).To(Equal("the_cert"))
-					Expect(secret.StringData["private_key"]).To(Equal("private_key"))
-					Expect(secret.StringData["ca"]).To(Equal("theca"))
-					Expect(secret.GetLabels()).To(HaveKeyWithValue(qsv1a1.LabelKind, qsv1a1.GeneratedSecretKind))
-					return nil
+						return credsgen.Certificate{Certificate: []byte("the_cert"), PrivateKey: []byte("private_key"), IsCA: false}, nil
+					})
+					client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
+						secret := object.(*corev1.Secret)
+						Expect(secret.StringData["certificate"]).To(Equal("the_cert"))
+						Expect(secret.StringData["private_key"]).To(Equal("private_key"))
+						Expect(secret.StringData["ca"]).To(Equal("theca"))
+						Expect(secret.GetLabels()).To(HaveKeyWithValue(qsv1a1.LabelKind, qsv1a1.GeneratedSecretKind))
+						return nil
+					})
+
+					result, err := reconciler.Reconcile(request)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(client.CreateCallCount()).To(Equal(1))
+					Expect(reconcile.Result{}).To(Equal(result))
 				})
 
-				result, err := reconciler.Reconcile(request)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(client.CreateCallCount()).To(Equal(1))
-				Expect(reconcile.Result{}).To(Equal(result))
+				It("considers generation parameters", func() {
+					generator.GenerateCertificateCalls(func(name string, request credsgen.CertificateGenerationRequest) (credsgen.Certificate, error) {
+						Expect(request.IsCA).To(BeFalse())
+						Expect(request.CommonName).To(Equal("foo.com"))
+						Expect(request.AlternativeNames).To(Equal([]string{"bar.com", "baz.com"}))
+						return credsgen.Certificate{Certificate: []byte("the_cert"), PrivateKey: []byte("private_key"), IsCA: false}, nil
+					})
+					client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
+						secret := object.(*corev1.Secret)
+						Expect(secret.StringData["certificate"]).To(Equal("the_cert"))
+						Expect(secret.StringData["private_key"]).To(Equal("private_key"))
+						Expect(secret.StringData["ca"]).To(Equal("theca"))
+						Expect(secret.GetLabels()).To(HaveKeyWithValue(qsv1a1.LabelKind, qsv1a1.GeneratedSecretKind))
+						return nil
+					})
+
+					result, err := reconciler.Reconcile(request)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(client.CreateCallCount()).To(Equal(1))
+					Expect(reconcile.Result{}).To(Equal(result))
+				})
 			})
 
-			It("considers generation parameters", func() {
-				generator.GenerateCertificateCalls(func(name string, request credsgen.CertificateGenerationRequest) (credsgen.Certificate, error) {
-					Expect(request.IsCA).To(BeFalse())
-					Expect(request.CommonName).To(Equal("foo.com"))
-					Expect(request.AlternativeNames).To(Equal([]string{"bar.com", "baz.com"}))
-					return credsgen.Certificate{Certificate: []byte("the_cert"), PrivateKey: []byte("private_key"), IsCA: false}, nil
+			Context("and the generated cert is a ca", func() {
+				BeforeEach(func() {
+					qSecret.Spec.Request.CertificateRequest.IsCA = true
+					qSecret.Spec.Request.CertificateRequest.CommonName = ""
+					qSecret.Spec.Request.CertificateRequest.AlternativeNames = []string{}
 				})
 
-				result, err := reconciler.Reconcile(request)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(client.CreateCallCount()).To(Equal(1))
-				Expect(reconcile.Result{}).To(Equal(result))
+				It("considers the configured CA for signing", func() {
+					generator.GenerateCertificateCalls(func(name string, request credsgen.CertificateGenerationRequest) (credsgen.Certificate, error) {
+						Expect(request.IsCA).To(BeTrue())
+						Expect(request.CA.IsCA).To(BeTrue())
+						Expect(len(request.CA.PrivateKey) > 0).To(BeTrue())
+						return credsgen.Certificate{Certificate: []byte("the_cert"), PrivateKey: []byte("private_key"), IsCA: true}, nil
+					})
+					client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
+						secret := object.(*corev1.Secret)
+						Expect(secret.StringData["certificate"]).To(Equal("the_cert"))
+						Expect(secret.StringData["private_key"]).To(Equal("private_key"))
+						Expect(secret.StringData["ca"]).To(Equal("theca"))
+						Expect(secret.GetLabels()).To(HaveKeyWithValue(qsv1a1.LabelKind, qsv1a1.GeneratedSecretKind))
+						return nil
+					})
+
+					result, err := reconciler.Reconcile(request)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(reconcile.Result{}).To(Equal(result))
+				})
 			})
 		})
 	})

@@ -393,21 +393,22 @@ func (r *ReconcileQuarksSecret) createSecret(ctx context.Context, instance *qsv1
 // generateCertificateGenerationRequest generates CertificateGenerationRequest for certificate
 func (r *ReconcileQuarksSecret) generateCertificateGenerationRequest(ctx context.Context, namespace string, certificateRequest qsv1a1.CertificateRequest) (credsgen.CertificateGenerationRequest, error) {
 	var request credsgen.CertificateGenerationRequest
-	if certificateRequest.IsCA {
-		// Generate self-signed root CA certificate
+	switch certificateRequest.SignerType {
+	case qsv1a1.ClusterSigner:
+		// Generate cluster-signed CA certificate
 		request = credsgen.CertificateGenerationRequest{
-			IsCA:       certificateRequest.IsCA,
-			CommonName: certificateRequest.CommonName,
+			CommonName:       certificateRequest.CommonName,
+			AlternativeNames: certificateRequest.AlternativeNames,
 		}
-	} else {
-		switch certificateRequest.SignerType {
-		case qsv1a1.ClusterSigner:
-			// Generate cluster-signed CA certificate
-			request = credsgen.CertificateGenerationRequest{
-				CommonName:       certificateRequest.CommonName,
-				AlternativeNames: certificateRequest.AlternativeNames,
-			}
-		case qsv1a1.LocalSigner:
+	case qsv1a1.LocalSigner:
+		// Generate local-issued CA certificate
+		request = credsgen.CertificateGenerationRequest{
+			IsCA:             certificateRequest.IsCA,
+			CommonName:       certificateRequest.CommonName,
+			AlternativeNames: certificateRequest.AlternativeNames,
+		}
+
+		if len(certificateRequest.CARef.Name) > 0 {
 			// Get CA certificate
 			caSecret := &corev1.Secret{}
 			caNamespacedName := types.NamespacedName{
@@ -439,21 +440,14 @@ func (r *ReconcileQuarksSecret) generateCertificateGenerationRequest(ctx context
 				}
 			}
 			key := caSecret.Data[certificateRequest.CAKeyRef.Key]
-
-			// Generate local-issued CA certificate
-			request = credsgen.CertificateGenerationRequest{
-				IsCA:             certificateRequest.IsCA,
-				CommonName:       certificateRequest.CommonName,
-				AlternativeNames: certificateRequest.AlternativeNames,
-				CA: credsgen.Certificate{
-					IsCA:        true,
-					PrivateKey:  key,
-					Certificate: ca,
-				},
+			request.CA = credsgen.Certificate{
+				IsCA:        true,
+				PrivateKey:  key,
+				Certificate: ca,
 			}
-		default:
-			return request, fmt.Errorf("unrecognized signer type: %s", certificateRequest.SignerType)
 		}
+	default:
+		return request, fmt.Errorf("unrecognized signer type: %s", certificateRequest.SignerType)
 	}
 
 	return request, nil
