@@ -129,10 +129,10 @@ The following steps are necessary to have a proper environment setup, where all 
 1. Start `minikube`
 
     ```bash
-    minikube start
+    minikube start --kubernetes-version v1.15.5
     ```
 
-2. Switch to minikube docker daemon
+1. Switch to minikube docker daemon
 
     ```bash
     eval $(minikube docker-env)
@@ -143,15 +143,15 @@ The following steps are necessary to have a proper environment setup, where all 
     Kubernetes cluster.
 
 
-3. Export the `CF_OPERATOR_WEBHOOK_SERVICE_HOST` env variable
+1. Export the `CF_OPERATOR_WEBHOOK_SERVICE_HOST` env variable
 
     ```bash
-    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(minikube ssh -- "cat /etc/resolv.conf | grep nameserver | awk '{ printf \$2 }'")
+    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(minikube ip)
     ```
 
     _**Note**_: You can also find the correct IP, by running `ip addr`. The IP address under `vboxnet1` is the IP that you need.
 
-4. Export the `OPERATOR_TEST_STORAGE_CLASS` env variable
+1. Export the `OPERATOR_TEST_STORAGE_CLASS` env variable
 
     ```bash
     export OPERATOR_TEST_STORAGE_CLASS=standard
@@ -159,7 +159,23 @@ The following steps are necessary to have a proper environment setup, where all 
 
     _**Note**_: Require for the PVC test creation, in minikube.
 
-5. Ensure `GO111MODULE` is set
+1. Copy the ssh-key required for tunneling to /tmp
+
+    ```bash
+    cp $(minikube ssh-key) /tmp/cf-operator-tunnel-identity
+    ```
+
+1. Allow port tunneling on minikube
+    ```bash
+    minikube ssh -- "sudo sed -i 's/#GatewayPorts no/GatewayPorts yes/' /etc/ssh/sshd_config && sudo systemctl reload sshd"
+    ```
+
+1. Enable tunneling from the minikube node to the cf-operator on localhost (required for webhooks)
+    ```bash
+    export ssh_server_user=docker
+    ```
+
+1. Ensure `GO111MODULE` is set
 
     ```bash
     export GO111MODULE=on
@@ -167,13 +183,13 @@ The following steps are necessary to have a proper environment setup, where all 
 
     _**Note**_: When you have a vendor folder (either from the submodule or manually created) settings this to `off` speeds up the `build-image` target.
 
-6. Build the `cf-operator` binary
+1. Build the `cf-operator` binary
 
     ```bash
     bin/build
     ```
 
-7. Build the `cf-operator` docker image
+1. Build the `cf-operator` docker image
 
     ```bash
     bin/build-image
