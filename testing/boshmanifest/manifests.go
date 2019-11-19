@@ -226,6 +226,8 @@ releases:
 // NatsSmall is a small manifest to start nats
 const NatsSmall = `---
 name: test
+update:
+  canary_watch_time: 20000-1200000
 releases:
 - name: nats
   version: "26"
@@ -257,6 +259,8 @@ instance_groups:
 // NatsSmallWithPatch is a manifest that patches the prestart hook to loop forever
 const NatsSmallWithPatch = `---
 name: test
+update:
+  canary_watch_time: 20000
 releases:
 - name: nats
   version: "26"
@@ -300,6 +304,8 @@ instance_groups:
 // Drains is a small manifest with jobs that include drain scripts
 const Drains = `---
 name: my-manifest
+update:
+  canary_watch_time: 20000
 releases:
 - name: cf-operator-testing
   version: "0.0.6"
@@ -323,6 +329,8 @@ stemcells:
 - alias: default
   os: opensuse-42.3
   version: 28.g837c5b3-30.263-7.0.0_234.gcd7d1132
+update:
+  canary_watch_time: 20000
 instance_groups:
 - name: redis-slave
   instances: 2
