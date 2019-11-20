@@ -62,14 +62,14 @@ const (
 	// UnrestrictedVolumeBaseName is the volume name for the unrestricted ones.
 	UnrestrictedVolumeBaseName = "bpm-unrestricted-volume"
 
+	// VolumeLinksPath is the mount path for the links data.
+	VolumeLinksPath = "/var/run/secrets/links/"
+
 	secretsPath         = "/var/run/secrets/variables/"
 	withOpsManifestPath = "/var/run/secrets/deployment/"
 	// releaseSourceName is the folder for release sources
 	releaseSourceName        = "instance-group"
 	resolvedPropertiesFormat = "/var/run/secrets/resolved-properties/%s"
-
-	// linksPath is the mount path for the links data.
-	linksPath = "/var/run/secrets/links/"
 )
 
 // VolumeFactoryImpl is a concrete implementation of VolumeFactoryImpl
@@ -514,7 +514,7 @@ func linkVolume(secretName string) corev1.Volume {
 func linkVolumeMount(secretName string, providerName string) corev1.VolumeMount {
 	return corev1.VolumeMount{
 		Name:      generateVolumeName(secretName),
-		MountPath: linksPath + providerName,
+		MountPath: VolumeLinksPath + providerName,
 		ReadOnly:  true,
 	}
 }
