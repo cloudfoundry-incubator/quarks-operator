@@ -5,11 +5,10 @@ import (
 	"strconv"
 	"time"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,11 +22,11 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
-	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
-	exsts "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/extendedstatefulset"
+	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	qstscontroller "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarksstatefulset"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
-	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
@@ -42,8 +41,8 @@ type DesiredManifest interface {
 
 // KubeConverter converts k8s resources from single BOSH manifest
 type KubeConverter interface {
-	BPMResources(manifestName string, dns manifest.DomainNameService, exstsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*converter.BPMResources, error)
-	Variables(manifestName string, variables []bdm.Variable) ([]esv1.ExtendedSecret, error)
+	BPMResources(manifestName string, dns manifest.DomainNameService, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*converter.BPMResources, error)
+	Variables(manifestName string, variables []bdm.Variable) ([]qsv1a1.QuarksSecret, error)
 }
 
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
@@ -117,7 +116,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 
 	// Apply BPM information
-	instanceGroupName, ok := bpmSecret.Labels[ejv1.LabelInstanceGroup]
+	instanceGroupName, ok := bpmSecret.Labels[qjv1a1.LabelInstanceGroup]
 	if !ok {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "LabelMissingError").Errorf(ctx, "Missing container label for bpm information bpmSecret '%s'", request.NamespacedName)
@@ -137,7 +136,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 			log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get BoshDeployment instance '%s': %v", instanceName, err)
 	}
 
-	err = manifest.DNS.Reconcile(ctx, request.Namespace, r.client, func(object v1.Object) error {
+	err = manifest.DNS.Reconcile(ctx, request.Namespace, r.client, func(object metav1.Object) error {
 		return r.setReference(instance, object, r.scheme)
 	})
 
@@ -176,7 +175,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm.Manifest) (*converter.BPMResources, error) {
 
-	instanceGroupName, ok := bpmSecret.Labels[ejv1.LabelInstanceGroup]
+	instanceGroupName, ok := bpmSecret.Labels[qjv1a1.LabelInstanceGroup]
 	if !ok {
 		return nil, errors.Errorf("Missing container label for bpm information secret '%s'", bpmSecret.Name)
 	}
@@ -196,21 +195,21 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 		return nil, errors.Errorf("instance group '%s' not found", instanceGroupName)
 	}
 
-	// Fetch exsts version
-	exstendedStatefulSet := &essv1.ExtendedStatefulSet{}
-	exstendedStatefulSetName := instanceGroup.ExtendedStatefulsetName(manifest.Name)
-	err := r.client.Get(r.ctx, types.NamespacedName{Namespace: r.config.Namespace, Name: exstendedStatefulSetName}, exstendedStatefulSet)
+	// Fetch qSts version
+	quarksStatefulSet := &qstsv1a1.QuarksStatefulSet{}
+	quarksStatefulSetName := instanceGroup.QuarksStatefulSetName(manifest.Name)
+	err := r.client.Get(r.ctx, types.NamespacedName{Namespace: r.config.Namespace, Name: quarksStatefulSetName}, quarksStatefulSet)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return nil, errors.Errorf("Failed to get ExtendedStatefulSet instance '%s': %v", exstendedStatefulSetName, err)
+			return nil, errors.Errorf("Failed to get QuarksStatefulSet instance '%s': %v", quarksStatefulSetName, err)
 		}
 	}
-	_, exstsVersion, err := exsts.GetMaxStatefulSetVersion(r.ctx, r.client, exstendedStatefulSet)
+	_, qStsVersion, err := qstscontroller.GetMaxStatefulSetVersion(r.ctx, r.client, quarksStatefulSet)
 	if err != nil {
 		return nil, err
 	}
-	exstsVersion = exstsVersion + 1
-	exstsVersionString := strconv.Itoa(exstsVersion)
+	qStsVersion = qStsVersion + 1
+	qStsVersionString := strconv.Itoa(qStsVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +227,7 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 	}
 	igResolvedSecretVersion := igResolvedSecret.GetLabels()[versionedsecretstore.LabelVersion]
 
-	resources, err := r.kubeConverter.BPMResources(manifest.Name, manifest.DNS, exstsVersionString, instanceGroup, manifest, bpmInfo.Configs, igResolvedSecretVersion)
+	resources, err := r.kubeConverter.BPMResources(manifest.Name, manifest.DNS, qStsVersionString, instanceGroup, manifest, bpmInfo.Configs, igResolvedSecretVersion)
 	if err != nil {
 		return resources, err
 	}
@@ -236,31 +235,31 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 	return resources, nil
 }
 
-// deployInstanceGroups create or update ExtendedJobs and ExtendedStatefulSets for instance groups
+// deployInstanceGroups create or update QuarksJobs and QuarksStatefulSets for instance groups
 func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.BOSHDeployment, instanceGroupName string, resources *converter.BPMResources) error {
-	log.Debugf(ctx, "Creating extendedJobs and extendedStatefulSets for instance group '%s'", instanceGroupName)
+	log.Debugf(ctx, "Creating quarksJobs and quarksStatefulSets for instance group '%s'", instanceGroupName)
 
-	for _, eJob := range resources.Errands {
-		if eJob.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
-			log.Debugf(ctx, "Skipping EJob definition '%s' for instance group '%s' because of missmatching '%s' label", eJob.Name, instance.Name, bdm.LabelInstanceGroupName)
+	for _, qJob := range resources.Errands {
+		if qJob.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
+			log.Debugf(ctx, "Skipping apply QuarksJob '%s' for instance group '%s' because of mismatching '%s' label", qJob.Name, instance.Name, bdm.LabelInstanceGroupName)
 			continue
 		}
 
-		if err := r.setReference(instance, &eJob, r.scheme); err != nil {
-			return log.WithEvent(instance, "ExtendedJobForDeploymentError").Errorf(ctx, "Failed to set reference for ExtendedJob instance group '%s' : %v", instanceGroupName, err)
+		if err := r.setReference(instance, &qJob, r.scheme); err != nil {
+			return log.WithEvent(instance, "QuarksJobForDeploymentError").Errorf(ctx, "Failed to set reference for QuarksJob instance group '%s' : %v", instanceGroupName, err)
 		}
 
-		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &eJob, mutate.EJobMutateFn(&eJob))
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &qJob, mutate.QuarksJobMutateFn(&qJob))
 		if err != nil {
-			return log.WithEvent(instance, "ApplyExtendedJobError").Errorf(ctx, "Failed to apply ExtendedJob for instance group '%s' : %v", instanceGroupName, err)
+			return log.WithEvent(instance, "ApplyQuarksJobError").Errorf(ctx, "Failed to apply QuarksJob for instance group '%s' : %v", instanceGroupName, err)
 		}
 
-		log.Debugf(ctx, "ExtendedJob '%s' has been %s", eJob.Name, op)
+		log.Debugf(ctx, "QuarksJob '%s' has been %s", qJob.Name, op)
 	}
 
 	for _, svc := range resources.Services {
 		if svc.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
-			log.Debugf(ctx, "Skipping Service definition '%s' for instance group '%s' because of missmatching '%s' label", svc.Name, instance.Name, bdm.LabelInstanceGroupName)
+			log.Debugf(ctx, "Skipping apply Service '%s' for instance group '%s' because of mismatching '%s' label", svc.Name, instance.Name, bdm.LabelInstanceGroupName)
 			continue
 		}
 
@@ -276,22 +275,22 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 		log.Debugf(ctx, "Service '%s' has been %s", svc.Name, op)
 	}
 
-	for _, eSts := range resources.InstanceGroups {
-		if eSts.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
-			log.Debugf(ctx, "Skipping ESts definition '%s' for instance group '%s' because of missmatching '%s' label", eSts.Name, instance.Name, bdm.LabelInstanceGroupName)
+	for _, qSts := range resources.InstanceGroups {
+		if qSts.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
+			log.Debugf(ctx, "Skipping apply QuarksStatefulSet '%s' for instance group '%s' because of mismatching '%s' label", qSts.Name, instance.Name, bdm.LabelInstanceGroupName)
 			continue
 		}
 
-		if err := r.setReference(instance, &eSts, r.scheme); err != nil {
-			return log.WithEvent(instance, "ExtendedStatefulSetForDeploymentError").Errorf(ctx, "Failed to set reference for ExtendedStatefulSet instance group '%s' : %v", instanceGroupName, err)
+		if err := r.setReference(instance, &qSts, r.scheme); err != nil {
+			return log.WithEvent(instance, "QuarksStatefulSetForDeploymentError").Errorf(ctx, "Failed to set reference for QuarksStatefulSet instance group '%s' : %v", instanceGroupName, err)
 		}
 
-		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &eSts, mutate.EStsMutateFn(&eSts))
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &qSts, mutate.QuarksStatefulSetMutateFn(&qSts))
 		if err != nil {
-			return log.WithEvent(instance, "ApplyExtendedStatefulSetError").Errorf(ctx, "Failed to apply ExtendedStatefulSet for instance group '%s' : %v", instanceGroupName, err)
+			return log.WithEvent(instance, "ApplyQuarksStatefulSetError").Errorf(ctx, "Failed to apply QuarksStatefulSet for instance group '%s' : %v", instanceGroupName, err)
 		}
 
-		log.Debugf(ctx, "ExtendStatefulSet '%s' has been %s", eSts.Name, op)
+		log.Debugf(ctx, "QuarksStatefulSet '%s' has been %s", qSts.Name, op)
 	}
 
 	return nil

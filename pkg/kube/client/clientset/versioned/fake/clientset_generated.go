@@ -11,10 +11,10 @@ import (
 	clientset "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
 	boshdeploymentv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1"
 	fakeboshdeploymentv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1/fake"
-	extendedsecretv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedsecret/v1alpha1"
-	fakeextendedsecretv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedsecret/v1alpha1/fake"
-	extendedstatefulsetv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedstatefulset/v1alpha1"
-	fakeextendedstatefulsetv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/extendedstatefulset/v1alpha1/fake"
+	quarkssecretv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/quarkssecret/v1alpha1"
+	fakequarkssecretv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/quarkssecret/v1alpha1/fake"
+	quarksstatefulsetv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/quarksstatefulset/v1alpha1"
+	fakequarksstatefulsetv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/quarksstatefulset/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -34,7 +34,7 @@ func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 		}
 	}
 
-	cs := &Clientset{}
+	cs := &Clientset{tracker: o}
 	cs.discovery = &fakediscovery.FakeDiscovery{Fake: &cs.Fake}
 	cs.AddReactor("*", "*", testing.ObjectReaction(o))
 	cs.AddWatchReactor("*", func(action testing.Action) (handled bool, ret watch.Interface, err error) {
@@ -56,10 +56,15 @@ func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 type Clientset struct {
 	testing.Fake
 	discovery *fakediscovery.FakeDiscovery
+	tracker   testing.ObjectTracker
 }
 
 func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 	return c.discovery
+}
+
+func (c *Clientset) Tracker() testing.ObjectTracker {
+	return c.tracker
 }
 
 var _ clientset.Interface = &Clientset{}
@@ -69,12 +74,12 @@ func (c *Clientset) BoshdeploymentV1alpha1() boshdeploymentv1alpha1.Boshdeployme
 	return &fakeboshdeploymentv1alpha1.FakeBoshdeploymentV1alpha1{Fake: &c.Fake}
 }
 
-// ExtendedsecretV1alpha1 retrieves the ExtendedsecretV1alpha1Client
-func (c *Clientset) ExtendedsecretV1alpha1() extendedsecretv1alpha1.ExtendedsecretV1alpha1Interface {
-	return &fakeextendedsecretv1alpha1.FakeExtendedsecretV1alpha1{Fake: &c.Fake}
+// QuarkssecretV1alpha1 retrieves the QuarkssecretV1alpha1Client
+func (c *Clientset) QuarkssecretV1alpha1() quarkssecretv1alpha1.QuarkssecretV1alpha1Interface {
+	return &fakequarkssecretv1alpha1.FakeQuarkssecretV1alpha1{Fake: &c.Fake}
 }
 
-// ExtendedstatefulsetV1alpha1 retrieves the ExtendedstatefulsetV1alpha1Client
-func (c *Clientset) ExtendedstatefulsetV1alpha1() extendedstatefulsetv1alpha1.ExtendedstatefulsetV1alpha1Interface {
-	return &fakeextendedstatefulsetv1alpha1.FakeExtendedstatefulsetV1alpha1{Fake: &c.Fake}
+// QuarksstatefulsetV1alpha1 retrieves the QuarksstatefulsetV1alpha1Client
+func (c *Clientset) QuarksstatefulsetV1alpha1() quarksstatefulsetv1alpha1.QuarksstatefulsetV1alpha1Interface {
+	return &fakequarksstatefulsetv1alpha1.FakeQuarksstatefulsetV1alpha1{Fake: &c.Fake}
 }

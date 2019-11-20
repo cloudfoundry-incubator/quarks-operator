@@ -10,13 +10,12 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
-
 	credsgen "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
-	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/crd"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -80,28 +79,28 @@ func ApplyCRDs(config *rest.Config) error {
 			&bdv1.BOSHDeploymentValidation,
 		},
 		{
-			ejv1.ExtendedJobResourceName,
-			ejv1.ExtendedJobResourceKind,
-			ejv1.ExtendedJobResourcePlural,
-			ejv1.ExtendedJobResourceShortNames,
-			ejv1.SchemeGroupVersion,
-			&ejv1.ExtendedJobValidation,
+			qjv1a1.QuarksJobResourceName,
+			qjv1a1.QuarksJobResourceKind,
+			qjv1a1.QuarksJobResourcePlural,
+			qjv1a1.QuarksJobResourceShortNames,
+			qjv1a1.SchemeGroupVersion,
+			&qjv1a1.QuarksJobValidation,
 		},
 		{
-			esv1.ExtendedSecretResourceName,
-			esv1.ExtendedSecretResourceKind,
-			esv1.ExtendedSecretResourcePlural,
-			esv1.ExtendedSecretResourceShortNames,
-			esv1.SchemeGroupVersion,
+			qsv1a1.QuarksSecretResourceName,
+			qsv1a1.QuarksSecretResourceKind,
+			qsv1a1.QuarksSecretResourcePlural,
+			qsv1a1.QuarksSecretResourceShortNames,
+			qsv1a1.SchemeGroupVersion,
 			nil,
 		},
 		{
-			essv1.ExtendedStatefulSetResourceName,
-			essv1.ExtendedStatefulSetResourceKind,
-			essv1.ExtendedStatefulSetResourcePlural,
-			essv1.ExtendedStatefulSetResourceShortNames,
-			essv1.SchemeGroupVersion,
-			&essv1.ExtendedStatefulSetValidation,
+			qstsv1a1.QuarksStatefulSetResourceName,
+			qstsv1a1.QuarksStatefulSetResourceKind,
+			qstsv1a1.QuarksStatefulSetResourcePlural,
+			qstsv1a1.QuarksStatefulSetResourceShortNames,
+			qstsv1a1.SchemeGroupVersion,
+			&qstsv1a1.QuarksStatefulSetValidation,
 		},
 	} {
 		err = crd.ApplyCRD(

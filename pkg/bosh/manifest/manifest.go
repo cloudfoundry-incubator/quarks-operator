@@ -18,7 +18,7 @@ import (
 	goyaml "gopkg.in/yaml.v2"
 	"sigs.k8s.io/yaml"
 
-	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
@@ -54,14 +54,14 @@ const (
 
 // VariableOptions from BOSH deployment manifest
 type VariableOptions struct {
-	CommonName                  string                  `json:"common_name"`
-	AlternativeNames            []string                `json:"alternative_names,omitempty"`
-	IsCA                        bool                    `json:"is_ca"`
-	CA                          string                  `json:"ca,omitempty"`
-	ExtendedKeyUsage            []AuthType              `json:"extended_key_usage,omitempty"`
-	SignerType                  string                  `json:"signer_type,omitempty"`
-	ServiceRef                  []esv1.ServiceReference `json:"serviceRef,omitempty"`
-	ActivateEKSWorkaroundForSAN bool                    `json:"activateEKSWorkaroundForSAN,omitempty"`
+	CommonName                  string                    `json:"common_name"`
+	AlternativeNames            []string                  `json:"alternative_names,omitempty"`
+	IsCA                        bool                      `json:"is_ca"`
+	CA                          string                    `json:"ca,omitempty"`
+	ExtendedKeyUsage            []AuthType                `json:"extended_key_usage,omitempty"`
+	SignerType                  string                    `json:"signer_type,omitempty"`
+	ServiceRef                  []qsv1a1.ServiceReference `json:"serviceRef,omitempty"`
+	ActivateEKSWorkaroundForSAN bool                      `json:"activateEKSWorkaroundForSAN,omitempty"`
 }
 
 // Variable from BOSH deployment manifest

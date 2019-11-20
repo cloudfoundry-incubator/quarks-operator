@@ -5,7 +5,7 @@
 A desired manifest is a BOSH deployment manifest that has already been calculated so that it's the actual final state that the user wishes his software to be in. All ops files have been applied, variables have been calculated and replaced. This manifest is persisted and versioned.
 
 Ops files are applied by the operator.
-Variables are replaced by an `ExtendedJob` that runs the operator's image. The `ExtendedJob` writes the manifest on stdout, which is persisted using a [Versioned Secret](controllers/extendedjob.md#versioned-secrets).
+Variables are replaced by an `QuarksJob` that runs the operator's image. The `QuarksJob` writes the manifest on stdout, which is persisted using a [Versioned Secret](https://github.com/cloudfoundry-incubator/quarks-job/blob/master/docs/quarksjob.md#versioned-secrets).
 
 Each manifest version that goes live is immutable.
 A manifest's version is an integer that gets incremented.

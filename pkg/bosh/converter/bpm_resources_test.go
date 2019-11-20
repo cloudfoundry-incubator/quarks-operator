@@ -16,10 +16,10 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
 	"code.cloudfoundry.org/cf-operator/testing/boshreleases"
-	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
@@ -88,33 +88,33 @@ var _ = Describe("kube converter", func() {
 					Expect(err.Error()).To(ContainSubstring("building containers failed for instance group %s", m.InstanceGroups[0].Name))
 				})
 
-				It("converts the instance group to an ExtendedJob", func() {
+				It("converts the instance group to an quarksJob", func() {
 					resources, err := act(bpmConfigs[0], m.InstanceGroups[0])
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(resources.Errands).To(HaveLen(1))
 
-					// Test labels and annotations in the extended job
-					eJob := resources.Errands[0]
-					Expect(eJob.Name).To(Equal("foo-deployment-redis-slave"))
-					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
-					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, m.InstanceGroups[0].Name))
-					Expect(eJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentVersion, "1"))
-					Expect(eJob.GetLabels()).To(HaveKeyWithValue("custom-label", "foo"))
-					Expect(eJob.GetAnnotations()).To(HaveKeyWithValue("custom-annotation", "bar"))
+					// Test labels and annotations in the quarks job
+					qJob := resources.Errands[0]
+					Expect(qJob.Name).To(Equal("foo-deployment-redis-slave"))
+					Expect(qJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
+					Expect(qJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, m.InstanceGroups[0].Name))
+					Expect(qJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentVersion, "1"))
+					Expect(qJob.GetLabels()).To(HaveKeyWithValue("custom-label", "foo"))
+					Expect(qJob.GetAnnotations()).To(HaveKeyWithValue("custom-annotation", "bar"))
 
 					// Test affinity
-					Expect(eJob.Spec.Template.Spec.Template.Spec.Affinity).To(BeNil())
+					Expect(qJob.Spec.Template.Spec.Template.Spec.Affinity).To(BeNil())
 				})
 
-				It("converts the instance group to an ExtendedJob when this the lifecycle is set to auto-errand", func() {
+				It("converts the instance group to an quarksJob when this the lifecycle is set to auto-errand", func() {
 					m.InstanceGroups[0].LifeCycle = manifest.IGTypeAutoErrand
 					resources, err := act(bpmConfigs[0], m.InstanceGroups[0])
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(resources.Errands).To(HaveLen(1))
 
 					// Test trigger strategy
-					eJob := resources.Errands[0]
-					Expect(eJob.Spec.Trigger.Strategy).To(Equal(ejv1.TriggerOnce))
+					qJob := resources.Errands[0]
+					Expect(qJob.Spec.Trigger.Strategy).To(Equal(qjv1a1.TriggerOnce))
 				})
 
 				It("converts the AgentEnvBoshConfig information", func() {
@@ -145,10 +145,10 @@ var _ = Describe("kube converter", func() {
 					Expect(resources.Errands).To(HaveLen(1))
 
 					// Test AgentEnvBoshConfig
-					eJob := resources.Errands[0]
-					Expect(*eJob.Spec.Template.Spec.Template.Spec.Affinity).To(Equal(affinityCase))
-					Expect(eJob.Spec.Template.Spec.Template.Spec.ServiceAccountName).To(Equal(serviceAccount))
-					Expect(*eJob.Spec.Template.Spec.Template.Spec.AutomountServiceAccountToken).To(Equal(automountServiceAccountToken))
+					qJob := resources.Errands[0]
+					Expect(*qJob.Spec.Template.Spec.Template.Spec.Affinity).To(Equal(affinityCase))
+					Expect(qJob.Spec.Template.Spec.Template.Spec.ServiceAccountName).To(Equal(serviceAccount))
+					Expect(*qJob.Spec.Template.Spec.Template.Spec.AutomountServiceAccountToken).To(Equal(automountServiceAccountToken))
 				})
 			})
 
@@ -167,30 +167,30 @@ var _ = Describe("kube converter", func() {
 					Expect(err.Error()).To(ContainSubstring("building containers failed for instance group %s", m.InstanceGroups[1].Name))
 				})
 
-				It("converts the instance group to an ExtendedStatefulSet", func() {
+				It("converts the instance group to an QuarksStatefulSet", func() {
 					resources, err := act(bpmConfigs[1], m.InstanceGroups[1])
 					Expect(err).ShouldNot(HaveOccurred())
 
-					// Test labels and annotation in the extended statefulSet
-					extStS := resources.InstanceGroups[0]
-					Expect(extStS.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, "diego-cell")))
-					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
-					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, "diego-cell"))
-					Expect(extStS.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentVersion, "1"))
+					// Test labels and annotation in the quarks statefulSet
+					qSts := resources.InstanceGroups[0]
+					Expect(qSts.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, "diego-cell")))
+					Expect(qSts.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
+					Expect(qSts.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, "diego-cell"))
+					Expect(qSts.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentVersion, "1"))
 
 					// Test ESts spec
-					Expect(extStS.Spec.Zones).To(Equal(m.InstanceGroups[1].AZs))
+					Expect(qSts.Spec.Zones).To(Equal(m.InstanceGroups[1].AZs))
 
-					stS := extStS.Spec.Template.Spec.Template
+					stS := qSts.Spec.Template.Spec.Template
 					Expect(stS.Name).To(Equal("diego-cell"))
 
-					// Test services for the extended statefulSet
+					// Test services for the quarks statefulSet
 					service0 := resources.Services[0]
 					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-0", m.Name, stS.Name)))
 					Expect(service0.Spec.Selector).To(Equal(map[string]string{
 						manifest.LabelInstanceGroupName: stS.Name,
-						essv1.LabelAZIndex:              "0",
-						essv1.LabelPodOrdinal:           "0",
+						qstsv1a1.LabelAZIndex:           "0",
+						qstsv1a1.LabelPodOrdinal:        "0",
 					}))
 					Expect(service0.Spec.Ports).To(Equal([]corev1.ServicePort{
 						{
@@ -204,8 +204,8 @@ var _ = Describe("kube converter", func() {
 					Expect(service1.Name).To(Equal(fmt.Sprintf("%s-%s-1", m.Name, stS.Name)))
 					Expect(service1.Spec.Selector).To(Equal(map[string]string{
 						manifest.LabelInstanceGroupName: stS.Name,
-						essv1.LabelAZIndex:              "1",
-						essv1.LabelPodOrdinal:           "0",
+						qstsv1a1.LabelAZIndex:           "1",
+						qstsv1a1.LabelPodOrdinal:        "0",
 					}))
 					Expect(service1.Spec.Ports).To(Equal([]corev1.ServicePort{
 						{
@@ -219,8 +219,8 @@ var _ = Describe("kube converter", func() {
 					Expect(service2.Name).To(Equal(fmt.Sprintf("%s-%s-2", m.Name, stS.Name)))
 					Expect(service2.Spec.Selector).To(Equal(map[string]string{
 						manifest.LabelInstanceGroupName: stS.Name,
-						essv1.LabelAZIndex:              "0",
-						essv1.LabelPodOrdinal:           "1",
+						qstsv1a1.LabelAZIndex:           "0",
+						qstsv1a1.LabelPodOrdinal:        "1",
 					}))
 					Expect(service2.Spec.Ports).To(Equal([]corev1.ServicePort{
 						{
@@ -234,8 +234,8 @@ var _ = Describe("kube converter", func() {
 					Expect(service3.Name).To(Equal(fmt.Sprintf("%s-%s-3", m.Name, stS.Name)))
 					Expect(service3.Spec.Selector).To(Equal(map[string]string{
 						manifest.LabelInstanceGroupName: stS.Name,
-						essv1.LabelAZIndex:              "1",
-						essv1.LabelPodOrdinal:           "1",
+						qstsv1a1.LabelAZIndex:           "1",
+						qstsv1a1.LabelPodOrdinal:        "1",
 					}))
 					Expect(service3.Spec.Ports).To(Equal([]corev1.ServicePort{
 						{
@@ -274,9 +274,9 @@ var _ = Describe("kube converter", func() {
 				Expect(resources.InstanceGroups).To(HaveLen(1))
 
 				// Test AgentEnvBoshConfig
-				eJob := resources.InstanceGroups[0]
-				Expect(eJob.Spec.Template.Spec.Template.Spec.ServiceAccountName).To(Equal(serviceAccount))
-				Expect(*eJob.Spec.Template.Spec.Template.Spec.AutomountServiceAccountToken).To(Equal(automountServiceAccountToken))
+				qJob := resources.InstanceGroups[0]
+				Expect(qJob.Spec.Template.Spec.Template.Spec.ServiceAccountName).To(Equal(serviceAccount))
+				Expect(*qJob.Spec.Template.Spec.Template.Spec.AutomountServiceAccountToken).To(Equal(automountServiceAccountToken))
 			})
 		})
 
@@ -348,7 +348,7 @@ var _ = Describe("kube converter", func() {
 			})
 
 			Context("when the lifecycle is set to errand", func() {
-				It("converts the instance group to an ExtendedJob", func() {
+				It("converts the instance group to an QuarksJob", func() {
 					resources, err := act(bpmConfigs[0], m.InstanceGroups[0])
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(resources.InstanceGroups).To(HaveLen(1))

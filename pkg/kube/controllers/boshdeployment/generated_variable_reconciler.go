@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
@@ -46,7 +46,7 @@ type ReconcileGeneratedVariable struct {
 	kubeConverter KubeConverter
 }
 
-// Reconcile creates or updates variables extendedSecrets
+// Reconcile creates or updates variables quarksSecrets
 func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
@@ -102,7 +102,7 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 	}
 
 	if len(secrets) == 0 {
-		log.Debug(ctx, "Skip generate variable extendedSecrets: there are no variables")
+		log.Debug(ctx, "Skip generate variable quarksSecrets: there are no variables")
 		return reconcile.Result{}, nil
 	}
 
@@ -123,11 +123,11 @@ func (r *ReconcileGeneratedVariable) Reconcile(request reconcile.Request) (recon
 	return reconcile.Result{}, nil
 }
 
-// generateVariableSecrets create variables extendedSecrets
-func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context, manifestSecret *corev1.Secret, variables []esv1.ExtendedSecret) error {
-	log.Debug(ctx, "Creating ExtendedSecrets for explicit variables")
+// generateVariableSecrets create variables quarksSecrets
+func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context, manifestSecret *corev1.Secret, variables []qsv1a1.QuarksSecret) error {
+	log.Debug(ctx, "Creating QuarksSecrets for explicit variables")
 	for _, variable := range variables {
-		// Set the "manifest with ops" secret as the owner for the ExtendedSecrets
+		// Set the "manifest with ops" secret as the owner for the QuarksSecrets
 		// The "manifest with ops" secret is owned by the actual BOSHDeployment, so everything
 		// should be garbage collected properly.
 
@@ -136,12 +136,12 @@ func (r *ReconcileGeneratedVariable) generateVariableSecrets(ctx context.Context
 			return err
 		}
 
-		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &variable, mutate.ESecMutateFn(&variable))
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &variable, mutate.QuarksSecretMutateFn(&variable))
 		if err != nil {
-			return errors.Wrapf(err, "creating or updating ExtendedSecret '%s'", variable.Name)
+			return errors.Wrapf(err, "creating or updating QuarksSecret '%s'", variable.Name)
 		}
 
-		log.Debugf(ctx, "ExtendedSecret '%s' has been %s", variable.Name, op)
+		log.Debugf(ctx, "QuarksSecret '%s' has been %s", variable.Name, op)
 	}
 
 	return nil

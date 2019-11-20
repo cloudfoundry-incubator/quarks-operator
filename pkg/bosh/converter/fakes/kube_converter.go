@@ -7,7 +7,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedsecret/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 )
 
@@ -31,18 +31,18 @@ type FakeKubeConverter struct {
 		result1 *converter.BPMResources
 		result2 error
 	}
-	VariablesStub        func(string, []manifest.Variable) ([]v1alpha1.ExtendedSecret, error)
+	VariablesStub        func(string, []manifest.Variable) ([]v1alpha1.QuarksSecret, error)
 	variablesMutex       sync.RWMutex
 	variablesArgsForCall []struct {
 		arg1 string
 		arg2 []manifest.Variable
 	}
 	variablesReturns struct {
-		result1 []v1alpha1.ExtendedSecret
+		result1 []v1alpha1.QuarksSecret
 		result2 error
 	}
 	variablesReturnsOnCall map[int]struct {
-		result1 []v1alpha1.ExtendedSecret
+		result1 []v1alpha1.QuarksSecret
 		result2 error
 	}
 	invocations      map[string][][]interface{}
@@ -118,7 +118,7 @@ func (fake *FakeKubeConverter) BPMResourcesReturnsOnCall(i int, result1 *convert
 	}{result1, result2}
 }
 
-func (fake *FakeKubeConverter) Variables(arg1 string, arg2 []manifest.Variable) ([]v1alpha1.ExtendedSecret, error) {
+func (fake *FakeKubeConverter) Variables(arg1 string, arg2 []manifest.Variable) ([]v1alpha1.QuarksSecret, error) {
 	var arg2Copy []manifest.Variable
 	if arg2 != nil {
 		arg2Copy = make([]manifest.Variable, len(arg2))
@@ -148,7 +148,7 @@ func (fake *FakeKubeConverter) VariablesCallCount() int {
 	return len(fake.variablesArgsForCall)
 }
 
-func (fake *FakeKubeConverter) VariablesCalls(stub func(string, []manifest.Variable) ([]v1alpha1.ExtendedSecret, error)) {
+func (fake *FakeKubeConverter) VariablesCalls(stub func(string, []manifest.Variable) ([]v1alpha1.QuarksSecret, error)) {
 	fake.variablesMutex.Lock()
 	defer fake.variablesMutex.Unlock()
 	fake.VariablesStub = stub
@@ -161,28 +161,28 @@ func (fake *FakeKubeConverter) VariablesArgsForCall(i int) (string, []manifest.V
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeKubeConverter) VariablesReturns(result1 []v1alpha1.ExtendedSecret, result2 error) {
+func (fake *FakeKubeConverter) VariablesReturns(result1 []v1alpha1.QuarksSecret, result2 error) {
 	fake.variablesMutex.Lock()
 	defer fake.variablesMutex.Unlock()
 	fake.VariablesStub = nil
 	fake.variablesReturns = struct {
-		result1 []v1alpha1.ExtendedSecret
+		result1 []v1alpha1.QuarksSecret
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeKubeConverter) VariablesReturnsOnCall(i int, result1 []v1alpha1.ExtendedSecret, result2 error) {
+func (fake *FakeKubeConverter) VariablesReturnsOnCall(i int, result1 []v1alpha1.QuarksSecret, result2 error) {
 	fake.variablesMutex.Lock()
 	defer fake.variablesMutex.Unlock()
 	fake.VariablesStub = nil
 	if fake.variablesReturnsOnCall == nil {
 		fake.variablesReturnsOnCall = make(map[int]struct {
-			result1 []v1alpha1.ExtendedSecret
+			result1 []v1alpha1.QuarksSecret
 			result2 error
 		})
 	}
 	fake.variablesReturnsOnCall[i] = struct {
-		result1 []v1alpha1.ExtendedSecret
+		result1 []v1alpha1.QuarksSecret
 		result2 error
 	}{result1, result2}
 }

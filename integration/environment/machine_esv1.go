@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	esv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
 
@@ -22,9 +22,9 @@ func (m *Machine) GetStatefulSet(namespace string, name string) (*v1beta1.Statef
 	return statefulSet, nil
 }
 
-// CreateExtendedStatefulSet creates a ExtendedStatefulSet custom resource and returns a function to delete it
-func (m *Machine) CreateExtendedStatefulSet(namespace string, ess esv1.ExtendedStatefulSet) (*esv1.ExtendedStatefulSet, machine.TearDownFunc, error) {
-	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
+// CreateQuarksStatefulSet creates a QuarksStatefulSet custom resource and returns a function to delete it
+func (m *Machine) CreateQuarksStatefulSet(namespace string, ess qstsv1a1.QuarksStatefulSet) (*qstsv1a1.QuarksStatefulSet, machine.TearDownFunc, error) {
+	client := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace)
 
 	d, err := client.Create(&ess)
 
@@ -54,16 +54,16 @@ func (m *Machine) CreateExtendedStatefulSet(namespace string, ess esv1.ExtendedS
 	}, err
 }
 
-// GetExtendedStatefulSet gets a ExtendedStatefulSet custom resource
-func (m *Machine) GetExtendedStatefulSet(namespace string, name string) (*esv1.ExtendedStatefulSet, error) {
-	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
+// GetQuarksStatefulSet gets a QuarksStatefulSet custom resource
+func (m *Machine) GetQuarksStatefulSet(namespace string, name string) (*qstsv1a1.QuarksStatefulSet, error) {
+	client := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace)
 	d, err := client.Get(name, metav1.GetOptions{})
 	return d, err
 }
 
-// UpdateExtendedStatefulSet updates a ExtendedStatefulSet custom resource and returns a function to delete it
-func (m *Machine) UpdateExtendedStatefulSet(namespace string, ess esv1.ExtendedStatefulSet) (*esv1.ExtendedStatefulSet, machine.TearDownFunc, error) {
-	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
+// UpdateQuarksStatefulSet updates a QuarksStatefulSet custom resource and returns a function to delete it
+func (m *Machine) UpdateQuarksStatefulSet(namespace string, ess qstsv1a1.QuarksStatefulSet) (*qstsv1a1.QuarksStatefulSet, machine.TearDownFunc, error) {
+	client := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace)
 	d, err := client.Update(&ess)
 	return d, func() error {
 		err := client.Delete(ess.GetName(), &metav1.DeleteOptions{})
@@ -74,13 +74,13 @@ func (m *Machine) UpdateExtendedStatefulSet(namespace string, ess esv1.ExtendedS
 	}, err
 }
 
-// DeleteExtendedStatefulSet deletes a ExtendedStatefulSet custom resource
-func (m *Machine) DeleteExtendedStatefulSet(namespace string, name string) error {
-	client := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace)
+// DeleteQuarksStatefulSet deletes a QuarksStatefulSet custom resource
+func (m *Machine) DeleteQuarksStatefulSet(namespace string, name string) error {
+	client := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace)
 	return client.Delete(name, &metav1.DeleteOptions{})
 }
 
-// WaitForStatefulSetDelete blocks until the specified statefulset is deleted
+// WaitForStatefulSetDelete blocks until the specified statefulSet is deleted
 func (m *Machine) WaitForStatefulSetDelete(namespace string, name string) error {
 	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		found, err := m.StatefulSetExist(namespace, name)
@@ -88,14 +88,14 @@ func (m *Machine) WaitForStatefulSetDelete(namespace string, name string) error 
 	})
 }
 
-// StatefulSetExist checks if the statefulset exists
+// StatefulSetExist checks if the statefulSet exists
 func (m *Machine) StatefulSetExist(namespace string, name string) (bool, error) {
 	_, err := m.Clientset.AppsV1beta1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
 		}
-		return false, errors.Wrapf(err, "failed to query for statefulset by name: %s", name)
+		return false, errors.Wrapf(err, "failed to query for statefulSet by name: %s", name)
 	}
 	return true, nil
 }
@@ -107,10 +107,10 @@ func (m *Machine) WaitForStatefulSetNewGeneration(namespace string, name string,
 	})
 }
 
-// WaitForExtendedStatefulSets blocks until at least one ExtendedStatefulSet is found. It fails after the timeout.
-func (m *Machine) WaitForExtendedStatefulSets(namespace string, labels string) error {
+// WaitForQuarksStatefulSets blocks until at least one QuarksStatefulSet is found. It fails after the timeout.
+func (m *Machine) WaitForQuarksStatefulSets(namespace string, labels string) error {
 	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
-		return m.ExtendedStatefulSetExists(namespace, labels)
+		return m.QuarksStatefulSetExists(namespace, labels)
 	})
 }
 
@@ -177,21 +177,21 @@ func (m *Machine) PVCsDeleted(namespace string) (bool, error) {
 	return false, nil
 }
 
-// WaitForStatefulSet blocks until all statefulset pods are running. It fails after the timeout.
+// WaitForStatefulSet blocks until all statefulSet pods are running. It fails after the timeout.
 func (m *Machine) WaitForStatefulSet(namespace string, labels string) error {
 	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		return m.StatefulSetRunning(namespace, labels)
 	})
 }
 
-// StatefulSetRunning returns true if the statefulset by that name has all pods created
+// StatefulSetRunning returns true if the statefulSet by that name has all pods created
 func (m *Machine) StatefulSetRunning(namespace string, name string) (bool, error) {
 	statefulSet, err := m.Clientset.AppsV1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
 		}
-		return false, errors.Wrapf(err, "failed to query for statefulset by name: %s", name)
+		return false, errors.Wrapf(err, "failed to query for statefulSet by name: %s", name)
 	}
 
 	if statefulSet.Status.ReadyReplicas == *statefulSet.Spec.Replicas {
@@ -200,9 +200,9 @@ func (m *Machine) StatefulSetRunning(namespace string, name string) (bool, error
 	return false, nil
 }
 
-// ExtendedStatefulSetExists returns true if at least one ess selected by labels exists
-func (m *Machine) ExtendedStatefulSetExists(namespace string, labels string) (bool, error) {
-	esss, err := m.VersionedClientset.ExtendedstatefulsetV1alpha1().ExtendedStatefulSets(namespace).List(metav1.ListOptions{
+// QuarksStatefulSetExists returns true if at least one ess selected by labels exists
+func (m *Machine) QuarksStatefulSetExists(namespace string, labels string) (bool, error) {
+	esss, err := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace).List(metav1.ListOptions{
 		LabelSelector: labels,
 	})
 	if err != nil {
@@ -227,4 +227,3 @@ func (m *Machine) StatefulSetNewGeneration(namespace string, name string, versio
 
 	return false, nil
 }
-

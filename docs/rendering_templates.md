@@ -6,7 +6,7 @@
       - [Extract Job Spec and Templates from Image](#extract-job-spec-and-templates-from-image)
       - [Calculation of Required Properties for an Instance Group and BPM Info](#calculation-of-required-properties-for-an-instance-group-and-bpm-info)
     - [Run](#run)
-      - [Create ExtendedStatefulSet and ExtendedJobs](#create-extendedstatefulset-and-extendedjobs)
+      - [Create QuarksStatefulSet and QuarksJobs](#create-quarks-statefulset-and-quarks-jobs)
       - [Render Templates](#render-templates)
       - [Run the entrypoints](#run-the-entrypoints)
   - [Details](#details)
@@ -25,7 +25,7 @@ The following points describe each process that involves working with BOSH Job T
 
 ### Data Gathering
 
-The Data Gathering step is run using one `ExtendedJob`, that has one pod with multiple containers.
+The Data Gathering step is run using one `QuarksJob`, that has one pod with multiple containers.
 
 #### Extract Job Spec and Templates from Image
 
@@ -79,9 +79,9 @@ Two containers are run for each instance group in the deployment manifest, using
 
 ### Run
 
-#### Create ExtendedStatefulSet and ExtendedJobs
+#### Create QuarksStatefulSet and QuarksJobs
 
-The operator creates definitions for `ExtendedStatefulSets` (for **BOSH Services**) or `ExtendedJobs` (for **BOSH Errands**).
+The operator creates definitions for `QuarksStatefulSets` (for **BOSH Services**) or `QuarksJobs` (for **BOSH Errands**).
 
 These have the following init containers:
 

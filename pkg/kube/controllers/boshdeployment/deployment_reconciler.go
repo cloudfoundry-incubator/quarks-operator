@@ -17,9 +17,9 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
-	ejv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/extendedjob/v1alpha1"
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
@@ -27,9 +27,9 @@ import (
 
 // JobFactory creates Jobs for a given manifest
 type JobFactory interface {
-	VariableInterpolationJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error)
-	InstanceGroupManifestJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error)
-	BPMConfigsJob(manifest bdm.Manifest) (*ejv1.ExtendedJob, error)
+	VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error)
+	InstanceGroupManifestJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error)
+	BPMConfigsJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error)
 }
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
@@ -62,7 +62,7 @@ type ReconcileBOSHDeployment struct {
 	jobFactory   JobFactory
 }
 
-// Reconcile starts the deployment process for a BOSHDeployment and deploys ExtendedJobs to generate required properties for instance groups and rendered BPM
+// Reconcile starts the deployment process for a BOSHDeployment and deploys QuarksJobs to generate required properties for instance groups and rendered BPM
 func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the BOSHDeployment instance
 	instance := &bdv1.BOSHDeployment{}
@@ -101,43 +101,43 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	log.Debug(ctx, "Rendering manifest")
 
-	// Apply the "Variable Interpolation" ExtendedJob, which creates the desired manifest secret
-	eJob, err := r.jobFactory.VariableInterpolationJob(*manifest)
+	// Apply the "Variable Interpolation" QuarksJob, which creates the desired manifest secret
+	qJob, err := r.jobFactory.VariableInterpolationJob(*manifest)
 	if err != nil {
-		return reconcile.Result{}, log.WithEvent(instance, "DesiredManifestError").Errorf(ctx, "Failed to build the desired manifest eJob: %v", err)
+		return reconcile.Result{}, log.WithEvent(instance, "DesiredManifestError").Errorf(ctx, "Failed to build the desired manifest qJob: %v", err)
 	}
 
-	log.Debug(ctx, "Creating desired manifest ExtendedJob")
-	err = r.createEJob(ctx, instance, eJob)
+	log.Debug(ctx, "Creating desired manifest QuarksJob")
+	err = r.createQuarksJob(ctx, instance, qJob)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(instance, "DesiredManifestError").Errorf(ctx, "Failed to create desired manifest ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(instance, "DesiredManifestError").Errorf(ctx, "Failed to create desired manifest qJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	// Apply the "Data Gathering" ExtendedJob, which creates instance group manifests (ig-resolved) secrets
-	eJob, err = r.jobFactory.InstanceGroupManifestJob(*manifest)
+	// Apply the "Data Gathering" QuarksJob, which creates instance group manifests (ig-resolved) secrets
+	qJob, err = r.jobFactory.InstanceGroupManifestJob(*manifest)
 	if err != nil {
-		return reconcile.Result{}, log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "Failed to build instance group manifest eJob: %v", err)
+		return reconcile.Result{}, log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "Failed to build instance group manifest qJob: %v", err)
 
 	}
-	log.Debug(ctx, "Creating instance group manifest ExtendedJob")
-	err = r.createEJob(ctx, instance, eJob)
-	if err != nil {
-		return reconcile.Result{},
-			log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "Failed to create instance group manifest ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
-	}
-
-	// Apply the "BPM Configs" ExtendedJob, which creates BPM config secrets
-	eJob, err = r.jobFactory.BPMConfigsJob(*manifest)
-	if err != nil {
-		return reconcile.Result{}, log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to build BPM configs eJob: %v", err)
-
-	}
-	log.Debug(ctx, "Creating BPM configs ExtendedJob")
-	err = r.createEJob(ctx, instance, eJob)
+	log.Debug(ctx, "Creating instance group manifest QuarksJob")
+	err = r.createQuarksJob(ctx, instance, qJob)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to create BPM configs ExtendedJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "Failed to create instance group manifest qJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
+	}
+
+	// Apply the "BPM Configs" QuarksJob, which creates BPM config secrets
+	qJob, err = r.jobFactory.BPMConfigsJob(*manifest)
+	if err != nil {
+		return reconcile.Result{}, log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to build BPM configs qJob: %v", err)
+
+	}
+	log.Debug(ctx, "Creating BPM configs QuarksJob")
+	err = r.createQuarksJob(ctx, instance, qJob)
+	if err != nil {
+		return reconcile.Result{},
+			log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to create BPM configs qJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	// Update status of bdpl with the timestamp of the last reconcile
@@ -201,18 +201,18 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 	return manifest, nil
 }
 
-// createEJob creates a an EJob and sets ownership
-func (r *ReconcileBOSHDeployment) createEJob(ctx context.Context, instance *bdv1.BOSHDeployment, eJob *ejv1.ExtendedJob) error {
-	if err := r.setReference(instance, eJob, r.scheme); err != nil {
-		return errors.Errorf("failed to set ownerReference for ExtendedJob '%s': %v", eJob.GetName(), err)
+// createQuarksJob creates a QuarksJob and sets its ownership
+func (r *ReconcileBOSHDeployment) createQuarksJob(ctx context.Context, instance *bdv1.BOSHDeployment, qJob *qjv1a1.QuarksJob) error {
+	if err := r.setReference(instance, qJob, r.scheme); err != nil {
+		return errors.Errorf("failed to set ownerReference for QuarksJob '%s': %v", qJob.GetName(), err)
 	}
 
-	op, err := controllerutil.CreateOrUpdate(ctx, r.client, eJob, mutate.EJobMutateFn(eJob))
+	op, err := controllerutil.CreateOrUpdate(ctx, r.client, qJob, mutate.QuarksJobMutateFn(qJob))
 	if err != nil {
-		return errors.Wrapf(err, "creating or updating ExtendedJob '%s'", eJob.Name)
+		return errors.Wrapf(err, "creating or updating QuarksJob '%s'", qJob.Name)
 	}
 
-	log.Debugf(ctx, "ExtendedJob '%s' has been %s", eJob.Name, op)
+	log.Debugf(ctx, "QuarksJob '%s' has been %s", qJob.Name, op)
 
 	return err
 }

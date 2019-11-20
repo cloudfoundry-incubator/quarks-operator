@@ -11,43 +11,43 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	essv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/extendedstatefulset/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 )
 
 // AddTestStorageClassToVolumeClaimTemplates adds storage class to the example and returns the new file temporary path
 func AddTestStorageClassToVolumeClaimTemplates(filePath string, class string) (string, error) {
-	extendedStatefulSet := essv1.ExtendedStatefulSet{}
-	extendedStatefulSetBytes, err := ioutil.ReadFile(filePath)
+	qStatefulSet := qstsv1a1.QuarksStatefulSet{}
+	qStatefulSetBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return "", errors.Wrapf(err, "Reading file %s failed.", filePath)
 	}
-	err = yaml.Unmarshal(extendedStatefulSetBytes, &extendedStatefulSet)
+	err = yaml.Unmarshal(qStatefulSetBytes, &qStatefulSet)
 	if err != nil {
-		return "", errors.Wrapf(err, "Unmarshalling extendedstatefulset from file %s failed.", filePath)
+		return "", errors.Wrapf(err, "Unmarshalling quarksStatefulSet from file %s failed.", filePath)
 	}
 
-	if extendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates != nil {
-		volumeClaimTemplates := extendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates
+	if qStatefulSet.Spec.Template.Spec.VolumeClaimTemplates != nil {
+		volumeClaimTemplates := qStatefulSet.Spec.Template.Spec.VolumeClaimTemplates
 		for volumeClaimTemplateIndex := range volumeClaimTemplates {
 			volumeClaimTemplates[volumeClaimTemplateIndex].Spec.StorageClassName = pointers.String(class)
 		}
-		extendedStatefulSet.Spec.Template.Spec.VolumeClaimTemplates = volumeClaimTemplates
+		qStatefulSet.Spec.Template.Spec.VolumeClaimTemplates = volumeClaimTemplates
 	} else {
 		return "", errors.Errorf("No volumeclaimtemplates present in the %s yaml", filePath)
 	}
 
-	extendedStatefulSetBytes, err = yaml.Marshal(&extendedStatefulSet)
+	qStatefulSetBytes, err = yaml.Marshal(&qStatefulSet)
 	if err != nil {
-		return "", errors.Wrapf(err, "Marshing extendedstatfulset %s failed", extendedStatefulSet.GetName())
+		return "", errors.Wrapf(err, "Marshing quarksStatefulSet %s failed", qStatefulSet.GetName())
 	}
 
 	tmpFilePath := "/tmp/example.yaml"
 
-	err = ioutil.WriteFile(tmpFilePath, extendedStatefulSetBytes, 0644)
+	err = ioutil.WriteFile(tmpFilePath, qStatefulSetBytes, 0644)
 	if err != nil {
-		return "", errors.Wrapf(err, "Writing extendedstatefulset %s to file %s failed.", extendedStatefulSet.GetName(), tmpFilePath)
+		return "", errors.Wrapf(err, "Writing quarksStatefulSet %s to file %s failed.", qStatefulSet.GetName(), tmpFilePath)
 	}
 
 	return tmpFilePath, nil
@@ -100,8 +100,8 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 			})
 
-			It("extended-statefulset pvc example must work", func() {
-				yamlFilePath := examplesDir + "extended-statefulset/exstatefulset_pvcs.yaml"
+			It("quarks-statefulset pvc example must work", func() {
+				yamlFilePath := examplesDir + "quarks-statefulset/qstatefulset_pvcs.yaml"
 
 				// Adding storageclass to volumeclaimtemplates
 				class, ok := os.LookupEnv("OPERATOR_TEST_STORAGE_CLASS")
@@ -110,21 +110,21 @@ var _ = Describe("Examples", func() {
 				exampleTmpFilePath, err := AddTestStorageClassToVolumeClaimTemplates(yamlFilePath, class)
 				Expect(err).ToNot(HaveOccurred())
 
-				By("Creating exstatefulset pvcs")
+				By("Creating quarksStatefulSet pvcs")
 				err = cmdHelper.Create(namespace, exampleTmpFilePath)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
-				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v1-0", kubectlHelper.PollTimeout)
+				err = kubectlHelper.Wait(namespace, "ready", "pod/example-quarks-statefulset-v1-0", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.Wait(namespace, "ready", "pod/example-extendedstatefulset-v1-1", kubectlHelper.PollTimeout)
+				err = kubectlHelper.Wait(namespace, "ready", "pod/example-quarks-statefulset-v1-1", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.WaitForPVC(namespace, "pvc-volume-management-example-extendedstatefulset-0")
+				err = kubectlHelper.WaitForPVC(namespace, "pvc-volume-management-example-quarks-statefulset-0")
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.WaitForPVC(namespace, "pvc-volume-management-example-extendedstatefulset-1")
+				err = kubectlHelper.WaitForPVC(namespace, "pvc-volume-management-example-quarks-statefulset-1")
 				Expect(err).ToNot(HaveOccurred())
 
 				// Delete the temporary file
