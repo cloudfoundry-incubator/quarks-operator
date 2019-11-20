@@ -44,6 +44,7 @@ kubectl delete validatingwebhookconfiguration "cf-operator-hook-$CF_OPERATOR_NAM
 ```
 
 From **Kubernetes 1.15** onwards, it is possible to instead patch the webhook configurations for the cf-operator namespace via:
+
 ```bash
 CF_OPERATOR_NAMESPACE=cf-operator
 kubectl patch mutatingwebhookconfigurations "cf-operator-hook-$CF_OPERATOR_NAMESPACE" -p '
@@ -62,10 +63,10 @@ webhooks:
 
 The `cf-operator` watches four different types of custom resources:
 
-- [BoshDeployment](docs/controllers/bosh_deployment.md)
-- [QuarksJob](https://github.com/cloudfoundry-incubator/quarks-job/blob/master/docs/quarksjob.md)
-- [QuarksSecret](docs/controllers/quarks_secret.md)
-- [QuarksStatefulSet](docs/controllers/quarks_statefulset.md)
+* [BoshDeployment](docs/controllers/bosh_deployment.md)
+* [QuarksJob](https://github.com/cloudfoundry-incubator/quarks-job/blob/master/docs/quarksjob.md)
+* [QuarksSecret](docs/controllers/quarks_secret.md)
+* [QuarksStatefulSet](docs/controllers/quarks_statefulset.md)
 
 The `cf-operator` requires the according CRDs to be installed in the cluster in order to work as expected. By default, the `cf-operator` applies CRDs in your cluster automatically.
 
@@ -100,7 +101,6 @@ Explicit variables are explicitly defined in the [BOSH manifest](https://bosh.io
 The naming scheme is the same as for implicit variables.
 
 If an explicit variable secret already exists, it will not be generated. This allows users to set their own passwords, etc.
-
 
 ## Using your fresh installation
 
@@ -143,3 +143,45 @@ For more information about testing, see [docs/testing.md](docs/testing.md)
 For more information about building the operator from source, see [docs/building.md](docs/building.md)
 
 For more information about how to develop a BOSH release using Quarks and SCF, see the [SCFv3 docs](https://github.com/SUSE/scf/blob/v3-develop/dev/scf/docs/bosh-author.md)
+
+## Nice tools to use
+
+The following is a list of tools with their respective main features that can help you
+to simplify your development work when dealing with [cf-operator](https://github.com/cloudfoundry-incubator/cf-operator) and [kubecf](https://github.com/SUSE/kubecf)
+
+### [k9s](https://github.com/derailed/k9s)
+
+It provides an easy way to navigate through your k8s resources, while watching lively
+to changes on them. Main features that can be helpful for containerized CF are:
+
+* inmediate access to resources YAMLs definition
+
+* inmediate access to services endpoints
+
+* inmediate access to pods/container logs
+
+* sort resources(e.g. pods) by cpu or memory consumption
+
+* inmediate access to a container secure shell
+
+### [havener](https://github.com/homeport/havener)
+
+A tool-kit with different features around k8s and CloudFoundry
+
+* `top`, to get an overview on the cpu/memory/load of the cluster, per ns and pods.
+
+* `logs`, to download all logs from all pods into your local system
+
+* `pod-exec`, to open a shell into containers. This can execute cmds in different containers
+simultaneously.
+
+* `node-exec`, to open a shell into nodes. This can execute cmds in different containers
+simultaneously.
+
+### [stern](https://github.com/wercker/stern)
+
+Allows you to tail multiple pods on k8s and multiple containers within the pod.
+
+### [kube dashboard](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/)
+
+A more user friendly to navigate your k8s cluster resources.
