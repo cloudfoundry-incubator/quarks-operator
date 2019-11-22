@@ -1,12 +1,13 @@
 #!/bin/bash
 
 function setup_testing_tmp {
-  if [ -z "${CF_OPERATOR_TESTING_TMP}" ]
+  if [ -z ${CF_OPERATOR_TESTING_TMP+x} ]
   then
     echo "[Error] Env variable \$CF_OPERATOR_TESTING_TMP is not set. Please set to continue."
     exit 1
   fi
 
+  SKIP_CF_OPERATOR_TESTING_TMP_CLEANUP=${SKIP_CF_OPERATOR_TESTING_TMP_CLEANUP:-}
   if [ "$SKIP_CF_OPERATOR_TESTING_TMP_CLEANUP" != "true" ]
   then
     echo "${CF_OPERATOR_TESTING_TMP} will be cleaned up after the tests. Set SKIP_CF_OPERATOR_TESTING_TMP_CLEANUP=true to skip cleanup."

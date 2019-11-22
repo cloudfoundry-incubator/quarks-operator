@@ -7,7 +7,7 @@ GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
 . "${GIT_ROOT}/bin/include/testing"
 . "${GIT_ROOT}/bin/include/dependencies"
 
-name="$1"
+name="${1-}"
 
 if [ -z ${TEST_NAMESPACE+x} ]; then
   TEST_NAMESPACE="test$(date +%s)"
@@ -20,7 +20,8 @@ setup_testing_tmp
 trap cleanup_testing_tmp EXIT
 
 # Run code coverage only in CI
-if [ -n "$COVERAGE" ]; then
+COV_ARG=""
+if [ ${COVERAGE+x} ]; then
   pkgs="code.cloudfoundry.org/cf-operator/pkg/bosh/...,\
     code.cloudfoundry.org/cf-operator/pkg/credsgen/...,\
     code.cloudfoundry.org/cf-operator/pkg/kube/controllers/...,\
