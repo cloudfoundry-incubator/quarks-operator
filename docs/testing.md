@@ -5,7 +5,9 @@
   - [Unit](#unit)
   - [Integration](#integration)
   - [End-to-End](#end-to-end)
-  - [Running tests in minikube](#running-tests-in-minikube)
+  - [Running tests](#running-tests)
+    - [in minikube](#in-minikube)
+    - [in KinD](#in-kind)
   - [Makefile](#makefile)
     - [General Targets](#general-targets)
     - [Build Targets](#build-targets)
@@ -118,7 +120,9 @@ The CLI tests build the operator binary themselves.
 
 The second type of e2e tests use `helm` to install the CF operator into the k8s cluster and use the files from `docs/examples` for testing.
 
-## Running tests in minikube
+## Running tests
+
+### In minikube
 
 The following steps are necessary to have a proper environment setup, where all types of tests can be executed:
 
@@ -185,6 +189,62 @@ old resources will interfere with a future installation, by:
 # Deleting old mutating webhooks configurations
 kubectl get mutatingwebhookconfiguration -oname | xargs -n 1 kubectl delete
 ```
+
+### In KinD
+
+The following steps are necessary to have a proper environment setup, where all types of tests can be executed:
+
+1. Install `KinD`
+
+Follow the instructions from https://github.com/kubernetes-sigs/kind/
+
+2. Start cluster
+
+    ```bash
+    kind create cluster --image kindest/node:v1.15.6
+    ```
+
+3. Export the `CF_OPERATOR_WEBHOOK_SERVICE_HOST` env variable
+
+    Use the IP of the docker bridge or your public IP. Firewall rules may interfere.
+
+4. Export the `OPERATOR_TEST_STORAGE_CLASS` env variable
+
+    ```bash
+    export OPERATOR_TEST_STORAGE_CLASS=standard
+    ```
+
+    _**Note**_: Required for the PVC tests.
+
+5. Build the `cf-operator` docker image
+
+    First set the version to something static, not dependant on git:
+
+    ```bash
+    export DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG:-dev}
+    ```
+
+    ```bash
+    bin/build-image
+    ```
+
+    Or if you have local changes and use `go mod edit --replace`,
+    follow instructions from [development](development.md#standalone-components).
+
+6. Load image into KinD
+
+    ```
+    kind load docker-image cfcontainerization/cf-operator:$DOCKER_IMAGE_TAG
+    ```
+
+7. Export QuarksJob dependency
+
+    ```
+    export QUARKS_JOB_IMAGE_TAG=${QUARKS_JOB_IMAGE_TAG:-dev}
+    ```
+
+    If using a locally built quarks-job image, it might be necessary to load it, too,
+    see [development](development.md#standalone-components).
 
 ## Makefile
 

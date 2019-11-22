@@ -208,6 +208,8 @@ var (
 	LabelInstanceGroupName = fmt.Sprintf("%s/instance-group-name", apis.GroupName)
 	// LabelDeploymentVersion is the name of a label for the deployment's version.
 	LabelDeploymentVersion = fmt.Sprintf("%s/deployment-version", apis.GroupName)
+	// LabelReferencedJobName is the name key for dependent job
+	LabelReferencedJobName = fmt.Sprintf("%s/referenced-job-name", apis.GroupName)
 )
 
 // AgentSettings from BOSH deployment manifest.

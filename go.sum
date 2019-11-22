@@ -1,11 +1,6 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
-code.cloudfoundry.org/quarks-job v0.0.0-20191114061609-c3704bb5fb45 h1:l8NlRNR08MclzP1JjaykYXUjCpKUq5LlrQ1ih9YG7Zo=
-code.cloudfoundry.org/quarks-job v0.0.0-20191114061609-c3704bb5fb45/go.mod h1:dDwAM6J54bBNVOdqnfEtmFgelr5m71prMs58oGzgLMc=
-code.cloudfoundry.org/quarks-job v0.0.0-20191118101604-b02b381d5aba h1:W0XYxwI/YhIjKmLVOIxkcQbkNEaI/xHLI2a9Qo+PD/Q=
-code.cloudfoundry.org/quarks-job v0.0.0-20191118101604-b02b381d5aba/go.mod h1:E1WpDsi0+UbI/W5mDCD6CYzUTh8p2nFIAoc3o3kLffQ=
-code.cloudfoundry.org/quarks-utils v0.0.0-20191112142553-a2225c40261f/go.mod h1:H6fVNegFsTZqOU2Cggvue8X5vfAdeGDKemikmwc7RBc=
-code.cloudfoundry.org/quarks-utils v0.0.0-20191113134855-ab445bec32c6 h1:7pQtmKfqhvqjfeTK2rR8hd1rOwKMFwmG61UrQONrOP8=
-code.cloudfoundry.org/quarks-utils v0.0.0-20191113134855-ab445bec32c6/go.mod h1:H6fVNegFsTZqOU2Cggvue8X5vfAdeGDKemikmwc7RBc=
+code.cloudfoundry.org/quarks-job v0.0.0-20191120115056-1642b1e5e3c5 h1:vRveICJ9L+zOF0+K8b6hx7IBD/2a8T22Fr0m8Ff7QCY=
+code.cloudfoundry.org/quarks-job v0.0.0-20191120115056-1642b1e5e3c5/go.mod h1:E1WpDsi0+UbI/W5mDCD6CYzUTh8p2nFIAoc3o3kLffQ=
 code.cloudfoundry.org/quarks-utils v0.0.0-20191114145816-f753780f6d4f h1:csZ/4q+RneCMG/peE4pl+9/yM69uMog7SH1Yibaw6oE=
 code.cloudfoundry.org/quarks-utils v0.0.0-20191114145816-f753780f6d4f/go.mod h1:H6fVNegFsTZqOU2Cggvue8X5vfAdeGDKemikmwc7RBc=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
@@ -282,6 +277,7 @@ github.com/stretchr/testify v0.0.0-20151208002404-e3a8ff8ce365/go.mod h1:a8OnRci
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0Q=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
+github.com/stretchr/testify v1.4.0 h1:2E4SXV/wtOkTonXsotYi4li6zVWxYlZuYNCXe9XRJyk=
 github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81PSLYec5m4=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGrc=
