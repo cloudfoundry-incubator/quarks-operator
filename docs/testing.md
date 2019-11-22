@@ -146,9 +146,10 @@ The following steps are necessary to have a proper environment setup, where all 
 1. Export the `CF_OPERATOR_WEBHOOK_SERVICE_HOST` env variable
 
     ```bash
-    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(minikube ip)
+    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip -4 a s dev $(ip r l 0/0 | cut -f5 -d' ') | grep -oP 'inet \K\S+(?=/)')
     ```
 
+    _**Note**_: On Mac, use `export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip a s $(ip r g 0/0 | cut -f5 -d' ') | grep -oE 'inet [^ /]+' | cut -f2 -d' ')`, because grep cannot handle perl regexs.
     _**Note**_: You can also find the correct IP, by running `ip addr`. The IP address under `vboxnet1` is the IP that you need.
 
 1. Export the `OPERATOR_TEST_STORAGE_CLASS` env variable
@@ -158,22 +159,6 @@ The following steps are necessary to have a proper environment setup, where all 
     ```
 
     _**Note**_: Require for the PVC test creation, in minikube.
-
-1. Copy the ssh-key required for tunneling to /tmp
-
-    ```bash
-    cp $(minikube ssh-key) /tmp/cf-operator-tunnel-identity
-    ```
-
-1. Allow port tunneling on minikube
-    ```bash
-    minikube ssh -- "sudo sed -i 's/#GatewayPorts no/GatewayPorts yes/' /etc/ssh/sshd_config && sudo systemctl reload sshd"
-    ```
-
-1. Enable tunneling from the minikube node to the cf-operator on localhost (required for webhooks)
-    ```bash
-    export ssh_server_user=docker
-    ```
 
 1. Ensure `GO111MODULE` is set
 
@@ -214,17 +199,22 @@ The following steps are necessary to have a proper environment setup, where all 
 
 Follow the instructions from https://github.com/kubernetes-sigs/kind/
 
-2. Start cluster
+1. Start cluster
 
     ```bash
     kind create cluster --image kindest/node:v1.15.6
     ```
 
-3. Export the `CF_OPERATOR_WEBHOOK_SERVICE_HOST` env variable
+1. Export the `CF_OPERATOR_WEBHOOK_SERVICE_HOST` env variable. Use the IP of the docker bridge or your public IP. Firewall rules may interfere.
 
-    Use the IP of the docker bridge or your public IP. Firewall rules may interfere.
+    ```bash
+    export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip -4 a s dev $(ip r l 0/0 | cut -f5 -d' ') | grep -oP 'inet \K\S+(?=/)')
+    ```
 
-4. Export the `OPERATOR_TEST_STORAGE_CLASS` env variable
+_**Note**_: On Mac, use `export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip a s $(ip r g 0/0 | cut -f5 -d' ') | grep -oE 'inet [^ /]+' | cut -f2 -d' ')`, because grep cannot handle perl regexs.
+
+
+1. Export the `OPERATOR_TEST_STORAGE_CLASS` env variable
 
     ```bash
     export OPERATOR_TEST_STORAGE_CLASS=standard
@@ -232,7 +222,7 @@ Follow the instructions from https://github.com/kubernetes-sigs/kind/
 
     _**Note**_: Required for the PVC tests.
 
-5. Build the `cf-operator` docker image
+1. Build the `cf-operator` docker image
 
     First set the version to something static, not dependant on git:
 
@@ -247,20 +237,23 @@ Follow the instructions from https://github.com/kubernetes-sigs/kind/
     Or if you have local changes and use `go mod edit --replace`,
     follow instructions from [development](development.md#standalone-components).
 
-6. Load image into KinD
+1. Load image into KinD
 
     ```
     kind load docker-image cfcontainerization/cf-operator:$DOCKER_IMAGE_TAG
     ```
 
-7. Export QuarksJob dependency
+1. Set QuarksJob dependency. Choose a tag from [docker.io](https://hub.docker.com/r/cfcontainerization/quarks-job/tags).
 
     ```
     export QUARKS_JOB_IMAGE_TAG=${QUARKS_JOB_IMAGE_TAG:-dev}
     ```
 
-    If using a locally built quarks-job image, it might be necessary to load it, too,
-    see [development](development.md#standalone-components).
+    If using a locally built quarks-job image, load it via
+
+    ```kind load docker-image cfcontainerization/quarks-job:$QUARKS_JOB_IMAGE_TAG```
+
+    (see [development](development.md#standalone-components)).
 
 ## Makefile
 
