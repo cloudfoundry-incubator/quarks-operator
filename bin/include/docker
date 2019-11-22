@@ -10,7 +10,7 @@ if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
   export DOCKER_IMAGE_TAG
 fi
 
-if [ -z "$DOCKER_IMAGE_REPOSITORY" ]; then
+if [ -z ${DOCKER_IMAGE_REPOSITORY+x} ]; then
     DOCKER_IMAGE_REPOSITORY="cf-operator"
     export DOCKER_IMAGE_REPOSITORY
 fi

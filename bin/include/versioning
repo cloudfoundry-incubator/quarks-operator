@@ -1,12 +1,5 @@
 #!/bin/bash
 
-old_options="$(set +o); set -$-"
-set -o errexit -o nounset
-
-if [ -n "${XTRACE:-}" ] ; then
-    set -o xtrace
-fi
-
 GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 GIT_DESCRIBE=$(git describe --tags --long || (git tag -a v0.0.0 -m "tag v0.0.0"; git describe --tags --long))
 GIT_BRANCH=${GIT_BRANCH:-$(git name-rev --name-only HEAD)}
@@ -17,7 +10,3 @@ GIT_TAG=$(echo "${GIT_DESCRIBE}" | awk -F - '{ print $1 }')
 [ -z "$(git status --porcelain)" ] || GIT_TAG="${GIT_TAG}-dirty"
 
 ARTIFACT_VERSION="${GIT_TAG}-${GIT_COMMITS}.${GIT_SHA}"
-
-# Restore shell options (in case this script is being sourced)
-set +x;
-eval "$old_options"
