@@ -42,14 +42,14 @@ This will resolve the properties of an instance group and return a manifest for 
 		log = cmd.Logger()
 		defer log.Sync()
 
-		boshManifestPath, err := boshManifestFlagValidation(dGatherFailedMessage)
+		boshManifestPath, err := boshManifestFlagValidation()
 		if err != nil {
-			return err
+			return errors.Wrap(err, dGatherFailedMessage)
 		}
 
-		baseDir, err := baseDirFlagValidation(dGatherFailedMessage)
+		baseDir, err := baseDirFlagValidation()
 		if err != nil {
-			return err
+			return errors.Wrap(err, dGatherFailedMessage)
 		}
 
 		namespace := viper.GetString("cf-operator-namespace")
@@ -57,14 +57,14 @@ This will resolve the properties of an instance group and return a manifest for 
 			return errors.Errorf("%s cf-operator-namespace flag is empty.", dGatherFailedMessage)
 		}
 
-		outputFilePath, err := outputFilePathFlagValidation(dGatherFailedMessage)
+		outputFilePath, err := outputFilePathFlagValidation()
 		if err != nil {
-			return err
+			return errors.Wrap(err, dGatherFailedMessage)
 		}
 
-		instanceGroupName, err := instanceGroupFlagValidation(dGatherFailedMessage)
+		instanceGroupName, err := instanceGroupFlagValidation()
 		if err != nil {
-			return err
+			return errors.Wrap(err, dGatherFailedMessage)
 		}
 
 		boshManifestBytes, err := ioutil.ReadFile(boshManifestPath)
@@ -79,14 +79,15 @@ This will resolve the properties of an instance group and return a manifest for 
 
 		dg, err := manifest.NewInstanceGroupResolver(baseDir, *m, instanceGroupName)
 		if err != nil {
-			return errors.Wrapf(err, dGatherFailedMessage)
+			return errors.Wrap(err, dGatherFailedMessage)
 		}
 
 		manifest, err := dg.Manifest()
 		if err != nil {
-			return errors.Wrapf(err, dGatherFailedMessage)
+			return errors.Wrap(err, dGatherFailedMessage)
 		}
 
+		// write instance group manifest to output.json
 		propertiesBytes, err := manifest.Marshal()
 		if err != nil {
 			return errors.Wrapf(err, "%s YAML marshalling instance group manifest failed.", dGatherFailedMessage)

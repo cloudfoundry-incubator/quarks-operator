@@ -18,10 +18,10 @@ func init() {
 	rootCmd.AddCommand(utilCmd)
 }
 
-func boshManifestFlagValidation(cmdMsg string) (string, error) {
+func boshManifestFlagValidation() (string, error) {
 	boshManifestPath := viper.GetString("bosh-manifest-path")
 	if len(boshManifestPath) == 0 {
-		return "", errors.Errorf("%s bosh-manifest-path flag is empty.", cmdMsg)
+		return "", errors.New("bosh-manifest-path flag is empty")
 	}
 	return boshManifestPath, nil
 }
@@ -36,10 +36,10 @@ func boshManifestFlagViperBind(pf *flag.FlagSet) {
 
 }
 
-func baseDirFlagValidation(cmdMsg string) (string, error) {
+func baseDirFlagValidation() (string, error) {
 	baseDir := viper.GetString("base-dir")
 	if len(baseDir) == 0 {
-		return "", errors.Errorf("%s base-dir flag is empty.", cmdMsg)
+		return "", errors.New("base-dir flag is empty")
 	}
 	return baseDir, nil
 }
@@ -53,10 +53,10 @@ func baseDirFlagViperBind(pf *flag.FlagSet) {
 	viper.BindPFlag("base-dir", pf.Lookup("base-dir"))
 }
 
-func instanceGroupFlagValidation(cmdMsg string) (string, error) {
+func instanceGroupFlagValidation() (string, error) {
 	instanceGroupName := viper.GetString("instance-group-name")
 	if len(instanceGroupName) == 0 {
-		return "", errors.Errorf("%s instance-group-name flag is empty.", cmdMsg)
+		return "", errors.New("instance-group-name flag is empty")
 	}
 	return instanceGroupName, nil
 }
@@ -70,10 +70,10 @@ func instanceGroupFlagViperBind(pf *flag.FlagSet) {
 	viper.BindPFlag("instance-group-name", pf.Lookup("instance-group-name"))
 }
 
-func outputFilePathFlagValidation(cmdMsg string) (string, error) {
+func outputFilePathFlagValidation() (string, error) {
 	outputFilePath := viper.GetString("output-file-path")
 	if len(outputFilePath) == 0 {
-		return "", errors.Errorf("%s output-file-path flag is empty.", cmdMsg)
+		return "", errors.New("output-file-path flag is empty")
 	}
 	return outputFilePath, nil
 }

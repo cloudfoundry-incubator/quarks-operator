@@ -42,17 +42,17 @@ This will render a provided manifest instance-group
 			}
 		}()
 
-		boshManifestPath, err := boshManifestFlagValidation(tRenderFailedMessage)
+		boshManifestPath, err := boshManifestFlagValidation()
 		if err != nil {
-			return err
+			return errors.Wrap(err, tRenderFailedMessage)
 		}
 
 		jobsDir := viper.GetString("jobs-dir")
 		outputDir := viper.GetString("output-dir")
 
-		instanceGroupName, err := instanceGroupFlagValidation(tRenderFailedMessage)
+		instanceGroupName, err := instanceGroupFlagValidation()
 		if err != nil {
-			return err
+			return errors.Wrap(err, tRenderFailedMessage)
 		}
 
 		replicas := viper.GetInt("replicas")

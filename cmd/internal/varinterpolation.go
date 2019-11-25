@@ -41,13 +41,13 @@ interpolated manifest to STDOUT
 		log = cmd.Logger()
 		defer log.Sync()
 
-		boshManifestPath, err := boshManifestFlagValidation(vInterpolateFailedMessage)
+		boshManifestPath, err := boshManifestFlagValidation()
 		if err != nil {
-			return err
+			return errors.Wrap(err, vInterpolateFailedMessage)
 		}
-		outputFilePath, err := outputFilePathFlagValidation(vInterpolateFailedMessage)
+		outputFilePath, err := outputFilePathFlagValidation()
 		if err != nil {
-			return err
+			return errors.Wrap(err, vInterpolateFailedMessage)
 		}
 
 		variablesDir := filepath.Clean(viper.GetString("variables-dir"))
