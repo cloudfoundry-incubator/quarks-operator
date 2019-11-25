@@ -45,27 +45,27 @@ func NewInstanceGroupResolver(basedir string, manifest Manifest, instanceGroupNa
 // azs, env, variables and a map of all BOSH jobs in the instance group.
 // The output will be persisted by QuarksJob as 'bpm.yaml' in the
 // `<deployment-name>.bpm.<instance-group>-v<version>` secret.
-func (dg *InstanceGroupResolver) BPMInfo() (BPMInfo, error) {
+func (igr *InstanceGroupResolver) BPMInfo() (BPMInfo, error) {
 	bpmInfo := BPMInfo{}
 
-	err := dg.resolveManifest()
+	err := igr.resolveManifest()
 	if err != nil {
 		return bpmInfo, err
 	}
 
 	bpmInfo.Configs = bpm.Configs{}
-	for _, job := range dg.instanceGroup.Jobs {
+	for _, job := range igr.instanceGroup.Jobs {
 		if job.Properties.Quarks.BPM == nil {
 			return bpmInfo, errors.Errorf("Empty bpm configs about job '%s'", job.Name)
 		}
 		bpmInfo.Configs[job.Name] = *job.Properties.Quarks.BPM
 	}
 
-	bpmInfo.InstanceGroup.Name = dg.instanceGroup.Name
-	bpmInfo.InstanceGroup.AZs = dg.instanceGroup.AZs
-	bpmInfo.InstanceGroup.Instances = dg.instanceGroup.Instances
-	bpmInfo.InstanceGroup.Env = dg.instanceGroup.Env
-	bpmInfo.Variables = dg.manifest.Variables
+	bpmInfo.InstanceGroup.Name = igr.instanceGroup.Name
+	bpmInfo.InstanceGroup.AZs = igr.instanceGroup.AZs
+	bpmInfo.InstanceGroup.Instances = igr.instanceGroup.Instances
+	bpmInfo.InstanceGroup.Env = igr.instanceGroup.Env
+	bpmInfo.Variables = igr.manifest.Variables
 
 	return bpmInfo, nil
 }
@@ -74,15 +74,15 @@ func (dg *InstanceGroupResolver) BPMInfo() (BPMInfo, error) {
 // That manifest includes the gathered data from BPM and links.
 // The output will be persisted by QuarksJob as 'properties.yaml' in the
 // `<deployment-name>.ig-resolved.<instance-group>-v<version>` secret.
-func (dg *InstanceGroupResolver) Manifest() (Manifest, error) {
-	err := dg.resolveManifest()
+func (igr *InstanceGroupResolver) Manifest() (Manifest, error) {
+	err := igr.resolveManifest()
 	if err != nil {
 		return Manifest{}, err
 	}
 
 	// Filter igManifest to contain only relevant fields
 	igJobs := []Job{}
-	for _, job := range dg.instanceGroup.Jobs {
+	for _, job := range igr.instanceGroup.Jobs {
 
 		igQuarks := Quarks{
 			Consumes:         job.Properties.Quarks.Consumes,
@@ -103,10 +103,10 @@ func (dg *InstanceGroupResolver) Manifest() (Manifest, error) {
 		igJobs = append(igJobs, igJob)
 	}
 
-	ig := &InstanceGroup{Name: dg.instanceGroup.Name, Jobs: igJobs}
+	ig := &InstanceGroup{Name: igr.instanceGroup.Name, Jobs: igJobs}
 
 	igManifest := Manifest{
-		Name:           dg.manifest.Name,
+		Name:           igr.manifest.Name,
 		InstanceGroups: []*InstanceGroup{ig},
 	}
 
@@ -120,20 +120,20 @@ func (dg *InstanceGroupResolver) Manifest() (Manifest, error) {
 // * job properties
 // * bosh links
 // * bpm yaml file data
-func (dg *InstanceGroupResolver) resolveManifest() error {
-	if err := runPreRenderScripts(dg.instanceGroup); err != nil {
+func (igr *InstanceGroupResolver) resolveManifest() error {
+	if err := runPreRenderScripts(igr.instanceGroup); err != nil {
 		return err
 	}
 
-	if err := dg.collectReleaseSpecsAndProviderLinks(); err != nil {
+	if err := igr.collectReleaseSpecsAndProviderLinks(); err != nil {
 		return err
 	}
 
-	if err := dg.processConsumers(); err != nil {
+	if err := igr.processConsumers(); err != nil {
 		return err
 	}
 
-	if err := dg.renderBPM(); err != nil {
+	if err := igr.renderBPM(); err != nil {
 		return err
 	}
 
@@ -141,32 +141,32 @@ func (dg *InstanceGroupResolver) resolveManifest() error {
 }
 
 // collectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
-func (dg *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
-	for _, instanceGroup := range dg.manifest.InstanceGroups {
-		serviceName := dg.manifest.DNS.HeadlessServiceName(instanceGroup.Name)
+func (igr *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
+	for _, instanceGroup := range igr.manifest.InstanceGroups {
+		serviceName := igr.manifest.DNS.HeadlessServiceName(instanceGroup.Name)
 
 		for jobIdx, job := range instanceGroup.Jobs {
 			// make sure a map entry exists for the current job release
-			if _, ok := dg.jobReleaseSpecs[job.Release]; !ok {
-				dg.jobReleaseSpecs[job.Release] = map[string]JobSpec{}
+			if _, ok := igr.jobReleaseSpecs[job.Release]; !ok {
+				igr.jobReleaseSpecs[job.Release] = map[string]JobSpec{}
 			}
 
 			// load job.MF into jobReleaseSpecs[job.Release][job.Name]
-			if _, ok := dg.jobReleaseSpecs[job.Release][job.Name]; !ok {
-				jobSpec, err := job.loadSpec(dg.baseDir)
+			if _, ok := igr.jobReleaseSpecs[job.Release][job.Name]; !ok {
+				jobSpec, err := job.loadSpec(igr.baseDir)
 				if err != nil {
 					return err
 				}
-				dg.jobReleaseSpecs[job.Release][job.Name] = *jobSpec
+				igr.jobReleaseSpecs[job.Release][job.Name] = *jobSpec
 			}
 
 			// spec of the current jobs release/name
-			spec := dg.jobReleaseSpecs[job.Release][job.Name]
+			spec := igr.jobReleaseSpecs[job.Release][job.Name]
 
 			// Generate instance spec for each ig instance
 			// This will be stored inside the current job under
 			// job.properties.quarks
-			jobsInstances := instanceGroup.jobInstances(dg.manifest.Name, job.Name)
+			jobsInstances := instanceGroup.jobInstances(igr.manifest.Name, job.Name)
 
 			// set jobs.properties.quarks.instances with the ig instances
 			instanceGroup.Jobs[jobIdx].Properties.Quarks.Instances = jobsInstances
@@ -174,7 +174,7 @@ func (dg *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 			// Create a list of fully evaluated links provided by the current job
 			// These is specified in the job release job.MF file
 			if spec.Provides != nil {
-				err := dg.jobProviderLinks.Add(job, spec, jobsInstances, serviceName)
+				err := igr.jobProviderLinks.Add(job, spec, jobsInstances, serviceName)
 				if err != nil {
 					return errors.Wrapf(err, "Collecting release spec and provider links failed for %s", job.Name)
 				}
@@ -185,31 +185,31 @@ func (dg *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 }
 
 // ProcessConsumers will generate a proper context for links and render the required ERB files
-func (dg *InstanceGroupResolver) processConsumers() error {
-	for i := range dg.instanceGroup.Jobs {
-		job := &dg.instanceGroup.Jobs[i]
+func (igr *InstanceGroupResolver) processConsumers() error {
+	for i := range igr.instanceGroup.Jobs {
+		job := &igr.instanceGroup.Jobs[i]
 
 		// Verify that the current job release exists on the manifest releases block
-		if lookUpJobRelease(dg.manifest.Releases, job.Release) {
+		if lookUpJobRelease(igr.manifest.Releases, job.Release) {
 			job.Properties.Quarks.Release = job.Release
 		}
 
-		err := generateJobConsumersData(job, dg.jobReleaseSpecs, dg.jobProviderLinks)
+		err := generateJobConsumersData(job, igr.jobReleaseSpecs, igr.jobProviderLinks)
 		if err != nil {
-			return errors.Wrapf(err, "Generate Job Consumes data failed for instance group %s", dg.instanceGroup.Name)
+			return errors.Wrapf(err, "Generate Job Consumes data failed for instance group %s", igr.instanceGroup.Name)
 		}
 	}
 
 	return nil
 }
 
-func (dg *InstanceGroupResolver) renderBPM() error {
-	for i := range dg.instanceGroup.Jobs {
-		job := &dg.instanceGroup.Jobs[i]
+func (igr *InstanceGroupResolver) renderBPM() error {
+	for i := range igr.instanceGroup.Jobs {
+		job := &igr.instanceGroup.Jobs[i]
 
-		err := dg.renderJobBPM(job, dg.baseDir)
+		err := igr.renderJobBPM(job, igr.baseDir)
 		if err != nil {
-			return errors.Wrapf(err, "Rendering BPM failed for instance group %s", dg.instanceGroup.Name)
+			return errors.Wrapf(err, "Rendering BPM failed for instance group %s", igr.instanceGroup.Name)
 		}
 	}
 
@@ -217,7 +217,7 @@ func (dg *InstanceGroupResolver) renderBPM() error {
 }
 
 // renderJobBPM per job and add its value to the jobInstances.BPM field.
-func (dg *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) error {
+func (igr *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) error {
 	// Location of the current job job.MF file.
 	jobSpecFile := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "job.MF")
 
@@ -272,7 +272,7 @@ func (dg *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) e
 					Bootstrap:  jobInstance.Bootstrap,
 					ID:         jobInstance.ID,
 					Index:      jobInstance.Index,
-					Deployment: dg.manifest.Name,
+					Deployment: igr.manifest.Name,
 					Name:       jobInstance.Name,
 				},
 				jobSpecFile,
