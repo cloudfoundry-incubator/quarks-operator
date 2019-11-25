@@ -67,7 +67,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		Describe("BPMConfig", func() {
+		Describe("BPMInfo", func() {
 			BeforeEach(func() {
 				m, err = env.BOSHManifestWithProviderAndConsumer()
 				Expect(err).NotTo(HaveOccurred())
@@ -196,28 +196,33 @@ var _ = Describe("InstanceGroupResolver", func() {
 				})
 			})
 		})
+
 		Describe("Manifest", func() {
-			BeforeEach(func() {
-				m, err = env.ElaboratedBOSHManifest()
-				Expect(err).NotTo(HaveOccurred())
-				ig = "redis-slave"
-			})
+			Context("when manifest has multiple instances", func() {
+				BeforeEach(func() {
+					m, err = env.ElaboratedBOSHManifest()
+					Expect(err).NotTo(HaveOccurred())
+					ig = "redis-slave"
+				})
 
-			It("should not have info about job instances, instance count, azs", func() {
-				manifest, err := dg.Manifest()
-				Expect(err).ToNot(HaveOccurred())
+				It("should remove info about job instances, instance count, azs", func() {
+					manifest, err := dg.Manifest()
+					Expect(err).ToNot(HaveOccurred())
 
-				//Check JobInstance for the redis-server job
-				Expect(manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Instances).To(BeNil())
-				Expect(manifest.InstanceGroups[0].Instances).To(Equal(0))
-				Expect(manifest.InstanceGroups[0].AZs).To(BeNil())
+					Expect(manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Instances).To(BeNil())
+					Expect(manifest.InstanceGroups[0].Instances).To(Equal(0))
+					Expect(manifest.InstanceGroups[0].AZs).To(BeNil())
+				})
 			})
 
 			Context("when resolving links between providers and consumers", func() {
+				BeforeEach(func() {
+					m, err = env.BOSHManifestWithProviderAndConsumer()
+					Expect(err).NotTo(HaveOccurred())
+				})
+
 				Context("when the job consumes a link", func() {
 					BeforeEach(func() {
-						m, err = env.BOSHManifestWithProviderAndConsumer()
-						Expect(err).NotTo(HaveOccurred())
 						ig = "log-api"
 					})
 
@@ -244,8 +249,6 @@ var _ = Describe("InstanceGroupResolver", func() {
 
 				Context("when the job does not consume a link", func() {
 					BeforeEach(func() {
-						m, err = env.BOSHManifestWithProviderAndConsumer()
-						Expect(err).NotTo(HaveOccurred())
 						ig = "doppler"
 					})
 					It("has an empty consumes list if the job does not consume a link", func() {
@@ -262,7 +265,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 				})
 			})
 
-			Context("when specifying consume as nil ", func() {
+			Context("when specifying consume as nil", func() {
 				BeforeEach(func() {
 					m, err = env.BOSHManifestWithNilConsume()
 					Expect(err).NotTo(HaveOccurred())
