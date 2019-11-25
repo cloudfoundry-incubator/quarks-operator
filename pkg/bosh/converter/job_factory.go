@@ -154,47 +154,74 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 // InstanceGroupManifestJob generates the job to create an instance group manifest
 func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error) {
 	containers := []corev1.Container{}
-
-	// QuarksJob will always pick the latest version for versioned secrets
-	desiredManifestName := names.DesiredManifestName(manifest.Name, "1")
+	ct := containerTemplate{
+		manifestName: desiredManifestName(manifest.Name),
+		cmd:          "instance-group",
+		namespace:    f.Namespace,
+	}
 
 	for _, ig := range manifest.InstanceGroups {
 		if ig.Instances != 0 {
 			// One container per Instance Group
 			// There will be one secret generated for each of these containers
-			containers = append(containers, f.gatheringContainer("instance-group", desiredManifestName, ig.Name))
+			containers = append(containers, ct.newUtilContainer(ig.Name))
 		}
 	}
 
 	qJobName := fmt.Sprintf("ig-%s", manifest.Name)
-	return f.gatheringJob(qJobName, manifest, desiredManifestName, names.DeploymentSecretTypeInstanceGroupResolvedProperties, containers)
+
+	qJob, err := f.releaseImageQJob(qJobName, manifest, names.DeploymentSecretTypeInstanceGroupResolvedProperties, containers)
+	if err != nil {
+		return nil, err
+	}
+	return qJob, nil
 }
 
 // BPMConfigsJob returns an quarks job to calculate BPM information
 func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error) {
 	containers := []corev1.Container{}
-	desiredManifestName := names.DesiredManifestName(manifest.Name, "1")
+	ct := containerTemplate{
+		manifestName: desiredManifestName(manifest.Name),
+		cmd:          "bpm-configs",
+		namespace:    f.Namespace,
+	}
 
 	for _, ig := range manifest.InstanceGroups {
 		if ig.Instances != 0 {
-			// One container per Instance Group
-			// There will be one secret generated for each of these containers
-			containers = append(containers, f.gatheringContainer("bpm-configs", desiredManifestName, ig.Name))
+			// One container per instance group
+			// There will be one BPM secret generated for each of these containers
+			container := ct.newUtilContainer(ig.Name)
+
+			env := corev1.EnvVar{Name: qjv1a1.RemoteIDKey, Value: ig.Name}
+			container.Env = append(container.Env, env)
+			containers = append(containers, container)
 		}
 	}
 
 	qJobName := fmt.Sprintf("bpm-%s", manifest.Name)
-	return f.gatheringJob(qJobName, manifest, desiredManifestName, names.DeploymentSecretBpmInformation, containers)
+	return f.releaseImageQJob(qJobName, manifest, names.DeploymentSecretBpmInformation, containers)
 }
 
-func (f *JobFactory) gatheringContainer(cmd, desiredManifestName string, instanceGroupName string) corev1.Container {
+// desiredManifestName returns the sanitized, versioned name of the manifest.
+// QuarksJob will always pick the latest version for versioned secrets
+func desiredManifestName(name string) string {
+	return names.DesiredManifestName(name, "1")
+}
+
+type containerTemplate struct {
+	manifestName string
+	cmd          string
+	namespace    string
+}
+
+func (ct *containerTemplate) newUtilContainer(instanceGroupName string) corev1.Container {
 	return corev1.Container{
 		Name:            names.Sanitize(instanceGroupName),
 		Image:           GetOperatorDockerImage(),
 		ImagePullPolicy: GetOperatorImagePullPolicy(),
-		Args:            []string{"util", cmd},
+		Args:            []string{"util", ct.cmd},
 		VolumeMounts: []corev1.VolumeMount{
-			withOpsVolumeMount(desiredManifestName),
+			withOpsVolumeMount(ct.manifestName),
 			releaseSourceVolumeMount(),
 		},
 		Env: []corev1.EnvVar{
@@ -204,15 +231,11 @@ func (f *JobFactory) gatheringContainer(cmd, desiredManifestName string, instanc
 			},
 			{
 				Name:  EnvCFONamespace,
-				Value: f.Namespace,
+				Value: ct.namespace,
 			},
 			{
 				Name:  EnvBaseDir,
 				Value: VolumeRenderingDataMountPath,
-			},
-			{
-				Name:  qjv1a1.RemoteIDKey,
-				Value: instanceGroupName,
 			},
 			{
 				Name:  EnvInstanceGroupName,
@@ -226,7 +249,8 @@ func (f *JobFactory) gatheringContainer(cmd, desiredManifestName string, instanc
 	}
 }
 
-func (f *JobFactory) gatheringJob(name string, manifest bdm.Manifest, desiredManifestName string, secretType names.DeploymentSecretType, containers []corev1.Container) (*qjv1a1.QuarksJob, error) {
+// releaseImageQJob collects outputs, like bpm, links or ig manifests, from the BOSH release images
+func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, secretType names.DeploymentSecretType, containers []corev1.Container) (*qjv1a1.QuarksJob, error) {
 	outputSecretNamePrefix := names.CalculateIGSecretPrefix(secretType, manifest.Name)
 
 	initContainers := []corev1.Container{}
@@ -295,7 +319,7 @@ func (f *JobFactory) gatheringJob(name string, manifest bdm.Manifest, desiredMan
 							Containers: containers,
 							// Volumes for secrets
 							Volumes: []corev1.Volume{
-								*withOpsVolume(desiredManifestName),
+								*withOpsVolume(desiredManifestName(manifest.Name)),
 								releaseSourceVolume(),
 							},
 						},
