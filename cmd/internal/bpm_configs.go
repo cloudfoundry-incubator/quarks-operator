@@ -50,14 +50,14 @@ instance group.
 		log = cmd.Logger()
 		defer log.Sync()
 
-		boshManifestPath, err := boshManifestFlagValidation(bpmFailedMessage)
+		boshManifestPath, err := boshManifestFlagValidation()
 		if err != nil {
-			return err
+			return errors.Wrap(err, bpmFailedMessage)
 		}
 
-		baseDir, err := baseDirFlagValidation(bpmFailedMessage)
+		baseDir, err := baseDirFlagValidation()
 		if err != nil {
-			return err
+			return errors.Wrap(err, bpmFailedMessage)
 		}
 
 		namespace := viper.GetString("cf-operator-namespace")
@@ -65,14 +65,14 @@ instance group.
 			return errors.Errorf("%s cf-operator-namespace flag is empty.", bpmFailedMessage)
 		}
 
-		outputFilePath, err := outputFilePathFlagValidation(bpmFailedMessage)
+		outputFilePath, err := outputFilePathFlagValidation()
 		if err != nil {
-			return err
+			return errors.Wrap(err, bpmFailedMessage)
 		}
 
-		instanceGroupName, err := instanceGroupFlagValidation(bpmFailedMessage)
+		instanceGroupName, err := instanceGroupFlagValidation()
 		if err != nil {
-			return err
+			return errors.Wrap(err, bpmFailedMessage)
 		}
 
 		boshManifestBytes, err := ioutil.ReadFile(boshManifestPath)
@@ -87,12 +87,12 @@ instance group.
 
 		dg, err := manifest.NewInstanceGroupResolver(baseDir, *m, instanceGroupName)
 		if err != nil {
-			return errors.Wrapf(err, bpmFailedMessage)
+			return errors.Wrap(err, bpmFailedMessage)
 		}
 
 		bpmInfo, err := dg.BPMInfo()
 		if err != nil {
-			return errors.Wrapf(err, bpmFailedMessage)
+			return errors.Wrap(err, bpmFailedMessage)
 		}
 
 		bpmBytes, err := yaml.Marshal(bpmInfo)
