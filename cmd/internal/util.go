@@ -79,7 +79,7 @@ func outputFilePathFlagValidation() (string, error) {
 }
 
 func outputFilePathFlagCobraSet(pf *flag.FlagSet, argToEnv map[string]string) {
-	pf.StringP("output-file-path", "", "", "Path of the file to which json output is redirected.")
+	pf.StringP("output-file-path", "", "", "Path of the file to which json output is written.")
 	argToEnv["output-file-path"] = "OUTPUT_FILE_PATH"
 }
 

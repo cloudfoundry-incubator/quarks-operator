@@ -1,6 +1,7 @@
 package manifest
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
+	"github.com/spf13/afero"
 	btg "github.com/viovanov/bosh-template-go"
 	yaml "gopkg.in/yaml.v2"
 
@@ -22,11 +24,12 @@ type InstanceGroupResolver struct {
 	manifest         Manifest
 	instanceGroup    *InstanceGroup
 	jobReleaseSpecs  map[string]map[string]JobSpec
-	jobProviderLinks JobProviderLinks
+	jobProviderLinks jobProviderLinks
+	fs               afero.Fs
 }
 
 // NewInstanceGroupResolver returns a data gatherer with logging for a given input manifest and instance group
-func NewInstanceGroupResolver(basedir string, manifest Manifest, instanceGroupName string) (*InstanceGroupResolver, error) {
+func NewInstanceGroupResolver(fs afero.Fs, basedir string, manifest Manifest, instanceGroupName string) (*InstanceGroupResolver, error) {
 	ig, found := manifest.InstanceGroups.InstanceGroupByName(instanceGroupName)
 	if !found {
 		return nil, errors.Errorf("instance group '%s' not found", instanceGroupName)
@@ -37,7 +40,8 @@ func NewInstanceGroupResolver(basedir string, manifest Manifest, instanceGroupNa
 		manifest:         manifest,
 		instanceGroup:    ig,
 		jobReleaseSpecs:  map[string]map[string]JobSpec{},
-		jobProviderLinks: JobProviderLinks{},
+		jobProviderLinks: newJobProviderLinks(),
+		fs:               fs,
 	}, nil
 }
 
@@ -113,6 +117,37 @@ func (igr *InstanceGroupResolver) Manifest() (Manifest, error) {
 	return igManifest, nil
 }
 
+// SaveLinks writes provides.json with all links for this instance group
+func (igr *InstanceGroupResolver) SaveLinks(path string) error {
+	//path := "/mnt/quarks/provides.json"
+	path = filepath.Join(path, "provides.json")
+	igName := igr.instanceGroup.Name
+
+	properties := igr.jobProviderLinks.instanceGroups[igName]
+
+	var result = map[string]string{}
+	for id, property := range properties {
+		jsonBytes, err := json.Marshal(property)
+		if err != nil {
+			return errors.Wrapf(err, "JSON marshalling failed for ig '%s' property '%s'", igName, id)
+		}
+
+		result[id] = string(jsonBytes)
+	}
+
+	jsonBytes, err := json.Marshal(result)
+	if err != nil {
+		return errors.Wrapf(err, "JSON marshalling failed for ig '%s' properties", igName)
+	}
+
+	err = afero.WriteFile(igr.fs, path, jsonBytes, 0644)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to write JSON to a output file '%s'", path)
+	}
+
+	return nil
+}
+
 // resolveManifest collects bpm and link information and enriches the manifest accordingly
 //
 // Data gathered:
@@ -174,7 +209,7 @@ func (igr *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 			// Create a list of fully evaluated links provided by the current job
 			// These is specified in the job release job.MF file
 			if spec.Provides != nil {
-				err := igr.jobProviderLinks.Add(job, spec, jobsInstances, serviceName)
+				err := igr.jobProviderLinks.Add(instanceGroup.Name, job, spec, jobsInstances, serviceName)
 				if err != nil {
 					return errors.Wrapf(err, "Collecting release spec and provider links failed for %s", job.Name)
 				}
@@ -342,7 +377,7 @@ func validateBPMProcesses(processes []bpm.Process) error {
 
 // generateJobConsumersData will populate a job with its corresponding provider links
 // under properties.quarks.consumes
-func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks JobProviderLinks) error {
+func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[string]JobSpec, jobProviderLinks jobProviderLinks) error {
 	currentJobSpecData := jobReleaseSpecs[currentJob.Release][currentJob.Name]
 	for _, provider := range currentJobSpecData.Consumes {
 		providerName := getProviderNameFromConsumer(*currentJob, provider.Name)

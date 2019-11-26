@@ -41,11 +41,14 @@ type JobInstance struct {
 	Network   map[string]interface{} `json:"networks"`
 }
 
+// JobLinkProperties are the properties from the provides section in a job spec manifest
+type JobLinkProperties map[string]interface{}
+
 // JobLink describes links inside a job properties quarks.
 type JobLink struct {
-	Address    string                 `json:"address"`
-	Instances  []JobInstance          `json:"instances"`
-	Properties map[string]interface{} `json:"properties"`
+	Address    string            `json:"address"`
+	Instances  []JobInstance     `json:"instances"`
+	Properties JobLinkProperties `json:"properties"`
 }
 
 // HealthCheck defines liveness and readiness probes for a container.

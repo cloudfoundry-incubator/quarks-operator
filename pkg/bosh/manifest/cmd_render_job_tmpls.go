@@ -188,6 +188,7 @@ func runRenderScript(
 	}
 	return nil
 }
+
 func runPreRenderScripts(instanceGroup *InstanceGroup) error {
 	for _, job := range instanceGroup.Jobs {
 

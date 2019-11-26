@@ -5,17 +5,27 @@ import (
 	"strings"
 )
 
-// JobProviderLinks provides links to other jobs, indexed by provider type and name
-type JobProviderLinks map[string]map[string]JobLink
+// jobProviderLinks provides links to other jobs, indexed by provider type and name
+type jobProviderLinks struct {
+	links          map[string]map[string]JobLink
+	instanceGroups map[string]map[string]JobLinkProperties
+}
+
+func newJobProviderLinks() jobProviderLinks {
+	return jobProviderLinks{
+		links:          map[string]map[string]JobLink{},
+		instanceGroups: map[string]map[string]JobLinkProperties{},
+	}
+}
 
 // Lookup returns a link for a type and name, used when links are consumed
-func (jpl JobProviderLinks) Lookup(provider *JobSpecProvider) (JobLink, bool) {
-	link, ok := jpl[provider.Type][provider.Name]
+func (jpl jobProviderLinks) Lookup(provider *JobSpecProvider) (JobLink, bool) {
+	link, ok := jpl.links[provider.Type][provider.Name]
 	return link, ok
 }
 
-// Add another job to the lookup map
-func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstance, linkAddress string) error {
+// Add another job to the lookup maps
+func (jpl jobProviderLinks) Add(igName string, job Job, spec JobSpec, jobsInstances []JobInstance, linkAddress string) error {
 	var properties map[string]interface{}
 
 	for _, link := range spec.Provides {
@@ -62,7 +72,7 @@ func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstan
 			}
 		}
 
-		if providers, ok := jpl[linkType]; ok {
+		if providers, ok := jpl.links[linkType]; ok {
 			if _, ok := providers[linkName]; ok {
 				// If this comes from an addon, it will inevitably cause
 				// conflicts. So in this case, we simply ignore the error
@@ -74,17 +84,23 @@ func (jpl JobProviderLinks) Add(job Job, spec JobSpec, jobsInstances []JobInstan
 			}
 		}
 
-		if _, ok := jpl[linkType]; !ok {
-			jpl[linkType] = map[string]JobLink{}
+		if _, ok := jpl.links[linkType]; !ok {
+			jpl.links[linkType] = map[string]JobLink{}
 		}
 
 		// construct the jobProviderLinks of the current job that provides
 		// a link
-		jpl[linkType][linkName] = JobLink{
+		jpl.links[linkType][linkName] = JobLink{
 			Address:    linkAddress,
 			Instances:  jobsInstances,
 			Properties: properties,
+			//InstanceGroup: igName,
 		}
+
+		if _, ok := jpl.instanceGroups[igName]; !ok {
+			jpl.instanceGroups[igName] = map[string]JobLinkProperties{}
+		}
+		jpl.instanceGroups[igName][linkType+"."+linkName] = properties
 	}
 	return nil
 }

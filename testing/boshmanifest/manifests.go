@@ -250,6 +250,39 @@ instance_groups:
           internal: 4223
 `
 
+// NatsSmallWithLinks has explicit BOSH links
+const NatsSmallWithLinks = `---
+name: test
+releases:
+- name: nats
+  version: "26"
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
+instance_groups:
+- name: nats
+  instances: 2
+  jobs:
+  - name: nats
+    provides:
+      nats: { shared: true, as: nuts }
+    release: nats
+    properties:
+      nats:
+        user: admin
+        password: changeme
+        debug: true
+      quarks:
+        ports:
+        - name: "nats"
+          protocol: "TCP"
+          internal: 4222
+        - name: "nats-routes"
+          protocol: "TCP"
+          internal: 4223
+`
+
 // NatsSmallWithPatch is a manifest that patches the prestart hook to loop forever
 const NatsSmallWithPatch = `---
 name: test
