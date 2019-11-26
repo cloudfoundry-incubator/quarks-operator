@@ -7,6 +7,7 @@ import (
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/testing"
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 )
 
 var _ = Describe("JobFactory", func() {
@@ -49,6 +50,38 @@ var _ = Describe("JobFactory", func() {
 			jobIG := qJob.Spec.Template.Spec
 			Expect(len(jobIG.Template.Spec.InitContainers)).To(BeNumerically("<", 2))
 			Expect(len(jobIG.Template.Spec.Containers)).To(BeNumerically("<", 2))
+		})
+
+		Context("when manifest contains links", func() {
+			It("creates output entries for all provides", func() {
+				m, err = env.ElaboratedBOSHManifest()
+				Expect(err).NotTo(HaveOccurred())
+				qJob, err := factory.InstanceGroupManifestJob(*m)
+				Expect(err).ToNot(HaveOccurred())
+				om := qJob.Spec.Output.OutputMap
+				Expect(om).To(Equal(
+					qjv1a1.OutputMap{
+						"redis-slave": qjv1a1.FilesToSecrets{
+							"output.json": qjv1a1.SecretOptions{
+								Name:      "foo-deployment.ig-resolved.redis-slave",
+								Versioned: true,
+							},
+							"provides.json": qjv1a1.SecretOptions{
+								Name: "link-foo-deployment-redis-slave",
+							},
+						},
+						"diego-cell": qjv1a1.FilesToSecrets{
+							"output.json": qjv1a1.SecretOptions{
+								Name:      "foo-deployment.ig-resolved.diego-cell",
+								Versioned: true,
+							},
+							"provides.json": qjv1a1.SecretOptions{
+								Name: "link-foo-deployment-diego-cell",
+							},
+						},
+					},
+				))
+			})
 		})
 	})
 

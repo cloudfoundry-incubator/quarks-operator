@@ -1,5 +1,11 @@
 binaries/
 build/
+helm/
 tmp/
 
+deploy/
+docs/
+e2e/
+integration/
+testing/
 Dockerfile

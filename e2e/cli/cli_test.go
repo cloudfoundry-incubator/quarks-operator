@@ -146,7 +146,7 @@ var _ = Describe("CLI", func() {
 			Eventually(session.Out).Should(Say(`Flags:
   -m, --bosh-manifest-path string   \(BOSH_MANIFEST_PATH\) path to the bosh manifest file
   -h, --help                        help for variable-interpolation
-      --output-file-path string     \(OUTPUT_FILE_PATH\) Path of the file to which json output is redirected.
+      --output-file-path string     \(OUTPUT_FILE_PATH\) Path of the file to which json output is written.
   -v, --variables-dir string        \(VARIABLES_DIR\) path to the variables dir`))
 		})
 
@@ -182,7 +182,7 @@ var _ = Describe("CLI", func() {
   -m, --bosh-manifest-path string    \(BOSH_MANIFEST_PATH\) path to the bosh manifest file
   -h, --help                         help for instance-group
   -g, --instance-group-name string   \(INSTANCE_GROUP_NAME\) name of the instance group for data gathering
-      --output-file-path string      \(OUTPUT_FILE_PATH\) Path of the file to which json output is redirected.`))
+      --output-file-path string      \(OUTPUT_FILE_PATH\) Path of the file to which json output is written.`))
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
@@ -217,7 +217,7 @@ var _ = Describe("CLI", func() {
   -m, --bosh-manifest-path string    \(BOSH_MANIFEST_PATH\) path to the bosh manifest file
   -h, --help                         help for bpm-configs
   -g, --instance-group-name string   \(INSTANCE_GROUP_NAME\) name of the instance group for data gathering
-      --output-file-path string      \(OUTPUT_FILE_PATH\) Path of the file to which json output is redirected.`))
+      --output-file-path string      \(OUTPUT_FILE_PATH\) Path of the file to which json output is written.`))
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
