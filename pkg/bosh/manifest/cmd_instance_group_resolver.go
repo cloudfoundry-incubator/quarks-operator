@@ -2,6 +2,7 @@ package manifest
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -170,6 +171,61 @@ func (igr *InstanceGroupResolver) resolveManifest(initialRollout bool) error {
 
 	if err := igr.renderBPM(); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// CollectQuarksLinks collect all links from path
+func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
+	links, err := ioutil.ReadDir(linksPath)
+	if err != nil {
+		return errors.Wrapf(err, "could not read links directory")
+	}
+
+	quarksLinks, ok := igr.manifest.Properties["quarks_links"]
+	if !ok {
+		return fmt.Errorf("missing quarks_links")
+	}
+	q, ok := quarksLinks.(map[string]QuarksLink)
+	if !ok {
+		return fmt.Errorf("could not get a map of QuarksLink")
+	}
+
+	// Assumed we have secrets path and link secrets named as providerName
+	for _, l := range links {
+		if l.IsDir() {
+			linkName := l.Name()
+			linkType := q[linkName].Type
+			properties := map[string]interface{}{}
+			err = filepath.Walk(filepath.Clean(linksPath+"/"+l.Name()), func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+
+				if !info.IsDir() {
+					_, propertyFileName := filepath.Split(path)
+					// Skip the symlink to a directory
+					if strings.HasPrefix(propertyFileName, "..") {
+						return filepath.SkipDir
+					}
+					varBytes, err := ioutil.ReadFile(path)
+					if err != nil {
+						return errors.Wrapf(err, "could not read link %s", l.Name())
+					}
+
+					properties[propertyFileName] = string(varBytes)
+
+				}
+				return nil
+			})
+
+			igr.jobProviderLinks.links[linkType][linkName] = JobLink{
+				Address:    q[linkName].Address,
+				Instances:  q[linkName].Instances,
+				Properties: properties,
+			}
+		}
 	}
 
 	return nil
