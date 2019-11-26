@@ -1,15 +1,24 @@
 package environment
 
 import (
-	"github.com/pkg/errors"
-	"k8s.io/api/apps/v1beta1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/wait"
+	"encoding/json"
+	"os"
 
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
+	"github.com/pkg/errors"
+	"k8s.io/api/apps/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
+	clientscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
 )
 
 // GetStatefulSet gets a StatefulSet custom resource
@@ -78,6 +87,46 @@ func (m *Machine) UpdateQuarksStatefulSet(namespace string, ess qstsv1a1.QuarksS
 func (m *Machine) DeleteQuarksStatefulSet(namespace string, name string) error {
 	client := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace)
 	return client.Delete(name, &metav1.DeleteOptions{})
+}
+
+// WaitForPodLabelToExist blocks until the specified label appears
+func (m *Machine) WaitForPodLabelToExist(n string, podName string, label string) error {
+	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
+		return m.PodLabelToExist(n, podName, label)
+	})
+}
+
+// PodLabelToExist returns true if the label exist in the specified pod
+func (m *Machine) PodLabelToExist(n string, podName string, label string) (bool, error) {
+	pod, err := m.Clientset.CoreV1().Pods(n).Get(podName, metav1.GetOptions{})
+	if err != nil {
+		return false, err
+	}
+	labels := pod.GetLabels()
+	if _, found := labels[label]; found {
+		return true, nil
+	}
+	return false, nil
+}
+
+// WaitForPodLabelToNotExist blocks until the specified label is not present
+func (m *Machine) WaitForPodLabelToNotExist(n string, podName string, label string) error {
+	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
+		return m.PodLabelToNotExist(n, podName, label)
+	})
+}
+
+// PodLabelToNotExist returns true if the label does not exist
+func (m *Machine) PodLabelToNotExist(n string, podName string, label string) (bool, error) {
+	pod, err := m.Clientset.CoreV1().Pods(n).Get(podName, metav1.GetOptions{})
+	if err != nil {
+		return false, err
+	}
+	labels := pod.GetLabels()
+	if _, found := labels[label]; !found {
+		return true, nil
+	}
+	return false, nil
 }
 
 // WaitForStatefulSetDelete blocks until the specified statefulSet is deleted
@@ -226,4 +275,81 @@ func (m *Machine) StatefulSetNewGeneration(namespace string, name string, versio
 	}
 
 	return false, nil
+}
+
+// GetNamespaceEvents exits as soon as an event reason and msg matches
+func (m *Machine) GetNamespaceEvents(namespace, name, id, reason, msg string) (bool, error) {
+	eList, err := m.Clientset.CoreV1().Events(namespace).List(metav1.ListOptions{
+		FieldSelector: fields.Set{
+			"involvedObject.name": name,
+			"involvedObject.uid":  id,
+		}.AsSelector().String(),
+	})
+	if err != nil {
+		return false, err
+	}
+	// Loop here due to the size
+	// of the events in the ns
+	for _, n := range eList.Items {
+		if n.Reason == reason && n.Message == msg {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// ExecPodCMD executes a cmd in a container
+func (m *Machine) ExecPodCMD(client kubernetes.Interface, rc *rest.Config, pod *corev1.Pod, container string, command []string) (bool, error) {
+	req := client.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(pod.Name).
+		Namespace(pod.Namespace).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Container: container,
+			Command:   command,
+			Stdin:     true,
+			Stdout:    true,
+			Stderr:    true,
+		}, clientscheme.ParameterCodec)
+
+	executor, err := remotecommand.NewSPDYExecutor(rc, "POST", req.URL())
+	if err != nil {
+		return false, errors.New("failed to initialize remote command executor")
+	}
+	if err = executor.Stream(remotecommand.StreamOptions{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Tty: false}); err != nil {
+		return false, errors.Wrapf(err, "failed executing command in pod: %s, container: %s in namespace: %s",
+			pod.Name,
+			container,
+			pod.Namespace,
+		)
+	}
+	return true, nil
+}
+
+// PatchPod applies a patch into a specific pod
+// operation can be of the form add,remove,replace
+// See https://tools.ietf.org/html/rfc6902 for more information
+func (m *Machine) PatchPod(namespace string, name string, o string, p string, v string) error {
+
+	payloadBytes, _ := json.Marshal(
+		[]struct {
+			Op    string `json:"op"`
+			Path  string `json:"path"`
+			Value string `json:"value"`
+		}{{
+			Op:    o,
+			Path:  p,
+			Value: v,
+		}},
+	)
+
+	_, err := m.Clientset.CoreV1().Pods(namespace).Patch(
+		name,
+		types.JSONPatchType,
+		payloadBytes,
+	)
+
+	return err
 }

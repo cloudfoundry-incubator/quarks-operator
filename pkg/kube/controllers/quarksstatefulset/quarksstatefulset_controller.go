@@ -6,7 +6,6 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-
 	corev1 "k8s.io/api/core/v1"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"

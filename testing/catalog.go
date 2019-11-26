@@ -339,6 +339,50 @@ func (c *Catalog) DefaultStatefulSet(name string) appsv1.StatefulSet {
 	}
 }
 
+// DefaultStatefulSetWithActiveSinglePod for use in tests
+func (c *Catalog) DefaultStatefulSetWithActiveSinglePod(name string) appsv1.StatefulSet {
+	return appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				"testpod": "yes",
+			},
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas: pointers.Int32(1),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"testpod": "yes",
+				},
+			},
+			ServiceName: name,
+			Template:    c.DefaultPodTemplateWithActiveLabel(name),
+		},
+	}
+}
+
+// DefaultStatefulSetWithReplicasN for use in tests
+func (c *Catalog) DefaultStatefulSetWithReplicasN(name string) appsv1.StatefulSet {
+	return appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				"testpod": "yes",
+			},
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas: pointers.Int32(3),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"testpod": "yes",
+				},
+			},
+			ServiceName: name,
+			Template:    c.DefaultPodTemplate(name),
+		},
+	}
+}
+
 // StatefulSetWithPVC for use in tests
 func (c *Catalog) StatefulSetWithPVC(name, pvcName string, storageClassName string) appsv1.StatefulSet {
 	labels := map[string]string{
@@ -526,6 +570,20 @@ func (c *Catalog) DefaultPodTemplate(name string) corev1.PodTemplateSpec {
 			Name: name,
 			Labels: map[string]string{
 				"testpod": "yes",
+			},
+		},
+		Spec: c.Sleep1hPodSpec(),
+	}
+}
+
+// DefaultPodTemplateWithActiveLabel defines a pod template with a simple web server useful for testing
+func (c *Catalog) DefaultPodTemplateWithActiveLabel(name string) corev1.PodTemplateSpec {
+	return corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				"testpod":                            "yes",
+				"quarks.cloudfoundry.org/pod-active": "active",
 			},
 		},
 		Spec: c.Sleep1hPodSpec(),

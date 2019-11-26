@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
@@ -29,6 +30,8 @@ var (
 	LabelPodOrdinal = fmt.Sprintf("%s/pod-ordinal", apis.GroupName)
 	// LabelQStsName is the name of the QuarksStatefulSet owns this resource
 	LabelQStsName = fmt.Sprintf("%s/quarks-statefulset-name", apis.GroupName)
+	// LabelActiveContainer is the active container on an active/passive setup
+	LabelActiveContainer = fmt.Sprintf("%s/pod-active", apis.GroupName)
 )
 
 // QuarksStatefulSetSpec defines the desired state of QuarksStatefulSet
@@ -44,6 +47,10 @@ type QuarksStatefulSetSpec struct {
 
 	// Defines a regular StatefulSet template
 	Template appsv1.StatefulSet `json:"template"`
+
+	// Periodic probe for active/passive containers
+	// Only an active container will process request from a service
+	ActivePassiveProbe map[string]*corev1.Probe `json:"activePassiveProbe,omitempty"`
 }
 
 // QuarksStatefulSetStatus defines the observed state of QuarksStatefulSet

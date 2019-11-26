@@ -4,15 +4,14 @@ import (
 	"fmt"
 	"testing"
 
-	"k8s.io/client-go/rest"
-
+	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/pkg/errors"
+	"k8s.io/client-go/rest"
 
 	"code.cloudfoundry.org/cf-operator/integration/environment"
-	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 	utils "code.cloudfoundry.org/quarks-utils/testing/integration"
 )
 
