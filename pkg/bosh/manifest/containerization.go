@@ -80,3 +80,10 @@ type PostStart struct {
 type PostStartCondition struct {
 	Exec *corev1.ExecAction `json:"exec,omitempty"`
 }
+
+// QuarksLinks represents the links to share/discover information between BOSH and Kube Native components
+type QuarksLink struct {
+	Type      string        `json:"type,omitempty"`
+	Address   string        `json:"address"`
+	Instances []JobInstance `json:"instances"`
+}
