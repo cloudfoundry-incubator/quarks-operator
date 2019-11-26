@@ -50,6 +50,7 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 	quarkssecret.AddCertificateSigningRequest,
 	quarksstatefulset.AddQuarksStatefulSet,
 	statefulset.AddStatefulSetRollout,
+	quarksstatefulset.AddStatefulSetActivePassive,
 }
 
 var addToSchemes = runtime.SchemeBuilder{
