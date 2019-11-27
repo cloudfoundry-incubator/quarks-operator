@@ -13,16 +13,16 @@ import (
 	podutil "code.cloudfoundry.org/quarks-utils/pkg/pod"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ConfigureStatefulSetForRollout configures a stateful set for canarying and rollout
-func ConfigureStatefulSetForRollout(statefulSet *v1beta2.StatefulSet) {
-	statefulSet.Spec.UpdateStrategy.Type = v1beta2.RollingUpdateStatefulSetStrategyType
+func ConfigureStatefulSetForRollout(statefulSet *appsv1.StatefulSet) {
+	statefulSet.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
 	//the canary rollout is for now directly started, the might move to a webhook instead
-	statefulSet.Spec.UpdateStrategy.RollingUpdate = &v1beta2.RollingUpdateStatefulSetStrategy{
+	statefulSet.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{
 		Partition: pointers.Int32(util.MaxInt32(util.MinInt32(*statefulSet.Spec.Replicas-1, statefulSet.Status.Replicas), 0)),
 	}
 	statefulSet.Annotations[AnnotationCanaryRollout] = rolloutStatePending
@@ -90,7 +90,7 @@ func ExtractWatchTime(rawWatchTime string, field string) (string, error) {
 }
 
 // CleanupNonReadyPod deletes all pods, that are not ready
-func CleanupNonReadyPod(ctx context.Context, client crc.Client, statefulSet *v1beta2.StatefulSet, index int32) error {
+func CleanupNonReadyPod(ctx context.Context, client crc.Client, statefulSet *appsv1.StatefulSet, index int32) error {
 	ctxlog.Debug(ctx, "Cleaning up non ready pod for StatefulSet ", statefulSet.Namespace, "/", statefulSet.Name, "-", index)
 	pod, ready, err := getPodWithIndex(ctx, client, statefulSet, index)
 	if err != nil {
@@ -104,7 +104,7 @@ func CleanupNonReadyPod(ctx context.Context, client crc.Client, statefulSet *v1b
 }
 
 // getPodWithIndex returns a pod for a given statefulset and index
-func getPodWithIndex(ctx context.Context, client crc.Client, statefulSet *v1beta2.StatefulSet, index int32) (*corev1.Pod, bool, error) {
+func getPodWithIndex(ctx context.Context, client crc.Client, statefulSet *appsv1.StatefulSet, index int32) (*corev1.Pod, bool, error) {
 	var pod corev1.Pod
 	podName := fmt.Sprintf("%s-%d", statefulSet.Name, index)
 	err := client.Get(ctx, crc.ObjectKey{Name: podName, Namespace: statefulSet.Namespace}, &pod)

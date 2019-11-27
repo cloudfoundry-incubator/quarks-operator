@@ -3,7 +3,7 @@ package mutate
 import (
 	"reflect"
 
-	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -42,7 +42,7 @@ func QuarksStatefulSetMutateFn(qSts *qstsv1a1.QuarksStatefulSet) controllerutil.
 // StatefulSetMutateFn returns MutateFn which mutates StatefulSet including:
 // - labels, annotations
 // - spec
-func StatefulSetMutateFn(sfs *appsv1beta2.StatefulSet) controllerutil.MutateFn {
+func StatefulSetMutateFn(sfs *appsv1.StatefulSet) controllerutil.MutateFn {
 	updated := sfs.DeepCopy()
 	return func() error {
 		sfs.Labels = updated.Labels

@@ -15,7 +15,7 @@ import (
 	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,15 +29,15 @@ var _ = Describe("When the muatating webhook handles a statefulset", func() {
 		ctx     context.Context
 		decoder *admission.Decoder
 		mutator admission.Handler
-		old     v1beta2.StatefulSet
-		new     v1beta2.StatefulSet
+		old     appsv1.StatefulSet
+		new     appsv1.StatefulSet
 		request admission.Request
 	)
 
 	BeforeEach(func() {
 		_, log = helper.NewTestLogger()
 		ctx = ctxlog.NewParentContext(log)
-		old = v1beta2.StatefulSet{
+		old = appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-statefulset",
 				Namespace: "test",
@@ -45,7 +45,7 @@ var _ = Describe("When the muatating webhook handles a statefulset", func() {
 					AnnotationCanaryRolloutEnabled: "true",
 				},
 			},
-			Spec: v1beta2.StatefulSetSpec{
+			Spec: appsv1.StatefulSetSpec{
 				Replicas: pointers.Int32(2),
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{

@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
 
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,12 +39,12 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 		client             *cfakes.FakeClient
 		readyPod           *corev1.Pod
 		noneReadyPod       *corev1.Pod
-		statefulSet        *v1beta2.StatefulSet
+		statefulSet        *appsv1.StatefulSet
 		replicas           int32
 		partition          int32
 		readyReplicas      int32
 		updatedReplicas    int32
-		updatedStatefulSet v1beta2.StatefulSet
+		updatedStatefulSet appsv1.StatefulSet
 	)
 	annotations := make(map[string]string)
 	timeout := 10 * time.Second
@@ -70,7 +70,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 		_, log = helper.NewTestLogger()
 		ctx = ctxlog.NewParentContext(log)
 
-		statefulSet = &v1beta2.StatefulSet{
+		statefulSet = &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        "foo",
 				Namespace:   "default",
@@ -86,15 +86,15 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 					},
 				},
 			},
-			Spec: v1beta2.StatefulSetSpec{
+			Spec: appsv1.StatefulSetSpec{
 				Replicas: pointers.Int32(replicas),
-				UpdateStrategy: v1beta2.StatefulSetUpdateStrategy{
-					RollingUpdate: &v1beta2.RollingUpdateStatefulSetStrategy{
+				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+					RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
 						Partition: &partition,
 					},
 				},
 			},
-			Status: v1beta2.StatefulSetStatus{
+			Status: appsv1.StatefulSetStatus{
 				CurrentRevision: "1",
 				Replicas:        replicas,
 				ReadyReplicas:   readyReplicas,
@@ -131,7 +131,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 			switch object := object.(type) {
-			case *v1beta2.StatefulSet:
+			case *appsv1.StatefulSet:
 				statefulSet.DeepCopyInto(object)
 				return nil
 			case *corev1.Pod:
@@ -147,7 +147,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 		})
 
 		client.UpdateCalls(func(ctx context.Context, object runtime.Object, option ...k8sclient.UpdateOption) error {
-			object.(*v1beta2.StatefulSet).DeepCopyInto(&updatedStatefulSet)
+			object.(*appsv1.StatefulSet).DeepCopyInto(&updatedStatefulSet)
 			return nil
 		})
 

@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -282,15 +282,15 @@ func (c *Catalog) DefaultCA(name string, ca credsgen.Certificate) corev1.Secret 
 }
 
 // DefaultStatefulSet for use in tests
-func (c *Catalog) DefaultStatefulSet(name string) v1beta2.StatefulSet {
-	return v1beta2.StatefulSet{
+func (c *Catalog) DefaultStatefulSet(name string) appsv1.StatefulSet {
+	return appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Labels: map[string]string{
 				"testpod": "yes",
 			},
 		},
-		Spec: v1beta2.StatefulSetSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: pointers.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -304,17 +304,17 @@ func (c *Catalog) DefaultStatefulSet(name string) v1beta2.StatefulSet {
 }
 
 // StatefulSetWithPVC for use in tests
-func (c *Catalog) StatefulSetWithPVC(name, pvcName string, storageClassName string) v1beta2.StatefulSet {
+func (c *Catalog) StatefulSetWithPVC(name, pvcName string, storageClassName string) appsv1.StatefulSet {
 	labels := map[string]string{
 		"test-run-reference": name,
 		"testpod":            "yes",
 	}
 
-	return v1beta2.StatefulSet{
+	return appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: v1beta2.StatefulSetSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: pointers.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
@@ -327,17 +327,17 @@ func (c *Catalog) StatefulSetWithPVC(name, pvcName string, storageClassName stri
 }
 
 // WrongStatefulSetWithPVC for use in tests
-func (c *Catalog) WrongStatefulSetWithPVC(name, pvcName string, storageClassName string) v1beta2.StatefulSet {
+func (c *Catalog) WrongStatefulSetWithPVC(name, pvcName string, storageClassName string) appsv1.StatefulSet {
 	labels := map[string]string{
 		"wrongpod":           "yes",
 		"test-run-reference": name,
 	}
 
-	return v1beta2.StatefulSet{
+	return appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: v1beta2.StatefulSetSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: pointers.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
@@ -398,15 +398,15 @@ func (c *Catalog) DefaultVolumeMount(name string) corev1.VolumeMount {
 }
 
 // WrongStatefulSet for use in tests
-func (c *Catalog) WrongStatefulSet(name string) v1beta2.StatefulSet {
-	return v1beta2.StatefulSet{
+func (c *Catalog) WrongStatefulSet(name string) appsv1.StatefulSet {
+	return appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Annotations: map[string]string{
 				statefulset.AnnotationCanaryWatchTime: "30000",
 			},
 		},
-		Spec: v1beta2.StatefulSetSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: pointers.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -420,12 +420,12 @@ func (c *Catalog) WrongStatefulSet(name string) v1beta2.StatefulSet {
 }
 
 // OwnedReferencesStatefulSet for use in tests
-func (c *Catalog) OwnedReferencesStatefulSet(name string) v1beta2.StatefulSet {
-	return v1beta2.StatefulSet{
+func (c *Catalog) OwnedReferencesStatefulSet(name string) appsv1.StatefulSet {
+	return appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: v1beta2.StatefulSetSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: pointers.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{

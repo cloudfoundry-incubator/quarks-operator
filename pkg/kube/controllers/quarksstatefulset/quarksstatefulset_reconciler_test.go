@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
 
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -85,12 +85,12 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 						UID:       "",
 					},
 					Spec: qstsv1a1.QuarksStatefulSetSpec{
-						Template: v1beta2.StatefulSet{
+						Template: appsv1.StatefulSet{
 							ObjectMeta: metav1.ObjectMeta{
 								Annotations: map[string]string{existingAnnotation: existingValue},
 								Labels:      map[string]string{existingLabel: existingValue},
 							},
-							Spec: v1beta2.StatefulSetSpec{
+							Spec: appsv1.StatefulSetSpec{
 								Replicas: pointers.Int32(1),
 								Template: corev1.PodTemplateSpec{
 									ObjectMeta: metav1.ObjectMeta{
@@ -130,7 +130,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
 				Expect(err).ToNot(HaveOccurred())
 
-				ss := &v1beta2.StatefulSet{}
+				ss := &appsv1.StatefulSet{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ss)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -142,13 +142,13 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))
 
-				ss := &v1beta2.StatefulSet{}
+				ss := &appsv1.StatefulSet{}
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ss)
 				Expect(err).ToNot(HaveOccurred())
 			})
 
 			Context("with multiple replicas", func() {
-				var ss *v1beta2.StatefulSet
+				var ss *appsv1.StatefulSet
 				BeforeEach(func() {
 					desiredQStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(3)
 					client = fake.NewFakeClient(
@@ -162,7 +162,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(result).To(Equal(reconcile.Result{}))
 
-					ss = &v1beta2.StatefulSet{}
+					ss = &appsv1.StatefulSet{}
 					err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ss)
 					Expect(err).ToNot(HaveOccurred())
 
@@ -205,19 +205,19 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 						err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
 						Expect(err).ToNot(HaveOccurred())
 
-						ssZ0 := &v1beta2.StatefulSet{}
+						ssZ0 := &appsv1.StatefulSet{}
 						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z0", Namespace: "default"}, ssZ0)
 						Expect(err).ToNot(HaveOccurred())
 
-						ssZ1 := &v1beta2.StatefulSet{}
+						ssZ1 := &appsv1.StatefulSet{}
 						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z1", Namespace: "default"}, ssZ1)
 						Expect(err).ToNot(HaveOccurred())
 
-						ssZ2 := &v1beta2.StatefulSet{}
+						ssZ2 := &appsv1.StatefulSet{}
 						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z2", Namespace: "default"}, ssZ2)
 						Expect(err).ToNot(HaveOccurred())
 
-						for idx, ss := range []*v1beta2.StatefulSet{ssZ0, ssZ1, ssZ2} {
+						for idx, ss := range []*appsv1.StatefulSet{ssZ0, ssZ1, ssZ2} {
 							Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
 
 							// Check statefulSet labels and annotations
@@ -310,19 +310,19 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 						err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
 						Expect(err).ToNot(HaveOccurred())
 
-						ssZ0 := &v1beta2.StatefulSet{}
+						ssZ0 := &appsv1.StatefulSet{}
 						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z0", Namespace: "default"}, ssZ0)
 						Expect(err).ToNot(HaveOccurred())
 
-						ssZ1 := &v1beta2.StatefulSet{}
+						ssZ1 := &appsv1.StatefulSet{}
 						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z1", Namespace: "default"}, ssZ1)
 						Expect(err).ToNot(HaveOccurred())
 
-						ssZ2 := &v1beta2.StatefulSet{}
+						ssZ2 := &appsv1.StatefulSet{}
 						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z2", Namespace: "default"}, ssZ2)
 						Expect(err).ToNot(HaveOccurred())
 
-						for idx, ss := range []*v1beta2.StatefulSet{ssZ0, ssZ1, ssZ2} {
+						for idx, ss := range []*appsv1.StatefulSet{ssZ0, ssZ1, ssZ2} {
 							Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
 
 							// Check statefulSet labels and annotations
@@ -420,7 +420,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 		Context("when there are two versions", func() {
 			var (
 				desiredQStatefulSet *qstsv1a1.QuarksStatefulSet
-				v2StatefulSet       *v1beta2.StatefulSet
+				v2StatefulSet       *appsv1.StatefulSet
 			)
 
 			BeforeEach(func() {
@@ -431,19 +431,19 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 						UID:       "foo-uid",
 					},
 					Spec: qstsv1a1.QuarksStatefulSetSpec{
-						Template: v1beta2.StatefulSet{
+						Template: appsv1.StatefulSet{
 							ObjectMeta: metav1.ObjectMeta{
 								Labels: map[string]string{
 									"test": "2",
 								},
 							},
-							Spec: v1beta2.StatefulSetSpec{
+							Spec: appsv1.StatefulSetSpec{
 								Replicas: pointers.Int32(1),
 							},
 						},
 					},
 				}
-				v2StatefulSet = &v1beta2.StatefulSet{
+				v2StatefulSet = &appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "foo",
 						Namespace: "default",
@@ -470,7 +470,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 			})
 
 			It("creates version 3", func() {
-				ss := &v1beta2.StatefulSet{}
+				ss := &appsv1.StatefulSet{}
 				err := client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ss)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(ss.GetAnnotations()).To(HaveKeyWithValue(qstsv1a1.AnnotationVersion, "2"))

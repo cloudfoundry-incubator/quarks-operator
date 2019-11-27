@@ -15,7 +15,7 @@ import (
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1b1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -139,13 +139,13 @@ func (kc *KubeConverter) serviceToQuarksStatefulSet(
 		Spec: qstsv1a1.QuarksStatefulSetSpec{
 			Zones:                instanceGroup.AZs,
 			UpdateOnConfigChange: true,
-			Template: v1beta2.StatefulSet{
+			Template: appsv1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        instanceGroup.NameSanitized(),
 					Labels:      statefulSetLabels,
 					Annotations: statefulSetAnnotations,
 				},
-				Spec: v1beta2.StatefulSetSpec{
+				Spec: appsv1.StatefulSetSpec{
 					Replicas: pointers.Int32(int32(instanceGroup.Instances)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: statefulSetLabels,

@@ -3,7 +3,7 @@ package v1alpha1
 import (
 	"fmt"
 
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
@@ -43,7 +43,7 @@ type QuarksStatefulSetSpec struct {
 	Zones []string `json:"zones,omitempty"`
 
 	// Defines a regular StatefulSet template
-	Template v1beta2.StatefulSet `json:"template"`
+	Template appsv1.StatefulSet `json:"template"`
 }
 
 // QuarksStatefulSetStatus defines the observed state of QuarksStatefulSet

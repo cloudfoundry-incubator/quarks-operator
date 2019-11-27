@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -49,7 +49,7 @@ func AddStatefulSetRollout(ctx context.Context, config *config.Config, mgr manag
 			return false
 		},
 	}
-	err = c.Watch(&source.Kind{Type: &v1beta2.StatefulSet{}}, &handler.EnqueueRequestForObject{}, statefulSetPredicates)
+	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForObject{}, statefulSetPredicates)
 	if err != nil {
 		return errors.Wrapf(err, "Watching StatefulSet failed in StatefulSet rollout controller.")
 	}
@@ -59,7 +59,7 @@ func AddStatefulSetRollout(ctx context.Context, config *config.Config, mgr manag
 
 // CheckUpdate checks if update event should be processed
 func CheckUpdate(e event.UpdateEvent) bool {
-	newSts := e.ObjectNew.(*v1beta2.StatefulSet)
+	newSts := e.ObjectNew.(*appsv1.StatefulSet)
 	state, ok := newSts.Annotations[AnnotationCanaryRollout]
 	if !ok || state == rolloutStateDone || state == rolloutStateFailed {
 		return false
@@ -67,7 +67,7 @@ func CheckUpdate(e event.UpdateEvent) bool {
 	if state == rolloutStatePending {
 		return true
 	}
-	oldSts := e.ObjectOld.(*v1beta2.StatefulSet)
+	oldSts := e.ObjectOld.(*appsv1.StatefulSet)
 	if oldSts.Status.ReadyReplicas == newSts.Status.ReadyReplicas &&
 		oldSts.Status.UpdatedReplicas == newSts.Status.UpdatedReplicas &&
 		oldSts.Status.Replicas == newSts.Status.Replicas {
