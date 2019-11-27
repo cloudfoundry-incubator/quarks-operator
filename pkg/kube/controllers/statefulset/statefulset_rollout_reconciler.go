@@ -13,7 +13,7 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
@@ -70,7 +70,7 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 
 	ctxlog.Debug(ctx, "Reconciling StatefulSet ", request.NamespacedName)
 
-	statefulSet := v1beta2.StatefulSet{}
+	statefulSet := appsv1.StatefulSet{}
 
 	err := r.client.Get(ctx, request.NamespacedName, &statefulSet)
 	if err != nil {
@@ -168,7 +168,7 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 	return result, err
 }
 
-func getTimeOut(ctx context.Context, statefulSet v1beta2.StatefulSet, watchTimeAnnotation string) time.Duration {
+func getTimeOut(ctx context.Context, statefulSet appsv1.StatefulSet, watchTimeAnnotation string) time.Duration {
 	watchTimeStr, ok := statefulSet.Annotations[watchTimeAnnotation]
 	if !ok || watchTimeStr == "" {
 		return 0 // never timeout
@@ -187,7 +187,7 @@ func getTimeOut(ctx context.Context, statefulSet v1beta2.StatefulSet, watchTimeA
 	return time.Until(updateStartTime.Add(time.Millisecond * time.Duration(watchTime)))
 }
 
-func (r *ReconcileStatefulSetRollout) update(ctx context.Context, statefulSet *v1beta2.StatefulSet, result *reconcile.Result) error {
+func (r *ReconcileStatefulSetRollout) update(ctx context.Context, statefulSet *appsv1.StatefulSet, result *reconcile.Result) error {
 
 	partition := *statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition
 	state := statefulSet.Annotations[AnnotationCanaryRollout]
@@ -213,7 +213,7 @@ func (r *ReconcileStatefulSetRollout) update(ctx context.Context, statefulSet *v
 	return nil
 }
 
-func partitionPodIsReadyAndUpdated(ctx context.Context, client crc.Client, statefulSet *v1beta2.StatefulSet) (bool, error) {
+func partitionPodIsReadyAndUpdated(ctx context.Context, client crc.Client, statefulSet *appsv1.StatefulSet) (bool, error) {
 	ready := false
 	updated := false
 	if statefulSet.Spec.UpdateStrategy.RollingUpdate != nil {
@@ -224,7 +224,7 @@ func partitionPodIsReadyAndUpdated(ctx context.Context, client crc.Client, state
 		}
 		if podReady {
 			ready = true
-			updated = pod.Labels[v1beta2.StatefulSetRevisionLabel] == statefulSet.Status.UpdateRevision
+			updated = pod.Labels[appsv1.StatefulSetRevisionLabel] == statefulSet.Status.UpdateRevision
 		}
 	}
 	return ready && updated, nil

@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	corev1 "k8s.io/api/core/v1"
-	appsv1beta2client "k8s.io/client-go/kubernetes/typed/apps/v1beta2"
+	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -41,7 +41,7 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 		return errors.Wrap(err, "Adding QuarksStatefulSet controller to manager failed.")
 	}
 
-	client, err := appsv1beta2client.NewForConfig(mgr.GetConfig())
+	client, err := appsv1client.NewForConfig(mgr.GetConfig())
 	if err != nil {
 		return errors.Wrap(err, "Could not get kube client")
 	}

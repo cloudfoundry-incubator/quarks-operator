@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
 
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,7 +49,7 @@ var _ = Describe("CleanupNonReadyPod", func() {
 		ctx          context.Context
 		log          *zap.SugaredLogger
 		client       *cfakes.FakeClient
-		statefulSet  *v1beta2.StatefulSet
+		statefulSet  *appsv1.StatefulSet
 		readyPod     *corev1.Pod
 		pendingPod   *corev1.Pod
 		noneReadyPod *corev1.Pod
@@ -107,7 +107,7 @@ var _ = Describe("CleanupNonReadyPod", func() {
 				Phase: corev1.PodRunning,
 			},
 		}
-		statefulSet = &v1beta2.StatefulSet{
+		statefulSet = &appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        "foo",
 				Namespace:   "default",
@@ -123,11 +123,11 @@ var _ = Describe("CleanupNonReadyPod", func() {
 					},
 				},
 			},
-			Spec: v1beta2.StatefulSetSpec{
+			Spec: appsv1.StatefulSetSpec{
 				Replicas: pointers.Int32(3),
 				Selector: &metav1.LabelSelector{MatchLabels: selector},
-				UpdateStrategy: v1beta2.StatefulSetUpdateStrategy{
-					RollingUpdate: &v1beta2.RollingUpdateStatefulSetStrategy{
+				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+					RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
 						Partition: pointers.Int32(8),
 					},
 				},
@@ -135,7 +135,7 @@ var _ = Describe("CleanupNonReadyPod", func() {
 					Spec: readyPod.Spec,
 				},
 			},
-			Status: v1beta2.StatefulSetStatus{
+			Status: appsv1.StatefulSetStatus{
 				UpdatedReplicas: 3,
 				ReadyReplicas:   1,
 				Replicas:        3,

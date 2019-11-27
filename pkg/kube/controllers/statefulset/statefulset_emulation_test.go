@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,7 +25,7 @@ import (
 type StatefulSetEmulation struct {
 	pods         []corev1.Pod
 	deleted      []bool
-	statefulSet  v1beta2.StatefulSet
+	statefulSet  appsv1.StatefulSet
 	readyPending int32
 	failed       bool
 }
@@ -34,7 +34,7 @@ func NewStatefulSetEmulation(replicas int) *StatefulSetEmulation {
 	sse := &StatefulSetEmulation{
 		readyPending: -1,
 		deleted:      make([]bool, 4),
-		statefulSet: v1beta2.StatefulSet{
+		statefulSet: appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{
 				Generation:  0,
 				Name:        "foo",
@@ -42,11 +42,11 @@ func NewStatefulSetEmulation(replicas int) *StatefulSetEmulation {
 				Annotations: make(map[string]string),
 				Labels:      make(map[string]string),
 			},
-			Spec: v1beta2.StatefulSetSpec{
+			Spec: appsv1.StatefulSetSpec{
 				Replicas: pointers.Int32(int32(replicas)),
-				UpdateStrategy: v1beta2.StatefulSetUpdateStrategy{
-					Type: v1beta2.RollingUpdateStatefulSetStrategyType,
-					RollingUpdate: &v1beta2.RollingUpdateStatefulSetStrategy{
+				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+					Type: appsv1.RollingUpdateStatefulSetStrategyType,
+					RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
 						Partition: pointers.Int32(0),
 					},
 				},
@@ -59,7 +59,7 @@ func NewStatefulSetEmulation(replicas int) *StatefulSetEmulation {
 
 // Reconciles returns old statefulset if something has changed, nil otherwise
 func (sse *StatefulSetEmulation) Reconcile() *event.UpdateEvent {
-	var old v1beta2.StatefulSet
+	var old appsv1.StatefulSet
 	sse.statefulSet.DeepCopyInto(&old)
 	updateEvent := event.UpdateEvent{ObjectOld: &old, ObjectNew: &sse.statefulSet}
 	if sse.readyPending != -1 {
@@ -116,7 +116,7 @@ func WithFailure() UpdateOpts {
 }
 
 func (sse *StatefulSetEmulation) Update(updateOpts ...UpdateOpts) *event.UpdateEvent {
-	var old v1beta2.StatefulSet
+	var old appsv1.StatefulSet
 	sse.statefulSet.DeepCopyInto(&old)
 	sse.statefulSet.Status.UpdatedReplicas = 0
 	sse.statefulSet.Generation++
@@ -150,7 +150,7 @@ func (sse *StatefulSetEmulation) configurePod(index int) corev1.Pod {
 	}
 }
 func (sse *StatefulSetEmulation) setPodReady(pod *corev1.Pod) {
-	pod.Labels = map[string]string{v1beta2.StatefulSetRevisionLabel: sse.statefulSet.Status.UpdateRevision}
+	pod.Labels = map[string]string{appsv1.StatefulSetRevisionLabel: sse.statefulSet.Status.UpdateRevision}
 
 	pod.Status = corev1.PodStatus{
 		Phase: corev1.PodRunning,
@@ -172,7 +172,7 @@ func (sse *StatefulSetEmulation) FakeClient() *cfakes.FakeClient {
 
 	client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 		switch object := object.(type) {
-		case *v1beta2.StatefulSet:
+		case *appsv1.StatefulSet:
 			sse.statefulSet.DeepCopyInto(object)
 			return nil
 		case *corev1.Pod:
@@ -187,7 +187,7 @@ func (sse *StatefulSetEmulation) FakeClient() *cfakes.FakeClient {
 	})
 
 	client.UpdateCalls(func(ctx context.Context, object runtime.Object, option ...k8sclient.UpdateOption) error {
-		object.(*v1beta2.StatefulSet).DeepCopyInto(&sse.statefulSet)
+		object.(*appsv1.StatefulSet).DeepCopyInto(&sse.statefulSet)
 		return nil
 	})
 

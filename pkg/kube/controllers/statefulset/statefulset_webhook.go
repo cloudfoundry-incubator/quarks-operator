@@ -10,7 +10,7 @@ import (
 
 	"k8s.io/api/admission/v1beta1"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -40,15 +40,15 @@ func NewMutator(log *zap.SugaredLogger, config *config.Config) admission.Handler
 	}
 }
 
-func isControlledRolloutStatefulSet(statefulset *v1beta2.StatefulSet) bool {
+func isControlledRolloutStatefulSet(statefulset *appsv1.StatefulSet) bool {
 	enabled, ok := statefulset.GetAnnotations()[AnnotationCanaryRolloutEnabled]
 	return ok && enabled == "true"
 }
 
 // Handle set the partion for StatefulSets
 func (m *Mutator) Handle(ctx context.Context, req admission.Request) admission.Response {
-	statefulset := &v1beta2.StatefulSet{}
-	oldStatefulset := &v1beta2.StatefulSet{}
+	statefulset := &appsv1.StatefulSet{}
+	oldStatefulset := &appsv1.StatefulSet{}
 
 	err := m.decoder.Decode(req, statefulset)
 	if err != nil {
@@ -94,7 +94,7 @@ func NewStatefulSetRolloutMutator(log *zap.SugaredLogger, config *config.Config)
 			{
 				Rule: admissionregistrationv1beta1.Rule{
 					APIGroups:   []string{"apps"},
-					APIVersions: []string{"v1beta2"},
+					APIVersions: []string{"v1"},
 					Resources:   []string{"statefulsets"},
 					Scope:       &globalScopeType,
 				},
