@@ -43,7 +43,7 @@ func (c *Catalog) DefaultConfig() *config.Config {
 	}
 }
 
-// DefaultBOSHManifest for tests
+// DefaultBOSHManifest returns a BOSH manifest for unit tests
 func (c *Catalog) DefaultBOSHManifest() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.Default))
 	if err != nil {
@@ -133,16 +133,8 @@ func (c *Catalog) BOSHManifestWithBPMRelease() (*manifest.Manifest, error) {
 	return m, nil
 }
 
-// BOSHManifestWithoutPersistentDisk returns a manifest with persistent disk declaration
-func (c *Catalog) BOSHManifestWithoutPersistentDisk() (*manifest.Manifest, error) {
-	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithoutPersistentDisk))
-	if err != nil {
-		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
-	}
-	return m, nil
-}
-
-// BoshManifestWithLinks returns a manifest with explicit and implicit BOSH links
+// BOSHManifestWithLinks returns a manifest with explicit and implicit BOSH links
+// Also usable in integration tests
 func (c *Catalog) BOSHManifestWithLinks() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.NatsSmallWithLinks))
 	if err != nil {
@@ -179,7 +171,7 @@ func (c *Catalog) BPMReleaseWithAffinityConfigMap(name string) corev1.ConfigMap 
 	}
 }
 
-// DefaultBOSHManifestConfigMap for tests
+// DefaultBOSHManifestConfigMap for integration tests
 func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
