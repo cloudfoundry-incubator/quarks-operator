@@ -39,6 +39,7 @@ global:
   rbacEnable: true
 
 quarks-job:
+  createWatchNamespace: false
   serviceAccount:
     quarksJobServiceAccount:
       create: true
