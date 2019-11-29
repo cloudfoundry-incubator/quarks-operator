@@ -2,6 +2,7 @@ package quarkssecret
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	certv1 "k8s.io/api/certificates/v1beta1"
@@ -12,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	certv1client "k8s.io/client-go/kubernetes/typed/certificates/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -89,6 +91,13 @@ func (r *ReconcileCertificateSigningRequest) Reconcile(request reconcile.Request
 			ctxlog.Errorf(ctx, "Failed to get the CSR private key secret: %v", err.Error())
 			return reconcile.Result{}, err
 		}
+
+		rootCA, err := getClusterRootCA(ctx, r.client, namespace)
+		if err != nil {
+			ctxlog.Errorf(ctx, "Failed to get the cluster root CA: %v", err.Error())
+			return reconcile.Result{}, nil
+		}
+
 		certSecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            secretName,
@@ -99,6 +108,7 @@ func (r *ReconcileCertificateSigningRequest) Reconcile(request reconcile.Request
 				},
 			},
 			Data: map[string][]byte{
+				"ca":          rootCA,
 				"certificate": instance.Status.Certificate,
 				"private_key": privatekeySecret.Data["private_key"],
 				"is_ca":       privatekeySecret.Data["is_ca"],
@@ -208,4 +218,32 @@ func isApproved(conditions []certv1.CertificateSigningRequestCondition) bool {
 	}
 
 	return false
+}
+
+func getClusterRootCA(ctx context.Context, client client.Client, namespace string) ([]byte, error) {
+	// TODO: This should work with filtering using something like
+	// err = client.List(ctx, secretList, crc.InNamespace(namespace), crc.MatchingFields{"type": "kubernetes.io/service-account-token"})
+	// but it doesn't return any results. Maybe try again after a controller-runtime bump
+
+	secretList := &corev1.SecretList{}
+	err := client.List(ctx, secretList, crc.InNamespace(namespace))
+	if err != nil {
+		return nil, errors.Wrap(err, "Could not get the list of secrets")
+	}
+
+	if len(secretList.Items) <= 0 {
+		return nil, fmt.Errorf("Failed to get a service account token secret to extract the cluster root CA")
+	}
+
+	for _, secret := range secretList.Items {
+		if secret.Type == "kubernetes.io/service-account-token" {
+			if val, ok := secret.Data["ca.crt"]; ok {
+				return val, nil
+			}
+
+			return nil, fmt.Errorf("the service account token secret does not contain the cluster root CA")
+		}
+	}
+
+	return nil, fmt.Errorf("Could not find a service account token secret")
 }
