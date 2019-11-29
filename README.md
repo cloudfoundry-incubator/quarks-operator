@@ -19,6 +19,10 @@ It's implemented as a k8s operator, an active controller component which acts up
 * Backlog: [Pivotal Tracker](https://www.pivotaltracker.com/n/projects/2192232)
 * Docker: https://hub.docker.com/r/cfcontainerization/cf-operator/tags
 
+## Prerequisites
+
+The `cf-operator` assumes that the cluster root CA is also used for signing CSRs via the certificates.k8s.io API and will embed this CA in the generated certificate secrets. If your cluster is set up to use a different cluster-signing CA the generated certificates will have the wrong CA embedded. See https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/ for more information on cluster trust.
+
 ## Installing
 
 ### **Using the helm chart**
