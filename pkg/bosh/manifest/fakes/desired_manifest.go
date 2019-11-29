@@ -5,8 +5,8 @@ import (
 	"context"
 	"sync"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 )
 
 type FakeDesiredManifest struct {
@@ -118,4 +118,4 @@ func (fake *FakeDesiredManifest) recordInvocation(key string, args []interface{}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ boshdeployment.DesiredManifest = new(FakeDesiredManifest)
+var _ converter.DesiredManifest = new(FakeDesiredManifest)
