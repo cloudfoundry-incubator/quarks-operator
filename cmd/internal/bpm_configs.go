@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"sigs.k8s.io/yaml"
@@ -85,26 +86,26 @@ instance group.
 			return errors.Wrapf(err, "%s Loading bosh manifest file failed. Please check the file contents and try again.", bpmFailedMessage)
 		}
 
-		dg, err := manifest.NewInstanceGroupResolver(baseDir, *m, instanceGroupName)
+		igr, err := manifest.NewInstanceGroupResolver(afero.NewOsFs(), baseDir, *m, instanceGroupName)
 		if err != nil {
 			return errors.Wrap(err, bpmFailedMessage)
 		}
 
-		bpmInfo, err := dg.BPMInfo()
+		bpmInfo, err := igr.BPMInfo()
 		if err != nil {
 			return errors.Wrap(err, bpmFailedMessage)
 		}
 
 		bpmBytes, err := yaml.Marshal(bpmInfo)
 		if err != nil {
-			return errors.Wrapf(err, "%s YAML marshalling bpmConfigs spec returned by dg.BPMConfigs() failed.", bpmFailedMessage)
+			return errors.Wrapf(err, "%s YAML marshalling bpmConfigs spec returned by igr.BPMConfigs() failed.", bpmFailedMessage)
 		}
 
 		jsonBytes, err := json.Marshal(map[string]string{
 			"bpm.yaml": string(bpmBytes),
 		})
 		if err != nil {
-			return errors.Wrapf(err, "%s JSON marshalling bpmConfigs spec returned by dg.BPMConfigs() failed.", bpmFailedMessage)
+			return errors.Wrapf(err, "%s JSON marshalling bpmConfigs spec returned by igr.BPMConfigs() failed.", bpmFailedMessage)
 		}
 
 		err = ioutil.WriteFile(outputFilePath, jsonBytes, 0644)

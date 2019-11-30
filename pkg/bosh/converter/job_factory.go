@@ -83,6 +83,7 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 	}
 
 	qJobName := fmt.Sprintf("dm-%s", manifest.Name)
+	secretName := names.DesiredManifestPrefix(manifest.Name) + VarInterpolationContainerName
 
 	// Construct the var interpolation auto-errand qJob
 	qJob := &qjv1a1.QuarksJob{
@@ -95,13 +96,14 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 		},
 		Spec: qjv1a1.QuarksJobSpec{
 			Output: &qjv1a1.Output{
-				NamePrefix: names.DesiredManifestPrefix(manifest.Name),
+				OutputMap: qjv1a1.OutputMap{
+					VarInterpolationContainerName: qjv1a1.NewFileToSecret("output.json", secretName, true),
+				},
 				SecretLabels: map[string]string{
 					bdv1.LabelDeploymentName:       manifest.Name,
 					bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeManifestWithOps.String(),
 					bdm.LabelReferencedJobName:     fmt.Sprintf("instance-group-%s", manifest.Name),
 				},
-				Versioned: true,
 			},
 			Trigger: qjv1a1.Trigger{
 				Strategy: qjv1a1.TriggerOnce,
@@ -160,10 +162,15 @@ func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest) (*qjv1a1.Qu
 		namespace:    f.Namespace,
 	}
 
+	linkOutputs := map[string]string{}
+
 	for _, ig := range manifest.InstanceGroups {
 		if ig.Instances != 0 {
-			// One container per Instance Group
-			// There will be one secret generated for each of these containers
+			// Additional secret for BOSH links per instance group
+			containerName := names.Sanitize(ig.Name)
+			linkOutputs[containerName] = names.Sanitize(fmt.Sprintf("link-%s-%s", manifest.Name, ig.Name))
+
+			// One container per instance group
 			containers = append(containers, ct.newUtilContainer(ig.Name))
 		}
 	}
@@ -173,6 +180,13 @@ func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest) (*qjv1a1.Qu
 	qJob, err := f.releaseImageQJob(qJobName, manifest, names.DeploymentSecretTypeInstanceGroupResolvedProperties, containers)
 	if err != nil {
 		return nil, err
+	}
+
+	// add BOSH link secret to the output list
+	for container, secret := range linkOutputs {
+		qJob.Spec.Output.OutputMap[container]["provides.json"] = qjv1a1.SecretOptions{
+			Name: secret,
+		}
 	}
 	return qJob, nil
 }
@@ -280,6 +294,11 @@ func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, secret
 		}
 	}
 
+	outputMap := qjv1a1.OutputMap{}
+	for _, container := range containers {
+		outputMap[container.Name] = qjv1a1.NewFileToSecret("output.json", outputSecretNamePrefix+container.Name, true)
+	}
+
 	// Construct the "BPM configs" or "data gathering" auto-errand qJob
 	qJob := &qjv1a1.QuarksJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -291,12 +310,11 @@ func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, secret
 		},
 		Spec: qjv1a1.QuarksJobSpec{
 			Output: &qjv1a1.Output{
-				NamePrefix: outputSecretNamePrefix,
+				OutputMap: outputMap,
 				SecretLabels: map[string]string{
 					bdv1.LabelDeploymentName:       manifest.Name,
 					bdv1.LabelDeploymentSecretType: secretType.String(),
 				},
-				Versioned: true,
 			},
 			Trigger: qjv1a1.Trigger{
 				Strategy: qjv1a1.TriggerOnce,

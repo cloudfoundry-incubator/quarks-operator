@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
+
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -42,7 +43,7 @@ func (c *Catalog) DefaultConfig() *config.Config {
 	}
 }
 
-// DefaultBOSHManifest for tests
+// DefaultBOSHManifest returns a BOSH manifest for unit tests
 func (c *Catalog) DefaultBOSHManifest() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.Default))
 	if err != nil {
@@ -60,8 +61,8 @@ func (c *Catalog) ElaboratedBOSHManifest() (*manifest.Manifest, error) {
 	return m, nil
 }
 
-// BoshManifestWithResources for data gathering tests
-func (c *Catalog) BoshManifestWithResources() (*manifest.Manifest, error) {
+// BOSHManifestWithResources for data gathering tests
+func (c *Catalog) BOSHManifestWithResources() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.WithResources))
 	if err != nil {
 		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
@@ -132,9 +133,10 @@ func (c *Catalog) BOSHManifestWithBPMRelease() (*manifest.Manifest, error) {
 	return m, nil
 }
 
-// BOSHManifestWithoutPersistentDisk returns a manifest with persistent disk declaration
-func (c *Catalog) BOSHManifestWithoutPersistentDisk() (*manifest.Manifest, error) {
-	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithoutPersistentDisk))
+// BOSHManifestWithLinks returns a manifest with explicit and implicit BOSH links
+// Also usable in integration tests
+func (c *Catalog) BOSHManifestWithLinks() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.NatsSmallWithLinks))
 	if err != nil {
 		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
 	}
@@ -169,12 +171,22 @@ func (c *Catalog) BPMReleaseWithAffinityConfigMap(name string) corev1.ConfigMap 
 	}
 }
 
-// DefaultBOSHManifestConfigMap for tests
+// DefaultBOSHManifestConfigMap for integration tests
 func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Data: map[string]string{
 			"manifest": bm.NatsSmall,
+		},
+	}
+}
+
+// BOSHManifestSecret for tests
+func (c *Catalog) BOSHManifestSecret(ref string, text string) corev1.Secret {
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: ref},
+		StringData: map[string]string{
+			"manifest": text,
 		},
 	}
 }
