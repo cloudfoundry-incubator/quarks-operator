@@ -232,7 +232,7 @@ func getClusterRootCA(ctx context.Context, client client.Client, namespace strin
 	}
 
 	if len(secretList.Items) <= 0 {
-		return nil, fmt.Errorf("Failed to get a service account token secret to extract the cluster root CA")
+		return nil, fmt.Errorf("failed to get a service account token secret to extract the cluster root CA")
 	}
 
 	for _, secret := range secretList.Items {
@@ -245,5 +245,5 @@ func getClusterRootCA(ctx context.Context, client client.Client, namespace strin
 		}
 	}
 
-	return nil, fmt.Errorf("Could not find a service account token secret")
+	return nil, fmt.Errorf("could not find a service account token secret")
 }
