@@ -17,7 +17,7 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
-// PodMutator changes pod definitions
+// PodMutator for adding the pod-ordinal label on statefulset pods
 type PodMutator struct {
 	log     *zap.SugaredLogger
 	config  *config.Config
@@ -27,7 +27,7 @@ type PodMutator struct {
 // Check that PodMutator implements the admission.Handler interface
 var _ admission.Handler = &PodMutator{}
 
-// NewPodMutator returns a new reconcile.Reconciler
+// NewPodMutator returns a pod mutator to add pod-ordinal on statefulset pods
 func NewPodMutator(log *zap.SugaredLogger, config *config.Config) admission.Handler {
 	mutatorLog := log.Named("quarks-statefulset-pod-mutator")
 	mutatorLog.Info("Creating a Pod mutator for QuarksStatefulSet")
@@ -38,7 +38,8 @@ func NewPodMutator(log *zap.SugaredLogger, config *config.Config) admission.Hand
 	}
 }
 
-// Handle manages volume claims for QuarksStatefulSet pods
+// Handle checks if pod is part of a statefulset and adds the pod-ordinal label
+// on the pod
 func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	pod := &corev1.Pod{}
 	err := m.decoder.Decode(req, pod)
@@ -63,7 +64,7 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledPod)
 }
 
-// mutatePodsFn add an annotation to the given pod
+// mutatePodsFn add a pod-ordinal label to the given pod
 func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 
 	m.log.Info("Mutating Pod ", pod.Name)

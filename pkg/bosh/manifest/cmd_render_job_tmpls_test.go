@@ -18,17 +18,17 @@ import (
 var _ = Describe("Trender", func() {
 	var (
 		deploymentManifest string
-		jobsDir            string
 		instanceGroupName  string
 		index              int
 		podIP              net.IP
 		replicas           int
 	)
 
+	const jobsDir = "../../../testing/assets"
+
 	Context("when podIP is nil", func() {
 		BeforeEach(func() {
-			deploymentManifest = "../../../testing/assets/ig-resolved.mysql-v1.yml"
-			jobsDir = "../../../testing/assets"
+			deploymentManifest = assetPath + "/ig-resolved.mysql-v1.yml"
 			instanceGroupName = "mysql0"
 			index = 0
 			podIP = nil
@@ -48,8 +48,7 @@ var _ = Describe("Trender", func() {
 
 	Context("when flag values and manifest file are specified", func() {
 		BeforeEach(func() {
-			deploymentManifest = "../../../testing/assets/gatherManifest.yml"
-			jobsDir = "../../../testing/assets"
+			deploymentManifest = assetPath + "/gatherManifest.yml"
 			instanceGroupName = "log-api"
 			podIP = net.ParseIP("172.17.0.13")
 			replicas = 1
@@ -123,8 +122,7 @@ var _ = Describe("Trender", func() {
 
 	Context("with an empty instances array in consumes", func() {
 		BeforeEach(func() {
-			deploymentManifest = "../../../testing/assets/ig-resolved.mysql-v1.yml"
-			jobsDir = "../../../testing/assets"
+			deploymentManifest = assetPath + "/ig-resolved.mysql-v1.yml"
 			instanceGroupName = "mysql0"
 			index = 0
 			podIP = net.ParseIP("172.17.0.13")
@@ -157,8 +155,7 @@ var _ = Describe("Trender", func() {
 
 	Context("with an instance index if one", func() {
 		BeforeEach(func() {
-			deploymentManifest = "../../../testing/assets/ig-resolved.redis.yml"
-			jobsDir = "../../../testing/assets"
+			deploymentManifest = assetPath + "/ig-resolved.redis.yml"
 			instanceGroupName = "redis-slave"
 
 			// By using index 1, we can make sure that an evaluation of spec.bootstrap
@@ -191,8 +188,7 @@ var _ = Describe("Trender", func() {
 
 	Context("when spec.id is used in a bosh release", func() {
 		BeforeEach(func() {
-			deploymentManifest = "../../../testing/assets/ig-resolved.app-autoscaler.yml"
-			jobsDir = "../../../testing/assets"
+			deploymentManifest = assetPath + "/ig-resolved.app-autoscaler.yml"
 			instanceGroupName = "asmetrics"
 			index = 0
 			podIP = net.ParseIP("172.17.0.13")
