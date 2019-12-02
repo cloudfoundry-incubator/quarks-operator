@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
+
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -76,6 +78,12 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 		ctxlog.Debug(ctx, "StatefulSet not found ", request.NamespacedName)
 		return reconcile.Result{}, err
 	}
+
+	if meltdown.NewAnnotationWindow(r.config.MeltdownDuration, statefulSet.Annotations).Contains(time.Now()) {
+		ctxlog.WithEvent(&statefulSet, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", statefulSet.Name, r.config.MeltdownRequeueAfter)
+		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
+	}
+
 	var result reconcile.Result
 	var status = statefulSet.Annotations[AnnotationCanaryRollout]
 	var newStatus = status
@@ -155,6 +163,7 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 	}
 	err = nil
 	if dirty {
+		meltdown.SetLastReconcile(&statefulSet.ObjectMeta, time.Now())
 		err = r.update(ctx, &statefulSet, &result)
 	}
 	return result, err
