@@ -134,7 +134,7 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 		boshPreStartInitContainers = append(boshPreStartInitContainers, *boshPreStartInitContainer.DeepCopy())
 	}
 
-	resolvedPropertiesSecretName := names.CalculateIGSecretName(
+	resolvedPropertiesSecretName := names.InstanceGroupSecretName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties, // ig-resolved
 		c.manifestName,
 		c.instanceGroupName,

@@ -86,7 +86,7 @@ func NewVolumeFactory() *VolumeFactoryImpl {
 // - the "not interpolated" manifest volume
 // - resolved properties data volume
 func (f *VolumeFactoryImpl) GenerateDefaultDisks(manifestName string, instanceGroupName string, igResolvedSecretVersion string, namespace string) disk.BPMResourceDisks {
-	resolvedPropertiesSecretName := names.CalculateIGSecretName(
+	resolvedPropertiesSecretName := names.InstanceGroupSecretName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
 		manifestName,
 		instanceGroupName,
