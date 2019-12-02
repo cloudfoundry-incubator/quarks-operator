@@ -64,7 +64,6 @@ type ReconcileStatefulSetRollout struct {
 
 // Reconcile cleans up old versions and volumeManagement statefulSet of the ExtendedStatefulSet
 func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()
