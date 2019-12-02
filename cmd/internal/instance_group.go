@@ -32,6 +32,7 @@ This will resolve the properties of an instance group and return a manifest for 
 		baseDirFlagViperBind(cmd.Flags())
 		instanceGroupFlagViperBind(cmd.Flags())
 		outputFilePathFlagViperBind(cmd.Flags())
+		initialRolloutFlagViperBind(cmd.Flags())
 	},
 
 	RunE: func(_ *cobra.Command, args []string) (err error) {
@@ -84,7 +85,8 @@ This will resolve the properties of an instance group and return a manifest for 
 			return errors.Wrap(err, igFailedMessage)
 		}
 
-		manifest, err := igr.Manifest()
+		initialRollout := viper.GetBool("initial-rollout")
+		manifest, err := igr.Manifest(initialRollout)
 		if err != nil {
 			return errors.Wrap(err, igFailedMessage)
 		}
@@ -126,5 +128,6 @@ func init() {
 	baseDirFlagCobraSet(pf, argToEnv)
 	instanceGroupFlagCobraSet(pf, argToEnv)
 	outputFilePathFlagCobraSet(pf, argToEnv)
+	initialRolloutFlagCobraSet(pf, argToEnv)
 	cmd.AddEnvToUsage(instanceGroupCmd, argToEnv)
 }

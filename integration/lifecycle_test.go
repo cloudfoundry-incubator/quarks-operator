@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	corev1 "k8s.io/api/core/v1"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
@@ -77,8 +78,8 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
 
 			// Check link address
-			Expect(env.WaitForPodContainerLogMsg(env.Namespace, "test-nats-v1-0", "nats-nats", fmt.Sprintf("Trying to connect to route on %s:4223", clusterIPService.Name))).To(BeNil(), "error getting logs for connecting nats route")
-			Expect(env.WaitForPodContainerLogMatchRegexp(env.Namespace, "test-nats-v1-0", "nats-nats", fmt.Sprintf(`%s:4223 - [\w:]+ - Route connection created`, clusterIPService.Spec.ClusterIP))).To(BeNil(), "error getting logs for resolving nats route address")
+			Expect(env.WaitForPodContainerLogMsg(env.Namespace, "test-nats-0", "nats-nats", fmt.Sprintf("Trying to connect to route on %s:4223", clusterIPService.Name))).To(BeNil(), "error getting logs for connecting nats route")
+			Expect(env.WaitForPodContainerLogMatchRegexp(env.Namespace, "test-nats-0", "nats-nats", fmt.Sprintf(`%s:4223 - [\w:]+ - Route connection created`, clusterIPService.Spec.ClusterIP))).To(BeNil(), "error getting logs for resolving nats route address")
 		})
 
 		It("executes the job's drain scripts", func() {
@@ -95,7 +96,7 @@ var _ = Describe("Lifecycle", func() {
 			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, "test", "drains", "1", 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
-			err = env.WaitForPodReady(env.Namespace, "test-drains-v1-0")
+			err = env.WaitForPodReady(env.Namespace, "test-drains-0")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Expect(env.WaitForPodContainerLogMsg(env.Namespace, "test-drains-v1-0", "delaying-drain-job-drain-watch", "ls: cannot access '/tmp/drain_logs': No such file or directory")).To(BeNil(), "error getting logs from drain_watch process")
@@ -106,12 +107,12 @@ var _ = Describe("Lifecycle", func() {
 			postAssertionWg.Add(2)
 			go func() {
 				preAssertionWg.Done()
-				Expect(env.WaitForPodContainerLogMsg(env.Namespace, "test-drains-v1-0", "delaying-drain-job-drain-watch", "delaying-drain-job.log")).To(BeNil(), "error finding file created by drain script")
+				Expect(env.WaitForPodContainerLogMsg(env.Namespace, "test-drains-0", "delaying-drain-job-drain-watch", "delaying-drain-job.log")).To(BeNil(), "error finding file created by drain script")
 				postAssertionWg.Done()
 			}()
 			go func() {
 				preAssertionWg.Done()
-				Expect(env.WaitForPodContainerLogMsg(env.Namespace, "test-drains-v1-0", "failing-drain-job-drain-watch", "failing-drain-job.log")).To(BeNil(), "error finding file created by drain script")
+				Expect(env.WaitForPodContainerLogMsg(env.Namespace, "test-drains-0", "failing-drain-job-drain-watch", "failing-drain-job.log")).To(BeNil(), "error finding file created by drain script")
 				postAssertionWg.Done()
 			}()
 			preAssertionWg.Wait()

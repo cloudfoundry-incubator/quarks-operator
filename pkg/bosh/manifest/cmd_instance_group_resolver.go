@@ -49,10 +49,10 @@ func NewInstanceGroupResolver(fs afero.Fs, basedir string, manifest Manifest, in
 // azs, env, variables and a map of all BOSH jobs in the instance group.
 // The output will be persisted by QuarksJob as 'bpm.yaml' in the
 // `<deployment-name>.bpm.<instance-group>-v<version>` secret.
-func (igr *InstanceGroupResolver) BPMInfo() (BPMInfo, error) {
+func (igr *InstanceGroupResolver) BPMInfo(initialRollout bool) (BPMInfo, error) {
 	bpmInfo := BPMInfo{}
 
-	err := igr.resolveManifest()
+	err := igr.resolveManifest(initialRollout)
 	if err != nil {
 		return bpmInfo, err
 	}
@@ -78,8 +78,8 @@ func (igr *InstanceGroupResolver) BPMInfo() (BPMInfo, error) {
 // That manifest includes the gathered data from BPM and links.
 // The output will be persisted by QuarksJob as 'properties.yaml' in the
 // `<deployment-name>.ig-resolved.<instance-group>-v<version>` secret.
-func (igr *InstanceGroupResolver) Manifest() (Manifest, error) {
-	err := igr.resolveManifest()
+func (igr *InstanceGroupResolver) Manifest(initialRollout bool) (Manifest, error) {
+	err := igr.resolveManifest(initialRollout)
 	if err != nil {
 		return Manifest{}, err
 	}
@@ -155,12 +155,12 @@ func (igr *InstanceGroupResolver) SaveLinks(path string) error {
 // * job properties
 // * bosh links
 // * bpm yaml file data
-func (igr *InstanceGroupResolver) resolveManifest() error {
+func (igr *InstanceGroupResolver) resolveManifest(initialRollout bool) error {
 	if err := runPreRenderScripts(igr.instanceGroup); err != nil {
 		return err
 	}
 
-	if err := igr.collectReleaseSpecsAndProviderLinks(); err != nil {
+	if err := igr.collectReleaseSpecsAndProviderLinks(initialRollout); err != nil {
 		return err
 	}
 
@@ -176,7 +176,7 @@ func (igr *InstanceGroupResolver) resolveManifest() error {
 }
 
 // collectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
-func (igr *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
+func (igr *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks(initialRollout bool) error {
 	for _, instanceGroup := range igr.manifest.InstanceGroups {
 		serviceName := igr.manifest.DNS.HeadlessServiceName(instanceGroup.Name)
 
@@ -201,7 +201,7 @@ func (igr *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks() error {
 			// Generate instance spec for each ig instance
 			// This will be stored inside the current job under
 			// job.properties.quarks
-			jobsInstances := instanceGroup.jobInstances(igr.manifest.Name, job.Name)
+			jobsInstances := instanceGroup.jobInstances(igr.manifest.Name, job.Name, initialRollout)
 
 			// set jobs.properties.quarks.instances with the ig instances
 			instanceGroup.Jobs[jobIdx].Properties.Quarks.Instances = jobsInstances

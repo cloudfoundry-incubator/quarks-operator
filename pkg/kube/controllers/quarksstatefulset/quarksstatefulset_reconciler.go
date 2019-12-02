@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -16,11 +17,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
@@ -107,29 +111,13 @@ func (r *ReconcileQuarksStatefulSet) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
-	// Get the current StatefulSet.
-	currentStatefulSet, currentVersion, err := GetMaxStatefulSetVersion(ctx, r.client, qStatefulSet)
-	if err != nil {
-		return reconcile.Result{}, ctxlog.WithEvent(qStatefulSet, "StatefulSetNotFound").Error(ctx, "Could not retrieve latest StatefulSet owned by QuarksStatefulSet '", request.NamespacedName, "': ", err)
-	}
-
 	// Calculate the desired statefulSets
-	desiredStatefulSets, desiredVersion, err := r.calculateDesiredStatefulSets(qStatefulSet, currentVersion)
+	desiredStatefulSets, err := r.calculateDesiredStatefulSets(ctx, qStatefulSet)
 	if err != nil {
 		return reconcile.Result{}, ctxlog.WithEvent(qStatefulSet, "CalculationError").Error(ctx, "Could not calculate StatefulSet owned by QuarksStatefulSet '", request.NamespacedName, "': ", err)
 	}
 
-	if qStatefulSet.Spec.Template.Spec.VolumeClaimTemplates != nil {
-		err := r.alterVolumeManagementStatefulSet(ctx, currentVersion, desiredVersion, qStatefulSet, currentStatefulSet)
-		if err != nil {
-			ctxlog.Error(ctx, "Alteration of VolumeManagement statefulSet failed for QuarksStatefulSet ", qStatefulSet.Name, " in namespace ", qStatefulSet.Namespace, ".", err)
-			return reconcile.Result{}, err
-		}
-	}
-
 	for _, desiredStatefulSet := range desiredStatefulSets {
-		desiredStatefulSet.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{}
-
 		// If it doesn't exist, create it
 		ctxlog.Info(ctx, "StatefulSet '", desiredStatefulSet.Name, "' owned by QuarksStatefulSet '", request.NamespacedName, "' not found, will be created.")
 
@@ -178,7 +166,7 @@ func (r *ReconcileQuarksStatefulSet) UpdateVersions(ctx context.Context, qStatef
 }
 
 // calculateDesiredStatefulSets generates the desired StatefulSets that should exist
-func (r *ReconcileQuarksStatefulSet) calculateDesiredStatefulSets(qStatefulSet *qstsv1a1.QuarksStatefulSet, currentVersion int) ([]v1beta2.StatefulSet, int, error) {
+func (r *ReconcileQuarksStatefulSet) calculateDesiredStatefulSets(ctx context.Context, qStatefulSet *qstsv1a1.QuarksStatefulSet) ([]v1beta2.StatefulSet, error) {
 	var desiredStatefulSets []v1beta2.StatefulSet
 
 	template := qStatefulSet.Spec.Template.DeepCopy()
@@ -186,13 +174,14 @@ func (r *ReconcileQuarksStatefulSet) calculateDesiredStatefulSets(qStatefulSet *
 	// Place the StatefulSet in the same namespace as the QuarksStatefulSet
 	template.SetNamespace(qStatefulSet.Namespace)
 
-	if template.Annotations == nil {
-		template.Annotations = map[string]string{}
+	// Set version
+	// Get the current StatefulSet.
+	_, currentVersion, err := GetMaxStatefulSetVersion(ctx, r.client, qStatefulSet)
+	if err != nil {
+		return nil, err
 	}
 
-	// Set version
 	desiredVersion := currentVersion + 1
-	template.Annotations[qstsv1a1.AnnotationVersion] = fmt.Sprintf("%d", desiredVersion)
 
 	if qStatefulSet.Spec.ZoneNodeLabel == "" {
 		qStatefulSet.Spec.ZoneNodeLabel = qstsv1a1.DefaultZoneNodeLabel
@@ -202,7 +191,7 @@ func (r *ReconcileQuarksStatefulSet) calculateDesiredStatefulSets(qStatefulSet *
 		for zoneIndex, zoneName := range qStatefulSet.Spec.Zones {
 			statefulSet, err := r.generateSingleStatefulSet(qStatefulSet, template, zoneIndex, zoneName, desiredVersion)
 			if err != nil {
-				return desiredStatefulSets, desiredVersion, errors.Wrapf(err, "Could not generate StatefulSet template for AZ '%d/%s'", zoneIndex, zoneName)
+				return desiredStatefulSets, errors.Wrapf(err, "Could not generate StatefulSet template for AZ '%d/%s'", zoneIndex, zoneName)
 			}
 			desiredStatefulSets = append(desiredStatefulSets, *statefulSet)
 		}
@@ -210,12 +199,12 @@ func (r *ReconcileQuarksStatefulSet) calculateDesiredStatefulSets(qStatefulSet *
 	} else {
 		statefulSet, err := r.generateSingleStatefulSet(qStatefulSet, template, 0, "", desiredVersion)
 		if err != nil {
-			return desiredStatefulSets, desiredVersion, errors.Wrap(err, "Could not generate StatefulSet template for single zone")
+			return desiredStatefulSets, errors.Wrap(err, "Could not generate StatefulSet template for single zone")
 		}
 		desiredStatefulSets = append(desiredStatefulSets, *statefulSet)
 	}
 
-	return desiredStatefulSets, desiredVersion, nil
+	return desiredStatefulSets, nil
 }
 
 // createStatefulSet creates a StatefulSet
@@ -228,13 +217,11 @@ func (r *ReconcileQuarksStatefulSet) createStatefulSet(ctx context.Context, qSta
 		return errors.Wrapf(err, "could not set owner for StatefulSet '%s' to QuarksStatefulSet '%s' in namespace '%s'", statefulSet.Name, qStatefulSet.Name, qStatefulSet.Namespace)
 	}
 
-	// Create the StatefulSet
-	if err := r.client.Create(ctx, statefulSet); err != nil {
-		return errors.Wrapf(err, "could not create StatefulSet '%s' for QuarksStatefulSet '%s' in namespace '%s'", statefulSet.Name, qStatefulSet.Name, qStatefulSet.Namespace)
+	// Create or update the StatefulSet
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.client, statefulSet, mutate.StatefulSetMutateFn(statefulSet)); err != nil {
+		return errors.Wrapf(err, "could not create or update StatefulSet '%s' for QuarksStatefulSet '%s' in namespace '%s'", statefulSet.Name, qStatefulSet.Name, qStatefulSet.Namespace)
 	}
-
-	ctxlog.Info(ctx, "Created StatefulSet '", statefulSet.Name, "' for QuarksStatefulSet '", qStatefulSet.Name, "' in namespace '", qStatefulSet.Namespace, "'.")
-
+	ctxlog.Info(ctx, "Created/Updated StatefulSet '", statefulSet.Name, "' for QuarksStatefulSet '", qStatefulSet.Name, "' in namespace '", qStatefulSet.Namespace, "'.")
 	return nil
 }
 
@@ -242,37 +229,15 @@ func (r *ReconcileQuarksStatefulSet) createStatefulSet(ctx context.Context, qSta
 func (r *ReconcileQuarksStatefulSet) generateSingleStatefulSet(qStatefulSet *qstsv1a1.QuarksStatefulSet, template *v1beta2.StatefulSet, zoneIndex int, zoneName string, version int) (*v1beta2.StatefulSet, error) {
 	statefulSet := template.DeepCopy()
 
-	// Get the labels and annotations
-	labels := statefulSet.GetLabels()
-	if labels == nil {
-		labels = make(map[string]string)
-	}
-	labels[manifest.LabelDeploymentVersion] = strconv.Itoa(version)
-	statefulSet.SetLabels(labels)
-
-	annotations := statefulSet.GetAnnotations()
-	if annotations == nil {
-		annotations = make(map[string]string)
-	}
-
 	statefulSetNamePrefix := qStatefulSet.GetName()
-
-	// Get the pod labels and annotations
-	podLabels := statefulSet.Spec.Template.GetLabels()
-	if podLabels == nil {
-		podLabels = make(map[string]string)
-	}
-	podAnnotations := statefulSet.Spec.Template.GetAnnotations()
-	if podAnnotations == nil {
-		podAnnotations = make(map[string]string)
-	}
+	labels := make(map[string]string)
+	annotations := make(map[string]string)
 
 	// Update available-zone specified properties
 	if zoneName != "" {
 		// Override name prefix with zoneIndex
 		statefulSetNamePrefix = fmt.Sprintf("%s-z%d", qStatefulSet.GetName(), zoneIndex)
 
-		labels[qstsv1a1.LabelAZIndex] = strconv.Itoa(zoneIndex)
 		labels[qstsv1a1.LabelAZName] = zoneName
 
 		zonesBytes, err := json.Marshal(qStatefulSet.Spec.Zones)
@@ -281,33 +246,25 @@ func (r *ReconcileQuarksStatefulSet) generateSingleStatefulSet(qStatefulSet *qst
 		}
 		annotations[qstsv1a1.AnnotationZones] = string(zonesBytes)
 
-		podLabels[qstsv1a1.LabelAZIndex] = strconv.Itoa(zoneIndex)
-		podLabels[qstsv1a1.LabelAZName] = zoneName
-
-		podAnnotations[qstsv1a1.AnnotationZones] = string(zonesBytes)
-
 		statefulSet = r.updateAffinity(statefulSet, qStatefulSet.Spec.ZoneNodeLabel, zoneName)
 	}
+	labels[qstsv1a1.LabelAZIndex] = strconv.Itoa(zoneIndex)
+	labels[qstsv1a1.LabelQStsName] = qStatefulSet.GetName()
 
-	podLabels[qstsv1a1.LabelAZIndex] = strconv.Itoa(zoneIndex)
-	podLabels[qstsv1a1.LabelQStsName] = qStatefulSet.GetName()
-	podLabels[manifest.LabelDeploymentVersion] = fmt.Sprintf("%d", version)
-
-	statefulSet.Spec.Template.SetLabels(podLabels)
-	statefulSet.Spec.Template.SetAnnotations(podAnnotations)
-
-	r.injectContainerEnv(&statefulSet.Spec.Template.Spec, zoneIndex, zoneName, qStatefulSet.Spec.Template.Spec.Replicas)
-
-	annotations[qstsv1a1.AnnotationVersion] = fmt.Sprintf("%d", version)
+	annotations[qstsv1a1.AnnotationVersion] = strconv.Itoa(version)
+	annotations[statefulset.AnnotationCanaryRolloutEnabled] = "true"
 
 	// Set updated properties
-	statefulSet.SetName(fmt.Sprintf("%s-v%d", statefulSetNamePrefix, version))
-	statefulSet.SetLabels(labels)
+	statefulSet.Spec.Template.SetLabels(util.UnionMaps(statefulSet.Spec.Template.GetLabels(), labels))
+	statefulSet.Spec.Template.SetAnnotations(util.UnionMaps(statefulSet.Spec.Template.GetAnnotations(), annotations))
+	statefulSet.SetName(statefulSetNamePrefix)
+	statefulSet.SetLabels(util.UnionMaps(statefulSet.GetLabels(), labels))
 	statefulSet.Spec.Selector = &metav1.LabelSelector{
 		MatchLabels: labels,
 	}
-	statefulSet.SetAnnotations(annotations)
+	statefulSet.SetAnnotations(util.UnionMaps(statefulSet.GetAnnotations(), annotations))
 
+	r.injectContainerEnv(&statefulSet.Spec.Template.Spec, zoneIndex, zoneName, qStatefulSet.Spec.Template.Spec.Replicas)
 	return statefulSet, nil
 }
 

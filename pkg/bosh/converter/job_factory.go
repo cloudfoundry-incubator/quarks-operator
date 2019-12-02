@@ -3,8 +3,10 @@ package converter
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 
 	"github.com/pkg/errors"
+
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1b1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -154,12 +156,13 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 }
 
 // InstanceGroupManifestJob generates the job to create an instance group manifest
-func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error) {
+func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest, initialRollout bool) (*qjv1a1.QuarksJob, error) {
 	containers := []corev1.Container{}
 	ct := containerTemplate{
-		manifestName: desiredManifestName(manifest.Name),
-		cmd:          "instance-group",
-		namespace:    f.Namespace,
+		manifestName:   desiredManifestName(manifest.Name),
+		cmd:            "instance-group",
+		namespace:      f.Namespace,
+		initialRollout: initialRollout,
 	}
 
 	linkOutputs := map[string]string{}
@@ -192,12 +195,13 @@ func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest) (*qjv1a1.Qu
 }
 
 // BPMConfigsJob returns an quarks job to calculate BPM information
-func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error) {
+func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest, initialRollout bool) (*qjv1a1.QuarksJob, error) {
 	containers := []corev1.Container{}
 	ct := containerTemplate{
-		manifestName: desiredManifestName(manifest.Name),
-		cmd:          "bpm-configs",
-		namespace:    f.Namespace,
+		manifestName:   desiredManifestName(manifest.Name),
+		cmd:            "bpm-configs",
+		namespace:      f.Namespace,
+		initialRollout: initialRollout,
 	}
 
 	for _, ig := range manifest.InstanceGroups {
@@ -223,9 +227,10 @@ func desiredManifestName(name string) string {
 }
 
 type containerTemplate struct {
-	manifestName string
-	cmd          string
-	namespace    string
+	manifestName   string
+	cmd            string
+	namespace      string
+	initialRollout bool
 }
 
 func (ct *containerTemplate) newUtilContainer(instanceGroupName string) corev1.Container {
@@ -233,7 +238,7 @@ func (ct *containerTemplate) newUtilContainer(instanceGroupName string) corev1.C
 		Name:            names.Sanitize(instanceGroupName),
 		Image:           GetOperatorDockerImage(),
 		ImagePullPolicy: GetOperatorImagePullPolicy(),
-		Args:            []string{"util", ct.cmd},
+		Args:            []string{"util", ct.cmd, "--initial-rollout", strconv.FormatBool(ct.initialRollout)},
 		VolumeMounts: []corev1.VolumeMount{
 			withOpsVolumeMount(ct.manifestName),
 			releaseSourceVolumeMount(),

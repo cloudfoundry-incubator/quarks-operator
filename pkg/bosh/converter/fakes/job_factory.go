@@ -53,7 +53,7 @@ type FakeJobFactory struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeJobFactory) BPMConfigsJob(arg1 manifest.Manifest) (*v1alpha1.QuarksJob, error) {
+func (fake *FakeJobFactory) BPMConfigsJob(arg1 manifest.Manifest, initialRollout bool) (*v1alpha1.QuarksJob, error) {
 	fake.bPMConfigsJobMutex.Lock()
 	ret, specificReturn := fake.bPMConfigsJobReturnsOnCall[len(fake.bPMConfigsJobArgsForCall)]
 	fake.bPMConfigsJobArgsForCall = append(fake.bPMConfigsJobArgsForCall, struct {
@@ -116,7 +116,7 @@ func (fake *FakeJobFactory) BPMConfigsJobReturnsOnCall(i int, result1 *v1alpha1.
 	}{result1, result2}
 }
 
-func (fake *FakeJobFactory) InstanceGroupManifestJob(arg1 manifest.Manifest) (*v1alpha1.QuarksJob, error) {
+func (fake *FakeJobFactory) InstanceGroupManifestJob(arg1 manifest.Manifest, initialRollout bool) (*v1alpha1.QuarksJob, error) {
 	fake.instanceGroupManifestJobMutex.Lock()
 	ret, specificReturn := fake.instanceGroupManifestJobReturnsOnCall[len(fake.instanceGroupManifestJobArgsForCall)]
 	fake.instanceGroupManifestJobArgsForCall = append(fake.instanceGroupManifestJobArgsForCall, struct {

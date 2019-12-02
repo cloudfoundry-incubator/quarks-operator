@@ -18,6 +18,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
@@ -285,6 +286,9 @@ func (c *Catalog) DefaultStatefulSet(name string) v1beta2.StatefulSet {
 	return v1beta2.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
+			Labels: map[string]string{
+				"testpod": "yes",
+			},
 		},
 		Spec: v1beta2.StatefulSetSpec{
 			Replicas: pointers.Int32(1),
@@ -398,6 +402,9 @@ func (c *Catalog) WrongStatefulSet(name string) v1beta2.StatefulSet {
 	return v1beta2.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
+			Annotations: map[string]string{
+				statefulset.AnnotationCanaryWatchTime: "30000",
+			},
 		},
 		Spec: v1beta2.StatefulSetSpec{
 			Replicas: pointers.Int32(1),
@@ -660,6 +667,15 @@ func (c *Catalog) NodePortService(name, ig string, targetPort int32) corev1.Serv
 			},
 		},
 	}
+}
+
+//BOSHManifestWithGlobalUpdateBlock returns a manifest with a global update block
+func (c *Catalog) BOSHManifestWithGlobalUpdateBlock() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithGlobalUpdateBlock))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
 }
 
 // BOSHManifestWithUpdateSerial returns a manifest with update serial

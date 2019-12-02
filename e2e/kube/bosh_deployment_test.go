@@ -21,19 +21,24 @@ var _ = Describe("BOSHDeployment", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Checking for pods")
-			err = kubectl.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-0", kubectl.PollTimeout)
+			err = kubectl.Wait(namespace, "ready", "pod/nats-deployment-nats-0", kubectl.PollTimeout)
 			Expect(err).ToNot(HaveOccurred())
-			err = kubectl.Wait(namespace, "ready", "pod/nats-deployment-nats-v1-1", kubectl.PollTimeout)
+			err = kubectl.Wait(namespace, "ready", "pod/nats-deployment-nats-1", kubectl.PollTimeout)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should not create unexpected resources", func() {
-			err := testing.RestartOperator(namespace)
+			status, err := kubectl.PodStatus(namespace, "nats-deployment-nats-0")
+			Expect(err).ToNot(HaveOccurred(), "error getting pod start time")
+			startTime := status.StartTime
+			err = testing.RestartOperator(namespace)
 			Expect(err).ToNot(HaveOccurred(), "error restarting cf-operator")
 
-			By("Checking for pods not created")
-			err = kubectl.Wait(namespace, "ready", "pod/nats-deployment-nats-v2-0", 10*time.Second)
-			Expect(err).To(HaveOccurred(), "error unexpected version of instance group is created")
+			By("Checking for pod not restarted")
+			time.Sleep(10 * time.Second)
+			status, err = kubectl.PodStatus(namespace, "nats-deployment-nats-0")
+			Expect(err).ToNot(HaveOccurred(), "error getting pod start time")
+			Expect(status.StartTime).To(Equal(startTime), "error pod must not be restarted")
 
 			By("Checking for secrets not created")
 			exist, err := kubectl.SecretExists(namespace, "nats-deployment.bpm.nats-v2")

@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
+
 	"k8s.io/api/apps/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -130,10 +131,51 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				ss := &v1beta2.StatefulSet{}
-				err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v1", Namespace: "default"}, ss)
+				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ss)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
+			})
+
+			It("sets no RollingUpdate even if replica=1", func() {
+				result, err := reconciler.Reconcile(request)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				ss := &v1beta2.StatefulSet{}
+				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ss)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			Context("with multiple replicas", func() {
+				var ss *v1beta2.StatefulSet
+				BeforeEach(func() {
+					desiredQStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(3)
+					client = fake.NewFakeClient(
+						desiredQStatefulSet,
+					)
+					manager.GetClientReturns(client)
+				})
+
+				JustBeforeEach(func() {
+					result, err := reconciler.Reconcile(request)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(result).To(Equal(reconcile.Result{}))
+
+					ss = &v1beta2.StatefulSet{}
+					err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ss)
+					Expect(err).ToNot(HaveOccurred())
+
+				})
+
+				It("sets annotation to start canary rollout", func() {
+					Expect(ss.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-rollout-enabled", "true"))
+				})
+
+				It("sets pod label for az index to 0 needed by service selector", func() {
+					Expect(ss.Spec.Template.GetLabels()).To(HaveKeyWithValue("quarks.cloudfoundry.org/az-index", "0"))
+				})
+
 			})
 
 			Context("When zones has the values", func() {
@@ -146,7 +188,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 					desiredQStatefulSet.Spec.Zones = zones
 				})
 
-				When("When zoneNodeLabel has default value", func() {
+				When("zoneNodeLabel has default value", func() {
 					BeforeEach(func() {
 						client = fake.NewFakeClient(
 							desiredQStatefulSet,
@@ -164,15 +206,15 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 						Expect(err).ToNot(HaveOccurred())
 
 						ssZ0 := &v1beta2.StatefulSet{}
-						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z0-v1", Namespace: "default"}, ssZ0)
+						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z0", Namespace: "default"}, ssZ0)
 						Expect(err).ToNot(HaveOccurred())
 
 						ssZ1 := &v1beta2.StatefulSet{}
-						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z1-v1", Namespace: "default"}, ssZ1)
+						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z1", Namespace: "default"}, ssZ1)
 						Expect(err).ToNot(HaveOccurred())
 
 						ssZ2 := &v1beta2.StatefulSet{}
-						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z2-v1", Namespace: "default"}, ssZ2)
+						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z2", Namespace: "default"}, ssZ2)
 						Expect(err).ToNot(HaveOccurred())
 
 						for idx, ss := range []*v1beta2.StatefulSet{ssZ0, ssZ1, ssZ2} {
@@ -248,6 +290,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 					var (
 						customizedNodeLabel string
 					)
+
 					BeforeEach(func() {
 						customizedNodeLabel = "fake-zone-label"
 						desiredQStatefulSet.Spec.ZoneNodeLabel = customizedNodeLabel
@@ -268,15 +311,15 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 						Expect(err).ToNot(HaveOccurred())
 
 						ssZ0 := &v1beta2.StatefulSet{}
-						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z0-v1", Namespace: "default"}, ssZ0)
+						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z0", Namespace: "default"}, ssZ0)
 						Expect(err).ToNot(HaveOccurred())
 
 						ssZ1 := &v1beta2.StatefulSet{}
-						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z1-v1", Namespace: "default"}, ssZ1)
+						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z1", Namespace: "default"}, ssZ1)
 						Expect(err).ToNot(HaveOccurred())
 
 						ssZ2 := &v1beta2.StatefulSet{}
-						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z2-v1", Namespace: "default"}, ssZ2)
+						err = client.Get(context.Background(), types.NamespacedName{Name: "foo-z2", Namespace: "default"}, ssZ2)
 						Expect(err).ToNot(HaveOccurred())
 
 						for idx, ss := range []*v1beta2.StatefulSet{ssZ0, ssZ1, ssZ2} {
@@ -350,6 +393,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 			var (
 				client *cfakes.FakeClient
 			)
+
 			BeforeEach(func() {
 				client = &cfakes.FakeClient{}
 				manager.GetClientReturns(client)
@@ -376,7 +420,6 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 		Context("when there are two versions", func() {
 			var (
 				desiredQStatefulSet *qstsv1a1.QuarksStatefulSet
-				v1StatefulSet       *v1beta2.StatefulSet
 				v2StatefulSet       *v1beta2.StatefulSet
 			)
 
@@ -389,33 +432,20 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 					},
 					Spec: qstsv1a1.QuarksStatefulSetSpec{
 						Template: v1beta2.StatefulSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Labels: map[string]string{
+									"test": "2",
+								},
+							},
 							Spec: v1beta2.StatefulSetSpec{
 								Replicas: pointers.Int32(1),
 							},
 						},
 					},
 				}
-				v1StatefulSet = &v1beta2.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo-v1",
-						Namespace: "default",
-						UID:       "foo-v1-uid",
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								Name:               "foo",
-								UID:                "foo-uid",
-								Controller:         pointers.Bool(true),
-								BlockOwnerDeletion: pointers.Bool(true),
-							},
-						},
-						Annotations: map[string]string{
-							qstsv1a1.AnnotationVersion: "1",
-						},
-					},
-				}
 				v2StatefulSet = &v1beta2.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo-v2",
+						Name:      "foo",
 						Namespace: "default",
 						UID:       "foo-v2-uid",
 						OwnerReferences: []metav1.OwnerReference{
@@ -434,17 +464,16 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 
 				client = fake.NewFakeClient(
 					desiredQStatefulSet,
-					v1StatefulSet,
 					v2StatefulSet,
 				)
 				manager.GetClientReturns(client)
 			})
 
-			It("creates version 3 is running", func() {
+			It("creates version 3", func() {
 				ss := &v1beta2.StatefulSet{}
-				err := client.Get(context.Background(), types.NamespacedName{Name: "foo-v3", Namespace: "default"}, ss)
-				Expect(err).To(HaveOccurred())
-				Expect(errors.IsNotFound(err)).To(BeTrue())
+				err := client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ss)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(ss.GetAnnotations()).To(HaveKeyWithValue(qstsv1a1.AnnotationVersion, "2"))
 
 				result, err := reconciler.Reconcile(request)
 				Expect(err).ToNot(HaveOccurred())
@@ -454,10 +483,11 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ess)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = client.Get(context.Background(), types.NamespacedName{Name: "foo-v3", Namespace: "default"}, ss)
+				err = client.Get(context.Background(), types.NamespacedName{Name: "foo", Namespace: "default"}, ss)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(metav1.IsControlledBy(ss, ess)).To(BeTrue())
+				Expect(ss.GetAnnotations()).To(HaveKeyWithValue(qstsv1a1.AnnotationVersion, "3"))
 			})
 		})
 	})

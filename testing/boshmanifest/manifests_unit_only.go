@@ -22,6 +22,9 @@ instance_groups:
   vm_type: medium
   stemcell: default
   persistent_disk_type: medium
+  update:
+    update_watch_time: "120000000"
+    canary_watch_time: 20000-1200000
   networks:
   - name: default
   properties:
@@ -43,6 +46,9 @@ instance_groups:
   lifecycle: service
   persistent_disk: 1024
   persistent_disk_type: "standard"
+  update:
+    canary_watch_time: 20000-1200000
+    update_watch_time: "120000000"
   vm_type: small-highmem
   vm_extensions:
   - 100GB_ephemeral_disk
@@ -555,6 +561,7 @@ const WithZeroInstances = `---
 name: nats-manifest
 update:
   serial: false
+  update_watch_time: 2
 releases:
 - name: nats
   version: "26"
@@ -2426,6 +2433,64 @@ instance_groups:
   name: log-api
 name: scf-dev
 variables: []`
+
+// BPMReleaseWithGlobalUpdateBlock contains a manifest with a global update block
+const BPMReleaseWithGlobalUpdateBlock = `
+name: bpm
+releases:
+- name: bpm
+  version: 1.0.4
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 36.g03b4653-30.80-7.0.0_316.gcf9fe4a7
+update:
+  serial: false
+  canary_watch_time: 20000-1200000
+  update_watch_time: 20000-1200000
+instance_groups:
+- name: bpm1
+  jobs:
+  - name: test-server
+    release: bpm
+    properties:
+      quarks:
+        ports:
+        - name: test-server
+          protocol: TCP
+          internal: 1337
+- name: bpm2
+  update:
+    serial: true
+  jobs:
+  - name: test-server
+    release: bpm
+    properties:
+      quarks:
+        ports:
+        - name: test-server
+          protocol: TCP
+          internal: 1337
+        - name: alt-test-server
+          protocol: TCP
+          internal: 1338
+- name: bpm3
+  update:
+    canary_watch_time: 10000-9900000
+    update_watch_time: 10000-9900000
+  jobs:
+  - name: test-server3
+    release: bpm
+    properties:
+      quarks:
+        ports:
+        - name: test-server
+          protocol: TCP
+          internal: 1337
+        - name: alt-test-server
+          protocol: TCP
+          internal: 1338
+`
 
 // BPMReleaseWithUpdateSerial contains a manifest with some dependent instance groups
 const BPMReleaseWithUpdateSerial = `

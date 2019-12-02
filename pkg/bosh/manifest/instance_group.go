@@ -7,6 +7,7 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
@@ -115,8 +116,15 @@ func (ig *InstanceGroup) IndexedServiceName(deploymentName string, index int) st
 func (ig *InstanceGroup) jobInstances(
 	deploymentName string,
 	jobName string,
+	initialRollout bool,
 ) []JobInstance {
 	var jobsInstances []JobInstance
+
+	bootstrapIndex := 0
+	if !initialRollout {
+		bootstrapIndex = ig.Instances*len(ig.AZs) - 1
+	}
+
 	for i := 0; i < ig.Instances; i++ {
 		// TODO: Understand whether there are negative side-effects to using this
 		// default or not.
@@ -133,7 +141,7 @@ func (ig *InstanceGroup) jobInstances(
 			jobsInstances = append(jobsInstances, JobInstance{
 				Address:   address,
 				AZ:        az,
-				Bootstrap: index == 0,
+				Bootstrap: index == bootstrapIndex,
 				Index:     index,
 				Instance:  i,
 				Name:      name,
