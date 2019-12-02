@@ -134,7 +134,7 @@ func (r *ResolverImpl) WithOpsManifest(ctx context.Context, instance *bdv1.BOSHD
 
 	varSecrets := make([]string, len(vars))
 	for i, v := range vars {
-		varSecretName := names.CalculateSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), v)
+		varSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), v)
 		varData, err := r.resourceData(namespace, bdv1.SecretReference, varSecretName, bdv1.ImplicitVariableKeyName)
 		if err != nil {
 			return nil, varSecrets, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
@@ -209,7 +209,7 @@ func (r *ResolverImpl) WithOpsManifestDetailed(ctx context.Context, instance *bd
 
 	varSecrets := make([]string, len(vars))
 	for i, v := range vars {
-		varSecretName := names.CalculateSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), v)
+		varSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), v)
 		varData, err := r.resourceData(namespace, bdv1.SecretReference, varSecretName, bdv1.ImplicitVariableKeyName)
 		if err != nil {
 			return nil, varSecrets, errors.Wrapf(err, "failed to load secret for variable '%s'", v)

@@ -209,7 +209,7 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 	}
 
 	// Fetch ig resolved secret version
-	igResolvedSecretName := names.CalculateIGSecretName(
+	igResolvedSecretName := names.InstanceGroupSecretName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
 		manifest.Name,
 		instanceGroupName,

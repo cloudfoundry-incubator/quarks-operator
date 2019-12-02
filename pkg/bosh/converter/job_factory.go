@@ -62,7 +62,7 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 	args := []string{"util", "variable-interpolation"}
 
 	// This is the source manifest, that still has the '((vars))'
-	manifestSecretName := names.CalculateSecretName(names.DeploymentSecretTypeManifestWithOps, manifest.Name, "")
+	manifestSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeManifestWithOps, manifest.Name, "")
 
 	// Prepare Volumes and Volume mounts
 
@@ -72,7 +72,7 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 	// We need a volume and a mount for each input variable
 	for _, variable := range manifest.Variables {
 		varName := variable.Name
-		varSecretName := names.CalculateSecretName(names.DeploymentSecretTypeVariable, manifest.Name, varName)
+		varSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeVariable, manifest.Name, varName)
 
 		volumes = append(volumes, variableVolume(varSecretName))
 		volumeMounts = append(volumeMounts, variableVolumeMount(varSecretName, varName))
@@ -270,7 +270,7 @@ func (ct *containerTemplate) newUtilContainer(instanceGroupName string) corev1.C
 
 // releaseImageQJob collects outputs, like bpm, links or ig manifests, from the BOSH release images
 func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, secretType names.DeploymentSecretType, containers []corev1.Container) (*qjv1a1.QuarksJob, error) {
-	outputSecretNamePrefix := names.CalculateIGSecretPrefix(secretType, manifest.Name)
+	outputSecretNamePrefix := names.DeploymentSecretPrefix(secretType, manifest.Name)
 
 	initContainers := []corev1.Container{}
 	doneSpecCopyingReleases := map[string]bool{}
