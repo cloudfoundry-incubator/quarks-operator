@@ -1,4 +1,4 @@
-package statefulset
+package statefulset_test
 
 import (
 	"context"
@@ -9,11 +9,6 @@ import (
 	"go.uber.org/zap"
 	"gomodules.xyz/jsonpatch/v2"
 
-	cfcfg "code.cloudfoundry.org/quarks-utils/pkg/config"
-	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
-	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
-	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
-
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -21,6 +16,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/json"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
+	cfcfg "code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
+	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
 
 var _ = Describe("When the muatating webhook handles a statefulset", func() {
@@ -137,16 +138,6 @@ var _ = Describe("When the muatating webhook handles a statefulset", func() {
 			Expect(response.Patches).To(ContainElement(
 				jsonpatch.Operation{Operation: "add", Path: "/spec/updateStrategy/type", Value: "RollingUpdate"},
 			))
-
-			// Does not work because no deepequal check (value is a map/reference)
-			//Expect(response.Patches).To(ContainElement(
-			//	jsonpatch.Operation{Operation: "add", Path: "/spec/updateStrategy/rollingUpdate", Value: map[string]interface{}{"partition": 0}},
-			//))
-
-			// Does not work because of unix timestamp
-			//Expect(response.Patches).To(ContainElement(
-			//	jsonpatch.Operation{Operation: "add", Path: "/metadata/annotations/quarks.cloudfoundry.org~1update-start-time", Value: "1574265011"},
-			//))
 
 			Expect(response.AdmissionResponse.Allowed).To(BeTrue())
 		})
