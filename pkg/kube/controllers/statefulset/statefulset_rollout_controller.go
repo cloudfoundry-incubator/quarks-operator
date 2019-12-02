@@ -61,7 +61,7 @@ func AddStatefulSetRollout(ctx context.Context, config *config.Config, mgr manag
 func CheckUpdate(e event.UpdateEvent) bool {
 	newSts := e.ObjectNew.(*v1beta2.StatefulSet)
 	state, ok := newSts.Annotations[AnnotationCanaryRollout]
-	if !ok {
+	if !ok || state == rolloutStateDone || state == rolloutStateFailed {
 		return false
 	}
 	if state == rolloutStatePending {
