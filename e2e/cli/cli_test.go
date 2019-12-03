@@ -146,7 +146,7 @@ var _ = Describe("CLI", func() {
 			Eventually(session.Out).Should(Say(`Flags:
   -m, --bosh-manifest-path string   \(BOSH_MANIFEST_PATH\) path to the bosh manifest file
   -h, --help                        help for variable-interpolation
-      --output-file-path string     \(OUTPUT_FILE_PATH\) Path of the file to which json output is redirected.
+      --output-file-path string     \(OUTPUT_FILE_PATH\) Path of the file to which json output is written.
   -v, --variables-dir string        \(VARIABLES_DIR\) path to the variables dir`))
 		})
 
@@ -181,8 +181,9 @@ var _ = Describe("CLI", func() {
   -b, --base-dir string              \(BASE_DIR\) a path to the base directory
   -m, --bosh-manifest-path string    \(BOSH_MANIFEST_PATH\) path to the bosh manifest file
   -h, --help                         help for instance-group
+      --initial-rollout              \(INITIAL_ROLLOUT\) Initial rollout of bosh deployment. \(default true\)
   -g, --instance-group-name string   \(INSTANCE_GROUP_NAME\) name of the instance group for data gathering
-      --output-file-path string      \(OUTPUT_FILE_PATH\) Path of the file to which json output is redirected.`))
+      --output-file-path string      \(OUTPUT_FILE_PATH\) Path of the file to which json output is written.`))
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
@@ -216,8 +217,9 @@ var _ = Describe("CLI", func() {
   -b, --base-dir string              \(BASE_DIR\) a path to the base directory
   -m, --bosh-manifest-path string    \(BOSH_MANIFEST_PATH\) path to the bosh manifest file
   -h, --help                         help for bpm-configs
+      --initial-rollout              \(INITIAL_ROLLOUT\) Initial rollout of bosh deployment. \(default true\)
   -g, --instance-group-name string   \(INSTANCE_GROUP_NAME\) name of the instance group for data gathering
-      --output-file-path string      \(OUTPUT_FILE_PATH\) Path of the file to which json output is redirected.`))
+      --output-file-path string      \(OUTPUT_FILE_PATH\) Path of the file to which json output is written.`))
 		})
 
 		It("accepts the bosh-manifest-path as a parameter", func() {
@@ -251,6 +253,7 @@ var _ = Describe("CLI", func() {
       --az-index int                 \(AZ_INDEX\) az index \(default -1\)
   -m, --bosh-manifest-path string    \(BOSH_MANIFEST_PATH\) path to the bosh manifest file
   -h, --help                         help for template-render
+      --initial-rollout              \(INITIAL_ROLLOUT\) Initial rollout of bosh deployment. \(default true\)
   -g, --instance-group-name string   \(INSTANCE_GROUP_NAME\) name of the instance group for data gathering
   -j, --jobs-dir string              \(JOBS_DIR\) path to the jobs dir.
   -d, --output-dir string            \(OUTPUT_DIR\) path to output dir. \(default "/var/vcap/jobs"\)

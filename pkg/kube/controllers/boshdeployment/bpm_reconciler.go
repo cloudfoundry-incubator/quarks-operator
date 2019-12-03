@@ -34,11 +34,6 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
-// DesiredManifest unmarshals desired manifest from the manifest secret
-type DesiredManifest interface {
-	DesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error)
-}
-
 // KubeConverter converts k8s resources from single BOSH manifest
 type KubeConverter interface {
 	BPMResources(manifestName string, dns manifest.DomainNameService, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*converter.BPMResources, error)
@@ -48,7 +43,7 @@ type KubeConverter interface {
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 
 // NewBPMReconciler returns a new reconcile.Reconciler
-func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver DesiredManifest, srf setReferenceFunc, kubeConverter KubeConverter) reconcile.Reconciler {
+func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver converter.DesiredManifest, srf setReferenceFunc, kubeConverter KubeConverter) reconcile.Reconciler {
 	return &ReconcileBPM{
 		ctx:                  ctx,
 		config:               config,
@@ -67,7 +62,7 @@ type ReconcileBPM struct {
 	config               *config.Config
 	client               client.Client
 	scheme               *runtime.Scheme
-	resolver             DesiredManifest
+	resolver             converter.DesiredManifest
 	setReference         setReferenceFunc
 	kubeConverter        KubeConverter
 	versionedSecretStore versionedsecretstore.VersionedSecretStore

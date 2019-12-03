@@ -1,7 +1,7 @@
 module code.cloudfoundry.org/cf-operator
 
 require (
-	code.cloudfoundry.org/quarks-job v0.0.0-20191120115056-1642b1e5e3c5
+	code.cloudfoundry.org/quarks-job v0.0.0-20191129095316-23b0d08e8376
 	code.cloudfoundry.org/quarks-utils v0.0.0-20191114145816-f753780f6d4f
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
 	github.com/charlievieth/fs v0.0.0-20170613215519-7dc373669fa1 // indirect
@@ -35,11 +35,13 @@ require (
 	github.com/viovanov/bosh-template-go v0.0.0-20190801125410-a195ef3de03a
 	go.uber.org/zap v1.13.0
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
+	gomodules.xyz/jsonpatch/v2 v2.0.1
 	gopkg.in/yaml.v2 v2.2.7
 	k8s.io/api v0.0.0-20190409021203-6e4e0e4f393b
 	k8s.io/apiextensions-apiserver v0.0.0-20190409022649-727a075fdec8
 	k8s.io/apimachinery v0.0.0-20190404173353-6a84e37a896d
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
+	k8s.io/utils v0.0.0-20190506122338-8fab8cb257d5
 	sigs.k8s.io/controller-runtime v0.2.2
 	sigs.k8s.io/yaml v1.1.0
 )

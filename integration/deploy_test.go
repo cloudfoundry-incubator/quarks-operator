@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -20,7 +21,7 @@ import (
 
 var _ = Describe("Deploy", func() {
 	Context("when using the default configuration", func() {
-		stsName := "test-nats-v1"
+		stsName := "test-nats"
 		headlessSvcName := "test-nats"
 		clusterIpSvcName := "test-nats-0"
 
@@ -88,7 +89,7 @@ var _ = Describe("Deploy", func() {
 	})
 
 	Context("when using pre-render scripts", func() {
-		podName := "test-nats-v1-0"
+		podName := "test-nats-0"
 
 		It("it should run them", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, corev1.ConfigMap{
@@ -242,7 +243,7 @@ var _ = Describe("Deploy", func() {
 					// nats is a special release which consumes itself. So, whenever these is change related instances or azs
 					// nats statefulset gets updated 2 times. TODO: need to fix this later.
 					By("checking for instance group updated pods")
-					err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "3", 1)
+					err = env.WaitForInstanceGroupVersionAllReplicas(env.Namespace, "test", "nats", 1, "2", "3")
 					Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 				})
 			})
@@ -314,10 +315,6 @@ var _ = Describe("Deploy", func() {
 					err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "2", 2)
 					Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
-					found, err := env.StatefulSetExist(env.Namespace, "test-nats-v1")
-					Expect(found).To(BeFalse())
-					Expect(err).NotTo(HaveOccurred())
-
 					// Stop the watcher if it's still running
 					close(stopChan)
 
@@ -357,20 +354,20 @@ var _ = Describe("Deploy", func() {
 				scaleDeployment("2")
 
 				By("checking for instance group updated pods")
-				err := env.WaitForInstanceGroup(env.Namespace, "test", "nats", "3", 2)
+				err := env.WaitForInstanceGroupVersionAllReplicas(env.Namespace, "test", "nats", 2, "2", "3")
 				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
-				pods, _ := env.GetInstanceGroupPods(env.Namespace, "test", "nats", "3")
+				pods, _ := env.GetInstanceGroupPods(env.Namespace, "test", "nats")
 				Expect(len(pods.Items)).To(Equal(2))
 
 				By("updating the deployment again")
 				scaleDeployment("3")
 
 				By("checking if the deployment was again updated")
-				err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "5", 3)
+				err = env.WaitForInstanceGroupVersionAllReplicas(env.Namespace, "test", "nats", 3, "3", "4", "5")
 				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
 
-				pods, _ = env.GetInstanceGroupPods(env.Namespace, "test", "nats", "5")
+				pods, _ = env.GetInstanceGroupPods(env.Namespace, "test", "nats")
 				Expect(len(pods.Items)).To(Equal(3))
 			})
 		})
@@ -411,12 +408,12 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("Checking volume mounts with secret versions")
-			pod, err := env.GetPod(env.Namespace, manifestName+"-nats-v2-1")
+			pod, err := env.GetPod(env.Namespace, manifestName+"-nats-1")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal(manifestName + ".ig-resolved.nats-v2"))
 			Expect(pod.Spec.InitContainers[2].VolumeMounts[2].Name).To(Equal("ig-resolved"))
 
-			pod, err = env.GetPod(env.Namespace, manifestName+"-route-registrar-v2-0")
+			pod, err = env.GetPod(env.Namespace, manifestName+"-route-registrar-0")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal(manifestName + ".ig-resolved.route-registrar-v2"))
 			Expect(pod.Spec.InitContainers[2].VolumeMounts[2].Name).To(Equal("ig-resolved"))

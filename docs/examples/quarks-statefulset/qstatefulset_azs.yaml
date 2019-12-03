@@ -6,11 +6,11 @@ spec:
   zones: ["dal10", "dal13"]
   updateOnConfigChange: true
   template:
+    metadata:
+      labels:
+        app: example-statefulset
     spec:
       replicas: 2
-      selector:
-        matchLabels:
-          app: example-statefulset
       template:
         metadata:
           labels:

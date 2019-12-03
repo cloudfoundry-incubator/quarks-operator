@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/go-test/deep"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"github.com/go-test/deep"
+	"github.com/spf13/afero"
 
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/testing"
@@ -18,7 +18,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 	var (
 		m   *Manifest
 		env testing.Catalog
-		dg  *InstanceGroupResolver
+		igr *InstanceGroupResolver
 		ig  string
 		err error
 	)
@@ -61,13 +61,15 @@ var _ = Describe("InstanceGroupResolver", func() {
 	})
 
 	Context("InstanceGroupResolver", func() {
+		var fs = afero.NewMemMapFs()
+
 		JustBeforeEach(func() {
 			var err error
-			dg, err = NewInstanceGroupResolver(assetPath, *m, ig)
+			igr, err = NewInstanceGroupResolver(fs, assetPath, *m, ig)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		Describe("BPMConfig", func() {
+		Describe("BPMInfo", func() {
 			BeforeEach(func() {
 				m, err = env.BOSHManifestWithProviderAndConsumer()
 				Expect(err).NotTo(HaveOccurred())
@@ -75,7 +77,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 			})
 
 			It("it should have info about instances, azs", func() {
-				bpmInfo, err := dg.BPMInfo()
+				bpmInfo, err := igr.BPMInfo(true)
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(bpmInfo).ToNot(BeNil())
@@ -85,7 +87,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 			})
 
 			It("returns the bpm config for all jobs", func() {
-				bpmInfo, err := dg.BPMInfo()
+				bpmInfo, err := igr.BPMInfo(true)
 				Expect(err).ToNot(HaveOccurred())
 
 				bpm := bpmInfo.Configs["loggregator_trafficcontroller"]
@@ -123,7 +125,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 				})
 
 				It("returns overwritten bpm config", func() {
-					bpmInfo, err := dg.BPMInfo()
+					bpmInfo, err := igr.BPMInfo(true)
 					Expect(err).ToNot(HaveOccurred())
 
 					bpm := bpmInfo.Configs["redis-server"]
@@ -140,7 +142,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 				})
 
 				It("returns merged bpm config", func() {
-					bpmInfo, err := dg.BPMInfo()
+					bpmInfo, err := igr.BPMInfo(true)
 					Expect(err).ToNot(HaveOccurred())
 
 					bpm := bpmInfo.Configs["redis-server"]
@@ -159,7 +161,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 				})
 
 				It("reports an error if the job had empty bpm configs", func() {
-					_, err := dg.BPMInfo()
+					_, err := igr.BPMInfo(true)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("Empty bpm configs about job '%s'", ig)))
 				})
@@ -167,13 +169,13 @@ var _ = Describe("InstanceGroupResolver", func() {
 
 			Context("with process resources", func() {
 				BeforeEach(func() {
-					m, err = env.BoshManifestWithResources()
+					m, err = env.BOSHManifestWithResources()
 					Expect(err).NotTo(HaveOccurred())
 					ig = "doppler"
 				})
 
 				It("returns the bpm with resources for process", func() {
-					bpmInfo, err := dg.BPMInfo()
+					bpmInfo, err := igr.BPMInfo(true)
 					Expect(err).ToNot(HaveOccurred())
 
 					bpm := bpmInfo.Configs["doppler"]
@@ -184,45 +186,50 @@ var _ = Describe("InstanceGroupResolver", func() {
 			})
 			Context("with process resources", func() {
 				BeforeEach(func() {
-					m, err = env.BoshManifestWithResources()
+					m, err = env.BOSHManifestWithResources()
 					Expect(err).NotTo(HaveOccurred())
 					ig = "log-api"
 				})
 
 				It("raises an error for bpm process without executable", func() {
-					_, err := dg.BPMInfo()
+					_, err := igr.BPMInfo(true)
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("invalid BPM process"))
 				})
 			})
 		})
+
 		Describe("Manifest", func() {
-			BeforeEach(func() {
-				m, err = env.ElaboratedBOSHManifest()
-				Expect(err).NotTo(HaveOccurred())
-				ig = "redis-slave"
-			})
+			Context("when manifest has multiple instances", func() {
+				BeforeEach(func() {
+					m, err = env.ElaboratedBOSHManifest()
+					Expect(err).NotTo(HaveOccurred())
+					ig = "redis-slave"
+				})
 
-			It("should not have info about job instances, instance count, azs", func() {
-				manifest, err := dg.Manifest()
-				Expect(err).ToNot(HaveOccurred())
+				It("should remove info about job instances, instance count, azs", func() {
+					manifest, err := igr.Manifest(true)
+					Expect(err).ToNot(HaveOccurred())
 
-				//Check JobInstance for the redis-server job
-				Expect(manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Instances).To(BeNil())
-				Expect(manifest.InstanceGroups[0].Instances).To(Equal(0))
-				Expect(manifest.InstanceGroups[0].AZs).To(BeNil())
+					Expect(manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Instances).To(BeNil())
+					Expect(manifest.InstanceGroups[0].Instances).To(Equal(0))
+					Expect(manifest.InstanceGroups[0].AZs).To(BeNil())
+				})
 			})
 
 			Context("when resolving links between providers and consumers", func() {
+				BeforeEach(func() {
+					m, err = env.BOSHManifestWithProviderAndConsumer()
+					Expect(err).NotTo(HaveOccurred())
+				})
+
 				Context("when the job consumes a link", func() {
 					BeforeEach(func() {
-						m, err = env.BOSHManifestWithProviderAndConsumer()
-						Expect(err).NotTo(HaveOccurred())
 						ig = "log-api"
 					})
 
 					It("resolves all required data if the job consumes a link", func() {
-						m, err := dg.Manifest()
+						m, err := igr.Manifest(true)
 						Expect(err).ToNot(HaveOccurred())
 
 						instanceGroup, ok := m.InstanceGroups.InstanceGroupByName(ig)
@@ -231,7 +238,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 						jobQuarksConsumes := instanceGroup.Jobs[0].Properties.Quarks.Consumes
 						jobConsumesFromDoppler, consumeFromDopplerExists := jobQuarksConsumes["doppler"]
 						Expect(consumeFromDopplerExists).To(BeTrue())
-						expectedProperties := map[string]interface{}{
+						expectedProperties := JobLinkProperties{
 							"doppler": map[string]interface{}{
 								"grpc_port": json.Number("7765"),
 							},
@@ -244,12 +251,10 @@ var _ = Describe("InstanceGroupResolver", func() {
 
 				Context("when the job does not consume a link", func() {
 					BeforeEach(func() {
-						m, err = env.BOSHManifestWithProviderAndConsumer()
-						Expect(err).NotTo(HaveOccurred())
 						ig = "doppler"
 					})
 					It("has an empty consumes list if the job does not consume a link", func() {
-						m, err := dg.Manifest()
+						m, err := igr.Manifest(true)
 						Expect(err).ToNot(HaveOccurred())
 
 						ig, ok := m.InstanceGroups.InstanceGroupByName(ig)
@@ -262,7 +267,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 				})
 			})
 
-			Context("when specifying consume as nil ", func() {
+			Context("when specifying consume as nil", func() {
 				BeforeEach(func() {
 					m, err = env.BOSHManifestWithNilConsume()
 					Expect(err).NotTo(HaveOccurred())
@@ -270,7 +275,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 				})
 
 				It("resolves all required data if the job consumes a link", func() {
-					manifest, err := dg.Manifest()
+					manifest, err := igr.Manifest(true)
 					Expect(err).ToNot(HaveOccurred())
 
 					// log-api instance_group, with loggregator_trafficcontroller job, consumes nil link from log-cache
@@ -278,6 +283,25 @@ var _ = Describe("InstanceGroupResolver", func() {
 					jobConsumesFromLogCache, consumeFromLogCacheExists := jobQuarksConsumes["log-cache"]
 					Expect(consumeFromLogCacheExists).To(BeTrue())
 					Expect(jobConsumesFromLogCache).To(Equal(JobLink{}))
+				})
+			})
+		})
+
+		Describe("SaveLinks", func() {
+			Context("when jobs provide links", func() {
+				BeforeEach(func() {
+					m, err = env.BOSHManifestWithLinks()
+					Expect(err).NotTo(HaveOccurred())
+					ig = "nats"
+				})
+
+				It("stores all the links of the instance group in a file", func() {
+					_, err := igr.Manifest(true)
+					Expect(err).ToNot(HaveOccurred())
+					err = igr.SaveLinks("/mnt/quarks")
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(afero.Exists(fs, "/mnt/quarks/provides.json")).To(BeTrue())
 				})
 			})
 		})

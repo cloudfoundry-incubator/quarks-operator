@@ -656,7 +656,7 @@ After creating a `BOSHDeployment` named `nats-deployment`, with one Instance Gro
 - `Secrets`
 
   ```text
-  nats-deployment.bpm.nats-v1
+  nats-deployment.bpm.nats
   nats-deployment.ig-resolved.nats-v1
   nats-deployment.var-nats-password
   nats-deployment.with-ops
@@ -666,14 +666,14 @@ After creating a `BOSHDeployment` named `nats-deployment`, with one Instance Gro
 - `StatefulSets`
 
   ```text
-  nats-deployment-nats-v1
+  nats-deployment-nats
   ```
 
 - `Pods`
 
   ```text
-  nats-deployment-nats-v1-0
-  nats-deployment-nats-v1-1
+  nats-deployment-nats-0
+  nats-deployment-nats-1
   ```
 
 - `Services`

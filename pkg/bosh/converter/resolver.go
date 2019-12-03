@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,6 +27,11 @@ type Resolver interface {
 	WithOpsManifestDetailed(ctx context.Context, instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
 }
 
+// DesiredManifest unmarshals desired manifest from the manifest secret
+type DesiredManifest interface {
+	DesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error)
+}
+
 // ResolverImpl resolves references from bdpl CRD to a BOSH manifest
 type ResolverImpl struct {
 	client               client.Client
@@ -36,8 +42,16 @@ type ResolverImpl struct {
 // NewInterpolatorFunc returns a fresh Interpolator
 type NewInterpolatorFunc func() Interpolator
 
+// NewDesiredManifest constructs a resolver
+func NewDesiredManifest(client client.Client) DesiredManifest {
+	return &ResolverImpl{
+		client:               client,
+		versionedSecretStore: versionedsecretstore.NewVersionedSecretStore(client),
+	}
+}
+
 // NewResolver constructs a resolver
-func NewResolver(client client.Client, f NewInterpolatorFunc) *ResolverImpl {
+func NewResolver(client client.Client, f NewInterpolatorFunc) Resolver {
 	return &ResolverImpl{
 		client:               client,
 		newInterpolatorFunc:  f,
@@ -135,9 +149,7 @@ func (r *ResolverImpl) WithOpsManifest(ctx context.Context, instance *bdv1.BOSHD
 	if err != nil {
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}
-
-	manifest.CalculateRequiredServices()
-
+	manifest.ApplyUpdateBlock()
 	return manifest, varSecrets, err
 }
 
@@ -213,7 +225,7 @@ func (r *ResolverImpl) WithOpsManifestDetailed(ctx context.Context, instance *bd
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}
 
-	manifest.CalculateRequiredServices()
+	manifest.ApplyUpdateBlock()
 
 	return manifest, varSecrets, err
 }

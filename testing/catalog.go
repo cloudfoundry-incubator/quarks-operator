@@ -8,7 +8,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
-	"k8s.io/api/apps/v1beta2"
+
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -17,6 +18,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
@@ -42,7 +44,7 @@ func (c *Catalog) DefaultConfig() *config.Config {
 	}
 }
 
-// DefaultBOSHManifest for tests
+// DefaultBOSHManifest returns a BOSH manifest for unit tests
 func (c *Catalog) DefaultBOSHManifest() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.Default))
 	if err != nil {
@@ -60,8 +62,8 @@ func (c *Catalog) ElaboratedBOSHManifest() (*manifest.Manifest, error) {
 	return m, nil
 }
 
-// BoshManifestWithResources for data gathering tests
-func (c *Catalog) BoshManifestWithResources() (*manifest.Manifest, error) {
+// BOSHManifestWithResources for data gathering tests
+func (c *Catalog) BOSHManifestWithResources() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.WithResources))
 	if err != nil {
 		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
@@ -132,9 +134,10 @@ func (c *Catalog) BOSHManifestWithBPMRelease() (*manifest.Manifest, error) {
 	return m, nil
 }
 
-// BOSHManifestWithoutPersistentDisk returns a manifest with persistent disk declaration
-func (c *Catalog) BOSHManifestWithoutPersistentDisk() (*manifest.Manifest, error) {
-	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithoutPersistentDisk))
+// BOSHManifestWithLinks returns a manifest with explicit and implicit BOSH links
+// Also usable in integration tests
+func (c *Catalog) BOSHManifestWithLinks() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.NatsSmallWithLinks))
 	if err != nil {
 		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
 	}
@@ -169,12 +172,22 @@ func (c *Catalog) BPMReleaseWithAffinityConfigMap(name string) corev1.ConfigMap 
 	}
 }
 
-// DefaultBOSHManifestConfigMap for tests
+// DefaultBOSHManifestConfigMap for integration tests
 func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Data: map[string]string{
 			"manifest": bm.NatsSmall,
+		},
+	}
+}
+
+// BOSHManifestSecret for tests
+func (c *Catalog) BOSHManifestSecret(ref string, text string) corev1.Secret {
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: ref},
+		StringData: map[string]string{
+			"manifest": text,
 		},
 	}
 }
@@ -269,12 +282,15 @@ func (c *Catalog) DefaultCA(name string, ca credsgen.Certificate) corev1.Secret 
 }
 
 // DefaultStatefulSet for use in tests
-func (c *Catalog) DefaultStatefulSet(name string) v1beta2.StatefulSet {
-	return v1beta2.StatefulSet{
+func (c *Catalog) DefaultStatefulSet(name string) appsv1.StatefulSet {
+	return appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
+			Labels: map[string]string{
+				"testpod": "yes",
+			},
 		},
-		Spec: v1beta2.StatefulSetSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: pointers.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -288,17 +304,17 @@ func (c *Catalog) DefaultStatefulSet(name string) v1beta2.StatefulSet {
 }
 
 // StatefulSetWithPVC for use in tests
-func (c *Catalog) StatefulSetWithPVC(name, pvcName string, storageClassName string) v1beta2.StatefulSet {
+func (c *Catalog) StatefulSetWithPVC(name, pvcName string, storageClassName string) appsv1.StatefulSet {
 	labels := map[string]string{
 		"test-run-reference": name,
 		"testpod":            "yes",
 	}
 
-	return v1beta2.StatefulSet{
+	return appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: v1beta2.StatefulSetSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: pointers.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
@@ -311,17 +327,17 @@ func (c *Catalog) StatefulSetWithPVC(name, pvcName string, storageClassName stri
 }
 
 // WrongStatefulSetWithPVC for use in tests
-func (c *Catalog) WrongStatefulSetWithPVC(name, pvcName string, storageClassName string) v1beta2.StatefulSet {
+func (c *Catalog) WrongStatefulSetWithPVC(name, pvcName string, storageClassName string) appsv1.StatefulSet {
 	labels := map[string]string{
 		"wrongpod":           "yes",
 		"test-run-reference": name,
 	}
 
-	return v1beta2.StatefulSet{
+	return appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: v1beta2.StatefulSetSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: pointers.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
@@ -382,12 +398,15 @@ func (c *Catalog) DefaultVolumeMount(name string) corev1.VolumeMount {
 }
 
 // WrongStatefulSet for use in tests
-func (c *Catalog) WrongStatefulSet(name string) v1beta2.StatefulSet {
-	return v1beta2.StatefulSet{
+func (c *Catalog) WrongStatefulSet(name string) appsv1.StatefulSet {
+	return appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
+			Annotations: map[string]string{
+				statefulset.AnnotationCanaryWatchTime: "30000",
+			},
 		},
-		Spec: v1beta2.StatefulSetSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: pointers.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -401,12 +420,12 @@ func (c *Catalog) WrongStatefulSet(name string) v1beta2.StatefulSet {
 }
 
 // OwnedReferencesStatefulSet for use in tests
-func (c *Catalog) OwnedReferencesStatefulSet(name string) v1beta2.StatefulSet {
-	return v1beta2.StatefulSet{
+func (c *Catalog) OwnedReferencesStatefulSet(name string) appsv1.StatefulSet {
+	return appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: v1beta2.StatefulSetSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: pointers.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -648,6 +667,15 @@ func (c *Catalog) NodePortService(name, ig string, targetPort int32) corev1.Serv
 			},
 		},
 	}
+}
+
+//BOSHManifestWithGlobalUpdateBlock returns a manifest with a global update block
+func (c *Catalog) BOSHManifestWithGlobalUpdateBlock() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithGlobalUpdateBlock))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
 }
 
 // BOSHManifestWithUpdateSerial returns a manifest with update serial

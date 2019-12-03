@@ -22,6 +22,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarkssecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarksstatefulset"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -47,7 +48,7 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 	quarkssecret.AddQuarksSecret,
 	quarkssecret.AddCertificateSigningRequest,
 	quarksstatefulset.AddQuarksStatefulSet,
-	quarksstatefulset.AddStatefulSetCleanup,
+	statefulset.AddStatefulSetRollout,
 }
 
 var addToSchemes = runtime.SchemeBuilder{
@@ -64,6 +65,7 @@ var validatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.Operato
 
 var mutatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.OperatorWebhook{
 	quarksstatefulset.NewQuarksStatefulSetPodMutator,
+	statefulset.NewStatefulSetRolloutMutator,
 }
 
 // AddToManager adds all Controllers to the Manager

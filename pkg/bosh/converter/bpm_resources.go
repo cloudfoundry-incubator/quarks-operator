@@ -5,19 +5,21 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
-	"k8s.io/api/apps/v1beta2"
-	batchv1 "k8s.io/api/batch/v1"
-	batchv1b1 "k8s.io/api/batch/v1beta1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
+
+	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	batchv1b1 "k8s.io/api/batch/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
@@ -122,6 +124,11 @@ func (kc *KubeConverter) serviceToQuarksStatefulSet(
 	volumeClaims = append(volumeClaims, defaultVolumeClaims...)
 	volumeClaims = append(volumeClaims, bpmVolumeClaims...)
 
+	statefulSetLabels := statefulset.FilterLabels(instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels)
+	statefulSetAnnotations, err := statefulset.ComputeAnnotations(instanceGroup)
+	if err != nil {
+		return qstsv1a1.QuarksStatefulSet{}, errors.Wrapf(err, "computing annotations failed for instance group %s", instanceGroup.Name)
+	}
 	extSts := qstsv1a1.QuarksStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        instanceGroup.QuarksStatefulSetName(manifestName),
@@ -132,20 +139,20 @@ func (kc *KubeConverter) serviceToQuarksStatefulSet(
 		Spec: qstsv1a1.QuarksStatefulSetSpec{
 			Zones:                instanceGroup.AZs,
 			UpdateOnConfigChange: true,
-			Template: v1beta2.StatefulSet{
+			Template: appsv1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        instanceGroup.NameSanitized(),
-					Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
-					Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
+					Labels:      statefulSetLabels,
+					Annotations: statefulSetAnnotations,
 				},
-				Spec: v1beta2.StatefulSetSpec{
+				Spec: appsv1.StatefulSetSpec{
 					Replicas: pointers.Int32(int32(instanceGroup.Instances)),
 					Selector: &metav1.LabelSelector{
-						MatchLabels: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+						MatchLabels: statefulSetLabels,
 					},
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
-							Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+							Labels:      statefulSetLabels,
 							Name:        instanceGroup.NameSanitized(),
 							Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 						},

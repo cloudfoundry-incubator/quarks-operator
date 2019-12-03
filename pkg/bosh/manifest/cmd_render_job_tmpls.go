@@ -31,6 +31,7 @@ func RenderJobTemplates(
 	specIndex int,
 	podIP net.IP,
 	replicas int,
+	initialRollout bool,
 ) error {
 	if podIP == nil {
 		return fmt.Errorf("the pod IP is empty")
@@ -58,7 +59,7 @@ func RenderJobTemplates(
 		// Generate instance spec for each ig instance
 		// This will be stored inside the current job under
 		// job.properties.quarks
-		jobsInstances := currentInstanceGroup.jobInstances(boshManifest.Name, job.Name)
+		jobsInstances := currentInstanceGroup.jobInstances(boshManifest.Name, job.Name, initialRollout)
 
 		// set jobs.properties.quarks.instances with the ig instances
 		currentInstanceGroup.Jobs[jobIdx].Properties.Quarks.Instances = jobsInstances
@@ -188,6 +189,7 @@ func runRenderScript(
 	}
 	return nil
 }
+
 func runPreRenderScripts(instanceGroup *InstanceGroup) error {
 	for _, job := range instanceGroup.Jobs {
 

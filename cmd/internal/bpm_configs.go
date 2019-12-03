@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
 	"sigs.k8s.io/yaml"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
@@ -33,6 +35,7 @@ instance group.
 		baseDirFlagViperBind(cmd.Flags())
 		instanceGroupFlagViperBind(cmd.Flags())
 		outputFilePathFlagViperBind(cmd.Flags())
+		initialRolloutFlagViperBind(cmd.Flags())
 	},
 
 	RunE: func(_ *cobra.Command, args []string) (err error) {
@@ -50,14 +53,14 @@ instance group.
 		log = cmd.Logger()
 		defer log.Sync()
 
-		boshManifestPath, err := boshManifestFlagValidation(bpmFailedMessage)
+		boshManifestPath, err := boshManifestFlagValidation()
 		if err != nil {
-			return err
+			return errors.Wrap(err, bpmFailedMessage)
 		}
 
-		baseDir, err := baseDirFlagValidation(bpmFailedMessage)
+		baseDir, err := baseDirFlagValidation()
 		if err != nil {
-			return err
+			return errors.Wrap(err, bpmFailedMessage)
 		}
 
 		namespace := viper.GetString("cf-operator-namespace")
@@ -65,14 +68,14 @@ instance group.
 			return errors.Errorf("%s cf-operator-namespace flag is empty.", bpmFailedMessage)
 		}
 
-		outputFilePath, err := outputFilePathFlagValidation(bpmFailedMessage)
+		outputFilePath, err := outputFilePathFlagValidation()
 		if err != nil {
-			return err
+			return errors.Wrap(err, bpmFailedMessage)
 		}
 
-		instanceGroupName, err := instanceGroupFlagValidation(bpmFailedMessage)
+		instanceGroupName, err := instanceGroupFlagValidation()
 		if err != nil {
-			return err
+			return errors.Wrap(err, bpmFailedMessage)
 		}
 
 		boshManifestBytes, err := ioutil.ReadFile(boshManifestPath)
@@ -85,26 +88,27 @@ instance group.
 			return errors.Wrapf(err, "%s Loading bosh manifest file failed. Please check the file contents and try again.", bpmFailedMessage)
 		}
 
-		dg, err := manifest.NewInstanceGroupResolver(baseDir, *m, instanceGroupName)
+		igr, err := manifest.NewInstanceGroupResolver(afero.NewOsFs(), baseDir, *m, instanceGroupName)
 		if err != nil {
-			return errors.Wrapf(err, bpmFailedMessage)
+			return errors.Wrap(err, bpmFailedMessage)
 		}
 
-		bpmInfo, err := dg.BPMInfo()
+		initialRollout := viper.GetBool("initial-rollout")
+		bpmInfo, err := igr.BPMInfo(initialRollout)
 		if err != nil {
-			return errors.Wrapf(err, bpmFailedMessage)
+			return errors.Wrap(err, bpmFailedMessage)
 		}
 
 		bpmBytes, err := yaml.Marshal(bpmInfo)
 		if err != nil {
-			return errors.Wrapf(err, "%s YAML marshalling bpmConfigs spec returned by dg.BPMConfigs() failed.", bpmFailedMessage)
+			return errors.Wrapf(err, "%s YAML marshalling bpmConfigs spec returned by igr.BPMConfigs() failed.", bpmFailedMessage)
 		}
 
 		jsonBytes, err := json.Marshal(map[string]string{
 			"bpm.yaml": string(bpmBytes),
 		})
 		if err != nil {
-			return errors.Wrapf(err, "%s JSON marshalling bpmConfigs spec returned by dg.BPMConfigs() failed.", bpmFailedMessage)
+			return errors.Wrapf(err, "%s JSON marshalling bpmConfigs spec returned by igr.BPMConfigs() failed.", bpmFailedMessage)
 		}
 
 		err = ioutil.WriteFile(outputFilePath, jsonBytes, 0644)
@@ -125,5 +129,6 @@ func init() {
 	baseDirFlagCobraSet(pf, argToEnv)
 	instanceGroupFlagCobraSet(pf, argToEnv)
 	outputFilePathFlagCobraSet(pf, argToEnv)
+	initialRolloutFlagCobraSet(pf, argToEnv)
 	cmd.AddEnvToUsage(bpmConfigsCmd, argToEnv)
 }

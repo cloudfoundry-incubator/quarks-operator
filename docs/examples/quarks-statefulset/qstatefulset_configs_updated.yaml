@@ -22,11 +22,15 @@ metadata:
 spec:
   updateOnConfigChange: true
   template:
+    metadata:
+      annotations:
+        "quarks.cloudfoundry.org/canary-rollout-enabled": "true"
+        "quarks.cloudfoundry.org/update-watch-time-ms": "120000"
+        "quarks.cloudfoundry.org/canary-watch-time-ms": "120000"
+      labels:
+        app: example-statefulset
     spec:
       replicas: 2
-      selector:
-        matchLabels:
-          app: example-statefulset
       template:
         metadata:
           labels:
@@ -46,6 +50,9 @@ spec:
               - name: secret1-volume
                 readOnly: true
                 mountPath: "/etc/secret1-volume"
+              - name: secret1-volume
+                readOnly: true
+                mountPath: "/etc/secret1-volume2"
             env:
               - name: SPECIAL_KEY
                 valueFrom:

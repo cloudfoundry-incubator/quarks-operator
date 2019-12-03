@@ -4,11 +4,11 @@ metadata:
   name: example-quarks-statefulset
 spec:
   template:
+    metadata:
+      labels:
+        app: example-statefulset
     spec:
       replicas: 2
-      selector:
-        matchLabels:
-          app: example-statefulset
       template:
         metadata:
           labels:
