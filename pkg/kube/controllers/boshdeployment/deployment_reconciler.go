@@ -281,7 +281,7 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 					}
 
 					linkInfos = append(linkInfos, converter.LinkInfo{
-						SecretName: s.Name,
+						SecretName:   s.Name,
 						ProviderName: providerName,
 					})
 					if providerType, ok := s.GetAnnotations()[bdv1.AnnotationLinkProviderType]; ok {
@@ -299,7 +299,7 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 			return linkInfos, errors.New(fmt.Sprintf("Failed to get link services for: %s", instance.Name))
 		}
 
-		for qName, _ := range quarksLinks {
+		for qName := range quarksLinks {
 			if svcRecord, ok := serviceRecords[qName]; ok {
 				pods, err := r.listPodsFromSelector(instance.Namespace, svcRecord.selector)
 				if err != nil {

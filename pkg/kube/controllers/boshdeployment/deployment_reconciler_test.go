@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
@@ -440,13 +441,19 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				It("passes link secrets to QJobs", func() {
 					_, err := reconciler.Reconcile(request)
 					Expect(err).ToNot(HaveOccurred())
-					_, linksSecrets := jobFactory.BPMConfigsJobArgsForCall(0)
-					Expect(linksSecrets).To(Equal(map[string]string{
-						"baz-sec": "baz",
+					_, linksSecrets, _ := jobFactory.BPMConfigsJobArgsForCall(0)
+					Expect(linksSecrets).To(Equal(converter.LinkInfos{
+						{
+							SecretName:   "baz-sec",
+							ProviderName: "baz",
+						},
 					}))
-					_, linksSecrets = jobFactory.InstanceGroupManifestJobArgsForCall(0)
-					Expect(linksSecrets).To(Equal(map[string]string{
-						"baz-sec": "baz",
+					_, linksSecrets, _ = jobFactory.InstanceGroupManifestJobArgsForCall(0)
+					Expect(linksSecrets).To(Equal(converter.LinkInfos{
+						{
+							SecretName:   "baz-sec",
+							ProviderName: "baz",
+						},
 					}))
 				})
 

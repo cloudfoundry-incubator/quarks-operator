@@ -178,6 +178,14 @@ func (igr *InstanceGroupResolver) resolveManifest(initialRollout bool) error {
 
 // CollectQuarksLinks collect all links from path
 func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
+	exist, err := afero.DirExists(igr.fs, linksPath)
+	if err != nil {
+		return errors.Wrapf(err, "could not check if a path exists")
+	}
+	if !exist {
+		return nil
+	}
+
 	links, err := afero.ReadDir(igr.fs, linksPath)
 	if err != nil {
 		return errors.Wrapf(err, "could not read links directory")
@@ -229,6 +237,9 @@ func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
 				}
 				return nil
 			})
+			if err != nil {
+				return errors.Wrapf(err, "Walking links path")
+			}
 
 			err = igr.jobProviderLinks.AddExternalLink(linkName, linkType, q.Address, q.Instances, properties)
 			if err != nil {
