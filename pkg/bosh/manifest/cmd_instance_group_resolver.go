@@ -178,7 +178,7 @@ func (igr *InstanceGroupResolver) resolveManifest(initialRollout bool) error {
 
 // CollectQuarksLinks collect all links from path
 func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
-	links, err := ioutil.ReadDir(linksPath)
+	links, err := afero.ReadDir(igr.fs, linksPath)
 	if err != nil {
 		return errors.Wrapf(err, "could not read links directory")
 	}
@@ -187,7 +187,7 @@ func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
 	if !ok {
 		return fmt.Errorf("missing quarks_links")
 	}
-	q, ok := quarksLinks.(map[string]QuarksLink)
+	qs, ok := quarksLinks.(map[string]interface{})
 	if !ok {
 		return fmt.Errorf("could not get a map of QuarksLink")
 	}
@@ -196,9 +196,19 @@ func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
 	for _, l := range links {
 		if l.IsDir() {
 			linkName := l.Name()
-			linkType := q[linkName].Type
+			qMap, ok := qs[linkName].(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("could not cast for link %s", linkName)
+			}
+
+			q, err := getQuarksLinkFromMap(qMap)
+			if err != nil {
+				return fmt.Errorf("could not get quarks link '%s' from map", linkName)
+			}
+
+			linkType := q.Type
 			properties := map[string]interface{}{}
-			err = filepath.Walk(filepath.Clean(linksPath+"/"+l.Name()), func(path string, info os.FileInfo, err error) error {
+			err = afero.Walk(igr.fs, filepath.Clean(linksPath+"/"+l.Name()), func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
@@ -209,7 +219,7 @@ func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
 					if strings.HasPrefix(propertyFileName, "..") {
 						return filepath.SkipDir
 					}
-					varBytes, err := ioutil.ReadFile(path)
+					varBytes, err := afero.ReadFile(igr.fs, path)
 					if err != nil {
 						return errors.Wrapf(err, "could not read link %s", l.Name())
 					}
@@ -220,10 +230,9 @@ func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
 				return nil
 			})
 
-			igr.jobProviderLinks.links[linkType][linkName] = JobLink{
-				Address:    q[linkName].Address,
-				Instances:  q[linkName].Instances,
-				Properties: properties,
+			err = igr.jobProviderLinks.AddExternalLink(linkName, linkType, q.Address, q.Instances, properties)
+			if err != nil {
+				return errors.Wrapf(err, "Collecting external link failed for %s", linkName)
 			}
 		}
 	}
@@ -614,4 +623,15 @@ func getProviderNameFromConsumer(job Job, provider string) string {
 	}
 
 	return providerName
+}
+
+func getQuarksLinkFromMap(m map[string]interface{}) (QuarksLink, error) {
+	var result QuarksLink
+
+	data, err := json.Marshal(m)
+	if err != nil {
+		return result, err
+	}
+	err = json.Unmarshal(data, &result)
+	return result, err
 }

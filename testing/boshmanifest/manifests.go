@@ -231,3 +231,67 @@ const Diego = `
         enable_consul_service_registration: false
         set_kernel_parameters: false
 `
+
+// ManifestWithExternalLinks has explicit BOSH links consumes.
+const ManifestWithExternalLinks = `---
+name: test
+releases:
+- name: loggregator
+  url: https://bosh.io/d/github.com/cloudfoundry/loggregator-release?v=105.0
+  version: "105.0"
+  sha1: d0bed91335aaac418eb6e8b2be13c6ecf4ce7b90
+stemcells:
+- alias: default
+  os: ubuntu-xenial
+  version: "250.17"
+instance_groups:
+- name: log-api
+  instances: 2
+  vm_type: minimal
+  stemcell: default
+  update:
+    serial: true
+  networks:
+  - name: default
+  jobs:
+  - name: loggregator_trafficcontroller
+    release: loggregator
+    consumes:
+      doppler: {from: doppler}
+    properties:
+      uaa:
+        internal_url: https://uaa.service.cf.internal:8443
+        ca_cert: "uaa_ca_certificate"
+      doppler:
+        grpc_port: 6060
+      loggregator:
+        tls:
+          cc_trafficcontroller:
+            cert: "fake_cert"
+            key: "fake_private_key"
+          ca_cert: "fake_ca_cert"
+          trafficcontroller:
+            cert: "fake_cert"
+            key: "fake_private_key"
+        uaa:
+          client_secret: "uaa_clients_doppler_secret"
+      system_domain: "system_domain"
+      ssl:
+        skip_cert_verify: true
+      cc:
+        internal_service_hostname: "cloud-controller-ng.service.cf.internal"
+        tls_port: 9023
+        mutual_tls:
+          ca_cert: "fake_certificate"
+properties:
+  quarks_links:
+    doppler:
+      type: doppler
+      address: doppler-0.default.svc.cluster.local
+      instances:
+      - name: doppler
+        id: pod-uuid
+        index: 0
+        address: 172.30.10.1
+        bootstrap: true
+`
