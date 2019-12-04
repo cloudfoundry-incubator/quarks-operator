@@ -31,8 +31,8 @@ import (
 // JobFactory creates Jobs for a given manifest
 type JobFactory interface {
 	VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error)
-	InstanceGroupManifestJob(manifest bdm.Manifest, linkSecrets map[string]string, initialRollout bool) (*qjv1a1.QuarksJob, error)
-	BPMConfigsJob(manifest bdm.Manifest, providerSecrets map[string]string, initialRollout bool) (*qjv1a1.QuarksJob, error)
+	InstanceGroupManifestJob(manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error)
+	BPMConfigsJob(manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error)
 }
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
@@ -101,8 +101,8 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			log.WithEvent(instance, "WithOpsManifestError").Errorf(ctx, "Failed to get with-ops manifest for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	// Get explicit linking data
-	linkSecrets, err := r.listQuarksLinks(instance, manifest)
+	// Get link infos containing provider name and its secret name
+	linkInfos, err := r.listLinkInfos(instance, manifest)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "Failed to listing link secrets for BOSHDeployment '%s': %v", request.NamespacedName, err)
@@ -132,7 +132,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Apply the "Instance group manifest" QuarksJob, which creates instance group manifests (ig-resolved) secrets
-	qJob, err = r.jobFactory.InstanceGroupManifestJob(*manifest, linkSecrets, instance.ObjectMeta.Generation == 1)
+	qJob, err = r.jobFactory.InstanceGroupManifestJob(*manifest, linkInfos, instance.ObjectMeta.Generation == 1)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "Failed to build instance group manifest qJob: %v", err)
@@ -146,7 +146,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Apply the "BPM Configs" QuarksJob, which creates BPM config secrets
-	qJob, err = r.jobFactory.BPMConfigsJob(*manifest, linkSecrets, instance.ObjectMeta.Generation == 1)
+	qJob, err = r.jobFactory.BPMConfigsJob(*manifest, linkInfos, instance.ObjectMeta.Generation == 1)
 	if err != nil {
 		return reconcile.Result{}, log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "Failed to build BPM configs qJob: %v", err)
 
@@ -240,18 +240,18 @@ func (r *ReconcileBOSHDeployment) createQuarksJob(ctx context.Context, instance 
 	return err
 }
 
-// listQuarksLinks returns a map of secrets containing link providers if needed
+// listLinkInfos returns a LinkInfos containing link providers if needed
 // and updates `quarks_links` properties
-func (r *ReconcileBOSHDeployment) listQuarksLinks(instance *bdv1.BOSHDeployment, manifest *bdm.Manifest) (map[string]string, error) {
-	linkSecrets := map[string]string{}
+func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, manifest *bdm.Manifest) (converter.LinkInfos, error) {
+	linkInfos := converter.LinkInfos{}
 
-	// find all missing providers in the manifest
-	seekingPs := listMissingProviders(*manifest)
+	// find all missing providers in the manifest to track duplicated secrets then
+	missingProviders := listMissingProviders(*manifest)
 
-	// list secrets and match annotation
 	// quarksLinks store missing provider name with type from secrets
 	quarksLinks := map[string]bdm.QuarksLink{}
-	if len(seekingPs) != 0 {
+	if len(missingProviders) != 0 {
+		// list secrets and services from target deployment
 		secretLabels := map[string]string{bdv1.LabelDeploymentName: instance.Name}
 		secrets := &corev1.SecretList{}
 		err := r.client.List(r.ctx, secrets,
@@ -259,7 +259,7 @@ func (r *ReconcileBOSHDeployment) listQuarksLinks(instance *bdv1.BOSHDeployment,
 			crc.InNamespace(instance.Namespace),
 		)
 		if err != nil {
-			return linkSecrets, errors.Wrapf(err, "listing secrets for seeking links from '%s':", instance.Name)
+			return linkInfos, errors.Wrapf(err, "listing secrets for seeking links from '%s':", instance.Name)
 		}
 
 		servicesLabels := map[string]string{bdv1.LabelDeploymentName: instance.Name}
@@ -269,37 +269,41 @@ func (r *ReconcileBOSHDeployment) listQuarksLinks(instance *bdv1.BOSHDeployment,
 			crc.InNamespace(instance.Namespace),
 		)
 		if err != nil {
-			return linkSecrets, errors.Wrapf(err, "listing services for seeking links from '%s':", instance.Name)
+			return linkInfos, errors.Wrapf(err, "listing services for seeking links from '%s':", instance.Name)
 		}
 
 		for _, s := range secrets.Items {
 			providerName, ok := s.GetAnnotations()[bdv1.AnnotationLinkProviderName]
 			if ok {
-				if dup, ok := seekingPs[providerName]; ok {
+				if dup, ok := missingProviders[providerName]; ok {
 					if dup {
-						return linkSecrets, errors.New(fmt.Sprintf("duplicated secrets of provider: %s", providerName))
+						return linkInfos, errors.New(fmt.Sprintf("duplicated secrets of provider: %s", providerName))
 					}
-					linkSecrets[s.Name] = providerName
+
+					linkInfos = append(linkInfos, converter.LinkInfo{
+						SecretName: s.Name,
+						ProviderName: providerName,
+					})
 					if providerType, ok := s.GetAnnotations()[bdv1.AnnotationLinkProviderType]; ok {
 						quarksLinks[s.Name] = bdm.QuarksLink{
 							Type: providerType,
 						}
 					}
-					seekingPs[providerName] = true
+					missingProviders[providerName] = true
 				}
 			}
 		}
 
 		serviceRecords, err := r.getServiceRecords(instance.Namespace, services.Items)
 		if err != nil {
-			return linkSecrets, errors.New(fmt.Sprintf("Failed to get link services for: %s", instance.Name))
+			return linkInfos, errors.New(fmt.Sprintf("Failed to get link services for: %s", instance.Name))
 		}
 
 		for qName, _ := range quarksLinks {
 			if svcRecord, ok := serviceRecords[qName]; ok {
 				pods, err := r.listPodsFromSelector(instance.Namespace, svcRecord.selector)
 				if err != nil {
-					return linkSecrets, errors.New(fmt.Sprintf("Failed to get link pods for: %s", instance.Name))
+					return linkInfos, errors.New(fmt.Sprintf("Failed to get link pods for: %s", instance.Name))
 				}
 
 				var jobsInstances []bdm.JobInstance
@@ -324,22 +328,22 @@ func (r *ReconcileBOSHDeployment) listQuarksLinks(instance *bdv1.BOSHDeployment,
 		}
 	}
 
-	missingPs := make([]string, 0, len(seekingPs))
-	for key, found := range seekingPs {
+	missingPs := make([]string, 0, len(missingProviders))
+	for key, found := range missingProviders {
 		if !found {
 			missingPs = append(missingPs, key)
 		}
 	}
 
 	if len(missingPs) != 0 {
-		return linkSecrets, errors.New(fmt.Sprintf("missing secrets of providers: %s", strings.Join(missingPs, ", ")))
+		return linkInfos, errors.New(fmt.Sprintf("missing secrets of providers: %s", strings.Join(missingPs, ", ")))
 	}
 
 	if len(quarksLinks) != 0 {
 		manifest.Properties["quarks_links"] = quarksLinks
 	}
 
-	return linkSecrets, nil
+	return linkInfos, nil
 }
 
 // getServiceRecords gets service records from Kube Services

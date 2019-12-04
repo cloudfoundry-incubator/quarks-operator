@@ -62,9 +62,6 @@ const (
 	// UnrestrictedVolumeBaseName is the volume name for the unrestricted ones.
 	UnrestrictedVolumeBaseName = "bpm-unrestricted-volume"
 
-	// VolumeLinksPath is the mount path for the links data.
-	VolumeLinksPath = "/var/run/secrets/links/"
-
 	secretsPath         = "/var/run/secrets/variables/"
 	withOpsManifestPath = "/var/run/secrets/deployment/"
 	// releaseSourceName is the folder for release sources
@@ -498,23 +495,4 @@ func generateVolumeName(secretName string) string {
 		volName = nameSlices[0]
 	}
 	return names.Sanitize(volName)
-}
-
-func linkVolume(secretName string) corev1.Volume {
-	return corev1.Volume{
-		Name: generateVolumeName(secretName),
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName: secretName,
-			},
-		},
-	}
-}
-
-func linkVolumeMount(secretName string, providerName string) corev1.VolumeMount {
-	return corev1.VolumeMount{
-		Name:      generateVolumeName(secretName),
-		MountPath: VolumeLinksPath + providerName,
-		ReadOnly:  true,
-	}
 }
