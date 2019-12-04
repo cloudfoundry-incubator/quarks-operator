@@ -211,10 +211,24 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 				Certificate: []byte("fake-issued-certificate"),
 			}
 
+			client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
+				switch object := object.(type) {
+				case *corev1.SecretList:
+					object.Items = append(object.Items, corev1.Secret{
+						Type: "kubernetes.io/service-account-token",
+						Data: map[string][]byte{
+							"ca.crt": []byte("foo"),
+						},
+					})
+				}
+				return nil
+			})
+
 			client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 				switch object := object.(type) {
 				case *corev1.Secret:
 					Expect(object.Name).To(Equal("fake-cert"))
+					Expect(object.Data).To(HaveKeyWithValue("ca", []byte("foo")))
 					Expect(object.Data).To(HaveKeyWithValue("certificate", csr.Status.Certificate))
 					Expect(object.Data).To(HaveKeyWithValue("private_key", privateKeySecret.Data["private_key"]))
 					Expect(object.Data).To(HaveKeyWithValue("is_ca", privateKeySecret.Data["is_ca"]))

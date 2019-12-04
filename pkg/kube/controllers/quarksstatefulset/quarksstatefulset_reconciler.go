@@ -10,7 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -166,8 +166,8 @@ func (r *ReconcileQuarksStatefulSet) UpdateVersions(ctx context.Context, qStatef
 }
 
 // calculateDesiredStatefulSets generates the desired StatefulSets that should exist
-func (r *ReconcileQuarksStatefulSet) calculateDesiredStatefulSets(ctx context.Context, qStatefulSet *qstsv1a1.QuarksStatefulSet) ([]v1beta2.StatefulSet, error) {
-	var desiredStatefulSets []v1beta2.StatefulSet
+func (r *ReconcileQuarksStatefulSet) calculateDesiredStatefulSets(ctx context.Context, qStatefulSet *qstsv1a1.QuarksStatefulSet) ([]appsv1.StatefulSet, error) {
+	var desiredStatefulSets []appsv1.StatefulSet
 
 	template := qStatefulSet.Spec.Template.DeepCopy()
 
@@ -208,7 +208,7 @@ func (r *ReconcileQuarksStatefulSet) calculateDesiredStatefulSets(ctx context.Co
 }
 
 // createStatefulSet creates a StatefulSet
-func (r *ReconcileQuarksStatefulSet) createStatefulSet(ctx context.Context, qStatefulSet *qstsv1a1.QuarksStatefulSet, statefulSet *v1beta2.StatefulSet) error {
+func (r *ReconcileQuarksStatefulSet) createStatefulSet(ctx context.Context, qStatefulSet *qstsv1a1.QuarksStatefulSet, statefulSet *appsv1.StatefulSet) error {
 
 	// Set the owner of the StatefulSet, so it's garbage collected,
 	// and we can find it later
@@ -226,7 +226,7 @@ func (r *ReconcileQuarksStatefulSet) createStatefulSet(ctx context.Context, qSta
 }
 
 // generateSingleStatefulSet creates a StatefulSet from one zone
-func (r *ReconcileQuarksStatefulSet) generateSingleStatefulSet(qStatefulSet *qstsv1a1.QuarksStatefulSet, template *v1beta2.StatefulSet, zoneIndex int, zoneName string, version int) (*v1beta2.StatefulSet, error) {
+func (r *ReconcileQuarksStatefulSet) generateSingleStatefulSet(qStatefulSet *qstsv1a1.QuarksStatefulSet, template *appsv1.StatefulSet, zoneIndex int, zoneName string, version int) (*appsv1.StatefulSet, error) {
 	statefulSet := template.DeepCopy()
 
 	statefulSetNamePrefix := qStatefulSet.GetName()
@@ -242,7 +242,7 @@ func (r *ReconcileQuarksStatefulSet) generateSingleStatefulSet(qStatefulSet *qst
 
 		zonesBytes, err := json.Marshal(qStatefulSet.Spec.Zones)
 		if err != nil {
-			return &v1beta2.StatefulSet{}, errors.Wrapf(err, "Could not marshal zones: '%v'", qStatefulSet.Spec.Zones)
+			return &appsv1.StatefulSet{}, errors.Wrapf(err, "Could not marshal zones: '%v'", qStatefulSet.Spec.Zones)
 		}
 		annotations[qstsv1a1.AnnotationZones] = string(zonesBytes)
 
@@ -269,7 +269,7 @@ func (r *ReconcileQuarksStatefulSet) generateSingleStatefulSet(qStatefulSet *qst
 }
 
 // updateAffinity Update current statefulSet Affinity from AZ specification
-func (r *ReconcileQuarksStatefulSet) updateAffinity(statefulSet *v1beta2.StatefulSet, zoneNodeLabel string, zoneName string) *v1beta2.StatefulSet {
+func (r *ReconcileQuarksStatefulSet) updateAffinity(statefulSet *appsv1.StatefulSet, zoneNodeLabel string, zoneName string) *appsv1.StatefulSet {
 	nodeInZoneSelector := corev1.NodeSelectorRequirement{
 		Key:      zoneNodeLabel,
 		Operator: corev1.NodeSelectorOpIn,
