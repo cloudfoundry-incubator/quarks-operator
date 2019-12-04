@@ -162,6 +162,16 @@ func (c *Catalog) BOSHManifestWithZeroInstances() (*manifest.Manifest, error) {
 	return m, nil
 }
 
+// BOSHManifestWithExternalLinks returns a manifest with external links
+// Also usable in integration tests
+func (c *Catalog) BOSHManifestWithExternalLinks() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.ManifestWithExternalLinks))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
+}
+
 // BPMReleaseWithAffinityConfigMap for tests
 func (c *Catalog) BPMReleaseWithAffinityConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
