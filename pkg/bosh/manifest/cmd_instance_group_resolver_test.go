@@ -315,11 +315,13 @@ var _ = Describe("InstanceGroupResolver", func() {
 					ig = "log-api"
 
 					fileP1, err := fs.Create(converter.VolumeLinksPath + "doppler/fooprop")
+					Expect(err).NotTo(HaveOccurred())
 					defer fileP1.Close()
 					_, err = fileP1.WriteString("fake_prop")
 					Expect(err).NotTo(HaveOccurred())
 
 					fileP2, err := fs.Create(converter.VolumeLinksPath + "doppler/doppler")
+					Expect(err).NotTo(HaveOccurred())
 					defer fileP2.Close()
 					_, err = fileP2.WriteString(`grpc_port: 7765`)
 					Expect(err).NotTo(HaveOccurred())
@@ -330,9 +332,9 @@ var _ = Describe("InstanceGroupResolver", func() {
 					err = igr.CollectQuarksLinks("/var/run/secrets/links/")
 					Expect(err).ToNot(HaveOccurred())
 
-					m, err := igr.Manifest()
+					m, err := igr.Manifest(true)
 					Expect(err).ToNot(HaveOccurred())
-					// log-api instance_group, with loggregator_trafficcontroller job, consumes nil link from external doppler
+					// log-api instance_group, with loggregator_trafficcontroller job, consumes links from external doppler
 					jobQuarksConsumes := m.InstanceGroups[0].Jobs[0].Properties.Quarks.Consumes
 					Expect(jobQuarksConsumes).To(ContainElement(JobLink{
 						Address: "doppler-0.default.svc.cluster.local",
