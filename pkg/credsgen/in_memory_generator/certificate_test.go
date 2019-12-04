@@ -122,17 +122,41 @@ var _ = Describe("InMemoryGenerator", func() {
 				}
 			})
 
-			It("creates a CA", func() {
-				request.CommonName = "example.com"
-				cert, err := generator.GenerateCertificate("foo", request)
-				Expect(err).ToNot(HaveOccurred())
+			Context("creates a root CA", func() {
 
-				parsedCert, err := parseCert(cert.Certificate)
-				Expect(err).ToNot(HaveOccurred())
+				var (
+					cert credsgen.Certificate
+					err  error
+				)
 
-				Expect(parsedCert.IsCA).To(BeTrue())
-				Expect(cert.PrivateKey).ToNot(BeEmpty())
-				Expect(parsedCert.Subject.CommonName).To(Equal(request.CommonName))
+				BeforeEach(func() {
+					request.CommonName = "example.com"
+					cert, err = generator.GenerateCertificate("foo", request)
+					Expect(err).ToNot(HaveOccurred())
+
+					parsedCert, err := parseCert(cert.Certificate)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(parsedCert.IsCA).To(BeTrue())
+					Expect(cert.PrivateKey).ToNot(BeEmpty())
+					Expect(parsedCert.Subject.CommonName).To(Equal(request.CommonName))
+				})
+
+				It("creates an intermediate CA", func() {
+
+					request.CommonName = "exampleIntermediate.com"
+					request.CA = cert
+					cert, err = generator.GenerateCertificate("foo", request)
+					Expect(err).ToNot(HaveOccurred())
+
+					parsedCert, err := parseCert(cert.Certificate)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(parsedCert.Issuer.CommonName).To(Equal("example.com"))
+					Expect(parsedCert.IsCA).To(BeTrue())
+					Expect(cert.PrivateKey).ToNot(BeEmpty())
+					Expect(parsedCert.Subject.CommonName).To(Equal(request.CommonName))
+				})
 			})
 		})
 	})
