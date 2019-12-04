@@ -74,36 +74,15 @@ func (g InMemoryGenerator) generateCertificate(request credsgen.CertificateGener
 	if err != nil {
 		return credsgen.Certificate{}, err
 	}
-
-	// Parse CA
-	caCert, err := helpers.ParseCertificatePEM([]byte(request.CA.Certificate))
-	if err != nil {
-		return credsgen.Certificate{}, errors.Wrap(err, "Parsing CA PEM failed.")
-	}
-	caKey, err := helpers.ParsePrivateKeyPEM([]byte(request.CA.PrivateKey))
-	if err != nil {
-		return credsgen.Certificate{}, errors.Wrap(err, "Parsing CA private key failed.")
-	}
-
 	// Sign certificate
 	signingProfile := &config.SigningProfile{
 		Usage:        []string{"server auth", "client auth"},
 		Expiry:       time.Duration(g.Expiry*24) * time.Hour,
 		ExpiryString: fmt.Sprintf("%dh", g.Expiry*24),
 	}
-	policy := &config.Signing{
-		Profiles: map[string]*config.SigningProfile{},
-		Default:  signingProfile,
-	}
-
-	s, err := local.NewSigner(caKey, caCert, signer.DefaultSigAlgo(caKey), policy)
+	cert.Certificate, err = g.signCertificate(signingReq, signingProfile, request)
 	if err != nil {
-		return credsgen.Certificate{}, errors.Wrap(err, "Creating signer failed.")
-	}
-
-	cert.Certificate, err = s.Sign(signer.SignRequest{Request: string(signingReq)})
-	if err != nil {
-		return credsgen.Certificate{}, errors.Wrap(err, "Signing certificate failed.")
+		return credsgen.Certificate{}, err
 	}
 	cert.PrivateKey = privateKey
 
@@ -117,7 +96,7 @@ func (g InMemoryGenerator) generateCACertificate(request credsgen.CertificateGen
 		CN:         request.CommonName,
 		KeyRequest: &csr.BasicKeyRequest{A: g.Algorithm, S: g.Bits},
 	}
-	ca, _, privateKey, err := initca.New(req)
+	ca, csr, privateKey, err := initca.New(req)
 	if err != nil {
 		return credsgen.Certificate{}, err
 	}
@@ -127,7 +106,50 @@ func (g InMemoryGenerator) generateCACertificate(request credsgen.CertificateGen
 		Certificate: ca,
 		PrivateKey:  privateKey,
 	}
+	if request.CA.IsCA {
+		signingProfile := &config.SigningProfile{
+			Usage:        []string{"cert sign", "crl sign"},
+			ExpiryString: "43800h",
+			Expiry:       5 * helpers.OneYear,
+			CAConstraint: config.CAConstraint{
+				IsCA: true,
+			},
+		}
+		cert.Certificate, err = g.signCertificate(csr, signingProfile, request)
+		if err != nil {
+			return credsgen.Certificate{}, err
+		}
+	}
 
 	return cert, nil
+}
 
+// Given a signing profile, csr  & request with CA, the certificate is signed by the CA.
+func (g InMemoryGenerator) signCertificate(csr []byte, signingProfile *config.SigningProfile, request credsgen.CertificateGenerationRequest) ([]byte, error) {
+
+	policy := &config.Signing{
+		Profiles: map[string]*config.SigningProfile{},
+		Default:  signingProfile,
+	}
+
+	// Parse parent CA
+	parentCACert, err := helpers.ParseCertificatePEM([]byte(request.CA.Certificate))
+	if err != nil {
+		return []byte{}, errors.Wrap(err, "Parsing CA PEM failed.")
+	}
+	parentCAKey, err := helpers.ParsePrivateKeyPEM([]byte(request.CA.PrivateKey))
+	if err != nil {
+		return []byte{}, errors.Wrap(err, "Parsing CA private key failed.")
+	}
+
+	s, err := local.NewSigner(parentCAKey, parentCACert, signer.DefaultSigAlgo(parentCAKey), policy)
+	if err != nil {
+		return []byte{}, errors.Wrap(err, "Creating signer failed.")
+	}
+	certificate, err := s.Sign(signer.SignRequest{Request: string(csr)})
+	if err != nil {
+		return []byte{}, errors.Wrap(err, "Signing certificate failed.")
+	}
+
+	return certificate, nil
 }
