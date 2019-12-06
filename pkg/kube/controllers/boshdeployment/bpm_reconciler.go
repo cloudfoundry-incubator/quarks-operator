@@ -24,6 +24,7 @@ import (
 	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	qstscontroller "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarksstatefulset"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -42,7 +43,7 @@ type KubeConverter interface {
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 
 // NewBPMReconciler returns a new reconcile.Reconciler
-func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver converter.DesiredManifest, srf setReferenceFunc, kubeConverter KubeConverter) reconcile.Reconciler {
+func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver manifest.DesiredManifest, srf setReferenceFunc, kubeConverter KubeConverter) reconcile.Reconciler {
 	return &ReconcileBPM{
 		ctx:                  ctx,
 		config:               config,
@@ -61,7 +62,7 @@ type ReconcileBPM struct {
 	config               *config.Config
 	client               client.Client
 	scheme               *runtime.Scheme
-	resolver             converter.DesiredManifest
+	resolver             manifest.DesiredManifest
 	setReference         setReferenceFunc
 	kubeConverter        KubeConverter
 	versionedSecretStore versionedsecretstore.VersionedSecretStore

@@ -27,11 +27,6 @@ type Resolver interface {
 	WithOpsManifestDetailed(ctx context.Context, instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
 }
 
-// DesiredManifest unmarshals desired manifest from the manifest secret
-type DesiredManifest interface {
-	DesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error)
-}
-
 // ResolverImpl resolves references from bdpl CRD to a BOSH manifest
 type ResolverImpl struct {
 	client               client.Client
@@ -42,14 +37,6 @@ type ResolverImpl struct {
 // NewInterpolatorFunc returns a fresh Interpolator
 type NewInterpolatorFunc func() Interpolator
 
-// NewDesiredManifest constructs a resolver
-func NewDesiredManifest(client client.Client) DesiredManifest {
-	return &ResolverImpl{
-		client:               client,
-		versionedSecretStore: versionedsecretstore.NewVersionedSecretStore(client),
-	}
-}
-
 // NewResolver constructs a resolver
 func NewResolver(client client.Client, f NewInterpolatorFunc) Resolver {
 	return &ResolverImpl{
@@ -57,27 +44,6 @@ func NewResolver(client client.Client, f NewInterpolatorFunc) Resolver {
 		newInterpolatorFunc:  f,
 		versionedSecretStore: versionedsecretstore.NewVersionedSecretStore(client),
 	}
-}
-
-// DesiredManifest reads the versioned secret created by the variable interpolation job
-// and unmarshals it into a Manifest object
-func (r *ResolverImpl) DesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error) {
-	// unversioned desired manifest name
-	secretName := names.DesiredManifestName(boshDeploymentName, "")
-
-	secret, err := r.versionedSecretStore.Latest(ctx, namespace, secretName)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read latest versioned secret %s for bosh deployment %s", secretName, boshDeploymentName)
-	}
-
-	manifestData := secret.Data["manifest.yaml"]
-
-	manifest, err := bdm.LoadYAML(manifestData)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to unmarshal manifest from secret %s for boshdeployment %s", secretName, boshDeploymentName)
-	}
-
-	return manifest, nil
 }
 
 // WithOpsManifest returns manifest and a list of implicit variables referenced by our bdpl CRD

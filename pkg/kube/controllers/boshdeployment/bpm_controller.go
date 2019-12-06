@@ -18,6 +18,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/manifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
@@ -31,9 +32,11 @@ import (
 // BOSH errands.
 func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "bpm-reconciler", mgr.GetEventRecorderFor("bpm-recorder"))
+	desiredManifest := manifest.NewDesiredManifest()
+	desiredManifest.InjectClient(mgr.GetClient())
 	r := NewBPMReconciler(
 		ctx, config, mgr,
-		converter.NewDesiredManifest(mgr.GetClient()),
+		desiredManifest,
 		controllerutil.SetControllerReference,
 		converter.NewKubeConverter(
 			config.Namespace,
