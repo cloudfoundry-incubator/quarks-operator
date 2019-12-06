@@ -3,6 +3,8 @@ package manifest
 import (
 	"fmt"
 	"strings"
+
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 // jobProviderLinks provides links to other jobs, indexed by provider type and name
@@ -94,13 +96,12 @@ func (jpl jobProviderLinks) Add(igName string, job Job, spec JobSpec, jobsInstan
 			Address:    linkAddress,
 			Instances:  jobsInstances,
 			Properties: properties,
-			//InstanceGroup: igName,
 		}
 
 		if _, ok := jpl.instanceGroups[igName]; !ok {
 			jpl.instanceGroups[igName] = map[string]JobLinkProperties{}
 		}
-		jpl.instanceGroups[igName][linkType+"."+linkName] = properties
+		jpl.instanceGroups[igName][names.EntanglementSecretKey(linkType, linkName)] = properties
 	}
 	return nil
 }
