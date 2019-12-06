@@ -44,6 +44,25 @@ func (c *Catalog) DefaultConfig() *config.Config {
 	}
 }
 
+// DesiredManifest returns an interpolated manifest with all variables filled, for unit tests
+func (c *Catalog) DesiredManifest() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.DesiredManifest))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, "Loading desired manifest spec failed.")
+	}
+	return m, nil
+}
+
+// InstanceGroupManifest returns a fully resolved and interpolated manifest for unit tests
+// It contains all information from BPM and job specs, but is limited to one instance group.
+func (c *Catalog) InstanceGroupManifest() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.InstanceGroupManifest))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, "Loading instance group manifest spec failed.")
+	}
+	return m, nil
+}
+
 // DefaultBOSHManifest returns a BOSH manifest for unit tests
 func (c *Catalog) DefaultBOSHManifest() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.Default))
@@ -183,11 +202,31 @@ func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
 }
 
 // BOSHManifestSecret for tests
-func (c *Catalog) BOSHManifestSecret(ref string, text string) corev1.Secret {
+func (c *Catalog) BOSHManifestSecret(name string, text string) corev1.Secret {
 	return corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: ref},
+		ObjectMeta: metav1.ObjectMeta{Name: name},
 		StringData: map[string]string{
 			"manifest": text,
+		},
+	}
+}
+
+// DesiredManifestSecret for tests
+func (c *Catalog) DesiredManifestSecret() corev1.Secret {
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "nats-deployment.desired-manifest-v1",
+			Labels: map[string]string{
+				"quarks.cloudfoundry.org/container-name":      "desired-manifest",
+				"quarks.cloudfoundry.org/deployment-name":     "nats-deployment",
+				"quarks.cloudfoundry.org/referenced-job-name": "instance-group-nats-deployment",
+				"quarks.cloudfoundry.org/secret-kind":         "versionedSecret",
+				"quarks.cloudfoundry.org/secret-name":         "with-ops",
+				"quarks.cloudfoundry.org/secret-version":      "1",
+			},
+		},
+		StringData: map[string]string{
+			"manifest.yaml": bm.DesiredManifest,
 		},
 	}
 }
