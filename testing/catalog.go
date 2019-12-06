@@ -222,6 +222,31 @@ func (c *Catalog) DefaultConfigMap(name string) corev1.ConfigMap {
 	}
 }
 
+// QuarksLinkSecret returns a implicit var secret used in deployment manifests
+func (c *Catalog) QuarksLinkSecret(deploymentName, igName, linkType, linkName, value string) corev1.Secret {
+	key := names.EntanglementSecretKey(linkType, linkName)
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "link-" + deploymentName + "-" + igName,
+			Labels: map[string]string{
+				manifest.LabelDeploymentName: deploymentName,
+			},
+		},
+		Data: map[string][]byte{
+			key: []byte(value),
+		},
+	}
+}
+
+// DefaultQuarksLinkSecret has default values from the nats release
+func (c *Catalog) DefaultQuarksLinkSecret(deploymentName, linkType string) corev1.Secret {
+	return c.QuarksLinkSecret(
+		deploymentName, linkType, // link-<nats-deployment>-<nats-ig>
+		linkType, "nats", // type.name
+		`{"nats":{"password":"custom_password","port":4222,"user":"admin"}}`,
+	)
+}
+
 // InterpolateOpsConfigMap for ops interpolate configmap tests
 func (c *Catalog) InterpolateOpsConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
@@ -634,6 +659,17 @@ func (c *Catalog) AnnotatedPod(name string, annotations map[string]string) corev
 		},
 		Spec: c.Sleep1hPodSpec(),
 	}
+}
+
+// EntangledPod is a pod which has annotations for a BOSH link
+func (c *Catalog) EntangledPod(deploymentName string) corev1.Pod {
+	return c.AnnotatedPod(
+		"entangled",
+		map[string]string{
+			"quarks.cloudfoundry.org/deployment": deploymentName,
+			"quarks.cloudfoundry.org/consumes":   "nats.nats",
+		},
+	)
 }
 
 // Sleep1hPodSpec defines a simple pod that sleeps 60*60s for testing

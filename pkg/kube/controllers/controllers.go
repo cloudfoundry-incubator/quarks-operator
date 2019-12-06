@@ -20,6 +20,7 @@ import (
 	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarkslink"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarkssecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarksstatefulset"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
@@ -66,6 +67,7 @@ var validatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.Operato
 var mutatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.OperatorWebhook{
 	quarksstatefulset.NewQuarksStatefulSetPodMutator,
 	statefulset.NewStatefulSetRolloutMutator,
+	quarkslink.NewBOSHLinkPodMutator,
 }
 
 // AddToManager adds all Controllers to the Manager

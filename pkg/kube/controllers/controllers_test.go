@@ -166,7 +166,7 @@ var _ = Describe("Controllers", func() {
 					switch config := object.(type) {
 					case *admissionregistrationv1beta1.MutatingWebhookConfiguration:
 						Expect(config.Name).To(Equal("cf-operator-hook-" + config.Namespace))
-						Expect(len(config.Webhooks)).To(Equal(2))
+						Expect(len(config.Webhooks)).To(Equal(3))
 
 						wh := config.Webhooks[0]
 						Expect(wh.Name).To(Equal("mutate-pods.quarks.cloudfoundry.org"))

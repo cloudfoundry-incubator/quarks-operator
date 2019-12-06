@@ -33,8 +33,11 @@ const (
 	EnvVariablesDir = "VARIABLES_DIR"
 	// EnvOutputFilePath is path where json output is to be redirected (CLI)
 	EnvOutputFilePath = "OUTPUT_FILE_PATH"
-	// EnvOutputFilePathValue is the value of filepath of json output file
+	// EnvOutputFilePathValue is the value of filepath of JSON output file
 	EnvOutputFilePathValue = "/mnt/quarks/output.json"
+	// outputFilename is the file name of the JSON output file, which quarks job will look for
+	outputFilename = "output.json"
+
 	// VarInterpolationContainerName is the name of the container that
 	// performs variable interpolation for a manifest. It's also part of
 	// the output secret's name
@@ -171,7 +174,7 @@ func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest, initialRoll
 		if ig.Instances != 0 {
 			// Additional secret for BOSH links per instance group
 			containerName := names.Sanitize(ig.Name)
-			linkOutputs[containerName] = names.Sanitize(fmt.Sprintf("link-%s-%s", manifest.Name, ig.Name))
+			linkOutputs[containerName] = names.EntanglementSecretName(manifest.Name, ig.Name)
 
 			// One container per instance group
 			containers = append(containers, ct.newUtilContainer(ig.Name))
@@ -270,8 +273,6 @@ func (ct *containerTemplate) newUtilContainer(instanceGroupName string) corev1.C
 
 // releaseImageQJob collects outputs, like bpm, links or ig manifests, from the BOSH release images
 func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, secretType names.DeploymentSecretType, containers []corev1.Container) (*qjv1a1.QuarksJob, error) {
-	outputSecretNamePrefix := names.DeploymentSecretPrefix(secretType, manifest.Name)
-
 	initContainers := []corev1.Container{}
 	doneSpecCopyingReleases := map[string]bool{}
 	for _, ig := range manifest.InstanceGroups {
@@ -300,8 +301,14 @@ func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, secret
 	}
 
 	outputMap := qjv1a1.OutputMap{}
+	outputSecretNamePrefix := names.DeploymentSecretPrefix(secretType, manifest.Name)
 	for _, container := range containers {
-		outputMap[container.Name] = qjv1a1.NewFileToSecret("output.json", outputSecretNamePrefix+container.Name, true)
+		outputMap[container.Name] = qjv1a1.NewFileToSecret(
+			outputFilename,
+			// the same as names.InstaceGroupSecretName(secretType, manifestName, container.Name, "")
+			outputSecretNamePrefix+container.Name,
+			true,
+		)
 	}
 
 	// Construct the "BPM configs" or "data gathering" auto-errand qJob
