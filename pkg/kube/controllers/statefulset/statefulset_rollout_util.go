@@ -23,7 +23,7 @@ func ConfigureStatefulSetForRollout(statefulSet *appsv1.StatefulSet) {
 	statefulSet.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
 	//the canary rollout is for now directly started, the might move to a webhook instead
 	statefulSet.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{
-		Partition: pointers.Int32(util.MaxInt32(util.MinInt32(*statefulSet.Spec.Replicas-1, statefulSet.Status.Replicas), 0)),
+		Partition: pointers.Int32(util.MinInt32(*statefulSet.Spec.Replicas, statefulSet.Status.Replicas)),
 	}
 	statefulSet.Annotations[AnnotationCanaryRollout] = rolloutStatePending
 	statefulSet.Annotations[AnnotationUpdateStartTime] = strconv.FormatInt(time.Now().Unix(), 10)

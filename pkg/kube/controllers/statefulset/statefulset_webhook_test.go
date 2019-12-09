@@ -55,6 +55,12 @@ var _ = Describe("When the muatating webhook handles a statefulset", func() {
 						}},
 					},
 				},
+				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+					RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{},
+				},
+			},
+			Status: appsv1.StatefulSetStatus{
+				Replicas: 2,
 			},
 		}
 	})
@@ -137,6 +143,9 @@ var _ = Describe("When the muatating webhook handles a statefulset", func() {
 			))
 			Expect(response.Patches).To(ContainElement(
 				jsonpatch.Operation{Operation: "add", Path: "/spec/updateStrategy/type", Value: "RollingUpdate"},
+			))
+			Expect(response.Patches).To(ContainElement(
+				jsonpatch.Operation{Operation: "add", Path: "/spec/updateStrategy/rollingUpdate/partition", Value: float64(2)},
 			))
 
 			Expect(response.AdmissionResponse.Allowed).To(BeTrue())
