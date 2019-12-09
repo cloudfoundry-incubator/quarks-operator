@@ -106,8 +106,8 @@ func (jpl jobProviderLinks) Add(igName string, job Job, spec JobSpec, jobsInstan
 	return nil
 }
 
-// AddExternalLink add link info from external
-func (jpl jobProviderLinks) AddExternalLink(linkName string, linkType string, linkAddress string, jobsInstances []JobInstance, properties JobLinkProperties) error {
+// AddExternalLink adds link info from an external (non-BOSH) source
+func (jpl jobProviderLinks) AddExternalLink(linkName string, linkType string, linkAddress string, jobsInstances []JobInstance, properties JobLinkProperties) {
 	if _, ok := jpl.links[linkType]; !ok {
 		jpl.links[linkType] = map[string]JobLink{}
 	}
@@ -117,5 +117,4 @@ func (jpl jobProviderLinks) AddExternalLink(linkName string, linkType string, li
 		Instances:  jobsInstances,
 		Properties: properties,
 	}
-	return nil
 }

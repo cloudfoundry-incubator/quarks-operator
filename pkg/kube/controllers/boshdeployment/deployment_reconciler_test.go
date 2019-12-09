@@ -468,12 +468,12 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					})
 
 					_, err := reconciler.Reconcile(request)
-					Expect(err.Error()).To(ContainSubstring("listing secrets for seeking links"))
+					Expect(err.Error()).To(ContainSubstring("listing secrets for link in deployment"))
 				})
 				It("handles an error on missing providers when the secret doesn't have the annotation", func() {
 					bazSecret.Annotations = nil
 					_, err := reconciler.Reconcile(request)
-					Expect(err.Error()).To(ContainSubstring("missing secrets of providers"))
+					Expect(err.Error()).To(ContainSubstring("missing link secrets for providers"))
 				})
 
 				It("handles an error on duplicated secrets of provider when duplicated secrets match the annotation", func() {
