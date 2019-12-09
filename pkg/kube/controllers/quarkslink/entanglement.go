@@ -4,8 +4,8 @@ const (
 	// DeploymentKey is the key to retrieve the name of the deployment,
 	// which provides the variables for the pod
 	DeploymentKey = "quarks.cloudfoundry.org/deployment"
-	// ConsumesKey is the key to identify the job, which properties are consumed,
-	// which is of 'type.job'
+	// ConsumesKey is the key for identifying the provider to be consumed, in the
+	// format of 'type.job'
 	ConsumesKey = "quarks.cloudfoundry.org/consumes"
 )
 
