@@ -87,6 +87,13 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 	var status = statefulSet.Annotations[AnnotationCanaryRollout]
 	var newStatus = status
 	dirty := false
+	var oldPartition int32
+	if statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
+		oldPartition = -1
+		ctxlog.Debug(ctx, "StatefulSet with unexpected partition = nil found (webhook should prevent this)", request.NamespacedName)
+	} else {
+		oldPartition = *statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition
+	}
 
 	switch status {
 	case rolloutStateCanaryUpscale:
@@ -135,11 +142,6 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 		}
 		(*statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition)--
 		dirty = true
-		err = CleanupNonReadyPod(ctx, r.client, &statefulSet, *statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-		if err != nil {
-			ctxlog.Debug(ctx, "Error calling CleanupNonReadyPod ", request.NamespacedName, err)
-			return reconcile.Result{}, err
-		}
 		newStatus = rolloutStateRollout
 	case rolloutStatePending:
 		if statefulSet.Status.Replicas < *statefulSet.Spec.Replicas {
@@ -148,11 +150,8 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 		} else {
 			result.RequeueAfter = getTimeOut(ctx, statefulSet, AnnotationCanaryWatchTime)
 			newStatus = rolloutStateCanary
-			err = CleanupNonReadyPod(ctx, r.client, &statefulSet, *statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-			if err != nil {
-				ctxlog.Debug(ctx, "Error calling CleanupNonReadyPod ", request.NamespacedName, err)
-				return reconcile.Result{}, err
-			}
+			(*statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition)--
+			dirty = true
 		}
 	}
 	statusChanged := newStatus != statefulSet.Annotations[AnnotationCanaryRollout]
@@ -164,6 +163,18 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 	if dirty {
 		meltdown.SetLastReconcile(&statefulSet.ObjectMeta, time.Now())
 		err = r.update(ctx, &statefulSet, &result)
+		if err != nil {
+			ctxlog.Debug(ctx, "Error updating StatefulSet ", request.NamespacedName, err)
+			return reconcile.Result{}, err
+		}
+
+		if oldPartition != *statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition {
+			err = CleanupNonReadyPod(ctx, r.client, &statefulSet, *statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition)
+			if err != nil {
+				ctxlog.Debug(ctx, "Error calling CleanupNonReadyPod ", request.NamespacedName, err)
+				return reconcile.Result{}, err
+			}
+		}
 	}
 	return result, err
 }

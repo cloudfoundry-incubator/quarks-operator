@@ -7,6 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -315,6 +316,21 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(client.UpdateCallCount()).To(Equal(0))
 					Expect(client.DeleteCallCount()).To(Equal(0))
+				})
+
+				When("update fails", func() {
+					JustBeforeEach(func() {
+						client.UpdateReturns(errors.New("injected error"))
+					})
+
+					It("no pod is deleted", func() {
+						noneReadyPod.Name = "foo-0"
+						_, err := reconciler.Reconcile(request)
+						Expect(err).To(HaveOccurred())
+						Expect(err.Error()).To(ContainSubstring("injected"))
+						Expect(client.UpdateCallCount()).To(Equal(1))
+						Expect(client.DeleteCallCount()).To(Equal(0))
+					})
 				})
 			})
 
