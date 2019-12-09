@@ -222,7 +222,7 @@ func (c *Catalog) DefaultConfigMap(name string) corev1.ConfigMap {
 	}
 }
 
-// QuarksLinkSecret returns a implicit var secret used in deployment manifests
+// QuarksLinkSecret returns a link secret, as generated for consumption by an external (non BOSH) consumer
 func (c *Catalog) QuarksLinkSecret(deploymentName, igName, linkType, linkName, value string) corev1.Secret {
 	key := names.EntanglementSecretKey(linkType, linkName)
 	return corev1.Secret{
