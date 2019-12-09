@@ -7,16 +7,16 @@ const (
 	VolumeLinksPath = "/var/run/secrets/links/"
 )
 
-// LinkInfo Specify link provider and its secret name from Kube native components
+// LinkInfo specifies the link provider and its secret name from Kube native components
 type LinkInfo struct {
 	SecretName   string
 	ProviderName string
 }
 
-// LinkInfos a list of LinkInfo
+// LinkInfos is a list of LinkInfo
 type LinkInfos []LinkInfo
 
-// Volumes return a list of volumes from LinkInfos
+// Volumes returns a list of volumes from LinkInfos
 func (q *LinkInfos) Volumes() []corev1.Volume {
 	volumes := []corev1.Volume{}
 	for _, l := range *q {
@@ -26,7 +26,7 @@ func (q *LinkInfos) Volumes() []corev1.Volume {
 	return volumes
 }
 
-// VolumeMounts return a list of volumeMounts from LinkInfos
+// VolumeMounts returns a list of volumeMounts from LinkInfos
 func (q *LinkInfos) VolumeMounts() []corev1.VolumeMount {
 	volumeMounts := []corev1.VolumeMount{}
 	for _, l := range *q {

@@ -156,7 +156,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 
 	}
 
-	// Watch Services routing to external link provider
+	// Watch Services that route (select) pods that are external link providers
 	servicesPredicates := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			service := e.Object.(*corev1.Service)
@@ -191,7 +191,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		}),
 	}, servicesPredicates)
 	if err != nil {
-		return errors.Wrapf(err, "Watching services failed in bosh deployment controller.")
+		return errors.Wrapf(err, "watching services failed in bosh deployment controller.")
 
 	}
 

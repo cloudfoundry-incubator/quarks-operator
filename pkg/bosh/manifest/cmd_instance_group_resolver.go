@@ -176,11 +176,11 @@ func (igr *InstanceGroupResolver) resolveManifest(initialRollout bool) error {
 	return nil
 }
 
-// CollectQuarksLinks collect all links from path
+// CollectQuarksLinks collects all links from a directory specified by path
 func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
 	exist, err := afero.DirExists(igr.fs, linksPath)
 	if err != nil {
-		return errors.Wrapf(err, "could not check if a path exists")
+		return errors.Wrapf(err, "could not check if path '%s' exists", linksPath)
 	}
 	if !exist {
 		return nil
@@ -188,19 +188,19 @@ func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
 
 	links, err := afero.ReadDir(igr.fs, linksPath)
 	if err != nil {
-		return errors.Wrapf(err, "could not read links directory")
+		return errors.Wrapf(err, "could not read links directory '%s'", linksPath)
 	}
 
 	quarksLinks, ok := igr.manifest.Properties["quarks_links"]
 	if !ok {
-		return fmt.Errorf("missing quarks_links")
+		return fmt.Errorf("missing quarks_links key in manifest properties")
 	}
 	qs, ok := quarksLinks.(map[string]interface{})
 	if !ok {
 		return fmt.Errorf("could not get a map of QuarksLink")
 	}
 
-	// Assumed we have secrets path and link secrets named as providerName
+	// Assume we have a list of files named as the provider names of a link
 	for _, l := range links {
 		if l.IsDir() {
 			linkName := l.Name()
@@ -218,7 +218,7 @@ func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
 			properties := map[string]interface{}{}
 			properties[linkName] = map[string]interface{}{}
 			linkP := map[string]interface{}{}
-			err = afero.Walk(igr.fs, filepath.Clean(linksPath+"/"+l.Name()), func(path string, info os.FileInfo, err error) error {
+			err = afero.Walk(igr.fs, filepath.Clean(filepath.Join(linksPath, l.Name())), func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
@@ -239,14 +239,11 @@ func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
 				return nil
 			})
 			if err != nil {
-				return errors.Wrapf(err, "Walking links path")
+				return errors.Wrapf(err, "walking links path")
 			}
 
 			properties[linkName] = linkP
-			err = igr.jobProviderLinks.AddExternalLink(linkName, linkType, q.Address, q.Instances, properties)
-			if err != nil {
-				return errors.Wrapf(err, "Collecting external link failed for %s", linkName)
-			}
+			igr.jobProviderLinks.AddExternalLink(linkName, linkType, q.Address, q.Instances, properties)
 		}
 	}
 
