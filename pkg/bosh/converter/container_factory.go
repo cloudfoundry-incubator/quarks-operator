@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -15,6 +16,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
+	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
@@ -517,9 +519,13 @@ func bpmProcessContainer(
 	}
 	command, args := generateBPMCommand(&process, postStart)
 	limits := corev1.ResourceList{}
-	quantity, err := resource.ParseQuantity(process.Limits.Memory)
-	if err == nil {
-		limits[corev1.ResourceMemory] = quantity
+	if process.Limits.Memory != "" {
+		quantity, err := resource.ParseQuantity(process.Limits.Memory)
+		if err != nil {
+			log.Errorf(context.TODO(), "Error parsing %s: %v", process.Limits.Memory, err)
+		} else {
+			limits[corev1.ResourceMemory] = quantity
+		}
 	}
 	container := corev1.Container{
 		Name:            names.Sanitize(name),
