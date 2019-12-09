@@ -390,7 +390,8 @@ var _ = Describe("ContainerFactory", func() {
 			bpmConfigs["fake-job"] = bpm.Config{
 				Processes: []bpm.Process{
 					{
-						Name: "fake-job",
+						Name:   "fake-job",
+						Limits: bpm.Limits{Memory: "5G"},
 						Requests: corev1.ResourceList{
 							corev1.ResourceName(corev1.ResourceMemory): resource.MustParse("128Mi"),
 							corev1.ResourceName(corev1.ResourceCPU):    resource.MustParse("5m"),
@@ -402,6 +403,7 @@ var _ = Describe("ContainerFactory", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(containers[0].Resources.Requests.Memory().String()).To(Equal("128Mi"))
 			Expect(containers[0].Resources.Requests.Cpu().String()).To(Equal("5m"))
+			Expect(containers[0].Resources.Limits.Memory().String()).To(Equal("5G"))
 		})
 
 		Context("with lifecycle events", func() {
