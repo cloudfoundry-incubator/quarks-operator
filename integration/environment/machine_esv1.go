@@ -2,7 +2,7 @@ package environment
 
 import (
 	"github.com/pkg/errors"
-	"k8s.io/api/apps/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -13,10 +13,10 @@ import (
 )
 
 // GetStatefulSet gets a StatefulSet custom resource
-func (m *Machine) GetStatefulSet(namespace string, name string) (*v1beta1.StatefulSet, error) {
-	statefulSet, err := m.Clientset.AppsV1beta1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
+func (m *Machine) GetStatefulSet(namespace string, name string) (*appsv1.StatefulSet, error) {
+	statefulSet, err := m.Clientset.AppsV1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
-		return &v1beta1.StatefulSet{}, errors.Wrapf(err, "failed to query for statefulSet by name: %v", name)
+		return &appsv1.StatefulSet{}, errors.Wrapf(err, "failed to query for statefulSet by name: %v", name)
 	}
 
 	return statefulSet, nil
@@ -90,7 +90,7 @@ func (m *Machine) WaitForStatefulSetDelete(namespace string, name string) error 
 
 // StatefulSetExist checks if the statefulSet exists
 func (m *Machine) StatefulSetExist(namespace string, name string) (bool, error) {
-	_, err := m.Clientset.AppsV1beta1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
+	_, err := m.Clientset.AppsV1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
@@ -214,14 +214,14 @@ func (m *Machine) QuarksStatefulSetExists(namespace string, labels string) (bool
 
 // StatefulSetNewGeneration returns true if StatefulSet has new generation
 func (m *Machine) StatefulSetNewGeneration(namespace string, name string, version int64) (bool, error) {
-	client := m.Clientset.AppsV1beta1().StatefulSets(namespace)
+	client := m.Clientset.AppsV1().StatefulSets(namespace)
 
 	ss, err := client.Get(name, metav1.GetOptions{})
 	if err != nil {
 		return false, errors.Wrapf(err, "failed to query for statefulSet by name: %v", name)
 	}
 
-	if *ss.Status.ObservedGeneration > version {
+	if ss.Status.ObservedGeneration > version {
 		return true, nil
 	}
 
