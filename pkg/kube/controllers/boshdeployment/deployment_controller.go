@@ -174,7 +174,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			// Get one request from one service at most
-			reconciles := make([]reconcile.Request, 0, 1)
+			reconciles := make([]reconcile.Request, 1)
 
 			svc := a.Object.(*corev1.Service)
 			if provider, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderName]; ok {

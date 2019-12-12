@@ -242,8 +242,8 @@ var _ = Describe("InstanceGroupResolver", func() {
 						expectedProperties := JobLinkProperties{
 							"doppler": map[string]interface{}{
 								"grpc_port": json.Number("7765"),
+								"fooprop":   json.Number("10001"),
 							},
-							"fooprop": json.Number("10001"),
 						}
 
 						Expect(deep.Equal(jobConsumesFromDoppler.Properties, expectedProperties)).To(HaveLen(0))
@@ -320,16 +320,16 @@ var _ = Describe("InstanceGroupResolver", func() {
 					_, err = fileP1.WriteString("fake_prop")
 					Expect(err).NotTo(HaveOccurred())
 
-					fileP2, err := fs.Create(converter.VolumeLinksPath + "doppler/doppler")
+					fileP2, err := fs.Create(converter.VolumeLinksPath + "doppler/grpc_port")
 					Expect(err).NotTo(HaveOccurred())
 					defer fileP2.Close()
-					_, err = fileP2.WriteString(`grpc_port: 7765`)
+					_, err = fileP2.WriteString(`7765`)
 					Expect(err).NotTo(HaveOccurred())
 
 				})
 
 				It("stores all the links of the instance group in a file", func() {
-					err = igr.CollectQuarksLinks("/var/run/secrets/links/")
+					err = igr.CollectQuarksLinks(converter.VolumeLinksPath)
 					Expect(err).ToNot(HaveOccurred())
 
 					m, err := igr.Manifest(true)
@@ -348,8 +348,10 @@ var _ = Describe("InstanceGroupResolver", func() {
 							},
 						},
 						Properties: JobLinkProperties{
-							"doppler": "grpc_port: 7765",
-							"fooprop": "fake_prop",
+							"doppler": map[string]interface{}{
+								"grpc_port": "7765",
+								"fooprop":   "fake_prop",
+							},
 						},
 					}))
 

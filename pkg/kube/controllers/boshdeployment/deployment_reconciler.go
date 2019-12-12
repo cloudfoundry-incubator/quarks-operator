@@ -296,19 +296,21 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 
 		serviceRecords, err := r.getServiceRecords(instance.Namespace, services.Items)
 		if err != nil {
-			return linkInfos, errors.New(fmt.Sprintf("Failed to get link services for: %s", instance.Name))
+			return linkInfos, errors.Wrap(err, fmt.Sprintf("Failed to get link services for: %s", instance.Name))
 		}
 
 		for qName := range quarksLinks {
 			if svcRecord, ok := serviceRecords[qName]; ok {
 				pods, err := r.listPodsFromSelector(instance.Namespace, svcRecord.selector)
 				if err != nil {
-					return linkInfos, errors.New(fmt.Sprintf("Failed to get link pods for: %s", instance.Name))
+					return linkInfos, errors.Wrap(err, fmt.Sprintf("Failed to get link pods for: %s", instance.Name))
 				}
 
 				var jobsInstances []bdm.JobInstance
 				for i, p := range pods {
-
+					if len(p.Status.PodIP) == 0 {
+						return linkInfos, fmt.Errorf("empty ip of kube native component: '%s/%s'", p.Namespace, p.Name)
+					}
 					jobsInstances = append(jobsInstances, bdm.JobInstance{
 						Name:      qName,
 						ID:        string(p.GetUID()),
@@ -340,6 +342,9 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 	}
 
 	if len(quarksLinks) != 0 {
+		if manifest.Properties == nil {
+			manifest.Properties = map[string]interface{}{}
+		}
 		manifest.Properties["quarks_links"] = quarksLinks
 	}
 
@@ -358,7 +363,7 @@ func (r *ReconcileBOSHDeployment) getServiceRecords(namespace string, svcs []cor
 
 			svcRecords[providerName] = serviceRecord{
 				selector:  svc.Spec.Selector,
-				dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, bdm.GetClusterDomain()),
+				dnsRecord: fmt.Sprintf("%s.%s.svc.cluster.local", svc.Name, namespace),
 			}
 		}
 	}
