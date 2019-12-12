@@ -216,6 +216,8 @@ func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
 
 			linkType := q.Type
 			properties := map[string]interface{}{}
+			properties[linkName] = map[string]interface{}{}
+			linkP := map[string]interface{}{}
 			err = afero.Walk(igr.fs, filepath.Clean(linksPath+"/"+l.Name()), func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
@@ -225,15 +227,14 @@ func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
 					_, propertyFileName := filepath.Split(path)
 					// Skip the symlink to a directory
 					if strings.HasPrefix(propertyFileName, "..") {
-						return filepath.SkipDir
+						return nil
 					}
 					varBytes, err := afero.ReadFile(igr.fs, path)
 					if err != nil {
 						return errors.Wrapf(err, "could not read link %s", l.Name())
 					}
 
-					properties[propertyFileName] = string(varBytes)
-
+					linkP[propertyFileName] = string(varBytes)
 				}
 				return nil
 			})
@@ -241,6 +242,7 @@ func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
 				return errors.Wrapf(err, "Walking links path")
 			}
 
+			properties[linkName] = linkP
 			err = igr.jobProviderLinks.AddExternalLink(linkName, linkType, q.Address, q.Instances, properties)
 			if err != nil {
 				return errors.Wrapf(err, "Collecting external link failed for %s", linkName)

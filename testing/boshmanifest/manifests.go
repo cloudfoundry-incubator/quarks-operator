@@ -110,6 +110,28 @@ instance_groups:
           internal: 4223
 `
 
+// NatsSmokeTestWithExternalLinks has explicit BOSH links.
+// It can be used in integration tests.
+const NatsSmokeTestWithExternalLinks = `---
+name: test
+releases:
+- name: nats
+  version: "26"
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
+instance_groups:
+- name: nats-smoke-tests
+  instances: 1
+  lifecycle: auto-errand
+  jobs:
+  - name: smoke-tests
+    release: nats
+    consumes:
+      nats: {from: nats}
+`
+
 // Drains is a small manifest with jobs that include drain scripts
 // It can be used in integration tests.
 const Drains = `---
