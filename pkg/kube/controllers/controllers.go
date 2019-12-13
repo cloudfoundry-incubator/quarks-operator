@@ -51,6 +51,7 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 	quarksstatefulset.AddQuarksStatefulSet,
 	statefulset.AddStatefulSetRollout,
 	quarkslink.AddRestart,
+	quarksstatefulset.AddStatefulSetActivePassive,
 }
 
 var addToSchemes = runtime.SchemeBuilder{
