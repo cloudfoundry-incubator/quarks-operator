@@ -134,19 +134,19 @@ type AddOn struct {
 
 // Manifest is a BOSH deployment manifest
 type Manifest struct {
-	Name           string                   `json:"name"`
-	DirectorUUID   string                   `json:"director_uuid"`
-	InstanceGroups InstanceGroups           `json:"instance_groups,omitempty"`
-	Features       *Feature                 `json:"features,omitempty"`
-	Tags           map[string]string        `json:"tags,omitempty"`
-	Releases       []*Release               `json:"releases,omitempty"`
-	Stemcells      []*Stemcell              `json:"stemcells,omitempty"`
-	AddOns         []*AddOn                 `json:"addons,omitempty"`
-	Properties     []map[string]interface{} `json:"properties,omitempty"`
-	Variables      []Variable               `json:"variables,omitempty"`
-	Update         *Update                  `json:"update,omitempty"`
-	AddOnsApplied  bool                     `json:"addons_applied,omitempty"`
-	DNS            DomainNameService        `json:"-"`
+	Name           string                 `json:"name"`
+	DirectorUUID   string                 `json:"director_uuid"`
+	InstanceGroups InstanceGroups         `json:"instance_groups,omitempty"`
+	Features       *Feature               `json:"features,omitempty"`
+	Tags           map[string]string      `json:"tags,omitempty"`
+	Releases       []*Release             `json:"releases,omitempty"`
+	Stemcells      []*Stemcell            `json:"stemcells,omitempty"`
+	AddOns         []*AddOn               `json:"addons,omitempty"`
+	Properties     map[string]interface{} `json:"properties,omitempty"`
+	Variables      []Variable             `json:"variables,omitempty"`
+	Update         *Update                `json:"update,omitempty"`
+	AddOnsApplied  bool                   `json:"addons_applied,omitempty"`
+	DNS            DomainNameService      `json:"-"`
 }
 
 // duplicateYamlValue is a struct used for size compression

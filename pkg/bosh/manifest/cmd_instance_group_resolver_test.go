@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/spf13/afero"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
@@ -241,8 +242,8 @@ var _ = Describe("InstanceGroupResolver", func() {
 						expectedProperties := JobLinkProperties{
 							"doppler": map[string]interface{}{
 								"grpc_port": json.Number("7765"),
+								"fooprop":   json.Number("10001"),
 							},
-							"fooprop": json.Number("10001"),
 						}
 
 						Expect(deep.Equal(jobConsumesFromDoppler.Properties, expectedProperties)).To(HaveLen(0))
@@ -302,6 +303,58 @@ var _ = Describe("InstanceGroupResolver", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(afero.Exists(fs, "/mnt/quarks/provides.json")).To(BeTrue())
+				})
+			})
+		})
+
+		Describe("CollectQuarksLinks", func() {
+			Context("when jobs provide links", func() {
+				BeforeEach(func() {
+					m, err = env.BOSHManifestWithExternalLinks()
+					Expect(err).NotTo(HaveOccurred())
+					ig = "log-api"
+
+					fileP1, err := fs.Create(converter.VolumeLinksPath + "doppler/fooprop")
+					Expect(err).NotTo(HaveOccurred())
+					defer fileP1.Close()
+					_, err = fileP1.WriteString("fake_prop")
+					Expect(err).NotTo(HaveOccurred())
+
+					fileP2, err := fs.Create(converter.VolumeLinksPath + "doppler/grpc_port")
+					Expect(err).NotTo(HaveOccurred())
+					defer fileP2.Close()
+					_, err = fileP2.WriteString(`7765`)
+					Expect(err).NotTo(HaveOccurred())
+
+				})
+
+				It("stores all the links of the instance group in a file", func() {
+					err = igr.CollectQuarksLinks(converter.VolumeLinksPath)
+					Expect(err).ToNot(HaveOccurred())
+
+					m, err := igr.Manifest(true)
+					Expect(err).ToNot(HaveOccurred())
+					// log-api instance_group, with loggregator_trafficcontroller job, consumes links from external doppler
+					jobQuarksConsumes := m.InstanceGroups[0].Jobs[0].Properties.Quarks.Consumes
+					Expect(jobQuarksConsumes).To(ContainElement(JobLink{
+						Address: "doppler-0.default.svc.cluster.local",
+						Instances: []JobInstance{
+							{
+								Address:   "172.30.10.1",
+								Name:      "doppler",
+								ID:        "pod-uuid",
+								Index:     0,
+								Bootstrap: true,
+							},
+						},
+						Properties: JobLinkProperties{
+							"doppler": map[string]interface{}{
+								"grpc_port": "7765",
+								"fooprop":   "fake_prop",
+							},
+						},
+					}))
+
 				})
 			})
 		})

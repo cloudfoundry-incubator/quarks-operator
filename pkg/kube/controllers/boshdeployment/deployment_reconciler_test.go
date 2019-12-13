@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
@@ -165,6 +166,10 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		})
 
 		manager.GetClientReturns(client)
+
+		jobFactory.VariableInterpolationJobReturns(dmQJob, nil)
+		jobFactory.InstanceGroupManifestJobReturns(igQJob, nil)
+		jobFactory.BPMConfigsJobReturns(bpmQJob, nil)
 	})
 
 	JustBeforeEach(func() {
@@ -283,8 +288,6 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles an error when creating desired manifest qJob", func() {
-				jobFactory.VariableInterpolationJobReturns(dmQJob, nil)
-
 				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 					switch object := object.(type) {
 					case *qjv1a1.QuarksJob:
@@ -302,7 +305,6 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles an error when building instance group manifest qJob", func() {
-				jobFactory.VariableInterpolationJobReturns(dmQJob, nil)
 				jobFactory.InstanceGroupManifestJobReturns(dmQJob, errors.New("fake-error"))
 
 				_, err := reconciler.Reconcile(request)
@@ -311,9 +313,6 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles an error when creating instance group manifest qJob", func() {
-				jobFactory.VariableInterpolationJobReturns(dmQJob, nil)
-				jobFactory.InstanceGroupManifestJobReturns(igQJob, nil)
-
 				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 					switch object := object.(type) {
 					case *qjv1a1.QuarksJob:
@@ -331,8 +330,6 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles an error when building BPM configs qJob", func() {
-				jobFactory.VariableInterpolationJobReturns(dmQJob, nil)
-				jobFactory.InstanceGroupManifestJobReturns(dmQJob, nil)
 				jobFactory.BPMConfigsJobReturns(dmQJob, errors.New("fake-error"))
 
 				_, err := reconciler.Reconcile(request)
@@ -341,10 +338,6 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles an error when creating BPM configs qJob", func() {
-				jobFactory.VariableInterpolationJobReturns(dmQJob, nil)
-				jobFactory.InstanceGroupManifestJobReturns(igQJob, nil)
-				jobFactory.BPMConfigsJobReturns(bpmQJob, nil)
-
 				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
 					switch object := object.(type) {
 					case *qjv1a1.QuarksJob:
@@ -359,6 +352,146 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to create BPM configs qJob for BOSHDeployment 'default/foo': creating or updating QuarksJob 'bpm-foo': fake-error"))
+			})
+
+			Context("when the manifest contains explicit links", func() {
+				var bazSecret *corev1.Secret
+
+				BeforeEach(func() {
+					bazSecret = &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "baz-sec",
+							Namespace: "default",
+							Labels: map[string]string{
+								bdv1.LabelDeploymentName: "foo",
+							},
+							Annotations: map[string]string{
+								bdv1.AnnotationLinkProviderName: "baz",
+							},
+						},
+						Data: map[string][]byte{},
+					}
+
+					manifest = &bdm.Manifest{
+						Name: "foo",
+						Releases: []*bdm.Release{
+							{
+								Name:    "bar",
+								URL:     "docker.io/cfcontainerization",
+								Version: "1.0",
+								Stemcell: &bdm.ReleaseStemcell{
+									OS:      "opensuse",
+									Version: "42.3",
+								},
+							},
+						},
+						InstanceGroups: []*bdm.InstanceGroup{
+							{
+								Name: "fakepod",
+								Jobs: []bdm.Job{
+									{
+										Name:    "foo",
+										Release: "bar",
+										Properties: bdm.JobProperties{
+											Properties: map[string]interface{}{
+												"password": "((foo_password))",
+											},
+											Quarks: bdm.Quarks{
+												Ports: []bdm.Port{
+													{
+														Name:     "foo",
+														Protocol: "TCP",
+														Internal: 8080,
+													},
+												},
+											},
+										},
+										Consumes: map[string]interface{}{
+											"baz": map[string]interface{}{
+												"from": "baz",
+											},
+										},
+									},
+								},
+							},
+						},
+						Variables: []bdm.Variable{
+							{
+								Name: "foo_password",
+								Type: "password",
+							},
+						},
+					}
+
+					client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
+						switch object := object.(type) {
+						case *corev1.SecretList:
+							secretList := corev1.SecretList{
+								Items: []corev1.Secret{*bazSecret},
+							}
+							secretList.DeepCopyInto(object)
+						}
+
+						return nil
+					})
+
+					client.StatusCalls(func() crc.StatusWriter { return &cfakes.FakeStatusWriter{} })
+				})
+
+				It("passes link secrets to QJobs", func() {
+					_, err := reconciler.Reconcile(request)
+					Expect(err).ToNot(HaveOccurred())
+					_, linksSecrets, _ := jobFactory.BPMConfigsJobArgsForCall(0)
+					Expect(linksSecrets).To(Equal(converter.LinkInfos{
+						{
+							SecretName:   "baz-sec",
+							ProviderName: "baz",
+						},
+					}))
+					_, linksSecrets, _ = jobFactory.InstanceGroupManifestJobArgsForCall(0)
+					Expect(linksSecrets).To(Equal(converter.LinkInfos{
+						{
+							SecretName:   "baz-sec",
+							ProviderName: "baz",
+						},
+					}))
+				})
+
+				It("handles an error when listing secretsn", func() {
+					client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
+						switch object.(type) {
+						case *corev1.SecretList:
+							return errors.New("fake-error")
+						}
+
+						return nil
+					})
+
+					_, err := reconciler.Reconcile(request)
+					Expect(err.Error()).To(ContainSubstring("listing secrets for link in deployment"))
+				})
+				It("handles an error on missing providers when the secret doesn't have the annotation", func() {
+					bazSecret.Annotations = nil
+					_, err := reconciler.Reconcile(request)
+					Expect(err.Error()).To(ContainSubstring("missing link secrets for providers"))
+				})
+
+				It("handles an error on duplicated secrets of provider when duplicated secrets match the annotation", func() {
+					client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
+						switch object := object.(type) {
+						case *corev1.SecretList:
+							secretList := corev1.SecretList{
+								Items: []corev1.Secret{*bazSecret, *bazSecret},
+							}
+							secretList.DeepCopyInto(object)
+						}
+
+						return nil
+					})
+
+					_, err := reconciler.Reconcile(request)
+					Expect(err.Error()).To(ContainSubstring("duplicated secrets of provider"))
+				})
 			})
 		})
 	})

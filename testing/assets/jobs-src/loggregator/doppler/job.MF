@@ -19,7 +19,7 @@ provides:
   type: doppler
   properties:
   - doppler.grpc_port
-  - fooprop
+  - doppler.fooprop
 - name: loggregator
   type: loggregator
   properties:
@@ -49,7 +49,7 @@ properties:
     description: Port for outgoing log messages via GRPC
     default: 8082
   
-  fooprop:
+  doppler.fooprop:
     description: Port for outgoing log messages via GRPC
     default: 10001
 

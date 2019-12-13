@@ -32,8 +32,12 @@ const (
 var (
 	// LabelDeploymentName is the label key for manifest name
 	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
-	// LabelDeploymentSecretType is the label key for secret type name
-	LabelDeploymentSecretType = fmt.Sprintf("%s/secret-name", apis.GroupName)
+	// LabelDeploymentSecretType is the label key for secret type
+	LabelDeploymentSecretType = fmt.Sprintf("%s/secret-type", apis.GroupName)
+	// AnnotationLinkProviderName is the annotation key for link provider name
+	AnnotationLinkProviderName = fmt.Sprintf("%s/link-provider-name", apis.GroupName)
+	// AnnotationLinkProviderType is the annotation key for link provider type
+	AnnotationLinkProviderType = fmt.Sprintf("%s/link-provider-type", apis.GroupName)
 )
 
 // BOSHDeploymentSpec defines the desired state of BOSHDeployment
