@@ -24,7 +24,7 @@ import (
 )
 
 // AddGeneratedVariable creates a new generated variable controller to watch for the intermediate "with-ops" manifest and
-// reconcile it into one QuarksSecret for each explicit variable.
+// reconcile them into one QuarksSecret for each explicit variable.
 func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, "generated-variable-reconciler", mgr.GetEventRecorderFor("generated-variable-recorder"))
 	r := NewGeneratedVariableReconciler(
@@ -38,7 +38,6 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 			}),
 	)
 
-	// Create a new controller
 	c, err := controller.New("generated-variable-controller", mgr, controller.Options{
 		Reconciler:              r,
 		MaxConcurrentReconciles: config.MaxBoshDeploymentWorkers,
@@ -47,7 +46,7 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 		return errors.Wrap(err, "Adding generated variable controller to manager failed.")
 	}
 
-	// Watch Secrets which contain manifest with ops
+	// Watch the with-ops manifest secrets
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*corev1.Secret)
@@ -56,8 +55,8 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 			if shouldProcessEvent {
 				ctxlog.NewPredicateEvent(o).Debug(
 					ctx, e.Meta, names.Secret,
-					fmt.Sprintf("Create predicate passed for %s, existing secret with the %s suffix",
-						e.Meta.GetName(), names.DeploymentSecretTypeManifestWithOps.String()),
+					fmt.Sprintf("Create predicate passed for %s, new with-ops manifest has been created",
+						e.Meta.GetName()),
 				)
 			}
 
@@ -73,8 +72,8 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 			if shouldProcessEvent {
 				ctxlog.NewPredicateEvent(newSecret).Debug(
 					ctx, e.MetaNew, bdv1.SecretReference,
-					fmt.Sprintf("Update predicate passed for %s, existing secret with the %s suffix has been updated",
-						e.MetaNew.GetName(), names.DeploymentSecretTypeManifestWithOps.String()),
+					fmt.Sprintf("Update predicate passed for %s, existing with-ops manifest has been updated",
+						e.MetaNew.GetName()),
 				)
 			}
 
@@ -82,9 +81,9 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 		},
 	}
 
-	// This is a manifest with ops files secret that has changed.
-	// We can reconcile this as-is, no need to find the corresponding BOSHDeployment.
-	// All we have to do is create secrets for explicit variables.
+	// This watches for the with-ops manifest secrets.
+	// We can reconcile them as-is, no need to find the corresponding BOSHDeployment.
+	// All we have to do is create secrets for the explicit variables.
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, p)
 	if err != nil {
 		return errors.Wrap(err, "Watching secrets in generated variable controller.")
