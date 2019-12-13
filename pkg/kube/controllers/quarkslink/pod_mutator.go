@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
-	"regexp"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -48,10 +47,10 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}
-	m.log.Debugf("Pod mutator handler ran for pod '%s'", pod.Name)
 
 	updatedPod := pod.DeepCopy()
 	if validEntanglement(pod.GetAnnotations()) {
+		m.log.Debugf("Adding quarks link secret to entangled pod '%s'", pod.Name)
 		err = m.addSecret(ctx, req.Namespace, updatedPod)
 		if err != nil {
 			return admission.Errored(http.StatusInternalServerError, err)
@@ -133,15 +132,10 @@ func (m *PodMutator) findSecret(ctx context.Context, namespace string, e entangl
 	// we can't use the instance group from
 	// link-<deployment>-<instancegroup> for the search, because we don't
 	// know which ig provides the link, so filter for secrets which match
-	// the link name scheme
-	var regex = regexp.MustCompile(fmt.Sprintf("^link-%s-[a-z0-9-]*$", e.deployment))
+	// the link name scheme and have our link 'type.name' as data key
 	for _, secret := range list.Items {
-		if regex.MatchString(secret.Name) {
-			// found an entanglement secret for the deployment,
-			// does it have our link 'type.name'?
-			if _, found := secret.Data[e.consumes]; found {
-				return secret.Name, nil
-			}
+		if e.fulfilledBy(secret) {
+			return secret.Name, nil
 		}
 	}
 

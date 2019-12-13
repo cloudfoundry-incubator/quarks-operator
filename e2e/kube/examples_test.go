@@ -7,26 +7,20 @@ import (
 	"strings"
 	"time"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"code.cloudfoundry.org/cf-operator/testing"
 	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Examples Directory", func() {
 	var (
 		example      string
 		yamlFilePath string
-		kubectl      *cmdHelper.Kubectl
 	)
-
-	podWait := func(name string) {
-		err := kubectl.Wait(namespace, "ready", name, kubectl.PollTimeout)
-		Expect(err).ToNot(HaveOccurred())
-	}
 
 	podRestarted := func(podName string, startTime time.Time) {
 		wait.PollImmediate(1*time.Second, kubectl.PollTimeout, func() (bool, error) {
@@ -111,6 +105,23 @@ var _ = Describe("Examples Directory", func() {
 
 			err = kubectl.RunCommandWithCheckString(namespace, "example-quarks-statefulset-1", "env", "SPECIAL_KEY=value1Updated")
 			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("it labels the first pod as active", func() {
+			yamlUpdatedFilePath := examplesDir + "quarks-statefulset/qstatefulset_active_passive.yaml"
+			By("Applying a quarkstatefulset with active-passive probe")
+			err := cmdHelper.Apply(namespace, yamlUpdatedFilePath)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = wait.PollImmediate(time.Second*5, time.Second*35, func() (bool, error) {
+				err := kubectl.WaitForPod(namespace, "quarks.cloudfoundry.org/pod-active", "example-quarks-statefulset-0")
+				if err != nil {
+					return false, err
+				}
+				return true, nil
+			})
+			Expect(err).ToNot(HaveOccurred())
+
 		})
 
 	})

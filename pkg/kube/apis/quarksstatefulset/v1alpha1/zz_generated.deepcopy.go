@@ -10,6 +10,7 @@ Don't alter this file, it was generated.
 package v1alpha1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -83,6 +84,21 @@ func (in *QuarksStatefulSetSpec) DeepCopyInto(out *QuarksStatefulSetSpec) {
 		copy(*out, *in)
 	}
 	in.Template.DeepCopyInto(&out.Template)
+	if in.ActivePassiveProbe != nil {
+		in, out := &in.ActivePassiveProbe, &out.ActivePassiveProbe
+		*out = make(map[string]*v1.Probe, len(*in))
+		for key, val := range *in {
+			var outVal *v1.Probe
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				in, out := &val, &outVal
+				*out = new(v1.Probe)
+				(*in).DeepCopyInto(*out)
+			}
+			(*out)[key] = outVal
+		}
+	}
 	return
 }
 

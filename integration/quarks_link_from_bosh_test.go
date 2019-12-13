@@ -14,6 +14,7 @@ var _ = Describe("BOSHLinks", func() {
 	const (
 		manifestRef    = "manifest"
 		deploymentName = "test"
+		secretName     = "link-test-nats"
 	)
 
 	var (
@@ -41,9 +42,8 @@ var _ = Describe("BOSHLinks", func() {
 			boshManifest = env.BOSHManifestSecret(manifestRef, bm.NatsSmall)
 		})
 
-		It("creates a secret for each link", func() {
+		It("creates a secret for each link found in jobs", func() {
 			By("waiting for secrets", func() {
-				secretName := "link-test-nats"
 				err := env.WaitForSecret(env.Namespace, secretName)
 				Expect(err).NotTo(HaveOccurred())
 				secret, err := env.GetSecret(env.Namespace, secretName)
@@ -58,11 +58,11 @@ var _ = Describe("BOSHLinks", func() {
 			boshManifest = env.BOSHManifestSecret(manifestRef, bm.NatsSmallWithLinks)
 		})
 
-		It("creates a secret for each link", func() {
+		It("creates a secret for each link found in jobs", func() {
 			By("waiting for secrets", func() {
-				err := env.WaitForSecret(env.Namespace, "link-test-nats")
+				err := env.WaitForSecret(env.Namespace, secretName)
 				Expect(err).NotTo(HaveOccurred())
-				secret, err := env.GetSecret(env.Namespace, "link-test-nats")
+				secret, err := env.GetSecret(env.Namespace, secretName)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(secret.Data).Should(HaveKeyWithValue("nats.nuts", []byte("{\"nats\":{\"password\":\"changeme\",\"port\":4222,\"user\":\"admin\"}}")))
 			})

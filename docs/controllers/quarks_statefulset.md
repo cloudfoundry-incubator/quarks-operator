@@ -194,7 +194,7 @@ If zones are set for an `QuarksStatefulSet`, the following occurs:
 
 Active/passive model is application model that have multiple running instances, but only one instance is active and all other instances are passive (standby). If the active instance is down, one of the passive instances will be promoted to active immediately.
 
-The `activeProbe` key defines active probe to be performed on a container. The controller examines the active probe periodically to see if the active one is still active. If active pod is down or there isn’t an active pod, the first running pod will be promoted as active and label it as `quarks.cloudfoundry.org/pod-designation: active`.
+The `activeProbe` key defines active probe to be performed on a container. The controller examines the active probe periodically to see if the active one is still active. If active pod is down or there isn’t an active pod, the first running pod will be promoted as active and label it as `quarks.cloudfoundry.org/pod-active: active`.
 
 ```yaml
 apiVersion: quarks.cloudfoundry.org/v1alpha1
