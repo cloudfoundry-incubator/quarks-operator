@@ -1,5 +1,8 @@
 package environment
 
+// The functions in this file are only used by the extended secret component
+// tests.  They were split off in preparation for standalone components.
+
 import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

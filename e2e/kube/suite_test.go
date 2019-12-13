@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 	"code.cloudfoundry.org/quarks-utils/testing/e2ehelper"
 )
 
@@ -18,6 +19,7 @@ var (
 	nsIndex   int
 	teardown  e2ehelper.TearDownFunc
 	namespace string
+	kubectl   *cmdHelper.Kubectl
 )
 
 func FailAndCollectDebugInfo(description string, callerSkip ...int) {
@@ -54,3 +56,8 @@ var _ = AfterEach(func() {
 		teardown()
 	}
 })
+
+func podWait(name string) {
+	err := kubectl.Wait(namespace, "ready", name, kubectl.PollTimeout)
+	Expect(err).ToNot(HaveOccurred())
+}

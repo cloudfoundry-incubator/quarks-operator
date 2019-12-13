@@ -7,26 +7,20 @@ import (
 	"strings"
 	"time"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"code.cloudfoundry.org/cf-operator/testing"
 	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Examples Directory", func() {
 	var (
 		example      string
 		yamlFilePath string
-		kubectl      *cmdHelper.Kubectl
 	)
-
-	podWait := func(name string) {
-		err := kubectl.Wait(namespace, "ready", name, kubectl.PollTimeout)
-		Expect(err).ToNot(HaveOccurred())
-	}
 
 	podRestarted := func(podName string, startTime time.Time) {
 		wait.PollImmediate(1*time.Second, kubectl.PollTimeout, func() (bool, error) {

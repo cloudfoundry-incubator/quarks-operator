@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: entangled-statefulset
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      example: owned-by-sts
+  serviceName: ""
+  template:
+    metadata:
+      annotations:
+        quarks.cloudfoundry.org/consumes: nats.nats
+        quarks.cloudfoundry.org/deployment: nats-deployment
+      labels:
+        example: owned-by-sts
+      name: entangled
+    spec:
+      containers:
+      - command:
+        - sleep
+        - "3600"
+        image: busybox
+        imagePullPolicy: Always
+        name: busybox
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 1

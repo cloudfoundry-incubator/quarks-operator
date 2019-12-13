@@ -2,16 +2,8 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: nats-deployment.var-custom-password
-type: Opaque
-stringData:
-  password: custom_password
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
   name: nats-manifest
-data:
+stringData:
   manifest: |
     ---
     name: nats-deployment
@@ -31,25 +23,18 @@ data:
         properties:
           nats:
             user: admin
-            password: ((custom_password))
-      env:
-        bosh:
-          agent:
-            settings:
-              disable_log_sidecar: true
+            password: onetwothreefour
+          quarks:
+            ports:
+            - name: "nats"
+              protocol: "TCP"
+              internal: 4222
+            - name: "nats-routes"
+              protocol: TCP
+              internal: 4223
     variables:
-    - name: custom_password
+    - name: nats_password
       type: password
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ops-scale
-data:
-  ops: |
-    - type: replace
-      path: /instance_groups/name=nats?/instances
-      value: 2
 ---
 apiVersion: quarks.cloudfoundry.org/v1alpha1
 kind: BOSHDeployment
@@ -58,7 +43,4 @@ metadata:
 spec:
   manifest:
     name: nats-manifest
-    type: configmap
-  ops:
-  - name: ops-scale
-    type: configmap
+    type: secret
