@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/pkg/errors"
+
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -18,6 +18,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
@@ -50,7 +51,7 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*corev1.Secret)
-			shouldProcessEvent := isManifestWithOps(o.Name)
+			shouldProcessEvent := isManifestWithOps(o.Labels)
 
 			if shouldProcessEvent {
 				ctxlog.NewPredicateEvent(o).Debug(
@@ -67,7 +68,7 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			oldSecret := e.ObjectOld.(*corev1.Secret)
 			newSecret := e.ObjectNew.(*corev1.Secret)
-			shouldProcessEvent := isManifestWithOps(newSecret.Name) && !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
+			shouldProcessEvent := isManifestWithOps(newSecret.Labels) && !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
 
 			if shouldProcessEvent {
 				ctxlog.NewPredicateEvent(newSecret).Debug(
@@ -92,7 +93,9 @@ func AddGeneratedVariable(ctx context.Context, config *config.Config, mgr manage
 	return nil
 }
 
-func isManifestWithOps(name string) bool {
-	// TODO: replace this with an annotation
-	return strings.HasSuffix(name, names.DeploymentSecretTypeManifestWithOps.String())
+func isManifestWithOps(labels map[string]string) bool {
+	if t, ok := labels[bdv1.LabelDeploymentSecretType]; ok && t == names.DeploymentSecretTypeManifestWithOps.String() {
+		return true
+	}
+	return false
 }
