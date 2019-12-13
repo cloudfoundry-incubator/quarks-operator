@@ -247,6 +247,21 @@ var _ = Describe("Deploy", func() {
 			})
 		})
 
+		Context("by adding an additional explicit variable", func() {
+			BeforeEach(func() {
+				cm, err := env.GetConfigMap(env.Namespace, manifestName)
+				Expect(err).NotTo(HaveOccurred())
+				cm.Data["manifest"] = bm.NatsExplicitVar
+				_, _, err = env.UpdateConfigMap(env.Namespace, *cm)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should create a new secret for the variable", func() {
+				err := env.WaitForSecret(env.Namespace, "test.var-nats-password")
+				Expect(err).NotTo(HaveOccurred(), "error waiting for new generated variable secret")
+			})
+		})
+
 		Context("deployment downtime", func() {
 			It("should be zero", func() {
 				By("Setting up a NodePort service")
