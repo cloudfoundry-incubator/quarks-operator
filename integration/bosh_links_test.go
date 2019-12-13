@@ -3,6 +3,7 @@ package integration_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	corev1 "k8s.io/api/core/v1"
 
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
@@ -70,22 +71,22 @@ var _ = Describe("BOSHLinks", func() {
 
 	Context("when deployment has explicit external link dependencies", func() {
 		BeforeEach(func() {
-			natsConfigMap := env.Catalog.NatsConfigMap(deploymentName)
+			natsConfigMap := env.NatsConfigMap(deploymentName)
 			tearDown, err := env.CreateConfigMap(env.Namespace, natsConfigMap)
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
-			natsSecret := env.Catalog.NatsSecret(deploymentName)
+			natsSecret := env.NatsSecret(deploymentName)
 			tearDown, err = env.CreateSecret(env.Namespace, natsSecret)
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
-			natsPod := env.Catalog.NatsPod(deploymentName)
+			natsPod := env.NatsPod(deploymentName)
 			tearDown, err = env.CreatePod(env.Namespace, natsPod)
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
-			natsService := env.Catalog.NatsService(deploymentName)
+			natsService := env.NatsService(deploymentName)
 			tearDown, err = env.CreateService(env.Namespace, natsService)
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
@@ -95,7 +96,7 @@ var _ = Describe("BOSHLinks", func() {
 
 		It("creates a secret for each link", func() {
 			By("waiting for job rendering done", func() {
-				err := env.WaitForPods(env.Namespace,"quarks.cloudfoundry.org/instance-group-name=nats-smoke-tests")
+				err := env.WaitForPods(env.Namespace, "quarks.cloudfoundry.org/instance-group-name=nats-smoke-tests")
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
