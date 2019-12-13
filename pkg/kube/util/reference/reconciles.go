@@ -85,6 +85,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 	namespace := object.GetNamespace()
 	result := []reconcile.Request{}
 
+	log.Debugf(ctx, "Listing %s in namespace '%s' for '%s'", reconcileType, namespace, object.GetName())
 	switch reconcileType {
 	case ReconcileForBOSHDeployment:
 		boshDeployments, err := listBOSHDeployments(ctx, client, namespace)
@@ -166,14 +167,13 @@ func SkipReconciles(ctx context.Context, client crc.Client, object apis.Object) 
 	}
 
 	if object.GetResourceVersion() != newResourceVersion {
-		log.Debugf(ctx, "skip reconcile request for old resource version of '%s'", object.GetName())
+		log.Debugf(ctx, "Skipping reconcile request for old resource version of '%s'", object.GetName())
 		return true
 	}
 	return false
 }
 
 func listBOSHDeployments(ctx context.Context, client crc.Client, namespace string) (*bdv1.BOSHDeploymentList, error) {
-	log.Debugf(ctx, "Listing BOSHDeployments in namespace '%s'", namespace)
 	result := &bdv1.BOSHDeploymentList{}
 	err := client.List(ctx, result)
 	if err != nil {
@@ -184,7 +184,6 @@ func listBOSHDeployments(ctx context.Context, client crc.Client, namespace strin
 }
 
 func listQuarksStatefulSets(ctx context.Context, client crc.Client, namespace string) (*qstsv1a1.QuarksStatefulSetList, error) {
-	log.Debugf(ctx, "Listing QuarksStatefulSets in namespace '%s'", namespace)
 	result := &qstsv1a1.QuarksStatefulSetList{}
 	err := client.List(ctx, result)
 	if err != nil {
