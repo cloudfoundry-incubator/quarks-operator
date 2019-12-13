@@ -4,13 +4,6 @@ image:
   org: cfcontainerization
   tag: foobar
 
-operator:
-  webhook:
-    endpoint: ~
-    host: ~
-    port: "2999"
-    useServiceReference: true
-
 cluster:
   domain: ~
 
@@ -30,6 +23,11 @@ global:
     credentials: ~
   operator:
     watchNamespace: ""
+    webhook:
+      endpoint: ~
+      host: ~
+      port: "2999"
+      useServiceReference: true
   rbacEnable: true
 
 quarks-job:
