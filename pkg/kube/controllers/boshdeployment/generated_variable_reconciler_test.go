@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -93,17 +94,6 @@ variables:
 		ctx = ctxlog.NewContextWithRecorder(ctx, "TestRecorder", recorder)
 
 		client = &cfakes.FakeClient{}
-		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
-			switch object := object.(type) {
-			case *corev1.Secret:
-				if nn.Name == "foo-with-ops" {
-					manifestWithOpsSecret.DeepCopyInto(object)
-				}
-			}
-
-			return nil
-		})
-
 		manager.GetClientReturns(client)
 
 		kubeConverter = &fakes.FakeKubeConverter{}
@@ -115,8 +105,8 @@ variables:
 	})
 
 	Describe("Reconcile", func() {
-		Context("when manifest with ops is created", func() {
-			It("handles an error when generating variables", func() {
+		Context("when creating the new variable secret fails", func() {
+			BeforeEach(func() {
 				kubeConverter.VariablesReturns([]qsv1a1.QuarksSecret{
 					{
 						ObjectMeta: metav1.ObjectMeta{
@@ -145,14 +135,30 @@ variables:
 					return nil
 				})
 
-				By("From ops applied state to variable interpolated state")
+			})
+
+			It("handles an error when creating the new variable secrets", func() {
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to generate variables"))
+			})
+		})
 
+		Context("when no errors occurr", func() {
+			BeforeEach(func() {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+					switch object := object.(type) {
+					case *corev1.Secret:
+						if nn.Name == "foo-with-ops" {
+							manifestWithOpsSecret.DeepCopyInto(object)
+						}
+					}
+
+					return nil
+				})
 			})
 
-			It("creates generated variables", func() {
+			It("creates the variable secrets", func() {
 				result, err := reconciler.Reconcile(request)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))

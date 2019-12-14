@@ -203,6 +203,10 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      manifestSecretName,
 			Namespace: instance.GetNamespace(),
+			Labels: map[string]string{
+				bdv1.LabelDeploymentName:       manifest.Name,
+				bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeManifestWithOps.String(),
+			},
 		},
 		StringData: map[string]string{
 			"manifest.yaml": string(manifestBytes),

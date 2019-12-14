@@ -32,6 +32,41 @@ instance_groups:
           internal: 4223
 `
 
+// NatsExplicitVar is the same as NatsSmall, but with an additional explicit var
+const NatsExplicitVar = `---
+name: test
+releases:
+- name: nats
+  version: "26"
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
+instance_groups:
+- name: nats
+  instances: 2
+  jobs:
+  - name: nats
+    release: nats
+    properties:
+      nats:
+        user: admin
+        password: changeme
+        nats_password: (( nats_password ))
+        debug: true
+      quarks:
+        ports:
+        - name: "nats"
+          protocol: "TCP"
+          internal: 4222
+        - name: "nats-routes"
+          protocol: "TCP"
+          internal: 4223
+variables:
+- name: nats_password
+  type: password
+`
+
 // NatsSmallWithLinks has explicit BOSH links.
 // It can be used in integration tests.
 const NatsSmallWithLinks = `---
