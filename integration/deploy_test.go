@@ -439,6 +439,51 @@ var _ = Describe("Deploy", func() {
 		})
 	})
 
+	Context("when adding env vars", func() {
+		BeforeEach(func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			tearDown, err = env.CreateConfigMap(env.Namespace, env.CustomOpsConfigMap(
+				"ops-bpm",
+				`- type: replace
+  path: /instance_groups/name=nats/jobs/name=nats/properties/quarks?
+  value:
+    envs:
+    - name: XPOD_IPX
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: status.podIP
+`,
+			))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeploymentWithOps(deploymentName, manifestName, "ops-bpm"))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			By("checking for instance group pods")
+			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "1", 2)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
+		})
+
+		It("should add the env var to the container", func() {
+			pod, err := env.GetPod(env.Namespace, "test-nats-1")
+			Expect(err).NotTo(HaveOccurred())
+
+			envKeys := []string{}
+			for _, c := range pod.Spec.Containers {
+				for _, e := range c.Env {
+					envKeys = append(envKeys, e.Name)
+				}
+			}
+			Expect(envKeys).To(ContainElement("XPOD_IPX"))
+		})
+	})
+
 	Context("when using a custom reconciler configuration", func() {
 		It("should use the context timeout (1ns)", func() {
 			env.Config.CtxTimeOut = 1 * time.Nanosecond
