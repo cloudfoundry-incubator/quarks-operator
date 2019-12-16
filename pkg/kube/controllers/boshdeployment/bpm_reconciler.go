@@ -208,18 +208,10 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 		return nil, err
 	}
 
-	// Fetch ig resolved secret version
-	igResolvedSecretName := names.InstanceGroupSecretName(
-		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
-		manifest.Name,
-		instanceGroupName,
-		"",
-	)
-	igResolvedSecret, err := r.versionedSecretStore.Latest(r.ctx, r.config.Namespace, igResolvedSecretName)
+	igResolvedSecretVersion, err := r.fetchIGresolvedVersion(manifest.Name, instanceGroupName)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read latest versioned secret %s for bosh deployment %s", igResolvedSecretName, manifest.Name)
+		return nil, err
 	}
-	igResolvedSecretVersion := igResolvedSecret.GetLabels()[versionedsecretstore.LabelVersion]
 
 	resources, err := r.kubeConverter.BPMResources(manifest.Name, manifest.DNS, qStsVersionString, instanceGroup, manifest, bpmInfo.Configs, igResolvedSecretVersion)
 	if err != nil {
@@ -227,6 +219,20 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 	}
 
 	return resources, nil
+}
+
+func (r *ReconcileBPM) fetchIGresolvedVersion(manifestName, instanceGroupName string) (string, error) {
+	igResolvedSecretName := names.InstanceGroupSecretName(
+		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
+		manifestName,
+		instanceGroupName,
+		"",
+	)
+	igResolvedSecret, err := r.versionedSecretStore.Latest(r.ctx, r.config.Namespace, igResolvedSecretName)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to read latest versioned secret %s for bosh deployment %s", igResolvedSecretName, manifestName)
+	}
+	return igResolvedSecret.GetLabels()[versionedsecretstore.LabelVersion], nil
 }
 
 // deployInstanceGroups create or update QuarksJobs and QuarksStatefulSets for instance groups
