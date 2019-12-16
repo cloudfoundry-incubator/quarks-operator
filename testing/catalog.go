@@ -258,6 +258,16 @@ func (c *Catalog) DefaultQuarksLinkSecret(deploymentName, linkType string) corev
 	)
 }
 
+// CustomOpsConfigMap is an operations file with a custom structural change
+func (c *Catalog) CustomOpsConfigMap(name string, change string) corev1.ConfigMap {
+	return corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Data: map[string]string{
+			"ops": change,
+		},
+	}
+}
+
 // InterpolateOpsConfigMap for ops interpolate configmap tests
 func (c *Catalog) InterpolateOpsConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{

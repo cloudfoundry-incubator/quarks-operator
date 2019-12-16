@@ -1,6 +1,8 @@
 package bpm
 
 import (
+	"sort"
+
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
@@ -66,4 +68,26 @@ func NewConfig(data []byte) (Config, error) {
 		return Config{}, errors.Wrapf(err, "Unmarshalling data %s failed", string(data))
 	}
 	return config, nil
+}
+
+func (p Process) MergeEnv(overrides []corev1.EnvVar) []corev1.EnvVar {
+	seen := make(map[string]corev1.EnvVar)
+
+	for name, value := range p.Env {
+		seen[name] = corev1.EnvVar{Name: name, Value: value}
+	}
+
+	for _, env := range overrides {
+		seen[env.Name] = env
+	}
+
+	result := make([]corev1.EnvVar, 0, len(seen))
+	for _, value := range seen {
+		result = append(result, value)
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
+	return result
 }

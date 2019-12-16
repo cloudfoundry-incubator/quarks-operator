@@ -59,7 +59,9 @@ func NewJobFactory(namespace string) *JobFactory {
 	}
 }
 
-// VariableInterpolationJob returns an quarks job to interpolate variables
+// VariableInterpolationJob returns an quarks job to create the desired manifest
+// The desired manifest is a BOSH manifest with all variables interpolated.
+// It's sometimes referred to as the 'with-vars' manifest.
 func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error) {
 	args := []string{"util", "variable-interpolation"}
 
