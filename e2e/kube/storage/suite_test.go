@@ -18,8 +18,9 @@ func TestKubeStorage(t *testing.T) {
 }
 
 var (
-	nsTeardown e2ehelper.TearDownFunc
-	namespace  string
+	nsTeardown        e2ehelper.TearDownFunc
+	namespace         string
+	operatorNamespace string
 )
 
 var _ = BeforeEach(func() {
@@ -30,7 +31,7 @@ var _ = BeforeEach(func() {
 		log.Fatal(err)
 	}
 	chartPath := fmt.Sprintf("%s%s", dir, "/../../../helm/cf-operator")
-	namespace, nsTeardown, err = e2ehelper.SetUpEnvironment(chartPath)
+	namespace, operatorNamespace, nsTeardown, err = e2ehelper.SetUpEnvironment(chartPath)
 	Expect(err).ToNot(HaveOccurred())
 })
 

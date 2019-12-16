@@ -31,7 +31,7 @@ var _ = Describe("BOSHDeployment", func() {
 			status, err := kubectl.PodStatus(namespace, "nats-deployment-nats-0")
 			Expect(err).ToNot(HaveOccurred(), "error getting pod start time")
 			startTime := status.StartTime
-			err = testing.RestartOperator(namespace)
+			err = testing.RestartOperator(operatorNamespace)
 			Expect(err).ToNot(HaveOccurred(), "error restarting cf-operator")
 
 			By("Checking for pod not restarted")
