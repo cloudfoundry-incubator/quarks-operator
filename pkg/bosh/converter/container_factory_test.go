@@ -1,6 +1,7 @@
 package converter_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"path"
 
@@ -382,7 +383,7 @@ var _ = Describe("ContainerFactory", func() {
 			Expect(err.Error()).To(ContainSubstring("fake-release-image-error"))
 		})
 
-		It("adds k8s resource requests from bpm config", func() {
+		It("adds k8s resource requests and limits from bpm config", func() {
 			jobs = []bdm.Job{
 				{Name: "fake-job"},
 			}
@@ -390,7 +391,8 @@ var _ = Describe("ContainerFactory", func() {
 			bpmConfigs["fake-job"] = bpm.Config{
 				Processes: []bpm.Process{
 					{
-						Name: "fake-job",
+						Name:   "fake-job",
+						Limits: bpm.Limits{Memory: "5G"},
 						Requests: corev1.ResourceList{
 							corev1.ResourceName(corev1.ResourceMemory): resource.MustParse("128Mi"),
 							corev1.ResourceName(corev1.ResourceCPU):    resource.MustParse("5m"),
@@ -402,6 +404,31 @@ var _ = Describe("ContainerFactory", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(containers[0].Resources.Requests.Memory().String()).To(Equal("128Mi"))
 			Expect(containers[0].Resources.Requests.Cpu().String()).To(Equal("5m"))
+			Expect(containers[0].Resources.Limits.Memory().String()).To(Equal("5G"))
+		})
+
+		It("doesn't add invalid k8s resource limits from bpm config", func() {
+			jobs = []bdm.Job{
+				{Name: "fake-job"},
+			}
+
+			bpmConfigs["fake-job"] = bpm.Config{
+				Processes: []bpm.Process{
+					{
+						Name:   "fake-job",
+						Limits: bpm.Limits{Memory: "invalid"},
+					},
+				},
+			}
+			containers, err := act()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(containers)).To(BeNumerically(">", 0))
+			Expect(containers[0].Name).To(ContainSubstring("fake-job"))
+			Expect(containers[0].Resources.Limits.Memory().String()).To(Equal("0"))
+
+			bytes, err := json.Marshal(containers[0].Resources.Limits)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(bytes)).To(Equal("{}"))
 		})
 
 		Context("with lifecycle events", func() {

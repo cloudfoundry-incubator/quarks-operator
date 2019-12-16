@@ -1,4 +1,4 @@
-package boshdeployment
+package boshdeployment_test
 
 import (
 	"context"
@@ -20,6 +20,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 	"code.cloudfoundry.org/cf-operator/testing"
 	cfcfg "code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -53,7 +54,6 @@ var _ = Describe("When the validating webhook handles a manifest", func() {
 		}
 		boshDeploymentBytes, _ = json.Marshal(boshDeployment)
 		manifest, _ = env.BOSHManifestWithZeroInstances()
-
 	})
 
 	JustBeforeEach(func() {
@@ -70,7 +70,7 @@ var _ = Describe("When the validating webhook handles a manifest", func() {
 			},
 		})
 		decoder, _ = admission.NewDecoder(scheme)
-		validator = NewValidator(log, &cfcfg.Config{CtxTimeOut: 10 * time.Second})
+		validator = boshdeployment.NewValidator(log, &cfcfg.Config{CtxTimeOut: 10 * time.Second})
 		validator.(inject.Client).InjectClient(client)
 		validator.(admission.DecoderInjector).InjectDecoder(decoder)
 

@@ -12,21 +12,23 @@ import (
 
 var _ = Describe("JobFactory", func() {
 	var (
-		factory *JobFactory
-		m       *manifest.Manifest
-		env     testing.Catalog
-		err     error
+		factory   *JobFactory
+		m         *manifest.Manifest
+		env       testing.Catalog
+		err       error
+		linkInfos LinkInfos
 	)
 
 	BeforeEach(func() {
 		m, err = env.DefaultBOSHManifest()
+		linkInfos = LinkInfos{}
 		Expect(err).NotTo(HaveOccurred())
 		factory = NewJobFactory("namespace")
 	})
 
 	Describe("InstanceGroupManifestJob", func() {
 		It("creates init containers", func() {
-			qJob, err := factory.InstanceGroupManifestJob(*m, true)
+			qJob, err := factory.InstanceGroupManifestJob(*m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 			jobIG := qJob.Spec.Template.Spec
 			// Test init containers in the ig manifest qJob
@@ -36,16 +38,38 @@ var _ = Describe("JobFactory", func() {
 			Expect(jobIG.Template.Spec.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 		})
 
+		It("creates relative volume infos when having link secrets", func() {
+			linkInfos = LinkInfos{
+				{
+					SecretName:   "fake-secret-name",
+					ProviderName: "fake-link-name",
+				},
+			}
+
+			qJob, err := factory.InstanceGroupManifestJob(*m, linkInfos, true)
+			Expect(err).ToNot(HaveOccurred())
+			jobIG := qJob.Spec.Template.Spec
+			// Test init containers in the ig manifest qJob
+			Expect(jobIG.Template.Spec.InitContainers[0].Name).To(Equal("spec-copier-redis"))
+			Expect(jobIG.Template.Spec.InitContainers[1].Name).To(Equal("spec-copier-cflinuxfs3"))
+			Expect(jobIG.Template.Spec.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+			Expect(jobIG.Template.Spec.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+			Expect(jobIG.Template.Spec.Volumes[0].Name).To(Equal("fake-secret-name"))
+			Expect(jobIG.Template.Spec.Volumes[0].Secret.SecretName).To(Equal("fake-secret-name"))
+			Expect(jobIG.Template.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("fake-secret-name"))
+			Expect(jobIG.Template.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal(VolumeLinksPath + "fake-link-name"))
+		})
+
 		It("handles an error when getting release image", func() {
 			m.Stemcells = nil
-			_, err := factory.InstanceGroupManifestJob(*m, true)
+			_, err := factory.InstanceGroupManifestJob(*m, linkInfos, true)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Generation of gathering job failed for manifest"))
 		})
 
 		It("does not generate the instance group containers when its instances is zero", func() {
 			m.InstanceGroups[0].Instances = 0
-			qJob, err := factory.InstanceGroupManifestJob(*m, true)
+			qJob, err := factory.InstanceGroupManifestJob(*m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 			jobIG := qJob.Spec.Template.Spec
 			Expect(len(jobIG.Template.Spec.InitContainers)).To(BeNumerically("<", 2))
@@ -56,7 +80,7 @@ var _ = Describe("JobFactory", func() {
 			It("creates output entries for all provides", func() {
 				m, err = env.ElaboratedBOSHManifest()
 				Expect(err).NotTo(HaveOccurred())
-				qJob, err := factory.InstanceGroupManifestJob(*m, true)
+				qJob, err := factory.InstanceGroupManifestJob(*m, linkInfos, true)
 				Expect(err).ToNot(HaveOccurred())
 				om := qJob.Spec.Output.OutputMap
 				Expect(om).To(Equal(
@@ -87,7 +111,7 @@ var _ = Describe("JobFactory", func() {
 
 	Describe("BPMConfigsJob", func() {
 		It("has one spec-copier init container per instance group", func() {
-			job, err := factory.BPMConfigsJob(*m, true)
+			job, err := factory.BPMConfigsJob(*m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			spec := job.Spec.Template.Spec.Template.Spec
@@ -98,7 +122,7 @@ var _ = Describe("JobFactory", func() {
 		})
 
 		It("has one bpm-configs container per instance group", func() {
-			job, err := factory.BPMConfigsJob(*m, true)
+			job, err := factory.BPMConfigsJob(*m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			spec := job.Spec.Template.Spec.Template.Spec
@@ -109,7 +133,7 @@ var _ = Describe("JobFactory", func() {
 
 		It("does not generate the instance group containers when its instances is zero", func() {
 			m.InstanceGroups[0].Instances = 0
-			job, err := factory.BPMConfigsJob(*m, true)
+			job, err := factory.BPMConfigsJob(*m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			spec := job.Spec.Template.Spec.Template.Spec

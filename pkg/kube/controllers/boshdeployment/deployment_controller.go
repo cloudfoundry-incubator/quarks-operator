@@ -6,7 +6,9 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
+
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -155,5 +157,52 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 
 	}
 
+	// Watch Services that route (select) pods that are external link providers
+	servicesPredicates := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			service := e.Object.(*corev1.Service)
+
+			return isLinkProviderService(service)
+		},
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			newService := e.ObjectNew.(*corev1.Service)
+
+			return isLinkProviderService(newService)
+		},
+	}
+	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
+			// Get one request from one service at most
+			reconciles := make([]reconcile.Request, 1)
+
+			svc := a.Object.(*corev1.Service)
+			if provider, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderName]; ok {
+				reconciles[0] = reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Namespace: svc.Namespace,
+						Name:      provider,
+					},
+				}
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciles[0], "BOSHDeployment", a.Meta.GetName(), "ServiceOfLinkProvider")
+			}
+
+			return reconciles
+		}),
+	}, servicesPredicates)
+	if err != nil {
+		return errors.Wrapf(err, "watching services failed in bosh deployment controller.")
+
+	}
+
 	return nil
+}
+
+func isLinkProviderService(svc *corev1.Service) bool {
+	if _, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderName]; ok {
+		return true
+	}
+
+	return false
 }

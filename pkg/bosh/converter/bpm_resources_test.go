@@ -265,7 +265,7 @@ var _ = Describe("kube converter", func() {
 				})
 			})
 
-			It("adds the canaryWatchTime of an instance group to an ExtendedStatefulSet", func() {
+			It("adds the canaryWatchTime of an instance group to an QuarksStatefulSet", func() {
 				resources, err := act(bpmConfigs[1], m.InstanceGroups[1])
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -273,7 +273,7 @@ var _ = Describe("kube converter", func() {
 				Expect(extStS.Spec.Template.Annotations).To(HaveKeyWithValue(statefulset.AnnotationCanaryWatchTime, "1200000"))
 			})
 
-			It("combines the canaryWatchTime and custom annotations and adds them to ExtendedStatefulSet", func() {
+			It("combines the canaryWatchTime and custom annotations and adds them to QuarksStatefulSet", func() {
 				m.InstanceGroups[1].Env.AgentEnvBoshConfig.Agent.Settings.Annotations = make(map[string]string)
 				m.InstanceGroups[1].Env.AgentEnvBoshConfig.Agent.Settings.Annotations["custom-annotation"] = "bar"
 				resources, err := act(bpmConfigs[1], m.InstanceGroups[1])

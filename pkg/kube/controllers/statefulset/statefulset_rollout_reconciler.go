@@ -54,7 +54,7 @@ func NewStatefulSetRolloutReconciler(ctx context.Context, config *config.Config,
 	}
 }
 
-// ReconcileStatefulSetRollout reconciles an ExtendedStatefulSet object when references changes
+// ReconcileStatefulSetRollout reconciles an QuarksStatefulSet object when references changes
 type ReconcileStatefulSetRollout struct {
 	ctx    context.Context
 	client crc.Client
@@ -62,7 +62,7 @@ type ReconcileStatefulSetRollout struct {
 	config *config.Config
 }
 
-// Reconcile cleans up old versions and volumeManagement statefulSet of the ExtendedStatefulSet
+// Reconcile cleans up old versions and volumeManagement statefulSet of the QuarksStatefulSet
 func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)

@@ -325,7 +325,7 @@ instance_groups:
                 properties:
                   doppler:
                     grpc_port: 7765
-                  fooprop: 10001
+                    fooprop: 10001
             instances: null
             release: loggregator
             envs:

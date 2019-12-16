@@ -14,7 +14,7 @@ metadata:
 data:
   manifest: |
     ---
-    name: nats-manifest
+    name: nats-deployment
     releases:
     - name: nats
       version: "26"
@@ -34,7 +34,7 @@ data:
             password: ((custom_password))
       env:
         bosh:
-          agent: 
+          agent:
             settings:
               disable_log_sidecar: true
     variables:

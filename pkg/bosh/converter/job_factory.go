@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
-
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1b1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -33,8 +32,11 @@ const (
 	EnvVariablesDir = "VARIABLES_DIR"
 	// EnvOutputFilePath is path where json output is to be redirected (CLI)
 	EnvOutputFilePath = "OUTPUT_FILE_PATH"
-	// EnvOutputFilePathValue is the value of filepath of json output file
+	// EnvOutputFilePathValue is the value of filepath of JSON output file
 	EnvOutputFilePathValue = "/mnt/quarks/output.json"
+	// outputFilename is the file name of the JSON output file, which quarks job will look for
+	outputFilename = "output.json"
+
 	// VarInterpolationContainerName is the name of the container that
 	// performs variable interpolation for a manifest. It's also part of
 	// the output secret's name
@@ -62,7 +64,7 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 	args := []string{"util", "variable-interpolation"}
 
 	// This is the source manifest, that still has the '((vars))'
-	manifestSecretName := names.CalculateSecretName(names.DeploymentSecretTypeManifestWithOps, manifest.Name, "")
+	manifestSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeManifestWithOps, manifest.Name, "")
 
 	// Prepare Volumes and Volume mounts
 
@@ -72,7 +74,7 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 	// We need a volume and a mount for each input variable
 	for _, variable := range manifest.Variables {
 		varName := variable.Name
-		varSecretName := names.CalculateSecretName(names.DeploymentSecretTypeVariable, manifest.Name, varName)
+		varSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeVariable, manifest.Name, varName)
 
 		volumes = append(volumes, variableVolume(varSecretName))
 		volumeMounts = append(volumeMounts, variableVolumeMount(varSecretName, varName))
@@ -103,7 +105,7 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 				},
 				SecretLabels: map[string]string{
 					bdv1.LabelDeploymentName:       manifest.Name,
-					bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeManifestWithOps.String(),
+					bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeDesiredManifest.String(),
 					bdm.LabelReferencedJobName:     fmt.Sprintf("instance-group-%s", manifest.Name),
 				},
 			},
@@ -156,7 +158,7 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 }
 
 // InstanceGroupManifestJob generates the job to create an instance group manifest
-func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest, initialRollout bool) (*qjv1a1.QuarksJob, error) {
+func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest, linkInfos LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error) {
 	containers := []corev1.Container{}
 	ct := containerTemplate{
 		manifestName:   desiredManifestName(manifest.Name),
@@ -171,16 +173,16 @@ func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest, initialRoll
 		if ig.Instances != 0 {
 			// Additional secret for BOSH links per instance group
 			containerName := names.Sanitize(ig.Name)
-			linkOutputs[containerName] = names.Sanitize(fmt.Sprintf("link-%s-%s", manifest.Name, ig.Name))
+			linkOutputs[containerName] = names.EntanglementSecretName(manifest.Name, ig.Name)
 
 			// One container per instance group
-			containers = append(containers, ct.newUtilContainer(ig.Name))
+			containers = append(containers, ct.newUtilContainer(ig.Name, linkInfos.VolumeMounts()))
 		}
 	}
 
 	qJobName := fmt.Sprintf("ig-%s", manifest.Name)
 
-	qJob, err := f.releaseImageQJob(qJobName, manifest, names.DeploymentSecretTypeInstanceGroupResolvedProperties, containers)
+	qJob, err := f.releaseImageQJob(qJobName, manifest, names.DeploymentSecretTypeInstanceGroupResolvedProperties, containers, linkInfos.Volumes())
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +197,7 @@ func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest, initialRoll
 }
 
 // BPMConfigsJob returns an quarks job to calculate BPM information
-func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest, initialRollout bool) (*qjv1a1.QuarksJob, error) {
+func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest, linkInfos LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error) {
 	containers := []corev1.Container{}
 	ct := containerTemplate{
 		manifestName:   desiredManifestName(manifest.Name),
@@ -208,7 +210,7 @@ func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest, initialRollout bool) (
 		if ig.Instances != 0 {
 			// One container per instance group
 			// There will be one BPM secret generated for each of these containers
-			container := ct.newUtilContainer(ig.Name)
+			container := ct.newUtilContainer(ig.Name, linkInfos.VolumeMounts())
 
 			env := corev1.EnvVar{Name: qjv1a1.RemoteIDKey, Value: ig.Name}
 			container.Env = append(container.Env, env)
@@ -217,7 +219,7 @@ func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest, initialRollout bool) (
 	}
 
 	qJobName := fmt.Sprintf("bpm-%s", manifest.Name)
-	return f.releaseImageQJob(qJobName, manifest, names.DeploymentSecretBpmInformation, containers)
+	return f.releaseImageQJob(qJobName, manifest, names.DeploymentSecretBpmInformation, containers, linkInfos.Volumes())
 }
 
 // desiredManifestName returns the sanitized, versioned name of the manifest.
@@ -233,16 +235,16 @@ type containerTemplate struct {
 	initialRollout bool
 }
 
-func (ct *containerTemplate) newUtilContainer(instanceGroupName string) corev1.Container {
+func (ct *containerTemplate) newUtilContainer(instanceGroupName string, linkVolumeMounts []corev1.VolumeMount) corev1.Container {
 	return corev1.Container{
 		Name:            names.Sanitize(instanceGroupName),
 		Image:           GetOperatorDockerImage(),
 		ImagePullPolicy: GetOperatorImagePullPolicy(),
 		Args:            []string{"util", ct.cmd, "--initial-rollout", strconv.FormatBool(ct.initialRollout)},
-		VolumeMounts: []corev1.VolumeMount{
+		VolumeMounts: append(linkVolumeMounts, []corev1.VolumeMount{
 			withOpsVolumeMount(ct.manifestName),
 			releaseSourceVolumeMount(),
-		},
+		}...),
 		Env: []corev1.EnvVar{
 			{
 				Name:  EnvBOSHManifestPath,
@@ -269,9 +271,7 @@ func (ct *containerTemplate) newUtilContainer(instanceGroupName string) corev1.C
 }
 
 // releaseImageQJob collects outputs, like bpm, links or ig manifests, from the BOSH release images
-func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, secretType names.DeploymentSecretType, containers []corev1.Container) (*qjv1a1.QuarksJob, error) {
-	outputSecretNamePrefix := names.CalculateIGSecretPrefix(secretType, manifest.Name)
-
+func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, secretType names.DeploymentSecretType, containers []corev1.Container, linkVolumes []corev1.Volume) (*qjv1a1.QuarksJob, error) {
 	initContainers := []corev1.Container{}
 	doneSpecCopyingReleases := map[string]bool{}
 	for _, ig := range manifest.InstanceGroups {
@@ -300,8 +300,14 @@ func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, secret
 	}
 
 	outputMap := qjv1a1.OutputMap{}
+	outputSecretNamePrefix := names.DeploymentSecretPrefix(secretType, manifest.Name)
 	for _, container := range containers {
-		outputMap[container.Name] = qjv1a1.NewFileToSecret("output.json", outputSecretNamePrefix+container.Name, true)
+		outputMap[container.Name] = qjv1a1.NewFileToSecret(
+			outputFilename,
+			// the same as names.InstaceGroupSecretName(secretType, manifestName, container.Name, "")
+			outputSecretNamePrefix+container.Name,
+			true,
+		)
 	}
 
 	// Construct the "BPM configs" or "data gathering" auto-errand qJob
@@ -341,10 +347,10 @@ func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, secret
 							// Container to run data gathering
 							Containers: containers,
 							// Volumes for secrets
-							Volumes: []corev1.Volume{
+							Volumes: append(linkVolumes, []corev1.Volume{
 								*withOpsVolume(desiredManifestName(manifest.Name)),
 								releaseSourceVolume(),
-							},
+							}...),
 						},
 					},
 				},

@@ -2,7 +2,7 @@ module code.cloudfoundry.org/cf-operator
 
 require (
 	code.cloudfoundry.org/quarks-job v0.0.0-20191129095316-23b0d08e8376
-	code.cloudfoundry.org/quarks-utils v0.0.0-20191114145816-f753780f6d4f
+	code.cloudfoundry.org/quarks-utils v0.0.0-20191213222420-ca6f0a8579ed
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
 	github.com/charlievieth/fs v0.0.0-20170613215519-7dc373669fa1 // indirect
 	github.com/cloudflare/cfssl v0.0.0-20181102015659-ea4033a214e7
@@ -11,6 +11,7 @@ require (
 	github.com/cppforlife/go-patch v0.0.0-20171006213518-250da0e0e68c
 	github.com/daaku/go.zipexe v1.0.1 // indirect
 	github.com/dchest/uniuri v0.0.0-20160212164326-8902c56451e9
+	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/go-test/deep v1.0.4
@@ -31,7 +32,7 @@ require (
 	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.4.0
+	github.com/spf13/viper v1.6.1
 	github.com/viovanov/bosh-template-go v0.0.0-20190801125410-a195ef3de03a
 	go.uber.org/zap v1.13.0
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586

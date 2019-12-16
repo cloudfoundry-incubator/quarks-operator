@@ -42,6 +42,11 @@ func SetClusterDomain(domain string) {
 	clusterDomain = domain
 }
 
+// GetClusterDomain returns the package scoped clusterDomain variable.
+func GetClusterDomain() string {
+	return clusterDomain
+}
+
 // DomainNameService abstraction.
 type DomainNameService interface {
 	// HeadlessServiceName constructs the headless service name for the instance group.

@@ -116,7 +116,7 @@ var _ = Describe("CleanupNonReadyPod", func() {
 				OwnerReferences: []metav1.OwnerReference{
 					{
 						Name:               "foo",
-						Kind:               "ExtendedStatefulSet",
+						Kind:               "QuarksStatefulSet",
 						UID:                "",
 						Controller:         pointers.Bool(true),
 						BlockOwnerDeletion: pointers.Bool(true),

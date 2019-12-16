@@ -22,7 +22,7 @@ processes:
       TRAFFIC_CONTROLLER_DISABLE_ACCESS_CONTROL: "<%= p("traffic_controller.disable_access_control") %>"
 
       FOOBARWITHLINKADDRESS: <%= link('doppler').address %>
-      FOOBARWITHLINKVALUES: <%= link('doppler').p("fooprop") %>
+      FOOBARWITHLINKVALUES: <%= link('doppler').p("doppler.fooprop") %>
       FOOBARWITHLINKNESTEDVALUES: <%= link('doppler').p("doppler.grpc_port") %>
       FOOBARWITHLINKINSTANCESINDEX: <%= link('doppler').instances[0].index %>
       FOOBARWITHLINKINSTANCESAZ: <%= link('doppler').instances[0].az %>

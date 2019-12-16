@@ -4,25 +4,12 @@ image:
   org: cfcontainerization
   tag: foobar
 
-operator:
-  webhook:
-    endpoint: ~
-    host: ~
-    port: "2999"
-    useServiceReference: true
-
 cluster:
   domain: ~
 
 nameOverride: ""
 
 fullnameOverride: ""
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
 
 serviceAccount:
   cfOperatorServiceAccount:
@@ -36,6 +23,11 @@ global:
     credentials: ~
   operator:
     watchNamespace: ""
+    webhook:
+      endpoint: ~
+      host: ~
+      port: "2999"
+      useServiceReference: true
   rbacEnable: true
 
 quarks-job:

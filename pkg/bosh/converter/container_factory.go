@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -8,12 +9,14 @@ import (
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	resource "k8s.io/apimachinery/pkg/api/resource"
 
 	"code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
+	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
@@ -134,7 +137,7 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 		boshPreStartInitContainers = append(boshPreStartInitContainers, *boshPreStartInitContainer.DeepCopy())
 	}
 
-	resolvedPropertiesSecretName := names.CalculateIGSecretName(
+	resolvedPropertiesSecretName := names.InstanceGroupSecretName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties, // ig-resolved
 		c.manifestName,
 		c.instanceGroupName,
@@ -515,6 +518,15 @@ func bpmProcessContainer(
 		workdir = filepath.Join(VolumeJobsDirMountPath, jobName)
 	}
 	command, args := generateBPMCommand(&process, postStart)
+	limits := corev1.ResourceList{}
+	if process.Limits.Memory != "" {
+		quantity, err := resource.ParseQuantity(process.Limits.Memory)
+		if err != nil {
+			log.Errorf(context.TODO(), "Error parsing %s: %v", process.Limits.Memory, err)
+		} else {
+			limits[corev1.ResourceMemory] = quantity
+		}
+	}
 	container := corev1.Container{
 		Name:            names.Sanitize(name),
 		Image:           jobImage,
@@ -525,7 +537,10 @@ func bpmProcessContainer(
 		WorkingDir:      workdir,
 		SecurityContext: securityContext,
 		Lifecycle:       &corev1.Lifecycle{},
-		Resources:       corev1.ResourceRequirements{Requests: process.Requests},
+		Resources: corev1.ResourceRequirements{
+			Requests: process.Requests,
+			Limits:   limits,
+		},
 	}
 
 	// Setup the job drain script handler.

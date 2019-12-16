@@ -50,7 +50,7 @@ func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable
 	secrets := []qsv1a1.QuarksSecret{}
 
 	for _, v := range variables {
-		secretName := names.CalculateSecretName(names.DeploymentSecretTypeVariable, manifestName, v.Name)
+		secretName := names.DeploymentSecretName(names.DeploymentSecretTypeVariable, manifestName, v.Name)
 		s := qsv1a1.QuarksSecret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
@@ -105,11 +105,11 @@ func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable
 			}
 			if v.Options.CA != "" {
 				certRequest.CARef = qsv1a1.SecretReference{
-					Name: names.CalculateSecretName(names.DeploymentSecretTypeVariable, manifestName, v.Options.CA),
+					Name: names.DeploymentSecretName(names.DeploymentSecretTypeVariable, manifestName, v.Options.CA),
 					Key:  "certificate",
 				}
 				certRequest.CAKeyRef = qsv1a1.SecretReference{
-					Name: names.CalculateSecretName(names.DeploymentSecretTypeVariable, manifestName, v.Options.CA),
+					Name: names.DeploymentSecretName(names.DeploymentSecretTypeVariable, manifestName, v.Options.CA),
 					Key:  "private_key",
 				}
 			}

@@ -18,6 +18,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -162,6 +163,16 @@ func (c *Catalog) BOSHManifestWithZeroInstances() (*manifest.Manifest, error) {
 	return m, nil
 }
 
+// BOSHManifestWithExternalLinks returns a manifest with external links
+// Also usable in integration tests
+func (c *Catalog) BOSHManifestWithExternalLinks() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.ManifestWithExternalLinks))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
+}
+
 // BPMReleaseWithAffinityConfigMap for tests
 func (c *Catalog) BPMReleaseWithAffinityConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
@@ -220,6 +231,31 @@ func (c *Catalog) DefaultConfigMap(name string) corev1.ConfigMap {
 			name: "default-value",
 		},
 	}
+}
+
+// QuarksLinkSecret returns a link secret, as generated for consumption by an external (non BOSH) consumer
+func (c *Catalog) QuarksLinkSecret(deploymentName, igName, linkType, linkName, value string) corev1.Secret {
+	key := names.EntanglementSecretKey(linkType, linkName)
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "link-" + deploymentName + "-" + igName,
+			Labels: map[string]string{
+				manifest.LabelDeploymentName: deploymentName,
+			},
+		},
+		Data: map[string][]byte{
+			key: []byte(value),
+		},
+	}
+}
+
+// DefaultQuarksLinkSecret has default values from the nats release
+func (c *Catalog) DefaultQuarksLinkSecret(deploymentName, linkType string) corev1.Secret {
+	return c.QuarksLinkSecret(
+		deploymentName, linkType, // link-<nats-deployment>-<nats-ig>
+		linkType, "nats", // type.name
+		`{"nats":{"password":"custom_password","port":4222,"user":"admin"}}`,
+	)
 }
 
 // InterpolateOpsConfigMap for ops interpolate configmap tests
@@ -292,6 +328,50 @@ func (c *Catalog) DefaultStatefulSet(name string) appsv1.StatefulSet {
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: pointers.Int32(1),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"testpod": "yes",
+				},
+			},
+			ServiceName: name,
+			Template:    c.DefaultPodTemplate(name),
+		},
+	}
+}
+
+// DefaultStatefulSetWithActiveSinglePod for use in tests
+func (c *Catalog) DefaultStatefulSetWithActiveSinglePod(name string) appsv1.StatefulSet {
+	return appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				"testpod": "yes",
+			},
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas: pointers.Int32(1),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"testpod": "yes",
+				},
+			},
+			ServiceName: name,
+			Template:    c.DefaultPodTemplateWithActiveLabel(name),
+		},
+	}
+}
+
+// DefaultStatefulSetWithReplicasN for use in tests
+func (c *Catalog) DefaultStatefulSetWithReplicasN(name string) appsv1.StatefulSet {
+	return appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				"testpod": "yes",
+			},
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas: pointers.Int32(3),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"testpod": "yes",
@@ -496,6 +576,20 @@ func (c *Catalog) DefaultPodTemplate(name string) corev1.PodTemplateSpec {
 	}
 }
 
+// DefaultPodTemplateWithActiveLabel defines a pod template with a simple web server useful for testing
+func (c *Catalog) DefaultPodTemplateWithActiveLabel(name string) corev1.PodTemplateSpec {
+	return corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				"testpod":                            "yes",
+				"quarks.cloudfoundry.org/pod-active": "active",
+			},
+		},
+		Spec: c.Sleep1hPodSpec(),
+	}
+}
+
 // WrongPodTemplate defines a pod template with a simple web server useful for testing
 func (c *Catalog) WrongPodTemplate(name string) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
@@ -636,6 +730,17 @@ func (c *Catalog) AnnotatedPod(name string, annotations map[string]string) corev
 	}
 }
 
+// EntangledPod is a pod which has annotations for a BOSH link
+func (c *Catalog) EntangledPod(deploymentName string) corev1.Pod {
+	return c.AnnotatedPod(
+		"entangled",
+		map[string]string{
+			"quarks.cloudfoundry.org/deployment": deploymentName,
+			"quarks.cloudfoundry.org/consumes":   "nats.nats",
+		},
+	)
+}
+
 // Sleep1hPodSpec defines a simple pod that sleeps 60*60s for testing
 func (c *Catalog) Sleep1hPodSpec() corev1.PodSpec {
 	return corev1.PodSpec{
@@ -712,4 +817,194 @@ func (c *Catalog) BOSHManifestWithNilConsume() (*manifest.Manifest, error) {
 		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
 	}
 	return m, nil
+}
+
+// NatsPod for use in tests
+func (c *Catalog) NatsPod(deployName string) corev1.Pod {
+	return corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "nats",
+			Labels: map[string]string{
+				bdv1.LabelDeploymentName: deployName,
+				"app":                    "nats",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:            "nats",
+					Image:           "docker.io/bitnami/nats:1.1.0",
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Command:         []string{"gnatsd"},
+					Args:            []string{"-c", "/opt/bitnami/nats/gnatsd.conf"},
+					Ports: []corev1.ContainerPort{
+						{
+							Name:          "client",
+							ContainerPort: 4222,
+						},
+						{
+							Name:          "cluster",
+							ContainerPort: 6222,
+						},
+						{
+							Name:          "monitoring",
+							ContainerPort: 8222,
+						},
+					},
+					LivenessProbe: &corev1.Probe{
+						Handler: corev1.Handler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path: "/",
+								Port: intstr.FromString("monitoring"),
+							},
+						},
+						FailureThreshold:    6,
+						PeriodSeconds:       10,
+						SuccessThreshold:    1,
+						TimeoutSeconds:      5,
+						InitialDelaySeconds: 30,
+					},
+					ReadinessProbe: &corev1.Probe{
+						Handler: corev1.Handler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path: "/",
+								Port: intstr.FromString("monitoring"),
+							},
+						},
+						FailureThreshold:    6,
+						PeriodSeconds:       10,
+						SuccessThreshold:    1,
+						TimeoutSeconds:      5,
+						InitialDelaySeconds: 5,
+					},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "config",
+							MountPath: "/opt/bitnami/nats/gnatsd.conf",
+							SubPath:   "gnatsd.conf",
+						},
+					},
+				},
+			},
+			Volumes: []corev1.Volume{
+				{
+					Name: "config",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "nats",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// NatsConfigMap for use in tests
+func (c *Catalog) NatsConfigMap(deployName string) corev1.ConfigMap {
+	return corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "nats",
+			Labels: map[string]string{
+				bdv1.LabelDeploymentName: deployName,
+			},
+		},
+		Data: map[string]string{
+			"gnatsd.conf": `listen: 0.0.0.0:4222
+http: 0.0.0.0:8222
+
+# Authorization for client connections
+authorization {
+  user: nats_client
+  password: r9fXAlY3gZ
+  timeout:  1
+}
+
+# Logging options
+debug: false
+trace: false
+logtime: false
+
+# Pid file
+pid_file: "/tmp/gnatsd.pid"
+
+# Some system overides
+
+
+# Clustering definition
+cluster {
+  listen: 0.0.0.0:6222
+
+  # Authorization for cluster connections
+  authorization {
+	user: nats_cluster
+	password: hK9awRcEYs
+	timeout:  1
+  }
+
+  # Routes are actively solicited and connected to from this server.
+  # Other servers can connect to us if they supply the correct credentials
+  # in their routes definitions from above
+  routes = [
+	nats://nats_cluster:hK9awRcEYs@nats-headless:6222
+  ]
+}`,
+		},
+	}
+}
+
+// NatsService for use in tests
+func (c *Catalog) NatsService(deployName string) corev1.Service {
+	return corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "nats-headless",
+			Labels: map[string]string{
+				bdv1.LabelDeploymentName: deployName,
+			},
+			Annotations: map[string]string{
+				bdv1.AnnotationLinkProviderName: "nats",
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeClusterIP,
+			Selector: map[string]string{
+				"app": "nats",
+			},
+			Ports: []corev1.ServicePort{
+				corev1.ServicePort{
+					Name:       "client",
+					Port:       4222,
+					TargetPort: intstr.FromString("client"),
+				},
+				corev1.ServicePort{
+					Name:       "cluster",
+					Port:       6222,
+					TargetPort: intstr.FromString("cluster"),
+				},
+			},
+		},
+	}
+}
+
+// NatsSecret for use in tests
+func (c *Catalog) NatsSecret(deployName string) corev1.Secret {
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "nats",
+			Labels: map[string]string{
+				bdv1.LabelDeploymentName: deployName,
+			},
+			Annotations: map[string]string{
+				bdv1.AnnotationLinkProviderName: "nats",
+				bdv1.AnnotationLinkProviderType: "nats",
+			},
+		},
+		StringData: map[string]string{
+			"user":     "nats_client",
+			"password": "r9fXAlY3gZ",
+			"port":     "4222",
+		},
+	}
 }

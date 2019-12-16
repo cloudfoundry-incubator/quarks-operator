@@ -2,6 +2,7 @@ package manifest
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -170,6 +171,80 @@ func (igr *InstanceGroupResolver) resolveManifest(initialRollout bool) error {
 
 	if err := igr.renderBPM(); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// CollectQuarksLinks collects all links from a directory specified by path
+func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
+	exist, err := afero.DirExists(igr.fs, linksPath)
+	if err != nil {
+		return errors.Wrapf(err, "could not check if path '%s' exists", linksPath)
+	}
+	if !exist {
+		return nil
+	}
+
+	links, err := afero.ReadDir(igr.fs, linksPath)
+	if err != nil {
+		return errors.Wrapf(err, "could not read links directory '%s'", linksPath)
+	}
+
+	quarksLinks, ok := igr.manifest.Properties["quarks_links"]
+	if !ok {
+		return fmt.Errorf("missing quarks_links key in manifest properties")
+	}
+	qs, ok := quarksLinks.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("could not get a map of QuarksLink")
+	}
+
+	// Assume we have a list of files named as the provider names of a link
+	for _, l := range links {
+		if l.IsDir() {
+			linkName := l.Name()
+			qMap, ok := qs[linkName].(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("could not cast for link %s", linkName)
+			}
+
+			q, err := getQuarksLinkFromMap(qMap)
+			if err != nil {
+				return fmt.Errorf("could not get quarks link '%s' from map", linkName)
+			}
+
+			linkType := q.Type
+			properties := map[string]interface{}{}
+			properties[linkName] = map[string]interface{}{}
+			linkP := map[string]interface{}{}
+			err = afero.Walk(igr.fs, filepath.Clean(filepath.Join(linksPath, l.Name())), func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+
+				if !info.IsDir() {
+					_, propertyFileName := filepath.Split(path)
+					// Skip the symlink to a directory
+					if strings.HasPrefix(propertyFileName, "..") {
+						return nil
+					}
+					varBytes, err := afero.ReadFile(igr.fs, path)
+					if err != nil {
+						return errors.Wrapf(err, "could not read link %s", l.Name())
+					}
+
+					linkP[propertyFileName] = string(varBytes)
+				}
+				return nil
+			})
+			if err != nil {
+				return errors.Wrapf(err, "walking links path")
+			}
+
+			properties[linkName] = linkP
+			igr.jobProviderLinks.AddExternalLink(linkName, linkType, q.Address, q.Instances, properties)
+		}
 	}
 
 	return nil
@@ -558,4 +633,15 @@ func getProviderNameFromConsumer(job Job, provider string) string {
 	}
 
 	return providerName
+}
+
+func getQuarksLinkFromMap(m map[string]interface{}) (QuarksLink, error) {
+	var result QuarksLink
+
+	data, err := json.Marshal(m)
+	if err != nil {
+		return result, err
+	}
+	err = json.Unmarshal(data, &result)
+	return result, err
 }

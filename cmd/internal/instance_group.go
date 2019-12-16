@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
@@ -83,6 +84,11 @@ This will resolve the properties of an instance group and return a manifest for 
 		igr, err := manifest.NewInstanceGroupResolver(afero.NewOsFs(), baseDir, *m, instanceGroupName)
 		if err != nil {
 			return errors.Wrap(err, igFailedMessage)
+		}
+
+		err = igr.CollectQuarksLinks(filepath.Dir(converter.VolumeLinksPath))
+		if err != nil {
+			return errors.Wrapf(err, "%s failed to collect quarks links.", igFailedMessage)
 		}
 
 		initialRollout := viper.GetBool("initial-rollout")
