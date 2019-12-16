@@ -53,12 +53,12 @@ spec:
               value: "{{ .Values.image.tag }}"
             - name: DOCKER_IMAGE_PULL_POLICY
               value: "{{ .Values.global.image.pullPolicy }}"
-            {{- if and .Values.global.operator.webhook.endpoint (not .Values.global.operator.webhook.useServiceReference) }}
+            {{- if and .Values.operator.webhook.endpoint (not .Values.operator.webhook.useServiceReference) }}
             - name: CF_OPERATOR_WEBHOOK_SERVICE_HOST
-              value: {{ .Values.global.operator.webhook.endpoint | quote }}
+              value: {{ .Values.operator.webhook.endpoint | quote }}
             {{- end }}
             - name: CF_OPERATOR_WEBHOOK_SERVICE_PORT
-              value: {{ .Values.global.operator.webhook.port | quote }}
+              value: {{ .Values.operator.webhook.port | quote }}
             {{- if .Values.global.operator.webhook.useServiceReference  }}
             - name: CF_OPERATOR_WEBHOOK_USE_SERVICE_REFERENCE
               value: "{{ .Values.global.operator.webhook.useServiceReference }}"

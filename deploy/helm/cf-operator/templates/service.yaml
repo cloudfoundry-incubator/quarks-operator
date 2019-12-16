@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: cf-operator-webhook
 spec:
-  {{- if or .Values.global.operator.webhook.useServiceReference (not .Values.global.operator.webhook.endpoint) }}
+  {{- if or .Values.global.operator.webhook.useServiceReference (not .Values.operator.webhook.endpoint) }}
   selector:
     name: cf-operator
   {{- end }}
