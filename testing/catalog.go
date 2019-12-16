@@ -268,6 +268,16 @@ func (c *Catalog) CustomOpsConfigMap(name string, change string) corev1.ConfigMa
 	}
 }
 
+// CustomOpsSecret is an operations file with a custom structural change
+func (c *Catalog) CustomOpsSecret(name string, change string) corev1.Secret {
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		StringData: map[string]string{
+			"ops": change,
+		},
+	}
+}
+
 // InterpolateOpsConfigMap for ops interpolate configmap tests
 func (c *Catalog) InterpolateOpsConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{

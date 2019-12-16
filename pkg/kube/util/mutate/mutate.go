@@ -47,7 +47,9 @@ func StatefulSetMutateFn(sfs *appsv1.StatefulSet) controllerutil.MutateFn {
 	return func() error {
 		sfs.Labels = updated.Labels
 		sfs.Annotations = updated.Annotations
-		sfs.Spec = updated.Spec
+		sfs.Spec.Replicas = updated.Spec.Replicas
+		sfs.Spec.Template = updated.Spec.Template
+		sfs.Spec.UpdateStrategy = updated.Spec.UpdateStrategy
 		return nil
 	}
 }
