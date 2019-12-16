@@ -16,10 +16,11 @@ import (
 const examplesDir = "../../docs/examples/"
 
 var (
-	nsIndex   int
-	teardown  e2ehelper.TearDownFunc
-	namespace string
-	kubectl   *cmdHelper.Kubectl
+	nsIndex           int
+	teardown          e2ehelper.TearDownFunc
+	namespace         string
+	operatorNamespace string
+	kubectl           *cmdHelper.Kubectl
 )
 
 func FailAndCollectDebugInfo(description string, callerSkip ...int) {
@@ -47,7 +48,7 @@ var _ = BeforeEach(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	chartPath := fmt.Sprintf("%s%s", dir, "/../../helm/cf-operator")
-	namespace, teardown, err = e2ehelper.SetUpEnvironment(chartPath)
+	namespace, operatorNamespace, teardown, err = e2ehelper.SetUpEnvironment(chartPath)
 	Expect(err).ToNot(HaveOccurred())
 })
 
