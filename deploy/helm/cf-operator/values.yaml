@@ -4,6 +4,12 @@ image:
   org: cfcontainerization
   tag: foobar
 
+operator:
+  webhook:
+    endpoint: ~
+    host: ~
+    port: "2999"
+
 cluster:
   domain: ~
 
@@ -24,9 +30,6 @@ global:
   operator:
     watchNamespace: ""
     webhook:
-      endpoint: ~
-      host: ~
-      port: "2999"
       useServiceReference: true
   rbacEnable: true
 

@@ -66,15 +66,15 @@ helm delete cf-operator --purge
 | `global.image.credentials`                        | Kubernetes image pull secret credentials (map with keys `servername`, `username`, and `password`) | `nil`                                          |
 | `global.operator.watchNamespace`                  | Namespace the operator will watch for BOSH deployments                                            | the release namespace                          |
 | `global.rbacEnable`                               | Install required RBAC service account, roles and rolebindings                                     | `true`                                         |
-| `global.operator.webhook.endpoint`                       | Hostname/IP under which the webhook server can be reached from the cluster                        | the IP of service `cf-operator-webhook `       |
-| `global.operator.webhook.port`                           | Port the webhook server listens on                                                                | 2999                                           |
-| `global.operator.webhook.useServiceReference`            | If true, the webhook server is addressed using a service reference instead of the IP              | `true`                                         |
+| `operator.webhook.endpoint`                       | Hostname/IP under which the webhook server can be reached from the cluster                        | the IP of service `cf-operator-webhook`        |
+| `operator.webhook.port`                           | Port the webhook server listens on                                                                | 2999                                           |
+| `global.operator.webhook.useServiceReference`     | If true, the webhook server is addressed using a service reference instead of the IP              | `true`                                         |
 | `serviceAccount.cfOperatorServiceAccount.create`  | Will set the value of `cf-operator.serviceAccountName` to the current chart name                  | `true`                                         |
 | `serviceAccount.cfOperatorServiceAccount.name`    | If the above is not set, it will set the `cf-operator.serviceAccountName`                         |                                                |
 
 > **Note:**
 >
-> `global.operator.webhook.useServiceReference` will override `global.operator.webhook.endpoint` configuration
+> `global.operator.webhook.useServiceReference` will override `operator.webhook.endpoint` configuration
 >
 
 ## Watched namespace
