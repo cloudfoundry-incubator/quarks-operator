@@ -532,7 +532,7 @@ func bpmProcessContainer(
 		VolumeMounts:    deduplicateVolumeMounts(volumeMounts),
 		Command:         command,
 		Args:            args,
-		Env:             process.MergeEnv(quarksEnvs),
+		Env:             process.NewEnvs(quarksEnvs),
 		WorkingDir:      workdir,
 		SecurityContext: securityContext,
 		Lifecycle:       &corev1.Lifecycle{},

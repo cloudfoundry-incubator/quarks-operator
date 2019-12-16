@@ -88,7 +88,6 @@ func (igr *InstanceGroupResolver) Manifest(initialRollout bool) (Manifest, error
 	// Filter igManifest to contain only relevant fields
 	igJobs := []Job{}
 	for _, job := range igr.instanceGroup.Jobs {
-
 		igQuarks := Quarks{
 			Consumes:         job.Properties.Quarks.Consumes,
 			PreRenderScripts: job.Properties.Quarks.PreRenderScripts,
@@ -418,6 +417,11 @@ func (igr *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) 
 				if err != nil {
 					return errors.Wrapf(err, "failed to merge bpm information from quarks for job '%s'", currentJob.Name)
 				}
+			}
+
+			// Merge env if it also exists in Quarks
+			for i := range renderedBPM.Processes {
+				renderedBPM.Processes[i].UpdateEnv(currentJob.Properties.Quarks.Envs)
 			}
 
 			jobIndexBPM[i] = renderedBPM

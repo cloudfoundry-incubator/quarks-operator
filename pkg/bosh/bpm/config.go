@@ -70,7 +70,9 @@ func NewConfig(data []byte) (Config, error) {
 	return config, nil
 }
 
-func (p Process) MergeEnv(overrides []corev1.EnvVar) []corev1.EnvVar {
+// NewEnvs returns a list of k8s env vars, based on the bpm envs, overwritten
+// by the overrides list passed to the function.
+func (p *Process) NewEnvs(overrides []corev1.EnvVar) []corev1.EnvVar {
 	seen := make(map[string]corev1.EnvVar)
 
 	for name, value := range p.Env {
@@ -90,4 +92,18 @@ func (p Process) MergeEnv(overrides []corev1.EnvVar) []corev1.EnvVar {
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
 	return result
+}
+
+// UpdateEnv adds the overrides env vars to the env list of the bpm process
+func (p *Process) UpdateEnv(overrides []corev1.EnvVar) {
+	if p.Env == nil {
+		p.Env = map[string]string{}
+	}
+	for _, env := range overrides {
+		if env.Value == "" && env.ValueFrom != nil {
+			p.Env[env.Name] = env.ValueFrom.String()
+		} else {
+			p.Env[env.Name] = env.Value
+		}
+	}
 }

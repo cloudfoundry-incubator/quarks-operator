@@ -68,7 +68,7 @@ var _ = Describe("BPM Config", func() {
 		})
 	})
 
-	Describe("MergeEnv", func() {
+	Describe("NewEnvs", func() {
 		var (
 			process   bpm.Process
 			overrides []corev1.EnvVar
@@ -82,7 +82,7 @@ var _ = Describe("BPM Config", func() {
 		Context("when process env is empty", func() {
 			Context("when override is empty", func() {
 				It("returns nil", func() {
-					vars := process.MergeEnv(overrides)
+					vars := process.NewEnvs(overrides)
 					Expect(vars).To(BeNil())
 					Expect(vars).To(HaveLen(0))
 				})
@@ -98,7 +98,7 @@ var _ = Describe("BPM Config", func() {
 				})
 
 				It("returns the override EnvVars", func() {
-					vars := process.MergeEnv(overrides)
+					vars := process.NewEnvs(overrides)
 					Expect(vars).To(HaveLen(2))
 				})
 			})
@@ -113,7 +113,7 @@ var _ = Describe("BPM Config", func() {
 
 			Context("when override is empty", func() {
 				It("returns process env", func() {
-					vars := process.MergeEnv(overrides)
+					vars := process.NewEnvs(overrides)
 					Expect(vars).To(HaveLen(1))
 				})
 			})
@@ -128,7 +128,7 @@ var _ = Describe("BPM Config", func() {
 				})
 
 				It("returns a union and with override taking precedence", func() {
-					vars := process.MergeEnv(overrides)
+					vars := process.NewEnvs(overrides)
 					Expect(vars).To(HaveLen(2))
 					data := []string{}
 					for _, env := range vars {

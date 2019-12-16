@@ -23,7 +23,27 @@ var _ = Describe("Deploy", func() {
 	const (
 		deploymentName = "test"
 		manifestName   = "manifest"
+		replaceEnvOps  = `- type: replace
+  path: /instance_groups/name=nats/jobs/name=nats/properties/quarks?
+  value:
+    envs:
+    - name: XPOD_IPX
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: status.podIP
+`
 	)
+
+	envKeys := func(containers []corev1.Container) []string {
+		envKeys := []string{}
+		for _, c := range containers {
+			for _, e := range c.Env {
+				envKeys = append(envKeys, e.Name)
+			}
+		}
+		return envKeys
+	}
 
 	var tearDowns []machine.TearDownFunc
 
@@ -262,6 +282,30 @@ var _ = Describe("Deploy", func() {
 			})
 		})
 
+		Context("by adding a new env var to BPM via quarks job properties", func() {
+			BeforeEach(func() {
+				tearDown, err := env.CreateSecret(env.Namespace, env.CustomOpsSecret("ops-bpm", replaceEnvOps))
+				Expect(err).NotTo(HaveOccurred())
+				tearDowns = append(tearDowns, tearDown)
+
+				bdpl, err := env.GetBOSHDeployment(env.Namespace, deploymentName)
+				Expect(err).NotTo(HaveOccurred())
+				bdpl.Spec.Ops = []bdv1.ResourceReference{{Name: "ops-bpm", Type: bdv1.SecretReference}}
+				_, _, err = env.UpdateBOSHDeployment(env.Namespace, *bdpl)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should add the env var to the container", func() {
+				err := env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "2", 2)
+				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
+
+				pod, err := env.GetPod(env.Namespace, "test-nats-1")
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(envKeys(pod.Spec.Containers)).To(ContainElement("XPOD_IPX"))
+			})
+		})
+
 		Context("deployment downtime", func() {
 			It("should be zero", func() {
 				By("Setting up a NodePort service")
@@ -445,19 +489,7 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
-			tearDown, err = env.CreateConfigMap(env.Namespace, env.CustomOpsConfigMap(
-				"ops-bpm",
-				`- type: replace
-  path: /instance_groups/name=nats/jobs/name=nats/properties/quarks?
-  value:
-    envs:
-    - name: XPOD_IPX
-      valueFrom:
-        fieldRef:
-          apiVersion: v1
-          fieldPath: status.podIP
-`,
-			))
+			tearDown, err = env.CreateConfigMap(env.Namespace, env.CustomOpsConfigMap("ops-bpm", replaceEnvOps))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -474,13 +506,7 @@ var _ = Describe("Deploy", func() {
 			pod, err := env.GetPod(env.Namespace, "test-nats-1")
 			Expect(err).NotTo(HaveOccurred())
 
-			envKeys := []string{}
-			for _, c := range pod.Spec.Containers {
-				for _, e := range c.Env {
-					envKeys = append(envKeys, e.Name)
-				}
-			}
-			Expect(envKeys).To(ContainElement("XPOD_IPX"))
+			Expect(envKeys(pod.Spec.Containers)).To(ContainElement("XPOD_IPX"))
 		})
 	})
 
