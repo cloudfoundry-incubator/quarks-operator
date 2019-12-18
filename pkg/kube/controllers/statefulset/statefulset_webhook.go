@@ -57,7 +57,7 @@ func (m *Mutator) Handle(ctx context.Context, req admission.Request) admission.R
 
 	if isControlledRolloutStatefulSet(statefulset) {
 		if req.Operation == v1beta1.Create {
-			ConfigureStatefulSetForRollout(statefulset)
+			ConfigureStatefulSetForInitialRollout(statefulset)
 		} else {
 			err = m.decoder.DecodeRaw(req.OldObject, oldStatefulset)
 			if err != nil {

@@ -323,7 +323,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 						client.UpdateReturns(errors.New("injected error"))
 					})
 
-					It("no pod is deleted", func() {
+					It("doesn't delete any pods", func() {
 						noneReadyPod.Name = "foo-0"
 						_, err := reconciler.Reconcile(request)
 						Expect(err).To(HaveOccurred())

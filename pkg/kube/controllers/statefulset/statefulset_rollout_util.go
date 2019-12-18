@@ -29,6 +29,17 @@ func ConfigureStatefulSetForRollout(statefulSet *appsv1.StatefulSet) {
 	statefulSet.Annotations[AnnotationUpdateStartTime] = strconv.FormatInt(time.Now().Unix(), 10)
 }
 
+// ConfigureStatefulSetForInitialRollout initially configures a stateful set for canarying and rollout
+func ConfigureStatefulSetForInitialRollout(statefulSet *appsv1.StatefulSet) {
+	statefulSet.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
+	//the canary rollout is for now directly started, the might move to a webhook instead
+	statefulSet.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{
+		Partition: pointers.Int32(0),
+	}
+	statefulSet.Annotations[AnnotationCanaryRollout] = rolloutStateCanaryUpscale
+	statefulSet.Annotations[AnnotationUpdateStartTime] = strconv.FormatInt(time.Now().Unix(), 10)
+}
+
 // FilterLabels filters out labels, that are not suitable for StatefulSet updates
 func FilterLabels(labels map[string]string) map[string]string {
 
@@ -100,7 +111,10 @@ func CleanupNonReadyPod(ctx context.Context, client crc.Client, statefulSet *app
 		return nil
 	}
 	ctxlog.Debug(ctx, "Deleting pod ", pod.Name)
-	return client.Delete(ctx, pod)
+	if err = client.Delete(ctx, pod); err != nil {
+		ctxlog.Error(ctx, "Error deleting non-ready pod ", err)
+	}
+	return err
 }
 
 // getPodWithIndex returns a pod for a given statefulset and index
