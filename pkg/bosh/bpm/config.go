@@ -3,6 +3,7 @@ package bpm
 import (
 	"sort"
 
+	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
@@ -68,6 +69,44 @@ func NewConfig(data []byte) (Config, error) {
 		return Config{}, errors.Wrapf(err, "Unmarshalling data %s failed", string(data))
 	}
 	return config, nil
+}
+
+// MergeProcesses adds and updates the preset processes and returns a new list
+func (c Config) MergeProcesses(presetProcesses []Process) ([]Process, error) {
+	renderedProcesses := c.Processes
+	for _, process := range presetProcesses {
+		index, exist := indexOfBPMProcess(renderedProcesses, process.Name)
+		if exist {
+			err := mergo.MergeWithOverwrite(&renderedProcesses[index], process)
+			if err != nil {
+				return nil, errors.Wrapf(err, "Failed to merge bpm process information for preset process %s", process.Name)
+			}
+		} else {
+			renderedProcesses = append(renderedProcesses, process)
+		}
+	}
+	return renderedProcesses, nil
+}
+
+// indexOfBPMProcess will return the first index at which a given process name can be found in the []bpm.Process.
+// Return -1 if not find valid version
+func indexOfBPMProcess(processes []Process, processName string) (int, bool) {
+	for i, process := range processes {
+		if process.Name == processName {
+			return i, true
+		}
+	}
+	return -1, false
+}
+
+// ValidateProcesses checks if all processes have an executable
+func (c Config) ValidateProcesses() error {
+	for _, process := range c.Processes {
+		if process.Executable == "" {
+			return errors.Errorf("no executable specified for process %s", process.Name)
+		}
+	}
+	return nil
 }
 
 // NewEnvs returns a list of k8s env vars, based on the bpm envs, overwritten

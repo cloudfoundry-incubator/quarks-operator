@@ -71,7 +71,7 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 	// Prepare Volumes and Volume mounts
 
 	volumes := []corev1.Volume{*withOpsVolume(manifestSecretName)}
-	volumeMounts := []corev1.VolumeMount{withOpsVolumeMount(manifestSecretName)}
+	volumeMounts := []corev1.VolumeMount{manifestVolumeMount(manifestSecretName)}
 
 	// We need a volume and a mount for each input variable
 	for _, variable := range manifest.Variables {
@@ -244,7 +244,7 @@ func (ct *containerTemplate) newUtilContainer(instanceGroupName string, linkVolu
 		ImagePullPolicy: GetOperatorImagePullPolicy(),
 		Args:            []string{"util", ct.cmd, "--initial-rollout", strconv.FormatBool(ct.initialRollout)},
 		VolumeMounts: append(linkVolumeMounts, []corev1.VolumeMount{
-			withOpsVolumeMount(ct.manifestName),
+			manifestVolumeMount(ct.manifestName),
 			releaseSourceVolumeMount(),
 		}...),
 		Env: []corev1.EnvVar{
