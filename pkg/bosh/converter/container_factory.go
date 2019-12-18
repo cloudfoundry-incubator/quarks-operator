@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -492,7 +491,7 @@ func bpmProcessContainer(
 	process bpm.Process,
 	volumeMounts []corev1.VolumeMount,
 	healthchecks map[string]bdm.HealthCheck,
-	arbitraryEnvs []corev1.EnvVar,
+	quarksEnvs []corev1.EnvVar,
 	securityContext *corev1.SecurityContext,
 	postStart postStart,
 ) corev1.Container {
@@ -533,7 +532,7 @@ func bpmProcessContainer(
 		VolumeMounts:    deduplicateVolumeMounts(volumeMounts),
 		Command:         command,
 		Args:            args,
-		Env:             generateEnv(process.Env, arbitraryEnvs),
+		Env:             process.NewEnvs(quarksEnvs),
 		WorkingDir:      workdir,
 		SecurityContext: securityContext,
 		Lifecycle:       &corev1.Lifecycle{},
@@ -652,27 +651,4 @@ func generateBPMCommand(
 	args = append(args, process.Args...)
 
 	return command, args
-}
-
-// generateEnv returns new slice of corev1.EnvVar
-func generateEnv(envs map[string]string, overrides []corev1.EnvVar) []corev1.EnvVar {
-	result := make([]corev1.EnvVar, 0, len(envs))
-	overridesMap := make(map[string]corev1.EnvVar)
-
-	for _, override := range overrides {
-		overridesMap[override.Name] = override
-	}
-	for name, value := range envs {
-		if override, ok := overridesMap[name]; ok {
-			result = append(result, override)
-		} else {
-			result = append(result, corev1.EnvVar{Name: name, Value: value})
-		}
-	}
-
-	if len(result) == 0 {
-		return nil
-	}
-	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
-	return result
 }

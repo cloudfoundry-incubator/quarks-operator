@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	btg "github.com/viovanov/bosh-template-go"
@@ -88,7 +87,6 @@ func (igr *InstanceGroupResolver) Manifest(initialRollout bool) (Manifest, error
 	// Filter igManifest to contain only relevant fields
 	igJobs := []Job{}
 	for _, job := range igr.instanceGroup.Jobs {
-
 		igQuarks := Quarks{
 			Consumes:         job.Properties.Quarks.Consumes,
 			PreRenderScripts: job.Properties.Quarks.PreRenderScripts,
@@ -317,20 +315,24 @@ func (igr *InstanceGroupResolver) renderBPM() error {
 	for i := range igr.instanceGroup.Jobs {
 		job := &igr.instanceGroup.Jobs[i]
 
-		err := igr.renderJobBPM(job, igr.baseDir)
+		jobSpecFile := job.specFile(igr.baseDir)
+		template, err := igr.findBPMTemplate(job, igr.baseDir, jobSpecFile)
 		if err != nil {
 			return errors.Wrapf(err, "Rendering BPM failed for instance group %s", igr.instanceGroup.Name)
+		}
+
+		if template != "" {
+			err = igr.renderJobBPM(job, jobSpecFile, template)
+			if err != nil {
+				return errors.Wrapf(err, "Rendering BPM failed for instance group %s", igr.instanceGroup.Name)
+			}
 		}
 	}
 
 	return nil
 }
 
-// renderJobBPM per job and add its value to the jobInstances.BPM field.
-func (igr *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) error {
-	// Location of the current job job.MF file.
-	jobSpecFile := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "job.MF")
-
+func (igr *InstanceGroupResolver) findBPMTemplate(currentJob *Job, baseDir string, jobSpecFile string) (string, error) {
 	var jobSpec struct {
 		Templates map[string]string `yaml:"templates"`
 	}
@@ -339,11 +341,11 @@ func (igr *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) 
 	// We're looking for a template in the spec, whose result is a file "bpm.yml".
 	yamlFile, err := ioutil.ReadFile(jobSpecFile)
 	if err != nil {
-		return errors.Wrapf(err, "failed to read the job spec file %s in job %s", jobSpecFile, currentJob.Name)
+		return "", errors.Wrapf(err, "failed to read the job spec file %s in job %s", jobSpecFile, currentJob.Name)
 	}
 	err = yaml.Unmarshal(yamlFile, &jobSpec)
 	if err != nil {
-		return errors.Wrapf(err, "failed to unmarshal the job spec file %s in job %s", jobSpecFile, currentJob.Name)
+		return "", errors.Wrapf(err, "failed to unmarshal the job spec file %s in job %s", jobSpecFile, currentJob.Name)
 	}
 
 	var bpmSource string
@@ -358,95 +360,96 @@ func (igr *InstanceGroupResolver) renderJobBPM(currentJob *Job, baseDir string) 
 		// Render bpm.yml.erb for each job instance.
 		erbFilePath := filepath.Join(baseDir, "jobs-src", currentJob.Release, currentJob.Name, "templates", bpmSource)
 		if _, err := os.Stat(erbFilePath); err != nil {
-			return errors.Wrapf(err, "os.Stat failed for %s", erbFilePath)
+			return "", errors.Wrapf(err, "os.Stat failed for %s", erbFilePath)
 		}
-
-		// Get current job.quarks.instances, which will be required by the renderer to generate
-		// the render.InstanceInfo struct.
-		jobInstances := currentJob.Properties.Quarks.Instances
-		if jobInstances == nil {
-			return nil
-		}
-
-		jobIndexBPM := make([]bpm.Config, len(jobInstances))
-		for i, jobInstance := range jobInstances {
-			properties := currentJob.Properties.ToMap()
-
-			renderPointer := btg.NewERBRenderer(
-				&btg.EvaluationContext{
-					Properties: properties,
-				},
-				&btg.InstanceInfo{
-					Address:    jobInstance.Address,
-					AZ:         jobInstance.AZ,
-					Bootstrap:  jobInstance.Bootstrap,
-					ID:         jobInstance.ID,
-					Index:      jobInstance.Index,
-					Deployment: igr.manifest.Name,
-					Name:       jobInstance.Name,
-				},
-				jobSpecFile,
-			)
-
-			// Write to a tmp, this is following the conventions on how the
-			// https://github.com/viovanov/bosh-template-go/ processes the params
-			// when we calling the *.Render().
-			tmpfile, err := ioutil.TempFile("", "rendered.*.yml")
-			if err != nil {
-				return errors.Wrapf(err, "Creation of tmp file %s failed", tmpfile.Name())
-			}
-			defer os.Remove(tmpfile.Name())
-
-			if err := renderPointer.Render(erbFilePath, tmpfile.Name()); err != nil {
-				return errors.Wrapf(err, "Rendering file %s failed", erbFilePath)
-			}
-
-			bpmBytes, err := ioutil.ReadFile(tmpfile.Name())
-			if err != nil {
-				return errors.Wrapf(err, "Reading of tmp file %s failed", tmpfile.Name())
-			}
-
-			// Parse a rendered bpm.yml into the bpm Config struct.
-			renderedBPM, err := bpm.NewConfig(bpmBytes)
-			if err != nil {
-				return errors.Wrapf(err, "Rendering bpm.yaml into bpm config %s failed", string(bpmBytes))
-			}
-
-			// Merge processes if they also exist in Quarks
-			if currentJob.Properties.Quarks.BPM != nil && len(currentJob.Properties.Quarks.BPM.Processes) > 0 {
-				renderedBPM.Processes, err = mergeBPMProcesses(renderedBPM.Processes, currentJob.Properties.Quarks.BPM.Processes)
-				if err != nil {
-					return errors.Wrapf(err, "failed to merge bpm information from quarks for job '%s'", currentJob.Name)
-				}
-			}
-
-			jobIndexBPM[i] = renderedBPM
-		}
-
-		firstJobIndexBPM := jobIndexBPM[0]
-		for _, jobBPMInstance := range jobIndexBPM {
-			if !reflect.DeepEqual(jobBPMInstance, firstJobIndexBPM) {
-				firstJobIndexBPM.UnsupportedTemplate = true
-			}
-		}
-		err = validateBPMProcesses(firstJobIndexBPM.Processes)
-		if err != nil {
-			return errors.Wrapf(err, "invalid BPM process for job %s", currentJob.Name)
-		}
-		currentJob.Properties.Quarks.BPM = &firstJobIndexBPM
+		return erbFilePath, nil
 	} else if currentJob.Properties.Quarks.BPM == nil {
-		return errors.Errorf("can't find BPM template for job %s", currentJob.Name)
+		return "", errors.Errorf("can't find BPM template for job %s", currentJob.Name)
 	}
 
-	return nil
+	return "", nil
 }
 
-func validateBPMProcesses(processes []bpm.Process) error {
-	for _, process := range processes {
-		if process.Executable == "" {
-			return errors.Errorf("no executable specified for process %s", process.Name)
+// renderJobBPM per job and add its value to the jobInstances.BPM field.
+func (igr *InstanceGroupResolver) renderJobBPM(currentJob *Job, jobSpecFile string, erbFilePath string) error {
+	// Get current job.quarks.instances, which will be required by the renderer to generate
+	// the render.InstanceInfo struct.
+	jobInstances := currentJob.Properties.Quarks.Instances
+	if jobInstances == nil {
+		return nil
+	}
+
+	jobIndexBPM := make([]bpm.Config, len(jobInstances))
+	for i, jobInstance := range jobInstances {
+		properties := currentJob.Properties.ToMap()
+
+		renderPointer := btg.NewERBRenderer(
+			&btg.EvaluationContext{
+				Properties: properties,
+			},
+			&btg.InstanceInfo{
+				Address:    jobInstance.Address,
+				AZ:         jobInstance.AZ,
+				Bootstrap:  jobInstance.Bootstrap,
+				ID:         jobInstance.ID,
+				Index:      jobInstance.Index,
+				Deployment: igr.manifest.Name,
+				Name:       jobInstance.Name,
+			},
+			jobSpecFile,
+		)
+
+		// Write to a tmp, this is following the conventions on how the
+		// https://github.com/viovanov/bosh-template-go/ processes the params
+		// when we calling the *.Render().
+		tmpfile, err := ioutil.TempFile("", "rendered.*.yml")
+		if err != nil {
+			return errors.Wrapf(err, "Creation of tmp file %s failed", tmpfile.Name())
+		}
+		defer os.Remove(tmpfile.Name())
+
+		if err := renderPointer.Render(erbFilePath, tmpfile.Name()); err != nil {
+			return errors.Wrapf(err, "Rendering file %s failed", erbFilePath)
+		}
+
+		bpmBytes, err := ioutil.ReadFile(tmpfile.Name())
+		if err != nil {
+			return errors.Wrapf(err, "Reading of tmp file %s failed", tmpfile.Name())
+		}
+
+		// Parse a rendered bpm.yml into the bpm Config struct.
+		renderedBPM, err := bpm.NewConfig(bpmBytes)
+		if err != nil {
+			return errors.Wrapf(err, "Rendering bpm.yaml into bpm config %s failed", string(bpmBytes))
+		}
+
+		// Merge processes if they also exist in Quarks
+		if currentJob.Properties.Quarks.BPM != nil && len(currentJob.Properties.Quarks.BPM.Processes) > 0 {
+			renderedBPM.Processes, err = renderedBPM.MergeProcesses(currentJob.Properties.Quarks.BPM.Processes)
+			if err != nil {
+				return errors.Wrapf(err, "failed to merge bpm information from quarks for job '%s'", currentJob.Name)
+			}
+		}
+
+		// Merge env if it also exists in Quarks
+		for i := range renderedBPM.Processes {
+			renderedBPM.Processes[i].UpdateEnv(currentJob.Properties.Quarks.Envs)
+		}
+
+		jobIndexBPM[i] = renderedBPM
+	}
+
+	firstJobIndexBPM := jobIndexBPM[0]
+	for _, jobBPMInstance := range jobIndexBPM {
+		if !reflect.DeepEqual(jobBPMInstance, firstJobIndexBPM) {
+			firstJobIndexBPM.UnsupportedTemplate = true
 		}
 	}
+	err := firstJobIndexBPM.ValidateProcesses()
+	if err != nil {
+		return errors.Wrapf(err, "invalid BPM process for job %s", currentJob.Name)
+	}
+	currentJob.Properties.Quarks.BPM = &firstJobIndexBPM
 	return nil
 }
 
@@ -574,33 +577,6 @@ func mergeNestedExplicitProperty(properties map[string]interface{}, job Job, pro
 
 		currentLevel = currentLevel[gram].(map[string]interface{})
 	}
-}
-
-// mergeBPMProcesses will return new processes slice which be overwritten with preset processes
-func mergeBPMProcesses(renderedProcesses []bpm.Process, presetProcesses []bpm.Process) ([]bpm.Process, error) {
-	for _, process := range presetProcesses {
-		index, exist := indexOfBPMProcess(renderedProcesses, process.Name)
-		if exist {
-			err := mergo.MergeWithOverwrite(&renderedProcesses[index], process)
-			if err != nil {
-				return nil, errors.Wrapf(err, "Failed to merge bpm process information for preset process %s", process.Name)
-			}
-		} else {
-			renderedProcesses = append(renderedProcesses, process)
-		}
-	}
-	return renderedProcesses, nil
-}
-
-// indexOfBPMProcess will return the first index at which a given process name can be found in the []bpm.Process.
-// Return -1 if not find valid version
-func indexOfBPMProcess(processes []bpm.Process, processName string) (int, bool) {
-	for i, process := range processes {
-		if process.Name == processName {
-			return i, true
-		}
-	}
-	return -1, false
 }
 
 // getProviderNameFromConsumer get the override of the provider to consume.
