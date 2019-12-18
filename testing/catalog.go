@@ -503,7 +503,7 @@ func (c *Catalog) WrongStatefulSet(name string) appsv1.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Annotations: map[string]string{
-				statefulset.AnnotationCanaryWatchTime: "30000",
+				statefulset.AnnotationUpdateWatchTime: "20000",
 			},
 		},
 		Spec: appsv1.StatefulSetSpec{

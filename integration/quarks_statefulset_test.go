@@ -103,7 +103,7 @@ var _ = Describe("QuarksStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should keep two versions if all are not running", func() {
+		It("should keep two versions if both are not running", func() {
 			By("Creating an QuarksStatefulSet")
 			qSts, tearDown, err := env.CreateQuarksStatefulSet(env.Namespace, wrongQuarksStatefulSet)
 			Expect(err).NotTo(HaveOccurred())
@@ -120,9 +120,9 @@ var _ = Describe("QuarksStatefulSet", func() {
 
 			sts, err := env.GetStatefulSet(env.Namespace, qSts.GetName())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(sts.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-rollout", "Canary"))
+			Expect(sts.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-rollout", "CanaryUpscale"))
 
-			err = wait.PollImmediate(5*time.Second, 35*time.Second, func() (bool, error) {
+			err = wait.PollImmediate(5*time.Second, 25*time.Second, func() (bool, error) {
 				sts, err := env.GetStatefulSet(env.Namespace, qSts.GetName())
 				if err != nil {
 					return false, err
