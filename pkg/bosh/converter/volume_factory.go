@@ -62,8 +62,8 @@ const (
 	// UnrestrictedVolumeBaseName is the volume name for the unrestricted ones.
 	UnrestrictedVolumeBaseName = "bpm-unrestricted-volume"
 
-	secretsPath         = "/var/run/secrets/variables/"
-	withOpsManifestPath = "/var/run/secrets/deployment/"
+	secretsPath  = "/var/run/secrets/variables/"
+	manifestPath = "/var/run/secrets/deployment/"
 	// releaseSourceName is the folder for release sources
 	releaseSourceName        = "instance-group"
 	resolvedPropertiesFormat = "/var/run/secrets/resolved-properties/%s"
@@ -327,11 +327,11 @@ func withOpsVolume(name string) *corev1.Volume {
 	}
 }
 
-// withOpsVolumeMount mount for the with-ops manifest
-func withOpsVolumeMount(name string) corev1.VolumeMount {
+// manifestVolumeMount mount for the manifest
+func manifestVolumeMount(name string) corev1.VolumeMount {
 	return corev1.VolumeMount{
 		Name:      generateVolumeName(name),
-		MountPath: withOpsManifestPath,
+		MountPath: manifestPath,
 		ReadOnly:  true,
 	}
 }

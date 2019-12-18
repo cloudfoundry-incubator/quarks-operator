@@ -87,8 +87,13 @@ func (j *Job) specDir(baseDir string) string {
 	return filepath.Join(baseDir, "jobs-src", j.Release, j.Name)
 }
 
+// specFile returns the location of the current job job.MF file.
+func (j *Job) specFile(baseDir string) string {
+	return filepath.Join(j.specDir(baseDir), JobSpecFilename)
+}
+
 func (j *Job) loadSpec(baseDir string) (*JobSpec, error) {
-	jobMFFilePath := filepath.Join(j.specDir(baseDir), JobSpecFilename)
+	jobMFFilePath := j.specFile(baseDir)
 	jobMfBytes, err := ioutil.ReadFile(jobMFFilePath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read file in path %s", jobMFFilePath)
