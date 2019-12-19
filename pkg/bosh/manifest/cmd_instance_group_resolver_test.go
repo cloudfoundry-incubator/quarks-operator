@@ -3,12 +3,12 @@ package manifest_test
 import (
 	"encoding/json"
 	"fmt"
-
 	"github.com/go-test/deep"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/afero"
 
+	bpmConfig "code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/testing"
@@ -116,6 +116,12 @@ var _ = Describe("InstanceGroupResolver", func() {
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECNAME"]).To(Equal("log-api-loggregator_trafficcontroller"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECNETWORKS"]).To(Equal(""))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-0"))
+
+				Expect(bpm.Ports).To(ContainElement(bpmConfig.Port{
+					Name:     "outgoing_dropsonde_port",
+					Protocol: "TCP",
+					Internal: 8081,
+				}))
 			})
 
 			Context("when manifest presets overridden bpm info", func() {

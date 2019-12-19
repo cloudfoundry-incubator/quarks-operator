@@ -436,6 +436,13 @@ func (igr *InstanceGroupResolver) renderJobBPM(currentJob *Job, jobSpecFile stri
 			renderedBPM.Processes[i].UpdateEnv(currentJob.Properties.Quarks.Envs)
 		}
 
+		// Add ports to BPM config
+		ports := []bpm.Port{}
+		for _, port := range currentJob.Properties.Quarks.Ports {
+			ports = append(ports, bpm.Port(port))
+		}
+		renderedBPM.Ports = ports
+
 		jobIndexBPM[i] = renderedBPM
 	}
 
