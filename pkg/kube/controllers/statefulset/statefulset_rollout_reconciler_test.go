@@ -384,6 +384,20 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 				})
 			})
 
+			When("and update_watch_time is exceeded", func() {
+				BeforeEach(func() {
+					annotations[statefulset.AnnotationCanaryRollout] = "Done"
+					annotations[statefulset.AnnotationUpdateWatchTime] = "-1"
+				})
+
+				It("state remains 'Done'", func() {
+					result, err := reconciler.Reconcile(request)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(reconcile.Result{}).To(Equal(result))
+					Expect(client.UpdateCallCount()).To(Equal(0))
+				})
+			})
+
 		})
 	})
 })

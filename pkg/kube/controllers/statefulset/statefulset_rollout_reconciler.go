@@ -84,6 +84,10 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 	}
 
 	var status = statefulSet.Annotations[AnnotationCanaryRollout]
+	if status == rolloutStateFailed || status == rolloutStateDone {
+		return reconcile.Result{}, nil
+	}
+
 	var newStatus = status
 	dirty := false
 	var oldPartition int32
@@ -97,12 +101,10 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 	var resultWithRetrigger reconcile.Result
 	timeLeft := getTimeOut(ctx, statefulSet, AnnotationUpdateWatchTime)
 	if timeLeft < 0 {
-		if rolloutStateFailed != statefulSet.Annotations[AnnotationCanaryRollout] {
-			statefulSet.Annotations[AnnotationCanaryRollout] = rolloutStateFailed
-			if err = r.updateStatefulSet(ctx, statefulSet, oldPartition); err != nil {
-				ctxlog.Debug(ctx, "Error updating StatefulSet ", request.NamespacedName, err)
-				return reconcile.Result{}, err
-			}
+		statefulSet.Annotations[AnnotationCanaryRollout] = rolloutStateFailed
+		if err = r.updateStatefulSet(ctx, statefulSet, oldPartition); err != nil {
+			ctxlog.Debug(ctx, "Error updating StatefulSet ", request.NamespacedName, err)
+			return reconcile.Result{}, err
 		}
 		return reconcile.Result{}, nil
 	}
@@ -118,8 +120,6 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 				newStatus = rolloutStateRollout
 			}
 		}
-	case rolloutStateDone:
-	case rolloutStateFailed:
 	case rolloutStateCanary:
 		if getTimeOut(ctx, statefulSet, AnnotationCanaryWatchTime) < 0 {
 			newStatus = rolloutStateFailed
