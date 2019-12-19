@@ -26,12 +26,12 @@ The **QuarksSecret** component is a categorization of a set of controllers, unde
 
 Figure 1, illustrates the component and associated set of controllers.
 
-![qsec-component-flow](quarks_qseccomponent_flow.png)
+![qsec-component-flow](quarks_eseccomponent_flow.png)
 *Fig. 1: The QuarksSecret component*
 
 ### **_QuarksSecret Controller_**
 
-![qsec-controller-flow](quarks_qseccontroller_flow.png)
+![qsec-controller-flow](quarks_eseccontroller_flow.png)
 *Fig. 2: The QuarksSecret controller*
 
 The **QuarksSecret** Controller will get a list of all variables referenced in a BOSH manifest with ops files applied, and will use this list of variables to generate the pertinent `QuarksSecret` instances.
@@ -103,7 +103,7 @@ The CertificateSigningRequest controller watches for `CertificateSigningRequest`
 
 ## Relationship with the BDPL component
 
-![bdpl-qjob-relationship](quarks_gvc_and_qsec_flow.png)
+![bdpl-qjob-relationship](quarks_gvc_and_esec_flow.png)
 *Fig. 4: Relationship between the Generated V.  controller and the QuarksSecret component*
 
 Figure 4 illustrates the interaction of the **Generated Variables** Controller with the **QuarksSecret** Controller. When reconciling, the Generated Variables Controller lists all variables of a BOSH manifest(basically all BOSH variables) and generates an `QuarksSecret` instance per variable, which will trigger the **QuarksSecret** Controller.

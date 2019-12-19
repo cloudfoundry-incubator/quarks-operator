@@ -15,10 +15,7 @@
          9. [Extended Upgrade Support](#extended-upgrade-support)
          10. [Detects if StatefulSet versions are running](#detects-if-statefulset-versions-are-running)
          11. [AZ Support](#az-support)
-         12. [Active/passive model](#activepassive-model)
-      2. [Statefulset Cleanup Controller](#statefulset-cleanup-controller)
-         1. [Watches](#watches-in-cleanup-controller)
-         2. [Reconciliation](#reconciliation-in-cleanup-controller)
+      2. [QuarksStatefulSet Active-Passive Controller](#quarksstatefulset-active-passive-controller)
    3. [Relationship with the BPM component](#relationship-with-the-bdpl-component)
    4. [`QuarksStatefulSet` Examples](#`quarks-statefulset`-examples)
 
@@ -32,12 +29,12 @@ The **QuarksStatefulset** component is a categorization of a set of controllers,
 
 Figure 1 illustrates a **QuarksStatefulset** component diagram that covers the set of controllers it uses.
 
-![qsts-component-flow](quarks_qstscomponent_flow.png)
+![qsts-component-flow](quarks_estscomponent_flow.png)
 *Fig. 1: The QuarksStatefulset component*
 
 ### **_QuarksStatefulSet Controller_**
 
-![qsts-controller-flow](quarks_qstscontroller_flow.png)
+![qsts-controller-flow](quarks_eseccontroller_flow.png)
 *Fig. 2: The QuarksStatefulset controller*
 
 This controller will generate a Kubernetes statefulset for each `instance_group` defined in the BOSH manifest. This `Statefulset` will also include a set of Kubernetes services, so that each component can be accessed on specific ports.
@@ -190,7 +187,23 @@ If zones are set for an `QuarksStatefulSet`, the following occurs:
   AZ_INDEX="zone index"
   ```
 
-#### Active/passive model
+#### Restarting on Config Change
+
+`QuarksStatefulSets` can be automatically updated when the environment/mounts have changed due to a referenced
+`ConfigMap` or a `Secret` being updated. This behavior is controlled by the `updateOnConfigChange` flag which defaults to `false`.
+
+#### Watches in cleanup controller
+
+- `StatefulSet`: Creation/Update
+
+#### Reconciliation in cleanup controller
+
+It will delete statefulsets with old versions, only after the new statefulset version instances are up and running.
+
+### **_QuarksStatefulSet Active-Passive Controller_**
+
+![qsts-activepassivecontroller-flow](quarks_estsactivepassivecontroller_flow.png)
+*Fig. 3: The QuarksStatefulset active/passive controller*
 
 Active/passive model is application model that have multiple running instances, but only one instance is active and all other instances are passive (standby). If the active instance is down, one of the passive instances will be promoted to active immediately.
 
@@ -226,30 +239,13 @@ spec:
 
 The controller manages this active probing and provides pod designation label to the service's selectors. Any requests sent to the service will then only be sent to the active pod.
 
-#### Restarting on Config Change
-
-`QuarksStatefulSets` can be automatically updated when the environment/mounts have changed due to a referenced
-`ConfigMap` or a `Secret` being updated. This behavior is controlled by the `updateOnConfigChange` flag which defaults to `false`.
-
-### **_Statefulset Cleanup Controller_**
-
-![qstscleanup-controller-flow](quarks_stscleanupcontroller_flow.png)
-*Fig. 4: The Statefulset Cleanup controller*
-
-#### Watches in cleanup controller
-
-- `StatefulSet`: Creation/Update
-
-#### Reconciliation in cleanup controller
-
-It will delete statefulsets with old versions, only after the new statefulset version instances are up and running.
 
 ## Relationship with the BDPL component
 
-![bpm-qsts-relationship](quarks_bpm_and_qsts_flow.png)
-*Fig. 5: Relationship with the BPM controller*
+![bpm-qsts-relationship](quarks_bpm_and_ests_flow.png)
+*Fig. 4: Relationship with the BPM controller*
 
-Figure 5 illustrates the interaction of the **BPM** Controller with the **QuarksStatefulSet** Controller. Once the BPM controller consumes the data persisted in secrets from the `QuarksJob` Component, it will use that data to generate new `QuarksStatefulset` instances. When these resources are generated, the QuarksStatefulSet controller will be watching and trigger its reconciliation loop.
+Figure 4 illustrates the interaction of the **BPM** Controller with the **QuarksStatefulSet** Controller. Once the BPM controller consumes the data persisted in secrets from the `QuarksJob` Component, it will use that data to generate new `QuarksStatefulset` instances. When these resources are generated, the QuarksStatefulSet controller will be watching and trigger its reconciliation loop.
 
 ## `QuarksStatefulSet` Examples
 
