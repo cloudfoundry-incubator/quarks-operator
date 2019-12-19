@@ -447,6 +447,11 @@ instance_groups:
         tls_port: 9023
         mutual_tls:
           ca_cert: "((service_cf_internal_ca.certificate))"
+      quarks:
+        ports:
+        - name: "outgoing_dropsonde_port"
+          protocol: "TCP"
+          internal: 8081
 releases:
 - name: loggregator
   url: https://bosh.io/d/github.com/cloudfoundry/loggregator-release?v=105.0

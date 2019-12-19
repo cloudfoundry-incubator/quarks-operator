@@ -52,9 +52,17 @@ type Process struct {
 	Unsafe            Unsafe              `yaml:"unsafe,omitempty" json:"unsafe,omitempty"`
 }
 
+// Port represents the port to be opened up for this job only for tracing changes.
+type Port struct {
+	Name     string `json:"name"`
+	Protocol string `json:"protocol"`
+	Internal int    `json:"internal"`
+}
+
 // Config represent a BPM configuration
 type Config struct {
 	Processes           []Process `yaml:"processes,omitempty" json:"processes,omitempty"`
+	Ports               []Port    `yaml:"ports,omitempty" json:"ports,omitempty"`
 	UnsupportedTemplate bool      `json:"unsupported_template"`
 }
 
