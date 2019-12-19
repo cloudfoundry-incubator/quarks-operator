@@ -11,6 +11,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
@@ -32,6 +33,13 @@ var _ = Describe("Deploy", func() {
         fieldRef:
           apiVersion: v1
           fieldPath: status.podIP
+`
+		replacePortsOps = `- type: replace
+  path: /instance_groups/name=nats/jobs/name=nats/properties/quarks/ports?/-
+  value:
+    name: "fake-port"
+    protocol: "TCP"
+    internal: 6443
 `
 	)
 
@@ -303,6 +311,37 @@ var _ = Describe("Deploy", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(envKeys(pod.Spec.Containers)).To(ContainElement("XPOD_IPX"))
+			})
+		})
+
+		Context("by adding a new port via quarks job properties", func() {
+			BeforeEach(func() {
+				tearDown, err := env.CreateSecret(env.Namespace, env.CustomOpsSecret("ops-ports", replacePortsOps))
+				Expect(err).NotTo(HaveOccurred())
+				tearDowns = append(tearDowns, tearDown)
+
+				bdpl, err := env.GetBOSHDeployment(env.Namespace, deploymentName)
+				Expect(err).NotTo(HaveOccurred())
+				bdpl.Spec.Ops = []bdv1.ResourceReference{{Name: "ops-ports", Type: bdv1.SecretReference}}
+				_, _, err = env.UpdateBOSHDeployment(env.Namespace, *bdpl)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should update the service with new port", func() {
+				err := env.WaitForSecret(env.Namespace, "test.bpm.nats-v2")
+				Expect(err).NotTo(HaveOccurred(), "error waiting for new bpm config")
+
+				err = env.WaitForServiceVersion(env.Namespace, "test-nats", "2")
+				Expect(err).NotTo(HaveOccurred(), "error waiting for service from deployment")
+
+				svc, err := env.GetService(env.Namespace, "test-nats")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(svc.Spec.Ports).To(ContainElement(corev1.ServicePort{
+					Name:       "fake-port",
+					Port:       6443,
+					Protocol:   "TCP",
+					TargetPort: intstr.FromInt(6443),
+				}))
 			})
 		})
 
