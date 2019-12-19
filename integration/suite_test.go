@@ -70,6 +70,11 @@ var _ = BeforeEach(func() {
 	}
 	namespacesToNuke = append(namespacesToNuke, env.Namespace)
 
+	err = env.SetupQjobAccount()
+	if err != nil {
+		fmt.Printf("WARNING: failed to setup quarks-job operator service account: %s\n", err)
+	}
+
 	err = qjobCmd.Start(env.Namespace)
 	if err != nil {
 		fmt.Printf("WARNING: failed to start quarks job operator: %v\n", err)
