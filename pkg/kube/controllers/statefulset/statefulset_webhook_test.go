@@ -91,7 +91,7 @@ var _ = Describe("When the muatating webhook handles a statefulset", func() {
 			})
 			Expect(response.AdmissionResponse.Allowed).To(BeTrue())
 			Expect(response.Patches).To(ContainElement(
-				jsonpatch.Operation{Operation: "add", Path: "/metadata/annotations/quarks.cloudfoundry.org~1canary-rollout", Value: "Pending"},
+				jsonpatch.Operation{Operation: "add", Path: "/metadata/annotations/quarks.cloudfoundry.org~1canary-rollout", Value: "CanaryUpscale"},
 			))
 			Expect(response.Patches).To(ContainElement(
 				jsonpatch.Operation{Operation: "add", Path: "/spec/updateStrategy/type", Value: "RollingUpdate"},
