@@ -23,6 +23,7 @@ var waitCmd = &cobra.Command{
 	Short: "Wait for required service",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Printf("Waiting for %s to be reachable\n", args[0])
 		expiry := time.Now().Add(time.Duration(viper.GetInt("timeout")) * time.Second)
 		for {
 			if time.Now().After(expiry) {
@@ -31,7 +32,6 @@ var waitCmd = &cobra.Command{
 			if _, err := net.LookupIP(args[0]); err == nil {
 				return nil
 			}
-			fmt.Printf("Waiting for %s to be reachable\n", args[0])
 			time.Sleep(time.Second * 5)
 		}
 	},
