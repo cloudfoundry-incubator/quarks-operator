@@ -13,7 +13,9 @@ import (
 func init() {
 	utilCmd.AddCommand(waitCmd)
 	waitCmd.Flags().IntP("timeout", "", 30*60, "timeout in seconds after the required service must be available")
+	waitCmd.Flags().IntP("interval", "", 1, "interval between checks in seconds")
 	viper.BindPFlag("timeout", waitCmd.Flags().Lookup("timeout"))
+	viper.BindPFlag("interval", waitCmd.Flags().Lookup("interval"))
 }
 
 // waitCmd is used to wait for a service (e.g. database), which is required for the calling job (e.g. cloud-controller).
@@ -32,7 +34,7 @@ var waitCmd = &cobra.Command{
 				return nil
 			}
 			fmt.Printf("Waiting for %s to be reachable\n", args[0])
-			time.Sleep(time.Second * 5)
+			time.Sleep(time.Duration(viper.GetInt("interval")) * time.Second)
 		}
 	},
 }
