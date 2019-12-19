@@ -6,6 +6,11 @@ import (
 
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pkg/errors"
+
+	v1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // QuarksJobCmd helps to run the QuarksJob operator in tests
@@ -31,6 +36,7 @@ func (q *QuarksJobCmd) Start(namespace string) error {
 		"-n", namespace,
 		"-o", "cfcontainerization",
 		"-r", "quarks-job",
+		"--service-account", "default",
 		"-t", quarksJobTag(),
 	)
 	_, err := gexec.Start(cmd, ginkgo.GinkgoWriter, ginkgo.GinkgoWriter)
@@ -43,4 +49,36 @@ func quarksJobTag() string {
 		version = "dev"
 	}
 	return version
+}
+
+func (e *Environment) SetupQjobAccount() error {
+	// Bind the persist-output service account to the cluster-admin ClusterRole. Notice that the
+	// RoleBinding is namespaced as opposed to ClusterRoleBinding which would give the service account
+	// unrestricted permissions to any namespace.
+	roleBinding := &v1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "persist-output-role",
+			Namespace: e.Namespace,
+		},
+		Subjects: []v1.Subject{
+			{
+				Kind:      v1.ServiceAccountKind,
+				Name:      "default",
+				Namespace: e.Namespace,
+			},
+		},
+		RoleRef: v1.RoleRef{
+			Kind:     "ClusterRole",
+			Name:     "cluster-admin",
+			APIGroup: "rbac.authorization.k8s.io",
+		},
+	}
+
+	rbac := e.Clientset.RbacV1().RoleBindings(e.Namespace)
+	if _, err := rbac.Create(roleBinding); err != nil {
+		if !apierrors.IsAlreadyExists(err) {
+			return errors.Wrapf(err, "could not create role binding")
+		}
+	}
+	return nil
 }

@@ -1,8 +1,8 @@
 module code.cloudfoundry.org/cf-operator
 
 require (
-	code.cloudfoundry.org/quarks-job v0.0.0-20191129095316-23b0d08e8376
-	code.cloudfoundry.org/quarks-utils v0.0.0-20191218072851-52c9a8ec8c73
+	code.cloudfoundry.org/quarks-job v0.0.0-20191220085811-ceb51b2eb926
+	code.cloudfoundry.org/quarks-utils v0.0.0-20191220014113-dab838a1c0be
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
 	github.com/charlievieth/fs v0.0.0-20170613215519-7dc373669fa1 // indirect
 	github.com/cloudflare/cfssl v0.0.0-20181102015659-ea4033a214e7
@@ -12,6 +12,7 @@ require (
 	github.com/daaku/go.zipexe v1.0.1 // indirect
 	github.com/dchest/uniuri v0.0.0-20160212164326-8902c56451e9
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
+	github.com/elazarl/goproxy v0.0.0-20191011121108-aa519ddbe484 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/go-test/deep v1.0.4
