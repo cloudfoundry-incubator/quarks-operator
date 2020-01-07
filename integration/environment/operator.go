@@ -7,6 +7,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
 	"github.com/pkg/errors"
 
 	corev1 "k8s.io/api/core/v1"
@@ -49,6 +53,7 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 		return nil, err
 	}
 
+	// Server needs `GatewayPorts yes` in sshd_config`
 	sshUser, shouldForwardPort := os.LookupEnv("ssh_server_user")
 	if shouldForwardPort {
 		var remoteAddr string
@@ -56,18 +61,18 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 		if remoteAddr, ok = os.LookupEnv("ssh_server_listen_address"); !ok {
 			remoteAddr = whh
 		}
-		go func() {
-			cmd := exec.Command(
-				"ssh", "-fNT", "-i", "/tmp/cf-operator-tunnel-identity", "-o",
-				"UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-R",
-				fmt.Sprintf("%s:%[2]d:localhost:%[2]d", remoteAddr, port),
-				fmt.Sprintf("%s@%s", sshUser, whh))
 
-			stdOutput, err := cmd.CombinedOutput()
-			if err != nil {
-				fmt.Printf("SSH TUNNEL FAILED: %s\nOUTPUT: %s", err.Error(), string(stdOutput))
-			}
-		}()
+		cmd := exec.Command(
+			"ssh", "-nNT", "-i", "/tmp/cf-operator-tunnel-identity", "-o",
+			"UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-R",
+			fmt.Sprintf("%s:%[2]d:localhost:%[2]d", remoteAddr, port),
+			fmt.Sprintf("%s@%s", sshUser, whh))
+
+		session, err := gexec.Start(cmd, ginkgo.GinkgoWriter, ginkgo.GinkgoWriter)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Failed to setup the SSH tunnel to %s", remoteAddr)
+		}
+		gomega.Eventually(session.Err, "20s", "50ms").Should(gbytes.Say("Permanently added"))
 	}
 
 	e.Config.WebhookServerPort = port
@@ -126,7 +131,7 @@ func getWebhookServicePort(namespaceCounter int) (int32, error) {
 		var err error
 		port, err = strconv.ParseInt(portString, 10, 32)
 		if err != nil {
-			return -1, errors.Wrapf(err, "Parsing portSting %s failed", portString)
+			return -1, errors.Wrapf(err, "Parsing CF_OPERATOR_WEBHOOK_SERVICE_PORT '%s' failed", portString)
 		}
 	}
 	return int32(port) + int32(namespaceCounter), nil
