@@ -61,10 +61,10 @@ var _ = Describe("Examples Directory", func() {
 				}
 				return true, nil
 			})
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred(), "polling for example-quarks-statefulset-0 with special key")
 
 			err = kubectl.RunCommandWithCheckString(namespace, "example-quarks-statefulset-1", "env", "SPECIAL_KEY=value1Updated")
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred(), "waiting for example-quarks-statefulset-1 with special key")
 		})
 
 		It("creates and updates statefulsets even out of a failure situation", func() {
@@ -85,7 +85,7 @@ var _ = Describe("Examples Directory", func() {
 				lastStateTerminated := podStatus.ContainerStatuses[0].LastTerminationState.Terminated
 				return lastStateTerminated != nil && lastStateTerminated.ExitCode == 1, nil
 			})
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred(), "polling for example-quarks-statefulset-1")
 
 			yamlUpdatedFilePath := examplesDir + "quarks-statefulset/qstatefulset_configs_updated.yaml"
 
@@ -101,10 +101,10 @@ var _ = Describe("Examples Directory", func() {
 				}
 				return true, nil
 			})
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred(), "polling for example-quarks-statefulset-0 with special key")
 
 			err = kubectl.RunCommandWithCheckString(namespace, "example-quarks-statefulset-1", "env", "SPECIAL_KEY=value1Updated")
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred(), "waiting for example-quarks-statefulset-1 with special key")
 		})
 
 		It("it labels the first pod as active", func() {
@@ -120,8 +120,7 @@ var _ = Describe("Examples Directory", func() {
 				}
 				return true, nil
 			})
-			Expect(err).ToNot(HaveOccurred())
-
+			Expect(err).ToNot(HaveOccurred(), "waiting for example-quarks-statefulset-1")
 		})
 
 	})
