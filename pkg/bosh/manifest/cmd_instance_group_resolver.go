@@ -45,17 +45,39 @@ func NewInstanceGroupResolver(fs afero.Fs, basedir string, manifest Manifest, in
 	}, nil
 }
 
+// Resolve collects bpm and link information and enriches the manifest accordingly
+//
+// Data gathered:
+// * job spec information
+// * job properties
+// * bosh links
+// * bpm yaml file data
+func (igr *InstanceGroupResolver) Resolve(initialRollout bool) error {
+	if err := runPreRenderScripts(igr.instanceGroup); err != nil {
+		return err
+	}
+
+	if err := igr.collectReleaseSpecsAndProviderLinks(initialRollout); err != nil {
+		return err
+	}
+
+	if err := igr.processConsumers(); err != nil {
+		return err
+	}
+
+	if err := igr.renderBPM(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // BPMInfo returns an instance of BPMInfo which consists info about instances,
 // azs, env, variables and a map of all BOSH jobs in the instance group.
 // The output will be persisted by QuarksJob as 'bpm.yaml' in the
 // `<deployment-name>.bpm.<instance-group>-v<version>` secret.
-func (igr *InstanceGroupResolver) BPMInfo(initialRollout bool) (BPMInfo, error) {
+func (igr *InstanceGroupResolver) BPMInfo() (BPMInfo, error) {
 	bpmInfo := BPMInfo{}
-
-	err := igr.resolveManifest(initialRollout)
-	if err != nil {
-		return bpmInfo, err
-	}
 
 	bpmInfo.Configs = bpm.Configs{}
 	for _, job := range igr.instanceGroup.Jobs {
@@ -78,12 +100,7 @@ func (igr *InstanceGroupResolver) BPMInfo(initialRollout bool) (BPMInfo, error) 
 // That manifest includes the gathered data from BPM and links.
 // The output will be persisted by QuarksJob as 'properties.yaml' in the
 // `<deployment-name>.ig-resolved.<instance-group>-v<version>` secret.
-func (igr *InstanceGroupResolver) Manifest(initialRollout bool) (Manifest, error) {
-	err := igr.resolveManifest(initialRollout)
-	if err != nil {
-		return Manifest{}, err
-	}
-
+func (igr *InstanceGroupResolver) Manifest() (Manifest, error) {
 	// Filter igManifest to contain only relevant fields
 	igJobs := []Job{}
 	for _, job := range igr.instanceGroup.Jobs {
@@ -142,33 +159,6 @@ func (igr *InstanceGroupResolver) SaveLinks(path string) error {
 	err = afero.WriteFile(igr.fs, path, jsonBytes, 0644)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to write JSON to a output file '%s'", path)
-	}
-
-	return nil
-}
-
-// resolveManifest collects bpm and link information and enriches the manifest accordingly
-//
-// Data gathered:
-// * job spec information
-// * job properties
-// * bosh links
-// * bpm yaml file data
-func (igr *InstanceGroupResolver) resolveManifest(initialRollout bool) error {
-	if err := runPreRenderScripts(igr.instanceGroup); err != nil {
-		return err
-	}
-
-	if err := igr.collectReleaseSpecsAndProviderLinks(initialRollout); err != nil {
-		return err
-	}
-
-	if err := igr.processConsumers(); err != nil {
-		return err
-	}
-
-	if err := igr.renderBPM(); err != nil {
-		return err
 	}
 
 	return nil
