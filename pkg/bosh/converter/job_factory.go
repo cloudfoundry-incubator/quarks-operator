@@ -32,10 +32,14 @@ const (
 	EnvVariablesDir = "VARIABLES_DIR"
 	// EnvOutputFilePath is path where json output is to be redirected (CLI)
 	EnvOutputFilePath = "OUTPUT_FILE_PATH"
-	// EnvOutputFilePathValue is the value of filepath of JSON output file
-	EnvOutputFilePathValue = "/mnt/quarks/output.json"
+	// EnvOutputFilePathValue is the value of filepath of JSON output dir
+	EnvOutputFilePathValue = "/mnt/quarks"
 	// outputFilename is the file name of the JSON output file, which quarks job will look for
 	outputFilename = "output.json"
+	// InstanceGroupOutputFilename i s the file name of the JSON output file, which quarks job will look for
+	InstanceGroupOutputFilename = "ig.json"
+	// BPMOutputFilename i s the file name of the JSON output file, which quarks job will look for
+	BPMOutputFilename = "bpm.json"
 
 	// VarInterpolationContainerName is the name of the container that
 	// performs variable interpolation for a manifest. It's also part of
@@ -103,7 +107,7 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 		Spec: qjv1a1.QuarksJobSpec{
 			Output: &qjv1a1.Output{
 				OutputMap: qjv1a1.OutputMap{
-					VarInterpolationContainerName: qjv1a1.NewFileToSecret("output.json", secretName, true),
+					VarInterpolationContainerName: qjv1a1.NewFileToSecret(outputFilename, secretName, true),
 				},
 				SecretLabels: map[string]string{
 					bdv1.LabelDeploymentName:       manifest.Name,
@@ -144,7 +148,7 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 										},
 										{
 											Name:  EnvOutputFilePath,
-											Value: EnvOutputFilePathValue,
+											Value: filepath.Join(EnvOutputFilePathValue, outputFilename),
 										},
 									},
 								},
@@ -183,45 +187,18 @@ func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest, linkInfos L
 	}
 
 	qJobName := fmt.Sprintf("ig-%s", manifest.Name)
-
-	qJob, err := f.releaseImageQJob(qJobName, manifest, names.DeploymentSecretTypeInstanceGroupResolvedProperties, containers, linkInfos.Volumes())
+	qJob, err := f.releaseImageQJob(qJobName, manifest, containers, linkInfos.Volumes())
 	if err != nil {
 		return nil, err
 	}
 
-	// add BOSH link secret to the output list
+	// add the BOSH link secret to the output list of each container
 	for container, secret := range linkOutputs {
 		qJob.Spec.Output.OutputMap[container]["provides.json"] = qjv1a1.SecretOptions{
 			Name: secret,
 		}
 	}
 	return qJob, nil
-}
-
-// BPMConfigsJob returns an quarks job to calculate BPM information
-func (f *JobFactory) BPMConfigsJob(manifest bdm.Manifest, linkInfos LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error) {
-	containers := []corev1.Container{}
-	ct := containerTemplate{
-		manifestName:   desiredManifestName(manifest.Name),
-		cmd:            "bpm-configs",
-		namespace:      f.Namespace,
-		initialRollout: initialRollout,
-	}
-
-	for _, ig := range manifest.InstanceGroups {
-		if ig.Instances != 0 {
-			// One container per instance group
-			// There will be one BPM secret generated for each of these containers
-			container := ct.newUtilContainer(ig.Name, linkInfos.VolumeMounts())
-
-			env := corev1.EnvVar{Name: qjv1a1.RemoteIDKey, Value: ig.Name}
-			container.Env = append(container.Env, env)
-			containers = append(containers, container)
-		}
-	}
-
-	qJobName := fmt.Sprintf("bpm-%s", manifest.Name)
-	return f.releaseImageQJob(qJobName, manifest, names.DeploymentSecretBpmInformation, containers, linkInfos.Volumes())
 }
 
 // desiredManifestName returns the sanitized, versioned name of the manifest.
@@ -268,12 +245,16 @@ func (ct *containerTemplate) newUtilContainer(instanceGroupName string, linkVolu
 				Name:  EnvOutputFilePath,
 				Value: EnvOutputFilePathValue,
 			},
+			{
+				Name:  qjv1a1.RemoteIDKey,
+				Value: instanceGroupName,
+			},
 		},
 	}
 }
 
 // releaseImageQJob collects outputs, like bpm, links or ig manifests, from the BOSH release images
-func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, secretType names.DeploymentSecretType, containers []corev1.Container, linkVolumes []corev1.Volume) (*qjv1a1.QuarksJob, error) {
+func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, containers []corev1.Container, linkVolumes []corev1.Volume) (*qjv1a1.QuarksJob, error) {
 	initContainers := []corev1.Container{}
 	doneSpecCopyingReleases := map[string]bool{}
 	for _, ig := range manifest.InstanceGroups {
@@ -302,14 +283,26 @@ func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, secret
 	}
 
 	outputMap := qjv1a1.OutputMap{}
-	outputSecretNamePrefix := names.DeploymentSecretPrefix(secretType, manifest.Name)
+	igPrefix := names.DeploymentSecretPrefix(names.DeploymentSecretTypeInstanceGroupResolvedProperties, manifest.Name)
+	bpmPrefix := names.DeploymentSecretPrefix(names.DeploymentSecretBpmInformation, manifest.Name)
 	for _, container := range containers {
-		outputMap[container.Name] = qjv1a1.NewFileToSecret(
-			outputFilename,
-			// the same as names.InstaceGroupSecretName(secretType, manifestName, container.Name, "")
-			outputSecretNamePrefix+container.Name,
-			true,
-		)
+		outputMap[container.Name] = qjv1a1.FilesToSecrets{
+			InstanceGroupOutputFilename: qjv1a1.SecretOptions{
+				// the same as names.InstanceGroupSecretName(secretType, manifestName, container.Name, "")
+				Name: igPrefix + container.Name,
+				AdditionalSecretLabels: map[string]string{
+					bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeInstanceGroupResolvedProperties.String(),
+				},
+				Versioned: true,
+			},
+			BPMOutputFilename: qjv1a1.SecretOptions{
+				Name: bpmPrefix + container.Name,
+				AdditionalSecretLabels: map[string]string{
+					bdv1.LabelDeploymentSecretType: names.DeploymentSecretBpmInformation.String(),
+				},
+				Versioned: true,
+			},
+		}
 	}
 
 	// Construct the "BPM configs" or "data gathering" auto-errand qJob
@@ -325,8 +318,7 @@ func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, secret
 			Output: &qjv1a1.Output{
 				OutputMap: outputMap,
 				SecretLabels: map[string]string{
-					bdv1.LabelDeploymentName:       manifest.Name,
-					bdv1.LabelDeploymentSecretType: secretType.String(),
+					bdv1.LabelDeploymentName: manifest.Name,
 				},
 			},
 			Trigger: qjv1a1.Trigger{

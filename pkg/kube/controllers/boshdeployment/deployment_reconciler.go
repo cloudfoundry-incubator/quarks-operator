@@ -33,7 +33,6 @@ import (
 type JobFactory interface {
 	VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error)
 	InstanceGroupManifestJob(manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error)
-	BPMConfigsJob(manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error)
 }
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
@@ -132,7 +131,8 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			log.WithEvent(instance, "DesiredManifestError").Errorf(ctx, "failed to create desired manifest qJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	// Apply the "Instance group manifest" QuarksJob, which creates instance group manifests (ig-resolved) secrets
+	// Apply the "Instance group manifest" QuarksJob, which creates instance group manifests (ig-resolved) secrets and BPM config secrets
+	// once the "Variable Interpolation" job created the desired manifest.
 	qJob, err = r.jobFactory.InstanceGroupManifestJob(*manifest, linkInfos, instance.ObjectMeta.Generation == 1)
 	if err != nil {
 		return reconcile.Result{},
@@ -144,19 +144,6 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "failed to create instance group manifest qJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
-	}
-
-	// Apply the "BPM Configs" QuarksJob, which creates BPM config secrets
-	qJob, err = r.jobFactory.BPMConfigsJob(*manifest, linkInfos, instance.ObjectMeta.Generation == 1)
-	if err != nil {
-		return reconcile.Result{}, log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "failed to build BPM configs qJob: %v", err)
-
-	}
-	log.Debug(ctx, "Creating BPM configs QuarksJob")
-	err = r.createQuarksJob(ctx, instance, qJob)
-	if err != nil {
-		return reconcile.Result{},
-			log.WithEvent(instance, "BPMConfigsError").Errorf(ctx, "failed to create BPM configs qJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	// Update status of bdpl with the timestamp of the last reconcile
