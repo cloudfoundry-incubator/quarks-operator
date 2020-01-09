@@ -3,6 +3,8 @@ code.cloudfoundry.org/quarks-job v0.0.0-20191220033938-3dddb8f2a8a2 h1:06l8XF4gT
 code.cloudfoundry.org/quarks-job v0.0.0-20191220033938-3dddb8f2a8a2/go.mod h1:UoFtaj5zIi4N2q/tE6kqTK6+XbaBguaIFohTdenU5lE=
 code.cloudfoundry.org/quarks-job v0.0.0-20191220085811-ceb51b2eb926 h1:Dw0Q9w8hgk6a33O3fZMTgQnH1h9f7xpmYgu6WN9zXUI=
 code.cloudfoundry.org/quarks-job v0.0.0-20191220085811-ceb51b2eb926/go.mod h1:UoFtaj5zIi4N2q/tE6kqTK6+XbaBguaIFohTdenU5lE=
+code.cloudfoundry.org/quarks-job v0.0.0-20200108153414-e5f1b5b03d31 h1:Ml/obnETB/RLGPNE4/xDdv9d7tFm+77KbW5FywMZs4E=
+code.cloudfoundry.org/quarks-job v0.0.0-20200108153414-e5f1b5b03d31/go.mod h1:UoFtaj5zIi4N2q/tE6kqTK6+XbaBguaIFohTdenU5lE=
 code.cloudfoundry.org/quarks-utils v0.0.0-20191220014113-dab838a1c0be h1:e0cGMd6GdQ01b4eAcYJIycsohlUhrO2v0Nq9dKCQyNI=
 code.cloudfoundry.org/quarks-utils v0.0.0-20191220014113-dab838a1c0be/go.mod h1:H6fVNegFsTZqOU2Cggvue8X5vfAdeGDKemikmwc7RBc=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
