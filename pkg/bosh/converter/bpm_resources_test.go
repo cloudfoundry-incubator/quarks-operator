@@ -103,8 +103,9 @@ var _ = Describe("kube converter", func() {
 					Expect(qJob.GetLabels()).To(HaveKeyWithValue("custom-label", "foo"))
 					Expect(qJob.GetAnnotations()).To(HaveKeyWithValue("custom-annotation", "bar"))
 
-					// Test affinity
+					// Test affinity & tolerations
 					Expect(qJob.Spec.Template.Spec.Template.Spec.Affinity).To(BeNil())
+					Expect(len(qJob.Spec.Template.Spec.Template.Spec.Tolerations)).To(Equal(0))
 				})
 
 				It("converts the instance group to an quarksJob when this the lifecycle is set to auto-errand", func() {
@@ -136,9 +137,18 @@ var _ = Describe("kube converter", func() {
 							},
 						},
 					}
+					tolerations := []corev1.Toleration{
+						{
+							Key:      "key",
+							Operator: "Equal",
+							Value:    "value",
+							Effect:   "NoSchedule",
+						},
+					}
 					serviceAccount := "fake-service-account"
 					automountServiceAccountToken := true
 					m.InstanceGroups[0].Env.AgentEnvBoshConfig.Agent.Settings.Affinity = &affinityCase
+					m.InstanceGroups[0].Env.AgentEnvBoshConfig.Agent.Settings.Tolerations = tolerations
 					m.InstanceGroups[0].Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName = serviceAccount
 					m.InstanceGroups[0].Env.AgentEnvBoshConfig.Agent.Settings.AutomountServiceAccountToken = &automountServiceAccountToken
 					resources, err := act(bpmConfigs[0], m.InstanceGroups[0])
@@ -148,6 +158,7 @@ var _ = Describe("kube converter", func() {
 					// Test AgentEnvBoshConfig
 					qJob := resources.Errands[0]
 					Expect(*qJob.Spec.Template.Spec.Template.Spec.Affinity).To(Equal(affinityCase))
+					Expect(qJob.Spec.Template.Spec.Template.Spec.Tolerations).To(Equal(tolerations))
 					Expect(qJob.Spec.Template.Spec.Template.Spec.ServiceAccountName).To(Equal(serviceAccount))
 					Expect(*qJob.Spec.Template.Spec.Template.Spec.AutomountServiceAccountToken).To(Equal(automountServiceAccountToken))
 				})
@@ -169,6 +180,16 @@ var _ = Describe("kube converter", func() {
 				})
 
 				It("converts the instance group to an QuarksStatefulSet", func() {
+
+					tolerations := []corev1.Toleration{
+						{
+							Key:      "key",
+							Operator: "Equal",
+							Value:    "value",
+							Effect:   "NoSchedule",
+						},
+					}
+					m.InstanceGroups[1].Env.AgentEnvBoshConfig.Agent.Settings.Tolerations = tolerations
 					resources, err := act(bpmConfigs[1], m.InstanceGroups[1])
 					Expect(err).ShouldNot(HaveOccurred())
 
@@ -260,8 +281,9 @@ var _ = Describe("kube converter", func() {
 					}))
 					Expect(headlessService.Spec.ClusterIP).To(Equal("None"))
 
-					// Test affinity
+					// Test affinity & tolerations
 					Expect(stS.Spec.Affinity).To(BeNil())
+					Expect(stS.Spec.Tolerations).To(Equal(tolerations))
 				})
 			})
 
@@ -571,6 +593,44 @@ var _ = Describe("kube converter", func() {
 								TopologyKey: "beta.kubernetes.io/os",
 							},
 						},
+					},
+				}))
+			})
+		})
+
+		Context("when tolerations are provided", func() {
+			var bpmConfigs []bpm.Configs
+
+			BeforeEach(func() {
+				m, err = env.BPMReleaseWithTolerations()
+				Expect(err).NotTo(HaveOccurred())
+
+				c, err := bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
+				Expect(err).ShouldNot(HaveOccurred())
+
+				bpmConfigs = []bpm.Configs{
+					{"test-server": c},
+				}
+
+			})
+
+			It("adds tolerations into the spec", func() {
+				r1, err := act(bpmConfigs[0], m.InstanceGroups[0])
+				Expect(err).ShouldNot(HaveOccurred())
+
+				ig1 := r1.InstanceGroups[0]
+				Expect(ig1.Spec.Template.Spec.Template.Spec.Tolerations).To(Equal([]corev1.Toleration{
+					{
+						Key:      "key",
+						Operator: "Equal",
+						Value:    "value",
+						Effect:   "NoSchedule",
+					},
+					{
+						Key:      "key1",
+						Operator: "Equal",
+						Value:    "value1",
+						Effect:   "NoExecute",
 					},
 				}))
 			})
