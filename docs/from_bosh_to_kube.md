@@ -307,6 +307,8 @@ instance_groups:
           # ImagePullSecrets is an optional list of references to secrets to use for pulling any of the images.
           # This field in PodSpec can be automated by setting the imagePullSecrets in a serviceAccount.
           ImagePullSecrets: {}
+          # Tolerations and taints are a concept defined in kubernetes to repel pods from nodes. [4]
+          tolerations: []
 # Each addon job is added to the desired manifest before it's persisted
 # Not all placement rules are supported, see below for more details.
 addons:
@@ -366,6 +368,7 @@ tags:
 - [1] https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 - [2] https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 - [3] https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+- [4] https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
 
 ## BPM
 
