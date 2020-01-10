@@ -222,7 +222,7 @@ var (
 
 // AgentSettings from BOSH deployment manifest.
 // These annotations and labels are added to kube resources.
-// Affinity is added into the pod's definition.
+// Affinity & tolerations are added into the pod's definition.
 type AgentSettings struct {
 	Annotations                  map[string]string             `json:"annotations,omitempty"`
 	Labels                       map[string]string             `json:"labels,omitempty"`
@@ -231,6 +231,7 @@ type AgentSettings struct {
 	ServiceAccountName           string                        `json:"serviceAccountName,omitempty" yaml:"serviceAccountName,omitempty"`
 	AutomountServiceAccountToken *bool                         `json:"automountServiceAccountToken,omitempty" yaml:"automountServiceAccountToken,omitempty"`
 	ImagePullSecrets             []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	Tolerations                  []corev1.Toleration           `json:"tolerations,omitempty"`
 }
 
 // Set overrides labels and annotations with operator-owned metadata.
