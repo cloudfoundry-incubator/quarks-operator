@@ -47,8 +47,8 @@ func NewEnvironment(kubeConfig *rest.Config) *Environment {
 			KubeConfig: kubeConfig,
 			Config: &config.Config{
 				CtxTimeOut:           10 * time.Second,
-				MeltdownDuration:     1 * time.Second,
-				MeltdownRequeueAfter: 500 * time.Millisecond,
+				MeltdownDuration:     10 * time.Second,
+				MeltdownRequeueAfter: 1 * time.Second,
 				Fs:                   afero.NewOsFs(),
 			},
 		},
