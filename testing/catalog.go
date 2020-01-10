@@ -154,6 +154,15 @@ func (c *Catalog) BPMReleaseWithAffinity() (*manifest.Manifest, error) {
 	return m, nil
 }
 
+// BPMReleaseWithTolerations returns a manifest with tolerations
+func (c *Catalog) BPMReleaseWithTolerations() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithTolerations))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
+}
+
 // BOSHManifestWithZeroInstances for data gathering tests
 func (c *Catalog) BOSHManifestWithZeroInstances() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.WithZeroInstances))
