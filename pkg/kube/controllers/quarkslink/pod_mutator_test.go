@@ -55,6 +55,15 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 		return patches
 	}
 
+	newAdmissionRequest := func(pod corev1.Pod) admission.Request {
+		raw, _ := json.Marshal(pod)
+		return admission.Request{
+			AdmissionRequest: admissionv1beta1.AdmissionRequest{
+				Object: runtime.RawExtension{Raw: raw},
+			},
+		}
+	}
+
 	BeforeEach(func() {
 		_, log = helper.NewTestLogger()
 		ctx = ctxlog.NewParentContext(log)
@@ -78,14 +87,7 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 	Context("when pod has no entanglement annotation", func() {
 		BeforeEach(func() {
 			pod = env.DefaultPod("test-pod")
-			raw, _ := json.Marshal(pod)
-
-			request = admission.Request{
-				AdmissionRequest: admissionv1beta1.AdmissionRequest{
-					Object:    runtime.RawExtension{Raw: raw},
-					Operation: admissionv1beta1.Update,
-				},
-			}
+			request = newAdmissionRequest(pod)
 			client = fakeClient.NewFakeClient(&entanglementSecret)
 		})
 
@@ -105,14 +107,7 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 				{Name: "first", Image: "busybox", Command: []string{"sleep", "3600"}},
 				{Name: "second", Image: "busybox", Command: []string{"sleep", "3600"}},
 			}
-			raw, _ := json.Marshal(pod)
-
-			request = admission.Request{
-				AdmissionRequest: admissionv1beta1.AdmissionRequest{
-					Object:    runtime.RawExtension{Raw: raw},
-					Operation: admissionv1beta1.Create,
-				},
-			}
+			request = newAdmissionRequest(pod)
 		})
 
 		Context("when entanglement secret exists", func() {
@@ -149,14 +144,7 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 				quarkslink.DeploymentKey: "nuts",
 				quarkslink.ConsumesKey:   "nuts.nats",
 			})
-			raw, _ := json.Marshal(pod)
-
-			request = admission.Request{
-				AdmissionRequest: admissionv1beta1.AdmissionRequest{
-					Object:    runtime.RawExtension{Raw: raw},
-					Operation: admissionv1beta1.Create,
-				},
-			}
+			request = newAdmissionRequest(pod)
 			client = fakeClient.NewFakeClient(&entanglementSecret)
 		})
 
@@ -176,14 +164,7 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 				quarkslink.DeploymentKey: deploymentName,
 				quarkslink.ConsumesKey:   "nats.nats",
 			})
-			raw, _ := json.Marshal(pod)
-
-			request = admission.Request{
-				AdmissionRequest: admissionv1beta1.AdmissionRequest{
-					Object:    runtime.RawExtension{Raw: raw},
-					Operation: admissionv1beta1.Update,
-				},
-			}
+			request = newAdmissionRequest(pod)
 		})
 
 		Context("when pod has a non-secret volume", func() {
