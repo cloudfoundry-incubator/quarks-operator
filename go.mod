@@ -1,8 +1,8 @@
 module code.cloudfoundry.org/cf-operator
 
 require (
-	code.cloudfoundry.org/quarks-job v0.0.0-20191220085811-ceb51b2eb926
-	code.cloudfoundry.org/quarks-utils v0.0.0-20191220014113-dab838a1c0be
+	code.cloudfoundry.org/quarks-job v0.0.0-20200109094705-4db12e77f5e6
+	code.cloudfoundry.org/quarks-utils v0.0.0-20200107151858-94a806988b47
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
 	github.com/charlievieth/fs v0.0.0-20170613215519-7dc373669fa1 // indirect
 	github.com/cloudflare/cfssl v0.0.0-20181102015659-ea4033a214e7
@@ -28,7 +28,7 @@ require (
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/onsi/ginkgo v1.10.2
-	github.com/onsi/gomega v1.7.1
+	github.com/onsi/gomega v1.8.1
 	github.com/pkg/errors v0.8.1
 	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v0.0.5

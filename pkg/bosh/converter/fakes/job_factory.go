@@ -11,21 +11,6 @@ import (
 )
 
 type FakeJobFactory struct {
-	BPMConfigsJobStub        func(manifest.Manifest, converter.LinkInfos, bool) (*v1alpha1.QuarksJob, error)
-	bPMConfigsJobMutex       sync.RWMutex
-	bPMConfigsJobArgsForCall []struct {
-		arg1 manifest.Manifest
-		arg2 converter.LinkInfos
-		arg3 bool
-	}
-	bPMConfigsJobReturns struct {
-		result1 *v1alpha1.QuarksJob
-		result2 error
-	}
-	bPMConfigsJobReturnsOnCall map[int]struct {
-		result1 *v1alpha1.QuarksJob
-		result2 error
-	}
 	InstanceGroupManifestJobStub        func(manifest.Manifest, converter.LinkInfos, bool) (*v1alpha1.QuarksJob, error)
 	instanceGroupManifestJobMutex       sync.RWMutex
 	instanceGroupManifestJobArgsForCall []struct {
@@ -56,71 +41,6 @@ type FakeJobFactory struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
-}
-
-func (fake *FakeJobFactory) BPMConfigsJob(arg1 manifest.Manifest, arg2 converter.LinkInfos, arg3 bool) (*v1alpha1.QuarksJob, error) {
-	fake.bPMConfigsJobMutex.Lock()
-	ret, specificReturn := fake.bPMConfigsJobReturnsOnCall[len(fake.bPMConfigsJobArgsForCall)]
-	fake.bPMConfigsJobArgsForCall = append(fake.bPMConfigsJobArgsForCall, struct {
-		arg1 manifest.Manifest
-		arg2 converter.LinkInfos
-		arg3 bool
-	}{arg1, arg2, arg3})
-	fake.recordInvocation("BPMConfigsJob", []interface{}{arg1, arg2, arg3})
-	fake.bPMConfigsJobMutex.Unlock()
-	if fake.BPMConfigsJobStub != nil {
-		return fake.BPMConfigsJobStub(arg1, arg2, arg3)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.bPMConfigsJobReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *FakeJobFactory) BPMConfigsJobCallCount() int {
-	fake.bPMConfigsJobMutex.RLock()
-	defer fake.bPMConfigsJobMutex.RUnlock()
-	return len(fake.bPMConfigsJobArgsForCall)
-}
-
-func (fake *FakeJobFactory) BPMConfigsJobCalls(stub func(manifest.Manifest, converter.LinkInfos, bool) (*v1alpha1.QuarksJob, error)) {
-	fake.bPMConfigsJobMutex.Lock()
-	defer fake.bPMConfigsJobMutex.Unlock()
-	fake.BPMConfigsJobStub = stub
-}
-
-func (fake *FakeJobFactory) BPMConfigsJobArgsForCall(i int) (manifest.Manifest, converter.LinkInfos, bool) {
-	fake.bPMConfigsJobMutex.RLock()
-	defer fake.bPMConfigsJobMutex.RUnlock()
-	argsForCall := fake.bPMConfigsJobArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
-}
-
-func (fake *FakeJobFactory) BPMConfigsJobReturns(result1 *v1alpha1.QuarksJob, result2 error) {
-	fake.bPMConfigsJobMutex.Lock()
-	defer fake.bPMConfigsJobMutex.Unlock()
-	fake.BPMConfigsJobStub = nil
-	fake.bPMConfigsJobReturns = struct {
-		result1 *v1alpha1.QuarksJob
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeJobFactory) BPMConfigsJobReturnsOnCall(i int, result1 *v1alpha1.QuarksJob, result2 error) {
-	fake.bPMConfigsJobMutex.Lock()
-	defer fake.bPMConfigsJobMutex.Unlock()
-	fake.BPMConfigsJobStub = nil
-	if fake.bPMConfigsJobReturnsOnCall == nil {
-		fake.bPMConfigsJobReturnsOnCall = make(map[int]struct {
-			result1 *v1alpha1.QuarksJob
-			result2 error
-		})
-	}
-	fake.bPMConfigsJobReturnsOnCall[i] = struct {
-		result1 *v1alpha1.QuarksJob
-		result2 error
-	}{result1, result2}
 }
 
 func (fake *FakeJobFactory) InstanceGroupManifestJob(arg1 manifest.Manifest, arg2 converter.LinkInfos, arg3 bool) (*v1alpha1.QuarksJob, error) {
@@ -254,8 +174,6 @@ func (fake *FakeJobFactory) VariableInterpolationJobReturnsOnCall(i int, result1
 func (fake *FakeJobFactory) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.bPMConfigsJobMutex.RLock()
-	defer fake.bPMConfigsJobMutex.RUnlock()
 	fake.instanceGroupManifestJobMutex.RLock()
 	defer fake.instanceGroupManifestJobMutex.RUnlock()
 	fake.variableInterpolationJobMutex.RLock()

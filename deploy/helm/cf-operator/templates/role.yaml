@@ -3,6 +3,7 @@ kind: Role
 metadata:
   creationTimestamp: null
   name: cf-operator
+  namespace: {{ .Release.Namespace }}
 rules:
 - apiGroups:
   - ""

@@ -86,18 +86,30 @@ var _ = Describe("JobFactory", func() {
 				Expect(om).To(Equal(
 					qjv1a1.OutputMap{
 						"redis-slave": qjv1a1.FilesToSecrets{
-							"output.json": qjv1a1.SecretOptions{
-								Name:      "foo-deployment.ig-resolved.redis-slave",
-								Versioned: true,
+							"ig.json": qjv1a1.SecretOptions{
+								Name:                   "foo-deployment.ig-resolved.redis-slave",
+								AdditionalSecretLabels: map[string]string{"quarks.cloudfoundry.org/secret-type": "ig-resolved"},
+								Versioned:              true,
+							},
+							"bpm.json": qjv1a1.SecretOptions{
+								Name:                   "foo-deployment.bpm.redis-slave",
+								AdditionalSecretLabels: map[string]string{"quarks.cloudfoundry.org/secret-type": "bpm"},
+								Versioned:              true,
 							},
 							"provides.json": qjv1a1.SecretOptions{
 								Name: "link-foo-deployment-redis-slave",
 							},
 						},
 						"diego-cell": qjv1a1.FilesToSecrets{
-							"output.json": qjv1a1.SecretOptions{
-								Name:      "foo-deployment.ig-resolved.diego-cell",
-								Versioned: true,
+							"ig.json": qjv1a1.SecretOptions{
+								Name:                   "foo-deployment.ig-resolved.diego-cell",
+								AdditionalSecretLabels: map[string]string{"quarks.cloudfoundry.org/secret-type": "ig-resolved"},
+								Versioned:              true,
+							},
+							"bpm.json": qjv1a1.SecretOptions{
+								Name:                   "foo-deployment.bpm.diego-cell",
+								AdditionalSecretLabels: map[string]string{"quarks.cloudfoundry.org/secret-type": "bpm"},
+								Versioned:              true,
 							},
 							"provides.json": qjv1a1.SecretOptions{
 								Name: "link-foo-deployment-diego-cell",
@@ -107,11 +119,9 @@ var _ = Describe("JobFactory", func() {
 				))
 			})
 		})
-	})
 
-	Describe("BPMConfigsJob", func() {
 		It("has one spec-copier init container per instance group", func() {
-			job, err := factory.BPMConfigsJob(*m, linkInfos, true)
+			job, err := factory.InstanceGroupManifestJob(*m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			spec := job.Spec.Template.Spec.Template.Spec
@@ -122,18 +132,18 @@ var _ = Describe("JobFactory", func() {
 		})
 
 		It("has one bpm-configs container per instance group", func() {
-			job, err := factory.BPMConfigsJob(*m, linkInfos, true)
+			job, err := factory.InstanceGroupManifestJob(*m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			spec := job.Spec.Template.Spec.Template.Spec
 			Expect(len(spec.Containers)).To(Equal(len(m.InstanceGroups)))
 			Expect(spec.Containers[0].Name).To(Equal(m.InstanceGroups[0].Name))
-			Expect(spec.Containers[0].Args).To(Equal([]string{"util", "bpm-configs", "--initial-rollout", "true"}))
+			Expect(spec.Containers[0].Args).To(Equal([]string{"util", "instance-group", "--initial-rollout", "true"}))
 		})
 
 		It("does not generate the instance group containers when its instances is zero", func() {
 			m.InstanceGroups[0].Instances = 0
-			job, err := factory.BPMConfigsJob(*m, linkInfos, true)
+			job, err := factory.InstanceGroupManifestJob(*m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			spec := job.Spec.Template.Spec.Template.Spec

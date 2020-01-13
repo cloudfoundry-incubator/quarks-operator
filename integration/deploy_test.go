@@ -346,6 +346,10 @@ var _ = Describe("Deploy", func() {
 		})
 
 		Context("deployment downtime", func() {
+			// This test is flaky on some providers, failing
+			// `net.Dial` with "connect: connection refused".
+			// Either zero downtime is not working correctly, or
+			// networking to the NodePort is unreliable
 			It("should be zero", func() {
 				By("Setting up a NodePort service")
 				svc, err := env.GetService(env.Namespace, "test-nats-0")
@@ -361,6 +365,9 @@ var _ = Describe("Deploy", func() {
 				nodeIP, err := env.NodeIP()
 				Expect(err).NotTo(HaveOccurred(), "error retrieving node ip")
 
+				// This test cannot be executed from remote.
+				// the k8s node must be reachable from the
+				// machine running the test
 				address := fmt.Sprintf("%s:%d", nodeIP, service.Spec.Ports[0].NodePort)
 				err = env.WaitForPortReachable("tcp", address)
 				Expect(err).NotTo(HaveOccurred(), "port not reachable")
