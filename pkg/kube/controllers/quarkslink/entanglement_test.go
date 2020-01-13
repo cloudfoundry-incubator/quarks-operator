@@ -36,9 +36,32 @@ var _ = Describe("QuarksLink Annotations", func() {
 			})
 		})
 
-		Context("when annotations are valid", func() {
+		Context("when annotation's consumes key is not valid", func() {
+			tests := []string{
+				``,
+				`abc`,
+				`[]`,
+				`[{"name":"nats"}]`,
+				`{"name":"nats","type":"nats"}`,
+			}
+
 			BeforeEach(func() {
-				pod = env.AnnotatedPod("annotated", map[string]string{DeploymentKey: "foo", ConsumesKey: "nats"})
+				pod = env.AnnotatedPod("annotated", map[string]string{})
+			})
+
+			It("returns true", func() {
+				for _, test := range tests {
+					pod.SetAnnotations(map[string]string{DeploymentKey: "foo", ConsumesKey: test})
+					Expect(validEntanglement(pod.GetAnnotations())).To(BeFalse())
+				}
+			})
+		})
+
+		Context("when annotations are valid", func() {
+			const consumes = `[{"name":"nats","type":"nats"}]`
+
+			BeforeEach(func() {
+				pod = env.AnnotatedPod("annotated", map[string]string{DeploymentKey: "foo", ConsumesKey: consumes})
 			})
 
 			It("returns true", func() {
