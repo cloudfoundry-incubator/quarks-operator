@@ -28,6 +28,8 @@ import (
 var _ = Describe("Mount quarks link secret on entangled pods", func() {
 	const (
 		deploymentName = "nats-deployment"
+		consumesNats   = `[{"name":"nats","type":"nats"}]`
+		consumesNuts   = `[{"name":"nats","type":"nuts"}]`
 	)
 
 	var (
@@ -101,7 +103,7 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 		BeforeEach(func() {
 			pod = env.AnnotatedPod("entangled-pod", map[string]string{
 				quarkslink.DeploymentKey: deploymentName,
-				quarkslink.ConsumesKey:   "nats.nats",
+				quarkslink.ConsumesKey:   consumesNats,
 			})
 			pod.Spec.Containers = []corev1.Container{
 				{Name: "first", Image: "busybox", Command: []string{"sleep", "3600"}},
@@ -142,7 +144,7 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 		BeforeEach(func() {
 			pod = env.AnnotatedPod("entangled-pod", map[string]string{
 				quarkslink.DeploymentKey: "nuts",
-				quarkslink.ConsumesKey:   "nuts.nats",
+				quarkslink.ConsumesKey:   consumesNuts,
 			})
 			request = newAdmissionRequest(pod)
 			client = fakeClient.NewFakeClient(&entanglementSecret)
@@ -162,7 +164,7 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 			pod = env.NatsPod("entangled-pod")
 			pod.SetAnnotations(map[string]string{
 				quarkslink.DeploymentKey: deploymentName,
-				quarkslink.ConsumesKey:   "nats.nats",
+				quarkslink.ConsumesKey:   consumesNats,
 			})
 			request = newAdmissionRequest(pod)
 		})

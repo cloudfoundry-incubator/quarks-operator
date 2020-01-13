@@ -29,8 +29,7 @@ kind: Secret
 metadata:
   annotations:
     quarks.cloudfoundry.org/deployment: "mydeployment"
-    quarks.cloudfoundry.org/provides/name: "nats"
-    quarks.cloudfoundry.org/provides/type: "nats"
+    quarks.cloudfoundry.org/provides: '{"name":"nats","type":"nats"}'
 spec:
   data:
     password: mysecret
@@ -44,7 +43,7 @@ kind: Service
 metadata:
   annotations:
     quarks.cloudfoundry.org/deployment: "mydeployment"
-    quarks.cloudfoundry.org/provides: "nats"
+    quarks.cloudfoundry.org/provides: '{"name":"nats","type":"nats"}'
   name: nats-service
 spec:
   ports:
@@ -71,8 +70,7 @@ The operator creates link Secrets for all providers in a BOSH deployment.
 
 If a pod is annotated with the following:
   - `quarks.cloudfoundry.org/deployment: foo`
-  - `quarks.cloudfoundry.org/consumes/name: nats`
-  - `quarks.cloudfoundry.org/consumes/type: nats`
+  - `quarks.cloudfoundry.org/consumes: '[{"name":"nats","type":"nats"}]'`
 The operator will:
   - mutate the pod and mount the secret as `/quarks/link/DEPLOYMENT/link.yaml`
 
@@ -90,8 +88,7 @@ The OPI process of Eirini required the NATS password and IP.
   template:
     metadata:
       quarks.cloudfoundry.org/deployment: {{ .Values.deploymentName }}
-      quarks.cloudfoundry.org/consumes/name: "nats"
-      quarks.cloudfoundry.org/consumes/type: "nats"
+      quarks.cloudfoundry.org/consumes: '[{"name":"nats","type":"nats"}]'`
     spec:
 
 ```
