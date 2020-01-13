@@ -765,7 +765,7 @@ func (c *Catalog) EntangledPod(deploymentName string) corev1.Pod {
 		"entangled",
 		map[string]string{
 			"quarks.cloudfoundry.org/deployment": deploymentName,
-			"quarks.cloudfoundry.org/consumes":   "nats.nats",
+			"quarks.cloudfoundry.org/consumes":   `[{"name":"nats","type":"nats"}]`,
 		},
 	)
 }

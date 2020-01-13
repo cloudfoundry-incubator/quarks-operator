@@ -51,7 +51,7 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 	updatedPod := pod.DeepCopy()
 	if validEntanglement(pod.GetAnnotations()) {
 		m.log.Debugf("Adding quarks link secret to entangled pod '%s'", pod.Name)
-		err = m.addSecret(ctx, req.Namespace, updatedPod)
+		err = m.addSecrets(ctx, req.Namespace, updatedPod)
 		if err != nil {
 			return admission.Errored(http.StatusInternalServerError, err)
 		}
@@ -65,68 +65,72 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledPod)
 }
 
-func (m *PodMutator) addSecret(ctx context.Context, namespace string, pod *corev1.Pod) error {
+func (m *PodMutator) addSecrets(ctx context.Context, namespace string, pod *corev1.Pod) error {
 	e := newEntanglement(pod.GetAnnotations())
-	secretName, err := m.findSecret(ctx, namespace, e)
+	links, err := m.findLinks(ctx, namespace, e)
 	if err != nil {
 		m.log.Errorf("Couldn't list entanglement secrets for '%s/%s' in %s", e.deployment, e.consumes, namespace)
 		return err
 	}
 
-	if secretName == "" {
-		return fmt.Errorf("couldn't find entanglement secret '%s' for deployment '%s' in %s", e.consumes, e.deployment, namespace)
+	if len(links) == 0 {
+		return fmt.Errorf("couldn't find any entanglement secret for deployment '%s' in %s", e.deployment, namespace)
 	}
 
-	// add volume source to pod
-	if !hasSecretVolumeSource(pod.Spec.Volumes, secretName) {
-		volume := corev1.Volume{
-			Name: secretName,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: secretName,
-					Items: []corev1.KeyToPath{
-						corev1.KeyToPath{
-							Key:  e.consumes,
-							Path: filepath.Join(e.deployment, "link.yaml"),
+	// add missing volume sources to pod
+	for _, link := range links {
+		if !hasSecretVolumeSource(pod.Spec.Volumes, link.secretName) {
+			volume := corev1.Volume{
+				Name: link.secretName,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: link.secretName,
+						Items: []corev1.KeyToPath{
+							corev1.KeyToPath{
+								Key:  link.String(),
+								Path: filepath.Join(e.deployment, "link.yaml"),
+							},
 						},
 					},
 				},
-			},
+			}
+			pod.Spec.Volumes = append(pod.Spec.Volumes, volume)
 		}
-		pod.Spec.Volumes = append(pod.Spec.Volumes, volume)
-	}
 
-	// create/update volume mount on containers
-	mount := corev1.VolumeMount{
-		Name:      secretName,
-		ReadOnly:  true,
-		MountPath: "/quarks/link",
-	}
-	for i, container := range pod.Spec.Containers {
-		idx := findVolumeMount(container.VolumeMounts, secretName)
-		if idx > -1 {
-			container.VolumeMounts[idx] = mount
-		} else {
-			container.VolumeMounts = append(container.VolumeMounts, mount)
+		// create/update volume mount on containers
+		mount := corev1.VolumeMount{
+			Name:      link.secretName,
+			ReadOnly:  true,
+			MountPath: "/quarks/link",
 		}
-		pod.Spec.Containers[i] = container
+		for i, container := range pod.Spec.Containers {
+			idx := findVolumeMount(container.VolumeMounts, link.secretName)
+			if idx > -1 {
+				container.VolumeMounts[idx] = mount
+			} else {
+				container.VolumeMounts = append(container.VolumeMounts, mount)
+			}
+			pod.Spec.Containers[i] = container
+		}
 	}
 
 	return nil
 }
 
-func (m *PodMutator) findSecret(ctx context.Context, namespace string, e entanglement) (string, error) {
+func (m *PodMutator) findLinks(ctx context.Context, namespace string, e entanglement) (links, error) {
+	links := []link{}
+
 	list := &corev1.SecretList{}
 	// can't use entanglement labels, because quarks-job does not set
 	// labels per container, so we list all secrets from the deployment
 	labels := map[string]string{manifest.LabelDeploymentName: e.deployment}
 	err := m.client.List(ctx, list, client.InNamespace(namespace), client.MatchingLabels(labels))
 	if err != nil {
-		return "", err
+		return links, err
 	}
 
 	if len(list.Items) == 0 {
-		return "", nil
+		return links, nil
 	}
 
 	// we can't use the instance group from
@@ -134,12 +138,13 @@ func (m *PodMutator) findSecret(ctx context.Context, namespace string, e entangl
 	// know which ig provides the link, so filter for secrets which match
 	// the link name scheme and have our link 'type.name' as data key
 	for _, secret := range list.Items {
-		if e.fulfilledBy(secret) {
-			return secret.Name, nil
+		if link, ok := e.find(secret); ok {
+			link.secretName = secret.Name
+			links = append(links, link)
 		}
 	}
 
-	return "", nil
+	return links, nil
 }
 
 func hasSecretVolumeSource(volumes []corev1.Volume, name string) bool {

@@ -12,6 +12,8 @@ import (
 var _ = Describe("Entangled Pods PodMutator", func() {
 	const (
 		deploymentName = "nats-deployment"
+		consumesNats   = `[{"name":"nats","type":"nats"}]`
+		consumesNuts   = `[{"name":"nats","type":"nuts"}]`
 	)
 
 	var (
@@ -108,7 +110,7 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 		It("refuses to mutate the pod", func() {
 			_, err := env.CreatePod(env.Namespace, pod)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(`admission webhook "mutate-tangled-pods.quarks.cloudfoundry.org" denied the request: couldn't find entanglement secret 'nats.nats' for deployment 'non-existant'`))
+			Expect(err.Error()).To(ContainSubstring(`admission webhook "mutate-tangled-pods.quarks.cloudfoundry.org" denied the request: couldn't find any entanglement secret for deployment 'non-existant'`))
 		})
 	})
 
@@ -129,7 +131,7 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 			act(pod)
 
 			By("updating the annotations on an existing pod", func() {
-				updateEntanglementAnnotations("nuts.nats")
+				updateEntanglementAnnotations(consumesNuts)
 			})
 
 			By("checking volume and mounts stay the same", func() {
@@ -154,7 +156,7 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 			act(pod)
 
 			By("updating the annotations on an existing pod", func() {
-				updateEntanglementAnnotations("nats.nats")
+				updateEntanglementAnnotations(consumesNats)
 			})
 
 			By("checking the volume and mounts", func() {

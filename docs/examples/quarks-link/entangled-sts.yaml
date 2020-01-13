@@ -11,7 +11,7 @@ spec:
   template:
     metadata:
       annotations:
-        quarks.cloudfoundry.org/consumes: nats.nats
+        quarks.cloudfoundry.org/consumes: '[{"name":"nats","type":"nats"}]'
         quarks.cloudfoundry.org/deployment: nats-deployment
       labels:
         example: owned-by-sts
