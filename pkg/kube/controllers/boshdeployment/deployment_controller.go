@@ -178,7 +178,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			reconciles := make([]reconcile.Request, 1)
 
 			svc := a.Object.(*corev1.Service)
-			if provider, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderName]; ok {
+			if provider, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderService]; ok {
 				reconciles[0] = reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Namespace: svc.Namespace,
@@ -197,12 +197,4 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	}
 
 	return nil
-}
-
-func isLinkProviderService(svc *corev1.Service) bool {
-	if _, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderName]; ok {
-		return true
-	}
-
-	return false
 }

@@ -993,7 +993,7 @@ func (c *Catalog) NatsService(deployName string) corev1.Service {
 				bdv1.LabelDeploymentName: deployName,
 			},
 			Annotations: map[string]string{
-				bdv1.AnnotationLinkProviderName: "nats",
+				bdv1.AnnotationLinkProviderService: "nats",
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -1026,8 +1026,7 @@ func (c *Catalog) NatsSecret(deployName string) corev1.Secret {
 				bdv1.LabelDeploymentName: deployName,
 			},
 			Annotations: map[string]string{
-				bdv1.AnnotationLinkProviderName: "nats",
-				bdv1.AnnotationLinkProviderType: "nats",
+				bdv1.AnnotationLinkProvidesKey: `{"name":"nats","type":"nats"}`,
 			},
 		},
 		StringData: map[string]string{
