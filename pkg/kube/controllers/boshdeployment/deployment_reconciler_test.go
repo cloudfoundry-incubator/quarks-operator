@@ -334,7 +334,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 								bdv1.LabelDeploymentName: "foo",
 							},
 							Annotations: map[string]string{
-								bdv1.AnnotationLinkProviderName: "baz",
+								bdv1.AnnotationLinkProvidesKey: `{"name":"baz"}`,
 							},
 						},
 						Data: map[string][]byte{},
