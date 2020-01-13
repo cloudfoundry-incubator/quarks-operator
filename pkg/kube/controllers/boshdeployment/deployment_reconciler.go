@@ -238,7 +238,7 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 	linkInfos := converter.LinkInfos{}
 
 	// find all missing providers in the manifest, so we can look for secrets
-	missingProviders := listMissingProviders(*manifest)
+	missingProviders := manifest.ListMissingProviders()
 
 	// quarksLinks store for missing provider names with types read from secrets
 	quarksLinks := map[string]bdm.QuarksLink{}
@@ -265,37 +265,38 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 		}
 
 		for _, s := range secrets.Items {
-			providerName, ok := s.GetAnnotations()[bdv1.AnnotationLinkProviderName]
-			if ok {
-				if dup, ok := missingProviders[providerName]; ok {
-					if dup {
-						return linkInfos, errors.New(fmt.Sprintf("duplicated secrets of provider: %s", providerName))
-					}
-
-					linkInfos = append(linkInfos, converter.LinkInfo{
-						SecretName:   s.Name,
-						ProviderName: providerName,
-					})
-					if providerType, ok := s.GetAnnotations()[bdv1.AnnotationLinkProviderType]; ok {
-						quarksLinks[s.Name] = bdm.QuarksLink{
-							Type: providerType,
-						}
-					}
-					missingProviders[providerName] = true
+			linkProvider, err := newLinkProvider(s.GetAnnotations())
+			if err != nil {
+				return linkInfos, errors.Wrapf(err, "failed to parse link JSON for  '%s'", instance.Name)
+			}
+			if dup, ok := missingProviders[linkProvider.Name]; ok {
+				if dup {
+					return linkInfos, errors.New(fmt.Sprintf("duplicated secrets of provider: %s", linkProvider.Name))
 				}
+
+				linkInfos = append(linkInfos, converter.LinkInfo{
+					SecretName:   s.Name,
+					ProviderName: linkProvider.Name,
+				})
+				if linkProvider.ProviderType != "" {
+					quarksLinks[s.Name] = bdm.QuarksLink{
+						Type: linkProvider.ProviderType,
+					}
+				}
+				missingProviders[linkProvider.Name] = true
 			}
 		}
 
 		serviceRecords, err := r.getServiceRecords(instance.Namespace, services.Items)
 		if err != nil {
-			return linkInfos, errors.Wrapf(err, "failed to get link services for: %s", instance.Name)
+			return linkInfos, errors.Wrapf(err, "failed to get link services for '%s'", instance.Name)
 		}
 
 		for qName := range quarksLinks {
 			if svcRecord, ok := serviceRecords[qName]; ok {
 				pods, err := r.listPodsFromSelector(instance.Namespace, svcRecord.selector)
 				if err != nil {
-					return linkInfos, errors.Wrapf(err, "Failed to get link pods for: %s", instance.Name)
+					return linkInfos, errors.Wrapf(err, "Failed to get link pods for '%s'", instance.Name)
 				}
 
 				var jobsInstances []bdm.JobInstance
@@ -347,7 +348,7 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 func (r *ReconcileBOSHDeployment) getServiceRecords(namespace string, svcs []corev1.Service) (map[string]serviceRecord, error) {
 	svcRecords := map[string]serviceRecord{}
 	for _, svc := range svcs {
-		providerName, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderName]
+		providerName, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderService]
 		if ok {
 			if _, ok := svcRecords[providerName]; ok {
 				return svcRecords, errors.New(fmt.Sprintf("duplicated services of provider: %s", providerName))
@@ -379,52 +380,6 @@ func (r *ReconcileBOSHDeployment) listPodsFromSelector(namespace string, selecto
 	}
 
 	return podList.Items, nil
-}
-
-// listMissingProviders return a list of missing providers in the manifest
-func listMissingProviders(manifest bdm.Manifest) map[string]bool {
-	provideAsNames := map[string]bool{}
-	consumeFromNames := map[string]bool{}
-
-	for _, ig := range manifest.InstanceGroups {
-		for _, job := range ig.Jobs {
-			provideAsNames = listProviderNames(job.Provides, "as")
-			consumeFromNames = listProviderNames(job.Consumes, "from")
-		}
-	}
-
-	// Iterate consumeFromNames and remove providers existing in the manifest
-	for providerName := range consumeFromNames {
-		if _, ok := provideAsNames[providerName]; ok {
-			delete(consumeFromNames, providerName)
-		}
-	}
-
-	return consumeFromNames
-}
-
-// listProviderNames returns a map containing provider names from job provides and consumes
-func listProviderNames(providerProperties map[string]interface{}, providerKey string) map[string]bool {
-	providerNames := map[string]bool{}
-
-	for _, property := range providerProperties {
-		p, ok := property.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		nameVal, ok := p[providerKey]
-		if !ok {
-			continue
-		}
-
-		name, _ := nameVal.(string)
-		if len(name) == 0 {
-			continue
-		}
-		providerNames[name] = false
-	}
-
-	return providerNames
 }
 
 type serviceRecord struct {

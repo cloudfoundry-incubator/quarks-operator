@@ -34,10 +34,10 @@ var (
 	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
 	// LabelDeploymentSecretType is the label key for secret type
 	LabelDeploymentSecretType = fmt.Sprintf("%s/secret-type", apis.GroupName)
-	// AnnotationLinkProviderName is the annotation key for link provider name
-	AnnotationLinkProviderName = fmt.Sprintf("%s/link-provider-name", apis.GroupName)
-	// AnnotationLinkProviderType is the annotation key for link provider type
-	AnnotationLinkProviderType = fmt.Sprintf("%s/link-provider-type", apis.GroupName)
+	// AnnotationLinkProvidesKey is the key for the quarks links 'provides' JSON
+	AnnotationLinkProvidesKey = fmt.Sprintf("%s/provides", apis.GroupName)
+	// AnnotationLinkProviderService is the annotation key used on services to identify the link provider
+	AnnotationLinkProviderService = fmt.Sprintf("%s/link-provider-name", apis.GroupName)
 )
 
 // BOSHDeploymentSpec defines the desired state of BOSHDeployment
