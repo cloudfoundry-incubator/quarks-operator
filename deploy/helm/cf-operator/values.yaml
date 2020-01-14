@@ -43,14 +43,13 @@ operator:
 # nameOverride overrides the chart name part of the release name
 nameOverride: ""
 
+# serviceAccount contains the configuration
+# values of the service account used by cf-operator.
 serviceAccount:
-  # cfOperatorServiceAccount contains the configuration
-  # values of the service account used by cf-operator.
-  cfOperatorServiceAccount:
-    # create is a boolean to control the creation of service account name.
-    create: true
-    # name of the service account.
-    name:
+  # create is a boolean to control the creation of service account name.
+  create: true
+  # name of the service account.
+  name:
 
 global:
   # Context Timeout for each K8's API request in seconds.
@@ -70,17 +69,16 @@ global:
       # useServiceReference is a boolean to control the use of the
       # service reference in the webhook spec instead of a url.
       useServiceReference: true
-  # rbacEnable is a boolean to control the installation of quarks job cluster role template.
-  rbacEnable: true
+
+  rbac:
+    # create is a boolean to control the installation of quarks job cluster role template.
+    create: true
 
 quarks-job:
   # createWatchNamespace is a boolean to control creation of watchnamespace.
   createWatchNamespace: false
   serviceAccount:
-    # quarksJobServiceAccount contains the configuration
-    # values of the service account used by quarks-job.
-    quarksJobServiceAccount:
-      # create is a boolean to control the creation of service account name.
-      create: true
-      # name of the service account.
-      name:
+    # create is a boolean to control the creation of service account name.
+    create: true
+    # name of the service account.
+    name:
