@@ -35,9 +35,9 @@ Create chart name and version as used by the chart label.
 Create the name of the cf-operator service account to use
 */}}
 {{- define "cf-operator.serviceAccountName" -}}
-{{- if .Values.serviceAccount.cfOperatorServiceAccount.create -}}
-    {{ default (include "cf-operator.fullname" .) .Values.serviceAccount.cfOperatorServiceAccount.name }}
+{{- if .Values.serviceAccount.create -}}
+    {{ default (include "cf-operator.fullname" .) .Values.serviceAccount.name }}
 {{- else -}}
-    {{ default "default" .Values.serviceAccount.cfOperatorServiceAccount.name }}
+    {{ default "default" .Values.serviceAccount.name }}
 {{- end -}}
 {{- end -}}

@@ -1,4 +1,4 @@
-{{- if .Values.global.rbacEnable }}
+{{- if .Values.global.rbac.create }}
 ---
 apiVersion: v1
 kind: List
