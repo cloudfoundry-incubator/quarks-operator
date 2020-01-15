@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"sigs.k8s.io/yaml"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
@@ -26,6 +27,7 @@ var instanceGroupCmd = &cobra.Command{
 	Long: `Resolves instance group properties of a BOSH manifest.
 
 This will resolve the properties of an instance group and return a manifest for that instance group.
+Also calculates and prints the BPM configurations for all BOSH jobs of that instance group.
 
 `,
 	PreRun: func(cmd *cobra.Command, args []string) {
@@ -92,17 +94,22 @@ This will resolve the properties of an instance group and return a manifest for 
 		}
 
 		initialRollout := viper.GetBool("initial-rollout")
-		manifest, err := igr.Manifest(initialRollout)
+		err = igr.Resolve(initialRollout)
+		if err != nil {
+			return errors.Wrapf(err, "%s failed to resolve manifest.", igFailedMessage)
+		}
+
+		manifest, err := igr.Manifest()
 		if err != nil {
 			return errors.Wrap(err, igFailedMessage)
 		}
 
-		err = igr.SaveLinks(filepath.Dir(outputFilePath))
+		err = igr.SaveLinks(outputFilePath)
 		if err != nil {
 			return errors.Wrapf(err, "%s failed to write link output to file.", igFailedMessage)
 		}
 
-		// write instance group manifest to output.json
+		// write instance group manifest
 		propertiesBytes, err := manifest.Marshal()
 		if err != nil {
 			return errors.Wrapf(err, "%s YAML marshalling instance group manifest failed.", igFailedMessage)
@@ -115,9 +122,32 @@ This will resolve the properties of an instance group and return a manifest for 
 			return errors.Wrapf(err, "%s JSON marshalling instance group manifest failed.", igFailedMessage)
 		}
 
-		err = ioutil.WriteFile(outputFilePath, jsonBytes, 0644)
+		err = ioutil.WriteFile(filepath.Join(outputFilePath, converter.InstanceGroupOutputFilename), jsonBytes, 0644)
 		if err != nil {
 			return errors.Wrapf(err, "%s Writing json into a output file failed.", igFailedMessage)
+		}
+
+		// write bpm manifest
+		bpmInfo, err := igr.BPMInfo()
+		if err != nil {
+			return errors.Wrap(err, igFailedMessage)
+		}
+
+		bpmBytes, err := yaml.Marshal(bpmInfo)
+		if err != nil {
+			return errors.Wrapf(err, "%s YAML marshalling BPM config spec failed.", igFailedMessage)
+		}
+
+		jsonBytes, err = json.Marshal(map[string]string{
+			"bpm.yaml": string(bpmBytes),
+		})
+		if err != nil {
+			return errors.Wrapf(err, "%s JSON marshalling BPM config spec failed.", igFailedMessage)
+		}
+
+		err = ioutil.WriteFile(filepath.Join(outputFilePath, converter.BPMOutputFilename), jsonBytes, 0644)
+		if err != nil {
+			return errors.Wrapf(err, "%s Writing BPM config json into a file failed.", igFailedMessage)
 		}
 
 		return nil

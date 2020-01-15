@@ -55,6 +55,15 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 		return patches
 	}
 
+	newAdmissionRequest := func(pod corev1.Pod) admission.Request {
+		raw, _ := json.Marshal(pod)
+		return admission.Request{
+			AdmissionRequest: admissionv1beta1.AdmissionRequest{
+				Object: runtime.RawExtension{Raw: raw},
+			},
+		}
+	}
+
 	BeforeEach(func() {
 		_, log = helper.NewTestLogger()
 		ctx = ctxlog.NewParentContext(log)
@@ -78,14 +87,7 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 	Context("when pod has no entanglement annotation", func() {
 		BeforeEach(func() {
 			pod = env.DefaultPod("test-pod")
-			raw, _ := json.Marshal(pod)
-
-			request = admission.Request{
-				AdmissionRequest: admissionv1beta1.AdmissionRequest{
-					Object:    runtime.RawExtension{Raw: raw},
-					Operation: admissionv1beta1.Update,
-				},
-			}
+			request = newAdmissionRequest(pod)
 			client = fakeClient.NewFakeClient(&entanglementSecret)
 		})
 
@@ -105,14 +107,7 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 				{Name: "first", Image: "busybox", Command: []string{"sleep", "3600"}},
 				{Name: "second", Image: "busybox", Command: []string{"sleep", "3600"}},
 			}
-			raw, _ := json.Marshal(pod)
-
-			request = admission.Request{
-				AdmissionRequest: admissionv1beta1.AdmissionRequest{
-					Object:    runtime.RawExtension{Raw: raw},
-					Operation: admissionv1beta1.Create,
-				},
-			}
+			request = newAdmissionRequest(pod)
 		})
 
 		Context("when entanglement secret exists", func() {
@@ -124,7 +119,6 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 				Expect(response.Patches).To(HaveLen(3))
 				patches := jsonPatches(response.Patches)
 				Expect(patches).To(ContainElement(podPatch))
-				Expect(patches).To(ContainElement(containerPatch))
 				Expect(patches).To(ContainElement(containerPatch))
 				Expect(patches).To(ContainElement(secondContainerPatch))
 
@@ -150,20 +144,41 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 				quarkslink.DeploymentKey: "nuts",
 				quarkslink.ConsumesKey:   "nuts.nats",
 			})
-			raw, _ := json.Marshal(pod)
-
-			request = admission.Request{
-				AdmissionRequest: admissionv1beta1.AdmissionRequest{
-					Object:    runtime.RawExtension{Raw: raw},
-					Operation: admissionv1beta1.Create,
-				},
-			}
+			request = newAdmissionRequest(pod)
 			client = fakeClient.NewFakeClient(&entanglementSecret)
 		})
 
 		It("does not mutate the pod and errors", func() {
 			Expect(response.Patches).To(BeEmpty())
 			Expect(response.AdmissionResponse.Allowed).To(BeFalse())
+		})
+	})
+
+	Context("when pod has existing volumes", func() {
+		podPatch := `{"op":"add","path":"/spec/volumes/1","value":{"name":"link-nats-deployment-nats","secret":{"items":[{"key":"nats.nats","path":"nats-deployment/link.yaml"}],"secretName":"link-nats-deployment-nats"}}}`
+		containerPatch := `{"op":"add","path":"/spec/containers/0/volumeMounts/1","value":{"mountPath":"/quarks/link","name":"link-nats-deployment-nats","readOnly":true}}`
+
+		BeforeEach(func() {
+			pod = env.NatsPod("entangled-pod")
+			pod.SetAnnotations(map[string]string{
+				quarkslink.DeploymentKey: deploymentName,
+				quarkslink.ConsumesKey:   "nats.nats",
+			})
+			request = newAdmissionRequest(pod)
+		})
+
+		Context("when pod has a non-secret volume", func() {
+			BeforeEach(func() {
+				client = fakeClient.NewFakeClient(&entanglementSecret)
+			})
+
+			It("does add the link volume and mounts it on all containers", func() {
+				Expect(response.Patches).To(HaveLen(2))
+				patches := jsonPatches(response.Patches)
+				Expect(patches).To(ContainElement(podPatch))
+				Expect(patches).To(ContainElement(containerPatch))
+				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
+			})
 		})
 	})
 })

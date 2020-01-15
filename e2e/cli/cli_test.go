@@ -209,42 +209,6 @@ var _ = Describe("CLI", func() {
 		})
 	})
 
-	Describe("bpm-configs", func() {
-		It("lists its flags incl. ENV binding", func() {
-			session, err := act("util", "bpm-configs", "-h")
-			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out).Should(Say(`Flags:
-  -b, --base-dir string              \(BASE_DIR\) a path to the base directory
-  -m, --bosh-manifest-path string    \(BOSH_MANIFEST_PATH\) path to the bosh manifest file
-  -h, --help                         help for bpm-configs
-      --initial-rollout              \(INITIAL_ROLLOUT\) Initial rollout of bosh deployment. \(default true\)
-  -g, --instance-group-name string   \(INSTANCE_GROUP_NAME\) name of the instance group for data gathering
-      --output-file-path string      \(OUTPUT_FILE_PATH\) Path of the file to which json output is written.`))
-		})
-
-		It("accepts the bosh-manifest-path as a parameter", func() {
-			session, err := act("util", "bpm-configs", "--base-dir=.", "-m", "foo.txt", "-g", "log-api", "--output-file-path", "./output.json")
-			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Err).Should(Say("open foo.txt: no such file or directory"))
-		})
-
-		Context("using env variables for parameters", func() {
-			BeforeEach(func() {
-				os.Setenv("BOSH_MANIFEST_PATH", "bar.txt")
-			})
-
-			AfterEach(func() {
-				os.Setenv("BOSH_MANIFEST_PATH", "")
-			})
-
-			It("accepts the bosh-manifest-path as an environment variable", func() {
-				session, err := act("util", "bpm-configs", "--base-dir=.", "-g", "log-api", "--output-file-path", "./output.json")
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(session.Err).Should(Say("open bar.txt: no such file or directory"))
-			})
-		})
-	})
-
 	Describe("template-render", func() {
 		It("lists its flags incl. ENV binding", func() {
 			session, err := act("util", "template-render", "-h")

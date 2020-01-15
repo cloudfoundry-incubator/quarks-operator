@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: cf-operator-webhook
+  namespace: {{ .Release.Namespace }}
 spec:
   {{- if or .Values.global.operator.webhook.useServiceReference (not .Values.operator.webhook.endpoint) }}
   selector:
