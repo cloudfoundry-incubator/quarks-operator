@@ -1,6 +1,6 @@
 #!/bin/bash
 
-git_sha="e5f1b5b"
+git_sha="4db12e7"
 quarks_job_release="v0.0.0-0.g$git_sha"
 
 # QUARKS_JOB_IMAGE_TAG is used for integration tests

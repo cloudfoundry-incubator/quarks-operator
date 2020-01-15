@@ -52,7 +52,6 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		instance   *bdv1.BOSHDeployment
 		dmQJob     *qjv1a1.QuarksJob
 		igQJob     *qjv1a1.QuarksJob
-		bpmQJob    *qjv1a1.QuarksJob
 	)
 
 	BeforeEach(func() {
@@ -120,11 +119,6 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Name: fmt.Sprintf("ig-%s", manifest.Name),
 			},
 		}
-		bpmQJob = &qjv1a1.QuarksJob{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("bpm-%s", manifest.Name),
-			},
-		}
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
 		_, log = helper.NewTestLogger()
 		ctx = ctxlog.NewParentContext(log)
@@ -169,7 +163,6 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 		jobFactory.VariableInterpolationJobReturns(dmQJob, nil)
 		jobFactory.InstanceGroupManifestJobReturns(igQJob, nil)
-		jobFactory.BPMConfigsJobReturns(bpmQJob, nil)
 	})
 
 	JustBeforeEach(func() {
@@ -329,31 +322,6 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Expect(err.Error()).To(ContainSubstring("failed to create instance group manifest qJob for BOSHDeployment 'default/foo': creating or updating QuarksJob 'ig-foo': fake-error"))
 			})
 
-			It("handles an error when building BPM configs qJob", func() {
-				jobFactory.BPMConfigsJobReturns(dmQJob, errors.New("fake-error"))
-
-				_, err := reconciler.Reconcile(request)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to build BPM configs qJob"))
-			})
-
-			It("handles an error when creating BPM configs qJob", func() {
-				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
-					switch object := object.(type) {
-					case *qjv1a1.QuarksJob:
-						qJob := object
-						if strings.HasPrefix(qJob.Name, "bpm-") {
-							return errors.New("fake-error")
-						}
-					}
-					return nil
-				})
-
-				_, err := reconciler.Reconcile(request)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to create BPM configs qJob for BOSHDeployment 'default/foo': creating or updating QuarksJob 'bpm-foo': fake-error"))
-			})
-
 			Context("when the manifest contains explicit links", func() {
 				var bazSecret *corev1.Secret
 
@@ -441,7 +409,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				It("passes link secrets to QJobs", func() {
 					_, err := reconciler.Reconcile(request)
 					Expect(err).ToNot(HaveOccurred())
-					_, linksSecrets, _ := jobFactory.BPMConfigsJobArgsForCall(0)
+					_, linksSecrets, _ := jobFactory.InstanceGroupManifestJobArgsForCall(0)
 					Expect(linksSecrets).To(Equal(converter.LinkInfos{
 						{
 							SecretName:   "baz-sec",

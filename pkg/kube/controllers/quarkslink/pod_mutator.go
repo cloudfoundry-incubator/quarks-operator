@@ -144,7 +144,7 @@ func (m *PodMutator) findSecret(ctx context.Context, namespace string, e entangl
 
 func hasSecretVolumeSource(volumes []corev1.Volume, name string) bool {
 	for _, v := range volumes {
-		if v.Secret.SecretName == name {
+		if v.Secret != nil && v.Secret.SecretName == name {
 			return true
 		}
 	}

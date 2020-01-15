@@ -22,8 +22,10 @@ var _ = Describe("Examples Directory", func() {
 		yamlFilePath string
 	)
 
+	const pollInterval = 5 * time.Second
+
 	podRestarted := func(podName string, startTime time.Time) {
-		wait.PollImmediate(1*time.Second, kubectl.PollTimeout, func() (bool, error) {
+		wait.PollImmediate(pollInterval, kubectl.PollTimeout, func() (bool, error) {
 			status, err := kubectl.PodStatus(namespace, podName)
 			return ((err == nil) && status.StartTime.After(startTime)), err
 		})
@@ -54,7 +56,7 @@ var _ = Describe("Examples Directory", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Checking the updated value in the env")
-			err = wait.PollImmediate(time.Second*5, time.Second*120, func() (bool, error) {
+			err = wait.PollImmediate(pollInterval, kubectl.PollTimeout, func() (bool, error) {
 				err := kubectl.RunCommandWithCheckString(namespace, "example-quarks-statefulset-0", "env", "SPECIAL_KEY=value1Updated")
 				if err != nil {
 					return false, nil
@@ -77,7 +79,7 @@ var _ = Describe("Examples Directory", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Waiting for failed pod")
-			err = wait.PollImmediate(time.Second*5, time.Second*120, func() (bool, error) {
+			err = wait.PollImmediate(pollInterval, kubectl.PollTimeout, func() (bool, error) {
 				podStatus, err := kubectl.PodStatus(namespace, "example-quarks-statefulset-1")
 				if err != nil {
 					return true, err
@@ -94,7 +96,7 @@ var _ = Describe("Examples Directory", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Checking the updated value in the env")
-			err = wait.PollImmediate(time.Second*5, time.Second*120, func() (bool, error) {
+			err = wait.PollImmediate(pollInterval, kubectl.PollTimeout, func() (bool, error) {
 				err := kubectl.RunCommandWithCheckString(namespace, "example-quarks-statefulset-0", "env", "SPECIAL_KEY=value1Updated")
 				if err != nil {
 					return false, nil
@@ -113,14 +115,8 @@ var _ = Describe("Examples Directory", func() {
 			err := cmdHelper.Apply(namespace, yamlUpdatedFilePath)
 			Expect(err).ToNot(HaveOccurred())
 
-			err = wait.PollImmediate(time.Second*5, time.Second*35, func() (bool, error) {
-				err := kubectl.WaitForPod(namespace, "quarks.cloudfoundry.org/pod-active", "example-quarks-statefulset-0")
-				if err != nil {
-					return false, err
-				}
-				return true, nil
-			})
-			Expect(err).ToNot(HaveOccurred(), "waiting for example-quarks-statefulset-1")
+			err = kubectl.WaitForPod(namespace, "quarks.cloudfoundry.org/pod-active", "example-quarks-statefulset-0")
+			Expect(err).ToNot(HaveOccurred(), "waiting for example-quarks-statefulset-0")
 		})
 
 	})
