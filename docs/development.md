@@ -310,6 +310,9 @@ docker tag <quarks-job-tag> cfcontainerization/quarks-job:$QUARKS_JOB_IMAGE_TAG
 
 * In PR reviews, make sure only reviewed branches of dependencies are used.
 * If several PRs across repos belong together, be careful to merge them together and in order, so that the master branches stay compatible if one of the merges fails.
+* Make sure that the cf-operator repo PR has updated value of quarks image tag or version at these places
+  * [Dependency File](https://github.com/cloudfoundry-incubator/cf-operator/blob/master/bin/include/dependencies#L3)
+  * [Go mod file](https://github.com/cloudfoundry-incubator/cf-operator/blob/master/go.mod)
 
 ## Versioning
 
