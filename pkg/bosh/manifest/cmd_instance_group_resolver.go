@@ -148,7 +148,9 @@ func (igr *InstanceGroupResolver) SaveLinks(path string) error {
 			return errors.Wrapf(err, "JSON marshalling failed for ig '%s' property '%s'", igName, id)
 		}
 
-		result[id] = string(jsonBytes)
+		if string(jsonBytes) != "null" {
+			result[id] = string(jsonBytes)
+		}
 	}
 
 	jsonBytes, err := json.Marshal(result)

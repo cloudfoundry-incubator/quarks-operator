@@ -88,7 +88,7 @@ func (m *PodMutator) addSecrets(ctx context.Context, namespace string, pod *core
 						Items: []corev1.KeyToPath{
 							corev1.KeyToPath{
 								Key:  link.String(),
-								Path: filepath.Join(e.deployment, "link.yaml"),
+								Path: "link.yaml",
 							},
 						},
 					},
@@ -101,7 +101,7 @@ func (m *PodMutator) addSecrets(ctx context.Context, namespace string, pod *core
 		mount := corev1.VolumeMount{
 			Name:      link.secretName,
 			ReadOnly:  true,
-			MountPath: "/quarks/link",
+			MountPath: filepath.Join("/quarks/link", e.deployment, link.Name),
 		}
 		for i, container := range pod.Spec.Containers {
 			idx := findVolumeMount(container.VolumeMounts, link.secretName)

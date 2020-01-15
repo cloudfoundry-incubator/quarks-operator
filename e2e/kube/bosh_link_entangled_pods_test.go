@@ -22,7 +22,7 @@ var _ = Describe("BOSHLinkEntanglements", func() {
 	checkEntanglement := func(podName, expect string) error {
 		return kubectl.RunCommandWithCheckString(
 			namespace, podName,
-			"cat /quarks/link/nats-deployment/link.yaml",
+			"cat /quarks/link/nats-deployment/nats/link.yaml",
 			expect,
 		)
 	}
