@@ -9,6 +9,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 var (
@@ -57,7 +58,7 @@ type link struct {
 }
 
 func (l link) String() string {
-	return fmt.Sprintf("%s.%s", l.Name, l.LinkType)
+	return names.EntanglementSecretKey(l.LinkType, l.Name)
 }
 
 type links []link

@@ -72,7 +72,9 @@ If a pod is annotated with the following:
   - `quarks.cloudfoundry.org/deployment: foo`
   - `quarks.cloudfoundry.org/consumes: '[{"name":"nats","type":"nats"}]'`
 The operator will:
-  - mutate the pod and mount the secret as `/quarks/link/DEPLOYMENT/link.yaml`
+  - mutate the pod and mount the secret as `/quarks/link/DEPLOYMENT/<name>/link.yaml`
+
+Where `<name>` is the name of the link, e.g. 'nats'.
 
 If link information changes, the operator will trigger an update (restart) of the deployment or statefulset owning the pod.
 This can be done by updating the template of the pod using an annotation.
