@@ -21,8 +21,6 @@ perl -pi -e "s|version: .*|version: ${ARTIFACT_VERSION}|g" "${output_dir}/cf-ope
 repo="https://cf-operators.s3.amazonaws.com/helm-charts/"
 qj="quarks-job-$QUARKS_JOB_HELM_VERSION.tgz"
 pushd "$output_dir/cf-operator"
-  #helm repo add quarks https://cf-operators.s3.amazonaws.com/helm-charts/
-  #helm dependency update
   mkdir charts
   curl -LO "$repo$qj"
   tar xfz "$qj" -C charts

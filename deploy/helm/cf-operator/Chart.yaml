@@ -1,5 +1,18 @@
 apiVersion: v1
-description: A Helm chart for cf-operator, the k8s operator for deploying BOSH releases
-icon: https://www.cloudfoundry.org/wp-content/uploads/erini-quarks-wide.png
 name: cf-operator
 version: 0.0.1
+description: A Helm chart for cf-operator, the k8s operator for deploying BOSH releases
+home: https://github.com/cloudfoundry-incubator/cf-operator
+icon: https://cloudfoundry-incubator.github.io/quarks-helm/logo.png
+keywords:
+- cloudfoundry
+- bosh
+- quarks
+- deployment
+sources:
+- https://github.com/cloudfoundry-incubator/cf-operator
+- https://github.com/cloudfoundry-incubator/quarks-job
+- https://github.com/cfcontainerizationbot/cf-operator-base
+maintainers:
+- name: project-quarks
+  email: project-quarks@googlegroups.com
