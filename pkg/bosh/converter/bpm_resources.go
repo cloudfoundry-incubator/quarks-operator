@@ -180,6 +180,10 @@ func (kc *KubeConverter) serviceToQuarksStatefulSet(
 		return qstsv1a1.QuarksStatefulSet{}, err
 	}
 
+	if len(instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Tolerations) > 0 {
+		extSts.Spec.Template.Spec.Template.Spec.Tolerations = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Tolerations
+	}
+
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName != "" {
 		extSts.Spec.Template.Spec.Template.Spec.ServiceAccountName = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName
 	}
@@ -349,6 +353,10 @@ func (kc *KubeConverter) errandToQuarksJob(
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity != nil {
 		qJob.Spec.Template.Spec.Template.Spec.Affinity = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity
+	}
+
+	if len(instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Tolerations) > 0 {
+		qJob.Spec.Template.Spec.Template.Spec.Tolerations = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Tolerations
 	}
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName != "" {

@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"regexp"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
 
 	. "github.com/onsi/ginkgo"
@@ -1104,6 +1105,31 @@ var _ = Describe("Manifest", func() {
 				Expect(match.Values).To(HaveLen(2))
 			})
 
+			It("populates toleration fields", func() {
+				manifest, err := LoadYAML([]byte(boshmanifest.BPMReleaseWithTolerations))
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(manifest.Name).To(Equal("bpm-tolerations"))
+
+				ig := manifest.InstanceGroups[0]
+				Expect(ig.Name).To(Equal("bpm1"))
+				Expect(ig.Instances).To(Equal(2))
+
+				tolerations := ig.Env.AgentEnvBoshConfig.Agent.Settings.Tolerations
+				Expect(tolerations).ToNot(BeNil())
+				Expect(tolerations).To(HaveLen(2))
+				tolerations1 := tolerations[0]
+				Expect(tolerations1.Key).To(Equal("key"))
+				Expect(tolerations1.Value).To(Equal("value"))
+				Expect(tolerations1.Effect).To(Equal(v1.TaintEffect("NoSchedule")))
+				Expect(tolerations1.TolerationSeconds).To(BeNil())
+				tolerations2 := tolerations[1]
+				Expect(tolerations2.Key).To(Equal("key1"))
+				Expect(tolerations2.Value).To(Equal("value1"))
+				Expect(tolerations2.Effect).To(Equal(v1.TaintEffect("NoExecute")))
+				Expect(tolerations2.TolerationSeconds).To(BeNil())
+			})
+
 			It("provide and consume fields are populated", func() {
 				manifest, err := LoadYAML([]byte(boshmanifest.WithProviderAndConsumer))
 				Expect(err).NotTo(HaveOccurred())
@@ -1154,8 +1180,10 @@ var _ = Describe("Manifest", func() {
 
 		Describe("Marshal", func() {
 			orgText := boshmanifest.BPMReleaseWithAffinity
+			tolerationText := boshmanifest.BPMReleaseWithTolerations
 			largeText := boshmanifest.ManifestWithLargeValues
 			var m1 *Manifest
+			var m2 *Manifest
 			var largeManifest *Manifest
 
 			Context("with a manifest with large values", func() {
@@ -1213,6 +1241,9 @@ var _ = Describe("Manifest", func() {
 					var err error
 					m1, err = LoadYAML([]byte(orgText))
 					Expect(err).NotTo(HaveOccurred())
+
+					m2, err = LoadYAML([]byte(tolerationText))
+					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("converts k8s tags to lowercase", func() {
@@ -1246,6 +1277,33 @@ var _ = Describe("Manifest", func() {
 					match := selectors.MatchExpressions[0]
 					Expect(match.Key).To(Equal("beta.kubernetes.io/os"))
 					Expect(match.Values).To(HaveLen(2))
+				})
+
+				It("retains tolerations data", func() {
+					text, err := m2.Marshal()
+					Expect(err).NotTo(HaveOccurred())
+
+					By("loading marshalled manifest again")
+					manifest, err := LoadYAML(text)
+					Expect(err).NotTo(HaveOccurred())
+
+					ig := manifest.InstanceGroups[0]
+					Expect(ig.Name).To(Equal("bpm1"))
+					Expect(ig.Instances).To(Equal(2))
+
+					tolerations := ig.Env.AgentEnvBoshConfig.Agent.Settings.Tolerations
+					Expect(tolerations).ToNot(BeNil())
+					Expect(tolerations).To(HaveLen(2))
+					tolerations1 := tolerations[0]
+					Expect(tolerations1.Key).To(Equal("key"))
+					Expect(tolerations1.Value).To(Equal("value"))
+					Expect(tolerations1.Effect).To(Equal(v1.TaintEffect("NoSchedule")))
+					Expect(tolerations1.TolerationSeconds).To(BeNil())
+					tolerations2 := tolerations[1]
+					Expect(tolerations2.Key).To(Equal("key1"))
+					Expect(tolerations2.Value).To(Equal("value1"))
+					Expect(tolerations2.Effect).To(Equal(v1.TaintEffect("NoExecute")))
+					Expect(tolerations2.TolerationSeconds).To(BeNil())
 				})
 
 				It("retains healthcheck data", func() {

@@ -86,7 +86,7 @@ func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager)
 				}
 
 				e := newEntanglement(pod.GetAnnotations())
-				if e.fulfilledBy(*secret) {
+				if _, ok := e.find(*secret); ok {
 					reconciles = append(reconciles, reconcile.Request{
 						NamespacedName: types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace},
 					})

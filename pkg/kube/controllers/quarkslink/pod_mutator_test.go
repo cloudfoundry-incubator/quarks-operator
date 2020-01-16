@@ -28,6 +28,8 @@ import (
 var _ = Describe("Mount quarks link secret on entangled pods", func() {
 	const (
 		deploymentName = "nats-deployment"
+		consumesNats   = `[{"name":"nats","type":"nats"}]`
+		consumesNuts   = `[{"name":"nats","type":"nuts"}]`
 	)
 
 	var (
@@ -43,9 +45,9 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 		response           admission.Response
 	)
 
-	podPatch := `{"op":"add","path":"/spec/volumes","value":[{"name":"link-nats-deployment-nats","secret":{"items":[{"key":"nats.nats","path":"nats-deployment/link.yaml"}],"secretName":"link-nats-deployment-nats"}}]}`
-	containerPatch := `{"op":"add","path":"/spec/containers/0/volumeMounts","value":[{"mountPath":"/quarks/link","name":"link-nats-deployment-nats","readOnly":true}]}`
-	secondContainerPatch := `{"op":"add","path":"/spec/containers/1/volumeMounts","value":[{"mountPath":"/quarks/link","name":"link-nats-deployment-nats","readOnly":true}]}`
+	podPatch := `{"op":"add","path":"/spec/volumes","value":[{"name":"link-nats-deployment-nats","secret":{"items":[{"key":"nats.nats","path":"link.yaml"}],"secretName":"link-nats-deployment-nats"}}]}`
+	containerPatch := `{"op":"add","path":"/spec/containers/0/volumeMounts","value":[{"mountPath":"/quarks/link/nats-deployment/nats","name":"link-nats-deployment-nats","readOnly":true}]}`
+	secondContainerPatch := `{"op":"add","path":"/spec/containers/1/volumeMounts","value":[{"mountPath":"/quarks/link/nats-deployment/nats","name":"link-nats-deployment-nats","readOnly":true}]}`
 
 	jsonPatches := func(operations []jsonpatch.Operation) []string {
 		patches := make([]string, len(operations))
@@ -101,7 +103,7 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 		BeforeEach(func() {
 			pod = env.AnnotatedPod("entangled-pod", map[string]string{
 				quarkslink.DeploymentKey: deploymentName,
-				quarkslink.ConsumesKey:   "nats.nats",
+				quarkslink.ConsumesKey:   consumesNats,
 			})
 			pod.Spec.Containers = []corev1.Container{
 				{Name: "first", Image: "busybox", Command: []string{"sleep", "3600"}},
@@ -142,7 +144,7 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 		BeforeEach(func() {
 			pod = env.AnnotatedPod("entangled-pod", map[string]string{
 				quarkslink.DeploymentKey: "nuts",
-				quarkslink.ConsumesKey:   "nuts.nats",
+				quarkslink.ConsumesKey:   consumesNuts,
 			})
 			request = newAdmissionRequest(pod)
 			client = fakeClient.NewFakeClient(&entanglementSecret)
@@ -155,14 +157,14 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 	})
 
 	Context("when pod has existing volumes", func() {
-		podPatch := `{"op":"add","path":"/spec/volumes/1","value":{"name":"link-nats-deployment-nats","secret":{"items":[{"key":"nats.nats","path":"nats-deployment/link.yaml"}],"secretName":"link-nats-deployment-nats"}}}`
-		containerPatch := `{"op":"add","path":"/spec/containers/0/volumeMounts/1","value":{"mountPath":"/quarks/link","name":"link-nats-deployment-nats","readOnly":true}}`
+		podPatch := `{"op":"add","path":"/spec/volumes/1","value":{"name":"link-nats-deployment-nats","secret":{"items":[{"key":"nats.nats","path":"link.yaml"}],"secretName":"link-nats-deployment-nats"}}}`
+		containerPatch := `{"op":"add","path":"/spec/containers/0/volumeMounts/1","value":{"mountPath":"/quarks/link/nats-deployment/nats","name":"link-nats-deployment-nats","readOnly":true}}`
 
 		BeforeEach(func() {
 			pod = env.NatsPod("entangled-pod")
 			pod.SetAnnotations(map[string]string{
 				quarkslink.DeploymentKey: deploymentName,
-				quarkslink.ConsumesKey:   "nats.nats",
+				quarkslink.ConsumesKey:   consumesNats,
 			})
 			request = newAdmissionRequest(pod)
 		})

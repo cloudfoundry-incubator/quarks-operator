@@ -121,6 +121,24 @@ var _ = Describe("Examples Directory", func() {
 
 	})
 
+	Context("quarks-statefulset examples", func() {
+		BeforeEach(func() {
+			example = "quarks-statefulset/qstatefulset_tolerations.yaml"
+		})
+
+		It("creates statefulset pods with tolerations defined", func() {
+			By("Checking for pods")
+			podWait("pod/example-quarks-statefulset-0")
+
+			tolerations, err := cmdHelper.GetData(namespace, "pod", "example-quarks-statefulset-0", "go-template={{.spec.tolerations}}")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(tolerations).To(ContainSubstring(string("effect:NoSchedule")))
+			Expect(tolerations).To(ContainSubstring(string("key:key")))
+			Expect(tolerations).To(ContainSubstring(string("value:value")))
+
+		})
+	})
+
 	Context("bosh-deployment service example", func() {
 		BeforeEach(func() {
 			example = "bosh-deployment/boshdeployment-with-service.yaml"

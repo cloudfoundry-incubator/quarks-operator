@@ -809,6 +809,47 @@ instance_groups:
   persistent_disk_type: ((operator_test_storage_class))
 `
 
+// BPMReleaseWithTolerations contains tolerations information too
+const BPMReleaseWithTolerations = `
+name: bpm-tolerations
+
+releases:
+- name: bpm
+  version: 1.0.4
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 36.g03b4653-30.80-7.0.0_316.gcf9fe4a7
+
+instance_groups:
+- name: bpm1
+  instances: 2
+  jobs:
+  - name: test-server
+    release: bpm
+    properties:
+      quarks:
+        ports:
+        - name: test-server
+          protocol: TCP
+          internal: 1337
+        - name: alt-test-server
+          protocol: TCP
+          internal: 1338
+  env:
+    bosh:
+      agent:
+        settings:
+          tolerations:
+          - key: "key"
+            operator: "Equal"
+            value: "value"
+            effect: "NoSchedule"
+          - key: "key1"
+            operator: "Equal"
+            value: "value1"
+            effect: "NoExecute"`
+
 // ManifestWithLargeValues has large yaml values.
 const ManifestWithLargeValues = `
 director_uuid: ""

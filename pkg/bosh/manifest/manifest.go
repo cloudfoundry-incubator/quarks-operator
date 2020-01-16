@@ -569,3 +569,49 @@ func (m *Manifest) propagateGlobalUpdateBlockToIGs() {
 		}
 	}
 }
+
+// ListMissingProviders returns a list of missing providers from the manifest
+func (m *Manifest) ListMissingProviders() map[string]bool {
+	provideAsNames := map[string]bool{}
+	consumeFromNames := map[string]bool{}
+
+	for _, ig := range m.InstanceGroups {
+		for _, job := range ig.Jobs {
+			provideAsNames = listProviderNames(job.Provides, "as")
+			consumeFromNames = listProviderNames(job.Consumes, "from")
+		}
+	}
+
+	// Iterate consumeFromNames and remove providers existing in the manifest
+	for providerName := range consumeFromNames {
+		if _, ok := provideAsNames[providerName]; ok {
+			delete(consumeFromNames, providerName)
+		}
+	}
+
+	return consumeFromNames
+}
+
+// listProviderNames returns a map containing provider names from job provides and consumes
+func listProviderNames(providerProperties map[string]interface{}, providerKey string) map[string]bool {
+	providerNames := map[string]bool{}
+
+	for _, property := range providerProperties {
+		p, ok := property.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		nameVal, ok := p[providerKey]
+		if !ok {
+			continue
+		}
+
+		name, _ := nameVal.(string)
+		if len(name) == 0 {
+			continue
+		}
+		providerNames[name] = false
+	}
+
+	return providerNames
+}

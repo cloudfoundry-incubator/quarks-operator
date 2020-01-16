@@ -154,6 +154,15 @@ func (c *Catalog) BPMReleaseWithAffinity() (*manifest.Manifest, error) {
 	return m, nil
 }
 
+// BPMReleaseWithTolerations returns a manifest with tolerations
+func (c *Catalog) BPMReleaseWithTolerations() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithTolerations))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
+}
+
 // BOSHManifestWithZeroInstances for data gathering tests
 func (c *Catalog) BOSHManifestWithZeroInstances() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.WithZeroInstances))
@@ -756,7 +765,7 @@ func (c *Catalog) EntangledPod(deploymentName string) corev1.Pod {
 		"entangled",
 		map[string]string{
 			"quarks.cloudfoundry.org/deployment": deploymentName,
-			"quarks.cloudfoundry.org/consumes":   "nats.nats",
+			"quarks.cloudfoundry.org/consumes":   `[{"name":"nats","type":"nats"}]`,
 		},
 	)
 }
@@ -984,7 +993,7 @@ func (c *Catalog) NatsService(deployName string) corev1.Service {
 				bdv1.LabelDeploymentName: deployName,
 			},
 			Annotations: map[string]string{
-				bdv1.AnnotationLinkProviderName: "nats",
+				bdv1.AnnotationLinkProviderService: "nats",
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -1017,8 +1026,7 @@ func (c *Catalog) NatsSecret(deployName string) corev1.Secret {
 				bdv1.LabelDeploymentName: deployName,
 			},
 			Annotations: map[string]string{
-				bdv1.AnnotationLinkProviderName: "nats",
-				bdv1.AnnotationLinkProviderType: "nats",
+				bdv1.AnnotationLinkProvidesKey: `{"name":"nats","type":"nats"}`,
 			},
 		},
 		StringData: map[string]string{
