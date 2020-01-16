@@ -103,13 +103,14 @@ func (r *ReconcileQuarksSecret) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
-	// Check if secret could be generated when secret was already created
-	canBeGenerated, err := r.canBeGenerated(ctx, instance)
+	// Check if allowed to generate secret, could be already done or
+	// created manually by a user
+	skipReconcile, err := r.skipReconcile(ctx, instance)
 	if err != nil {
 		ctxlog.Errorf(ctx, "Error reading the secret: %v", err.Error())
 		return reconcile.Result{}, err
 	}
-	if !canBeGenerated {
+	if skipReconcile {
 		ctxlog.WithEvent(instance, "SkipReconcile").Infof(ctx, "Skip reconcile: quarksSecret '%s' is already generated", instance.Name)
 		return reconcile.Result{}, nil
 	}
@@ -334,10 +335,12 @@ func (r *ReconcileQuarksSecret) createCertificateSecret(ctx context.Context, ins
 	}
 }
 
-func (r *ReconcileQuarksSecret) canBeGenerated(ctx context.Context, instance *qsv1a1.QuarksSecret) (bool, error) {
-	// Skip secret generation when instance has generated secret and its `generated` status is true
+// Skip reconcile when
+// * secret is already generated according to qsecs status field
+// * secret exists, but was not generated (user created secret)
+func (r *ReconcileQuarksSecret) skipReconcile(ctx context.Context, instance *qsv1a1.QuarksSecret) (bool, error) {
 	if instance.Status.Generated {
-		return false, nil
+		return true, nil
 	}
 
 	secretName := instance.Spec.SecretName
@@ -346,9 +349,9 @@ func (r *ReconcileQuarksSecret) canBeGenerated(ctx context.Context, instance *qs
 	err := r.client.Get(ctx, types.NamespacedName{Name: secretName, Namespace: instance.GetNamespace()}, existingSecret)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return true, nil
+			return false, nil
 		}
-		return true, errors.Wrapf(err, "could not get secret")
+		return false, errors.Wrapf(err, "could not get secret")
 	}
 
 	secretLabels := existingSecret.GetLabels()
@@ -356,11 +359,12 @@ func (r *ReconcileQuarksSecret) canBeGenerated(ctx context.Context, instance *qs
 		secretLabels = map[string]string{}
 	}
 
+	// skip the user generated secret
 	if secretLabels[qsv1a1.LabelKind] != qsv1a1.GeneratedSecretKind {
-		return false, nil
+		return true, nil
 	}
 
-	return true, nil
+	return false, nil
 }
 
 // createSecret applies common properties(labels and ownerReferences) to the secret and creates it
