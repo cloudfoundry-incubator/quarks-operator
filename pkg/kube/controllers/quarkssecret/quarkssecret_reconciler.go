@@ -154,21 +154,15 @@ func (r *ReconcileQuarksSecret) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
-	return reconcile.Result{}, r.updateQSecret(ctx, instance)
+	return reconcile.Result{}, r.updateStatus(ctx, instance)
 }
 
-func (r *ReconcileQuarksSecret) updateQSecret(ctx context.Context, instance *qsv1a1.QuarksSecret) error {
+func (r *ReconcileQuarksSecret) updateStatus(ctx context.Context, instance *qsv1a1.QuarksSecret) error {
 	instance.Status.Generated = true
-	op, err := controllerutil.CreateOrUpdate(ctx, r.client, instance, mutate.QuarksSecretMutateFn(instance))
-	if err != nil {
-		return errors.Wrapf(err, "could not create or update QuarksSecret '%s'", instance.GetName())
-	}
-
-	ctxlog.Debugf(ctx, "QuarksSecret '%s' has been %s", instance.Name, op)
 
 	now := metav1.Now()
 	instance.Status.LastReconcile = &now
-	err = r.client.Status().Update(ctx, instance)
+	err := r.client.Status().Update(ctx, instance)
 	if err != nil {
 		return errors.Wrapf(err, "could not create or update QuarksSecret status '%s'", instance.GetName())
 	}
