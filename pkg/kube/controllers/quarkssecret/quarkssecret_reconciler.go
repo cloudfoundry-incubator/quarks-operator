@@ -383,7 +383,9 @@ func (r *ReconcileQuarksSecret) createSecret(ctx context.Context, instance *qsv1
 		return errors.Wrapf(err, "could not create or update secret '%s'", secret.GetName())
 	}
 
-	ctxlog.Debugf(ctx, "Secret '%s' has been %s", secret.Name, op)
+	if op != "unchanged" {
+		ctxlog.Debugf(ctx, "Secret '%s' has been %s", secret.Name, op)
+	}
 
 	return nil
 }

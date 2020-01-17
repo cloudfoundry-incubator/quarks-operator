@@ -1,7 +1,6 @@
 package converter_test
 
 import (
-	"context"
 	"net/http"
 
 	. "github.com/onsi/ginkgo"
@@ -332,7 +331,7 @@ instance_groups:
 				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
-			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			manifest, implicitVars, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -365,7 +364,7 @@ instance_groups:
 				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
-			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			manifest, implicitVars, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -394,7 +393,7 @@ instance_groups:
 				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
-			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			manifest, implicitVars, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -441,7 +440,7 @@ instance_groups:
 				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
-			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			manifest, implicitVars, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -498,7 +497,7 @@ instance_groups:
 				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
-			manifest, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			manifest, implicitVars, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -530,7 +529,7 @@ instance_groups:
 				},
 			}
 
-			manifest, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			manifest, _, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -549,7 +548,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve manifest"))
 		})
@@ -563,7 +562,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("doesn't contain key manifest"))
 		})
@@ -577,7 +576,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("cannot unmarshal string into Go value of type manifest.Manifest"))
 		})
@@ -591,7 +590,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unrecognized manifest ref type"))
 		})
@@ -611,7 +610,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from configmap"))
 		})
@@ -631,7 +630,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("doesn't contain key ops"))
 		})
@@ -653,7 +652,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Interpolation failed for bosh deployment"))
 		})
@@ -674,7 +673,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Failed to interpolate"))
 		})
@@ -694,7 +693,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unrecognized ops ref type"))
 		})
@@ -718,7 +717,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from configmap"))
 		})
@@ -742,7 +741,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from secret"))
 		})
@@ -770,7 +769,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			_, _, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from secret"))
@@ -789,7 +788,7 @@ instance_groups:
 					Ops: []bdc.ResourceReference{},
 				},
 			}
-			m, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			m, implicitVars, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(m.Variables[1].Options.CommonName).To(Equal("example.com"))
@@ -810,7 +809,7 @@ instance_groups:
 					Ops: []bdc.ResourceReference{},
 				},
 			}
-			m, _, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			m, _, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			dns := m.DNS
@@ -831,7 +830,7 @@ instance_groups:
 					Ops: []bdc.ResourceReference{},
 				},
 			}
-			m, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			m, implicitVars, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(implicitVars)).To(Equal(1))
@@ -852,7 +851,7 @@ instance_groups:
 					Ops: []bdc.ResourceReference{},
 				},
 			}
-			m, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			m, implicitVars, err := resolver.WithOpsManifest(deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(implicitVars)).To(Equal(1))

@@ -162,7 +162,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 // resolveManifest resolves manifest with ops manifest
 func (r *ReconcileBOSHDeployment) resolveManifest(ctx context.Context, instance *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
 	log.Debug(ctx, "Resolving manifest")
-	manifest, _, err := r.resolver.WithOpsManifest(ctx, instance, instance.GetNamespace())
+	manifest, _, err := r.resolver.WithOpsManifest(instance, instance.GetNamespace())
 	if err != nil {
 		return nil, log.WithEvent(instance, "WithOpsManifestError").Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
 	}

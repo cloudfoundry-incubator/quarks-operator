@@ -4,7 +4,6 @@ package manifest
 
 import (
 	"bytes"
-	"context"
 	"crypto"
 	"crypto/sha1"
 	"encoding/hex"
@@ -20,7 +19,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
-	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
 const (
@@ -502,7 +500,7 @@ func (m *Manifest) ImplicitVariables() ([]string, error) {
 }
 
 // ApplyAddons goes through all defined addons and adds jobs to matched instance groups
-func (m *Manifest) ApplyAddons(ctx context.Context) error {
+func (m *Manifest) ApplyAddons() error {
 	if m.AddOnsApplied {
 		return nil
 	}
@@ -511,17 +509,16 @@ func (m *Manifest) ApplyAddons(ctx context.Context) error {
 			continue
 		}
 		for _, ig := range m.InstanceGroups {
-			include, err := m.addOnPlacementMatch(ctx, "inclusion", ig, addon.Include)
+			include, err := m.addOnPlacementMatch("inclusion", ig, addon.Include)
 			if err != nil {
 				return errors.Wrap(err, "failed to process include placement matches")
 			}
-			exclude, err := m.addOnPlacementMatch(ctx, "exclusion", ig, addon.Exclude)
+			exclude, err := m.addOnPlacementMatch("exclusion", ig, addon.Exclude)
 			if err != nil {
 				return errors.Wrap(err, "failed to process exclude placement matches")
 			}
 
 			if exclude || !include {
-				ctxlog.Debugf(ctx, "Addon '%s' doesn't match instance group '%s'", addon.Name, ig.Name)
 				continue
 			}
 
@@ -533,8 +530,6 @@ func (m *Manifest) ApplyAddons(ctx context.Context) error {
 				}
 
 				addedJob.Properties.Quarks.IsAddon = true
-
-				ctxlog.Debugf(ctx, "Applying addon job '%s/%s' to instance group '%s'", addon.Name, addonJob.Name, ig.Name)
 				ig.Jobs = append(ig.Jobs, addedJob)
 			}
 		}
