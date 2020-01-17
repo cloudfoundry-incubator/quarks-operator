@@ -33,7 +33,7 @@ require (
 	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.6.1
+	github.com/spf13/viper v1.6.2
 	github.com/viovanov/bosh-template-go v0.0.0-20190801125410-a195ef3de03a
 	go.uber.org/zap v1.13.0
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
