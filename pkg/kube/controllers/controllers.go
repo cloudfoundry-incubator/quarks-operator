@@ -44,7 +44,6 @@ const (
 // itself is started.
 var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager) error{
 	boshdeployment.AddDeployment,
-	boshdeployment.AddGeneratedVariable,
 	boshdeployment.AddBPM,
 	quarkssecret.AddQuarksSecret,
 	quarkssecret.AddCertificateSigningRequest,

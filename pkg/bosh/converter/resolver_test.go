@@ -30,7 +30,7 @@ var _ = Describe("Resolver", func() {
 		validOpsPath      string
 		invalidOpsPath    string
 
-		resolver         converter.Resolver
+		resolver         *converter.ResolverImpl
 		client           client.Client
 		interpolator     *fakes.FakeInterpolator
 		remoteFileServer *ghttp.Server
