@@ -20,12 +20,6 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
-// Resolver interface to provide a BOSH manifest resolved references from bdpl CRD
-type Resolver interface {
-	WithOpsManifest(ctx context.Context, instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
-	WithOpsManifestDetailed(ctx context.Context, instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
-}
-
 // DesiredManifest unmarshals desired manifest from the manifest secret
 type DesiredManifest interface {
 	DesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error)
@@ -50,7 +44,7 @@ func NewDesiredManifest(client client.Client) DesiredManifest {
 }
 
 // NewResolver constructs a resolver
-func NewResolver(client client.Client, f NewInterpolatorFunc) Resolver {
+func NewResolver(client client.Client, f NewInterpolatorFunc) *ResolverImpl {
 	return &ResolverImpl{
 		client:               client,
 		newInterpolatorFunc:  f,

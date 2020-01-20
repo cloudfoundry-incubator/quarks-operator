@@ -21,6 +21,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -35,13 +36,21 @@ type JobFactory interface {
 	InstanceGroupManifestJob(manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error)
 }
 
+type VariablesConverter interface {
+	Variables(manifestName string, variables []bdm.Variable) ([]qsv1a1.QuarksSecret, error)
+}
+
+type Resolver interface {
+	WithOpsManifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
+}
+
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // NewDeploymentReconciler returns a new reconcile.Reconciler
-func NewDeploymentReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver converter.Resolver, jobFactory JobFactory, srf setReferenceFunc) reconcile.Reconciler {
+func NewDeploymentReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver Resolver, jobFactory JobFactory, converter VariablesConverter, srf setReferenceFunc) reconcile.Reconciler {
 
 	return &ReconcileBOSHDeployment{
 		ctx:          ctx,
@@ -51,6 +60,7 @@ func NewDeploymentReconciler(ctx context.Context, config *config.Config, mgr man
 		resolver:     resolver,
 		setReference: srf,
 		jobFactory:   jobFactory,
+		converter:    converter,
 	}
 }
 
@@ -60,9 +70,10 @@ type ReconcileBOSHDeployment struct {
 	config       *config.Config
 	client       client.Client
 	scheme       *runtime.Scheme
-	resolver     converter.Resolver
+	resolver     Resolver
 	setReference setReferenceFunc
 	jobFactory   JobFactory
+	converter    VariablesConverter
 }
 
 // Reconcile starts the deployment process for a BOSHDeployment and deploys QuarksJobs to generate required properties for instance groups and rendered BPM
@@ -110,13 +121,29 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Apply the "with-ops" manifest secret
 	log.Debug(ctx, "Creating with-ops manifest secret")
-	err = r.createManifestWithOps(ctx, instance, *manifest)
+	manifestSecret, err := r.createManifestWithOps(ctx, instance, *manifest)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(instance, "WithOpsManifestError").Errorf(ctx, "failed to create with-ops manifest secret for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	log.Debug(ctx, "Rendering manifest")
+	// Create all QuarksSecret variables
+	log.Debug(ctx, "Converting BOSH manifest variables to QuarksSecret resources")
+	secrets, err := r.converter.Variables(manifest.Name, manifest.Variables)
+	if err != nil {
+		return reconcile.Result{},
+			log.WithEvent(instance, "BadManifestError").Error(ctx, errors.Wrap(err, "failed to generate quarks secrets from manifest"))
+
+	}
+
+	// Create/update all explicit BOSH Variables
+	if len(secrets) > 0 {
+		err = r.createQuarksSecrets(ctx, manifestSecret, secrets)
+		if err != nil {
+			return reconcile.Result{},
+				log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "failed to create quarks secrets for BOSH manifest '%s': %v", manifest.Name, err)
+		}
+	}
 
 	// Apply the "Variable Interpolation" QuarksJob, which creates the desired manifest secret
 	qJob, err := r.jobFactory.VariableInterpolationJob(*manifest)
@@ -174,13 +201,13 @@ func (r *ReconcileBOSHDeployment) resolveManifest(ctx context.Context, instance 
 }
 
 // createManifestWithOps creates a secret containing the deployment manifest with ops files applied
-func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, instance *bdv1.BOSHDeployment, manifest bdm.Manifest) error {
+func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, instance *bdv1.BOSHDeployment, manifest bdm.Manifest) (*corev1.Secret, error) {
 	log.Debug(ctx, "Creating manifest secret with ops")
 
 	// Create manifest with ops, which will be used as a base for variable interpolation in desired manifest job input.
 	manifestBytes, err := manifest.Marshal()
 	if err != nil {
-		return log.WithEvent(instance, "ManifestWithOpsMarshalError").Errorf(ctx, "Error marshaling the manifest %s: %s", instance.GetName(), err)
+		return nil, log.WithEvent(instance, "ManifestWithOpsMarshalError").Errorf(ctx, "Error marshaling the manifest %s: %s", instance.GetName(), err)
 	}
 
 	manifestSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeManifestWithOps, manifest.Name, "")
@@ -202,18 +229,18 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 
 	// Set ownership reference
 	if err := r.setReference(instance, manifestSecret, r.scheme); err != nil {
-		return log.WithEvent(instance, "ManifestWithOpsRefError").Errorf(ctx, "failed to set ownerReference for Secret '%s': %v", manifestSecretName, err)
+		return nil, log.WithEvent(instance, "ManifestWithOpsRefError").Errorf(ctx, "failed to set ownerReference for Secret '%s': %v", manifestSecretName, err)
 	}
 
 	// Apply the secret
 	op, err := controllerutil.CreateOrUpdate(ctx, r.client, manifestSecret, mutate.SecretMutateFn(manifestSecret))
 	if err != nil {
-		return log.WithEvent(instance, "ManifestWithOpsApplyError").Errorf(ctx, "failed to apply Secret '%s': %v", manifestSecretName, err)
+		return nil, log.WithEvent(instance, "ManifestWithOpsApplyError").Errorf(ctx, "failed to apply Secret '%s': %v", manifestSecretName, err)
 	}
 
 	log.Debugf(ctx, "ResourceReference secret '%s' has been %s", manifestSecret.Name, op)
 
-	return nil
+	return manifestSecret, nil
 }
 
 // createQuarksJob creates a QuarksJob and sets its ownership
@@ -380,6 +407,29 @@ func (r *ReconcileBOSHDeployment) listPodsFromSelector(namespace string, selecto
 	}
 
 	return podList.Items, nil
+}
+
+// createQuarksSecrets create variables quarksSecrets
+func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manifestSecret *corev1.Secret, variables []qsv1a1.QuarksSecret) error {
+	for _, variable := range variables {
+		log.Debugf(ctx, "Creating QuarksSecrets for explicit variable '%s'", variable.Name)
+		// Set the "manifest with ops" secret as the owner for the QuarksSecrets
+		// The "manifest with ops" secret is owned by the actual BOSHDeployment, so everything
+		// should be garbage collected properly.
+		if err := r.setReference(manifestSecret, &variable, r.scheme); err != nil {
+			err = log.WithEvent(manifestSecret, "OwnershipError").Errorf(ctx, "Failed to set ownership for %s: %v", variable.Name, err)
+			return err
+		}
+
+		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &variable, mutate.QuarksSecretMutateFn(&variable))
+		if err != nil {
+			return errors.Wrapf(err, "creating or updating QuarksSecret '%s'", variable.Name)
+		}
+
+		log.Debugf(ctx, "QuarksSecret '%s' has been %s", variable.Name, op)
+	}
+
+	return nil
 }
 
 type serviceRecord struct {
