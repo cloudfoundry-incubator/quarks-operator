@@ -3,6 +3,7 @@ package environment
 import (
 	"os"
 	"path"
+	"strings"
 
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -36,6 +37,12 @@ func (e *Environment) SetupNamespace() error {
 	}
 
 	return nil
+}
+
+// NamespaceDeletionInProgress returns true if the error indicates deletion will happen
+// eventually
+func (e *Environment) NamespaceDeletionInProgress(err error) bool {
+	return strings.Contains(err.Error(), "namespace will automatically be purged")
 }
 
 // removeWebhookCache removes the local webhook config temp folder
