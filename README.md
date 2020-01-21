@@ -19,6 +19,48 @@ It's implemented as a k8s operator, an active controller component which acts up
 * Backlog: [Pivotal Tracker](https://www.pivotaltracker.com/n/projects/2192232)
 * Docker: https://hub.docker.com/r/cfcontainerization/cf-operator/tags
 
+## Features
+
+cf-operator deploys dockerized BOSH releases onto existing Kubernetes cluster
+
+* Supports operations files to modify manifest
+* Service instance groups become pods, each job in one container
+* Errand instance groups become QuarksJobs
+
+To do this it relies on three Kubernetes components:
+
+* QuarksSecret, a custom resource and controller for the generation and rotation of secrets
+* [QuarksJob](https://github.com/cloudfoundry-incubator/quarks-job), templating for Kubernetes jobs, which can trigger jobs on configuration changes and persist their output to secrets
+* QuarksStatefulSet, adds canary, zero-downtime deployment, zones and active-passive probe support
+
+BOSH configuration related:
+* BOSH links can be provided by existing Kubernetes secrets
+* Provides BOSH link properties as Kubernetes secrets
+* Generates explicit variables, e.g. password, certificate, and SSH keys
+* Reads implicit variables from secrets
+* Secret rotation for individual secrets
+
+BOSH releases related:
+* Pre-render scripts to patch releases, which are incompatible with Kubernetes
+
+BOSH lifecycle related:
+* Restart only affected instance groups on update
+* Sequential startup of instance groups
+* Kubernetes healthchecks instead of monit
+
+Kubernetes related:
+* Supports RBAC
+* Uses immutable, versioned secrets internally
+
+### BOSH Compatibily
+
+* Supports BOSH deployment manifests, including links and addons
+* Uses available BPM information from job releases
+* Renders ERB job templates in an init container, before starting the dockerized BOSH release
+* Adds endpoints and services for instance groups
+* BOSH DNS support
+* Uses Kubernetes zones for BOSH AZs
+
 ## Prerequisites
 
 The `cf-operator` assumes that the cluster root CA is also used for signing CSRs via the certificates.k8s.io API and will embed this CA in the generated certificate secrets. If your cluster is set up to use a different cluster-signing CA the generated certificates will have the wrong CA embedded. See https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/ for more information on cluster trust.
