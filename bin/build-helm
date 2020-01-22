@@ -8,15 +8,18 @@ GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 . "${GIT_ROOT}/bin/include/dependencies"
 
 output_dir=${GIT_ROOT}/helm
-filename="${output_dir}/cf-operator-${ARTIFACT_VERSION}.tgz"
+version=$(echo "$ARTIFACT_VERSION" | sed 's/^v//')
+filename="${output_dir}/cf-operator-${version}.tgz"
 
 [ -d "${output_dir}" ] && rm -r "${output_dir}"
 cp -r "${GIT_ROOT}/deploy/helm" "${output_dir}"
 
+
 perl -pi -e "s|repository: .*|repository: ${DOCKER_IMAGE_REPOSITORY}|g" "${output_dir}/cf-operator/values.yaml"
 perl -pi -e "s|org: .*|org: ${DOCKER_IMAGE_ORG}|g" "${output_dir}/cf-operator/values.yaml"
 perl -pi -e "s|tag: .*|tag: ${DOCKER_IMAGE_TAG}|g" "${output_dir}/cf-operator/values.yaml"
-perl -pi -e "s|version: .*|version: ${ARTIFACT_VERSION}|g" "${output_dir}/cf-operator/Chart.yaml"
+perl -pi -e "s|version: .*|version: ${version}|g" "${output_dir}/cf-operator/Chart.yaml"
+perl -pi -e "s|appVersion: .*|appVersion: ${version}|g" "${output_dir}/cf-operator/Chart.yaml"
 
 repo="https://cf-operators.s3.amazonaws.com/helm-charts/"
 qj="quarks-job-$QUARKS_JOB_HELM_VERSION.tgz"
