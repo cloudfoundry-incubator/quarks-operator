@@ -134,8 +134,22 @@ func (r *ResolverImpl) WithOpsManifest(ctx context.Context, instance *bdv1.BOSHD
 
 	varSecrets := make([]string, len(vars))
 	for i, v := range vars {
-		varSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), v)
-		varData, err := r.resourceData(namespace, bdv1.SecretReference, varSecretName, bdv1.ImplicitVariableKeyName)
+		varKeyName := ""
+		varSecretName := ""
+		if strings.Contains(v, "/") {
+			parts := strings.Split(v, "/")
+			if len(parts) != 2 {
+				return nil, []string{}, fmt.Errorf("expected one / separator for implicit variable/key name, have %d", len(parts))
+			}
+
+			varSecretName = names.DeploymentSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), parts[0])
+			varKeyName = parts[1]
+		} else {
+			varKeyName = bdv1.ImplicitVariableKeyName
+			varSecretName = names.DeploymentSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), v)
+		}
+
+		varData, err := r.resourceData(namespace, bdv1.SecretReference, varSecretName, varKeyName)
 		if err != nil {
 			return nil, varSecrets, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
 		}
@@ -209,8 +223,22 @@ func (r *ResolverImpl) WithOpsManifestDetailed(ctx context.Context, instance *bd
 
 	varSecrets := make([]string, len(vars))
 	for i, v := range vars {
-		varSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), v)
-		varData, err := r.resourceData(namespace, bdv1.SecretReference, varSecretName, bdv1.ImplicitVariableKeyName)
+		varKeyName := ""
+		varSecretName := ""
+		if strings.Contains(v, "/") {
+			parts := strings.Split(v, "/")
+			if len(parts) != 2 {
+				return nil, []string{}, fmt.Errorf("expected one / separator for implicit variable/key name, have %d", len(parts))
+			}
+
+			varSecretName = names.DeploymentSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), parts[0])
+			varKeyName = parts[1]
+		} else {
+			varKeyName = bdv1.ImplicitVariableKeyName
+			varSecretName = names.DeploymentSecretName(names.DeploymentSecretTypeVariable, instance.GetName(), v)
+		}
+
+		varData, err := r.resourceData(namespace, bdv1.SecretReference, varSecretName, varKeyName)
 		if err != nil {
 			return nil, varSecrets, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
 		}
