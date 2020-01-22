@@ -1,6 +1,7 @@
 apiVersion: v1
 name: cf-operator
-version: 0.0.1
+version: x.x.x
+appVersion: x.x.x
 description: A Helm chart for cf-operator, the k8s operator for deploying BOSH releases
 home: https://github.com/cloudfoundry-incubator/cf-operator
 icon: https://cloudfoundry-incubator.github.io/quarks-helm/logo.png
