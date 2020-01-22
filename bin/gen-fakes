@@ -6,12 +6,15 @@ set -e
 counterfeiter -o pkg/kube/controllers/fakes/manager.go vendor/sigs.k8s.io/controller-runtime/pkg/manager Manager
 counterfeiter -o pkg/kube/controllers/fakes/client.go vendor/sigs.k8s.io/controller-runtime/pkg/client Client
 counterfeiter -o pkg/kube/controllers/fakes/status_writer.go vendor/sigs.k8s.io/controller-runtime/pkg/client StatusWriter
-counterfeiter -o pkg/bosh/converter/fakes/release_image_provider.go pkg/bosh/converter/ ReleaseImageProvider
-counterfeiter -o pkg/bosh/converter/fakes/resolver.go pkg/bosh/converter/ Resolver
-counterfeiter -o pkg/bosh/converter/fakes/interpolator.go pkg/bosh/converter/ Interpolator
+
+counterfeiter -o pkg/kube/controllers/fakes/bpm_converter.go pkg/kube/controllers/boshdeployment BPMConverter
+counterfeiter -o pkg/kube/controllers/fakes/job_factory.go pkg/kube/controllers/boshdeployment/ JobFactory
+counterfeiter -o pkg/kube/controllers/fakes/resolver.go pkg/kube/controllers/boshdeployment Resolver
+counterfeiter -o pkg/kube/controllers/fakes/variables_converter.go pkg/kube/controllers/boshdeployment VariablesConverter
+
 counterfeiter -o pkg/bosh/converter/fakes/container_factory.go pkg/bosh/converter/ ContainerFactory
+counterfeiter -o pkg/bosh/converter/fakes/interpolator.go pkg/bosh/converter/ Interpolator
+counterfeiter -o pkg/bosh/converter/fakes/release_image_provider.go pkg/bosh/converter/ ReleaseImageProvider
 counterfeiter -o pkg/bosh/converter/fakes/volume_factory.go pkg/bosh/converter/ VolumeFactory
-counterfeiter -o pkg/bosh/converter/fakes/job_factory.go pkg/kube/controllers/boshdeployment/ JobFactory
-counterfeiter -o pkg/bosh/converter/fakes/kube_converter.go pkg/kube/controllers/boshdeployment KubeConverter
 counterfeiter -o pkg/bosh/manifest/fakes/desired_manifest.go pkg/bosh/converter/ DesiredManifest
 counterfeiter -o pkg/credsgen/fakes/generator.go pkg/credsgen/ Generator

@@ -2,7 +2,7 @@ module code.cloudfoundry.org/cf-operator
 
 require (
 	code.cloudfoundry.org/quarks-job v0.0.0-20200117020937-e0ed19868499
-	code.cloudfoundry.org/quarks-utils v0.0.0-20200113103742-673f14c44002
+	code.cloudfoundry.org/quarks-utils v0.0.0-20200121122630-31020afe6ac7
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
 	github.com/charlievieth/fs v0.0.0-20170613215519-7dc373669fa1 // indirect
 	github.com/cloudflare/cfssl v0.0.0-20181102015659-ea4033a214e7
@@ -16,7 +16,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/go-test/deep v1.0.5
-	github.com/golang/mock v1.3.1
+	github.com/golang/mock v1.4.0
 	github.com/gonvenience/bunt v1.1.1
 	github.com/google/certificate-transparency-go v1.0.21 // indirect
 	github.com/hpcloud/tail v1.0.0

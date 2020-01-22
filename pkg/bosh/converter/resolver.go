@@ -16,16 +16,9 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
-
-// Resolver interface to provide a BOSH manifest resolved references from bdpl CRD
-type Resolver interface {
-	WithOpsManifest(ctx context.Context, instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
-	WithOpsManifestDetailed(ctx context.Context, instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
-}
 
 // DesiredManifest unmarshals desired manifest from the manifest secret
 type DesiredManifest interface {
@@ -51,7 +44,7 @@ func NewDesiredManifest(client client.Client) DesiredManifest {
 }
 
 // NewResolver constructs a resolver
-func NewResolver(client client.Client, f NewInterpolatorFunc) Resolver {
+func NewResolver(client client.Client, f NewInterpolatorFunc) *ResolverImpl {
 	return &ResolverImpl{
 		client:               client,
 		newInterpolatorFunc:  f,
@@ -83,9 +76,7 @@ func (r *ResolverImpl) DesiredManifest(ctx context.Context, boshDeploymentName, 
 // WithOpsManifest returns manifest and a list of implicit variables referenced by our bdpl CRD
 // The resulting manifest has variables interpolated and ops files applied.
 // It is the 'with-ops' manifest.
-func (r *ResolverImpl) WithOpsManifest(ctx context.Context, instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
-	log.Debugf(ctx, "Calculating manifest with ops files applied for deployment '%s'", instance.Name)
-
+func (r *ResolverImpl) WithOpsManifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
 	interpolator := r.newInterpolatorFunc()
 	spec := instance.Spec
 	var (
@@ -159,7 +150,7 @@ func (r *ResolverImpl) WithOpsManifest(ctx context.Context, instance *bdv1.BOSHD
 	}
 
 	// Apply addons
-	err = manifest.ApplyAddons(ctx)
+	err = manifest.ApplyAddons()
 	if err != nil {
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}
@@ -170,9 +161,7 @@ func (r *ResolverImpl) WithOpsManifest(ctx context.Context, instance *bdv1.BOSHD
 // WithOpsManifestDetailed returns manifest and a list of implicit variables referenced by our bdpl CRD
 // The resulting manifest has variables interpolated and ops files applied.
 // It is the 'with-ops' manifest. This variant processes each ops file individually, so it's more debuggable - but slower.
-func (r *ResolverImpl) WithOpsManifestDetailed(ctx context.Context, instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
-	log.Debugf(ctx, "Calculating manifest with ops files applied for deployment '%s'", instance.Name)
-
+func (r *ResolverImpl) WithOpsManifestDetailed(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
 	spec := instance.Spec
 	var (
 		m   string
@@ -204,9 +193,6 @@ func (r *ResolverImpl) WithOpsManifestDetailed(ctx context.Context, instance *bd
 		if err != nil {
 			return nil, []string{}, errors.Wrapf(err, "Failed to interpolate ops '%s' for manifest '%s'", op.Name, instance.Name)
 		}
-
-		// Calculate a diff for the ops file we've just applied, then log it as a debug message
-		log.Debugf(ctx, "Applied ops file '%s' for deployment '%s'", op.Name, instance.Name)
 	}
 
 	// Reload the manifest after interpolation, and apply implicit variables
@@ -248,7 +234,7 @@ func (r *ResolverImpl) WithOpsManifestDetailed(ctx context.Context, instance *bd
 	}
 
 	// Apply addons
-	err = manifest.ApplyAddons(ctx)
+	err = manifest.ApplyAddons()
 	if err != nil {
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}

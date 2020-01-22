@@ -90,7 +90,7 @@ func (r *ReconcileQuarksSecret) Reconcile(request reconcile.Request) (reconcile.
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			ctxlog.Info(ctx, "Skip reconcile: CRD not found")
+			ctxlog.Info(ctx, "Skip reconcile: quarks secret not found")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
@@ -383,7 +383,9 @@ func (r *ReconcileQuarksSecret) createSecret(ctx context.Context, instance *qsv1
 		return errors.Wrapf(err, "could not create or update secret '%s'", secret.GetName())
 	}
 
-	ctxlog.Debugf(ctx, "Secret '%s' has been %s", secret.Name, op)
+	if op != "unchanged" {
+		ctxlog.Debugf(ctx, "Secret '%s' has been %s", secret.Name, op)
+	}
 
 	return nil
 }

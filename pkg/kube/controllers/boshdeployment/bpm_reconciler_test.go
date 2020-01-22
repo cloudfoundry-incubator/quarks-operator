@@ -23,7 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
-	cvfakes "code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	mfakes "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
@@ -45,7 +44,7 @@ var _ = Describe("ReconcileBPM", func() {
 		request                   reconcile.Request
 		ctx                       context.Context
 		resolver                  mfakes.FakeDesiredManifest
-		kubeConverter             cvfakes.FakeKubeConverter
+		kubeConverter             cfakes.FakeBPMConverter
 		manifest                  *bdm.Manifest
 		logs                      *observer.ObservedLogs
 		log                       *zap.SugaredLogger
@@ -63,7 +62,7 @@ var _ = Describe("ReconcileBPM", func() {
 		manager.GetSchemeReturns(scheme.Scheme)
 		manager.GetEventRecorderForReturns(recorder)
 		resolver = mfakes.FakeDesiredManifest{}
-		kubeConverter = cvfakes.FakeKubeConverter{}
+		kubeConverter = cfakes.FakeBPMConverter{}
 
 		kubeConverter.BPMResourcesReturns(&converter.BPMResources{}, nil)
 		size := 1024

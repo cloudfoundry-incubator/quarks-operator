@@ -95,7 +95,7 @@ var _ = AfterSuite(func() {
 	// Nuking all namespaces at the end of the run
 	for _, namespace := range namespacesToNuke {
 		err := cmdHelper.DeleteNamespace(namespace)
-		if err != nil {
+		if err != nil && !env.NamespaceDeletionInProgress(err) {
 			fmt.Printf("WARNING: failed to delete namespace %s: %v\n", namespace, err)
 		}
 		err = cmdHelper.DeleteWebhooks(namespace)

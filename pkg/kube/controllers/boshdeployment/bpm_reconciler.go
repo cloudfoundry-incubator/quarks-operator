@@ -21,7 +21,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	qstscontroller "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarksstatefulset"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
@@ -33,16 +32,15 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
-// KubeConverter converts k8s resources from single BOSH manifest
-type KubeConverter interface {
+// BPMConverter converts k8s resources from single BOSH manifest
+type BPMConverter interface {
 	BPMResources(manifestName string, dns bdm.DomainNameService, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*converter.BPMResources, error)
-	Variables(manifestName string, variables []bdm.Variable) ([]qsv1a1.QuarksSecret, error)
 }
 
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 
 // NewBPMReconciler returns a new reconcile.Reconciler
-func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver converter.DesiredManifest, srf setReferenceFunc, kubeConverter KubeConverter) reconcile.Reconciler {
+func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver converter.DesiredManifest, srf setReferenceFunc, converter BPMConverter) reconcile.Reconciler {
 	return &ReconcileBPM{
 		ctx:                  ctx,
 		config:               config,
@@ -50,7 +48,7 @@ func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Ma
 		scheme:               mgr.GetScheme(),
 		resolver:             resolver,
 		setReference:         srf,
-		kubeConverter:        kubeConverter,
+		converter:            converter,
 		versionedSecretStore: versionedsecretstore.NewVersionedSecretStore(mgr.GetClient()),
 	}
 }
@@ -63,7 +61,7 @@ type ReconcileBPM struct {
 	scheme               *runtime.Scheme
 	resolver             converter.DesiredManifest
 	setReference         setReferenceFunc
-	kubeConverter        KubeConverter
+	converter            BPMConverter
 	versionedSecretStore versionedsecretstore.VersionedSecretStore
 }
 
@@ -213,7 +211,7 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 		return nil, err
 	}
 
-	resources, err := r.kubeConverter.BPMResources(manifest.Name, manifest.DNS, qStsVersionString, instanceGroup, manifest, bpmInfo.Configs, igResolvedSecretVersion)
+	resources, err := r.converter.BPMResources(manifest.Name, manifest.DNS, qStsVersionString, instanceGroup, manifest, bpmInfo.Configs, igResolvedSecretVersion)
 	if err != nil {
 		return resources, err
 	}

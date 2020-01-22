@@ -42,6 +42,13 @@ var (
 	AnnotationCertSecretName = fmt.Sprintf("%s/cert-secret-name", apis.GroupName)
 	// AnnotationQSecNamespace is the annotation key for quarks secret namespace
 	AnnotationQSecNamespace = fmt.Sprintf("%s/quarks-secret-namespace", apis.GroupName)
+	// LabelSecretRotationTrigger is set on a config map to trigger secret
+	// rotation. If set, then creating the config map will trigger secret
+	// rotation.
+	LabelSecretRotationTrigger = fmt.Sprintf("%s/secret-rotation", apis.GroupName)
+	// RotateQSecretListName is the name of the config map entry, which
+	// contains a JSON array of quarks secret names to rotate
+	RotateQSecretListName = "secrets"
 )
 
 const (
@@ -83,6 +90,8 @@ type QuarksSecretSpec struct {
 	Type       SecretType `json:"type"`
 	Request    Request    `json:"request"`
 	SecretName string     `json:"secretName"`
+	// Rotation is used to trigger a new version of the generated secret
+	Rotation *metav1.Time `json:"rotation,omitempty"`
 }
 
 // QuarksSecretStatus defines the observed state of QuarksSecret
