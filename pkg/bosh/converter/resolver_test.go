@@ -190,6 +190,23 @@ instance_groups:
       host: 'foo.((system_domain))'
 `},
 			},
+			&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "manifest-with-multi-key-implicit-var",
+					Namespace: "default",
+				},
+				Data: map[string]string{bdc.ManifestSpecName: `---
+name: foo
+instance_groups:
+  - name: component1
+    instances: 1
+    properties:
+      ssl:
+        ca: '((ssl/ca))'
+        cert: '((ssl/cert))'
+        key: '((ssl/key))'
+`},
+			},
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo-deployment.var-system-domain",
@@ -203,6 +220,17 @@ instance_groups:
 					Namespace: "default",
 				},
 				Data: map[string][]byte{"value": []byte("complicated\n'multiline'\nstring")},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-deployment.var-ssl",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"ca":   []byte("the-ca"),
+					"cert": []byte("the-cert"),
+					"key":  []byte("the-key"),
+				},
 			},
 			&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -857,6 +885,29 @@ instance_groups:
 			Expect(len(implicitVars)).To(Equal(1))
 			Expect(implicitVars[0]).To(Equal("foo-deployment.var-system-domain"))
 			Expect(m.InstanceGroups[0].Properties.Properties["host"]).To(Equal("foo.example.com"))
+		})
+
+		It("handles multi-key implicit variables", func() {
+			deployment := &bdc.BOSHDeployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo-deployment",
+				},
+				Spec: bdc.BOSHDeploymentSpec{
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "manifest-with-multi-key-implicit-var",
+					},
+					Ops: []bdc.ResourceReference{},
+				},
+			}
+			m, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+
+			sslProps := m.InstanceGroups[0].Properties.Properties["ssl"].(map[string]interface{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(implicitVars)).To(Equal(3))
+			Expect(sslProps["ca"]).To(Equal("the-ca"))
+			Expect(sslProps["cert"]).To(Equal("the-cert"))
+			Expect(sslProps["key"]).To(Equal("the-key"))
 		})
 	})
 })

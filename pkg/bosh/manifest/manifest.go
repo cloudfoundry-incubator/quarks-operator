@@ -477,9 +477,12 @@ func (m *Manifest) ImplicitVariables() ([]string, error) {
 	// Collect all variables
 	varRegexp := regexp.MustCompile(`\(\((!?[-/\.\w\pL]+)\)\)`)
 	for _, match := range varRegexp.FindAllStringSubmatch(rawManifest, -1) {
-		// Remove subfields from the match, e.g. ca.private_key -> ca
-		fieldRegexp := regexp.MustCompile(`[^\.]+`)
-		main := fieldRegexp.FindString(match[1])
+		main := match[1]
+		if !strings.Contains(main, "/") {
+			// Remove subfields from explicit vars, e.g. ca.private_key -> ca
+			fieldRegexp := regexp.MustCompile(`[^\.]+`)
+			main = fieldRegexp.FindString(match[1])
+		}
 
 		varMap[main] = true
 	}
