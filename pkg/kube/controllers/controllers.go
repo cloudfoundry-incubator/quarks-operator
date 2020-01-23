@@ -64,6 +64,7 @@ var addToSchemes = runtime.SchemeBuilder{
 
 var validatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.OperatorWebhook{
 	boshdeployment.NewBOSHDeploymentValidator,
+	quarkssecret.NewSecretValidator,
 }
 
 var mutatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.OperatorWebhook{
