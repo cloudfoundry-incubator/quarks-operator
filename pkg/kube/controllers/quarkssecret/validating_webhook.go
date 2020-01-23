@@ -21,7 +21,7 @@ import (
 	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
-// NewSecretValidator creates a validating hook for Secret and adds it to the Manager
+// NewSecretValidator creates a validating hook to deny updates to versioned secrets and adds it to the manager.
 func NewSecretValidator(log *zap.SugaredLogger, config *config.Config) *wh.OperatorWebhook {
 	log.Info("Setting up validator for Secret")
 
@@ -72,7 +72,7 @@ func NewValidationHandler(log *zap.SugaredLogger) admission.Handler {
 	}
 }
 
-//Handle validates a Secret
+//Handle denies changes to all versioned secrets as they are immutable
 func (v *ValidationHandler) Handle(_ context.Context, req admission.Request) admission.Response {
 	secret := &corev1.Secret{}
 	ctx := log.NewParentContext(v.log)
@@ -92,12 +92,12 @@ func (v *ValidationHandler) Handle(_ context.Context, req admission.Request) adm
 	// Checking if the secret is a versioned secret
 	ok := vss.IsVersionedSecret(*secret)
 	if ok {
-		log.Infof(ctx, "Denying updation of versioned secret '%s' as it is immutable.", secret.Name)
+		log.Infof(ctx, "Denying update to versioned secret '%s' as it is immutable.", secret.Name)
 		return admission.Response{
 			AdmissionResponse: v1beta1.AdmissionResponse{
 				Allowed: false,
 				Result: &metav1.Status{
-					Message: fmt.Sprintf("Denying updation of versioned secret %s as it is immutable.", secret.GetName()),
+					Message: fmt.Sprintf("Denying update to versioned secret '%s' as it is immutable.", secret.GetName()),
 				},
 			},
 		}

@@ -92,7 +92,9 @@ is set to `true`.
 Quarks StatefulSet requires a k8s webhook to mutate the volumes of a pod.
 Kubernetes will call back to the operator for certain requests and use the
 modified pod manifest, which is returned.
-CF-Operator also uses a validating webhook to check the BOSH deployment custom resource.
+CF-Operator also uses a validating webhook to validate the BOSH deployment spec and the creation
+of reference resources specified in the spec. Secret validation admission webhook restricts the 
+user from updating a versioned secret.
 
 The cf-operator integration tests use `CF_OPERATOR_WEBHOOK_SERVICE_PORT` as a
 base value to calculate the port number to listen to on `CF_OPERATOR_WEBHOOK_SERVICE_HOST`.
