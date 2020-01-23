@@ -900,7 +900,7 @@ instance_groups:
 					Ops: []bdc.ResourceReference{},
 				},
 			}
-			m, implicitVars, err := resolver.WithOpsManifest(context.Background(), deployment, "default")
+			m, implicitVars, err := resolver.WithOpsManifest(deployment, "default")
 
 			sslProps := m.InstanceGroups[0].Properties.Properties["ssl"].(map[string]interface{})
 			Expect(err).ToNot(HaveOccurred())
