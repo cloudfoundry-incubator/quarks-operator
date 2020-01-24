@@ -8,7 +8,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -88,12 +87,6 @@ func (r *ReconcileSecretRotation) Reconcile(request reconcile.Request) (reconcil
 		err = r.client.Status().Update(ctx, qsec)
 		if err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "Error updating QuarksSecret status")
-		}
-		now := metav1.Now()
-		qsec.Spec.Rotation = &now
-		err = r.client.Update(ctx, qsec)
-		if err != nil {
-			return reconcile.Result{}, errors.Wrap(err, "Error updating QuarksSecret spec")
 		}
 	}
 
