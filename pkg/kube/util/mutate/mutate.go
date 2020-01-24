@@ -55,20 +55,20 @@ func StatefulSetMutateFn(sfs *appsv1.StatefulSet) controllerutil.MutateFn {
 }
 
 // QuarksJobMutateFn returns MutateFn which mutates QuarksJob including:
-// - labels, annotations
+// - annotations and trigger strategy if empty
+// - labels
 // - spec.output, spec.Template, spec.updateOnConfigChange
 func QuarksJobMutateFn(qJob *qjv1a1.QuarksJob) controllerutil.MutateFn {
 	updated := qJob.DeepCopy()
 	return func() error {
 		qJob.Labels = updated.Labels
-		qJob.Annotations = updated.Annotations
-		// Does not reset Spec.Trigger.Strategy
-		if len(qJob.Spec.Trigger.Strategy) == 0 {
-			qJob.Spec.Trigger.Strategy = updated.Spec.Trigger.Strategy
-		}
 		// Does not reset Annotations
 		if qJob.ObjectMeta.Annotations == nil {
 			qJob.ObjectMeta.Annotations = updated.ObjectMeta.Annotations
+		}
+		// Does not reset Spec.Trigger.Strategy
+		if len(qJob.Spec.Trigger.Strategy) == 0 {
+			qJob.Spec.Trigger.Strategy = updated.Spec.Trigger.Strategy
 		}
 		qJob.Spec.Output = updated.Spec.Output
 		qJob.Spec.Template = updated.Spec.Template
@@ -80,19 +80,12 @@ func QuarksJobMutateFn(qJob *qjv1a1.QuarksJob) controllerutil.MutateFn {
 // QuarksSecretMutateFn returns MutateFn which mutates QuarksSecret including:
 // - labels, annotations
 // - spec
-// - status.generated
 func QuarksSecretMutateFn(qSec *qsv1a1.QuarksSecret) controllerutil.MutateFn {
 	updated := qSec.DeepCopy()
 	return func() error {
 		qSec.Labels = updated.Labels
 		qSec.Annotations = updated.Annotations
-		// Update only when spec or status has been changed
-		if !reflect.DeepEqual(qSec.Spec, updated.Spec) {
-			qSec.Spec = updated.Spec
-		}
-		if qSec.Status.Generated != updated.Status.Generated {
-			qSec.Status.Generated = updated.Status.Generated
-		}
+		qSec.Spec = updated.Spec
 
 		return nil
 	}
