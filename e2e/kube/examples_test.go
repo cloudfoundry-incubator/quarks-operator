@@ -25,11 +25,11 @@ var _ = Describe("Examples Directory", func() {
 	const pollInterval = 5 * time.Second
 
 	podRestarted := func(podName string, startTime time.Time) {
-		wait.PollImmediate(pollInterval, kubectl.PollTimeout, func() (bool, error) {
+		err := wait.PollImmediate(pollInterval, kubectl.PollTimeout, func() (bool, error) {
 			status, err := kubectl.PodStatus(namespace, podName)
 			return ((err == nil) && status.StartTime.After(startTime)), err
 		})
-		podWait("pod/" + podName)
+		Expect(err).ToNot(HaveOccurred())
 	}
 
 	JustBeforeEach(func() {
@@ -220,15 +220,12 @@ var _ = Describe("Examples Directory", func() {
 		})
 	})
 
-	Context("bosh-deployment with a implicit variable example", func() {
+	Context("bosh-deployment with an implicit variable example", func() {
 		BeforeEach(func() {
 			example = "bosh-deployment/boshdeployment-with-implicit-variable.yaml"
 		})
 
 		It("updates deployment when implicit variable changes", func() {
-
-			Skip("Skipping this test as this is related to secret rotation and secret rotation is not yet supported in `cf-operator`.")
-
 			By("Checking for pods")
 			podWait("pod/nats-deployment-nats-0")
 			status, err := kubectl.PodStatus(namespace, "nats-deployment-nats-0")
@@ -240,7 +237,29 @@ var _ = Describe("Examples Directory", func() {
 			err = cmdHelper.Apply(namespace, implicitVariablePath)
 			Expect(err).ToNot(HaveOccurred())
 
-			By("Checking for new pod")
+			By("Checking for pod restart")
+			podRestarted("nats-deployment-nats-0", startTime.Time)
+		})
+	})
+
+	Context("bosh-deployment with an implicit variable used by an explicit variable example", func() {
+		BeforeEach(func() {
+			example = "bosh-deployment/boshdeployment-with-implicit-in-explicit-variable.yaml"
+		})
+
+		It("updates quarks secret when implicit variable changes, then deployment updates", func() {
+			By("Checking for pods")
+			podWait("pod/nats-deployment-nats-0")
+			status, err := kubectl.PodStatus(namespace, "nats-deployment-nats-0")
+			Expect(err).ToNot(HaveOccurred(), "error getting pod status")
+			startTime := status.StartTime
+
+			By("Updating implicit variable")
+			implicitVariablePath := examplesDir + "bosh-deployment/implicit-variable-updated.yaml"
+			err = cmdHelper.Apply(namespace, implicitVariablePath)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Checking for pod restart")
 			podRestarted("nats-deployment-nats-0", startTime.Time)
 		})
 	})
