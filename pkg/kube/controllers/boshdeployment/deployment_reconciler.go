@@ -412,18 +412,29 @@ func (r *ReconcileBOSHDeployment) listPodsFromSelector(namespace string, selecto
 // createQuarksSecrets create variables quarksSecrets
 func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manifestSecret *corev1.Secret, variables []qsv1a1.QuarksSecret) error {
 	for _, variable := range variables {
-		log.Debugf(ctx, "Creating QuarksSecrets for explicit variable '%s'", variable.Name)
+		log.Debugf(ctx, "CreateOrUpdate QuarksSecrets for explicit variable '%s'", variable.Name)
+
 		// Set the "manifest with ops" secret as the owner for the QuarksSecrets
 		// The "manifest with ops" secret is owned by the actual BOSHDeployment, so everything
 		// should be garbage collected properly.
 		if err := r.setReference(manifestSecret, &variable, r.scheme); err != nil {
-			err = log.WithEvent(manifestSecret, "OwnershipError").Errorf(ctx, "Failed to set ownership for %s: %v", variable.Name, err)
+			err = log.WithEvent(manifestSecret, "OwnershipError").Errorf(ctx, "failed to set ownership for %s: %v", variable.Name, err)
 			return err
 		}
 
 		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &variable, mutate.QuarksSecretMutateFn(&variable))
 		if err != nil {
 			return errors.Wrapf(err, "creating or updating QuarksSecret '%s'", variable.Name)
+		}
+
+		// Update does not update status. We only trigger quarks secret
+		// reconciler again if variable was updated by previous CreateOrUpdate
+		if op == controllerutil.OperationResultUpdated {
+			variable.Status.Generated = false
+			if err := r.client.Status().Update(ctx, &variable); err != nil {
+				log.WithEvent(&variable, "UpdateError").Errorf(ctx, "failed to update generated status on quarks secret '%s' (%v): %s", variable.Name, variable.ResourceVersion, err)
+				return err
+			}
 		}
 
 		log.Debugf(ctx, "QuarksSecret '%s' has been %s", variable.Name, op)

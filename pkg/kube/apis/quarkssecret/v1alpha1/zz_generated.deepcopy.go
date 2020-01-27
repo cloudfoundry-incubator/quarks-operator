@@ -112,10 +112,6 @@ func (in *QuarksSecretList) DeepCopyObject() runtime.Object {
 func (in *QuarksSecretSpec) DeepCopyInto(out *QuarksSecretSpec) {
 	*out = *in
 	in.Request.DeepCopyInto(&out.Request)
-	if in.Rotation != nil {
-		in, out := &in.Rotation, &out.Rotation
-		*out = (*in).DeepCopy()
-	}
 	return
 }
 

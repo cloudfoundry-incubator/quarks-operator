@@ -90,8 +90,6 @@ type QuarksSecretSpec struct {
 	Type       SecretType `json:"type"`
 	Request    Request    `json:"request"`
 	SecretName string     `json:"secretName"`
-	// Rotation is used to trigger a new version of the generated secret
-	Rotation *metav1.Time `json:"rotation,omitempty"`
 }
 
 // QuarksSecretStatus defines the observed state of QuarksSecret
