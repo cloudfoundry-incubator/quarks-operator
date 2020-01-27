@@ -115,12 +115,14 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		}
 		dmQJob = &qjv1a1.QuarksJob{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("dm-%s", manifest.Name),
+				Name:      fmt.Sprintf("dm-%s", manifest.Name),
+				Namespace: "default",
 			},
 		}
 		igQJob = &qjv1a1.QuarksJob{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("ig-%s", manifest.Name),
+				Name:      fmt.Sprintf("ig-%s", manifest.Name),
+				Namespace: "default",
 			},
 		}
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
@@ -369,9 +371,9 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			Context("when the manifest contains variables", func() {
 				BeforeEach(func() {
 					kubeConverter.VariablesReturns([]qsv1a1.QuarksSecret{
-						{ObjectMeta: metav1.ObjectMeta{Name: "fake-variable"}},
-						{ObjectMeta: metav1.ObjectMeta{Name: "other-variable"}},
-						{ObjectMeta: metav1.ObjectMeta{Name: "last-variable"}},
+						{ObjectMeta: metav1.ObjectMeta{Name: "fake-variable", Namespace: "default"}},
+						{ObjectMeta: metav1.ObjectMeta{Name: "other-variable", Namespace: "default"}},
+						{ObjectMeta: metav1.ObjectMeta{Name: "last-variable", Namespace: "default"}},
 					}, nil)
 					client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 						switch object := object.(type) {
