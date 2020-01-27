@@ -3,7 +3,6 @@ package quarkssecret
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -59,9 +58,8 @@ func AddQuarksSecret(ctx context.Context, config *config.Config, mgr manager.Man
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			o := e.ObjectOld.(*qsv1a1.QuarksSecret)
 			n := e.ObjectNew.(*qsv1a1.QuarksSecret)
-			if !reflect.DeepEqual(o.Spec, n.Spec) || !n.Status.Generated {
+			if !n.Status.Generated {
 				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
 					ctx, e.MetaNew, "qsv1a1.QuarksSecret",
 					fmt.Sprintf("Update predicate passed for '%s'", e.MetaNew.GetName()),
