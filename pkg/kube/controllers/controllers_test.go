@@ -176,7 +176,7 @@ var _ = Describe("Controllers", func() {
 						return nil
 					case *admissionregistrationv1beta1.ValidatingWebhookConfiguration:
 						Expect(config.Name).To(Equal("cf-operator-hook-" + config.Namespace))
-						Expect(len(config.Webhooks)).To(Equal(1))
+						Expect(len(config.Webhooks)).To(Equal(2))
 
 						wh := config.Webhooks[0]
 						Expect(wh.Name).To(Equal("validate-boshdeployment.quarks.cloudfoundry.org"))
