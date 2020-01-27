@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"k8s.io/api/admission/v1beta1"
-	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
+	admissionregistration "k8s.io/api/admissionregistration/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -87,18 +87,18 @@ func NewStatefulSetRolloutMutator(log *zap.SugaredLogger, config *config.Config)
 
 	mutator := NewMutator(log, config)
 
-	globalScopeType := admissionregistrationv1beta1.ScopeType("*")
+	globalScopeType := admissionregistration.ScopeType("*")
 	return &wh.OperatorWebhook{
-		FailurePolicy: admissionregistrationv1beta1.Fail,
-		Rules: []admissionregistrationv1beta1.RuleWithOperations{
+		FailurePolicy: admissionregistration.Fail,
+		Rules: []admissionregistration.RuleWithOperations{
 			{
-				Rule: admissionregistrationv1beta1.Rule{
+				Rule: admissionregistration.Rule{
 					APIGroups:   []string{"apps"},
 					APIVersions: []string{"v1"},
 					Resources:   []string{"statefulsets"},
 					Scope:       &globalScopeType,
 				},
-				Operations: []admissionregistrationv1beta1.OperationType{
+				Operations: []admissionregistration.OperationType{
 					"CREATE",
 					"UPDATE",
 				},
