@@ -140,7 +140,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("handles an error when getting certificateSigningRequest", func() {
+		It("handles an error when getting certificatesigningrequest", func() {
 			client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 				switch object.(type) {
 				case *certv1.CertificateSigningRequest:
@@ -151,10 +151,10 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 
 			_, err := reconciler.Reconcile(request)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Error reading certificateSigningRequest"))
+			Expect(err.Error()).To(ContainSubstring("Error reading certificatesigningrequest"))
 		})
 
-		It("handles an error when getting pending certificateSigningRequest", func() {
+		It("handles an error when getting pending certificatesigningrequest", func() {
 			certClient.PrependReactor("get", "certificatesigningrequests", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 				if action, ok := action.(ktesting.GetActionImpl); ok {
 					Expect(action.Name).To(Equal(csr.Name))
@@ -165,10 +165,10 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 
 			_, err := reconciler.Reconcile(request)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("could not get certificateSigningRequest"))
+			Expect(err.Error()).To(ContainSubstring("could not get certificatesigningrequest"))
 		})
 
-		It("skips if pending certificateSigningRequest has been approved", func() {
+		It("skips if pending certificatesigningrequest has been approved", func() {
 			certClient.PrependReactor("get", "certificatesigningrequests", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 				if action, ok := action.(ktesting.GetActionImpl); ok {
 					Expect(action.Name).To(Equal(csr.Name))
@@ -186,14 +186,14 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("handles an error when updating approval of certificateSigningRequest", func() {
+		It("handles an error when updating approval of certificatesigningrequest", func() {
 			certClient.PrependReactor("update", "certificatesigningrequests", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 				return true, &certv1.CertificateSigningRequest{}, apierrors.NewBadRequest("fake-error")
 			})
 
 			_, err := reconciler.Reconcile(request)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("could not update approval of certificateSigningRequest"))
+			Expect(err.Error()).To(ContainSubstring("could not update approval of certificatesigningrequest"))
 		})
 	})
 
