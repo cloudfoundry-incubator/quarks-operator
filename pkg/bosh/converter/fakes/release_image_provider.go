@@ -4,7 +4,7 @@ package fakes
 import (
 	"sync"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
 type FakeReleaseImageProvider struct {
@@ -114,4 +114,4 @@ func (fake *FakeReleaseImageProvider) recordInvocation(key string, args []interf
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ converter.ReleaseImageProvider = new(FakeReleaseImageProvider)
+var _ manifest.ReleaseImageProvider = new(FakeReleaseImageProvider)

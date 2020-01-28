@@ -41,7 +41,7 @@ func (r *DesiredManifest) DesiredManifest(ctx context.Context, boshDeploymentNam
 
 	manifest, err := bdm.LoadYAML(manifestData)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to unmarshal manifest from secret %s for boshdeployment %s", secretName, boshDeploymentName)
+		return nil, errors.Wrapf(err, "failed to unmarshal manifest from secret %s for boshdeployment %s", secretName, boshDeploymentName)
 	}
 
 	return manifest, nil

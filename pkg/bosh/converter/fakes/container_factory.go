@@ -4,7 +4,7 @@ package fakes
 import (
 	"sync"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	v1 "k8s.io/api/core/v1"
@@ -223,4 +223,4 @@ func (fake *FakeContainerFactory) recordInvocation(key string, args []interface{
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ converter.ContainerFactory = new(FakeContainerFactory)
+var _ bpmconverter.ContainerFactory = new(FakeContainerFactory)

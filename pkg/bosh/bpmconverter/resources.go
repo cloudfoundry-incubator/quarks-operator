@@ -1,4 +1,4 @@
-package converter
+package bpmconverter
 
 import (
 	"fmt"
@@ -6,44 +6,76 @@ import (
 
 	"github.com/pkg/errors"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
-	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
-	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
-
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1b1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 var (
 	admGroupID = int64(1000)
 )
 
-// ReleaseImageProvider interface to provide the docker release image for a BOSH job
-// This lookup is currently implemented by the manifest model.
-type ReleaseImageProvider interface {
-	// GetReleaseImage returns the release image for an job in an instance group
-	GetReleaseImage(instanceGroupName, jobName string) (string, error)
+// BPMConverter converts BPM information to kubernetes resources
+type BPMConverter struct {
+	namespace               string
+	volumeFactory           VolumeFactory
+	newContainerFactoryFunc NewContainerFactoryFunc
 }
 
-// BPMResources contains BPM related k8s resources, which were converted from BOSH objects
-type BPMResources struct {
+// ContainerFactory builds Kubernetes containers from BOSH jobs.
+type ContainerFactory interface {
+	JobsToInitContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks disk.BPMResourceDisks, requiredService *string) ([]corev1.Container, error)
+	JobsToContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks disk.BPMResourceDisks) ([]corev1.Container, error)
+}
+
+// NewContainerFactoryFunc returns ContainerFactory from single BOSH instance group.
+type NewContainerFactoryFunc func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) ContainerFactory
+
+// VolumeFactory builds Kubernetes containers from BOSH jobs.
+type VolumeFactory interface {
+	GenerateDefaultDisks(manifestName string, instanceGroupName string, igResolvedSecretVersion string, namespace string) disk.BPMResourceDisks
+	GenerateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (disk.BPMResourceDisks, error)
+}
+
+// DomainNameService is a limited interface for the funcs used in the bpm converter
+type DomainNameService interface {
+	// HeadlessServiceName constructs the headless service name for the instance group.
+	HeadlessServiceName(instanceGroupName string) string
+
+	// DNSSetting get the DNS settings for POD.
+	DNSSetting(namespace string) (corev1.DNSPolicy, *corev1.PodDNSConfig, error)
+}
+
+// NewConverter returns a new converter
+func NewConverter(namespace string, volumeFactory VolumeFactory, newContainerFactoryFunc NewContainerFactoryFunc) *BPMConverter {
+	return &BPMConverter{
+		namespace:               namespace,
+		volumeFactory:           volumeFactory,
+		newContainerFactoryFunc: newContainerFactoryFunc,
+	}
+}
+
+// Resources contains BPM related k8s resources, which were converted from BOSH objects
+type Resources struct {
 	InstanceGroups         []qstsv1a1.QuarksStatefulSet
 	Errands                []qjv1a1.QuarksJob
 	Services               []corev1.Service
 	PersistentVolumeClaims []corev1.PersistentVolumeClaim
 }
 
-// BPMResources uses BOSH Process Manager information to create k8s container specs from single BOSH instance group.
+// Resources uses BOSH Process Manager information to create k8s container specs from single BOSH instance group.
 // It returns quarks stateful sets, services and quarks jobs.
-func (kc *KubeConverter) BPMResources(manifestName string, dns manifest.DomainNameService, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*BPMResources, error) {
+func (kc *BPMConverter) Resources(manifestName string, dns DomainNameService, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*Resources, error) {
 	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(manifestName, instanceGroup.Name, qStsVersion)
 
 	defaultDisks := kc.volumeFactory.GenerateDefaultDisks(manifestName, instanceGroup.Name, igResolvedSecretVersion, kc.namespace)
@@ -54,7 +86,7 @@ func (kc *KubeConverter) BPMResources(manifestName string, dns manifest.DomainNa
 
 	allDisks := append(defaultDisks, bpmDisks...)
 
-	res := &BPMResources{
+	res := &Resources{
 		PersistentVolumeClaims: allDisks.PVCs(),
 	}
 
@@ -93,10 +125,10 @@ func (kc *KubeConverter) BPMResources(manifestName string, dns manifest.DomainNa
 }
 
 // serviceToQuarksStatefulSet will generate an QuarksStatefulSet
-func (kc *KubeConverter) serviceToQuarksStatefulSet(
+func (kc *BPMConverter) serviceToQuarksStatefulSet(
 	cfac ContainerFactory,
 	manifestName string,
-	dns manifest.DomainNameService,
+	dns DomainNameService,
 	instanceGroup *bdm.InstanceGroup,
 	defaultDisks disk.BPMResourceDisks,
 	bpmDisks disk.BPMResourceDisks,
@@ -196,7 +228,7 @@ func (kc *KubeConverter) serviceToQuarksStatefulSet(
 }
 
 // serviceToKubeServices will generate Services which expose ports for InstanceGroup's jobs
-func (kc *KubeConverter) serviceToKubeServices(manifestName string, dns manifest.DomainNameService, instanceGroup *bdm.InstanceGroup, qSts *qstsv1a1.QuarksStatefulSet) []corev1.Service {
+func (kc *BPMConverter) serviceToKubeServices(manifestName string, dns DomainNameService, instanceGroup *bdm.InstanceGroup, qSts *qstsv1a1.QuarksStatefulSet) []corev1.Service {
 	var services []corev1.Service
 	// Collect ports to be exposed for each job
 	ports := instanceGroup.ServicePorts()
@@ -276,10 +308,10 @@ func (kc *KubeConverter) serviceToKubeServices(manifestName string, dns manifest
 }
 
 // errandToQuarksJob will generate an QuarksJob
-func (kc *KubeConverter) errandToQuarksJob(
+func (kc *BPMConverter) errandToQuarksJob(
 	cfac ContainerFactory,
 	manifestName string,
-	dns manifest.DomainNameService,
+	dns DomainNameService,
 	instanceGroup *bdm.InstanceGroup,
 	defaultDisks disk.BPMResourceDisks,
 	bpmDisks disk.BPMResourceDisks,

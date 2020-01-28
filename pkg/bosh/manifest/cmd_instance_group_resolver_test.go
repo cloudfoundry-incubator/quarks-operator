@@ -12,6 +12,7 @@ import (
 	bpmConfig "code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
 
@@ -71,8 +72,9 @@ var _ = Describe("InstanceGroupResolver", func() {
 		var fs = afero.NewMemMapFs()
 
 		JustBeforeEach(func() {
-			var err error
-			igr, err = NewInstanceGroupResolver(fs, assetPath, *m, ig)
+			dns, err := boshdns.NewDNS(*m)
+			Expect(err).ToNot(HaveOccurred())
+			igr, err = NewInstanceGroupResolver(fs, assetPath, *m, ig, dns)
 			Expect(err).ToNot(HaveOccurred())
 		})
 

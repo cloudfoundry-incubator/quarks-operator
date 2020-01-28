@@ -26,6 +26,13 @@ const (
 	DesiredManifestKeyName = "manifest.yaml"
 )
 
+// ReleaseImageProvider interface to provide the docker release image for a BOSH job
+// This lookup is currently implemented by the manifest model.
+type ReleaseImageProvider interface {
+	// GetReleaseImage returns the release image for an job in an instance group
+	GetReleaseImage(instanceGroupName, jobName string) (string, error)
+}
+
 // Feature from BOSH deployment manifest
 type Feature struct {
 	ConvergeVariables    bool  `json:"converge_variables"`
@@ -49,6 +56,9 @@ const (
 	IGTypeErrand     InstanceGroupType = "errand"
 	IGTypeAutoErrand InstanceGroupType = "auto-errand"
 	IGTypeDefault    InstanceGroupType = ""
+
+	// BoshDNSAddOnName name of bosh dns addon.
+	BoshDNSAddOnName = "bosh-dns-aliases"
 )
 
 // VariableOptions from BOSH deployment manifest
@@ -144,7 +154,6 @@ type Manifest struct {
 	Variables      []Variable             `json:"variables,omitempty"`
 	Update         *Update                `json:"update,omitempty"`
 	AddOnsApplied  bool                   `json:"addons_applied,omitempty"`
-	DNS            DomainNameService      `json:"-"`
 }
 
 // duplicateYamlValue is a struct used for size compression
@@ -166,58 +175,7 @@ func LoadYAML(data []byte) (*Manifest, error) {
 		return nil, errors.Wrapf(err, "failed to unmarshal BOSH deployment manifest %s", string(data))
 	}
 
-	if err := m.loadDNS(); err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal BOSH deployment manifest %s", string(data))
-	}
-
 	return m, nil
-}
-
-// DNS returns the DNS service
-func (m *Manifest) loadDNS() error {
-	for _, addon := range m.AddOns {
-		if addon.Name == BoshDNSAddOnName {
-			var err error
-			dns, err := NewBoshDomainNameService(addon, m.Name, m.InstanceGroups)
-			if err != nil {
-				return errors.Wrapf(err, "error loading BOSH DNS configuration")
-			}
-			m.DNS = dns
-			return nil
-		}
-	}
-
-	m.DNS = NewSimpleDomainNameService(m.Name)
-	return nil
-}
-
-// calculateRequiredServices calculates the required services using the update.serial property
-func (m *Manifest) calculateRequiredServices() {
-	var requiredService *string
-	var requiredSerialService *string
-
-	for _, ig := range m.InstanceGroups {
-		serial := true
-		if ig.Update != nil && ig.Update.Serial != nil {
-			serial = *ig.Update.Serial
-		}
-
-		if serial {
-			ig.Properties.Quarks.RequiredService = requiredService
-		} else {
-			ig.Properties.Quarks.RequiredService = requiredSerialService
-		}
-
-		ports := ig.ServicePorts()
-		if len(ports) > 0 {
-			serviceName := m.DNS.HeadlessServiceName(ig.Name)
-			requiredService = &serviceName
-		}
-
-		if serial {
-			requiredSerialService = requiredService
-		}
-	}
 }
 
 // Marshal serializes a BOSH manifest into yaml
@@ -544,13 +502,8 @@ func (m *Manifest) ApplyAddons() error {
 	return nil
 }
 
-//ApplyUpdateBlock interprets and propagates information of the 'update'-blocks
-func (m *Manifest) ApplyUpdateBlock() {
-	m.propagateGlobalUpdateBlockToIGs()
-	m.calculateRequiredServices()
-}
-
-func (m *Manifest) propagateGlobalUpdateBlockToIGs() {
+// PropagateGlobalUpdateBlockToIGs copies the update block to all instance groups
+func (m *Manifest) PropagateGlobalUpdateBlockToIGs() {
 	for _, ig := range m.InstanceGroups {
 		if ig.Update == nil {
 			ig.Update = m.Update

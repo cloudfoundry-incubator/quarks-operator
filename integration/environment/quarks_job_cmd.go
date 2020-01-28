@@ -51,6 +51,8 @@ func quarksJobTag() string {
 	return version
 }
 
+// SetupQjobAccount creates the service account for the quarks job
+// for testing this is cluster-admin
 func (e *Environment) SetupQjobAccount() error {
 	// Bind the persist-output service account to the cluster-admin ClusterRole. Notice that the
 	// RoleBinding is namespaced as opposed to ClusterRoleBinding which would give the service account

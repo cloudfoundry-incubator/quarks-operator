@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
@@ -200,4 +200,4 @@ func (fake *FakeVolumeFactory) recordInvocation(key string, args []interface{}) 
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ converter.VolumeFactory = new(FakeVolumeFactory)
+var _ bpmconverter.VolumeFactory = new(FakeVolumeFactory)

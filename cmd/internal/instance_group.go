@@ -14,6 +14,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
 
@@ -80,10 +81,15 @@ Also calculates and prints the BPM configurations for all BOSH jobs of that inst
 
 		m, err := manifest.LoadYAML(boshManifestBytes)
 		if err != nil {
-			return errors.Wrapf(err, "%s Loading bosh manifest file failed. Please check the file contents and try again.", igFailedMessage)
+			return errors.Wrapf(err, "%s Loading BOSH manifest file failed. Please check the file contents and try again.", igFailedMessage)
 		}
 
-		igr, err := manifest.NewInstanceGroupResolver(afero.NewOsFs(), baseDir, *m, instanceGroupName)
+		dns, err := boshdns.NewDNS(*m)
+		if err != nil {
+			return errors.Wrapf(err, "%s Loading DNS for BOSH manifest failed.", igFailedMessage)
+		}
+
+		igr, err := manifest.NewInstanceGroupResolver(afero.NewOsFs(), baseDir, *m, instanceGroupName, dns)
 		if err != nil {
 			return errors.Wrap(err, igFailedMessage)
 		}
