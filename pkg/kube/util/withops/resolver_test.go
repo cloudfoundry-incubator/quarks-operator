@@ -16,6 +16,7 @@ import (
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/withops"
 )
 
@@ -331,7 +332,10 @@ instance_groups:
 		newInterpolatorFunc := func() withops.Interpolator {
 			return interpolator
 		}
-		resolver = withops.NewResolver(client, newInterpolatorFunc)
+		newDNSFunc := func(m bdm.Manifest) (withops.DomainNameService, error) {
+			return boshdns.NewSimpleDomainNameService(""), nil
+		}
+		resolver = withops.NewResolver(client, newInterpolatorFunc, newDNSFunc)
 	})
 
 	Describe("ResolveCRD", func() {
@@ -356,7 +360,6 @@ instance_groups:
 					},
 				},
 				AddOnsApplied: true,
-				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
 			manifest, implicitVars, err := resolver.Manifest(deployment, "default")
@@ -389,7 +392,6 @@ instance_groups:
 					},
 				},
 				AddOnsApplied: true,
-				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
 			manifest, implicitVars, err := resolver.Manifest(deployment, "default")
@@ -418,7 +420,6 @@ instance_groups:
 					},
 				},
 				AddOnsApplied: true,
-				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
 			manifest, implicitVars, err := resolver.Manifest(deployment, "default")
@@ -465,7 +466,6 @@ instance_groups:
 					},
 				},
 				AddOnsApplied: true,
-				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
 			manifest, implicitVars, err := resolver.Manifest(deployment, "default")
@@ -522,7 +522,6 @@ instance_groups:
 					},
 				},
 				AddOnsApplied: true,
-				DNS:           bdm.NewSimpleDomainNameService(""),
 			}
 
 			manifest, implicitVars, err := resolver.Manifest(deployment, "default")
@@ -825,6 +824,17 @@ instance_groups:
 		})
 
 		It("loads dns from addons", func() {
+			var dns withops.DomainNameService
+			newInterpolatorFunc := func() withops.Interpolator {
+				return interpolator
+			}
+			newDNSFunc := func(m bdm.Manifest) (withops.DomainNameService, error) {
+				var err error
+				dns, err = boshdns.NewDNS(m)
+				return dns, err
+			}
+			resolver = withops.NewResolver(client, newInterpolatorFunc, newDNSFunc)
+
 			deployment := &bdc.BOSHDeployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "scf",
@@ -837,10 +847,9 @@ instance_groups:
 					Ops: []bdc.ResourceReference{},
 				},
 			}
-			m, _, err := resolver.Manifest(deployment, "default")
-
+			_, _, err := resolver.Manifest(deployment, "default")
 			Expect(err).ToNot(HaveOccurred())
-			dns := m.DNS
+
 			Expect(dns).NotTo(BeNil())
 			Expect(dns.HeadlessServiceName("singleton-uaa")).To(Equal("manifest-with-dns-singleton-uaa"))
 		})

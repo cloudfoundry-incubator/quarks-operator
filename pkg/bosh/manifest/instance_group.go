@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
@@ -109,7 +110,7 @@ func (ig *InstanceGroup) QuarksStatefulSetName(deploymentName string) string {
 // IndexedServiceName constructs an indexed service name. It's used to construct the service
 // names other than the headless service.
 func (ig *InstanceGroup) IndexedServiceName(deploymentName string, index int) string {
-	sn := serviceName(ig.Name, deploymentName, 53)
+	sn := util.ServiceName(ig.Name, deploymentName, 53)
 	return fmt.Sprintf("%s-%d", sn, index)
 }
 

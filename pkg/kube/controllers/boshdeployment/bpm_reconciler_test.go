@@ -22,12 +22,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	cfcfg "code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -63,7 +64,7 @@ var _ = Describe("ReconcileBPM", func() {
 		resolver = fakes.FakeDesiredManifest{}
 		kubeConverter = fakes.FakeBPMConverter{}
 
-		kubeConverter.BPMResourcesReturns(&converter.BPMResources{}, nil)
+		kubeConverter.ResourcesReturns(&bpmconverter.Resources{}, nil)
 		size := 1024
 
 		manifest = &bdm.Manifest{
@@ -113,7 +114,6 @@ var _ = Describe("ReconcileBPM", func() {
 					Type: "password",
 				},
 			},
-			DNS: bdm.NewSimpleDomainNameService("fake-manifest"),
 		}
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
 		logs, log = helper.NewTestLogger()
@@ -236,6 +236,9 @@ variables: []
 		resolver.DesiredManifestReturns(manifest, nil)
 		reconciler = cfd.NewBPMReconciler(ctx, config, manager, &resolver,
 			controllerutil.SetControllerReference, &kubeConverter,
+			func(m bdm.Manifest) (boshdns.DomainNameService, error) {
+				return boshdns.NewSimpleDomainNameService("fake-manifest"), nil
+			},
 		)
 	})
 
@@ -258,7 +261,7 @@ variables: []
 			})
 
 			It("handles an error when applying BPM info", func() {
-				kubeConverter.BPMResourcesReturns(&converter.BPMResources{}, errors.New("fake-error"))
+				kubeConverter.ResourcesReturns(&bpmconverter.Resources{}, errors.New("fake-error"))
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object := object.(type) {
 					case *corev1.Secret:
@@ -276,7 +279,7 @@ variables: []
 			})
 
 			It("handles an error when deploying instance groups", func() {
-				kubeConverter.BPMResourcesReturns(&converter.BPMResources{
+				kubeConverter.ResourcesReturns(&bpmconverter.Resources{
 					Services: []corev1.Service{
 						{
 							ObjectMeta: metav1.ObjectMeta{

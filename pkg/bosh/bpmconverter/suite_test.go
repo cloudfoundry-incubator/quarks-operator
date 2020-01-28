@@ -1,4 +1,4 @@
-package desiredmanifest_test
+package bpmconverter_test
 
 import (
 	"testing"
@@ -9,5 +9,5 @@ import (
 
 func TestManifest(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "DesiredManifest Suite")
+	RunSpecs(t, "BPM Converter Suite")
 }

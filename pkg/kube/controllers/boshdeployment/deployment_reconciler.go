@@ -22,6 +22,7 @@ import (
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -36,10 +37,12 @@ type JobFactory interface {
 	InstanceGroupManifestJob(manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error)
 }
 
+// VariablesConverter converts BOSH variables into QuarksSecrets
 type VariablesConverter interface {
 	Variables(manifestName string, variables []bdm.Variable) ([]qsv1a1.QuarksSecret, error)
 }
 
+// WithOps interpolates BOSH manifests and operations files to create the WithOps manifest
 type WithOps interface {
 	Manifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
 }
@@ -383,7 +386,7 @@ func (r *ReconcileBOSHDeployment) getServiceRecords(namespace string, svcs []cor
 
 			svcRecords[providerName] = serviceRecord{
 				selector:  svc.Spec.Selector,
-				dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, bdm.GetClusterDomain()),
+				dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, boshdns.GetClusterDomain()),
 			}
 		}
 	}

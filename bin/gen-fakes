@@ -14,7 +14,7 @@ counterfeiter -o pkg/kube/controllers/fakes/job_factory.go pkg/kube/controllers/
 counterfeiter -o pkg/kube/controllers/fakes/variables_converter.go pkg/kube/controllers/boshdeployment VariablesConverter
 counterfeiter -o pkg/kube/controllers/fakes/withops.go pkg/kube/controllers/boshdeployment WithOps
 
-counterfeiter -o pkg/bosh/converter/fakes/container_factory.go pkg/bosh/converter/ ContainerFactory
-counterfeiter -o pkg/bosh/converter/fakes/release_image_provider.go pkg/bosh/converter/ ReleaseImageProvider
-counterfeiter -o pkg/bosh/converter/fakes/volume_factory.go pkg/bosh/converter/ VolumeFactory
+counterfeiter -o pkg/bosh/converter/fakes/container_factory.go pkg/bosh/bpmconverter/ ContainerFactory
+counterfeiter -o pkg/bosh/converter/fakes/release_image_provider.go pkg/bosh/manifest/ ReleaseImageProvider
+counterfeiter -o pkg/bosh/converter/fakes/volume_factory.go pkg/bosh/bpmconverter/ VolumeFactory
 counterfeiter -o pkg/credsgen/fakes/generator.go pkg/credsgen/ Generator

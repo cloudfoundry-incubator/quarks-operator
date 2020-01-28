@@ -17,6 +17,12 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 )
 
+// DomainNameService abstraction.
+type DomainNameService interface {
+	// HeadlessServiceName constructs the headless service name for the instance group.
+	HeadlessServiceName(instanceGroupName string) string
+}
+
 // InstanceGroupResolver gathers data for jobs in the manifest, it handles links and returns a deployment manifest
 // that only has information pertinent to an instance group.
 type InstanceGroupResolver struct {
@@ -26,10 +32,11 @@ type InstanceGroupResolver struct {
 	jobReleaseSpecs  map[string]map[string]JobSpec
 	jobProviderLinks jobProviderLinks
 	fs               afero.Fs
+	dns              DomainNameService
 }
 
 // NewInstanceGroupResolver returns a data gatherer with logging for a given input manifest and instance group
-func NewInstanceGroupResolver(fs afero.Fs, basedir string, manifest Manifest, instanceGroupName string) (*InstanceGroupResolver, error) {
+func NewInstanceGroupResolver(fs afero.Fs, basedir string, manifest Manifest, instanceGroupName string, dns DomainNameService) (*InstanceGroupResolver, error) {
 	ig, found := manifest.InstanceGroups.InstanceGroupByName(instanceGroupName)
 	if !found {
 		return nil, errors.Errorf("instance group '%s' not found", instanceGroupName)
@@ -42,6 +49,7 @@ func NewInstanceGroupResolver(fs afero.Fs, basedir string, manifest Manifest, in
 		jobReleaseSpecs:  map[string]map[string]JobSpec{},
 		jobProviderLinks: newJobProviderLinks(),
 		fs:               fs,
+		dns:              dns,
 	}, nil
 }
 
@@ -243,7 +251,7 @@ func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
 // collectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
 func (igr *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks(initialRollout bool) error {
 	for _, instanceGroup := range igr.manifest.InstanceGroups {
-		serviceName := igr.manifest.DNS.HeadlessServiceName(instanceGroup.Name)
+		serviceName := igr.dns.HeadlessServiceName(instanceGroup.Name)
 
 		for jobIdx, job := range instanceGroup.Jobs {
 			// make sure a map entry exists for the current job release

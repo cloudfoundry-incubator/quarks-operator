@@ -17,8 +17,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/withops"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -178,7 +180,11 @@ func (v *Validator) Handle(_ context.Context, req admission.Request) admission.R
 	}
 
 	log.Infof(ctx, "Verifying dependencies for deployment '%s'", boshDeployment.Name)
-	withops := withops.NewResolver(v.client, func() withops.Interpolator { return withops.NewInterpolator() })
+	withops := withops.NewResolver(
+		v.client,
+		func() withops.Interpolator { return withops.NewInterpolator() },
+		func(m bdm.Manifest) (withops.DomainNameService, error) { return boshdns.NewDNS(m) },
+	)
 	resourceExist, msg := v.OpsResourcesExist(ctx, boshDeployment.Spec.Ops, boshDeployment.Namespace)
 	if !resourceExist {
 		return admission.Response{

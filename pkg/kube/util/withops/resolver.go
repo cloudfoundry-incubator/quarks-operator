@@ -20,21 +20,32 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
-// Resolver resolves references from bdpl CRD to a BOSH manifest
+// DomainNameService consumer interface
+type DomainNameService interface {
+	// HeadlessServiceName constructs the headless service name for the instance group.
+	HeadlessServiceName(instanceGroupName string) string
+}
+
+// Resolver resolves references from bdpl CR to a BOSH manifest
 type Resolver struct {
 	client               client.Client
 	versionedSecretStore versionedsecretstore.VersionedSecretStore
 	newInterpolatorFunc  NewInterpolatorFunc
+	newDNSFunc           NewDNSFunc
 }
 
 // NewInterpolatorFunc returns a fresh Interpolator
 type NewInterpolatorFunc func() Interpolator
 
+// NewDNSFunc returns a dns client for the manifest
+type NewDNSFunc func(m bdm.Manifest) (DomainNameService, error)
+
 // NewResolver constructs a resolver
-func NewResolver(client client.Client, f NewInterpolatorFunc) *Resolver {
+func NewResolver(client client.Client, f NewInterpolatorFunc, dns NewDNSFunc) *Resolver {
 	return &Resolver{
 		client:               client,
 		newInterpolatorFunc:  f,
+		newDNSFunc:           dns,
 		versionedSecretStore: versionedsecretstore.NewVersionedSecretStore(client),
 	}
 }
@@ -120,7 +131,13 @@ func (r *Resolver) Manifest(instance *bdv1.BOSHDeployment, namespace string) (*b
 	if err != nil {
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}
-	manifest.ApplyUpdateBlock()
+
+	dns, err := r.newDNSFunc(*manifest)
+	if err != nil {
+		return nil, nil, err
+	}
+	manifest.ApplyUpdateBlock(dns)
+
 	return manifest, varSecrets, err
 }
 
@@ -205,7 +222,11 @@ func (r *Resolver) ManifestDetailed(instance *bdv1.BOSHDeployment, namespace str
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}
 
-	manifest.ApplyUpdateBlock()
+	dns, err := r.newDNSFunc(*manifest)
+	if err != nil {
+		return nil, nil, err
+	}
+	manifest.ApplyUpdateBlock(dns)
 
 	return manifest, varSecrets, err
 }
