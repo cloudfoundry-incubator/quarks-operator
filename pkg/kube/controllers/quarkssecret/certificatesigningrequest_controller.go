@@ -5,7 +5,6 @@ import (
 
 	"github.com/pkg/errors"
 	certv1 "k8s.io/api/certificates/v1beta1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	certv1client "k8s.io/client-go/kubernetes/typed/certificates/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -43,14 +42,14 @@ func AddCertificateSigningRequest(ctx context.Context, config *config.Config, mg
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*certv1.CertificateSigningRequest)
 
-			return ownedByQuarksSecret(o.OwnerReferences)
+			return ownedByQuarksSecret(config.Namespace, o.Annotations)
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectNew.(*certv1.CertificateSigningRequest)
 
-			return ownedByQuarksSecret(o.OwnerReferences)
+			return ownedByQuarksSecret(config.Namespace, o.Annotations)
 
 		},
 	}
@@ -62,10 +61,10 @@ func AddCertificateSigningRequest(ctx context.Context, config *config.Config, mg
 	return nil
 }
 
-func ownedByQuarksSecret(owners []metav1.OwnerReference) bool {
-	for _, owner := range owners {
-		if owner.Kind == qsv1a1.QuarksSecretResourceKind {
-			return true
+func ownedByQuarksSecret(namespace string, annotations map[string]string) bool {
+	if _, ok := annotations[qsv1a1.AnnotationCertSecretName]; ok {
+		if ns, ok := annotations[qsv1a1.AnnotationQSecNamespace]; ok {
+			return ns == namespace
 		}
 	}
 	return false
