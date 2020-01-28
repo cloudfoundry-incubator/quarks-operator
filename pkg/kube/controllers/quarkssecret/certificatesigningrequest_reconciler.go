@@ -52,35 +52,35 @@ func (r *ReconcileCertificateSigningRequest) Reconcile(request reconcile.Request
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()
 
-	ctxlog.Infof(ctx, "Reconciling certificateSigningRequest '%s'", request.Name)
+	ctxlog.Infof(ctx, "Reconciling certificatesigningrequest '%s'", request.Name)
 	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			ctxlog.Info(ctx, "Skip reconcile: certificateSigningRequest not found")
+			ctxlog.Info(ctx, "Skip reconcile: certificatesigningrequest not found")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
 		ctxlog.Info(ctx, "Error reading the object")
-		return reconcile.Result{}, errors.Wrap(err, "Error reading certificateSigningRequest")
+		return reconcile.Result{}, errors.Wrap(err, "Error reading certificatesigningrequest")
 	}
 
 	if len(instance.Status.Certificate) != 0 {
 		annotations := instance.GetAnnotations()
 		if annotations == nil {
-			ctxlog.WithEvent(instance, "NotFoundError").Errorf(ctx, "Empty annotations of certificateSigningRequest '%s'", instance.Name)
+			ctxlog.WithEvent(instance, "NotFoundError").Errorf(ctx, "Empty annotations of certificatesigningrequest '%s'", instance.Name)
 			return reconcile.Result{}, nil
 		}
 		secretName, ok := annotations[qev1a1.AnnotationCertSecretName]
 		if !ok {
-			ctxlog.WithEvent(instance, "NotFoundError").Errorf(ctx, "failed to lookup cert secret name from certificateSigningRequest '%s' annotations", instance.Name)
+			ctxlog.WithEvent(instance, "NotFoundError").Errorf(ctx, "failed to lookup cert secret name from certificatesigningrequest '%s' annotations", instance.Name)
 			return reconcile.Result{}, nil
 		}
 		namespace, ok := annotations[qev1a1.AnnotationQSecNamespace]
 		if !ok {
-			ctxlog.WithEvent(instance, "NotFoundError").Errorf(ctx, "failed to lookup quarksSecret namespace from certificateSigningRequest '%s' annotations", instance.Name)
+			ctxlog.WithEvent(instance, "NotFoundError").Errorf(ctx, "failed to lookup quarksSecret namespace from certificatesigningrequest '%s' annotations", instance.Name)
 			return reconcile.Result{}, nil
 		}
 
@@ -135,19 +135,19 @@ func (r *ReconcileCertificateSigningRequest) Reconcile(request reconcile.Request
 	return reconcile.Result{}, nil
 }
 
-// approveRequest approves the certificateSigningRequest
+// approveRequest approves the certificatesigningrequest
 func (r *ReconcileCertificateSigningRequest) approveRequest(ctx context.Context, csrName string) error {
 	csr, err := r.certClient.CertificateSigningRequests().Get(csrName, metav1.GetOptions{})
 	if err != nil {
-		return errors.Wrapf(err, "could not get certificateSigningRequest '%s'", csrName)
+		return errors.Wrapf(err, "could not get certificatesigningrequest '%s'", csrName)
 	}
 
 	if isApproved(csr.Status.Conditions) {
-		ctxlog.Debugf(ctx, "Skip approve: certificateSigningRequest %s has already been approved", csrName)
+		ctxlog.Debugf(ctx, "Skip approve: certificatesigningrequest %s has already been approved", csrName)
 		return nil
 	}
 
-	ctxlog.Debugf(ctx, "Approving certificateSigningRequest '%s'", csrName)
+	ctxlog.Debugf(ctx, "Approving certificatesigningrequest '%s'", csrName)
 
 	csr.Status.Conditions = append(csr.Status.Conditions, certv1.CertificateSigningRequestCondition{
 		Type:    certv1.CertificateApproved,
@@ -157,7 +157,7 @@ func (r *ReconcileCertificateSigningRequest) approveRequest(ctx context.Context,
 
 	_, err = r.certClient.CertificateSigningRequests().UpdateApproval(csr)
 	if err != nil {
-		return errors.Wrapf(err, "could not update approval of certificateSigningRequest '%s'", csrName)
+		return errors.Wrapf(err, "could not update approval of certificatesigningrequest '%s'", csrName)
 	}
 
 	ctxlog.Debugf(ctx, "CertificateSigningRequest '%s' has been updated", csrName)
@@ -207,7 +207,7 @@ func (r *ReconcileCertificateSigningRequest) deleteSecret(ctx context.Context, s
 	return nil
 }
 
-// isApproved returns true if the certificateSigningRequest has already been approved
+// isApproved returns true if the certificatesigningrequest has already been approved
 func isApproved(conditions []certv1.CertificateSigningRequestCondition) bool {
 	for _, condition := range conditions {
 		if condition.Type == certv1.CertificateApproved {
