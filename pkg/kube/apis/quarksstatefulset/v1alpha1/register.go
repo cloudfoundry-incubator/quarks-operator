@@ -46,9 +46,9 @@ var (
 							Type:        "boolean",
 							Description: "Indicate whether to update Pods in the StatefulSet when an env value or mount changes",
 						},
-						"activePassiveProbe": {
+						"activePassiveProbes": {
 							Type:        "object",
-							Description: "Defines a probe to determine an active/passive component instance",
+							Description: "Defines probes to determine active/passive component instances",
 						},
 						"zoneNodeLabel": {
 							Type:        "string",

@@ -2707,8 +2707,8 @@ stemcells:
   version: "250.17"
 `
 
-// WithActivePassiveProbe contains a manifest with an active/passive probe
-const WithActivePassiveProbe = `
+// WithActivePassiveProbes contains a manifest with an active/passive probe
+const WithActivePassiveProbes = `
 name: bpm
 
 releases:

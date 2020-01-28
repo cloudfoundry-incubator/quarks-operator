@@ -182,9 +182,9 @@ func (c *Catalog) BOSHManifestWithExternalLinks() (*manifest.Manifest, error) {
 	return m, nil
 }
 
-// BOSHManifestWithActivePassiveProbe returns a manifest with an active/passive probe
-func (c *Catalog) BOSHManifestWithActivePassiveProbe() (*manifest.Manifest, error) {
-	m, err := manifest.LoadYAML([]byte(bm.WithActivePassiveProbe))
+// BOSHManifestWithActivePassiveProbes returns a manifest with an active/passive probe
+func (c *Catalog) BOSHManifestWithActivePassiveProbes() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.WithActivePassiveProbes))
 	if err != nil {
 		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
 	}
