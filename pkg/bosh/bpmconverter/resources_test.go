@@ -340,7 +340,8 @@ var _ = Describe("BPM Converter", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				qSts := resources.InstanceGroups[0]
 				Expect(qSts.Spec.ActivePassiveProbe).ToNot(BeNil())
-				Expect(qSts.Spec.ActivePassiveProbe["test-server"].Handler.Exec.Command).To(Equal([]string{"ls", "/"}))
+				Expect(qSts.Spec.ActivePassiveProbe["some-bpm-process"].Handler.Exec.Command).To(Equal([]string{"ls", "/"}))
+				Expect(qSts.Spec.ActivePassiveProbe["another-bpm-process"].Handler.Exec.Command).To(Equal([]string{"find", "*"}))
 			})
 		})
 

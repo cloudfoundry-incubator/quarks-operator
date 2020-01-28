@@ -51,8 +51,7 @@ type InstanceGroup struct {
 
 // InstanceGroupQuarks represents the quark property of a InstanceGroup
 type InstanceGroupQuarks struct {
-	RequiredService    *string                  `json:"required_service,omitempty" mapstructure:"required_service"`
-	ActivePassiveProbe map[string]*corev1.Probe `json:"activePassiveProbe,omitempty"`
+	RequiredService *string `json:"required_service,omitempty" mapstructure:"required_service"`
 }
 
 // InstanceGroupProperties represents the properties map of a InstanceGroup
@@ -100,6 +99,17 @@ func (p *InstanceGroupProperties) UnmarshalJSON(b []byte) error {
 // NameSanitized returns the sanitized instance group name.
 func (ig *InstanceGroup) NameSanitized() string {
 	return names.Sanitize(ig.Name)
+}
+
+// ActivePassiveProbes returns all the probes defined in the instance group jobs
+func (ig *InstanceGroup) ActivePassiveProbes() map[string]*corev1.Probe {
+	probes := map[string]*corev1.Probe{}
+	for _, job := range ig.Jobs {
+		for container, probe := range job.Properties.Quarks.ActivePassiveProbes {
+			probes[container] = probe
+		}
+	}
+	return probes
 }
 
 // QuarksStatefulSetName constructs the quarksStatefulSet name.

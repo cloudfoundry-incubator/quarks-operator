@@ -2722,22 +2722,29 @@ update:
   serial: true
 instance_groups:
 - name: bpm1
-  properties:
-    quarks:
-      activePassiveProbe:
-        test-server:
-          handler:
+  jobs:
+  - name: job-1
+    release: bpm
+    properties:
+      quarks:
+        activePassiveProbes:
+          some-bpm-process:
             exec:
               command:
               - ls
               - /
-  jobs:
-  - name: test-server
-    release: bpm
-    properties:
-      quarks:
         ports:
         - name: test-server
           protocol: TCP
           internal: 1337
+  - name: job-2
+    release: bpm
+    properties:
+      quarks:
+        activePassiveProbes:
+          another-bpm-process:
+            exec:
+              command:
+              - find
+              - "*"
 `
