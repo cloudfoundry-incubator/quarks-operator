@@ -329,6 +329,21 @@ var _ = Describe("BPM Converter", func() {
 			})
 		})
 
+		Context("when an active/passive probe is defined", func() {
+			BeforeEach(func() {
+				m, err = env.BOSHManifestWithActivePassiveProbe()
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("passes it on to the QuarksStatefulSetSpec", func() {
+				resources, err := act(bpm.Configs{}, m.InstanceGroups[0])
+				Expect(err).ShouldNot(HaveOccurred())
+				qSts := resources.InstanceGroups[0]
+				Expect(qSts.Spec.ActivePassiveProbe).ToNot(BeNil())
+				Expect(qSts.Spec.ActivePassiveProbe["test-server"].Handler.Exec.Command).To(Equal([]string{"ls", "/"}))
+			})
+		})
+
 		Context("when multiple BPM processes exist", func() {
 			var (
 				bpmConfigs []bpm.Configs
