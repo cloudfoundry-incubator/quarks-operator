@@ -8,7 +8,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	certv1client "k8s.io/client-go/kubernetes/typed/certificates/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -28,7 +27,7 @@ func AddCertificateSigningRequest(ctx context.Context, config *config.Config, mg
 	if err != nil {
 		return errors.Wrap(err, "Could not get kube client")
 	}
-	r := NewCertificateSigningRequestReconciler(ctx, config, mgr, certClient, controllerutil.SetControllerReference)
+	r := NewCertificateSigningRequestReconciler(ctx, config, mgr, certClient)
 
 	// Create a new controller
 	c, err := controller.New("certificate-signing-request-controller", mgr, controller.Options{

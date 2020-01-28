@@ -42,7 +42,6 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 		certClient       *certv1clientfakes.FakeCertificatesV1beta1
 		csr              *certv1.CertificateSigningRequest
 		privateKeySecret *corev1.Secret
-		setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error = func(owner, object metav1.Object, scheme *runtime.Scheme) error { return nil }
 	)
 
 	BeforeEach(func() {
@@ -100,7 +99,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 	})
 
 	JustBeforeEach(func() {
-		reconciler = escontroller.NewCertificateSigningRequestReconciler(ctx, config, manager, certClient, setReferenceFunc)
+		reconciler = escontroller.NewCertificateSigningRequestReconciler(ctx, config, manager, certClient)
 	})
 
 	Context("when reconciling pending CSR", func() {
