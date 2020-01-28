@@ -50,7 +50,7 @@ type QuarksStatefulSetSpec struct {
 
 	// Periodic probe for active/passive containers
 	// Only an active container will process request from a service
-	ActivePassiveProbe map[string]*corev1.Probe `json:"activePassiveProbe,omitempty"`
+	ActivePassiveProbes map[string]*corev1.Probe `json:"activePassiveProbes,omitempty"`
 }
 
 // QuarksStatefulSetStatus defines the observed state of QuarksStatefulSet

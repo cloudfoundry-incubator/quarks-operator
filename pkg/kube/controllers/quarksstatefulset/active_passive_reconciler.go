@@ -88,7 +88,7 @@ func (r *ReconcileStatefulSetActivePassive) Reconcile(request reconcile.Request)
 	// retrieves the ActivePassiveProbe children key,
 	// this is the container name in where the ActivePassiveProbe
 	// cmd, needs to be executed
-	containerName, err := getProbeContainerName(qSts.Spec.ActivePassiveProbe)
+	containerName, err := getProbeContainerName(qSts.Spec.ActivePassiveProbes)
 	if err != nil {
 		// Reconcile failed due to error - requeue
 		return reconcile.Result{}, errors.Wrapf(err, "None container name found in probe for %s QuarksStatefulSet", qSts.Name)
@@ -100,7 +100,7 @@ func (r *ReconcileStatefulSetActivePassive) Reconcile(request reconcile.Request)
 		return reconcile.Result{}, err
 	}
 
-	periodSeconds := time.Second * time.Duration(qSts.Spec.ActivePassiveProbe[containerName].PeriodSeconds)
+	periodSeconds := time.Second * time.Duration(qSts.Spec.ActivePassiveProbes[containerName].PeriodSeconds)
 	if periodSeconds == (time.Second * time.Duration(0)) {
 		ctxlog.WithEvent(qSts, "active-passive").Debugf(ctx, "periodSeconds probe was not specified, going to default to 30 secs")
 		periodSeconds = time.Second * 30
@@ -112,7 +112,7 @@ func (r *ReconcileStatefulSetActivePassive) Reconcile(request reconcile.Request)
 
 func (r *ReconcileStatefulSetActivePassive) markActiveContainers(ctx context.Context, container string, pods *corev1.PodList, qSts *qstsv1a1.QuarksStatefulSet) (err error) {
 
-	probeCmd := qSts.Spec.ActivePassiveProbe[container].Exec.Command
+	probeCmd := qSts.Spec.ActivePassiveProbes[container].Exec.Command
 
 	for _, pod := range pods.Items {
 		ctxlog.WithEvent(qSts, "active-passive").Debugf(ctx, "validating probe in pod: %s", pod.Name)

@@ -4,7 +4,7 @@ metadata:
   name: example-quarks-statefulset
 spec:
   updateOnConfigChange: true
-  activePassiveProbe:
+  activePassiveProbes:
     busybox:
       periodSeconds: 5
       exec:

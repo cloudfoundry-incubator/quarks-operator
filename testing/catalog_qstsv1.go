@@ -27,7 +27,7 @@ func (c *Catalog) QstsWithProbeSinglePod(name string, cmd []string) qstsv1a1.Qua
 		},
 		Spec: qstsv1a1.QuarksStatefulSetSpec{
 			Template: c.DefaultStatefulSet(name),
-			ActivePassiveProbe: map[string]*v1.Probe{
+			ActivePassiveProbes: map[string]*v1.Probe{
 				"busybox": &v1.Probe{
 					PeriodSeconds: 2,
 					Handler: v1.Handler{
@@ -48,7 +48,7 @@ func (c *Catalog) QstsWithActiveSinglePod(name string, cmd []string) qstsv1a1.Qu
 		},
 		Spec: qstsv1a1.QuarksStatefulSetSpec{
 			Template: c.DefaultStatefulSetWithActiveSinglePod(name),
-			ActivePassiveProbe: map[string]*v1.Probe{
+			ActivePassiveProbes: map[string]*v1.Probe{
 				"busybox": &v1.Probe{
 					PeriodSeconds: 2,
 					Handler: v1.Handler{
@@ -69,7 +69,7 @@ func (c *Catalog) QstsWithoutProbeMultiplePods(name string, cmd []string) qstsv1
 		},
 		Spec: qstsv1a1.QuarksStatefulSetSpec{
 			Template: c.DefaultStatefulSetWithReplicasN(name),
-			ActivePassiveProbe: map[string]*v1.Probe{
+			ActivePassiveProbes: map[string]*v1.Probe{
 				"busybox": &v1.Probe{
 					Handler: v1.Handler{
 						Exec: &v1.ExecAction{
@@ -89,7 +89,7 @@ func (c *Catalog) QstsWithProbeMultiplePods(name string, cmd []string) qstsv1a1.
 		},
 		Spec: qstsv1a1.QuarksStatefulSetSpec{
 			Template: c.DefaultStatefulSetWithReplicasN(name),
-			ActivePassiveProbe: map[string]*v1.Probe{
+			ActivePassiveProbes: map[string]*v1.Probe{
 				"busybox": &v1.Probe{
 					PeriodSeconds: 2,
 					Handler: v1.Handler{
