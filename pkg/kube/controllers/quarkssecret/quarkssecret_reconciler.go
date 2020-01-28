@@ -477,10 +477,6 @@ func (r *ReconcileQuarksSecret) createCertificateSigningRequest(ctx context.Cont
 		},
 	}
 
-	if err := r.setReference(instance, csrObj, r.scheme); err != nil {
-		return errors.Wrapf(err, "error setting owner for certificateSigningRequest '%s' to QuarksSecret '%s' in namespace '%s'", csrObj.Name, instance.Name, instance.GetNamespace())
-	}
-
 	// CSR spec is immutable after the request is created
 	err := r.client.Get(ctx, types.NamespacedName{Name: csrObj.Name}, instance)
 	if err != nil {
