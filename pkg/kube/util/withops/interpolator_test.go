@@ -1,10 +1,10 @@
-package converter_test
+package withops_test
 
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	ipl "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	ipl "code.cloudfoundry.org/cf-operator/pkg/kube/util/withops"
 )
 
 var _ = Describe("Interpolator", func() {

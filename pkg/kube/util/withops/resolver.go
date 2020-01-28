@@ -1,4 +1,4 @@
-package converter
+package withops
 
 import (
 	"context"
@@ -20,13 +20,8 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
-// DesiredManifest unmarshals desired manifest from the manifest secret
-type DesiredManifest interface {
-	DesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error)
-}
-
-// ResolverImpl resolves references from bdpl CRD to a BOSH manifest
-type ResolverImpl struct {
+// Resolver resolves references from bdpl CRD to a BOSH manifest
+type Resolver struct {
 	client               client.Client
 	versionedSecretStore versionedsecretstore.VersionedSecretStore
 	newInterpolatorFunc  NewInterpolatorFunc
@@ -35,48 +30,19 @@ type ResolverImpl struct {
 // NewInterpolatorFunc returns a fresh Interpolator
 type NewInterpolatorFunc func() Interpolator
 
-// NewDesiredManifest constructs a resolver
-func NewDesiredManifest(client client.Client) DesiredManifest {
-	return &ResolverImpl{
-		client:               client,
-		versionedSecretStore: versionedsecretstore.NewVersionedSecretStore(client),
-	}
-}
-
 // NewResolver constructs a resolver
-func NewResolver(client client.Client, f NewInterpolatorFunc) *ResolverImpl {
-	return &ResolverImpl{
+func NewResolver(client client.Client, f NewInterpolatorFunc) *Resolver {
+	return &Resolver{
 		client:               client,
 		newInterpolatorFunc:  f,
 		versionedSecretStore: versionedsecretstore.NewVersionedSecretStore(client),
 	}
 }
 
-// DesiredManifest reads the versioned secret created by the variable interpolation job
-// and unmarshals it into a Manifest object
-func (r *ResolverImpl) DesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error) {
-	// unversioned desired manifest name
-	secretName := names.DesiredManifestName(boshDeploymentName, "")
-
-	secret, err := r.versionedSecretStore.Latest(ctx, namespace, secretName)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read latest versioned secret %s for bosh deployment %s", secretName, boshDeploymentName)
-	}
-
-	manifestData := secret.Data["manifest.yaml"]
-
-	manifest, err := bdm.LoadYAML(manifestData)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to unmarshal manifest from secret %s for boshdeployment %s", secretName, boshDeploymentName)
-	}
-
-	return manifest, nil
-}
-
-// WithOpsManifest returns manifest and a list of implicit variables referenced by our bdpl CRD
+// Manifest returns manifest and a list of implicit variables referenced by our bdpl CRD
 // The resulting manifest has variables interpolated and ops files applied.
 // It is the 'with-ops' manifest.
-func (r *ResolverImpl) WithOpsManifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
+func (r *Resolver) Manifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
 	interpolator := r.newInterpolatorFunc()
 	spec := instance.Spec
 	var (
@@ -158,10 +124,10 @@ func (r *ResolverImpl) WithOpsManifest(instance *bdv1.BOSHDeployment, namespace 
 	return manifest, varSecrets, err
 }
 
-// WithOpsManifestDetailed returns manifest and a list of implicit variables referenced by our bdpl CRD
+// ManifestDetailed returns manifest and a list of implicit variables referenced by our bdpl CRD
 // The resulting manifest has variables interpolated and ops files applied.
 // It is the 'with-ops' manifest. This variant processes each ops file individually, so it's more debuggable - but slower.
-func (r *ResolverImpl) WithOpsManifestDetailed(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
+func (r *Resolver) ManifestDetailed(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
 	spec := instance.Spec
 	var (
 		m   string
@@ -244,7 +210,7 @@ func (r *ResolverImpl) WithOpsManifestDetailed(instance *bdv1.BOSHDeployment, na
 	return manifest, varSecrets, err
 }
 
-func (r *ResolverImpl) replaceVar(manifest *bdm.Manifest, name, value string) *bdm.Manifest {
+func (r *Resolver) replaceVar(manifest *bdm.Manifest, name, value string) *bdm.Manifest {
 	original := reflect.ValueOf(manifest)
 	replaced := reflect.New(original.Type()).Elem()
 
@@ -252,7 +218,7 @@ func (r *ResolverImpl) replaceVar(manifest *bdm.Manifest, name, value string) *b
 
 	return replaced.Interface().(*bdm.Manifest)
 }
-func (r *ResolverImpl) replaceVarRecursive(copy, v reflect.Value, varName, varValue string) {
+func (r *Resolver) replaceVarRecursive(copy, v reflect.Value, varName, varValue string) {
 	switch v.Kind() {
 	case reflect.Ptr:
 		if !v.Elem().IsValid() {
@@ -308,7 +274,7 @@ func (r *ResolverImpl) replaceVarRecursive(copy, v reflect.Value, varName, varVa
 }
 
 // resourceData resolves different manifest reference types and returns the resource's data
-func (r *ResolverImpl) resourceData(namespace string, resType bdv1.ReferenceType, name string, key string) (string, error) {
+func (r *Resolver) resourceData(namespace string, resType bdv1.ReferenceType, name string, key string) (string, error) {
 	var (
 		data string
 		ok   bool

@@ -40,8 +40,8 @@ type VariablesConverter interface {
 	Variables(manifestName string, variables []bdm.Variable) ([]qsv1a1.QuarksSecret, error)
 }
 
-type Resolver interface {
-	WithOpsManifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
+type WithOps interface {
+	Manifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
 }
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
@@ -50,14 +50,14 @@ var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // NewDeploymentReconciler returns a new reconcile.Reconciler
-func NewDeploymentReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver Resolver, jobFactory JobFactory, converter VariablesConverter, srf setReferenceFunc) reconcile.Reconciler {
+func NewDeploymentReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, withops WithOps, jobFactory JobFactory, converter VariablesConverter, srf setReferenceFunc) reconcile.Reconciler {
 
 	return &ReconcileBOSHDeployment{
 		ctx:          ctx,
 		config:       config,
 		client:       mgr.GetClient(),
 		scheme:       mgr.GetScheme(),
-		resolver:     resolver,
+		withops:      withops,
 		setReference: srf,
 		jobFactory:   jobFactory,
 		converter:    converter,
@@ -70,7 +70,7 @@ type ReconcileBOSHDeployment struct {
 	config       *config.Config
 	client       client.Client
 	scheme       *runtime.Scheme
-	resolver     Resolver
+	withops      WithOps
 	setReference setReferenceFunc
 	jobFactory   JobFactory
 	converter    VariablesConverter
@@ -189,7 +189,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 // resolveManifest resolves manifest with ops manifest
 func (r *ReconcileBOSHDeployment) resolveManifest(ctx context.Context, instance *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
 	log.Debug(ctx, "Resolving manifest")
-	manifest, _, err := r.resolver.WithOpsManifest(instance, instance.GetNamespace())
+	manifest, _, err := r.withops.Manifest(instance, instance.GetNamespace())
 	if err != nil {
 		return nil, log.WithEvent(instance, "WithOpsManifestError").Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
 	}

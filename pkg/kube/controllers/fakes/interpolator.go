@@ -4,7 +4,7 @@ package fakes
 import (
 	"sync"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/withops"
 )
 
 type FakeInterpolator struct {
@@ -195,4 +195,4 @@ func (fake *FakeInterpolator) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ converter.Interpolator = new(FakeInterpolator)
+var _ withops.Interpolator = new(FakeInterpolator)
