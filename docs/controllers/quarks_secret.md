@@ -13,6 +13,9 @@
          1. [Watches](#watches-in-csr-controller)
          2. [Reconciliation](#reconciliation-in-csr-controller)
          3. [Highlights](#highlights-in-csr-controller)
+      3. [SecretRotation Controller](#_secretrotation-controller_)
+         1. [Watches](#watches-in-secret-rotation-controller)
+         2. [Reconciliation](#reconciliation-in-secret-rotation-controller)
    3. [Relationship with the BDPL component](#relationship-with-the-bdpl-component)
    4. [`QuarksSecret` Examples](#`quarkssecret`-examples)
 
@@ -22,7 +25,7 @@ An QuarksSecret generates passwords, keys and certificates and stores them in Ku
 
 ## QuarksSecret Component
 
-The **QuarksSecret** component is a categorization of a set of controllers, under the same group. Inside the **QuarksSecret** component, we have a set of 2 controllers together with one separate reconciliation loop per controller.
+The **QuarksSecret** component consists of three controllers, each with a separate reconciliation loop.
 
 Figure 1, illustrates the component and associated set of controllers.
 
@@ -34,18 +37,19 @@ Figure 1, illustrates the component and associated set of controllers.
 ![qsec-controller-flow](quarks_eseccontroller_flow.png)
 *Fig. 2: The QuarksSecret controller*
 
-The **QuarksSecret** Controller will get a list of all variables referenced in a BOSH manifest with ops files applied, and will use this list of variables to generate the pertinent `QuarksSecret` instances.
 
-#### Watches in quarks secret controller
+#### Watches in Quarks Secret Controller
 
 - `QuarksSecret`: Creation
+- `QuarksSecret`: Updates if `.status.generated` is false
 
-#### Reconciliation in quarks secret controller
+#### Reconciliation in Quarks Secret Controller
 
 - generates Kubernetes secret of specific types(see Types under Highlights).
 - generate a Certificate Signing Request against the cluster API.
+- sets `.status.generated` to `true`, to avoid re-generation and allow secret rotation.
 
-#### Highlights in quarks secret controller
+#### Highlights in Quarks Secret Controller
 
 ##### Types
 
@@ -64,13 +68,9 @@ Depending on the `spec.type`, `QuarksSecret` supports generating the following:
 >
 > You can find more details in the [BOSH docs](https://bosh.io/docs/variable-types).
 
-##### Policies
-
-The developer can specify policies for rotation (e.g. automatic or not ) and how secrets are created (e.g. password complexity, certificate expiration date, etc.).
-
 ##### Auto-approving Certificates
 
-A certificate `QuarksSecret` can be signed by the Kube API Server. The **QuarksSecret** Controller is responsible for generating the certificate signing request:
+A certificate `QuarksSecret` can be signed by the Kubernetes API Server. The **QuarksSecret** Controller is responsible for generating the certificate signing request:
 
 ```yaml
 apiVersion: certificates.k8s.io/v1beta1
@@ -89,24 +89,36 @@ spec:
 ![certsr-controller-flow](quarks_certsrcontroller_flow.png)
 *Fig. 3: The CertificateSigningRequest controller*
 
-#### Watches in CSR controller
+#### Watches in CSR Controller
 
 - `Certificate Signing Request`: Creation
 
-#### Reconciliation in CSR controller
+#### Reconciliation in CSR Controller
 
 - once the request is approved by Kubernetes API, will generate a certificate stored in a Kubernetes secret, that is recognized by the cluster.
 
-#### Highlights in CSR controller
+#### Highlights in CSR Controller
 
 The CertificateSigningRequest controller watches for `CertificateSigningRequest` and approves `QuarksSecret`-owned CSRs and persists the generated certificate.
 
-## Relationship with the BDPL component
+### **_SecretRotation Controller_**
 
-![bdpl-qjob-relationship](quarks_gvc_and_esec_flow.png)
-*Fig. 4: Relationship between the Generated V.  controller and the QuarksSecret component*
+The secret rotation controller watches for a rotation config map and re-generates all the listed `QuarksSecrets`.
 
-Figure 4 illustrates the interaction of the **Generated Variables** Controller with the **QuarksSecret** Controller. When reconciling, the Generated Variables Controller lists all variables of a BOSH manifest(basically all BOSH variables) and generates an `QuarksSecret` instance per variable, which will trigger the **QuarksSecret** Controller.
+#### Watches in Secret Rotation Controller
+
+- `ConfigMap`: Creation of a config map, which has the `secret-rotation` label.
+
+#### Reconciliation in Secret Rotation Controller
+
+- Will read the array of `QuarksSecret` names from the JSON under the config map key `secrets`.
+- Skip `QuarksSecret` where `.status.generated` is `false`, as these might be under control of the user.
+- Set `.status.generated` for each named `QuarksSecret` to `false`, to trigger re-creation of the corresponding secret.
+
+## Relationship With the BDPL Component
+
+All explicit variables of a BOSH manifest will be created as `QuarksSecret` instances, which will trigger the **QuarksSecret** Controller.
+This will create corresponding secrets. If the user decides to change a secret, the `.status.generated` field in the corresponding `QuarksSecret` should be set to `false`, to protect against overwriting.
 
 ## `QuarksSecret` Examples
 

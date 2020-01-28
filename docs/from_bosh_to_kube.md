@@ -549,13 +549,17 @@ BOSH deployment manifests support two different types of variables, implicit and
 
 "Explicit" variables are declared in the `variables` section of the manifest and are generated automatically before the interpolation step.
 
-"Implicit" variables just appear in the document within double parentheses without any declaration. These variables have to be provided by the user prior to creating the BOSH deployment. The variables have to be provided as a secret with the `value` key holding the variable content. The secret name has to follow the scheme
+"Implicit" variables just appear in the document within double parentheses without any declaration. These variables have to be provided by the user prior to creating the BOSH deployment as a secret. The secret name has to follow the scheme
 
 ```text
 <deployment-name>.var-<variable-name>
 ```
 
-Example:
+By default the variable content is expected in the `value` key, e.g.
+
+```
+((system-domain))
+```
 
 ```yaml
 ---
@@ -566,6 +570,25 @@ metadata:
 type: Opaque
 stringData:
   value: example.com
+```
+
+It is also possible to specify the key name after a `/` separator, e.g.
+
+```
+((ssl/ca))
+```
+
+```yaml
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nats-deployment.var-ssl
+type: Opaque
+stringData:
+  ca: ...
+  cert: ...
+  key: ...
 ```
 
 ### Pre_render_scripts
