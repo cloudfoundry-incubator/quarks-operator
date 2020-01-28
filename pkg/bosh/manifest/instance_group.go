@@ -51,7 +51,8 @@ type InstanceGroup struct {
 
 // InstanceGroupQuarks represents the quark property of a InstanceGroup
 type InstanceGroupQuarks struct {
-	RequiredService *string `json:"required_service,omitempty" mapstructure:"required_service"`
+	RequiredService    *string                  `json:"required_service,omitempty" mapstructure:"required_service"`
+	ActivePassiveProbe map[string]*corev1.Probe `json:"activePassiveProbe,omitempty"`
 }
 
 // InstanceGroupProperties represents the properties map of a InstanceGroup

@@ -182,7 +182,15 @@ func (c *Catalog) BOSHManifestWithExternalLinks() (*manifest.Manifest, error) {
 	return m, nil
 }
 
-// BPMReleaseWithAffinityConfigMap for tests
+// BOSHManifestWithActivePassiveProbe returns a manifest with an active/passive probe
+func (c *Catalog) BOSHManifestWithActivePassiveProbe() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.WithActivePassiveProbe))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
+}
+
 func (c *Catalog) BPMReleaseWithAffinityConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: name},

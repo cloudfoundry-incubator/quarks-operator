@@ -2669,7 +2669,7 @@ instance_groups:
     release: loggregator
     consumes:
       doppler: {from: doppler}
-      # 
+      #
       log-cache: nil
     properties:
       uaa:
@@ -2705,4 +2705,39 @@ stemcells:
 - alias: default
   os: ubuntu-xenial
   version: "250.17"
+`
+
+// WithActivePassiveProbe contains a manifest with an active/passive probe
+const WithActivePassiveProbe = `
+name: bpm
+
+releases:
+- name: bpm
+  version: 1.0.4
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: opensuse-42.3
+    version: 36.g03b4653-30.80-7.0.0_316.gcf9fe4a7
+update:
+  serial: true
+instance_groups:
+- name: bpm1
+  properties:
+    quarks:
+      activePassiveProbe:
+        test-server:
+          handler:
+            exec:
+              command:
+              - ls
+              - /
+  jobs:
+  - name: test-server
+    release: bpm
+    properties:
+      quarks:
+        ports:
+        - name: test-server
+          protocol: TCP
+          internal: 1337
 `
