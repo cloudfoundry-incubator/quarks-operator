@@ -25,25 +25,23 @@ import (
 )
 
 // NewCertificateSigningRequestReconciler returns a new Reconciler
-func NewCertificateSigningRequestReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, certClient certv1client.CertificatesV1beta1Interface, srf setReferenceFunc) reconcile.Reconciler {
+func NewCertificateSigningRequestReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, certClient certv1client.CertificatesV1beta1Interface) reconcile.Reconciler {
 	return &ReconcileCertificateSigningRequest{
-		ctx:          ctx,
-		config:       config,
-		client:       mgr.GetClient(),
-		certClient:   certClient,
-		scheme:       mgr.GetScheme(),
-		setReference: srf,
+		ctx:        ctx,
+		config:     config,
+		client:     mgr.GetClient(),
+		certClient: certClient,
+		scheme:     mgr.GetScheme(),
 	}
 }
 
 // ReconcileCertificateSigningRequest reconciles an CertificateSigningRequest object
 type ReconcileCertificateSigningRequest struct {
-	ctx          context.Context
-	config       *config.Config
-	client       client.Client
-	certClient   certv1client.CertificatesV1beta1Interface
-	scheme       *runtime.Scheme
-	setReference setReferenceFunc
+	ctx        context.Context
+	config     *config.Config
+	client     client.Client
+	certClient certv1client.CertificatesV1beta1Interface
+	scheme     *runtime.Scheme
 }
 
 // Reconcile approves pending CSR and creates its certificate secret
