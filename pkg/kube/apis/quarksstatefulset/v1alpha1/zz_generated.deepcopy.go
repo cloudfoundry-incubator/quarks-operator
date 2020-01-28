@@ -84,8 +84,8 @@ func (in *QuarksStatefulSetSpec) DeepCopyInto(out *QuarksStatefulSetSpec) {
 		copy(*out, *in)
 	}
 	in.Template.DeepCopyInto(&out.Template)
-	if in.ActivePassiveProbe != nil {
-		in, out := &in.ActivePassiveProbe, &out.ActivePassiveProbe
+	if in.ActivePassiveProbes != nil {
+		in, out := &in.ActivePassiveProbes, &out.ActivePassiveProbes
 		*out = make(map[string]*v1.Probe, len(*in))
 		for key, val := range *in {
 			var outVal *v1.Probe
