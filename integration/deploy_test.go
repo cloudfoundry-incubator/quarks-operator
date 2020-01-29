@@ -82,7 +82,7 @@ var _ = Describe("Deploy", func() {
 			By("checking for services")
 			svc, err := env.GetService(env.Namespace, headlessSvcName)
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
-			Expect(svc.Spec.Selector).To(Equal(map[string]string{bdm.LabelInstanceGroupName: "nats"}))
+			Expect(svc.Spec.Selector).To(Equal(map[string]string{bdm.LabelInstanceGroupName: "nats", bdm.LabelDeploymentName: deploymentName}))
 			Expect(svc.Spec.Ports).NotTo(BeEmpty())
 			Expect(svc.Spec.Ports[0].Name).To(Equal("nats"))
 			Expect(svc.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
@@ -94,6 +94,7 @@ var _ = Describe("Deploy", func() {
 				bdm.LabelInstanceGroupName: "nats",
 				qstsv1a1.LabelAZIndex:      "0",
 				qstsv1a1.LabelPodOrdinal:   "0",
+				bdm.LabelDeploymentName:    deploymentName,
 			}))
 			Expect(svc.Spec.Ports).NotTo(BeEmpty())
 			Expect(svc.Spec.Ports[0].Name).To(Equal("nats"))

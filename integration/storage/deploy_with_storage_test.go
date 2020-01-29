@@ -42,7 +42,10 @@ var _ = Describe("DeployWithStorage", func() {
 			By("checking for services")
 			svc, err := env.GetService(env.Namespace, "test-bdpl-bpm")
 			Expect(err).NotTo(HaveOccurred(), "error getting service")
-			Expect(svc.Spec.Selector).To(Equal(map[string]string{bdm.LabelInstanceGroupName: "bpm"}))
+			Expect(svc.Spec.Selector).To(Equal(map[string]string{
+				bdm.LabelInstanceGroupName: "bpm",
+				bdm.LabelDeploymentName:    "test-bdpl",
+			}))
 			Expect(svc.Spec.Ports).NotTo(BeEmpty())
 			Expect(svc.Spec.Ports[0].Port).To(Equal(int32(1337)))
 			Expect(svc.Spec.Ports[1].Port).To(Equal(int32(1338)))

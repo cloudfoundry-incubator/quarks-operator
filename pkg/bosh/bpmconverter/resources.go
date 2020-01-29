@@ -237,26 +237,37 @@ func (kc *BPMConverter) serviceToKubeServices(manifestName string, dns DomainNam
 		return services
 	}
 
+	activePassiveModel := false
+	for _, job := range instanceGroup.Jobs {
+		if len(job.Properties.Quarks.ActivePassiveProbes) > 0 {
+			activePassiveModel = true
+		}
+	}
+
+	serviceLabels := func(azIndex, ordinal int, includeActiveSelector bool) map[string]string {
+		labels := map[string]string{
+			bdm.LabelDeploymentName:    manifestName,
+			bdm.LabelInstanceGroupName: instanceGroup.Name,
+			qstsv1a1.LabelAZIndex:      strconv.Itoa(azIndex),
+			qstsv1a1.LabelPodOrdinal:   strconv.Itoa(ordinal),
+		}
+		if includeActiveSelector {
+			labels[qstsv1a1.LabelActivePod] = "active"
+		}
+		return labels
+	}
+
 	for i := 0; i < instanceGroup.Instances; i++ {
 		if len(instanceGroup.AZs) == 0 {
 			services = append(services, corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      instanceGroup.IndexedServiceName(manifestName, len(services)),
 					Namespace: kc.namespace,
-					Labels: map[string]string{
-						bdm.LabelDeploymentName:    manifestName,
-						bdm.LabelInstanceGroupName: instanceGroup.Name,
-						qstsv1a1.LabelAZIndex:      strconv.Itoa(0),
-						qstsv1a1.LabelPodOrdinal:   strconv.Itoa(i),
-					},
+					Labels:    serviceLabels(0, i, false),
 				},
 				Spec: corev1.ServiceSpec{
-					Ports: ports,
-					Selector: map[string]string{
-						bdm.LabelInstanceGroupName: instanceGroup.Name,
-						qstsv1a1.LabelAZIndex:      strconv.Itoa(0),
-						qstsv1a1.LabelPodOrdinal:   strconv.Itoa(i),
-					},
+					Ports:    ports,
+					Selector: serviceLabels(0, i, activePassiveModel),
 				},
 			})
 		}
@@ -265,25 +276,24 @@ func (kc *BPMConverter) serviceToKubeServices(manifestName string, dns DomainNam
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      instanceGroup.IndexedServiceName(manifestName, len(services)),
 					Namespace: kc.namespace,
-					Labels: map[string]string{
-						bdm.LabelInstanceGroupName: instanceGroup.Name,
-						qstsv1a1.LabelAZIndex:      strconv.Itoa(azIndex),
-						qstsv1a1.LabelPodOrdinal:   strconv.Itoa(i),
-					},
+					Labels:    serviceLabels(azIndex, i, false),
 				},
 				Spec: corev1.ServiceSpec{
-					Ports: ports,
-					Selector: map[string]string{
-						bdm.LabelInstanceGroupName: instanceGroup.Name,
-						qstsv1a1.LabelAZIndex:      strconv.Itoa(azIndex),
-						qstsv1a1.LabelPodOrdinal:   strconv.Itoa(i),
-					},
+					Ports:    ports,
+					Selector: serviceLabels(azIndex, i, activePassiveModel),
 				},
 			})
 		}
 	}
 
 	headlessServiceName := dns.HeadlessServiceName(instanceGroup.Name)
+	headlessServiceSelector := map[string]string{
+		bdm.LabelDeploymentName:    manifestName,
+		bdm.LabelInstanceGroupName: instanceGroup.Name,
+	}
+	if activePassiveModel {
+		headlessServiceSelector[qstsv1a1.LabelActivePod] = "active"
+	}
 	headlessService := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        headlessServiceName,
@@ -292,10 +302,8 @@ func (kc *BPMConverter) serviceToKubeServices(manifestName string, dns DomainNam
 			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
 		Spec: corev1.ServiceSpec{
-			Ports: ports,
-			Selector: map[string]string{
-				bdm.LabelInstanceGroupName: instanceGroup.Name,
-			},
+			Ports:     ports,
+			Selector:  headlessServiceSelector,
 			ClusterIP: "None",
 		},
 	}
