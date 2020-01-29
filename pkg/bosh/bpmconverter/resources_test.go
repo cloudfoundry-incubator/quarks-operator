@@ -197,6 +197,47 @@ var _ = Describe("BPM Converter", func() {
 						},
 					}
 					m.InstanceGroups[1].Env.AgentEnvBoshConfig.Agent.Settings.Tolerations = tolerations
+
+					activePassiveProbes := map[string]*corev1.Probe{
+						"rep-server": &corev1.Probe{
+							Handler: corev1.Handler{
+								Exec: &corev1.ExecAction{
+									Command: []string{"ls", "/"},
+								},
+							},
+						},
+					}
+					m.InstanceGroups[1].Jobs[0].Properties.Quarks.ActivePassiveProbes = activePassiveProbes
+
+					resources, err := act(bpmConfigs[1], m.InstanceGroups[1])
+					Expect(err).ShouldNot(HaveOccurred())
+
+					qSts := resources.InstanceGroups[0]
+					stS := qSts.Spec.Template.Spec.Template
+
+					// Test services for the quarks statefulSet
+					service0 := resources.Services[0]
+					Expect(service0.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelDeploymentName:    m.Name,
+						manifest.LabelInstanceGroupName: stS.Name,
+						qstsv1a1.LabelAZIndex:           "0",
+						qstsv1a1.LabelPodOrdinal:        "0",
+						qstsv1a1.LabelActivePod:         "active",
+					}))
+				})
+
+				It("converts the instance group to an QuarksStatefulSet", func() {
+
+					tolerations := []corev1.Toleration{
+						{
+							Key:      "key",
+							Operator: "Equal",
+							Value:    "value",
+							Effect:   "NoSchedule",
+						},
+					}
+					m.InstanceGroups[1].Env.AgentEnvBoshConfig.Agent.Settings.Tolerations = tolerations
+
 					resources, err := act(bpmConfigs[1], m.InstanceGroups[1])
 					Expect(err).ShouldNot(HaveOccurred())
 
@@ -217,6 +258,7 @@ var _ = Describe("BPM Converter", func() {
 					service0 := resources.Services[0]
 					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-0", m.Name, stS.Name)))
 					Expect(service0.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelDeploymentName:    m.Name,
 						manifest.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:           "0",
 						qstsv1a1.LabelPodOrdinal:        "0",
@@ -232,6 +274,7 @@ var _ = Describe("BPM Converter", func() {
 					service1 := resources.Services[1]
 					Expect(service1.Name).To(Equal(fmt.Sprintf("%s-%s-1", m.Name, stS.Name)))
 					Expect(service1.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelDeploymentName:    m.Name,
 						manifest.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:           "1",
 						qstsv1a1.LabelPodOrdinal:        "0",
@@ -247,6 +290,7 @@ var _ = Describe("BPM Converter", func() {
 					service2 := resources.Services[2]
 					Expect(service2.Name).To(Equal(fmt.Sprintf("%s-%s-2", m.Name, stS.Name)))
 					Expect(service2.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelDeploymentName:    m.Name,
 						manifest.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:           "0",
 						qstsv1a1.LabelPodOrdinal:        "1",
@@ -262,6 +306,7 @@ var _ = Describe("BPM Converter", func() {
 					service3 := resources.Services[3]
 					Expect(service3.Name).To(Equal(fmt.Sprintf("%s-%s-3", m.Name, stS.Name)))
 					Expect(service3.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelDeploymentName:    m.Name,
 						manifest.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:           "1",
 						qstsv1a1.LabelPodOrdinal:        "1",
@@ -277,6 +322,7 @@ var _ = Describe("BPM Converter", func() {
 					headlessService := resources.Services[4]
 					Expect(headlessService.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, stS.Name)))
 					Expect(headlessService.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelDeploymentName:    m.Name,
 						manifest.LabelInstanceGroupName: stS.Name,
 					}))
 					Expect(headlessService.Spec.Ports).To(Equal([]corev1.ServicePort{
