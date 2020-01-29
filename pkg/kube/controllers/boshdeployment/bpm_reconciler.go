@@ -37,10 +37,15 @@ type BPMConverter interface {
 	BPMResources(manifestName string, dns bdm.DomainNameService, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*converter.BPMResources, error)
 }
 
+// DesiredManifest unmarshals desired manifest from the manifest secret
+type DesiredManifest interface {
+	DesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error)
+}
+
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 
 // NewBPMReconciler returns a new reconcile.Reconciler
-func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver converter.DesiredManifest, srf setReferenceFunc, converter BPMConverter) reconcile.Reconciler {
+func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver DesiredManifest, srf setReferenceFunc, converter BPMConverter) reconcile.Reconciler {
 	return &ReconcileBPM{
 		ctx:                  ctx,
 		config:               config,
@@ -59,7 +64,7 @@ type ReconcileBPM struct {
 	config               *config.Config
 	client               client.Client
 	scheme               *runtime.Scheme
-	resolver             converter.DesiredManifest
+	resolver             DesiredManifest
 	setReference         setReferenceFunc
 	converter            BPMConverter
 	versionedSecretStore versionedsecretstore.VersionedSecretStore
