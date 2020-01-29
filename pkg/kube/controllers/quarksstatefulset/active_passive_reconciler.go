@@ -146,11 +146,11 @@ func (r *ReconcileStatefulSetActivePassive) addActiveLabel(ctx context.Context, 
 		podLabels = map[string]string{}
 	}
 
-	if _, found := podLabels[qstsv1a1.LabelActiveContainer]; found {
+	if _, found := podLabels[qstsv1a1.LabelActivePod]; found {
 		return nil
 	}
 
-	podLabels[qstsv1a1.LabelActiveContainer] = "active"
+	podLabels[qstsv1a1.LabelActivePod] = "active"
 
 	return r.updatePodLabels(ctx, p, qSts, "active")
 }
@@ -158,10 +158,10 @@ func (r *ReconcileStatefulSetActivePassive) addActiveLabel(ctx context.Context, 
 func (r *ReconcileStatefulSetActivePassive) deleteActiveLabel(ctx context.Context, p *corev1.Pod, qSts *qstsv1a1.QuarksStatefulSet) error {
 	podLabels := p.GetLabels()
 
-	if _, found := podLabels[qstsv1a1.LabelActiveContainer]; !found {
+	if _, found := podLabels[qstsv1a1.LabelActivePod]; !found {
 		return nil
 	}
-	delete(podLabels, qstsv1a1.LabelActiveContainer)
+	delete(podLabels, qstsv1a1.LabelActivePod)
 
 	return r.updatePodLabels(ctx, p, qSts, "passive")
 }

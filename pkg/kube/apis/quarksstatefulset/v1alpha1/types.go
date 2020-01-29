@@ -30,8 +30,8 @@ var (
 	LabelPodOrdinal = fmt.Sprintf("%s/pod-ordinal", apis.GroupName)
 	// LabelQStsName is the name of the QuarksStatefulSet owns this resource
 	LabelQStsName = fmt.Sprintf("%s/quarks-statefulset-name", apis.GroupName)
-	// LabelActiveContainer is the active container on an active/passive setup
-	LabelActiveContainer = fmt.Sprintf("%s/pod-active", apis.GroupName)
+	// LabelActivePod is the active pod on an active/passive setup
+	LabelActivePod = fmt.Sprintf("%s/pod-active", apis.GroupName)
 )
 
 // QuarksStatefulSetSpec defines the desired state of QuarksStatefulSet
