@@ -14,6 +14,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	clientscheme "k8s.io/client-go/kubernetes/scheme"
@@ -213,9 +214,11 @@ func (r *ReconcileStatefulSetActivePassive) execContainerCmd(pod *corev1.Pod, co
 
 func (r *ReconcileStatefulSetActivePassive) getStsPodList(ctx context.Context, desiredSts *appsv1.StatefulSet) (*corev1.PodList, error) {
 	podList := &corev1.PodList{}
+	stsSelector := labels.SelectorFromSet(labels.Set(map[string]string{qstsv1a1.LabelQStsName: desiredSts.Name}))
 	err := r.client.List(ctx,
 		podList,
 		crc.InNamespace(desiredSts.Namespace),
+		crc.MatchingLabelsSelector{Selector: stsSelector},
 	)
 	if err != nil {
 		return nil, err
