@@ -307,7 +307,9 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 				linkInfos = append(linkInfos, converter.LinkInfo{
 					SecretName:   s.Name,
 					ProviderName: linkProvider.Name,
+					ProviderType: linkProvider.ProviderType,
 				})
+
 				if linkProvider.ProviderType != "" {
 					quarksLinks[s.Name] = bdm.QuarksLink{
 						Type: linkProvider.ProviderType,
