@@ -75,8 +75,8 @@ type CertificateRequest struct {
 	CARef                       SecretReference    `json:"CARef"`
 	CAKeyRef                    SecretReference    `json:"CAKeyRef"`
 	SignerType                  SignerType         `json:"signerType,omitempty"`
-	Usages                      []certv1.KeyUsage  `json:"usages,omitempty"`
-	ServiceRef                  []ServiceReference `json:"serviceRef,omitempty"`
+	Usages                      []certv1.KeyUsage  `json:"usages"`
+	ServiceRef                  []ServiceReference `json:"serviceRef"`
 	ActivateEKSWorkaroundForSAN bool               `json:"activateEKSWorkaroundForSAN,omitempty"`
 }
 
