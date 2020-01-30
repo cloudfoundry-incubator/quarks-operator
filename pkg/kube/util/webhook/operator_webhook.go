@@ -1,7 +1,7 @@
 package webhook
 
 import (
-	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
+	admissionregistration "k8s.io/api/admissionregistration/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -13,13 +13,13 @@ type OperatorWebhook struct {
 	Name string
 	// Path is the path this webhook will serve.
 	Path string
-	// Rules maps to the Rules field in admissionregistrationv1beta1.Webhook
-	Rules []admissionregistrationv1beta1.RuleWithOperations
-	// FailurePolicy maps to the FailurePolicy field in admissionregistrationv1beta1.Webhook
+	// Rules maps to the Rules field in admissionregistration.Webhook
+	Rules []admissionregistration.RuleWithOperations
+	// FailurePolicy maps to the FailurePolicy field in admissionregistration.Webhook
 	// This optional. If not set, will be defaulted to Ignore (fail-open) by the server.
-	// More details: https://github.com/kubernetes/api/blob/f5c295feaba2cbc946f0bbb8b535fc5f6a0345ee/admissionregistration/v1beta1/types.go#L144-L147
-	FailurePolicy admissionregistrationv1beta1.FailurePolicyType
-	// NamespaceSelector maps to the NamespaceSelector field in admissionregistrationv1beta1.Webhook
+	// More details: https://github.com/kubernetes/api/blob/f5c295feaba2cbc946f0bbb8b535fc5f6a0345ee/admissionregistration/v1/types.go#L144-L147
+	FailurePolicy admissionregistration.FailurePolicyType
+	// NamespaceSelector maps to the NamespaceSelector field in admissionregistration.Webhook
 	// This optional.
 	NamespaceSelector *metav1.LabelSelector
 	// Handlers contains a list of handlers. Each handler may only contains the business logic for its own feature.

@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
@@ -24,6 +25,30 @@ type FakeManager struct {
 		result1 error
 	}
 	addReturnsOnCall map[int]struct {
+		result1 error
+	}
+	AddHealthzCheckStub        func(string, healthz.Checker) error
+	addHealthzCheckMutex       sync.RWMutex
+	addHealthzCheckArgsForCall []struct {
+		arg1 string
+		arg2 healthz.Checker
+	}
+	addHealthzCheckReturns struct {
+		result1 error
+	}
+	addHealthzCheckReturnsOnCall map[int]struct {
+		result1 error
+	}
+	AddReadyzCheckStub        func(string, healthz.Checker) error
+	addReadyzCheckMutex       sync.RWMutex
+	addReadyzCheckArgsForCall []struct {
+		arg1 string
+		arg2 healthz.Checker
+	}
+	addReadyzCheckReturns struct {
+		result1 error
+	}
+	addReadyzCheckReturnsOnCall map[int]struct {
 		result1 error
 	}
 	GetAPIReaderStub        func() client.Reader
@@ -199,6 +224,128 @@ func (fake *FakeManager) AddReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.addReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeManager) AddHealthzCheck(arg1 string, arg2 healthz.Checker) error {
+	fake.addHealthzCheckMutex.Lock()
+	ret, specificReturn := fake.addHealthzCheckReturnsOnCall[len(fake.addHealthzCheckArgsForCall)]
+	fake.addHealthzCheckArgsForCall = append(fake.addHealthzCheckArgsForCall, struct {
+		arg1 string
+		arg2 healthz.Checker
+	}{arg1, arg2})
+	fake.recordInvocation("AddHealthzCheck", []interface{}{arg1, arg2})
+	fake.addHealthzCheckMutex.Unlock()
+	if fake.AddHealthzCheckStub != nil {
+		return fake.AddHealthzCheckStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.addHealthzCheckReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeManager) AddHealthzCheckCallCount() int {
+	fake.addHealthzCheckMutex.RLock()
+	defer fake.addHealthzCheckMutex.RUnlock()
+	return len(fake.addHealthzCheckArgsForCall)
+}
+
+func (fake *FakeManager) AddHealthzCheckCalls(stub func(string, healthz.Checker) error) {
+	fake.addHealthzCheckMutex.Lock()
+	defer fake.addHealthzCheckMutex.Unlock()
+	fake.AddHealthzCheckStub = stub
+}
+
+func (fake *FakeManager) AddHealthzCheckArgsForCall(i int) (string, healthz.Checker) {
+	fake.addHealthzCheckMutex.RLock()
+	defer fake.addHealthzCheckMutex.RUnlock()
+	argsForCall := fake.addHealthzCheckArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeManager) AddHealthzCheckReturns(result1 error) {
+	fake.addHealthzCheckMutex.Lock()
+	defer fake.addHealthzCheckMutex.Unlock()
+	fake.AddHealthzCheckStub = nil
+	fake.addHealthzCheckReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeManager) AddHealthzCheckReturnsOnCall(i int, result1 error) {
+	fake.addHealthzCheckMutex.Lock()
+	defer fake.addHealthzCheckMutex.Unlock()
+	fake.AddHealthzCheckStub = nil
+	if fake.addHealthzCheckReturnsOnCall == nil {
+		fake.addHealthzCheckReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.addHealthzCheckReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeManager) AddReadyzCheck(arg1 string, arg2 healthz.Checker) error {
+	fake.addReadyzCheckMutex.Lock()
+	ret, specificReturn := fake.addReadyzCheckReturnsOnCall[len(fake.addReadyzCheckArgsForCall)]
+	fake.addReadyzCheckArgsForCall = append(fake.addReadyzCheckArgsForCall, struct {
+		arg1 string
+		arg2 healthz.Checker
+	}{arg1, arg2})
+	fake.recordInvocation("AddReadyzCheck", []interface{}{arg1, arg2})
+	fake.addReadyzCheckMutex.Unlock()
+	if fake.AddReadyzCheckStub != nil {
+		return fake.AddReadyzCheckStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.addReadyzCheckReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeManager) AddReadyzCheckCallCount() int {
+	fake.addReadyzCheckMutex.RLock()
+	defer fake.addReadyzCheckMutex.RUnlock()
+	return len(fake.addReadyzCheckArgsForCall)
+}
+
+func (fake *FakeManager) AddReadyzCheckCalls(stub func(string, healthz.Checker) error) {
+	fake.addReadyzCheckMutex.Lock()
+	defer fake.addReadyzCheckMutex.Unlock()
+	fake.AddReadyzCheckStub = stub
+}
+
+func (fake *FakeManager) AddReadyzCheckArgsForCall(i int) (string, healthz.Checker) {
+	fake.addReadyzCheckMutex.RLock()
+	defer fake.addReadyzCheckMutex.RUnlock()
+	argsForCall := fake.addReadyzCheckArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeManager) AddReadyzCheckReturns(result1 error) {
+	fake.addReadyzCheckMutex.Lock()
+	defer fake.addReadyzCheckMutex.Unlock()
+	fake.AddReadyzCheckStub = nil
+	fake.addReadyzCheckReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeManager) AddReadyzCheckReturnsOnCall(i int, result1 error) {
+	fake.addReadyzCheckMutex.Lock()
+	defer fake.addReadyzCheckMutex.Unlock()
+	fake.AddReadyzCheckStub = nil
+	if fake.addReadyzCheckReturnsOnCall == nil {
+		fake.addReadyzCheckReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.addReadyzCheckReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
@@ -804,6 +951,10 @@ func (fake *FakeManager) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.addMutex.RLock()
 	defer fake.addMutex.RUnlock()
+	fake.addHealthzCheckMutex.RLock()
+	defer fake.addHealthzCheckMutex.RUnlock()
+	fake.addReadyzCheckMutex.RLock()
+	defer fake.addReadyzCheckMutex.RUnlock()
 	fake.getAPIReaderMutex.RLock()
 	defer fake.getAPIReaderMutex.RUnlock()
 	fake.getCacheMutex.RLock()
