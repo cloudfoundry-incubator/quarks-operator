@@ -84,8 +84,10 @@ var _ = Describe("Examples Directory", func() {
 				if err != nil {
 					return true, err
 				}
-				lastStateTerminated := podStatus.ContainerStatuses[0].LastTerminationState.Terminated
-				return lastStateTerminated != nil && lastStateTerminated.ExitCode == 1, nil
+
+				return len(podStatus.ContainerStatuses) > 0 &&
+					podStatus.ContainerStatuses[0].LastTerminationState.Terminated != nil &&
+					podStatus.ContainerStatuses[0].LastTerminationState.Terminated.ExitCode == 1, nil
 			})
 			Expect(err).ToNot(HaveOccurred(), "polling for example-quarks-statefulset-1")
 
