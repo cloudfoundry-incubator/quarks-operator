@@ -45,9 +45,9 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 		response           admission.Response
 	)
 
-	podPatch := `{"op":"add","path":"/spec/volumes","value":[{"name":"link-nats-deployment-nats","secret":{"items":[{"key":"nats.nats","path":"link.yaml"}],"secretName":"link-nats-deployment-nats"}}]}`
-	containerPatch := `{"op":"add","path":"/spec/containers/0/volumeMounts","value":[{"mountPath":"/quarks/link/nats-deployment/nats","name":"link-nats-deployment-nats","readOnly":true}]}`
-	secondContainerPatch := `{"op":"add","path":"/spec/containers/1/volumeMounts","value":[{"mountPath":"/quarks/link/nats-deployment/nats","name":"link-nats-deployment-nats","readOnly":true}]}`
+	podPatch := `{"op":"add","path":"/spec/volumes","value":[{"name":"link-nats-deployment-nats-nats","secret":{"secretName":"link-nats-deployment-nats-nats"}}]}`
+	containerPatch := `{"op":"add","path":"/spec/containers/0/volumeMounts","value":[{"mountPath":"/quarks/link/nats-deployment/nats-nats","name":"link-nats-deployment-nats-nats","readOnly":true}]}`
+	secondContainerPatch := `{"op":"add","path":"/spec/containers/1/volumeMounts","value":[{"mountPath":"/quarks/link/nats-deployment/nats-nats","name":"link-nats-deployment-nats-nats","readOnly":true}]}`
 
 	jsonPatches := func(operations []jsonpatch.Operation) []string {
 		patches := make([]string, len(operations))
@@ -118,7 +118,7 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 			})
 
 			It("secret is mounted on all containers", func() {
-				Expect(response.Patches).To(HaveLen(3))
+				Expect(response.Patches).To(HaveLen(5))
 				patches := jsonPatches(response.Patches)
 				Expect(patches).To(ContainElement(podPatch))
 				Expect(patches).To(ContainElement(containerPatch))
@@ -157,8 +157,9 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 	})
 
 	Context("when pod has existing volumes", func() {
-		podPatch := `{"op":"add","path":"/spec/volumes/1","value":{"name":"link-nats-deployment-nats","secret":{"items":[{"key":"nats.nats","path":"link.yaml"}],"secretName":"link-nats-deployment-nats"}}}`
-		containerPatch := `{"op":"add","path":"/spec/containers/0/volumeMounts/1","value":{"mountPath":"/quarks/link/nats-deployment/nats","name":"link-nats-deployment-nats","readOnly":true}}`
+		podPatch := `{"op":"add","path":"/spec/volumes/1","value":{"name":"link-nats-deployment-nats-nats","secret":{"secretName":"link-nats-deployment-nats-nats"}}}`
+		containerPatch := `{"op":"add","path":"/spec/containers/0/volumeMounts/1","value":{"mountPath":"/quarks/link/nats-deployment/nats-nats","name":"link-nats-deployment-nats-nats","readOnly":true}}`
+		envVarsPatch := `{"op":"add","path":"/spec/containers/0/env","value":[{"name":"LINK_NATS_PASSWORD","valueFrom":{"secretKeyRef":{"key":"nats.password","name":"link-nats-deployment-nats-nats"}}},{"name":"LINK_NATS_PORT","valueFrom":{"secretKeyRef":{"key":"nats.port","name":"link-nats-deployment-nats-nats"}}},{"name":"LINK_NATS_USER","valueFrom":{"secretKeyRef":{"key":"nats.user","name":"link-nats-deployment-nats-nats"}}}]}`
 
 		BeforeEach(func() {
 			pod = env.NatsPod("entangled-pod")
@@ -175,10 +176,11 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 			})
 
 			It("does add the link volume and mounts it on all containers", func() {
-				Expect(response.Patches).To(HaveLen(2))
+				Expect(response.Patches).To(HaveLen(3))
 				patches := jsonPatches(response.Patches)
 				Expect(patches).To(ContainElement(podPatch))
 				Expect(patches).To(ContainElement(containerPatch))
+				Expect(patches).To(ContainElement(envVarsPatch))
 				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
 			})
 		})

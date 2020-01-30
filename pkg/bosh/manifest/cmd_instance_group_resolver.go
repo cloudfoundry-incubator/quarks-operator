@@ -151,7 +151,7 @@ func (igr *InstanceGroupResolver) SaveLinks(path string) error {
 
 	var result = map[string]string{}
 	for id, property := range properties {
-		jsonBytes, err := json.Marshal(property)
+		jsonBytes, err := json.Marshal(flattenForSecretData(property))
 		if err != nil {
 			return errors.Wrapf(err, "JSON marshalling failed for ig '%s' property '%s'", igName, id)
 		}
@@ -627,4 +627,35 @@ func getQuarksLinkFromMap(m map[string]interface{}) (QuarksLink, error) {
 	}
 	err = json.Unmarshal(data, &result)
 	return result, err
+}
+
+func traverse(path string, obj interface{}, leafFunc func(path string, value interface{})) {
+	appendPath := func(new string) string {
+		if len(path) == 0 {
+			return new
+		}
+
+		return fmt.Sprintf("%s.%s", path, new)
+	}
+
+	switch tobj := obj.(type) {
+	case map[string]interface{}:
+		for key, value := range tobj {
+			traverse(appendPath(key), value, leafFunc)
+		}
+
+	default:
+		leafFunc(path, tobj)
+	}
+}
+
+func flattenForSecretData(property JobLinkProperties) map[string]string {
+	tmp := map[string]string{}
+	for k, v := range property {
+		traverse(k, v, func(path string, value interface{}) {
+			tmp[path] = fmt.Sprintf("%v", value)
+		})
+	}
+
+	return tmp
 }
