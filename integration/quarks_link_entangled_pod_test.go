@@ -29,16 +29,6 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 		return names
 	}
 
-	volumeKeyToPaths := func(volumes []corev1.Volume) []string {
-		keys := make([]string, len(volumes))
-		for i, v := range volumes {
-			if len(v.Secret.Items) > 0 {
-				keys[i] = v.Secret.Items[0].Key
-			}
-		}
-		return keys
-	}
-
 	volumeMountNames := func(mounts []corev1.VolumeMount) []string {
 		names := make([]string, len(mounts))
 		for i, m := range mounts {
@@ -87,12 +77,11 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(p.Spec.Volumes).To(HaveLen(2))
-				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-nats"))
-				Expect(volumeKeyToPaths(p.Spec.Volumes)).To(ContainElement("nats.nats"))
+				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-nats-nats"))
 
 				for _, c := range p.Spec.Containers {
 					Expect(c.VolumeMounts).To(HaveLen(2))
-					Expect(volumeMountNames(c.VolumeMounts)).To(ContainElement("link-nats-deployment-nats"))
+					Expect(volumeMountNames(c.VolumeMounts)).To(ContainElement("link-nats-deployment-nats-nats"))
 				}
 			})
 		})
@@ -105,10 +94,15 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			otherSecret := env.QuarksLinkSecret(
-				deploymentName, "ig",
-				"type", "name",
-				`{"foo":[1,2,3],{"password":"abc"}}`,
+				deploymentName,
+				"type",
+				"name",
+				map[string][]byte{
+					"foo":      []byte("[1,2,3]"),
+					"password": []byte("abc"),
+				},
 			)
+
 			tearDown, err = env.CreateSecret(env.Namespace, otherSecret)
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
@@ -125,15 +119,14 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(p.Spec.Volumes).To(HaveLen(3))
-				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-nats"))
-				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-ig"))
-				Expect(volumeKeyToPaths(p.Spec.Volumes)).To(ContainElement("type.name"))
+				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-nats-nats"))
+				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-type-name"))
 
 				for _, c := range p.Spec.Containers {
 					Expect(c.VolumeMounts).To(HaveLen(3))
 					mounts := c.VolumeMounts
-					Expect(volumeMountNames(mounts)).To(ContainElement("link-nats-deployment-nats"))
-					Expect(volumeMountNames(mounts)).To(ContainElement("link-nats-deployment-ig"))
+					Expect(volumeMountNames(mounts)).To(ContainElement("link-nats-deployment-nats-nats"))
+					Expect(volumeMountNames(mounts)).To(ContainElement("link-nats-deployment-type-name"))
 				}
 			})
 		})
@@ -176,12 +169,11 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(p.Spec.Volumes).To(HaveLen(2))
-				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-nats"))
-				Expect(volumeKeyToPaths(p.Spec.Volumes)).To(ContainElement("nats.nats"))
+				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-nats-nats"))
 
 				for _, c := range p.Spec.Containers {
 					Expect(c.VolumeMounts).To(HaveLen(2))
-					Expect(volumeMountNames(c.VolumeMounts)).To(ContainElement("link-nats-deployment-nats"))
+					Expect(volumeMountNames(c.VolumeMounts)).To(ContainElement("link-nats-deployment-nats-nats"))
 				}
 			})
 		})

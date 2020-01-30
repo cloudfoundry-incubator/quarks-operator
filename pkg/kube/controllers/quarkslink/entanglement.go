@@ -3,7 +3,6 @@ package quarkslink
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -16,8 +15,9 @@ var (
 	// DeploymentKey is the key to retrieve the name of the deployment,
 	// which provides the variables for the pod
 	DeploymentKey = fmt.Sprintf("%s/deployment", apis.GroupName)
-	// ConsumesKey is the key for identifying the provider to be consumed, in the
-	// format of 'type.job'
+
+	// ConsumesKey is the key for identifying the provider to be consumed, in
+	// the format of: '[{"name":"<name>","type":"<type>"}]' (JSON string)
 	ConsumesKey = fmt.Sprintf("%s/consumes", apis.GroupName)
 )
 
@@ -52,13 +52,13 @@ func newLinks(value string) (links, error) {
 }
 
 type link struct {
-	Name       string `json:"name"`
-	LinkType   string `json:"type"`
-	secretName string
+	Name     string `json:"name"`
+	LinkType string `json:"type"`
+	secret   *corev1.Secret
 }
 
 func (l link) String() string {
-	return names.EntanglementSecretKey(l.LinkType, l.Name)
+	return names.QuarksLinkSecretKey(l.LinkType, l.Name)
 }
 
 type links []link
@@ -91,17 +91,11 @@ func (e entanglement) find(secret corev1.Secret) (link, bool) {
 		return link{}, false
 	}
 
-	// secret name is a valid quarks link name and matches deployment
-	var regex = regexp.MustCompile(fmt.Sprintf("^link-%s-[a-z0-9-]*$", e.deployment))
-	if !regex.MatchString(secret.Name) {
-		return link{}, false
-	}
-
-	// secret contains one of the requested properties
 	for _, link := range e.links {
-		if _, found := secret.Data[link.String()]; found {
+		if secret.Name == names.QuarksLinkSecretName(e.deployment, link.LinkType, link.Name) {
 			return link, true
 		}
 	}
+
 	return link{}, false
 }

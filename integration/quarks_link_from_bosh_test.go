@@ -7,6 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
 
@@ -14,7 +15,6 @@ var _ = Describe("BOSHLinks", func() {
 	const (
 		manifestRef    = "manifest"
 		deploymentName = "test"
-		secretName     = "link-test-nats"
 	)
 
 	var (
@@ -43,12 +43,18 @@ var _ = Describe("BOSHLinks", func() {
 		})
 
 		It("creates a secret for each link found in jobs", func() {
+			secretName := names.QuarksLinkSecretName(deploymentName, "nats", "nats")
+
 			By("waiting for secrets", func() {
 				err := env.WaitForSecret(env.Namespace, secretName)
 				Expect(err).NotTo(HaveOccurred())
 				secret, err := env.GetSecret(env.Namespace, secretName)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(secret.Data).Should(HaveKeyWithValue("nats.nats", []byte("{\"nats\":{\"password\":\"changeme\",\"port\":4222,\"user\":\"admin\"}}")))
+				Expect(secret.Data).To(Equal(map[string][]byte{
+					"nats.password": []byte("changeme"),
+					"nats.port":     []byte("4222"),
+					"nats.user":     []byte("admin"),
+				}))
 			})
 		})
 	})
@@ -59,12 +65,18 @@ var _ = Describe("BOSHLinks", func() {
 		})
 
 		It("creates a secret for each link found in jobs", func() {
+			secretName := names.QuarksLinkSecretName(deploymentName, "nats", "nuts")
+
 			By("waiting for secrets", func() {
 				err := env.WaitForSecret(env.Namespace, secretName)
 				Expect(err).NotTo(HaveOccurred())
 				secret, err := env.GetSecret(env.Namespace, secretName)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(secret.Data).Should(HaveKeyWithValue("nats.nuts", []byte("{\"nats\":{\"password\":\"changeme\",\"port\":4222,\"user\":\"admin\"}}")))
+				Expect(secret.Data).To(Equal(map[string][]byte{
+					"nats.password": []byte("changeme"),
+					"nats.port":     []byte("4222"),
+					"nats.user":     []byte("admin"),
+				}))
 			})
 		})
 	})

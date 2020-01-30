@@ -243,27 +243,29 @@ func (c *Catalog) DefaultConfigMap(name string) corev1.ConfigMap {
 }
 
 // QuarksLinkSecret returns a link secret, as generated for consumption by an external (non BOSH) consumer
-func (c *Catalog) QuarksLinkSecret(deploymentName, igName, linkType, linkName, value string) corev1.Secret {
-	key := names.EntanglementSecretKey(linkType, linkName)
+func (c *Catalog) QuarksLinkSecret(deploymentName, linkType, linkName string, value map[string][]byte) corev1.Secret {
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "link-" + deploymentName + "-" + igName,
+			Name: names.QuarksLinkSecretName(deploymentName, linkType, linkName),
 			Labels: map[string]string{
 				manifest.LabelDeploymentName: deploymentName,
 			},
 		},
-		Data: map[string][]byte{
-			key: []byte(value),
-		},
+		Data: value,
 	}
 }
 
 // DefaultQuarksLinkSecret has default values from the nats release
 func (c *Catalog) DefaultQuarksLinkSecret(deploymentName, linkType string) corev1.Secret {
 	return c.QuarksLinkSecret(
-		deploymentName, linkType, // link-<nats-deployment>-<nats-ig>
-		linkType, "nats", // type.name
-		`{"nats":{"password":"custom_password","port":4222,"user":"admin"}}`,
+		deploymentName,
+		linkType,
+		"nats",
+		map[string][]byte{
+			"nats.password": []byte("custom_password"),
+			"nats.port":     []byte("4222"),
+			"nats.user":     []byte("admin"),
+		},
 	)
 }
 
