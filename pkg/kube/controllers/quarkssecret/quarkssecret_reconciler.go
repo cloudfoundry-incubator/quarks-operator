@@ -456,7 +456,7 @@ func (r *ReconcileQuarksSecret) generateCertificateGenerationRequest(ctx context
 // createCertificateSigningRequest creates CertificateSigningRequest Object
 func (r *ReconcileQuarksSecret) createCertificateSigningRequest(ctx context.Context, instance *qsv1a1.QuarksSecret, csr []byte) error {
 	csrName := names.CSRName(instance.Namespace, instance.Name)
-	ctxlog.Debugf(ctx, "Creating certificateSigningRequest '%s'", csrName)
+	ctxlog.Debugf(ctx, "Creating certificatesigningrequest '%s'", csrName)
 
 	annotations := instance.GetAnnotations()
 	if annotations == nil {
@@ -477,21 +477,17 @@ func (r *ReconcileQuarksSecret) createCertificateSigningRequest(ctx context.Cont
 		},
 	}
 
-	if err := r.setReference(instance, csrObj, r.scheme); err != nil {
-		return errors.Wrapf(err, "error setting owner for certificateSigningRequest '%s' to QuarksSecret '%s' in namespace '%s'", csrObj.Name, instance.Name, instance.GetNamespace())
-	}
-
 	// CSR spec is immutable after the request is created
 	err := r.client.Get(ctx, types.NamespacedName{Name: csrObj.Name}, instance)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			err = r.client.Create(ctx, csrObj)
 			if err != nil {
-				return errors.Wrapf(err, "could not create certificateSigningRequest '%s'", csrObj.Name)
+				return errors.Wrapf(err, "could not create certificatesigningrequest '%s'", csrObj.Name)
 			}
 			return nil
 		}
-		return errors.Wrapf(err, "could not get certificateSigningRequest '%s'", csrObj.Name)
+		return errors.Wrapf(err, "could not get certificatesigningrequest '%s'", csrObj.Name)
 	}
 
 	return nil
