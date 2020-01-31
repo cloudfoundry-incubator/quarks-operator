@@ -27,8 +27,17 @@ var _ = Describe("Examples Directory", func() {
 	podRestarted := func(podName string, startTime time.Time) {
 		err := wait.PollImmediate(pollInterval, kubectl.PollTimeout, func() (bool, error) {
 			status, err := kubectl.PodStatus(namespace, podName)
-			return ((err == nil) && status.StartTime.After(startTime)), err
+			if err != nil {
+				return false, err
+			}
+
+			if status == nil || status.StartTime == nil {
+				return false, nil
+			}
+
+			return status.StartTime.After(startTime), nil
 		})
+
 		Expect(err).ToNot(HaveOccurred())
 	}
 
