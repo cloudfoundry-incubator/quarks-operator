@@ -89,7 +89,7 @@ The operator will mutate the pod to:
 - mount the link secrets as `/quarks/link/DEPLOYMENT/<type>.<name>/<key>`
 - add an environment variable for each key in the secret data mapping: `LINK_<key>`
 
-The `<name>` and `<type>` are the respective link type and name, for example the nats release uses `nats` for both the name and the type of the link. Whereas the `<key>` describes the BOSH properties style flattened property key with its dot-style, for example `nats.password`. The key name is modified to be all upper case and without dots in the context of an environment variable, therefore `nats.password` becomes `LINK_NATS_PASSWORD` in the container.
+The `<name>` and `<type>` are the respective link type and name. For example, the nats release uses `nats` for both the name and the type of the link. The `<key>` describes the BOSH property, flattened (dot-style), for example `nats.password`. The key name is modified to be upper case and without dots in the context of an environment variable, therefore `nats.password` becomes `LINK_NATS_PASSWORD` in the container.
 
 If link information changes, the operator will trigger an update (restart) of the deployment or statefulset owning the pod.
 This can be done by updating the template of the pod using an annotation.
