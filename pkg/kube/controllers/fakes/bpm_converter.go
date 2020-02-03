@@ -5,100 +5,100 @@ import (
 	"sync"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 )
 
 type FakeBPMConverter struct {
-	BPMResourcesStub        func(string, manifest.DomainNameService, string, *manifest.InstanceGroup, converter.ReleaseImageProvider, bpm.Configs, string) (*converter.BPMResources, error)
-	bPMResourcesMutex       sync.RWMutex
-	bPMResourcesArgsForCall []struct {
+	ResourcesStub        func(string, bpmconverter.DomainNameService, string, *manifest.InstanceGroup, manifest.ReleaseImageProvider, bpm.Configs, string) (*bpmconverter.Resources, error)
+	resourcesMutex       sync.RWMutex
+	resourcesArgsForCall []struct {
 		arg1 string
-		arg2 manifest.DomainNameService
+		arg2 bpmconverter.DomainNameService
 		arg3 string
 		arg4 *manifest.InstanceGroup
-		arg5 converter.ReleaseImageProvider
+		arg5 manifest.ReleaseImageProvider
 		arg6 bpm.Configs
 		arg7 string
 	}
-	bPMResourcesReturns struct {
-		result1 *converter.BPMResources
+	resourcesReturns struct {
+		result1 *bpmconverter.Resources
 		result2 error
 	}
-	bPMResourcesReturnsOnCall map[int]struct {
-		result1 *converter.BPMResources
+	resourcesReturnsOnCall map[int]struct {
+		result1 *bpmconverter.Resources
 		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeBPMConverter) BPMResources(arg1 string, arg2 manifest.DomainNameService, arg3 string, arg4 *manifest.InstanceGroup, arg5 converter.ReleaseImageProvider, arg6 bpm.Configs, arg7 string) (*converter.BPMResources, error) {
-	fake.bPMResourcesMutex.Lock()
-	ret, specificReturn := fake.bPMResourcesReturnsOnCall[len(fake.bPMResourcesArgsForCall)]
-	fake.bPMResourcesArgsForCall = append(fake.bPMResourcesArgsForCall, struct {
+func (fake *FakeBPMConverter) Resources(arg1 string, arg2 bpmconverter.DomainNameService, arg3 string, arg4 *manifest.InstanceGroup, arg5 manifest.ReleaseImageProvider, arg6 bpm.Configs, arg7 string) (*bpmconverter.Resources, error) {
+	fake.resourcesMutex.Lock()
+	ret, specificReturn := fake.resourcesReturnsOnCall[len(fake.resourcesArgsForCall)]
+	fake.resourcesArgsForCall = append(fake.resourcesArgsForCall, struct {
 		arg1 string
-		arg2 manifest.DomainNameService
+		arg2 bpmconverter.DomainNameService
 		arg3 string
 		arg4 *manifest.InstanceGroup
-		arg5 converter.ReleaseImageProvider
+		arg5 manifest.ReleaseImageProvider
 		arg6 bpm.Configs
 		arg7 string
 	}{arg1, arg2, arg3, arg4, arg5, arg6, arg7})
-	fake.recordInvocation("BPMResources", []interface{}{arg1, arg2, arg3, arg4, arg5, arg6, arg7})
-	fake.bPMResourcesMutex.Unlock()
-	if fake.BPMResourcesStub != nil {
-		return fake.BPMResourcesStub(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+	fake.recordInvocation("Resources", []interface{}{arg1, arg2, arg3, arg4, arg5, arg6, arg7})
+	fake.resourcesMutex.Unlock()
+	if fake.ResourcesStub != nil {
+		return fake.ResourcesStub(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.bPMResourcesReturns
+	fakeReturns := fake.resourcesReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *FakeBPMConverter) BPMResourcesCallCount() int {
-	fake.bPMResourcesMutex.RLock()
-	defer fake.bPMResourcesMutex.RUnlock()
-	return len(fake.bPMResourcesArgsForCall)
+func (fake *FakeBPMConverter) ResourcesCallCount() int {
+	fake.resourcesMutex.RLock()
+	defer fake.resourcesMutex.RUnlock()
+	return len(fake.resourcesArgsForCall)
 }
 
-func (fake *FakeBPMConverter) BPMResourcesCalls(stub func(string, manifest.DomainNameService, string, *manifest.InstanceGroup, converter.ReleaseImageProvider, bpm.Configs, string) (*converter.BPMResources, error)) {
-	fake.bPMResourcesMutex.Lock()
-	defer fake.bPMResourcesMutex.Unlock()
-	fake.BPMResourcesStub = stub
+func (fake *FakeBPMConverter) ResourcesCalls(stub func(string, bpmconverter.DomainNameService, string, *manifest.InstanceGroup, manifest.ReleaseImageProvider, bpm.Configs, string) (*bpmconverter.Resources, error)) {
+	fake.resourcesMutex.Lock()
+	defer fake.resourcesMutex.Unlock()
+	fake.ResourcesStub = stub
 }
 
-func (fake *FakeBPMConverter) BPMResourcesArgsForCall(i int) (string, manifest.DomainNameService, string, *manifest.InstanceGroup, converter.ReleaseImageProvider, bpm.Configs, string) {
-	fake.bPMResourcesMutex.RLock()
-	defer fake.bPMResourcesMutex.RUnlock()
-	argsForCall := fake.bPMResourcesArgsForCall[i]
+func (fake *FakeBPMConverter) ResourcesArgsForCall(i int) (string, bpmconverter.DomainNameService, string, *manifest.InstanceGroup, manifest.ReleaseImageProvider, bpm.Configs, string) {
+	fake.resourcesMutex.RLock()
+	defer fake.resourcesMutex.RUnlock()
+	argsForCall := fake.resourcesArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5, argsForCall.arg6, argsForCall.arg7
 }
 
-func (fake *FakeBPMConverter) BPMResourcesReturns(result1 *converter.BPMResources, result2 error) {
-	fake.bPMResourcesMutex.Lock()
-	defer fake.bPMResourcesMutex.Unlock()
-	fake.BPMResourcesStub = nil
-	fake.bPMResourcesReturns = struct {
-		result1 *converter.BPMResources
+func (fake *FakeBPMConverter) ResourcesReturns(result1 *bpmconverter.Resources, result2 error) {
+	fake.resourcesMutex.Lock()
+	defer fake.resourcesMutex.Unlock()
+	fake.ResourcesStub = nil
+	fake.resourcesReturns = struct {
+		result1 *bpmconverter.Resources
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeBPMConverter) BPMResourcesReturnsOnCall(i int, result1 *converter.BPMResources, result2 error) {
-	fake.bPMResourcesMutex.Lock()
-	defer fake.bPMResourcesMutex.Unlock()
-	fake.BPMResourcesStub = nil
-	if fake.bPMResourcesReturnsOnCall == nil {
-		fake.bPMResourcesReturnsOnCall = make(map[int]struct {
-			result1 *converter.BPMResources
+func (fake *FakeBPMConverter) ResourcesReturnsOnCall(i int, result1 *bpmconverter.Resources, result2 error) {
+	fake.resourcesMutex.Lock()
+	defer fake.resourcesMutex.Unlock()
+	fake.ResourcesStub = nil
+	if fake.resourcesReturnsOnCall == nil {
+		fake.resourcesReturnsOnCall = make(map[int]struct {
+			result1 *bpmconverter.Resources
 			result2 error
 		})
 	}
-	fake.bPMResourcesReturnsOnCall[i] = struct {
-		result1 *converter.BPMResources
+	fake.resourcesReturnsOnCall[i] = struct {
+		result1 *bpmconverter.Resources
 		result2 error
 	}{result1, result2}
 }
@@ -106,8 +106,8 @@ func (fake *FakeBPMConverter) BPMResourcesReturnsOnCall(i int, result1 *converte
 func (fake *FakeBPMConverter) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.bPMResourcesMutex.RLock()
-	defer fake.bPMResourcesMutex.RUnlock()
+	fake.resourcesMutex.RLock()
+	defer fake.resourcesMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

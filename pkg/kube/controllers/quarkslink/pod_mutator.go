@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -79,18 +82,12 @@ func (m *PodMutator) addSecrets(ctx context.Context, namespace string, pod *core
 
 	// add missing volume sources to pod
 	for _, link := range links {
-		if !hasSecretVolumeSource(pod.Spec.Volumes, link.secretName) {
+		if !hasSecretVolumeSource(pod.Spec.Volumes, link.secret.Name) {
 			volume := corev1.Volume{
-				Name: link.secretName,
+				Name: link.secret.Name,
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
-						SecretName: link.secretName,
-						Items: []corev1.KeyToPath{
-							corev1.KeyToPath{
-								Key:  link.String(),
-								Path: "link.yaml",
-							},
-						},
+						SecretName: link.secret.Name,
 					},
 				},
 			}
@@ -99,18 +96,41 @@ func (m *PodMutator) addSecrets(ctx context.Context, namespace string, pod *core
 
 		// create/update volume mount on containers
 		mount := corev1.VolumeMount{
-			Name:      link.secretName,
+			Name:      link.secret.Name,
 			ReadOnly:  true,
-			MountPath: filepath.Join("/quarks/link", e.deployment, link.Name),
+			MountPath: filepath.Join("/quarks/link", e.deployment, link.String()),
 		}
 		for i, container := range pod.Spec.Containers {
-			idx := findVolumeMount(container.VolumeMounts, link.secretName)
+			idx := findVolumeMount(container.VolumeMounts, link.secret.Name)
 			if idx > -1 {
 				container.VolumeMounts[idx] = mount
 			} else {
 				container.VolumeMounts = append(container.VolumeMounts, mount)
 			}
 			pod.Spec.Containers[i] = container
+		}
+
+		// add link properties as environment variables
+		keys := []string{}
+		for key := range link.secret.Data {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+
+		for contIdx := range pod.Spec.Containers {
+			for _, key := range keys {
+				pod.Spec.Containers[contIdx].Env = append(pod.Spec.Containers[contIdx].Env,
+					corev1.EnvVar{
+						Name: fmt.Sprintf("LINK_%s", asEnvironmentVariableName(key)),
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: link.secret.Name},
+								Key:                  key,
+							},
+						},
+					},
+				)
+			}
 		}
 	}
 
@@ -133,18 +153,19 @@ func (m *PodMutator) findLinks(ctx context.Context, namespace string, e entangle
 		return links, nil
 	}
 
-	// we can't use the instance group from
-	// link-<deployment>-<instancegroup> for the search, because we don't
-	// know which ig provides the link, so filter for secrets which match
-	// the link name scheme and have our link 'type.name' as data key
-	for _, secret := range list.Items {
-		if link, ok := e.find(secret); ok {
-			link.secretName = secret.Name
+	for i := range list.Items {
+		if link, ok := e.find(list.Items[i]); ok {
+			link.secret = &(list.Items[i])
 			links = append(links, link)
 		}
 	}
 
 	return links, nil
+}
+
+func asEnvironmentVariableName(input string) string {
+	reg := regexp.MustCompile(`[^a-zA-Z0-9]+`)
+	return strings.ToUpper(reg.ReplaceAllString(input, "_"))
 }
 
 func hasSecretVolumeSource(volumes []corev1.Volume, name string) bool {

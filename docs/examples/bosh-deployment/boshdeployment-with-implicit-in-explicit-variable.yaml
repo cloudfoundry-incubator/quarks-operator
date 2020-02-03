@@ -32,7 +32,7 @@ data:
           nats:
             user: admin
             password: ((nats_password))
-            ca: ((nats_ca.certificate))
+            cert: ((nats_cert))
     variables:
     - name: nats_password
       type: password

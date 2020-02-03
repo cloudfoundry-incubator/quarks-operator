@@ -1,20 +1,20 @@
-package manifest_test
+package boshdns_test
 
 import (
 	"context"
 	"encoding/json"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"k8s.io/apimachinery/pkg/runtime"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 )
 
 const boshDNSAddOn = `
@@ -150,12 +150,10 @@ func loadAddOn() *manifest.AddOn {
 	return &addOn
 }
 
-var _ = Describe("kube converter", func() {
-
+var _ = Describe("BOSH DNS", func() {
 	Context("bosh-dns", func() {
-
 		It("reconciles dns stuff", func() {
-			d, err := manifest.NewBoshDomainNameService(loadAddOn(), "scf", nil)
+			d, err := boshdns.NewBoshDomainNameService(loadAddOn(), "scf", nil)
 			Expect(err).NotTo(HaveOccurred())
 			scheme := runtime.NewScheme()
 			Expect(corev1.AddToScheme(scheme)).To(Succeed())
@@ -170,26 +168,22 @@ var _ = Describe("kube converter", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(counter).To(Equal(3))
 		})
-
 	})
 
 	Context("simple-dns", func() {
-
 		It("shorten long service names", func() {
-			dns := manifest.NewSimpleDomainNameService("sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-")
+			dns := boshdns.NewSimpleDomainNameService("sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-")
 			Expect(len(dns.HeadlessServiceName("scheduler-scheduler-scheduler-scheduler-scheduler-scheduler-scheduler-scheduler"))).
 				To(Equal(63))
 		})
 
 		It("reconciles does nothing", func() {
-			dns := manifest.NewSimpleDomainNameService("scf")
+			dns := boshdns.NewSimpleDomainNameService("scf")
 			client := fake.NewFakeClientWithScheme(runtime.NewScheme())
 			err := dns.Reconcile(context.Background(), "default", client, func(object v1.Object) error {
 				return nil
 			})
 			Expect(err).NotTo(HaveOccurred())
 		})
-
 	})
-
 })

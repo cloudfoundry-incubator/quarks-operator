@@ -1,4 +1,4 @@
-package converter_test
+package bpmconverter_test
 
 import (
 	"fmt"
@@ -12,41 +12,48 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/cf-operator/testing"
 	"code.cloudfoundry.org/cf-operator/testing/boshreleases"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
-var _ = Describe("kube converter", func() {
+var _ = Describe("BPM Converter", func() {
 	var (
 		m                *manifest.Manifest
 		volumeFactory    *fakes.FakeVolumeFactory
 		containerFactory *fakes.FakeContainerFactory
 		env              testing.Catalog
 		err              error
+		dns              boshdns.DomainNameService
 	)
 
-	Context("BPMResources", func() {
-		act := func(bpmConfigs bpm.Configs, instanceGroup *manifest.InstanceGroup) (*converter.BPMResources, error) {
-			kubeConverter := converter.NewKubeConverter(
+	Context("Resources", func() {
+		act := func(bpmConfigs bpm.Configs, instanceGroup *manifest.InstanceGroup) (*bpmconverter.Resources, error) {
+			c := bpmconverter.NewConverter(
 				"foo",
 				volumeFactory,
-				func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) converter.ContainerFactory {
+				func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
 					return containerFactory
 				})
-			resources, err := kubeConverter.BPMResources(m.Name, m.DNS, "1", instanceGroup, m, bpmConfigs, "1")
+			resources, err := c.Resources(m.Name, dns, "1", instanceGroup, m, bpmConfigs, "1")
 			return resources, err
 		}
 
 		BeforeEach(func() {
+
 			m, err = env.DefaultBOSHManifest()
+			Expect(err).NotTo(HaveOccurred())
+
+			dns, err = boshdns.NewDNS(*m)
 			Expect(err).NotTo(HaveOccurred())
 
 			volumeFactory = &fakes.FakeVolumeFactory{}

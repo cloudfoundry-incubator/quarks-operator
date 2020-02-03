@@ -11,6 +11,7 @@ const (
 type LinkInfo struct {
 	SecretName   string
 	ProviderName string
+	ProviderType string
 }
 
 // LinkInfos is a list of LinkInfo

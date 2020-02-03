@@ -11,14 +11,14 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
-	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
+
+	admissionregistration "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	machinerytypes "k8s.io/apimachinery/pkg/types"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
@@ -165,7 +165,7 @@ func (f *WebhookConfig) generateValidationWebhookServerConfig(ctx context.Contex
 		return errors.Errorf("can not create a webhook server config with an empty ca certificate")
 	}
 
-	config := &admissionregistrationv1beta1.ValidatingWebhookConfiguration{
+	config := &admissionregistration.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      f.ConfigName,
 			Namespace: f.config.OperatorNamespace,
@@ -176,15 +176,15 @@ func (f *WebhookConfig) generateValidationWebhookServerConfig(ctx context.Contex
 		ctxlog.Debugf(ctx, "Calculating validation webhook '%s'", webhook.Name)
 
 		if f.config.WebhookUseServiceRef {
-			clientConfig := admissionregistrationv1beta1.WebhookClientConfig{
+			clientConfig := admissionregistration.WebhookClientConfig{
 				CABundle: f.CaCertificate,
-				Service: &admissionregistrationv1beta1.ServiceReference{
+				Service: &admissionregistration.ServiceReference{
 					Name:      "cf-operator-webhook",
 					Namespace: f.config.OperatorNamespace,
 					Path:      &webhook.Path,
 				},
 			}
-			config.Webhooks = append(config.Webhooks, f.newWebhook(webhook, clientConfig))
+			config.Webhooks = append(config.Webhooks, f.newValidatingWebhook(webhook, clientConfig))
 		} else {
 			url := url.URL{
 				Scheme: "https",
@@ -193,21 +193,16 @@ func (f *WebhookConfig) generateValidationWebhookServerConfig(ctx context.Contex
 			}
 			urlString := url.String()
 
-			clientConfig := admissionregistrationv1beta1.WebhookClientConfig{
+			clientConfig := admissionregistration.WebhookClientConfig{
 				CABundle: f.CaCertificate,
 				URL:      &urlString,
 			}
-			config.Webhooks = append(config.Webhooks, f.newWebhook(webhook, clientConfig))
+			config.Webhooks = append(config.Webhooks, f.newValidatingWebhook(webhook, clientConfig))
 		}
 	}
 	ctxlog.Debugf(ctx, "Creating validation webhook config '%s'", config.Name)
 	f.client.Delete(ctx, config)
-	err := f.client.Create(ctx, config)
-	if err != nil {
-		return errors.Wrap(err, "generating the webhook configuration")
-	}
-
-	return nil
+	return f.client.Create(ctx, config)
 }
 
 func (f *WebhookConfig) generateMutationWebhookServerConfig(ctx context.Context, webhooks []*webhook.OperatorWebhook) error {
@@ -215,7 +210,7 @@ func (f *WebhookConfig) generateMutationWebhookServerConfig(ctx context.Context,
 		return fmt.Errorf("can not create a webhook server config with an empty ca certificate")
 	}
 
-	config := admissionregistrationv1beta1.MutatingWebhookConfiguration{
+	config := admissionregistration.MutatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      f.ConfigName,
 			Namespace: f.config.OperatorNamespace,
@@ -226,15 +221,15 @@ func (f *WebhookConfig) generateMutationWebhookServerConfig(ctx context.Context,
 		ctxlog.Debugf(ctx, "Calculating mutating webhook '%s'", webhook.Name)
 
 		if f.config.WebhookUseServiceRef {
-			clientConfig := admissionregistrationv1beta1.WebhookClientConfig{
-				Service: &admissionregistrationv1beta1.ServiceReference{
+			clientConfig := admissionregistration.WebhookClientConfig{
+				Service: &admissionregistration.ServiceReference{
 					Name:      "cf-operator-webhook",
 					Namespace: f.config.OperatorNamespace,
 					Path:      &webhook.Path,
 				},
 				CABundle: f.CaCertificate,
 			}
-			config.Webhooks = append(config.Webhooks, f.newWebhook(webhook, clientConfig))
+			config.Webhooks = append(config.Webhooks, f.newMutatingWebhook(webhook, clientConfig))
 		} else {
 			url := url.URL{
 				Scheme: "https",
@@ -243,22 +238,17 @@ func (f *WebhookConfig) generateMutationWebhookServerConfig(ctx context.Context,
 			}
 			urlString := url.String()
 
-			clientConfig := admissionregistrationv1beta1.WebhookClientConfig{
+			clientConfig := admissionregistration.WebhookClientConfig{
 				CABundle: f.CaCertificate,
 				URL:      &urlString,
 			}
-			config.Webhooks = append(config.Webhooks, f.newWebhook(webhook, clientConfig))
+			config.Webhooks = append(config.Webhooks, f.newMutatingWebhook(webhook, clientConfig))
 		}
 	}
 
 	ctxlog.Debugf(ctx, "Creating mutating webhook config '%s'", config.Name)
 	f.client.Delete(ctx, &config)
-	err := f.client.Create(ctx, &config)
-	if err != nil {
-		return errors.Wrap(err, "generating the webhook configuration")
-	}
-
-	return nil
+	return f.client.Create(ctx, &config)
 }
 
 func (f *WebhookConfig) writeSecretFiles() error {
@@ -289,8 +279,19 @@ func (f *WebhookConfig) writeSecretFiles() error {
 	return nil
 }
 
-func (f *WebhookConfig) newWebhook(webhook *webhook.OperatorWebhook, clientConfig admissionregistrationv1beta1.WebhookClientConfig) admissionregistrationv1beta1.Webhook {
-	wh := admissionregistrationv1beta1.Webhook{
+func (f *WebhookConfig) newValidatingWebhook(webhook *webhook.OperatorWebhook, clientConfig admissionregistration.WebhookClientConfig) admissionregistration.ValidatingWebhook {
+	wh := admissionregistration.ValidatingWebhook{
+		Name:              webhook.Name,
+		Rules:             webhook.Rules,
+		FailurePolicy:     &webhook.FailurePolicy,
+		NamespaceSelector: webhook.NamespaceSelector,
+		ClientConfig:      clientConfig,
+	}
+	return wh
+}
+
+func (f *WebhookConfig) newMutatingWebhook(webhook *webhook.OperatorWebhook, clientConfig admissionregistration.WebhookClientConfig) admissionregistration.MutatingWebhook {
+	wh := admissionregistration.MutatingWebhook{
 		Name:              webhook.Name,
 		Rules:             webhook.Rules,
 		FailurePolicy:     &webhook.FailurePolicy,

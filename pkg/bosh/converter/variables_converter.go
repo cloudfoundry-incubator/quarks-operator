@@ -4,49 +4,27 @@ import (
 	"fmt"
 
 	certv1 "k8s.io/api/certificates/v1beta1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
-// KubeConverter represents a Manifest in kube resources
-type KubeConverter struct {
-	namespace               string
-	volumeFactory           VolumeFactory
-	newContainerFactoryFunc NewContainerFactoryFunc
+// VariablesConverter represents a BOSH manifest into kubernetes resources
+type VariablesConverter struct {
+	namespace string
 }
 
-// ContainerFactory builds Kubernetes containers from BOSH jobs.
-type ContainerFactory interface {
-	JobsToInitContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks disk.BPMResourceDisks, requiredService *string) ([]corev1.Container, error)
-	JobsToContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks disk.BPMResourceDisks) ([]corev1.Container, error)
-}
-
-// NewContainerFactoryFunc returns ContainerFactory from single BOSH instance group.
-type NewContainerFactoryFunc func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) ContainerFactory
-
-// VolumeFactory builds Kubernetes containers from BOSH jobs.
-type VolumeFactory interface {
-	GenerateDefaultDisks(manifestName string, instanceGroupName string, igResolvedSecretVersion string, namespace string) disk.BPMResourceDisks
-	GenerateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (disk.BPMResourceDisks, error)
-}
-
-// NewKubeConverter converts a Manifest into kube resources
-func NewKubeConverter(namespace string, volumeFactory VolumeFactory, newContainerFactoryFunc NewContainerFactoryFunc) *KubeConverter {
-	return &KubeConverter{
-		namespace:               namespace,
-		volumeFactory:           volumeFactory,
-		newContainerFactoryFunc: newContainerFactoryFunc,
+// NewVariablesConverter converts a BOSH manifest into kubernetes resources
+func NewVariablesConverter(namespace string) *VariablesConverter {
+	return &VariablesConverter{
+		namespace: namespace,
 	}
 }
 
 // Variables returns quarks secrets for a list of BOSH variables
-func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable) ([]qsv1a1.QuarksSecret, error) {
+func (vc *VariablesConverter) Variables(manifestName string, variables []bdm.Variable) ([]qsv1a1.QuarksSecret, error) {
 	secrets := []qsv1a1.QuarksSecret{}
 
 	for _, v := range variables {
@@ -54,7 +32,7 @@ func (kc *KubeConverter) Variables(manifestName string, variables []bdm.Variable
 		s := qsv1a1.QuarksSecret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
-				Namespace: kc.namespace,
+				Namespace: vc.namespace,
 				Labels: map[string]string{
 					"variableName":          v.Name,
 					bdm.LabelDeploymentName: manifestName,

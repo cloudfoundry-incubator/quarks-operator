@@ -1,4 +1,4 @@
-package converter
+package withops
 
 import (
 	"github.com/cppforlife/go-patch/patch"

@@ -22,7 +22,7 @@ We construct link information like so:
 
 > If multiple secrets or services are found with the same link information, the operator should error
 
-### Example
+### Example (Native -> BOSH)
 
 ```yaml
 kind: Secret
@@ -37,7 +37,7 @@ spec:
 
 Using this secret, I should be able to use `link("nats").p("password")` in one of my BOSH templates.
 
-```
+```yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -66,20 +66,35 @@ If the service is changed, or the list of pods selected by the service is change
 
 In this case, the BOSH component is a provider, and the native component is a consumer.
 
-The operator creates link Secrets for all providers in a BOSH deployment.
+The operator creates link secrets for all providers in a BOSH deployment. Each secret contains a flattened map with the provided properties:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: link-test-nats-nats
+data:
+  nats.password: YXBwYXJlbnRseSwgeW91Cg==
+  nats.port: aGF2ZSB0b28K
+  nats.user: bXVjaCB0aW1lCg==
+```
 
 If a pod is annotated with the following:
-  - `quarks.cloudfoundry.org/deployment: foo`
-  - `quarks.cloudfoundry.org/consumes: '[{"name":"nats","type":"nats"}]'`
-The operator will:
-  - mutate the pod and mount the secret as `/quarks/link/DEPLOYMENT/<name>/link.yaml`
 
-Where `<name>` is the name of the link, e.g. 'nats'.
+- `quarks.cloudfoundry.org/deployment: foo`
+- `quarks.cloudfoundry.org/consumes: '[{"name":"nats","type":"nats"}]'`
+
+The operator will mutate the pod to:
+
+- mount the link secrets as `/quarks/link/DEPLOYMENT/<type>.<name>/<key>`
+- add an environment variable for each key in the secret data mapping: `LINK_<key>`
+
+The `<name>` and `<type>` are the respective link type and name. For example, the nats release uses `nats` for both the name and the type of the link. The `<key>` describes the BOSH property, flattened (dot-style), for example `nats.password`. The key name is modified to be upper case and without dots in the context of an environment variable, therefore `nats.password` becomes `LINK_NATS_PASSWORD` in the container.
 
 If link information changes, the operator will trigger an update (restart) of the deployment or statefulset owning the pod.
 This can be done by updating the template of the pod using an annotation.
 
-## Example
+### Example (BOSH -> Native)
 
 an Eirini Helm Chart
 
@@ -94,6 +109,7 @@ The OPI process of Eirini required the NATS password and IP.
     spec:
 
 ```
+
 and a CF-Deployment with Operator
 Instance Groups:
 
@@ -102,4 +118,3 @@ Instance Groups:
 - Gorouter
 - NATS
   provides: nats
-

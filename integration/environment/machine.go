@@ -63,6 +63,10 @@ func (m *Machine) WaitForDeployment(namespace string, name string, generation in
 			return false, errors.Wrapf(err, "failed to query for deployment by name: %v", name)
 		}
 
+		if d.Status.ReadyReplicas != *d.Spec.Replicas {
+			return false, nil
+		}
+
 		if d.Status.ObservedGeneration > generation {
 			return true, nil
 		}

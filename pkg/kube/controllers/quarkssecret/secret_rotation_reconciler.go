@@ -19,7 +19,7 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
-// NewQuarksSecretReconciler returns a new ReconcileQuarksSecret
+// NewSecretRotationReconciler returns a new ReconcileQuarksSecret
 func NewSecretRotationReconciler(ctx context.Context, config *config.Config, mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileSecretRotation{
 		ctx:    ctx,

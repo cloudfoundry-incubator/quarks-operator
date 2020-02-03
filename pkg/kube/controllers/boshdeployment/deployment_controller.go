@@ -18,10 +18,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/withops"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
@@ -33,14 +35,13 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	ctx = ctxlog.NewContextWithRecorder(ctx, "boshdeployment-reconciler", mgr.GetEventRecorderFor("boshdeployment-recorder"))
 	r := NewDeploymentReconciler(
 		ctx, config, mgr,
-		converter.NewResolver(mgr.GetClient(), func() converter.Interpolator { return converter.NewInterpolator() }),
+		withops.NewResolver(
+			mgr.GetClient(),
+			func() withops.Interpolator { return withops.NewInterpolator() },
+			func(m bdm.Manifest) (withops.DomainNameService, error) { return boshdns.NewDNS(m) },
+		),
 		converter.NewJobFactory(config.Namespace),
-		converter.NewKubeConverter(
-			config.Namespace,
-			converter.NewVolumeFactory(),
-			func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) converter.ContainerFactory {
-				return converter.NewContainerFactory(manifestName, instanceGroupName, version, disableLogSidecar, releaseImageProvider, bpmConfigs)
-			}),
+		converter.NewVariablesConverter(config.Namespace),
 		controllerutil.SetControllerReference,
 	)
 

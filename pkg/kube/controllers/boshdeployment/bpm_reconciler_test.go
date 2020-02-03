@@ -22,13 +22,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	mfakes "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest/fakes"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
-	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	cfcfg "code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -38,18 +38,18 @@ import (
 
 var _ = Describe("ReconcileBPM", func() {
 	var (
-		manager                   *cfakes.FakeManager
+		manager                   *fakes.FakeManager
 		reconciler                reconcile.Reconciler
 		recorder                  *record.FakeRecorder
 		request                   reconcile.Request
 		ctx                       context.Context
-		resolver                  mfakes.FakeDesiredManifest
-		kubeConverter             cfakes.FakeBPMConverter
+		resolver                  fakes.FakeDesiredManifest
+		kubeConverter             fakes.FakeBPMConverter
 		manifest                  *bdm.Manifest
 		logs                      *observer.ObservedLogs
 		log                       *zap.SugaredLogger
 		config                    *cfcfg.Config
-		client                    *cfakes.FakeClient
+		client                    *fakes.FakeClient
 		manifestWithVars          *corev1.Secret
 		bpmInformation            *corev1.Secret
 		bpmInformationNoProcesses *corev1.Secret
@@ -58,13 +58,13 @@ var _ = Describe("ReconcileBPM", func() {
 	BeforeEach(func() {
 		controllers.AddToScheme(scheme.Scheme)
 		recorder = record.NewFakeRecorder(20)
-		manager = &cfakes.FakeManager{}
+		manager = &fakes.FakeManager{}
 		manager.GetSchemeReturns(scheme.Scheme)
 		manager.GetEventRecorderForReturns(recorder)
-		resolver = mfakes.FakeDesiredManifest{}
-		kubeConverter = cfakes.FakeBPMConverter{}
+		resolver = fakes.FakeDesiredManifest{}
+		kubeConverter = fakes.FakeBPMConverter{}
 
-		kubeConverter.BPMResourcesReturns(&converter.BPMResources{}, nil)
+		kubeConverter.ResourcesReturns(&bpmconverter.Resources{}, nil)
 		size := 1024
 
 		manifest = &bdm.Manifest{
@@ -114,7 +114,6 @@ var _ = Describe("ReconcileBPM", func() {
 					Type: "password",
 				},
 			},
-			DNS: bdm.NewSimpleDomainNameService("fake-manifest"),
 		}
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
 		logs, log = helper.NewTestLogger()
@@ -200,7 +199,7 @@ variables: []
 			},
 		}
 
-		client = &cfakes.FakeClient{}
+		client = &fakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 			switch object := object.(type) {
 			case *corev1.Secret:
@@ -237,6 +236,9 @@ variables: []
 		resolver.DesiredManifestReturns(manifest, nil)
 		reconciler = cfd.NewBPMReconciler(ctx, config, manager, &resolver,
 			controllerutil.SetControllerReference, &kubeConverter,
+			func(m bdm.Manifest) (boshdns.DomainNameService, error) {
+				return boshdns.NewSimpleDomainNameService("fake-manifest"), nil
+			},
 		)
 	})
 
@@ -259,7 +261,7 @@ variables: []
 			})
 
 			It("handles an error when applying BPM info", func() {
-				kubeConverter.BPMResourcesReturns(&converter.BPMResources{}, errors.New("fake-error"))
+				kubeConverter.ResourcesReturns(&bpmconverter.Resources{}, errors.New("fake-error"))
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object := object.(type) {
 					case *corev1.Secret:
@@ -277,7 +279,7 @@ variables: []
 			})
 
 			It("handles an error when deploying instance groups", func() {
-				kubeConverter.BPMResourcesReturns(&converter.BPMResources{
+				kubeConverter.ResourcesReturns(&bpmconverter.Resources{
 					Services: []corev1.Service{
 						{
 							ObjectMeta: metav1.ObjectMeta{

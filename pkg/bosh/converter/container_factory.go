@@ -39,12 +39,12 @@ type ContainerFactoryImpl struct {
 	instanceGroupName    string
 	version              string
 	disableLogSidecar    bool
-	releaseImageProvider ReleaseImageProvider
+	releaseImageProvider bdm.ReleaseImageProvider
 	bpmConfigs           bpm.Configs
 }
 
 // NewContainerFactory returns a concrete implementation of ContainerFactory.
-func NewContainerFactory(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactoryImpl {
+func NewContainerFactory(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactoryImpl {
 	return &ContainerFactoryImpl{
 		manifestName:         manifestName,
 		instanceGroupName:    instanceGroupName,

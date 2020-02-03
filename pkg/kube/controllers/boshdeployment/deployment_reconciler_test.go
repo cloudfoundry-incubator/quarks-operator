@@ -43,7 +43,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		recorder      *record.FakeRecorder
 		request       reconcile.Request
 		ctx           context.Context
-		resolver      fakes.FakeResolver
+		withops       fakes.FakeWithOps
 		jobFactory    fakes.FakeJobFactory
 		kubeConverter fakes.FakeVariablesConverter
 		manifest      *bdm.Manifest
@@ -61,7 +61,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		manager = &fakes.FakeManager{}
 		manager.GetSchemeReturns(scheme.Scheme)
 		manager.GetEventRecorderForReturns(recorder)
-		resolver = fakes.FakeResolver{}
+		withops = fakes.FakeWithOps{}
 		jobFactory = fakes.FakeJobFactory{}
 		kubeConverter = fakes.FakeVariablesConverter{}
 		kubeConverter.VariablesReturns([]qsv1a1.QuarksSecret{}, nil)
@@ -115,12 +115,14 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		}
 		dmQJob = &qjv1a1.QuarksJob{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("dm-%s", manifest.Name),
+				Name:      fmt.Sprintf("dm-%s", manifest.Name),
+				Namespace: "default",
 			},
 		}
 		igQJob = &qjv1a1.QuarksJob{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("ig-%s", manifest.Name),
+				Name:      fmt.Sprintf("ig-%s", manifest.Name),
+				Namespace: "default",
 			},
 		}
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
@@ -170,10 +172,10 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 	})
 
 	JustBeforeEach(func() {
-		resolver.WithOpsManifestReturns(manifest, []string{}, nil)
+		withops.ManifestReturns(manifest, []string{}, nil)
 		reconciler = cfd.NewDeploymentReconciler(
 			ctx, config, manager,
-			&resolver, &jobFactory, &kubeConverter,
+			&withops, &jobFactory, &kubeConverter,
 			controllerutil.SetControllerReference,
 		)
 	})
@@ -201,7 +203,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles an error when resolving the BOSHDeployment", func() {
-				resolver.WithOpsManifestReturns(nil, []string{}, fmt.Errorf("resolver error"))
+				withops.ManifestReturns(nil, []string{}, fmt.Errorf("resolver error"))
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
@@ -215,7 +217,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		Context("when the manifest can be resolved", func() {
 			It("handles an error when resolving manifest", func() {
 				manifest = &bdm.Manifest{}
-				resolver.WithOpsManifestReturns(manifest, []string{}, errors.New("fake-error"))
+				withops.ManifestReturns(manifest, []string{}, errors.New("fake-error"))
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
@@ -223,7 +225,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles an error when setting the owner reference on the object", func() {
-				reconciler = cfd.NewDeploymentReconciler(ctx, config, manager, &resolver, &jobFactory, &kubeConverter,
+				reconciler = cfd.NewDeploymentReconciler(ctx, config, manager, &withops, &jobFactory, &kubeConverter,
 					func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 						return fmt.Errorf("some error")
 					},
@@ -369,9 +371,9 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			Context("when the manifest contains variables", func() {
 				BeforeEach(func() {
 					kubeConverter.VariablesReturns([]qsv1a1.QuarksSecret{
-						{ObjectMeta: metav1.ObjectMeta{Name: "fake-variable"}},
-						{ObjectMeta: metav1.ObjectMeta{Name: "other-variable"}},
-						{ObjectMeta: metav1.ObjectMeta{Name: "last-variable"}},
+						{ObjectMeta: metav1.ObjectMeta{Name: "fake-variable", Namespace: "default"}},
+						{ObjectMeta: metav1.ObjectMeta{Name: "other-variable", Namespace: "default"}},
+						{ObjectMeta: metav1.ObjectMeta{Name: "last-variable", Namespace: "default"}},
 					}, nil)
 					client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 						switch object := object.(type) {
