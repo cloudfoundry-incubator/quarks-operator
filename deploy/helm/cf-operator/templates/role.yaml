@@ -1,5 +1,4 @@
 {{- if .Values.global.rbac.create }}
-{{- if .Values.global.operator.watchNamespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -16,14 +15,13 @@ rules:
   - get
   - create
   - update
-{{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   creationTimestamp: null
   name: {{ template "cf-operator.fullname" . }}
-  {{- template "cf-operator.roleNamespace" . }}
+  namespace: {{ .Values.global.operator.watchNamespace }}
 rules:
 - apiGroups:
   - ""
@@ -89,7 +87,7 @@ rules:
   verbs:
   - get
   - list
-- apiGroups: 
+- apiGroups:
   - quarks.cloudfoundry.org
   resources:
   - quarksjobs
@@ -99,7 +97,7 @@ rules:
   - list
   - update
   - watch
-- apiGroups: 
+- apiGroups:
   - quarks.cloudfoundry.org
   resources:
   - boshdeployments
@@ -113,7 +111,7 @@ rules:
   - patch
   - update
   - watch
-- apiGroups: 
+- apiGroups:
   - quarks.cloudfoundry.org
   resources:
   - boshdeployments/status

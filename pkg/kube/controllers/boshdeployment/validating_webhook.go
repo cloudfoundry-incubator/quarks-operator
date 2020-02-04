@@ -55,7 +55,7 @@ func NewBOSHDeploymentValidator(log *zap.SugaredLogger, config *config.Config) *
 		Name: "validate-boshdeployment." + names.GroupName,
 		NamespaceSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				"cf-operator-ns": config.Namespace,
+				wh.LabelWatchNamespace: config.Namespace,
 			},
 		},
 		Webhook: &admission.Webhook{

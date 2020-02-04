@@ -40,7 +40,9 @@ items:
       - namespaces
       verbs:
       - get
+      - list
       - update
+      - watch
     - apiGroups:
       - admissionregistration.k8s.io
       resources:

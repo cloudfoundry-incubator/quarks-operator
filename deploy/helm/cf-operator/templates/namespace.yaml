@@ -1,4 +1,4 @@
-{{- if and .Values.global.operator.watchNamespace .Values.createWatchNamespace }}
+{{- if .Values.createWatchNamespace }}
 ---
 apiVersion: v1
 kind: Namespace

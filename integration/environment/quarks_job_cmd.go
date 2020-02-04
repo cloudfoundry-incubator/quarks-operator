@@ -33,7 +33,7 @@ func (q *QuarksJobCmd) Build() error {
 // Start starts the specified quarks-job in a namespace
 func (q *QuarksJobCmd) Start(namespace string) error {
 	cmd := exec.Command(q.Path,
-		"-n", namespace,
+		"-a", namespace,
 		"-o", "cfcontainerization",
 		"-r", "quarks-job",
 		"--service-account", "default",

@@ -92,8 +92,8 @@ func AddToScheme(s *runtime.Scheme) error {
 func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, generator credsgen.Generator) error {
 	ctxlog.Infof(ctx, "Setting up webhook server on %s:%d", config.WebhookServerHost, config.WebhookServerPort)
 
-	ctxlog.Info(ctx, "Setting a cf-operator namespace label")
-	err := setOperatorNamespaceLabel(ctx, config, m.GetClient())
+	ctxlog.Info(ctx, "Setting a cf-operator namespace label on the watched namespace")
+	err := setWatchNamespaceLabel(ctx, config, m.GetClient())
 	if err != nil {
 		return errors.Wrap(err, "setting the operator namespace label")
 	}
@@ -147,7 +147,7 @@ func ordinaryHTTPHandler() http.Handler {
 	})
 }
 
-func setOperatorNamespaceLabel(ctx context.Context, config *config.Config, c client.Client) error {
+func setWatchNamespaceLabel(ctx context.Context, config *config.Config, c client.Client) error {
 	ns := &unstructured.Unstructured{}
 	ns.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
@@ -164,7 +164,7 @@ func setOperatorNamespaceLabel(ctx context.Context, config *config.Config, c cli
 	if labels == nil {
 		labels = map[string]string{}
 	}
-	labels["cf-operator-ns"] = config.Namespace
+	labels[wh.LabelWatchNamespace] = config.Namespace
 	ns.SetLabels(labels)
 	err = c.Update(ctx, ns)
 

@@ -167,8 +167,7 @@ func (f *WebhookConfig) generateValidationWebhookServerConfig(ctx context.Contex
 
 	config := &admissionregistration.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      f.ConfigName,
-			Namespace: f.config.OperatorNamespace,
+			Name: f.ConfigName,
 		},
 	}
 
@@ -212,8 +211,7 @@ func (f *WebhookConfig) generateMutationWebhookServerConfig(ctx context.Context,
 
 	config := admissionregistration.MutatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      f.ConfigName,
-			Namespace: f.config.OperatorNamespace,
+			Name: f.ConfigName,
 		},
 	}
 
