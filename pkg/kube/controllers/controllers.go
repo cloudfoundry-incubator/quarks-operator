@@ -164,7 +164,7 @@ func setWatchNamespaceLabel(ctx context.Context, config *config.Config, c client
 	if labels == nil {
 		labels = map[string]string{}
 	}
-	labels[wh.LabelWatchNamespace] = config.Namespace
+	labels[wh.LabelWatchNamespace] = config.OperatorNamespace
 	ns.SetLabels(labels)
 	err = c.Update(ctx, ns)
 

@@ -39,7 +39,7 @@ func NewQuarksStatefulSetPodMutator(log *zap.SugaredLogger, config *config.Confi
 		Name: "mutate-pods." + names.GroupName,
 		NamespaceSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				wh.LabelWatchNamespace: config.Namespace,
+				wh.LabelWatchNamespace: config.OperatorNamespace,
 			},
 		},
 		Webhook: &admission.Webhook{

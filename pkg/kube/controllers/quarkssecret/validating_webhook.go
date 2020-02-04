@@ -47,7 +47,7 @@ func NewSecretValidator(log *zap.SugaredLogger, config *config.Config) *wh.Opera
 		Name: "validate-secret." + names.GroupName,
 		NamespaceSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				wh.LabelWatchNamespace: config.Namespace,
+				wh.LabelWatchNamespace: config.OperatorNamespace,
 			},
 		},
 		Webhook: &admission.Webhook{

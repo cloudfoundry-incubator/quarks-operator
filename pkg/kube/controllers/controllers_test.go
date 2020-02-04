@@ -87,7 +87,7 @@ var _ = Describe("Controllers", func() {
 				ns := object.(*unstructured.Unstructured)
 				labels := ns.GetLabels()
 
-				Expect(labels["cf-operator-ns"]).To(Equal(config.Namespace))
+				Expect(labels["cf-operator-ns"]).To(Equal(config.OperatorNamespace))
 
 				return nil
 			})
@@ -165,7 +165,7 @@ var _ = Describe("Controllers", func() {
 
 					switch config := object.(type) {
 					case *admissionregistration.MutatingWebhookConfiguration:
-						Expect(config.Name).To(Equal("cf-operator-hook-" + config.Namespace))
+						Expect(config.Name).To(Equal("cf-operator-hook-default"))
 						Expect(len(config.Webhooks)).To(Equal(3))
 
 						wh := config.Webhooks[0]
@@ -175,7 +175,7 @@ var _ = Describe("Controllers", func() {
 						Expect(*wh.FailurePolicy).To(Equal(admissionregistration.Fail))
 						return nil
 					case *admissionregistration.ValidatingWebhookConfiguration:
-						Expect(config.Name).To(Equal("cf-operator-hook-" + config.Namespace))
+						Expect(config.Name).To(Equal("cf-operator-hook-default"))
 						Expect(len(config.Webhooks)).To(Equal(2))
 
 						wh := config.Webhooks[0]
