@@ -67,7 +67,7 @@ global:
       # servername:
   operator:
     # watchNamespace is used for watching the BOSH deployments.
-    watchNamespace: ""
+    watchNamespace: staging
     webhook:
       # useServiceReference is a boolean to control the use of the
       # service reference in the webhook spec instead of a url.

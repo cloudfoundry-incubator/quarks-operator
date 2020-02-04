@@ -1,12 +1,10 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=
-code.cloudfoundry.org/quarks-job v0.0.0-20200203163102-70ae34b833a3 h1:mxUu66bntxKHbgbRnwdUmB1VIffEg4yhZiknA3MWa9s=
-code.cloudfoundry.org/quarks-job v0.0.0-20200203163102-70ae34b833a3/go.mod h1:fLlgnrSanve71EtkVswD8hoI6U2RYM4+0S3A2ajvTEI=
-code.cloudfoundry.org/quarks-utils v0.0.0-20200127150718-47028dacbc7c h1:nEbvnRc7JUgzLFfopuvdPBhT4nHQulxg8iVVPxuVZOM=
-code.cloudfoundry.org/quarks-utils v0.0.0-20200127150718-47028dacbc7c/go.mod h1:d2OaSM1qVE/7Zo1imovL7CZCOAShFePFMI3jlpMcp14=
-code.cloudfoundry.org/quarks-utils v0.0.0-20200130110052-eac67a73088b h1:vngvL8ncDz/ihUgnNZplK1gCwnxDppucvBLeYZKFqVc=
-code.cloudfoundry.org/quarks-utils v0.0.0-20200130110052-eac67a73088b/go.mod h1:d2OaSM1qVE/7Zo1imovL7CZCOAShFePFMI3jlpMcp14=
+code.cloudfoundry.org/quarks-job v0.0.0-20200206154519-ff0b0e6fd849 h1:JoaAMSKyfI7cw6H8SdMAbx/xp6q2n7tpshDhRgP+7us=
+code.cloudfoundry.org/quarks-job v0.0.0-20200206154519-ff0b0e6fd849/go.mod h1:VNHz6Cne5aOPqaV+1c4KTxxeqCxThukdj2Jh1fkr6zo=
+code.cloudfoundry.org/quarks-utils v0.0.0-20200205085816-8f419b34462d h1:2lbvPtehm4XCHICYy6fHmw8kZTCVSWVU/JqEDjoLGC4=
+code.cloudfoundry.org/quarks-utils v0.0.0-20200205085816-8f419b34462d/go.mod h1:d2OaSM1qVE/7Zo1imovL7CZCOAShFePFMI3jlpMcp14=
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
 github.com/Azure/go-autorest/autorest v0.9.0/go.mod h1:xyHB1BMZT0cuDHU7I0+g046+BFDTQ8rEZB0s4Yfa6bI=
 github.com/Azure/go-autorest/autorest/adal v0.5.0/go.mod h1:8Z9fGy2MpX0PvDjB1pEgQTmVqjGhiHBW7RJJEciWzS0=
@@ -319,8 +317,6 @@ github.com/onsi/gomega v1.5.0/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1Cpa
 github.com/onsi/gomega v1.6.0 h1:8XTW0fcJZEq9q+Upcyws4JSGua2MFysCL5xkaSgHc+M=
 github.com/onsi/gomega v1.6.0/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
 github.com/onsi/gomega v1.7.1/go.mod h1:XdKZgCCFLUoM/7CFJVPcG8C1xQ1AJ0vpAezJrB7JYyY=
-github.com/onsi/gomega v1.8.1 h1:C5Dqfs/LeauYDX0jJXIe2SWmwCbGzx9yF8C8xy3Lh34=
-github.com/onsi/gomega v1.8.1/go.mod h1:Ho0h+IUsWyvy1OpqCwxlQ/21gkhVunqlU8fDGcoTdcA=
 github.com/onsi/gomega v1.9.0 h1:R1uwffexN6Pr340GtYRIdZmAiN4J+iw6WG4wog1DUXg=
 github.com/onsi/gomega v1.9.0/go.mod h1:Ho0h+IUsWyvy1OpqCwxlQ/21gkhVunqlU8fDGcoTdcA=
 github.com/pborman/uuid v1.2.0 h1:J7Q5mO4ysT1dv8hyrUGHb9+ooztCXu1D8MY8DZYsu3g=

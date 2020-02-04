@@ -79,7 +79,7 @@ helm delete cf-operator --purge
 
 ## Watched namespace
 
-By default the operator will watch for BOSH deployments in the same namespace as it has been deployed to. Optionally, the watched namespace can be changed to something else using the `global.operator.watchNamespace` value, e.g.
+The operator will watch for BOSH deployments in a separate namespace, not the one it has been deployed to. The watched namespace can be changed to something else using the `global.operator.watchNamespace` value, e.g.
 
 ```bash
 $ helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com/cf-operators/helm-charts/cf-operator-v0.2.2%2B47.g24492ea.tgz --set global.operator.watchNamespace=staging

@@ -36,10 +36,8 @@ spec:
             {{- end }}
             - name: LOG_LEVEL
               value: "{{ .Values.logLevel }}"
-            {{- if .Values.global.operator.watchNamespace }}
             - name: WATCH_NAMESPACE
               value: "{{ .Values.global.operator.watchNamespace }}"
-            {{- end}}
             - name: CF_OPERATOR_NAMESPACE
               valueFrom:
                 fieldRef:

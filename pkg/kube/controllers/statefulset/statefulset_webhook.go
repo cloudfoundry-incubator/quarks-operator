@@ -108,7 +108,7 @@ func NewStatefulSetRolloutMutator(log *zap.SugaredLogger, config *config.Config)
 		Name: "mutate-statefulsets." + names.GroupName,
 		NamespaceSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				"cf-operator-ns": config.Namespace,
+				wh.LabelWatchNamespace: config.Namespace,
 			},
 		},
 		Webhook: &admission.Webhook{
