@@ -24,6 +24,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarkssecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarksstatefulset"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/watchnamespace"
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -43,6 +44,7 @@ const (
 // manager. The manager will set fields on the controllers and start them, when
 // itself is started.
 var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager) error{
+	watchnamespace.AddTerminate,
 	boshdeployment.AddDeployment,
 	boshdeployment.AddBPM,
 	quarkssecret.AddQuarksSecret,
