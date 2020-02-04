@@ -38,7 +38,7 @@ func NewBOSHLinkPodMutator(log *zap.SugaredLogger, config *config.Config) *wh.Op
 		Name: "mutate-tangled-pods." + names.GroupName,
 		NamespaceSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				wh.LabelWatchNamespace: config.Namespace,
+				wh.LabelWatchNamespace: config.OperatorNamespace,
 			},
 		},
 		Webhook: &admission.Webhook{Handler: mutator},
