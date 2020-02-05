@@ -497,7 +497,7 @@ BOSH Auto-Errands (supported only by the operator) are converted to `QuarksJobs`
 
 ### Support for active/passive pod replicas
 
-TODO - Not implemented yet.
+`QuarksStatefulSets` support active/passive pod replicas. You can learn more about this in [the docs](controllers/quarks_statefulset.md#quarksstatefulset-active-passive-controller).
 
 ### Ephemeral Disks
 
