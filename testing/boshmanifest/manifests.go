@@ -148,7 +148,7 @@ instance_groups:
   jobs:
   - name: nats
     provides:
-      nats: { shared: true, as: nuts }
+      nats: { shared: true, as: nutty_nuts }
     release: nats
     properties:
       nats:
