@@ -35,7 +35,7 @@ const (
 
 // ContainerFactoryImpl is a concrete implementation of ContainerFactor.
 type ContainerFactoryImpl struct {
-	manifestName         string
+	deploymentName       string
 	instanceGroupName    string
 	version              string
 	disableLogSidecar    bool
@@ -44,9 +44,9 @@ type ContainerFactoryImpl struct {
 }
 
 // NewContainerFactory returns a concrete implementation of ContainerFactory.
-func NewContainerFactory(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactoryImpl {
+func NewContainerFactory(deploymentName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactoryImpl {
 	return &ContainerFactoryImpl{
-		manifestName:         manifestName,
+		deploymentName:       deploymentName,
 		instanceGroupName:    instanceGroupName,
 		version:              version,
 		disableLogSidecar:    disableLogSidecar,
@@ -138,7 +138,7 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 
 	resolvedPropertiesSecretName := names.InstanceGroupSecretName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties, // ig-resolved
-		c.manifestName,
+		c.deploymentName,
 		c.instanceGroupName,
 		c.version,
 	)
@@ -146,7 +146,7 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 	initContainers := flattenContainers(
 		containerRunCopier(),
 		copyingSpecsInitContainers,
-		templateRenderingContainer(c.instanceGroupName, resolvedPropertiesSecretName),
+		templateRenderingContainer(c.deploymentName, c.instanceGroupName, resolvedPropertiesSecretName),
 		createDirContainer(jobs),
 		createWaitContainer(requiredService),
 		boshPreStartInitContainers,
@@ -335,7 +335,7 @@ func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 	}
 }
 
-func templateRenderingContainer(instanceGroupName string, secretName string) corev1.Container {
+func templateRenderingContainer(deploymentName string, instanceGroupName string, secretName string) corev1.Container {
 	return corev1.Container{
 		Name:            "template-render",
 		Image:           GetOperatorDockerImage(),
@@ -346,6 +346,10 @@ func templateRenderingContainer(instanceGroupName string, secretName string) cor
 			resolvedPropertiesVolumeMount(secretName, instanceGroupName),
 		},
 		Env: []corev1.EnvVar{
+			{
+				Name:  EnvDeploymentName,
+				Value: deploymentName,
+			},
 			{
 				Name:  EnvInstanceGroupName,
 				Value: instanceGroupName,

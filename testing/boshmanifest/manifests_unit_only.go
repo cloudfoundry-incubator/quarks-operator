@@ -285,7 +285,6 @@ releases:
 
 // WithResources is a manifest with setting resources for a process
 const WithResources = `---
-name: cf
 manifest_version: v7.7.0
 instance_groups:
 - name: doppler
@@ -378,7 +377,6 @@ releases:
 
 // WithProviderAndConsumer is a manifest with providers and consumers
 const WithProviderAndConsumer = `---
-name: cf
 manifest_version: v7.7.0
 instance_groups:
 - name: doppler
@@ -465,7 +463,6 @@ stemcells:
 
 // WithOverriddenBPMInfo is a manifest with overridden BPM Infos
 const WithOverriddenBPMInfo = `---
-name: foo-deployment
 stemcells:
 - alias: default
   os: opensuse-42.3
@@ -522,7 +519,6 @@ releases:
 
 // WithAbsentBPMInfo is a manifest with an absent BPM info
 const WithAbsentBPMInfo = `---
-name: foo-deployment
 stemcells:
 - alias: default
   os: opensuse-42.3
@@ -563,7 +559,6 @@ releases:
 
 // WithZeroInstances is a manifest with zero instances
 const WithZeroInstances = `---
-name: nats-manifest
 update:
   serial: false
   update_watch_time: 2
@@ -595,7 +590,6 @@ instance_groups:
 
 // WithMultiBPMProcesses is a manifest with multi BPM processes
 const WithMultiBPMProcesses = `---
-name: my-manifest
 releases:
 - name: fake-release
   version: "26"
@@ -646,7 +640,6 @@ instance_groups:
 
 // WithMultiBPMProcessesAndPersistentDisk is a BOSH manifest with multi BPM Processes and persistent disk definition
 const WithMultiBPMProcessesAndPersistentDisk = `---
-name: my-manifest
 releases:
 - name: fake-release
   version: "26"
@@ -700,8 +693,6 @@ instance_groups:
 
 // BPMReleaseWithAffinity contains affinity information
 const BPMReleaseWithAffinity = `
-name: bpm-affinity
-
 releases:
 - name: bpm
   version: 1.0.4
@@ -811,8 +802,6 @@ instance_groups:
 
 // BPMReleaseWithTolerations contains tolerations information too
 const BPMReleaseWithTolerations = `
-name: bpm-tolerations
-
 releases:
 - name: bpm
   version: 1.0.4
@@ -2413,12 +2402,10 @@ instance_groups:
       ipv6:
         enable: false
   name: log-api
-name: scf-dev
 variables: []`
 
 // BPMReleaseWithGlobalUpdateBlock contains a manifest with a global update block
 const BPMReleaseWithGlobalUpdateBlock = `
-name: bpm
 releases:
 - name: bpm
   version: 1.0.4
@@ -2476,8 +2463,6 @@ instance_groups:
 
 // BPMReleaseWithUpdateSerial contains a manifest with some dependent instance groups
 const BPMReleaseWithUpdateSerial = `
-name: bpm
-
 releases:
 - name: bpm
   version: 1.0.4
@@ -2550,8 +2535,6 @@ instance_groups:
 
 // BPMReleaseWithUpdateSerialInManifest contains a manifest with bosh serial on manifest level
 const BPMReleaseWithUpdateSerialInManifest = `
-name: bpm
-
 releases:
 - name: bpm
   version: 1.0.4
@@ -2589,8 +2572,6 @@ instance_groups:
 
 // BPMReleaseWithUpdateSerialAndWithoutPorts contains a manifest with serial but without ports
 const BPMReleaseWithUpdateSerialAndWithoutPorts = `
-name: bpm
-
 releases:
 - name: bpm
   version: 1.0.4
@@ -2625,7 +2606,6 @@ instance_groups:
 
 // WithNilConsume is a manifest with a nil consume
 const WithNilConsume = `---
-name: cf
 manifest_version: v7.7.0
 instance_groups:
 - name: doppler

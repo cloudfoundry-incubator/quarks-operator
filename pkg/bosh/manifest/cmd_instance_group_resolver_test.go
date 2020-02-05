@@ -70,16 +70,18 @@ var _ = Describe("InstanceGroupResolver", func() {
 
 	Context("InstanceGroupResolver", func() {
 		var fs = afero.NewMemMapFs()
+		var deploymentName string
 
 		JustBeforeEach(func() {
-			dns, err := boshdns.NewDNS(*m)
+			dns, err := boshdns.NewDNS(deploymentName, *m)
 			Expect(err).ToNot(HaveOccurred())
-			igr, err = NewInstanceGroupResolver(fs, assetPath, *m, ig, dns)
+			igr, err = NewInstanceGroupResolver(fs, assetPath, deploymentName, *m, ig, dns)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		Describe("BPMInfo", func() {
 			BeforeEach(func() {
+				deploymentName = "cf"
 				m, err = env.BOSHManifestWithProviderAndConsumer()
 				Expect(err).NotTo(HaveOccurred())
 				ig = "log-api"

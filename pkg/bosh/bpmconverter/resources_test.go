@@ -29,6 +29,7 @@ import (
 var _ = Describe("BPM Converter", func() {
 	var (
 		m                *manifest.Manifest
+		deploymentName   string
 		volumeFactory    *fakes.FakeVolumeFactory
 		containerFactory *fakes.FakeContainerFactory
 		env              testing.Catalog
@@ -44,16 +45,17 @@ var _ = Describe("BPM Converter", func() {
 				func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
 					return containerFactory
 				})
-			resources, err := c.Resources(m.Name, dns, "1", instanceGroup, m, bpmConfigs, "1")
+			resources, err := c.Resources(deploymentName, dns, "1", instanceGroup, m, bpmConfigs, "1")
 			return resources, err
 		}
 
 		BeforeEach(func() {
+			deploymentName = "fake-deployment"
 
 			m, err = env.DefaultBOSHManifest()
 			Expect(err).NotTo(HaveOccurred())
 
-			dns, err = boshdns.NewDNS(*m)
+			dns, err = boshdns.NewDNS(deploymentName, *m)
 			Expect(err).NotTo(HaveOccurred())
 
 			volumeFactory = &fakes.FakeVolumeFactory{}
@@ -79,7 +81,7 @@ var _ = Describe("BPM Converter", func() {
 					volumeFactory.GenerateBPMDisksReturns(disk.BPMResourceDisks{}, errors.New("fake-bpm-disk-error"))
 					_, err := act(bpmConfigs[0], m.InstanceGroups[0])
 					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("Generate of BPM disks failed for manifest name %s, instance group %s.", m.Name, m.InstanceGroups[0].Name))
+					Expect(err.Error()).To(ContainSubstring("Generate of BPM disks failed for manifest name %s, instance group %s.", deploymentName, m.InstanceGroups[0].Name))
 				})
 
 				It("handles an error when converting jobs to initContainers", func() {
@@ -103,8 +105,8 @@ var _ = Describe("BPM Converter", func() {
 
 					// Test labels and annotations in the quarks job
 					qJob := resources.Errands[0]
-					Expect(qJob.Name).To(Equal("foo-deployment-redis-slave"))
-					Expect(qJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
+					Expect(qJob.Name).To(Equal("fake-deployment-redis-slave"))
+					Expect(qJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, deploymentName))
 					Expect(qJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, m.InstanceGroups[0].Name))
 					Expect(qJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentVersion, "1"))
 					Expect(qJob.GetLabels()).To(HaveKeyWithValue("custom-label", "foo"))
@@ -218,7 +220,7 @@ var _ = Describe("BPM Converter", func() {
 					// Test services for the quarks statefulSet
 					service0 := resources.Services[0]
 					Expect(service0.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelDeploymentName:    m.Name,
+						manifest.LabelDeploymentName:    deploymentName,
 						manifest.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:           "0",
 						qstsv1a1.LabelPodOrdinal:        "0",
@@ -243,8 +245,8 @@ var _ = Describe("BPM Converter", func() {
 
 					// Test labels and annotation in the quarks statefulSet
 					qSts := resources.InstanceGroups[0]
-					Expect(qSts.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, "diego-cell")))
-					Expect(qSts.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
+					Expect(qSts.Name).To(Equal(fmt.Sprintf("%s-%s", deploymentName, "diego-cell")))
+					Expect(qSts.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, deploymentName))
 					Expect(qSts.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, "diego-cell"))
 					Expect(qSts.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentVersion, "1"))
 
@@ -256,9 +258,9 @@ var _ = Describe("BPM Converter", func() {
 
 					// Test services for the quarks statefulSet
 					service0 := resources.Services[0]
-					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-0", m.Name, stS.Name)))
+					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-0", deploymentName, stS.Name)))
 					Expect(service0.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelDeploymentName:    m.Name,
+						manifest.LabelDeploymentName:    deploymentName,
 						manifest.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:           "0",
 						qstsv1a1.LabelPodOrdinal:        "0",
@@ -272,9 +274,9 @@ var _ = Describe("BPM Converter", func() {
 					}))
 
 					service1 := resources.Services[1]
-					Expect(service1.Name).To(Equal(fmt.Sprintf("%s-%s-1", m.Name, stS.Name)))
+					Expect(service1.Name).To(Equal(fmt.Sprintf("%s-%s-1", deploymentName, stS.Name)))
 					Expect(service1.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelDeploymentName:    m.Name,
+						manifest.LabelDeploymentName:    deploymentName,
 						manifest.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:           "1",
 						qstsv1a1.LabelPodOrdinal:        "0",
@@ -288,9 +290,9 @@ var _ = Describe("BPM Converter", func() {
 					}))
 
 					service2 := resources.Services[2]
-					Expect(service2.Name).To(Equal(fmt.Sprintf("%s-%s-2", m.Name, stS.Name)))
+					Expect(service2.Name).To(Equal(fmt.Sprintf("%s-%s-2", deploymentName, stS.Name)))
 					Expect(service2.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelDeploymentName:    m.Name,
+						manifest.LabelDeploymentName:    deploymentName,
 						manifest.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:           "0",
 						qstsv1a1.LabelPodOrdinal:        "1",
@@ -304,9 +306,9 @@ var _ = Describe("BPM Converter", func() {
 					}))
 
 					service3 := resources.Services[3]
-					Expect(service3.Name).To(Equal(fmt.Sprintf("%s-%s-3", m.Name, stS.Name)))
+					Expect(service3.Name).To(Equal(fmt.Sprintf("%s-%s-3", deploymentName, stS.Name)))
 					Expect(service3.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelDeploymentName:    m.Name,
+						manifest.LabelDeploymentName:    deploymentName,
 						manifest.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:           "1",
 						qstsv1a1.LabelPodOrdinal:        "1",
@@ -320,9 +322,9 @@ var _ = Describe("BPM Converter", func() {
 					}))
 
 					headlessService := resources.Services[4]
-					Expect(headlessService.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, stS.Name)))
+					Expect(headlessService.Name).To(Equal(fmt.Sprintf("%s-%s", deploymentName, stS.Name)))
 					Expect(headlessService.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelDeploymentName:    m.Name,
+						manifest.LabelDeploymentName:    deploymentName,
 						manifest.LabelInstanceGroupName: stS.Name,
 					}))
 					Expect(headlessService.Spec.Ports).To(Equal([]corev1.ServicePort{

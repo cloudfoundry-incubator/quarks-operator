@@ -153,7 +153,7 @@ func loadAddOn() *manifest.AddOn {
 var _ = Describe("BOSH DNS", func() {
 	Context("bosh-dns", func() {
 		It("reconciles dns stuff", func() {
-			d, err := boshdns.NewBoshDomainNameService(loadAddOn(), "scf", nil)
+			d, err := boshdns.NewBoshDomainNameService("scf", loadAddOn(), nil)
 			Expect(err).NotTo(HaveOccurred())
 			scheme := runtime.NewScheme()
 			Expect(corev1.AddToScheme(scheme)).To(Succeed())

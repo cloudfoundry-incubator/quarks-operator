@@ -25,7 +25,7 @@ var _ = Describe("InterpolateVariables", func() {
 		_, log = helper.NewTestLogger()
 		baseManifest = []byte(`
 ---
-name: ((password1))
+director_uuid: ((password1))
 instance_groups:
 - name: ((value1.key1))
 - name: ((value2.key2))
@@ -44,7 +44,7 @@ instance_groups:
 		Expect(err).ToNot(HaveOccurred())
 		Expect(err).To(BeNil())
 
-		Expect(string(dataBytes)).To(Equal(`{"manifest.yaml":"director_uuid: \"\"\ninstance_groups:\n- azs: null\n  env:\n    bosh:\n      agent:\n        settings: {}\n      ipv6:\n        enable: false\n  instances: 0\n  jobs: null\n  name: |\n    baz\n  properties:\n    quarks: {}\n  stemcell: \"\"\n  vm_resources: null\n- azs: null\n  env:\n    bosh:\n      agent:\n        settings: {}\n      ipv6:\n        enable: false\n  instances: 0\n  jobs: null\n  name: |\n    foo\n  properties:\n    quarks: {}\n  stemcell: \"\"\n  vm_resources: null\n- azs: null\n  env:\n    bosh:\n      agent:\n        settings: {}\n      ipv6:\n        enable: false\n  instances: 0\n  jobs: null\n  name: |\n    bar\n  properties:\n    quarks: {}\n  stemcell: \"\"\n  vm_resources: null\nname: |\n  fake-password\n"}`))
+		Expect(string(dataBytes)).To(Equal(`{"manifest.yaml":"director_uuid: |\n  fake-password\ninstance_groups:\n- azs: null\n  env:\n    bosh:\n      agent:\n        settings: {}\n      ipv6:\n        enable: false\n  instances: 0\n  jobs: null\n  name: |\n    baz\n  properties:\n    quarks: {}\n  stemcell: \"\"\n  vm_resources: null\n- azs: null\n  env:\n    bosh:\n      agent:\n        settings: {}\n      ipv6:\n        enable: false\n  instances: 0\n  jobs: null\n  name: |\n    foo\n  properties:\n    quarks: {}\n  stemcell: \"\"\n  vm_resources: null\n- azs: null\n  env:\n    bosh:\n      agent:\n        settings: {}\n      ipv6:\n        enable: false\n  instances: 0\n  jobs: null\n  name: |\n    bar\n  properties:\n    quarks: {}\n  stemcell: \"\"\n  vm_resources: null\n"}`))
 	})
 
 	It("raises error when variablesDir is not directory", func() {

@@ -142,7 +142,6 @@ type AddOn struct {
 
 // Manifest is a BOSH deployment manifest
 type Manifest struct {
-	Name           string                 `json:"name"`
 	DirectorUUID   string                 `json:"director_uuid"`
 	InstanceGroups InstanceGroups         `json:"instance_groups,omitempty"`
 	Features       *Feature               `json:"features,omitempty"`
@@ -311,7 +310,7 @@ func markDuplicateValues(value reflect.Value, duplicateValues map[string]duplica
 func (m *Manifest) SHA1() (string, error) {
 	manifestBytes, err := m.Marshal()
 	if err != nil {
-		return "", errors.Wrapf(err, "YAML marshalling manifest %s failed.", m.Name)
+		return "", errors.Wrapf(err, "YAML marshalling manifest failed.")
 	}
 
 	return fmt.Sprintf("%x", sha1.Sum(manifestBytes)), nil

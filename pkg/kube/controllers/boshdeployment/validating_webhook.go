@@ -183,7 +183,9 @@ func (v *Validator) Handle(_ context.Context, req admission.Request) admission.R
 	withops := withops.NewResolver(
 		v.client,
 		func() withops.Interpolator { return withops.NewInterpolator() },
-		func(m bdm.Manifest) (withops.DomainNameService, error) { return boshdns.NewDNS(m) },
+		func(deploymentName string, m bdm.Manifest) (withops.DomainNameService, error) {
+			return boshdns.NewDNS(deploymentName, m)
+		},
 	)
 	resourceExist, msg := v.OpsResourcesExist(ctx, boshDeployment.Spec.Ops, boshDeployment.Namespace)
 	if !resourceExist {

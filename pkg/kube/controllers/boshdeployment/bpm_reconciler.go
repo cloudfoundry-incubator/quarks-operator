@@ -40,16 +40,13 @@ type BPMConverter interface {
 
 // DesiredManifest unmarshals desired manifest from the manifest secret
 type DesiredManifest interface {
-	DesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error)
+	DesiredManifest(ctx context.Context, deploymentName, namespace string) (*bdm.Manifest, error)
 }
 
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 
-// NewDNSFunc returns a dns client for the manifest
-type NewDNSFunc func(m bdm.Manifest) (boshdns.DomainNameService, error)
-
 // NewBPMReconciler returns a new reconcile.Reconciler
-func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver DesiredManifest, srf setReferenceFunc, converter BPMConverter, dns NewDNSFunc) reconcile.Reconciler {
+func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver DesiredManifest, srf setReferenceFunc, converter BPMConverter, dns boshdns.NewDNSFunc) reconcile.Reconciler {
 	return &ReconcileBPM{
 		ctx:                  ctx,
 		config:               config,
@@ -73,7 +70,7 @@ type ReconcileBPM struct {
 	setReference         setReferenceFunc
 	converter            BPMConverter
 	versionedSecretStore versionedsecretstore.VersionedSecretStore
-	newDNSFunc           NewDNSFunc
+	newDNSFunc           boshdns.NewDNSFunc
 }
 
 // Reconcile reconciles an Instance Group BPM versioned secret read the corresponding
@@ -106,19 +103,19 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 
 	// Get the label from the BPM Secret and read the corresponding desired manifest
-	var boshDeploymentName string
+	var deploymentName string
 	var ok bool
-	if boshDeploymentName, ok = bpmSecret.Labels[bdv1.LabelDeploymentName]; !ok {
+	if deploymentName, ok = bpmSecret.Labels[bdv1.LabelDeploymentName]; !ok {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "GetBOSHDeploymentLabel").Errorf(ctx, "There's no label for a BOSH Deployment name on the Instance Group BPM versioned bpmSecret '%s'", request.NamespacedName)
 	}
-	manifest, err := r.resolver.DesiredManifest(ctx, boshDeploymentName, request.Namespace)
+	manifest, err := r.resolver.DesiredManifest(ctx, deploymentName, request.Namespace)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "DesiredManifestReadError").Errorf(ctx, "Failed to read desired manifest '%s': %v", request.NamespacedName, err)
 	}
 
-	dns, err := boshdns.NewDNS(*manifest)
+	dns, err := r.newDNSFunc(deploymentName, *manifest)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "DesiredManifestReadError").Errorf(ctx, "Failed to load BOSH DNS for manifest '%s': %v", request.NamespacedName, err)
@@ -138,15 +135,15 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 			log.WithEvent(bpmSecret, "LabelMissingError").Errorf(ctx, "Missing deployment mame label for bpm information bpmSecret '%s'", request.NamespacedName)
 	}
 
-	instance := &bdv1.BOSHDeployment{}
-	err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: instanceName}, instance)
+	bdpl := &bdv1.BOSHDeployment{}
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: instanceName}, bdpl)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get BoshDeployment instance '%s': %v", instanceName, err)
 	}
 
 	err = dns.Reconcile(ctx, request.Namespace, r.client, func(object metav1.Object) error {
-		return r.setReference(instance, object, r.scheme)
+		return r.setReference(bdpl, object, r.scheme)
 	})
 
 	if err != nil {
@@ -154,7 +151,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 			log.WithEvent(bpmSecret, "DnsReconcileError").Errorf(ctx, "Failed to reconcile dns: %v", err)
 	}
 
-	resources, err := r.applyBPMResources(bpmSecret, manifest, dns)
+	resources, err := r.applyBPMResources(bdpl.Name, bpmSecret, manifest, dns)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "BPMApplyingError").Errorf(ctx, "Failed to apply BPM information: %v", err)
@@ -166,7 +163,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 
 	// Deploy instance groups
-	err = r.deployInstanceGroups(ctx, instance, instanceGroupName, resources)
+	err = r.deployInstanceGroups(ctx, bdpl, instanceGroupName, resources)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "InstanceGroupStartError").Errorf(ctx, "Failed to start: %v", err)
@@ -182,7 +179,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm.Manifest, dns boshdns.DomainNameService) (*bpmconverter.Resources, error) {
+func (r *ReconcileBPM) applyBPMResources(bdplName string, bpmSecret *corev1.Secret, manifest *bdm.Manifest, dns boshdns.DomainNameService) (*bpmconverter.Resources, error) {
 
 	instanceGroupName, ok := bpmSecret.Labels[qjv1a1.LabelRemoteID]
 	if !ok {
@@ -206,7 +203,7 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 
 	// Fetch qSts version
 	quarksStatefulSet := &qstsv1a1.QuarksStatefulSet{}
-	quarksStatefulSetName := instanceGroup.QuarksStatefulSetName(manifest.Name)
+	quarksStatefulSetName := instanceGroup.QuarksStatefulSetName(bdplName)
 	err := r.client.Get(r.ctx, types.NamespacedName{Namespace: r.config.Namespace, Name: quarksStatefulSetName}, quarksStatefulSet)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
@@ -223,12 +220,12 @@ func (r *ReconcileBPM) applyBPMResources(bpmSecret *corev1.Secret, manifest *bdm
 		return nil, err
 	}
 
-	igResolvedSecretVersion, err := r.fetchIGresolvedVersion(manifest.Name, instanceGroupName)
+	igResolvedSecretVersion, err := r.fetchIGresolvedVersion(bdplName, instanceGroupName)
 	if err != nil {
 		return nil, err
 	}
 
-	resources, err := r.converter.Resources(manifest.Name, dns, qStsVersionString, instanceGroup, manifest, bpmInfo.Configs, igResolvedSecretVersion)
+	resources, err := r.converter.Resources(bdplName, dns, qStsVersionString, instanceGroup, manifest, bpmInfo.Configs, igResolvedSecretVersion)
 	if err != nil {
 		return resources, err
 	}
@@ -251,22 +248,22 @@ func (r *ReconcileBPM) fetchIGresolvedVersion(manifestName, instanceGroupName st
 }
 
 // deployInstanceGroups create or update QuarksJobs and QuarksStatefulSets for instance groups
-func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.BOSHDeployment, instanceGroupName string, resources *bpmconverter.Resources) error {
+func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, bdpl *bdv1.BOSHDeployment, instanceGroupName string, resources *bpmconverter.Resources) error {
 	log.Debugf(ctx, "Creating quarksJobs and quarksStatefulSets for instance group '%s'", instanceGroupName)
 
 	for _, qJob := range resources.Errands {
 		if qJob.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
-			log.Debugf(ctx, "Skipping apply QuarksJob '%s' for instance group '%s' because of mismatching '%s' label", qJob.Name, instance.Name, bdm.LabelInstanceGroupName)
+			log.Debugf(ctx, "Skipping apply QuarksJob '%s' for instance group '%s' because of mismatching '%s' label", qJob.Name, bdpl.Name, bdm.LabelInstanceGroupName)
 			continue
 		}
 
-		if err := r.setReference(instance, &qJob, r.scheme); err != nil {
-			return log.WithEvent(instance, "QuarksJobForDeploymentError").Errorf(ctx, "Failed to set reference for QuarksJob instance group '%s' : %v", instanceGroupName, err)
+		if err := r.setReference(bdpl, &qJob, r.scheme); err != nil {
+			return log.WithEvent(bdpl, "QuarksJobForDeploymentError").Errorf(ctx, "Failed to set reference for QuarksJob instance group '%s' : %v", instanceGroupName, err)
 		}
 
 		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &qJob, mutate.QuarksJobMutateFn(&qJob))
 		if err != nil {
-			return log.WithEvent(instance, "ApplyQuarksJobError").Errorf(ctx, "Failed to apply QuarksJob for instance group '%s' : %v", instanceGroupName, err)
+			return log.WithEvent(bdpl, "ApplyQuarksJobError").Errorf(ctx, "Failed to apply QuarksJob for instance group '%s' : %v", instanceGroupName, err)
 		}
 
 		log.Debugf(ctx, "QuarksJob '%s' has been %s", qJob.Name, op)
@@ -274,17 +271,17 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 
 	for _, svc := range resources.Services {
 		if svc.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
-			log.Debugf(ctx, "Skipping apply Service '%s' for instance group '%s' because of mismatching '%s' label", svc.Name, instance.Name, bdm.LabelInstanceGroupName)
+			log.Debugf(ctx, "Skipping apply Service '%s' for instance group '%s' because of mismatching '%s' label", svc.Name, bdpl.Name, bdm.LabelInstanceGroupName)
 			continue
 		}
 
-		if err := r.setReference(instance, &svc, r.scheme); err != nil {
-			return log.WithEvent(instance, "ServiceForDeploymentError").Errorf(ctx, "Failed to set reference for Service instance group '%s' : %v", instanceGroupName, err)
+		if err := r.setReference(bdpl, &svc, r.scheme); err != nil {
+			return log.WithEvent(bdpl, "ServiceForDeploymentError").Errorf(ctx, "Failed to set reference for Service instance group '%s' : %v", instanceGroupName, err)
 		}
 
 		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &svc, mutate.ServiceMutateFn(&svc))
 		if err != nil {
-			return log.WithEvent(instance, "ApplyServiceError").Errorf(ctx, "Failed to apply Service for instance group '%s' : %v", instanceGroupName, err)
+			return log.WithEvent(bdpl, "ApplyServiceError").Errorf(ctx, "Failed to apply Service for instance group '%s' : %v", instanceGroupName, err)
 		}
 
 		log.Debugf(ctx, "Service '%s' has been %s", svc.Name, op)
@@ -292,17 +289,17 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, instance *bdv1.
 
 	for _, qSts := range resources.InstanceGroups {
 		if qSts.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
-			log.Debugf(ctx, "Skipping apply QuarksStatefulSet '%s' for instance group '%s' because of mismatching '%s' label", qSts.Name, instance.Name, bdm.LabelInstanceGroupName)
+			log.Debugf(ctx, "Skipping apply QuarksStatefulSet '%s' for instance group '%s' because of mismatching '%s' label", qSts.Name, bdpl.Name, bdm.LabelInstanceGroupName)
 			continue
 		}
 
-		if err := r.setReference(instance, &qSts, r.scheme); err != nil {
-			return log.WithEvent(instance, "QuarksStatefulSetForDeploymentError").Errorf(ctx, "Failed to set reference for QuarksStatefulSet instance group '%s' : %v", instanceGroupName, err)
+		if err := r.setReference(bdpl, &qSts, r.scheme); err != nil {
+			return log.WithEvent(bdpl, "QuarksStatefulSetForDeploymentError").Errorf(ctx, "Failed to set reference for QuarksStatefulSet instance group '%s' : %v", instanceGroupName, err)
 		}
 
 		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &qSts, mutate.QuarksStatefulSetMutateFn(&qSts))
 		if err != nil {
-			return log.WithEvent(instance, "ApplyQuarksStatefulSetError").Errorf(ctx, "Failed to apply QuarksStatefulSet for instance group '%s' : %v", instanceGroupName, err)
+			return log.WithEvent(bdpl, "ApplyQuarksStatefulSetError").Errorf(ctx, "Failed to apply QuarksStatefulSet for instance group '%s' : %v", instanceGroupName, err)
 		}
 
 		log.Debugf(ctx, "QuarksStatefulSet '%s' has been %s", qSts.Name, op)

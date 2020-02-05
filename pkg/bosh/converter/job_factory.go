@@ -23,6 +23,8 @@ const (
 	EnvInstanceGroupName = "INSTANCE_GROUP_NAME"
 	// EnvBOSHManifestPath is a key for the container Env pointing to the BOSH manifest (CLI)
 	EnvBOSHManifestPath = "BOSH_MANIFEST_PATH"
+	// EnvDeploymentName is the name of the BOSH deployment
+	EnvDeploymentName = "DEPLOYMENT_NAME"
 	// EnvCFONamespace is a key for the container Env used to lookup the
 	// namespace CF operator is running in (CLI)
 	EnvCFONamespace = "CF_OPERATOR_NAMESPACE"
@@ -66,11 +68,11 @@ func NewJobFactory(namespace string) *JobFactory {
 // VariableInterpolationJob returns an quarks job to create the desired manifest
 // The desired manifest is a BOSH manifest with all variables interpolated.
 // It's sometimes referred to as the 'with-vars' manifest.
-func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error) {
+func (f *JobFactory) VariableInterpolationJob(deploymentName string, manifest bdm.Manifest) (*qjv1a1.QuarksJob, error) {
 	args := []string{"util", "variable-interpolation"}
 
 	// This is the source manifest, that still has the '((vars))'
-	manifestSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeManifestWithOps, manifest.Name, "")
+	manifestSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeManifestWithOps, deploymentName, "")
 
 	// Prepare Volumes and Volume mounts
 
@@ -80,7 +82,7 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 	// We need a volume and a mount for each input variable
 	for _, variable := range manifest.Variables {
 		varName := variable.Name
-		varSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeVariable, manifest.Name, varName)
+		varSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeVariable, deploymentName, varName)
 
 		volumes = append(volumes, variableVolume(varSecretName))
 		volumeMounts = append(volumeMounts, variableVolumeMount(varSecretName, varName))
@@ -92,8 +94,8 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 		volumeMounts = append(volumeMounts, noVarsVolumeMount())
 	}
 
-	qJobName := fmt.Sprintf("dm-%s", manifest.Name)
-	secretName := names.DesiredManifestPrefix(manifest.Name) + VarInterpolationContainerName
+	qJobName := fmt.Sprintf("dm-%s", deploymentName)
+	secretName := names.DesiredManifestPrefix(deploymentName) + VarInterpolationContainerName
 
 	// Construct the var interpolation auto-errand qJob
 	qJob := &qjv1a1.QuarksJob{
@@ -101,7 +103,7 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 			Name:      qJobName,
 			Namespace: f.Namespace,
 			Labels: map[string]string{
-				bdv1.LabelDeploymentName: manifest.Name,
+				bdv1.LabelDeploymentName: deploymentName,
 			},
 		},
 		Spec: qjv1a1.QuarksJobSpec{
@@ -110,9 +112,9 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 					VarInterpolationContainerName: qjv1a1.NewFileToSecret(outputFilename, secretName, true),
 				},
 				SecretLabels: map[string]string{
-					bdv1.LabelDeploymentName:       manifest.Name,
+					bdv1.LabelDeploymentName:       deploymentName,
 					bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeDesiredManifest.String(),
-					bdm.LabelReferencedJobName:     fmt.Sprintf("instance-group-%s", manifest.Name),
+					bdm.LabelReferencedJobName:     fmt.Sprintf("instance-group-%s", deploymentName),
 				},
 			},
 			Trigger: qjv1a1.Trigger{
@@ -164,10 +166,11 @@ func (f *JobFactory) VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.Qu
 }
 
 // InstanceGroupManifestJob generates the job to create an instance group manifest
-func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest, linkInfos LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error) {
+func (f *JobFactory) InstanceGroupManifestJob(deploymentName string, manifest bdm.Manifest, linkInfos LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error) {
 	containers := []corev1.Container{}
 	ct := containerTemplate{
-		manifestName:   desiredManifestName(manifest.Name),
+		deploymentName: deploymentName,
+		manifestName:   desiredManifestName(deploymentName),
 		cmd:            "instance-group",
 		namespace:      f.Namespace,
 		initialRollout: initialRollout,
@@ -179,15 +182,15 @@ func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest, linkInfos L
 		if ig.Instances != 0 {
 			// Additional secret for BOSH links per instance group
 			containerName := names.Sanitize(ig.Name)
-			linkOutputs[containerName] = names.QuarksLinkSecretName(manifest.Name)
+			linkOutputs[containerName] = names.QuarksLinkSecretName(deploymentName)
 
 			// One container per instance group
 			containers = append(containers, ct.newUtilContainer(ig.Name, linkInfos.VolumeMounts()))
 		}
 	}
 
-	qJobName := fmt.Sprintf("ig-%s", manifest.Name)
-	qJob, err := f.releaseImageQJob(qJobName, manifest, containers, linkInfos.Volumes())
+	qJobName := fmt.Sprintf("ig-%s", deploymentName)
+	qJob, err := f.releaseImageQJob(qJobName, deploymentName, manifest, containers, linkInfos.Volumes())
 	if err != nil {
 		return nil, err
 	}
@@ -210,6 +213,7 @@ func desiredManifestName(name string) string {
 }
 
 type containerTemplate struct {
+	deploymentName string
 	manifestName   string
 	cmd            string
 	namespace      string
@@ -227,6 +231,10 @@ func (ct *containerTemplate) newUtilContainer(instanceGroupName string, linkVolu
 			releaseSourceVolumeMount(),
 		}...),
 		Env: []corev1.EnvVar{
+			{
+				Name:  EnvDeploymentName,
+				Value: ct.deploymentName,
+			},
 			{
 				Name:  EnvBOSHManifestPath,
 				Value: filepath.Join("/var/run/secrets/deployment/", bdm.DesiredManifestKeyName),
@@ -256,7 +264,7 @@ func (ct *containerTemplate) newUtilContainer(instanceGroupName string, linkVolu
 }
 
 // releaseImageQJob collects outputs, like bpm, links or ig manifests, from the BOSH release images
-func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, containers []corev1.Container, linkVolumes []corev1.Volume) (*qjv1a1.QuarksJob, error) {
+func (f *JobFactory) releaseImageQJob(name string, deploymentName string, manifest bdm.Manifest, containers []corev1.Container, linkVolumes []corev1.Volume) (*qjv1a1.QuarksJob, error) {
 	initContainers := []corev1.Container{}
 	doneSpecCopyingReleases := map[string]bool{}
 	for _, ig := range manifest.InstanceGroups {
@@ -276,7 +284,7 @@ func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, contai
 			// Get the docker image for the release
 			releaseImage, err := (&manifest).GetReleaseImage(ig.Name, boshJob.Name)
 			if err != nil {
-				return nil, errors.Wrapf(err, "Generation of gathering job failed for manifest %s", manifest.Name)
+				return nil, errors.Wrapf(err, "Generation of gathering job failed for manifest %s", deploymentName)
 			}
 			// Create an init container that copies sources
 			// TODO: destination should also contain release name, to prevent overwrites
@@ -285,8 +293,8 @@ func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, contai
 	}
 
 	outputMap := qjv1a1.OutputMap{}
-	igPrefix := names.DeploymentSecretPrefix(names.DeploymentSecretTypeInstanceGroupResolvedProperties, manifest.Name)
-	bpmPrefix := names.DeploymentSecretPrefix(names.DeploymentSecretBpmInformation, manifest.Name)
+	igPrefix := names.DeploymentSecretPrefix(names.DeploymentSecretTypeInstanceGroupResolvedProperties, deploymentName)
+	bpmPrefix := names.DeploymentSecretPrefix(names.DeploymentSecretBpmInformation, deploymentName)
 	for _, container := range containers {
 		outputMap[container.Name] = qjv1a1.FilesToSecrets{
 			InstanceGroupOutputFilename: qjv1a1.SecretOptions{
@@ -313,14 +321,14 @@ func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, contai
 			Name:      name,
 			Namespace: f.Namespace,
 			Labels: map[string]string{
-				bdv1.LabelDeploymentName: manifest.Name,
+				bdv1.LabelDeploymentName: deploymentName,
 			},
 		},
 		Spec: qjv1a1.QuarksJobSpec{
 			Output: &qjv1a1.Output{
 				OutputMap: outputMap,
 				SecretLabels: map[string]string{
-					bdv1.LabelDeploymentName: manifest.Name,
+					bdv1.LabelDeploymentName: deploymentName,
 				},
 			},
 			Trigger: qjv1a1.Trigger{
@@ -344,7 +352,7 @@ func (f *JobFactory) releaseImageQJob(name string, manifest bdm.Manifest, contai
 							Containers: containers,
 							// Volumes for secrets
 							Volumes: append(linkVolumes, []corev1.Volume{
-								*withOpsVolume(desiredManifestName(manifest.Name)),
+								*withOpsVolume(desiredManifestName(deploymentName)),
 								releaseSourceVolume(),
 							}...),
 						},
