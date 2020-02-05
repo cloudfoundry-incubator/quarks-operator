@@ -102,8 +102,8 @@ func (ig *InstanceGroup) NameSanitized() string {
 }
 
 // ActivePassiveProbes returns all the probes defined in the instance group jobs
-func (ig *InstanceGroup) ActivePassiveProbes() map[string]*corev1.Probe {
-	probes := map[string]*corev1.Probe{}
+func (ig *InstanceGroup) ActivePassiveProbes() map[string]corev1.Probe {
+	probes := map[string]corev1.Probe{}
 	for _, job := range ig.Jobs {
 		for container, probe := range job.Properties.Quarks.ActivePassiveProbes {
 			probes[container] = probe

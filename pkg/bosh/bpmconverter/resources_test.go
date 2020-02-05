@@ -198,8 +198,8 @@ var _ = Describe("BPM Converter", func() {
 					}
 					m.InstanceGroups[1].Env.AgentEnvBoshConfig.Agent.Settings.Tolerations = tolerations
 
-					activePassiveProbes := map[string]*corev1.Probe{
-						"rep-server": &corev1.Probe{
+					activePassiveProbes := map[string]corev1.Probe{
+						"rep-server": corev1.Probe{
 							Handler: corev1.Handler{
 								Exec: &corev1.ExecAction{
 									Command: []string{"ls", "/"},
