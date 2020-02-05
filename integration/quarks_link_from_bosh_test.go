@@ -65,7 +65,7 @@ var _ = Describe("BOSHLinks", func() {
 		})
 
 		It("creates a secret for each link found in jobs", func() {
-			secretName := names.QuarksLinkSecretName(deploymentName, "nats", "nuts")
+			secretName := names.QuarksLinkSecretName(deploymentName, "nats", "nutty-nuts")
 
 			By("waiting for secrets", func() {
 				err := env.WaitForSecret(env.Namespace, secretName)

@@ -344,7 +344,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(fileContentOf("/mnt/quarks/provides.json")).To(Equal(map[string]string{
-						"nats-nuts": `{"nats.password":"changeme","nats.port":"4222","nats.user":"admin"}`,
+						"nats-nutty-nuts": `{"nats.password":"changeme","nats.port":"4222","nats.user":"admin"}`,
 					}))
 				})
 			})
