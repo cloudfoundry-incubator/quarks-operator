@@ -226,7 +226,7 @@ func (r *ReconcileStatefulSetActivePassive) getStsPodList(ctx context.Context, d
 	return podList, nil
 }
 
-func getProbeContainerName(p map[string]*corev1.Probe) (string, error) {
+func getProbeContainerName(p map[string]corev1.Probe) (string, error) {
 	for key := range p {
 		return key, nil
 	}
