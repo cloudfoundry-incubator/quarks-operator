@@ -42,10 +42,12 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 		bpmconverter.NewConverter(
 			config.Namespace,
 			converter.NewVolumeFactory(),
-			func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
-				return converter.NewContainerFactory(manifestName, instanceGroupName, version, disableLogSidecar, releaseImageProvider, bpmConfigs)
+			func(deploymentName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
+				return converter.NewContainerFactory(deploymentName, instanceGroupName, version, disableLogSidecar, releaseImageProvider, bpmConfigs)
 			}),
-		func(m bdm.Manifest) (boshdns.DomainNameService, error) { return boshdns.NewDNS(m) },
+		func(deploymentName string, m bdm.Manifest) (boshdns.DomainNameService, error) {
+			return boshdns.NewDNS(deploymentName, m)
+		},
 	)
 
 	// Create a new controller

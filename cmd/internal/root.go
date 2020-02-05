@@ -139,7 +139,7 @@ func Execute() {
 }
 
 func init() {
-	pf := rootCmd.PersistentFlags()
+	pf := rootCmd.Flags()
 
 	argToEnv := map[string]string{}
 

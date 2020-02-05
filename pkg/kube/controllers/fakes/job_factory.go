@@ -11,12 +11,13 @@ import (
 )
 
 type FakeJobFactory struct {
-	InstanceGroupManifestJobStub        func(manifest.Manifest, converter.LinkInfos, bool) (*v1alpha1.QuarksJob, error)
+	InstanceGroupManifestJobStub        func(string, manifest.Manifest, converter.LinkInfos, bool) (*v1alpha1.QuarksJob, error)
 	instanceGroupManifestJobMutex       sync.RWMutex
 	instanceGroupManifestJobArgsForCall []struct {
-		arg1 manifest.Manifest
-		arg2 converter.LinkInfos
-		arg3 bool
+		arg1 string
+		arg2 manifest.Manifest
+		arg3 converter.LinkInfos
+		arg4 bool
 	}
 	instanceGroupManifestJobReturns struct {
 		result1 *v1alpha1.QuarksJob
@@ -26,10 +27,11 @@ type FakeJobFactory struct {
 		result1 *v1alpha1.QuarksJob
 		result2 error
 	}
-	VariableInterpolationJobStub        func(manifest.Manifest) (*v1alpha1.QuarksJob, error)
+	VariableInterpolationJobStub        func(string, manifest.Manifest) (*v1alpha1.QuarksJob, error)
 	variableInterpolationJobMutex       sync.RWMutex
 	variableInterpolationJobArgsForCall []struct {
-		arg1 manifest.Manifest
+		arg1 string
+		arg2 manifest.Manifest
 	}
 	variableInterpolationJobReturns struct {
 		result1 *v1alpha1.QuarksJob
@@ -43,18 +45,19 @@ type FakeJobFactory struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeJobFactory) InstanceGroupManifestJob(arg1 manifest.Manifest, arg2 converter.LinkInfos, arg3 bool) (*v1alpha1.QuarksJob, error) {
+func (fake *FakeJobFactory) InstanceGroupManifestJob(arg1 string, arg2 manifest.Manifest, arg3 converter.LinkInfos, arg4 bool) (*v1alpha1.QuarksJob, error) {
 	fake.instanceGroupManifestJobMutex.Lock()
 	ret, specificReturn := fake.instanceGroupManifestJobReturnsOnCall[len(fake.instanceGroupManifestJobArgsForCall)]
 	fake.instanceGroupManifestJobArgsForCall = append(fake.instanceGroupManifestJobArgsForCall, struct {
-		arg1 manifest.Manifest
-		arg2 converter.LinkInfos
-		arg3 bool
-	}{arg1, arg2, arg3})
-	fake.recordInvocation("InstanceGroupManifestJob", []interface{}{arg1, arg2, arg3})
+		arg1 string
+		arg2 manifest.Manifest
+		arg3 converter.LinkInfos
+		arg4 bool
+	}{arg1, arg2, arg3, arg4})
+	fake.recordInvocation("InstanceGroupManifestJob", []interface{}{arg1, arg2, arg3, arg4})
 	fake.instanceGroupManifestJobMutex.Unlock()
 	if fake.InstanceGroupManifestJobStub != nil {
-		return fake.InstanceGroupManifestJobStub(arg1, arg2, arg3)
+		return fake.InstanceGroupManifestJobStub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -69,17 +72,17 @@ func (fake *FakeJobFactory) InstanceGroupManifestJobCallCount() int {
 	return len(fake.instanceGroupManifestJobArgsForCall)
 }
 
-func (fake *FakeJobFactory) InstanceGroupManifestJobCalls(stub func(manifest.Manifest, converter.LinkInfos, bool) (*v1alpha1.QuarksJob, error)) {
+func (fake *FakeJobFactory) InstanceGroupManifestJobCalls(stub func(string, manifest.Manifest, converter.LinkInfos, bool) (*v1alpha1.QuarksJob, error)) {
 	fake.instanceGroupManifestJobMutex.Lock()
 	defer fake.instanceGroupManifestJobMutex.Unlock()
 	fake.InstanceGroupManifestJobStub = stub
 }
 
-func (fake *FakeJobFactory) InstanceGroupManifestJobArgsForCall(i int) (manifest.Manifest, converter.LinkInfos, bool) {
+func (fake *FakeJobFactory) InstanceGroupManifestJobArgsForCall(i int) (string, manifest.Manifest, converter.LinkInfos, bool) {
 	fake.instanceGroupManifestJobMutex.RLock()
 	defer fake.instanceGroupManifestJobMutex.RUnlock()
 	argsForCall := fake.instanceGroupManifestJobArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *FakeJobFactory) InstanceGroupManifestJobReturns(result1 *v1alpha1.QuarksJob, result2 error) {
@@ -108,16 +111,17 @@ func (fake *FakeJobFactory) InstanceGroupManifestJobReturnsOnCall(i int, result1
 	}{result1, result2}
 }
 
-func (fake *FakeJobFactory) VariableInterpolationJob(arg1 manifest.Manifest) (*v1alpha1.QuarksJob, error) {
+func (fake *FakeJobFactory) VariableInterpolationJob(arg1 string, arg2 manifest.Manifest) (*v1alpha1.QuarksJob, error) {
 	fake.variableInterpolationJobMutex.Lock()
 	ret, specificReturn := fake.variableInterpolationJobReturnsOnCall[len(fake.variableInterpolationJobArgsForCall)]
 	fake.variableInterpolationJobArgsForCall = append(fake.variableInterpolationJobArgsForCall, struct {
-		arg1 manifest.Manifest
-	}{arg1})
-	fake.recordInvocation("VariableInterpolationJob", []interface{}{arg1})
+		arg1 string
+		arg2 manifest.Manifest
+	}{arg1, arg2})
+	fake.recordInvocation("VariableInterpolationJob", []interface{}{arg1, arg2})
 	fake.variableInterpolationJobMutex.Unlock()
 	if fake.VariableInterpolationJobStub != nil {
-		return fake.VariableInterpolationJobStub(arg1)
+		return fake.VariableInterpolationJobStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -132,17 +136,17 @@ func (fake *FakeJobFactory) VariableInterpolationJobCallCount() int {
 	return len(fake.variableInterpolationJobArgsForCall)
 }
 
-func (fake *FakeJobFactory) VariableInterpolationJobCalls(stub func(manifest.Manifest) (*v1alpha1.QuarksJob, error)) {
+func (fake *FakeJobFactory) VariableInterpolationJobCalls(stub func(string, manifest.Manifest) (*v1alpha1.QuarksJob, error)) {
 	fake.variableInterpolationJobMutex.Lock()
 	defer fake.variableInterpolationJobMutex.Unlock()
 	fake.VariableInterpolationJobStub = stub
 }
 
-func (fake *FakeJobFactory) VariableInterpolationJobArgsForCall(i int) manifest.Manifest {
+func (fake *FakeJobFactory) VariableInterpolationJobArgsForCall(i int) (string, manifest.Manifest) {
 	fake.variableInterpolationJobMutex.RLock()
 	defer fake.variableInterpolationJobMutex.RUnlock()
 	argsForCall := fake.variableInterpolationJobArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeJobFactory) VariableInterpolationJobReturns(result1 *v1alpha1.QuarksJob, result2 error) {

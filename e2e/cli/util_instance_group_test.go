@@ -19,7 +19,7 @@ var _ = Describe("instance-group", func() {
 	)
 
 	act := func(manifestPath string) (session *gexec.Session, err error) {
-		args := []string{"util", "instance-group", "-m", manifestPath, "-b", assetPath, "-g", "log-api", "--output-file-path", assetPath}
+		args := []string{"util", "instance-group", "-n", "foo", "-m", manifestPath, "-b", assetPath, "-g", "log-api", "--output-file-path", assetPath}
 		cmd := exec.Command(cliPath, args...)
 		session, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
 		return
@@ -45,7 +45,7 @@ var _ = Describe("instance-group", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(dataBytes)).Should(ContainSubstring(`"properties.yaml":"`))
-			Expect(string(dataBytes)).Should(ContainSubstring(`name: cf`))
+			Expect(string(dataBytes)).Should(ContainSubstring(`instance_groups:`))
 
 			Expect(output["properties.yaml"]).ToNot(BeEmpty())
 

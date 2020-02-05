@@ -58,6 +58,9 @@ type DomainNameService interface {
 	Reconcile(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error
 }
 
+// NewDNSFunc returns a dns client for the manifest
+type NewDNSFunc func(deploymentName string, m bdm.Manifest) (DomainNameService, error)
+
 // Target of domain alias.
 type Target struct {
 	Query         string `json:"query"`
@@ -82,11 +85,11 @@ type boshDomainNameService struct {
 }
 
 // NewDNS returns the DNS service
-func NewDNS(m bdm.Manifest) (DomainNameService, error) {
+func NewDNS(deploymentName string, m bdm.Manifest) (DomainNameService, error) {
 	for _, addon := range m.AddOns {
 		if addon.Name == bdm.BoshDNSAddOnName {
 			var err error
-			dns, err := NewBoshDomainNameService(addon, m.Name, m.InstanceGroups)
+			dns, err := NewBoshDomainNameService(deploymentName, addon, m.InstanceGroups)
 			if err != nil {
 				return nil, errors.Wrapf(err, "error loading BOSH DNS configuration")
 			}
@@ -94,13 +97,13 @@ func NewDNS(m bdm.Manifest) (DomainNameService, error) {
 		}
 	}
 
-	return NewSimpleDomainNameService(m.Name), nil
+	return NewSimpleDomainNameService(deploymentName), nil
 }
 
 // NewBoshDomainNameService create a new DomainNameService.
-func NewBoshDomainNameService(addOn *bdm.AddOn, manifestName string, instanceGroups bdm.InstanceGroups) (DomainNameService, error) {
+func NewBoshDomainNameService(deploymentName string, addOn *bdm.AddOn, instanceGroups bdm.InstanceGroups) (DomainNameService, error) {
 	dns := boshDomainNameService{
-		ManifestName:   manifestName,
+		ManifestName:   deploymentName,
 		InstanceGroups: instanceGroups,
 	}
 	for _, job := range addOn.Jobs {

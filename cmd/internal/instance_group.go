@@ -34,6 +34,7 @@ Also calculates and prints the BPM configurations for all BOSH jobs of that inst
 	PreRun: func(cmd *cobra.Command, args []string) {
 		boshManifestFlagViperBind(cmd.Flags())
 		baseDirFlagViperBind(cmd.Flags())
+		deploymentNameFlagViperBind(cmd.Flags())
 		instanceGroupFlagViperBind(cmd.Flags())
 		outputFilePathFlagViperBind(cmd.Flags())
 		initialRolloutFlagViperBind(cmd.Flags())
@@ -69,6 +70,11 @@ Also calculates and prints the BPM configurations for all BOSH jobs of that inst
 			return errors.Wrap(err, igFailedMessage)
 		}
 
+		deploymentName, err := deploymentNameFlagValidation()
+		if err != nil {
+			return errors.Wrap(err, igFailedMessage)
+		}
+
 		instanceGroupName, err := instanceGroupFlagValidation()
 		if err != nil {
 			return errors.Wrap(err, igFailedMessage)
@@ -84,12 +90,12 @@ Also calculates and prints the BPM configurations for all BOSH jobs of that inst
 			return errors.Wrapf(err, "%s Loading BOSH manifest file failed. Please check the file contents and try again.", igFailedMessage)
 		}
 
-		dns, err := boshdns.NewDNS(*m)
+		dns, err := boshdns.NewDNS(deploymentName, *m)
 		if err != nil {
 			return errors.Wrapf(err, "%s Loading DNS for BOSH manifest failed.", igFailedMessage)
 		}
 
-		igr, err := manifest.NewInstanceGroupResolver(afero.NewOsFs(), baseDir, *m, instanceGroupName, dns)
+		igr, err := manifest.NewInstanceGroupResolver(afero.NewOsFs(), baseDir, deploymentName, *m, instanceGroupName, dns)
 		if err != nil {
 			return errors.Wrap(err, igFailedMessage)
 		}
@@ -168,6 +174,7 @@ func init() {
 
 	boshManifestFlagCobraSet(pf, argToEnv)
 	baseDirFlagCobraSet(pf, argToEnv)
+	deploymentNameFlagCobraSet(pf, argToEnv)
 	instanceGroupFlagCobraSet(pf, argToEnv)
 	outputFilePathFlagCobraSet(pf, argToEnv)
 	initialRolloutFlagCobraSet(pf, argToEnv)
