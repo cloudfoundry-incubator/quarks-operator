@@ -17,6 +17,7 @@ spec:
         - bdpls
   scope: Namespaced
   version: v1alpha1
+  preserveUnknownFields: false
   subresources:
     status: {}
   validation:

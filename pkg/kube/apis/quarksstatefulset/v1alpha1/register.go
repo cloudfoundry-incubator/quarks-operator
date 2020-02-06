@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,16 +40,18 @@ var (
 					Type: "object",
 					Properties: map[string]extv1.JSONSchemaProps{
 						"template": {
-							Type:        "object",
-							Description: "A template for a regular StatefulSet",
+							Type:                   "object",
+							Description:            "A template for a regular StatefulSet",
+							XPreserveUnknownFields: pointers.Bool(true),
 						},
 						"updateOnConfigChange": {
 							Type:        "boolean",
 							Description: "Indicate whether to update Pods in the StatefulSet when an env value or mount changes",
 						},
 						"activePassiveProbes": {
-							Type:        "object",
-							Description: "Defines probes to determine active/passive component instances",
+							Type:                   "object",
+							Description:            "Defines probes to determine active/passive component instances",
+							XPreserveUnknownFields: pointers.Bool(true),
 						},
 						"zoneNodeLabel": {
 							Type:        "string",
