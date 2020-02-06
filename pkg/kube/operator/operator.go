@@ -92,7 +92,7 @@ func ApplyCRDs(config *rest.Config) error {
 			qsv1a1.QuarksSecretResourcePlural,
 			qsv1a1.QuarksSecretResourceShortNames,
 			qsv1a1.SchemeGroupVersion,
-			nil,
+			&qsv1a1.QuarksSecretValidation,
 		},
 		{
 			qstsv1a1.QuarksStatefulSetResourceName,
