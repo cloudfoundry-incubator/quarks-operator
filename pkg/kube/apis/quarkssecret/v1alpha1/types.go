@@ -58,8 +58,8 @@ const (
 
 // SecretReference specifies a reference to another secret
 type SecretReference struct {
-	Name string
-	Key  string
+	Name string `json:"name"`
+	Key  string `json:"key"`
 }
 
 // ServiceReference specifies a reference to a service
