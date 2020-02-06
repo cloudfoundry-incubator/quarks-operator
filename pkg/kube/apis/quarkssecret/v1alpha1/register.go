@@ -4,9 +4,12 @@ import (
 	"fmt"
 
 	apis "code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 // This file looks almost the same for all controllers
@@ -28,6 +31,114 @@ var (
 
 	// QuarksSecretResourceShortNames is the short names of QuarksSecret
 	QuarksSecretResourceShortNames = []string{"qsec", "qsecs"}
+	// QuarksSecretValidation is the validation method for QuarksSecret
+	QuarksSecretValidation = extv1.CustomResourceValidation{
+		OpenAPIV3Schema: &extv1.JSONSchemaProps{
+			Type: "object",
+			Properties: map[string]extv1.JSONSchemaProps{
+				"spec": {
+					Type: "object",
+					Properties: map[string]extv1.JSONSchemaProps{
+						"request": {
+							Type: "object",
+							Properties: map[string]extv1.JSONSchemaProps{
+								"certificate": {
+									Type: "object",
+									Properties: map[string]extv1.JSONSchemaProps{
+										"alternativeNames": {
+											Type:     "array",
+											Nullable: true,
+											Items: &extv1.JSONSchemaPropsOrArray{
+												Schema: &extv1.JSONSchemaProps{
+													Type: "string",
+												},
+											},
+										},
+										"isCA": {
+											Type: "boolean",
+										},
+										"commonName": {
+											Type: "string",
+										},
+										"CARef": {
+											Type: "object",
+											Properties: map[string]extv1.JSONSchemaProps{
+												"name": {
+													Type: "string",
+												},
+												"key": {
+													Type: "string",
+												},
+											},
+										},
+										"CAKeyRef": {
+											Type: "object",
+											Properties: map[string]extv1.JSONSchemaProps{
+												"name": {
+													Type: "string",
+												},
+												"key": {
+													Type: "string",
+												},
+											},
+										},
+										"signerType": {
+											Type: "string",
+										},
+										"usages": {
+											Type:     "array",
+											Nullable: true,
+											Items: &extv1.JSONSchemaPropsOrArray{
+												Schema: &extv1.JSONSchemaProps{
+													Type: "object",
+												},
+											},
+										},
+										"serviceRef": {
+											Type:     "array",
+											Nullable: true,
+											Items: &extv1.JSONSchemaPropsOrArray{
+												Schema: &extv1.JSONSchemaProps{
+													Type: "object",
+												},
+											},
+										},
+										"activateEKSWorkaroundForSAN": {
+											Type: "boolean",
+										},
+									},
+								},
+							},
+						},
+						"secretName": {
+							Type:      "string",
+							MinLength: pointers.Int64(1),
+						},
+						"type": {
+							Type:      "string",
+							MinLength: pointers.Int64(1),
+						},
+					},
+					Required: []string{
+						"request",
+						"secretName",
+						"type",
+					},
+				},
+				"status": {
+					Type: "object",
+					Properties: map[string]extv1.JSONSchemaProps{
+						"generated": {
+							Type: "boolean",
+						},
+						"lastReconcile": {
+							Type: "object",
+						},
+					},
+				},
+			},
+		},
+	}
 
 	// QuarksSecretResourceName is the resource name of QuarksSecret
 	QuarksSecretResourceName = fmt.Sprintf("%s.%s", QuarksSecretResourcePlural, apis.GroupName)
