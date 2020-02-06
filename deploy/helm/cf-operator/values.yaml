@@ -10,6 +10,9 @@ cluster:
   # domain is the the Kubernetes cluster domain
   domain: "cluster.local"
 
+# createWatchNamespace is a boolean to control creation of the watched namespace.
+createWatchNamespace: true
+
 # fullnameOverride overrides the release name
 fullnameOverride: ""
 
@@ -75,7 +78,7 @@ global:
     create: true
 
 quarks-job:
-  # createWatchNamespace is a boolean to control creation of watchnamespace.
+  # createWatchNamespace is a boolean to control creation of the watched namespace.
   createWatchNamespace: false
   serviceAccount:
     # create is a boolean to control the creation of service account name.
