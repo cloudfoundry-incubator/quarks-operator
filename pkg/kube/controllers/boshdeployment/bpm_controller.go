@@ -17,7 +17,6 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
@@ -41,9 +40,9 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 		controllerutil.SetControllerReference,
 		bpmconverter.NewConverter(
 			config.Namespace,
-			converter.NewVolumeFactory(),
+			bpmconverter.NewVolumeFactory(),
 			func(deploymentName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
-				return converter.NewContainerFactory(deploymentName, instanceGroupName, version, disableLogSidecar, releaseImageProvider, bpmConfigs)
+				return bpmconverter.NewContainerFactory(deploymentName, instanceGroupName, version, disableLogSidecar, releaseImageProvider, bpmConfigs)
 			}),
 		func(deploymentName string, m bdm.Manifest) (boshdns.DomainNameService, error) {
 			return boshdns.NewDNS(deploymentName, m)

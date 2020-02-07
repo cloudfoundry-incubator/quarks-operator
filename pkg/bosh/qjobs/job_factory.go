@@ -1,4 +1,4 @@
-package converter
+package qjobs
 
 import (
 	"fmt"
@@ -11,6 +11,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
@@ -19,13 +21,6 @@ import (
 )
 
 const (
-	// EnvInstanceGroupName is a key for the container Env identifying the
-	// instance group that container is started for (CLI)
-	EnvInstanceGroupName = "INSTANCE_GROUP_NAME"
-	// EnvBOSHManifestPath is a key for the container Env pointing to the BOSH manifest (CLI)
-	EnvBOSHManifestPath = "BOSH_MANIFEST_PATH"
-	// EnvDeploymentName is the name of the BOSH deployment
-	EnvDeploymentName = "DEPLOYMENT_NAME"
 	// EnvCFONamespace is a key for the container Env used to lookup the
 	// namespace CF operator is running in (CLI)
 	EnvCFONamespace = "CF_OPERATOR_NAMESPACE"
@@ -50,8 +45,6 @@ const (
 	VarInterpolationContainerName = "desired-manifest"
 	// PodNameEnvVar is the environment variable containing metadata.name used to render BOSH spec.id. (CLI)
 	PodNameEnvVar = "POD_NAME"
-	// PodIPEnvVar is the environment variable containing status.podIP used to render BOSH spec.ip. (CLI)
-	PodIPEnvVar = "POD_IP"
 )
 
 // JobFactory is a concrete implementation of JobFactory
@@ -142,7 +135,7 @@ func (f *JobFactory) VariableInterpolationJob(deploymentName string, manifest bd
 									VolumeMounts:    volumeMounts,
 									Env: []corev1.EnvVar{
 										{
-											Name:  EnvBOSHManifestPath,
+											Name:  bpmconverter.EnvBOSHManifestPath,
 											Value: filepath.Join("/var/run/secrets/deployment/", bdm.DesiredManifestKeyName),
 										},
 										{
@@ -167,7 +160,7 @@ func (f *JobFactory) VariableInterpolationJob(deploymentName string, manifest bd
 }
 
 // InstanceGroupManifestJob generates the job to create an instance group manifest
-func (f *JobFactory) InstanceGroupManifestJob(deploymentName string, manifest bdm.Manifest, linkInfos LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error) {
+func (f *JobFactory) InstanceGroupManifestJob(deploymentName string, manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error) {
 	containers := []corev1.Container{}
 	ct := containerTemplate{
 		deploymentName: deploymentName,
@@ -233,11 +226,11 @@ func (ct *containerTemplate) newUtilContainer(instanceGroupName string, linkVolu
 		}...),
 		Env: []corev1.EnvVar{
 			{
-				Name:  EnvDeploymentName,
+				Name:  bpmconverter.EnvDeploymentName,
 				Value: ct.deploymentName,
 			},
 			{
-				Name:  EnvBOSHManifestPath,
+				Name:  bpmconverter.EnvBOSHManifestPath,
 				Value: filepath.Join("/var/run/secrets/deployment/", bdm.DesiredManifestKeyName),
 			},
 			{
@@ -246,10 +239,10 @@ func (ct *containerTemplate) newUtilContainer(instanceGroupName string, linkVolu
 			},
 			{
 				Name:  EnvBaseDir,
-				Value: VolumeRenderingDataMountPath,
+				Value: bpmconverter.VolumeRenderingDataMountPath,
 			},
 			{
-				Name:  EnvInstanceGroupName,
+				Name:  bpmconverter.EnvInstanceGroupName,
 				Value: instanceGroupName,
 			},
 			{
@@ -289,7 +282,7 @@ func (f *JobFactory) releaseImageQJob(name string, deploymentName string, manife
 			}
 			// Create an init container that copies sources
 			// TODO: destination should also contain release name, to prevent overwrites
-			initContainers = append(initContainers, jobSpecCopierContainer(releaseName, releaseImage, generateVolumeName(releaseSourceName)))
+			initContainers = append(initContainers, bpmconverter.JobSpecCopierContainer(releaseName, releaseImage, names.VolumeName(releaseSourceName)))
 		}
 	}
 

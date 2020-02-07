@@ -1,4 +1,4 @@
-package converter_test
+package qjobs_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -6,13 +6,14 @@ import (
 
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/qjobs"
 	"code.cloudfoundry.org/cf-operator/testing"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 )
 
 var _ = Describe("JobFactory", func() {
 	var (
-		factory        *JobFactory
+		factory        *qjobs.JobFactory
 		deploymentName string
 		m              *manifest.Manifest
 		env            testing.Catalog
@@ -25,7 +26,7 @@ var _ = Describe("JobFactory", func() {
 		m, err = env.DefaultBOSHManifest()
 		linkInfos = LinkInfos{}
 		Expect(err).NotTo(HaveOccurred())
-		factory = NewJobFactory("namespace")
+		factory = qjobs.NewJobFactory("namespace")
 	})
 
 	Describe("InstanceGroupManifestJob", func() {
