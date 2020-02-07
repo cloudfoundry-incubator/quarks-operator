@@ -13,6 +13,7 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
@@ -135,8 +136,8 @@ func (f *JobFactory) VariableInterpolationJob(deploymentName string, manifest bd
 							Containers: []corev1.Container{
 								{
 									Name:            VarInterpolationContainerName,
-									Image:           GetOperatorDockerImage(),
-									ImagePullPolicy: GetOperatorImagePullPolicy(),
+									Image:           operatorimage.GetOperatorDockerImage(),
+									ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
 									Args:            args,
 									VolumeMounts:    volumeMounts,
 									Env: []corev1.EnvVar{
@@ -223,8 +224,8 @@ type containerTemplate struct {
 func (ct *containerTemplate) newUtilContainer(instanceGroupName string, linkVolumeMounts []corev1.VolumeMount) corev1.Container {
 	return corev1.Container{
 		Name:            names.Sanitize(instanceGroupName),
-		Image:           GetOperatorDockerImage(),
-		ImagePullPolicy: GetOperatorImagePullPolicy(),
+		Image:           operatorimage.GetOperatorDockerImage(),
+		ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
 		Args:            []string{"util", ct.cmd, "--initial-rollout", strconv.FormatBool(ct.initialRollout)},
 		VolumeMounts: append(linkVolumeMounts, []corev1.VolumeMount{
 			manifestVolumeMount(ct.manifestName),

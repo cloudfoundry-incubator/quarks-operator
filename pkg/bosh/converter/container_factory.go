@@ -14,6 +14,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
@@ -162,7 +163,7 @@ func createWaitContainer(requiredService *string) []corev1.Container {
 	}
 	return []corev1.Container{{
 		Name:    "wait-for",
-		Image:   GetOperatorDockerImage(),
+		Image:   operatorimage.GetOperatorDockerImage(),
 		Command: []string{"/usr/bin/dumb-init", "--"},
 		Args: []string{
 			"/bin/sh",
@@ -270,8 +271,8 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 func logsTailerContainer(instanceGroupName string) corev1.Container {
 	return corev1.Container{
 		Name:            "logs",
-		Image:           GetOperatorDockerImage(),
-		ImagePullPolicy: GetOperatorImagePullPolicy(),
+		Image:           operatorimage.GetOperatorDockerImage(),
+		ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
 		VolumeMounts:    []corev1.VolumeMount{*sysDirVolumeMount()},
 		Args: []string{
 			"util",
@@ -293,8 +294,8 @@ func containerRunCopier() corev1.Container {
 	dstDir := fmt.Sprintf("%s/container-run", VolumeRenderingDataMountPath)
 	return corev1.Container{
 		Name:            "container-run-copier",
-		Image:           GetOperatorDockerImage(),
-		ImagePullPolicy: GetOperatorImagePullPolicy(),
+		Image:           operatorimage.GetOperatorDockerImage(),
+		ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      VolumeRenderingDataName,
@@ -338,8 +339,8 @@ func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 func templateRenderingContainer(deploymentName string, instanceGroupName string, secretName string) corev1.Container {
 	return corev1.Container{
 		Name:            "template-render",
-		Image:           GetOperatorDockerImage(),
-		ImagePullPolicy: GetOperatorImagePullPolicy(),
+		Image:           operatorimage.GetOperatorDockerImage(),
+		ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
 		VolumeMounts: []corev1.VolumeMount{
 			*renderingVolumeMount(),
 			*jobsDirVolumeMount(),
@@ -393,8 +394,8 @@ func createDirContainer(jobs []bdm.Job) corev1.Container {
 
 	return corev1.Container{
 		Name:            "create-dirs",
-		Image:           GetOperatorDockerImage(),
-		ImagePullPolicy: GetOperatorImagePullPolicy(),
+		Image:           operatorimage.GetOperatorDockerImage(),
+		ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
 		VolumeMounts:    []corev1.VolumeMount{*dataDirVolumeMount(), *sysDirVolumeMount()},
 		Command:         entrypoint,
 		Args: []string{

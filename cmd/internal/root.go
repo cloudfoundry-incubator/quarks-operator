@@ -16,9 +16,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
 	"code.cloudfoundry.org/cf-operator/version"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -53,7 +53,7 @@ var rootCmd = &cobra.Command{
 
 		cfg := config.NewDefaultConfig(afero.NewOsFs())
 
-		err = converter.SetupOperatorDockerImage(
+		err = operatorimage.SetupOperatorDockerImage(
 			viper.GetString("docker-image-org"),
 			viper.GetString("docker-image-repository"),
 			viper.GetString("docker-image-tag"),
