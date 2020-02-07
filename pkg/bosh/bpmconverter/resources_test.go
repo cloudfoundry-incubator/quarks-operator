@@ -1,4 +1,4 @@
-package converter_test
+package bpmconverter_test
 
 import (
 	"fmt"
@@ -12,41 +12,48 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/cf-operator/testing"
 	"code.cloudfoundry.org/cf-operator/testing/boshreleases"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
-var _ = Describe("kube converter", func() {
+var _ = Describe("BPM Converter", func() {
 	var (
 		m                *manifest.Manifest
 		volumeFactory    *fakes.FakeVolumeFactory
 		containerFactory *fakes.FakeContainerFactory
 		env              testing.Catalog
 		err              error
+		dns              boshdns.DomainNameService
 	)
 
-	Context("BPMResources", func() {
-		act := func(bpmConfigs bpm.Configs, instanceGroup *manifest.InstanceGroup) (*converter.BPMResources, error) {
-			kubeConverter := converter.NewKubeConverter(
+	Context("Resources", func() {
+		act := func(bpmConfigs bpm.Configs, instanceGroup *manifest.InstanceGroup) (*bpmconverter.Resources, error) {
+			c := bpmconverter.NewConverter(
 				"foo",
 				volumeFactory,
-				func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) converter.ContainerFactory {
+				func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
 					return containerFactory
 				})
-			resources, err := kubeConverter.BPMResources(m.Name, m.DNS, "1", instanceGroup, m, bpmConfigs, "1")
+			resources, err := c.Resources(m.Name, dns, "1", instanceGroup, m, bpmConfigs, "1")
 			return resources, err
 		}
 
 		BeforeEach(func() {
+
 			m, err = env.DefaultBOSHManifest()
+			Expect(err).NotTo(HaveOccurred())
+
+			dns, err = boshdns.NewDNS(*m)
 			Expect(err).NotTo(HaveOccurred())
 
 			volumeFactory = &fakes.FakeVolumeFactory{}
@@ -103,8 +110,9 @@ var _ = Describe("kube converter", func() {
 					Expect(qJob.GetLabels()).To(HaveKeyWithValue("custom-label", "foo"))
 					Expect(qJob.GetAnnotations()).To(HaveKeyWithValue("custom-annotation", "bar"))
 
-					// Test affinity
+					// Test affinity & tolerations
 					Expect(qJob.Spec.Template.Spec.Template.Spec.Affinity).To(BeNil())
+					Expect(len(qJob.Spec.Template.Spec.Template.Spec.Tolerations)).To(Equal(0))
 				})
 
 				It("converts the instance group to an quarksJob when this the lifecycle is set to auto-errand", func() {
@@ -136,9 +144,18 @@ var _ = Describe("kube converter", func() {
 							},
 						},
 					}
+					tolerations := []corev1.Toleration{
+						{
+							Key:      "key",
+							Operator: "Equal",
+							Value:    "value",
+							Effect:   "NoSchedule",
+						},
+					}
 					serviceAccount := "fake-service-account"
 					automountServiceAccountToken := true
 					m.InstanceGroups[0].Env.AgentEnvBoshConfig.Agent.Settings.Affinity = &affinityCase
+					m.InstanceGroups[0].Env.AgentEnvBoshConfig.Agent.Settings.Tolerations = tolerations
 					m.InstanceGroups[0].Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName = serviceAccount
 					m.InstanceGroups[0].Env.AgentEnvBoshConfig.Agent.Settings.AutomountServiceAccountToken = &automountServiceAccountToken
 					resources, err := act(bpmConfigs[0], m.InstanceGroups[0])
@@ -148,6 +165,7 @@ var _ = Describe("kube converter", func() {
 					// Test AgentEnvBoshConfig
 					qJob := resources.Errands[0]
 					Expect(*qJob.Spec.Template.Spec.Template.Spec.Affinity).To(Equal(affinityCase))
+					Expect(qJob.Spec.Template.Spec.Template.Spec.Tolerations).To(Equal(tolerations))
 					Expect(qJob.Spec.Template.Spec.Template.Spec.ServiceAccountName).To(Equal(serviceAccount))
 					Expect(*qJob.Spec.Template.Spec.Template.Spec.AutomountServiceAccountToken).To(Equal(automountServiceAccountToken))
 				})
@@ -169,6 +187,57 @@ var _ = Describe("kube converter", func() {
 				})
 
 				It("converts the instance group to an QuarksStatefulSet", func() {
+
+					tolerations := []corev1.Toleration{
+						{
+							Key:      "key",
+							Operator: "Equal",
+							Value:    "value",
+							Effect:   "NoSchedule",
+						},
+					}
+					m.InstanceGroups[1].Env.AgentEnvBoshConfig.Agent.Settings.Tolerations = tolerations
+
+					activePassiveProbes := map[string]corev1.Probe{
+						"rep-server": corev1.Probe{
+							Handler: corev1.Handler{
+								Exec: &corev1.ExecAction{
+									Command: []string{"ls", "/"},
+								},
+							},
+						},
+					}
+					m.InstanceGroups[1].Jobs[0].Properties.Quarks.ActivePassiveProbes = activePassiveProbes
+
+					resources, err := act(bpmConfigs[1], m.InstanceGroups[1])
+					Expect(err).ShouldNot(HaveOccurred())
+
+					qSts := resources.InstanceGroups[0]
+					stS := qSts.Spec.Template.Spec.Template
+
+					// Test services for the quarks statefulSet
+					service0 := resources.Services[0]
+					Expect(service0.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelDeploymentName:    m.Name,
+						manifest.LabelInstanceGroupName: stS.Name,
+						qstsv1a1.LabelAZIndex:           "0",
+						qstsv1a1.LabelPodOrdinal:        "0",
+						qstsv1a1.LabelActivePod:         "active",
+					}))
+				})
+
+				It("converts the instance group to an QuarksStatefulSet", func() {
+
+					tolerations := []corev1.Toleration{
+						{
+							Key:      "key",
+							Operator: "Equal",
+							Value:    "value",
+							Effect:   "NoSchedule",
+						},
+					}
+					m.InstanceGroups[1].Env.AgentEnvBoshConfig.Agent.Settings.Tolerations = tolerations
+
 					resources, err := act(bpmConfigs[1], m.InstanceGroups[1])
 					Expect(err).ShouldNot(HaveOccurred())
 
@@ -189,6 +258,7 @@ var _ = Describe("kube converter", func() {
 					service0 := resources.Services[0]
 					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-0", m.Name, stS.Name)))
 					Expect(service0.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelDeploymentName:    m.Name,
 						manifest.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:           "0",
 						qstsv1a1.LabelPodOrdinal:        "0",
@@ -204,6 +274,7 @@ var _ = Describe("kube converter", func() {
 					service1 := resources.Services[1]
 					Expect(service1.Name).To(Equal(fmt.Sprintf("%s-%s-1", m.Name, stS.Name)))
 					Expect(service1.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelDeploymentName:    m.Name,
 						manifest.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:           "1",
 						qstsv1a1.LabelPodOrdinal:        "0",
@@ -219,6 +290,7 @@ var _ = Describe("kube converter", func() {
 					service2 := resources.Services[2]
 					Expect(service2.Name).To(Equal(fmt.Sprintf("%s-%s-2", m.Name, stS.Name)))
 					Expect(service2.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelDeploymentName:    m.Name,
 						manifest.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:           "0",
 						qstsv1a1.LabelPodOrdinal:        "1",
@@ -234,6 +306,7 @@ var _ = Describe("kube converter", func() {
 					service3 := resources.Services[3]
 					Expect(service3.Name).To(Equal(fmt.Sprintf("%s-%s-3", m.Name, stS.Name)))
 					Expect(service3.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelDeploymentName:    m.Name,
 						manifest.LabelInstanceGroupName: stS.Name,
 						qstsv1a1.LabelAZIndex:           "1",
 						qstsv1a1.LabelPodOrdinal:        "1",
@@ -249,6 +322,7 @@ var _ = Describe("kube converter", func() {
 					headlessService := resources.Services[4]
 					Expect(headlessService.Name).To(Equal(fmt.Sprintf("%s-%s", m.Name, stS.Name)))
 					Expect(headlessService.Spec.Selector).To(Equal(map[string]string{
+						manifest.LabelDeploymentName:    m.Name,
 						manifest.LabelInstanceGroupName: stS.Name,
 					}))
 					Expect(headlessService.Spec.Ports).To(Equal([]corev1.ServicePort{
@@ -260,8 +334,9 @@ var _ = Describe("kube converter", func() {
 					}))
 					Expect(headlessService.Spec.ClusterIP).To(Equal("None"))
 
-					// Test affinity
+					// Test affinity & tolerations
 					Expect(stS.Spec.Affinity).To(BeNil())
+					Expect(stS.Spec.Tolerations).To(Equal(tolerations))
 				})
 			})
 
@@ -297,6 +372,22 @@ var _ = Describe("kube converter", func() {
 				qJob := resources.InstanceGroups[0]
 				Expect(qJob.Spec.Template.Spec.Template.Spec.ServiceAccountName).To(Equal(serviceAccount))
 				Expect(*qJob.Spec.Template.Spec.Template.Spec.AutomountServiceAccountToken).To(Equal(automountServiceAccountToken))
+			})
+		})
+
+		Context("when an active/passive probe is defined", func() {
+			BeforeEach(func() {
+				m, err = env.BOSHManifestWithActivePassiveProbes()
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("passes it on to the QuarksStatefulSetSpec", func() {
+				resources, err := act(bpm.Configs{}, m.InstanceGroups[0])
+				Expect(err).ShouldNot(HaveOccurred())
+				qSts := resources.InstanceGroups[0]
+				Expect(qSts.Spec.ActivePassiveProbes).ToNot(BeNil())
+				Expect(qSts.Spec.ActivePassiveProbes["some-bpm-process"].Handler.Exec.Command).To(Equal([]string{"ls", "/"}))
+				Expect(qSts.Spec.ActivePassiveProbes["another-bpm-process"].Handler.Exec.Command).To(Equal([]string{"find", "*"}))
 			})
 		})
 
@@ -571,6 +662,44 @@ var _ = Describe("kube converter", func() {
 								TopologyKey: "beta.kubernetes.io/os",
 							},
 						},
+					},
+				}))
+			})
+		})
+
+		Context("when tolerations are provided", func() {
+			var bpmConfigs []bpm.Configs
+
+			BeforeEach(func() {
+				m, err = env.BPMReleaseWithTolerations()
+				Expect(err).NotTo(HaveOccurred())
+
+				c, err := bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
+				Expect(err).ShouldNot(HaveOccurred())
+
+				bpmConfigs = []bpm.Configs{
+					{"test-server": c},
+				}
+
+			})
+
+			It("adds tolerations into the spec", func() {
+				r1, err := act(bpmConfigs[0], m.InstanceGroups[0])
+				Expect(err).ShouldNot(HaveOccurred())
+
+				ig1 := r1.InstanceGroups[0]
+				Expect(ig1.Spec.Template.Spec.Template.Spec.Tolerations).To(Equal([]corev1.Toleration{
+					{
+						Key:      "key",
+						Operator: "Equal",
+						Value:    "value",
+						Effect:   "NoSchedule",
+					},
+					{
+						Key:      "key1",
+						Operator: "Equal",
+						Value:    "value1",
+						Effect:   "NoExecute",
 					},
 				}))
 			})

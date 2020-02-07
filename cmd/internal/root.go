@@ -17,8 +17,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/cf-operator/version"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -27,8 +27,7 @@ import (
 
 const (
 	// Port on which the controller-runtime manager listens
-	managerPort  = 2999
-	namespaceArg = "cf-operator-namespace"
+	managerPort = 2999
 )
 
 var (
@@ -64,12 +63,19 @@ var rootCmd = &cobra.Command{
 			return wrapError(err, "")
 		}
 
-		watchNamespace := cmd.Namespaces(cfg, log, namespaceArg)
+		cmd.OperatorNamespace(cfg, log, "cf-operator-namespace")
+		cmd.WatchNamespace(cfg, log)
+		if cfg.Namespace == "" || cfg.OperatorNamespace == "" {
+			return wrapError(errors.New("both namespaces must be defined"), "")
+		}
+		if cfg.Namespace == cfg.OperatorNamespace {
+			return wrapError(errors.New("watched namespace cannot be the same as the operators namespace"), "")
+		}
 
-		manifest.SetBoshDNSDockerImage(viper.GetString("bosh-dns-docker-image"))
-		manifest.SetClusterDomain(viper.GetString("cluster-domain"))
+		boshdns.SetBoshDNSDockerImage(viper.GetString("bosh-dns-docker-image"))
+		boshdns.SetClusterDomain(viper.GetString("cluster-domain"))
 
-		log.Infof("Starting cf-operator %s with namespace %s", version.Version, watchNamespace)
+		log.Infof("Starting cf-operator %s with namespace %s", version.Version, cfg.Namespace)
 		log.Infof("cf-operator docker image: %s", config.GetOperatorDockerImage())
 
 		serviceHost := viper.GetString("operator-webhook-service-host")
@@ -98,7 +104,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		mgr, err := operator.NewManager(ctx, cfg, restConfig, manager.Options{
-			Namespace:          watchNamespace,
+			Namespace:          cfg.Namespace,
 			MetricsBindAddress: "0",
 			LeaderElection:     false,
 			Port:               managerPort,
@@ -137,10 +143,11 @@ func init() {
 
 	argToEnv := map[string]string{}
 
+	cmd.OperatorNamespaceFlags(pf, argToEnv, "cf-operator-namespace")
+	cmd.WatchNamespaceFlags(pf, argToEnv)
 	cmd.CtxTimeOutFlags(pf, argToEnv)
 	cmd.KubeConfigFlags(pf, argToEnv)
 	cmd.LoggerFlags(pf, argToEnv)
-	cmd.NamespacesFlags(pf, argToEnv, namespaceArg)
 	cmd.DockerImageFlags(pf, argToEnv, "cf-operator", version.Version)
 	cmd.ApplyCRDsFlags(pf, argToEnv)
 
@@ -165,6 +172,7 @@ func init() {
 	} {
 		viper.BindPFlag(name, pf.Lookup(name))
 	}
+
 	argToEnv["bosh-dns-docker-image"] = "BOSH_DNS_DOCKER_IMAGE"
 	argToEnv["cluster-domain"] = "CLUSTER_DOMAIN"
 	argToEnv["max-boshdeployment-workers"] = "MAX_BOSHDEPLOYMENT_WORKERS"

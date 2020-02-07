@@ -16,8 +16,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/desiredmanifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
@@ -33,14 +37,15 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 	ctx = ctxlog.NewContextWithRecorder(ctx, "bpm-reconciler", mgr.GetEventRecorderFor("bpm-recorder"))
 	r := NewBPMReconciler(
 		ctx, config, mgr,
-		converter.NewDesiredManifest(mgr.GetClient()),
+		desiredmanifest.NewDesiredManifest(mgr.GetClient()),
 		controllerutil.SetControllerReference,
-		converter.NewKubeConverter(
+		bpmconverter.NewConverter(
 			config.Namespace,
 			converter.NewVolumeFactory(),
-			func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider converter.ReleaseImageProvider, bpmConfigs bpm.Configs) converter.ContainerFactory {
+			func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
 				return converter.NewContainerFactory(manifestName, instanceGroupName, version, disableLogSidecar, releaseImageProvider, bpmConfigs)
 			}),
+		func(m bdm.Manifest) (boshdns.DomainNameService, error) { return boshdns.NewDNS(m) },
 	)
 
 	// Create a new controller

@@ -42,6 +42,13 @@ var (
 	AnnotationCertSecretName = fmt.Sprintf("%s/cert-secret-name", apis.GroupName)
 	// AnnotationQSecNamespace is the annotation key for quarks secret namespace
 	AnnotationQSecNamespace = fmt.Sprintf("%s/quarks-secret-namespace", apis.GroupName)
+	// LabelSecretRotationTrigger is set on a config map to trigger secret
+	// rotation. If set, then creating the config map will trigger secret
+	// rotation.
+	LabelSecretRotationTrigger = fmt.Sprintf("%s/secret-rotation", apis.GroupName)
+	// RotateQSecretListName is the name of the config map entry, which
+	// contains a JSON array of quarks secret names to rotate
+	RotateQSecretListName = "secrets"
 )
 
 const (
@@ -68,8 +75,8 @@ type CertificateRequest struct {
 	CARef                       SecretReference    `json:"CARef"`
 	CAKeyRef                    SecretReference    `json:"CAKeyRef"`
 	SignerType                  SignerType         `json:"signerType,omitempty"`
-	Usages                      []certv1.KeyUsage  `json:"usages,omitempty"`
-	ServiceRef                  []ServiceReference `json:"serviceRef,omitempty"`
+	Usages                      []certv1.KeyUsage  `json:"usages"`
+	ServiceRef                  []ServiceReference `json:"serviceRef"`
 	ActivateEKSWorkaroundForSAN bool               `json:"activateEKSWorkaroundForSAN,omitempty"`
 }
 

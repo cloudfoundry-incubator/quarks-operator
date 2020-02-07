@@ -24,6 +24,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarkssecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarksstatefulset"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/watchnamespace"
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -43,11 +44,12 @@ const (
 // manager. The manager will set fields on the controllers and start them, when
 // itself is started.
 var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager) error{
+	watchnamespace.AddTerminate,
 	boshdeployment.AddDeployment,
-	boshdeployment.AddGeneratedVariable,
 	boshdeployment.AddBPM,
 	quarkssecret.AddQuarksSecret,
 	quarkssecret.AddCertificateSigningRequest,
+	quarkssecret.AddSecretRotation,
 	quarksstatefulset.AddQuarksStatefulSet,
 	statefulset.AddStatefulSetRollout,
 	quarkslink.AddRestart,
@@ -64,6 +66,7 @@ var addToSchemes = runtime.SchemeBuilder{
 
 var validatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.OperatorWebhook{
 	boshdeployment.NewBOSHDeploymentValidator,
+	quarkssecret.NewSecretValidator,
 }
 
 var mutatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.OperatorWebhook{
@@ -91,8 +94,8 @@ func AddToScheme(s *runtime.Scheme) error {
 func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, generator credsgen.Generator) error {
 	ctxlog.Infof(ctx, "Setting up webhook server on %s:%d", config.WebhookServerHost, config.WebhookServerPort)
 
-	ctxlog.Info(ctx, "Setting a cf-operator namespace label")
-	err := setOperatorNamespaceLabel(ctx, config, m.GetClient())
+	ctxlog.Info(ctx, "Setting a cf-operator namespace label on the watched namespace")
+	err := setWatchNamespaceLabel(ctx, config, m.GetClient())
 	if err != nil {
 		return errors.Wrap(err, "setting the operator namespace label")
 	}
@@ -146,7 +149,7 @@ func ordinaryHTTPHandler() http.Handler {
 	})
 }
 
-func setOperatorNamespaceLabel(ctx context.Context, config *config.Config, c client.Client) error {
+func setWatchNamespaceLabel(ctx context.Context, config *config.Config, c client.Client) error {
 	ns := &unstructured.Unstructured{}
 	ns.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
@@ -163,7 +166,7 @@ func setOperatorNamespaceLabel(ctx context.Context, config *config.Config, c cli
 	if labels == nil {
 		labels = map[string]string{}
 	}
-	labels["cf-operator-ns"] = config.Namespace
+	labels[wh.LabelWatchNamespace] = config.OperatorNamespace
 	ns.SetLabels(labels)
 	err = c.Update(ctx, ns)
 

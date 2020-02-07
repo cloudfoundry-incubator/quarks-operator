@@ -4,7 +4,7 @@ import (
 	"go.uber.org/zap"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
+	admissionregistration "k8s.io/api/admissionregistration/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
@@ -18,18 +18,18 @@ func NewQuarksStatefulSetPodMutator(log *zap.SugaredLogger, config *config.Confi
 
 	quarksStatefulSetMutator := NewPodMutator(log, config)
 
-	globalScopeType := admissionregistrationv1beta1.ScopeType("*")
+	globalScopeType := admissionregistration.ScopeType("*")
 	return &wh.OperatorWebhook{
-		FailurePolicy: admissionregistrationv1beta1.Fail,
-		Rules: []admissionregistrationv1beta1.RuleWithOperations{
+		FailurePolicy: admissionregistration.Fail,
+		Rules: []admissionregistration.RuleWithOperations{
 			{
-				Rule: admissionregistrationv1beta1.Rule{
+				Rule: admissionregistration.Rule{
 					APIGroups:   []string{""},
 					APIVersions: []string{"v1"},
 					Resources:   []string{"pods"},
 					Scope:       &globalScopeType,
 				},
-				Operations: []admissionregistrationv1beta1.OperationType{
+				Operations: []admissionregistration.OperationType{
 					"CREATE",
 					"UPDATE",
 				},
@@ -39,7 +39,7 @@ func NewQuarksStatefulSetPodMutator(log *zap.SugaredLogger, config *config.Confi
 		Name: "mutate-pods." + names.GroupName,
 		NamespaceSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				"cf-operator-ns": config.Namespace,
+				wh.LabelWatchNamespace: config.OperatorNamespace,
 			},
 		},
 		Webhook: &admission.Webhook{

@@ -4,7 +4,6 @@ package manifest
 
 import (
 	"bytes"
-	"context"
 	"crypto"
 	"crypto/sha1"
 	"encoding/hex"
@@ -20,13 +19,19 @@ import (
 	"sigs.k8s.io/yaml"
 
 	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
-	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
 const (
 	// DesiredManifestKeyName is the name of the key in desired manifest secret
 	DesiredManifestKeyName = "manifest.yaml"
 )
+
+// ReleaseImageProvider interface to provide the docker release image for a BOSH job
+// This lookup is currently implemented by the manifest model.
+type ReleaseImageProvider interface {
+	// GetReleaseImage returns the release image for an job in an instance group
+	GetReleaseImage(instanceGroupName, jobName string) (string, error)
+}
 
 // Feature from BOSH deployment manifest
 type Feature struct {
@@ -51,6 +56,9 @@ const (
 	IGTypeErrand     InstanceGroupType = "errand"
 	IGTypeAutoErrand InstanceGroupType = "auto-errand"
 	IGTypeDefault    InstanceGroupType = ""
+
+	// BoshDNSAddOnName name of bosh dns addon.
+	BoshDNSAddOnName = "bosh-dns-aliases"
 )
 
 // VariableOptions from BOSH deployment manifest
@@ -146,7 +154,6 @@ type Manifest struct {
 	Variables      []Variable             `json:"variables,omitempty"`
 	Update         *Update                `json:"update,omitempty"`
 	AddOnsApplied  bool                   `json:"addons_applied,omitempty"`
-	DNS            DomainNameService      `json:"-"`
 }
 
 // duplicateYamlValue is a struct used for size compression
@@ -168,58 +175,7 @@ func LoadYAML(data []byte) (*Manifest, error) {
 		return nil, errors.Wrapf(err, "failed to unmarshal BOSH deployment manifest %s", string(data))
 	}
 
-	if err := m.loadDNS(); err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal BOSH deployment manifest %s", string(data))
-	}
-
 	return m, nil
-}
-
-// DNS returns the DNS service
-func (m *Manifest) loadDNS() error {
-	for _, addon := range m.AddOns {
-		if addon.Name == BoshDNSAddOnName {
-			var err error
-			dns, err := NewBoshDomainNameService(addon, m.Name, m.InstanceGroups)
-			if err != nil {
-				return errors.Wrapf(err, "error loading BOSH DNS configuration")
-			}
-			m.DNS = dns
-			return nil
-		}
-	}
-
-	m.DNS = NewSimpleDomainNameService(m.Name)
-	return nil
-}
-
-// calculateRequiredServices calculates the required services using the update.serial property
-func (m *Manifest) calculateRequiredServices() {
-	var requiredService *string
-	var requiredSerialService *string
-
-	for _, ig := range m.InstanceGroups {
-		serial := true
-		if ig.Update != nil && ig.Update.Serial != nil {
-			serial = *ig.Update.Serial
-		}
-
-		if serial {
-			ig.Properties.Quarks.RequiredService = requiredService
-		} else {
-			ig.Properties.Quarks.RequiredService = requiredSerialService
-		}
-
-		ports := ig.ServicePorts()
-		if len(ports) > 0 {
-			serviceName := m.DNS.HeadlessServiceName(ig.Name)
-			requiredService = &serviceName
-		}
-
-		if serial {
-			requiredSerialService = requiredService
-		}
-	}
 }
 
 // Marshal serializes a BOSH manifest into yaml
@@ -479,9 +435,12 @@ func (m *Manifest) ImplicitVariables() ([]string, error) {
 	// Collect all variables
 	varRegexp := regexp.MustCompile(`\(\((!?[-/\.\w\pL]+)\)\)`)
 	for _, match := range varRegexp.FindAllStringSubmatch(rawManifest, -1) {
-		// Remove subfields from the match, e.g. ca.private_key -> ca
-		fieldRegexp := regexp.MustCompile(`[^\.]+`)
-		main := fieldRegexp.FindString(match[1])
+		main := match[1]
+		if !strings.Contains(main, "/") {
+			// Remove subfields from explicit vars, e.g. ca.private_key -> ca
+			fieldRegexp := regexp.MustCompile(`[^\.]+`)
+			main = fieldRegexp.FindString(match[1])
+		}
 
 		varMap[main] = true
 	}
@@ -502,7 +461,7 @@ func (m *Manifest) ImplicitVariables() ([]string, error) {
 }
 
 // ApplyAddons goes through all defined addons and adds jobs to matched instance groups
-func (m *Manifest) ApplyAddons(ctx context.Context) error {
+func (m *Manifest) ApplyAddons() error {
 	if m.AddOnsApplied {
 		return nil
 	}
@@ -511,17 +470,16 @@ func (m *Manifest) ApplyAddons(ctx context.Context) error {
 			continue
 		}
 		for _, ig := range m.InstanceGroups {
-			include, err := m.addOnPlacementMatch(ctx, "inclusion", ig, addon.Include)
+			include, err := m.addOnPlacementMatch("inclusion", ig, addon.Include)
 			if err != nil {
 				return errors.Wrap(err, "failed to process include placement matches")
 			}
-			exclude, err := m.addOnPlacementMatch(ctx, "exclusion", ig, addon.Exclude)
+			exclude, err := m.addOnPlacementMatch("exclusion", ig, addon.Exclude)
 			if err != nil {
 				return errors.Wrap(err, "failed to process exclude placement matches")
 			}
 
 			if exclude || !include {
-				ctxlog.Debugf(ctx, "Addon '%s' doesn't match instance group '%s'", addon.Name, ig.Name)
 				continue
 			}
 
@@ -533,8 +491,6 @@ func (m *Manifest) ApplyAddons(ctx context.Context) error {
 				}
 
 				addedJob.Properties.Quarks.IsAddon = true
-
-				ctxlog.Debugf(ctx, "Applying addon job '%s/%s' to instance group '%s'", addon.Name, addonJob.Name, ig.Name)
 				ig.Jobs = append(ig.Jobs, addedJob)
 			}
 		}
@@ -546,13 +502,8 @@ func (m *Manifest) ApplyAddons(ctx context.Context) error {
 	return nil
 }
 
-//ApplyUpdateBlock interprets and propagates information of the 'update'-blocks
-func (m *Manifest) ApplyUpdateBlock() {
-	m.propagateGlobalUpdateBlockToIGs()
-	m.calculateRequiredServices()
-}
-
-func (m *Manifest) propagateGlobalUpdateBlockToIGs() {
+// PropagateGlobalUpdateBlockToIGs copies the update block to all instance groups
+func (m *Manifest) PropagateGlobalUpdateBlockToIGs() {
 	for _, ig := range m.InstanceGroups {
 		if ig.Update == nil {
 			ig.Update = m.Update
@@ -568,4 +519,50 @@ func (m *Manifest) propagateGlobalUpdateBlockToIGs() {
 			}
 		}
 	}
+}
+
+// ListMissingProviders returns a list of missing providers from the manifest
+func (m *Manifest) ListMissingProviders() map[string]bool {
+	provideAsNames := map[string]bool{}
+	consumeFromNames := map[string]bool{}
+
+	for _, ig := range m.InstanceGroups {
+		for _, job := range ig.Jobs {
+			provideAsNames = listProviderNames(job.Provides, "as")
+			consumeFromNames = listProviderNames(job.Consumes, "from")
+		}
+	}
+
+	// Iterate consumeFromNames and remove providers existing in the manifest
+	for providerName := range consumeFromNames {
+		if _, ok := provideAsNames[providerName]; ok {
+			delete(consumeFromNames, providerName)
+		}
+	}
+
+	return consumeFromNames
+}
+
+// listProviderNames returns a map containing provider names from job provides and consumes
+func listProviderNames(providerProperties map[string]interface{}, providerKey string) map[string]bool {
+	providerNames := map[string]bool{}
+
+	for _, property := range providerProperties {
+		p, ok := property.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		nameVal, ok := p[providerKey]
+		if !ok {
+			continue
+		}
+
+		name, _ := nameVal.(string)
+		if len(name) == 0 {
+			continue
+		}
+		providerNames[name] = false
+	}
+
+	return providerNames
 }

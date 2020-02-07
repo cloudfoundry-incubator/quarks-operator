@@ -46,7 +46,7 @@ func (in *QuarksStatefulSet) DeepCopyObject() runtime.Object {
 func (in *QuarksStatefulSetList) DeepCopyInto(out *QuarksStatefulSetList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]QuarksStatefulSet, len(*in))
@@ -84,19 +84,11 @@ func (in *QuarksStatefulSetSpec) DeepCopyInto(out *QuarksStatefulSetSpec) {
 		copy(*out, *in)
 	}
 	in.Template.DeepCopyInto(&out.Template)
-	if in.ActivePassiveProbe != nil {
-		in, out := &in.ActivePassiveProbe, &out.ActivePassiveProbe
-		*out = make(map[string]*v1.Probe, len(*in))
+	if in.ActivePassiveProbes != nil {
+		in, out := &in.ActivePassiveProbes, &out.ActivePassiveProbes
+		*out = make(map[string]v1.Probe, len(*in))
 		for key, val := range *in {
-			var outVal *v1.Probe
-			if val == nil {
-				(*out)[key] = nil
-			} else {
-				in, out := &val, &outVal
-				*out = new(v1.Probe)
-				(*in).DeepCopyInto(*out)
-			}
-			(*out)[key] = outVal
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 	return

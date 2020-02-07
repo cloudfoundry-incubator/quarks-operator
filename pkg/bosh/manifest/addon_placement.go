@@ -1,12 +1,9 @@
 package manifest
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
-
-	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
 type matcher func(*InstanceGroup, *AddOnPlacementRules) (bool, error)
@@ -76,19 +73,17 @@ func (m *Manifest) instanceGroupMatch(instanceGroup *InstanceGroup, rules *AddOn
 }
 
 // addOnPlacementMatch returns true if any placement rule of the addon matches the instance group
-func (m *Manifest) addOnPlacementMatch(ctx context.Context, placementType string, instanceGroup *InstanceGroup, rules *AddOnPlacementRules) (bool, error) {
+func (m *Manifest) addOnPlacementMatch(placementType string, instanceGroup *InstanceGroup, rules *AddOnPlacementRules) (bool, error) {
 	// This check is special, not a matcher. Lifecycle always needs to match
 	if (instanceGroup.LifeCycle == IGTypeErrand ||
 		instanceGroup.LifeCycle == IGTypeAutoErrand) &&
 		(rules == nil || rules.Lifecycle != IGTypeErrand) {
-		ctxlog.Debugf(ctx, "Instance group '%s' is an errand, but the %s placement rules don't match an errand", instanceGroup.Name, placementType)
 		return false, nil
 	}
 
 	if (instanceGroup.LifeCycle == IGTypeService ||
 		instanceGroup.LifeCycle == IGTypeDefault) &&
 		(rules != nil && rules.Lifecycle != IGTypeDefault && rules.Lifecycle != IGTypeService) {
-		ctxlog.Debugf(ctx, "Instance group '%s' is a BOSH service, but the %s placement rules don't match a BOSH service", instanceGroup.Name, placementType)
 		return false, nil
 	}
 
@@ -107,10 +102,6 @@ func (m *Manifest) addOnPlacementMatch(ctx context.Context, placementType string
 		}
 
 		matchResult = matchResult || matched
-	}
-
-	if !matchResult {
-		ctxlog.Debugf(ctx, "Instance group '%s' did not match the %s placement rules", instanceGroup.Name, placementType)
 	}
 
 	return matchResult, nil

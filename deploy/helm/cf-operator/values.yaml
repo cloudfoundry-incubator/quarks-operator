@@ -1,41 +1,87 @@
-# Default values for cf-operator.
+## Default values for Cf-operator Helm Chart.
+## This is a YAML-formatted file.
+## Declare variables to be passed into your templates.
+
+
+# applyCRD is a boolean to control the installation of CRD's.
+applyCRD: true
+
+cluster:
+  # domain is the the Kubernetes cluster domain
+  domain: "cluster.local"
+
+# createWatchNamespace is a boolean to control creation of the watched namespace.
+createWatchNamespace: true
+
+# fullnameOverride overrides the release name
+fullnameOverride: ""
+
+# image is the docker image of quarks job.
 image:
+  # repository that provides the operator docker image.
   repository: cf-operator
+  # org that provides the operator docker image.
   org: cfcontainerization
+  # tag of the operator docker image
   tag: foobar
+
+# logLevel defines from which level the logs should be printed.
+logLevel: debug
+
+# workers are the int values for running maximum number of workers of the respective controller.
+workers:
+  boshdeployment: 1
+  quarksSecret: 1
+  quarksStatefulset: 1
 
 operator:
   webhook:
-    endpoint: ~
+    # host under which the webhook server can be reached from the cluster
     host: ~
+    # port the webhook server listens on
     port: "2999"
+  # boshDNSDockerImage is the docker image used for emulating bosh DNS (a CoreDNS image).
+  boshDNSDockerImage: "coredns/coredns:1.6.3"
 
-cluster:
-  domain: ~
-
+# nameOverride overrides the chart name part of the release name
 nameOverride: ""
 
-fullnameOverride: ""
-
+# serviceAccount contains the configuration
+# values of the service account used by cf-operator.
 serviceAccount:
-  cfOperatorServiceAccount:
-    create: true
-    name:
+  # create is a boolean to control the creation of service account name.
+  create: true
+  # name of the service account.
+  name:
 
 global:
+  # Context Timeout for each K8's API request in seconds.
   contextTimeout: 30
   image:
+    # pullPolicy defines the policy used for pulling docker images.
     pullPolicy: IfNotPresent
+    # credentials is used for pulling docker images.
     credentials: ~
+      # username:
+      # password:
+      # servername:
   operator:
-    watchNamespace: ""
+    # watchNamespace is used for watching the BOSH deployments.
+    watchNamespace: staging
     webhook:
+      # useServiceReference is a boolean to control the use of the
+      # service reference in the webhook spec instead of a url.
       useServiceReference: true
-  rbacEnable: true
+
+  rbac:
+    # create is a boolean to control the installation of quarks job cluster role template.
+    create: true
 
 quarks-job:
+  # createWatchNamespace is a boolean to control creation of the watched namespace.
   createWatchNamespace: false
   serviceAccount:
-    quarksJobServiceAccount:
-      create: true
-      name:
+    # create is a boolean to control the creation of service account name.
+    create: true
+    # name of the service account.
+    name:

@@ -1,0 +1,9 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rotate
+  labels:
+    quarks.cloudfoundry.org/secret-rotation: "true"
+data:
+  secrets: '["generate-password"]'

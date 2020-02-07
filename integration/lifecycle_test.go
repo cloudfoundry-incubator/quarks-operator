@@ -47,6 +47,7 @@ var _ = Describe("Lifecycle", func() {
 			Expect(headlessService.Spec.Ports)
 			Expect(headlessService.Spec.Selector).To(Equal(map[string]string{
 				bdm.LabelInstanceGroupName: "nats",
+				bdm.LabelDeploymentName:    "test",
 			}))
 			Expect(headlessService.Spec.Ports[0].Name).To(Equal("nats"))
 			Expect(headlessService.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
@@ -60,6 +61,7 @@ var _ = Describe("Lifecycle", func() {
 			Expect(clusterIPService.Spec.Ports)
 			Expect(clusterIPService.Spec.Selector).To(Equal(map[string]string{
 				bdm.LabelInstanceGroupName: "nats",
+				bdm.LabelDeploymentName:    "test",
 				qstsv1a1.LabelAZIndex:      "0",
 				qstsv1a1.LabelPodOrdinal:   "0",
 			}))

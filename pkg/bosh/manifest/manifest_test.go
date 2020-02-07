@@ -4,13 +4,15 @@ import (
 	"reflect"
 	"regexp"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	t "code.cloudfoundry.org/cf-operator/testing"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
+	"code.cloudfoundry.org/cf-operator/testing"
 	"code.cloudfoundry.org/cf-operator/testing/boshmanifest"
 )
 
@@ -1052,7 +1054,7 @@ var _ = Describe("Manifest", func() {
 
 	Describe("Functions", func() {
 		var (
-			env t.Catalog
+			env testing.Catalog
 			err error
 		)
 
@@ -1102,6 +1104,31 @@ var _ = Describe("Manifest", func() {
 				match := selectors.MatchExpressions[0]
 				Expect(match.Key).To(Equal("beta.kubernetes.io/os"))
 				Expect(match.Values).To(HaveLen(2))
+			})
+
+			It("populates toleration fields", func() {
+				manifest, err := LoadYAML([]byte(boshmanifest.BPMReleaseWithTolerations))
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(manifest.Name).To(Equal("bpm-tolerations"))
+
+				ig := manifest.InstanceGroups[0]
+				Expect(ig.Name).To(Equal("bpm1"))
+				Expect(ig.Instances).To(Equal(2))
+
+				tolerations := ig.Env.AgentEnvBoshConfig.Agent.Settings.Tolerations
+				Expect(tolerations).ToNot(BeNil())
+				Expect(tolerations).To(HaveLen(2))
+				tolerations1 := tolerations[0]
+				Expect(tolerations1.Key).To(Equal("key"))
+				Expect(tolerations1.Value).To(Equal("value"))
+				Expect(tolerations1.Effect).To(Equal(v1.TaintEffect("NoSchedule")))
+				Expect(tolerations1.TolerationSeconds).To(BeNil())
+				tolerations2 := tolerations[1]
+				Expect(tolerations2.Key).To(Equal("key1"))
+				Expect(tolerations2.Value).To(Equal("value1"))
+				Expect(tolerations2.Effect).To(Equal(v1.TaintEffect("NoExecute")))
+				Expect(tolerations2.TolerationSeconds).To(BeNil())
 			})
 
 			It("provide and consume fields are populated", func() {
@@ -1154,8 +1181,10 @@ var _ = Describe("Manifest", func() {
 
 		Describe("Marshal", func() {
 			orgText := boshmanifest.BPMReleaseWithAffinity
+			tolerationText := boshmanifest.BPMReleaseWithTolerations
 			largeText := boshmanifest.ManifestWithLargeValues
 			var m1 *Manifest
+			var m2 *Manifest
 			var largeManifest *Manifest
 
 			Context("with a manifest with large values", func() {
@@ -1213,6 +1242,9 @@ var _ = Describe("Manifest", func() {
 					var err error
 					m1, err = LoadYAML([]byte(orgText))
 					Expect(err).NotTo(HaveOccurred())
+
+					m2, err = LoadYAML([]byte(tolerationText))
+					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("converts k8s tags to lowercase", func() {
@@ -1248,6 +1280,33 @@ var _ = Describe("Manifest", func() {
 					Expect(match.Values).To(HaveLen(2))
 				})
 
+				It("retains tolerations data", func() {
+					text, err := m2.Marshal()
+					Expect(err).NotTo(HaveOccurred())
+
+					By("loading marshalled manifest again")
+					manifest, err := LoadYAML(text)
+					Expect(err).NotTo(HaveOccurred())
+
+					ig := manifest.InstanceGroups[0]
+					Expect(ig.Name).To(Equal("bpm1"))
+					Expect(ig.Instances).To(Equal(2))
+
+					tolerations := ig.Env.AgentEnvBoshConfig.Agent.Settings.Tolerations
+					Expect(tolerations).ToNot(BeNil())
+					Expect(tolerations).To(HaveLen(2))
+					tolerations1 := tolerations[0]
+					Expect(tolerations1.Key).To(Equal("key"))
+					Expect(tolerations1.Value).To(Equal("value"))
+					Expect(tolerations1.Effect).To(Equal(v1.TaintEffect("NoSchedule")))
+					Expect(tolerations1.TolerationSeconds).To(BeNil())
+					tolerations2 := tolerations[1]
+					Expect(tolerations2.Key).To(Equal("key1"))
+					Expect(tolerations2.Value).To(Equal("value1"))
+					Expect(tolerations2.Effect).To(Equal(v1.TaintEffect("NoExecute")))
+					Expect(tolerations2.TolerationSeconds).To(BeNil())
+				})
+
 				It("retains healthcheck data", func() {
 					defaultText := boshmanifest.Default
 					m1, err := LoadYAML([]byte(defaultText))
@@ -1269,7 +1328,9 @@ var _ = Describe("Manifest", func() {
 				})
 
 				It("serializes instancegroup quarks", func() {
-					m1.ApplyUpdateBlock()
+					dns, err := boshdns.NewDNS(*m1)
+					Expect(err).NotTo(HaveOccurred())
+					m1.ApplyUpdateBlock(dns)
 					text, err := m1.Marshal()
 					Expect(err).NotTo(HaveOccurred())
 					By("loading marshalled manifest again")
@@ -1350,19 +1411,22 @@ var _ = Describe("Manifest", func() {
 		})
 
 		Describe("ApplyUpdateBlock", func() {
+			var dns DomainNameService
 			BeforeEach(func() {
 				manifest, err = env.BOSHManifestWithUpdateSerial()
+				Expect(err).NotTo(HaveOccurred())
+				dns, err = boshdns.NewDNS(*manifest)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("calculates first instance group without dependency", func() {
-				manifest.ApplyUpdateBlock()
+				manifest.ApplyUpdateBlock(dns)
 				Expect(manifest.InstanceGroups).To(HaveLen(4))
 				Expect(manifest.InstanceGroups[0].Properties.Quarks.RequiredService).To(BeNil())
 			})
 
 			It("respects serial=true on instance group as barrier", func() {
-				manifest.ApplyUpdateBlock()
+				manifest.ApplyUpdateBlock(dns)
 				Expect(manifest.InstanceGroups).To(HaveLen(4))
 				expectedRequireService := "bpm-bpm1"
 				Expect(manifest.InstanceGroups[1].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
@@ -1370,7 +1434,7 @@ var _ = Describe("Manifest", func() {
 			})
 
 			It("respects serial=true to wait for the predecessor", func() {
-				manifest.ApplyUpdateBlock()
+				manifest.ApplyUpdateBlock(dns)
 				Expect(manifest.InstanceGroups).To(HaveLen(4))
 				expectedRequireService := "bpm-bpm3"
 				Expect(manifest.InstanceGroups[3].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
@@ -1379,7 +1443,7 @@ var _ = Describe("Manifest", func() {
 			It("respects update serial in manifest", func() {
 				manifestWithUpdate, err := env.BOSHManifestWithUpdateSerialInManifest()
 				Expect(err).NotTo(HaveOccurred())
-				manifestWithUpdate.ApplyUpdateBlock()
+				manifestWithUpdate.ApplyUpdateBlock(dns)
 				Expect(manifestWithUpdate.InstanceGroups).To(HaveLen(2))
 				Expect(manifestWithUpdate.InstanceGroups[0].Properties.Quarks.RequiredService).To(BeNil())
 				Expect(manifestWithUpdate.InstanceGroups[1].Properties.Quarks.RequiredService).To(BeNil())
@@ -1388,17 +1452,18 @@ var _ = Describe("Manifest", func() {
 			It("doesn't wait for instance groups without ports", func() {
 				manifestWithUpdate, err := env.BOSHManifestWithUpdateSerialAndWithoutPorts()
 				Expect(err).NotTo(HaveOccurred())
-				manifestWithUpdate.ApplyUpdateBlock()
+				manifestWithUpdate.ApplyUpdateBlock(dns)
 				Expect(manifestWithUpdate.InstanceGroups).To(HaveLen(3))
 				expectedRequireService := "bpm-bpm1"
 				Expect(manifestWithUpdate.InstanceGroups[0].Properties.Quarks.RequiredService).To(BeNil())
 				Expect(manifestWithUpdate.InstanceGroups[1].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
 				Expect(manifestWithUpdate.InstanceGroups[2].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
 			})
+
 			It("propagates global update block correctly", func() {
 				manifest, err = env.BOSHManifestWithGlobalUpdateBlock()
 				Expect(err).NotTo(HaveOccurred())
-				manifest.ApplyUpdateBlock()
+				manifest.ApplyUpdateBlock(dns)
 				By("propagating if ig has no update block")
 				Expect(*manifest.InstanceGroups[0].Update).To(Equal(Update{
 					CanaryWatchTime: "20000-1200000",

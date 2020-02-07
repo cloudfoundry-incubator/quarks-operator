@@ -179,7 +179,7 @@ func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest, linkInfos L
 		if ig.Instances != 0 {
 			// Additional secret for BOSH links per instance group
 			containerName := names.Sanitize(ig.Name)
-			linkOutputs[containerName] = names.EntanglementSecretName(manifest.Name, ig.Name)
+			linkOutputs[containerName] = names.QuarksLinkSecretName(manifest.Name)
 
 			// One container per instance group
 			containers = append(containers, ct.newUtilContainer(ig.Name, linkInfos.VolumeMounts()))
@@ -195,9 +195,11 @@ func (f *JobFactory) InstanceGroupManifestJob(manifest bdm.Manifest, linkInfos L
 	// add the BOSH link secret to the output list of each container
 	for container, secret := range linkOutputs {
 		qJob.Spec.Output.OutputMap[container]["provides.json"] = qjv1a1.SecretOptions{
-			Name: secret,
+			Name:              secret,
+			PersistenceMethod: qjv1a1.PersistUsingFanOut,
 		}
 	}
+
 	return qJob, nil
 }
 

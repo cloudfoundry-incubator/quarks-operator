@@ -1,63 +1,101 @@
 package quarkslink
 
 import (
+	"encoding/json"
 	"fmt"
-	"regexp"
+
+	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	corev1 "k8s.io/api/core/v1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
-const (
+var (
 	// DeploymentKey is the key to retrieve the name of the deployment,
 	// which provides the variables for the pod
-	DeploymentKey = "quarks.cloudfoundry.org/deployment"
-	// ConsumesKey is the key for identifying the provider to be consumed, in the
-	// format of 'type.job'
-	ConsumesKey = "quarks.cloudfoundry.org/consumes"
+	DeploymentKey = fmt.Sprintf("%s/deployment", apis.GroupName)
+
+	// ConsumesKey is the key for identifying the provider to be consumed, in
+	// the format of: '[{"name":"<name>","type":"<type>"}]' (JSON string)
+	ConsumesKey = fmt.Sprintf("%s/consumes", apis.GroupName)
 )
 
 func validEntanglement(annotations map[string]string) bool {
 	if annotations[DeploymentKey] != "" && annotations[ConsumesKey] != "" {
-		return true
+		return validLinksJSON(annotations[ConsumesKey])
 	}
 	return false
 }
 
+func validLinksJSON(value string) bool {
+	links, err := newLinks(value)
+	if err != nil {
+		return false
+	}
+	if len(links) == 0 {
+		return false
+	}
+
+	for _, link := range links {
+		if link.Name == "" || link.LinkType == "" {
+			return false
+		}
+	}
+	return true
+}
+
+func newLinks(value string) (links, error) {
+	l := &links{}
+	err := json.Unmarshal([]byte(value), l)
+	return *l, err
+}
+
+type link struct {
+	Name     string `json:"name"`
+	LinkType string `json:"type"`
+	secret   *corev1.Secret
+}
+
+func (l link) String() string {
+	return names.QuarksLinkSecretKey(l.LinkType, l.Name)
+}
+
+type links []link
+
 type entanglement struct {
 	deployment string
 	consumes   string
+	links      links
 }
 
 func newEntanglement(obj map[string]string) entanglement {
+	links, _ := newLinks(obj[ConsumesKey])
 	e := entanglement{
 		deployment: obj[DeploymentKey],
 		consumes:   obj[ConsumesKey],
+		links:      links,
 	}
 	return e
 }
 
-func (e entanglement) fulfilledBy(secret corev1.Secret) bool {
+func (e entanglement) find(secret corev1.Secret) (link, bool) {
 	// secret has a deployment label
 	entanglementDeployment, found := secret.Labels[manifest.LabelDeploymentName]
 	if !found {
-		return false
+		return link{}, false
 	}
 
 	// deployment label matches entanglements'
 	if entanglementDeployment != e.deployment {
-		return false
+		return link{}, false
 	}
 
-	// secret name is a valid quarks link name and matches deployment
-	var regex = regexp.MustCompile(fmt.Sprintf("^link-%s-[a-z0-9-]*$", e.deployment))
-	if !regex.MatchString(secret.Name) {
-		return false
+	for _, link := range e.links {
+		if secret.Name == names.QuarksLinkSecretName(e.deployment, link.LinkType, link.Name) {
+			return link, true
+		}
 	}
 
-	// secret contains the requested properties
-	if _, found := secret.Data[e.consumes]; !found {
-		return false
-	}
-	return true
+	return link{}, false
 }

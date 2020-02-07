@@ -30,7 +30,7 @@ var _ = Describe("CLI", func() {
 			Eventually(session.Out).Should(Say(`Flags:
       --apply-crd                                \(APPLY_CRD\) If true, apply CRDs on start \(default true\)
       --bosh-dns-docker-image string             \(BOSH_DNS_DOCKER_IMAGE\) The docker image used for emulating bosh DNS \(a CoreDNS image\) \(default "coredns/coredns:\d+.\d+.\d+"\)
-  -n, --cf-operator-namespace string             \(CF_OPERATOR_NAMESPACE\) The operator namespace \(default "default"\)
+  -n, --cf-operator-namespace string             \(CF_OPERATOR_NAMESPACE\) The operator namespace, for the webhook service \(default "default"\)
       --cluster-domain string                    \(CLUSTER_DOMAIN\) The Kubernetes cluster domain \(default "cluster.local"\)
       --ctx-timeout int                          \(CTX_TIMEOUT\) context timeout for each k8s API request in seconds \(default 30\)
   -o, --docker-image-org string                  \(DOCKER_IMAGE_ORG\) Dockerhub organization that provides the operator docker image \(default "cfcontainerization"\)
@@ -46,7 +46,7 @@ var _ = Describe("CLI", func() {
   -w, --operator-webhook-service-host string     \(CF_OPERATOR_WEBHOOK_SERVICE_HOST\) Hostname/IP under which the webhook server can be reached from the cluster
   -p, --operator-webhook-service-port string     \(CF_OPERATOR_WEBHOOK_SERVICE_PORT\) Port the webhook server listens on \(default "2999"\)
   -x, --operator-webhook-use-service-reference   \(CF_OPERATOR_WEBHOOK_USE_SERVICE_REFERENCE\) If true the webhook service is targeted using a service reference instead of a URL
-      --watch-namespace string                   \(WATCH_NAMESPACE\) Namespace to watch for BOSH deployments`))
+  -a, --watch-namespace string                   \(WATCH_NAMESPACE\) Act on this namespace, watch for BOSH deployments and create resources \(default "staging"\)`))
 		})
 
 		It("shows all available commands", func() {
@@ -72,11 +72,11 @@ var _ = Describe("CLI", func() {
 		Context("when specifying namespace", func() {
 			Context("via environment variables", func() {
 				BeforeEach(func() {
-					os.Setenv("CF_OPERATOR_NAMESPACE", "env-test")
+					os.Setenv("WATCH_NAMESPACE", "env-test")
 				})
 
 				AfterEach(func() {
-					os.Setenv("CF_OPERATOR_NAMESPACE", "")
+					os.Setenv("WATCH_NAMESPACE", "")
 				})
 
 				It("should start for namespace", func() {
@@ -88,7 +88,7 @@ var _ = Describe("CLI", func() {
 
 			Context("via using switches", func() {
 				It("should start for namespace", func() {
-					session, err := act("--cf-operator-namespace", "switch-test")
+					session, err := act("--watch-namespace", "switch-test")
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+ with namespace switch-test`))
 				})

@@ -45,7 +45,7 @@ func AddStatefulSetActivePassive(ctx context.Context, config *config.Config, mgr
 			if !ok {
 				return false
 			}
-			activePassiveCmd := qo.Spec.ActivePassiveProbe
+			activePassiveCmd := qo.Spec.ActivePassiveProbes
 			if activePassiveCmd != nil {
 				ctxlog.NewPredicateEvent(e.Object).Debug(
 					ctx, e.Meta, "qstsv1a1.QuarksStatefulSet",
@@ -60,11 +60,11 @@ func AddStatefulSetActivePassive(ctx context.Context, config *config.Config, mgr
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			newStatefulSet := e.ObjectNew.(*qstsv1a1.QuarksStatefulSet)
 
-			activePassiveCmd := newStatefulSet.Spec.ActivePassiveProbe
+			activePassiveCmd := newStatefulSet.Spec.ActivePassiveProbes
 			if activePassiveCmd != nil {
 				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
 					ctx, e.MetaNew, "qstsv1a1.QuarksStatefulSet",
-					fmt.Sprintf("Create predicate passed for active-passive '%s'", e.MetaNew.GetName()),
+					fmt.Sprintf("Update predicate passed for active-passive '%s'", e.MetaNew.GetName()),
 				)
 				return true
 			}

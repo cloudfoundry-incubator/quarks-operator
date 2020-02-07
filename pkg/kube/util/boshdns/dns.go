@@ -1,9 +1,7 @@
-package manifest
+package boshdns
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	"regexp"
 	"strings"
@@ -19,8 +17,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
-	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 const (
@@ -79,14 +78,27 @@ type boshDomainNameService struct {
 	Aliases        []Alias
 	LocalDNSIP     string
 	ManifestName   string
-	InstanceGroups InstanceGroups
+	InstanceGroups bdm.InstanceGroups
 }
 
-// BoshDNSAddOnName name of bosh dns addon.
-const BoshDNSAddOnName = "bosh-dns-aliases"
+// NewDNS returns the DNS service
+func NewDNS(m bdm.Manifest) (DomainNameService, error) {
+	for _, addon := range m.AddOns {
+		if addon.Name == bdm.BoshDNSAddOnName {
+			var err error
+			dns, err := NewBoshDomainNameService(addon, m.Name, m.InstanceGroups)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error loading BOSH DNS configuration")
+			}
+			return dns, nil
+		}
+	}
+
+	return NewSimpleDomainNameService(m.Name), nil
+}
 
 // NewBoshDomainNameService create a new DomainNameService.
-func NewBoshDomainNameService(addOn *AddOn, manifestName string, instanceGroups InstanceGroups) (DomainNameService, error) {
+func NewBoshDomainNameService(addOn *bdm.AddOn, manifestName string, instanceGroups bdm.InstanceGroups) (DomainNameService, error) {
 	dns := boshDomainNameService{
 		ManifestName:   manifestName,
 		InstanceGroups: instanceGroups,
@@ -106,7 +118,7 @@ func NewBoshDomainNameService(addOn *AddOn, manifestName string, instanceGroups 
 
 // HeadlessServiceName see interface.
 func (dns *boshDomainNameService) HeadlessServiceName(instanceGroupName string) string {
-	return serviceName(instanceGroupName, dns.ManifestName, 63)
+	return util.ServiceName(instanceGroupName, dns.ManifestName, 63)
 }
 
 // DNSSetting see interface.
@@ -345,7 +357,7 @@ func NewSimpleDomainNameService(manifestName string) DomainNameService {
 
 // HeadlessServiceName see interface.
 func (dns *simpleDomainNameService) HeadlessServiceName(instanceGroupName string) string {
-	return serviceName(instanceGroupName, dns.ManifestName, 63)
+	return util.ServiceName(instanceGroupName, dns.ManifestName, 63)
 }
 
 // DNSSetting see interface.
@@ -356,16 +368,6 @@ func (dns *simpleDomainNameService) DNSSetting(_ string) (corev1.DNSPolicy, *cor
 // Reconcile see interface.
 func (dns *simpleDomainNameService) Reconcile(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
 	return nil
-}
-
-func serviceName(instanceGroupName string, deploymentName string, maxLength int) string {
-	serviceName := fmt.Sprintf("%s-%s", deploymentName, names.Sanitize(instanceGroupName))
-	if len(serviceName) > maxLength {
-		sumHex := md5.Sum([]byte(serviceName))
-		sum := hex.EncodeToString(sumHex[:])
-		serviceName = fmt.Sprintf("%s-%s", serviceName[:maxLength-len(sum)-1], sum)
-	}
-	return serviceName
 }
 
 func configMapMutateFn(configMap *corev1.ConfigMap) controllerutil.MutateFn {

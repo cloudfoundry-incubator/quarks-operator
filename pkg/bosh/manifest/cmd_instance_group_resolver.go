@@ -15,7 +15,14 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
+
+// DomainNameService abstraction.
+type DomainNameService interface {
+	// HeadlessServiceName constructs the headless service name for the instance group.
+	HeadlessServiceName(instanceGroupName string) string
+}
 
 // InstanceGroupResolver gathers data for jobs in the manifest, it handles links and returns a deployment manifest
 // that only has information pertinent to an instance group.
@@ -26,10 +33,11 @@ type InstanceGroupResolver struct {
 	jobReleaseSpecs  map[string]map[string]JobSpec
 	jobProviderLinks jobProviderLinks
 	fs               afero.Fs
+	dns              DomainNameService
 }
 
 // NewInstanceGroupResolver returns a data gatherer with logging for a given input manifest and instance group
-func NewInstanceGroupResolver(fs afero.Fs, basedir string, manifest Manifest, instanceGroupName string) (*InstanceGroupResolver, error) {
+func NewInstanceGroupResolver(fs afero.Fs, basedir string, manifest Manifest, instanceGroupName string, dns DomainNameService) (*InstanceGroupResolver, error) {
 	ig, found := manifest.InstanceGroups.InstanceGroupByName(instanceGroupName)
 	if !found {
 		return nil, errors.Errorf("instance group '%s' not found", instanceGroupName)
@@ -42,6 +50,7 @@ func NewInstanceGroupResolver(fs afero.Fs, basedir string, manifest Manifest, in
 		jobReleaseSpecs:  map[string]map[string]JobSpec{},
 		jobProviderLinks: newJobProviderLinks(),
 		fs:               fs,
+		dns:              dns,
 	}, nil
 }
 
@@ -143,12 +152,14 @@ func (igr *InstanceGroupResolver) SaveLinks(path string) error {
 
 	var result = map[string]string{}
 	for id, property := range properties {
-		jsonBytes, err := json.Marshal(property)
+		jsonBytes, err := json.Marshal(flattenForSecretData(property))
 		if err != nil {
 			return errors.Wrapf(err, "JSON marshalling failed for ig '%s' property '%s'", igName, id)
 		}
 
-		result[id] = string(jsonBytes)
+		if string(jsonBytes) != "null" {
+			result[names.Sanitize(id)] = string(jsonBytes)
+		}
 	}
 
 	jsonBytes, err := json.Marshal(result)
@@ -241,7 +252,7 @@ func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
 // collectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
 func (igr *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks(initialRollout bool) error {
 	for _, instanceGroup := range igr.manifest.InstanceGroups {
-		serviceName := igr.manifest.DNS.HeadlessServiceName(instanceGroup.Name)
+		serviceName := igr.dns.HeadlessServiceName(instanceGroup.Name)
 
 		for jobIdx, job := range instanceGroup.Jobs {
 			// make sure a map entry exists for the current job release
@@ -617,4 +628,35 @@ func getQuarksLinkFromMap(m map[string]interface{}) (QuarksLink, error) {
 	}
 	err = json.Unmarshal(data, &result)
 	return result, err
+}
+
+func traverse(path string, obj interface{}, leafFunc func(path string, value interface{})) {
+	appendPath := func(new string) string {
+		if len(path) == 0 {
+			return new
+		}
+
+		return fmt.Sprintf("%s.%s", path, new)
+	}
+
+	switch tobj := obj.(type) {
+	case map[string]interface{}:
+		for key, value := range tobj {
+			traverse(appendPath(key), value, leafFunc)
+		}
+
+	default:
+		leafFunc(path, tobj)
+	}
+}
+
+func flattenForSecretData(property JobLinkProperties) map[string]string {
+	tmp := map[string]string{}
+	for k, v := range property {
+		traverse(k, v, func(path string, value interface{}) {
+			tmp[path] = fmt.Sprintf("%v", value)
+		})
+	}
+
+	return tmp
 }

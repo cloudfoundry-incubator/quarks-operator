@@ -154,6 +154,15 @@ func (c *Catalog) BPMReleaseWithAffinity() (*manifest.Manifest, error) {
 	return m, nil
 }
 
+// BPMReleaseWithTolerations returns a manifest with tolerations
+func (c *Catalog) BPMReleaseWithTolerations() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.BPMReleaseWithTolerations))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
+}
+
 // BOSHManifestWithZeroInstances for data gathering tests
 func (c *Catalog) BOSHManifestWithZeroInstances() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.WithZeroInstances))
@@ -173,7 +182,15 @@ func (c *Catalog) BOSHManifestWithExternalLinks() (*manifest.Manifest, error) {
 	return m, nil
 }
 
-// BPMReleaseWithAffinityConfigMap for tests
+// BOSHManifestWithActivePassiveProbes returns a manifest with an active/passive probe
+func (c *Catalog) BOSHManifestWithActivePassiveProbes() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.WithActivePassiveProbes))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
+}
+
 func (c *Catalog) BPMReleaseWithAffinityConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
@@ -234,27 +251,29 @@ func (c *Catalog) DefaultConfigMap(name string) corev1.ConfigMap {
 }
 
 // QuarksLinkSecret returns a link secret, as generated for consumption by an external (non BOSH) consumer
-func (c *Catalog) QuarksLinkSecret(deploymentName, igName, linkType, linkName, value string) corev1.Secret {
-	key := names.EntanglementSecretKey(linkType, linkName)
+func (c *Catalog) QuarksLinkSecret(deploymentName, linkType, linkName string, value map[string][]byte) corev1.Secret {
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "link-" + deploymentName + "-" + igName,
+			Name: names.QuarksLinkSecretName(deploymentName, linkType, linkName),
 			Labels: map[string]string{
 				manifest.LabelDeploymentName: deploymentName,
 			},
 		},
-		Data: map[string][]byte{
-			key: []byte(value),
-		},
+		Data: value,
 	}
 }
 
 // DefaultQuarksLinkSecret has default values from the nats release
 func (c *Catalog) DefaultQuarksLinkSecret(deploymentName, linkType string) corev1.Secret {
 	return c.QuarksLinkSecret(
-		deploymentName, linkType, // link-<nats-deployment>-<nats-ig>
-		linkType, "nats", // type.name
-		`{"nats":{"password":"custom_password","port":4222,"user":"admin"}}`,
+		deploymentName,
+		linkType,
+		"nats",
+		map[string][]byte{
+			"nats.password": []byte("custom_password"),
+			"nats.port":     []byte("4222"),
+			"nats.user":     []byte("admin"),
+		},
 	)
 }
 
@@ -756,7 +775,7 @@ func (c *Catalog) EntangledPod(deploymentName string) corev1.Pod {
 		"entangled",
 		map[string]string{
 			"quarks.cloudfoundry.org/deployment": deploymentName,
-			"quarks.cloudfoundry.org/consumes":   "nats.nats",
+			"quarks.cloudfoundry.org/consumes":   `[{"name":"nats","type":"nats"}]`,
 		},
 	)
 }
@@ -984,7 +1003,7 @@ func (c *Catalog) NatsService(deployName string) corev1.Service {
 				bdv1.LabelDeploymentName: deployName,
 			},
 			Annotations: map[string]string{
-				bdv1.AnnotationLinkProviderName: "nats",
+				bdv1.AnnotationLinkProviderService: "nats",
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -1017,8 +1036,7 @@ func (c *Catalog) NatsSecret(deployName string) corev1.Secret {
 				bdv1.LabelDeploymentName: deployName,
 			},
 			Annotations: map[string]string{
-				bdv1.AnnotationLinkProviderName: "nats",
-				bdv1.AnnotationLinkProviderType: "nats",
+				bdv1.AnnotationLinkProvidesKey: `{"name":"nats","type":"nats"}`,
 			},
 		},
 		StringData: map[string]string{

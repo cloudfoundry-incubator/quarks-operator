@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 
-	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
+	admissionregistration "k8s.io/api/admissionregistration/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -87,7 +87,7 @@ var _ = Describe("Controllers", func() {
 				ns := object.(*unstructured.Unstructured)
 				labels := ns.GetLabels()
 
-				Expect(labels["cf-operator-ns"]).To(Equal(config.Namespace))
+				Expect(labels["cf-operator-ns"]).To(Equal(config.OperatorNamespace))
 
 				return nil
 			})
@@ -164,25 +164,25 @@ var _ = Describe("Controllers", func() {
 					// Validation webhook, one for the Mutating Webhook
 
 					switch config := object.(type) {
-					case *admissionregistrationv1beta1.MutatingWebhookConfiguration:
-						Expect(config.Name).To(Equal("cf-operator-hook-" + config.Namespace))
+					case *admissionregistration.MutatingWebhookConfiguration:
+						Expect(config.Name).To(Equal("cf-operator-hook-default"))
 						Expect(len(config.Webhooks)).To(Equal(3))
 
 						wh := config.Webhooks[0]
 						Expect(wh.Name).To(Equal("mutate-pods.quarks.cloudfoundry.org"))
 						Expect(*wh.ClientConfig.URL).To(Equal("https://foo.com:1234/mutate-pods"))
 						Expect(wh.ClientConfig.CABundle).To(ContainSubstring("the-ca-cert"))
-						Expect(*wh.FailurePolicy).To(Equal(admissionregistrationv1beta1.Fail))
+						Expect(*wh.FailurePolicy).To(Equal(admissionregistration.Fail))
 						return nil
-					case *admissionregistrationv1beta1.ValidatingWebhookConfiguration:
-						Expect(config.Name).To(Equal("cf-operator-hook-" + config.Namespace))
-						Expect(len(config.Webhooks)).To(Equal(1))
+					case *admissionregistration.ValidatingWebhookConfiguration:
+						Expect(config.Name).To(Equal("cf-operator-hook-default"))
+						Expect(len(config.Webhooks)).To(Equal(2))
 
 						wh := config.Webhooks[0]
 						Expect(wh.Name).To(Equal("validate-boshdeployment.quarks.cloudfoundry.org"))
 						Expect(*wh.ClientConfig.URL).To(Equal("https://foo.com:1234/validate-boshdeployment"))
 						Expect(wh.ClientConfig.CABundle).To(ContainSubstring("the-ca-cert"))
-						Expect(*wh.FailurePolicy).To(Equal(admissionregistrationv1beta1.Fail))
+						Expect(*wh.FailurePolicy).To(Equal(admissionregistration.Fail))
 						return nil
 					default:
 						return errors.New("unexpected type")

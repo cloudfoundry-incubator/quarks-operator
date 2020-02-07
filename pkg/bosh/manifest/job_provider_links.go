@@ -101,7 +101,7 @@ func (jpl jobProviderLinks) Add(igName string, job Job, spec JobSpec, jobsInstan
 		if _, ok := jpl.instanceGroups[igName]; !ok {
 			jpl.instanceGroups[igName] = map[string]JobLinkProperties{}
 		}
-		jpl.instanceGroups[igName][names.EntanglementSecretKey(linkType, linkName)] = properties
+		jpl.instanceGroups[igName][names.QuarksLinkSecretKey(linkType, linkName)] = properties
 	}
 	return nil
 }

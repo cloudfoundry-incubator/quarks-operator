@@ -9,18 +9,20 @@ import (
 	"go.uber.org/zap"
 
 	"k8s.io/api/admission/v1beta1"
-	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
+	admissionregistration "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/withops"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
@@ -32,18 +34,18 @@ func NewBOSHDeploymentValidator(log *zap.SugaredLogger, config *config.Config) *
 
 	boshDeploymentValidator := NewValidator(log, config)
 
-	globalScopeType := admissionregistrationv1beta1.ScopeType("*")
+	globalScopeType := admissionregistration.ScopeType("*")
 	return &wh.OperatorWebhook{
-		FailurePolicy: admissionregistrationv1beta1.Fail,
-		Rules: []admissionregistrationv1beta1.RuleWithOperations{
+		FailurePolicy: admissionregistration.Fail,
+		Rules: []admissionregistration.RuleWithOperations{
 			{
-				Rule: admissionregistrationv1beta1.Rule{
+				Rule: admissionregistration.Rule{
 					APIGroups:   []string{names.GroupName},
 					APIVersions: []string{"v1alpha1"},
 					Resources:   []string{"boshdeployments"},
 					Scope:       &globalScopeType,
 				},
-				Operations: []admissionregistrationv1beta1.OperationType{
+				Operations: []admissionregistration.OperationType{
 					"CREATE",
 					"UPDATE",
 				},
@@ -53,7 +55,7 @@ func NewBOSHDeploymentValidator(log *zap.SugaredLogger, config *config.Config) *
 		Name: "validate-boshdeployment." + names.GroupName,
 		NamespaceSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				"cf-operator-ns": config.Namespace,
+				wh.LabelWatchNamespace: config.OperatorNamespace,
 			},
 		},
 		Webhook: &admission.Webhook{
@@ -178,7 +180,11 @@ func (v *Validator) Handle(_ context.Context, req admission.Request) admission.R
 	}
 
 	log.Infof(ctx, "Verifying dependencies for deployment '%s'", boshDeployment.Name)
-	resolver := converter.NewResolver(v.client, func() converter.Interpolator { return converter.NewInterpolator() })
+	withops := withops.NewResolver(
+		v.client,
+		func() withops.Interpolator { return withops.NewInterpolator() },
+		func(m bdm.Manifest) (withops.DomainNameService, error) { return boshdns.NewDNS(m) },
+	)
 	resourceExist, msg := v.OpsResourcesExist(ctx, boshDeployment.Spec.Ops, boshDeployment.Namespace)
 	if !resourceExist {
 		return admission.Response{
@@ -192,7 +198,7 @@ func (v *Validator) Handle(_ context.Context, req admission.Request) admission.R
 	}
 
 	log.Infof(ctx, "Resolving deployment '%s'", boshDeployment.Name)
-	manifest, _, err := resolver.WithOpsManifestDetailed(ctx, boshDeployment, boshDeployment.GetNamespace())
+	manifest, _, err := withops.ManifestDetailed(boshDeployment, boshDeployment.GetNamespace())
 	if err != nil {
 		return admission.Response{
 			AdmissionResponse: v1beta1.AdmissionResponse{

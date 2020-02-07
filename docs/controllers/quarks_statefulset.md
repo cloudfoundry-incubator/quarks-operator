@@ -15,6 +15,7 @@
          9. [Extended Upgrade Support](#extended-upgrade-support)
          10. [Detects if StatefulSet versions are running](#detects-if-statefulset-versions-are-running)
          11. [AZ Support](#az-support)
+         12. [Tolerations](#tolerations)
       2. [QuarksStatefulSet Active-Passive Controller](#quarksstatefulset-active-passive-controller)
    3. [Relationship with the BPM component](#relationship-with-the-bdpl-component)
    4. [`QuarksStatefulSet` Examples](#`quarks-statefulset`-examples)
@@ -186,6 +187,10 @@ If zones are set for an `QuarksStatefulSet`, the following occurs:
   CF_OPERATOR_AZ="zone name"
   AZ_INDEX="zone index"
   ```
+
+##### Tolerations
+
+Taints and tolerations is a concept defined in kubernetes to repel pods from nodes [link](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/). Defining tolerations is same as defined in the kubernetes docs. Keep in mind the affinity rules added by the controller when az's are defined. An example is specified in the examples folder.
 
 #### Restarting on Config Change
 

@@ -32,6 +32,7 @@ data:
           nats:
             user: admin
             password: ((nats_password))
+            domain: ((system_domain))
     variables:
     - name: nats_password
       type: password
@@ -46,8 +47,8 @@ data:
         ca: nats_ca
         common_name: routerSSL
         alternative_names:
-        - "((system_domain))"
-        - "*.((system_domain))"
+        - "foo.bar"
+        - "*.foo.bar"
 
 ---
 apiVersion: quarks.cloudfoundry.org/v1alpha1

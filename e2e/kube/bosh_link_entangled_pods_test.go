@@ -11,18 +11,15 @@ import (
 )
 
 var _ = Describe("BOSHLinkEntanglements", func() {
-	const jobProperties = `{"nats":{"password":"onetwothreefour","port":4222,"user":"admin"}}`
-	const changedProperties = `{"nats":{"password":"qwerty1234","port":4222,"user":"admin"}}`
-
 	apply := func(p string) error {
 		yamlPath := path.Join(examplesDir, p)
 		return cmdHelper.Apply(namespace, yamlPath)
 	}
 
-	checkEntanglement := func(podName, expect string) error {
+	checkEntanglement := func(podName, cmd, expect string) error {
 		return kubectl.RunCommandWithCheckString(
 			namespace, podName,
-			"cat /quarks/link/nats-deployment/link.yaml",
+			cmd,
 			expect,
 		)
 	}
@@ -44,7 +41,7 @@ var _ = Describe("BOSHLinkEntanglements", func() {
 
 	Context("when creating a bosh deployment", func() {
 		It("creates secrets for a all BOSH links", func() {
-			exist, err := kubectl.SecretExists(namespace, "link-nats-deployment-nats")
+			exist, err := kubectl.SecretExists(namespace, "link-nats-deployment-nats-nats")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exist).To(BeTrue())
 		})
@@ -61,8 +58,9 @@ var _ = Describe("BOSHLinkEntanglements", func() {
 				err := apply("quarks-link/entangled-sts.yaml")
 				Expect(err).ToNot(HaveOccurred())
 				podWait(selector)
-				err = checkEntanglement(podName, jobProperties)
-				Expect(err).ToNot(HaveOccurred())
+
+				Expect(checkEntanglement(podName, "cat /quarks/link/nats-deployment/nats-nats/nats.password", "onetwothreefour")).ToNot(HaveOccurred())
+				Expect(checkEntanglement(podName, "echo $LINK_NATS_USER", "admin")).ToNot(HaveOccurred())
 			})
 
 			By("restarting pods when the link secret changes", func() {
@@ -76,8 +74,8 @@ var _ = Describe("BOSHLinkEntanglements", func() {
 				Expect(err).ToNot(HaveOccurred(), "waiting for restart annotation on entangled pod")
 				podWait(selector)
 
-				err = checkEntanglement(podName, changedProperties)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(checkEntanglement(podName, "cat /quarks/link/nats-deployment/nats-nats/nats.password", "qwerty1234")).ToNot(HaveOccurred())
+				Expect(checkEntanglement(podName, "echo $LINK_NATS_USER", "admin")).ToNot(HaveOccurred())
 			})
 		})
 	})
@@ -97,8 +95,8 @@ var _ = Describe("BOSHLinkEntanglements", func() {
 				podName = getPodName(selector)
 				podWait("pod/" + podName)
 
-				err = checkEntanglement(podName, jobProperties)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(checkEntanglement(podName, "cat /quarks/link/nats-deployment/nats-nats/nats.password", "onetwothreefour")).ToNot(HaveOccurred())
+				Expect(checkEntanglement(podName, "echo $LINK_NATS_USER", "admin")).ToNot(HaveOccurred())
 			})
 
 			By("restarting pods when the link secret changes", func() {
@@ -119,8 +117,8 @@ var _ = Describe("BOSHLinkEntanglements", func() {
 				)
 				Expect(err).ToNot(HaveOccurred(), "waiting for restart annotation on entangled pod")
 
-				err = checkEntanglement(podName, changedProperties)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(checkEntanglement(podName, "cat /quarks/link/nats-deployment/nats-nats/nats.password", "qwerty1234")).ToNot(HaveOccurred())
+				Expect(checkEntanglement(podName, "echo $LINK_NATS_USER", "admin")).ToNot(HaveOccurred())
 			})
 		})
 	})

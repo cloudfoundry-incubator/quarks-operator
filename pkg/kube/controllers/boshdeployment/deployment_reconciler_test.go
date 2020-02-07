@@ -24,12 +24,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfd "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
-	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	cfcfg "code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -38,32 +38,36 @@ import (
 
 var _ = Describe("ReconcileBoshDeployment", func() {
 	var (
-		manager    *cfakes.FakeManager
-		reconciler reconcile.Reconciler
-		recorder   *record.FakeRecorder
-		request    reconcile.Request
-		ctx        context.Context
-		resolver   fakes.FakeResolver
-		jobFactory fakes.FakeJobFactory
-		manifest   *bdm.Manifest
-		log        *zap.SugaredLogger
-		config     *cfcfg.Config
-		client     *cfakes.FakeClient
-		instance   *bdv1.BOSHDeployment
-		dmQJob     *qjv1a1.QuarksJob
-		igQJob     *qjv1a1.QuarksJob
+		manager       *fakes.FakeManager
+		reconciler    reconcile.Reconciler
+		recorder      *record.FakeRecorder
+		request       reconcile.Request
+		ctx           context.Context
+		withops       fakes.FakeWithOps
+		jobFactory    fakes.FakeJobFactory
+		kubeConverter fakes.FakeVariablesConverter
+		manifest      *bdm.Manifest
+		log           *zap.SugaredLogger
+		config        *cfcfg.Config
+		client        *fakes.FakeClient
+		instance      *bdv1.BOSHDeployment
+		dmQJob        *qjv1a1.QuarksJob
+		igQJob        *qjv1a1.QuarksJob
 	)
 
 	BeforeEach(func() {
 		controllers.AddToScheme(scheme.Scheme)
 		recorder = record.NewFakeRecorder(20)
-		manager = &cfakes.FakeManager{}
+		manager = &fakes.FakeManager{}
 		manager.GetSchemeReturns(scheme.Scheme)
 		manager.GetEventRecorderForReturns(recorder)
-		resolver = fakes.FakeResolver{}
+		withops = fakes.FakeWithOps{}
 		jobFactory = fakes.FakeJobFactory{}
+		kubeConverter = fakes.FakeVariablesConverter{}
+		kubeConverter.VariablesReturns([]qsv1a1.QuarksSecret{}, nil)
 
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
+
 		manifest = &bdm.Manifest{
 			Name: "foo",
 			Releases: []*bdm.Release{
@@ -111,12 +115,14 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		}
 		dmQJob = &qjv1a1.QuarksJob{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("dm-%s", manifest.Name),
+				Name:      fmt.Sprintf("dm-%s", manifest.Name),
+				Namespace: "default",
 			},
 		}
 		igQJob = &qjv1a1.QuarksJob{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("ig-%s", manifest.Name),
+				Name:      fmt.Sprintf("ig-%s", manifest.Name),
+				Namespace: "default",
 			},
 		}
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
@@ -147,7 +153,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			},
 		}
 
-		client = &cfakes.FakeClient{}
+		client = &fakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 			switch object := object.(type) {
 			case *bdv1.BOSHDeployment:
@@ -158,7 +164,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 			return nil
 		})
-
+		client.StatusCalls(func() crc.StatusWriter { return &fakes.FakeStatusWriter{} })
 		manager.GetClientReturns(client)
 
 		jobFactory.VariableInterpolationJobReturns(dmQJob, nil)
@@ -166,9 +172,11 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 	})
 
 	JustBeforeEach(func() {
-		resolver.WithOpsManifestReturns(manifest, []string{}, nil)
-		reconciler = cfd.NewDeploymentReconciler(ctx, config, manager,
-			&resolver, &jobFactory, controllerutil.SetControllerReference,
+		withops.ManifestReturns(manifest, []string{}, nil)
+		reconciler = cfd.NewDeploymentReconciler(
+			ctx, config, manager,
+			&withops, &jobFactory, &kubeConverter,
+			controllerutil.SetControllerReference,
 		)
 	})
 
@@ -195,7 +203,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles an error when resolving the BOSHDeployment", func() {
-				resolver.WithOpsManifestReturns(nil, []string{}, fmt.Errorf("resolver error"))
+				withops.ManifestReturns(nil, []string{}, fmt.Errorf("resolver error"))
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
@@ -209,7 +217,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		Context("when the manifest can be resolved", func() {
 			It("handles an error when resolving manifest", func() {
 				manifest = &bdm.Manifest{}
-				resolver.WithOpsManifestReturns(manifest, []string{}, errors.New("fake-error"))
+				withops.ManifestReturns(manifest, []string{}, errors.New("fake-error"))
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
@@ -217,7 +225,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("handles an error when setting the owner reference on the object", func() {
-				reconciler = cfd.NewDeploymentReconciler(ctx, config, manager, &resolver, &jobFactory,
+				reconciler = cfd.NewDeploymentReconciler(ctx, config, manager, &withops, &jobFactory, &kubeConverter,
 					func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 						return fmt.Errorf("some error")
 					},
@@ -228,7 +236,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Expect(err.Error()).To(ContainSubstring("failed to set ownerReference for Secret 'foo.with-ops': some error"))
 			})
 
-			It("handles an error when creating manifest secret with ops ", func() {
+			It("handles an error when creating manifest secret with ops", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
@@ -270,6 +278,44 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to build the desired manifest qJob"))
+			})
+
+			It("handles an error generating the new variable secrets", func() {
+				kubeConverter.VariablesReturns(nil, errors.New("fake-error"))
+
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to generate quarks secrets from manifest"))
+			})
+
+			It("handles an error when creating the new quarks secrets", func() {
+				kubeConverter.VariablesReturns([]qsv1a1.QuarksSecret{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "fake-variable",
+						},
+					},
+				}, nil)
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+					switch object := object.(type) {
+					case *bdv1.BOSHDeployment:
+						instance.DeepCopyInto(object)
+					case *qsv1a1.QuarksSecret:
+						return apierrors.NewNotFound(schema.GroupResource{}, "fake-variable")
+					}
+					return nil
+				})
+				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
+					switch object.(type) {
+					case *qsv1a1.QuarksSecret:
+						return errors.New("fake-error")
+					}
+					return nil
+				})
+
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to create quarks secrets for BOSH manifest 'foo'"))
 			})
 
 			It("handles an error when building desired manifest qJob", func() {
@@ -322,6 +368,34 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				Expect(err.Error()).To(ContainSubstring("failed to create instance group manifest qJob for BOSHDeployment 'default/foo': creating or updating QuarksJob 'ig-foo': fake-error"))
 			})
 
+			Context("when the manifest contains variables", func() {
+				BeforeEach(func() {
+					kubeConverter.VariablesReturns([]qsv1a1.QuarksSecret{
+						{ObjectMeta: metav1.ObjectMeta{Name: "fake-variable", Namespace: "default"}},
+						{ObjectMeta: metav1.ObjectMeta{Name: "other-variable", Namespace: "default"}},
+						{ObjectMeta: metav1.ObjectMeta{Name: "last-variable", Namespace: "default"}},
+					}, nil)
+					client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+						switch object := object.(type) {
+						case *bdv1.BOSHDeployment:
+							instance.DeepCopyInto(object)
+						case *qjv1a1.QuarksJob:
+							return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+						case *qsv1a1.QuarksSecret:
+							return apierrors.NewNotFound(schema.GroupResource{}, "")
+						}
+						return nil
+					})
+				})
+
+				It("creates the variable secrets", func() {
+					result, err := reconciler.Reconcile(request)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(result).To(Equal(reconcile.Result{}))
+					Expect(client.CreateCallCount()).To(Equal(5))
+				})
+			})
+
 			Context("when the manifest contains explicit links", func() {
 				var bazSecret *corev1.Secret
 
@@ -334,7 +408,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 								bdv1.LabelDeploymentName: "foo",
 							},
 							Annotations: map[string]string{
-								bdv1.AnnotationLinkProviderName: "baz",
+								bdv1.AnnotationLinkProvidesKey: `{"name":"baz"}`,
 							},
 						},
 						Data: map[string][]byte{},
@@ -402,8 +476,6 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 						return nil
 					})
-
-					client.StatusCalls(func() crc.StatusWriter { return &cfakes.FakeStatusWriter{} })
 				})
 
 				It("passes link secrets to QJobs", func() {
@@ -438,6 +510,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					_, err := reconciler.Reconcile(request)
 					Expect(err.Error()).To(ContainSubstring("listing secrets for link in deployment"))
 				})
+
 				It("handles an error on missing providers when the secret doesn't have the annotation", func() {
 					bazSecret.Annotations = nil
 					_, err := reconciler.Reconcile(request)

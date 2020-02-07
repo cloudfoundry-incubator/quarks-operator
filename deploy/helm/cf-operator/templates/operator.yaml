@@ -26,14 +26,18 @@ spec:
           - cf-operator
           imagePullPolicy: {{ .Values.global.image.pullPolicy | quote }}
           env:
-            {{- if .Values.global.operator.watchNamespace }}
-            - name: WATCH_NAMESPACE
-              value: "{{ .Values.global.operator.watchNamespace }}"
-            {{- end}}
+            - name: APPLY_CRD
+              value: "{{ .Values.applyCRD }}"
+            - name: BOSH_DNS_DOCKER_IMAGE
+              value: "{{ .Values.operator.boshDNSDockerImage }}"
             {{- if .Values.cluster.domain }}
             - name: CLUSTER_DOMAIN
               value: {{ .Values.cluster.domain | quote }}
             {{- end }}
+            - name: LOG_LEVEL
+              value: "{{ .Values.logLevel }}"
+            - name: WATCH_NAMESPACE
+              value: "{{ .Values.global.operator.watchNamespace }}"
             - name: CF_OPERATOR_NAMESPACE
               valueFrom:
                 fieldRef:
@@ -54,9 +58,9 @@ spec:
               value: "{{ .Values.image.tag }}"
             - name: DOCKER_IMAGE_PULL_POLICY
               value: "{{ .Values.global.image.pullPolicy }}"
-            {{- if and .Values.operator.webhook.endpoint (not .Values.operator.webhook.useServiceReference) }}
+            {{- if and .Values.operator.webhook.host (not .Values.operator.webhook.useServiceReference) }}
             - name: CF_OPERATOR_WEBHOOK_SERVICE_HOST
-              value: {{ .Values.operator.webhook.endpoint | quote }}
+              value: {{ .Values.operator.webhook.host | quote }}
             {{- end }}
             - name: CF_OPERATOR_WEBHOOK_SERVICE_PORT
               value: {{ .Values.operator.webhook.port | quote }}

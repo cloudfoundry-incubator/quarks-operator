@@ -19,8 +19,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/withops"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
@@ -32,8 +35,13 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	ctx = ctxlog.NewContextWithRecorder(ctx, "boshdeployment-reconciler", mgr.GetEventRecorderFor("boshdeployment-recorder"))
 	r := NewDeploymentReconciler(
 		ctx, config, mgr,
-		converter.NewResolver(mgr.GetClient(), func() converter.Interpolator { return converter.NewInterpolator() }),
+		withops.NewResolver(
+			mgr.GetClient(),
+			func() withops.Interpolator { return withops.NewInterpolator() },
+			func(m bdm.Manifest) (withops.DomainNameService, error) { return boshdns.NewDNS(m) },
+		),
 		converter.NewJobFactory(config.Namespace),
+		converter.NewVariablesConverter(config.Namespace),
 		controllerutil.SetControllerReference,
 	)
 
@@ -178,7 +186,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			reconciles := make([]reconcile.Request, 1)
 
 			svc := a.Object.(*corev1.Service)
-			if provider, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderName]; ok {
+			if provider, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderService]; ok {
 				reconciles[0] = reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Namespace: svc.Namespace,
@@ -197,12 +205,4 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	}
 
 	return nil
-}
-
-func isLinkProviderService(svc *corev1.Service) bool {
-	if _, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderName]; ok {
-		return true
-	}
-
-	return false
 }

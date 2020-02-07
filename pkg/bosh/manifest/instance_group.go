@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
@@ -100,6 +101,17 @@ func (ig *InstanceGroup) NameSanitized() string {
 	return names.Sanitize(ig.Name)
 }
 
+// ActivePassiveProbes returns all the probes defined in the instance group jobs
+func (ig *InstanceGroup) ActivePassiveProbes() map[string]corev1.Probe {
+	probes := map[string]corev1.Probe{}
+	for _, job := range ig.Jobs {
+		for container, probe := range job.Properties.Quarks.ActivePassiveProbes {
+			probes[container] = probe
+		}
+	}
+	return probes
+}
+
 // QuarksStatefulSetName constructs the quarksStatefulSet name.
 func (ig *InstanceGroup) QuarksStatefulSetName(deploymentName string) string {
 	ign := ig.NameSanitized()
@@ -109,7 +121,7 @@ func (ig *InstanceGroup) QuarksStatefulSetName(deploymentName string) string {
 // IndexedServiceName constructs an indexed service name. It's used to construct the service
 // names other than the headless service.
 func (ig *InstanceGroup) IndexedServiceName(deploymentName string, index int) string {
-	sn := serviceName(ig.Name, deploymentName, 53)
+	sn := util.ServiceName(ig.Name, deploymentName, 53)
 	return fmt.Sprintf("%s-%d", sn, index)
 }
 
@@ -222,7 +234,7 @@ var (
 
 // AgentSettings from BOSH deployment manifest.
 // These annotations and labels are added to kube resources.
-// Affinity is added into the pod's definition.
+// Affinity & tolerations are added into the pod's definition.
 type AgentSettings struct {
 	Annotations                  map[string]string             `json:"annotations,omitempty"`
 	Labels                       map[string]string             `json:"labels,omitempty"`
@@ -231,6 +243,7 @@ type AgentSettings struct {
 	ServiceAccountName           string                        `json:"serviceAccountName,omitempty" yaml:"serviceAccountName,omitempty"`
 	AutomountServiceAccountToken *bool                         `json:"automountServiceAccountToken,omitempty" yaml:"automountServiceAccountToken,omitempty"`
 	ImagePullSecrets             []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	Tolerations                  []corev1.Toleration           `json:"tolerations,omitempty"`
 }
 
 // Set overrides labels and annotations with operator-owned metadata.

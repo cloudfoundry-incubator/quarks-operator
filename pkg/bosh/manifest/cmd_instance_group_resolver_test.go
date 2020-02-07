@@ -12,6 +12,7 @@ import (
 	bpmConfig "code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
 
@@ -71,8 +72,9 @@ var _ = Describe("InstanceGroupResolver", func() {
 		var fs = afero.NewMemMapFs()
 
 		JustBeforeEach(func() {
-			var err error
-			igr, err = NewInstanceGroupResolver(fs, assetPath, *m, ig)
+			dns, err := boshdns.NewDNS(*m)
+			Expect(err).ToNot(HaveOccurred())
+			igr, err = NewInstanceGroupResolver(fs, assetPath, *m, ig, dns)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -316,6 +318,18 @@ var _ = Describe("InstanceGroupResolver", func() {
 
 		Describe("SaveLinks", func() {
 			Context("when jobs provide links", func() {
+				var fileContentOf = func(path string) map[string]string {
+					Expect(afero.Exists(fs, path)).To(BeTrue())
+
+					bytes, err := afero.ReadFile(fs, path)
+					Expect(err).ToNot(HaveOccurred())
+
+					var data map[string]string
+					Expect(json.Unmarshal(bytes, &data)).ToNot(HaveOccurred())
+
+					return data
+				}
+
 				BeforeEach(func() {
 					m, err = env.BOSHManifestWithLinks()
 					Expect(err).NotTo(HaveOccurred())
@@ -329,7 +343,9 @@ var _ = Describe("InstanceGroupResolver", func() {
 					err = igr.SaveLinks("/mnt/quarks")
 					Expect(err).ToNot(HaveOccurred())
 
-					Expect(afero.Exists(fs, "/mnt/quarks/provides.json")).To(BeTrue())
+					Expect(fileContentOf("/mnt/quarks/provides.json")).To(Equal(map[string]string{
+						"nats-nutty-nuts": `{"nats.password":"changeme","nats.port":"4222","nats.user":"admin"}`,
+					}))
 				})
 			})
 		})

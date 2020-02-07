@@ -9,17 +9,18 @@ import (
 // Quarks represents the special 'quarks' property key.
 // It contains all kubernetes structures we need to add to the BOSH manifest.
 type Quarks struct {
-	Consumes         map[string]JobLink `json:"consumes"`
-	Instances        []JobInstance      `json:"instances"`
-	Release          string             `json:"release"`
-	BPM              *bpm.Config        `json:"bpm,omitempty" yaml:"bpm,omitempty"`
-	Ports            []Port             `json:"ports"`
-	Run              RunConfig          `json:"run"`
-	PreRenderScripts PreRenderScripts   `json:"pre_render_scripts" yaml:"pre_render_scripts"`
-	PostStart        PostStart          `json:"post_start"`
-	Debug            bool               `json:"debug" yaml:"debug"`
-	IsAddon          bool               `json:"is_addon" yaml:"is_addon"`
-	Envs             []corev1.EnvVar    `json:"envs" yaml:"envs"`
+	Consumes            map[string]JobLink      `json:"consumes"`
+	Instances           []JobInstance           `json:"instances"`
+	Release             string                  `json:"release"`
+	BPM                 *bpm.Config             `json:"bpm,omitempty" yaml:"bpm,omitempty"`
+	Ports               []Port                  `json:"ports"`
+	Run                 RunConfig               `json:"run"`
+	PreRenderScripts    PreRenderScripts        `json:"pre_render_scripts" yaml:"pre_render_scripts"`
+	PostStart           PostStart               `json:"post_start"`
+	Debug               bool                    `json:"debug" yaml:"debug"`
+	IsAddon             bool                    `json:"is_addon" yaml:"is_addon"`
+	Envs                []corev1.EnvVar         `json:"envs" yaml:"envs"`
+	ActivePassiveProbes map[string]corev1.Probe `json:"activePassiveProbes,omitempty"`
 }
 
 // Port represents the port to be opened up for this job.

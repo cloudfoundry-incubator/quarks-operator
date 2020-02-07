@@ -8,9 +8,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/withops"
 )
 
 // GetSecretsReferencedBy returns a list of all names for Secrets referenced by the object
@@ -40,8 +42,12 @@ func getSecretRefFromBdpl(ctx context.Context, client crc.Client, object bdv1.BO
 	}
 
 	// Include secrets of implicit vars
-	resolver := converter.NewResolver(client, func() converter.Interpolator { return converter.NewInterpolator() })
-	_, implicitVars, err := resolver.WithOpsManifest(ctx, &object, object.Namespace)
+	withops := withops.NewResolver(
+		client,
+		func() withops.Interpolator { return withops.NewInterpolator() },
+		func(m bdm.Manifest) (withops.DomainNameService, error) { return boshdns.NewDNS(m) },
+	)
+	_, implicitVars, err := withops.Manifest(&object, object.Namespace)
 	if err != nil {
 		return map[string]bool{}, errors.Wrap(err, fmt.Sprintf("Failed to load the with-ops manifest for BOSHDeployment '%s/%s'", object.Namespace, object.Name))
 	}

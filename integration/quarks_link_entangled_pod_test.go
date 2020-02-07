@@ -12,6 +12,8 @@ import (
 var _ = Describe("Entangled Pods PodMutator", func() {
 	const (
 		deploymentName = "nats-deployment"
+		consumesNats   = `[{"name":"nats","type":"nats"}]`
+		consumesNuts   = `[{"name":"nats","type":"nuts"}]`
 	)
 
 	var (
@@ -27,30 +29,12 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 		return names
 	}
 
-	volumeKeyToPaths := func(volumes []corev1.Volume) []string {
-		keys := make([]string, len(volumes))
-		for i, v := range volumes {
-			if len(v.Secret.Items) > 0 {
-				keys[i] = v.Secret.Items[0].Key
-			}
-		}
-		return keys
-	}
-
 	volumeMountNames := func(mounts []corev1.VolumeMount) []string {
 		names := make([]string, len(mounts))
 		for i, m := range mounts {
 			names[i] = m.Name
 		}
 		return names
-	}
-
-	act := func(pod corev1.Pod) {
-		tearDown, err := env.CreatePod(env.Namespace, pod)
-		Expect(err).NotTo(HaveOccurred())
-		tearDowns = append(tearDowns, tearDown)
-		err = env.WaitForPodReady(env.Namespace, pod.GetName())
-		Expect(err).NotTo(HaveOccurred())
 	}
 
 	updateEntanglementAnnotations := func(consumes string) {
@@ -64,15 +48,12 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 		Expect(err).NotTo(HaveOccurred())
 	}
 
-	expectEntanglementVolumes := func(p *corev1.Pod, linkType string) {
-		Expect(p.Spec.Volumes).To(HaveLen(2))
-		Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-nats"))
-		Expect(volumeKeyToPaths(p.Spec.Volumes)).To(ContainElement(linkType))
-
-		for _, c := range p.Spec.Containers {
-			Expect(c.VolumeMounts).To(HaveLen(2))
-			Expect(volumeMountNames(c.VolumeMounts)).To(ContainElement("link-nats-deployment-nats"))
-		}
+	act := func(pod corev1.Pod) {
+		tearDown, err := env.CreatePod(env.Namespace, pod)
+		Expect(err).NotTo(HaveOccurred())
+		tearDowns = append(tearDowns, tearDown)
+		err = env.WaitForPodReady(env.Namespace, pod.GetName())
+		Expect(err).NotTo(HaveOccurred())
 	}
 
 	AfterEach(func() {
@@ -95,7 +76,58 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 				p, err := env.GetPod(env.Namespace, pod.GetName())
 				Expect(err).NotTo(HaveOccurred())
 
-				expectEntanglementVolumes(p, "nats.nats")
+				Expect(p.Spec.Volumes).To(HaveLen(2))
+				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-nats-nats"))
+
+				for _, c := range p.Spec.Containers {
+					Expect(c.VolumeMounts).To(HaveLen(2))
+					Expect(volumeMountNames(c.VolumeMounts)).To(ContainElement("link-nats-deployment-nats-nats"))
+				}
+			})
+		})
+	})
+
+	Context("when entangled pod is using multiple links", func() {
+		BeforeEach(func() {
+			tearDown, err := env.CreateSecret(env.Namespace, env.DefaultQuarksLinkSecret(deploymentName, "nats"))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			otherSecret := env.QuarksLinkSecret(
+				deploymentName,
+				"type",
+				"name",
+				map[string][]byte{
+					"foo":      []byte("[1,2,3]"),
+					"password": []byte("abc"),
+				},
+			)
+
+			tearDown, err = env.CreateSecret(env.Namespace, otherSecret)
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			pod = env.EntangledPod(deploymentName)
+			pod.Annotations["quarks.cloudfoundry.org/consumes"] = `[{"name":"nats","type":"nats"},{"name":"name","type":"type"}]`
+		})
+
+		It("mounts both secrets on the pod", func() {
+			act(pod)
+
+			By("checking the volume and mounts", func() {
+				p, err := env.GetPod(env.Namespace, pod.GetName())
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(p.Spec.Volumes).To(HaveLen(3))
+				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-nats-nats"))
+				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-type-name"))
+
+				for _, c := range p.Spec.Containers {
+					Expect(c.VolumeMounts).To(HaveLen(3))
+					mounts := c.VolumeMounts
+					Expect(volumeMountNames(mounts)).To(ContainElement("link-nats-deployment-nats-nats"))
+					Expect(volumeMountNames(mounts)).To(ContainElement("link-nats-deployment-type-name"))
+				}
 			})
 		})
 	})
@@ -108,7 +140,7 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 		It("refuses to mutate the pod", func() {
 			_, err := env.CreatePod(env.Namespace, pod)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(`admission webhook "mutate-tangled-pods.quarks.cloudfoundry.org" denied the request: couldn't find entanglement secret 'nats.nats' for deployment 'non-existant'`))
+			Expect(err.Error()).To(ContainSubstring(`admission webhook "mutate-tangled-pods.quarks.cloudfoundry.org" denied the request: couldn't find any entanglement secret for deployment 'non-existant'`))
 		})
 	})
 
@@ -129,14 +161,20 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 			act(pod)
 
 			By("updating the annotations on an existing pod", func() {
-				updateEntanglementAnnotations("nuts.nats")
+				updateEntanglementAnnotations(consumesNuts)
 			})
 
 			By("checking volume and mounts stay the same", func() {
 				p, err := env.GetPod(env.Namespace, pod.GetName())
 				Expect(err).NotTo(HaveOccurred())
 
-				expectEntanglementVolumes(p, "nats.nats")
+				Expect(p.Spec.Volumes).To(HaveLen(2))
+				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-nats-nats"))
+
+				for _, c := range p.Spec.Containers {
+					Expect(c.VolumeMounts).To(HaveLen(2))
+					Expect(volumeMountNames(c.VolumeMounts)).To(ContainElement("link-nats-deployment-nats-nats"))
+				}
 			})
 		})
 	})
@@ -154,7 +192,7 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 			act(pod)
 
 			By("updating the annotations on an existing pod", func() {
-				updateEntanglementAnnotations("nats.nats")
+				updateEntanglementAnnotations(consumesNats)
 			})
 
 			By("checking the volume and mounts", func() {

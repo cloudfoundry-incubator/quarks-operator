@@ -90,7 +90,7 @@ func (r *ReconcileQuarksSecret) Reconcile(request reconcile.Request) (reconcile.
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			ctxlog.Info(ctx, "Skip reconcile: CRD not found")
+			ctxlog.Info(ctx, "Skip reconcile: quarks secret not found")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
@@ -103,13 +103,14 @@ func (r *ReconcileQuarksSecret) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
-	// Check if secret could be generated when secret was already created
-	canBeGenerated, err := r.canBeGenerated(ctx, instance)
+	// Check if allowed to generate secret, could be already done or
+	// created manually by a user
+	skipReconcile, err := r.skipReconcile(ctx, instance)
 	if err != nil {
 		ctxlog.Errorf(ctx, "Error reading the secret: %v", err.Error())
 		return reconcile.Result{}, err
 	}
-	if !canBeGenerated {
+	if skipReconcile {
 		ctxlog.WithEvent(instance, "SkipReconcile").Infof(ctx, "Skip reconcile: quarksSecret '%s' is already generated", instance.Name)
 		return reconcile.Result{}, nil
 	}
@@ -153,21 +154,15 @@ func (r *ReconcileQuarksSecret) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
-	return reconcile.Result{}, r.updateQSecret(ctx, instance)
+	return reconcile.Result{}, r.updateStatus(ctx, instance)
 }
 
-func (r *ReconcileQuarksSecret) updateQSecret(ctx context.Context, instance *qsv1a1.QuarksSecret) error {
+func (r *ReconcileQuarksSecret) updateStatus(ctx context.Context, instance *qsv1a1.QuarksSecret) error {
 	instance.Status.Generated = true
-	op, err := controllerutil.CreateOrUpdate(ctx, r.client, instance, mutate.QuarksSecretMutateFn(instance))
-	if err != nil {
-		return errors.Wrapf(err, "could not create or update QuarksSecret '%s'", instance.GetName())
-	}
-
-	ctxlog.Debugf(ctx, "QuarksSecret '%s' has been %s", instance.Name, op)
 
 	now := metav1.Now()
 	instance.Status.LastReconcile = &now
-	err = r.client.Status().Update(ctx, instance)
+	err := r.client.Status().Update(ctx, instance)
 	if err != nil {
 		return errors.Wrapf(err, "could not create or update QuarksSecret status '%s'", instance.GetName())
 	}
@@ -334,10 +329,12 @@ func (r *ReconcileQuarksSecret) createCertificateSecret(ctx context.Context, ins
 	}
 }
 
-func (r *ReconcileQuarksSecret) canBeGenerated(ctx context.Context, instance *qsv1a1.QuarksSecret) (bool, error) {
-	// Skip secret generation when instance has generated secret and its `generated` status is true
+// Skip reconcile when
+// * secret is already generated according to qsecs status field
+// * secret exists, but was not generated (user created secret)
+func (r *ReconcileQuarksSecret) skipReconcile(ctx context.Context, instance *qsv1a1.QuarksSecret) (bool, error) {
 	if instance.Status.Generated {
-		return false, nil
+		return true, nil
 	}
 
 	secretName := instance.Spec.SecretName
@@ -346,9 +343,9 @@ func (r *ReconcileQuarksSecret) canBeGenerated(ctx context.Context, instance *qs
 	err := r.client.Get(ctx, types.NamespacedName{Name: secretName, Namespace: instance.GetNamespace()}, existingSecret)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return true, nil
+			return false, nil
 		}
-		return true, errors.Wrapf(err, "could not get secret")
+		return false, errors.Wrapf(err, "could not get secret")
 	}
 
 	secretLabels := existingSecret.GetLabels()
@@ -356,11 +353,12 @@ func (r *ReconcileQuarksSecret) canBeGenerated(ctx context.Context, instance *qs
 		secretLabels = map[string]string{}
 	}
 
+	// skip the user generated secret
 	if secretLabels[qsv1a1.LabelKind] != qsv1a1.GeneratedSecretKind {
-		return false, nil
+		return true, nil
 	}
 
-	return true, nil
+	return false, nil
 }
 
 // createSecret applies common properties(labels and ownerReferences) to the secret and creates it
@@ -385,7 +383,9 @@ func (r *ReconcileQuarksSecret) createSecret(ctx context.Context, instance *qsv1
 		return errors.Wrapf(err, "could not create or update secret '%s'", secret.GetName())
 	}
 
-	ctxlog.Debugf(ctx, "Secret '%s' has been %s", secret.Name, op)
+	if op != "unchanged" {
+		ctxlog.Debugf(ctx, "Secret '%s' has been %s", secret.Name, op)
+	}
 
 	return nil
 }
@@ -456,7 +456,7 @@ func (r *ReconcileQuarksSecret) generateCertificateGenerationRequest(ctx context
 // createCertificateSigningRequest creates CertificateSigningRequest Object
 func (r *ReconcileQuarksSecret) createCertificateSigningRequest(ctx context.Context, instance *qsv1a1.QuarksSecret, csr []byte) error {
 	csrName := names.CSRName(instance.Namespace, instance.Name)
-	ctxlog.Debugf(ctx, "Creating certificateSigningRequest '%s'", csrName)
+	ctxlog.Debugf(ctx, "Creating certificatesigningrequest '%s'", csrName)
 
 	annotations := instance.GetAnnotations()
 	if annotations == nil {
@@ -477,21 +477,17 @@ func (r *ReconcileQuarksSecret) createCertificateSigningRequest(ctx context.Cont
 		},
 	}
 
-	if err := r.setReference(instance, csrObj, r.scheme); err != nil {
-		return errors.Wrapf(err, "error setting owner for certificateSigningRequest '%s' to QuarksSecret '%s' in namespace '%s'", csrObj.Name, instance.Name, instance.GetNamespace())
-	}
-
 	// CSR spec is immutable after the request is created
 	err := r.client.Get(ctx, types.NamespacedName{Name: csrObj.Name}, instance)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			err = r.client.Create(ctx, csrObj)
 			if err != nil {
-				return errors.Wrapf(err, "could not create certificateSigningRequest '%s'", csrObj.Name)
+				return errors.Wrapf(err, "could not create certificatesigningrequest '%s'", csrObj.Name)
 			}
 			return nil
 		}
-		return errors.Wrapf(err, "could not get certificateSigningRequest '%s'", csrObj.Name)
+		return errors.Wrapf(err, "could not get certificatesigningrequest '%s'", csrObj.Name)
 	}
 
 	return nil
