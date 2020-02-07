@@ -1,4 +1,4 @@
-package converter_test
+package bpmconverter_test
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	. "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	. "code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"

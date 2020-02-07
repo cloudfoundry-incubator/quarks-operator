@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
@@ -105,7 +105,7 @@ func init() {
 	pf := templateRenderCmd.Flags()
 	utilCmd.AddCommand(templateRenderCmd)
 	pf.StringP("jobs-dir", "j", "", "path to the jobs dir.")
-	pf.StringP("output-dir", "d", converter.VolumeJobsDirMountPath, "path to output dir.")
+	pf.StringP("output-dir", "d", bpmconverter.VolumeJobsDirMountPath, "path to output dir.")
 	pf.IntP("spec-index", "", -1, "index of the instance spec")
 	pf.IntP("az-index", "", -1, "az index")
 	pf.IntP("pod-ordinal", "", -1, "pod ordinal")
@@ -128,7 +128,7 @@ func init() {
 		"az-index":                "AZ_INDEX",
 		"pod-ordinal":             "POD_ORDINAL",
 		"replicas":                "REPLICAS",
-		"pod-ip":                  converter.PodIPEnvVar,
+		"pod-ip":                  bpmconverter.PodIPEnvVar,
 	}
 
 	deploymentNameFlagCobraSet(pf, argToEnv)

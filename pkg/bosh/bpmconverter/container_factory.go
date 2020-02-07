@@ -1,4 +1,4 @@
-package converter
+package bpmconverter
 
 import (
 	"context"
@@ -77,7 +77,7 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 		// One copying specs init container for each release.
 		if _, done := copyingSpecsUniq[job.Release]; !done {
 			copyingSpecsUniq[job.Release] = struct{}{}
-			copyingSpecsInitContainer := jobSpecCopierContainer(job.Release, jobImage, VolumeRenderingDataName)
+			copyingSpecsInitContainer := JobSpecCopierContainer(job.Release, jobImage, VolumeRenderingDataName)
 			copyingSpecsInitContainers = append(copyingSpecsInitContainers, copyingSpecsInitContainer)
 		}
 
@@ -315,8 +315,8 @@ func containerRunCopier() corev1.Container {
 	}
 }
 
-// jobSpecCopierContainer will return a corev1.Container{} with the populated field.
-func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName string) corev1.Container {
+// JobSpecCopierContainer will return a corev1.Container{} with the populated field.
+func JobSpecCopierContainer(releaseName string, jobImage string, volumeMountName string) corev1.Container {
 	inContainerReleasePath := filepath.Join(VolumeRenderingDataMountPath, "jobs-src", releaseName)
 	return corev1.Container{
 		Name:  names.Sanitize(fmt.Sprintf("spec-copier-%s", releaseName)),

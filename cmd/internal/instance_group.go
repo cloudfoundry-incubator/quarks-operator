@@ -14,6 +14,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/qjobs"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
@@ -134,7 +135,7 @@ Also calculates and prints the BPM configurations for all BOSH jobs of that inst
 			return errors.Wrapf(err, "%s JSON marshalling instance group manifest failed.", igFailedMessage)
 		}
 
-		err = ioutil.WriteFile(filepath.Join(outputFilePath, converter.InstanceGroupOutputFilename), jsonBytes, 0644)
+		err = ioutil.WriteFile(filepath.Join(outputFilePath, qjobs.InstanceGroupOutputFilename), jsonBytes, 0644)
 		if err != nil {
 			return errors.Wrapf(err, "%s Writing json into a output file failed.", igFailedMessage)
 		}
@@ -157,7 +158,7 @@ Also calculates and prints the BPM configurations for all BOSH jobs of that inst
 			return errors.Wrapf(err, "%s JSON marshalling BPM config spec failed.", igFailedMessage)
 		}
 
-		err = ioutil.WriteFile(filepath.Join(outputFilePath, converter.BPMOutputFilename), jsonBytes, 0644)
+		err = ioutil.WriteFile(filepath.Join(outputFilePath, qjobs.BPMOutputFilename), jsonBytes, 0644)
 		if err != nil {
 			return errors.Wrapf(err, "%s Writing BPM config json into a file failed.", igFailedMessage)
 		}

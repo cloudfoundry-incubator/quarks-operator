@@ -13,7 +13,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"

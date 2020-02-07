@@ -1,4 +1,4 @@
-package converter
+package bpmconverter
 
 import (
 	"fmt"
@@ -62,10 +62,7 @@ const (
 	// UnrestrictedVolumeBaseName is the volume name for the unrestricted ones.
 	UnrestrictedVolumeBaseName = "bpm-unrestricted-volume"
 
-	secretsPath  = "/var/run/secrets/variables/"
-	manifestPath = "/var/run/secrets/deployment/"
-	// releaseSourceName is the folder for release sources
-	releaseSourceName        = "instance-group"
+	// resolvedPropertiesFormat describes where to mount the BOSH manifest
 	resolvedPropertiesFormat = "/var/run/secrets/resolved-properties/%s"
 )
 
@@ -314,84 +311,6 @@ func generatePersistentVolumeClaimName(manifestName string, instanceGroupName st
 	return names.Sanitize(fmt.Sprintf("%s-%s-%s", manifestName, instanceGroupName, "pvc"))
 }
 
-// withOpsVolume is a volume for the "not interpolated" manifest,
-// that has the ops files applied, but still contains '((vars))'
-func withOpsVolume(name string) *corev1.Volume {
-	return &corev1.Volume{
-		Name: generateVolumeName(name),
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName: name,
-			},
-		},
-	}
-}
-
-// manifestVolumeMount mount for the manifest
-func manifestVolumeMount(name string) corev1.VolumeMount {
-	return corev1.VolumeMount{
-		Name:      generateVolumeName(name),
-		MountPath: manifestPath,
-		ReadOnly:  true,
-	}
-}
-
-// variableVolume gives the volume definition for the variables content
-func variableVolume(name string) corev1.Volume {
-	return corev1.Volume{
-		Name: generateVolumeName(name),
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName: name,
-			},
-		},
-	}
-}
-
-// variableVolumeMount is the volume mount to file 'varName' for a variables content
-func variableVolumeMount(name string, varName string) corev1.VolumeMount {
-	return corev1.VolumeMount{
-		Name:      generateVolumeName(name),
-		MountPath: secretsPath + varName,
-		ReadOnly:  true,
-	}
-}
-
-// noVarsVolume returns an EmptyVolume
-func noVarsVolume() corev1.Volume {
-	return corev1.Volume{
-		Name: generateVolumeName("no-vars"),
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	}
-}
-
-// noVarsVolumeMount returns the corresponding VolumeMount
-func noVarsVolumeMount() corev1.VolumeMount {
-	return corev1.VolumeMount{
-		Name:      generateVolumeName("no-vars"),
-		MountPath: secretsPath,
-		ReadOnly:  true,
-	}
-}
-
-func releaseSourceVolume() corev1.Volume {
-	return corev1.Volume{
-		Name: generateVolumeName(releaseSourceName),
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	}
-}
-
-func releaseSourceVolumeMount() corev1.VolumeMount {
-	return corev1.VolumeMount{
-		Name:      generateVolumeName(releaseSourceName),
-		MountPath: VolumeRenderingDataMountPath,
-	}
-}
-
 func renderingVolume() *corev1.Volume {
 	return &corev1.Volume{
 		Name:         VolumeRenderingDataName,
@@ -422,7 +341,7 @@ func jobsDirVolumeMount() *corev1.VolumeMount {
 
 func resolvedPropertiesVolume(name string) *corev1.Volume {
 	return &corev1.Volume{
-		Name: generateVolumeName(name),
+		Name: names.VolumeName(name),
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName: name,
@@ -433,7 +352,7 @@ func resolvedPropertiesVolume(name string) *corev1.Volume {
 
 func resolvedPropertiesVolumeMount(name string, instanceGroupName string) corev1.VolumeMount {
 	return corev1.VolumeMount{
-		Name:      generateVolumeName(name),
+		Name:      names.VolumeName(name),
 		MountPath: fmt.Sprintf(resolvedPropertiesFormat, instanceGroupName),
 		ReadOnly:  true,
 	}
@@ -483,16 +402,4 @@ func deduplicateVolumeMounts(volumeMounts []corev1.VolumeMount) []corev1.VolumeM
 	}
 
 	return result
-}
-
-// generateVolumeName generate volume name based on secret name
-func generateVolumeName(secretName string) string {
-	nameSlices := strings.Split(secretName, ".")
-	volName := ""
-	if len(nameSlices) > 1 {
-		volName = nameSlices[1]
-	} else {
-		volName = nameSlices[0]
-	}
-	return names.Sanitize(volName)
 }
