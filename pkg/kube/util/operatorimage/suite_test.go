@@ -1,4 +1,4 @@
-package operator_test
+package operatorimage_test
 
 import (
 	"testing"
@@ -9,5 +9,5 @@ import (
 
 func TestOperatorSet(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Operator Suite")
+	RunSpecs(t, "Operator Image Suite")
 }
