@@ -31,6 +31,7 @@ var (
 
 	// BOSHDeploymentResourceShortNames is the short names of BOSHDeployment
 	BOSHDeploymentResourceShortNames = []string{"bdpl", "bdpls"}
+
 	// BOSHDeploymentValidation is the validation method for BOSHDeployment
 	BOSHDeploymentValidation = extv1.CustomResourceValidation{
 		OpenAPIV3Schema: &extv1.JSONSchemaProps{
@@ -101,6 +102,14 @@ var (
 					},
 					Required: []string{
 						"manifest",
+					},
+				},
+				"status": {
+					Type: "object",
+					Properties: map[string]extv1.JSONSchemaProps{
+						"lastReconcile": {
+							Type: "object",
+						},
 					},
 				},
 			},

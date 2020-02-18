@@ -3,12 +3,13 @@ package v1alpha1
 import (
 	"fmt"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
-	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 // This file looks almost the same for all controllers
@@ -69,6 +70,14 @@ var (
 					},
 					Required: []string{
 						"template",
+					},
+				},
+				"status": {
+					Type: "object",
+					Properties: map[string]extv1.JSONSchemaProps{
+						"lastReconcile": {
+							Type: "object",
+						},
 					},
 				},
 			},
