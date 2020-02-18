@@ -1,4 +1,3 @@
----
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
@@ -6,46 +5,69 @@ metadata:
   annotations:
     "helm.sh/hook": crd-install
 spec:
+  conversion:
+    strategy: None
   group: quarks.cloudfoundry.org
   names:
     kind: BOSHDeployment
     listKind: BOSHDeploymentList
     plural: boshdeployments
-    singular: boshdeployment
     shortNames:
-        - bdpl
-        - bdpls
-  scope: Namespaced
-  version: v1alpha1
+    - bdpl
+    - bdpls
+    singular: boshdeployment
   preserveUnknownFields: false
+  scope: Namespaced
   subresources:
     status: {}
   validation:
-    # openAPIV3Schema is the schema for validating custom objects.
     openAPIV3Schema:
       properties:
         spec:
-          required: [manifest]
           properties:
             manifest:
-              type: object
-              required: [type, name]
               properties:
-                type:
-                  type: string
-                  enum: ["configmap", "secret", "url"]
                 name:
-                  type: string
                   minLength: 1
+                  type: string
+                type:
+                  enum:
+                  - configmap
+                  - secret
+                  - url
+                  type: string
+              required:
+              - type
+              - name
+              type: object
             ops:
-              type: array
               items:
-                type: object
-                required: [type, name]
                 properties:
-                  type:
-                    type: string
-                    enum: ["configmap", "secret", "url"]
                   name:
-                    type: string
                     minLength: 1
+                    type: string
+                  type:
+                    enum:
+                    - configmap
+                    - secret
+                    - url
+                    type: string
+                required:
+                - type
+                - name
+                type: object
+              type: array
+          required:
+          - manifest
+          type: object
+        status:
+          properties:
+            lastReconcile:
+              type: string
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
