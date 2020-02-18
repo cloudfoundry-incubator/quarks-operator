@@ -1,0 +1,55 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: quarksstatefulsets.quarks.cloudfoundry.org
+  annotations:
+    "helm.sh/hook": crd-install
+spec:
+  conversion:
+    strategy: None
+  group: quarks.cloudfoundry.org
+  names:
+    kind: QuarksStatefulSet
+    listKind: QuarksStatefulSetList
+    plural: quarksstatefulsets
+    shortNames:
+    - qsts
+    singular: quarksstatefulset
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          spec:
+            properties:
+              activePassiveProbes:
+                description: Defines probes to determine active/passive component
+                  instances
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              template:
+                description: A template for a regular StatefulSet
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              updateOnConfigChange:
+                description: Indicate whether to update Pods in the StatefulSet when
+                  an env value or mount changes
+                type: boolean
+              zoneNodeLabel:
+                description: Indicates the node label that a node locates
+                type: string
+              zones:
+                description: Indicates the availability zones that the QuarksStatefulSet
+                  needs to span
+                items:
+                  type: string
+                type: array
+            required:
+            - template
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

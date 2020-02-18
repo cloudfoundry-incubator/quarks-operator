@@ -1,51 +1,66 @@
----
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: boshdeployments.quarks.cloudfoundry.org
   annotations:
     "helm.sh/hook": crd-install
 spec:
+  conversion:
+    strategy: None
   group: quarks.cloudfoundry.org
   names:
     kind: BOSHDeployment
     listKind: BOSHDeploymentList
     plural: boshdeployments
-    singular: boshdeployment
     shortNames:
-        - bdpl
-        - bdpls
+    - bdpl
+    - bdpls
+    singular: boshdeployment
   scope: Namespaced
-  version: v1alpha1
-  preserveUnknownFields: false
-  subresources:
-    status: {}
-  validation:
-    # openAPIV3Schema is the schema for validating custom objects.
-    openAPIV3Schema:
-      properties:
-        spec:
-          required: [manifest]
-          properties:
-            manifest:
-              type: object
-              required: [type, name]
-              properties:
-                type:
-                  type: string
-                  enum: ["configmap", "secret", "url"]
-                name:
-                  type: string
-                  minLength: 1
-            ops:
-              type: array
-              items:
-                type: object
-                required: [type, name]
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          spec:
+            properties:
+              manifest:
                 properties:
-                  type:
-                    type: string
-                    enum: ["configmap", "secret", "url"]
                   name:
-                    type: string
                     minLength: 1
+                    type: string
+                  type:
+                    enum:
+                    - configmap
+                    - secret
+                    - url
+                    type: string
+                required:
+                - type
+                - name
+                type: object
+              ops:
+                items:
+                  properties:
+                    name:
+                      minLength: 1
+                      type: string
+                    type:
+                      enum:
+                      - configmap
+                      - secret
+                      - url
+                      type: string
+                  required:
+                  - type
+                  - name
+                  type: object
+                type: array
+            required:
+            - manifest
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
