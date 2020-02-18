@@ -1,8 +1,8 @@
 module code.cloudfoundry.org/cf-operator
 
 require (
-	code.cloudfoundry.org/quarks-job v0.0.0-20200218162011-01fa7cc4f402
-	code.cloudfoundry.org/quarks-utils v0.0.0-20200217102826-5c0793ae43bd
+	code.cloudfoundry.org/quarks-job v0.0.0-20200218153329-05c8658fe520
+	code.cloudfoundry.org/quarks-utils v0.0.0-20200218142826-1168643e81bc
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
 	github.com/charlievieth/fs v0.0.0-20170613215519-7dc373669fa1 // indirect
