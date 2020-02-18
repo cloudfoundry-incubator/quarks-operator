@@ -603,7 +603,11 @@ var _ = Describe("Deploy", func() {
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.EmptyBOSHDeployment(deploymentName, manifestName))
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("spec.manifest.type in body should be one of"))
+			Expect(err.Error()).To(SatisfyAny(
+				ContainSubstring("spec.manifest.type in body should be one of"),
+				// kube > 1.16
+				ContainSubstring("spec.manifest.type: Unsupported value"),
+			))
 			Expect(err.Error()).To(ContainSubstring("spec.manifest.name in body should be at least 1 chars long"))
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 		})
@@ -615,7 +619,11 @@ var _ = Describe("Deploy", func() {
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.WrongTypeBOSHDeployment(deploymentName, manifestName))
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("spec.manifest.type in body should be one of"))
+			Expect(err.Error()).To(SatisfyAny(
+				ContainSubstring("spec.manifest.type in body should be one of"),
+				// kube > 1.16
+				ContainSubstring("spec.manifest.type: Unsupported value"),
+			))
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 		})
 
@@ -637,7 +645,11 @@ var _ = Describe("Deploy", func() {
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.BOSHDeploymentWithWrongTypeOps(deploymentName, manifestName, "ops"))
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("spec.ops.type in body should be one of"))
+			Expect(err.Error()).To(SatisfyAny(
+				ContainSubstring("spec.ops.type in body should be one of"),
+				// kube > 1.16
+				ContainSubstring("spec.ops.type: Unsupported value"),
+			))
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 		})
 
