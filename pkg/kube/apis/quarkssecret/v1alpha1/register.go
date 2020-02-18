@@ -3,12 +3,12 @@ package v1alpha1
 import (
 	"fmt"
 
-	apis "code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	apis "code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
@@ -31,7 +31,8 @@ var (
 
 	// QuarksSecretResourceShortNames is the short names of QuarksSecret
 	QuarksSecretResourceShortNames = []string{"qsec", "qsecs"}
-	// QuarksSecretValidation is the validation method for QuarksSecret
+
+	// QuarksSecretValidation is the validation schema for QuarksSecret
 	QuarksSecretValidation = extv1.CustomResourceValidation{
 		OpenAPIV3Schema: &extv1.JSONSchemaProps{
 			Type: "object",
@@ -39,6 +40,16 @@ var (
 				"spec": {
 					Type: "object",
 					Properties: map[string]extv1.JSONSchemaProps{
+						"secretName": {
+							Type:        "string",
+							MinLength:   pointers.Int64(1),
+							Description: "The name of the generated secret",
+						},
+						"type": {
+							Type:        "string",
+							MinLength:   pointers.Int64(1),
+							Description: "What kind of secret to generate: password, certificate, ssh, rsa",
+						},
 						"request": {
 							Type: "object",
 							Properties: map[string]extv1.JSONSchemaProps{
@@ -90,7 +101,8 @@ var (
 											Nullable: true,
 											Items: &extv1.JSONSchemaPropsOrArray{
 												Schema: &extv1.JSONSchemaProps{
-													Type: "object",
+													Type:                   "object",
+													XPreserveUnknownFields: pointers.Bool(true),
 												},
 											},
 										},
@@ -99,7 +111,8 @@ var (
 											Nullable: true,
 											Items: &extv1.JSONSchemaPropsOrArray{
 												Schema: &extv1.JSONSchemaProps{
-													Type: "object",
+													Type:                   "object",
+													XPreserveUnknownFields: pointers.Bool(true),
 												},
 											},
 										},
@@ -110,17 +123,8 @@ var (
 								},
 							},
 						},
-						"secretName": {
-							Type:      "string",
-							MinLength: pointers.Int64(1),
-						},
-						"type": {
-							Type:      "string",
-							MinLength: pointers.Int64(1),
-						},
 					},
 					Required: []string{
-						"request",
 						"secretName",
 						"type",
 					},
@@ -132,7 +136,7 @@ var (
 							Type: "boolean",
 						},
 						"lastReconcile": {
-							Type: "object",
+							Type: "string",
 						},
 					},
 				},
