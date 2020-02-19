@@ -51,77 +51,8 @@ var (
 							Description: "What kind of secret to generate: password, certificate, ssh, rsa",
 						},
 						"request": {
-							Type: "object",
-							Properties: map[string]extv1.JSONSchemaProps{
-								"certificate": {
-									Type: "object",
-									Properties: map[string]extv1.JSONSchemaProps{
-										"alternativeNames": {
-											Type:     "array",
-											Nullable: true,
-											Items: &extv1.JSONSchemaPropsOrArray{
-												Schema: &extv1.JSONSchemaProps{
-													Type: "string",
-												},
-											},
-										},
-										"isCA": {
-											Type: "boolean",
-										},
-										"commonName": {
-											Type: "string",
-										},
-										"CARef": {
-											Type: "object",
-											Properties: map[string]extv1.JSONSchemaProps{
-												"name": {
-													Type: "string",
-												},
-												"key": {
-													Type: "string",
-												},
-											},
-										},
-										"CAKeyRef": {
-											Type: "object",
-											Properties: map[string]extv1.JSONSchemaProps{
-												"name": {
-													Type: "string",
-												},
-												"key": {
-													Type: "string",
-												},
-											},
-										},
-										"signerType": {
-											Type: "string",
-										},
-										"usages": {
-											Type:     "array",
-											Nullable: true,
-											Items: &extv1.JSONSchemaPropsOrArray{
-												Schema: &extv1.JSONSchemaProps{
-													Type:                   "object",
-													XPreserveUnknownFields: pointers.Bool(true),
-												},
-											},
-										},
-										"serviceRef": {
-											Type:     "array",
-											Nullable: true,
-											Items: &extv1.JSONSchemaPropsOrArray{
-												Schema: &extv1.JSONSchemaProps{
-													Type:                   "object",
-													XPreserveUnknownFields: pointers.Bool(true),
-												},
-											},
-										},
-										"activateEKSWorkaroundForSAN": {
-											Type: "boolean",
-										},
-									},
-								},
-							},
+							Type:                   "object",
+							XPreserveUnknownFields: pointers.Bool(true),
 						},
 					},
 					Required: []string{
