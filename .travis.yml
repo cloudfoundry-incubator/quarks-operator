@@ -77,7 +77,7 @@ jobs:
         - bin/lint
         - bin/vet
         - bin/staticcheck
-    - script: /bin/test-unit
+    - script: bin/test-unit
       name: unit
       # don't inherit
       services: []
