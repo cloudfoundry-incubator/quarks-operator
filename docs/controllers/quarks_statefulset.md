@@ -212,7 +212,7 @@ It will delete statefulsets with old versions, only after the new statefulset ve
 
 Active/passive model is application model that have multiple running instances, but only one instance is active and all other instances are passive (standby). If the active instance is down, one of the passive instances will be promoted to active immediately.
 
-The `activeProbe` key defines active probe to be performed on a container. The controller examines the active probe periodically to see if the active one is still active. If active pod is down or there isn’t an active pod, the first running pod will be promoted as active and label it as `quarks.cloudfoundry.org/pod-active: active`.
+The `activePassiveProbes` key defines active probe to be performed on a container. The controller examines the active probe periodically to see if the active one is still active. If active pod is down or there isn’t an active pod, the first running pod will be promoted as active and label it as `quarks.cloudfoundry.org/pod-active: active`.
 
 ```yaml
 apiVersion: quarks.cloudfoundry.org/v1alpha1
@@ -220,7 +220,7 @@ kind: QuarksStatefulSet
 metadata:
   name: myquarksstatefulset
 spec:
-  activeProbe:
+  activePassiveProbes:
     busybox:
       # define a active probe on the container
       exec:
