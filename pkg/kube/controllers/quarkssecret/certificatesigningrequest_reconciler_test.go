@@ -151,7 +151,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 
 			_, err := reconciler.Reconcile(request)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Error reading certificatesigningrequest"))
+			Expect(err.Error()).To(ContainSubstring("Error reading CSR"))
 		})
 
 		It("handles an error when getting pending certificatesigningrequest", func() {
@@ -165,7 +165,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 
 			_, err := reconciler.Reconcile(request)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("could not get certificatesigningrequest"))
+			Expect(err.Error()).To(ContainSubstring("could not get CSR"))
 		})
 
 		It("skips if pending certificatesigningrequest has been approved", func() {
@@ -193,7 +193,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 
 			_, err := reconciler.Reconcile(request)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("could not update approval of certificatesigningrequest"))
+			Expect(err.Error()).To(ContainSubstring("could not update approval of CSR"))
 		})
 	})
 

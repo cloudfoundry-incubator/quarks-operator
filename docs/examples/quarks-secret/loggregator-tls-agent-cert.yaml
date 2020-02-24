@@ -6,11 +6,11 @@ spec:
   request:
     certificate:
       CAKeyRef:
-        Key: private_key
-        Name: example.var-loggregator-ca
+        key: private_key
+        name: example.var-loggregator-ca
       CARef:
-        Key: certificate
-        Name: example.var-loggregator-ca
+        key: certificate
+        name: example.var-loggregator-ca
       alternativeNames: null
       commonName: metron
       isCA: false
