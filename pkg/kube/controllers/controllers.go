@@ -24,6 +24,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarkssecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarksstatefulset"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/versionedsecret"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/watchnamespace"
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
@@ -66,7 +67,7 @@ var addToSchemes = runtime.SchemeBuilder{
 
 var validatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.OperatorWebhook{
 	boshdeployment.NewBOSHDeploymentValidator,
-	quarkssecret.NewSecretValidator,
+	versionedsecret.NewSecretValidator,
 }
 
 var mutatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.OperatorWebhook{
