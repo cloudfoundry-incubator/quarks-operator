@@ -24,11 +24,20 @@ We construct link information like so:
 
 ### Example (Native -> BOSH)
 
+Add the following yaml config to the job spec (job.MF) file in the nats release.
+
+```yaml
+consumes:
+- name: nats
+  type: nats
+```
+
 ```yaml
 kind: Secret
 metadata:
+  name: secretlink
   annotations:
-    quarks.cloudfoundry.org/deployment: "mydeployment"
+    quarks.cloudfoundry.org/deployment-name: "mydeployment"
     quarks.cloudfoundry.org/provides: '{"name":"nats","type":"nats"}'
 spec:
   data:
@@ -42,8 +51,9 @@ apiVersion: v1
 kind: Service
 metadata:
   annotations:
-    quarks.cloudfoundry.org/deployment: "mydeployment"
+    quarks.cloudfoundry.org/deployment-name: "mydeployment"
     quarks.cloudfoundry.org/provides: '{"name":"nats","type":"nats"}'
+    quarks.cloudfoundry.org/link-provider-name: secretlink
   name: nats-service
 spec:
   ports:
