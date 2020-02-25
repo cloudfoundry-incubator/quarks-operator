@@ -999,10 +999,8 @@ func (c *Catalog) NatsService(deployName string) corev1.Service {
 	return corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "nats-headless",
-			Labels: map[string]string{
-				bdv1.LabelDeploymentName: deployName,
-			},
 			Annotations: map[string]string{
+				bdv1.LabelDeploymentName:           deployName,
 				bdv1.AnnotationLinkProviderService: "nats",
 			},
 		},
@@ -1032,10 +1030,8 @@ func (c *Catalog) NatsSecret(deployName string) corev1.Secret {
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "nats",
-			Labels: map[string]string{
-				bdv1.LabelDeploymentName: deployName,
-			},
 			Annotations: map[string]string{
+				bdv1.LabelDeploymentName:       deployName,
 				bdv1.AnnotationLinkProvidesKey: `{"name":"nats","type":"nats"}`,
 			},
 		},
