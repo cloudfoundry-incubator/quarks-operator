@@ -271,20 +271,16 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 	quarksLinks := map[string]bdm.QuarksLink{}
 	if len(missingProviders) != 0 {
 		// list secrets and services from target deployment
-		secretLabels := map[string]string{bdv1.LabelDeploymentName: instance.Name}
 		secrets := &corev1.SecretList{}
 		err := r.client.List(r.ctx, secrets,
-			crc.MatchingLabels(secretLabels),
 			crc.InNamespace(instance.Namespace),
 		)
 		if err != nil {
 			return linkInfos, errors.Wrapf(err, "listing secrets for link in deployment '%s':", instance.Name)
 		}
 
-		servicesLabels := map[string]string{bdv1.LabelDeploymentName: instance.Name}
 		services := &corev1.ServiceList{}
 		err = r.client.List(r.ctx, services,
-			crc.MatchingLabels(servicesLabels),
 			crc.InNamespace(instance.Namespace),
 		)
 		if err != nil {
@@ -292,31 +288,33 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 		}
 
 		for _, s := range secrets.Items {
-			linkProvider, err := newLinkProvider(s.GetAnnotations())
-			if err != nil {
-				return linkInfos, errors.Wrapf(err, "failed to parse link JSON for  '%s'", instance.Name)
-			}
-			if dup, ok := missingProviders[linkProvider.Name]; ok {
-				if dup {
-					return linkInfos, errors.New(fmt.Sprintf("duplicated secrets of provider: %s", linkProvider.Name))
+			if deploymentName, ok := s.GetAnnotations()[bdv1.LabelDeploymentName]; ok && deploymentName == instance.Name {
+				linkProvider, err := newLinkProvider(s.GetAnnotations())
+				if err != nil {
+					return linkInfos, errors.Wrapf(err, "failed to parse link JSON for  '%s'", instance.Name)
 				}
-
-				linkInfos = append(linkInfos, converter.LinkInfo{
-					SecretName:   s.Name,
-					ProviderName: linkProvider.Name,
-					ProviderType: linkProvider.ProviderType,
-				})
-
-				if linkProvider.ProviderType != "" {
-					quarksLinks[s.Name] = bdm.QuarksLink{
-						Type: linkProvider.ProviderType,
+				if dup, ok := missingProviders[linkProvider.Name]; ok {
+					if dup {
+						return linkInfos, errors.New(fmt.Sprintf("duplicated secrets of provider: %s", linkProvider.Name))
 					}
+
+					linkInfos = append(linkInfos, converter.LinkInfo{
+						SecretName:   s.Name,
+						ProviderName: linkProvider.Name,
+						ProviderType: linkProvider.ProviderType,
+					})
+
+					if linkProvider.ProviderType != "" {
+						quarksLinks[s.Name] = bdm.QuarksLink{
+							Type: linkProvider.ProviderType,
+						}
+					}
+					missingProviders[linkProvider.Name] = true
 				}
-				missingProviders[linkProvider.Name] = true
 			}
 		}
 
-		serviceRecords, err := r.getServiceRecords(instance.Namespace, services.Items)
+		serviceRecords, err := r.getServiceRecords(instance.Namespace, instance.Name, services.Items)
 		if err != nil {
 			return linkInfos, errors.Wrapf(err, "failed to get link services for '%s'", instance.Name)
 		}
@@ -374,18 +372,20 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 }
 
 // getServiceRecords gets service records from Kube Services
-func (r *ReconcileBOSHDeployment) getServiceRecords(namespace string, svcs []corev1.Service) (map[string]serviceRecord, error) {
+func (r *ReconcileBOSHDeployment) getServiceRecords(namespace string, name string, svcs []corev1.Service) (map[string]serviceRecord, error) {
 	svcRecords := map[string]serviceRecord{}
 	for _, svc := range svcs {
-		providerName, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderService]
-		if ok {
-			if _, ok := svcRecords[providerName]; ok {
-				return svcRecords, errors.New(fmt.Sprintf("duplicated services of provider: %s", providerName))
-			}
+		if deploymentName, ok := svc.GetAnnotations()[bdv1.LabelDeploymentName]; ok && deploymentName == name {
+			providerName, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderService]
+			if ok {
+				if _, ok := svcRecords[providerName]; ok {
+					return svcRecords, errors.New(fmt.Sprintf("duplicated services of provider: %s", providerName))
+				}
 
-			svcRecords[providerName] = serviceRecord{
-				selector:  svc.Spec.Selector,
-				dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, boshdns.GetClusterDomain()),
+				svcRecords[providerName] = serviceRecord{
+					selector:  svc.Spec.Selector,
+					dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, boshdns.GetClusterDomain()),
+				}
 			}
 		}
 	}
