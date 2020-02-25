@@ -24,6 +24,7 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
+	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
 const (
@@ -236,6 +237,21 @@ func (c *Catalog) StorageClassSecret(name string, class string) corev1.Secret {
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		StringData: map[string]string{
 			"value": class,
+		},
+	}
+}
+
+// VersionedSecret for tests
+func (c *Catalog) VersionedSecret(name string) corev1.Secret {
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				versionedsecretstore.LabelSecretKind: versionedsecretstore.VersionSecretKind,
+			},
+		},
+		StringData: map[string]string{
+			name: "default-value",
 		},
 	}
 }
