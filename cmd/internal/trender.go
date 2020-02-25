@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
@@ -31,6 +31,7 @@ var templateRenderCmd = &cobra.Command{
 This will render a provided manifest instance-group
 `,
 	PreRun: func(cmd *cobra.Command, args []string) {
+		deploymentNameFlagViperBind(cmd.Flags())
 		boshManifestFlagViperBind(cmd.Flags())
 		instanceGroupFlagViperBind(cmd.Flags())
 		initialRolloutFlagViperBind(cmd.Flags())
@@ -44,6 +45,11 @@ This will render a provided manifest instance-group
 		}()
 
 		boshManifestPath, err := boshManifestFlagValidation()
+		if err != nil {
+			return errors.Wrap(err, tRenderFailedMessage)
+		}
+
+		deploymentName, err := deploymentNameFlagValidation()
 		if err != nil {
 			return errors.Wrap(err, tRenderFailedMessage)
 		}
@@ -91,7 +97,7 @@ This will render a provided manifest instance-group
 		initialRollout := viper.GetBool("initial-rollout")
 		podIP := net.ParseIP(viper.GetString("pod-ip"))
 
-		return manifest.RenderJobTemplates(boshManifestPath, jobsDir, outputDir, instanceGroupName, specIndex, podIP, replicas, initialRollout)
+		return manifest.RenderJobTemplates(deploymentName, boshManifestPath, jobsDir, outputDir, instanceGroupName, specIndex, podIP, replicas, initialRollout)
 	},
 }
 
@@ -99,7 +105,7 @@ func init() {
 	pf := templateRenderCmd.Flags()
 	utilCmd.AddCommand(templateRenderCmd)
 	pf.StringP("jobs-dir", "j", "", "path to the jobs dir.")
-	pf.StringP("output-dir", "d", converter.VolumeJobsDirMountPath, "path to output dir.")
+	pf.StringP("output-dir", "d", bpmconverter.VolumeJobsDirMountPath, "path to output dir.")
 	pf.IntP("spec-index", "", -1, "index of the instance spec")
 	pf.IntP("az-index", "", -1, "az index")
 	pf.IntP("pod-ordinal", "", -1, "pod ordinal")
@@ -122,9 +128,10 @@ func init() {
 		"az-index":                "AZ_INDEX",
 		"pod-ordinal":             "POD_ORDINAL",
 		"replicas":                "REPLICAS",
-		"pod-ip":                  converter.PodIPEnvVar,
+		"pod-ip":                  bpmconverter.PodIPEnvVar,
 	}
 
+	deploymentNameFlagCobraSet(pf, argToEnv)
 	boshManifestFlagCobraSet(pf, argToEnv)
 	instanceGroupFlagCobraSet(pf, argToEnv)
 	initialRolloutFlagCobraSet(pf, argToEnv)

@@ -26,20 +26,15 @@ func getStructTagForName(field string, opts interface{}) string {
 }
 
 var _ = Describe("Manifest", func() {
+	var (
+		manifest       *Manifest
+		deploymentName string
+	)
+
 	Describe("Tags", func() {
 		Describe("Manifest", func() {
-			var manifest *Manifest
-
 			BeforeEach(func() {
 				manifest = &Manifest{}
-			})
-
-			Describe("Name", func() {
-				It("contains desired values", func() {
-					Expect(getStructTagForName("Name", manifest)).To(Equal(
-						`json:"name"`,
-					))
-				})
 			})
 
 			Describe("DirectorUUID", func() {
@@ -1058,15 +1053,12 @@ var _ = Describe("Manifest", func() {
 			err error
 		)
 
-		manifest := &Manifest{}
-
 		Describe("LoadYAML", func() {
 			It("populates fields fo default manifest", func() {
 				manifest, err := LoadYAML([]byte(boshmanifest.Default))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(manifest).ToNot(BeNil())
 
-				Expect(manifest.Name).To(Equal("foo-deployment"))
 				Expect(manifest.InstanceGroups).To(HaveLen(2))
 
 				ig := manifest.InstanceGroups[0]
@@ -1088,8 +1080,6 @@ var _ = Describe("Manifest", func() {
 				manifest, err := LoadYAML([]byte(boshmanifest.BPMReleaseWithAffinity))
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(manifest.Name).To(Equal("bpm-affinity"))
-
 				ig := manifest.InstanceGroups[0]
 				Expect(ig.Name).To(Equal("bpm1"))
 				Expect(ig.Instances).To(Equal(2))
@@ -1109,8 +1099,6 @@ var _ = Describe("Manifest", func() {
 			It("populates toleration fields", func() {
 				manifest, err := LoadYAML([]byte(boshmanifest.BPMReleaseWithTolerations))
 				Expect(err).NotTo(HaveOccurred())
-
-				Expect(manifest.Name).To(Equal("bpm-tolerations"))
 
 				ig := manifest.InstanceGroups[0]
 				Expect(ig.Name).To(Equal("bpm1"))
@@ -1328,7 +1316,8 @@ var _ = Describe("Manifest", func() {
 				})
 
 				It("serializes instancegroup quarks", func() {
-					dns, err := boshdns.NewDNS(*m1)
+					deploymentName = "bpm-affinity"
+					dns, err := boshdns.NewDNS(deploymentName, *m1)
 					Expect(err).NotTo(HaveOccurred())
 					m1.ApplyUpdateBlock(dns)
 					text, err := m1.Marshal()
@@ -1415,7 +1404,7 @@ var _ = Describe("Manifest", func() {
 			BeforeEach(func() {
 				manifest, err = env.BOSHManifestWithUpdateSerial()
 				Expect(err).NotTo(HaveOccurred())
-				dns, err = boshdns.NewDNS(*manifest)
+				dns, err = boshdns.NewDNS("bpm", *manifest)
 				Expect(err).NotTo(HaveOccurred())
 			})
 

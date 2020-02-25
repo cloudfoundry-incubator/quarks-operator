@@ -16,8 +16,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
 	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
 
@@ -95,7 +95,7 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 		return nil, errors.Errorf("required environment variable DOCKER_IMAGE_TAG not set")
 	}
 
-	err = converter.SetupOperatorDockerImage(dockerImageOrg, dockerImageRepo, dockerImageTag, corev1.PullIfNotPresent)
+	err = operatorimage.SetupOperatorDockerImage(dockerImageOrg, dockerImageRepo, dockerImageTag, corev1.PullIfNotPresent)
 	if err != nil {
 		return nil, err
 	}

@@ -68,7 +68,6 @@ var _ = Describe("ReconcileBPM", func() {
 		size := 1024
 
 		manifest = &bdm.Manifest{
-			Name: "fake-manifest",
 			Releases: []*bdm.Release{
 				{
 					Name:    "bar",
@@ -236,7 +235,7 @@ variables: []
 		resolver.DesiredManifestReturns(manifest, nil)
 		reconciler = cfd.NewBPMReconciler(ctx, config, manager, &resolver,
 			controllerutil.SetControllerReference, &kubeConverter,
-			func(m bdm.Manifest) (boshdns.DomainNameService, error) {
+			func(name string, m bdm.Manifest) (boshdns.DomainNameService, error) {
 				return boshdns.NewSimpleDomainNameService("fake-manifest"), nil
 			},
 		)

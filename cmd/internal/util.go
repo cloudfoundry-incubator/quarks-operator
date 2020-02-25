@@ -53,6 +53,23 @@ func baseDirFlagViperBind(pf *flag.FlagSet) {
 	viper.BindPFlag("base-dir", pf.Lookup("base-dir"))
 }
 
+func deploymentNameFlagValidation() (string, error) {
+	deploymentNameName := viper.GetString("deployment-name")
+	if len(deploymentNameName) == 0 {
+		return "", errors.New("deployment-name flag is empty")
+	}
+	return deploymentNameName, nil
+}
+
+func deploymentNameFlagCobraSet(pf *flag.FlagSet, argToEnv map[string]string) {
+	pf.StringP("deployment-name", "n", "", "name of the bdpl resource")
+	argToEnv["deployment-name"] = "DEPLOYMENT_NAME"
+}
+
+func deploymentNameFlagViperBind(pf *flag.FlagSet) {
+	viper.BindPFlag("deployment-name", pf.Lookup("deployment-name"))
+}
+
 func instanceGroupFlagValidation() (string, error) {
 	instanceGroupName := viper.GetString("instance-group-name")
 	if len(instanceGroupName) == 0 {

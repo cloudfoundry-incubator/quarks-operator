@@ -33,8 +33,8 @@ import (
 
 // JobFactory creates Jobs for a given manifest
 type JobFactory interface {
-	VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error)
-	InstanceGroupManifestJob(manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error)
+	VariableInterpolationJob(deploymentName string, manifest bdm.Manifest) (*qjv1a1.QuarksJob, error)
+	InstanceGroupManifestJob(deploymentName string, manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error)
 }
 
 // VariablesConverter converts BOSH variables into QuarksSecrets
@@ -132,7 +132,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Create all QuarksSecret variables
 	log.Debug(ctx, "Converting BOSH manifest variables to QuarksSecret resources")
-	secrets, err := r.converter.Variables(manifest.Name, manifest.Variables)
+	secrets, err := r.converter.Variables(instance.Name, manifest.Variables)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(instance, "BadManifestError").Error(ctx, errors.Wrap(err, "failed to generate quarks secrets from manifest"))
@@ -144,12 +144,12 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		err = r.createQuarksSecrets(ctx, manifestSecret, secrets)
 		if err != nil {
 			return reconcile.Result{},
-				log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "failed to create quarks secrets for BOSH manifest '%s': %v", manifest.Name, err)
+				log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "failed to create quarks secrets for BOSH manifest '%s': %v", instance.Name, err)
 		}
 	}
 
 	// Apply the "Variable Interpolation" QuarksJob, which creates the desired manifest secret
-	qJob, err := r.jobFactory.VariableInterpolationJob(*manifest)
+	qJob, err := r.jobFactory.VariableInterpolationJob(instance.Name, *manifest)
 	if err != nil {
 		return reconcile.Result{}, log.WithEvent(instance, "DesiredManifestError").Errorf(ctx, "failed to build the desired manifest qJob: %v", err)
 	}
@@ -163,7 +163,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Apply the "Instance group manifest" QuarksJob, which creates instance group manifests (ig-resolved) secrets and BPM config secrets
 	// once the "Variable Interpolation" job created the desired manifest.
-	qJob, err = r.jobFactory.InstanceGroupManifestJob(*manifest, linkInfos, instance.ObjectMeta.Generation == 1)
+	qJob, err = r.jobFactory.InstanceGroupManifestJob(instance.Name, *manifest, linkInfos, instance.ObjectMeta.Generation == 1)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "failed to build instance group manifest qJob: %v", err)
@@ -197,9 +197,6 @@ func (r *ReconcileBOSHDeployment) resolveManifest(ctx context.Context, instance 
 		return nil, log.WithEvent(instance, "WithOpsManifestError").Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
 	}
 
-	// Replace the name with the name of the BOSHDeployment resource
-	manifest.Name = instance.GetName()
-
 	return manifest, nil
 }
 
@@ -213,7 +210,7 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 		return nil, log.WithEvent(instance, "ManifestWithOpsMarshalError").Errorf(ctx, "Error marshaling the manifest %s: %s", instance.GetName(), err)
 	}
 
-	manifestSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeManifestWithOps, manifest.Name, "")
+	manifestSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeManifestWithOps, instance.Name, "")
 
 	// Create a secret object for the manifest
 	manifestSecret := &corev1.Secret{
@@ -221,7 +218,7 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 			Name:      manifestSecretName,
 			Namespace: instance.GetNamespace(),
 			Labels: map[string]string{
-				bdv1.LabelDeploymentName:       manifest.Name,
+				bdv1.LabelDeploymentName:       instance.Name,
 				bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeManifestWithOps.String(),
 			},
 		},

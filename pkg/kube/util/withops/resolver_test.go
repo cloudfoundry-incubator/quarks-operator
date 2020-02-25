@@ -332,7 +332,7 @@ instance_groups:
 		newInterpolatorFunc := func() withops.Interpolator {
 			return interpolator
 		}
-		newDNSFunc := func(m bdm.Manifest) (withops.DomainNameService, error) {
+		newDNSFunc := func(n string, m bdm.Manifest) (withops.DomainNameService, error) {
 			return boshdns.NewSimpleDomainNameService(""), nil
 		}
 		resolver = withops.NewResolver(client, newInterpolatorFunc, newDNSFunc)
@@ -824,20 +824,21 @@ instance_groups:
 		})
 
 		It("loads dns from addons", func() {
+			deploymentName := "scf"
 			var dns withops.DomainNameService
 			newInterpolatorFunc := func() withops.Interpolator {
 				return interpolator
 			}
-			newDNSFunc := func(m bdm.Manifest) (withops.DomainNameService, error) {
+			newDNSFunc := func(n string, m bdm.Manifest) (withops.DomainNameService, error) {
 				var err error
-				dns, err = boshdns.NewDNS(m)
+				dns, err = boshdns.NewDNS(n, m)
 				return dns, err
 			}
 			resolver = withops.NewResolver(client, newInterpolatorFunc, newDNSFunc)
 
 			deployment := &bdc.BOSHDeployment{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "scf",
+					Name: deploymentName,
 				},
 				Spec: bdc.BOSHDeploymentSpec{
 					Manifest: bdc.ResourceReference{
@@ -851,7 +852,7 @@ instance_groups:
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(dns).NotTo(BeNil())
-			Expect(dns.HeadlessServiceName("singleton-uaa")).To(Equal("manifest-with-dns-singleton-uaa"))
+			Expect(dns.HeadlessServiceName("singleton-uaa")).To(Equal("scf-singleton-uaa"))
 		})
 
 		It("handles multi-line implicit vars", func() {

@@ -20,6 +20,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/qjobs"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
@@ -38,9 +39,11 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		withops.NewResolver(
 			mgr.GetClient(),
 			func() withops.Interpolator { return withops.NewInterpolator() },
-			func(m bdm.Manifest) (withops.DomainNameService, error) { return boshdns.NewDNS(m) },
+			func(deploymentName string, m bdm.Manifest) (withops.DomainNameService, error) {
+				return boshdns.NewDNS(deploymentName, m)
+			},
 		),
-		converter.NewJobFactory(config.Namespace),
+		qjobs.NewJobFactory(config.Namespace),
 		converter.NewVariablesConverter(config.Namespace),
 		controllerutil.SetControllerReference,
 	)

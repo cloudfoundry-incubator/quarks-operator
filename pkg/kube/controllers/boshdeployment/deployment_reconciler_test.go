@@ -38,21 +38,22 @@ import (
 
 var _ = Describe("ReconcileBoshDeployment", func() {
 	var (
-		manager       *fakes.FakeManager
-		reconciler    reconcile.Reconciler
-		recorder      *record.FakeRecorder
-		request       reconcile.Request
-		ctx           context.Context
-		withops       fakes.FakeWithOps
-		jobFactory    fakes.FakeJobFactory
-		kubeConverter fakes.FakeVariablesConverter
-		manifest      *bdm.Manifest
-		log           *zap.SugaredLogger
-		config        *cfcfg.Config
-		client        *fakes.FakeClient
-		instance      *bdv1.BOSHDeployment
-		dmQJob        *qjv1a1.QuarksJob
-		igQJob        *qjv1a1.QuarksJob
+		manager        *fakes.FakeManager
+		reconciler     reconcile.Reconciler
+		recorder       *record.FakeRecorder
+		request        reconcile.Request
+		ctx            context.Context
+		withops        fakes.FakeWithOps
+		jobFactory     fakes.FakeJobFactory
+		kubeConverter  fakes.FakeVariablesConverter
+		manifest       *bdm.Manifest
+		log            *zap.SugaredLogger
+		config         *cfcfg.Config
+		client         *fakes.FakeClient
+		instance       *bdv1.BOSHDeployment
+		dmQJob         *qjv1a1.QuarksJob
+		igQJob         *qjv1a1.QuarksJob
+		deploymentName string
 	)
 
 	BeforeEach(func() {
@@ -66,10 +67,11 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		kubeConverter = fakes.FakeVariablesConverter{}
 		kubeConverter.VariablesReturns([]qsv1a1.QuarksSecret{}, nil)
 
-		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
+		deploymentName = "foo"
+
+		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: deploymentName, Namespace: "default"}}
 
 		manifest = &bdm.Manifest{
-			Name: "foo",
 			Releases: []*bdm.Release{
 				{
 					Name:    "bar",
@@ -115,13 +117,13 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		}
 		dmQJob = &qjv1a1.QuarksJob{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("dm-%s", manifest.Name),
+				Name:      fmt.Sprintf("dm-%s", deploymentName),
 				Namespace: "default",
 			},
 		}
 		igQJob = &qjv1a1.QuarksJob{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("ig-%s", manifest.Name),
+				Name:      fmt.Sprintf("ig-%s", deploymentName),
 				Namespace: "default",
 			},
 		}
@@ -132,7 +134,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 		instance = &bdv1.BOSHDeployment{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
+				Name:      deploymentName,
 				Namespace: "default",
 			},
 			Spec: bdv1.BOSHDeploymentSpec{
@@ -405,7 +407,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 							Name:      "baz-sec",
 							Namespace: "default",
 							Labels: map[string]string{
-								bdv1.LabelDeploymentName: "foo",
+								bdv1.LabelDeploymentName: deploymentName,
 							},
 							Annotations: map[string]string{
 								bdv1.AnnotationLinkProvidesKey: `{"name":"baz"}`,
@@ -415,7 +417,6 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					}
 
 					manifest = &bdm.Manifest{
-						Name: "foo",
 						Releases: []*bdm.Release{
 							{
 								Name:    "bar",
@@ -481,14 +482,14 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				It("passes link secrets to QJobs", func() {
 					_, err := reconciler.Reconcile(request)
 					Expect(err).ToNot(HaveOccurred())
-					_, linksSecrets, _ := jobFactory.InstanceGroupManifestJobArgsForCall(0)
+					_, _, linksSecrets, _ := jobFactory.InstanceGroupManifestJobArgsForCall(0)
 					Expect(linksSecrets).To(Equal(converter.LinkInfos{
 						{
 							SecretName:   "baz-sec",
 							ProviderName: "baz",
 						},
 					}))
-					_, linksSecrets, _ = jobFactory.InstanceGroupManifestJobArgsForCall(0)
+					_, _, linksSecrets, _ = jobFactory.InstanceGroupManifestJobArgsForCall(0)
 					Expect(linksSecrets).To(Equal(converter.LinkInfos{
 						{
 							SecretName:   "baz-sec",

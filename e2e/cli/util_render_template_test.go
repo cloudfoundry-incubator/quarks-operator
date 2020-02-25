@@ -31,6 +31,7 @@ var _ = Describe("render-template", func() {
 	act := func(manifestPath string) (session *gexec.Session, err error) {
 		args := []string{
 			"util", "template-render",
+			"-n", "foo",
 			"-m", manifestPath,
 			"-j", assetPath,
 			"-g", "log-api",
