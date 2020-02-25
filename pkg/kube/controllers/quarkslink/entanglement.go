@@ -8,6 +8,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
@@ -92,7 +93,8 @@ func (e entanglement) find(secret corev1.Secret) (link, bool) {
 	}
 
 	for _, link := range e.links {
-		if secret.Name == names.QuarksLinkSecretName(e.deployment, link.LinkType, link.Name) {
+		name := names.QuarksLinkSecretName(e.deployment, link.LinkType, link.Name)
+		if key, ok := secret.Labels[qjv1a1.LabelEntanglementKey]; ok && key == name {
 			return link, true
 		}
 	}

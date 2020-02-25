@@ -15,7 +15,6 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 // DomainNameService abstraction.
@@ -159,7 +158,7 @@ func (igr *InstanceGroupResolver) SaveLinks(path string) error {
 		}
 
 		if string(jsonBytes) != "null" {
-			result[names.Sanitize(id)] = string(jsonBytes)
+			result[id] = string(jsonBytes)
 		}
 	}
 
