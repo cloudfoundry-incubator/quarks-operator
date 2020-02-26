@@ -4,54 +4,27 @@
 
 This helm chart deploys the cf-operator, which allow the deployment of a bosh manifest through a configmap and watches for changes on it.
 
-## Installing the latest stable chart
+## Installing the Latest Stable Chart
 
 To install the latest stable helm chart, with the `cf-operator` as the release name and namespace:
 
 ```bash
-helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com/cf-operators/helm-charts/cf-operator-v0.2.2%2B47.g24492ea.tgz
+helm repo add quarks https://cloudfoundry-incubator.github.io/quarks-helm/
+helm install cf-operator quarks/cf-operator
 ```
 
-## Installing the chart from develop branch
+## Installing the Chart From the Development Branch
 
-To install the helm chart directly from the [cf-operator repository](https://github.com/cloudfoundry-incubator/cf-operator) (any branch), the following parameters in the `values.yaml` need to be set in advance:
+Run `bin/build-image` to create a new docker image, export `DOCKER_IMAGE_TAG` to override the tag.
 
-| Parameter                                         | Description                                                          | Default                                        |
-| ------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------- |
-| `image.repository`                                | docker hub repository for the cf-operator image                      | `cf-operator`                                  |
-| `image.org`                                       | docker hub organization for the cf-operator image                    | `cfcontainerization`                           |
-| `image.tag`                                       | docker image tag                                                     | `foobar`                                       |
+To install the helm chart directly from the [cf-operator repository](https://github.com/cloudfoundry-incubator/cf-operator) (any branch), run `bin/build-helm` first.
 
-### For a local development with minikube, you can generate the image first and then use the `$ARTIFACT_VERSION` environment variable into the `image.tag`:
-
-```bash
-export GO111MODULE=on
-eval `minikube docker-env`
-. bin/include/versioning
-echo "Tag for docker image is ${ARTIFACT_VERSION}"
-./bin/build-image
-```
-
-Either set the `image.tag` in the `values.yaml`, or pass the `$ARTIFACT_VERSION` to `helm install`:
-
-```bash
-helm install deploy/helm/cf-operator/ --namespace cf-operator --name cf-operator --set image.tag=$ARTIFACT_VERSION
-```
-
-### For a local development with minikube and havener
-
-Make sure you have [havener](https://github.com/homeport/havener) install.
-
-```bash
-havener deploy --config dev-env-havener.yaml
-```
-
-## Uninstalling the chart
+## Uninstalling the Chart
 
 To delete the helm chart:
 
 ```bash
-helm delete cf-operator --purge
+helm delete cf-operator
 ```
 
 ## Configuration
@@ -61,6 +34,7 @@ helm delete cf-operator --purge
 | `image.repository`                                | Docker hub repository for the cf-operator image                                                   | `cf-operator`                                  |
 | `image.org`                                       | Docker hub organization for the cf-operator image                                                 | `cfcontainerization`                           |
 | `image.tag`                                       | Docker image tag                                                                                  | `foobar`                                       |
+| `createWatchNamespace`                            | Create the namespace, which is used for deployment                                                | `true`                                         |
 | `global.contextTimeout`                           | Will set the context timeout in seconds, for future K8S API requests                              | `30`                                           |
 | `global.image.pullPolicy`                         | Kubernetes image pullPolicy                                                                       | `IfNotPresent`                                 |
 | `global.image.credentials`                        | Kubernetes image pull secret credentials (map with keys `servername`, `username`, and `password`) | `nil`                                          |
@@ -77,12 +51,12 @@ helm delete cf-operator --purge
 > `global.operator.webhook.useServiceReference` will override `operator.webhook.endpoint` configuration
 >
 
-## Watched namespace
+## Watched Namespace
 
 The operator will watch for BOSH deployments in a separate namespace, not the one it has been deployed to. The watched namespace can be changed to something else using the `global.operator.watchNamespace` value, e.g.
 
 ```bash
-$ helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com/cf-operators/helm-charts/cf-operator-v0.2.2%2B47.g24492ea.tgz --set global.operator.watchNamespace=staging
+$ helm install cf-operator quarks/cf-operator --namespace cf-operator --set global.operator.watchNamespace=staging
 ```
 
 ## RBAC
@@ -92,5 +66,5 @@ By default, the helm chart will install RBAC ClusterRole and ClusterRoleBinding 
 The RBAC resources are enable by default. To disable:
 
 ```bash
-helm install --namespace cf-operator --name cf-operator https://s3.amazonaws.com/cf-operators/helm-charts/cf-operator-v0.2.2%2B47.g24492ea.tgz --set global.rbac.create=false
+helm install cf-operator quarks/cf-operator --namespace cf-operator --set global.rbac.create=false
 ```
