@@ -40,7 +40,17 @@ Follow this steps to build a proper docker image and generate a deployable helm 
 5. Install the helm chart(apply Kubernetes Custom Resources)
 
     ```bash
-    helm install --name cf-operator-test --namespace cf-operator-test helm/cf-operator
+    helm install cf-operator-test helm/cf-operator
     ```
 
-    _**Note**_: The cf-operator will be available under the `cf-operator-test` namespace, running as a pod.
+    _**Note**_: The cf-operator will be available under the namespace set in the context, usually `default`, running as a pod.
+
+## Notes
+
+### Local Development with Minikube and Havener
+
+Make sure you have [havener](https://github.com/homeport/havener) install.
+
+```bash
+havener deploy --config dev-env-havener.yaml
+```

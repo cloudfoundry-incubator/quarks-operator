@@ -23,9 +23,8 @@
 # - You have created a kind cluster named "kubecf", e.g.:
 #   `kind create cluster --name=kubecf`
 #
-# - Tiller is up and running, you can make use of the following:
+# - You can make use of the following:
 #
-#   helm init
 #   kubectl create serviceaccount --namespace kube-system tiller
 #   kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
 #   kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
@@ -66,7 +65,7 @@ before:
     set +e
     helm version > /dev/null 2>&1
     if [ $? -ne 0 ]; then
-      echo "PLEASE ENSURE TILLER IS UP AND RUNNING, see the comments on the top of this file."; exit 1
+      echo "PLEASE INSTALL HELM."; exit 1
     fi
     set -e
 

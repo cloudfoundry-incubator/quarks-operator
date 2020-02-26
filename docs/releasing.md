@@ -27,6 +27,7 @@ Within those pipelines, releases can be built from minor versions.
 After completion, the pipeline will create several artifacts:
 
 * helm chart on S3
+* helm chart in our repo at https://cloudfoundry-incubator.github.io/quarks-helm/
 * cf-operator binary on S3
 * docker image of the operator on dockerhub
 

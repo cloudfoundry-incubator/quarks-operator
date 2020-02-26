@@ -14,7 +14,7 @@
 ## Requirements
 
 - A working Kubernetes cluster
-- Helm binary
+- Helm v3 binary
 - Go 1.12.2 and install the tool chain: `make tools`
 
 ## Dependencies
@@ -165,7 +165,7 @@ The CRDs are also defined in code and applied automatically when cf-operator sta
 
 - add the new resource to `addToSchemes` in `pkg/controllers/controller.go`.
 - add the new controller to `addToManagerFuncs` in the same file.
-- create a custom resource definition in `deploy/helm/cf-operator/templates/`
+- create a custom resource definition and add docs to `docs/crds`.
 
 ### Reconcile Results
 
