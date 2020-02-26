@@ -45,7 +45,7 @@ before_script:
   # Download and install KinD
   - curl -Lo kind https://github.com/kubernetes-sigs/kind/releases/download/v0.7.0/kind-linux-amd64 && chmod +x kind && sudo mv kind /usr/local/bin/
   # Create a new Kubernetes cluster using KinD
-  - kind create cluster --image kindest/node:v$KUBE --name kind$KUBE --wait 20s
+  - kind create cluster --image kindest/node:v$KUBE --name kind$KUBE --wait 240s
   - kubectl version
 script:
   - bin/build-image
