@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
+
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	extv1client "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -92,7 +93,7 @@ func ApplyCRDs(config *rest.Config) error {
 			qsv1a1.QuarksSecretResourcePlural,
 			qsv1a1.QuarksSecretResourceShortNames,
 			qsv1a1.SchemeGroupVersion,
-			nil,
+			&qsv1a1.QuarksSecretValidation,
 		},
 		{
 			qstsv1a1.QuarksStatefulSetResourceName,

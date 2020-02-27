@@ -28,6 +28,7 @@ type DomainNameService interface {
 // that only has information pertinent to an instance group.
 type InstanceGroupResolver struct {
 	baseDir          string
+	deploymentName   string
 	manifest         Manifest
 	instanceGroup    *InstanceGroup
 	jobReleaseSpecs  map[string]map[string]JobSpec
@@ -37,7 +38,7 @@ type InstanceGroupResolver struct {
 }
 
 // NewInstanceGroupResolver returns a data gatherer with logging for a given input manifest and instance group
-func NewInstanceGroupResolver(fs afero.Fs, basedir string, manifest Manifest, instanceGroupName string, dns DomainNameService) (*InstanceGroupResolver, error) {
+func NewInstanceGroupResolver(fs afero.Fs, basedir string, deploymentName string, manifest Manifest, instanceGroupName string, dns DomainNameService) (*InstanceGroupResolver, error) {
 	ig, found := manifest.InstanceGroups.InstanceGroupByName(instanceGroupName)
 	if !found {
 		return nil, errors.Errorf("instance group '%s' not found", instanceGroupName)
@@ -45,6 +46,7 @@ func NewInstanceGroupResolver(fs afero.Fs, basedir string, manifest Manifest, in
 
 	return &InstanceGroupResolver{
 		baseDir:          basedir,
+		deploymentName:   deploymentName,
 		manifest:         manifest,
 		instanceGroup:    ig,
 		jobReleaseSpecs:  map[string]map[string]JobSpec{},
@@ -135,7 +137,6 @@ func (igr *InstanceGroupResolver) Manifest() (Manifest, error) {
 	ig := &InstanceGroup{Name: igr.instanceGroup.Name, Jobs: igJobs}
 
 	igManifest := Manifest{
-		Name:           igr.manifest.Name,
 		InstanceGroups: []*InstanceGroup{ig},
 	}
 
@@ -275,7 +276,7 @@ func (igr *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks(initialRol
 			// Generate instance spec for each ig instance
 			// This will be stored inside the current job under
 			// job.properties.quarks
-			jobsInstances := instanceGroup.jobInstances(igr.manifest.Name, job.Name, initialRollout)
+			jobsInstances := instanceGroup.jobInstances(igr.deploymentName, job.Name, initialRollout)
 
 			// set jobs.properties.quarks.instances with the ig instances
 			instanceGroup.Jobs[jobIdx].Properties.Quarks.Instances = jobsInstances
@@ -394,7 +395,7 @@ func (igr *InstanceGroupResolver) renderJobBPM(currentJob *Job, jobSpecFile stri
 				Bootstrap:  jobInstance.Bootstrap,
 				ID:         jobInstance.ID,
 				Index:      jobInstance.Index,
-				Deployment: igr.manifest.Name,
+				Deployment: igr.deploymentName,
 				Name:       jobInstance.Name,
 			},
 			jobSpecFile,

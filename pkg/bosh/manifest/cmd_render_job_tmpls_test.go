@@ -17,6 +17,7 @@ import (
 
 var _ = Describe("Trender", func() {
 	var (
+		deploymentName     string
 		deploymentManifest string
 		instanceGroupName  string
 		index              int
@@ -36,7 +37,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		act := func() error {
-			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas, true)
+			return manifest.RenderJobTemplates(deploymentName, deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas, true)
 		}
 
 		It("fails", func() {
@@ -55,7 +56,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		act := func() error {
-			return manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas, true)
+			return manifest.RenderJobTemplates(deploymentName, deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas, true)
 		}
 
 		Context("with an invalid instance index", func() {
@@ -72,6 +73,7 @@ var _ = Describe("Trender", func() {
 
 		Context("with a valid instance index", func() {
 			BeforeEach(func() {
+				deploymentName = "foo"
 				index = 0
 			})
 
@@ -108,7 +110,7 @@ var _ = Describe("Trender", func() {
 				Expect(values.Env["FOOBARWITHSPECINDEX"]).To(Equal("0"))
 				Expect(values.Env["FOOBARWITHSPECNAME"]).To(Equal("log-api-loggregator_trafficcontroller"))
 				Expect(values.Env["FOOBARWITHSPECNETWORKS"]).To(Equal(""))
-				Expect(values.Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-0"))
+				Expect(values.Env["FOOBARWITHSPECADDRESS"]).To(Equal("foo-log-api-0"))
 				Expect(values.Env["FOOBARWITHSPECDEPLOYMENT"]).To(Equal(""))
 				Expect(values.Env["FOOBARWITHSPECIP"]).To(Equal("172.17.0.13"))
 			})
@@ -135,7 +137,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		It("renders the job erb files correctly", func() {
-			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas, true)
+			err := manifest.RenderJobTemplates(deploymentName, deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			drainFile := filepath.Join(jobsDir, "pxc-mysql", "bin/drain")
@@ -172,7 +174,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		It("renders the configuration erb file correctly", func() {
-			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas, true)
+			err := manifest.RenderJobTemplates(deploymentName, deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			configFile := filepath.Join(jobsDir, "redis-server", "config/redis.conf")
@@ -201,7 +203,7 @@ var _ = Describe("Trender", func() {
 		})
 
 		It("usage of spec field in an ERB template should work", func() {
-			err := manifest.RenderJobTemplates(deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas, true)
+			err := manifest.RenderJobTemplates(deploymentName, deploymentManifest, jobsDir, jobsDir, instanceGroupName, index, podIP, replicas, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			configFile := filepath.Join(jobsDir, "metricsserver", "config/metricsserver.yml")

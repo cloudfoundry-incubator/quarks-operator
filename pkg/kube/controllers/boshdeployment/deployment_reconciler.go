@@ -33,8 +33,8 @@ import (
 
 // JobFactory creates Jobs for a given manifest
 type JobFactory interface {
-	VariableInterpolationJob(manifest bdm.Manifest) (*qjv1a1.QuarksJob, error)
-	InstanceGroupManifestJob(manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error)
+	VariableInterpolationJob(deploymentName string, manifest bdm.Manifest) (*qjv1a1.QuarksJob, error)
+	InstanceGroupManifestJob(deploymentName string, manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error)
 }
 
 // VariablesConverter converts BOSH variables into QuarksSecrets
@@ -132,7 +132,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Create all QuarksSecret variables
 	log.Debug(ctx, "Converting BOSH manifest variables to QuarksSecret resources")
-	secrets, err := r.converter.Variables(manifest.Name, manifest.Variables)
+	secrets, err := r.converter.Variables(instance.Name, manifest.Variables)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(instance, "BadManifestError").Error(ctx, errors.Wrap(err, "failed to generate quarks secrets from manifest"))
@@ -144,12 +144,12 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		err = r.createQuarksSecrets(ctx, manifestSecret, secrets)
 		if err != nil {
 			return reconcile.Result{},
-				log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "failed to create quarks secrets for BOSH manifest '%s': %v", manifest.Name, err)
+				log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "failed to create quarks secrets for BOSH manifest '%s': %v", instance.Name, err)
 		}
 	}
 
 	// Apply the "Variable Interpolation" QuarksJob, which creates the desired manifest secret
-	qJob, err := r.jobFactory.VariableInterpolationJob(*manifest)
+	qJob, err := r.jobFactory.VariableInterpolationJob(instance.Name, *manifest)
 	if err != nil {
 		return reconcile.Result{}, log.WithEvent(instance, "DesiredManifestError").Errorf(ctx, "failed to build the desired manifest qJob: %v", err)
 	}
@@ -163,7 +163,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Apply the "Instance group manifest" QuarksJob, which creates instance group manifests (ig-resolved) secrets and BPM config secrets
 	// once the "Variable Interpolation" job created the desired manifest.
-	qJob, err = r.jobFactory.InstanceGroupManifestJob(*manifest, linkInfos, instance.ObjectMeta.Generation == 1)
+	qJob, err = r.jobFactory.InstanceGroupManifestJob(instance.Name, *manifest, linkInfos, instance.ObjectMeta.Generation == 1)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "failed to build instance group manifest qJob: %v", err)
@@ -197,9 +197,6 @@ func (r *ReconcileBOSHDeployment) resolveManifest(ctx context.Context, instance 
 		return nil, log.WithEvent(instance, "WithOpsManifestError").Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
 	}
 
-	// Replace the name with the name of the BOSHDeployment resource
-	manifest.Name = instance.GetName()
-
 	return manifest, nil
 }
 
@@ -213,7 +210,7 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 		return nil, log.WithEvent(instance, "ManifestWithOpsMarshalError").Errorf(ctx, "Error marshaling the manifest %s: %s", instance.GetName(), err)
 	}
 
-	manifestSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeManifestWithOps, manifest.Name, "")
+	manifestSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeManifestWithOps, instance.Name, "")
 
 	// Create a secret object for the manifest
 	manifestSecret := &corev1.Secret{
@@ -221,7 +218,7 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 			Name:      manifestSecretName,
 			Namespace: instance.GetNamespace(),
 			Labels: map[string]string{
-				bdv1.LabelDeploymentName:       manifest.Name,
+				bdv1.LabelDeploymentName:       instance.Name,
 				bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeManifestWithOps.String(),
 			},
 		},
@@ -274,20 +271,16 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 	quarksLinks := map[string]bdm.QuarksLink{}
 	if len(missingProviders) != 0 {
 		// list secrets and services from target deployment
-		secretLabels := map[string]string{bdv1.LabelDeploymentName: instance.Name}
 		secrets := &corev1.SecretList{}
 		err := r.client.List(r.ctx, secrets,
-			crc.MatchingLabels(secretLabels),
 			crc.InNamespace(instance.Namespace),
 		)
 		if err != nil {
 			return linkInfos, errors.Wrapf(err, "listing secrets for link in deployment '%s':", instance.Name)
 		}
 
-		servicesLabels := map[string]string{bdv1.LabelDeploymentName: instance.Name}
 		services := &corev1.ServiceList{}
 		err = r.client.List(r.ctx, services,
-			crc.MatchingLabels(servicesLabels),
 			crc.InNamespace(instance.Namespace),
 		)
 		if err != nil {
@@ -295,31 +288,33 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 		}
 
 		for _, s := range secrets.Items {
-			linkProvider, err := newLinkProvider(s.GetAnnotations())
-			if err != nil {
-				return linkInfos, errors.Wrapf(err, "failed to parse link JSON for  '%s'", instance.Name)
-			}
-			if dup, ok := missingProviders[linkProvider.Name]; ok {
-				if dup {
-					return linkInfos, errors.New(fmt.Sprintf("duplicated secrets of provider: %s", linkProvider.Name))
+			if deploymentName, ok := s.GetAnnotations()[bdv1.LabelDeploymentName]; ok && deploymentName == instance.Name {
+				linkProvider, err := newLinkProvider(s.GetAnnotations())
+				if err != nil {
+					return linkInfos, errors.Wrapf(err, "failed to parse link JSON for  '%s'", instance.Name)
 				}
-
-				linkInfos = append(linkInfos, converter.LinkInfo{
-					SecretName:   s.Name,
-					ProviderName: linkProvider.Name,
-					ProviderType: linkProvider.ProviderType,
-				})
-
-				if linkProvider.ProviderType != "" {
-					quarksLinks[s.Name] = bdm.QuarksLink{
-						Type: linkProvider.ProviderType,
+				if dup, ok := missingProviders[linkProvider.Name]; ok {
+					if dup {
+						return linkInfos, errors.New(fmt.Sprintf("duplicated secrets of provider: %s", linkProvider.Name))
 					}
+
+					linkInfos = append(linkInfos, converter.LinkInfo{
+						SecretName:   s.Name,
+						ProviderName: linkProvider.Name,
+						ProviderType: linkProvider.ProviderType,
+					})
+
+					if linkProvider.ProviderType != "" {
+						quarksLinks[s.Name] = bdm.QuarksLink{
+							Type: linkProvider.ProviderType,
+						}
+					}
+					missingProviders[linkProvider.Name] = true
 				}
-				missingProviders[linkProvider.Name] = true
 			}
 		}
 
-		serviceRecords, err := r.getServiceRecords(instance.Namespace, services.Items)
+		serviceRecords, err := r.getServiceRecords(instance.Namespace, instance.Name, services.Items)
 		if err != nil {
 			return linkInfos, errors.Wrapf(err, "failed to get link services for '%s'", instance.Name)
 		}
@@ -377,18 +372,20 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 }
 
 // getServiceRecords gets service records from Kube Services
-func (r *ReconcileBOSHDeployment) getServiceRecords(namespace string, svcs []corev1.Service) (map[string]serviceRecord, error) {
+func (r *ReconcileBOSHDeployment) getServiceRecords(namespace string, name string, svcs []corev1.Service) (map[string]serviceRecord, error) {
 	svcRecords := map[string]serviceRecord{}
 	for _, svc := range svcs {
-		providerName, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderService]
-		if ok {
-			if _, ok := svcRecords[providerName]; ok {
-				return svcRecords, errors.New(fmt.Sprintf("duplicated services of provider: %s", providerName))
-			}
+		if deploymentName, ok := svc.GetAnnotations()[bdv1.LabelDeploymentName]; ok && deploymentName == name {
+			providerName, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderService]
+			if ok {
+				if _, ok := svcRecords[providerName]; ok {
+					return svcRecords, errors.New(fmt.Sprintf("duplicated services of provider: %s", providerName))
+				}
 
-			svcRecords[providerName] = serviceRecord{
-				selector:  svc.Spec.Selector,
-				dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, boshdns.GetClusterDomain()),
+				svcRecords[providerName] = serviceRecord{
+					selector:  svc.Spec.Selector,
+					dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, boshdns.GetClusterDomain()),
+				}
 			}
 		}
 	}

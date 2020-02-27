@@ -3,10 +3,13 @@ package v1alpha1
 import (
 	"fmt"
 
-	apis "code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	apis "code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 // This file looks almost the same for all controllers
@@ -28,6 +31,49 @@ var (
 
 	// QuarksSecretResourceShortNames is the short names of QuarksSecret
 	QuarksSecretResourceShortNames = []string{"qsec", "qsecs"}
+
+	// QuarksSecretValidation is the validation schema for QuarksSecret
+	QuarksSecretValidation = extv1.CustomResourceValidation{
+		OpenAPIV3Schema: &extv1.JSONSchemaProps{
+			Type: "object",
+			Properties: map[string]extv1.JSONSchemaProps{
+				"spec": {
+					Type: "object",
+					Properties: map[string]extv1.JSONSchemaProps{
+						"secretName": {
+							Type:        "string",
+							MinLength:   pointers.Int64(1),
+							Description: "The name of the generated secret",
+						},
+						"type": {
+							Type:        "string",
+							MinLength:   pointers.Int64(1),
+							Description: "What kind of secret to generate: password, certificate, ssh, rsa",
+						},
+						"request": {
+							Type:                   "object",
+							XPreserveUnknownFields: pointers.Bool(true),
+						},
+					},
+					Required: []string{
+						"secretName",
+						"type",
+					},
+				},
+				"status": {
+					Type: "object",
+					Properties: map[string]extv1.JSONSchemaProps{
+						"generated": {
+							Type: "boolean",
+						},
+						"lastReconcile": {
+							Type: "string",
+						},
+					},
+				},
+			},
+		},
+	}
 
 	// QuarksSecretResourceName is the resource name of QuarksSecret
 	QuarksSecretResourceName = fmt.Sprintf("%s.%s", QuarksSecretResourcePlural, apis.GroupName)

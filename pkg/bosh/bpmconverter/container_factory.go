@@ -1,4 +1,4 @@
-package converter
+package bpmconverter
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
@@ -35,7 +36,7 @@ const (
 
 // ContainerFactoryImpl is a concrete implementation of ContainerFactor.
 type ContainerFactoryImpl struct {
-	manifestName         string
+	deploymentName       string
 	instanceGroupName    string
 	version              string
 	disableLogSidecar    bool
@@ -44,9 +45,9 @@ type ContainerFactoryImpl struct {
 }
 
 // NewContainerFactory returns a concrete implementation of ContainerFactory.
-func NewContainerFactory(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactoryImpl {
+func NewContainerFactory(deploymentName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactoryImpl {
 	return &ContainerFactoryImpl{
-		manifestName:         manifestName,
+		deploymentName:       deploymentName,
 		instanceGroupName:    instanceGroupName,
 		version:              version,
 		disableLogSidecar:    disableLogSidecar,
@@ -76,7 +77,7 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 		// One copying specs init container for each release.
 		if _, done := copyingSpecsUniq[job.Release]; !done {
 			copyingSpecsUniq[job.Release] = struct{}{}
-			copyingSpecsInitContainer := jobSpecCopierContainer(job.Release, jobImage, VolumeRenderingDataName)
+			copyingSpecsInitContainer := JobSpecCopierContainer(job.Release, jobImage, VolumeRenderingDataName)
 			copyingSpecsInitContainers = append(copyingSpecsInitContainers, copyingSpecsInitContainer)
 		}
 
@@ -138,7 +139,7 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 
 	resolvedPropertiesSecretName := names.InstanceGroupSecretName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties, // ig-resolved
-		c.manifestName,
+		c.deploymentName,
 		c.instanceGroupName,
 		c.version,
 	)
@@ -146,7 +147,7 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 	initContainers := flattenContainers(
 		containerRunCopier(),
 		copyingSpecsInitContainers,
-		templateRenderingContainer(c.instanceGroupName, resolvedPropertiesSecretName),
+		templateRenderingContainer(c.deploymentName, c.instanceGroupName, resolvedPropertiesSecretName),
 		createDirContainer(jobs),
 		createWaitContainer(requiredService),
 		boshPreStartInitContainers,
@@ -162,7 +163,7 @@ func createWaitContainer(requiredService *string) []corev1.Container {
 	}
 	return []corev1.Container{{
 		Name:    "wait-for",
-		Image:   GetOperatorDockerImage(),
+		Image:   operatorimage.GetOperatorDockerImage(),
 		Command: []string{"/usr/bin/dumb-init", "--"},
 		Args: []string{
 			"/bin/sh",
@@ -270,8 +271,8 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 func logsTailerContainer(instanceGroupName string) corev1.Container {
 	return corev1.Container{
 		Name:            "logs",
-		Image:           GetOperatorDockerImage(),
-		ImagePullPolicy: GetOperatorImagePullPolicy(),
+		Image:           operatorimage.GetOperatorDockerImage(),
+		ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
 		VolumeMounts:    []corev1.VolumeMount{*sysDirVolumeMount()},
 		Args: []string{
 			"util",
@@ -293,8 +294,8 @@ func containerRunCopier() corev1.Container {
 	dstDir := fmt.Sprintf("%s/container-run", VolumeRenderingDataMountPath)
 	return corev1.Container{
 		Name:            "container-run-copier",
-		Image:           GetOperatorDockerImage(),
-		ImagePullPolicy: GetOperatorImagePullPolicy(),
+		Image:           operatorimage.GetOperatorDockerImage(),
+		ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      VolumeRenderingDataName,
@@ -314,8 +315,8 @@ func containerRunCopier() corev1.Container {
 	}
 }
 
-// jobSpecCopierContainer will return a corev1.Container{} with the populated field.
-func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName string) corev1.Container {
+// JobSpecCopierContainer will return a corev1.Container{} with the populated field.
+func JobSpecCopierContainer(releaseName string, jobImage string, volumeMountName string) corev1.Container {
 	inContainerReleasePath := filepath.Join(VolumeRenderingDataMountPath, "jobs-src", releaseName)
 	return corev1.Container{
 		Name:  names.Sanitize(fmt.Sprintf("spec-copier-%s", releaseName)),
@@ -335,17 +336,21 @@ func jobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 	}
 }
 
-func templateRenderingContainer(instanceGroupName string, secretName string) corev1.Container {
+func templateRenderingContainer(deploymentName string, instanceGroupName string, secretName string) corev1.Container {
 	return corev1.Container{
 		Name:            "template-render",
-		Image:           GetOperatorDockerImage(),
-		ImagePullPolicy: GetOperatorImagePullPolicy(),
+		Image:           operatorimage.GetOperatorDockerImage(),
+		ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
 		VolumeMounts: []corev1.VolumeMount{
 			*renderingVolumeMount(),
 			*jobsDirVolumeMount(),
 			resolvedPropertiesVolumeMount(secretName, instanceGroupName),
 		},
 		Env: []corev1.EnvVar{
+			{
+				Name:  EnvDeploymentName,
+				Value: deploymentName,
+			},
 			{
 				Name:  EnvInstanceGroupName,
 				Value: instanceGroupName,
@@ -389,8 +394,8 @@ func createDirContainer(jobs []bdm.Job) corev1.Container {
 
 	return corev1.Container{
 		Name:            "create-dirs",
-		Image:           GetOperatorDockerImage(),
-		ImagePullPolicy: GetOperatorImagePullPolicy(),
+		Image:           operatorimage.GetOperatorDockerImage(),
+		ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
 		VolumeMounts:    []corev1.VolumeMount{*dataDirVolumeMount(), *sysDirVolumeMount()},
 		Command:         entrypoint,
 		Args: []string{

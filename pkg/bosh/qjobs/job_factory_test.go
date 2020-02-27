@@ -1,4 +1,4 @@
-package converter_test
+package qjobs_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -6,29 +6,32 @@ import (
 
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/bosh/qjobs"
 	"code.cloudfoundry.org/cf-operator/testing"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 )
 
 var _ = Describe("JobFactory", func() {
 	var (
-		factory   *JobFactory
-		m         *manifest.Manifest
-		env       testing.Catalog
-		err       error
-		linkInfos LinkInfos
+		factory        *qjobs.JobFactory
+		deploymentName string
+		m              *manifest.Manifest
+		env            testing.Catalog
+		err            error
+		linkInfos      LinkInfos
 	)
 
 	BeforeEach(func() {
+		deploymentName = "foo-deployment"
 		m, err = env.DefaultBOSHManifest()
 		linkInfos = LinkInfos{}
 		Expect(err).NotTo(HaveOccurred())
-		factory = NewJobFactory("namespace")
+		factory = qjobs.NewJobFactory("namespace")
 	})
 
 	Describe("InstanceGroupManifestJob", func() {
 		It("creates init containers", func() {
-			qJob, err := factory.InstanceGroupManifestJob(*m, linkInfos, true)
+			qJob, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 			jobIG := qJob.Spec.Template.Spec
 			// Test init containers in the ig manifest qJob
@@ -46,7 +49,7 @@ var _ = Describe("JobFactory", func() {
 				},
 			}
 
-			qJob, err := factory.InstanceGroupManifestJob(*m, linkInfos, true)
+			qJob, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 			jobIG := qJob.Spec.Template.Spec
 			// Test init containers in the ig manifest qJob
@@ -62,14 +65,14 @@ var _ = Describe("JobFactory", func() {
 
 		It("handles an error when getting release image", func() {
 			m.Stemcells = nil
-			_, err := factory.InstanceGroupManifestJob(*m, linkInfos, true)
+			_, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Generation of gathering job failed for manifest"))
 		})
 
 		It("does not generate the instance group containers when its instances is zero", func() {
 			m.InstanceGroups[0].Instances = 0
-			qJob, err := factory.InstanceGroupManifestJob(*m, linkInfos, true)
+			qJob, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 			jobIG := qJob.Spec.Template.Spec
 			Expect(len(jobIG.Template.Spec.InitContainers)).To(BeNumerically("<", 2))
@@ -80,7 +83,7 @@ var _ = Describe("JobFactory", func() {
 			It("creates output entries for all provides", func() {
 				m, err = env.ElaboratedBOSHManifest()
 				Expect(err).NotTo(HaveOccurred())
-				qJob, err := factory.InstanceGroupManifestJob(*m, linkInfos, true)
+				qJob, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
 				Expect(err).ToNot(HaveOccurred())
 				om := qJob.Spec.Output.OutputMap
 				Expect(om).To(Equal(
@@ -131,18 +134,18 @@ var _ = Describe("JobFactory", func() {
 		})
 
 		It("has one spec-copier init container per instance group", func() {
-			job, err := factory.InstanceGroupManifestJob(*m, linkInfos, true)
+			job, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			spec := job.Spec.Template.Spec.Template.Spec
-			Expect(job.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
+			Expect(job.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, deploymentName))
 
 			Expect(len(spec.InitContainers)).To(Equal(len(m.InstanceGroups)))
 			Expect(spec.InitContainers[0].Name).To(ContainSubstring("spec-copier-"))
 		})
 
 		It("has one bpm-configs container per instance group", func() {
-			job, err := factory.InstanceGroupManifestJob(*m, linkInfos, true)
+			job, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			spec := job.Spec.Template.Spec.Template.Spec
@@ -153,7 +156,7 @@ var _ = Describe("JobFactory", func() {
 
 		It("does not generate the instance group containers when its instances is zero", func() {
 			m.InstanceGroups[0].Instances = 0
-			job, err := factory.InstanceGroupManifestJob(*m, linkInfos, true)
+			job, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			spec := job.Spec.Template.Spec.Template.Spec
@@ -164,9 +167,9 @@ var _ = Describe("JobFactory", func() {
 
 	Describe("VariableInterpolationJob", func() {
 		It("mounts variable secrets in the variable interpolation container", func() {
-			job, err := factory.VariableInterpolationJob(*m)
+			job, err := factory.VariableInterpolationJob(deploymentName, *m)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(job.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, m.Name))
+			Expect(job.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, deploymentName))
 
 			podSpec := job.Spec.Template.Spec.Template.Spec
 

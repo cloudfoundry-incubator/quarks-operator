@@ -1,6 +1,9 @@
 package converter
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
+	corev1 "k8s.io/api/core/v1"
+)
 
 const (
 	// VolumeLinksPath is the mount path for the links data.
@@ -39,7 +42,7 @@ func (q *LinkInfos) VolumeMounts() []corev1.VolumeMount {
 
 func (q *LinkInfo) linkVolume() corev1.Volume {
 	return corev1.Volume{
-		Name: generateVolumeName(q.SecretName),
+		Name: names.VolumeName(q.SecretName),
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName: q.SecretName,
@@ -50,7 +53,7 @@ func (q *LinkInfo) linkVolume() corev1.Volume {
 
 func (q *LinkInfo) linkVolumeMount() corev1.VolumeMount {
 	return corev1.VolumeMount{
-		Name:      generateVolumeName(q.SecretName),
+		Name:      names.VolumeName(q.SecretName),
 		MountPath: VolumeLinksPath + q.ProviderName,
 		ReadOnly:  true,
 	}

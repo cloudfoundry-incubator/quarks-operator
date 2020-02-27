@@ -1,4 +1,4 @@
-package converter_test
+package bpmconverter_test
 
 import (
 	"encoding/json"
@@ -13,7 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	. "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
+	. "code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
