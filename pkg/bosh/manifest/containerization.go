@@ -14,9 +14,9 @@ type Quarks struct {
 	Release             string                  `json:"release"`
 	BPM                 *bpm.Config             `json:"bpm,omitempty" yaml:"bpm,omitempty"`
 	Ports               []Port                  `json:"ports"`
-	Run                 RunConfig               `json:"run"`
+	Run                 bpm.RunConfig           `json:"run"`
 	PreRenderScripts    PreRenderScripts        `json:"pre_render_scripts" yaml:"pre_render_scripts"`
-	PostStart           PostStart               `json:"post_start"`
+	PostStart           bpm.PostStart           `json:"post_start"`
 	Debug               bool                    `json:"debug" yaml:"debug"`
 	IsAddon             bool                    `json:"is_addon" yaml:"is_addon"`
 	Envs                []corev1.EnvVar         `json:"envs" yaml:"envs"`
@@ -52,28 +52,11 @@ type JobLink struct {
 	Properties JobLinkProperties `json:"properties"`
 }
 
-// HealthCheck defines liveness and readiness probes for a container.
-type HealthCheck struct {
-	ReadinessProbe *corev1.Probe `json:"readiness" yaml:"readiness"`
-	LivenessProbe  *corev1.Probe `json:"liveness"  yaml:"liveness"`
-}
-
-// RunConfig describes the runtime configuration for this job.
-type RunConfig struct {
-	HealthCheck     map[string]HealthCheck  `json:"healthcheck" yaml:"healthcheck"`
-	SecurityContext *corev1.SecurityContext `json:"security_context" yaml:"security_context"`
-}
-
 // PreRenderScripts describes the different types of scripts that can be run inside a job.
 type PreRenderScripts struct {
 	BPM        []string `json:"bpm" yaml:"bpm"`
 	IgResolver []string `json:"ig_resolver" yaml:"ig_resolver"`
 	Jobs       []string `json:"jobs" yaml:"jobs"`
-}
-
-// PostStart allows post-start specifics to be passed through the manifest.
-type PostStart struct {
-	Condition *PostStartCondition `json:"condition,omitempty"`
 }
 
 // PostStartCondition represents the condition that should succeed in order to execute the

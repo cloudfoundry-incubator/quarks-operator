@@ -451,8 +451,8 @@ var _ = Describe("ContainerFactory", func() {
 						Name: "fake-job",
 						Properties: bdm.JobProperties{
 							Quarks: bdm.Quarks{
-								PostStart: bdm.PostStart{
-									Condition: &bdm.PostStartCondition{
+								PostStart: bpm.PostStart{
+									Condition: &bpm.PostStartCondition{
 										Exec: &corev1.ExecAction{
 											Command: []string{"sh", "-c", "fake_health_check"},
 										},

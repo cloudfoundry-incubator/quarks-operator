@@ -116,8 +116,8 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 					process,
 					jobImage,
 					processVolumeMounts,
-					job.Properties.Quarks.Debug,
-					job.Properties.Quarks.Run.SecurityContext.DeepCopy(),
+					bpmConfig.Debug,
+					bpmConfig.Run.SecurityContext.DeepCopy(),
 				)
 
 				bpmPreStartInitContainers = append(bpmPreStartInitContainers, *container.DeepCopy())
@@ -129,8 +129,8 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 			job.Name,
 			jobImage,
 			append(defaultVolumeMounts, bpmDisks.VolumeMounts()...),
-			job.Properties.Quarks.Debug,
-			job.Properties.Quarks.Run.SecurityContext.DeepCopy(),
+			bpmConfig.Debug,
+			bpmConfig.Run.SecurityContext.DeepCopy(),
 		)
 		boshPreStartInitContainers = append(boshPreStartInitContainers, *boshPreStartInitContainer.DeepCopy())
 	}
@@ -225,7 +225,7 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 			// process container.
 			var postStart postStart
 			if processIndex == 0 {
-				conditionProperty := job.Properties.Quarks.PostStart.Condition
+				conditionProperty := bpmConfig.PostStart.Condition
 				if conditionProperty != nil && conditionProperty.Exec != nil && len(conditionProperty.Exec.Command) > 0 {
 					postStart.condition = &containerrun.Command{
 						Name: conditionProperty.Exec.Command[0],
@@ -244,9 +244,9 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 				jobImage,
 				process,
 				processVolumeMounts,
-				job.Properties.Quarks.Run.HealthCheck,
+				bpmConfig.Run.HealthCheck,
 				job.Properties.Quarks.Envs,
-				job.Properties.Quarks.Run.SecurityContext.DeepCopy(),
+				bpmConfig.Run.SecurityContext.DeepCopy(),
 				postStart,
 			)
 
@@ -496,7 +496,7 @@ func bpmProcessContainer(
 	jobImage string,
 	process bpm.Process,
 	volumeMounts []corev1.VolumeMount,
-	healthchecks map[string]bdm.HealthCheck,
+	healthChecks map[string]bpm.HealthCheck,
 	quarksEnvs []corev1.EnvVar,
 	securityContext *corev1.SecurityContext,
 	postStart postStart,
@@ -589,7 +589,7 @@ echo "Done"`,
 		},
 	}
 
-	for name, hc := range healthchecks {
+	for name, hc := range healthChecks {
 		if name == process.Name {
 			if hc.ReadinessProbe != nil {
 				container.ReadinessProbe = hc.ReadinessProbe
