@@ -447,6 +447,12 @@ func (igr *InstanceGroupResolver) renderJobBPM(currentJob *Job, jobSpecFile stri
 		}
 		renderedBPM.Ports = ports
 
+		// Add these to reflect quarks properties update
+		renderedBPM.Run = currentJob.Properties.Quarks.Run
+		renderedBPM.PostStart = currentJob.Properties.Quarks.PostStart
+		renderedBPM.Debug = currentJob.Properties.Quarks.Debug
+		renderedBPM.ActivePassiveProbes = currentJob.Properties.Quarks.ActivePassiveProbes
+
 		jobIndexBPM[i] = renderedBPM
 	}
 
