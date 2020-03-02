@@ -24,7 +24,6 @@ import (
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/withops"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
-	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
@@ -76,7 +75,7 @@ type Validator struct {
 
 // NewValidator returns a new BOSHDeploymentValidator
 func NewValidator(log *zap.SugaredLogger, config *config.Config) admission.Handler {
-	validationLog := log.Named("boshdeployment-validator")
+	validationLog := log.Named("boshdeployment-validator").Desugar().WithOptions(zap.AddCallerSkip(-1)).Sugar()
 	validationLog.Info("Creating a validator for BOSHDeployment")
 
 	return &Validator{
@@ -163,9 +162,8 @@ func (v *Validator) OpsResourcesExist(ctx context.Context, specOpsResource []bdv
 }
 
 //Handle validates a BOSHDeployment
-func (v *Validator) Handle(_ context.Context, req admission.Request) admission.Response {
+func (v *Validator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	boshDeployment := &bdv1.BOSHDeployment{}
-	ctx := log.NewParentContext(v.log)
 
 	err := v.decoder.Decode(req, boshDeployment)
 	if err != nil {
@@ -179,7 +177,7 @@ func (v *Validator) Handle(_ context.Context, req admission.Request) admission.R
 		}
 	}
 
-	log.Infof(ctx, "Verifying dependencies for deployment '%s'", boshDeployment.Name)
+	v.log.Infof("Verifying dependencies for deployment '%s'", boshDeployment.Name)
 	withops := withops.NewResolver(
 		v.client,
 		func() withops.Interpolator { return withops.NewInterpolator() },
@@ -199,7 +197,7 @@ func (v *Validator) Handle(_ context.Context, req admission.Request) admission.R
 		}
 	}
 
-	log.Infof(ctx, "Resolving deployment '%s'", boshDeployment.Name)
+	v.log.Infof("Resolving deployment '%s'", boshDeployment.Name)
 	manifest, _, err := withops.ManifestDetailed(boshDeployment, boshDeployment.GetNamespace())
 	if err != nil {
 		return admission.Response{

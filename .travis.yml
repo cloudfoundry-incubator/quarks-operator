@@ -15,11 +15,11 @@ env:
     - GOPROXY="https://proxy.golang.org"
     - DOCKER_IMAGE_TAG=dev
     - CF_OPERATOR_WEBHOOK_SERVICE_HOST=172.17.0.1
-    - OPERATOR_TEST_STORAGE_CLASS=local-path
+    - OPERATOR_TEST_STORAGE_CLASS=standard
   jobs:
-    - KUBE=1.13.12
-    - KUBE=1.15.6
-    - KUBE=1.16.3
+    - KUBE=1.14.10
+    - KUBE=1.15.7
+    - KUBE=1.16.4
 
 stages:
   - lint
@@ -43,17 +43,10 @@ before_script:
   # Download and install kubectl
   - curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
   # Download and install KinD
-  - curl -Lo kind https://github.com/kubernetes-sigs/kind/releases/download/v0.6.0/kind-linux-amd64 && chmod +x kind && sudo mv kind /usr/local/bin/
+  - curl -Lo kind https://github.com/kubernetes-sigs/kind/releases/download/v0.7.0/kind-linux-amd64 && chmod +x kind && sudo mv kind /usr/local/bin/
   # Create a new Kubernetes cluster using KinD
-  - kind create cluster --image kindest/node:v$KUBE --name kind$KUBE --wait 20s
+  - kind create cluster --image kindest/node:v$KUBE --name kind$KUBE --wait 240s
   - kubectl version
-  # Add local-path storage support
-  - |
-    kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
-  - |
-    kubectl patch storageclass standard --patch '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false", "storageclass.beta.kubernetes.io/is-default-class":"false"}}}'
-  - |
-    kubectl patch storageclass local-path --patch '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true", "storageclass.beta.kubernetes.io/is-default-class":"true"}}}'
 script:
   - bin/build-image
   - kind load docker-image "cfcontainerization/cf-operator:dev" --name kind$KUBE

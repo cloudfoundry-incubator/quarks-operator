@@ -1,4 +1,4 @@
-package quarkssecret_test
+package versionedsecret_test
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarkssecret"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/versionedsecret"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
@@ -27,6 +27,7 @@ var _ = Describe("When the webhook handles update request of a secret", func() {
 		decoder        *admission.Decoder
 		validator      admission.Handler
 		secretBytes    []byte
+		oldSecretBytes []byte
 		validateSecret func() admission.Response
 		secret         corev1.Secret
 	)
@@ -52,7 +53,7 @@ var _ = Describe("When the webhook handles update request of a secret", func() {
 		scheme := runtime.NewScheme()
 		Expect(corev1.AddToScheme(scheme)).To(Succeed())
 		decoder, _ = admission.NewDecoder(scheme)
-		validator = quarkssecret.NewValidationHandler(log)
+		validator = versionedsecret.NewValidationHandler(log)
 		validator.(admission.DecoderInjector).InjectDecoder(decoder)
 
 		validateSecret = func() admission.Response {
@@ -60,6 +61,9 @@ var _ = Describe("When the webhook handles update request of a secret", func() {
 				AdmissionRequest: v1beta1.AdmissionRequest{
 					Object: runtime.RawExtension{
 						Raw: secretBytes,
+					},
+					OldObject: runtime.RawExtension{
+						Raw: oldSecretBytes,
 					},
 				},
 			})
@@ -71,6 +75,8 @@ var _ = Describe("When the webhook handles update request of a secret", func() {
 		BeforeEach(func() {
 			secret.SetLabels(map[string]string{})
 			secretBytes, _ = json.Marshal(secret)
+			secret.Data["new"] = []byte("value")
+			oldSecretBytes, _ = json.Marshal(secret)
 		})
 
 		It("should allow", func() {
@@ -80,14 +86,31 @@ var _ = Describe("When the webhook handles update request of a secret", func() {
 	})
 
 	Context("which is a versioned type", func() {
-		BeforeEach(func() {
-			secretBytes, _ = json.Marshal(secret)
+		Context("when updating data", func() {
+			BeforeEach(func() {
+				secretBytes, _ = json.Marshal(secret)
+				secret.Data["new"] = []byte("value")
+				oldSecretBytes, _ = json.Marshal(secret)
+			})
+
+			It("should not allow", func() {
+				response := validateSecret()
+				Expect(response.AdmissionResponse.Allowed).To(BeFalse())
+				Expect(response.AdmissionResponse.Result.Message).To(Equal("Denying update to versioned secret 'mysecret' as it is immutable."))
+			})
 		})
 
-		It("should not allow", func() {
-			response := validateSecret()
-			Expect(response.AdmissionResponse.Allowed).To(BeFalse())
-			Expect(response.AdmissionResponse.Result.Message).To(Equal("Denying update to versioned secret 'mysecret' as it is immutable."))
+		Context("when updating meta", func() {
+			BeforeEach(func() {
+				secretBytes, _ = json.Marshal(secret)
+				secret.SetLabels(map[string]string{"foo": "bar"})
+				oldSecretBytes, _ = json.Marshal(secret)
+			})
+
+			It("should allow", func() {
+				response := validateSecret()
+				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
+			})
 		})
 	})
 })

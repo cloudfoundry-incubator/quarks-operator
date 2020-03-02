@@ -1,8 +1,10 @@
-package quarkssecret
+package versionedsecret
 
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"reflect"
 
 	"go.uber.org/zap"
 
@@ -16,14 +18,13 @@ import (
 
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
-	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
 // NewSecretValidator creates a validating hook to deny updates to versioned secrets and adds it to the manager.
 func NewSecretValidator(log *zap.SugaredLogger, config *config.Config) *wh.OperatorWebhook {
-	log.Info("Setting up validator for Secret")
+	log.Info("Setting up validator for versioned secrets")
 
 	secretValidator := NewValidationHandler(log)
 
@@ -65,17 +66,17 @@ type ValidationHandler struct {
 
 // NewValidationHandler returns a new ValidationHandler
 func NewValidationHandler(log *zap.SugaredLogger) admission.Handler {
-	validationLog := log.Named("secret-validator")
+	validationLog := log.Named("secret-validator").Desugar().WithOptions(zap.AddCallerSkip(-1)).Sugar()
 	validationLog.Info("Creating a validator for Secret")
+
 	return &ValidationHandler{
 		log: validationLog,
 	}
 }
 
-//Handle denies changes to all versioned secrets as they are immutable
-func (v *ValidationHandler) Handle(_ context.Context, req admission.Request) admission.Response {
+// Handle denies changes to all versioned secrets as they are immutable
+func (v *ValidationHandler) Handle(ctx context.Context, req admission.Request) admission.Response {
 	secret := &corev1.Secret{}
-	ctx := log.NewParentContext(v.log)
 
 	err := v.decoder.Decode(req, secret)
 	if err != nil {
@@ -89,17 +90,29 @@ func (v *ValidationHandler) Handle(_ context.Context, req admission.Request) adm
 		}
 	}
 
+	oldSecret := &corev1.Secret{}
+	err = v.decoder.DecodeRaw(req.OldObject, oldSecret)
+	if err != nil {
+		return admission.Errored(http.StatusBadRequest, err)
+	}
+
 	// Checking if the secret is a versioned secret
-	ok := vss.IsVersionedSecret(*secret)
+	ok := vss.IsVersionedSecret(*oldSecret)
 	if ok {
-		log.Infof(ctx, "Denying update to versioned secret '%s' as it is immutable.", secret.Name)
-		return admission.Response{
-			AdmissionResponse: v1beta1.AdmissionResponse{
-				Allowed: false,
-				Result: &metav1.Status{
-					Message: fmt.Sprintf("Denying update to versioned secret '%s' as it is immutable.", secret.GetName()),
+		v.log.Info("found versioned secret")
+
+		dataChanged := !reflect.DeepEqual(secret.Data, oldSecret.Data)
+
+		if dataChanged {
+			v.log.Infof("Denying update to versioned secret '%s' data as it is immutable.", secret.Name)
+			return admission.Response{
+				AdmissionResponse: v1beta1.AdmissionResponse{
+					Allowed: false,
+					Result: &metav1.Status{
+						Message: fmt.Sprintf("Denying update to versioned secret '%s' as it is immutable.", secret.GetName()),
+					},
 				},
-			},
+			}
 		}
 	}
 

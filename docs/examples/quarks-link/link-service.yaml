@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    quarks.cloudfoundry.org/deployment-name: "cf-operator-testing-deployment"
+    quarks.cloudfoundry.org/provides: '{"name":"testlink","type":"link"}'
+    quarks.cloudfoundry.org/link-provider-name: testlink
+  name: testlink
+spec:
+  ports:
+  - name: client
+    port: 2181
+    protocol: TCP
+    targetPort: client
+  selector:
+    app: linkpod
+  type: ClusterIP
+status:
+  loadBalancer: {}

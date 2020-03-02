@@ -98,17 +98,12 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 		oldPartition = *statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition
 	}
 
-	var resultWithRetrigger reconcile.Result
-	timeLeft := getTimeOut(ctx, statefulSet, AnnotationUpdateWatchTime)
-	if timeLeft < 0 {
-		statefulSet.Annotations[AnnotationCanaryRollout] = rolloutStateFailed
-		if err = r.updateStatefulSet(ctx, statefulSet, oldPartition); err != nil {
-			ctxlog.Debug(ctx, "Error updating StatefulSet ", request.NamespacedName, err)
-			return reconcile.Result{}, err
-		}
-		return reconcile.Result{}, nil
+	if timedOut, err := r.failIfTimedOut(ctx, statefulSet, AnnotationUpdateWatchTime); timedOut || err != nil {
+		return reconcile.Result{}, err
 	}
-	resultWithRetrigger.RequeueAfter = timeLeft
+
+	var resultWithRetrigger reconcile.Result
+	resultWithRetrigger.RequeueAfter = getTimeOut(ctx, statefulSet, AnnotationUpdateWatchTime)
 
 	switch status {
 	case rolloutStateCanaryUpscale:
@@ -127,10 +122,9 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 		}
 		fallthrough
 	case rolloutStateRollout:
-		if timeLeft > time.Minute {
-			timeLeft = time.Minute
+		if resultWithRetrigger.RequeueAfter > time.Minute {
+			resultWithRetrigger.RequeueAfter = time.Minute
 		}
-		resultWithRetrigger.RequeueAfter = timeLeft
 		ready, err := partitionPodIsReadyAndUpdated(ctx, r.client, &statefulSet)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -164,7 +158,7 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 		dirty = true
 	}
 	if dirty {
-		if err = r.updateStatefulSet(ctx, statefulSet, oldPartition); err != nil {
+		if err = r.updateWithPartitionMove(ctx, statefulSet, oldPartition); err != nil {
 			ctxlog.Debug(ctx, "Error updating StatefulSet ", request.NamespacedName, err)
 			return reconcile.Result{}, err
 		}
@@ -172,9 +166,20 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 	return resultWithRetrigger, nil
 }
 
-func (r *ReconcileStatefulSetRollout) updateStatefulSet(ctx context.Context, statefulset appsv1.StatefulSet, oldPartition int32) error {
-	meltdown.SetLastReconcile(&statefulset.ObjectMeta, time.Now())
-	err := r.update(ctx, &statefulset)
+func (r *ReconcileStatefulSetRollout) failIfTimedOut(ctx context.Context, statefulSet appsv1.StatefulSet, timeout string) (bool, error) {
+	if getTimeOut(ctx, statefulSet, timeout) < 0 {
+		statefulSet.Annotations[AnnotationCanaryRollout] = rolloutStateFailed
+		if err := r.updateStatefulSet(ctx, &statefulSet); err != nil {
+			ctxlog.Debug(ctx, "Error updating StatefulSet ", statefulSet.Name, err)
+			return true, err
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+func (r *ReconcileStatefulSetRollout) updateWithPartitionMove(ctx context.Context, statefulset appsv1.StatefulSet, oldPartition int32) error {
+	err := r.updateStatefulSet(ctx, &statefulset)
 	if err != nil {
 		return err
 	}
@@ -205,10 +210,15 @@ func getTimeOut(ctx context.Context, statefulSet appsv1.StatefulSet, watchTimeAn
 		return -1
 	}
 	updateStartTime := time.Unix(updateStartTimeUnix, 0)
-	return time.Until(updateStartTime.Add(time.Millisecond * time.Duration(watchTime)))
+	timeLeft := time.Until(updateStartTime.Add(time.Millisecond * time.Duration(watchTime)))
+	if timeLeft == 0 { //differ from 'never timeout'
+		timeLeft = -1
+	}
+	return timeLeft
 }
 
-func (r *ReconcileStatefulSetRollout) update(ctx context.Context, statefulSet *appsv1.StatefulSet) error {
+func (r *ReconcileStatefulSetRollout) updateStatefulSet(ctx context.Context, statefulSet *appsv1.StatefulSet) error {
+	meltdown.SetLastReconcile(&statefulSet.ObjectMeta, time.Now())
 
 	partition := *statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition
 	state := statefulSet.Annotations[AnnotationCanaryRollout]
