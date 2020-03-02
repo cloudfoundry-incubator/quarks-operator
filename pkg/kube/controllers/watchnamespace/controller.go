@@ -16,13 +16,13 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 )
 
-// Reconcile doesn't have any state
+// Reconcile implements reconcile.Reconciler
 type Reconcile struct {
 }
 
 var _ reconcile.Reconciler = &Reconcile{}
 
-// Reconcile is a null operation and not called, since the predicate never returns true
+// Reconcile doesn't do anything, because there is nothing to reconcile with the watched namespace
 func (r *Reconcile) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	return reconcile.Result{}, nil
 }
