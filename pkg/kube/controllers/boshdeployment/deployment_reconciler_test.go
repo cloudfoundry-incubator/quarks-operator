@@ -406,10 +406,8 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "baz-sec",
 							Namespace: "default",
-							Labels: map[string]string{
-								bdv1.LabelDeploymentName: deploymentName,
-							},
 							Annotations: map[string]string{
+								bdv1.LabelDeploymentName:       deploymentName,
 								bdv1.AnnotationLinkProvidesKey: `{"name":"baz"}`,
 							},
 						},

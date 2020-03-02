@@ -1,0 +1,33 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cf-operator-testing-manifest
+stringData:
+  manifest: |
+    ---
+    name: cf-operator-testing-deployment
+    releases:
+    - name: cf-operator-testing
+      version: "0.0.6"
+      url: docker.io/cfcontainerization
+      stemcell:
+        os: opensuse-42.3
+        version: 36.g03b4653-30.80-7.0.0_374.gb8e8e6af
+    instance_groups:
+    - name: draining-ig
+      instances: 1
+      jobs:
+      - name: delaying-drain-job
+        release: cf-operator-testing
+        consumes:
+          testlink: {from: testlink}
+---
+apiVersion: quarks.cloudfoundry.org/v1alpha1
+kind: BOSHDeployment
+metadata:
+  name: cf-operator-testing-deployment
+spec:
+  manifest:
+    name: cf-operator-testing-manifest
+    type: secret

@@ -69,7 +69,7 @@ The `cf-operator` assumes that the cluster root CA is also used for signing CSRs
 
 ### **Using the helm chart**
 
-The `cf-operator` can be installed via `helm`. Make sure you have a running Kubernetes cluster and that tiller is reachable.
+The `cf-operator` can be installed via `helm`. You can use our [helm repository](https://cloudfoundry-incubator.github.io/quarks-helm/).
 
 See the [releases page](https://github.com/cloudfoundry-incubator/cf-operator/releases) for up-to-date instructions on how to install the operator.
 

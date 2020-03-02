@@ -14,7 +14,7 @@
 ## Requirements
 
 - A working Kubernetes cluster
-- Helm binary
+- Helm v3 binary
 - Go 1.12.2 and install the tool chain: `make tools`
 
 ## Dependencies
@@ -165,7 +165,7 @@ The CRDs are also defined in code and applied automatically when cf-operator sta
 
 - add the new resource to `addToSchemes` in `pkg/controllers/controller.go`.
 - add the new controller to `addToManagerFuncs` in the same file.
-- create a custom resource definition in `deploy/helm/cf-operator/templates/`
+- create a custom resource definition and add docs to `docs/crds`.
 
 ### Reconcile Results
 
@@ -254,10 +254,12 @@ References to quarks job:
 
 * as a library, for the API type, via git commit sha in `go.mod`:
     'b5dc240'
-* the docker image for integration tests is set in `integration/environment/quarks_job_cmd.go`:
-    'cfcontainerization/quarks-job:v0.0.0-0.gb5dc240'
-* releases and e2e test use the helm sub chart, added in `bin/build-helm`:
-    'https://cf-operators.s3.amazonaws.com/helm-charts/quarks-job-v0.0.0%2B0.gb5dc240.tgz'
+* the docker image for integration tests is set via  `QUARKS_JOB_IMAGE_TAG`:
+    'v0.0.0-0.gb5dc240'
+* releases and e2e test use the helm sub chart, build by `bin/build-helm`, which uses the `QUARKS_JOB_HELM_VERSION` variable:
+    '0.0.0-0.gb5dc240'
+
+Both variables are set in `bin/include/dependencies`.
 
 ### Update Dependencies
 

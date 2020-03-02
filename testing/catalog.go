@@ -21,9 +21,11 @@ import (
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
+	qjv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
+	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
 const (
@@ -240,6 +242,21 @@ func (c *Catalog) StorageClassSecret(name string, class string) corev1.Secret {
 	}
 }
 
+// VersionedSecret for tests
+func (c *Catalog) VersionedSecret(name string) corev1.Secret {
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				versionedsecretstore.LabelSecretKind: versionedsecretstore.VersionSecretKind,
+			},
+		},
+		StringData: map[string]string{
+			name: "default-value",
+		},
+	}
+}
+
 // DefaultConfigMap for tests
 func (c *Catalog) DefaultConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
@@ -252,11 +269,13 @@ func (c *Catalog) DefaultConfigMap(name string) corev1.ConfigMap {
 
 // QuarksLinkSecret returns a link secret, as generated for consumption by an external (non BOSH) consumer
 func (c *Catalog) QuarksLinkSecret(deploymentName, linkType, linkName string, value map[string][]byte) corev1.Secret {
+	name := names.QuarksLinkSecretName(deploymentName, linkType, linkName)
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: names.QuarksLinkSecretName(deploymentName, linkType, linkName),
+			Name: name,
 			Labels: map[string]string{
 				manifest.LabelDeploymentName: deploymentName,
+				qjv1.LabelEntanglementKey:    name,
 			},
 		},
 		Data: value,
@@ -999,10 +1018,8 @@ func (c *Catalog) NatsService(deployName string) corev1.Service {
 	return corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "nats-headless",
-			Labels: map[string]string{
-				bdv1.LabelDeploymentName: deployName,
-			},
 			Annotations: map[string]string{
+				bdv1.LabelDeploymentName:           deployName,
 				bdv1.AnnotationLinkProviderService: "nats",
 			},
 		},
@@ -1032,10 +1049,8 @@ func (c *Catalog) NatsSecret(deployName string) corev1.Secret {
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "nats",
-			Labels: map[string]string{
-				bdv1.LabelDeploymentName: deployName,
-			},
 			Annotations: map[string]string{
+				bdv1.LabelDeploymentName:       deployName,
 				bdv1.AnnotationLinkProvidesKey: `{"name":"nats","type":"nats"}`,
 			},
 		},
