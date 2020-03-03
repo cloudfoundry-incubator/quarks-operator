@@ -1,6 +1,7 @@
 package integration_test
 
 import (
+	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -215,6 +216,51 @@ var _ = Describe("Deploy", func() {
 			Expect(len(pods.Items)).To(Equal(2))
 			Expect(pods.Items[0].Spec.Containers).To(HaveLen(2))
 			Expect(pods.Items[0].Spec.Containers[0].Name).To(Equal("route-registrar-route-registrar"))
+		})
+	})
+
+	Context("when updating a readiness probe", func() {
+		BeforeEach(func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment(deploymentName, manifestName))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			By("checking for instance group pods")
+			err = env.WaitForPods(env.Namespace, "quarks.cloudfoundry.org/instance-group-name=nats")
+			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
+		})
+
+		Context("by adding an ops file to the bdpl custom resource", func() {
+			It("should update the deployment and respect the instance pods", func() {
+				tearDown, err := env.CreateConfigMap(env.Namespace, env.ReadinessProbeOpsConfigMap("readiness-ops"))
+				Expect(err).NotTo(HaveOccurred())
+				tearDowns = append(tearDowns, tearDown)
+
+				bdpl, err := env.GetBOSHDeployment(env.Namespace, deploymentName)
+				Expect(err).NotTo(HaveOccurred())
+				bdpl.Spec.Ops = []bdv1.ResourceReference{{Name: "readiness-ops", Type: bdv1.ConfigMapReference}}
+
+				_, _, err = env.UpdateBOSHDeployment(env.Namespace, *bdpl)
+				Expect(err).NotTo(HaveOccurred())
+
+				By("checking for statefulset")
+				stsName := fmt.Sprintf("%s-%s", deploymentName, "nats")
+
+				Eventually(func() []string {
+					sts, err := env.GetStatefulSet(env.Namespace, stsName)
+					Expect(err).NotTo(HaveOccurred(), "error getting statefulset for deployment")
+
+					if sts.Spec.Template.Spec.Containers[0].ReadinessProbe != nil {
+						return sts.Spec.Template.Spec.Containers[0].ReadinessProbe.Exec.Command
+					} else {
+						return []string{}
+					}
+				}, env.PollTimeout, env.PollInterval).Should(Equal([]string{"echo healthy"}), "command for readiness should be created")
+			})
 		})
 	})
 
