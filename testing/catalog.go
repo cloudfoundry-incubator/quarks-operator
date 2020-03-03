@@ -369,6 +369,25 @@ func (c *Catalog) InterpolateOpsIncorrectSecret(name string) corev1.Secret {
 	}
 }
 
+// ReadinessProbeOpsConfigMap for ops interpolate configmap tests with readiness probe
+func (c *Catalog) ReadinessProbeOpsConfigMap(name string) corev1.ConfigMap {
+	return corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Data: map[string]string{
+			"ops": `- type: replace
+  path: /instance_groups/name=nats?/jobs/name=nats?/properties/quarks/run
+  value:
+    healthcheck:
+      nats:
+        readiness:
+          exec:
+            command:
+            - "echo healthy"
+`,
+		},
+	}
+}
+
 // DefaultCA for use in tests
 func (c *Catalog) DefaultCA(name string, ca credsgen.Certificate) corev1.Secret {
 	return corev1.Secret{
