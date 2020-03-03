@@ -446,22 +446,15 @@ var _ = Describe("ContainerFactory", func() {
 			})
 
 			It("creates a postStart condition command", func() {
-				jobs = []bdm.Job{
-					bdm.Job{
-						Name: "fake-job",
-						Properties: bdm.JobProperties{
-							Quarks: bdm.Quarks{
-								PostStart: bpm.PostStart{
-									Condition: &bpm.PostStartCondition{
-										Exec: &corev1.ExecAction{
-											Command: []string{"sh", "-c", "fake_health_check"},
-										},
-									},
-								},
-							},
+				config := bpmConfigs["fake-job"]
+				config.PostStart = bpm.PostStart{
+					Condition: &bpm.PostStartCondition{
+						Exec: &corev1.ExecAction{
+							Command: []string{"sh", "-c", "fake_health_check"},
 						},
 					},
 				}
+				bpmConfigs["fake-job"] = config
 
 				containers, err := act()
 				Expect(err).ToNot(HaveOccurred())
@@ -483,6 +476,54 @@ var _ = Describe("ContainerFactory", func() {
 					"fake-process",
 					"--",
 					""))
+			})
+
+			It("creates a health check for the job", func() {
+				config := bpmConfigs["fake-job"]
+				config.Run = bpm.RunConfig{
+					HealthCheck: map[string]bpm.HealthCheck{
+						"fake-process": {
+							ReadinessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									Exec: &corev1.ExecAction{
+										Command: []string{"ls", "/"},
+									},
+								},
+							},
+							LivenessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									Exec: &corev1.ExecAction{
+										Command: []string{"echo", "liveness"},
+									},
+								},
+							},
+						},
+					},
+				}
+				bpmConfigs["fake-job"] = config
+
+				containers, err := act()
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(containers[0].ReadinessProbe.Exec.Command).Should(Equal([]string{"ls", "/"}))
+				Expect(containers[0].LivenessProbe.Exec.Command).Should(Equal([]string{"echo", "liveness"}))
+			})
+
+			It("creates a container security context for the job", func() {
+				config := bpmConfigs["fake-job"]
+				config.Run = bpm.RunConfig{
+					SecurityContext: &corev1.SecurityContext{
+						RunAsNonRoot:           pointers.Bool(true),
+						ReadOnlyRootFilesystem: pointers.Bool(true),
+					},
+				}
+				bpmConfigs["fake-job"] = config
+
+				containers, err := act()
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(*containers[0].SecurityContext.RunAsNonRoot).Should(BeTrue())
+				Expect(*containers[0].SecurityContext.ReadOnlyRootFilesystem).Should(BeTrue())
 			})
 		})
 
@@ -604,13 +645,12 @@ var _ = Describe("ContainerFactory", func() {
 
 			It("generates one BOSH pre-start init container with debug window", func() {
 				jobs = []bdm.Job{
-					bdm.Job{Name: "fake-job",
-						Properties: bdm.JobProperties{
-							Quarks: bdm.Quarks{
-								Debug: true,
-							},
-						}},
+					{Name: "fake-job"},
 				}
+				config := bpmConfigs["fake-job"]
+				config.Debug = true
+				bpmConfigs["fake-job"] = config
+
 				containers, err := act()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(containers).To(HaveLen(5))
@@ -620,12 +660,7 @@ var _ = Describe("ContainerFactory", func() {
 
 			It("generates one BPM pre-start init container with debug window", func() {
 				jobs = []bdm.Job{
-					bdm.Job{Name: "fake-job",
-						Properties: bdm.JobProperties{
-							Quarks: bdm.Quarks{
-								Debug: true,
-							},
-						}},
+					{Name: "fake-job"},
 				}
 
 				bpmConfigs["fake-job"] = bpm.Config{
@@ -638,7 +673,9 @@ var _ = Describe("ContainerFactory", func() {
 							Capabilities: []string{"SYS_TIME"},
 						},
 					},
+					Debug: true,
 				}
+
 				containers, err := act()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(containers).To(HaveLen(6))

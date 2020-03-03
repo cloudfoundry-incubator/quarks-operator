@@ -208,7 +208,9 @@ var _ = Describe("BPM Converter", func() {
 							},
 						},
 					}
-					m.InstanceGroups[1].Jobs[0].Properties.Quarks.ActivePassiveProbes = activePassiveProbes
+					config := bpmConfigs[1]["cflinuxfs3-rootfs-setup"]
+					config.ActivePassiveProbes = activePassiveProbes
+					bpmConfigs[1]["cflinuxfs3-rootfs-setup"] = config
 
 					resources, err := act(bpmConfigs[1], m.InstanceGroups[1])
 					Expect(err).ShouldNot(HaveOccurred())
@@ -383,8 +385,30 @@ var _ = Describe("BPM Converter", func() {
 			})
 
 			It("passes it on to the QuarksStatefulSetSpec", func() {
-				resources, err := act(bpm.Configs{}, m.InstanceGroups[0])
+				resources, err := act(bpm.Configs{
+					"bpm1": {
+						ActivePassiveProbes: map[string]corev1.Probe{
+							"some-bpm-process": {
+								PeriodSeconds: 2,
+								Handler: corev1.Handler{
+									Exec: &corev1.ExecAction{
+										Command: []string{"ls", "/"},
+									},
+								},
+							},
+							"another-bpm-process": {
+								PeriodSeconds: 2,
+								Handler: corev1.Handler{
+									Exec: &corev1.ExecAction{
+										Command: []string{"find", "*"},
+									},
+								},
+							},
+						},
+					},
+				}, m.InstanceGroups[0])
 				Expect(err).ShouldNot(HaveOccurred())
+
 				qSts := resources.InstanceGroups[0]
 				Expect(qSts.Spec.ActivePassiveProbes).ToNot(BeNil())
 				Expect(qSts.Spec.ActivePassiveProbes["some-bpm-process"].Handler.Exec.Command).To(Equal([]string{"ls", "/"}))
