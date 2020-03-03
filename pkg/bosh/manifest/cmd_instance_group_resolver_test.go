@@ -232,14 +232,13 @@ var _ = Describe("InstanceGroupResolver", func() {
 					ig = "redis-slave"
 				})
 
-				It("should remove info about job instances, instance count, azs", func() {
+				It("should remove info about job instances, instance count", func() {
 					resolve()
 					manifest, err := igr.Manifest()
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Instances).To(BeNil())
 					Expect(manifest.InstanceGroups[0].Instances).To(Equal(0))
-					Expect(manifest.InstanceGroups[0].AZs).To(Equal([]string{"z1", "z2"}))
 				})
 			})
 
