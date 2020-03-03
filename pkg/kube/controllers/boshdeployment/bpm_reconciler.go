@@ -102,38 +102,36 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
-	// Get the label from the BPM Secret and read the corresponding desired manifest
+	// Get the labels from the BPM Secret and read the corresponding desired manifest
+	deploymentName, ok := bpmSecret.Labels[bdv1.LabelDeploymentName]
+	if !ok {
+		return reconcile.Result{},
+			log.WithEvent(bpmSecret, "LabelMissingError").Errorf(ctx, "There's no label for a BoshDeployment name on the BPM secret '%s'", request.NamespacedName)
+	}
+
+	instanceGroupName, ok := bpmSecret.Labels[qjv1a1.LabelRemoteID]
+	if !ok {
+		return reconcile.Result{},
+			log.WithEvent(bpmSecret, "LabelMissingError").Errorf(ctx, "There's no label for a instance group name on the BPM secret '%s'", request.NamespacedName)
+	}
+
 	manifest, err := r.resolver.DesiredManifest(ctx, request.Namespace)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(bpmSecret, "DesiredManifestReadError").Errorf(ctx, "Failed to read desired manifest '%s': %v", request.NamespacedName, err)
+			log.WithEvent(bpmSecret, "DesiredManifestReadError").Errorf(ctx, "Failed to read desired manifest for bpm '%s': %v", request.NamespacedName, err)
 	}
 
 	dns, err := r.newDNSFunc(*manifest)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(bpmSecret, "DesiredManifestReadError").Errorf(ctx, "Failed to load BOSH DNS for manifest '%s': %v", request.NamespacedName, err)
-	}
-
-	// Apply BPM information
-	instanceGroupName, ok := bpmSecret.Labels[qjv1a1.LabelRemoteID]
-	if !ok {
-		return reconcile.Result{},
-			log.WithEvent(bpmSecret, "LabelMissingError").Errorf(ctx, "Missing container label for bpm information bpmSecret '%s'", request.NamespacedName)
-	}
-
-	// Start the instance groups referenced by this BPM secret
-	instanceName, ok := bpmSecret.Labels[bdv1.LabelDeploymentName]
-	if !ok {
-		return reconcile.Result{},
-			log.WithEvent(bpmSecret, "LabelMissingError").Errorf(ctx, "Missing deployment mame label for bpm information bpmSecret '%s'", request.NamespacedName)
+			log.WithEvent(bpmSecret, "DesiredManifestReadError").Errorf(ctx, "Failed to load BOSH DNS for manifest '%s': %v", deploymentName, err)
 	}
 
 	bdpl := &bdv1.BOSHDeployment{}
-	err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: instanceName}, bdpl)
+	err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: deploymentName}, bdpl)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get BoshDeployment instance '%s': %v", instanceName, err)
+			log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get BoshDeployment instance '%s': %v", deploymentName, err)
 	}
 
 	err = dns.Reconcile(ctx, request.Namespace, r.client, func(object metav1.Object) error {
@@ -145,7 +143,8 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 			log.WithEvent(bpmSecret, "DnsReconcileError").Errorf(ctx, "Failed to reconcile dns: %v", err)
 	}
 
-	resources, err := r.applyBPMResources(bdpl.Name, bpmSecret, manifest, dns)
+	// Apply BPM information
+	resources, err := r.applyBPMResources(bdpl.Name, instanceGroupName, bpmSecret, manifest, dns)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "BPMApplyingError").Errorf(ctx, "Failed to apply BPM information: %v", err)
@@ -173,13 +172,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileBPM) applyBPMResources(bdplName string, bpmSecret *corev1.Secret, manifest *bdm.Manifest, dns boshdns.DomainNameService) (*bpmconverter.Resources, error) {
-
-	instanceGroupName, ok := bpmSecret.Labels[qjv1a1.LabelRemoteID]
-	if !ok {
-		return nil, errors.Errorf("Missing container label for bpm information secret '%s'", bpmSecret.Name)
-	}
-
+func (r *ReconcileBPM) applyBPMResources(bdplName string, instanceGroupName string, bpmSecret *corev1.Secret, manifest *bdm.Manifest, dns boshdns.DomainNameService) (*bpmconverter.Resources, error) {
 	var bpmInfo bdm.BPMInfo
 	if val, ok := bpmSecret.Data["bpm.yaml"]; ok {
 		err := yaml.Unmarshal(val, &bpmInfo)

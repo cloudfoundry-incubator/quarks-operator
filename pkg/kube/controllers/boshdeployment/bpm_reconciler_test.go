@@ -43,7 +43,7 @@ var _ = Describe("ReconcileBPM", func() {
 		recorder                  *record.FakeRecorder
 		request                   reconcile.Request
 		ctx                       context.Context
-		resolver                  fakes.FakeInstanceGroupManifest
+		resolver                  fakes.FakeDesiredManifest
 		kubeConverter             fakes.FakeBPMConverter
 		manifest                  *bdm.Manifest
 		logs                      *observer.ObservedLogs
@@ -61,7 +61,7 @@ var _ = Describe("ReconcileBPM", func() {
 		manager = &fakes.FakeManager{}
 		manager.GetSchemeReturns(scheme.Scheme)
 		manager.GetEventRecorderForReturns(recorder)
-		resolver = fakes.FakeInstanceGroupManifest{}
+		resolver = fakes.FakeDesiredManifest{}
 		kubeConverter = fakes.FakeBPMConverter{}
 
 		kubeConverter.ResourcesReturns(&bpmconverter.Resources{}, nil)
@@ -232,7 +232,7 @@ variables: []
 	})
 
 	JustBeforeEach(func() {
-		resolver.InstanceGroupManifestReturns(manifest, nil)
+		resolver.DesiredManifestReturns(manifest, nil)
 		reconciler = cfd.NewBPMReconciler(ctx, config, manager, &resolver,
 			controllerutil.SetControllerReference, &kubeConverter,
 			func(m bdm.Manifest) (boshdns.DomainNameService, error) {
