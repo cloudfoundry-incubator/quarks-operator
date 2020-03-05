@@ -95,7 +95,6 @@ var _ = Describe("InstanceGroupResolver", func() {
 				Expect(bpmInfo).ToNot(BeNil())
 				Expect(bpmInfo.InstanceGroup.Name).To(Equal("log-api"))
 				Expect(bpmInfo.InstanceGroup.Instances).To(Equal(2))
-				Expect(bpmInfo.InstanceGroup.AZs).To(Equal([]string{"z1", "z2"}))
 			})
 
 			It("returns the bpm config for all jobs", func() {
@@ -240,7 +239,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 
 					Expect(manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Instances).To(BeNil())
 					Expect(manifest.InstanceGroups[0].Instances).To(Equal(0))
-					Expect(manifest.InstanceGroups[0].AZs).To(BeNil())
+					Expect(manifest.InstanceGroups[0].AZs).To(Equal([]string{"z1", "z2"}))
 				})
 			})
 
