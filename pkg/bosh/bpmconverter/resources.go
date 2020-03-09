@@ -107,7 +107,7 @@ func (kc *BPMConverter) Resources(deploymentName string, dns DomainNameService, 
 			return nil, err
 		}
 
-		services := kc.serviceToKubeServices(deploymentName, dns, instanceGroup, &convertedExtStatefulSet, bpmConfigs.IsActivePassiveModel())
+		services := kc.serviceToKubeServices(deploymentName, dns, instanceGroup, &convertedExtStatefulSet, bpmConfigs)
 		if len(services) != 0 {
 			res.Services = append(res.Services, services...)
 		}
@@ -230,13 +230,15 @@ func (kc *BPMConverter) serviceToQuarksStatefulSet(
 }
 
 // serviceToKubeServices will generate Services which expose ports for InstanceGroup's jobs
-func (kc *BPMConverter) serviceToKubeServices(deploymentName string, dns DomainNameService, instanceGroup *bdm.InstanceGroup, qSts *qstsv1a1.QuarksStatefulSet, activePassiveModel bool) []corev1.Service {
+func (kc *BPMConverter) serviceToKubeServices(deploymentName string, dns DomainNameService, instanceGroup *bdm.InstanceGroup, qSts *qstsv1a1.QuarksStatefulSet, bpmConfigs bpm.Configs) []corev1.Service {
 	var services []corev1.Service
-	// Collect ports to be exposed for each job
-	ports := instanceGroup.ServicePorts()
+	// Collect ports from bpm configs
+	ports := bpmConfigs.ServicePorts()
 	if len(ports) == 0 {
 		return services
 	}
+
+	isActivePassiveModel := bpmConfigs.IsActivePassiveModel()
 
 	if len(instanceGroup.AZs) > 0 {
 		for azIndex := range instanceGroup.AZs {
@@ -244,7 +246,7 @@ func (kc *BPMConverter) serviceToKubeServices(deploymentName string, dns DomainN
 				*instanceGroup,
 				deploymentName,
 				azIndex,
-				activePassiveModel,
+				isActivePassiveModel,
 				ports)
 		}
 	} else {
@@ -252,7 +254,7 @@ func (kc *BPMConverter) serviceToKubeServices(deploymentName string, dns DomainN
 			*instanceGroup,
 			deploymentName,
 			-1,
-			activePassiveModel,
+			isActivePassiveModel,
 			ports)
 	}
 
@@ -261,7 +263,7 @@ func (kc *BPMConverter) serviceToKubeServices(deploymentName string, dns DomainN
 		bdv1.LabelDeploymentName:    deploymentName,
 		bdv1.LabelInstanceGroupName: instanceGroup.Name,
 	}
-	if activePassiveModel {
+	if isActivePassiveModel {
 		headlessServiceSelector[qstsv1a1.LabelActivePod] = "active"
 	}
 	headlessService := corev1.Service{

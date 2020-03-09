@@ -98,9 +98,9 @@ type PostStartCondition struct {
 // Configs holds a collection of BPM configurations by their according job
 type Configs map[string]Config
 
-// IsActivePassiveModel indicates weather this bpm configs contains ActivePassiveProbes
-func (c Configs) IsActivePassiveModel() (isActivePassiveModel bool) {
-	for _, config := range c {
+// IsActivePassiveModel indicates whether these bpm configs contain ActivePassiveProbes
+func (cs Configs) IsActivePassiveModel() (isActivePassiveModel bool) {
+	for _, config := range cs {
 		if len(config.ActivePassiveProbes) > 0 {
 			isActivePassiveModel = true
 		}
@@ -110,14 +110,30 @@ func (c Configs) IsActivePassiveModel() (isActivePassiveModel bool) {
 }
 
 // ActivePassiveProbes returns all activePassive probes defined in the bpm configs
-func (c Configs) ActivePassiveProbes() map[string]corev1.Probe {
+func (cs Configs) ActivePassiveProbes() map[string]corev1.Probe {
 	probes := map[string]corev1.Probe{}
-	for _, config := range c {
+	for _, config := range cs {
 		for container, probe := range config.ActivePassiveProbes {
 			probes[container] = probe
 		}
 	}
 	return probes
+}
+
+// ServicePorts returns the service ports defined in the bpm configs
+func (cs Configs) ServicePorts() []corev1.ServicePort {
+	ports := []corev1.ServicePort{}
+
+	for _, c := range cs {
+		for _, port := range c.Ports {
+			ports = append(ports, corev1.ServicePort{
+				Name:     port.Name,
+				Protocol: corev1.Protocol(port.Protocol),
+				Port:     int32(port.Internal),
+			})
+		}
+	}
+	return ports
 }
 
 // NewConfig creates a new Config object from the yaml
