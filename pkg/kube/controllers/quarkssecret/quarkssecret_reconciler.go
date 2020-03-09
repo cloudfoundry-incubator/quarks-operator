@@ -154,20 +154,19 @@ func (r *ReconcileQuarksSecret) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
-	return reconcile.Result{}, r.updateStatus(ctx, instance)
+	r.updateStatus(ctx, instance)
+	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileQuarksSecret) updateStatus(ctx context.Context, instance *qsv1a1.QuarksSecret) error {
+func (r *ReconcileQuarksSecret) updateStatus(ctx context.Context, instance *qsv1a1.QuarksSecret) {
 	instance.Status.Generated = true
 
 	now := metav1.Now()
 	instance.Status.LastReconcile = &now
 	err := r.client.Status().Update(ctx, instance)
 	if err != nil {
-		return errors.Wrapf(err, "could not create or update QuarksSecret status '%s'", instance.GetName())
+		ctxlog.Errorf(ctx, "could not create or update QuarksSecret status '%s': %v", instance.GetName(), err)
 	}
-
-	return nil
 }
 
 func (r *ReconcileQuarksSecret) createPasswordSecret(ctx context.Context, instance *qsv1a1.QuarksSecret) error {
@@ -228,7 +227,6 @@ func (r *ReconcileQuarksSecret) createSSHSecret(ctx context.Context, instance *q
 }
 
 func (r *ReconcileQuarksSecret) createCertificateSecret(ctx context.Context, instance *qsv1a1.QuarksSecret) error {
-
 	serviceIPForEKSWorkaround := ""
 
 	for _, serviceRef := range instance.Spec.Request.CertificateRequest.ServiceRef {
@@ -363,7 +361,7 @@ func (r *ReconcileQuarksSecret) skipReconcile(ctx context.Context, instance *qsv
 
 // createSecret applies common properties(labels and ownerReferences) to the secret and creates it
 func (r *ReconcileQuarksSecret) createSecret(ctx context.Context, instance *qsv1a1.QuarksSecret, secret *corev1.Secret) error {
-	ctxlog.Debugf(ctx, "Creating secret '%s'", secret.Name)
+	ctxlog.Debugf(ctx, "Creating secret '%s', owned by quarks secret '%s'", secret.Name, instance.Name)
 
 	secretLabels := secret.GetLabels()
 	if secretLabels == nil {
@@ -454,31 +452,34 @@ func (r *ReconcileQuarksSecret) generateCertificateGenerationRequest(ctx context
 }
 
 // createCertificateSigningRequest creates CertificateSigningRequest Object
-func (r *ReconcileQuarksSecret) createCertificateSigningRequest(ctx context.Context, instance *qsv1a1.QuarksSecret, csr []byte) error {
-	csrName := names.CSRName(instance.Namespace, instance.Name)
+func (r *ReconcileQuarksSecret) createCertificateSigningRequest(ctx context.Context, qsec *qsv1a1.QuarksSecret, csr []byte) error {
+	csrName := names.CSRName(qsec.Namespace, qsec.Name)
 	ctxlog.Debugf(ctx, "Creating certificatesigningrequest '%s'", csrName)
 
-	annotations := instance.GetAnnotations()
+	annotations := qsec.GetAnnotations()
 	if annotations == nil {
 		annotations = map[string]string{}
 	}
-	annotations[qsv1a1.AnnotationCertSecretName] = instance.Spec.SecretName
-	annotations[qsv1a1.AnnotationQSecNamespace] = instance.Namespace
+	annotations[qsv1a1.AnnotationCertSecretName] = qsec.Spec.SecretName
+	annotations[qsv1a1.AnnotationQSecNamespace] = qsec.Namespace
+	annotations[qsv1a1.AnnotationQSecName] = qsec.Name
 
 	csrObj := &certv1.CertificateSigningRequest{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        csrName,
-			Labels:      instance.Labels,
+			Labels:      qsec.Labels,
 			Annotations: annotations,
 		},
 		Spec: certv1.CertificateSigningRequestSpec{
 			Request: csr,
-			Usages:  instance.Spec.Request.CertificateRequest.Usages,
+			Usages:  qsec.Spec.Request.CertificateRequest.Usages,
 		},
 	}
 
+	oldCsrObj := &certv1.CertificateSigningRequest{}
+
 	// CSR spec is immutable after the request is created
-	err := r.client.Get(ctx, types.NamespacedName{Name: csrObj.Name}, instance)
+	err := r.client.Get(ctx, types.NamespacedName{Name: csrObj.Name}, oldCsrObj)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			err = r.client.Create(ctx, csrObj)
@@ -490,5 +491,6 @@ func (r *ReconcileQuarksSecret) createCertificateSigningRequest(ctx context.Cont
 		return errors.Wrapf(err, "could not get certificatesigningrequest '%s'", csrObj.Name)
 	}
 
+	ctxlog.Infof(ctx, "Ignoring immutable CSR '%s'", csrObj.Name)
 	return nil
 }
