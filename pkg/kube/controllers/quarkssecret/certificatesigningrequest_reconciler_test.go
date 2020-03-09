@@ -42,6 +42,8 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 		certClient       *certv1clientfakes.FakeCertificatesV1beta1
 		csr              *certv1.CertificateSigningRequest
 		privateKeySecret *corev1.Secret
+		qsec             *qsv1a1.QuarksSecret
+		setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error = func(owner, object metav1.Object, scheme *runtime.Scheme) error { return nil }
 	)
 
 	BeforeEach(func() {
@@ -52,6 +54,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 				Annotations: map[string]string{
 					qsv1a1.AnnotationCertSecretName: "fake-cert",
 					qsv1a1.AnnotationQSecNamespace:  "fake-namespace",
+					qsv1a1.AnnotationQSecName:       "fake-name",
 				},
 			},
 			Spec: certv1.CertificateSigningRequestSpec{
@@ -66,6 +69,13 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 			Data: map[string][]byte{
 				"private_key": []byte("fake-private-key"),
 				"is_ca":       []byte("false"),
+			},
+		}
+
+		qsec = &qsv1a1.QuarksSecret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "fake-name",
+				Namespace: "fake-namespace",
 			},
 		}
 
@@ -87,6 +97,11 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 					privateKeySecret.DeepCopyInto(object)
 					return nil
 				}
+			case *qsv1a1.QuarksSecret:
+				if nn.Name == "fake-name" {
+					qsec.DeepCopyInto(object)
+					return nil
+				}
 			}
 			return apierrors.NewNotFound(schema.GroupResource{}, "not found")
 		})
@@ -99,7 +114,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 	})
 
 	JustBeforeEach(func() {
-		reconciler = escontroller.NewCertificateSigningRequestReconciler(ctx, config, manager, certClient)
+		reconciler = escontroller.NewCertificateSigningRequestReconciler(ctx, config, manager, certClient, setReferenceFunc)
 	})
 
 	Context("when reconciling pending CSR", func() {
@@ -251,9 +266,9 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 			result, err := reconciler.Reconcile(request)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(reconcile.Result{}).To(Equal(result))
-			Expect(client.GetCallCount()).To(Equal(3))
+			Expect(client.GetCallCount()).To(Equal(4))
 			Expect(client.CreateCallCount()).To(Equal(1))
-			Expect(client.DeleteCallCount()).To(Equal(1))
+			Expect(client.DeleteCallCount()).To(Equal(2))
 		})
 
 		It("Skips reconcile when getting nil annotations", func() {
@@ -305,12 +320,9 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 				return apierrors.NewNotFound(schema.GroupResource{}, "not found")
 			})
 
-			_, err := reconciler.Reconcile(request)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("could not get secret"))
-			Expect(client.GetCallCount()).To(Equal(2))
-			Expect(client.CreateCallCount()).To(Equal(0))
-			Expect(client.DeleteCallCount()).To(Equal(0))
+			result, err := reconciler.Reconcile(request)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Requeue).To(BeTrue())
 		})
 
 		It("handles an error when creating certificate secret", func() {
@@ -321,7 +333,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 			_, err := reconciler.Reconcile(request)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("could not create or update secret"))
-			Expect(client.GetCallCount()).To(Equal(3))
+			Expect(client.GetCallCount()).To(Equal(4))
 			Expect(client.CreateCallCount()).To(Equal(1))
 			Expect(client.DeleteCallCount()).To(Equal(0))
 		})
@@ -334,7 +346,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 			_, err := reconciler.Reconcile(request)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("could not delete secret"))
-			Expect(client.GetCallCount()).To(Equal(3))
+			Expect(client.GetCallCount()).To(Equal(4))
 			Expect(client.CreateCallCount()).To(Equal(1))
 			Expect(client.DeleteCallCount()).To(Equal(1))
 		})

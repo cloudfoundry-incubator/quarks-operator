@@ -40,6 +40,8 @@ var (
 	LabelKind = fmt.Sprintf("%s/secret-kind", apis.GroupName)
 	// AnnotationCertSecretName is the annotation key for certificate secret name
 	AnnotationCertSecretName = fmt.Sprintf("%s/cert-secret-name", apis.GroupName)
+	// AnnotationQSecName is the annotation key for the name of the owning quarks secret
+	AnnotationQSecName = fmt.Sprintf("%s/quarks-secret-name", apis.GroupName)
 	// AnnotationQSecNamespace is the annotation key for quarks secret namespace
 	AnnotationQSecNamespace = fmt.Sprintf("%s/quarks-secret-namespace", apis.GroupName)
 	// LabelSecretRotationTrigger is set on a config map to trigger secret
