@@ -110,7 +110,7 @@ var _ = Describe("Trender", func() {
 				Expect(values.Env["FOOBARWITHSPECINDEX"]).To(Equal("0"))
 				Expect(values.Env["FOOBARWITHSPECNAME"]).To(Equal("log-api-loggregator_trafficcontroller"))
 				Expect(values.Env["FOOBARWITHSPECNETWORKS"]).To(Equal(""))
-				Expect(values.Env["FOOBARWITHSPECADDRESS"]).To(Equal("foo-log-api-0"))
+				Expect(values.Env["FOOBARWITHSPECADDRESS"]).To(Equal("foo-log-api-z0-0"))
 				Expect(values.Env["FOOBARWITHSPECDEPLOYMENT"]).To(Equal(""))
 				Expect(values.Env["FOOBARWITHSPECIP"]).To(Equal("172.17.0.13"))
 			})
