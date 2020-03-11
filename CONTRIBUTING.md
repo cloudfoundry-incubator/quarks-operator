@@ -59,10 +59,10 @@ Please refer to [Code of Conduct](https://www.cloudfoundry.org/code-of-conduct/)
 
 - [Bugs][1]
 - [Features][2]
-- [Readme][4]
+- [Readme][3]
 
 [1]: https://github.com/cloudfoundry-incubator/cf-operator/issues?q=is%3Aopen+is%3Aissue+label%3Abug
 
 [2]: https://github.com/cloudfoundry-incubator/cf-operator/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement
 
-[3]: https://github.com/cloudfoundry-incubator/cf-operator
+[3]: https://github.com/cloudfoundry-incubator/cf-operator#cf-operator
