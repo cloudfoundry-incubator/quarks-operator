@@ -49,7 +49,15 @@ When you create a github issue, cf-bot creates a story in the `IceBox` board in 
 
 * If the story is moved to the `Current Iteration/Backlog` board, then expect that the story would be worked on in the coming sprints.
 * If the story is left out in the `IceBox` board itself, then expect that the story is not in priority and the github issue will be closed. This doesn't mean we reject to implement the feature or fix. This step is to prevent piling up of github issues's. The story is still in the tracker and will be worked on when it is moved from `IceBox` to `Current Iteration/Backlog` during planning sessions.
-* Both github issue and the story will be closed if there is no response for more than 10 days from the person who filed it, when contacted.
+* Both github issue and the story will be closed if there is no response for more than 30 days from the person who filed it, when contacted.
+
+### How are tracker stories handled
+
+* By default, a story is in `Unstarted` state. 
+* When the developer clicks on the `Start` button, the story moves to `Started` state. 
+* When the developer finishes the story, submits a PR and clicks on `Finish` button, the story moves to `Finished` state.
+* After approving all PRs that belong to a story, the reviewer and author then try to merge and rebase those PRs, changing references as needed, and ensure all tests are still green. Finally one of them clicks the `Deliver` button which is when the story moves to the `Delivered` state. 
+* The team lead after checking the feature/bugfix, will accept the story. That is the end of the life of a story. A detailed flow diagram can be found [here](https://www.pivotaltracker.com/help/articles/story_states/).
 
 ## Code review process
 
