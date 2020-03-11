@@ -278,23 +278,15 @@ func (dns *boshDomainNameService) createCorefile(namespace string) (string, erro
 	for _, alias := range dns.Aliases {
 		for _, target := range alias.Targets {
 			// Implement BOSH DNS placeholder alias: https://bosh.io/docs/dns/#placeholder-alias.
-			if target.Query == "_" {
-				instanceGroup, found := dns.InstanceGroups.InstanceGroupByName(target.InstanceGroup)
-				if !found {
-					continue
-				}
-				for i := 0; i < instanceGroup.Instances; i++ {
-					id := fmt.Sprintf("%s-%d", target.InstanceGroup, i)
-					from := strings.Replace(alias.Domain, "_", id, 1)
-					serviceName := instanceGroup.IndexedServiceName(dns.ManifestName, i, -1)
-					to := fmt.Sprintf("%s.%s.svc.%s", serviceName, namespace, clusterDomain)
-					rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
-				}
-			} else {
-				from := alias.Domain
-				to := fmt.Sprintf("%s.%s.svc.%s", dns.HeadlessServiceName(target.InstanceGroup), namespace, clusterDomain)
-				rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
+			instanceGroup, found := dns.InstanceGroups.InstanceGroupByName(target.InstanceGroup)
+			if !found {
+				continue
 			}
+			rewrites = dns.gatherAllRewrites(rewrites,
+				*instanceGroup,
+				target,
+				namespace,
+				alias)
 		}
 	}
 
@@ -305,6 +297,55 @@ func (dns *boshDomainNameService) createCorefile(namespace string) (string, erro
 	}
 
 	return config.String(), nil
+}
+
+func (dns *boshDomainNameService) gatherAllRewrites(rewrites []string,
+	instanceGroup bdm.InstanceGroup,
+	target Target,
+	namespace string,
+	alias Alias) []string {
+	if target.Query == "_" {
+		if len(instanceGroup.AZs) > 0 {
+			for azIndex := range instanceGroup.AZs {
+				rewrites = dns.gatherRewritesForInstances(rewrites,
+					instanceGroup,
+					target,
+					namespace,
+					azIndex,
+					alias)
+			}
+		} else {
+			rewrites = dns.gatherRewritesForInstances(rewrites,
+				instanceGroup,
+				target,
+				namespace,
+				-1,
+				alias)
+		}
+	} else {
+		from := alias.Domain
+		to := fmt.Sprintf("%s.%s.svc.%s", dns.HeadlessServiceName(target.InstanceGroup), namespace, clusterDomain)
+		rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
+	}
+
+	return rewrites
+}
+
+func (dns *boshDomainNameService) gatherRewritesForInstances(rewrites []string,
+	instanceGroup bdm.InstanceGroup,
+	target Target,
+	namespace string,
+	azIndex int,
+	alias Alias) []string {
+	for i := 0; i < instanceGroup.Instances; i++ {
+		id := fmt.Sprintf("%s-%d", target.InstanceGroup, i)
+		from := strings.Replace(alias.Domain, "_", id, 1)
+		serviceName := instanceGroup.IndexedServiceName(dns.ManifestName, i, azIndex)
+		to := fmt.Sprintf("%s.%s.svc.%s", serviceName, namespace, clusterDomain)
+		rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
+	}
+
+	return rewrites
 }
 
 // The Corefile values other than the rewrites were based on the default cluster CoreDNS Corefile.
