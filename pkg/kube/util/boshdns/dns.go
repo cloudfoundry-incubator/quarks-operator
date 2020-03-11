@@ -286,7 +286,7 @@ func (dns *boshDomainNameService) createCorefile(namespace string) (string, erro
 				for i := 0; i < instanceGroup.Instances; i++ {
 					id := fmt.Sprintf("%s-%d", target.InstanceGroup, i)
 					from := strings.Replace(alias.Domain, "_", id, 1)
-					serviceName := instanceGroup.IndexedServiceName(dns.ManifestName, i)
+					serviceName := instanceGroup.IndexedServiceName(dns.ManifestName, i, -1)
 					to := fmt.Sprintf("%s.%s.svc.%s", serviceName, namespace, clusterDomain)
 					rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
 				}

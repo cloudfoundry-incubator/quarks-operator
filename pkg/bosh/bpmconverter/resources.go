@@ -261,7 +261,7 @@ func (kc *BPMConverter) serviceToKubeServices(manifestName string, dns DomainNam
 		if len(instanceGroup.AZs) == 0 {
 			services = append(services, corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      instanceGroup.IndexedServiceName(manifestName, len(services)),
+					Name:      instanceGroup.IndexedServiceName(manifestName, len(services), -1),
 					Namespace: kc.namespace,
 					Labels:    serviceLabels(0, i, false),
 				},
@@ -274,7 +274,7 @@ func (kc *BPMConverter) serviceToKubeServices(manifestName string, dns DomainNam
 		for azIndex := range instanceGroup.AZs {
 			services = append(services, corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      instanceGroup.IndexedServiceName(manifestName, len(services)),
+					Name:      instanceGroup.IndexedServiceName(manifestName, len(services), -1),
 					Namespace: kc.namespace,
 					Labels:    serviceLabels(azIndex, i, false),
 				},
