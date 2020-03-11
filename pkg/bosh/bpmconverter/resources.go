@@ -244,46 +244,22 @@ func (kc *BPMConverter) serviceToKubeServices(manifestName string, dns DomainNam
 		}
 	}
 
-	serviceLabels := func(azIndex, ordinal int, includeActiveSelector bool) map[string]string {
-		labels := map[string]string{
-			bdm.LabelDeploymentName:    manifestName,
-			bdm.LabelInstanceGroupName: instanceGroup.Name,
-			qstsv1a1.LabelAZIndex:      strconv.Itoa(azIndex),
-			qstsv1a1.LabelPodOrdinal:   strconv.Itoa(ordinal),
-		}
-		if includeActiveSelector {
-			labels[qstsv1a1.LabelActivePod] = "active"
-		}
-		return labels
-	}
-
-	for i := 0; i < instanceGroup.Instances; i++ {
-		if len(instanceGroup.AZs) == 0 {
-			services = append(services, corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      instanceGroup.IndexedServiceName(manifestName, len(services), -1),
-					Namespace: kc.namespace,
-					Labels:    serviceLabels(0, i, false),
-				},
-				Spec: corev1.ServiceSpec{
-					Ports:    ports,
-					Selector: serviceLabels(0, i, activePassiveModel),
-				},
-			})
-		}
+	if len(instanceGroup.AZs) > 0 {
 		for azIndex := range instanceGroup.AZs {
-			services = append(services, corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      instanceGroup.IndexedServiceName(manifestName, len(services), -1),
-					Namespace: kc.namespace,
-					Labels:    serviceLabels(azIndex, i, false),
-				},
-				Spec: corev1.ServiceSpec{
-					Ports:    ports,
-					Selector: serviceLabels(azIndex, i, activePassiveModel),
-				},
-			})
+			services = kc.generateServices(services,
+				*instanceGroup,
+				manifestName,
+				azIndex,
+				activePassiveModel,
+				ports)
 		}
+	} else {
+		services = kc.generateServices(services,
+			*instanceGroup,
+			manifestName,
+			-1,
+			activePassiveModel,
+			ports)
 	}
 
 	headlessServiceName := dns.HeadlessServiceName(instanceGroup.Name)
@@ -409,4 +385,43 @@ func (kc *BPMConverter) errandToQuarksJob(
 	}
 
 	return qJob, nil
+}
+
+func (kc *BPMConverter) generateServices(services []corev1.Service,
+	instanceGroup bdm.InstanceGroup,
+	manifestName string,
+	azIndex int,
+	activePassiveModel bool,
+	ports []corev1.ServicePort) []corev1.Service {
+	serviceLabels := func(azIndex, ordinal int, includeActiveSelector bool) map[string]string {
+		if azIndex == -1 {
+			azIndex = 0
+		}
+		labels := map[string]string{
+			bdm.LabelDeploymentName:    manifestName,
+			bdm.LabelInstanceGroupName: instanceGroup.Name,
+			qstsv1a1.LabelAZIndex:      strconv.Itoa(azIndex),
+			qstsv1a1.LabelPodOrdinal:   strconv.Itoa(ordinal),
+		}
+		if includeActiveSelector {
+			labels[qstsv1a1.LabelActivePod] = "active"
+		}
+		return labels
+	}
+
+	for i := 0; i < instanceGroup.Instances; i++ {
+		services = append(services, corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      instanceGroup.IndexedServiceName(manifestName, i, azIndex),
+				Namespace: kc.namespace,
+				Labels:    serviceLabels(azIndex, i, false),
+			},
+			Spec: corev1.ServiceSpec{
+				Ports:    ports,
+				Selector: serviceLabels(azIndex, i, activePassiveModel),
+			},
+		})
+	}
+
+	return services
 }
