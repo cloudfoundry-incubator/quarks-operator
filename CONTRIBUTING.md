@@ -43,6 +43,14 @@ If you find yourself wishing for a feature/enhancement that does not exist yet i
 by running a quick [search][2] - you may not be alone! If you ain't any luck, then go ahead and open a
 new issue by selecting the "Feature" issue type and answer some needed questions.
 
+### How are Github issues handled
+
+When you create a github issue, cf-bot creates a story in the `IceBox` board in the tracker automatically and comments on the issue with the link to the story. The team conducts its planning session once every week during which your issue will be discussed.
+
+* If the story is moved to the `Current Iteration/Backlog` board, then expect that the story would be worked on in the coming sprints.
+* If the story is left out in the `IceBox` board itself, then expect that the story is not in priority and the github issue will be closed. This doesn't mean we reject to implement the feature or fix. This step is to prevent piling up of github issues's. The story is still in the tracker and will be worked on when it is moved from `IceBox` to `Current Iteration/Backlog` during planning sessions.
+* Both github issue and the story will be closed if there is no response for more than 10 days from the person who filed it, when contacted.
+
 ## Code review process
 
 The core team looks to Pull Requests regularly and in a best effort.
