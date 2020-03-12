@@ -98,7 +98,6 @@ func (igr *InstanceGroupResolver) BPMInfo() (BPMInfo, error) {
 	}
 
 	bpmInfo.InstanceGroup.Name = igr.instanceGroup.Name
-	bpmInfo.InstanceGroup.AZs = igr.instanceGroup.AZs
 	bpmInfo.InstanceGroup.Instances = igr.instanceGroup.Instances
 	bpmInfo.InstanceGroup.Env = igr.instanceGroup.Env
 	bpmInfo.Variables = igr.manifest.Variables
@@ -133,7 +132,11 @@ func (igr *InstanceGroupResolver) Manifest() (Manifest, error) {
 		igJobs = append(igJobs, igJob)
 	}
 
-	ig := &InstanceGroup{Name: igr.instanceGroup.Name, Jobs: igJobs}
+	ig := &InstanceGroup{
+		Name: igr.instanceGroup.Name,
+		Jobs: igJobs,
+		AZs:  igr.instanceGroup.AZs,
+	}
 
 	igManifest := Manifest{
 		InstanceGroups: []*InstanceGroup{ig},

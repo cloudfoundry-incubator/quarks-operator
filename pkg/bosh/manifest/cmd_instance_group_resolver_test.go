@@ -95,7 +95,6 @@ var _ = Describe("InstanceGroupResolver", func() {
 				Expect(bpmInfo).ToNot(BeNil())
 				Expect(bpmInfo.InstanceGroup.Name).To(Equal("log-api"))
 				Expect(bpmInfo.InstanceGroup.Instances).To(Equal(2))
-				Expect(bpmInfo.InstanceGroup.AZs).To(Equal([]string{"z1", "z2"}))
 			})
 
 			It("returns the bpm config for all jobs", func() {
@@ -110,8 +109,8 @@ var _ = Describe("InstanceGroupResolver", func() {
 				Expect(bpm.Processes[0].Env["FOOBARWITHLINKVALUES"]).To(Equal("10001"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHLINKNESTEDVALUES"]).To(Equal("7765"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHLINKINSTANCESAZ"]).To(Equal("z1"))
-				Expect(bpm.Processes[0].Env["FOOBARWITHLINKINSTANCESADDRESS"]).To(Equal("cf-doppler-0"))
-				Expect(bpm.Processes[0].Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-0"))
+				Expect(bpm.Processes[0].Env["FOOBARWITHLINKINSTANCESADDRESS"]).To(Equal("cf-doppler-z0-0"))
+				Expect(bpm.Processes[0].Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-z0-0"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECDEPLOYMENT"]).To(Equal("cf"))
 
 				// The following block of assertions are related to the usage of
@@ -127,7 +126,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECINDEX"]).To(Equal("0"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECNAME"]).To(Equal("log-api-loggregator_trafficcontroller"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECNETWORKS"]).To(Equal(""))
-				Expect(bpm.Processes[0].Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-0"))
+				Expect(bpm.Processes[0].Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-z0-0"))
 
 				Expect(bpm.Ports).To(ContainElement(bpmConfig.Port{
 					Name:     "outgoing_dropsonde_port",
@@ -240,7 +239,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 
 					Expect(manifest.InstanceGroups[0].Jobs[0].Properties.Quarks.Instances).To(BeNil())
 					Expect(manifest.InstanceGroups[0].Instances).To(Equal(0))
-					Expect(manifest.InstanceGroups[0].AZs).To(BeNil())
+					Expect(manifest.InstanceGroups[0].AZs).To(Equal([]string{"z1", "z2"}))
 				})
 			})
 

@@ -258,7 +258,7 @@ var _ = Describe("BPM Converter", func() {
 
 					// Test services for the quarks statefulSet
 					service0 := resources.Services[0]
-					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-0", deploymentName, stS.Name)))
+					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-z%d-0", deploymentName, stS.Name, 0)))
 					Expect(service0.Spec.Selector).To(Equal(map[string]string{
 						manifest.LabelDeploymentName:    deploymentName,
 						manifest.LabelInstanceGroupName: stS.Name,
@@ -274,12 +274,12 @@ var _ = Describe("BPM Converter", func() {
 					}))
 
 					service1 := resources.Services[1]
-					Expect(service1.Name).To(Equal(fmt.Sprintf("%s-%s-1", deploymentName, stS.Name)))
+					Expect(service1.Name).To(Equal(fmt.Sprintf("%s-%s-z%d-1", deploymentName, stS.Name, 0)))
 					Expect(service1.Spec.Selector).To(Equal(map[string]string{
 						manifest.LabelDeploymentName:    deploymentName,
 						manifest.LabelInstanceGroupName: stS.Name,
-						qstsv1a1.LabelAZIndex:           "1",
-						qstsv1a1.LabelPodOrdinal:        "0",
+						qstsv1a1.LabelAZIndex:           "0",
+						qstsv1a1.LabelPodOrdinal:        "1",
 					}))
 					Expect(service1.Spec.Ports).To(Equal([]corev1.ServicePort{
 						{
@@ -290,12 +290,12 @@ var _ = Describe("BPM Converter", func() {
 					}))
 
 					service2 := resources.Services[2]
-					Expect(service2.Name).To(Equal(fmt.Sprintf("%s-%s-2", deploymentName, stS.Name)))
+					Expect(service2.Name).To(Equal(fmt.Sprintf("%s-%s-z%d-0", deploymentName, stS.Name, 1)))
 					Expect(service2.Spec.Selector).To(Equal(map[string]string{
 						manifest.LabelDeploymentName:    deploymentName,
 						manifest.LabelInstanceGroupName: stS.Name,
-						qstsv1a1.LabelAZIndex:           "0",
-						qstsv1a1.LabelPodOrdinal:        "1",
+						qstsv1a1.LabelAZIndex:           "1",
+						qstsv1a1.LabelPodOrdinal:        "0",
 					}))
 					Expect(service2.Spec.Ports).To(Equal([]corev1.ServicePort{
 						{
@@ -306,7 +306,7 @@ var _ = Describe("BPM Converter", func() {
 					}))
 
 					service3 := resources.Services[3]
-					Expect(service3.Name).To(Equal(fmt.Sprintf("%s-%s-3", deploymentName, stS.Name)))
+					Expect(service3.Name).To(Equal(fmt.Sprintf("%s-%s-z%d-1", deploymentName, stS.Name, 1)))
 					Expect(service3.Spec.Selector).To(Equal(map[string]string{
 						manifest.LabelDeploymentName:    deploymentName,
 						manifest.LabelInstanceGroupName: stS.Name,

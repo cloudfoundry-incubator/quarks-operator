@@ -120,9 +120,13 @@ func (ig *InstanceGroup) QuarksStatefulSetName(deploymentName string) string {
 
 // IndexedServiceName constructs an indexed service name. It's used to construct the service
 // names other than the headless service.
-func (ig *InstanceGroup) IndexedServiceName(deploymentName string, index int) string {
+func (ig *InstanceGroup) IndexedServiceName(deploymentName string, index int, azIndex int) string {
 	sn := util.ServiceName(ig.Name, deploymentName, 53)
-	return fmt.Sprintf("%s-%d", sn, index)
+	if azIndex > -1 {
+		return fmt.Sprintf("%s-z%d-%d", sn, azIndex, index)
+	} else {
+		return fmt.Sprintf("%s-%d", sn, index)
+	}
 }
 
 func (ig *InstanceGroup) jobInstances(
@@ -137,30 +141,41 @@ func (ig *InstanceGroup) jobInstances(
 		bootstrapIndex = ig.Instances*len(ig.AZs) - 1
 	}
 
-	for i := 0; i < ig.Instances; i++ {
-		// TODO: Understand whether there are negative side-effects to using this
-		// default or not.
-		azs := []string{""}
-		if len(ig.AZs) > 0 {
-			azs = ig.AZs
+	if len(ig.AZs) > 0 {
+		for azIndex, az := range ig.AZs {
+			jobsInstances = ig.generateJobInstances(jobsInstances, initialRollout, azIndex, az, deploymentName, jobName, bootstrapIndex)
 		}
-
-		for _, az := range azs {
-			index := len(jobsInstances)
-			address := ig.IndexedServiceName(deploymentName, index)
-			name := fmt.Sprintf("%s-%s", ig.NameSanitized(), jobName)
-
-			jobsInstances = append(jobsInstances, JobInstance{
-				Address:   address,
-				AZ:        az,
-				Bootstrap: index == bootstrapIndex,
-				Index:     index,
-				Instance:  i,
-				Name:      name,
-				ID:        fmt.Sprintf("%s-%d", ig.NameSanitized(), index),
-			})
-		}
+	} else {
+		jobsInstances = ig.generateJobInstances(jobsInstances, initialRollout, -1, "", deploymentName, jobName, bootstrapIndex)
 	}
+
+	return jobsInstances
+}
+
+func (ig *InstanceGroup) generateJobInstances(jobsInstances []JobInstance,
+	initialRollout bool,
+	azIndex int,
+	az string,
+	deploymentName string,
+	jobName string,
+	bootstrapIndex int) []JobInstance {
+
+	for i := 0; i < ig.Instances; i++ {
+		index := len(jobsInstances)
+		address := ig.IndexedServiceName(deploymentName, i, azIndex)
+		name := fmt.Sprintf("%s-%s", ig.NameSanitized(), jobName)
+
+		jobsInstances = append(jobsInstances, JobInstance{
+			Address:   address,
+			AZ:        az,
+			Bootstrap: index == bootstrapIndex,
+			Index:     index,
+			Instance:  i,
+			Name:      name,
+			ID:        fmt.Sprintf("%s-%d", ig.NameSanitized(), index),
+		})
+	}
+
 	return jobsInstances
 }
 

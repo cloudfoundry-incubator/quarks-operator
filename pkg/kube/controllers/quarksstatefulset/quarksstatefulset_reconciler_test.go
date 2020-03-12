@@ -2,6 +2,7 @@ package quarksstatefulset_test
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -235,7 +236,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 							Expect(podLabels).Should(HaveKeyWithValue(existingLabel, existingValue))
 							Expect(podLabels).Should(HaveKeyWithValue(qstsv1a1.LabelAZIndex, strconv.Itoa(idx)))
 							Expect(podLabels).Should(HaveKeyWithValue(qstsv1a1.LabelAZName, zones[idx]))
-							Expect(podLabels).Should(HaveKeyWithValue(qstsv1a1.LabelQStsName, ess.Name))
+							Expect(podLabels).Should(HaveKeyWithValue(qstsv1a1.LabelQStsName, fmt.Sprintf("%s-z%d", ess.Name, idx)))
 
 							podAnnotations := ss.Spec.Template.GetAnnotations()
 							Expect(podAnnotations).Should(HaveKeyWithValue(existingAnnotation, existingValue))
@@ -340,7 +341,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 							Expect(podLabels).Should(HaveKeyWithValue(existingLabel, existingValue))
 							Expect(podLabels).Should(HaveKeyWithValue(qstsv1a1.LabelAZIndex, strconv.Itoa(idx)))
 							Expect(podLabels).Should(HaveKeyWithValue(qstsv1a1.LabelAZName, zones[idx]))
-							Expect(podLabels).Should(HaveKeyWithValue(qstsv1a1.LabelQStsName, ess.Name))
+							Expect(podLabels).Should(HaveKeyWithValue(qstsv1a1.LabelQStsName, fmt.Sprintf("%s-z%d", ess.Name, idx)))
 
 							podAnnotations := ss.Spec.Template.GetAnnotations()
 							Expect(podAnnotations).Should(HaveKeyWithValue(existingAnnotation, existingValue))
