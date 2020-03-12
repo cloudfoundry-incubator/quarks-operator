@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -83,4 +84,15 @@ func (m *Machine) CollectDeployment(namespace string, name string, generation in
 		return nil, errors.Wrap(err, "waiting for deployment "+name)
 	}
 	return client.Get(name, metav1.GetOptions{})
+}
+
+// EnvKeys returns an array of all env key names found in containers
+func (m *Machine) EnvKeys(containers []corev1.Container) []string {
+	envKeys := []string{}
+	for _, c := range containers {
+		for _, e := range c.Env {
+			envKeys = append(envKeys, e.Name)
+		}
+	}
+	return envKeys
 }
