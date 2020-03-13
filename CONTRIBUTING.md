@@ -55,6 +55,7 @@ The core team conducts its planning session once every week during which your is
 
 * If the story is moved to the `Current Iteration/Backlog` board, then expect that the story would be worked on in the coming sprints.
 * If the story is left out in the `IceBox` board itself, then expect that the story low in priority.
+* If the github issue becomes stale, it might be closed even though we plan to work on it. The core team will reopen it when work begins.
 * Both the github issue and the story will be closed if there is no response for more than 30 days when contacted.
 
 ### How are tracker stories handled
