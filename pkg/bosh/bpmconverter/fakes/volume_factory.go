@@ -27,13 +27,14 @@ type FakeVolumeFactory struct {
 		result1 disk.BPMResourceDisks
 		result2 error
 	}
-	GenerateDefaultDisksStub        func(string, string, string, string) disk.BPMResourceDisks
+	GenerateDefaultDisksStub        func(string, string, string, string, bool) disk.BPMResourceDisks
 	generateDefaultDisksMutex       sync.RWMutex
 	generateDefaultDisksArgsForCall []struct {
 		arg1 string
 		arg2 string
 		arg3 string
 		arg4 string
+		arg5 bool
 	}
 	generateDefaultDisksReturns struct {
 		result1 disk.BPMResourceDisks
@@ -111,7 +112,7 @@ func (fake *FakeVolumeFactory) GenerateBPMDisksReturnsOnCall(i int, result1 disk
 	}{result1, result2}
 }
 
-func (fake *FakeVolumeFactory) GenerateDefaultDisks(arg1 string, arg2 string, arg3 string, arg4 string) disk.BPMResourceDisks {
+func (fake *FakeVolumeFactory) GenerateDefaultDisks(arg1 string, arg2 string, arg3 string, arg4 string, arg5 bool) disk.BPMResourceDisks {
 	fake.generateDefaultDisksMutex.Lock()
 	ret, specificReturn := fake.generateDefaultDisksReturnsOnCall[len(fake.generateDefaultDisksArgsForCall)]
 	fake.generateDefaultDisksArgsForCall = append(fake.generateDefaultDisksArgsForCall, struct {
@@ -119,11 +120,12 @@ func (fake *FakeVolumeFactory) GenerateDefaultDisks(arg1 string, arg2 string, ar
 		arg2 string
 		arg3 string
 		arg4 string
-	}{arg1, arg2, arg3, arg4})
-	fake.recordInvocation("GenerateDefaultDisks", []interface{}{arg1, arg2, arg3, arg4})
+		arg5 bool
+	}{arg1, arg2, arg3, arg4, arg5})
+	fake.recordInvocation("GenerateDefaultDisks", []interface{}{arg1, arg2, arg3, arg4, arg5})
 	fake.generateDefaultDisksMutex.Unlock()
 	if fake.GenerateDefaultDisksStub != nil {
-		return fake.GenerateDefaultDisksStub(arg1, arg2, arg3, arg4)
+		return fake.GenerateDefaultDisksStub(arg1, arg2, arg3, arg4, arg5)
 	}
 	if specificReturn {
 		return ret.result1
@@ -138,17 +140,17 @@ func (fake *FakeVolumeFactory) GenerateDefaultDisksCallCount() int {
 	return len(fake.generateDefaultDisksArgsForCall)
 }
 
-func (fake *FakeVolumeFactory) GenerateDefaultDisksCalls(stub func(string, string, string, string) disk.BPMResourceDisks) {
+func (fake *FakeVolumeFactory) GenerateDefaultDisksCalls(stub func(string, string, string, string, bool) disk.BPMResourceDisks) {
 	fake.generateDefaultDisksMutex.Lock()
 	defer fake.generateDefaultDisksMutex.Unlock()
 	fake.GenerateDefaultDisksStub = stub
 }
 
-func (fake *FakeVolumeFactory) GenerateDefaultDisksArgsForCall(i int) (string, string, string, string) {
+func (fake *FakeVolumeFactory) GenerateDefaultDisksArgsForCall(i int) (string, string, string, string, bool) {
 	fake.generateDefaultDisksMutex.RLock()
 	defer fake.generateDefaultDisksMutex.RUnlock()
 	argsForCall := fake.generateDefaultDisksArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
 }
 
 func (fake *FakeVolumeFactory) GenerateDefaultDisksReturns(result1 disk.BPMResourceDisks) {
