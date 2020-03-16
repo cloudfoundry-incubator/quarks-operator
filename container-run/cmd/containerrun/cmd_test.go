@@ -12,8 +12,14 @@ import (
 )
 
 var _ = Describe("NewContainerRunCmd", func() {
+	cwd, _ := os.Getwd()
+	socketToWatch := cwd + "/containerrun.sock"
+	defer func() {
+		_ = os.RemoveAll (socketToWatch)
+	}()
+
 	It("constructs a new command", func() {
-		cmd := NewContainerRunCmd(nil, nil, nil, nil, pkg.Stdio{})
+		cmd := NewContainerRunCmd(nil, nil, nil, nil, pkg.Stdio{}, socketToWatch)
 		Expect(cmd).ToNot(Equal(nil))
 	})
 
@@ -29,10 +35,11 @@ var _ = Describe("NewContainerRunCmd", func() {
 			_ []string,
 			_ string,
 			_ []string,
+			_ string,
 		) error {
 			return expectedErr
 		}
-		cmd := NewContainerRunCmd(run, nil, nil, nil, pkg.Stdio{})
+		cmd := NewContainerRunCmd(run, nil, nil, nil, pkg.Stdio{}, socketToWatch)
 		origArgs := os.Args[:]
 		os.Args = os.Args[:1]
 		err := cmd.Execute()
@@ -51,10 +58,11 @@ var _ = Describe("NewContainerRunCmd", func() {
 			_ []string,
 			_ string,
 			_ []string,
+			_ string,
 		) error {
 			return nil
 		}
-		cmd := NewContainerRunCmd(run, nil, nil, nil, pkg.Stdio{})
+		cmd := NewContainerRunCmd(run, nil, nil, nil, pkg.Stdio{}, socketToWatch)
 		origArgs := os.Args[:]
 		os.Args = os.Args[:1]
 		err := cmd.Execute()

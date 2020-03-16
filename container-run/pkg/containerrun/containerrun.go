@@ -6,6 +6,7 @@ package containerrun
 import (
 	"context"
 	"fmt"
+	"net"
 	"io"
 	"io/ioutil"
 	"os"
@@ -19,7 +20,12 @@ import (
 const (
 	postStartTimeout   = time.Minute * 15
 	conditionSleepTime = time.Second * 3
+
+	processStart  = "+"
+	processStop   = "-"
 )
+
+type processCommand string
 
 // CmdRun represents the signature for the top-level Run command.
 type CmdRun func(
@@ -32,6 +38,7 @@ type CmdRun func(
 	postStartCommandArgs []string,
 	postStartConditionCommandName string,
 	postStartConditionCommandArgs []string,
+	socketToWatch string,
 ) error
 
 // Run implements the logic for the container-run CLI command.
@@ -45,6 +52,7 @@ func Run(
 	postStartCommandArgs []string,
 	postStartConditionCommandName string,
 	postStartConditionCommandArgs []string,
+	socketToWatch string,
 ) error {
 	if len(args) == 0 {
 		err := fmt.Errorf("a command is required")
@@ -54,6 +62,8 @@ func Run(
 	done := make(chan struct{}, 1)
 	errors := make(chan error)
 	sigs := make(chan os.Signal, 1)
+	commands := make(chan processCommand)
+
 	signal.Notify(sigs)
 	processRegistry := NewProcessRegistry()
 
@@ -61,23 +71,222 @@ func Run(
 		Name: args[0],
 		Arg:  args[1:],
 	}
+	conditionCommand := Command{
+		Name: postStartConditionCommandName,
+		Arg:  postStartConditionCommandArgs,
+	}
+	postStartCommand := Command{
+		Name: postStartCommandName,
+		Arg:  postStartCommandArgs,
+	}
+
+	err := startProcesses (
+		runner,
+		conditionRunner,
+		commandChecker,
+		stdio,
+		command,
+		postStartCommand,
+		conditionCommand,
+		processRegistry,
+		errors,
+		done)
+	if err != nil {
+		return err
+	}
+
+	go processRegistry.HandleSignals(sigs, errors)
+
+	active := true
+
+	err = watchForCommands (socketToWatch, errors, commands)
+	if err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case cmd := <-commands:
+			// Note: Commands are ignored if the system is
+			// already in the requested state. IOW
+			// demanding things to stop when things are
+			// already stopped does nothing. Similarly for
+			// demanding a start when the children are
+			// started/up/active.
+
+			switch cmd {
+			case processStop:
+				if active {
+					active = false
+					stopProcesses(processRegistry)
+				}
+			case processStart:
+				if !active {
+					err := startProcesses (
+						runner,
+						conditionRunner,
+						commandChecker,
+						stdio,
+						command,
+						postStartCommand,
+						conditionCommand,
+						processRegistry,
+						errors,
+						done)
+					if err != nil {
+						return err
+					}
+
+					active = false
+				}
+			}
+		case <-done:
+			// Ignore done signals when we actively stopped the children
+			if (active) {
+				return nil
+			}
+		case err := <-errors:
+			return &runErr{err}
+		}
+	}
+}
+
+func watchForCommands(
+	sockAddr string,
+	errors chan error,
+	commands chan processCommand,
+) error {
+	if err := os.RemoveAll(sockAddr); err != nil {
+		return err
+	}
+
+	listener, err := net.Listen("unix", sockAddr)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		defer listener.Close()
+		for {
+			// Accept new connections, dispatching them to
+			// our handler in a goroutine.
+			conn, err := listener.Accept()
+			if err != nil {
+				errors <- err
+			}
+
+			go commandHandler(conn, errors, commands)
+		}
+	}()
+
+	return nil
+}
+
+func commandHandler(
+	conn net.Conn,
+	errors chan error,
+	commands chan processCommand,
+) {
+	defer conn.Close()
+	for {
+		packet := make([]byte, 256)
+		_, err := conn.Read(packet)
+		if (err != nil) {
+			errors <- err
+			return
+		}
+		command := string (packet)
+		switch command {
+		case processStart, processStop:
+			commands <- processCommand (command)
+		default:
+			// Bad commands are ignored. Else they could be used to DOS the runner.
+		}
+	}
+}
+
+func stopProcesses (processRegistry *ProcessRegistry) {
+	_ = processRegistry.SignalAll(os.Kill)
+}
+
+func startProcesses (
+	runner Runner,
+	conditionRunner Runner,
+	commandChecker Checker,
+	stdio Stdio,
+	command Command,
+	postStartCommand Command,
+	conditionCommand Command,
+	processRegistry *ProcessRegistry,
+	errors chan error,
+	done chan struct{},
+) error {
+	err := startMainProcess (
+		runner,
+		command,
+		stdio,
+		processRegistry,
+		errors,
+		done)
+	if err != nil {
+		return err
+	}
+
+	startPostStartProcesses(
+		runner,
+		conditionRunner,
+		commandChecker,
+		stdio,
+		postStartCommand,
+		conditionCommand,
+		processRegistry,
+		errors)
+
+	return nil
+}
+
+func startMainProcess (
+	runner Runner,
+	command Command,
+	stdio Stdio,
+	processRegistry *ProcessRegistry,
+	errors chan error,
+	done chan struct{},
+) error {
 	process, err := runner.Run(command, stdio)
 	if err != nil {
 		return &runErr{err}
 	}
 	processRegistry.Register(process)
 
-	if postStartCommandName != "" {
-		if commandChecker.Check(postStartCommandName) {
+	go func() {
+		if err := process.Wait(); err != nil {
+			errors <- err
+			return
+		}
+		done <- struct{}{}
+	}()
+
+	return nil
+}
+
+func startPostStartProcesses (
+	runner Runner,
+	conditionRunner Runner,
+	commandChecker Checker,
+	stdio Stdio,
+	postStartCommand Command,
+	conditionCommand Command,
+	processRegistry *ProcessRegistry,
+	errors chan error,
+) {
+	if postStartCommand.Name != "" {
+		if commandChecker.Check(postStartCommand.Name) {
 			go func() {
 				ctx, cancel := context.WithTimeout(context.Background(), postStartTimeout)
 				defer cancel()
 
-				if postStartConditionCommandName != "" {
-					conditionCommand := Command{
-						Name: postStartConditionCommandName,
-						Arg:  postStartConditionCommandArgs,
-					}
+				if conditionCommand.Name != "" {
 					conditionStdio := Stdio{
 						Out: ioutil.Discard,
 						Err: ioutil.Discard,
@@ -86,10 +295,6 @@ func Run(
 						errors <- err
 						return
 					}
-				}
-				postStartCommand := Command{
-					Name: postStartCommandName,
-					Arg:  postStartCommandArgs,
 				}
 				postStartProcess, err := runner.RunContext(ctx, postStartCommand, stdio)
 				if err != nil {
@@ -104,24 +309,8 @@ func Run(
 			}()
 		}
 	}
-
-	go func() {
-		if err := process.Wait(); err != nil {
-			errors <- err
-			return
-		}
-		done <- struct{}{}
-	}()
-
-	go processRegistry.HandleSignals(sigs, errors)
-
-	select {
-	case <-done:
-		return nil
-	case err := <-errors:
-		return &runErr{err}
-	}
 }
+
 
 type runErr struct {
 	err error
