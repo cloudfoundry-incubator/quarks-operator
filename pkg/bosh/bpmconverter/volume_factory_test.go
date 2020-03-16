@@ -133,6 +133,36 @@ var _ = Describe("VolumeFactory", func() {
 			}))
 		})
 
+		It("uses a pvc for an ephemeral disk if so configured", func() {
+			bpmConfigs = &bpm.Configs{
+				"fake-job": bpm.Config{
+					Processes: []bpm.Process{
+						{
+							EphemeralDisk: true,
+						},
+					},
+				},
+			}
+
+			instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.EphemeralAsPVC = true
+
+			disks, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			Expect(disks).Should(HaveLen(1))
+			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
+				VolumeMount: &corev1.VolumeMount{
+					Name:      VolumeDataDirName,
+					MountPath: path.Join(VolumeDataDirMountPath, "fake-job"),
+					SubPath:   "fake-job",
+				},
+				Labels: map[string]string{
+					"job_name":  "fake-job",
+					"ephemeral": "true",
+				},
+			}))
+		})
+
 		It("creates persistent disk", func() {
 			instanceGroup.PersistentDisk = pointers.Int(1)
 			instanceGroup.PersistentDiskType = "fake-storage-class"
