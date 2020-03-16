@@ -48,7 +48,7 @@ var _ = Describe("VolumeFactory", func() {
 
 	Describe("GenerateDefaultDisks", func() {
 		It("creates default disks", func() {
-			disks := factory.GenerateDefaultDisks(manifestName, instanceGroup.Name, version, namespace, false)
+			disks := factory.GenerateDefaultDisks(manifestName, instanceGroup, version, namespace)
 
 			Expect(disks).Should(HaveLen(5))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
@@ -73,11 +73,11 @@ var _ = Describe("VolumeFactory", func() {
 			}))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
 				Volume: &corev1.Volume{
-					Name:         VolumeDataDirName,
+					Name:         VolumeDataDirName("fake-manifest-name", "fake-instance-group-name"),
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 				},
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeDataDirName,
+					Name:      VolumeDataDirName("fake-manifest-name", "fake-instance-group-name"),
 					MountPath: VolumeDataDirMountPath,
 				},
 			}))
@@ -122,7 +122,7 @@ var _ = Describe("VolumeFactory", func() {
 			Expect(disks).Should(HaveLen(1))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeDataDirName,
+					Name:      VolumeDataDirName("fake-manifest-name", "fake-instance-group-name"),
 					MountPath: path.Join(VolumeDataDirMountPath, "fake-job"),
 					SubPath:   "fake-job",
 				},
@@ -151,8 +151,30 @@ var _ = Describe("VolumeFactory", func() {
 
 			Expect(disks).Should(HaveLen(1))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
+				Volume: &corev1.Volume{
+					Name: "fake-manifest-name-fake-instance-group-name-ephemeral",
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: "fake-manifest-name-fake-instance-group-name-ephemeral",
+						},
+					},
+				},
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
+						Namespace: "fake-namespace",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceName(corev1.ResourceStorage): resource.MustParse("10240Mi"),
+							},
+						},
+					},
+				},
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeDataDirName,
+					Name:      VolumeDataDirName("fake-manifest-name", "fake-instance-group-name"),
 					MountPath: path.Join(VolumeDataDirMountPath, "fake-job"),
 					SubPath:   "fake-job",
 				},
@@ -246,7 +268,7 @@ var _ = Describe("VolumeFactory", func() {
 			Expect(disks).Should(HaveLen(3))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeDataDirName,
+					Name:      VolumeDataDirName("fake-manifest-name", "fake-instance-group-name"),
 					ReadOnly:  true,
 					MountPath: "/var/vcap/data/add1",
 					SubPath:   "add1",
@@ -317,7 +339,7 @@ var _ = Describe("VolumeFactory", func() {
 			Expect(disks).Should(HaveLen(4))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeDataDirName,
+					Name:      VolumeDataDirName("fake-manifest-name", "fake-instance-group-name"),
 					ReadOnly:  true,
 					MountPath: "/var/vcap/data/add1",
 					SubPath:   "add1",
