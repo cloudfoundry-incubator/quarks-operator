@@ -17,6 +17,7 @@ func NewContainerRunCmd(
 	conditionRunner pkg.Runner,
 	commandChecker pkg.Checker,
 	stdio pkg.Stdio,
+	socketToWatch string,
 ) *cobra.Command {
 	var postStartCommandName string
 	var postStartCommandArgs []string
@@ -39,6 +40,7 @@ func NewContainerRunCmd(
 				postStartCommandArgs,
 				postStartConditionCommandName,
 				postStartConditionCommandArgs,
+				socketToWatch,
 			)
 		},
 	}
@@ -60,5 +62,6 @@ func NewDefaultContainerRunCmd() *cobra.Command {
 		Out: os.Stdout,
 		Err: os.Stderr,
 	}
-	return NewContainerRunCmd(pkg.Run, runner, conditionRunner, commandChecker, stdio)
+	socketToWatch := "/var/vcap/data/containerrun.sock"
+	return NewContainerRunCmd(pkg.Run, runner, conditionRunner, commandChecker, stdio, socketToWatch)
 }
