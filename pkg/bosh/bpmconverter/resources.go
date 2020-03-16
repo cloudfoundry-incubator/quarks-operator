@@ -43,7 +43,7 @@ type NewContainerFactoryFunc func(manifestName string, instanceGroupName string,
 
 // VolumeFactory builds Kubernetes containers from BOSH jobs.
 type VolumeFactory interface {
-	GenerateDefaultDisks(manifestName string, instanceGroupName string, igResolvedSecretVersion string, namespace string, ephemeralAsPVC bool) disk.BPMResourceDisks
+	GenerateDefaultDisks(manifestName string, instanceGroupName *bdm.InstanceGroup, igResolvedSecretVersion string, namespace string) disk.BPMResourceDisks
 	GenerateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (disk.BPMResourceDisks, error)
 }
 
@@ -78,7 +78,7 @@ type Resources struct {
 func (kc *BPMConverter) Resources(manifestName string, dns DomainNameService, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*Resources, error) {
 	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(manifestName, instanceGroup.Name, qStsVersion)
 
-	defaultDisks := kc.volumeFactory.GenerateDefaultDisks(manifestName, instanceGroup.Name, igResolvedSecretVersion, kc.namespace, instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.EphemeralAsPVC)
+	defaultDisks := kc.volumeFactory.GenerateDefaultDisks(manifestName, instanceGroup, igResolvedSecretVersion, kc.namespace)
 	bpmDisks, err := kc.volumeFactory.GenerateBPMDisks(manifestName, instanceGroup, bpmConfigs, kc.namespace)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Generate of BPM disks failed for manifest name %s, instance group %s.", manifestName, instanceGroup.Name)

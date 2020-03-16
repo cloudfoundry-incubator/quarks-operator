@@ -148,7 +148,7 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 		containerRunCopier(),
 		copyingSpecsInitContainers,
 		templateRenderingContainer(c.deploymentName, c.instanceGroupName, resolvedPropertiesSecretName),
-		createDirContainer(jobs),
+		createDirContainer(jobs, c.instanceGroupName, c.deploymentName),
 		createWaitContainer(requiredService),
 		boshPreStartInitContainers,
 		bpmPreStartInitContainers,
@@ -385,7 +385,7 @@ func templateRenderingContainer(deploymentName string, instanceGroupName string,
 	}
 }
 
-func createDirContainer(jobs []bdm.Job) corev1.Container {
+func createDirContainer(jobs []bdm.Job, instanceGroupName, manifestName string) corev1.Container {
 	dirs := []string{}
 	for _, job := range jobs {
 		jobDirs := append(job.DataDirs(), job.SysDirs()...)
@@ -396,8 +396,16 @@ func createDirContainer(jobs []bdm.Job) corev1.Container {
 		Name:            "create-dirs",
 		Image:           operatorimage.GetOperatorDockerImage(),
 		ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
-		VolumeMounts:    []corev1.VolumeMount{*dataDirVolumeMount(), *sysDirVolumeMount()},
-		Command:         entrypoint,
+		VolumeMounts: []corev1.VolumeMount{
+			corev1.VolumeMount{
+				Name: VolumeDataDirName(
+					manifestName,
+					instanceGroupName),
+				MountPath: VolumeDataDirMountPath,
+			},
+			*sysDirVolumeMount(),
+		},
+		Command: entrypoint,
 		Args: []string{
 			"/bin/sh",
 			"-xc",
