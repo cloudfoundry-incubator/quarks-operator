@@ -82,7 +82,7 @@ func NewVolumeFactory() *VolumeFactoryImpl {
 // - the sys volume
 // - the "not interpolated" manifest volume
 // - resolved properties data volume
-func (f *VolumeFactoryImpl) GenerateDefaultDisks(manifestName string, instanceGroupName string, igResolvedSecretVersion string, namespace string) disk.BPMResourceDisks {
+func (f *VolumeFactoryImpl) GenerateDefaultDisks(manifestName string, instanceGroupName string, igResolvedSecretVersion string, namespace string, ephemeralAsPVC bool) disk.BPMResourceDisks {
 	resolvedPropertiesSecretName := names.InstanceGroupSecretName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
 		manifestName,
@@ -102,7 +102,7 @@ func (f *VolumeFactoryImpl) GenerateDefaultDisks(manifestName string, instanceGr
 		{
 			// For ephemeral job data.
 			// https://bosh.io/docs/vm-config/#jobs-and-packages
-			Volume:      dataDirVolume(),
+			Volume:      dataDirVolume(ephemeralAsPVC, manifestName, instanceGroupName),
 			VolumeMount: dataDirVolumeMount(),
 		},
 		{
@@ -360,7 +360,21 @@ func resolvedPropertiesVolumeMount(name string, instanceGroupName string) corev1
 
 // For ephemeral job data.
 // https://bosh.io/docs/vm-config/#jobs-and-packages
-func dataDirVolume() *corev1.Volume {
+func dataDirVolume(ephemeralAsPVC bool, manifestName, instanceGroupName string) *corev1.Volume {
+	if ephemeralAsPVC {
+
+		persistentVolumeClaimName := generatePersistentVolumeClaimName(manifestName, instanceGroupName)
+
+		return &corev1.Volume{
+			Name: VolumeDataDirName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: persistentVolumeClaimName,
+				},
+			},
+		}
+	}
+
 	return &corev1.Volume{
 		Name:         VolumeDataDirName,
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},

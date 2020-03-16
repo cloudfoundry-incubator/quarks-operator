@@ -48,7 +48,7 @@ var _ = Describe("VolumeFactory", func() {
 
 	Describe("GenerateDefaultDisks", func() {
 		It("creates default disks", func() {
-			disks := factory.GenerateDefaultDisks(manifestName, instanceGroup.Name, version, namespace)
+			disks := factory.GenerateDefaultDisks(manifestName, instanceGroup.Name, version, namespace, false)
 
 			Expect(disks).Should(HaveLen(5))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
