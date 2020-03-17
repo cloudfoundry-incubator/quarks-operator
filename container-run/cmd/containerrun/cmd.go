@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"time"
+	"net"
 
 	"github.com/spf13/cobra"
 
@@ -16,6 +17,7 @@ func NewContainerRunCmd(
 	runner pkg.Runner,
 	conditionRunner pkg.Runner,
 	commandChecker pkg.Checker,
+	listener pkg.PacketListener,
 	stdio pkg.Stdio,
 	socketToWatch string,
 ) *cobra.Command {
@@ -34,6 +36,7 @@ func NewContainerRunCmd(
 				runner,
 				conditionRunner,
 				commandChecker,
+				listener,
 				stdio,
 				args,
 				postStartCommandName,
@@ -58,10 +61,11 @@ func NewDefaultContainerRunCmd() *cobra.Command {
 	runner := pkg.NewContainerRunner()
 	conditionRunner := pkg.NewConditionRunner(time.Sleep, exec.CommandContext)
 	commandChecker := pkg.NewCommandChecker(os.Stat, exec.LookPath)
+	listener := pkg.NewNetPacketListener(net.ListenPacket)
 	stdio := pkg.Stdio{
 		Out: os.Stdout,
 		Err: os.Stderr,
 	}
 	socketToWatch := "/var/vcap/data/containerrun.sock"
-	return NewContainerRunCmd(pkg.Run, runner, conditionRunner, commandChecker, stdio, socketToWatch)
+	return NewContainerRunCmd(pkg.Run, runner, conditionRunner, commandChecker, listener, stdio, socketToWatch)
 }

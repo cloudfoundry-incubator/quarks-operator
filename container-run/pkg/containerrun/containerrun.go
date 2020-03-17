@@ -32,6 +32,7 @@ type CmdRun func(
 	runner Runner,
 	conditionRunner Runner,
 	commandChecker Checker,
+	listener PacketListener,
 	stdio Stdio,
 	args []string,
 	postStartCommandName string,
@@ -46,6 +47,7 @@ func Run(
 	runner Runner,
 	conditionRunner Runner,
 	commandChecker Checker,
+	listener PacketListener,
 	stdio Stdio,
 	args []string,
 	postStartCommandName string,
@@ -99,7 +101,7 @@ func Run(
 
 	active := true
 
-	err = watchForCommands (socketToWatch, errors, commands)
+	err = watchForCommands (listener, socketToWatch, errors, commands)
 	if err != nil {
 		return err
 	}
@@ -152,6 +154,7 @@ func Run(
 }
 
 func watchForCommands(
+	listener PacketListener,
 	sockAddr string,
 	errors chan error,
 	commands chan processCommand,
@@ -163,7 +166,7 @@ func watchForCommands(
 	go func() {
 		for {
 			// Accept new packet, dispatching them to our handler
-			packet, err := net.ListenPacket("unixgram", sockAddr)
+			packet, err := listener.ListenPacket("unixgram", sockAddr)
 			if err != nil {
 				errors <- err
 			}
@@ -175,7 +178,7 @@ func watchForCommands(
 }
 
 func handlePacket(
-	conn net.PacketConn,
+	conn PacketConnection,
 	commands chan processCommand,
 ) {
 	defer conn.Close()
@@ -537,4 +540,37 @@ func (cc *CommandChecker) Check(command string) bool {
 // ExecCommandContext wraps exec.CommandContext.
 type ExecCommandContext interface {
 	CommandContext(ctx context.Context, name string, arg ...string) *exec.Cmd
+}
+
+// PacketConnection is the interface that wraps the PacketConn methods.
+type PacketConnection interface {
+	ReadFrom(p []byte) (n int, addr net.Addr, err error)
+	Close() error
+}
+
+// net.PacketConn satisfies this interface.
+
+// PacketListener is the interface that wraps the ListenPacket methods.
+type PacketListener interface {
+	ListenPacket(network, address string) (PacketConnection, error)
+}
+
+// NetPacketListener satisfies the PacketListener interface.
+type NetPacketListener struct {
+	listen func(network, address string) (net.PacketConn, error)
+}
+
+// NewNetPacketListener constructs a new NetPacketListener
+func NewNetPacketListener(
+	listen func(network, address string) (net.PacketConn, error),
+) *NetPacketListener {
+	return &NetPacketListener{
+		listen: listen,
+	}
+}
+
+// ListenPacket implements listening for packets.
+func (npl *NetPacketListener) ListenPacket(network, address string) (PacketConnection, error) {
+	conn, error := npl.listen(network, address)
+	return conn, error
 }
