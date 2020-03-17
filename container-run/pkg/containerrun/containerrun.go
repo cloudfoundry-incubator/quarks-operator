@@ -160,48 +160,37 @@ func watchForCommands(
 		return err
 	}
 
-	listener, err := net.Listen("unix", sockAddr)
-	if err != nil {
-		return err
-	}
-
 	go func() {
-		defer listener.Close()
 		for {
-			// Accept new connections, dispatching them to
-			// our handler in a goroutine.
-			conn, err := listener.Accept()
+			// Accept new packet, dispatching them to our handler
+			packet, err := net.ListenPacket("unixgram", sockAddr)
 			if err != nil {
 				errors <- err
 			}
-
-			go commandHandler(conn, errors, commands)
+			handlePacket(packet, commands)
 		}
 	}()
 
 	return nil
 }
 
-func commandHandler(
-	conn net.Conn,
-	errors chan error,
+func handlePacket(
+	conn net.PacketConn,
 	commands chan processCommand,
 ) {
 	defer conn.Close()
-	for {
-		packet := make([]byte, 256)
-		_, err := conn.Read(packet)
-		if (err != nil) {
-			errors <- err
-			return
-		}
-		command := string (packet)
-		switch command {
-		case processStart, processStop:
-			commands <- processCommand (command)
-		default:
-			// Bad commands are ignored. Else they could be used to DOS the runner.
-		}
+
+	packet := make([]byte, 256)
+	count, _, _ := conn.ReadFrom(packet)
+	// Return address ignored. We do not send anything out.
+	// Read errors ignored. Ref https://johnrefior.com/gobits/read?post=12
+
+	command := string(packet[:count])
+	switch command {
+	case processStart, processStop:
+		commands <- processCommand (command)
+	default:
+		// Bad commands are ignored. Else they could be used to DOS the runner.
 	}
 }
 
