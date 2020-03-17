@@ -1,35 +1,35 @@
 # Transforming BOSH concepts to Kubernetes
 
-- [Transforming BOSH concepts to Kubernetes](#Transforming-BOSH-concepts-to-Kubernetes)
-  - [Open Questions](#Open-Questions)
-  - [Missing Features](#Missing-Features)
-  - [High-level Direction](#High-level-Direction)
-  - [Deployment Lifecycle](#Deployment-Lifecycle)
-  - [Example Deployment Manifest Conversion Details](#Example-Deployment-Manifest-Conversion-Details)
-  - [BPM](#BPM)
-    - [Entrypoint & Environment Variables](#Entrypoint--Environment-Variables)
-    - [Resources](#Resources)
-    - [Health checks](#Health-checks)
-    - [Hooks](#Hooks)
-    - [Misc](#Misc)
-  - [Conversion Details](#Conversion-Details)
-    - [Calculation of docker image location for releases](#Calculation-of-docker-image-location-for-releases)
-    - [Variables to Quarks Secrets](#Variables-to-Quarks-Secrets)
-    - [Instance Groups to Quarks StatefulSets and Jobs](#Instance-Groups-to-Quarks-StatefulSets-and-Jobs)
-      - [BOSH Services vs BOSH Errands](#BOSH-Services-vs-BOSH-Errands)
-  - [Miscellaneous](#Miscellaneous)
-    - [Dealing with AZs](#Dealing-with-AZs)
-    - [Support for active/passive pod replicas](#Support-for-activepassive-pod-replicas)
-    - [Ephemeral Disks](#Ephemeral-Disks)
-    - [Credentials for Docker Registries](#Credentials-for-Docker-Registries)
-    - [Running manual errands](#Running-manual-errands)
-    - [Readiness and Liveness Probes](#Readiness-and-Liveness-Probes)
-    - [Persistent Disks](#Persistent-Disks)
-    - [Manual ("implicit") variables](#Manual-%22implicit%22-variables)
-    - [Pre_render_scripts](#Pre_render_scripts)
-    - [BOSH DNS](#BOSH-DNS)
-  - [Flow](#Flow)
-  - [Naming Conventions](#Naming-Conventions)
+- [Transforming BOSH concepts to Kubernetes](#transforming-bosh-concepts-to-kubernetes)
+  - [Open Questions](#open-questions)
+  - [Missing Features](#missing-features)
+  - [High-level Direction](#high-level-direction)
+  - [Deployment Lifecycle](#deployment-lifecycle)
+  - [Example Deployment Manifest Conversion Details](#example-deployment-manifest-conversion-details)
+  - [BPM](#bpm)
+    - [Entrypoint & Environment Variables](#entrypoint--environment-variables)
+    - [Resources](#resources)
+    - [Health checks](#health-checks)
+    - [Hooks](#hooks)
+    - [Misc](#misc)
+  - [Conversion Details](#conversion-details)
+    - [Calculation of docker image location for releases](#calculation-of-docker-image-location-for-releases)
+    - [Variables to Quarks Secrets](#variables-to-quarks-secrets)
+    - [Instance Groups to Quarks StatefulSets and Jobs](#instance-groups-to-quarks-statefulsets-and-jobs)
+      - [BOSH Services vs BOSH Errands](#bosh-services-vs-bosh-errands)
+  - [Miscellaneous](#miscellaneous)
+    - [Dealing with AZs](#dealing-with-azs)
+    - [Support for active/passive pod replicas](#support-for-activepassive-pod-replicas)
+    - [Ephemeral Disks](#ephemeral-disks)
+    - [Credentials for Docker Registries](#credentials-for-docker-registries)
+    - [Running manual errands](#running-manual-errands)
+    - [Readiness and Liveness Probes](#readiness-and-liveness-probes)
+    - [Persistent Disks](#persistent-disks)
+    - [Manual ("implicit") variables](#manual-%22implicit%22-variables)
+    - [Pre_render_scripts](#prerenderscripts)
+    - [BOSH DNS](#bosh-dns)
+  - [Flow](#flow)
+  - [Naming Conventions](#naming-conventions)
 
 ## Open Questions
 
@@ -206,7 +206,7 @@ instance_groups:
     cpu: 4
     # Memory used by a container
     ram: 1024
-    # We use emptyDir volumes for ephemeral disks
+    # Used for PVC sizes if `ephemeralAsPVC` is set to true
     ephemeral_disk_size: 4096
   # Not used by the cf-operator.
   # A warning is logged if this is set.
@@ -309,6 +309,10 @@ instance_groups:
           ImagePullSecrets: {}
           # Tolerations and taints are a concept defined in kubernetes to repel pods from nodes. [4]
           tolerations: []
+          # If this is set to true, the operator will define a PersistentVolumeClaim template
+          # on the QuarksStatefulSet of the instance group, and it will use that PVC for all volume
+          # mounts for ephemeral disks
+          ephemeralAsPVC: false
 # Each addon job is added to the desired manifest before it's persisted
 # Not all placement rules are supported, see below for more details.
 addons:
@@ -386,17 +390,17 @@ The following subsections describe the mapping of BPM configuration into contain
 
 ### Resources
 
-| Bosh                          | Kube Pod Container                                             |
-| ----------------------------- | -------------------------------------------------------------- |
-| `workdir`                     | `workingDir`. Not implemented yet.                             |
-| `hooks`                       | `initContainers`. and container hooks. Not implemented yet.    |
-| `process.capabilities`        | `container.SecurityContext.Capabilities`.                      |
-| `limits`                      | `container.Resources.Limits`. Not implemented yet.             |
-| `ephemeral_disk`              | `emptyDir`. volumes.                                           |
-| `persistent_disk`             | `PersistentVolumeClaims`. Not yet implemented.                 |
-| `additional_volumes`          | `emptyDir`. Paths under /var/vcap/store are currently ignored. |
-| `unsafe.unrestricted_volumes` | `emptyDir`. Paths under /var/vcap/store are currently ignored. |
-| `unsafe.privileged`           | `container.SecurityContext.Privileged`.                        |
+| Bosh                          | Kube Pod Container                                                                                                          |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `workdir`                     | `workingDir`. Not implemented yet.                                                                                          |
+| `hooks`                       | `initContainers`. and container hooks. Not implemented yet.                                                                 |
+| `process.capabilities`        | `container.SecurityContext.Capabilities`.                                                                                   |
+| `limits`                      | `container.Resources.Limits`. Not implemented yet.                                                                          |
+| `ephemeral_disk`              | `emptyDir` volumes by default, but can be `PersistentVolumeClaims` if `ephemeralAsPVC` is set on the `bosh.agent.settings`. |
+| `persistent_disk`             | `PersistentVolumeClaims`. Not yet implemented.                                                                              |
+| `additional_volumes`          | `emptyDir`. Paths under /var/vcap/store are currently ignored.                                                              |
+| `unsafe.unrestricted_volumes` | `emptyDir`. Paths under /var/vcap/store are currently ignored.                                                              |
+| `unsafe.privileged`           | `container.SecurityContext.Privileged`.                                                                                     |
 
 
 ### Health checks
@@ -414,10 +418,10 @@ BPM supports `pre_start` hooks. CF-Operator will convert those to additional ini
 
 In addition, there are configuration variables that are not available in Bosh but are required for scaling in a kubernetes environment.
 
-| Job spec in Manifest                                    | Kube Pod Container                    | Description |
-| ------------------------------------------------------- | --------------------------------------|------------------------ |
-| `properties.quarks.bpm.processes[n].requests.cpu`       | `container.Resources.Requests.cpu`    | [Guaranteed CPU](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#resource-requests-and-limits-of-pod-and-container) |
-| `properties.quarks.bpm.processes[n].requests.memory`    | `container.Resources.Requests.memory` | [Guaranteed memory](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#resource-requests-and-limits-of-pod-and-container) |
+| Job spec in Manifest                                 | Kube Pod Container                    | Description                                                                                                                                                  |
+| ---------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `properties.quarks.bpm.processes[n].requests.cpu`    | `container.Resources.Requests.cpu`    | [Guaranteed CPU](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#resource-requests-and-limits-of-pod-and-container)    |
+| `properties.quarks.bpm.processes[n].requests.memory` | `container.Resources.Requests.memory` | [Guaranteed memory](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#resource-requests-and-limits-of-pod-and-container) |
 
 
 ## Conversion Details
@@ -502,6 +506,10 @@ BOSH Auto-Errands (supported only by the operator) are converted to `QuarksJobs`
 ### Ephemeral Disks
 
 We use an `emptyDir` for ephemeral disks. You can learn more from [the official docs](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir).
+
+If the setting `bosh.settings.agent.ephemeralAsPVC` is set to `true`, the operator will use `PersistentVolumeClaims` instead.
+This option should be used for jobs that make assumptions about ephemeral disks (like this [garden](https://github.com/cloudfoundry/garden-runc-release/tree/develop/jobs/garden) job) mounts, or the size limit for the disk is critical.
+If `vm_resources.ephemeral_disk_size` is set, the PVC size will be set to this. If it's not set, the operator will try to use `persistent_disk` as a size. If this is not set either, the operator will use a default of `10GB`.
 
 ### Credentials for Docker Registries
 

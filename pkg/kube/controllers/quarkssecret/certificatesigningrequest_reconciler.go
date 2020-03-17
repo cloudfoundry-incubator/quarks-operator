@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+
 	certv1 "k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -18,30 +19,32 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	qev1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
+	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 // NewCertificateSigningRequestReconciler returns a new Reconciler
-func NewCertificateSigningRequestReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, certClient certv1client.CertificatesV1beta1Interface) reconcile.Reconciler {
+func NewCertificateSigningRequestReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, certClient certv1client.CertificatesV1beta1Interface, srf setReferenceFunc) reconcile.Reconciler {
 	return &ReconcileCertificateSigningRequest{
-		ctx:        ctx,
-		config:     config,
-		client:     mgr.GetClient(),
-		certClient: certClient,
-		scheme:     mgr.GetScheme(),
+		ctx:          ctx,
+		config:       config,
+		client:       mgr.GetClient(),
+		certClient:   certClient,
+		scheme:       mgr.GetScheme(),
+		setReference: srf,
 	}
 }
 
 // ReconcileCertificateSigningRequest reconciles an CertificateSigningRequest object
 type ReconcileCertificateSigningRequest struct {
-	ctx        context.Context
-	config     *config.Config
-	client     client.Client
-	certClient certv1client.CertificatesV1beta1Interface
-	scheme     *runtime.Scheme
+	ctx          context.Context
+	config       *config.Config
+	client       client.Client
+	certClient   certv1client.CertificatesV1beta1Interface
+	scheme       *runtime.Scheme
+	setReference setReferenceFunc
 }
 
 // Reconcile approves pending CSR and creates its certificate secret
@@ -57,7 +60,7 @@ func (r *ReconcileCertificateSigningRequest) Reconcile(request reconcile.Request
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Owned objects are automatically garbage collected.
 			// Return and don't requeue
 			ctxlog.Info(ctx, "Skip reconcile: CSR not found")
 			return reconcile.Result{}, nil
@@ -68,30 +71,53 @@ func (r *ReconcileCertificateSigningRequest) Reconcile(request reconcile.Request
 	}
 
 	if len(csr.Status.Certificate) != 0 {
-		ctxlog.Debugf(ctx, "CSR %s has been issued", csr.Name)
+		ctxlog.Debugf(ctx, "CSR '%s' is in 'issued' state", csr.Name)
 
+		// Validate annotations on CSR, should be correct, since it created by the quarks secret reconciler
 		annotations := csr.GetAnnotations()
 		if annotations == nil {
 			ctxlog.WithEvent(csr, "NotFoundError").Errorf(ctx, "Empty annotations of CSR '%s'", csr.Name)
 			return reconcile.Result{}, nil
 		}
-		secretName, ok := annotations[qev1a1.AnnotationCertSecretName]
+		secretName, ok := annotations[qsv1a1.AnnotationCertSecretName]
 		if !ok {
 			ctxlog.WithEvent(csr, "NotFoundError").Errorf(ctx, "Failed to lookup cert secret name from CSR '%s' annotations", csr.Name)
 			return reconcile.Result{}, nil
 		}
-		namespace, ok := annotations[qev1a1.AnnotationQSecNamespace]
+		namespace, ok := annotations[qsv1a1.AnnotationQSecNamespace]
 		if !ok {
 			ctxlog.WithEvent(csr, "NotFoundError").Errorf(ctx, "Failed to lookup quarksSecret namespace from CSR '%s' annotations", csr.Name)
 			return reconcile.Result{}, nil
 		}
+		qsecName, ok := annotations[qsv1a1.AnnotationQSecName]
+		if !ok {
+			ctxlog.WithEvent(csr, "NotFoundError").Errorf(ctx, "Failed to lookup quarksSecret name from CSR '%s' annotations", csr.Name)
+			return reconcile.Result{}, nil
+		}
 
-		privateKeySecret, err := r.getSecret(ctx, namespace, names.CsrPrivateKeySecretName(csr.Name))
+		// Wait for CSR to result in a private key
+		privateKeySecret := &corev1.Secret{}
+		keySecretName := names.CsrPrivateKeySecretName(csr.Name)
+		err := r.client.Get(ctx, types.NamespacedName{Name: keySecretName, Namespace: namespace}, privateKeySecret)
 		if err != nil {
+			if apierrors.IsNotFound(err) {
+				ctxlog.Debugf(ctx, "Waiting for CSR private key secret '%s'", keySecretName)
+				return reconcile.Result{Requeue: true}, nil
+			}
 			ctxlog.Errorf(ctx, "Failed to get the CSR private key secret: %v", err.Error())
 			return reconcile.Result{}, err
 		}
 
+		// Load quarks secret which created this CSR, so we can set it as an owner of the resulting
+		// certificate secret
+		qsec := &qsv1a1.QuarksSecret{}
+		err = r.client.Get(ctx, types.NamespacedName{Name: qsecName, Namespace: namespace}, qsec)
+		if err != nil {
+			ctxlog.Errorf(ctx, "Failed to get the quarks secret '%s' for this CSR:  %v", qsecName, err.Error())
+			return reconcile.Result{}, err
+		}
+
+		// Create the certificate secret
 		rootCA, err := getClusterRootCA(ctx, r.client, namespace)
 		if err != nil {
 			ctxlog.Errorf(ctx, "Failed to get the cluster root CA: %v", err.Error())
@@ -100,11 +126,10 @@ func (r *ReconcileCertificateSigningRequest) Reconcile(request reconcile.Request
 
 		certSecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:            secretName,
-				Namespace:       namespace,
-				OwnerReferences: csr.OwnerReferences,
+				Name:      secretName,
+				Namespace: namespace,
 				Labels: map[string]string{
-					qev1a1.LabelKind: qev1a1.GeneratedSecretKind,
+					qsv1a1.LabelKind: qsv1a1.GeneratedSecretKind,
 				},
 			},
 			Data: map[string][]byte{
@@ -114,19 +139,28 @@ func (r *ReconcileCertificateSigningRequest) Reconcile(request reconcile.Request
 				"is_ca":       privateKeySecret.Data["is_ca"],
 			},
 		}
+		r.setReference(qsec, certSecret, r.scheme)
 
-		ctxlog.Infof(ctx, "Creating secret '%s' for CSR '%s'", certSecret.Name, csr.Name)
+		ctxlog.Infof(ctx, "Creating certificate secret '%s' for CSR '%s'", certSecret.Name, csr.Name)
 		err = r.createSecret(ctx, certSecret)
 		if err != nil {
 			ctxlog.Errorf(ctx, "Failed to create the approved certificate secret: %v", err.Error())
 			return reconcile.Result{}, err
 		}
 
+		// Clean up CSR and private key, no longer needed
 		err = r.deleteSecret(ctx, privateKeySecret)
 		if err != nil {
 			ctxlog.Errorf(ctx, "Failed to delete the CSR private key secret: %v", err.Error())
 			return reconcile.Result{}, err
 		}
+
+		err = r.deleteCSR(ctx, csr)
+		if err != nil {
+			ctxlog.Errorf(ctx, "Failed to remove completed CSR: %v", err.Error())
+			return reconcile.Result{}, err
+		}
+
 	} else {
 		err = r.approveRequest(ctx, csr.Name)
 		if err != nil {
@@ -185,25 +219,23 @@ func (r *ReconcileCertificateSigningRequest) createSecret(ctx context.Context, s
 	return nil
 }
 
-// getSecret gets secret
-func (r *ReconcileCertificateSigningRequest) getSecret(ctx context.Context, namespace string, secretName string) (*corev1.Secret, error) {
-	ctxlog.Debugf(ctx, "getting secret '%s'", secretName)
-
-	secret := &corev1.Secret{}
-	err := r.client.Get(ctx, types.NamespacedName{Name: secretName, Namespace: namespace}, secret)
-	if err != nil {
-		return secret, errors.Wrapf(err, "could not get secret '%s/%s'", namespace, secretName)
-	}
-	return secret, nil
-}
-
-// deleteSecret deletes secret
 func (r *ReconcileCertificateSigningRequest) deleteSecret(ctx context.Context, secret *corev1.Secret) error {
 	ctxlog.Debugf(ctx, "Deleting secret '%s'", secret.Name)
 
 	err := r.client.Delete(ctx, secret)
 	if err != nil {
 		return errors.Wrapf(err, "could not delete secret '%s/%s'", secret.Namespace, secret.Name)
+	}
+
+	return nil
+}
+
+func (r *ReconcileCertificateSigningRequest) deleteCSR(ctx context.Context, csr *certv1.CertificateSigningRequest) error {
+	ctxlog.Debugf(ctx, "Deleting csr '%s'", csr.Name)
+
+	err := r.client.Delete(ctx, csr)
+	if err != nil {
+		return errors.Wrapf(err, "could not delete csr '%s'", csr.Name)
 	}
 
 	return nil
