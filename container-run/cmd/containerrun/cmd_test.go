@@ -19,7 +19,7 @@ var _ = Describe("NewContainerRunCmd", func() {
 	}()
 
 	It("constructs a new command", func() {
-		cmd := NewContainerRunCmd(nil, nil, nil, nil, pkg.Stdio{}, socketToWatch)
+		cmd := NewContainerRunCmd(nil, nil, nil, nil, nil, pkg.Stdio{}, socketToWatch)
 		Expect(cmd).ToNot(Equal(nil))
 	})
 
@@ -29,6 +29,7 @@ var _ = Describe("NewContainerRunCmd", func() {
 			_ pkg.Runner,
 			_ pkg.Runner,
 			_ pkg.Checker,
+			_ pkg.PacketListener,
 			_ pkg.Stdio,
 			_ []string,
 			_ string,
@@ -39,7 +40,7 @@ var _ = Describe("NewContainerRunCmd", func() {
 		) error {
 			return expectedErr
 		}
-		cmd := NewContainerRunCmd(run, nil, nil, nil, pkg.Stdio{}, socketToWatch)
+		cmd := NewContainerRunCmd(run, nil, nil, nil, nil, pkg.Stdio{}, socketToWatch)
 		origArgs := os.Args[:]
 		os.Args = os.Args[:1]
 		err := cmd.Execute()
@@ -52,6 +53,7 @@ var _ = Describe("NewContainerRunCmd", func() {
 			_ pkg.Runner,
 			_ pkg.Runner,
 			_ pkg.Checker,
+			_ pkg.PacketListener,
 			_ pkg.Stdio,
 			_ []string,
 			_ string,
@@ -62,7 +64,7 @@ var _ = Describe("NewContainerRunCmd", func() {
 		) error {
 			return nil
 		}
-		cmd := NewContainerRunCmd(run, nil, nil, nil, pkg.Stdio{}, socketToWatch)
+		cmd := NewContainerRunCmd(run, nil, nil, nil, nil, pkg.Stdio{}, socketToWatch)
 		origArgs := os.Args[:]
 		os.Args = os.Args[:1]
 		err := cmd.Execute()
