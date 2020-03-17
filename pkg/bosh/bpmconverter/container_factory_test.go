@@ -52,7 +52,7 @@ var _ = Describe("ContainerFactory", func() {
 			{
 
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeDataDirName("fake-manifest-name", "fake-instance-group-name"),
+					Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
 					MountPath: path.Join(VolumeDataDirMountPath, "fake-job"),
 					SubPath:   "fake-job",
 				},
@@ -63,7 +63,7 @@ var _ = Describe("ContainerFactory", func() {
 			},
 			{
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeDataDirName("fake-manifest-name", "fake-instance-group-name"),
+					Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
 					MountPath: path.Join(VolumeDataDirMountPath, "other-job"),
 					SubPath:   "other-job",
 				},

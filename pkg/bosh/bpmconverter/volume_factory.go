@@ -92,11 +92,10 @@ func (f *VolumeFactoryImpl) GenerateDefaultDisks(manifestName string, instanceGr
 		igResolvedSecretVersion,
 	)
 
-	var ephemeralPVC *corev1.PersistentVolumeClaim
+	var pvc *corev1.PersistentVolumeClaim
 	ephemeralAsPVC := instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.EphemeralAsPVC
 	if ephemeralAsPVC {
-		pvc := generateEphemeralPersistentVolumeClaim(manifestName, instanceGroup, namespace)
-		ephemeralPVC = &pvc
+		pvc = ephemeralPVC(manifestName, instanceGroup, namespace)
 	}
 
 	defaultDisks := disk.BPMResourceDisks{
@@ -112,14 +111,14 @@ func (f *VolumeFactoryImpl) GenerateDefaultDisks(manifestName string, instanceGr
 			// For ephemeral job data.
 			// https://bosh.io/docs/vm-config/#jobs-and-packages
 			Volume: &corev1.Volume{
-				Name:         VolumeDataDirName(manifestName, instanceGroup.Name),
+				Name:         volumeDataDirName(manifestName, instanceGroup.Name),
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 			},
 			VolumeMount: &corev1.VolumeMount{
-				Name:      VolumeDataDirName(manifestName, instanceGroup.Name),
+				Name:      volumeDataDirName(manifestName, instanceGroup.Name),
 				MountPath: VolumeDataDirMountPath,
 			},
-			PersistentVolumeClaim: ephemeralPVC,
+			PersistentVolumeClaim: pvc,
 		},
 		{
 			Volume:      sysDirVolume(),
@@ -195,7 +194,7 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 					subPath    string
 				)
 				if strings.HasPrefix(additionalVolume.Path, VolumeDataDirMountPath) {
-					volumeName = VolumeDataDirName(
+					volumeName = volumeDataDirName(
 						manifestName,
 						instanceGroup.Name)
 					subPath, err = filepath.Rel(VolumeDataDirMountPath, additionalVolume.Path)
@@ -250,46 +249,15 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 		}
 
 		if hasEphemeralDisk {
-			persistent := instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.EphemeralAsPVC
 
-			ephemeralDisk := disk.BPMResourceDisk{
-				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeDataDirName(manifestName, instanceGroup.Name),
-					MountPath: path.Join(VolumeDataDirMountPath, job.Name),
-					SubPath:   job.Name,
-				},
-				Labels: map[string]string{
-					"job_name":  job.Name,
-					"ephemeral": "true",
-				},
-			}
+			disk := ephemeralDisk(
+				manifestName,
+				namespace,
+				instanceGroup,
+				job,
+			)
 
-			if persistent {
-				persistentVolumeClaim := generateEphemeralPersistentVolumeClaim(manifestName, instanceGroup, namespace)
-
-				ephemeralDisk = disk.BPMResourceDisk{
-					PersistentVolumeClaim: &persistentVolumeClaim,
-					Volume: &corev1.Volume{
-						Name: persistentVolumeClaim.Name,
-						VolumeSource: corev1.VolumeSource{
-							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-								ClaimName: persistentVolumeClaim.Name,
-							},
-						},
-					},
-					VolumeMount: &corev1.VolumeMount{
-						Name:      persistentVolumeClaim.Name,
-						MountPath: path.Join(VolumeDataDirMountPath, job.Name),
-						SubPath:   job.Name,
-					},
-					Labels: map[string]string{
-						"job_name":  job.Name,
-						"ephemeral": "true",
-					},
-				}
-			}
-
-			bpmDisks = append(bpmDisks, ephemeralDisk)
+			bpmDisks = append(bpmDisks, disk)
 		}
 
 		if hasPersistentDisk {
@@ -298,40 +266,108 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 					" but instance group '%s' doesn't have any persistent disk declaration", job.Name, instanceGroup.Name)
 			}
 
-			persistentVolumeClaim := generatePersistentVolumeClaim(manifestName, instanceGroup, namespace)
+			disk := persistentDisk(
+				manifestName,
+				namespace,
+				instanceGroup,
+				job,
+			)
 
-			// Specify the job sub-path inside of the instance group PV
-			bpmPersistentDisk := disk.BPMResourceDisk{
-				PersistentVolumeClaim: &persistentVolumeClaim,
-				Volume: &corev1.Volume{
-					Name: persistentVolumeClaim.Name,
-					VolumeSource: corev1.VolumeSource{
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: persistentVolumeClaim.Name,
-						},
-					},
-				},
-				VolumeMount: &corev1.VolumeMount{
-					Name:      persistentVolumeClaim.Name,
-					MountPath: path.Join(VolumeStoreDirMountPath, job.Name),
-					SubPath:   job.Name,
-				},
-				Labels: map[string]string{
-					"job_name":   job.Name,
-					"persistent": "true",
-				},
-			}
-			bpmDisks = append(bpmDisks, bpmPersistentDisk)
+			bpmDisks = append(bpmDisks, disk)
 		}
 	}
 
 	return bpmDisks, nil
 }
 
-func generateEphemeralPersistentVolumeClaim(manifestName string, instanceGroup *bdm.InstanceGroup, namespace string) corev1.PersistentVolumeClaim {
-	// Spec of a persistentVolumeClaim
+func persistentDisk(manifestName, namespace string, instanceGroup *bdm.InstanceGroup, job bdm.Job) disk.BPMResourceDisk {
+	persistentVolumeClaim := generatePersistentVolumeClaim(manifestName, instanceGroup, namespace)
 
+	// Specify the job sub-path inside of the instance group PV
+	bpmPersistentDisk := disk.BPMResourceDisk{
+		PersistentVolumeClaim: &persistentVolumeClaim,
+		Volume: &corev1.Volume{
+			Name: persistentVolumeClaim.Name,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: persistentVolumeClaim.Name,
+				},
+			},
+		},
+		VolumeMount: &corev1.VolumeMount{
+			Name:      persistentVolumeClaim.Name,
+			MountPath: path.Join(VolumeStoreDirMountPath, job.Name),
+			SubPath:   job.Name,
+		},
+		Labels: map[string]string{
+			"job_name":   job.Name,
+			"persistent": "true",
+		},
+	}
+
+	return bpmPersistentDisk
+}
+
+func ephemeralDisk(manifestName, namespace string, instanceGroup *bdm.InstanceGroup, job bdm.Job) disk.BPMResourceDisk {
+	persistent := instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.EphemeralAsPVC
+
+	ephemeralDisk := disk.BPMResourceDisk{
+		VolumeMount: &corev1.VolumeMount{
+			Name:      volumeDataDirName(manifestName, instanceGroup.Name),
+			MountPath: path.Join(VolumeDataDirMountPath, job.Name),
+			SubPath:   job.Name,
+		},
+		Labels: map[string]string{
+			"job_name":  job.Name,
+			"ephemeral": "true",
+		},
+	}
+
+	if persistent {
+		persistentVolumeClaim := ephemeralPVC(manifestName, instanceGroup, namespace)
+
+		ephemeralDisk = disk.BPMResourceDisk{
+			PersistentVolumeClaim: persistentVolumeClaim,
+			Volume: &corev1.Volume{
+				Name: persistentVolumeClaim.Name,
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: persistentVolumeClaim.Name,
+					},
+				},
+			},
+			VolumeMount: &corev1.VolumeMount{
+				Name:      persistentVolumeClaim.Name,
+				MountPath: path.Join(VolumeDataDirMountPath, job.Name),
+				SubPath:   job.Name,
+			},
+			Labels: map[string]string{
+				"job_name":  job.Name,
+				"ephemeral": "true",
+			},
+		}
+	}
+
+	return ephemeralDisk
+}
+
+func ephemeralPVCSize(instanceGroup *bdm.InstanceGroup) int {
 	diskSize := defaultEphemeralVolumeSize
+
+	if instanceGroup.PersistentDisk != nil {
+		diskSize = *instanceGroup.PersistentDisk
+	}
+
+	if instanceGroup.VMResources != nil && instanceGroup.VMResources.EphemeralDiskSize > 0 {
+		diskSize = instanceGroup.VMResources.EphemeralDiskSize
+	}
+
+	return diskSize
+}
+
+// ephemeralPVC returns a PVC to be used for ephemeral disks
+func ephemeralPVC(manifestName string, instanceGroup *bdm.InstanceGroup, namespace string) *corev1.PersistentVolumeClaim {
+	diskSize := ephemeralPVCSize(instanceGroup)
 
 	if instanceGroup.PersistentDisk != nil {
 		diskSize = *instanceGroup.PersistentDisk
@@ -343,7 +379,7 @@ func generateEphemeralPersistentVolumeClaim(manifestName string, instanceGroup *
 
 	persistentVolumeClaim := corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      generateEphemeralPersistentVolumeClaimName(manifestName, instanceGroup.Name),
+			Name:      ephemeralPVCName(manifestName, instanceGroup.Name),
 			Namespace: namespace,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -361,7 +397,7 @@ func generateEphemeralPersistentVolumeClaim(manifestName string, instanceGroup *
 		persistentVolumeClaim.Spec.StorageClassName = &instanceGroup.PersistentDiskType
 	}
 
-	return persistentVolumeClaim
+	return &persistentVolumeClaim
 }
 
 func generatePersistentVolumeClaim(manifestName string, instanceGroup *bdm.InstanceGroup, namespace string) corev1.PersistentVolumeClaim {
@@ -389,7 +425,7 @@ func generatePersistentVolumeClaim(manifestName string, instanceGroup *bdm.Insta
 	return persistentVolumeClaim
 }
 
-func generateEphemeralPersistentVolumeClaimName(manifestName string, instanceGroupName string) string {
+func ephemeralPVCName(manifestName string, instanceGroupName string) string {
 	return names.Sanitize(fmt.Sprintf("%s-%s-%s", manifestName, instanceGroupName, "ephemeral"))
 }
 
@@ -451,9 +487,9 @@ func sysDirVolume() *corev1.Volume {
 	}
 }
 
-// VolumeDataDirName is the volume name for the data directory.
-func VolumeDataDirName(manifestName string, instanceGroupName string) string {
-	return generateEphemeralPersistentVolumeClaimName(manifestName, instanceGroupName)
+// volumeDataDirName is the volume name for the data directory.
+func volumeDataDirName(manifestName string, instanceGroupName string) string {
+	return ephemeralPVCName(manifestName, instanceGroupName)
 }
 
 func sysDirVolumeMount() *corev1.VolumeMount {

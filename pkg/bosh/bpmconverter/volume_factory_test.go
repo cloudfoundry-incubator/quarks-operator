@@ -73,11 +73,11 @@ var _ = Describe("VolumeFactory", func() {
 			}))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
 				Volume: &corev1.Volume{
-					Name:         VolumeDataDirName("fake-manifest-name", "fake-instance-group-name"),
+					Name:         "fake-manifest-name-fake-instance-group-name-ephemeral",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 				},
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeDataDirName("fake-manifest-name", "fake-instance-group-name"),
+					Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
 					MountPath: VolumeDataDirMountPath,
 				},
 			}))
@@ -122,7 +122,7 @@ var _ = Describe("VolumeFactory", func() {
 			Expect(disks).Should(HaveLen(1))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeDataDirName("fake-manifest-name", "fake-instance-group-name"),
+					Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
 					MountPath: path.Join(VolumeDataDirMountPath, "fake-job"),
 					SubPath:   "fake-job",
 				},
@@ -174,7 +174,7 @@ var _ = Describe("VolumeFactory", func() {
 					},
 				},
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeDataDirName("fake-manifest-name", "fake-instance-group-name"),
+					Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
 					MountPath: path.Join(VolumeDataDirMountPath, "fake-job"),
 					SubPath:   "fake-job",
 				},
@@ -268,7 +268,7 @@ var _ = Describe("VolumeFactory", func() {
 			Expect(disks).Should(HaveLen(3))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeDataDirName("fake-manifest-name", "fake-instance-group-name"),
+					Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
 					ReadOnly:  true,
 					MountPath: "/var/vcap/data/add1",
 					SubPath:   "add1",
@@ -339,7 +339,7 @@ var _ = Describe("VolumeFactory", func() {
 			Expect(disks).Should(HaveLen(4))
 			Expect(disks).Should(ContainElement(disk.BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
-					Name:      VolumeDataDirName("fake-manifest-name", "fake-instance-group-name"),
+					Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
 					ReadOnly:  true,
 					MountPath: "/var/vcap/data/add1",
 					SubPath:   "add1",
