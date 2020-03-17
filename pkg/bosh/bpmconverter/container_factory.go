@@ -398,7 +398,7 @@ func createDirContainer(jobs []bdm.Job, instanceGroupName, manifestName string) 
 		ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
 		VolumeMounts: []corev1.VolumeMount{
 			corev1.VolumeMount{
-				Name: VolumeDataDirName(
+				Name: volumeDataDirName(
 					manifestName,
 					instanceGroupName),
 				MountPath: VolumeDataDirMountPath,
