@@ -259,7 +259,7 @@ type AgentSettings struct {
 	AutomountServiceAccountToken *bool                         `json:"automountServiceAccountToken,omitempty" yaml:"automountServiceAccountToken,omitempty"`
 	ImagePullSecrets             []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	Tolerations                  []corev1.Toleration           `json:"tolerations,omitempty"`
-	EphemeralAsPVC               bool                          `json:"ephemeralAsPVC",omitempty`
+	EphemeralAsPVC               bool                          `json:"ephemeralAsPVC,omitempty"`
 }
 
 // Set overrides labels and annotations with operator-owned metadata.
