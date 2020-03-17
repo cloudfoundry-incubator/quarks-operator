@@ -1,6 +1,6 @@
 package containerrun
 
-//go:generate mockgen -destination=./mocks/mock_containerrun.go -package=mocks code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun Runner,Checker,Process,OSProcess,ExecCommandContext
+//go:generate mockgen -destination=./mocks/mock_containerrun.go -package=mocks code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun Runner,Checker,Process,OSProcess,ExecCommandContext,PacketListener,PacketConnection
 //go:generate mockgen -destination=./mocks/mock_context.go -package=mocks context Context
 
 import (
