@@ -50,14 +50,23 @@ var _ = Describe("Run", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 
-		// Creating a listener spinning out an infinity of empty
-		// packets when called upon. This keeps the watchForCommands
-		// goroutine occupied with nothing while we are testing the
-		// main part of the runner.
-
-		// As a side note, I would have prefered a spinner where I can
-		// delay the return arbitrarily. That would keep the goroutine
-		// mostly waiting instead of mostly spinning as right now.
+		// Creating a listener spinning out an infinity of
+		// empty packets when called upon. This keeps the
+		// watchForCommands goroutine occupied with nothing
+		// while we are testing the main part of the
+		// runner. Note that the spinner contains a Do action
+		// which delays the return until after the test is
+		// done. This means that the spinner is actually not
+		// wasting CPU as might be thought.
+		//
+		// ATTENTION: The func'tion used for `Do(AndReturn)`
+		// has to take the same arguments as the method we are
+		// mocking (here `ListenPacket`). This requirement is
+		// __not__ documented and must be infered from the
+		// discussion at
+		// https://github.com/golang/mock/issues/34 and the
+		// code at
+		// https://github.com/golang/mock/blob/master/gomock/call.go#L112-L129
 
 		packet := NewMockPacketConnection(ctrl)
 		packet.EXPECT().
@@ -70,9 +79,10 @@ var _ = Describe("Run", func() {
 		       AnyTimes()
 		spinner = NewMockPacketListener(ctrl)
 		spinner.EXPECT().
-		         ListenPacket(gomock.Any(), gomock.Any()).
-			 Return(packet,nil).
-			 AnyTimes()
+			ListenPacket(gomock.Any(), gomock.Any()).
+			Do(func(net, addr string) { time.Sleep(time.Hour) }).
+			Return(packet, nil).
+			AnyTimes()
 	})
 
 	AfterEach(func() {
