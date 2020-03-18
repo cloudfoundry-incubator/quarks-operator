@@ -388,6 +388,139 @@ var _ = Describe("Run", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
+
+	Context("With irrelevant commands", func() {
+		It("ignores unknown commands", func() {
+			process := NewMockProcess(ctrl)
+			process.EXPECT().
+				Wait().
+				Return(nil).
+				Times(1)
+			process.EXPECT().
+				Signal(gomock.Any()).
+				Return(nil).
+				AnyTimes()
+			runner := NewMockRunner(ctrl)
+			runner.EXPECT().
+				Run(command, stdio).
+				Return(process, nil).
+				Times(1)
+			boguscmd := []byte("bogus")
+			bogus := NewMockPacketConnection(ctrl)
+			bogus.EXPECT().
+				Close().
+				Return(nil).
+				AnyTimes()
+			bogus.EXPECT().
+				ReadFrom(gomock.Any()).
+				Do(func(p []byte) { copy (p, boguscmd) }).
+				// The action is needed because the
+				// slice argument of `ReadFrom` gets
+				// the main result (packet data).
+				Return(len(boguscmd),nil,nil).
+				AnyTimes()
+			emit_bogus := NewMockPacketListener(ctrl)
+			emit_bogus.EXPECT().
+				ListenPacket(gomock.Any(), gomock.Any()).
+				Return(bogus, nil).
+				AnyTimes()
+			err := Run(runner, nil, nil, emit_bogus, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("ignores packet read errors", func() {
+			process := NewMockProcess(ctrl)
+			process.EXPECT().
+				Wait().
+				Return(nil).
+				Times(1)
+			process.EXPECT().
+				Signal(gomock.Any()).
+				Return(nil).
+				AnyTimes()
+			runner := NewMockRunner(ctrl)
+			runner.EXPECT().
+				Run(command, stdio).
+				Return(process, nil).
+				Times(1)
+			packet_error := NewMockPacketConnection(ctrl)
+			packet_error.EXPECT().
+				Close().
+				Return(nil).
+				AnyTimes()
+			packet_error.EXPECT().
+				ReadFrom(gomock.Any()).
+				Return(0,nil,fmt.Errorf ("bogus")).
+				AnyTimes()
+			emit_error := NewMockPacketListener(ctrl)
+			emit_error.EXPECT().
+				ListenPacket(gomock.Any(), gomock.Any()).
+				Return(packet_error, nil).
+				AnyTimes()
+			err := Run(runner, nil, nil, emit_error, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("ignores start commands for running processes", func() {
+			// The trigger channel is used to sequence
+			// `Wait` (main command goroutine) and
+			// `ListenPacket` (watch goroutine). An action
+			// in `Wait` posts the signal, `ListenPacket`
+			// waits for reception, then returns the start
+			// command, which does nothing, so `Kill` is
+			// never called. `Wait` also delays a bit
+			// before declaring the command as done,
+			// giving the command processing time to pass
+			// the command around to do nothing.
+			//
+			// That nothing is done is seen through
+			// Run().Times(1) not triggering.
+			trigger := make(chan struct {})
+			process := NewMockProcess(ctrl)
+			process.EXPECT().
+				Wait().
+				Do(func () { trigger <- struct{}{} ; time.Sleep (time.Second) }).
+				Return(nil).
+				Times(1)
+			process.EXPECT().
+				Signal(os.Kill).
+				Return(nil).
+				Times(0)
+			runner := NewMockRunner(ctrl)
+			runner.EXPECT().
+				Run(command, stdio).
+				Return(process, nil).
+				Times(1)
+			packet_start := NewMockPacketConnection(ctrl)
+			packet_start.EXPECT().
+				Close().
+				Return(nil).
+				AnyTimes()
+			packet_start.EXPECT().
+				ReadFrom(gomock.Any()).
+				Do(func(p []byte) { copy (p, []byte(ProcessStart)) }).
+				Return(len(ProcessStart),nil,nil).
+				AnyTimes()
+			emit_start := NewMockPacketListener(ctrl)
+			emit_start.EXPECT().
+				ListenPacket(gomock.Any(), gomock.Any()).
+				Do(func(net, addr string) { _ = <- trigger }).
+				Return(packet_start, nil).
+				AnyTimes()
+			err := Run(runner, nil, nil, emit_start, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("ignores stop commands for stopped processes", func() {
+		})
+	})
+
+	Context("With commands", func() {
+		It("processes stop commands, and stops the running processes", func() {
+		})
+		It("processes start commands, and starts the stopped processes", func() {
+		})
+	})
 })
 
 var _ = Describe("ProcessRegistry", func() {

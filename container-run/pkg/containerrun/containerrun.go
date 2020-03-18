@@ -21,8 +21,8 @@ const (
 	postStartTimeout   = time.Minute * 15
 	conditionSleepTime = time.Second * 3
 
-	processStart  = "+"
-	processStop   = "-"
+	ProcessStart  = "+"
+	ProcessStop   = "-"
 )
 
 type processCommand string
@@ -117,12 +117,23 @@ func Run(
 			// started/up/active.
 
 			switch cmd {
-			case processStop:
+			case ProcessStop:
 				if active {
+					// Order is important here.
+					// The `stopProcesses` sends
+					// signals to the children,
+					// which unlocks their Wait,
+					// which causes events to be
+					// posted on the done channel.
+					// To properly ignore these
+					// events the flag has to be
+					// set before sending any
+					// signals.
+
 					active = false
 					stopProcesses(processRegistry)
 				}
-			case processStart:
+			case ProcessStart:
 				if !active {
 					err := startProcesses (
 						runner,
@@ -139,11 +150,12 @@ func Run(
 						return err
 					}
 
-					active = false
+					active = true
 				}
 			}
 		case <-done:
-			// Ignore done signals when we actively stopped the children
+			// Ignore done signals when we actively
+			// stopped the children via ProcessStop.
 			if (active) {
 				return nil
 			}
@@ -190,7 +202,7 @@ func handlePacket(
 
 	command := string(packet[:count])
 	switch command {
-	case processStart, processStop:
+	case ProcessStart, ProcessStop:
 		commands <- processCommand (command)
 	default:
 		// Bad commands are ignored. Else they could be used to DOS the runner.
