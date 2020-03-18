@@ -45,9 +45,34 @@ var _ = Describe("Run", func() {
 	stdio := Stdio{}
 
 	var ctrl *gomock.Controller
+	var spinner *MockPacketListener
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
+
+		// Creating a listener spinning out an infinity of empty
+		// packets when called upon. This keeps the watchForCommands
+		// goroutine occupied with nothing while we are testing the
+		// main part of the runner.
+
+		// As a side note, I would have prefered a spinner where I can
+		// delay the return arbitrarily. That would keep the goroutine
+		// mostly waiting instead of mostly spinning as right now.
+
+		packet := NewMockPacketConnection(ctrl)
+		packet.EXPECT().
+		       Close().
+		       Return(nil).
+		       AnyTimes()
+		packet.EXPECT().
+		       ReadFrom(gomock.Any()).
+		       Return(0,nil,nil).
+		       AnyTimes()
+		spinner = NewMockPacketListener(ctrl)
+		spinner.EXPECT().
+		         ListenPacket(gomock.Any(), gomock.Any()).
+			 Return(packet,nil).
+			 AnyTimes()
 	})
 
 	AfterEach(func() {
@@ -86,7 +111,7 @@ var _ = Describe("Run", func() {
 			Run(command, stdio).
 			Return(process, nil).
 			Times(1)
-		err := Run(runner, nil, nil, nil, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
+		err := Run(runner, nil, nil, spinner, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal(`failed to run container: ¯\_(ツ)_/¯`))
 	})
@@ -106,7 +131,7 @@ var _ = Describe("Run", func() {
 			Run(command, stdio).
 			Return(process, nil).
 			Times(1)
-		err := Run(runner, nil, nil, nil, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
+		err := Run(runner, nil, nil, spinner, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -130,7 +155,7 @@ var _ = Describe("Run", func() {
 			Check(postStart.Name).
 			Return(false).
 			Times(1)
-		err := Run(runner, nil, checker, nil, stdio, commandLine, postStart.Name, postStart.Arg, "", []string{}, socketToWatch)
+		err := Run(runner, nil, checker, spinner, stdio, commandLine, postStart.Name, postStart.Arg, "", []string{}, socketToWatch)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -165,7 +190,7 @@ var _ = Describe("Run", func() {
 				Return(true).
 				Times(1)
 			conditionRunner := NewMockRunner(ctrl)
-			err := Run(runner, conditionRunner, checker, nil, stdio, commandLine, postStart.Name, postStart.Arg, "", []string{}, socketToWatch)
+			err := Run(runner, conditionRunner, checker, spinner, stdio, commandLine, postStart.Name, postStart.Arg, "", []string{}, socketToWatch)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Errorf("failed to run container: %v", expectedErr).Error()))
 		})
@@ -209,7 +234,7 @@ var _ = Describe("Run", func() {
 				Return(true).
 				Times(1)
 			conditionRunner := NewMockRunner(ctrl)
-			err := Run(runner, conditionRunner, checker, nil, stdio, commandLine, postStart.Name, postStart.Arg, "", []string{}, socketToWatch)
+			err := Run(runner, conditionRunner, checker, spinner, stdio, commandLine, postStart.Name, postStart.Arg, "", []string{}, socketToWatch)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Errorf("failed to run container: %v", expectedErr).Error()))
 		})
@@ -258,7 +283,7 @@ var _ = Describe("Run", func() {
 				Return(true).
 				Times(1)
 			conditionRunner := NewMockRunner(ctrl)
-			err := Run(runner, conditionRunner, checker, nil, stdio, commandLine, postStart.Name, postStart.Arg, "", []string{}, socketToWatch)
+			err := Run(runner, conditionRunner, checker, spinner, stdio, commandLine, postStart.Name, postStart.Arg, "", []string{}, socketToWatch)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -292,7 +317,7 @@ var _ = Describe("Run", func() {
 				RunContext(gomock.Any(), postStartCondition, gomock.Any()).
 				Return(nil, expectedErr).
 				Times(1)
-			err := Run(runner, conditionRunner, checker, nil, stdio, commandLine, postStart.Name, postStart.Arg, postStartCondition.Name, postStartCondition.Arg, socketToWatch)
+			err := Run(runner, conditionRunner, checker, spinner, stdio, commandLine, postStart.Name, postStart.Arg, postStartCondition.Name, postStartCondition.Arg, socketToWatch)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Errorf("failed to run container: %v", expectedErr).Error()))
 		})
@@ -349,7 +374,7 @@ var _ = Describe("Run", func() {
 				}).
 				Return(nil, nil).
 				Times(1)
-			err := Run(runner, conditionRunner, checker, nil, stdio, commandLine, postStart.Name, postStart.Arg, postStartCondition.Name, postStartCondition.Arg, socketToWatch)
+			err := Run(runner, conditionRunner, checker, spinner, stdio, commandLine, postStart.Name, postStart.Arg, postStartCondition.Name, postStartCondition.Arg, socketToWatch)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
