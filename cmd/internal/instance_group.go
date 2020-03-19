@@ -48,9 +48,6 @@ Also calculates and prints the BPM configurations for all BOSH jobs of that inst
 			}
 		}()
 
-		log = cmd.Logger()
-		defer log.Sync()
-
 		boshManifestPath, err := boshManifestFlagValidation()
 		if err != nil {
 			return errors.Wrap(err, igFailedMessage)
