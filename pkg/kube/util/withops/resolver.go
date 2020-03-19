@@ -16,6 +16,8 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
@@ -53,7 +55,7 @@ func NewResolver(client client.Client, f NewInterpolatorFunc, dns NewDNSFunc) *R
 // Manifest returns manifest and a list of implicit variables referenced by our bdpl CRD
 // The resulting manifest has variables interpolated and ops files applied.
 // It is the 'with-ops' manifest.
-func (r *Resolver) Manifest(bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
+func (r *Resolver) Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
 	interpolator := r.newInterpolatorFunc()
 	spec := bdpl.Spec
 	var (
@@ -61,7 +63,7 @@ func (r *Resolver) Manifest(bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.M
 		err error
 	)
 
-	m, err = r.resourceData(namespace, spec.Manifest.Type, spec.Manifest.Name, bdv1.ManifestSpecName)
+	m, err = r.resourceData(ctx, namespace, spec.Manifest.Type, spec.Manifest.Name, bdv1.ManifestSpecName)
 	if err != nil {
 		return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", bdpl.GetName())
 	}
@@ -70,7 +72,7 @@ func (r *Resolver) Manifest(bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.M
 	ops := spec.Ops
 
 	for _, op := range ops {
-		opsData, err := r.resourceData(namespace, op.Type, op.Name, bdv1.OpsSpecName)
+		opsData, err := r.resourceData(ctx, namespace, op.Type, op.Name, bdv1.OpsSpecName)
 		if err != nil {
 			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", bdpl.GetName())
 		}
@@ -117,7 +119,7 @@ func (r *Resolver) Manifest(bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.M
 			varSecretName = names.DeploymentSecretName(names.DeploymentSecretTypeVariable, bdpl.GetName(), v)
 		}
 
-		varData, err := r.resourceData(namespace, bdv1.SecretReference, varSecretName, varKeyName)
+		varData, err := r.resourceData(ctx, namespace, bdv1.SecretReference, varSecretName, varKeyName)
 		if err != nil {
 			return nil, varSecrets, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
 		}
@@ -127,7 +129,8 @@ func (r *Resolver) Manifest(bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.M
 	}
 
 	// Apply addons
-	err = manifest.ApplyAddons()
+	log := ctxlog.ExtractLogger(ctx)
+	err = manifest.ApplyAddons(logger.TraceFilter(log, "manifest-addons"))
 	if err != nil {
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}
@@ -144,14 +147,14 @@ func (r *Resolver) Manifest(bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.M
 // ManifestDetailed returns manifest and a list of implicit variables referenced by our bdpl CRD
 // The resulting manifest has variables interpolated and ops files applied.
 // It is the 'with-ops' manifest. This variant processes each ops file individually, so it's more debuggable - but slower.
-func (r *Resolver) ManifestDetailed(bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
+func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
 	spec := bdpl.Spec
 	var (
 		m   string
 		err error
 	)
 
-	m, err = r.resourceData(namespace, spec.Manifest.Type, spec.Manifest.Name, bdv1.ManifestSpecName)
+	m, err = r.resourceData(ctx, namespace, spec.Manifest.Type, spec.Manifest.Name, bdv1.ManifestSpecName)
 	if err != nil {
 		return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", bdpl.GetName())
 	}
@@ -163,7 +166,7 @@ func (r *Resolver) ManifestDetailed(bdpl *bdv1.BOSHDeployment, namespace string)
 	for _, op := range ops {
 		interpolator := r.newInterpolatorFunc()
 
-		opsData, err := r.resourceData(namespace, op.Type, op.Name, bdv1.OpsSpecName)
+		opsData, err := r.resourceData(ctx, namespace, op.Type, op.Name, bdv1.OpsSpecName)
 		if err != nil {
 			return nil, []string{}, errors.Wrapf(err, "Failed to get resource data for interpolation of bosh deployment '%s' and ops '%s'", bdpl.GetName(), op.Name)
 		}
@@ -207,7 +210,7 @@ func (r *Resolver) ManifestDetailed(bdpl *bdv1.BOSHDeployment, namespace string)
 			varSecretName = names.DeploymentSecretName(names.DeploymentSecretTypeVariable, bdpl.GetName(), v)
 		}
 
-		varData, err := r.resourceData(namespace, bdv1.SecretReference, varSecretName, varKeyName)
+		varData, err := r.resourceData(ctx, namespace, bdv1.SecretReference, varSecretName, varKeyName)
 		if err != nil {
 			return nil, varSecrets, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
 		}
@@ -217,7 +220,8 @@ func (r *Resolver) ManifestDetailed(bdpl *bdv1.BOSHDeployment, namespace string)
 	}
 
 	// Apply addons
-	err = manifest.ApplyAddons()
+	log := ctxlog.ExtractLogger(ctx)
+	err = manifest.ApplyAddons(logger.TraceFilter(log, "detailed-manifest-addons"))
 	if err != nil {
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}
@@ -295,7 +299,7 @@ func (r *Resolver) replaceVarRecursive(copy, v reflect.Value, varName, varValue 
 }
 
 // resourceData resolves different manifest reference types and returns the resource's data
-func (r *Resolver) resourceData(namespace string, resType bdv1.ReferenceType, name string, key string) (string, error) {
+func (r *Resolver) resourceData(ctx context.Context, namespace string, resType bdv1.ReferenceType, name string, key string) (string, error) {
 	var (
 		data string
 		ok   bool
@@ -304,7 +308,7 @@ func (r *Resolver) resourceData(namespace string, resType bdv1.ReferenceType, na
 	switch resType {
 	case bdv1.ConfigMapReference:
 		opsConfig := &corev1.ConfigMap{}
-		err := r.client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, opsConfig)
+		err := r.client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, opsConfig)
 		if err != nil {
 			return data, errors.Wrapf(err, "failed to retrieve %s from configmap '%s/%s' via client.Get", key, namespace, name)
 		}
@@ -314,7 +318,7 @@ func (r *Resolver) resourceData(namespace string, resType bdv1.ReferenceType, na
 		}
 	case bdv1.SecretReference:
 		opsSecret := &corev1.Secret{}
-		err := r.client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, opsSecret)
+		err := r.client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, opsSecret)
 		if err != nil {
 			return data, errors.Wrapf(err, "failed to retrieve %s from secret '%s/%s' via client.Get", key, namespace, name)
 		}

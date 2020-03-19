@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	goyaml "gopkg.in/yaml.v2"
 
 	"sigs.k8s.io/yaml"
@@ -460,7 +461,7 @@ func (m *Manifest) ImplicitVariables() ([]string, error) {
 }
 
 // ApplyAddons goes through all defined addons and adds jobs to matched instance groups
-func (m *Manifest) ApplyAddons() error {
+func (m *Manifest) ApplyAddons(log *zap.SugaredLogger) error {
 	if m.AddOnsApplied {
 		return nil
 	}

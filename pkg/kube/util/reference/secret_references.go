@@ -49,7 +49,7 @@ func getSecretRefFromBdpl(ctx context.Context, client crc.Client, object bdv1.BO
 			return boshdns.NewDNS(deploymentName, m)
 		},
 	)
-	_, implicitVars, err := withops.Manifest(&object, object.Namespace)
+	_, implicitVars, err := withops.Manifest(ctx, &object, object.Namespace)
 	if err != nil {
 		return map[string]bool{}, errors.Wrap(err, fmt.Sprintf("Failed to load the with-ops manifest for BOSHDeployment '%s/%s'", object.Namespace, object.Name))
 	}
