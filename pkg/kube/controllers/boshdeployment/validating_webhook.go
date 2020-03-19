@@ -199,7 +199,7 @@ func (v *Validator) Handle(ctx context.Context, req admission.Request) admission
 	}
 
 	v.log.Infof("Resolving deployment '%s'", boshDeployment.Name)
-	manifest, _, err := withops.ManifestDetailed(boshDeployment, boshDeployment.GetNamespace())
+	manifest, _, err := withops.ManifestDetailed(ctx, boshDeployment, boshDeployment.GetNamespace())
 	if err != nil {
 		return admission.Response{
 			AdmissionResponse: v1beta1.AdmissionResponse{
