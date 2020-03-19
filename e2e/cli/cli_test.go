@@ -39,7 +39,7 @@ var _ = Describe("CLI", func() {
   -t, --docker-image-tag string                  \(DOCKER_IMAGE_TAG\) Tag of the operator docker image \(default "\d+.\d+.\d+"\)
   -h, --help                                     help for cf-operator
   -c, --kubeconfig string                        \(KUBECONFIG\) Path to a kubeconfig, not required in-cluster
-  -l, --log-level string                         \(LOG_LEVEL\) Only print log messages from this level onward \(default "debug"\)
+  -l, --log-level string                         \(LOG_LEVEL\) Only print log messages from this level onward \(trace,debug,info,warn\) \(default "debug"\)
       --max-boshdeployment-workers int           \(MAX_BOSHDEPLOYMENT_WORKERS\) Maximum number of workers concurrently running BOSHDeployment controller \(default 1\)
       --max-quarks-secret-workers int            \(MAX_QUARKS_SECRET_WORKERS\) Maximum number of workers concurrently running QuarksSecret controller \(default 5\)
       --max-quarks-statefulset-workers int       \(MAX_QUARKS_STATEFULSET_WORKERS\) Maximum number of workers concurrently running QuarksStatefulSet controller \(default 1\)

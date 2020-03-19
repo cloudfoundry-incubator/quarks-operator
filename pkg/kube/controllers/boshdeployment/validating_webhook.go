@@ -24,6 +24,7 @@ import (
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/withops"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
@@ -75,7 +76,7 @@ type Validator struct {
 
 // NewValidator returns a new BOSHDeploymentValidator
 func NewValidator(log *zap.SugaredLogger, config *config.Config) admission.Handler {
-	validationLog := log.Named("boshdeployment-validator").Desugar().WithOptions(zap.AddCallerSkip(-1)).Sugar()
+	validationLog := logger.Unskip(log, "boshdeployment-validator")
 	validationLog.Info("Creating a validator for BOSHDeployment")
 
 	return &Validator{

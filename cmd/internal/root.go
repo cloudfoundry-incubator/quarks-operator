@@ -23,6 +23,7 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 )
 
 const (
@@ -43,7 +44,7 @@ var rootCmd = &cobra.Command{
 	Use:   "cf-operator",
 	Short: "cf-operator manages BOSH deployments on Kubernetes",
 	RunE: func(_ *cobra.Command, args []string) error {
-		log = cmd.Logger(zap.AddCallerSkip(1))
+		log = logger.NewControllerLogger(cmd.LogLevel())
 		defer log.Sync()
 
 		restConfig, err := cmd.KubeConfig(log)
