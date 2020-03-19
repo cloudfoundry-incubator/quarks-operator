@@ -7,13 +7,14 @@ import (
 	"regexp"
 	"time"
 
-	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
-	"github.com/gonvenience/bunt"
-
 	"github.com/fsnotify/fsnotify"
+	"github.com/gonvenience/bunt"
 	"github.com/hpcloud/tail"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
+	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 )
 
 // dataGatherCmd represents the dataGather command
@@ -40,7 +41,7 @@ the LOGS_DIR env variable.
 // This only tail logs from files names
 // in the form *.log
 func TailLogsFromDir() error {
-	log = cmd.Logger()
+	log = logger.New(cmd.LogLevel())
 	defer log.Sync()
 
 	monitorDir := viper.GetString("logs-dir")
