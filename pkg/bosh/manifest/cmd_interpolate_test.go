@@ -4,13 +4,10 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"go.uber.org/zap"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
 
 var _ = Describe("InterpolateVariables", func() {
@@ -18,11 +15,9 @@ var _ = Describe("InterpolateVariables", func() {
 	var (
 		baseManifest   []byte
 		varDir         string
-		log            *zap.SugaredLogger
 		outputFilePath string
 	)
 	BeforeEach(func() {
-		_, log = helper.NewTestLogger()
 		baseManifest = []byte(`
 ---
 director_uuid: ((password1))
@@ -37,7 +32,7 @@ instance_groups:
 	})
 
 	It("returns interpolated manifest", func() {
-		err := InterpolateVariables(log, baseManifest, varDir, outputFilePath)
+		err := InterpolateVariables(baseManifest, varDir, outputFilePath)
 		Expect(err).NotTo(HaveOccurred())
 
 		dataBytes, err := ioutil.ReadFile(outputFilePath)
@@ -49,7 +44,7 @@ instance_groups:
 
 	It("raises error when variablesDir is not directory", func() {
 		varDir = assetPath + "/nonexisting"
-		err := InterpolateVariables(log, baseManifest, varDir, outputFilePath)
+		err := InterpolateVariables(baseManifest, varDir, outputFilePath)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("could not read variables directory"))
 	})
