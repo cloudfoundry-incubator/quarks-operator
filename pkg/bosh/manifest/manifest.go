@@ -470,16 +470,17 @@ func (m *Manifest) ApplyAddons(log *zap.SugaredLogger) error {
 			continue
 		}
 		for _, ig := range m.InstanceGroups {
-			include, err := m.addOnPlacementMatch("inclusion", ig, addon.Include)
+			include, err := m.addOnPlacementMatch(log, "inclusion", ig, addon.Include)
 			if err != nil {
 				return errors.Wrap(err, "failed to process include placement matches")
 			}
-			exclude, err := m.addOnPlacementMatch("exclusion", ig, addon.Exclude)
+			exclude, err := m.addOnPlacementMatch(log, "exclusion", ig, addon.Exclude)
 			if err != nil {
 				return errors.Wrap(err, "failed to process exclude placement matches")
 			}
 
 			if exclude || !include {
+				log.Debugf("Addon '%s' doesn't match instance group '%s'", addon.Name, ig.Name)
 				continue
 			}
 
@@ -491,6 +492,8 @@ func (m *Manifest) ApplyAddons(log *zap.SugaredLogger) error {
 				}
 
 				addedJob.Properties.Quarks.IsAddon = true
+
+				log.Debugf("Applying addon job '%s/%s' to instance group '%s'", addon.Name, addonJob.Name, ig.Name)
 				ig.Jobs = append(ig.Jobs, addedJob)
 			}
 		}
