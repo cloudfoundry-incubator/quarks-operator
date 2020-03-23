@@ -16,11 +16,11 @@ RUN make build && \
     cp -p binaries/cf-operator /usr/local/bin/cf-operator
 RUN ./bin/build-container-run /usr/local/bin
 
-FROM cfcontainerization/cf-operator-base@sha256:6495dd2e427e716fcdf1153dbca57e5ac6b1c68ca34c6ebb23be46d186fc2474
+FROM registry.opensuse.org/cloud/platform/quarks/sle_15_sp1/quarks-operator-base:latest
 RUN groupadd -g 1000 vcap && \
     useradd -r -u 1000 -g vcap vcap
 RUN cp /usr/sbin/dumb-init /usr/bin/dumb-init
-USER vcap
+USER 1000
 COPY --from=build /usr/local/bin/cf-operator /usr/local/bin/cf-operator
 COPY --from=build /usr/local/bin/container-run /usr/local/bin/container-run
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "cf-operator"]
