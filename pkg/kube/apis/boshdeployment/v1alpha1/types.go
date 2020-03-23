@@ -30,10 +30,16 @@ const (
 )
 
 var (
-	// LabelDeploymentName is the label key for manifest name
+	// LabelDeploymentName is the label key for the deployment manifest name
 	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
 	// LabelDeploymentSecretType is the label key for secret type
 	LabelDeploymentSecretType = fmt.Sprintf("%s/secret-type", apis.GroupName)
+	// LabelInstanceGroupName is the name of a label for an instance group name.
+	LabelInstanceGroupName = fmt.Sprintf("%s/instance-group-name", apis.GroupName)
+	// LabelDeploymentVersion is the name of a label for the deployment's version.
+	LabelDeploymentVersion = fmt.Sprintf("%s/deployment-version", apis.GroupName)
+	// LabelReferencedJobName is the name key for dependent job
+	LabelReferencedJobName = fmt.Sprintf("%s/referenced-job-name", apis.GroupName)
 	// AnnotationLinkProvidesKey is the key for the quarks links 'provides' JSON
 	AnnotationLinkProvidesKey = fmt.Sprintf("%s/provides", apis.GroupName)
 	// AnnotationLinkProviderService is the annotation key used on services to identify the link provider

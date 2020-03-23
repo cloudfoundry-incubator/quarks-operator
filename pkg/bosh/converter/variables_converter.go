@@ -7,6 +7,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
@@ -34,8 +35,8 @@ func (vc *VariablesConverter) Variables(manifestName string, variables []bdm.Var
 				Name:      secretName,
 				Namespace: vc.namespace,
 				Labels: map[string]string{
-					"variableName":          v.Name,
-					bdm.LabelDeploymentName: manifestName,
+					"variableName":           v.Name,
+					bdv1.LabelDeploymentName: manifestName,
 				},
 			},
 			Spec: qsv1a1.QuarksSecretSpec{

@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 	corev1 "k8s.io/api/core/v1"
@@ -43,8 +43,8 @@ var _ = Describe("DeployWithStorage", func() {
 			svc, err := env.GetService(env.Namespace, "test-bdpl-bpm")
 			Expect(err).NotTo(HaveOccurred(), "error getting service")
 			Expect(svc.Spec.Selector).To(Equal(map[string]string{
-				bdm.LabelInstanceGroupName: "bpm",
-				bdm.LabelDeploymentName:    "test-bdpl",
+				bdv1.LabelInstanceGroupName: "bpm",
+				bdv1.LabelDeploymentName:    "test-bdpl",
 			}))
 			Expect(svc.Spec.Ports).NotTo(BeEmpty())
 			Expect(svc.Spec.Ports[0].Port).To(Equal(int32(1337)))

@@ -14,6 +14,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
@@ -263,8 +264,8 @@ func (kc *BPMConverter) serviceToKubeServices(manifestName string, dns DomainNam
 
 	headlessServiceName := dns.HeadlessServiceName(instanceGroup.Name)
 	headlessServiceSelector := map[string]string{
-		bdm.LabelDeploymentName:    manifestName,
-		bdm.LabelInstanceGroupName: instanceGroup.Name,
+		bdv1.LabelDeploymentName:    manifestName,
+		bdv1.LabelInstanceGroupName: instanceGroup.Name,
 	}
 	if activePassiveModel {
 		headlessServiceSelector[qstsv1a1.LabelActivePod] = "active"
@@ -397,10 +398,10 @@ func (kc *BPMConverter) generateServices(services []corev1.Service,
 			azIndex = 0
 		}
 		labels := map[string]string{
-			bdm.LabelDeploymentName:    manifestName,
-			bdm.LabelInstanceGroupName: instanceGroup.Name,
-			qstsv1a1.LabelAZIndex:      strconv.Itoa(azIndex),
-			qstsv1a1.LabelPodOrdinal:   strconv.Itoa(ordinal),
+			bdv1.LabelDeploymentName:    manifestName,
+			bdv1.LabelInstanceGroupName: instanceGroup.Name,
+			qstsv1a1.LabelAZIndex:       strconv.Itoa(azIndex),
+			qstsv1a1.LabelPodOrdinal:    strconv.Itoa(ordinal),
 		}
 		if includeActiveSelector {
 			labels[qstsv1a1.LabelActivePod] = "active"

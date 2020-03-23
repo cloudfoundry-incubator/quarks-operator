@@ -5,7 +5,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 )
 
 // WaitForServiceVersion blocks until the service of the instance group is created/updated. It fails after the timeout.
@@ -16,7 +16,7 @@ func (m *Machine) WaitForServiceVersion(namespace string, serviceName string, ve
 			return false, errors.Wrapf(err, "failed to get service '%s'", svc)
 		}
 
-		deploymentVersion, ok := svc.Labels[bdm.LabelDeploymentVersion]
+		deploymentVersion, ok := svc.Labels[bdv1.LabelDeploymentVersion]
 		if ok && deploymentVersion == version {
 			return true, nil
 		}

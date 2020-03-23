@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
 	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
@@ -32,13 +32,13 @@ var _ = Describe("FilterLabels", func() {
 
 		BeforeEach(func() {
 			labels = make(map[string]string)
-			labels[manifest.LabelDeploymentName] = "xxx"
-			labels[manifest.LabelDeploymentVersion] = "3"
+			labels[bdv1.LabelDeploymentName] = "xxx"
+			labels[bdv1.LabelDeploymentVersion] = "3"
 		})
 
 		It("deployment version is filtered", func() {
 			filteredLabels := statefulset.FilterLabels(labels)
-			Expect(filteredLabels).NotTo(HaveKey(manifest.LabelDeploymentVersion))
+			Expect(filteredLabels).NotTo(HaveKey(bdv1.LabelDeploymentVersion))
 		})
 	})
 

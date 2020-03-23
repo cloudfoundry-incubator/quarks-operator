@@ -277,8 +277,8 @@ func (c *Catalog) QuarksLinkSecret(deploymentName, linkType, linkName string, va
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Labels: map[string]string{
-				manifest.LabelDeploymentName: deploymentName,
-				qjv1.LabelEntanglementKey:    name,
+				bdv1.LabelDeploymentName:  deploymentName,
+				qjv1.LabelEntanglementKey: name,
 			},
 		},
 		Data: value,
