@@ -535,7 +535,7 @@ var _ = Describe("Run", func() {
 			emit_start.EXPECT().
 				ListenPacket(gomock.Any(), gomock.Any()).
 				// Wait for main command to be "up".
-				Do(func(net, addr string) { _ = <- trigger }).
+				Do(func(net, addr string) { <- trigger }).
 				Return(packet_start, nil).
 				AnyTimes()
 			err := Run(runner, nil, nil, emit_start, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
@@ -557,7 +557,7 @@ var _ = Describe("Run", func() {
 				// command, then wait for kill.
 				process.EXPECT().
 					Wait().
-					Do(func () { trigger <- struct{}{} ; _ = <- killed }).
+					Do(func () { trigger <- struct{}{} ; <- killed }).
 					Return(nil).
 					Times(1),
 				// Second start, via `start` command.
@@ -619,21 +619,21 @@ var _ = Describe("Run", func() {
 				// Receive first trigger, post `stop`.
 				emitter.EXPECT().
 					ListenPacket(gomock.Any(), gomock.Any()).
-					Do(func(net, addr string) { _ = <- trigger }).
+					Do(func(net, addr string) { <- trigger }).
 					Return(packet_stop, nil).
 					Times(1),
 				// Receive second trigger, post 2nd `stop`.
 				// With delay for kill handling. Then also trigger `start`
 				emitter.EXPECT().
 					ListenPacket(gomock.Any(), gomock.Any()).
-					Do(func(net, addr string) { _ = <- trigger ; time.Sleep(time.Second) ; trigger <- struct{}{} }).
+					Do(func(net, addr string) { <- trigger ; time.Sleep(time.Second) ; trigger <- struct{}{} }).
 					Return(packet_stop, nil).
 					Times(1),
 				// Receive 3rd trigger, post `start`.
 				// With delay for handling of 2nd `stop`.
 				emitter.EXPECT().
 					ListenPacket(gomock.Any(), gomock.Any()).
-					Do(func(net, addr string) { _ = <- trigger ; time.Sleep(time.Second) }).
+					Do(func(net, addr string) { <- trigger ; time.Sleep(time.Second) }).
 					Return(packet_start, nil).
 					AnyTimes(),
 			)
@@ -671,7 +671,7 @@ var _ = Describe("Run", func() {
 				// command, then wait for kill.
 				process.EXPECT().
 					Wait().
-					Do(func () { trigger <- struct{}{} ; _ = <- killed }).
+					Do(func () { trigger <- struct{}{} ; <- killed }).
 					Return(nil).
 					Times(1),
 				// Second start, via `start` command.
@@ -733,14 +733,14 @@ var _ = Describe("Run", func() {
 				// Receive first trigger, post `stop`.
 				emitter.EXPECT().
 					ListenPacket(gomock.Any(), gomock.Any()).
-					Do(func(net, addr string) { _ = <- trigger }).
+					Do(func(net, addr string) { <- trigger }).
 					Return(packet_stop, nil).
 					Times(1),
 				// Receive second trigger, post `start`.
 				// With delay for kill handling.
 				emitter.EXPECT().
 					ListenPacket(gomock.Any(), gomock.Any()).
-					Do(func(net, addr string) { _ = <- trigger ; time.Sleep(time.Second) }).
+					Do(func(net, addr string) { <- trigger ; time.Sleep(time.Second) }).
 					Return(packet_start, nil).
 					AnyTimes(),
 			)
