@@ -399,9 +399,13 @@ var _ = Describe("Run", func() {
 				Return(nil).
 				Times(1)
 			process.EXPECT().
-				Signal(gomock.Any()).
+				Signal(os.Kill).
 				Return(nil).
 				Times(0)
+			process.EXPECT().
+				Signal(syscall.SIGCHLD).
+				Return(nil).
+				AnyTimes()
 			runner := NewMockRunner(ctrl)
 			runner.EXPECT().
 				Run(command, stdio).
@@ -439,9 +443,13 @@ var _ = Describe("Run", func() {
 				Return(nil).
 				Times(1)
 			process.EXPECT().
-				Signal(gomock.Any()).
+				Signal(os.Kill).
 				Return(nil).
 				Times(0)
+			process.EXPECT().
+				Signal(syscall.SIGCHLD).
+				Return(nil).
+				AnyTimes()
 			runner := NewMockRunner(ctrl)
 			runner.EXPECT().
 				Run(command, stdio).
@@ -492,6 +500,10 @@ var _ = Describe("Run", func() {
 				Signal(os.Kill).
 				Return(nil).
 				Times(0)
+			process.EXPECT().
+				Signal(syscall.SIGCHLD).
+				Return(nil).
+				AnyTimes()
 			runner := NewMockRunner(ctrl)
 			runner.EXPECT().
 				Run(command, stdio).
@@ -555,6 +567,10 @@ var _ = Describe("Run", func() {
 				Do(func (x os.Signal) { killed <- struct{}{} ; trigger <- struct{}{} }).
 				Return(nil).
 				Times(1)
+			process.EXPECT().
+				Signal(syscall.SIGCHLD).
+				Return(nil).
+				AnyTimes()
 			runner := NewMockRunner(ctrl)
 			runner.EXPECT().
 				Run(command, stdio).
@@ -662,6 +678,10 @@ var _ = Describe("Run", func() {
 				Do(func (x os.Signal) { killed <- struct{}{} ; trigger <- struct{}{} }).
 				Return(nil).
 				Times(1)
+			process.EXPECT().
+				Signal(syscall.SIGCHLD).
+				Return(nil).
+				AnyTimes()
 			runner := NewMockRunner(ctrl)
 			runner.EXPECT().
 				Run(command, stdio).
