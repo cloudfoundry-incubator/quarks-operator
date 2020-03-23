@@ -1030,9 +1030,6 @@ func (c *Catalog) NatsConfigMap(deployName string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "nats",
-			Labels: map[string]string{
-				bdv1.LabelDeploymentName: deployName,
-			},
 		},
 		Data: map[string]string{
 			"gnatsd.conf": `listen: 0.0.0.0:4222
