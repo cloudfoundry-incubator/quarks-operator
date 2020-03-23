@@ -15,7 +15,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 )
 
@@ -26,7 +25,7 @@ var _ = Describe("ContainerFactory", func() {
 		releaseImageProvider *fakes.FakeReleaseImageProvider
 		jobs                 []bdm.Job
 		defaultVolumeMounts  []corev1.VolumeMount
-		bpmDisks             disk.BPMResourceDisks
+		bpmDisks             BPMResourceDisks
 	)
 
 	BeforeEach(func() {
@@ -48,7 +47,7 @@ var _ = Describe("ContainerFactory", func() {
 			},
 		}
 
-		bpmDisks = disk.BPMResourceDisks{
+		bpmDisks = BPMResourceDisks{
 			{
 
 				VolumeMount: &corev1.VolumeMount{
@@ -56,7 +55,7 @@ var _ = Describe("ContainerFactory", func() {
 					MountPath: path.Join(VolumeDataDirMountPath, "fake-job"),
 					SubPath:   "fake-job",
 				},
-				Labels: map[string]string{
+				Filters: map[string]string{
 					"job_name":  "fake-job",
 					"ephemeral": "true",
 				},
@@ -67,7 +66,7 @@ var _ = Describe("ContainerFactory", func() {
 					MountPath: path.Join(VolumeDataDirMountPath, "other-job"),
 					SubPath:   "other-job",
 				},
-				Labels: map[string]string{
+				Filters: map[string]string{
 					"job_name":  "other-job",
 					"ephemeral": "true",
 				},
@@ -78,7 +77,7 @@ var _ = Describe("ContainerFactory", func() {
 					MountPath: path.Join(VolumeStoreDirMountPath, "fake-job"),
 					SubPath:   "fake-job",
 				},
-				Labels: map[string]string{
+				Filters: map[string]string{
 					"job_name":   "fake-job",
 					"persistent": "true",
 				},
@@ -89,7 +88,7 @@ var _ = Describe("ContainerFactory", func() {
 					MountPath: path.Join(VolumeStoreDirMountPath, "other-job"),
 					SubPath:   "other-job",
 				},
-				Labels: map[string]string{
+				Filters: map[string]string{
 					"job_name":   "other-job",
 					"persistent": "true",
 				},
@@ -106,7 +105,7 @@ var _ = Describe("ContainerFactory", func() {
 					SubPath:          "",
 					MountPropagation: nil,
 				},
-				Labels: map[string]string{
+				Filters: map[string]string{
 					"job_name":     "fake-job",
 					"process_name": "fake-process",
 				},
@@ -123,7 +122,7 @@ var _ = Describe("ContainerFactory", func() {
 					SubPath:          "",
 					MountPropagation: nil,
 				},
-				Labels: map[string]string{
+				Filters: map[string]string{
 					"job_name":     "fake-job",
 					"process_name": "fake-process",
 				},
@@ -140,7 +139,7 @@ var _ = Describe("ContainerFactory", func() {
 					SubPath:          "",
 					MountPropagation: nil,
 				},
-				Labels: map[string]string{
+				Filters: map[string]string{
 					"job_name":     "fake-job",
 					"process_name": "fake-process",
 				},
@@ -157,7 +156,7 @@ var _ = Describe("ContainerFactory", func() {
 					SubPath:          "",
 					MountPropagation: nil,
 				},
-				Labels: map[string]string{
+				Filters: map[string]string{
 					"job_name":     "fake-job",
 					"process_name": "fake-process",
 				},
@@ -323,7 +322,7 @@ var _ = Describe("ContainerFactory", func() {
 			}
 			containerFactory = NewContainerFactory("fake-manifest", "fake-ig", "v1", false, releaseImageProvider, bpmConfigsWithError)
 			actWithError := func() ([]corev1.Container, error) {
-				return containerFactory.JobsToContainers(jobs, []corev1.VolumeMount{}, disk.BPMResourceDisks{})
+				return containerFactory.JobsToContainers(jobs, []corev1.VolumeMount{}, BPMResourceDisks{})
 			}
 			_, err := actWithError()
 			Expect(err).To(HaveOccurred())
@@ -517,7 +516,7 @@ var _ = Describe("ContainerFactory", func() {
 
 				containerFactory := NewContainerFactory("fake-manifest", ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
 				act := func() ([]corev1.Container, error) {
-					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, disk.BPMResourceDisks{})
+					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, BPMResourceDisks{})
 				}
 				containers, err := act()
 
@@ -544,7 +543,7 @@ var _ = Describe("ContainerFactory", func() {
 
 				containerFactory := NewContainerFactory("fake-manifest", ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
 				act := func() ([]corev1.Container, error) {
-					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, disk.BPMResourceDisks{})
+					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, BPMResourceDisks{})
 				}
 				containers, err := act()
 

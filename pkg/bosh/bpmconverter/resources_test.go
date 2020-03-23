@@ -14,7 +14,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter/fakes"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
@@ -78,7 +77,7 @@ var _ = Describe("BPM Converter", func() {
 
 			Context("when the lifecycle is set to errand", func() {
 				It("handles an error when generating bpm disks", func() {
-					volumeFactory.GenerateBPMDisksReturns(disk.BPMResourceDisks{}, errors.New("fake-bpm-disk-error"))
+					volumeFactory.GenerateBPMDisksReturns(bpmconverter.BPMResourceDisks{}, errors.New("fake-bpm-disk-error"))
 					_, err := act(bpmConfigs[0], m.InstanceGroups[0])
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("Generate of BPM disks failed for manifest name %s, instance group %s.", deploymentName, m.InstanceGroups[0].Name))
@@ -486,7 +485,7 @@ var _ = Describe("BPM Converter", func() {
 			})
 
 			It("converts the disks and volume declarations when instance group has persistent disk declaration", func() {
-				volumeFactory.GenerateBPMDisksReturns(disk.BPMResourceDisks{
+				volumeFactory.GenerateBPMDisksReturns(bpmconverter.BPMResourceDisks{
 					{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaim{
 							ObjectMeta: metav1.ObjectMeta{

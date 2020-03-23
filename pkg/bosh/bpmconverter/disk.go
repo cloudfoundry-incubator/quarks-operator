@@ -1,4 +1,4 @@
-package disk
+package bpmconverter
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -10,12 +10,12 @@ type BPMResourceDisk struct {
 	Volume                *corev1.Volume
 	VolumeMount           *corev1.VolumeMount
 
-	Labels map[string]string
+	Filters map[string]string
 }
 
-// MatchesFilter returns true if the disk matches the filter with one of its labels.
-func (disk *BPMResourceDisk) MatchesFilter(filterKey, filterValue string) bool {
-	labelValue, exists := disk.Labels[filterKey]
+// matchesFilter returns true if the disk matches the filter with one of its Filters.
+func (disk *BPMResourceDisk) matchesFilter(filterKey, filterValue string) bool {
+	labelValue, exists := disk.Filters[filterKey]
 	if !exists {
 		return false
 	}
@@ -25,11 +25,11 @@ func (disk *BPMResourceDisk) MatchesFilter(filterKey, filterValue string) bool {
 // BPMResourceDisks represents a slice of BPMResourceDisk.
 type BPMResourceDisks []BPMResourceDisk
 
-// Filter filters BPMResourceDisks on its labels.
-func (disks BPMResourceDisks) Filter(filterKey, filterValue string) BPMResourceDisks {
+// filter filters BPMResourceDisks on its Filters.
+func (disks BPMResourceDisks) filter(filterKey, filterValue string) BPMResourceDisks {
 	filtered := make(BPMResourceDisks, 0)
 	for _, disk := range disks {
-		if disk.MatchesFilter(filterKey, filterValue) {
+		if disk.matchesFilter(filterKey, filterValue) {
 			filtered = append(filtered, disk)
 		}
 	}
@@ -37,7 +37,7 @@ func (disks BPMResourceDisks) Filter(filterKey, filterValue string) BPMResourceD
 }
 
 // VolumeMounts returns a slice of VolumeMount of each BPMResourceDisk contained in BPMResourceDisks.
-func (disks BPMResourceDisks) VolumeMounts() []corev1.VolumeMount {
+func (disks BPMResourceDisks) volumeMounts() []corev1.VolumeMount {
 	volumeMounts := make([]corev1.VolumeMount, 0)
 	for _, disk := range disks {
 		if disk.VolumeMount != nil {
@@ -48,7 +48,7 @@ func (disks BPMResourceDisks) VolumeMounts() []corev1.VolumeMount {
 }
 
 // Volumes returns a slice of Volume of each BPMResourceDisk contained in BPMResourceDisks.
-func (disks BPMResourceDisks) Volumes() []corev1.Volume {
+func (disks BPMResourceDisks) volumes() []corev1.Volume {
 	volumes := make([]corev1.Volume, 0)
 	for _, disk := range disks {
 		if disk.Volume != nil {
@@ -59,7 +59,7 @@ func (disks BPMResourceDisks) Volumes() []corev1.Volume {
 }
 
 // PVCs returns a slice of PVC of each BPMResourceDisk
-func (disks BPMResourceDisks) PVCs() []corev1.PersistentVolumeClaim {
+func (disks BPMResourceDisks) pvcs() []corev1.PersistentVolumeClaim {
 	pvcs := make([]corev1.PersistentVolumeClaim, 0)
 	for _, disk := range disks {
 

@@ -13,7 +13,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
@@ -84,7 +83,7 @@ func NewVolumeFactory() *VolumeFactoryImpl {
 // - the sys volume
 // - the "not interpolated" manifest volume
 // - resolved properties data volume
-func (f *VolumeFactoryImpl) GenerateDefaultDisks(manifestName string, instanceGroup *bdm.InstanceGroup, igResolvedSecretVersion string, namespace string) disk.BPMResourceDisks {
+func (f *VolumeFactoryImpl) GenerateDefaultDisks(manifestName string, instanceGroup *bdm.InstanceGroup, igResolvedSecretVersion string, namespace string) BPMResourceDisks {
 	resolvedPropertiesSecretName := names.InstanceGroupSecretName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
 		manifestName,
@@ -98,7 +97,7 @@ func (f *VolumeFactoryImpl) GenerateDefaultDisks(manifestName string, instanceGr
 		pvc = ephemeralPVC(manifestName, instanceGroup, namespace)
 	}
 
-	defaultDisks := disk.BPMResourceDisks{
+	defaultDisks := BPMResourceDisks{
 		{
 			Volume:      renderingVolume(),
 			VolumeMount: renderingVolumeMount(),
@@ -138,8 +137,8 @@ func (f *VolumeFactoryImpl) GenerateDefaultDisks(manifestName string, instanceGr
 // - persistent_disk (boolean)
 // - additional_volumes (list of volumes)
 // - unrestricted_volumes (list of volumes)
-func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (disk.BPMResourceDisks, error) {
-	bpmDisks := make(disk.BPMResourceDisks, 0)
+func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (BPMResourceDisks, error) {
+	bpmDisks := make(BPMResourceDisks, 0)
 
 	rAdditionalVolumes := regexp.MustCompile(AdditionalVolumesRegex)
 
@@ -212,14 +211,14 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 					return nil, errors.Wrapf(err, "failed to calculate subpath for additional volume mount '%s'", additionalVolume.Path)
 				}
 
-				additionalDisk := disk.BPMResourceDisk{
+				additionalDisk := BPMResourceDisk{
 					VolumeMount: &corev1.VolumeMount{
 						Name:      volumeName,
 						ReadOnly:  !additionalVolume.Writable,
 						MountPath: additionalVolume.Path,
 						SubPath:   subPath,
 					},
-					Labels: map[string]string{
+					Filters: map[string]string{
 						"job_name":     job.Name,
 						"process_name": process.Name,
 					},
@@ -229,7 +228,7 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 
 			for i, unrestrictedVolume := range process.Unsafe.UnrestrictedVolumes {
 				volumeName := names.Sanitize(fmt.Sprintf("%s-%s-%s-%b", UnrestrictedVolumeBaseName, job.Name, process.Name, i))
-				unrestrictedDisk := disk.BPMResourceDisk{
+				unrestrictedDisk := BPMResourceDisk{
 					Volume: &corev1.Volume{
 						Name:         volumeName,
 						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
@@ -239,7 +238,7 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 						ReadOnly:  !unrestrictedVolume.Writable,
 						MountPath: unrestrictedVolume.Path,
 					},
-					Labels: map[string]string{
+					Filters: map[string]string{
 						"job_name":     job.Name,
 						"process_name": process.Name,
 					},
@@ -280,11 +279,11 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 	return bpmDisks, nil
 }
 
-func persistentDisk(manifestName, namespace string, instanceGroup *bdm.InstanceGroup, job bdm.Job) disk.BPMResourceDisk {
+func persistentDisk(manifestName, namespace string, instanceGroup *bdm.InstanceGroup, job bdm.Job) BPMResourceDisk {
 	persistentVolumeClaim := generatePersistentVolumeClaim(manifestName, instanceGroup, namespace)
 
 	// Specify the job sub-path inside of the instance group PV
-	bpmPersistentDisk := disk.BPMResourceDisk{
+	bpmPersistentDisk := BPMResourceDisk{
 		PersistentVolumeClaim: &persistentVolumeClaim,
 		Volume: &corev1.Volume{
 			Name: persistentVolumeClaim.Name,
@@ -299,7 +298,7 @@ func persistentDisk(manifestName, namespace string, instanceGroup *bdm.InstanceG
 			MountPath: path.Join(VolumeStoreDirMountPath, job.Name),
 			SubPath:   job.Name,
 		},
-		Labels: map[string]string{
+		Filters: map[string]string{
 			"job_name":   job.Name,
 			"persistent": "true",
 		},
@@ -308,16 +307,16 @@ func persistentDisk(manifestName, namespace string, instanceGroup *bdm.InstanceG
 	return bpmPersistentDisk
 }
 
-func ephemeralDisk(manifestName, namespace string, instanceGroup *bdm.InstanceGroup, job bdm.Job) disk.BPMResourceDisk {
+func ephemeralDisk(manifestName, namespace string, instanceGroup *bdm.InstanceGroup, job bdm.Job) BPMResourceDisk {
 	persistent := instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.EphemeralAsPVC
 
-	ephemeralDisk := disk.BPMResourceDisk{
+	ephemeralDisk := BPMResourceDisk{
 		VolumeMount: &corev1.VolumeMount{
 			Name:      volumeDataDirName(manifestName, instanceGroup.Name),
 			MountPath: path.Join(VolumeDataDirMountPath, job.Name),
 			SubPath:   job.Name,
 		},
-		Labels: map[string]string{
+		Filters: map[string]string{
 			"job_name":  job.Name,
 			"ephemeral": "true",
 		},
@@ -326,7 +325,7 @@ func ephemeralDisk(manifestName, namespace string, instanceGroup *bdm.InstanceGr
 	if persistent {
 		persistentVolumeClaim := ephemeralPVC(manifestName, instanceGroup, namespace)
 
-		ephemeralDisk = disk.BPMResourceDisk{
+		ephemeralDisk = BPMResourceDisk{
 			PersistentVolumeClaim: persistentVolumeClaim,
 			Volume: &corev1.Volume{
 				Name: persistentVolumeClaim.Name,
@@ -341,7 +340,7 @@ func ephemeralDisk(manifestName, namespace string, instanceGroup *bdm.InstanceGr
 				MountPath: path.Join(VolumeDataDirMountPath, job.Name),
 				SubPath:   job.Name,
 			},
-			Labels: map[string]string{
+			Filters: map[string]string{
 				"job_name":  job.Name,
 				"ephemeral": "true",
 			},
