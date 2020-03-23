@@ -21,7 +21,9 @@ const (
 	postStartTimeout   = time.Minute * 15
 	conditionSleepTime = time.Second * 3
 
+	// ProcessStart is the command to restart the suspended child processes.
 	ProcessStart  = "+"
+	// ProcessStop is the command to stop and suspend the child processes.
 	ProcessStop   = "-"
 )
 
