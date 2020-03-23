@@ -9,7 +9,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
@@ -46,8 +45,8 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
 			Expect(headlessService.Spec.Ports)
 			Expect(headlessService.Spec.Selector).To(Equal(map[string]string{
-				bdm.LabelInstanceGroupName: "nats",
-				bdm.LabelDeploymentName:    "test",
+				bdv1.LabelInstanceGroupName: "nats",
+				bdv1.LabelDeploymentName:    "test",
 			}))
 			Expect(headlessService.Spec.Ports[0].Name).To(Equal("nats"))
 			Expect(headlessService.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
@@ -60,10 +59,10 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
 			Expect(clusterIPService.Spec.Ports)
 			Expect(clusterIPService.Spec.Selector).To(Equal(map[string]string{
-				bdm.LabelInstanceGroupName: "nats",
-				bdm.LabelDeploymentName:    "test",
-				qstsv1a1.LabelAZIndex:      "0",
-				qstsv1a1.LabelPodOrdinal:   "0",
+				bdv1.LabelInstanceGroupName: "nats",
+				bdv1.LabelDeploymentName:    "test",
+				qstsv1a1.LabelAZIndex:       "0",
+				qstsv1a1.LabelPodOrdinal:    "0",
 			}))
 			Expect(clusterIPService.Spec.Ports[0].Name).To(Equal("nats"))
 			Expect(clusterIPService.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))

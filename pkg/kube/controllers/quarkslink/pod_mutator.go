@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 )
 
@@ -143,7 +143,7 @@ func (m *PodMutator) findLinks(ctx context.Context, namespace string, e entangle
 	list := &corev1.SecretList{}
 	// can't use entanglement labels, because quarks-job does not set
 	// labels per container, so we list all secrets from the deployment
-	labels := map[string]string{manifest.LabelDeploymentName: e.deployment}
+	labels := map[string]string{bdv1.LabelDeploymentName: e.deployment}
 	err := m.client.List(ctx, list, client.InNamespace(namespace), client.MatchingLabels(labels))
 	if err != nil {
 		return links, err

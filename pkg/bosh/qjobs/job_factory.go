@@ -108,7 +108,7 @@ func (f *JobFactory) VariableInterpolationJob(deploymentName string, manifest bd
 				SecretLabels: map[string]string{
 					bdv1.LabelDeploymentName:       deploymentName,
 					bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeDesiredManifest.String(),
-					bdm.LabelReferencedJobName:     fmt.Sprintf("instance-group-%s", deploymentName),
+					bdv1.LabelReferencedJobName:    fmt.Sprintf("instance-group-%s", deploymentName),
 				},
 			},
 			Trigger: qjv1a1.Trigger{

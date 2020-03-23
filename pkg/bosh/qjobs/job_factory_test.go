@@ -7,6 +7,7 @@ import (
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/qjobs"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 )
@@ -138,7 +139,7 @@ var _ = Describe("JobFactory", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			spec := job.Spec.Template.Spec.Template.Spec
-			Expect(job.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, deploymentName))
+			Expect(job.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
 
 			Expect(len(spec.InitContainers)).To(Equal(len(m.InstanceGroups)))
 			Expect(spec.InitContainers[0].Name).To(ContainSubstring("spec-copier-"))
@@ -169,7 +170,7 @@ var _ = Describe("JobFactory", func() {
 		It("mounts variable secrets in the variable interpolation container", func() {
 			job, err := factory.VariableInterpolationJob(deploymentName, *m)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(job.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, deploymentName))
+			Expect(job.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
 
 			podSpec := job.Spec.Template.Spec.Template.Spec
 

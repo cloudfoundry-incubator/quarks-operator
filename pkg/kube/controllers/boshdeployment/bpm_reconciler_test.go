@@ -284,7 +284,7 @@ variables: []
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "fake-bpm-svc",
 								Labels: map[string]string{
-									bdm.LabelInstanceGroupName: "fakepod",
+									bdv1.LabelInstanceGroupName: "fakepod",
 								},
 							},
 						},

@@ -9,7 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
@@ -61,7 +61,7 @@ var _ = Describe("Deploy", func() {
 			By("checking for services")
 			svc, err := env.GetService(env.Namespace, headlessSvcName)
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
-			Expect(svc.Spec.Selector).To(Equal(map[string]string{bdm.LabelInstanceGroupName: "nats", bdm.LabelDeploymentName: deploymentName}))
+			Expect(svc.Spec.Selector).To(Equal(map[string]string{bdv1.LabelInstanceGroupName: "nats", bdv1.LabelDeploymentName: deploymentName}))
 			Expect(svc.Spec.Ports).NotTo(BeEmpty())
 			Expect(svc.Spec.Ports[0].Name).To(Equal("nats"))
 			Expect(svc.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
@@ -70,10 +70,10 @@ var _ = Describe("Deploy", func() {
 			svc, err = env.GetService(env.Namespace, clusterIpSvcName)
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
 			Expect(svc.Spec.Selector).To(Equal(map[string]string{
-				bdm.LabelInstanceGroupName: "nats",
-				qstsv1a1.LabelAZIndex:      "0",
-				qstsv1a1.LabelPodOrdinal:   "0",
-				bdm.LabelDeploymentName:    deploymentName,
+				bdv1.LabelInstanceGroupName: "nats",
+				qstsv1a1.LabelAZIndex:       "0",
+				qstsv1a1.LabelPodOrdinal:    "0",
+				bdv1.LabelDeploymentName:    deploymentName,
 			}))
 			Expect(svc.Spec.Ports).NotTo(BeEmpty())
 			Expect(svc.Spec.Ports[0].Name).To(Equal("nats"))

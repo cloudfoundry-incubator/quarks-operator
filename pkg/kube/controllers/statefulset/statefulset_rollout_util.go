@@ -7,15 +7,16 @@ import (
 	"strconv"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	crc "sigs.k8s.io/controller-runtime/pkg/client"
+
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	podutil "code.cloudfoundry.org/quarks-utils/pkg/pod"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
-
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	crc "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ConfigureStatefulSetForRollout configures a stateful set for canarying and rollout
@@ -45,7 +46,7 @@ func FilterLabels(labels map[string]string) map[string]string {
 
 	statefulSetLabels := make(map[string]string)
 	for key, value := range labels {
-		if key != manifest.LabelDeploymentVersion {
+		if key != bdv1.LabelDeploymentVersion {
 			statefulSetLabels[key] = value
 		}
 	}

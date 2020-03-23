@@ -6,8 +6,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
@@ -82,7 +82,7 @@ func newEntanglement(obj map[string]string) entanglement {
 
 func (e entanglement) find(secret corev1.Secret) (link, bool) {
 	// secret has a deployment label
-	entanglementDeployment, found := secret.Labels[manifest.LabelDeploymentName]
+	entanglementDeployment, found := secret.Labels[bdv1.LabelDeploymentName]
 	if !found {
 		return link{}, false
 	}
