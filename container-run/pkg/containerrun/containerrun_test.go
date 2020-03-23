@@ -402,6 +402,9 @@ var _ = Describe("Run", func() {
 				Signal(os.Kill).
 				Return(nil).
 				Times(0)
+			// Note: The SIGCHLD signals (report of child
+			// process ending) seem to race the end of the
+			// test case. We may receive them, or not.
 			process.EXPECT().
 				Signal(syscall.SIGCHLD).
 				Return(nil).
@@ -446,6 +449,9 @@ var _ = Describe("Run", func() {
 				Signal(os.Kill).
 				Return(nil).
 				Times(0)
+			// Note: The SIGCHLD signals (report of child
+			// process ending) seem to race the end of the
+			// test case. We may receive them, or not.
 			process.EXPECT().
 				Signal(syscall.SIGCHLD).
 				Return(nil).
@@ -500,6 +506,9 @@ var _ = Describe("Run", func() {
 				Signal(os.Kill).
 				Return(nil).
 				Times(0)
+			// Note: The SIGCHLD signals (report of child
+			// process ending) seem to race the end of the
+			// test case. We may receive them, or not.
 			process.EXPECT().
 				Signal(syscall.SIGCHLD).
 				Return(nil).
@@ -567,6 +576,9 @@ var _ = Describe("Run", func() {
 				Do(func (x os.Signal) { killed <- struct{}{} ; trigger <- struct{}{} }).
 				Return(nil).
 				Times(1)
+			// Note: The SIGCHLD signals (report of child
+			// process ending) seem to race the end of the
+			// test case. We may receive them, or not.
 			process.EXPECT().
 				Signal(syscall.SIGCHLD).
 				Return(nil).
@@ -678,6 +690,9 @@ var _ = Describe("Run", func() {
 				Do(func (x os.Signal) { killed <- struct{}{} ; trigger <- struct{}{} }).
 				Return(nil).
 				Times(1)
+			// Note: The SIGCHLD signals (report of child
+			// process ending) seem to race the end of the
+			// test case. We may receive them, or not.
 			process.EXPECT().
 				Signal(syscall.SIGCHLD).
 				Return(nil).
