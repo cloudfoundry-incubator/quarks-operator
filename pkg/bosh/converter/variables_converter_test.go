@@ -7,6 +7,7 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/testing"
 )
@@ -73,7 +74,7 @@ var _ = Describe("kube converter", func() {
 
 				var1 := variables[0]
 				Expect(var1.Name).To(Equal("foo-deployment.var-adminkey"))
-				Expect(var1.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, deploymentName))
+				Expect(var1.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
 				Expect(var1.Spec.Type).To(Equal(qsv1a1.RSAKey))
 				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminkey"))
 			})
@@ -89,7 +90,7 @@ var _ = Describe("kube converter", func() {
 
 				var1 := variables[0]
 				Expect(var1.Name).To(Equal("foo-deployment.var-adminkey"))
-				Expect(var1.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, deploymentName))
+				Expect(var1.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
 				Expect(var1.Spec.Type).To(Equal(qsv1a1.SSHKey))
 				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminkey"))
 			})
@@ -121,7 +122,7 @@ var _ = Describe("kube converter", func() {
 
 				var1 := variables[0]
 				Expect(var1.Name).To(Equal("foo-deployment.var-foo-cert"))
-				Expect(var1.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, deploymentName))
+				Expect(var1.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
 				Expect(var1.Spec.Type).To(Equal(qsv1a1.Certificate))
 				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-foo-cert"))
 				request := var1.Spec.Request.CertificateRequest

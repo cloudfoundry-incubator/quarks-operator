@@ -10,7 +10,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
@@ -236,17 +236,6 @@ type JobDir struct {
 	TmpfsSize string `json:"tmpfs_size,omitempty"`
 }
 
-var (
-	// LabelDeploymentName is the name of a label for the deployment name.
-	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)
-	// LabelInstanceGroupName is the name of a label for an instance group name.
-	LabelInstanceGroupName = fmt.Sprintf("%s/instance-group-name", apis.GroupName)
-	// LabelDeploymentVersion is the name of a label for the deployment's version.
-	LabelDeploymentVersion = fmt.Sprintf("%s/deployment-version", apis.GroupName)
-	// LabelReferencedJobName is the name key for dependent job
-	LabelReferencedJobName = fmt.Sprintf("%s/referenced-job-name", apis.GroupName)
-)
-
 // AgentSettings from BOSH deployment manifest.
 // These annotations and labels are added to kube resources.
 // Affinity & tolerations are added into the pod's definition.
@@ -267,9 +256,9 @@ func (as *AgentSettings) Set(manifestName, igName, version string) {
 	if as.Labels == nil {
 		as.Labels = map[string]string{}
 	}
-	as.Labels[LabelDeploymentName] = manifestName
-	as.Labels[LabelInstanceGroupName] = igName
-	as.Labels[LabelDeploymentVersion] = version
+	as.Labels[bdv1.LabelDeploymentName] = manifestName
+	as.Labels[bdv1.LabelInstanceGroupName] = igName
+	as.Labels[bdv1.LabelDeploymentVersion] = version
 }
 
 // Agent from BOSH deployment manifest.

@@ -5,7 +5,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 )
 
@@ -17,8 +17,8 @@ func (m *Machine) WaitForInstanceGroup(namespace string, deployment string, igNa
 // WaitForInstanceGroupVersionAllReplicas blocks until all selected pods of the instance group are running. It fails after the timeout.
 func (m *Machine) WaitForInstanceGroupVersionAllReplicas(namespace string, deployment string, igName string, count int, versions ...string) error {
 	labels := labels.Set(map[string]string{
-		bdm.LabelDeploymentName:    deployment,
-		bdm.LabelInstanceGroupName: igName,
+		bdv1.LabelDeploymentName:    deployment,
+		bdv1.LabelInstanceGroupName: igName,
 	}).String()
 	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		n, err := m.PodCount(namespace, labels, func(pod corev1.Pod) bool {
@@ -34,8 +34,8 @@ func (m *Machine) WaitForInstanceGroupVersionAllReplicas(namespace string, deplo
 // GetInstanceGroupPods returns all pods from a specific instance group version
 func (m *Machine) GetInstanceGroupPods(namespace string, deployment string, igName string) (*corev1.PodList, error) {
 	labels := labels.Set(map[string]string{
-		bdm.LabelDeploymentName:    deployment,
-		bdm.LabelInstanceGroupName: igName,
+		bdv1.LabelDeploymentName:    deployment,
+		bdv1.LabelInstanceGroupName: igName,
 	}).String()
 	return m.GetPods(namespace, labels)
 }
