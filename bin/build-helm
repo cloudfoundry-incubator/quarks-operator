@@ -20,15 +20,10 @@ cp -r "${GIT_ROOT}/deploy/helm" "${output_dir}"
 perl -pi -e "s|repository: .*|repository: ${DOCKER_IMAGE_REPOSITORY}|g" "${output_dir}/cf-operator/values.yaml"
 perl -pi -e "s|org: .*|org: ${DOCKER_IMAGE_ORG}|g" "${output_dir}/cf-operator/values.yaml"
 perl -pi -e "s|tag: .*|tag: ${DOCKER_IMAGE_TAG}|g" "${output_dir}/cf-operator/values.yaml"
+perl -pi -e "s|version: .*|version: ${QUARKS_JOB_HELM_VERSION}|g" "${output_dir}/cf-operator/requirements.yaml"
 
-repo="https://github.com/cloudfoundry-incubator/quarks-helm/raw/master/"
-qj="quarks-job-${QUARKS_JOB_HELM_VERSION/+/%2b}.tgz"
 pushd "$output_dir/cf-operator"
-  mkdir charts
-  echo "downloading $repo$qj"
-  curl -sLO "$repo$qj"
-  tar xfz "$qj" -C charts
-  rm "$qj"
+  helm dependency update
 popd
 
 helm package helm/cf-operator \
