@@ -32,7 +32,7 @@ While unit testing we:
 
 - test classes in isolation
 - pass all dependencies to the constructor, so we can inject fakes for testing
-- use `counterfeiter` to generate and update fakes
+- use `counterfeiter` and `gomock`/`mockgen` to generate and update fakes and mocks
 - don't test private methods, tests are in a separate `_test` package
 - try not to nest ginkgo contexts too deep and keep tests DRY by extracting useful helpers
 - assert incoming messages produce the expected state
