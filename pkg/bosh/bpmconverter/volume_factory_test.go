@@ -10,7 +10,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
@@ -51,7 +50,7 @@ var _ = Describe("VolumeFactory", func() {
 			disks := factory.GenerateDefaultDisks(manifestName, instanceGroup, version, namespace)
 
 			Expect(disks).Should(HaveLen(5))
-			Expect(disks).Should(ContainElement(bpmconverter.BPMResourceDisk{
+			Expect(disks).Should(ContainElement(BPMResourceDisk{
 				Volume: &corev1.Volume{
 					Name:         VolumeRenderingDataName,
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
@@ -61,7 +60,7 @@ var _ = Describe("VolumeFactory", func() {
 					MountPath: VolumeRenderingDataMountPath,
 				},
 			}))
-			Expect(disks).Should(ContainElement(bpmconverter.BPMResourceDisk{
+			Expect(disks).Should(ContainElement(BPMResourceDisk{
 				Volume: &corev1.Volume{
 					Name:         VolumeJobsDirName,
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
@@ -71,7 +70,7 @@ var _ = Describe("VolumeFactory", func() {
 					MountPath: VolumeJobsDirMountPath,
 				},
 			}))
-			Expect(disks).Should(ContainElement(bpmconverter.BPMResourceDisk{
+			Expect(disks).Should(ContainElement(BPMResourceDisk{
 				Volume: &corev1.Volume{
 					Name:         "fake-manifest-name-fake-instance-group-name-ephemeral",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
@@ -81,7 +80,7 @@ var _ = Describe("VolumeFactory", func() {
 					MountPath: VolumeDataDirMountPath,
 				},
 			}))
-			Expect(disks).Should(ContainElement(bpmconverter.BPMResourceDisk{
+			Expect(disks).Should(ContainElement(BPMResourceDisk{
 				Volume: &corev1.Volume{
 					Name:         VolumeSysDirName,
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
@@ -91,7 +90,7 @@ var _ = Describe("VolumeFactory", func() {
 					MountPath: VolumeSysDirMountPath,
 				},
 			}))
-			Expect(disks).Should(ContainElement(bpmconverter.BPMResourceDisk{
+			Expect(disks).Should(ContainElement(BPMResourceDisk{
 				Volume: &corev1.Volume{
 					Name: "ig-resolved",
 					VolumeSource: corev1.VolumeSource{
@@ -120,7 +119,7 @@ var _ = Describe("VolumeFactory", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(disks).Should(HaveLen(1))
-			Expect(disks).Should(ContainElement(bpmconverter.BPMResourceDisk{
+			Expect(disks).Should(ContainElement(BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
 					Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
 					MountPath: path.Join(VolumeDataDirMountPath, "fake-job"),
@@ -150,7 +149,7 @@ var _ = Describe("VolumeFactory", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(disks).Should(HaveLen(1))
-			Expect(disks).Should(ContainElement(bpmconverter.BPMResourceDisk{
+			Expect(disks).Should(ContainElement(BPMResourceDisk{
 				Volume: &corev1.Volume{
 					Name: "fake-manifest-name-fake-instance-group-name-ephemeral",
 					VolumeSource: corev1.VolumeSource{
@@ -217,7 +216,7 @@ var _ = Describe("VolumeFactory", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(disks).Should(HaveLen(1))
-			Expect(disks).Should(ContainElement(bpmconverter.BPMResourceDisk{
+			Expect(disks).Should(ContainElement(BPMResourceDisk{
 				PersistentVolumeClaim: &persistentVolumeClaim,
 				Volume: &corev1.Volume{
 					Name: "fake-manifest-name-fake-instance-group-name-pvc",
@@ -266,7 +265,7 @@ var _ = Describe("VolumeFactory", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(disks).Should(HaveLen(3))
-			Expect(disks).Should(ContainElement(bpmconverter.BPMResourceDisk{
+			Expect(disks).Should(ContainElement(BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
 					Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
 					ReadOnly:  true,
@@ -278,7 +277,7 @@ var _ = Describe("VolumeFactory", func() {
 					"process_name": "fake-process",
 				},
 			}))
-			Expect(disks).Should(ContainElement(bpmconverter.BPMResourceDisk{
+			Expect(disks).Should(ContainElement(BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
 					Name:      "fake-manifest-name-fake-instance-group-name-pvc",
 					ReadOnly:  true,
@@ -290,7 +289,7 @@ var _ = Describe("VolumeFactory", func() {
 					"process_name": "fake-process",
 				},
 			}))
-			Expect(disks).Should(ContainElement(bpmconverter.BPMResourceDisk{
+			Expect(disks).Should(ContainElement(BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
 					Name:      VolumeSysDirName,
 					ReadOnly:  true,
@@ -337,7 +336,7 @@ var _ = Describe("VolumeFactory", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(disks).Should(HaveLen(4))
-			Expect(disks).Should(ContainElement(bpmconverter.BPMResourceDisk{
+			Expect(disks).Should(ContainElement(BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
 					Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
 					ReadOnly:  true,
@@ -349,7 +348,7 @@ var _ = Describe("VolumeFactory", func() {
 					"process_name": "fake-process",
 				},
 			}))
-			Expect(disks).Should(ContainElement(bpmconverter.BPMResourceDisk{
+			Expect(disks).Should(ContainElement(BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
 					Name:      "fake-manifest-name-fake-instance-group-name-pvc",
 					ReadOnly:  true,
@@ -361,7 +360,7 @@ var _ = Describe("VolumeFactory", func() {
 					"process_name": "fake-process",
 				},
 			}))
-			Expect(disks).Should(ContainElement(bpmconverter.BPMResourceDisk{
+			Expect(disks).Should(ContainElement(BPMResourceDisk{
 				VolumeMount: &corev1.VolumeMount{
 					Name:      VolumeSysDirName,
 					ReadOnly:  true,
@@ -373,7 +372,7 @@ var _ = Describe("VolumeFactory", func() {
 					"process_name": "fake-process",
 				},
 			}))
-			Expect(disks).Should(ContainElement(bpmconverter.BPMResourceDisk{
+			Expect(disks).Should(ContainElement(BPMResourceDisk{
 				Volume: &corev1.Volume{
 					Name:         "bpm-unrestricted-volume-fake-job-fake-process-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},

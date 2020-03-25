@@ -17,7 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
@@ -182,7 +181,7 @@ func (v *Validator) Handle(ctx context.Context, req admission.Request) admission
 	withops := withops.NewResolver(
 		v.client,
 		func() withops.Interpolator { return withops.NewInterpolator() },
-		func(deploymentName string, m bdm.Manifest) (withops.DomainNameService, error) {
+		func(deploymentName string, m manifest.Manifest) (withops.DomainNameService, error) {
 			return boshdns.NewDNS(deploymentName, m)
 		},
 	)

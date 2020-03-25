@@ -19,7 +19,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,7 +45,7 @@ type ReconcileStatefulSetActivePassive struct {
 	kclient    kubernetes.Interface
 	scheme     *runtime.Scheme
 	config     *config.Config
-	restConfig *restclient.Config
+	restConfig *rest.Config
 }
 
 // Reconcile reads the state of the cluster for a QuarksStatefulSet object
@@ -101,14 +100,14 @@ func (r *ReconcileStatefulSetActivePassive) Reconcile(request reconcile.Request)
 		return reconcile.Result{}, err
 	}
 
-	periodSeconds := time.Second * time.Duration(qSts.Spec.ActivePassiveProbes[containerName].PeriodSeconds)
-	if periodSeconds == (time.Second * time.Duration(0)) {
+	ps := time.Second * time.Duration(qSts.Spec.ActivePassiveProbes[containerName].PeriodSeconds)
+	if ps == (time.Second * time.Duration(0)) {
 		ctxlog.WithEvent(qSts, "active-passive").Debugf(ctx, "periodSeconds probe was not specified, going to default to 30 secs")
-		periodSeconds = time.Second * 30
+		ps = time.Second * 30
 	}
 
 	// Reconcile for any reason than error after the ActivePassiveProbe PeriodSeconds
-	return reconcile.Result{RequeueAfter: periodSeconds}, nil
+	return reconcile.Result{RequeueAfter: ps}, nil
 }
 
 func (r *ReconcileStatefulSetActivePassive) markActiveContainers(ctx context.Context, container string, pods *corev1.PodList, qSts *qstsv1a1.QuarksStatefulSet) (err error) {
