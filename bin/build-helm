@@ -21,7 +21,7 @@ perl -pi -e "s|repository: .*|repository: ${DOCKER_IMAGE_REPOSITORY}|g" "${outpu
 perl -pi -e "s|org: .*|org: ${DOCKER_IMAGE_ORG}|g" "${output_dir}/cf-operator/values.yaml"
 perl -pi -e "s|tag: .*|tag: ${DOCKER_IMAGE_TAG}|g" "${output_dir}/cf-operator/values.yaml"
 
-repo="https://cf-operators.s3.amazonaws.com/helm-charts/"
+repo="https://github.com/cloudfoundry-incubator/quarks-helm/raw/master/"
 qj="quarks-job-${QUARKS_JOB_HELM_VERSION/+/%2b}.tgz"
 pushd "$output_dir/cf-operator"
   mkdir charts

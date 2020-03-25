@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	goyaml "gopkg.in/yaml.v2"
 
 	"sigs.k8s.io/yaml"
@@ -460,7 +461,7 @@ func (m *Manifest) ImplicitVariables() ([]string, error) {
 }
 
 // ApplyAddons goes through all defined addons and adds jobs to matched instance groups
-func (m *Manifest) ApplyAddons() error {
+func (m *Manifest) ApplyAddons(log *zap.SugaredLogger) error {
 	if m.AddOnsApplied {
 		return nil
 	}
@@ -469,16 +470,17 @@ func (m *Manifest) ApplyAddons() error {
 			continue
 		}
 		for _, ig := range m.InstanceGroups {
-			include, err := m.addOnPlacementMatch("inclusion", ig, addon.Include)
+			include, err := m.addOnPlacementMatch(log, "inclusion", ig, addon.Include)
 			if err != nil {
 				return errors.Wrap(err, "failed to process include placement matches")
 			}
-			exclude, err := m.addOnPlacementMatch("exclusion", ig, addon.Exclude)
+			exclude, err := m.addOnPlacementMatch(log, "exclusion", ig, addon.Exclude)
 			if err != nil {
 				return errors.Wrap(err, "failed to process exclude placement matches")
 			}
 
 			if exclude || !include {
+				log.Debugf("Addon '%s' doesn't match instance group '%s'", addon.Name, ig.Name)
 				continue
 			}
 
@@ -490,6 +492,8 @@ func (m *Manifest) ApplyAddons() error {
 				}
 
 				addedJob.Properties.Quarks.IsAddon = true
+
+				log.Debugf("Applying addon job '%s/%s' to instance group '%s'", addon.Name, addonJob.Name, ig.Name)
 				ig.Jobs = append(ig.Jobs, addedJob)
 			}
 		}
