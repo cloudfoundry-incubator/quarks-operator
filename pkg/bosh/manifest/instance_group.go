@@ -248,6 +248,7 @@ type AgentSettings struct {
 	ImagePullSecrets             []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	Tolerations                  []corev1.Toleration           `json:"tolerations,omitempty"`
 	EphemeralAsPVC               bool                          `json:"ephemeralAsPVC,omitempty"`
+	Disks                        BPMResourceDisks              `json:"disks,omitempty"`
 }
 
 // Set overrides labels and annotations with operator-owned metadata.
