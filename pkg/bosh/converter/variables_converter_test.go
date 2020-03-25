@@ -40,16 +40,17 @@ var _ = Describe("kube converter", func() {
 
 				variables, err := act()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(variables[0].Name).To(Equal("abc-123.var-def-456"))
+				Expect(variables[0].Name).To(Equal("var-def-456"))
 			})
 
-			It("trims secret names to 63 characters", func() {
+			It("trims secret names", func() {
 				deploymentName = "foo"
-				m.Variables[0].Name = "this-is-waaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaay-too-long"
+				long := "this-is-waaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+				m.Variables[0].Name = long + "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaay-too-long"
 
 				variables, err := act()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(variables[0].Name).To(Equal("foo.var-this-is-waaaaaaaaaaaaaa5bffdb0302ac051d11f52d2606254a5f"))
+				Expect(variables[0].Name).To(Equal("var-" + long + "cd1aedf32e5af6a8401880952515840e"))
 			})
 
 			It("converts password variables", func() {
@@ -58,9 +59,9 @@ var _ = Describe("kube converter", func() {
 				Expect(len(variables)).To(Equal(1))
 
 				var1 := variables[0]
-				Expect(var1.Name).To(Equal("foo-deployment.var-adminpass"))
+				Expect(var1.Name).To(Equal("var-adminpass"))
 				Expect(var1.Spec.Type).To(Equal(qsv1a1.Password))
-				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminpass"))
+				Expect(var1.Spec.SecretName).To(Equal("var-adminpass"))
 			})
 
 			It("converts rsa key variables", func() {
@@ -73,10 +74,10 @@ var _ = Describe("kube converter", func() {
 				Expect(variables).To(HaveLen(1))
 
 				var1 := variables[0]
-				Expect(var1.Name).To(Equal("foo-deployment.var-adminkey"))
+				Expect(var1.Name).To(Equal("var-adminkey"))
 				Expect(var1.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
 				Expect(var1.Spec.Type).To(Equal(qsv1a1.RSAKey))
-				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminkey"))
+				Expect(var1.Spec.SecretName).To(Equal("var-adminkey"))
 			})
 
 			It("converts ssh key variables", func() {
@@ -89,10 +90,10 @@ var _ = Describe("kube converter", func() {
 				Expect(variables).To(HaveLen(1))
 
 				var1 := variables[0]
-				Expect(var1.Name).To(Equal("foo-deployment.var-adminkey"))
+				Expect(var1.Name).To(Equal("var-adminkey"))
 				Expect(var1.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
 				Expect(var1.Spec.Type).To(Equal(qsv1a1.SSHKey))
-				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-adminkey"))
+				Expect(var1.Spec.SecretName).To(Equal("var-adminkey"))
 			})
 
 			It("raises an error when the options are missing for a certificate variable", func() {
@@ -121,15 +122,15 @@ var _ = Describe("kube converter", func() {
 				Expect(variables).To(HaveLen(1))
 
 				var1 := variables[0]
-				Expect(var1.Name).To(Equal("foo-deployment.var-foo-cert"))
+				Expect(var1.Name).To(Equal("var-foo-cert"))
 				Expect(var1.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
 				Expect(var1.Spec.Type).To(Equal(qsv1a1.Certificate))
-				Expect(var1.Spec.SecretName).To(Equal("foo-deployment.var-foo-cert"))
+				Expect(var1.Spec.SecretName).To(Equal("var-foo-cert"))
 				request := var1.Spec.Request.CertificateRequest
 				Expect(request.CommonName).To(Equal("example.com"))
 				Expect(request.AlternativeNames).To(Equal([]string{"foo.com", "bar.com"}))
 				Expect(request.IsCA).To(Equal(true))
-				Expect(request.CARef.Name).To(Equal("foo-deployment.var-theca"))
+				Expect(request.CARef.Name).To(Equal("var-theca"))
 				Expect(request.CARef.Key).To(Equal("certificate"))
 			})
 		})

@@ -15,7 +15,6 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter/fakes"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
@@ -42,7 +41,7 @@ var _ = Describe("BPM Converter", func() {
 			c := bpmconverter.NewConverter(
 				"foo",
 				volumeFactory,
-				func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider manifest.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
+				func(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider manifest.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
 					return containerFactory
 				})
 			resources, err := c.Resources(deploymentName, dns, "1", instanceGroup, m, bpmConfigs, "1")
@@ -55,7 +54,7 @@ var _ = Describe("BPM Converter", func() {
 			m, err = env.DefaultBOSHManifest()
 			Expect(err).NotTo(HaveOccurred())
 
-			dns, err = boshdns.NewDNS(deploymentName, *m)
+			dns, err = boshdns.NewDNS(*m)
 			Expect(err).NotTo(HaveOccurred())
 
 			volumeFactory = &fakes.FakeVolumeFactory{}
@@ -78,7 +77,7 @@ var _ = Describe("BPM Converter", func() {
 
 			Context("when the lifecycle is set to errand", func() {
 				It("handles an error when generating bpm disks", func() {
-					volumeFactory.GenerateBPMDisksReturns(bdm.Disks{}, errors.New("fake-bpm-disk-error"))
+					volumeFactory.GenerateBPMDisksReturns(manifest.Disks{}, errors.New("fake-bpm-disk-error"))
 					_, err := act(bpmConfigs[0], m.InstanceGroups[0])
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("Generate of BPM disks failed for manifest name %s, instance group %s.", deploymentName, m.InstanceGroups[0].Name))
@@ -105,7 +104,7 @@ var _ = Describe("BPM Converter", func() {
 
 					// Test labels and annotations in the quarks job
 					qJob := resources.Errands[0]
-					Expect(qJob.Name).To(Equal("fake-deployment-redis-slave"))
+					Expect(qJob.Name).To(Equal("redis-slave"))
 					Expect(qJob.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
 					Expect(qJob.GetLabels()).To(HaveKeyWithValue(bdv1.LabelInstanceGroupName, m.InstanceGroups[0].Name))
 					Expect(qJob.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentVersion, "1"))
@@ -245,7 +244,7 @@ var _ = Describe("BPM Converter", func() {
 
 					// Test labels and annotation in the quarks statefulSet
 					qSts := resources.InstanceGroups[0]
-					Expect(qSts.Name).To(Equal(fmt.Sprintf("%s-%s", deploymentName, "diego-cell")))
+					Expect(qSts.Name).To(Equal("diego-cell"))
 					Expect(qSts.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
 					Expect(qSts.GetLabels()).To(HaveKeyWithValue(bdv1.LabelInstanceGroupName, "diego-cell"))
 					Expect(qSts.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentVersion, "1"))
@@ -258,7 +257,7 @@ var _ = Describe("BPM Converter", func() {
 
 					// Test services for the quarks statefulSet
 					service0 := resources.Services[0]
-					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-z%d-0", deploymentName, stS.Name, 0)))
+					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-z%d-0", stS.Name, 0)))
 					Expect(service0.Spec.Selector).To(Equal(map[string]string{
 						bdv1.LabelDeploymentName:    deploymentName,
 						bdv1.LabelInstanceGroupName: stS.Name,
@@ -274,7 +273,7 @@ var _ = Describe("BPM Converter", func() {
 					}))
 
 					service1 := resources.Services[1]
-					Expect(service1.Name).To(Equal(fmt.Sprintf("%s-%s-z%d-1", deploymentName, stS.Name, 0)))
+					Expect(service1.Name).To(Equal(fmt.Sprintf("%s-z%d-1", stS.Name, 0)))
 					Expect(service1.Spec.Selector).To(Equal(map[string]string{
 						bdv1.LabelDeploymentName:    deploymentName,
 						bdv1.LabelInstanceGroupName: stS.Name,
@@ -290,7 +289,7 @@ var _ = Describe("BPM Converter", func() {
 					}))
 
 					service2 := resources.Services[2]
-					Expect(service2.Name).To(Equal(fmt.Sprintf("%s-%s-z%d-0", deploymentName, stS.Name, 1)))
+					Expect(service2.Name).To(Equal(fmt.Sprintf("%s-z%d-0", stS.Name, 1)))
 					Expect(service2.Spec.Selector).To(Equal(map[string]string{
 						bdv1.LabelDeploymentName:    deploymentName,
 						bdv1.LabelInstanceGroupName: stS.Name,
@@ -306,7 +305,7 @@ var _ = Describe("BPM Converter", func() {
 					}))
 
 					service3 := resources.Services[3]
-					Expect(service3.Name).To(Equal(fmt.Sprintf("%s-%s-z%d-1", deploymentName, stS.Name, 1)))
+					Expect(service3.Name).To(Equal(fmt.Sprintf("%s-z%d-1", stS.Name, 1)))
 					Expect(service3.Spec.Selector).To(Equal(map[string]string{
 						bdv1.LabelDeploymentName:    deploymentName,
 						bdv1.LabelInstanceGroupName: stS.Name,
@@ -322,7 +321,7 @@ var _ = Describe("BPM Converter", func() {
 					}))
 
 					headlessService := resources.Services[4]
-					Expect(headlessService.Name).To(Equal(fmt.Sprintf("%s-%s", deploymentName, stS.Name)))
+					Expect(headlessService.Name).To(Equal(stS.Name))
 					Expect(headlessService.Spec.Selector).To(Equal(map[string]string{
 						bdv1.LabelDeploymentName:    deploymentName,
 						bdv1.LabelInstanceGroupName: stS.Name,
@@ -486,7 +485,7 @@ var _ = Describe("BPM Converter", func() {
 			})
 
 			It("converts the disks and volume declarations when instance group has persistent disk declaration", func() {
-				volumeFactory.GenerateBPMDisksReturns(bdm.Disks{
+				volumeFactory.GenerateBPMDisksReturns(manifest.Disks{
 					{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaim{
 							ObjectMeta: metav1.ObjectMeta{
@@ -586,9 +585,8 @@ var _ = Describe("BPM Converter", func() {
 					c := bpmconverter.NewConverter(
 						"foo",
 						bpmconverter.NewVolumeFactory(),
-						func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider manifest.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
+						func(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider manifest.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
 							return bpmconverter.NewContainerFactory(
-								deploymentName,
 								instanceGroupName,
 								"1",
 								true,

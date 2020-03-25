@@ -29,6 +29,38 @@ const (
 	ImplicitVariableKeyName string = "value"
 )
 
+// DeploymentSecretType lists all the types of secrets used in
+// the lifecycle of a BOSHDeployment
+type DeploymentSecretType int
+
+const (
+	// DeploymentSecretTypeManifestWithOps is a manifest that has ops files applied
+	DeploymentSecretTypeManifestWithOps DeploymentSecretType = iota
+	// DeploymentSecretTypeDesiredManifest is a manifest whose variables have been interpolated
+	DeploymentSecretTypeDesiredManifest
+	// DeploymentSecretTypeVariable is a BOSH variable generated using an QuarksSecret
+	DeploymentSecretTypeVariable
+	// DeploymentSecretTypeInstanceGroupResolvedProperties is a YAML file containing all properties needed to render an Instance Group
+	DeploymentSecretTypeInstanceGroupResolvedProperties
+	// DeploymentSecretBPMInformation is a YAML file containing the BPM information for one instance group
+	DeploymentSecretBPMInformation
+)
+
+func (s DeploymentSecretType) String() string {
+	return [...]string{
+		"with-ops",
+		"desired",
+		"var",
+		"ig-resolved",
+		"bpm"}[s]
+}
+
+// Prefix returns the prefix used for our k8s secrets:
+// `<secretType>.`
+func (s DeploymentSecretType) Prefix() string {
+	return s.String() + "."
+}
+
 var (
 	// LabelDeploymentName is the label key for the deployment manifest name
 	LabelDeploymentName = fmt.Sprintf("%s/deployment-name", apis.GroupName)

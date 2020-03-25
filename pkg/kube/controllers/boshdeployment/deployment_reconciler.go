@@ -27,7 +27,6 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
-	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 // JobFactory creates Jobs for a given manifest
@@ -209,7 +208,7 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 		return nil, log.WithEvent(instance, "ManifestWithOpsMarshalError").Errorf(ctx, "Error marshaling the manifest %s: %s", instance.GetName(), err)
 	}
 
-	manifestSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeManifestWithOps, instance.Name, "")
+	manifestSecretName := bdv1.DeploymentSecretTypeManifestWithOps.String()
 
 	// Create a secret object for the manifest
 	manifestSecret := &corev1.Secret{
@@ -218,7 +217,7 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 			Namespace: instance.GetNamespace(),
 			Labels: map[string]string{
 				bdv1.LabelDeploymentName:       instance.Name,
-				bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeManifestWithOps.String(),
+				bdv1.LabelDeploymentSecretType: bdv1.DeploymentSecretTypeManifestWithOps.String(),
 			},
 		},
 		StringData: map[string]string{

@@ -9,7 +9,7 @@ import (
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
-	"code.cloudfoundry.org/quarks-utils/pkg/names"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
 // VariablesConverter represents a BOSH manifest into kubernetes resources
@@ -29,7 +29,7 @@ func (vc *VariablesConverter) Variables(manifestName string, variables []bdm.Var
 	secrets := []qsv1a1.QuarksSecret{}
 
 	for _, v := range variables {
-		secretName := names.DeploymentSecretName(names.DeploymentSecretTypeVariable, manifestName, v.Name)
+		secretName := names.SecretVariableName(v.Name)
 		s := qsv1a1.QuarksSecret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
@@ -84,11 +84,11 @@ func (vc *VariablesConverter) Variables(manifestName string, variables []bdm.Var
 			}
 			if v.Options.CA != "" {
 				certRequest.CARef = qsv1a1.SecretReference{
-					Name: names.DeploymentSecretName(names.DeploymentSecretTypeVariable, manifestName, v.Options.CA),
+					Name: names.SecretVariableName(v.Options.CA),
 					Key:  "certificate",
 				}
 				certRequest.CAKeyRef = qsv1a1.SecretReference{
-					Name: names.DeploymentSecretName(names.DeploymentSecretTypeVariable, manifestName, v.Options.CA),
+					Name: names.SecretVariableName(v.Options.CA),
 					Key:  "private_key",
 				}
 			}

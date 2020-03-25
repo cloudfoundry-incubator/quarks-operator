@@ -216,21 +216,21 @@ instance_groups:
 			},
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-deployment.var-system-domain",
+					Name:      "var-system-domain",
 					Namespace: "default",
 				},
 				Data: map[string][]byte{"value": []byte("example.com")},
 			},
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-deployment.var-implicit-ca",
+					Name:      "var-implicit-ca",
 					Namespace: "default",
 				},
 				Data: map[string][]byte{"value": []byte("complicated\n'multiline'\nstring")},
 			},
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo-deployment.var-ssl",
+					Name:      "var-ssl",
 					Namespace: "default",
 				},
 				Data: map[string][]byte{
@@ -338,8 +338,8 @@ instance_groups:
 		newInterpolatorFunc := func() withops.Interpolator {
 			return interpolator
 		}
-		newDNSFunc := func(n string, m bdm.Manifest) (withops.DomainNameService, error) {
-			return boshdns.NewSimpleDomainNameService(""), nil
+		newDNSFunc := func(m bdm.Manifest) (withops.DomainNameService, error) {
+			return boshdns.NewSimpleDomainNameService(), nil
 		}
 		resolver = withops.NewResolver(client, newInterpolatorFunc, newDNSFunc)
 	})
@@ -826,7 +826,7 @@ instance_groups:
 			Expect(err).ToNot(HaveOccurred())
 			Expect(m.Variables[1].Options.CommonName).To(Equal("example.com"))
 			Expect(len(implicitVars)).To(Equal(1))
-			Expect(implicitVars[0]).To(Equal("foo-deployment.var-system-domain"))
+			Expect(implicitVars[0]).To(Equal("var-system-domain"))
 		})
 
 		It("loads dns from addons", func() {
@@ -835,9 +835,9 @@ instance_groups:
 			newInterpolatorFunc := func() withops.Interpolator {
 				return interpolator
 			}
-			newDNSFunc := func(n string, m bdm.Manifest) (withops.DomainNameService, error) {
+			newDNSFunc := func(m bdm.Manifest) (withops.DomainNameService, error) {
 				var err error
-				dns, err = boshdns.NewDNS(n, m)
+				dns, err = boshdns.NewDNS(m)
 				return dns, err
 			}
 			resolver = withops.NewResolver(client, newInterpolatorFunc, newDNSFunc)
@@ -858,7 +858,7 @@ instance_groups:
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(dns).NotTo(BeNil())
-			Expect(dns.HeadlessServiceName("singleton-uaa")).To(Equal("scf-singleton-uaa"))
+			Expect(dns.HeadlessServiceName("singleton-uaa")).To(Equal("singleton-uaa"))
 		})
 
 		It("handles multi-line implicit vars", func() {
@@ -878,7 +878,7 @@ instance_groups:
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(implicitVars)).To(Equal(1))
-			Expect(implicitVars[0]).To(Equal("foo-deployment.var-implicit-ca"))
+			Expect(implicitVars[0]).To(Equal("var-implicit-ca"))
 			Expect(m.InstanceGroups[0].Properties.Properties["ca"]).To(Equal("complicated\n'multiline'\nstring"))
 		})
 
@@ -899,7 +899,7 @@ instance_groups:
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(implicitVars)).To(Equal(1))
-			Expect(implicitVars[0]).To(Equal("foo-deployment.var-system-domain"))
+			Expect(implicitVars[0]).To(Equal("var-system-domain"))
 			Expect(m.InstanceGroups[0].Properties.Properties["host"]).To(Equal("foo.example.com"))
 		})
 

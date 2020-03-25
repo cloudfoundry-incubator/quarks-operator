@@ -93,7 +93,7 @@ var _ = Describe("BDPL updates", func() {
 			})
 
 			It("should create a new secret for the variable", func() {
-				err := env.WaitForSecret(env.Namespace, "test.var-nats-password")
+				err := env.WaitForSecret(env.Namespace, "var-nats-password")
 				Expect(err).NotTo(HaveOccurred(), "error waiting for new generated variable secret")
 			})
 		})
@@ -115,7 +115,7 @@ var _ = Describe("BDPL updates", func() {
 				err := env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "2", 2)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
-				pod, err := env.GetPod(env.Namespace, "test-nats-1")
+				pod, err := env.GetPod(env.Namespace, "nats-1")
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(env.EnvKeys(pod.Spec.Containers)).To(ContainElement("XPOD_IPX"))
@@ -136,13 +136,13 @@ var _ = Describe("BDPL updates", func() {
 			})
 
 			It("should update the service with new port", func() {
-				err := env.WaitForSecret(env.Namespace, "test.bpm.nats-v2")
+				err := env.WaitForSecret(env.Namespace, "bpm.nats-v2")
 				Expect(err).NotTo(HaveOccurred(), "error waiting for new bpm config")
 
-				err = env.WaitForServiceVersion(env.Namespace, "test-nats", "2")
+				err = env.WaitForServiceVersion(env.Namespace, "nats", "2")
 				Expect(err).NotTo(HaveOccurred(), "error waiting for service from deployment")
 
-				svc, err := env.GetService(env.Namespace, "test-nats")
+				svc, err := env.GetService(env.Namespace, "nats")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(svc.Spec.Ports).To(ContainElement(corev1.ServicePort{
 					Name:       "fake-port",
@@ -160,7 +160,7 @@ var _ = Describe("BDPL updates", func() {
 			// networking to the NodePort is unreliable
 			It("should be zero", func() {
 				By("Setting up a NodePort service")
-				svc, err := env.GetService(env.Namespace, "test-nats-0")
+				svc, err := env.GetService(env.Namespace, "nats-0")
 				Expect(err).NotTo(HaveOccurred(), "error retrieving clusterIP service")
 
 				tearDown, err := env.CreateService(env.Namespace, env.NodePortService("nats-service", "nats", svc.Spec.Ports[0].Port))
@@ -325,14 +325,14 @@ var _ = Describe("BDPL updates", func() {
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("Checking volume mounts with secret versions")
-			pod, err := env.GetPod(env.Namespace, manifestName+"-nats-1")
+			pod, err := env.GetPod(env.Namespace, "nats-1")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal(manifestName + ".ig-resolved.nats-v2"))
+			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal("ig-resolved.nats-v2"))
 			Expect(pod.Spec.InitContainers[2].VolumeMounts[2].Name).To(Equal("ig-resolved"))
 
-			pod, err = env.GetPod(env.Namespace, manifestName+"-route-registrar-0")
+			pod, err = env.GetPod(env.Namespace, "route-registrar-0")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal(manifestName + ".ig-resolved.route-registrar-v2"))
+			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal("ig-resolved.route-registrar-v2"))
 			Expect(pod.Spec.InitContainers[2].VolumeMounts[2].Name).To(Equal("ig-resolved"))
 		})
 	})

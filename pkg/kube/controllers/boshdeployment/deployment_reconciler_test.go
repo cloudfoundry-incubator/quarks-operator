@@ -235,7 +235,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to set ownerReference for Secret 'foo.with-ops': some error"))
+				Expect(err.Error()).To(ContainSubstring("failed to set ownerReference for Secret 'with-ops': some error"))
 			})
 
 			It("handles an error when creating manifest secret with ops", func() {
@@ -246,7 +246,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					case *qjv1a1.QuarksJob:
 						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 					case *corev1.Secret:
-						if nn.Name == "foo.with-ops" {
+						if nn.Name == "with-ops" {
 							return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 						}
 					}
@@ -271,7 +271,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				By("From created state to ops applied state")
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to create with-ops manifest secret for BOSHDeployment 'default/foo': failed to apply Secret 'foo.with-ops': fake-error"))
+				Expect(err.Error()).To(ContainSubstring("failed to create with-ops manifest secret for BOSHDeployment 'default/foo': failed to apply Secret 'with-ops': fake-error"))
 			})
 
 			It("handles an error when building desired manifest qJob", func() {

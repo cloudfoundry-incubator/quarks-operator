@@ -88,7 +88,7 @@ Also calculates and prints the BPM configurations for all BOSH jobs of that inst
 			return errors.Wrapf(err, "%s Loading BOSH manifest file failed. Please check the file contents and try again.", igFailedMessage)
 		}
 
-		dns, err := boshdns.NewDNS(deploymentName, *m)
+		dns, err := boshdns.NewDNS(*m)
 		if err != nil {
 			return errors.Wrapf(err, "%s Loading DNS for BOSH manifest failed.", igFailedMessage)
 		}

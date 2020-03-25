@@ -496,7 +496,7 @@ The `QuarksSecret` is meant to generate the value required by the variable.
 The name of the `QuarksSecret` is calculated like this:
 
 ```text
-<DEPLOYMENT_NAME>.var-<VARIABLE_NAME>
+var-<VARIABLE_NAME>
 ```
 
 The name of the final generated `Secret` (the `secretName` key of the `QuarksSecret`) is calculated the same way.
@@ -578,7 +578,7 @@ BOSH deployment manifests support two different types of variables, implicit and
 "Implicit" variables just appear in the document within double parentheses without any declaration. These variables have to be provided by the user prior to creating the BOSH deployment as a secret. The secret name has to follow the scheme
 
 ```text
-<deployment-name>.var-<variable-name>
+var-<variable-name>
 ```
 
 By default the variable content is expected in the `value` key, e.g.
@@ -592,7 +592,7 @@ By default the variable content is expected in the `value` key, e.g.
 apiVersion: v1
 kind: Secret
 metadata:
-  name: nats-deployment.var-system-domain
+  name: var-system-domain
 type: Opaque
 stringData:
   value: example.com
@@ -609,7 +609,7 @@ It is also possible to specify the key name after a `/` separator, e.g.
 apiVersion: v1
 kind: Secret
 metadata:
-  name: nats-deployment.var-ssl
+  name: var-ssl
 type: Opaque
 stringData:
   ca: ...
@@ -650,7 +650,7 @@ instance_groups:
 ### BOSH DNS
 
 The BOSH DNS addon is implemented using a separate DNS server (coredns). For each BOSHDeployment, which enables this addon, an additional DNS server is created within the namespace.
-This DNS server rewrites all BOSH dns requests to standard k8s queries (e.g. `api.service.cf.internal` -> `api.<namespace>.svc.cluster.local`) and forwards them to the k8s DNS server. 
+This DNS server rewrites all BOSH dns requests to standard k8s queries (e.g. `api.service.cf.internal` -> `api.<namespace>.svc.cluster.local`) and forwards them to the k8s DNS server.
 All pods created from the BOSHDeployment are configured to use this DNS server.
 
 Additionally the headless services are created on base of the specified aliases. The following alias
@@ -665,10 +665,10 @@ Additionally the headless services are created on base of the specified aliases.
       query: '*'
 ```
 
-will create a headless service with the name `blobstore` instead of `<deployment-name>-singleton-blobstore`.
+will create a headless service with the name `blobstore` instead of `singleton-blobstore`.
 
-For migration purpose, the DNS service does also a rewrite of all previous headless service names 
-(e.g. `<deployment-name>-singleton-blobstore` is rewritten to `blobstore.<namespace>.svc.cluster.local`).
+For migration purpose, the DNS service does also a rewrite of all previous headless service names
+(e.g. `singleton-blobstore` is rewritten to `blobstore.<namespace>.svc.cluster.local`).
 
 
 ## Flow
@@ -688,50 +688,49 @@ After creating a `BOSHDeployment` named `nats-deployment`, with one Instance Gro
 - `QuarksJob`
 
   ```text
-  bpm-configs-nats-deployment
-  ig-nats-deployment
-  var-interpolation-nats-deployment
+  ig
+  dm
   ```
 
 - `QuarksSecret`
 
   ```text
-  nats-deployment.var-nats-password
+  var-nats-password
   ```
 
 - `QuarksStatefulSet`
 
   ```text
-  nats-deployment-nats
+  nats
   ```
 
 - `Secrets`
 
   ```text
-  nats-deployment.bpm.nats
-  nats-deployment.ig-resolved.nats-v1
-  nats-deployment.var-nats-password
-  nats-deployment.with-ops
-  nats-deployment.desired-manifest-v1
+  bpm.nats-v1
+  ig-resolved.nats-v1
+  var-nats-password
+  with-ops
+  desired-manifest-v1
   ```
 
 - `StatefulSets`
 
   ```text
-  nats-deployment-nats
+  nats
   ```
 
 - `Pods`
 
   ```text
-  nats-deployment-nats-0
-  nats-deployment-nats-1
+  nats-0
+  nats-1
   ```
 
 - `Services`
 
   ```text
-  nats-deployment-nats
-  nats-deployment-nats-0
-  nats-deployment-nats-1
+  nats
+  nats-0
+  nats-1
   ```

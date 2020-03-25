@@ -46,7 +46,7 @@ The main purpose of the data gathering phase is to compile all information requi
 
 Two containers are run for each instance group in the deployment manifest, using the image of the CF Operator. These two containers write the following on to a file `output.json` in the volume mount `/mnt/quarks` of the container :
 
-- A `Secret` named `<deployment-name>.ig-resolved.<instance-group>-v<version>`
+- A `Secret` named `ig-resolved.<instance-group>-v<version>`
 
     This is the "Resolved Instance Group Properties" yaml file.
     It contains a deployment manifest structure that only has information pertinent to an instance group.
@@ -61,7 +61,7 @@ Two containers are run for each instance group in the deployment manifest, using
     >
     > Link instance specs are stored in the `quarks` property key for each job in the instance group.
 
-- a `Secret` named `<deployment-name>.bpm.<instance-group>-v<version>`
+- a `Secret` named `bpm.<instance-group>-v<version>`
 
     Once all properties and link instances are compiled, `bpm.yml.erb` can be rendered for each job and for each AZ and replica of the instance group.
 
@@ -128,22 +128,22 @@ In order for things to work correctly across versions and AZs, we need [ClusterI
 For example, assuming a `REPLICAS` of `3` and an `AZ_COUNT` of `2` for a "nats" `BOSHDeployment`, with `2` `StatefulSet` versions available, we would see the following `Services`:
 
 ```text
-nats-deployment-nats-0
+nats-0
   selects pod z0-v1-0
   selects pod z0-v2-0
-nats-deployment-nats-1
+nats-1
   selects pod z1-v1-0
   selects pod z1-v2-0
-nats-deployment-nats-2
+nats-2
   selects pod z0-v1-1
   selects pod z0-v2-1
-nats-deployment-nats-3
+nats-3
   selects pod z1-v1-1
   selects pod z1-v2-1
-nats-deployment-nats-4
+nats-4
   selects pod z0-v1-2
   selects pod z0-v2-2
-nats-deployment-nats-5
+nats-5
   selects pod z1-v1-2
   selects pod z1-v2-2
 ```

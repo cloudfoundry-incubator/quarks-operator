@@ -21,10 +21,11 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
 	qjv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
-	"code.cloudfoundry.org/quarks-utils/pkg/names"
+	sharednames "code.cloudfoundry.org/quarks-utils/pkg/names"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
@@ -273,7 +274,7 @@ func (c *Catalog) DefaultConfigMap(name string) corev1.ConfigMap {
 
 // QuarksLinkSecret returns a link secret, as generated for consumption by an external (non BOSH) consumer
 func (c *Catalog) QuarksLinkSecret(deploymentName, linkType, linkName string, value map[string][]byte) corev1.Secret {
-	name := names.QuarksLinkSecretName(deploymentName, linkType, linkName)
+	name := names.QuarksLinkSecretName(linkType, linkName)
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -886,7 +887,7 @@ func (c *Catalog) NodePortService(name, ig string, targetPort int32) corev1.Serv
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceTypeNodePort,
 			Selector: map[string]string{
-				names.GroupName + "/instance-group-name": ig,
+				sharednames.GroupName + "/instance-group-name": ig,
 			},
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{

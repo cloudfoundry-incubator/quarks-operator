@@ -8,8 +8,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
+)
+
+var (
+	// Name is the name of the container that
+	// performs variable interpolation for a manifest. It's also part of
+	// the output secret's name
+	Name = "desired-manifest"
 )
 
 // DesiredManifest resolves references from bdpl CRD to a BOSH manifest
@@ -28,20 +34,17 @@ func NewDesiredManifest(client client.Client) *DesiredManifest {
 
 // DesiredManifest reads the versioned secret created by the variable interpolation job
 // and unmarshals it into a Manifest object
-func (r *DesiredManifest) DesiredManifest(ctx context.Context, boshDeploymentName, namespace string) (*bdm.Manifest, error) {
-	// unversioned desired manifest name
-	secretName := names.DesiredManifestName(boshDeploymentName, "")
-
-	secret, err := r.versionedSecretStore.Latest(ctx, namespace, secretName)
+func (r *DesiredManifest) DesiredManifest(ctx context.Context, namespace string) (*bdm.Manifest, error) {
+	secret, err := r.versionedSecretStore.Latest(ctx, namespace, Name)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read latest versioned secret %s for bosh deployment %s", secretName, boshDeploymentName)
+		return nil, errors.Wrapf(err, "failed to read latest versioned secret %s for bosh deployment in %s", Name, namespace)
 	}
 
 	manifestData := secret.Data["manifest.yaml"]
 
 	manifest, err := bdm.LoadYAML(manifestData)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal manifest from secret %s for boshdeployment %s", secretName, boshDeploymentName)
+		return nil, errors.Wrapf(err, "failed to unmarshal manifest from secret %s for boshdeployment in %s", Name, namespace)
 	}
 
 	return manifest, nil

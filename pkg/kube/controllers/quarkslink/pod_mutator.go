@@ -53,7 +53,6 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 
 	updatedPod := pod.DeepCopy()
 	if validEntanglement(pod.GetAnnotations()) {
-		m.log.Debugf("Adding quarks link secret to entangled pod '%s'", pod.Name)
 		err = m.addSecrets(ctx, req.Namespace, updatedPod)
 		if err != nil {
 			return admission.Errored(http.StatusInternalServerError, err)

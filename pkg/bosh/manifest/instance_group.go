@@ -11,7 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
+	boshnames "code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
@@ -101,6 +101,16 @@ func (ig *InstanceGroup) NameSanitized() string {
 	return names.Sanitize(ig.Name)
 }
 
+// IndexedServiceName constructs an indexed service name. It's used to construct the service
+// names other than the headless service.
+func (ig *InstanceGroup) IndexedServiceName(index int, azIndex int) string {
+	sn := boshnames.ServiceName(ig.Name, 53)
+	if azIndex > -1 {
+		return fmt.Sprintf("%s-z%d-%d", sn, azIndex, index)
+	}
+	return fmt.Sprintf("%s-%d", sn, index)
+}
+
 // ActivePassiveProbes returns all the probes defined in the instance group jobs
 func (ig *InstanceGroup) ActivePassiveProbes() map[string]corev1.Probe {
 	probes := map[string]corev1.Probe{}
@@ -112,24 +122,7 @@ func (ig *InstanceGroup) ActivePassiveProbes() map[string]corev1.Probe {
 	return probes
 }
 
-// QuarksStatefulSetName constructs the quarksStatefulSet name.
-func (ig *InstanceGroup) QuarksStatefulSetName(deploymentName string) string {
-	ign := ig.NameSanitized()
-	return fmt.Sprintf("%s-%s", deploymentName, ign)
-}
-
-// IndexedServiceName constructs an indexed service name. It's used to construct the service
-// names other than the headless service.
-func (ig *InstanceGroup) IndexedServiceName(deploymentName string, index int, azIndex int) string {
-	sn := util.ServiceName(ig.Name, deploymentName, 53)
-	if azIndex > -1 {
-		return fmt.Sprintf("%s-z%d-%d", sn, azIndex, index)
-	}
-	return fmt.Sprintf("%s-%d", sn, index)
-}
-
 func (ig *InstanceGroup) jobInstances(
-	deploymentName string,
 	jobName string,
 	initialRollout bool,
 ) []JobInstance {
@@ -142,10 +135,10 @@ func (ig *InstanceGroup) jobInstances(
 
 	if len(ig.AZs) > 0 {
 		for azIndex, az := range ig.AZs {
-			jobsInstances = ig.generateJobInstances(jobsInstances, initialRollout, azIndex, az, deploymentName, jobName, bootstrapIndex)
+			jobsInstances = ig.generateJobInstances(jobsInstances, initialRollout, azIndex, az, jobName, bootstrapIndex)
 		}
 	} else {
-		jobsInstances = ig.generateJobInstances(jobsInstances, initialRollout, -1, "", deploymentName, jobName, bootstrapIndex)
+		jobsInstances = ig.generateJobInstances(jobsInstances, initialRollout, -1, "", jobName, bootstrapIndex)
 	}
 
 	return jobsInstances
@@ -155,13 +148,12 @@ func (ig *InstanceGroup) generateJobInstances(jobsInstances []JobInstance,
 	initialRollout bool,
 	azIndex int,
 	az string,
-	deploymentName string,
 	jobName string,
 	bootstrapIndex int) []JobInstance {
 
 	for i := 0; i < ig.Instances; i++ {
 		index := len(jobsInstances)
-		address := ig.IndexedServiceName(deploymentName, i, azIndex)
+		address := ig.IndexedServiceName(i, azIndex)
 		name := fmt.Sprintf("%s-%s", ig.NameSanitized(), jobName)
 
 		jobsInstances = append(jobsInstances, JobInstance{

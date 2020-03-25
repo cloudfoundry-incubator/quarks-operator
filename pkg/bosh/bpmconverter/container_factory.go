@@ -13,6 +13,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	boshnames "code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -35,7 +36,6 @@ const (
 
 // ContainerFactoryImpl is a concrete implementation of ContainerFactor.
 type ContainerFactoryImpl struct {
-	deploymentName       string
 	instanceGroupName    string
 	version              string
 	disableLogSidecar    bool
@@ -44,9 +44,8 @@ type ContainerFactoryImpl struct {
 }
 
 // NewContainerFactory returns a concrete implementation of ContainerFactory.
-func NewContainerFactory(deploymentName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactoryImpl {
+func NewContainerFactory(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) *ContainerFactoryImpl {
 	return &ContainerFactoryImpl{
-		deploymentName:       deploymentName,
 		instanceGroupName:    instanceGroupName,
 		version:              version,
 		disableLogSidecar:    disableLogSidecar,
@@ -136,9 +135,7 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 		boshPreStartInitContainers = append(boshPreStartInitContainers, *boshPreStartInitContainer.DeepCopy())
 	}
 
-	resolvedPropertiesSecretName := names.InstanceGroupSecretName(
-		names.DeploymentSecretTypeInstanceGroupResolvedProperties, // ig-resolved
-		c.deploymentName,
+	resolvedPropertiesSecretName := boshnames.InstanceGroupSecretName(
 		c.instanceGroupName,
 		c.version,
 	)
@@ -146,8 +143,8 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 	initContainers := flattenContainers(
 		containerRunCopier(),
 		copyingSpecsInitContainers,
-		templateRenderingContainer(c.deploymentName, c.instanceGroupName, resolvedPropertiesSecretName),
-		createDirContainer(jobs, c.instanceGroupName, c.deploymentName),
+		templateRenderingContainer(c.instanceGroupName, resolvedPropertiesSecretName),
+		createDirContainer(jobs, c.instanceGroupName),
 		createWaitContainer(requiredService),
 		boshPreStartInitContainers,
 		bpmPreStartInitContainers,
@@ -337,7 +334,7 @@ func JobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 	}
 }
 
-func templateRenderingContainer(deploymentName string, instanceGroupName string, secretName string) corev1.Container {
+func templateRenderingContainer(instanceGroupName string, secretName string) corev1.Container {
 	return corev1.Container{
 		Name:            "template-render",
 		Image:           operatorimage.GetOperatorDockerImage(),
@@ -348,10 +345,6 @@ func templateRenderingContainer(deploymentName string, instanceGroupName string,
 			resolvedPropertiesVolumeMount(secretName, instanceGroupName),
 		},
 		Env: []corev1.EnvVar{
-			{
-				Name:  EnvDeploymentName,
-				Value: deploymentName,
-			},
 			{
 				Name:  EnvInstanceGroupName,
 				Value: instanceGroupName,
@@ -386,7 +379,7 @@ func templateRenderingContainer(deploymentName string, instanceGroupName string,
 	}
 }
 
-func createDirContainer(jobs []bdm.Job, instanceGroupName, manifestName string) corev1.Container {
+func createDirContainer(jobs []bdm.Job, instanceGroupName string) corev1.Container {
 	dirs := []string{}
 	for _, job := range jobs {
 		jobDirs := append(job.DataDirs(), job.SysDirs()...)
@@ -400,7 +393,6 @@ func createDirContainer(jobs []bdm.Job, instanceGroupName, manifestName string) 
 		VolumeMounts: []corev1.VolumeMount{
 			corev1.VolumeMount{
 				Name: volumeDataDirName(
-					manifestName,
 					instanceGroupName),
 				MountPath: VolumeDataDirMountPath,
 			},

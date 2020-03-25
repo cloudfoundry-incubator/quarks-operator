@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: nats-deployment.var-system-domain
+  name: var-system-domain
 type: Opaque
 stringData:
   value: bar.com

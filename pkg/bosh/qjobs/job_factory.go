@@ -15,9 +15,12 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/desiredmanifest"
+	boshnames "code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
+	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
 const (
@@ -39,10 +42,6 @@ const (
 	// BPMOutputFilename i s the file name of the JSON output file, which quarks job will look for
 	BPMOutputFilename = "bpm.json"
 
-	// VarInterpolationContainerName is the name of the container that
-	// performs variable interpolation for a manifest. It's also part of
-	// the output secret's name
-	VarInterpolationContainerName = "desired-manifest"
 	// PodNameEnvVar is the environment variable containing metadata.name used to render BOSH spec.id. (CLI)
 	PodNameEnvVar = "POD_NAME"
 )
@@ -61,12 +60,11 @@ func NewJobFactory(namespace string) *JobFactory {
 
 // VariableInterpolationJob returns an quarks job to create the desired manifest
 // The desired manifest is a BOSH manifest with all variables interpolated.
-// It's sometimes referred to as the 'with-vars' manifest.
 func (f *JobFactory) VariableInterpolationJob(deploymentName string, manifest bdm.Manifest) (*qjv1a1.QuarksJob, error) {
 	args := []string{"util", "variable-interpolation"}
 
 	// This is the source manifest, that still has the '((vars))'
-	manifestSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeManifestWithOps, deploymentName, "")
+	manifestSecretName := bdv1.DeploymentSecretTypeManifestWithOps.String()
 
 	// Prepare Volumes and Volume mounts
 
@@ -76,7 +74,7 @@ func (f *JobFactory) VariableInterpolationJob(deploymentName string, manifest bd
 	// We need a volume and a mount for each input variable
 	for _, variable := range manifest.Variables {
 		varName := variable.Name
-		varSecretName := names.DeploymentSecretName(names.DeploymentSecretTypeVariable, deploymentName, varName)
+		varSecretName := boshnames.SecretVariableName(varName)
 
 		volumes = append(volumes, variableVolume(varSecretName))
 		volumeMounts = append(volumeMounts, variableVolumeMount(varSecretName, varName))
@@ -88,13 +86,10 @@ func (f *JobFactory) VariableInterpolationJob(deploymentName string, manifest bd
 		volumeMounts = append(volumeMounts, noVarsVolumeMount())
 	}
 
-	qJobName := fmt.Sprintf("dm-%s", deploymentName)
-	secretName := names.DesiredManifestPrefix(deploymentName) + VarInterpolationContainerName
-
 	// Construct the var interpolation auto-errand qJob
 	qJob := &qjv1a1.QuarksJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      qJobName,
+			Name:      "dm",
 			Namespace: f.Namespace,
 			Labels: map[string]string{
 				bdv1.LabelDeploymentName: deploymentName,
@@ -103,11 +98,11 @@ func (f *JobFactory) VariableInterpolationJob(deploymentName string, manifest bd
 		Spec: qjv1a1.QuarksJobSpec{
 			Output: &qjv1a1.Output{
 				OutputMap: qjv1a1.OutputMap{
-					VarInterpolationContainerName: qjv1a1.NewFileToSecret(outputFilename, secretName, true),
+					desiredmanifest.Name: qjv1a1.NewFileToSecret(outputFilename, desiredmanifest.Name, true),
 				},
 				SecretLabels: map[string]string{
 					bdv1.LabelDeploymentName:       deploymentName,
-					bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeDesiredManifest.String(),
+					bdv1.LabelDeploymentSecretType: bdv1.DeploymentSecretTypeDesiredManifest.String(),
 					bdv1.LabelReferencedJobName:    fmt.Sprintf("instance-group-%s", deploymentName),
 				},
 			},
@@ -119,7 +114,7 @@ func (f *JobFactory) VariableInterpolationJob(deploymentName string, manifest bd
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: qJobName,
+							Name: "dm",
 							Labels: map[string]string{
 								"delete": "pod",
 							},
@@ -128,7 +123,7 @@ func (f *JobFactory) VariableInterpolationJob(deploymentName string, manifest bd
 							RestartPolicy: corev1.RestartPolicyOnFailure,
 							Containers: []corev1.Container{
 								{
-									Name:            VarInterpolationContainerName,
+									Name:            desiredmanifest.Name,
 									Image:           operatorimage.GetOperatorDockerImage(),
 									ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
 									Args:            args,
@@ -161,30 +156,29 @@ func (f *JobFactory) VariableInterpolationJob(deploymentName string, manifest bd
 
 // InstanceGroupManifestJob generates the job to create an instance group manifest
 func (f *JobFactory) InstanceGroupManifestJob(deploymentName string, manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error) {
-	containers := []corev1.Container{}
+	dmName := desiredManifestName()
 	ct := containerTemplate{
 		deploymentName: deploymentName,
-		manifestName:   desiredManifestName(deploymentName),
+		manifestName:   dmName,
 		cmd:            "instance-group",
 		namespace:      f.Namespace,
 		initialRollout: initialRollout,
 	}
 
+	containers := []corev1.Container{}
 	linkOutputs := map[string]string{}
-
 	for _, ig := range manifest.InstanceGroups {
 		if ig.Instances != 0 {
 			// Additional secret for BOSH links per instance group
 			containerName := names.Sanitize(ig.Name)
-			linkOutputs[containerName] = names.QuarksLinkSecretName(deploymentName)
+			linkOutputs[containerName] = boshnames.QuarksLinkSecretName()
 
 			// One container per instance group
 			containers = append(containers, ct.newUtilContainer(ig.Name, linkInfos.VolumeMounts()))
 		}
 	}
 
-	qJobName := fmt.Sprintf("ig-%s", deploymentName)
-	qJob, err := f.releaseImageQJob(qJobName, deploymentName, manifest, containers, linkInfos.Volumes())
+	qJob, err := f.releaseImageQJob(deploymentName, dmName, manifest, containers, linkInfos.Volumes())
 	if err != nil {
 		return nil, err
 	}
@@ -202,8 +196,8 @@ func (f *JobFactory) InstanceGroupManifestJob(deploymentName string, manifest bd
 
 // desiredManifestName returns the sanitized, versioned name of the manifest.
 // QuarksJob will always pick the latest version for versioned secrets
-func desiredManifestName(name string) string {
-	return names.DesiredManifestName(name, "1")
+func desiredManifestName() string {
+	return versionedsecretstore.VersionedName(desiredmanifest.Name, 1)
 }
 
 type containerTemplate struct {
@@ -258,7 +252,7 @@ func (ct *containerTemplate) newUtilContainer(instanceGroupName string, linkVolu
 }
 
 // releaseImageQJob collects outputs, like bpm, links or ig manifests, from the BOSH release images
-func (f *JobFactory) releaseImageQJob(name string, deploymentName string, manifest bdm.Manifest, containers []corev1.Container, linkVolumes []corev1.Volume) (*qjv1a1.QuarksJob, error) {
+func (f *JobFactory) releaseImageQJob(deploymentName string, dmName string, manifest bdm.Manifest, containers []corev1.Container, linkVolumes []corev1.Volume) (*qjv1a1.QuarksJob, error) {
 	initContainers := []corev1.Container{}
 	doneSpecCopyingReleases := map[string]bool{}
 	for _, ig := range manifest.InstanceGroups {
@@ -287,22 +281,22 @@ func (f *JobFactory) releaseImageQJob(name string, deploymentName string, manife
 	}
 
 	outputMap := qjv1a1.OutputMap{}
-	igPrefix := names.DeploymentSecretPrefix(names.DeploymentSecretTypeInstanceGroupResolvedProperties, deploymentName)
-	bpmPrefix := names.DeploymentSecretPrefix(names.DeploymentSecretBpmInformation, deploymentName)
+	igPrefix := bdv1.DeploymentSecretTypeInstanceGroupResolvedProperties.Prefix()
+	bpmPrefix := bdv1.DeploymentSecretBPMInformation.Prefix()
 	for _, container := range containers {
 		outputMap[container.Name] = qjv1a1.FilesToSecrets{
 			InstanceGroupOutputFilename: qjv1a1.SecretOptions{
-				// the same as names.InstanceGroupSecretName(secretType, manifestName, container.Name, "")
+				// the same as names.InstanceGroupSecretName(container.Name, "")
 				Name: igPrefix + container.Name,
 				AdditionalSecretLabels: map[string]string{
-					bdv1.LabelDeploymentSecretType: names.DeploymentSecretTypeInstanceGroupResolvedProperties.String(),
+					bdv1.LabelDeploymentSecretType: bdv1.DeploymentSecretTypeInstanceGroupResolvedProperties.String(),
 				},
 				Versioned: true,
 			},
 			BPMOutputFilename: qjv1a1.SecretOptions{
 				Name: bpmPrefix + container.Name,
 				AdditionalSecretLabels: map[string]string{
-					bdv1.LabelDeploymentSecretType: names.DeploymentSecretBpmInformation.String(),
+					bdv1.LabelDeploymentSecretType: bdv1.DeploymentSecretBPMInformation.String(),
 				},
 				Versioned: true,
 			},
@@ -312,7 +306,7 @@ func (f *JobFactory) releaseImageQJob(name string, deploymentName string, manife
 	// Construct the "BPM configs" or "data gathering" auto-errand qJob
 	qJob := &qjv1a1.QuarksJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      "ig",
 			Namespace: f.Namespace,
 			Labels: map[string]string{
 				bdv1.LabelDeploymentName: deploymentName,
@@ -333,7 +327,7 @@ func (f *JobFactory) releaseImageQJob(name string, deploymentName string, manife
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: name,
+							Name: "ig",
 							Labels: map[string]string{
 								"delete": "pod",
 							},
@@ -346,7 +340,7 @@ func (f *JobFactory) releaseImageQJob(name string, deploymentName string, manife
 							Containers: containers,
 							// Volumes for secrets
 							Volumes: append(linkVolumes, []corev1.Volume{
-								*withOpsVolume(desiredManifestName(deploymentName)),
+								*withOpsVolume(dmName),
 								releaseSourceVolume(),
 							}...),
 						},

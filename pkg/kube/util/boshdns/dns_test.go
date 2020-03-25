@@ -153,7 +153,7 @@ func loadAddOn() *manifest.AddOn {
 var _ = Describe("BOSH DNS", func() {
 	Context("bosh-dns", func() {
 		It("reconciles dns stuff", func() {
-			d, err := boshdns.NewBoshDomainNameService("scf", loadAddOn(), nil)
+			d, err := boshdns.NewBoshDomainNameService(loadAddOn(), nil)
 			Expect(err).NotTo(HaveOccurred())
 			scheme := runtime.NewScheme()
 			Expect(corev1.AddToScheme(scheme)).To(Succeed())
@@ -172,13 +172,13 @@ var _ = Describe("BOSH DNS", func() {
 
 	Context("simple-dns", func() {
 		It("shorten long service names", func() {
-			dns := boshdns.NewSimpleDomainNameService("sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-sfc-")
+			dns := boshdns.NewSimpleDomainNameService()
 			Expect(len(dns.HeadlessServiceName("scheduler-scheduler-scheduler-scheduler-scheduler-scheduler-scheduler-scheduler"))).
 				To(Equal(63))
 		})
 
 		It("reconciles does nothing", func() {
-			dns := boshdns.NewSimpleDomainNameService("scf")
+			dns := boshdns.NewSimpleDomainNameService()
 			client := fake.NewFakeClientWithScheme(runtime.NewScheme())
 			err := dns.Reconcile(context.Background(), "default", client, func(object v1.Object) error {
 				return nil

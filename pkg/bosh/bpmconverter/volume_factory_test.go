@@ -20,7 +20,6 @@ import (
 var _ = Describe("VolumeFactory", func() {
 	var (
 		factory       *VolumeFactoryImpl
-		manifestName  string
 		version       string
 		namespace     string
 		instanceGroup *bdm.InstanceGroup
@@ -28,7 +27,6 @@ var _ = Describe("VolumeFactory", func() {
 	)
 
 	BeforeEach(func() {
-		manifestName = "fake-manifest-name"
 		version = "1"
 		namespace = "fake-namespace"
 		instanceGroup = &bdm.InstanceGroup{
@@ -47,7 +45,7 @@ var _ = Describe("VolumeFactory", func() {
 
 	Describe("GenerateDefaultDisks", func() {
 		It("creates default disks", func() {
-			disks := factory.GenerateDefaultDisks(manifestName, instanceGroup, version, namespace)
+			disks := factory.GenerateDefaultDisks(instanceGroup, version, namespace)
 
 			Expect(disks).Should(HaveLen(5))
 			Expect(disks).Should(ContainElement(bdm.Disk{
@@ -72,11 +70,11 @@ var _ = Describe("VolumeFactory", func() {
 			}))
 			Expect(disks).Should(ContainElement(bdm.Disk{
 				Volume: &corev1.Volume{
-					Name:         "fake-manifest-name-fake-instance-group-name-ephemeral",
+					Name:         "fake-instance-group-name-ephemeral",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 				},
 				VolumeMount: &corev1.VolumeMount{
-					Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
+					Name:      "fake-instance-group-name-ephemeral",
 					MountPath: VolumeDataDirMountPath,
 				},
 			}))
@@ -95,7 +93,7 @@ var _ = Describe("VolumeFactory", func() {
 					Name: "ig-resolved",
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
-							SecretName: fmt.Sprintf("%s.ig-resolved.%s-v%s", manifestName, instanceGroup.Name, version),
+							SecretName: fmt.Sprintf("ig-resolved.%s-v%s", instanceGroup.Name, version),
 						},
 					},
 				},
@@ -115,13 +113,13 @@ var _ = Describe("VolumeFactory", func() {
 				},
 			}
 
-			disks, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
+			disks, err := factory.GenerateBPMDisks(instanceGroup, *bpmConfigs, namespace)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(disks).Should(HaveLen(1))
 			Expect(disks).Should(ContainElement(bdm.Disk{
 				VolumeMount: &corev1.VolumeMount{
-					Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
+					Name:      "fake-instance-group-name-ephemeral",
 					MountPath: path.Join(VolumeDataDirMountPath, "fake-job"),
 					SubPath:   "fake-job",
 				},
@@ -145,22 +143,22 @@ var _ = Describe("VolumeFactory", func() {
 
 			instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.EphemeralAsPVC = true
 
-			disks, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
+			disks, err := factory.GenerateBPMDisks(instanceGroup, *bpmConfigs, namespace)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(disks).Should(HaveLen(1))
 			Expect(disks).Should(ContainElement(bdm.Disk{
 				Volume: &corev1.Volume{
-					Name: "fake-manifest-name-fake-instance-group-name-ephemeral",
+					Name: "fake-instance-group-name-ephemeral",
 					VolumeSource: corev1.VolumeSource{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: "fake-manifest-name-fake-instance-group-name-ephemeral",
+							ClaimName: "fake-instance-group-name-ephemeral",
 						},
 					},
 				},
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaim{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
+						Name:      "fake-instance-group-name-ephemeral",
 						Namespace: "fake-namespace",
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
@@ -173,7 +171,7 @@ var _ = Describe("VolumeFactory", func() {
 					},
 				},
 				VolumeMount: &corev1.VolumeMount{
-					Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
+					Name:      "fake-instance-group-name-ephemeral",
 					MountPath: path.Join(VolumeDataDirMountPath, "fake-job"),
 					SubPath:   "fake-job",
 				},
@@ -189,7 +187,7 @@ var _ = Describe("VolumeFactory", func() {
 			instanceGroup.PersistentDiskType = "fake-storage-class"
 			persistentVolumeClaim := corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      names.Sanitize(fmt.Sprintf("%s-%s-%s", manifestName, instanceGroup.Name, "pvc")),
+					Name:      names.Sanitize(fmt.Sprintf("%s-%s", instanceGroup.Name, "pvc")),
 					Namespace: namespace,
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
@@ -212,14 +210,14 @@ var _ = Describe("VolumeFactory", func() {
 				},
 			}
 
-			disks, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
+			disks, err := factory.GenerateBPMDisks(instanceGroup, *bpmConfigs, namespace)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(disks).Should(HaveLen(1))
 			Expect(disks).Should(ContainElement(bdm.Disk{
 				PersistentVolumeClaim: &persistentVolumeClaim,
 				Volume: &corev1.Volume{
-					Name: "fake-manifest-name-fake-instance-group-name-pvc",
+					Name: "fake-instance-group-name-pvc",
 					VolumeSource: corev1.VolumeSource{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 							ClaimName: persistentVolumeClaim.Name,
@@ -227,7 +225,7 @@ var _ = Describe("VolumeFactory", func() {
 					},
 				},
 				VolumeMount: &corev1.VolumeMount{
-					Name:      "fake-manifest-name-fake-instance-group-name-pvc",
+					Name:      "fake-instance-group-name-pvc",
 					MountPath: path.Join(VolumeStoreDirMountPath, "fake-job"),
 					SubPath:   "fake-job",
 				},
@@ -261,13 +259,13 @@ var _ = Describe("VolumeFactory", func() {
 			}
 
 			instanceGroup.PersistentDisk = pointers.Int(42)
-			disks, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
+			disks, err := factory.GenerateBPMDisks(instanceGroup, *bpmConfigs, namespace)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(disks).Should(HaveLen(3))
 			Expect(disks).Should(ContainElement(bdm.Disk{
 				VolumeMount: &corev1.VolumeMount{
-					Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
+					Name:      "fake-instance-group-name-ephemeral",
 					ReadOnly:  true,
 					MountPath: "/var/vcap/data/add1",
 					SubPath:   "add1",
@@ -279,7 +277,7 @@ var _ = Describe("VolumeFactory", func() {
 			}))
 			Expect(disks).Should(ContainElement(bdm.Disk{
 				VolumeMount: &corev1.VolumeMount{
-					Name:      "fake-manifest-name-fake-instance-group-name-pvc",
+					Name:      "fake-instance-group-name-pvc",
 					ReadOnly:  true,
 					MountPath: "/var/vcap/store/add2",
 					SubPath:   "add2",
@@ -332,13 +330,13 @@ var _ = Describe("VolumeFactory", func() {
 
 			instanceGroup.PersistentDisk = pointers.Int(42)
 
-			disks, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
+			disks, err := factory.GenerateBPMDisks(instanceGroup, *bpmConfigs, namespace)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(disks).Should(HaveLen(4))
 			Expect(disks).Should(ContainElement(bdm.Disk{
 				VolumeMount: &corev1.VolumeMount{
-					Name:      "fake-manifest-name-fake-instance-group-name-ephemeral",
+					Name:      "fake-instance-group-name-ephemeral",
 					ReadOnly:  true,
 					MountPath: "/var/vcap/data/add1",
 					SubPath:   "add1",
@@ -350,7 +348,7 @@ var _ = Describe("VolumeFactory", func() {
 			}))
 			Expect(disks).Should(ContainElement(bdm.Disk{
 				VolumeMount: &corev1.VolumeMount{
-					Name:      "fake-manifest-name-fake-instance-group-name-pvc",
+					Name:      "fake-instance-group-name-pvc",
 					ReadOnly:  true,
 					MountPath: "/var/vcap/store/add2",
 					SubPath:   "add2",
@@ -407,7 +405,7 @@ var _ = Describe("VolumeFactory", func() {
 				},
 			}
 
-			disks, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
+			disks, err := factory.GenerateBPMDisks(instanceGroup, *bpmConfigs, namespace)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(disks).Should(HaveLen(0))
@@ -424,7 +422,7 @@ var _ = Describe("VolumeFactory", func() {
 				},
 			}
 
-			_, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
+			_, err := factory.GenerateBPMDisks(instanceGroup, *bpmConfigs, namespace)
 			Expect(err).Should(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring("instance group 'fake-instance-group-name' doesn't have any persistent disk declaration"))
 		})
@@ -445,7 +443,7 @@ var _ = Describe("VolumeFactory", func() {
 				},
 			}
 
-			_, err := factory.GenerateBPMDisks(manifestName, instanceGroup, *bpmConfigs, namespace)
+			_, err := factory.GenerateBPMDisks(instanceGroup, *bpmConfigs, namespace)
 			Expect(err).Should(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring(fmt.Sprintf("the '%s' path, must be a path inside"+
 				" '/var/vcap/data', '/var/vcap/store' or '/var/vcap/sys/run', for a path outside these,"+

@@ -40,9 +40,9 @@ var _ = Describe("Deploy", func() {
 
 	Context("when using the default configuration", func() {
 		const (
-			stsName          = "test-nats"
-			headlessSvcName  = "test-nats"
-			clusterIpSvcName = "test-nats-0"
+			stsName          = "nats"
+			headlessSvcName  = "nats"
+			clusterIpSvcName = "nats-0"
 		)
 
 		It("should deploy a pod and create services", func() {
@@ -110,7 +110,7 @@ var _ = Describe("Deploy", func() {
 	})
 
 	Context("when using pre-render scripts", func() {
-		podName := "test-nats-0"
+		podName := "nats-0"
 
 		It("it should run them", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, corev1.ConfigMap{
@@ -175,12 +175,12 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("test-bph", "cfrouting-manifest"))
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("bph", "cfrouting-manifest"))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, "test-bph", "route_registrar", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, "bph", "route_registrar", "1", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for containers")
@@ -238,7 +238,7 @@ var _ = Describe("Deploy", func() {
 		})
 
 		It("should add the env var to the container", func() {
-			pod, err := env.GetPod(env.Namespace, "test-nats-1")
+			pod, err := env.GetPod(env.Namespace, "nats-1")
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(env.EnvKeys(pod.Spec.Containers)).To(ContainElement("XPOD_IPX"))

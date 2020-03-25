@@ -16,9 +16,9 @@ import (
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/logger"
-	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
@@ -40,7 +40,7 @@ type Resolver struct {
 type NewInterpolatorFunc func() Interpolator
 
 // NewDNSFunc returns a dns client for the manifest
-type NewDNSFunc func(deploymentName string, m bdm.Manifest) (DomainNameService, error)
+type NewDNSFunc func(m bdm.Manifest) (DomainNameService, error)
 
 // NewResolver constructs a resolver
 func NewResolver(client client.Client, f NewInterpolatorFunc, dns NewDNSFunc) *Resolver {
@@ -65,7 +65,7 @@ func (r *Resolver) Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, name
 
 	m, err = r.resourceData(ctx, namespace, spec.Manifest.Type, spec.Manifest.Name, bdv1.ManifestSpecName)
 	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", bdpl.GetName())
+		return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' in '%s'", bdpl.Name, namespace)
 	}
 
 	// Interpolate manifest with ops
@@ -74,11 +74,11 @@ func (r *Resolver) Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, name
 	for _, op := range ops {
 		opsData, err := r.resourceData(ctx, namespace, op.Type, op.Name, bdv1.OpsSpecName)
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", bdpl.GetName())
+			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' in '%s'", bdpl.Name, namespace)
 		}
 		err = interpolator.BuildOps([]byte(opsData))
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", bdpl.GetName())
+			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' in '%s'", bdpl.Name, namespace)
 		}
 	}
 
@@ -112,11 +112,11 @@ func (r *Resolver) Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, name
 				return nil, []string{}, fmt.Errorf("expected one / separator for implicit variable/key name, have %d", len(parts))
 			}
 
-			varSecretName = names.DeploymentSecretName(names.DeploymentSecretTypeVariable, bdpl.GetName(), parts[0])
+			varSecretName = names.SecretVariableName(parts[0])
 			varKeyName = parts[1]
 		} else {
 			varKeyName = bdv1.ImplicitVariableKeyName
-			varSecretName = names.DeploymentSecretName(names.DeploymentSecretTypeVariable, bdpl.GetName(), v)
+			varSecretName = names.SecretVariableName(v)
 		}
 
 		varData, err := r.resourceData(ctx, namespace, bdv1.SecretReference, varSecretName, varKeyName)
@@ -135,7 +135,7 @@ func (r *Resolver) Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, name
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}
 
-	dns, err := r.newDNSFunc(bdpl.Name, *manifest)
+	dns, err := r.newDNSFunc(*manifest)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -156,7 +156,7 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 
 	m, err = r.resourceData(ctx, namespace, spec.Manifest.Type, spec.Manifest.Name, bdv1.ManifestSpecName)
 	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", bdpl.GetName())
+		return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", namespace)
 	}
 
 	// Interpolate manifest with ops
@@ -168,16 +168,16 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 
 		opsData, err := r.resourceData(ctx, namespace, op.Type, op.Name, bdv1.OpsSpecName)
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Failed to get resource data for interpolation of bosh deployment '%s' and ops '%s'", bdpl.GetName(), op.Name)
+			return nil, []string{}, errors.Wrapf(err, "Failed to get resource data for interpolation of bosh deployment '%s' and ops '%s' in '%s'", bdpl.Name, op.Name, namespace)
 		}
 		err = interpolator.BuildOps([]byte(opsData))
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' and ops '%s'", bdpl.GetName(), op.Name)
+			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' and ops '%s' in '%s'", bdpl.Name, op.Name, namespace)
 		}
 
 		bytes, err = interpolator.Interpolate(bytes)
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Failed to interpolate ops '%s' for manifest '%s'", op.Name, bdpl.Name)
+			return nil, []string{}, errors.Wrapf(err, "Failed to interpolate ops '%s' for manifest '%s' in '%s'", op.Name, bdpl.Name, namespace)
 		}
 	}
 
@@ -203,11 +203,11 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 				return nil, []string{}, fmt.Errorf("expected one / separator for implicit variable/key name, have %d", len(parts))
 			}
 
-			varSecretName = names.DeploymentSecretName(names.DeploymentSecretTypeVariable, bdpl.GetName(), parts[0])
+			varSecretName = names.SecretVariableName(parts[0])
 			varKeyName = parts[1]
 		} else {
 			varKeyName = bdv1.ImplicitVariableKeyName
-			varSecretName = names.DeploymentSecretName(names.DeploymentSecretTypeVariable, bdpl.GetName(), v)
+			varSecretName = names.SecretVariableName(v)
 		}
 
 		varData, err := r.resourceData(ctx, namespace, bdv1.SecretReference, varSecretName, varKeyName)
@@ -226,7 +226,7 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}
 
-	dns, err := r.newDNSFunc(bdpl.Name, *manifest)
+	dns, err := r.newDNSFunc(*manifest)
 	if err != nil {
 		return nil, nil, err
 	}

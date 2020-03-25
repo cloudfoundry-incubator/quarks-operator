@@ -20,7 +20,7 @@ var _ = Describe("DeployWithStorage", func() {
 			storageClass, ok := os.LookupEnv("OPERATOR_TEST_STORAGE_CLASS")
 			Expect(ok).To(Equal(true))
 
-			tearDown, err := env.CreateSecret(env.Namespace, env.StorageClassSecret("test-bdpl.var-operator-test-storage-class", storageClass))
+			tearDown, err := env.CreateSecret(env.Namespace, env.StorageClassSecret("var-operator-test-storage-class", storageClass))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
@@ -40,7 +40,7 @@ var _ = Describe("DeployWithStorage", func() {
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for services")
-			svc, err := env.GetService(env.Namespace, "test-bdpl-bpm")
+			svc, err := env.GetService(env.Namespace, "bpm")
 			Expect(err).NotTo(HaveOccurred(), "error getting service")
 			Expect(svc.Spec.Selector).To(Equal(map[string]string{
 				bdv1.LabelInstanceGroupName: "bpm",
@@ -60,9 +60,9 @@ var _ = Describe("DeployWithStorage", func() {
 	})
 
 	Context("when specifying affinity", func() {
-		sts1Name := "bpm-affinity-bpm1"
-		sts2Name := "bpm-affinity-bpm2"
-		sts3Name := "bpm-affinity-bpm3"
+		sts1Name := "bpm1"
+		sts2Name := "bpm2"
+		sts3Name := "bpm3"
 
 		It("should create available resources", func() {
 			nodes, err := env.GetNodes()
@@ -75,7 +75,7 @@ var _ = Describe("DeployWithStorage", func() {
 			storageClass, ok := os.LookupEnv("OPERATOR_TEST_STORAGE_CLASS")
 			Expect(ok).To(Equal(true))
 
-			tearDown, err := env.CreateSecret(env.Namespace, env.StorageClassSecret("bpm-affinity.var-operator-test-storage-class", storageClass))
+			tearDown, err := env.CreateSecret(env.Namespace, env.StorageClassSecret("var-operator-test-storage-class", storageClass))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 

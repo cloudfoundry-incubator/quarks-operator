@@ -41,11 +41,11 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 		bpmconverter.NewConverter(
 			config.Namespace,
 			bpmconverter.NewVolumeFactory(),
-			func(deploymentName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
-				return bpmconverter.NewContainerFactory(deploymentName, instanceGroupName, version, disableLogSidecar, releaseImageProvider, bpmConfigs)
+			func(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
+				return bpmconverter.NewContainerFactory(instanceGroupName, version, disableLogSidecar, releaseImageProvider, bpmConfigs)
 			}),
-		func(deploymentName string, m bdm.Manifest) (boshdns.DomainNameService, error) {
-			return boshdns.NewDNS(deploymentName, m)
+		func(m bdm.Manifest) (boshdns.DomainNameService, error) {
+			return boshdns.NewDNS(m)
 		},
 	)
 
@@ -105,7 +105,7 @@ func isBPMInfoSecret(secret *corev1.Secret) bool {
 	if !ok {
 		return false
 	}
-	if deploymentSecretType != names.DeploymentSecretBpmInformation.String() {
+	if deploymentSecretType != bdv1.DeploymentSecretBPMInformation.String() {
 		return false
 	}
 

@@ -91,19 +91,19 @@ var _ = Describe("JobFactory", func() {
 					qjv1a1.OutputMap{
 						"redis-slave": qjv1a1.FilesToSecrets{
 							"ig.json": qjv1a1.SecretOptions{
-								Name:                   "foo-deployment.ig-resolved.redis-slave",
+								Name:                   "ig-resolved.redis-slave",
 								AdditionalSecretLabels: map[string]string{"quarks.cloudfoundry.org/secret-type": "ig-resolved"},
 								Versioned:              true,
 								PersistenceMethod:      "",
 							},
 							"bpm.json": qjv1a1.SecretOptions{
-								Name:                   "foo-deployment.bpm.redis-slave",
+								Name:                   "bpm.redis-slave",
 								AdditionalSecretLabels: map[string]string{"quarks.cloudfoundry.org/secret-type": "bpm"},
 								Versioned:              true,
 								PersistenceMethod:      "",
 							},
 							"provides.json": qjv1a1.SecretOptions{
-								Name:                   "link-foo-deployment",
+								Name:                   "link",
 								AdditionalSecretLabels: nil,
 								Versioned:              false,
 								PersistenceMethod:      "fan-out",
@@ -111,19 +111,19 @@ var _ = Describe("JobFactory", func() {
 						},
 						"diego-cell": qjv1a1.FilesToSecrets{
 							"ig.json": qjv1a1.SecretOptions{
-								Name:                   "foo-deployment.ig-resolved.diego-cell",
+								Name:                   "ig-resolved.diego-cell",
 								AdditionalSecretLabels: map[string]string{"quarks.cloudfoundry.org/secret-type": "ig-resolved"},
 								Versioned:              true,
 								PersistenceMethod:      "",
 							},
 							"bpm.json": qjv1a1.SecretOptions{
-								Name:                   "foo-deployment.bpm.diego-cell",
+								Name:                   "bpm.diego-cell",
 								AdditionalSecretLabels: map[string]string{"quarks.cloudfoundry.org/secret-type": "bpm"},
 								Versioned:              true,
 								PersistenceMethod:      "",
 							},
 							"provides.json": qjv1a1.SecretOptions{
-								Name:                   "link-foo-deployment",
+								Name:                   "link",
 								AdditionalSecretLabels: nil,
 								Versioned:              false,
 								PersistenceMethod:      "fan-out",
