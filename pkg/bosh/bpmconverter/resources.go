@@ -34,8 +34,8 @@ type BPMConverter struct {
 
 // ContainerFactory builds Kubernetes containers from BOSH jobs.
 type ContainerFactory interface {
-	JobsToInitContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks bdm.BPMResourceDisks, requiredService *string) ([]corev1.Container, error)
-	JobsToContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks bdm.BPMResourceDisks) ([]corev1.Container, error)
+	JobsToInitContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks bdm.Disks, requiredService *string) ([]corev1.Container, error)
+	JobsToContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks bdm.Disks) ([]corev1.Container, error)
 }
 
 // NewContainerFactoryFunc returns ContainerFactory from single BOSH instance group.
@@ -43,8 +43,8 @@ type NewContainerFactoryFunc func(manifestName string, instanceGroupName string,
 
 // VolumeFactory builds Kubernetes containers from BOSH jobs.
 type VolumeFactory interface {
-	GenerateDefaultDisks(manifestName string, instanceGroupName *bdm.InstanceGroup, igResolvedSecretVersion string, namespace string) bdm.BPMResourceDisks
-	GenerateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (bdm.BPMResourceDisks, error)
+	GenerateDefaultDisks(manifestName string, instanceGroupName *bdm.InstanceGroup, igResolvedSecretVersion string, namespace string) bdm.Disks
+	GenerateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (bdm.Disks, error)
 }
 
 // DomainNameService is a limited interface for the funcs used in the bpm converter
@@ -133,8 +133,8 @@ func (kc *BPMConverter) serviceToQuarksStatefulSet(
 	manifestName string,
 	dns DomainNameService,
 	instanceGroup *bdm.InstanceGroup,
-	defaultDisks bdm.BPMResourceDisks,
-	bpmDisks bdm.BPMResourceDisks,
+	defaultDisks bdm.Disks,
+	bpmDisks bdm.Disks,
 ) (qstsv1a1.QuarksStatefulSet, error) {
 	defaultVolumeMounts := defaultDisks.VolumeMounts()
 	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks, instanceGroup.Properties.Quarks.RequiredService)
@@ -301,8 +301,8 @@ func (kc *BPMConverter) errandToQuarksJob(
 	manifestName string,
 	dns DomainNameService,
 	instanceGroup *bdm.InstanceGroup,
-	defaultDisks bdm.BPMResourceDisks,
-	bpmDisks bdm.BPMResourceDisks,
+	defaultDisks bdm.Disks,
+	bpmDisks bdm.Disks,
 ) (qjv1a1.QuarksJob, error) {
 	defaultVolumeMounts := defaultDisks.VolumeMounts()
 	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks, instanceGroup.Properties.Quarks.RequiredService)

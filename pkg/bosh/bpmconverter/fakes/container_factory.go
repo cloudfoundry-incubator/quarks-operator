@@ -10,12 +10,12 @@ import (
 )
 
 type FakeContainerFactory struct {
-	JobsToContainersStub        func([]manifest.Job, []v1.VolumeMount, manifest.BPMResourceDisks) ([]v1.Container, error)
+	JobsToContainersStub        func([]manifest.Job, []v1.VolumeMount, manifest.Disks) ([]v1.Container, error)
 	jobsToContainersMutex       sync.RWMutex
 	jobsToContainersArgsForCall []struct {
 		arg1 []manifest.Job
 		arg2 []v1.VolumeMount
-		arg3 manifest.BPMResourceDisks
+		arg3 manifest.Disks
 	}
 	jobsToContainersReturns struct {
 		result1 []v1.Container
@@ -25,12 +25,12 @@ type FakeContainerFactory struct {
 		result1 []v1.Container
 		result2 error
 	}
-	JobsToInitContainersStub        func([]manifest.Job, []v1.VolumeMount, manifest.BPMResourceDisks, *string) ([]v1.Container, error)
+	JobsToInitContainersStub        func([]manifest.Job, []v1.VolumeMount, manifest.Disks, *string) ([]v1.Container, error)
 	jobsToInitContainersMutex       sync.RWMutex
 	jobsToInitContainersArgsForCall []struct {
 		arg1 []manifest.Job
 		arg2 []v1.VolumeMount
-		arg3 manifest.BPMResourceDisks
+		arg3 manifest.Disks
 		arg4 *string
 	}
 	jobsToInitContainersReturns struct {
@@ -45,7 +45,7 @@ type FakeContainerFactory struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeContainerFactory) JobsToContainers(arg1 []manifest.Job, arg2 []v1.VolumeMount, arg3 manifest.BPMResourceDisks) ([]v1.Container, error) {
+func (fake *FakeContainerFactory) JobsToContainers(arg1 []manifest.Job, arg2 []v1.VolumeMount, arg3 manifest.Disks) ([]v1.Container, error) {
 	var arg1Copy []manifest.Job
 	if arg1 != nil {
 		arg1Copy = make([]manifest.Job, len(arg1))
@@ -61,7 +61,7 @@ func (fake *FakeContainerFactory) JobsToContainers(arg1 []manifest.Job, arg2 []v
 	fake.jobsToContainersArgsForCall = append(fake.jobsToContainersArgsForCall, struct {
 		arg1 []manifest.Job
 		arg2 []v1.VolumeMount
-		arg3 manifest.BPMResourceDisks
+		arg3 manifest.Disks
 	}{arg1Copy, arg2Copy, arg3})
 	fake.recordInvocation("JobsToContainers", []interface{}{arg1Copy, arg2Copy, arg3})
 	fake.jobsToContainersMutex.Unlock()
@@ -81,13 +81,13 @@ func (fake *FakeContainerFactory) JobsToContainersCallCount() int {
 	return len(fake.jobsToContainersArgsForCall)
 }
 
-func (fake *FakeContainerFactory) JobsToContainersCalls(stub func([]manifest.Job, []v1.VolumeMount, manifest.BPMResourceDisks) ([]v1.Container, error)) {
+func (fake *FakeContainerFactory) JobsToContainersCalls(stub func([]manifest.Job, []v1.VolumeMount, manifest.Disks) ([]v1.Container, error)) {
 	fake.jobsToContainersMutex.Lock()
 	defer fake.jobsToContainersMutex.Unlock()
 	fake.JobsToContainersStub = stub
 }
 
-func (fake *FakeContainerFactory) JobsToContainersArgsForCall(i int) ([]manifest.Job, []v1.VolumeMount, manifest.BPMResourceDisks) {
+func (fake *FakeContainerFactory) JobsToContainersArgsForCall(i int) ([]manifest.Job, []v1.VolumeMount, manifest.Disks) {
 	fake.jobsToContainersMutex.RLock()
 	defer fake.jobsToContainersMutex.RUnlock()
 	argsForCall := fake.jobsToContainersArgsForCall[i]
@@ -120,7 +120,7 @@ func (fake *FakeContainerFactory) JobsToContainersReturnsOnCall(i int, result1 [
 	}{result1, result2}
 }
 
-func (fake *FakeContainerFactory) JobsToInitContainers(arg1 []manifest.Job, arg2 []v1.VolumeMount, arg3 manifest.BPMResourceDisks, arg4 *string) ([]v1.Container, error) {
+func (fake *FakeContainerFactory) JobsToInitContainers(arg1 []manifest.Job, arg2 []v1.VolumeMount, arg3 manifest.Disks, arg4 *string) ([]v1.Container, error) {
 	var arg1Copy []manifest.Job
 	if arg1 != nil {
 		arg1Copy = make([]manifest.Job, len(arg1))
@@ -136,7 +136,7 @@ func (fake *FakeContainerFactory) JobsToInitContainers(arg1 []manifest.Job, arg2
 	fake.jobsToInitContainersArgsForCall = append(fake.jobsToInitContainersArgsForCall, struct {
 		arg1 []manifest.Job
 		arg2 []v1.VolumeMount
-		arg3 manifest.BPMResourceDisks
+		arg3 manifest.Disks
 		arg4 *string
 	}{arg1Copy, arg2Copy, arg3, arg4})
 	fake.recordInvocation("JobsToInitContainers", []interface{}{arg1Copy, arg2Copy, arg3, arg4})
@@ -157,13 +157,13 @@ func (fake *FakeContainerFactory) JobsToInitContainersCallCount() int {
 	return len(fake.jobsToInitContainersArgsForCall)
 }
 
-func (fake *FakeContainerFactory) JobsToInitContainersCalls(stub func([]manifest.Job, []v1.VolumeMount, manifest.BPMResourceDisks, *string) ([]v1.Container, error)) {
+func (fake *FakeContainerFactory) JobsToInitContainersCalls(stub func([]manifest.Job, []v1.VolumeMount, manifest.Disks, *string) ([]v1.Container, error)) {
 	fake.jobsToInitContainersMutex.Lock()
 	defer fake.jobsToInitContainersMutex.Unlock()
 	fake.JobsToInitContainersStub = stub
 }
 
-func (fake *FakeContainerFactory) JobsToInitContainersArgsForCall(i int) ([]manifest.Job, []v1.VolumeMount, manifest.BPMResourceDisks, *string) {
+func (fake *FakeContainerFactory) JobsToInitContainersArgsForCall(i int) ([]manifest.Job, []v1.VolumeMount, manifest.Disks, *string) {
 	fake.jobsToInitContainersMutex.RLock()
 	defer fake.jobsToInitContainersMutex.RUnlock()
 	argsForCall := fake.jobsToInitContainersArgsForCall[i]

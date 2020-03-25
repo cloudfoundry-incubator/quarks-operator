@@ -78,7 +78,7 @@ var _ = Describe("BPM Converter", func() {
 
 			Context("when the lifecycle is set to errand", func() {
 				It("handles an error when generating bpm disks", func() {
-					volumeFactory.GenerateBPMDisksReturns(bdm.BPMResourceDisks{}, errors.New("fake-bpm-disk-error"))
+					volumeFactory.GenerateBPMDisksReturns(bdm.Disks{}, errors.New("fake-bpm-disk-error"))
 					_, err := act(bpmConfigs[0], m.InstanceGroups[0])
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("Generate of BPM disks failed for manifest name %s, instance group %s.", deploymentName, m.InstanceGroups[0].Name))
@@ -486,7 +486,7 @@ var _ = Describe("BPM Converter", func() {
 			})
 
 			It("converts the disks and volume declarations when instance group has persistent disk declaration", func() {
-				volumeFactory.GenerateBPMDisksReturns(bdm.BPMResourceDisks{
+				volumeFactory.GenerateBPMDisksReturns(bdm.Disks{
 					{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaim{
 							ObjectMeta: metav1.ObjectMeta{
@@ -573,26 +573,47 @@ var _ = Describe("BPM Converter", func() {
 					Expect(containers[0].VolumeMounts[0].MountPath).To(Equal("fake-mount-path"))
 				})
 
-				It("includes special disk declarations from the instance group agent settings", func() {
-					containerFactory.JobsToContainersReturns([]corev1.Container{
-						{
-							Name: "fake-container",
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "fake-volume-name",
-									MountPath: "fake-mount-path",
-								},
-							},
-						},
-					}, nil)
+				It("includes extra disk declarations from the instance group agent settings", func() {
+					m, err = env.DefaultBOSHManifest()
+					conf, err := bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
+					Expect(err).ShouldNot(HaveOccurred())
 
-					resources, err := act(bpmConfigs[0], m.InstanceGroups[0])
+					bpmConfigs := []bpm.Configs{
+						{"redis-server": conf},
+						{"cflinuxfs3-rootfs-setup": conf},
+					}
+
+					c := bpmconverter.NewConverter(
+						"foo",
+						bpmconverter.NewVolumeFactory(),
+						func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider manifest.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
+							return bpmconverter.NewContainerFactory(
+								deploymentName,
+								instanceGroupName,
+								"1",
+								true,
+								releaseImageProvider,
+								bpmConfigs)
+						})
+					resources, err := c.Resources(deploymentName, dns, "1", m.InstanceGroups[1], m, bpmConfigs[1], "1")
 
 					Expect(err).ShouldNot(HaveOccurred())
-					Expect(resources).ShouldNot(BeNil())
+					Expect(resources.InstanceGroups).To(HaveLen(1))
+
+					volumes := resources.InstanceGroups[0].Spec.Template.Spec.Template.Spec.Volumes
+					containers := resources.InstanceGroups[0].Spec.Template.Spec.Template.Spec.Containers
+
 					// Test shared volume setup
-					// Expect(containers[0].VolumeMounts[0].Name).To(Equal("fake-volume-name"))
-					// Expect(containers[0].VolumeMounts[0].MountPath).To(Equal("fake-mount-path"))
+					Expect(len(volumes)).To(Equal(7))
+					Expect(volumes).To(ContainElement(
+						corev1.Volume{
+							Name:         "extravolume",
+							VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+						},
+					))
+					Expect(containers[0].VolumeMounts).To(ContainElement(
+						corev1.VolumeMount{Name: "extravolume", MountPath: "/var/vcap/data/rep"},
+					))
 				})
 			})
 		})

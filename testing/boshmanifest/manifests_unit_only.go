@@ -34,16 +34,6 @@ instance_groups:
     bosh:
       agent:
         settings:
-          disks:
-          - volume:
-              name: extravolume
-              emptyDir: {}
-            volumeMount:
-              name: extravolume
-              mountPath: /var/vcap/data/rep
-            labels:
-              job_name: redis-server
-              ephemeral: true
           labels:
             custom-label: foo
           annotations:
@@ -65,6 +55,20 @@ instance_groups:
   stemcell: default
   networks:
   - name: default
+  env:
+    bosh:
+      agent:
+        settings:
+          disks:
+          - volume:
+              name: extravolume
+              emptyDir: {}
+            volumeMount:
+              name: extravolume
+              mountPath: /var/vcap/data/rep
+            filters:
+              job_name: "cflinuxfs3-rootfs-setup"
+              process_name: "test-server"
   jobs:
   - name: cflinuxfs3-rootfs-setup
     release: cflinuxfs3
