@@ -18,12 +18,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 )
 
 const (
 	cfDomain = "service.cf.internal"
+	appName  = "bosh-dns"
 )
 
 var (
@@ -59,7 +60,7 @@ type DomainNameService interface {
 }
 
 // NewDNSFunc returns a dns client for the manifest
-type NewDNSFunc func(deploymentName string, m bdm.Manifest) (DomainNameService, error)
+type NewDNSFunc func(m bdm.Manifest) (DomainNameService, error)
 
 // Target of domain alias.
 type Target struct {
@@ -80,16 +81,15 @@ type Alias struct {
 type boshDomainNameService struct {
 	Aliases        []Alias
 	LocalDNSIP     string
-	ManifestName   string
 	InstanceGroups bdm.InstanceGroups
 }
 
 // NewDNS returns the DNS service
-func NewDNS(deploymentName string, m bdm.Manifest) (DomainNameService, error) {
+func NewDNS(m bdm.Manifest) (DomainNameService, error) {
 	for _, addon := range m.AddOns {
 		if addon.Name == bdm.BoshDNSAddOnName {
 			var err error
-			dns, err := NewBoshDomainNameService(deploymentName, addon, m.InstanceGroups)
+			dns, err := NewBoshDomainNameService(addon, m.InstanceGroups)
 			if err != nil {
 				return nil, errors.Wrapf(err, "error loading BOSH DNS configuration")
 			}
@@ -97,13 +97,12 @@ func NewDNS(deploymentName string, m bdm.Manifest) (DomainNameService, error) {
 		}
 	}
 
-	return NewSimpleDomainNameService(deploymentName), nil
+	return NewSimpleDomainNameService(), nil
 }
 
 // NewBoshDomainNameService create a new DomainNameService.
-func NewBoshDomainNameService(deploymentName string, addOn *bdm.AddOn, instanceGroups bdm.InstanceGroups) (DomainNameService, error) {
+func NewBoshDomainNameService(addOn *bdm.AddOn, instanceGroups bdm.InstanceGroups) (DomainNameService, error) {
 	dns := boshDomainNameService{
-		ManifestName:   deploymentName,
 		InstanceGroups: instanceGroups,
 	}
 	for _, job := range addOn.Jobs {
@@ -121,7 +120,7 @@ func NewBoshDomainNameService(deploymentName string, addOn *bdm.AddOn, instanceG
 
 // HeadlessServiceName see interface.
 func (dns *boshDomainNameService) HeadlessServiceName(instanceGroupName string) string {
-	return util.ServiceName(instanceGroupName, dns.ManifestName, 63)
+	return names.ServiceName(instanceGroupName, 63)
 }
 
 // DNSSetting see interface.
@@ -146,8 +145,6 @@ func (dns *boshDomainNameService) DNSSetting(namespace string) (corev1.DNSPolicy
 func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
 	const volumeName = "bosh-dns-volume"
 	const coreConfigFile = "Corefile"
-
-	appName := fmt.Sprintf("%s-bosh-dns", dns.ManifestName)
 
 	dnsTCPPort := corev1.ContainerPort{ContainerPort: 8053, Name: "dns-tcp", Protocol: "TCP"}
 	dnsUDPPort := corev1.ContainerPort{ContainerPort: 8053, Name: "dns-udp", Protocol: "UDP"}
@@ -340,7 +337,7 @@ func (dns *boshDomainNameService) gatherRewritesForInstances(rewrites []string,
 	for i := 0; i < instanceGroup.Instances; i++ {
 		id := fmt.Sprintf("%s-%d", target.InstanceGroup, i)
 		from := strings.Replace(alias.Domain, "_", id, 1)
-		serviceName := instanceGroup.IndexedServiceName(dns.ManifestName, i, azIndex)
+		serviceName := instanceGroup.IndexedServiceName(i, azIndex)
 		to := fmt.Sprintf("%s.%s.svc.%s", serviceName, namespace, clusterDomain)
 		rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
 	}
@@ -391,17 +388,16 @@ template IN CNAME %[4]s {
 // simpleDomainNameService emulates old behaviour without BOSH DNS.
 // TODO: Is this implementation of DomainNameService still relevant?
 type simpleDomainNameService struct {
-	ManifestName string
 }
 
 // NewSimpleDomainNameService creates a new simpleDomainNameService.
-func NewSimpleDomainNameService(manifestName string) DomainNameService {
-	return &simpleDomainNameService{ManifestName: manifestName}
+func NewSimpleDomainNameService() DomainNameService {
+	return &simpleDomainNameService{}
 }
 
 // HeadlessServiceName see interface.
 func (dns *simpleDomainNameService) HeadlessServiceName(instanceGroupName string) string {
-	return util.ServiceName(instanceGroupName, dns.ManifestName, 63)
+	return names.ServiceName(instanceGroupName, 63)
 }
 
 // DNSSetting see interface.

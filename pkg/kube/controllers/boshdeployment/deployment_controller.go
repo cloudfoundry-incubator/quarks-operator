@@ -39,8 +39,8 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		withops.NewResolver(
 			mgr.GetClient(),
 			func() withops.Interpolator { return withops.NewInterpolator() },
-			func(deploymentName string, m bdm.Manifest) (withops.DomainNameService, error) {
-				return boshdns.NewDNS(deploymentName, m)
+			func(m bdm.Manifest) (withops.DomainNameService, error) {
+				return boshdns.NewDNS(m)
 			},
 		),
 		qjobs.NewJobFactory(config.Namespace),

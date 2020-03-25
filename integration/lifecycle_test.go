@@ -41,7 +41,7 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			// check for services
-			headlessService, err := env.GetService(env.Namespace, "test-nats")
+			headlessService, err := env.GetService(env.Namespace, "nats")
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
 			Expect(headlessService.Spec.Ports)
 			Expect(headlessService.Spec.Selector).To(Equal(map[string]string{
@@ -55,7 +55,7 @@ var _ = Describe("Lifecycle", func() {
 			Expect(headlessService.Spec.Ports[1].Protocol).To(Equal(corev1.ProtocolTCP))
 			Expect(headlessService.Spec.Ports[1].Port).To(Equal(int32(4223)))
 
-			clusterIPService, err := env.GetService(env.Namespace, "test-nats-0")
+			clusterIPService, err := env.GetService(env.Namespace, "nats-0")
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
 			Expect(clusterIPService.Spec.Ports)
 			Expect(clusterIPService.Spec.Selector).To(Equal(map[string]string{
@@ -72,15 +72,15 @@ var _ = Describe("Lifecycle", func() {
 			Expect(clusterIPService.Spec.Ports[1].Port).To(Equal(int32(4223)))
 
 			// check for endpoints
-			Expect(env.WaitForSubsetsExist(env.Namespace, "test-nats-0")).To(BeNil(), "timeout getting subsets of endpoints 'test-nats-0'")
-			Expect(env.WaitForSubsetsExist(env.Namespace, "test-nats-1")).To(BeNil(), "timeout getting subsets of endpoints 'test-nats-1'")
+			Expect(env.WaitForSubsetsExist(env.Namespace, "nats-0")).To(BeNil(), "timeout getting subsets of endpoints 'nats-0'")
+			Expect(env.WaitForSubsetsExist(env.Namespace, "nats-1")).To(BeNil(), "timeout getting subsets of endpoints 'nats-1'")
 
-			clusterIPService, err = env.GetService(env.Namespace, "test-nats-1")
+			clusterIPService, err = env.GetService(env.Namespace, "nats-1")
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
 
 			// Check link address
-			Expect(env.WaitForPodContainerLogMsg(env.Namespace, "test-nats-0", "nats-nats", fmt.Sprintf("Trying to connect to route on %s:4223", clusterIPService.Name))).To(BeNil(), "error getting logs for connecting nats route")
-			Expect(env.WaitForPodContainerLogMatchRegexp(env.Namespace, "test-nats-0", "nats-nats", fmt.Sprintf(`%s:4223 - [\w:]+ - Route connection created`, clusterIPService.Spec.ClusterIP))).To(BeNil(), "error getting logs for resolving nats route address")
+			Expect(env.WaitForPodContainerLogMsg(env.Namespace, "nats-0", "nats-nats", fmt.Sprintf("Trying to connect to route on %s:4223", clusterIPService.Name))).To(BeNil(), "error getting logs for connecting nats route")
+			Expect(env.WaitForPodContainerLogMatchRegexp(env.Namespace, "nats-0", "nats-nats", fmt.Sprintf(`%s:4223 - [\w:]+ - Route connection created`, clusterIPService.Spec.ClusterIP))).To(BeNil(), "error getting logs for resolving nats route address")
 		})
 
 		It("executes the job's drain scripts", func() {
@@ -97,10 +97,10 @@ var _ = Describe("Lifecycle", func() {
 			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, "test", "drains", "1", 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
-			err = env.WaitForPodReady(env.Namespace, "test-drains-0")
+			err = env.WaitForPodReady(env.Namespace, "drains-0")
 			Expect(err).NotTo(HaveOccurred())
 
-			// Expect(env.WaitForPodContainerLogMsg(env.Namespace, "test-drains-v1-0", "delaying-drain-job-drain-watch", "ls: cannot access '/tmp/drain_logs': No such file or directory")).To(BeNil(), "error getting logs from drain_watch process")
+			// Expect(env.WaitForPodContainerLogMsg(env.Namespace, "drains-v1-0", "delaying-drain-job-drain-watch", "ls: cannot access '/tmp/drain_logs': No such file or directory")).To(BeNil(), "error getting logs from drain_watch process")
 
 			// Check for files created by the drain scripts.
 			var preAssertionWg, postAssertionWg sync.WaitGroup
@@ -108,12 +108,12 @@ var _ = Describe("Lifecycle", func() {
 			postAssertionWg.Add(2)
 			go func() {
 				preAssertionWg.Done()
-				Expect(env.WaitForPodContainerLogMsg(env.Namespace, "test-drains-0", "delaying-drain-job-drain-watch", "delaying-drain-job.log")).To(BeNil(), "error finding file created by drain script")
+				Expect(env.WaitForPodContainerLogMsg(env.Namespace, "drains-0", "delaying-drain-job-drain-watch", "delaying-drain-job.log")).To(BeNil(), "error finding file created by drain script")
 				postAssertionWg.Done()
 			}()
 			go func() {
 				preAssertionWg.Done()
-				Expect(env.WaitForPodContainerLogMsg(env.Namespace, "test-drains-0", "failing-drain-job-drain-watch", "failing-drain-job.log")).To(BeNil(), "error finding file created by drain script")
+				Expect(env.WaitForPodContainerLogMsg(env.Namespace, "drains-0", "failing-drain-job-drain-watch", "failing-drain-job.log")).To(BeNil(), "error finding file created by drain script")
 				postAssertionWg.Done()
 			}()
 			preAssertionWg.Wait()

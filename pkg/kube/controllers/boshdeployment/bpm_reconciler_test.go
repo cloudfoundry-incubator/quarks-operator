@@ -235,8 +235,8 @@ variables: []
 		resolver.DesiredManifestReturns(manifest, nil)
 		reconciler = cfd.NewBPMReconciler(ctx, config, manager, &resolver,
 			controllerutil.SetControllerReference, &kubeConverter,
-			func(name string, m bdm.Manifest) (boshdns.DomainNameService, error) {
-				return boshdns.NewSimpleDomainNameService("fake-manifest"), nil
+			func(m bdm.Manifest) (boshdns.DomainNameService, error) {
+				return boshdns.NewSimpleDomainNameService(), nil
 			},
 		)
 	})

@@ -77,11 +77,11 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(p.Spec.Volumes).To(HaveLen(2))
-				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-nats-nats"))
+				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-nats"))
 
 				for _, c := range p.Spec.Containers {
 					Expect(c.VolumeMounts).To(HaveLen(2))
-					Expect(volumeMountNames(c.VolumeMounts)).To(ContainElement("link-nats-deployment-nats-nats"))
+					Expect(volumeMountNames(c.VolumeMounts)).To(ContainElement("link-nats-nats"))
 				}
 			})
 		})
@@ -119,14 +119,14 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(p.Spec.Volumes).To(HaveLen(3))
-				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-nats-nats"))
-				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-type-name"))
+				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-nats"))
+				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-type-name"))
 
 				for _, c := range p.Spec.Containers {
 					Expect(c.VolumeMounts).To(HaveLen(3))
 					mounts := c.VolumeMounts
-					Expect(volumeMountNames(mounts)).To(ContainElement("link-nats-deployment-nats-nats"))
-					Expect(volumeMountNames(mounts)).To(ContainElement("link-nats-deployment-type-name"))
+					Expect(volumeMountNames(mounts)).To(ContainElement("link-nats-nats"))
+					Expect(volumeMountNames(mounts)).To(ContainElement("link-type-name"))
 				}
 			})
 		})
@@ -169,11 +169,11 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(p.Spec.Volumes).To(HaveLen(2))
-				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-deployment-nats-nats"))
+				Expect(volumeNames(p.Spec.Volumes)).To(ContainElement("link-nats-nats"))
 
 				for _, c := range p.Spec.Containers {
 					Expect(c.VolumeMounts).To(HaveLen(2))
-					Expect(volumeMountNames(c.VolumeMounts)).To(ContainElement("link-nats-deployment-nats-nats"))
+					Expect(volumeMountNames(c.VolumeMounts)).To(ContainElement("link-nats-nats"))
 				}
 			})
 		})

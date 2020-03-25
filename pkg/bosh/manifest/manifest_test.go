@@ -28,8 +28,7 @@ func getStructTagForName(field string, opts interface{}) string {
 
 var _ = Describe("Manifest", func() {
 	var (
-		manifest       *Manifest
-		deploymentName string
+		manifest *Manifest
 	)
 
 	Describe("Tags", func() {
@@ -1317,8 +1316,7 @@ var _ = Describe("Manifest", func() {
 				})
 
 				It("serializes instancegroup quarks", func() {
-					deploymentName = "bpm-affinity"
-					dns, err := boshdns.NewDNS(deploymentName, *m1)
+					dns, err := boshdns.NewDNS(*m1)
 					Expect(err).NotTo(HaveOccurred())
 					m1.ApplyUpdateBlock(dns)
 					text, err := m1.Marshal()
@@ -1328,9 +1326,9 @@ var _ = Describe("Manifest", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(manifest.InstanceGroups).To(HaveLen(3))
 					Expect(manifest.InstanceGroups[0].Properties.Quarks.RequiredService).To(BeNil())
-					expectedRequireService := "bpm-affinity-bpm1"
+					expectedRequireService := "bpm1"
 					Expect(manifest.InstanceGroups[1].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
-					expectedRequireService = "bpm-affinity-bpm2"
+					expectedRequireService = "bpm2"
 					Expect(manifest.InstanceGroups[2].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
 
 				})
@@ -1405,7 +1403,7 @@ var _ = Describe("Manifest", func() {
 			BeforeEach(func() {
 				manifest, err = env.BOSHManifestWithUpdateSerial()
 				Expect(err).NotTo(HaveOccurred())
-				dns, err = boshdns.NewDNS("bpm", *manifest)
+				dns, err = boshdns.NewDNS(*manifest)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -1418,7 +1416,7 @@ var _ = Describe("Manifest", func() {
 			It("respects serial=true on instance group as barrier", func() {
 				manifest.ApplyUpdateBlock(dns)
 				Expect(manifest.InstanceGroups).To(HaveLen(4))
-				expectedRequireService := "bpm-bpm1"
+				expectedRequireService := "bpm1"
 				Expect(manifest.InstanceGroups[1].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
 				Expect(manifest.InstanceGroups[2].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
 			})
@@ -1426,7 +1424,7 @@ var _ = Describe("Manifest", func() {
 			It("respects serial=true to wait for the predecessor", func() {
 				manifest.ApplyUpdateBlock(dns)
 				Expect(manifest.InstanceGroups).To(HaveLen(4))
-				expectedRequireService := "bpm-bpm3"
+				expectedRequireService := "bpm3"
 				Expect(manifest.InstanceGroups[3].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
 			})
 
@@ -1444,7 +1442,7 @@ var _ = Describe("Manifest", func() {
 				Expect(err).NotTo(HaveOccurred())
 				manifestWithUpdate.ApplyUpdateBlock(dns)
 				Expect(manifestWithUpdate.InstanceGroups).To(HaveLen(3))
-				expectedRequireService := "bpm-bpm1"
+				expectedRequireService := "bpm1"
 				Expect(manifestWithUpdate.InstanceGroups[0].Properties.Quarks.RequiredService).To(BeNil())
 				Expect(manifestWithUpdate.InstanceGroups[1].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
 				Expect(manifestWithUpdate.InstanceGroups[2].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))

@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: nats-deployment.var-custom-password
+  name: var-custom-password
 type: Opaque
 stringData:
   password: custom_password

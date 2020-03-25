@@ -278,7 +278,7 @@ func (igr *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks(initialRol
 			// Generate instance spec for each ig instance
 			// This will be stored inside the current job under
 			// job.properties.quarks
-			jobsInstances := instanceGroup.jobInstances(igr.deploymentName, job.Name, initialRollout)
+			jobsInstances := instanceGroup.jobInstances(job.Name, initialRollout)
 
 			// set jobs.properties.quarks.instances with the ig instances
 			instanceGroup.Jobs[jobIdx].Properties.Quarks.Instances = jobsInstances

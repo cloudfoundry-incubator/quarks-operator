@@ -10,12 +10,11 @@ import (
 )
 
 type FakeDesiredManifest struct {
-	DesiredManifestStub        func(context.Context, string, string) (*manifest.Manifest, error)
+	DesiredManifestStub        func(context.Context, string) (*manifest.Manifest, error)
 	desiredManifestMutex       sync.RWMutex
 	desiredManifestArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
-		arg3 string
 	}
 	desiredManifestReturns struct {
 		result1 *manifest.Manifest
@@ -29,18 +28,17 @@ type FakeDesiredManifest struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeDesiredManifest) DesiredManifest(arg1 context.Context, arg2 string, arg3 string) (*manifest.Manifest, error) {
+func (fake *FakeDesiredManifest) DesiredManifest(arg1 context.Context, arg2 string) (*manifest.Manifest, error) {
 	fake.desiredManifestMutex.Lock()
 	ret, specificReturn := fake.desiredManifestReturnsOnCall[len(fake.desiredManifestArgsForCall)]
 	fake.desiredManifestArgsForCall = append(fake.desiredManifestArgsForCall, struct {
 		arg1 context.Context
 		arg2 string
-		arg3 string
-	}{arg1, arg2, arg3})
-	fake.recordInvocation("DesiredManifest", []interface{}{arg1, arg2, arg3})
+	}{arg1, arg2})
+	fake.recordInvocation("DesiredManifest", []interface{}{arg1, arg2})
 	fake.desiredManifestMutex.Unlock()
 	if fake.DesiredManifestStub != nil {
-		return fake.DesiredManifestStub(arg1, arg2, arg3)
+		return fake.DesiredManifestStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -55,17 +53,17 @@ func (fake *FakeDesiredManifest) DesiredManifestCallCount() int {
 	return len(fake.desiredManifestArgsForCall)
 }
 
-func (fake *FakeDesiredManifest) DesiredManifestCalls(stub func(context.Context, string, string) (*manifest.Manifest, error)) {
+func (fake *FakeDesiredManifest) DesiredManifestCalls(stub func(context.Context, string) (*manifest.Manifest, error)) {
 	fake.desiredManifestMutex.Lock()
 	defer fake.desiredManifestMutex.Unlock()
 	fake.DesiredManifestStub = stub
 }
 
-func (fake *FakeDesiredManifest) DesiredManifestArgsForCall(i int) (context.Context, string, string) {
+func (fake *FakeDesiredManifest) DesiredManifestArgsForCall(i int) (context.Context, string) {
 	fake.desiredManifestMutex.RLock()
 	defer fake.desiredManifestMutex.RUnlock()
 	argsForCall := fake.desiredManifestArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeDesiredManifest) DesiredManifestReturns(result1 *manifest.Manifest, result2 error) {

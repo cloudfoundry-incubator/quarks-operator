@@ -24,7 +24,6 @@ const (
 // https://bosh.io/docs/create-release/#job-specs
 // boshManifest is a resolved manifest for a single instance group
 func RenderJobTemplates(
-	deploymentName string,
 	boshManifestPath string,
 	jobsDir string,
 	jobsOutputDir string,
@@ -60,7 +59,7 @@ func RenderJobTemplates(
 		// Generate instance spec for each ig instance
 		// This will be stored inside the current job under
 		// job.properties.quarks
-		jobsInstances := currentInstanceGroup.jobInstances(deploymentName, job.Name, initialRollout)
+		jobsInstances := currentInstanceGroup.jobInstances(job.Name, initialRollout)
 
 		// set jobs.properties.quarks.instances with the ig instances
 		currentInstanceGroup.Jobs[jobIdx].Properties.Quarks.Instances = jobsInstances

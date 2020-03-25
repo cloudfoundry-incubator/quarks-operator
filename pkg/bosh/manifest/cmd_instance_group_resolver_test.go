@@ -73,7 +73,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 		var deploymentName string
 
 		JustBeforeEach(func() {
-			dns, err := boshdns.NewDNS(deploymentName, *m)
+			dns, err := boshdns.NewDNS(*m)
 			Expect(err).ToNot(HaveOccurred())
 			igr, err = NewInstanceGroupResolver(fs, assetPath, deploymentName, *m, ig, dns)
 			Expect(err).ToNot(HaveOccurred())
@@ -105,12 +105,12 @@ var _ = Describe("InstanceGroupResolver", func() {
 				bpm := bpmInfo.Configs["loggregator_trafficcontroller"]
 				Expect(bpm).ToNot(BeNil())
 				Expect(bpm.Processes[0].Executable).To(Equal("/var/vcap/packages/loggregator_trafficcontroller/trafficcontroller"))
-				Expect(bpm.Processes[0].Env["FOOBARWITHLINKADDRESS"]).To(Equal("cf-doppler"))
+				Expect(bpm.Processes[0].Env["FOOBARWITHLINKADDRESS"]).To(Equal("doppler"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHLINKVALUES"]).To(Equal("10001"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHLINKNESTEDVALUES"]).To(Equal("7765"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHLINKINSTANCESAZ"]).To(Equal("z1"))
-				Expect(bpm.Processes[0].Env["FOOBARWITHLINKINSTANCESADDRESS"]).To(Equal("cf-doppler-z0-0"))
-				Expect(bpm.Processes[0].Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-z0-0"))
+				Expect(bpm.Processes[0].Env["FOOBARWITHLINKINSTANCESADDRESS"]).To(Equal("doppler-z0-0"))
+				Expect(bpm.Processes[0].Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-z0-0"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECDEPLOYMENT"]).To(Equal("cf"))
 
 				// The following block of assertions are related to the usage of
@@ -126,7 +126,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECINDEX"]).To(Equal("0"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECNAME"]).To(Equal("log-api-loggregator_trafficcontroller"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECNETWORKS"]).To(Equal(""))
-				Expect(bpm.Processes[0].Env["FOOBARWITHSPECADDRESS"]).To(Equal("cf-log-api-z0-0"))
+				Expect(bpm.Processes[0].Env["FOOBARWITHSPECADDRESS"]).To(Equal("log-api-z0-0"))
 
 				Expect(bpm.Ports).To(ContainElement(bpmConfig.Port{
 					Name:     "outgoing_dropsonde_port",

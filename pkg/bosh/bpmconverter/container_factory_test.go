@@ -166,7 +166,7 @@ var _ = Describe("ContainerFactory", func() {
 	})
 
 	JustBeforeEach(func() {
-		containerFactory = NewContainerFactory("fake-manifest", "fake-ig", "v1", false, releaseImageProvider, bpmConfigs)
+		containerFactory = NewContainerFactory("fake-ig", "v1", false, releaseImageProvider, bpmConfigs)
 	})
 
 	Context("JobsToContainers", func() {
@@ -321,7 +321,7 @@ var _ = Describe("ContainerFactory", func() {
 					},
 				},
 			}
-			containerFactory = NewContainerFactory("fake-manifest", "fake-ig", "v1", false, releaseImageProvider, bpmConfigsWithError)
+			containerFactory = NewContainerFactory("fake-ig", "v1", false, releaseImageProvider, bpmConfigsWithError)
 			actWithError := func() ([]corev1.Container, error) {
 				return containerFactory.JobsToContainers(jobs, []corev1.VolumeMount{}, bdm.Disks{})
 			}
@@ -515,7 +515,7 @@ var _ = Describe("ContainerFactory", func() {
 
 				disableSideCar := ig.Env.AgentEnvBoshConfig.Agent.Settings.DisableLogSidecar
 
-				containerFactory := NewContainerFactory("fake-manifest", ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
+				containerFactory := NewContainerFactory(ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
 				act := func() ([]corev1.Container, error) {
 					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, bdm.Disks{})
 				}
@@ -542,7 +542,7 @@ var _ = Describe("ContainerFactory", func() {
 
 				disableSideCar := ig.Env.AgentEnvBoshConfig.Agent.Settings.DisableLogSidecar
 
-				containerFactory := NewContainerFactory("fake-manifest", ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
+				containerFactory := NewContainerFactory(ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
 				act := func() ([]corev1.Container, error) {
 					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, bdm.Disks{})
 				}

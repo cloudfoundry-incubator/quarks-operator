@@ -45,8 +45,8 @@ func getSecretRefFromBdpl(ctx context.Context, client crc.Client, object bdv1.BO
 	withops := withops.NewResolver(
 		client,
 		func() withops.Interpolator { return withops.NewInterpolator() },
-		func(deploymentName string, m bdm.Manifest) (withops.DomainNameService, error) {
-			return boshdns.NewDNS(deploymentName, m)
+		func(m bdm.Manifest) (withops.DomainNameService, error) {
+			return boshdns.NewDNS(m)
 		},
 	)
 	_, implicitVars, err := withops.Manifest(ctx, &object, object.Namespace)

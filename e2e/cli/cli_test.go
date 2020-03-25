@@ -217,7 +217,6 @@ var _ = Describe("CLI", func() {
 			Eventually(session.Out).Should(Say(`Flags:
       --az-index int                 \(AZ_INDEX\) az index \(default -1\)
   -m, --bosh-manifest-path string    \(BOSH_MANIFEST_PATH\) path to the bosh manifest file
-  -n, --deployment-name string       \(DEPLOYMENT_NAME\) name of the bdpl resource
   -h, --help                         help for template-render
       --initial-rollout              \(INITIAL_ROLLOUT\) Initial rollout of bosh deployment. \(default true\)
   -g, --instance-group-name string   \(INSTANCE_GROUP_NAME\) name of the instance group for data gathering
@@ -236,7 +235,6 @@ var _ = Describe("CLI", func() {
 				"--az-index=1",
 				"--replicas=1",
 				"--pod-ordinal=1",
-				"-n", "foo",
 				"-m", "foo.txt",
 				"-g", "log-api",
 				"--pod-ip", "127.0.0.1",
@@ -257,7 +255,6 @@ var _ = Describe("CLI", func() {
 			It("accepts the bosh-manifest-path as an environment variable", func() {
 				session, err := act(
 					"util", "template-render",
-					"-n", "foo",
 					"--az-index=1",
 					"--replicas=1",
 					"--pod-ordinal=1",

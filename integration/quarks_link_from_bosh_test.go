@@ -6,8 +6,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	bm "code.cloudfoundry.org/cf-operator/testing/boshmanifest"
-	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
 
@@ -43,7 +43,7 @@ var _ = Describe("BOSHLinks", func() {
 		})
 
 		It("creates a secret for each link found in jobs", func() {
-			secretName := names.QuarksLinkSecretName(deploymentName, "nats", "nats")
+			secretName := names.QuarksLinkSecretName("nats", "nats")
 
 			By("waiting for secrets", func() {
 				err := env.WaitForSecret(env.Namespace, secretName)
@@ -65,7 +65,7 @@ var _ = Describe("BOSHLinks", func() {
 		})
 
 		It("creates a secret for each link found in jobs", func() {
-			secretName := names.QuarksLinkSecretName(deploymentName, "nats", "nutty-nuts")
+			secretName := names.QuarksLinkSecretName("nats", "nutty-nuts")
 
 			By("waiting for secrets", func() {
 				err := env.WaitForSecret(env.Namespace, secretName)

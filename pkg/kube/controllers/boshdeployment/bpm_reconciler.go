@@ -25,11 +25,11 @@ import (
 	qstscontroller "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarksstatefulset"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
-	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
@@ -40,7 +40,7 @@ type BPMConverter interface {
 
 // DesiredManifest unmarshals desired manifest from the manifest secret
 type DesiredManifest interface {
-	DesiredManifest(ctx context.Context, deploymentName, namespace string) (*bdm.Manifest, error)
+	DesiredManifest(ctx context.Context, namespace string) (*bdm.Manifest, error)
 }
 
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
@@ -103,19 +103,13 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 
 	// Get the label from the BPM Secret and read the corresponding desired manifest
-	var deploymentName string
-	var ok bool
-	if deploymentName, ok = bpmSecret.Labels[bdv1.LabelDeploymentName]; !ok {
-		return reconcile.Result{},
-			log.WithEvent(bpmSecret, "GetBOSHDeploymentLabel").Errorf(ctx, "There's no label for a BOSH Deployment name on the Instance Group BPM versioned bpmSecret '%s'", request.NamespacedName)
-	}
-	manifest, err := r.resolver.DesiredManifest(ctx, deploymentName, request.Namespace)
+	manifest, err := r.resolver.DesiredManifest(ctx, request.Namespace)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "DesiredManifestReadError").Errorf(ctx, "Failed to read desired manifest '%s': %v", request.NamespacedName, err)
 	}
 
-	dns, err := r.newDNSFunc(deploymentName, *manifest)
+	dns, err := r.newDNSFunc(*manifest)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "DesiredManifestReadError").Errorf(ctx, "Failed to load BOSH DNS for manifest '%s': %v", request.NamespacedName, err)
@@ -203,7 +197,7 @@ func (r *ReconcileBPM) applyBPMResources(bdplName string, bpmSecret *corev1.Secr
 
 	// Fetch qSts version
 	quarksStatefulSet := &qstsv1a1.QuarksStatefulSet{}
-	quarksStatefulSetName := instanceGroup.QuarksStatefulSetName(bdplName)
+	quarksStatefulSetName := instanceGroup.NameSanitized()
 	err := r.client.Get(r.ctx, types.NamespacedName{Namespace: r.config.Namespace, Name: quarksStatefulSetName}, quarksStatefulSet)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
@@ -220,7 +214,7 @@ func (r *ReconcileBPM) applyBPMResources(bdplName string, bpmSecret *corev1.Secr
 		return nil, err
 	}
 
-	igResolvedSecretVersion, err := r.fetchIGresolvedVersion(bdplName, instanceGroupName)
+	igResolvedSecretVersion, err := r.fetchIGresolvedVersion(instanceGroupName)
 	if err != nil {
 		return nil, err
 	}
@@ -233,16 +227,11 @@ func (r *ReconcileBPM) applyBPMResources(bdplName string, bpmSecret *corev1.Secr
 	return resources, nil
 }
 
-func (r *ReconcileBPM) fetchIGresolvedVersion(manifestName, instanceGroupName string) (string, error) {
-	igResolvedSecretName := names.InstanceGroupSecretName(
-		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
-		manifestName,
-		instanceGroupName,
-		"",
-	)
+func (r *ReconcileBPM) fetchIGresolvedVersion(instanceGroupName string) (string, error) {
+	igResolvedSecretName := names.InstanceGroupSecretName(instanceGroupName, "")
 	igResolvedSecret, err := r.versionedSecretStore.Latest(r.ctx, r.config.Namespace, igResolvedSecretName)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to read latest versioned secret %s for bosh deployment %s", igResolvedSecretName, manifestName)
+		return "", errors.Wrapf(err, "failed to read latest versioned secret %s", igResolvedSecretName)
 	}
 	return igResolvedSecret.GetLabels()[versionedsecretstore.LabelVersion], nil
 }

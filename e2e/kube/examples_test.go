@@ -157,16 +157,16 @@ var _ = Describe("Examples Directory", func() {
 
 		It("creates the deployment and an endpoint", func() {
 			By("Checking for pods")
-			podWait("pod/nats-deployment-nats-0")
-			podWait("pod/nats-deployment-nats-1")
+			podWait("pod/nats-0")
+			podWait("pod/nats-1")
 
 			err := kubectl.WaitForService(namespace, "nats-service")
 			Expect(err).ToNot(HaveOccurred())
 
-			ip0, err := cmdHelper.GetData(namespace, "pod", "nats-deployment-nats-0", "go-template={{.status.podIP}}")
+			ip0, err := cmdHelper.GetData(namespace, "pod", "nats-0", "go-template={{.status.podIP}}")
 			Expect(err).ToNot(HaveOccurred())
 
-			ip1, err := cmdHelper.GetData(namespace, "pod", "nats-deployment-nats-1", "go-template={{.status.podIP}}")
+			ip1, err := cmdHelper.GetData(namespace, "pod", "nats-1", "go-template={{.status.podIP}}")
 			Expect(err).ToNot(HaveOccurred())
 
 			out, err := cmdHelper.GetData(namespace, "endpoints", "nats-service", "go-template=\"{{(index .subsets 0).addresses}}\"")
@@ -182,8 +182,8 @@ var _ = Describe("Examples Directory", func() {
 		})
 
 		It("deploys two pods", func() {
-			podWait("pod/nats-deployment-nats-0")
-			podWait("pod/nats-deployment-nats-1")
+			podWait("pod/nats-0")
+			podWait("pod/nats-1")
 		})
 	})
 
@@ -194,11 +194,11 @@ var _ = Describe("Examples Directory", func() {
 
 		It("uses the custom variable", func() {
 			By("Checking for pods")
-			podWait("pod/nats-deployment-nats-0")
-			podWait("pod/nats-deployment-nats-1")
+			podWait("pod/nats-0")
+			podWait("pod/nats-1")
 
 			By("Checking the value in the config file")
-			outFile, err := cmdHelper.RunCommandWithOutput(namespace, "nats-deployment-nats-1", "awk 'NR == 18 {print substr($2,2,17)}' /var/vcap/jobs/nats/config/nats.conf")
+			outFile, err := cmdHelper.RunCommandWithOutput(namespace, "nats-1", "awk 'NR == 18 {print substr($2,2,17)}' /var/vcap/jobs/nats/config/nats.conf")
 			Expect(err).ToNot(HaveOccurred())
 
 			outSecret, err := cmdHelper.GetData(namespace, "secret", "nats-deployment.var-custom-password", "go-template={{.data.password}}")
@@ -215,16 +215,16 @@ var _ = Describe("Examples Directory", func() {
 		})
 		It("disables the logging sidecar", func() {
 			By("Checking for pods")
-			podWait("pod/nats-deployment-nats-0")
-			podWait("pod/nats-deployment-nats-1")
+			podWait("pod/nats-0")
+			podWait("pod/nats-1")
 
 			By("Ensure only one container exists")
-			containerName, err := cmdHelper.GetData(namespace, "pod", "nats-deployment-nats-0", "jsonpath={range .spec.containers[*]}{.name}")
+			containerName, err := cmdHelper.GetData(namespace, "pod", "nats-0", "jsonpath={range .spec.containers[*]}{.name}")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(containerName).To(ContainSubstring("nats-nats"))
 			Expect(containerName).ToNot(ContainSubstring("logs"))
 
-			containerName, err = cmdHelper.GetData(namespace, "pod", "nats-deployment-nats-1", "jsonpath={range .spec.containers[*]}{.name}")
+			containerName, err = cmdHelper.GetData(namespace, "pod", "nats-1", "jsonpath={range .spec.containers[*]}{.name}")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(containerName).To(ContainSubstring("nats-nats"))
 			Expect(containerName).ToNot(ContainSubstring("logs"))
@@ -238,8 +238,8 @@ var _ = Describe("Examples Directory", func() {
 
 		It("updates deployment when implicit variable changes", func() {
 			By("Checking for pods")
-			podWait("pod/nats-deployment-nats-0")
-			status, err := kubectl.PodStatus(namespace, "nats-deployment-nats-0")
+			podWait("pod/nats-0")
+			status, err := kubectl.PodStatus(namespace, "nats-0")
 			Expect(err).ToNot(HaveOccurred(), "error getting pod status")
 			startTime := status.StartTime
 
@@ -249,7 +249,7 @@ var _ = Describe("Examples Directory", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Checking for pod restart")
-			podRestarted("nats-deployment-nats-0", startTime.Time)
+			podRestarted("nats-0", startTime.Time)
 		})
 	})
 
@@ -260,8 +260,8 @@ var _ = Describe("Examples Directory", func() {
 
 		It("updates quarks secret when implicit variable changes, then deployment updates", func() {
 			By("Checking for pods")
-			podWait("pod/nats-deployment-nats-0")
-			status, err := kubectl.PodStatus(namespace, "nats-deployment-nats-0")
+			podWait("pod/nats-0")
+			status, err := kubectl.PodStatus(namespace, "nats-0")
 			Expect(err).ToNot(HaveOccurred(), "error getting pod status")
 			startTime := status.StartTime
 
@@ -271,7 +271,7 @@ var _ = Describe("Examples Directory", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Checking for pod restart")
-			podRestarted("nats-deployment-nats-0", startTime.Time)
+			podRestarted("nats-0", startTime.Time)
 		})
 	})
 
@@ -342,9 +342,9 @@ var _ = Describe("Examples Directory", func() {
 
 		It("resolves BOSH DNS placeholder aliases", func() {
 			By("Getting expected IP")
-			podName := "nats-deployment-nats-0"
+			podName := "nats-0"
 			podWait(fmt.Sprintf("pod/%s", podName))
-			serviceName := "nats-deployment-nats-0"
+			serviceName := "nats-0"
 			service, err := kubectl.Service(namespace, serviceName)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -373,7 +373,7 @@ var _ = Describe("Examples Directory", func() {
 
 		It("resolves BOSH DNS wildcard aliases", func() {
 			By("Getting expected IP")
-			podName := "nats-deployment-nats-0"
+			podName := "nats-0"
 			podWait(fmt.Sprintf("pod/%s", podName))
 			podStatus, err := kubectl.PodStatus(namespace, podName)
 			Expect(err).ToNot(HaveOccurred())

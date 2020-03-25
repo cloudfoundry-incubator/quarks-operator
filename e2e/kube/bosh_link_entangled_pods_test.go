@@ -23,7 +23,6 @@ var _ = Describe("BOSHLinkEntanglements", func() {
 
 	Context("testing native to bosh", func() {
 		It("uses kube native link", func() {
-
 			err = apply("quarks-link/link-pod.yaml")
 			Expect(err).ToNot(HaveOccurred())
 			err = apply("quarks-link/link-secret.yaml")
@@ -34,7 +33,7 @@ var _ = Describe("BOSHLinkEntanglements", func() {
 			err = apply("quarks-link/boshdeployment-with-external-consumer.yaml")
 			Expect(err).ToNot(HaveOccurred())
 
-			podWait("pod/cf-operator-testing-deployment-draining-ig-0")
+			podWait("pod/draining-ig-0")
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -55,17 +54,16 @@ var _ = Describe("BOSHLinkEntanglements", func() {
 	}
 
 	Context("testing bosh to native", func() {
-
 		BeforeEach(func() {
 			err := apply("quarks-link/boshdeployment.yaml")
 			Expect(err).ToNot(HaveOccurred())
-			podWait("pod/nats-deployment-nats-0")
+			podWait("pod/nats-0")
 
 		})
 
 		Context("when creating a bosh deployment", func() {
 			It("creates secrets for a all BOSH links", func() {
-				exist, err := kubectl.SecretExists(namespace, "link-nats-deployment-nats-nats")
+				exist, err := kubectl.SecretExists(namespace, "link-nats-nats")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(exist).To(BeTrue())
 			})

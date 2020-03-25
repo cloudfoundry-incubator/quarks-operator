@@ -10,13 +10,12 @@ import (
 )
 
 type FakeVolumeFactory struct {
-	GenerateBPMDisksStub        func(string, *manifest.InstanceGroup, bpm.Configs, string) (manifest.Disks, error)
+	GenerateBPMDisksStub        func(*manifest.InstanceGroup, bpm.Configs, string) (manifest.Disks, error)
 	generateBPMDisksMutex       sync.RWMutex
 	generateBPMDisksArgsForCall []struct {
-		arg1 string
-		arg2 *manifest.InstanceGroup
-		arg3 bpm.Configs
-		arg4 string
+		arg1 *manifest.InstanceGroup
+		arg2 bpm.Configs
+		arg3 string
 	}
 	generateBPMDisksReturns struct {
 		result1 manifest.Disks
@@ -26,13 +25,12 @@ type FakeVolumeFactory struct {
 		result1 manifest.Disks
 		result2 error
 	}
-	GenerateDefaultDisksStub        func(string, *manifest.InstanceGroup, string, string) manifest.Disks
+	GenerateDefaultDisksStub        func(*manifest.InstanceGroup, string, string) manifest.Disks
 	generateDefaultDisksMutex       sync.RWMutex
 	generateDefaultDisksArgsForCall []struct {
-		arg1 string
-		arg2 *manifest.InstanceGroup
+		arg1 *manifest.InstanceGroup
+		arg2 string
 		arg3 string
-		arg4 string
 	}
 	generateDefaultDisksReturns struct {
 		result1 manifest.Disks
@@ -44,19 +42,18 @@ type FakeVolumeFactory struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeVolumeFactory) GenerateBPMDisks(arg1 string, arg2 *manifest.InstanceGroup, arg3 bpm.Configs, arg4 string) (manifest.Disks, error) {
+func (fake *FakeVolumeFactory) GenerateBPMDisks(arg1 *manifest.InstanceGroup, arg2 bpm.Configs, arg3 string) (manifest.Disks, error) {
 	fake.generateBPMDisksMutex.Lock()
 	ret, specificReturn := fake.generateBPMDisksReturnsOnCall[len(fake.generateBPMDisksArgsForCall)]
 	fake.generateBPMDisksArgsForCall = append(fake.generateBPMDisksArgsForCall, struct {
-		arg1 string
-		arg2 *manifest.InstanceGroup
-		arg3 bpm.Configs
-		arg4 string
-	}{arg1, arg2, arg3, arg4})
-	fake.recordInvocation("GenerateBPMDisks", []interface{}{arg1, arg2, arg3, arg4})
+		arg1 *manifest.InstanceGroup
+		arg2 bpm.Configs
+		arg3 string
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("GenerateBPMDisks", []interface{}{arg1, arg2, arg3})
 	fake.generateBPMDisksMutex.Unlock()
 	if fake.GenerateBPMDisksStub != nil {
-		return fake.GenerateBPMDisksStub(arg1, arg2, arg3, arg4)
+		return fake.GenerateBPMDisksStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -71,17 +68,17 @@ func (fake *FakeVolumeFactory) GenerateBPMDisksCallCount() int {
 	return len(fake.generateBPMDisksArgsForCall)
 }
 
-func (fake *FakeVolumeFactory) GenerateBPMDisksCalls(stub func(string, *manifest.InstanceGroup, bpm.Configs, string) (manifest.Disks, error)) {
+func (fake *FakeVolumeFactory) GenerateBPMDisksCalls(stub func(*manifest.InstanceGroup, bpm.Configs, string) (manifest.Disks, error)) {
 	fake.generateBPMDisksMutex.Lock()
 	defer fake.generateBPMDisksMutex.Unlock()
 	fake.GenerateBPMDisksStub = stub
 }
 
-func (fake *FakeVolumeFactory) GenerateBPMDisksArgsForCall(i int) (string, *manifest.InstanceGroup, bpm.Configs, string) {
+func (fake *FakeVolumeFactory) GenerateBPMDisksArgsForCall(i int) (*manifest.InstanceGroup, bpm.Configs, string) {
 	fake.generateBPMDisksMutex.RLock()
 	defer fake.generateBPMDisksMutex.RUnlock()
 	argsForCall := fake.generateBPMDisksArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeVolumeFactory) GenerateBPMDisksReturns(result1 manifest.Disks, result2 error) {
@@ -110,19 +107,18 @@ func (fake *FakeVolumeFactory) GenerateBPMDisksReturnsOnCall(i int, result1 mani
 	}{result1, result2}
 }
 
-func (fake *FakeVolumeFactory) GenerateDefaultDisks(arg1 string, arg2 *manifest.InstanceGroup, arg3 string, arg4 string) manifest.Disks {
+func (fake *FakeVolumeFactory) GenerateDefaultDisks(arg1 *manifest.InstanceGroup, arg2 string, arg3 string) manifest.Disks {
 	fake.generateDefaultDisksMutex.Lock()
 	ret, specificReturn := fake.generateDefaultDisksReturnsOnCall[len(fake.generateDefaultDisksArgsForCall)]
 	fake.generateDefaultDisksArgsForCall = append(fake.generateDefaultDisksArgsForCall, struct {
-		arg1 string
-		arg2 *manifest.InstanceGroup
+		arg1 *manifest.InstanceGroup
+		arg2 string
 		arg3 string
-		arg4 string
-	}{arg1, arg2, arg3, arg4})
-	fake.recordInvocation("GenerateDefaultDisks", []interface{}{arg1, arg2, arg3, arg4})
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("GenerateDefaultDisks", []interface{}{arg1, arg2, arg3})
 	fake.generateDefaultDisksMutex.Unlock()
 	if fake.GenerateDefaultDisksStub != nil {
-		return fake.GenerateDefaultDisksStub(arg1, arg2, arg3, arg4)
+		return fake.GenerateDefaultDisksStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
@@ -137,17 +133,17 @@ func (fake *FakeVolumeFactory) GenerateDefaultDisksCallCount() int {
 	return len(fake.generateDefaultDisksArgsForCall)
 }
 
-func (fake *FakeVolumeFactory) GenerateDefaultDisksCalls(stub func(string, *manifest.InstanceGroup, string, string) manifest.Disks) {
+func (fake *FakeVolumeFactory) GenerateDefaultDisksCalls(stub func(*manifest.InstanceGroup, string, string) manifest.Disks) {
 	fake.generateDefaultDisksMutex.Lock()
 	defer fake.generateDefaultDisksMutex.Unlock()
 	fake.GenerateDefaultDisksStub = stub
 }
 
-func (fake *FakeVolumeFactory) GenerateDefaultDisksArgsForCall(i int) (string, *manifest.InstanceGroup, string, string) {
+func (fake *FakeVolumeFactory) GenerateDefaultDisksArgsForCall(i int) (*manifest.InstanceGroup, string, string) {
 	fake.generateDefaultDisksMutex.RLock()
 	defer fake.generateDefaultDisksMutex.RUnlock()
 	argsForCall := fake.generateDefaultDisksArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeVolumeFactory) GenerateDefaultDisksReturns(result1 manifest.Disks) {

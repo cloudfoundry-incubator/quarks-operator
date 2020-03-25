@@ -53,12 +53,8 @@ func AddTestStorageClassToVolumeClaimTemplates(filePath string, class string) (s
 }
 
 var _ = Describe("Examples", func() {
-
 	Describe("when storage related examples are specified in the docs", func() {
-
-		var (
-			kubectlHelper *cmdHelper.Kubectl
-		)
+		var kubectlHelper *cmdHelper.Kubectl
 		const examplesDir = "../../../docs/examples/"
 
 		BeforeEach(func() {
@@ -66,7 +62,6 @@ var _ = Describe("Examples", func() {
 		})
 
 		Context("all storage related examples with storage must be working", func() {
-
 			It("bosh-deployment with a persistent disk example must work", func() {
 				yamlFilePath := examplesDir + "bosh-deployment/boshdeployment-with-persistent-disk.yaml"
 
@@ -77,7 +72,7 @@ var _ = Describe("Examples", func() {
 				literalValues := map[string]string{
 					"value": class,
 				}
-				err := cmdHelper.CreateSecretFromLiteral(namespace, "nats-deployment.var-operator-test-storage-class", literalValues)
+				err := cmdHelper.CreateSecretFromLiteral(namespace, "var-operator-test-storage-class", literalValues)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Creating bosh deployment")
@@ -85,17 +80,17 @@ var _ = Describe("Examples", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pods")
-				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-0", kubectlHelper.PollTimeout)
+				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-0", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-deployment-nats-1", kubectlHelper.PollTimeout)
+				err = kubectlHelper.Wait(namespace, "ready", "pod/nats-1", kubectlHelper.PollTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Checking for pvcs")
-				err = kubectlHelper.WaitForPVC(namespace, "nats-deployment-nats-pvc-nats-deployment-nats-0")
+				err = kubectlHelper.WaitForPVC(namespace, "nats-pvc-nats-0")
 				Expect(err).ToNot(HaveOccurred())
 
-				err = kubectlHelper.WaitForPVC(namespace, "nats-deployment-nats-pvc-nats-deployment-nats-1")
+				err = kubectlHelper.WaitForPVC(namespace, "nats-pvc-nats-1")
 				Expect(err).ToNot(HaveOccurred())
 			})
 

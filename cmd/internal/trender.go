@@ -31,7 +31,6 @@ var templateRenderCmd = &cobra.Command{
 This will render a provided manifest instance-group
 `,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		deploymentNameFlagViperBind(cmd.Flags())
 		boshManifestFlagViperBind(cmd.Flags())
 		instanceGroupFlagViperBind(cmd.Flags())
 		initialRolloutFlagViperBind(cmd.Flags())
@@ -45,11 +44,6 @@ This will render a provided manifest instance-group
 		}()
 
 		boshManifestPath, err := boshManifestFlagValidation()
-		if err != nil {
-			return errors.Wrap(err, tRenderFailedMessage)
-		}
-
-		deploymentName, err := deploymentNameFlagValidation()
 		if err != nil {
 			return errors.Wrap(err, tRenderFailedMessage)
 		}
@@ -97,7 +91,7 @@ This will render a provided manifest instance-group
 		initialRollout := viper.GetBool("initial-rollout")
 		podIP := net.ParseIP(viper.GetString("pod-ip"))
 
-		return manifest.RenderJobTemplates(deploymentName, boshManifestPath, jobsDir, outputDir, instanceGroupName, specIndex, podIP, replicas, initialRollout)
+		return manifest.RenderJobTemplates(boshManifestPath, jobsDir, outputDir, instanceGroupName, specIndex, podIP, replicas, initialRollout)
 	},
 }
 
@@ -131,7 +125,6 @@ func init() {
 		"pod-ip":                  bpmconverter.PodIPEnvVar,
 	}
 
-	deploymentNameFlagCobraSet(pf, argToEnv)
 	boshManifestFlagCobraSet(pf, argToEnv)
 	instanceGroupFlagCobraSet(pf, argToEnv)
 	initialRolloutFlagCobraSet(pf, argToEnv)
