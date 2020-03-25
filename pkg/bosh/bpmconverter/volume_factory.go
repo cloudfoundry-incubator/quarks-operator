@@ -83,7 +83,7 @@ func NewVolumeFactory() *VolumeFactoryImpl {
 // - the sys volume
 // - the "not interpolated" manifest volume
 // - resolved properties data volume
-func (f *VolumeFactoryImpl) GenerateDefaultDisks(manifestName string, instanceGroup *bdm.InstanceGroup, igResolvedSecretVersion string, namespace string) BPMResourceDisks {
+func (f *VolumeFactoryImpl) GenerateDefaultDisks(manifestName string, instanceGroup *bdm.InstanceGroup, igResolvedSecretVersion string, namespace string) bdm.BPMResourceDisks {
 	resolvedPropertiesSecretName := names.InstanceGroupSecretName(
 		names.DeploymentSecretTypeInstanceGroupResolvedProperties,
 		manifestName,
@@ -97,7 +97,7 @@ func (f *VolumeFactoryImpl) GenerateDefaultDisks(manifestName string, instanceGr
 		pvc = ephemeralPVC(manifestName, instanceGroup, namespace)
 	}
 
-	defaultDisks := BPMResourceDisks{
+	defaultDisks := bdm.BPMResourceDisks{
 		{
 			Volume:      renderingVolume(),
 			VolumeMount: renderingVolumeMount(),
@@ -137,8 +137,8 @@ func (f *VolumeFactoryImpl) GenerateDefaultDisks(manifestName string, instanceGr
 // - persistent_disk (boolean)
 // - additional_volumes (list of volumes)
 // - unrestricted_volumes (list of volumes)
-func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (BPMResourceDisks, error) {
-	bpmDisks := make(BPMResourceDisks, 0)
+func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (bdm.BPMResourceDisks, error) {
+	bpmDisks := make(bdm.BPMResourceDisks, 0)
 
 	rAdditionalVolumes := regexp.MustCompile(AdditionalVolumesRegex)
 
@@ -211,7 +211,7 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 					return nil, errors.Wrapf(err, "failed to calculate subpath for additional volume mount '%s'", additionalVolume.Path)
 				}
 
-				additionalDisk := BPMResourceDisk{
+				additionalDisk := bdm.BPMResourceDisk{
 					VolumeMount: &corev1.VolumeMount{
 						Name:      volumeName,
 						ReadOnly:  !additionalVolume.Writable,
@@ -228,7 +228,7 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 
 			for i, unrestrictedVolume := range process.Unsafe.UnrestrictedVolumes {
 				volumeName := names.Sanitize(fmt.Sprintf("%s-%s-%s-%b", UnrestrictedVolumeBaseName, job.Name, process.Name, i))
-				unrestrictedDisk := BPMResourceDisk{
+				unrestrictedDisk := bdm.BPMResourceDisk{
 					Volume: &corev1.Volume{
 						Name:         volumeName,
 						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
@@ -279,11 +279,11 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 	return bpmDisks, nil
 }
 
-func persistentDisk(manifestName, namespace string, instanceGroup *bdm.InstanceGroup, job bdm.Job) BPMResourceDisk {
+func persistentDisk(manifestName, namespace string, instanceGroup *bdm.InstanceGroup, job bdm.Job) bdm.BPMResourceDisk {
 	persistentVolumeClaim := generatePersistentVolumeClaim(manifestName, instanceGroup, namespace)
 
 	// Specify the job sub-path inside of the instance group PV
-	bpmPersistentDisk := BPMResourceDisk{
+	bpmPersistentDisk := bdm.BPMResourceDisk{
 		PersistentVolumeClaim: &persistentVolumeClaim,
 		Volume: &corev1.Volume{
 			Name: persistentVolumeClaim.Name,
@@ -307,10 +307,10 @@ func persistentDisk(manifestName, namespace string, instanceGroup *bdm.InstanceG
 	return bpmPersistentDisk
 }
 
-func ephemeralDisk(manifestName, namespace string, instanceGroup *bdm.InstanceGroup, job bdm.Job) BPMResourceDisk {
+func ephemeralDisk(manifestName, namespace string, instanceGroup *bdm.InstanceGroup, job bdm.Job) bdm.BPMResourceDisk {
 	persistent := instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.EphemeralAsPVC
 
-	ephemeralDisk := BPMResourceDisk{
+	ephemeralDisk := bdm.BPMResourceDisk{
 		VolumeMount: &corev1.VolumeMount{
 			Name:      volumeDataDirName(manifestName, instanceGroup.Name),
 			MountPath: path.Join(VolumeDataDirMountPath, job.Name),
@@ -325,7 +325,7 @@ func ephemeralDisk(manifestName, namespace string, instanceGroup *bdm.InstanceGr
 	if persistent {
 		persistentVolumeClaim := ephemeralPVC(manifestName, instanceGroup, namespace)
 
-		ephemeralDisk = BPMResourceDisk{
+		ephemeralDisk = bdm.BPMResourceDisk{
 			PersistentVolumeClaim: persistentVolumeClaim,
 			Volume: &corev1.Volume{
 				Name: persistentVolumeClaim.Name,

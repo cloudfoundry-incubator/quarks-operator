@@ -34,6 +34,16 @@ instance_groups:
     bosh:
       agent:
         settings:
+          disks:
+          - volume:
+              name: extravolume
+              emptyDir: {}
+            volumeMount:
+              name: extravolume
+              mountPath: /var/vcap/data/rep
+            labels:
+              job_name: redis-server
+              ephemeral: true
           labels:
             custom-label: foo
           annotations:
