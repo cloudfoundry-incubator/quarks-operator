@@ -124,9 +124,8 @@ func (ig *InstanceGroup) IndexedServiceName(deploymentName string, index int, az
 	sn := util.ServiceName(ig.Name, deploymentName, 53)
 	if azIndex > -1 {
 		return fmt.Sprintf("%s-z%d-%d", sn, azIndex, index)
-	} else {
-		return fmt.Sprintf("%s-%d", sn, index)
 	}
+	return fmt.Sprintf("%s-%d", sn, index)
 }
 
 func (ig *InstanceGroup) jobInstances(

@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	certv1client "k8s.io/client-go/kubernetes/typed/certificates/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -252,13 +251,13 @@ func isApproved(conditions []certv1.CertificateSigningRequestCondition) bool {
 	return false
 }
 
-func getClusterRootCA(ctx context.Context, client client.Client, namespace string) ([]byte, error) {
+func getClusterRootCA(ctx context.Context, c client.Client, namespace string) ([]byte, error) {
 	// TODO: This should work with filtering using something like
-	// err = client.List(ctx, secretList, crc.InNamespace(namespace), crc.MatchingFields{"type": "kubernetes.io/service-account-token"})
+	// err = client.List(ctx, secretList, client.InNamespace(namespace), client.MatchingFields{"type": "kubernetes.io/service-account-token"})
 	// but it doesn't return any results. Maybe try again after a controller-runtime bump
 
 	secretList := &corev1.SecretList{}
-	err := client.List(ctx, secretList, crc.InNamespace(namespace))
+	err := c.List(ctx, secretList, client.InNamespace(namespace))
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not get the list of secrets")
 	}
