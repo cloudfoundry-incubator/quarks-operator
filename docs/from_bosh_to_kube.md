@@ -313,6 +313,24 @@ instance_groups:
           # on the QuarksStatefulSet of the instance group, and it will use that PVC for all volume
           # mounts for ephemeral disks
           ephemeralAsPVC: false
+          # An array of disks to be mounted on the containers
+          disks:
+            # A PersistentVolumeClaim to be used as a template in the StatefulSet of the instance group.
+          - pvc:
+              name: foo
+              storageClassName: persistent
+            # Volume definition to be included in the pod.
+            volume:
+              name: extravolume
+              emptyDir: {}
+            # Volume mounts to be set on the containers that match the job and process set in "filters".
+            volumeMount:
+              name: extravolume
+              mountPath: /var/vcap/data/rep
+            # Filters to identify on which containers to apply the volume mounts.
+            filters:
+              job_name: "cflinuxfs3-rootfs-setup"
+              process_name: "test-server"
 # Each addon job is added to the desired manifest before it's persisted
 # Not all placement rules are supported, see below for more details.
 addons:

@@ -25,7 +25,7 @@ var _ = Describe("ContainerFactory", func() {
 		releaseImageProvider *fakes.FakeReleaseImageProvider
 		jobs                 []bdm.Job
 		defaultVolumeMounts  []corev1.VolumeMount
-		bpmDisks             bdm.BPMResourceDisks
+		bpmDisks             bdm.Disks
 	)
 
 	BeforeEach(func() {
@@ -47,7 +47,7 @@ var _ = Describe("ContainerFactory", func() {
 			},
 		}
 
-		bpmDisks = bdm.BPMResourceDisks{
+		bpmDisks = bdm.Disks{
 			{
 
 				VolumeMount: &corev1.VolumeMount{
@@ -322,7 +322,7 @@ var _ = Describe("ContainerFactory", func() {
 			}
 			containerFactory = NewContainerFactory("fake-manifest", "fake-ig", "v1", false, releaseImageProvider, bpmConfigsWithError)
 			actWithError := func() ([]corev1.Container, error) {
-				return containerFactory.JobsToContainers(jobs, []corev1.VolumeMount{}, bdm.BPMResourceDisks{})
+				return containerFactory.JobsToContainers(jobs, []corev1.VolumeMount{}, bdm.Disks{})
 			}
 			_, err := actWithError()
 			Expect(err).To(HaveOccurred())
@@ -516,7 +516,7 @@ var _ = Describe("ContainerFactory", func() {
 
 				containerFactory := NewContainerFactory("fake-manifest", ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
 				act := func() ([]corev1.Container, error) {
-					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, bdm.BPMResourceDisks{})
+					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, bdm.Disks{})
 				}
 				containers, err := act()
 
@@ -543,7 +543,7 @@ var _ = Describe("ContainerFactory", func() {
 
 				containerFactory := NewContainerFactory("fake-manifest", ig.Name, "v1", disableSideCar, releaseImageProvider, bpmJobConfigs)
 				act := func() ([]corev1.Container, error) {
-					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, bdm.BPMResourceDisks{})
+					return containerFactory.JobsToContainers(ig.Jobs, []corev1.VolumeMount{}, bdm.Disks{})
 				}
 				containers, err := act()
 
