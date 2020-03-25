@@ -437,7 +437,7 @@ var _ = Describe("Run", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("ignores packet read errors", func() {
+		It("fails for packet read errors", func() {
 			process := NewMockProcess(ctrl)
 			process.EXPECT().
 				Wait().
@@ -476,7 +476,8 @@ var _ = Describe("Run", func() {
 				Return(packet_error, nil).
 				AnyTimes()
 			err := Run(runner, nil, nil, emit_error, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("failed to read command: bogus"))
 		})
 
 		It("ignores start commands for running processes", func() {

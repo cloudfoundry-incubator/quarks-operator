@@ -101,10 +101,12 @@ func Run(
 
 	go processRegistry.HandleSignals(sigs, errors)
 
+	// This flag records the state of the system and its child
+	// processes. It is set to true when the child processes are
+	// running, and false otherwise.
 	active := true
 
-	err = watchForCommands (listener, socketToWatch, errors, commands)
-	if err != nil {
+	if err = watchForCommands (listener, socketToWatch, errors, commands); err != nil {
 		return err
 	}
 
@@ -112,7 +114,7 @@ func Run(
 		select {
 		case cmd := <-commands:
 			// Note: Commands are ignored if the system is
-			// already in the requested state. IOW
+			// already in the requested state. I.e
 			// demanding things to stop when things are
 			// already stopped does nothing. Similarly for
 			// demanding a start when the children are
@@ -133,7 +135,7 @@ func Run(
 					// signals.
 
 					active = false
-					stopProcesses(processRegistry)
+					stopProcesses(processRegistry, errors)
 				}
 			case ProcessStart:
 				if !active {
@@ -162,7 +164,7 @@ func Run(
 				return nil
 			}
 		case err := <-errors:
-			return &runErr{err}
+			return err
 		}
 	}
 }
@@ -174,7 +176,7 @@ func watchForCommands(
 	commands chan processCommand,
 ) error {
 	if err := os.RemoveAll(sockAddr); err != nil {
-		return err
+		return fmt.Errorf("failed to watch for commands: %v", err)
 	}
 
 	go func() {
@@ -182,9 +184,9 @@ func watchForCommands(
 			// Accept new packet, dispatching them to our handler
 			packet, err := listener.ListenPacket("unixgram", sockAddr)
 			if err != nil {
-				errors <- err
+				errors <- fmt.Errorf("failed to watch for commands: %v", err)
 			}
-			handlePacket(packet, commands)
+			handlePacket(packet, errors, commands)
 		}
 	}()
 
@@ -193,16 +195,19 @@ func watchForCommands(
 
 func handlePacket(
 	conn PacketConnection,
+	errors chan error,
 	commands chan processCommand,
 ) {
 	defer conn.Close()
 
 	packet := make([]byte, 256)
-	count, _, _ := conn.ReadFrom(packet)
+	n, _, err := conn.ReadFrom(packet)
 	// Return address ignored. We do not send anything out.
-	// Read errors ignored. Ref https://johnrefior.com/gobits/read?post=12
+	if err != nil && err != io.EOF {
+		errors <- fmt.Errorf("failed to read command: %v", err)
+	}
 
-	command := string(packet[:count])
+	command := string(packet[:n])
 	switch command {
 	case ProcessStart, ProcessStop:
 		commands <- processCommand (command)
@@ -211,8 +216,10 @@ func handlePacket(
 	}
 }
 
-func stopProcesses (processRegistry *ProcessRegistry) {
-	_ = processRegistry.SignalAll(os.Kill)
+func stopProcesses (processRegistry *ProcessRegistry, errors chan<- error) {
+	for _, err := range processRegistry.SignalAll(os.Kill) {
+		errors <- err
+	}
 }
 
 func startProcesses (
@@ -267,7 +274,7 @@ func startMainProcess (
 
 	go func() {
 		if err := process.Wait(); err != nil {
-			errors <- err
+			errors <- &runErr{err}
 			return
 		}
 		done <- struct{}{}
@@ -298,18 +305,18 @@ func startPostStartProcesses (
 						Err: ioutil.Discard,
 					}
 					if _, err := conditionRunner.RunContext(ctx, conditionCommand, conditionStdio); err != nil {
-						errors <- err
+						errors <- &runErr{err}
 						return
 					}
 				}
 				postStartProcess, err := runner.RunContext(ctx, postStartCommand, stdio)
 				if err != nil {
-					errors <- err
+					errors <- &runErr{err}
 					return
 				}
 				processRegistry.Register(postStartProcess)
 				if err := postStartProcess.Wait(); err != nil {
-					errors <- err
+					errors <- &runErr{err}
 					return
 				}
 			}()
@@ -562,22 +569,22 @@ type PacketConnection interface {
 	Close() error
 }
 
-// net.PacketConn satisfies this interface.
+// ListenPacketFunc is a type alias to the net.ListenPacket function.
+type ListenPacketFunc func(network, address string) (net.PacketConn, error)
 
 // PacketListener is the interface that wraps the ListenPacket methods.
+// net.PacketConn satisfies this interface.
 type PacketListener interface {
 	ListenPacket(network, address string) (PacketConnection, error)
 }
 
 // NetPacketListener satisfies the PacketListener interface.
 type NetPacketListener struct {
-	listen func(network, address string) (net.PacketConn, error)
+	listen ListenPacketFunc
 }
 
-// NewNetPacketListener constructs a new NetPacketListener
-func NewNetPacketListener(
-	listen func(network, address string) (net.PacketConn, error),
-) *NetPacketListener {
+// NewNetPacketListener constructs a new NetPacketListener.
+func NewNetPacketListener(listen ListenPacketFunc) *NetPacketListener {
 	return &NetPacketListener{
 		listen: listen,
 	}
@@ -585,6 +592,9 @@ func NewNetPacketListener(
 
 // ListenPacket implements listening for packets.
 func (npl *NetPacketListener) ListenPacket(network, address string) (PacketConnection, error) {
-	conn, error := npl.listen(network, address)
-	return conn, error
+	conn, err := npl.listen(network, address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to listen for packet: %v", err)
+	}
+	return conn, nil
 }
