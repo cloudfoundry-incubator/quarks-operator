@@ -25,7 +25,7 @@ image:
   # tag of the operator docker image
   tag: foobar
 
-# logLevel defines from which level the logs should be printed.
+# logLevel defines from which level the logs should be printed (trace,debug,info,warn).
 logLevel: debug
 
 # workers are the int values for running maximum number of workers of the respective controller.

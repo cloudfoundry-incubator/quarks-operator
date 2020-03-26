@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 )
 
 type matcher func(*InstanceGroup, *AddOnPlacementRules) (bool, error)
@@ -73,17 +74,19 @@ func (m *Manifest) instanceGroupMatch(instanceGroup *InstanceGroup, rules *AddOn
 }
 
 // addOnPlacementMatch returns true if any placement rule of the addon matches the instance group
-func (m *Manifest) addOnPlacementMatch(placementType string, instanceGroup *InstanceGroup, rules *AddOnPlacementRules) (bool, error) {
+func (m *Manifest) addOnPlacementMatch(log *zap.SugaredLogger, placementType string, instanceGroup *InstanceGroup, rules *AddOnPlacementRules) (bool, error) {
 	// This check is special, not a matcher. Lifecycle always needs to match
 	if (instanceGroup.LifeCycle == IGTypeErrand ||
 		instanceGroup.LifeCycle == IGTypeAutoErrand) &&
 		(rules == nil || rules.Lifecycle != IGTypeErrand) {
+		log.Debugf("Instance group '%s' is an errand, but the %s placement rules don't match an errand", instanceGroup.Name, placementType)
 		return false, nil
 	}
 
 	if (instanceGroup.LifeCycle == IGTypeService ||
 		instanceGroup.LifeCycle == IGTypeDefault) &&
 		(rules != nil && rules.Lifecycle != IGTypeDefault && rules.Lifecycle != IGTypeService) {
+		log.Debugf("Instance group '%s' is a BOSH service, but the %s placement rules don't match a BOSH service", instanceGroup.Name, placementType)
 		return false, nil
 	}
 
@@ -102,6 +105,10 @@ func (m *Manifest) addOnPlacementMatch(placementType string, instanceGroup *Inst
 		}
 
 		matchResult = matchResult || matched
+	}
+
+	if !matchResult {
+		log.Debugf("Instance group '%s' did not match the %s placement rules", instanceGroup.Name, placementType)
 	}
 
 	return matchResult, nil

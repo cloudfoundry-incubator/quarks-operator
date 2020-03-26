@@ -17,13 +17,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/withops"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
@@ -75,7 +75,7 @@ type Validator struct {
 
 // NewValidator returns a new BOSHDeploymentValidator
 func NewValidator(log *zap.SugaredLogger, config *config.Config) admission.Handler {
-	validationLog := log.Named("boshdeployment-validator").Desugar().WithOptions(zap.AddCallerSkip(-1)).Sugar()
+	validationLog := logger.Unskip(log, "boshdeployment-validator")
 	validationLog.Info("Creating a validator for BOSHDeployment")
 
 	return &Validator{
@@ -181,7 +181,7 @@ func (v *Validator) Handle(ctx context.Context, req admission.Request) admission
 	withops := withops.NewResolver(
 		v.client,
 		func() withops.Interpolator { return withops.NewInterpolator() },
-		func(deploymentName string, m bdm.Manifest) (withops.DomainNameService, error) {
+		func(deploymentName string, m manifest.Manifest) (withops.DomainNameService, error) {
 			return boshdns.NewDNS(deploymentName, m)
 		},
 	)
@@ -198,7 +198,7 @@ func (v *Validator) Handle(ctx context.Context, req admission.Request) admission
 	}
 
 	v.log.Infof("Resolving deployment '%s'", boshDeployment.Name)
-	manifest, _, err := withops.ManifestDetailed(boshDeployment, boshDeployment.GetNamespace())
+	manifest, _, err := withops.ManifestDetailed(ctx, boshDeployment, boshDeployment.GetNamespace())
 	if err != nil {
 		return admission.Response{
 			AdmissionResponse: v1beta1.AdmissionResponse{

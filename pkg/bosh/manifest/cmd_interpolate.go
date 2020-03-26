@@ -7,14 +7,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	boshtpl "github.com/cloudfoundry/bosh-cli/director/template"
 	"github.com/cppforlife/go-patch/patch"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
+
+	boshtpl "github.com/cloudfoundry/bosh-cli/director/template"
 )
 
 // InterpolateVariables reads explicit secrets from a folder and writes an interpolated manifest to the output.json file in /mnt/quarks volume mount.
-func InterpolateVariables(log *zap.SugaredLogger, boshManifestBytes []byte, variablesDir string, outputFilePath string) error {
+func InterpolateVariables(boshManifestBytes []byte, variablesDir string, outputFilePath string) error {
 	var vars []boshtpl.Variables
 
 	variables, err := ioutil.ReadDir(variablesDir)

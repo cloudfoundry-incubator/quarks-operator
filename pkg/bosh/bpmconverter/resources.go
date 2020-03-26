@@ -13,8 +13,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
@@ -34,8 +34,8 @@ type BPMConverter struct {
 
 // ContainerFactory builds Kubernetes containers from BOSH jobs.
 type ContainerFactory interface {
-	JobsToInitContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks disk.BPMResourceDisks, requiredService *string) ([]corev1.Container, error)
-	JobsToContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks disk.BPMResourceDisks) ([]corev1.Container, error)
+	JobsToInitContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks bdm.Disks, requiredService *string) ([]corev1.Container, error)
+	JobsToContainers(jobs []bdm.Job, defaultVolumeMounts []corev1.VolumeMount, bpmDisks bdm.Disks) ([]corev1.Container, error)
 }
 
 // NewContainerFactoryFunc returns ContainerFactory from single BOSH instance group.
@@ -43,8 +43,8 @@ type NewContainerFactoryFunc func(manifestName string, instanceGroupName string,
 
 // VolumeFactory builds Kubernetes containers from BOSH jobs.
 type VolumeFactory interface {
-	GenerateDefaultDisks(manifestName string, instanceGroupName *bdm.InstanceGroup, igResolvedSecretVersion string, namespace string) disk.BPMResourceDisks
-	GenerateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (disk.BPMResourceDisks, error)
+	GenerateDefaultDisks(manifestName string, instanceGroupName *bdm.InstanceGroup, igResolvedSecretVersion string, namespace string) bdm.Disks
+	GenerateBPMDisks(manifestName string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (bdm.Disks, error)
 }
 
 // DomainNameService is a limited interface for the funcs used in the bpm converter
@@ -83,6 +83,9 @@ func (kc *BPMConverter) Resources(manifestName string, dns DomainNameService, qS
 	if err != nil {
 		return nil, errors.Wrapf(err, "Generate of BPM disks failed for manifest name %s, instance group %s.", manifestName, instanceGroup.Name)
 	}
+
+	// Add any special disks to the list of BPM disks
+	bpmDisks = append(bpmDisks, instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Disks...)
 
 	allDisks := append(defaultDisks, bpmDisks...)
 
@@ -130,8 +133,8 @@ func (kc *BPMConverter) serviceToQuarksStatefulSet(
 	manifestName string,
 	dns DomainNameService,
 	instanceGroup *bdm.InstanceGroup,
-	defaultDisks disk.BPMResourceDisks,
-	bpmDisks disk.BPMResourceDisks,
+	defaultDisks bdm.Disks,
+	bpmDisks bdm.Disks,
 ) (qstsv1a1.QuarksStatefulSet, error) {
 	defaultVolumeMounts := defaultDisks.VolumeMounts()
 	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks, instanceGroup.Properties.Quarks.RequiredService)
@@ -264,8 +267,8 @@ func (kc *BPMConverter) serviceToKubeServices(manifestName string, dns DomainNam
 
 	headlessServiceName := dns.HeadlessServiceName(instanceGroup.Name)
 	headlessServiceSelector := map[string]string{
-		bdm.LabelDeploymentName:    manifestName,
-		bdm.LabelInstanceGroupName: instanceGroup.Name,
+		bdv1.LabelDeploymentName:    manifestName,
+		bdv1.LabelInstanceGroupName: instanceGroup.Name,
 	}
 	if activePassiveModel {
 		headlessServiceSelector[qstsv1a1.LabelActivePod] = "active"
@@ -298,8 +301,8 @@ func (kc *BPMConverter) errandToQuarksJob(
 	manifestName string,
 	dns DomainNameService,
 	instanceGroup *bdm.InstanceGroup,
-	defaultDisks disk.BPMResourceDisks,
-	bpmDisks disk.BPMResourceDisks,
+	defaultDisks bdm.Disks,
+	bpmDisks bdm.Disks,
 ) (qjv1a1.QuarksJob, error) {
 	defaultVolumeMounts := defaultDisks.VolumeMounts()
 	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks, instanceGroup.Properties.Quarks.RequiredService)
@@ -398,10 +401,10 @@ func (kc *BPMConverter) generateServices(services []corev1.Service,
 			azIndex = 0
 		}
 		labels := map[string]string{
-			bdm.LabelDeploymentName:    manifestName,
-			bdm.LabelInstanceGroupName: instanceGroup.Name,
-			qstsv1a1.LabelAZIndex:      strconv.Itoa(azIndex),
-			qstsv1a1.LabelPodOrdinal:   strconv.Itoa(ordinal),
+			bdv1.LabelDeploymentName:    manifestName,
+			bdv1.LabelInstanceGroupName: instanceGroup.Name,
+			qstsv1a1.LabelAZIndex:       strconv.Itoa(azIndex),
+			qstsv1a1.LabelPodOrdinal:    strconv.Itoa(ordinal),
 		}
 		if includeActiveSelector {
 			labels[qstsv1a1.LabelActivePod] = "active"

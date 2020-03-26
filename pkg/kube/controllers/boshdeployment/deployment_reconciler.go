@@ -13,7 +13,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -44,7 +43,7 @@ type VariablesConverter interface {
 
 // WithOps interpolates BOSH manifests and operations files to create the WithOps manifest
 type WithOps interface {
-	Manifest(instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
+	Manifest(ctx context.Context, instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
 }
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
@@ -192,7 +191,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 // resolveManifest resolves manifest with ops manifest
 func (r *ReconcileBOSHDeployment) resolveManifest(ctx context.Context, instance *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
 	log.Debug(ctx, "Resolving manifest")
-	manifest, _, err := r.withops.Manifest(instance, instance.GetNamespace())
+	manifest, _, err := r.withops.Manifest(ctx, instance, instance.GetNamespace())
 	if err != nil {
 		return nil, log.WithEvent(instance, "WithOpsManifestError").Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
 	}
@@ -273,7 +272,7 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 		// list secrets and services from target deployment
 		secrets := &corev1.SecretList{}
 		err := r.client.List(r.ctx, secrets,
-			crc.InNamespace(instance.Namespace),
+			client.InNamespace(instance.Namespace),
 		)
 		if err != nil {
 			return linkInfos, errors.Wrapf(err, "listing secrets for link in deployment '%s':", instance.Name)
@@ -281,7 +280,7 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 
 		services := &corev1.ServiceList{}
 		err = r.client.List(r.ctx, services,
-			crc.InNamespace(instance.Namespace),
+			client.InNamespace(instance.Namespace),
 		)
 		if err != nil {
 			return linkInfos, errors.Wrapf(err, "listing services for link in deployment '%s':", instance.Name)
@@ -397,8 +396,8 @@ func (r *ReconcileBOSHDeployment) getServiceRecords(namespace string, name strin
 func (r *ReconcileBOSHDeployment) listPodsFromSelector(namespace string, selector map[string]string) ([]corev1.Pod, error) {
 	podList := &corev1.PodList{}
 	err := r.client.List(r.ctx, podList,
-		crc.InNamespace(namespace),
-		crc.MatchingLabels(selector),
+		client.InNamespace(namespace),
+		client.MatchingLabels(selector),
 	)
 	if err != nil {
 		return podList.Items, errors.Wrapf(err, "listing pods from selector '%+v':", selector)

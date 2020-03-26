@@ -12,7 +12,6 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
@@ -60,7 +59,7 @@ func NewContainerFactory(deploymentName string, instanceGroupName string, versio
 func (c *ContainerFactoryImpl) JobsToInitContainers(
 	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
-	bpmDisks disk.BPMResourceDisks,
+	bpmDisks bdm.Disks,
 	requiredService *string,
 ) ([]corev1.Container, error) {
 	copyingSpecsInitContainers := make([]corev1.Container, 0)
@@ -178,7 +177,7 @@ func createWaitContainer(requiredService *string) []corev1.Container {
 func (c *ContainerFactoryImpl) JobsToContainers(
 	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
-	bpmDisks disk.BPMResourceDisks,
+	bpmDisks bdm.Disks,
 ) ([]corev1.Container, error) {
 	var containers []corev1.Container
 
@@ -198,11 +197,13 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 		}
 
 		jobDisks := bpmDisks.Filter("job_name", job.Name)
+
 		var ephemeralMount *corev1.VolumeMount
 		ephemeralDisks := jobDisks.Filter("ephemeral", "true")
 		if len(ephemeralDisks) > 0 {
 			ephemeralMount = ephemeralDisks[0].VolumeMount
 		}
+
 		var persistentDiskMount *corev1.VolumeMount
 		persistentDiskDisks := jobDisks.Filter("persistent", "true")
 		if len(persistentDiskDisks) > 0 {

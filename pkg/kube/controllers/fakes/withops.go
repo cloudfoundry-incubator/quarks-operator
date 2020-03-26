@@ -2,6 +2,7 @@
 package fakes
 
 import (
+	"context"
 	"sync"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
@@ -10,11 +11,12 @@ import (
 )
 
 type FakeWithOps struct {
-	ManifestStub        func(*v1alpha1.BOSHDeployment, string) (*manifest.Manifest, []string, error)
+	ManifestStub        func(context.Context, *v1alpha1.BOSHDeployment, string) (*manifest.Manifest, []string, error)
 	manifestMutex       sync.RWMutex
 	manifestArgsForCall []struct {
-		arg1 *v1alpha1.BOSHDeployment
-		arg2 string
+		arg1 context.Context
+		arg2 *v1alpha1.BOSHDeployment
+		arg3 string
 	}
 	manifestReturns struct {
 		result1 *manifest.Manifest
@@ -30,17 +32,18 @@ type FakeWithOps struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeWithOps) Manifest(arg1 *v1alpha1.BOSHDeployment, arg2 string) (*manifest.Manifest, []string, error) {
+func (fake *FakeWithOps) Manifest(arg1 context.Context, arg2 *v1alpha1.BOSHDeployment, arg3 string) (*manifest.Manifest, []string, error) {
 	fake.manifestMutex.Lock()
 	ret, specificReturn := fake.manifestReturnsOnCall[len(fake.manifestArgsForCall)]
 	fake.manifestArgsForCall = append(fake.manifestArgsForCall, struct {
-		arg1 *v1alpha1.BOSHDeployment
-		arg2 string
-	}{arg1, arg2})
-	fake.recordInvocation("Manifest", []interface{}{arg1, arg2})
+		arg1 context.Context
+		arg2 *v1alpha1.BOSHDeployment
+		arg3 string
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("Manifest", []interface{}{arg1, arg2, arg3})
 	fake.manifestMutex.Unlock()
 	if fake.ManifestStub != nil {
-		return fake.ManifestStub(arg1, arg2)
+		return fake.ManifestStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2, ret.result3
@@ -55,17 +58,17 @@ func (fake *FakeWithOps) ManifestCallCount() int {
 	return len(fake.manifestArgsForCall)
 }
 
-func (fake *FakeWithOps) ManifestCalls(stub func(*v1alpha1.BOSHDeployment, string) (*manifest.Manifest, []string, error)) {
+func (fake *FakeWithOps) ManifestCalls(stub func(context.Context, *v1alpha1.BOSHDeployment, string) (*manifest.Manifest, []string, error)) {
 	fake.manifestMutex.Lock()
 	defer fake.manifestMutex.Unlock()
 	fake.ManifestStub = stub
 }
 
-func (fake *FakeWithOps) ManifestArgsForCall(i int) (*v1alpha1.BOSHDeployment, string) {
+func (fake *FakeWithOps) ManifestArgsForCall(i int) (context.Context, *v1alpha1.BOSHDeployment, string) {
 	fake.manifestMutex.RLock()
 	defer fake.manifestMutex.RUnlock()
 	argsForCall := fake.manifestArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeWithOps) ManifestReturns(result1 *manifest.Manifest, result2 []string, result3 error) {

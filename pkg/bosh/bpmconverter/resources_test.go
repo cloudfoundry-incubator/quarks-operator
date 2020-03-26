@@ -14,9 +14,9 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter/fakes"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/disk"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
@@ -42,7 +42,7 @@ var _ = Describe("BPM Converter", func() {
 			c := bpmconverter.NewConverter(
 				"foo",
 				volumeFactory,
-				func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
+				func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider manifest.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
 					return containerFactory
 				})
 			resources, err := c.Resources(deploymentName, dns, "1", instanceGroup, m, bpmConfigs, "1")
@@ -78,7 +78,7 @@ var _ = Describe("BPM Converter", func() {
 
 			Context("when the lifecycle is set to errand", func() {
 				It("handles an error when generating bpm disks", func() {
-					volumeFactory.GenerateBPMDisksReturns(disk.BPMResourceDisks{}, errors.New("fake-bpm-disk-error"))
+					volumeFactory.GenerateBPMDisksReturns(bdm.Disks{}, errors.New("fake-bpm-disk-error"))
 					_, err := act(bpmConfigs[0], m.InstanceGroups[0])
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("Generate of BPM disks failed for manifest name %s, instance group %s.", deploymentName, m.InstanceGroups[0].Name))
@@ -106,9 +106,9 @@ var _ = Describe("BPM Converter", func() {
 					// Test labels and annotations in the quarks job
 					qJob := resources.Errands[0]
 					Expect(qJob.Name).To(Equal("fake-deployment-redis-slave"))
-					Expect(qJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, deploymentName))
-					Expect(qJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, m.InstanceGroups[0].Name))
-					Expect(qJob.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentVersion, "1"))
+					Expect(qJob.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
+					Expect(qJob.GetLabels()).To(HaveKeyWithValue(bdv1.LabelInstanceGroupName, m.InstanceGroups[0].Name))
+					Expect(qJob.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentVersion, "1"))
 					Expect(qJob.GetLabels()).To(HaveKeyWithValue("custom-label", "foo"))
 					Expect(qJob.GetAnnotations()).To(HaveKeyWithValue("custom-annotation", "bar"))
 
@@ -220,11 +220,11 @@ var _ = Describe("BPM Converter", func() {
 					// Test services for the quarks statefulSet
 					service0 := resources.Services[0]
 					Expect(service0.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelDeploymentName:    deploymentName,
-						manifest.LabelInstanceGroupName: stS.Name,
-						qstsv1a1.LabelAZIndex:           "0",
-						qstsv1a1.LabelPodOrdinal:        "0",
-						qstsv1a1.LabelActivePod:         "active",
+						bdv1.LabelDeploymentName:    deploymentName,
+						bdv1.LabelInstanceGroupName: stS.Name,
+						qstsv1a1.LabelAZIndex:       "0",
+						qstsv1a1.LabelPodOrdinal:    "0",
+						qstsv1a1.LabelActivePod:     "active",
 					}))
 				})
 
@@ -246,9 +246,9 @@ var _ = Describe("BPM Converter", func() {
 					// Test labels and annotation in the quarks statefulSet
 					qSts := resources.InstanceGroups[0]
 					Expect(qSts.Name).To(Equal(fmt.Sprintf("%s-%s", deploymentName, "diego-cell")))
-					Expect(qSts.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, deploymentName))
-					Expect(qSts.GetLabels()).To(HaveKeyWithValue(manifest.LabelInstanceGroupName, "diego-cell"))
-					Expect(qSts.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentVersion, "1"))
+					Expect(qSts.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
+					Expect(qSts.GetLabels()).To(HaveKeyWithValue(bdv1.LabelInstanceGroupName, "diego-cell"))
+					Expect(qSts.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentVersion, "1"))
 
 					// Test ESts spec
 					Expect(qSts.Spec.Zones).To(Equal(m.InstanceGroups[1].AZs))
@@ -260,10 +260,10 @@ var _ = Describe("BPM Converter", func() {
 					service0 := resources.Services[0]
 					Expect(service0.Name).To(Equal(fmt.Sprintf("%s-%s-z%d-0", deploymentName, stS.Name, 0)))
 					Expect(service0.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelDeploymentName:    deploymentName,
-						manifest.LabelInstanceGroupName: stS.Name,
-						qstsv1a1.LabelAZIndex:           "0",
-						qstsv1a1.LabelPodOrdinal:        "0",
+						bdv1.LabelDeploymentName:    deploymentName,
+						bdv1.LabelInstanceGroupName: stS.Name,
+						qstsv1a1.LabelAZIndex:       "0",
+						qstsv1a1.LabelPodOrdinal:    "0",
 					}))
 					Expect(service0.Spec.Ports).To(Equal([]corev1.ServicePort{
 						{
@@ -276,10 +276,10 @@ var _ = Describe("BPM Converter", func() {
 					service1 := resources.Services[1]
 					Expect(service1.Name).To(Equal(fmt.Sprintf("%s-%s-z%d-1", deploymentName, stS.Name, 0)))
 					Expect(service1.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelDeploymentName:    deploymentName,
-						manifest.LabelInstanceGroupName: stS.Name,
-						qstsv1a1.LabelAZIndex:           "0",
-						qstsv1a1.LabelPodOrdinal:        "1",
+						bdv1.LabelDeploymentName:    deploymentName,
+						bdv1.LabelInstanceGroupName: stS.Name,
+						qstsv1a1.LabelAZIndex:       "0",
+						qstsv1a1.LabelPodOrdinal:    "1",
 					}))
 					Expect(service1.Spec.Ports).To(Equal([]corev1.ServicePort{
 						{
@@ -292,10 +292,10 @@ var _ = Describe("BPM Converter", func() {
 					service2 := resources.Services[2]
 					Expect(service2.Name).To(Equal(fmt.Sprintf("%s-%s-z%d-0", deploymentName, stS.Name, 1)))
 					Expect(service2.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelDeploymentName:    deploymentName,
-						manifest.LabelInstanceGroupName: stS.Name,
-						qstsv1a1.LabelAZIndex:           "1",
-						qstsv1a1.LabelPodOrdinal:        "0",
+						bdv1.LabelDeploymentName:    deploymentName,
+						bdv1.LabelInstanceGroupName: stS.Name,
+						qstsv1a1.LabelAZIndex:       "1",
+						qstsv1a1.LabelPodOrdinal:    "0",
 					}))
 					Expect(service2.Spec.Ports).To(Equal([]corev1.ServicePort{
 						{
@@ -308,10 +308,10 @@ var _ = Describe("BPM Converter", func() {
 					service3 := resources.Services[3]
 					Expect(service3.Name).To(Equal(fmt.Sprintf("%s-%s-z%d-1", deploymentName, stS.Name, 1)))
 					Expect(service3.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelDeploymentName:    deploymentName,
-						manifest.LabelInstanceGroupName: stS.Name,
-						qstsv1a1.LabelAZIndex:           "1",
-						qstsv1a1.LabelPodOrdinal:        "1",
+						bdv1.LabelDeploymentName:    deploymentName,
+						bdv1.LabelInstanceGroupName: stS.Name,
+						qstsv1a1.LabelAZIndex:       "1",
+						qstsv1a1.LabelPodOrdinal:    "1",
 					}))
 					Expect(service3.Spec.Ports).To(Equal([]corev1.ServicePort{
 						{
@@ -324,8 +324,8 @@ var _ = Describe("BPM Converter", func() {
 					headlessService := resources.Services[4]
 					Expect(headlessService.Name).To(Equal(fmt.Sprintf("%s-%s", deploymentName, stS.Name)))
 					Expect(headlessService.Spec.Selector).To(Equal(map[string]string{
-						manifest.LabelDeploymentName:    deploymentName,
-						manifest.LabelInstanceGroupName: stS.Name,
+						bdv1.LabelDeploymentName:    deploymentName,
+						bdv1.LabelInstanceGroupName: stS.Name,
 					}))
 					Expect(headlessService.Spec.Ports).To(Equal([]corev1.ServicePort{
 						{
@@ -486,7 +486,7 @@ var _ = Describe("BPM Converter", func() {
 			})
 
 			It("converts the disks and volume declarations when instance group has persistent disk declaration", func() {
-				volumeFactory.GenerateBPMDisksReturns(disk.BPMResourceDisks{
+				volumeFactory.GenerateBPMDisksReturns(bdm.Disks{
 					{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaim{
 							ObjectMeta: metav1.ObjectMeta{
@@ -571,6 +571,49 @@ var _ = Describe("BPM Converter", func() {
 					// Test shared volume setup
 					Expect(containers[0].VolumeMounts[0].Name).To(Equal("fake-volume-name"))
 					Expect(containers[0].VolumeMounts[0].MountPath).To(Equal("fake-mount-path"))
+				})
+
+				It("includes extra disk declarations from the instance group agent settings", func() {
+					m, err = env.DefaultBOSHManifest()
+					conf, err := bpm.NewConfig([]byte(boshreleases.DefaultBPMConfig))
+					Expect(err).ShouldNot(HaveOccurred())
+
+					bpmConfigs := []bpm.Configs{
+						{"redis-server": conf},
+						{"cflinuxfs3-rootfs-setup": conf},
+					}
+
+					c := bpmconverter.NewConverter(
+						"foo",
+						bpmconverter.NewVolumeFactory(),
+						func(manifestName string, instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider manifest.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
+							return bpmconverter.NewContainerFactory(
+								deploymentName,
+								instanceGroupName,
+								"1",
+								true,
+								releaseImageProvider,
+								bpmConfigs)
+						})
+					resources, err := c.Resources(deploymentName, dns, "1", m.InstanceGroups[1], m, bpmConfigs[1], "1")
+
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(resources.InstanceGroups).To(HaveLen(1))
+
+					volumes := resources.InstanceGroups[0].Spec.Template.Spec.Template.Spec.Volumes
+					containers := resources.InstanceGroups[0].Spec.Template.Spec.Template.Spec.Containers
+
+					// Test shared volume setup
+					Expect(len(volumes)).To(Equal(7))
+					Expect(volumes).To(ContainElement(
+						corev1.Volume{
+							Name:         "extravolume",
+							VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+						},
+					))
+					Expect(containers[0].VolumeMounts).To(ContainElement(
+						corev1.VolumeMount{Name: "extravolume", MountPath: "/var/vcap/data/rep"},
+					))
 				})
 			})
 		})

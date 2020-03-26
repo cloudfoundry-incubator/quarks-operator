@@ -7,6 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	bpm "code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 var _ = Describe("BPM Config", func() {
@@ -55,7 +56,7 @@ var _ = Describe("BPM Config", func() {
 			Expect(serverProcess.Args).To(Equal([]string{"--port", "2424"}))
 			Expect(serverProcess.Env).To(Equal(map[string]string{"FOO": "BAR"}))
 			Expect(serverProcess.Limits).To(Equal(bpm.Limits{Processes: 10, Memory: "", OpenFiles: 0}))
-			Expect(serverProcess.EphemeralDisk).To(BeTrue())
+			Expect(serverProcess.EphemeralDisk).To(Equal(pointers.Bool(true)))
 			Expect(serverProcess.AdditionalVolumes).To(Equal([]bpm.Volume{bpm.Volume{Path: "/var/vcap/data/sockets", Writable: true}}))
 			Expect(serverProcess.Capabilities).To(Equal([]string{"NET_BIND_SERVICE"}))
 

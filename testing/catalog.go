@@ -196,6 +196,7 @@ func (c *Catalog) BOSHManifestWithActivePassiveProbes() (*manifest.Manifest, err
 	return m, nil
 }
 
+// BPMReleaseWithAffinityConfigMap returns a manifest with affinity configuration
 func (c *Catalog) BPMReleaseWithAffinityConfigMap(name string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
@@ -277,8 +278,8 @@ func (c *Catalog) QuarksLinkSecret(deploymentName, linkType, linkName string, va
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Labels: map[string]string{
-				manifest.LabelDeploymentName: deploymentName,
-				qjv1.LabelEntanglementKey:    name,
+				bdv1.LabelDeploymentName:  deploymentName,
+				qjv1.LabelEntanglementKey: name,
 			},
 		},
 		Data: value,
@@ -1030,9 +1031,6 @@ func (c *Catalog) NatsConfigMap(deployName string) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "nats",
-			Labels: map[string]string{
-				bdv1.LabelDeploymentName: deployName,
-			},
 		},
 		Data: map[string]string{
 			"gnatsd.conf": `listen: 0.0.0.0:4222

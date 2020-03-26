@@ -38,9 +38,6 @@ interpolated manifest to STDOUT
 			}
 		}()
 
-		log = cmd.Logger()
-		defer log.Sync()
-
 		boshManifestPath, err := boshManifestFlagValidation()
 		if err != nil {
 			return errors.Wrap(err, vInterpolateFailedMessage)
@@ -72,7 +69,7 @@ interpolated manifest to STDOUT
 			return errors.Wrapf(err, "%s Reading file specified in the bosh-manifest-path flag failed", vInterpolateFailedMessage)
 		}
 
-		return manifest.InterpolateVariables(log, boshManifestBytes, variablesDir, outputFilePath)
+		return manifest.InterpolateVariables(boshManifestBytes, variablesDir, outputFilePath)
 	},
 }
 

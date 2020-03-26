@@ -252,8 +252,8 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, bdpl *bdv1.BOSH
 	log.Debugf(ctx, "Creating quarksJobs and quarksStatefulSets for instance group '%s'", instanceGroupName)
 
 	for _, qJob := range resources.Errands {
-		if qJob.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
-			log.Debugf(ctx, "Skipping apply QuarksJob '%s' for instance group '%s' because of mismatching '%s' label", qJob.Name, bdpl.Name, bdm.LabelInstanceGroupName)
+		if qJob.Labels[bdv1.LabelInstanceGroupName] != instanceGroupName {
+			log.Debugf(ctx, "Skipping apply QuarksJob '%s' for instance group '%s' because of mismatching '%s' label", qJob.Name, bdpl.Name, bdv1.LabelInstanceGroupName)
 			continue
 		}
 
@@ -270,8 +270,8 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, bdpl *bdv1.BOSH
 	}
 
 	for _, svc := range resources.Services {
-		if svc.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
-			log.Debugf(ctx, "Skipping apply Service '%s' for instance group '%s' because of mismatching '%s' label", svc.Name, bdpl.Name, bdm.LabelInstanceGroupName)
+		if svc.Labels[bdv1.LabelInstanceGroupName] != instanceGroupName {
+			log.Debugf(ctx, "Skipping apply Service '%s' for instance group '%s' because of mismatching '%s' label", svc.Name, bdpl.Name, bdv1.LabelInstanceGroupName)
 			continue
 		}
 
@@ -288,8 +288,8 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, bdpl *bdv1.BOSH
 	}
 
 	for _, qSts := range resources.InstanceGroups {
-		if qSts.Labels[bdm.LabelInstanceGroupName] != instanceGroupName {
-			log.Debugf(ctx, "Skipping apply QuarksStatefulSet '%s' for instance group '%s' because of mismatching '%s' label", qSts.Name, bdpl.Name, bdm.LabelInstanceGroupName)
+		if qSts.Labels[bdv1.LabelInstanceGroupName] != instanceGroupName {
+			log.Debugf(ctx, "Skipping apply QuarksStatefulSet '%s' for instance group '%s' because of mismatching '%s' label", qSts.Name, bdpl.Name, bdv1.LabelInstanceGroupName)
 			continue
 		}
 
