@@ -16,6 +16,7 @@ import (
 	. "code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter/fakes"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 var _ = Describe("ContainerFactory", func() {
@@ -175,8 +176,8 @@ var _ = Describe("ContainerFactory", func() {
 					Processes: []bpm.Process{
 						bpm.Process{
 							Name:           "fake-process",
-							EphemeralDisk:  true,
-							PersistentDisk: true,
+							EphemeralDisk:  pointers.Bool(true),
+							PersistentDisk: pointers.Bool(true),
 							AdditionalVolumes: []bpm.Volume{
 								{
 									Path:     "/var/vcap/data/shared/foo",
@@ -208,8 +209,8 @@ var _ = Describe("ContainerFactory", func() {
 							Name:           "fake-process",
 							Capabilities:   []string{"CHOWN", "AUDIT_CONTROL"},
 							Env:            map[string]string{"a": "1", "b": "2"},
-							EphemeralDisk:  true,
-							PersistentDisk: true,
+							EphemeralDisk:  pointers.Bool(true),
+							PersistentDisk: pointers.Bool(true),
 							Unsafe: bpm.Unsafe{
 								UnrestrictedVolumes: []bpm.Volume{
 									{
@@ -657,8 +658,8 @@ var _ = Describe("ContainerFactory", func() {
 						Processes: []bpm.Process{
 							bpm.Process{Name: "fake-process",
 								Hooks:          bpm.Hooks{PreStart: "fake-cmd"},
-								EphemeralDisk:  true,
-								PersistentDisk: true,
+								EphemeralDisk:  pointers.Bool(true),
+								PersistentDisk: pointers.Bool(true),
 								AdditionalVolumes: []bpm.Volume{
 									{
 										Path:     "/var/vcap/data/shared",

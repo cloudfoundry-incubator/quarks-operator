@@ -109,7 +109,7 @@ var _ = Describe("VolumeFactory", func() {
 				"fake-job": bpm.Config{
 					Processes: []bpm.Process{
 						{
-							EphemeralDisk: true,
+							EphemeralDisk: pointers.Bool(true),
 						},
 					},
 				},
@@ -137,7 +137,7 @@ var _ = Describe("VolumeFactory", func() {
 				"fake-job": bpm.Config{
 					Processes: []bpm.Process{
 						{
-							EphemeralDisk: true,
+							EphemeralDisk: pointers.Bool(true),
 						},
 					},
 				},
@@ -206,7 +206,7 @@ var _ = Describe("VolumeFactory", func() {
 				"fake-job": bpm.Config{
 					Processes: []bpm.Process{
 						{
-							PersistentDisk: true,
+							PersistentDisk: pointers.Bool(true),
 						},
 					},
 				},
@@ -418,7 +418,7 @@ var _ = Describe("VolumeFactory", func() {
 				"fake-job": bpm.Config{
 					Processes: []bpm.Process{
 						{
-							PersistentDisk: true,
+							PersistentDisk: pointers.Bool(true),
 						},
 					},
 				},

@@ -46,8 +46,8 @@ type Process struct {
 	Capabilities      []string            `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
 	Limits            Limits              `yaml:"limits,omitempty" json:"limits,omitempty"`
 	Requests          corev1.ResourceList `json:"requests,omitempty" protobuf:"bytes,2,rep,name=requests,casttype=ResourceList,castkey=ResourceName"`
-	EphemeralDisk     bool                `yaml:"ephemeral_disk,omitempty" json:"ephemeral_disk,omitempty"`
-	PersistentDisk    bool                `yaml:"persistent_disk,omitempty" json:"persistent_disk,omitempty"`
+	EphemeralDisk     *bool               `yaml:"ephemeral_disk,omitempty" json:"ephemeral_disk,omitempty"`
+	PersistentDisk    *bool               `yaml:"persistent_disk,omitempty" json:"persistent_disk,omitempty"`
 	AdditionalVolumes []Volume            `yaml:"additional_volumes,omitempty" json:"additional_volumes,omitempty"`
 	Unsafe            Unsafe              `yaml:"unsafe,omitempty" json:"unsafe,omitempty"`
 }
