@@ -17,7 +17,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/go-test/deep v1.0.5
-	github.com/golang/mock v1.4.0
+	github.com/golang/mock v1.4.3
 	github.com/gonvenience/bunt v1.1.1
 	github.com/google/certificate-transparency-go v1.0.21 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
