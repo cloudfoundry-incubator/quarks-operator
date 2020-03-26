@@ -522,7 +522,7 @@ func bpmProcessContainer(
 	if workdir == "" {
 		workdir = filepath.Join(VolumeJobsDirMountPath, jobName)
 	}
-	command, args := generateBPMCommand(&process, postStart)
+	command, args := generateBPMCommand(jobName, &process, postStart)
 	limits := corev1.ResourceList{}
 	if process.Limits.Memory != "" {
 		quantity, err := resource.ParseQuantity(process.Limits.Memory)
@@ -638,6 +638,7 @@ func flattenContainers(containers ...interface{}) []corev1.Container {
 
 // generateArgs generates the bpm container arguments.
 func generateBPMCommand(
+	jobName string,
 	process *bpm.Process,
 	postStart postStart,
 ) ([]string, []string) {
@@ -652,6 +653,8 @@ func generateBPMCommand(
 			}
 		}
 	}
+	args = append(args, "--job-name", jobName)
+	args = append(args, "--process-name", process.Name)
 	args = append(args, "--")
 	args = append(args, process.Executable)
 	args = append(args, process.Args...)

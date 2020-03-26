@@ -477,6 +477,10 @@ var _ = Describe("ContainerFactory", func() {
 					"-c",
 					"--post-start-condition-arg",
 					"fake_health_check",
+					"--job-name",
+					"fake-job",
+					"--process-name",
+					"fake-process",
 					"--",
 					""))
 			})
