@@ -14,6 +14,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/cf-operator/testing"
 	"code.cloudfoundry.org/cf-operator/testing/boshmanifest"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 var (
@@ -1153,8 +1154,8 @@ var _ = Describe("Manifest", func() {
 
 				Expect(proc.Name).To(Equal("redis"))
 				Expect(proc.Executable).To(Equal("/another/command"))
-				Expect(proc.EphemeralDisk).To(BeTrue())
-				Expect(proc.PersistentDisk).To(BeTrue())
+				Expect(proc.EphemeralDisk).To(Equal(pointers.Bool(true)))
+				Expect(proc.PersistentDisk).To(Equal(pointers.Bool(true)))
 
 				Expect(proc.Hooks.PreStart).To(Equal("/var/vcap/jobs/pxc-mysql/bin/cleanup-socket"))
 				Expect(proc.Env["PATH"]).To(Equal("/usr/bin:/bin:/var/vcap/packages/percona-xtrabackup/bin:/var/vcap/packages/pxc/bin:/var/vcap/packages/socat/bin"))
