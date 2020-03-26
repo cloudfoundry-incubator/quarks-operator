@@ -147,10 +147,20 @@ func (f *VolumeFactoryImpl) GenerateBPMDisks(manifestName string, instanceGroup 
 		hasEphemeralDisk := false
 		hasPersistentDisk := false
 		for _, process := range bpmConfig.Processes {
-			if !hasEphemeralDisk && process.EphemeralDisk {
+			processEphemeralDisk := false
+			if process.EphemeralDisk != nil {
+				processEphemeralDisk = *process.EphemeralDisk
+			}
+
+			processPersistentDisk := false
+			if process.PersistentDisk != nil {
+				processPersistentDisk = *process.PersistentDisk
+			}
+
+			if !hasEphemeralDisk && processEphemeralDisk {
 				hasEphemeralDisk = true
 			}
-			if !hasPersistentDisk && process.PersistentDisk {
+			if !hasPersistentDisk && processPersistentDisk {
 				hasPersistentDisk = true
 			}
 
