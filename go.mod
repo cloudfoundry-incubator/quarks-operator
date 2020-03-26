@@ -22,7 +22,7 @@ require (
 	github.com/google/certificate-transparency-go v1.0.21 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hpcloud/tail v1.0.0
-	github.com/imdario/mergo v0.3.8
+	github.com/imdario/mergo v0.3.9
 	github.com/jmoiron/sqlx v1.2.0 // indirect
 	github.com/kisielk/sqlstruct v0.0.0-20150923205031-648daed35d49 // indirect
 	github.com/lib/pq v1.2.0 // indirect
