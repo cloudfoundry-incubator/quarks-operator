@@ -21,12 +21,6 @@ import (
 )
 
 var _ = Describe("Run", func() {
-	cwd, _ := os.Getwd()
-	socketToWatch := cwd + "/containerrun.sock"
-	defer func() {
-		_ = os.RemoveAll (socketToWatch)
-	}()
-
 	commandLine := []string{"bash", "-c", "echo foo"}
 	command := Command{
 		Name: commandLine[0],
@@ -90,7 +84,7 @@ var _ = Describe("Run", func() {
 	})
 
 	It("fails when args is empty", func() {
-		err := Run(nil, nil, nil, nil, stdio, []string{}, "", []string{}, "", []string{}, socketToWatch)
+		err := Run(nil, nil, nil, nil, stdio, []string{}, "job", "process", "", []string{}, "", []string{})
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("failed to run container: a command is required"))
 	})
@@ -101,7 +95,7 @@ var _ = Describe("Run", func() {
 			Run(command, stdio).
 			Return(nil, fmt.Errorf(`¯\_(ツ)_/¯`)).
 			Times(1)
-		err := Run(runner, nil, nil, nil, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
+		err := Run(runner, nil, nil, nil, stdio, commandLine, "job", "process", "", []string{}, "", []string{})
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal(`failed to run container: ¯\_(ツ)_/¯`))
 	})
@@ -121,7 +115,7 @@ var _ = Describe("Run", func() {
 			Run(command, stdio).
 			Return(process, nil).
 			Times(1)
-		err := Run(runner, nil, nil, spinner, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
+		err := Run(runner, nil, nil, spinner, stdio, commandLine, "job", "process", "", []string{}, "", []string{})
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal(`failed to run container: ¯\_(ツ)_/¯`))
 	})
@@ -141,7 +135,7 @@ var _ = Describe("Run", func() {
 			Run(command, stdio).
 			Return(process, nil).
 			Times(1)
-		err := Run(runner, nil, nil, spinner, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
+		err := Run(runner, nil, nil, spinner, stdio, commandLine, "job", "process", "", []string{}, "", []string{})
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -165,7 +159,7 @@ var _ = Describe("Run", func() {
 			Check(postStart.Name).
 			Return(false).
 			Times(1)
-		err := Run(runner, nil, checker, spinner, stdio, commandLine, postStart.Name, postStart.Arg, "", []string{}, socketToWatch)
+		err := Run(runner, nil, checker, spinner, stdio, commandLine, "job", "process", postStart.Name, postStart.Arg, "", []string{})
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -200,7 +194,7 @@ var _ = Describe("Run", func() {
 				Return(true).
 				Times(1)
 			conditionRunner := NewMockRunner(ctrl)
-			err := Run(runner, conditionRunner, checker, spinner, stdio, commandLine, postStart.Name, postStart.Arg, "", []string{}, socketToWatch)
+			err := Run(runner, conditionRunner, checker, spinner, stdio, commandLine, "job", "process", postStart.Name, postStart.Arg, "", []string{})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Errorf("failed to run container: %v", expectedErr).Error()))
 		})
@@ -244,7 +238,7 @@ var _ = Describe("Run", func() {
 				Return(true).
 				Times(1)
 			conditionRunner := NewMockRunner(ctrl)
-			err := Run(runner, conditionRunner, checker, spinner, stdio, commandLine, postStart.Name, postStart.Arg, "", []string{}, socketToWatch)
+			err := Run(runner, conditionRunner, checker, spinner, stdio, commandLine, "job", "process", postStart.Name, postStart.Arg, "", []string{})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Errorf("failed to run container: %v", expectedErr).Error()))
 		})
@@ -293,7 +287,7 @@ var _ = Describe("Run", func() {
 				Return(true).
 				Times(1)
 			conditionRunner := NewMockRunner(ctrl)
-			err := Run(runner, conditionRunner, checker, spinner, stdio, commandLine, postStart.Name, postStart.Arg, "", []string{}, socketToWatch)
+			err := Run(runner, conditionRunner, checker, spinner, stdio, commandLine, "job", "process", postStart.Name, postStart.Arg, "", []string{})
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -327,7 +321,7 @@ var _ = Describe("Run", func() {
 				RunContext(gomock.Any(), postStartCondition, gomock.Any()).
 				Return(nil, expectedErr).
 				Times(1)
-			err := Run(runner, conditionRunner, checker, spinner, stdio, commandLine, postStart.Name, postStart.Arg, postStartCondition.Name, postStartCondition.Arg, socketToWatch)
+			err := Run(runner, conditionRunner, checker, spinner, stdio, commandLine, "job", "process", postStart.Name, postStart.Arg, postStartCondition.Name, postStartCondition.Arg)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(fmt.Errorf("failed to run container: %v", expectedErr).Error()))
 		})
@@ -384,7 +378,7 @@ var _ = Describe("Run", func() {
 				}).
 				Return(nil, nil).
 				Times(1)
-			err := Run(runner, conditionRunner, checker, spinner, stdio, commandLine, postStart.Name, postStart.Arg, postStartCondition.Name, postStartCondition.Arg, socketToWatch)
+			err := Run(runner, conditionRunner, checker, spinner, stdio, commandLine, "job", "process", postStart.Name, postStart.Arg, postStartCondition.Name, postStartCondition.Arg)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -433,16 +427,22 @@ var _ = Describe("Run", func() {
 				ListenPacket(gomock.Any(), gomock.Any()).
 				Return(bogus, nil).
 				AnyTimes()
-			err := Run(runner, nil, nil, emit_bogus, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
+			err := Run(runner, nil, nil, emit_bogus, stdio, commandLine, "job", "process", "", []string{}, "", []string{})
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("fails for packet read errors", func() {
+			// Orchestrate sequencing, i.e. delay
+			// generation of the error until the mailn
+			// process "runs".
+			trigger := make(chan struct {}, 1)
+
 			process := NewMockProcess(ctrl)
 			process.EXPECT().
 				Wait().
-				// Delay to give the error time for reception and processing.
-				Do(func() { time.Sleep(time.Second) }).
+				// Delay to give the error time for
+				// reception and processing.
+				Do(func() { trigger <- struct{}{} ; time.Sleep(time.Second) }).
 				Return(nil).
 				Times(1)
 			process.EXPECT().
@@ -473,9 +473,11 @@ var _ = Describe("Run", func() {
 			emit_error := NewMockPacketListener(ctrl)
 			emit_error.EXPECT().
 				ListenPacket(gomock.Any(), gomock.Any()).
+				// Wait for main command to be "up".
+				Do(func(net, addr string) { <- trigger }).
 				Return(packet_error, nil).
 				AnyTimes()
-			err := Run(runner, nil, nil, emit_error, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
+			err := Run(runner, nil, nil, emit_error, stdio, commandLine, "job", "process", "", []string{}, "", []string{})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal("failed to read command: bogus"))
 		})
@@ -539,7 +541,7 @@ var _ = Describe("Run", func() {
 				Do(func(net, addr string) { <- trigger }).
 				Return(packet_start, nil).
 				AnyTimes()
-			err := Run(runner, nil, nil, emit_start, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
+			err := Run(runner, nil, nil, emit_start, stdio, commandLine, "job", "process", "", []string{}, "", []string{})
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -638,7 +640,7 @@ var _ = Describe("Run", func() {
 					Return(packet_start, nil).
 					AnyTimes(),
 			)
-			err := Run(runner, nil, nil, emitter, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
+			err := Run(runner, nil, nil, emitter, stdio, commandLine, "job", "process", "", []string{}, "", []string{})
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -745,7 +747,7 @@ var _ = Describe("Run", func() {
 					Return(packet_start, nil).
 					AnyTimes(),
 			)
-			err := Run(runner, nil, nil, emitter, stdio, commandLine, "", []string{}, "", []string{}, socketToWatch)
+			err := Run(runner, nil, nil, emitter, stdio, commandLine, "job", "process", "", []string{}, "", []string{})
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})

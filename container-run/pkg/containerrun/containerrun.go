@@ -37,11 +37,12 @@ type CmdRun func(
 	listener PacketListener,
 	stdio Stdio,
 	args []string,
+	jobName string,
+	processName string,
 	postStartCommandName string,
 	postStartCommandArgs []string,
 	postStartConditionCommandName string,
 	postStartConditionCommandArgs []string,
-	socketToWatch string,
 ) error
 
 // Run implements the logic for the container-run CLI command.
@@ -52,11 +53,12 @@ func Run(
 	listener PacketListener,
 	stdio Stdio,
 	args []string,
+	jobName string,
+	processName string,
 	postStartCommandName string,
 	postStartCommandArgs []string,
 	postStartConditionCommandName string,
 	postStartConditionCommandArgs []string,
-	socketToWatch string,
 ) error {
 	if len(args) == 0 {
 		err := fmt.Errorf("a command is required")
@@ -106,7 +108,7 @@ func Run(
 	// running, and false otherwise.
 	active := true
 
-	if err = watchForCommands (listener, socketToWatch, errors, commands); err != nil {
+	if err = watchForCommands (listener, jobName, processName, errors, commands); err != nil {
 		return err
 	}
 
@@ -171,10 +173,12 @@ func Run(
 
 func watchForCommands(
 	listener PacketListener,
-	sockAddr string,
+	jobName, processName string,
 	errors chan error,
 	commands chan processCommand,
 ) error {
+	sockAddr := fmt.Sprintf ("/var/vcap/data/%s/%s_containerrun.sock", jobName, processName)
+
 	if err := os.RemoveAll(sockAddr); err != nil {
 		return fmt.Errorf("failed to watch for commands: %v", err)
 	}
@@ -186,7 +190,9 @@ func watchForCommands(
 			if err != nil {
 				errors <- fmt.Errorf("failed to watch for commands: %v", err)
 			}
-			handlePacket(packet, errors, commands)
+			if packet != nil {
+				handlePacket(packet, errors, commands)
+			}
 		}
 	}()
 

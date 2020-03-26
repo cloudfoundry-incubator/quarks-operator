@@ -19,10 +19,10 @@ application of the operator serve the same purpose.
 
 The process control features of `containerrun` are accessible through
 an unix domain __datagram__ socket at location
-`/var/vcap/data/containerrun.sock` in the container. Due to this
-placement the feature is not accessible from outside a cluster. An
-operator (or script written by such) has to log into the relevant
-container(s) to use the feature.
+`/var/vcap/data/`__JOB__`/`__PROCESS__`_containerrun.sock` in the
+container. Due to this placement the feature is not accessible from
+outside a cluster. An operator (or script written by such) has to log
+into the relevant container(s) to use the feature.
 
   - Suspending the monitored child processes is done by sending the
     command `STOP` to this socket.
@@ -41,5 +41,19 @@ type should work.
 
 Examples using `netcat`:
 
-  - `echo START | nc --unixsock --udp /var/vcap/data/containerrun.sock`
-  - `echo STOP  | nc --unixsock --udp /var/vcap/data/containerrun.sock`
+  - `echo START | nc --unixsock --udp /var/vcap/data/JOB/PROCESS_containerrun.sock`
+  - `echo STOP  | nc --unixsock --udp /var/vcap/data/JOB/PROCESS_containerrun.sock`
+
+Note that all of these sockets are placed in the volumne shared by all
+container of all jobs of the instance group. It is enough to ssh into
+one of the containers to be able to send commands to all sockets and
+thus jobs.
+
+Example:
+
+```
+for sock in $(find /var/vcap/data -name '*_containerrun.sock')
+do
+    echo STOP | nc --unixsock --udp $sock
+done
+```

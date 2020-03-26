@@ -19,8 +19,9 @@ func NewContainerRunCmd(
 	commandChecker pkg.Checker,
 	listener pkg.PacketListener,
 	stdio pkg.Stdio,
-	socketToWatch string,
 ) *cobra.Command {
+	var jobName string
+	var processName string
 	var postStartCommandName string
 	var postStartCommandArgs []string
 	var postStartConditionCommandName string
@@ -39,15 +40,18 @@ func NewContainerRunCmd(
 				listener,
 				stdio,
 				args,
+				jobName,
+				processName,
 				postStartCommandName,
 				postStartCommandArgs,
 				postStartConditionCommandName,
 				postStartConditionCommandArgs,
-				socketToWatch,
 			)
 		},
 	}
 
+	cmd.Flags().StringVar(&jobName, "job-name", "", "the controlling job")
+	cmd.Flags().StringVar(&processName, "process-name", "", "the main process")
 	cmd.Flags().StringVar(&postStartCommandName, "post-start-name", "", "the post-start command name")
 	cmd.Flags().StringArrayVar(&postStartCommandArgs, "post-start-arg", []string{}, "a post-start command arg")
 	cmd.Flags().StringVar(&postStartConditionCommandName, "post-start-condition-name", "", "the post-start condition command name")
@@ -66,6 +70,5 @@ func NewDefaultContainerRunCmd() *cobra.Command {
 		Out: os.Stdout,
 		Err: os.Stderr,
 	}
-	socketToWatch := "/var/vcap/data/containerrun.sock"
-	return NewContainerRunCmd(pkg.Run, runner, conditionRunner, commandChecker, listener, stdio, socketToWatch)
+	return NewContainerRunCmd(pkg.Run, runner, conditionRunner, commandChecker, listener, stdio)
 }
