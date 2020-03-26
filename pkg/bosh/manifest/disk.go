@@ -1,20 +1,23 @@
-package bpmconverter
+package manifest
 
 import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// BPMResourceDisk represents a converted BPM disk to k8s resources.
-type BPMResourceDisk struct {
-	PersistentVolumeClaim *corev1.PersistentVolumeClaim
-	Volume                *corev1.Volume
-	VolumeMount           *corev1.VolumeMount
+// Disk represents a converted BPM disk to k8s resources.
+type Disk struct {
+	PersistentVolumeClaim *corev1.PersistentVolumeClaim `json:"pvc,omitempty"`
+	Volume                *corev1.Volume                `json:"volume,omitempty"`
+	VolumeMount           *corev1.VolumeMount           `json:"volumeMount,omitempty"`
 
-	Filters map[string]string
+	Filters map[string]string `json:"filters,omitempty"`
 }
 
-// matchesFilter returns true if the disk matches the filter with one of its Filters.
-func (disk *BPMResourceDisk) matchesFilter(filterKey, filterValue string) bool {
+// Disks represents a slice of BPMResourceDisk.
+type Disks []Disk
+
+// MatchesFilter returns true if the disk matches the filter with one of its Filters.
+func (disk *Disk) MatchesFilter(filterKey, filterValue string) bool {
 	labelValue, exists := disk.Filters[filterKey]
 	if !exists {
 		return false
@@ -22,14 +25,11 @@ func (disk *BPMResourceDisk) matchesFilter(filterKey, filterValue string) bool {
 	return labelValue == filterValue
 }
 
-// BPMResourceDisks represents a slice of BPMResourceDisk.
-type BPMResourceDisks []BPMResourceDisk
-
-// filter filters BPMResourceDisks on its Filters.
-func (disks BPMResourceDisks) filter(filterKey, filterValue string) BPMResourceDisks {
-	filtered := make(BPMResourceDisks, 0)
+// Filter filters BPMResourceDisks on its Filters.
+func (disks Disks) Filter(filterKey, filterValue string) Disks {
+	filtered := make(Disks, 0)
 	for _, disk := range disks {
-		if disk.matchesFilter(filterKey, filterValue) {
+		if disk.MatchesFilter(filterKey, filterValue) {
 			filtered = append(filtered, disk)
 		}
 	}
@@ -37,7 +37,7 @@ func (disks BPMResourceDisks) filter(filterKey, filterValue string) BPMResourceD
 }
 
 // VolumeMounts returns a slice of VolumeMount of each BPMResourceDisk contained in BPMResourceDisks.
-func (disks BPMResourceDisks) volumeMounts() []corev1.VolumeMount {
+func (disks Disks) VolumeMounts() []corev1.VolumeMount {
 	volumeMounts := make([]corev1.VolumeMount, 0)
 	for _, disk := range disks {
 		if disk.VolumeMount != nil {
@@ -48,7 +48,7 @@ func (disks BPMResourceDisks) volumeMounts() []corev1.VolumeMount {
 }
 
 // Volumes returns a slice of Volume of each BPMResourceDisk contained in BPMResourceDisks.
-func (disks BPMResourceDisks) volumes() []corev1.Volume {
+func (disks Disks) Volumes() []corev1.Volume {
 	volumes := make([]corev1.Volume, 0)
 	for _, disk := range disks {
 		if disk.Volume != nil {
@@ -59,7 +59,7 @@ func (disks BPMResourceDisks) volumes() []corev1.Volume {
 }
 
 // PVCs returns a slice of PVC of each BPMResourceDisk
-func (disks BPMResourceDisks) pvcs() []corev1.PersistentVolumeClaim {
+func (disks Disks) PVCs() []corev1.PersistentVolumeClaim {
 	pvcs := make([]corev1.PersistentVolumeClaim, 0)
 	for _, disk := range disks {
 

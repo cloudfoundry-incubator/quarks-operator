@@ -59,7 +59,7 @@ func NewContainerFactory(deploymentName string, instanceGroupName string, versio
 func (c *ContainerFactoryImpl) JobsToInitContainers(
 	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
-	bpmDisks BPMResourceDisks,
+	bpmDisks bdm.Disks,
 	requiredService *string,
 ) ([]corev1.Container, error) {
 	copyingSpecsInitContainers := make([]corev1.Container, 0)
@@ -87,21 +87,21 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 			return []corev1.Container{}, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
 		}
 
-		jobDisks := bpmDisks.filter("job_name", job.Name)
+		jobDisks := bpmDisks.Filter("job_name", job.Name)
 		var ephemeralMount *corev1.VolumeMount
-		ephemeralDisks := jobDisks.filter("ephemeral", "true")
+		ephemeralDisks := jobDisks.Filter("ephemeral", "true")
 		if len(ephemeralDisks) > 0 {
 			ephemeralMount = ephemeralDisks[0].VolumeMount
 		}
 		var persistentDiskMount *corev1.VolumeMount
-		persistentDiskDisks := jobDisks.filter("persistent", "true")
+		persistentDiskDisks := jobDisks.Filter("persistent", "true")
 		if len(persistentDiskDisks) > 0 {
 			persistentDiskMount = persistentDiskDisks[0].VolumeMount
 		}
 
 		for _, process := range bpmConfig.Processes {
 			if process.Hooks.PreStart != "" {
-				processDisks := jobDisks.filter("process_name", process.Name)
+				processDisks := jobDisks.Filter("process_name", process.Name)
 				bpmVolumeMounts := make([]corev1.VolumeMount, 0)
 				for _, processDisk := range processDisks {
 					bpmVolumeMounts = append(bpmVolumeMounts, *processDisk.VolumeMount)
@@ -129,7 +129,7 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 		boshPreStartInitContainer := boshPreStartInitContainer(
 			job.Name,
 			jobImage,
-			append(defaultVolumeMounts, bpmDisks.volumeMounts()...),
+			append(defaultVolumeMounts, bpmDisks.VolumeMounts()...),
 			job.Properties.Quarks.Debug,
 			job.Properties.Quarks.Run.SecurityContext.DeepCopy(),
 		)
@@ -177,7 +177,7 @@ func createWaitContainer(requiredService *string) []corev1.Container {
 func (c *ContainerFactoryImpl) JobsToContainers(
 	jobs []bdm.Job,
 	defaultVolumeMounts []corev1.VolumeMount,
-	bpmDisks BPMResourceDisks,
+	bpmDisks bdm.Disks,
 ) ([]corev1.Container, error) {
 	var containers []corev1.Container
 
@@ -196,20 +196,22 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 			return nil, errors.Errorf("failed to lookup bpm config for bosh job '%s' in bpm configs", job.Name)
 		}
 
-		jobDisks := bpmDisks.filter("job_name", job.Name)
+		jobDisks := bpmDisks.Filter("job_name", job.Name)
+
 		var ephemeralMount *corev1.VolumeMount
-		ephemeralDisks := jobDisks.filter("ephemeral", "true")
+		ephemeralDisks := jobDisks.Filter("ephemeral", "true")
 		if len(ephemeralDisks) > 0 {
 			ephemeralMount = ephemeralDisks[0].VolumeMount
 		}
+
 		var persistentDiskMount *corev1.VolumeMount
-		persistentDiskDisks := jobDisks.filter("persistent", "true")
+		persistentDiskDisks := jobDisks.Filter("persistent", "true")
 		if len(persistentDiskDisks) > 0 {
 			persistentDiskMount = persistentDiskDisks[0].VolumeMount
 		}
 
 		for processIndex, process := range bpmConfig.Processes {
-			processDisks := jobDisks.filter("process_name", process.Name)
+			processDisks := jobDisks.Filter("process_name", process.Name)
 			bpmVolumeMounts := make([]corev1.VolumeMount, 0)
 			for _, processDisk := range processDisks {
 				bpmVolumeMounts = append(bpmVolumeMounts, *processDisk.VolumeMount)
