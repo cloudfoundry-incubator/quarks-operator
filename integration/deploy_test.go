@@ -48,11 +48,11 @@ var _ = Describe("Deploy", func() {
 		It("should deploy a pod and create services", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment(deploymentName, manifestName))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "1", 2)
@@ -84,19 +84,19 @@ var _ = Describe("Deploy", func() {
 		It("should deploy manifest with multiple ops correctly", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			tearDown, err = env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops"))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			tearDown, err = env.CreateSecret(env.Namespace, env.InterpolateOpsSecret("bosh-ops-secret"))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment(deploymentName, manifestName, "bosh-ops", "bosh-ops-secret"))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "1", 3)
@@ -120,11 +120,11 @@ var _ = Describe("Deploy", func() {
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment(deploymentName, manifestName))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for init container")
 
@@ -142,11 +142,11 @@ var _ = Describe("Deploy", func() {
 				Data:       map[string]string{"manifest": bm.Diego},
 			})
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("diego", "diego-manifest"))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, "diego", "file_server", "1", 2)
@@ -173,11 +173,11 @@ var _ = Describe("Deploy", func() {
 				Data:       map[string]string{"manifest": bm.CFRouting},
 			})
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("bph", "cfrouting-manifest"))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, "bph", "route_registrar", "1", 2)
@@ -218,7 +218,7 @@ var _ = Describe("Deploy", func() {
 		})
 	})
 
-	Context("when adding env vars", func() {
+	Context("when ops file is adding env vars", func() {
 		BeforeEach(func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
 			Expect(err).NotTo(HaveOccurred())
@@ -254,11 +254,11 @@ var _ = Describe("Deploy", func() {
 
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment(deploymentName, manifestName))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			Expect(env.WaitForLogMsg(env.ObservedLogs, "context deadline exceeded")).To(Succeed())
 		})
@@ -268,26 +268,26 @@ var _ = Describe("Deploy", func() {
 		It("fails to create the resource if the validator gets an error when applying ops files", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			tearDown, err = env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops"))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			tearDown, err = env.CreateSecret(env.Namespace, env.InterpolateOpsIncorrectSecret("bosh-ops-secret"))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.InterpolateBOSHDeployment(deploymentName, manifestName, "bosh-ops", "bosh-ops-secret"))
 			Expect(err).To(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 			Expect(err.Error()).To(ContainSubstring(`admission webhook "validate-boshdeployment.quarks.cloudfoundry.org" denied the request:`))
 		})
 
 		It("failed to deploy an empty manifest", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.EmptyBOSHDeployment(deploymentName, manifestName))
 			Expect(err).To(HaveOccurred())
@@ -297,13 +297,13 @@ var _ = Describe("Deploy", func() {
 				ContainSubstring("spec.manifest.type: Unsupported value"),
 			))
 			Expect(err.Error()).To(ContainSubstring("spec.manifest.name in body should be at least 1 chars long"))
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 		})
 
 		It("failed to deploy due to a wrong manifest type", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.WrongTypeBOSHDeployment(deploymentName, manifestName))
 			Expect(err).To(HaveOccurred())
@@ -312,24 +312,24 @@ var _ = Describe("Deploy", func() {
 				// kube > 1.16
 				ContainSubstring("spec.manifest.type: Unsupported value"),
 			))
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 		})
 
 		It("failed to deploy due to an empty manifest ref", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment(deploymentName, ""))
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("spec.manifest.name in body should be at least 1 chars long"))
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 		})
 
 		It("failed to deploy due to a wrong ops type", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.BOSHDeploymentWithWrongTypeOps(deploymentName, manifestName, "ops"))
 			Expect(err).To(HaveOccurred())
@@ -338,30 +338,30 @@ var _ = Describe("Deploy", func() {
 				// kube > 1.16
 				ContainSubstring("spec.ops.type: Unsupported value"),
 			))
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 		})
 
 		It("failed to deploy due to an empty ops ref", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeploymentWithOps(deploymentName, manifestName, ""))
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("spec.ops.name in body should be at least 1 chars long"))
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 		})
 
 		It("failed to deploy due to a not existing ops ref", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			// use a not created configmap name, so that we will hit errors while resources do not exist.
 			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeploymentWithOps(deploymentName, manifestName, "bosh-ops-unknown"))
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Timeout reached. Resources 'configmap/bosh-ops-unknown' do not exist"))
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 		})
 
 		It("failed to deploy if the ops resource is not available before timeout", func(done Done) {
@@ -369,7 +369,7 @@ var _ = Describe("Deploy", func() {
 
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			go env.CreateBOSHDeploymentUsingChan(ch, env.Namespace, env.DefaultBOSHDeploymentWithOps(deploymentName, manifestName, "bosh-ops"))
 
@@ -378,7 +378,7 @@ var _ = Describe("Deploy", func() {
 			// Generate the right ops resource, so that the above goroutine will not end in error
 			_, err = env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops"))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			chanReceived := <-ch
 			Expect(chanReceived.Error).To(HaveOccurred())
@@ -389,19 +389,37 @@ var _ = Describe("Deploy", func() {
 			ch := make(chan machine.ChanResult)
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			go env.CreateBOSHDeploymentUsingChan(ch, env.Namespace, env.DefaultBOSHDeploymentWithOps(deploymentName, manifestName, "bosh-ops"))
 
 			// Generate the right ops resource, so that the above goroutine will not end in error
 			tearDown, err = env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops"))
 			Expect(err).NotTo(HaveOccurred())
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			tearDowns = append(tearDowns, tearDown)
 
 			chanReceived := <-ch
 			Expect(chanReceived.Error).NotTo(HaveOccurred())
 			close(done)
 		}, 5)
+	})
+
+	Context("when a BOSHDeployment already exists in the namespace", func() {
+		BeforeEach(func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment(deploymentName, manifestName))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+		})
+
+		It("fails to create the resource", func() {
+			_, _, err := env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment("second-bdpl", manifestName))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring(`denied the request: Only one deployment allowed`))
+		})
 	})
 
 	Context("when the BOSHDeployment cannot be resolved", func() {

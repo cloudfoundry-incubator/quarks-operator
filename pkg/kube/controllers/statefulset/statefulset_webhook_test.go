@@ -80,7 +80,6 @@ var _ = Describe("When the muatating webhook handles a statefulset", func() {
 		})
 
 		It("doesn't fail", func() {
-
 			newRaw, _ := json.Marshal(new)
 
 			response := mutator.Handle(ctx, admission.Request{

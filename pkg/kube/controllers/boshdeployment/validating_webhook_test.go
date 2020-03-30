@@ -60,6 +60,7 @@ var _ = Describe("When the validating webhook handles a manifest", func() {
 		manifestBytes, _ := manifest.Marshal()
 		scheme := runtime.NewScheme()
 		Expect(corev1.AddToScheme(scheme)).To(Succeed())
+		Expect(bdv1.AddToScheme(scheme)).To(Succeed())
 		client = fake.NewFakeClientWithScheme(scheme, &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "base-manifest",
@@ -117,7 +118,7 @@ var _ = Describe("When the validating webhook handles a manifest", func() {
 
 		It("the manifest is accepted", func() {
 			response := validateBoshDeployment()
-			Expect(response.AdmissionResponse.Allowed).To(BeTrue())
+			Expect(response.AdmissionResponse.Allowed).To(BeTrue(), response.Result.String)
 		})
 	})
 
