@@ -86,10 +86,73 @@ func NewValidator(log *zap.SugaredLogger, config *config.Config) admission.Handl
 	}
 }
 
-// OpsResourcesExist verify if a resource exist in the namespace,
+//Handle validates a BOSHDeployment
+func (v *Validator) Handle(ctx context.Context, req admission.Request) admission.Response {
+	boshDeployment := &bdv1.BOSHDeployment{}
+
+	err := v.decoder.Decode(req, boshDeployment)
+	if err != nil {
+		denied(fmt.Sprintf("Failed to decode BOSHDeployment: %s", err.Error()))
+	}
+
+	// verify only one bdpl exists in this namespace
+	bdpls := &bdv1.BOSHDeploymentList{}
+	err = v.client.List(ctx, bdpls, client.InNamespace(boshDeployment.GetNamespace()))
+	if err != nil {
+		return denied(fmt.Sprintf("Failed to list bdpl: %s", err.Error()))
+	}
+	if len(bdpls.Items) > 0 {
+		for _, bdpl := range bdpls.Items {
+			if bdpl.Name != boshDeployment.Name {
+				return denied(fmt.Sprintf("Only one deployment allowed per namespace. Namespace is used for '%s'", bdpl.Name))
+			}
+		}
+	}
+
+	// verify dependencies exist
+	v.log.Debugf("Verifying dependencies for deployment '%s'", boshDeployment.Name)
+	resourceExist, msg := v.opsResourcesExist(ctx, boshDeployment.Spec.Ops, boshDeployment.Namespace)
+	if !resourceExist {
+		return denied(msg)
+	}
+
+	// verify with-ops manifest
+	v.log.Debugf("Resolving deployment '%s'", boshDeployment.Name)
+	resolver := withops.NewResolver(
+		v.client,
+		func() withops.Interpolator { return withops.NewInterpolator() },
+		func(m manifest.Manifest) (withops.DomainNameService, error) { return boshdns.NewDNS(m) },
+	)
+	manifest, _, err := resolver.ManifestDetailed(ctx, boshDeployment, boshDeployment.GetNamespace())
+	if err != nil {
+		return denied(fmt.Sprintf("Failed to resolve manifest: %s", err.Error()))
+	}
+
+	err = validateUpdateBlock(*manifest)
+	if err != nil {
+		return denied(fmt.Sprintf("Failed to validate update block: %s", err.Error()))
+	}
+
+	return admission.Response{
+		AdmissionResponse: v1beta1.AdmissionResponse{
+			Allowed: true,
+		},
+	}
+}
+
+func denied(msg string) admission.Response {
+	return admission.Response{
+		AdmissionResponse: v1beta1.AdmissionResponse{
+			Allowed: false,
+			Result:  &metav1.Status{Message: msg},
+		},
+	}
+}
+
+// opsResourcesExist verify if a resource exist in the namespace,
 // it will check its existence during 5 seconds,
 // otherwise it will timeout.
-func (v *Validator) OpsResourcesExist(ctx context.Context, specOpsResource []bdv1.ResourceReference, ns string) (bool, string) {
+func (v *Validator) opsResourcesExist(ctx context.Context, specOpsResource []bdv1.ResourceReference, ns string) (bool, string) {
 	timeOut := time.After(v.pollTimeout)
 	tick := time.NewTicker(v.pollInterval)
 	defer tick.Stop()
@@ -158,70 +221,6 @@ func (v *Validator) OpsResourcesExist(ctx context.Context, specOpsResource []bdv
 		if allExist {
 			return true, "all references exist"
 		}
-	}
-}
-
-//Handle validates a BOSHDeployment
-func (v *Validator) Handle(ctx context.Context, req admission.Request) admission.Response {
-	boshDeployment := &bdv1.BOSHDeployment{}
-
-	err := v.decoder.Decode(req, boshDeployment)
-	if err != nil {
-		return admission.Response{
-			AdmissionResponse: v1beta1.AdmissionResponse{
-				Allowed: false,
-				Result: &metav1.Status{
-					Message: fmt.Sprintf("Failed to decode BOSHDeployment: %s", err.Error()),
-				},
-			},
-		}
-	}
-
-	v.log.Infof("Verifying dependencies for deployment '%s'", boshDeployment.Name)
-	withops := withops.NewResolver(
-		v.client,
-		func() withops.Interpolator { return withops.NewInterpolator() },
-		func(m manifest.Manifest) (withops.DomainNameService, error) { return boshdns.NewDNS(m) },
-	)
-	resourceExist, msg := v.OpsResourcesExist(ctx, boshDeployment.Spec.Ops, boshDeployment.Namespace)
-	if !resourceExist {
-		return admission.Response{
-			AdmissionResponse: v1beta1.AdmissionResponse{
-				Allowed: false,
-				Result: &metav1.Status{
-					Message: msg,
-				},
-			},
-		}
-	}
-
-	v.log.Infof("Resolving deployment '%s'", boshDeployment.Name)
-	manifest, _, err := withops.ManifestDetailed(ctx, boshDeployment, boshDeployment.GetNamespace())
-	if err != nil {
-		return admission.Response{
-			AdmissionResponse: v1beta1.AdmissionResponse{
-				Allowed: false,
-				Result: &metav1.Status{
-					Message: fmt.Sprintf("Failed to resolve manifest: %s", err.Error()),
-				},
-			},
-		}
-	}
-	err = validateUpdateBlock(*manifest)
-	if err != nil {
-		return admission.Response{
-			AdmissionResponse: v1beta1.AdmissionResponse{
-				Allowed: false,
-				Result: &metav1.Status{
-					Message: fmt.Sprintf("Failed to validate update block: %s", err.Error()),
-				},
-			},
-		}
-	}
-	return admission.Response{
-		AdmissionResponse: v1beta1.AdmissionResponse{
-			Allowed: true,
-		},
 	}
 }
 
