@@ -60,6 +60,11 @@ func Run(
 	postStartConditionCommandName string,
 	postStartConditionCommandArgs []string,
 ) error {
+	fmt.Printf ("containerrun: %s / %s\n", jobName, processName)
+	fmt.Printf ("         cmd: %v\n", args)
+	fmt.Printf ("        post: %s %v\n", postStartCommandName, postStartCommandArgs)
+	fmt.Printf ("   post cond: %s %v\n", postStartConditionCommandName, postStartConditionCommandArgs)
+
 	if len(args) == 0 {
 		err := fmt.Errorf("a command is required")
 		return &runErr{err}
@@ -112,6 +117,8 @@ func Run(
 		return err
 	}
 
+	fmt.Println ("Processing activities ...")
+
 	for {
 		select {
 		case cmd := <-commands:
@@ -125,6 +132,7 @@ func Run(
 			switch cmd {
 			case ProcessStop:
 				if active {
+					fmt.Println ("Processing STOP. Killing childs.")
 					// Order is important here.
 					// The `stopProcesses` sends
 					// signals to the children,
@@ -138,9 +146,12 @@ func Run(
 
 					active = false
 					stopProcesses(processRegistry, errors)
+				} else {
+					fmt.Println ("Processing STOP. Ignored (system is stopped).")
 				}
 			case ProcessStart:
 				if !active {
+					fmt.Println ("Processing START. Restarting children.")
 					err := startProcesses (
 						runner,
 						conditionRunner,
@@ -157,15 +168,20 @@ func Run(
 					}
 
 					active = true
+				} else {
+					fmt.Println ("Processing START. Ignored (system running).")
 				}
 			}
 		case <-done:
 			// Ignore done signals when we actively
 			// stopped the children via ProcessStop.
 			if (active) {
+				fmt.Println ("Processing DONE. Ending container.")
 				return nil
 			}
+			fmt.Println ("Processing DONE. Ignored (system is stopped).")
 		case err := <-errors:
+			fmt.Printf ("Processing ERR: %s. Ending container", err)
 			return err
 		}
 	}
@@ -184,6 +200,8 @@ func watchForCommands(
 	}
 
 	go func() {
+		fmt.Printf ("Waiting for commands at %s\n", sockAddr)
+
 		for {
 			// Accept new packet, dispatching them to our handler
 			packet, err := listener.ListenPacket("unixgram", sockAddr)
@@ -214,15 +232,19 @@ func handlePacket(
 	}
 
 	command := string(packet[:n])
+	fmt.Printf ("Received command `%s`.\n", command)
+
 	switch command {
 	case ProcessStart, ProcessStop:
 		commands <- processCommand (command)
 	default:
 		// Bad commands are ignored. Else they could be used to DOS the runner.
+		fmt.Println ("Bogus command ignored.")
 	}
 }
 
 func stopProcesses (processRegistry *ProcessRegistry, errors chan<- error) {
+	fmt.Println ("Stopping processes ...")
 	for _, err := range processRegistry.SignalAll(os.Kill) {
 		errors <- err
 	}
@@ -240,6 +262,8 @@ func startProcesses (
 	errors chan error,
 	done chan struct{},
 ) error {
+	fmt.Println ("Starting processes ...")
+
 	err := startMainProcess (
 		runner,
 		command,
@@ -272,6 +296,8 @@ func startMainProcess (
 	errors chan error,
 	done chan struct{},
 ) error {
+	fmt.Println ("Starting main process ...")
+
 	process, err := runner.Run(command, stdio)
 	if err != nil {
 		return &runErr{err}
@@ -279,10 +305,12 @@ func startMainProcess (
 	processRegistry.Register(process)
 
 	go func() {
+		fmt.Println ("Waiting for main process to complete ...")
 		if err := process.Wait(); err != nil {
 			errors <- &runErr{err}
 			return
 		}
+		fmt.Println ("Main process is done.")
 		done <- struct{}{}
 	}()
 
@@ -302,6 +330,8 @@ func startPostStartProcesses (
 	if postStartCommand.Name != "" {
 		if commandChecker.Check(postStartCommand.Name) {
 			go func() {
+				fmt.Printf ("Post-start timeout: %v\n", postStartTimeout)
+
 				ctx, cancel := context.WithTimeout(context.Background(), postStartTimeout)
 				defer cancel()
 
@@ -310,23 +340,36 @@ func startPostStartProcesses (
 						Out: ioutil.Discard,
 						Err: ioutil.Discard,
 					}
+
+					fmt.Println ("Starting post-start condition process ...")
+
 					if _, err := conditionRunner.RunContext(ctx, conditionCommand, conditionStdio); err != nil {
 						errors <- &runErr{err}
 						return
 					}
 				}
+
+				fmt.Println ("Starting post-start process ...")
+
 				postStartProcess, err := runner.RunContext(ctx, postStartCommand, stdio)
 				if err != nil {
 					errors <- &runErr{err}
 					return
 				}
 				processRegistry.Register(postStartProcess)
+				fmt.Println ("Waiting for post-start process to complete ...")
 				if err := postStartProcess.Wait(); err != nil {
 					errors <- &runErr{err}
 					return
 				}
+
+				fmt.Println ("Post-start process is done.")
 			}()
+		} else {
+			fmt.Println ("Post-start command not present, ignored.")
 		}
+	} else {
+		fmt.Println ("Post-start command not specified, ignored.")
 	}
 }
 
@@ -458,6 +501,7 @@ type ContainerProcess struct {
 
 // NewContainerProcess constructs a new ContainerProcess.
 func NewContainerProcess(process OSProcess) *ContainerProcess {
+	fmt.Printf ("CP new %v.\n", process)
 	return &ContainerProcess{
 		process: process,
 	}
@@ -469,6 +513,7 @@ func (p *ContainerProcess) Signal(sig os.Signal) error {
 	if err := p.process.Signal(syscall.Signal(0)); err != nil {
 		return nil
 	}
+	fmt.Printf ("CP signal %v, using `%v`.\n", p.process, sig)
 	if err := p.process.Signal(sig); err != nil {
 		return fmt.Errorf("failed to send signal to process: %v", err)
 	}
@@ -478,6 +523,9 @@ func (p *ContainerProcess) Signal(sig os.Signal) error {
 // Wait waits for the process.
 func (p *ContainerProcess) Wait() error {
 	state, err := p.process.Wait()
+	if state != nil {
+		fmt.Printf ("CP complete %v, in (%v)\n", p.process, state)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to run process: %v", err)
 	} else if !state.Success() {
@@ -520,6 +568,7 @@ func (pr *ProcessRegistry) SignalAll(sig os.Signal) []error {
 	defer pr.Unlock()
 	errors := make([]error, 0)
 	for _, p := range pr.processes {
+		fmt.Printf ("Signal `%v` to process %v.\n", sig, pr)
 		if err := p.Signal(sig); err != nil {
 			errors = append(errors, err)
 		}
@@ -529,10 +578,16 @@ func (pr *ProcessRegistry) SignalAll(sig os.Signal) []error {
 
 // HandleSignals handles the signals channel and forwards them to the registered processes.
 func (pr *ProcessRegistry) HandleSignals(sigs <-chan os.Signal, errors chan<- error) {
+	fmt.Println ("Waiting for signals ...")
+
 	sig := <-sigs
+	fmt.Printf ("Received and forwarding signal `%v`.\n", sig)
+
 	for _, err := range pr.SignalAll(sig) {
 		errors <- err
 	}
+
+	fmt.Println ("Signals done.")
 }
 
 // Checker is the interface that wraps the basic Check method.
