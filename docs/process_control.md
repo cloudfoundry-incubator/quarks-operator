@@ -41,19 +41,19 @@ type should work.
 
 Examples using `netcat`:
 
-  - `echo START | nc --unixsock --udp /var/vcap/data/JOB/PROCESS_containerrun.sock`
-  - `echo STOP  | nc --unixsock --udp /var/vcap/data/JOB/PROCESS_containerrun.sock`
+  - `echo START | nc -w 1 --unixsock --udp /var/vcap/data/JOB/PROCESS_containerrun.sock`
+  - `echo STOP  | nc -w 1 --unixsock --udp /var/vcap/data/JOB/PROCESS_containerrun.sock`
 
 Note that all of these sockets are placed in the volumne shared by all
 container of all jobs of the instance group. It is enough to ssh into
-one of the containers to be able to send commands to all sockets and
-thus jobs.
+__one__ of the containers to be able to send commands to __all__
+sockets and thus jobs.
 
 Example:
 
 ```
-for sock in $(find /var/vcap/data -name '*_containerrun.sock')
+for sock in $(find /var/vcap/dataame '*_containerrun.sock')
 do
-    echo STOP | nc --unixsock --udp $sock
+    echo STOP | nc -w 1 --unixsock --udp $sock
 done
 ```

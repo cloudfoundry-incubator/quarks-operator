@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -173,7 +174,7 @@ func Run(
 				}
 			}
 		case <-done:
-			// Ignore done signals when we actively
+			// Ignore a done process when we actively
 			// stopped the children via ProcessStop.
 			if (active) {
 				fmt.Println ("Processing DONE. Ending container.")
@@ -181,8 +182,14 @@ func Run(
 			}
 			fmt.Println ("Processing DONE. Ignored (system is stopped).")
 		case err := <-errors:
-			fmt.Printf ("Processing ERR: %s. Ending container", err)
-			return err
+			// Ignore done signals when we actively
+			// stopped the children via ProcessStop.
+			// Wait returns with !state.Sucess, `signal: killed`
+			if (active) {
+				fmt.Printf ("Processing ERR: %s. Ending container", err)
+				return err
+			}
+			fmt.Printf ("Processing ERR: %s. Ignored (system is stopped)\n", err)
 		}
 	}
 }
@@ -195,14 +202,15 @@ func watchForCommands(
 ) error {
 	sockAddr := fmt.Sprintf ("/var/vcap/data/%s/%s_containerrun.sock", jobName, processName)
 
-	if err := os.RemoveAll(sockAddr); err != nil {
-		return fmt.Errorf("failed to watch for commands: %v", err)
-	}
-
 	go func() {
-		fmt.Printf ("Waiting for commands at %s\n", sockAddr)
-
 		for {
+			fmt.Printf ("Waiting for commands at %s\n", sockAddr)
+
+			if err := os.RemoveAll(sockAddr); err != nil {
+				errors <- fmt.Errorf("failed to setup command socket: %v", err)
+				return
+			}
+
 			// Accept new packet, dispatching them to our handler
 			packet, err := listener.ListenPacket("unixgram", sockAddr)
 			if err != nil {
@@ -231,7 +239,7 @@ func handlePacket(
 		errors <- fmt.Errorf("failed to read command: %v", err)
 	}
 
-	command := string(packet[:n])
+	command := strings.TrimSpace(string(packet[:n]))
 	fmt.Printf ("Received command `%s`.\n", command)
 
 	switch command {
@@ -524,7 +532,8 @@ func (p *ContainerProcess) Signal(sig os.Signal) error {
 func (p *ContainerProcess) Wait() error {
 	state, err := p.process.Wait()
 	if state != nil {
-		fmt.Printf ("CP complete %v, in (%v)\n", p.process, state)
+		fmt.Printf ("CP complete %v, in (%v), %v, %v\n",
+			p.process, state, state.Success(), state.ExitCode())
 	}
 	if err != nil {
 		return fmt.Errorf("failed to run process: %v", err)
@@ -576,18 +585,20 @@ func (pr *ProcessRegistry) SignalAll(sig os.Signal) []error {
 	return errors
 }
 
-// HandleSignals handles the signals channel and forwards them to the registered processes.
+// HandleSignals handles the signals channel and forwards them to the
+// registered processes. After a signal is handled it keeps running to
+// handle any future ones.
 func (pr *ProcessRegistry) HandleSignals(sigs <-chan os.Signal, errors chan<- error) {
-	fmt.Println ("Waiting for signals ...")
+	for {
+		fmt.Println ("Waiting for signals ...")
 
-	sig := <-sigs
-	fmt.Printf ("Received and forwarding signal `%v`.\n", sig)
+		sig := <-sigs
+		fmt.Printf ("Received and forwarding signal `%v`.\n", sig)
 
-	for _, err := range pr.SignalAll(sig) {
-		errors <- err
+		for _, err := range pr.SignalAll(sig) {
+			errors <- err
+		}
 	}
-
-	fmt.Println ("Signals done.")
 }
 
 // Checker is the interface that wraps the basic Check method.
