@@ -19,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
+	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -172,11 +173,15 @@ func (r *ReconcileQuarksSecret) updateStatus(ctx context.Context, instance *qsv1
 func (r *ReconcileQuarksSecret) createPasswordSecret(ctx context.Context, instance *qsv1a1.QuarksSecret) error {
 	request := credsgen.PasswordGenerationRequest{}
 	password := r.generator.GeneratePassword(instance.GetName(), request)
+	deploymentName := instance.GetLabels()[bdv1.LabelDeploymentName]
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      instance.Spec.SecretName,
 			Namespace: instance.GetNamespace(),
+			Labels: map[string]string{
+				bdv1.LabelDeploymentName: deploymentName,
+			},
 		},
 		StringData: map[string]string{
 			"password": password,
@@ -191,11 +196,15 @@ func (r *ReconcileQuarksSecret) createRSASecret(ctx context.Context, instance *q
 	if err != nil {
 		return err
 	}
+	deploymentName := instance.GetLabels()[bdv1.LabelDeploymentName]
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      instance.Spec.SecretName,
 			Namespace: instance.GetNamespace(),
+			Labels: map[string]string{
+				bdv1.LabelDeploymentName: deploymentName,
+			},
 		},
 		StringData: map[string]string{
 			"private_key": string(key.PrivateKey),
@@ -211,10 +220,15 @@ func (r *ReconcileQuarksSecret) createSSHSecret(ctx context.Context, instance *q
 	if err != nil {
 		return err
 	}
+	deploymentName := instance.GetLabels()[bdv1.LabelDeploymentName]
+
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      instance.Spec.SecretName,
 			Namespace: instance.GetNamespace(),
+			Labels: map[string]string{
+				bdv1.LabelDeploymentName: deploymentName,
+			},
 		},
 		StringData: map[string]string{
 			"private_key":            string(key.PrivateKey),
@@ -228,6 +242,8 @@ func (r *ReconcileQuarksSecret) createSSHSecret(ctx context.Context, instance *q
 
 func (r *ReconcileQuarksSecret) createCertificateSecret(ctx context.Context, instance *qsv1a1.QuarksSecret) error {
 	serviceIPForEKSWorkaround := ""
+
+	deploymentName := instance.GetLabels()[bdv1.LabelDeploymentName]
 
 	for _, serviceRef := range instance.Spec.Request.CertificateRequest.ServiceRef {
 		service := &corev1.Service{}
@@ -286,6 +302,9 @@ func (r *ReconcileQuarksSecret) createCertificateSecret(ctx context.Context, ins
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      names.CsrPrivateKeySecretName(names.CSRName(instance.Namespace, instance.Name)),
 				Namespace: instance.GetNamespace(),
+				Labels: map[string]string{
+					bdv1.LabelDeploymentName: deploymentName,
+				},
 			},
 			StringData: map[string]string{
 				"private_key": string(key),
@@ -309,6 +328,9 @@ func (r *ReconcileQuarksSecret) createCertificateSecret(ctx context.Context, ins
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      instance.Spec.SecretName,
 				Namespace: instance.GetNamespace(),
+				Labels: map[string]string{
+					bdv1.LabelDeploymentName: deploymentName,
+				},
 			},
 			StringData: map[string]string{
 				"certificate": string(cert.Certificate),
