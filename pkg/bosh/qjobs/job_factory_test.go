@@ -180,6 +180,12 @@ var _ = Describe("JobFactory", func() {
 			Expect(len(spec.InitContainers)).To(BeNumerically("<", 2))
 			Expect(len(spec.Containers)).To(BeNumerically("<", 2))
 		})
+		It("should have required labels", func() {
+			job, err := factory.VariableInterpolationJob(deploymentName, *m)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(job.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, deploymentName))
+		})
+
 	})
 
 	Describe("VariableInterpolationJob", func() {
@@ -189,6 +195,8 @@ var _ = Describe("JobFactory", func() {
 			Expect(job.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
 
 			podSpec := job.Spec.Template.Spec.Template.Spec
+			podTemplate := job.Spec.Template.Spec.Template
+			Expect(podTemplate.GetLabels()).To(HaveKeyWithValue(manifest.LabelDeploymentName, deploymentName))
 
 			volumes := []string{}
 			for _, v := range podSpec.Volumes {
