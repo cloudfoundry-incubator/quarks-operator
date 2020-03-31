@@ -6,9 +6,9 @@ package containerrun
 import (
 	"context"
 	"fmt"
-	"net"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -23,9 +23,9 @@ const (
 	conditionSleepTime = time.Second * 3
 
 	// ProcessStart is the command to restart the suspended child processes.
-	ProcessStart  = "START"
+	ProcessStart = "START"
 	// ProcessStop is the command to stop and suspend the child processes.
-	ProcessStop   = "STOP"
+	ProcessStop = "STOP"
 )
 
 type processCommand string
@@ -87,7 +87,7 @@ func Run(
 		Arg:  postStartCommandArgs,
 	}
 
-	err := startProcesses (
+	err := startProcesses(
 		runner,
 		conditionRunner,
 		commandChecker,
@@ -109,7 +109,7 @@ func Run(
 	// running, and false otherwise.
 	active := true
 
-	if err = watchForCommands (listener, jobName, processName, errors, commands); err != nil {
+	if err = watchForCommands(listener, jobName, processName, errors, commands); err != nil {
 		return err
 	}
 
@@ -142,7 +142,7 @@ func Run(
 				}
 			case ProcessStart:
 				if !active {
-					err := startProcesses (
+					err := startProcesses(
 						runner,
 						conditionRunner,
 						commandChecker,
@@ -163,14 +163,14 @@ func Run(
 		case <-done:
 			// Ignore a done process when we actively
 			// stopped the children via ProcessStop.
-			if (active) {
+			if active {
 				return nil
 			}
 		case err := <-errors:
 			// Ignore done signals when we actively
 			// stopped the children via ProcessStop.
 			// Wait returns with !state.Sucess, `signal: killed`
-			if (active) {
+			if active {
 				return err
 			}
 		}
@@ -183,7 +183,7 @@ func watchForCommands(
 	errors chan error,
 	commands chan processCommand,
 ) error {
-	sockAddr := fmt.Sprintf ("/var/vcap/data/%s/%s_containerrun.sock", jobName, processName)
+	sockAddr := fmt.Sprintf("/var/vcap/data/%s/%s_containerrun.sock", jobName, processName)
 
 	go func() {
 		for {
@@ -223,19 +223,19 @@ func handlePacket(
 	command := strings.TrimSpace(string(packet[:n]))
 	switch command {
 	case ProcessStart, ProcessStop:
-		commands <- processCommand (command)
+		commands <- processCommand(command)
 	default:
 		// Bad commands are ignored. Else they could be used to DOS the runner.
 	}
 }
 
-func stopProcesses (processRegistry *ProcessRegistry, errors chan<- error) {
+func stopProcesses(processRegistry *ProcessRegistry, errors chan<- error) {
 	for _, err := range processRegistry.SignalAll(os.Kill) {
 		errors <- err
 	}
 }
 
-func startProcesses (
+func startProcesses(
 	runner Runner,
 	conditionRunner Runner,
 	commandChecker Checker,
@@ -247,7 +247,7 @@ func startProcesses (
 	errors chan error,
 	done chan struct{},
 ) error {
-	err := startMainProcess (
+	err := startMainProcess(
 		runner,
 		command,
 		stdio,
@@ -271,7 +271,7 @@ func startProcesses (
 	return nil
 }
 
-func startMainProcess (
+func startMainProcess(
 	runner Runner,
 	command Command,
 	stdio Stdio,
@@ -296,7 +296,7 @@ func startMainProcess (
 	return nil
 }
 
-func startPostStartProcesses (
+func startPostStartProcesses(
 	runner Runner,
 	conditionRunner Runner,
 	commandChecker Checker,
