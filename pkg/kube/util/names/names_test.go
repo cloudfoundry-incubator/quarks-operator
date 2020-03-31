@@ -30,7 +30,7 @@ var _ = Describe("Names", func() {
 			{
 				arg3: "igname12345678901234567890ABC" + text225,
 				arg4: "",
-				name: "ig-resolved.igname12345678901234567890abcthis-is-w" + text171 + "d1a31c527eb0ad85b571d5028e28573c",
+				name: "ig-resolved.igname12345678901234567890abcthis-is-w" + text171[:170] + "-d1a31c527eb0ad85b571d5028e28573c",
 			},
 		}
 
