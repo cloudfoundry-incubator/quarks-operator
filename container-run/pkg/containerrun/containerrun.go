@@ -87,7 +87,7 @@ func Run(
 		Arg:  postStartCommandArgs,
 	}
 
-	err := startProcesses(
+	if err := startProcesses(
 		runner,
 		conditionRunner,
 		commandChecker,
@@ -97,8 +97,8 @@ func Run(
 		conditionCommand,
 		processRegistry,
 		errors,
-		done)
-	if err != nil {
+		done,
+	); err != nil {
 		return err
 	}
 
@@ -109,7 +109,7 @@ func Run(
 	// running, and false otherwise.
 	active := true
 
-	if err = watchForCommands(listener, jobName, processName, errors, commands); err != nil {
+	if err := watchForCommands(listener, jobName, processName, errors, commands); err != nil {
 		return err
 	}
 
@@ -247,14 +247,14 @@ func startProcesses(
 	errors chan error,
 	done chan struct{},
 ) error {
-	err := startMainProcess(
+	if err := startMainProcess(
 		runner,
 		command,
 		stdio,
 		processRegistry,
 		errors,
-		done)
-	if err != nil {
+		done,
+	); err != nil {
 		return err
 	}
 
