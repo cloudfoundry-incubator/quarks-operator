@@ -50,7 +50,7 @@ var _ = Describe("kube converter", func() {
 
 				variables, err := act()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(variables[0].Name).To(Equal("var-" + long + "cd1aedf32e5af6a8401880952515840e"))
+				Expect(variables[0].Name).To(Equal("var-" + long[:216] + "-cd1aedf32e5af6a8401880952515840e"))
 			})
 
 			It("converts password variables", func() {
