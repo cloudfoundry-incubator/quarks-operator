@@ -238,7 +238,6 @@ var _ = Describe("BPM Converter", func() {
 				})
 
 				It("converts the instance group to an QuarksStatefulSet", func() {
-
 					tolerations := []corev1.Toleration{
 						{
 							Key:      "key",

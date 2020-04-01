@@ -54,6 +54,10 @@ processes:
     unrestricted_volumes:
     - path: /dev/log
       mount_only: true
+ports:
+- name: "rep-server"
+  protocol: "TCP"
+  internal: 1801
 `
 
 // EnablePersistentDiskBPMConfig is a BOSH Job configuration with persistent disks

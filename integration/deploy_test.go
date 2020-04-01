@@ -1,7 +1,6 @@
 package integration_test
 
 import (
-	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -248,7 +247,7 @@ var _ = Describe("Deploy", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				By("checking for statefulset")
-				stsName := fmt.Sprintf("%s-%s", deploymentName, "nats")
+				stsName := "nats"
 
 				Eventually(func() []string {
 					sts, err := env.GetStatefulSet(env.Namespace, stsName)
