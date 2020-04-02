@@ -27,12 +27,12 @@ var _ = Describe("JobFactory", func() {
 		m, err = env.DefaultBOSHManifest()
 		linkInfos = LinkInfos{}
 		Expect(err).NotTo(HaveOccurred())
-		factory = qjobs.NewJobFactory("namespace")
+		factory = qjobs.NewJobFactory()
 	})
 
 	Describe("InstanceGroupManifestJob", func() {
 		It("creates init containers", func() {
-			qJob, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
+			qJob, err := factory.InstanceGroupManifestJob("namespace", deploymentName, *m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 			jobIG := qJob.Spec.Template.Spec
 			// Test init containers in the ig manifest qJob
@@ -50,7 +50,7 @@ var _ = Describe("JobFactory", func() {
 				},
 			}
 
-			qJob, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
+			qJob, err := factory.InstanceGroupManifestJob("namespace", deploymentName, *m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 			jobIG := qJob.Spec.Template.Spec
 			// Test init containers in the ig manifest qJob
@@ -66,14 +66,14 @@ var _ = Describe("JobFactory", func() {
 
 		It("handles an error when getting release image", func() {
 			m.Stemcells = nil
-			_, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
+			_, err := factory.InstanceGroupManifestJob("namespace", deploymentName, *m, linkInfos, true)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Generation of gathering job 'redis-server' failed for instance group"))
 		})
 
 		It("does not generate the instance group containers when its instances is zero", func() {
 			m.InstanceGroups[0].Instances = 0
-			qJob, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
+			qJob, err := factory.InstanceGroupManifestJob("namespace", deploymentName, *m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 			jobIG := qJob.Spec.Template.Spec
 			Expect(len(jobIG.Template.Spec.InitContainers)).To(BeNumerically("<", 2))
@@ -84,7 +84,7 @@ var _ = Describe("JobFactory", func() {
 			It("creates output entries for all provides", func() {
 				m, err = env.ElaboratedBOSHManifest()
 				Expect(err).NotTo(HaveOccurred())
-				qJob, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
+				qJob, err := factory.InstanceGroupManifestJob("namespace", deploymentName, *m, linkInfos, true)
 				Expect(err).ToNot(HaveOccurred())
 				om := qJob.Spec.Output.OutputMap
 				Expect(om).To(Equal(
@@ -135,7 +135,7 @@ var _ = Describe("JobFactory", func() {
 		})
 
 		It("has one spec-copier init container per instance group", func() {
-			job, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
+			job, err := factory.InstanceGroupManifestJob("namespace", deploymentName, *m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			spec := job.Spec.Template.Spec.Template.Spec
@@ -146,7 +146,7 @@ var _ = Describe("JobFactory", func() {
 		})
 
 		It("has one bpm-configs container per instance group", func() {
-			job, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
+			job, err := factory.InstanceGroupManifestJob("namespace", deploymentName, *m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			spec := job.Spec.Template.Spec.Template.Spec
@@ -157,7 +157,7 @@ var _ = Describe("JobFactory", func() {
 
 		It("does not generate the instance group containers when its instances is zero", func() {
 			m.InstanceGroups[0].Instances = 0
-			job, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
+			job, err := factory.InstanceGroupManifestJob("namespace", deploymentName, *m, linkInfos, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			spec := job.Spec.Template.Spec.Template.Spec
@@ -168,7 +168,7 @@ var _ = Describe("JobFactory", func() {
 
 	Describe("VariableInterpolationJob", func() {
 		It("mounts variable secrets in the variable interpolation container", func() {
-			job, err := factory.VariableInterpolationJob(deploymentName, *m)
+			job, err := factory.VariableInterpolationJob("namespace", deploymentName, *m)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(job.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
 
