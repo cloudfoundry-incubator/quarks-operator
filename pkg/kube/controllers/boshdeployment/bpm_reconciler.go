@@ -35,7 +35,7 @@ import (
 
 // BPMConverter converts k8s resources from single BOSH manifest
 type BPMConverter interface {
-	Resources(manifestName string, dns bpmconverter.DomainNameService, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*bpmconverter.Resources, error)
+	Resources(namespace string, manifestName string, dns bpmconverter.DomainNameService, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*bpmconverter.Resources, error)
 }
 
 // DesiredManifest unmarshals desired manifest from the manifest secret
@@ -212,7 +212,7 @@ func (r *ReconcileBPM) applyBPMResources(bdplName string, instanceGroupName stri
 		return nil, err
 	}
 
-	resources, err := r.converter.Resources(bdplName, dns, qStsVersionString, instanceGroup, manifest, bpmInfo.Configs, igResolvedSecretVersion)
+	resources, err := r.converter.Resources(bpmSecret.Namespace, bdplName, dns, qStsVersionString, instanceGroup, manifest, bpmInfo.Configs, igResolvedSecretVersion)
 	if err != nil {
 		return resources, err
 	}
