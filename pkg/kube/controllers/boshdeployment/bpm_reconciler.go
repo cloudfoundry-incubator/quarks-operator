@@ -98,7 +98,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 
 	if meltdown.NewAnnotationWindow(r.config.MeltdownDuration, bpmSecret.ObjectMeta.Annotations).Contains(time.Now()) {
-		log.WithEvent(bpmSecret, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", bpmSecret.Name, r.config.MeltdownRequeueAfter)
+		log.WithEvent(bpmSecret, "Meltdown").Debugf(ctx, "Resource '%s/%s' is in meltdown, requeue reconcile after %s", bpmSecret.Namespace, bpmSecret.Name, r.config.MeltdownRequeueAfter)
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
@@ -131,7 +131,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: deploymentName}, bdpl)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get BoshDeployment instance '%s': %v", deploymentName, err)
+			log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get BoshDeployment instance '%s/%s': %v", request.Namespace, deploymentName, err)
 	}
 
 	err = dns.Reconcile(ctx, request.Namespace, r.client, func(object metav1.Object) error {
@@ -191,10 +191,10 @@ func (r *ReconcileBPM) applyBPMResources(bdplName string, instanceGroupName stri
 	// Fetch qSts version
 	quarksStatefulSet := &qstsv1a1.QuarksStatefulSet{}
 	quarksStatefulSetName := instanceGroup.NameSanitized()
-	err := r.client.Get(r.ctx, types.NamespacedName{Namespace: r.config.Namespace, Name: quarksStatefulSetName}, quarksStatefulSet)
+	err := r.client.Get(r.ctx, types.NamespacedName{Namespace: bpmSecret.Namespace, Name: quarksStatefulSetName}, quarksStatefulSet)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return nil, errors.Errorf("Failed to get QuarksStatefulSet instance '%s': %v", quarksStatefulSetName, err)
+			return nil, errors.Errorf("Failed to get QuarksStatefulSet instance '%s/%s': %v", bpmSecret.Namespace, quarksStatefulSetName, err)
 		}
 	}
 	_, qStsVersion, err := qstscontroller.GetMaxStatefulSetVersion(r.ctx, r.client, quarksStatefulSet)
@@ -207,7 +207,7 @@ func (r *ReconcileBPM) applyBPMResources(bdplName string, instanceGroupName stri
 		return nil, err
 	}
 
-	igResolvedSecretVersion, err := r.fetchIGresolvedVersion(instanceGroupName)
+	igResolvedSecretVersion, err := r.fetchIGresolvedVersion(bpmSecret.Namespace, instanceGroupName)
 	if err != nil {
 		return nil, err
 	}
@@ -220,11 +220,11 @@ func (r *ReconcileBPM) applyBPMResources(bdplName string, instanceGroupName stri
 	return resources, nil
 }
 
-func (r *ReconcileBPM) fetchIGresolvedVersion(instanceGroupName string) (string, error) {
+func (r *ReconcileBPM) fetchIGresolvedVersion(namespace string, instanceGroupName string) (string, error) {
 	igResolvedSecretName := names.InstanceGroupSecretName(instanceGroupName, "")
-	igResolvedSecret, err := r.versionedSecretStore.Latest(r.ctx, r.config.Namespace, igResolvedSecretName)
+	igResolvedSecret, err := r.versionedSecretStore.Latest(r.ctx, namespace, igResolvedSecretName)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to read latest versioned secret %s", igResolvedSecretName)
+		return "", errors.Wrapf(err, "failed to read latest versioned secret '%s/%s'", namespace, igResolvedSecretName)
 	}
 	return igResolvedSecret.GetLabels()[versionedsecretstore.LabelVersion], nil
 }
@@ -235,7 +235,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, bdpl *bdv1.BOSH
 
 	for _, qJob := range resources.Errands {
 		if qJob.Labels[bdv1.LabelInstanceGroupName] != instanceGroupName {
-			log.Debugf(ctx, "Skipping apply QuarksJob '%s' for instance group '%s' because of mismatching '%s' label", qJob.Name, bdpl.Name, bdv1.LabelInstanceGroupName)
+			log.Debugf(ctx, "Skipping apply QuarksJob '%s/%s' for instance group '%s' because of mismatching '%s' label", bdpl.Namespace, qJob.Name, bdpl.Name, bdv1.LabelInstanceGroupName)
 			continue
 		}
 
@@ -248,12 +248,12 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, bdpl *bdv1.BOSH
 			return log.WithEvent(bdpl, "ApplyQuarksJobError").Errorf(ctx, "Failed to apply QuarksJob for instance group '%s' : %v", instanceGroupName, err)
 		}
 
-		log.Debugf(ctx, "QuarksJob '%s' has been %s", qJob.Name, op)
+		log.Debugf(ctx, "QuarksJob '%s/%s' has been %s", bdpl.Namespace, qJob.Name, op)
 	}
 
 	for _, svc := range resources.Services {
 		if svc.Labels[bdv1.LabelInstanceGroupName] != instanceGroupName {
-			log.Debugf(ctx, "Skipping apply Service '%s' for instance group '%s' because of mismatching '%s' label", svc.Name, bdpl.Name, bdv1.LabelInstanceGroupName)
+			log.Debugf(ctx, "Skipping apply Service '%s/%s' for instance group '%s' because of mismatching '%s' label", bdpl.Namespace, svc.Name, bdpl.Name, bdv1.LabelInstanceGroupName)
 			continue
 		}
 
@@ -266,12 +266,12 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, bdpl *bdv1.BOSH
 			return log.WithEvent(bdpl, "ApplyServiceError").Errorf(ctx, "Failed to apply Service for instance group '%s' : %v", instanceGroupName, err)
 		}
 
-		log.Debugf(ctx, "Service '%s' has been %s", svc.Name, op)
+		log.Debugf(ctx, "Service '%s/%s' has been %s", bdpl.Namespace, svc.Name, op)
 	}
 
 	for _, qSts := range resources.InstanceGroups {
 		if qSts.Labels[bdv1.LabelInstanceGroupName] != instanceGroupName {
-			log.Debugf(ctx, "Skipping apply QuarksStatefulSet '%s' for instance group '%s' because of mismatching '%s' label", qSts.Name, bdpl.Name, bdv1.LabelInstanceGroupName)
+			log.Debugf(ctx, "Skipping apply QuarksStatefulSet '%s/%s' for instance group '%s' because of mismatching '%s' label", bdpl.Namespace, qSts.Name, bdpl.Name, bdv1.LabelInstanceGroupName)
 			continue
 		}
 
@@ -284,7 +284,7 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, bdpl *bdv1.BOSH
 			return log.WithEvent(bdpl, "ApplyQuarksStatefulSetError").Errorf(ctx, "Failed to apply QuarksStatefulSet for instance group '%s' : %v", instanceGroupName, err)
 		}
 
-		log.Debugf(ctx, "QuarksStatefulSet '%s' has been %s", qSts.Name, op)
+		log.Debugf(ctx, "QuarksStatefulSet '%s/%s' has been %s", bdpl.Namespace, qSts.Name, op)
 	}
 
 	return nil

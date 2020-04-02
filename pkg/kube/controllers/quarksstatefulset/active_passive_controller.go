@@ -49,7 +49,7 @@ func AddStatefulSetActivePassive(ctx context.Context, config *config.Config, mgr
 			if activePassiveCmd != nil {
 				ctxlog.NewPredicateEvent(e.Object).Debug(
 					ctx, e.Meta, "qstsv1a1.QuarksStatefulSet",
-					fmt.Sprintf("Create predicate passed for active-passive '%s'", e.Meta.GetName()),
+					fmt.Sprintf("Create predicate passed for active-passive '%s/%s'", e.Meta.GetNamespace(), e.Meta.GetName()),
 				)
 				return true
 			}
@@ -64,7 +64,7 @@ func AddStatefulSetActivePassive(ctx context.Context, config *config.Config, mgr
 			if activePassiveCmd != nil {
 				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
 					ctx, e.MetaNew, "qstsv1a1.QuarksStatefulSet",
-					fmt.Sprintf("Update predicate passed for active-passive '%s'", e.MetaNew.GetName()),
+					fmt.Sprintf("Update predicate passed for active-passive '%s/%s'", e.MetaNew.GetNamespace(), e.MetaNew.GetName()),
 				)
 				return true
 			}

@@ -42,7 +42,7 @@ func AddStatefulSetRollout(ctx context.Context, config *config.Config, mgr manag
 			if CheckUpdate(e) {
 				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
 					ctx, e.MetaNew, "StatefulSet",
-					fmt.Sprintf("Update predicate passed for '%s'", e.MetaNew.GetName()),
+					fmt.Sprintf("Update predicate passed for '%s/%s'", e.MetaNew.GetNamespace(), e.MetaNew.GetName()),
 				)
 				return true
 			}

@@ -96,7 +96,7 @@ var _ = Describe("When the webhook handles update request of a secret", func() {
 			It("should not allow", func() {
 				response := validateSecret()
 				Expect(response.AdmissionResponse.Allowed).To(BeFalse())
-				Expect(response.AdmissionResponse.Result.Message).To(Equal("Denying update to versioned secret 'mysecret' as it is immutable."))
+				Expect(response.AdmissionResponse.Result.Message).To(Equal("Denying update to versioned secret '/mysecret' as it is immutable."))
 			})
 		})
 

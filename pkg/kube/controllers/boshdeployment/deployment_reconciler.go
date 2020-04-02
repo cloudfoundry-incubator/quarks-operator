@@ -42,7 +42,7 @@ type VariablesConverter interface {
 
 // WithOps interpolates BOSH manifests and operations files to create the WithOps manifest
 type WithOps interface {
-	Manifest(ctx context.Context, instance *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
+	Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
 }
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
@@ -80,14 +80,14 @@ type ReconcileBOSHDeployment struct {
 // Reconcile starts the deployment process for a BOSHDeployment and deploys QuarksJobs to generate required properties for instance groups and rendered BPM
 func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the BOSHDeployment instance
-	instance := &bdv1.BOSHDeployment{}
+	bdpl := &bdv1.BOSHDeployment{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()
 
-	log.Infof(ctx, "Reconciling BOSHDeployment %s", request.NamespacedName)
-	err := r.client.Get(ctx, request.NamespacedName, instance)
+	log.Infof(ctx, "Reconciling BOSHDeployment '%s'", request.NamespacedName)
+	err := r.client.Get(ctx, request.NamespacedName, bdpl)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -98,42 +98,42 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		}
 
 		return reconcile.Result{},
-			log.WithEvent(instance, "GetBOSHDeploymentError").Errorf(ctx, "failed to get BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(bdpl, "GetBOSHDeploymentError").Errorf(ctx, "failed to get BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	if meltdown.NewWindow(r.config.MeltdownDuration, instance.Status.LastReconcile).Contains(time.Now()) {
-		log.WithEvent(instance, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", instance.Name, r.config.MeltdownRequeueAfter)
+	if meltdown.NewWindow(r.config.MeltdownDuration, bdpl.Status.LastReconcile).Contains(time.Now()) {
+		log.WithEvent(bdpl, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", request.NamespacedName, r.config.MeltdownRequeueAfter)
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
 	// Resolve the manifest with ops
-	manifest, err := r.resolveManifest(ctx, instance)
+	manifest, err := r.resolveManifest(ctx, bdpl)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(instance, "WithOpsManifestError").Errorf(ctx, "failed to get with-ops manifest for BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(bdpl, "WithOpsManifestError").Errorf(ctx, "failed to get with-ops manifest for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	// Get link infos containing provider name and its secret name
-	linkInfos, err := r.listLinkInfos(instance, manifest)
+	linkInfos, err := r.listLinkInfos(bdpl, manifest)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "failed to list quarks-link secrets for BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(bdpl, "InstanceGroupManifestError").Errorf(ctx, "failed to list quarks-link secrets for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	// Apply the "with-ops" manifest secret
 	log.Debug(ctx, "Creating with-ops manifest secret")
-	manifestSecret, err := r.createManifestWithOps(ctx, instance, *manifest)
+	manifestSecret, err := r.createManifestWithOps(ctx, bdpl, *manifest)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(instance, "WithOpsManifestError").Errorf(ctx, "failed to create with-ops manifest secret for BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(bdpl, "WithOpsManifestError").Errorf(ctx, "failed to create with-ops manifest secret for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	// Create all QuarksSecret variables
 	log.Debug(ctx, "Converting BOSH manifest variables to QuarksSecret resources")
-	secrets, err := r.converter.Variables(instance.Name, manifest.Variables)
+	secrets, err := r.converter.Variables(bdpl.Name, manifest.Variables)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(instance, "BadManifestError").Error(ctx, errors.Wrap(err, "failed to generate quarks secrets from manifest"))
+			log.WithEvent(bdpl, "BadManifestError").Error(ctx, errors.Wrap(err, "failed to generate quarks secrets from manifest"))
 
 	}
 
@@ -142,45 +142,45 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		err = r.createQuarksSecrets(ctx, manifestSecret, secrets)
 		if err != nil {
 			return reconcile.Result{},
-				log.WithEvent(instance, "VariableGenerationError").Errorf(ctx, "failed to create quarks secrets for BOSH manifest '%s': %v", instance.Name, err)
+				log.WithEvent(bdpl, "VariableGenerationError").Errorf(ctx, "failed to create quarks secrets for BOSH manifest '%s': %v", request.NamespacedName, err)
 		}
 	}
 
 	// Apply the "Variable Interpolation" QuarksJob, which creates the desired manifest secret
-	qJob, err := r.jobFactory.VariableInterpolationJob(instance.Name, *manifest)
+	qJob, err := r.jobFactory.VariableInterpolationJob(bdpl.Name, *manifest)
 	if err != nil {
-		return reconcile.Result{}, log.WithEvent(instance, "DesiredManifestError").Errorf(ctx, "failed to build the desired manifest qJob: %v", err)
+		return reconcile.Result{}, log.WithEvent(bdpl, "DesiredManifestError").Errorf(ctx, "failed to build the desired manifest qJob: %v", err)
 	}
 
 	log.Debug(ctx, "Creating desired manifest QuarksJob")
-	err = r.createQuarksJob(ctx, instance, qJob)
+	err = r.createQuarksJob(ctx, bdpl, qJob)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(instance, "DesiredManifestError").Errorf(ctx, "failed to create desired manifest qJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(bdpl, "DesiredManifestError").Errorf(ctx, "failed to create desired manifest qJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	// Apply the "Instance group manifest" QuarksJob, which creates instance group manifests (ig-resolved) secrets and BPM config secrets
 	// once the "Variable Interpolation" job created the desired manifest.
-	qJob, err = r.jobFactory.InstanceGroupManifestJob(instance.Name, *manifest, linkInfos, instance.ObjectMeta.Generation == 1)
+	qJob, err = r.jobFactory.InstanceGroupManifestJob(bdpl.Name, *manifest, linkInfos, bdpl.ObjectMeta.Generation == 1)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "failed to build instance group manifest qJob: %v", err)
+			log.WithEvent(bdpl, "InstanceGroupManifestError").Errorf(ctx, "failed to build instance group manifest qJob: %v", err)
 	}
 
 	log.Debug(ctx, "Creating instance group manifest QuarksJob")
-	err = r.createQuarksJob(ctx, instance, qJob)
+	err = r.createQuarksJob(ctx, bdpl, qJob)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(instance, "InstanceGroupManifestError").Errorf(ctx, "failed to create instance group manifest qJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(bdpl, "InstanceGroupManifestError").Errorf(ctx, "failed to create instance group manifest qJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	// Update status of bdpl with the timestamp of the last reconcile
 	now := metav1.Now()
-	instance.Status.LastReconcile = &now
+	bdpl.Status.LastReconcile = &now
 
-	err = r.client.Status().Update(ctx, instance)
+	err = r.client.Status().Update(ctx, bdpl)
 	if err != nil {
-		log.WithEvent(instance, "UpdateError").Errorf(ctx, "failed to update reconcile timestamp on bdpl '%s' (%v): %s", instance.Name, instance.ResourceVersion, err)
+		log.WithEvent(bdpl, "UpdateError").Errorf(ctx, "failed to update reconcile timestamp on bdpl '%s' (%v): %s", request.NamespacedName, bdpl.ResourceVersion, err)
 		return reconcile.Result{Requeue: false}, nil
 	}
 
@@ -188,24 +188,24 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 }
 
 // resolveManifest resolves manifest with ops manifest
-func (r *ReconcileBOSHDeployment) resolveManifest(ctx context.Context, instance *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
+func (r *ReconcileBOSHDeployment) resolveManifest(ctx context.Context, bdpl *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
 	log.Debug(ctx, "Resolving manifest")
-	manifest, _, err := r.withops.Manifest(ctx, instance, instance.GetNamespace())
+	manifest, _, err := r.withops.Manifest(ctx, bdpl, bdpl.GetNamespace())
 	if err != nil {
-		return nil, log.WithEvent(instance, "WithOpsManifestError").Errorf(ctx, "Error resolving the manifest %s: %s", instance.GetName(), err)
+		return nil, log.WithEvent(bdpl, "WithOpsManifestError").Errorf(ctx, "Error resolving the manifest '%s': %s", bdpl.GetNamespacedName(), err)
 	}
 
 	return manifest, nil
 }
 
 // createManifestWithOps creates a secret containing the deployment manifest with ops files applied
-func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, instance *bdv1.BOSHDeployment, manifest bdm.Manifest) (*corev1.Secret, error) {
+func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, bdpl *bdv1.BOSHDeployment, manifest bdm.Manifest) (*corev1.Secret, error) {
 	log.Debug(ctx, "Creating manifest secret with ops")
 
 	// Create manifest with ops, which will be used as a base for variable interpolation in desired manifest job input.
 	manifestBytes, err := manifest.Marshal()
 	if err != nil {
-		return nil, log.WithEvent(instance, "ManifestWithOpsMarshalError").Errorf(ctx, "Error marshaling the manifest %s: %s", instance.GetName(), err)
+		return nil, log.WithEvent(bdpl, "ManifestWithOpsMarshalError").Errorf(ctx, "Error marshaling the manifest '%s': %s", bdpl.GetNamespacedName(), err)
 	}
 
 	manifestSecretName := bdv1.DeploymentSecretTypeManifestWithOps.String()
@@ -214,9 +214,9 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 	manifestSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      manifestSecretName,
-			Namespace: instance.GetNamespace(),
+			Namespace: bdpl.GetNamespace(),
 			Labels: map[string]string{
-				bdv1.LabelDeploymentName:       instance.Name,
+				bdv1.LabelDeploymentName:       bdpl.Name,
 				bdv1.LabelDeploymentSecretType: bdv1.DeploymentSecretTypeManifestWithOps.String(),
 			},
 		},
@@ -226,40 +226,40 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, ins
 	}
 
 	// Set ownership reference
-	if err := r.setReference(instance, manifestSecret, r.scheme); err != nil {
-		return nil, log.WithEvent(instance, "ManifestWithOpsRefError").Errorf(ctx, "failed to set ownerReference for Secret '%s': %v", manifestSecretName, err)
+	if err := r.setReference(bdpl, manifestSecret, r.scheme); err != nil {
+		return nil, log.WithEvent(bdpl, "ManifestWithOpsRefError").Errorf(ctx, "failed to set ownerReference for Secret '%s/%s': %v", bdpl.Namespace, manifestSecretName, err)
 	}
 
 	// Apply the secret
 	op, err := controllerutil.CreateOrUpdate(ctx, r.client, manifestSecret, mutate.SecretMutateFn(manifestSecret))
 	if err != nil {
-		return nil, log.WithEvent(instance, "ManifestWithOpsApplyError").Errorf(ctx, "failed to apply Secret '%s': %v", manifestSecretName, err)
+		return nil, log.WithEvent(bdpl, "ManifestWithOpsApplyError").Errorf(ctx, "failed to apply Secret '%s/%s': %v", bdpl.Namespace, manifestSecretName, err)
 	}
 
-	log.Debugf(ctx, "ResourceReference secret '%s' has been %s", manifestSecret.Name, op)
+	log.Debugf(ctx, "ResourceReference secret '%s/%s' has been %s", bdpl.Namespace, manifestSecret.Name, op)
 
 	return manifestSecret, nil
 }
 
 // createQuarksJob creates a QuarksJob and sets its ownership
-func (r *ReconcileBOSHDeployment) createQuarksJob(ctx context.Context, instance *bdv1.BOSHDeployment, qJob *qjv1a1.QuarksJob) error {
-	if err := r.setReference(instance, qJob, r.scheme); err != nil {
-		return errors.Errorf("failed to set ownerReference for QuarksJob '%s': %v", qJob.GetName(), err)
+func (r *ReconcileBOSHDeployment) createQuarksJob(ctx context.Context, bdpl *bdv1.BOSHDeployment, qJob *qjv1a1.QuarksJob) error {
+	if err := r.setReference(bdpl, qJob, r.scheme); err != nil {
+		return errors.Errorf("failed to set ownerReference for QuarksJob '%s/%s': %v", bdpl.Namespace, qJob.GetName(), err)
 	}
 
 	op, err := controllerutil.CreateOrUpdate(ctx, r.client, qJob, mutate.QuarksJobMutateFn(qJob))
 	if err != nil {
-		return errors.Wrapf(err, "creating or updating QuarksJob '%s'", qJob.Name)
+		return errors.Wrapf(err, "creating or updating QuarksJob '%s/%s'", bdpl.Namespace, qJob.Name)
 	}
 
-	log.Debugf(ctx, "QuarksJob '%s' has been %s", qJob.Name, op)
+	log.Debugf(ctx, "QuarksJob '%s/%s' has been %s", bdpl.Namespace, qJob.Name, op)
 
 	return err
 }
 
 // listLinkInfos returns a LinkInfos containing link providers if needed
 // and updates `quarks_links` properties
-func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, manifest *bdm.Manifest) (converter.LinkInfos, error) {
+func (r *ReconcileBOSHDeployment) listLinkInfos(bdpl *bdv1.BOSHDeployment, manifest *bdm.Manifest) (converter.LinkInfos, error) {
 	linkInfos := converter.LinkInfos{}
 
 	// find all missing providers in the manifest, so we can look for secrets
@@ -271,25 +271,25 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 		// list secrets and services from target deployment
 		secrets := &corev1.SecretList{}
 		err := r.client.List(r.ctx, secrets,
-			client.InNamespace(instance.Namespace),
+			client.InNamespace(bdpl.Namespace),
 		)
 		if err != nil {
-			return linkInfos, errors.Wrapf(err, "listing secrets for link in deployment '%s':", instance.Name)
+			return linkInfos, errors.Wrapf(err, "listing secrets for link in deployment '%s':", bdpl.GetNamespacedName())
 		}
 
 		services := &corev1.ServiceList{}
 		err = r.client.List(r.ctx, services,
-			client.InNamespace(instance.Namespace),
+			client.InNamespace(bdpl.Namespace),
 		)
 		if err != nil {
-			return linkInfos, errors.Wrapf(err, "listing services for link in deployment '%s':", instance.Name)
+			return linkInfos, errors.Wrapf(err, "listing services for link in deployment '%s':", bdpl.GetNamespacedName())
 		}
 
 		for _, s := range secrets.Items {
-			if deploymentName, ok := s.GetAnnotations()[bdv1.LabelDeploymentName]; ok && deploymentName == instance.Name {
+			if deploymentName, ok := s.GetAnnotations()[bdv1.LabelDeploymentName]; ok && deploymentName == bdpl.Name {
 				linkProvider, err := newLinkProvider(s.GetAnnotations())
 				if err != nil {
-					return linkInfos, errors.Wrapf(err, "failed to parse link JSON for  '%s'", instance.Name)
+					return linkInfos, errors.Wrapf(err, "failed to parse link JSON for '%s'", bdpl.GetNamespacedName())
 				}
 				if dup, ok := missingProviders[linkProvider.Name]; ok {
 					if dup {
@@ -312,22 +312,22 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(instance *bdv1.BOSHDeployment, m
 			}
 		}
 
-		serviceRecords, err := r.getServiceRecords(instance.Namespace, instance.Name, services.Items)
+		serviceRecords, err := r.getServiceRecords(bdpl.Namespace, bdpl.Name, services.Items)
 		if err != nil {
-			return linkInfos, errors.Wrapf(err, "failed to get link services for '%s'", instance.Name)
+			return linkInfos, errors.Wrapf(err, "failed to get link services for '%s'", bdpl.GetNamespacedName())
 		}
 
 		for qName := range quarksLinks {
 			if svcRecord, ok := serviceRecords[qName]; ok {
-				pods, err := r.listPodsFromSelector(instance.Namespace, svcRecord.selector)
+				pods, err := r.listPodsFromSelector(bdpl.Namespace, svcRecord.selector)
 				if err != nil {
-					return linkInfos, errors.Wrapf(err, "Failed to get link pods for '%s'", instance.Name)
+					return linkInfos, errors.Wrapf(err, "Failed to get link pods for '%s'", bdpl.GetNamespacedName())
 				}
 
 				var jobsInstances []bdm.JobInstance
 				for i, p := range pods {
 					if len(p.Status.PodIP) == 0 {
-						return linkInfos, fmt.Errorf("empty ip of kube native component: '%s/%s'", p.Namespace, p.Name)
+						return linkInfos, fmt.Errorf("empty ip of kube native component: '%s'", p.Name)
 					}
 					jobsInstances = append(jobsInstances, bdm.JobInstance{
 						Name:      qName,
@@ -412,19 +412,19 @@ func (r *ReconcileBOSHDeployment) listPodsFromSelector(namespace string, selecto
 // createQuarksSecrets create variables quarksSecrets
 func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manifestSecret *corev1.Secret, variables []qsv1a1.QuarksSecret) error {
 	for _, variable := range variables {
-		log.Debugf(ctx, "CreateOrUpdate QuarksSecrets for explicit variable '%s'", variable.Name)
+		log.Debugf(ctx, "CreateOrUpdate QuarksSecrets for explicit variable '%s'", variable.GetNamespacedName())
 
 		// Set the "manifest with ops" secret as the owner for the QuarksSecrets
 		// The "manifest with ops" secret is owned by the actual BOSHDeployment, so everything
 		// should be garbage collected properly.
 		if err := r.setReference(manifestSecret, &variable, r.scheme); err != nil {
-			err = log.WithEvent(manifestSecret, "OwnershipError").Errorf(ctx, "failed to set ownership for %s: %v", variable.Name, err)
+			err = log.WithEvent(manifestSecret, "OwnershipError").Errorf(ctx, "failed to set ownership for '%s': %v", variable.GetNamespacedName(), err)
 			return err
 		}
 
 		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &variable, mutate.QuarksSecretMutateFn(&variable))
 		if err != nil {
-			return errors.Wrapf(err, "creating or updating QuarksSecret '%s'", variable.Name)
+			return errors.Wrapf(err, "creating or updating QuarksSecret '%s'", variable.GetNamespacedName())
 		}
 
 		// Update does not update status. We only trigger quarks secret
@@ -432,12 +432,12 @@ func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manif
 		if op == controllerutil.OperationResultUpdated {
 			variable.Status.Generated = false
 			if err := r.client.Status().Update(ctx, &variable); err != nil {
-				log.WithEvent(&variable, "UpdateError").Errorf(ctx, "failed to update generated status on quarks secret '%s' (%v): %s", variable.Name, variable.ResourceVersion, err)
+				log.WithEvent(&variable, "UpdateError").Errorf(ctx, "failed to update generated status on quarks secret '%s' (%v): %s", variable.GetNamespacedName(), variable.ResourceVersion, err)
 				return err
 			}
 		}
 
-		log.Debugf(ctx, "QuarksSecret '%s' has been %s", variable.Name, op)
+		log.Debugf(ctx, "QuarksSecret '%s' has been %s", variable.GetNamespacedName(), op)
 	}
 
 	return nil

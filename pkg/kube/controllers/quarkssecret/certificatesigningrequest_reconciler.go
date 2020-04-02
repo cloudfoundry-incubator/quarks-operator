@@ -61,12 +61,11 @@ func (r *ReconcileCertificateSigningRequest) Reconcile(request reconcile.Request
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected.
 			// Return and don't requeue
-			ctxlog.Info(ctx, "Skip reconcile: CSR not found")
+			ctxlog.Infof(ctx, "Skip reconcile: CSR '%s' not found", request.NamespacedName)
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		ctxlog.Info(ctx, "Error reading the object")
-		return reconcile.Result{}, errors.Wrap(err, "Error reading CSR")
+		return reconcile.Result{}, errors.Wrapf(err, "Error reading CSR '%s'", request.NamespacedName)
 	}
 
 	if len(csr.Status.Certificate) != 0 {
@@ -100,7 +99,7 @@ func (r *ReconcileCertificateSigningRequest) Reconcile(request reconcile.Request
 		err := r.client.Get(ctx, types.NamespacedName{Name: keySecretName, Namespace: namespace}, privateKeySecret)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
-				ctxlog.Debugf(ctx, "Waiting for CSR private key secret '%s'", keySecretName)
+				ctxlog.Debugf(ctx, "Waiting for CSR private key secret '%s/%s'", namespace, keySecretName)
 				return reconcile.Result{Requeue: true}, nil
 			}
 			ctxlog.Errorf(ctx, "Failed to get the CSR private key secret: %v", err.Error())
@@ -112,7 +111,7 @@ func (r *ReconcileCertificateSigningRequest) Reconcile(request reconcile.Request
 		qsec := &qsv1a1.QuarksSecret{}
 		err = r.client.Get(ctx, types.NamespacedName{Name: qsecName, Namespace: namespace}, qsec)
 		if err != nil {
-			ctxlog.Errorf(ctx, "Failed to get the quarks secret '%s' for this CSR:  %v", qsecName, err.Error())
+			ctxlog.Errorf(ctx, "Failed to get the quarks secret '%s/%s' for this CSR:  %v", namespace, qsecName, err.Error())
 			return reconcile.Result{}, err
 		}
 

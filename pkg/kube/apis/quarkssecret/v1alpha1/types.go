@@ -123,3 +123,8 @@ type QuarksSecretList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []QuarksSecret `json:"items"`
 }
+
+// GetNamespacedName returns the resource name with its namespace
+func (qs *QuarksSecret) GetNamespacedName() string {
+	return fmt.Sprintf("%s/%s", qs.Namespace, qs.Name)
+}

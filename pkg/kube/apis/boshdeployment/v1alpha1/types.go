@@ -117,3 +117,8 @@ type BOSHDeploymentList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []BOSHDeployment `json:"items"`
 }
+
+// GetNamespacedName returns the resource name with its namespace
+func (bdpl *BOSHDeployment) GetNamespacedName() string {
+	return fmt.Sprintf("%s/%s", bdpl.Namespace, bdpl.Name)
+}

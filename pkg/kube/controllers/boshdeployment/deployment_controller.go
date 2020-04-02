@@ -62,7 +62,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		CreateFunc: func(e event.CreateEvent) bool {
 			ctxlog.NewPredicateEvent(e.Object).Debug(
 				ctx, e.Meta, "bdv1.BOSHDeployment",
-				fmt.Sprintf("Create predicate passed for '%s'", e.Meta.GetName()),
+				fmt.Sprintf("Create predicate passed for '%s/%s'", e.Meta.GetNamespace(), e.Meta.GetName()),
 			)
 			return true
 		},
@@ -74,7 +74,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			if !reflect.DeepEqual(o.Spec, n.Spec) {
 				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
 					ctx, e.MetaNew, "bdv1.BOSHDeployment",
-					fmt.Sprintf("Update predicate passed for '%s'", e.MetaNew.GetName()),
+					fmt.Sprintf("Update predicate passed for '%s/%s'", e.MetaNew.GetNamespace(), e.MetaNew.GetName()),
 				)
 				return true
 			}
@@ -108,7 +108,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, config, false)
 			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to calculate reconciles for config '%s': %v", config.Name, err)
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for config '%s/%s': %v", config.Namespace, config.Name, err)
 			}
 
 			for _, reconciliation := range reconciles {
@@ -128,7 +128,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			secret := e.Object.(*corev1.Secret)
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, secret, false)
 			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", secret.Name, err)
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s/%s': %v", secret.Namespace, secret.Name, err)
 			}
 
 			// The Secret should reference at least one BOSHDeployment in order for us to consider it
@@ -153,7 +153,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, secret, false)
 			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", secret.Name, err)
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s/%s': %v", secret.Namespace, secret.Name, err)
 			}
 
 			for _, reconciliation := range reconciles {
