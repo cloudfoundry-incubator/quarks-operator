@@ -480,14 +480,14 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				It("passes link secrets to QJobs", func() {
 					_, err := reconciler.Reconcile(request)
 					Expect(err).ToNot(HaveOccurred())
-					_, _, linksSecrets, _ := jobFactory.InstanceGroupManifestJobArgsForCall(0)
+					_, _, _, linksSecrets, _ := jobFactory.InstanceGroupManifestJobArgsForCall(0)
 					Expect(linksSecrets).To(Equal(converter.LinkInfos{
 						{
 							SecretName:   "baz-sec",
 							ProviderName: "baz",
 						},
 					}))
-					_, _, linksSecrets, _ = jobFactory.InstanceGroupManifestJobArgsForCall(0)
+					_, _, _, linksSecrets, _ = jobFactory.InstanceGroupManifestJobArgsForCall(0)
 					Expect(linksSecrets).To(Equal(converter.LinkInfos{
 						{
 							SecretName:   "baz-sec",

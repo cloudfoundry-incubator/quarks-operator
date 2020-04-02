@@ -43,8 +43,8 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 				return boshdns.NewDNS(m)
 			},
 		),
-		qjobs.NewJobFactory(config.Namespace),
-		converter.NewVariablesConverter(config.Namespace),
+		qjobs.NewJobFactory(),
+		converter.NewVariablesConverter(),
 		controllerutil.SetControllerReference,
 	)
 

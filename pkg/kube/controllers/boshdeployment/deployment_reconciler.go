@@ -31,13 +31,13 @@ import (
 
 // JobFactory creates Jobs for a given manifest
 type JobFactory interface {
-	VariableInterpolationJob(deploymentName string, manifest bdm.Manifest) (*qjv1a1.QuarksJob, error)
-	InstanceGroupManifestJob(deploymentName string, manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error)
+	VariableInterpolationJob(namespace string, deploymentName string, manifest bdm.Manifest) (*qjv1a1.QuarksJob, error)
+	InstanceGroupManifestJob(namespace string, deploymentName string, manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error)
 }
 
 // VariablesConverter converts BOSH variables into QuarksSecrets
 type VariablesConverter interface {
-	Variables(manifestName string, variables []bdm.Variable) ([]qsv1a1.QuarksSecret, error)
+	Variables(namespace string, manifestName string, variables []bdm.Variable) ([]qsv1a1.QuarksSecret, error)
 }
 
 // WithOps interpolates BOSH manifests and operations files to create the WithOps manifest
@@ -130,7 +130,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Create all QuarksSecret variables
 	log.Debug(ctx, "Converting BOSH manifest variables to QuarksSecret resources")
-	secrets, err := r.converter.Variables(bdpl.Name, manifest.Variables)
+	secrets, err := r.converter.Variables(request.Namespace, bdpl.Name, manifest.Variables)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bdpl, "BadManifestError").Error(ctx, errors.Wrap(err, "failed to generate quarks secrets from manifest"))
@@ -147,7 +147,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Apply the "Variable Interpolation" QuarksJob, which creates the desired manifest secret
-	qJob, err := r.jobFactory.VariableInterpolationJob(bdpl.Name, *manifest)
+	qJob, err := r.jobFactory.VariableInterpolationJob(request.Namespace, bdpl.Name, *manifest)
 	if err != nil {
 		return reconcile.Result{}, log.WithEvent(bdpl, "DesiredManifestError").Errorf(ctx, "failed to build the desired manifest qJob: %v", err)
 	}
@@ -161,7 +161,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Apply the "Instance group manifest" QuarksJob, which creates instance group manifests (ig-resolved) secrets and BPM config secrets
 	// once the "Variable Interpolation" job created the desired manifest.
-	qJob, err = r.jobFactory.InstanceGroupManifestJob(bdpl.Name, *manifest, linkInfos, bdpl.ObjectMeta.Generation == 1)
+	qJob, err = r.jobFactory.InstanceGroupManifestJob(request.Namespace, bdpl.Name, *manifest, linkInfos, bdpl.ObjectMeta.Generation == 1)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bdpl, "InstanceGroupManifestError").Errorf(ctx, "failed to build instance group manifest qJob: %v", err)
