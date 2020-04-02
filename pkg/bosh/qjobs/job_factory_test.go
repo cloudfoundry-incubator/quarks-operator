@@ -68,7 +68,7 @@ var _ = Describe("JobFactory", func() {
 			m.Stemcells = nil
 			_, err := factory.InstanceGroupManifestJob(deploymentName, *m, linkInfos, true)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Generation of gathering job failed for manifest"))
+			Expect(err.Error()).To(ContainSubstring("Generation of gathering job 'redis-server' failed for instance group"))
 		})
 
 		It("does not generate the instance group containers when its instances is zero", func() {

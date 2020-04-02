@@ -6,11 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
-	"code.cloudfoundry.org/quarks-utils/pkg/config"
-	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
-	podutil "code.cloudfoundry.org/quarks-utils/pkg/pod"
 	"github.com/pkg/errors"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -24,6 +21,11 @@ import (
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	podutil "code.cloudfoundry.org/quarks-utils/pkg/pod"
 )
 
 // NewActivePassiveReconciler returns a new reconcile.Reconciler for the active/passive controller
@@ -82,7 +84,7 @@ func (r *ReconcileStatefulSetActivePassive) Reconcile(request reconcile.Request)
 	ownedPods, err := r.getStsPodList(ctx, statefulSets)
 	if err != nil {
 		// Reconcile failed due to error - requeue
-		return reconcile.Result{}, errors.Wrapf(err, "couldn't retrieve pod items from sts: %s", qSts.Name)
+		return reconcile.Result{}, errors.Wrapf(err, "couldn't retrieve pod items from sts: '%s'", request.NamespacedName)
 	}
 
 	// retrieves the ActivePassiveProbe children key,
@@ -91,7 +93,7 @@ func (r *ReconcileStatefulSetActivePassive) Reconcile(request reconcile.Request)
 	containerName, err := getProbeContainerName(qSts.Spec.ActivePassiveProbes)
 	if err != nil {
 		// Reconcile failed due to error - requeue
-		return reconcile.Result{}, errors.Wrapf(err, "None container name found in probe for %s QuarksStatefulSet", qSts.Name)
+		return reconcile.Result{}, errors.Wrapf(err, "None container name found in probe for '%s' QuarksStatefulSet", request.NamespacedName)
 	}
 
 	err = r.markActiveContainers(ctx, containerName, ownedPods, qSts)
@@ -111,11 +113,10 @@ func (r *ReconcileStatefulSetActivePassive) Reconcile(request reconcile.Request)
 }
 
 func (r *ReconcileStatefulSetActivePassive) markActiveContainers(ctx context.Context, container string, pods *corev1.PodList, qSts *qstsv1a1.QuarksStatefulSet) (err error) {
-
 	probeCmd := qSts.Spec.ActivePassiveProbes[container].Exec.Command
 
 	for _, pod := range pods.Items {
-		ctxlog.WithEvent(qSts, "active-passive").Debugf(ctx, "validating probe in pod: %s", pod.Name)
+		ctxlog.WithEvent(qSts, "active-passive").Debugf(ctx, "validating probe in pod: '%s/%s'", qSts.Namespace, pod.Name)
 		if err := r.execContainerCmd(&pod, container, probeCmd); err != nil {
 			ctxlog.WithEvent(qSts, "active-passive").Debugf(
 				ctx,
@@ -125,14 +126,14 @@ func (r *ReconcileStatefulSetActivePassive) markActiveContainers(ctx context.Con
 			// mark as passive
 			err := r.deleteActiveLabel(ctx, &pod, qSts)
 			if err != nil {
-				return errors.Wrapf(err, "couldn't remove label from active pod %s", pod.Name)
+				return errors.Wrapf(err, "couldn't remove label from active pod '%s/%s'", qSts.Namespace, pod.Name)
 			}
 		} else {
 			if podutil.IsPodReady(&pod) {
 				// mark as active
 				err := r.addActiveLabel(ctx, &pod, qSts)
 				if err != nil {
-					return errors.Wrapf(err, "couldn't label pod %s as active", pod.Name)
+					return errors.Wrapf(err, "couldn't label pod '%s/%s' as active", qSts.Namespace, pod.Name)
 				}
 			}
 		}
@@ -200,13 +201,13 @@ func (r *ReconcileStatefulSetActivePassive) execContainerCmd(pod *corev1.Pod, co
 		return errors.New("failed to initialize remote command executor")
 	}
 	if err = executor.Stream(remotecommand.StreamOptions{Stdin: os.Stdin, Stdout: os.Stdout, Tty: false}); err != nil {
-		return errors.Wrapf(err, "failed executing command in pod: %s, container: %s in namespace: %s",
+		return errors.Wrapf(err, "failed executing command in pod: '%s/%s', container: %s",
+			pod.Namespace,
 			pod.Name,
 			container,
-			pod.Namespace,
 		)
 	}
-	ctxlog.Info(r.ctx, "Succesfully exec cmd in container: ", container, ", inside pod: ", pod.Name)
+	ctxlog.Infof(r.ctx, "Succesfully exec cmd in container: %s, inside pod '%s/%s'", container, pod.Namespace, pod.Name)
 
 	return nil
 }

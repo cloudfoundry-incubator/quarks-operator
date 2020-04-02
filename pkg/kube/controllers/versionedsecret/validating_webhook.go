@@ -104,12 +104,12 @@ func (v *ValidationHandler) Handle(ctx context.Context, req admission.Request) a
 		dataChanged := !reflect.DeepEqual(secret.Data, oldSecret.Data)
 
 		if dataChanged {
-			v.log.Infof("Denying update to versioned secret '%s' data as it is immutable.", secret.Name)
+			v.log.Infof("Denying update to versioned secret '%s/%s' data as it is immutable.", secret.Namespace, secret.Name)
 			return admission.Response{
 				AdmissionResponse: v1beta1.AdmissionResponse{
 					Allowed: false,
 					Result: &metav1.Status{
-						Message: fmt.Sprintf("Denying update to versioned secret '%s' as it is immutable.", secret.GetName()),
+						Message: fmt.Sprintf("Denying update to versioned secret '%s/%s' as it is immutable.", secret.Namespace, secret.Name),
 					},
 				},
 			}

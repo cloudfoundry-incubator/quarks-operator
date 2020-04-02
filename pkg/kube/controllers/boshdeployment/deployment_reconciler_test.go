@@ -223,7 +223,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("error resolving the manifest foo: fake-error"))
+				Expect(err.Error()).To(ContainSubstring("error resolving the manifest 'default/foo': fake-error"))
 			})
 
 			It("handles an error when setting the owner reference on the object", func() {
@@ -235,7 +235,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to set ownerReference for Secret 'with-ops': some error"))
+				Expect(err.Error()).To(ContainSubstring("failed to set ownerReference for Secret 'default/with-ops': some error"))
 			})
 
 			It("handles an error when creating manifest secret with ops", func() {
@@ -271,7 +271,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				By("From created state to ops applied state")
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to create with-ops manifest secret for BOSHDeployment 'default/foo': failed to apply Secret 'with-ops': fake-error"))
+				Expect(err.Error()).To(ContainSubstring("failed to create with-ops manifest secret for BOSHDeployment 'default/foo': failed to apply Secret 'default/with-ops': fake-error"))
 			})
 
 			It("handles an error when building desired manifest qJob", func() {
@@ -317,7 +317,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to create quarks secrets for BOSH manifest 'foo'"))
+				Expect(err.Error()).To(ContainSubstring("failed to create quarks secrets for BOSH manifest 'default/foo'"))
 			})
 
 			It("handles an error when building desired manifest qJob", func() {
@@ -342,7 +342,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to create desired manifest qJob for BOSHDeployment 'default/foo': creating or updating QuarksJob 'dm-foo': fake-error"))
+				Expect(err.Error()).To(ContainSubstring("failed to create desired manifest qJob for BOSHDeployment 'default/foo': creating or updating QuarksJob 'default/dm-foo': fake-error"))
 			})
 
 			It("handles an error when building instance group manifest qJob", func() {
@@ -367,7 +367,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to create instance group manifest qJob for BOSHDeployment 'default/foo': creating or updating QuarksJob 'ig-foo': fake-error"))
+				Expect(err.Error()).To(ContainSubstring("failed to create instance group manifest qJob for BOSHDeployment 'default/foo': creating or updating QuarksJob 'default/ig-foo': fake-error"))
 			})
 
 			Context("when the manifest contains variables", func() {

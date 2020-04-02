@@ -64,10 +64,10 @@ func (m *Mutator) Handle(ctx context.Context, req admission.Request) admission.R
 				return admission.Errored(http.StatusBadRequest, err)
 			}
 
-			m.log.Debug("Mutator handler ran for statefulset ", statefulset.Name)
+			m.log.Debugf("Mutator handler ran for statefulset '%s/%s'", statefulset.Namespace, statefulset.Name)
 
 			if !reflect.DeepEqual(statefulset.Spec.Template, oldStatefulset.Spec.Template) {
-				m.log.Debug("StatefulSet has changed ", statefulset.Name)
+				m.log.Debugf("StatefulSet '%s/%s' has changed", statefulset.Namespace, statefulset.Name)
 				ConfigureStatefulSetForRollout(statefulset)
 			}
 		}

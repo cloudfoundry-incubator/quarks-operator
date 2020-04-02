@@ -62,7 +62,7 @@ func (r *ReconcileRestart) Reconcile(request reconcile.Request) (reconcile.Resul
 	}
 
 	if meltdown.NewAnnotationWindow(r.config.MeltdownDuration, pod.ObjectMeta.Annotations).Contains(time.Now()) {
-		log.WithEvent(pod, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", pod.Name, r.config.MeltdownRequeueAfter)
+		log.WithEvent(pod, "Meltdown").Debugf(ctx, "Resource '%s/%s' is in meltdown, requeue reconcile after %s", pod.Namespace, pod.Name, r.config.MeltdownRequeueAfter)
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
@@ -91,7 +91,7 @@ func (r *ReconcileRestart) Reconcile(request reconcile.Request) (reconcile.Resul
 	meltdown.SetLastReconcile(&pod.ObjectMeta, time.Now())
 	err = r.client.Update(ctx, pod)
 	if err != nil {
-		log.WithEvent(pod, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on quarks-link annotated pod '%s' (%v): %s", pod.Name, pod.ResourceVersion, err)
+		log.WithEvent(pod, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on quarks-link annotated pod '%s/%s' (%v): %s", pod.Namespace, pod.Name, pod.ResourceVersion, err)
 		return reconcile.Result{}, nil
 	}
 	return reconcile.Result{}, nil
@@ -144,7 +144,7 @@ func (r *ReconcileRestart) findDeployment(ctx context.Context, rs appsv1.Replica
 			return d, err
 		}
 	}
-	return nil, fmt.Errorf("deployment for replica set '%s' was not found", rs.Name)
+	return nil, fmt.Errorf("deployment for replica set '%s/%s' was not found", rs.Namespace, rs.Name)
 }
 
 func restartAnnotation() map[string]string {

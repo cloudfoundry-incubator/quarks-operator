@@ -77,14 +77,14 @@ func isCaNotReady(o interface{}) bool {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileQuarksSecret) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	instance := &qsv1a1.QuarksSecret{}
+	qsec := &qsv1a1.QuarksSecret{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()
 
 	ctxlog.Infof(ctx, "Reconciling QuarksSecret %s", request.NamespacedName)
-	err := r.client.Get(ctx, request.NamespacedName, instance)
+	err := r.client.Get(ctx, request.NamespacedName, qsec)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -98,104 +98,104 @@ func (r *ReconcileQuarksSecret) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, errors.Wrap(err, "Error reading quarksSecret")
 	}
 
-	if meltdown.NewWindow(r.config.MeltdownDuration, instance.Status.LastReconcile).Contains(time.Now()) {
-		ctxlog.WithEvent(instance, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", instance.Name, r.config.MeltdownRequeueAfter)
+	if meltdown.NewWindow(r.config.MeltdownDuration, qsec.Status.LastReconcile).Contains(time.Now()) {
+		ctxlog.WithEvent(qsec, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", qsec.GetNamespacedName(), r.config.MeltdownRequeueAfter)
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
 	// Check if allowed to generate secret, could be already done or
 	// created manually by a user
-	skipReconcile, err := r.skipReconcile(ctx, instance)
+	skipReconcile, err := r.skipReconcile(ctx, qsec)
 	if err != nil {
 		ctxlog.Errorf(ctx, "Error reading the secret: %v", err.Error())
 		return reconcile.Result{}, err
 	}
 	if skipReconcile {
-		ctxlog.WithEvent(instance, "SkipReconcile").Infof(ctx, "Skip reconcile: quarksSecret '%s' is already generated", instance.Name)
+		ctxlog.WithEvent(qsec, "SkipReconcile").Infof(ctx, "Skip reconcile: quarksSecret '%s' is already generated", request.NamespacedName)
 		return reconcile.Result{}, nil
 	}
 
 	// Create secret
-	switch instance.Spec.Type {
+	switch qsec.Spec.Type {
 	case qsv1a1.Password:
 		ctxlog.Info(ctx, "Generating password")
-		err = r.createPasswordSecret(ctx, instance)
+		err = r.createPasswordSecret(ctx, qsec)
 		if err != nil {
 			ctxlog.Infof(ctx, "Error generating password secret: %s", err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "generating password secret failed.")
 		}
 	case qsv1a1.RSAKey:
 		ctxlog.Info(ctx, "Generating RSA Key")
-		err = r.createRSASecret(ctx, instance)
+		err = r.createRSASecret(ctx, qsec)
 		if err != nil {
 			ctxlog.Infof(ctx, "Error generating RSA key secret: %s", err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "generating RSA key secret failed.")
 		}
 	case qsv1a1.SSHKey:
 		ctxlog.Info(ctx, "Generating SSH Key")
-		err = r.createSSHSecret(ctx, instance)
+		err = r.createSSHSecret(ctx, qsec)
 		if err != nil {
 			ctxlog.Infof(ctx, "Error generating SSH key secret: %s", err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "generating SSH key secret failed.")
 		}
 	case qsv1a1.Certificate:
 		ctxlog.Info(ctx, "Generating certificate")
-		err = r.createCertificateSecret(ctx, instance)
+		err = r.createCertificateSecret(ctx, qsec)
 		if err != nil {
 			if isCaNotReady(err) {
-				ctxlog.Info(ctx, fmt.Sprintf("CA for secret '%s' is not ready yet: %s", instance.Name, err))
+				ctxlog.Info(ctx, fmt.Sprintf("CA for secret '%s' is not ready yet: %s", request.NamespacedName, err))
 				return reconcile.Result{RequeueAfter: time.Second * 5}, nil
 			}
 			ctxlog.Info(ctx, "Error generating certificate secret: "+err.Error())
 			return reconcile.Result{}, errors.Wrap(err, "generating certificate secret.")
 		}
 	default:
-		err = ctxlog.WithEvent(instance, "InvalidTypeError").Errorf(ctx, "Invalid type: %s", instance.Spec.Type)
+		err = ctxlog.WithEvent(qsec, "InvalidTypeError").Errorf(ctx, "Invalid type: %s", qsec.Spec.Type)
 		return reconcile.Result{}, err
 	}
 
-	r.updateStatus(ctx, instance)
+	r.updateStatus(ctx, qsec)
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileQuarksSecret) updateStatus(ctx context.Context, instance *qsv1a1.QuarksSecret) {
-	instance.Status.Generated = true
+func (r *ReconcileQuarksSecret) updateStatus(ctx context.Context, qsec *qsv1a1.QuarksSecret) {
+	qsec.Status.Generated = true
 
 	now := metav1.Now()
-	instance.Status.LastReconcile = &now
-	err := r.client.Status().Update(ctx, instance)
+	qsec.Status.LastReconcile = &now
+	err := r.client.Status().Update(ctx, qsec)
 	if err != nil {
-		ctxlog.Errorf(ctx, "could not create or update QuarksSecret status '%s': %v", instance.GetName(), err)
+		ctxlog.Errorf(ctx, "could not create or update QuarksSecret status '%s': %v", qsec.GetNamespacedName(), err)
 	}
 }
 
-func (r *ReconcileQuarksSecret) createPasswordSecret(ctx context.Context, instance *qsv1a1.QuarksSecret) error {
+func (r *ReconcileQuarksSecret) createPasswordSecret(ctx context.Context, qsec *qsv1a1.QuarksSecret) error {
 	request := credsgen.PasswordGenerationRequest{}
-	password := r.generator.GeneratePassword(instance.GetName(), request)
+	password := r.generator.GeneratePassword(qsec.GetName(), request)
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Spec.SecretName,
-			Namespace: instance.GetNamespace(),
+			Name:      qsec.Spec.SecretName,
+			Namespace: qsec.GetNamespace(),
 		},
 		StringData: map[string]string{
 			"password": password,
 		},
 	}
 
-	return r.createSecret(ctx, instance, secret)
+	return r.createSecret(ctx, qsec, secret)
 }
 
-func (r *ReconcileQuarksSecret) createRSASecret(ctx context.Context, instance *qsv1a1.QuarksSecret) error {
-	key, err := r.generator.GenerateRSAKey(instance.GetName())
+func (r *ReconcileQuarksSecret) createRSASecret(ctx context.Context, qsec *qsv1a1.QuarksSecret) error {
+	key, err := r.generator.GenerateRSAKey(qsec.GetName())
 	if err != nil {
 		return err
 	}
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Spec.SecretName,
-			Namespace: instance.GetNamespace(),
+			Name:      qsec.Spec.SecretName,
+			Namespace: qsec.GetNamespace(),
 		},
 		StringData: map[string]string{
 			"private_key": string(key.PrivateKey),
@@ -203,18 +203,18 @@ func (r *ReconcileQuarksSecret) createRSASecret(ctx context.Context, instance *q
 		},
 	}
 
-	return r.createSecret(ctx, instance, secret)
+	return r.createSecret(ctx, qsec, secret)
 }
 
-func (r *ReconcileQuarksSecret) createSSHSecret(ctx context.Context, instance *qsv1a1.QuarksSecret) error {
-	key, err := r.generator.GenerateSSHKey(instance.GetName())
+func (r *ReconcileQuarksSecret) createSSHSecret(ctx context.Context, qsec *qsv1a1.QuarksSecret) error {
+	key, err := r.generator.GenerateSSHKey(qsec.GetName())
 	if err != nil {
 		return err
 	}
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Spec.SecretName,
-			Namespace: instance.GetNamespace(),
+			Name:      qsec.Spec.SecretName,
+			Namespace: qsec.GetNamespace(),
 		},
 		StringData: map[string]string{
 			"private_key":            string(key.PrivateKey),
@@ -223,27 +223,27 @@ func (r *ReconcileQuarksSecret) createSSHSecret(ctx context.Context, instance *q
 		},
 	}
 
-	return r.createSecret(ctx, instance, secret)
+	return r.createSecret(ctx, qsec, secret)
 }
 
-func (r *ReconcileQuarksSecret) createCertificateSecret(ctx context.Context, instance *qsv1a1.QuarksSecret) error {
+func (r *ReconcileQuarksSecret) createCertificateSecret(ctx context.Context, qsec *qsv1a1.QuarksSecret) error {
 	serviceIPForEKSWorkaround := ""
 
-	for _, serviceRef := range instance.Spec.Request.CertificateRequest.ServiceRef {
+	for _, serviceRef := range qsec.Spec.Request.CertificateRequest.ServiceRef {
 		service := &corev1.Service{}
 
-		err := r.client.Get(ctx, types.NamespacedName{Namespace: r.config.Namespace, Name: serviceRef.Name}, service)
+		err := r.client.Get(ctx, types.NamespacedName{Namespace: qsec.Namespace, Name: serviceRef.Name}, service)
 
 		if err != nil {
-			return errors.Wrapf(err, "Failed to get service reference '%s' for QuarksSecret '%s'", serviceRef.Name, instance.Name)
+			return errors.Wrapf(err, "Failed to get service reference '%s' for QuarksSecret '%s'", serviceRef.Name, qsec.GetNamespacedName())
 		}
 
 		if serviceIPForEKSWorkaround == "" {
 			serviceIPForEKSWorkaround = service.Spec.ClusterIP
 		}
 
-		instance.Spec.Request.CertificateRequest.AlternativeNames = append(append(
-			instance.Spec.Request.CertificateRequest.AlternativeNames,
+		qsec.Spec.Request.CertificateRequest.AlternativeNames = append(append(
+			qsec.Spec.Request.CertificateRequest.AlternativeNames,
 			service.Name,
 			service.Name+"."+service.Namespace,
 			"*."+service.Name,
@@ -254,23 +254,23 @@ func (r *ReconcileQuarksSecret) createCertificateSecret(ctx context.Context, ins
 		), service.Spec.ExternalIPs...)
 	}
 
-	if len(instance.Spec.Request.CertificateRequest.SignerType) == 0 {
-		instance.Spec.Request.CertificateRequest.SignerType = qsv1a1.LocalSigner
+	if len(qsec.Spec.Request.CertificateRequest.SignerType) == 0 {
+		qsec.Spec.Request.CertificateRequest.SignerType = qsv1a1.LocalSigner
 	}
 
-	generationRequest, err := r.generateCertificateGenerationRequest(ctx, instance.Namespace, instance.Spec.Request.CertificateRequest)
+	generationRequest, err := r.generateCertificateGenerationRequest(ctx, qsec.Namespace, qsec.Spec.Request.CertificateRequest)
 	if err != nil {
 		return errors.Wrap(err, "generating certificate generation request")
 	}
 
-	switch instance.Spec.Request.CertificateRequest.SignerType {
+	switch qsec.Spec.Request.CertificateRequest.SignerType {
 	case qsv1a1.ClusterSigner:
-		if instance.Spec.Request.CertificateRequest.ActivateEKSWorkaroundForSAN {
+		if qsec.Spec.Request.CertificateRequest.ActivateEKSWorkaroundForSAN {
 			if serviceIPForEKSWorkaround == "" {
-				return errors.Errorf("can't activate EKS workaround for QuarksSecret '%s/%s'; couldn't find a ClusterIP for any service reference", instance.Namespace, instance.Name)
+				return errors.Errorf("can't activate EKS workaround for QuarksSecret '%s'; couldn't find a ClusterIP for any service reference", qsec.GetNamespacedName())
 			}
 
-			ctxlog.Infof(ctx, "Activating EKS workaround for QuarksSecret '%s/%s'. Using IP '%s' as a common name. See 'https://github.com/awslabs/amazon-eks-ami/issues/341' for more details.", instance.Namespace, instance.Name, serviceIPForEKSWorkaround)
+			ctxlog.Infof(ctx, "Activating EKS workaround for QuarksSecret '%s'. Using IP '%s' as a common name. See 'https://github.com/awslabs/amazon-eks-ami/issues/341' for more details.", qsec.GetNamespacedName(), serviceIPForEKSWorkaround)
 
 			generationRequest.CommonName = serviceIPForEKSWorkaround
 		}
@@ -284,36 +284,36 @@ func (r *ReconcileQuarksSecret) createCertificateSecret(ctx context.Context, ins
 		// private key Secret which will be merged to certificate Secret later
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      names.CsrPrivateKeySecretName(names.CSRName(instance.Namespace, instance.Name)),
-				Namespace: instance.GetNamespace(),
+				Name:      names.CsrPrivateKeySecretName(names.CSRName(qsec.Namespace, qsec.Name)),
+				Namespace: qsec.GetNamespace(),
 			},
 			StringData: map[string]string{
 				"private_key": string(key),
-				"is_ca":       strconv.FormatBool(instance.Spec.Request.CertificateRequest.IsCA),
+				"is_ca":       strconv.FormatBool(qsec.Spec.Request.CertificateRequest.IsCA),
 			},
 		}
 
-		err = r.createSecret(ctx, instance, secret)
+		err = r.createSecret(ctx, qsec, secret)
 		if err != nil {
 			return err
 		}
 
-		return r.createCertificateSigningRequest(ctx, instance, csr)
+		return r.createCertificateSigningRequest(ctx, qsec, csr)
 	case qsv1a1.LocalSigner:
 		// Generate certificate
-		cert, err := r.generator.GenerateCertificate(instance.GetName(), generationRequest)
+		cert, err := r.generator.GenerateCertificate(qsec.GetName(), generationRequest)
 		if err != nil {
 			return err
 		}
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      instance.Spec.SecretName,
-				Namespace: instance.GetNamespace(),
+				Name:      qsec.Spec.SecretName,
+				Namespace: qsec.GetNamespace(),
 			},
 			StringData: map[string]string{
 				"certificate": string(cert.Certificate),
 				"private_key": string(cert.PrivateKey),
-				"is_ca":       strconv.FormatBool(instance.Spec.Request.CertificateRequest.IsCA),
+				"is_ca":       strconv.FormatBool(qsec.Spec.Request.CertificateRequest.IsCA),
 			},
 		}
 
@@ -321,24 +321,24 @@ func (r *ReconcileQuarksSecret) createCertificateSecret(ctx context.Context, ins
 			secret.StringData["ca"] = string(generationRequest.CA.Certificate)
 		}
 
-		return r.createSecret(ctx, instance, secret)
+		return r.createSecret(ctx, qsec, secret)
 	default:
-		return fmt.Errorf("unrecognized signer type: %s", instance.Spec.Request.CertificateRequest.SignerType)
+		return fmt.Errorf("unrecognized signer type: %s", qsec.Spec.Request.CertificateRequest.SignerType)
 	}
 }
 
 // Skip reconcile when
 // * secret is already generated according to qsecs status field
 // * secret exists, but was not generated (user created secret)
-func (r *ReconcileQuarksSecret) skipReconcile(ctx context.Context, instance *qsv1a1.QuarksSecret) (bool, error) {
-	if instance.Status.Generated {
+func (r *ReconcileQuarksSecret) skipReconcile(ctx context.Context, qsec *qsv1a1.QuarksSecret) (bool, error) {
+	if qsec.Status.Generated {
 		return true, nil
 	}
 
-	secretName := instance.Spec.SecretName
+	secretName := qsec.Spec.SecretName
 
 	existingSecret := &corev1.Secret{}
-	err := r.client.Get(ctx, types.NamespacedName{Name: secretName, Namespace: instance.GetNamespace()}, existingSecret)
+	err := r.client.Get(ctx, types.NamespacedName{Name: secretName, Namespace: qsec.GetNamespace()}, existingSecret)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
@@ -360,8 +360,8 @@ func (r *ReconcileQuarksSecret) skipReconcile(ctx context.Context, instance *qsv
 }
 
 // createSecret applies common properties(labels and ownerReferences) to the secret and creates it
-func (r *ReconcileQuarksSecret) createSecret(ctx context.Context, instance *qsv1a1.QuarksSecret, secret *corev1.Secret) error {
-	ctxlog.Debugf(ctx, "Creating secret '%s', owned by quarks secret '%s'", secret.Name, instance.Name)
+func (r *ReconcileQuarksSecret) createSecret(ctx context.Context, qsec *qsv1a1.QuarksSecret, secret *corev1.Secret) error {
+	ctxlog.Debugf(ctx, "Creating secret '%s', owned by quarks secret '%s'", secret.Name, qsec.GetNamespacedName())
 
 	secretLabels := secret.GetLabels()
 	if secretLabels == nil {
@@ -372,13 +372,13 @@ func (r *ReconcileQuarksSecret) createSecret(ctx context.Context, instance *qsv1
 
 	secret.SetLabels(secretLabels)
 
-	if err := r.setReference(instance, secret, r.scheme); err != nil {
-		return errors.Wrapf(err, "error setting owner for secret '%s' to QuarksSecret '%s' in namespace '%s'", secret.GetName(), instance.GetName(), instance.GetNamespace())
+	if err := r.setReference(qsec, secret, r.scheme); err != nil {
+		return errors.Wrapf(err, "error setting owner for secret '%s' to QuarksSecret '%s'", secret.GetName(), qsec.GetNamespacedName())
 	}
 
 	op, err := controllerutil.CreateOrUpdate(ctx, r.client, secret, mutate.SecretMutateFn(secret))
 	if err != nil {
-		return errors.Wrapf(err, "could not create or update secret '%s'", secret.GetName())
+		return errors.Wrapf(err, "could not create or update secret '%s/%s'", qsec.Namespace, secret.GetName())
 	}
 
 	if op != "unchanged" {

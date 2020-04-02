@@ -125,7 +125,7 @@ func getPodWithIndex(ctx context.Context, client crc.Client, statefulSet *appsv1
 	err := client.Get(ctx, crc.ObjectKey{Name: podName, Namespace: statefulSet.Namespace}, &pod)
 	if err != nil {
 		if crc.IgnoreNotFound(err) == nil {
-			ctxlog.Error(ctx, "Pods ", podName, " belonging to StatefulSet not found", statefulSet.Name, ":", err)
+			ctxlog.Error(ctx, "Pods ", podName, " belonging to StatefulSet not found", statefulSet.Namespace, "/", statefulSet.Name, ":", err)
 			return nil, false, nil
 		}
 		return nil, false, err

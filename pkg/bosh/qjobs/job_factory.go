@@ -272,7 +272,7 @@ func (f *JobFactory) releaseImageQJob(deploymentName string, dmName string, mani
 			// Get the docker image for the release
 			releaseImage, err := (&manifest).GetReleaseImage(ig.Name, boshJob.Name)
 			if err != nil {
-				return nil, errors.Wrapf(err, "Generation of gathering job failed for manifest %s", deploymentName)
+				return nil, errors.Wrapf(err, "Generation of gathering job '%s' failed for instance group '%s'", boshJob.Name, ig.Name)
 			}
 			// Create an init container that copies sources
 			// TODO: destination should also contain release name, to prevent overwrites

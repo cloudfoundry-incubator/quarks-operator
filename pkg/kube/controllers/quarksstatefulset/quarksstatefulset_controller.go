@@ -54,12 +54,12 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 			o := e.Object.(*qstsv1a1.QuarksStatefulSet)
 			sts, err := listStatefulSetsFromAPIClient(ctx, client, o)
 			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to list StatefulSets owned by QuarksStatefulSet '%s': %s", o.Name, err)
+				ctxlog.Errorf(ctx, "Failed to list StatefulSets owned by QuarksStatefulSet '%s': %s", o.GetNamespacedName(), err)
 			}
 			if len(sts) == 0 {
 				ctxlog.NewPredicateEvent(e.Object).Debug(
 					ctx, e.Meta, "qstsv1a1.QuarksStatefulSet",
-					fmt.Sprintf("Create predicate passed for '%s'", e.Meta.GetName()),
+					fmt.Sprintf("Create predicate passed for '%s/%s'", e.Meta.GetNamespace(), e.Meta.GetName()),
 				)
 				return true
 			}
@@ -74,7 +74,7 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 			if !reflect.DeepEqual(o.Spec, n.Spec) {
 				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
 					ctx, e.MetaNew, "qstsv1a1.QuarksStatefulSet",
-					fmt.Sprintf("Update predicate passed for '%s'", e.MetaNew.GetName()),
+					fmt.Sprintf("Update predicate passed for '%s/%s'", e.MetaNew.GetNamespace(), e.MetaNew.GetName()),
 				)
 				return true
 			}
@@ -108,7 +108,7 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForQuarksStatefulSet, config, false)
 			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s': %v", config.Name, err)
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s/%s': %v", config.Namespace, config.Name, err)
 			}
 
 			for _, reconciliation := range reconciles {
@@ -129,7 +129,7 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 			shouldProcessEvent := vss.IsVersionedSecret(*o)
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForQuarksStatefulSet, o, true)
 			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", o.Name, err)
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s/%s': %v", o.Namespace, o.Name, err)
 			}
 
 			if shouldProcessEvent && len(reconciles) > 0 {
@@ -158,7 +158,7 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForQuarksStatefulSet, secret, false)
 			if err != nil {
-				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s': %v", secret.Name, err)
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s/%s': %v", secret.Namespace, secret.Name, err)
 			}
 
 			for _, reconciliation := range reconciles {
