@@ -158,7 +158,7 @@ func (kc *BPMConverter) serviceToQuarksStatefulSet(
 	volumeClaims = append(volumeClaims, bpmVolumeClaims...)
 
 	statefulSetLabels := statefulset.FilterLabels(instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels)
-	statefulSetAnnotations, err := statefulset.ComputeAnnotations(instanceGroup)
+	statefulSetAnnotations, err := computeAnnotations(instanceGroup)
 	if err != nil {
 		return qstsv1a1.QuarksStatefulSet{}, errors.Wrapf(err, "computing annotations failed for instance group %s", instanceGroup.Name)
 	}
@@ -419,4 +419,34 @@ func (kc *BPMConverter) generateServices(services []corev1.Service,
 	}
 
 	return services
+}
+
+// computeAnnotations computes annotations for the statefulset from the instance group
+func computeAnnotations(ig *bdm.InstanceGroup) (map[string]string, error) {
+	statefulSetAnnotations := ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations
+	if statefulSetAnnotations == nil {
+		statefulSetAnnotations = make(map[string]string)
+	}
+	if ig.Update == nil {
+		return statefulSetAnnotations, nil
+	}
+
+	canaryWatchTime, err := bdm.ExtractWatchTime(ig.Update.CanaryWatchTime)
+	if err != nil {
+		return nil, errors.Wrap(err, "update block has invalid canary_watch_time")
+	}
+	if canaryWatchTime != "" {
+		statefulSetAnnotations[statefulset.AnnotationCanaryWatchTime] = canaryWatchTime
+	}
+
+	updateWatchTime, err := bdm.ExtractWatchTime(ig.Update.UpdateWatchTime)
+	if err != nil {
+		return nil, errors.Wrap(err, "update block has invalid update_watch_time")
+	}
+
+	if updateWatchTime != "" {
+		statefulSetAnnotations[statefulset.AnnotationUpdateWatchTime] = updateWatchTime
+	}
+
+	return statefulSetAnnotations, nil
 }
