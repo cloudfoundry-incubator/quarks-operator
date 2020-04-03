@@ -15,7 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
@@ -38,15 +37,8 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 		ctx, config, mgr,
 		desiredmanifest.NewDesiredManifest(mgr.GetClient()),
 		controllerutil.SetControllerReference,
-		bpmconverter.NewConverter(
-			config.Namespace,
-			bpmconverter.NewVolumeFactory(),
-			func(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
-				return bpmconverter.NewContainerFactory(instanceGroupName, version, disableLogSidecar, releaseImageProvider, bpmConfigs)
-			}),
-		func(m bdm.Manifest) (boshdns.DomainNameService, error) {
-			return boshdns.NewDNS(m)
-		},
+		bpmconverter.NewConverter(bpmconverter.NewVolumeFactory(), bpmconverter.NewContainerFactoryImplFunc),
+		func(m bdm.Manifest) (boshdns.DomainNameService, error) { return boshdns.NewDNS(m) },
 	)
 
 	// Create a new controller
@@ -71,8 +63,8 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 
 				ctxlog.NewPredicateEvent(o).Debug(
 					ctx, e.Meta, names.Secret,
-					fmt.Sprintf("Create predicate passed for %s, existing secret with label %s, value %s",
-						e.Meta.GetName(), bdv1.LabelDeploymentSecretType, o.GetLabels()[bdv1.LabelDeploymentSecretType]),
+					fmt.Sprintf("Create predicate passed for '%s/%s', existing secret with label %s, value %s",
+						e.Meta.GetNamespace(), e.Meta.GetName(), bdv1.LabelDeploymentSecretType, o.GetLabels()[bdv1.LabelDeploymentSecretType]),
 				)
 			}
 

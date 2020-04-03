@@ -92,3 +92,8 @@ func (q *QuarksStatefulSet) GetMaxAvailableVersion(versions map[int]bool) int {
 	}
 	return maxAvailableVersion
 }
+
+// GetNamespacedName returns the resource name with its namespace
+func (q *QuarksStatefulSet) GetNamespacedName() string {
+	return fmt.Sprintf("%s/%s", q.Namespace, q.Name)
+}

@@ -48,19 +48,16 @@ const (
 
 // JobFactory is a concrete implementation of JobFactory
 type JobFactory struct {
-	Namespace string
 }
 
 // NewJobFactory returns a concrete implementation of JobFactory
-func NewJobFactory(namespace string) *JobFactory {
-	return &JobFactory{
-		Namespace: namespace,
-	}
+func NewJobFactory() *JobFactory {
+	return &JobFactory{}
 }
 
 // VariableInterpolationJob returns an quarks job to create the desired manifest
 // The desired manifest is a BOSH manifest with all variables interpolated.
-func (f *JobFactory) VariableInterpolationJob(deploymentName string, manifest bdm.Manifest) (*qjv1a1.QuarksJob, error) {
+func (f *JobFactory) VariableInterpolationJob(namespace string, deploymentName string, manifest bdm.Manifest) (*qjv1a1.QuarksJob, error) {
 	args := []string{"util", "variable-interpolation"}
 
 	// This is the source manifest, that still has the '((vars))'
@@ -90,7 +87,7 @@ func (f *JobFactory) VariableInterpolationJob(deploymentName string, manifest bd
 	qJob := &qjv1a1.QuarksJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "dm",
-			Namespace: f.Namespace,
+			Namespace: namespace,
 			Labels: map[string]string{
 				bdv1.LabelDeploymentName: deploymentName,
 			},
@@ -155,13 +152,13 @@ func (f *JobFactory) VariableInterpolationJob(deploymentName string, manifest bd
 }
 
 // InstanceGroupManifestJob generates the job to create an instance group manifest
-func (f *JobFactory) InstanceGroupManifestJob(deploymentName string, manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error) {
+func (f *JobFactory) InstanceGroupManifestJob(namespace string, deploymentName string, manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error) {
 	dmName := desiredManifestName()
 	ct := containerTemplate{
 		deploymentName: deploymentName,
 		manifestName:   dmName,
 		cmd:            "instance-group",
-		namespace:      f.Namespace,
+		namespace:      namespace,
 		initialRollout: initialRollout,
 	}
 
@@ -178,7 +175,7 @@ func (f *JobFactory) InstanceGroupManifestJob(deploymentName string, manifest bd
 		}
 	}
 
-	qJob, err := f.releaseImageQJob(deploymentName, dmName, manifest, containers, linkInfos.Volumes())
+	qJob, err := f.releaseImageQJob(namespace, deploymentName, dmName, manifest, containers, linkInfos.Volumes())
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +249,7 @@ func (ct *containerTemplate) newUtilContainer(instanceGroupName string, linkVolu
 }
 
 // releaseImageQJob collects outputs, like bpm, links or ig manifests, from the BOSH release images
-func (f *JobFactory) releaseImageQJob(deploymentName string, dmName string, manifest bdm.Manifest, containers []corev1.Container, linkVolumes []corev1.Volume) (*qjv1a1.QuarksJob, error) {
+func (f *JobFactory) releaseImageQJob(namespace string, deploymentName string, dmName string, manifest bdm.Manifest, containers []corev1.Container, linkVolumes []corev1.Volume) (*qjv1a1.QuarksJob, error) {
 	initContainers := []corev1.Container{}
 	doneSpecCopyingReleases := map[string]bool{}
 	for _, ig := range manifest.InstanceGroups {
@@ -272,7 +269,7 @@ func (f *JobFactory) releaseImageQJob(deploymentName string, dmName string, mani
 			// Get the docker image for the release
 			releaseImage, err := (&manifest).GetReleaseImage(ig.Name, boshJob.Name)
 			if err != nil {
-				return nil, errors.Wrapf(err, "Generation of gathering job failed for manifest %s", deploymentName)
+				return nil, errors.Wrapf(err, "Generation of gathering job '%s' failed for instance group '%s'", boshJob.Name, ig.Name)
 			}
 			// Create an init container that copies sources
 			// TODO: destination should also contain release name, to prevent overwrites
@@ -307,7 +304,7 @@ func (f *JobFactory) releaseImageQJob(deploymentName string, dmName string, mani
 	qJob := &qjv1a1.QuarksJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ig",
-			Namespace: f.Namespace,
+			Namespace: namespace,
 			Labels: map[string]string{
 				bdv1.LabelDeploymentName: deploymentName,
 			},

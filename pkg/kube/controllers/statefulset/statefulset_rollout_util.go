@@ -3,7 +3,6 @@ package statefulset
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strconv"
 	"time"
 
@@ -11,7 +10,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -53,54 +51,6 @@ func FilterLabels(labels map[string]string) map[string]string {
 	return statefulSetLabels
 }
 
-//ComputeAnnotations computes annotations from the instance group
-func ComputeAnnotations(ig *manifest.InstanceGroup) (map[string]string, error) {
-	statefulSetAnnotations := ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations
-	if statefulSetAnnotations == nil {
-		statefulSetAnnotations = make(map[string]string)
-	}
-	if ig.Update == nil {
-		return statefulSetAnnotations, nil
-	}
-
-	canaryWatchTime, err := ExtractWatchTime(ig.Update.CanaryWatchTime, "canary_watch_time")
-	if err != nil {
-		return nil, err
-	}
-	if canaryWatchTime != "" {
-		statefulSetAnnotations[AnnotationCanaryWatchTime] = canaryWatchTime
-	}
-
-	updateWatchTime, err := ExtractWatchTime(ig.Update.UpdateWatchTime, "update_watch_time")
-	if err != nil {
-		return nil, err
-	}
-
-	if updateWatchTime != "" {
-		statefulSetAnnotations[AnnotationUpdateWatchTime] = updateWatchTime
-	}
-
-	return statefulSetAnnotations, nil
-}
-
-//ExtractWatchTime computes the watch time from a range or an absolute value
-func ExtractWatchTime(rawWatchTime string, field string) (string, error) {
-	if rawWatchTime == "" {
-		return "", nil
-	}
-
-	rangeRegex := regexp.MustCompile(`^\s*(\d+)\s*-\s*(\d+)\s*$`) // https://github.com/cloudfoundry/bosh/blob/914edca5278b994df7d91620c4f55f1c6665f81c/src/bosh-director/lib/bosh/director/deployment_plan/update_config.rb#L128
-	if matches := rangeRegex.FindStringSubmatch(rawWatchTime); len(matches) > 0 {
-		// Ignore the lower boundary, because the API-Server triggers reconciles
-		return matches[2], nil
-	}
-	absoluteRegex := regexp.MustCompile(`^\s*(\d+)\s*$`) // https://github.com/cloudfoundry/bosh/blob/914edca5278b994df7d91620c4f55f1c6665f81c/src/bosh-director/lib/bosh/director/deployment_plan/update_config.rb#L130
-	if matches := absoluteRegex.FindStringSubmatch(rawWatchTime); len(matches) > 0 {
-		return matches[1], nil
-	}
-	return "", fmt.Errorf("invalid %s", field)
-}
-
 // CleanupNonReadyPod deletes all pods, that are not ready
 func CleanupNonReadyPod(ctx context.Context, client crc.Client, statefulSet *appsv1.StatefulSet, index int32) error {
 	ctxlog.Debug(ctx, "Cleaning up non ready pod for StatefulSet ", statefulSet.Namespace, "/", statefulSet.Name, "-", index)
@@ -125,7 +75,7 @@ func getPodWithIndex(ctx context.Context, client crc.Client, statefulSet *appsv1
 	err := client.Get(ctx, crc.ObjectKey{Name: podName, Namespace: statefulSet.Namespace}, &pod)
 	if err != nil {
 		if crc.IgnoreNotFound(err) == nil {
-			ctxlog.Error(ctx, "Pods ", podName, " belonging to StatefulSet not found", statefulSet.Name, ":", err)
+			ctxlog.Error(ctx, "Pods ", podName, " belonging to StatefulSet not found", statefulSet.Namespace, "/", statefulSet.Name, ":", err)
 			return nil, false, nil
 		}
 		return nil, false, err

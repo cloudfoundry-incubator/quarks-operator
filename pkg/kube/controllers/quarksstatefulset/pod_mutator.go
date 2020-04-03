@@ -46,7 +46,7 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}
-	m.log.Debug("Pod mutator handler ran for pod ", pod.Name)
+	m.log.Debugf("Pod mutator handler ran for pod '%s/%s'", pod.Namespace, pod.Name)
 
 	updatedPod := pod.DeepCopy()
 	if isQuarksStatefulSet(pod.GetLabels()) {
@@ -67,7 +67,7 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 // mutatePodsFn add a pod-ordinal label to the given pod
 func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 
-	m.log.Info("Mutating Pod ", pod.Name)
+	m.log.Infof("Mutating Pod '%s/%s'", pod.Namespace, pod.Name)
 
 	// Add pod ordinal label for service selectors
 	podLabels := pod.GetLabels()

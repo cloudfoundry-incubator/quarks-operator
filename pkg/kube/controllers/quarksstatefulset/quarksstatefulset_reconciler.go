@@ -107,7 +107,7 @@ func (r *ReconcileQuarksStatefulSet) Reconcile(request reconcile.Request) (recon
 	}
 
 	if meltdown.NewWindow(r.config.MeltdownDuration, qStatefulSet.Status.LastReconcile).Contains(time.Now()) {
-		ctxlog.WithEvent(qStatefulSet, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", qStatefulSet.Name, r.config.MeltdownRequeueAfter)
+		ctxlog.WithEvent(qStatefulSet, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", request.NamespacedName, r.config.MeltdownRequeueAfter)
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
@@ -133,7 +133,7 @@ func (r *ReconcileQuarksStatefulSet) Reconcile(request reconcile.Request) (recon
 	qStatefulSet.Status.LastReconcile = &now
 	err = r.client.Status().Update(ctx, qStatefulSet)
 	if err != nil {
-		ctxlog.WithEvent(qStatefulSet, "UpdateStatusError").Errorf(ctx, "Failed to update reconcile timestamp on QuarksStatefulSet '%s' (%v): %s", qStatefulSet.Name, qStatefulSet.ResourceVersion, err)
+		ctxlog.WithEvent(qStatefulSet, "UpdateStatusError").Errorf(ctx, "Failed to update reconcile timestamp on QuarksStatefulSet '%s' (%v): %s", request.NamespacedName, qStatefulSet.ResourceVersion, err)
 		return reconcile.Result{Requeue: false}, nil
 	}
 
@@ -148,14 +148,14 @@ func (r *ReconcileQuarksStatefulSet) UpdateVersions(ctx context.Context, qStatef
 	volumes := qStatefulSet.Spec.Template.Spec.Template.Spec.Volumes
 	for volumeIndex, volume := range volumes {
 		if volume.VolumeSource.Secret != nil {
-			if err := r.client.Get(ctx, types.NamespacedName{Name: volume.Secret.SecretName, Namespace: qStatefulSet.GetNamespace()}, secret); err != nil {
+			if err := r.client.Get(ctx, types.NamespacedName{Name: volume.Secret.SecretName, Namespace: qStatefulSet.Namespace}, secret); err != nil {
 				return err
 			}
 			if vss.IsVersionedSecret(*secret) {
 				secretNameSplitted := strings.Split(secret.GetName(), "-")
-				latestSecret, err := r.versionedSecretStore.Latest(ctx, r.config.Namespace, strings.Join(secretNameSplitted[0:len(secretNameSplitted)-1], "-"))
+				latestSecret, err := r.versionedSecretStore.Latest(ctx, qStatefulSet.Namespace, strings.Join(secretNameSplitted[0:len(secretNameSplitted)-1], "-"))
 				if err != nil {
-					return errors.Wrapf(err, "failed to read latest versioned secret %s for QuarksStatefulSet %s", secret.GetName(), qStatefulSet.GetName())
+					return errors.Wrapf(err, "failed to read latest versioned secret '%s' for QuarksStatefulSet '%s'", secret.GetName(), qStatefulSet.GetNamespacedName())
 				}
 				qStatefulSet.Spec.Template.Spec.Template.Spec.Volumes[volumeIndex].Secret.SecretName = latestSecret.GetName()
 			}
@@ -212,16 +212,16 @@ func (r *ReconcileQuarksStatefulSet) createStatefulSet(ctx context.Context, qSta
 
 	// Set the owner of the StatefulSet, so it's garbage collected,
 	// and we can find it later
-	ctxlog.Info(ctx, "Setting owner for StatefulSet '", statefulSet.Name, "' to QuarksStatefulSet '", qStatefulSet.Name, "' in namespace '", qStatefulSet.Namespace, "'.")
+	ctxlog.Infof(ctx, "Setting owner for StatefulSet '%s' to QuarksStatefulSet '%s'", statefulSet.Name, qStatefulSet.GetNamespacedName())
 	if err := r.setReference(qStatefulSet, statefulSet, r.scheme); err != nil {
-		return errors.Wrapf(err, "could not set owner for StatefulSet '%s' to QuarksStatefulSet '%s' in namespace '%s'", statefulSet.Name, qStatefulSet.Name, qStatefulSet.Namespace)
+		return errors.Wrapf(err, "could not set owner for StatefulSet '%s' to QuarksStatefulSet '%s'", statefulSet.Name, qStatefulSet.GetNamespacedName())
 	}
 
 	// Create or update the StatefulSet
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.client, statefulSet, mutate.StatefulSetMutateFn(statefulSet)); err != nil {
-		return errors.Wrapf(err, "could not create or update StatefulSet '%s' for QuarksStatefulSet '%s' in namespace '%s'", statefulSet.Name, qStatefulSet.Name, qStatefulSet.Namespace)
+		return errors.Wrapf(err, "could not create or update StatefulSet '%s' for QuarksStatefulSet '%s'", statefulSet.Name, qStatefulSet.GetNamespacedName())
 	}
-	ctxlog.Info(ctx, "Created/Updated StatefulSet '", statefulSet.Name, "' for QuarksStatefulSet '", qStatefulSet.Name, "' in namespace '", qStatefulSet.Namespace, "'.")
+	ctxlog.Infof(ctx, "Created/Updated StatefulSet '%s' for QuarksStatefulSet '%s'", statefulSet.Name, qStatefulSet.GetNamespacedName())
 	return nil
 }
 

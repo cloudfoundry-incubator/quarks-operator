@@ -29,8 +29,8 @@ var _ = Describe("kube converter", func() {
 		})
 
 		act := func() ([]qsv1a1.QuarksSecret, error) {
-			kubeConverter := converter.NewVariablesConverter("foo")
-			return kubeConverter.Variables(deploymentName, m.Variables)
+			kubeConverter := converter.NewVariablesConverter()
+			return kubeConverter.Variables("foo", deploymentName, m.Variables)
 		}
 
 		Context("converting variables", func() {

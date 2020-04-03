@@ -1,10 +1,8 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=
-code.cloudfoundry.org/quarks-job v0.0.0-20200324115046-491e84a96bcb h1:rzcXbA8PW3HEzXE/3Nof1Q3Q7uCjNPvYQXXRzb7ShVw=
-code.cloudfoundry.org/quarks-job v0.0.0-20200324115046-491e84a96bcb/go.mod h1:SNtMRjKEXm1T/WbLWTSUAlNIl2ddO7qDTsV1aiJ/HGc=
-code.cloudfoundry.org/quarks-utils v0.0.0-20200319162833-2e0d9adb7eb6 h1:k3/D4AKF5oMs+eadgtDc8MUi3L6rgErlcOB791qYv6Y=
-code.cloudfoundry.org/quarks-utils v0.0.0-20200319162833-2e0d9adb7eb6/go.mod h1:d2OaSM1qVE/7Zo1imovL7CZCOAShFePFMI3jlpMcp14=
+code.cloudfoundry.org/quarks-job v0.0.0-20200402132051-aa1b50c5cc0c h1:W12orAahE0oN5UQK0SFu0BZAgA6FQz7x62pf8zMH9Iw=
+code.cloudfoundry.org/quarks-job v0.0.0-20200402132051-aa1b50c5cc0c/go.mod h1:sUVpg32Ks2/cIxsN0Jn0jzqUF70Sv8uB9ndXSf9z5+8=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200331122601-bc0838ffea60 h1:1FNLU6zVwDXkLXvJS7RvSScxNpO01NfyiR6Za9Un5Cg=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200331122601-bc0838ffea60/go.mod h1:d2OaSM1qVE/7Zo1imovL7CZCOAShFePFMI3jlpMcp14=
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
@@ -626,6 +624,7 @@ k8s.io/apiextensions-apiserver v0.0.0-20190918161926-8f644eb6e783 h1:V6ndwCPoao1
 k8s.io/apiextensions-apiserver v0.0.0-20190918161926-8f644eb6e783/go.mod h1:xvae1SZB3E17UpV59AWc271W/Ph25N+bjPyR63X6tPY=
 k8s.io/apimachinery v0.0.0-20190913080033-27d36303b655 h1:CS1tBQz3HOXiseWZu6ZicKX361CZLT97UFnnPx0aqBw=
 k8s.io/apimachinery v0.0.0-20190913080033-27d36303b655/go.mod h1:nL6pwRT8NgfF8TT68DBI8uEePRt89cSvoXUVqbkWHq4=
+k8s.io/apiserver v0.0.0-20190918160949-bfa5e2e684ad h1:IMoNR9pilTBaCS5WpwWnAdmoVYVeXowOD3bLrwxIAtQ=
 k8s.io/apiserver v0.0.0-20190918160949-bfa5e2e684ad/go.mod h1:XPCXEwhjaFN29a8NldXA901ElnKeKLrLtREO9ZhFyhg=
 k8s.io/client-go v0.0.0-20190918160344-1fbdaa4c8d90 h1:mLmhKUm1X+pXu0zXMEzNsOF5E2kKFGe5o6BZBIIqA6A=
 k8s.io/client-go v0.0.0-20190918160344-1fbdaa4c8d90/go.mod h1:J69/JveO6XESwVgG53q3Uz5OSfgsv4uxpScmmyYOOlk=

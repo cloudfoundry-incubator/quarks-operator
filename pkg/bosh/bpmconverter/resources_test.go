@@ -39,12 +39,11 @@ var _ = Describe("BPM Converter", func() {
 	Context("Resources", func() {
 		act := func(bpmConfigs bpm.Configs, instanceGroup *manifest.InstanceGroup) (*bpmconverter.Resources, error) {
 			c := bpmconverter.NewConverter(
-				"foo",
 				volumeFactory,
 				func(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider manifest.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
 					return containerFactory
 				})
-			resources, err := c.Resources(deploymentName, dns, "1", instanceGroup, m, bpmConfigs, "1")
+			resources, err := c.Resources("foo", deploymentName, dns, "1", instanceGroup, m, bpmConfigs, "1")
 			return resources, err
 		}
 
@@ -614,7 +613,6 @@ var _ = Describe("BPM Converter", func() {
 					}
 
 					c := bpmconverter.NewConverter(
-						"foo",
 						bpmconverter.NewVolumeFactory(),
 						func(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider manifest.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
 							return bpmconverter.NewContainerFactory(
@@ -624,7 +622,7 @@ var _ = Describe("BPM Converter", func() {
 								releaseImageProvider,
 								bpmConfigs)
 						})
-					resources, err := c.Resources(deploymentName, dns, "1", m.InstanceGroups[1], m, bpmConfigs[1], "1")
+					resources, err := c.Resources("foo", deploymentName, dns, "1", m.InstanceGroups[1], m, bpmConfigs[1], "1")
 
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(resources.InstanceGroups).To(HaveLen(1))
