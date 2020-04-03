@@ -1,4 +1,4 @@
 dependencies:
   - name: quarks-job
-    version: 0.0.0+0.g06ad02b
+    version: 0.0.0
     repository: https://cloudfoundry-incubator.github.io/quarks-helm

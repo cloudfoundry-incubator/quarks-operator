@@ -22,11 +22,8 @@ perl -pi -e "s|org: .*|org: ${DOCKER_IMAGE_ORG}|g" "${output_dir}/cf-operator/va
 perl -pi -e "s|tag: .*|tag: ${DOCKER_IMAGE_TAG}|g" "${output_dir}/cf-operator/values.yaml"
 perl -pi -e "s|version: .*|version: ${QUARKS_JOB_HELM_VERSION}|g" "${output_dir}/cf-operator/requirements.yaml"
 
-pushd "$output_dir/cf-operator"
-  helm dependency update
-popd
-
 helm package helm/cf-operator \
+  --dependency-update \
   --app-version "$version" \
   --version "$version" \
   --destination "$output_dir"
