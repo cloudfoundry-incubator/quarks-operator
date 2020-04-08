@@ -22,8 +22,29 @@ perl -pi -e "s|org: .*|org: ${DOCKER_IMAGE_ORG}|g" "${output_dir}/cf-operator/va
 perl -pi -e "s|tag: .*|tag: ${DOCKER_IMAGE_TAG}|g" "${output_dir}/cf-operator/values.yaml"
 perl -pi -e "s|version: .*|version: ${QUARKS_JOB_HELM_VERSION}|g" "${output_dir}/cf-operator/requirements.yaml"
 
+# Fetch subchart dependencies
+pushd "$output_dir/cf-operator"
+  helm dependency update
+popd
+
+# Store a list of referenced images with the chart
+quarks_job_values_file=$(mktemp)
+tar xfO ${output_dir}/cf-operator/charts/quarks-job-*.tgz quarks-job/values.yaml > "${quarks_job_values_file}"
+imagelist="$output_dir/cf-operator/imagelist.txt"
+ruby > $imagelist <<EOF
+  require 'yaml'
+  values = YAML.load_file('${output_dir}/cf-operator/values.yaml')
+  image = values['image']
+  puts "#{image['org']}/#{image['repository']}:#{image['tag']}"
+  puts values['operator']['boshDNSDockerImage']
+
+  values = YAML.load_file('${quarks_job_values_file}')
+  image = values['image']
+  puts "#{image['org']}/#{image['repository']}:#{image['tag']}"
+EOF
+rm "${quarks_job_values_file}"
+
 helm package helm/cf-operator \
-  --dependency-update \
   --app-version "$version" \
   --version "$version" \
   --destination "$output_dir"
