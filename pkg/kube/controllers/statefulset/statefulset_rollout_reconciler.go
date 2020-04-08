@@ -79,7 +79,7 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 	}
 
 	if meltdown.NewAnnotationWindow(r.config.MeltdownDuration, statefulSet.Annotations).Contains(time.Now()) {
-		ctxlog.WithEvent(&statefulSet, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", statefulSet.Name, r.config.MeltdownRequeueAfter)
+		ctxlog.WithEvent(&statefulSet, "Meltdown").Debugf(ctx, "Resource '%s/%s' is in meltdown, requeue reconcile after %s", statefulSet.Namespace, statefulSet.Name, r.config.MeltdownRequeueAfter)
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
@@ -170,7 +170,7 @@ func (r *ReconcileStatefulSetRollout) failIfTimedOut(ctx context.Context, statef
 	if getTimeOut(ctx, statefulSet, timeout) < 0 {
 		statefulSet.Annotations[AnnotationCanaryRollout] = rolloutStateFailed
 		if err := r.updateStatefulSet(ctx, &statefulSet); err != nil {
-			ctxlog.Debug(ctx, "Error updating StatefulSet ", statefulSet.Name, err)
+			ctxlog.Debugf(ctx, "Error updating StatefulSet '%s/%s'", statefulSet.Namespace, statefulSet.Name, err)
 			return true, err
 		}
 		return true, nil
@@ -201,12 +201,12 @@ func getTimeOut(ctx context.Context, statefulSet appsv1.StatefulSet, watchTimeAn
 	}
 	watchTime, err := strconv.Atoi(watchTimeStr)
 	if err != nil {
-		ctxlog.Errorf(ctx, "Invalid annotation %s: %s", watchTimeAnnotation, statefulSet.Annotations[watchTimeAnnotation])
+		ctxlog.Errorf(ctx, "Invalid annotation '%s' on '%s/%s': %s", watchTimeAnnotation, statefulSet.Namespace, statefulSet.Name, statefulSet.Annotations[watchTimeAnnotation])
 		return -1
 	}
 	updateStartTimeUnix, err := strconv.ParseInt(statefulSet.Annotations[AnnotationUpdateStartTime], 10, 64)
 	if err != nil {
-		ctxlog.Errorf(ctx, "Invalid annotation %s: %s", AnnotationUpdateStartTime, statefulSet.Annotations[AnnotationUpdateStartTime])
+		ctxlog.Errorf(ctx, "Invalid annotation '%s' on '%s/%s': %s", AnnotationUpdateStartTime, statefulSet.Namespace, statefulSet.Name, statefulSet.Annotations[AnnotationUpdateStartTime])
 		return -1
 	}
 	updateStartTime := time.Unix(updateStartTimeUnix, 0)

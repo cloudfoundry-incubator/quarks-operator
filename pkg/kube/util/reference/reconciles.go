@@ -85,7 +85,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 	namespace := object.GetNamespace()
 	result := []reconcile.Request{}
 
-	log.Debugf(ctx, "Listing %s in namespace '%s' for '%s'", reconcileType, namespace, object.GetName())
+	log.Debugf(ctx, "Listing '%s' for '%s/%s'", reconcileType, namespace, object.GetName())
 	switch reconcileType {
 	case ReconcileForBOSHDeployment:
 		boshDeployments, err := listBOSHDeployments(ctx, client, namespace)
@@ -148,7 +148,7 @@ func SkipReconciles(ctx context.Context, client crc.Client, object apis.Object) 
 		cm := &corev1.ConfigMap{}
 		err := client.Get(ctx, types.NamespacedName{Name: object.Name, Namespace: object.Namespace}, cm)
 		if err != nil {
-			log.Errorf(ctx, "Failed to get ConfigMap '%s': %s", object.Name, err)
+			log.Errorf(ctx, "Failed to get ConfigMap '%s/%s': %s", object.Namespace, object.Name, err)
 			return true
 		}
 
@@ -157,7 +157,7 @@ func SkipReconciles(ctx context.Context, client crc.Client, object apis.Object) 
 		s := &corev1.Secret{}
 		err := client.Get(ctx, types.NamespacedName{Name: object.Name, Namespace: object.Namespace}, s)
 		if err != nil {
-			log.Errorf(ctx, "Failed to get Secret '%s': %s", object.Name, err)
+			log.Errorf(ctx, "Failed to get Secret '%s/%s': %s", object.Namespace, object.Name, err)
 			return true
 		}
 
@@ -167,7 +167,7 @@ func SkipReconciles(ctx context.Context, client crc.Client, object apis.Object) 
 	}
 
 	if object.GetResourceVersion() != newResourceVersion {
-		log.Debugf(ctx, "Skipping reconcile request for old resource version of '%s'", object.GetName())
+		log.Debugf(ctx, "Skipping reconcile request for old resource version of '%s/%s'", object.GetNamespace(), object.GetName())
 		return true
 	}
 	return false

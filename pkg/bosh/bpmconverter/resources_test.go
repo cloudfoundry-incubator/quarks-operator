@@ -39,12 +39,11 @@ var _ = Describe("BPM Converter", func() {
 	Context("Resources", func() {
 		act := func(bpmConfigs bpm.Configs, instanceGroup *manifest.InstanceGroup) (*bpmconverter.Resources, error) {
 			c := bpmconverter.NewConverter(
-				"foo",
 				volumeFactory,
 				func(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider manifest.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
 					return containerFactory
 				})
-			resources, err := c.Resources(deploymentName, dns, "1", instanceGroup, m, bpmConfigs, "1")
+			resources, err := c.Resources("foo", deploymentName, dns, "1", instanceGroup, m, bpmConfigs, "1")
 			return resources, err
 		}
 
@@ -208,7 +207,16 @@ var _ = Describe("BPM Converter", func() {
 							},
 						},
 					}
-					m.InstanceGroups[1].Jobs[0].Properties.Quarks.ActivePassiveProbes = activePassiveProbes
+					config := bpmConfigs[1]["cflinuxfs3-rootfs-setup"]
+					config.ActivePassiveProbes = activePassiveProbes
+					config.Ports = []bpm.Port{
+						{
+							Name:     "rep-server",
+							Protocol: "TCP",
+							Internal: 1801,
+						},
+					}
+					bpmConfigs[1]["cflinuxfs3-rootfs-setup"] = config
 
 					resources, err := act(bpmConfigs[1], m.InstanceGroups[1])
 					Expect(err).ShouldNot(HaveOccurred())
@@ -217,6 +225,7 @@ var _ = Describe("BPM Converter", func() {
 					stS := qSts.Spec.Template.Spec.Template
 
 					// Test services for the quarks statefulSet
+					//
 					service0 := resources.Services[0]
 					Expect(service0.Spec.Selector).To(Equal(map[string]string{
 						bdv1.LabelDeploymentName:    deploymentName,
@@ -228,7 +237,6 @@ var _ = Describe("BPM Converter", func() {
 				})
 
 				It("converts the instance group to an QuarksStatefulSet", func() {
-
 					tolerations := []corev1.Toleration{
 						{
 							Key:      "key",
@@ -383,8 +391,30 @@ var _ = Describe("BPM Converter", func() {
 			})
 
 			It("passes it on to the QuarksStatefulSetSpec", func() {
-				resources, err := act(bpm.Configs{}, m.InstanceGroups[0])
+				resources, err := act(bpm.Configs{
+					"bpm1": {
+						ActivePassiveProbes: map[string]corev1.Probe{
+							"some-bpm-process": {
+								PeriodSeconds: 2,
+								Handler: corev1.Handler{
+									Exec: &corev1.ExecAction{
+										Command: []string{"ls", "/"},
+									},
+								},
+							},
+							"another-bpm-process": {
+								PeriodSeconds: 2,
+								Handler: corev1.Handler{
+									Exec: &corev1.ExecAction{
+										Command: []string{"find", "*"},
+									},
+								},
+							},
+						},
+					},
+				}, m.InstanceGroups[0])
 				Expect(err).ShouldNot(HaveOccurred())
+
 				qSts := resources.InstanceGroups[0]
 				Expect(qSts.Spec.ActivePassiveProbes).ToNot(BeNil())
 				Expect(qSts.Spec.ActivePassiveProbes["some-bpm-process"].Handler.Exec.Command).To(Equal([]string{"ls", "/"}))
@@ -583,7 +613,6 @@ var _ = Describe("BPM Converter", func() {
 					}
 
 					c := bpmconverter.NewConverter(
-						"foo",
 						bpmconverter.NewVolumeFactory(),
 						func(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider manifest.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
 							return bpmconverter.NewContainerFactory(
@@ -593,7 +622,7 @@ var _ = Describe("BPM Converter", func() {
 								releaseImageProvider,
 								bpmConfigs)
 						})
-					resources, err := c.Resources(deploymentName, dns, "1", m.InstanceGroups[1], m, bpmConfigs[1], "1")
+					resources, err := c.Resources("foo", deploymentName, dns, "1", m.InstanceGroups[1], m, bpmConfigs[1], "1")
 
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(resources.InstanceGroups).To(HaveLen(1))

@@ -42,7 +42,7 @@ func AddSecretRotation(ctx context.Context, config *config.Config, mgr manager.M
 			if found {
 				ctxlog.NewPredicateEvent(e.Object).Debug(
 					ctx, e.Meta, "corev1.ConfigMap",
-					fmt.Sprintf("Create predicate passed for '%s'", e.Meta.GetName()),
+					fmt.Sprintf("Create predicate passed for '%s/%s'", e.Meta.GetNamespace(), e.Meta.GetName()),
 				)
 				return true
 			}

@@ -62,12 +62,79 @@ type Port struct {
 // Config represent a BPM configuration
 type Config struct {
 	Processes           []Process `yaml:"processes,omitempty" json:"processes,omitempty"`
-	Ports               []Port    `yaml:"ports,omitempty" json:"ports,omitempty"`
 	UnsupportedTemplate bool      `json:"unsupported_template"`
+
+	// Bind these to reflect quarks properties update
+	Ports               []Port                  `yaml:"ports,omitempty" json:"ports,omitempty"`
+	Run                 RunConfig               `json:"run"`
+	PostStart           PostStart               `json:"post_start"`
+	Debug               bool                    `json:"debug"`
+	ActivePassiveProbes map[string]corev1.Probe `json:"activePassiveProbes"`
+}
+
+// RunConfig describes the runtime configuration for this job.
+type RunConfig struct {
+	HealthCheck     map[string]HealthCheck  `json:"healthcheck" yaml:"healthcheck"`
+	SecurityContext *corev1.SecurityContext `json:"security_context" yaml:"security_context"`
+}
+
+// HealthCheck defines liveness and readiness probes for a container.
+type HealthCheck struct {
+	ReadinessProbe *corev1.Probe `json:"readiness" yaml:"readiness"`
+	LivenessProbe  *corev1.Probe `json:"liveness"  yaml:"liveness"`
+}
+
+// PostStart allows post-start specifics to be passed through the manifest.
+type PostStart struct {
+	Condition *PostStartCondition `json:"condition,omitempty"`
+}
+
+// PostStartCondition represents the condition that should succeed in order to execute the
+// post-start script. It's often set to be the same as the readiness probe of a job.
+type PostStartCondition struct {
+	Exec *corev1.ExecAction `json:"exec,omitempty"`
 }
 
 // Configs holds a collection of BPM configurations by their according job
 type Configs map[string]Config
+
+// IsActivePassiveModel indicates whether these bpm configs contain ActivePassiveProbes
+func (cs Configs) IsActivePassiveModel() (isActivePassiveModel bool) {
+	for _, config := range cs {
+		if len(config.ActivePassiveProbes) > 0 {
+			isActivePassiveModel = true
+		}
+	}
+
+	return
+}
+
+// ActivePassiveProbes returns all activePassive probes defined in the bpm configs
+func (cs Configs) ActivePassiveProbes() map[string]corev1.Probe {
+	probes := map[string]corev1.Probe{}
+	for _, config := range cs {
+		for container, probe := range config.ActivePassiveProbes {
+			probes[container] = probe
+		}
+	}
+	return probes
+}
+
+// ServicePorts returns the service ports defined in the bpm configs
+func (cs Configs) ServicePorts() []corev1.ServicePort {
+	ports := []corev1.ServicePort{}
+
+	for _, c := range cs {
+		for _, port := range c.Ports {
+			ports = append(ports, corev1.ServicePort{
+				Name:     port.Name,
+				Protocol: corev1.Protocol(port.Protocol),
+				Port:     int32(port.Internal),
+			})
+		}
+	}
+	return ports
+}
 
 // NewConfig creates a new Config object from the yaml
 func NewConfig(data []byte) (Config, error) {

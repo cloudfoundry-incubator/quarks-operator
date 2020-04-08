@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
 	"k8s.io/api/admission/v1beta1"
@@ -18,7 +19,6 @@ import (
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
 	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/withops"
@@ -128,7 +128,7 @@ func (v *Validator) Handle(ctx context.Context, req admission.Request) admission
 		return denied(fmt.Sprintf("Failed to resolve manifest: %s", err.Error()))
 	}
 
-	err = validateUpdateBlock(*manifest)
+	err = validateUpdateBlock(manifest.Update)
 	if err != nil {
 		return denied(fmt.Sprintf("Failed to validate update block: %s", err.Error()))
 	}
@@ -224,15 +224,17 @@ func (v *Validator) opsResourcesExist(ctx context.Context, specOpsResource []bdv
 	}
 }
 
-func validateUpdateBlock(manifest manifest.Manifest) error {
-	if manifest.Update == nil {
+func validateUpdateBlock(update *manifest.Update) error {
+	if update == nil {
 		return nil
 	}
-	if _, err := statefulset.ExtractWatchTime(manifest.Update.CanaryWatchTime, "canary_watch_time"); err != nil {
-		return err
+	if _, err := manifest.ExtractWatchTime(update.CanaryWatchTime); err != nil {
+		return errors.Wrap(err, "update block has invalid canary_watch_time")
 	}
-	_, err := statefulset.ExtractWatchTime(manifest.Update.UpdateWatchTime, "update_watch_time")
-	return err
+	if _, err := manifest.ExtractWatchTime(update.UpdateWatchTime); err != nil {
+		return errors.Wrap(err, "update block has invalid update_watch_time")
+	}
+	return nil
 }
 
 // Validator implements inject.Client.

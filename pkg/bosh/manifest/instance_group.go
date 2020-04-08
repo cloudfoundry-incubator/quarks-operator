@@ -111,17 +111,6 @@ func (ig *InstanceGroup) IndexedServiceName(index int, azIndex int) string {
 	return fmt.Sprintf("%s-%d", sn, index)
 }
 
-// ActivePassiveProbes returns all the probes defined in the instance group jobs
-func (ig *InstanceGroup) ActivePassiveProbes() map[string]corev1.Probe {
-	probes := map[string]corev1.Probe{}
-	for _, job := range ig.Jobs {
-		for container, probe := range job.Properties.Quarks.ActivePassiveProbes {
-			probes[container] = probe
-		}
-	}
-	return probes
-}
-
 func (ig *InstanceGroup) jobInstances(
 	jobName string,
 	initialRollout bool,

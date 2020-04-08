@@ -14,18 +14,15 @@ import (
 
 // VariablesConverter represents a BOSH manifest into kubernetes resources
 type VariablesConverter struct {
-	namespace string
 }
 
 // NewVariablesConverter converts a BOSH manifest into kubernetes resources
-func NewVariablesConverter(namespace string) *VariablesConverter {
-	return &VariablesConverter{
-		namespace: namespace,
-	}
+func NewVariablesConverter() *VariablesConverter {
+	return &VariablesConverter{}
 }
 
 // Variables returns quarks secrets for a list of BOSH variables
-func (vc *VariablesConverter) Variables(manifestName string, variables []bdm.Variable) ([]qsv1a1.QuarksSecret, error) {
+func (vc *VariablesConverter) Variables(namespace string, manifestName string, variables []bdm.Variable) ([]qsv1a1.QuarksSecret, error) {
 	secrets := []qsv1a1.QuarksSecret{}
 
 	for _, v := range variables {
@@ -33,7 +30,7 @@ func (vc *VariablesConverter) Variables(manifestName string, variables []bdm.Var
 		s := qsv1a1.QuarksSecret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
-				Namespace: vc.namespace,
+				Namespace: namespace,
 				Labels: map[string]string{
 					"variableName":           v.Name,
 					bdv1.LabelDeploymentName: manifestName,

@@ -26,7 +26,6 @@ var (
 
 // BPMConverter converts BPM information to kubernetes resources
 type BPMConverter struct {
-	namespace               string
 	volumeFactory           VolumeFactory
 	newContainerFactoryFunc NewContainerFactoryFunc
 }
@@ -39,6 +38,11 @@ type ContainerFactory interface {
 
 // NewContainerFactoryFunc returns ContainerFactory from single BOSH instance group.
 type NewContainerFactoryFunc func(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) ContainerFactory
+
+// NewContainerFactoryImplFunc returns a ContainerFactoryImpl
+func NewContainerFactoryImplFunc(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs) ContainerFactory {
+	return NewContainerFactory(instanceGroupName, version, disableLogSidecar, releaseImageProvider, bpmConfigs)
+}
 
 // VolumeFactory builds Kubernetes containers from BOSH jobs.
 type VolumeFactory interface {
@@ -56,9 +60,8 @@ type DomainNameService interface {
 }
 
 // NewConverter returns a new converter
-func NewConverter(namespace string, volumeFactory VolumeFactory, newContainerFactoryFunc NewContainerFactoryFunc) *BPMConverter {
+func NewConverter(volumeFactory VolumeFactory, newContainerFactoryFunc NewContainerFactoryFunc) *BPMConverter {
 	return &BPMConverter{
-		namespace:               namespace,
 		volumeFactory:           volumeFactory,
 		newContainerFactoryFunc: newContainerFactoryFunc,
 	}
@@ -74,11 +77,11 @@ type Resources struct {
 
 // Resources uses BOSH Process Manager information to create k8s container specs from single BOSH instance group.
 // It returns quarks stateful sets, services and quarks jobs.
-func (kc *BPMConverter) Resources(deploymentName string, dns DomainNameService, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*Resources, error) {
+func (kc *BPMConverter) Resources(namespace string, deploymentName string, dns DomainNameService, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*Resources, error) {
 	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(deploymentName, instanceGroup.Name, qStsVersion)
 
-	defaultDisks := kc.volumeFactory.GenerateDefaultDisks(instanceGroup, igResolvedSecretVersion, kc.namespace)
-	bpmDisks, err := kc.volumeFactory.GenerateBPMDisks(instanceGroup, bpmConfigs, kc.namespace)
+	defaultDisks := kc.volumeFactory.GenerateDefaultDisks(instanceGroup, igResolvedSecretVersion, namespace)
+	bpmDisks, err := kc.volumeFactory.GenerateBPMDisks(instanceGroup, bpmConfigs, namespace)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Generate of BPM disks failed for manifest name %s, instance group %s.", deploymentName, instanceGroup.Name)
 	}
@@ -102,19 +105,19 @@ func (kc *BPMConverter) Resources(deploymentName string, dns DomainNameService, 
 
 	switch instanceGroup.LifeCycle {
 	case bdm.IGTypeService, "":
-		convertedExtStatefulSet, err := kc.serviceToQuarksStatefulSet(cfac, dns, instanceGroup, defaultDisks, bpmDisks)
+		convertedExtStatefulSet, err := kc.serviceToQuarksStatefulSet(namespace, cfac, dns, instanceGroup, defaultDisks, bpmDisks, bpmConfigs.ActivePassiveProbes())
 		if err != nil {
 			return nil, err
 		}
 
-		services := kc.serviceToKubeServices(deploymentName, dns, instanceGroup, &convertedExtStatefulSet)
+		services := kc.serviceToKubeServices(namespace, deploymentName, dns, instanceGroup, &convertedExtStatefulSet, bpmConfigs)
 		if len(services) != 0 {
 			res.Services = append(res.Services, services...)
 		}
 
 		res.InstanceGroups = append(res.InstanceGroups, convertedExtStatefulSet)
 	case bdm.IGTypeErrand, bdm.IGTypeAutoErrand:
-		convertedQJob, err := kc.errandToQuarksJob(cfac, dns, instanceGroup, defaultDisks, bpmDisks)
+		convertedQJob, err := kc.errandToQuarksJob(namespace, cfac, dns, instanceGroup, defaultDisks, bpmDisks)
 		if err != nil {
 			return nil, err
 		}
@@ -127,11 +130,13 @@ func (kc *BPMConverter) Resources(deploymentName string, dns DomainNameService, 
 
 // serviceToQuarksStatefulSet will generate an QuarksStatefulSet
 func (kc *BPMConverter) serviceToQuarksStatefulSet(
+	namespace string,
 	cfac ContainerFactory,
 	dns DomainNameService,
 	instanceGroup *bdm.InstanceGroup,
 	defaultDisks bdm.Disks,
 	bpmDisks bdm.Disks,
+	activePassiveProbes map[string]corev1.Probe,
 ) (qstsv1a1.QuarksStatefulSet, error) {
 	defaultVolumeMounts := defaultDisks.VolumeMounts()
 	initContainers, err := cfac.JobsToInitContainers(instanceGroup.Jobs, defaultVolumeMounts, bpmDisks, instanceGroup.Properties.Quarks.RequiredService)
@@ -157,21 +162,21 @@ func (kc *BPMConverter) serviceToQuarksStatefulSet(
 	volumeClaims = append(volumeClaims, bpmVolumeClaims...)
 
 	statefulSetLabels := statefulset.FilterLabels(instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels)
-	statefulSetAnnotations, err := statefulset.ComputeAnnotations(instanceGroup)
+	statefulSetAnnotations, err := computeAnnotations(instanceGroup)
 	if err != nil {
 		return qstsv1a1.QuarksStatefulSet{}, errors.Wrapf(err, "computing annotations failed for instance group %s", instanceGroup.Name)
 	}
 	extSts := qstsv1a1.QuarksStatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        instanceGroup.NameSanitized(),
-			Namespace:   kc.namespace,
+			Namespace:   namespace,
 			Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
 			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
 		Spec: qstsv1a1.QuarksStatefulSetSpec{
 			Zones:                instanceGroup.AZs,
 			UpdateOnConfigChange: true,
-			ActivePassiveProbes:  instanceGroup.ActivePassiveProbes(),
+			ActivePassiveProbes:  activePassiveProbes,
 			Template: appsv1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        instanceGroup.NameSanitized(),
@@ -208,7 +213,7 @@ func (kc *BPMConverter) serviceToQuarksStatefulSet(
 	}
 
 	spec := &extSts.Spec.Template.Spec.Template.Spec
-	spec.DNSPolicy, spec.DNSConfig, err = dns.DNSSetting(kc.namespace)
+	spec.DNSPolicy, spec.DNSConfig, err = dns.DNSSetting(namespace)
 	if err != nil {
 		return qstsv1a1.QuarksStatefulSet{}, err
 	}
@@ -229,36 +234,35 @@ func (kc *BPMConverter) serviceToQuarksStatefulSet(
 }
 
 // serviceToKubeServices will generate Services which expose ports for InstanceGroup's jobs
-func (kc *BPMConverter) serviceToKubeServices(deploymentName string, dns DomainNameService, instanceGroup *bdm.InstanceGroup, qSts *qstsv1a1.QuarksStatefulSet) []corev1.Service {
+func (kc *BPMConverter) serviceToKubeServices(namespace string, deploymentName string, dns DomainNameService, instanceGroup *bdm.InstanceGroup, qSts *qstsv1a1.QuarksStatefulSet, bpmConfigs bpm.Configs) []corev1.Service {
 	var services []corev1.Service
-	// Collect ports to be exposed for each job
-	ports := instanceGroup.ServicePorts()
+	// Collect ports from bpm configs
+	ports := bpmConfigs.ServicePorts()
 	if len(ports) == 0 {
 		return services
 	}
 
-	activePassiveModel := false
-	for _, job := range instanceGroup.Jobs {
-		if len(job.Properties.Quarks.ActivePassiveProbes) > 0 {
-			activePassiveModel = true
-		}
-	}
+	isActivePassiveModel := bpmConfigs.IsActivePassiveModel()
 
 	if len(instanceGroup.AZs) > 0 {
 		for azIndex := range instanceGroup.AZs {
-			services = kc.generateServices(services,
-				*instanceGroup,
+			services = kc.generateServices(
+				services,
+				namespace,
 				deploymentName,
+				*instanceGroup,
 				azIndex,
-				activePassiveModel,
+				isActivePassiveModel,
 				ports)
 		}
 	} else {
-		services = kc.generateServices(services,
-			*instanceGroup,
+		services = kc.generateServices(
+			services,
+			namespace,
 			deploymentName,
+			*instanceGroup,
 			-1,
-			activePassiveModel,
+			isActivePassiveModel,
 			ports)
 	}
 
@@ -267,13 +271,13 @@ func (kc *BPMConverter) serviceToKubeServices(deploymentName string, dns DomainN
 		bdv1.LabelDeploymentName:    deploymentName,
 		bdv1.LabelInstanceGroupName: instanceGroup.Name,
 	}
-	if activePassiveModel {
+	if isActivePassiveModel {
 		headlessServiceSelector[qstsv1a1.LabelActivePod] = "active"
 	}
 	headlessService := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        headlessServiceName,
-			Namespace:   kc.namespace,
+			Namespace:   namespace,
 			Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
 			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
@@ -294,6 +298,7 @@ func (kc *BPMConverter) serviceToKubeServices(deploymentName string, dns DomainN
 
 // errandToQuarksJob will generate an QuarksJob
 func (kc *BPMConverter) errandToQuarksJob(
+	namespace string,
 	cfac ContainerFactory,
 	dns DomainNameService,
 	instanceGroup *bdm.InstanceGroup,
@@ -329,7 +334,7 @@ func (kc *BPMConverter) errandToQuarksJob(
 	qJob := qjv1a1.QuarksJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        instanceGroup.Name,
-			Namespace:   kc.namespace,
+			Namespace:   namespace,
 			Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
 			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
@@ -361,7 +366,7 @@ func (kc *BPMConverter) errandToQuarksJob(
 		},
 	}
 
-	qJob.Spec.Template.Spec.Template.Spec.DNSPolicy, qJob.Spec.Template.Spec.Template.Spec.DNSConfig, err = dns.DNSSetting(kc.namespace)
+	qJob.Spec.Template.Spec.Template.Spec.DNSPolicy, qJob.Spec.Template.Spec.Template.Spec.DNSConfig, err = dns.DNSSetting(namespace)
 
 	if err != nil {
 		return qjv1a1.QuarksJob{}, err
@@ -386,9 +391,11 @@ func (kc *BPMConverter) errandToQuarksJob(
 	return qJob, nil
 }
 
-func (kc *BPMConverter) generateServices(services []corev1.Service,
-	instanceGroup bdm.InstanceGroup,
+func (kc *BPMConverter) generateServices(
+	services []corev1.Service,
+	namespace string,
 	deploymentName string,
+	instanceGroup bdm.InstanceGroup,
 	azIndex int,
 	activePassiveModel bool,
 	ports []corev1.ServicePort) []corev1.Service {
@@ -412,7 +419,7 @@ func (kc *BPMConverter) generateServices(services []corev1.Service,
 		services = append(services, corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      instanceGroup.IndexedServiceName(i, azIndex),
-				Namespace: kc.namespace,
+				Namespace: namespace,
 				Labels:    serviceLabels(azIndex, i, false),
 			},
 			Spec: corev1.ServiceSpec{
@@ -423,4 +430,34 @@ func (kc *BPMConverter) generateServices(services []corev1.Service,
 	}
 
 	return services
+}
+
+// computeAnnotations computes annotations for the statefulset from the instance group
+func computeAnnotations(ig *bdm.InstanceGroup) (map[string]string, error) {
+	statefulSetAnnotations := ig.Env.AgentEnvBoshConfig.Agent.Settings.Annotations
+	if statefulSetAnnotations == nil {
+		statefulSetAnnotations = make(map[string]string)
+	}
+	if ig.Update == nil {
+		return statefulSetAnnotations, nil
+	}
+
+	canaryWatchTime, err := bdm.ExtractWatchTime(ig.Update.CanaryWatchTime)
+	if err != nil {
+		return nil, errors.Wrap(err, "update block has invalid canary_watch_time")
+	}
+	if canaryWatchTime != "" {
+		statefulSetAnnotations[statefulset.AnnotationCanaryWatchTime] = canaryWatchTime
+	}
+
+	updateWatchTime, err := bdm.ExtractWatchTime(ig.Update.UpdateWatchTime)
+	if err != nil {
+		return nil, errors.Wrap(err, "update block has invalid update_watch_time")
+	}
+
+	if updateWatchTime != "" {
+		statefulSetAnnotations[statefulset.AnnotationUpdateWatchTime] = updateWatchTime
+	}
+
+	return statefulSetAnnotations, nil
 }

@@ -123,19 +123,19 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 		hookServer.Register(hook.Path, hook.Webhook)
 	}
 
-	ctxlog.Info(ctx, "generating webhook certificates")
+	ctxlog.Info(ctx, "Generating webhook certificates")
 	err = webhookConfig.setupCertificate(ctx)
 	if err != nil {
 		return errors.Wrap(err, "setting up the webhook server certificate")
 	}
 
-	ctxlog.Info(ctx, "generating validating webhook server configuration")
+	ctxlog.Info(ctx, "Generating validating webhook server configuration")
 	err = webhookConfig.generateValidationWebhookServerConfig(ctx, validatingWebhooks)
 	if err != nil {
 		return errors.Wrap(err, "generating the validating webhook server configuration")
 	}
 
-	ctxlog.Info(ctx, "generating mutating webhook server configuration")
+	ctxlog.Info(ctx, "Generating mutating webhook server configuration")
 	err = webhookConfig.generateMutationWebhookServerConfig(ctx, mutatingWebhooks)
 	if err != nil {
 		return errors.Wrap(err, "generating the webhook server configuration")
