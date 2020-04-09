@@ -331,6 +331,12 @@ func (kc *BPMConverter) errandToQuarksJob(
 		strategy = qjv1a1.TriggerOnce
 	}
 
+	restartPolicy := corev1.RestartPolicyOnFailure
+	if instanceGroup.LifeCycle == bdm.IGTypeErrand {
+		// Manually triggered errands are not auto-restarted
+		restartPolicy = corev1.RestartPolicyNever
+	}
+
 	qJob := qjv1a1.QuarksJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        instanceGroup.Name,
@@ -351,7 +357,7 @@ func (kc *BPMConverter) errandToQuarksJob(
 							Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 						},
 						Spec: corev1.PodSpec{
-							RestartPolicy:  corev1.RestartPolicyOnFailure,
+							RestartPolicy:  restartPolicy,
 							Containers:     containers,
 							InitContainers: initContainers,
 							Volumes:        volumes,
