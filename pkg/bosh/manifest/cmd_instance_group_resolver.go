@@ -325,11 +325,9 @@ func (igr *InstanceGroupResolver) renderBPM() error {
 			return errors.Wrapf(err, "Rendering BPM failed for instance group %s", igr.instanceGroup.Name)
 		}
 
-		err = igr.renderJobBPM(job, jobSpecFile, template)
-		if err != nil {
+		if err := igr.renderJobBPM(job, jobSpecFile, template); err != nil {
 			return errors.Wrapf(err, "Rendering BPM failed for instance group %s", igr.instanceGroup.Name)
 		}
-
 	}
 
 	return nil
@@ -385,7 +383,6 @@ func (igr *InstanceGroupResolver) renderJobBPM(currentJob *Job, jobSpecFile stri
 	jobIndexBPM := make([]bpm.Config, len(jobInstances))
 	for i, jobInstance := range jobInstances {
 		var renderedBPM = bpm.Config{}
-		var err error
 
 		properties := currentJob.Properties.ToMap()
 
@@ -433,6 +430,7 @@ func (igr *InstanceGroupResolver) renderJobBPM(currentJob *Job, jobSpecFile stri
 
 		// Merge processes if they also exist in Quarks
 		if currentJob.Properties.Quarks.BPM != nil && len(currentJob.Properties.Quarks.BPM.Processes) > 0 {
+			var err error
 			renderedBPM.Processes, err = renderedBPM.MergeProcesses(currentJob.Properties.Quarks.BPM.Processes)
 			if err != nil {
 				return errors.Wrapf(err, "failed to merge bpm information from quarks for job '%s'", currentJob.Name)
