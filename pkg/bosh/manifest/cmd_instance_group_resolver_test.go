@@ -68,6 +68,36 @@ var _ = Describe("InstanceGroupResolver", func() {
 		})
 	})
 
+	Context("real-life manifests", func() {
+		var fs = afero.NewMemMapFs()
+
+		// https://github.com/cloudfoundry-incubator/kubecf/pull/641
+		It("it avoids regression for kubecf-641", func() {
+			deploymentName := "kubecf"
+			ig := "asdatabase"
+
+			m, err = env.BOSHManifestFromKubeCF641()
+			Expect(err).NotTo(HaveOccurred())
+
+			dns, err := boshdns.NewDNS(*m)
+			Expect(err).ToNot(HaveOccurred())
+
+			igr, err = NewInstanceGroupResolver(fs, assetPath, deploymentName, *m, ig, dns)
+			Expect(err).ToNot(HaveOccurred())
+
+			resolve()
+			bpmInfo, err := igr.BPMInfo()
+			Expect(err).ToNot(HaveOccurred())
+
+			bpm := bpmInfo.Configs["postgres"]
+			Expect(bpm.Ports).To(ContainElement(bpmConfig.Port{
+				Name:     "postgres",
+				Protocol: "TCP",
+				Internal: 5432,
+			}))
+		})
+	})
+
 	Context("InstanceGroupResolver", func() {
 		var fs = afero.NewMemMapFs()
 		var deploymentName string
