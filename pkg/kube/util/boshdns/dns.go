@@ -23,8 +23,7 @@ import (
 )
 
 const (
-	cfDomain = "service.cf.internal"
-	appName  = "bosh-dns"
+	appName = "bosh-dns"
 )
 
 var (
@@ -135,7 +134,6 @@ func (dns *boshDomainNameService) DNSSetting(namespace string) (corev1.DNSPolicy
 			fmt.Sprintf("%s.svc.%s", namespace, clusterDomain),
 			fmt.Sprintf("svc.%s", clusterDomain),
 			clusterDomain,
-			cfDomain,
 		},
 		Options: []corev1.PodDNSConfigOption{{Name: "ndots", Value: &ndots}},
 	}, nil
