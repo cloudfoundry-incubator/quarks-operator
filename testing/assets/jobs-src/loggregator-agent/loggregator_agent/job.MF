@@ -1,0 +1,80 @@
+---
+name: loggregator_agent
+
+provides:
+- name: loggregator_agent
+  type: loggregator_agent
+  properties:
+  - listening_port
+  - grpc_port
+
+consumes:
+- name: doppler
+  type: doppler
+
+templates:
+  bpm.yml.erb: config/bpm.yml
+  ingress_port.yml.erb: config/ingress_port.yml
+  prom_scraper_config.yml.erb: config/prom_scraper_config.yml
+  loggregator_agent.crt.erb: config/certs/loggregator_agent.crt
+  loggregator_agent.key.erb: config/certs/loggregator_agent.key
+  loggregator_ca.crt.erb: config/certs/loggregator_ca.crt
+  metrics_ca.crt.erb: config/certs/metrics_ca.crt
+  metrics.crt.erb: config/certs/metrics.crt
+  metrics.key.erb: config/certs/metrics.key
+
+packages:
+- loggregator_agent
+
+properties:
+  enabled:
+    description: "Enable v1 Firehose and v2 Logstream"
+    default: true
+  disable_udp:
+    description: "Disable incoming UDP"
+    default: false
+  listening_port:
+    description: "Port the agent is listening on to receive dropsonde log messages"
+    default: 3457
+  grpc_port:
+    description: "Port the agent is listening on to receive gRPC log envelopes"
+    default: 3458
+  zone:
+    description: "Availability zone where this agent is running"
+    default: ""
+  deployment:
+    description: "Name of deployment (added as tag on all outgoing v1 envelopes)"
+    default: ""
+  tags:
+    description: "Collection of tags to add on all outgoing v2 envelopes. Bosh deployment, job, index and IP will be merged with this property if they are not provided"
+    default: {}
+    example: {"deployment": "cf"}
+
+  doppler.grpc_port:
+    description: Port for outgoing log messages via GRPC
+    default: 8082
+
+  loggregator.tls.ca_cert:
+    description: "CA root required for key/cert verification"
+  loggregator.tls.agent.cert:
+    description: "TLS certificate for agent"
+  loggregator.tls.agent.key:
+    description: "TLS key for agent"
+  loggregator.tls.cipher_suites:
+    description: |
+      An ordered list of supported SSL cipher suites. Allowed cipher suites are
+      TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 and TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384.
+    default: "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+
+  metrics.port:
+    description: "Port the agent uses to serve metrics and debug information"
+    default: 14824
+  metrics.ca_cert:
+    description: "TLS CA cert to verify requests to metrics endpoint."
+  metrics.cert:
+    description: "TLS certificate for metrics server signed by the metrics CA"
+  metrics.key:
+    description: "TLS private key for metrics server signed by the metrics CA"
+  metrics.server_name:
+    description: "The server name used in the scrape configuration for the metrics endpoint"
+  

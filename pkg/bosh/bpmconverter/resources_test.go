@@ -113,6 +113,8 @@ var _ = Describe("BPM Converter", func() {
 					// Test affinity & tolerations
 					Expect(qJob.Spec.Template.Spec.Template.Spec.Affinity).To(BeNil())
 					Expect(len(qJob.Spec.Template.Spec.Template.Spec.Tolerations)).To(Equal(0))
+
+					Expect(qJob.Spec.Template.Spec.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
 				})
 
 				It("converts the instance group to an quarksJob when this the lifecycle is set to auto-errand", func() {
@@ -124,6 +126,8 @@ var _ = Describe("BPM Converter", func() {
 					// Test trigger strategy
 					qJob := resources.Errands[0]
 					Expect(qJob.Spec.Trigger.Strategy).To(Equal(qjv1a1.TriggerOnce))
+
+					Expect(qJob.Spec.Template.Spec.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyOnFailure))
 				})
 
 				It("converts the AgentEnvBoshConfig information", func() {

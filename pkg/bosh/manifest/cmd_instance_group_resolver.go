@@ -325,11 +325,8 @@ func (igr *InstanceGroupResolver) renderBPM() error {
 			return errors.Wrapf(err, "Rendering BPM failed for instance group %s", igr.instanceGroup.Name)
 		}
 
-		if template != "" {
-			err = igr.renderJobBPM(job, jobSpecFile, template)
-			if err != nil {
-				return errors.Wrapf(err, "Rendering BPM failed for instance group %s", igr.instanceGroup.Name)
-			}
+		if err := igr.renderJobBPM(job, jobSpecFile, template); err != nil {
+			return errors.Wrapf(err, "Rendering BPM failed for instance group %s", igr.instanceGroup.Name)
 		}
 	}
 
@@ -385,50 +382,55 @@ func (igr *InstanceGroupResolver) renderJobBPM(currentJob *Job, jobSpecFile stri
 
 	jobIndexBPM := make([]bpm.Config, len(jobInstances))
 	for i, jobInstance := range jobInstances {
+		var renderedBPM = bpm.Config{}
+
 		properties := currentJob.Properties.ToMap()
 
-		renderPointer := btg.NewERBRenderer(
-			&btg.EvaluationContext{
-				Properties: properties,
-			},
-			&btg.InstanceInfo{
-				Address:    jobInstance.Address,
-				AZ:         jobInstance.AZ,
-				Bootstrap:  jobInstance.Bootstrap,
-				ID:         jobInstance.ID,
-				Index:      jobInstance.Index,
-				Deployment: igr.deploymentName,
-				Name:       jobInstance.Name,
-			},
-			jobSpecFile,
-		)
+		if erbFilePath != "" {
+			renderPointer := btg.NewERBRenderer(
+				&btg.EvaluationContext{
+					Properties: properties,
+				},
+				&btg.InstanceInfo{
+					Address:    jobInstance.Address,
+					AZ:         jobInstance.AZ,
+					Bootstrap:  jobInstance.Bootstrap,
+					ID:         jobInstance.ID,
+					Index:      jobInstance.Index,
+					Deployment: igr.deploymentName,
+					Name:       jobInstance.Name,
+				},
+				jobSpecFile,
+			)
 
-		// Write to a tmp, this is following the conventions on how the
-		// https://github.com/viovanov/bosh-template-go/ processes the params
-		// when we calling the *.Render().
-		tmpfile, err := ioutil.TempFile("", "rendered.*.yml")
-		if err != nil {
-			return errors.Wrapf(err, "Creation of tmp file %s failed", tmpfile.Name())
-		}
-		defer os.Remove(tmpfile.Name())
+			// Write to a tmp, this is following the conventions on how the
+			// https://github.com/viovanov/bosh-template-go/ processes the params
+			// when we calling the *.Render().
+			tmpfile, err := ioutil.TempFile("", "rendered.*.yml")
+			if err != nil {
+				return errors.Wrapf(err, "Creation of tmp file %s failed", tmpfile.Name())
+			}
+			defer os.Remove(tmpfile.Name())
 
-		if err := renderPointer.Render(erbFilePath, tmpfile.Name()); err != nil {
-			return errors.Wrapf(err, "Rendering file %s failed", erbFilePath)
-		}
+			if err := renderPointer.Render(erbFilePath, tmpfile.Name()); err != nil {
+				return errors.Wrapf(err, "Rendering file %s failed", erbFilePath)
+			}
 
-		bpmBytes, err := ioutil.ReadFile(tmpfile.Name())
-		if err != nil {
-			return errors.Wrapf(err, "Reading of tmp file %s failed", tmpfile.Name())
-		}
+			bpmBytes, err := ioutil.ReadFile(tmpfile.Name())
+			if err != nil {
+				return errors.Wrapf(err, "Reading of tmp file %s failed", tmpfile.Name())
+			}
 
-		// Parse a rendered bpm.yml into the bpm Config struct.
-		renderedBPM, err := bpm.NewConfig(bpmBytes)
-		if err != nil {
-			return errors.Wrapf(err, "Rendering bpm.yaml into bpm config %s failed", string(bpmBytes))
+			// Parse a rendered bpm.yml into the bpm Config struct.
+			renderedBPM, err = bpm.NewConfig(bpmBytes)
+			if err != nil {
+				return errors.Wrapf(err, "Rendering bpm.yaml into bpm config %s failed", string(bpmBytes))
+			}
 		}
 
 		// Merge processes if they also exist in Quarks
 		if currentJob.Properties.Quarks.BPM != nil && len(currentJob.Properties.Quarks.BPM.Processes) > 0 {
+			var err error
 			renderedBPM.Processes, err = renderedBPM.MergeProcesses(currentJob.Properties.Quarks.BPM.Processes)
 			if err != nil {
 				return errors.Wrapf(err, "failed to merge bpm information from quarks for job '%s'", currentJob.Name)

@@ -1,0 +1,133 @@
+---
+name: postgres
+
+description: "The Postgres server provides a single instance Postgres database that can be used with the Cloud Controller or the UAA. It does not provide highly-available configuration."
+
+templates:
+  pre-start.sh.erb: bin/pre-start
+  postgres_ctl.sh.erb: bin/postgres_ctl
+  pg_janitor_ctl.sh.erb: bin/pg_janitor_ctl
+  pg_janitor.sh.erb: bin/pg_janitor.sh
+  postgres_start.sh.erb: bin/postgres_start.sh
+  pgconfig.sh.erb: bin/pgconfig.sh
+  utils.sh.erb: bin/utils.sh
+  postgresql.conf.erb: config/postgresql.conf
+  pg_hba.conf.erb: config/pg_hba.conf
+  pg_ident.conf.erb: config/pg_ident.conf
+  roles.sql.erb: config/roles.sql
+  server.private_key.erb: config/certificates/server.private_key
+  server.public_cert.erb: config/certificates/server.public_cert
+  server.ca_cert.erb: config/certificates/server.ca_cert
+  hooks/call-hooks.sh.erb: bin/hooks/call-hooks.sh
+  hooks/postgres-pre-start.sh.erb: bin/hooks/postgres-pre-start.sh
+  hooks/janitor.sh.erb: bin/hooks/janitor.sh
+  hooks/postgres-pre-stop.sh.erb: bin/hooks/postgres-pre-stop.sh
+  hooks/postgres-post-start.sh.erb: bin/hooks/postgres-post-start.sh
+  hooks/postgres-post-stop.sh.erb: bin/hooks/postgres-post-stop.sh
+
+packages:
+  - postgres-common
+  - postgres-9.6.10
+  - postgres-11.5
+
+provides:
+- name: postgres
+  type: database
+  properties:
+  - databases.port
+  - databases.databases
+  - databases.roles
+  - databases.tls.ca
+
+properties:
+  databases.port:
+    description: "The database port"
+    default: 5432
+  databases.databases:
+    description: "A list of databases and associated properties to create"
+    example: |
+      - name: sandbox
+        citext: true
+      - name: sandbox2
+        citext: false
+  databases.roles:
+    description: "A list of database roles and associated properties to create"
+    example: |
+      - name: pgadmin
+        password: passwd
+        permissions:
+        - "CONNECTION LIMIT 33"
+      - name: bud_spencer
+        common_name: "Carlo Pedersoli"
+  databases.max_connections:
+    description: "Maximum number of database connections"
+    default: 500
+  databases.log_line_prefix:
+    description: "The postgres `printf` style string that is output at the beginning of each log line"
+    default: "%m: "
+  databases.collect_statement_statistics:
+    description: "Enable the `pg_stat_statements` extension and collect statement execution statistics"
+    default: false
+  databases.additional_config:
+    description: "A map of additional key/value pairs to include as extra configuration properties"
+    example: |
+      shared_buffers: 4GB
+  databases.monit_timeout:
+    description: "Monit timout in seconds for the postgres job start. If not specified, no timeout statement will be added so that the global monit timeout applies."
+    default: 90
+  databases.tls.ca:
+    description: "PEM-encoded certification authority for secure TLS communication"
+    default: ''
+  databases.tls.certificate:
+    description: "PEM-encoded certificate for secure TLS communication"
+    default: ''
+  databases.tls.private_key:
+    description: "PEM-encoded key for secure TLS communication"
+    default: ''
+  databases.trust_local_connections:
+    description: Whether to trust or not local connections. Note that vcap is always trusted.
+    default: true
+  databases.skip_data_copy_in_minor:
+    description: "If false, during a PostgreSQL minor upgrade a copy of the data directory is created."
+    default: false
+  databases.hooks.timeout:
+    description: "Time limit in seconds for the hook script. By default it's set to 0 that means no time limit"
+    default: 0
+  databases.hooks.pre_start:
+    description: "Script to run before starting PostgreSQL"
+    default: ''
+    example: |
+      #!/bin/bash
+      echo "Going to start Postgres"
+      echo "PostgreSQL data directory is ${DATA_DIR}"
+      echo "PostgreSQL port is ${PORT}"
+      echo "Package directory is ${PACKAGE_DIR}"
+  databases.hooks.post_start:
+    description: "Script to run after PostgreSQL has started"
+    default: ''
+    example: |
+      #!/bin/bash
+      echo "The following databases are available:"
+      ${PACKAGE_DIR}/bin/psql -p ${PORT} -U vcap postgres -c "\l"
+  databases.hooks.pre_stop:
+    description: "Script to run before stopping PostgreSQL"
+    default: ''
+  databases.hooks.post_stop:
+    description: "Script to run after PostgreSQL has stopped"
+    default: ''
+  databases.enable_trace:
+    description: "Print additional traces in control scripts"
+    default: false
+  janitor.script:
+    description: "If specified, janitor would periodically run this script"
+    default: ''
+    example: |
+      #!/bin/bash
+      echo "Run VACUUM"
+      ${PACKAGE_DIR}/bin/psql -p ${PORT} -U vcap sandbox -c "VACUUM ANALYZE"
+  janitor.interval:
+    description: "Interval in seconds between two invocations of the janitor script. By default it's set to 1 day."
+    default: 86400
+  janitor.timeout:
+    description: "Time limit in seconds for the janitor script. By default it's set to 0 that means no time limit"
+    default: 0
