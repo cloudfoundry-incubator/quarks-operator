@@ -87,6 +87,15 @@ func (c *Catalog) BOSHManifestWithProviderAndConsumer() (*manifest.Manifest, err
 	return m, nil
 }
 
+// BOSHManifestFromKubeCF641 for "real-life" tests
+func (c *Catalog) BOSHManifestFromKubeCF641() (*manifest.Manifest, error) {
+	m, err := manifest.LoadYAML([]byte(bm.FromKubeCF641))
+	if err != nil {
+		return &manifest.Manifest{}, errors.Wrapf(err, manifestFailedMessage)
+	}
+	return m, nil
+}
+
 // BOSHManifestWithOverriddenBPMInfo for data gathering tests
 func (c *Catalog) BOSHManifestWithOverriddenBPMInfo() (*manifest.Manifest, error) {
 	m, err := manifest.LoadYAML([]byte(bm.WithOverriddenBPMInfo))
