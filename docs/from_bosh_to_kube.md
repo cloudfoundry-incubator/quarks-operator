@@ -298,15 +298,15 @@ instance_groups:
           labels: {}
           # Annotations to add to the resources representing the instance group
           annotations: {}
-          # disableLogSidecar is an option to disable log sidecar
-          disableLogSidecar: false
+          # disable_log_sidecar is an option to disable log sidecar
+          disable_log_sidecar: false
           # serviceAccountName is the name of the ServiceAccount to use to run this pod.
           serviceAccountName: kubecf
           # automountServiceAccountToken indicates whether a service account token should be automatically mounted
           automountServiceAccountToken: false
           # ImagePullSecrets is an optional list of references to secrets to use for pulling any of the images.
           # This field in PodSpec can be automated by setting the imagePullSecrets in a serviceAccount.
-          ImagePullSecrets: {}
+          imagePullSecrets: {}
           # Tolerations and taints are a concept defined in kubernetes to repel pods from nodes. [4]
           tolerations: []
           # If this is set to true, the operator will define a PersistentVolumeClaim template
