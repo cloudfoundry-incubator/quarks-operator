@@ -1,6 +1,6 @@
 #!/bin/bash
 
-git_sha="491e84a"
+git_sha="770abf2"
 quarks_job_release="v0.0.0-0.g$git_sha"
 quarks_job_helm_release="0.0.0+0.g$git_sha"
 
