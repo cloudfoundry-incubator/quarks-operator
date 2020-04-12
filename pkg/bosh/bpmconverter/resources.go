@@ -350,6 +350,7 @@ func (kc *BPMConverter) errandToQuarksJob(
 			},
 			Template: batchv1b1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
+					BackoffLimit: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.JobBackoffLimit,
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:        instanceGroup.Name,

@@ -313,6 +313,9 @@ instance_groups:
           # on the QuarksStatefulSet of the instance group, and it will use that PVC for all volume
           # mounts for ephemeral disks
           ephemeralAsPVC: false
+          # This sets the backoffLimit for the jobs running errands. If not set, it will use the Kube default which is 6.
+          # https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#handling-pod-and-container-failures
+          jobBackoffLimit: 6
           # An array of disks to be mounted on the containers
           disks:
             # A PersistentVolumeClaim to be used as a template in the StatefulSet of the instance group.
