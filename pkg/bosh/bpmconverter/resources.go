@@ -317,8 +317,6 @@ func (kc *BPMConverter) errandToQuarksJob(
 	}
 
 	podLabels := instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels
-	// Controller will delete successful job
-	podLabels["delete"] = "pod"
 
 	defaultVolumes := defaultDisks.Volumes()
 	bpmVolumes := bpmDisks.Volumes()
