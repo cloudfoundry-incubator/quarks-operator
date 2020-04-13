@@ -230,6 +230,7 @@ type AgentSettings struct {
 	Tolerations                  []corev1.Toleration           `json:"tolerations,omitempty"`
 	EphemeralAsPVC               bool                          `json:"ephemeralAsPVC,omitempty"`
 	Disks                        Disks                         `json:"disks,omitempty"`
+	JobBackoffLimit              *int32                        `json:"jobBackoffLimit,omitempty"`
 }
 
 // Set overrides labels and annotations with operator-owned metadata.

@@ -298,21 +298,24 @@ instance_groups:
           labels: {}
           # Annotations to add to the resources representing the instance group
           annotations: {}
-          # disableLogSidecar is an option to disable log sidecar
-          disableLogSidecar: false
+          # disable_log_sidecar is an option to disable log sidecar
+          disable_log_sidecar: false
           # serviceAccountName is the name of the ServiceAccount to use to run this pod.
           serviceAccountName: kubecf
           # automountServiceAccountToken indicates whether a service account token should be automatically mounted
           automountServiceAccountToken: false
           # ImagePullSecrets is an optional list of references to secrets to use for pulling any of the images.
           # This field in PodSpec can be automated by setting the imagePullSecrets in a serviceAccount.
-          ImagePullSecrets: {}
+          imagePullSecrets: {}
           # Tolerations and taints are a concept defined in kubernetes to repel pods from nodes. [4]
           tolerations: []
           # If this is set to true, the operator will define a PersistentVolumeClaim template
           # on the QuarksStatefulSet of the instance group, and it will use that PVC for all volume
           # mounts for ephemeral disks
           ephemeralAsPVC: false
+          # This sets the backoffLimit for the jobs running errands. If not set, it will use the Kube default which is 6.
+          # https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#handling-pod-and-container-failures
+          jobBackoffLimit: 6
           # An array of disks to be mounted on the containers
           disks:
             # A PersistentVolumeClaim to be used as a template in the StatefulSet of the instance group.
