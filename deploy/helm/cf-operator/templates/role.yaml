@@ -3,7 +3,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   creationTimestamp: null
-  name: {{ template "cf-operator.fullname" . }}
+  name: {{ template "cf-operator.fullname" . }}-watch
   namespace: {{ .Values.global.operator.watchNamespace }}
 rules:
 - apiGroups:

@@ -54,7 +54,9 @@ func NewWebhookConfig(c client.Client, config *config.Config, generator credsgen
 }
 
 // SetupCertificate ensures that a CA and a certificate is available for the
-// webhook server
+// webhook server.
+// It caches the certificate data in a secret and writes it as
+// files to `CertDir`, for `webhook.Server` to use.
 func (f *WebhookConfig) setupCertificate(ctx context.Context) error {
 	secretNamespacedName := machinerytypes.NamespacedName{
 		Name:      "cf-operator-webhook-server-cert",
