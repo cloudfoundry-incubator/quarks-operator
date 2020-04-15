@@ -3,7 +3,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   creationTimestamp: null
-  name: {{ template "cf-operator.fullname" . }}
+  name: {{ template "cf-operator.fullname" . }}-cluster
 rules:
 - apiGroups:
   - certificates.k8s.io
