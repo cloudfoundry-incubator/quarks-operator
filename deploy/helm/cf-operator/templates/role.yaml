@@ -1,21 +1,4 @@
 {{- if .Values.global.rbac.create }}
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  creationTimestamp: null
-  name: {{ template "cf-operator.role-name" . }}
-  namespace: {{ .Release.Namespace }}
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-  - create
-  - update
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -31,6 +14,7 @@ rules:
   - create
   - patch
   - update
+
 - apiGroups:
   - ""
   resources:
@@ -42,6 +26,7 @@ rules:
   - list
   - update
   - watch
+
 - apiGroups:
   - ""
   resources:
@@ -52,6 +37,7 @@ rules:
   - list
   - update
   - watch
+
 - apiGroups:
   - ""
   resources:
@@ -63,12 +49,14 @@ rules:
   - list
   - update
   - watch
+
 - apiGroups:
   - ""
   resources:
   - pods/exec
   verbs:
   - create
+
 - apiGroups:
   - apps
   resources:
@@ -80,6 +68,7 @@ rules:
   - list
   - update
   - watch
+
 - apiGroups:
   - apps
   resources:
@@ -87,6 +76,7 @@ rules:
   verbs:
   - get
   - list
+
 - apiGroups:
   - quarks.cloudfoundry.org
   resources:
@@ -97,6 +87,7 @@ rules:
   - list
   - update
   - watch
+
 - apiGroups:
   - quarks.cloudfoundry.org
   resources:
@@ -111,6 +102,7 @@ rules:
   - patch
   - update
   - watch
+
 - apiGroups:
   - quarks.cloudfoundry.org
   resources:
