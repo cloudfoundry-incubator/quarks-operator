@@ -56,7 +56,6 @@ items:
     apiVersion: rbac.authorization.k8s.io/v1
     metadata:
       name: {{ template "cf-operator.fullname" . }}
-      namespace: {{ .Release.Namespace }}
     roleRef:
       kind: ClusterRole
       name: {{ template "cf-operator.fullname" . }}
