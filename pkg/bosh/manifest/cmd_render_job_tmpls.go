@@ -12,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 	btg "github.com/viovanov/bosh-template-go"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -35,6 +36,14 @@ func RenderJobTemplates(
 ) error {
 	if podIP == nil {
 		return fmt.Errorf("the pod IP is empty")
+	}
+
+	if err := btg.CheckRubyAvailable(); err != nil {
+		return errors.Wrap(err, "ruby is not available")
+	}
+
+	if err := btg.CheckBOSHTemplateGemAvailable(); err != nil {
+		return errors.Wrap(err, "bosh template gem is not available")
 	}
 
 	// Loading deployment manifest file
@@ -70,65 +79,78 @@ func RenderJobTemplates(
 		return err
 	}
 
+	jobGroup := errgroup.Group{}
 	// Render all files for all jobs included in this instance_group.
 	for _, job := range currentInstanceGroup.Jobs {
 
-		jobSpec, err := job.loadSpec(jobsDir)
+		job := job // https://golang.org/doc/faq#closures_and_goroutines
+		jobGroup.Go(func() error {
+			jobSpec, err := job.loadSpec(jobsDir)
 
-		if err != nil {
-			return errors.Wrapf(err, "failed to load job spec file %s for instance group %s", job.Name, instanceGroupName)
-		}
-
-		// Find job instance that's being rendered
-		var currentJobInstance *JobInstance
-		for _, instance := range job.Properties.Quarks.Instances {
-			if instance.Index == specIndex {
-				currentJobInstance = &instance
-				break
-			}
-		}
-		if currentJobInstance == nil {
-			return errors.Errorf("no job instance found for spec index '%d'", specIndex)
-		}
-
-		// Loop over templates for rendering them
-		jobSrcDir := job.specDir(jobsDir)
-		for source, destination := range jobSpec.Templates {
-			absDest := filepath.Join(jobsOutputDir, job.Name, destination)
-			os.MkdirAll(filepath.Dir(absDest), 0755)
-
-			properties := job.Properties.ToMap()
-
-			renderPointer := btg.NewERBRenderer(
-				&btg.EvaluationContext{
-					Properties: properties,
-				},
-
-				&btg.InstanceInfo{
-					Address:   currentJobInstance.Address,
-					AZ:        currentJobInstance.AZ,
-					Bootstrap: currentJobInstance.Bootstrap,
-					ID:        currentJobInstance.ID,
-					Index:     currentJobInstance.Index,
-					IP:        podIP.String(),
-					Name:      currentJobInstance.Name,
-				},
-
-				filepath.Join(jobSrcDir, JobSpecFilename),
-			)
-
-			// Create the destination file
-			absDestFile, err := os.Create(absDest)
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "failed to load job spec file %s for instance group %s", job.Name, instanceGroupName)
 			}
-			defer absDestFile.Close()
-			if err = renderPointer.Render(filepath.Join(jobSrcDir, "templates", source), absDestFile.Name()); err != nil {
-				return err
+
+			// Find job instance that's being rendered
+			var currentJobInstance *JobInstance
+			for _, instance := range job.Properties.Quarks.Instances {
+				if instance.Index == specIndex {
+					currentJobInstance = &instance
+					break
+				}
 			}
-		}
+			if currentJobInstance == nil {
+				return errors.Errorf("no job instance found for spec index '%d'", specIndex)
+			}
+
+			// Loop over templates for rendering them
+			templateGroup := errgroup.Group{}
+			jobSrcDir := job.specDir(jobsDir)
+			for source, destination := range jobSpec.Templates {
+				source := source // https://golang.org/doc/faq#closures_and_goroutines
+				destination := destination
+				templateGroup.Go(func() error {
+					absDest := filepath.Join(jobsOutputDir, job.Name, destination)
+					os.MkdirAll(filepath.Dir(absDest), 0755)
+
+					properties := job.Properties.ToMap()
+
+					renderPointer := btg.NewERBRenderer(
+						&btg.EvaluationContext{
+							Properties: properties,
+						},
+
+						&btg.InstanceInfo{
+							Address:   currentJobInstance.Address,
+							AZ:        currentJobInstance.AZ,
+							Bootstrap: currentJobInstance.Bootstrap,
+							ID:        currentJobInstance.ID,
+							Index:     currentJobInstance.Index,
+							IP:        podIP.String(),
+							Name:      currentJobInstance.Name,
+						},
+
+						filepath.Join(jobSrcDir, JobSpecFilename),
+					)
+
+					// Create the destination file
+					absDestFile, err := os.Create(absDest)
+					if err != nil {
+						return err
+					}
+					defer absDestFile.Close()
+					if err = renderPointer.Render(filepath.Join(jobSrcDir, "templates", source), absDestFile.Name()); err != nil {
+						return err
+					}
+
+					return nil
+				})
+			}
+
+			return templateGroup.Wait()
+		})
 	}
-	return nil
+	return jobGroup.Wait()
 }
 
 func runRenderScript(
@@ -191,25 +213,32 @@ func runRenderScript(
 }
 
 func runPreRenderScripts(instanceGroup *InstanceGroup) error {
+	errGroup := errgroup.Group{}
+
 	for _, job := range instanceGroup.Jobs {
+		job := job // https://golang.org/doc/faq#closures_and_goroutines
+		errGroup.Go(func() error {
+			jobScripts := job.Properties.Quarks.PreRenderScripts
 
-		jobScripts := job.Properties.Quarks.PreRenderScripts
+			if len(jobScripts.BPM) > 0 {
+				if err := runRenderScript(job.Name, typeBPM, jobScripts.BPM, instanceGroup.Name); err != nil {
+					return err
+				}
+			}
+			if len(jobScripts.IgResolver) > 0 {
+				if err := runRenderScript(job.Name, typeIGResolver, jobScripts.IgResolver, instanceGroup.Name); err != nil {
+					return err
+				}
+			}
+			if len(jobScripts.Jobs) > 0 {
+				if err := runRenderScript(job.Name, typeJobs, jobScripts.Jobs, instanceGroup.Name); err != nil {
+					return err
+				}
+			}
 
-		if len(jobScripts.BPM) > 0 {
-			if err := runRenderScript(job.Name, typeBPM, jobScripts.BPM, instanceGroup.Name); err != nil {
-				return err
-			}
-		}
-		if len(jobScripts.IgResolver) > 0 {
-			if err := runRenderScript(job.Name, typeIGResolver, jobScripts.IgResolver, instanceGroup.Name); err != nil {
-				return err
-			}
-		}
-		if len(jobScripts.Jobs) > 0 {
-			if err := runRenderScript(job.Name, typeJobs, jobScripts.Jobs, instanceGroup.Name); err != nil {
-				return err
-			}
-		}
+			return nil
+		})
 	}
-	return nil
+
+	return errGroup.Wait()
 }

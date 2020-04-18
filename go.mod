@@ -39,9 +39,10 @@ require (
 	github.com/spf13/cobra v0.0.7
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.6.3
-	github.com/viovanov/bosh-template-go v0.0.0-20190801125410-a195ef3de03a
+	github.com/viovanov/bosh-template-go v0.0.0-20200416144406-32ddfa4afdb0
 	go.uber.org/zap v1.14.1
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
+	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	gomodules.xyz/jsonpatch/v2 v2.0.1
 	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.0.0-20190918155943-95b840bb6a1f
