@@ -161,7 +161,7 @@ var _ = Describe("Deploy", func() {
 			Expect(pod.Spec.InitContainers[5].Args).To(Equal([]string{
 				"/bin/sh",
 				"-xc",
-				"/var/vcap/jobs/file_server/bin/bpm-pre-start",
+				"time /var/vcap/jobs/file_server/bin/bpm-pre-start",
 			}))
 		})
 	})
