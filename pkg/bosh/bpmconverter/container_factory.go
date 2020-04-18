@@ -164,7 +164,7 @@ func createWaitContainer(requiredService *string) []corev1.Container {
 		Args: []string{
 			"/bin/sh",
 			"-xc",
-			fmt.Sprintf("cf-operator util wait %s", *requiredService),
+			fmt.Sprintf("time cf-operator util wait %s", *requiredService),
 		},
 	}}
 
@@ -307,7 +307,7 @@ func containerRunCopier() corev1.Container {
 			fmt.Sprintf(`
 				set -o errexit
 				mkdir -p '%[1]s'
-				cp /usr/local/bin/container-run '%[1]s'/container-run
+				time cp /usr/local/bin/container-run '%[1]s'/container-run
 			`, dstDir),
 		},
 	}
@@ -329,7 +329,7 @@ func JobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 		Args: []string{
 			"/bin/sh",
 			"-xc",
-			fmt.Sprintf("mkdir -p %s && cp -ar %s/* %s && chown vcap:vcap %s -R", inContainerReleasePath, VolumeJobsSrcDirMountPath, inContainerReleasePath, inContainerReleasePath),
+			fmt.Sprintf("time sh -c 'mkdir -p %s && cp -ar %s/* %s && chown vcap:vcap %s -R'", inContainerReleasePath, VolumeJobsSrcDirMountPath, inContainerReleasePath, inContainerReleasePath),
 		},
 	}
 }
@@ -374,7 +374,7 @@ func templateRenderingContainer(instanceGroupName string, secretName string) cor
 		Args: []string{
 			"/bin/sh",
 			"-xc",
-			"cf-operator util template-render",
+			"time cf-operator util template-render",
 		},
 	}
 }
@@ -402,7 +402,7 @@ func createDirContainer(jobs []bdm.Job, instanceGroupName string) corev1.Contain
 		Args: []string{
 			"/bin/sh",
 			"-xc",
-			fmt.Sprintf("mkdir -p %s", strings.Join(dirs, " ")),
+			fmt.Sprintf("time mkdir -p %s", strings.Join(dirs, " ")),
 		},
 		SecurityContext: &corev1.SecurityContext{
 			RunAsUser: &vcapUserID,
@@ -423,7 +423,7 @@ func boshPreStartInitContainer(
 	if debug {
 		script = fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s" || ( echo "Debug window 1hr" ; sleep 3600 ); fi`, boshPreStart)
 	} else {
-		script = fmt.Sprintf(`if [ -x "%[1]s" ]; then "%[1]s"; fi`, boshPreStart)
+		script = fmt.Sprintf(`if [ -x "%[1]s" ]; then time "%[1]s" ; fi`, boshPreStart)
 	}
 
 	if securityContext == nil {
@@ -456,7 +456,7 @@ func bpmPreStartInitContainer(
 	if debug {
 		script = fmt.Sprintf(`%s || ( echo "Debug window 1hr" ; sleep 3600 )`, process.Hooks.PreStart)
 	} else {
-		script = process.Hooks.PreStart
+		script = "time " + process.Hooks.PreStart
 	}
 
 	if securityContext == nil {
