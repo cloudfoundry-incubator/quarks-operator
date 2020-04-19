@@ -41,10 +41,3 @@ Create the name of the cf-operator service account to use
     {{ default "default" .Values.serviceAccount.name }}
 {{- end -}}
 {{- end -}}
-
-{{/*
-Name of the role of cf-operator.
-*/}}
-{{- define "cf-operator.role-name" -}}
-{{- printf "%s-%s" .Chart.Name .Release.Namespace | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
