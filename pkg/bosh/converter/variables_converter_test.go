@@ -4,6 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"
+	"k8s.io/apimachinery/pkg/types"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
@@ -103,6 +104,27 @@ var _ = Describe("kube converter", func() {
 				}
 				_, err := act()
 				Expect(err).To(HaveOccurred())
+			})
+
+			It("keeps copies definitions", func() {
+				m.Variables[0] = manifest.Variable{
+					Name: "foo-pass",
+					Type: "password",
+					Options: &manifest.VariableOptions{
+						Copies: []types.NamespacedName{
+							{
+								Namespace: "foo",
+								Name:      "acopy",
+							},
+						},
+					},
+				}
+				variables, err := act()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(len(variables)).To(Equal(1))
+				Expect(len(variables[0].Spec.Copies)).To(Equal(1))
+				Expect(variables[0].Spec.Copies[0].Name).To(Equal("acopy"))
+				Expect(variables[0].Spec.Copies[0].Namespace).To(Equal("foo"))
 			})
 
 			It("converts certificate variables", func() {
