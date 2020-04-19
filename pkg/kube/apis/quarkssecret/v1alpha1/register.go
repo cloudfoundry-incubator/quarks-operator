@@ -54,6 +54,15 @@ var (
 							Type:                   "object",
 							XPreserveUnknownFields: pointers.Bool(true),
 						},
+						"copies": {
+							Type:        "array",
+							Description: "A list of namespaced names where to copy generated secrets",
+							Items: &extv1.JSONSchemaPropsOrArray{
+								Schema: &extv1.JSONSchemaProps{
+									Type: "object",
+								},
+							},
+						},
 					},
 					Required: []string{
 						"secretName",

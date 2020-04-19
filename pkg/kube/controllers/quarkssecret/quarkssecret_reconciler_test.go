@@ -105,8 +105,28 @@ var _ = Describe("ReconcileQuarksSecret", func() {
 			generator.GeneratePasswordReturns("securepassword")
 		})
 
-		It("skips reconciling if the secret was already generated", func() {
-			client.GetReturns(nil)
+		It("skips reconciling if the secret exists", func() {
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "generated-secret",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"password": []byte("foo"),
+				},
+			}
+
+			client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				switch object := object.(type) {
+				case *qsv1a1.QuarksSecret:
+					qSecret.DeepCopyInto(object)
+				case *corev1.Secret:
+					if nn.Name == "generated-secret" {
+						secret.DeepCopyInto(object)
+					}
+				}
+				return nil
+			})
 
 			result, err := reconciler.Reconcile(request)
 			Expect(err).ToNot(HaveOccurred())
@@ -307,6 +327,111 @@ var _ = Describe("ReconcileQuarksSecret", func() {
 		})
 	})
 
+	Context("when creating copies", func() {
+		var copiedSecret *corev1.Secret
+		BeforeEach(func() {
+			copiedSecret = &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "generated-secret-copy",
+					Namespace: "notdefault",
+					Labels: map[string]string{
+						"quarks.cloudfoundry.org/secret-kind": "generated",
+					},
+					Annotations: map[string]string{
+						"quarks.cloudfoundry.org/secret-copy-of": "default/foo",
+					},
+				},
+			}
+
+			qSecret = &qsv1a1.QuarksSecret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "default",
+				},
+				Spec: qsv1a1.QuarksSecretSpec{
+					Type:       "password",
+					SecretName: "generated-secret",
+					Copies: []types.NamespacedName{
+						{
+							Name:      "generated-secret-copy",
+							Namespace: "notdefault",
+						},
+					},
+				},
+			}
+
+			client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				switch object := object.(type) {
+				case *qsv1a1.QuarksSecret:
+					qSecret.DeepCopyInto(object)
+				case *corev1.Secret:
+					if nn.String() == "default/generated-secret" {
+						return errors.NewNotFound(schema.GroupResource{}, "not found")
+					}
+					if nn.String() == "notdefault/generated-secret-copy" {
+						copiedSecret.DeepCopyInto(object)
+					}
+				}
+				return nil
+			})
+		})
+
+		It("it succeeds if everything is setup correctly", func() {
+			result, err := reconciler.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(client.GetCallCount()).To(Equal(5))
+			Expect(client.CreateCallCount()).To(Equal(1))
+			Expect(client.UpdateCallCount()).To(Equal(1))
+			Expect(reconcile.Result{}).To(Equal(result))
+		})
+
+		It("it doesn't copy if the copy secret is missing", func() {
+			client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				switch object := object.(type) {
+				case *qsv1a1.QuarksSecret:
+					qSecret.DeepCopyInto(object)
+				case *corev1.Secret:
+					if nn.String() == "default/generated-secret" {
+						return errors.NewNotFound(schema.GroupResource{}, "not found")
+					}
+					if nn.String() == "notdefault/generated-secret-copy" {
+						return nil
+					}
+				}
+				return nil
+			})
+
+			result, err := reconciler.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(client.GetCallCount()).To(Equal(4))
+			Expect(client.CreateCallCount()).To(Equal(1))
+			Expect(client.UpdateCallCount()).To(Equal(0))
+			Expect(reconcile.Result{}).To(Equal(result))
+		})
+
+		It("it doesn't copy if the copy secret is missing a label", func() {
+			copiedSecret = &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "generated-secret-copy",
+					Namespace: "notdefault",
+					Labels: map[string]string{
+						"quarks.cloudfoundry.org/secret-kind": "generated",
+					},
+					Annotations: map[string]string{
+						"quarks.cloudfoundry.org/secret-copy-of": "default/bar",
+					},
+				},
+			}
+
+			result, err := reconciler.Reconcile(request)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(client.GetCallCount()).To(Equal(4))
+			Expect(client.CreateCallCount()).To(Equal(1))
+			Expect(client.UpdateCallCount()).To(Equal(0))
+			Expect(reconcile.Result{}).To(Equal(result))
+		})
+	})
+
 	Context("when secret is set manually", func() {
 		var (
 			password string
@@ -366,7 +491,7 @@ var _ = Describe("ReconcileQuarksSecret", func() {
 			Expect(reconcile.Result{}).To(Equal(result))
 		})
 
-		It("Regenerate generation of a secret when existing secret has `generated` label", func() {
+		It("Regenerates a secret when the existing secret has a `generated` label", func() {
 			secret.Labels = map[string]string{
 				qsv1a1.LabelKind: qsv1a1.GeneratedSecretKind,
 			}

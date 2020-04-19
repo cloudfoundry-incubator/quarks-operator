@@ -5,6 +5,7 @@ import (
 
 	certv1 "k8s.io/api/certificates/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 )
@@ -38,6 +39,8 @@ const (
 var (
 	// LabelKind is the label key for secret kind
 	LabelKind = fmt.Sprintf("%s/secret-kind", apis.GroupName)
+	// AnnotationCopyOf is a label key for secrets that are copies of generated secrets
+	AnnotationCopyOf = fmt.Sprintf("%s/secret-copy-of", apis.GroupName)
 	// AnnotationCertSecretName is the annotation key for certificate secret name
 	AnnotationCertSecretName = fmt.Sprintf("%s/cert-secret-name", apis.GroupName)
 	// AnnotationQSecName is the annotation key for the name of the owning quarks secret
@@ -89,9 +92,10 @@ type Request struct {
 
 // QuarksSecretSpec defines the desired state of QuarksSecret
 type QuarksSecretSpec struct {
-	Type       SecretType `json:"type"`
-	Request    Request    `json:"request"`
-	SecretName string     `json:"secretName"`
+	Type       SecretType             `json:"type"`
+	Request    Request                `json:"request"`
+	SecretName string                 `json:"secretName"`
+	Copies     []types.NamespacedName `json:"copies"`
 }
 
 // QuarksSecretStatus defines the observed state of QuarksSecret
