@@ -72,7 +72,7 @@ type VariableOptions struct {
 	ExtendedKeyUsage            []AuthType                `json:"extended_key_usage,omitempty"`
 	SignerType                  string                    `json:"signer_type,omitempty"`
 	ServiceRef                  []qsv1a1.ServiceReference `json:"serviceRef,omitempty"`
-	Copies                      []types.NamespacedName    `json:"copies",omitempty`
+	Copies                      []types.NamespacedName    `json:"copies,omitempty"`
 	ActivateEKSWorkaroundForSAN bool                      `json:"activateEKSWorkaroundForSAN,omitempty"`
 }
 
