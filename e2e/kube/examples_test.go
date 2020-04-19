@@ -3,7 +3,10 @@ package kube_test
 import (
 	b64 "encoding/base64"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -43,7 +46,10 @@ var _ = Describe("Examples Directory", func() {
 
 	JustBeforeEach(func() {
 		kubectl = cmdHelper.NewKubectl()
-		yamlFilePath = path.Join(examplesDir, example)
+		yamlFilePath = example
+		if !strings.HasPrefix(example, "/") {
+			yamlFilePath = path.Join(examplesDir, example)
+		}
 		err := cmdHelper.Create(namespace, yamlFilePath)
 		Expect(err).ToNot(HaveOccurred())
 	})
@@ -283,6 +289,66 @@ var _ = Describe("Examples Directory", func() {
 		It("generates a password", func() {
 			By("Checking the generated password")
 			err := cmdHelper.SecretCheckData(namespace, "gen-secret1", ".data.password")
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	Context("quarks-secret copies", func() {
+		var copyNamespace string
+		var tempQSecretFileName string
+
+		BeforeEach(func() {
+			// example = "quarks-secret/copies.yaml"
+			copyNamespace = "qseccopy-" + strconv.Itoa(int(nsIndex)) + "-" +
+				strconv.FormatInt(time.Now().UTC().UnixNano(), 10)
+
+			cmdHelper.CreateNamespace(copyNamespace)
+			// Create a secret in the copy namespace
+
+			// Create a copy of the example files with the correct namespaces in them
+			dSecretExample := path.Join(examplesDir, "quarks-secret/copy-secret-destination.yaml")
+			dSecret, err := ioutil.ReadFile(dSecretExample)
+			Expect(err).ToNot(HaveOccurred())
+			tmpDSecret, err := ioutil.TempFile("", "dsecret-*")
+			defer os.Remove(tmpDSecret.Name())
+			Expect(err).ToNot(HaveOccurred())
+			_, err = tmpDSecret.WriteString(
+				strings.ReplaceAll(
+					strings.ReplaceAll(
+						string(dSecret), "COPYNAMESPACE", copyNamespace,
+					), "NAMESPACE", namespace))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(tmpDSecret.Close()).ToNot(HaveOccurred())
+
+			// A copy of the QuarkSecret with the correct COPYNAMESPACE in it
+			quarksSecretExample := path.Join(examplesDir, "quarks-secret/copies.yaml")
+			qSecret, err := ioutil.ReadFile(quarksSecretExample)
+			Expect(err).ToNot(HaveOccurred())
+			tmpQSecret, err := ioutil.TempFile("", "qsec-*")
+			tempQSecretFileName = tmpQSecret.Name()
+			Expect(err).ToNot(HaveOccurred())
+			_, err = tmpQSecret.WriteString(
+				strings.ReplaceAll(
+					string(qSecret), "COPYNAMESPACE", copyNamespace,
+				))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(tmpQSecret.Close()).ToNot(HaveOccurred())
+
+			// Create the destination secret
+			err = cmdHelper.Create(copyNamespace, tmpDSecret.Name())
+			Expect(err).ToNot(HaveOccurred())
+
+			example = tempQSecretFileName
+		})
+
+		AfterEach(func() {
+			cmdHelper.DeleteNamespace(copyNamespace)
+			os.Remove(tempQSecretFileName)
+		})
+
+		It("are created if everything is setup correctly", func() {
+			By("Checking the generated password")
+			err := cmdHelper.SecretCheckData(copyNamespace, "copied-secret", ".data.password")
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})

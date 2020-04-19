@@ -1,23 +1,24 @@
 # QuarksSecret
 
-1. [QuarksSecret](#quarkssecret)
-   1. [Description](#description)
-   2. [QuarksSecret Component](#quarkssecret-component)
-      1. [QuarksSecret Controller](#_quarkssecret-controller_)
-         1. [Watches](#watches-in-quarks-secret-controller)
-         2. [Reconciliation](#reconciliation-in-quarks-secret-controller)
-         3. [Types](#types)
-         4. [Policies](#policies)
-         5. [Auto-approving Certificates](#auto-approving-certificates)
-      2. [CertificateSigningRequest Controller](#_certificatesigningrequest-controller_)
-         1. [Watches](#watches-in-csr-controller)
-         2. [Reconciliation](#reconciliation-in-csr-controller)
-         3. [Highlights](#highlights-in-csr-controller)
-      3. [SecretRotation Controller](#_secretrotation-controller_)
-         1. [Watches](#watches-in-secret-rotation-controller)
-         2. [Reconciliation](#reconciliation-in-secret-rotation-controller)
-   3. [Relationship with the BDPL component](#relationship-with-the-bdpl-component)
-   4. [`QuarksSecret` Examples](#`quarkssecret`-examples)
+- [QuarksSecret](#quarkssecret)
+  - [Description](#description)
+  - [QuarksSecret Component](#quarkssecret-component)
+    - [**_QuarksSecret Controller_**](#quarkssecret-controller)
+      - [Watches in Quarks Secret Controller](#watches-in-quarks-secret-controller)
+      - [Reconciliation in Quarks Secret Controller](#reconciliation-in-quarks-secret-controller)
+      - [Highlights in Quarks Secret Controller](#highlights-in-quarks-secret-controller)
+        - [Types](#types)
+        - [Auto-approving Certificates](#auto-approving-certificates)
+        - [Copies](#copies)
+    - [**_CertificateSigningRequest Controller_**](#certificatesigningrequest-controller)
+      - [Watches in CSR Controller](#watches-in-csr-controller)
+      - [Reconciliation in CSR Controller](#reconciliation-in-csr-controller)
+      - [Highlights in CSR Controller](#highlights-in-csr-controller)
+    - [**_SecretRotation Controller_**](#secretrotation-controller)
+      - [Watches in Secret Rotation Controller](#watches-in-secret-rotation-controller)
+      - [Reconciliation in Secret Rotation Controller](#reconciliation-in-secret-rotation-controller)
+  - [Relationship With the BDPL Component](#relationship-with-the-bdpl-component)
+  - [`QuarksSecret` Examples](#quarkssecret-examples)
 
 ## Description
 
@@ -55,14 +56,14 @@ Figure 1, illustrates the component and associated set of controllers.
 
 Depending on the `spec.type`, `QuarksSecret` supports generating the following:
 
-| Secret Type                     | spec.type     | certificate.signerType | certificate.isCA    |
-| ------------------------------- | ------------- | ---------------------- | ------------------- |
-| `passwords`                     | `password`    | not set                | not set             |
-| `rsa keys`                      | `rsa`         | not set                | not set             |
-| `ssh keys`                      | `ssh`         | not set                | not set             |
-| `self-signed root certificates` | `certificate` | `local`                | `true`              |
-| `self-signed certificates`      | `certificate` | `local`                | `false`             |
-| `cluster-signed certificates`   | `certificate` | `cluster`              | `false`             |
+| Secret Type                     | spec.type     | certificate.signerType | certificate.isCA |
+| ------------------------------- | ------------- | ---------------------- | ---------------- |
+| `passwords`                     | `password`    | not set                | not set          |
+| `rsa keys`                      | `rsa`         | not set                | not set          |
+| `ssh keys`                      | `ssh`         | not set                | not set          |
+| `self-signed root certificates` | `certificate` | `local`                | `true`           |
+| `self-signed certificates`      | `certificate` | `local`                | `false`          |
+| `cluster-signed certificates`   | `certificate` | `cluster`              | `false`          |
 
 > **Note:**
 >
@@ -83,6 +84,22 @@ spec:
   - digital signature
   - key encipherment
 ```
+
+##### Copies
+
+The `QuarksSecret` controller can create copies of a generated secret across multiple namespaces, as long as the target secrets (that live in a namespace other than the namespace of the `QuarksSecret`) already exist, and have an annotation of:
+
+```text
+quarks.cloudfoundry.org/secret-copy-of: NAMESPACE/generate-password-with-copies
+```
+
+as well as the usual label for generated secrets:
+
+```text
+quarks.cloudfoundry.org/secret-kind: generated
+```
+
+This ensures that the creator of the `QuarksSecret` must have access to the copy target namespace.
 
 ### **_CertificateSigningRequest Controller_**
 
