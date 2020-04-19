@@ -95,7 +95,7 @@ type QuarksSecretSpec struct {
 	Type       SecretType             `json:"type"`
 	Request    Request                `json:"request"`
 	SecretName string                 `json:"secretName"`
-	Copies     []types.NamespacedName `json:"copies"`
+	Copies     []types.NamespacedName `json:"copies,omitempty"`
 }
 
 // QuarksSecretStatus defines the observed state of QuarksSecret

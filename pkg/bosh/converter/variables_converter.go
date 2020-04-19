@@ -41,6 +41,11 @@ func (vc *VariablesConverter) Variables(namespace string, manifestName string, v
 				SecretName: secretName,
 			},
 		}
+
+		if v.Options != nil {
+			s.Spec.Copies = v.Options.Copies
+		}
+
 		if v.Type == qsv1a1.Certificate {
 			if v.Options == nil {
 				return secrets, fmt.Errorf("invalid certificate QuarksSecret: missing options key")
@@ -91,6 +96,7 @@ func (vc *VariablesConverter) Variables(namespace string, manifestName string, v
 			}
 			s.Spec.Request.CertificateRequest = certRequest
 		}
+
 		secrets = append(secrets, s)
 	}
 
