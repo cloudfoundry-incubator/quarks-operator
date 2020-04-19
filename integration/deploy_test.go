@@ -45,7 +45,7 @@ var _ = Describe("Deploy", func() {
 			clusterIpSvcName = "nats-0"
 		)
 
-		FIt("should deploy a pod and create services", func() {
+		It("should deploy a pod and create services", func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
