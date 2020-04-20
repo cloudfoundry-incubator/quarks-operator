@@ -59,7 +59,8 @@ var (
 							Description: "A list of namespaced names where to copy generated secrets",
 							Items: &extv1.JSONSchemaPropsOrArray{
 								Schema: &extv1.JSONSchemaProps{
-									Type: "object",
+									Type:                   "object",
+									XPreserveUnknownFields: pointers.Bool(true),
 								},
 							},
 						},
