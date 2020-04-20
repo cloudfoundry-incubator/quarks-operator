@@ -351,7 +351,7 @@ var _ = Describe("ReconcileQuarksSecret", func() {
 				Spec: qsv1a1.QuarksSecretSpec{
 					Type:       "password",
 					SecretName: "generated-secret",
-					Copies: []types.NamespacedName{
+					Copies: []qsv1a1.Copy{
 						{
 							Name:      "generated-secret-copy",
 							Namespace: "notdefault",

@@ -5,7 +5,6 @@ import (
 
 	certv1 "k8s.io/api/certificates/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
 )
@@ -90,12 +89,23 @@ type Request struct {
 	CertificateRequest CertificateRequest `json:"certificate"`
 }
 
+// Copy defines the destination of a copied generated secret
+// We can't use types.NamespacedName because it doesn't marshal properly
+type Copy struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+}
+
+func (c *Copy) String() string {
+	return fmt.Sprintf("%s/%s", c.Namespace, c.Name)
+}
+
 // QuarksSecretSpec defines the desired state of QuarksSecret
 type QuarksSecretSpec struct {
-	Type       SecretType             `json:"type"`
-	Request    Request                `json:"request"`
-	SecretName string                 `json:"secretName"`
-	Copies     []types.NamespacedName `json:"copies,omitempty"`
+	Type       SecretType `json:"type"`
+	Request    Request    `json:"request"`
+	SecretName string     `json:"secretName"`
+	Copies     []Copy     `json:"copies,omitempty"`
 }
 
 // QuarksSecretStatus defines the observed state of QuarksSecret

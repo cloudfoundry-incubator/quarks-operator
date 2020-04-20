@@ -4,7 +4,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"
-	"k8s.io/apimachinery/pkg/types"
 
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
@@ -111,7 +110,7 @@ var _ = Describe("kube converter", func() {
 					Name: "foo-pass",
 					Type: "password",
 					Options: &manifest.VariableOptions{
-						Copies: []types.NamespacedName{
+						Copies: []qsv1a1.Copy{
 							{
 								Namespace: "foo",
 								Name:      "acopy",
