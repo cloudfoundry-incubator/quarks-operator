@@ -466,7 +466,7 @@ func (r *ReconcileQuarksSecret) createSecrets(ctx context.Context, qsec *qsv1a1.
 		if skipCreation {
 			ctxlog.WithEvent(qsec, "SkipCreation").Infof(ctx, "Skip creation: Secret '%s' must exist and have the appropriate labels and annotations to receive a copy", copy.String())
 		} else {
-			if err := r.createSecret(ctx, qsec, copiedSecret); err != nil {
+			if err := r.updateCopySecret(ctx, qsec, copiedSecret); err != nil {
 				return err
 			}
 		}
@@ -488,28 +488,6 @@ func (r *ReconcileQuarksSecret) createSecret(ctx context.Context, qsec *qsv1a1.Q
 
 	secret.SetLabels(secretLabels)
 
-	// If this is a copy (lives in a different namespace), we only do an update,
-	// since we're not allowed to create, and we don't set a reference, because
-	// cross namespace references are not supported
-	if qsec.Namespace != secret.Namespace {
-		uncachedSecret := &unstructured.Unstructured{}
-		uncachedSecret.SetGroupVersionKind(schema.GroupVersionKind{
-			Group:   "",
-			Kind:    "Secret",
-			Version: "v1",
-		})
-		uncachedSecret.SetName(secret.Name)
-		uncachedSecret.SetNamespace(secret.Namespace)
-		uncachedSecret.Object["data"] = secret.Data
-		err := r.client.Update(ctx, uncachedSecret)
-
-		if err != nil {
-			return errors.Wrapf(err, "could not update secret '%s/%s'", secret.Namespace, secret.GetName())
-		}
-
-		return nil
-	}
-
 	if err := r.setReference(qsec, secret, r.scheme); err != nil {
 		return errors.Wrapf(err, "error setting owner for secret '%s' to QuarksSecret '%s'", secret.GetName(), qsec.GetNamespacedName())
 	}
@@ -521,6 +499,29 @@ func (r *ReconcileQuarksSecret) createSecret(ctx context.Context, qsec *qsv1a1.Q
 
 	if op != "unchanged" {
 		ctxlog.Debugf(ctx, "Secret '%s' has been %s", secret.Name, op)
+	}
+
+	return nil
+}
+
+// updateCopySecret updates a copied destination Secret
+func (r *ReconcileQuarksSecret) updateCopySecret(ctx context.Context, qsec *qsv1a1.QuarksSecret, secret *corev1.Secret) error {
+	// If this is a copy (lives in a different namespace), we only do an update,
+	// since we're not allowed to create, and we don't set a reference, because
+	// cross namespace references are not supported
+	uncachedSecret := &unstructured.Unstructured{}
+	uncachedSecret.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "",
+		Kind:    "Secret",
+		Version: "v1",
+	})
+	uncachedSecret.SetName(secret.Name)
+	uncachedSecret.SetNamespace(secret.Namespace)
+	uncachedSecret.Object["data"] = secret.Data
+	err := r.client.Update(ctx, uncachedSecret)
+
+	if err != nil {
+		return errors.Wrapf(err, "could not update secret '%s/%s'", secret.Namespace, secret.GetName())
 	}
 
 	return nil
