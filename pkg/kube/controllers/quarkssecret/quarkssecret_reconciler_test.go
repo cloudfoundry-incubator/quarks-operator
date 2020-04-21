@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -368,8 +369,13 @@ var _ = Describe("ReconcileQuarksSecret", func() {
 					if nn.String() == "default/generated-secret" {
 						return errors.NewNotFound(schema.GroupResource{}, "not found")
 					}
+				case *unstructured.Unstructured:
 					if nn.String() == "notdefault/generated-secret-copy" {
-						copiedSecret.DeepCopyInto(object)
+						object.SetName(copiedSecret.Name)
+						object.SetNamespace(copiedSecret.Namespace)
+						object.SetLabels(copiedSecret.Labels)
+						object.SetAnnotations(copiedSecret.Annotations)
+						object.Object["data"] = copiedSecret.Data
 					}
 				}
 				return nil
@@ -379,7 +385,7 @@ var _ = Describe("ReconcileQuarksSecret", func() {
 		It("it succeeds if everything is setup correctly", func() {
 			result, err := reconciler.Reconcile(request)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(client.GetCallCount()).To(Equal(5))
+			Expect(client.GetCallCount()).To(Equal(4))
 			Expect(client.CreateCallCount()).To(Equal(1))
 			Expect(client.UpdateCallCount()).To(Equal(1))
 			Expect(reconcile.Result{}).To(Equal(result))
