@@ -207,7 +207,6 @@ func (r *ReconcileStatefulSetActivePassive) execContainerCmd(pod *corev1.Pod, co
 			container,
 		)
 	}
-	ctxlog.Infof(r.ctx, "Succesfully exec cmd in container: %s, inside pod '%s/%s'", container, pod.Namespace, pod.Name)
 
 	return nil
 }
