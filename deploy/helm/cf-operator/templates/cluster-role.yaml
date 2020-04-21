@@ -17,6 +17,14 @@ rules:
   - watch
 
 - apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - update
+
+- apiGroups:
   - certificates.k8s.io
   resources:
   - certificatesigningrequests/approval
