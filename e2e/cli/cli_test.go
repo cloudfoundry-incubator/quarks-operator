@@ -32,7 +32,7 @@ var _ = Describe("CLI", func() {
       --bosh-dns-docker-image string             \(BOSH_DNS_DOCKER_IMAGE\) The docker image used for emulating bosh DNS \(a CoreDNS image\) \(default "coredns/coredns:\d+.\d+.\d+"\)
   -n, --cf-operator-namespace string             \(CF_OPERATOR_NAMESPACE\) The operator namespace, for the webhook service \(default "default"\)
       --cluster-domain string                    \(CLUSTER_DOMAIN\) The Kubernetes cluster domain \(default "cluster.local"\)
-      --ctx-timeout int                          \(CTX_TIMEOUT\) context timeout for each k8s API request in seconds \(default 30\)
+      --ctx-timeout int                          \(CTX_TIMEOUT\) context timeout for each k8s API request in seconds \(default 300\)
   -o, --docker-image-org string                  \(DOCKER_IMAGE_ORG\) Dockerhub organization that provides the operator docker image \(default "cfcontainerization"\)
       --docker-image-pull-policy string          \(DOCKER_IMAGE_PULL_POLICY\) Image pull policy \(default "IfNotPresent"\)
   -r, --docker-image-repository string           \(DOCKER_IMAGE_REPOSITORY\) Dockerhub repository that provides the operator docker image \(default "cf-operator"\)
