@@ -64,9 +64,9 @@ fi
 printf "Output directory: $(basename $NAMESPACE_DIR)...\n"
 SECRETS_DIR="${NAMESPACE_DIR}/secrets"
 CONFIGMAPS_DIR="${NAMESPACE_DIR}/configmaps"
-mkdir -p ${OUTPUT_BASE}/env_dumps
-mkdir -p ${SECRETS_DIR}
-mkdir -p ${CONFIGMAPS_DIR}
+mkdir -p "${OUTPUT_BASE}/env_dumps"
+mkdir -p "${SECRETS_DIR}"
+mkdir -p "${CONFIGMAPS_DIR}"
 
 # Iterate over configmaps
 CONFIGMAPS=($(get_resources "configmaps" ))
@@ -78,8 +78,10 @@ done
 # Iterate over secrets
 SECRETS=($(get_resources "secrets"))
 for SECRET in "${SECRETS[@]}"; do
-  printf "Secret \e[0;32m$SECRET\e[0m\n"
-  get_resource secret "$SECRET" "${SECRETS_DIR}/${SECRET}.yaml"
+  if grep -qv "token" <<< "$SECRET"; then
+    printf "Secret \e[0;32m$SECRET\e[0m\n"
+    get_resource secret "$SECRET" "${SECRETS_DIR}/${SECRET}.yaml"
+  fi
 done
 
 # Iterate over jobs, Quarks*
@@ -108,7 +110,7 @@ for POD in "${PODS[@]}"; do
     printf "  container - \e[0;32m${CONTAINER}\e[0m logs:"
 
     CONTAINER_DIR="${POD_DIR}/${CONTAINER}"
-    mkdir -p ${CONTAINER_DIR}
+    mkdir -p "${CONTAINER_DIR}"
     retrieve_container_kube_logs 2> /dev/null || true
 
     printf "\n"
@@ -120,7 +122,7 @@ for POD in "${PODS[@]}"; do
     printf "  initContainer - \e[0;32m${INITCONTAINER}\e[0m logs:"
 
     INIT_CONTAINER_DIR="${POD_DIR}/init-containers/${INITCONTAINER}"
-    mkdir -p ${INIT_CONTAINER_DIR}
+    mkdir -p "${INIT_CONTAINER_DIR}"
     retrieve_init_container_kube_logs 2> /dev/null || true
 
     printf "\n"
@@ -131,6 +133,9 @@ done
 
 get_all_resources
 get_all_events
+
+find "$NAMESPACE_DIR" -type f -size 0 -delete
+find "$NAMESPACE_DIR" -type d -empty -delete
 
 printf "\e[0;32mDone\e[0m\n"
 exit
