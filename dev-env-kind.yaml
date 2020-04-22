@@ -42,9 +42,6 @@ releases:
       org: (( env DOCKER_ORGANIZATION ))
     customResources:
       enableInstallation: (( env CRDS_ENABLED ))
-    global:
-      operator:
-        watchNamespace: "kubecf"
 env:
   DOCKER_IMAGE_TAG: (( shell . bin/include/versioning && echo "${ARTIFACT_VERSION}" ))
   DOCKER_REPOSITORY: cf-operator

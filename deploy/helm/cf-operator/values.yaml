@@ -1,4 +1,4 @@
-## Default values for Cf-operator Helm Chart.
+## Default values for CF-operator Helm Chart.
 ## This is a YAML-formatted file.
 ## Declare variables to be passed into your templates.
 
@@ -9,9 +9,6 @@ applyCRD: true
 cluster:
   # domain is the the Kubernetes cluster domain
   domain: "cluster.local"
-
-# createWatchNamespace is a boolean to control creation of the watched namespace.
-createWatchNamespace: true
 
 # fullnameOverride overrides the release name
 fullnameOverride: ""
@@ -28,6 +25,9 @@ image:
 # logLevel defines from which level the logs should be printed (trace,debug,info,warn).
 logLevel: debug
 
+# nameOverride overrides the chart name part of the release name
+nameOverride: ""
+
 # workers are the int values for running maximum number of workers of the respective controller.
 workers:
   boshdeployment: 1
@@ -42,9 +42,6 @@ operator:
     port: "2999"
   # boshDNSDockerImage is the docker image used for emulating bosh DNS (a CoreDNS image).
   boshDNSDockerImage: "cfcontainerization/coredns:0.1.0-1.6.7-bp152.1.2"
-
-# nameOverride overrides the chart name part of the release name
-nameOverride: ""
 
 # serviceAccount contains the configuration
 # values of the service account used by cf-operator.
@@ -70,23 +67,32 @@ global:
       # username:
       # password:
       # servername:
+  # monitoredID is a string that has to match the content of the 'monitored' label in each monitored namespace.
+  monitoredID: cfo
   operator:
-    # watchNamespace is used for watching the BOSH deployments.
-    watchNamespace: staging
     webhook:
       # useServiceReference is a boolean to control the use of the
       # service reference in the webhook spec instead of a url.
       useServiceReference: true
-
   rbac:
-    # create is a boolean to control the installation of quarks job cluster role template.
+    # create is a boolean to control the installation of rbac resources.
     create: true
+  singleNamespace:
+    # create is a boolean to control the creation of resources for a simplified setup
+    create: true
+    # name is  the name of the single namespace, being watched for BOSH deployments.
+    name: staging
 
 quarks-job:
-  # createWatchNamespace is a boolean to control creation of the watched namespace.
-  createWatchNamespace: false
   serviceAccount:
     # create is a boolean to control the creation of service account name.
     create: true
     # name of the service account.
     name:
+  persistOutputClusterRole:
+    # create is a boolean to control the creation of the persist output cluster role
+    create: true
+    # name of the cluster role.
+    name: qjob-persist-output
+  singleNamespace:
+    createNamespace: false

@@ -17,7 +17,7 @@ const examplesDir = "../../docs/examples/"
 
 var (
 	nsIndex           int
-	teardown          e2ehelper.TearDownFunc
+	teardowns         []e2ehelper.TearDownFunc
 	namespace         string
 	operatorNamespace string
 	kubectl           *cmdHelper.Kubectl
@@ -43,19 +43,29 @@ func TestE2EKube(t *testing.T) {
 
 var _ = BeforeEach(func() {
 	var err error
+	var teardown e2ehelper.TearDownFunc
 
 	dir, err := os.Getwd()
 	Expect(err).ToNot(HaveOccurred())
 
 	chartPath := fmt.Sprintf("%s%s", dir, "/../../helm/cf-operator")
-	namespace, operatorNamespace, teardown, err = e2ehelper.SetUpEnvironment(chartPath)
+
+	namespace, operatorNamespace, teardown, err = e2ehelper.CreateNamespace()
 	Expect(err).ToNot(HaveOccurred())
+	teardowns = append(teardowns, teardown)
+
+	teardown, err = e2ehelper.InstallChart(chartPath, operatorNamespace,
+		"--set", fmt.Sprintf("global.singleNamespace.name=%s", namespace),
+		"--set", fmt.Sprintf("global.monitoredID=%s", namespace),
+		"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", namespace),
+	)
+	Expect(err).ToNot(HaveOccurred())
+	// prepend helm clean up
+	teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
 })
 
 var _ = AfterEach(func() {
-	if teardown != nil {
-		teardown()
-	}
+	e2ehelper.TearDownAll(teardowns)
 })
 
 func podWait(name string) {

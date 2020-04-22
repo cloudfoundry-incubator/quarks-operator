@@ -45,7 +45,11 @@ var (
 	// AnnotationQSecName is the annotation key for the name of the owning quarks secret
 	AnnotationQSecName = fmt.Sprintf("%s/quarks-secret-name", apis.GroupName)
 	// AnnotationQSecNamespace is the annotation key for quarks secret namespace
+	// since CSR are not namespaced
 	AnnotationQSecNamespace = fmt.Sprintf("%s/quarks-secret-namespace", apis.GroupName)
+	// AnnotationMonitoredID is used to link a CSR to a operator, so we don't have to
+	// infer that via the namespace
+	AnnotationMonitoredID = fmt.Sprintf("%s/monitored-id", apis.GroupName)
 	// LabelSecretRotationTrigger is set on a config map to trigger secret
 	// rotation. If set, then creating the config map will trigger secret
 	// rotation.

@@ -45,10 +45,10 @@ var _ = Describe("CLI", func() {
       --max-quarks-statefulset-workers int       \(MAX_QUARKS_STATEFULSET_WORKERS\) Maximum number of workers concurrently running QuarksStatefulSet controller \(default 1\)
       --meltdown-duration int                    \(MELTDOWN_DURATION\) Duration \(in seconds\) of the meltdown period, in which we postpone further reconciles for the same resource \(default 60\)
       --meltdown-requeue-after int               \(MELTDOWN_REQUEUE_AFTER\) Duration \(in seconds\) for which we delay the requeuing of the reconcile \(default 30\)
+      --monitored-id string                      \(MONITORED_ID\) only monitor namespaces with this id in their namespace label \(default "default"\)
   -w, --operator-webhook-service-host string     \(CF_OPERATOR_WEBHOOK_SERVICE_HOST\) Hostname/IP under which the webhook server can be reached from the cluster
   -p, --operator-webhook-service-port string     \(CF_OPERATOR_WEBHOOK_SERVICE_PORT\) Port the webhook server listens on \(default "2999"\)
-  -x, --operator-webhook-use-service-reference   \(CF_OPERATOR_WEBHOOK_USE_SERVICE_REFERENCE\) If true the webhook service is targeted using a service reference instead of a URL
-  -a, --watch-namespace string                   \(WATCH_NAMESPACE\) Act on this namespace, watch for BOSH deployments and create resources \(default "staging"\)`))
+  -x, --operator-webhook-use-service-reference   \(CF_OPERATOR_WEBHOOK_USE_SERVICE_REFERENCE\) If true the webhook service is targeted using a service reference instead of a URL`))
 		})
 
 		It("shows all available commands", func() {
@@ -67,32 +67,32 @@ var _ = Describe("CLI", func() {
 		It("should start the server", func() {
 			session, err := act()
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+ with namespace`))
+			Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+`))
 			Eventually(session.Err).ShouldNot(Say(`Applying CRD...`))
 		})
 
-		Context("when specifying namespace", func() {
+		Context("when specifying monitored id for namespaces to monitor", func() {
 			Context("via environment variables", func() {
 				BeforeEach(func() {
-					os.Setenv("WATCH_NAMESPACE", "env-test")
+					os.Setenv("MONITORED_ID", "env-test")
 				})
 
 				AfterEach(func() {
-					os.Setenv("WATCH_NAMESPACE", "")
+					os.Setenv("MONITORED_ID", "")
 				})
 
 				It("should start for namespace", func() {
 					session, err := act()
 					Expect(err).ToNot(HaveOccurred())
-					Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+ with namespace env-test`))
+					Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+, monitoring namespaces labeled with 'env-test'`))
 				})
 			})
 
 			Context("via using switches", func() {
-				It("should start for namespace", func() {
-					session, err := act("--watch-namespace", "switch-test")
+				It("should start", func() {
+					session, err := act("--monitored-id", "switch-test")
 					Expect(err).ToNot(HaveOccurred())
-					Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+ with namespace switch-test`))
+					Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+, monitoring namespaces labeled with 'switch-test'`))
 				})
 			})
 		})

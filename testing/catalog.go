@@ -43,7 +43,7 @@ func (c *Catalog) DefaultConfig() *config.Config {
 	return &config.Config{
 		CtxTimeOut:        10 * time.Second,
 		OperatorNamespace: "default",
-		Namespace:         "staging",
+		MonitoredID:       "staging",
 		WebhookServerHost: "foo.com",
 		WebhookServerPort: 1234,
 		Fs:                afero.NewMemMapFs(),

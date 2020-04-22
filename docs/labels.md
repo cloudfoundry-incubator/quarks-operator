@@ -11,7 +11,6 @@
 * `qstsv1a1.LabelPodOrdinal` "quarks.cloudfoundry.org/pod-ordinal"
 * `qstsv1a1.LabelQStsName` "quarks.cloudfoundry.org/quarks-statefulset-name"
 * `qsv1a1.LabelKind` "quarks.cloudfoundry.org/secret-kind"
-* `wh.LabelWatchNamespace` "quarks.cloudfoundry.org/cf-operator-namespace"
 * `delete` = pod
 * `variableName`
 * `app`
