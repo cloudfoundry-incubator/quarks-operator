@@ -7,9 +7,12 @@ func (m *Manifest) ApplyUpdateBlock(dns DomainNameService) {
 }
 
 // calculateRequiredServices calculates the required services using the update.serial property
+// It follows the algorithm from BOSH:
+// * it will use the last service as a dependency that had update.serial set
+// * if there are no service ports, it will use the last value
 func (m *Manifest) calculateRequiredServices(dns DomainNameService) {
 	var requiredService *string
-	var requiredSerialService *string
+	var lastUsedService *string
 
 	for _, ig := range m.InstanceGroups {
 		serial := true
@@ -20,7 +23,7 @@ func (m *Manifest) calculateRequiredServices(dns DomainNameService) {
 		if serial {
 			ig.Properties.Quarks.RequiredService = requiredService
 		} else {
-			ig.Properties.Quarks.RequiredService = requiredSerialService
+			ig.Properties.Quarks.RequiredService = lastUsedService
 		}
 
 		ports := ig.ServicePorts()
@@ -30,7 +33,7 @@ func (m *Manifest) calculateRequiredServices(dns DomainNameService) {
 		}
 
 		if serial {
-			requiredSerialService = requiredService
+			lastUsedService = requiredService
 		}
 	}
 }
