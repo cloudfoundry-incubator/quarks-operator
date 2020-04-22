@@ -56,7 +56,7 @@ serviceAccount:
 
 global:
   # Context Timeout for each K8's API request in seconds.
-  contextTimeout: 30
+  contextTimeout: 300
   image:
     # pullPolicy defines the policy used for pulling docker images.
     pullPolicy: IfNotPresent
