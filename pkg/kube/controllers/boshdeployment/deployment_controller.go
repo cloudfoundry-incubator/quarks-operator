@@ -23,6 +23,7 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/qjobs"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/reference"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/withops"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -57,6 +58,8 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		return errors.Wrap(err, "Adding Bosh deployment controller to manager failed.")
 	}
 
+	nsPred := monitorednamespace.NewNSPredicate(ctx, mgr.GetClient(), config.MonitoredID)
+
 	// Watch for changes to primary resource BOSHDeployment
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
@@ -81,7 +84,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			return false
 		},
 	}
-	err = c.Watch(&source.Kind{Type: &bdv1.BOSHDeployment{}}, &handler.EnqueueRequestForObject{}, p)
+	err = c.Watch(&source.Kind{Type: &bdv1.BOSHDeployment{}}, &handler.EnqueueRequestForObject{}, nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching bosh deployment failed in bosh deployment controller.")
 	}
@@ -117,7 +120,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 
 			return reconciles
 		}),
-	}, configMapPredicates)
+	}, nsPred, configMapPredicates)
 	if err != nil {
 		return errors.Wrapf(err, "Watching configmaps failed in bosh deployment controller.")
 	}
@@ -162,7 +165,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 
 			return reconciles
 		}),
-	}, secretPredicates)
+	}, nsPred, secretPredicates)
 	if err != nil {
 		return errors.Wrapf(err, "Watching secrets failed in bosh deployment controller.")
 
@@ -201,7 +204,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 
 			return reconciles
 		}),
-	}, servicesPredicates)
+	}, nsPred, servicesPredicates)
 	if err != nil {
 		return errors.Wrapf(err, "watching services failed in bosh deployment controller.")
 

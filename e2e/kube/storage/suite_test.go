@@ -2,7 +2,6 @@ package storage_kube_test
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"testing"
 
@@ -18,25 +17,33 @@ func TestKubeStorage(t *testing.T) {
 }
 
 var (
-	nsTeardown        e2ehelper.TearDownFunc
+	teardowns         []e2ehelper.TearDownFunc
 	namespace         string
 	operatorNamespace string
 )
 
 var _ = BeforeEach(func() {
-	var err error
+	var teardown e2ehelper.TearDownFunc
 
 	dir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-	}
-	chartPath := fmt.Sprintf("%s%s", dir, "/../../../helm/cf-operator")
-	namespace, operatorNamespace, nsTeardown, err = e2ehelper.SetUpEnvironment(chartPath)
 	Expect(err).ToNot(HaveOccurred())
+
+	chartPath := fmt.Sprintf("%s%s", dir, "/../../helm/cf-operator")
+
+	namespace, operatorNamespace, teardown, err = e2ehelper.CreateNamespace()
+	Expect(err).ToNot(HaveOccurred())
+	teardowns = append(teardowns, teardown)
+
+	teardown, err = e2ehelper.InstallChart(chartPath, operatorNamespace,
+		"--set", fmt.Sprintf("global.singleNamespace.name=%s", namespace),
+		"--set", fmt.Sprintf("global.monitoredID=%s", namespace),
+		"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", namespace),
+	)
+	Expect(err).ToNot(HaveOccurred())
+	// prepend helm clean up
+	teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
 })
 
 var _ = AfterEach(func() {
-	if nsTeardown != nil {
-		nsTeardown()
-	}
+	e2ehelper.TearDownAll(teardowns)
 })

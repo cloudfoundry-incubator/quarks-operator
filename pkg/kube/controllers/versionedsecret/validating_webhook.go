@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	wh "code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
@@ -48,7 +49,7 @@ func NewSecretValidator(log *zap.SugaredLogger, config *config.Config) *wh.Opera
 		Name: "validate-secret." + names.GroupName,
 		NamespaceSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				wh.LabelWatchNamespace: config.OperatorNamespace,
+				monitorednamespace.LabelNamespace: config.MonitoredID,
 			},
 		},
 		Webhook: &admission.Webhook{

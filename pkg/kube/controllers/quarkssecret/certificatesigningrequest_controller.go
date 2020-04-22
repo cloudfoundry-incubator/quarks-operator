@@ -43,15 +43,14 @@ func AddCertificateSigningRequest(ctx context.Context, config *config.Config, mg
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*certv1.CertificateSigningRequest)
 
-			return ownedByQuarksSecret(config.Namespace, o.Annotations)
+			return ownedByQuarksSecret(config.MonitoredID, o.Annotations)
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectNew.(*certv1.CertificateSigningRequest)
 
-			return ownedByQuarksSecret(config.Namespace, o.Annotations)
-
+			return ownedByQuarksSecret(config.MonitoredID, o.Annotations)
 		},
 	}
 	err = c.Watch(&source.Kind{Type: &certv1.CertificateSigningRequest{}}, &handler.EnqueueRequestForObject{}, p)
@@ -62,10 +61,13 @@ func AddCertificateSigningRequest(ctx context.Context, config *config.Config, mg
 	return nil
 }
 
-func ownedByQuarksSecret(namespace string, annotations map[string]string) bool {
+// ownedByQuarksSecret checks if the CSR is owned by a qsec and that the qsec is a namespace monitored by this operator
+func ownedByQuarksSecret(monitoredID string, annotations map[string]string) bool {
 	if _, ok := annotations[qsv1a1.AnnotationCertSecretName]; ok {
-		if ns, ok := annotations[qsv1a1.AnnotationQSecNamespace]; ok {
-			return ns == namespace
+		if _, ok := annotations[qsv1a1.AnnotationQSecNamespace]; ok {
+			if id, ok := annotations[qsv1a1.AnnotationMonitoredID]; ok {
+				return monitoredID == id
+			}
 		}
 	}
 	return false

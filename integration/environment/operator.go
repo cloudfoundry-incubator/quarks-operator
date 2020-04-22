@@ -78,7 +78,7 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 	e.Config.WebhookServerPort = port
 
 	e.Config.OperatorNamespace = e.Namespace
-	e.Config.Namespace = e.Namespace
+	e.Config.MonitoredID = e.Namespace
 
 	dockerImageOrg, found := os.LookupEnv("DOCKER_IMAGE_ORG")
 	if !found {
@@ -103,7 +103,6 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 	ctx := e.SetupLoggerContext("cf-operator-tests")
 
 	mgr, err := operator.NewManager(ctx, e.Config, e.KubeConfig, manager.Options{
-		Namespace:          e.Namespace,
 		MetricsBindAddress: "0",
 		LeaderElection:     false,
 		Port:               int(e.Config.WebhookServerPort),

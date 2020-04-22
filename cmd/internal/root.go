@@ -64,21 +64,14 @@ var rootCmd = &cobra.Command{
 			return wrapError(err, "")
 		}
 
-		cmd.OperatorNamespace(cfg, log, "cf-operator-namespace")
-		cmd.WatchNamespace(cfg, log)
 		cmd.Meltdown(cfg)
-
-		if cfg.Namespace == "" || cfg.OperatorNamespace == "" {
-			return wrapError(errors.New("both namespaces must be defined"), "")
-		}
-		if cfg.Namespace == cfg.OperatorNamespace {
-			return wrapError(errors.New("watched namespace cannot be the same as the operators namespace"), "")
-		}
+		cmd.OperatorNamespace(cfg, log, "cf-operator-namespace")
+		cmd.MonitoredID(cfg)
 
 		boshdns.SetBoshDNSDockerImage(viper.GetString("bosh-dns-docker-image"))
 		boshdns.SetClusterDomain(viper.GetString("cluster-domain"))
 
-		log.Infof("Starting cf-operator %s with namespace %s", version.Version, cfg.Namespace)
+		log.Infof("Starting cf-operator %s, monitoring namespaces labeled with '%s'", version.Version, cfg.MonitoredID)
 		log.Infof("cf-operator docker image: %s", config.GetOperatorDockerImage())
 
 		serviceHost := viper.GetString("operator-webhook-service-host")
@@ -107,7 +100,6 @@ var rootCmd = &cobra.Command{
 		}
 
 		mgr, err := operator.NewManager(ctx, cfg, restConfig, manager.Options{
-			Namespace:          cfg.Namespace,
 			MetricsBindAddress: "0",
 			LeaderElection:     false,
 			Port:               managerPort,
@@ -147,7 +139,7 @@ func init() {
 	argToEnv := map[string]string{}
 
 	cmd.OperatorNamespaceFlags(pf, argToEnv, "cf-operator-namespace")
-	cmd.WatchNamespaceFlags(pf, argToEnv)
+	cmd.MonitoredIDFlags(pf, argToEnv)
 	cmd.CtxTimeOutFlags(pf, argToEnv)
 	cmd.KubeConfigFlags(pf, argToEnv)
 	cmd.LoggerFlags(pf, argToEnv)

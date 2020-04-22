@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	wh "code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
@@ -108,7 +109,7 @@ func NewStatefulSetRolloutMutator(log *zap.SugaredLogger, config *config.Config)
 		Name: "mutate-statefulsets." + names.GroupName,
 		NamespaceSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				wh.LabelWatchNamespace: config.OperatorNamespace,
+				monitorednamespace.LabelNamespace: config.MonitoredID,
 			},
 		},
 		Webhook: &admission.Webhook{

@@ -20,6 +20,7 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	wh "code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/withops"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -54,7 +55,7 @@ func NewBOSHDeploymentValidator(log *zap.SugaredLogger, config *config.Config) *
 		Name: "validate-boshdeployment." + names.GroupName,
 		NamespaceSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				wh.LabelWatchNamespace: config.OperatorNamespace,
+				monitorednamespace.LabelNamespace: config.MonitoredID,
 			},
 		},
 		Webhook: &admission.Webhook{

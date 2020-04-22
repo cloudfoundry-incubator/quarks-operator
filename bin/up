@@ -11,5 +11,4 @@ fi
 
 bin/build
 
-echo "watching namespace ${CF_OPERATOR_NAMESPACE}"
 binaries/cf-operator
