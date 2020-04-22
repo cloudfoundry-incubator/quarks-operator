@@ -101,6 +101,8 @@ quarks.cloudfoundry.org/secret-kind: generated
 
 This ensures that the creator of the `QuarksSecret` must have access to the copy target namespace.
 
+Copied `Secrets` do not have an owner set, and are not cleaned up automatically when the `QuarksSecret` is deleted.
+
 ### **_CertificateSigningRequest Controller_**
 
 ![certsr-controller-flow](quarks_certsrcontroller_flow.png)
