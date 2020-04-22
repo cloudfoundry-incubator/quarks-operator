@@ -39,6 +39,9 @@ func (vc *VariablesConverter) Variables(namespace string, manifestName string, v
 			Spec: qsv1a1.QuarksSecretSpec{
 				Type:       v.Type,
 				SecretName: secretName,
+				SecretLabels: map[string]string{
+					bdv1.LabelDeploymentName: manifestName,
+				},
 			},
 		}
 

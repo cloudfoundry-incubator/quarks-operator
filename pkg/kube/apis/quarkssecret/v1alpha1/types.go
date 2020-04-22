@@ -106,10 +106,11 @@ func (c *Copy) String() string {
 
 // QuarksSecretSpec defines the desired state of QuarksSecret
 type QuarksSecretSpec struct {
-	Type       SecretType `json:"type"`
-	Request    Request    `json:"request"`
-	SecretName string     `json:"secretName"`
-	Copies     []Copy     `json:"copies,omitempty"`
+	Type         SecretType        `json:"type"`
+	Request      Request           `json:"request"`
+	SecretName   string            `json:"secretName"`
+	Copies       []Copy            `json:"copies,omitempty"`
+	SecretLabels map[string]string `json:"secretLabels,omitempty"`
 }
 
 // QuarksSecretStatus defines the observed state of QuarksSecret
@@ -129,8 +130,9 @@ type QuarksSecret struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   QuarksSecretSpec   `json:"spec,omitempty"`
-	Status QuarksSecretStatus `json:"status,omitempty"`
+	Spec         QuarksSecretSpec   `json:"spec,omitempty"`
+	Status       QuarksSecretStatus `json:"status,omitempty"`
+	SecretLabels map[string]string  `json:"secretLabels,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
