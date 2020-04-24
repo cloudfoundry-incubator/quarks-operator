@@ -153,6 +153,11 @@ func (in *QuarksSecretStatus) DeepCopyInto(out *QuarksSecretStatus) {
 		in, out := &in.LastReconcile, &out.LastReconcile
 		*out = (*in).DeepCopy()
 	}
+	if in.Generated != nil {
+		in, out := &in.Generated, &out.Generated
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 

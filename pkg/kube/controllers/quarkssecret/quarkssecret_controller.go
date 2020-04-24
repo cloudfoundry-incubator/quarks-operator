@@ -59,7 +59,9 @@ func AddQuarksSecret(ctx context.Context, config *config.Config, mgr manager.Man
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			n := e.ObjectNew.(*qsv1a1.QuarksSecret)
-			if !n.Status.Generated {
+			o := e.ObjectOld.(*qsv1a1.QuarksSecret)
+			if (o.Status.Generated == nil || !*o.Status.Generated) &&
+				(n.Status.Generated != nil && !*n.Status.Generated) {
 				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
 					ctx, e.MetaNew, "qsv1a1.QuarksSecret",
 					fmt.Sprintf("Update predicate passed for '%s/%s'", e.MetaNew.GetNamespace(), e.MetaNew.GetName()),

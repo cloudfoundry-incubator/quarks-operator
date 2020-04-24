@@ -28,6 +28,7 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
@@ -150,7 +151,7 @@ func (r *ReconcileQuarksSecret) Reconcile(request reconcile.Request) (reconcile.
 }
 
 func (r *ReconcileQuarksSecret) updateStatus(ctx context.Context, qsec *qsv1a1.QuarksSecret) {
-	qsec.Status.Generated = true
+	qsec.Status.Generated = pointers.Bool(true)
 
 	now := metav1.Now()
 	qsec.Status.LastReconcile = &now
@@ -322,7 +323,7 @@ func (r *ReconcileQuarksSecret) createCertificateSecret(ctx context.Context, qse
 // * secret is already generated according to qsecs status field
 // * secret exists, but was not generated (user created secret)
 func (r *ReconcileQuarksSecret) skipCreation(ctx context.Context, qsec *qsv1a1.QuarksSecret) (bool, error) {
-	if qsec.Status.Generated {
+	if qsec.Status.Generated != nil && *qsec.Status.Generated {
 		ctxlog.Debugf(ctx, "Existing secret %s/%s has already been generated",
 			qsec.Namespace,
 			qsec.Spec.SecretName,
@@ -366,7 +367,7 @@ func (r *ReconcileQuarksSecret) skipCreation(ctx context.Context, qsec *qsv1a1.Q
 // * secret doesn't exist
 // * secret exists, but it's not marked as generated (label) and a copy (annotation)
 func (r *ReconcileQuarksSecret) skipCopyCreation(ctx context.Context, qsec *qsv1a1.QuarksSecret, copyOf string) (bool, error) {
-	if qsec.Status.Generated {
+	if qsec.Status.Generated != nil && *qsec.Status.Generated {
 		ctxlog.Debugf(ctx, "Existing secret %s/%s has already been generated",
 			qsec.Namespace,
 			qsec.Spec.SecretName,
