@@ -55,7 +55,7 @@ var _ = Describe("QuarksSecretRotation", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			err = env.WaitForQuarksSecretChange(env.Namespace, qsecName, func(qs qsv1a1.QuarksSecret) bool {
-				return qs.Status.Generated == false
+				return qs.Status.Generated == nil || (qs.Status.Generated != nil && *qs.Status.Generated == false)
 			})
 			Expect(err).NotTo(HaveOccurred())
 
