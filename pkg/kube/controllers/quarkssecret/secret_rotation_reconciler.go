@@ -67,7 +67,7 @@ func (r *ReconcileSecretRotation) Reconcile(request reconcile.Request) (reconcil
 	names := []string{}
 	err = json.Unmarshal([]byte(data), &names)
 	if err != nil {
-		return reconcile.Result{}, errors.Wrapf(err, "Error unmarshalling list of secrets to rotate from '%s'", request.NamespacedName)
+		return reconcile.Result{}, errors.Wrapf(err, "Error un-marshalling list of secrets to rotate from '%s'", request.NamespacedName)
 	}
 
 	for _, name := range names {
@@ -78,13 +78,15 @@ func (r *ReconcileSecretRotation) Reconcile(request reconcile.Request) (reconcil
 			continue
 		}
 
-		// skip manual secrets
-		if qsec.Status.Generated != pointers.Bool(true) {
-			ctxlog.Debugf(ctx, "QuarksSecret '%s' cannot be rotated, it was not yet generated", qsec.GetNamespacedName())
+		// skip manual secrets or the ones that have not yet been generated
+		if qsec.Status.Generated != nil && !*qsec.Status.Generated {
+			ctxlog.Debugf(ctx, "QuarksSecret '%s' cannot be rotated, it was not generated", qsec.GetNamespacedName())
 			continue
 		}
 
 		qsec.Status.Generated = pointers.Bool(false)
+		ctxlog.Debugf(ctx, "QuarksSecret '%s' cannot be rotated, it was not yet generated", qsec.GetNamespacedName())
+
 		err = r.client.Status().Update(ctx, qsec)
 		if err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "Error updating QuarksSecret status")

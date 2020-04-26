@@ -64,7 +64,7 @@ func NewManager(ctx context.Context, config *config.Config, cfg *rest.Config, op
 }
 
 // ApplyCRDs applies a collection of CRDs into the cluster
-func ApplyCRDs(config *rest.Config) error {
+func ApplyCRDs(ctx context.Context, config *rest.Config) error {
 	exClient, err := extv1client.NewForConfig(config)
 	if err != nil {
 		return errors.Wrap(err, "Could not get kube client")
@@ -105,6 +105,7 @@ func ApplyCRDs(config *rest.Config) error {
 		},
 	} {
 		err = crd.ApplyCRD(
+			ctx,
 			exClient,
 			res.name,
 			res.kind,
@@ -116,7 +117,7 @@ func ApplyCRDs(config *rest.Config) error {
 		if err != nil {
 			return errors.Wrapf(err, "failed to apply CRD '%s'", res.name)
 		}
-		err = crd.WaitForCRDReady(exClient, res.name)
+		err = crd.WaitForCRDReady(ctx, exClient, res.name)
 		if err != nil {
 			return errors.Wrapf(err, "failed to wait for CRD '%s' ready", res.name)
 		}

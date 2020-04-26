@@ -73,7 +73,7 @@ func listStatefulSetsFromInformer(ctx context.Context, client crc.Client, qState
 func listStatefulSetsFromAPIClient(ctx context.Context, client appsv1client.AppsV1Interface, qStatefulSet *qstsv1a1.QuarksStatefulSet) ([]appsv1.StatefulSet, error) {
 	ctxlog.Debugf(ctx, "Listing StatefulSets owned by QuarksStatefulSet '%s'", qStatefulSet.GetNamespacedName())
 
-	allStatefulSets, err := client.StatefulSets(qStatefulSet.Namespace).List(metav1.ListOptions{})
+	allStatefulSets, err := client.StatefulSets(qStatefulSet.Namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

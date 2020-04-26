@@ -172,7 +172,7 @@ func (r *ReconcileCertificateSigningRequest) Reconcile(request reconcile.Request
 
 // approveRequest approves the CSR
 func (r *ReconcileCertificateSigningRequest) approveRequest(ctx context.Context, csrName string) error {
-	csr, err := r.certClient.CertificateSigningRequests().Get(csrName, metav1.GetOptions{})
+	csr, err := r.certClient.CertificateSigningRequests().Get(ctx, csrName, metav1.GetOptions{})
 	if err != nil {
 		return errors.Wrapf(err, "could not get CSR '%s'", csrName)
 	}
@@ -189,7 +189,7 @@ func (r *ReconcileCertificateSigningRequest) approveRequest(ctx context.Context,
 	})
 
 	ctxlog.Infof(ctx, "Approving CSR '%s'", csrName)
-	_, err = r.certClient.CertificateSigningRequests().UpdateApproval(csr)
+	_, err = r.certClient.CertificateSigningRequests().UpdateApproval(ctx, csr, metav1.UpdateOptions{})
 	if err != nil {
 		return errors.Wrapf(err, "could not update approval of CSR '%s'", csrName)
 	}

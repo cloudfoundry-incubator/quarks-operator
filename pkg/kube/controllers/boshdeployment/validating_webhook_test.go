@@ -45,6 +45,10 @@ var _ = Describe("When the validating webhook handles a manifest", func() {
 		ctx = ctxlog.NewParentContext(log)
 
 		boshDeployment := bdv1.BOSHDeployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "deployment",
+				Namespace: "default",
+			},
 			Spec: bdv1.BOSHDeploymentSpec{
 				Manifest: bdv1.ResourceReference{
 					Type: bdv1.ConfigMapReference,
