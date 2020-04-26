@@ -4,6 +4,8 @@ package environment
 // tests.  They were split off in preparation for standalone components.
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -17,9 +19,9 @@ import (
 // CreateQuarksSecret creates a QuarksSecret custom resource and returns a function to delete it
 func (m *Machine) CreateQuarksSecret(namespace string, qs qsv1a1.QuarksSecret) (*qsv1a1.QuarksSecret, machine.TearDownFunc, error) {
 	client := m.VersionedClientset.QuarkssecretV1alpha1().QuarksSecrets(namespace)
-	d, err := client.Create(&qs)
+	d, err := client.Create(context.Background(), &qs, metav1.CreateOptions{})
 	return d, func() error {
-		err := client.Delete(qs.GetName(), &metav1.DeleteOptions{})
+		err := client.Delete(context.Background(), qs.GetName(), metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
@@ -30,7 +32,7 @@ func (m *Machine) CreateQuarksSecret(namespace string, qs qsv1a1.QuarksSecret) (
 // DeleteQuarksSecret deletes an QuarksSecret custom resource
 func (m *Machine) DeleteQuarksSecret(namespace string, name string) error {
 	client := m.VersionedClientset.QuarkssecretV1alpha1().QuarksSecrets(namespace)
-	return client.Delete(name, &metav1.DeleteOptions{})
+	return client.Delete(context.Background(), name, metav1.DeleteOptions{})
 }
 
 // QuarksSecretChangedFunc returns true if something changed in the quarks secret
@@ -40,7 +42,7 @@ type QuarksSecretChangedFunc func(qsv1a1.QuarksSecret) bool
 func (m *Machine) WaitForQuarksSecretChange(namespace string, name string, changed QuarksSecretChangedFunc) error {
 	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		client := m.VersionedClientset.QuarkssecretV1alpha1().QuarksSecrets(namespace)
-		qs, err := client.Get(name, metav1.GetOptions{})
+		qs, err := client.Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return false, nil

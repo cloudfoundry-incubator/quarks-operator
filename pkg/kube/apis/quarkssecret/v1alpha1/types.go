@@ -113,7 +113,7 @@ type QuarksSecretStatus struct {
 	// Timestamp for the last reconcile
 	LastReconcile *metav1.Time `json:"lastReconcile"`
 	// Indicates if the secret has already been generated
-	Generated bool `json:"generated"`
+	Generated *bool `json:"generated"`
 }
 
 // +genclient

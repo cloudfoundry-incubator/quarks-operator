@@ -27,6 +27,7 @@ import (
 	qscontroller "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarkssecret"
 	cfcfg "code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
 
@@ -488,7 +489,7 @@ var _ = Describe("ReconcileQuarksSecret", func() {
 			secret.Labels = map[string]string{
 				qsv1a1.LabelKind: qsv1a1.GeneratedSecretKind,
 			}
-			qSecret.Status.Generated = true
+			qSecret.Status.Generated = pointers.Bool(true)
 
 			result, err := reconciler.Reconcile(request)
 			Expect(err).ToNot(HaveOccurred())

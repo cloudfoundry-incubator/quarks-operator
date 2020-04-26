@@ -1,6 +1,7 @@
 package environment
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync/atomic"
@@ -81,7 +82,7 @@ func (e *Environment) NodeIP() (string, error) {
 		return override, nil
 	}
 
-	nodes, err := e.Clientset.CoreV1().Nodes().List(metav1.ListOptions{})
+	nodes, err := e.Clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return "", errors.Wrap(err, "getting the list of nodes")
 	}
@@ -100,7 +101,7 @@ func (e *Environment) NodeIP() (string, error) {
 
 // ApplyCRDs applies the CRDs to the cluster
 func ApplyCRDs(kubeConfig *rest.Config) error {
-	err := operator.ApplyCRDs(kubeConfig)
+	err := operator.ApplyCRDs(context.Background(), kubeConfig)
 	if err != nil {
 		return err
 	}

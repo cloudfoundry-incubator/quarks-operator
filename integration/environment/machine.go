@@ -1,6 +1,8 @@
 package environment
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -23,9 +25,9 @@ type Machine struct {
 // CreateStatefulSet creates a statefulset and returns a function to delete it
 func (m *Machine) CreateStatefulSet(namespace string, res appsv1.StatefulSet) (machine.TearDownFunc, error) {
 	client := m.Clientset.AppsV1().StatefulSets(namespace)
-	_, err := client.Create(&res)
+	_, err := client.Create(context.Background(), &res, metav1.CreateOptions{})
 	return func() error {
-		err := client.Delete(res.GetName(), &metav1.DeleteOptions{})
+		err := client.Delete(context.Background(), res.GetName(), metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
@@ -36,9 +38,9 @@ func (m *Machine) CreateStatefulSet(namespace string, res appsv1.StatefulSet) (m
 // CreateDeployment creates a statefulset and returns a function to delete it
 func (m *Machine) CreateDeployment(namespace string, res appsv1.Deployment) (machine.TearDownFunc, error) {
 	client := m.Clientset.AppsV1().Deployments(namespace)
-	_, err := client.Create(&res)
+	_, err := client.Create(context.Background(), &res, metav1.CreateOptions{})
 	return func() error {
-		err := client.Delete(res.GetName(), &metav1.DeleteOptions{})
+		err := client.Delete(context.Background(), res.GetName(), metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
@@ -59,7 +61,7 @@ func (m *Machine) CollectStatefulSet(namespace string, name string, generation i
 func (m *Machine) WaitForDeployment(namespace string, name string, generation int64) error {
 	client := m.Clientset.AppsV1().Deployments(namespace)
 	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
-		d, err := client.Get(name, metav1.GetOptions{})
+		d, err := client.Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
 			return false, errors.Wrapf(err, "failed to query for deployment by name: %v", name)
 		}
@@ -83,7 +85,7 @@ func (m *Machine) CollectDeployment(namespace string, name string, generation in
 	if err != nil {
 		return nil, errors.Wrap(err, "waiting for deployment "+name)
 	}
-	return client.Get(name, metav1.GetOptions{})
+	return client.Get(context.Background(), name, metav1.GetOptions{})
 }
 
 // EnvKeys returns an array of all env key names found in containers

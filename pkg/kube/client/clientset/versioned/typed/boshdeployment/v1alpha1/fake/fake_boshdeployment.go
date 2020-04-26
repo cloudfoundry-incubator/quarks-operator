@@ -8,6 +8,8 @@ Don't alter this file, it was generated.
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -28,7 +30,7 @@ var boshdeploymentsResource = schema.GroupVersionResource{Group: "boshdeployment
 var boshdeploymentsKind = schema.GroupVersionKind{Group: "boshdeployment", Version: "v1alpha1", Kind: "BOSHDeployment"}
 
 // Get takes name of the bOSHDeployment, and returns the corresponding bOSHDeployment object, and an error if there is any.
-func (c *FakeBOSHDeployments) Get(name string, options v1.GetOptions) (result *v1alpha1.BOSHDeployment, err error) {
+func (c *FakeBOSHDeployments) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.BOSHDeployment, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(boshdeploymentsResource, c.ns, name), &v1alpha1.BOSHDeployment{})
 
@@ -39,7 +41,7 @@ func (c *FakeBOSHDeployments) Get(name string, options v1.GetOptions) (result *v
 }
 
 // List takes label and field selectors, and returns the list of BOSHDeployments that match those selectors.
-func (c *FakeBOSHDeployments) List(opts v1.ListOptions) (result *v1alpha1.BOSHDeploymentList, err error) {
+func (c *FakeBOSHDeployments) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.BOSHDeploymentList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(boshdeploymentsResource, boshdeploymentsKind, c.ns, opts), &v1alpha1.BOSHDeploymentList{})
 
@@ -61,14 +63,14 @@ func (c *FakeBOSHDeployments) List(opts v1.ListOptions) (result *v1alpha1.BOSHDe
 }
 
 // Watch returns a watch.Interface that watches the requested bOSHDeployments.
-func (c *FakeBOSHDeployments) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeBOSHDeployments) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(boshdeploymentsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a bOSHDeployment and creates it.  Returns the server's representation of the bOSHDeployment, and an error, if there is any.
-func (c *FakeBOSHDeployments) Create(bOSHDeployment *v1alpha1.BOSHDeployment) (result *v1alpha1.BOSHDeployment, err error) {
+func (c *FakeBOSHDeployments) Create(ctx context.Context, bOSHDeployment *v1alpha1.BOSHDeployment, opts v1.CreateOptions) (result *v1alpha1.BOSHDeployment, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(boshdeploymentsResource, c.ns, bOSHDeployment), &v1alpha1.BOSHDeployment{})
 
@@ -79,7 +81,7 @@ func (c *FakeBOSHDeployments) Create(bOSHDeployment *v1alpha1.BOSHDeployment) (r
 }
 
 // Update takes the representation of a bOSHDeployment and updates it. Returns the server's representation of the bOSHDeployment, and an error, if there is any.
-func (c *FakeBOSHDeployments) Update(bOSHDeployment *v1alpha1.BOSHDeployment) (result *v1alpha1.BOSHDeployment, err error) {
+func (c *FakeBOSHDeployments) Update(ctx context.Context, bOSHDeployment *v1alpha1.BOSHDeployment, opts v1.UpdateOptions) (result *v1alpha1.BOSHDeployment, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(boshdeploymentsResource, c.ns, bOSHDeployment), &v1alpha1.BOSHDeployment{})
 
@@ -91,7 +93,7 @@ func (c *FakeBOSHDeployments) Update(bOSHDeployment *v1alpha1.BOSHDeployment) (r
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeBOSHDeployments) UpdateStatus(bOSHDeployment *v1alpha1.BOSHDeployment) (*v1alpha1.BOSHDeployment, error) {
+func (c *FakeBOSHDeployments) UpdateStatus(ctx context.Context, bOSHDeployment *v1alpha1.BOSHDeployment, opts v1.UpdateOptions) (*v1alpha1.BOSHDeployment, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateSubresourceAction(boshdeploymentsResource, "status", c.ns, bOSHDeployment), &v1alpha1.BOSHDeployment{})
 
@@ -102,7 +104,7 @@ func (c *FakeBOSHDeployments) UpdateStatus(bOSHDeployment *v1alpha1.BOSHDeployme
 }
 
 // Delete takes name of the bOSHDeployment and deletes it. Returns an error if one occurs.
-func (c *FakeBOSHDeployments) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeBOSHDeployments) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(boshdeploymentsResource, c.ns, name), &v1alpha1.BOSHDeployment{})
 
@@ -110,15 +112,15 @@ func (c *FakeBOSHDeployments) Delete(name string, options *v1.DeleteOptions) err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeBOSHDeployments) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(boshdeploymentsResource, c.ns, listOptions)
+func (c *FakeBOSHDeployments) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(boshdeploymentsResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.BOSHDeploymentList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched bOSHDeployment.
-func (c *FakeBOSHDeployments) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.BOSHDeployment, err error) {
+func (c *FakeBOSHDeployments) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.BOSHDeployment, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(boshdeploymentsResource, c.ns, name, pt, data, subresources...), &v1alpha1.BOSHDeployment{})
 

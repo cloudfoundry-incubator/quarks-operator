@@ -8,6 +8,8 @@ Don't alter this file, it was generated.
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -28,7 +30,7 @@ var quarksstatefulsetsResource = schema.GroupVersionResource{Group: "quarksstate
 var quarksstatefulsetsKind = schema.GroupVersionKind{Group: "quarksstatefulset", Version: "v1alpha1", Kind: "QuarksStatefulSet"}
 
 // Get takes name of the quarksStatefulSet, and returns the corresponding quarksStatefulSet object, and an error if there is any.
-func (c *FakeQuarksStatefulSets) Get(name string, options v1.GetOptions) (result *v1alpha1.QuarksStatefulSet, err error) {
+func (c *FakeQuarksStatefulSets) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.QuarksStatefulSet, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(quarksstatefulsetsResource, c.ns, name), &v1alpha1.QuarksStatefulSet{})
 
@@ -39,7 +41,7 @@ func (c *FakeQuarksStatefulSets) Get(name string, options v1.GetOptions) (result
 }
 
 // List takes label and field selectors, and returns the list of QuarksStatefulSets that match those selectors.
-func (c *FakeQuarksStatefulSets) List(opts v1.ListOptions) (result *v1alpha1.QuarksStatefulSetList, err error) {
+func (c *FakeQuarksStatefulSets) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.QuarksStatefulSetList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(quarksstatefulsetsResource, quarksstatefulsetsKind, c.ns, opts), &v1alpha1.QuarksStatefulSetList{})
 
@@ -61,14 +63,14 @@ func (c *FakeQuarksStatefulSets) List(opts v1.ListOptions) (result *v1alpha1.Qua
 }
 
 // Watch returns a watch.Interface that watches the requested quarksStatefulSets.
-func (c *FakeQuarksStatefulSets) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeQuarksStatefulSets) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(quarksstatefulsetsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a quarksStatefulSet and creates it.  Returns the server's representation of the quarksStatefulSet, and an error, if there is any.
-func (c *FakeQuarksStatefulSets) Create(quarksStatefulSet *v1alpha1.QuarksStatefulSet) (result *v1alpha1.QuarksStatefulSet, err error) {
+func (c *FakeQuarksStatefulSets) Create(ctx context.Context, quarksStatefulSet *v1alpha1.QuarksStatefulSet, opts v1.CreateOptions) (result *v1alpha1.QuarksStatefulSet, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(quarksstatefulsetsResource, c.ns, quarksStatefulSet), &v1alpha1.QuarksStatefulSet{})
 
@@ -79,7 +81,7 @@ func (c *FakeQuarksStatefulSets) Create(quarksStatefulSet *v1alpha1.QuarksStatef
 }
 
 // Update takes the representation of a quarksStatefulSet and updates it. Returns the server's representation of the quarksStatefulSet, and an error, if there is any.
-func (c *FakeQuarksStatefulSets) Update(quarksStatefulSet *v1alpha1.QuarksStatefulSet) (result *v1alpha1.QuarksStatefulSet, err error) {
+func (c *FakeQuarksStatefulSets) Update(ctx context.Context, quarksStatefulSet *v1alpha1.QuarksStatefulSet, opts v1.UpdateOptions) (result *v1alpha1.QuarksStatefulSet, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(quarksstatefulsetsResource, c.ns, quarksStatefulSet), &v1alpha1.QuarksStatefulSet{})
 
@@ -91,7 +93,7 @@ func (c *FakeQuarksStatefulSets) Update(quarksStatefulSet *v1alpha1.QuarksStatef
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeQuarksStatefulSets) UpdateStatus(quarksStatefulSet *v1alpha1.QuarksStatefulSet) (*v1alpha1.QuarksStatefulSet, error) {
+func (c *FakeQuarksStatefulSets) UpdateStatus(ctx context.Context, quarksStatefulSet *v1alpha1.QuarksStatefulSet, opts v1.UpdateOptions) (*v1alpha1.QuarksStatefulSet, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateSubresourceAction(quarksstatefulsetsResource, "status", c.ns, quarksStatefulSet), &v1alpha1.QuarksStatefulSet{})
 
@@ -102,7 +104,7 @@ func (c *FakeQuarksStatefulSets) UpdateStatus(quarksStatefulSet *v1alpha1.Quarks
 }
 
 // Delete takes name of the quarksStatefulSet and deletes it. Returns an error if one occurs.
-func (c *FakeQuarksStatefulSets) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeQuarksStatefulSets) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(quarksstatefulsetsResource, c.ns, name), &v1alpha1.QuarksStatefulSet{})
 
@@ -110,15 +112,15 @@ func (c *FakeQuarksStatefulSets) Delete(name string, options *v1.DeleteOptions) 
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeQuarksStatefulSets) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(quarksstatefulsetsResource, c.ns, listOptions)
+func (c *FakeQuarksStatefulSets) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(quarksstatefulsetsResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.QuarksStatefulSetList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched quarksStatefulSet.
-func (c *FakeQuarksStatefulSets) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.QuarksStatefulSet, err error) {
+func (c *FakeQuarksStatefulSets) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.QuarksStatefulSet, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(quarksstatefulsetsResource, c.ns, name, pt, data, subresources...), &v1alpha1.QuarksStatefulSet{})
 

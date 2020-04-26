@@ -27,6 +27,7 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 // JobFactory creates Jobs for a given manifest
@@ -106,6 +107,8 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
+	// TODO: vladi: resolveManifest must mutate the bdpl, so that it no longer has Variables
+	// for any of the user-defined things
 	// Resolve the manifest with ops
 	manifest, err := r.resolveManifest(ctx, bdpl)
 	if err != nil {
@@ -189,6 +192,9 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 // resolveManifest resolves manifest with ops manifest
 func (r *ReconcileBOSHDeployment) resolveManifest(ctx context.Context, bdpl *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
+
+	// TODO: vladi: interpolate user-defined variables here (but in the bosh go package)
+
 	log.Debug(ctx, "Resolving manifest")
 	manifest, _, err := r.withops.Manifest(ctx, bdpl, bdpl.GetNamespace())
 	if err != nil {
@@ -411,6 +417,9 @@ func (r *ReconcileBOSHDeployment) listPodsFromSelector(namespace string, selecto
 
 // createQuarksSecrets create variables quarksSecrets
 func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manifestSecret *corev1.Secret, variables []qsv1a1.QuarksSecret) error {
+
+	// TODO: vladi: don't generate the variables that are "user-defined"
+
 	for _, variable := range variables {
 		log.Debugf(ctx, "CreateOrUpdate QuarksSecrets for explicit variable '%s'", variable.GetNamespacedName())
 
@@ -430,7 +439,7 @@ func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manif
 		// Update does not update status. We only trigger quarks secret
 		// reconciler again if variable was updated by previous CreateOrUpdate
 		if op == controllerutil.OperationResultUpdated {
-			variable.Status.Generated = false
+			variable.Status.Generated = pointers.Bool(false)
 			if err := r.client.Status().Update(ctx, &variable); err != nil {
 				log.WithEvent(&variable, "UpdateError").Errorf(ctx, "failed to update generated status on quarks secret '%s' (%v): %s", variable.GetNamespacedName(), variable.ResourceVersion, err)
 				return err

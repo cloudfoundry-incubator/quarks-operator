@@ -5,6 +5,7 @@ package environment
 // preparation for standalone components.
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 
@@ -29,7 +30,7 @@ import (
 
 // GetStatefulSet gets a StatefulSet by namespace and name
 func (m *Machine) GetStatefulSet(namespace string, name string) (*appsv1.StatefulSet, error) {
-	statefulSet, err := m.Clientset.AppsV1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
+	statefulSet, err := m.Clientset.AppsV1().StatefulSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
 	if err != nil {
 		return &appsv1.StatefulSet{}, errors.Wrapf(err, "failed to query for statefulSet by name: %v", name)
 	}
@@ -41,10 +42,10 @@ func (m *Machine) GetStatefulSet(namespace string, name string) (*appsv1.Statefu
 func (m *Machine) CreateQuarksStatefulSet(namespace string, ess qstsv1a1.QuarksStatefulSet) (*qstsv1a1.QuarksStatefulSet, machine.TearDownFunc, error) {
 	client := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace)
 
-	d, err := client.Create(&ess)
+	d, err := client.Create(context.Background(), &ess, metav1.CreateOptions{})
 
 	return d, func() error {
-		pvcs, err := m.Clientset.CoreV1().PersistentVolumeClaims(namespace).List(metav1.ListOptions{
+		pvcs, err := m.Clientset.CoreV1().PersistentVolumeClaims(namespace).List(context.Background(), metav1.ListOptions{
 			LabelSelector: labels.Set(map[string]string{
 				"test-run-reference": ess.Name,
 			}).String(),
@@ -53,13 +54,13 @@ func (m *Machine) CreateQuarksStatefulSet(namespace string, ess qstsv1a1.QuarksS
 			return err
 		}
 
-		err = client.Delete(ess.GetName(), &metav1.DeleteOptions{})
+		err = client.Delete(context.Background(), ess.GetName(), metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
 
 		for _, pvc := range pvcs.Items {
-			err = m.Clientset.CoreV1().PersistentVolumeClaims(namespace).Delete(pvc.GetName(), &metav1.DeleteOptions{})
+			err = m.Clientset.CoreV1().PersistentVolumeClaims(namespace).Delete(context.Background(), pvc.GetName(), metav1.DeleteOptions{})
 			if err != nil && !apierrors.IsNotFound(err) {
 				return err
 			}
@@ -72,16 +73,16 @@ func (m *Machine) CreateQuarksStatefulSet(namespace string, ess qstsv1a1.QuarksS
 // GetQuarksStatefulSet gets a QuarksStatefulSet custom resource
 func (m *Machine) GetQuarksStatefulSet(namespace string, name string) (*qstsv1a1.QuarksStatefulSet, error) {
 	client := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace)
-	d, err := client.Get(name, metav1.GetOptions{})
+	d, err := client.Get(context.Background(), name, metav1.GetOptions{})
 	return d, err
 }
 
 // UpdateQuarksStatefulSet updates a QuarksStatefulSet custom resource and returns a function to delete it
 func (m *Machine) UpdateQuarksStatefulSet(namespace string, ess qstsv1a1.QuarksStatefulSet) (*qstsv1a1.QuarksStatefulSet, machine.TearDownFunc, error) {
 	client := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace)
-	d, err := client.Update(&ess)
+	d, err := client.Update(context.Background(), &ess, metav1.UpdateOptions{})
 	return d, func() error {
-		err := client.Delete(ess.GetName(), &metav1.DeleteOptions{})
+		err := client.Delete(context.Background(), ess.GetName(), metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
@@ -92,7 +93,7 @@ func (m *Machine) UpdateQuarksStatefulSet(namespace string, ess qstsv1a1.QuarksS
 // DeleteQuarksStatefulSet deletes a QuarksStatefulSet custom resource
 func (m *Machine) DeleteQuarksStatefulSet(namespace string, name string) error {
 	client := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace)
-	return client.Delete(name, &metav1.DeleteOptions{})
+	return client.Delete(context.Background(), name, metav1.DeleteOptions{})
 }
 
 // WaitForPodLabelToExist blocks until the specified label appears
@@ -104,7 +105,7 @@ func (m *Machine) WaitForPodLabelToExist(n string, podName string, label string)
 
 // PodLabelToExist returns true if the label exist in the specified pod
 func (m *Machine) PodLabelToExist(n string, podName string, label string) (bool, error) {
-	pod, err := m.Clientset.CoreV1().Pods(n).Get(podName, metav1.GetOptions{})
+	pod, err := m.Clientset.CoreV1().Pods(n).Get(context.Background(), podName, metav1.GetOptions{})
 	if err != nil {
 		return false, err
 	}
@@ -124,7 +125,7 @@ func (m *Machine) WaitForPodLabelToNotExist(n string, podName string, label stri
 
 // PodLabelToNotExist returns true if the label does not exist
 func (m *Machine) PodLabelToNotExist(n string, podName string, label string) (bool, error) {
-	pod, err := m.Clientset.CoreV1().Pods(n).Get(podName, metav1.GetOptions{})
+	pod, err := m.Clientset.CoreV1().Pods(n).Get(context.Background(), podName, metav1.GetOptions{})
 	if err != nil {
 		return false, err
 	}
@@ -145,7 +146,7 @@ func (m *Machine) WaitForStatefulSetDelete(namespace string, name string) error 
 
 // StatefulSetExist checks if the statefulSet exists
 func (m *Machine) StatefulSetExist(namespace string, name string) (bool, error) {
-	_, err := m.Clientset.AppsV1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
+	_, err := m.Clientset.AppsV1().StatefulSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
@@ -180,7 +181,7 @@ func (m *Machine) WaitForPV(name string) error {
 
 // PVAvailable returns true if the pv by that name is in state available
 func (m *Machine) PVAvailable(name string) (bool, error) {
-	pv, err := m.Clientset.CoreV1().PersistentVolumes().Get(name, metav1.GetOptions{})
+	pv, err := m.Clientset.CoreV1().PersistentVolumes().Get(context.Background(), name, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
@@ -203,7 +204,7 @@ func (m *Machine) WaitForPVsDelete(labels string) error {
 
 // PVsDeleted returns true if the all pvs are deleted
 func (m *Machine) PVsDeleted(labels string) (bool, error) {
-	pvList, err := m.Clientset.CoreV1().PersistentVolumes().List(metav1.ListOptions{
+	pvList, err := m.Clientset.CoreV1().PersistentVolumes().List(context.Background(), metav1.ListOptions{
 		LabelSelector: labels,
 	})
 	if err != nil {
@@ -224,7 +225,7 @@ func (m *Machine) WaitForPVCsDelete(namespace string) error {
 
 // PVCsDeleted returns true if the all pvs are deleted
 func (m *Machine) PVCsDeleted(namespace string) (bool, error) {
-	pvcList, err := m.Clientset.CoreV1().PersistentVolumeClaims(namespace).List(metav1.ListOptions{})
+	pvcList, err := m.Clientset.CoreV1().PersistentVolumeClaims(namespace).List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return false, err
 	}
@@ -243,7 +244,7 @@ func (m *Machine) WaitForStatefulSet(namespace string, name string) error {
 
 // StatefulSetRunning returns true if the statefulSet by that name has all pods created
 func (m *Machine) StatefulSetRunning(namespace string, name string) (bool, error) {
-	statefulSet, err := m.Clientset.AppsV1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
+	statefulSet, err := m.Clientset.AppsV1().StatefulSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
@@ -259,7 +260,7 @@ func (m *Machine) StatefulSetRunning(namespace string, name string) (bool, error
 
 // QuarksStatefulSetExists returns true if at least one ess selected by labels exists
 func (m *Machine) QuarksStatefulSetExists(namespace string, labels string) (bool, error) {
-	esss, err := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace).List(metav1.ListOptions{
+	esss, err := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: labels,
 	})
 	if err != nil {
@@ -273,7 +274,7 @@ func (m *Machine) QuarksStatefulSetExists(namespace string, labels string) (bool
 func (m *Machine) StatefulSetNewGeneration(namespace string, name string, generation int64) (bool, error) {
 	client := m.Clientset.AppsV1().StatefulSets(namespace)
 
-	ss, err := client.Get(name, metav1.GetOptions{})
+	ss, err := client.Get(context.Background(), name, metav1.GetOptions{})
 	if err != nil {
 		return false, errors.Wrapf(err, "failed to query for statefulSet by name: %v", name)
 	}
@@ -287,7 +288,7 @@ func (m *Machine) StatefulSetNewGeneration(namespace string, name string, genera
 
 // GetNamespaceEvents exits as soon as an event reason and msg matches
 func (m *Machine) GetNamespaceEvents(namespace, name, id, reason, msg string) (bool, error) {
-	eList, err := m.Clientset.CoreV1().Events(namespace).List(metav1.ListOptions{
+	eList, err := m.Clientset.CoreV1().Events(namespace).List(context.Background(), metav1.ListOptions{
 		FieldSelector: fields.Set{
 			"involvedObject.name": name,
 			"involvedObject.uid":  id,
@@ -354,9 +355,11 @@ func (m *Machine) PatchPod(namespace string, name string, o string, p string, v 
 	)
 
 	_, err := m.Clientset.CoreV1().Pods(namespace).Patch(
+		context.Background(),
 		name,
 		types.JSONPatchType,
 		payloadBytes,
+		metav1.PatchOptions{},
 	)
 
 	return err
