@@ -11,7 +11,7 @@ cd "$GIT_ROOT"
 if [ -z ${CODEGEN_PKG+x} ] || [ ! -d "$CODEGEN_PKG" ]; then
   echo 'Please set CODEGEN_PKG to the location of kubernetes/code-generator'
   echo 'Make sure version of code-generator matches version of used kubernetes libraries.'
-  echo 'Tag 1.16.* was used in the past'.
+  echo 'Tag 1.18.2 was last used'.
   echo
   echo 'git clone https://github.com/kubernetes/code-generator.git ../code-generator'
   echo

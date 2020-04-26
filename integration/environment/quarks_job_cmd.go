@@ -1,6 +1,7 @@
 package environment
 
 import (
+	"context"
 	"os"
 	"os/exec"
 
@@ -77,7 +78,7 @@ func (e *Environment) SetupQjobAccount() error {
 	}
 
 	rbac := e.Clientset.RbacV1().RoleBindings(e.Namespace)
-	if _, err := rbac.Create(roleBinding); err != nil {
+	if _, err := rbac.Create(context.Background(), roleBinding, metav1.CreateOptions{}); err != nil {
 		if !apierrors.IsAlreadyExists(err) {
 			return errors.Wrapf(err, "could not create role binding")
 		}
