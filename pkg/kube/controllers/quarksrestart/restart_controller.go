@@ -1,0 +1,91 @@
+package quarksrestart
+
+import (
+	"context"
+	"fmt"
+	"reflect"
+
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+)
+
+// AnnotationUpdateReferencedOwner is the annotation required on the secret for the quarks restart feature
+var AnnotationUpdateReferencedOwner = fmt.Sprintf("%s/update-referenced-owner", apis.GroupName)
+
+const name = "quarks-restart"
+
+// AddRestart creates a new controller to restart statefulsets,deployments & jobs
+// if one of their pod's referred secrets has changed
+func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager) error {
+	ctx = ctxlog.NewContextWithRecorder(ctx, name+"-reconciler", mgr.GetEventRecorderFor(name+"-recorder"))
+	r := NewRestartReconciler(ctx, config, mgr)
+
+	c, err := controller.New(name+"-controller", mgr, controller.Options{
+		Reconciler: r,
+	})
+	if err != nil {
+		return errors.Wrap(err, "Adding restart controller to manager failed.")
+	}
+
+	// watch secrets, trigger if one changes which is used by a pod
+	p := predicate.Funcs{
+		CreateFunc:  func(e event.CreateEvent) bool { return false },
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+		UpdateFunc: func(e event.UpdateEvent) bool {
+
+			annotations := e.MetaNew.GetAnnotations()
+			if _, found := annotations[AnnotationUpdateReferencedOwner]; !found {
+				return false
+			}
+
+			oldSecret := e.ObjectOld.(*corev1.Secret)
+			newSecret := e.ObjectNew.(*corev1.Secret)
+
+			if !reflect.DeepEqual(oldSecret.Data, newSecret.Data) {
+				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
+					ctx, e.MetaNew, "corev1.Secret",
+					fmt.Sprintf("Update predicate passed for '%s/%s'", e.MetaNew.GetNamespace(), e.MetaNew.GetName()),
+				)
+				return true
+			}
+			return false
+		},
+	}
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
+			secret := a.Object.(*corev1.Secret)
+
+			if reference.SkipReconciles(ctx, mgr.GetClient(), secret) {
+				return []reconcile.Request{}
+			}
+
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForPod, secret, false)
+			if err != nil {
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s/%s': %v", secret.Namespace, secret.Name, err)
+			}
+
+			for _, reconciliation := range reconciles {
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "RestartController", a.Meta.GetName(), "secret")
+			}
+
+			return reconciles
+		}),
+	}, p)
+	if err != nil {
+		return errors.Wrapf(err, "Watching secrets failed in Restart controller failed.")
+	}
+	return nil
+}
