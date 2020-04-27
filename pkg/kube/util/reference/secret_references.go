@@ -23,6 +23,8 @@ func GetSecretsReferencedBy(ctx context.Context, client crc.Client, object inter
 		return getSecretRefFromBdpl(ctx, client, object)
 	case qstsv1a1.QuarksStatefulSet:
 		return getSecretRefFromESts(object), nil
+	case corev1.Pod:
+		return getSecretRefFromPod(object), nil
 	default:
 		return nil, errors.New("can't get secret references for unknown type; supported types are BOSHDeployment and QuarksStatefulSet")
 	}
@@ -64,11 +66,15 @@ func getSecretRefFromBdpl(ctx context.Context, client crc.Client, object bdv1.BO
 	return result, nil
 }
 
-func getSecretRefFromESts(object qstsv1a1.QuarksStatefulSet) map[string]bool {
-	return getSecretRefFromPod(object.Spec.Template.Spec.Template.Spec)
+func getSecretRefFromPod(object corev1.Pod) map[string]bool {
+	return getSecretRefFromPodSpec(object.Spec)
 }
 
-func getSecretRefFromPod(object corev1.PodSpec) map[string]bool {
+func getSecretRefFromESts(object qstsv1a1.QuarksStatefulSet) map[string]bool {
+	return getSecretRefFromPodSpec(object.Spec.Template.Spec.Template.Spec)
+}
+
+func getSecretRefFromPodSpec(object corev1.PodSpec) map[string]bool {
 	result := map[string]bool{}
 
 	// Look at all volumes

@@ -26,12 +26,15 @@ const (
 	ReconcileForBOSHDeployment ReconcileType = iota
 	// ReconcileForQuarksStatefulSet represents the QuarksStatefulSet CRD
 	ReconcileForQuarksStatefulSet
+	// ReconcileForPod represents the StatefulSet Kube Resource
+	ReconcileForPod
 )
 
 func (r ReconcileType) String() string {
 	return [...]string{
 		"BOSHDeployment",
 		"QuarksStatefulSet",
+		"Pod",
 	}[r]
 }
 
@@ -54,7 +57,6 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			objectReferences, err = GetSecretsReferencedBy(ctx, client, parent)
 			name = object.Name
 			versionedSecret = vss.IsVersionedSecret(*object)
-
 		default:
 			return false, errors.New("can't get reconciles for unknown object type; supported types are ConfigMap and Secret")
 		}
@@ -131,6 +133,26 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 					}})
 			}
 		}
+	case ReconcileForPod:
+		pods, err := listPods(ctx, client, namespace)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to list Pods for ConfigMap reconciles")
+		}
+
+		for _, pod := range pods.Items {
+			isRef, err := objReferencedBy(pod)
+			if err != nil {
+				return nil, err
+			}
+
+			if isRef {
+				result = append(result, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      pod.Name,
+						Namespace: pod.Namespace,
+					}})
+			}
+		}
 	default:
 		return nil, fmt.Errorf("unkown reconcile type %s", reconcileType.String())
 	}
@@ -188,6 +210,16 @@ func listQuarksStatefulSets(ctx context.Context, client crc.Client, namespace st
 	err := client.List(ctx, result, crc.InNamespace(namespace))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list QuarksStatefulSets")
+	}
+
+	return result, nil
+}
+
+func listPods(ctx context.Context, client crc.Client, namespace string) (*corev1.PodList, error) {
+	result := &corev1.PodList{}
+	err := client.List(ctx, result, crc.InNamespace(namespace))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to list Pods")
 	}
 
 	return result, nil
