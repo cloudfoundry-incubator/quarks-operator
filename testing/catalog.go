@@ -296,6 +296,9 @@ func (c *Catalog) QuarksLinkSecret(deploymentName, linkType, linkName string, va
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
+			Annotations: map[string]string{
+				quarksrestart.AnnotationUpdateReferencedOwner: "true",
+			},
 			Labels: map[string]string{
 				bdv1.LabelDeploymentName:  deploymentName,
 				bdv1.LabelEntanglementKey: name,

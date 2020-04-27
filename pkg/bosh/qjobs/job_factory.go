@@ -99,7 +99,7 @@ func (f *JobFactory) VariableInterpolationJob(namespace string, deploymentName s
 		Spec: qjv1a1.QuarksJobSpec{
 			Output: &qjv1a1.Output{
 				OutputMap: qjv1a1.OutputMap{
-					desiredmanifest.Name: qjv1a1.NewFileToSecret(outputFilename, desiredmanifest.Name, true, nil, additionalLabels),
+					desiredmanifest.Name: qjv1a1.NewFileToSecret(outputFilename, desiredmanifest.Name, true, additionalAnnotations, additionalLabels),
 				},
 				SecretLabels: map[string]string{
 					bdv1.LabelDeploymentName:       deploymentName,

@@ -1,4 +1,4 @@
-package quarkslink
+package quarksrestart
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -14,17 +15,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/apis"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
 )
 
 // RestartKey has the timestamp of the last restart triggered by this reconciler
-var RestartKey = fmt.Sprintf("%s/restart-by-entanglement", apis.GroupName)
+var RestartKey = fmt.Sprintf("%s/restart-by-quarks", apis.GroupName)
 
-// NewRestartReconciler returns a new reconciler to restart deployments and statefulsets of entangled pods
+// NewRestartReconciler returns a new reconciler to restart deployments & statefulsets
 func NewRestartReconciler(ctx context.Context, config *config.Config, mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileRestart{
 		ctx:    ctx,
@@ -40,7 +41,8 @@ type ReconcileRestart struct {
 	config *config.Config
 }
 
-// Reconcile adds an annotation to deployments and statefulsets which own the entangled pod
+// Reconcile adds an annotation to deployments, statefulsets & jobs which own the pod
+// whose referred secret has changed
 func (r *ReconcileRestart) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	pod := &corev1.Pod{}
 
@@ -48,27 +50,19 @@ func (r *ReconcileRestart) Reconcile(request reconcile.Request) (reconcile.Resul
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()
 
-	log.Info(ctx, "Reconciling entangled pod ", request.NamespacedName)
+	log.Info(ctx, "Reconciling pod ", request.NamespacedName)
 	err := r.client.Get(ctx, request.NamespacedName, pod)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			// Return and don't requeue
 			log.Debug(ctx, "Skip pod reconcile: pod not found")
 			return reconcile.Result{}, nil
 		}
-
-		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
 
 	if meltdown.NewAnnotationWindow(r.config.MeltdownDuration, pod.ObjectMeta.Annotations).Contains(time.Now()) {
 		log.WithEvent(pod, "Meltdown").Debugf(ctx, "Resource '%s/%s' is in meltdown, requeue reconcile after %s", pod.Namespace, pod.Name, r.config.MeltdownRequeueAfter)
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
-	}
-
-	// make sure this pod still has a valid entanglement
-	if !validEntanglement(pod.GetAnnotations()) {
-		return reconcile.Result{}, nil
 	}
 
 	// find owners and touch them
@@ -91,14 +85,14 @@ func (r *ReconcileRestart) Reconcile(request reconcile.Request) (reconcile.Resul
 	meltdown.SetLastReconcile(&pod.ObjectMeta, time.Now())
 	err = r.client.Update(ctx, pod)
 	if err != nil {
-		log.WithEvent(pod, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on quarks-link annotated pod '%s/%s' (%v): %s", pod.Namespace, pod.Name, pod.ResourceVersion, err)
+		log.WithEvent(pod, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on restart-by-quarks annotated pod '%s/%s' (%v): %s", pod.Namespace, pod.Name, pod.ResourceVersion, err)
 		return reconcile.Result{}, nil
 	}
 	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileRestart) touchStatefulSet(ctx context.Context, namespace string, name string) error {
-	sts := &appsv1.StatefulSet{}
+	sts := &batchv1.Job{}
 	err := r.client.Get(ctx, types.NamespacedName{
 		Namespace: namespace,
 		Name:      name,
@@ -106,10 +100,41 @@ func (r *ReconcileRestart) touchStatefulSet(ctx context.Context, namespace strin
 	if err != nil {
 		return err
 	}
+
+	// Skip if sts is part of the quarksstatefulset
+	for _, or := range sts.GetOwnerReferences() {
+		if or.Kind == "QuarksStatefulSet" {
+			return nil
+		}
+	}
+
 	sts.Spec.Template.SetAnnotations(
 		util.UnionMaps(sts.Spec.Template.GetAnnotations(), restartAnnotation()),
 	)
 	return r.client.Update(ctx, sts)
+}
+
+func (r *ReconcileRestart) touchJob(ctx context.Context, namespace string, name string) error {
+	job := &batchv1.Job{}
+	err := r.client.Get(ctx, types.NamespacedName{
+		Namespace: namespace,
+		Name:      name,
+	}, job)
+	if err != nil {
+		return err
+	}
+
+	// Skip if sts is part of the quarksjob
+	for _, or := range job.GetOwnerReferences() {
+		if or.Kind == "QuarksJob" {
+			return nil
+		}
+	}
+
+	job.Spec.Template.SetAnnotations(
+		util.UnionMaps(job.Spec.Template.GetAnnotations(), restartAnnotation()),
+	)
+	return r.client.Update(ctx, job)
 }
 
 func (r *ReconcileRestart) touchDeployment(ctx context.Context, namespace string, name string) error {
