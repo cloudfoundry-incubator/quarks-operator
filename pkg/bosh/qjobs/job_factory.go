@@ -85,6 +85,8 @@ func (f *JobFactory) VariableInterpolationJob(namespace string, deploymentName s
 
 	additionalLabels := map[string]string{
 		bdv1.LabelEntanglementKey: "true",
+	additionalAnnotations := map[string]string{
+		bdv1.AnnotationLinkProviderService: "true",
 	}
 	additionalAnnotations := map[string]string{
 		bdv1.AnnotationLinkProviderService: "true",
