@@ -3,7 +3,7 @@
 - [Use Cases](#use-cases)
   - [secret.yaml](#secretyaml)
   - [deployment.yaml](#deploymentyaml)
-  - [deployment.yaml](#deploymentyaml-1)
+  - [statefulset.yaml](#statefulsetyaml)
 
 ### secret.yaml
 
@@ -11,8 +11,8 @@ This is the `Secret` which has the quarks update-referenced-owner annotation.
 
 ### deployment.yaml
 
-This is a `Deployment` which refers the `Secret`. Whenever the secret's data changes, this `Deployment` gets restarted.
+This is the `Deployment` which refers to the `Secret`. Whenever the secret's data is modified, the `Deployment` is restarted.
 
 ### statefulset.yaml
 
-This is a `StatefulSet` which refers the `Secret`. Whenever the secret's data changes, this `StatefulSet` gets restarted.
+This is the `StatefulSet` which refers to the `Secret`. Whenever the secret's data is modified, the `StatefulSet` is restarted.

@@ -8,7 +8,7 @@
 
 ## Description
 
-The QuarksRestart controller is responsible for restarting kubernetes resources such as `StatefulSet` and `Deployment`. They are restarted whenever a secret referenced by these resources get updated. 
+The QuarksRestart controller is responsible for restarting kubernetes resources such as `StatefulSet` and `Deployment`. They are restarted whenever a secret referenced by these resources gets updated. 
 
 This feature also enables updating entangled pods whenever the link secrets get updated.
 
