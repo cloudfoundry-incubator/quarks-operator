@@ -57,6 +57,11 @@ serviceAccount:
 global:
   # Context Timeout for each K8's API request in seconds.
   contextTimeout: 300
+  # MeltdownDuration is the duration (in seconds) of the meltdown period, in which we
+  # postpone further reconciles for the same resource
+  meltdownDuration: 60
+  # MeltdownRequeueAfter is the duration (in seconds) for which we delay the requeuing of the reconcile
+  meltdownRequeueAfter: 30
   image:
     # pullPolicy defines the policy used for pulling docker images.
     pullPolicy: IfNotPresent
