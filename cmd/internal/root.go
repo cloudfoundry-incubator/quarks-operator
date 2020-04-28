@@ -37,7 +37,7 @@ var (
 )
 
 func wrapError(err error, msg string) error {
-	return errors.Wrap(err, "cf-operator command failed. "+msg)
+	return errors.Wrapf(err, "cf-operator command failed. %s", msg)
 }
 
 var rootCmd = &cobra.Command{
