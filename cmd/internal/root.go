@@ -66,6 +66,8 @@ var rootCmd = &cobra.Command{
 
 		cmd.OperatorNamespace(cfg, log, "cf-operator-namespace")
 		cmd.WatchNamespace(cfg, log)
+		cmd.Meltdown(cfg)
+
 		if cfg.Namespace == "" || cfg.OperatorNamespace == "" {
 			return wrapError(errors.New("both namespaces must be defined"), "")
 		}
@@ -151,6 +153,7 @@ func init() {
 	cmd.LoggerFlags(pf, argToEnv)
 	cmd.DockerImageFlags(pf, argToEnv, "cf-operator", version.Version)
 	cmd.ApplyCRDsFlags(pf, argToEnv)
+	cmd.MeltdownFlags(pf, argToEnv)
 
 	pf.StringP("bosh-dns-docker-image", "", "coredns/coredns:1.6.3", "The docker image used for emulating bosh DNS (a CoreDNS image)")
 	pf.String("cluster-domain", "cluster.local", "The Kubernetes cluster domain")
