@@ -43,6 +43,8 @@ var _ = Describe("CLI", func() {
       --max-boshdeployment-workers int           \(MAX_BOSHDEPLOYMENT_WORKERS\) Maximum number of workers concurrently running BOSHDeployment controller \(default 1\)
       --max-quarks-secret-workers int            \(MAX_QUARKS_SECRET_WORKERS\) Maximum number of workers concurrently running QuarksSecret controller \(default 5\)
       --max-quarks-statefulset-workers int       \(MAX_QUARKS_STATEFULSET_WORKERS\) Maximum number of workers concurrently running QuarksStatefulSet controller \(default 1\)
+      --meltdown-duration int                    \(MELTDOWN_DURATION\) Duration \(in seconds\) of the meltdown period, in which we postpone further reconciles for the same resource \(default 60\)
+      --meltdown-requeue-after int               \(MELTDOWN_REQUEUE_AFTER\) Duration \(in seconds\) for which we delay the requeuing of the reconcile \(default 30\)
   -w, --operator-webhook-service-host string     \(CF_OPERATOR_WEBHOOK_SERVICE_HOST\) Hostname/IP under which the webhook server can be reached from the cluster
   -p, --operator-webhook-service-port string     \(CF_OPERATOR_WEBHOOK_SERVICE_PORT\) Port the webhook server listens on \(default "2999"\)
   -x, --operator-webhook-use-service-reference   \(CF_OPERATOR_WEBHOOK_USE_SERVICE_REFERENCE\) If true the webhook service is targeted using a service reference instead of a URL
