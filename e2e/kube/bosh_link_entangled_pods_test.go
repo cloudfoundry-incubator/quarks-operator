@@ -145,5 +145,4 @@ var _ = Describe("BOSHLinkEntanglements", func() {
 			})
 		})
 	})
-
 })

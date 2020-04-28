@@ -7,7 +7,6 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
-	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -92,7 +91,7 @@ func (r *ReconcileRestart) Reconcile(request reconcile.Request) (reconcile.Resul
 }
 
 func (r *ReconcileRestart) touchStatefulSet(ctx context.Context, namespace string, name string) error {
-	sts := &batchv1.Job{}
+	sts := &appsv1.StatefulSet{}
 	err := r.client.Get(ctx, types.NamespacedName{
 		Namespace: namespace,
 		Name:      name,
@@ -112,29 +111,6 @@ func (r *ReconcileRestart) touchStatefulSet(ctx context.Context, namespace strin
 		util.UnionMaps(sts.Spec.Template.GetAnnotations(), restartAnnotation()),
 	)
 	return r.client.Update(ctx, sts)
-}
-
-func (r *ReconcileRestart) touchJob(ctx context.Context, namespace string, name string) error {
-	job := &batchv1.Job{}
-	err := r.client.Get(ctx, types.NamespacedName{
-		Namespace: namespace,
-		Name:      name,
-	}, job)
-	if err != nil {
-		return err
-	}
-
-	// Skip if sts is part of the quarksjob
-	for _, or := range job.GetOwnerReferences() {
-		if or.Kind == "QuarksJob" {
-			return nil
-		}
-	}
-
-	job.Spec.Template.SetAnnotations(
-		util.UnionMaps(job.Spec.Template.GetAnnotations(), restartAnnotation()),
-	)
-	return r.client.Update(ctx, job)
 }
 
 func (r *ReconcileRestart) touchDeployment(ctx context.Context, namespace string, name string) error {
