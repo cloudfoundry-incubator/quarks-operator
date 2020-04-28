@@ -83,6 +83,10 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: link-test-nats-nats
+  annotations:
+    quarks.cloudfoundry.org/update-referenced-owner: "true"
+  labels:
+    quarks.cloudfoundry.org/entanglement: link-test-nats-nats
 data:
   nats.password: YXBwYXJlbnRseSwgeW91Cg==
   nats.port: aGF2ZSB0b28K
