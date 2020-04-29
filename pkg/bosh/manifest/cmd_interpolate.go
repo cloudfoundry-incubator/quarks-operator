@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cppforlife/go-patch/patch"
+	"github.com/SUSE/go-patch/patch"
 	"github.com/pkg/errors"
 
 	boshtpl "github.com/cloudfoundry/bosh-cli/director/template"

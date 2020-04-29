@@ -3,13 +3,14 @@ module code.cloudfoundry.org/cf-operator
 require (
 	code.cloudfoundry.org/quarks-job v0.0.86-0.20200426215157-df8e2a749c4d
 	code.cloudfoundry.org/quarks-utils v0.0.0-20200426163230-480b21a17497
+	github.com/SUSE/go-patch v0.0.0-20171006213518-250da0e0e68c
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
 	github.com/charlievieth/fs v0.0.0-20170613215519-7dc373669fa1 // indirect
 	github.com/cloudflare/cfssl v0.0.0-20181102015659-ea4033a214e7
 	github.com/cloudfoundry/bosh-cli v5.4.0+incompatible
 	github.com/cloudfoundry/bosh-utils v0.0.0-20190206192830-9a0affed2bf1 // indirect
-	github.com/cppforlife/go-patch v0.0.0-20171006213518-250da0e0e68c
+	github.com/cppforlife/go-patch v0.2.0 // indirect
 	github.com/daaku/go.zipexe v1.0.1 // indirect
 	github.com/dchest/uniuri v0.0.0-20160212164326-8902c56451e9
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
