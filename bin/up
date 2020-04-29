@@ -5,7 +5,7 @@ set -e
 . ./bin/include/versioning
 . ./bin/include/docker
 
-if [ -z "$SKIP_IMAGE" ]; then
+if [ -z "${SKIP_IMAGE:-}" ]; then
   bin/build-image
 fi
 
