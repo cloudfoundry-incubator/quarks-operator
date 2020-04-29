@@ -1,7 +1,7 @@
 package withops
 
 import (
-	"github.com/cppforlife/go-patch/patch"
+	"github.com/SUSE/go-patch/patch"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
