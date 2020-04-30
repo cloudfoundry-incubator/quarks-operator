@@ -1,0 +1,19 @@
+#!/bin/bash
+
+export QUARKS_JOB_IMAGE_TAG=dev
+export QUARKS_JOB_HELM_VERSION=dev
+
+pushd ../quarks-job || exit
+  bin/build-image
+popd
+
+# docker image
+cluster_name="$(kubectl config current-context | sed 's/kind-//')"
+kind load docker-image cfcontainerization/quarks-job:"$QUARKS_JOB_IMAGE_TAG" --name "$cluster_name"
+
+# helm chart
+if [ "$TEST_HELM" ]; then
+  pushd ../quarks-job || exit
+    bin/build-helm
+  popd
+fi

@@ -1,0 +1,30 @@
+#!/bin/sh
+
+namespace=${CF_OPERATOR_NAMESPACE-cfo}
+kubecf_location=${KUBECF_LOCATION-~/Downloads/kubecf-v2.1.0.tgz}
+
+case "$1" in
+    kubecf|k)
+      helm install kubecf  \
+        "$kubecf_location" \
+        --namespace kubecf --set "system_domain=kubecf.suse.dev"
+      ;;
+
+    delete|rm)
+        helm delete --namespace "$namespace" cfodev
+        kubectl delete ns --wait "$namespace"
+        kubectl delete psp kubecf-default
+        kubectl delete mutatingwebhookconfigurations --all
+        kubectl delete validatingwebhookconfigurations --all
+        ;;
+
+    template|t)
+        helm template cfodev helm/cf-operator/ --namespace "$namespace" --wait --set "global.singleNamespace.name=kubecf"
+      ;;
+
+    *)
+        kubectl create ns "$namespace"
+        helm install cfodev helm/cf-operator --namespace "$namespace" --wait --set "global.singleNamespace.name=kubecf"
+        helm list --namespace "$namespace"
+        ;;
+esac
