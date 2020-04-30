@@ -3,7 +3,7 @@ module code.cloudfoundry.org/cf-operator
 require (
 	code.cloudfoundry.org/quarks-job v0.0.86-0.20200426215157-df8e2a749c4d
 	code.cloudfoundry.org/quarks-utils v0.0.0-20200426163230-480b21a17497
-	github.com/SUSE/go-patch v0.0.0-20171006213518-250da0e0e68c
+	github.com/SUSE/go-patch v0.3.0
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
 	github.com/charlievieth/fs v0.0.0-20170613215519-7dc373669fa1 // indirect

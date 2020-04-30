@@ -28,8 +28,8 @@ github.com/PuerkitoBio/purell v1.1.0/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbt
 github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/urlesc v0.0.0-20160726150825-5bd2802263f2/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
-github.com/SUSE/go-patch v0.0.0-20171006213518-250da0e0e68c h1:sSLZbKZOzUQU1vipUHB+imvHLxSUuQrk6qTfcRmdsUo=
-github.com/SUSE/go-patch v0.0.0-20171006213518-250da0e0e68c/go.mod h1:vh4DkkdS+eUWtJF0CaQnrrTjY+58NjAlIymHoMyCZOY=
+github.com/SUSE/go-patch v0.3.0 h1:62ZkvK8AsOtuuwzUrwrTW2Wvx4PM2OGchfYfgt7AEBA=
+github.com/SUSE/go-patch v0.3.0/go.mod h1:jGp8uo/QTM79THp76HLlgFZyU9O7TYetHvbpDzH1B7E=
 github.com/agnivade/levenshtein v1.0.1/go.mod h1:CURSv5d9Uaml+FovSIICkLbAUZ9S4RqaHDIsdSBg7lM=
 github.com/akavel/rsrc v0.8.0/go.mod h1:uLoCtb9J+EyAqh+26kdrTgmzRBFPGOolLWKpdxkKq+c=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
