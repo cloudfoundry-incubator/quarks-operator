@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# variables for dev-prepare* scripts:
+# * QUARKS_JOB_IMAGE_TAG set to 'dev' to use localy modified qjob image and chart
+# * DOCKER_IMAGE_TAG set to use locally modified operator image
+# * TEST_HELM set to build helm charts
+
+# for testing manually:
+# * SKIP_BUILD_HELM set to avoid bin/build-helm while running bin/test-helm-e2e
+# * SKIP_IMAGE set to avoid bin/build-image while running bin/up
+
+export DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG:-dev}
+
+if [ "$QUARKS_JOB_IMAGE_TAG" = "dev" ]; then
+  echo "Using local dev quarks job dependencies"
+  USE_KIND=true ./bin/dev-prepare-local-qjob
+fi
+
+. ./bin/include/dependencies
+
+# docker
+make build-image
+
+# kind
+echo "available clusters:"
+kind get clusters
+cluster_name="$(kubectl config current-context | sed 's/kind-//')"
+echo -n "using cluster: $cluster_name"
+kind load docker-image cfcontainerization/cf-operator:"$DOCKER_IMAGE_TAG" --name "$cluster_name"
+
+# helm chart
+if [ "$TEST_HELM" ]; then
+  ./bin/build-helm
+
+  echo "Deleting quarks-job chart and copying locally built helm chart from quarks-job"
+  rm -fr helm/cf-operator/charts/quarks-job
+  find helm/ -name \*.tgz -delete
+  mkdir -p helm/cf-operator/charts/quarks-job
+  cp -av ../quarks-job/helm/quarks-job helm/cf-operator/charts/
+
+  echo "The cf-operator helm chart is now available. Don't run bin/test-helm-e2e without setting SKIP_BUILD_HELM=1 to retain changes"
+fi
