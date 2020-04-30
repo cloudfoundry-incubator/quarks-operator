@@ -21,6 +21,7 @@ env:
     - KUBE=1.15.7
     - KUBE=1.16.4
     - KUBE=1.17.0
+    - KUBE=1.18.0
 
 stages:
   - lint
