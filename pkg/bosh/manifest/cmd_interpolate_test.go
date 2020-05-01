@@ -32,7 +32,7 @@ instance_groups:
 	})
 
 	It("returns interpolated manifest", func() {
-		err := InterpolateVariables(baseManifest, varDir, outputFilePath)
+		err := InterpolateFromSecretMounts(baseManifest, varDir, outputFilePath)
 		Expect(err).NotTo(HaveOccurred())
 
 		dataBytes, err := ioutil.ReadFile(outputFilePath)
@@ -44,7 +44,7 @@ instance_groups:
 
 	It("raises error when variablesDir is not directory", func() {
 		varDir = assetPath + "/nonexisting"
-		err := InterpolateVariables(baseManifest, varDir, outputFilePath)
+		err := InterpolateFromSecretMounts(baseManifest, varDir, outputFilePath)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("could not read variables directory"))
 	})

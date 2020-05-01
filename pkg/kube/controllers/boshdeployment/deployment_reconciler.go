@@ -107,9 +107,6 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
 	}
 
-	// TODO: vladi: resolveManifest must mutate the bdpl, so that it no longer has Variables
-	// for any of the user-defined things
-	// Resolve the manifest with ops
 	manifest, err := r.resolveManifest(ctx, bdpl)
 	if err != nil {
 		return reconcile.Result{},
@@ -192,9 +189,6 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 // resolveManifest resolves manifest with ops manifest
 func (r *ReconcileBOSHDeployment) resolveManifest(ctx context.Context, bdpl *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
-
-	// TODO: vladi: interpolate user-defined variables here (but in the bosh go package)
-
 	log.Debug(ctx, "Resolving manifest")
 	manifest, _, err := r.withops.Manifest(ctx, bdpl, bdpl.GetNamespace())
 	if err != nil {

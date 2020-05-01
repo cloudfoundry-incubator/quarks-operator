@@ -99,6 +99,28 @@ var (
 								},
 							},
 						},
+						"vars": {
+							Type: "array",
+							Items: &extv1.JSONSchemaPropsOrArray{
+								Schema: &extv1.JSONSchemaProps{
+									Type: "object",
+									Properties: map[string]extv1.JSONSchemaProps{
+										"name": {
+											Type:      "string",
+											MinLength: pointers.Int64(1),
+										},
+										"secret": {
+											Type:      "string",
+											MinLength: pointers.Int64(1),
+										},
+									},
+									Required: []string{
+										"secret",
+										"name",
+									},
+								},
+							},
+						},
 					},
 					Required: []string{
 						"manifest",

@@ -226,6 +226,16 @@ func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
 	}
 }
 
+// BOSHManifestConfigMapWithExplicitVars for integration tests
+func (c *Catalog) BOSHManifestConfigMapWithExplicitVars(name string) corev1.ConfigMap {
+	return corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Data: map[string]string{
+			"manifest": bm.NatsExplicitVar,
+		},
+	}
+}
+
 // BOSHManifestSecret for tests
 func (c *Catalog) BOSHManifestSecret(ref string, text string) corev1.Secret {
 	return corev1.Secret{
@@ -316,6 +326,16 @@ func (c *Catalog) CustomOpsConfigMap(name string, change string) corev1.ConfigMa
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Data: map[string]string{
 			"ops": change,
+		},
+	}
+}
+
+// UserExplicitPassword is a secret representing an explicit var, used as a password
+func (c *Catalog) UserExplicitPassword(name, password string) corev1.Secret {
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		StringData: map[string]string{
+			"password": password,
 		},
 	}
 }
