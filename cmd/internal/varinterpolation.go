@@ -69,7 +69,7 @@ interpolated manifest to STDOUT
 			return errors.Wrapf(err, "%s Reading file specified in the bosh-manifest-path flag failed", vInterpolateFailedMessage)
 		}
 
-		return manifest.InterpolateVariables(boshManifestBytes, variablesDir, outputFilePath)
+		return manifest.InterpolateFromSecretMounts(boshManifestBytes, variablesDir, outputFilePath)
 	},
 }
 

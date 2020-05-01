@@ -15,6 +15,7 @@
   - [Conversion Details](#conversion-details)
     - [Calculation of docker image location for releases](#calculation-of-docker-image-location-for-releases)
     - [Variables to Quarks Secrets](#variables-to-quarks-secrets)
+      - [Overriding generated variables](#overriding-generated-variables)
     - [Instance Groups to Quarks StatefulSets and Jobs](#instance-groups-to-quarks-statefulsets-and-jobs)
       - [BOSH Services vs BOSH Errands](#bosh-services-vs-bosh-errands)
   - [Miscellaneous](#miscellaneous)
@@ -444,7 +445,6 @@ In addition, there are configuration variables that are not available in Bosh bu
 | `properties.quarks.bpm.processes[n].requests.cpu`    | `container.Resources.Requests.cpu`    | [Guaranteed CPU](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#resource-requests-and-limits-of-pod-and-container)    |
 | `properties.quarks.bpm.processes[n].requests.memory` | `container.Resources.Requests.memory` | [Guaranteed memory](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/#resource-requests-and-limits-of-pod-and-container) |
 
-
 ## Conversion Details
 
 ### Calculation of docker image location for releases
@@ -503,6 +503,16 @@ var-<VARIABLE_NAME>
 ```
 
 The name of the final generated `Secret` (the `secretName` key of the `QuarksSecret`) is calculated the same way.
+
+#### Overriding generated variables
+
+The user can also specify overrides for generated secrets using the `vars` key in the `BOSHDeployment` spec.
+
+These map explicit variable names to secret names.
+
+Each secret must contain the usual keys used in explicit variables (see [here](https://bosh.io/docs/variable-types/) for more details).
+
+You can find an example [here](examples/bosh-deployment/boshdeployment-with-user-variable.yaml).
 
 ### Instance Groups to Quarks StatefulSets and Jobs
 

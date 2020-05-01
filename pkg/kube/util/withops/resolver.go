@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,6 +19,7 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
+	boshtpl "github.com/cloudfoundry/bosh-cli/director/template"
 )
 
 // DomainNameService consumer interface
@@ -88,6 +88,33 @@ func (r *Resolver) Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, name
 		if err != nil {
 			return nil, []string{}, errors.Wrapf(err, "Failed to interpolate %#v in interpolation task", m)
 		}
+	}
+
+	// Interpolate user-provided explicit variables
+	var userVars []boshtpl.Variables
+	for _, userVar := range bdpl.Spec.Vars {
+		varName := userVar.Name
+		varSecretName := userVar.Secret
+		secret := &corev1.Secret{}
+		err := r.client.Get(ctx, types.NamespacedName{Name: varSecretName, Namespace: namespace}, secret)
+		if err != nil {
+			return nil, []string{}, errors.Wrapf(err, "failed to retrieve secret '%s/%s' via client.Get", namespace, varSecretName)
+		}
+		staticVars := boshtpl.StaticVariables{}
+		for key, varBytes := range secret.Data {
+			switch key {
+			case "password":
+				staticVars[varName] = string(varBytes)
+			default:
+				staticVars[varName] = bdm.MergeStaticVar(staticVars[varName], key, string(varBytes))
+			}
+		}
+		userVars = append(userVars, staticVars)
+	}
+
+	bytes, err = bdm.InterpolateExplicitVariables(bytes, userVars)
+	if err != nil {
+		return nil, []string{}, errors.Wrapf(err, "Failed to interpolate user provided explicit variables manifest '%s' in '%s'", bdpl.Name, namespace)
 	}
 
 	// Reload the manifest after interpolation, and apply implicit variables
@@ -181,6 +208,32 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 		}
 	}
 
+	// Interpolate user-provided explicit variables
+	var userVars []boshtpl.Variables
+	for _, userVar := range bdpl.Spec.Vars {
+		varName := userVar.Name
+		varSecretName := userVar.Secret
+		secret := &corev1.Secret{}
+		err := r.client.Get(ctx, types.NamespacedName{Name: varSecretName, Namespace: namespace}, secret)
+		if err != nil {
+			return nil, []string{}, errors.Wrapf(err, "failed to retrieve secret '%s/%s' via client.Get", namespace, varSecretName)
+		}
+		staticVars := boshtpl.StaticVariables{}
+		for key, varBytes := range secret.Data {
+			switch key {
+			case "password":
+				staticVars[varName] = string(varBytes)
+			default:
+				staticVars[varName] = bdm.MergeStaticVar(staticVars[varName], key, string(varBytes))
+			}
+		}
+		userVars = append(userVars, staticVars)
+	}
+	bytes, err = bdm.InterpolateExplicitVariables(bytes, userVars)
+	if err != nil {
+		return nil, []string{}, errors.Wrapf(err, "Failed to interpolate user provided explicit variables manifest '%s' in '%s'", bdpl.Name, namespace)
+	}
+
 	// Reload the manifest after interpolation, and apply implicit variables
 	manifest, err := bdm.LoadYAML(bytes)
 	if err != nil {
@@ -243,6 +296,7 @@ func (r *Resolver) replaceVar(manifest *bdm.Manifest, name, value string) *bdm.M
 
 	return replaced.Interface().(*bdm.Manifest)
 }
+
 func (r *Resolver) replaceVarRecursive(copy, v reflect.Value, varName, varValue string) {
 	switch v.Kind() {
 	case reflect.Ptr:
