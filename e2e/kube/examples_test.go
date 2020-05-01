@@ -207,12 +207,45 @@ var _ = Describe("Examples Directory", func() {
 			outFile, err := cmdHelper.RunCommandWithOutput(namespace, "nats-1", "awk 'NR == 18 {print substr($2,2,17)}' /var/vcap/jobs/nats/config/nats.conf")
 			Expect(err).ToNot(HaveOccurred())
 
-			outSecret, err := cmdHelper.GetData(namespace, "secret", "nats-deployment.var-custom-password", "go-template={{.data.password}}")
+			outSecret, err := cmdHelper.GetData(namespace, "secret", "var-custom-password", "go-template={{.data.password}}")
 			Expect(err).ToNot(HaveOccurred())
 			outSecretDecoded, _ := b64.StdEncoding.DecodeString(string(outSecret))
 			Expect(strings.TrimSuffix(outFile, "\n")).To(ContainSubstring(string(outSecretDecoded)))
 		})
 
+	})
+
+	Context("bosh-deployment with user variables", func() {
+		BeforeEach(func() {
+			example = "bosh-deployment/boshdeployment-with-user-variable.yaml"
+		})
+
+		It("uses the user's variables instead of generating new ones", func() {
+			By("Checking for pods")
+			podWait("pod/nats-0")
+
+			// Check that we didn't create new secrets
+			sd, err := cmdHelper.GetData(namespace, "secret", "var-nats-password", "go-template={{.data}}")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sd).To(BeEmpty())
+			sd, err = cmdHelper.GetData(namespace, "secret", "var-nats-ca", "go-template={{.data}}")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sd).To(BeEmpty())
+			sd, err = cmdHelper.GetData(namespace, "secret", "var-nats-cert", "go-template={{.data}}")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sd).To(BeEmpty())
+
+			// Check that the manifest contains the user's certs and passwords
+			outSecret, err := cmdHelper.GetData(namespace, "secret", "desired-manifest-v1", `go-template={{index .data "manifest.yaml"}}`)
+			Expect(err).ToNot(HaveOccurred())
+			desiredManifest, _ := b64.StdEncoding.DecodeString(string(outSecret))
+			Expect(string(desiredManifest)).To(ContainSubstring("password: deadbeef"))
+			Expect(string(desiredManifest)).To(ContainSubstring("ca_cert: my-ca-cert-data"))
+			Expect(string(desiredManifest)).To(ContainSubstring("ca_key: my-ca-private-key"))
+			Expect(string(desiredManifest)).To(ContainSubstring("cert: my-cert-data"))
+			Expect(string(desiredManifest)).To(ContainSubstring("key: my-private-key-data"))
+			Expect(string(desiredManifest)).To(ContainSubstring("cert_ca: my-ca-cert-data"))
+		})
 	})
 
 	Context("bosh-deployment with a custom variable and logging sidecar disable example", func() {

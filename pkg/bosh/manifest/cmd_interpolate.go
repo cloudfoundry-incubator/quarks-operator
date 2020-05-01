@@ -13,8 +13,8 @@ import (
 	boshtpl "github.com/cloudfoundry/bosh-cli/director/template"
 )
 
-// InterpolateVariables reads explicit secrets from a folder and writes an interpolated manifest to the output.json file in /mnt/quarks volume mount.
-func InterpolateVariables(boshManifestBytes []byte, variablesDir string, outputFilePath string) error {
+// InterpolateFromSecretMounts reads explicit secrets from a folder and writes an interpolated manifest to the output.json file in /mnt/quarks volume mount.
+func InterpolateFromSecretMounts(boshManifestBytes []byte, variablesDir string, outputFilePath string) error {
 	var vars []boshtpl.Variables
 
 	variables, err := ioutil.ReadDir(variablesDir)
@@ -48,7 +48,7 @@ func InterpolateVariables(boshManifestBytes []byte, variablesDir string, outputF
 					case "password":
 						staticVars[variable.Name()] = string(varBytes)
 					default:
-						staticVars[variable.Name()] = mergeStaticVar(staticVars[variable.Name()], varFileName, string(varBytes))
+						staticVars[variable.Name()] = MergeStaticVar(staticVars[variable.Name()], varFileName, string(varBytes))
 					}
 				}
 				return nil
@@ -61,29 +61,9 @@ func InterpolateVariables(boshManifestBytes []byte, variablesDir string, outputF
 		}
 	}
 
-	multiVars := boshtpl.NewMultiVars(vars)
-	tpl := boshtpl.NewTemplate(boshManifestBytes)
-
-	// Following options are empty for cf-operator
-	op := patch.Ops{}
-	evalOpts := boshtpl.EvaluateOpts{
-		ExpectAllKeys:     false,
-		ExpectAllVarsUsed: false,
-	}
-
-	yamlBytes, err := tpl.Evaluate(multiVars, op, evalOpts)
+	yamlBytes, err := InterpolateExplicitVariables(boshManifestBytes, vars)
 	if err != nil {
-		return errors.Wrapf(err, "could not evaluate variables")
-	}
-
-	m, err := LoadYAML(yamlBytes)
-	if err != nil {
-		return errors.Wrapf(err, "could not evaluate variables")
-	}
-
-	yamlBytes, err = m.Marshal()
-	if err != nil {
-		return errors.Wrapf(err, "could not evaluate variables")
+		return errors.Wrap(err, "failed to interpolate explicit variables")
 	}
 
 	jsonBytes, err := json.Marshal(map[string]string{
@@ -101,7 +81,40 @@ func InterpolateVariables(boshManifestBytes []byte, variablesDir string, outputF
 	return nil
 }
 
-func mergeStaticVar(staticVar interface{}, field string, value string) interface{} {
+// InterpolateExplicitVariables interpolates explicit variables in the manifest
+// Expects an array of maps, each element being a variable: [{ "name":"foo", "password": "value" }, {"name": "bar", "ca": "---"} ]
+// Returns the new manifest as a byte array
+func InterpolateExplicitVariables(boshManifestBytes []byte, vars []boshtpl.Variables) ([]byte, error) {
+	multiVars := boshtpl.NewMultiVars(vars)
+	tpl := boshtpl.NewTemplate(boshManifestBytes)
+
+	// Following options are empty for cf-operator
+	op := patch.Ops{}
+	evalOpts := boshtpl.EvaluateOpts{
+		ExpectAllKeys:     false,
+		ExpectAllVarsUsed: false,
+	}
+
+	yamlBytes, err := tpl.Evaluate(multiVars, op, evalOpts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not evaluate variables")
+	}
+
+	m, err := LoadYAML(yamlBytes)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not evaluate variables")
+	}
+
+	yamlBytes, err = m.Marshal()
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not evaluate variables")
+	}
+
+	return yamlBytes, nil
+}
+
+// MergeStaticVar builds a map of values used for BOSH explicit variable interpolation
+func MergeStaticVar(staticVar interface{}, field string, value string) interface{} {
 	if staticVar == nil {
 		staticVar = map[interface{}]interface{}{
 			field: value,

@@ -116,7 +116,7 @@ instance_groups:
       nats:
         user: admin
         password: changeme
-        nats_password: (( nats_password ))
+        nats_password: ((nats_password))
         debug: true
       quarks:
         ports:
