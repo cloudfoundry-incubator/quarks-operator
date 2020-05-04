@@ -82,6 +82,13 @@ var (
 type BOSHDeploymentSpec struct {
 	Manifest ResourceReference   `json:"manifest"`
 	Ops      []ResourceReference `json:"ops,omitempty"`
+	Vars     []VarReference      `json:"vars,omitempty"`
+}
+
+// VarReference represents a user-defined secret for an explicit variable
+type VarReference struct {
+	Name   string `json:"name"`
+	Secret string `json:"secret"`
 }
 
 // ResourceReference defines the resource reference type and location

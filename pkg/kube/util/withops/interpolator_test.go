@@ -559,8 +559,8 @@ instance_groups:
   value: 4
 `)
 			ops2 := []byte(`
-- type: test
-  test: This is a wrong ops format file
+- type: foo
+  foo: This is a wrong ops format file
 `)
 
 			err := interpolator.BuildOps(ops1)

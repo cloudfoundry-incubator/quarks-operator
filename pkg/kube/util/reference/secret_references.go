@@ -41,6 +41,10 @@ func getSecretRefFromBdpl(ctx context.Context, client crc.Client, object bdv1.BO
 		}
 	}
 
+	for _, userVar := range object.Spec.Vars {
+		result[userVar.Secret] = true
+	}
+
 	// Include secrets of implicit vars
 	withops := withops.NewResolver(
 		client,

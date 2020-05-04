@@ -290,6 +290,67 @@ var _ = Describe("BDPL updates", func() {
 		})
 	})
 
+	Context("when updating a deployment with explicit vars", func() {
+		BeforeEach(func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMapWithExplicitVars(manifestName))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment(deploymentName, manifestName))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			By("checking for instance group pods")
+			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "1", 2)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
+		})
+
+		Context("by setting a user-defined explicit variable", func() {
+			BeforeEach(func() {
+				tearDown, err := env.CreateSecret(env.Namespace, env.UserExplicitPassword("my-var", "supersecret"))
+				Expect(err).NotTo(HaveOccurred())
+				tearDowns = append(tearDowns, tearDown)
+
+				bdpl, err := env.GetBOSHDeployment(env.Namespace, deploymentName)
+				Expect(err).NotTo(HaveOccurred())
+				bdpl.Spec.Vars = []bdv1.VarReference{{Name: "nats_password", Secret: "my-var"}}
+				_, _, err = env.UpdateBOSHDeployment(env.Namespace, *bdpl)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should use the value from the user's secret", func() {
+				err := env.WaitForSecret(env.Namespace, "desired-manifest-v2")
+				Expect(err).NotTo(HaveOccurred(), "error waiting for new desired manifest")
+
+				secret, err := env.GetSecret(env.Namespace, "desired-manifest-v2")
+				Expect(err).NotTo(HaveOccurred(), "error getting new desired manifest")
+
+				manifest := string(secret.Data["manifest.yaml"])
+
+				Expect(manifest).To(ContainSubstring("nats_password: supersecret"))
+			})
+
+			It("should update when the user's secret changes", func() {
+				err := env.WaitForSecret(env.Namespace, "desired-manifest-v2")
+				Expect(err).NotTo(HaveOccurred(), "error waiting for new desired manifest")
+
+				_, tearDown, err := env.UpdateSecret(env.Namespace, env.UserExplicitPassword("my-var", "anothersupersecret"))
+				Expect(err).NotTo(HaveOccurred(), "error updating user var")
+				tearDowns = append(tearDowns, tearDown)
+
+				err = env.WaitForSecret(env.Namespace, "desired-manifest-v3")
+				Expect(err).NotTo(HaveOccurred(), "error waiting for new desired manifest")
+
+				secret, err := env.GetSecret(env.Namespace, "desired-manifest-v3")
+				Expect(err).NotTo(HaveOccurred(), "error getting new desired manifest")
+
+				manifest := string(secret.Data["manifest.yaml"])
+
+				Expect(manifest).To(ContainSubstring("nats_password: anothersupersecret"))
+			})
+		})
+	})
+
 	Context("when updating a deployment with multiple instance groups", func() {
 		It("it should only update correctly and have correct secret versions in volume mounts", func() {
 			manifestName := "bosh-manifest-two-instance-groups"

@@ -1,7 +1,12 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
+  creationTimestamp: 2020-04-30T14:32:12Z
+  generation: 2
   name: boshdeployments.quarks.cloudfoundry.org
+  resourceVersion: "2545256"
+  selfLink: /apis/apiextensions.k8s.io/v1beta1/customresourcedefinitions/boshdeployments.quarks.cloudfoundry.org
+  uid: d7d271cc-4fc8-449d-a5ab-ef88f9ba7e86
 spec:
   conversion:
     strategy: None
@@ -55,6 +60,20 @@ spec:
                 - name
                 type: object
               type: array
+            vars:
+              items:
+                properties:
+                  name:
+                    minLength: 1
+                    type: string
+                  secret:
+                    minLength: 1
+                    type: string
+                required:
+                - secret
+                - name
+                type: object
+              type: array
           required:
           - manifest
           type: object
@@ -69,3 +88,25 @@ spec:
   - name: v1alpha1
     served: true
     storage: true
+status:
+  acceptedNames:
+    kind: BOSHDeployment
+    listKind: BOSHDeploymentList
+    plural: boshdeployments
+    shortNames:
+    - bdpl
+    - bdpls
+    singular: boshdeployment
+  conditions:
+  - lastTransitionTime: 2020-04-30T14:32:12Z
+    message: no conflicts found
+    reason: NoConflicts
+    status: "True"
+    type: NamesAccepted
+  - lastTransitionTime: null
+    message: the initial names have been accepted
+    reason: InitialNamesAccepted
+    status: "True"
+    type: Established
+  storedVersions:
+  - v1alpha1

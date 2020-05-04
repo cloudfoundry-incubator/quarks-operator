@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/go-test/deep"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
@@ -359,10 +360,15 @@ instance_groups:
 					{
 						Name:      "component1",
 						Instances: 1,
-					},
+						Properties: bdm.InstanceGroupProperties{
+							Properties: map[string]interface{}{},
+						}},
 					{
 						Name:      "component2",
 						Instances: 2,
+						Properties: bdm.InstanceGroupProperties{
+							Properties: map[string]interface{}{},
+						},
 					},
 				},
 				AddOnsApplied: true,
@@ -373,7 +379,7 @@ instance_groups:
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
 			Expect(len(manifest.InstanceGroups)).To(Equal(2))
-			Expect(manifest).To(Equal(expectedManifest))
+			Expect(deep.Equal(manifest, expectedManifest)).To(HaveLen(0))
 			Expect(len(implicitVars)).To(Equal(0))
 		})
 
@@ -391,10 +397,16 @@ instance_groups:
 					{
 						Name:      "component3",
 						Instances: 1,
-					},
+						Properties: bdm.InstanceGroupProperties{
+							Properties: map[string]interface{}{},
+						},
+						},
 					{
 						Name:      "component4",
 						Instances: 2,
+						Properties: bdm.InstanceGroupProperties{
+							Properties: map[string]interface{}{},
+						},
 					},
 				},
 				AddOnsApplied: true,
@@ -405,7 +417,7 @@ instance_groups:
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
 			Expect(len(manifest.InstanceGroups)).To(Equal(2))
-			Expect(manifest).To(Equal(expectedManifest))
+			Expect(deep.Equal(manifest, expectedManifest)).To(HaveLen(0))
 			Expect(len(implicitVars)).To(Equal(0))
 		})
 
@@ -423,6 +435,9 @@ instance_groups:
 					{
 						Name:      "component5",
 						Instances: 1,
+						Properties: bdm.InstanceGroupProperties{
+							Properties: map[string]interface{}{},
+						},
 					},
 				},
 				AddOnsApplied: true,
@@ -433,7 +448,7 @@ instance_groups:
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
 			Expect(len(manifest.InstanceGroups)).To(Equal(1))
-			Expect(manifest).To(Equal(expectedManifest))
+			Expect(deep.Equal(manifest, expectedManifest)).To(HaveLen(0))
 			Expect(len(implicitVars)).To(Equal(0))
 		})
 
@@ -465,10 +480,16 @@ instance_groups:
 					{
 						Name:      "component1",
 						Instances: 2,
+						Properties: bdm.InstanceGroupProperties{
+							Properties: map[string]interface{}{},
+						},
 					},
 					{
 						Name:      "component2",
 						Instances: 2,
+						Properties: bdm.InstanceGroupProperties{
+							Properties: map[string]interface{}{},
+						},
 					},
 				},
 				AddOnsApplied: true,
@@ -479,7 +500,7 @@ instance_groups:
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
 			Expect(len(manifest.InstanceGroups)).To(Equal(2))
-			Expect(manifest).To(Equal(expectedManifest))
+			Expect(deep.Equal(manifest, expectedManifest)).To(HaveLen(0))
 
 			Expect(interpolator.BuildOpsCallCount()).To(Equal(1))
 			opsBytes := interpolator.BuildOpsArgsForCall(0)
@@ -525,6 +546,9 @@ instance_groups:
 					{
 						Name:      "component1",
 						Instances: 4,
+						Properties: bdm.InstanceGroupProperties{
+							Properties: map[string]interface{}{},
+						},
 					},
 				},
 				AddOnsApplied: true,
@@ -535,7 +559,7 @@ instance_groups:
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
 			Expect(len(manifest.InstanceGroups)).To(Equal(1))
-			Expect(manifest).To(Equal(expectedManifest))
+			Expect(deep.Equal(manifest, expectedManifest)).To(HaveLen(0))
 
 			Expect(interpolator.BuildOpsCallCount()).To(Equal(4))
 			opsBytes := interpolator.BuildOpsArgsForCall(0)
