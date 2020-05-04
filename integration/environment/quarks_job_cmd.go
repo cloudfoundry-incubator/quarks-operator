@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"strconv"
 
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega/gexec"
@@ -37,6 +38,8 @@ func (q *QuarksJobCmd) Start(namespace string) error {
 		"-a", namespace,
 		"-o", "cfcontainerization",
 		"-r", "quarks-job",
+		"--meltdown-duration", strconv.Itoa(defaultTestMeltdownDuration),
+		"--meltdown-requeue-after", strconv.Itoa(defaultTestMeltdownRequeueAfter),
 		"--service-account", "default",
 		"-t", quarksJobTag(),
 	)
