@@ -16,7 +16,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	qjv1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-operator/pkg/credsgen"
@@ -299,7 +298,7 @@ func (c *Catalog) QuarksLinkSecret(deploymentName, linkType, linkName string, va
 			Name: name,
 			Labels: map[string]string{
 				bdv1.LabelDeploymentName:  deploymentName,
-				qjv1.LabelEntanglementKey: name,
+				bdv1.LabelEntanglementKey: name,
 			},
 		},
 		Data: value,

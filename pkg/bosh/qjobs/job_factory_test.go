@@ -91,42 +91,58 @@ var _ = Describe("JobFactory", func() {
 					qjv1a1.OutputMap{
 						"redis-slave": qjv1a1.FilesToSecrets{
 							"ig.json": qjv1a1.SecretOptions{
-								Name:                   "ig-resolved.redis-slave",
-								AdditionalSecretLabels: map[string]string{"quarks.cloudfoundry.org/secret-type": "ig-resolved"},
-								Versioned:              true,
-								PersistenceMethod:      "",
+								Name: "ig-resolved.redis-slave",
+								AdditionalSecretLabels: map[string]string{
+									"quarks.cloudfoundry.org/entanglement": "true",
+									"quarks.cloudfoundry.org/secret-type":  "ig-resolved",
+								},
+								Versioned:         true,
+								PersistenceMethod: "",
 							},
 							"bpm.json": qjv1a1.SecretOptions{
-								Name:                   "bpm.redis-slave",
-								AdditionalSecretLabels: map[string]string{"quarks.cloudfoundry.org/secret-type": "bpm"},
-								Versioned:              true,
-								PersistenceMethod:      "",
+								Name: "bpm.redis-slave",
+								AdditionalSecretLabels: map[string]string{
+									"quarks.cloudfoundry.org/entanglement": "true",
+									"quarks.cloudfoundry.org/secret-type":  "bpm",
+								},
+								Versioned:         true,
+								PersistenceMethod: "",
 							},
 							"provides.json": qjv1a1.SecretOptions{
-								Name:                   "link",
-								AdditionalSecretLabels: nil,
-								Versioned:              false,
-								PersistenceMethod:      "fan-out",
+								Name: "link",
+								AdditionalSecretLabels: map[string]string{
+									"quarks.cloudfoundry.org/entanglement": "true",
+								},
+								Versioned:         false,
+								PersistenceMethod: "fan-out",
 							},
 						},
 						"diego-cell": qjv1a1.FilesToSecrets{
 							"ig.json": qjv1a1.SecretOptions{
-								Name:                   "ig-resolved.diego-cell",
-								AdditionalSecretLabels: map[string]string{"quarks.cloudfoundry.org/secret-type": "ig-resolved"},
-								Versioned:              true,
-								PersistenceMethod:      "",
+								Name: "ig-resolved.diego-cell",
+								AdditionalSecretLabels: map[string]string{
+									"quarks.cloudfoundry.org/entanglement": "true",
+									"quarks.cloudfoundry.org/secret-type":  "ig-resolved",
+								},
+								Versioned:         true,
+								PersistenceMethod: "",
 							},
 							"bpm.json": qjv1a1.SecretOptions{
-								Name:                   "bpm.diego-cell",
-								AdditionalSecretLabels: map[string]string{"quarks.cloudfoundry.org/secret-type": "bpm"},
-								Versioned:              true,
-								PersistenceMethod:      "",
+								Name: "bpm.diego-cell",
+								AdditionalSecretLabels: map[string]string{
+									"quarks.cloudfoundry.org/entanglement": "true",
+									"quarks.cloudfoundry.org/secret-type":  "bpm",
+								},
+								Versioned:         true,
+								PersistenceMethod: "",
 							},
 							"provides.json": qjv1a1.SecretOptions{
-								Name:                   "link",
-								AdditionalSecretLabels: nil,
-								Versioned:              false,
-								PersistenceMethod:      "fan-out",
+								Name: "link",
+								AdditionalSecretLabels: map[string]string{
+									"quarks.cloudfoundry.org/entanglement": "true",
+								},
+								Versioned:         false,
+								PersistenceMethod: "fan-out",
 							},
 						},
 					},

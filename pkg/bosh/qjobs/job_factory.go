@@ -83,6 +83,10 @@ func (f *JobFactory) VariableInterpolationJob(namespace string, deploymentName s
 		volumeMounts = append(volumeMounts, noVarsVolumeMount())
 	}
 
+	additionalLabels := map[string]string{
+		bdv1.LabelEntanglementKey: "true",
+	}
+
 	// Construct the var interpolation auto-errand qJob
 	qJob := &qjv1a1.QuarksJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -95,7 +99,7 @@ func (f *JobFactory) VariableInterpolationJob(namespace string, deploymentName s
 		Spec: qjv1a1.QuarksJobSpec{
 			Output: &qjv1a1.Output{
 				OutputMap: qjv1a1.OutputMap{
-					desiredmanifest.Name: qjv1a1.NewFileToSecret(outputFilename, desiredmanifest.Name, true),
+					desiredmanifest.Name: qjv1a1.NewFileToSecret(outputFilename, desiredmanifest.Name, true, nil, additionalLabels),
 				},
 				SecretLabels: map[string]string{
 					bdv1.LabelDeploymentName:       deploymentName,
@@ -185,6 +189,9 @@ func (f *JobFactory) InstanceGroupManifestJob(namespace string, deploymentName s
 		qJob.Spec.Output.OutputMap[container]["provides.json"] = qjv1a1.SecretOptions{
 			Name:              secret,
 			PersistenceMethod: qjv1a1.PersistUsingFanOut,
+			AdditionalSecretLabels: map[string]string{
+				bdv1.LabelEntanglementKey: "true",
+			},
 		}
 	}
 
@@ -286,6 +293,7 @@ func (f *JobFactory) releaseImageQJob(namespace string, deploymentName string, d
 				// the same as names.InstanceGroupSecretName(container.Name, "")
 				Name: igPrefix + container.Name,
 				AdditionalSecretLabels: map[string]string{
+					bdv1.LabelEntanglementKey:      "true",
 					bdv1.LabelDeploymentSecretType: bdv1.DeploymentSecretTypeInstanceGroupResolvedProperties.String(),
 				},
 				Versioned: true,
@@ -293,6 +301,7 @@ func (f *JobFactory) releaseImageQJob(namespace string, deploymentName string, d
 			BPMOutputFilename: qjv1a1.SecretOptions{
 				Name: bpmPrefix + container.Name,
 				AdditionalSecretLabels: map[string]string{
+					bdv1.LabelEntanglementKey:      "true",
 					bdv1.LabelDeploymentSecretType: bdv1.DeploymentSecretBPMInformation.String(),
 				},
 				Versioned: true,

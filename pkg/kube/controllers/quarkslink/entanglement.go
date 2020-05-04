@@ -6,17 +6,16 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/apis"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
 )
 
 var (
+
 	// DeploymentKey is the key to retrieve the name of the deployment,
 	// which provides the variables for the pod
 	DeploymentKey = fmt.Sprintf("%s/deployment", apis.GroupName)
-
 	// ConsumesKey is the key for identifying the provider to be consumed, in
 	// the format of: '[{"name":"<name>","type":"<type>"}]' (JSON string)
 	ConsumesKey = fmt.Sprintf("%s/consumes", apis.GroupName)
@@ -94,7 +93,7 @@ func (e entanglement) find(secret corev1.Secret) (link, bool) {
 
 	for _, link := range e.links {
 		name := names.QuarksLinkSecretName(link.LinkType, link.Name)
-		if key, ok := secret.Labels[qjv1a1.LabelEntanglementKey]; ok && key == name {
+		if _, ok := secret.Labels[bdv1.LabelEntanglementKey]; ok && secret.Name == name {
 			return link, true
 		}
 	}
