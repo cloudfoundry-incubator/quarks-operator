@@ -9,7 +9,9 @@ rules:
   - certificates.k8s.io
   resources:
   - certificatesigningrequests
+  - signers
   verbs:
+  - approve
   - create
   - get
   - list
