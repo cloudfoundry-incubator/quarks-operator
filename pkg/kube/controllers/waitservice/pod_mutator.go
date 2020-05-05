@@ -3,12 +3,11 @@ package waitservice
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/operatorimage"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,10 +45,12 @@ func NewPodMutator(log *zap.SugaredLogger, config *config.Config) admission.Hand
 }
 
 func validWait(labels map[string]string) bool {
+	valid := false
 	if labels[WaitKey] != "" {
-		return true
+		valid = true
 	}
-	return false
+	
+	return valid
 }
 
 // Handle checks if the pod has the "wait-for" annotation and injects an initcontainer waiting for the service
@@ -80,11 +81,11 @@ func (m *PodMutator) addInitContainer(ctx context.Context, pod *corev1.Pod) erro
 	labels := pod.GetLabels()
 	serviceName, ok := labels[WaitKey]
 	if !ok {
-		return errors.New(fmt.Sprintf("No label %s found", WaitKey))
+		return fmt.Errorf("no label %s found", WaitKey)
 	}
 
 	if serviceName == "" {
-		return errors.New(fmt.Sprintf("Service name in '%s' empty", WaitKey))
+		return fmt.Errorf("service name in '%s' empty", WaitKey)
 	}
 
 	pod.Spec.InitContainers = append(pod.Spec.InitContainers, createWaitContainer(&serviceName)...)

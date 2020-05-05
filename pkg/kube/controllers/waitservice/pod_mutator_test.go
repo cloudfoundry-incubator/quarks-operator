@@ -18,8 +18,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/waitservice"
-	"code.cloudfoundry.org/cf-operator/testing"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/waitservice"
+	"code.cloudfoundry.org/quarks-operator/testing"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
