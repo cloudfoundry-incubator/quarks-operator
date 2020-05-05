@@ -1176,3 +1176,19 @@ func (c *Catalog) NatsSecret(deployName string) corev1.Secret {
 		},
 	}
 }
+
+// WaitingPod is a pod which has the wait-for label for use in tests
+func (c *Catalog) WaitingPod(name, service string) corev1.Pod {
+	return c.LabeledPod(name, map[string]string{
+		waitservice.WaitKey: service,
+	})
+}
+
+// EchoContainer returns a container which just "echo" for use in tests
+func (c *Catalog) EchoContainer(name string) corev1.Container {
+	return corev1.Container{
+		Name:    name,
+		Image:   "busybox",
+		Command: []string{"echo"},
+	}
+}
