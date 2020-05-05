@@ -21,9 +21,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
-	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
+	"code.cloudfoundry.org/quarks-operator/pkg/credsgen"
+	qsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarkssecret/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/mutate"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"

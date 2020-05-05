@@ -4,7 +4,7 @@ package fakes
 import (
 	"sync"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/withops"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/withops"
 )
 
 type FakeInterpolator struct {

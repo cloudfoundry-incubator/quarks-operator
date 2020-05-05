@@ -8,7 +8,7 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers"
 	utils "code.cloudfoundry.org/quarks-utils/testing/integration"
 )
 

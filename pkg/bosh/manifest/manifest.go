@@ -19,7 +19,7 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	qsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
+	qsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 )
 
 const (

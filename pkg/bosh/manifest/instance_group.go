@@ -10,8 +10,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	boshnames "code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	boshnames "code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 

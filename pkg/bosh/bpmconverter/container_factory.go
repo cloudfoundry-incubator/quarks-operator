@@ -10,12 +10,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	resource "k8s.io/apimachinery/pkg/api/resource"
 
-	"code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	boshnames "code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/container-run/pkg/containerrun"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
+	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
+	boshnames "code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/operatorimage"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )

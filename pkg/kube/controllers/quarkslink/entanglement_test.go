@@ -6,7 +6,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"code.cloudfoundry.org/cf-operator/testing"
+	"code.cloudfoundry.org/quarks-operator/testing"
 )
 
 var _ = Describe("QuarksLink Annotations", func() {

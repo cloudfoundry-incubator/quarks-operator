@@ -104,7 +104,7 @@ The CRDs are also defined in code and applied automatically when cf-operator sta
     "sigs.k8s.io/controller-runtime/pkg/manager"
     "sigs.k8s.io/controller-runtime/pkg/source"
 
-    mrcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/myresourcecontroller/v1"
+    mrcv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/myresourcecontroller/v1"
   )
 
   func Add(log *zap.SugaredLogger, mgr manager.Manager) error {

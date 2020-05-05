@@ -8,13 +8,13 @@ Don't alter this file, it was generated.
 package fake
 
 import (
-	clientset "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
-	boshdeploymentv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1"
-	fakeboshdeploymentv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1/fake"
-	quarkssecretv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/quarkssecret/v1alpha1"
-	fakequarkssecretv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/quarkssecret/v1alpha1/fake"
-	quarksstatefulsetv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/quarksstatefulset/v1alpha1"
-	fakequarksstatefulsetv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/quarksstatefulset/v1alpha1/fake"
+	clientset "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned"
+	boshdeploymentv1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1"
+	fakeboshdeploymentv1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1/fake"
+	quarkssecretv1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/typed/quarkssecret/v1alpha1"
+	fakequarkssecretv1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/typed/quarkssecret/v1alpha1/fake"
+	quarksstatefulsetv1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/typed/quarksstatefulset/v1alpha1"
+	fakequarksstatefulsetv1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/typed/quarksstatefulset/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

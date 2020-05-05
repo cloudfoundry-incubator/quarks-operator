@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"

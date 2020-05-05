@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 
-	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
+	"code.cloudfoundry.org/quarks-operator/pkg/credsgen"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 )

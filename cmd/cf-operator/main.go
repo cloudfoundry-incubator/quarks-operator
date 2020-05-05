@@ -1,6 +1,6 @@
 package main
 
-import cmd "code.cloudfoundry.org/cf-operator/cmd/internal"
+import cmd "code.cloudfoundry.org/quarks-operator/cmd/internal"
 
 func main() {
 	cmd.Execute()

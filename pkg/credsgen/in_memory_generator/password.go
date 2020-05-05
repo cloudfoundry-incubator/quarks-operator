@@ -1,7 +1,7 @@
 package inmemorygenerator
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
+	"code.cloudfoundry.org/quarks-operator/pkg/credsgen"
 	"github.com/dchest/uniuri"
 )
 

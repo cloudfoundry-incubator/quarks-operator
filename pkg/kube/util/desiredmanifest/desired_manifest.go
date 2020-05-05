@@ -7,7 +7,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 

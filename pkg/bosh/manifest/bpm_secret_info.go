@@ -1,7 +1,7 @@
 package manifest
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
 )
 
 // BPMInfo contains custom information about

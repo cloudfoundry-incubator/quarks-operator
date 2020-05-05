@@ -10,9 +10,9 @@ import (
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/apis"
+	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )

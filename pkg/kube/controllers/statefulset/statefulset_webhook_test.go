@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	. "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
+	. "code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
 	cfcfg "code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"

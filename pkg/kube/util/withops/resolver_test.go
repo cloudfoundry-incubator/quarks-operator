@@ -15,11 +15,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeClient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdc "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/withops"
+	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
+	bdc "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/withops"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
@@ -400,7 +400,7 @@ instance_groups:
 						Properties: bdm.InstanceGroupProperties{
 							Properties: map[string]interface{}{},
 						},
-						},
+					},
 					{
 						Name:      "component4",
 						Instances: 2,

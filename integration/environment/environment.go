@@ -16,9 +16,9 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 	"k8s.io/client-go/rest"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
-	"code.cloudfoundry.org/cf-operator/testing"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/operator"
+	"code.cloudfoundry.org/quarks-operator/testing"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	utils "code.cloudfoundry.org/quarks-utils/testing/integration"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"

@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
 

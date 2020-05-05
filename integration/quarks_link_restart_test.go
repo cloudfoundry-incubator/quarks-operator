@@ -8,7 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/quarkslink"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarkslink"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )

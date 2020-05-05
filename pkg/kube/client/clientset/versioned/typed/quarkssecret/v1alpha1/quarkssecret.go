@@ -11,8 +11,8 @@ import (
 	"context"
 	"time"
 
-	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
-	scheme "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/scheme"
+	v1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarkssecret/v1alpha1"
+	scheme "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
