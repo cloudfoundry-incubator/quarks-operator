@@ -4,9 +4,9 @@ package fakes
 import (
 	"sync"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpmconverter"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 )
 
 type FakeVolumeFactory struct {

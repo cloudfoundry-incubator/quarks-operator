@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
 )
 
 // jobProviderLinks provides links to other jobs, indexed by provider type and name

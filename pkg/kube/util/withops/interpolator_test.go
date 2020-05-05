@@ -4,7 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	ipl "code.cloudfoundry.org/cf-operator/pkg/kube/util/withops"
+	ipl "code.cloudfoundry.org/quarks-operator/pkg/kube/util/withops"
 )
 
 var _ = Describe("Interpolator", func() {

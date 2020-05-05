@@ -17,9 +17,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/mutate"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/mutate"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
 )
 
 const (

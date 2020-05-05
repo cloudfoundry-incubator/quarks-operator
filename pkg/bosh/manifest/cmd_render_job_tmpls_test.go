@@ -9,8 +9,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 
 	"sigs.k8s.io/yaml"
 )

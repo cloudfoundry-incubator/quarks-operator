@@ -9,9 +9,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	. "code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
+	. "code.cloudfoundry.org/quarks-operator/pkg/bosh/bpmconverter"
+	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 	corev1 "k8s.io/api/core/v1"

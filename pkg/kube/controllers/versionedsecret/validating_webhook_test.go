@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/versionedsecret"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/versionedsecret"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"

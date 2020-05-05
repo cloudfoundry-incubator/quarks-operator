@@ -10,9 +10,9 @@ package versioned
 import (
 	"fmt"
 
-	boshdeploymentv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1"
-	quarkssecretv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/quarkssecret/v1alpha1"
-	quarksstatefulsetv1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/quarksstatefulset/v1alpha1"
+	boshdeploymentv1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1"
+	quarkssecretv1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/typed/quarkssecret/v1alpha1"
+	quarksstatefulsetv1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/typed/quarksstatefulset/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"

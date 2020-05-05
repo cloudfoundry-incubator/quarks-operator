@@ -8,8 +8,8 @@ Don't alter this file, it was generated.
 package v1alpha1
 
 import (
-	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarkssecret/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/scheme"
+	v1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarkssecret/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 

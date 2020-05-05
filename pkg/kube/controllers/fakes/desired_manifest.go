@@ -5,8 +5,8 @@ import (
 	"context"
 	"sync"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/boshdeployment"
 )
 
 type FakeDesiredManifest struct {

@@ -10,8 +10,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util"
+	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	podutil "code.cloudfoundry.org/quarks-utils/pkg/pod"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"

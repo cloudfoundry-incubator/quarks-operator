@@ -4,8 +4,8 @@ package fakes
 import (
 	"sync"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpmconverter"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpmconverter"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	v1 "k8s.io/api/core/v1"
 )
 

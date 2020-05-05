@@ -6,7 +6,7 @@ import (
 	certv1 "k8s.io/api/certificates/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/apis"
 )
 
 // This file is safe to edit

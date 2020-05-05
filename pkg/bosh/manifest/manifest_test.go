@@ -10,10 +10,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
-	"code.cloudfoundry.org/cf-operator/testing"
-	"code.cloudfoundry.org/cf-operator/testing/boshmanifest"
+	. "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
+	"code.cloudfoundry.org/quarks-operator/testing"
+	"code.cloudfoundry.org/quarks-operator/testing/boshmanifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 

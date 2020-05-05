@@ -4,8 +4,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
-	inmemorygenerator "code.cloudfoundry.org/cf-operator/pkg/credsgen/in_memory_generator"
+	"code.cloudfoundry.org/quarks-operator/pkg/credsgen"
+	inmemorygenerator "code.cloudfoundry.org/quarks-operator/pkg/credsgen/in_memory_generator"
 	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
 

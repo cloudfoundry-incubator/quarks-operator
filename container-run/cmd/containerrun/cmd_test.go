@@ -7,8 +7,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "code.cloudfoundry.org/cf-operator/container-run/cmd/containerrun"
-	pkg "code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
+	. "code.cloudfoundry.org/quarks-operator/container-run/cmd/containerrun"
+	pkg "code.cloudfoundry.org/quarks-operator/container-run/pkg/containerrun"
 )
 
 var _ = Describe("NewContainerRunCmd", func() {

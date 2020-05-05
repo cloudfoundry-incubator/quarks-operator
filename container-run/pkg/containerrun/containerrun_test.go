@@ -16,8 +16,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
-	. "code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun/mocks"
+	. "code.cloudfoundry.org/quarks-operator/container-run/pkg/containerrun"
+	. "code.cloudfoundry.org/quarks-operator/container-run/pkg/containerrun/mocks"
 )
 
 var _ = Describe("Run", func() {
@@ -64,13 +64,13 @@ var _ = Describe("Run", func() {
 
 		packet := NewMockPacketConnection(ctrl)
 		packet.EXPECT().
-		       Close().
-		       Return(nil).
-		       AnyTimes()
+			Close().
+			Return(nil).
+			AnyTimes()
 		packet.EXPECT().
-		       ReadFrom(gomock.Any()).
-		       Return(0,nil,nil).
-		       AnyTimes()
+			ReadFrom(gomock.Any()).
+			Return(0, nil, nil).
+			AnyTimes()
 		spinner = NewMockPacketListener(ctrl)
 		spinner.EXPECT().
 			ListenPacket(gomock.Any(), gomock.Any()).
@@ -419,8 +419,8 @@ var _ = Describe("Run", func() {
 				// Note that the slice argument of
 				// `ReadFrom` is where the command is
 				// actually returned.
-				Do(func(p []byte) { copy (p, boguscmd) }).
-				Return(len(boguscmd),nil,nil).
+				Do(func(p []byte) { copy(p, boguscmd) }).
+				Return(len(boguscmd), nil, nil).
 				AnyTimes()
 			emit_bogus := NewMockPacketListener(ctrl)
 			emit_bogus.EXPECT().
@@ -435,14 +435,14 @@ var _ = Describe("Run", func() {
 			// Orchestrate sequencing, i.e. delay
 			// generation of the error until the mailn
 			// process "runs".
-			trigger := make(chan struct {}, 1)
+			trigger := make(chan struct{}, 1)
 
 			process := NewMockProcess(ctrl)
 			process.EXPECT().
 				Wait().
 				// Delay to give the error time for
 				// reception and processing.
-				Do(func() { trigger <- struct{}{} ; time.Sleep(time.Second) }).
+				Do(func() { trigger <- struct{}{}; time.Sleep(time.Second) }).
 				Return(nil).
 				Times(1)
 			process.EXPECT().
@@ -468,13 +468,13 @@ var _ = Describe("Run", func() {
 				AnyTimes()
 			packet_error.EXPECT().
 				ReadFrom(gomock.Any()).
-				Return(0,nil,fmt.Errorf ("bogus")).
+				Return(0, nil, fmt.Errorf("bogus")).
 				AnyTimes()
 			emit_error := NewMockPacketListener(ctrl)
 			emit_error.EXPECT().
 				ListenPacket(gomock.Any(), gomock.Any()).
 				// Wait for main command to be "up".
-				Do(func(net, addr string) { <- trigger }).
+				Do(func(net, addr string) { <-trigger }).
 				Return(packet_error, nil).
 				AnyTimes()
 			err := Run(runner, nil, nil, emit_error, stdio, commandLine, "job", "process", "", []string{}, "", []string{})
@@ -496,13 +496,13 @@ var _ = Describe("Run", func() {
 			//
 			// That nothing is done is seen through
 			// Run().Times(1) not triggering.
-			trigger := make(chan struct {}, 1)
+			trigger := make(chan struct{}, 1)
 			process := NewMockProcess(ctrl)
 			process.EXPECT().
 				Wait().
 				// Trigger ListenPacket, and give
 				// command some time for processing
-				Do(func () { trigger <- struct{}{} ; time.Sleep (time.Second) }).
+				Do(func() { trigger <- struct{}{}; time.Sleep(time.Second) }).
 				Return(nil).
 				Times(1)
 			process.EXPECT().
@@ -531,14 +531,14 @@ var _ = Describe("Run", func() {
 				// Note that the slice argument of
 				// `ReadFrom` is where the command is
 				// actually returned.
-				Do(func(p []byte) { copy (p, []byte(ProcessStart)) }).
-				Return(len(ProcessStart),nil,nil).
+				Do(func(p []byte) { copy(p, []byte(ProcessStart)) }).
+				Return(len(ProcessStart), nil, nil).
 				AnyTimes()
 			emit_start := NewMockPacketListener(ctrl)
 			emit_start.EXPECT().
 				ListenPacket(gomock.Any(), gomock.Any()).
 				// Wait for main command to be "up".
-				Do(func(net, addr string) { <- trigger }).
+				Do(func(net, addr string) { <-trigger }).
 				Return(packet_start, nil).
 				AnyTimes()
 			err := Run(runner, nil, nil, emit_start, stdio, commandLine, "job", "process", "", []string{}, "", []string{})
@@ -552,15 +552,15 @@ var _ = Describe("Run", func() {
 			// superfluous stop stage into the stop/start
 			// sequence. I.e. making it stop/stop/start.
 
-			trigger := make(chan struct {}, 1)
-			killed  := make(chan struct {}, 1)
+			trigger := make(chan struct{}, 1)
+			killed := make(chan struct{}, 1)
 			process := NewMockProcess(ctrl)
 			gomock.InOrder(
 				// Initial start, trigger `stop`
 				// command, then wait for kill.
 				process.EXPECT().
 					Wait().
-					Do(func () { trigger <- struct{}{} ; <- killed }).
+					Do(func() { trigger <- struct{}{}; <-killed }).
 					Return(nil).
 					Times(1),
 				// Second start, via `start` command.
@@ -576,7 +576,7 @@ var _ = Describe("Run", func() {
 				// `stop`. The emitter contains the
 				// delay giving main the time to
 				// process the kill.
-				Do(func (x os.Signal) { killed <- struct{}{} ; trigger <- struct{}{} }).
+				Do(func(x os.Signal) { killed <- struct{}{}; trigger <- struct{}{} }).
 				Return(nil).
 				Times(1)
 			// Note: The SIGCHLD signals (report of child
@@ -601,8 +601,8 @@ var _ = Describe("Run", func() {
 				// Note that the slice argument of
 				// `ReadFrom` is where the command is
 				// actually returned.
-				Do(func(p []byte) { copy (p, []byte(ProcessStop)) }).
-				Return(len(ProcessStop),nil,nil).
+				Do(func(p []byte) { copy(p, []byte(ProcessStop)) }).
+				Return(len(ProcessStop), nil, nil).
 				Times(2)
 			packet_start := NewMockPacketConnection(ctrl)
 			packet_start.EXPECT().
@@ -614,29 +614,29 @@ var _ = Describe("Run", func() {
 				// Note that the slice argument of
 				// `ReadFrom` is where the command is
 				// actually returned.
-				Do(func(p []byte) { copy (p, []byte(ProcessStart)) }).
-				Return(len(ProcessStart),nil,nil).
+				Do(func(p []byte) { copy(p, []byte(ProcessStart)) }).
+				Return(len(ProcessStart), nil, nil).
 				AnyTimes()
 			emitter := NewMockPacketListener(ctrl)
 			gomock.InOrder(
 				// Receive first trigger, post `stop`.
 				emitter.EXPECT().
 					ListenPacket(gomock.Any(), gomock.Any()).
-					Do(func(net, addr string) { <- trigger }).
+					Do(func(net, addr string) { <-trigger }).
 					Return(packet_stop, nil).
 					Times(1),
 				// Receive second trigger, post 2nd `stop`.
 				// With delay for kill handling. Then also trigger `start`
 				emitter.EXPECT().
 					ListenPacket(gomock.Any(), gomock.Any()).
-					Do(func(net, addr string) { <- trigger ; time.Sleep(time.Second) ; trigger <- struct{}{} }).
+					Do(func(net, addr string) { <-trigger; time.Sleep(time.Second); trigger <- struct{}{} }).
 					Return(packet_stop, nil).
 					Times(1),
 				// Receive 3rd trigger, post `start`.
 				// With delay for handling of 2nd `stop`.
 				emitter.EXPECT().
 					ListenPacket(gomock.Any(), gomock.Any()).
-					Do(func(net, addr string) { <- trigger ; time.Sleep(time.Second) }).
+					Do(func(net, addr string) { <-trigger; time.Sleep(time.Second) }).
 					Return(packet_start, nil).
 					AnyTimes(),
 			)
@@ -666,15 +666,15 @@ var _ = Describe("Run", func() {
 			//     the kill signal. This is sent by `Kill`
 			//     (first, then it triggers `start`).
 
-			trigger := make(chan struct {}, 1)
-			killed  := make(chan struct {}, 1)
+			trigger := make(chan struct{}, 1)
+			killed := make(chan struct{}, 1)
 			process := NewMockProcess(ctrl)
 			gomock.InOrder(
 				// Initial start, trigger `stop`
 				// command, then wait for kill.
 				process.EXPECT().
 					Wait().
-					Do(func () { trigger <- struct{}{} ; <- killed }).
+					Do(func() { trigger <- struct{}{}; <-killed }).
 					Return(nil).
 					Times(1),
 				// Second start, via `start` command.
@@ -690,7 +690,7 @@ var _ = Describe("Run", func() {
 				// `start`. The emitter contains the
 				// delay giving main the time to
 				// process the kill.
-				Do(func (x os.Signal) { killed <- struct{}{} ; trigger <- struct{}{} }).
+				Do(func(x os.Signal) { killed <- struct{}{}; trigger <- struct{}{} }).
 				Return(nil).
 				Times(1)
 			// Note: The SIGCHLD signals (report of child
@@ -715,8 +715,8 @@ var _ = Describe("Run", func() {
 				// Note that the slice argument of
 				// `ReadFrom` is where the command is
 				// actually returned.
-				Do(func(p []byte) { copy (p, []byte(ProcessStop)) }).
-				Return(len(ProcessStop),nil,nil).
+				Do(func(p []byte) { copy(p, []byte(ProcessStop)) }).
+				Return(len(ProcessStop), nil, nil).
 				Times(1)
 			packet_start := NewMockPacketConnection(ctrl)
 			packet_start.EXPECT().
@@ -728,22 +728,22 @@ var _ = Describe("Run", func() {
 				// Note that the slice argument of
 				// `ReadFrom` is where the command is
 				// actually returned.
-				Do(func(p []byte) { copy (p, []byte(ProcessStart)) }).
-				Return(len(ProcessStart),nil,nil).
+				Do(func(p []byte) { copy(p, []byte(ProcessStart)) }).
+				Return(len(ProcessStart), nil, nil).
 				AnyTimes()
 			emitter := NewMockPacketListener(ctrl)
 			gomock.InOrder(
 				// Receive first trigger, post `stop`.
 				emitter.EXPECT().
 					ListenPacket(gomock.Any(), gomock.Any()).
-					Do(func(net, addr string) { <- trigger }).
+					Do(func(net, addr string) { <-trigger }).
 					Return(packet_stop, nil).
 					Times(1),
 				// Receive second trigger, post `start`.
 				// With delay for kill handling.
 				emitter.EXPECT().
 					ListenPacket(gomock.Any(), gomock.Any()).
-					Do(func(net, addr string) { <- trigger ; time.Sleep(time.Second) }).
+					Do(func(net, addr string) { <-trigger; time.Sleep(time.Second) }).
 					Return(packet_start, nil).
 					AnyTimes(),
 			)

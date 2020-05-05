@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"code.cloudfoundry.org/cf-operator/container-run/cmd/containerrun"
+	"code.cloudfoundry.org/quarks-operator/container-run/cmd/containerrun"
 )
 
 func main() {

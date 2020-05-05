@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
+	"code.cloudfoundry.org/quarks-operator/pkg/credsgen"
 	"github.com/cloudflare/cfssl/cli/genkey"
 	"github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/csr"

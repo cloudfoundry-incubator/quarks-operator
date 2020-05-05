@@ -3,7 +3,7 @@ package manifest
 import (
 	corev1 "k8s.io/api/core/v1"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
 )
 
 // Quarks represents the special 'quarks' property key.

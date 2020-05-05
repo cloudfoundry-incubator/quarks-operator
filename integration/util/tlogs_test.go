@@ -1,7 +1,7 @@
 package util_test
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/operatorimage"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 
 	. "github.com/onsi/ginkgo"
