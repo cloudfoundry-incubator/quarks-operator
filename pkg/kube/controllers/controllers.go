@@ -23,6 +23,7 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksstatefulset"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/versionedsecret"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/waitservice"
 	wh "code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -69,6 +70,7 @@ var mutatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.OperatorW
 	quarksstatefulset.NewQuarksStatefulSetPodMutator,
 	statefulset.NewStatefulSetRolloutMutator,
 	quarkslink.NewBOSHLinkPodMutator,
+	waitservice.NewWaitServicePodMutator,
 }
 
 // AddToManager adds all Controllers to the Manager
