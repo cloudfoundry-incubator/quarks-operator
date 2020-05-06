@@ -8,11 +8,7 @@ import (
 	"go.uber.org/zap"
 
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	machinerytypes "k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
@@ -26,7 +22,6 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksstatefulset"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/versionedsecret"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/watchnamespace"
 	wh "code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -45,7 +40,6 @@ const (
 // manager. The manager will set fields on the controllers and start them, when
 // itself is started.
 var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager) error{
-	watchnamespace.AddTerminate,
 	boshdeployment.AddDeployment,
 	boshdeployment.AddBPM,
 	quarkssecret.AddQuarksSecret,
@@ -95,12 +89,6 @@ func AddToScheme(s *runtime.Scheme) error {
 func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, generator credsgen.Generator) error {
 	ctxlog.Infof(ctx, "Setting up webhook server on %s:%d", config.WebhookServerHost, config.WebhookServerPort)
 
-	ctxlog.Info(ctx, "Setting a cf-operator namespace label on the watched namespace")
-	err := setWatchNamespaceLabel(ctx, config, m.GetClient())
-	if err != nil {
-		return errors.Wrap(err, "setting the operator namespace label")
-	}
-
 	webhookConfig := NewWebhookConfig(m.GetClient(), config, generator, WebhookConfigPrefix+config.OperatorNamespace)
 
 	hookServer := m.GetWebhookServer()
@@ -124,7 +112,7 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 	}
 
 	ctxlog.Info(ctx, "Generating webhook certificates")
-	err = webhookConfig.setupCertificate(ctx)
+	err := webhookConfig.setupCertificate(ctx)
 	if err != nil {
 		return errors.Wrap(err, "setting up the webhook server certificate")
 	}
@@ -148,32 +136,4 @@ func ordinaryHTTPHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-}
-
-func setWatchNamespaceLabel(ctx context.Context, config *config.Config, c client.Client) error {
-	ns := &unstructured.Unstructured{}
-	ns.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "",
-		Kind:    "Namespace",
-		Version: "v1",
-	})
-	err := c.Get(ctx, machinerytypes.NamespacedName{Name: config.Namespace}, ns)
-
-	if err != nil {
-		return errors.Wrap(err, "getting the namespace object")
-	}
-
-	labels := ns.GetLabels()
-	if labels == nil {
-		labels = map[string]string{}
-	}
-	labels[wh.LabelWatchNamespace] = config.OperatorNamespace
-	ns.SetLabels(labels)
-	err = c.Update(ctx, ns)
-
-	if err != nil {
-		return errors.Wrap(err, "updating the namespace object")
-	}
-
-	return nil
 }

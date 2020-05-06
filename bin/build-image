@@ -8,10 +8,30 @@ GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
 
 image="${DOCKER_IMAGE_ORG}/cf-operator:${DOCKER_IMAGE_TAG}"
 
+# in case you're using vendor this script should not remove it
+created_vendor=0
+if [ ! -d vendor ]; then
+  # create vendor if replace is used, to allow local paths in go.mod
+  if  grep -q "^replace " go.mod; then
+    echo "creating vendor folder"
+    created_vendor=1
+    GO111MODULE=on go mod vendor
+  fi
+fi
+
+if [ -d vendor ]; then
+  GO111MODULE=off
+fi
+
 docker build "${GIT_ROOT}" \
   --file "${GIT_ROOT}/Dockerfile" \
   --build-arg GO111MODULE="${GO111MODULE:-on}" \
   --tag "${image}"
+
+if [ "$created_vendor" == 1 ]; then
+  echo "removing previously created vendor folder"
+  rm -fr vendor
+fi
 
 if [ -n "${SAVE_TARBALL}" ] && [[ "${SAVE_TARBALL}" == "true" ]]; then
   dst_dir="${GIT_ROOT}/binaries"

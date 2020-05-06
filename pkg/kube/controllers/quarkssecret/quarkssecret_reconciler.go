@@ -602,6 +602,7 @@ func (r *ReconcileQuarksSecret) createCertificateSigningRequest(ctx context.Cont
 	annotations[qsv1a1.AnnotationCertSecretName] = qsec.Spec.SecretName
 	annotations[qsv1a1.AnnotationQSecNamespace] = qsec.Namespace
 	annotations[qsv1a1.AnnotationQSecName] = qsec.Name
+	annotations[qsv1a1.AnnotationMonitoredID] = r.config.MonitoredID
 
 	csrObj := &certv1.CertificateSigningRequest{
 		ObjectMeta: metav1.ObjectMeta{

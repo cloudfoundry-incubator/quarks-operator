@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/reference"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -44,6 +45,8 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 	if err != nil {
 		return errors.Wrap(err, "Could not get kube client")
 	}
+
+	nsPred := monitorednamespace.NewNSPredicate(ctx, mgr.GetClient(), config.MonitoredID)
 
 	// Watch for changes to primary resource QuarksStatefulSet
 	// Trigger when
@@ -81,7 +84,7 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 			return false
 		},
 	}
-	err = c.Watch(&source.Kind{Type: &qstsv1a1.QuarksStatefulSet{}}, &handler.EnqueueRequestForObject{}, p)
+	err = c.Watch(&source.Kind{Type: &qstsv1a1.QuarksStatefulSet{}}, &handler.EnqueueRequestForObject{}, nsPred, p)
 	if err != nil {
 		return err
 	}
@@ -116,7 +119,7 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 			}
 			return reconciles
 		}),
-	}, configMapPredicates)
+	}, nsPred, configMapPredicates)
 	if err != nil {
 		return errors.Wrapf(err, "Watching configMaps failed in QuarksStatefulSet controller failed.")
 	}
@@ -167,7 +170,7 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 
 			return reconciles
 		}),
-	}, secretPredicates)
+	}, nsPred, secretPredicates)
 	if err != nil {
 		return errors.Wrapf(err, "Watching secrets failed in QuarksStatefulSet controller failed.")
 	}

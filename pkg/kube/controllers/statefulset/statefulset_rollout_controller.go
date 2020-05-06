@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
@@ -33,6 +34,8 @@ func AddStatefulSetRollout(ctx context.Context, config *config.Config, mgr manag
 		return errors.Wrap(err, "Adding StatefulSet rollout controller to manager failed.")
 	}
 
+	nsPred := monitorednamespace.NewNSPredicate(ctx, mgr.GetClient(), config.MonitoredID)
+
 	// Trigger when annotation is set
 	statefulSetPredicates := predicate.Funcs{
 		CreateFunc:  func(e event.CreateEvent) bool { return false },
@@ -49,7 +52,7 @@ func AddStatefulSetRollout(ctx context.Context, config *config.Config, mgr manag
 			return false
 		},
 	}
-	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForObject{}, statefulSetPredicates)
+	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForObject{}, nsPred, statefulSetPredicates)
 	if err != nil {
 		return errors.Wrapf(err, "Watching StatefulSet failed in StatefulSet rollout controller.")
 	}

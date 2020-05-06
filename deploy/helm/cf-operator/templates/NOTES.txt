@@ -8,7 +8,7 @@ Running the operator will install the following CRD´s:
 You can always verify if the CRD´s are installed, by running:
  $ kubectl get crds
 
-
+You can check the charts README: `helm show readme quarks/cf-operator` for more information about configuration options.
 
 {{- if and .Release.IsInstall }}
 
@@ -22,9 +22,9 @@ Interacting with the cf-operator pod
   kubectl -n {{ .Release.Namespace }} logs $OPERATOR_POD -f
 
 3. Apply one of the BOSH deployment manifest examples
-  kubectl -n {{ .Values.global.operator.watchNamespace }} apply -f docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml
+  kubectl -n {{ .Values.global.singleNamespace.name }} apply -f docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml
 
 4. See the cf-operator in action!
-  watch -c "kubectl -n {{ .Values.global.operator.watchNamespace }} get pods"
+  watch -c "kubectl -n {{ .Values.global.singleNamespace.name }} get pods"
 
 {{- end -}}
