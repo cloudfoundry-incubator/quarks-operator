@@ -25,7 +25,7 @@ import (
 	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
 
-var _ = Describe("Adds waiting initcontainer on pods with wait-for label", func() {
+var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", func() {
 	var (
 		client             client.Client
 		ctx                context.Context
@@ -77,7 +77,7 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for label", func(
 		response = mutator.Handle(ctx, request)
 	})
 
-	Context("when pod has no special label", func() {
+	Context("when pod has no special annotation", func() {
 		BeforeEach(func() {
 			pod = env.DefaultPod("test-pod")
 			request = newAdmissionRequest(pod)
@@ -92,7 +92,7 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for label", func(
 
 	Context("when valid label exists on pod", func() {
 		BeforeEach(func() {
-			pod = env.LabeledPod("waiting-pod", map[string]string{
+			pod = env.AnnotatedPod("waiting-pod", map[string]string{
 				waitservice.WaitKey: "test",
 			})
 			pod.Spec.Containers = []corev1.Container{
@@ -124,7 +124,7 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for label", func(
 		podPatch := `{"op":"add","path":"/spec/initContainers/2","value":{"args":["/bin/sh","-xc","time cf-operator util wait test"],"command":["/usr/bin/dumb-init","--"],"name":"wait-for","resources":{}}}`
 
 		BeforeEach(func() {
-			pod = env.LabeledPod("waiting-pod", map[string]string{
+			pod = env.AnnotatedPod("waiting-pod", map[string]string{
 				waitservice.WaitKey: "test",
 			})
 			pod.Spec.InitContainers = []corev1.Container{

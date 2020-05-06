@@ -44,12 +44,12 @@ func NewPodMutator(log *zap.SugaredLogger, config *config.Config) admission.Hand
 	}
 }
 
-func validWait(labels map[string]string) bool {
+func validWait(annotations map[string]string) bool {
 	valid := false
-	if labels[WaitKey] != "" {
+	if annotations[WaitKey] != "" {
 		valid = true
 	}
-	
+
 	return valid
 }
 
@@ -62,7 +62,7 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 	}
 
 	updatedPod := pod.DeepCopy()
-	if validWait(pod.GetLabels()) {
+	if validWait(pod.GetAnnotations()) {
 		err = m.addInitContainer(ctx, updatedPod)
 		if err != nil {
 			return admission.Errored(http.StatusInternalServerError, err)
@@ -78,10 +78,10 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 }
 
 func (m *PodMutator) addInitContainer(ctx context.Context, pod *corev1.Pod) error {
-	labels := pod.GetLabels()
-	serviceName, ok := labels[WaitKey]
+	annotations := pod.GetAnnotations()
+	serviceName, ok := annotations[WaitKey]
 	if !ok {
-		return fmt.Errorf("no label %s found", WaitKey)
+		return fmt.Errorf("no annotations %s found", WaitKey)
 	}
 
 	if serviceName == "" {
