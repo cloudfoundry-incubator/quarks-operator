@@ -13,8 +13,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
+	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"

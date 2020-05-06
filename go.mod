@@ -1,8 +1,9 @@
-module code.cloudfoundry.org/cf-operator
+module code.cloudfoundry.org/quarks-operator
 
 require (
-	code.cloudfoundry.org/quarks-job v0.0.86-0.20200426215157-df8e2a749c4d
-	code.cloudfoundry.org/quarks-utils v0.0.0-20200426163230-480b21a17497
+	code.cloudfoundry.org/quarks-job v0.0.92
+	code.cloudfoundry.org/quarks-utils v0.0.0-20200430100130-3be3c1d39218
+	github.com/OpenPeeDeeP/depguard v1.0.1 // indirect
 	github.com/SUSE/go-patch v0.3.0
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
@@ -16,6 +17,7 @@ require (
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/elazarl/goproxy v0.0.0-20191011121108-aa519ddbe484 // indirect
 	github.com/fsnotify/fsnotify v1.4.9
+	github.com/go-critic/go-critic v0.4.3 // indirect
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/go-test/deep v1.0.6
 	github.com/golang/mock v1.4.3

@@ -4,10 +4,10 @@ package fakes
 import (
 	"sync"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/boshdeployment"
 	"code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/boshdeployment"
 )
 
 type FakeJobFactory struct {

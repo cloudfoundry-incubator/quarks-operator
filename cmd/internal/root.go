@@ -16,10 +16,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
-	"code.cloudfoundry.org/cf-operator/version"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/operator"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/operatorimage"
+	"code.cloudfoundry.org/quarks-operator/version"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -37,7 +37,7 @@ var (
 )
 
 func wrapError(err error, msg string) error {
-	return errors.Wrap(err, "cf-operator command failed. "+msg)
+	return errors.Wrapf(err, "cf-operator command failed. %s", msg)
 }
 
 var rootCmd = &cobra.Command{
@@ -66,6 +66,8 @@ var rootCmd = &cobra.Command{
 
 		cmd.OperatorNamespace(cfg, log, "cf-operator-namespace")
 		cmd.WatchNamespace(cfg, log)
+		cmd.Meltdown(cfg)
+
 		if cfg.Namespace == "" || cfg.OperatorNamespace == "" {
 			return wrapError(errors.New("both namespaces must be defined"), "")
 		}
@@ -151,6 +153,7 @@ func init() {
 	cmd.LoggerFlags(pf, argToEnv)
 	cmd.DockerImageFlags(pf, argToEnv, "cf-operator", version.Version)
 	cmd.ApplyCRDsFlags(pf, argToEnv)
+	cmd.MeltdownFlags(pf, argToEnv)
 
 	pf.StringP("bosh-dns-docker-image", "", "coredns/coredns:1.6.3", "The docker image used for emulating bosh DNS (a CoreDNS image)")
 	pf.String("cluster-domain", "cluster.local", "The Kubernetes cluster domain")

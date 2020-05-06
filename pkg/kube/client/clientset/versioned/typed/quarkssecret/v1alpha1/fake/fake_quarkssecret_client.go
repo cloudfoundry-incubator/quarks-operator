@@ -8,7 +8,7 @@ Don't alter this file, it was generated.
 package fake
 
 import (
-	v1alpha1 "code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned/typed/quarkssecret/v1alpha1"
+	v1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/typed/quarkssecret/v1alpha1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )

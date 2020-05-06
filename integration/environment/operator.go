@@ -16,8 +16,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/operator"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/operatorimage"
 	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
 

@@ -8,7 +8,7 @@ import (
 
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/apis"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"

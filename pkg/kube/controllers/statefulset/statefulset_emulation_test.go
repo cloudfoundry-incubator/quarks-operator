@@ -17,8 +17,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers/statefulset"
+	cfakes "code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 

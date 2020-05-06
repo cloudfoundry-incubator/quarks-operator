@@ -1,14 +1,14 @@
 package containerrun
 
 import (
+	"net"
 	"os"
 	"os/exec"
 	"time"
-	"net"
 
 	"github.com/spf13/cobra"
 
-	pkg "code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
+	pkg "code.cloudfoundry.org/quarks-operator/container-run/pkg/containerrun"
 )
 
 // NewContainerRunCmd constructs a new container-run command.

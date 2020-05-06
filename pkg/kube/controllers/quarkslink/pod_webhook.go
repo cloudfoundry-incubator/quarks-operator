@@ -7,7 +7,7 @@ import (
 	admissionregistration "k8s.io/api/admissionregistration/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	wh "code.cloudfoundry.org/cf-operator/pkg/kube/util/webhook"
+	wh "code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )

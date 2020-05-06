@@ -13,8 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 )
 
 const boshDNSAddOn = `

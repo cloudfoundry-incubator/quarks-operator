@@ -14,7 +14,7 @@ import (
 	btg "github.com/viovanov/bosh-template-go"
 	yaml "gopkg.in/yaml.v2"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
 )
 
 // DomainNameService abstraction.

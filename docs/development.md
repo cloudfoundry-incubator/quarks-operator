@@ -10,6 +10,7 @@
   - [Logging and Events](#logging-and-events)
   - [Standalone Components](#standalone-components)
   - [Versioning](#versioning)
+  - [Colourise Logs](#colourise-logs)
 
 ## Requirements
 
@@ -103,7 +104,7 @@ The CRDs are also defined in code and applied automatically when cf-operator sta
     "sigs.k8s.io/controller-runtime/pkg/manager"
     "sigs.k8s.io/controller-runtime/pkg/source"
 
-    mrcv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/myresourcecontroller/v1"
+    mrcv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/myresourcecontroller/v1"
   )
 
   func Add(log *zap.SugaredLogger, mgr manager.Manager) error {
@@ -319,3 +320,19 @@ docker tag <quarks-job-tag> cfcontainerization/quarks-job:$QUARKS_JOB_IMAGE_TAG
 ## Versioning
 
 APIs and types follow the upstream versioning scheme described at: https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-versioning
+
+## Colourise Logs
+
+Copy the [grc](https://github.com/garabik/grc) (generic colouriser grcat) config file [zap.grc.conf](zap.grc.conf) to `/usr/share/grc/conf.zap` and pipe logs to `grcat conf.zap`:
+
+```
+# install the custom log config
+cp docs/zap.grc.conf /usr/share/grc/conf.zap
+
+# running operator
+kubectl get pods -A -l name=cf-operator --no-headers=true | tail -1 | read namespace name _
+kubectl logs -f -n "$namespace" "$name" | grcat conf.zap
+
+# integration tests example
+grcat conf.zap < /tmp/cf-operator-tests.log
+```

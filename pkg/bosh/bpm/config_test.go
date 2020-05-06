@@ -6,7 +6,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	bpm "code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
+	bpm "code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 

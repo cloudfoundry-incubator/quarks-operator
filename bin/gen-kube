@@ -23,7 +23,7 @@ fi
 GROUP_VERSIONS="boshdeployment:v1alpha1 quarksstatefulset:v1alpha1 quarkssecret:v1alpha1"
 
 env GO111MODULE="$GO111MODULE" "${CODEGEN_PKG}/generate-groups.sh" "deepcopy,client,lister" \
-  code.cloudfoundry.org/cf-operator/pkg/kube/client \
-  code.cloudfoundry.org/cf-operator/pkg/kube/apis \
+  code.cloudfoundry.org/quarks-operator/pkg/kube/client \
+  code.cloudfoundry.org/quarks-operator/pkg/kube/apis \
   "${GROUP_VERSIONS}" \
   --go-header-file "${GIT_ROOT}/gen/header.go.txt"

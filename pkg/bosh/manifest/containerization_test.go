@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 
-	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	. "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 )
 
 var _ = Describe("Quarks", func() {

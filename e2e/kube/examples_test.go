@@ -15,7 +15,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"code.cloudfoundry.org/cf-operator/testing"
+	"code.cloudfoundry.org/quarks-operator/testing"
 	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 )
 

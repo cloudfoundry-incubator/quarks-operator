@@ -12,10 +12,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	bdv1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	boshnames "code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
+	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
+	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	boshnames "code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 

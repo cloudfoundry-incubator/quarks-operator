@@ -11,7 +11,7 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"github.com/pkg/errors"
 
-	"code.cloudfoundry.org/cf-operator/integration/environment"
+	"code.cloudfoundry.org/quarks-operator/integration/environment"
 	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 	utils "code.cloudfoundry.org/quarks-utils/testing/integration"
 )

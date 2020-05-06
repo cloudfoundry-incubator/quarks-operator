@@ -6,7 +6,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/operatorimage"
 )
 
 var _ = Describe("operatorimage", func() {

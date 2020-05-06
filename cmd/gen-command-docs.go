@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	cmd "code.cloudfoundry.org/cf-operator/cmd/internal"
+	cmd "code.cloudfoundry.org/quarks-operator/cmd/internal"
 	"github.com/spf13/cobra/doc"
 )
 

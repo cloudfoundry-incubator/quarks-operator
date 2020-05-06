@@ -12,10 +12,10 @@ import (
 	"github.com/spf13/viper"
 	"sigs.k8s.io/yaml"
 
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/qjobs"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/converter"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/qjobs"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 )
 

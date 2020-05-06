@@ -9,4 +9,4 @@ if [[ "${BASEDIR}" == "" ]]; then
   >&2 echo "missing basedir"
   exit 1
 fi
-CGO_ENABLED=0 go build -ldflags="-s -w" -o "${BASEDIR}/container-run" code.cloudfoundry.org/cf-operator/container-run/cmd
+CGO_ENABLED=0 go build -ldflags="-s -w" -o "${BASEDIR}/container-run" code.cloudfoundry.org/quarks-operator/container-run/cmd

@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/client-go/rest"
 
-	"code.cloudfoundry.org/cf-operator/integration/environment"
+	"code.cloudfoundry.org/quarks-operator/integration/environment"
 	utils "code.cloudfoundry.org/quarks-utils/testing/integration"
 )
 

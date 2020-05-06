@@ -4,7 +4,7 @@ package fakes
 import (
 	"sync"
 
-	"code.cloudfoundry.org/cf-operator/pkg/credsgen"
+	"code.cloudfoundry.org/quarks-operator/pkg/credsgen"
 )
 
 type FakeGenerator struct {

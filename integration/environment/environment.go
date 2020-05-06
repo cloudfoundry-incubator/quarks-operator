@@ -16,9 +16,9 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 	"k8s.io/client-go/rest"
 
-	"code.cloudfoundry.org/cf-operator/pkg/kube/client/clientset/versioned"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/operator"
-	"code.cloudfoundry.org/cf-operator/testing"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/operator"
+	"code.cloudfoundry.org/quarks-operator/testing"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	utils "code.cloudfoundry.org/quarks-utils/testing/integration"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
@@ -36,6 +36,11 @@ var (
 	namespaceCounter int32
 )
 
+const (
+	defaultTestMeltdownDuration     = 10
+	defaultTestMeltdownRequeueAfter = 1
+)
+
 // NewEnvironment returns a new struct
 func NewEnvironment(kubeConfig *rest.Config) *Environment {
 	atomic.AddInt32(&namespaceCounter, 1)
@@ -48,8 +53,8 @@ func NewEnvironment(kubeConfig *rest.Config) *Environment {
 			KubeConfig: kubeConfig,
 			Config: &config.Config{
 				CtxTimeOut:           10 * time.Second,
-				MeltdownDuration:     10 * time.Second,
-				MeltdownRequeueAfter: 1 * time.Second,
+				MeltdownDuration:     defaultTestMeltdownDuration * time.Second,
+				MeltdownRequeueAfter: defaultTestMeltdownRequeueAfter * time.Second,
 				Fs:                   afero.NewOsFs(),
 			},
 		},

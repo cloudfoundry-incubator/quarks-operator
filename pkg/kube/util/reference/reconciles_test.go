@@ -10,11 +10,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	qstsv1a1 "code.cloudfoundry.org/cf-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/controllers"
-	cfakes "code.cloudfoundry.org/cf-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/reference"
-	"code.cloudfoundry.org/cf-operator/testing"
+	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers"
+	cfakes "code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/reference"
+	"code.cloudfoundry.org/quarks-operator/testing"
 )
 
 var _ = Describe("GetReconciles", func() {

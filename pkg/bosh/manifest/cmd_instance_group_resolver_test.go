@@ -9,11 +9,11 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/spf13/afero"
 
-	bpmConfig "code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
-	"code.cloudfoundry.org/cf-operator/pkg/bosh/converter"
-	. "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/boshdns"
-	"code.cloudfoundry.org/cf-operator/testing"
+	bpmConfig "code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/converter"
+	. "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
+	"code.cloudfoundry.org/quarks-operator/testing"
 )
 
 var _ = Describe("InstanceGroupResolver", func() {
