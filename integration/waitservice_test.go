@@ -40,7 +40,7 @@ var _ = Describe("WaitService PodMutator", func() {
 		Expect(env.TearDownAll(tearDowns)).To(Succeed())
 	})
 
-	Context("when service is available and pod has wait-for label", func() {
+	Context("when service is available and pod has wait-for annotation", func() {
 		BeforeEach(func() {
 			service = env.NatsService(deploymentName)
 			tearDown, err := env.CreateService(env.Namespace, service)
@@ -58,7 +58,6 @@ var _ = Describe("WaitService PodMutator", func() {
 
 				Expect(p.Spec.InitContainers).To(HaveLen(1))
 				Expect(containerNames(p.Spec.InitContainers)).To(ContainElement("wait-for"))
-
 			})
 		})
 
@@ -77,7 +76,7 @@ var _ = Describe("WaitService PodMutator", func() {
 		})
 	})
 
-	Context("when pod has no wait-for label", func() {
+	Context("when pod has no wait-for annotation", func() {
 		BeforeEach(func() {
 			pod = env.DefaultPod("not-waiting")
 		})
@@ -94,7 +93,7 @@ var _ = Describe("WaitService PodMutator", func() {
 		})
 	})
 
-	Context("when service is not available yet and pod has wait-for label", func() {
+	Context("when service is not available yet and pod has wait-for annotation", func() {
 		BeforeEach(func() {
 			pod = env.WaitingPod("waiting", "nats-headless")
 			tearDown, err := env.CreatePod(env.Namespace, pod)

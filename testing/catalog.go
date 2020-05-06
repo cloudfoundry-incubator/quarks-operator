@@ -21,6 +21,7 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/credsgen"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/waitservice"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
 	bm "code.cloudfoundry.org/quarks-operator/testing/boshmanifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -1173,9 +1174,9 @@ func (c *Catalog) NatsSecret(deployName string) corev1.Secret {
 	}
 }
 
-// WaitingPod is a pod which has the wait-for label for use in tests
+// WaitingPod is a pod which has the wait-for annotation for use in tests
 func (c *Catalog) WaitingPod(name, service string) corev1.Pod {
-	return c.LabeledPod(name, map[string]string{
+	return c.AnnotatedPod(name, map[string]string{
 		waitservice.WaitKey: service,
 	})
 }
