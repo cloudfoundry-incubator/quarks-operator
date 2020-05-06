@@ -35,6 +35,10 @@ install:
   # speed up build?
   - go mod vendor
 
+# Avoid too many builds.
+# Otherwise opening a PR from a local branch would trigger two builds.
+if: tag IS blank AND (type = push OR (type = pull_request AND head_repo != repo))
+
 before_script:
   # Download and install helm
   - curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 > get_helm.sh
