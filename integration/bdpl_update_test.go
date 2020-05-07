@@ -107,18 +107,21 @@ var _ = Describe("BDPL updates", func() {
 				bdpl, err := env.GetBOSHDeployment(env.Namespace, deploymentName)
 				Expect(err).NotTo(HaveOccurred())
 				bdpl.Spec.Ops = []bdv1.ResourceReference{{Name: "ops-bpm", Type: bdv1.SecretReference}}
-				_, _, err = env.UpdateBOSHDeployment(env.Namespace, *bdpl)
-				Expect(err).NotTo(HaveOccurred())
+				Eventually(func() error {
+					_, _, err = env.UpdateBOSHDeployment(env.Namespace, *bdpl)
+					return err
+				}).Should(BeNil())
 			})
 
 			It("should add the env var to the container", func() {
 				err := env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "2", 2)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
-				pod, err := env.GetPod(env.Namespace, "nats-1")
-				Expect(err).NotTo(HaveOccurred())
-
-				Expect(env.EnvKeys(pod.Spec.Containers)).To(ContainElement("XPOD_IPX"))
+				Eventually(func() []string {
+					pod, err := env.GetPod(env.Namespace, "nats-1")
+					Expect(err).NotTo(HaveOccurred())
+					return env.EnvKeys(pod.Spec.Containers)
+				}).Should(ContainElement("XPOD_IPX"))
 			})
 		})
 
