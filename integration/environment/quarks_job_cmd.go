@@ -33,13 +33,13 @@ func (q *QuarksJobCmd) Build() error {
 }
 
 // Start starts the specified quarks-job in a namespace
-func (q *QuarksJobCmd) Start(namespace string) error {
+func (q *QuarksJobCmd) Start(id string) error {
 	cmd := exec.Command(q.Path,
-		"--monitored-id", namespace,
 		"-o", "cfcontainerization",
 		"-r", "quarks-job",
 		"--meltdown-duration", strconv.Itoa(defaultTestMeltdownDuration),
 		"--meltdown-requeue-after", strconv.Itoa(defaultTestMeltdownRequeueAfter),
+		"--monitored-id", id,
 		"-t", quarksJobTag(),
 	)
 	_, err := gexec.Start(cmd, ginkgo.GinkgoWriter, ginkgo.GinkgoWriter)

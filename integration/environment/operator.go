@@ -77,9 +77,6 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 
 	e.Config.WebhookServerPort = port
 
-	e.Config.OperatorNamespace = e.Namespace
-	e.Config.MonitoredID = e.Namespace
-
 	dockerImageOrg, found := os.LookupEnv("DOCKER_IMAGE_ORG")
 	if !found {
 		dockerImageOrg = "cfcontainerization"
