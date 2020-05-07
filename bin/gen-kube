@@ -6,24 +6,21 @@ set -o pipefail
 
 GO111MODULE=${GO111MODULE:-on} #Always on, so it works also inside GOPATH
 GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
+PROJECT="quarks-operator"
+# The groups and their versions in the format "groupA:v1,v2 groupB:v1 groupC:v2"
+GROUP_VERSIONS="boshdeployment:v1alpha1 quarksstatefulset:v1alpha1 quarkssecret:v1alpha1"
+QUARKS_UTILS=${QUARKS_UTILS:-../quarks-utils}
+
 cd "$GIT_ROOT"
 
-if [ -z ${CODEGEN_PKG+x} ] || [ ! -d "$CODEGEN_PKG" ]; then
-  echo 'Please set CODEGEN_PKG to the location of kubernetes/code-generator'
-  echo 'Make sure version of code-generator matches version of used kubernetes libraries.'
-  echo 'Tag 1.18.2 was last used'.
+if [ -z ${QUARKS_UTILS+x} ] || [ ! -d "$QUARKS_UTILS" ]; then
+  echo 'Please set QUARKS_UTILS to the location of code.cloudfoundry.org/quarks-utils'
+  echo 'git clone https://github.com/cloudfoundry-incubator/quarks-utils.git ../quarks-utils'
   echo
-  echo 'git clone https://github.com/kubernetes/code-generator.git ../code-generator'
-  echo
-  echo 'IMPORTANT! Remember that all generated code is created in your GOPATH.'
   exit 1
 fi
 
-# The groups and their versions in the format "groupA:v1,v2 groupB:v1 groupC:v2"
-GROUP_VERSIONS="boshdeployment:v1alpha1 quarksstatefulset:v1alpha1 quarkssecret:v1alpha1"
-
-env GO111MODULE="$GO111MODULE" "${CODEGEN_PKG}/generate-groups.sh" "deepcopy,client,lister" \
-  code.cloudfoundry.org/quarks-operator/pkg/kube/client \
-  code.cloudfoundry.org/quarks-operator/pkg/kube/apis \
-  "${GROUP_VERSIONS}" \
-  --go-header-file "${GIT_ROOT}/gen/header.go.txt"
+export GIT_ROOT
+export PROJECT
+export GROUP_VERSIONS
+$QUARKS_UTILS/bin/gen-kube
