@@ -45,6 +45,7 @@ const (
 func NewEnvironment(kubeConfig *rest.Config) *Environment {
 	atomic.AddInt32(&namespaceCounter, 1)
 	namespaceID := gomegaConfig.GinkgoConfig.ParallelNode*100 + int(namespaceCounter)
+	// the single namespace used by this test
 	ns := utils.GetNamespaceName(namespaceID)
 
 	return &Environment{
@@ -57,6 +58,7 @@ func NewEnvironment(kubeConfig *rest.Config) *Environment {
 				MeltdownDuration:     defaultTestMeltdownDuration * time.Second,
 				MeltdownRequeueAfter: defaultTestMeltdownRequeueAfter * time.Second,
 				MonitoredID:          ns,
+				OperatorNamespace:    ns,
 				Fs:                   afero.NewOsFs(),
 			},
 		},

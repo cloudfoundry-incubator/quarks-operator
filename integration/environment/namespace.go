@@ -18,7 +18,7 @@ import (
 func (e *Environment) SetupNamespace() error {
 	nsTeardown, err := e.CreateLabeledNamespace(e.Namespace,
 		map[string]string{
-			monitorednamespace.LabelNamespace: e.Namespace,
+			monitorednamespace.LabelNamespace: e.Config.MonitoredID,
 			qjv1a1.LabelServiceAccount:        persistOutputServiceAccount,
 		})
 	if err != nil {
