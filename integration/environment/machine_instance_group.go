@@ -11,11 +11,13 @@ import (
 
 // WaitForInstanceGroup blocks until all selected pods of the instance group are running. It fails after the timeout.
 func (m *Machine) WaitForInstanceGroup(namespace string, deployment string, igName string, version string, count int) error {
-	return m.WaitForInstanceGroupVersionAllReplicas(namespace, deployment, igName, count, version)
+	return m.WaitForInstanceGroupVersions(namespace, deployment, igName, count, version)
 }
 
-// WaitForInstanceGroupVersionAllReplicas blocks until all selected pods of the instance group are running. It fails after the timeout.
-func (m *Machine) WaitForInstanceGroupVersionAllReplicas(namespace string, deployment string, igName string, count int, versions ...string) error {
+// WaitForInstanceGroupVersions blocks until the specified number of pods from
+// the instance group are running.  It counts running pods from all given
+// versions. It fails after the timeout.
+func (m *Machine) WaitForInstanceGroupVersions(namespace string, deployment string, igName string, count int, versions ...string) error {
 	labels := labels.Set(map[string]string{
 		bdv1.LabelDeploymentName:    deployment,
 		bdv1.LabelInstanceGroupName: igName,

@@ -78,7 +78,7 @@ var _ = Describe("BDPL updates", func() {
 			It("should update the deployment", func() {
 				// nats is a special release which consumes itself. So, whenever these is change related instances or azs
 				// nats statefulset gets updated 2 times. TODO: need to fix this later.
-				err := env.WaitForInstanceGroupVersionAllReplicas(env.Namespace, deploymentName, "nats", 1, "2", "3")
+				err := env.WaitForInstanceGroupVersions(env.Namespace, deploymentName, "nats", 1, "2", "3")
 				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 			})
 		})
@@ -114,7 +114,7 @@ var _ = Describe("BDPL updates", func() {
 			})
 
 			It("should add the env var to the container", func() {
-				err := env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "2", 2)
+				err := env.WaitForInstanceGroupVersions(env.Namespace, deploymentName, "nats", 2, "2", "3")
 				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 				Eventually(func() []string {
@@ -274,7 +274,7 @@ var _ = Describe("BDPL updates", func() {
 				scaleDeployment("2")
 
 				By("checking for instance group updated pods")
-				err := env.WaitForInstanceGroupVersionAllReplicas(env.Namespace, deploymentName, "nats", 2, "2", "3")
+				err := env.WaitForInstanceGroupVersions(env.Namespace, deploymentName, "nats", 2, "2", "3")
 				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 				pods, _ := env.GetInstanceGroupPods(env.Namespace, deploymentName, "nats")
@@ -284,8 +284,13 @@ var _ = Describe("BDPL updates", func() {
 				scaleDeployment("3")
 
 				By("checking if the deployment was again updated")
-				err = env.WaitForInstanceGroupVersionAllReplicas(env.Namespace, deploymentName, "nats", 3, "3", "4", "5")
-				Expect(err).NotTo(HaveOccurred(), "error waiting for pod from deployment")
+				Eventually(func() int {
+					pods, err := env.GetInstanceGroupPods(env.Namespace, deploymentName, "nats")
+					if err != nil {
+						return 0
+					}
+					return len(pods.Items)
+				}).Should(Equal(3))
 
 				pods, _ = env.GetInstanceGroupPods(env.Namespace, deploymentName, "nats")
 				Expect(len(pods.Items)).To(Equal(3))
@@ -380,25 +385,27 @@ var _ = Describe("BDPL updates", func() {
 			_, _, err = env.UpdateConfigMap(env.Namespace, *cm)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("checking for updated nats instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, manifestName, "nats", "2", 2)
-			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
-
-			By("checking for updated route_registrar instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, manifestName, "route_registrar", "2", 2)
-			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
-
 			By("Checking volume mounts with secret versions")
-			pod, err := env.GetPod(env.Namespace, "nats-1")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal("ig-resolved.nats-v2"))
-			Expect(pod.Spec.InitContainers[2].VolumeMounts[2].Name).To(Equal("ig-resolved"))
+			Eventually(func() error {
+				pod, err := env.GetPod(env.Namespace, "nats-1")
+				if err != nil {
+					return err
+				}
+				if pod.Spec.Volumes[4].Secret.SecretName != "ig-resolved.nats-v2" {
+					return fmt.Errorf("wrong ig resolved secret version")
+				}
+				Expect(pod.Spec.InitContainers[2].VolumeMounts[2].Name).To(Equal("ig-resolved"))
 
-			pod, err = env.GetPod(env.Namespace, "route-registrar-0")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(pod.Spec.Volumes[4].Secret.SecretName).To(Equal("ig-resolved.route-registrar-v2"))
-			Expect(pod.Spec.InitContainers[2].VolumeMounts[2].Name).To(Equal("ig-resolved"))
+				pod, err = env.GetPod(env.Namespace, "route-registrar-0")
+				if err != nil {
+					return err
+				}
+				if pod.Spec.Volumes[4].Secret.SecretName != "ig-resolved.route-registrar-v2" {
+					return fmt.Errorf("wrong ig resolved secret version")
+				}
+				Expect(pod.Spec.InitContainers[2].VolumeMounts[2].Name).To(Equal("ig-resolved"))
+				return nil
+			}).Should(Succeed())
 		})
 	})
-
 })
