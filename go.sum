@@ -3,6 +3,9 @@ cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMT
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=
 code.cloudfoundry.org/quarks-job v0.0.145-ga2965aa h1:YIy4yAxmZYqgJiW1GHXbtFGhkBDKFvtZkpWZFN5/L20=
 code.cloudfoundry.org/quarks-job v0.0.145-ga2965aa/go.mod h1:y/voMxVJUdbffkhxhNcutPB4zeOkn89s88AiicCx2G4=
+code.cloudfoundry.org/quarks-job v0.0.146-ga933d62 h1:Zoje2kQX6VCwvMiUsvljJ0k4RICtMbZh5XInl0eWV5E=
+code.cloudfoundry.org/quarks-job v0.0.146-ga933d62/go.mod h1:y/voMxVJUdbffkhxhNcutPB4zeOkn89s88AiicCx2G4=
+code.cloudfoundry.org/quarks-job v1.0.148 h1:U0TvNlO4X4XYvcda4Nf2+IkPFGCckY5gh/tIe0QUxps=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200504075000-7effd62f9bce h1:lwh6S2ICAg0GZOenffNnRSxqwCNvRvpEuKgTs2voqT4=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200504075000-7effd62f9bce/go.mod h1:MxdilS/wL1D5NokUPCGR3AX1PqCwCQc+ex8Jk87lbgU=
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
