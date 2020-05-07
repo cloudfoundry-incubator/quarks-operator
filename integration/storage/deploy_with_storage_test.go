@@ -65,7 +65,7 @@ var _ = Describe("DeployWithStorage", func() {
 		sts3Name := "bpm3"
 
 		It("should create available resources", func() {
-			skip("flakiness in CI")
+			Skip("flakiness in CI")
 			nodes, err := env.GetNodes()
 			Expect(err).NotTo(HaveOccurred(), "error getting nodes")
 			if len(nodes) < 2 {
