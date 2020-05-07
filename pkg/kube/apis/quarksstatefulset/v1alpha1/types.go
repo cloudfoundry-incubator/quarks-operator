@@ -57,6 +57,8 @@ type QuarksStatefulSetSpec struct {
 type QuarksStatefulSetStatus struct {
 	// Timestamp for the last reconcile
 	LastReconcile *metav1.Time `json:"lastReconcile"`
+	// Ready determines whether the QuarksStatefulSet is ready for serve
+	Ready bool `json:"ready"`
 }
 
 // +genclient

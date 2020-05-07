@@ -48,6 +48,7 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 	quarkssecret.AddCertificateSigningRequest,
 	quarkssecret.AddSecretRotation,
 	quarksstatefulset.AddQuarksStatefulSet,
+	quarksstatefulset.AddQuarksStatefulSetStatus,
 	statefulset.AddStatefulSetRollout,
 	quarksrestart.AddRestart,
 	quarksstatefulset.AddStatefulSetActivePassive,

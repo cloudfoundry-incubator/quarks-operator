@@ -129,6 +129,9 @@ func (r *ReconcileQuarksStatefulSet) Reconcile(request reconcile.Request) (recon
 		if err := r.createStatefulSet(ctx, qStatefulSet, &desiredStatefulSet); err != nil {
 			return reconcile.Result{}, ctxlog.WithEvent(qStatefulSet, "CreateStatefulSetError").Error(ctx, "Could not create StatefulSet for QuarksStatefulSet '", request.NamespacedName, "': ", err)
 		}
+
+		// Reset ready status if we create
+		qStatefulSet.Status.Ready = false
 	}
 
 	now := metav1.Now()
