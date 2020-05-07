@@ -471,6 +471,7 @@ var _ = Describe("Examples Directory", func() {
 		})
 
 		It("resolves BOSH DNS wildcard aliases", func() {
+			Skip("flakiness on ci")
 			By("Getting expected IP")
 			podName := "nats-0"
 			podWait(fmt.Sprintf("pod/%s", podName))
