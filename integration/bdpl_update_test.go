@@ -397,5 +397,4 @@ var _ = Describe("BDPL updates", func() {
 			Expect(pod.Spec.InitContainers[2].VolumeMounts[2].Name).To(Equal("ig-resolved"))
 		})
 	})
-
 })

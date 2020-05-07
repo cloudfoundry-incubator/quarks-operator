@@ -81,7 +81,7 @@ data:
         ca: nats_ca
         common_name: routerSSL
         alternative_names:
-        - "foo.bar"
+        - "foo.((system_domain))"
         - "*.foo.bar"
 ---
 apiVersion: quarks.cloudfoundry.org/v1alpha1

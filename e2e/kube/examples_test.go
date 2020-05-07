@@ -220,7 +220,7 @@ var _ = Describe("Examples Directory", func() {
 			example = "bosh-deployment/boshdeployment-with-user-variable.yaml"
 		})
 
-		It("uses the user's variables instead of generating new ones", func() {
+		FIt("uses the user's variables instead of generating new ones", func() {
 			By("Checking for pods")
 			podWait("pod/nats-0")
 
