@@ -102,7 +102,6 @@ var _ = Describe("WaitService PodMutator", func() {
 		})
 
 		It("init container waits until the service is available", func() {
-
 			p, err := env.GetPod(env.Namespace, pod.GetName())
 			Expect(err).NotTo(HaveOccurred())
 
@@ -135,5 +134,4 @@ var _ = Describe("WaitService PodMutator", func() {
 			})
 		})
 	})
-
 })
