@@ -93,21 +93,22 @@ func (m *PodMutator) addInitContainer(ctx context.Context, pod *corev1.Pod) erro
 	return nil
 }
 
-func createWaitContainer(requiredService *string) []corev1.Container {
-	if requiredService == nil {
-		return nil
+func createWaitContainers(requiredServices ...*string) []corev1.Container {
+	containers := []corev1.Container{}
+	for _, service := range requiredServices {
+		if service == nil {
+			continue
+		}
+		containers = append(containers, corev1.Container{Name: "wait-for",
+			Image:   operatorimage.GetOperatorDockerImage(),
+			Command: []string{"/usr/bin/dumb-init", "--"},
+			Args: []string{
+				"/bin/sh",
+				"-xc",
+				fmt.Sprintf("time cf-operator util wait %s", *service),
+			}})
 	}
-	return []corev1.Container{{
-		Name:    "wait-for",
-		Image:   operatorimage.GetOperatorDockerImage(),
-		Command: []string{"/usr/bin/dumb-init", "--"},
-		Args: []string{
-			"/bin/sh",
-			"-xc",
-			fmt.Sprintf("time cf-operator util wait %s", *requiredService),
-		},
-	}}
-
+	return containers
 }
 
 // Check that PodMutator implements the inject.Client interface
