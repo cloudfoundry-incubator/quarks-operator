@@ -1,6 +1,7 @@
 package bpm
 
 import (
+	"reflect"
 	"sort"
 
 	"github.com/imdario/mergo"
@@ -146,13 +147,28 @@ func NewConfig(data []byte) (Config, error) {
 	return config, nil
 }
 
+type nullTransformer struct {
+}
+
+func (t *nullTransformer) Transformer(typ reflect.Type) func(dst, src reflect.Value) error {
+	if typ.Kind() == reflect.Ptr {
+		return func(dst, src reflect.Value) error {
+			if dst.CanSet() && !src.IsNil() {
+				dst.Set(src)
+			}
+			return nil
+		}
+	}
+	return nil
+}
+
 // MergeProcesses adds and updates the preset processes and returns a new list
 func (c Config) MergeProcesses(presetProcesses []Process) ([]Process, error) {
 	renderedProcesses := c.Processes
 	for _, process := range presetProcesses {
 		index, exist := indexOfBPMProcess(renderedProcesses, process.Name)
 		if exist {
-			err := mergo.MergeWithOverwrite(&renderedProcesses[index], process)
+			err := mergo.MergeWithOverwrite(&renderedProcesses[index], process, mergo.WithTransformers(&nullTransformer{}))
 			if err != nil {
 				return nil, errors.Wrapf(err, "Failed to merge bpm process information for preset process %s", process.Name)
 			}

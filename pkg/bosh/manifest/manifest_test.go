@@ -1153,7 +1153,7 @@ var _ = Describe("Manifest", func() {
 
 				Expect(proc.Name).To(Equal("redis"))
 				Expect(proc.Executable).To(Equal("/another/command"))
-				Expect(proc.EphemeralDisk).To(Equal(pointers.Bool(true)))
+				Expect(proc.EphemeralDisk).To(Equal(pointers.Bool(false)))
 				Expect(proc.PersistentDisk).To(Equal(pointers.Bool(true)))
 
 				Expect(proc.Hooks.PreStart).To(Equal("/var/vcap/jobs/pxc-mysql/bin/cleanup-socket"))

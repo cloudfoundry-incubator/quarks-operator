@@ -14,6 +14,7 @@ import (
 	. "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/testing"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 var _ = Describe("InstanceGroupResolver", func() {
@@ -179,6 +180,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 
 					bpm := bpmInfo.Configs["redis-server"]
 					Expect(bpm).ToNot(BeNil())
+					Expect(bpm.Processes[0].EphemeralDisk).To(Equal(pointers.Bool(false)))
 					Expect(bpm.Processes[0].Executable).To(Equal("/another/command"))
 				})
 			})
