@@ -75,7 +75,7 @@ var _ = BeforeEach(func() {
 		fmt.Printf("WARNING: failed to setup quarks-job operator service account: %s\n", err)
 	}
 
-	err = qjobCmd.Start(env.Namespace)
+	err = qjobCmd.Start(env.Config.MonitoredID)
 	if err != nil {
 		fmt.Printf("WARNING: failed to start quarks job operator: %v\n", err)
 	}

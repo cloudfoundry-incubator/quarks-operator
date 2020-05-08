@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
-	"code.cloudfoundry.org/quarks-utils/pkg/config"
-	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"github.com/pkg/errors"
+
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -15,6 +13,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
 // AddStatefulSetActivePassive creates a new QuarksStatefulSet controller that watches multiple instances
@@ -38,6 +41,8 @@ func AddStatefulSetActivePassive(ctx context.Context, config *config.Config, mgr
 	if err != nil {
 		return errors.Wrap(err, "adding active-passive controller to manager failed")
 	}
+
+	nsPred := monitorednamespace.NewNSPredicate(ctx, mgr.GetClient(), config.MonitoredID)
 
 	stsPredicates := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
@@ -73,6 +78,7 @@ func AddStatefulSetActivePassive(ctx context.Context, config *config.Config, mgr
 	}
 	err = c.Watch(&source.Kind{Type: &qstsv1a1.QuarksStatefulSet{}},
 		&handler.EnqueueRequestForObject{},
+		nsPred,
 		stsPredicates)
 	if err != nil {
 		return errors.Wrapf(err, "watching QuarksStatefulSet failed in active/passive controller")

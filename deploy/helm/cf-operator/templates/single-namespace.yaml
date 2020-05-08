@@ -1,0 +1,10 @@
+{{- if .Values.global.singleNamespace.create }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: "{{ .Values.global.singleNamespace.name }}"
+  labels:
+    quarks.cloudfoundry.org/monitored: {{ .Values.global.monitoredID }}
+    quarks.cloudfoundry.org/qjob-service-account: {{ index .Values "quarks-job" "persistOutputClusterRole" "name" }}
+{{- end }}

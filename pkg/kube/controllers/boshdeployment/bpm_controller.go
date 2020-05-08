@@ -20,6 +20,7 @@ import (
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/desiredmanifest"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
@@ -78,7 +79,8 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 	// We have to watch the BPM secret. It gives us information about how to
 	// start containers for each process.
 	// The BPM secret is annotated with the name of the BOSHDeployment.
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, p)
+	nsPred := monitorednamespace.NewNSPredicate(ctx, mgr.GetClient(), config.MonitoredID)
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching secrets failed in BPM controller.")
 	}

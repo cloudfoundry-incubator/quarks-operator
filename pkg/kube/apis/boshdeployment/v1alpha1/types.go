@@ -76,6 +76,8 @@ var (
 	AnnotationLinkProvidesKey = fmt.Sprintf("%s/provides", apis.GroupName)
 	// AnnotationLinkProviderService is the annotation key used on services to identify the link provider
 	AnnotationLinkProviderService = fmt.Sprintf("%s/link-provider-name", apis.GroupName)
+	// LabelEntanglementKey to identify a quarks link
+	LabelEntanglementKey = fmt.Sprintf("%s/entanglement", apis.GroupName)
 )
 
 // BOSHDeploymentSpec defines the desired state of BOSHDeployment

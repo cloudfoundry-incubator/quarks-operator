@@ -7,10 +7,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// LabelWatchNamespace is set on the watched namespace and contains the name of
-// the operator namespace
-const LabelWatchNamespace = "cf-operator-ns"
-
 // OperatorWebhook represents an operator webhook
 type OperatorWebhook struct {
 	// Name is the name of the webhook

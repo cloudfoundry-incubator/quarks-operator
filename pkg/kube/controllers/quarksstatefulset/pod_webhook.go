@@ -7,6 +7,7 @@ import (
 	admissionregistration "k8s.io/api/admissionregistration/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	wh "code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
@@ -39,7 +40,7 @@ func NewQuarksStatefulSetPodMutator(log *zap.SugaredLogger, config *config.Confi
 		Name: "mutate-pods." + names.GroupName,
 		NamespaceSelector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				wh.LabelWatchNamespace: config.OperatorNamespace,
+				monitorednamespace.LabelNamespace: config.MonitoredID,
 			},
 		},
 		Webhook: &admission.Webhook{

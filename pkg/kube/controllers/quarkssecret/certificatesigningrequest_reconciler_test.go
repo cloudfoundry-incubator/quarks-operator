@@ -47,6 +47,8 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 	)
 
 	BeforeEach(func() {
+		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
+
 		csr = &certv1.CertificateSigningRequest{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
@@ -55,6 +57,7 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 					qsv1a1.AnnotationCertSecretName: "fake-cert",
 					qsv1a1.AnnotationQSecNamespace:  "fake-namespace",
 					qsv1a1.AnnotationQSecName:       "fake-name",
+					qsv1a1.AnnotationMonitoredID:    config.MonitoredID,
 				},
 			},
 			Spec: certv1.CertificateSigningRequestSpec{
@@ -82,7 +85,6 @@ var _ = Describe("ReconcileCertificateSigningRequest", func() {
 		controllers.AddToScheme(scheme.Scheme)
 		manager = &cfakes.FakeManager{}
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
 		_, log = helper.NewTestLogger()
 		ctx = ctxlog.NewParentContext(log)
 

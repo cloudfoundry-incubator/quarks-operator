@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/reference"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -39,6 +40,8 @@ func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager)
 	if err != nil {
 		return errors.Wrap(err, "Adding restart controller to manager failed.")
 	}
+
+	nsPred := monitorednamespace.NewNSPredicate(ctx, mgr.GetClient(), config.MonitoredID)
 
 	// watch entanglement secrets, trigger if one changes which is used by a pod
 	p := predicate.Funcs{
@@ -99,7 +102,7 @@ func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager)
 
 			return reconciles
 		}),
-	}, p)
+	}, nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching secrets failed in %s controller.", name)
 	}
