@@ -121,7 +121,15 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 	})
 
 	Context("when pod has existing initcontainers", func() {
-		podPatch := `{"op":"add","path":"/spec/initContainers/2","value":{"args":["/bin/sh","-xc","time cf-operator util wait test"],"command":["/usr/bin/dumb-init","--"],"name":"wait-for","resources":{}}}`
+		podPatch := []string{
+			"{\"op\":\"add\",\"path\":\"/spec/initContainers/2\",\"value\":{\"command\":[\"sleep\",\"3600\"],\"image\":\"busybox\",\"name\":\"second\",\"resources\":{}}}",
+			"{\"op\":\"replace\",\"path\":\"/spec/initContainers/0/name\",\"value\":\"wait-for\"}",
+			"{\"op\":\"replace\",\"path\":\"/spec/initContainers/0/command/1\",\"value\":\"--\"}",
+			"{\"op\":\"replace\",\"path\":\"/spec/initContainers/0/command/0\",\"value\":\"/usr/bin/dumb-init\"}",
+			"{\"op\":\"add\",\"path\":\"/spec/initContainers/0/args\",\"value\":[\"/bin/sh\",\"-xc\",\"time cf-operator util wait test\"]}",
+			"{\"op\":\"remove\",\"path\":\"/spec/initContainers/0/image\"}",
+			"{\"op\":\"replace\",\"path\":\"/spec/initContainers/1/name\",\"value\":\"first\"}",
+		}
 
 		BeforeEach(func() {
 			pod = env.AnnotatedPod("waiting-pod", map[string]string{
@@ -136,11 +144,11 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 			client = fakeClient.NewFakeClient(&entanglementSecret)
 		})
 
-		It("does add the initcontainer, and not replace it", func() {
+		It("does add the initcontainer at the beginning, and not replace it", func() {
 			Expect(response.Allowed).To(BeTrue(), response.Result)
-			Expect(response.Patches).To(HaveLen(1))
+			Expect(response.Patches).To(HaveLen(7))
 			patches := jsonPatches(response.Patches)
-			Expect(patches).To(ContainElement(podPatch))
+			Expect(patches).To(Equal(podPatch))
 			Expect(response.AdmissionResponse.Allowed).To(BeTrue())
 		})
 
