@@ -513,7 +513,7 @@ instance_groups:
               # Add xtrabackup, pxc binaries, and socat to PATH
               PATH: /usr/bin:/bin:/var/vcap/packages/percona-xtrabackup/bin:/var/vcap/packages/pxc/bin:/var/vcap/packages/socat/bin
             persistent_disk: true
-            ephemeral_disk: true
+            ephemeral_disk: false
             additional_volumes:
             - path: /var/vcap/sys/run/pxc-mysql
               writable: true
