@@ -88,7 +88,7 @@ func (m *PodMutator) addInitContainer(ctx context.Context, pod *corev1.Pod) erro
 		return fmt.Errorf("service name in '%s' empty", WaitKey)
 	}
 
-	pod.Spec.InitContainers = append(pod.Spec.InitContainers, createWaitContainer(&serviceName)...)
+	pod.Spec.InitContainers = append(createWaitContainers(&serviceName), pod.Spec.InitContainers...)
 
 	return nil
 }
