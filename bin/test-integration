@@ -33,7 +33,7 @@ if [ ${COVERAGE+x} ]; then
   mkdir -p code-coverage
 fi
 
-NODES=${NODES:-3}
+NODES=${NODES:-1}
 FLAKE_ATTEMPTS=${FLAKE_ATTEMPTS:-3}
 ginkgo ${FOCUS:+ --focus "$FOCUS"} \
   --randomizeAllSpecs \
