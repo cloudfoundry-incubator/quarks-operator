@@ -182,6 +182,7 @@ func (r *ReconcileQuarksStatefulSet) calculateDesiredStatefulSets(ctx context.Co
 	}
 
 	desiredVersion := currentVersion + 1
+	ctxlog.Infof(ctx, "Creating new version '%s' for QuarksStatefulSet '%s'", desiredVersion, qStatefulSet.GetNamespacedName())
 
 	if qStatefulSet.Spec.ZoneNodeLabel == "" {
 		qStatefulSet.Spec.ZoneNodeLabel = qstsv1a1.DefaultZoneNodeLabel
