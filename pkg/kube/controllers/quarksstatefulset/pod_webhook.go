@@ -10,16 +10,18 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	wh "code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 // NewQuarksStatefulSetPodMutator creates a quarksStatefulSet pod mutator for managing volumes
 func NewQuarksStatefulSetPodMutator(log *zap.SugaredLogger, config *config.Config) *wh.OperatorWebhook {
+	log = logger.Unskip(log, "quarks-statefulset-pod-mutator")
 	log.Info("Setting up mutator for quarksStatefulSet pods")
 
 	quarksStatefulSetMutator := NewPodMutator(log, config)
 
-	globalScopeType := admissionregistration.ScopeType("*")
+	globalScopeType := admissionregistration.NamespacedScope
 	return &wh.OperatorWebhook{
 		FailurePolicy: admissionregistration.Fail,
 		Rules: []admissionregistration.RuleWithOperations{
