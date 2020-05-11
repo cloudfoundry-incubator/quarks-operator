@@ -4,6 +4,7 @@
 package testing
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/pkg/errors"
@@ -1179,9 +1180,10 @@ func (c *Catalog) NatsSecret(deployName string) corev1.Secret {
 }
 
 // WaitingPod is a pod which has the wait-for annotation for use in tests
-func (c *Catalog) WaitingPod(name, service string) corev1.Pod {
+func (c *Catalog) WaitingPod(name string, serviceList ...string) corev1.Pod {
+	services, _ := json.Marshal(serviceList)
 	return c.AnnotatedPod(name, map[string]string{
-		waitservice.WaitKey: service,
+		waitservice.WaitKey: string(services),
 	})
 }
 
@@ -1191,5 +1193,29 @@ func (c *Catalog) EchoContainer(name string) corev1.Container {
 		Name:    name,
 		Image:   "busybox",
 		Command: []string{"echo"},
+	}
+}
+
+// DummyService for use in tests
+func (c *Catalog) DummyService(serviceName string) corev1.Service {
+	return corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: serviceName,
+		},
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeClusterIP,
+			Ports: []corev1.ServicePort{
+				corev1.ServicePort{
+					Name:       "client",
+					Port:       4222,
+					TargetPort: intstr.FromString("client"),
+				},
+				corev1.ServicePort{
+					Name:       "cluster",
+					Port:       6222,
+					TargetPort: intstr.FromString("cluster"),
+				},
+			},
+		},
 	}
 }
