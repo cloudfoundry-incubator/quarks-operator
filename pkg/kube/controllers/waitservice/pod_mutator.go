@@ -56,15 +56,13 @@ func validWait(annotations map[string]string) bool {
 // Handle checks if the pod has the "wait-for" annotation and injects an initcontainer waiting for the service
 func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	pod := &corev1.Pod{}
-	err := m.decoder.Decode(req, pod)
-	if err != nil {
+	if err := m.decoder.Decode(req, pod); err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
 	updatedPod := pod.DeepCopy()
 	if validWait(pod.GetAnnotations()) {
-		err = m.addInitContainer(ctx, updatedPod)
-		if err != nil {
+		if err := m.addInitContainer(ctx, updatedPod); err != nil {
 			return admission.Errored(http.StatusInternalServerError, err)
 		}
 	}
