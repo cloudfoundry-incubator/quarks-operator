@@ -39,7 +39,8 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 		response           admission.Response
 	)
 
-	podPatch := `{"op":"add","path":"/spec/initContainers","value":[{"args":["/bin/sh","-xc","time cf-operator util wait test"],"command":["/usr/bin/dumb-init","--"],"name":"wait-for","resources":{}}]}`
+	podPatch := `{"op":"add","path":"/spec/initContainers","value":[{"args":["/bin/sh","-xc","time cf-operator util wait test"],"command":["/usr/bin/dumb-init","--"],"name":"wait-for-test","resources":{}}]}`
+	podPatch2 := `{"op":"add","path":"/spec/initContainers","value":[{"args":["/bin/sh","-xc","time cf-operator util wait test"],"command":["/usr/bin/dumb-init","--"],"name":"wait-for-test","resources":{}},{"args":["/bin/sh","-xc","time cf-operator util wait test2"],"command":["/usr/bin/dumb-init","--"],"name":"wait-for-test2","resources":{}}]}`
 
 	jsonPatches := func(operations []jsonpatch.Operation) []string {
 		patches := make([]string, len(operations))
@@ -93,7 +94,7 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 	Context("when valid label exists on pod", func() {
 		BeforeEach(func() {
 			pod = env.AnnotatedPod("waiting-pod", map[string]string{
-				waitservice.WaitKey: "test",
+				waitservice.WaitKey: "[\"test\"]",
 			})
 			pod.Spec.Containers = []corev1.Container{
 				{Name: "first", Image: "busybox", Command: []string{"sleep", "3600"}},
@@ -108,7 +109,7 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 			})
 
 			It("initcontainer is appended", func() {
-				Expect(response.Allowed).To(BeTrue(), response.Result)
+				Expect(response.Allowed).To(BeTrue(), response.Result.String())
 
 				Expect(response.Patches).To(HaveLen(1))
 				patches := jsonPatches(response.Patches)
@@ -117,13 +118,63 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
 			})
 		})
+	})
 
+	Context("when more than one service is specified", func() {
+		BeforeEach(func() {
+			pod = env.AnnotatedPod("waiting-pod", map[string]string{
+				waitservice.WaitKey: "[\"test\", \"test2\"]",
+			})
+			pod.Spec.Containers = []corev1.Container{
+				{Name: "first", Image: "busybox", Command: []string{"sleep", "3600"}},
+				{Name: "second", Image: "busybox", Command: []string{"sleep", "3600"}},
+			}
+			request = newAdmissionRequest(pod)
+		})
+
+		Context("when wait-for label exists", func() {
+			BeforeEach(func() {
+				client = fakeClient.NewFakeClient(&entanglementSecret)
+			})
+
+			It("initcontainer is appended", func() {
+				Expect(response.Allowed).To(BeTrue(), response.Result.String())
+
+				Expect(response.Patches).To(HaveLen(1))
+				patches := jsonPatches(response.Patches)
+				Expect(patches).To(ContainElement(podPatch2))
+
+				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
+			})
+		})
+	})
+
+	Context("when invalid label exists on pod", func() {
+		BeforeEach(func() {
+			pod = env.AnnotatedPod("waiting-pod", map[string]string{
+				waitservice.WaitKey: "test",
+			})
+			request = newAdmissionRequest(pod)
+		})
+
+		Context("when wait-for label exists", func() {
+			BeforeEach(func() {
+				client = fakeClient.NewFakeClient(&entanglementSecret)
+			})
+
+			It("initcontainer is not appended", func() {
+				Expect(response.Allowed).To(BeTrue(), response.Result.String())
+
+				Expect(response.Patches).To(HaveLen(0))
+				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
+			})
+		})
 	})
 
 	Context("when pod has existing initcontainers", func() {
 		podPatch := []string{
 			"{\"op\":\"add\",\"path\":\"/spec/initContainers/2\",\"value\":{\"command\":[\"sleep\",\"3600\"],\"image\":\"busybox\",\"name\":\"second\",\"resources\":{}}}",
-			"{\"op\":\"replace\",\"path\":\"/spec/initContainers/0/name\",\"value\":\"wait-for\"}",
+			"{\"op\":\"replace\",\"path\":\"/spec/initContainers/0/name\",\"value\":\"wait-for-test\"}",
 			"{\"op\":\"replace\",\"path\":\"/spec/initContainers/0/command/1\",\"value\":\"--\"}",
 			"{\"op\":\"replace\",\"path\":\"/spec/initContainers/0/command/0\",\"value\":\"/usr/bin/dumb-init\"}",
 			"{\"op\":\"add\",\"path\":\"/spec/initContainers/0/args\",\"value\":[\"/bin/sh\",\"-xc\",\"time cf-operator util wait test\"]}",
@@ -133,7 +184,7 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 
 		BeforeEach(func() {
 			pod = env.AnnotatedPod("waiting-pod", map[string]string{
-				waitservice.WaitKey: "test",
+				waitservice.WaitKey: "[\"test\"]",
 			})
 			pod.Spec.InitContainers = []corev1.Container{
 				{Name: "first", Image: "busybox", Command: []string{"sleep", "3600"}},
@@ -145,10 +196,12 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 		})
 
 		It("does add the initcontainer at the beginning, and not replace it", func() {
-			Expect(response.Allowed).To(BeTrue(), response.Result)
+			Expect(response.Allowed).To(BeTrue(), response.Result.String())
 			Expect(response.Patches).To(HaveLen(7))
 			patches := jsonPatches(response.Patches)
-			Expect(patches).To(Equal(podPatch))
+			for _, p := range podPatch {
+				Expect(patches).To(ContainElement(p))
+			}
 			Expect(response.AdmissionResponse.Allowed).To(BeTrue())
 		})
 

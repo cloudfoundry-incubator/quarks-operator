@@ -8,6 +8,7 @@ import (
 
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/apis"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/operatorimage"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,7 +47,9 @@ func NewPodMutator(log *zap.SugaredLogger, config *config.Config) admission.Hand
 
 func validWait(annotations map[string]string) bool {
 	valid := false
-	if annotations[WaitKey] != "" {
+	var services []string
+
+	if err := json.Unmarshal([]byte(annotations[WaitKey]), &services); err == nil && len(services) != 0 {
 		valid = true
 	}
 
@@ -77,16 +80,17 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 
 func (m *PodMutator) addInitContainer(ctx context.Context, pod *corev1.Pod) error {
 	annotations := pod.GetAnnotations()
-	serviceName, ok := annotations[WaitKey]
+	servicesStr, ok := annotations[WaitKey]
 	if !ok {
 		return fmt.Errorf("no annotations %s found", WaitKey)
 	}
 
-	if serviceName == "" {
-		return fmt.Errorf("service name in '%s' empty", WaitKey)
+	var services []*string
+	if err := json.Unmarshal([]byte(servicesStr), &services); err != nil {
+		return errors.Wrapf(err, "failed unmarshalling services in '%s'", WaitKey)
 	}
 
-	pod.Spec.InitContainers = append(createWaitContainers(&serviceName), pod.Spec.InitContainers...)
+	pod.Spec.InitContainers = append(createWaitContainers(services...), pod.Spec.InitContainers...)
 
 	return nil
 }
@@ -97,7 +101,7 @@ func createWaitContainers(requiredServices ...*string) []corev1.Container {
 		if service == nil {
 			continue
 		}
-		containers = append(containers, corev1.Container{Name: "wait-for",
+		containers = append(containers, corev1.Container{Name: fmt.Sprintf("wait-for-%s", *service),
 			Image:   operatorimage.GetOperatorDockerImage(),
 			Command: []string{"/usr/bin/dumb-init", "--"},
 			Args: []string{
