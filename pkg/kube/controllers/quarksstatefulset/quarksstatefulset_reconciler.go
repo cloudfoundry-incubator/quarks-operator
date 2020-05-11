@@ -119,7 +119,9 @@ func (r *ReconcileQuarksStatefulSet) Reconcile(request reconcile.Request) (recon
 
 	for _, desiredStatefulSet := range desiredStatefulSets {
 		// If it doesn't exist, create it
-		ctxlog.Info(ctx, "StatefulSet '", desiredStatefulSet.Name, "' owned by QuarksStatefulSet '", request.NamespacedName, "' not found, will be created.")
+		ctxlog.Infof(ctx, "StatefulSet '%s' owned by QuarksStatefulSet '%s' not found, will be created.",
+			request.NamespacedName,
+			desiredStatefulSet.Name)
 
 		if err = r.versionedSecretStore.SetSecretReferences(ctx, request.Namespace, &qStatefulSet.Spec.Template.Spec.Template.Spec); err != nil {
 			return reconcile.Result{}, ctxlog.WithEvent(qStatefulSet, "UpdateVersionedSecretReferencesError").Error(ctx, "Could not update versioned secret references in pod spec for QuarksStatefulSet '", request.NamespacedName, "': ", err)
@@ -182,7 +184,7 @@ func (r *ReconcileQuarksStatefulSet) calculateDesiredStatefulSets(ctx context.Co
 	}
 
 	desiredVersion := currentVersion + 1
-	ctxlog.Infof(ctx, "Creating new version '%s' for QuarksStatefulSet '%s'", desiredVersion, qStatefulSet.GetNamespacedName())
+	ctxlog.Infof(ctx, "Creating new version '%d' for QuarksStatefulSet '%s'", desiredVersion, qStatefulSet.GetNamespacedName())
 
 	if qStatefulSet.Spec.ZoneNodeLabel == "" {
 		qStatefulSet.Spec.ZoneNodeLabel = qstsv1a1.DefaultZoneNodeLabel

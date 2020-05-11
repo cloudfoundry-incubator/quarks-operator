@@ -10,16 +10,18 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	wh "code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 // NewBOSHLinkPodMutator returns a new webhook to mount BOSH link secrets on entangled pods
 func NewBOSHLinkPodMutator(log *zap.SugaredLogger, config *config.Config) *wh.OperatorWebhook {
+	log = logger.Unskip(log, "boshlink-mutator")
 	log.Info("Setting up mutator for mounting BOSH links in entangled pods")
 
 	mutator := NewPodMutator(log, config)
 
-	globalScopeType := admissionregistration.ScopeType("*")
+	globalScopeType := admissionregistration.NamespacedScope
 	return &wh.OperatorWebhook{
 		FailurePolicy: admissionregistration.Fail,
 		Rules: []admissionregistration.RuleWithOperations{

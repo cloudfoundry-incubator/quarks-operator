@@ -197,14 +197,15 @@ func (r *ReconcileBPM) applyBPMResources(bdplName string, instanceGroupName stri
 			return nil, errors.Errorf("Failed to get QuarksStatefulSet instance '%s/%s': %v", bpmSecret.Namespace, quarksStatefulSetName, err)
 		}
 	}
-	_, qStsVersion, err := qstscontroller.GetMaxStatefulSetVersion(r.ctx, r.client, quarksStatefulSet)
-	if err != nil {
-		return nil, err
-	}
-	qStsVersion = qStsVersion + 1
-	qStsVersionString := strconv.Itoa(qStsVersion)
-	if err != nil {
-		return nil, err
+
+	qStsVersionString := "0"
+	if quarksStatefulSet.Namespace != "" {
+		_, qStsVersion, err := qstscontroller.GetMaxStatefulSetVersion(r.ctx, r.client, quarksStatefulSet)
+		if err != nil {
+			return nil, err
+		}
+		qStsVersion = qStsVersion + 1
+		qStsVersionString = strconv.Itoa(qStsVersion)
 	}
 
 	igResolvedSecretVersion, err := r.fetchIGresolvedVersion(bpmSecret.Namespace, instanceGroupName)
