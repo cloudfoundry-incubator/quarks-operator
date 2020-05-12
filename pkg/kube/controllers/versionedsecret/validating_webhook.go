@@ -19,17 +19,19 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	wh "code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
 // NewSecretValidator creates a validating hook to deny updates to versioned secrets and adds it to the manager.
 func NewSecretValidator(log *zap.SugaredLogger, config *config.Config) *wh.OperatorWebhook {
+	log = logger.Unskip(log, "secret-validator")
 	log.Info("Setting up validator for versioned secrets")
 
 	secretValidator := NewValidationHandler(log)
 
-	globalScopeType := admissionregistration.ScopeType("*")
+	globalScopeType := admissionregistration.NamespacedScope
 	return &wh.OperatorWebhook{
 		FailurePolicy: admissionregistration.Fail,
 		Rules: []admissionregistration.RuleWithOperations{

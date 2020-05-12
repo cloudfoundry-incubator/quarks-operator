@@ -66,7 +66,6 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 
 // mutatePodsFn add a pod-ordinal label to the given pod
 func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
-
 	m.log.Infof("Mutating Pod '%s/%s'", pod.Namespace, pod.Name)
 
 	// Add pod ordinal label for service selectors

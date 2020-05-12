@@ -34,7 +34,7 @@ func NewBOSHDeploymentValidator(log *zap.SugaredLogger, config *config.Config) *
 
 	boshDeploymentValidator := NewValidator(log, config)
 
-	globalScopeType := admissionregistration.ScopeType("*")
+	globalScopeType := admissionregistration.NamespacedScope
 	return &wh.OperatorWebhook{
 		FailurePolicy: admissionregistration.Fail,
 		Rules: []admissionregistration.RuleWithOperations{

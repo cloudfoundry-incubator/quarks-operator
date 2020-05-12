@@ -17,6 +17,7 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	wh "code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
@@ -84,11 +85,12 @@ func (m *Mutator) Handle(ctx context.Context, req admission.Request) admission.R
 
 // NewStatefulSetRolloutMutator creates a statefulset mutator for setting the partion
 func NewStatefulSetRolloutMutator(log *zap.SugaredLogger, config *config.Config) *wh.OperatorWebhook {
+	log = logger.Unskip(log, "sts-rollout-mutator")
 	log.Info("Setting up mutator for statefulsets")
 
 	mutator := NewMutator(log, config)
 
-	globalScopeType := admissionregistration.ScopeType("*")
+	globalScopeType := admissionregistration.NamespacedScope
 	return &wh.OperatorWebhook{
 		FailurePolicy: admissionregistration.Fail,
 		Rules: []admissionregistration.RuleWithOperations{

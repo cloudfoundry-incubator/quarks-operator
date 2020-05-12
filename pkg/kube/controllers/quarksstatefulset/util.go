@@ -27,6 +27,10 @@ func GetMaxStatefulSetVersion(ctx context.Context, client crc.Client, qStatefulS
 	}
 	maxVersion := 0
 
+	if qStatefulSet.Namespace == "" {
+		return result, maxVersion, nil
+	}
+
 	statefulSets, err := listStatefulSetsFromInformer(ctx, client, qStatefulSet)
 	if err != nil {
 		return nil, 0, err
