@@ -5,6 +5,7 @@ code.cloudfoundry.org/quarks-job v1.0.149 h1:omyXhWVO6f1DEOQ2vkaftCbAcWwsYr8Ba5Q
 code.cloudfoundry.org/quarks-job v1.0.149/go.mod h1:rrE1M2QwmA8a9piqOCAHJv40/nmeztK0Hh/Oqae4jKM=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200508141127-47307e498e12 h1:8qLQTH6WV2Jlwb8w2kCjTV/W4/1EaXmtI/Rk420Px24=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200508141127-47307e498e12/go.mod h1:MxdilS/wL1D5NokUPCGR3AX1PqCwCQc+ex8Jk87lbgU=
+code.cloudfoundry.org/quarks-utils v0.0.0-20200512070940-c6dcee3e25a9/go.mod h1:voPdeHf5x70u82CBFDCisvVFhxpXKuUEjd+b8y4Dcwo=
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
 github.com/Azure/go-autorest/autorest v0.9.0/go.mod h1:xyHB1BMZT0cuDHU7I0+g046+BFDTQ8rEZB0s4Yfa6bI=
 github.com/Azure/go-autorest/autorest/adal v0.5.0/go.mod h1:8Z9fGy2MpX0PvDjB1pEgQTmVqjGhiHBW7RJJEciWzS0=
