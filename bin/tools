@@ -7,3 +7,37 @@ go get -u github.com/maxbrunsfeld/counterfeiter
 go get -u github.com/onsi/ginkgo/ginkgo
 go get -u honnef.co/go/tools/...
 popd
+
+GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
+
+pushd $GIT_ROOT
+
+[ ! -d "$GIT_ROOT/tools" ] && mkdir -p "$GIT_ROOT/tools"
+
+# Gets the quarks-utils version from go.mod
+quarks_utils_version=$(go list -u -m all | grep 'code.cloudfoundry.org/quarks-utils' | awk '{print $2}')
+quarks_utils_version=$(echo $quarks_utils_version | sed 's/.*-//g') # Keep only the commit
+
+# Clone quarks-utils if necessary and checkout the commit from go.mod
+if [ ! -d "$GIT_ROOT/tools/quarks-utils" ]; then
+    git clone "https://github.com/cloudfoundry-incubator/quarks-utils" "$GIT_ROOT/tools/quarks-utils"
+fi
+
+pushd "$GIT_ROOT/tools/quarks-utils"
+
+# Create a branch with the checkout, so we can also test changes locally and clone
+# only if we didn't do that already
+branch=$(git rev-parse --abbrev-ref HEAD)
+if [[ "$branch" != "utils" ]]; then
+    git checkout $quarks_utils_version -b utils
+else
+    git fetch --all
+    if [[ $(git --no-pager diff HEAD $quarks_utils_version --raw | wc -l) != "0" ]]; then
+        echo "Changes detected, resetting branch"
+        git reset --hard $quarks_utils_version
+    fi
+fi
+
+popd
+
+popd

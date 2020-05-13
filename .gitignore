@@ -6,6 +6,9 @@
 /helm
 /vendor
 
+# Dir to store dependencies (quarks-utils)
+/tools/
+
 # Created by https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 ### Emacs ###
 # -*- mode: gitignore; -*-

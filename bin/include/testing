@@ -1,5 +1,13 @@
 #!/bin/bash
 
+INTEGRATION_TESTS_PACKAGE="code.cloudfoundry.org/quarks-operator/pkg/bosh/...,\
+  code.cloudfoundry.org/quarks-operator/pkg/credsgen/...,\
+  code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/...,\
+  code.cloudfoundry.org/quarks-operator/pkg/kube/operator/...,\
+  code.cloudfoundry.org/quarks-operator/pkg/kube/util/...,\
+  code.cloudfoundry.org/quarks-operator/pkg/kube/config/..."
+INTEGRATION_TESTS_PACKAGE=${INTEGRATION_TESTS_PACKAGE// /}
+
 function setup_testing_tmp {
   if [ -z ${CF_OPERATOR_TESTING_TMP+x} ]
   then
