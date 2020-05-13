@@ -21,7 +21,7 @@ func NewQuarksStatefulSetPodMutator(log *zap.SugaredLogger, config *config.Confi
 
 	quarksStatefulSetMutator := NewPodMutator(log, config)
 
-	globalScopeType := admissionregistration.NamespacedScope
+	scope := admissionregistration.NamespacedScope
 	return &wh.OperatorWebhook{
 		FailurePolicy: admissionregistration.Fail,
 		Rules: []admissionregistration.RuleWithOperations{
@@ -30,7 +30,7 @@ func NewQuarksStatefulSetPodMutator(log *zap.SugaredLogger, config *config.Confi
 					APIGroups:   []string{""},
 					APIVersions: []string{"v1"},
 					Resources:   []string{"pods"},
-					Scope:       &globalScopeType,
+					Scope:       &scope,
 				},
 				Operations: []admissionregistration.OperationType{
 					"CREATE",

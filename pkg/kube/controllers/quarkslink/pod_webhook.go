@@ -21,7 +21,7 @@ func NewBOSHLinkPodMutator(log *zap.SugaredLogger, config *config.Config) *wh.Op
 
 	mutator := NewPodMutator(log, config)
 
-	globalScopeType := admissionregistration.NamespacedScope
+	scope := admissionregistration.NamespacedScope
 	return &wh.OperatorWebhook{
 		FailurePolicy: admissionregistration.Fail,
 		Rules: []admissionregistration.RuleWithOperations{
@@ -30,7 +30,7 @@ func NewBOSHLinkPodMutator(log *zap.SugaredLogger, config *config.Config) *wh.Op
 					APIGroups:   []string{""},
 					APIVersions: []string{"v1"},
 					Resources:   []string{"pods"},
-					Scope:       &globalScopeType,
+					Scope:       &scope,
 				},
 				Operations: []admissionregistration.OperationType{
 					"CREATE",
