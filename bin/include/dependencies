@@ -1,6 +1,6 @@
 #!/bin/bash
 
-quarks_job_release="v0.0.149-gb3a3dec"
+quarks_job_release="v1.0.152"
 
 # QUARKS_JOB_IMAGE_TAG is used for integration tests
 if [ -z ${QUARKS_JOB_IMAGE_TAG+x} ]; then
