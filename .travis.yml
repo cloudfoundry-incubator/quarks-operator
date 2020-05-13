@@ -56,11 +56,9 @@ before_script:
 script:
   - bin/build-image
   - kind load docker-image "cfcontainerization/cf-operator:dev" --name kind$KUBE
-  - bin/test-integration
-  - bin/test-integration storage
-  - bin/test-integration util
-  - bin/test-cli-e2e
-  - bin/test-helm-e2e
+  - make test-integration test-integration-storage test-integration-subcmds
+  - make test-cli-e2e
+  - make test-helm-e2e
   - bin/test-helm-e2e-storage
 
 jobs:
@@ -73,10 +71,8 @@ jobs:
         - go get -u golang.org/x/lint/golint
       name: lint
       script:
-        - bin/lint
-        - bin/vet
-        - bin/staticcheck
-    - script: bin/test-unit
+        - make lint vet
+    - script: make test-unit
       name: unit
       # don't inherit
       services: []

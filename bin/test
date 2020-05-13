@@ -1,5 +1,5 @@
 #!/bin/bash
 set -ev
 
-bin/test-unit
-bin/test-integration
+tools/quarks-utils/bin/test-unit
+tools/quarks-utils/bin/test-integration
