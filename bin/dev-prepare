@@ -32,11 +32,13 @@ kind load docker-image cfcontainerization/cf-operator:"$DOCKER_IMAGE_TAG" --name
 if [ "$TEST_HELM" ]; then
   ./bin/build-helm
 
-  echo "Deleting quarks-job chart and copying locally built helm chart from quarks-job"
-  rm -fr helm/cf-operator/charts/quarks-job
-  find helm/ -name \*.tgz -delete
-  mkdir -p helm/cf-operator/charts/quarks-job
-  cp -av ../quarks-job/helm/quarks-job helm/cf-operator/charts/
+  if [ "$QUARKS_JOB_IMAGE_TAG" = "dev" ]; then
+    echo "Deleting quarks-job chart and copying locally built helm chart from quarks-job"
+    rm -fr helm/cf-operator/charts/quarks-job
+    find helm/ -name \*.tgz -delete
+    mkdir -p helm/cf-operator/charts/quarks-job
+    cp -av ../quarks-job/helm/quarks-job helm/cf-operator/charts/
+  fi
 
   echo "The cf-operator helm chart is now available. Don't run bin/test-helm-e2e without setting SKIP_BUILD_HELM=1 to retain changes"
 fi
