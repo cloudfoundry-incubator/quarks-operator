@@ -32,6 +32,7 @@ To do this it relies on three Kubernetes components:
 * QuarksSecret, a custom resource and controller for the generation and rotation of secrets
 * [QuarksJob](https://github.com/cloudfoundry-incubator/quarks-job), templating for Kubernetes jobs, which can trigger jobs on configuration changes and persist their output to secrets
 * QuarksStatefulSet, adds canary, zero-downtime deployment, zones and active-passive probe support
+* QuarksRestart, restarts statefulset and deployment if the referenced secret changes
 
 The cf-operator supports RBAC and uses immutable, versioned secrets internally.
 
