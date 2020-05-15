@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sample-statefulset
+spec:
+  serviceName: ""
+  selector:
+    matchLabels:
+      app: sample 
+  template:
+    metadata:
+      labels:
+        app: sample
+    spec:
+      containers:
+      - name: busybox
+        image: busybox
+        command:
+        - sleep
+        - "3600"
+        volumeMounts:
+        - mountPath: /config
+          name: sample-volume
+      volumes:
+      - name: sample-volume
+        secret:
+          defaultMode: 420
+          secretName: sample-secret

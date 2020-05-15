@@ -18,6 +18,7 @@ import (
 	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/boshdeployment"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarkslink"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksrestart"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarkssecret"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksstatefulset"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
@@ -47,7 +48,7 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 	quarkssecret.AddSecretRotation,
 	quarksstatefulset.AddQuarksStatefulSet,
 	statefulset.AddStatefulSetRollout,
-	quarkslink.AddRestart,
+	quarksrestart.AddRestart,
 	quarksstatefulset.AddStatefulSetActivePassive,
 }
 

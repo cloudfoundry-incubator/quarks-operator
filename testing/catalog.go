@@ -20,6 +20,7 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-operator/pkg/credsgen"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksrestart"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
 	bm "code.cloudfoundry.org/quarks-operator/testing/boshmanifest"
@@ -296,6 +297,9 @@ func (c *Catalog) QuarksLinkSecret(deploymentName, linkType, linkName string, va
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
+			Annotations: map[string]string{
+				quarksrestart.AnnotationRestartOnUpdate: "true",
+			},
 			Labels: map[string]string{
 				bdv1.LabelDeploymentName:  deploymentName,
 				bdv1.LabelEntanglementKey: name,

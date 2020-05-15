@@ -96,6 +96,9 @@ var _ = Describe("JobFactory", func() {
 									"quarks.cloudfoundry.org/entanglement": "true",
 									"quarks.cloudfoundry.org/secret-type":  "ig-resolved",
 								},
+								AdditionalSecretAnnotations: map[string]string{
+									"quarks.cloudfoundry.org/restart-on-update": "true",
+								},
 								Versioned:         true,
 								PersistenceMethod: "",
 							},
@@ -105,6 +108,9 @@ var _ = Describe("JobFactory", func() {
 									"quarks.cloudfoundry.org/entanglement": "true",
 									"quarks.cloudfoundry.org/secret-type":  "bpm",
 								},
+								AdditionalSecretAnnotations: map[string]string{
+									"quarks.cloudfoundry.org/restart-on-update": "true",
+								},
 								Versioned:         true,
 								PersistenceMethod: "",
 							},
@@ -112,6 +118,9 @@ var _ = Describe("JobFactory", func() {
 								Name: "link",
 								AdditionalSecretLabels: map[string]string{
 									"quarks.cloudfoundry.org/entanglement": "true",
+								},
+								AdditionalSecretAnnotations: map[string]string{
+									"quarks.cloudfoundry.org/restart-on-update": "true",
 								},
 								Versioned:         false,
 								PersistenceMethod: "fan-out",
@@ -124,6 +133,9 @@ var _ = Describe("JobFactory", func() {
 									"quarks.cloudfoundry.org/entanglement": "true",
 									"quarks.cloudfoundry.org/secret-type":  "ig-resolved",
 								},
+								AdditionalSecretAnnotations: map[string]string{
+									"quarks.cloudfoundry.org/restart-on-update": "true",
+								},
 								Versioned:         true,
 								PersistenceMethod: "",
 							},
@@ -133,6 +145,9 @@ var _ = Describe("JobFactory", func() {
 									"quarks.cloudfoundry.org/entanglement": "true",
 									"quarks.cloudfoundry.org/secret-type":  "bpm",
 								},
+								AdditionalSecretAnnotations: map[string]string{
+									"quarks.cloudfoundry.org/restart-on-update": "true",
+								},
 								Versioned:         true,
 								PersistenceMethod: "",
 							},
@@ -140,6 +155,9 @@ var _ = Describe("JobFactory", func() {
 								Name: "link",
 								AdditionalSecretLabels: map[string]string{
 									"quarks.cloudfoundry.org/entanglement": "true",
+								},
+								AdditionalSecretAnnotations: map[string]string{
+									"quarks.cloudfoundry.org/restart-on-update": "true",
 								},
 								Versioned:         false,
 								PersistenceMethod: "fan-out",

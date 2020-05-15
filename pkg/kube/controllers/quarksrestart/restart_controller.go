@@ -1,14 +1,12 @@
-package quarkslink
+package quarksrestart
 
 import (
 	"context"
 	"fmt"
-	"regexp"
+	"reflect"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -17,19 +15,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/apis"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/reference"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 
-const name = "quarks-link-restart"
+// AnnotationRestartOnUpdate is the annotation required on the secret for the quarks restart feature
+var AnnotationRestartOnUpdate = fmt.Sprintf("%s/restart-on-update", apis.GroupName)
 
-var secretNameRegex = regexp.MustCompile("^link-[a-z0-9-]*$")
+const name = "quarks-restart"
 
-// AddRestart creates a new controller to restart statefulsets and deployments
-// if one of their pods has changed entanglement information
+// AddRestart creates a new controller to restart statefulsets,deployments & jobs
+// if one of their pod's referred secrets has changed
 func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, name+"-reconciler", mgr.GetEventRecorderFor(name+"-recorder"))
 	r := NewRestartReconciler(ctx, config, mgr)
@@ -43,69 +42,53 @@ func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager)
 
 	nsPred := monitorednamespace.NewNSPredicate(ctx, mgr.GetClient(), config.MonitoredID)
 
-	// watch entanglement secrets, trigger if one changes which is used by a pod
+	// watch secrets, trigger if one changes which is used by a pod
 	p := predicate.Funcs{
 		CreateFunc:  func(e event.CreateEvent) bool { return false },
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			// is it a modification to an entanglement secret?
-			nameMatch := secretNameRegex.MatchString(e.MetaNew.GetName())
-			if !nameMatch {
+
+			annotations := e.MetaNew.GetAnnotations()
+			if _, found := annotations[AnnotationRestartOnUpdate]; !found {
 				return false
 			}
 
-			labels := e.MetaNew.GetLabels()
-			if _, found := labels[bdv1.LabelDeploymentName]; !found {
-				return false
-			}
+			oldSecret := e.ObjectOld.(*corev1.Secret)
+			newSecret := e.ObjectNew.(*corev1.Secret)
 
-			ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
-				ctx, e.MetaNew, "corev1.Secret",
-				fmt.Sprintf("Update predicate passed for '%s/%s'", e.MetaNew.GetNamespace(), e.MetaNew.GetName()),
-			)
-			return true
+			if !reflect.DeepEqual(oldSecret.Data, newSecret.Data) {
+				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
+					ctx, e.MetaNew, "corev1.Secret",
+					fmt.Sprintf("Update predicate passed for '%s/%s'", e.MetaNew.GetNamespace(), e.MetaNew.GetName()),
+				)
+				return true
+			}
+			return false
 		},
 	}
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			secret := a.Object.(*corev1.Secret)
 
-			c := mgr.GetClient()
-
-			if reference.SkipReconciles(ctx, c, secret) {
+			if reference.SkipReconciles(ctx, mgr.GetClient(), secret) {
 				return []reconcile.Request{}
 			}
 
-			reconciles := []reconcile.Request{}
-			namespace := secret.GetNamespace()
-
-			list := &corev1.PodList{}
-			c.List(ctx, list, client.InNamespace(namespace))
-
-			for _, pod := range list.Items {
-				if !validEntanglement(pod.GetAnnotations()) {
-					continue
-				}
-
-				e := newEntanglement(pod.GetAnnotations())
-				if _, ok := e.find(*secret); ok {
-					reconciles = append(reconciles, reconcile.Request{
-						NamespacedName: types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace},
-					})
-				}
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForPod, secret, false)
+			if err != nil {
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s/%s': %v", secret.Namespace, secret.Name, err)
 			}
 
-			for _, reconcile := range reconciles {
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconcile, "QuarksLinkRestart", a.Meta.GetName(), "secret")
+			for _, reconciliation := range reconciles {
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "RestartController", a.Meta.GetName(), "secret")
 			}
 
 			return reconciles
 		}),
 	}, nsPred, p)
 	if err != nil {
-		return errors.Wrapf(err, "Watching secrets failed in %s controller.", name)
+		return errors.Wrapf(err, "Watching secrets failed in Restart controller failed.")
 	}
-
 	return nil
 }

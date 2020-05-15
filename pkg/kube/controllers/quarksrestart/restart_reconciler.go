@@ -1,4 +1,4 @@
-package quarkslink
+package quarksrestart
 
 import (
 	"context"
@@ -22,9 +22,9 @@ import (
 )
 
 // RestartKey has the timestamp of the last restart triggered by this reconciler
-var RestartKey = fmt.Sprintf("%s/restart-by-entanglement", apis.GroupName)
+var RestartKey = fmt.Sprintf("%s/restart", apis.GroupName)
 
-// NewRestartReconciler returns a new reconciler to restart deployments and statefulsets of entangled pods
+// NewRestartReconciler returns a new reconciler to restart deployments & statefulsets
 func NewRestartReconciler(ctx context.Context, config *config.Config, mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileRestart{
 		ctx:    ctx,
@@ -40,7 +40,8 @@ type ReconcileRestart struct {
 	config *config.Config
 }
 
-// Reconcile adds an annotation to deployments and statefulsets which own the entangled pod
+// Reconcile adds an annotation to deployments, statefulsets & jobs which own the pod
+// whose referred secret has changed
 func (r *ReconcileRestart) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	pod := &corev1.Pod{}
 
@@ -48,7 +49,7 @@ func (r *ReconcileRestart) Reconcile(request reconcile.Request) (reconcile.Resul
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()
 
-	log.Info(ctx, "Reconciling entangled pod ", request.NamespacedName)
+	log.Info(ctx, "Reconciling pod ", request.NamespacedName)
 	err := r.client.Get(ctx, request.NamespacedName, pod)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -64,11 +65,6 @@ func (r *ReconcileRestart) Reconcile(request reconcile.Request) (reconcile.Resul
 	if meltdown.NewAnnotationWindow(r.config.MeltdownDuration, pod.ObjectMeta.Annotations).Contains(time.Now()) {
 		log.WithEvent(pod, "Meltdown").Debugf(ctx, "Resource '%s/%s' is in meltdown, requeue reconcile after %s", pod.Namespace, pod.Name, r.config.MeltdownRequeueAfter)
 		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
-	}
-
-	// make sure this pod still has a valid entanglement
-	if !validEntanglement(pod.GetAnnotations()) {
-		return reconcile.Result{}, nil
 	}
 
 	// find owners and touch them
@@ -91,7 +87,7 @@ func (r *ReconcileRestart) Reconcile(request reconcile.Request) (reconcile.Resul
 	meltdown.SetLastReconcile(&pod.ObjectMeta, time.Now())
 	err = r.client.Update(ctx, pod)
 	if err != nil {
-		log.WithEvent(pod, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on quarks-link annotated pod '%s/%s' (%v): %s", pod.Namespace, pod.Name, pod.ResourceVersion, err)
+		log.WithEvent(pod, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on restart annotated pod '%s/%s' (%v): %s", pod.Namespace, pod.Name, pod.ResourceVersion, err)
 		return reconcile.Result{}, nil
 	}
 	return reconcile.Result{}, nil
@@ -106,6 +102,14 @@ func (r *ReconcileRestart) touchStatefulSet(ctx context.Context, namespace strin
 	if err != nil {
 		return err
 	}
+
+	// Sts part of QuarksStatefulset have their own logic of updation
+	for _, or := range sts.GetOwnerReferences() {
+		if or.Kind == "QuarksStatefulSet" {
+			return nil
+		}
+	}
+
 	sts.Spec.Template.SetAnnotations(
 		util.UnionMaps(sts.Spec.Template.GetAnnotations(), restartAnnotation()),
 	)

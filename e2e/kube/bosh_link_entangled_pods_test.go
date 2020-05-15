@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarkslink"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksrestart"
 	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 )
 
@@ -91,7 +91,7 @@ var _ = Describe("BOSHLinkEntanglements", func() {
 					err = kubectl.WaitForData(
 						namespace, "pod", podName,
 						`jsonpath="{.metadata.annotations}"`,
-						quarkslink.RestartKey,
+						quarksrestart.RestartKey,
 					)
 					Expect(err).ToNot(HaveOccurred(), "waiting for restart annotation on entangled pod")
 					podWait(selector)
@@ -135,7 +135,7 @@ var _ = Describe("BOSHLinkEntanglements", func() {
 					err = kubectl.WaitForData(
 						namespace, "pod", podName,
 						`jsonpath="{.metadata.annotations}"`,
-						quarkslink.RestartKey,
+						quarksrestart.RestartKey,
 					)
 					Expect(err).ToNot(HaveOccurred(), "waiting for restart annotation on entangled pod")
 
@@ -145,5 +145,4 @@ var _ = Describe("BOSHLinkEntanglements", func() {
 			})
 		})
 	})
-
 })
