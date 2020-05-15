@@ -175,7 +175,7 @@ func SkipReconciles(ctx context.Context, client crc.Client, object apis.Object) 
 
 func listBOSHDeployments(ctx context.Context, client crc.Client, namespace string) (*bdv1.BOSHDeploymentList, error) {
 	result := &bdv1.BOSHDeploymentList{}
-	err := client.List(ctx, result)
+	err := client.List(ctx, result, crc.InNamespace(namespace))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list BOSHDeployments")
 	}
@@ -185,7 +185,7 @@ func listBOSHDeployments(ctx context.Context, client crc.Client, namespace strin
 
 func listQuarksStatefulSets(ctx context.Context, client crc.Client, namespace string) (*qstsv1a1.QuarksStatefulSetList, error) {
 	result := &qstsv1a1.QuarksStatefulSetList{}
-	err := client.List(ctx, result)
+	err := client.List(ctx, result, crc.InNamespace(namespace))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list QuarksStatefulSets")
 	}

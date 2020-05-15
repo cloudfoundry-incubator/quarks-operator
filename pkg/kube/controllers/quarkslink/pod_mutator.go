@@ -50,6 +50,7 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}
+	m.log.Debugf("Pod mutator handler ran for pod '%s/%s' (%s)", pod.Namespace, pod.Name, req.Namespace)
 
 	updatedPod := pod.DeepCopy()
 	if validEntanglement(pod.GetAnnotations()) {
