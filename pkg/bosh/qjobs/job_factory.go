@@ -16,6 +16,7 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/converter"
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksrestart"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/desiredmanifest"
 	boshnames "code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/operatorimage"
@@ -86,6 +87,9 @@ func (f *JobFactory) VariableInterpolationJob(namespace string, deploymentName s
 	additionalLabels := map[string]string{
 		bdv1.LabelEntanglementKey: "true",
 	}
+	additionalAnnotations := map[string]string{
+		quarksrestart.AnnotationRestartOnUpdate: "true",
+	}
 
 	// Construct the var interpolation auto-errand qJob
 	qJob := &qjv1a1.QuarksJob{
@@ -99,7 +103,7 @@ func (f *JobFactory) VariableInterpolationJob(namespace string, deploymentName s
 		Spec: qjv1a1.QuarksJobSpec{
 			Output: &qjv1a1.Output{
 				OutputMap: qjv1a1.OutputMap{
-					desiredmanifest.Name: qjv1a1.NewFileToSecret(outputFilename, desiredmanifest.Name, true, nil, additionalLabels),
+					desiredmanifest.Name: qjv1a1.NewFileToSecret(outputFilename, desiredmanifest.Name, true, additionalAnnotations, additionalLabels),
 				},
 				SecretLabels: map[string]string{
 					bdv1.LabelDeploymentName:       deploymentName,
@@ -191,6 +195,9 @@ func (f *JobFactory) InstanceGroupManifestJob(namespace string, deploymentName s
 			PersistenceMethod: qjv1a1.PersistUsingFanOut,
 			AdditionalSecretLabels: map[string]string{
 				bdv1.LabelEntanglementKey: "true",
+			},
+			AdditionalSecretAnnotations: map[string]string{
+				quarksrestart.AnnotationRestartOnUpdate: "true",
 			},
 		}
 	}
@@ -296,6 +303,9 @@ func (f *JobFactory) releaseImageQJob(namespace string, deploymentName string, d
 					bdv1.LabelEntanglementKey:      "true",
 					bdv1.LabelDeploymentSecretType: bdv1.DeploymentSecretTypeInstanceGroupResolvedProperties.String(),
 				},
+				AdditionalSecretAnnotations: map[string]string{
+					quarksrestart.AnnotationRestartOnUpdate: "true",
+				},
 				Versioned: true,
 			},
 			BPMOutputFilename: qjv1a1.SecretOptions{
@@ -303,6 +313,9 @@ func (f *JobFactory) releaseImageQJob(namespace string, deploymentName string, d
 				AdditionalSecretLabels: map[string]string{
 					bdv1.LabelEntanglementKey:      "true",
 					bdv1.LabelDeploymentSecretType: bdv1.DeploymentSecretBPMInformation.String(),
+				},
+				AdditionalSecretAnnotations: map[string]string{
+					quarksrestart.AnnotationRestartOnUpdate: "true",
 				},
 				Versioned: true,
 			},
