@@ -8,7 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarkslink"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksrestart"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
@@ -71,7 +71,7 @@ var _ = Describe("QuarksLink Restart", func() {
 				statefulset, err := env.CollectStatefulSet(env.Namespace, "test-statefulset", 1)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(statefulset.Generation).To(Equal(int64(2)))
-				Expect(statefulset.Spec.Template.GetAnnotations()).To(HaveKey(quarkslink.RestartKey))
+				Expect(statefulset.Spec.Template.GetAnnotations()).To(HaveKey(quarksrestart.RestartKey))
 			})
 		})
 
@@ -104,7 +104,7 @@ var _ = Describe("QuarksLink Restart", func() {
 				dpl, err := env.CollectDeployment(env.Namespace, "test-deployment", 1)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(dpl.Generation).To(Equal(int64(2)))
-				Expect(dpl.Spec.Template.GetAnnotations()).To(HaveKey(quarkslink.RestartKey))
+				Expect(dpl.Spec.Template.GetAnnotations()).To(HaveKey(quarksrestart.RestartKey))
 			})
 		})
 	})
