@@ -32,7 +32,7 @@ require (
 	github.com/mitchellh/mapstructure v1.2.2
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/onsi/ginkgo v1.12.0
-	github.com/onsi/gomega v1.9.0
+	github.com/onsi/gomega v1.10.0
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/procfs v0.0.8 // indirect
 	github.com/spf13/afero v1.2.2
