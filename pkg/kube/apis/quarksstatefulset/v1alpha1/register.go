@@ -78,6 +78,9 @@ var (
 						"lastReconcile": {
 							Type: "string",
 						},
+						"ready": {
+							Type: "boolean",
+						},
 					},
 				},
 			},
