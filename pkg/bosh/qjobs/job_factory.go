@@ -121,7 +121,8 @@ func (f *JobFactory) VariableInterpolationJob(namespace string, deploymentName s
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "dm",
 							Labels: map[string]string{
-								"delete": "pod",
+								"delete":                 "pod",
+								bdv1.LabelDeploymentName: deploymentName,
 							},
 						},
 						Spec: corev1.PodSpec{
@@ -348,7 +349,8 @@ func (f *JobFactory) releaseImageQJob(namespace string, deploymentName string, d
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "ig",
 							Labels: map[string]string{
-								"delete": "pod",
+								"delete":                 "pod",
+								bdv1.LabelDeploymentName: "deploymentName",
 							},
 						},
 						Spec: corev1.PodSpec{
