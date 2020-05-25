@@ -16,6 +16,7 @@ env:
     - DOCKER_IMAGE_TAG=dev
     - CF_OPERATOR_WEBHOOK_SERVICE_HOST=172.17.0.1
     - OPERATOR_TEST_STORAGE_CLASS=standard
+    - PROJECT=quarks-operator
   jobs:
     - KUBE=1.14.10
     - KUBE=1.15.7
@@ -56,9 +57,12 @@ before_script:
 script:
   - bin/build-image
   - kind load docker-image "cfcontainerization/cf-operator:dev" --name kind$KUBE
-  - make test-integration test-integration-storage test-integration-subcmds
-  - make test-cli-e2e
-  - make test-helm-e2e
+  - bin/tools
+  - tools/quarks-utils/bin/test-integration
+  - INTEGRATION_SUITE=storage tools/quarks-utils/bin/test-integration
+  - INTEGRATION_SUITE=util tools/quarks-utils/bin/test-integration
+  - tools/quarks-utils/bin/test-cli-e2e
+  - tools/quarks-utils/bin/test-helm-e2e
   - bin/test-helm-e2e-storage
 
 jobs:
