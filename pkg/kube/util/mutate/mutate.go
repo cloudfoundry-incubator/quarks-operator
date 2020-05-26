@@ -1,15 +1,12 @@
 package mutate
 
 import (
-	"reflect"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 )
 
@@ -73,42 +70,6 @@ func QuarksJobMutateFn(qJob *qjv1a1.QuarksJob) controllerutil.MutateFn {
 		qJob.Spec.Output = updated.Spec.Output
 		qJob.Spec.Template = updated.Spec.Template
 		qJob.Spec.UpdateOnConfigChange = updated.Spec.UpdateOnConfigChange
-		return nil
-	}
-}
-
-// QuarksSecretMutateFn returns MutateFn which mutates QuarksSecret including:
-// - labels, annotations
-// - spec
-func QuarksSecretMutateFn(qSec *qsv1a1.QuarksSecret) controllerutil.MutateFn {
-	updated := qSec.DeepCopy()
-	return func() error {
-		qSec.Labels = updated.Labels
-		qSec.Annotations = updated.Annotations
-		qSec.Spec = updated.Spec
-
-		return nil
-	}
-}
-
-// SecretMutateFn returns MutateFn which mutates Secret including:
-// - labels, annotations
-// - stringData
-func SecretMutateFn(s *corev1.Secret) controllerutil.MutateFn {
-	updated := s.DeepCopy()
-	return func() error {
-		s.Labels = updated.Labels
-		s.Annotations = updated.Annotations
-		for key, data := range updated.StringData {
-			// Update once one of data has been changed
-			oriData, ok := s.Data[key]
-			if ok && reflect.DeepEqual(string(oriData), data) {
-				continue
-			} else {
-				s.StringData = updated.StringData
-				break
-			}
-		}
 		return nil
 	}
 }

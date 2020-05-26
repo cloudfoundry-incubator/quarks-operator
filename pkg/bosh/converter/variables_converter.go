@@ -8,8 +8,8 @@ import (
 
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
+	qsv1a1 "code.cloudfoundry.org/quarks-secret/pkg/kube/apis/quarkssecret/v1alpha1"
 )
 
 // VariablesConverter represents a BOSH manifest into kubernetes resources

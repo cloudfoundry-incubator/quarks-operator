@@ -87,7 +87,6 @@ var rootCmd = &cobra.Command{
 		cfg.WebhookServerPort = servicePort
 		cfg.WebhookUseServiceRef = useServiceRef
 		cfg.MaxBoshDeploymentWorkers = viper.GetInt("max-boshdeployment-workers")
-		cfg.MaxQuarksSecretWorkers = viper.GetInt("max-quarks-secret-workers")
 		cfg.MaxQuarksStatefulSetWorkers = viper.GetInt("max-quarks-statefulset-workers")
 
 		cmd.CtxTimeOut(cfg)
@@ -150,7 +149,6 @@ func init() {
 	pf.StringP("bosh-dns-docker-image", "", "coredns/coredns:1.6.3", "The docker image used for emulating bosh DNS (a CoreDNS image)")
 	pf.String("cluster-domain", "cluster.local", "The Kubernetes cluster domain")
 	pf.Int("max-boshdeployment-workers", 1, "Maximum number of workers concurrently running BOSHDeployment controller")
-	pf.Int("max-quarks-secret-workers", 5, "Maximum number of workers concurrently running QuarksSecret controller")
 	pf.Int("max-quarks-statefulset-workers", 1, "Maximum number of workers concurrently running QuarksStatefulSet controller")
 	pf.StringP("operator-webhook-service-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")
 	pf.StringP("operator-webhook-service-port", "p", "2999", "Port the webhook server listens on")
@@ -160,7 +158,6 @@ func init() {
 		"bosh-dns-docker-image",
 		"cluster-domain",
 		"max-boshdeployment-workers",
-		"max-quarks-secret-workers",
 		"max-quarks-statefulset-workers",
 		"operator-webhook-service-host",
 		"operator-webhook-service-port",
@@ -172,7 +169,6 @@ func init() {
 	argToEnv["bosh-dns-docker-image"] = "BOSH_DNS_DOCKER_IMAGE"
 	argToEnv["cluster-domain"] = "CLUSTER_DOMAIN"
 	argToEnv["max-boshdeployment-workers"] = "MAX_BOSHDEPLOYMENT_WORKERS"
-	argToEnv["max-quarks-secret-workers"] = "MAX_QUARKS_SECRET_WORKERS"
 	argToEnv["max-quarks-statefulset-workers"] = "MAX_QUARKS_STATEFULSET_WORKERS"
 	argToEnv["operator-webhook-service-host"] = "CF_OPERATOR_WEBHOOK_SERVICE_HOST"
 	argToEnv["operator-webhook-service-port"] = "CF_OPERATOR_WEBHOOK_SERVICE_PORT"
