@@ -21,8 +21,8 @@ import (
 	machinerytypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"code.cloudfoundry.org/quarks-operator/pkg/credsgen"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
+	"code.cloudfoundry.org/quarks-secret/pkg/credsgen"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )

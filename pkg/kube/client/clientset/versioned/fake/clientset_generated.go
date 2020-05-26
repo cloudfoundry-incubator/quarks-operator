@@ -11,8 +11,6 @@ import (
 	clientset "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned"
 	boshdeploymentv1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1"
 	fakeboshdeploymentv1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/typed/boshdeployment/v1alpha1/fake"
-	quarkssecretv1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/typed/quarkssecret/v1alpha1"
-	fakequarkssecretv1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/typed/quarkssecret/v1alpha1/fake"
 	quarksstatefulsetv1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/typed/quarksstatefulset/v1alpha1"
 	fakequarksstatefulsetv1alpha1 "code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned/typed/quarksstatefulset/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -72,11 +70,6 @@ var _ clientset.Interface = &Clientset{}
 // BoshdeploymentV1alpha1 retrieves the BoshdeploymentV1alpha1Client
 func (c *Clientset) BoshdeploymentV1alpha1() boshdeploymentv1alpha1.BoshdeploymentV1alpha1Interface {
 	return &fakeboshdeploymentv1alpha1.FakeBoshdeploymentV1alpha1{Fake: &c.Fake}
-}
-
-// QuarkssecretV1alpha1 retrieves the QuarkssecretV1alpha1Client
-func (c *Clientset) QuarkssecretV1alpha1() quarkssecretv1alpha1.QuarkssecretV1alpha1Interface {
-	return &fakequarkssecretv1alpha1.FakeQuarkssecretV1alpha1{Fake: &c.Fake}
 }
 
 // QuarksstatefulsetV1alpha1 retrieves the QuarksstatefulsetV1alpha1Client
