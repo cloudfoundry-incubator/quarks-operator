@@ -85,7 +85,6 @@ gen-command-docs:
 
 gen-crd-docs:
 	kubectl get crd boshdeployments.quarks.cloudfoundry.org -o yaml > docs/crds/quarks_v1alpha1_boshdeployment_crd.yaml
-	kubectl get crd quarkssecrets.quarks.cloudfoundry.org -o yaml > docs/crds/quarks_v1alpha1_quarkssecret_crd.yaml
 	kubectl get crd quarksstatefulsets.quarks.cloudfoundry.org -o yaml > docs/crds/quarks_v1alpha1_quarksstatefulset_crd.yaml
 
 verify-gen-kube:
