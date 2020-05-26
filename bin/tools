@@ -15,7 +15,7 @@ pushd $GIT_ROOT
 [ ! -d "$GIT_ROOT/tools" ] && mkdir -p "$GIT_ROOT/tools"
 
 # Gets the quarks-utils version from go.mod
-quarks_utils_version=$(go list -u -m all | grep 'code.cloudfoundry.org/quarks-utils' | awk '{print $2}')
+quarks_utils_version=$(grep code.cloudfoundry.org/quarks-utils go.mod | awk '{print $2}')
 quarks_utils_version=$(echo $quarks_utils_version | sed 's/.*-//g') # Keep only the commit
 
 # Clone quarks-utils if necessary and checkout the commit from go.mod
