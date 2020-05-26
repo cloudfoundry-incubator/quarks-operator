@@ -60,6 +60,10 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 var _ = BeforeEach(func() {
 	env = environment.NewEnvironment(kubeConfig)
+
+	SetDefaultEventuallyTimeout(env.PollTimeout)
+	SetDefaultEventuallyPollingInterval(env.PollInterval)
+
 	err := env.SetupClientsets()
 	if err != nil {
 		errors.Wrapf(err, "Integration setup failed. Creating clientsets in %s", env.Namespace)

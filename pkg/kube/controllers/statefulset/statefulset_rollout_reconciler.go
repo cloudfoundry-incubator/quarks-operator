@@ -6,20 +6,21 @@ import (
 	"strconv"
 	"time"
 
-	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
-
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/apis"
-	"code.cloudfoundry.org/quarks-utils/pkg/config"
-	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
-	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
+	"github.com/pkg/errors"
 
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/apis"
+	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
+	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 const (
@@ -99,6 +100,7 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 	}
 
 	if timedOut, err := r.failIfTimedOut(ctx, statefulSet, AnnotationUpdateWatchTime); timedOut || err != nil {
+		ctxlog.Errorf(ctx, "Error updating StatefulSet '%s' after timeout: %s", request.NamespacedName, err)
 		return reconcile.Result{}, err
 	}
 
@@ -159,7 +161,7 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 	}
 	if dirty {
 		if err = r.updateWithPartitionMove(ctx, statefulSet, oldPartition); err != nil {
-			ctxlog.Debug(ctx, "Error updating StatefulSet ", request.NamespacedName, err)
+			ctxlog.Errorf(ctx, "Error updating StatefulSet '%s' with partition move: %s", request.NamespacedName, err)
 			return reconcile.Result{}, err
 		}
 	}
@@ -170,7 +172,6 @@ func (r *ReconcileStatefulSetRollout) failIfTimedOut(ctx context.Context, statef
 	if getTimeOut(ctx, statefulSet, timeout) < 0 {
 		statefulSet.Annotations[AnnotationCanaryRollout] = rolloutStateFailed
 		if err := r.updateStatefulSet(ctx, &statefulSet); err != nil {
-			ctxlog.Debugf(ctx, "Error updating StatefulSet '%s/%s'", statefulSet.Namespace, statefulSet.Name, err)
 			return true, err
 		}
 		return true, nil
@@ -228,16 +229,10 @@ func (r *ReconcileStatefulSetRollout) updateStatefulSet(ctx context.Context, sta
 		return nil
 	})
 	if err != nil {
-		if err != nil {
-			statusError, ok := err.(*errors.StatusError)
-			if ok && statusError.Status().Code == 409 {
-				ctxlog.Debug(ctx, "Conflict while updating stateful set: ", err.Error())
-				return err
-			}
-			ctxlog.Errorf(ctx, "Error while updating stateful set: ", err.Error())
-			return err
+		statusError, ok := err.(*apierrors.StatusError)
+		if ok && statusError.Status().Code == 409 {
+			return errors.Wrap(err, "Conflict while updating stateful set")
 		}
-		ctxlog.Errorf(ctx, "Error while updating stateful set: ", err.Error())
 		return err
 	}
 	ctxlog.Debugf(ctx, "StatefulSet %s/%s updated to state Done ", statefulSet.Namespace, statefulSet.Name)
