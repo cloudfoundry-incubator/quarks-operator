@@ -1,6 +1,6 @@
 #!/bin/bash
 
-quarks_job_release="v1.0.152"
+quarks_job_release=$(grep code.cloudfoundry.org/quarks-job go.mod | awk '{print $2}')
 
 # QUARKS_JOB_IMAGE_TAG is used for integration tests
 if [ -z ${QUARKS_JOB_IMAGE_TAG+x} ]; then
