@@ -17,4 +17,3 @@ counterfeiter -o pkg/kube/controllers/fakes/withops.go pkg/kube/controllers/bosh
 counterfeiter -o pkg/bosh/bpmconverter/fakes/container_factory.go pkg/bosh/bpmconverter/ ContainerFactory
 counterfeiter -o pkg/bosh/bpmconverter/fakes/volume_factory.go pkg/bosh/bpmconverter/ VolumeFactory
 counterfeiter -o pkg/bosh/converter/fakes/release_image_provider.go pkg/bosh/manifest/ ReleaseImageProvider
-counterfeiter -o pkg/credsgen/fakes/generator.go pkg/credsgen/ Generator
