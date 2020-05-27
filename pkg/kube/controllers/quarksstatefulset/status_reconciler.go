@@ -69,7 +69,11 @@ func (r *ReconcileQuarksStatefulSetStatus) Reconcile(request reconcile.Request) 
 		return reconcile.Result{}, errors.Wrapf(err, "couldn't get latest StatefulSet")
 	}
 
-	if statefulSet.Status.ReadyReplicas == *statefulSet.Spec.Replicas {
+	replicas := int32(1)
+	if statefulSet.Spec.Replicas != nil {
+		replicas = *statefulSet.Spec.Replicas
+	}
+	if statefulSet.Status.ReadyReplicas == replicas {
 		qStatefulSet.Status.Ready = true
 		err = r.client.Status().Update(ctx, qStatefulSet)
 		if err != nil {
