@@ -46,7 +46,7 @@ var _ = Describe("Deploy", func() {
 		)
 
 		It("should deploy a pod and create services", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -82,7 +82,7 @@ var _ = Describe("Deploy", func() {
 		})
 
 		It("should deploy manifest with multiple ops correctly", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -220,7 +220,7 @@ var _ = Describe("Deploy", func() {
 
 	Context("when updating a readiness probe", func() {
 		BeforeEach(func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -265,7 +265,7 @@ var _ = Describe("Deploy", func() {
 
 	Context("when ops file is adding env vars", func() {
 		BeforeEach(func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -297,7 +297,7 @@ var _ = Describe("Deploy", func() {
 				env.Config.CtxTimeOut = 10 * time.Second
 			}()
 
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -311,7 +311,7 @@ var _ = Describe("Deploy", func() {
 
 	Context("when data provided by the user is incorrect", func() {
 		It("fails to create the resource if the validator gets an error when applying ops files", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -330,7 +330,7 @@ var _ = Describe("Deploy", func() {
 		})
 
 		It("failed to deploy an empty manifest", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -346,7 +346,7 @@ var _ = Describe("Deploy", func() {
 		})
 
 		It("failed to deploy due to a wrong manifest type", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -361,7 +361,7 @@ var _ = Describe("Deploy", func() {
 		})
 
 		It("failed to deploy due to an empty manifest ref", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -372,7 +372,7 @@ var _ = Describe("Deploy", func() {
 		})
 
 		It("failed to deploy due to a wrong ops type", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -387,7 +387,7 @@ var _ = Describe("Deploy", func() {
 		})
 
 		It("failed to deploy due to an empty ops ref", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -398,7 +398,7 @@ var _ = Describe("Deploy", func() {
 		})
 
 		It("failed to deploy due to a not existing ops ref", func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -412,7 +412,7 @@ var _ = Describe("Deploy", func() {
 		It("failed to deploy if the ops resource is not available before timeout", func(done Done) {
 			ch := make(chan machine.ChanResult)
 
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -432,7 +432,7 @@ var _ = Describe("Deploy", func() {
 
 		It("does not failed to deploy if the ops ref is created on time", func(done Done) {
 			ch := make(chan machine.ChanResult)
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -451,7 +451,7 @@ var _ = Describe("Deploy", func() {
 
 	Context("when a BOSHDeployment already exists in the namespace", func() {
 		BeforeEach(func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
