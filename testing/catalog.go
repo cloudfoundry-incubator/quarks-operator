@@ -208,41 +208,21 @@ func (c *Catalog) BOSHManifestWithActivePassiveProbes() (*manifest.Manifest, err
 	return m, nil
 }
 
-// BPMReleaseWithAffinityConfigMap returns a manifest with affinity configuration
-func (c *Catalog) BPMReleaseWithAffinityConfigMap(name string) corev1.ConfigMap {
-	return corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Data: map[string]string{
-			"manifest": bm.BPMReleaseWithAffinity,
-		},
-	}
-}
-
-// DefaultBOSHManifestConfigMap for integration tests
-func (c *Catalog) DefaultBOSHManifestConfigMap(name string) corev1.ConfigMap {
-	return corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Data: map[string]string{
-			"manifest": bm.NatsSmall,
-		},
-	}
-}
-
-// BOSHManifestConfigMapWithExplicitVars for integration tests
-func (c *Catalog) BOSHManifestConfigMapWithExplicitVars(name string) corev1.ConfigMap {
-	return corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Data: map[string]string{
-			"manifest": bm.NatsExplicitVar,
-		},
-	}
-}
-
-// BOSHManifestSecret for tests
-func (c *Catalog) BOSHManifestSecret(ref string, text string) corev1.Secret {
+// BOSHManifestSecret returns a secret containing the BOSH manifest
+func (c *Catalog) BOSHManifestSecret(name string, text string) corev1.Secret {
 	return corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: ref},
+		ObjectMeta: metav1.ObjectMeta{Name: name},
 		StringData: map[string]string{
+			"manifest": text,
+		},
+	}
+}
+
+// BOSHManifestConfigMap creates a config map containing the BOSH manifest
+func (c *Catalog) BOSHManifestConfigMap(name string, text string) corev1.ConfigMap {
+	return corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Data: map[string]string{
 			"manifest": text,
 		},
 	}
@@ -364,16 +344,6 @@ func (c *Catalog) InterpolateOpsConfigMap(name string) corev1.ConfigMap {
   path: /instance_groups/name=nats?/instances
   value: 1
 `,
-		},
-	}
-}
-
-// BOSHManifestConfigMapWithTwoInstanceGroups for tests
-func (c *Catalog) BOSHManifestConfigMapWithTwoInstanceGroups(name string) corev1.ConfigMap {
-	return corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Data: map[string]string{
-			"manifest": bm.BOSHManifestWithTwoInstanceGroups,
 		},
 	}
 }

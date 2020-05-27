@@ -27,7 +27,7 @@ var _ = Describe("Lifecycle", func() {
 
 		It("should exercise a deployment lifecycle", func() {
 			// Create BOSH manifest in config map
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap("manifest"))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap("manifest", bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
@@ -84,7 +84,7 @@ var _ = Describe("Lifecycle", func() {
 		})
 
 		It("executes the job's drain scripts", func() {
-			cm := env.DefaultBOSHManifestConfigMap("manifest")
+			cm := env.BOSHManifestConfigMap("manifest", bm.NatsSmall)
 			cm.Data["manifest"] = bm.Drains
 			tearDown, err := env.CreateConfigMap(env.Namespace, cm)
 			Expect(err).NotTo(HaveOccurred())

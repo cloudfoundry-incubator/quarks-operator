@@ -48,7 +48,7 @@ var _ = Describe("BDPL updates", func() {
 
 	Context("when updating a deployment", func() {
 		BeforeEach(func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -242,7 +242,7 @@ var _ = Describe("BDPL updates", func() {
 
 	Context("when updating a deployment which uses ops files", func() {
 		BeforeEach(func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.DefaultBOSHManifestConfigMap(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -300,7 +300,7 @@ var _ = Describe("BDPL updates", func() {
 
 	Context("when updating a deployment with explicit vars", func() {
 		BeforeEach(func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMapWithExplicitVars(manifestName))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsExplicitVar))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -362,7 +362,7 @@ var _ = Describe("BDPL updates", func() {
 	Context("when updating a deployment with multiple instance groups", func() {
 		It("it should only update correctly and have correct secret versions in volume mounts", func() {
 			manifestName := "bosh-manifest-two-instance-groups"
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMapWithTwoInstanceGroups("fooconfigmap"))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap("fooconfigmap", bm.BOSHManifestWithTwoInstanceGroups))
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 

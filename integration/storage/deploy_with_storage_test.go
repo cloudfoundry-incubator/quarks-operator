@@ -79,7 +79,7 @@ var _ = Describe("DeployWithStorage", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
-			tearDown, err = env.CreateConfigMap(env.Namespace, env.BPMReleaseWithAffinityConfigMap("bpm-affinity"))
+			tearDown, err = env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap("bpm-affinity", bm.BPMReleaseWithAffinity))
 			Expect(err).NotTo(HaveOccurred(), "error creating configMap")
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
