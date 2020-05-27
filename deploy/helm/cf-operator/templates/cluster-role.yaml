@@ -9,7 +9,6 @@ rules:
   - certificates.k8s.io
   resources:
   - certificatesigningrequests
-  - signers
   verbs:
   - approve
   - create
@@ -17,6 +16,15 @@ rules:
   - list
   - update
   - watch
+
+- apiGroups:
+  - certificates.k8s.io
+  resources:
+  - signers
+  resourceNames:
+  - kubernetes.io/legacy-unknown
+  verbs:
+  - approve
 
 - apiGroups:
   - ""
