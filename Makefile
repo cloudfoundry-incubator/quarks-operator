@@ -94,3 +94,14 @@ verify-gen-kube:
 
 coverage: tools
 	$(QUARKS_UTILS)/bin/coverage
+
+############ WEBSITE TARGETS #############
+
+website-serve:
+	$(MAKE) -C website serve
+
+website-publish:
+	$(MAKE) -C website publish
+
+website-build:
+	$(MAKE) -C website build
