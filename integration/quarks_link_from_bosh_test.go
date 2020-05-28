@@ -50,11 +50,12 @@ var _ = Describe("BOSHLinks", func() {
 				Expect(err).NotTo(HaveOccurred())
 				secret, err := env.GetSecret(env.Namespace, secretName)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(secret.Data).To(Equal(map[string][]byte{
-					"nats.password": []byte("changeme"),
-					"nats.port":     []byte("4222"),
-					"nats.user":     []byte("admin"),
-				}))
+				Expect(secret.Data).To(HaveKeyWithValue(
+					"nats.password", []byte("changeme")))
+				Expect(secret.Data).To(HaveKeyWithValue(
+					"nats.port", []byte("4222")))
+				Expect(secret.Data).To(HaveKeyWithValue(
+					"nats.user", []byte("admin")))
 			})
 		})
 	})
@@ -72,11 +73,12 @@ var _ = Describe("BOSHLinks", func() {
 				Expect(err).NotTo(HaveOccurred())
 				secret, err := env.GetSecret(env.Namespace, secretName)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(secret.Data).To(Equal(map[string][]byte{
-					"nats.password": []byte("changeme"),
-					"nats.port":     []byte("4222"),
-					"nats.user":     []byte("admin"),
-				}))
+				Expect(secret.Data).To(HaveKeyWithValue(
+					"nats.password", []byte("changeme")))
+				Expect(secret.Data).To(HaveKeyWithValue(
+					"nats.port", []byte("4222")))
+				Expect(secret.Data).To(HaveKeyWithValue(
+					"nats.user", []byte("admin")))
 			})
 		})
 	})

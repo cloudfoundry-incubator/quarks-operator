@@ -1,22 +1,25 @@
 // Package boshmanifest contains text assets for BOSH manifests and ops files
 package boshmanifest
 
+// The manifests in this file are used in integration tests. They reference
+// existing docker images and are deployable.
+
 // BOSHManifestWithTwoInstanceGroups has two instance groups nats and route_registrar
 const BOSHManifestWithTwoInstanceGroups = `---
 name: bosh-manifest-two-instance-groups
 releases:
 - name: nats
-  version: "26"
+  version: "33"
   url: docker.io/cfcontainerization
   stemcell:
-    os: opensuse-42.3
-    version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
+    os: SLE_15_SP1
+    version: 26.1-7.0.0_374.gb8e8e6af
 - name: routing
-  version: 0.188.0
+  version: 0.198.0
   url: docker.io/cfcontainerization
   stemcell:
-    os: opensuse-42.3
-    version: 36.g03b4653-30.80-7.0.0_332.g0d8469bb
+    os: SLE_15_SP1
+    version: 26.1-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: nats
   instances: 2
@@ -70,11 +73,11 @@ const NatsSmall = `---
 name: test
 releases:
 - name: nats
-  version: "26"
+  version: "33"
   url: docker.io/cfcontainerization
   stemcell:
-    os: opensuse-42.3
-    version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
+    os: SLE_15_SP1
+    version: 26.1-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: nats
   instances: 2
@@ -101,11 +104,11 @@ const NatsExplicitVar = `---
 name: test
 releases:
 - name: nats
-  version: "26"
+  version: "33"
   url: docker.io/cfcontainerization
   stemcell:
-    os: opensuse-42.3
-    version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
+    os: SLE_15_SP1
+    version: 26.1-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: nats
   instances: 2
@@ -137,11 +140,11 @@ const NatsSmallWithLinks = `---
 name: test
 releases:
 - name: nats
-  version: "26"
+  version: "33"
   url: docker.io/cfcontainerization
   stemcell:
-    os: opensuse-42.3
-    version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
+    os: SLE_15_SP1
+    version: 26.1-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: nats
   instances: 2
@@ -171,11 +174,11 @@ const NatsSmallWithPatch = `---
 name: test
 releases:
 - name: nats
-  version: "26"
+  version: "33"
   url: docker.io/cfcontainerization
   stemcell:
-    os: opensuse-42.3
-    version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
+    os: SLE_15_SP1
+    version: 26.1-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: nats
   instances: 1
@@ -215,11 +218,11 @@ const NatsSmokeTestWithExternalLinks = `---
 name: test
 releases:
 - name: nats
-  version: "26"
+  version: "33"
   url: docker.io/cfcontainerization
   stemcell:
-    os: opensuse-42.3
-    version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
+    os: SLE_15_SP1
+    version: 26.1-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: nats-smoke-tests
   instances: 1
@@ -240,8 +243,8 @@ releases:
   version: "0.0.6"
   url: docker.io/cfcontainerization
   stemcell:
-    os: opensuse-42.3
-    version: 36.g03b4653-30.80-7.0.0_346.ge9dd9ff3
+    os: SLE_15_SP1
+    version: 26.1-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: drains
   instances: 1
@@ -259,11 +262,11 @@ name: test-bdpl
 
 releases:
 - name: bpm
-  version: 1.0.4
+  version: 1.1.7
   url: docker.io/cfcontainerization
   stemcell:
-    os: opensuse-42.3
-    version: 36.g03b4653-30.80-7.0.0_316.gcf9fe4a7
+    os: SLE_15_SP1
+    version: 26.1-7.0.0_374.gb8e8e6af
 
 instance_groups:
 - name: bpm
@@ -291,11 +294,11 @@ name: routing
 
 releases:
 - name: routing
-  version: 0.188.0
+  version: 0.198.0
   url: docker.io/cfcontainerization
   stemcell:
-    os: opensuse-42.3
-    version: 36.g03b4653-30.80-7.0.0_332.g0d8469bb
+    os: SLE_15_SP1
+    version: 26.1-7.0.0_374.gb8e8e6af
 
 instance_groups:
 - name: route_registrar
@@ -334,11 +337,11 @@ const Diego = `
 
   releases:
   - name: diego
-    version: 2.32.0
+    version: 2.44.0
     url: docker.io/cfcontainerization
     stemcell:
-      os: opensuse-42.3
-      version: 36.g03b4653-30.80-7.0.0_332.g0d8469bb
+      os: SLE_15_SP1
+      version: 26.1-7.0.0_374.gb8e8e6af
 
   instance_groups:
   - name: file_server
@@ -351,68 +354,4 @@ const Diego = `
           enabled: true
         enable_consul_service_registration: false
         set_kernel_parameters: false
-`
-
-// ManifestWithExternalLinks has explicit BOSH links consumes.
-const ManifestWithExternalLinks = `---
-name: test
-releases:
-- name: loggregator
-  url: https://bosh.io/d/github.com/cloudfoundry/loggregator-release?v=105.0
-  version: "105.0"
-  sha1: d0bed91335aaac418eb6e8b2be13c6ecf4ce7b90
-stemcells:
-- alias: default
-  os: ubuntu-xenial
-  version: "250.17"
-instance_groups:
-- name: log-api
-  instances: 2
-  vm_type: minimal
-  stemcell: default
-  update:
-    serial: true
-  networks:
-  - name: default
-  jobs:
-  - name: loggregator_trafficcontroller
-    release: loggregator
-    consumes:
-      doppler: {from: doppler}
-    properties:
-      uaa:
-        internal_url: https://uaa.service.cf.internal:8443
-        ca_cert: "uaa_ca_certificate"
-      doppler:
-        grpc_port: 6060
-      loggregator:
-        tls:
-          cc_trafficcontroller:
-            cert: "fake_cert"
-            key: "fake_private_key"
-          ca_cert: "fake_ca_cert"
-          trafficcontroller:
-            cert: "fake_cert"
-            key: "fake_private_key"
-        uaa:
-          client_secret: "uaa_clients_doppler_secret"
-      system_domain: "system_domain"
-      ssl:
-        skip_cert_verify: true
-      cc:
-        internal_service_hostname: "cloud-controller-ng.service.cf.internal"
-        tls_port: 9023
-        mutual_tls:
-          ca_cert: "fake_certificate"
-properties:
-  quarks_links:
-    doppler:
-      type: doppler
-      address: doppler-0.default.svc.cluster.local
-      instances:
-      - name: doppler
-        id: pod-uuid
-        index: 0
-        address: 172.30.10.1
-        bootstrap: true
 `
