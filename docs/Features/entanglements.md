@@ -1,4 +1,8 @@
-# Entanglements
+---
+title: "Entanglements"
+linkTitle: "Entanglements"
+weight: 11
+---
 
 Also known as "Quarks Links" - they provide a way to share/discover information between BOSH and Kube Native components.
 

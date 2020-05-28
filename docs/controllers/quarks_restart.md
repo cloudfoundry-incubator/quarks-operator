@@ -1,10 +1,10 @@
-# QuarksSecret
-
-- [QuarksSecret](#quarkssecret)
-  - [Description](#description)
-      - [Watches in Quarks Restart Controller](#watches-in-quarks-restart-controller)
-      - [Reconciliation in Quarks Restart Controller](#reconciliation-in-quarks-restart-controller)
-  - [`QuarksRestart` Examples](#quarksrestart-examples)
+---
+title: "Quarks restart"
+linkTitle: "Quarks restart"
+weight: 4
+description: >
+  The QuarksRestart controller is responsible for restarting kubernetes resources such as `StatefulSet` and `Deployment`. 
+---
 
 ## Description
 

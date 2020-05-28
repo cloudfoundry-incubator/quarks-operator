@@ -1,4 +1,8 @@
-# Naming Conventions
+---
+title: "Naming Conventions"
+linkTitle: "Naming Conventions"
+weight: 11
+---
 
 - [Naming Conventions](#naming-conventions)
   - [Kubernetes Resources](#kubernetes-resources)

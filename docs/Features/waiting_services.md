@@ -1,4 +1,8 @@
-# Service wait for Kubernetes native pods
+---
+title: "Service wait for Kubernetes native pods"
+linkTitle: "Waiting for services"
+weight: 11
+---
 
 To support clean deployments and correct depedency management, the quarks-operator allows a Kubernetes `Pod` to wait until one (or more) `Service` is available.
 
