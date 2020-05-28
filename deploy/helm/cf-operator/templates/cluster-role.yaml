@@ -12,6 +12,7 @@ rules:
   verbs:
   - approve
   - create
+  - delete
   - get
   - list
   - update
