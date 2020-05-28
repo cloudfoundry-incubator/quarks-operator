@@ -17,6 +17,11 @@ After cloning the repo (with submodules), just run `make website-serve` to test 
     $> make website-serve
 ```
 
+Or just sync the submodules:
+```
+    $> git submodule update --init --recursive --depth 1
+```
+
 To run the website locally in other platforms, e.g. MacOS:
 
 ```
