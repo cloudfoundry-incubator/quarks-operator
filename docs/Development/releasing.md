@@ -1,4 +1,8 @@
-# Releasing
+---
+title: "Releasing"
+linkTitle: "Releasing"
+weight: 11
+---
 
 We're releasing based on tags, which contain our version number. The format is 'v0.0.0'.
 The release title will be set to this version.

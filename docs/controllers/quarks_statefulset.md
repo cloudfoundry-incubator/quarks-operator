@@ -1,4 +1,10 @@
-# QuarksStatefulSet
+---
+title: "Quarks StatefulSet"
+linkTitle: "Quarks StatefulSet"
+weight: 4
+description: >
+  The QuarksStatefulSet component can be understood as the set of controllers responsible for translating the BOSH manifest `instance_groups` into Kubernetes resources.
+---
 
 1. [QuarksStatefulSet](#QuarksStatefulSet)
    1. [Description](#Description)

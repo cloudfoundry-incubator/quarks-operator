@@ -1,4 +1,9 @@
-# Transforming BOSH concepts to Kubernetes
+---
+title: "From BOSH to Kubernetes"
+linkTitle: "Transforming BOSH concepts to Kubernetes"
+weight: 11
+---
+
 
 - [Transforming BOSH concepts to Kubernetes](#transforming-bosh-concepts-to-kubernetes)
   - [Open Questions](#open-questions)

@@ -1,4 +1,8 @@
-# Testing
+---
+title: "Testing"
+linkTitle: "Testing"
+weight: 11
+---
 
 - [Testing](#testing)
   - [Tests description](#tests-description)

@@ -1,3 +1,11 @@
+---
+title: "Bosh Deployment"
+linkTitle: "Bosh Deployment"
+weight: 4
+description: >
+  Deploying a Bosh Deployment on Kubernetes
+---
+
 # BOSHDeployment
 
 1. [BOSHDeployment](#boshdeployment)

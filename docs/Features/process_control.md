@@ -1,4 +1,8 @@
-# Process Control
+---
+title: "Process Control"
+linkTitle: "Process Control"
+weight: 11
+---
 
 ## Background & Motivation
 

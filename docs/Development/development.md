@@ -1,4 +1,8 @@
-# Development
+---
+title: "Development Guidelines"
+linkTitle: "Development Guidelines"
+weight: 11
+---
 
 - [Development](#development)
   - [Requirements](#requirements)

@@ -1,6 +1,10 @@
-# StatefulSet Rollout
-
-To implement the BOSH behaviour during rollout of a new manifest, an special controller is introduced.
+---
+title: "StatefulSet Rollout"
+linkTitle: "StatefulSet Rollout"
+weight: 4
+description: >
+  To implement the BOSH behaviour during rollout of a new manifest, an special controller is introduced.
+---
 
 ## Motivation
 

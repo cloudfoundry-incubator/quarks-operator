@@ -1,4 +1,8 @@
-# List
+---
+title: "Labels"
+linkTitle: "Labels"
+weight: 11
+---
 
 * `bdv1.LabelDeploymentName` "quarks.cloudfoundry.org/deployment-name"
 * `bdv1.LabelDeploymentSecretType` "quarks.cloudfoundry.org/secret-type"

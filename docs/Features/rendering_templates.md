@@ -1,4 +1,8 @@
-# Rendering BOSH Templates
+---
+title: "Rendering BOSH Templates"
+linkTitle: "Rendering BOSH Templates"
+weight: 11
+---
 
 - [Rendering BOSH Templates](#rendering-bosh-templates)
   - [Flow](#flow)
