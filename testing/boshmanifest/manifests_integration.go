@@ -4,6 +4,31 @@ package boshmanifest
 // The manifests in this file are used in integration tests. They reference
 // existing docker images and are deployable.
 
+// Gora is a BOSH manifest for our gora test release, without SSL
+const Gora = `---
+releases:
+- name: quarks-gora
+  version: "0.0.4"
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: SLE_15_SP1-26.1
+    version: 7.0.0_374.gb8e8e6af
+instance_groups:
+- name: quarks-gora
+  instances: 2
+  jobs:
+  - name: quarks-gora
+    release: quarks-gora
+    properties:
+      quarks-gora:
+        port: 4222
+      quarks:
+        ports:
+        - name: "quarks-gora"
+          protocol: "TCP"
+          internal: 4222
+`
+
 // BOSHManifestWithTwoInstanceGroups has two instance groups nats and route_registrar
 const BOSHManifestWithTwoInstanceGroups = `---
 name: bosh-manifest-two-instance-groups
