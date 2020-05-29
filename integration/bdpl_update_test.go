@@ -21,8 +21,13 @@ var _ = Describe("BDPL updates", func() {
 	const (
 		deploymentName = "test"
 		manifestName   = "manifest"
-		replaceEnvOps  = `- type: replace
-  path: /instance_groups/name=nats/jobs/name=nats/properties/quarks?
+
+		opOneInstance = `- type: replace
+  path: /instance_groups/name=nats?/instances
+  value: 1
+`
+		opReplaceEnv = `- type: replace
+  path: /instance_groups/name=nats/jobs/name=quarks-gora/properties/quarks?
   value:
     envs:
     - name: XPOD_IPX
@@ -31,8 +36,9 @@ var _ = Describe("BDPL updates", func() {
           apiVersion: v1
           fieldPath: status.podIP
 `
-		replacePortsOps = `- type: replace
-  path: /instance_groups/name=nats/jobs/name=nats/properties/quarks/ports?/-
+
+		opReplacePorts = `- type: replace
+  path: /instance_groups/name=nats/jobs/name=quarks-gora/properties/quarks/ports?/-
   value:
     name: "fake-port"
     protocol: "TCP"
@@ -63,7 +69,7 @@ var _ = Describe("BDPL updates", func() {
 
 		Context("by adding an ops file to the bdpl custom resource", func() {
 			BeforeEach(func() {
-				tearDown, err := env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("test-ops"))
+				tearDown, err := env.CreateConfigMap(env.Namespace, env.CustomOpsConfigMap("test-ops", opOneInstance))
 				Expect(err).NotTo(HaveOccurred())
 				tearDowns = append(tearDowns, tearDown)
 
@@ -100,7 +106,7 @@ var _ = Describe("BDPL updates", func() {
 
 		Context("by adding a new env var to BPM via quarks job properties", func() {
 			BeforeEach(func() {
-				tearDown, err := env.CreateSecret(env.Namespace, env.CustomOpsSecret("ops-bpm", replaceEnvOps))
+				tearDown, err := env.CreateSecret(env.Namespace, env.CustomOpsSecret("ops-bpm", opReplaceEnv))
 				Expect(err).NotTo(HaveOccurred())
 				tearDowns = append(tearDowns, tearDown)
 
@@ -127,7 +133,7 @@ var _ = Describe("BDPL updates", func() {
 
 		Context("by adding a new port via quarks job properties", func() {
 			BeforeEach(func() {
-				tearDown, err := env.CreateSecret(env.Namespace, env.CustomOpsSecret("ops-ports", replacePortsOps))
+				tearDown, err := env.CreateSecret(env.Namespace, env.CustomOpsSecret("ops-ports", opReplacePorts))
 				Expect(err).NotTo(HaveOccurred())
 				tearDowns = append(tearDowns, tearDown)
 
@@ -246,7 +252,7 @@ var _ = Describe("BDPL updates", func() {
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
-			tearDown, err = env.CreateConfigMap(env.Namespace, env.InterpolateOpsConfigMap("bosh-ops"))
+			tearDown, err = env.CreateConfigMap(env.Namespace, env.CustomOpsConfigMap("bosh-ops", opOneInstance))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 

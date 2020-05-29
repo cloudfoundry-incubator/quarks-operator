@@ -335,44 +335,6 @@ func (c *Catalog) CustomOpsSecret(name string, change string) corev1.Secret {
 	}
 }
 
-// InterpolateOpsConfigMap for ops interpolate configmap tests
-func (c *Catalog) InterpolateOpsConfigMap(name string) corev1.ConfigMap {
-	return corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Data: map[string]string{
-			"ops": `- type: replace
-  path: /instance_groups/name=nats?/instances
-  value: 1
-`,
-		},
-	}
-}
-
-// InterpolateOpsSecret for ops interpolate secret tests
-func (c *Catalog) InterpolateOpsSecret(name string) corev1.Secret {
-	return corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		StringData: map[string]string{
-			"ops": `- type: replace
-  path: /instance_groups/name=nats?/instances
-  value: 3
-`,
-		},
-	}
-}
-
-// InterpolateOpsIncorrectSecret for ops interpolate incorrect secret tests
-func (c *Catalog) InterpolateOpsIncorrectSecret(name string) corev1.Secret {
-	return corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		StringData: map[string]string{
-			"ops": `- type: remove
-  path: /instance_groups/name=api
-`,
-		},
-	}
-}
-
 // DefaultCA for use in tests
 func (c *Catalog) DefaultCA(name string, ca credsgen.Certificate) corev1.Secret {
 	return corev1.Secret{
