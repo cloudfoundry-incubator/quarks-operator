@@ -21,29 +21,6 @@ var _ = Describe("BDPL updates", func() {
 	const (
 		deploymentName = "test"
 		manifestName   = "manifest"
-
-		opOneInstance = `- type: replace
-  path: /instance_groups/name=nats?/instances
-  value: 1
-`
-		opReplaceEnv = `- type: replace
-  path: /instance_groups/name=nats/jobs/name=quarks-gora/properties/quarks?
-  value:
-    envs:
-    - name: XPOD_IPX
-      valueFrom:
-        fieldRef:
-          apiVersion: v1
-          fieldPath: status.podIP
-`
-
-		opReplacePorts = `- type: replace
-  path: /instance_groups/name=nats/jobs/name=quarks-gora/properties/quarks/ports?/-
-  value:
-    name: "fake-port"
-    protocol: "TCP"
-    internal: 6443
-`
 	)
 
 	var tearDowns []machine.TearDownFunc
@@ -53,6 +30,10 @@ var _ = Describe("BDPL updates", func() {
 	})
 
 	Context("when updating a deployment", func() {
+		opOneInstance := `- type: replace
+  path: /instance_groups/name=nats?/instances
+  value: 1
+`
 		BeforeEach(func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
 			Expect(err).NotTo(HaveOccurred())
@@ -105,6 +86,16 @@ var _ = Describe("BDPL updates", func() {
 		})
 
 		Context("by adding a new env var to BPM via quarks job properties", func() {
+			opReplaceEnv := `- type: replace
+  path: /instance_groups/name=nats/jobs/name=nats/properties/quarks?
+  value:
+    envs:
+    - name: XPOD_IPX
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: status.podIP
+`
 			BeforeEach(func() {
 				tearDown, err := env.CreateSecret(env.Namespace, env.CustomOpsSecret("ops-bpm", opReplaceEnv))
 				Expect(err).NotTo(HaveOccurred())
@@ -132,6 +123,13 @@ var _ = Describe("BDPL updates", func() {
 		})
 
 		Context("by adding a new port via quarks job properties", func() {
+			opReplacePorts := `- type: replace
+  path: /instance_groups/name=nats/jobs/name=nats/properties/quarks/ports?/-
+  value:
+    name: "fake-port"
+    protocol: "TCP"
+    internal: 6443
+`
 			BeforeEach(func() {
 				tearDown, err := env.CreateSecret(env.Namespace, env.CustomOpsSecret("ops-ports", opReplacePorts))
 				Expect(err).NotTo(HaveOccurred())
@@ -247,8 +245,12 @@ var _ = Describe("BDPL updates", func() {
 	})
 
 	Context("when updating a deployment which uses ops files", func() {
+		opOneInstance := `- type: replace
+  path: /instance_groups/name=quarks-gora?/instances
+  value: 1
+`
 		BeforeEach(func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.Gora))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -261,7 +263,7 @@ var _ = Describe("BDPL updates", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "1", 1)
+			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "quarks-gora", "1", 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 		})
 
@@ -269,7 +271,7 @@ var _ = Describe("BDPL updates", func() {
 			ops, err := env.GetConfigMap(env.Namespace, "bosh-ops")
 			Expect(err).NotTo(HaveOccurred())
 			ops.Data["ops"] = `- type: replace
-  path: /instance_groups/name=nats?/instances
+  path: /instance_groups/name=quarks-gora?/instances
   value: ` + n
 			_, _, err = env.UpdateConfigMap(env.Namespace, *ops)
 			Expect(err).NotTo(HaveOccurred())
@@ -280,10 +282,10 @@ var _ = Describe("BDPL updates", func() {
 				scaleDeployment("2")
 
 				By("checking for instance group updated pods")
-				err := env.WaitForInstanceGroupVersions(env.Namespace, deploymentName, "nats", 2, "2", "3")
+				err := env.WaitForInstanceGroupVersions(env.Namespace, deploymentName, "quarks-gora", 2, "2", "3")
 				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
-				pods, _ := env.GetInstanceGroupPods(env.Namespace, deploymentName, "nats")
+				pods, _ := env.GetInstanceGroupPods(env.Namespace, deploymentName, "quarks-gora")
 				Expect(len(pods.Items)).To(Equal(2))
 
 				By("updating the deployment again")
@@ -291,14 +293,14 @@ var _ = Describe("BDPL updates", func() {
 
 				By("checking if the deployment was again updated")
 				Eventually(func() int {
-					pods, err := env.GetInstanceGroupPods(env.Namespace, deploymentName, "nats")
+					pods, err := env.GetInstanceGroupPods(env.Namespace, deploymentName, "quarks-gora")
 					if err != nil {
 						return 0
 					}
 					return len(pods.Items)
 				}).Should(Equal(3))
 
-				pods, _ = env.GetInstanceGroupPods(env.Namespace, deploymentName, "nats")
+				pods, _ = env.GetInstanceGroupPods(env.Namespace, deploymentName, "quarks-gora")
 				Expect(len(pods.Items)).To(Equal(3))
 			})
 		})
