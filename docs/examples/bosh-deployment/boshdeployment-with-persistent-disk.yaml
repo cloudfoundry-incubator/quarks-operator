@@ -19,11 +19,11 @@ data:
     name: nats-deployment
     releases:
     - name: nats
-      version: "26"
+      version: "33"
       url: docker.io/cfcontainerization
       stemcell:
-        os: opensuse-42.3
-        version: 30.g9c91e77-30.80-7.0.0_257.gb97ced55
+        os: SLE_15_SP1
+        version: 26.1-7.0.0_374.gb8e8e6af
     instance_groups:
     - name: nats
       instances: 1
