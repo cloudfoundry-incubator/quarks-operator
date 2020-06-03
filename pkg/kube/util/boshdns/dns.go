@@ -275,13 +275,19 @@ func (dns *boshDomainNameService) createCorefile(namespace string) (string, erro
 			// Implement BOSH DNS placeholder alias: https://bosh.io/docs/dns/#placeholder-alias.
 			instanceGroup, found := dns.InstanceGroups.InstanceGroupByName(target.InstanceGroup)
 			if !found {
-				continue
+				// Even if the instance group doesn't exist, the user may want to setup aliases to other kube service names
+				rewrites = dns.gatherSimpleRewrites(rewrites,
+					target,
+					namespace,
+					alias,
+				)
+			} else {
+				rewrites = dns.gatherAllRewrites(rewrites,
+					*instanceGroup,
+					target,
+					namespace,
+					alias)
 			}
-			rewrites = dns.gatherAllRewrites(rewrites,
-				*instanceGroup,
-				target,
-				namespace,
-				alias)
 		}
 	}
 
@@ -292,6 +298,23 @@ func (dns *boshDomainNameService) createCorefile(namespace string) (string, erro
 	}
 
 	return config.String(), nil
+}
+
+func (dns *boshDomainNameService) gatherSimpleRewrites(rewrites []string,
+	target Target,
+	namespace string,
+	alias Alias) []string {
+
+	// We can't do simple rewrites for indexes
+	if target.Query == "_" {
+		return rewrites
+	}
+
+	from := alias.Domain
+	to := fmt.Sprintf("%s.%s.svc.%s", target.InstanceGroup, namespace, clusterDomain)
+	rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
+
+	return rewrites
 }
 
 func (dns *boshDomainNameService) gatherAllRewrites(rewrites []string,
