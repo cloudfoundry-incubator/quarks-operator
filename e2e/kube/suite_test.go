@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -71,4 +72,9 @@ var _ = AfterEach(func() {
 func podWait(name string) {
 	err := kubectl.Wait(namespace, "ready", name, kubectl.PollTimeout)
 	Expect(err).ToNot(HaveOccurred())
+}
+
+func apply(p string) error {
+	yamlPath := path.Join(examplesDir, p)
+	return cmdHelper.Apply(namespace, yamlPath)
 }

@@ -383,7 +383,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 		})
 
 		Describe("CollectQuarksLinks", func() {
-			Context("when jobs provide links", func() {
+			Context("when jobs consume external links", func() {
 				BeforeEach(func() {
 					m, err = env.BOSHManifestWithExternalLinks()
 					Expect(err).NotTo(HaveOccurred())
@@ -403,7 +403,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 
 				})
 
-				It("stores all the links of the instance group in a file", func() {
+				It("loads the external link properties and adds them", func() {
 					err = igr.CollectQuarksLinks(converter.VolumeLinksPath)
 					Expect(err).ToNot(HaveOccurred())
 

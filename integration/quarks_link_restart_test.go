@@ -13,6 +13,7 @@ import (
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
 
+// test "pod restarts" when the BOSH deployment provides links to native k8s resources
 var _ = Describe("QuarksLink Restart", func() {
 	const (
 		deploymentName = "nats-deployment"

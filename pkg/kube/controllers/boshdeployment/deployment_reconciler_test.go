@@ -398,7 +398,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				})
 			})
 
-			Context("when the manifest contains explicit links", func() {
+			Context("when the manifest contains explicit links to native k8s resources", func() {
 				var bazSecret *corev1.Secret
 
 				BeforeEach(func() {
