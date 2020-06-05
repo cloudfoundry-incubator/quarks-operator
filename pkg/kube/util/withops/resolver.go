@@ -90,34 +90,7 @@ func (r *Resolver) Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, name
 		}
 	}
 
-	// Interpolate user-provided explicit variables
-	var userVars []boshtpl.Variables
-	for _, userVar := range bdpl.Spec.Vars {
-		varName := userVar.Name
-		varSecretName := userVar.Secret
-		secret := &corev1.Secret{}
-		err := r.client.Get(ctx, types.NamespacedName{Name: varSecretName, Namespace: namespace}, secret)
-		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "failed to retrieve secret '%s/%s' via client.Get", namespace, varSecretName)
-		}
-		staticVars := boshtpl.StaticVariables{}
-		for key, varBytes := range secret.Data {
-			switch key {
-			case "password":
-				staticVars[varName] = string(varBytes)
-			default:
-				staticVars[varName] = bdm.MergeStaticVar(staticVars[varName], key, string(varBytes))
-			}
-		}
-		userVars = append(userVars, staticVars)
-	}
-
-	bytes, err = bdm.InterpolateExplicitVariables(bytes, userVars)
-	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Failed to interpolate user provided explicit variables manifest '%s' in '%s'", bdpl.Name, namespace)
-	}
-
-	// Reload the manifest after interpolation, and apply implicit variables
+	// Apply implicit variables
 	manifest, err := bdm.LoadYAML(bytes)
 	if err != nil {
 		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying ops %#v", m)
@@ -160,6 +133,42 @@ func (r *Resolver) Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, name
 	err = manifest.ApplyAddons(logger.TraceFilter(log, "manifest-addons"))
 	if err != nil {
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
+	}
+
+	// Interpolate user-provided explicit variables
+	bytes, err = manifest.Marshal()
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to marshal bdpl '%s/%s' after applying addons", bdpl.Namespace, bdpl.Name)
+	}
+
+	var userVars []boshtpl.Variables
+	for _, userVar := range bdpl.Spec.Vars {
+		varName := userVar.Name
+		varSecretName := userVar.Secret
+		secret := &corev1.Secret{}
+		err := r.client.Get(ctx, types.NamespacedName{Name: varSecretName, Namespace: namespace}, secret)
+		if err != nil {
+			return nil, []string{}, errors.Wrapf(err, "failed to retrieve secret '%s/%s' via client.Get", namespace, varSecretName)
+		}
+		staticVars := boshtpl.StaticVariables{}
+		for key, varBytes := range secret.Data {
+			switch key {
+			case "password":
+				staticVars[varName] = string(varBytes)
+			default:
+				staticVars[varName] = bdm.MergeStaticVar(staticVars[varName], key, string(varBytes))
+			}
+		}
+		userVars = append(userVars, staticVars)
+	}
+	bytes, err = bdm.InterpolateExplicitVariables(bytes, userVars)
+	if err != nil {
+		return nil, []string{}, errors.Wrapf(err, "Failed to interpolate user provided explicit variables manifest '%s' in '%s'", bdpl.Name, namespace)
+	}
+
+	manifest, err = bdm.LoadYAML(bytes)
+	if err != nil {
+		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying user explicit vars %#v", m)
 	}
 
 	dns, err := r.newDNSFunc(*manifest)
@@ -208,33 +217,7 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 		}
 	}
 
-	// Interpolate user-provided explicit variables
-	var userVars []boshtpl.Variables
-	for _, userVar := range bdpl.Spec.Vars {
-		varName := userVar.Name
-		varSecretName := userVar.Secret
-		secret := &corev1.Secret{}
-		err := r.client.Get(ctx, types.NamespacedName{Name: varSecretName, Namespace: namespace}, secret)
-		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "failed to retrieve secret '%s/%s' via client.Get", namespace, varSecretName)
-		}
-		staticVars := boshtpl.StaticVariables{}
-		for key, varBytes := range secret.Data {
-			switch key {
-			case "password":
-				staticVars[varName] = string(varBytes)
-			default:
-				staticVars[varName] = bdm.MergeStaticVar(staticVars[varName], key, string(varBytes))
-			}
-		}
-		userVars = append(userVars, staticVars)
-	}
-	bytes, err = bdm.InterpolateExplicitVariables(bytes, userVars)
-	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Failed to interpolate user provided explicit variables manifest '%s' in '%s'", bdpl.Name, namespace)
-	}
-
-	// Reload the manifest after interpolation, and apply implicit variables
+	// Apply implicit variables
 	manifest, err := bdm.LoadYAML(bytes)
 	if err != nil {
 		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying ops %#v", m)
@@ -277,6 +260,42 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 	err = manifest.ApplyAddons(logger.TraceFilter(log, "detailed-manifest-addons"))
 	if err != nil {
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
+	}
+
+	// Interpolate user-provided explicit variables
+	bytes, err = manifest.Marshal()
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to marshal bdpl '%s/%s' after applying addons", bdpl.Namespace, bdpl.Name)
+	}
+
+	var userVars []boshtpl.Variables
+	for _, userVar := range bdpl.Spec.Vars {
+		varName := userVar.Name
+		varSecretName := userVar.Secret
+		secret := &corev1.Secret{}
+		err := r.client.Get(ctx, types.NamespacedName{Name: varSecretName, Namespace: namespace}, secret)
+		if err != nil {
+			return nil, []string{}, errors.Wrapf(err, "failed to retrieve secret '%s/%s' via client.Get", namespace, varSecretName)
+		}
+		staticVars := boshtpl.StaticVariables{}
+		for key, varBytes := range secret.Data {
+			switch key {
+			case "password":
+				staticVars[varName] = string(varBytes)
+			default:
+				staticVars[varName] = bdm.MergeStaticVar(staticVars[varName], key, string(varBytes))
+			}
+		}
+		userVars = append(userVars, staticVars)
+	}
+	bytes, err = bdm.InterpolateExplicitVariables(bytes, userVars)
+	if err != nil {
+		return nil, []string{}, errors.Wrapf(err, "Failed to interpolate user provided explicit variables manifest '%s' in '%s'", bdpl.Name, namespace)
+	}
+
+	manifest, err = bdm.LoadYAML(bytes)
+	if err != nil {
+		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying user explicit vars %#v", m)
 	}
 
 	dns, err := r.newDNSFunc(*manifest)
