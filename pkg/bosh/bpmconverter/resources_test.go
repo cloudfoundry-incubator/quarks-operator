@@ -33,7 +33,7 @@ var _ = Describe("BPM Converter", func() {
 		containerFactory *fakes.FakeContainerFactory
 		env              testing.Catalog
 		err              error
-		dns              boshdns.DomainNameService
+		dns              bpmconverter.DNSSettings
 	)
 
 	Context("Resources", func() {
@@ -53,7 +53,7 @@ var _ = Describe("BPM Converter", func() {
 			m, err = env.DefaultBOSHManifest()
 			Expect(err).NotTo(HaveOccurred())
 
-			dns, err = boshdns.NewDNS(*m)
+			dns, err = boshdns.New(*m)
 			Expect(err).NotTo(HaveOccurred())
 
 			volumeFactory = &fakes.FakeVolumeFactory{}

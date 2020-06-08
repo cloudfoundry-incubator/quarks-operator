@@ -15,6 +15,7 @@ import (
 
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/logger"
@@ -22,32 +23,21 @@ import (
 	boshtpl "github.com/cloudfoundry/bosh-cli/director/template"
 )
 
-// DomainNameService consumer interface
-type DomainNameService interface {
-	// HeadlessServiceName constructs the headless service name for the instance group.
-	HeadlessServiceName(instanceGroupName string) string
-}
-
 // Resolver resolves references from bdpl CR to a BOSH manifest
 type Resolver struct {
 	client               client.Client
 	versionedSecretStore versionedsecretstore.VersionedSecretStore
 	newInterpolatorFunc  NewInterpolatorFunc
-	newDNSFunc           NewDNSFunc
 }
 
 // NewInterpolatorFunc returns a fresh Interpolator
 type NewInterpolatorFunc func() Interpolator
 
-// NewDNSFunc returns a dns client for the manifest
-type NewDNSFunc func(m bdm.Manifest) (DomainNameService, error)
-
 // NewResolver constructs a resolver
-func NewResolver(client client.Client, f NewInterpolatorFunc, dns NewDNSFunc) *Resolver {
+func NewResolver(client client.Client, f NewInterpolatorFunc) *Resolver {
 	return &Resolver{
 		client:               client,
 		newInterpolatorFunc:  f,
-		newDNSFunc:           dns,
 		versionedSecretStore: versionedsecretstore.NewVersionedSecretStore(client),
 	}
 }
@@ -162,11 +152,11 @@ func (r *Resolver) Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, name
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}
 
-	dns, err := r.newDNSFunc(*manifest)
+	err = boshdns.Validate(*manifest)
 	if err != nil {
 		return nil, nil, err
 	}
-	manifest.ApplyUpdateBlock(dns)
+	manifest.ApplyUpdateBlock()
 
 	return manifest, varSecrets, err
 }
@@ -279,11 +269,11 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}
 
-	dns, err := r.newDNSFunc(*manifest)
+	err = boshdns.Validate(*manifest)
 	if err != nil {
 		return nil, nil, err
 	}
-	manifest.ApplyUpdateBlock(dns)
+	manifest.ApplyUpdateBlock()
 
 	return manifest, varSecrets, err
 }

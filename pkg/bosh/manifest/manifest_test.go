@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	. "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/testing"
 	"code.cloudfoundry.org/quarks-operator/testing/boshmanifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
@@ -1316,9 +1315,7 @@ var _ = Describe("Manifest", func() {
 				})
 
 				It("serializes instancegroup quarks", func() {
-					dns, err := boshdns.NewDNS(*m1)
-					Expect(err).NotTo(HaveOccurred())
-					m1.ApplyUpdateBlock(dns)
+					m1.ApplyUpdateBlock()
 					text, err := m1.Marshal()
 					Expect(err).NotTo(HaveOccurred())
 					By("loading marshalled manifest again")
@@ -1399,22 +1396,20 @@ var _ = Describe("Manifest", func() {
 		})
 
 		Describe("ApplyUpdateBlock", func() {
-			var dns DomainNameService
 			BeforeEach(func() {
 				manifest, err = env.BOSHManifestWithUpdateSerial()
 				Expect(err).NotTo(HaveOccurred())
-				dns, err = boshdns.NewDNS(*manifest)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("calculates first instance group without dependency", func() {
-				manifest.ApplyUpdateBlock(dns)
+				manifest.ApplyUpdateBlock()
 				Expect(manifest.InstanceGroups).To(HaveLen(4))
 				Expect(manifest.InstanceGroups[0].Properties.Quarks.RequiredService).To(BeNil())
 			})
 
 			It("respects serial=true on instance group as barrier", func() {
-				manifest.ApplyUpdateBlock(dns)
+				manifest.ApplyUpdateBlock()
 				Expect(manifest.InstanceGroups).To(HaveLen(4))
 				expectedRequireService := "bpm1"
 				Expect(manifest.InstanceGroups[1].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
@@ -1422,7 +1417,7 @@ var _ = Describe("Manifest", func() {
 			})
 
 			It("respects serial=true to wait for the predecessor", func() {
-				manifest.ApplyUpdateBlock(dns)
+				manifest.ApplyUpdateBlock()
 				Expect(manifest.InstanceGroups).To(HaveLen(4))
 				expectedRequireService := "bpm3"
 				Expect(manifest.InstanceGroups[3].Properties.Quarks.RequiredService).To(Equal(&expectedRequireService))
@@ -1431,7 +1426,7 @@ var _ = Describe("Manifest", func() {
 			It("respects update serial in manifest", func() {
 				manifestWithUpdate, err := env.BOSHManifestWithUpdateSerialInManifest()
 				Expect(err).NotTo(HaveOccurred())
-				manifestWithUpdate.ApplyUpdateBlock(dns)
+				manifestWithUpdate.ApplyUpdateBlock()
 				Expect(manifestWithUpdate.InstanceGroups).To(HaveLen(2))
 				Expect(manifestWithUpdate.InstanceGroups[0].Properties.Quarks.RequiredService).To(BeNil())
 				Expect(manifestWithUpdate.InstanceGroups[1].Properties.Quarks.RequiredService).To(BeNil())
@@ -1440,7 +1435,7 @@ var _ = Describe("Manifest", func() {
 			It("doesn't wait for instance groups without ports", func() {
 				manifestWithUpdate, err := env.BOSHManifestWithUpdateSerialAndWithoutPorts()
 				Expect(err).NotTo(HaveOccurred())
-				manifestWithUpdate.ApplyUpdateBlock(dns)
+				manifestWithUpdate.ApplyUpdateBlock()
 				Expect(manifestWithUpdate.InstanceGroups).To(HaveLen(3))
 				expectedRequireService := "bpm1"
 				Expect(manifestWithUpdate.InstanceGroups[0].Properties.Quarks.RequiredService).To(BeNil())
@@ -1451,7 +1446,7 @@ var _ = Describe("Manifest", func() {
 			It("propagates global update block correctly", func() {
 				manifest, err = env.BOSHManifestWithGlobalUpdateBlock()
 				Expect(err).NotTo(HaveOccurred())
-				manifest.ApplyUpdateBlock(dns)
+				manifest.ApplyUpdateBlock()
 				By("propagating if ig has no update block")
 				Expect(*manifest.InstanceGroups[0].Update).To(Equal(Update{
 					CanaryWatchTime: "20000-1200000",

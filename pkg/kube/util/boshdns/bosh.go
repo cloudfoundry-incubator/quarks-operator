@@ -16,7 +16,6 @@ import (
 
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/mutate"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
 )
 
 const (
@@ -43,21 +42,6 @@ func GetClusterDomain() string {
 	return clusterDomain
 }
 
-// DomainNameService abstraction.
-type DomainNameService interface {
-	// HeadlessServiceName constructs the headless service name for the instance group.
-	HeadlessServiceName(instanceGroupName string) string
-
-	// DNSSetting get the DNS settings for POD.
-	DNSSetting(namespace string) (corev1.DNSPolicy, *corev1.PodDNSConfig, error)
-
-	// Apply a DNS server to the given namespace, if required.
-	Apply(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error
-}
-
-// NewDNSFunc returns a dns client for the manifest
-type NewDNSFunc func(m bdm.Manifest) (DomainNameService, error)
-
 // Target of domain alias.
 type Target struct {
 	Query         string `json:"query"`
@@ -73,32 +57,16 @@ type Alias struct {
 	Targets []Target `json:"targets"`
 }
 
-// boshDomainNameService is used to emulate Bosh DNS.
-type boshDomainNameService struct {
+// BoshDomainNameService is used to emulate Bosh DNS.
+type BoshDomainNameService struct {
 	Aliases        []Alias
 	LocalDNSIP     string
 	InstanceGroups bdm.InstanceGroups
 }
 
-// NewDNS returns the DNS service
-func NewDNS(m bdm.Manifest) (DomainNameService, error) {
-	for _, addon := range m.AddOns {
-		if addon.Name == bdm.BoshDNSAddOnName {
-			var err error
-			dns, err := NewBoshDomainNameService(addon, m.InstanceGroups)
-			if err != nil {
-				return nil, errors.Wrapf(err, "error loading BOSH DNS configuration")
-			}
-			return dns, nil
-		}
-	}
-
-	return NewSimpleDomainNameService(), nil
-}
-
-// NewBoshDomainNameService create a new DomainNameService.
-func NewBoshDomainNameService(addOn *bdm.AddOn, instanceGroups bdm.InstanceGroups) (DomainNameService, error) {
-	dns := boshDomainNameService{
+// NewBoshDomainNameService create a new DomainNameService to setup BOSH DNS.
+func NewBoshDomainNameService(addOn *bdm.AddOn, instanceGroups bdm.InstanceGroups) (*BoshDomainNameService, error) {
+	dns := BoshDomainNameService{
 		InstanceGroups: instanceGroups,
 	}
 	for _, job := range addOn.Jobs {
@@ -114,13 +82,8 @@ func NewBoshDomainNameService(addOn *bdm.AddOn, instanceGroups bdm.InstanceGroup
 	return &dns, nil
 }
 
-// HeadlessServiceName see interface.
-func (dns *boshDomainNameService) HeadlessServiceName(instanceGroupName string) string {
-	return names.ServiceName(instanceGroupName, 63)
-}
-
 // DNSSetting see interface.
-func (dns *boshDomainNameService) DNSSetting(namespace string) (corev1.DNSPolicy, *corev1.PodDNSConfig, error) {
+func (dns *BoshDomainNameService) DNSSetting(namespace string) (corev1.DNSPolicy, *corev1.PodDNSConfig, error) {
 	if dns.LocalDNSIP == "" {
 		return corev1.DNSNone, nil, errors.New("BoshDomainNameService: DNSSetting called before Apply")
 	}
@@ -137,7 +100,7 @@ func (dns *boshDomainNameService) DNSSetting(namespace string) (corev1.DNSPolicy
 }
 
 // Apply DNS k8s resources. This deploys CoreDNS with our DNS records in a config map.
-func (dns *boshDomainNameService) Apply(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
+func (dns *BoshDomainNameService) Apply(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
 	const volumeName = "bosh-dns-volume"
 	const coreConfigFile = "Corefile"
 
@@ -262,31 +225,6 @@ func (dns *boshDomainNameService) Apply(ctx context.Context, namespace string, c
 	}
 
 	dns.LocalDNSIP = service.Spec.ClusterIP
-	return nil
-}
-
-// simpleDomainNameService emulates old behaviour without BOSH DNS.
-// TODO: Is this implementation of DomainNameService still relevant?
-type simpleDomainNameService struct {
-}
-
-// NewSimpleDomainNameService creates a new simpleDomainNameService.
-func NewSimpleDomainNameService() DomainNameService {
-	return &simpleDomainNameService{}
-}
-
-// HeadlessServiceName see interface.
-func (dns *simpleDomainNameService) HeadlessServiceName(instanceGroupName string) string {
-	return names.ServiceName(instanceGroupName, 63)
-}
-
-// DNSSetting see interface.
-func (dns *simpleDomainNameService) DNSSetting(_ string) (corev1.DNSPolicy, *corev1.PodDNSConfig, error) {
-	return corev1.DNSClusterFirst, nil, nil
-}
-
-// Apply is not required for the simple domain service.
-func (dns *simpleDomainNameService) Apply(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
 	return nil
 }
 

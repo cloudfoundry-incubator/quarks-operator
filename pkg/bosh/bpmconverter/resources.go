@@ -17,6 +17,7 @@ import (
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
@@ -50,11 +51,8 @@ type VolumeFactory interface {
 	GenerateBPMDisks(instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, namespace string) (bdm.Disks, error)
 }
 
-// DomainNameService is a limited interface for the funcs used in the bpm converter
-type DomainNameService interface {
-	// HeadlessServiceName constructs the headless service name for the instance group.
-	HeadlessServiceName(instanceGroupName string) string
-
+// DNSSettings is a limited interface for the funcs used in the bpm converter
+type DNSSettings interface {
 	// DNSSetting get the DNS settings for POD.
 	DNSSetting(namespace string) (corev1.DNSPolicy, *corev1.PodDNSConfig, error)
 }
@@ -77,7 +75,7 @@ type Resources struct {
 
 // Resources uses BOSH Process Manager information to create k8s container specs from single BOSH instance group.
 // It returns quarks stateful sets, services and quarks jobs.
-func (kc *BPMConverter) Resources(namespace string, deploymentName string, dns DomainNameService, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*Resources, error) {
+func (kc *BPMConverter) Resources(namespace string, deploymentName string, dns DNSSettings, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*Resources, error) {
 	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(deploymentName, instanceGroup.Name, qStsVersion)
 
 	defaultDisks := kc.volumeFactory.GenerateDefaultDisks(instanceGroup, igResolvedSecretVersion, namespace)
@@ -110,7 +108,7 @@ func (kc *BPMConverter) Resources(namespace string, deploymentName string, dns D
 			return nil, err
 		}
 
-		services := kc.serviceToKubeServices(namespace, deploymentName, dns, instanceGroup, &convertedExtStatefulSet, bpmConfigs)
+		services := kc.serviceToKubeServices(namespace, deploymentName, instanceGroup, &convertedExtStatefulSet, bpmConfigs)
 		if len(services) != 0 {
 			res.Services = append(res.Services, services...)
 		}
@@ -132,7 +130,7 @@ func (kc *BPMConverter) Resources(namespace string, deploymentName string, dns D
 func (kc *BPMConverter) serviceToQuarksStatefulSet(
 	namespace string,
 	cfac ContainerFactory,
-	dns DomainNameService,
+	dns DNSSettings,
 	instanceGroup *bdm.InstanceGroup,
 	defaultDisks bdm.Disks,
 	bpmDisks bdm.Disks,
@@ -202,7 +200,7 @@ func (kc *BPMConverter) serviceToQuarksStatefulSet(
 							SecurityContext: &corev1.PodSecurityContext{
 								FSGroup: &admGroupID,
 							},
-							Subdomain:        dns.HeadlessServiceName(instanceGroup.Name),
+							Subdomain:        names.HeadlessServiceName(instanceGroup.Name),
 							ImagePullSecrets: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ImagePullSecrets,
 						},
 					},
@@ -234,7 +232,7 @@ func (kc *BPMConverter) serviceToQuarksStatefulSet(
 }
 
 // serviceToKubeServices will generate Services which expose ports for InstanceGroup's jobs
-func (kc *BPMConverter) serviceToKubeServices(namespace string, deploymentName string, dns DomainNameService, instanceGroup *bdm.InstanceGroup, qSts *qstsv1a1.QuarksStatefulSet, bpmConfigs bpm.Configs) []corev1.Service {
+func (kc *BPMConverter) serviceToKubeServices(namespace string, deploymentName string, instanceGroup *bdm.InstanceGroup, qSts *qstsv1a1.QuarksStatefulSet, bpmConfigs bpm.Configs) []corev1.Service {
 	var services []corev1.Service
 	// Collect ports from bpm configs
 	ports := bpmConfigs.ServicePorts()
@@ -266,7 +264,7 @@ func (kc *BPMConverter) serviceToKubeServices(namespace string, deploymentName s
 			ports)
 	}
 
-	headlessServiceName := dns.HeadlessServiceName(instanceGroup.Name)
+	headlessServiceName := names.HeadlessServiceName(instanceGroup.Name)
 	headlessServiceSelector := map[string]string{
 		bdv1.LabelDeploymentName:    deploymentName,
 		bdv1.LabelInstanceGroupName: instanceGroup.Name,
@@ -300,7 +298,7 @@ func (kc *BPMConverter) serviceToKubeServices(namespace string, deploymentName s
 func (kc *BPMConverter) errandToQuarksJob(
 	namespace string,
 	cfac ContainerFactory,
-	dns DomainNameService,
+	dns DNSSettings,
 	instanceGroup *bdm.InstanceGroup,
 	defaultDisks bdm.Disks,
 	bpmDisks bdm.Disks,

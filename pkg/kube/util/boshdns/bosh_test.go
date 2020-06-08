@@ -7,14 +7,15 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
+	cfakes "code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/fakes"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 )
 
@@ -151,49 +152,74 @@ func loadAddOn() *manifest.AddOn {
 	return &addOn
 }
 
-var _ = Describe("BOSH DNS", func() {
-	Context("bosh-dns", func() {
+var _ = Describe("BoshDomainNameService", func() {
+	Context("Apply", func() {
 		var (
-			client client.Client
+			client *cfakes.FakeClient
 			dns    boshdns.DomainNameService
 		)
 
 		BeforeEach(func() {
+			igs := manifest.InstanceGroups{
+				&manifest.InstanceGroup{Name: "scheduler", AZs: []string{"az1", "az2"}},
+				&manifest.InstanceGroup{Name: "diego-api", AZs: []string{"az1", "az2"}},
+				&manifest.InstanceGroup{Name: "bits", AZs: []string{"az1", "az2"}},
+			}
 			var err error
-			dns, err = boshdns.NewBoshDomainNameService(loadAddOn(), nil)
+			dns, err = boshdns.NewBoshDomainNameService(loadAddOn(), igs)
 			Expect(err).NotTo(HaveOccurred())
-			scheme := runtime.NewScheme()
-			Expect(corev1.AddToScheme(scheme)).To(Succeed())
-			Expect(appsv1.AddToScheme(scheme)).To(Succeed())
 
-			client = fake.NewFakeClientWithScheme(scheme)
+			client = &cfakes.FakeClient{}
+			// Needed to get along with CreateOrUpdate
+			client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+			})
 		})
 
-		It("creates or updates the coredns and calls setOwner", func() {
+		It("creates coredns resources and generates resources", func() {
 			counter := 0
 			err := dns.Apply(context.Background(), "default", client, func(object v1.Object) error {
 				counter++
 				return nil
 			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(counter).To(Equal(3))
-		})
-	})
+			Expect(client.CreateCallCount()).To(Equal(3))
 
-	Context("simple-dns", func() {
-		It("shorten long service names", func() {
-			dns := boshdns.NewSimpleDomainNameService()
-			Expect(len(dns.HeadlessServiceName("scheduler-scheduler-scheduler-scheduler-scheduler-scheduler-scheduler-scheduler"))).
-				To(Equal(63))
-		})
-
-		It("reconciles does nothing", func() {
-			dns := boshdns.NewSimpleDomainNameService()
-			client := fake.NewFakeClientWithScheme(runtime.NewScheme())
-			err := dns.Apply(context.Background(), "default", client, func(object v1.Object) error {
-				return nil
+			By("calling setOwner", func() {
+				Expect(counter).To(Equal(3))
 			})
-			Expect(err).NotTo(HaveOccurred())
+
+			By("creating a corefile configmap")
+			_, obj, _ := client.CreateArgsForCall(0)
+			cm, ok := obj.(*corev1.ConfigMap)
+			Expect(ok).To(BeTrue())
+			corefile, ok := cm.Data["Corefile"]
+			Expect(ok).To(BeTrue())
+
+			By("checking for entries in corefile")
+			Expect(corefile).To(ContainSubstring(`
+template IN A bits.service.cf.internal {
+	match ^(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*bits\.service\.cf\.internal\.$
+	answer "{{ .Name }} 60 IN CNAME bits.default.svc."
+	upstream`))
+			Expect(corefile).To(ContainSubstring(`
+template IN AAAA bits.service.cf.internal {
+	match ^(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*bits\.service\.cf\.internal\.$
+	answer "{{ .Name }} 60 IN CNAME bits.default.svc."
+	upstream`))
+			Expect(corefile).To(ContainSubstring(`
+template IN CNAME bbs1.service.cf.internal {
+	match ^bbs1\.service\.cf\.internal\.$
+	answer "{{ .Name }} 60 IN CNAME diego-api.default.svc."
+	upstream
+}`))
+
+			By("checking for entries which are missing an instance group, but do not use _ query")
+			Expect(corefile).To(ContainSubstring(`
+template IN A uaa.service.cf.internal {
+	match ^(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*uaa\.service\.cf\.internal\.$
+	answer "{{ .Name }} 60 IN CNAME uaa.default.svc."
+	upstream`))
 		})
 	})
 })
