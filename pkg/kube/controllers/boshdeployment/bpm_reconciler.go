@@ -134,7 +134,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 			log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get BoshDeployment instance '%s/%s': %v", request.Namespace, deploymentName, err)
 	}
 
-	err = dns.Reconcile(ctx, request.Namespace, r.client, func(object metav1.Object) error {
+	err = dns.Apply(ctx, request.Namespace, r.client, func(object metav1.Object) error {
 		return r.setReference(bdpl, object, r.scheme)
 	})
 

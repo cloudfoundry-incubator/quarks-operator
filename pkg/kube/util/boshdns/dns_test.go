@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
@@ -152,16 +153,25 @@ func loadAddOn() *manifest.AddOn {
 
 var _ = Describe("BOSH DNS", func() {
 	Context("bosh-dns", func() {
-		It("reconciles dns stuff", func() {
-			dns, err := boshdns.NewBoshDomainNameService(loadAddOn(), nil)
+		var (
+			client client.Client
+			dns    boshdns.DomainNameService
+		)
+
+		BeforeEach(func() {
+			var err error
+			dns, err = boshdns.NewBoshDomainNameService(loadAddOn(), nil)
 			Expect(err).NotTo(HaveOccurred())
 			scheme := runtime.NewScheme()
 			Expect(corev1.AddToScheme(scheme)).To(Succeed())
 			Expect(appsv1.AddToScheme(scheme)).To(Succeed())
 
-			client := fake.NewFakeClientWithScheme(scheme)
+			client = fake.NewFakeClientWithScheme(scheme)
+		})
+
+		It("creates or updates the coredns and calls setOwner", func() {
 			counter := 0
-			err = dns.Reconcile(context.Background(), "default", client, func(object v1.Object) error {
+			err := dns.Apply(context.Background(), "default", client, func(object v1.Object) error {
 				counter++
 				return nil
 			})
@@ -180,7 +190,7 @@ var _ = Describe("BOSH DNS", func() {
 		It("reconciles does nothing", func() {
 			dns := boshdns.NewSimpleDomainNameService()
 			client := fake.NewFakeClientWithScheme(runtime.NewScheme())
-			err := dns.Reconcile(context.Background(), "default", client, func(object v1.Object) error {
+			err := dns.Apply(context.Background(), "default", client, func(object v1.Object) error {
 				return nil
 			})
 			Expect(err).NotTo(HaveOccurred())
