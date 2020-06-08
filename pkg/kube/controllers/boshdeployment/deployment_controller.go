@@ -19,10 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/converter"
-	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/qjobs"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/reference"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/withops"
@@ -40,9 +38,6 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		withops.NewResolver(
 			mgr.GetClient(),
 			func() withops.Interpolator { return withops.NewInterpolator() },
-			func(m bdm.Manifest) (withops.DomainNameService, error) {
-				return boshdns.NewDNS(m)
-			},
 		),
 		qjobs.NewJobFactory(),
 		converter.NewVariablesConverter(),

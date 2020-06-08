@@ -41,4 +41,11 @@ var _ = Describe("Names", func() {
 			}
 		})
 	})
+
+	Context("HeadlessServiceName", func() {
+		It("shortens long service names", func() {
+			Expect(len(names.HeadlessServiceName("scheduler-scheduler-scheduler-scheduler-scheduler-scheduler-scheduler-scheduler"))).
+				To(Equal(63))
+		})
+	})
 })

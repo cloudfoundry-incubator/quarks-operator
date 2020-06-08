@@ -41,7 +41,7 @@ func ServiceName(igName string, maxLength int) string {
 	return names.TruncateMD5(s, maxLength)
 }
 
-// HeadlessServiceName see interface.
+// HeadlessServiceName constructs the headless service name for the instance group.
 func HeadlessServiceName(instanceGroupName string) string {
 	return ServiceName(instanceGroupName, 63)
 }

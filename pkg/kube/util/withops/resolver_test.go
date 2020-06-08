@@ -18,7 +18,6 @@ import (
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdc "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/withops"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/testing/testhelper"
@@ -339,10 +338,7 @@ instance_groups:
 		newInterpolatorFunc := func() withops.Interpolator {
 			return interpolator
 		}
-		newDNSFunc := func(m bdm.Manifest) (withops.DomainNameService, error) {
-			return boshdns.NewSimpleDomainNameService(), nil
-		}
-		resolver = withops.NewResolver(client, newInterpolatorFunc, newDNSFunc)
+		resolver = withops.NewResolver(client, newInterpolatorFunc)
 	})
 
 	Describe("Manifest", func() {
@@ -853,18 +849,12 @@ instance_groups:
 			Expect(implicitVars[0]).To(Equal("var-system-domain"))
 		})
 
-		It("loads dns from addons", func() {
+		It("verify does not return an error for valid addon job properties", func() {
 			deploymentName := "scf"
-			var dns withops.DomainNameService
 			newInterpolatorFunc := func() withops.Interpolator {
 				return interpolator
 			}
-			newDNSFunc := func(m bdm.Manifest) (withops.DomainNameService, error) {
-				var err error
-				dns, err = boshdns.NewDNS(m)
-				return dns, err
-			}
-			resolver = withops.NewResolver(client, newInterpolatorFunc, newDNSFunc)
+			resolver = withops.NewResolver(client, newInterpolatorFunc)
 
 			deployment := &bdc.BOSHDeployment{
 				ObjectMeta: metav1.ObjectMeta{
@@ -880,9 +870,6 @@ instance_groups:
 			}
 			_, _, err := resolver.Manifest(ctx, deployment, "default")
 			Expect(err).ToNot(HaveOccurred())
-
-			Expect(dns).NotTo(BeNil())
-			Expect(dns.HeadlessServiceName("singleton-uaa")).To(Equal("singleton-uaa"))
 		})
 
 		It("handles multi-line implicit vars", func() {
