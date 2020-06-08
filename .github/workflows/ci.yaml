@@ -2,7 +2,7 @@ name: quarks-operator-ci
 
 on: [push]
 
-jobs:   
+jobs:
   unit-tests:
     runs-on: ubuntu-latest
 
@@ -71,6 +71,7 @@ jobs:
         bin/build-image
         kind load docker-image "cfcontainerization/cf-operator:dev"
         bin/tools
+        export DEBUG=yes
         tools/quarks-utils/bin/test-integration
         INTEGRATION_SUITE=storage tools/quarks-utils/bin/test-integration
         INTEGRATION_SUITE=util tools/quarks-utils/bin/test-integration
