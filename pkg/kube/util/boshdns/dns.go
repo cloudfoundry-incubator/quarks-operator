@@ -3,9 +3,6 @@ package boshdns
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"strings"
-	"text/template"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -54,8 +51,8 @@ type DomainNameService interface {
 	// DNSSetting get the DNS settings for POD.
 	DNSSetting(namespace string) (corev1.DNSPolicy, *corev1.PodDNSConfig, error)
 
-	// Reconcile DNS stuff.
-	Reconcile(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error
+	// Apply a DNS server to the given namespace, if required.
+	Apply(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error
 }
 
 // NewDNSFunc returns a dns client for the manifest
@@ -125,7 +122,7 @@ func (dns *boshDomainNameService) HeadlessServiceName(instanceGroupName string) 
 // DNSSetting see interface.
 func (dns *boshDomainNameService) DNSSetting(namespace string) (corev1.DNSPolicy, *corev1.PodDNSConfig, error) {
 	if dns.LocalDNSIP == "" {
-		return corev1.DNSNone, nil, errors.New("BoshDomainNameService: DNSSetting called before Reconcile")
+		return corev1.DNSNone, nil, errors.New("BoshDomainNameService: DNSSetting called before Apply")
 	}
 	ndots := "5"
 	return corev1.DNSNone, &corev1.PodDNSConfig{
@@ -139,8 +136,8 @@ func (dns *boshDomainNameService) DNSSetting(namespace string) (corev1.DNSPolicy
 	}, nil
 }
 
-// Reconcile see interface.
-func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
+// Apply DNS k8s resources. This deploys CoreDNS with our DNS records in a config map.
+func (dns *boshDomainNameService) Apply(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
 	const volumeName = "bosh-dns-volume"
 	const coreConfigFile = "Corefile"
 
@@ -154,7 +151,7 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace strin
 		Labels:    map[string]string{"app": appName},
 	}
 
-	corefile, err := dns.createCorefile(namespace)
+	corefile, err := createCorefile(namespace, dns.InstanceGroups, dns.Aliases)
 	if err != nil {
 		return err
 	}
@@ -268,144 +265,6 @@ func (dns *boshDomainNameService) Reconcile(ctx context.Context, namespace strin
 	return nil
 }
 
-func (dns *boshDomainNameService) createCorefile(namespace string) (string, error) {
-	rewrites := make([]string, 0)
-	for _, alias := range dns.Aliases {
-		for _, target := range alias.Targets {
-			// Implement BOSH DNS placeholder alias: https://bosh.io/docs/dns/#placeholder-alias.
-			instanceGroup, found := dns.InstanceGroups.InstanceGroupByName(target.InstanceGroup)
-			if !found {
-				// Even if the instance group doesn't exist, the user may want to setup aliases to other kube service names
-				rewrites = dns.gatherSimpleRewrites(rewrites,
-					target,
-					namespace,
-					alias,
-				)
-			} else {
-				rewrites = dns.gatherAllRewrites(rewrites,
-					*instanceGroup,
-					target,
-					namespace,
-					alias)
-			}
-		}
-	}
-
-	tmpl := template.Must(template.New("Corefile").Parse(corefileTemplate))
-	var config strings.Builder
-	if err := tmpl.Execute(&config, rewrites); err != nil {
-		return "", errors.Wrapf(err, "failed to generate Corefile")
-	}
-
-	return config.String(), nil
-}
-
-func (dns *boshDomainNameService) gatherSimpleRewrites(rewrites []string,
-	target Target,
-	namespace string,
-	alias Alias) []string {
-
-	// We can't do simple rewrites for indexes
-	if target.Query == "_" {
-		return rewrites
-	}
-
-	from := alias.Domain
-	to := fmt.Sprintf("%s.%s.svc.%s", target.InstanceGroup, namespace, clusterDomain)
-	rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
-
-	return rewrites
-}
-
-func (dns *boshDomainNameService) gatherAllRewrites(rewrites []string,
-	instanceGroup bdm.InstanceGroup,
-	target Target,
-	namespace string,
-	alias Alias) []string {
-	if target.Query == "_" {
-		if len(instanceGroup.AZs) > 0 {
-			for azIndex := range instanceGroup.AZs {
-				rewrites = dns.gatherRewritesForInstances(rewrites,
-					instanceGroup,
-					target,
-					namespace,
-					azIndex,
-					alias)
-			}
-		} else {
-			rewrites = dns.gatherRewritesForInstances(rewrites,
-				instanceGroup,
-				target,
-				namespace,
-				-1,
-				alias)
-		}
-	} else {
-		from := alias.Domain
-		to := fmt.Sprintf("%s.%s.svc.%s", dns.HeadlessServiceName(target.InstanceGroup), namespace, clusterDomain)
-		rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
-	}
-
-	return rewrites
-}
-
-func (dns *boshDomainNameService) gatherRewritesForInstances(rewrites []string,
-	instanceGroup bdm.InstanceGroup,
-	target Target,
-	namespace string,
-	azIndex int,
-	alias Alias) []string {
-	for i := 0; i < instanceGroup.Instances; i++ {
-		id := fmt.Sprintf("%s-%d", target.InstanceGroup, i)
-		from := strings.Replace(alias.Domain, "_", id, 1)
-		serviceName := instanceGroup.IndexedServiceName(i, azIndex)
-		to := fmt.Sprintf("%s.%s.svc.%s", serviceName, namespace, clusterDomain)
-		rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
-	}
-
-	return rewrites
-}
-
-// The Corefile values other than the rewrites were based on the default cluster CoreDNS Corefile.
-const corefileTemplate = `
-.:8053 {
-	errors
-	health
-	{{- range $rewrite := . }}
-	{{ $rewrite }}
-	{{- end }}
-	forward . /etc/resolv.conf
-	cache 30
-	loop
-	reload
-	loadbalance
-}`
-
-func dnsTemplate(from, to, queryType string) string {
-	matchPrefix := ""
-	if queryType == "*" {
-		matchPrefix = `(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*`
-	}
-	return fmt.Sprintf(cnameTemplate, regexp.QuoteMeta(from), matchPrefix, to, from)
-}
-
-const cnameTemplate = `
-template IN A %[4]s {
-	match ^%[2]s%[1]s\.$
-	answer "{{ .Name }} 60 IN CNAME %[3]s"
-	upstream
-}
-template IN AAAA %[4]s {
-	match ^%[2]s%[1]s\.$
-	answer "{{ .Name }} 60 IN CNAME %[3]s"
-	upstream
-}
-template IN CNAME %[4]s {
-	match ^%[2]s%[1]s\.$
-	answer "{{ .Name }} 60 IN CNAME %[3]s"
-	upstream
-}`
-
 // simpleDomainNameService emulates old behaviour without BOSH DNS.
 // TODO: Is this implementation of DomainNameService still relevant?
 type simpleDomainNameService struct {
@@ -426,8 +285,8 @@ func (dns *simpleDomainNameService) DNSSetting(_ string) (corev1.DNSPolicy, *cor
 	return corev1.DNSClusterFirst, nil, nil
 }
 
-// Reconcile see interface.
-func (dns *simpleDomainNameService) Reconcile(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
+// Apply is not required for the simple domain service.
+func (dns *simpleDomainNameService) Apply(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
 	return nil
 }
 
