@@ -248,7 +248,7 @@ func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
 // collectReleaseSpecsAndProviderLinks will collect all release specs and generate bosh links for provider jobs
 func (igr *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks(initialRollout bool) error {
 	for _, instanceGroup := range igr.manifest.InstanceGroups {
-		serviceName := names.HeadlessServiceName(instanceGroup.Name)
+		serviceName := names.ServiceName(instanceGroup.Name)
 
 		for jobIdx, job := range instanceGroup.Jobs {
 			// make sure a map entry exists for the current job release

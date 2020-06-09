@@ -200,7 +200,7 @@ func (kc *BPMConverter) serviceToQuarksStatefulSet(
 							SecurityContext: &corev1.PodSecurityContext{
 								FSGroup: &admGroupID,
 							},
-							Subdomain:        names.HeadlessServiceName(instanceGroup.Name),
+							Subdomain:        names.ServiceName(instanceGroup.Name),
 							ImagePullSecrets: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ImagePullSecrets,
 						},
 					},
@@ -264,7 +264,7 @@ func (kc *BPMConverter) serviceToKubeServices(namespace string, deploymentName s
 			ports)
 	}
 
-	headlessServiceName := names.HeadlessServiceName(instanceGroup.Name)
+	headlessServiceName := names.ServiceName(instanceGroup.Name)
 	headlessServiceSelector := map[string]string{
 		bdv1.LabelDeploymentName:    deploymentName,
 		bdv1.LabelInstanceGroupName: instanceGroup.Name,
