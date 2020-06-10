@@ -383,25 +383,19 @@ var _ = Describe("InstanceGroupResolver", func() {
 					Expect(err).NotTo(HaveOccurred())
 					ig = "log-api"
 
-					fileP1, err := fs.Create(converter.VolumeLinksPath + "doppler/fooprop")
+					fileP1, err := fs.Create(converter.VolumeLinksPath + "doppler/link")
 					Expect(err).NotTo(HaveOccurred())
 					defer fileP1.Close()
-					_, err = fileP1.WriteString("fake_prop")
+					_, err = fileP1.WriteString(`{"doppler.fooprop":"fake_prop","doppler.grpc_port":"7765","doppler.int":123, "doppler.nested.truth":false,"doppler.map":{"key":"value"}}}`)
 					Expect(err).NotTo(HaveOccurred())
-
-					fileP2, err := fs.Create(converter.VolumeLinksPath + "doppler/grpc_port")
-					Expect(err).NotTo(HaveOccurred())
-					defer fileP2.Close()
-					_, err = fileP2.WriteString(`7765`)
-					Expect(err).NotTo(HaveOccurred())
-
 				})
 
 				It("loads the external link properties and adds them", func() {
 					err = igr.CollectQuarksLinks(converter.VolumeLinksPath)
 					Expect(err).ToNot(HaveOccurred())
 
-					resolve()
+					err := igr.Resolve(true)
+					Expect(err).ToNot(HaveOccurred())
 					m, err := igr.Manifest()
 					Expect(err).ToNot(HaveOccurred())
 					// log-api instance_group, with loggregator_trafficcontroller job, consumes links from external doppler
@@ -421,6 +415,9 @@ var _ = Describe("InstanceGroupResolver", func() {
 							"doppler": map[string]interface{}{
 								"grpc_port": "7765",
 								"fooprop":   "fake_prop",
+								"int":       123,
+								"nested":    map[string]interface{}{"truth": false},
+								"map":       map[interface{}]interface{}{"key": "value"},
 							},
 						},
 					}))

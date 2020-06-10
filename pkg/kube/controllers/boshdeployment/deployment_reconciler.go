@@ -304,7 +304,7 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(bdpl *bdv1.BOSHDeployment, manif
 					})
 
 					if linkProvider.ProviderType != "" {
-						quarksLinks[s.Name] = bdm.QuarksLink{
+						quarksLinks[linkProvider.Name] = bdm.QuarksLink{
 							Type: linkProvider.ProviderType,
 						}
 					}
@@ -318,6 +318,7 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(bdpl *bdv1.BOSHDeployment, manif
 			return linkInfos, errors.Wrapf(err, "failed to get link services for '%s'", bdpl.GetNamespacedName())
 		}
 
+		// Update quarksLinks section `manifest.Properties["quarks_links"]` with info from existing serviceRecords
 		for qName := range quarksLinks {
 			if svcRecord, ok := serviceRecords[qName]; ok {
 				pods, err := r.listPodsFromSelector(bdpl.Namespace, svcRecord.selector)
@@ -364,7 +365,7 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(bdpl *bdv1.BOSHDeployment, manif
 		if manifest.Properties == nil {
 			manifest.Properties = map[string]interface{}{}
 		}
-		manifest.Properties["quarks_links"] = quarksLinks
+		manifest.Properties[bdm.QuarksLinksProperty] = quarksLinks
 	}
 
 	return linkInfos, nil
