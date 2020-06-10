@@ -12,6 +12,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -321,22 +322,47 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(bdpl *bdv1.BOSHDeployment, manif
 		// Update quarksLinks section `manifest.Properties["quarks_links"]` with info from existing serviceRecords
 		for qName := range quarksLinks {
 			if svcRecord, ok := serviceRecords[qName]; ok {
-				pods, err := r.listPodsFromSelector(bdpl.Namespace, svcRecord.selector)
-				if err != nil {
-					return linkInfos, errors.Wrapf(err, "Failed to get link pods for '%s'", bdpl.GetNamespacedName())
-				}
 
 				var jobsInstances []bdm.JobInstance
-				for i, p := range pods {
-					if len(p.Status.PodIP) == 0 {
-						return linkInfos, fmt.Errorf("empty ip of kube native component: '%s'", p.Name)
+
+				if svcRecord.selector != nil {
+					// Service has selectors, we're going through pods in order to build
+					// an instance list for the link
+					pods, err := r.listPodsFromSelector(bdpl.Namespace, svcRecord.selector)
+					if err != nil {
+						return linkInfos, errors.Wrapf(err, "Failed to get link pods for '%s'", bdpl.GetNamespacedName())
 					}
+
+					for i, p := range pods {
+						if len(p.Status.PodIP) == 0 {
+							return linkInfos, fmt.Errorf("empty ip of kube native component: '%s'", p.Name)
+						}
+						jobsInstances = append(jobsInstances, bdm.JobInstance{
+							Name:      qName,
+							ID:        string(p.GetUID()),
+							Index:     i,
+							Address:   p.Status.PodIP,
+							Bootstrap: i == 0,
+						})
+					}
+				} else if svcRecord.addresses != nil {
+					for i, a := range svcRecord.addresses {
+						jobsInstances = append(jobsInstances, bdm.JobInstance{
+							Name:      qName,
+							ID:        a,
+							Index:     i,
+							Address:   a,
+							Bootstrap: i == 0,
+						})
+					}
+				} else {
+					// No selector, no addresses - we're creating one instance that just points to the service address itself
 					jobsInstances = append(jobsInstances, bdm.JobInstance{
 						Name:      qName,
-						ID:        string(p.GetUID()),
-						Index:     i,
-						Address:   p.Status.PodIP,
-						Bootstrap: i == 0,
+						ID:        qName,
+						Index:     0,
+						Address:   svcRecord.dnsRecord,
+						Bootstrap: true,
 					})
 				}
 
@@ -346,7 +372,6 @@ func (r *ReconcileBOSHDeployment) listLinkInfos(bdpl *bdv1.BOSHDeployment, manif
 					Instances: jobsInstances,
 				}
 			}
-
 		}
 	}
 
@@ -376,14 +401,67 @@ func (r *ReconcileBOSHDeployment) getServiceRecords(namespace string, name strin
 	svcRecords := map[string]serviceRecord{}
 	for _, svc := range svcs {
 		if deploymentName, ok := svc.GetAnnotations()[bdv1.LabelDeploymentName]; ok && deploymentName == name {
-			providerName, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderService]
-			if ok {
+			if providerName, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderService]; ok {
 				if _, ok := svcRecords[providerName]; ok {
 					return svcRecords, errors.New(fmt.Sprintf("duplicated services of provider: %s", providerName))
 				}
 
+				// An ExternalName service doesn't have a selector or endpoints
+				if svc.Spec.Type == corev1.ServiceTypeExternalName {
+					svcRecords[providerName] = serviceRecord{
+						addresses: nil,
+						selector:  nil,
+						dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, boshdns.GetClusterDomain()),
+					}
+
+					continue
+				}
+
+				if len(svc.Spec.Selector) != 0 {
+					svcRecords[providerName] = serviceRecord{
+						addresses: nil,
+						selector:  svc.Spec.Selector,
+						dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, boshdns.GetClusterDomain()),
+					}
+
+					continue
+				}
+
+				// If we don't have a selector, we're either dealing with an ExternalName service,
+				// or a service that's backed by manually created Endpoints.
+				endpoints := &corev1.Endpoints{}
+				err := r.client.Get(
+					r.ctx,
+					types.NamespacedName{
+						Name:      svc.Name,
+						Namespace: svc.Namespace,
+					},
+					endpoints)
+
+				if err != nil {
+					// No selectors and no endpoints
+					if apierrors.IsNotFound(err) {
+						svcRecords[providerName] = serviceRecord{
+							addresses: nil,
+							selector:  nil,
+							dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, boshdns.GetClusterDomain()),
+						}
+					}
+
+					// We hit an actual error
+					return nil, errors.Wrapf(err, "failed to get service endpoints for links")
+				}
+
+				addresses := []string{}
+				for _, subset := range endpoints.Subsets {
+					for _, address := range subset.Addresses {
+						addresses = append(addresses, address.IP)
+					}
+				}
+
 				svcRecords[providerName] = serviceRecord{
-					selector:  svc.Spec.Selector,
+					addresses: addresses,
+					selector:  nil,
 					dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, boshdns.GetClusterDomain()),
 				}
 			}
@@ -404,10 +482,6 @@ func (r *ReconcileBOSHDeployment) listPodsFromSelector(namespace string, selecto
 		return podList.Items, errors.Wrapf(err, "listing pods from selector '%+v':", selector)
 	}
 
-	if len(podList.Items) == 0 {
-		return podList.Items, fmt.Errorf("got an empty list of pods")
-	}
-
 	return podList.Items, nil
 }
 
@@ -423,8 +497,7 @@ func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manif
 		// The "manifest with ops" secret is owned by the actual BOSHDeployment, so everything
 		// should be garbage collected properly.
 		if err := r.setReference(manifestSecret, &variable, r.scheme); err != nil {
-			err = log.WithEvent(manifestSecret, "OwnershipError").Errorf(ctx, "failed to set ownership for '%s': %v", variable.GetNamespacedName(), err)
-			return err
+			return log.WithEvent(manifestSecret, "OwnershipError").Errorf(ctx, "failed to set ownership for '%s': %v", variable.GetNamespacedName(), err)
 		}
 
 		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &variable, mutateqs.QuarksSecretMutateFn(&variable))
@@ -437,8 +510,7 @@ func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manif
 		if op == controllerutil.OperationResultUpdated {
 			variable.Status.Generated = pointers.Bool(false)
 			if err := r.client.Status().Update(ctx, &variable); err != nil {
-				log.WithEvent(&variable, "UpdateError").Errorf(ctx, "failed to update generated status on quarks secret '%s' (%v): %s", variable.GetNamespacedName(), variable.ResourceVersion, err)
-				return err
+				return log.WithEvent(&variable, "UpdateError").Errorf(ctx, "failed to update generated status on quarks secret '%s' (%v): %s", variable.GetNamespacedName(), variable.ResourceVersion, err)
 			}
 		}
 
@@ -451,4 +523,5 @@ func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manif
 type serviceRecord struct {
 	selector  map[string]string
 	dnsRecord string
+	addresses []string
 }
