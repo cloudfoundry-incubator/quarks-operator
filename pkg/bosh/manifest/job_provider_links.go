@@ -20,14 +20,14 @@ func newJobProviderLinks() jobProviderLinks {
 	}
 }
 
-// Lookup returns a link for a type and name, used when links are consumed
-func (jpl jobProviderLinks) Lookup(provider *JobSpecProvider) (JobLink, bool) {
+// lookup returns a link for a type and name, used when links are consumed
+func (jpl jobProviderLinks) lookup(provider *JobSpecProvider) (JobLink, bool) {
 	link, ok := jpl.links[provider.Type][provider.Name]
 	return link, ok
 }
 
-// Add another job to the lookup maps
-func (jpl jobProviderLinks) Add(igName string, job Job, spec JobSpec, jobsInstances []JobInstance, linkAddress string) error {
+// add another job to the lookup maps
+func (jpl jobProviderLinks) add(igName string, job Job, spec JobSpec, jobsInstances []JobInstance, linkAddress string) error {
 	var properties map[string]interface{}
 
 	for _, link := range spec.Provides {
@@ -106,15 +106,41 @@ func (jpl jobProviderLinks) Add(igName string, job Job, spec JobSpec, jobsInstan
 	return nil
 }
 
-// AddExternalLink adds link info from an external (non-BOSH) source
-func (jpl jobProviderLinks) AddExternalLink(linkName string, linkType string, linkAddress string, jobsInstances []JobInstance, properties JobLinkProperties) {
+// addExternalLink adds link info from an external (non-BOSH) source
+func (jpl jobProviderLinks) addExternalLink(linkName string, linkType string, linkAddress string, jobsInstances []JobInstance, properties JobLinkProperties) {
 	if _, ok := jpl.links[linkType]; !ok {
 		jpl.links[linkType] = map[string]JobLink{}
+	}
+
+	nestedProperties := map[string]interface{}{}
+	for propertyName, value := range properties {
+
+		items := strings.Split(propertyName, ".")
+		currentLevel := nestedProperties
+
+		for idx, gram := range items {
+			if idx == len(items)-1 {
+				currentLevel[gram] = value
+				continue
+			}
+
+			// Path doesn't exist, create it
+			if _, ok := currentLevel[gram]; !ok {
+				currentLevel[gram] = map[string]interface{}{}
+			}
+
+			// This is not the leaf, and we must make sure we have a map
+			if _, ok := currentLevel[gram].(map[string]interface{}); !ok {
+				currentLevel[gram] = map[string]interface{}{}
+			}
+
+			currentLevel = currentLevel[gram].(map[string]interface{})
+		}
 	}
 
 	jpl.links[linkType][linkName] = JobLink{
 		Address:    linkAddress,
 		Instances:  jobsInstances,
-		Properties: properties,
+		Properties: nestedProperties,
 	}
 }

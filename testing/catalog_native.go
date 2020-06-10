@@ -157,12 +157,12 @@ func (c *Catalog) NatsService(deployName string) corev1.Service {
 				"app": "nats",
 			},
 			Ports: []corev1.ServicePort{
-				corev1.ServicePort{
+				{
 					Name:       "client",
 					Port:       4222,
 					TargetPort: intstr.FromString("client"),
 				},
-				corev1.ServicePort{
+				{
 					Name:       "cluster",
 					Port:       6222,
 					TargetPort: intstr.FromString("cluster"),
@@ -183,9 +183,10 @@ func (c *Catalog) NatsSecret(deployName string) corev1.Secret {
 			},
 		},
 		StringData: map[string]string{
-			"user":     "nats_client",
-			"password": "r9fXAlY3gZ",
-			"port":     "4222",
+			"link": `---
+nats.user: nats_client
+nats.password: r9fXAlY3gZ
+nats.port: "4222"`,
 		},
 	}
 }

@@ -18,6 +18,12 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
 )
 
+// QuarksLinksProperty is the key for the manifest.Properties containing all external link secrets
+const QuarksLinksProperty = "quarks_links"
+
+// LinkFile is the property in the secrets data, containing the link properties yaml
+const LinkFile = "link"
+
 // InstanceGroupResolver gathers data for jobs in the manifest, it handles links and returns a deployment manifest
 // that only has information pertinent to an instance group.
 type InstanceGroupResolver struct {
@@ -181,65 +187,50 @@ func (igr *InstanceGroupResolver) CollectQuarksLinks(linksPath string) error {
 		return nil
 	}
 
-	links, err := afero.ReadDir(igr.fs, linksPath)
+	fileInfos, err := afero.ReadDir(igr.fs, linksPath)
 	if err != nil {
 		return errors.Wrapf(err, "could not read links directory '%s'", linksPath)
 	}
 
-	quarksLinks, ok := igr.manifest.Properties["quarks_links"]
+	p, ok := igr.manifest.Properties[QuarksLinksProperty]
 	if !ok {
 		return fmt.Errorf("missing quarks_links key in manifest properties")
 	}
-	qs, ok := quarksLinks.(map[string]interface{})
+	quarksLinks, ok := p.(map[string]interface{})
 	if !ok {
 		return fmt.Errorf("could not get a map of QuarksLink")
 	}
 
-	// Assume we have a list of files named as the provider names of a link
-	for _, l := range links {
-		if l.IsDir() {
-			linkName := l.Name()
-			qMap, ok := qs[linkName].(map[string]interface{})
-			if !ok {
-				return fmt.Errorf("could not cast for link %s", linkName)
-			}
-
-			q, err := getQuarksLinkFromMap(qMap)
-			if err != nil {
-				return fmt.Errorf("could not get quarks link '%s' from map", linkName)
-			}
-
-			linkType := q.Type
-			properties := map[string]interface{}{}
-			properties[linkName] = map[string]interface{}{}
-			linkP := map[string]interface{}{}
-			err = afero.Walk(igr.fs, filepath.Clean(filepath.Join(linksPath, l.Name())), func(path string, info os.FileInfo, err error) error {
-				if err != nil {
-					return err
-				}
-
-				if !info.IsDir() {
-					_, propertyFileName := filepath.Split(path)
-					// Skip the symlink to a directory
-					if strings.HasPrefix(propertyFileName, "..") {
-						return nil
-					}
-					varBytes, err := afero.ReadFile(igr.fs, path)
-					if err != nil {
-						return errors.Wrapf(err, "could not read link %s", l.Name())
-					}
-
-					linkP[propertyFileName] = string(varBytes)
-				}
-				return nil
-			})
-			if err != nil {
-				return errors.Wrapf(err, "walking links path")
-			}
-
-			properties[linkName] = linkP
-			igr.jobProviderLinks.AddExternalLink(linkName, linkType, q.Address, q.Instances, properties)
+	// Assume we have a list of dirs named as the provider names of a link, each containing a file 'link'
+	for _, fi := range fileInfos {
+		if !fi.IsDir() {
+			continue
 		}
+		linkName := fi.Name()
+
+		qMap, ok := quarksLinks[linkName].(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("could not cast for link %s", linkName)
+		}
+
+		ql, err := newQuarksLink(qMap)
+		if err != nil {
+			return fmt.Errorf("could not get quarks link '%s' from map", linkName)
+		}
+
+		properties := map[string]interface{}{}
+		linkfile := filepath.Join(linksPath, linkName, LinkFile)
+		varBytes, err := afero.ReadFile(igr.fs, linkfile)
+		if err != nil {
+			return errors.Wrapf(err, "failed to read link file")
+		}
+
+		err = yaml.Unmarshal(varBytes, properties)
+		if err != nil {
+			return errors.Wrapf(err, "failed to unmarshal link file")
+		}
+
+		igr.jobProviderLinks.addExternalLink(linkName, ql.Type, ql.Address, ql.Instances, properties)
 	}
 
 	return nil
@@ -279,7 +270,7 @@ func (igr *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks(initialRol
 			// Create a list of fully evaluated links provided by the current job
 			// These is specified in the job release job.MF file
 			if spec.Provides != nil {
-				err := igr.jobProviderLinks.Add(instanceGroup.Name, job, spec, jobsInstances, serviceName)
+				err := igr.jobProviderLinks.add(instanceGroup.Name, job, spec, jobsInstances, serviceName)
 				if err != nil {
 					return errors.Wrapf(err, "Collecting release spec and provider links failed for %s", job.Name)
 				}
@@ -472,7 +463,7 @@ func generateJobConsumersData(currentJob *Job, jobReleaseSpecs map[string]map[st
 	for _, provider := range currentJobSpecData.Consumes {
 		providerName := getProviderNameFromConsumer(*currentJob, provider.Name)
 
-		link, hasLink := jobProviderLinks.Lookup(&provider)
+		link, hasLink := jobProviderLinks.lookup(&provider)
 		if !hasLink && !provider.Optional {
 			return errors.Errorf("cannot resolve non-optional link for provider %s in job %s", providerName, currentJob.Name)
 		}
@@ -623,7 +614,7 @@ func getProviderNameFromConsumer(job Job, provider string) string {
 	return providerName
 }
 
-func getQuarksLinkFromMap(m map[string]interface{}) (QuarksLink, error) {
+func newQuarksLink(m map[string]interface{}) (QuarksLink, error) {
 	var result QuarksLink
 
 	data, err := json.Marshal(m)
