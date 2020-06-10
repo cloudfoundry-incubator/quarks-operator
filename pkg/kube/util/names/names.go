@@ -40,3 +40,8 @@ func ServiceName(igName string, maxLength int) string {
 	s := names.DNSLabelSafe(igName)
 	return names.TruncateMD5(s, maxLength)
 }
+
+// HeadlessServiceName constructs the headless service name for the instance group.
+func HeadlessServiceName(instanceGroupName string) string {
+	return ServiceName(instanceGroupName, 63)
+}

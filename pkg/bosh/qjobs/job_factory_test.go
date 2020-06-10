@@ -4,6 +4,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	batchv1 "k8s.io/api/batch/v1"
+
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	. "code.cloudfoundry.org/quarks-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
@@ -42,26 +44,34 @@ var _ = Describe("JobFactory", func() {
 			Expect(jobIG.Template.Spec.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
 		})
 
-		It("creates relative volume infos when having link secrets", func() {
-			linkInfos = LinkInfos{
-				{
-					SecretName:   "fake-secret-name",
-					ProviderName: "fake-link-name",
-				},
-			}
+		Context("when link infos are provided", func() {
+			var jobIG batchv1.JobSpec
 
-			qJob, err := factory.InstanceGroupManifestJob("namespace", deploymentName, *m, linkInfos, true)
-			Expect(err).ToNot(HaveOccurred())
-			jobIG := qJob.Spec.Template.Spec
-			// Test init containers in the ig manifest qJob
-			Expect(jobIG.Template.Spec.InitContainers[0].Name).To(Equal("spec-copier-redis"))
-			Expect(jobIG.Template.Spec.InitContainers[1].Name).To(Equal("spec-copier-cflinuxfs3"))
-			Expect(jobIG.Template.Spec.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-			Expect(jobIG.Template.Spec.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
-			Expect(jobIG.Template.Spec.Volumes[0].Name).To(Equal("fake-secret-name"))
-			Expect(jobIG.Template.Spec.Volumes[0].Secret.SecretName).To(Equal("fake-secret-name"))
-			Expect(jobIG.Template.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("fake-secret-name"))
-			Expect(jobIG.Template.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal(VolumeLinksPath + "fake-link-name"))
+			BeforeEach(func() {
+				linkInfos = LinkInfos{
+					{
+						SecretName:   "fake-secret-name",
+						ProviderName: "fake-link-name",
+					},
+				}
+				qJob, err := factory.InstanceGroupManifestJob("namespace", deploymentName, *m, linkInfos, true)
+				Expect(err).ToNot(HaveOccurred())
+				jobIG = qJob.Spec.Template.Spec
+			})
+
+			It("keeps existing volume mounts on init containers", func() {
+				Expect(jobIG.Template.Spec.InitContainers[0].Name).To(Equal("spec-copier-redis"))
+				Expect(jobIG.Template.Spec.InitContainers[1].Name).To(Equal("spec-copier-cflinuxfs3"))
+				Expect(jobIG.Template.Spec.InitContainers[0].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+				Expect(jobIG.Template.Spec.InitContainers[1].VolumeMounts[0].MountPath).To(Equal("/var/vcap/all-releases"))
+			})
+
+			It("adds the linked secret as a volume and mounts it on the first container", func() {
+				Expect(jobIG.Template.Spec.Volumes[0].Name).To(Equal("fake-secret-name"))
+				Expect(jobIG.Template.Spec.Volumes[0].Secret.SecretName).To(Equal("fake-secret-name"))
+				Expect(jobIG.Template.Spec.Containers[0].VolumeMounts[0].Name).To(Equal("fake-secret-name"))
+				Expect(jobIG.Template.Spec.Containers[0].VolumeMounts[0].MountPath).To(Equal(VolumeLinksPath + "fake-link-name"))
+			})
 		})
 
 		It("handles an error when getting release image", func() {

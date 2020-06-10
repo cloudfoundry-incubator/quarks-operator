@@ -19,7 +19,6 @@ import (
 
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	wh "code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/withops"
@@ -122,7 +121,6 @@ func (v *Validator) Handle(ctx context.Context, req admission.Request) admission
 	resolver := withops.NewResolver(
 		v.client,
 		func() withops.Interpolator { return withops.NewInterpolator() },
-		func(m manifest.Manifest) (withops.DomainNameService, error) { return boshdns.NewDNS(m) },
 	)
 	manifest, _, err := resolver.ManifestDetailed(ctx, boshDeployment, boshDeployment.GetNamespace())
 	if err != nil {

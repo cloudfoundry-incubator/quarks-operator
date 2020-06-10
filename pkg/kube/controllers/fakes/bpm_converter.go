@@ -11,12 +11,12 @@ import (
 )
 
 type FakeBPMConverter struct {
-	ResourcesStub        func(string, string, bpmconverter.DomainNameService, string, *manifest.InstanceGroup, manifest.ReleaseImageProvider, bpm.Configs, string) (*bpmconverter.Resources, error)
+	ResourcesStub        func(string, string, bpmconverter.DNSSettings, string, *manifest.InstanceGroup, manifest.ReleaseImageProvider, bpm.Configs, string) (*bpmconverter.Resources, error)
 	resourcesMutex       sync.RWMutex
 	resourcesArgsForCall []struct {
 		arg1 string
 		arg2 string
-		arg3 bpmconverter.DomainNameService
+		arg3 bpmconverter.DNSSettings
 		arg4 string
 		arg5 *manifest.InstanceGroup
 		arg6 manifest.ReleaseImageProvider
@@ -35,13 +35,13 @@ type FakeBPMConverter struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeBPMConverter) Resources(arg1 string, arg2 string, arg3 bpmconverter.DomainNameService, arg4 string, arg5 *manifest.InstanceGroup, arg6 manifest.ReleaseImageProvider, arg7 bpm.Configs, arg8 string) (*bpmconverter.Resources, error) {
+func (fake *FakeBPMConverter) Resources(arg1 string, arg2 string, arg3 bpmconverter.DNSSettings, arg4 string, arg5 *manifest.InstanceGroup, arg6 manifest.ReleaseImageProvider, arg7 bpm.Configs, arg8 string) (*bpmconverter.Resources, error) {
 	fake.resourcesMutex.Lock()
 	ret, specificReturn := fake.resourcesReturnsOnCall[len(fake.resourcesArgsForCall)]
 	fake.resourcesArgsForCall = append(fake.resourcesArgsForCall, struct {
 		arg1 string
 		arg2 string
-		arg3 bpmconverter.DomainNameService
+		arg3 bpmconverter.DNSSettings
 		arg4 string
 		arg5 *manifest.InstanceGroup
 		arg6 manifest.ReleaseImageProvider
@@ -66,13 +66,13 @@ func (fake *FakeBPMConverter) ResourcesCallCount() int {
 	return len(fake.resourcesArgsForCall)
 }
 
-func (fake *FakeBPMConverter) ResourcesCalls(stub func(string, string, bpmconverter.DomainNameService, string, *manifest.InstanceGroup, manifest.ReleaseImageProvider, bpm.Configs, string) (*bpmconverter.Resources, error)) {
+func (fake *FakeBPMConverter) ResourcesCalls(stub func(string, string, bpmconverter.DNSSettings, string, *manifest.InstanceGroup, manifest.ReleaseImageProvider, bpm.Configs, string) (*bpmconverter.Resources, error)) {
 	fake.resourcesMutex.Lock()
 	defer fake.resourcesMutex.Unlock()
 	fake.ResourcesStub = stub
 }
 
-func (fake *FakeBPMConverter) ResourcesArgsForCall(i int) (string, string, bpmconverter.DomainNameService, string, *manifest.InstanceGroup, manifest.ReleaseImageProvider, bpm.Configs, string) {
+func (fake *FakeBPMConverter) ResourcesArgsForCall(i int) (string, string, bpmconverter.DNSSettings, string, *manifest.InstanceGroup, manifest.ReleaseImageProvider, bpm.Configs, string) {
 	fake.resourcesMutex.RLock()
 	defer fake.resourcesMutex.RUnlock()
 	argsForCall := fake.resourcesArgsForCall[i]

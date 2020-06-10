@@ -200,13 +200,10 @@ var _ = Describe("Examples Directory", func() {
 			podWait("pod/nats-1")
 
 			By("Checking the value in the config file")
-			outFile, err := cmdHelper.RunCommandWithOutput(namespace, "nats-1", "awk 'NR == 18 {print substr($2,2,17)}' /var/vcap/jobs/nats/config/nats.conf")
+			// password is stored in line 24
+			password, err := cmdHelper.RunCommandWithOutput(namespace, "nats-1", "awk 'NR == 24 {print substr($2,2,17)}' /var/vcap/jobs/nats/config/nats.conf")
 			Expect(err).ToNot(HaveOccurred())
-
-			outSecret, err := cmdHelper.GetData(namespace, "secret", "var-custom-password", "go-template={{.data.password}}")
-			Expect(err).ToNot(HaveOccurred())
-			outSecretDecoded, _ := b64.StdEncoding.DecodeString(string(outSecret))
-			Expect(strings.TrimSuffix(outFile, "\n")).To(ContainSubstring(string(outSecretDecoded)))
+			Expect(strings.TrimSuffix(password, "\n")).To(Equal("a-custom-password"))
 		})
 
 	})

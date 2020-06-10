@@ -97,3 +97,8 @@ website/resources/
 website/node_modules/
 website/tech-doc-hugo
 website/bin/
+
+# Created by tests
+testing/assets/bpm.json
+testing/assets/ig.json
+testing/assets/provides.json
