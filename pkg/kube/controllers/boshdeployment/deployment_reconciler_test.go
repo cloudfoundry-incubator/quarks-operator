@@ -496,7 +496,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					}))
 				})
 
-				It("handles an error when listing secretsn", func() {
+				It("handles an error when listing secrets", func() {
 					client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
 						switch object.(type) {
 						case *corev1.SecretList:
