@@ -70,7 +70,7 @@ jobs:
         bin/build-helm
         bin/build-image
         kind load docker-image "cfcontainerization/cf-operator:dev"
-        bin/tools
+        bin/tools-shared
         export DEBUG=yes
         tools/quarks-utils/bin/test-integration
         INTEGRATION_SUITE=storage tools/quarks-utils/bin/test-integration
