@@ -8,10 +8,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
-	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/withops"
 )
 
@@ -51,9 +49,6 @@ func getSecretRefFromBdpl(ctx context.Context, client crc.Client, object bdv1.BO
 	withops := withops.NewResolver(
 		client,
 		func() withops.Interpolator { return withops.NewInterpolator() },
-		func(m bdm.Manifest) (withops.DomainNameService, error) {
-			return boshdns.NewDNS(m)
-		},
 	)
 	_, implicitVars, err := withops.Manifest(ctx, &object, object.Namespace)
 	if err != nil {

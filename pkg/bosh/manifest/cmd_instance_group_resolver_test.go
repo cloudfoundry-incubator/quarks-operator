@@ -12,7 +12,6 @@ import (
 	bpmConfig "code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/converter"
 	. "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/testing"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
@@ -80,10 +79,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 			m, err = env.BOSHManifestFromKubeCF641()
 			Expect(err).NotTo(HaveOccurred())
 
-			dns, err := boshdns.NewDNS(*m)
-			Expect(err).ToNot(HaveOccurred())
-
-			igr, err = NewInstanceGroupResolver(fs, assetPath, deploymentName, *m, ig, dns)
+			igr, err = NewInstanceGroupResolver(fs, assetPath, deploymentName, *m, ig)
 			Expect(err).ToNot(HaveOccurred())
 
 			resolve()
@@ -104,9 +100,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 		var deploymentName string
 
 		JustBeforeEach(func() {
-			dns, err := boshdns.NewDNS(*m)
-			Expect(err).ToNot(HaveOccurred())
-			igr, err = NewInstanceGroupResolver(fs, assetPath, deploymentName, *m, ig, dns)
+			igr, err = NewInstanceGroupResolver(fs, assetPath, deploymentName, *m, ig)
 			Expect(err).ToNot(HaveOccurred())
 		})
 

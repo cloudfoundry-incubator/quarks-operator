@@ -104,7 +104,7 @@ func (ig *InstanceGroup) NameSanitized() string {
 // IndexedServiceName constructs an indexed service name. It's used to construct the service
 // names other than the headless service.
 func (ig *InstanceGroup) IndexedServiceName(index int, azIndex int) string {
-	sn := boshnames.ServiceName(ig.Name, 53)
+	sn := boshnames.TruncatedServiceName(ig.Name, 53)
 	if azIndex > -1 {
 		return fmt.Sprintf("%s-z%d-%d", sn, azIndex, index)
 	}

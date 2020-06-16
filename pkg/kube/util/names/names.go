@@ -35,8 +35,13 @@ func InstanceGroupSecretName(igName string, version string) string {
 	return finalName
 }
 
-// ServiceName returns the service name for a deployment
-func ServiceName(igName string, maxLength int) string {
+// TruncatedServiceName returns the service name for a deployment
+func TruncatedServiceName(igName string, maxLength int) string {
 	s := names.DNSLabelSafe(igName)
 	return names.TruncateMD5(s, maxLength)
+}
+
+// ServiceName constructs the headless service name for the instance group.
+func ServiceName(instanceGroupName string) string {
+	return names.Sanitize(instanceGroupName)
 }
