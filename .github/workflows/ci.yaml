@@ -1,6 +1,12 @@
 name: quarks-operator-ci
 
-on: [push]
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - master
+  pull_request:
 
 jobs:
   unit-tests:
@@ -77,7 +83,6 @@ jobs:
         bin/build-helm
         bin/build-image
         kind load docker-image "cfcontainerization/cf-operator:dev"
-        export DEBUG=yes
         tools/quarks-utils/bin/test-integration
         INTEGRATION_SUITE=storage tools/quarks-utils/bin/test-integration
         INTEGRATION_SUITE=util tools/quarks-utils/bin/test-integration
@@ -85,6 +90,7 @@ jobs:
         tools/quarks-utils/bin/test-helm-e2e
         bin/test-helm-e2e-storage
       env:
+        DEBUG: "yes"
         GOPROXY: "https://proxy.golang.org"
         OPERATOR_TEST_STORAGE_CLASS: "standard"
         PROJECT: "quarks-operator"
