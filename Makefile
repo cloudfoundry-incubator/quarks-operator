@@ -11,9 +11,6 @@ all: tools build test
 up:
 	bin/up
 
-vet:
-	bin/vet
-
 lint: tools
 	$(QUARKS_UTILS)/bin/lint
 
@@ -29,6 +26,9 @@ vendor:
 
 staticcheck:
 	staticcheck ./...
+
+vet:
+	go list ./... | xargs go vet
 
 ############ BUILD TARGETS ############
 
