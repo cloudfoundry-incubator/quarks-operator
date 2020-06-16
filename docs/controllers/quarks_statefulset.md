@@ -108,11 +108,7 @@ For more information about Kubernetes services, we recommend you to read [this](
 
 #### Extended Upgrade Support
 
-When an update needs to happen, a second `StatefulSet` for the new version is deployed, and both coexist until canary conditions are met. This also allows support for Blue/Green techniques.
-
-> **Note:**
->
-> This could make integration with [Istio](https://istio.io/) easier and (more) seamless.
+When an update needs to happen, a second `StatefulSet` for the new version is deployed, and both coexist until canary conditions are met.
 
 Annotated with a version (auto-incremented on each update). The annotation key is `quarks.cloudfoundry.org/version`.
 
