@@ -18,7 +18,7 @@ func GetConfigMapsReferencedBy(object interface{}) (map[string]bool, error) {
 	case qstsv1a1.QuarksStatefulSet:
 		return getConfMapRefFromESts(object), nil
 	default:
-		return nil, errors.New("can't get config map references for unkown type; supported types are BOSHDeployment and QuarksStatefulSet")
+		return nil, errors.New("can't get config map references for unknown type; supported types are BOSHDeployment and QuarksStatefulSet")
 	}
 }
 

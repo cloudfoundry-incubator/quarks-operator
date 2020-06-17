@@ -65,7 +65,7 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 
 	updatedPod := pod.DeepCopy()
 	if validWait(pod.GetAnnotations()) {
-		if err := m.addInitContainer(ctx, updatedPod); err != nil {
+		if err := m.addInitContainer(updatedPod); err != nil {
 			return admission.Errored(http.StatusInternalServerError, err)
 		}
 	}
@@ -78,7 +78,7 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledPod)
 }
 
-func (m *PodMutator) addInitContainer(ctx context.Context, pod *corev1.Pod) error {
+func (m *PodMutator) addInitContainer(pod *corev1.Pod) error {
 	annotations := pod.GetAnnotations()
 	servicesStr, ok := annotations[WaitKey]
 	if !ok {

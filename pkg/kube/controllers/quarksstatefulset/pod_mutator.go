@@ -50,10 +50,7 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 
 	updatedPod := pod.DeepCopy()
 	if isQuarksStatefulSet(pod.GetLabels()) {
-		err = m.mutatePodsFn(ctx, updatedPod)
-		if err != nil {
-			return admission.Errored(http.StatusInternalServerError, err)
-		}
+		m.mutatePodsFn(updatedPod)
 	}
 
 	marshaledPod, err := json.Marshal(updatedPod)
@@ -65,7 +62,7 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 }
 
 // mutatePodsFn add a pod-ordinal label to the given pod
-func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
+func (m *PodMutator) mutatePodsFn(pod *corev1.Pod) {
 	m.log.Infof("Mutating Pod '%s/%s'", pod.Namespace, pod.Name)
 
 	// Add pod ordinal label for service selectors
@@ -79,8 +76,6 @@ func (m *PodMutator) mutatePodsFn(ctx context.Context, pod *corev1.Pod) error {
 		podLabels[qstsv1a1.LabelPodOrdinal] = strconv.Itoa(podOrdinal)
 		pod.SetLabels(podLabels)
 	}
-
-	return nil
 }
 
 // isQuarksStatefulSet check is it is quarksStatefulSet Pod
