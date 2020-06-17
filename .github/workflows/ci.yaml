@@ -96,3 +96,8 @@ jobs:
         PROJECT: "quarks-operator"
         DOCKER_IMAGE_TAG: "dev"
         CF_OPERATOR_WEBHOOK_SERVICE_HOST: 172.17.0.1
+    - uses: actions/upload-artifact@v2
+      if: failure()
+      with:
+        name: ginkgo debug logs
+        path: "**/ginkgo-node-*.log"
