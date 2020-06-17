@@ -45,8 +45,6 @@ jobs:
 
   cluster-tests:
     needs: [unit-tests]
-    env:
-      NODES: "1"
     runs-on: ubuntu-16.04
     strategy:
       matrix:
@@ -90,6 +88,7 @@ jobs:
         tools/quarks-utils/bin/test-helm-e2e
         bin/test-helm-e2e-storage
       env:
+        NODES: "1"
         DEBUG: "yes"
         GOPROXY: "https://proxy.golang.org"
         OPERATOR_TEST_STORAGE_CLASS: "standard"
