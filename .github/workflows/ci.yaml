@@ -45,9 +45,9 @@ jobs:
 
   cluster-tests:
     needs: [unit-tests]
-
+    env:
+      NODES: "1"
     runs-on: ubuntu-16.04
-
     strategy:
       matrix:
         kubernetes_version: [v1.14.10,v1.15.7,v1.16.4,v1.17.0,v1.18.0]
