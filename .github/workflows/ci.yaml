@@ -72,6 +72,7 @@ jobs:
     - name: Create k8s Kind Cluster
       uses: engineerd/setup-kind@v0.3.0
       with:
+       config: .github/kind-config.yaml
        version: v0.7.0
        image: kindest/node:${{matrix.kubernetes_version}}
     - name: Run cluster tests
