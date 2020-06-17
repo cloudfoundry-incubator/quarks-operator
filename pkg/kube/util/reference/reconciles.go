@@ -154,7 +154,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			}
 		}
 	default:
-		return nil, fmt.Errorf("unkown reconcile type %s", reconcileType.String())
+		return nil, fmt.Errorf("unknown reconcile type %s", reconcileType.String())
 	}
 
 	return result, nil

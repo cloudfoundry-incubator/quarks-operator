@@ -275,9 +275,8 @@ var _ = Describe("Deploy", func() {
 
 					if sts.Spec.Template.Spec.Containers[0].ReadinessProbe != nil {
 						return sts.Spec.Template.Spec.Containers[0].ReadinessProbe.Exec.Command
-					} else {
-						return []string{}
 					}
+					return []string{}
 				}, env.PollTimeout, env.PollInterval).Should(Equal([]string{"echo healthy"}), "command for readiness should be created")
 			})
 		})

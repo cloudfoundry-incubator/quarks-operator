@@ -478,7 +478,7 @@ func resolvedPropertiesVolume(name string) *corev1.Volume {
 	}
 }
 
-func resolvedPropertiesVolumeMount(name string, instanceGroupName string) corev1.VolumeMount {
+func resolvedPropertiesVolumeMount(instanceGroupName string) corev1.VolumeMount {
 	return corev1.VolumeMount{
 		Name:      "ig-resolved",
 		MountPath: fmt.Sprintf(resolvedPropertiesFormat, instanceGroupName),
