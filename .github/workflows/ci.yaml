@@ -88,7 +88,7 @@ jobs:
         tools/quarks-utils/bin/test-helm-e2e
         bin/test-helm-e2e-storage
       env:
-        NODES: "1"
+        NODES: "3"
         DEBUG: "yes"
         GOPROXY: "https://proxy.golang.org"
         OPERATOR_TEST_STORAGE_CLASS: "standard"
