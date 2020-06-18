@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gexec"
 	"github.com/pkg/errors"
 	"k8s.io/client-go/rest"
 
@@ -16,7 +17,7 @@ import (
 
 func TestUtil(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Util Suite")
+	RunSpecs(t, "Integration Util Suite")
 }
 
 var (
@@ -67,6 +68,7 @@ var _ = BeforeEach(func() {
 
 var _ = AfterEach(func() {
 	env.Teardown(CurrentGinkgoTestDescription().Failed)
+	gexec.Kill()
 })
 
 var _ = AfterSuite(func() {
