@@ -16,8 +16,8 @@ code.cloudfoundry.org/quarks-job v1.0.159/go.mod h1:oJojakrgj7y1GlSs7UaDGvjI4b1w
 code.cloudfoundry.org/quarks-secret v0.0.0-20200527034647-269daeb7e9ca h1:q8W1AbMFvSIEts/qH1bNnnOhZcQ9hRdfkXHfWWMZClU=
 code.cloudfoundry.org/quarks-secret v0.0.0-20200527034647-269daeb7e9ca/go.mod h1:0NEUHrB9j1T7WQzndlvTthCDQuwglfkte/lavTLC2nI=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200514122617-32f742d5f10e/go.mod h1:voPdeHf5x70u82CBFDCisvVFhxpXKuUEjd+b8y4Dcwo=
-code.cloudfoundry.org/quarks-utils v0.0.0-20200616125609-bd688d9e9d1d h1:s7WS3kQAZJA+C+X+cDye7zEQO1qjEEVgVlaEZG6UGR4=
-code.cloudfoundry.org/quarks-utils v0.0.0-20200616125609-bd688d9e9d1d/go.mod h1:voPdeHf5x70u82CBFDCisvVFhxpXKuUEjd+b8y4Dcwo=
+code.cloudfoundry.org/quarks-utils v0.0.0-20200617083836-737aa9337569 h1:fi0Qhwd6SP0yqZj3tL3kFUyDdZcq93mzZq65JjH0xOw=
+code.cloudfoundry.org/quarks-utils v0.0.0-20200617083836-737aa9337569/go.mod h1:voPdeHf5x70u82CBFDCisvVFhxpXKuUEjd+b8y4Dcwo=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
 github.com/Azure/go-autorest/autorest v0.9.0/go.mod h1:xyHB1BMZT0cuDHU7I0+g046+BFDTQ8rEZB0s4Yfa6bI=

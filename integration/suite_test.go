@@ -92,7 +92,7 @@ var _ = BeforeEach(func() {
 
 var _ = AfterEach(func() {
 	env.Teardown(CurrentGinkgoTestDescription().Failed)
-	gexec.KillAndWait()
+	gexec.Kill()
 })
 
 var _ = AfterSuite(func() {

@@ -124,17 +124,16 @@ func (ig *InstanceGroup) jobInstances(
 
 	if len(ig.AZs) > 0 {
 		for azIndex, az := range ig.AZs {
-			jobsInstances = ig.generateJobInstances(jobsInstances, initialRollout, azIndex, az, jobName, bootstrapIndex)
+			jobsInstances = ig.generateJobInstances(jobsInstances, azIndex, az, jobName, bootstrapIndex)
 		}
 	} else {
-		jobsInstances = ig.generateJobInstances(jobsInstances, initialRollout, -1, "", jobName, bootstrapIndex)
+		jobsInstances = ig.generateJobInstances(jobsInstances, -1, "", jobName, bootstrapIndex)
 	}
 
 	return jobsInstances
 }
 
 func (ig *InstanceGroup) generateJobInstances(jobsInstances []JobInstance,
-	initialRollout bool,
 	azIndex int,
 	az string,
 	jobName string,

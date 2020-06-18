@@ -16,7 +16,7 @@ func (c *Catalog) DefaultBOSHDeployment(name, manifestRef string) bdv1.BOSHDeplo
 	}
 }
 
-// SecretBOSHDeployment a deployment CR which expectes the BOSH manifest in a secret.
+// SecretBOSHDeployment a deployment CR which expects the BOSH manifest in a secret.
 // The name needs to match the name inside the referenced manifest.
 func (c *Catalog) SecretBOSHDeployment(name, manifestRef string) bdv1.BOSHDeployment {
 	return bdv1.BOSHDeployment{
