@@ -6,35 +6,37 @@ weight: 11
 
 Also known as "Quarks Links" - they provide a way to share/discover information between BOSH and Kube Native components.
 
-## Native -> BOSH
+## Using k8s Native Values in BOSH Deployments (Native -> BOSH)
 
 In this case, the native component is a provider, and the BOSH component is a consumer.
 
-We construct link information like so:
+We construct link information from the native resources like this:
 
 | BOSH Link           | Native  | Description                                                                                              |
 | ------------------- | ------- | -------------------------------------------------------------------------------------------------------- |
-| address             | Service | DNS address of a Kubernetes service annotated  `quarks.cloudfoundry.org/provides = LINK_NAME`            |
+| address             | Service | DNS address of a k8s *service* annotated  `quarks.cloudfoundry.org/provides = LINK_NAME`                 |
 | azs                 | N/A     | not supported                                                                                            |
-| p                   |         | properties retrieved from a secret annotated `quarks.cloudfoundry.org/provides = LINK_NAME`              |
-| instances.name      | Pod     | name of pod selected by the Kube Service that's annotated `quarks.cloudfoundry.org/provides = LINK_NAME` |
-| instances.id        | Pod     | pod uid                                                                                                  |
+| p                   |         | properties retrieved from a *secret* annotated `quarks.cloudfoundry.org/provides = LINK_NAME`            |
+| instances.name      | Pod     | name of *pod* selected by the k8s *service* that's annotated `quarks.cloudfoundry.org/provides = LINK_NAME` |
+| instances.id        | Pod     | *pod* uid                                                                                                |
 | instances.index     | Pod     | set to a value 0-(pod replica count)                                                                     |
 | instances.az        | N/A     | not supported                                                                                            |
-| instances.address   | Pod     | ip of pod                                                                                                |
+| instances.address   | Pod     | ip of *pod*                                                                                              |
 | instances.bootstrap | Pod     | set to true if index == 0                                                                                |
 
 > If multiple secrets or services are found with the same link information, the operator should error
 
 ### Example (Native -> BOSH)
 
-Add the following yaml config to the job spec (job.MF) file in the nats release.
+When a job consumes a link, it will have a section like this in the in its job spec (`job.MF`), e.g. the nats release:
 
 ```yaml
 consumes:
 - name: nats
   type: nats
 ```
+
+We can create the following k8s secret to fulfill the link:
 
 ```yaml
 kind: Secret
@@ -45,10 +47,17 @@ metadata:
     quarks.cloudfoundry.org/provides: '{"name":"nats","type":"nats"}'
 spec:
   data:
-    password: mysecret
+    link: |
+      nats.password: mysecret
 ```
 
-Using this secret, I should be able to use `link("nats").p("password")` in one of my BOSH templates.
+Using this secret, the nats release can use `link("nats").p("password")` in its eruby templates.
+
+```eruby
+"<%= p("nats.password") %>"
+```
+
+Furthermore, if there is a matching k8s service, it will be used in the link:
 
 ```yaml
 apiVersion: v1
@@ -76,9 +85,10 @@ If the secret is changed, consumers of the link are automatically restarted.
 
 If the service is changed, or the list of pods selected by the service is changed, consumers of the link are automatically restarted.
 
-## BOSH -> Native
+## Using BOSH Variables in k8s Pods (BOSH -> Native)
 
 In this case, the BOSH component is a provider, and the native component is a consumer.
+The native component is pod, which might belong to a deployment or statefulset.
 
 The operator creates link secrets for all providers in a BOSH deployment. Each secret contains a flattened map with the provided properties:
 
@@ -128,11 +138,9 @@ The OPI process of Eirini required the NATS password and IP.
 
 ```
 
-and a CF-Deployment with Operator
-Instance Groups:
-
+and a CF-Deployment with Operator, which has the following instance groups:
 - API
 - Diego Cell
 - Gorouter
 - NATS
-  provides: nats
+  `provides: nats`
