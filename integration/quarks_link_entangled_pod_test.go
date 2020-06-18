@@ -134,13 +134,13 @@ var _ = Describe("Entangled Pods PodMutator", func() {
 
 	Context("when no entanglement secret can be found", func() {
 		BeforeEach(func() {
-			pod = env.EntangledPod("non-existant")
+			pod = env.EntangledPod("non-existent")
 		})
 
 		It("refuses to mutate the pod", func() {
 			_, err := env.CreatePod(env.Namespace, pod)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring(`admission webhook "mutate-tangled-pods.quarks.cloudfoundry.org" denied the request: couldn't find any entanglement secret for deployment 'non-existant'`))
+			Expect(err.Error()).To(ContainSubstring(`admission webhook "mutate-tangled-pods.quarks.cloudfoundry.org" denied the request: couldn't find any entanglement secret for deployment 'non-existent'`))
 		})
 	})
 

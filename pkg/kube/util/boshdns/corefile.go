@@ -87,7 +87,7 @@ func gatherAllRewrites(rewrites []string,
 	} else {
 		from := alias.Domain
 		to := fmt.Sprintf("%s.%s.svc.%s",
-			names.HeadlessServiceName(target.InstanceGroup),
+			names.ServiceName(target.InstanceGroup),
 			namespace,
 			clusterDomain)
 		rewrites = append(rewrites, dnsTemplate(from, to, target.Query))

@@ -104,7 +104,7 @@ func (ig *InstanceGroup) NameSanitized() string {
 // IndexedServiceName constructs an indexed service name. It's used to construct the service
 // names other than the headless service.
 func (ig *InstanceGroup) IndexedServiceName(index int, azIndex int) string {
-	sn := boshnames.ServiceName(ig.Name, 53)
+	sn := boshnames.TruncatedServiceName(ig.Name, 53)
 	if azIndex > -1 {
 		return fmt.Sprintf("%s-z%d-%d", sn, azIndex, index)
 	}
@@ -124,17 +124,16 @@ func (ig *InstanceGroup) jobInstances(
 
 	if len(ig.AZs) > 0 {
 		for azIndex, az := range ig.AZs {
-			jobsInstances = ig.generateJobInstances(jobsInstances, initialRollout, azIndex, az, jobName, bootstrapIndex)
+			jobsInstances = ig.generateJobInstances(jobsInstances, azIndex, az, jobName, bootstrapIndex)
 		}
 	} else {
-		jobsInstances = ig.generateJobInstances(jobsInstances, initialRollout, -1, "", jobName, bootstrapIndex)
+		jobsInstances = ig.generateJobInstances(jobsInstances, -1, "", jobName, bootstrapIndex)
 	}
 
 	return jobsInstances
 }
 
 func (ig *InstanceGroup) generateJobInstances(jobsInstances []JobInstance,
-	initialRollout bool,
 	azIndex int,
 	az string,
 	jobName string,

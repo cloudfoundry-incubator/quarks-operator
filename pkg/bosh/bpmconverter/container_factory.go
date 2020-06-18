@@ -14,7 +14,6 @@ import (
 	"code.cloudfoundry.org/quarks-operator/container-run/pkg/containerrun"
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
-	boshnames "code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/operatorimage"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
@@ -135,15 +134,10 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 		boshPreStartInitContainers = append(boshPreStartInitContainers, *boshPreStartInitContainer.DeepCopy())
 	}
 
-	resolvedPropertiesSecretName := boshnames.InstanceGroupSecretName(
-		c.instanceGroupName,
-		c.version,
-	)
-
 	initContainers := flattenContainers(
 		containerRunCopier(),
 		copyingSpecsInitContainers,
-		templateRenderingContainer(c.instanceGroupName, resolvedPropertiesSecretName),
+		templateRenderingContainer(c.instanceGroupName),
 		createDirContainer(jobs, c.instanceGroupName),
 		createWaitContainer(requiredService),
 		boshPreStartInitContainers,
@@ -258,7 +252,7 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 	// appending the sidecar, default behaviour is to
 	// colocate it always in the pod.
 	if !c.disableLogSidecar {
-		logsTailer := logsTailerContainer(c.instanceGroupName)
+		logsTailer := logsTailerContainer()
 		containers = append(containers, logsTailer)
 	}
 
@@ -266,7 +260,7 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 }
 
 // logsTailerContainer is a container that tails all logs in /var/vcap/sys/log.
-func logsTailerContainer(instanceGroupName string) corev1.Container {
+func logsTailerContainer() corev1.Container {
 	return corev1.Container{
 		Name:            "logs",
 		Image:           operatorimage.GetOperatorDockerImage(),
@@ -334,7 +328,7 @@ func JobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 	}
 }
 
-func templateRenderingContainer(instanceGroupName string, secretName string) corev1.Container {
+func templateRenderingContainer(instanceGroupName string) corev1.Container {
 	return corev1.Container{
 		Name:            "template-render",
 		Image:           operatorimage.GetOperatorDockerImage(),
@@ -342,7 +336,7 @@ func templateRenderingContainer(instanceGroupName string, secretName string) cor
 		VolumeMounts: []corev1.VolumeMount{
 			*renderingVolumeMount(),
 			*jobsDirVolumeMount(),
-			resolvedPropertiesVolumeMount(secretName, instanceGroupName),
+			resolvedPropertiesVolumeMount(instanceGroupName),
 		},
 		Env: []corev1.EnvVar{
 			{

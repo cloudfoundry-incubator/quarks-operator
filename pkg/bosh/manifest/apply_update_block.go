@@ -30,7 +30,7 @@ func (m *Manifest) calculateRequiredServices() {
 
 		ports := ig.ServicePorts()
 		if len(ports) > 0 {
-			serviceName := names.HeadlessServiceName(ig.Name)
+			serviceName := names.ServiceName(ig.Name)
 			requiredService = &serviceName
 		}
 

@@ -179,8 +179,6 @@ var _ = Describe("Mutate", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object.(type) {
 					case *qstsv1a1.QuarksStatefulSet:
-						object = eSts.DeepCopy()
-
 						return nil
 					}
 
@@ -253,8 +251,6 @@ var _ = Describe("Mutate", func() {
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 					switch object.(type) {
 					case *qjv1a1.QuarksJob:
-						object = qJob.DeepCopy()
-
 						return nil
 					}
 

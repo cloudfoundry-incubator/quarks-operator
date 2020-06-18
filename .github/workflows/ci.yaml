@@ -1,6 +1,12 @@
 name: quarks-operator-ci
 
-on: [push]
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - master
+  pull_request:
 
 jobs:
   unit-tests:
@@ -25,19 +31,21 @@ jobs:
         go get -u golang.org/x/lint/golint
         curl -LO https://github.com/dominikh/go-tools/releases/download/2020.1.3/staticcheck_linux_amd64.tar.gz
         sudo tar xfz staticcheck_linux_amd64.tar.gz --strip-component 1 -C $GOPATH/bin staticcheck/staticcheck
+    - name: Install shared tools
+      run: |
+        bin/tools-shared
     - name: Run lint
-      run: make lint vet
+      run: |
+        tools/quarks-utils/bin/lint
     - name: Run unit tests
       run: |
-        make test-unit
+        tools/quarks-utils/bin/test-unit
       env:
         GOPROXY: "https://proxy.golang.org"
 
   cluster-tests:
     needs: [unit-tests]
-
     runs-on: ubuntu-16.04
-
     strategy:
       matrix:
         kubernetes_version: [v1.14.10,v1.15.7,v1.16.4,v1.17.0,v1.18.0]
@@ -58,9 +66,13 @@ jobs:
       run: |
         sudo gem install bosh-template
         go install github.com/onsi/ginkgo/ginkgo
+    - name: Install shared tools
+      run: |
+        bin/tools-shared
     - name: Create k8s Kind Cluster
       uses: engineerd/setup-kind@v0.3.0
       with:
+       config: .github/kind-config.yaml
        version: v0.7.0
        image: kindest/node:${{matrix.kubernetes_version}}
     - name: Run cluster tests
@@ -70,8 +82,6 @@ jobs:
         bin/build-helm
         bin/build-image
         kind load docker-image "cfcontainerization/cf-operator:dev"
-        bin/tools
-        export DEBUG=yes
         tools/quarks-utils/bin/test-integration
         INTEGRATION_SUITE=storage tools/quarks-utils/bin/test-integration
         INTEGRATION_SUITE=util tools/quarks-utils/bin/test-integration
@@ -79,8 +89,15 @@ jobs:
         tools/quarks-utils/bin/test-helm-e2e
         bin/test-helm-e2e-storage
       env:
+        NODES: "3"
+        DEBUG: "yes"
         GOPROXY: "https://proxy.golang.org"
         OPERATOR_TEST_STORAGE_CLASS: "standard"
         PROJECT: "quarks-operator"
         DOCKER_IMAGE_TAG: "dev"
         CF_OPERATOR_WEBHOOK_SERVICE_HOST: 172.17.0.1
+    - uses: actions/upload-artifact@v2
+      if: failure()
+      with:
+        name: ginkgo debug logs
+        path: "**/ginkgo-node-*.log"
