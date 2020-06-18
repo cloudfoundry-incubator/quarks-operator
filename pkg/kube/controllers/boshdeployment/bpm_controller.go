@@ -39,7 +39,7 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 		desiredmanifest.NewDesiredManifest(mgr.GetClient()),
 		controllerutil.SetControllerReference,
 		bpmconverter.NewConverter(bpmconverter.NewVolumeFactory(), bpmconverter.NewContainerFactoryImplFunc),
-		func(m bdm.Manifest) (boshdns.DomainNameService, error) { return boshdns.NewDNS(m) },
+		func(m bdm.Manifest) (boshdns.DomainNameService, error) { return boshdns.New(m) },
 	)
 
 	// Create a new controller

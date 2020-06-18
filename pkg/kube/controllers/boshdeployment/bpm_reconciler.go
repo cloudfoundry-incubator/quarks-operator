@@ -35,7 +35,7 @@ import (
 
 // BPMConverter converts k8s resources from single BOSH manifest
 type BPMConverter interface {
-	Resources(namespace string, manifestName string, dns bpmconverter.DomainNameService, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*bpmconverter.Resources, error)
+	Resources(namespace string, manifestName string, dns bpmconverter.DNSSettings, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*bpmconverter.Resources, error)
 }
 
 // DesiredManifest unmarshals desired manifest from the manifest secret
@@ -43,10 +43,13 @@ type DesiredManifest interface {
 	DesiredManifest(ctx context.Context, namespace string) (*bdm.Manifest, error)
 }
 
+// NewDNSFunc returns a dns client for the manifest
+type NewDNSFunc func(m bdm.Manifest) (boshdns.DomainNameService, error)
+
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 
 // NewBPMReconciler returns a new reconcile.Reconciler
-func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver DesiredManifest, srf setReferenceFunc, converter BPMConverter, dns boshdns.NewDNSFunc) reconcile.Reconciler {
+func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver DesiredManifest, srf setReferenceFunc, converter BPMConverter, dns NewDNSFunc) reconcile.Reconciler {
 	return &ReconcileBPM{
 		ctx:                  ctx,
 		config:               config,
@@ -70,7 +73,7 @@ type ReconcileBPM struct {
 	setReference         setReferenceFunc
 	converter            BPMConverter
 	versionedSecretStore versionedsecretstore.VersionedSecretStore
-	newDNSFunc           boshdns.NewDNSFunc
+	newDNSFunc           NewDNSFunc
 }
 
 // Reconcile reconciles an Instance Group BPM versioned secret read the corresponding
@@ -134,7 +137,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 			log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get BoshDeployment instance '%s/%s': %v", request.Namespace, deploymentName, err)
 	}
 
-	err = dns.Reconcile(ctx, request.Namespace, r.client, func(object metav1.Object) error {
+	err = dns.Apply(ctx, request.Namespace, r.client, func(object metav1.Object) error {
 		return r.setReference(bdpl, object, r.scheme)
 	})
 

@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -37,6 +38,8 @@ func FailAndCollectDebugInfo(description string, callerSkip ...int) {
 
 func TestE2EKube(t *testing.T) {
 	nsIndex = 0
+	SetDefaultEventuallyTimeout(kubectl.PollTimeout)
+	SetDefaultEventuallyPollingInterval(500 * time.Millisecond)
 
 	RegisterFailHandler(FailAndCollectDebugInfo)
 	RunSpecs(t, "E2E Kube Suite")

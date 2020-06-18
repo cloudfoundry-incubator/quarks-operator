@@ -321,6 +321,8 @@ var _ = Describe("Examples Directory", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("DNS lookup")
+			err = kubectl.WaitLabelFilter(namespace, "ready", "pod", "app=bosh-dns")
+			Expect(err).ToNot(HaveOccurred())
 			placeholderNames := []string{
 				"nats-0.myplaceholderalias.service.cf.internal.",
 				"nats-0.myplaceholderalias.service.cf.internal",
@@ -351,6 +353,8 @@ var _ = Describe("Examples Directory", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("DNS lookup")
+			err = kubectl.WaitLabelFilter(namespace, "ready", "pod", "app=bosh-dns")
+			Expect(err).ToNot(HaveOccurred())
 			wildcardNames := []string{
 				"nats.service.cf.internal.",
 				"nats.service.cf.internal",

@@ -38,7 +38,6 @@ if [ "$TEST_HELM" ]; then
     find helm/ -name \*.tgz -delete
     mkdir -p helm/cf-operator/charts/quarks-job
     cp -av ../quarks-job/helm/quarks-job helm/cf-operator/charts/
+    echo "The cf-operator helm chart is now available. Don't run bin/test-helm-e2e without setting SKIP_BUILD_HELM=1 to retain changes"
   fi
-
-  echo "The cf-operator helm chart is now available. Don't run bin/test-helm-e2e without setting SKIP_BUILD_HELM=1 to retain changes"
 fi
