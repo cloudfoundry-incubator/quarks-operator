@@ -2,8 +2,6 @@ package boshdeployment
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -12,7 +10,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -22,7 +19,6 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/converter"
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/mutate"
 	qsv1a1 "code.cloudfoundry.org/quarks-secret/pkg/kube/apis/quarkssecret/v1alpha1"
 	mutateqs "code.cloudfoundry.org/quarks-secret/pkg/kube/util/mutate"
@@ -116,7 +112,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Get link infos containing provider name and its secret name
-	linkInfos, err := r.listLinkInfos(bdpl, manifest)
+	linkInfos, err := ListLinkInfos(ctx, r.client, bdpl, manifest)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bdpl, "InstanceGroupManifestError").Errorf(ctx, "failed to list quarks-link secrets for BOSHDeployment '%s': %v", request.NamespacedName, err)
@@ -259,232 +255,6 @@ func (r *ReconcileBOSHDeployment) createQuarksJob(ctx context.Context, bdpl *bdv
 	return err
 }
 
-// listLinkInfos returns a LinkInfos containing link providers if needed
-// and updates `quarks_links` properties
-func (r *ReconcileBOSHDeployment) listLinkInfos(bdpl *bdv1.BOSHDeployment, manifest *bdm.Manifest) (converter.LinkInfos, error) {
-	linkInfos := converter.LinkInfos{}
-
-	// find all missing providers in the manifest, so we can look for secrets
-	missingProviders := manifest.ListMissingProviders()
-
-	// quarksLinks store for missing provider names with types read from secrets
-	quarksLinks := map[string]bdm.QuarksLink{}
-	if len(missingProviders) != 0 {
-		// list secrets and services from target deployment
-		secrets := &corev1.SecretList{}
-		err := r.client.List(r.ctx, secrets,
-			client.InNamespace(bdpl.Namespace),
-		)
-		if err != nil {
-			return linkInfos, errors.Wrapf(err, "listing secrets for link in deployment '%s':", bdpl.GetNamespacedName())
-		}
-
-		services := &corev1.ServiceList{}
-		err = r.client.List(r.ctx, services,
-			client.InNamespace(bdpl.Namespace),
-		)
-		if err != nil {
-			return linkInfos, errors.Wrapf(err, "listing services for link in deployment '%s':", bdpl.GetNamespacedName())
-		}
-
-		for _, s := range secrets.Items {
-			if deploymentName, ok := s.GetAnnotations()[bdv1.LabelDeploymentName]; ok && deploymentName == bdpl.Name {
-				linkProvider, err := newLinkProvider(s.GetAnnotations())
-				if err != nil {
-					return linkInfos, errors.Wrapf(err, "failed to parse link JSON for '%s'", bdpl.GetNamespacedName())
-				}
-				if dup, ok := missingProviders[linkProvider.Name]; ok {
-					if dup {
-						return linkInfos, errors.New(fmt.Sprintf("duplicated secrets of provider: %s", linkProvider.Name))
-					}
-
-					linkInfos = append(linkInfos, converter.LinkInfo{
-						SecretName:   s.Name,
-						ProviderName: linkProvider.Name,
-						ProviderType: linkProvider.ProviderType,
-					})
-
-					if linkProvider.ProviderType != "" {
-						quarksLinks[linkProvider.Name] = bdm.QuarksLink{
-							Type: linkProvider.ProviderType,
-						}
-					}
-					missingProviders[linkProvider.Name] = true
-				}
-			}
-		}
-
-		serviceRecords, err := r.getServiceRecords(bdpl.Namespace, bdpl.Name, services.Items)
-		if err != nil {
-			return linkInfos, errors.Wrapf(err, "failed to get link services for '%s'", bdpl.GetNamespacedName())
-		}
-
-		// Update quarksLinks section `manifest.Properties["quarks_links"]` with info from existing serviceRecords
-		for qName := range quarksLinks {
-			if svcRecord, ok := serviceRecords[qName]; ok {
-
-				var jobsInstances []bdm.JobInstance
-
-				if svcRecord.selector != nil {
-					// Service has selectors, we're going through pods in order to build
-					// an instance list for the link
-					pods, err := r.listPodsFromSelector(bdpl.Namespace, svcRecord.selector)
-					if err != nil {
-						return linkInfos, errors.Wrapf(err, "Failed to get link pods for '%s'", bdpl.GetNamespacedName())
-					}
-
-					for i, p := range pods {
-						if len(p.Status.PodIP) == 0 {
-							return linkInfos, fmt.Errorf("empty ip of kube native component: '%s'", p.Name)
-						}
-						jobsInstances = append(jobsInstances, bdm.JobInstance{
-							Name:      qName,
-							ID:        string(p.GetUID()),
-							Index:     i,
-							Address:   p.Status.PodIP,
-							Bootstrap: i == 0,
-						})
-					}
-				} else if svcRecord.addresses != nil {
-					for i, a := range svcRecord.addresses {
-						jobsInstances = append(jobsInstances, bdm.JobInstance{
-							Name:      qName,
-							ID:        a,
-							Index:     i,
-							Address:   a,
-							Bootstrap: i == 0,
-						})
-					}
-				} else {
-					// No selector, no addresses - we're creating one instance that just points to the service address itself
-					jobsInstances = append(jobsInstances, bdm.JobInstance{
-						Name:      qName,
-						ID:        qName,
-						Index:     0,
-						Address:   svcRecord.dnsRecord,
-						Bootstrap: true,
-					})
-				}
-
-				quarksLinks[qName] = bdm.QuarksLink{
-					Type:      quarksLinks[qName].Type,
-					Address:   svcRecord.dnsRecord,
-					Instances: jobsInstances,
-				}
-			}
-		}
-	}
-
-	missingPs := make([]string, 0, len(missingProviders))
-	for key, found := range missingProviders {
-		if !found {
-			missingPs = append(missingPs, key)
-		}
-	}
-
-	if len(missingPs) != 0 {
-		return linkInfos, errors.New(fmt.Sprintf("missing link secrets for providers: %s", strings.Join(missingPs, ", ")))
-	}
-
-	if len(quarksLinks) != 0 {
-		if manifest.Properties == nil {
-			manifest.Properties = map[string]interface{}{}
-		}
-		manifest.Properties[bdm.QuarksLinksProperty] = quarksLinks
-	}
-
-	return linkInfos, nil
-}
-
-// getServiceRecords gets service records from Kube Services
-func (r *ReconcileBOSHDeployment) getServiceRecords(namespace string, name string, svcs []corev1.Service) (map[string]serviceRecord, error) {
-	svcRecords := map[string]serviceRecord{}
-	for _, svc := range svcs {
-		if deploymentName, ok := svc.GetAnnotations()[bdv1.LabelDeploymentName]; ok && deploymentName == name {
-			if providerName, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderService]; ok {
-				if _, ok := svcRecords[providerName]; ok {
-					return svcRecords, errors.New(fmt.Sprintf("duplicated services of provider: %s", providerName))
-				}
-
-				// An ExternalName service doesn't have a selector or endpoints
-				if svc.Spec.Type == corev1.ServiceTypeExternalName {
-					svcRecords[providerName] = serviceRecord{
-						addresses: nil,
-						selector:  nil,
-						dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, boshdns.GetClusterDomain()),
-					}
-
-					continue
-				}
-
-				if len(svc.Spec.Selector) != 0 {
-					svcRecords[providerName] = serviceRecord{
-						addresses: nil,
-						selector:  svc.Spec.Selector,
-						dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, boshdns.GetClusterDomain()),
-					}
-
-					continue
-				}
-
-				// If we don't have a selector, we're either dealing with an ExternalName service,
-				// or a service that's backed by manually created Endpoints.
-				endpoints := &corev1.Endpoints{}
-				err := r.client.Get(
-					r.ctx,
-					types.NamespacedName{
-						Name:      svc.Name,
-						Namespace: svc.Namespace,
-					},
-					endpoints)
-
-				if err != nil {
-					// No selectors and no endpoints
-					if apierrors.IsNotFound(err) {
-						svcRecords[providerName] = serviceRecord{
-							addresses: nil,
-							selector:  nil,
-							dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, boshdns.GetClusterDomain()),
-						}
-					}
-
-					// We hit an actual error
-					return nil, errors.Wrapf(err, "failed to get service endpoints for links")
-				}
-
-				addresses := []string{}
-				for _, subset := range endpoints.Subsets {
-					for _, address := range subset.Addresses {
-						addresses = append(addresses, address.IP)
-					}
-				}
-
-				svcRecords[providerName] = serviceRecord{
-					addresses: addresses,
-					selector:  nil,
-					dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, boshdns.GetClusterDomain()),
-				}
-			}
-		}
-	}
-
-	return svcRecords, nil
-}
-
-// listPodsFromSelector lists pods from the selector
-func (r *ReconcileBOSHDeployment) listPodsFromSelector(namespace string, selector map[string]string) ([]corev1.Pod, error) {
-	podList := &corev1.PodList{}
-	err := r.client.List(r.ctx, podList,
-		client.InNamespace(namespace),
-		client.MatchingLabels(selector),
-	)
-	if err != nil {
-		return podList.Items, errors.Wrapf(err, "listing pods from selector '%+v':", selector)
-	}
-
-	return podList.Items, nil
-}
-
 // createQuarksSecrets create variables quarksSecrets
 func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manifestSecret *corev1.Secret, variables []qsv1a1.QuarksSecret) error {
 
@@ -518,10 +288,4 @@ func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manif
 	}
 
 	return nil
-}
-
-type serviceRecord struct {
-	selector  map[string]string
-	dnsRecord string
-	addresses []string
 }
