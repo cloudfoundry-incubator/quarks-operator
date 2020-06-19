@@ -116,7 +116,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	linkInfos, err := l.List(ctx, r.client, manifest)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(bdpl, "InstanceGroupManifestError").Errorf(ctx, "failed to list quarks-link secrets for BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(bdpl, "InstanceGroupManifestError").Errorf(ctx, "failed to find native quarks-links for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	// Apply the "with-ops" manifest secret

@@ -16,7 +16,7 @@ We construct link information from the native resources like this:
 | ------------------- | ------- | -------------------------------------------------------------------------------------------------------- |
 | address             | Service | DNS address of a k8s *service* annotated  `quarks.cloudfoundry.org/provides = LINK_NAME`                 |
 | azs                 | N/A     | not supported                                                                                            |
-| p                   |         | properties retrieved from a *secret* annotated `quarks.cloudfoundry.org/provides = LINK_NAME`            |
+| properties          |         | properties retrieved from a *secret* annotated `quarks.cloudfoundry.org/provides = LINK_NAME`            |
 | instances.name      | Pod     | name of *pod* selected by the k8s *service* that's annotated `quarks.cloudfoundry.org/provides = LINK_NAME` |
 | instances.id        | Pod     | *pod* uid                                                                                                |
 | instances.index     | Pod     | set to a value 0-(pod replica count)                                                                     |
@@ -42,12 +42,14 @@ We can create the following k8s secret to fulfill the link:
 kind: Secret
 metadata:
   name: secretlink
-  annotations:
+  labels:
     quarks.cloudfoundry.org/deployment-name: "mydeployment"
+  annotations:
     quarks.cloudfoundry.org/provides: '{"name":"nats","type":"nats"}'
 spec:
   data:
     link: |
+      nats.user: myuser
       nats.password: mysecret
 ```
 
@@ -63,10 +65,10 @@ Furthermore, if there is a matching k8s service, it will be used in the link:
 apiVersion: v1
 kind: Service
 metadata:
-  annotations:
+  labels:
     quarks.cloudfoundry.org/deployment-name: "mydeployment"
-    quarks.cloudfoundry.org/provides: '{"name":"nats","type":"nats"}'
-    quarks.cloudfoundry.org/link-provider-name: secretlink
+  annotations:
+    quarks.cloudfoundry.org/link-provider-name: nats
   name: nats-service
 spec:
   ports:

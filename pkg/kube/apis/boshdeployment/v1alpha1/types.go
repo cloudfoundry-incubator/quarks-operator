@@ -72,10 +72,10 @@ var (
 	LabelDeploymentVersion = fmt.Sprintf("%s/deployment-version", apis.GroupName)
 	// LabelReferencedJobName is the name key for dependent job
 	LabelReferencedJobName = fmt.Sprintf("%s/referenced-job-name", apis.GroupName)
-	// AnnotationLinkProvidesKey is the key for the quarks links 'provides' JSON
+	// AnnotationLinkProvidesKey is the key for the quarks links 'provides' JSON on a secret
 	AnnotationLinkProvidesKey = fmt.Sprintf("%s/provides", apis.GroupName)
-	// AnnotationLinkProviderService is the annotation key used to identify the service of a native link provider
-	AnnotationLinkProviderService = fmt.Sprintf("%s/link-provider-name", apis.GroupName)
+	// AnnotationLinkProviderName is the annotation key used on services to identify the link it provides addresses for
+	AnnotationLinkProviderName = fmt.Sprintf("%s/link-provider-name", apis.GroupName)
 	// LabelEntanglementKey to identify a quarks link
 	LabelEntanglementKey = fmt.Sprintf("%s/entanglement", apis.GroupName)
 )

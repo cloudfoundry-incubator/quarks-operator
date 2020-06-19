@@ -15,7 +15,7 @@ func (c *Catalog) NatsPod(deployName string) corev1.Pod {
 			Name: "nats",
 			Labels: map[string]string{
 				bdv1.LabelDeploymentName: deployName,
-				"app":                    "nats",
+				"app":                    "nats-app",
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -146,15 +146,17 @@ func (c *Catalog) NatsService(deployName string) corev1.Service {
 	return corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "nats-headless",
+			Labels: map[string]string{
+				bdv1.LabelDeploymentName: deployName,
+			},
 			Annotations: map[string]string{
-				bdv1.LabelDeploymentName:           deployName,
-				bdv1.AnnotationLinkProviderService: "nats",
+				bdv1.AnnotationLinkProviderName: "nats",
 			},
 		},
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceTypeClusterIP,
 			Selector: map[string]string{
-				"app": "nats",
+				"app": "nats-app",
 			},
 			Ports: []corev1.ServicePort{
 				{
@@ -172,13 +174,34 @@ func (c *Catalog) NatsService(deployName string) corev1.Service {
 	}
 }
 
+// NatsServiceExternalName is used to test native-to-bosh quarks-links
+func (c *Catalog) NatsServiceExternalName(deployName string) corev1.Service {
+	return corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "nats-headless",
+			Labels: map[string]string{
+				bdv1.LabelDeploymentName: deployName,
+			},
+			Annotations: map[string]string{
+				bdv1.AnnotationLinkProviderName: "nats",
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Type:         corev1.ServiceTypeExternalName,
+			ExternalName: "test.example.com",
+		},
+	}
+}
+
 // NatsSecret is used to test native-to-bosh quarks-links
 func (c *Catalog) NatsSecret(deployName string) corev1.Secret {
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "nats",
+			Name: "nats-sec",
+			Labels: map[string]string{
+				bdv1.LabelDeploymentName: deployName,
+			},
 			Annotations: map[string]string{
-				bdv1.LabelDeploymentName:       deployName,
 				bdv1.AnnotationLinkProvidesKey: `{"name":"nats","type":"nats"}`,
 			},
 		},
@@ -186,6 +209,27 @@ func (c *Catalog) NatsSecret(deployName string) corev1.Secret {
 			"link": `---
 nats.user: nats_client
 nats.password: r9fXAlY3gZ
+nats.port: "4222"`,
+		},
+	}
+}
+
+// NatsOtherSecret is used to test native-to-bosh quarks-links
+func (c *Catalog) NatsOtherSecret(deployName string) corev1.Secret {
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "nats-sec",
+			Labels: map[string]string{
+				bdv1.LabelDeploymentName: deployName,
+			},
+			Annotations: map[string]string{
+				bdv1.AnnotationLinkProvidesKey: `{"name":"nats","type":"nats"}`,
+			},
+		},
+		StringData: map[string]string{
+			"link": `---
+nats.user: nats_user
+nats.password: abcdefg123
 nats.port: "4222"`,
 		},
 	}

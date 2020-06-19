@@ -177,8 +177,9 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			newService := e.ObjectNew.(*corev1.Service)
+			oldService := e.ObjectOld.(*corev1.Service)
 
-			return isLinkProviderService(newService)
+			return isLinkProviderService(newService) || isLinkProviderService(oldService)
 		},
 	}
 	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestsFromMapFunc{
@@ -187,11 +188,11 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			reconciles := make([]reconcile.Request, 1)
 
 			svc := a.Object.(*corev1.Service)
-			if provider, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderService]; ok {
+			if name, ok := svc.GetLabels()[bdv1.LabelDeploymentName]; ok {
 				reconciles[0] = reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Namespace: svc.Namespace,
-						Name:      provider,
+						Name:      name,
 					},
 				}
 				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciles[0], "BOSHDeployment", a.Meta.GetName(), "ServiceOfLinkProvider")
