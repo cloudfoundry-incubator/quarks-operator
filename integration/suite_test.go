@@ -91,8 +91,8 @@ var _ = BeforeEach(func() {
 })
 
 var _ = AfterEach(func() {
-	env.Teardown(CurrentGinkgoTestDescription().Failed)
 	gexec.Kill()
+	env.Teardown(CurrentGinkgoTestDescription().Failed)
 })
 
 var _ = AfterSuite(func() {

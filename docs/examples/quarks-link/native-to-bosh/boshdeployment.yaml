@@ -6,27 +6,27 @@ metadata:
 stringData:
   manifest: |
     ---
-    name: cf-operator-testing-deployment
     releases:
-    - name: cf-operator-testing
-      version: "0.0.6"
+    - name: quarks-gora
+      version: "0.0.7"
       url: docker.io/cfcontainerization
       stemcell:
-        os: SLE_15_SP1
-        version: 26.1-7.0.0_374.gb8e8e6af
+        os: SLE_15_SP1-26.5
+        version: 7.0.0_374.gb8e8e6af
     instance_groups:
-    - name: draining-ig
-      instances: 1
+    - name: quarks-gora
+      instances: 2
+      lifecycle: errand
       jobs:
-      - name: delaying-drain-job
-        release: cf-operator-testing
+      - name: smoke-tests
+        release: quarks-gora
         consumes:
-          testlink: {from: testlink}
+          quarks-gora: {from: quarks-gora}
 ---
 apiVersion: quarks.cloudfoundry.org/v1alpha1
 kind: BOSHDeployment
 metadata:
-  name: cf-operator-testing-deployment
+  name: cfo-test-deployment
 spec:
   manifest:
     name: cf-operator-testing-manifest

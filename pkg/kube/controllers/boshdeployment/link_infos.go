@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -17,6 +16,10 @@ import (
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 )
+
+func matchDeployment(name string) crc.MatchingLabels {
+	return map[string]string{bdv1.LabelDeploymentName: name}
+}
 
 type linkInfoService struct {
 	deploymentName string
@@ -28,6 +31,9 @@ type linkInfoService struct {
 func (l *linkInfoService) List(ctx context.Context, client crc.Client, manifest *bdm.Manifest) (converter.LinkInfos, error) {
 	// find all missing providers in the manifest, so we can look for secrets
 	missingProviders := manifest.ListMissingProviders()
+	if len(missingProviders) == 0 {
+		return converter.LinkInfos{}, nil
+	}
 
 	quarksLinks, linkInfos, err := l.nativeQuarksLinks(ctx, client, missingProviders)
 	if err != nil {
@@ -47,79 +53,50 @@ func (l *linkInfoService) List(ctx context.Context, client crc.Client, manifest 
 // properties and uses data from existing services.
 func (l *linkInfoService) nativeQuarksLinks(ctx context.Context, client crc.Client, missingProviders map[string]bool) (map[string]bdm.QuarksLink, converter.LinkInfos, error) {
 	linkInfos := converter.LinkInfos{}
-
-	// quarksLinks store for missing provider names with types read from secrets
+	// quarksLinks store for missingProvider names with types read from secrets
 	quarksLinks := map[string]bdm.QuarksLink{}
 
-	if len(missingProviders) != 0 {
-		// list secrets and services from target deployment
-		secrets := &corev1.SecretList{}
-		err := client.List(ctx, secrets,
-			crc.InNamespace(l.namespace),
-		)
+	// list secrets and services from target deployment
+	secrets := &corev1.SecretList{}
+	err := client.List(ctx, secrets,
+		crc.InNamespace(l.namespace),
+		matchDeployment(l.deploymentName),
+	)
+	if err != nil {
+		return quarksLinks, linkInfos, errors.Wrap(err, "listing secrets to fill missing links")
+	}
+
+	// Create linkInfos/quarksLinks for all missingProviders, which are provided by secrets. Error out if
+	// two secrets exist for the same link.
+	for _, s := range secrets.Items {
+		if !isLinkProviderSecret(s) {
+			continue
+		}
+		linkProvider, err := newLinkProvider(s.GetAnnotations())
 		if err != nil {
-			return quarksLinks, linkInfos, errors.Wrap(err, "listing secrets to fill missing links")
+			return quarksLinks, linkInfos, errors.Wrapf(err, "failed to parse link annotation JSON for secret '%s'", s.Name)
 		}
-
-		for _, s := range secrets.Items {
-			// for resources created by quarks, the deployment name is normally in a label, however these are created by a user
-			if deploymentName, ok := s.GetAnnotations()[bdv1.LabelDeploymentName]; !ok || deploymentName != l.deploymentName {
-				continue
+		if dup, ok := missingProviders[linkProvider.Name]; ok {
+			if dup {
+				return quarksLinks, linkInfos, errors.New(fmt.Sprintf("duplicated secrets of provider: %s", linkProvider.Name))
 			}
 
-			linkProvider, err := newLinkProvider(s.GetAnnotations())
-			if err != nil {
-				return quarksLinks, linkInfos, errors.Wrapf(err, "failed to parse link annotation JSON for secret '%s'", s.Name)
-			}
-			if dup, ok := missingProviders[linkProvider.Name]; ok {
-				if dup {
-					return quarksLinks, linkInfos, errors.New(fmt.Sprintf("duplicated secrets of provider: %s", linkProvider.Name))
-				}
+			linkInfos = append(linkInfos, converter.LinkInfo{
+				SecretName:   s.Name,
+				ProviderName: linkProvider.Name,
+				ProviderType: linkProvider.ProviderType,
+			})
 
-				linkInfos = append(linkInfos, converter.LinkInfo{
-					SecretName:   s.Name,
-					ProviderName: linkProvider.Name,
-					ProviderType: linkProvider.ProviderType,
-				})
-
-				if linkProvider.ProviderType != "" {
-					quarksLinks[linkProvider.Name] = bdm.QuarksLink{
-						Type: linkProvider.ProviderType,
-					}
-				}
-				missingProviders[linkProvider.Name] = true
-			}
-		}
-
-		services := &corev1.ServiceList{}
-		err = client.List(ctx, services,
-			crc.InNamespace(l.namespace),
-		)
-		if err != nil {
-			return quarksLinks, linkInfos, errors.Wrap(err, "listing services")
-		}
-
-		serviceRecords, err := serviceRecordByProvider(ctx, client, l.namespace, linkedServices(l.deploymentName, services.Items))
-		if err != nil {
-			return quarksLinks, linkInfos, errors.Wrap(err, "failed to determine service records of link providers")
-		}
-
-		// Update quarksLinks section `manifest.Properties["quarks_links"]` with info from existing serviceRecords
-		for qName := range quarksLinks {
-			if svcRecord, ok := serviceRecords[qName]; ok {
-				j, err := svcRecord.jobInstances(ctx, client, l.namespace, qName)
-				if err != nil {
-					return quarksLinks, linkInfos, errors.Wrapf(err, "failed to get job instances for service record '%s'", qName)
-				}
-				quarksLinks[qName] = bdm.QuarksLink{
-					Type:      quarksLinks[qName].Type,
-					Address:   svcRecord.dnsRecord,
-					Instances: j,
+			if linkProvider.ProviderType != "" {
+				quarksLinks[linkProvider.Name] = bdm.QuarksLink{
+					Type: linkProvider.ProviderType,
 				}
 			}
+			missingProviders[linkProvider.Name] = true
 		}
 	}
 
+	// Check if all missingProviders are now backed by secrets, otherwise throw an error
 	missingPs := make([]string, 0, len(missingProviders))
 	for key, found := range missingProviders {
 		if !found {
@@ -131,20 +108,45 @@ func (l *linkInfoService) nativeQuarksLinks(ctx context.Context, client crc.Clie
 		return quarksLinks, linkInfos, errors.New(fmt.Sprintf("missing link secrets for providers: %s", strings.Join(missingPs, ", ")))
 	}
 
+	// Find services that are relevant to the new QuarksLinks
+	services := &corev1.ServiceList{}
+	err = client.List(ctx, services,
+		crc.InNamespace(l.namespace),
+		matchDeployment(l.deploymentName),
+	)
+	if err != nil {
+		return quarksLinks, linkInfos, errors.Wrap(err, "listing services")
+	}
+
+	serviceRecords, err := serviceRecordByProvider(ctx, client, l.namespace, linkedServices(services.Items))
+	if err != nil {
+		return quarksLinks, linkInfos, errors.Wrap(err, "failed to determine service records of link providers")
+	}
+
+	// Update quarksLinks section `manifest.Properties["quarks_links"]` with info from existing serviceRecords
+	for qName := range quarksLinks {
+		if svcRecord, ok := serviceRecords[qName]; ok {
+			j, err := svcRecord.jobInstances(ctx, client, l.namespace, qName)
+			if err != nil {
+				return quarksLinks, linkInfos, errors.Wrapf(err, "failed to get job instances for service record '%s'", qName)
+			}
+			quarksLinks[qName] = bdm.QuarksLink{
+				Type:      quarksLinks[qName].Type,
+				Address:   svcRecord.dnsRecord,
+				Instances: j,
+			}
+		}
+	}
+
 	return quarksLinks, linkInfos, nil
 }
 
-func linkedServices(name string, services []corev1.Service) []corev1.Service {
-	filtered := make([]corev1.Service, len(services))
+func linkedServices(services []corev1.Service) []corev1.Service {
+	filtered := make([]corev1.Service, 0, len(services))
 	for _, svc := range services {
-		if deploymentName, ok := svc.GetAnnotations()[bdv1.LabelDeploymentName]; !ok || deploymentName != name {
-			continue
+		if isLinkProviderService(&svc) {
+			filtered = append(filtered, svc)
 		}
-
-		if _, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderService]; !ok {
-			continue
-		}
-		filtered = append(filtered, svc)
 
 	}
 	return filtered
@@ -160,7 +162,7 @@ func linkedServices(name string, services []corev1.Service) []corev1.Service {
 func serviceRecordByProvider(ctx context.Context, client crc.Client, namespace string, services []corev1.Service) (map[string]serviceRecord, error) {
 	svcRecords := map[string]serviceRecord{}
 	for _, svc := range services {
-		providerName := svc.GetAnnotations()[bdv1.AnnotationLinkProviderService]
+		providerName := svc.GetAnnotations()[bdv1.AnnotationLinkProviderName]
 		if _, ok := svcRecords[providerName]; ok {
 			return svcRecords, errors.New(fmt.Sprintf("duplicated services of provider: %s", providerName))
 		}
@@ -176,6 +178,7 @@ func serviceRecordByProvider(ctx context.Context, client crc.Client, namespace s
 			continue
 		}
 
+		// Selector can be used to gather data from pods
 		if len(svc.Spec.Selector) != 0 {
 			svcRecords[providerName] = serviceRecord{
 				addresses: nil,
@@ -186,20 +189,9 @@ func serviceRecordByProvider(ctx context.Context, client crc.Client, namespace s
 			continue
 		}
 
-		// If we don't have a selector, we're either dealing with an ExternalName service,
-		// or a service that's backed by manually created Endpoints.
+		// If we don't have a selector, the service must be backed by a manually created Endpoint with the same name.
 		endpoints := &corev1.Endpoints{}
 		if err := client.Get(ctx, types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}, endpoints); err != nil {
-			// No selectors and no endpoints
-			if apierrors.IsNotFound(err) {
-				svcRecords[providerName] = serviceRecord{
-					addresses: nil,
-					selector:  nil,
-					dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, boshdns.GetClusterDomain()),
-				}
-			}
-
-			// We hit an actual error
 			return nil, errors.Wrapf(err, "failed to get service endpoints for links")
 		}
 

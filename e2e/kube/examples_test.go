@@ -57,8 +57,8 @@ var _ = Describe("Examples Directory", func() {
 
 		It("creates and updates statefulsets", func() {
 			By("Checking for pods")
-			podWait("pod/example-quarks-statefulset-0")
-			podWait("pod/example-quarks-statefulset-1")
+			waitReady("pod/example-quarks-statefulset-0")
+			waitReady("pod/example-quarks-statefulset-1")
 
 			yamlUpdatedFilePath := examplesDir + "quarks-statefulset/qstatefulset_configs_updated.yaml"
 
@@ -82,8 +82,8 @@ var _ = Describe("Examples Directory", func() {
 
 		It("creates and updates statefulsets even out of a failure situation", func() {
 			By("Checking for pods")
-			podWait("pod/example-quarks-statefulset-0")
-			podWait("pod/example-quarks-statefulset-1")
+			waitReady("pod/example-quarks-statefulset-0")
+			waitReady("pod/example-quarks-statefulset-1")
 
 			yamlUpdatedFilePathFailing := examplesDir + "quarks-statefulset/qstatefulset_configs_fail.yaml"
 			err := cmdHelper.Apply(namespace, yamlUpdatedFilePathFailing)
@@ -141,7 +141,7 @@ var _ = Describe("Examples Directory", func() {
 
 		It("creates statefulset pods with tolerations defined", func() {
 			By("Checking for pods")
-			podWait("pod/example-quarks-statefulset-0")
+			waitReady("pod/example-quarks-statefulset-0")
 
 			tolerations, err := cmdHelper.GetData(namespace, "pod", "example-quarks-statefulset-0", "go-template={{.spec.tolerations}}")
 			Expect(err).ToNot(HaveOccurred())
@@ -159,8 +159,8 @@ var _ = Describe("Examples Directory", func() {
 
 		It("creates the deployment and an endpoint", func() {
 			By("Checking for pods")
-			podWait("pod/nats-0")
-			podWait("pod/nats-1")
+			waitReady("pod/nats-0")
+			waitReady("pod/nats-1")
 
 			err := kubectl.WaitForService(namespace, "nats-service")
 			Expect(err).ToNot(HaveOccurred())
@@ -184,8 +184,8 @@ var _ = Describe("Examples Directory", func() {
 		})
 
 		It("deploys two pods", func() {
-			podWait("pod/nats-0")
-			podWait("pod/nats-1")
+			waitReady("pod/nats-0")
+			waitReady("pod/nats-1")
 		})
 	})
 
@@ -196,8 +196,8 @@ var _ = Describe("Examples Directory", func() {
 
 		It("uses the custom variable", func() {
 			By("Checking for pods")
-			podWait("pod/nats-0")
-			podWait("pod/nats-1")
+			waitReady("pod/nats-0")
+			waitReady("pod/nats-1")
 
 			By("Checking the value in the config file")
 			// password is stored in line 24
@@ -215,7 +215,7 @@ var _ = Describe("Examples Directory", func() {
 
 		It("uses the user's variables instead of generating new ones", func() {
 			By("Checking for pods")
-			podWait("pod/nats-0")
+			waitReady("pod/nats-0")
 
 			// Check that we didn't create new secrets
 			sd, err := cmdHelper.GetData(namespace, "secret", "var-nats-password", "go-template={{.data}}")
@@ -247,8 +247,8 @@ var _ = Describe("Examples Directory", func() {
 		})
 		It("disables the logging sidecar", func() {
 			By("Checking for pods")
-			podWait("pod/nats-0")
-			podWait("pod/nats-1")
+			waitReady("pod/nats-0")
+			waitReady("pod/nats-1")
 
 			By("Ensure only one container exists")
 			containerName, err := cmdHelper.GetData(namespace, "pod", "nats-0", "jsonpath={range .spec.containers[*]}{.name}")
@@ -270,7 +270,7 @@ var _ = Describe("Examples Directory", func() {
 
 		It("updates deployment when implicit variable changes", func() {
 			By("Checking for pods")
-			podWait("pod/nats-0")
+			waitReady("pod/nats-0")
 			status, err := kubectl.PodStatus(namespace, "nats-0")
 			Expect(err).ToNot(HaveOccurred(), "error getting pod status")
 			startTime := status.StartTime
@@ -292,7 +292,7 @@ var _ = Describe("Examples Directory", func() {
 
 		It("updates quarks secret when implicit variable changes, then deployment updates", func() {
 			By("Checking for pods")
-			podWait("pod/nats-0")
+			waitReady("pod/nats-0")
 			status, err := kubectl.PodStatus(namespace, "nats-0")
 			Expect(err).ToNot(HaveOccurred(), "error getting pod status")
 			startTime := status.StartTime
@@ -315,7 +315,7 @@ var _ = Describe("Examples Directory", func() {
 		It("resolves BOSH DNS placeholder aliases", func() {
 			By("Getting expected IP")
 			podName := "nats-0"
-			podWait(fmt.Sprintf("pod/%s", podName))
+			waitReady(fmt.Sprintf("pod/%s", podName))
 			serviceName := "nats-0"
 			service, err := kubectl.Service(namespace, serviceName)
 			Expect(err).ToNot(HaveOccurred())
@@ -348,7 +348,7 @@ var _ = Describe("Examples Directory", func() {
 		It("resolves BOSH DNS wildcard aliases", func() {
 			By("Getting expected IP")
 			podName := "nats-0"
-			podWait(fmt.Sprintf("pod/%s", podName))
+			waitReady(fmt.Sprintf("pod/%s", podName))
 			podStatus, err := kubectl.PodStatus(namespace, podName)
 			Expect(err).ToNot(HaveOccurred())
 

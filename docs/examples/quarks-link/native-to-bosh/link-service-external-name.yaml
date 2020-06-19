@@ -5,15 +5,7 @@ metadata:
     quarks.cloudfoundry.org/deployment-name: "cfo-test-deployment"
   annotations:
     quarks.cloudfoundry.org/link-provider-name: quarks-gora
-  name: testservice
+  name: svcexternal
 spec:
-  ports:
-  - name: client
-    port: 2181
-    protocol: TCP
-    targetPort: client
-  selector:
-    app: linkpod
-  type: ClusterIP
-status:
-  loadBalancer: {}
+  type: ExternalName
+  externalName: test.example.com
