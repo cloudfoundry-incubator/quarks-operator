@@ -507,7 +507,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					})
 
 					_, err := reconciler.Reconcile(request)
-					Expect(err.Error()).To(ContainSubstring("listing secrets for link in deployment"))
+					Expect(err.Error()).To(ContainSubstring("listing secrets to fill missing links"))
 				})
 
 				It("handles an error on missing providers when the secret doesn't have the annotation", func() {

@@ -111,8 +111,9 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			log.WithEvent(bdpl, "WithOpsManifestError").Errorf(ctx, "failed to get with-ops manifest for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	// Get link infos containing provider name and its secret name
-	linkInfos, err := ListLinkInfos(ctx, r.client, bdpl, manifest)
+	// Find the required native-to-bosh links, add the properties to the manifest and error if links are missing
+	l := linkInfoService{deploymentName: bdpl.Name, namespace: bdpl.Namespace}
+	linkInfos, err := l.List(ctx, r.client, manifest)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bdpl, "InstanceGroupManifestError").Errorf(ctx, "failed to list quarks-link secrets for BOSHDeployment '%s': %v", request.NamespacedName, err)

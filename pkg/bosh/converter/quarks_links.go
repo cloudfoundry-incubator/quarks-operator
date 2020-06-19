@@ -20,7 +20,7 @@ type LinkInfo struct {
 	ProviderType string
 }
 
-// LinkInfos is a list of LinkInfo
+// LinkInfos is a list of LinkInfo, which reference the secret providing the links properties and the name and type of the provider
 type LinkInfos []LinkInfo
 
 // Volumes returns a list of volumes from LinkInfos
