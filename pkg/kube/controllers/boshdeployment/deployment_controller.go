@@ -85,7 +85,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	}
 
 	// Watch ConfigMaps referenced by the BOSHDeployment
-	configMapPredicates := predicate.Funcs{
+	p = predicate.Funcs{
 		CreateFunc:  func(e event.CreateEvent) bool { return true },
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
@@ -115,13 +115,13 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 
 			return reconciles
 		}),
-	}, nsPred, configMapPredicates)
+	}, nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching configmaps failed in bosh deployment controller.")
 	}
 
 	// Watch Secrets referenced by the BOSHDeployment
-	secretPredicates := predicate.Funcs{
+	p = predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			secret := e.Object.(*corev1.Secret)
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, secret, false)
@@ -160,14 +160,14 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 
 			return reconciles
 		}),
-	}, nsPred, secretPredicates)
+	}, nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching secrets failed in bosh deployment controller.")
 
 	}
 
 	// Watch Services that route (select) pods that are external link providers
-	servicesPredicates := predicate.Funcs{
+	p = predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			service := e.Object.(*corev1.Service)
 
@@ -199,7 +199,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 
 			return reconciles
 		}),
-	}, nsPred, servicesPredicates)
+	}, nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "watching services failed in bosh deployment controller.")
 
