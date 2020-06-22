@@ -1,8 +1,11 @@
 package converter
 
 import (
-	"code.cloudfoundry.org/quarks-utils/pkg/names"
+	"path/filepath"
+
 	corev1 "k8s.io/api/core/v1"
+
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 const (
@@ -54,7 +57,7 @@ func (q *LinkInfo) linkVolume() corev1.Volume {
 func (q *LinkInfo) linkVolumeMount() corev1.VolumeMount {
 	return corev1.VolumeMount{
 		Name:      names.VolumeName(q.SecretName),
-		MountPath: VolumeLinksPath + q.ProviderName,
+		MountPath: filepath.Join(VolumeLinksPath, q.ProviderName),
 		ReadOnly:  true,
 	}
 }
