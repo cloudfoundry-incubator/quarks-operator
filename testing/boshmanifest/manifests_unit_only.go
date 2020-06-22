@@ -558,7 +558,7 @@ instance_groups:
           - name: absent-process
             executable: /absent-process-command
             limits:
-            open_files: 100000
+              open_files: 100000
   vm_type: medium
   stemcell: default
   persistent_disk_type: medium
