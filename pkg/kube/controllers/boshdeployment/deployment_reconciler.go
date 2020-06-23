@@ -121,14 +121,6 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			log.WithEvent(bdpl, "InstanceGroupManifestError").Errorf(ctx, "failed to list quarks-link secrets for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	// Apply the "with-ops" manifest secret
-	log.Debug(ctx, "Creating with-ops manifest secret")
-	manifestSecret, err := r.createManifestWithOps(ctx, bdpl, *manifest)
-	if err != nil {
-		return reconcile.Result{},
-			log.WithEvent(bdpl, "WithOpsManifestError").Errorf(ctx, "failed to create with-ops manifest secret for BOSHDeployment '%s': %v", request.NamespacedName, err)
-	}
-
 	// Create all QuarksSecret variables
 	log.Debug(ctx, "Converting BOSH manifest variables to QuarksSecret resources")
 	secrets, err := r.converter.Variables(request.Namespace, bdpl.Name, manifest.Variables)
@@ -140,11 +132,19 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 
 	// Create/update all explicit BOSH Variables
 	if len(secrets) > 0 {
-		err = r.createQuarksSecrets(ctx, manifestSecret, secrets)
+		err = r.createQuarksSecrets(ctx, bdpl, secrets)
 		if err != nil {
 			return reconcile.Result{},
 				log.WithEvent(bdpl, "VariableGenerationError").Errorf(ctx, "failed to create quarks secrets for BOSH manifest '%s': %v", request.NamespacedName, err)
 		}
+	}
+
+	// Apply the "with-ops" manifest secret
+	log.Debug(ctx, "Creating with-ops manifest secret")
+	err = r.createManifestWithOps(ctx, bdpl, *manifest)
+	if err != nil {
+		return reconcile.Result{},
+			log.WithEvent(bdpl, "WithOpsManifestError").Errorf(ctx, "failed to create with-ops manifest secret for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	// Apply the "Variable Interpolation" QuarksJob, which creates the desired manifest secret
@@ -200,13 +200,13 @@ func (r *ReconcileBOSHDeployment) resolveManifest(ctx context.Context, bdpl *bdv
 }
 
 // createManifestWithOps creates a secret containing the deployment manifest with ops files applied
-func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, bdpl *bdv1.BOSHDeployment, manifest bdm.Manifest) (*corev1.Secret, error) {
+func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, bdpl *bdv1.BOSHDeployment, manifest bdm.Manifest) error {
 	log.Debug(ctx, "Creating manifest secret with ops")
 
 	// Create manifest with ops, which will be used as a base for variable interpolation in desired manifest job input.
 	manifestBytes, err := manifest.Marshal()
 	if err != nil {
-		return nil, log.WithEvent(bdpl, "ManifestWithOpsMarshalError").Errorf(ctx, "Error marshaling the manifest '%s': %s", bdpl.GetNamespacedName(), err)
+		return log.WithEvent(bdpl, "ManifestWithOpsMarshalError").Errorf(ctx, "Error marshaling the manifest '%s': %s", bdpl.GetNamespacedName(), err)
 	}
 
 	manifestSecretName := bdv1.DeploymentSecretTypeManifestWithOps.String()
@@ -228,18 +228,18 @@ func (r *ReconcileBOSHDeployment) createManifestWithOps(ctx context.Context, bdp
 
 	// Set ownership reference
 	if err := r.setReference(bdpl, manifestSecret, r.scheme); err != nil {
-		return nil, log.WithEvent(bdpl, "ManifestWithOpsRefError").Errorf(ctx, "failed to set ownerReference for Secret '%s/%s': %v", bdpl.Namespace, manifestSecretName, err)
+		return log.WithEvent(bdpl, "ManifestWithOpsRefError").Errorf(ctx, "failed to set ownerReference for Secret '%s/%s': %v", bdpl.Namespace, manifestSecretName, err)
 	}
 
 	// Apply the secret
 	op, err := controllerutil.CreateOrUpdate(ctx, r.client, manifestSecret, mutateqs.SecretMutateFn(manifestSecret))
 	if err != nil {
-		return nil, log.WithEvent(bdpl, "ManifestWithOpsApplyError").Errorf(ctx, "failed to apply Secret '%s/%s': %v", bdpl.Namespace, manifestSecretName, err)
+		return log.WithEvent(bdpl, "ManifestWithOpsApplyError").Errorf(ctx, "failed to apply Secret '%s/%s': %v", bdpl.Namespace, manifestSecretName, err)
 	}
 
 	log.Debugf(ctx, "ResourceReference secret '%s/%s' has been %s", bdpl.Namespace, manifestSecret.Name, op)
 
-	return manifestSecret, nil
+	return nil
 }
 
 // createQuarksJob creates a QuarksJob and sets its ownership
@@ -412,18 +412,16 @@ func (r *ReconcileBOSHDeployment) listPodsFromSelector(namespace string, selecto
 }
 
 // createQuarksSecrets create variables quarksSecrets
-func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manifestSecret *corev1.Secret, variables []qsv1a1.QuarksSecret) error {
+func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, bdpl *bdv1.BOSHDeployment, variables []qsv1a1.QuarksSecret) error {
 
 	// TODO: vladi: don't generate the variables that are "user-defined"
 
 	for _, variable := range variables {
 		log.Debugf(ctx, "CreateOrUpdate QuarksSecrets for explicit variable '%s'", variable.GetNamespacedName())
 
-		// Set the "manifest with ops" secret as the owner for the QuarksSecrets
-		// The "manifest with ops" secret is owned by the actual BOSHDeployment, so everything
-		// should be garbage collected properly.
-		if err := r.setReference(manifestSecret, &variable, r.scheme); err != nil {
-			err = log.WithEvent(manifestSecret, "OwnershipError").Errorf(ctx, "failed to set ownership for '%s': %v", variable.GetNamespacedName(), err)
+		// Set the bdpl as the owner for the QuarksSecrets
+		if err := r.setReference(bdpl, &variable, r.scheme); err != nil {
+			err = log.WithEvent(bdpl, "OwnershipError").Errorf(ctx, "failed to set ownership for '%s': %v", variable.GetNamespacedName(), err)
 			return err
 		}
 
