@@ -193,6 +193,50 @@ func (c *Catalog) NatsServiceExternalName(deployName string) corev1.Service {
 	}
 }
 
+// NatsServiceForEndpoint is used to test native-to-bosh quarks-links
+func (c *Catalog) NatsServiceForEndpoint(deployName string) corev1.Service {
+	return corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "nats-ep",
+			Labels: map[string]string{
+				bdv1.LabelDeploymentName: deployName,
+			},
+			Annotations: map[string]string{
+				bdv1.AnnotationLinkProviderName: "nats",
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "client",
+					Port:       4222,
+					TargetPort: intstr.FromString("client"),
+				},
+				{
+					Name:       "cluster",
+					Port:       6222,
+					TargetPort: intstr.FromString("cluster"),
+				},
+			},
+		},
+	}
+}
+
+// NatsEndpoints is used to test native-to-bosh quarks-links
+func (c *Catalog) NatsEndpoints(deployName string) corev1.Endpoints {
+	return corev1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "nats-ep",
+		},
+		Subsets: []corev1.EndpointSubset{
+			{
+				Ports:     []corev1.EndpointPort{{Port: 1234}},
+				Addresses: []corev1.EndpointAddress{{IP: "192.168.0.1"}},
+			},
+		},
+	}
+}
+
 // NatsSecret is used to test native-to-bosh quarks-links
 func (c *Catalog) NatsSecret(deployName string) corev1.Secret {
 	return corev1.Secret{

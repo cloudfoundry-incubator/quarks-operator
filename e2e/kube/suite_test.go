@@ -69,13 +69,18 @@ var _ = BeforeEach(func() {
 })
 
 var _ = AfterEach(func() {
-	e2ehelper.TearDownAll(teardowns)
+	err := e2ehelper.TearDownAll(teardowns)
+	if err != nil {
+		fmt.Printf("Failures while cleaning up test environment:\n %v", err)
+	}
 	teardowns = []e2ehelper.TearDownFunc{}
 })
 
 var _ = AfterSuite(func() {
-	e2ehelper.TearDownAll(teardowns)
-	teardowns = []e2ehelper.TearDownFunc{}
+	err := e2ehelper.TearDownAll(teardowns)
+	if err != nil {
+		fmt.Printf("Failures while cleaning up test environment:\n %v", err)
+	}
 })
 
 func waitReady(name string) {
