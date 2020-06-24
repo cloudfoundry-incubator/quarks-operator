@@ -10,7 +10,7 @@ import (
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
 
-var _ = Describe("QuarksLink from native to BOSH", func() {
+var _ = Describe("QuarksLink from native provider to explicit links in BOSH", func() {
 	const (
 		manifestRef    = "manifest"
 		deploymentName = "test"
@@ -19,6 +19,8 @@ var _ = Describe("QuarksLink from native to BOSH", func() {
 	var (
 		tearDowns    []machine.TearDownFunc
 		boshManifest corev1.Secret
+		provider     corev1.Secret
+		service      corev1.Service
 	)
 
 	AfterEach(func() {
@@ -26,8 +28,18 @@ var _ = Describe("QuarksLink from native to BOSH", func() {
 	})
 
 	JustBeforeEach(func() {
+		By("Creating a secret to provide values")
+		tearDown, err := env.CreateSecret(env.Namespace, provider)
+		Expect(err).NotTo(HaveOccurred())
+		tearDowns = append(tearDowns, tearDown)
+
+		By("Creating a service for the provider")
+		tearDown, err = env.CreateService(env.Namespace, service)
+		Expect(err).NotTo(HaveOccurred())
+		tearDowns = append(tearDowns, tearDown)
+
 		By("Creating the BOSH manifest")
-		tearDown, err := env.CreateSecret(env.Namespace, boshManifest)
+		tearDown, err = env.CreateSecret(env.Namespace, boshManifest)
 		Expect(err).NotTo(HaveOccurred())
 		tearDowns = append(tearDowns, tearDown)
 
@@ -38,15 +50,10 @@ var _ = Describe("QuarksLink from native to BOSH", func() {
 		tearDowns = append(tearDowns, tearDown)
 	})
 
-	Context("when deployment has explicit, external link dependencies", func() {
+	Context("when deployment has a service with a selector", func() {
 		BeforeEach(func() {
 			By("Creating a minimal nats config")
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.NatsConfigMap(deploymentName))
-			Expect(err).NotTo(HaveOccurred())
-			tearDowns = append(tearDowns, tearDown)
-
-			By("Creating a secret to export values from that nats config")
-			tearDown, err = env.CreateSecret(env.Namespace, env.NatsSecret(deploymentName))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -55,13 +62,10 @@ var _ = Describe("QuarksLink from native to BOSH", func() {
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
-			By("Applying a service for the nats pod")
-			tearDown, err = env.CreateService(env.Namespace, env.NatsService(deploymentName))
-			Expect(err).NotTo(HaveOccurred())
-			tearDowns = append(tearDowns, tearDown)
-
 			// choose a manifest which uses the values from nats, i.e. the nats smoke test
 			boshManifest = env.BOSHManifestSecret(manifestRef, bm.NatsSmokeTestWithExternalLinks)
+			provider = env.NatsSecret(deploymentName)
+			service = env.NatsService(deploymentName)
 		})
 
 		It("uses the values from the native resources", func() {
@@ -118,6 +122,68 @@ var _ = Describe("QuarksLink from native to BOSH", func() {
 				igm := string(ig.Data["properties.yaml"])
 				Expect(igm).NotTo(ContainSubstring("address: " + nats.Status.PodIP))
 				Expect(igm).To(ContainSubstring(`id: nats`))
+			})
+		})
+	})
+
+	Context("when deployment has a service with an endpoint", func() {
+		var ep corev1.Endpoints
+		BeforeEach(func() {
+			ep = env.NatsEndpoints(deploymentName)
+			tearDown, err := env.CreateEndpoints(env.Namespace, ep)
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			// choose a manifest which uses the values from nats, i.e. the nats smoke test
+			boshManifest = env.BOSHManifestSecret(manifestRef, bm.NatsSmokeTestWithExternalLinks)
+			provider = env.NatsSecret(deploymentName)
+			service = env.NatsServiceForEndpoint(deploymentName)
+		})
+
+		It("uses the values provided by the native resources", func() {
+			By("checking the ig manifest", func() {
+				ig, err := env.CollectSecret(env.Namespace, "ig-resolved.nats-smoke-tests-v1")
+				Expect(err).NotTo(HaveOccurred())
+
+				igm := string(ig.Data["properties.yaml"])
+				Expect(igm).To(ContainSubstring("address: nats-ep." + env.Namespace + ".svc."))
+				Expect(igm).To(ContainSubstring("address: 192.168.0.1"))
+			})
+
+			By("updating the endpoint and checking the ig manifest", func() {
+				ep.Subsets[0].Addresses[0].IP = "10.10.10.11"
+				_, _, err := env.UpdateEndpoints(env.Namespace, ep)
+				Expect(err).NotTo(HaveOccurred())
+
+				ig, err := env.CollectSecret(env.Namespace, "ig-resolved.nats-smoke-tests-v2")
+				Expect(err).NotTo(HaveOccurred())
+
+				igm := string(ig.Data["properties.yaml"])
+				Expect(igm).To(ContainSubstring("address: 10.10.10.11"))
+			})
+		})
+	})
+
+	Context("when deployment has a service with an external name", func() {
+		BeforeEach(func() {
+			manifest := bm.NatsSmokeTestWithExternalLinks
+			boshManifest = env.BOSHManifestSecret(manifestRef, manifest)
+			provider = env.NatsSecret(deploymentName)
+			service = env.NatsServiceExternalName(deploymentName)
+		})
+
+		It("uses the values provided by the native resources", func() {
+			By("checking the ig manifest", func() {
+				ig, err := env.CollectSecret(env.Namespace, "ig-resolved.nats-smoke-tests-v1")
+				Expect(err).NotTo(HaveOccurred())
+
+				igm := string(ig.Data["properties.yaml"])
+				Expect(igm).To(ContainSubstring("address: nats-headless." + env.Namespace + ".svc."))
+				Expect(igm).To(ContainSubstring(`id: nats`))
+				Expect(igm).To(ContainSubstring(`name: nats`))
+				Expect(igm).To(ContainSubstring("password: r9fXAlY3gZ"))
+				Expect(igm).To(ContainSubstring(`port: "4222"`))
+				Expect(igm).To(ContainSubstring(`user: nats_client`))
 			})
 		})
 	})
