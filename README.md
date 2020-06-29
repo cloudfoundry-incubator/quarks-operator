@@ -14,6 +14,7 @@ cf-operator enables the deployment of BOSH Releases, especially Cloud Foundry, t
 
 It's implemented as a k8s operator, an active controller component which acts upon custom k8s resources.
 
+* [Documentation](https://quarks.suse.dev)
 * Incubation Proposal: [Containerizing Cloud Foundry](https://docs.google.com/document/d/1_IvFf-cCR4_Hxg-L7Z_R51EKhZfBqlprrs5NgC2iO2w/edit#heading=h.lybtsdyh8res)
 * Slack: #quarks-dev on <https://slack.cloudfoundry.org>
 * Backlog: [Pivotal Tracker](https://www.pivotaltracker.com/n/projects/2192232)
@@ -230,8 +231,8 @@ Also see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 For more information about
 
-* the operator development, see [docs/development.md](docs/development.md)
-* testing, see [docs/testing.md](docs/testing.md)
-* building the operator from source, see [docs/building.md](docs/building.md)
+* the operator development, see [development docs](https://quarks.suse.dev/docs/development/)
+* testing, see [testing docs](https://quarks.suse.dev/docs/development/testing/)
+* building the operator from source, see [here](https://quarks.suse.dev/docs/core-tasks/building/)
 * how to develop a BOSH release using Quarks and SCF, see the [SCFv3 docs](https://github.com/SUSE/scf/blob/v3-develop/dev/scf/docs/bosh-author.md)
 
