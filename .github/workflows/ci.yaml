@@ -39,10 +39,10 @@ jobs:
         bin/tools
     - name: Run lint
       run: |
-        tools/quarks-utils/bin/lint
+        bin/lint
     - name: Run unit tests
       run: |
-        tools/quarks-utils/bin/test-unit
+        bin/test-unit
       env:
         GOPROXY: "https://proxy.golang.org"
 
