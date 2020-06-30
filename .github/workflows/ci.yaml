@@ -36,10 +36,10 @@ jobs:
         bin/tools
     - name: Run lint
       run: |
-        tools/quarks-utils/bin/lint
+        bin/lint
     - name: Run unit tests
       run: |
-        tools/quarks-utils/bin/test-unit
+        bin/test-unit
       env:
         GOPROXY: "https://proxy.golang.org"
 
@@ -82,11 +82,11 @@ jobs:
         bin/build-helm
         bin/build-image
         kind load docker-image "cfcontainerization/cf-operator:dev"
-        tools/quarks-utils/bin/test-integration
-        INTEGRATION_SUITE=storage tools/quarks-utils/bin/test-integration
-        INTEGRATION_SUITE=util tools/quarks-utils/bin/test-integration
-        tools/quarks-utils/bin/test-cli-e2e
-        tools/quarks-utils/bin/test-helm-e2e
+        bin/test-integration
+        INTEGRATION_SUITE=storage bin/test-integration
+        INTEGRATION_SUITE=util bin/test-integration
+        bin/test-cli-e2e
+        bin/test-helm-e2e
         bin/test-helm-e2e-storage
       env:
         NODES: "3"
