@@ -1,7 +1,7 @@
 ---
 title: "Labels"
 linkTitle: "Labels"
-weight: 11
+weight: 4
 ---
 
 * `bdv1.LabelDeploymentName` "quarks.cloudfoundry.org/deployment-name"

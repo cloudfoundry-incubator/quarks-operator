@@ -1,7 +1,7 @@
 ---
 title: "Releasing"
 linkTitle: "Releasing"
-weight: 11
+weight: 3
 ---
 
 We're releasing based on tags, which contain our version number. The format is 'v0.0.0'.

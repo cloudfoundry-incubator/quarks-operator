@@ -3,7 +3,7 @@ title: "Troubleshooting"
 linkTitle: "Troubleshooting"
 weight: 4
 description: >
-  Troubleshooting notes for Quarks-operator.
+  Troubleshooting notes for Quarks-operator
 ---
 
 ### Cluster CA

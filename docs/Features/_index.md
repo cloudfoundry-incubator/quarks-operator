@@ -2,6 +2,8 @@
 title: "Features"
 linkTitle: "Features"
 weight: 11
+description: >
+  Quarks-operator features reference
 ---
 
 Quarks-operator deploys dockerized BOSH releases onto existing Kubernetes cluster

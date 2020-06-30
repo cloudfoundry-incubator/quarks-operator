@@ -3,7 +3,7 @@ title: "Kubernetes Controllers"
 linkTitle: "Controllers"
 weight: 4
 description: >
-    This section contains design documents for the Kubernetes controllers that make up the quarks-operator.
+    This section contains design documents for the Kubernetes controllers that make up the quarks-operator
 
 ---
 
@@ -25,6 +25,9 @@ boshdeployments.quarks.cloudfoundry.org        2019-06-25T07:08:37Z
 quarksjobs.quarks.cloudfoundry.org           2019-06-25T07:08:37Z
 quarkssecrets.quarks.cloudfoundry.org        2019-06-25T07:08:37Z
 quarksstatefulsets.quarks.cloudfoundry.org   2019-06-25T07:08:37Z
+```
+
+### Architecture design
 
 Draw.io with the sources for the `quarks_deployment_flow-*png` controller charts:
 
