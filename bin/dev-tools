@@ -1,0 +1,12 @@
+#!/bin/bash
+export GO111MODULE=on
+
+pushd ~
+go get -u golang.org/x/lint/golint
+go get -u github.com/maxbrunsfeld/counterfeiter
+go get -u github.com/onsi/ginkgo/ginkgo
+go get -u honnef.co/go/tools/...
+popd
+
+GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
+"$GIT_ROOT"/bin/tools

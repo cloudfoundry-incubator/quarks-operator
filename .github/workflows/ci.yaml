@@ -36,7 +36,7 @@ jobs:
         sudo tar xfz staticcheck_linux_amd64.tar.gz --strip-component 1 -C $GOPATH/bin staticcheck/staticcheck
     - name: Install shared tools
       run: |
-        bin/tools-shared
+        bin/tools
     - name: Run lint
       run: |
         tools/quarks-utils/bin/lint
@@ -71,7 +71,7 @@ jobs:
         go install github.com/onsi/ginkgo/ginkgo
     - name: Install shared tools
       run: |
-        bin/tools-shared
+        bin/tools
     - name: Create k8s Kind Cluster
       uses: engineerd/setup-kind@v0.3.0
       with:
