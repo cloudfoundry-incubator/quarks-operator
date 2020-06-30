@@ -13,7 +13,9 @@ keywords:
 sources:
 - https://github.com/cloudfoundry-incubator/cf-operator
 - https://github.com/cloudfoundry-incubator/quarks-job
-- https://github.com/cfcontainerizationbot/cf-operator-base
+- https://github.com/cloudfoundry-incubator/quarks-secret
+- https://github.com/cloudfoundry-incubator/quarks-utils
+- https://build.opensuse.org/package/show/Cloud:Platform:quarks/quarks-operator-base
 maintainers:
 - name: project-quarks
   email: project-quarks@googlegroups.com
