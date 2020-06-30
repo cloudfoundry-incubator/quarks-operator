@@ -66,9 +66,10 @@ helm delete cf-operator
 | `image.repository`                                | Docker hub repository for the cf-operator image                                                   | `cf-operator`                                  |
 | `image.org`                                       | Docker hub organization for the cf-operator image                                                 | `cfcontainerization`                           |
 | `image.tag`                                       | Docker image tag                                                                                  | `foobar`                                       |
-| `global.contextTimeout`                           | Will set the context timeout in seconds, for future K8S API requests                              | `300`                                           |
+| `global.contextTimeout`                           | Will set the context timeout in seconds, for future K8S API requests                              | `300`                                          |
 | `global.image.pullPolicy`                         | Kubernetes image pullPolicy                                                                       | `IfNotPresent`                                 |
 | `global.image.credentials`                        | Kubernetes image pull secret credentials (map with keys `servername`, `username`, and `password`) | `nil`                                          |
+| `global.monitoredID`                              | Label value of 'quarks.cloudfoundry.org/monitored'. Only matching namespaces are watched          | `cfo`                                          |
 | `global.rbac.create`                              | Install required RBAC service account, roles and rolebindings                                     | `true`                                         |
 | `operator.webhook.endpoint`                       | Hostname/IP under which the webhook server can be reached from the cluster                        | the IP of service `cf-operator-webhook`        |
 | `operator.webhook.port`                           | Port the webhook server listens on                                                                | 2999                                           |
@@ -76,7 +77,7 @@ helm delete cf-operator
 | `serviceAccount.create`                           | If true, create a service account                                                                 | `true`                                         |
 | `serviceAccount.name`                             | If not set and `create` is `true`, a name is generated using the fullname of the chart            |                                                |
 | `global.singleNamespace.create`                   | If true, create a service account and a single watch namespace                                    |                                                |
-| `global.singleNamespace.name`                     | Namespace the operator will watch for BOSH deployment                                             |                                                |
+| `global.singleNamespace.name`                     | Name of the single watch namespace, that will be watched for BOSH deployment                      |                                                |
 
 > **Note:**
 >
