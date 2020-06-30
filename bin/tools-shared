@@ -1,2 +1,0 @@
-#!/bin/sh
-curl -s "https://raw.githubusercontent.com/cloudfoundry-incubator/quarks-utils/master/bin/tools-shared-get-v1.sh" | sh

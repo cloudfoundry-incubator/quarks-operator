@@ -16,7 +16,7 @@ lint: tools
 
 .PHONY: tools
 tools:
-	bin/tools
+	bin/dev-tools
 
 check-scripts:
 	bin/check-scripts
