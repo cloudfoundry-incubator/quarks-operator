@@ -1,7 +1,7 @@
 ---
 title: "Nice tools to use"
 linkTitle: "Tooling"
-weight: 4
+weight: 6
 description: >
   Tools to simplify your development workflow
 ---
