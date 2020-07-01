@@ -6,28 +6,6 @@ metadata:
   name: {{ template "cf-operator.fullname" . }}-cluster
 rules:
 - apiGroups:
-  - certificates.k8s.io
-  resources:
-  - certificatesigningrequests
-  verbs:
-  - approve
-  - create
-  - delete
-  - get
-  - list
-  - update
-  - watch
-
-- apiGroups:
-  - certificates.k8s.io
-  resources:
-  - signers
-  resourceNames:
-  - kubernetes.io/legacy-unknown
-  verbs:
-  - approve
-
-- apiGroups:
   - ""
   resources:
   - secrets
@@ -38,14 +16,6 @@ rules:
   - list
   - update
   - watch
-
-- apiGroups:
-  - certificates.k8s.io
-  resources:
-  - certificatesigningrequests/approval
-  verbs:
-  - create
-  - update
 
 - apiGroups:
   - apiextensions.k8s.io
