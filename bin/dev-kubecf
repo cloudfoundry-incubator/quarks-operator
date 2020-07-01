@@ -1,13 +1,15 @@
 #!/bin/sh
 
 namespace=${CF_OPERATOR_NAMESPACE-cfo}
-kubecf_location=${KUBECF_LOCATION-~/Downloads/kubecf-v2.1.0.tgz}
+kubecf_location=${KUBECF_LOCATION-~/Downloads/kubecf-v2.2.2.tgz}
 
 case "$1" in
     kubecf|k)
       helm install kubecf  \
         "$kubecf_location" \
-        --namespace kubecf --set "system_domain=kubecf.suse.dev"
+        --namespace kubecf \
+        --wait \
+        --set "system_domain=kubecf.suse.dev"
       ;;
 
     delete|rm)
@@ -19,7 +21,9 @@ case "$1" in
         ;;
 
     template|t)
-        helm template cfodev helm/cf-operator/ --namespace "$namespace" --wait --set "global.singleNamespace.name=kubecf"
+        helm template cfodev helm/cf-operator/ \
+          --namespace "$namespace" \
+          --set "global.singleNamespace.name=kubecf"
       ;;
 
     *)

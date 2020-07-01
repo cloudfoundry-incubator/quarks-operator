@@ -47,7 +47,7 @@ var _ = Describe("QuarksRestart", func() {
 				podName = getPodName(selector)
 				return podName
 			}).ShouldNot(BeEmpty())
-			podWait("pod/" + podName)
+			waitReady("pod/" + podName)
 
 			By("Updating secret")
 			updateSecret()
@@ -75,7 +75,7 @@ var _ = Describe("QuarksRestart", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			podName := getPodName(selector)
-			podWait("pod/" + podName)
+			waitReady("pod/" + podName)
 
 			By("Updating secret")
 			updateSecret()

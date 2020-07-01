@@ -10,7 +10,15 @@ import (
 )
 
 func isLinkProviderService(svc *corev1.Service) bool {
-	if _, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderService]; ok {
+	if _, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderName]; ok {
+		return true
+	}
+
+	return false
+}
+
+func isLinkProviderSecret(secret corev1.Secret) bool {
+	if _, ok := secret.GetAnnotations()[bdv1.AnnotationLinkProvidesKey]; ok {
 		return true
 	}
 

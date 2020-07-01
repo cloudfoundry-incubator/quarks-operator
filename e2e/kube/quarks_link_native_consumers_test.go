@@ -27,9 +27,8 @@ var _ = Describe("BOSH deployment provides links to native k8s resources", func(
 	}
 
 	BeforeEach(func() {
-		err := apply("quarks-link/boshdeployment.yaml")
-		Expect(err).ToNot(HaveOccurred())
-		podWait("pod/nats-0")
+		apply("quarks-link/boshdeployment.yaml")
+		waitReady("pod/nats-0")
 
 	})
 
@@ -49,24 +48,23 @@ var _ = Describe("BOSH deployment provides links to native k8s resources", func(
 			)
 
 			By("mutating new pods to mount the secret", func() {
-				err := apply("quarks-link/entangled-sts.yaml")
-				Expect(err).ToNot(HaveOccurred())
-				podWait(selector)
+				apply("quarks-link/entangled-sts.yaml")
+				waitReady(selector)
 
 				Expect(checkEntanglement(podName, "cat /quarks/link/nats-deployment/nats-nats/nats.password", "onetwothreefour")).ToNot(HaveOccurred())
 				Expect(checkEntanglement(podName, "echo $LINK_NATS_USER", "admin")).ToNot(HaveOccurred())
 			})
 
 			By("restarting pods when the link secret changes", func() {
-				err := apply("quarks-link/password-ops.yaml")
-				Expect(err).ToNot(HaveOccurred())
-				err = kubectl.WaitForData(
+				apply("quarks-link/password-ops.yaml")
+
+				err := kubectl.WaitForData(
 					namespace, "pod", podName,
 					`jsonpath="{.metadata.annotations}"`,
 					quarksrestart.RestartKey,
 				)
 				Expect(err).ToNot(HaveOccurred(), "waiting for restart annotation on entangled pod")
-				podWait(selector)
+				waitReady(selector)
 
 				Expect(checkEntanglement(podName, "cat /quarks/link/nats-deployment/nats-nats/nats.password", "qwerty1234")).ToNot(HaveOccurred())
 				Expect(checkEntanglement(podName, "echo $LINK_NATS_USER", "admin")).ToNot(HaveOccurred())
@@ -81,23 +79,22 @@ var _ = Describe("BOSH deployment provides links to native k8s resources", func(
 			var podName string
 
 			By("mutating new pods to mount the secret", func() {
-				err := apply("quarks-link/entangled-dpl.yaml")
-				Expect(err).ToNot(HaveOccurred())
-				err = kubectl.WaitLabelFilter(namespace, "ready", "pod", selector)
+				apply("quarks-link/entangled-dpl.yaml")
+
+				err := kubectl.WaitLabelFilter(namespace, "ready", "pod", selector)
 				Expect(err).ToNot(HaveOccurred())
 
 				podName = getPodName(selector)
-				podWait("pod/" + podName)
+				waitReady("pod/" + podName)
 
 				Expect(checkEntanglement(podName, "cat /quarks/link/nats-deployment/nats-nats/nats.password", "onetwothreefour")).ToNot(HaveOccurred())
 				Expect(checkEntanglement(podName, "echo $LINK_NATS_USER", "admin")).ToNot(HaveOccurred())
 			})
 
 			By("restarting pods when the link secret changes", func() {
-				err := apply("quarks-link/password-ops.yaml")
-				Expect(err).ToNot(HaveOccurred())
+				apply("quarks-link/password-ops.yaml")
 
-				err = kubectl.WaitForPodDelete(namespace, podName)
+				err := kubectl.WaitForPodDelete(namespace, podName)
 				Expect(err).ToNot(HaveOccurred(), "waiting for old pod to terminate")
 
 				err = kubectl.WaitLabelFilter(namespace, "ready", "pod", selector)
