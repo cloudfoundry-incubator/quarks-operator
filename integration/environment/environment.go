@@ -44,7 +44,7 @@ const (
 // NewEnvironment returns a new struct
 func NewEnvironment(kubeConfig *rest.Config) *Environment {
 	atomic.AddInt32(&namespaceCounter, 1)
-	namespaceID := gomegaConfig.GinkgoConfig.ParallelNode*100 + int(namespaceCounter)
+	namespaceID := gomegaConfig.GinkgoConfig.ParallelNode*200 + int(namespaceCounter)
 	// the single namespace used by this test
 	ns := utils.GetNamespaceName(namespaceID)
 

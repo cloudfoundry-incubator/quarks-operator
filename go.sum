@@ -13,10 +13,10 @@ cloud.google.com/go/pubsub v1.0.1/go.mod h1:R0Gpsv3s54REJCy4fxDixWD93lHJMoZTyQ2k
 cloud.google.com/go/storage v1.0.0/go.mod h1:IhtSnM/ZTZV8YYJWCY8RULGVqBDmpoyjwiyrjsg+URw=
 code.cloudfoundry.org/quarks-job v1.0.172 h1:WM9UFzGckL+0HNVQ6sQYwykBcIbwRB/9t8jq0qLW2Zo=
 code.cloudfoundry.org/quarks-job v1.0.172/go.mod h1:+8RUHvAg1slEtgXpSAZFK+tYB8hEwE/YgUjA23I5aLs=
-code.cloudfoundry.org/quarks-secret v0.0.0-20200527034647-269daeb7e9ca h1:q8W1AbMFvSIEts/qH1bNnnOhZcQ9hRdfkXHfWWMZClU=
-code.cloudfoundry.org/quarks-secret v0.0.0-20200527034647-269daeb7e9ca/go.mod h1:0NEUHrB9j1T7WQzndlvTthCDQuwglfkte/lavTLC2nI=
-code.cloudfoundry.org/quarks-utils v0.0.0-20200514122617-32f742d5f10e/go.mod h1:voPdeHf5x70u82CBFDCisvVFhxpXKuUEjd+b8y4Dcwo=
+code.cloudfoundry.org/quarks-secret v0.0.678-g33bcace h1:8fEDeIoOe/D2u2ScQEMvYIrLVr44w6NBltpyhfRhHI8=
+code.cloudfoundry.org/quarks-secret v0.0.678-g33bcace/go.mod h1:Wbt2nVlC/EcKsZ6v6uxsARH47jadEO0flO+F9CeR7tY=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200616125609-bd688d9e9d1d/go.mod h1:voPdeHf5x70u82CBFDCisvVFhxpXKuUEjd+b8y4Dcwo=
+code.cloudfoundry.org/quarks-utils v0.0.0-20200630135315-de0c944c2813/go.mod h1:voPdeHf5x70u82CBFDCisvVFhxpXKuUEjd+b8y4Dcwo=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200630143852-8e5cc2a49982 h1:zcBEDebUyQHzujuRydT0GlveFwOLGGqPcCDYuXgvUB4=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200630143852-8e5cc2a49982/go.mod h1:voPdeHf5x70u82CBFDCisvVFhxpXKuUEjd+b8y4Dcwo=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=

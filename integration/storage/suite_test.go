@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"testing"
 
-	"k8s.io/client-go/rest"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	"github.com/pkg/errors"
+
+	"k8s.io/client-go/rest"
 
 	"code.cloudfoundry.org/quarks-operator/integration/environment"
 	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
@@ -25,7 +24,7 @@ var (
 	env              *environment.Environment
 	namespacesToNuke []string
 	kubeConfig       *rest.Config
-	qjobCmd          environment.QuarksJobCmd
+	quarks           *environment.QuarksCmds
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -38,32 +37,41 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	// Ginkgo node 1 gets to setup the CRDs
 	err = environment.ApplyCRDs(kubeConfig)
 	if err != nil {
-		fmt.Printf("WARNING: failed to apply CRDs: %v", err)
+		fmt.Printf("WARNING: failed to apply CRDs: %v\n", err)
 	}
 
-	// Ginkgo node 1 needs to build the quarks job binary
-	qjobCmd = environment.NewQuarksJobCmd()
-	err = qjobCmd.Build()
+	// Ginkgo node 1 needs to build the quarks component binaries
+	quarks = environment.NewQuarksCmds()
+	err = quarks.Build()
 	if err != nil {
-		fmt.Printf("WARNING: failed to build quarks-job: %v\n", err)
+		fmt.Printf("WARNING: %v\n", err)
 	}
 
-	return []byte(qjobCmd.Path)
+	bytes := quarks.Marshal()
+	return bytes
 }, func(data []byte) {
 	var err error
 	kubeConfig, err = utils.KubeConfig()
 	if err != nil {
-		fmt.Printf("WARNING: failed to get kube config: %v", err)
+		fmt.Printf("WARNING: failed to get kube config: %v\n", err)
 	}
-	qjobCmd = environment.NewQuarksJobCmd()
-	qjobCmd.Path = string(data)
+
+	quarks := environment.NewQuarksCmds()
+	err = quarks.Unmarshal(data)
+	if err != nil {
+		fmt.Printf("WARNING: failed to quarks binary paths from node 1: %v\n", err)
+	}
 })
 
 var _ = BeforeEach(func() {
 	env = environment.NewEnvironment(kubeConfig)
+
+	SetDefaultEventuallyTimeout(env.PollTimeout)
+	SetDefaultEventuallyPollingInterval(env.PollInterval)
+
 	err := env.SetupClientsets()
 	if err != nil {
-		errors.Wrapf(err, "Integration setup failed. Creating clientsets in %s", env.Namespace)
+		fmt.Printf("Integration setup failed. Creating clientsets for %s: %s\n", env.Namespace, err)
 	}
 	err = env.SetupNamespace()
 	if err != nil {
@@ -76,9 +84,14 @@ var _ = BeforeEach(func() {
 		fmt.Printf("WARNING: failed to setup quarks-job operator service account: %s\n", err)
 	}
 
-	err = qjobCmd.Start(env.Config.MonitoredID)
+	err = quarks.Job.Start(env.Config.MonitoredID)
 	if err != nil {
-		fmt.Printf("WARNING: failed to start operator dependencies: %v\n", err)
+		fmt.Printf("WARNING: failed to start quarks-job operator: %v\n", err)
+	}
+
+	err = quarks.Secret.Start(env.Config.MonitoredID)
+	if err != nil {
+		fmt.Printf("WARNING: failed to start quarks-secret operator: %v\n", err)
 	}
 
 	err = env.StartOperator()
@@ -88,8 +101,8 @@ var _ = BeforeEach(func() {
 })
 
 var _ = AfterEach(func() {
-	env.Teardown(CurrentGinkgoTestDescription().Failed)
 	gexec.Kill()
+	env.Teardown(CurrentGinkgoTestDescription().Failed)
 })
 
 var _ = AfterSuite(func() {
