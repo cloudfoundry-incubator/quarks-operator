@@ -13,6 +13,8 @@ cloud.google.com/go/pubsub v1.0.1/go.mod h1:R0Gpsv3s54REJCy4fxDixWD93lHJMoZTyQ2k
 cloud.google.com/go/storage v1.0.0/go.mod h1:IhtSnM/ZTZV8YYJWCY8RULGVqBDmpoyjwiyrjsg+URw=
 code.cloudfoundry.org/quarks-job v1.0.172 h1:WM9UFzGckL+0HNVQ6sQYwykBcIbwRB/9t8jq0qLW2Zo=
 code.cloudfoundry.org/quarks-job v1.0.172/go.mod h1:+8RUHvAg1slEtgXpSAZFK+tYB8hEwE/YgUjA23I5aLs=
+code.cloudfoundry.org/quarks-job v1.0.173 h1:+E8zL/ux7bdSy5iLt0z4CWB+htGDKZNLe6V7WzkqBkI=
+code.cloudfoundry.org/quarks-job v1.0.173/go.mod h1:+8RUHvAg1slEtgXpSAZFK+tYB8hEwE/YgUjA23I5aLs=
 code.cloudfoundry.org/quarks-secret v0.0.0-20200527034647-269daeb7e9ca h1:q8W1AbMFvSIEts/qH1bNnnOhZcQ9hRdfkXHfWWMZClU=
 code.cloudfoundry.org/quarks-secret v0.0.0-20200527034647-269daeb7e9ca/go.mod h1:0NEUHrB9j1T7WQzndlvTthCDQuwglfkte/lavTLC2nI=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200514122617-32f742d5f10e/go.mod h1:voPdeHf5x70u82CBFDCisvVFhxpXKuUEjd+b8y4Dcwo=
