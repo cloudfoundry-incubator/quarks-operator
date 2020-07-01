@@ -496,7 +496,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					}))
 				})
 
-				It("handles an error when listing secretsn", func() {
+				It("handles an error when listing secrets", func() {
 					client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
 						switch object.(type) {
 						case *corev1.SecretList:
@@ -507,7 +507,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					})
 
 					_, err := reconciler.Reconcile(request)
-					Expect(err.Error()).To(ContainSubstring("listing secrets for link in deployment"))
+					Expect(err.Error()).To(ContainSubstring("listing secrets to fill missing links"))
 				})
 
 				It("handles an error on missing providers when the secret doesn't have the annotation", func() {
