@@ -121,6 +121,15 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - endpoints
+  verbs:
+  - get
+  - list
+  - watch
+
+- apiGroups:
+  - ""
+  resources:
   - pods/exec
   verbs:
   - create
