@@ -15,7 +15,7 @@ function describe_resource() {
 }
 
 function get_resource() {
-  kubectl get "$1" "$2" -oyaml --namespace "${NS}" > "$3"
+  kubectl get "$1" "$2" --output=yaml --namespace "${NS}" > "$3"
 }
 
 function get_pod_phase() {
