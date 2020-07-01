@@ -15,3 +15,19 @@ if [ -z ${QUARKS_JOB_HELM_VERSION+x} ]; then
   QUARKS_JOB_HELM_VERSION=$(echo "$quarks_job_release" | sed 's/^v//')
   export QUARKS_JOB_HELM_VERSION
 fi
+
+quarks_secret_release=$(grep code.cloudfoundry.org/quarks-secret go.mod | awk '{print $2}')
+
+# QUARKS_SECRET_IMAGE_TAG is used for integration tests
+if [ -z ${QUARKS_SECRET_IMAGE_TAG+x} ]; then
+  # + is not allowed in docker versions
+  QUARKS_SECRET_IMAGE_TAG=$(echo "$quarks_secret_release" | sed 's/+/-/')
+  export QUARKS_SECRET_IMAGE_TAG
+fi
+
+# QUARKS_SECRET_HELM_VERSION is used to build helm charts including sub-charts
+if [ -z ${QUARKS_SECRET_HELM_VERSION+x} ]; then
+  # helm version handling for leading 'v' is inconsistent, 'v' is not part of semver
+  QUARKS_SECRET_HELM_VERSION=$(echo "$quarks_secret_release" | sed 's/^v//')
+  export QUARKS_SECRET_HELM_VERSION
+fi
