@@ -44,4 +44,4 @@ Allows you to tail multiple pods on k8s and multiple containers within the pod.
 
 ### [kube dashboard](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/)
 
-A more user friendly to navigate your k8s cluster resources.
+A more user friendly way to navigate your k8s cluster resources.
