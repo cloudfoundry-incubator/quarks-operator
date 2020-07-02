@@ -6,6 +6,9 @@ on:
       - v*
     branches:
       - master
+    paths-ignore:
+    - "docs/**"
+    - "website/**"
   pull_request:
 
 jobs:
