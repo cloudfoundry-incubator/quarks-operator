@@ -2,7 +2,6 @@ package kube_test
 
 import (
 	"encoding/base64"
-	"fmt"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -38,7 +37,6 @@ var _ = Describe("K8s native resources provide BOSH links to a BOSH deployment",
 
 		It("uses kube native link", func() {
 			link := jobLink("quarks_gora")
-			fmt.Printf("%#v\n", link)
 			Expect(link.Address).To(ContainSubstring("svcexternal." + namespace + ".svc."))
 
 			By("Checking instance", func() {
