@@ -1,7 +1,7 @@
 ---
 title: "Development Guidelines"
 linkTitle: "Development Guidelines"
-weight: 11
+weight: 1
 ---
 
 - [Development](#development)

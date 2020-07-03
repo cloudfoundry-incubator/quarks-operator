@@ -1,7 +1,9 @@
 ---
 title: "Build"
 linkTitle: "Build quarks-operator"
-weight: 11
+weight: 2
+description: >
+  Build Quarks-operator from source
 ---
 
 The following steps layout the process of generating a `cf-operator` controller and how to install this in your Kubernetes cluster. This is probably a good approach, when developing, as a way to inmediately test your changes.
