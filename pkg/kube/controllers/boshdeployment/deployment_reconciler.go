@@ -24,6 +24,7 @@ import (
 	mutateqs "code.cloudfoundry.org/quarks-secret/pkg/kube/util/mutate"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
@@ -112,7 +113,11 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	// Find the required native-to-bosh links, add the properties to the manifest and error if links are missing
-	l := linkInfoService{deploymentName: bdpl.Name, namespace: bdpl.Namespace}
+	l := linkInfoService{
+		log:            logger.TraceFilter(log.ExtractLogger(ctx), "linkinfoservice"),
+		deploymentName: bdpl.Name,
+		namespace:      bdpl.Namespace,
+	}
 	linkInfos, err := l.List(ctx, r.client, manifest)
 	if err != nil {
 		return reconcile.Result{},
