@@ -84,12 +84,20 @@ var _ = AfterSuite(func() {
 })
 
 func waitReady(name string) {
-	err := kubectl.Wait(namespace, "ready", name, kubectl.PollTimeout)
+	waitReadyNamespace(namespace, name)
+}
+
+func waitReadyNamespace(ns, name string) {
+	err := kubectl.Wait(ns, "ready", name, kubectl.PollTimeout)
 	Expect(err).ToNot(HaveOccurred(), "waiting for resource: ", name)
 }
 
-func apply(p string) {
+func applyNamespace(ns, p string) {
 	yamlPath := path.Join(examplesDir, p)
-	err := cmdHelper.Apply(namespace, yamlPath)
+	err := cmdHelper.Apply(ns, yamlPath)
 	Expect(err).ToNot(HaveOccurred())
+}
+
+func apply(p string) {
+	applyNamespace(namespace, p)
 }
