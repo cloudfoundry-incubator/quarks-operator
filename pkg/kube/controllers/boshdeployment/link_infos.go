@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,6 +23,7 @@ func matchDeployment(name string) crc.MatchingLabels {
 }
 
 type linkInfoService struct {
+	log            *zap.SugaredLogger
 	deploymentName string
 	namespace      string
 }
@@ -32,6 +34,7 @@ func (l *linkInfoService) List(ctx context.Context, client crc.Client, manifest 
 	// find all missing providers in the manifest, so we can look for secrets
 	missingProviders := manifest.ListMissingProviders()
 	if len(missingProviders) == 0 {
+		l.log.Debug("manifest is not missing any link providers")
 		return converter.LinkInfos{}, nil
 	}
 
@@ -72,6 +75,8 @@ func (l *linkInfoService) nativeQuarksLinks(ctx context.Context, client crc.Clie
 		if !isLinkProviderSecret(s) {
 			continue
 		}
+		l.log.Debugf("secret '%s/%s' is a link provider secret for a missing link", s.Namespace, s.Name)
+
 		linkProvider, err := newLinkProvider(s.GetAnnotations())
 		if err != nil {
 			return quarksLinks, linkInfos, errors.Wrapf(err, "failed to parse link annotation JSON for secret '%s'", s.Name)
@@ -135,6 +140,7 @@ func (l *linkInfoService) nativeQuarksLinks(ctx context.Context, client crc.Clie
 				Address:   svcRecord.dnsRecord,
 				Instances: j,
 			}
+			l.log.Debugf("updated quarks link '%s' with service record: %v", qName, quarksLinks[qName])
 		}
 	}
 
