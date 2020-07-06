@@ -101,9 +101,29 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			log.WithEvent(bdpl, "GetBOSHDeploymentError").Errorf(ctx, "failed to get BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	if meltdown.NewWindow(r.config.MeltdownDuration, bdpl.Status.LastReconcile).Contains(time.Now()) {
-		log.WithEvent(bdpl, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", request.NamespacedName, r.config.MeltdownRequeueAfter)
-		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
+	negativeTime := metav1.Date(0001, 1, 1, -1, 0, 0, 0, time.UTC)
+	if bdpl.Status.LastReconcile.Equal(&negativeTime) || bdpl.Status.LastReconcile == nil {
+		now := metav1.Now()
+		bdpl.Status.LastReconcile = &now
+
+		err = r.client.Status().Update(ctx, bdpl)
+		if err != nil {
+			log.WithEvent(bdpl, "UpdateError").Errorf(ctx, "failed to update reconcile timestamp on bdpl '%s' (%v): %s", request.NamespacedName, bdpl.ResourceVersion, err)
+			return reconcile.Result{Requeue: false}, nil
+		}
+		return reconcile.Result{RequeueAfter: 10 * time.Second}, nil
+	}
+
+	if meltdown.NewWindow(10*time.Second, bdpl.Status.LastReconcile).Contains(time.Now()) {
+		log.WithEvent(bdpl, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile skipped.")
+		return reconcile.Result{}, nil
+	}
+
+	bdpl.Status.LastReconcile = &negativeTime
+	err = r.client.Status().Update(ctx, bdpl)
+	if err != nil {
+		log.WithEvent(bdpl, "UpdateError").Errorf(ctx, "failed to update reconcile timestamp on bdpl '%s' (%v): %s", request.NamespacedName, bdpl.ResourceVersion, err)
+		return reconcile.Result{}, nil
 	}
 
 	manifest, err := r.resolveManifest(ctx, bdpl)
@@ -176,16 +196,6 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bdpl, "InstanceGroupManifestError").Errorf(ctx, "failed to create instance group manifest qJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
-	}
-
-	// Update status of bdpl with the timestamp of the last reconcile
-	now := metav1.Now()
-	bdpl.Status.LastReconcile = &now
-
-	err = r.client.Status().Update(ctx, bdpl)
-	if err != nil {
-		log.WithEvent(bdpl, "UpdateError").Errorf(ctx, "failed to update reconcile timestamp on bdpl '%s' (%v): %s", request.NamespacedName, bdpl.ResourceVersion, err)
-		return reconcile.Result{Requeue: false}, nil
 	}
 
 	return reconcile.Result{}, nil
