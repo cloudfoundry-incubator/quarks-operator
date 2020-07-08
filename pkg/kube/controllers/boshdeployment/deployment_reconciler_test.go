@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -48,6 +49,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		kubeConverter  fakes.FakeVariablesConverter
 		manifest       *bdm.Manifest
 		log            *zap.SugaredLogger
+		logs           *observer.ObservedLogs
 		config         *cfcfg.Config
 		client         *fakes.FakeClient
 		instance       *bdv1.BOSHDeployment
@@ -128,7 +130,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			},
 		}
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
-		_, log = helper.NewTestLogger()
+		logs, log = helper.NewTestLogger()
 		ctx = ctxlog.NewParentContext(log)
 		ctx = ctxlog.NewContextWithRecorder(ctx, "TestRecorder", recorder)
 
@@ -154,6 +156,8 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				},
 			},
 		}
+		bdplTime := metav1.NewTime(metav1.Now().Add(cfd.ReconcileSkipDuration))
+		instance.Status.LastReconcile = &bdplTime
 
 		client = &fakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
@@ -183,6 +187,54 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 	})
 
 	Describe("Reconcile", func() {
+		Context("boshdeployment resource request", func() {
+			var (
+				statusWriter fakes.FakeStatusWriter
+			)
+
+			BeforeEach(func() {
+				instance.Status.LastReconcile = nil
+				statusWriter = fakes.FakeStatusWriter{}
+				client.StatusCalls(func() crc.StatusWriter { return &statusWriter })
+				statusCallQueue := helper.NewCallQueue(
+					func(context context.Context, object runtime.Object) error {
+						switch qJob := object.(type) {
+						case *qjv1a1.QuarksJob:
+							Expect(qJob.Status.LastReconcile).NotTo(BeNil())
+						}
+						return nil
+					},
+				)
+				statusWriter.UpdateCalls(statusCallQueue.Calls)
+			})
+
+			It("should go into meltdown", func() {
+				result, err := reconciler.Reconcile(request)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result.RequeueAfter).To(Equal(cfd.ReconcileSkipDuration))
+				Expect(result.RequeueAfter).To(Equal(cfd.ReconcileSkipDuration))
+				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
+				Expect(logs.FilterMessageSnippet("Meltdown started for").Len()).To(Equal(1))
+			})
+
+			It("should stay in meltown when multiple reconciles happen", func() {
+				result, err := reconciler.Reconcile(request)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result.RequeueAfter).To(Equal(cfd.ReconcileSkipDuration))
+				Expect(result.RequeueAfter).To(Equal(cfd.ReconcileSkipDuration))
+				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
+				Expect(logs.FilterMessageSnippet("Meltdown started for").Len()).To(Equal(1))
+				now := metav1.Now()
+				instance.Status.LastReconcile = &now
+
+				result, err = reconciler.Reconcile(request)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result.Requeue).To(BeFalse())
+				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
+				Expect(logs.FilterMessageSnippet("Meltdown in progress").Len()).To(Equal(1))
+			})
+		})
+
 		Context("when the manifest can not be resolved", func() {
 			It("returns an empty result when the resource was not found", func() {
 				client.GetReturns(apierrors.NewNotFound(schema.GroupResource{}, "not found is requeued"))

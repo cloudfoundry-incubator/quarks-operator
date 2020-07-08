@@ -24,7 +24,6 @@ import (
 	wh "code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-secret/pkg/credsgen"
 	qsv1a1 "code.cloudfoundry.org/quarks-secret/pkg/kube/apis/quarkssecret/v1alpha1"
-	"code.cloudfoundry.org/quarks-secret/pkg/kube/controllers/quarkssecret"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
@@ -44,9 +43,6 @@ const (
 var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager) error{
 	boshdeployment.AddDeployment,
 	boshdeployment.AddBPM,
-	quarkssecret.AddQuarksSecret,
-	quarkssecret.AddCertificateSigningRequest,
-	quarkssecret.AddSecretRotation,
 	quarksstatefulset.AddQuarksStatefulSet,
 	quarksstatefulset.AddQuarksStatefulSetStatus,
 	statefulset.AddStatefulSetRollout,
