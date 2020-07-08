@@ -532,8 +532,8 @@ func (m *Manifest) ListMissingProviders() map[string]bool {
 
 	for _, ig := range m.InstanceGroups {
 		for _, job := range ig.Jobs {
-			provideAsNames = listProviderNames(job.Provides, "as")
-			consumeFromNames = listProviderNames(job.Consumes, "from")
+			provideAsNames = listProviderNames(provideAsNames, job.Provides, "as")
+			consumeFromNames = listProviderNames(consumeFromNames, job.Consumes, "from")
 		}
 	}
 
@@ -548,9 +548,7 @@ func (m *Manifest) ListMissingProviders() map[string]bool {
 }
 
 // listProviderNames returns a map containing provider names from job provides and consumes
-func listProviderNames(providerProperties map[string]interface{}, providerKey string) map[string]bool {
-	providerNames := map[string]bool{}
-
+func listProviderNames(providerNames map[string]bool, providerProperties map[string]interface{}, providerKey string) map[string]bool {
 	for _, property := range providerProperties {
 		p, ok := property.(map[string]interface{})
 		if !ok {

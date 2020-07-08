@@ -1467,5 +1467,25 @@ var _ = Describe("Manifest", func() {
 				}))
 			})
 		})
+
+		Describe("ListMissingProviders", func() {
+			It("finds missing providers if an ig has multiple jobs", func() {
+				manifest, err := LoadYAML([]byte(`---
+instance_groups:
+- name: diego-cell
+  jobs:
+  - name: loggr-udp-forwarder
+    release: loggregator-agent
+    consumes:
+      cloud_controller:
+        from: cloud_controller
+  - name: sle15-rootfs-setup
+    release: sle15`))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(manifest).ToNot(BeNil())
+				Expect(manifest.ListMissingProviders()).To(HaveLen(1))
+			})
+		})
+
 	})
 })
