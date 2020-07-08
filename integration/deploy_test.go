@@ -128,7 +128,6 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred(), "error getting statefulset for deployment")
 			Expect(*sts.Spec.Replicas).To(BeEquivalentTo(3))
 		})
-
 	})
 
 	Context("when using pre-render scripts", func() {

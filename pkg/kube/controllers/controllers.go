@@ -41,6 +41,7 @@ const (
 var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager) error{
 	boshdeployment.AddDeployment,
 	boshdeployment.AddBPM,
+	boshdeployment.AddBDPLStatusReconciler,
 	quarksstatefulset.AddQuarksStatefulSet,
 	quarksstatefulset.AddQuarksStatefulSetStatus,
 	statefulset.AddStatefulSetRollout,
