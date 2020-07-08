@@ -13,14 +13,23 @@ import (
 var _ = Describe("InterpolateVariables", func() {
 
 	var (
-		baseManifest   []byte
-		varDir         string
-		outputFilePath string
+		baseManifest          []byte
+		incorrectBaseManifest []byte
+		varDir                string
+		outputFilePath        string
 	)
 	BeforeEach(func() {
 		baseManifest = []byte(`
 ---
 director_uuid: ((password1))
+instance_groups:
+- name: ((value1.key1))
+- name: ((value2.key2))
+- name: ((value2.key3))
+`)
+		incorrectBaseManifest = []byte(`
+---
+director_uuid: ((password2))
 instance_groups:
 - name: ((value1.key1))
 - name: ((value2.key2))
@@ -47,5 +56,10 @@ instance_groups:
 		err := InterpolateFromSecretMounts(baseManifest, varDir, outputFilePath)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("could not read variables directory"))
+	})
+
+	It("raises error when all variables in the manifest are not rendered", func() {
+		err := InterpolateFromSecretMounts(incorrectBaseManifest, varDir, outputFilePath)
+		Expect(err).To(HaveOccurred())
 	})
 })

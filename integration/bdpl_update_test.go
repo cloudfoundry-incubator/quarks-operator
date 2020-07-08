@@ -30,6 +30,7 @@ var _ = Describe("BDPL updates", func() {
 	})
 
 	Context("when updating a deployment", func() {
+
 		opOneInstance := `- type: replace
   path: /instance_groups/name=nats?/instances
   value: 1
@@ -302,6 +303,18 @@ var _ = Describe("BDPL updates", func() {
 
 				pods, _ = env.GetInstanceGroupPods(env.Namespace, deploymentName, "quarks-gora")
 				Expect(len(pods.Items)).To(Equal(3))
+			})
+		})
+
+		Context("by modifying a referenced ops files multiple times", func() {
+			It("should update the deployment and respect the instance count", func() {
+				scaleDeployment("2")
+				scaleDeployment("3")
+				scaleDeployment("4")
+
+				By("checking for instance group updated pods")
+				err := env.WaitForInstanceGroupVersions(env.Namespace, deploymentName, "quarks-gora", 4, "2")
+				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 			})
 		})
 	})
