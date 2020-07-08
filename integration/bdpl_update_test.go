@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -162,10 +163,12 @@ var _ = Describe("BDPL updates", func() {
 		})
 
 		Context("deployment downtime", func() {
-			// This test is flaky on some providers, failing
-			// `net.Dial` with "connect: connection refused".
-			// Either zero downtime is not working correctly, or
-			// networking to the NodePort is unreliable
+			// This test uses a NodePort to work around private network issues.
+			// This test cannot be executed from remote.
+			// the k8s node must be reachable from the
+			// machine running the test.
+
+			// We define "downtime" as more than 5 errors, while checking every 200ms during the update
 			It("should be zero", func() {
 				By("Setting up a NodePort service")
 				svc, err := env.GetService(env.Namespace, "nats-0")
@@ -181,9 +184,6 @@ var _ = Describe("BDPL updates", func() {
 				nodeIP, err := env.NodeIP()
 				Expect(err).NotTo(HaveOccurred(), "error retrieving node ip")
 
-				// This test cannot be executed from remote.
-				// the k8s node must be reachable from the
-				// machine running the test
 				address := fmt.Sprintf("%s:%d", nodeIP, service.Spec.Ports[0].NodePort)
 				err = env.WaitForPortReachable("tcp", address)
 				Expect(err).NotTo(HaveOccurred(), "port not reachable")
@@ -191,29 +191,34 @@ var _ = Describe("BDPL updates", func() {
 				By("Setting up a service watcher")
 				resultChan := make(chan machine.ChanResult)
 				stopChan := make(chan struct{})
+
 				watchNats := func(outChan chan machine.ChanResult, stopChan chan struct{}, uri string) {
-					var checkDelay time.Duration = 200 // Time between checks in ms
-					toleranceWindow := 5               // Tolerate errors during a 1s window (5*200ms)
-					inToleranceWindow := false
+					var (
+						checkDelay time.Duration = 200 * time.Millisecond // Time between checks in ms
+						maxErrors                = 5
+						tcpTimeout               = 10 * time.Second // usually around 3min
+					)
+
+					i := 0
+					errCount := 0
+					tick := time.Tick(checkDelay)
 
 					for {
-						if inToleranceWindow {
-							toleranceWindow -= 1
-						}
-
+						i++
 						select {
-						default:
-							_, err := net.Dial("tcp", uri)
+						case <-tick:
+
+							_, err := net.DialTimeout("tcp", uri, tcpTimeout)
 							if err != nil {
-								inToleranceWindow = true
-								if toleranceWindow < 0 {
+								errCount++
+								if errCount >= maxErrors {
 									outChan <- machine.ChanResult{
-										Error: err,
+										Error: errors.Wrapf(err, "on try %d, after %d errors", i, errCount),
 									}
 									return
 								}
 							}
-							time.Sleep(checkDelay * time.Millisecond)
+							time.Sleep(checkDelay)
 						case <-stopChan:
 							outChan <- machine.ChanResult{
 								Error: nil,
