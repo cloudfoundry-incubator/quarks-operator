@@ -2,6 +2,7 @@
 
 namespace=${CF_OPERATOR_NAMESPACE-cfo}
 kubecf_location=${KUBECF_LOCATION-~/Downloads/kubecf-v2.2.2.tgz}
+relname=${HELM_RELEASE_NAME-cfodev}
 
 case "$1" in
     kubecf|k)
@@ -13,7 +14,7 @@ case "$1" in
       ;;
 
     delete|rm)
-        helm delete --namespace "$namespace" cfodev
+        helm delete --namespace "$namespace" "$relname"
         kubectl delete ns --wait "$namespace"
         kubectl delete psp kubecf-default
         kubectl delete mutatingwebhookconfigurations --all
@@ -21,14 +22,15 @@ case "$1" in
         ;;
 
     template|t)
-        helm template cfodev helm/cf-operator/ \
+        helm template "$relname" helm/cf-operator/ \
           --namespace "$namespace" \
           --set "global.singleNamespace.name=kubecf"
       ;;
 
+
     *)
         kubectl create ns "$namespace"
-        helm install cfodev helm/cf-operator --namespace "$namespace" --wait --set "global.singleNamespace.name=kubecf"
+        helm install "$relname" helm/cf-operator --namespace "$namespace" --wait --set "global.singleNamespace.name=kubecf"
         helm list --namespace "$namespace"
         ;;
 esac
