@@ -108,6 +108,10 @@ func (in *BOSHDeploymentStatus) DeepCopyInto(out *BOSHDeploymentStatus) {
 		in, out := &in.LastReconcile, &out.LastReconcile
 		*out = (*in).DeepCopy()
 	}
+	if in.StateTimestamp != nil {
+		in, out := &in.StateTimestamp, &out.StateTimestamp
+		*out = (*in).DeepCopy()
+	}
 	return
 }
 

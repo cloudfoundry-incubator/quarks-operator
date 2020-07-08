@@ -133,6 +133,28 @@ var (
 							Type:     "string",
 							Nullable: true,
 						},
+						"state": {
+							Type: "string",
+						},
+						"message": {
+							Type: "string",
+						},
+						"totalJobCount": {
+							Type: "integer",
+						},
+						"completedJobCount": {
+							Type: "integer",
+						},
+						"totalInstanceGroups": {
+							Type: "integer",
+						},
+						"deployedInstanceGroups": {
+							Type: "integer",
+						},
+						"stateTimestamp": {
+							Type:     "string",
+							Nullable: true,
+						},
 					},
 				},
 			},

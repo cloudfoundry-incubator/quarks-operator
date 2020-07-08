@@ -31,6 +31,9 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
+// BDPLStateCreating is the Bosh Deployment Status spec Creating State
+const BDPLStateCreating = "Creating/Updating"
+
 // JobFactory creates Jobs for a given manifest
 type JobFactory interface {
 	VariableInterpolationJob(namespace string, deploymentName string, manifest bdm.Manifest) (*qjv1a1.QuarksJob, error)
@@ -109,7 +112,6 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	if bdpl.Status.LastReconcile == nil {
 		now := metav1.Now()
 		bdpl.Status.LastReconcile = &now
-
 		err = r.client.Status().Update(ctx, bdpl)
 		if err != nil {
 			return reconcile.Result{},
@@ -126,7 +128,13 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	log.Infof(ctx, "Meltdown ended for '%s'", request.NamespacedName)
+
 	bdpl.Status.LastReconcile = nil
+	// update the bdpl state spec with the initial state
+	now := metav1.Now()
+	bdpl.Status.StateTimestamp = &now
+	bdpl.Status.State = BDPLStateCreating
+
 	err = r.client.Status().Update(ctx, bdpl)
 	if err != nil {
 		return reconcile.Result{},
