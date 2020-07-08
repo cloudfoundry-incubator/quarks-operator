@@ -61,7 +61,7 @@ func InterpolateFromSecretMounts(boshManifestBytes []byte, variablesDir string, 
 		}
 	}
 
-	yamlBytes, err := InterpolateExplicitVariables(boshManifestBytes, vars)
+	yamlBytes, err := InterpolateExplicitVariables(boshManifestBytes, vars, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to interpolate explicit variables")
 	}
@@ -84,14 +84,14 @@ func InterpolateFromSecretMounts(boshManifestBytes []byte, variablesDir string, 
 // InterpolateExplicitVariables interpolates explicit variables in the manifest
 // Expects an array of maps, each element being a variable: [{ "name":"foo", "password": "value" }, {"name": "bar", "ca": "---"} ]
 // Returns the new manifest as a byte array
-func InterpolateExplicitVariables(boshManifestBytes []byte, vars []boshtpl.Variables) ([]byte, error) {
+func InterpolateExplicitVariables(boshManifestBytes []byte, vars []boshtpl.Variables, expectAllKeys bool) ([]byte, error) {
 	multiVars := boshtpl.NewMultiVars(vars)
 	tpl := boshtpl.NewTemplate(boshManifestBytes)
 
 	// Following options are empty for cf-operator
 	op := patch.Ops{}
 	evalOpts := boshtpl.EvaluateOpts{
-		ExpectAllKeys:     false,
+		ExpectAllKeys:     expectAllKeys,
 		ExpectAllVarsUsed: false,
 	}
 
