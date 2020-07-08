@@ -151,7 +151,7 @@ func (r *Resolver) Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, name
 		}
 		userVars = append(userVars, staticVars)
 	}
-	bytes, err = bdm.InterpolateExplicitVariables(bytes, userVars)
+	bytes, err = bdm.InterpolateExplicitVariables(bytes, userVars, false)
 	if err != nil {
 		return nil, []string{}, errors.Wrapf(err, "Failed to interpolate user provided explicit variables manifest '%s' in '%s'", bdpl.Name, namespace)
 	}
@@ -278,7 +278,8 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 		}
 		userVars = append(userVars, staticVars)
 	}
-	bytes, err = bdm.InterpolateExplicitVariables(bytes, userVars)
+
+	bytes, err = bdm.InterpolateExplicitVariables(bytes, userVars, false)
 	if err != nil {
 		return nil, []string{}, errors.Wrapf(err, "Failed to interpolate user provided explicit variables manifest '%s' in '%s'", bdpl.Name, namespace)
 	}
