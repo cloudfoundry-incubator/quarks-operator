@@ -1193,9 +1193,9 @@ var _ = Describe("Manifest", func() {
 					marshalledLargeManifest, err := largeManifest.Marshal()
 					Expect(err).NotTo(HaveOccurred())
 
-					uncompressed_size := len([]byte(largeText))
-					compressed_size := len([]byte(marshalledLargeManifest))
-					Expect(compressed_size < uncompressed_size).To(BeTrue())
+					uncompressed := len([]byte(largeText))
+					compressed := len([]byte(marshalledLargeManifest))
+					Expect(compressed < uncompressed).To(BeTrue())
 
 					By("Unmarshalling the large manifest")
 
