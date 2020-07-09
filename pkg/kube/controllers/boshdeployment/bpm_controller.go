@@ -20,10 +20,10 @@ import (
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/desiredmanifest"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
+	"code.cloudfoundry.org/quarks-utils/pkg/monitorednamespace"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )

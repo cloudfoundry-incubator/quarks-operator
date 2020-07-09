@@ -15,10 +15,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/apis"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
+	"code.cloudfoundry.org/quarks-utils/pkg/util"
 )
 
 // RestartKey has the timestamp of the last restart triggered by this reconciler

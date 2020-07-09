@@ -22,11 +22,11 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/converter"
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/qjobs"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/reference"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/withops"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/monitorednamespace"
 	"code.cloudfoundry.org/quarks-utils/pkg/skip"
 )
 

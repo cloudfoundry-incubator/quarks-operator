@@ -7,9 +7,9 @@ import (
 	admissionregistration "k8s.io/api/admissionregistration/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/logger"
+	"code.cloudfoundry.org/quarks-utils/pkg/monitorednamespace"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	wh "code.cloudfoundry.org/quarks-utils/pkg/webhook"
 )
