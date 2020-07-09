@@ -781,4 +781,23 @@ var _ = Describe("BPM Converter", func() {
 			})
 		})
 	})
+
+	Context("FilterLabels", func() {
+		var labels map[string]string
+
+		Context("map of labels", func() {
+
+			BeforeEach(func() {
+				labels = make(map[string]string)
+				labels[bdv1.LabelDeploymentName] = "xxx"
+				labels[bdv1.LabelDeploymentVersion] = "3"
+			})
+
+			It("deployment version is filtered", func() {
+				filteredLabels := bpmconverter.FilterLabels(labels)
+				Expect(filteredLabels).NotTo(HaveKey(bdv1.LabelDeploymentVersion))
+			})
+		})
+
+	})
 })
