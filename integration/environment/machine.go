@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned"
+	qstsclient "code.cloudfoundry.org/quarks-statefulset/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
 
@@ -19,7 +20,8 @@ import (
 type Machine struct {
 	machine.Machine
 
-	VersionedClientset *versioned.Clientset
+	VersionedClientset      *versioned.Clientset
+	QuarksStatefulSetClient *qstsclient.Clientset
 }
 
 // CreateStatefulSet creates a statefulset and returns a function to delete it

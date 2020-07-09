@@ -17,11 +17,11 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpmconverter/fakes"
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/testing"
 	"code.cloudfoundry.org/quarks-operator/testing/boshreleases"
+	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 

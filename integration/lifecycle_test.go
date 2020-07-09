@@ -10,7 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	bm "code.cloudfoundry.org/quarks-operator/testing/boshmanifest"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
