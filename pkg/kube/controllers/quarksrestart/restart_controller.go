@@ -16,10 +16,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/apis"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/reference"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/monitorednamespace"
 	"code.cloudfoundry.org/quarks-utils/pkg/skip"
 )
 
