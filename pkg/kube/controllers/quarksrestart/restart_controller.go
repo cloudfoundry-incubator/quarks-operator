@@ -20,6 +20,7 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/reference"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/skip"
 )
 
 // AnnotationRestartOnUpdate is the annotation required on the secret for the quarks restart feature
@@ -71,7 +72,7 @@ func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager)
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			secret := a.Object.(*corev1.Secret)
 
-			if reference.SkipReconciles(ctx, mgr.GetClient(), secret) {
+			if skip.Reconciles(ctx, mgr.GetClient(), secret) {
 				return []reconcile.Request{}
 			}
 

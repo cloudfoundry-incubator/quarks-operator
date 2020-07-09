@@ -23,8 +23,6 @@ type ReconcileType int
 const (
 	// ReconcileForBOSHDeployment represents the BOSHDeployment CRD
 	ReconcileForBOSHDeployment ReconcileType = iota
-	// ReconcileForQuarksStatefulSet represents the QuarksStatefulSet CRD
-	ReconcileForQuarksStatefulSet
 	// ReconcileForPod represents the StatefulSet Kube Resource
 	ReconcileForPod
 )
@@ -32,7 +30,6 @@ const (
 func (r ReconcileType) String() string {
 	return [...]string{
 		"BOSHDeployment",
-		"QuarksStatefulSet",
 		"Pod",
 	}[r]
 }
@@ -108,30 +105,6 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 					}})
 			}
 		}
-	case ReconcileForQuarksStatefulSet:
-		quarksStatefulSets, err := res.ListQuarksStatefulSets(ctx, client, namespace)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to list QuarksStatefulSets for ConfigMap reconciles")
-		}
-
-		for _, quarksStatefulSet := range quarksStatefulSets.Items {
-			if !quarksStatefulSet.Spec.UpdateOnConfigChange {
-				continue
-			}
-
-			isRef, err := objReferencedBy(quarksStatefulSet)
-			if err != nil {
-				return nil, err
-			}
-
-			if isRef {
-				result = append(result, reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Name:      quarksStatefulSet.Name,
-						Namespace: quarksStatefulSet.Namespace,
-					}})
-			}
-		}
 	case ReconcileForPod:
 		pods, err := res.ListPods(ctx, client, namespace)
 		if err != nil {
@@ -157,39 +130,4 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 	}
 
 	return result, nil
-}
-
-// SkipReconciles returns true if the object is stale, and shouldn't be enqueued for reconciliation
-// The object can be a ConfigMap or a Secret
-func SkipReconciles(ctx context.Context, client crc.Client, object apis.Object) bool {
-	var newResourceVersion string
-
-	switch object := object.(type) {
-	case *corev1.ConfigMap:
-		cm := &corev1.ConfigMap{}
-		err := client.Get(ctx, types.NamespacedName{Name: object.Name, Namespace: object.Namespace}, cm)
-		if err != nil {
-			log.Errorf(ctx, "Failed to get ConfigMap '%s/%s': %s", object.Namespace, object.Name, err)
-			return true
-		}
-
-		newResourceVersion = cm.ResourceVersion
-	case *corev1.Secret:
-		s := &corev1.Secret{}
-		err := client.Get(ctx, types.NamespacedName{Name: object.Name, Namespace: object.Namespace}, s)
-		if err != nil {
-			log.Errorf(ctx, "Failed to get Secret '%s/%s': %s", object.Namespace, object.Name, err)
-			return true
-		}
-
-		newResourceVersion = s.ResourceVersion
-	default:
-		return false
-	}
-
-	if object.GetResourceVersion() != newResourceVersion {
-		log.Debugf(ctx, "Skipping reconcile request for old resource version of '%s/%s'", object.GetNamespace(), object.GetName())
-		return true
-	}
-	return false
 }
