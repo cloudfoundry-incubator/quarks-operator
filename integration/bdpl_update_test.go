@@ -325,6 +325,14 @@ var _ = Describe("BDPL updates", func() {
 	})
 
 	Context("when updating a deployment with explicit vars", func() {
+		opReplacePorts := `- type: replace
+  path: /instance_groups/name=nats/jobs/name=nats/properties/quarks/ports?/-
+  value:
+    name: "fake-port"
+    protocol: "TCP"
+    internal: 6443
+`
+
 		BeforeEach(func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsExplicitVar))
 			Expect(err).NotTo(HaveOccurred())
@@ -337,6 +345,34 @@ var _ = Describe("BDPL updates", func() {
 			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "1", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
+		})
+
+		Context("unnecessary secret updates should not happen", func() {
+			It("update the instance group", func() {
+				secret, err := env.GetSecret(env.Namespace, "var-nats-password")
+				Expect(err).NotTo(HaveOccurred(), "error getting var-nats-password secret")
+				passwordv1 := string(secret.Data["password"])
+
+				By("updating the deployment")
+				tearDown, err := env.CreateSecret(env.Namespace, env.CustomOpsSecret("ops-ports", opReplacePorts))
+				Expect(err).NotTo(HaveOccurred())
+				tearDowns = append(tearDowns, tearDown)
+
+				bdpl, err := env.GetBOSHDeployment(env.Namespace, deploymentName)
+				Expect(err).NotTo(HaveOccurred())
+				bdpl.Spec.Ops = []bdv1.ResourceReference{{Name: "ops-ports", Type: bdv1.SecretReference}}
+				_, _, err = env.UpdateBOSHDeployment(env.Namespace, *bdpl)
+				Expect(err).NotTo(HaveOccurred())
+
+				By("checking for instance group pods")
+				err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "2", 2)
+				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
+
+				secret, err = env.GetSecret(env.Namespace, "var-nats-password")
+				Expect(err).NotTo(HaveOccurred(), "error getting var-nats-password secret")
+				passwordv2 := string(secret.Data["password"])
+				Expect(passwordv1).To(Equal(passwordv2))
+			})
 		})
 
 		Context("by setting a user-defined explicit variable", func() {
