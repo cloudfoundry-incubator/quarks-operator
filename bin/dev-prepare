@@ -23,7 +23,7 @@ fi
 . ./bin/include/dependencies
 
 # docker
-make build-image
+bin/build-image
 
 # kind
 echo "available clusters:"

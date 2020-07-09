@@ -193,6 +193,48 @@ instance_groups:
           internal: 4223
 `
 
+// NatsWithSmokeTest has a link, which is provided by another instance group
+const NatsWithSmokeTest = `---
+name: test
+releases:
+- name: nats
+  version: "33"
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: SLE_15_SP1
+    version: 26.1-7.0.0_374.gb8e8e6af
+instance_groups:
+- name: nats
+  instances: 2
+  jobs:
+  - name: nats
+    release: nats
+    properties:
+      nats:
+        user: admin
+        password: changeme
+        debug: true
+      quarks:
+        ports:
+        - name: "nats"
+          protocol: "TCP"
+          internal: 4222
+        - name: "nats-routes"
+          protocol: "TCP"
+          internal: 4223
+    provides:
+      nats:
+        as: nats
+- name: nats-smoke-tests
+  instances: 1
+  lifecycle: auto-errand
+  jobs:
+  - name: smoke-tests
+    release: nats
+    consumes:
+      nats: {from: nats}
+`
+
 // NatsSmallWithPatch is a manifest that patches the prestart hook to loop forever
 // It can be used in integration tests.
 const NatsSmallWithPatch = `---
