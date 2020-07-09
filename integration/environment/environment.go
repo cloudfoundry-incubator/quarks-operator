@@ -20,6 +20,7 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/operator"
 	"code.cloudfoundry.org/quarks-operator/testing"
+	qstsclient "code.cloudfoundry.org/quarks-statefulset/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	utils "code.cloudfoundry.org/quarks-utils/testing/integration"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
@@ -85,8 +86,8 @@ func (e *Environment) SetupClientsets() error {
 	if err != nil {
 		return err
 	}
-
-	return nil
+	e.QuarksStatefulSetClient, err = qstsclient.NewForConfig(e.KubeConfig)
+	return err
 }
 
 // NodeIP returns a public IP of a node

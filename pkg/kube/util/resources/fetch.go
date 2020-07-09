@@ -8,7 +8,7 @@ import (
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 )
 
 // ListBOSHDeployments fetches all the boshdeployments from the namespace

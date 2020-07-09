@@ -15,8 +15,15 @@ code.cloudfoundry.org/quarks-job v1.0.179 h1:JxPQWS3aSYX3GjXQr0ycir4nvm9LSoAr1cK
 code.cloudfoundry.org/quarks-job v1.0.179/go.mod h1:WfqAkDAkqG3rVjKYNahns9kZLuIUab0yEmXveRh+xTM=
 code.cloudfoundry.org/quarks-secret v1.0.692 h1:TG1WROeiEhkR/h1FM3yiiehXF9jmmtzz+UGG4ehHfic=
 code.cloudfoundry.org/quarks-secret v1.0.692/go.mod h1:Wbt2nVlC/EcKsZ6v6uxsARH47jadEO0flO+F9CeR7tY=
+code.cloudfoundry.org/quarks-statefulset v0.0.0-20200722093402-f9c5975ca3df h1:MUl691A+3utKM1nEltgQWMQRvkh3fnFLPs64i1Yg7cA=
+code.cloudfoundry.org/quarks-statefulset v0.0.0-20200722093402-f9c5975ca3df/go.mod h1:qVd4XqwCMstHz9L4fucwTKVtMlMtla7mmL45fF+Ya0o=
+code.cloudfoundry.org/quarks-statefulset v0.0.0-20200722122431-9349b1437c55 h1:efsCtVnMw/T/u2Txp0FIYdMNfBUerAxW+rl9jMeA5ss=
+code.cloudfoundry.org/quarks-statefulset v0.0.0-20200722122431-9349b1437c55/go.mod h1:kpeiMwNrtfarWhHNEqTH2Rf9ftejnr5AP5zxUprnTOU=
+code.cloudfoundry.org/quarks-statefulset v0.0.0-20200722160349-65184c60c678 h1:TLfikjkhGsrVUrQ3jFOS2bDjskjDGrS+nyLUhbGP5is=
+code.cloudfoundry.org/quarks-statefulset v0.0.0-20200722160349-65184c60c678/go.mod h1:kpeiMwNrtfarWhHNEqTH2Rf9ftejnr5AP5zxUprnTOU=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200630135315-de0c944c2813/go.mod h1:voPdeHf5x70u82CBFDCisvVFhxpXKuUEjd+b8y4Dcwo=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200630143852-8e5cc2a49982/go.mod h1:voPdeHf5x70u82CBFDCisvVFhxpXKuUEjd+b8y4Dcwo=
+code.cloudfoundry.org/quarks-utils v0.0.0-20200722080531-e080d2c27ca3/go.mod h1:hf71629t5/6wUZ6jONwcdMLttDgzHAkNsWcIS0t/XM8=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200722122107-ca50b1d6fec5 h1:m6AWoshDRaOTIcdqso+2cHABbSbGDwPJJ+hZOkksa2c=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200722122107-ca50b1d6fec5/go.mod h1:hf71629t5/6wUZ6jONwcdMLttDgzHAkNsWcIS0t/XM8=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
