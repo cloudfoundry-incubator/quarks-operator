@@ -27,6 +27,7 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/withops"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/skip"
 )
 
 // AddDeployment creates a new BOSHDeployment controller to watch for
@@ -101,7 +102,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			config := a.Object.(*corev1.ConfigMap)
 
-			if reference.SkipReconciles(ctx, mgr.GetClient(), config) {
+			if skip.Reconciles(ctx, mgr.GetClient(), config) {
 				return []reconcile.Request{}
 			}
 
@@ -146,7 +147,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			secret := a.Object.(*corev1.Secret)
 
-			if reference.SkipReconciles(ctx, mgr.GetClient(), secret) {
+			if skip.Reconciles(ctx, mgr.GetClient(), secret) {
 				return []reconcile.Request{}
 			}
 
