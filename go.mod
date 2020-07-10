@@ -1,9 +1,9 @@
 module code.cloudfoundry.org/quarks-operator
 
 require (
-	code.cloudfoundry.org/quarks-job v1.0.178
+	code.cloudfoundry.org/quarks-job v1.0.179
 	code.cloudfoundry.org/quarks-secret v1.0.687
-	code.cloudfoundry.org/quarks-utils v0.0.0-20200630143852-8e5cc2a49982
+	code.cloudfoundry.org/quarks-utils v0.0.0-20200706123245-b663da7030da
 	github.com/SUSE/go-patch v0.3.0
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
@@ -38,7 +38,7 @@ require (
 	github.com/spf13/viper v1.7.0
 	github.com/viovanov/bosh-template-go v0.0.0-20200416144406-32ddfa4afdb0
 	go.uber.org/zap v1.15.0
-	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
+	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	gomodules.xyz/jsonpatch/v2 v2.0.1
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.18.5
