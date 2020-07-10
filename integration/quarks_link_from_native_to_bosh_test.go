@@ -5,7 +5,9 @@ import (
 	. "github.com/onsi/gomega"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	bm "code.cloudfoundry.org/quarks-operator/testing/boshmanifest"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
@@ -21,6 +23,7 @@ var _ = Describe("QuarksLink from native provider to explicit links in BOSH", fu
 		boshManifest corev1.Secret
 		provider     corev1.Secret
 		service      corev1.Service
+		bdpl         bdv1.BOSHDeployment
 	)
 
 	AfterEach(func() {
@@ -44,8 +47,7 @@ var _ = Describe("QuarksLink from native provider to explicit links in BOSH", fu
 		tearDowns = append(tearDowns, tearDown)
 
 		By("Creating the BOSH deployment")
-		_, tearDown, err = env.CreateBOSHDeployment(env.Namespace,
-			env.SecretBOSHDeployment(deploymentName, manifestRef))
+		_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, bdpl)
 		Expect(err).NotTo(HaveOccurred())
 		tearDowns = append(tearDowns, tearDown)
 	})
@@ -66,6 +68,7 @@ var _ = Describe("QuarksLink from native provider to explicit links in BOSH", fu
 			boshManifest = env.BOSHManifestSecret(manifestRef, bm.NatsSmokeTestWithExternalLinks)
 			provider = env.NatsSecret(deploymentName)
 			service = env.NatsService(deploymentName)
+			bdpl = env.SecretBOSHDeployment(deploymentName, manifestRef)
 		})
 
 		It("uses the values from the native resources", func() {
@@ -138,6 +141,7 @@ var _ = Describe("QuarksLink from native provider to explicit links in BOSH", fu
 			boshManifest = env.BOSHManifestSecret(manifestRef, bm.NatsSmokeTestWithExternalLinks)
 			provider = env.NatsSecret(deploymentName)
 			service = env.NatsServiceForEndpoint(deploymentName)
+			bdpl = env.SecretBOSHDeployment(deploymentName, manifestRef)
 		})
 
 		It("uses the values provided by the native resources", func() {
@@ -170,6 +174,7 @@ var _ = Describe("QuarksLink from native provider to explicit links in BOSH", fu
 			boshManifest = env.BOSHManifestSecret(manifestRef, manifest)
 			provider = env.NatsSecret(deploymentName)
 			service = env.NatsServiceExternalName(deploymentName)
+			bdpl = env.SecretBOSHDeployment(deploymentName, manifestRef)
 		})
 
 		It("uses the values provided by the native resources", func() {
@@ -184,6 +189,46 @@ var _ = Describe("QuarksLink from native provider to explicit links in BOSH", fu
 				Expect(igm).To(ContainSubstring("password: r9fXAlY3gZ"))
 				Expect(igm).To(ContainSubstring(`port: "4222"`))
 				Expect(igm).To(ContainSubstring(`user: nats_client`))
+			})
+		})
+	})
+
+	When("ops file removes the manifest link in favor of an external link", func() {
+		var ep corev1.Endpoints
+		const opRemove = `- type: remove
+  path: /instance_groups/name=nats
+`
+
+		BeforeEach(func() {
+			ep = env.NatsEndpoints(deploymentName)
+			tearDown, err := env.CreateEndpoints(env.Namespace, ep)
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			tearDown, err = env.CreateSecret(env.Namespace, env.CustomOpsSecret("ops-rm", opRemove))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			boshManifest = env.BOSHManifestSecret(manifestRef, bm.NatsWithSmokeTest)
+			provider = env.NatsSecret(deploymentName)
+			service = env.NatsServiceForEndpoint(deploymentName)
+			bdpl = bdv1.BOSHDeployment{
+				ObjectMeta: metav1.ObjectMeta{Name: deploymentName},
+				Spec: bdv1.BOSHDeploymentSpec{
+					Manifest: bdv1.ResourceReference{Name: manifestRef, Type: bdv1.SecretReference},
+					Ops:      []bdv1.ResourceReference{{Name: "ops-rm", Type: bdv1.SecretReference}},
+				},
+			}
+		})
+
+		It("uses the values provided by the k8s secret", func() {
+			By("checking the ig manifest", func() {
+				ig, err := env.CollectSecret(env.Namespace, "ig-resolved.nats-smoke-tests-v1")
+				Expect(err).NotTo(HaveOccurred())
+
+				igm := string(ig.Data["properties.yaml"])
+				Expect(igm).To(ContainSubstring("address: nats-ep." + env.Namespace + ".svc."))
+				Expect(igm).To(ContainSubstring("address: 192.168.0.1"))
 			})
 		})
 	})
