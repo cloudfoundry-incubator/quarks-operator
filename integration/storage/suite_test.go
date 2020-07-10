@@ -6,12 +6,10 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gexec"
 
 	"k8s.io/client-go/rest"
 
 	"code.cloudfoundry.org/quarks-operator/integration/environment"
-	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 	utils "code.cloudfoundry.org/quarks-utils/testing/integration"
 )
 
@@ -66,9 +64,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 var _ = BeforeEach(func() {
 	env = environment.NewEnvironment(kubeConfig)
 
-	SetDefaultEventuallyTimeout(env.PollTimeout)
-	SetDefaultEventuallyPollingInterval(env.PollInterval)
-
 	err := env.SetupClientsets()
 	if err != nil {
 		fmt.Printf("Integration setup failed. Creating clientsets for %s: %s\n", env.Namespace, err)
@@ -101,20 +96,10 @@ var _ = BeforeEach(func() {
 })
 
 var _ = AfterEach(func() {
-	gexec.Kill()
-	env.Teardown(CurrentGinkgoTestDescription().Failed)
+	environment.Teardown(env, CurrentGinkgoTestDescription().Failed)
 })
 
 var _ = AfterSuite(func() {
-	// Nuking all namespaces at the end of the run
-	for _, namespace := range namespacesToNuke {
-		err := cmdHelper.DeleteNamespace(namespace)
-		if err != nil && !env.NamespaceDeletionInProgress(err) {
-			fmt.Printf("WARNING: failed to delete namespace %s: %v\n", namespace, err)
-		}
-		err = cmdHelper.DeleteWebhooks(namespace)
-		if err != nil {
-			fmt.Printf("WARNING: failed to delete mutatingwebhookconfiguration in %s: %v\n", namespace, err)
-		}
-	}
+	utils.NukeNamespaces(namespacesToNuke)
+	environment.NukeWebhooks(namespacesToNuke)
 })
