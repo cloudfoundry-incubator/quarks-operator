@@ -36,12 +36,12 @@ The **QuarksStatefulset** component is a categorization of a set of controllers,
 
 Figure 1 illustrates a **QuarksStatefulset** component diagram that covers the set of controllers it uses.
 
-![qsts-component-flow](quarks_estscomponent_flow.png)
+![qsts-component-flow](../quarks_estscomponent_flow.png)
 *Fig. 1: The QuarksStatefulset component*
 
 ### **_QuarksStatefulSet Controller_**
 
-![qsts-controller-flow](quarks_eseccontroller_flow.png)
+![qsts-controller-flow](../quarks_eseccontroller_flow.png)
 *Fig. 2: The QuarksStatefulset controller*
 
 This controller will generate a Kubernetes statefulset for each `instance_group` defined in the BOSH manifest. This `Statefulset` will also include a set of Kubernetes services, so that each component can be accessed on specific ports.
@@ -209,7 +209,7 @@ It will delete statefulsets with old versions, only after the new statefulset ve
 
 ### **_QuarksStatefulSet Active-Passive Controller_**
 
-![qsts-activepassivecontroller-flow](quarks_estsactivepassivecontroller_flow.png)
+![qsts-activepassivecontroller-flow](../quarks_estsactivepassivecontroller_flow.png)
 *Fig. 3: The QuarksStatefulset active/passive controller*
 
 Active/passive model is application model that have multiple running instances, but only one instance is active and all other instances are passive (standby). If the active instance is down, one of the passive instances will be promoted to active immediately.
@@ -249,7 +249,7 @@ The controller manages this active probing and provides pod designation label to
 
 ## Relationship with the BDPL component
 
-![bpm-qsts-relationship](quarks_bpm_and_ests_flow.png)
+![bpm-qsts-relationship](../quarks_bpm_and_ests_flow.png)
 *Fig. 4: Relationship with the BPM controller*
 
 Figure 4 illustrates the interaction of the **BPM** Controller with the **QuarksStatefulSet** Controller. Once the BPM controller consumes the data persisted in secrets from the `QuarksJob` Component, it will use that data to generate new `QuarksStatefulset` instances. When these resources are generated, the QuarksStatefulSet controller will be watching and trigger its reconciliation loop.

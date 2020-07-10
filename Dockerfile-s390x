@@ -1,4 +1,5 @@
 ARG quarkz_base_version="0.0.6"
+ARG BASE_IMAGE=quarkz/cf-operator-base:$quarkz_base_version
 
 FROM s390x/alpine AS dumb-init
 ADD https://github.com/Yelp/dumb-init/releases/download/v1.2.2/dumb-init_1.2.2_s390x /usr/bin/dumb-init
@@ -19,7 +20,7 @@ COPY . .
 RUN make build && \
     cp -p binaries/cf-operator /usr/local/bin/cf-operator
 
-FROM quarkz/cf-operator-base:$quarkz_base_version
+FROM $BASE_IMAGE
 RUN groupadd -g 1000 vcap && \
     useradd -r -u 1000 -g vcap vcap
 USER vcap

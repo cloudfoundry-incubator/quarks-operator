@@ -1,7 +1,9 @@
 ---
 title: "Install"
 linkTitle: "Install quarks-operator"
-weight: 11
+weight: 1
+description: >
+  Installation of Quarks-operator in your Kubernetes cluster with helm
 ---
 
 The `quarks-operator` can be installed via `helm`. You can use our [helm repository](https://cloudfoundry-incubator.github.io/quarks-helm/).

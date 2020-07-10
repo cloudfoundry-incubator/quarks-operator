@@ -2,8 +2,6 @@ package boshdeployment
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -21,12 +19,12 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/converter"
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/mutate"
 	qsv1a1 "code.cloudfoundry.org/quarks-secret/pkg/kube/apis/quarkssecret/v1alpha1"
 	mutateqs "code.cloudfoundry.org/quarks-secret/pkg/kube/util/mutate"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
@@ -49,6 +47,9 @@ type WithOps interface {
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
+
+// ReconcileSkipDuration is the duration of merging consecutive triggers.
+const ReconcileSkipDuration = 10 * time.Second
 
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
@@ -103,9 +104,31 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			log.WithEvent(bdpl, "GetBOSHDeploymentError").Errorf(ctx, "failed to get BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	if meltdown.NewWindow(r.config.MeltdownDuration, bdpl.Status.LastReconcile).Contains(time.Now()) {
-		log.WithEvent(bdpl, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", request.NamespacedName, r.config.MeltdownRequeueAfter)
-		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
+	if bdpl.Status.LastReconcile == nil {
+		now := metav1.Now()
+		bdpl.Status.LastReconcile = &now
+
+		err = r.client.Status().Update(ctx, bdpl)
+		if err != nil {
+			return reconcile.Result{},
+				log.WithEvent(bdpl, "UpdateError").Errorf(ctx, "failed to update reconcile timestamp on bdpl '%s' (%v): %s", request.NamespacedName, bdpl.ResourceVersion, err)
+		}
+		log.Infof(ctx, "Meltdown started for '%s'", request.NamespacedName)
+
+		return reconcile.Result{RequeueAfter: ReconcileSkipDuration}, nil
+	}
+
+	if meltdown.NewWindow(ReconcileSkipDuration, bdpl.Status.LastReconcile).Contains(time.Now()) {
+		log.Infof(ctx, "Meltdown in progress for '%s'", request.NamespacedName)
+		return reconcile.Result{}, nil
+	}
+
+	log.Infof(ctx, "Meltdown ended for '%s'", request.NamespacedName)
+	bdpl.Status.LastReconcile = nil
+	err = r.client.Status().Update(ctx, bdpl)
+	if err != nil {
+		return reconcile.Result{},
+			log.WithEvent(bdpl, "UpdateError").Errorf(ctx, "failed to update reconcile timestamp on bdpl '%s' (%v): %s", request.NamespacedName, bdpl.ResourceVersion, err)
 	}
 
 	manifest, err := r.resolveManifest(ctx, bdpl)
@@ -114,11 +137,16 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			log.WithEvent(bdpl, "WithOpsManifestError").Errorf(ctx, "failed to get with-ops manifest for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	// Get link infos containing provider name and its secret name
-	linkInfos, err := r.listLinkInfos(bdpl, manifest)
+	// Find the required native-to-bosh links, add the properties to the manifest and error if links are missing
+	l := linkInfoService{
+		log:            logger.TraceFilter(log.ExtractLogger(ctx), "linkinfoservice"),
+		deploymentName: bdpl.Name,
+		namespace:      bdpl.Namespace,
+	}
+	linkInfos, err := l.List(ctx, r.client, manifest)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(bdpl, "InstanceGroupManifestError").Errorf(ctx, "failed to list quarks-link secrets for BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(bdpl, "InstanceGroupManifestError").Errorf(ctx, "failed to find native quarks-links for BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
 	// Apply the "with-ops" manifest secret
@@ -173,16 +201,6 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bdpl, "InstanceGroupManifestError").Errorf(ctx, "failed to create instance group manifest qJob for BOSHDeployment '%s': %v", request.NamespacedName, err)
-	}
-
-	// Update status of bdpl with the timestamp of the last reconcile
-	now := metav1.Now()
-	bdpl.Status.LastReconcile = &now
-
-	err = r.client.Status().Update(ctx, bdpl)
-	if err != nil {
-		log.WithEvent(bdpl, "UpdateError").Errorf(ctx, "failed to update reconcile timestamp on bdpl '%s' (%v): %s", request.NamespacedName, bdpl.ResourceVersion, err)
-		return reconcile.Result{Requeue: false}, nil
 	}
 
 	return reconcile.Result{}, nil
@@ -258,159 +276,6 @@ func (r *ReconcileBOSHDeployment) createQuarksJob(ctx context.Context, bdpl *bdv
 	return err
 }
 
-// listLinkInfos returns a LinkInfos containing link providers if needed
-// and updates `quarks_links` properties
-func (r *ReconcileBOSHDeployment) listLinkInfos(bdpl *bdv1.BOSHDeployment, manifest *bdm.Manifest) (converter.LinkInfos, error) {
-	linkInfos := converter.LinkInfos{}
-
-	// find all missing providers in the manifest, so we can look for secrets
-	missingProviders := manifest.ListMissingProviders()
-
-	// quarksLinks store for missing provider names with types read from secrets
-	quarksLinks := map[string]bdm.QuarksLink{}
-	if len(missingProviders) != 0 {
-		// list secrets and services from target deployment
-		secrets := &corev1.SecretList{}
-		err := r.client.List(r.ctx, secrets,
-			client.InNamespace(bdpl.Namespace),
-		)
-		if err != nil {
-			return linkInfos, errors.Wrapf(err, "listing secrets for link in deployment '%s':", bdpl.GetNamespacedName())
-		}
-
-		services := &corev1.ServiceList{}
-		err = r.client.List(r.ctx, services,
-			client.InNamespace(bdpl.Namespace),
-		)
-		if err != nil {
-			return linkInfos, errors.Wrapf(err, "listing services for link in deployment '%s':", bdpl.GetNamespacedName())
-		}
-
-		for _, s := range secrets.Items {
-			if deploymentName, ok := s.GetAnnotations()[bdv1.LabelDeploymentName]; ok && deploymentName == bdpl.Name {
-				linkProvider, err := newLinkProvider(s.GetAnnotations())
-				if err != nil {
-					return linkInfos, errors.Wrapf(err, "failed to parse link JSON for '%s'", bdpl.GetNamespacedName())
-				}
-				if dup, ok := missingProviders[linkProvider.Name]; ok {
-					if dup {
-						return linkInfos, errors.New(fmt.Sprintf("duplicated secrets of provider: %s", linkProvider.Name))
-					}
-
-					linkInfos = append(linkInfos, converter.LinkInfo{
-						SecretName:   s.Name,
-						ProviderName: linkProvider.Name,
-						ProviderType: linkProvider.ProviderType,
-					})
-
-					if linkProvider.ProviderType != "" {
-						quarksLinks[linkProvider.Name] = bdm.QuarksLink{
-							Type: linkProvider.ProviderType,
-						}
-					}
-					missingProviders[linkProvider.Name] = true
-				}
-			}
-		}
-
-		serviceRecords, err := r.getServiceRecords(bdpl.Namespace, bdpl.Name, services.Items)
-		if err != nil {
-			return linkInfos, errors.Wrapf(err, "failed to get link services for '%s'", bdpl.GetNamespacedName())
-		}
-
-		// Update quarksLinks section `manifest.Properties["quarks_links"]` with info from existing serviceRecords
-		for qName := range quarksLinks {
-			if svcRecord, ok := serviceRecords[qName]; ok {
-				pods, err := r.listPodsFromSelector(bdpl.Namespace, svcRecord.selector)
-				if err != nil {
-					return linkInfos, errors.Wrapf(err, "Failed to get link pods for '%s'", bdpl.GetNamespacedName())
-				}
-
-				var jobsInstances []bdm.JobInstance
-				for i, p := range pods {
-					if len(p.Status.PodIP) == 0 {
-						return linkInfos, fmt.Errorf("empty ip of kube native component: '%s'", p.Name)
-					}
-					jobsInstances = append(jobsInstances, bdm.JobInstance{
-						Name:      qName,
-						ID:        string(p.GetUID()),
-						Index:     i,
-						Address:   p.Status.PodIP,
-						Bootstrap: i == 0,
-					})
-				}
-
-				quarksLinks[qName] = bdm.QuarksLink{
-					Type:      quarksLinks[qName].Type,
-					Address:   svcRecord.dnsRecord,
-					Instances: jobsInstances,
-				}
-			}
-
-		}
-	}
-
-	missingPs := make([]string, 0, len(missingProviders))
-	for key, found := range missingProviders {
-		if !found {
-			missingPs = append(missingPs, key)
-		}
-	}
-
-	if len(missingPs) != 0 {
-		return linkInfos, errors.New(fmt.Sprintf("missing link secrets for providers: %s", strings.Join(missingPs, ", ")))
-	}
-
-	if len(quarksLinks) != 0 {
-		if manifest.Properties == nil {
-			manifest.Properties = map[string]interface{}{}
-		}
-		manifest.Properties[bdm.QuarksLinksProperty] = quarksLinks
-	}
-
-	return linkInfos, nil
-}
-
-// getServiceRecords gets service records from Kube Services
-func (r *ReconcileBOSHDeployment) getServiceRecords(namespace string, name string, svcs []corev1.Service) (map[string]serviceRecord, error) {
-	svcRecords := map[string]serviceRecord{}
-	for _, svc := range svcs {
-		if deploymentName, ok := svc.GetAnnotations()[bdv1.LabelDeploymentName]; ok && deploymentName == name {
-			providerName, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderService]
-			if ok {
-				if _, ok := svcRecords[providerName]; ok {
-					return svcRecords, errors.New(fmt.Sprintf("duplicated services of provider: %s", providerName))
-				}
-
-				svcRecords[providerName] = serviceRecord{
-					selector:  svc.Spec.Selector,
-					dnsRecord: fmt.Sprintf("%s.%s.svc.%s", svc.Name, namespace, boshdns.GetClusterDomain()),
-				}
-			}
-		}
-	}
-
-	return svcRecords, nil
-}
-
-// listPodsFromSelector lists pods from the selector
-func (r *ReconcileBOSHDeployment) listPodsFromSelector(namespace string, selector map[string]string) ([]corev1.Pod, error) {
-	podList := &corev1.PodList{}
-	err := r.client.List(r.ctx, podList,
-		client.InNamespace(namespace),
-		client.MatchingLabels(selector),
-	)
-	if err != nil {
-		return podList.Items, errors.Wrapf(err, "listing pods from selector '%+v':", selector)
-	}
-
-	if len(podList.Items) == 0 {
-		return podList.Items, fmt.Errorf("got an empty list of pods")
-	}
-
-	return podList.Items, nil
-}
-
 // createQuarksSecrets create variables quarksSecrets
 func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manifestSecret *corev1.Secret, variables []qsv1a1.QuarksSecret) error {
 
@@ -423,8 +288,7 @@ func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manif
 		// The "manifest with ops" secret is owned by the actual BOSHDeployment, so everything
 		// should be garbage collected properly.
 		if err := r.setReference(manifestSecret, &variable, r.scheme); err != nil {
-			err = log.WithEvent(manifestSecret, "OwnershipError").Errorf(ctx, "failed to set ownership for '%s': %v", variable.GetNamespacedName(), err)
-			return err
+			return log.WithEvent(manifestSecret, "OwnershipError").Errorf(ctx, "failed to set ownership for '%s': %v", variable.GetNamespacedName(), err)
 		}
 
 		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &variable, mutateqs.QuarksSecretMutateFn(&variable))
@@ -437,8 +301,7 @@ func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manif
 		if op == controllerutil.OperationResultUpdated {
 			variable.Status.Generated = pointers.Bool(false)
 			if err := r.client.Status().Update(ctx, &variable); err != nil {
-				log.WithEvent(&variable, "UpdateError").Errorf(ctx, "failed to update generated status on quarks secret '%s' (%v): %s", variable.GetNamespacedName(), variable.ResourceVersion, err)
-				return err
+				return log.WithEvent(&variable, "UpdateError").Errorf(ctx, "failed to update generated status on quarks secret '%s' (%v): %s", variable.GetNamespacedName(), variable.ResourceVersion, err)
 			}
 		}
 
@@ -446,9 +309,4 @@ func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manif
 	}
 
 	return nil
-}
-
-type serviceRecord struct {
-	selector  map[string]string
-	dnsRecord string
 }

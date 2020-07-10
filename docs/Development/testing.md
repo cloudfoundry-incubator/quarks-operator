@@ -1,7 +1,7 @@
 ---
 title: "Testing"
 linkTitle: "Testing"
-weight: 11
+weight: 2
 ---
 
 - [Testing](#testing)
@@ -263,7 +263,10 @@ _**Note**_: On Mac, use `export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip a s $(ip r
 
 ## Makefile
 
-The following are the make targets available and their actions.
+The following are the make targets available and their actions. When building and running the targets manually on the quarks-operator codebase, please set `PROJECT=quarks-operator`.
+
+The common scripts between the `quarks-operator` components are in the `quarks-utils` [project](https://github.com/cloudfoundry-incubator/quarks-utils/). To download them, make sure to run `bin/tools-shared` or `make tools` before running any other script/target. 
+
 
 ### General Targets
 

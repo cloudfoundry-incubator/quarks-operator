@@ -107,9 +107,11 @@ type Release struct {
 
 // AddOnJob from BOSH deployment manifest
 type AddOnJob struct {
-	Name       string        `json:"name"`
-	Release    string        `json:"release"`
-	Properties JobProperties `json:"properties,omitempty"`
+	Name       string                 `json:"name"`
+	Release    string                 `json:"release"`
+	Properties JobProperties          `json:"properties,omitempty"`
+	Consumes   map[string]interface{} `json:"consumes,omitempty"`
+	Provides   map[string]interface{} `json:"provides,omitempty"`
 }
 
 // AddOnStemcell from BOSH deployment manifest
@@ -490,6 +492,8 @@ func (m *Manifest) ApplyAddons(log *zap.SugaredLogger) error {
 					Name:       addonJob.Name,
 					Release:    addonJob.Release,
 					Properties: addonJob.Properties,
+					Consumes:   addonJob.Consumes,
+					Provides:   addonJob.Provides,
 				}
 
 				addedJob.Properties.Quarks.IsAddon = true
@@ -532,8 +536,8 @@ func (m *Manifest) ListMissingProviders() map[string]bool {
 
 	for _, ig := range m.InstanceGroups {
 		for _, job := range ig.Jobs {
-			provideAsNames = listProviderNames(job.Provides, "as")
-			consumeFromNames = listProviderNames(job.Consumes, "from")
+			provideAsNames = listProviderNames(provideAsNames, job.Provides, "as")
+			consumeFromNames = listProviderNames(consumeFromNames, job.Consumes, "from")
 		}
 	}
 
@@ -548,9 +552,7 @@ func (m *Manifest) ListMissingProviders() map[string]bool {
 }
 
 // listProviderNames returns a map containing provider names from job provides and consumes
-func listProviderNames(providerProperties map[string]interface{}, providerKey string) map[string]bool {
-	providerNames := map[string]bool{}
-
+func listProviderNames(providerNames map[string]bool, providerProperties map[string]interface{}, providerKey string) map[string]bool {
 	for _, property := range providerProperties {
 		p, ok := property.(map[string]interface{})
 		if !ok {

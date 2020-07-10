@@ -69,15 +69,27 @@ var _ = BeforeEach(func() {
 })
 
 var _ = AfterEach(func() {
-	e2ehelper.TearDownAll(teardowns)
+	err := e2ehelper.TearDownAll(teardowns)
+	if err != nil {
+		fmt.Printf("Failures while cleaning up test environment:\n %v", err)
+	}
+	teardowns = []e2ehelper.TearDownFunc{}
 })
 
-func podWait(name string) {
+var _ = AfterSuite(func() {
+	err := e2ehelper.TearDownAll(teardowns)
+	if err != nil {
+		fmt.Printf("Failures while cleaning up test environment:\n %v", err)
+	}
+})
+
+func waitReady(name string) {
 	err := kubectl.Wait(namespace, "ready", name, kubectl.PollTimeout)
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred(), "waiting for resource: ", name)
 }
 
-func apply(p string) error {
+func apply(p string) {
 	yamlPath := path.Join(examplesDir, p)
-	return cmdHelper.Apply(namespace, yamlPath)
+	err := cmdHelper.Apply(namespace, yamlPath)
+	Expect(err).ToNot(HaveOccurred())
 }

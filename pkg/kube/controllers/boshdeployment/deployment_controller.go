@@ -9,6 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -85,7 +86,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	}
 
 	// Watch ConfigMaps referenced by the BOSHDeployment
-	configMapPredicates := predicate.Funcs{
+	p = predicate.Funcs{
 		CreateFunc:  func(e event.CreateEvent) bool { return true },
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
@@ -115,13 +116,13 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 
 			return reconciles
 		}),
-	}, nsPred, configMapPredicates)
+	}, nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching configmaps failed in bosh deployment controller.")
 	}
 
 	// Watch Secrets referenced by the BOSHDeployment
-	secretPredicates := predicate.Funcs{
+	p = predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			secret := e.Object.(*corev1.Secret)
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForBOSHDeployment, secret, false)
@@ -160,14 +161,14 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 
 			return reconciles
 		}),
-	}, nsPred, secretPredicates)
+	}, nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching secrets failed in bosh deployment controller.")
 
 	}
 
 	// Watch Services that route (select) pods that are external link providers
-	servicesPredicates := predicate.Funcs{
+	p = predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			service := e.Object.(*corev1.Service)
 
@@ -177,8 +178,9 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			newService := e.ObjectNew.(*corev1.Service)
+			oldService := e.ObjectOld.(*corev1.Service)
 
-			return isLinkProviderService(newService)
+			return isLinkProviderService(newService) || isLinkProviderService(oldService)
 		},
 	}
 	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestsFromMapFunc{
@@ -187,11 +189,11 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			reconciles := make([]reconcile.Request, 1)
 
 			svc := a.Object.(*corev1.Service)
-			if provider, ok := svc.GetAnnotations()[bdv1.AnnotationLinkProviderService]; ok {
+			if name, ok := svc.GetLabels()[bdv1.LabelDeploymentName]; ok {
 				reconciles[0] = reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Namespace: svc.Namespace,
-						Name:      provider,
+						Name:      name,
 					},
 				}
 				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciles[0], "BOSHDeployment", a.Meta.GetName(), "ServiceOfLinkProvider")
@@ -199,11 +201,70 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 
 			return reconciles
 		}),
-	}, nsPred, servicesPredicates)
+	}, nsPred, p)
+	if err != nil {
+		return errors.Wrapf(err, "watching services failed in bosh deployment controller.")
+
+	}
+
+	// Watch Endpoints that are used in endpoint services
+	p = predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			ep := e.Object.(*corev1.Endpoints)
+
+			svc, err := getEndpointsService(ctx, mgr.GetClient(), *ep)
+			if err != nil {
+				return false
+			}
+			return isLinkProviderService(svc)
+		},
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			ep := e.ObjectNew.(*corev1.Endpoints)
+
+			svc, err := getEndpointsService(ctx, mgr.GetClient(), *ep)
+			if err != nil {
+				return false
+			}
+			return isLinkProviderService(svc)
+		},
+	}
+	err = c.Watch(&source.Kind{Type: &corev1.Endpoints{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
+			// One endpoint is used by one service, which can only be used in link
+			reconciles := []reconcile.Request{}
+
+			ep := a.Object.(*corev1.Endpoints)
+			svc, err := getEndpointsService(ctx, mgr.GetClient(), *ep)
+			if err != nil {
+				return reconciles
+			}
+
+			if name, ok := svc.GetLabels()[bdv1.LabelDeploymentName]; ok {
+				reconciles = append(reconciles, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Namespace: svc.Namespace,
+						Name:      name,
+					},
+				})
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciles[0], "BOSHDeployment", a.Meta.GetName(), "EndpointOfLinkProvider")
+			}
+
+			return reconciles
+		}),
+	}, nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "watching services failed in bosh deployment controller.")
 
 	}
 
 	return nil
+}
+
+func getEndpointsService(ctx context.Context, client client.Client, ep corev1.Endpoints) (*corev1.Service, error) {
+	id := types.NamespacedName{Name: ep.Name, Namespace: ep.Namespace}
+	svc := &corev1.Service{}
+	err := client.Get(ctx, id, svc)
+	return svc, err
 }

@@ -1,7 +1,9 @@
 ---
 title: "From BOSH to Kubernetes"
 linkTitle: "Transforming BOSH concepts to Kubernetes"
-weight: 11
+weight: 3
+description: >
+  Guidelines on transforming BOSH concepts to Kubernetes
 ---
 
 

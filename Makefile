@@ -4,7 +4,7 @@ MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MAKEFILE_DIR := $(patsubst %/,%,$(dir $(MAKEFILE_PATH)))
 export PROJECT ?= quarks-operator
 export QUARKS_UTILS ?= tools/quarks-utils
-export GROUP_VERSIONS ?= boshdeployment:v1alpha1 quarksstatefulset:v1alpha1 quarkssecret:v1alpha1
+export GROUP_VERSIONS ?= boshdeployment:v1alpha1 quarksstatefulset:v1alpha1
 
 all: tools build test
 
@@ -16,7 +16,7 @@ lint: tools
 
 .PHONY: tools
 tools:
-	bin/tools
+	bin/dev-tools
 
 check-scripts:
 	bin/check-scripts

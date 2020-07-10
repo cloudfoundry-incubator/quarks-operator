@@ -74,7 +74,7 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectOld.(*qstsv1a1.QuarksStatefulSet)
 			n := e.ObjectNew.(*qstsv1a1.QuarksStatefulSet)
-			if !reflect.DeepEqual(o.Spec, n.Spec) {
+			if !reflect.DeepEqual(o.Spec, n.Spec) || !reflect.DeepEqual(o.Labels, n.Labels) || !reflect.DeepEqual(o.Annotations, n.Annotations) {
 				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
 					ctx, e.MetaNew, "qstsv1a1.QuarksStatefulSet",
 					fmt.Sprintf("Update predicate passed for '%s/%s'", e.MetaNew.GetNamespace(), e.MetaNew.GetName()),

@@ -1,9 +1,9 @@
 module code.cloudfoundry.org/quarks-operator
 
 require (
-	code.cloudfoundry.org/quarks-job v1.0.159
-	code.cloudfoundry.org/quarks-secret v0.0.0-20200527034647-269daeb7e9ca
-	code.cloudfoundry.org/quarks-utils v0.0.0-20200618110450-50a1f24d7ef7
+	code.cloudfoundry.org/quarks-job v1.0.179
+	code.cloudfoundry.org/quarks-secret v1.0.687
+	code.cloudfoundry.org/quarks-utils v0.0.0-20200706123245-b663da7030da
 	github.com/SUSE/go-patch v0.3.0
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
@@ -26,25 +26,25 @@ require (
 	github.com/lib/pq v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.11 // indirect
 	github.com/mattn/go-sqlite3 v1.11.0 // indirect
-	github.com/mitchellh/mapstructure v1.2.2
+	github.com/mitchellh/mapstructure v1.3.2
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
-	github.com/onsi/ginkgo v1.12.3
+	github.com/onsi/ginkgo v1.13.0
 	github.com/onsi/gomega v1.10.1
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/procfs v0.0.8 // indirect
-	github.com/spf13/afero v1.2.2
+	github.com/spf13/afero v1.3.0
 	github.com/spf13/cobra v0.0.7
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
 	github.com/viovanov/bosh-template-go v0.0.0-20200416144406-32ddfa4afdb0
 	go.uber.org/zap v1.15.0
-	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
+	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	gomodules.xyz/jsonpatch/v2 v2.0.1
 	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/api v0.18.3
-	k8s.io/apiextensions-apiserver v0.18.2
-	k8s.io/apimachinery v0.18.3
-	k8s.io/client-go v0.18.2
+	k8s.io/api v0.18.5
+	k8s.io/apiextensions-apiserver v0.18.5
+	k8s.io/apimachinery v0.18.5
+	k8s.io/client-go v0.18.5
 	k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89
 	sigs.k8s.io/controller-runtime v0.6.0
 	sigs.k8s.io/yaml v1.2.0

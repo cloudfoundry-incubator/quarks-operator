@@ -33,7 +33,11 @@ rules:
   - secrets
   verbs:
   - get
+  - create
+  - delete
+  - list
   - update
+  - watch
 
 - apiGroups:
   - certificates.k8s.io
@@ -86,18 +90,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - secrets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - update
-  - watch
-
-- apiGroups:
-  - ""
-  resources:
   - pods
   verbs:
   - delete
@@ -116,6 +108,15 @@ rules:
   - get
   - list
   - update
+  - watch
+
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - get
+  - list
   - watch
 
 - apiGroups:
