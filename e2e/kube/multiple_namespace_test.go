@@ -42,4 +42,53 @@ var _ = Describe("Deploying in multiple namespace", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
+
+	Context("when updating bosh deployments in two monitored namespaces", func() {
+
+		scale := func(namespace, i string) {
+			cfgmap, err := kubectl.GetConfigMap(namespace, "ops-scale")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cfgmap.Metadata.Name).To(Equal("ops-scale"))
+			cfgmap.Data["ops"] = `- type: replace
+  path: /instance_groups/name=quarks-gora?/instances
+  value: ` + i
+
+			err = kubectl.ApplyYAML(namespace, "configmap", &cfgmap)
+			Expect(err).ToNot(HaveOccurred())
+		}
+
+		It("scales quarks-gora in each namespace respectively", func() {
+
+			applyNamespace(namespace, "bosh-deployment/quarks-gora.yaml")
+			waitReadyNamespace(namespace, "pod/quarks-gora-0")
+			waitReadyNamespace(namespace, "pod/quarks-gora-1")
+			err := kubectl.WaitForService(namespace, "quarks-gora-0")
+			Expect(err).ToNot(HaveOccurred())
+			err = kubectl.WaitForService(namespace, "quarks-gora-1")
+			Expect(err).ToNot(HaveOccurred())
+
+			applyNamespace(newNamespace, "bosh-deployment/quarks-gora.yaml")
+			waitReadyNamespace(newNamespace, "pod/quarks-gora-0")
+			waitReadyNamespace(newNamespace, "pod/quarks-gora-1")
+			err = kubectl.WaitForService(newNamespace, "quarks-gora-0")
+			Expect(err).ToNot(HaveOccurred())
+			err = kubectl.WaitForService(newNamespace, "quarks-gora-1")
+			Expect(err).ToNot(HaveOccurred())
+
+			scale(namespace, "3")
+			waitReadyNamespace(namespace, "pod/quarks-gora-2")
+			err = kubectl.WaitForService(namespace, "quarks-gora-2")
+			Expect(err).ToNot(HaveOccurred())
+
+			scale(newNamespace, "4")
+			waitReadyNamespace(newNamespace, "pod/quarks-gora-3")
+			err = kubectl.WaitForService(newNamespace, "quarks-gora-3")
+			Expect(err).ToNot(HaveOccurred())
+
+			e, err := kubectl.ServiceExists(namespace, "quarks-gora-3")
+			Expect(err).To(HaveOccurred())
+			Expect(e).ToNot(BeTrue())
+		})
+	})
+
 })
