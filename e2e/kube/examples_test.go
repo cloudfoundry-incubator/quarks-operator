@@ -118,8 +118,14 @@ var _ = Describe("Examples Directory", func() {
 			})
 			Expect(err).ToNot(HaveOccurred(), "polling for example-quarks-statefulset-0 with special key")
 
-			err = kubectl.RunCommandWithCheckString(namespace, "example-quarks-statefulset-1", "env", "SPECIAL_KEY=value1Updated")
-			Expect(err).ToNot(HaveOccurred(), "waiting for example-quarks-statefulset-1 with special key")
+			err = wait.PollImmediate(pollInterval, kubectl.PollTimeout, func() (bool, error) {
+				err := kubectl.RunCommandWithCheckString(namespace, "example-quarks-statefulset-1", "env", "SPECIAL_KEY=value1Updated")
+				if err != nil {
+					return false, nil
+				}
+				return true, nil
+			})
+			Expect(err).ToNot(HaveOccurred(), "polling for example-quarks-statefulset-1 with special key")
 		})
 
 		It("it labels the first pod as active", func() {
