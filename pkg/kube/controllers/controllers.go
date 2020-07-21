@@ -21,11 +21,11 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/versionedsecret"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/waitservice"
-	wh "code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-secret/pkg/credsgen"
 	qsv1a1 "code.cloudfoundry.org/quarks-secret/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/webhook"
 )
 
 const (
@@ -33,8 +33,6 @@ const (
 	HTTPReadyzEndpoint = "/readyz"
 	// WebhookConfigPrefix is the prefix for the dir containing the webhook SSL certs
 	WebhookConfigPrefix = "cf-operator-hook-"
-	// WebhookConfigDir contains the dir with the webhook SSL certs
-	WebhookConfigDir = "/tmp"
 )
 
 // Theses funcs construct controllers and add them to the controller-runtime
@@ -58,12 +56,12 @@ var addToSchemes = runtime.SchemeBuilder{
 	qstsv1a1.AddToScheme,
 }
 
-var validatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.OperatorWebhook{
+var validatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *webhook.OperatorWebhook{
 	boshdeployment.NewBOSHDeploymentValidator,
 	versionedsecret.NewSecretValidator,
 }
 
-var mutatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *wh.OperatorWebhook{
+var mutatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *webhook.OperatorWebhook{
 	quarksstatefulset.NewQuarksStatefulSetPodMutator,
 	statefulset.NewStatefulSetRolloutMutator,
 	quarkslink.NewBOSHLinkPodMutator,
@@ -89,14 +87,14 @@ func AddToScheme(s *runtime.Scheme) error {
 func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, generator credsgen.Generator) error {
 	ctxlog.Infof(ctx, "Setting up webhook server on %s:%d", config.WebhookServerHost, config.WebhookServerPort)
 
-	webhookConfig := NewWebhookConfig(m.GetClient(), config, generator, WebhookConfigPrefix+config.OperatorNamespace)
+	webhookConfig := webhook.NewConfig(m.GetClient(), config, generator, WebhookConfigPrefix+config.OperatorNamespace)
 
 	hookServer := m.GetWebhookServer()
 	hookServer.CertDir = webhookConfig.CertDir
 
 	hookServer.Register(HTTPReadyzEndpoint, ordinaryHTTPHandler())
 
-	validatingWebhooks := make([]*wh.OperatorWebhook, len(validatingHookFuncs))
+	validatingWebhooks := make([]*webhook.OperatorWebhook, len(validatingHookFuncs))
 	log := ctxlog.ExtractLogger(ctx)
 	for idx, f := range validatingHookFuncs {
 		hook := f(log, config)
@@ -104,7 +102,7 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 		hookServer.Register(hook.Path, hook.Webhook)
 	}
 
-	mutatingWebhooks := make([]*wh.OperatorWebhook, len(mutatingHookFuncs))
+	mutatingWebhooks := make([]*webhook.OperatorWebhook, len(mutatingHookFuncs))
 	for idx, f := range mutatingHookFuncs {
 		hook := f(log, config)
 		mutatingWebhooks[idx] = hook
@@ -112,19 +110,19 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 	}
 
 	ctxlog.Info(ctx, "Generating webhook certificates")
-	err := webhookConfig.setupCertificate(ctx)
+	err := webhookConfig.SetupCertificate(ctx)
 	if err != nil {
 		return errors.Wrap(err, "setting up the webhook server certificate")
 	}
 
 	ctxlog.Info(ctx, "Generating validating webhook server configuration")
-	err = webhookConfig.generateValidationWebhookServerConfig(ctx, validatingWebhooks)
+	err = webhookConfig.CreateValidationWebhookServerConfig(ctx, validatingWebhooks)
 	if err != nil {
 		return errors.Wrap(err, "generating the validating webhook server configuration")
 	}
 
 	ctxlog.Info(ctx, "Generating mutating webhook server configuration")
-	err = webhookConfig.generateMutationWebhookServerConfig(ctx, mutatingWebhooks)
+	err = webhookConfig.CreateMutationWebhookServerConfig(ctx, mutatingWebhooks)
 	if err != nil {
 		return errors.Wrap(err, "generating the webhook server configuration")
 	}

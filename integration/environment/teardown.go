@@ -6,6 +6,7 @@ import (
 	"path"
 
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers"
+	"code.cloudfoundry.org/quarks-utils/pkg/webhook"
 	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 	utils "code.cloudfoundry.org/quarks-utils/testing/integration"
 )
@@ -18,7 +19,7 @@ func Teardown(e *Environment, wasFailure bool) {
 
 // removeWebhookCache removes the local webhook config temp folder
 func (e *Environment) removeWebhookCache() {
-	os.RemoveAll(path.Join(controllers.WebhookConfigDir, controllers.WebhookConfigPrefix+utils.GetNamespaceName(e.ID)))
+	os.RemoveAll(path.Join(webhook.ConfigDir, controllers.WebhookConfigPrefix+utils.GetNamespaceName(e.ID)))
 }
 
 // NukeWebhooks nukes all webhooks at the end of the run
