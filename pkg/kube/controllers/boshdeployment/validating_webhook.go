@@ -20,11 +20,11 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
-	wh "code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/withops"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
+	wh "code.cloudfoundry.org/quarks-utils/pkg/webhook"
 )
 
 // NewBOSHDeploymentValidator creates a validating hook for BOSHDeployment and adds it to the Manager
@@ -63,7 +63,7 @@ func NewBOSHDeploymentValidator(log *zap.SugaredLogger, config *config.Config) *
 	}
 }
 
-// Validator s
+// Validator struct contains all fields for the deployment validator
 type Validator struct {
 	log          *zap.SugaredLogger
 	config       *config.Config

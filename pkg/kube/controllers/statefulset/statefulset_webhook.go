@@ -15,10 +15,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/monitorednamespace"
-	wh "code.cloudfoundry.org/quarks-operator/pkg/kube/util/webhook"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
+	wh "code.cloudfoundry.org/quarks-utils/pkg/webhook"
 )
 
 // Mutator changes statefulset definitions
