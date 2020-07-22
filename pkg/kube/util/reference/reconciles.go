@@ -11,8 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/apis"
-	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	res "code.cloudfoundry.org/quarks-operator/pkg/kube/util/resources"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
@@ -90,7 +89,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 	log.Debugf(ctx, "Listing '%s' for '%s/%s'", reconcileType, namespace, object.GetName())
 	switch reconcileType {
 	case ReconcileForBOSHDeployment:
-		boshDeployments, err := listBOSHDeployments(ctx, client, namespace)
+		boshDeployments, err := res.ListBOSHDeployments(ctx, client, namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to list BOSHDeployments for ConfigMap reconciles")
 		}
@@ -110,7 +109,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			}
 		}
 	case ReconcileForQuarksStatefulSet:
-		quarksStatefulSets, err := listQuarksStatefulSets(ctx, client, namespace)
+		quarksStatefulSets, err := res.ListQuarksStatefulSets(ctx, client, namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to list QuarksStatefulSets for ConfigMap reconciles")
 		}
@@ -134,7 +133,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 			}
 		}
 	case ReconcileForPod:
-		pods, err := listPods(ctx, client, namespace)
+		pods, err := res.ListPods(ctx, client, namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to list Pods for ConfigMap reconciles")
 		}
@@ -193,34 +192,4 @@ func SkipReconciles(ctx context.Context, client crc.Client, object apis.Object) 
 		return true
 	}
 	return false
-}
-
-func listBOSHDeployments(ctx context.Context, client crc.Client, namespace string) (*bdv1.BOSHDeploymentList, error) {
-	result := &bdv1.BOSHDeploymentList{}
-	err := client.List(ctx, result, crc.InNamespace(namespace))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to list BOSHDeployments")
-	}
-
-	return result, nil
-}
-
-func listQuarksStatefulSets(ctx context.Context, client crc.Client, namespace string) (*qstsv1a1.QuarksStatefulSetList, error) {
-	result := &qstsv1a1.QuarksStatefulSetList{}
-	err := client.List(ctx, result, crc.InNamespace(namespace))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to list QuarksStatefulSets")
-	}
-
-	return result, nil
-}
-
-func listPods(ctx context.Context, client crc.Client, namespace string) (*corev1.PodList, error) {
-	result := &corev1.PodList{}
-	err := client.List(ctx, result, crc.InNamespace(namespace))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to list Pods")
-	}
-
-	return result, nil
 }
