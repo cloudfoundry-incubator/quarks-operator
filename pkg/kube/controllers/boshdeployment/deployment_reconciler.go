@@ -19,7 +19,9 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/converter"
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/mutate"
+	res "code.cloudfoundry.org/quarks-operator/pkg/kube/util/resources"
 	qsv1a1 "code.cloudfoundry.org/quarks-secret/pkg/kube/apis/quarkssecret/v1alpha1"
 	mutateqs "code.cloudfoundry.org/quarks-secret/pkg/kube/util/mutate"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -155,6 +157,13 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bdpl, "WithOpsManifestError").Errorf(ctx, "failed to create with-ops manifest secret for BOSHDeployment '%s': %v", request.NamespacedName, err)
+	}
+
+	// delete qsts which are not in the manifest
+	err = r.deleteQuarksStatefulSets(ctx, manifest, bdpl)
+	if err != nil {
+		return reconcile.Result{},
+			log.WithEvent(bdpl, "DeleteQuarksStatefulSet").Error(ctx, "failed to delete orphan QuarksStatefulSets", err)
 	}
 
 	// Create all QuarksSecret variables
@@ -306,6 +315,37 @@ func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, manif
 		}
 
 		log.Debugf(ctx, "QuarksSecret '%s' has been %s", variable.GetNamespacedName(), op)
+	}
+
+	return nil
+}
+
+// deleteQuarksStatefulSets deletes qsts which are removed from the manifest
+func (r *ReconcileBOSHDeployment) deleteQuarksStatefulSets(ctx context.Context, manifest *bdm.Manifest, bdpl *bdv1.BOSHDeployment) error {
+	quarksStatefulSets, err := res.ListQuarksStatefulSets(ctx, r.client, bdpl.Namespace)
+	if err != nil {
+		return errors.Wrap(err, "failed to list QuarksStatefulSets")
+	}
+
+	qstsToBeDeleted := []qstsv1a1.QuarksStatefulSet{}
+	for _, qsts := range quarksStatefulSets.Items {
+		labels := qsts.GetLabels()
+		if labels[bdv1.LabelDeploymentName] == bdpl.Name {
+			_, found := manifest.InstanceGroups.InstanceGroupByName(labels[bdv1.LabelInstanceGroupName])
+			if !found {
+				qstsToBeDeleted = append(qstsToBeDeleted, qsts)
+			}
+		}
+	}
+	for _, qsts := range qstsToBeDeleted {
+		log.Infof(ctx, "deleting quarksstatefulset '%s'", qsts.Name)
+		err = r.client.Delete(ctx, &qsts)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
 	}
 
 	return nil
