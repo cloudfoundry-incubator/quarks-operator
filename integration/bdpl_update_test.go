@@ -421,6 +421,45 @@ var _ = Describe("BDPL updates", func() {
 		})
 	})
 
+	Context("when updating a deployment with delete ops file", func() {
+		opsDelete := `- type: remove
+  path: /instance_groups/name=nats
+`
+		BeforeEach(func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment(deploymentName, manifestName))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			By("checking for instance group pods")
+			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "1", 2)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
+		})
+
+		Context("by adding an delete instance group ops file to the bdpl", func() {
+			BeforeEach(func() {
+				tearDown, err := env.CreateConfigMap(env.Namespace, env.CustomOpsConfigMap("test-ops", opsDelete))
+				Expect(err).NotTo(HaveOccurred())
+				tearDowns = append(tearDowns, tearDown)
+
+				bdpl, err := env.GetBOSHDeployment(env.Namespace, deploymentName)
+				Expect(err).NotTo(HaveOccurred())
+				bdpl.Spec.Ops = []bdv1.ResourceReference{{Name: "test-ops", Type: bdv1.ConfigMapReference}}
+
+				_, _, err = env.UpdateBOSHDeployment(env.Namespace, *bdpl)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should delete the qsts", func() {
+				err := env.WaitForQuarksStatefulSetDelete(env.Namespace, "nats")
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+	})
+
 	Context("when updating a deployment with multiple instance groups", func() {
 		It("it should only update correctly and have correct secret versions in volume mounts", func() {
 			manifestName := "bosh-manifest-two-instance-groups"

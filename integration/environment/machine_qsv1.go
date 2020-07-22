@@ -258,16 +258,25 @@ func (m *Machine) StatefulSetRunning(namespace string, name string) (bool, error
 	return false, nil
 }
 
-// QuarksStatefulSetExists returns true if at least one ess selected by labels exists
-func (m *Machine) QuarksStatefulSetExists(namespace string, labels string) (bool, error) {
-	esss, err := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace).List(context.Background(), metav1.ListOptions{
-		LabelSelector: labels,
+// WaitForQuarksStatefulSetDelete blocks until the specified quarksstatefulSet is deleted
+func (m *Machine) WaitForQuarksStatefulSetDelete(namespace string, name string) error {
+	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
+		found, err := m.QuarksStatefulSetExists(namespace, name)
+		return !found, err
 	})
+}
+
+// QuarksStatefulSetExists returns true if at least one ess selected by labels exists
+func (m *Machine) QuarksStatefulSetExists(namespace string, name string) (bool, error) {
+	_, err := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to query for ess by labels: %v", labels)
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "failed to query for quarksstatefulSet by name: %s", name)
 	}
 
-	return len(esss.Items) > 0, nil
+	return true, nil
 }
 
 // StatefulSetNewGeneration returns true if StatefulSet has a new generation greater `generation`
