@@ -31,7 +31,7 @@ Instead, report to the CloudFoundry Foundation team first <security@cloudfoundry
 some time to fix it in a timely matter before disclosing it to the public. For more
 information check the CloudFoundry Security [page](https://www.cloudfoundry.org/security/).
 
-Don't forget to familiarize yourself with our processes and tools, by reading about them [here](doc/README.md).
+Don't forget to familiarize yourself with our processes and tools, by reading about them [here](../development/tooling).
 
 ### Conversation
 

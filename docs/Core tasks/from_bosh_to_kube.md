@@ -54,13 +54,13 @@ description: >
 - each instance group is transformed to an `QuarksStatefulSet` or an `QuarksJob`
 - each BOSH Job corresponds to one or more containers in the `Pod` template defined in the `QuarksStatefulSet` or the `QuarksJob`; there's one container for each process defined in the BPM information of each BOSH Job
 - "explicit" `variables` are generated using `QuarksSecrets`
-- for rendering of BOSH Job Templates, please read [this document](rendering_templates.md)
-- we have a concept of [Desired Manifests](desired_manifests.md)
-- all communication happens through Kubernetes `Services`, which have deterministic DNS Addresses; you can read more about these [here](rendering_templates.md#services-and-dns-addresses)
+- for rendering of BOSH Job Templates, please read [this document](../../features/rendering_templates)
+- we have a concept of [Desired Manifests](../../features/desired_manifests)
+- all communication happens through Kubernetes `Services`, which have deterministic DNS Addresses; you can read more about these [here](../../features/rendering_templates#services-and-dns-addresses)
 
 ## Deployment Lifecycle
 
-Please read the [documentation for the `BOSHDeployment` controller](controllers/bosh_deployment.md).
+Please read the [documentation for the `BOSHDeployment` controller](../../controllers/bosh_deployment).
 
 ## Example Deployment Manifest Conversion Details
 
@@ -519,7 +519,7 @@ These map explicit variable names to secret names.
 
 Each secret must contain the usual keys used in explicit variables (see [here](https://bosh.io/docs/variable-types/) for more details).
 
-You can find an example [here](examples/bosh-deployment/boshdeployment-with-user-variable.yaml).
+You can find an example [here](https://github.com/cloudfoundry-incubator/quarks-operator/blob/master/docs/examples/bosh-deployment/boshdeployment-with-user-variable.yaml).
 
 ### Instance Groups to Quarks StatefulSets and Jobs
 
@@ -535,11 +535,11 @@ BOSH Auto-Errands (supported only by the operator) are converted to `QuarksJobs`
 
 ### Dealing with AZs
 
-`QuarksStatefulSets` support AZs. You can learn more about this in [the docs](controllers/quarks_statefulset.md#az-support).
+`QuarksStatefulSets` support AZs. You can learn more about this in [the docs](../../controllers/quarks_statefulset#az-support).
 
 ### Support for active/passive pod replicas
 
-`QuarksStatefulSets` support active/passive pod replicas. You can learn more about this in [the docs](controllers/quarks_statefulset.md#quarksstatefulset-active-passive-controller).
+`QuarksStatefulSets` support active/passive pod replicas. You can learn more about this in [the docs](../../controllers/quarks_statefulset#quarksstatefulset-active-passive-controller).
 
 ### Ephemeral Disks
 
