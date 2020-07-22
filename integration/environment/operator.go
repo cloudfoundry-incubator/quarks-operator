@@ -28,7 +28,8 @@ func (e *Environment) StartOperator() error {
 		return errors.Wrapf(err, "Setting up CF Operator failed.")
 	}
 
-	e.Stop = e.startOperator(mgr)
+	e.StartManager(mgr)
+
 	err = helper.WaitForPort(
 		"127.0.0.1",
 		strconv.Itoa(int(e.Config.WebhookServerPort)),
@@ -107,17 +108,6 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 	})
 
 	return mgr, err
-}
-
-func (e *Environment) startOperator(mgr manager.Manager) chan struct{} {
-	stop := make(chan struct{})
-	go func() {
-		err := mgr.Start(stop)
-		if err != nil {
-			panic(err)
-		}
-	}()
-	return stop
 }
 
 func getWebhookServicePort(namespaceCounter int) (int32, error) {
