@@ -241,7 +241,7 @@ _**Note**_: On Mac, use `export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip a s $(ip r
     ```
 
     Or if you have local changes and use `go mod edit --replace`,
-    follow instructions from [development](development.md#standalone-components).
+    follow instructions from [development](../../development/development#standalone-components).
 
 1. Load image into KinD
 
@@ -259,7 +259,7 @@ _**Note**_: On Mac, use `export CF_OPERATOR_WEBHOOK_SERVICE_HOST=$(ip a s $(ip r
 
     ```kind load docker-image cfcontainerization/quarks-job:$QUARKS_JOB_IMAGE_TAG```
 
-    (see [development](development.md#standalone-components)).
+    (see [development](../../development/development#standalone-components)).
 
 ## Makefile
 

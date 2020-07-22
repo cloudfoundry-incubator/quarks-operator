@@ -11,7 +11,7 @@ BOSH releases consume two types of variables, explicit and implicit ones.
 ### Implicit Variables
 
 Implicit variables have to be created before creating a BOSH deployment resource.
-The [example](docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml) creates a secret named `var-custom-password`. That value will be used to fill `((custom-password))` place holders in the BOSH manifest.
+The [example](https://github.com/cloudfoundry-incubator/quarks-operator/blob/master/docs/examples/bosh-deployment/boshdeployment-with-custom-variable.yaml) creates a secret named `var-custom-password`. That value will be used to fill `((custom-password))` place holders in the BOSH manifest.
 
 The name of the secret has to follow this scheme: 'var-<variable-name>'
 

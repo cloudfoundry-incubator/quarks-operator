@@ -32,7 +32,7 @@ export GO111MODULE=on
 
 ## Custom Resource Definitions (CRDs)
 
-Kubernetes allows developers to extend the objects its APIs process and store using Custom Resource Definitions (CRDs). We are creating four [CRDs](../docs/crds):
+Kubernetes allows developers to extend the objects its APIs process and store using Custom Resource Definitions (CRDs). We are creating four [CRDs](https://github.com/cloudfoundry-incubator/quarks-operator/tree/master/docs/crds) (see [Controllers](../../controllers)):
 
 - BOSHDeployment
 - QuarksJob
@@ -327,7 +327,7 @@ APIs and types follow the upstream versioning scheme described at: https://kuber
 
 ## Colourise Logs
 
-Copy the [grc](https://github.com/garabik/grc) (generic colouriser grcat) config file [zap.grc.conf](zap.grc.conf) to `/usr/share/grc/conf.zap` and pipe logs to `grcat conf.zap`:
+Copy the [grc](https://github.com/garabik/grc) (generic colouriser grcat) config file [zap.grc.conf](https://github.com/cloudfoundry-incubator/quarks-operator/blob/master/docs/zap.grc.conf) to `/usr/share/grc/conf.zap` and pipe logs to `grcat conf.zap`:
 
 ```
 # install the custom log config

@@ -23,7 +23,7 @@ The former implementation use a new `StatefulSet` for each new version of a mani
 
 This controller implements the following state machine
 
-![](quarks_sts_rollout_fsm.png)
+![](../quarks_sts_rollout_fsm.png)
 
 
 ### Known Limitations

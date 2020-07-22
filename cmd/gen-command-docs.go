@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"path/filepath"
 	"strings"
@@ -27,8 +26,9 @@ description: >
 func main() {
 
 	cfOperatorCommand := cmd.NewCFOperatorCommand()
-	identity := func(s string) string {
-		fmt.Println(s)
+	rewriteURL := func(s string) string {
+		s = strings.ReplaceAll(s, ".md", "")
+		s = "../" + s
 		return s
 	}
 	prepend := func(s string) string {
@@ -42,8 +42,9 @@ linkTitle: "` + title + `"
 weight: 1
 ---
 `
+
 	}
-	err := doc.GenMarkdownTreeCustom(cfOperatorCommand, filepath.Join("./", docDir), prepend, identity)
+	err := doc.GenMarkdownTreeCustom(cfOperatorCommand, filepath.Join("./", docDir), prepend, rewriteURL)
 	if err != nil {
 		log.Fatal(err)
 	}
