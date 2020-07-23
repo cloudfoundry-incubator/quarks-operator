@@ -9,10 +9,10 @@ description: >
 
 The `quarks-operator` watches four different types of custom resources:
 
-* [BoshDeployment](docs/controllers/bosh_deployment.md)
+* [BoshDeployment](bosh_deployment)
 * [QuarksJob](https://github.com/cloudfoundry-incubator/quarks-job/blob/master/docs/quarksjob.md)
 * [QuarksSecret](https://github.com/cloudfoundry-incubator/quarks-secret/blob/master/docs/quarks_secret.md)
-* [QuarksStatefulSet](docs/controllers/quarks_statefulset.md)
+* [QuarksStatefulSet](quarks_statefulset)
 
 The `cf-operator` requires the according CRDs to be installed in the cluster in order to work as expected. By default, the `cf-operator` applies CRDs in your cluster automatically.
 

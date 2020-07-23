@@ -41,7 +41,7 @@ Figure 1 illustrates a **QuarksStatefulset** component diagram that covers the s
 
 ### **_QuarksStatefulSet Controller_**
 
-![qsts-controller-flow](../quarks_eseccontroller_flow.png)
+![qsts-controller-flow](../quarks_estscontroller_flow.png)
 *Fig. 2: The QuarksStatefulset controller*
 
 This controller will generate a Kubernetes statefulset for each `instance_group` defined in the BOSH manifest. This `Statefulset` will also include a set of Kubernetes services, so that each component can be accessed on specific ports.
@@ -94,7 +94,7 @@ spec:
 
 Complete example can be found [here](https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/examples/bosh-deployment/boshdeployment-with-service.yaml).
 
-Though, by default, quarks creates three services of type **ClusterIP** as defined [here](https://github.com/cloudfoundry-incubator/cf-operator/blob/master/docs/from_bosh_to_kube.md#naming-conventions) for any instance group.
+Though, by default, quarks creates three services of type **ClusterIP** as defined [here](../../core-tasks/from_bosh_to_kube/#naming-conventions) for any instance group.
 
 #### Load Balancer
 
