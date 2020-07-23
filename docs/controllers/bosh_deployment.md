@@ -25,6 +25,7 @@ description: >
          3. [Highlights](#highlights-in-bpm-controller)
    3. [BDPL Abstract view](#bdpl-abstract-view)
    4. [BOSHDeployment resource examples](#boshdeployment-resource-examples)
+   5. [BOSHDeployment status][#boshdeployment-status]
 
 ## Description
 
@@ -151,3 +152,40 @@ Figure 5 is a diagram that explains the whole `BOSHDeployment` component control
 ## BOSHDeployment resource examples
 
 See https://github.com/cloudfoundry-incubator/cf-operator/tree/master/docs/examples/bosh-deployment
+
+## BOSHDeployment status
+
+The `BOSHDeployment` status is resolved by a [separate controller](https://github.com/cloudfoundry-incubator/quarks-operator/blob/c6480811376faf81d6edadb62fcd0c7951e173c1/pkg/kube/controllers/boshdeployment/status_reconciler.go) which tracks the status of `QuarksJob` and `QuarksStatefulSet` associated with a deployment.
+The controller annotates the instance groups and the jobs counters and it resolves the BDPL State (`Deployed`, `Converting` , `Resolving`) by looking at the associated resources states and computing the overall state.
+
+The `BOSHDeployment` status spec is composed of the following fields:
+
+```golang
+// BOSHDeploymentStatus defines the observed state of BOSHDeployment
+type BOSHDeploymentStatus struct {
+	// Timestamp for the last reconcile
+	LastReconcile          *metav1.Time `json:"lastReconcile"`
+	State                  string       `json:"state"`
+	Message                string       `json:"message"`
+	TotalJobCount          int          `json:"totalJobCount"`
+	CompletedJobCount      int          `json:"completedJobCount"`
+	TotalInstanceGroups    int          `json:"totalInstanceGroups"`
+	DeployedInstanceGroups int          `json:"deployedInstanceGroups"`
+	StateTimestamp         *metav1.Time `json:"stateTimestamp"`
+}
+```
+
+The `BOSHDeployment` States can be:
+
+- Created
+- Converting to Kubernetes Resources
+- Resolving Manifest
+- Deployed
+
+where "Deployed" is the final state. Note that during deployments, the lifecycle might vary if the same resources are updated subsequently: the status of a `BOSHDeployment` may go back from `Deployed` to `Converting` and `Resolving` again if updates to the manifest are triggered.
+
+The Reconcile resolves to the Deployed state by looking at the overall counts of `QuarksJobs` and `QuarksStatefulSet` associated to the `BOSHDeployment` and its state:
+
+- `Converting`: All `QuarksJobs` belonging to a `BOSHDeployment` are completed, but `QuarksStatefulSet` aren't ready yet ( or either way around )
+- `Resolving`: `QuarksJobs` belonging to a `BOSHDeployment` aren't completed, `QuarksStatefulSet` aren't ready yet
+- `Deployed`: All `QuarksJobs` and `QuarksStatefulSet` are ready/completed.

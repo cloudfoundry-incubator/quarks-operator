@@ -19,17 +19,20 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/converter"
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/mutate"
 	res "code.cloudfoundry.org/quarks-operator/pkg/kube/util/resources"
 	qsv1a1 "code.cloudfoundry.org/quarks-secret/pkg/kube/apis/quarkssecret/v1alpha1"
 	mutateqs "code.cloudfoundry.org/quarks-secret/pkg/kube/util/mutate"
+	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
+
+// BDPLStateCreating is the Bosh Deployment Status spec Creating State
+const BDPLStateCreating = "Creating/Updating"
 
 // JobFactory creates Jobs for a given manifest
 type JobFactory interface {
@@ -109,7 +112,6 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	if bdpl.Status.LastReconcile == nil {
 		now := metav1.Now()
 		bdpl.Status.LastReconcile = &now
-
 		err = r.client.Status().Update(ctx, bdpl)
 		if err != nil {
 			return reconcile.Result{},
@@ -126,7 +128,13 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	log.Infof(ctx, "Meltdown ended for '%s'", request.NamespacedName)
+
 	bdpl.Status.LastReconcile = nil
+	// update the bdpl state spec with the initial state
+	now := metav1.Now()
+	bdpl.Status.StateTimestamp = &now
+	bdpl.Status.State = BDPLStateCreating
+
 	err = r.client.Status().Update(ctx, bdpl)
 	if err != nil {
 		return reconcile.Result{},

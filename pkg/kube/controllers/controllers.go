@@ -13,16 +13,16 @@ import (
 
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/boshdeployment"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarkslink"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksrestart"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksstatefulset"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/versionedsecret"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/waitservice"
 	"code.cloudfoundry.org/quarks-secret/pkg/credsgen"
 	qsv1a1 "code.cloudfoundry.org/quarks-secret/pkg/kube/apis/quarkssecret/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/quarksstatefulset"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/webhook"
@@ -41,6 +41,7 @@ const (
 var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager) error{
 	boshdeployment.AddDeployment,
 	boshdeployment.AddBPM,
+	boshdeployment.AddBDPLStatusReconciler,
 	quarksstatefulset.AddQuarksStatefulSet,
 	quarksstatefulset.AddQuarksStatefulSetStatus,
 	statefulset.AddStatefulSetRollout,

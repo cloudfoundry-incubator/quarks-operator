@@ -15,9 +15,9 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
+	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
@@ -71,6 +71,18 @@ type Resources struct {
 	Errands                []qjv1a1.QuarksJob
 	Services               []corev1.Service
 	PersistentVolumeClaims []corev1.PersistentVolumeClaim
+}
+
+// FilterLabels filters out labels, that are not suitable for StatefulSet updates
+func FilterLabels(labels map[string]string) map[string]string {
+
+	statefulSetLabels := make(map[string]string)
+	for key, value := range labels {
+		if key != bdv1.LabelDeploymentVersion {
+			statefulSetLabels[key] = value
+		}
+	}
+	return statefulSetLabels
 }
 
 // Resources uses BOSH Process Manager information to create k8s container specs from single BOSH instance group.
@@ -159,7 +171,7 @@ func (kc *BPMConverter) serviceToQuarksStatefulSet(
 	volumeClaims = append(volumeClaims, defaultVolumeClaims...)
 	volumeClaims = append(volumeClaims, bpmVolumeClaims...)
 
-	statefulSetLabels := statefulset.FilterLabels(instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels)
+	statefulSetLabels := FilterLabels(instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels)
 	statefulSetAnnotations, err := computeAnnotations(instanceGroup)
 	if err != nil {
 		return qstsv1a1.QuarksStatefulSet{}, errors.Wrapf(err, "computing annotations failed for instance group %s", instanceGroup.Name)
