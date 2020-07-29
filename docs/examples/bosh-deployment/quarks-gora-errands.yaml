@@ -1,0 +1,184 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: var-custom-password
+type: Opaque
+stringData:
+  password: a-custom-password
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-gora
+type: Opaque
+stringData:
+  certificate: "my-ca-cert-data"
+  private_key: "my-ca-private-key"
+  is_ca: "true"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: links
+  labels:
+    quarks.cloudfoundry.org/deployment-name: "gora-test-deployment"
+    quarks.cloudfoundry.org/entanglement: link-quarks-gora-quarks-gora
+  annotations:
+    quarks.cloudfoundry.org/provides: '{"name":"quarks-gora-data","type":"quarks-gora-data"}'
+    quarks.cloudfoundry.org/restart-on-update: "true"
+stringData:
+  link: |
+    quarks-gora.ssl: false
+    quarks-gora.port: "55556"
+    quarks-gora.client.port: "55556"
+    quarks-gora.client.ssl: false
+    quarks-gora.client.host: "quarks-gora"
+    text_message: admin
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gora-testing-manifest
+stringData:
+  manifest: |
+    ---
+    releases:
+    - name: quarks-gora
+      version: "0.0.9"
+      url: docker.io/cfcontainerization
+      stemcell:
+        os: SLE_15_SP1-26.6
+        version: 7.0.0_374.gb8e8e6af
+    instance_groups:
+    - name: quarks-gora
+      instances: 1
+      jobs:
+      - name: quarks-gora
+        release: quarks-gora
+        #consumes:
+        #  quarks-gora-data: {from: quarks-gora-data}
+        properties:
+          quarks-gora:
+            port: 55556
+            ssl: false
+            text_message: "test"
+          quarks:
+            ports:
+            - name: "quarks-gora"
+              protocol: "TCP"
+              internal: 55556
+        provides:
+          quarks-gora: {as: server-data}
+    - name: smoke
+      instances: 2
+      lifecycle: errand
+      jobs:
+      - name: smoke-tests
+        release: quarks-gora
+        properties:
+          quarks-gora:
+            client:
+              port: 55556
+              ssl: false
+              host: quarks-gora
+        consumes:
+          quarks-gora: {from: server-data}
+      env:
+        bosh:
+          agent:
+            settings:
+              disable_log_sidecar: true
+    variables:
+    - name: gora_password
+      type: password
+    - name: gora_ca
+      type: certificate
+      options:
+        is_ca: true
+        common_name: routerCA
+    - name: gora_cert
+      type: certificate
+      options:
+        ca: gora_ca
+        common_name: routerSSL
+        alternative_names:
+        - "foo.bar"
+        - "*.foo.bar"
+    - name: custom_password
+      type: password
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ops-scale
+data:
+  ops: |
+    - type: replace
+      path: /instance_groups/name=quarks-gora?/instances
+      value: 2
+---
+apiVersion: quarks.cloudfoundry.org/v1alpha1
+kind: BOSHDeployment
+metadata:
+  name: gora-test-deployment
+spec:
+  manifest:
+    name: gora-testing-manifest
+    type: secret
+  ops:
+  - name: ops-scale
+    type: configmap
+  vars:
+  - name: test_gora
+    secret: test-gora
+---
+apiVersion: quarks.cloudfoundry.org/v1alpha1
+kind: QuarksJob
+metadata:
+  name: autoerrand
+spec:
+  template:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          containers:
+          - command:
+            - sleep
+            - "15"
+            image: busybox
+            name: busybox
+          restartPolicy: Never
+          terminationGracePeriodSeconds: 1
+  trigger:
+    strategy: once
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: entangled-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      example: owned-by-bdpl
+  template:
+    metadata:
+      annotations:
+        quarks.cloudfoundry.org/consumes: '[{"name":"server-data","type":"quarks-gora"}]'
+        quarks.cloudfoundry.org/deployment: gora-test-deployment
+      labels:
+        example: owned-by-bdpl
+      name: entangled
+    spec:
+      containers:
+      - command:
+        - sleep
+        - "3600"
+        image: busybox
+        imagePullPolicy: Always
+        name: busybox
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 1
