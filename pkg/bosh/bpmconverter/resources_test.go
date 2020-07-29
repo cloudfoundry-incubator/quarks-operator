@@ -17,11 +17,11 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpmconverter/fakes"
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/testing"
 	"code.cloudfoundry.org/quarks-operator/testing/boshreleases"
+	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
@@ -780,5 +780,24 @@ var _ = Describe("BPM Converter", func() {
 				}))
 			})
 		})
+	})
+
+	Context("FilterLabels", func() {
+		var labels map[string]string
+
+		Context("map of labels", func() {
+
+			BeforeEach(func() {
+				labels = make(map[string]string)
+				labels[bdv1.LabelDeploymentName] = "xxx"
+				labels[bdv1.LabelDeploymentVersion] = "3"
+			})
+
+			It("deployment version is filtered", func() {
+				filteredLabels := bpmconverter.FilterLabels(labels)
+				Expect(filteredLabels).NotTo(HaveKey(bdv1.LabelDeploymentVersion))
+			})
+		})
+
 	})
 })

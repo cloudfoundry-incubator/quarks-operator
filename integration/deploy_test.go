@@ -10,8 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	bm "code.cloudfoundry.org/quarks-operator/testing/boshmanifest"
+	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
 
@@ -128,7 +128,6 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred(), "error getting statefulset for deployment")
 			Expect(*sts.Spec.Replicas).To(BeEquivalentTo(3))
 		})
-
 	})
 
 	Context("when using pre-render scripts", func() {

@@ -1,13 +1,12 @@
 package mutate
 
 import (
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 )
 
 // BoshDeploymentMutateFn returns MutateFn which mutates BoshDeployment including:
@@ -32,21 +31,6 @@ func QuarksStatefulSetMutateFn(qSts *qstsv1a1.QuarksStatefulSet) controllerutil.
 		qSts.Labels = updated.Labels
 		qSts.Annotations = updated.Annotations
 		qSts.Spec = updated.Spec
-		return nil
-	}
-}
-
-// StatefulSetMutateFn returns MutateFn which mutates StatefulSet including:
-// - labels, annotations
-// - spec
-func StatefulSetMutateFn(sfs *appsv1.StatefulSet) controllerutil.MutateFn {
-	updated := sfs.DeepCopy()
-	return func() error {
-		sfs.Labels = updated.Labels
-		sfs.Annotations = updated.Annotations
-		sfs.Spec.Replicas = updated.Spec.Replicas
-		sfs.Spec.Template = updated.Spec.Template
-		sfs.Spec.UpdateStrategy = updated.Spec.UpdateStrategy
 		return nil
 	}
 }

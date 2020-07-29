@@ -102,7 +102,14 @@ type ResourceReference struct {
 // BOSHDeploymentStatus defines the observed state of BOSHDeployment
 type BOSHDeploymentStatus struct {
 	// Timestamp for the last reconcile
-	LastReconcile *metav1.Time `json:"lastReconcile"`
+	LastReconcile          *metav1.Time `json:"lastReconcile"`
+	State                  string       `json:"state"`
+	Message                string       `json:"message"`
+	TotalJobCount          int          `json:"totalJobCount"`
+	CompletedJobCount      int          `json:"completedJobCount"`
+	TotalInstanceGroups    int          `json:"totalInstanceGroups"`
+	DeployedInstanceGroups int          `json:"deployedInstanceGroups"`
+	StateTimestamp         *metav1.Time `json:"stateTimestamp"`
 }
 
 // +genclient

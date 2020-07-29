@@ -16,16 +16,12 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	clientscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
-
-	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
-	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
 
 // GetStatefulSet gets a StatefulSet by namespace and name
@@ -36,64 +32,6 @@ func (m *Machine) GetStatefulSet(namespace string, name string) (*appsv1.Statefu
 	}
 
 	return statefulSet, nil
-}
-
-// CreateQuarksStatefulSet creates a QuarksStatefulSet custom resource and returns a function to delete it
-func (m *Machine) CreateQuarksStatefulSet(namespace string, ess qstsv1a1.QuarksStatefulSet) (*qstsv1a1.QuarksStatefulSet, machine.TearDownFunc, error) {
-	client := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace)
-
-	d, err := client.Create(context.Background(), &ess, metav1.CreateOptions{})
-
-	return d, func() error {
-		pvcs, err := m.Clientset.CoreV1().PersistentVolumeClaims(namespace).List(context.Background(), metav1.ListOptions{
-			LabelSelector: labels.Set(map[string]string{
-				"test-run-reference": ess.Name,
-			}).String(),
-		})
-		if err != nil {
-			return err
-		}
-
-		err = client.Delete(context.Background(), ess.GetName(), metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			return err
-		}
-
-		for _, pvc := range pvcs.Items {
-			err = m.Clientset.CoreV1().PersistentVolumeClaims(namespace).Delete(context.Background(), pvc.GetName(), metav1.DeleteOptions{})
-			if err != nil && !apierrors.IsNotFound(err) {
-				return err
-			}
-		}
-
-		return nil
-	}, err
-}
-
-// GetQuarksStatefulSet gets a QuarksStatefulSet custom resource
-func (m *Machine) GetQuarksStatefulSet(namespace string, name string) (*qstsv1a1.QuarksStatefulSet, error) {
-	client := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace)
-	d, err := client.Get(context.Background(), name, metav1.GetOptions{})
-	return d, err
-}
-
-// UpdateQuarksStatefulSet updates a QuarksStatefulSet custom resource and returns a function to delete it
-func (m *Machine) UpdateQuarksStatefulSet(namespace string, ess qstsv1a1.QuarksStatefulSet) (*qstsv1a1.QuarksStatefulSet, machine.TearDownFunc, error) {
-	client := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace)
-	d, err := client.Update(context.Background(), &ess, metav1.UpdateOptions{})
-	return d, func() error {
-		err := client.Delete(context.Background(), ess.GetName(), metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}, err
-}
-
-// DeleteQuarksStatefulSet deletes a QuarksStatefulSet custom resource
-func (m *Machine) DeleteQuarksStatefulSet(namespace string, name string) error {
-	client := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace)
-	return client.Delete(context.Background(), name, metav1.DeleteOptions{})
 }
 
 // WaitForPodLabelToExist blocks until the specified label appears
@@ -162,13 +100,6 @@ func (m *Machine) StatefulSetExist(namespace string, name string) (bool, error) 
 func (m *Machine) WaitForStatefulSetNewGeneration(namespace string, name string, currentVersion int64) error {
 	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 		return m.StatefulSetNewGeneration(namespace, name, currentVersion)
-	})
-}
-
-// WaitForQuarksStatefulSets blocks until at least one QuarksStatefulSet is found. It fails after the timeout.
-func (m *Machine) WaitForQuarksStatefulSets(namespace string, labels string) error {
-	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
-		return m.QuarksStatefulSetExists(namespace, labels)
 	})
 }
 
@@ -258,16 +189,25 @@ func (m *Machine) StatefulSetRunning(namespace string, name string) (bool, error
 	return false, nil
 }
 
-// QuarksStatefulSetExists returns true if at least one ess selected by labels exists
-func (m *Machine) QuarksStatefulSetExists(namespace string, labels string) (bool, error) {
-	esss, err := m.VersionedClientset.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace).List(context.Background(), metav1.ListOptions{
-		LabelSelector: labels,
+// WaitForQuarksStatefulSetDelete blocks until the specified quarksstatefulSet is deleted
+func (m *Machine) WaitForQuarksStatefulSetDelete(namespace string, name string) error {
+	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
+		found, err := m.QuarksStatefulSetExists(namespace, name)
+		return !found, err
 	})
+}
+
+// QuarksStatefulSetExists returns true if at least one ess selected by labels exists
+func (m *Machine) QuarksStatefulSetExists(namespace string, name string) (bool, error) {
+	_, err := m.QuarksStatefulSetClient.QuarksstatefulsetV1alpha1().QuarksStatefulSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to query for ess by labels: %v", labels)
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "failed to query for quarksstatefulSet by name: %s", name)
 	}
 
-	return len(esss.Items) > 0, nil
+	return true, nil
 }
 
 // StatefulSetNewGeneration returns true if StatefulSet has a new generation greater `generation`

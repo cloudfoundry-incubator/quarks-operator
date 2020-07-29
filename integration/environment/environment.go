@@ -8,6 +8,7 @@ import (
 	"time"
 
 	gomegaConfig "github.com/onsi/ginkgo/config"
+	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 
@@ -19,6 +20,7 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/operator"
 	"code.cloudfoundry.org/quarks-operator/testing"
+	qstsclient "code.cloudfoundry.org/quarks-statefulset/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	utils "code.cloudfoundry.org/quarks-utils/testing/integration"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
@@ -48,7 +50,7 @@ func NewEnvironment(kubeConfig *rest.Config) *Environment {
 	// the single namespace used by this test
 	ns := utils.GetNamespaceName(namespaceID)
 
-	return &Environment{
+	env := &Environment{
 		Environment: &utils.Environment{
 			ID:         namespaceID,
 			Namespace:  ns,
@@ -66,6 +68,10 @@ func NewEnvironment(kubeConfig *rest.Config) *Environment {
 			Machine: machine.NewMachine(),
 		},
 	}
+	gomega.SetDefaultEventuallyTimeout(env.PollTimeout)
+	gomega.SetDefaultEventuallyPollingInterval(env.PollInterval)
+
+	return env
 }
 
 // SetupClientsets initializes kube clientsets
@@ -80,8 +86,8 @@ func (e *Environment) SetupClientsets() error {
 	if err != nil {
 		return err
 	}
-
-	return nil
+	e.QuarksStatefulSetClient, err = qstsclient.NewForConfig(e.KubeConfig)
+	return err
 }
 
 // NodeIP returns a public IP of a node

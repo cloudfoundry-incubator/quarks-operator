@@ -118,8 +118,14 @@ var _ = Describe("Examples Directory", func() {
 			})
 			Expect(err).ToNot(HaveOccurred(), "polling for example-quarks-statefulset-0 with special key")
 
-			err = kubectl.RunCommandWithCheckString(namespace, "example-quarks-statefulset-1", "env", "SPECIAL_KEY=value1Updated")
-			Expect(err).ToNot(HaveOccurred(), "waiting for example-quarks-statefulset-1 with special key")
+			err = wait.PollImmediate(pollInterval, kubectl.PollTimeout, func() (bool, error) {
+				err := kubectl.RunCommandWithCheckString(namespace, "example-quarks-statefulset-1", "env", "SPECIAL_KEY=value1Updated")
+				if err != nil {
+					return false, nil
+				}
+				return true, nil
+			})
+			Expect(err).ToNot(HaveOccurred(), "polling for example-quarks-statefulset-1 with special key")
 		})
 
 		It("it labels the first pod as active", func() {
@@ -204,6 +210,24 @@ var _ = Describe("Examples Directory", func() {
 			password, err := cmdHelper.RunCommandWithOutput(namespace, "nats-1", "awk 'NR == 24 {print substr($2,2,17)}' /var/vcap/jobs/nats/config/nats.conf")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(strings.TrimSuffix(password, "\n")).To(Equal("a-custom-password"))
+		})
+
+	})
+
+	Context("bosh-deployment with pre-render ops files", func() {
+		BeforeEach(func() {
+			example = "bosh-deployment/boshdeployment-with-pre-ops.yaml"
+		})
+
+		It("applies the ops file", func() {
+			By("Checking for pods")
+			waitReady("pod/nats-0")
+
+			By("Checking the value in the config file")
+
+			envSetByOps, err := cmdHelper.RunCommandWithOutput(namespace, "nats-0", "env")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(strings.TrimSuffix(envSetByOps, "\n")).To(ContainSubstring("deadbeef"))
 		})
 
 	})

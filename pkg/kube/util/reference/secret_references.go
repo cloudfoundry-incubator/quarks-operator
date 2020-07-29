@@ -9,7 +9,6 @@ import (
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/withops"
 )
 
@@ -19,8 +18,6 @@ func GetSecretsReferencedBy(ctx context.Context, client crc.Client, object inter
 	switch object := object.(type) {
 	case bdv1.BOSHDeployment:
 		return getSecretRefFromBdpl(ctx, client, object)
-	case qstsv1a1.QuarksStatefulSet:
-		return getSecretRefFromESts(object), nil
 	case corev1.Pod:
 		return getSecretRefFromPod(object), nil
 	default:
@@ -63,10 +60,6 @@ func getSecretRefFromBdpl(ctx context.Context, client crc.Client, object bdv1.BO
 
 func getSecretRefFromPod(object corev1.Pod) map[string]bool {
 	return getSecretRefFromPodSpec(object.Spec)
-}
-
-func getSecretRefFromESts(object qstsv1a1.QuarksStatefulSet) map[string]bool {
-	return getSecretRefFromPodSpec(object.Spec.Template.Spec.Template.Spec)
 }
 
 func getSecretRefFromPodSpec(object corev1.PodSpec) map[string]bool {

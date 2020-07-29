@@ -7,37 +7,36 @@ description: >
 ---
 
 
-- [Transforming BOSH concepts to Kubernetes](#transforming-bosh-concepts-to-kubernetes)
-  - [Open Questions](#open-questions)
-  - [Missing Features](#missing-features)
-  - [High-level Direction](#high-level-direction)
-  - [Deployment Lifecycle](#deployment-lifecycle)
-  - [Example Deployment Manifest Conversion Details](#example-deployment-manifest-conversion-details)
-  - [BPM](#bpm)
-    - [Entrypoint & Environment Variables](#entrypoint--environment-variables)
-    - [Resources](#resources)
-    - [Health checks](#health-checks)
-    - [Hooks](#hooks)
-    - [Misc](#misc)
-  - [Conversion Details](#conversion-details)
-    - [Calculation of docker image location for releases](#calculation-of-docker-image-location-for-releases)
-    - [Variables to Quarks Secrets](#variables-to-quarks-secrets)
-      - [Overriding generated variables](#overriding-generated-variables)
-    - [Instance Groups to Quarks StatefulSets and Jobs](#instance-groups-to-quarks-statefulsets-and-jobs)
-      - [BOSH Services vs BOSH Errands](#bosh-services-vs-bosh-errands)
-  - [Miscellaneous](#miscellaneous)
-    - [Dealing with AZs](#dealing-with-azs)
-    - [Support for active/passive pod replicas](#support-for-activepassive-pod-replicas)
-    - [Ephemeral Disks](#ephemeral-disks)
-    - [Credentials for Docker Registries](#credentials-for-docker-registries)
-    - [Running manual errands](#running-manual-errands)
-    - [Readiness and Liveness Probes](#readiness-and-liveness-probes)
-    - [Persistent Disks](#persistent-disks)
-    - [Manual ("implicit") variables](#manual-%22implicit%22-variables)
-    - [Pre_render_scripts](#prerenderscripts)
-    - [BOSH DNS](#bosh-dns)
-  - [Flow](#flow)
-  - [Naming Conventions](#naming-conventions)
+- [Open Questions](#open-questions)
+- [Missing Features](#missing-features)
+- [High-level Direction](#high-level-direction)
+- [Deployment Lifecycle](#deployment-lifecycle)
+- [Example Deployment Manifest Conversion Details](#example-deployment-manifest-conversion-details)
+- [BPM](#bpm)
+  - [Entrypoint & Environment Variables](#entrypoint--environment-variables)
+  - [Resources](#resources)
+  - [Health checks](#health-checks)
+  - [Hooks](#hooks)
+  - [Misc](#misc)
+- [Conversion Details](#conversion-details)
+  - [Calculation of docker image location for releases](#calculation-of-docker-image-location-for-releases)
+  - [Variables to Quarks Secrets](#variables-to-quarks-secrets)
+    - [Overriding generated variables](#overriding-generated-variables)
+  - [Instance Groups to Quarks StatefulSets and Jobs](#instance-groups-to-quarks-statefulsets-and-jobs)
+    - [BOSH Services vs BOSH Errands](#bosh-services-vs-bosh-errands)
+- [Miscellaneous](#miscellaneous)
+  - [Dealing with AZs](#dealing-with-azs)
+  - [Support for active/passive pod replicas](#support-for-activepassive-pod-replicas)
+  - [Ephemeral Disks](#ephemeral-disks)
+  - [Credentials for Docker Registries](#credentials-for-docker-registries)
+  - [Running manual errands](#running-manual-errands)
+  - [Readiness and Liveness Probes](#readiness-and-liveness-probes)
+  - [Persistent Disks](#persistent-disks)
+  - [Manual ("implicit") variables](#manual-implicit-variables)
+  - [Pre_render_scripts](#pre_render_scripts)
+  - [BOSH DNS](#bosh-dns)
+- [Flow](#flow)
+- [Naming Conventions](#naming-conventions)
 
 ## Open Questions
 
@@ -54,13 +53,13 @@ description: >
 - each instance group is transformed to an `QuarksStatefulSet` or an `QuarksJob`
 - each BOSH Job corresponds to one or more containers in the `Pod` template defined in the `QuarksStatefulSet` or the `QuarksJob`; there's one container for each process defined in the BPM information of each BOSH Job
 - "explicit" `variables` are generated using `QuarksSecrets`
-- for rendering of BOSH Job Templates, please read [this document](rendering_templates.md)
-- we have a concept of [Desired Manifests](desired_manifests.md)
-- all communication happens through Kubernetes `Services`, which have deterministic DNS Addresses; you can read more about these [here](rendering_templates.md#services-and-dns-addresses)
+- for rendering of BOSH Job Templates, please read [this document](../../features/rendering_templates)
+- we have a concept of [Desired Manifests](../../features/desired_manifests)
+- all communication happens through Kubernetes `Services`, which have deterministic DNS Addresses; you can read more about these [here](../../features/rendering_templates#services-and-dns-addresses)
 
 ## Deployment Lifecycle
 
-Please read the [documentation for the `BOSHDeployment` controller](controllers/bosh_deployment.md).
+Please read the [documentation for the `BOSHDeployment` controller](../../controllers/bosh_deployment).
 
 ## Example Deployment Manifest Conversion Details
 
@@ -306,6 +305,16 @@ instance_groups:
           labels: {}
           # Annotations to add to the resources representing the instance group
           annotations: {}
+          # Ops files that are applied on top of instance group properties yaml or BPM data yaml
+          preRenderOps:
+            bpm:
+            - type: replace
+              path: /foo
+              value: bar
+            instanceGroup:
+            - type: replace
+              path: /foo
+              value: bar
           # disable_log_sidecar is an option to disable log sidecar
           disable_log_sidecar: false
           # serviceAccountName is the name of the ServiceAccount to use to run this pod.
@@ -519,7 +528,7 @@ These map explicit variable names to secret names.
 
 Each secret must contain the usual keys used in explicit variables (see [here](https://bosh.io/docs/variable-types/) for more details).
 
-You can find an example [here](examples/bosh-deployment/boshdeployment-with-user-variable.yaml).
+You can find an example [here](https://github.com/cloudfoundry-incubator/quarks-operator/blob/master/docs/examples/bosh-deployment/boshdeployment-with-user-variable.yaml).
 
 ### Instance Groups to Quarks StatefulSets and Jobs
 
@@ -535,11 +544,11 @@ BOSH Auto-Errands (supported only by the operator) are converted to `QuarksJobs`
 
 ### Dealing with AZs
 
-`QuarksStatefulSets` support AZs. You can learn more about this in [the docs](controllers/quarks_statefulset.md#az-support).
+`QuarksStatefulSets` support AZs. You can learn more about this in [the docs](../../controllers/quarks_statefulset#az-support).
 
 ### Support for active/passive pod replicas
 
-`QuarksStatefulSets` support active/passive pod replicas. You can learn more about this in [the docs](controllers/quarks_statefulset.md#quarksstatefulset-active-passive-controller).
+`QuarksStatefulSets` support active/passive pod replicas. You can learn more about this in [the docs](../../controllers/quarks_statefulset#quarksstatefulset-active-passive-controller).
 
 ### Ephemeral Disks
 

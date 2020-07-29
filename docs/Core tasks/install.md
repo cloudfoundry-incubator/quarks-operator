@@ -68,5 +68,5 @@ The main input to the operator is the `BOSH deployment` custom resource and the 
 Besides that there are more things the user can change which will trigger an update of the deployment:
 
 * `ops files` can be added or removed from the `BOSH deployment`. Existing `ops file` config maps and secrets can be modified
-* generated secrets for [explicit variables](docs/from_bosh_to_kube.md#variables-to-quarks-secrets) can be modified
-* secrets for [implicit variables](docs/from_bosh_to_kube.md#manual-implicit-variables) have to be created by the user beforehand anyway, but can also be changed after the initial deployment
+* generated secrets for [explicit variables](https://github.com/cloudfoundry-incubator/cf-operator/blob/master/docs/from_bosh_to_kube.md#variables-to-quarks-secrets) can be modified
+* secrets for [implicit variables](https://github.com/cloudfoundry-incubator/cf-operator/blob/master/docs/from_bosh_to_kube.md#manual-implicit-variables) have to be created by the user beforehand anyway, but can also be changed after the initial deployment
