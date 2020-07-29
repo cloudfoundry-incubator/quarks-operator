@@ -208,6 +208,24 @@ var _ = Describe("Examples Directory", func() {
 
 	})
 
+	Context("bosh-deployment with pre-render ops files", func() {
+		BeforeEach(func() {
+			example = "bosh-deployment/boshdeployment-with-pre-ops.yaml"
+		})
+
+		It("applies the ops file", func() {
+			By("Checking for pods")
+			waitReady("pod/nats-0")
+
+			By("Checking the value in the config file")
+
+			envSetByOps, err := cmdHelper.RunCommandWithOutput(namespace, "nats-0", "env")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(strings.TrimSuffix(envSetByOps, "\n")).To(ContainSubstring("deadbeef"))
+		})
+
+	})
+
 	Context("bosh-deployment with user variables", func() {
 		BeforeEach(func() {
 			example = "bosh-deployment/boshdeployment-with-user-variable.yaml"
