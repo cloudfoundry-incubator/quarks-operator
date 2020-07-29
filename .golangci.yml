@@ -11,7 +11,12 @@ issues:
   # (fill in the rest as needed)
   exclude-rules:
   - linters: [errcheck]
-    text: "Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv). is not checked"
+    text: "Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv|Errorf). is not checked"
+  skip-files:
+  - ".*_fake.go$"
+  skip-dirs:
+  - pkg/kube/client
+
 linters:
   disable-all: true
   enable:
@@ -34,3 +39,4 @@ linters:
   - golint
   - gosimple
   - typecheck
+  - unused
