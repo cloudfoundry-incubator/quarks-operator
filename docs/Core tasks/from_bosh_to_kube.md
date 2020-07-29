@@ -7,37 +7,36 @@ description: >
 ---
 
 
-- [Transforming BOSH concepts to Kubernetes](#transforming-bosh-concepts-to-kubernetes)
-  - [Open Questions](#open-questions)
-  - [Missing Features](#missing-features)
-  - [High-level Direction](#high-level-direction)
-  - [Deployment Lifecycle](#deployment-lifecycle)
-  - [Example Deployment Manifest Conversion Details](#example-deployment-manifest-conversion-details)
-  - [BPM](#bpm)
-    - [Entrypoint & Environment Variables](#entrypoint--environment-variables)
-    - [Resources](#resources)
-    - [Health checks](#health-checks)
-    - [Hooks](#hooks)
-    - [Misc](#misc)
-  - [Conversion Details](#conversion-details)
-    - [Calculation of docker image location for releases](#calculation-of-docker-image-location-for-releases)
-    - [Variables to Quarks Secrets](#variables-to-quarks-secrets)
-      - [Overriding generated variables](#overriding-generated-variables)
-    - [Instance Groups to Quarks StatefulSets and Jobs](#instance-groups-to-quarks-statefulsets-and-jobs)
-      - [BOSH Services vs BOSH Errands](#bosh-services-vs-bosh-errands)
-  - [Miscellaneous](#miscellaneous)
-    - [Dealing with AZs](#dealing-with-azs)
-    - [Support for active/passive pod replicas](#support-for-activepassive-pod-replicas)
-    - [Ephemeral Disks](#ephemeral-disks)
-    - [Credentials for Docker Registries](#credentials-for-docker-registries)
-    - [Running manual errands](#running-manual-errands)
-    - [Readiness and Liveness Probes](#readiness-and-liveness-probes)
-    - [Persistent Disks](#persistent-disks)
-    - [Manual ("implicit") variables](#manual-%22implicit%22-variables)
-    - [Pre_render_scripts](#prerenderscripts)
-    - [BOSH DNS](#bosh-dns)
-  - [Flow](#flow)
-  - [Naming Conventions](#naming-conventions)
+- [Open Questions](#open-questions)
+- [Missing Features](#missing-features)
+- [High-level Direction](#high-level-direction)
+- [Deployment Lifecycle](#deployment-lifecycle)
+- [Example Deployment Manifest Conversion Details](#example-deployment-manifest-conversion-details)
+- [BPM](#bpm)
+  - [Entrypoint & Environment Variables](#entrypoint--environment-variables)
+  - [Resources](#resources)
+  - [Health checks](#health-checks)
+  - [Hooks](#hooks)
+  - [Misc](#misc)
+- [Conversion Details](#conversion-details)
+  - [Calculation of docker image location for releases](#calculation-of-docker-image-location-for-releases)
+  - [Variables to Quarks Secrets](#variables-to-quarks-secrets)
+    - [Overriding generated variables](#overriding-generated-variables)
+  - [Instance Groups to Quarks StatefulSets and Jobs](#instance-groups-to-quarks-statefulsets-and-jobs)
+    - [BOSH Services vs BOSH Errands](#bosh-services-vs-bosh-errands)
+- [Miscellaneous](#miscellaneous)
+  - [Dealing with AZs](#dealing-with-azs)
+  - [Support for active/passive pod replicas](#support-for-activepassive-pod-replicas)
+  - [Ephemeral Disks](#ephemeral-disks)
+  - [Credentials for Docker Registries](#credentials-for-docker-registries)
+  - [Running manual errands](#running-manual-errands)
+  - [Readiness and Liveness Probes](#readiness-and-liveness-probes)
+  - [Persistent Disks](#persistent-disks)
+  - [Manual ("implicit") variables](#manual-implicit-variables)
+  - [Pre_render_scripts](#pre_render_scripts)
+  - [BOSH DNS](#bosh-dns)
+- [Flow](#flow)
+- [Naming Conventions](#naming-conventions)
 
 ## Open Questions
 
@@ -306,6 +305,16 @@ instance_groups:
           labels: {}
           # Annotations to add to the resources representing the instance group
           annotations: {}
+          # Ops files that are applied on top of instance group properties yaml or BPM data yaml
+          preRenderOps:
+            bpm:
+            - type: replace
+              path: /foo
+              value: bar
+            instanceGroup:
+            - type: replace
+              path: /foo
+              value: bar
           # disable_log_sidecar is an option to disable log sidecar
           disable_log_sidecar: false
           # serviceAccountName is the name of the ServiceAccount to use to run this pod.

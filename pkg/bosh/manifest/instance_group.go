@@ -7,6 +7,7 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -215,6 +216,29 @@ type JobDir struct {
 	TmpfsSize string `json:"tmpfs_size,omitempty"`
 }
 
+// OpsPatch represents a Json patch that can be performed
+// on an Instance Group or BPM properties yaml file
+type OpsPatch struct {
+	Type  string      `json:"type,omitempty"`
+	Path  string      `json:"path,omitempty"`
+	Value interface{} `json:"value,omitempty"`
+}
+
+// OpsPatches is a list of ops files
+type OpsPatches []OpsPatch
+
+// Bytes returns the yaml equivalent of the ops patch
+func (o *OpsPatches) Bytes() ([]byte, error) {
+	return yaml.Marshal(o)
+}
+
+// PreRenderOps contains ops files for BPM and Instance Groups
+// yaml files
+type PreRenderOps struct {
+	BPM           OpsPatches `json:"bpm,omitempty"`
+	InstanceGroup OpsPatches `json:"instanceGroup,omitempty"`
+}
+
 // AgentSettings from BOSH deployment manifest.
 // These annotations and labels are added to kube resources.
 // Affinity & tolerations are added into the pod's definition.
@@ -230,6 +254,7 @@ type AgentSettings struct {
 	EphemeralAsPVC               bool                          `json:"ephemeralAsPVC,omitempty"`
 	Disks                        Disks                         `json:"disks,omitempty"`
 	JobBackoffLimit              *int32                        `json:"jobBackoffLimit,omitempty"`
+	PreRenderOps                 *PreRenderOps                 `json:"preRenderOps,omitempty"`
 }
 
 // Set overrides labels and annotations with operator-owned metadata.
