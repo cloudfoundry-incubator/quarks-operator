@@ -90,6 +90,7 @@ jobs:
         bin/test-cli-e2e
         bin/test-helm-e2e
         bin/test-helm-e2e-storage
+        bin/test-helm-e2e-upgrade
       env:
         NODES: "3"
         DEBUG: "yes"

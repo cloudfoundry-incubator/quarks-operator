@@ -1,0 +1,23 @@
+#!/bin/bash
+set -euo pipefail
+
+GIT_ROOT="${GIT_ROOT:-$(git rev-parse --show-toplevel)}"
+. "${GIT_ROOT}/bin/include/versioning"
+. "${GIT_ROOT}/bin/include/docker"
+
+if [ -z ${TEST_NAMESPACE+x} ]; then
+  TEST_NAMESPACE="test-upgrade$(date +%s)"
+  export TEST_NAMESPACE
+fi
+
+# Build the required helm charts to run the cf-operator
+if [ -z "${SKIP_BUILD_HELM:-}" ]; then
+  ./bin/build-helm
+fi
+
+NODES=${NODES:-1}
+FLAKE_ATTEMPTS=${FLAKE_ATTEMPTS:-3}
+ginkgo \
+  --nodes="$NODES" \
+  --flakeAttempts="$FLAKE_ATTEMPTS" \
+  e2e/kube/upgrade
