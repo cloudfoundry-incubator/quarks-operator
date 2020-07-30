@@ -1,14 +1,4 @@
 ---
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ops-scale2
-data:
-  ops: |
-    - type: replace
-      path: /instance_groups/name=quarks-gora1?/instances
-      value: 2
----
 apiVersion: quarks.cloudfoundry.org/v1alpha1
 kind: QuarksSecret
 metadata:
@@ -22,7 +12,8 @@ spec:
       CARef:
         key: certificate
         name: var-quarks-gora-ssl-ca
-      alternativeNames: null
+      alternativeNames: 
+      - quarks-gora
       commonName: metron
       isCA: false
       signerType: local
@@ -36,7 +27,8 @@ metadata:
 spec:
   request:
     certificate:
-      alternativeNames: null
+      alternativeNames: 
+      - quarks-gora
       commonName: quarksGoraCA
       isCA: true
       signerType: local

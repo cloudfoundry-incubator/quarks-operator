@@ -20,36 +20,16 @@ stringData:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: links
-  labels:
-    quarks.cloudfoundry.org/deployment-name: "gora-test-deployment"
-    quarks.cloudfoundry.org/entanglement: link-quarks-gora-quarks-gora
-  annotations:
-    quarks.cloudfoundry.org/provides: '{"name":"quarks-gora-data","type":"quarks-gora-data"}'
-    quarks.cloudfoundry.org/restart-on-update: "true"
-stringData:
-  link: |
-    quarks-gora.ssl: false
-    quarks-gora.port: "55556"
-    quarks-gora.client.port: "55556"
-    quarks-gora.client.ssl: false
-    quarks-gora.client.host: "quarks-gora"
-    text_message: admin
-
----
-apiVersion: v1
-kind: Secret
-metadata:
   name: gora-testing-manifest
 stringData:
   manifest: |
     ---
     releases:
     - name: quarks-gora
-      version: "0.0.9"
+      version: "0.0.12"
       url: docker.io/cfcontainerization
       stemcell:
-        os: SLE_15_SP1-26.6
+        os: SLE_15_SP1-27.2
         version: 7.0.0_374.gb8e8e6af
     instance_groups:
     - name: quarks-gora
@@ -57,22 +37,22 @@ stringData:
       jobs:
       - name: quarks-gora
         release: quarks-gora
-        #consumes:
-        #  quarks-gora-data: {from: quarks-gora-data}
+        provides:
+          quarks-gora: { as: server_data }
         properties:
           quarks-gora:
             port: 55556
-            ssl: false
+            ssl: true
             text_message: "test"
+            cert: ((quarks_gora_ssl/certificate))
+            key: ((quarks_gora_ssl/private_key))
           quarks:
             ports:
             - name: "quarks-gora"
               protocol: "TCP"
               internal: 55556
-        provides:
-          quarks-gora: {as: server-data}
     - name: smoke
-      instances: 2
+      instances: 1
       lifecycle: errand
       jobs:
       - name: smoke-tests
@@ -80,11 +60,15 @@ stringData:
         properties:
           quarks-gora:
             client:
-              port: 55556
-              ssl: false
               host: quarks-gora
-        consumes:
-          quarks-gora: {from: server-data}
+              port: 55556
+              ssl: true
+              cert: ((quarks_gora_ssl_ca/certificate))
+          quarks:
+            ports:
+            - name: "quarks-gora"
+              protocol: "TCP"
+              internal: 55556
       env:
         bosh:
           agent:
@@ -138,6 +122,9 @@ apiVersion: quarks.cloudfoundry.org/v1alpha1
 kind: QuarksJob
 metadata:
   name: autoerrand
+  annotations:
+    quarks.cloudfoundry.org/consumes: '[{"name":"server_data","type":"quarks-gora"}]'
+    quarks.cloudfoundry.org/deployment: gora-test-deployment
 spec:
   template:
     spec:
@@ -146,8 +133,9 @@ spec:
         spec:
           containers:
           - command:
-            - sleep
-            - "15"
+            - sh
+            - -xc
+            - "env && sleep 15"
             image: busybox
             name: busybox
           restartPolicy: Never
@@ -167,7 +155,7 @@ spec:
   template:
     metadata:
       annotations:
-        quarks.cloudfoundry.org/consumes: '[{"name":"server-data","type":"quarks-gora"}]'
+        quarks.cloudfoundry.org/consumes: '[{"name":"server_data","type":"quarks-gora"}]'
         quarks.cloudfoundry.org/deployment: gora-test-deployment
       labels:
         example: owned-by-bdpl

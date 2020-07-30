@@ -64,6 +64,9 @@ test-helm-e2e: tools
 test-helm-e2e-storage:
 	bin/test-helm-e2e-storage
 
+test-helm-e2e-upgrade:
+	bin/test-helm-e2e-upgrade
+
 test-integration-storage:
 	INTEGRATION_SUITE=storage $(QUARKS_UTILS)/bin/test-integration
 
