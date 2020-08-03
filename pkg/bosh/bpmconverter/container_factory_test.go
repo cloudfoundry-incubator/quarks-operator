@@ -1,7 +1,6 @@
 package bpmconverter_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"path"
 
@@ -420,15 +419,8 @@ var _ = Describe("ContainerFactory", func() {
 					},
 				},
 			}
-			containers, err := act()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(len(containers)).To(BeNumerically(">", 0))
-			Expect(containers[0].Name).To(ContainSubstring("fake-job"))
-			Expect(containers[0].Resources.Limits.Memory().String()).To(Equal("0"))
-
-			bytes, err := json.Marshal(containers[0].Resources.Limits)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(string(bytes)).To(Equal("{}"))
+			_, err := act()
+			Expect(err).To(HaveOccurred())
 		})
 
 		Context("with lifecycle events", func() {
