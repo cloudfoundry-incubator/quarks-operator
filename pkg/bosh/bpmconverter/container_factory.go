@@ -1,7 +1,6 @@
 package bpmconverter
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -15,7 +14,6 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/operatorimage"
-	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
@@ -232,7 +230,7 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 				}
 			}
 
-			container := bpmProcessContainer(
+			container, err := bpmProcessContainer(
 				job.Name,
 				process.Name,
 				jobImage,
@@ -243,6 +241,9 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 				bpmConfig.Run.SecurityContext.DeepCopy(),
 				postStart,
 			)
+			if err != nil {
+				return []corev1.Container{}, err
+			}
 
 			containers = append(containers, *container.DeepCopy())
 		}
@@ -385,7 +386,7 @@ func createDirContainer(jobs []bdm.Job, instanceGroupName string) corev1.Contain
 		Image:           operatorimage.GetOperatorDockerImage(),
 		ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
 		VolumeMounts: []corev1.VolumeMount{
-			corev1.VolumeMount{
+			{
 				Name: volumeDataDirName(
 					instanceGroupName),
 				MountPath: VolumeDataDirMountPath,
@@ -494,7 +495,7 @@ func bpmProcessContainer(
 	quarksEnvs []corev1.EnvVar,
 	securityContext *corev1.SecurityContext,
 	postStart postStart,
-) corev1.Container {
+) (corev1.Container, error) {
 	name := names.Sanitize(fmt.Sprintf("%s-%s", jobName, processName))
 
 	if securityContext == nil {
@@ -521,10 +522,9 @@ func bpmProcessContainer(
 	if process.Limits.Memory != "" {
 		quantity, err := resource.ParseQuantity(process.Limits.Memory)
 		if err != nil {
-			log.Errorf(context.TODO(), "Error parsing %s: %v", process.Limits.Memory, err)
-		} else {
-			limits[corev1.ResourceMemory] = quantity
+			return corev1.Container{}, fmt.Errorf("error parsing memory limit '%s': %v", process.Limits.Memory, err)
 		}
+		limits[corev1.ResourceMemory] = quantity
 	}
 	container := corev1.Container{
 		Name:            names.Sanitize(name),
@@ -593,7 +593,7 @@ echo "Done"`,
 			}
 		}
 	}
-	return container
+	return container, nil
 }
 
 // capability converts string slice into Capability slice of kubernetes.
