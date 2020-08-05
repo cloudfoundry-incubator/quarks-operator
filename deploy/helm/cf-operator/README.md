@@ -78,7 +78,8 @@ helm delete cf-operator
 | `serviceAccount.name`                             | If not set and `create` is `true`, a name is generated using the fullname of the chart            |                                                |
 | `global.singleNamespace.create`                   | If true, create a service account and a single watch namespace                                    | `true`                                         |
 | `global.singleNamespace.name`                     | Name of the single watch namespace, that will be watched for BOSH deployment                      | `staging`                                      |
-
+| `applyCRD`              | If True, the quarks-operator will install the CRD's.                                                                        | `true`
+|
 > **Note:**
 >
 > `global.operator.webhook.useServiceReference` will override `operator.webhook.endpoint` configuration
