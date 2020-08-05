@@ -4,6 +4,10 @@
 
 This helm chart deploys the cf-operator, which allow the deployment of a bosh manifest through a configmap and watches for changes on it.
 
+The Quarks-operator documentation is available at: https://quarks.suse.dev/docs/
+
+For notes about the installation, see the relevant section: https://quarks.suse.dev/docs/core-tasks/install/
+
 ## Installing the Latest Stable Chart
 
 To install the latest stable helm chart, with the `cf-operator` as the release name and namespace:
