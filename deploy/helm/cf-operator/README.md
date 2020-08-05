@@ -43,11 +43,11 @@ helm install relname1 quarks/cf-operator \
 
 Manually create before running `helm install`, for each namespace:
 
-* a namespace "staging1" with the following labels (note: "true" and "qjob-persist-output" are the defaults from `values.yaml`):
-  * quarks.cloudfoundry.org/monitored: "true"
-  * quarks.cloudfoundry.org/qjob-service-account: qjob-account1
-* a service account named "qjob-account1"
-* a role binding from the existing cluster role "qjob-persist-output" to "qjob-account1" in namespace "staging1"
+* a namespace "staging1" with the following labels (note: "cfo" and "qjob-persist-output" are the defaults from `values.yaml`):
+  * quarks.cloudfoundry.org/monitored: cfo
+  * quarks.cloudfoundry.org/qjob-service-account: qjob-persist-output
+* a service account named "qjob-persist-output"
+* a role binding from the existing cluster role "qjob-persist-output" to "qjob-persist-output" service account in namespace "staging1"
 
 ## Installing the Chart From the Development Branch
 
