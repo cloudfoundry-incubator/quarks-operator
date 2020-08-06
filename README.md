@@ -28,7 +28,7 @@ It's implemented as a k8s operator, an active controller component which acts up
 ----
 
 - [Features](https://quarks.suse.dev/docs/features/) 
-   - [Controllers](https://quarks.suse.dev/docs/controllers/)
+   - [Controllers](https://quarks.suse.dev/docs/development/controllers/)
    - [BOSH Variables interpolation](https://quarks.suse.dev/docs/features/variables/)
 - [Installing](https://quarks.suse.dev/docs/core-tasks/install/)
   - [Troubleshooting](https://quarks.suse.dev/docs/core-tasks/troubleshooting/)
