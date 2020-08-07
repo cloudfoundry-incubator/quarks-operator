@@ -30,6 +30,7 @@ interpolated manifest to STDOUT
 	PreRun: func(cmd *cobra.Command, args []string) {
 		boshManifestFlagViperBind(cmd.Flags())
 		outputFilePathFlagViperBind(cmd.Flags())
+		viper.BindPFlag("variables-dir", cmd.Flags().Lookup("variables-dir"))
 	},
 	RunE: func(_ *cobra.Command, args []string) (err error) {
 		defer func() {
@@ -75,18 +76,15 @@ interpolated manifest to STDOUT
 
 func init() {
 	utilCmd.AddCommand(variableInterpolationCmd)
-	variableInterpolationCmd.Flags().StringP("variables-dir", "v", "", "path to the variables dir")
+	pf := variableInterpolationCmd.Flags()
 
-	viper.BindPFlag("variables-dir", variableInterpolationCmd.Flags().Lookup("variables-dir"))
-
+	pf.StringP("variables-dir", "v", "", "path to the variables dir")
 	argToEnv := map[string]string{
 		"variables-dir": "VARIABLES_DIR",
 	}
 
-	pf := variableInterpolationCmd.Flags()
 	boshManifestFlagCobraSet(pf, argToEnv)
 	outputFilePathFlagCobraSet(pf, argToEnv)
 
 	cmd.AddEnvToUsage(variableInterpolationCmd, argToEnv)
-
 }
