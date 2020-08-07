@@ -23,9 +23,9 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers"
 	cfakes "code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/fakes"
 	"code.cloudfoundry.org/quarks-operator/testing"
-	"code.cloudfoundry.org/quarks-secret/pkg/credsgen"
-	gfakes "code.cloudfoundry.org/quarks-secret/pkg/credsgen/fakes"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/credsgen"
+	gfakes "code.cloudfoundry.org/quarks-utils/pkg/credsgen/fakes"
 	cmdhelper "code.cloudfoundry.org/quarks-utils/testing"
 )
 
