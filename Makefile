@@ -80,8 +80,7 @@ gen-fakes:
 	bin/gen-fakes
 
 gen-command-docs:
-	rm -f docs/commands/*
-	go run cmd/gen-command-docs.go
+	go run cmd/gen-command-docs.go docs/commands/
 
 gen-crd-docs:
 	kubectl get crd boshdeployments.quarks.cloudfoundry.org -o yaml > docs/crds/quarks_v1alpha1_boshdeployment_crd.yaml
