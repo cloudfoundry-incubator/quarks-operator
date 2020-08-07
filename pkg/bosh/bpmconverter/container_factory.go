@@ -3,6 +3,7 @@ package bpmconverter
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -13,6 +14,7 @@ import (
 	"code.cloudfoundry.org/quarks-operator/container-run/pkg/containerrun"
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/logrotate"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/operatorimage"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
@@ -275,6 +277,10 @@ func logsTailerContainer() corev1.Container {
 			{
 				Name:  EnvLogsDir,
 				Value: "/var/vcap/sys/log",
+			},
+			{
+				Name:  "LOGROTATE_INTERVAL",
+				Value: strconv.Itoa(logrotate.GetInterval()),
 			},
 		},
 		SecurityContext: &corev1.SecurityContext{
