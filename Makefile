@@ -68,7 +68,7 @@ test-integration-storage:
 	INTEGRATION_SUITE=storage $(QUARKS_UTILS)/bin/test-integration
 
 test-integration-subcmds:
-	INTEGRATION_SUITE=util $(QUARKS_UTILS)/bin/test-integration util
+	INTEGRATION_SUITE=util $(QUARKS_UTILS)/bin/test-integration
 ############ GENERATE TARGETS ############
 
 generate: gen-kube gen-fakes
