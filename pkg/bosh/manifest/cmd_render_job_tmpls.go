@@ -138,8 +138,10 @@ func RenderJobTemplates(
 					if err != nil {
 						return err
 					}
-					defer absDestFile.Close()
 					if err = renderPointer.Render(filepath.Join(jobSrcDir, "templates", source), absDestFile.Name()); err != nil {
+						return err
+					}
+					if err = absDestFile.Close(); err != nil {
 						return err
 					}
 
@@ -170,10 +172,13 @@ func runRenderScript(
 			return createErr(err)
 		}
 		defer os.Remove(tmpFile.Name())
-		defer tmpFile.Close()
 
 		// Write the pre-render script contents.
 		if _, err = tmpFile.Write([]byte(script)); err != nil {
+			return createErr(err)
+		}
+
+		if err = tmpFile.Close(); err != nil {
 			return createErr(err)
 		}
 
