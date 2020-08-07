@@ -22,6 +22,9 @@ image:
   # tag of the operator docker image
   tag: foobar
 
+# logrotateInterval is the time between logrotate calls for instance groups in minutes
+logrotateInterval: 1440
+
 # logLevel defines from which level the logs should be printed (trace,debug,info,warn).
 logLevel: debug
 
