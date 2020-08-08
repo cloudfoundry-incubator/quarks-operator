@@ -36,6 +36,8 @@ spec:
             {{- end }}
             - name: LOG_LEVEL
               value: "{{ .Values.logLevel }}"
+            - name: LOGROTATE_INTERVAL
+              value: "{{ .Values.logrotateInterval }}"
             - name: MONITORED_ID
               value: {{ .Values.global.monitoredID }}
             - name: CF_OPERATOR_NAMESPACE

@@ -70,6 +70,7 @@ helm delete cf-operator
 | `image.repository`                                | Docker hub repository for the cf-operator image                                                   | `cf-operator`                                  |
 | `image.org`                                       | Docker hub organization for the cf-operator image                                                 | `cfcontainerization`                           |
 | `image.tag`                                       | Docker image tag                                                                                  | `foobar`                                       |
+| `logrotateInterval`                               | Logrotate interval in minutes                                                                     | `1440`                                         |
 | `global.contextTimeout`                           | Will set the context timeout in seconds, for future K8S API requests                              | `300`                                          |
 | `global.image.pullPolicy`                         | Kubernetes image pullPolicy                                                                       | `IfNotPresent`                                 |
 | `global.image.credentials`                        | Kubernetes image pull secret credentials (map with keys `servername`, `username`, and `password`) | `nil`                                          |

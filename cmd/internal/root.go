@@ -18,6 +18,7 @@ import (
 
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/operator"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/logrotate"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/operatorimage"
 	"code.cloudfoundry.org/quarks-operator/version"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
@@ -88,6 +89,7 @@ var rootCmd = &cobra.Command{
 		cfg.WebhookUseServiceRef = useServiceRef
 		cfg.MaxBoshDeploymentWorkers = viper.GetInt("max-boshdeployment-workers")
 		cfg.MaxQuarksStatefulSetWorkers = viper.GetInt("max-quarks-statefulset-workers")
+		logrotate.SetInterval(viper.GetInt("logrotate-interval"))
 
 		cmd.CtxTimeOut(cfg)
 
@@ -148,6 +150,7 @@ func init() {
 
 	pf.StringP("bosh-dns-docker-image", "", "coredns/coredns:1.6.3", "The docker image used for emulating bosh DNS (a CoreDNS image)")
 	pf.String("cluster-domain", "cluster.local", "The Kubernetes cluster domain")
+	pf.IntP("logrotate-interval", "i", 24*60, "Interval between logrotate calls for instance groups in minutes")
 	pf.Int("max-boshdeployment-workers", 1, "Maximum number of workers concurrently running BOSHDeployment controller")
 	pf.Int("max-quarks-statefulset-workers", 1, "Maximum number of workers concurrently running QuarksStatefulSet controller")
 	pf.StringP("operator-webhook-service-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")
@@ -157,6 +160,7 @@ func init() {
 	for _, name := range []string{
 		"bosh-dns-docker-image",
 		"cluster-domain",
+		"logrotate-interval",
 		"max-boshdeployment-workers",
 		"max-quarks-statefulset-workers",
 		"operator-webhook-service-host",
@@ -168,6 +172,7 @@ func init() {
 
 	argToEnv["bosh-dns-docker-image"] = "BOSH_DNS_DOCKER_IMAGE"
 	argToEnv["cluster-domain"] = "CLUSTER_DOMAIN"
+	argToEnv["logrotate-interval"] = "LOGROTATE_INTERVAL"
 	argToEnv["max-boshdeployment-workers"] = "MAX_BOSHDEPLOYMENT_WORKERS"
 	argToEnv["max-quarks-statefulset-workers"] = "MAX_QUARKS_STATEFULSET_WORKERS"
 	argToEnv["operator-webhook-service-host"] = "CF_OPERATOR_WEBHOOK_SERVICE_HOST"
