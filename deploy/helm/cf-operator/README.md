@@ -65,12 +65,15 @@ helm delete cf-operator
 
 ## Configuration
 
+For more possible parameters look in [`values.yml`](https://github.com/cloudfoundry-incubator/quarks-operator/blob/master/deploy/helm/cf-operator/values.yaml).
+
 | Parameter                                         | Description                                                                                       | Default                                        |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
 | `image.repository`                                | Docker hub repository for the cf-operator image                                                   | `cf-operator`                                  |
 | `image.org`                                       | Docker hub organization for the cf-operator image                                                 | `cfcontainerization`                           |
 | `image.tag`                                       | Docker image tag                                                                                  | `foobar`                                       |
 | `logrotateInterval`                               | Logrotate interval in minutes                                                                     | `1440`                                         |
+| `logLevel`                                        | Only show log messages which are at least at the given level (trace,debug,info,warn)              | `debug`                                        |
 | `global.contextTimeout`                           | Will set the context timeout in seconds, for future K8S API requests                              | `300`                                          |
 | `global.image.pullPolicy`                         | Kubernetes image pullPolicy                                                                       | `IfNotPresent`                                 |
 | `global.image.credentials`                        | Kubernetes image pull secret credentials (map with keys `servername`, `username`, and `password`) | `nil`                                          |
