@@ -1,0 +1,36 @@
+---
+apiVersion: quarks.cloudfoundry.org/v1alpha1
+kind: QuarksSecret
+metadata:
+  name: var-quarks-gora-ssl
+spec:
+  request:
+    certificate:
+      CAKeyRef:
+        key: private_key
+        name: var-quarks-gora-ssl-ca
+      CARef:
+        key: certificate
+        name: var-quarks-gora-ssl-ca
+      alternativeNames: 
+      - quarks-gora
+      commonName: metron
+      isCA: false
+      signerType: local
+  secretName: var-quarks-gora-ssl
+  type: certificate
+---
+apiVersion: quarks.cloudfoundry.org/v1alpha1
+kind: QuarksSecret
+metadata:
+  name: var-quarks-gora-ssl-ca
+spec:
+  request:
+    certificate:
+      alternativeNames: 
+      - quarks-gora
+      commonName: quarksGoraCA
+      isCA: true
+      signerType: local
+  secretName: var-quarks-gora-ssl-ca
+  type: certificate
