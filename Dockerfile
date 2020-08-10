@@ -12,7 +12,7 @@ COPY go.sum .
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o "/usr/local/bin/container-run" code.cloudfoundry.org/quarks-container-run/cmd
 
 ################################################################################
-FROM golang:1.13.5 AS build
+FROM golang:1.14.7 AS build
 ARG GOPROXY
 ENV GOPROXY $GOPROXY
 ARG GO111MODULE="on"
