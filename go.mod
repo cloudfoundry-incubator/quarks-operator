@@ -1,6 +1,7 @@
 module code.cloudfoundry.org/quarks-operator
 
 require (
+	code.cloudfoundry.org/quarks-container-run v0.0.0-20200401175908-5c2ca1065b9e
 	code.cloudfoundry.org/quarks-job v1.0.179
 	code.cloudfoundry.org/quarks-secret v1.0.697
 	code.cloudfoundry.org/quarks-statefulset v0.0.0-20200722160349-65184c60c678
@@ -14,7 +15,6 @@ require (
 	github.com/daaku/go.zipexe v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/go-test/deep v1.0.6
-	github.com/golang/mock v1.4.3
 	github.com/gonvenience/bunt v1.1.1
 	github.com/hpcloud/tail v1.0.0
 	github.com/imdario/mergo v0.3.9
