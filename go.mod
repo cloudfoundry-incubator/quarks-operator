@@ -42,4 +42,4 @@ require (
 	sigs.k8s.io/yaml v1.2.0
 )
 
-go 1.13
+go 1.14
