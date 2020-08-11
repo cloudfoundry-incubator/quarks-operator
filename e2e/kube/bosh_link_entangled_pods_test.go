@@ -71,6 +71,8 @@ var _ = Describe("BOSHLinkEntanglements", func() {
 
 		Context("when entangling a statefulsets pod", func() {
 			It("supports entangled pods", func() {
+				Skip("test is broken and these entanglements are not required in 4.*")
+
 				const (
 					podName  = "entangled-statefulset-0"
 					selector = "pod/entangled-statefulset-0"
@@ -104,6 +106,8 @@ var _ = Describe("BOSHLinkEntanglements", func() {
 
 		Context("when entangling a deployments pod", func() {
 			It("supports entangled pods", func() {
+				Skip("test is broken and these entanglements are not required in 4.*")
+
 				const selector = "example=owned-by-dpl"
 				// pod names in deployments contain a dynamic suffix
 				var podName string
