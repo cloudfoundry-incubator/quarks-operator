@@ -38,7 +38,7 @@ It will also run logrotate.
 		d := time.Duration(viper.GetInt("logrotate-interval")) * time.Minute
 		go func() {
 			for range time.Tick(d) {
-				log.Debug("running logroate")
+				log.Debug("running logrotate")
 				out, err := logrotate.Logrotate()
 				if err != nil {
 					log.Errorf("failed to run logrotate: %v", err)
