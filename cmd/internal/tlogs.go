@@ -12,7 +12,9 @@ import (
 	"github.com/hpcloud/tail"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/logrotate"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 )
@@ -26,11 +28,46 @@ var tailLogsCmd = &cobra.Command{
 This will tail all logs under the specified dir.
 The dir can be set using the "-z" flag, or setting
 the LOGS_DIR env variable.
+It will also run logrotate.
 
 `,
-	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		return TailLogsFromDir()
+	RunE: func(_ *cobra.Command, args []string) (err error) {
+		log = logger.New(cmd.LogLevel())
+		defer log.Sync()
+
+		d := time.Duration(viper.GetInt("logrotate-interval")) * time.Minute
+		go func() {
+			for range time.Tick(d) {
+				log.Debug("running logroate")
+				out, err := logrotate.Logrotate()
+				if err != nil {
+					log.Errorf("failed to run logrotate: %v", err)
+					log.Debugf("logrotate: %s", out)
+				}
+			}
+		}()
+		return TailLogsFromDir(log)
 	},
+}
+
+func init() {
+	utilCmd.AddCommand(tailLogsCmd)
+
+	tailLogsCmd.Flags().StringP("logs-dir", "z", "", "a path from where to tail logs")
+	viper.BindPFlag("logs-dir", tailLogsCmd.Flags().Lookup("logs-dir"))
+
+	tailLogsCmd.Flags().IntP("logrotate-interval", "i", 24*60, "interval between logrotates in minutes")
+	viper.BindPFlag("logrotate-interval", tailLogsCmd.Flags().Lookup("logrotate-interval"))
+
+	argToEnv := map[string]string{
+		"logs-dir":           "LOGS_DIR",
+		"logrotate-interval": "LOGROTATE_INTERVAL",
+	}
+	cmd.AddEnvToUsage(tailLogsCmd, argToEnv)
+
+	// Force colors to be seen in the pod STDOUT
+	// even though it is not a terminal
+	bunt.ColorSetting = bunt.ON
 }
 
 // TailLogsFromDir will stream to the pod
@@ -40,10 +77,7 @@ the LOGS_DIR env variable.
 //
 // This only tail logs from files names
 // in the form *.log
-func TailLogsFromDir() error {
-	log = logger.New(cmd.LogLevel())
-	defer log.Sync()
-
+func TailLogsFromDir(log *zap.SugaredLogger) error {
 	monitorDir := viper.GetString("logs-dir")
 	if len(monitorDir) == 0 {
 		return fmt.Errorf("logs directory cannot be empty")
@@ -137,18 +171,6 @@ func TailLogsFromDir() error {
 	return nil
 }
 
-func init() {
-	utilCmd.AddCommand(tailLogsCmd)
-
-	tailLogsCmd.Flags().StringP("logs-dir", "z", "", "a path from where to tail logs")
-	viper.BindPFlag("logs-dir", tailLogsCmd.Flags().Lookup("logs-dir"))
-
-	argToEnv := map[string]string{
-		"logs-dir": "LOGS_DIR",
-	}
-	cmd.AddEnvToUsage(tailLogsCmd, argToEnv)
-}
-
 func addExistingFiles(monitDir string, fileRegex *regexp.Regexp, fileList chan string) error {
 	err := filepath.Walk(monitDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -239,12 +261,6 @@ func LogTailors(files chan string) error {
 
 	<-done
 	return nil
-}
-
-// Force colors to be seen in the pod STDOUT
-// even though it is not a terminal
-func init() {
-	bunt.ColorSetting = bunt.ON
 }
 
 // PrintOutput ensures that all logs send to STDOUT stream
