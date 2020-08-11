@@ -524,6 +524,7 @@ func bpmProcessContainer(
 		workdir = filepath.Join(VolumeJobsDirMountPath, jobName)
 	}
 	command, args := generateBPMCommand(jobName, &process, postStart)
+
 	limits := corev1.ResourceList{}
 	if process.Limits.Memory != "" {
 		quantity, err := resource.ParseQuantity(process.Limits.Memory)
@@ -532,6 +533,14 @@ func bpmProcessContainer(
 		}
 		limits[corev1.ResourceMemory] = quantity
 	}
+	if process.Limits.CPU != "" {
+		quantity, err := resource.ParseQuantity(process.Limits.CPU)
+		if err != nil {
+			return corev1.Container{}, fmt.Errorf("error parsing cpu limit '%s': %v", process.Limits.CPU, err)
+		}
+		limits[corev1.ResourceCPU] = quantity
+	}
+
 	container := corev1.Container{
 		Name:            names.Sanitize(name),
 		Image:           jobImage,
