@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -13,6 +14,7 @@ import (
 	"code.cloudfoundry.org/cf-operator/container-run/pkg/containerrun"
 	"code.cloudfoundry.org/cf-operator/pkg/bosh/bpm"
 	bdm "code.cloudfoundry.org/cf-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/logrotate"
 	boshnames "code.cloudfoundry.org/cf-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
@@ -258,7 +260,7 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 	// appending the sidecar, default behaviour is to
 	// colocate it always in the pod.
 	if !c.disableLogSidecar {
-		logsTailer := logsTailerContainer(c.instanceGroupName)
+		logsTailer := logsTailerContainer()
 		containers = append(containers, logsTailer)
 	}
 
@@ -266,7 +268,7 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 }
 
 // logsTailerContainer is a container that tails all logs in /var/vcap/sys/log.
-func logsTailerContainer(instanceGroupName string) corev1.Container {
+func logsTailerContainer() corev1.Container {
 	return corev1.Container{
 		Name:            "logs",
 		Image:           operatorimage.GetOperatorDockerImage(),
@@ -280,6 +282,10 @@ func logsTailerContainer(instanceGroupName string) corev1.Container {
 			{
 				Name:  EnvLogsDir,
 				Value: "/var/vcap/sys/log",
+			},
+			{
+				Name:  "LOGROTATE_INTERVAL",
+				Value: strconv.Itoa(logrotate.GetInterval()),
 			},
 		},
 		SecurityContext: &corev1.SecurityContext{
