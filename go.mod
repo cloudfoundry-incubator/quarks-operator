@@ -1,9 +1,9 @@
 module code.cloudfoundry.org/quarks-operator
 
 require (
-	code.cloudfoundry.org/quarks-job v1.0.179
-	code.cloudfoundry.org/quarks-secret v1.0.697
-	code.cloudfoundry.org/quarks-statefulset v0.0.0-20200722160349-65184c60c678
+	code.cloudfoundry.org/quarks-job v1.0.187
+	code.cloudfoundry.org/quarks-secret v1.0.705
+	code.cloudfoundry.org/quarks-statefulset v0.0.0-20200807110127-ebabb749a8aa
 	code.cloudfoundry.org/quarks-utils v0.0.0-20200811100212-17790f5204d6
 	github.com/SUSE/go-patch v0.3.0
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
