@@ -1,13 +1,13 @@
 ARG BASE_IMAGE=registry.opensuse.org/cloud/platform/quarks/sle_15_sp1/quarks-operator-base:latest
 
+
 ################################################################################
 FROM golang:1.13.15 AS containerrun
 ARG GOPROXY
 ENV GOPROXY $GOPROXY
 
-WORKDIR /go/src/code.cloudfoundry.org/quarks-operator
-COPY go.mod .
-COPY go.sum .
+ENV GO111MODULE on
+
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o "/usr/local/bin/container-run" code.cloudfoundry.org/quarks-container-run/cmd
 
 ################################################################################
