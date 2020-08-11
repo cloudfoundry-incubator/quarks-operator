@@ -1,7 +1,6 @@
 module code.cloudfoundry.org/quarks-operator
 
 require (
-	code.cloudfoundry.org/quarks-container-run v0.0.0-20200401175908-5c2ca1065b9e
 	code.cloudfoundry.org/quarks-job v1.0.179
 	code.cloudfoundry.org/quarks-secret v1.0.697
 	code.cloudfoundry.org/quarks-statefulset v0.0.0-20200722160349-65184c60c678
