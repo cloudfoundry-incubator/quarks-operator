@@ -25,12 +25,9 @@ staticcheck:
 
 ############ BUILD TARGETS ############
 
-.PHONY: build build-container-run
+.PHONY: build
 build:
 	bin/build
-
-build-container-run:
-	bin/build-container-run $(MAKEFILE_DIR)/binaries
 
 build-image:
 	bin/build-image
