@@ -1,11 +1,15 @@
 package util_test
 
 import (
-	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
-	"code.cloudfoundry.org/quarks-utils/testing/machine"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	corev1 "k8s.io/api/core/v1"
+
+	"code.cloudfoundry.org/cf-operator/pkg/kube/util/operatorimage"
+	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
 
 var _ = Describe("when testing tail-logs subcommand", func() {
