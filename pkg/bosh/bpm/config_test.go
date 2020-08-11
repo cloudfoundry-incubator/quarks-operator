@@ -5,6 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	corev1 "k8s.io/api/core/v1"
+	resource "k8s.io/apimachinery/pkg/api/resource"
 
 	bpm "code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
@@ -27,6 +28,11 @@ var _ = Describe("BPM Config", func() {
       FOO: BAR
     limits:
       processes: 10
+      cpu: 3
+      memory: 100
+    requests:
+      cpu: 1
+      memory: 20
     ephemeral_disk: true
     additional_volumes:
     - path: /var/vcap/data/sockets
@@ -55,7 +61,15 @@ var _ = Describe("BPM Config", func() {
 			Expect(serverProcess.Executable).To(Equal("/var/vcap/data/packages/server/serve.sh"))
 			Expect(serverProcess.Args).To(Equal([]string{"--port", "2424"}))
 			Expect(serverProcess.Env).To(Equal(map[string]string{"FOO": "BAR"}))
-			Expect(serverProcess.Limits).To(Equal(bpm.Limits{Processes: 10, Memory: "", OpenFiles: 0}))
+			Expect(serverProcess.Limits).To(Equal(bpm.Limits{Processes: 10, Memory: "100", OpenFiles: 0, CPU: "3"}))
+
+			quantity, err := resource.ParseQuantity("1")
+			Expect(err).ToNot(HaveOccurred())
+			memQuantity, err := resource.ParseQuantity("20")
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(serverProcess.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: quantity, corev1.ResourceMemory: memQuantity}))
+
 			Expect(serverProcess.EphemeralDisk).To(Equal(pointers.Bool(true)))
 			Expect(serverProcess.AdditionalVolumes).To(Equal([]bpm.Volume{bpm.Volume{Path: "/var/vcap/data/sockets", Writable: true}}))
 			Expect(serverProcess.Capabilities).To(Equal([]string{"NET_BIND_SERVICE"}))
