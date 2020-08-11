@@ -1,10 +1,10 @@
 module code.cloudfoundry.org/quarks-operator
 
 require (
-	code.cloudfoundry.org/quarks-job v1.0.179
-	code.cloudfoundry.org/quarks-secret v1.0.697
-	code.cloudfoundry.org/quarks-statefulset v0.0.0-20200722160349-65184c60c678
-	code.cloudfoundry.org/quarks-utils v0.0.0-20200807165244-e8a67008d68b
+	code.cloudfoundry.org/quarks-job v1.0.187
+	code.cloudfoundry.org/quarks-secret v1.0.705
+	code.cloudfoundry.org/quarks-statefulset v0.0.0-20200807110127-ebabb749a8aa
+	code.cloudfoundry.org/quarks-utils v0.0.0-20200811100212-17790f5204d6
 	github.com/SUSE/go-patch v0.3.0
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
 	github.com/charlievieth/fs v0.0.0-20170613215519-7dc373669fa1 // indirect
@@ -14,7 +14,6 @@ require (
 	github.com/daaku/go.zipexe v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/go-test/deep v1.0.6
-	github.com/golang/mock v1.4.3
 	github.com/gonvenience/bunt v1.1.1
 	github.com/hpcloud/tail v1.0.0
 	github.com/imdario/mergo v0.3.9
@@ -42,4 +41,4 @@ require (
 	sigs.k8s.io/yaml v1.2.0
 )
 
-go 1.13
+go 1.14

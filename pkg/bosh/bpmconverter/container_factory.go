@@ -11,7 +11,6 @@ import (
 	resource "k8s.io/apimachinery/pkg/api/resource"
 
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/container-run/pkg/containerrun"
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/logrotate"
@@ -221,13 +220,13 @@ func (c *ContainerFactoryImpl) JobsToContainers(
 			if processIndex == 0 {
 				conditionProperty := bpmConfig.PostStart.Condition
 				if conditionProperty != nil && conditionProperty.Exec != nil && len(conditionProperty.Exec.Command) > 0 {
-					postStart.condition = &containerrun.Command{
+					postStart.condition = &postStartCmd{
 						Name: conditionProperty.Exec.Command[0],
 						Arg:  conditionProperty.Exec.Command[1:],
 					}
 				}
 
-				postStart.command = &containerrun.Command{
+				postStart.command = &postStartCmd{
 					Name: filepath.Join(VolumeJobsDirMountPath, job.Name, "bin", "post-start"),
 				}
 			}
@@ -487,8 +486,13 @@ func bpmPreStartInitContainer(
 	}
 }
 
+// Command represents a command to be run.
+type postStartCmd struct {
+	Name string
+	Arg  []string
+}
 type postStart struct {
-	command, condition *containerrun.Command
+	command, condition *postStartCmd
 }
 
 func bpmProcessContainer(

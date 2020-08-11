@@ -373,8 +373,9 @@ func (c *Catalog) Sleep1hPodSpec() corev1.PodSpec {
 // that writes into files under /var/vcap/sys/log
 // The side-car container, will be tailing the logs of specific files under
 // /var/vcap/sys/log, by running the cf-operator util tail-logs subcmommand
-func (c *Catalog) PodWithTailLogsContainer(podName string, parentPodCmd string, parentCName string, sidecardCName string,
-	dockerImg string) corev1.Pod {
+func (c *Catalog) PodWithTailLogsContainer(podName string, parentPodCmd string, parentCName string, sidecardCName string, dockerImg string) corev1.Pod {
+	rootUserID := int64(0)
+
 	return corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: podName,
@@ -417,6 +418,9 @@ func (c *Catalog) PodWithTailLogsContainer(podName string, parentPodCmd string, 
 							Name:  logsDir,
 							Value: logsDirPath,
 						},
+					},
+					SecurityContext: &corev1.SecurityContext{
+						RunAsUser: &rootUserID,
 					},
 				},
 			},

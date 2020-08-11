@@ -33,7 +33,6 @@ func boshManifestFlagCobraSet(pf *flag.FlagSet, argToEnv map[string]string) {
 
 func boshManifestFlagViperBind(pf *flag.FlagSet) {
 	viper.BindPFlag("bosh-manifest-path", pf.Lookup("bosh-manifest-path"))
-
 }
 
 func baseDirFlagValidation() (string, error) {
