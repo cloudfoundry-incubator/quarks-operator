@@ -10,7 +10,7 @@ import (
 )
 
 var _ = Describe("BOSHDeployment", func() {
-	When("specifying cpu/memory resources requests and limits in bpm configs", func() {
+	When("specifying cpu/memory resources requests and limits in the quarks.bpm config", func() {
 		kubectl := cmdHelper.NewKubectl()
 
 		BeforeEach(func() {
