@@ -18,6 +18,7 @@ type Hooks struct {
 // Limits from a BPM config
 type Limits struct {
 	Memory    string `yaml:"memory,omitempty" json:"memory,omitempty"`
+	CPU       string `yaml:"cpu,omitempty" json:"cpu,omitempty"`
 	OpenFiles int    `yaml:"open_files,omitempty" json:"open_files,omitempty"`
 	Processes int    `yaml:"processes,omitempty" json:"processes,omitempty"`
 }
