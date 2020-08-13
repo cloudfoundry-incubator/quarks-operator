@@ -66,21 +66,29 @@ var _ = Describe("Quarks-operator Upgrade test", func() {
 			return podNames[0]
 		}
 
-		upgradeDeploymentToCurrent := func() {
+		upgradeDeploymentToCurrent := func(singlenamespace bool) {
 			dir, err := os.Getwd()
 			Expect(err).ToNot(HaveOccurred())
 
 			chartPath := fmt.Sprintf("%s%s", dir, "/../../../helm/cf-operator")
-
-			teardown, err := e2ehelper.UpgradeChart(chartPath, operatorNamespace,
-				"--set", fmt.Sprintf("global.singleNamespace.create=%s", "false"),
-				"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
-				"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID))
-			Expect(err).ToNot(HaveOccurred())
-			teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
+			if singlenamespace {
+				teardown, err := e2ehelper.UpgradeChart(chartPath, operatorNamespace,
+					"--set", fmt.Sprintf("global.singleNamespace.name=%s", namespace),
+					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
+					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID))
+				Expect(err).ToNot(HaveOccurred())
+				teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
+			} else {
+				teardown, err := e2ehelper.UpgradeChart(chartPath, operatorNamespace,
+					"--set", fmt.Sprintf("global.singleNamespace.create=%s", "false"),
+					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
+					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID))
+				Expect(err).ToNot(HaveOccurred())
+				teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
+			}
 		}
 
-		deployLatestOperator := func() {
+		deployLatestOperator := func(singlenamespace bool) {
 			path, teardown, err := e2ehelper.GetChart("quarks/cf-operator")
 			Expect(err).ToNot(HaveOccurred())
 			teardowns = append(teardowns, teardown)
@@ -89,28 +97,39 @@ var _ = Describe("Quarks-operator Upgrade test", func() {
 			Expect(err).ToNot(HaveOccurred())
 			teardowns = append(teardowns, teardown)
 
-			// Deploys the chart without single namespace.
-			// If singleNamespace is enabled, then during upgrades namespace is going to be deleted and recreated.
-			teardown, err = e2ehelper.InstallChart(path+"/cf-operator", operatorNamespace,
-				//"--set", fmt.Sprintf("global.singleNamespace.name=%s", namespace),
-				"--set", fmt.Sprintf("global.singleNamespace.create=%s", "false"),
-				"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
-				"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
-			)
+			if singlenamespace {
+				teardown, err = e2ehelper.InstallChart(path+"/cf-operator", operatorNamespace,
+					"--set", fmt.Sprintf("global.singleNamespace.name=%s", monitoredID),
+					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
+					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
+				)
+			} else {
+				teardown, err = e2ehelper.InstallChart(path+"/cf-operator", operatorNamespace,
+					"--set", fmt.Sprintf("global.singleNamespace.create=%s", "false"),
+					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
+					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
+				)
+			}
+
 			Expect(err).ToNot(HaveOccurred())
 			teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
 
-			var nsTeardowns []e2ehelper.TearDownFunc
-			namespace, nsTeardowns, err = e2ehelper.CreateMonitoredNamespaceFromExistingRole(monitoredID)
-			teardowns = append(teardowns, nsTeardowns...)
-			Expect(err).ToNot(HaveOccurred())
+			if !singlenamespace {
+				var nsTeardowns []e2ehelper.TearDownFunc
+
+				namespace, nsTeardowns, err = e2ehelper.CreateMonitoredNamespaceFromExistingRole(monitoredID)
+				teardowns = append(teardowns, nsTeardowns...)
+				Expect(err).ToNot(HaveOccurred())
+			} else {
+				namespace = monitoredID
+			}
 		}
 
-		It("deploys and manage a bosh deployment between upgrades", func() {
+		upgradeTest := func(singlenamesapce bool) {
 			By("Deploying the latest release of cfo")
 			var err error
 			// Get latest release and deploy the operator
-			deployLatestOperator()
+			deployLatestOperator(singlenamesapce)
 
 			applyNamespace(namespace, "bosh-deployment/quarks-gora-certs.yaml")
 			err = kubectl.WaitForSecret(namespace, "var-quarks-gora-ssl")
@@ -193,7 +212,7 @@ var _ = Describe("Quarks-operator Upgrade test", func() {
 
 			By("Upgrading the operator to the current code checkout")
 			// Upgrade to the version of the operator from the checkout
-			upgradeDeploymentToCurrent()
+			upgradeDeploymentToCurrent(singlenamesapce)
 
 			waitReadyNamespace(namespace, "pod/quarks-gora-1")
 
@@ -260,6 +279,15 @@ var _ = Describe("Quarks-operator Upgrade test", func() {
 
 			err = kubectl.WaitLabelFilter(namespace, "complete", "pod", "quarks.cloudfoundry.org/qjob-name=smoke")
 			Expect(err).ToNot(HaveOccurred())
+		}
+
+		It("deploys and manage a bosh deployment between upgrades with multiple namespaces", func() {
+			upgradeTest(false)
 		})
+
+		It("deploys and manage a bosh deployment between upgrades with singleNamespace", func() {
+			upgradeTest(true)
+		})
+
 	})
 })
