@@ -89,13 +89,14 @@ func InterpolateExplicitVariables(boshManifestBytes []byte, vars []boshtpl.Varia
 	tpl := boshtpl.NewTemplate(boshManifestBytes)
 
 	// Following options are empty for cf-operator
-	op := patch.Ops{}
+	ops := patch.Ops{}
+
 	evalOpts := boshtpl.EvaluateOpts{
 		ExpectAllKeys:     expectAllKeys,
 		ExpectAllVarsUsed: false,
 	}
 
-	yamlBytes, err := tpl.Evaluate(multiVars, op, evalOpts)
+	yamlBytes, err := tpl.Evaluate(multiVars, ops, evalOpts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not evaluate variables")
 	}
