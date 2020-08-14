@@ -124,7 +124,7 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 	return r.applyVariables(ctx, bdpl, namespace, m, bytes, "detailed-manifest-addons")
 }
 
-func (r *ResolverImpl) applyVariables(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string, original string, bytes []byte, logName string) (*bdm.Manifest, []string, error) {
+func (r *Resolver) applyVariables(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string, original string, bytes []byte, logName string) (*bdm.Manifest, []string, error) {
 	// Apply implicit variables
 	manifest, err := bdm.LoadYAML(bytes)
 	if err != nil {
@@ -209,12 +209,13 @@ func (r *ResolverImpl) applyVariables(ctx context.Context, bdpl *bdv1.BOSHDeploy
 			case "password":
 				staticVars[varName] = string(varBytes)
 			default:
-				staticVars[varName] = bdm.MergeStaticVar(staticVars[varName], key, string(varBytes))
+				staticVars[varName] = MergeStaticVar(staticVars[varName], key, string(varBytes))
 			}
 		}
 		userVars = append(userVars, staticVars)
 	}
-	bytes, err = bdm.InterpolateExplicitVariables(bytes, userVars, false)
+
+	bytes, err = InterpolateExplicitVariables(bytes, userVars, false)
 	if err != nil {
 		return nil, []string{}, errors.Wrapf(err, "Failed to interpolate user provided explicit variables manifest '%s' in '%s'", bdpl.Name, namespace)
 	}
@@ -280,7 +281,7 @@ func (r *Resolver) resourceData(ctx context.Context, namespace string, resType b
 }
 
 // InterpolateVariableFromSecrets reads explicit secrets and writes an interpolated manifest into desired manifest secret.
-func (r *ResolverImpl) InterpolateVariableFromSecrets(ctx context.Context, withOpsManifestData []byte, namespace string, boshdeploymentName string) ([]byte, error) {
+func (r *Resolver) InterpolateVariableFromSecrets(ctx context.Context, withOpsManifestData []byte, namespace string, boshdeploymentName string) ([]byte, error) {
 	var vars []boshtpl.Variables
 
 	withOpsManifest, err := bdm.LoadYAML(withOpsManifestData)
