@@ -141,40 +141,6 @@ var _ = Describe("CLI", func() {
 		})
 	})
 
-	Describe("variable-interpolation", func() {
-		It("should list its flags incl. ENV binding", func() {
-			session, err := act("util", "variable-interpolation", "-h")
-			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out).Should(Say(`Flags:
-  -m, --bosh-manifest-path string   \(BOSH_MANIFEST_PATH\) path to the bosh manifest file
-  -h, --help                        help for variable-interpolation
-      --output-file-path string     \(OUTPUT_FILE_PATH\) Path of the file to which json output is written.
-  -v, --variables-dir string        \(VARIABLES_DIR\) path to the variables dir`))
-		})
-
-		It("accepts the bosh-manifest-path as a parameter", func() {
-			session, err := act("util", "variable-interpolation", "-m", "foo.txt", "--output-file-path", "./output.json")
-			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Err).Should(Say("variable-interpolation command failed. bosh-manifest-path file doesn't exist : foo.txt"))
-		})
-
-		Context("using env variables for parameters", func() {
-			BeforeEach(func() {
-				os.Setenv("BOSH_MANIFEST_PATH", "bar.txt")
-			})
-
-			AfterEach(func() {
-				os.Setenv("BOSH_MANIFEST_PATH", "")
-			})
-
-			It("accepts the bosh-manifest-path as an environment variable", func() {
-				session, err := act("util", "variable-interpolation", "--output-file-path", "./output.json")
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(session.Err).Should(Say("variable-interpolation command failed. bosh-manifest-path file doesn't exist : bar.txt"))
-			})
-		})
-	})
-
 	Describe("instance-group", func() {
 		It("lists its flags incl. ENV binding", func() {
 			session, err := act("util", "instance-group", "-h")

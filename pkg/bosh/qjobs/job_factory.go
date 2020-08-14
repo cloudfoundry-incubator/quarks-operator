@@ -1,7 +1,6 @@
 package qjobs
 
 import (
-	"fmt"
 	"path/filepath"
 	"strconv"
 
@@ -36,8 +35,6 @@ const (
 	EnvOutputFilePath = "OUTPUT_FILE_PATH"
 	// EnvOutputFilePathValue is the value of filepath of JSON output dir
 	EnvOutputFilePathValue = "/mnt/quarks"
-	// outputFilename is the file name of the JSON output file, which quarks job will look for
-	outputFilename = "output.json"
 	// InstanceGroupOutputFilename i s the file name of the JSON output file, which quarks job will look for
 	InstanceGroupOutputFilename = "ig.json"
 	// BPMOutputFilename i s the file name of the JSON output file, which quarks job will look for
@@ -54,110 +51,6 @@ type JobFactory struct {
 // NewJobFactory returns a concrete implementation of JobFactory
 func NewJobFactory() *JobFactory {
 	return &JobFactory{}
-}
-
-// VariableInterpolationJob returns an quarks job to create the desired manifest
-// The desired manifest is a BOSH manifest with all variables interpolated.
-func (f *JobFactory) VariableInterpolationJob(namespace string, deploymentName string, manifest bdm.Manifest) (*qjv1a1.QuarksJob, error) {
-	args := []string{"util", "variable-interpolation"}
-
-	// This is the source manifest, that still has the '((vars))'
-	manifestSecretName := bdv1.DeploymentSecretTypeManifestWithOps.String()
-
-	// Prepare Volumes and Volume mounts
-
-	volumes := []corev1.Volume{*withOpsVolume(manifestSecretName)}
-	volumeMounts := []corev1.VolumeMount{manifestVolumeMount(manifestSecretName)}
-
-	// We need a volume and a mount for each input variable
-	for _, variable := range manifest.Variables {
-		varName := variable.Name
-		varSecretName := boshnames.SecretVariableName(varName)
-
-		volumes = append(volumes, variableVolume(varSecretName))
-		volumeMounts = append(volumeMounts, variableVolumeMount(varSecretName, varName))
-	}
-
-	// If there are no variables, mount an empty dir for variables
-	if len(manifest.Variables) == 0 {
-		volumes = append(volumes, noVarsVolume())
-		volumeMounts = append(volumeMounts, noVarsVolumeMount())
-	}
-
-	additionalLabels := map[string]string{
-		bdv1.LabelEntanglementKey: "true",
-	}
-	additionalAnnotations := map[string]string{
-		quarksrestart.AnnotationRestartOnUpdate: "true",
-	}
-
-	// Construct the var interpolation auto-errand qJob
-	qJob := &qjv1a1.QuarksJob{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dm",
-			Namespace: namespace,
-			Labels: map[string]string{
-				bdv1.LabelDeploymentName: deploymentName,
-			},
-		},
-		Spec: qjv1a1.QuarksJobSpec{
-			Output: &qjv1a1.Output{
-				OutputMap: qjv1a1.OutputMap{
-					desiredmanifest.Name: qjv1a1.NewFileToSecret(outputFilename, desiredmanifest.Name, true, additionalAnnotations, additionalLabels),
-				},
-				SecretLabels: map[string]string{
-					bdv1.LabelDeploymentName:       deploymentName,
-					bdv1.LabelDeploymentSecretType: bdv1.DeploymentSecretTypeDesiredManifest.String(),
-					bdv1.LabelReferencedJobName:    fmt.Sprintf("instance-group-%s", deploymentName),
-				},
-			},
-			Trigger: qjv1a1.Trigger{
-				Strategy: qjv1a1.TriggerOnce,
-			},
-			UpdateOnConfigChange: true,
-			Template: batchv1b1.JobTemplateSpec{
-				Spec: batchv1.JobSpec{
-					Template: corev1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "dm",
-							Labels: map[string]string{
-								"delete":                 "pod",
-								bdv1.LabelDeploymentName: deploymentName,
-							},
-						},
-						Spec: corev1.PodSpec{
-							RestartPolicy: corev1.RestartPolicyOnFailure,
-							Containers: []corev1.Container{
-								{
-									Name:            desiredmanifest.Name,
-									Image:           operatorimage.GetOperatorDockerImage(),
-									ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
-									Args:            args,
-									VolumeMounts:    volumeMounts,
-									Env: []corev1.EnvVar{
-										{
-											Name:  bpmconverter.EnvBOSHManifestPath,
-											Value: filepath.Join("/var/run/secrets/deployment/", bdm.DesiredManifestKeyName),
-										},
-										{
-											Name:  EnvVariablesDir,
-											Value: "/var/run/secrets/variables/",
-										},
-										{
-											Name:  EnvOutputFilePath,
-											Value: filepath.Join(EnvOutputFilePathValue, outputFilename),
-										},
-									},
-								},
-							},
-							Volumes: volumes,
-						},
-					},
-				},
-			},
-		},
-	}
-	return qJob, nil
 }
 
 // InstanceGroupManifestJob generates the job to create an instance group manifest
