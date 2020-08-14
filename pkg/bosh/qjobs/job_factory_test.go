@@ -209,38 +209,5 @@ var _ = Describe("JobFactory", func() {
 			Expect(len(spec.Containers)).To(BeNumerically("<", 2))
 		})
 
-		It("should have required labels", func() {
-			job, err := factory.VariableInterpolationJob("namespace", deploymentName, *m)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(job.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
-		})
-
-	})
-
-	Describe("VariableInterpolationJob", func() {
-		It("mounts variable secrets in the variable interpolation container", func() {
-			job, err := factory.VariableInterpolationJob("namespace", deploymentName, *m)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(job.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
-
-			podSpec := job.Spec.Template.Spec.Template.Spec
-			podTemplate := job.Spec.Template.Spec.Template
-			Expect(podTemplate.GetLabels()).To(HaveKeyWithValue(bdv1.LabelDeploymentName, deploymentName))
-
-			volumes := []string{}
-			for _, v := range podSpec.Volumes {
-				volumes = append(volumes, v.Name)
-			}
-			Expect(volumes).To(ConsistOf("with-ops", "var-adminpass"))
-
-			mountPaths := []string{}
-			for _, p := range podSpec.Containers[0].VolumeMounts {
-				mountPaths = append(mountPaths, p.MountPath)
-			}
-			Expect(mountPaths).To(ConsistOf(
-				"/var/run/secrets/deployment/",
-				"/var/run/secrets/variables/adminpass",
-			))
-		})
 	})
 })
