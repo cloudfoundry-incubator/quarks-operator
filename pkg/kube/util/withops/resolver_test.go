@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	boshtpl "github.com/cloudfoundry/bosh-cli/director/template"
 	"github.com/go-test/deep"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -935,6 +936,120 @@ instance_groups:
 			Expect(sslProps["ca"]).To(Equal("the-ca"))
 			Expect(sslProps["cert"]).To(Equal("the-cert"))
 			Expect(sslProps["key"]).To(Equal("the-key"))
+		})
+	})
+
+	Context("Interpolate variables correctly", func() {
+		var (
+			baseManifest          []byte
+			incorrectBaseManifest []byte
+			vars                  []boshtpl.Variables
+		)
+
+		BeforeEach(func() {
+			baseManifest = []byte(`
+---
+director_uuid: ((password1))
+instance_groups:
+- name: ((value1.key1))
+- name: ((value2.key2))
+- name: ((value2.key3))
+`)
+			incorrectBaseManifest = []byte(`
+---
+director_uuid: ((password2))
+instance_groups:
+- name: ((value1.key1))
+- name: ((value2.key2))
+- name: ((value2.key3))
+`)
+		})
+
+		It("returns interpolated manifest", func() {
+			vars = []boshtpl.Variables{
+				0: boshtpl.StaticVariables{
+					"password1": "password1data",
+				},
+				1: boshtpl.StaticVariables{
+					"value1": map[interface{}]interface{}{
+						"key1": "key1data",
+					},
+				},
+				2: boshtpl.StaticVariables{
+					"value2": map[interface{}]interface{}{
+						"key2": "key2data",
+						"key3": "ky3data",
+					},
+				},
+			}
+			desiredManifestBytes, err := withops.InterpolateExplicitVariables(baseManifest, vars, true)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(desiredManifestBytes)).To(Equal(`director_uuid: password1data
+instance_groups:
+- azs: null
+  env:
+    bosh:
+      agent:
+        settings: {}
+      ipv6:
+        enable: false
+  instances: 0
+  jobs: null
+  name: key1data
+  properties:
+    quarks: {}
+  stemcell: ""
+  vm_resources: null
+- azs: null
+  env:
+    bosh:
+      agent:
+        settings: {}
+      ipv6:
+        enable: false
+  instances: 0
+  jobs: null
+  name: key2data
+  properties:
+    quarks: {}
+  stemcell: ""
+  vm_resources: null
+- azs: null
+  env:
+    bosh:
+      agent:
+        settings: {}
+      ipv6:
+        enable: false
+  instances: 0
+  jobs: null
+  name: ky3data
+  properties:
+    quarks: {}
+  stemcell: ""
+  vm_resources: null
+`))
+		})
+
+		It("raises error when all variables in the manifest are not rendered", func() {
+			vars = []boshtpl.Variables{
+				0: boshtpl.StaticVariables{
+					"password1": "password1data",
+				},
+				1: boshtpl.StaticVariables{
+					"value1": map[interface{}]interface{}{
+						"key1": "key1data",
+					},
+				},
+				2: boshtpl.StaticVariables{
+					"value2": map[interface{}]interface{}{
+						"key2": "key2data",
+						"key3": "ky3data",
+					},
+				},
+			}
+			_, err := withops.InterpolateExplicitVariables(incorrectBaseManifest, vars, true)
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })
