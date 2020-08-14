@@ -8,7 +8,7 @@ import (
 
 // Interpolator renders BOSH manifests by operations files
 type Interpolator interface {
-	BuildOps(opsBytes []byte) error
+	AddOps(opsBytes []byte) error
 	Interpolate(manifestBytes []byte) ([]byte, error)
 }
 
@@ -22,8 +22,8 @@ func NewInterpolator() *InterpolatorImpl {
 	return &InterpolatorImpl{}
 }
 
-// BuildOps unmarshals ops definitions, processes them and holds them in memory
-func (i *InterpolatorImpl) BuildOps(opsBytes []byte) error {
+// AddOps unmarshals ops definitions, processes them and holds them in memory
+func (i *InterpolatorImpl) AddOps(opsBytes []byte) error {
 	var opDefs []patch.OpDefinition
 	err := yaml.Unmarshal(opsBytes, &opDefs)
 	if err != nil {

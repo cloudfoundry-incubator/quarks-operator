@@ -19,7 +19,7 @@ var _ = Describe("Interpolator", func() {
 		interpolator = ipl.NewInterpolator()
 	})
 
-	Describe("BuildOps", func() {
+	Describe("AddOps", func() {
 		//Test for Hash
 		It("works for setting a key", func() {
 			ops = []byte(`
@@ -28,7 +28,7 @@ var _ = Describe("Interpolator", func() {
   value: new-deployment
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -40,7 +40,7 @@ wrong-key
   value: new-deployment
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Unmarshalling ops data"))
 		})
@@ -52,7 +52,7 @@ wrong-key
   value: new-deployment
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Building ops from opDefs failed"))
 		})
@@ -94,7 +94,7 @@ instance_groups:
     instances: 2
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).ToNot(HaveOccurred())
 
 			result, err := interpolator.Interpolate(baseManifest)
@@ -119,7 +119,7 @@ instance_groups:
     instances: 2
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).ToNot(HaveOccurred())
 
 			result, err := interpolator.Interpolate(baseManifest)
@@ -147,7 +147,7 @@ instance_groups:
 new_key: 1234abcd
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).ToNot(HaveOccurred())
 
 			result, err := interpolator.Interpolate(baseManifest)
@@ -162,7 +162,7 @@ new_key: 1234abcd
   value: 1234abcd
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).ToNot(HaveOccurred())
 
 			_, err = interpolator.Interpolate(baseManifest)
@@ -190,7 +190,7 @@ instance_groups:
     instances: 2
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).ToNot(HaveOccurred())
 
 			result, err := interpolator.Interpolate(baseManifest)
@@ -215,7 +215,7 @@ instance_groups:
     instances: 2
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).ToNot(HaveOccurred())
 
 			result, err := interpolator.Interpolate(baseManifest)
@@ -243,7 +243,7 @@ instance_groups:
     instances: 2
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).ToNot(HaveOccurred())
 
 			result, err := interpolator.Interpolate(baseManifest)
@@ -270,7 +270,7 @@ instance_groups:
     instances: 2
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).ToNot(HaveOccurred())
 
 			result, err := interpolator.Interpolate(baseManifest)
@@ -298,7 +298,7 @@ instance_groups:
     instances: 2
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).ToNot(HaveOccurred())
 
 			result, err := interpolator.Interpolate(baseManifest)
@@ -326,7 +326,7 @@ instance_groups:
     instances: 2
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).ToNot(HaveOccurred())
 
 			result, err := interpolator.Interpolate(baseManifest)
@@ -353,7 +353,7 @@ instance_groups:
     instances: 2
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).ToNot(HaveOccurred())
 
 			result, err := interpolator.Interpolate(baseManifest)
@@ -382,7 +382,7 @@ instance_groups:
     instances: 2
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).ToNot(HaveOccurred())
 
 			result, err := interpolator.Interpolate(baseManifest)
@@ -409,7 +409,7 @@ instance_groups:
     instances: 1
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).ToNot(HaveOccurred())
 
 			result, err := interpolator.Interpolate(baseManifest)
@@ -433,7 +433,7 @@ instance_groups:
     instances: 2
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).ToNot(HaveOccurred())
 
 			result, err := interpolator.Interpolate(baseManifest)
@@ -448,7 +448,7 @@ instance_groups:
   value: 2
 `)
 
-			err := interpolator.BuildOps(ops)
+			err := interpolator.AddOps(ops)
 			Expect(err).ToNot(HaveOccurred())
 
 			_, err = interpolator.Interpolate(baseManifest)
@@ -483,9 +483,9 @@ instance_groups:
     instances: 2
 `)
 
-			err := interpolator.BuildOps(ops1)
+			err := interpolator.AddOps(ops1)
 			Expect(err).ToNot(HaveOccurred())
-			err = interpolator.BuildOps(ops2)
+			err = interpolator.AddOps(ops2)
 			Expect(err).ToNot(HaveOccurred())
 
 			result, err := interpolator.Interpolate(baseManifest)
@@ -519,11 +519,11 @@ instance_groups:
     instances: 5
 `)
 
-			err := interpolator.BuildOps(ops1)
+			err := interpolator.AddOps(ops1)
 			Expect(err).ToNot(HaveOccurred())
-			err = interpolator.BuildOps(ops2)
+			err = interpolator.AddOps(ops2)
 			Expect(err).ToNot(HaveOccurred())
-			err = interpolator.BuildOps(ops3)
+			err = interpolator.AddOps(ops3)
 			Expect(err).ToNot(HaveOccurred())
 
 			result, err := interpolator.Interpolate(baseManifest)
@@ -542,9 +542,9 @@ instance_groups:
   path: /instance_groups/name=api
 `)
 
-			err := interpolator.BuildOps(ops1)
+			err := interpolator.AddOps(ops1)
 			Expect(err).ToNot(HaveOccurred())
-			err = interpolator.BuildOps(ops2)
+			err = interpolator.AddOps(ops2)
 			Expect(err).ToNot(HaveOccurred())
 
 			_, err = interpolator.Interpolate(baseManifest)
@@ -563,9 +563,9 @@ instance_groups:
   foo: This is a wrong ops format file
 `)
 
-			err := interpolator.BuildOps(ops1)
+			err := interpolator.AddOps(ops1)
 			Expect(err).ToNot(HaveOccurred())
-			err = interpolator.BuildOps(ops2)
+			err = interpolator.AddOps(ops2)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Building ops from opDefs failed: Unknown operation"))
 		})
@@ -580,10 +580,10 @@ This is a wrong ops format file
 			  path: /instance_groups/name=diego/instances
 			  value: 4
 			`)
-			err := interpolator.BuildOps(ops1)
+			err := interpolator.AddOps(ops1)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("yaml: unmarshal errors"))
-			err = interpolator.BuildOps(ops2)
+			err = interpolator.AddOps(ops2)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("found character that cannot start any token"))
 		})
