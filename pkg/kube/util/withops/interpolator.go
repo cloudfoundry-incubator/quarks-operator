@@ -2,6 +2,7 @@ package withops
 
 import (
 	"github.com/SUSE/go-patch/patch"
+	boshtpl "github.com/cloudfoundry/bosh-cli/director/template"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -40,81 +41,17 @@ func (i *InterpolatorImpl) AddOps(opsBytes []byte) error {
 
 // Interpolate returns manifest which is rendered by operations files
 func (i *InterpolatorImpl) Interpolate(manifestBytes []byte) ([]byte, error) {
+	tpl := boshtpl.NewTemplate(manifestBytes)
 
-	// Decode manifest
-	var obj interface{}
+	// Following options are empty for cf-operator
+	evalOpts := boshtpl.EvaluateOpts{
+		ExpectAllKeys:     false,
+		ExpectAllVarsUsed: false,
+	}
 
-	err := yaml.Unmarshal(manifestBytes, &obj)
+	bytes, err := tpl.Evaluate(boshtpl.StaticVariables{}, i.ops, evalOpts)
 	if err != nil {
-		return []byte{}, errors.Wrapf(err, "Unmarshalling manifest obj %s failed in interpolator", string(manifestBytes))
+		return nil, errors.Wrapf(err, "could not evaluate variables")
 	}
-
-	// Apply ops
-	if i.ops != nil {
-		obj, err = i.ops.Apply(obj)
-		if err != nil {
-			return []byte{}, errors.Wrapf(err, "Applying ops on manifest obj failed in interpolator")
-		}
-	}
-
-	// Interpolate from root
-	obj, err = i.interpolateRoot(obj)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	bytes, err := yaml.Marshal(obj)
-	if err != nil {
-		return []byte{}, errors.Wrapf(err, "Marshalling manifest object in interpolator failed.")
-	}
-
 	return bytes, nil
-}
-
-func (i *InterpolatorImpl) interpolateRoot(obj interface{}) (interface{}, error) {
-	obj, err := i.interpolate(obj)
-	if err != nil {
-		return nil, err
-	}
-
-	return obj, nil
-}
-
-func (i *InterpolatorImpl) interpolate(node interface{}) (interface{}, error) {
-	switch typedNode := node.(type) {
-	case map[string]interface{}:
-		for k, v := range typedNode {
-			evaluatedValue, err := i.interpolate(v)
-			if err != nil {
-				return nil, err
-			}
-
-			evaluatedKey, err := i.interpolate(k)
-			if err != nil {
-				return nil, err
-			}
-
-			stringKey, ok := evaluatedKey.(string)
-			if !ok {
-				return nil, errors.Errorf("interpolator only supports string keys, not '%T'", evaluatedKey)
-			}
-
-			delete(typedNode, k) // delete in case key has changed
-			typedNode[stringKey] = evaluatedValue
-		}
-
-	case []interface{}:
-		for idx, x := range typedNode {
-			var err error
-			typedNode[idx], err = i.interpolate(x)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-	case string:
-		return typedNode, nil
-	}
-
-	return node, nil
 }
