@@ -17,6 +17,7 @@ import (
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
+	qsv1a1 "code.cloudfoundry.org/quarks-secret/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
@@ -123,7 +124,7 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 	return r.applyVariables(ctx, bdpl, namespace, m, bytes, "detailed-manifest-addons")
 }
 
-func (r *Resolver) applyVariables(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string, original string, bytes []byte, logName string) (*bdm.Manifest, []string, error) {
+func (r *ResolverImpl) applyVariables(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string, original string, bytes []byte, logName string) (*bdm.Manifest, []string, error) {
 	// Apply implicit variables
 	manifest, err := bdm.LoadYAML(bytes)
 	if err != nil {
@@ -276,4 +277,101 @@ func (r *Resolver) resourceData(ctx context.Context, namespace string, resType b
 	}
 
 	return data, nil
+}
+
+// InterpolateVariableFromSecrets reads explicit secrets and writes an interpolated manifest into desired manifest secret.
+func (r *ResolverImpl) InterpolateVariableFromSecrets(ctx context.Context, withOpsManifestData []byte, namespace string, boshdeploymentName string) ([]byte, error) {
+	var vars []boshtpl.Variables
+
+	withOpsManifest, err := bdm.LoadYAML(withOpsManifestData)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, variable := range withOpsManifest.Variables {
+		staticVars := boshtpl.StaticVariables{}
+
+		varName := variable.Name
+		varSecretName := names.SecretVariableName(varName)
+
+		varQuarksSecret := &qsv1a1.QuarksSecret{}
+		err = r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: varSecretName}, varQuarksSecret)
+		if err != nil {
+			return nil, err
+		}
+
+		if !*varQuarksSecret.Status.Generated {
+			return nil, errors.Errorf("QuarksSecret '%s' has generated status false", varQuarksSecret.Name)
+		}
+
+		varSecret := &corev1.Secret{}
+		err = r.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: varSecretName}, varSecret)
+		if err != nil {
+			return nil, err
+		}
+
+		varSecretData := varSecret.Data
+		for key, value := range varSecretData {
+			switch key {
+			case "password":
+				staticVars[varName] = string(value)
+			default:
+				staticVars[varName] = MergeStaticVar(staticVars[varName], key, string(value))
+			}
+		}
+		vars = append(vars, staticVars)
+	}
+	desiredManifestBytes, err := InterpolateExplicitVariables(withOpsManifestData, vars, true)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to interpolate explicit variables")
+	}
+
+	return desiredManifestBytes, nil
+}
+
+// InterpolateExplicitVariables interpolates explicit variables in the manifest
+// Expects an array of maps, each element being a variable: [{ "name":"foo", "password": "value" }, {"name": "bar", "ca": "---"} ]
+// Returns the new manifest as a byte array
+func InterpolateExplicitVariables(boshManifestBytes []byte, vars []boshtpl.Variables, expectAllKeys bool) ([]byte, error) {
+	multiVars := boshtpl.NewMultiVars(vars)
+	tpl := boshtpl.NewTemplate(boshManifestBytes)
+
+	// Following options are empty for cf-operator
+	op := patch.Ops{}
+	evalOpts := boshtpl.EvaluateOpts{
+		ExpectAllKeys:     expectAllKeys,
+		ExpectAllVarsUsed: false,
+	}
+
+	yamlBytes, err := tpl.Evaluate(multiVars, op, evalOpts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not evaluate variables")
+	}
+
+	m, err := bdm.LoadYAML(yamlBytes)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not evaluate variables")
+	}
+
+	yamlBytes, err = m.Marshal()
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not evaluate variables")
+	}
+
+	return yamlBytes, nil
+}
+
+// MergeStaticVar builds a map of values used for BOSH explicit variable interpolation
+func MergeStaticVar(staticVar interface{}, field string, value string) interface{} {
+	if staticVar == nil {
+		staticVar = map[interface{}]interface{}{
+			field: value,
+		}
+	} else {
+		staticVarMap := staticVar.(map[interface{}]interface{})
+		staticVarMap[field] = value
+		staticVar = staticVarMap
+	}
+
+	return staticVar
 }

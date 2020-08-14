@@ -64,8 +64,8 @@ var _ = Describe("BDPL Status", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(bdpl.Status.DeployedInstanceGroups).To(BeEquivalentTo(1))
 			Expect(bdpl.Status.TotalInstanceGroups).To(BeEquivalentTo(1))
-			Expect(bdpl.Status.TotalJobCount).To(BeEquivalentTo(2))
-			Expect(bdpl.Status.CompletedJobCount).To(BeEquivalentTo(2))
+			Expect(bdpl.Status.TotalJobCount).To(BeEquivalentTo(1))
+			Expect(bdpl.Status.CompletedJobCount).To(BeEquivalentTo(1))
 
 			Eventually(func() string {
 				bdpl, err = env.GetBOSHDeployment(env.Namespace, deploymentName)

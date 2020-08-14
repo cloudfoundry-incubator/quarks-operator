@@ -15,6 +15,7 @@ import (
 
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	bm "code.cloudfoundry.org/quarks-operator/testing/boshmanifest"
+	qsecm "code.cloudfoundry.org/quarks-secret/testing"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
 )
 
@@ -37,7 +38,7 @@ var _ = Describe("BDPL updates", func() {
   value: 1
 `
 		BeforeEach(func() {
-			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsSmall))
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsExplicitVar))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
@@ -456,6 +457,41 @@ var _ = Describe("BDPL updates", func() {
 			It("should delete the qsts", func() {
 				err := env.WaitForQuarksStatefulSetDelete(env.Namespace, "nats")
 				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+	})
+
+	FContext("when updating a deployment with rotating an explicit secret", func() {
+		BeforeEach(func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsExplicitVar))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment(deploymentName, manifestName))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			By("checking for instance group pods")
+			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "1", 2)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
+		})
+
+		Context("by rotating the explicit secret", func() {
+			BeforeEach(func() {
+				qsecCatalog := qsecm.Catalog{}
+				rotationConfig := qsecCatalog.RotationConfig("var-nats-password")
+				tearDown, err := env.CreateConfigMap(env.Namespace, rotationConfig)
+				Expect(err).NotTo(HaveOccurred())
+				tearDowns = append(tearDowns, tearDown)
+
+				err = env.WaitForConfigMap(env.Namespace, "rotation-config1")
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should update the deployment", func() {
+				By("checking for instance group pods")
+				err := env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "2", 2)
+				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 			})
 		})
 	})
