@@ -66,7 +66,7 @@ func (r *Resolver) Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, name
 		if err != nil {
 			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' in '%s'", bdpl.Name, namespace)
 		}
-		err = interpolator.BuildOps([]byte(opsData))
+		err = interpolator.AddOps([]byte(opsData))
 		if err != nil {
 			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' in '%s'", bdpl.Name, namespace)
 		}
@@ -196,7 +196,7 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 		if err != nil {
 			return nil, []string{}, errors.Wrapf(err, "Failed to get resource data for interpolation of bosh deployment '%s' and ops '%s' in '%s'", bdpl.Name, op.Name, namespace)
 		}
-		err = interpolator.BuildOps([]byte(opsData))
+		err = interpolator.AddOps([]byte(opsData))
 		if err != nil {
 			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' and ops '%s' in '%s'", bdpl.Name, op.Name, namespace)
 		}

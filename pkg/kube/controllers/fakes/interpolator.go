@@ -8,15 +8,15 @@ import (
 )
 
 type FakeInterpolator struct {
-	BuildOpsStub        func([]byte) error
-	buildOpsMutex       sync.RWMutex
-	buildOpsArgsForCall []struct {
+	AddOpsStub        func([]byte) error
+	addOpsMutex       sync.RWMutex
+	addOpsArgsForCall []struct {
 		arg1 []byte
 	}
-	buildOpsReturns struct {
+	addOpsReturns struct {
 		result1 error
 	}
-	buildOpsReturnsOnCall map[int]struct {
+	addOpsReturnsOnCall map[int]struct {
 		result1 error
 	}
 	InterpolateStub        func([]byte) ([]byte, error)
@@ -36,67 +36,67 @@ type FakeInterpolator struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeInterpolator) BuildOps(arg1 []byte) error {
+func (fake *FakeInterpolator) AddOps(arg1 []byte) error {
 	var arg1Copy []byte
 	if arg1 != nil {
 		arg1Copy = make([]byte, len(arg1))
 		copy(arg1Copy, arg1)
 	}
-	fake.buildOpsMutex.Lock()
-	ret, specificReturn := fake.buildOpsReturnsOnCall[len(fake.buildOpsArgsForCall)]
-	fake.buildOpsArgsForCall = append(fake.buildOpsArgsForCall, struct {
+	fake.addOpsMutex.Lock()
+	ret, specificReturn := fake.addOpsReturnsOnCall[len(fake.addOpsArgsForCall)]
+	fake.addOpsArgsForCall = append(fake.addOpsArgsForCall, struct {
 		arg1 []byte
 	}{arg1Copy})
-	fake.recordInvocation("BuildOps", []interface{}{arg1Copy})
-	fake.buildOpsMutex.Unlock()
-	if fake.BuildOpsStub != nil {
-		return fake.BuildOpsStub(arg1)
+	fake.recordInvocation("AddOps", []interface{}{arg1Copy})
+	fake.addOpsMutex.Unlock()
+	if fake.AddOpsStub != nil {
+		return fake.AddOpsStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.buildOpsReturns
+	fakeReturns := fake.addOpsReturns
 	return fakeReturns.result1
 }
 
-func (fake *FakeInterpolator) BuildOpsCallCount() int {
-	fake.buildOpsMutex.RLock()
-	defer fake.buildOpsMutex.RUnlock()
-	return len(fake.buildOpsArgsForCall)
+func (fake *FakeInterpolator) AddOpsCallCount() int {
+	fake.addOpsMutex.RLock()
+	defer fake.addOpsMutex.RUnlock()
+	return len(fake.addOpsArgsForCall)
 }
 
-func (fake *FakeInterpolator) BuildOpsCalls(stub func([]byte) error) {
-	fake.buildOpsMutex.Lock()
-	defer fake.buildOpsMutex.Unlock()
-	fake.BuildOpsStub = stub
+func (fake *FakeInterpolator) AddOpsCalls(stub func([]byte) error) {
+	fake.addOpsMutex.Lock()
+	defer fake.addOpsMutex.Unlock()
+	fake.AddOpsStub = stub
 }
 
-func (fake *FakeInterpolator) BuildOpsArgsForCall(i int) []byte {
-	fake.buildOpsMutex.RLock()
-	defer fake.buildOpsMutex.RUnlock()
-	argsForCall := fake.buildOpsArgsForCall[i]
+func (fake *FakeInterpolator) AddOpsArgsForCall(i int) []byte {
+	fake.addOpsMutex.RLock()
+	defer fake.addOpsMutex.RUnlock()
+	argsForCall := fake.addOpsArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *FakeInterpolator) BuildOpsReturns(result1 error) {
-	fake.buildOpsMutex.Lock()
-	defer fake.buildOpsMutex.Unlock()
-	fake.BuildOpsStub = nil
-	fake.buildOpsReturns = struct {
+func (fake *FakeInterpolator) AddOpsReturns(result1 error) {
+	fake.addOpsMutex.Lock()
+	defer fake.addOpsMutex.Unlock()
+	fake.AddOpsStub = nil
+	fake.addOpsReturns = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *FakeInterpolator) BuildOpsReturnsOnCall(i int, result1 error) {
-	fake.buildOpsMutex.Lock()
-	defer fake.buildOpsMutex.Unlock()
-	fake.BuildOpsStub = nil
-	if fake.buildOpsReturnsOnCall == nil {
-		fake.buildOpsReturnsOnCall = make(map[int]struct {
+func (fake *FakeInterpolator) AddOpsReturnsOnCall(i int, result1 error) {
+	fake.addOpsMutex.Lock()
+	defer fake.addOpsMutex.Unlock()
+	fake.AddOpsStub = nil
+	if fake.addOpsReturnsOnCall == nil {
+		fake.addOpsReturnsOnCall = make(map[int]struct {
 			result1 error
 		})
 	}
-	fake.buildOpsReturnsOnCall[i] = struct {
+	fake.addOpsReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
@@ -172,8 +172,8 @@ func (fake *FakeInterpolator) InterpolateReturnsOnCall(i int, result1 []byte, re
 func (fake *FakeInterpolator) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.buildOpsMutex.RLock()
-	defer fake.buildOpsMutex.RUnlock()
+	fake.addOpsMutex.RLock()
+	defer fake.addOpsMutex.RUnlock()
 	fake.interpolateMutex.RLock()
 	defer fake.interpolateMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

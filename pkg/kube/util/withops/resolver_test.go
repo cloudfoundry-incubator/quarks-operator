@@ -498,8 +498,8 @@ instance_groups:
 			Expect(len(manifest.InstanceGroups)).To(Equal(2))
 			Expect(deep.Equal(manifest, expectedManifest)).To(HaveLen(0))
 
-			Expect(interpolator.BuildOpsCallCount()).To(Equal(1))
-			opsBytes := interpolator.BuildOpsArgsForCall(0)
+			Expect(interpolator.AddOpsCallCount()).To(Equal(1))
+			opsBytes := interpolator.AddOpsArgsForCall(0)
 			Expect(string(opsBytes)).To(Equal(replaceOpsStr))
 			Expect(len(implicitVars)).To(Equal(0))
 		})
@@ -557,14 +557,14 @@ instance_groups:
 			Expect(len(manifest.InstanceGroups)).To(Equal(1))
 			Expect(deep.Equal(manifest, expectedManifest)).To(HaveLen(0))
 
-			Expect(interpolator.BuildOpsCallCount()).To(Equal(4))
-			opsBytes := interpolator.BuildOpsArgsForCall(0)
+			Expect(interpolator.AddOpsCallCount()).To(Equal(4))
+			opsBytes := interpolator.AddOpsArgsForCall(0)
 			Expect(string(opsBytes)).To(Equal(replaceOpsStr))
-			opsBytes = interpolator.BuildOpsArgsForCall(1)
+			opsBytes = interpolator.AddOpsArgsForCall(1)
 			Expect(string(opsBytes)).To(Equal(opaqueOpsStr))
-			opsBytes = interpolator.BuildOpsArgsForCall(2)
+			opsBytes = interpolator.AddOpsArgsForCall(2)
 			Expect(string(opsBytes)).To(Equal(urlOpsStr))
-			opsBytes = interpolator.BuildOpsArgsForCall(3)
+			opsBytes = interpolator.AddOpsArgsForCall(3)
 			Expect(string(opsBytes)).To(Equal(removeOpsStr))
 			Expect(len(implicitVars)).To(Equal(0))
 		})
@@ -689,7 +689,7 @@ instance_groups:
 		})
 
 		It("throws an error if build invalid ops", func() {
-			interpolator.BuildOpsReturns(errors.New("fake-error"))
+			interpolator.AddOpsReturns(errors.New("fake-error"))
 
 			deployment := &bdc.BOSHDeployment{
 				Spec: bdc.BOSHDeploymentSpec{

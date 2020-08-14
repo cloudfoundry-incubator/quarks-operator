@@ -136,7 +136,7 @@ Also calculates and prints the BPM configurations for all BOSH jobs of that inst
 				return errors.Wrapf(err, "failed to get bytes for pre render ops in instance group '%s'", instanceGroupName)
 			}
 
-			err = interpolator.BuildOps([]byte(opsData))
+			err = interpolator.AddOps([]byte(opsData))
 			if err != nil {
 				return errors.Wrapf(err, "interpolation failed for pre-render ops in instance group '%s'", instanceGroupName)
 			}
@@ -180,7 +180,7 @@ Also calculates and prints the BPM configurations for all BOSH jobs of that inst
 				return errors.Wrapf(err, "failed to get bytes for bpm pre render ops in instance group '%s'", instanceGroupName)
 			}
 
-			err = interpolator.BuildOps([]byte(opsData))
+			err = interpolator.AddOps([]byte(opsData))
 			if err != nil {
 				return errors.Wrapf(err, "interpolation failed for bpm pre-render ops in instance group '%s'", instanceGroupName)
 			}
