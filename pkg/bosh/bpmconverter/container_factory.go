@@ -134,7 +134,6 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 	}
 
 	initContainers := flattenContainers(
-		containerRunCopier(),
 		copyingSpecsInitContainers,
 		templateRenderingContainer(c.instanceGroupName),
 		createDirContainer(jobs, c.instanceGroupName),
@@ -284,31 +283,6 @@ func logsTailerContainer() corev1.Container {
 		},
 		SecurityContext: &corev1.SecurityContext{
 			RunAsUser: &rootUserID,
-		},
-	}
-}
-
-func containerRunCopier() corev1.Container {
-	dstDir := fmt.Sprintf("%s/container-run", VolumeRenderingDataMountPath)
-	return corev1.Container{
-		Name:            "container-run-copier",
-		Image:           operatorimage.GetOperatorDockerImage(),
-		ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      VolumeRenderingDataName,
-				MountPath: VolumeRenderingDataMountPath,
-			},
-		},
-		Command: entrypoint,
-		Args: []string{
-			"/bin/sh",
-			"-c",
-			fmt.Sprintf(`
-				set -o errexit
-				mkdir -p '%[1]s'
-				time cp /usr/local/bin/container-run '%[1]s'/container-run
-			`, dstDir),
 		},
 	}
 }
@@ -656,7 +630,7 @@ func generateBPMCommand(
 	postStart postStart,
 ) ([]string, []string) {
 	command := []string{"/usr/bin/dumb-init", "--"}
-	args := []string{fmt.Sprintf("%s/container-run/container-run", VolumeRenderingDataMountPath)}
+	args := []string{"/usr/bin/quarks-container-run"}
 	if postStart.command != nil {
 		args = append(args, "--post-start-name", postStart.command.Name)
 		if postStart.condition != nil {

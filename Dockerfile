@@ -2,15 +2,6 @@ ARG BASE_IMAGE=registry.opensuse.org/cloud/platform/quarks/sle_15_sp1/quarks-ope
 
 
 ################################################################################
-FROM golang:1.13.15 AS containerrun
-ARG GOPROXY
-ENV GOPROXY $GOPROXY
-
-ENV GO111MODULE on
-
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o "/usr/local/bin/container-run" code.cloudfoundry.org/quarks-container-run/cmd
-
-################################################################################
 FROM golang:1.14.7 AS build
 ARG GOPROXY
 ENV GOPROXY $GOPROXY
@@ -32,5 +23,4 @@ RUN groupadd -g 1000 vcap && \
 RUN cp /usr/sbin/dumb-init /usr/bin/dumb-init
 USER 1000
 COPY --from=build /usr/local/bin/cf-operator /usr/local/bin/cf-operator
-COPY --from=containerrun /usr/local/bin/container-run /usr/local/bin/container-run
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "cf-operator"]
