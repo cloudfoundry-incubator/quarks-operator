@@ -10,6 +10,7 @@ import (
 	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/monitorednamespace"
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -295,6 +296,8 @@ func AddBDPLStatusReconciler(ctx context.Context, config *config.Config, mgr man
 		return errors.Wrap(err, "Adding StatusQJobsReconciler controller to manager failed.")
 	}
 
+	nsPred := monitorednamespace.NewNSPredicate(ctx, mgr.GetClient(), config.MonitoredID)
+
 	// doamins are watched on updates too to get status changes
 	certPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -307,12 +310,12 @@ func AddBDPLStatusReconciler(ctx context.Context, config *config.Config, mgr man
 			return false
 		},
 	}
-	err = c.Watch(&source.Kind{Type: &qstsv1a1.QuarksStatefulSet{}}, &handler.EnqueueRequestForObject{}, certPred)
+	err = c.Watch(&source.Kind{Type: &qstsv1a1.QuarksStatefulSet{}}, &handler.EnqueueRequestForObject{}, nsPred, certPred)
 	if err != nil {
 		return errors.Wrapf(err, "Watching QSTS in QuarksBDPLStatus controller failed.")
 	}
 
-	err = cjobs.Watch(&source.Kind{Type: &qjv1a1.QuarksJob{}}, &handler.EnqueueRequestForObject{}, certPred)
+	err = cjobs.Watch(&source.Kind{Type: &qjv1a1.QuarksJob{}}, &handler.EnqueueRequestForObject{}, nsPred, certPred)
 	if err != nil {
 		return errors.Wrapf(err, "Watching QJobs in QuarksBDPLStatus controller failed.")
 	}
