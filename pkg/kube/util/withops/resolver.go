@@ -80,94 +80,7 @@ func (r *Resolver) Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, name
 		}
 	}
 
-	// Apply implicit variables
-	manifest, err := bdm.LoadYAML(bytes)
-	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying ops %#v", m)
-	}
-
-	// Interpolate implicit variables
-	vars, err := manifest.ImplicitVariables()
-	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "failed to list implicit variables")
-	}
-
-	varSecrets := make([]string, len(vars))
-	for i, v := range vars {
-		varKeyName := ""
-		varSecretName := ""
-		if strings.Contains(v, "/") {
-			parts := strings.Split(v, "/")
-			if len(parts) != 2 {
-				return nil, []string{}, fmt.Errorf("expected one / separator for implicit variable/key name, have %d", len(parts))
-			}
-
-			varSecretName = names.SecretVariableName(parts[0])
-			varKeyName = parts[1]
-		} else {
-			varKeyName = bdv1.ImplicitVariableKeyName
-			varSecretName = names.SecretVariableName(v)
-		}
-
-		varData, err := r.resourceData(ctx, namespace, bdv1.SecretReference, varSecretName, varKeyName)
-		if err != nil {
-			return nil, varSecrets, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
-		}
-
-		varSecrets[i] = varSecretName
-		manifest = r.replaceVar(manifest, v, varData)
-	}
-
-	// Apply addons
-	log := ctxlog.ExtractLogger(ctx)
-	err = manifest.ApplyAddons(logger.TraceFilter(log, "manifest-addons"))
-	if err != nil {
-		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
-	}
-
-	// Interpolate user-provided explicit variables
-	bytes, err = manifest.Marshal()
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to marshal bdpl '%s/%s' after applying addons", bdpl.Namespace, bdpl.Name)
-	}
-
-	var userVars []boshtpl.Variables
-	for _, userVar := range bdpl.Spec.Vars {
-		varName := userVar.Name
-		varSecretName := userVar.Secret
-		secret := &corev1.Secret{}
-		err := r.client.Get(ctx, types.NamespacedName{Name: varSecretName, Namespace: namespace}, secret)
-		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "failed to retrieve secret '%s/%s' via client.Get", namespace, varSecretName)
-		}
-		staticVars := boshtpl.StaticVariables{}
-		for key, varBytes := range secret.Data {
-			switch key {
-			case "password":
-				staticVars[varName] = string(varBytes)
-			default:
-				staticVars[varName] = bdm.MergeStaticVar(staticVars[varName], key, string(varBytes))
-			}
-		}
-		userVars = append(userVars, staticVars)
-	}
-	bytes, err = bdm.InterpolateExplicitVariables(bytes, userVars, false)
-	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Failed to interpolate user provided explicit variables manifest '%s' in '%s'", bdpl.Name, namespace)
-	}
-
-	manifest, err = bdm.LoadYAML(bytes)
-	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying user explicit vars %#v", m)
-	}
-
-	err = boshdns.Validate(*manifest)
-	if err != nil {
-		return nil, nil, err
-	}
-	manifest.ApplyUpdateBlock()
-
-	return manifest, varSecrets, err
+	return r.applyVariables(ctx, bdpl, namespace, m, bytes, "manifest-addons")
 }
 
 // ManifestDetailed returns manifest and a list of implicit variables referenced by our bdpl CRD
@@ -207,10 +120,14 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 		}
 	}
 
+	return r.applyVariables(ctx, bdpl, namespace, m, bytes, "detailed-manifest-addons")
+}
+
+func (r *Resolver) applyVariables(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string, original string, bytes []byte, logName string) (*bdm.Manifest, []string, error) {
 	// Apply implicit variables
 	manifest, err := bdm.LoadYAML(bytes)
 	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying ops %#v", m)
+		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying ops %#v", original)
 	}
 
 	// Interpolate implicit variables
@@ -232,8 +149,8 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 			varSecretName = names.SecretVariableName(parts[0])
 			varKeyName = parts[1]
 		} else {
-			varKeyName = bdv1.ImplicitVariableKeyName
 			varSecretName = names.SecretVariableName(v)
+			varKeyName = bdv1.ImplicitVariableKeyName
 		}
 
 		varData, err := r.resourceData(ctx, namespace, bdv1.SecretReference, varSecretName, varKeyName)
@@ -247,7 +164,7 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 
 	// Apply addons
 	log := ctxlog.ExtractLogger(ctx)
-	err = manifest.ApplyAddons(logger.TraceFilter(log, "detailed-manifest-addons"))
+	err = manifest.ApplyAddons(logger.TraceFilter(log, logName))
 	if err != nil {
 		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
 	}
@@ -278,7 +195,6 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 		}
 		userVars = append(userVars, staticVars)
 	}
-
 	bytes, err = bdm.InterpolateExplicitVariables(bytes, userVars, false)
 	if err != nil {
 		return nil, []string{}, errors.Wrapf(err, "Failed to interpolate user provided explicit variables manifest '%s' in '%s'", bdpl.Name, namespace)
@@ -286,7 +202,7 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 
 	manifest, err = bdm.LoadYAML(bytes)
 	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying user explicit vars %#v", m)
+		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying user explicit vars %#v", original)
 	}
 
 	err = boshdns.Validate(*manifest)
