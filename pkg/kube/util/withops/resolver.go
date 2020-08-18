@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"reflect"
 	"strings"
 
+	"github.com/SUSE/go-patch/patch"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -136,6 +136,7 @@ func (r *Resolver) applyVariables(ctx context.Context, bdpl *bdv1.BOSHDeployment
 		return nil, []string{}, errors.Wrapf(err, "failed to list implicit variables")
 	}
 
+	impVars := boshtpl.StaticVariables{}
 	varSecrets := make([]string, len(vars))
 	for i, v := range vars {
 		varKeyName := ""
@@ -159,7 +160,24 @@ func (r *Resolver) applyVariables(ctx context.Context, bdpl *bdv1.BOSHDeployment
 		}
 
 		varSecrets[i] = varSecretName
-		manifest = r.replaceVar(manifest, v, varData)
+		impVars[v] = varData
+	}
+
+	// Interpolate variables
+	boshManifestBytes, _ := manifest.Marshal()
+	if err != nil {
+		return nil, varSecrets, errors.Wrapf(err, "failed to marshal manifest")
+	}
+	tpl := boshtpl.NewTemplate(boshManifestBytes)
+	evalOpts := boshtpl.EvaluateOpts{ExpectAllKeys: false, ExpectAllVarsUsed: false}
+	yamlBytes, err := tpl.Evaluate(impVars, patch.Ops{}, evalOpts)
+	if err != nil {
+		return nil, varSecrets, errors.Wrapf(err, "could not evaluate variables")
+	}
+
+	manifest, err = bdm.LoadYAML(yamlBytes)
+	if err != nil {
+		return nil, varSecrets, errors.Wrapf(err, "failed to load manifest with evaluated variables")
 	}
 
 	// Apply addons
@@ -212,70 +230,6 @@ func (r *Resolver) applyVariables(ctx context.Context, bdpl *bdv1.BOSHDeployment
 	manifest.ApplyUpdateBlock()
 
 	return manifest, varSecrets, err
-}
-
-func (r *Resolver) replaceVar(manifest *bdm.Manifest, name, value string) *bdm.Manifest {
-	original := reflect.ValueOf(manifest)
-	replaced := reflect.New(original.Type()).Elem()
-
-	r.replaceVarRecursive(replaced, original, name, value)
-
-	return replaced.Interface().(*bdm.Manifest)
-}
-
-func (r *Resolver) replaceVarRecursive(copy, v reflect.Value, varName, varValue string) {
-	switch v.Kind() {
-	case reflect.Ptr:
-		if !v.Elem().IsValid() {
-			return
-		}
-		copy.Set(reflect.New(v.Elem().Type()))
-		r.replaceVarRecursive(copy.Elem(), reflect.Indirect(v), varName, varValue)
-
-	case reflect.Interface:
-		originalValue := v.Elem()
-		if !originalValue.IsValid() {
-			return
-		}
-		copyValue := reflect.New(originalValue.Type()).Elem()
-		r.replaceVarRecursive(copyValue, originalValue, varName, varValue)
-		copy.Set(copyValue)
-
-	case reflect.Struct:
-		deepCopy := v.MethodByName("DeepCopy")
-		if (deepCopy != reflect.Value{}) {
-			values := deepCopy.Call([]reflect.Value{})
-			copy.Set(values[0])
-		}
-		for i := 0; i < v.NumField(); i++ {
-			r.replaceVarRecursive(copy.Field(i), v.Field(i), varName, varValue)
-		}
-
-	case reflect.Slice:
-		copy.Set(reflect.MakeSlice(v.Type(), v.Len(), v.Cap()))
-		for i := 0; i < v.Len(); i++ {
-			r.replaceVarRecursive(copy.Index(i), v.Index(i), varName, varValue)
-		}
-
-	case reflect.Map:
-		copy.Set(reflect.MakeMap(v.Type()))
-		for _, key := range v.MapKeys() {
-			originalValue := v.MapIndex(key)
-			copyValue := reflect.New(originalValue.Type()).Elem()
-			r.replaceVarRecursive(copyValue, originalValue, varName, varValue)
-			copy.SetMapIndex(key, copyValue)
-		}
-
-	case reflect.String:
-		if copy.CanSet() {
-			replaced := strings.Replace(v.String(), fmt.Sprintf("((%s))", varName), varValue, -1)
-			copy.SetString(replaced)
-		}
-	default:
-		if copy.CanSet() {
-			copy.Set(v)
-		}
-	}
 }
 
 // resourceData resolves different manifest reference types and returns the resource's data
