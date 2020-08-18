@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -51,35 +50,29 @@ type Target struct {
 	Domain        string `json:"domain"`
 }
 
-// Alias of domain alias.
-type Alias struct {
-	Domain  string   `json:"domain"`
-	Targets []Target `json:"targets"`
-}
-
 // BoshDomainNameService is used to emulate Bosh DNS.
 type BoshDomainNameService struct {
-	Aliases        []Alias
+	Corefile       *Corefile
 	LocalDNSIP     string
 	InstanceGroups bdm.InstanceGroups
 }
 
 // NewBoshDomainNameService create a new DomainNameService to setup BOSH DNS.
-func NewBoshDomainNameService(addOn *bdm.AddOn, instanceGroups bdm.InstanceGroups) (*BoshDomainNameService, error) {
-	dns := BoshDomainNameService{
+func NewBoshDomainNameService(instanceGroups bdm.InstanceGroups) *BoshDomainNameService {
+	return &BoshDomainNameService{
+		Corefile:       &Corefile{},
 		InstanceGroups: instanceGroups,
 	}
+}
+
+// Add create a new DomainNameService to setup BOSH DNS.
+func (dns *BoshDomainNameService) Add(addOn *bdm.AddOn) error {
 	for _, job := range addOn.Jobs {
-		aliasesProperty := job.Properties.Properties["aliases"]
-		if aliasesProperty != nil {
-			aliases := make([]Alias, 0)
-			if err := mapstructure.Decode(aliasesProperty, &aliases); err != nil {
-				return nil, errors.Wrapf(err, "failed to load aliases from manifest")
-			}
-			dns.Aliases = append(dns.Aliases, aliases...)
+		if err := dns.Corefile.Add(job.Properties.Properties); err != nil {
+			return err
 		}
 	}
-	return &dns, nil
+	return nil
 }
 
 // DNSSetting see interface.
@@ -114,7 +107,7 @@ func (dns *BoshDomainNameService) Apply(ctx context.Context, namespace string, c
 		Labels:    map[string]string{"app": appName},
 	}
 
-	corefile, err := createCorefile(namespace, dns.InstanceGroups, dns.Aliases)
+	corefile, err := dns.Corefile.Create(namespace, dns.InstanceGroups)
 	if err != nil {
 		return err
 	}

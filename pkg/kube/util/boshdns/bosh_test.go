@@ -142,11 +142,34 @@ const aliasAddon = `
 }
 `
 
+const handlerAddon = `
+{
+  "name": "bosh-dns-handler",
+  "jobs": [
+    {
+      "name": "bosh-dns-handler",
+      "release": "fake-release",
+      "properties": {
+        "handlers": [
+          {
+            "domain": "corp.intranet.local.",
+            "source": {
+              "recursors": [ "10.0.0.2", "127.0.0.1" ],
+              "type": "dns"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+`
+
 var _ = Describe("BOSHDomainNameService", func() {
 	Context("Apply", func() {
 		var (
 			client *cfakes.FakeClient
-			dns    boshdns.DomainNameService
+			dns    *boshdns.BoshDomainNameService
 		)
 
 		loadAddOn := func(addon string) *manifest.AddOn {
@@ -159,6 +182,15 @@ var _ = Describe("BOSHDomainNameService", func() {
 			return &addOn
 		}
 
+		getCorefile := func(client *cfakes.FakeClient) string {
+			_, obj, _ := client.CreateArgsForCall(0)
+			cm, ok := obj.(*corev1.ConfigMap)
+			Expect(ok).To(BeTrue())
+			corefile, ok := cm.Data["Corefile"]
+			Expect(ok).To(BeTrue())
+			return corefile
+		}
+
 		When("BOSHDNS Addon has aliases", func() {
 			BeforeEach(func() {
 				igs := manifest.InstanceGroups{
@@ -166,8 +198,8 @@ var _ = Describe("BOSHDomainNameService", func() {
 					&manifest.InstanceGroup{Name: "diego-api", AZs: []string{"az1", "az2"}},
 					&manifest.InstanceGroup{Name: "bits", AZs: []string{"az1", "az2"}},
 				}
-				var err error
-				dns, err = boshdns.NewBoshDomainNameService(loadAddOn(aliasAddon), igs)
+				dns = boshdns.NewBoshDomainNameService(igs)
+				err := dns.Add(loadAddOn(aliasAddon))
 				Expect(err).NotTo(HaveOccurred())
 
 				client = &cfakes.FakeClient{}
@@ -190,37 +222,87 @@ var _ = Describe("BOSHDomainNameService", func() {
 					Expect(counter).To(Equal(3))
 				})
 
-				By("creating a corefile configmap")
-				_, obj, _ := client.CreateArgsForCall(0)
-				cm, ok := obj.(*corev1.ConfigMap)
-				Expect(ok).To(BeTrue())
-				corefile, ok := cm.Data["Corefile"]
-				Expect(ok).To(BeTrue())
-
 				By("checking for entries in corefile")
+				corefile := getCorefile(client)
 				Expect(corefile).To(ContainSubstring(`
-template IN A bits.service.cf.internal {
-	match ^(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*bits\.service\.cf\.internal\.$
-	answer "{{ .Name }} 60 IN CNAME bits.default.svc."
-	upstream`))
+	template IN A bits.service.cf.internal {
+		match ^(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*bits\.service\.cf\.internal\.$
+		answer "{{ .Name }} 60 IN CNAME bits.default.svc."
+		upstream`))
 				Expect(corefile).To(ContainSubstring(`
-template IN AAAA bits.service.cf.internal {
-	match ^(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*bits\.service\.cf\.internal\.$
-	answer "{{ .Name }} 60 IN CNAME bits.default.svc."
-	upstream`))
+	template IN AAAA bits.service.cf.internal {
+		match ^(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*bits\.service\.cf\.internal\.$
+		answer "{{ .Name }} 60 IN CNAME bits.default.svc."
+		upstream`))
 				Expect(corefile).To(ContainSubstring(`
-template IN CNAME bbs1.service.cf.internal {
-	match ^bbs1\.service\.cf\.internal\.$
-	answer "{{ .Name }} 60 IN CNAME diego-api.default.svc."
-	upstream
-}`))
+	template IN CNAME bbs1.service.cf.internal {
+		match ^bbs1\.service\.cf\.internal\.$
+		answer "{{ .Name }} 60 IN CNAME diego-api.default.svc."
+		upstream
+	}`))
 
 				By("checking for entries which are missing an instance group, but do not use _ query")
 				Expect(corefile).To(ContainSubstring(`
-template IN A uaa.service.cf.internal {
-	match ^(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*uaa\.service\.cf\.internal\.$
-	answer "{{ .Name }} 60 IN CNAME uaa.default.svc."
-	upstream`))
+	template IN A uaa.service.cf.internal {
+		match ^(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*uaa\.service\.cf\.internal\.$
+		answer "{{ .Name }} 60 IN CNAME uaa.default.svc."
+		upstream`))
+			})
+		})
+
+		When("BOSHDNS Addon has handlers", func() {
+			BeforeEach(func() {
+				dns = boshdns.NewBoshDomainNameService(manifest.InstanceGroups{})
+				err := dns.Add(loadAddOn(handlerAddon))
+				Expect(err).NotTo(HaveOccurred())
+
+				client = &cfakes.FakeClient{}
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+				})
+			})
+
+			It("creates coredns corefile with handler statements", func() {
+				err := dns.Apply(context.Background(), "default", client, func(object v1.Object) error { return nil })
+				Expect(err).NotTo(HaveOccurred())
+
+				By("checking for handler entries in corefile")
+				corefile := getCorefile(client)
+				Expect(corefile).To(ContainSubstring(`corp.intranet.local:8053 {`))
+				Expect(corefile).To(ContainSubstring(`forward . dns://10.0.0.2 dns://127.0.0.1`))
+				Expect(corefile).To(ContainSubstring(`forward . /etc/resolv.conf`))
+			})
+		})
+
+		When("adding multiple dns addons", func() {
+			BeforeEach(func() {
+				dns = boshdns.NewBoshDomainNameService(manifest.InstanceGroups{})
+				err := dns.Add(loadAddOn(handlerAddon))
+				Expect(err).NotTo(HaveOccurred())
+				err = dns.Add(loadAddOn(aliasAddon))
+				Expect(err).NotTo(HaveOccurred())
+
+				client = &cfakes.FakeClient{}
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+				})
+			})
+
+			It("creates coredns corefile with handler statements", func() {
+				err := dns.Apply(context.Background(), "default", client, func(object v1.Object) error { return nil })
+				Expect(err).NotTo(HaveOccurred())
+
+				By("checking for handler entries in corefile")
+				corefile := getCorefile(client)
+				Expect(corefile).To(ContainSubstring(`corp.intranet.local:8053 {`))
+				Expect(corefile).To(ContainSubstring(`forward . dns://10.0.0.2 dns://127.0.0.1`))
+				Expect(corefile).To(ContainSubstring(`forward . /etc/resolv.conf`))
+				Expect(corefile).To(ContainSubstring(`
+	template IN CNAME bbs1.service.cf.internal {
+		match ^bbs1\.service\.cf\.internal\.$
+		answer "{{ .Name }} 60 IN CNAME diego-api.default.svc."
+		upstream
+	}`))
 			})
 		})
 	})

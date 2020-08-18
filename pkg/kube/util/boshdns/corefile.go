@@ -6,15 +6,68 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
 )
 
-func createCorefile(namespace string, instanceGroups bdm.InstanceGroups, aliases []Alias) (string, error) {
+// Corefile contains config for coredns
+type Corefile struct {
+	Aliases  []Alias   `json:"aliases"`
+	Handlers []Handler `json:"handlers"`
+}
+
+// Alias of domain alias.
+type Alias struct {
+	Domain  string   `json:"domain"`
+	Targets []Target `json:"targets"`
+}
+
+// Handler redirects DNS queries for a zone to a forward server
+type Handler struct {
+	Domain string        `json:"domain"`
+	Source HandlerSource `json:"source"`
+}
+
+// Zone returns the domain with the trailing dot removed
+func (h Handler) Zone() string {
+	return strings.TrimRight(h.Domain, ".")
+}
+
+// HandlerSource points to the forward DNS server
+type HandlerSource struct {
+	Recursors []string `json:"recursors"`
+	Type      string   `json:"type"`
+}
+
+// HTTP returns true if the handler's source is of type http
+func (h HandlerSource) HTTP() bool {
+	return h.Type == "http"
+}
+
+// DNS returns true if the handler's source is of type dns
+func (h HandlerSource) DNS() bool {
+	return h.Type == "dns"
+}
+
+// Add an entry (alias or handler) to the corefile
+func (c *Corefile) Add(props map[string]interface{}) error {
+	tmp := &Corefile{}
+	if err := mapstructure.Decode(props, tmp); err != nil {
+		return errors.Wrapf(err, "failed to load dns addon config")
+	}
+	c.Aliases = append(c.Aliases, tmp.Aliases...)
+	c.Handlers = append(c.Handlers, tmp.Handlers...)
+
+	return nil
+}
+
+// Create the coredns corefile
+func (c *Corefile) Create(namespace string, instanceGroups bdm.InstanceGroups) (string, error) {
 	rewrites := make([]string, 0)
-	for _, alias := range aliases {
+	for _, alias := range c.Aliases {
 		for _, target := range alias.Targets {
 			// Implement BOSH DNS placeholder alias: https://bosh.io/docs/dns/#placeholder-alias.
 			instanceGroup, found := instanceGroups.InstanceGroupByName(target.InstanceGroup)
@@ -37,7 +90,11 @@ func createCorefile(namespace string, instanceGroups bdm.InstanceGroups, aliases
 
 	tmpl := template.Must(template.New("Corefile").Parse(corefileTemplate))
 	var config strings.Builder
-	if err := tmpl.Execute(&config, rewrites); err != nil {
+	data := struct {
+		Rewrites []string
+		Handlers []Handler
+	}{rewrites, c.Handlers}
+	if err := tmpl.Execute(&config, data); err != nil {
 		return "", errors.Wrapf(err, "failed to generate Corefile")
 	}
 
@@ -56,7 +113,7 @@ func gatherSimpleRewrites(rewrites []string,
 
 	from := alias.Domain
 	to := fmt.Sprintf("%s.%s.svc.%s", target.InstanceGroup, namespace, clusterDomain)
-	rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
+	rewrites = append(rewrites, newTemplate(from, to, target.Query))
 
 	return rewrites
 }
@@ -90,7 +147,7 @@ func gatherAllRewrites(rewrites []string,
 			names.ServiceName(target.InstanceGroup),
 			namespace,
 			clusterDomain)
-		rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
+		rewrites = append(rewrites, newTemplate(from, to, target.Query))
 	}
 
 	return rewrites
@@ -107,7 +164,7 @@ func gatherRewritesForInstances(rewrites []string,
 		from := strings.Replace(alias.Domain, "_", id, 1)
 		serviceName := instanceGroup.IndexedServiceName(i, azIndex)
 		to := fmt.Sprintf("%s.%s.svc.%s", serviceName, namespace, clusterDomain)
-		rewrites = append(rewrites, dnsTemplate(from, to, target.Query))
+		rewrites = append(rewrites, newTemplate(from, to, target.Query))
 	}
 
 	return rewrites
@@ -115,10 +172,15 @@ func gatherRewritesForInstances(rewrites []string,
 
 // The Corefile values other than the rewrites were based on the default cluster CoreDNS Corefile.
 const corefileTemplate = `
+{{- range .Handlers }}
+{{ .Zone }}:8053 {
+	forward . {{ if .Source.DNS }} {{- range .Source.Recursors }}dns://{{ . }} {{ end }} {{ else if .Source.Type.HTTP }} {{- range .Source.Recursors }}tls://{{ . }} {{ end }} {{ end }}
+}
+{{- end }}
 .:8053 {
 	errors
 	health
-	{{- range $rewrite := . }}
+	{{- range $rewrite := .Rewrites }}
 	{{ $rewrite }}
 	{{- end }}
 	forward . /etc/resolv.conf
@@ -128,7 +190,7 @@ const corefileTemplate = `
 	loadbalance
 }`
 
-func dnsTemplate(from, to, queryType string) string {
+func newTemplate(from, to, queryType string) string {
 	matchPrefix := ""
 	if queryType == "*" {
 		matchPrefix = `(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*`
@@ -137,18 +199,18 @@ func dnsTemplate(from, to, queryType string) string {
 }
 
 const cnameTemplate = `
-template IN A %[4]s {
-	match ^%[2]s%[1]s\.$
-	answer "{{ .Name }} 60 IN CNAME %[3]s"
-	upstream
-}
-template IN AAAA %[4]s {
-	match ^%[2]s%[1]s\.$
-	answer "{{ .Name }} 60 IN CNAME %[3]s"
-	upstream
-}
-template IN CNAME %[4]s {
-	match ^%[2]s%[1]s\.$
-	answer "{{ .Name }} 60 IN CNAME %[3]s"
-	upstream
-}`
+	template IN A %[4]s {
+		match ^%[2]s%[1]s\.$
+		answer "{{ .Name }} 60 IN CNAME %[3]s"
+		upstream
+	}
+	template IN AAAA %[4]s {
+		match ^%[2]s%[1]s\.$
+		answer "{{ .Name }} 60 IN CNAME %[3]s"
+		upstream
+	}
+	template IN CNAME %[4]s {
+		match ^%[2]s%[1]s\.$
+		answer "{{ .Name }} 60 IN CNAME %[3]s"
+		upstream
+	}`
