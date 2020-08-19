@@ -461,7 +461,7 @@ var _ = Describe("BDPL updates", func() {
 		})
 	})
 
-	FContext("when updating a deployment with rotating an explicit secret", func() {
+	Context("when updating a deployment with rotating an explicit secret", func() {
 		BeforeEach(func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsExplicitVar))
 			Expect(err).NotTo(HaveOccurred())

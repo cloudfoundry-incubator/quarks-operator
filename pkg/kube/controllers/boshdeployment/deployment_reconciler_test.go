@@ -286,7 +286,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 				_, err := reconciler.Reconcile(request)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to set ownerReference for Secret 'default/with-ops': some error"))
+				Expect(err.Error()).To(ContainSubstring("failed to set ownerReference for QuarksJob 'default/ig-foo': some error"))
 			})
 
 			It("handles an error when creating manifest secret with ops", func() {
