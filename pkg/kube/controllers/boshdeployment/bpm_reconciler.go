@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,7 +34,7 @@ import (
 
 // BPMConverter converts k8s resources from single BOSH manifest
 type BPMConverter interface {
-	Resources(namespace string, manifestName string, dns bpmconverter.DNSSettings, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*bpmconverter.Resources, error)
+	Resources(manifest bdm.Manifest, namespace string, manifestName string, serviceIP string, qStsVersion string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*bpmconverter.Resources, error)
 }
 
 // DesiredManifest unmarshals desired manifest from the manifest secret
@@ -43,13 +42,10 @@ type DesiredManifest interface {
 	DesiredManifest(ctx context.Context, namespace string) (*bdm.Manifest, error)
 }
 
-// NewDNSFunc returns a dns client for the manifest
-type NewDNSFunc func(m bdm.Manifest) (boshdns.DomainNameService, error)
-
 var _ reconcile.Reconciler = &ReconcileBOSHDeployment{}
 
 // NewBPMReconciler returns a new reconcile.Reconciler
-func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver DesiredManifest, srf setReferenceFunc, converter BPMConverter, dns NewDNSFunc) reconcile.Reconciler {
+func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver DesiredManifest, srf setReferenceFunc, converter BPMConverter) reconcile.Reconciler {
 	return &ReconcileBPM{
 		ctx:                  ctx,
 		config:               config,
@@ -59,7 +55,6 @@ func NewBPMReconciler(ctx context.Context, config *config.Config, mgr manager.Ma
 		setReference:         srf,
 		converter:            converter,
 		versionedSecretStore: versionedsecretstore.NewVersionedSecretStore(mgr.GetClient()),
-		newDNSFunc:           dns,
 	}
 }
 
@@ -73,7 +68,6 @@ type ReconcileBPM struct {
 	setReference         setReferenceFunc
 	converter            BPMConverter
 	versionedSecretStore versionedsecretstore.VersionedSecretStore
-	newDNSFunc           NewDNSFunc
 }
 
 // Reconcile reconciles an Instance Group BPM versioned secret read the corresponding
@@ -124,12 +118,6 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 			log.WithEvent(bpmSecret, "DesiredManifestReadError").Errorf(ctx, "Failed to read desired manifest for bpm '%s': %v", request.NamespacedName, err)
 	}
 
-	dns, err := r.newDNSFunc(*manifest)
-	if err != nil {
-		return reconcile.Result{},
-			log.WithEvent(bpmSecret, "DesiredManifestReadError").Errorf(ctx, "Failed to load BOSH DNS for manifest '%s': %v", deploymentName, err)
-	}
-
 	bdpl := &bdv1.BOSHDeployment{}
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: deploymentName}, bdpl)
 	if err != nil {
@@ -137,17 +125,17 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 			log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get BoshDeployment instance '%s/%s': %v", request.Namespace, deploymentName, err)
 	}
 
-	err = dns.Apply(ctx, request.Namespace, r.client, func(object metav1.Object) error {
-		return r.setReference(bdpl, object, r.scheme)
-	})
-
-	if err != nil {
-		return reconcile.Result{},
-			log.WithEvent(bpmSecret, "DnsReconcileError").Errorf(ctx, "Failed to reconcile dns: %v", err)
+	dnsService := &corev1.Service{}
+	if boshdns.HasBoshDNSAddOn(*manifest) != -1 {
+		err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: "bosh-dns"}, dnsService)
+		if err != nil {
+			return reconcile.Result{},
+				log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get bosh-dns service '%s/%s': %v", request.Namespace, deploymentName, err)
+		}
 	}
 
 	// Apply BPM information
-	resources, err := r.applyBPMResources(bdpl.Name, instanceGroupName, bpmSecret, manifest, dns)
+	resources, err := r.applyBPMResources(bdpl.Name, instanceGroupName, bpmSecret, manifest, dnsService.Spec.ClusterIP)
 	if err != nil {
 		return reconcile.Result{},
 			log.WithEvent(bpmSecret, "BPMApplyingError").Errorf(ctx, "Failed to apply BPM information: %v", err)
@@ -175,7 +163,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileBPM) applyBPMResources(bdplName string, instanceGroupName string, bpmSecret *corev1.Secret, manifest *bdm.Manifest, dns boshdns.DomainNameService) (*bpmconverter.Resources, error) {
+func (r *ReconcileBPM) applyBPMResources(bdplName string, instanceGroupName string, bpmSecret *corev1.Secret, manifest *bdm.Manifest, serviceIP string) (*bpmconverter.Resources, error) {
 	var bpmInfo bdm.BPMInfo
 	if val, ok := bpmSecret.Data["bpm.yaml"]; ok {
 		err := yaml.Unmarshal(val, &bpmInfo)
@@ -216,7 +204,7 @@ func (r *ReconcileBPM) applyBPMResources(bdplName string, instanceGroupName stri
 		return nil, err
 	}
 
-	resources, err := r.converter.Resources(bpmSecret.Namespace, bdplName, dns, qStsVersionString, instanceGroup, manifest, bpmInfo.Configs, igResolvedSecretVersion)
+	resources, err := r.converter.Resources(*manifest, bpmSecret.Namespace, bdplName, serviceIP, qStsVersionString, instanceGroup, bpmInfo.Configs, igResolvedSecretVersion)
 	if err != nil {
 		return resources, err
 	}

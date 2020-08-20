@@ -17,7 +17,6 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpmconverter/fakes"
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/testing"
 	"code.cloudfoundry.org/quarks-operator/testing/boshreleases"
 	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
@@ -33,7 +32,6 @@ var _ = Describe("BPM Converter", func() {
 		containerFactory *fakes.FakeContainerFactory
 		env              testing.Catalog
 		err              error
-		dns              bpmconverter.DNSSettings
 	)
 
 	Context("Resources", func() {
@@ -43,7 +41,7 @@ var _ = Describe("BPM Converter", func() {
 				func(instanceGroupName string, version string, disableLogSidecar bool, releaseImageProvider manifest.ReleaseImageProvider, bpmConfigs bpm.Configs) bpmconverter.ContainerFactory {
 					return containerFactory
 				})
-			resources, err := c.Resources("foo", deploymentName, dns, "1", instanceGroup, m, bpmConfigs, "1")
+			resources, err := c.Resources(*m, "foo", deploymentName, "1.2.3.4", "1", instanceGroup, bpmConfigs, "1")
 			return resources, err
 		}
 
@@ -51,9 +49,6 @@ var _ = Describe("BPM Converter", func() {
 			deploymentName = "fake-deployment"
 
 			m, err = env.DefaultBOSHManifest()
-			Expect(err).NotTo(HaveOccurred())
-
-			dns, err = boshdns.New(*m)
 			Expect(err).NotTo(HaveOccurred())
 
 			volumeFactory = &fakes.FakeVolumeFactory{}
@@ -626,7 +621,7 @@ var _ = Describe("BPM Converter", func() {
 								releaseImageProvider,
 								bpmConfigs)
 						})
-					resources, err := c.Resources("foo", deploymentName, dns, "1", m.InstanceGroups[1], m, bpmConfigs[1], "1")
+					resources, err := c.Resources(*m, "foo", deploymentName, "1.2.3.4", "1", m.InstanceGroups[1], bpmConfigs[1], "1")
 
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(resources.InstanceGroups).To(HaveLen(1))

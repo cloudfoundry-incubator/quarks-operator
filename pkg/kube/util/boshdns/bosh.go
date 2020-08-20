@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/apis"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/mutate"
 )
 
@@ -23,11 +22,12 @@ const (
 )
 
 var (
-	boshDNSDockerImage = ""
-	clusterDomain      = ""
-	dnsTCPPort         = corev1.ContainerPort{ContainerPort: 8053, Name: "dns-tcp", Protocol: "TCP"}
-	dnsUDPPort         = corev1.ContainerPort{ContainerPort: 8053, Name: "dns-udp", Protocol: "UDP"}
-	metricsPort        = corev1.ContainerPort{ContainerPort: 9153, Name: "metrics", Protocol: "TCP"}
+	annotationRestartOnUpdate = fmt.Sprintf("%s/restart-on-update", apis.GroupName)
+	boshDNSDockerImage        = ""
+	clusterDomain             = ""
+	dnsTCPPort                = corev1.ContainerPort{ContainerPort: 8053, Name: "dns-tcp", Protocol: "TCP"}
+	dnsUDPPort                = corev1.ContainerPort{ContainerPort: 8053, Name: "dns-udp", Protocol: "UDP"}
+	metricsPort               = corev1.ContainerPort{ContainerPort: 9153, Name: "metrics", Protocol: "TCP"}
 )
 
 // SetBoshDNSDockerImage initializes the package scoped boshDNSDockerImage variable.
@@ -79,30 +79,14 @@ func (dns *BoshDomainNameService) Add(addOn *bdm.AddOn) error {
 	return nil
 }
 
-// DNSSetting see interface.
-func (dns *BoshDomainNameService) DNSSetting(namespace string) (corev1.DNSPolicy, *corev1.PodDNSConfig, error) {
-	if dns.LocalDNSIP == "" {
-		return corev1.DNSNone, nil, errors.New("BoshDomainNameService: DNSSetting called before Apply")
-	}
-	ndots := "5"
-	return corev1.DNSNone, &corev1.PodDNSConfig{
-		Nameservers: []string{dns.LocalDNSIP},
-		Searches: []string{
-			fmt.Sprintf("%s.svc.%s", namespace, clusterDomain),
-			fmt.Sprintf("svc.%s", clusterDomain),
-			clusterDomain,
-		},
-		Options: []corev1.PodDNSConfigOption{{Name: "ndots", Value: &ndots}},
-	}, nil
-}
-
 // CorefileConfigMap is a ConfigMap that contains the corefile
 func (dns *BoshDomainNameService) CorefileConfigMap(namespace string) (corev1.ConfigMap, error) {
 	cm := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      appName,
-			Namespace: namespace,
-			Labels:    map[string]string{"app": appName},
+			Name:        appName,
+			Namespace:   namespace,
+			Labels:      map[string]string{"app": appName},
+			Annotations: map[string]string{annotationRestartOnUpdate: "true"},
 		},
 	}
 
@@ -235,14 +219,13 @@ func (dns *BoshDomainNameService) Apply(ctx context.Context, namespace string, c
 	if _, err := controllerutil.CreateOrUpdate(ctx, c, &configMap, configMapMutateFn(&configMap)); err != nil {
 		return err
 	}
-	if _, err := controllerutil.CreateOrUpdate(ctx, c, &deployment, deploymentMapMutateFn(&deployment)); err != nil {
+	if _, err = controllerutil.CreateOrUpdate(ctx, c, &deployment, deploymentMapMutateFn(&deployment)); err != nil {
 		return err
 	}
 	if _, err := controllerutil.CreateOrUpdate(ctx, c, &service, mutate.ServiceMutateFn(&service)); err != nil {
 		return err
 	}
 
-	dns.LocalDNSIP = service.Spec.ClusterIP
 	return nil
 }
 

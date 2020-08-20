@@ -29,7 +29,6 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers"
 	cfd "code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/boshdeployment"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	cfcfg "code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
@@ -53,6 +52,7 @@ var _ = Describe("ReconcileBPM", func() {
 		manifestWithVars          *corev1.Secret
 		bpmInformation            *corev1.Secret
 		bpmInformationNoProcesses *corev1.Secret
+		dnsService                *corev1.Service
 	)
 
 	BeforeEach(func() {
@@ -198,6 +198,15 @@ variables: []
 			},
 		}
 
+		dnsService = &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "bosh-dns",
+			},
+			Spec: corev1.ServiceSpec{
+				ClusterIP: "1.2.3.4",
+			},
+		}
+
 		client = &fakes.FakeClient{}
 		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
 			switch object := object.(type) {
@@ -235,9 +244,6 @@ variables: []
 		resolver.DesiredManifestReturns(manifest, nil)
 		reconciler = cfd.NewBPMReconciler(ctx, config, manager, &resolver,
 			controllerutil.SetControllerReference, &kubeConverter,
-			func(m bdm.Manifest) (boshdns.DomainNameService, error) {
-				return boshdns.NewSimpleDomainNameService(), nil
-			},
 		)
 	})
 
@@ -301,7 +307,11 @@ variables: []
 							bpmInformation.DeepCopyInto(object)
 						}
 					case *corev1.Service:
-						return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+						if nn.Name == "bosh-dns" {
+							dnsService.DeepCopyInto(object)
+						} else {
+							return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
+						}
 					}
 
 					return nil
