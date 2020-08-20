@@ -159,8 +159,13 @@ func gatherRewritesForInstances(rewrites []string,
 	namespace string,
 	azIndex int,
 	alias Alias) []string {
+	id := ""
 	for i := 0; i < instanceGroup.Instances; i++ {
-		id := fmt.Sprintf("%s-%d", target.InstanceGroup, i)
+		if azIndex > -1 {
+			id = fmt.Sprintf("%s-z%d-%d", target.InstanceGroup, azIndex, i)
+		} else {
+			id = fmt.Sprintf("%s-%d", target.InstanceGroup, i)
+		}
 		from := strings.Replace(alias.Domain, "_", id, 1)
 		serviceName := instanceGroup.IndexedServiceName(i, azIndex)
 		to := fmt.Sprintf("%s.%s.svc.%s", serviceName, namespace, clusterDomain)
