@@ -44,7 +44,7 @@ operator:
     # port the webhook server listens on
     port: "2999"
   # boshDNSDockerImage is the docker image used for emulating bosh DNS (a CoreDNS image).
-  boshDNSDockerImage: "cfcontainerization/coredns:0.1.0-1.6.7-bp152.1.8"
+  boshDNSDockerImage: "registry.opensuse.org/cloud/platform/quarks/images/images/coredns@sha256:e5a6afe73d0823b45e7faaa71574bb1a596c53f1e1f95f693acbb850058d09f6"
 
 # serviceAccount contains the configuration
 # values of the service account used by cf-operator.
