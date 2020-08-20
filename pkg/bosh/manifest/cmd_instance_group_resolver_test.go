@@ -147,7 +147,7 @@ var _ = Describe("InstanceGroupResolver", func() {
 				// We do not support different indexes in BPM data.
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECAZ"]).To(Equal("z1"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECBOOTSTRAP"]).To(Equal("true"))
-				Expect(bpm.Processes[0].Env["FOOBARWITHSPECID"]).To(Equal("log-api-0"))
+				Expect(bpm.Processes[0].Env["FOOBARWITHSPECID"]).To(Equal("log-api-z0-0"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECINDEX"]).To(Equal("0"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECNAME"]).To(Equal("log-api-loggregator_trafficcontroller"))
 				Expect(bpm.Processes[0].Env["FOOBARWITHSPECNETWORKS"]).To(Equal(""))

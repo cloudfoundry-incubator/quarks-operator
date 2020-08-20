@@ -104,7 +104,7 @@ var _ = Describe("Trender", func() {
 				// will use the instance at the index provided to the RenderJobTemplates func().
 				Expect(values.Env["FOOBARWITHSPECAZ"]).To(Equal("z1"))
 				Expect(values.Env["FOOBARWITHSPECBOOTSTRAP"]).To(Equal("true"))
-				Expect(values.Env["FOOBARWITHSPECID"]).To(Equal("log-api-0"))
+				Expect(values.Env["FOOBARWITHSPECID"]).To(Equal("log-api-z0-0"))
 				Expect(values.Env["FOOBARWITHSPECINDEX"]).To(Equal("0"))
 				Expect(values.Env["FOOBARWITHSPECNAME"]).To(Equal("log-api-loggregator_trafficcontroller"))
 				Expect(values.Env["FOOBARWITHSPECNETWORKS"]).To(Equal(""))
