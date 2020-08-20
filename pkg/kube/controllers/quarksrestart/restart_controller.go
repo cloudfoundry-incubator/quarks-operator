@@ -23,13 +23,13 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/skip"
 )
 
-// AnnotationRestartOnUpdate is the annotation required on the secret for the quarks restart feature
+// AnnotationRestartOnUpdate is the annotation required on the secret/configmap for the quarks restart feature
 var AnnotationRestartOnUpdate = fmt.Sprintf("%s/restart-on-update", apis.GroupName)
 
 const name = "quarks-restart"
 
 // AddRestart creates a new controller to restart statefulsets,deployments & jobs
-// if one of their pod's referred secrets has changed
+// if one of their pod's referred secrets/configmaps has changed
 func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager) error {
 	ctx = ctxlog.NewContextWithRecorder(ctx, name+"-reconciler", mgr.GetEventRecorderFor(name+"-recorder"))
 	r := NewRestartReconciler(ctx, config, mgr)
@@ -90,6 +90,55 @@ func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager)
 	}, nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching secrets failed in Restart controller failed.")
+	}
+
+	// watch configmaps, trigger if one changes which is used by a pod
+	p = predicate.Funcs{
+		CreateFunc:  func(e event.CreateEvent) bool { return false },
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+		UpdateFunc: func(e event.UpdateEvent) bool {
+
+			annotations := e.MetaNew.GetAnnotations()
+			if _, found := annotations[AnnotationRestartOnUpdate]; !found {
+				return false
+			}
+
+			oldConfigMap := e.ObjectOld.(*corev1.ConfigMap)
+			newConfigMap := e.ObjectNew.(*corev1.ConfigMap)
+
+			if !reflect.DeepEqual(oldConfigMap.Data, newConfigMap.Data) {
+				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
+					ctx, e.MetaNew, "corev1.ConfigMap",
+					fmt.Sprintf("Update predicate passed for '%s/%s'", e.MetaNew.GetNamespace(), e.MetaNew.GetName()),
+				)
+				return true
+			}
+			return false
+		},
+	}
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
+			configmap := a.Object.(*corev1.ConfigMap)
+
+			if skip.Reconciles(ctx, mgr.GetClient(), configmap) {
+				return []reconcile.Request{}
+			}
+
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForPod, configmap, false)
+			if err != nil {
+				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configmap '%s/%s': %v", configmap.Namespace, configmap.Name, err)
+			}
+
+			for _, reconciliation := range reconciles {
+				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "RestartController", a.Meta.GetName(), "configmap")
+			}
+
+			return reconciles
+		}),
+	}, nsPred, p)
+	if err != nil {
+		return errors.Wrapf(err, "Watching configmaps failed in Restart controller failed.")
 	}
 	return nil
 }
