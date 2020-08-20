@@ -23,17 +23,20 @@ type DomainNameService interface {
 
 // New returns the DNS service management struct
 func New(m bdm.Manifest) (DomainNameService, error) {
+	dns := NewBoshDomainNameService(m.InstanceGroups)
+	found := false
 	for _, addon := range m.AddOns {
 		if addon.Name == bdm.BoshDNSAddOnName {
-			var err error
-			dns, err := NewBoshDomainNameService(addon, m.InstanceGroups)
-			if err != nil {
+			found = true
+			if err := dns.Add(addon); err != nil {
 				return nil, errors.Wrapf(err, "error loading BOSH DNS configuration")
 			}
-			return dns, nil
 		}
 	}
 
+	if found {
+		return dns, nil
+	}
 	return NewSimpleDomainNameService(), nil
 }
 

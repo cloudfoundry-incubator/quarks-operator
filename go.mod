@@ -26,7 +26,7 @@ require (
 	github.com/spf13/afero v1.3.0
 	github.com/spf13/cobra v0.0.7
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.7.0
+	github.com/spf13/viper v1.7.1
 	github.com/viovanov/bosh-template-go v0.0.0-20200416144406-32ddfa4afdb0
 	go.uber.org/zap v1.15.0
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
@@ -34,7 +34,7 @@ require (
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.18.5
 	k8s.io/apiextensions-apiserver v0.18.5
-	k8s.io/apimachinery v0.18.5
+	k8s.io/apimachinery v0.18.8
 	k8s.io/client-go v0.18.5
 	k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89
 	sigs.k8s.io/controller-runtime v0.6.0

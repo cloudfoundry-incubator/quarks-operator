@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -19,12 +18,16 @@ import (
 )
 
 const (
-	appName = "bosh-dns"
+	appName        = "bosh-dns"
+	coreConfigFile = "Corefile"
 )
 
 var (
 	boshDNSDockerImage = ""
 	clusterDomain      = ""
+	dnsTCPPort         = corev1.ContainerPort{ContainerPort: 8053, Name: "dns-tcp", Protocol: "TCP"}
+	dnsUDPPort         = corev1.ContainerPort{ContainerPort: 8053, Name: "dns-udp", Protocol: "UDP"}
+	metricsPort        = corev1.ContainerPort{ContainerPort: 9153, Name: "metrics", Protocol: "TCP"}
 )
 
 // SetBoshDNSDockerImage initializes the package scoped boshDNSDockerImage variable.
@@ -51,35 +54,29 @@ type Target struct {
 	Domain        string `json:"domain"`
 }
 
-// Alias of domain alias.
-type Alias struct {
-	Domain  string   `json:"domain"`
-	Targets []Target `json:"targets"`
-}
-
 // BoshDomainNameService is used to emulate Bosh DNS.
 type BoshDomainNameService struct {
-	Aliases        []Alias
+	Corefile       *Corefile
 	LocalDNSIP     string
 	InstanceGroups bdm.InstanceGroups
 }
 
 // NewBoshDomainNameService create a new DomainNameService to setup BOSH DNS.
-func NewBoshDomainNameService(addOn *bdm.AddOn, instanceGroups bdm.InstanceGroups) (*BoshDomainNameService, error) {
-	dns := BoshDomainNameService{
+func NewBoshDomainNameService(instanceGroups bdm.InstanceGroups) *BoshDomainNameService {
+	return &BoshDomainNameService{
+		Corefile:       &Corefile{},
 		InstanceGroups: instanceGroups,
 	}
+}
+
+// Add create a new DomainNameService to setup BOSH DNS.
+func (dns *BoshDomainNameService) Add(addOn *bdm.AddOn) error {
 	for _, job := range addOn.Jobs {
-		aliasesProperty := job.Properties.Properties["aliases"]
-		if aliasesProperty != nil {
-			aliases := make([]Alias, 0)
-			if err := mapstructure.Decode(aliasesProperty, &aliases); err != nil {
-				return nil, errors.Wrapf(err, "failed to load aliases from manifest")
-			}
-			dns.Aliases = append(dns.Aliases, aliases...)
+		if err := dns.Corefile.Add(job.Properties.Properties); err != nil {
+			return err
 		}
 	}
-	return &dns, nil
+	return nil
 }
 
 // DNSSetting see interface.
@@ -99,47 +96,36 @@ func (dns *BoshDomainNameService) DNSSetting(namespace string) (corev1.DNSPolicy
 	}, nil
 }
 
-// Apply DNS k8s resources. This deploys CoreDNS with our DNS records in a config map.
-func (dns *BoshDomainNameService) Apply(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
-	const volumeName = "bosh-dns-volume"
-	const coreConfigFile = "Corefile"
-
-	dnsTCPPort := corev1.ContainerPort{ContainerPort: 8053, Name: "dns-tcp", Protocol: "TCP"}
-	dnsUDPPort := corev1.ContainerPort{ContainerPort: 8053, Name: "dns-udp", Protocol: "UDP"}
-	metricsPort := corev1.ContainerPort{ContainerPort: 9153, Name: "metrics", Protocol: "TCP"}
-
-	metadata := metav1.ObjectMeta{
-		Name:      appName,
-		Namespace: namespace,
-		Labels:    map[string]string{"app": appName},
-	}
-
-	corefile, err := createCorefile(namespace, dns.InstanceGroups, dns.Aliases)
-	if err != nil {
-		return err
-	}
-
-	configMap := corev1.ConfigMap{
-		ObjectMeta: metadata,
-		Data:       map[string]string{coreConfigFile: corefile},
-	}
-	service := corev1.Service{
-		ObjectMeta: metadata,
-		Spec: corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{
-				{Name: dnsUDPPort.Name, Port: 53, Protocol: dnsUDPPort.Protocol, TargetPort: intstr.FromString(dnsUDPPort.Name)},
-				{Name: dnsTCPPort.Name, Port: 53, Protocol: dnsTCPPort.Protocol, TargetPort: intstr.FromString(dnsTCPPort.Name)},
-				{Name: metricsPort.Name, Port: 9153, Protocol: metricsPort.Protocol, TargetPort: intstr.FromString(metricsPort.Name)},
-			},
-			Selector: map[string]string{"app": appName},
-			Type:     "ClusterIP",
+// CorefileConfigMap is a ConfigMap that contains the corefile
+func (dns *BoshDomainNameService) CorefileConfigMap(namespace string) (corev1.ConfigMap, error) {
+	cm := corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      appName,
+			Namespace: namespace,
+			Labels:    map[string]string{"app": appName},
 		},
 	}
 
+	corefile, err := dns.Corefile.Create(namespace, dns.InstanceGroups)
+	if err != nil {
+		return cm, err
+	}
+	cm.Data = map[string]string{coreConfigFile: corefile}
+
+	return cm, nil
+}
+
+// Deployment returns the k8s Deployment for coredns
+func (dns *BoshDomainNameService) Deployment(namespace string) appsv1.Deployment {
 	var corefileMode int32 = 0644
 	var replicas int32 = 2
-	deployment := appsv1.Deployment{
-		ObjectMeta: metadata,
+	const volumeName = "bosh-dns-volume"
+	return appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      appName,
+			Namespace: namespace,
+			Labels:    map[string]string{"app": appName},
+		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": appName},
@@ -208,6 +194,38 @@ func (dns *BoshDomainNameService) Apply(ctx context.Context, namespace string, c
 			},
 		},
 	}
+}
+
+// Service returns the k8s service to access coredns
+func (dns *BoshDomainNameService) Service(namespace string) corev1.Service {
+	return corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      appName,
+			Namespace: namespace,
+			Labels:    map[string]string{"app": appName},
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{Name: dnsUDPPort.Name, Port: 53, Protocol: dnsUDPPort.Protocol, TargetPort: intstr.FromString(dnsUDPPort.Name)},
+				{Name: dnsTCPPort.Name, Port: 53, Protocol: dnsTCPPort.Protocol, TargetPort: intstr.FromString(dnsTCPPort.Name)},
+				{Name: metricsPort.Name, Port: 9153, Protocol: metricsPort.Protocol, TargetPort: intstr.FromString(metricsPort.Name)},
+			},
+			Selector: map[string]string{"app": appName},
+			Type:     "ClusterIP",
+		},
+	}
+}
+
+// Apply DNS k8s resources. This deploys CoreDNS with our DNS records in a config map.
+func (dns *BoshDomainNameService) Apply(ctx context.Context, namespace string, c client.Client, setOwner func(object metav1.Object) error) error {
+	configMap, err := dns.CorefileConfigMap(namespace)
+	if err != nil {
+		return err
+	}
+
+	deployment := dns.Deployment(namespace)
+	service := dns.Service(namespace)
+
 	for _, obj := range []metav1.Object{&configMap, &deployment, &service} {
 		if err := setOwner(obj); err != nil {
 			return err
