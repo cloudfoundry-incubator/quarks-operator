@@ -18,7 +18,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/withops"
 	qsv1a1 "code.cloudfoundry.org/quarks-secret/pkg/kube/apis/quarkssecret/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -39,6 +41,7 @@ func AddWithOps(ctx context.Context, config *config.Config, mgr manager.Manager)
 			func() withops.Interpolator { return withops.NewInterpolator() },
 		),
 		controllerutil.SetControllerReference,
+		func(m bdm.Manifest) (boshdns.DomainNameService, error) { return boshdns.New(m) },
 	)
 
 	// Create a new controller

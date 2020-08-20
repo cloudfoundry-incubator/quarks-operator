@@ -17,6 +17,7 @@ import (
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksrestart"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
@@ -28,8 +29,11 @@ type InterpolateSecrets interface {
 	InterpolateVariableFromSecrets(ctx context.Context, withOpsManifestData []byte, namespace string, boshdeploymentName string) ([]byte, error)
 }
 
+// NewDNSFunc returns a dns client for the manifest
+type NewDNSFunc func(m bdm.Manifest) (boshdns.DomainNameService, error)
+
 // NewWithOpsReconciler returns a new reconcile.Reconciler
-func NewWithOpsReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver InterpolateSecrets, srf setReferenceFunc) reconcile.Reconciler {
+func NewWithOpsReconciler(ctx context.Context, config *config.Config, mgr manager.Manager, resolver InterpolateSecrets, srf setReferenceFunc, dns NewDNSFunc) reconcile.Reconciler {
 	return &ReconcileWithOps{
 		ctx:                  ctx,
 		config:               config,
@@ -38,6 +42,7 @@ func NewWithOpsReconciler(ctx context.Context, config *config.Config, mgr manage
 		resolver:             resolver,
 		setReference:         srf,
 		versionedSecretStore: versionedsecretstore.NewVersionedSecretStore(mgr.GetClient()),
+		newDNSFunc:           dns,
 	}
 }
 
@@ -50,6 +55,7 @@ type ReconcileWithOps struct {
 	resolver             InterpolateSecrets
 	setReference         setReferenceFunc
 	versionedSecretStore versionedsecretstore.VersionedSecretStore
+	newDNSFunc           NewDNSFunc
 }
 
 // Reconcile reconciles an withOps secret and generates the corresponding
@@ -127,14 +133,34 @@ func (r *ReconcileWithOps) Reconcile(request reconcile.Request) (reconcile.Resul
 	desiredManifestBytes, err := r.resolver.InterpolateVariableFromSecrets(ctx, withOpsManifestData, request.Namespace, boshdeploymentName)
 	if err != nil {
 		return reconcile.Result{RequeueAfter: time.Second * 5},
-			log.WithEvent(withOpsSecret, "WithOpsManifestError").Errorf(ctx, "failed to interpolated variables for BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(withOpsSecret, "WithOpsManifestError").Errorf(ctx, "failed to interpolated variables for BOSHDeployment '%s': %v", boshdeploymentName, err)
 	}
 
 	log.Infof(ctx, "Creating desired manifest secret")
 	err = r.createDesiredManifest(ctx, desiredManifestBytes, *boshdeployment, request.Namespace)
 	if err != nil {
 		return reconcile.Result{},
-			log.WithEvent(withOpsSecret, "WithOpsManifestError").Errorf(ctx, "failed to create desired manifest secret for BOSHDeployment '%s': %v", request.NamespacedName, err)
+			log.WithEvent(withOpsSecret, "WithOpsManifestError").Errorf(ctx, "failed to create desired manifest secret for BOSHDeployment '%s': %v", boshdeploymentName, err)
+	}
+
+	manifest, err := bdm.LoadYAML(desiredManifestBytes)
+	if err != nil {
+		return reconcile.Result{},
+			log.WithEvent(withOpsSecret, "WithOpsManifestError").Errorf(ctx, "failed to unmarshal manifest bytes for boshdeployment '%s': %v", boshdeploymentName, err)
+	}
+
+	dns, err := r.newDNSFunc(*manifest)
+	if err != nil {
+		return reconcile.Result{},
+			log.WithEvent(withOpsSecret, "WithOpsManifestError").Errorf(ctx, "failed to create desired manifest secret for BOSHDeployment '%s': %v", boshdeploymentName, err)
+	}
+
+	err = dns.Apply(ctx, request.Namespace, r.client, func(object metav1.Object) error {
+		return r.setReference(boshdeployment, object, r.scheme)
+	})
+	if err != nil {
+		return reconcile.Result{},
+			log.WithEvent(withOpsSecret, "WithOpsManifestError").Errorf(ctx, "Failed to reconcile dns: %v", err)
 	}
 
 	return reconcile.Result{}, nil

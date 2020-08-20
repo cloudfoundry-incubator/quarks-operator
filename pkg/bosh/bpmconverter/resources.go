@@ -15,6 +15,7 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
 	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/statefulset"
@@ -75,7 +76,6 @@ type Resources struct {
 
 // FilterLabels filters out labels, that are not suitable for StatefulSet updates
 func FilterLabels(labels map[string]string) map[string]string {
-
 	statefulSetLabels := make(map[string]string)
 	for key, value := range labels {
 		if key != bdv1.LabelDeploymentVersion {
@@ -87,7 +87,7 @@ func FilterLabels(labels map[string]string) map[string]string {
 
 // Resources uses BOSH Process Manager information to create k8s container specs from single BOSH instance group.
 // It returns quarks stateful sets, services and quarks jobs.
-func (kc *BPMConverter) Resources(namespace string, deploymentName string, dns DNSSettings, qStsVersion string, instanceGroup *bdm.InstanceGroup, releaseImageProvider bdm.ReleaseImageProvider, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*Resources, error) {
+func (kc *BPMConverter) Resources(manifest bdm.Manifest, namespace string, deploymentName string, serviceIP string, qStsVersion string, instanceGroup *bdm.InstanceGroup, bpmConfigs bpm.Configs, igResolvedSecretVersion string) (*Resources, error) {
 	instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Set(deploymentName, instanceGroup.Name, qStsVersion)
 
 	defaultDisks := kc.volumeFactory.GenerateDefaultDisks(instanceGroup, igResolvedSecretVersion, namespace)
@@ -109,13 +109,13 @@ func (kc *BPMConverter) Resources(namespace string, deploymentName string, dns D
 		instanceGroup.Name,
 		igResolvedSecretVersion,
 		instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.DisableLogSidecar,
-		releaseImageProvider,
+		&manifest,
 		bpmConfigs,
 	)
 
 	switch instanceGroup.LifeCycle {
 	case bdm.IGTypeService, "":
-		convertedExtStatefulSet, err := kc.serviceToQuarksStatefulSet(namespace, cfac, dns, instanceGroup, defaultDisks, bpmDisks, bpmConfigs.ActivePassiveProbes())
+		convertedExtStatefulSet, err := kc.serviceToQuarksStatefulSet(manifest, namespace, cfac, serviceIP, instanceGroup, defaultDisks, bpmDisks, bpmConfigs.ActivePassiveProbes())
 		if err != nil {
 			return nil, err
 		}
@@ -127,7 +127,7 @@ func (kc *BPMConverter) Resources(namespace string, deploymentName string, dns D
 
 		res.InstanceGroups = append(res.InstanceGroups, convertedExtStatefulSet)
 	case bdm.IGTypeErrand, bdm.IGTypeAutoErrand:
-		convertedQJob, err := kc.errandToQuarksJob(namespace, cfac, dns, instanceGroup, defaultDisks, bpmDisks)
+		convertedQJob, err := kc.errandToQuarksJob(manifest, namespace, cfac, serviceIP, instanceGroup, defaultDisks, bpmDisks)
 		if err != nil {
 			return nil, err
 		}
@@ -140,9 +140,10 @@ func (kc *BPMConverter) Resources(namespace string, deploymentName string, dns D
 
 // serviceToQuarksStatefulSet will generate an QuarksStatefulSet
 func (kc *BPMConverter) serviceToQuarksStatefulSet(
+	manifest bdm.Manifest,
 	namespace string,
 	cfac ContainerFactory,
-	dns DNSSettings,
+	serviceIP string,
 	instanceGroup *bdm.InstanceGroup,
 	defaultDisks bdm.Disks,
 	bpmDisks bdm.Disks,
@@ -223,7 +224,8 @@ func (kc *BPMConverter) serviceToQuarksStatefulSet(
 	}
 
 	spec := &extSts.Spec.Template.Spec.Template.Spec
-	spec.DNSPolicy, spec.DNSConfig, err = dns.DNSSetting(namespace)
+
+	spec.DNSPolicy, spec.DNSConfig, err = boshdns.DNSSetting(manifest, serviceIP, namespace)
 	if err != nil {
 		return qstsv1a1.QuarksStatefulSet{}, err
 	}
@@ -308,9 +310,10 @@ func (kc *BPMConverter) serviceToKubeServices(namespace string, deploymentName s
 
 // errandToQuarksJob will generate an QuarksJob
 func (kc *BPMConverter) errandToQuarksJob(
+	manifest bdm.Manifest,
 	namespace string,
 	cfac ContainerFactory,
-	dns DNSSettings,
+	serviceIP string,
 	instanceGroup *bdm.InstanceGroup,
 	defaultDisks bdm.Disks,
 	bpmDisks bdm.Disks,
@@ -381,8 +384,7 @@ func (kc *BPMConverter) errandToQuarksJob(
 		},
 	}
 
-	qJob.Spec.Template.Spec.Template.Spec.DNSPolicy, qJob.Spec.Template.Spec.Template.Spec.DNSConfig, err = dns.DNSSetting(namespace)
-
+	qJob.Spec.Template.Spec.Template.Spec.DNSPolicy, qJob.Spec.Template.Spec.Template.Spec.DNSConfig, err = boshdns.DNSSetting(manifest, serviceIP, namespace)
 	if err != nil {
 		return qjv1a1.QuarksJob{}, err
 	}

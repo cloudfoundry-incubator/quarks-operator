@@ -28,21 +28,6 @@ type FakeJobFactory struct {
 		result1 *v1alpha1.QuarksJob
 		result2 error
 	}
-	VariableInterpolationJobStub        func(string, string, manifest.Manifest) (*v1alpha1.QuarksJob, error)
-	variableInterpolationJobMutex       sync.RWMutex
-	variableInterpolationJobArgsForCall []struct {
-		arg1 string
-		arg2 string
-		arg3 manifest.Manifest
-	}
-	variableInterpolationJobReturns struct {
-		result1 *v1alpha1.QuarksJob
-		result2 error
-	}
-	variableInterpolationJobReturnsOnCall map[int]struct {
-		result1 *v1alpha1.QuarksJob
-		result2 error
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -114,78 +99,11 @@ func (fake *FakeJobFactory) InstanceGroupManifestJobReturnsOnCall(i int, result1
 	}{result1, result2}
 }
 
-func (fake *FakeJobFactory) VariableInterpolationJob(arg1 string, arg2 string, arg3 manifest.Manifest) (*v1alpha1.QuarksJob, error) {
-	fake.variableInterpolationJobMutex.Lock()
-	ret, specificReturn := fake.variableInterpolationJobReturnsOnCall[len(fake.variableInterpolationJobArgsForCall)]
-	fake.variableInterpolationJobArgsForCall = append(fake.variableInterpolationJobArgsForCall, struct {
-		arg1 string
-		arg2 string
-		arg3 manifest.Manifest
-	}{arg1, arg2, arg3})
-	fake.recordInvocation("VariableInterpolationJob", []interface{}{arg1, arg2, arg3})
-	fake.variableInterpolationJobMutex.Unlock()
-	if fake.VariableInterpolationJobStub != nil {
-		return fake.VariableInterpolationJobStub(arg1, arg2, arg3)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.variableInterpolationJobReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *FakeJobFactory) VariableInterpolationJobCallCount() int {
-	fake.variableInterpolationJobMutex.RLock()
-	defer fake.variableInterpolationJobMutex.RUnlock()
-	return len(fake.variableInterpolationJobArgsForCall)
-}
-
-func (fake *FakeJobFactory) VariableInterpolationJobCalls(stub func(string, string, manifest.Manifest) (*v1alpha1.QuarksJob, error)) {
-	fake.variableInterpolationJobMutex.Lock()
-	defer fake.variableInterpolationJobMutex.Unlock()
-	fake.VariableInterpolationJobStub = stub
-}
-
-func (fake *FakeJobFactory) VariableInterpolationJobArgsForCall(i int) (string, string, manifest.Manifest) {
-	fake.variableInterpolationJobMutex.RLock()
-	defer fake.variableInterpolationJobMutex.RUnlock()
-	argsForCall := fake.variableInterpolationJobArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
-}
-
-func (fake *FakeJobFactory) VariableInterpolationJobReturns(result1 *v1alpha1.QuarksJob, result2 error) {
-	fake.variableInterpolationJobMutex.Lock()
-	defer fake.variableInterpolationJobMutex.Unlock()
-	fake.VariableInterpolationJobStub = nil
-	fake.variableInterpolationJobReturns = struct {
-		result1 *v1alpha1.QuarksJob
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeJobFactory) VariableInterpolationJobReturnsOnCall(i int, result1 *v1alpha1.QuarksJob, result2 error) {
-	fake.variableInterpolationJobMutex.Lock()
-	defer fake.variableInterpolationJobMutex.Unlock()
-	fake.VariableInterpolationJobStub = nil
-	if fake.variableInterpolationJobReturnsOnCall == nil {
-		fake.variableInterpolationJobReturnsOnCall = make(map[int]struct {
-			result1 *v1alpha1.QuarksJob
-			result2 error
-		})
-	}
-	fake.variableInterpolationJobReturnsOnCall[i] = struct {
-		result1 *v1alpha1.QuarksJob
-		result2 error
-	}{result1, result2}
-}
-
 func (fake *FakeJobFactory) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.instanceGroupManifestJobMutex.RLock()
 	defer fake.instanceGroupManifestJobMutex.RUnlock()
-	fake.variableInterpolationJobMutex.RLock()
-	defer fake.variableInterpolationJobMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
