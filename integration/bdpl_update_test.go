@@ -14,6 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksrestart"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	bm "code.cloudfoundry.org/quarks-operator/testing/boshmanifest"
 	qsecm "code.cloudfoundry.org/quarks-secret/testing"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
@@ -247,6 +249,50 @@ var _ = Describe("BDPL updates", func() {
 				// Collect result
 				result := <-resultChan
 				Expect(result.Error).NotTo(HaveOccurred())
+			})
+		})
+	})
+
+	Context("when updating a deployment with an addon", func() {
+		opDNS := `- type: replace
+  path: /addons/name=bosh-dns-aliases/jobs/name=bosh-dns-aliases/properties/aliases/domain=nats.service.cf.internal/targets/instance_group=nats/instance_group
+  value: natsv2
+`
+		boshdns.SetBoshDNSDockerImage("coredns/coredns:1.7.0")
+		boshdns.SetClusterDomain("cluster.local")
+
+		BeforeEach(func() {
+			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsAddOn))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			_, tearDown, err = env.CreateBOSHDeployment(env.Namespace, env.DefaultBOSHDeployment(deploymentName, manifestName))
+			Expect(err).NotTo(HaveOccurred())
+			tearDowns = append(tearDowns, tearDown)
+
+			By("checking for instance group pods")
+			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "1", 2)
+			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
+		})
+
+		Context("by adding an ops file to the bdpl custom resource", func() {
+			BeforeEach(func() {
+				tearDown, err := env.CreateConfigMap(env.Namespace, env.CustomOpsConfigMap("dns-ops", opDNS))
+				Expect(err).NotTo(HaveOccurred())
+				tearDowns = append(tearDowns, tearDown)
+
+				bdpl, err := env.GetBOSHDeployment(env.Namespace, deploymentName)
+				Expect(err).NotTo(HaveOccurred())
+				bdpl.Spec.Ops = []bdv1.ResourceReference{{Name: "dns-ops", Type: bdv1.ConfigMapReference}}
+
+				_, _, err = env.UpdateBOSHDeployment(env.Namespace, *bdpl)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should update the dns pods", func() {
+				deployment, err := env.CollectDeployment(env.Namespace, "bosh-dns", 1)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(deployment.Spec.Template.GetAnnotations()).To(HaveKey(quarksrestart.RestartKey))
 			})
 		})
 	})

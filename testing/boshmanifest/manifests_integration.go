@@ -159,6 +159,59 @@ variables:
   type: password
 `
 
+// NatsAddOn is the same as NatsSmall, but with an addon bosh dns job
+const NatsAddOn = `---
+name: test
+releases:
+- name: nats
+  version: "33"
+  url: docker.io/cfcontainerization
+  stemcell:
+    os: SLE_15_SP1
+    version: 26.1-7.0.0_374.gb8e8e6af
+- name: bosh-dns-aliases
+  url: https://bosh.io/d/github.com/cloudfoundry/bosh-dns-aliases-release?v=0.0.3
+  version: 0.0.3
+  sha1: b0d0a0350ed87f1ded58b2ebb469acea0e026ccc
+addons:
+- name: bosh-dns-aliases
+  jobs:
+  - name: bosh-dns-aliases
+    release: bosh-dns-aliases
+    properties:
+      aliases:
+      - domain: nats.service.cf.internal
+        targets:
+        - query: '*'
+          instance_group: nats
+          deployment: cf
+          network: default
+          domain: bosh
+instance_groups:
+- name: nats
+  instances: 2
+  jobs:
+  - name: nats
+    release: nats
+    properties:
+      nats:
+        user: admin
+        password: changeme
+        nats_password: ((nats_password))
+        debug: true
+      quarks:
+        ports:
+        - name: "nats"
+          protocol: "TCP"
+          internal: 4222
+        - name: "nats-routes"
+          protocol: "TCP"
+          internal: 4223
+variables:
+- name: nats_password
+  type: password
+`
+
 // NatsSmallWithLinks has explicit BOSH links.
 // It can be used in integration tests.
 const NatsSmallWithLinks = `---
