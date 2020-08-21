@@ -25,7 +25,7 @@ var _ = Describe("QuarksRestart", func() {
 		Expect(err).ToNot(HaveOccurred())
 	}
 
-	Context("when a secret has quarks restart annotation", func() {
+	Context("when a pod has quarks restart annotation", func() {
 		kubectl := testing.NewKubectl()
 		const selector = "app=sample"
 
@@ -48,6 +48,14 @@ var _ = Describe("QuarksRestart", func() {
 				return podName
 			}).ShouldNot(BeEmpty())
 			waitReady("pod/" + podName)
+
+			By("checking deployment has correct annotation of the pod")
+			err = kubectl.WaitForData(
+				namespace, "pod", podName,
+				`jsonpath="{.metadata.annotations}"`,
+				quarksrestart.AnnotationRestartOnUpdate,
+			)
+			Expect(err).ToNot(HaveOccurred())
 
 			By("Updating secret")
 			updateSecret()

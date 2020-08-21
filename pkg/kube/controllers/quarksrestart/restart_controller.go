@@ -50,11 +50,6 @@ func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager)
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
 
-			annotations := e.MetaNew.GetAnnotations()
-			if _, found := annotations[AnnotationRestartOnUpdate]; !found {
-				return false
-			}
-
 			oldSecret := e.ObjectOld.(*corev1.Secret)
 			newSecret := e.ObjectNew.(*corev1.Secret)
 
@@ -76,7 +71,14 @@ func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager)
 				return []reconcile.Request{}
 			}
 
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForPod, secret, false)
+			reconciles, err := reference.GetReconcilesWithFilter(ctx, mgr.GetClient(), reference.ReconcileForPod, secret, false, func(v interface{}) bool {
+				pod := v.(corev1.Pod)
+				annotations := pod.GetAnnotations()
+				if _, found := annotations[AnnotationRestartOnUpdate]; !found {
+					return false
+				}
+				return true
+			})
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s/%s': %v", secret.Namespace, secret.Name, err)
 			}
