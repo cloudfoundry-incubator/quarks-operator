@@ -144,6 +144,12 @@ func (ig *InstanceGroup) generateJobInstances(jobsInstances []JobInstance,
 		index := len(jobsInstances)
 		address := ig.IndexedServiceName(i, azIndex)
 		name := fmt.Sprintf("%s-%s", ig.NameSanitized(), jobName)
+		id := ""
+		if azIndex > -1 {
+			id = fmt.Sprintf("%s-z%d-%d", ig.NameSanitized(), azIndex, index%ig.Instances)
+		} else {
+			id = fmt.Sprintf("%s-%d", ig.NameSanitized(), index)
+		}
 
 		jobsInstances = append(jobsInstances, JobInstance{
 			Address:   address,
@@ -152,10 +158,9 @@ func (ig *InstanceGroup) generateJobInstances(jobsInstances []JobInstance,
 			Index:     index,
 			Instance:  i,
 			Name:      name,
-			ID:        fmt.Sprintf("%s-%d", ig.NameSanitized(), index),
+			ID:        id,
 		})
 	}
-
 	return jobsInstances
 }
 

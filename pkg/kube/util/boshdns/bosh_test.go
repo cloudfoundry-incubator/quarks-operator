@@ -197,6 +197,7 @@ var _ = Describe("BOSHDomainNameService", func() {
 					&manifest.InstanceGroup{Name: "scheduler", AZs: []string{"az1", "az2"}},
 					&manifest.InstanceGroup{Name: "diego-api", AZs: []string{"az1", "az2"}},
 					&manifest.InstanceGroup{Name: "bits", AZs: []string{"az1", "az2"}},
+					&manifest.InstanceGroup{Name: "diego-cell", AZs: []string{"az1", "az2"}, Instances: 1},
 				}
 				dns = boshdns.NewBoshDomainNameService(igs)
 				err := dns.Add(loadAddOn(aliasAddon))
@@ -246,6 +247,13 @@ var _ = Describe("BOSHDomainNameService", func() {
 	template IN A uaa.service.cf.internal {
 		match ^(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*uaa\.service\.cf\.internal\.$
 		answer "{{ .Name }} 60 IN CNAME uaa.default.svc."
+		upstream`))
+
+				By("checking for entries for diego-cells in mutli-zone")
+				Expect(corefile).To(ContainSubstring(`
+	template IN A diego-cell-z0-0.cell.service.cf.internal {
+		match ^diego-cell-z0-0\.cell\.service\.cf\.internal\.$
+		answer "{{ .Name }} 60 IN CNAME diego-cell-z0-0.default.svc."
 		upstream`))
 			})
 		})
