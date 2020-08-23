@@ -158,7 +158,7 @@ variables:
 			}))
 		})
 
-		It("should rqueue after if quarks secret is not found", func() {
+		It("should requeue after if quarks secret is not found", func() {
 			resolver.InterpolateVariableFromSecretsReturns([]byte("test"), errors.New("Expected to find variables: password"))
 
 			result, err := reconciler.Reconcile(request)
