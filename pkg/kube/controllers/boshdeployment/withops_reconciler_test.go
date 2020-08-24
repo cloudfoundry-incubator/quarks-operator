@@ -4,9 +4,11 @@ import (
 	"context"
 	"time"
 
+	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	cfd "code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/boshdeployment"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	cfcfg "code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
@@ -126,6 +128,9 @@ variables:
 			ctx, config, manager,
 			&resolver,
 			controllerutil.SetControllerReference,
+			func(m bdm.Manifest) (boshdns.DomainNameService, error) {
+				return boshdns.NewSimpleDomainNameService(), nil
+			},
 		)
 	})
 
@@ -153,7 +158,7 @@ variables:
 			}))
 		})
 
-		It("should rqueue after if quarks secret is not found", func() {
+		It("should requeue after if quarks secret is not found", func() {
 			resolver.InterpolateVariableFromSecretsReturns([]byte("test"), errors.New("Expected to find variables: password"))
 
 			result, err := reconciler.Reconcile(request)

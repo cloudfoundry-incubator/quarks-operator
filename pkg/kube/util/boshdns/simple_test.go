@@ -6,7 +6,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -23,16 +22,6 @@ var _ = Describe("SimpleDomainNameService", func() {
 				return nil
 			})
 			Expect(err).NotTo(HaveOccurred())
-		})
-	})
-
-	Context("DNSSetting", func() {
-		It("returns an empty config, so cluster DNS is used", func() {
-			dns := boshdns.NewSimpleDomainNameService()
-			policy, config, err := dns.DNSSetting("default")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(policy).To(Equal(corev1.DNSClusterFirst))
-			Expect(config).To(BeNil())
 		})
 	})
 })

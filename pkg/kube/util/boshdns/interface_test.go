@@ -3,6 +3,7 @@ package boshdns_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
@@ -106,6 +107,28 @@ var _ = Describe("Interface", func() {
 				err = boshdns.Validate(*m)
 				Expect(err).NotTo(HaveOccurred())
 			})
+		})
+	})
+
+	Context("DNSSetting", func() {
+		It("returns clusterDNSFirst when boshdns addon is not present", func() {
+			m, err := manifest.LoadYAML([]byte(nodns))
+			Expect(err).NotTo(HaveOccurred())
+
+			policy, config, err := boshdns.DNSSetting(*m, "1.2.3.5", "default")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(policy).To(Equal(corev1.DNSClusterFirst))
+			Expect(config).To(BeNil())
+		})
+
+		It("returns DNSNone when bosh dns addon is present", func() {
+			m, err := manifest.LoadYAML([]byte(valid))
+			Expect(err).NotTo(HaveOccurred())
+
+			policy, config, err := boshdns.DNSSetting(*m, "1.2.3.5", "default")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(policy).To(Equal(corev1.DNSNone))
+			Expect(config).NotTo(BeNil())
 		})
 	})
 })

@@ -16,9 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpmconverter"
-	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/desiredmanifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -39,7 +37,6 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 		desiredmanifest.NewDesiredManifest(mgr.GetClient()),
 		controllerutil.SetControllerReference,
 		bpmconverter.NewConverter(bpmconverter.NewVolumeFactory(), bpmconverter.NewContainerFactoryImplFunc),
-		func(m bdm.Manifest) (boshdns.DomainNameService, error) { return boshdns.New(m) },
 	)
 
 	// Create a new controller
