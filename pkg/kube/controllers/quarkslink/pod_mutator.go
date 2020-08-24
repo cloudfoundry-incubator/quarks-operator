@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksrestart"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 )
 
@@ -133,6 +134,11 @@ func (m *PodMutator) addSecrets(ctx context.Context, namespace string, pod *core
 			}
 		}
 	}
+
+	// Apply quarksrestart annotation so the link gets restarted when mounted secrets are changed
+
+	annotations := pod.Annotations
+	annotations[quarksrestart.AnnotationRestartOnUpdate] = "true"
 
 	return nil
 }
