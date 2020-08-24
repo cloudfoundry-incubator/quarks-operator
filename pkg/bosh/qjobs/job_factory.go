@@ -15,7 +15,6 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/converter"
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksrestart"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/desiredmanifest"
 	boshnames "code.cloudfoundry.org/quarks-operator/pkg/kube/util/names"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/operatorimage"
@@ -90,9 +89,7 @@ func (f *JobFactory) InstanceGroupManifestJob(namespace string, deploymentName s
 			AdditionalSecretLabels: map[string]string{
 				bdv1.LabelEntanglementKey: "true",
 			},
-			AdditionalSecretAnnotations: map[string]string{
-				quarksrestart.AnnotationRestartOnUpdate: "true",
-			},
+			AdditionalSecretAnnotations: map[string]string{},
 		}
 	}
 
@@ -197,10 +194,8 @@ func (f *JobFactory) releaseImageQJob(namespace string, deploymentName string, d
 					bdv1.LabelEntanglementKey:      "true",
 					bdv1.LabelDeploymentSecretType: bdv1.DeploymentSecretTypeInstanceGroupResolvedProperties.String(),
 				},
-				AdditionalSecretAnnotations: map[string]string{
-					quarksrestart.AnnotationRestartOnUpdate: "true",
-				},
-				Versioned: true,
+				AdditionalSecretAnnotations: map[string]string{},
+				Versioned:                   true,
 			},
 			BPMOutputFilename: qjv1a1.SecretOptions{
 				Name: bpmPrefix + container.Name,
@@ -208,10 +203,8 @@ func (f *JobFactory) releaseImageQJob(namespace string, deploymentName string, d
 					bdv1.LabelEntanglementKey:      "true",
 					bdv1.LabelDeploymentSecretType: bdv1.DeploymentSecretBPMInformation.String(),
 				},
-				AdditionalSecretAnnotations: map[string]string{
-					quarksrestart.AnnotationRestartOnUpdate: "true",
-				},
-				Versioned: true,
+				AdditionalSecretAnnotations: map[string]string{},
+				Versioned:                   true,
 			},
 		}
 	}

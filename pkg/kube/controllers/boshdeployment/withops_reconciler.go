@@ -16,7 +16,6 @@ import (
 
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksrestart"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -186,9 +185,7 @@ func (r *ReconcileWithOps) createDesiredManifest(ctx context.Context, desiredMan
 		bdv1.LabelDeploymentName:       boshdeployment.Name,
 		bdv1.LabelDeploymentSecretType: bdv1.DeploymentSecretTypeDesiredManifest.String(),
 	}
-	secretAnnotations := map[string]string{
-		quarksrestart.AnnotationRestartOnUpdate: "true",
-	}
+	secretAnnotations := map[string]string{}
 	sourceDescription := "created by quarksOperator"
 
 	store := versionedsecretstore.NewVersionedSecretStore(r.client)
