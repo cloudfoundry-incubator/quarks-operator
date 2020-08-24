@@ -22,14 +22,21 @@ type DomainNameService interface {
 // New returns the DNS service management struct
 func New(m bdm.Manifest) (DomainNameService, error) {
 	dns := NewBoshDomainNameService(m.InstanceGroups)
-
-	index := HasBoshDNSAddOn(m)
-	if index != -1 {
-		if err := dns.Add(m.AddOns[index]); err != nil {
-			return nil, errors.Wrapf(err, "error loading BOSH DNS configuration")
+	found := false
+	for index, addon := range m.AddOns {
+		for _, job := range addon.Jobs {
+			if job.Release == bdm.BoshDNSAddOnName || job.Release == bdm.BOSHDNSAliasesAddOnName {
+				found = true
+				if err := dns.Add(m.AddOns[index]); err != nil {
+					return nil, errors.Wrapf(err, "error loading BOSH DNS configuration")
+				}
+			}
 		}
+	}
+	if found {
 		return dns, nil
 	}
+
 	return NewSimpleDomainNameService(), nil
 }
 
@@ -65,9 +72,12 @@ func DNSSetting(m bdm.Manifest, serviceIP, namespace string) (corev1.DNSPolicy, 
 func HasBoshDNSAddOn(m bdm.Manifest) int {
 	index := -1
 	for index, addon := range m.AddOns {
-		if addon.Name == bdm.BoshDNSAddOnName {
-			return index
+		for _, job := range addon.Jobs {
+			if job.Release == bdm.BoshDNSAddOnName || job.Release == bdm.BOSHDNSAliasesAddOnName {
+				return index
+			}
 		}
 	}
+
 	return index
 }
