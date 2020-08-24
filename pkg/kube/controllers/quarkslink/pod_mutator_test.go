@@ -44,6 +44,7 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 		request            admission.Request
 		response           admission.Response
 	)
+	annotationPatch := `{"op":"add","path":"/metadata/annotations/quarks.cloudfoundry.org~1restart-on-update","value":"true"}`
 
 	podPatch := `{"op":"add","path":"/spec/volumes","value":[{"name":"link-nats-nats","secret":{"secretName":"link-nats-nats"}}]}`
 	containerPatch := `{"op":"add","path":"/spec/containers/0/volumeMounts","value":[{"mountPath":"/quarks/link/nats-deployment/nats-nats","name":"link-nats-nats","readOnly":true}]}`
@@ -120,11 +121,27 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 			It("secret is mounted on all containers", func() {
 				Expect(response.Allowed).To(BeTrue(), response.Result)
 
-				Expect(response.Patches).To(HaveLen(5))
+				Expect(response.Patches).To(HaveLen(6))
 				patches := jsonPatches(response.Patches)
 				Expect(patches).To(ContainElement(podPatch))
 				Expect(patches).To(ContainElement(containerPatch))
 				Expect(patches).To(ContainElement(secondContainerPatch))
+
+				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
+			})
+		})
+
+		Context("when entanglement exists", func() {
+			BeforeEach(func() {
+				client = fakeClient.NewFakeClient(&entanglementSecret)
+			})
+
+			It("adds a quarks restart annotation", func() {
+				Expect(response.Allowed).To(BeTrue(), response.Result)
+
+				Expect(response.Patches).To(HaveLen(6))
+				patches := jsonPatches(response.Patches)
+				Expect(patches).To(ContainElement(annotationPatch))
 
 				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
 			})
@@ -179,7 +196,7 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 
 			It("does add the link volume and mounts it on all containers", func() {
 				Expect(response.Allowed).To(BeTrue(), response.Result)
-				Expect(response.Patches).To(HaveLen(3))
+				Expect(response.Patches).To(HaveLen(4))
 				patches := jsonPatches(response.Patches)
 				Expect(patches).To(ContainElement(podPatch))
 				Expect(patches).To(ContainElement(containerPatch))

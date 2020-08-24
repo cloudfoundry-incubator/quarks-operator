@@ -106,11 +106,9 @@ var _ = Describe("JobFactory", func() {
 									"quarks.cloudfoundry.org/entanglement": "true",
 									"quarks.cloudfoundry.org/secret-type":  "ig-resolved",
 								},
-								AdditionalSecretAnnotations: map[string]string{
-									"quarks.cloudfoundry.org/restart-on-update": "true",
-								},
-								Versioned:         true,
-								PersistenceMethod: "",
+								AdditionalSecretAnnotations: map[string]string{},
+								Versioned:                   true,
+								PersistenceMethod:           "",
 							},
 							"bpm.json": qjv1a1.SecretOptions{
 								Name: "bpm.redis-slave",
@@ -118,22 +116,18 @@ var _ = Describe("JobFactory", func() {
 									"quarks.cloudfoundry.org/entanglement": "true",
 									"quarks.cloudfoundry.org/secret-type":  "bpm",
 								},
-								AdditionalSecretAnnotations: map[string]string{
-									"quarks.cloudfoundry.org/restart-on-update": "true",
-								},
-								Versioned:         true,
-								PersistenceMethod: "",
+								AdditionalSecretAnnotations: map[string]string{},
+								Versioned:                   true,
+								PersistenceMethod:           "",
 							},
 							"provides.json": qjv1a1.SecretOptions{
 								Name: "link",
 								AdditionalSecretLabels: map[string]string{
 									"quarks.cloudfoundry.org/entanglement": "true",
 								},
-								AdditionalSecretAnnotations: map[string]string{
-									"quarks.cloudfoundry.org/restart-on-update": "true",
-								},
-								Versioned:         false,
-								PersistenceMethod: "fan-out",
+								AdditionalSecretAnnotations: map[string]string{},
+								Versioned:                   false,
+								PersistenceMethod:           "fan-out",
 							},
 						},
 						"diego-cell": qjv1a1.FilesToSecrets{
@@ -143,11 +137,9 @@ var _ = Describe("JobFactory", func() {
 									"quarks.cloudfoundry.org/entanglement": "true",
 									"quarks.cloudfoundry.org/secret-type":  "ig-resolved",
 								},
-								AdditionalSecretAnnotations: map[string]string{
-									"quarks.cloudfoundry.org/restart-on-update": "true",
-								},
-								Versioned:         true,
-								PersistenceMethod: "",
+								AdditionalSecretAnnotations: map[string]string{},
+								Versioned:                   true,
+								PersistenceMethod:           "",
 							},
 							"bpm.json": qjv1a1.SecretOptions{
 								Name: "bpm.diego-cell",
@@ -155,22 +147,18 @@ var _ = Describe("JobFactory", func() {
 									"quarks.cloudfoundry.org/entanglement": "true",
 									"quarks.cloudfoundry.org/secret-type":  "bpm",
 								},
-								AdditionalSecretAnnotations: map[string]string{
-									"quarks.cloudfoundry.org/restart-on-update": "true",
-								},
-								Versioned:         true,
-								PersistenceMethod: "",
+								AdditionalSecretAnnotations: map[string]string{},
+								Versioned:                   true,
+								PersistenceMethod:           "",
 							},
 							"provides.json": qjv1a1.SecretOptions{
 								Name: "link",
 								AdditionalSecretLabels: map[string]string{
 									"quarks.cloudfoundry.org/entanglement": "true",
 								},
-								AdditionalSecretAnnotations: map[string]string{
-									"quarks.cloudfoundry.org/restart-on-update": "true",
-								},
-								Versioned:         false,
-								PersistenceMethod: "fan-out",
+								AdditionalSecretAnnotations: map[string]string{},
+								Versioned:                   false,
+								PersistenceMethod:           "fan-out",
 							},
 						},
 					},
