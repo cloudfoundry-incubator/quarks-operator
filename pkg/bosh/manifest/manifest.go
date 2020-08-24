@@ -59,7 +59,8 @@ const (
 	IGTypeDefault    InstanceGroupType = ""
 
 	// BoshDNSAddOnName name of bosh dns addon.
-	BoshDNSAddOnName = "bosh-dns-aliases"
+	BoshDNSAddOnName        = "bosh-dns"
+	BOSHDNSAliasesAddOnName = "bosh-dns-aliases"
 )
 
 // VariableOptions from BOSH deployment manifest

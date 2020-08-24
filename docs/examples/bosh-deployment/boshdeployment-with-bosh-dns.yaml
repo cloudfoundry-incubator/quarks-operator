@@ -18,6 +18,7 @@ data:
     - name: bosh-dns-aliases
       jobs:
       - name: bosh-dns-aliases
+        release: bosh-dns-aliases
         properties:
           aliases:
             - domain: _.myplaceholderalias.service.cf.internal
