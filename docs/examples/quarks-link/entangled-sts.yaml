@@ -13,6 +13,7 @@ spec:
       annotations:
         quarks.cloudfoundry.org/consumes: '[{"name":"nats","type":"nats"}]'
         quarks.cloudfoundry.org/deployment: nats-deployment
+        quarks.cloudfoundry.org/restart-on-update: "true"
       labels:
         example: owned-by-sts
       name: entangled
