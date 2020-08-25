@@ -55,6 +55,13 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 
 	updatedPod := pod.DeepCopy()
 	if validEntanglement(pod.GetAnnotations()) {
+
+		// Apply quarksrestart annotation so the link gets restarted when mounted secrets are changed
+
+		annotations := updatedPod.Annotations
+		annotations[quarksrestart.AnnotationRestartOnUpdate] = "true"
+		updatedPod.Annotations = annotations
+
 		err = m.addSecrets(ctx, req.Namespace, updatedPod)
 		if err != nil {
 			return admission.Errored(http.StatusInternalServerError, err)
@@ -134,11 +141,6 @@ func (m *PodMutator) addSecrets(ctx context.Context, namespace string, pod *core
 			}
 		}
 	}
-
-	// Apply quarksrestart annotation so the link gets restarted when mounted secrets are changed
-
-	annotations := pod.Annotations
-	annotations[quarksrestart.AnnotationRestartOnUpdate] = "true"
 
 	return nil
 }

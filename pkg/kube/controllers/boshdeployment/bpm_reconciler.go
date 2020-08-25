@@ -264,9 +264,9 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, bdpl *bdv1.BOSH
 
 	for _, qSts := range resources.InstanceGroups {
 		// Automatically restart instance groups if any of the secret changes
-		annotations := qSts.Spec.Template.Annotations
+		annotations := qSts.Spec.Template.Spec.Template.Annotations
 		annotations[quarksrestart.AnnotationRestartOnUpdate] = "true"
-		qSts.Spec.Template.Annotations = annotations
+		qSts.Spec.Template.Spec.Template.Annotations = annotations
 
 		if qSts.Labels[bdv1.LabelInstanceGroupName] != instanceGroupName {
 			log.Debugf(ctx, "Skipping apply QuarksStatefulSet '%s/%s' for instance group '%s' because of mismatching '%s' label", bdpl.Namespace, qSts.Name, bdpl.Name, bdv1.LabelInstanceGroupName)
