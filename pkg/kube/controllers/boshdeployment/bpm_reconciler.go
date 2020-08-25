@@ -265,6 +265,9 @@ func (r *ReconcileBPM) deployInstanceGroups(ctx context.Context, bdpl *bdv1.BOSH
 	for _, qSts := range resources.InstanceGroups {
 		// Automatically restart instance groups if any of the secret changes
 		annotations := qSts.Spec.Template.Spec.Template.Annotations
+		if len(annotations) == 0 {
+			annotations = map[string]string{}
+		}
 		annotations[quarksrestart.AnnotationRestartOnUpdate] = "true"
 		qSts.Spec.Template.Spec.Template.Annotations = annotations
 
