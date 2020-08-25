@@ -61,7 +61,7 @@ var _ = Describe("BOSH deployment provides links to native k8s resources", func(
 				err := kubectl.WaitForData(
 					namespace, "pod", podName,
 					`jsonpath="{.metadata.annotations}"`,
-					quarksrestart.RestartKey,
+					quarksrestart.RestartKey+":",
 				)
 				Expect(err).ToNot(HaveOccurred(), "waiting for restart annotation on entangled pod")
 				waitReady(selector)
@@ -104,7 +104,7 @@ var _ = Describe("BOSH deployment provides links to native k8s resources", func(
 				err = kubectl.WaitForData(
 					namespace, "pod", podName,
 					`jsonpath="{.metadata.annotations}"`,
-					quarksrestart.RestartKey,
+					quarksrestart.RestartKey+":",
 				)
 				Expect(err).ToNot(HaveOccurred(), "waiting for restart annotation on entangled pod")
 

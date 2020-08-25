@@ -57,8 +57,10 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 	if validEntanglement(pod.GetAnnotations()) {
 
 		// Apply quarksrestart annotation so the link gets restarted when mounted secrets are changed
-
 		annotations := updatedPod.Annotations
+		if len(annotations) == 0 {
+			annotations = map[string]string{}
+		}
 		annotations[quarksrestart.AnnotationRestartOnUpdate] = "true"
 		updatedPod.Annotations = annotations
 
