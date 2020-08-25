@@ -10,9 +10,17 @@ GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 output_dir="$GIT_ROOT/helm"
 
 # https://semver.org/#semantic-versioning-200
-# helm does not accept ^v and considers any version with a dash to be a
-# pre-release
-version=$(echo "$ARTIFACT_VERSION" | sed 's/^v//; s/-/+/')
+# helm does not accept a leading 'v'
+version=$(echo "$ARTIFACT_VERSION" | sed 's/^v//')
+# helm considers any version with a dash to be a pre-release
+if [ ${RELEASE+x} ]; then
+  # if version contains '-dirty', it's a bug in CI
+  if echo "$version" | grep -q 'dirty'; then
+    echo "release versions may not contain '-dirty': $version"
+    exit 1
+  fi
+  version=$(echo "$version" | sed 's/-/+/')
+fi
 
 [ -d "$output_dir" ] && rm -r "$output_dir"
 cp -r "$GIT_ROOT/deploy/helm" "$output_dir"
