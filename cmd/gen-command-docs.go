@@ -8,20 +8,9 @@ import (
 	cmd "code.cloudfoundry.org/quarks-operator/cmd/internal"
 )
 
-const (
-	index = `---
-title: "Quarks-operator"
-linkTitle: "Quarks-operator"
-weight: 20
-description: >
-    Quarks-operator
----
-	`
-)
-
 func main() {
 	docDir := os.Args[1]
-	if err := utils.GenCLIDocsyMarkDown(cmd.NewCFOperatorCommand(), docDir, index); err != nil {
+	if err := utils.GenCLIDocsyMarkDown(cmd.NewCFOperatorCommand(), docDir); err != nil {
 		panic(err)
 	}
 }
