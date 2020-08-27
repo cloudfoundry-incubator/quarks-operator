@@ -26,6 +26,7 @@ type Alias struct {
 }
 
 // Handler redirects DNS queries for a zone to a forward server
+// https://coredns.io/plugins/forward/
 type Handler struct {
 	Domain string        `json:"domain"`
 	Source HandlerSource `json:"source"`
@@ -42,14 +43,19 @@ type HandlerSource struct {
 	Type      string   `json:"type"`
 }
 
-// HTTP returns true if the handler's source is of type http
-func (h HandlerSource) HTTP() bool {
-	return h.Type == "http"
-}
-
-// DNS returns true if the handler's source is of type dns
-func (h HandlerSource) DNS() bool {
-	return h.Type == "dns"
+// Protocol returns the coredns server protocol.
+// https://coredns.io/manual/toc/#specifying-a-protocol
+func (h HandlerSource) Protocol() string {
+	switch h.Type {
+	case "tls":
+		return "tls://"
+	case "https", "http":
+		return "https://"
+	case "grpc":
+		return "grpc://"
+	default:
+		return "dns://"
+	}
 }
 
 // Add an entry (alias or handler) to the corefile
@@ -177,9 +183,9 @@ func gatherRewritesForInstances(rewrites []string,
 
 // The Corefile values other than the rewrites were based on the default cluster CoreDNS Corefile.
 const corefileTemplate = `
-{{- range .Handlers }}
+{{- range $h := .Handlers }}
 {{ .Zone }}:8053 {
-	forward . {{ if .Source.DNS }} {{- range .Source.Recursors }}dns://{{ . }} {{ end }} {{ else if .Source.Type.HTTP }} {{- range .Source.Recursors }}tls://{{ . }} {{ end }} {{ end }}
+	forward . {{ range .Source.Recursors }}{{ $h.Source.Protocol }}{{ . }} {{ end }}
 }
 {{- end }}
 .:8053 {
