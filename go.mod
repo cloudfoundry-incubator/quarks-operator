@@ -1,7 +1,7 @@
 module code.cloudfoundry.org/quarks-operator
 
 require (
-	code.cloudfoundry.org/quarks-job v1.0.187
+	code.cloudfoundry.org/quarks-job v1.0.190
 	code.cloudfoundry.org/quarks-secret v1.0.709
 	code.cloudfoundry.org/quarks-statefulset v0.0.0-20200817131228-570120ed5c02
 	code.cloudfoundry.org/quarks-utils v0.0.0-20200813133957-bc38d827b4ad
@@ -13,10 +13,10 @@ require (
 	github.com/cppforlife/go-patch v0.2.0 // indirect
 	github.com/daaku/go.zipexe v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.4.9
-	github.com/go-test/deep v1.0.6
+	github.com/go-test/deep v1.0.7
 	github.com/gonvenience/bunt v1.1.1
 	github.com/hpcloud/tail v1.0.0
-	github.com/imdario/mergo v0.3.9
+	github.com/imdario/mergo v0.3.11
 	github.com/mattn/go-isatty v0.0.11 // indirect
 	github.com/mitchellh/mapstructure v1.3.2
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect

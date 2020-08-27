@@ -83,10 +83,9 @@ func (dns *BoshDomainNameService) Add(addOn *bdm.AddOn) error {
 func (dns *BoshDomainNameService) CorefileConfigMap(namespace string) (corev1.ConfigMap, error) {
 	cm := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        appName,
-			Namespace:   namespace,
-			Labels:      map[string]string{"app": appName},
-			Annotations: map[string]string{annotationRestartOnUpdate: "true"},
+			Name:      appName,
+			Namespace: namespace,
+			Labels:    map[string]string{"app": appName},
 		},
 	}
 
@@ -117,7 +116,8 @@ func (dns *BoshDomainNameService) Deployment(namespace string) appsv1.Deployment
 			Replicas: &replicas,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"app": appName},
+					Labels:      map[string]string{"app": appName},
+					Annotations: map[string]string{annotationRestartOnUpdate: "true"},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{

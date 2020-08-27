@@ -34,9 +34,9 @@ func (r ReconcileType) String() string {
 	}[r]
 }
 
-// GetReconciles returns reconciliation requests for the BOSHDeployments or QuarksStatefulSets
-// that reference an object. The object can be a ConfigMap or a Secret
-func GetReconciles(ctx context.Context, client crc.Client, reconcileType ReconcileType, object apis.Object, versionCheck bool) ([]reconcile.Request, error) {
+// GetReconcilesWithFilter returns reconciliation requests for the BOSHDeployments or QuarksStatefulSets
+// that reference an object. The object can be a ConfigMap or a Secret, it accepts an admit function which is used for filtering the object
+func GetReconcilesWithFilter(ctx context.Context, client crc.Client, reconcileType ReconcileType, object apis.Object, versionCheck bool, admitFn func(v interface{}) bool) ([]reconcile.Request, error) {
 	objReferencedBy := func(parent interface{}) (bool, error) {
 		var (
 			objectReferences map[string]bool
@@ -97,7 +97,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 				return nil, err
 			}
 
-			if isRef {
+			if isRef && admitFn(boshDeployment) {
 				result = append(result, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      boshDeployment.Name,
@@ -117,7 +117,7 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 				return nil, err
 			}
 
-			if isRef {
+			if isRef && admitFn(pod) {
 				result = append(result, reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      pod.Name,
@@ -130,4 +130,10 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 	}
 
 	return result, nil
+}
+
+// GetReconciles returns reconciliation requests for the BOSHDeployments or QuarksStatefulSets
+// that reference an object. The object can be a ConfigMap or a Secret
+func GetReconciles(ctx context.Context, client crc.Client, reconcileType ReconcileType, object apis.Object, versionCheck bool) ([]reconcile.Request, error) {
+	return GetReconcilesWithFilter(ctx, client, reconcileType, object, versionCheck, func(v interface{}) bool { return true })
 }

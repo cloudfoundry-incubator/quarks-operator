@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksrestart"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 )
 
@@ -54,6 +55,15 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 
 	updatedPod := pod.DeepCopy()
 	if validEntanglement(pod.GetAnnotations()) {
+
+		// Apply quarksrestart annotation so the link gets restarted when mounted secrets are changed
+		annotations := updatedPod.Annotations
+		if len(annotations) == 0 {
+			annotations = map[string]string{}
+		}
+		annotations[quarksrestart.AnnotationRestartOnUpdate] = "true"
+		updatedPod.Annotations = annotations
+
 		err = m.addSecrets(ctx, req.Namespace, updatedPod)
 		if err != nil {
 			return admission.Errored(http.StatusInternalServerError, err)

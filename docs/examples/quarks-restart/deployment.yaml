@@ -13,6 +13,8 @@ spec:
     metadata:
       labels:
         app: sample
+      annotations:
+        quarks.cloudfoundry.org/restart-on-update: "true"
     spec:
       containers:
       - name: busybox
