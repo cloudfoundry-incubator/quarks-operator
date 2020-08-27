@@ -15,6 +15,8 @@ code.cloudfoundry.org/quarks-job v1.0.190 h1:E3uwZBkGUncNzASp1FtbK9lCgxlHgLu3syV
 code.cloudfoundry.org/quarks-job v1.0.190/go.mod h1:hM3tjV6nT9PvMR+pw7Yu/NCFLG1dCqqWl9Nw9ChqMu0=
 code.cloudfoundry.org/quarks-secret v1.0.709 h1:KIeMLGO+R6GGNE6ehjGBew15VIgYjZl8nUSxtqF0V74=
 code.cloudfoundry.org/quarks-secret v1.0.709/go.mod h1:aoXHQTB1WkahmzoV8GZDZTWX9j9/azcPCKeL+qmrPnM=
+code.cloudfoundry.org/quarks-secret v1.0.712 h1:tUNvGV+vcGCBFqIxa2qI3CKay0tTateb2mKg/QMJ/7I=
+code.cloudfoundry.org/quarks-secret v1.0.712/go.mod h1:hku0yHGUoAM7hzL3jNA68uiEtJw8ymv0hWrTuK/6JSw=
 code.cloudfoundry.org/quarks-statefulset v0.0.0-20200817131228-570120ed5c02 h1:y6ypMuGkIfM7GDMByoiLEVv+9wtz6VfafwW03LfgAC4=
 code.cloudfoundry.org/quarks-statefulset v0.0.0-20200817131228-570120ed5c02/go.mod h1:W/9DBTCAUqrFzBPq7cv6R+yHbqzB7693Lt/rjnaFNEY=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200813133957-bc38d827b4ad h1:gsqoY5TE61iINkAIllEqJ/P8K+siXIAFq4NnlP2UtdA=
