@@ -28,11 +28,11 @@ It's implemented as a k8s operator, an active controller component which acts up
 
 ----
 
-- [Features](https://quarks.suse.dev/docs/features/) 
-   - [Controllers](https://quarks.suse.dev/docs/development/controllers/)
-   - [BOSH Variables interpolation](https://quarks.suse.dev/docs/features/variables/)
-- [Installing](https://quarks.suse.dev/docs/core-tasks/install/)
-  - [Troubleshooting](https://quarks.suse.dev/docs/core-tasks/troubleshooting/)
+- [Features](https://quarks.suse.dev/docs/quarks-operator/overview/)
+   - [Controllers](https://quarks.suse.dev/docs/quarks-operator/development/controllers/)
+   - [BOSH Variables interpolation](https://quarks.suse.dev/docs/quarks-operator/concepts/variables/)
+- [Installing](https://quarks.suse.dev/docs/quarks-operator/install/)
+  - [Troubleshooting](https://quarks.suse.dev/docs/quarks-operator/troubleshooting/)
 - [Tooling](https://quarks.suse.dev/docs/development/tooling/)
 
 ## Development and Tests

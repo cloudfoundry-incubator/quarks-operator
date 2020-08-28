@@ -8,21 +8,25 @@ export GROUP_VERSIONS ?= boshdeployment:v1alpha1
 
 all: tools build test
 
+setup:
+	# installs ginkgo, counterfeiter, linters, ...
+	# includes bin/tools
+	bin/dev-tools
+
+.PHONY: tools
+tools:
+	bin/tools
+
 up:
 	bin/up
+
+############ LINTER TARGETS ############
 
 lint: tools
 	$(QUARKS_UTILS)/bin/lint
 
-.PHONY: tools
-tools:
-	bin/dev-tools
-
 check-scripts:
 	bin/check-scripts
-
-vendor:
-	go mod vendor
 
 staticcheck:
 	staticcheck ./...
@@ -55,20 +59,21 @@ test-integration: tools
 test-cli-e2e: tools
 	$(QUARKS_UTILS)/bin/test-cli-e2e
 
-test-helm-e2e: tools
+test-helm-e2e: tools build-helm
 	$(QUARKS_UTILS)/bin/test-helm-e2e
 
-test-helm-e2e-storage:
+test-helm-e2e-storage: tools build-helm
 	bin/test-helm-e2e-storage
 
-test-helm-e2e-upgrade:
+test-helm-e2e-upgrade: tools build-helm
 	bin/test-helm-e2e-upgrade
 
-test-integration-storage:
+test-integration-storage: tools
 	INTEGRATION_SUITE=storage $(QUARKS_UTILS)/bin/test-integration
 
-test-integration-subcmds:
+test-integration-subcmds: tools
 	INTEGRATION_SUITE=util $(QUARKS_UTILS)/bin/test-integration
+
 ############ GENERATE TARGETS ############
 
 generate: gen-kube gen-fakes
@@ -76,7 +81,7 @@ generate: gen-kube gen-fakes
 gen-kube: tools
 	$(QUARKS_UTILS)/bin/gen-kube
 
-gen-fakes:
+gen-fakes: setup
 	bin/gen-fakes
 
 gen-command-docs:

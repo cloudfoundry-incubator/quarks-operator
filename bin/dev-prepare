@@ -6,7 +6,6 @@
 # * TEST_HELM set to build helm charts
 
 # for testing manually:
-# * SKIP_BUILD_HELM set to avoid bin/build-helm while running bin/test-helm-e2e
 # * SKIP_IMAGE set to avoid bin/build-image while running bin/up
 
 export DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG:-dev}
@@ -41,7 +40,7 @@ replace_local_chart() {
   find helm/ -name "$chart*.tgz" -delete
   mkdir -p helm/cf-operator/charts/"$chart"
   cp -av "$localchartdir/$chart/helm/$chart" helm/cf-operator/charts/
-  echo -e "The cf-operator helm chart has been modified.\n Don't run bin/test-helm-e2e without setting SKIP_BUILD_HELM=1 to retain changes."
+  echo -e "The cf-operator helm chart has been modified."
 }
 
 if [ "$TEST_HELM" ]; then
