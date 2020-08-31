@@ -39,6 +39,10 @@ spec:
               description: Indicate whether to update Pods in the StatefulSet when
                 an env value or mount changes
               type: boolean
+            injectReplicasEnv:
+              description: Determines if the REPLICAS env var is injected into pod containers.
+                true by default
+              type: boolean
             zoneNodeLabel:
               description: Indicates the node label that a node locates
               type: string

@@ -19,6 +19,12 @@ code.cloudfoundry.org/quarks-secret v1.0.712 h1:tUNvGV+vcGCBFqIxa2qI3CKay0tTateb
 code.cloudfoundry.org/quarks-secret v1.0.712/go.mod h1:hku0yHGUoAM7hzL3jNA68uiEtJw8ymv0hWrTuK/6JSw=
 code.cloudfoundry.org/quarks-statefulset v0.0.0-20200817131228-570120ed5c02 h1:y6ypMuGkIfM7GDMByoiLEVv+9wtz6VfafwW03LfgAC4=
 code.cloudfoundry.org/quarks-statefulset v0.0.0-20200817131228-570120ed5c02/go.mod h1:W/9DBTCAUqrFzBPq7cv6R+yHbqzB7693Lt/rjnaFNEY=
+code.cloudfoundry.org/quarks-statefulset v0.0.0-20200830200937-b8b733c22ae3 h1:GGQFEoqmNSPRLtXUswpuC9a33FEKacF1sizJVKHH5Cw=
+code.cloudfoundry.org/quarks-statefulset v0.0.0-20200830200937-b8b733c22ae3/go.mod h1:W/9DBTCAUqrFzBPq7cv6R+yHbqzB7693Lt/rjnaFNEY=
+code.cloudfoundry.org/quarks-statefulset v0.0.0-20200830222251-25f58f5a67c4 h1:n3qmy0bWu1uBcFrvOxfgqmek2If8331qtY+c+a183Q4=
+code.cloudfoundry.org/quarks-statefulset v0.0.0-20200830222251-25f58f5a67c4/go.mod h1:W/9DBTCAUqrFzBPq7cv6R+yHbqzB7693Lt/rjnaFNEY=
+code.cloudfoundry.org/quarks-statefulset v0.0.0-20200831010448-fbbb417b9bbd h1:r2+vLo0AySJtlwiwVvQ5cAIM/DM3oh3t5Ijj/g1orso=
+code.cloudfoundry.org/quarks-statefulset v0.0.0-20200831010448-fbbb417b9bbd/go.mod h1:W/9DBTCAUqrFzBPq7cv6R+yHbqzB7693Lt/rjnaFNEY=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200813133957-bc38d827b4ad h1:gsqoY5TE61iINkAIllEqJ/P8K+siXIAFq4NnlP2UtdA=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200813133957-bc38d827b4ad/go.mod h1:Dlc5H34JWsNtMjdJYf7nm8hoxNl+hEQR0AMk0qOSmjc=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200827123554-ad9094d4eeef h1:wZY/qHJYBoMSenTC86UnljyeKtXyighqocHQnwaaC7Y=
