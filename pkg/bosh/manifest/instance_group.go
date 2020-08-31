@@ -260,6 +260,7 @@ type AgentSettings struct {
 	Disks                        Disks                         `json:"disks,omitempty"`
 	JobBackoffLimit              *int32                        `json:"jobBackoffLimit,omitempty"`
 	PreRenderOps                 *PreRenderOps                 `json:"preRenderOps,omitempty"`
+	InjectReplicasEnv            *bool                         `json:"injectReplicasEnv,omitempty"`
 }
 
 // Set overrides labels and annotations with operator-owned metadata.
