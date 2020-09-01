@@ -185,8 +185,8 @@ func (r *ReconcileBoshDeploymentQJobStatus) Reconcile(request reconcile.Request)
 	}
 	deploymentName, ok := qJob.GetLabels()[bdv1.LabelDeploymentName]
 	if !ok {
-		return reconcile.Result{Requeue: false},
-			ctxlog.WithEvent(qJob, "LabelMissingError").Errorf(ctx, "There's no label for a BoshDeployment name on the QSTS '%s'", request.NamespacedName)
+		ctxlog.WithEvent(qJob, "LabelMissingError").Infof(ctx, "There's no label for a BoshDeployment name on the QSTS '%s'", request.NamespacedName)
+		return reconcile.Result{Requeue: false}, nil
 	}
 	bdpl := &bdv1.BOSHDeployment{}
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: deploymentName}, bdpl)
