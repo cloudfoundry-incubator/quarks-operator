@@ -202,7 +202,7 @@ var _ = Describe("ReconcileBDPL", func() {
 			Expect(result).To(Equal(reconcile.Result{}))
 
 			result, err = jobreconciler.Reconcile(request)
-			Expect(err).To(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(Equal(reconcile.Result{Requeue: false}))
 
 			Expect(bdpl.Status.TotalInstanceGroups).To(Equal(1))
