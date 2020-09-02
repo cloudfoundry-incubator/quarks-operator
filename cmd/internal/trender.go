@@ -58,12 +58,14 @@ This will render a provided manifest instance-group
 
 		replicas := viper.GetInt("replicas")
 		if replicas < 0 {
+			// If the replicas count config is missing, it means the user has chosen to ignore the value
+			// because no templates were using it, and to optimize scaling by avoiding unnecessary restarts.
 			replicas = 1
 		}
 
 		podOrdinal := viper.GetInt("pod-ordinal")
 		if podOrdinal < 0 {
-			// Infer ordinal from hostname.
+			// If the pod ordinal is not explicitly set, infer ordinal from hostname.
 			hostname, err := os.Hostname()
 			if err != nil {
 				return errors.Wrapf(err, "%s Failed to get hostname from os.Hostname()", tRenderFailedMessage)
@@ -87,6 +89,8 @@ This will render a provided manifest instance-group
 				return errors.Errorf("%s az-index is negative. %d", tRenderFailedMessage, azIndex)
 			}
 
+			// We use a very large value as a maximum number of replicas per instance group, per AZ
+			// We do this in lieu of using the actual replica count, which would cause pods to always restart
 			specIndex = (azIndex-1)*10000 + podOrdinal
 		}
 
