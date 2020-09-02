@@ -1,12 +1,12 @@
 package environment
 
 import (
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 )
 
 // WaitForInstanceGroup blocks until all selected pods of the instance group are running. It fails after the timeout.
@@ -23,8 +23,14 @@ func (m *Machine) WaitForInstanceGroupVersions(namespace string, deployment stri
 		bdv1.LabelInstanceGroupName: igName,
 	}).String()
 	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
+
+		ss, err := m.GetStatefulSet(namespace, igName)
+		if err != nil {
+			return false, nil
+		}
+
 		n, err := m.PodCount(namespace, labels, func(pod corev1.Pod) bool {
-			return pod.Status.Phase == corev1.PodRunning && contains(versions, pod.Annotations[v1alpha1.AnnotationVersion])
+			return pod.Status.Phase == corev1.PodRunning && pod.Labels[appsv1.StatefulSetRevisionLabel] == ss.Status.UpdateRevision
 		})
 		if err != nil {
 			return false, err
