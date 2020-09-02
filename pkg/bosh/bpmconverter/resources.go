@@ -188,6 +188,7 @@ func (kc *BPMConverter) serviceToQuarksStatefulSet(
 			Zones:                instanceGroup.AZs,
 			UpdateOnConfigChange: true,
 			ActivePassiveProbes:  activePassiveProbes,
+			InjectReplicasEnv:    instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.InjectReplicasEnv,
 			Template: appsv1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        instanceGroup.NameSanitized(),
