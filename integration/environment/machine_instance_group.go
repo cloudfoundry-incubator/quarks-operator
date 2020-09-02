@@ -24,7 +24,7 @@ func (m *Machine) WaitForInstanceGroupVersions(namespace string, deployment stri
 	}).String()
 	return wait.PollImmediate(m.PollInterval, m.PollTimeout, func() (bool, error) {
 
-		ss, err := m.GetStatefulSet(namespace, igName)
+		ss, err := m.GetStatefulSetByInstanceGroupName(namespace, igName)
 		if err != nil {
 			return false, nil
 		}
