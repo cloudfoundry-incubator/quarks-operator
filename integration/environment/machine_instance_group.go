@@ -47,12 +47,3 @@ func (m *Machine) GetInstanceGroupPods(namespace string, deployment string, igNa
 	}).String()
 	return m.GetPods(namespace, labels)
 }
-
-func contains(versions []string, version string) bool {
-	for _, a := range versions {
-		if a == version {
-			return true
-		}
-	}
-	return false
-}
