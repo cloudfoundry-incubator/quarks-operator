@@ -22,7 +22,7 @@ require (
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/onsi/ginkgo v1.13.0
 	github.com/onsi/gomega v1.10.1
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.1
 	github.com/spf13/afero v1.3.4
 	github.com/spf13/cobra v0.0.7
 	github.com/spf13/pflag v1.0.5
@@ -34,7 +34,7 @@ require (
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.18.8
 	k8s.io/apiextensions-apiserver v0.18.5
-	k8s.io/apimachinery v0.18.8
+	k8s.io/apimachinery v0.19.0
 	k8s.io/client-go v0.18.8
 	k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89
 	sigs.k8s.io/controller-runtime v0.6.0
