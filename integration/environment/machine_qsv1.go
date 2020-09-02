@@ -7,6 +7,7 @@ package environment
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/pkg/errors"
@@ -32,6 +33,22 @@ func (m *Machine) GetStatefulSet(namespace string, name string) (*appsv1.Statefu
 	}
 
 	return statefulSet, nil
+}
+
+// GetStatefulSetByInstanceGroupName gets a StatefulSet by namespace and an instance group name
+func (m *Machine) GetStatefulSetByInstanceGroupName(namespace string, name string) (*appsv1.StatefulSet, error) {
+	statefulSets, err := m.Clientset.AppsV1().StatefulSets(namespace).List(context.Background(), metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("quarks.cloudfoundry.org/instance-group-name=%s", name),
+	})
+	if err != nil {
+		return &appsv1.StatefulSet{}, errors.Wrapf(err, "failed to query for statefulSet by name: %v", name)
+	}
+
+	if len(statefulSets.Items) != 1 {
+		return nil, errors.Errorf("expected 1 statefulset for instance group %s but got %d", name, len(statefulSets.Items))
+	}
+
+	return &statefulSets.Items[0], nil
 }
 
 // WaitForPodLabelToExist blocks until the specified label appears
