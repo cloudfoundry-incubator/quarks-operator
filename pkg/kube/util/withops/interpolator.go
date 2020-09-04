@@ -43,7 +43,7 @@ func (i *InterpolatorImpl) AddOps(opsBytes []byte) error {
 func (i *InterpolatorImpl) Interpolate(manifestBytes []byte) ([]byte, error) {
 	tpl := boshtpl.NewTemplate(manifestBytes)
 
-	// Following options are empty for cf-operator
+	// Following options are empty for quarks-operator
 	evalOpts := boshtpl.EvaluateOpts{
 		ExpectAllKeys:     false,
 		ExpectAllVarsUsed: false,

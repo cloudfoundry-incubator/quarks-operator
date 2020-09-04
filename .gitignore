@@ -1,5 +1,5 @@
 # Temporary Build Files
-/cf-operator
+/quarks-operator
 /binaries
 # Temp dir for generated kube files
 /_tmp
