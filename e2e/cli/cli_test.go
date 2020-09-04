@@ -35,7 +35,7 @@ var _ = Describe("CLI", func() {
       --ctx-timeout int                          \(CTX_TIMEOUT\) context timeout for each k8s API request in seconds \(default 300\)
   -o, --docker-image-org string                  \(DOCKER_IMAGE_ORG\) Dockerhub organization that provides the operator docker image \(default "cfcontainerization"\)
       --docker-image-pull-policy string          \(DOCKER_IMAGE_PULL_POLICY\) Image pull policy \(default "IfNotPresent"\)
-  -r, --docker-image-repository string           \(DOCKER_IMAGE_REPOSITORY\) Dockerhub repository that provides the operator docker image \(default "cf-operator"\)
+  -r, --docker-image-repository string           \(DOCKER_IMAGE_REPOSITORY\) Dockerhub repository that provides the operator docker image \(default "quarks-operator"\)
   -t, --docker-image-tag string                  \(DOCKER_IMAGE_TAG\) Tag of the operator docker image \(default "\d+.\d+.\d+"\)
   -h, --help                                     help for quarks-operator
   -c, --kubeconfig string                        \(KUBECONFIG\) Path to a kubeconfig, not required in-cluster
