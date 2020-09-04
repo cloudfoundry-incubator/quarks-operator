@@ -29,18 +29,18 @@ echo "available clusters:"
 kind get clusters
 cluster_name="$(kubectl config current-context | sed 's/kind-//')"
 echo -n "using cluster: $cluster_name"
-kind load docker-image cfcontainerization/cf-operator:"$DOCKER_IMAGE_TAG" --name "$cluster_name"
+kind load docker-image cfcontainerization/quarks-operator:"$DOCKER_IMAGE_TAG" --name "$cluster_name"
 
 # helm chart
 localchartdir=".."
 replace_local_chart() {
   chart="$1"
   echo "Deleting $chart chart and copying locally built helm chart from $localchartdir"
-  rm -fr "helm/cf-operator/charts/$chart"
+  rm -fr "helm/quarks-operator/charts/$chart"
   find helm/ -name "$chart*.tgz" -delete
-  mkdir -p helm/cf-operator/charts/"$chart"
-  cp -av "$localchartdir/$chart/helm/$chart" helm/cf-operator/charts/
-  echo -e "The cf-operator helm chart has been modified."
+  mkdir -p helm/quarks-operator/charts/"$chart"
+  cp -av "$localchartdir/$chart/helm/$chart" helm/quarks-operator/charts/
+  echo -e "The quarks-operator helm chart has been modified."
 }
 
 if [ "$TEST_HELM" ]; then

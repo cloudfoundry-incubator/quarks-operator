@@ -13,7 +13,7 @@ import (
 )
 
 // This cannot run in parallel
-var _ = Describe("Quarks-operator Upgrade test", func() {
+var _ = Describe("Quarks Upgrade test", func() {
 	var (
 		monitoredID       string
 		namespace         string
@@ -41,7 +41,7 @@ var _ = Describe("Quarks-operator Upgrade test", func() {
 			dir, err := os.Getwd()
 			Expect(err).ToNot(HaveOccurred())
 
-			chartPath := fmt.Sprintf("%s%s", dir, "/../../../helm/cf-operator")
+			chartPath := fmt.Sprintf("%s%s", dir, "/../../../helm/quarks-operator")
 			if singlenamespace {
 				_, err := e2ehelper.UpgradeChart(chartPath, operatorNamespace,
 					"--set", fmt.Sprintf("global.singleNamespace.name=%s", namespace),
@@ -59,7 +59,7 @@ var _ = Describe("Quarks-operator Upgrade test", func() {
 
 		// installLatestOperator fetches latest release and deploy the operator
 		installLatestOperator := func(singlenamespace bool) {
-			path, teardown, err := e2ehelper.GetChart("quarks/cf-operator")
+			path, teardown, err := e2ehelper.GetChart("quarks/quarks-operator")
 			Expect(err).ToNot(HaveOccurred())
 			teardowns = append(teardowns, teardown)
 
@@ -69,7 +69,7 @@ var _ = Describe("Quarks-operator Upgrade test", func() {
 
 			if singlenamespace {
 				// uses the default 'singleNamespace' setup from our helm templates
-				teardown, err = e2ehelper.InstallChart(path+"/cf-operator", operatorNamespace,
+				teardown, err = e2ehelper.InstallChart(path+"/quarks-operator", operatorNamespace,
 					"--set", fmt.Sprintf("global.singleNamespace.name=%s", monitoredID),
 					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
 					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
@@ -81,7 +81,7 @@ var _ = Describe("Quarks-operator Upgrade test", func() {
 
 			} else {
 				// Create multiple namespaces, service accounts and role bindings manually
-				teardown, err = e2ehelper.InstallChart(path+"/cf-operator", operatorNamespace,
+				teardown, err = e2ehelper.InstallChart(path+"/quarks-operator", operatorNamespace,
 					"--set", fmt.Sprintf("global.singleNamespace.create=%s", "false"),
 					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
 					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
@@ -151,7 +151,7 @@ var _ = Describe("Quarks-operator Upgrade test", func() {
 			err = kubectl.WaitLabelFilter(namespace, "complete", "pod", "quarks.cloudfoundry.org/qjob-name=autoerrand")
 			Expect(err).ToNot(HaveOccurred())
 
-			By("Running quarks-gora smoke tests with the latest release of cf-operator")
+			By("Running quarks-gora smoke tests with the latest release of quarks")
 			// Trigger manual errand to verify that deployment is behaving correctly
 			err = cmdHelper.TriggerQJob(namespace, "smoke")
 			Expect(err).ToNot(HaveOccurred())
@@ -234,8 +234,8 @@ var _ = Describe("Quarks-operator Upgrade test", func() {
 			err = kubectl.WaitLabelFilter(namespace, "complete", "pod", "quarks.cloudfoundry.org/qjob-name=autoerrand")
 			Expect(err).ToNot(HaveOccurred())
 
-			By("Running quarks-gora smoke tests from the current cf-operator code")
-			// Run smoke tests again (manual-errand) after the cf-operator upgrade to verify that certificates and variables interpolation are working
+			By("Running quarks-gora smoke tests from the current quarks code")
+			// Run smoke tests again (manual-errand) after the quarks upgrade to verify that certificates and variables interpolation are working
 			// as expected, and our deployment is still accessible
 			err = cmdHelper.TriggerQJob(namespace, "smoke")
 			Expect(err).ToNot(HaveOccurred())
