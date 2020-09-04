@@ -30,7 +30,7 @@ var _ = Describe("BOSHDeployment", func() {
 			Expect(err).ToNot(HaveOccurred(), "error getting pod start time")
 			startTime := status.StartTime
 			err = testing.RestartOperator(operatorNamespace)
-			Expect(err).ToNot(HaveOccurred(), "error restarting cf-operator")
+			Expect(err).ToNot(HaveOccurred(), "error restarting quarks-operator")
 
 			By("Checking for pod not restarted")
 			time.Sleep(10 * time.Second)

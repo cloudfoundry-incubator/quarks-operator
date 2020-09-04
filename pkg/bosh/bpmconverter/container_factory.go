@@ -157,7 +157,7 @@ func createWaitContainer(requiredService *string) []corev1.Container {
 		Args: []string{
 			"/bin/sh",
 			"-xc",
-			fmt.Sprintf("time cf-operator util wait %s", *requiredService),
+			fmt.Sprintf("time quarks-operator util wait %s", *requiredService),
 		},
 	}}
 
@@ -374,7 +374,7 @@ func templateRenderingContainer(instanceGroupName string) corev1.Container {
 		Args: []string{
 			"/bin/sh",
 			"-xc",
-			"time cf-operator util template-render",
+			"time quarks-operator util template-render",
 		},
 	}
 }

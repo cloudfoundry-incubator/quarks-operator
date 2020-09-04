@@ -39,8 +39,8 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 		response           admission.Response
 	)
 
-	podPatch := `{"op":"add","path":"/spec/initContainers","value":[{"args":["/bin/sh","-xc","time cf-operator util wait test"],"command":["/usr/bin/dumb-init","--"],"name":"wait-for-test","resources":{}}]}`
-	podPatch2 := `{"op":"add","path":"/spec/initContainers","value":[{"args":["/bin/sh","-xc","time cf-operator util wait test"],"command":["/usr/bin/dumb-init","--"],"name":"wait-for-test","resources":{}},{"args":["/bin/sh","-xc","time cf-operator util wait test2"],"command":["/usr/bin/dumb-init","--"],"name":"wait-for-test2","resources":{}}]}`
+	podPatch := `{"op":"add","path":"/spec/initContainers","value":[{"args":["/bin/sh","-xc","time quarks-operator util wait test"],"command":["/usr/bin/dumb-init","--"],"name":"wait-for-test","resources":{}}]}`
+	podPatch2 := `{"op":"add","path":"/spec/initContainers","value":[{"args":["/bin/sh","-xc","time quarks-operator util wait test"],"command":["/usr/bin/dumb-init","--"],"name":"wait-for-test","resources":{}},{"args":["/bin/sh","-xc","time quarks-operator util wait test2"],"command":["/usr/bin/dumb-init","--"],"name":"wait-for-test2","resources":{}}]}`
 
 	jsonPatches := func(operations []jsonpatch.Operation) []string {
 		patches := make([]string, len(operations))
@@ -177,7 +177,7 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 			"{\"op\":\"replace\",\"path\":\"/spec/initContainers/0/name\",\"value\":\"wait-for-test\"}",
 			"{\"op\":\"replace\",\"path\":\"/spec/initContainers/0/command/1\",\"value\":\"--\"}",
 			"{\"op\":\"replace\",\"path\":\"/spec/initContainers/0/command/0\",\"value\":\"/usr/bin/dumb-init\"}",
-			"{\"op\":\"add\",\"path\":\"/spec/initContainers/0/args\",\"value\":[\"/bin/sh\",\"-xc\",\"time cf-operator util wait test\"]}",
+			"{\"op\":\"add\",\"path\":\"/spec/initContainers/0/args\",\"value\":[\"/bin/sh\",\"-xc\",\"time quarks-operator util wait test\"]}",
 			"{\"op\":\"remove\",\"path\":\"/spec/initContainers/0/image\"}",
 			"{\"op\":\"replace\",\"path\":\"/spec/initContainers/1/name\",\"value\":\"first\"}",
 		}

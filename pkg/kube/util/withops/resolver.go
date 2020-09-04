@@ -337,7 +337,7 @@ func InterpolateExplicitVariables(boshManifestBytes []byte, vars []boshtpl.Varia
 	multiVars := boshtpl.NewMultiVars(vars)
 	tpl := boshtpl.NewTemplate(boshManifestBytes)
 
-	// Following options are empty for cf-operator
+	// Following options are empty for quarks-operator
 	op := patch.Ops{}
 	evalOpts := boshtpl.EvaluateOpts{
 		ExpectAllKeys:     expectAllKeys,

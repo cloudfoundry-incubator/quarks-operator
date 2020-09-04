@@ -38,12 +38,12 @@ var (
 )
 
 func wrapError(err error, msg string) error {
-	return errors.Wrapf(err, "cf-operator command failed. %s", msg)
+	return errors.Wrapf(err, "quarks-operator command failed. %s", msg)
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "cf-operator",
-	Short: "cf-operator manages BOSH deployments on Kubernetes",
+	Use:   "quarks-operator",
+	Short: "quarks-operator manages BOSH deployments on Kubernetes",
 	RunE: func(_ *cobra.Command, args []string) error {
 		log = logger.NewControllerLogger(cmd.LogLevel())
 		defer log.Sync()
@@ -72,8 +72,8 @@ var rootCmd = &cobra.Command{
 		boshdns.SetBoshDNSDockerImage(viper.GetString("bosh-dns-docker-image"))
 		boshdns.SetClusterDomain(viper.GetString("cluster-domain"))
 
-		log.Infof("Starting cf-operator %s, monitoring namespaces labeled with '%s'", version.Version, cfg.MonitoredID)
-		log.Infof("cf-operator docker image: %s", config.GetOperatorDockerImage())
+		log.Infof("Starting quarks-operator %s, monitoring namespaces labeled with '%s'", version.Version, cfg.MonitoredID)
+		log.Infof("quarks-operator docker image: %s", config.GetOperatorDockerImage())
 
 		serviceHost := viper.GetString("operator-webhook-service-host")
 		// Port on which the cf operator webhook kube service listens to.
@@ -114,14 +114,14 @@ var rootCmd = &cobra.Command{
 
 		err = mgr.Start(signals.SetupSignalHandler())
 		if err != nil {
-			return wrapError(err, "Failed to start cf-operator manager.")
+			return wrapError(err, "Failed to start quarks-operator manager.")
 		}
 		return nil
 	},
 	TraverseChildren: true,
 }
 
-// NewCFOperatorCommand returns the `cf-operator` command.
+// NewCFOperatorCommand returns the `quarks-operator` command.
 func NewCFOperatorCommand() *cobra.Command {
 	return rootCmd
 }
@@ -144,7 +144,7 @@ func init() {
 	cmd.CtxTimeOutFlags(pf, argToEnv)
 	cmd.KubeConfigFlags(pf, argToEnv)
 	cmd.LoggerFlags(pf, argToEnv)
-	cmd.DockerImageFlags(pf, argToEnv, "cf-operator", version.Version)
+	cmd.DockerImageFlags(pf, argToEnv, "quarks-operator", version.Version)
 	cmd.ApplyCRDsFlags(pf, argToEnv)
 	cmd.MeltdownFlags(pf, argToEnv)
 

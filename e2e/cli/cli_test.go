@@ -37,7 +37,7 @@ var _ = Describe("CLI", func() {
       --docker-image-pull-policy string          \(DOCKER_IMAGE_PULL_POLICY\) Image pull policy \(default "IfNotPresent"\)
   -r, --docker-image-repository string           \(DOCKER_IMAGE_REPOSITORY\) Dockerhub repository that provides the operator docker image \(default "cf-operator"\)
   -t, --docker-image-tag string                  \(DOCKER_IMAGE_TAG\) Tag of the operator docker image \(default "\d+.\d+.\d+"\)
-  -h, --help                                     help for cf-operator
+  -h, --help                                     help for quarks-operator
   -c, --kubeconfig string                        \(KUBECONFIG\) Path to a kubeconfig, not required in-cluster
   -l, --log-level string                         \(LOG_LEVEL\) Only print log messages from this level onward \(trace,debug,info,warn\) \(default "debug"\)
   -i, --logrotate-interval int                   \(LOGROTATE_INTERVAL\) Interval between logrotate calls for instance groups in minutes \(default 1440\)
@@ -67,7 +67,7 @@ var _ = Describe("CLI", func() {
 		It("should start the server", func() {
 			session, err := act()
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+`))
+			Eventually(session.Err).Should(Say(`Starting quarks-operator \d+\.\d+\.\d+`))
 			Eventually(session.Err).ShouldNot(Say(`Applying CRD...`))
 		})
 
@@ -84,7 +84,7 @@ var _ = Describe("CLI", func() {
 				It("should start for namespace", func() {
 					session, err := act()
 					Expect(err).ToNot(HaveOccurred())
-					Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+, monitoring namespaces labeled with 'env-test'`))
+					Eventually(session.Err).Should(Say(`Starting quarks-operator \d+\.\d+\.\d+, monitoring namespaces labeled with 'env-test'`))
 				})
 			})
 
@@ -92,7 +92,7 @@ var _ = Describe("CLI", func() {
 				It("should start", func() {
 					session, err := act("--monitored-id", "switch-test")
 					Expect(err).ToNot(HaveOccurred())
-					Eventually(session.Err).Should(Say(`Starting cf-operator \d+\.\d+\.\d+, monitoring namespaces labeled with 'switch-test'`))
+					Eventually(session.Err).Should(Say(`Starting quarks-operator \d+\.\d+\.\d+, monitoring namespaces labeled with 'switch-test'`))
 				})
 			})
 		})
@@ -128,7 +128,7 @@ var _ = Describe("CLI", func() {
 		It("should show a semantic version number", func() {
 			session, err := act("version")
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out).Should(Say(`CF-Operator Version: \d+.\d+.\d+`))
+			Eventually(session.Out).Should(Say(`Quarks-Operator Version: \d+.\d+.\d+`))
 		})
 	})
 
