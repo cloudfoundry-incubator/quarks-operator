@@ -28,7 +28,7 @@ var _ = BeforeEach(func() {
 	dir, err := os.Getwd()
 	Expect(err).ToNot(HaveOccurred())
 
-	chartPath := fmt.Sprintf("%s%s", dir, "/../../../helm/cf-operator")
+	chartPath := fmt.Sprintf("%s%s", dir, "/../../../helm/quarks-operator")
 
 	namespace, operatorNamespace, teardown, err = e2ehelper.CreateNamespace()
 	Expect(err).ToNot(HaveOccurred())

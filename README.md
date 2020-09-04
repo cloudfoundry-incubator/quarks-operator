@@ -3,12 +3,12 @@
 [![godoc](https://godoc.org/code.cloudfoundry.org/quarks-operator?status.svg)](https://godoc.org/code.cloudfoundry.org/quarks-operator)
 [![master](https://ci.flintstone.cf.cloud.ibm.com/api/v1/teams/quarks/pipelines/cf-operator/badge)](https://ci.flintstone.cf.cloud.ibm.com/teams/quarks/pipelines/cf-operator)
 [![go report card](https://goreportcard.com/badge/code.cloudfoundry.org/quarks-operator)](https://goreportcard.com/report/code.cloudfoundry.org/quarks-operator)
-[![Coveralls github](https://img.shields.io/coveralls/github/cloudfoundry-incubator/cf-operator.svg?style=flat)](https://coveralls.io/github/cloudfoundry-incubator/cf-operator?branch=HEAD)
+[![Coveralls github](https://img.shields.io/coveralls/github/cloudfoundry-incubator/quarks-operator.svg?style=flat)](https://coveralls.io/github/cloudfoundry-incubator/quarks-operator?branch=HEAD)
 
 | Nightly build | [![quarks-operator-nightly](https://github.com/cloudfoundry-incubator/quarks-operator/workflows/quarks-operator-ci/badge.svg?event=schedule)](https://github.com/cloudfoundry-incubator/quarks-operator/actions?query=event%3Aschedule) |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 
-<img align="right" width="200" height="39" src="https://github.com/cloudfoundry-incubator/quarks-docs/raw/master/content/en/docs/cf-operator-logo.png">
+<img align="right" width="200" height="39" src="https://github.com/cloudfoundry-incubator/quarks-docs/raw/master/content/en/docs/quarks-operator-logo.png">
 
 ----
 
@@ -22,8 +22,8 @@ It's implemented as a k8s operator, an active controller component which acts up
 * Incubation Proposal: [Containerizing Cloud Foundry](https://docs.google.com/document/d/1_IvFf-cCR4_Hxg-L7Z_R51EKhZfBqlprrs5NgC2iO2w/edit#heading=h.lybtsdyh8res)
 * Slack: #quarks-dev on <https://slack.cloudfoundry.org>
 * Backlog: [Pivotal Tracker](https://www.pivotaltracker.com/n/projects/2192232)
-* Helm: https://hub.helm.sh/charts/quarks/cf-operator
-* Docker: https://hub.docker.com/r/cfcontainerization/cf-operator/tags
+* Helm: https://hub.helm.sh/charts/quarks/quarks-operator
+* Docker: https://hub.docker.com/r/cfcontainerization/quarks-operator/tags
 * Documentation: [quarks.suse.dev](https://quarks.suse.dev)
 
 ----

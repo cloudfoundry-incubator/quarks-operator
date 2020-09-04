@@ -1,4 +1,4 @@
-## Default values for CF-operator Helm Chart.
+## Default values for Quarks Operator Helm Chart.
 ## This is a YAML-formatted file.
 ## Declare variables to be passed into your templates.
 
@@ -16,7 +16,7 @@ fullnameOverride: ""
 # image is the docker image of quarks job.
 image:
   # repository that provides the operator docker image.
-  repository: cf-operator
+  repository: quarks-operator
   # org that provides the operator docker image.
   org: cfcontainerization
   # tag of the operator docker image
@@ -47,7 +47,7 @@ operator:
   boshDNSDockerImage: "cfcontainerization/coredns:0.1.0-1.6.7-bp152.1.19"
 
 # serviceAccount contains the configuration
-# values of the service account used by cf-operator.
+# values of the service account used by quarks-operator.
 serviceAccount:
   # create is a boolean to control the creation of service account name.
   create: true
