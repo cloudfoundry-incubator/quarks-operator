@@ -45,12 +45,63 @@ jobs:
       env:
         GOPROXY: "https://proxy.golang.org"
 
-  cluster-tests:
+  e2e-tests:
     needs: [unit-tests]
     runs-on: ubuntu-16.04
     strategy:
       matrix:
-        kubernetes_version: [v1.14.10,v1.15.7,v1.16.4,v1.17.0,v1.18.0]
+        kubernetes_version: [v1.14.10,v1.16.4,v1.18.0]
+
+    steps:
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.14.7
+    - uses: actions/checkout@v2
+    - uses: actions/cache@v1
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Install Go dependencies
+      run: |
+        sudo gem install bosh-template
+        go install github.com/onsi/ginkgo/ginkgo
+    - name: Install shared tools
+      run: |
+        bin/tools
+    - name: Create k8s Kind Cluster
+      uses: engineerd/setup-kind@v0.4.0
+      with:
+       config: .github/kind-config.yaml
+       version: v0.7.0
+       image: kindest/node:${{matrix.kubernetes_version}}
+    - name: Run cluster tests
+      run: |
+        git config --global user.email "no-reply@quarks.cloudfoundry.org"
+        git config --global user.name $GITHUB_ACTOR
+        bin/build-image
+        bin/build-helm
+        bin/test-cli-e2e
+        bin/test-helm-e2e
+        bin/test-helm-e2e-storage
+        bin/test-helm-e2e-upgrade
+      env:
+        NODES: "3"
+        GOPROXY: "https://proxy.golang.org"
+        OPERATOR_TEST_STORAGE_CLASS: "standard"
+        PROJECT: "quarks-operator"
+        USE_KIND: "true"
+        DOCKER_IMAGE_TAG: "dev"
+        CF_OPERATOR_WEBHOOK_SERVICE_HOST: 172.17.0.1
+
+  integration-tests:
+    needs: [unit-tests]
+    runs-on: ubuntu-16.04
+    strategy:
+      matrix:
+        kubernetes_version: [v1.14.10,v1.16.4,v1.18.0]
 
     steps:
     - name: Set up Go
@@ -81,18 +132,13 @@ jobs:
       run: |
         git config --global user.email "no-reply@quarks.cloudfoundry.org"
         git config --global user.name $GITHUB_ACTOR
-        bin/build-helm
-        PROJECT=cf-operator bin/build-image
+        bin/build-image
         bin/test-integration
         INTEGRATION_SUITE=storage bin/test-integration
         INTEGRATION_SUITE=util bin/test-integration
-        bin/test-cli-e2e
-        bin/test-helm-e2e
-        bin/test-helm-e2e-storage
-        bin/test-helm-e2e-upgrade
       env:
         NODES: "3"
-        DEBUG: "yes"
+        DEBUG: "no"
         GOPROXY: "https://proxy.golang.org"
         OPERATOR_TEST_STORAGE_CLASS: "standard"
         PROJECT: "quarks-operator"
