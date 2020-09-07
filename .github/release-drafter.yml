@@ -16,7 +16,7 @@ change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add ` to disable code blocks.
 template: |
 
-  * https://hub.helm.sh/charts/quarks/quarks-operator
+  * https://hub.helm.sh/charts/quarks/quarks
   * https://github.com/orgs/cloudfoundry-incubator/packages/container/package/quarks-operator
 
   ## Changes

@@ -98,7 +98,7 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 		return nil, err
 	}
 
-	ctx := e.SetupLoggerContext("cf-operator-tests")
+	ctx := e.SetupLoggerContext("quarks-tests")
 
 	mgr, err := operator.NewManager(ctx, e.Config, e.KubeConfig, manager.Options{
 		MetricsBindAddress: "0",
