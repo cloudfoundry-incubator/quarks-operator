@@ -22,7 +22,7 @@ It's implemented as a k8s operator, an active controller component which acts up
 * Incubation Proposal: [Containerizing Cloud Foundry](https://docs.google.com/document/d/1_IvFf-cCR4_Hxg-L7Z_R51EKhZfBqlprrs5NgC2iO2w/edit#heading=h.lybtsdyh8res)
 * Slack: #quarks-dev on <https://slack.cloudfoundry.org>
 * Backlog: [Pivotal Tracker](https://www.pivotaltracker.com/n/projects/2192232)
-* Helm: https://hub.helm.sh/charts/quarks/quarks-operator
+* Helm: https://hub.helm.sh/charts/quarks/quarks
 * Docker: https://hub.docker.com/r/cfcontainerization/quarks-operator/tags
 * Documentation: [quarks.suse.dev](https://quarks.suse.dev)
 

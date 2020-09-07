@@ -14,7 +14,7 @@ To install the latest stable helm chart, with the `quarks-operator` as the relea
 
 ```bash
 helm repo add quarks https://cloudfoundry-incubator.github.io/quarks-helm/
-helm install qops1 quarks/quarks-operator
+helm install qops1 quarks/quarks
 ```
 
 The operator will watch for BOSH deployments in separate namespaces (default: one namespace named 'staging'), not the one it has been deployed to.
@@ -24,7 +24,7 @@ The operator will watch for BOSH deployments in separate namespaces (default: on
 Choose different namespaces and cluster role names. The persist output service account will be named the same as the cluster role:
 
 ```
-helm install qops1 quarks/quarks-operator \
+helm install qops1 quarks/quarks \
   --namespace namespace1
   --set "global.singleNamespace.name=staging1" \
   --set "global.monitoredID=id1" \
@@ -37,7 +37,7 @@ The cluster role can be reused between namespaces.
 The service account (and role binding) should be different for each namespace.
 
 ```
-helm install relname1 quarks/quarks-operator \
+helm install relname1 quarks/quarks \
   --set "global.singleNamespace.create=false"
 ```
 
@@ -53,7 +53,7 @@ Manually create before running `helm install`, for each namespace:
 
 Download the shared scripts with `bin/tools`, set `PROJECT=quarks-operator` and run `bin/build-image` to create a new docker image, export `DOCKER_IMAGE_TAG` to override the tag.
 
-To install the helm chart directly from the [quarks-operator repository](https://github.com/cloudfoundry-incubator/quarks-operator) (any branch), run `bin/build-helm` first.
+To install the helm chart directly from the [quarks repository](https://github.com/cloudfoundry-incubator/quarks-operator) (any branch), run `bin/build-helm` first.
 
 ## Uninstalling the Chart
 
@@ -65,7 +65,7 @@ helm delete qops1
 
 ## Configuration
 
-For more possible parameters look in [`values.yml`](https://github.com/cloudfoundry-incubator/quarks-operator/blob/master/deploy/helm/quarks-operator/values.yaml).
+For more possible parameters look in [`values.yml`](https://github.com/cloudfoundry-incubator/quarks-operator/blob/master/deploy/helm/quarks/values.yaml).
 
 | Parameter                                         | Description                                                                                       | Default                                        |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
@@ -100,5 +100,5 @@ By default, the helm chart will install RBAC ClusterRole and ClusterRoleBinding 
 The RBAC resources are enable by default. To disable:
 
 ```bash
-helm install qops1 quarks/quarks-operator --namespace qops1 --set global.rbac.create=false
+helm install qops1 quarks/quarks --namespace qops1 --set global.rbac.create=false
 ```

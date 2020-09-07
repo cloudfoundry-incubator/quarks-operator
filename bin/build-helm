@@ -25,10 +25,10 @@ fi
 [ -d "$output_dir" ] && rm -r "$output_dir"
 cp -r "$GIT_ROOT/deploy/helm" "$output_dir"
 
-ruby -pi -e "sub /repository: .*/, 'repository: $DOCKER_IMAGE_REPOSITORY'" "$output_dir/quarks-operator/values.yaml"
-ruby -pi -e "sub /org: .*/, 'org: $DOCKER_IMAGE_ORG'" "$output_dir/quarks-operator/values.yaml"
-ruby -pi -e "sub /tag: .*/, 'tag: $DOCKER_IMAGE_TAG'" "$output_dir/quarks-operator/values.yaml"
-ruby -ryaml > "$output_dir/quarks-operator/requirements.yaml" <<EOF
+ruby -pi -e "sub /repository: .*/, 'repository: $DOCKER_IMAGE_REPOSITORY'" "$output_dir/quarks/values.yaml"
+ruby -pi -e "sub /org: .*/, 'org: $DOCKER_IMAGE_ORG'" "$output_dir/quarks/values.yaml"
+ruby -pi -e "sub /tag: .*/, 'tag: $DOCKER_IMAGE_TAG'" "$output_dir/quarks/values.yaml"
+ruby -ryaml > "$output_dir/quarks/requirements.yaml" <<EOF
   url = 'https://cloudfoundry-incubator.github.io/quarks-helm'
   puts({'dependencies' => [
     {'name' => 'quarks-job', 'version' => '$QUARKS_JOB_HELM_VERSION', 'repository' => url},
@@ -37,18 +37,18 @@ ruby -ryaml > "$output_dir/quarks-operator/requirements.yaml" <<EOF
 EOF
 
 # Fetch subchart dependencies
-pushd "$output_dir/quarks-operator"
+pushd "$output_dir/quarks"
   helm dependency update
 popd
 
 # Store a list of referenced images with the chart
 quarks_job_values_file=$(mktemp)
-tar xfO "$output_dir"/quarks-operator/charts/quarks-job-*.tgz quarks-job/values.yaml > "$quarks_job_values_file"
+tar xfO "$output_dir"/quarks/charts/quarks-job-*.tgz quarks-job/values.yaml > "$quarks_job_values_file"
 quarks_secret_values_file=$(mktemp)
-tar xfO "$output_dir"/quarks-operator/charts/quarks-secret-*.tgz quarks-secret/values.yaml > "$quarks_secret_values_file"
-imagelist="$output_dir/quarks-operator/imagelist.txt"
+tar xfO "$output_dir"/quarks/charts/quarks-secret-*.tgz quarks-secret/values.yaml > "$quarks_secret_values_file"
+imagelist="$output_dir/quarks/imagelist.txt"
 ruby -ryaml > "$imagelist" <<EOF
-  values = YAML.load_file('$output_dir/quarks-operator/values.yaml')
+  values = YAML.load_file('$output_dir/quarks/values.yaml')
   image = values['image']
   puts "#{image['org']}/#{image['repository']}:#{image['tag']}"
   puts values['operator']['boshDNSDockerImage']
@@ -63,7 +63,7 @@ ruby -ryaml > "$imagelist" <<EOF
 EOF
 rm "$quarks_job_values_file" "$quarks_secret_values_file"
 
-helm package helm/quarks-operator \
+helm package helm/quarks \
   --app-version "$version" \
   --version "$version" \
   --destination "$output_dir"

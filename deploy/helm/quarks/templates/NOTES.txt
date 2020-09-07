@@ -8,7 +8,7 @@ Running the operator will install the following CRD´s:
 You can always verify if the CRD´s are installed, by running:
  $ kubectl get crds
 
-You can check the charts README: `helm show readme quarks/quarks-operator` for more information about configuration options.
+You can check the charts README: `helm show readme quarks/quarks` for more information about configuration options.
 
 {{- if and .Release.IsInstall }}
 

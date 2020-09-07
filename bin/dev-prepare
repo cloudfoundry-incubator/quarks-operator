@@ -36,11 +36,11 @@ localchartdir=".."
 replace_local_chart() {
   chart="$1"
   echo "Deleting $chart chart and copying locally built helm chart from $localchartdir"
-  rm -fr "helm/quarks-operator/charts/$chart"
+  rm -fr "helm/quarks/charts/$chart"
   find helm/ -name "$chart*.tgz" -delete
-  mkdir -p helm/quarks-operator/charts/"$chart"
-  cp -av "$localchartdir/$chart/helm/$chart" helm/quarks-operator/charts/
-  echo -e "The quarks-operator helm chart has been modified."
+  mkdir -p helm/quarks/charts/"$chart"
+  cp -av "$localchartdir/$chart/helm/$chart" helm/quarks/charts/
+  echo -e "The quarks helm chart has been modified."
 }
 
 if [ "$TEST_HELM" ]; then
