@@ -301,7 +301,7 @@ func (r *Resolver) InterpolateVariableFromSecrets(ctx context.Context, withOpsMa
 			return nil, err
 		}
 
-		if !*varQuarksSecret.Status.Generated {
+		if !varQuarksSecret.Status.IsGenerated() {
 			return nil, errors.Errorf("QuarksSecret '%s' has generated status false", varQuarksSecret.Name)
 		}
 
