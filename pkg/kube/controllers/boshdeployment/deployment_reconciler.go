@@ -331,6 +331,7 @@ func (r *ReconcileBOSHDeployment) deleteQuarksStatefulSets(ctx context.Context, 
 			}
 		}
 	}
+
 	for _, qsts := range qstsToBeDeleted {
 		log.Infof(ctx, "deleting quarksstatefulset '%s'", qsts.Name)
 		err = r.client.Delete(ctx, &qsts)
@@ -339,6 +340,24 @@ func (r *ReconcileBOSHDeployment) deleteQuarksStatefulSets(ctx context.Context, 
 				return nil
 			}
 			return err
+		}
+
+		// delete all associated services
+		services := &corev1.ServiceList{}
+		name := qsts.Labels[bdv1.LabelInstanceGroupName]
+		labels := map[string]string{bdv1.LabelInstanceGroupName: name}
+		err := r.client.List(ctx, services, client.InNamespace(bdpl.Namespace), client.MatchingLabels(labels))
+		if err != nil {
+			return errors.Wrapf(err, "failed to list services for instance group %s", name)
+		}
+		for _, svc := range services.Items {
+			err = r.client.Delete(ctx, &svc)
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					return nil
+				}
+				return err
+			}
 		}
 	}
 

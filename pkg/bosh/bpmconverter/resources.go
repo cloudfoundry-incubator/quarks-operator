@@ -10,6 +10,7 @@ import (
 	batchv1b1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
@@ -287,11 +288,16 @@ func (kc *BPMConverter) serviceToKubeServices(namespace string, deploymentName s
 	if isActivePassiveModel {
 		headlessServiceSelector[qstsv1a1.LabelActivePod] = "active"
 	}
+
+	labels := labels.Merge(
+		instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+		map[string]string{bdv1.LabelInstanceGroupName: instanceGroup.Name},
+	)
 	headlessService := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        headlessServiceName,
 			Namespace:   namespace,
-			Labels:      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Labels,
+			Labels:      labels,
 			Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 		},
 		Spec: corev1.ServiceSpec{
