@@ -33,7 +33,7 @@ var _ = Describe("BDPL updates", func() {
 		Expect(env.TearDownAll(tearDowns)).To(Succeed())
 	})
 
-	Context("when updating a deployment", func() {
+	When("updating a deployment", func() {
 
 		opOneInstance := `- type: replace
   path: /instance_groups/name=nats?/instances
@@ -253,7 +253,7 @@ var _ = Describe("BDPL updates", func() {
 		})
 	})
 
-	Context("when updating a deployment with an addon", func() {
+	When("updating a deployment with an addon", func() {
 		opDNS := `- type: replace
   path: /addons/name=bosh-dns-aliases/jobs/name=bosh-dns-aliases/properties/aliases/domain=nats.service.cf.internal/targets/instance_group=nats/instance_group
   value: natsv2
@@ -297,7 +297,7 @@ var _ = Describe("BDPL updates", func() {
 		})
 	})
 
-	Context("when updating a deployment which uses ops files", func() {
+	When("updating a deployment which uses ops files", func() {
 		opOneInstance := `- type: replace
   path: /instance_groups/name=quarks-gora?/instances
   value: 1
@@ -371,7 +371,7 @@ var _ = Describe("BDPL updates", func() {
 		})
 	})
 
-	Context("when updating a deployment with explicit vars", func() {
+	When("updating a deployment with explicit vars", func() {
 		opReplacePorts := `- type: replace
   path: /instance_groups/name=nats/jobs/name=nats/properties/quarks/ports?/-
   value:
@@ -468,7 +468,7 @@ var _ = Describe("BDPL updates", func() {
 		})
 	})
 
-	Context("when updating a deployment with delete ops file", func() {
+	When("deleting an instance group", func() {
 		opsDelete := `- type: remove
   path: /instance_groups/name=nats
 `
@@ -492,6 +492,8 @@ var _ = Describe("BDPL updates", func() {
 				Expect(err).NotTo(HaveOccurred())
 				tearDowns = append(tearDowns, tearDown)
 
+				_, err = env.GetService(env.Namespace, "nats")
+				Expect(err).To(BeNil())
 				bdpl, err := env.GetBOSHDeployment(env.Namespace, deploymentName)
 				Expect(err).NotTo(HaveOccurred())
 				bdpl.Spec.Ops = []bdv1.ResourceReference{{Name: "test-ops", Type: bdv1.ConfigMapReference}}
@@ -500,14 +502,21 @@ var _ = Describe("BDPL updates", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("should delete the qsts", func() {
+			It("should delete the qsts and the services", func() {
 				err := env.WaitForQuarksStatefulSetDelete(env.Namespace, "nats")
 				Expect(err).NotTo(HaveOccurred())
+
+				_, err = env.GetService(env.Namespace, "nats")
+				Expect(err).To(HaveOccurred())
+				_, err = env.GetService(env.Namespace, "nats-0")
+				Expect(err).To(HaveOccurred())
+				_, err = env.GetService(env.Namespace, "nats-1")
+				Expect(err).To(HaveOccurred())
 			})
 		})
 	})
 
-	Context("when updating a deployment with rotating an explicit secret", func() {
+	When("rotating an explicit secret", func() {
 		BeforeEach(func() {
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.NatsExplicitVar))
 			Expect(err).NotTo(HaveOccurred())
@@ -542,7 +551,7 @@ var _ = Describe("BDPL updates", func() {
 		})
 	})
 
-	Context("when updating a deployment with multiple instance groups", func() {
+	When("updating a deployment with multiple instance groups", func() {
 		It("it should only update correctly and have correct secret versions in volume mounts", func() {
 			manifestName := "bosh-manifest-two-instance-groups"
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap("fooconfigmap", bm.BOSHManifestWithTwoInstanceGroups))
