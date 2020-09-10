@@ -44,7 +44,7 @@ jobs:
         bin/tools
     - name: Run lint
       run: |
-        bin/lint
+        go list ./... | xargs go vet
     - name: Run unit tests
       run: |
         bin/test-unit
@@ -52,6 +52,7 @@ jobs:
   dockerbuild:
     needs: [unit-tests]
     runs-on: ubuntu-16.04
+
     steps:
     - name: Set up Go
       uses: actions/setup-go@v2
