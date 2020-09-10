@@ -68,9 +68,7 @@ var _ = Describe("BDPL updates", func() {
 			})
 
 			It("should update the deployment", func() {
-				// nats is a special release which consumes itself. So, whenever these is change related instances or azs
-				// nats statefulset gets updated 2 times. TODO: need to fix this later.
-				err := env.WaitForInstanceGroupVersions(env.Namespace, deploymentName, "nats", 1, "2", "3")
+				err := env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "1", 1)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 			})
 		})
