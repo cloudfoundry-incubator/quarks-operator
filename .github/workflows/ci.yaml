@@ -10,6 +10,12 @@ on:
   schedule:
     - cron:  '0 0 * * *'
 
+env:
+  GOPROXY: "https://proxy.golang.org"
+  DOCKER_IMAGE_ORG: ghcr.io/cfcontainerizationbot
+  DOCKER_IMAGE_REPOSITORY: quarks-operator-dev
+  DOCKER_IMAGE_TAG: "${{ github.sha }}"
+
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
@@ -42,11 +48,40 @@ jobs:
     - name: Run unit tests
       run: |
         bin/test-unit
-      env:
-        GOPROXY: "https://proxy.golang.org"
+
+  dockerbuild:
+    needs: [unit-tests]
+    runs-on: ubuntu-16.04
+    steps:
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15.1
+    - uses: actions/checkout@v2
+    - uses: actions/cache@v1
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Install shared tools
+      run: |
+        bin/tools
+        git config user.email "no-reply@quarks.cloudfoundry.org"
+        git config user.name "$GITHUB_ACTOR"
+    - name: Prepare docker build
+      run: |
+        go mod vendor
+    - uses: whoan/docker-build-with-cache-action@v5
+      with:
+        username: cfcontainerizationbot
+        password: "${{ secrets.PERSONAL_ACCESS_TOKEN }}"
+        registry: "${{ env.DOCKER_IMAGE_ORG }}"
+        image_name: "${{ env.DOCKER_IMAGE_REPOSITORY }}"
+        image_tag: "${{ env.DOCKER_IMAGE_TAG }}"
 
   e2e-tests:
-    needs: [unit-tests]
+    needs: [unit-tests,dockerbuild]
     runs-on: ubuntu-16.04
     strategy:
       matrix:
@@ -71,17 +106,17 @@ jobs:
     - name: Install shared tools
       run: |
         bin/tools
+        git config user.email "no-reply@quarks.cloudfoundry.org"
+        git config user.name "$GITHUB_ACTOR"
     - name: Create k8s Kind Cluster
       uses: engineerd/setup-kind@v0.4.0
       with:
        config: .github/kind-config.yaml
        version: v0.7.0
        image: kindest/node:${{matrix.kubernetes_version}}
+
     - name: Run cluster tests
       run: |
-        git config --global user.email "no-reply@quarks.cloudfoundry.org"
-        git config --global user.name $GITHUB_ACTOR
-        bin/build-image
         bin/build-helm
         bin/test-cli-e2e
         bin/test-helm-e2e
@@ -89,15 +124,12 @@ jobs:
         bin/test-helm-e2e-upgrade
       env:
         NODES: "3"
-        GOPROXY: "https://proxy.golang.org"
         OPERATOR_TEST_STORAGE_CLASS: "standard"
         PROJECT: "quarks-operator"
-        USE_KIND: "true"
-        DOCKER_IMAGE_TAG: "dev"
         CF_OPERATOR_WEBHOOK_SERVICE_HOST: 172.17.0.1
 
   integration-tests:
-    needs: [unit-tests]
+    needs: [unit-tests,dockerbuild]
     runs-on: ubuntu-16.04
     strategy:
       matrix:
@@ -122,28 +154,25 @@ jobs:
     - name: Install shared tools
       run: |
         bin/tools
+        git config user.email "no-reply@quarks.cloudfoundry.org"
+        git config user.name "$GITHUB_ACTOR"
     - name: Create k8s Kind Cluster
       uses: engineerd/setup-kind@v0.3.0
       with:
        config: .github/kind-config.yaml
        version: v0.7.0
        image: kindest/node:${{matrix.kubernetes_version}}
+
     - name: Run cluster tests
       run: |
-        git config --global user.email "no-reply@quarks.cloudfoundry.org"
-        git config --global user.name $GITHUB_ACTOR
-        bin/build-image
         bin/test-integration
         INTEGRATION_SUITE=storage bin/test-integration
         INTEGRATION_SUITE=util bin/test-integration
       env:
         NODES: "3"
         DEBUG: "no"
-        GOPROXY: "https://proxy.golang.org"
         OPERATOR_TEST_STORAGE_CLASS: "standard"
         PROJECT: "quarks-operator"
-        USE_KIND: "true"
-        DOCKER_IMAGE_TAG: "dev"
         CF_OPERATOR_WEBHOOK_SERVICE_HOST: 172.17.0.1
     - uses: actions/upload-artifact@v2
       if: failure()
