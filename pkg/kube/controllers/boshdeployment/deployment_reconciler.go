@@ -20,7 +20,6 @@ import (
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/mutate"
-	res "code.cloudfoundry.org/quarks-operator/pkg/kube/util/resources"
 	qsv1a1 "code.cloudfoundry.org/quarks-secret/pkg/kube/apis/quarkssecret/v1alpha1"
 	mutateqs "code.cloudfoundry.org/quarks-secret/pkg/kube/util/mutate"
 	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
@@ -316,7 +315,8 @@ func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, bdpl 
 
 // deleteQuarksStatefulSets deletes qsts which are removed from the manifest
 func (r *ReconcileBOSHDeployment) deleteQuarksStatefulSets(ctx context.Context, manifest *bdm.Manifest, bdpl *bdv1.BOSHDeployment) error {
-	quarksStatefulSets, err := res.ListQuarksStatefulSets(ctx, r.client, bdpl.Namespace)
+	quarksStatefulSets := &qstsv1a1.QuarksStatefulSetList{}
+	err := r.client.List(ctx, quarksStatefulSets, client.InNamespace(bdpl.Namespace))
 	if err != nil {
 		return errors.Wrap(err, "failed to list QuarksStatefulSets")
 	}
