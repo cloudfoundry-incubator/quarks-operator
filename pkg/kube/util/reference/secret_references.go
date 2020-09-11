@@ -15,11 +15,11 @@ import (
 
 // GetSecretsReferencedBy returns a list of all names for Secrets referenced by the object
 // The object can be an QuarksStatefulSet or a BOSHDeployment
-func GetSecretsReferencedBy(ctx context.Context, client crc.Client, object interface{}) (map[string]bool, error) {
+func getSecretsReferencedBy(ctx context.Context, client crc.Client, object interface{}) (map[string]bool, error) {
 	switch object := object.(type) {
-	case bdv1.BOSHDeployment:
-		return getSecretRefFromBdpl(ctx, client, object)
-	case corev1.Pod:
+	case *bdv1.BOSHDeployment:
+		return getSecretRefFromBdpl(ctx, client, *object)
+	case *corev1.Pod:
 		return podref.GetSecretRefFromPodSpec(object.Spec), nil
 	default:
 		return nil, errors.New("can't get secret references for unknown type; supported types are BOSHDeployment and QuarksStatefulSet")

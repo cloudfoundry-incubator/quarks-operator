@@ -71,14 +71,7 @@ func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager)
 				return []reconcile.Request{}
 			}
 
-			reconciles, err := reference.GetReconcilesWithFilter(ctx, mgr.GetClient(), reference.ReconcileForPod, secret, false, func(v interface{}) bool {
-				pod := v.(corev1.Pod)
-				annotations := pod.GetAnnotations()
-				if _, found := annotations[AnnotationRestartOnUpdate]; !found {
-					return false
-				}
-				return true
-			})
+			reconciles, err := reference.GetReconcilesForPod(ctx, mgr.GetClient(), secret, restartAnnotationFunc)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s/%s': %v", secret.Namespace, secret.Name, err)
 			}
@@ -122,14 +115,7 @@ func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager)
 				return []reconcile.Request{}
 			}
 
-			reconciles, err := reference.GetReconcilesWithFilter(ctx, mgr.GetClient(), reference.ReconcileForPod, configmap, false, func(v interface{}) bool {
-				pod := v.(corev1.Pod)
-				annotations := pod.GetAnnotations()
-				if _, found := annotations[AnnotationRestartOnUpdate]; !found {
-					return false
-				}
-				return true
-			})
+			reconciles, err := reference.GetReconcilesForPod(ctx, mgr.GetClient(), configmap, restartAnnotationFunc)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configmap '%s/%s': %v", configmap.Namespace, configmap.Name, err)
 			}
@@ -145,4 +131,12 @@ func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager)
 		return errors.Wrapf(err, "Watching configmaps failed in Restart controller failed.")
 	}
 	return nil
+}
+
+func restartAnnotationFunc(pod corev1.Pod) bool {
+	annotations := pod.GetAnnotations()
+	if _, found := annotations[AnnotationRestartOnUpdate]; !found {
+		return false
+	}
+	return true
 }
