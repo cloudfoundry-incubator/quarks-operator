@@ -31,6 +31,6 @@ RUN groupadd -g 1000 vcap && \
     useradd -r -u 1000 -g vcap vcap
 RUN cp /usr/sbin/dumb-init /usr/bin/dumb-init
 USER 1000
-COPY --from=build /usr/local/bin/cf-operator /usr/local/bin/cf-operator
 COPY --from=containerrun /usr/local/bin/container-run /usr/local/bin/container-run
+COPY --from=build /usr/local/bin/cf-operator /usr/local/bin/cf-operator
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "cf-operator"]
