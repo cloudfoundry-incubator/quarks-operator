@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 	"code.cloudfoundry.org/quarks-utils/testing/e2ehelper"
@@ -28,8 +29,11 @@ func TestUpgrades(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	dir, _ := os.Getwd()
 	kubectl = cmdHelper.NewKubectl()
+	SetDefaultEventuallyTimeout(kubectl.PollTimeout)
+	SetDefaultEventuallyPollingInterval(500 * time.Millisecond)
+
+	dir, _ := os.Getwd()
 	examplesDir = fmt.Sprintf("%s%s", dir, "/../../../docs/examples/")
 })
 

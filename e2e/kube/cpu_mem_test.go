@@ -11,8 +11,6 @@ import (
 
 var _ = Describe("BOSHDeployment", func() {
 	When("specifying cpu/memory resources requests and limits in the quarks.bpm config", func() {
-		kubectl := cmdHelper.NewKubectl()
-
 		BeforeEach(func() {
 			By("Creating bdpl")
 			f := path.Join(examplesDir, "bosh-deployment/quarks-gora-cpu-mem.yaml")

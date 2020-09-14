@@ -13,8 +13,6 @@ import (
 )
 
 var _ = Describe("K8s native resources provide BOSH links to a BOSH deployment", func() {
-	kubectl = cmdHelper.NewKubectl()
-
 	jobLink := func(name string) manifest.JobLink {
 		enc, err := cmdHelper.GetData(namespace, "secret", "ig-resolved.quarks-gora-v1", `go-template={{index .data "properties.yaml"}}`)
 		Expect(err).ToNot(HaveOccurred())

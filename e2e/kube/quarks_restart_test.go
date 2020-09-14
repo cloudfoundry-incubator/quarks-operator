@@ -26,7 +26,6 @@ var _ = Describe("QuarksRestart", func() {
 	}
 
 	Context("when a pod has quarks restart annotation", func() {
-		kubectl := testing.NewKubectl()
 		const selector = "app=sample"
 
 		BeforeEach(func() {
