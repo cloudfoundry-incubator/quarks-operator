@@ -3,13 +3,9 @@ package kube_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 )
 
 var _ = Describe("BOSH deployment provides links to native k8s resources", func() {
-	kubectl = cmdHelper.NewKubectl()
-
 	checkEntanglement := func(podName, cmd, expect string) error {
 		return kubectl.RunCommandWithCheckString(
 			namespace, podName,

@@ -12,8 +12,6 @@ import (
 
 var _ = Describe("BOSHDeployment", func() {
 	Context("when restarting operator", func() {
-		kubectl := testing.NewKubectl()
-
 		BeforeEach(func() {
 			By("Creating bdpl")
 			f := path.Join(examplesDir, "bosh-deployment/boshdeployment-with-custom-variable.yaml")

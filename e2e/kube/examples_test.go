@@ -41,7 +41,6 @@ var _ = Describe("Examples Directory", func() {
 	}
 
 	JustBeforeEach(func() {
-		kubectl = cmdHelper.NewKubectl()
 		yamlFilePath = example
 		if !strings.HasPrefix(example, "/") {
 			yamlFilePath = path.Join(examplesDir, example)
