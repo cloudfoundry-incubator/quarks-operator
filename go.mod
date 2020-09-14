@@ -1,9 +1,9 @@
 module code.cloudfoundry.org/quarks-operator
 
 require (
-	code.cloudfoundry.org/quarks-job v1.0.190
-	code.cloudfoundry.org/quarks-secret v1.0.727
-	code.cloudfoundry.org/quarks-statefulset v0.0.0-20200908143620-9cf6d0c65222
+	code.cloudfoundry.org/quarks-job v1.0.198
+	code.cloudfoundry.org/quarks-secret v1.0.733
+	code.cloudfoundry.org/quarks-statefulset v0.0.0-20200911141742-4c862aed1727
 	code.cloudfoundry.org/quarks-utils v0.0.0-20200911114130-7b6fe4c269e6
 	github.com/SUSE/go-patch v0.3.0
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
@@ -20,7 +20,7 @@ require (
 	github.com/mattn/go-isatty v0.0.11 // indirect
 	github.com/mitchellh/mapstructure v1.3.3
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
-	github.com/onsi/ginkgo v1.13.0
+	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.10.1
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/afero v1.3.4
