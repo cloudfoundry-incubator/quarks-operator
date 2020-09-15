@@ -27,6 +27,7 @@ RUN make build && \
 
 ################################################################################
 FROM $BASE_IMAGE
+LABEL org.opencontainers.image.source https://github.com/cloudfoundry-incubator/quarks-operator
 RUN groupadd -g 1000 vcap && \
     useradd -r -u 1000 -g vcap vcap
 RUN cp /usr/sbin/dumb-init /usr/bin/dumb-init
