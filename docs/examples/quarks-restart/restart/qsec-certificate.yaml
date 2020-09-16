@@ -1,0 +1,16 @@
+---
+apiVersion: quarks.cloudfoundry.org/v1alpha1
+kind: QuarksSecret
+metadata:
+  name: gen-gora-cert
+spec:
+  request:
+    certificate:
+      alternativeNames:
+        - foo.com
+        - '*.foo.com'
+      commonName: routerSSL
+      isCA: false
+      signerType: cluster
+  secretName: gora-cert
+  type: certificate
