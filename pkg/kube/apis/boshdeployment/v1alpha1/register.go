@@ -161,6 +161,34 @@ var (
 		},
 	}
 
+	// BOSHDeploymentAdditionalPrinterColumns are used by `kubectl get`
+	BOSHDeploymentAdditionalPrinterColumns = []extv1.CustomResourceColumnDefinition{
+		{
+			Name:     "totalInstanceGroups",
+			Type:     "integer",
+			Priority: 0,
+			JSONPath: ".status.totalInstanceGroups",
+		},
+		{
+			Name:     "deployedInstanceGroups",
+			Type:     "integer",
+			Priority: 0,
+			JSONPath: ".status.deployedInstanceGroups",
+		},
+		{
+			Name:     "completedJobCount",
+			Type:     "integer",
+			Priority: 10,
+			JSONPath: ".status.completedJobCount",
+		},
+		{
+			Name:     "totalJobCount",
+			Type:     "integer",
+			Priority: 20,
+			JSONPath: ".status.totalJobCount",
+		},
+	}
+
 	// BOSHDeploymentResourceName is the resource name of BOSHDeployment
 	BOSHDeploymentResourceName = fmt.Sprintf("%s.%s", BOSHDeploymentResourcePlural, apis.GroupName)
 
