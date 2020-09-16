@@ -2,7 +2,7 @@ module code.cloudfoundry.org/quarks-operator
 
 require (
 	code.cloudfoundry.org/quarks-job v1.0.198
-	code.cloudfoundry.org/quarks-secret v1.0.733
+	code.cloudfoundry.org/quarks-secret v1.0.738
 	code.cloudfoundry.org/quarks-statefulset v0.0.0-20200916122356-dacf4936f0b7
 	code.cloudfoundry.org/quarks-utils v0.0.0-20200911114130-7b6fe4c269e6
 	github.com/SUSE/go-patch v0.3.0
