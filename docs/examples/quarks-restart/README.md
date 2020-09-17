@@ -7,7 +7,7 @@
 
 ### secret.yaml
 
-This is the `Secret` which has the quarks restart-on-update annotation.
+This is the `Secret` being used by the pods, which will trigger restarts on annotated pods.
 
 ### deployment.yaml
 
