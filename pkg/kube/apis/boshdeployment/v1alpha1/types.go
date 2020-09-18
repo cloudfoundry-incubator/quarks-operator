@@ -138,3 +138,9 @@ type BOSHDeploymentList struct {
 func (bdpl *BOSHDeployment) GetNamespacedName() string {
 	return fmt.Sprintf("%s/%s", bdpl.Namespace, bdpl.Name)
 }
+
+// HasDeploymentName returns true if the deployment name label is present in the set of labels
+func HasDeploymentName(l map[string]string) bool {
+	_, ok := l[LabelDeploymentName]
+	return ok
+}
