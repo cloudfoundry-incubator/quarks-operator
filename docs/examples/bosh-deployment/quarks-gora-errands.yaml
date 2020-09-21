@@ -41,8 +41,8 @@ stringData:
           quarks-gora:
             port: 55556
             ssl: true
-            cert: ((quarks_gora_ssl/certificate))
-            key: ((quarks_gora_ssl/private_key))
+            cert: ((quarks_gora_ssl.certificate))
+            key: ((quarks_gora_ssl.private_key))
           text_message: |
             provided=((user_provided_password))
             defined=((user_defined_pw))
@@ -64,7 +64,7 @@ stringData:
               host: quarks-gora
               port: 55556
               ssl: true
-              cert: ((quarks_gora_ssl_ca/certificate))
+              cert: ((quarks_gora_ssl_ca.certificate))
           quarks:
             ports:
             - name: "quarks-gora"
