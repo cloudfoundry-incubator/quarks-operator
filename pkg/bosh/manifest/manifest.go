@@ -440,6 +440,7 @@ func (m *Manifest) ImplicitVariables() ([]string, error) {
 	varRegexp := regexp.MustCompile(`\(\((!?[-/\.\w\pL]+)\)\)`)
 	for _, match := range varRegexp.FindAllStringSubmatch(rawManifest, -1) {
 		main := match[1]
+		// absolute paths (https://bosh.io/docs/cli-int/#absolute) are always implicit variables
 		if !strings.Contains(main, "/") {
 			// Remove subfields from explicit vars, e.g. ca.private_key -> ca
 			fieldRegexp := regexp.MustCompile(`[^\.]+`)

@@ -218,16 +218,16 @@ var _ = Describe("Quarks-operator Upgrade test", func() {
 
 			By("Checking if secrets are still present")
 			for _, s := range []string{"link-quarks-gora-server-data",
-				"var-custom-password", "var-gora-ca",
 				"link-quarks-gora-server-data",
-				"var-gora-cert",
+				"var-example-cert",
 				"var-gora-password",
 				"var-quarks-gora-ssl",
-				"test-gora",
+				"var-quarks-gora-ssl-ca",
+				"var-user-provided-password",
 			} {
 				exists, err = kubectl.SecretExists(namespace, s)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(exists).To(BeTrue())
+				Expect(err).ToNot(HaveOccurred(), "error fetching secret '%s'", s)
+				Expect(exists).To(BeTrue(), "secret '%s' doesn't exist", s)
 			}
 
 			// Check autoerrand was executed
