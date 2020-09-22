@@ -38,6 +38,7 @@ func FailAndCollectDebugInfo(description string, callerSkip ...int) {
 
 func TestE2EKube(t *testing.T) {
 	nsIndex = 0
+	kubectl = cmdHelper.NewKubectl()
 	SetDefaultEventuallyTimeout(kubectl.PollTimeout)
 	SetDefaultEventuallyPollingInterval(500 * time.Millisecond)
 

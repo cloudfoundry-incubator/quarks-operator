@@ -111,7 +111,7 @@ func AddWithOps(ctx context.Context, config *config.Config, mgr manager.Manager)
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			s := a.Object.(*corev1.Secret)
 			result := []reconcile.Request{
-				reconcile.Request{
+				{
 					NamespacedName: types.NamespacedName{
 						Name:      bdv1.DeploymentSecretTypeManifestWithOps.String(),
 						Namespace: s.Namespace,
@@ -144,8 +144,7 @@ func isWithOpsSecret(secret *corev1.Secret) bool {
 
 func isDeploymentExplicitSecret(secret *corev1.Secret) bool {
 	secretLabels := secret.GetLabels()
-	_, ok := secretLabels[bdv1.LabelDeploymentName]
-	if !ok {
+	if !bdv1.HasDeploymentName(secretLabels) {
 		return false
 	}
 	value, ok := secretLabels[qsv1a1.LabelKind]

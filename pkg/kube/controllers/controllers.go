@@ -42,7 +42,7 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 	boshdeployment.AddDeployment,
 	boshdeployment.AddBPM,
 	boshdeployment.AddWithOps,
-	boshdeployment.AddBDPLStatusReconciler,
+	boshdeployment.AddBDPLStatusReconcilers,
 	quarksstatefulset.AddQuarksStatefulSet,
 	quarksstatefulset.AddQuarksStatefulSetStatus,
 	statefulset.AddStatefulSetRollout,

@@ -9,6 +9,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -18,7 +19,6 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
-	"code.cloudfoundry.org/quarks-utils/pkg/util"
 )
 
 // RestartKey has the timestamp of the last restart triggered by this reconciler
@@ -111,7 +111,7 @@ func (r *ReconcileRestart) touchStatefulSet(ctx context.Context, namespace strin
 	}
 
 	sts.Spec.Template.SetAnnotations(
-		util.UnionMaps(sts.Spec.Template.GetAnnotations(), restartAnnotation()),
+		labels.Merge(sts.Spec.Template.GetAnnotations(), restartAnnotation()),
 	)
 	return r.client.Update(ctx, sts)
 }
@@ -132,7 +132,7 @@ func (r *ReconcileRestart) touchDeployment(ctx context.Context, namespace string
 	}
 
 	d.Spec.Template.SetAnnotations(
-		util.UnionMaps(d.Spec.Template.GetAnnotations(), restartAnnotation()),
+		labels.Merge(d.Spec.Template.GetAnnotations(), restartAnnotation()),
 	)
 	return r.client.Update(ctx, d)
 }

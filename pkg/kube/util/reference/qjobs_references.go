@@ -3,11 +3,12 @@ package reference
 import (
 	"context"
 
-	res "code.cloudfoundry.org/quarks-operator/pkg/kube/util/resources"
-
-	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"github.com/pkg/errors"
+
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
+
+	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
+	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 )
 
 // GetQJobsReferencedBy returns a list of all QJob referenced by a BOSHDeployment
@@ -15,7 +16,8 @@ import (
 func GetQJobsReferencedBy(ctx context.Context, client crc.Client, bdpl bdv1.BOSHDeployment) (map[string]bool, error) {
 
 	bdplQjobs := map[string]bool{}
-	list, err := res.ListQjobs(ctx, client, bdpl.GetNamespace())
+	list := &qjv1a1.QuarksJobList{}
+	err := client.List(ctx, list, crc.InNamespace(bdpl.Namespace))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed getting QJob List")
 	}

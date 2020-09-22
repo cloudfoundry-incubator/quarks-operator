@@ -3,14 +3,9 @@ package kube_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksrestart"
-	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 )
 
 var _ = Describe("BOSH deployment provides links to native k8s resources", func() {
-	kubectl = cmdHelper.NewKubectl()
-
 	checkEntanglement := func(podName, cmd, expect string) error {
 		return kubectl.RunCommandWithCheckString(
 			namespace, podName,
@@ -51,23 +46,23 @@ var _ = Describe("BOSH deployment provides links to native k8s resources", func(
 				apply("quarks-link/entangled-sts.yaml")
 				waitReady(selector)
 
-				Expect(checkEntanglement(podName, "cat /quarks/link/nats-deployment/nats-nats/nats.password", "onetwothreefour")).ToNot(HaveOccurred())
-				Expect(checkEntanglement(podName, "echo $LINK_NATS_USER", "admin")).ToNot(HaveOccurred())
+				Expect(checkEntanglement(podName, "cat /quarks/link/nats-deployment/nats-nats/nats.password", "onetwothreefour")).ToNot(HaveOccurred(), "password is not onetwothreefour")
+				Expect(checkEntanglement(podName, "echo $LINK_NATS_USER", "admin")).ToNot(HaveOccurred(), "nats user is not admin")
 			})
 
 			By("restarting pods when the link secret changes", func() {
 				apply("quarks-link/password-ops.yaml")
-
-				err := kubectl.WaitForData(
-					namespace, "pod", podName,
-					`jsonpath="{.metadata.annotations}"`,
-					quarksrestart.RestartKey+":",
-				)
-				Expect(err).ToNot(HaveOccurred(), "waiting for restart annotation on entangled pod")
 				waitReady(selector)
 
-				Expect(checkEntanglement(podName, "cat /quarks/link/nats-deployment/nats-nats/nats.password", "qwerty1234")).ToNot(HaveOccurred())
-				Expect(checkEntanglement(podName, "echo $LINK_NATS_USER", "admin")).ToNot(HaveOccurred())
+				Eventually(func() error {
+					if err := checkEntanglement(podName, "cat /quarks/link/nats-deployment/nats-nats/nats.password", "qwerty1234"); err != nil {
+						return err
+					}
+					if err := checkEntanglement(podName, "echo $LINK_NATS_USER", "admin"); err != nil {
+						return err
+					}
+					return nil
+				}).Should(BeNil())
 			})
 		})
 	})
@@ -101,15 +96,15 @@ var _ = Describe("BOSH deployment provides links to native k8s resources", func(
 				Expect(err).ToNot(HaveOccurred())
 
 				podName = getPodName(selector)
-				err = kubectl.WaitForData(
-					namespace, "pod", podName,
-					`jsonpath="{.metadata.annotations}"`,
-					quarksrestart.RestartKey+":",
-				)
-				Expect(err).ToNot(HaveOccurred(), "waiting for restart annotation on entangled pod")
-
-				Expect(checkEntanglement(podName, "cat /quarks/link/nats-deployment/nats-nats/nats.password", "qwerty1234")).ToNot(HaveOccurred())
-				Expect(checkEntanglement(podName, "echo $LINK_NATS_USER", "admin")).ToNot(HaveOccurred())
+				Eventually(func() error {
+					if err := checkEntanglement(podName, "cat /quarks/link/nats-deployment/nats-nats/nats.password", "qwerty1234"); err != nil {
+						return err
+					}
+					if err := checkEntanglement(podName, "echo $LINK_NATS_USER", "admin"); err != nil {
+						return err
+					}
+					return nil
+				}).Should(BeNil())
 			})
 		})
 	})

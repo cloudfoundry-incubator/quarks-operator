@@ -11,7 +11,7 @@ ENV GO111MODULE on
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o "/usr/local/bin/container-run" code.cloudfoundry.org/quarks-container-run/cmd
 
 ################################################################################
-FROM golang:1.14.7 AS build
+FROM golang:1.15.1 AS build
 ARG GOPROXY
 ENV GOPROXY $GOPROXY
 
@@ -27,10 +27,11 @@ RUN make build && \
 
 ################################################################################
 FROM $BASE_IMAGE
+LABEL org.opencontainers.image.source https://github.com/cloudfoundry-incubator/quarks-operator
 RUN groupadd -g 1000 vcap && \
     useradd -r -u 1000 -g vcap vcap
 RUN cp /usr/sbin/dumb-init /usr/bin/dumb-init
 USER 1000
-COPY --from=build /usr/local/bin/cf-operator /usr/local/bin/cf-operator
 COPY --from=containerrun /usr/local/bin/container-run /usr/local/bin/container-run
+COPY --from=build /usr/local/bin/cf-operator /usr/local/bin/cf-operator
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "cf-operator"]

@@ -4,12 +4,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 	"code.cloudfoundry.org/quarks-utils/testing/e2ehelper"
 )
 
 var _ = Describe("Deploying in multiple namespace", func() {
-	kubectl = cmdHelper.NewKubectl()
 	var newNamespace string
 
 	BeforeEach(func() {

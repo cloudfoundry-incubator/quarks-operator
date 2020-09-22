@@ -20,7 +20,6 @@ import (
 	bdm "code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/mutate"
-	res "code.cloudfoundry.org/quarks-operator/pkg/kube/util/resources"
 	qsv1a1 "code.cloudfoundry.org/quarks-secret/pkg/kube/apis/quarkssecret/v1alpha1"
 	mutateqs "code.cloudfoundry.org/quarks-secret/pkg/kube/util/mutate"
 	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
@@ -316,7 +315,8 @@ func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, bdpl 
 
 // deleteQuarksStatefulSets deletes qsts which are removed from the manifest
 func (r *ReconcileBOSHDeployment) deleteQuarksStatefulSets(ctx context.Context, manifest *bdm.Manifest, bdpl *bdv1.BOSHDeployment) error {
-	quarksStatefulSets, err := res.ListQuarksStatefulSets(ctx, r.client, bdpl.Namespace)
+	quarksStatefulSets := &qstsv1a1.QuarksStatefulSetList{}
+	err := r.client.List(ctx, quarksStatefulSets, client.InNamespace(bdpl.Namespace))
 	if err != nil {
 		return errors.Wrap(err, "failed to list QuarksStatefulSets")
 	}
@@ -331,6 +331,7 @@ func (r *ReconcileBOSHDeployment) deleteQuarksStatefulSets(ctx context.Context, 
 			}
 		}
 	}
+
 	for _, qsts := range qstsToBeDeleted {
 		log.Infof(ctx, "deleting quarksstatefulset '%s'", qsts.Name)
 		err = r.client.Delete(ctx, &qsts)
@@ -339,6 +340,24 @@ func (r *ReconcileBOSHDeployment) deleteQuarksStatefulSets(ctx context.Context, 
 				return nil
 			}
 			return err
+		}
+
+		// delete all associated services
+		services := &corev1.ServiceList{}
+		name := qsts.Labels[bdv1.LabelInstanceGroupName]
+		labels := map[string]string{bdv1.LabelInstanceGroupName: name}
+		err := r.client.List(ctx, services, client.InNamespace(bdpl.Namespace), client.MatchingLabels(labels))
+		if err != nil {
+			return errors.Wrapf(err, "failed to list services for instance group %s", name)
+		}
+		for _, svc := range services.Items {
+			err = r.client.Delete(ctx, &svc)
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					return nil
+				}
+				return err
+			}
 		}
 	}
 

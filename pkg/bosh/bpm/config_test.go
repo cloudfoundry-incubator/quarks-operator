@@ -71,14 +71,14 @@ var _ = Describe("BPM Config", func() {
 			Expect(serverProcess.Requests).To(Equal(corev1.ResourceList{corev1.ResourceCPU: quantity, corev1.ResourceMemory: memQuantity}))
 
 			Expect(serverProcess.EphemeralDisk).To(Equal(pointers.Bool(true)))
-			Expect(serverProcess.AdditionalVolumes).To(Equal([]bpm.Volume{bpm.Volume{Path: "/var/vcap/data/sockets", Writable: true}}))
+			Expect(serverProcess.AdditionalVolumes).To(Equal([]bpm.Volume{{Path: "/var/vcap/data/sockets", Writable: true}}))
 			Expect(serverProcess.Capabilities).To(Equal([]string{"NET_BIND_SERVICE"}))
 
 			By("Unmarshalling the worker process")
 			workerProcess := config.Processes[1]
 			Expect(workerProcess.Executable).To(Equal("/var/vcap/data/packages/worker/work.sh"))
 			Expect(workerProcess.Args).To(Equal([]string{"--queues", "4"}))
-			Expect(workerProcess.AdditionalVolumes).To(Equal([]bpm.Volume{bpm.Volume{Path: "/var/vcap/data/sockets", Writable: true}}))
+			Expect(workerProcess.AdditionalVolumes).To(Equal([]bpm.Volume{{Path: "/var/vcap/data/sockets", Writable: true}}))
 			Expect(workerProcess.Hooks).To(Equal(bpm.Hooks{PreStart: "/var/vcap/jobs/server/bin/worker-setup"}))
 		})
 	})
@@ -106,8 +106,8 @@ var _ = Describe("BPM Config", func() {
 			Context("when override is present", func() {
 				BeforeEach(func() {
 					overrides = []corev1.EnvVar{
-						corev1.EnvVar{Name: "first", Value: "data"},
-						corev1.EnvVar{Name: "second", Value: "", ValueFrom: &corev1.EnvVarSource{FieldRef: &corev1.ObjectFieldSelector{FieldPath: "foo"}}},
+						{Name: "first", Value: "data"},
+						{Name: "second", Value: "", ValueFrom: &corev1.EnvVarSource{FieldRef: &corev1.ObjectFieldSelector{FieldPath: "foo"}}},
 					}
 
 				})
@@ -136,8 +136,8 @@ var _ = Describe("BPM Config", func() {
 			Context("when override is present", func() {
 				BeforeEach(func() {
 					overrides = []corev1.EnvVar{
-						corev1.EnvVar{Name: "first", Value: "new-data"},
-						corev1.EnvVar{Name: "org", Value: "over-data"},
+						{Name: "first", Value: "new-data"},
+						{Name: "org", Value: "over-data"},
 					}
 
 				})

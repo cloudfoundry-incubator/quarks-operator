@@ -1,10 +1,10 @@
 module code.cloudfoundry.org/quarks-operator
 
 require (
-	code.cloudfoundry.org/quarks-job v1.0.190
-	code.cloudfoundry.org/quarks-secret v1.0.712
-	code.cloudfoundry.org/quarks-statefulset v0.0.0-20200902063647-65e6ea7be054
-	code.cloudfoundry.org/quarks-utils v0.0.0-20200827123554-ad9094d4eeef
+	code.cloudfoundry.org/quarks-job v1.0.198
+	code.cloudfoundry.org/quarks-secret v1.0.738
+	code.cloudfoundry.org/quarks-statefulset v0.0.0-20200916122356-dacf4936f0b7
+	code.cloudfoundry.org/quarks-utils v0.0.0-20200911114130-7b6fe4c269e6
 	github.com/SUSE/go-patch v0.3.0
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
 	github.com/charlievieth/fs v0.0.0-20170613215519-7dc373669fa1 // indirect
@@ -20,11 +20,11 @@ require (
 	github.com/mattn/go-isatty v0.0.11 // indirect
 	github.com/mitchellh/mapstructure v1.3.3
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
-	github.com/onsi/ginkgo v1.13.0
+	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.10.1
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.1
 	github.com/spf13/afero v1.3.4
-	github.com/spf13/cobra v0.0.7
+	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
 	github.com/viovanov/bosh-template-go v0.0.0-20200416144406-32ddfa4afdb0
@@ -41,4 +41,4 @@ require (
 	sigs.k8s.io/yaml v1.2.0
 )
 
-go 1.14
+go 1.15
