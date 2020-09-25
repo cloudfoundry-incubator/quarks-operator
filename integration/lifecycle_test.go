@@ -36,6 +36,14 @@ var _ = Describe("Lifecycle", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
+			By("checking for desired manifest secret and its owner reference")
+			err = env.WaitForSecret(env.Namespace, "desired-manifest-v1")
+			Expect(err).NotTo(HaveOccurred(), "error waiting for new desired manifest")
+			secret, err := env.GetSecret(env.Namespace, "desired-manifest-v1")
+			Expect(err).NotTo(HaveOccurred(), "error getting new desired manifest")
+			ownerReference := secret.GetOwnerReferences()[0]
+			Expect(ownerReference.Kind).To(Equal(bdv1.BOSHDeploymentResourceKind))
+
 			By("checking for instance group pods")
 			err = env.WaitForInstanceGroup(env.Namespace, "test", "nats", "1", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
