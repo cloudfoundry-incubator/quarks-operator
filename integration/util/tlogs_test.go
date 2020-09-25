@@ -13,14 +13,13 @@ import (
 )
 
 var _ = Describe("when testing tail-logs subcommand", func() {
-	Skip("Tests are flaky in the Concourse release pipeline")
-
 	Context("subcommand must be working", func() {
 		podName := "test-pod-bar-foo"
 		parentCName := "fake-nats"
 		sidecarCName := "logs"
 
 		It("when tailing and only one file exists", func() {
+			Skip("Tests are flaky in the Concourse release pipeline")
 			scriptCreateDirs := `mkdir -p /var/vcap/sys/log/nats;
 			touch /var/vcap/sys/log/nats/nats.log;
 			while true;
@@ -44,6 +43,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 		})
 
 		It("when tailing and more than one file exists", func() {
+			Skip("Tests are flaky in the Concourse release pipeline")
 			scriptCreateDirs := `mkdir -p /var/vcap/sys/log/nats;
 			mkdir -p /var/vcap/sys/log/doppler;
 			touch /var/vcap/sys/log/nats/nats.log;
@@ -70,6 +70,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 		})
 
 		It("when tailing and an unsupported files exist", func() {
+			Skip("Tests are flaky in the Concourse release pipeline")
 			scriptCreateDirs := `mkdir -p /var/vcap/sys/log/nats;
 			touch /var/vcap/sys/log/nats/nats.log;
 			touch /var/vcap/sys/log/nats/nats.err
@@ -92,6 +93,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 		})
 
 		It("when tailing and no file exist", func() {
+			Skip("Tests are flaky in the Concourse release pipeline")
 			scriptCreateDirs := `
 			mkdir -p /var/vcap/sys/log
 			while true;
@@ -109,6 +111,7 @@ var _ = Describe("when testing tail-logs subcommand", func() {
 		})
 
 		It("calls logrotate at the configured interval", func() {
+			Skip("Tests are flaky in the Concourse release pipeline")
 			scriptCreateDirs := `mkdir -p /var/vcap/sys/log/nats;
 			touch /var/vcap/sys/log/nats/nats.log;
 			while true;
