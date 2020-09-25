@@ -1,0 +1,20 @@
+#!/bin/bash
+
+export QUARKS_SECRET_IMAGE_TAG=dev
+export QUARKS_SECRET_HELM_VERSION=dev
+export PROJECT=quarks-secret
+
+pushd ../quarks-secret || exit
+  bin/build-image
+popd
+
+# docker image
+cluster_name="$(kubectl config current-context | sed 's/kind-//')"
+kind load docker-image cfcontainerization/quarks-secret:"$QUARKS_SECRET_IMAGE_TAG" --name "$cluster_name"
+
+# helm chart
+if [ "$TEST_HELM" ]; then
+  pushd ../quarks-secret || exit
+    bin/build-helm
+  popd
+fi

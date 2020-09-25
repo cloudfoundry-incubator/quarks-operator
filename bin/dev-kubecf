@@ -1,7 +1,7 @@
 #!/bin/sh
 
 namespace=${CF_OPERATOR_NAMESPACE-cfo}
-kubecf_location=${KUBECF_LOCATION-~/Downloads/kubecf-v2.2.2.tgz}
+kubecf_location=${KUBECF_LOCATION-~/Downloads/kubecf-v2.5.0.tgz}
 relname=${HELM_RELEASE_NAME-cfodev}
 
 case "$1" in
@@ -9,7 +9,6 @@ case "$1" in
       helm install kubecf  \
         "$kubecf_location" \
         --namespace kubecf \
-        --wait \
         --set "system_domain=kubecf.suse.dev"
       ;;
 
