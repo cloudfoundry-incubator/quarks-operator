@@ -31,7 +31,6 @@ var _ = Describe("Quarks-operator Upgrade test", func() {
 		_ = kubectl.Delete("crds", "quarksjobs.quarks.cloudfoundry.org")
 		_ = kubectl.Delete("crds", "quarkssecrets.quarks.cloudfoundry.org")
 		_ = kubectl.Delete("crds", "quarksstatefulsets.quarks.cloudfoundry.org")
-
 		teardown, err := e2ehelper.AddHelmRepo("quarks", "https://cloudfoundry-incubator.github.io/quarks-helm")
 		Expect(err).ToNot(HaveOccurred())
 		teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
@@ -61,7 +60,6 @@ var _ = Describe("Quarks-operator Upgrade test", func() {
 		getPodName := func(namespace, selector string) string {
 			podNames, err := kubectl.GetPodNames(namespace, selector)
 			Expect(err).ToNot(HaveOccurred())
-			//Expect(podNames).To(HaveLen(1))
 			Expect(podNames[0]).ToNot(Equal(""))
 			return podNames[0]
 		}
@@ -72,19 +70,17 @@ var _ = Describe("Quarks-operator Upgrade test", func() {
 
 			chartPath := fmt.Sprintf("%s%s", dir, "/../../../helm/cf-operator")
 			if singlenamespace {
-				teardown, err := e2ehelper.UpgradeChart(chartPath, operatorNamespace,
+				_, err := e2ehelper.UpgradeChart(chartPath, operatorNamespace,
 					"--set", fmt.Sprintf("global.singleNamespace.name=%s", namespace),
 					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
 					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID))
 				Expect(err).ToNot(HaveOccurred())
-				teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
 			} else {
-				teardown, err := e2ehelper.UpgradeChart(chartPath, operatorNamespace,
+				_, err := e2ehelper.UpgradeChart(chartPath, operatorNamespace,
 					"--set", fmt.Sprintf("global.singleNamespace.create=%s", "false"),
 					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
 					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID))
 				Expect(err).ToNot(HaveOccurred())
-				teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
 			}
 		}
 
