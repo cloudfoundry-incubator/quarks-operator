@@ -16,7 +16,7 @@ if [ "$QUARKS_JOB_IMAGE_TAG" = "dev" ]; then
 fi
 if [ "$QUARKS_SECRET_IMAGE_TAG" = "dev" ]; then
   echo "Using local dev quarks secret dependencies"
-  USE_KIND=true ./bin/dev-prepare-local-secret
+  USE_KIND=true ./bin/dev-prepare-local-qsec
 fi
 
 . ./bin/include/dependencies

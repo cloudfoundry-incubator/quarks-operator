@@ -2,6 +2,7 @@
 
 export QUARKS_JOB_IMAGE_TAG=dev
 export QUARKS_JOB_HELM_VERSION=dev
+export PROJECT=quarks-job
 
 pushd ../quarks-job || exit
   bin/build-image
