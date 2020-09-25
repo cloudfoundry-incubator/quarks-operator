@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -134,6 +135,16 @@ type FakeManager struct {
 	}
 	getFieldIndexerReturnsOnCall map[int]struct {
 		result1 client.FieldIndexer
+	}
+	GetLoggerStub        func() logr.Logger
+	getLoggerMutex       sync.RWMutex
+	getLoggerArgsForCall []struct {
+	}
+	getLoggerReturns struct {
+		result1 logr.Logger
+	}
+	getLoggerReturnsOnCall map[int]struct {
+		result1 logr.Logger
 	}
 	GetRESTMapperStub        func() meta.RESTMapper
 	getRESTMapperMutex       sync.RWMutex
@@ -806,6 +817,58 @@ func (fake *FakeManager) GetFieldIndexerReturnsOnCall(i int, result1 client.Fiel
 	}{result1}
 }
 
+func (fake *FakeManager) GetLogger() logr.Logger {
+	fake.getLoggerMutex.Lock()
+	ret, specificReturn := fake.getLoggerReturnsOnCall[len(fake.getLoggerArgsForCall)]
+	fake.getLoggerArgsForCall = append(fake.getLoggerArgsForCall, struct {
+	}{})
+	fake.recordInvocation("GetLogger", []interface{}{})
+	fake.getLoggerMutex.Unlock()
+	if fake.GetLoggerStub != nil {
+		return fake.GetLoggerStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.getLoggerReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeManager) GetLoggerCallCount() int {
+	fake.getLoggerMutex.RLock()
+	defer fake.getLoggerMutex.RUnlock()
+	return len(fake.getLoggerArgsForCall)
+}
+
+func (fake *FakeManager) GetLoggerCalls(stub func() logr.Logger) {
+	fake.getLoggerMutex.Lock()
+	defer fake.getLoggerMutex.Unlock()
+	fake.GetLoggerStub = stub
+}
+
+func (fake *FakeManager) GetLoggerReturns(result1 logr.Logger) {
+	fake.getLoggerMutex.Lock()
+	defer fake.getLoggerMutex.Unlock()
+	fake.GetLoggerStub = nil
+	fake.getLoggerReturns = struct {
+		result1 logr.Logger
+	}{result1}
+}
+
+func (fake *FakeManager) GetLoggerReturnsOnCall(i int, result1 logr.Logger) {
+	fake.getLoggerMutex.Lock()
+	defer fake.getLoggerMutex.Unlock()
+	fake.GetLoggerStub = nil
+	if fake.getLoggerReturnsOnCall == nil {
+		fake.getLoggerReturnsOnCall = make(map[int]struct {
+			result1 logr.Logger
+		})
+	}
+	fake.getLoggerReturnsOnCall[i] = struct {
+		result1 logr.Logger
+	}{result1}
+}
+
 func (fake *FakeManager) GetRESTMapper() meta.RESTMapper {
 	fake.getRESTMapperMutex.Lock()
 	ret, specificReturn := fake.getRESTMapperReturnsOnCall[len(fake.getRESTMapperArgsForCall)]
@@ -1107,6 +1170,8 @@ func (fake *FakeManager) Invocations() map[string][][]interface{} {
 	defer fake.getEventRecorderForMutex.RUnlock()
 	fake.getFieldIndexerMutex.RLock()
 	defer fake.getFieldIndexerMutex.RUnlock()
+	fake.getLoggerMutex.RLock()
+	defer fake.getLoggerMutex.RUnlock()
 	fake.getRESTMapperMutex.RLock()
 	defer fake.getRESTMapperMutex.RUnlock()
 	fake.getSchemeMutex.RLock()

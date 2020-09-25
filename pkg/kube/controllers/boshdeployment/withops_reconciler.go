@@ -190,7 +190,7 @@ func (r *ReconcileWithOps) createDesiredManifest(ctx context.Context, desiredMan
 
 	store := versionedsecretstore.NewVersionedSecretStore(r.client)
 	err = store.Create(context.Background(), namespace, boshdeployment.Name,
-		boshdeployment.GetUID(), desiredManifestSecretName, desiredManifestData,
+		boshdeployment.GetUID(), boshdeployment.Kind, desiredManifestSecretName, desiredManifestData,
 		secretAnnotations, secretLabels, sourceDescription)
 	if err != nil {
 		if !versionedsecretstore.IsSecretIdenticalError(err) {
