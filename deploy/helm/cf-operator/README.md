@@ -6,7 +6,7 @@ This helm chart deploys the cf-operator, which allow the deployment of a bosh ma
 
 The Quarks-operator documentation is available at: https://quarks.suse.dev/docs/
 
-For notes about the installation, see the relevant section: https://quarks.suse.dev/docs/core-tasks/install/
+For notes about the installation, see the relevant section: https://quarks.suse.dev/docs/quarks-operator/install/
 
 ## Installing the Latest Stable Chart
 
