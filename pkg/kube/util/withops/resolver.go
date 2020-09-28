@@ -250,7 +250,7 @@ func (r *Resolver) resourceData(ctx context.Context, namespace string, resType b
 		}
 		data, ok = opsConfig.Data[key]
 		if !ok {
-			return data, fmt.Errorf("configMap '%s/%s' doesn't contain key %s", namespace, name, key)
+			return data, fmt.Errorf("configMap '%s/%s' doesn't contain key '%s'", namespace, name, key)
 		}
 	case bdv1.SecretReference:
 		opsSecret := &corev1.Secret{}
@@ -260,7 +260,7 @@ func (r *Resolver) resourceData(ctx context.Context, namespace string, resType b
 		}
 		encodedData, ok := opsSecret.Data[key]
 		if !ok {
-			return data, fmt.Errorf("secret '%s/%s' doesn't contain key %s", namespace, name, key)
+			return data, fmt.Errorf("secret '%s/%s' doesn't contain key '%s'", namespace, name, key)
 		}
 		data = string(encodedData)
 	case bdv1.URLReference:
