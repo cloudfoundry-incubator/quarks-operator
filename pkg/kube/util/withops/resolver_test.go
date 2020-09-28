@@ -618,7 +618,7 @@ instance_groups:
 			}
 			_, _, err := resolver.Manifest(ctx, deployment, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("doesn't contain key manifest"))
+			Expect(err.Error()).To(ContainSubstring("doesn't contain key 'manifest'"))
 		})
 
 		It("throws an error on invalid yaml", func() {
@@ -686,7 +686,7 @@ instance_groups:
 			}
 			_, _, err := resolver.Manifest(ctx, deployment, "default")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("doesn't contain key ops"))
+			Expect(err.Error()).To(ContainSubstring("doesn't contain key 'ops'"))
 		})
 
 		It("throws an error if build invalid ops", func() {
