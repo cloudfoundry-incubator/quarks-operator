@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Get current tag
         id: get_tag
-        run: echo ::set-output name=TAG::${GITHUB_REF/refs\/tags\//}
+        run: echo ::set-output name=TAG::${GITHUB_REF/refs\/heads\//}
 
       # Drafts your next Release notes as Pull Requests are merged into "master"
       - uses: release-drafter/release-drafter@v5
