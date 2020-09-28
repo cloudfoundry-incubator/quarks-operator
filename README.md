@@ -43,6 +43,6 @@ For more information about
 
 * the operator development, see [development docs](https://quarks.suse.dev/docs/development/)
 * testing, see [testing docs](https://quarks.suse.dev/docs/development/testing/)
-* building the operator from source, see [here](https://quarks.suse.dev/docs/core-tasks/building/)
+* building the operator from source, see [here](https://quarks.suse.dev/docs/development/building/)
 * how to develop a BOSH release using Quarks and SCF, see the [SCFv3 docs](https://github.com/SUSE/scf/blob/v3-develop/dev/scf/docs/bosh-author.md)
 
