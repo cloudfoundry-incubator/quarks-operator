@@ -102,8 +102,6 @@ func (v *ValidationHandler) Handle(ctx context.Context, req admission.Request) a
 	// Checking if the secret is a versioned secret
 	ok := vss.IsVersionedSecret(*oldSecret)
 	if ok {
-		v.log.Info("found versioned secret")
-
 		dataChanged := !reflect.DeepEqual(secret.Data, oldSecret.Data)
 
 		if dataChanged {

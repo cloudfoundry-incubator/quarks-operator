@@ -128,14 +128,12 @@ func (r *ReconcileWithOps) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	withOpsManifestData := withOpsSecret.Data["manifest.yaml"]
 
-	log.Infof(ctx, "Interpolating variables")
 	desiredManifestBytes, err := r.resolver.InterpolateVariableFromSecrets(ctx, withOpsManifestData, request.Namespace, boshdeploymentName)
 	if err != nil {
 		return reconcile.Result{RequeueAfter: time.Second * 5},
 			log.WithEvent(withOpsSecret, "WithOpsManifestError").Errorf(ctx, "failed to interpolated variables for BOSHDeployment '%s': %v", boshdeploymentName, err)
 	}
 
-	log.Infof(ctx, "Creating desired manifest secret")
 	err = r.createDesiredManifest(ctx, desiredManifestBytes, *boshdeployment, request.Namespace)
 	if err != nil {
 		return reconcile.Result{},
