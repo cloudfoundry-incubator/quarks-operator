@@ -130,6 +130,9 @@ var _ = Describe("Quarks-operator Upgrade test", func() {
 
 			err = kubectl.WaitForPodDelete(namespace, "quarks-gora-0")
 			Expect(err).ToNot(HaveOccurred())
+
+			err = kubectl.WaitForPodDelete(namespace, "quarks-gora-1")
+			Expect(err).ToNot(HaveOccurred())
 		}
 
 		deployGora := func(namespace string) {
