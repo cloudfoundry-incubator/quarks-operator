@@ -118,12 +118,16 @@ func AddWithOps(ctx context.Context, config *config.Config, mgr manager.Manager)
 					},
 				},
 			}
+			ctxlog.NewPredicateEvent(a.Object).Debug(
+				ctx, a.Meta, names.Secret,
+				fmt.Sprintf("Update predicate passed for existing secret '%s/%s'", s.GetNamespace(), s.GetName()),
+			)
 
 			return result
 		}),
 	}, nsPred, p)
 	if err != nil {
-		return errors.Wrapf(err, "Watching secretsfailed in withops controller.")
+		return errors.Wrapf(err, "Watching secrets failed in withops controller.")
 	}
 
 	return nil
