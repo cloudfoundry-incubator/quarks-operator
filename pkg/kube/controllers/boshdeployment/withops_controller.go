@@ -27,6 +27,7 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/monitorednamespace"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
+	"code.cloudfoundry.org/quarks-utils/pkg/skip"
 )
 
 // AddWithOps creates a new WithOps controller to watch for
@@ -110,6 +111,10 @@ func AddWithOps(ctx context.Context, config *config.Config, mgr manager.Manager)
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			s := a.Object.(*corev1.Secret)
+
+			if skip.Reconciles(ctx, mgr.GetClient(), s) {
+				return []reconcile.Request{}
+			}
 			result := []reconcile.Request{
 				{
 					NamespacedName: types.NamespacedName{
