@@ -1,0 +1,24 @@
+categories:
+  - title: '🚀 Features'
+    labels:
+      - 'feature'
+      - 'enhancement'
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'fix'
+      - 'bugfix'
+      - 'bug'
+  - title: '🧰 Maintenance'
+    labels:
+      - 'chore'
+      - '🤖 dependencies'
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add ` to disable code blocks.
+template: |
+
+  * https://hub.helm.sh/charts/quarks/cf-operator
+  * https://hub.docker.com/r/cfcontainerization/cf-operator/tags
+
+  ## Changes
+
+  $CHANGES

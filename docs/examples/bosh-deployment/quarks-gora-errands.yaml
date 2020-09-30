@@ -2,20 +2,18 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: var-custom-password
+  name: var-user-provided-password
 type: Opaque
 stringData:
-  password: a-custom-password
+  password: a-user-provided-password
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: test-gora
+  name: user-defined-password
 type: Opaque
 stringData:
-  certificate: "my-ca-cert-data"
-  private_key: "my-ca-private-key"
-  is_ca: "true"
+  password: a-user-defined-password
 ---
 apiVersion: v1
 kind: Secret
@@ -43,9 +41,12 @@ stringData:
           quarks-gora:
             port: 55556
             ssl: true
-            text_message: "test"
             cert: ((quarks_gora_ssl/certificate))
             key: ((quarks_gora_ssl/private_key))
+          text_message: |
+            provided=((user_provided_password))
+            defined=((user_defined_pw))
+            generated=((gora_password))
           quarks:
             ports:
             - name: "quarks-gora"
@@ -77,20 +78,22 @@ stringData:
     variables:
     - name: gora_password
       type: password
-    - name: gora_ca
+    - name: example_ca
       type: certificate
       options:
         is_ca: true
         common_name: routerCA
-    - name: gora_cert
+    - name: example_cert
       type: certificate
       options:
-        ca: gora_ca
+        ca: example_ca
         common_name: routerSSL
         alternative_names:
         - "foo.bar"
         - "*.foo.bar"
-    - name: custom_password
+    - name: user_provided_password
+      type: password
+    - name: user_defined_pw
       type: password
 ---
 apiVersion: v1
@@ -115,8 +118,8 @@ spec:
   - name: ops-scale
     type: configmap
   vars:
-  - name: test_gora
-    secret: test-gora
+  - name: user_defined_pw
+    secret: user-defined-password
 ---
 apiVersion: quarks.cloudfoundry.org/v1alpha1
 kind: QuarksJob

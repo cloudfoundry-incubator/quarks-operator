@@ -2806,3 +2806,53 @@ properties:
         address: 172.30.10.1
         bootstrap: true
 `
+
+// GoraVars with different variables for unit tests
+const GoraVars = `---
+releases:
+- name: quarks-gora
+instance_groups:
+- name: quarks-gora
+  jobs:
+  - name: quarks-gora
+    release: quarks-gora
+    properties:
+      quarks-gora:
+        cert: ((ssl_cert.certificate))
+        key: ((ssl_cert.private_key))
+      text_message: |
+        provided=((user_provided_password))
+        defined=((user_defined_pw))
+        generated=((generated_password))
+        implicit=((implicit_password))
+- name: smoke
+  lifecycle: errand
+  jobs:
+  - name: smoke-tests
+    release: quarks-gora
+    properties:
+      quarks-gora:
+        client:
+          cert: ((ssl_ca.certificate))
+variables:
+- name: generated_password
+  type: password
+- name: ssl_ca
+  type: certificate
+  options:
+    is_ca: true
+    common_name: goraCA
+- name: ssl_cert
+  type: certificate
+  options:
+    ca: ssl_ca
+    common_name: quarks-gora
+    alternative_names:
+    - quarks-gora-0
+    - quarks-gora-1
+    - quarks-gora.staging
+- name: user_provided_password
+  type: password
+- name: user_defined_pw
+  type: password
+`

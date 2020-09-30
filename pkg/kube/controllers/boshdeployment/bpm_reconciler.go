@@ -3,6 +3,7 @@ package boshdeployment
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -91,7 +92,7 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 		}
 
 		// Error reading the object - requeue the request.
-		log.WithEvent(bpmSecret, "GetBPMSecret").Errorf(ctx, "Failed to get Instance Group BPM versioned secret '%s': %v", request.NamespacedName, err)
+		_ = log.WithEvent(bpmSecret, "GetBPMSecret").Errorf(ctx, "Failed to get Instance Group BPM versioned secret '%s': %v", request.NamespacedName, err)
 		return reconcile.Result{RequeueAfter: time.Second * 5}, nil
 	}
 
@@ -138,8 +139,11 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 	// Apply BPM information
 	resources, err := r.applyBPMResources(bdpl.Name, instanceGroupName, bpmSecret, manifest, dnsService.Spec.ClusterIP)
 	if err != nil {
-		return reconcile.Result{},
-			log.WithEvent(bpmSecret, "BPMApplyingError").Errorf(ctx, "Failed to apply BPM information: %v", err)
+		if apierrors.IsNotFound(err) {
+			log.WithEvent(bpmSecret, "SkipReconcile").Debugf(ctx, "Requeue reconcile: %s", err)
+			return reconcile.Result{RequeueAfter: time.Second * 5}, nil
+		}
+		return reconcile.Result{}, log.WithEvent(bpmSecret, "BPMApplyingError").Errorf(ctx, "Failed to apply BPM information: %v", err)
 	}
 
 	if resources == nil {
@@ -190,6 +194,11 @@ func (r *ReconcileBPM) applyBPMResources(bdplName string, instanceGroupName stri
 		}
 	}
 
+	igResolvedSecretVersion, err := r.fetchIGresolvedVersion(bpmSecret.Namespace, instanceGroupName)
+	if err != nil {
+		return nil, err
+	}
+
 	qStsVersionString := "0"
 	if quarksStatefulSet.Namespace != "" {
 		_, qStsVersion, err := qstscontroller.GetMaxStatefulSetVersion(r.ctx, r.client, quarksStatefulSet)
@@ -198,11 +207,6 @@ func (r *ReconcileBPM) applyBPMResources(bdplName string, instanceGroupName stri
 		}
 		qStsVersion = qStsVersion + 1
 		qStsVersionString = strconv.Itoa(qStsVersion)
-	}
-
-	igResolvedSecretVersion, err := r.fetchIGresolvedVersion(bpmSecret.Namespace, instanceGroupName)
-	if err != nil {
-		return nil, err
 	}
 
 	resources, err := r.converter.Resources(*manifest, bpmSecret.Namespace, bdplName, serviceIP, qStsVersionString, instanceGroup, bpmInfo.Configs, igResolvedSecretVersion)
@@ -217,6 +221,9 @@ func (r *ReconcileBPM) fetchIGresolvedVersion(namespace string, instanceGroupNam
 	igResolvedSecretName := names.InstanceGroupSecretName(instanceGroupName, "")
 	igResolvedSecret, err := r.versionedSecretStore.Latest(r.ctx, namespace, igResolvedSecretName)
 	if err != nil {
+		if strings.HasSuffix(igResolvedSecretName, "-v0") {
+			return "", apierrors.NewNotFound(corev1.Resource("secret"), igResolvedSecretName)
+		}
 		return "", errors.Wrapf(err, "failed to read latest versioned secret '%s/%s'", namespace, igResolvedSecretName)
 	}
 	return igResolvedSecret.GetLabels()[versionedsecretstore.LabelVersion], nil

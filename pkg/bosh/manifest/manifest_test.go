@@ -1486,6 +1486,16 @@ instance_groups:
 				Expect(manifest.ListMissingProviders()).To(HaveLen(1))
 			})
 		})
+		Describe("ImplicitVariables", func() {
+			It("lists only implicit variables", func() {
+				manifest, err := LoadYAML([]byte(boshmanifest.GoraVars))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(manifest).ToNot(BeNil())
 
+				vars, err := manifest.ImplicitVariables()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(vars).To(HaveLen(1))
+			})
+		})
 	})
 })
