@@ -202,11 +202,7 @@ const corefileTemplate = `
 }`
 
 func newTemplate(from, to, queryType string) string {
-	matchPrefix := ""
-	if queryType == "*" {
-		matchPrefix = `(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*`
-	}
-	return fmt.Sprintf(cnameTemplate, regexp.QuoteMeta(from), matchPrefix, to, from)
+	return fmt.Sprintf(cnameTemplate, regexp.QuoteMeta(from), "", to, from)
 }
 
 const cnameTemplate = `
