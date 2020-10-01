@@ -368,7 +368,7 @@ var _ = Describe("Examples Directory", func() {
 			}
 		})
 
-		It("resolves BOSH DNS wildcard aliases", func() {
+		It("resolves BOSH DNS aliases", func() {
 			By("Getting expected IP")
 			podName := "nats-0"
 			waitReady(fmt.Sprintf("pod/%s", podName))
@@ -378,25 +378,30 @@ var _ = Describe("Examples Directory", func() {
 			By("DNS lookup")
 			err = kubectl.WaitLabelFilter(namespace, "ready", "pod", "app=bosh-dns")
 			Expect(err).ToNot(HaveOccurred())
-			wildcardNames := []string{
+			cnames := []string{
 				"nats.service.cf.internal.",
 				"nats.service.cf.internal",
-				"foo.nats.service.cf.internal.",
-				"foo.nats.service.cf.internal",
 			}
-
-			for _, name := range wildcardNames {
+			for _, name := range cnames {
 				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), podStatus.PodIP)
 				Expect(err).ToNot(HaveOccurred())
 			}
 
-			By("negativ DNS lookup")
-			unresolvableNames := []string{
+			By("negative DNS lookup")
+			unresolvableWildCardNames := []string{
+				"foo.nats.service.cf.internal.",
+				"foo.nats.service.cf.internal",
+			}
+			for _, name := range unresolvableWildCardNames {
+				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s || true", name), "no servers could be reached")
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			unresolvableCNAMES := []string{
 				"myplaceholderalias.",
 				"myplaceholderalias.service.",
 			}
-
-			for _, name := range unresolvableNames {
+			for _, name := range unresolvableCNAMES {
 				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s || true", name), "NXDOMAIN")
 				Expect(err).NotTo(HaveOccurred())
 			}
