@@ -227,12 +227,12 @@ var _ = Describe("BOSHDomainNameService", func() {
 				corefile := getCorefile(client)
 				Expect(corefile).To(ContainSubstring(`
 	template IN A bits.service.cf.internal {
-		match ^(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*bits\.service\.cf\.internal\.$
+		match ^bits\.service\.cf\.internal\.$
 		answer "{{ .Name }} 60 IN CNAME bits.default.svc."
 		upstream`))
 				Expect(corefile).To(ContainSubstring(`
 	template IN AAAA bits.service.cf.internal {
-		match ^(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*bits\.service\.cf\.internal\.$
+		match ^bits\.service\.cf\.internal\.$
 		answer "{{ .Name }} 60 IN CNAME bits.default.svc."
 		upstream`))
 				Expect(corefile).To(ContainSubstring(`
@@ -245,7 +245,7 @@ var _ = Describe("BOSHDomainNameService", func() {
 				By("checking for entries which are missing an instance group, but do not use _ query")
 				Expect(corefile).To(ContainSubstring(`
 	template IN A uaa.service.cf.internal {
-		match ^(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*uaa\.service\.cf\.internal\.$
+		match ^uaa\.service\.cf\.internal\.$
 		answer "{{ .Name }} 60 IN CNAME uaa.default.svc."
 		upstream`))
 

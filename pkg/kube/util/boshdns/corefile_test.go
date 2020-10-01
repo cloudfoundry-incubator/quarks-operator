@@ -99,7 +99,7 @@ var _ = Describe("Corefile", func() {
 				Expect(corefile).To(ContainSubstring(`forward . /etc/resolv.conf`))
 				Expect(corefile).To(ContainSubstring(`
 	template IN A bits.service.cf.internal {
-		match ^(([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.)*bits\.service\.cf\.internal\.$
+		match ^bits\.service\.cf\.internal\.$
 		answer "{{ .Name }} 60 IN CNAME bits.default.svc."
 		upstream`))
 			})
