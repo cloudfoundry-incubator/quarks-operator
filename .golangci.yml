@@ -1,5 +1,8 @@
 run:
   deadline: 20s
+  skip-dirs:
+    - vendor
+    - pkg/kube/client
 linters-settings:
   dupl:
     threshold: 400
@@ -11,7 +14,7 @@ issues:
   # (fill in the rest as needed)
   exclude-rules:
   - linters: [errcheck]
-    text: "Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv|Errorf|viper.BindPFlag). is not checked"
+    text: "Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv|.*Errorf|viper.BindPFlag). is not checked"
   skip-files:
   - ".*_fake.go$"
   skip-dirs:
@@ -28,7 +31,6 @@ linters:
   - deadcode
   - errcheck
   - varcheck
-  - goconst
   - unparam
   - ineffassign
   - nakedret
