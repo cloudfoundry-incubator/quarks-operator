@@ -4,7 +4,7 @@ require (
 	code.cloudfoundry.org/quarks-job v1.0.206
 	code.cloudfoundry.org/quarks-secret v1.0.744
 	code.cloudfoundry.org/quarks-statefulset v0.0.1
-	code.cloudfoundry.org/quarks-utils v0.0.2-0.20200925154647-e6823dafb671
+	code.cloudfoundry.org/quarks-utils v0.0.2-0.20201007144659-b8f6a7ee0d40
 	github.com/SUSE/go-patch v0.3.0
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
 	github.com/charlievieth/fs v0.0.0-20170613215519-7dc373669fa1 // indirect
