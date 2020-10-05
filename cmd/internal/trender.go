@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"regexp"
@@ -80,19 +81,17 @@ This will render a provided manifest instance-group
 			}
 		}
 
-		specIndex := viper.GetInt("spec-index")
-		if specIndex < 0 {
-			// Calculate index following the formula specified in
-			// docs/rendering_templates.md.
-			azIndex := viper.GetInt("az-index")
-			if azIndex < 0 {
-				return errors.Errorf("%s az-index is negative. %d", tRenderFailedMessage, azIndex)
-			}
-
-			// We use a very large value as a maximum number of replicas per instance group, per AZ
-			// We do this in lieu of using the actual replica count, which would cause pods to always restart
-			specIndex = (azIndex-1)*10000 + podOrdinal
+		// Calculate index following the formula specified in
+		// docs/rendering_templates.md.
+		azIndex := viper.GetInt("az-index")
+		if azIndex < 0 {
+			return errors.Errorf("%s az-index is negative. %d", tRenderFailedMessage, azIndex)
 		}
+
+		// We use a very large value as a maximum number of replicas per instance group, per AZ
+		// We do this in lieu of using the actual replica count, which would cause pods to always restart
+		specIndex := (azIndex-1)*10000 + podOrdinal
+		fmt.Printf("found spec.index: %d", specIndex)
 
 		initialRollout := viper.GetBool("initial-rollout")
 		podIP := net.ParseIP(viper.GetString("pod-ip"))
@@ -110,7 +109,6 @@ func init() {
 	utilCmd.AddCommand(templateRenderCmd)
 	pf.StringP("jobs-dir", "j", "", "path to the jobs dir.")
 	pf.StringP("output-dir", "d", bpmconverter.VolumeJobsDirMountPath, "path to output dir.")
-	pf.IntP("spec-index", "", -1, "index of the instance spec")
 	pf.IntP("az-index", "", -1, "az index")
 	pf.IntP("pod-ordinal", "", -1, "pod ordinal")
 	pf.IntP("replicas", "", -1, "number of replicas")
@@ -119,7 +117,6 @@ func init() {
 	viper.BindPFlag("jobs-dir", pf.Lookup("jobs-dir"))
 	viper.BindPFlag("output-dir", pf.Lookup("output-dir"))
 	viper.BindPFlag("az-index", pf.Lookup("az-index"))
-	viper.BindPFlag("spec-index", pf.Lookup("spec-index"))
 	viper.BindPFlag("pod-ordinal", pf.Lookup("pod-ordinal"))
 	viper.BindPFlag("replicas", pf.Lookup("replicas"))
 	viper.BindPFlag("pod-ip", pf.Lookup("pod-ip"))
@@ -128,7 +125,6 @@ func init() {
 		"jobs-dir":                "JOBS_DIR",
 		"output-dir":              "OUTPUT_DIR",
 		"docker-image-repository": "DOCKER_IMAGE_REPOSITORY",
-		"spec-index":              "SPEC_INDEX",
 		"az-index":                "AZ_INDEX",
 		"pod-ordinal":             "POD_ORDINAL",
 		"replicas":                "REPLICAS",
