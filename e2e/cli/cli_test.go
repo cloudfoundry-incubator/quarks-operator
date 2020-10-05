@@ -193,7 +193,6 @@ var _ = Describe("CLI", func() {
       --pod-ip string                \(POD_IP\) pod IP
       --pod-ordinal int              \(POD_ORDINAL\) pod ordinal \(default -1\)
       --replicas int                 \(REPLICAS\) number of replicas \(default -1\)
-      --spec-index int               \(SPEC_INDEX\) index of the instance spec \(default -1\)
 `))
 		})
 
