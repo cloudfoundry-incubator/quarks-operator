@@ -301,6 +301,7 @@ func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, bdpl 
 		// Update does not update status. We only trigger quarks secret
 		// reconciler again if variable was updated by previous CreateOrUpdate
 		if op == controllerutil.OperationResultUpdated {
+			variable.Status.Copied = pointers.Bool(false)
 			variable.Status.Generated = pointers.Bool(false)
 			if err := r.client.Status().Update(ctx, &variable); err != nil {
 				return log.WithEvent(&variable, "UpdateError").Errorf(ctx, "failed to update generated status on quarks secret '%s' (%v): %s", variable.GetNamespacedName(), variable.ResourceVersion, err)
