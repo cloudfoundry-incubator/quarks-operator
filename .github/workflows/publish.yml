@@ -1,0 +1,236 @@
+name: quarks-operator-ci
+
+on:
+  push:
+    tags:
+      - v6*
+
+env:
+  GOPROXY: "https://proxy.golang.org"
+  DOCKER_IMAGE_ORG: ghcr.io/cfcontainerizationbot
+  DOCKER_IMAGE_REPOSITORY: quarks-operator-dev
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15.1
+    - uses: actions/checkout@v2
+    - uses: actions/cache@v1
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Install dependencies
+      run: |
+        sudo gem install bosh-template
+        go install github.com/onsi/ginkgo/ginkgo
+        go get -u golang.org/x/lint/golint
+        curl -LO https://github.com/dominikh/go-tools/releases/download/2020.1.3/staticcheck_linux_amd64.tar.gz
+        sudo tar xfz staticcheck_linux_amd64.tar.gz --strip-component 1 -C $GOPATH/bin staticcheck/staticcheck
+    - name: Install shared tools
+      run: |
+        bin/tools
+    - name: Run lint
+      run: |
+        go list ./... | xargs go vet
+    - name: Run unit tests
+      run: |
+        bin/test-unit
+
+  dockerbuild:
+    needs: [unit-tests]
+    runs-on: ubuntu-16.04
+
+    steps:
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15.1
+    - uses: actions/checkout@v2
+    - uses: actions/cache@v1
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Install shared tools
+      run: |
+        bin/tools
+        git config user.email "no-reply@quarks.cloudfoundry.org"
+        git config user.name "$GITHUB_ACTOR"
+    - name: Prepare docker build
+      run: |
+        go mod vendor
+    - name: Get version number
+      shell: bash
+      run: |
+        . ./bin/include/versioning
+        echo "##[set-output name=artifact_version;]$(echo $ARTIFACT_VERSION)"
+      id: get_version
+    - uses: whoan/docker-build-with-cache-action@v5
+      with:
+        username: cfcontainerizationbot
+        password: "${{ secrets.PERSONAL_ACCESS_TOKEN }}"
+        registry: "${{ env.DOCKER_IMAGE_ORG }}"
+        image_name: "${{ env.DOCKER_IMAGE_REPOSITORY }}"
+        image_tag: "${{ steps.get_version.outpus.artifact_version }}"
+
+  e2e-tests:
+    needs: [unit-tests,dockerbuild]
+    runs-on: ubuntu-16.04
+    strategy:
+      matrix:
+        kubernetes_version: [v1.14.10,v1.16.4,v1.18.0]
+
+    steps:
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15.1
+    - uses: actions/checkout@v2
+    - uses: actions/cache@v1
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Install Go dependencies
+      run: |
+        sudo gem install bosh-template
+        go install github.com/onsi/ginkgo/ginkgo
+    - name: Install shared tools
+      run: |
+        bin/tools
+        git config user.email "no-reply@quarks.cloudfoundry.org"
+        git config user.name "$GITHUB_ACTOR"
+    - name: Create k8s Kind Cluster
+      uses: engineerd/setup-kind@v0.4.0
+      with:
+       config: .github/kind-config.yaml
+       version: v0.7.0
+       image: kindest/node:${{matrix.kubernetes_version}}
+
+    - name: Get version number
+      shell: bash
+      run: |
+        . ./bin/include/versioning
+        echo "##[set-output name=artifact_version;]$(echo $ARTIFACT_VERSION)"
+      id: get_version
+    - name: Run cluster tests
+      run: |
+        bin/build-helm
+        bin/test-cli-e2e
+        bin/test-helm-e2e
+        bin/test-helm-e2e-storage
+        bin/test-helm-e2e-upgrade
+      env:
+        NODES: "3"
+        OPERATOR_TEST_STORAGE_CLASS: "standard"
+        PROJECT: "quarks-operator"
+        CF_OPERATOR_WEBHOOK_SERVICE_HOST: 172.17.0.1
+        DOCKER_IMAGE_TAG: "${{ steps.get_version.outpus.artifact_version }}"
+
+  integration-tests:
+    needs: [unit-tests,dockerbuild]
+    runs-on: ubuntu-16.04
+    strategy:
+      matrix:
+        kubernetes_version: [v1.14.10,v1.16.4,v1.18.0]
+
+    steps:
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15.1
+    - uses: actions/checkout@v2
+    - uses: actions/cache@v1
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Install Go dependencies
+      run: |
+        sudo gem install bosh-template
+        go install github.com/onsi/ginkgo/ginkgo
+    - name: Install shared tools
+      run: |
+        bin/tools
+        git config user.email "no-reply@quarks.cloudfoundry.org"
+        git config user.name "$GITHUB_ACTOR"
+    - name: Create k8s Kind Cluster
+      uses: engineerd/setup-kind@v0.3.0
+      with:
+       config: .github/kind-config.yaml
+       version: v0.7.0
+       image: kindest/node:${{matrix.kubernetes_version}}
+
+    - name: Get version number
+      shell: bash
+      run: |
+        . ./bin/include/versioning
+        echo "##[set-output name=artifact_version;]$(echo $ARTIFACT_VERSION)"
+      id: get_version
+    - name: Run cluster tests
+      run: |
+        bin/test-integration
+        INTEGRATION_SUITE=storage bin/test-integration
+        INTEGRATION_SUITE=util bin/test-integration
+      env:
+        NODES: "3"
+        DEBUG: "no"
+        OPERATOR_TEST_STORAGE_CLASS: "standard"
+        PROJECT: "quarks-operator"
+        CF_OPERATOR_WEBHOOK_SERVICE_HOST: 172.17.0.1
+        DOCKER_IMAGE_TAG: "${{ steps.get_version.outpus.artifact_version }}"
+    - uses: actions/upload-artifact@v2
+      if: failure()
+      with:
+        name: ginkgo debug logs
+        path: "**/ginkgo-node-*.log"
+
+  publish:
+    needs: [integration-tests,e2e-tests]
+    runs-on: ubuntu-16.04
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Get version number
+      shell: bash
+      run: |
+        . ./bin/include/versioning
+        echo "##[set-output name=artifact_version;]$(echo $ARTIFACT_VERSION)"
+      id: get_version
+    - name: Promote docker image
+      shell: bash
+      run: |
+        pre="$DOCKER_IMAGE_ORG/$DOCKER_IMAGE_REPOSITORY:$DOCKER_IMAGE_TAG"
+        image="$DOCKER_IMAGE_ORG/$PROJECT:$DOCKER_IMAGE_TAG"
+        docker tag "$pre" "$image"
+        docker push "$image"
+      env:
+        PROJECT: "quarks-operator"
+        DOCKER_IMAGE_TAG: "${{ steps.get_version.outpus.artifact_version }}"
+
+    - uses: actions/checkout@master
+      with:
+        name: cloudfoundry-incubator/quarks-helm
+        ref: refs/heads/master
+        path: helm-charts
+
+    - name: Install shared tools
+      run: bin/tools
+    - name: Build helm chart
+      run: |
+        bin/build-helm
+        cp -a helm-charts new-charts
+        cp -p helm/cf-operator*.tgz new-charts/
+        helm repo index --merge new-charts/index.yaml helm-charts
+
+        # TODO timestamps? commit new-charts?

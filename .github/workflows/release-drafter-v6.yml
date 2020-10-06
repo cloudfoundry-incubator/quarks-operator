@@ -1,0 +1,25 @@
+name: Release Drafter
+
+on:
+  push:
+    branches:
+      - v6.*
+
+jobs:
+  update_release_draft:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Get version number
+        shell: bash
+        run: |
+          . ./bin/include/versioning
+          echo "##[set-output name=artifact_version;]$(echo $ARTIFACT_VERSION)"
+        id: get_version
+      # Drafts your next Release notes as Pull Requests are merged into "master"
+      - uses: release-drafter/release-drafter@v5
+        with:
+          name: "${{ steps.get_tag.outputs.TAG }} 🌈"
+          tag: ${{ steps.get_version.outputs.artifact_version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
