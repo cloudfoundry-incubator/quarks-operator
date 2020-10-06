@@ -27,7 +27,6 @@ import (
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
-	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 // BDPLStateCreating is the Bosh Deployment Status spec Creating State
@@ -296,16 +295,6 @@ func (r *ReconcileBOSHDeployment) createQuarksSecrets(ctx context.Context, bdpl 
 		op, err := controllerutil.CreateOrUpdate(ctx, r.client, &variable, mutateqs.QuarksSecretMutateFn(&variable))
 		if err != nil {
 			return errors.Wrapf(err, "creating or updating QuarksSecret '%s'", variable.GetNamespacedName())
-		}
-
-		// Update does not update status. We only trigger quarks secret
-		// reconciler again if variable was updated by previous CreateOrUpdate
-		if op == controllerutil.OperationResultUpdated {
-			variable.Status.Copied = pointers.Bool(false)
-			variable.Status.Generated = pointers.Bool(false)
-			if err := r.client.Status().Update(ctx, &variable); err != nil {
-				return log.WithEvent(&variable, "UpdateError").Errorf(ctx, "failed to update generated status on quarks secret '%s' (%v): %s", variable.GetNamespacedName(), variable.ResourceVersion, err)
-			}
 		}
 
 		log.Debugf(ctx, "QuarksSecret '%s' has been %s", variable.GetNamespacedName(), op)
