@@ -27,7 +27,6 @@ import (
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
-	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 )
 
 // BDPLStateCreating is the Bosh Deployment Status spec Creating State
