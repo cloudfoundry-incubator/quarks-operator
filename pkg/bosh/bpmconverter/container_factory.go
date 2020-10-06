@@ -151,7 +151,7 @@ func createWaitContainer(requiredService *string) []corev1.Container {
 		return nil
 	}
 	return []corev1.Container{{
-		Name:    fmt.Sprintf("wait-for %s", *requiredService),
+		Name:    fmt.Sprintf("wait-for-%s", *requiredService),
 		Image:   operatorimage.GetOperatorDockerImage(),
 		Command: []string{"/usr/bin/dumb-init", "--"},
 		Args: []string{
