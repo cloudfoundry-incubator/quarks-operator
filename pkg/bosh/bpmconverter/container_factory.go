@@ -136,7 +136,7 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 	initContainers := flattenContainers(
 		containerRunCopier(),
 		copyingSpecsInitContainers,
-		templateRenderingContainer(c.instanceGroupName),
+		templateRenderingContainer(c.instanceGroupName, c.version == "1"),
 		createDirContainer(jobs, c.instanceGroupName),
 		createWaitContainer(requiredService),
 		boshPreStartInitContainers,
@@ -334,8 +334,8 @@ func JobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 	}
 }
 
-func templateRenderingContainer(instanceGroupName string) corev1.Container {
-	return corev1.Container{
+func templateRenderingContainer(instanceGroupName string, initialRollout bool) corev1.Container {
+	container := corev1.Container{
 		Name:            "template-render",
 		Image:           operatorimage.GetOperatorDockerImage(),
 		ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
@@ -377,6 +377,16 @@ func templateRenderingContainer(instanceGroupName string) corev1.Container {
 			"time cf-operator util template-render",
 		},
 	}
+
+	if !initialRollout {
+		container.Env = append(container.Env,
+			corev1.EnvVar{
+				Name:  EnvInitialRollout,
+				Value: "false",
+			})
+	}
+
+	return container
 }
 
 func createDirContainer(jobs []bdm.Job, instanceGroupName string) corev1.Container {

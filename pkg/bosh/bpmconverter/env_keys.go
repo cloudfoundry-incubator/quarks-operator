@@ -10,4 +10,6 @@ const (
 	EnvBOSHManifestPath = "BOSH_MANIFEST_PATH"
 	// PodIPEnvVar is the environment variable containing status.podIP used to render BOSH spec.ip. (CLI)
 	PodIPEnvVar = "POD_IP"
+	// EnvInitialRollout is set to "false" if this is not the first time the instance group has run
+	EnvInitialRollout = "INITIAL_ROLLOUT"
 )
