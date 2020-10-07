@@ -610,7 +610,7 @@ var _ = Describe("ContainerFactory", func() {
 				containers, err := containerFactory.JobsToInitContainers(jobs, defaultVolumeMounts, bpmDisks, &requiredService)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(containers).To(HaveLen(7))
-				Expect(containers[4].Name).To(Equal("wait-for"))
+				Expect(containers[4].Name).To(Equal("wait-for-required-service"))
 				Expect(containers[4].Args).To(ContainElement(`time cf-operator util wait required-service`))
 			})
 
