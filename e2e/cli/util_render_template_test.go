@@ -34,7 +34,7 @@ var _ = Describe("render-template", func() {
 			"-m", manifestPath,
 			"-j", assetPath,
 			"-g", "log-api",
-			"--spec-index", "0",
+			"--az-index", "1",
 			"-d", tmpDir,
 			"--pod-ip", "10.10.50.50",
 			"--replicas", "2",
