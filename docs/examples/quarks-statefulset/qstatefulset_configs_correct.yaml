@@ -27,7 +27,8 @@ spec:
           - name: busybox
             image: busybox
             command:
-            - "false"
+            - sleep
+            - "3600"
             volumeMounts:
               - name: secret1-volume
                 readOnly: true
