@@ -1,0 +1,97 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ printf "%s-pre-upgrade" .Release.Name | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+    app.kubernetes.io/name: {{ include "cf-operator.fullname" . }}
+    app.kubernetes.io/version: {{ default .Chart.Version .Chart.AppVersion | quote }}
+    helm.sh/chart: {{ include "cf-operator.chart" . }}
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: "-2"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ printf "%s-pre-upgrade-delete-dm" .Release.Name | quote }}
+  namespace: {{ .Values.global.singleNamespace.name | quote }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+    app.kubernetes.io/name: {{ include "cf-operator.fullname" . }}
+    app.kubernetes.io/version: {{ default .Chart.Version .Chart.AppVersion | quote }}
+    helm.sh/chart: {{ include "cf-operator.chart" . }}
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: "-2"
+rules:
+- apiGroups: [quarks.cloudfoundry.org]
+  resources: [quarksjobs]
+  resourceNames: [dm]
+  verbs: [delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ printf "%s-pre-upgrade-delete-dm" .Release.Name | quote }}
+  namespace: {{ .Values.global.singleNamespace.name | quote }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+    app.kubernetes.io/name: {{ include "cf-operator.fullname" . }}
+    app.kubernetes.io/version: {{ default .Chart.Version .Chart.AppVersion | quote }}
+    helm.sh/chart: {{ include "cf-operator.chart" . }}
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: "-2"
+roleRef:
+  kind: Role
+  name: {{ printf "%s-pre-upgrade-delete-dm" .Release.Name | quote }}
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: {{ printf "%s-pre-upgrade" .Release.Name | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ printf "%s-pre-upgrade" .Release.Name | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+    app.kubernetes.io/name: {{ include "cf-operator.fullname" . }}
+    app.kubernetes.io/version: {{ default .Chart.Version .Chart.AppVersion | quote }}
+    helm.sh/chart: {{ include "cf-operator.chart" . }}
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: "-1"
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name | quote }}
+        app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+        app.kubernetes.io/name: {{ include "cf-operator.fullname" . }}
+        app.kubernetes.io/version: {{ default .Chart.Version .Chart.AppVersion | quote }}
+        helm.sh/chart: {{ include "cf-operator.chart" . }}
+    spec:
+      serviceAccountName: {{ printf "%s-pre-upgrade" .Release.Name | quote }}
+      restartPolicy: Never
+      containers:
+      - name: pre-upgrade
+        image: {{ .Values.operator.preUpgradeHookDockerImage | quote }}
+        imagePullPolicy: IfNotPresent
+        args:
+        - kubectl
+        - delete
+        - quarksjobs.quarks.cloudfoundry.org
+        - --ignore-not-found
+        - {{ printf "--namespace=%s" .Values.global.singleNamespace.name | squote }}
+        - dm
