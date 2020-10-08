@@ -120,7 +120,12 @@ func (ig *InstanceGroup) jobInstances(
 
 	bootstrapIndex := 0
 	if !initialRollout {
-		bootstrapIndex = ig.Instances*len(ig.AZs) - 1
+		azCount := 1
+		if len(ig.AZs) > 1 {
+			azCount = len(ig.AZs)
+		}
+
+		bootstrapIndex = ig.Instances*azCount - 1
 	}
 
 	if len(ig.AZs) > 0 {
