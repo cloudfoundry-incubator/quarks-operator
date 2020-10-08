@@ -40,7 +40,7 @@ vet:
 build:
 	bin/build
 
-build-image:
+build-image: tools
 	bin/build-image
 
 build-helm:
