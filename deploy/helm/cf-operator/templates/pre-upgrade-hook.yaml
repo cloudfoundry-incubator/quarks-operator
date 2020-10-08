@@ -89,7 +89,6 @@ spec:
         image: {{ .Values.operator.preUpgradeHookDockerImage | quote }}
         imagePullPolicy: IfNotPresent
         args:
-        - kubectl
         - delete
         - quarksjobs.quarks.cloudfoundry.org
         - --ignore-not-found
