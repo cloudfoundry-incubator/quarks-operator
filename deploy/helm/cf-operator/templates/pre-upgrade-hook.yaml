@@ -8,8 +8,6 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name | quote }}
     app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
     app.kubernetes.io/name: {{ include "cf-operator.fullname" . }}
-    app.kubernetes.io/version: {{ default .Chart.Version .Chart.AppVersion | quote }}
-    helm.sh/chart: {{ include "cf-operator.chart" . }}
   annotations:
     helm.sh/hook: pre-upgrade
     helm.sh/hook-weight: "-2"
@@ -23,8 +21,6 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name | quote }}
     app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
     app.kubernetes.io/name: {{ include "cf-operator.fullname" . }}
-    app.kubernetes.io/version: {{ default .Chart.Version .Chart.AppVersion | quote }}
-    helm.sh/chart: {{ include "cf-operator.chart" . }}
   annotations:
     helm.sh/hook: pre-upgrade
     helm.sh/hook-weight: "-2"
@@ -43,8 +39,6 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name | quote }}
     app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
     app.kubernetes.io/name: {{ include "cf-operator.fullname" . }}
-    app.kubernetes.io/version: {{ default .Chart.Version .Chart.AppVersion | quote }}
-    helm.sh/chart: {{ include "cf-operator.chart" . }}
   annotations:
     rbac.authorization.kubernetes.io/autoupdate: "true"
     helm.sh/hook: pre-upgrade
@@ -67,8 +61,6 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name | quote }}
     app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
     app.kubernetes.io/name: {{ include "cf-operator.fullname" . }}
-    app.kubernetes.io/version: {{ default .Chart.Version .Chart.AppVersion | quote }}
-    helm.sh/chart: {{ include "cf-operator.chart" . }}
   annotations:
     helm.sh/hook: pre-upgrade
     helm.sh/hook-weight: "-1"
@@ -79,8 +71,6 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name | quote }}
         app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
         app.kubernetes.io/name: {{ include "cf-operator.fullname" . }}
-        app.kubernetes.io/version: {{ default .Chart.Version .Chart.AppVersion | quote }}
-        helm.sh/chart: {{ include "cf-operator.chart" . }}
     spec:
       serviceAccountName: {{ printf "%s-pre-upgrade" .Release.Name | quote }}
       restartPolicy: Never
