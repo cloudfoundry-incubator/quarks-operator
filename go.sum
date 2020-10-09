@@ -18,10 +18,12 @@ code.cloudfoundry.org/quarks-secret v1.0.744 h1:2XgRTMTooO4MErFp4OrmkeJQ05Rz1fCJ
 code.cloudfoundry.org/quarks-secret v1.0.744/go.mod h1:2NRcfkX/dc+Xk90GRUS6tAYQHZnrkXhflM6L5Py4od8=
 code.cloudfoundry.org/quarks-statefulset v0.0.1 h1:QDHH7EhqtjVeZ/J/1DXmIzCPzLXp9FTFuCVV3P7QJA4=
 code.cloudfoundry.org/quarks-statefulset v0.0.1/go.mod h1:UYu7Wo+SSkhwVasEMg5P8FFvbLzN7cPd1TduTwo+pdo=
+code.cloudfoundry.org/quarks-statefulset v0.0.2/go.mod h1:FYpNGg1VKCTMKDlnr599HwHiyBS2fteWMGpTpPbUz0w=
 code.cloudfoundry.org/quarks-utils v0.0.0-20200925090848-029325981b63/go.mod h1:hpiFutwYAgz6NFZSHNbsuMGVnv0GU/DP+AQn1gf3G+4=
 code.cloudfoundry.org/quarks-utils v0.0.2-0.20200925150425-86012dcc3927/go.mod h1:hpiFutwYAgz6NFZSHNbsuMGVnv0GU/DP+AQn1gf3G+4=
-code.cloudfoundry.org/quarks-utils v0.0.2-0.20200925154647-e6823dafb671 h1:zmJB+jnTfSd/vVz0YCXuCWNwbxGaJAIhKkUlNzvbgY0=
 code.cloudfoundry.org/quarks-utils v0.0.2-0.20200925154647-e6823dafb671/go.mod h1:hpiFutwYAgz6NFZSHNbsuMGVnv0GU/DP+AQn1gf3G+4=
+code.cloudfoundry.org/quarks-utils v0.0.2-0.20201007144659-b8f6a7ee0d40 h1:l8UWmaJRFL6sT0Huc/7uTM016kju0ubGpSjyYJab8VU=
+code.cloudfoundry.org/quarks-utils v0.0.2-0.20201007144659-b8f6a7ee0d40/go.mod h1:hpiFutwYAgz6NFZSHNbsuMGVnv0GU/DP+AQn1gf3G+4=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/Azure/azure-sdk-for-go v16.2.1+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
@@ -688,6 +690,7 @@ github.com/spf13/afero v1.2.2/go.mod h1:9ZxEEn6pIJ8Rxe320qSDBk6AsU0r9pR7Q4OcevTd
 github.com/spf13/afero v1.3.0/go.mod h1:5KUK8ByomD5Ti5Artl0RtHeI5pTF7MIDuXL3yY520V4=
 github.com/spf13/afero v1.3.4 h1:8q6vk3hthlpb2SouZcnBVKboxWQWMDNF38bwholZrJc=
 github.com/spf13/afero v1.3.4/go.mod h1:Ai8FlHk4v/PARR026UzYexafAt9roJ7LcLMAmO6Z93I=
+github.com/spf13/afero v1.4.1/go.mod h1:Ai8FlHk4v/PARR026UzYexafAt9roJ7LcLMAmO6Z93I=
 github.com/spf13/cast v1.3.0/go.mod h1:Qx5cxh0v+4UWYiBimWS+eyWzqEqokIECu5etghLkUJE=
 github.com/spf13/cast v1.3.1 h1:nFm6S0SMdyzrzcmThSipiEubIDy8WEXKNZ0UOgiRpng=
 github.com/spf13/cast v1.3.1/go.mod h1:Qx5cxh0v+4UWYiBimWS+eyWzqEqokIECu5etghLkUJE=

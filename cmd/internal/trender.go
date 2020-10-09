@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"regexp"
@@ -15,6 +14,7 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpmconverter"
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 const (
@@ -90,8 +90,7 @@ This will render a provided manifest instance-group
 
 		// We use a very large value as a maximum number of replicas per instance group, per AZ
 		// We do this in lieu of using the actual replica count, which would cause pods to always restart
-		specIndex := (azIndex-1)*10000 + podOrdinal
-		fmt.Printf("found spec.index: %d", specIndex)
+		specIndex := names.SpecIndex(azIndex, podOrdinal)
 
 		initialRollout := viper.GetBool("initial-rollout")
 		podIP := net.ParseIP(viper.GetString("pod-ip"))
