@@ -15,6 +15,8 @@ env:
   DOCKER_IMAGE_ORG: ghcr.io/cfcontainerizationbot
   DOCKER_IMAGE_REPOSITORY: quarks-operator-dev
   DOCKER_IMAGE_TAG: "${{ github.sha }}"
+  DOCKER_RELEASE_ORG: ghcr.io/cloudfoundry-incubator
+  DOCKER_RELEASE_REPOSITORY: quarks-operator
 
 jobs:
 
@@ -99,13 +101,14 @@ jobs:
     - uses: whoan/docker-build-with-cache-action@v5
       with:
         username: cfcontainerizationbot
-        password: "${{ secrets.PERSONAL_ACCESS_TOKEN }}"
+        # container registry personal access token
+        password: "${{ secrets.CR_PAT }}"
         registry: "${{ env.DOCKER_IMAGE_ORG }}"
         image_name: "${{ env.DOCKER_IMAGE_REPOSITORY }}"
         image_tag: "${{ env.DOCKER_IMAGE_TAG }}"
 
   e2e-tests:
-    needs: [unit-tests,dockerbuild]
+    needs: [dockerbuild]
     runs-on: ubuntu-16.04
     strategy:
       matrix:
@@ -153,7 +156,7 @@ jobs:
         CF_OPERATOR_WEBHOOK_SERVICE_HOST: 172.17.0.1
 
   integration-tests:
-    needs: [unit-tests,dockerbuild]
+    needs: [dockerbuild]
     runs-on: ubuntu-16.04
     strategy:
       matrix:
@@ -206,7 +209,7 @@ jobs:
 
   publish:
     needs: [integration-tests,e2e-tests]
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-latest
 
     # only run if this is a push with a release tag
     if: startsWith( github.ref, 'refs/tags/v')
@@ -215,7 +218,13 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Install shared tools
-      run: bin/tools
+      run: |
+        bin/tools
+
+    - name: Setup git
+      run: |
+        git config --global user.name "CFContainerizationBot"
+        git config --global user.email "cf-containerization@cloudfoundry.org"
 
     - name: Get version number
       shell: bash
@@ -224,32 +233,128 @@ jobs:
         echo "##[set-output name=artifact_version;]$(echo $ARTIFACT_VERSION)"
       id: get_version
 
+    - name: Get current tag
+      id: get_tag
+      run: echo ::set-output name=TAG::${GITHUB_REF/refs\/heads\//}
+
+    - name: Drafts release notes
+      uses: release-drafter/release-drafter@v5
+      with:
+        name: "${{ steps.get_tag.outputs.TAG }} 🌈"
+        tag: ${{ steps.get_version.outputs.artifact_version }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      id: create_release
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: cfcontainerizationbot
+        password: ${{ secrets.CR_PAT }}
+
     - name: Promote docker image
       shell: bash
       run: |
         pre="$DOCKER_IMAGE_ORG/$DOCKER_IMAGE_REPOSITORY:$DOCKER_IMAGE_TAG"
-        image="$DOCKER_IMAGE_ORG/$PROJECT:$DOCKER_IMAGE_TAG"
+        image="$DOCKER_RELEASE_ORG/$DOCKER_RELEASE_REPOSITORY:$ARTIFACT_VERSION"
+        docker pull "$pre"
         docker tag "$pre" "$image"
         docker push "$image"
       env:
-        PROJECT: "quarks-operator"
-        DOCKER_IMAGE_TAG: "${{ steps.get_version.outpus.artifact_version }}"
+        ARTIFACT_VERSION: "${{ steps.get_version.outputs.artifact_version }}"
 
-    # TODO rebuild binary with version
+    - name: Build binary
+      shell: bash
+      run: |
+        bin/build
+        zip --junk-paths quarks-operator-linux-amd64.zip binaries/quarks-operator
+      env:
+        ARTIFACT_VERSION: "${{ steps.get_version.outputs.artifact_version }}"
 
-    - uses: actions/checkout@master
+    # You have to manually delete wrong assets from the release and wait for them to vanish
+    - name: Upload release asset
+      id: upload-release-asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        name: cloudfoundry-incubator/quarks-helm
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: "quarks-operator-linux-amd64.zip"
+        asset_name: "quarks-operator-linux-amd64"
+        asset_content_type: application/zip
+
+    - name: Checkout helm chart repo
+      uses: actions/checkout@master
+      with:
+        repository: cloudfoundry-incubator/quarks-helm
         ref: refs/heads/master
         path: helm-charts
+        # github personal access token, for pushing commits
+        token: ${{ secrets.GH_PAT }}
 
-    - name: Build helm chart
+    - name: Build and commit helm chart
       run: |
         bin/build-helm
-        cp -a helm-charts new-charts
-        cp -p helm/cf-operator*.tgz new-charts/
-        helm repo index --merge new-charts/index.yaml helm-charts
+        echo "##[set-output name=sha;]$( sha256sum helm/*.tgz | head -1 | cut -f1 -d ' ' )"
 
-        # TODO timestamps? commit new-charts?
+        helm repo index --merge helm-charts/index.yaml helm/
+        cp -p helm/quarks*.tgz helm-charts/
+        cp helm/index.yaml helm-charts/
 
-    # TODO assets that can be attached by release-drafter?
+        cd helm-charts
+        git add .
+        git commit -m "add helm chart for $ARTIFACT_VERSION"
+
+        git push
+      env:
+        DOCKER_IMAGE_ORG: "${{ env.DOCKER_RELEASE_ORG }}"
+        DOCKER_IMAGE_REPOSITORY: "${{ env.DOCKER_RELEASE_REPOSITORY }}"
+        ARTIFACT_VERSION: "${{ steps.get_version.outputs.artifact_version }}"
+      id: build_helm
+
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    - name: Install git-pull-request tool
+      run: pip3 install git-pull-request
+
+    - name: Checkout kubecf repo
+      uses: actions/checkout@master
+      with:
+        repository: cloudfoundry-incubator/kubecf
+        ref: refs/heads/master
+        path: kubecf
+        # github personal access token, for pushing commits
+        token: ${{ secrets.GH_PAT }}
+
+    - name: Create KubeCF PR
+      shell: bash
+      run: |
+        version=$(echo "$version" | sed 's/+/%2B/')
+
+        cd kubecf
+        sed -i "/cf_operator:/{n;s/sha256: \(.*\)/sha256: ${sha}/}" ./dependencies.yaml
+        sed -i "/cf_operator:/{n;n;n;s/version: \(.*\)/version: ${version}/}" ./dependencies.yaml
+        git checkout -b bot/cf-operator
+
+        git add .
+        git commit -m "feat: bump cf-operator $version"
+
+        git push -f origin bot/cf-operator
+
+        # Create PR
+        export GIT_ASKPASS=./git-password.sh
+        cat > git-password.sh <<EOF
+        #!/bin/sh
+        echo "$token"
+        EOF
+        chmod +x git-password.sh
+        git config --global core.editor "cat"
+        git config --global credential.helper cache
+        git config credential.https://github.com.username CFContainerizationBot
+        git pull-request --no-fork --title "Update cf-operator dependency." --message "Increment cf-operator version in def.bzl file."
+      env:
+        SHA: "${{ steps.build_helm.outputs.sha }}"
+        version: "${{ steps.get_version.outputs.artifact_version }}"
+        token: ${{ secrets.GH_PAT }}
