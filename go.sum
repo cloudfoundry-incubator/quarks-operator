@@ -22,6 +22,8 @@ code.cloudfoundry.org/quarks-utils v0.0.2-0.20200925150425-86012dcc3927/go.mod h
 code.cloudfoundry.org/quarks-utils v0.0.2-0.20200925154647-e6823dafb671/go.mod h1:hpiFutwYAgz6NFZSHNbsuMGVnv0GU/DP+AQn1gf3G+4=
 code.cloudfoundry.org/quarks-utils v0.0.2-0.20201007144659-b8f6a7ee0d40 h1:l8UWmaJRFL6sT0Huc/7uTM016kju0ubGpSjyYJab8VU=
 code.cloudfoundry.org/quarks-utils v0.0.2-0.20201007144659-b8f6a7ee0d40/go.mod h1:hpiFutwYAgz6NFZSHNbsuMGVnv0GU/DP+AQn1gf3G+4=
+code.cloudfoundry.org/quarks-utils v0.0.2-0.20201020085845-6575bfd4b208 h1:eZe1+/pPEwIKR25a038oKP2ACrqT2mkOf6qL1sZpOaE=
+code.cloudfoundry.org/quarks-utils v0.0.2-0.20201020085845-6575bfd4b208/go.mod h1:hpiFutwYAgz6NFZSHNbsuMGVnv0GU/DP+AQn1gf3G+4=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/Azure/azure-sdk-for-go v16.2.1+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
