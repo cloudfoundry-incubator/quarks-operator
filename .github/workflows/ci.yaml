@@ -1,12 +1,11 @@
 name: quarks-operator-ci
 
 on:
+  # run for every push (master, feature branch, ...)
   push:
-    tags:
-      - v*
-    branches:
-      - master
-  pull_request:
+  # run for reviewed PRs
+  pull_request_review:
+    types: [submitted]
   schedule:
     - cron:  '0 0 * * *'
 
@@ -19,6 +18,9 @@ env:
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
+
+    # only run on approved prs or pushes to the quarks repo
+    if: github.event.review.state == 'approved' || github.repository == 'cloudfoundry-incubator/quarks-operator'
 
     steps:
     - name: Set up Go
@@ -180,3 +182,54 @@ jobs:
       with:
         name: ginkgo debug logs
         path: "**/ginkgo-node-*.log"
+
+  publish:
+    needs: [integration-tests,e2e-tests]
+    runs-on: ubuntu-16.04
+
+    # only run if this is a push to a release branch
+    #if: startsWith( github.ref, 'refs/heads/v')
+    if: github.ref == 'refs/heads/v7.x'
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install shared tools
+      run: bin/tools
+
+    - name: Get version number
+      shell: bash
+      run: |
+        . ./bin/include/versioning
+        echo "##[set-output name=artifact_version;]$(echo $ARTIFACT_VERSION)"
+      id: get_version
+
+    - name: Promote docker image
+      shell: bash
+      run: |
+        pre="$DOCKER_IMAGE_ORG/$DOCKER_IMAGE_REPOSITORY:$DOCKER_IMAGE_TAG"
+        image="$DOCKER_IMAGE_ORG/$PROJECT:$DOCKER_IMAGE_TAG"
+        docker tag "$pre" "$image"
+        docker push "$image"
+      env:
+        PROJECT: "quarks-operator"
+        DOCKER_IMAGE_TAG: "${{ steps.get_version.outpus.artifact_version }}"
+
+    # TODO rebuild binary with version
+
+    - uses: actions/checkout@master
+      with:
+        name: cloudfoundry-incubator/quarks-helm
+        ref: refs/heads/master
+        path: helm-charts
+
+    - name: Build helm chart
+      run: |
+        bin/build-helm
+        cp -a helm-charts new-charts
+        cp -p helm/cf-operator*.tgz new-charts/
+        helm repo index --merge new-charts/index.yaml helm-charts
+
+        # TODO timestamps? commit new-charts?
+
+    # TODO assets that can be attached by release-drafter?
