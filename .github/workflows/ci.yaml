@@ -3,11 +3,12 @@ name: quarks-operator-ci
 on:
   # run for every push (master, feature branch, ...)
   push:
-  # run for reviewed PRs
-  pull_request_review:
-    types: [submitted]
+  # nightly
   schedule:
     - cron:  '0 0 * * *'
+  # run for labeled PRs
+  pull_request_target:
+    types: [labeled]
 
 env:
   GOPROXY: "https://proxy.golang.org"
@@ -16,11 +17,31 @@ env:
   DOCKER_IMAGE_TAG: "${{ github.sha }}"
 
 jobs:
-  unit-tests:
-    runs-on: ubuntu-latest
 
-    # only run on approved prs or pushes to the quarks repo
-    if: github.event.review.state == 'approved' || github.repository == 'cloudfoundry-incubator/quarks-operator'
+  # The first thing we do is to check that the PR has the pr-test-queue label
+  # If it doesn't have it, the flow stops. If it does, we remove it (approval is good for one run only).
+  dequeue:
+    name: dequeue
+    runs-on: ubuntu-20.04
+
+    if: contains(github.event.pull_request.labels.*.name, 'pr-test-queue') ||
+      github.repository == 'cloudfoundry-incubator/quarks-operator' &&
+      startsWith( github.ref, 'refs/heads/' ) ||
+      startsWith( github.ref, 'refs/tags/' )
+
+    # Also make this job succeed if label can't be deleted
+    continue-on-error: true
+
+    steps:
+      - uses: actions-ecosystem/action-remove-labels@556e306
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: pr-test-queue
+
+
+  unit-tests:
+    needs: [dequeue]
+    runs-on: ubuntu-latest
 
     steps:
     - name: Set up Go
@@ -187,9 +208,8 @@ jobs:
     needs: [integration-tests,e2e-tests]
     runs-on: ubuntu-16.04
 
-    # only run if this is a push to a release branch
-    #if: startsWith( github.ref, 'refs/heads/v')
-    if: github.ref == 'refs/heads/v7.x'
+    # only run if this is a push with a release tag
+    if: startsWith( github.ref, 'refs/tags/v')
 
     steps:
     - uses: actions/checkout@v2
