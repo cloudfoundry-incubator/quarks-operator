@@ -161,10 +161,9 @@ variables:
 		It("should requeue after if quarks secret is not found", func() {
 			resolver.InterpolateVariableFromSecretsReturns([]byte("test"), errors.New("Expected to find variables: password"))
 
-			result, err := reconciler.Reconcile(request)
+			_, err := reconciler.Reconcile(request)
 			Expect(err).To(HaveOccurred())
 			Expect(logs.FilterMessageSnippet("Expected to find variables: password").Len()).To(Equal(1))
-			Expect(result.RequeueAfter).To(Equal(5 * time.Second))
 		})
 	})
 })
