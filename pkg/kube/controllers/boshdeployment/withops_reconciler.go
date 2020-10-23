@@ -3,6 +3,7 @@ package boshdeployment
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -130,6 +131,10 @@ func (r *ReconcileWithOps) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	desiredManifestBytes, err := r.resolver.InterpolateVariableFromSecrets(ctx, withOpsManifestData, request.Namespace, boshdeploymentName)
 	if err != nil {
+		if strings.HasSuffix(err.Error(), "has generated status false") {
+			log.WithEvent(withOpsSecret, "SkipReconcile").Debugf(ctx, "Requeue reconcile: %s", err)
+			return reconcile.Result{RequeueAfter: time.Second * 5}, nil
+		}
 		return reconcile.Result{},
 			log.WithEvent(withOpsSecret, "WithOpsManifestError").Errorf(ctx, "failed to interpolated variables for BOSHDeployment '%s': %v", boshdeploymentName, err)
 	}
