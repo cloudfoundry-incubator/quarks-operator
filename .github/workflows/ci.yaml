@@ -264,25 +264,13 @@ jobs:
       env:
         ARTIFACT_VERSION: "${{ steps.get_version.outputs.artifact_version }}"
 
-    - name: Build binary
+    - name: Build binary to attach later
       shell: bash
       run: |
         bin/build
         zip --junk-paths quarks-operator-linux-amd64.zip binaries/quarks-operator
       env:
         ARTIFACT_VERSION: "${{ steps.get_version.outputs.artifact_version }}"
-
-    # You have to manually delete wrong assets from the release and wait for them to vanish
-    - name: Upload release asset
-      id: upload-release-asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: "quarks-operator-linux-amd64.zip"
-        asset_name: "quarks-operator-linux-amd64"
-        asset_content_type: application/zip
 
     - name: Checkout helm chart repo
       uses: actions/checkout@master
@@ -358,3 +346,15 @@ jobs:
         SHA: "${{ steps.build_helm.outputs.sha }}"
         version: "${{ steps.get_version.outputs.artifact_version }}"
         token: ${{ secrets.GH_PAT }}
+
+    # You have to manually delete wrong assets from the release and wait for them to vanish
+    - name: Upload release asset
+      id: upload-release-asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: "quarks-operator-linux-amd64.zip"
+        asset_name: "quarks-operator-linux-amd64"
+        asset_content_type: application/zip
