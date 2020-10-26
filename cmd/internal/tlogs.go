@@ -33,7 +33,9 @@ It will also run logrotate.
 `,
 	RunE: func(_ *cobra.Command, args []string) (err error) {
 		log = logger.New(cmd.LogLevel())
-		defer log.Sync()
+		defer func() {
+			_ = log.Sync()
+		}()
 
 		d := time.Duration(viper.GetInt("logrotate-interval")) * time.Minute
 		go func() {
@@ -133,7 +135,7 @@ func TailLogsFromDir(log *zap.SugaredLogger) error {
 					info, err := os.Stat(event.Name)
 					switch {
 					case err == nil && info.IsDir():
-						watcher.Add(event.Name)
+						_ = watcher.Add(event.Name)
 
 					case err == nil && !info.IsDir():
 						if isValidFile(event.Name, fileNameRegex) {

@@ -119,7 +119,7 @@ func gatherSimpleRewrites(rewrites []string,
 
 	from := alias.Domain
 	to := fmt.Sprintf("%s.%s.svc.%s", target.InstanceGroup, namespace, clusterDomain)
-	rewrites = append(rewrites, newTemplate(from, to, target.Query))
+	rewrites = append(rewrites, newTemplate(from, to))
 
 	return rewrites
 }
@@ -153,7 +153,7 @@ func gatherAllRewrites(rewrites []string,
 			names.ServiceName(target.InstanceGroup),
 			namespace,
 			clusterDomain)
-		rewrites = append(rewrites, newTemplate(from, to, target.Query))
+		rewrites = append(rewrites, newTemplate(from, to))
 	}
 
 	return rewrites
@@ -175,7 +175,7 @@ func gatherRewritesForInstances(rewrites []string,
 		from := strings.Replace(alias.Domain, "_", id, 1)
 		serviceName := instanceGroup.IndexedServiceName(i, azIndex)
 		to := fmt.Sprintf("%s.%s.svc.%s", serviceName, namespace, clusterDomain)
-		rewrites = append(rewrites, newTemplate(from, to, target.Query))
+		rewrites = append(rewrites, newTemplate(from, to))
 	}
 
 	return rewrites
@@ -201,7 +201,7 @@ const corefileTemplate = `
 	loadbalance
 }`
 
-func newTemplate(from, to, queryType string) string {
+func newTemplate(from, to string) string {
 	return fmt.Sprintf(cnameTemplate, regexp.QuoteMeta(from), "", to, from)
 }
 

@@ -54,7 +54,7 @@ var _ = Describe("When the webhook handles update request of a secret", func() {
 		Expect(corev1.AddToScheme(scheme)).To(Succeed())
 		decoder, _ = admission.NewDecoder(scheme)
 		validator = versionedsecret.NewValidationHandler(log)
-		validator.(admission.DecoderInjector).InjectDecoder(decoder)
+		_ = validator.(admission.DecoderInjector).InjectDecoder(decoder)
 
 		validateSecret = func() admission.Response {
 			response := validator.Handle(ctx, admission.Request{

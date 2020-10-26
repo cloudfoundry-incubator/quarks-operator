@@ -50,7 +50,7 @@ var _ = Describe("Deploy", func() {
   path: /instance_groups/name=quarks-gora?/instances
   value: 3
 `
-		opRemoveApi = `- type: remove
+		opRemoveAPI = `- type: remove
   path: /instance_groups/name=api
 `
 	)
@@ -64,7 +64,7 @@ var _ = Describe("Deploy", func() {
 	Context("when using the default configuration", func() {
 		const (
 			headlessSvcName  = "quarks-gora"
-			clusterIpSvcName = "quarks-gora-0"
+			clusterIPSvcName = "quarks-gora-0"
 		)
 
 		It("should deploy a pod and create services", func() {
@@ -89,7 +89,7 @@ var _ = Describe("Deploy", func() {
 			Expect(svc.Spec.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
 			Expect(svc.Spec.Ports[0].Port).To(Equal(int32(4222)))
 
-			svc, err = env.GetService(env.Namespace, clusterIpSvcName)
+			svc, err = env.GetService(env.Namespace, clusterIPSvcName)
 			Expect(err).NotTo(HaveOccurred(), "error getting service for instance group")
 			Expect(svc.Spec.Selector).To(Equal(map[string]string{
 				bdv1.LabelInstanceGroupName: "quarks-gora",
@@ -339,7 +339,7 @@ var _ = Describe("Deploy", func() {
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
-			tearDown, err = env.CreateSecret(env.Namespace, env.CustomOpsSecret("bosh-ops-secret", opRemoveApi))
+			tearDown, err = env.CreateSecret(env.Namespace, env.CustomOpsSecret("bosh-ops-secret", opRemoveAPI))
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 

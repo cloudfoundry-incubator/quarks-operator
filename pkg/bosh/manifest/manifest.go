@@ -249,7 +249,7 @@ func markDuplicateValues(value reflect.Value, duplicateValues map[string]duplica
 		if valueField.Kind() == reflect.String {
 			if valueField.String() != "" && valueField.IsValid() && len(valueField.String()) > 64 {
 				h := crypto.SHA1.New()
-				h.Write([]byte(valueField.String()))
+				_, _ = h.Write([]byte(valueField.String()))
 				sum := h.Sum(nil)
 				sha1 := hex.EncodeToString(sum[:])
 
@@ -284,7 +284,7 @@ func markDuplicateValues(value reflect.Value, duplicateValues map[string]duplica
 			if valueField.Kind() == reflect.String {
 				if valueField.String() != "" && valueField.IsValid() {
 					h := crypto.SHA1.New()
-					h.Write([]byte(valueField.String()))
+					_, _ = h.Write([]byte(valueField.String()))
 					sum := h.Sum(nil)
 					sha1 := hex.EncodeToString(sum[:])
 

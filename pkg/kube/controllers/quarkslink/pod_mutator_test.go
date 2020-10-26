@@ -77,13 +77,13 @@ var _ = Describe("Mount quarks link secret on entangled pods", func() {
 		Expect(corev1.AddToScheme(scheme)).To(Succeed())
 
 		decoder, _ = admission.NewDecoder(scheme)
-		mutator.(admission.DecoderInjector).InjectDecoder(decoder)
+		_ = mutator.(admission.DecoderInjector).InjectDecoder(decoder)
 
 		entanglementSecret = env.DefaultQuarksLinkSecret(deploymentName, "nats")
 	})
 
 	JustBeforeEach(func() {
-		mutator.(inject.Client).InjectClient(client)
+		_ = mutator.(inject.Client).InjectClient(client)
 		response = mutator.Handle(ctx, request)
 	})
 

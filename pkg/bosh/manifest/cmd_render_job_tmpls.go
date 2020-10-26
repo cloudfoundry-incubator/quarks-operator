@@ -111,7 +111,10 @@ func RenderJobTemplates(
 				destination := destination
 				templateGroup.Go(func() error {
 					absDest := filepath.Join(jobsOutputDir, job.Name, destination)
-					os.MkdirAll(filepath.Dir(absDest), 0755)
+					err := os.MkdirAll(filepath.Dir(absDest), 0755)
+					if err != nil {
+						return err
+					}
 
 					properties := job.Properties.ToMap()
 

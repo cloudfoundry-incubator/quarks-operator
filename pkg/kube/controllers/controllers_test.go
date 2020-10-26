@@ -33,7 +33,7 @@ var _ = Describe("Controllers", func() {
 	Describe("AddToScheme", func() {
 		It("registers our schemes with the operator", func() {
 			scheme := scheme.Scheme
-			controllers.AddToScheme(scheme)
+			_ = controllers.AddToScheme(scheme)
 			kinds := []string{}
 			for k := range scheme.AllKnownTypes() {
 				kinds = append(kinds, k.Kind)
@@ -65,7 +65,7 @@ var _ = Describe("Controllers", func() {
 
 			manager = &cfakes.FakeManager{}
 
-			controllers.AddToScheme(scheme.Scheme)
+			_ = controllers.AddToScheme(scheme.Scheme)
 
 			manager.GetSchemeReturns(scheme.Scheme)
 
