@@ -12,7 +12,6 @@ import (
 
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers"
-	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/crd"
 	credsgen "code.cloudfoundry.org/quarks-utils/pkg/credsgen/in_memory_generator"
@@ -79,29 +78,6 @@ func ApplyCRDs(ctx context.Context, config *rest.Config) error {
 	err = crd.WaitForCRDReady(ctx, client, bdv1.BOSHDeploymentResourceName)
 	if err != nil {
 		return errors.Wrapf(err, "failed to wait for CRD '%s' ready", bdv1.BOSHDeploymentResourceName)
-	}
-
-	// Add qsts crd
-	q := crd.New(
-		qstsv1a1.QuarksStatefulSetResourceName,
-		extv1.CustomResourceDefinitionNames{
-			Kind:       qstsv1a1.QuarksStatefulSetResourceKind,
-			Plural:     qstsv1a1.QuarksStatefulSetResourcePlural,
-			ShortNames: qstsv1a1.QuarksStatefulSetResourceShortNames,
-		},
-		qstsv1a1.SchemeGroupVersion,
-	)
-
-	err = q.WithValidation(&qstsv1a1.QuarksStatefulSetValidation).
-		WithAdditionalPrinterColumns(qstsv1a1.QuarksStatefulSetAdditionalPrinterColumns).
-		Build().
-		Apply(ctx, client)
-	if err != nil {
-		return errors.Wrapf(err, "failed to apply CRD '%s'", qstsv1a1.QuarksStatefulSetResourceName)
-	}
-	err = crd.WaitForCRDReady(ctx, client, qstsv1a1.QuarksStatefulSetResourceName)
-	if err != nil {
-		return errors.Wrapf(err, "failed to wait for CRD '%s' ready", qstsv1a1.QuarksStatefulSetResourceName)
 	}
 	return nil
 }

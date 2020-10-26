@@ -120,13 +120,6 @@ rules:
   - watch
 
 - apiGroups:
-  - ""
-  resources:
-  - pods/exec
-  verbs:
-  - create
-
-- apiGroups:
   - apps
   resources:
   - deployments
@@ -176,8 +169,6 @@ rules:
   - quarks.cloudfoundry.org
   resources:
   - boshdeployments/status
-  - quarkssecrets/status
-  - quarksstatefulsets/status
   verbs:
   - create
   - patch

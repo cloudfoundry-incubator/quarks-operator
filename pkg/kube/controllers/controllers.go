@@ -20,8 +20,6 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/waitservice"
 	qsv1a1 "code.cloudfoundry.org/quarks-secret/pkg/kube/apis/quarkssecret/v1alpha1"
 	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
-	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/quarksstatefulset"
-	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/credsgen"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -43,11 +41,7 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 	boshdeployment.AddBPM,
 	boshdeployment.AddWithOps,
 	boshdeployment.AddBDPLStatusReconcilers,
-	quarksstatefulset.AddQuarksStatefulSet,
-	quarksstatefulset.AddQuarksStatefulSetStatus,
-	statefulset.AddStatefulSetRollout,
 	quarksrestart.AddRestart,
-	quarksstatefulset.AddStatefulSetActivePassive,
 }
 
 var addToSchemes = runtime.SchemeBuilder{
@@ -64,8 +58,6 @@ var validatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *webhook.Op
 }
 
 var mutatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *webhook.OperatorWebhook{
-	quarksstatefulset.NewQuarksStatefulSetPodMutator,
-	statefulset.NewStatefulSetRolloutMutator,
 	quarkslink.NewBOSHLinkPodMutator,
 	waitservice.NewWaitServicePodMutator,
 }

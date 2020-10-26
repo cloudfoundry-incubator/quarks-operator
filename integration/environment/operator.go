@@ -41,6 +41,21 @@ func (e *Environment) StartOperator() error {
 	return nil
 }
 
+// SetupPort of the webhook server
+func (e *Environment) SetupPort() error {
+	port, err := getWebhookServicePort(e.ID)
+	if err != nil {
+		return err
+	}
+	e.Config.WebhookServerPort = port
+	return nil
+}
+
+// QStsPort returns the port for the quarks statefulset webhook service
+func (e *Environment) QStsPort() int32 {
+	return e.Config.WebhookServerPort + 1
+}
+
 func (e *Environment) setupCFOperator() (manager.Manager, error) {
 	var err error
 	whh, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_HOST")
@@ -49,7 +64,6 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 	}
 	e.Config.WebhookServerHost = whh
 
-	port, err := getWebhookServicePort(e.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -65,8 +79,9 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 
 		cmd := exec.Command(
 			"ssh", "-nNT", "-i", "/tmp/cf-operator-tunnel-identity", "-o",
-			"UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-R",
-			fmt.Sprintf("%s:%[2]d:localhost:%[2]d", remoteAddr, port),
+			"UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+			"-R", fmt.Sprintf("%s:%[2]d:localhost:%[2]d", remoteAddr, e.Config.WebhookServerPort),
+			"-R", fmt.Sprintf("%s:%[2]d:localhost:%[2]d", remoteAddr, e.QStsPort()),
 			fmt.Sprintf("%s@%s", sshUser, whh))
 
 		session, err := gexec.Start(cmd, ginkgo.GinkgoWriter, ginkgo.GinkgoWriter)
@@ -75,8 +90,6 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 		}
 		gomega.Eventually(session.Err, "20s", "50ms").Should(gbytes.Say("Permanently added"))
 	}
-
-	e.Config.WebhookServerPort = port
 
 	dockerImageOrg, found := os.LookupEnv("DOCKER_IMAGE_ORG")
 	if !found {

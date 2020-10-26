@@ -8,13 +8,15 @@ import (
 
 // QuarksCmds holds the quarks standalone components gexec binaries
 type QuarksCmds struct {
-	Job    QuarksJobCmd
-	Secret QuarksSecretCmd
+	Job         QuarksJobCmd
+	Secret      QuarksSecretCmd
+	Statefulset QuarksStatefulsetCmd
 }
 
 type quarksPath struct {
 	QJob string
 	QSec string
+	QSts string
 }
 
 // NewQuarksCmds returns a new struct for the standalone commands
@@ -33,12 +35,18 @@ func (q *QuarksCmds) Build() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to build quarks-secret")
 	}
+
+	err = q.Statefulset.Build()
+	if err != nil {
+		return errors.Wrap(err, "failed to build quarks-statefulset")
+	}
+
 	return nil
 }
 
 // Marshal returns a JSON with the paths to the binaries
 func (q *QuarksCmds) Marshal() []byte {
-	bytes, _ := json.Marshal(quarksPath{QJob: q.Job.Path, QSec: q.Secret.Path})
+	bytes, _ := json.Marshal(quarksPath{QJob: q.Job.Path, QSec: q.Secret.Path, QSts: q.Statefulset.Path})
 	return bytes
 }
 
@@ -51,5 +59,6 @@ func (q *QuarksCmds) Unmarshal(data []byte) error {
 	}
 	q.Job.Path = string(paths.QJob)
 	q.Secret.Path = string(paths.QSec)
+	q.Statefulset.Path = string(paths.QSts)
 	return nil
 }

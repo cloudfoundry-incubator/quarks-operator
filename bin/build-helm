@@ -32,7 +32,8 @@ ruby -ryaml > "$output_dir/quarks/requirements.yaml" <<EOF
   url = 'https://cloudfoundry-incubator.github.io/quarks-helm'
   puts({'dependencies' => [
     {'name' => 'quarks-job', 'version' => '$QUARKS_JOB_HELM_VERSION', 'repository' => url},
-    {'name' => 'quarks-secret', 'version' => '$QUARKS_SECRET_HELM_VERSION', 'repository' => url}
+    {'name' => 'quarks-secret', 'version' => '$QUARKS_SECRET_HELM_VERSION', 'repository' => url},
+    {'name' => 'quarks-statefulset', 'version' => '$QUARKS_STS_HELM_VERSION', 'repository' => url}
   ]}.to_yaml)
 EOF
 
@@ -46,6 +47,8 @@ quarks_job_values_file=$(mktemp)
 tar xfO "$output_dir"/quarks/charts/quarks-job-*.tgz quarks-job/values.yaml > "$quarks_job_values_file"
 quarks_secret_values_file=$(mktemp)
 tar xfO "$output_dir"/quarks/charts/quarks-secret-*.tgz quarks-secret/values.yaml > "$quarks_secret_values_file"
+quarks_statefulset_values_file=$(mktemp)
+tar xfO "$output_dir"/quarks/charts/quarks-statefulset-*.tgz quarks-statefulset/values.yaml > "$quarks_statefulset_values_file"
 imagelist="$output_dir/quarks/imagelist.txt"
 ruby -ryaml > "$imagelist" <<EOF
   values = YAML.load_file('$output_dir/quarks/values.yaml')
@@ -59,6 +62,10 @@ ruby -ryaml > "$imagelist" <<EOF
   puts "#{image['org']}/#{image['repository']}:#{image['tag']}"
 
   values = YAML.load_file('$quarks_secret_values_file')
+  image = values['image']
+  puts "#{image['org']}/#{image['repository']}:#{image['tag']}"
+
+  values = YAML.load_file('$quarks_statefulset_values_file')
   image = values['image']
   puts "#{image['org']}/#{image['repository']}:#{image['tag']}"
 EOF

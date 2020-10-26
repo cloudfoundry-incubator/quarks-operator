@@ -34,8 +34,6 @@ nameOverride: ""
 # workers are the int values for running maximum number of workers of the respective controller.
 workers:
   boshdeployment: 1
-  quarksSecret: 1
-  quarksStatefulset: 1
 
 operator:
   webhook:

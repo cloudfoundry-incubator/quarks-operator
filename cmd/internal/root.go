@@ -90,7 +90,6 @@ var rootCmd = &cobra.Command{
 		cfg.WebhookServerPort = servicePort
 		cfg.WebhookUseServiceRef = useServiceRef
 		cfg.MaxBoshDeploymentWorkers = viper.GetInt("max-boshdeployment-workers")
-		cfg.MaxQuarksStatefulSetWorkers = viper.GetInt("max-quarks-statefulset-workers")
 		logrotate.SetInterval(viper.GetInt("logrotate-interval"))
 
 		cmd.CtxTimeOut(cfg)
@@ -154,7 +153,6 @@ func init() {
 	pf.String("cluster-domain", "cluster.local", "The Kubernetes cluster domain")
 	pf.IntP("logrotate-interval", "i", 24*60, "Interval between logrotate calls for instance groups in minutes")
 	pf.Int("max-boshdeployment-workers", 1, "Maximum number of workers concurrently running BOSHDeployment controller")
-	pf.Int("max-quarks-statefulset-workers", 1, "Maximum number of workers concurrently running QuarksStatefulSet controller")
 	pf.StringP("operator-webhook-service-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")
 	pf.StringP("operator-webhook-service-port", "p", "2999", "Port the webhook server listens on")
 	pf.BoolP("operator-webhook-use-service-reference", "x", false, "If true the webhook service is targeted using a service reference instead of a URL")
@@ -164,7 +162,6 @@ func init() {
 		"cluster-domain",
 		"logrotate-interval",
 		"max-boshdeployment-workers",
-		"max-quarks-statefulset-workers",
 		"operator-webhook-service-host",
 		"operator-webhook-service-port",
 		"operator-webhook-use-service-reference",
@@ -176,7 +173,6 @@ func init() {
 	argToEnv["cluster-domain"] = "CLUSTER_DOMAIN"
 	argToEnv["logrotate-interval"] = "LOGROTATE_INTERVAL"
 	argToEnv["max-boshdeployment-workers"] = "MAX_BOSHDEPLOYMENT_WORKERS"
-	argToEnv["max-quarks-statefulset-workers"] = "MAX_QUARKS_STATEFULSET_WORKERS"
 	argToEnv["operator-webhook-service-host"] = "CF_OPERATOR_WEBHOOK_SERVICE_HOST"
 	argToEnv["operator-webhook-service-port"] = "CF_OPERATOR_WEBHOOK_SERVICE_PORT"
 	argToEnv["operator-webhook-use-service-reference"] = "CF_OPERATOR_WEBHOOK_USE_SERVICE_REFERENCE"

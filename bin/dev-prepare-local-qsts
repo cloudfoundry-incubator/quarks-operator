@@ -1,0 +1,20 @@
+#!/bin/bash
+
+export QUARKS_STS_IMAGE_TAG=dev
+export QUARKS_STS_HELM_VERSION=dev
+export PROJECT=quarks-statefulset
+
+pushd ../quarks-statefulset || exit
+  bin/build-image
+popd
+
+# docker image
+cluster_name="$(kubectl config current-context | sed 's/kind-//')"
+kind load docker-image cfcontainerization/quarks-statefulset:"$QUARKS_STS_IMAGE_TAG" --name "$cluster_name"
+
+# helm chart
+if [ "$TEST_HELM" ]; then
+  pushd ../quarks-statefulset || exit
+    bin/build-helm
+  popd
+fi
