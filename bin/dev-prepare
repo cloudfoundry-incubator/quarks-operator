@@ -18,6 +18,10 @@ if [ "$QUARKS_SECRET_IMAGE_TAG" = "dev" ]; then
   echo "Using local dev quarks secret dependencies"
   USE_KIND=true ./bin/dev-prepare-local-qsec
 fi
+if [ "$QUARKS_STS_IMAGE_TAG" = "dev" ]; then
+  echo "Using local dev quarks statefulset dependencies"
+  USE_KIND=true ./bin/dev-prepare-local-qsts
+fi
 
 . ./bin/include/dependencies
 
@@ -52,5 +56,9 @@ if [ "$TEST_HELM" ]; then
 
   if [ "$QUARKS_SECRET_IMAGE_TAG" = "dev" ]; then
     replace_local_chart quarks-secret
+  fi
+
+  if [ "$QUARKS_STS_IMAGE_TAG" = "dev" ]; then
+    replace_local_chart quarks-statefulset
   fi
 fi

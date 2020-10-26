@@ -42,7 +42,6 @@ var _ = Describe("CLI", func() {
   -l, --log-level string                         \(LOG_LEVEL\) Only print log messages from this level onward \(trace,debug,info,warn\) \(default "debug"\)
   -i, --logrotate-interval int                   \(LOGROTATE_INTERVAL\) Interval between logrotate calls for instance groups in minutes \(default 1440\)
       --max-boshdeployment-workers int           \(MAX_BOSHDEPLOYMENT_WORKERS\) Maximum number of workers concurrently running BOSHDeployment controller \(default 1\)
-      --max-quarks-statefulset-workers int       \(MAX_QUARKS_STATEFULSET_WORKERS\) Maximum number of workers concurrently running QuarksStatefulSet controller \(default 1\)
       --meltdown-duration int                    \(MELTDOWN_DURATION\) Duration \(in seconds\) of the meltdown period, in which we postpone further reconciles for the same resource \(default 60\)
       --meltdown-requeue-after int               \(MELTDOWN_REQUEUE_AFTER\) Duration \(in seconds\) for which we delay the requeuing of the reconcile \(default 30\)
       --monitored-id string                      \(MONITORED_ID\) only monitor namespaces with this id in their namespace label \(default "default"\)
