@@ -76,8 +76,8 @@ var _ = Describe("When the validating webhook handles a manifest", func() {
 		})
 		decoder, _ = admission.NewDecoder(scheme)
 		validator = boshdeployment.NewValidator(log, &cfcfg.Config{CtxTimeOut: 10 * time.Second})
-		validator.(inject.Client).InjectClient(client)
-		validator.(admission.DecoderInjector).InjectDecoder(decoder)
+		_ = validator.(inject.Client).InjectClient(client)
+		_ = validator.(admission.DecoderInjector).InjectDecoder(decoder)
 
 		validateBoshDeployment = func() admission.Response {
 			response := validator.Handle(ctx, admission.Request{

@@ -59,7 +59,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 	)
 
 	BeforeEach(func() {
-		controllers.AddToScheme(scheme.Scheme)
+		_ = controllers.AddToScheme(scheme.Scheme)
 		recorder = record.NewFakeRecorder(20)
 		manager = &fakes.FakeManager{}
 		manager.GetSchemeReturns(scheme.Scheme)
@@ -238,7 +238,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			It("returns an empty result when the resource was not found", func() {
 				client.GetReturns(apierrors.NewNotFound(schema.GroupResource{}, "not found is requeued"))
 
-				reconciler.Reconcile(request)
+				_, _ = reconciler.Reconcile(request)
 				result, err := reconciler.Reconcile(request)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(reconcile.Result{}).To(Equal(result))

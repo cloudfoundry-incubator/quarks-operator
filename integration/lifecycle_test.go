@@ -125,7 +125,9 @@ var _ = Describe("Lifecycle", func() {
 				postAssertionWg.Done()
 			}()
 			preAssertionWg.Wait()
-			go env.DeleteBOSHDeployment(env.Namespace, boshDeployment.Name)
+			go func() {
+				_ = env.DeleteBOSHDeployment(env.Namespace, boshDeployment.Name)
+			}()
 			postAssertionWg.Wait()
 		})
 	})

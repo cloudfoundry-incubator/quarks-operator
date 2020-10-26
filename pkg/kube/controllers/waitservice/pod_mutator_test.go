@@ -69,12 +69,12 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 		Expect(corev1.AddToScheme(scheme)).To(Succeed())
 
 		decoder, _ = admission.NewDecoder(scheme)
-		mutator.(admission.DecoderInjector).InjectDecoder(decoder)
+		_ = mutator.(admission.DecoderInjector).InjectDecoder(decoder)
 
 	})
 
 	JustBeforeEach(func() {
-		mutator.(inject.Client).InjectClient(client)
+		_ = mutator.(inject.Client).InjectClient(client)
 		response = mutator.Handle(ctx, request)
 	})
 
