@@ -3,7 +3,6 @@ package boshdeployment
 import (
 	"context"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -221,7 +220,7 @@ func (r *ReconcileBPM) fetchIGresolvedVersion(namespace string, instanceGroupNam
 	igResolvedSecretName := names.InstanceGroupSecretName(instanceGroupName, "")
 	igResolvedSecret, err := r.versionedSecretStore.Latest(r.ctx, namespace, igResolvedSecretName)
 	if err != nil {
-		if strings.HasSuffix(igResolvedSecretName, "-v0") {
+		if igResolvedSecret == nil {
 			return "", apierrors.NewNotFound(corev1.Resource("secret"), igResolvedSecretName)
 		}
 		return "", errors.Wrapf(err, "failed to read latest versioned secret '%s/%s'", namespace, igResolvedSecretName)
