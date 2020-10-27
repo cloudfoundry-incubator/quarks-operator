@@ -40,7 +40,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           labels: pr-test-queue
 
-
   unit-tests:
     needs: [dequeue]
     runs-on: ubuntu-latest

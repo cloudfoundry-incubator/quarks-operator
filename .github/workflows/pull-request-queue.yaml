@@ -7,6 +7,7 @@ on:
 jobs:
   enqueue:
     if: |
+      github.repository != 'cloudfoundry-incubator/quarks-operator' &&
       ( github.event.pull_request.base.ref == 'master' && github.event.review.state == 'approved' )
     name: enqueue
     runs-on: ubuntu-20.04
