@@ -154,6 +154,11 @@ jobs:
         OPERATOR_TEST_STORAGE_CLASS: "standard"
         PROJECT: "quarks-operator"
         CF_OPERATOR_WEBHOOK_SERVICE_HOST: 172.17.0.1
+    - uses: actions/upload-artifact@v2
+      if: success()
+      with:
+        name: helm chart
+        path: "helm/quarks-*.tgz"
 
   integration-tests:
     needs: [dockerbuild]
