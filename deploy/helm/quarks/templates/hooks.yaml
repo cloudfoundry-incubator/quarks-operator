@@ -72,7 +72,7 @@ items:
       kind: ClusterRole
       name: cf-operator-{{$hook}}-helm-hook
       apiGroup: rbac.authorization.k8s.io
-
+  {{- if $.Values.global.singleNamespace.create }}
   - apiVersion: rbac.authorization.k8s.io/v1
     kind: RoleBinding
     metadata:
@@ -91,6 +91,7 @@ items:
       kind: Role
       name: {{$hook}}-helm-hook
       apiGroup: rbac.authorization.k8s.io
+  {{- end }}
 {{- end }}
 ---
 apiVersion: batch/v1
@@ -123,8 +124,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        {{- if $.Values.global.singleNamespace.create }}
         - name: SINGLE_NAMESPACE
           value: {{ $.Values.global.singleNamespace.name | quote }}
+        {{- end }}
         command: ["/bin/bash","-cex"]
         args: 
         - |
