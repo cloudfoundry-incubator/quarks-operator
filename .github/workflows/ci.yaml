@@ -347,7 +347,7 @@ jobs:
         git config credential.https://github.com.username CFContainerizationBot
         git pull-request --no-fork --title "Update cf-operator dependency." --message "Increment cf-operator version in def.bzl file."
       env:
-        SHA: "${{ steps.build_helm.outputs.sha }}"
+        sha: "${{ steps.build_helm.outputs.sha }}"
         version: "${{ steps.get_version.outputs.artifact_version }}"
         token: ${{ secrets.GH_PAT }}
 
