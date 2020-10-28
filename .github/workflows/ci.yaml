@@ -239,7 +239,7 @@ jobs:
 
     - name: Get current tag
       id: get_tag
-      run: echo ::set-output name=TAG::${GITHUB_REF/refs\/heads\//}
+      run: echo ::set-output name=TAG::${GITHUB_REF/refs\/tags\//}
 
     - name: Drafts release notes
       uses: release-drafter/release-drafter@v5
