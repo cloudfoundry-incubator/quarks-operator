@@ -33,7 +33,6 @@ var _ = Describe("BDPL Status", func() {
 	})
 
 	Context("when using the default configuration", func() {
-
 		It("should deploy manifest and report the bdpl status", func() {
 			var bdpl *bdv1.BOSHDeployment
 			tearDown, err := env.CreateConfigMap(env.Namespace, env.BOSHManifestConfigMap(manifestName, bm.Gora))
@@ -73,7 +72,5 @@ var _ = Describe("BDPL Status", func() {
 				return bdpl.Status.State
 			}).Should(BeEquivalentTo(controller.BDPLStateDeployed))
 		})
-
 	})
-
 })
