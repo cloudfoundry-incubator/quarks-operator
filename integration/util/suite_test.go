@@ -57,6 +57,11 @@ var _ = BeforeEach(func() {
 	}
 	namespacesToNuke = append(namespacesToNuke, env.Namespace)
 
+	err = env.SetupPort()
+	if err != nil {
+		fmt.Printf("WARNING: failed to parse CF_OPERATOR_WEBHOOK_SERVICE_PORT: %s", err)
+	}
+
 	err = env.StartOperator()
 	if err != nil {
 		fmt.Printf("WARNING: failed to start operator: %v\n", err)
