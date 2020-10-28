@@ -97,7 +97,7 @@ func RenderJobTemplates(
 				if len(currentInstanceGroup.AZs) > 0 {
 					for azIndex, az := range currentInstanceGroup.AZs {
 						if instance.AZ == az {
-							if instance.Instance + azIndex*10000 == specIndex {
+							if instance.Instance+azIndex*10000 == specIndex {
 								currentJobInstance = &instance
 								break
 							}
