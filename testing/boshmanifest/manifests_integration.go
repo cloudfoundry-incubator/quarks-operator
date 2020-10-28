@@ -8,10 +8,10 @@ package boshmanifest
 const Gora = `---
 releases:
 - name: quarks-gora
-  version: "0.0.4"
-  url: docker.io/cfcontainerization
+  version: "0.0.14"
+  url: ghcr.io/cloudfoundry-incubator
   stemcell:
-    os: SLE_15_SP1-26.1
+    os: SLE_15_SP1-27.10
     version: 7.0.0_374.gb8e8e6af
 instance_groups:
 - name: quarks-gora
@@ -35,16 +35,16 @@ name: bosh-manifest-two-instance-groups
 releases:
 - name: nats
   version: "33"
-  url: docker.io/cfcontainerization
+  url: ghcr.io/cloudfoundry-incubator
   stemcell:
     os: SLE_15_SP1
-    version: 26.1-7.0.0_374.gb8e8e6af
+    version: 27.8-7.0.0_374.gb8e8e6af
 - name: routing
   version: 0.198.0
-  url: docker.io/cfcontainerization
+  url: ghcr.io/cloudfoundry-incubator
   stemcell:
     os: SLE_15_SP1
-    version: 26.1-7.0.0_374.gb8e8e6af
+    version: 27.8-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: nats
   instances: 2
@@ -99,10 +99,10 @@ name: test
 releases:
 - name: nats
   version: "33"
-  url: docker.io/cfcontainerization
+  url: ghcr.io/cloudfoundry-incubator
   stemcell:
     os: SLE_15_SP1
-    version: 26.1-7.0.0_374.gb8e8e6af
+    version: 27.8-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: nats
   instances: 2
@@ -130,10 +130,10 @@ name: test
 releases:
 - name: nats
   version: "33"
-  url: docker.io/cfcontainerization
+  url: ghcr.io/cloudfoundry-incubator
   stemcell:
     os: SLE_15_SP1
-    version: 26.1-7.0.0_374.gb8e8e6af
+    version: 27.8-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: nats
   instances: 2
@@ -165,10 +165,10 @@ name: test
 releases:
 - name: nats
   version: "33"
-  url: docker.io/cfcontainerization
+  url: ghcr.io/cloudfoundry-incubator
   stemcell:
     os: SLE_15_SP1
-    version: 26.1-7.0.0_374.gb8e8e6af
+    version: 27.8-7.0.0_374.gb8e8e6af
 - name: bosh-dns-aliases
   url: https://bosh.io/d/github.com/cloudfoundry/bosh-dns-aliases-release?v=0.0.3
   version: 0.0.3
@@ -219,10 +219,10 @@ name: test
 releases:
 - name: nats
   version: "33"
-  url: docker.io/cfcontainerization
+  url: ghcr.io/cloudfoundry-incubator
   stemcell:
     os: SLE_15_SP1
-    version: 26.1-7.0.0_374.gb8e8e6af
+    version: 27.8-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: nats
   instances: 2
@@ -252,10 +252,10 @@ name: test
 releases:
 - name: nats
   version: "33"
-  url: docker.io/cfcontainerization
+  url: ghcr.io/cloudfoundry-incubator
   stemcell:
     os: SLE_15_SP1
-    version: 26.1-7.0.0_374.gb8e8e6af
+    version: 27.8-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: nats
   instances: 2
@@ -295,10 +295,10 @@ name: test
 releases:
 - name: nats
   version: "33"
-  url: docker.io/cfcontainerization
+  url: ghcr.io/cloudfoundry-incubator
   stemcell:
     os: SLE_15_SP1
-    version: 26.1-7.0.0_374.gb8e8e6af
+    version: 27.8-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: nats
   instances: 1
@@ -339,10 +339,10 @@ name: test
 releases:
 - name: nats
   version: "33"
-  url: docker.io/cfcontainerization
+  url: ghcr.io/cloudfoundry-incubator
   stemcell:
     os: SLE_15_SP1
-    version: 26.1-7.0.0_374.gb8e8e6af
+    version: 27.8-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: nats-smoke-tests
   instances: 1
@@ -361,10 +361,10 @@ name: my-manifest
 releases:
 - name: cf-operator-testing
   version: "0.0.6"
-  url: docker.io/cfcontainerization
+  url: ghcr.io/cloudfoundry-incubator
   stemcell:
     os: SLE_15_SP1
-    version: 26.1-7.0.0_374.gb8e8e6af
+    version: 27.8-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: drains
   instances: 1
@@ -383,10 +383,10 @@ name: test-bdpl
 releases:
 - name: bpm
   version: 1.1.7
-  url: docker.io/cfcontainerization
+  url: ghcr.io/cloudfoundry-incubator
   stemcell:
     os: SLE_15_SP1
-    version: 26.1-7.0.0_374.gb8e8e6af
+    version: 27.8-7.0.0_374.gb8e8e6af
 
 instance_groups:
 - name: bpm
@@ -415,10 +415,10 @@ name: routing
 releases:
 - name: routing
   version: 0.198.0
-  url: docker.io/cfcontainerization
+  url: ghcr.io/cloudfoundry-incubator
   stemcell:
     os: SLE_15_SP1
-    version: 26.1-7.0.0_374.gb8e8e6af
+    version: 27.8-7.0.0_374.gb8e8e6af
 
 instance_groups:
 - name: route_registrar
@@ -458,10 +458,10 @@ const Diego = `
   releases:
   - name: diego
     version: 2.44.0
-    url: docker.io/cfcontainerization
+    url: ghcr.io/cloudfoundry-incubator
     stemcell:
       os: SLE_15_SP1
-      version: 26.1-7.0.0_374.gb8e8e6af
+      version: 27.8-7.0.0_374.gb8e8e6af
 
   instance_groups:
   - name: file_server
