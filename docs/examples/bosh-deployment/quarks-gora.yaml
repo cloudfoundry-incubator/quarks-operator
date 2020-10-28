@@ -19,10 +19,10 @@ data:
     name: quarks-gora-deployment
     releases:
     - name: quarks-gora
-      version: "0.0.7"
-      url: docker.io/cfcontainerization
+      version: "0.0.14"
+      url: ghcr.io/cloudfoundry-incubator
       stemcell:
-        os: SLE_15_SP1-26.5
+        os: SLE_15_SP1-27.10
         version: 7.0.0_374.gb8e8e6af
     instance_groups:
     - name: quarks-gora
