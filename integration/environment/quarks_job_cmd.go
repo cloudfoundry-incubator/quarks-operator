@@ -30,7 +30,7 @@ func (q *QuarksJobCmd) Build() error {
 // Start starts the specified quarks-job in a namespace
 func (q *QuarksJobCmd) Start(id string) error {
 	cmd := exec.Command(q.Path,
-		"-o", "cfcontainerization",
+		"-o", "ghcr.io/cloudfoundry-incubator",
 		"-r", "quarks-job",
 		"-t", quarksJobTag(),
 		"--meltdown-duration", strconv.Itoa(defaultTestMeltdownDuration),

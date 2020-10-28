@@ -107,7 +107,7 @@ func createWaitContainers(requiredServices ...*string) []corev1.Container {
 			Args: []string{
 				"/bin/sh",
 				"-xc",
-				fmt.Sprintf("time cf-operator util wait %s", *service),
+				fmt.Sprintf("time quarks-operator util wait %s", *service),
 			}})
 	}
 	return containers

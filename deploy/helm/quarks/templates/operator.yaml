@@ -15,7 +15,7 @@ spec:
     spec:
       serviceAccountName: {{ template "cf-operator.serviceAccountName" . }}
       containers:
-        - name: cf-operator
+        - name: quarks-operator
           image: "{{ .Values.image.org }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           ports:
           - containerPort: 60000
@@ -23,7 +23,7 @@ spec:
           - containerPort: 2999
             name: webhook
           command:
-          - cf-operator
+          - quarks-operator
           imagePullPolicy: {{ .Values.global.image.pullPolicy | quote }}
           env:
             - name: APPLY_CRD
@@ -55,7 +55,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
-              value: "cf-operator"
+              value: "quarks-operator"
             - name: DOCKER_IMAGE_ORG
               value: "{{ .Values.image.org }}"
             - name: DOCKER_IMAGE_REPOSITORY

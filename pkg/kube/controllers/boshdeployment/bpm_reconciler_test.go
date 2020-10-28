@@ -56,7 +56,7 @@ var _ = Describe("ReconcileBPM", func() {
 	)
 
 	BeforeEach(func() {
-		controllers.AddToScheme(scheme.Scheme)
+		_ = controllers.AddToScheme(scheme.Scheme)
 		recorder = record.NewFakeRecorder(20)
 		manager = &fakes.FakeManager{}
 		manager.GetSchemeReturns(scheme.Scheme)

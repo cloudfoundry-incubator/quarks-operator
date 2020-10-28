@@ -21,7 +21,7 @@ import (
 	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
 
-// StartOperator prepares and starts the cf-operator
+// StartOperator prepares and starts the quarks-operator
 func (e *Environment) StartOperator() error {
 	mgr, err := e.setupCFOperator()
 	if err != nil {
@@ -85,7 +85,7 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 
 	dockerImageRepo, found := os.LookupEnv("DOCKER_IMAGE_REPOSITORY")
 	if !found {
-		dockerImageRepo = "cf-operator"
+		dockerImageRepo = "quarks-operator"
 	}
 
 	dockerImageTag, found := os.LookupEnv("DOCKER_IMAGE_TAG")
@@ -98,7 +98,7 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 		return nil, err
 	}
 
-	ctx := e.SetupLoggerContext("cf-operator-tests")
+	ctx := e.SetupLoggerContext("quarks-tests")
 
 	mgr, err := operator.NewManager(ctx, e.Config, e.KubeConfig, manager.Options{
 		MetricsBindAddress: "0",

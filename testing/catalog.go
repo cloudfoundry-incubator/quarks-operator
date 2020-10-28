@@ -369,7 +369,7 @@ func (c *Catalog) Sleep1hPodSpec() corev1.PodSpec {
 // One is the parent container that will execute a cmd, preferrable something
 // that writes into files under /var/vcap/sys/log
 // The side-car container, will be tailing the logs of specific files under
-// /var/vcap/sys/log, by running the cf-operator util tail-logs subcmommand
+// /var/vcap/sys/log, by running the quarks-operator util tail-logs subcmommand
 func (c *Catalog) PodWithTailLogsContainer(podName string, parentPodCmd string, parentCName string, sidecardCName string, dockerImg string) corev1.Pod {
 	rootUserID := int64(0)
 

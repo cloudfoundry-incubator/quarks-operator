@@ -8,7 +8,6 @@ import (
 )
 
 const (
-	secretsPath  = "/var/run/secrets/variables/"
 	manifestPath = "/var/run/secrets/deployment/"
 
 	// releaseSourceName is the folder for release sources

@@ -16,9 +16,25 @@ change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add ` to disable code blocks.
 template: |
 
-  * https://hub.helm.sh/charts/quarks/cf-operator
-  * https://hub.docker.com/r/cfcontainerization/cf-operator/tags
-
-  ## Changes
+  # New Features
 
   $CHANGES
+
+  # Known Issues
+
+  ...
+
+  # Installation
+
+      # Use this if you've never installed the operator before
+      helm repo add quarks https://cloudfoundry-incubator.github.io/quarks-helm/
+      helm install cf-operator quarks/cf-operator --wait
+
+      # For more options look at the README for the chart
+      helm show readme quarks/cf-operator
+
+  # Assets
+
+  * https://hub.helm.sh/charts/quarks/quarks
+  * https://cloudfoundry-incubator.github.io/quarks-helm/
+  * https://github.com/orgs/cloudfoundry-incubator/packages/container/package/quarks-operator

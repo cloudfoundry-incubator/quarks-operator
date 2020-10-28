@@ -1,9 +1,9 @@
 apiVersion: v1
-name: cf-operator
+name: quarks
 version: x.x.x
 appVersion: x.x.x
-description: A Helm chart for cf-operator, the k8s operator for deploying BOSH releases
-home: https://github.com/cloudfoundry-incubator/cf-operator
+description: A Helm chart for quarks-operator, the k8s operator for deploying BOSH releases
+home: https://github.com/cloudfoundry-incubator/quarks-operator
 icon: https://cloudfoundry-incubator.github.io/quarks-helm/logo.png
 keywords:
 - cloudfoundry
@@ -11,7 +11,7 @@ keywords:
 - quarks
 - deployment
 sources:
-- https://github.com/cloudfoundry-incubator/cf-operator
+- https://github.com/cloudfoundry-incubator/quarks-operator
 - https://github.com/cloudfoundry-incubator/quarks-job
 - https://github.com/cloudfoundry-incubator/quarks-secret
 - https://github.com/cloudfoundry-incubator/quarks-utils

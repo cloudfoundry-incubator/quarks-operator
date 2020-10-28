@@ -30,9 +30,7 @@ func SetupOperatorDockerImage(org, repo, tag string, pullPolicy corev1.PullPolic
 	} else {
 		operatorImagePullPolicy = pullPolicy
 	}
-	config.SetupOperatorImagePullPolicy(string(operatorImagePullPolicy))
-
-	return nil
+	return config.SetupOperatorImagePullPolicy(string(operatorImagePullPolicy))
 }
 
 // GetOperatorDockerImage returns the image name of the operator docker image

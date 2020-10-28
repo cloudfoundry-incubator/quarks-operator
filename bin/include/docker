@@ -11,6 +11,6 @@ if [ -z ${DOCKER_IMAGE_TAG+x} ]; then
 fi
 
 if [ -z ${DOCKER_IMAGE_REPOSITORY+x} ]; then
-    DOCKER_IMAGE_REPOSITORY="cf-operator"
+    DOCKER_IMAGE_REPOSITORY="quarks-operator"
     export DOCKER_IMAGE_REPOSITORY
 fi

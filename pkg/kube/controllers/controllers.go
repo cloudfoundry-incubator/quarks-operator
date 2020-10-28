@@ -112,7 +112,7 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 	}
 
 	ctxlog.Info(ctx, "Generating webhook certificates")
-	err := webhookConfig.SetupCertificate(ctx)
+	err := webhookConfig.SetupCertificate(ctx, "cf-operator-webhook")
 	if err != nil {
 		return errors.Wrap(err, "setting up the webhook server certificate")
 	}
@@ -124,7 +124,7 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 	}
 
 	ctxlog.Info(ctx, "Generating mutating webhook server configuration")
-	err = webhookConfig.CreateMutationWebhookServerConfig(ctx, mutatingWebhooks)
+	err = webhookConfig.CreateMutationWebhookServerConfig(ctx, "cf-operator-webhook", mutatingWebhooks)
 	if err != nil {
 		return errors.Wrap(err, "generating the webhook server configuration")
 	}

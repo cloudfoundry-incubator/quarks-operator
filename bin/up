@@ -11,4 +11,4 @@ fi
 
 bin/build
 
-binaries/cf-operator
+binaries/quarks-operator
