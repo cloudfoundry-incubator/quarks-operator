@@ -52,6 +52,7 @@ ruby -ryaml > "$imagelist" <<EOF
   image = values['image']
   puts "#{image['org']}/#{image['repository']}:#{image['tag']}"
   puts values['operator']['boshDNSDockerImage']
+  puts values['operator']['hookDockerImage']
 
   values = YAML.load_file('$quarks_job_values_file')
   image = values['image']
