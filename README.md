@@ -8,7 +8,7 @@
 | Nightly build | [![quarks-operator-nightly](https://github.com/cloudfoundry-incubator/quarks-operator/workflows/quarks-operator-ci/badge.svg?event=schedule)](https://github.com/cloudfoundry-incubator/quarks-operator/actions?query=event%3Aschedule) |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 
-<img align="right" width="200" height="39" src="https://github.com/cloudfoundry-incubator/quarks-docs/raw/master/content/en/docs/quarks-operator-logo.png">
+<img align="right" width="200" height="39" src="https://quarks.suse.dev/docs/cf-operator-logo.png">
 
 ----
 
