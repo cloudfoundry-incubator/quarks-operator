@@ -6,9 +6,6 @@ on:
   # nightly
   schedule:
     - cron:  '0 0 * * *'
-  # run for labeled PRs
-  pull_request_target:
-    types: [labeled]
 
 env:
   GOPROXY: "https://proxy.golang.org"
@@ -19,30 +16,11 @@ env:
   DOCKER_RELEASE_REPOSITORY: quarks-operator
 
 jobs:
-
-  # The first thing we do is to check that the PR has the pr-test-queue label
-  # If it doesn't have it, the flow stops. If it does, we remove it (approval is good for one run only).
-  dequeue:
-    name: dequeue
-    runs-on: ubuntu-20.04
-
-    if: contains(github.event.pull_request.labels.*.name, 'pr-test-queue') ||
-      github.repository == 'cloudfoundry-incubator/quarks-operator' &&
-      startsWith( github.ref, 'refs/heads/' ) ||
-      startsWith( github.ref, 'refs/tags/' )
-
-    # Also make this job succeed if label can't be deleted
-    continue-on-error: true
-
-    steps:
-      - uses: actions-ecosystem/action-remove-labels@556e306
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          labels: pr-test-queue
-
   unit-tests:
-    needs: [dequeue]
     runs-on: ubuntu-latest
+
+    # Cannot run for pushes in forked repos, without adapting this workflow
+    if: github.repository == 'cloudfoundry-incubator/quarks-operator'
 
     steps:
     - name: Set up Go
