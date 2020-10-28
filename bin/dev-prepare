@@ -10,22 +10,27 @@
 
 export DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG:-dev}
 
+# image always used for persist output
 if [ "$QUARKS_JOB_IMAGE_TAG" = "dev" ]; then
   echo "Using local dev quarks job dependencies"
   USE_KIND=true ./bin/dev-prepare-local-qjob
 fi
-if [ "$QUARKS_SECRET_IMAGE_TAG" = "dev" ]; then
-  echo "Using local dev quarks secret dependencies"
-  USE_KIND=true ./bin/dev-prepare-local-qsec
-fi
-if [ "$QUARKS_STS_IMAGE_TAG" = "dev" ]; then
-  echo "Using local dev quarks statefulset dependencies"
-  USE_KIND=true ./bin/dev-prepare-local-qsts
+
+# images only used in e2e/helm tests
+if [ "$TEST_HELM" ]; then
+  if [ "$QUARKS_SECRET_IMAGE_TAG" = "dev" ]; then
+    echo "Using local dev quarks secret dependencies"
+    USE_KIND=true ./bin/dev-prepare-local-qsec
+  fi
+  if [ "$QUARKS_STS_IMAGE_TAG" = "dev" ]; then
+    echo "Using local dev quarks statefulset dependencies"
+    USE_KIND=true ./bin/dev-prepare-local-qsts
+  fi
 fi
 
 . ./bin/include/dependencies
 
-# docker
+# docker image, used for render templates and other util commands
 bin/build-image
 
 # kind
