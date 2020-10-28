@@ -16,12 +16,10 @@ code.cloudfoundry.org/quarks-job v1.0.208 h1:IPEY6Sn4ca0u2TUalAnWA/6VA/ZTVhcsgjj
 code.cloudfoundry.org/quarks-job v1.0.208/go.mod h1:36WD3neLO8IAA7bZEgnp+sqqaLk0OSJAqZBgRmjL8mk=
 code.cloudfoundry.org/quarks-secret v1.0.746 h1:vYi880UDRn6qzx6ocC9W7gADhWnKWffiOPDX4fHsoGo=
 code.cloudfoundry.org/quarks-secret v1.0.746/go.mod h1:2NRcfkX/dc+Xk90GRUS6tAYQHZnrkXhflM6L5Py4od8=
-code.cloudfoundry.org/quarks-statefulset v0.0.3-0.20201022121744-bf1f0d950a4f h1:C81f3L3WD3cq6cAmKf2B0AVTcjEt7ABUimi+6K+BLI4=
-code.cloudfoundry.org/quarks-statefulset v0.0.3-0.20201022121744-bf1f0d950a4f/go.mod h1:FYpNGg1VKCTMKDlnr599HwHiyBS2fteWMGpTpPbUz0w=
+code.cloudfoundry.org/quarks-statefulset v0.0.1304-g9f060bca h1:B2M8EyaeIAA7dLaAGRVSnc0GGL0t07KoPWNhW44ymMY=
+code.cloudfoundry.org/quarks-statefulset v0.0.1304-g9f060bca/go.mod h1:X7lKMxIBLtTs/RYgV42Gdn1uBWvkCNrHP4OP9e5owPA=
 code.cloudfoundry.org/quarks-utils v0.0.2-0.20200925150425-86012dcc3927/go.mod h1:hpiFutwYAgz6NFZSHNbsuMGVnv0GU/DP+AQn1gf3G+4=
 code.cloudfoundry.org/quarks-utils v0.0.2-0.20200925154647-e6823dafb671/go.mod h1:hpiFutwYAgz6NFZSHNbsuMGVnv0GU/DP+AQn1gf3G+4=
-code.cloudfoundry.org/quarks-utils v0.0.2-0.20201007144659-b8f6a7ee0d40 h1:l8UWmaJRFL6sT0Huc/7uTM016kju0ubGpSjyYJab8VU=
-code.cloudfoundry.org/quarks-utils v0.0.2-0.20201007144659-b8f6a7ee0d40/go.mod h1:hpiFutwYAgz6NFZSHNbsuMGVnv0GU/DP+AQn1gf3G+4=
 code.cloudfoundry.org/quarks-utils v0.0.2-0.20201027114038-8aab73d224e4 h1:0WGZtcvmHLdWMlzBN9NwP6RrdMmlHwopc8RrkWR8wW4=
 code.cloudfoundry.org/quarks-utils v0.0.2-0.20201027114038-8aab73d224e4/go.mod h1:K8KH67rdNk9+VPOA5QRgrujTFhbmtqxLOuPQ6APL6ks=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
@@ -692,7 +690,6 @@ github.com/sony/gobreaker v0.4.1/go.mod h1:ZKptC7FHNvhBz7dN2LGjPVBz2sZJmc0/PkyDJ
 github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
 github.com/spf13/afero v1.1.2/go.mod h1:j4pytiNVoe2o6bmDsKpLACNPDBIoEAkihy7loJ1B0CQ=
 github.com/spf13/afero v1.2.2/go.mod h1:9ZxEEn6pIJ8Rxe320qSDBk6AsU0r9pR7Q4OcevTdifk=
-github.com/spf13/afero v1.3.0/go.mod h1:5KUK8ByomD5Ti5Artl0RtHeI5pTF7MIDuXL3yY520V4=
 github.com/spf13/afero v1.4.1 h1:asw9sl74539yqavKaglDM5hFpdJVK0Y5Dr/JOgQ89nQ=
 github.com/spf13/afero v1.4.1/go.mod h1:Ai8FlHk4v/PARR026UzYexafAt9roJ7LcLMAmO6Z93I=
 github.com/spf13/cast v1.3.0/go.mod h1:Qx5cxh0v+4UWYiBimWS+eyWzqEqokIECu5etghLkUJE=
@@ -796,8 +793,6 @@ go.uber.org/tools v0.0.0-20190618225709-2cfd321de3ee h1:0mgffUl7nfd+FpvXMVz4IDEa
 go.uber.org/tools v0.0.0-20190618225709-2cfd321de3ee/go.mod h1:vJERXedbb3MVM5f9Ejo0C68/HhF8uaILCdgjnY+goOA=
 go.uber.org/zap v1.10.0/go.mod h1:vwi/ZaCAaUcBkycHslxD9B2zi4UTXhF60s6SWpuDF0Q=
 go.uber.org/zap v1.13.0/go.mod h1:zwrFLgMcdUuIBviXEYEH1YKNaOBnKXsx2IPda5bBwHM=
-go.uber.org/zap v1.15.0 h1:ZZCA22JRF2gQE5FoNmhmrf7jeJJ2uhqDUNRYKm8dvmM=
-go.uber.org/zap v1.15.0/go.mod h1:Mb2vm2krFEG5DV0W9qcHBYFtp/Wku1cvYaqPsS/WYfc=
 go.uber.org/zap v1.16.0 h1:uFRZXykJGK9lLY4HtgSw44DnIcAM+kRBP7x5m+NpAOM=
 go.uber.org/zap v1.16.0/go.mod h1:MA8QOfq0BHJwdXa996Y4dYkAqRKB8/1K1QMMZVaNZjQ=
 golang.org/x/crypto v0.0.0-20171113213409-9f005a07e0d3/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
