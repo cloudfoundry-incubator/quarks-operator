@@ -23,6 +23,7 @@ func (q *QuarksSecretCmd) Build() error {
 // Start starts the specified quarks-secret in a namespace
 func (q *QuarksSecretCmd) Start(id string) error {
 	cmd := exec.Command(q.Path,
+		"--apply-crd=false",
 		"--meltdown-duration", strconv.Itoa(defaultTestMeltdownDuration),
 		"--meltdown-requeue-after", strconv.Itoa(defaultTestMeltdownRequeueAfter),
 		"--monitored-id", id,

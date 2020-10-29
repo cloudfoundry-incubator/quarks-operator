@@ -17,10 +17,13 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 	"k8s.io/client-go/rest"
 
+	qjob "code.cloudfoundry.org/quarks-job/pkg/kube/operator"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/operator"
 	"code.cloudfoundry.org/quarks-operator/testing"
+	qsec "code.cloudfoundry.org/quarks-secret/pkg/kube/operator"
 	qstsclient "code.cloudfoundry.org/quarks-statefulset/pkg/kube/client/clientset/versioned"
+	qsts "code.cloudfoundry.org/quarks-statefulset/pkg/kube/operator"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	utils "code.cloudfoundry.org/quarks-utils/testing/integration"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
@@ -149,5 +152,13 @@ func ApplyCRDs(kubeConfig *rest.Config) error {
 	if err != nil {
 		return err
 	}
-	return nil
+	err = qjob.ApplyCRDs(context.Background(), kubeConfig)
+	if err != nil {
+		return err
+	}
+	err = qsec.ApplyCRDs(context.Background(), kubeConfig)
+	if err != nil {
+		return err
+	}
+	return qsts.ApplyCRDs(context.Background(), kubeConfig)
 }
