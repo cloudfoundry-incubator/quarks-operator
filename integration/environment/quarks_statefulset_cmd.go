@@ -26,10 +26,11 @@ func (q *QuarksStatefulsetCmd) Build() error {
 }
 
 // Start starts the specified quarks-statefulset in a namespace
-func (q *QuarksStatefulsetCmd) Start(id string, port int32) error {
+func (q *QuarksStatefulsetCmd) Start(id string, ns string, port int32) error {
 	cmd := exec.Command(q.Path,
 		"--operator-webhook-service-host", webhookHost(),
 		"--operator-webhook-service-port", strconv.Itoa(int(port)),
+		"--quarks-statefulset-namespace", ns,
 		"--meltdown-duration", strconv.Itoa(defaultTestMeltdownDuration),
 		"--meltdown-requeue-after", strconv.Itoa(defaultTestMeltdownRequeueAfter),
 		"--monitored-id", id,

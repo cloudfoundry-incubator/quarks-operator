@@ -94,7 +94,7 @@ var _ = BeforeEach(func() {
 		fmt.Printf("WARNING: failed to parse CF_OPERATOR_WEBHOOK_SERVICE_PORT: %s", err)
 	}
 
-	err = quarks.Statefulset.Start(env.Config.MonitoredID, env.QStsPort())
+	err = quarks.Statefulset.Start(env.Config.MonitoredID, env.Config.OperatorNamespace, env.QStsPort())
 	if err != nil {
 		fmt.Printf("WARNING: failed to start quarks-statefulset operator: %v\n", err)
 	}
