@@ -1,6 +1,8 @@
 name: run-pr-tests
 
-# Note: Don't expose secrets to scripts from the repo, only the workflow definition is from master
+# Note: Don't expose secrets to scripts controlled by the fork.
+#       Only the workflow definition is taken from the context of the base repository.
+#       https://docs.github.com/en/free-pro-team@latest/actions/reference/events-that-trigger-workflows#pull_request_target
 
 on:
   # run for labeled PRs from forks
