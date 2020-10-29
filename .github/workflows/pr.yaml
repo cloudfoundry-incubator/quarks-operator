@@ -21,8 +21,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     # run for PRs with the 'pr-test-queue' label, opened from forks
-    if: github.repository != 'cloudfoundry-incubator/quarks-operator' &&
-      contains(github.event.pull_request.labels.*.name, 'pr-test-queue')
+    if: contains(github.event.pull_request.labels.*.name, 'pr-test-queue')
 
     steps:
       - uses: actions-ecosystem/action-remove-labels@556e306
@@ -70,6 +69,9 @@ jobs:
   dockerbuild:
     needs: [unit-tests]
     runs-on: ubuntu-16.04
+
+    # Cannot run for pushes in forked repos, without adapting this workflow
+    if: github.repository == 'cloudfoundry-incubator/quarks-operator'
 
     steps:
     - name: Set up Go

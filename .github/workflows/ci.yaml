@@ -19,9 +19,6 @@ jobs:
   unit-tests:
     runs-on: ubuntu-latest
 
-    # Cannot run for pushes in forked repos, without adapting this workflow
-    if: github.repository == 'cloudfoundry-incubator/quarks-operator'
-
     steps:
     - name: Set up Go
       uses: actions/setup-go@v2
@@ -54,6 +51,9 @@ jobs:
   dockerbuild:
     needs: [unit-tests]
     runs-on: ubuntu-16.04
+
+    # Cannot run for pushes in forked repos, without adapting this workflow
+    if: github.repository == 'cloudfoundry-incubator/quarks-operator'
 
     steps:
     - name: Set up Go
