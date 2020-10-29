@@ -41,12 +41,41 @@ var (
 const (
 	defaultTestMeltdownDuration     = 10
 	defaultTestMeltdownRequeueAfter = 1
+	testPerNode                     = 200
+	portPerTest                     = 3
 )
+
+// testPerNode=200, portPerTest=1
+// id = 200 * node + i + 1
+//
+// namespaceCounter  ParallelNode  namespaceID  conflict
+// 0                 0             1
+// 0                 1             201          *
+// 0                 2             401          *
+// 1                 0             2
+// 1                 1             202
+// 1                 2             402
+// 20                0             21
+// 20                1             221
+// 20                2             421
+// 200               0             201          *
+// 200               1             401          *
+// 200               5             1201
+
+// testPerNode=200, portPerTest=3
+//
+// namespaceCounter  ParallelNode  namespaceID  conflict
+// 600               0             603          *
+// 0                 3             603          *
+// conflict at: 603, 803, 1003, 1203, ...
+
+// For testPerNode=198, portPerTest=3
+// conflict at: 201, 204, 207, ...
 
 // NewEnvironment returns a new struct
 func NewEnvironment(kubeConfig *rest.Config) *Environment {
-	atomic.AddInt32(&namespaceCounter, 1)
-	namespaceID := gomegaConfig.GinkgoConfig.ParallelNode*200 + int(namespaceCounter)
+	atomic.AddInt32(&namespaceCounter, portPerTest)
+	namespaceID := gomegaConfig.GinkgoConfig.ParallelNode*testPerNode + int(namespaceCounter)
 	// the single namespace used by this test
 	ns := utils.GetNamespaceName(namespaceID)
 
