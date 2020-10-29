@@ -8,11 +8,11 @@ package boshmanifest
 const Gora = `---
 releases:
 - name: quarks-gora
-  version: "0.0.14"
+  version: "0.0.15"
   url: ghcr.io/cloudfoundry-incubator
   stemcell:
-    os: SLE_15_SP1-27.10
-    version: 7.0.0_374.gb8e8e6af
+    os: SLE_15_SP1
+    version: 27.10-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: quarks-gora
   instances: 2
@@ -359,20 +359,20 @@ instance_groups:
 const Drains = `---
 name: my-manifest
 releases:
-- name: cf-operator-testing
-  version: "0.0.6"
+- name: quarks-gora
+  version: "0.0.15"
   url: ghcr.io/cloudfoundry-incubator
   stemcell:
     os: SLE_15_SP1
-    version: 27.8-7.0.0_374.gb8e8e6af
+    version: 27.10-7.0.0_374.gb8e8e6af
 instance_groups:
 - name: drains
   instances: 1
   jobs:
   - name: failing-drain-job
-    release: cf-operator-testing
+    release: quarks-gora
   - name: delaying-drain-job
-    release: cf-operator-testing
+    release: quarks-gora
 `
 
 // BPMRelease utilizing the test server to open two tcp ports
