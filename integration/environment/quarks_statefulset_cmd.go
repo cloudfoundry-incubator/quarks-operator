@@ -31,6 +31,7 @@ func (q *QuarksStatefulsetCmd) Start(id string, ns string, port int32) error {
 		"--operator-webhook-service-host", webhookHost(),
 		"--operator-webhook-service-port", strconv.Itoa(int(port)),
 		"--quarks-statefulset-namespace", ns,
+		"--apply-crd=false",
 		"--meltdown-duration", strconv.Itoa(defaultTestMeltdownDuration),
 		"--meltdown-requeue-after", strconv.Itoa(defaultTestMeltdownRequeueAfter),
 		"--monitored-id", id,

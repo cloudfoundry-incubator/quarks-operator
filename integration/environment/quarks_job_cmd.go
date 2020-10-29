@@ -33,6 +33,7 @@ func (q *QuarksJobCmd) Start(id string) error {
 		"-o", "ghcr.io/cloudfoundry-incubator",
 		"-r", "quarks-job",
 		"-t", quarksJobTag(),
+		"--apply-crd=false",
 		"--meltdown-duration", strconv.Itoa(defaultTestMeltdownDuration),
 		"--meltdown-requeue-after", strconv.Itoa(defaultTestMeltdownRequeueAfter),
 		"--monitored-id", id,
