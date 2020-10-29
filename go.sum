@@ -18,6 +18,8 @@ code.cloudfoundry.org/quarks-secret v1.0.750 h1:WGsJqnW2b6sGVTexdjNOglmDMbU/Q0O/
 code.cloudfoundry.org/quarks-secret v1.0.750/go.mod h1:acFRL3+ceVyN9mr9mNPQzZg6gAjJt1gwHlSREprGXFY=
 code.cloudfoundry.org/quarks-statefulset v0.0.1304-g9f060bca h1:B2M8EyaeIAA7dLaAGRVSnc0GGL0t07KoPWNhW44ymMY=
 code.cloudfoundry.org/quarks-statefulset v0.0.1304-g9f060bca/go.mod h1:X7lKMxIBLtTs/RYgV42Gdn1uBWvkCNrHP4OP9e5owPA=
+code.cloudfoundry.org/quarks-statefulset v0.0.1307-gdc5051c7/go.mod h1:xk6IHtnfPRgZm0UMOUxYyAs+Qz1eJJDpvCHF3gMVRDk=
+code.cloudfoundry.org/quarks-utils v0.0.2-0.20201027094321-c08e86782644/go.mod h1:K8KH67rdNk9+VPOA5QRgrujTFhbmtqxLOuPQ6APL6ks=
 code.cloudfoundry.org/quarks-utils v0.0.2-0.20201027114038-8aab73d224e4 h1:0WGZtcvmHLdWMlzBN9NwP6RrdMmlHwopc8RrkWR8wW4=
 code.cloudfoundry.org/quarks-utils v0.0.2-0.20201027114038-8aab73d224e4/go.mod h1:K8KH67rdNk9+VPOA5QRgrujTFhbmtqxLOuPQ6APL6ks=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
