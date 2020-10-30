@@ -2,7 +2,7 @@ name: redis-deployment
 director_uuid: ""
 instance_groups:
 - name: redis-slave
-  instances: 1
+  instances: 2
   azs: [z1, z2]
   jobs:
   - name: redis-server
@@ -20,10 +20,24 @@ instance_groups:
               name: redis-slave-redis-server
               networks: null
             - address: foo-deployment-redis-slave-1
-              az: z2
+              az: z1
               bootstrap: false
               index: 1
+              instance: 1
+              name: redis-slave-redis-server
+              networks: null
+            - address: foo-deployment-redis-slave-2
+              az: z2
+              bootstrap: false
+              index: 2
               instance: 0
+              name: redis-slave-redis-server
+              networks: null
+            - address: foo-deployment-redis-slave-3
+              az: z2
+              bootstrap: false
+              index: 3
+              instance: 1
               name: redis-slave-redis-server
               networks: null
             properties:
@@ -39,10 +53,24 @@ instance_groups:
           name: redis-slave-redis-server
           networks: null
         - address: foo-deployment-redis-slave-1
-          az: z2
+          az: z1
           bootstrap: false
           index: 1
+          instance: 1
+          name: redis-slave-redis-server
+          networks: null
+        - address: foo-deployment-redis-slave-2
+          az: z2
+          bootstrap: false
+          index: 2
           instance: 0
+          name: redis-slave-redis-server
+          networks: null
+        - address: foo-deployment-redis-slave-3
+          az: z2
+          bootstrap: false
+          index: 3
+          instance: 1
           name: redis-slave-redis-server
           networks: null
         bpm:
