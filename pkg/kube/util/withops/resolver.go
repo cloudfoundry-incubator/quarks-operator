@@ -2,6 +2,7 @@ package withops
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -140,28 +141,45 @@ func (r *Resolver) applyVariables(ctx context.Context, bdpl *bdv1.BOSHDeployment
 	impVars := boshtpl.StaticVariables{}
 	varSecrets := make([]string, len(vars))
 	for i, v := range vars {
-		varKeyName := ""
-		varSecretName := ""
+		key := ""
+		secName := ""
 		if strings.Contains(v, "/") {
 			parts := strings.Split(v, "/")
 			if len(parts) != 2 {
 				return nil, []string{}, fmt.Errorf("expected one / separator for implicit variable/key name, have %d", len(parts))
 			}
 
-			varSecretName = names.SecretVariableName(parts[0])
-			varKeyName = parts[1]
+			secName = names.SecretVariableName(parts[0])
+			key = parts[1]
 		} else {
-			varSecretName = names.SecretVariableName(v)
-			varKeyName = bdv1.ImplicitVariableKeyName
+			secName = names.SecretVariableName(v)
+			key = bdv1.ImplicitVariableKeyName
 		}
 
-		varData, err := r.resourceData(ctx, namespace, bdv1.SecretReference, varSecretName, varKeyName)
+		varSecrets[i] = secName
+
+		secret := &corev1.Secret{}
+		err := r.client.Get(ctx, types.NamespacedName{Name: secName, Namespace: namespace}, secret)
 		if err != nil {
-			return nil, varSecrets, errors.Wrapf(err, "failed to load secret for variable '%s'", v)
+			return nil, []string{}, errors.Wrapf(err, "failed to get secret '%s/%s' for implicit variable %s", namespace, secName, v)
 		}
 
-		varSecrets[i] = varSecretName
-		impVars[v] = varData
+		val, ok := secret.Data[key]
+		if !ok {
+			return nil, []string{}, fmt.Errorf("secret '%s/%s' doesn't contain key '%s' for variable '%s'", namespace, secName, key, v)
+		}
+
+		if _, ok := secret.Annotations[bdv1.AnnotationJSONValue]; ok {
+			var js interface{}
+			err := json.Unmarshal(val, &js)
+			if err != nil {
+				return nil, []string{}, errors.Wrapf(err, "failed to unmarshal JSON in '%s' from secret '%s/%s'", key, namespace, secName)
+			}
+			impVars[v] = js
+		} else {
+			impVars[v] = string(val)
+		}
+
 	}
 
 	// Interpolate variables

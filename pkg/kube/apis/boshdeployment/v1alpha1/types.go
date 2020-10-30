@@ -76,6 +76,8 @@ var (
 	AnnotationLinkProvidesKey = fmt.Sprintf("%s/provides", apis.GroupName)
 	// AnnotationLinkProviderName is the annotation key used on services to identify the link it provides addresses for
 	AnnotationLinkProviderName = fmt.Sprintf("%s/link-provider-name", apis.GroupName)
+	// AnnotationJSONValue is the annotation key used to indicate the implicit variable secret has a JSON value
+	AnnotationJSONValue = fmt.Sprintf("%s/json-value", apis.GroupName)
 	// LabelEntanglementKey to identify a quarks link
 	LabelEntanglementKey = fmt.Sprintf("%s/entanglement", apis.GroupName)
 )
