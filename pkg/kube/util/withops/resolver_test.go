@@ -2,6 +2,7 @@ package withops_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	boshtpl "github.com/cloudfoundry/bosh-cli/director/template"
@@ -215,6 +216,22 @@ instance_groups:
         key: '((ssl/key))'
 `},
 			},
+			&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "manifest-with-json-implicit-var",
+					Namespace: "default",
+				},
+				Data: map[string]string{bdc.ManifestSpecName: `---
+name: foo
+instance_groups:
+  - name: component1
+    instances: 1
+  - name: component2
+    instances: 2
+    properties:
+      nested: ((implicit_struct))
+`},
+			},
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "var-system-domain",
@@ -238,6 +255,18 @@ instance_groups:
 					"ca":   []byte("the-ca"),
 					"cert": []byte("the-cert"),
 					"key":  []byte("the-key"),
+				},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "var-implicit-struct",
+					Namespace: "default",
+					Annotations: map[string]string{
+						bdc.AnnotationJSONValue: "yes",
+					},
+				},
+				Data: map[string][]byte{
+					"value": []byte(`{"a":{"b":3}}`),
 				},
 			},
 			&corev1.ConfigMap{
@@ -936,6 +965,33 @@ instance_groups:
 			Expect(sslProps["ca"]).To(Equal("the-ca"))
 			Expect(sslProps["cert"]).To(Equal("the-cert"))
 			Expect(sslProps["key"]).To(Equal("the-key"))
+		})
+
+		It("handles json content implicit variables", func() {
+			deployment := &bdc.BOSHDeployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "foo-deployment",
+				},
+				Spec: bdc.BOSHDeploymentSpec{
+					Manifest: bdc.ResourceReference{
+						Type: bdc.ConfigMapReference,
+						Name: "manifest-with-json-implicit-var",
+					},
+					Ops: []bdc.ResourceReference{},
+				},
+			}
+			m, implicitVars, err := resolver.Manifest(ctx, deployment, "default")
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(implicitVars).To(HaveLen(1))
+			Expect(implicitVars).To(ContainElement("var-implicit-struct"))
+
+			props, ok := m.InstanceGroups[1].Properties.Properties["nested"]
+			Expect(ok).To(BeTrue())
+
+			bytes, err := json.Marshal(props)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(bytes)).To(Equal(`{"a":{"b":3}}`))
 		})
 	})
 
