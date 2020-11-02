@@ -42,6 +42,7 @@ var _ = Describe("WithOps", func() {
 		interpolator     *fakes.FakeInterpolator
 		remoteFileServer *ghttp.Server
 		expectedManifest *bdm.Manifest
+		deployment       *bdc.BOSHDeployment
 	)
 
 	BeforeEach(func() {
@@ -262,7 +263,7 @@ instance_groups:
 					Name:      "var-implicit-struct",
 					Namespace: "default",
 					Annotations: map[string]string{
-						bdc.AnnotationJSONValue: "yes",
+						bdc.AnnotationJSONValue: "true",
 					},
 				},
 				Data: map[string][]byte{
@@ -400,13 +401,12 @@ instance_groups:
 				AddOnsApplied: true,
 			}
 
-			manifest, implicitVars, err := resolver.Manifest(ctx, deployment, "default")
+			manifest, err := resolver.Manifest(ctx, deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
 			Expect(len(manifest.InstanceGroups)).To(Equal(2))
 			Expect(deep.Equal(manifest, expectedManifest)).To(HaveLen(0))
-			Expect(len(implicitVars)).To(Equal(0))
 		})
 
 		It("works for valid CRs by using secret", func() {
@@ -438,13 +438,12 @@ instance_groups:
 				AddOnsApplied: true,
 			}
 
-			manifest, implicitVars, err := resolver.Manifest(ctx, deployment, "default")
+			manifest, err := resolver.Manifest(ctx, deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
 			Expect(len(manifest.InstanceGroups)).To(Equal(2))
 			Expect(deep.Equal(manifest, expectedManifest)).To(HaveLen(0))
-			Expect(len(implicitVars)).To(Equal(0))
 		})
 
 		It("works for valid CRs by using URL", func() {
@@ -469,13 +468,12 @@ instance_groups:
 				AddOnsApplied: true,
 			}
 
-			manifest, implicitVars, err := resolver.Manifest(ctx, deployment, "default")
+			manifest, err := resolver.Manifest(ctx, deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
 			Expect(len(manifest.InstanceGroups)).To(Equal(1))
 			Expect(deep.Equal(manifest, expectedManifest)).To(HaveLen(0))
-			Expect(len(implicitVars)).To(Equal(0))
 		})
 
 		It("works for valid CRs containing one ops", func() {
@@ -521,7 +519,7 @@ instance_groups:
 				AddOnsApplied: true,
 			}
 
-			manifest, implicitVars, err := resolver.Manifest(ctx, deployment, "default")
+			manifest, err := resolver.Manifest(ctx, deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -531,7 +529,6 @@ instance_groups:
 			Expect(interpolator.AddOpsCallCount()).To(Equal(1))
 			opsBytes := interpolator.AddOpsArgsForCall(0)
 			Expect(string(opsBytes)).To(Equal(replaceOpsStr))
-			Expect(len(implicitVars)).To(Equal(0))
 		})
 
 		It("works for valid CRs containing multi ops", func() {
@@ -580,7 +577,7 @@ instance_groups:
 				AddOnsApplied: true,
 			}
 
-			manifest, implicitVars, err := resolver.Manifest(ctx, deployment, "default")
+			manifest, err := resolver.Manifest(ctx, deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -596,7 +593,6 @@ instance_groups:
 			Expect(string(opsBytes)).To(Equal(urlOpsStr))
 			opsBytes = interpolator.AddOpsArgsForCall(3)
 			Expect(string(opsBytes)).To(Equal(removeOpsStr))
-			Expect(len(implicitVars)).To(Equal(0))
 		})
 
 		It("works for resource requirements", func() {
@@ -612,7 +608,7 @@ instance_groups:
 				},
 			}
 
-			manifest, _, err := resolver.Manifest(ctx, deployment, "default")
+			manifest, err := resolver.Manifest(ctx, deployment, "default")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(manifest).ToNot(Equal(nil))
@@ -631,7 +627,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.Manifest(ctx, deployment, "default")
+			_, err := resolver.Manifest(ctx, deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve manifest"))
 		})
@@ -645,7 +641,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.Manifest(ctx, deployment, "default")
+			_, err := resolver.Manifest(ctx, deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("doesn't contain key 'manifest'"))
 		})
@@ -659,7 +655,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.Manifest(ctx, deployment, "default")
+			_, err := resolver.Manifest(ctx, deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("cannot unmarshal string into Go value of type manifest.Manifest"))
 		})
@@ -673,7 +669,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.Manifest(ctx, deployment, "default")
+			_, err := resolver.Manifest(ctx, deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unrecognized manifest ref type"))
 		})
@@ -693,7 +689,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.Manifest(ctx, deployment, "default")
+			_, err := resolver.Manifest(ctx, deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from configmap"))
 		})
@@ -713,7 +709,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.Manifest(ctx, deployment, "default")
+			_, err := resolver.Manifest(ctx, deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("doesn't contain key 'ops'"))
 		})
@@ -735,7 +731,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.Manifest(ctx, deployment, "default")
+			_, err := resolver.Manifest(ctx, deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Interpolation failed for bosh deployment"))
 		})
@@ -756,7 +752,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.Manifest(ctx, deployment, "default")
+			_, err := resolver.Manifest(ctx, deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Failed to interpolate"))
 		})
@@ -776,7 +772,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.Manifest(ctx, deployment, "default")
+			_, err := resolver.Manifest(ctx, deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unrecognized ops ref type"))
 		})
@@ -800,7 +796,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.Manifest(ctx, deployment, "default")
+			_, err := resolver.Manifest(ctx, deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from configmap"))
 		})
@@ -824,7 +820,7 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.Manifest(ctx, deployment, "default")
+			_, err := resolver.Manifest(ctx, deployment, "default")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from secret"))
 		})
@@ -852,31 +848,42 @@ instance_groups:
 					},
 				},
 			}
-			_, _, err := resolver.Manifest(ctx, deployment, "default")
+			_, err := resolver.Manifest(ctx, deployment, "default")
 
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to retrieve ops from secret"))
 		})
 
-		It("replaces implicit variables", func() {
-			deployment := &bdc.BOSHDeployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo-deployment",
-				},
-				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.ResourceReference{
-						Type: bdc.ConfigMapReference,
-						Name: "manifest-with-vars",
+		When("replacing implicit variables", func() {
+			BeforeEach(func() {
+				deployment = &bdc.BOSHDeployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "foo-deployment",
 					},
-					Ops: []bdc.ResourceReference{},
-				},
-			}
-			m, implicitVars, err := resolver.Manifest(ctx, deployment, "default")
+					Spec: bdc.BOSHDeploymentSpec{
+						Manifest: bdc.ResourceReference{
+							Type: bdc.ConfigMapReference,
+							Name: "manifest-with-vars",
+						},
+						Ops: []bdc.ResourceReference{},
+					},
+				}
+			})
 
-			Expect(err).ToNot(HaveOccurred())
-			Expect(m.Variables[1].Options.CommonName).To(Equal("example.com"))
-			Expect(len(implicitVars)).To(Equal(1))
-			Expect(implicitVars[0]).To(Equal("var-system-domain"))
+			It("returns correct value", func() {
+				m, err := resolver.Manifest(ctx, deployment, "default")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(m.Variables[1].Options.CommonName).To(Equal("example.com"))
+			})
+
+			It("lists implicit variables", func() {
+				implicitVars, err := resolver.ImplicitVariables(ctx, deployment, "default")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(len(implicitVars)).To(Equal(1))
+				Expect(implicitVars[0]).To(Equal("var-system-domain"))
+			})
 		})
 
 		It("verify does not return an error for valid addon job properties", func() {
@@ -898,100 +905,142 @@ instance_groups:
 					Ops: []bdc.ResourceReference{},
 				},
 			}
-			_, _, err := resolver.Manifest(ctx, deployment, "default")
+			_, err := resolver.Manifest(ctx, deployment, "default")
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("handles multi-line implicit vars", func() {
-			deployment := &bdc.BOSHDeployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo-deployment",
-				},
-				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.ResourceReference{
-						Type: bdc.ConfigMapReference,
-						Name: "manifest-with-multiline-implicit-var",
+		When("multiline implicit variables exist", func() {
+			BeforeEach(func() {
+				deployment = &bdc.BOSHDeployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "foo-deployment",
 					},
-					Ops: []bdc.ResourceReference{},
-				},
-			}
-			m, implicitVars, err := resolver.Manifest(ctx, deployment, "default")
+					Spec: bdc.BOSHDeploymentSpec{
+						Manifest: bdc.ResourceReference{
+							Type: bdc.ConfigMapReference,
+							Name: "manifest-with-multiline-implicit-var",
+						},
+						Ops: []bdc.ResourceReference{},
+					},
+				}
+			})
 
-			Expect(err).ToNot(HaveOccurred())
-			Expect(len(implicitVars)).To(Equal(1))
-			Expect(implicitVars[0]).To(Equal("var-implicit-ca"))
-			Expect(m.InstanceGroups[0].Properties.Properties["ca"]).To(Equal("complicated\n'multiline'\nstring"))
+			It("uses values of implicit vars", func() {
+				m, err := resolver.Manifest(ctx, deployment, "default")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(m.InstanceGroups[0].Properties.Properties["ca"]).To(Equal("complicated\n'multiline'\nstring"))
+			})
+
+			It("lists implicit variables", func() {
+				implicitVars, err := resolver.ImplicitVariables(ctx, deployment, "default")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(len(implicitVars)).To(Equal(1))
+				Expect(implicitVars[0]).To(Equal("var-implicit-ca"))
+			})
 		})
 
-		It("handles embedded variables", func() {
-			deployment := &bdc.BOSHDeployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo-deployment",
-				},
-				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.ResourceReference{
-						Type: bdc.ConfigMapReference,
-						Name: "manifest-with-embedded-implicit-var",
+		When("embedded implicit variables", func() {
+			BeforeEach(func() {
+				deployment = &bdc.BOSHDeployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "foo-deployment",
 					},
-					Ops: []bdc.ResourceReference{},
-				},
-			}
-			m, implicitVars, err := resolver.Manifest(ctx, deployment, "default")
+					Spec: bdc.BOSHDeploymentSpec{
+						Manifest: bdc.ResourceReference{
+							Type: bdc.ConfigMapReference,
+							Name: "manifest-with-embedded-implicit-var",
+						},
+						Ops: []bdc.ResourceReference{},
+					},
+				}
+			})
 
-			Expect(err).ToNot(HaveOccurred())
-			Expect(len(implicitVars)).To(Equal(1))
-			Expect(implicitVars[0]).To(Equal("var-system-domain"))
-			Expect(m.InstanceGroups[0].Properties.Properties["host"]).To(Equal("foo.example.com"))
+			It("uses values of implicit vars", func() {
+				m, err := resolver.Manifest(ctx, deployment, "default")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(m.InstanceGroups[0].Properties.Properties["host"]).To(Equal("foo.example.com"))
+			})
+
+			It("lists implicit variables", func() {
+				implicitVars, err := resolver.ImplicitVariables(ctx, deployment, "default")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(len(implicitVars)).To(Equal(1))
+				Expect(implicitVars[0]).To(Equal("var-system-domain"))
+			})
 		})
 
-		It("handles multi-key implicit variables", func() {
-			deployment := &bdc.BOSHDeployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo-deployment",
-				},
-				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.ResourceReference{
-						Type: bdc.ConfigMapReference,
-						Name: "manifest-with-multi-key-implicit-var",
+		When("multi-key implicit variables", func() {
+			BeforeEach(func() {
+				deployment = &bdc.BOSHDeployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "foo-deployment",
 					},
-					Ops: []bdc.ResourceReference{},
-				},
-			}
-			m, implicitVars, err := resolver.Manifest(ctx, deployment, "default")
+					Spec: bdc.BOSHDeploymentSpec{
+						Manifest: bdc.ResourceReference{
+							Type: bdc.ConfigMapReference,
+							Name: "manifest-with-multi-key-implicit-var",
+						},
+						Ops: []bdc.ResourceReference{},
+					},
+				}
+			})
 
-			sslProps := m.InstanceGroups[0].Properties.Properties["ssl"].(map[string]interface{})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(len(implicitVars)).To(Equal(3))
-			Expect(sslProps["ca"]).To(Equal("the-ca"))
-			Expect(sslProps["cert"]).To(Equal("the-cert"))
-			Expect(sslProps["key"]).To(Equal("the-key"))
+			It("uses values of implicit vars", func() {
+				m, err := resolver.Manifest(ctx, deployment, "default")
+
+				sslProps := m.InstanceGroups[0].Properties.Properties["ssl"].(map[string]interface{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sslProps["ca"]).To(Equal("the-ca"))
+				Expect(sslProps["cert"]).To(Equal("the-cert"))
+				Expect(sslProps["key"]).To(Equal("the-key"))
+			})
+
+			It("lists implicit variables", func() {
+				implicitVars, err := resolver.ImplicitVariables(ctx, deployment, "default")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(len(implicitVars)).To(Equal(3))
+			})
 		})
 
-		It("handles json content implicit variables", func() {
-			deployment := &bdc.BOSHDeployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "foo-deployment",
-				},
-				Spec: bdc.BOSHDeploymentSpec{
-					Manifest: bdc.ResourceReference{
-						Type: bdc.ConfigMapReference,
-						Name: "manifest-with-json-implicit-var",
+		When("replacing implicit variables", func() {
+			BeforeEach(func() {
+				deployment = &bdc.BOSHDeployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "foo-deployment",
 					},
-					Ops: []bdc.ResourceReference{},
-				},
-			}
-			m, implicitVars, err := resolver.Manifest(ctx, deployment, "default")
-			Expect(err).ToNot(HaveOccurred())
+					Spec: bdc.BOSHDeploymentSpec{
+						Manifest: bdc.ResourceReference{
+							Type: bdc.ConfigMapReference,
+							Name: "manifest-with-json-implicit-var",
+						},
+						Ops: []bdc.ResourceReference{},
+					},
+				}
+			})
 
-			Expect(implicitVars).To(HaveLen(1))
-			Expect(implicitVars).To(ContainElement("var-implicit-struct"))
+			It("uses json content of implicit vars", func() {
+				m, err := resolver.Manifest(ctx, deployment, "default")
+				Expect(err).ToNot(HaveOccurred())
 
-			props, ok := m.InstanceGroups[1].Properties.Properties["nested"]
-			Expect(ok).To(BeTrue())
+				props, ok := m.InstanceGroups[1].Properties.Properties["nested"]
+				Expect(ok).To(BeTrue())
 
-			bytes, err := json.Marshal(props)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(string(bytes)).To(Equal(`{"a":{"b":3}}`))
+				bytes, err := json.Marshal(props)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(bytes)).To(Equal(`{"a":{"b":3}}`))
+			})
+
+			It("lists implicit variables", func() {
+				implicitVars, err := resolver.ImplicitVariables(ctx, deployment, "default")
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(implicitVars).To(HaveLen(1))
+				Expect(implicitVars).To(ContainElement("var-implicit-struct"))
+			})
 		})
 	})
 
