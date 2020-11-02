@@ -143,7 +143,8 @@ func (r *Resolver) applyVariables(ctx context.Context, bdpl *bdv1.BOSHDeployment
 	for i, v := range vars {
 		key := ""
 		secName := ""
-		if strings.Contains(v, "/") {
+		// implicit variables can have a slash to specify the key in the secret
+		if bdm.SlashedVariable(v) {
 			parts := strings.Split(v, "/")
 			if len(parts) != 2 {
 				return nil, []string{}, fmt.Errorf("expected one / separator for implicit variable/key name, have %d", len(parts))
