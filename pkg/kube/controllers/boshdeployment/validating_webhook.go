@@ -122,7 +122,7 @@ func (v *Validator) Handle(ctx context.Context, req admission.Request) admission
 		v.client,
 		func() withops.Interpolator { return withops.NewInterpolator() },
 	)
-	manifest, _, err := resolver.ManifestDetailed(ctx, boshDeployment, boshDeployment.GetNamespace())
+	manifest, err := resolver.ManifestDetailed(ctx, boshDeployment, boshDeployment.GetNamespace())
 	if err != nil {
 		return denied(fmt.Sprintf("Failed to resolve manifest: %s", err.Error()))
 	}

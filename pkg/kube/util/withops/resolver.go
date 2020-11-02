@@ -44,20 +44,17 @@ func NewResolver(client client.Client, f NewInterpolatorFunc) *Resolver {
 	}
 }
 
-// Manifest returns manifest and a list of implicit variables referenced by our bdpl CRD
-// The resulting manifest has variables interpolated and ops files applied.
-// It is the 'with-ops' manifest.
-func (r *Resolver) Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
-	interpolator := r.newInterpolatorFunc()
-	spec := bdpl.Spec
+func (r *Resolver) load(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, error) {
 	var (
-		m   string
-		err error
+		m            string
+		err          error
+		interpolator = r.newInterpolatorFunc()
+		spec         = bdpl.Spec
 	)
 
 	m, err = r.resourceData(ctx, namespace, spec.Manifest.Type, spec.Manifest.Name, bdv1.ManifestSpecName)
 	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' in '%s'", bdpl.Name, namespace)
+		return nil, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' in '%s'", bdpl.Name, namespace)
 	}
 
 	// Interpolate manifest with ops
@@ -66,11 +63,11 @@ func (r *Resolver) Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, name
 	for _, op := range ops {
 		opsData, err := r.resourceData(ctx, namespace, op.Type, op.Name, bdv1.OpsSpecName)
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' in '%s'", bdpl.Name, namespace)
+			return nil, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' in '%s'", bdpl.Name, namespace)
 		}
 		err = interpolator.AddOps([]byte(opsData))
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' in '%s'", bdpl.Name, namespace)
+			return nil, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' in '%s'", bdpl.Name, namespace)
 		}
 	}
 
@@ -78,26 +75,68 @@ func (r *Resolver) Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, name
 	if len(ops) != 0 {
 		bytes, err = interpolator.Interpolate([]byte(m))
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Failed to interpolate %#v in interpolation task", m)
+			return nil, errors.Wrapf(err, "Failed to interpolate %#v in interpolation task", m)
 		}
 	}
 
-	return r.applyVariables(ctx, bdpl, namespace, m, bytes, "manifest-addons")
+	manifest, err := bdm.LoadYAML(bytes)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying ops %#v", m)
+	}
+	return manifest, nil
+}
+
+// Manifest returns manifest and a list of implicit variables referenced by our bdpl CRD
+// The resulting manifest has variables interpolated and ops files applied.
+// It is the 'with-ops' manifest.
+func (r *Resolver) Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, error) {
+	manifest, err := r.load(ctx, bdpl, namespace)
+	if err != nil {
+		return nil, err
+	}
+	return r.applyVariables(ctx, bdpl, namespace, manifest, "manifest-addons")
+}
+
+// ImplicitVariables returns the implicit variables found in the manifest
+func (r *Resolver) ImplicitVariables(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string) ([]string, error) {
+	manifest, err := r.load(ctx, bdpl, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	refs, err := buildSecretRefs(manifest)
+	if err != nil {
+		return []string{}, errors.Wrapf(err, "failed to parse all implicit variable names")
+	}
+
+	varSecrets := []string{}
+	for secName, infos := range refs {
+		for _, info := range infos {
+			if info.key == "value" {
+				varSecrets = append(varSecrets, secName)
+			} else {
+				varSecrets = append(varSecrets, secName+"/"+info.key)
+
+			}
+		}
+	}
+
+	return varSecrets, nil
 }
 
 // ManifestDetailed returns manifest and a list of implicit variables referenced by our bdpl CRD
 // The resulting manifest has variables interpolated and ops files applied.
 // It is the 'with-ops' manifest. This variant processes each ops file individually, so it's more debuggable - but slower.
-func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error) {
-	spec := bdpl.Spec
+func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, error) {
 	var (
-		m   string
-		err error
+		m    string
+		err  error
+		spec = bdpl.Spec
 	)
 
 	m, err = r.resourceData(ctx, namespace, spec.Manifest.Type, spec.Manifest.Name, bdv1.ManifestSpecName)
 	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", namespace)
+		return nil, errors.Wrapf(err, "Interpolation failed for bosh deployment %s", namespace)
 	}
 
 	// Interpolate manifest with ops
@@ -109,45 +148,62 @@ func (r *Resolver) ManifestDetailed(ctx context.Context, bdpl *bdv1.BOSHDeployme
 
 		opsData, err := r.resourceData(ctx, namespace, op.Type, op.Name, bdv1.OpsSpecName)
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Failed to get resource data for interpolation of bosh deployment '%s' and ops '%s' in '%s'", bdpl.Name, op.Name, namespace)
+			return nil, errors.Wrapf(err, "Failed to get resource data for interpolation of bosh deployment '%s' and ops '%s' in '%s'", bdpl.Name, op.Name, namespace)
 		}
 		err = interpolator.AddOps([]byte(opsData))
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' and ops '%s' in '%s'", bdpl.Name, op.Name, namespace)
+			return nil, errors.Wrapf(err, "Interpolation failed for bosh deployment '%s' and ops '%s' in '%s'", bdpl.Name, op.Name, namespace)
 		}
 
 		bytes, err = interpolator.Interpolate(bytes)
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "Failed to interpolate ops '%s' for manifest '%s' in '%s'", op.Name, bdpl.Name, namespace)
+			return nil, errors.Wrapf(err, "Failed to interpolate ops '%s' for manifest '%s' in '%s'", op.Name, bdpl.Name, namespace)
 		}
 	}
 
-	return r.applyVariables(ctx, bdpl, namespace, m, bytes, "detailed-manifest-addons")
-}
-
-func (r *Resolver) applyVariables(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string, original string, bytes []byte, logName string) (*bdm.Manifest, []string, error) {
-	// Apply implicit variables
 	manifest, err := bdm.LoadYAML(bytes)
 	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying ops %#v", original)
+		return nil, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying ops %#v", m)
 	}
 
-	// Interpolate implicit variables
+	manifest, err = r.applyVariables(ctx, bdpl, namespace, manifest, "detailed-manifest-addons")
+	if err != nil {
+		return nil, errors.Wrapf(err, "Loading yaml failed after applying variable: %#v", m)
+	}
+	return manifest, nil
+}
+
+type secretInfo struct {
+	key      string
+	variable string
+}
+
+// secretRefs references secrets and keys. It also stores the original variable usage (name/key).
+// If the variable has no slash the default key is 'value', so 'name/value' is identical to just 'name'.
+type secretRefs map[string][]secretInfo
+
+func (s secretRefs) add(variable string, secName string, key string) {
+	si := s[secName]
+	si = append(si, secretInfo{variable: variable, key: key})
+	s[secName] = si
+}
+
+// Find implicit variable references and index by secret name
+func buildSecretRefs(manifest *bdm.Manifest) (secretRefs, error) {
 	vars, err := manifest.ImplicitVariables()
 	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "failed to list implicit variables")
+		return nil, errors.Wrapf(err, "failed to list implicit variables")
 	}
 
-	impVars := boshtpl.StaticVariables{}
-	varSecrets := make([]string, len(vars))
-	for i, v := range vars {
+	refs := make(secretRefs, len(vars))
+	for _, v := range vars {
 		key := ""
 		secName := ""
 		// implicit variables can have a slash to specify the key in the secret
 		if bdm.SlashedVariable(v) {
 			parts := strings.Split(v, "/")
 			if len(parts) != 2 {
-				return nil, []string{}, fmt.Errorf("expected one / separator for implicit variable/key name, have %d", len(parts))
+				return refs, fmt.Errorf("expected one / separator for implicit variable/key name, have %d", len(parts))
 			}
 
 			secName = names.SecretVariableName(parts[0])
@@ -157,60 +213,75 @@ func (r *Resolver) applyVariables(ctx context.Context, bdpl *bdv1.BOSHDeployment
 			key = bdv1.ImplicitVariableKeyName
 		}
 
-		varSecrets[i] = secName
+		refs.add(v, secName, key)
+	}
+	return refs, nil
+}
 
+// Apply all variables and interpolate
+func (r *Resolver) applyVariables(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string, manifest *bdm.Manifest, logName string) (*bdm.Manifest, error) {
+	refs, err := buildSecretRefs(manifest)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to parse all implicit variable names")
+	}
+
+	// fetch each secret for implicit variables
+	impVars := boshtpl.StaticVariables{}
+	for secName, infos := range refs {
 		secret := &corev1.Secret{}
 		err := r.client.Get(ctx, types.NamespacedName{Name: secName, Namespace: namespace}, secret)
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "failed to get secret '%s/%s' for implicit variable %s", namespace, secName, v)
+			return nil, errors.Wrapf(err, "failed to get secret '%s/%s'", namespace, secName)
 		}
 
-		val, ok := secret.Data[key]
-		if !ok {
-			return nil, []string{}, fmt.Errorf("secret '%s/%s' doesn't contain key '%s' for variable '%s'", namespace, secName, key, v)
-		}
-
-		if _, ok := secret.Annotations[bdv1.AnnotationJSONValue]; ok {
-			var js interface{}
-			err := json.Unmarshal(val, &js)
-			if err != nil {
-				return nil, []string{}, errors.Wrapf(err, "failed to unmarshal JSON in '%s' from secret '%s/%s'", key, namespace, secName)
+		for _, info := range infos {
+			val, ok := secret.Data[info.key]
+			if !ok {
+				return nil, fmt.Errorf("secret '%s/%s' doesn't contain key '%s' for variable '%s'", namespace, secName, info.key, info.variable)
 			}
-			impVars[v] = js
-		} else {
-			impVars[v] = string(val)
-		}
 
+			if t, ok := secret.Annotations[bdv1.AnnotationJSONValue]; ok && t == "true" {
+				var js interface{}
+				err := json.Unmarshal(val, &js)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to unmarshal JSON in '%s' from secret '%s/%s'", info.variable, namespace, secName)
+				}
+				impVars[info.variable] = js
+			} else {
+				impVars[info.variable] = string(val)
+			}
+
+		}
 	}
 
 	// Interpolate variables
 	boshManifestBytes, _ := manifest.Marshal()
 	if err != nil {
-		return nil, varSecrets, errors.Wrapf(err, "failed to marshal manifest")
+		return nil, errors.Wrapf(err, "failed to marshal manifest")
 	}
 	tpl := boshtpl.NewTemplate(boshManifestBytes)
 	evalOpts := boshtpl.EvaluateOpts{ExpectAllKeys: false, ExpectAllVarsUsed: false}
 	yamlBytes, err := tpl.Evaluate(impVars, patch.Ops{}, evalOpts)
 	if err != nil {
-		return nil, varSecrets, errors.Wrapf(err, "could not evaluate variables")
+		return nil, errors.Wrapf(err, "could not evaluate variables")
 	}
 
 	manifest, err = bdm.LoadYAML(yamlBytes)
 	if err != nil {
-		return nil, varSecrets, errors.Wrapf(err, "failed to load manifest with evaluated variables")
+		return nil, errors.Wrapf(err, "failed to load manifest with evaluated variables")
 	}
 
 	// Apply addons
 	log := ctxlog.ExtractLogger(ctx)
 	err = manifest.ApplyAddons(logger.TraceFilter(log, logName))
 	if err != nil {
-		return nil, varSecrets, errors.Wrapf(err, "failed to apply addons")
+		return nil, errors.Wrapf(err, "failed to apply addons")
 	}
 
 	// Interpolate user-provided explicit variables
-	bytes, err = manifest.Marshal()
+	bytes, err := manifest.Marshal()
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to marshal bdpl '%s/%s' after applying addons", bdpl.Namespace, bdpl.Name)
+		return nil, errors.Wrapf(err, "failed to marshal bdpl '%s/%s' after applying addons", bdpl.Namespace, bdpl.Name)
 	}
 
 	var userVars []boshtpl.Variables
@@ -220,7 +291,7 @@ func (r *Resolver) applyVariables(ctx context.Context, bdpl *bdv1.BOSHDeployment
 		secret := &corev1.Secret{}
 		err := r.client.Get(ctx, types.NamespacedName{Name: varSecretName, Namespace: namespace}, secret)
 		if err != nil {
-			return nil, []string{}, errors.Wrapf(err, "failed to retrieve secret '%s/%s' via client.Get", namespace, varSecretName)
+			return nil, errors.Wrapf(err, "failed to retrieve secret '%s/%s' via client.Get", namespace, varSecretName)
 		}
 		staticVars := boshtpl.StaticVariables{}
 		for key, varBytes := range secret.Data {
@@ -236,21 +307,21 @@ func (r *Resolver) applyVariables(ctx context.Context, bdpl *bdv1.BOSHDeployment
 
 	bytes, err = InterpolateExplicitVariables(bytes, userVars, false)
 	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Failed to interpolate user provided explicit variables manifest '%s' in '%s'", bdpl.Name, namespace)
+		return nil, errors.Wrapf(err, "Failed to interpolate user provided explicit variables manifest '%s' in '%s'", bdpl.Name, namespace)
 	}
 
 	manifest, err = bdm.LoadYAML(bytes)
 	if err != nil {
-		return nil, []string{}, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying user explicit vars %#v", original)
+		return nil, errors.Wrapf(err, "Loading yaml failed in interpolation task after applying user explicit vars")
 	}
 
 	err = boshdns.Validate(*manifest)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	manifest.ApplyUpdateBlock()
 
-	return manifest, varSecrets, err
+	return manifest, err
 }
 
 // resourceData resolves different manifest reference types and returns the resource's data
