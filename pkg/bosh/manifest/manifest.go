@@ -425,6 +425,15 @@ func (m *Manifest) GetJobOS(instanceGroupName, jobName string) (string, error) {
 	return "", fmt.Errorf("release '%s' not found", job.Release)
 }
 
+// SlashedVariable returns true if the variable name contains a slash.
+// This could be a https://bosh.io/docs/cli-int/#absolute explicit variable,
+// but more likely it's the '/' syntax that was introduced to specify the key
+// in a secret, e.g. 'ca.private_key' for *implicit variables*.
+// Explicit variables use a dot to separate the secret name from the key.
+func SlashedVariable(name string) bool {
+	return strings.Contains(name, "/")
+}
+
 // ImplicitVariables returns a list of all implicit variables in a manifest
 func (m *Manifest) ImplicitVariables() ([]string, error) {
 	varMap := make(map[string]bool)
@@ -438,15 +447,18 @@ func (m *Manifest) ImplicitVariables() ([]string, error) {
 
 	// Collect all variables
 	varRegexp := regexp.MustCompile(`\(\((!?[-/\.\w\pL]+)\)\)`)
+	fieldRegexp := regexp.MustCompile(`[^\.]+`)
 	for _, match := range varRegexp.FindAllStringSubmatch(rawManifest, -1) {
 		main := match[1]
-		// absolute paths (https://bosh.io/docs/cli-int/#absolute) are always implicit variables
-		if !strings.Contains(main, "/") {
+
+		// variables with a slash are passed through
+		if !SlashedVariable(main) {
+			// This stores only the name part of a dotted explicit variable.
 			// Remove subfields from explicit vars, e.g. ca.private_key -> ca
-			fieldRegexp := regexp.MustCompile(`[^\.]+`)
 			main = fieldRegexp.FindString(match[1])
 		}
 
+		// store the name of the potentially implicit variable
 		varMap[main] = true
 	}
 
@@ -462,6 +474,7 @@ func (m *Manifest) ImplicitVariables() ([]string, error) {
 		}
 	}
 
+	// Slashed implicit vars are returned multiple times, e.g. ca/cert, ca/key
 	return names, nil
 }
 
