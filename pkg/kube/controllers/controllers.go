@@ -14,7 +14,9 @@ import (
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
 	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/boshdeployment"
+	quarksdrain "code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/drain"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarkslink"
+
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksrestart"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/versionedsecret"
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/waitservice"
@@ -42,6 +44,7 @@ var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager)
 	boshdeployment.AddWithOps,
 	boshdeployment.AddBDPLStatusReconcilers,
 	quarksrestart.AddRestart,
+	quarksdrain.AddDrain,
 }
 
 var addToSchemes = runtime.SchemeBuilder{
