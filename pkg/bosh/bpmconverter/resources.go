@@ -208,10 +208,11 @@ func (kc *BPMConverter) serviceToQuarksStatefulSet(
 							Annotations: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Annotations,
 						},
 						Spec: corev1.PodSpec{
-							Affinity:       instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity,
-							Volumes:        volumes,
-							InitContainers: initContainers,
-							Containers:     containers,
+							TerminationGracePeriodSeconds: instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.TerminationGracePeriodSeconds,
+							Affinity:                      instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity,
+							Volumes:                       volumes,
+							InitContainers:                initContainers,
+							Containers:                    containers,
 							SecurityContext: &corev1.PodSecurityContext{
 								FSGroup: &admGroupID,
 							},
