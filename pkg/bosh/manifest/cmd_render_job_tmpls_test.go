@@ -158,10 +158,10 @@ var _ = Describe("Trender", func() {
 			deploymentManifest = assetPath + "/ig-resolved.redis.yml"
 			instanceGroupName = "redis-slave"
 
-			// By using index 1, we can make sure that an evaluation of spec.bootstrap
+			// By using non-zero index , we can make sure that an evaluation of spec.bootstrap
 			// will return false. See https://bosh.io/docs/jobs/#properties-spec for
 			// more information.
-			index = 1
+			index = 10000
 			podIP = net.ParseIP("172.17.0.13")
 			replicas = 1
 		})
