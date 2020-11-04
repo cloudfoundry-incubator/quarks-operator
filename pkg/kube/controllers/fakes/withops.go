@@ -11,7 +11,7 @@ import (
 )
 
 type FakeWithOps struct {
-	ManifestStub        func(context.Context, *v1alpha1.BOSHDeployment, string) (*manifest.Manifest, []string, error)
+	ManifestStub        func(context.Context, *v1alpha1.BOSHDeployment, string) (*manifest.Manifest, error)
 	manifestMutex       sync.RWMutex
 	manifestArgsForCall []struct {
 		arg1 context.Context
@@ -20,19 +20,17 @@ type FakeWithOps struct {
 	}
 	manifestReturns struct {
 		result1 *manifest.Manifest
-		result2 []string
-		result3 error
+		result2 error
 	}
 	manifestReturnsOnCall map[int]struct {
 		result1 *manifest.Manifest
-		result2 []string
-		result3 error
+		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeWithOps) Manifest(arg1 context.Context, arg2 *v1alpha1.BOSHDeployment, arg3 string) (*manifest.Manifest, []string, error) {
+func (fake *FakeWithOps) Manifest(arg1 context.Context, arg2 *v1alpha1.BOSHDeployment, arg3 string) (*manifest.Manifest, error) {
 	fake.manifestMutex.Lock()
 	ret, specificReturn := fake.manifestReturnsOnCall[len(fake.manifestArgsForCall)]
 	fake.manifestArgsForCall = append(fake.manifestArgsForCall, struct {
@@ -46,10 +44,10 @@ func (fake *FakeWithOps) Manifest(arg1 context.Context, arg2 *v1alpha1.BOSHDeplo
 		return fake.ManifestStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2, ret.result3
+		return ret.result1, ret.result2
 	}
 	fakeReturns := fake.manifestReturns
-	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *FakeWithOps) ManifestCallCount() int {
@@ -58,7 +56,7 @@ func (fake *FakeWithOps) ManifestCallCount() int {
 	return len(fake.manifestArgsForCall)
 }
 
-func (fake *FakeWithOps) ManifestCalls(stub func(context.Context, *v1alpha1.BOSHDeployment, string) (*manifest.Manifest, []string, error)) {
+func (fake *FakeWithOps) ManifestCalls(stub func(context.Context, *v1alpha1.BOSHDeployment, string) (*manifest.Manifest, error)) {
 	fake.manifestMutex.Lock()
 	defer fake.manifestMutex.Unlock()
 	fake.ManifestStub = stub
@@ -71,33 +69,30 @@ func (fake *FakeWithOps) ManifestArgsForCall(i int) (context.Context, *v1alpha1.
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *FakeWithOps) ManifestReturns(result1 *manifest.Manifest, result2 []string, result3 error) {
+func (fake *FakeWithOps) ManifestReturns(result1 *manifest.Manifest, result2 error) {
 	fake.manifestMutex.Lock()
 	defer fake.manifestMutex.Unlock()
 	fake.ManifestStub = nil
 	fake.manifestReturns = struct {
 		result1 *manifest.Manifest
-		result2 []string
-		result3 error
-	}{result1, result2, result3}
+		result2 error
+	}{result1, result2}
 }
 
-func (fake *FakeWithOps) ManifestReturnsOnCall(i int, result1 *manifest.Manifest, result2 []string, result3 error) {
+func (fake *FakeWithOps) ManifestReturnsOnCall(i int, result1 *manifest.Manifest, result2 error) {
 	fake.manifestMutex.Lock()
 	defer fake.manifestMutex.Unlock()
 	fake.ManifestStub = nil
 	if fake.manifestReturnsOnCall == nil {
 		fake.manifestReturnsOnCall = make(map[int]struct {
 			result1 *manifest.Manifest
-			result2 []string
-			result3 error
+			result2 error
 		})
 	}
 	fake.manifestReturnsOnCall[i] = struct {
 		result1 *manifest.Manifest
-		result2 []string
-		result3 error
-	}{result1, result2, result3}
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeWithOps) Invocations() map[string][][]interface{} {

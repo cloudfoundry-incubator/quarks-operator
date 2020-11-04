@@ -44,7 +44,7 @@ type VariablesConverter interface {
 
 // WithOps interpolates BOSH manifests and operations files to create the WithOps manifest
 type WithOps interface {
-	Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, []string, error)
+	Manifest(ctx context.Context, bdpl *bdv1.BOSHDeployment, namespace string) (*bdm.Manifest, error)
 }
 
 // Check that ReconcileBOSHDeployment implements the reconcile.Reconciler interface
@@ -210,7 +210,7 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 // resolveManifest resolves manifest with ops manifest
 func (r *ReconcileBOSHDeployment) resolveManifest(ctx context.Context, bdpl *bdv1.BOSHDeployment) (*bdm.Manifest, error) {
 	log.Debug(ctx, "Resolving manifest")
-	manifest, _, err := r.withops.Manifest(ctx, bdpl, bdpl.GetNamespace())
+	manifest, err := r.withops.Manifest(ctx, bdpl, bdpl.GetNamespace())
 	if err != nil {
 		return nil, log.WithEvent(bdpl, "WithOpsManifestError").Errorf(ctx, "Error resolving the manifest '%s': %s", bdpl.GetNamespacedName(), err)
 	}

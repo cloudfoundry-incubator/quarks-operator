@@ -48,7 +48,7 @@ func getSecretRefFromBdpl(ctx context.Context, client crc.Client, object bdv1.BO
 		client,
 		func() withops.Interpolator { return withops.NewInterpolator() },
 	)
-	_, implicitVars, err := withops.Manifest(ctx, &object, object.Namespace)
+	implicitVars, err := withops.ImplicitVariables(ctx, &object, object.Namespace)
 	if err != nil {
 		return map[string]bool{}, errors.Wrap(err, fmt.Sprintf("Failed to load the with-ops manifest for BOSHDeployment '%s/%s'", object.Namespace, object.Name))
 	}

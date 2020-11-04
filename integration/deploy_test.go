@@ -260,12 +260,14 @@ var _ = Describe("Deploy", func() {
 				Expect(err).NotTo(HaveOccurred())
 				tearDowns = append(tearDowns, tearDown)
 
-				bdpl, err := env.GetBOSHDeployment(env.Namespace, deploymentName)
-				Expect(err).NotTo(HaveOccurred())
-				bdpl.Spec.Ops = []bdv1.ResourceReference{{Name: "readiness-ops", Type: bdv1.ConfigMapReference}}
+				Eventually(func() error {
+					bdpl, err := env.GetBOSHDeployment(env.Namespace, deploymentName)
+					Expect(err).NotTo(HaveOccurred())
+					bdpl.Spec.Ops = []bdv1.ResourceReference{{Name: "readiness-ops", Type: bdv1.ConfigMapReference}}
 
-				_, _, err = env.UpdateBOSHDeployment(env.Namespace, *bdpl)
-				Expect(err).NotTo(HaveOccurred())
+					_, _, err = env.UpdateBOSHDeployment(env.Namespace, *bdpl)
+					return err
+				}, env.PollTimeout, env.PollInterval).Should(BeNil(), "updating the BOSH deployment")
 
 				By("checking for statefulset")
 				Eventually(func() []string {
