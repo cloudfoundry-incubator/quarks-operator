@@ -14,12 +14,10 @@ cloud.google.com/go/pubsub v1.0.1/go.mod h1:R0Gpsv3s54REJCy4fxDixWD93lHJMoZTyQ2k
 cloud.google.com/go/storage v1.0.0/go.mod h1:IhtSnM/ZTZV8YYJWCY8RULGVqBDmpoyjwiyrjsg+URw=
 code.cloudfoundry.org/quarks-job v1.0.211 h1:GjyXKIOlJCgodvPJ25eyvNGNh4llgYEKQT2o3aRdxPc=
 code.cloudfoundry.org/quarks-job v1.0.211/go.mod h1:frjZekZLEqR6yAhmL9IpUYdaoaR4c07oQeFhymC45wU=
-code.cloudfoundry.org/quarks-secret v1.0.750 h1:WGsJqnW2b6sGVTexdjNOglmDMbU/Q0O/RSLvvD2mU2s=
-code.cloudfoundry.org/quarks-secret v1.0.750/go.mod h1:acFRL3+ceVyN9mr9mNPQzZg6gAjJt1gwHlSREprGXFY=
+code.cloudfoundry.org/quarks-secret v1.0.752 h1:DmqOuhVD+w3vDiWggEjmFcWRdCQGdDv4RLjGcEyID7o=
+code.cloudfoundry.org/quarks-secret v1.0.752/go.mod h1:5XWVFJ4wVZCbElNBl4Sjb38r038WsxrrSt0DMIqhSQU=
 code.cloudfoundry.org/quarks-statefulset v0.0.1304-g9f060bca h1:B2M8EyaeIAA7dLaAGRVSnc0GGL0t07KoPWNhW44ymMY=
 code.cloudfoundry.org/quarks-statefulset v0.0.1304-g9f060bca/go.mod h1:X7lKMxIBLtTs/RYgV42Gdn1uBWvkCNrHP4OP9e5owPA=
-code.cloudfoundry.org/quarks-utils v0.0.2-0.20201027114038-8aab73d224e4 h1:0WGZtcvmHLdWMlzBN9NwP6RrdMmlHwopc8RrkWR8wW4=
-code.cloudfoundry.org/quarks-utils v0.0.2-0.20201027114038-8aab73d224e4/go.mod h1:K8KH67rdNk9+VPOA5QRgrujTFhbmtqxLOuPQ6APL6ks=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/Azure/azure-sdk-for-go v16.2.1+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
