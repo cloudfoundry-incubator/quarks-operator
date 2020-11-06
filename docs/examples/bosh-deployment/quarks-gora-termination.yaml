@@ -1,14 +1,3 @@
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ops-scale
-data:
-  ops: |
-    - type: replace
-      path: /instance_groups/name=quarks-gora?/instances
-      value: 2
----
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -19,7 +8,7 @@ data:
     name: quarks-gora-deployment
     releases:
     - name: quarks-gora
-      version: "0.0.15"
+      version: "0.0.16"
       url: ghcr.io/cloudfoundry-incubator
       stemcell:
         os: SLE_15_SP1
@@ -31,8 +20,10 @@ data:
         bosh:
           agent:
             settings: 
-              terminationGracePeriodSeconds: 900
+              terminationGracePeriodSeconds: 70
       jobs:
+      - name: loop-drain-job
+        release: quarks-gora
       - name: quarks-gora
         release: quarks-gora
         properties:
@@ -52,7 +43,4 @@ metadata:
 spec:
   manifest:
     name: quarks-gora-manifest
-    type: configmap
-  ops:
-  - name: ops-scale
     type: configmap
