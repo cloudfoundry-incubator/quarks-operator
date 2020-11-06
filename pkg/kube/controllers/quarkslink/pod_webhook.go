@@ -16,7 +16,7 @@ import (
 
 // NewBOSHLinkPodMutator returns a new webhook to mount BOSH link secrets on entangled pods
 func NewBOSHLinkPodMutator(log *zap.SugaredLogger, config *config.Config) *wh.OperatorWebhook {
-	log = logger.Unskip(log, "boshlink-mutator")
+	log = logger.Unskip(log, "bosh-link-mutator")
 	log.Info("Setting up mutator for mounting BOSH links in entangled pods")
 
 	mutator := NewPodMutator(log, config)

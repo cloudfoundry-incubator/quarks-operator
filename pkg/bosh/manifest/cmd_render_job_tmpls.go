@@ -94,9 +94,23 @@ func RenderJobTemplates(
 			// Find job instance that's being rendered
 			var currentJobInstance *JobInstance
 			for _, instance := range job.Properties.Quarks.Instances {
-				if instance.Index == specIndex {
-					currentJobInstance = &instance
-					break
+				if len(currentInstanceGroup.AZs) > 0 {
+					for azIndex, az := range currentInstanceGroup.AZs {
+						if instance.AZ == az {
+							if instance.Instance+azIndex*10000 == specIndex {
+								currentJobInstance = &instance
+								break
+							}
+						}
+					}
+					if currentJobInstance != nil {
+						break
+					}
+				} else {
+					if instance.Index == specIndex {
+						currentJobInstance = &instance
+						break
+					}
 				}
 			}
 			if currentJobInstance == nil {
