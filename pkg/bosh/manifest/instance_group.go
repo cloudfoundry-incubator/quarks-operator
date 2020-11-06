@@ -267,6 +267,7 @@ type AgentSettings struct {
 	PreRenderOps                  *PreRenderOps                 `json:"preRenderOps,omitempty"`
 	InjectReplicasEnv             *bool                         `json:"injectReplicasEnv,omitempty"`
 	TerminationGracePeriodSeconds *int64                        `json:"terminationGracePeriodSeconds,omitempty" yaml:"terminationGracePeriodSeconds,omitempty"`
+	DNS                           string                        `json:"dns,omitempty"`
 }
 
 // Set overrides labels and annotations with operator-owned metadata.

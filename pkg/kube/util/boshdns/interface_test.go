@@ -131,4 +131,14 @@ var _ = Describe("Interface", func() {
 			Expect(config).NotTo(BeNil())
 		})
 	})
+
+	Context("CustomDNSSetting", func() {
+		It("returns custom dns", func() {
+			policy, config := boshdns.CustomDNSSetting("1.2.3.5", "default")
+			Expect(policy).To(Equal(corev1.DNSNone))
+			Expect(config).NotTo(BeNil())
+			Expect(config.Nameservers).To(Equal([]string{"1.2.3.5"}))
+			Expect(config.Searches).To(ContainElements("default.svc.", "svc.", ""))
+		})
+	})
 })
