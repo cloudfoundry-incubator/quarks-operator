@@ -34,11 +34,8 @@ var _ admission.Handler = &PodMutator{}
 
 // NewPodMutator returns a new mutator to mount secrets on entangled pods
 func NewPodMutator(log *zap.SugaredLogger, config *config.Config) admission.Handler {
-	mutatorLog := log.Named("quarks-link-pod-mutator")
-	mutatorLog.Info("Creating a Pod mutator for QuarksLink")
-
 	return &PodMutator{
-		log:    mutatorLog,
+		log:    log,
 		config: config,
 	}
 }
@@ -54,7 +51,7 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 
 	updatedPod := pod.DeepCopy()
 	if validEntanglement(pod.GetAnnotations()) {
-		m.log.Debugf("Mutating pod '%s/%s', adding restart-on-update annotation and entanglement secrets", pod.Namespace, pod.Name)
+		m.log.Debugf("Mutating pod '%s/%s', adding restart-on-update annotation and entanglement secrets", req.Namespace, pod.Name)
 
 		// Apply quarksrestart annotation so the link gets restarted when mounted secrets are changed
 		annotations := updatedPod.Annotations
