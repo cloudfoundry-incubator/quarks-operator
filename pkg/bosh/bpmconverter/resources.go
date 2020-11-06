@@ -228,9 +228,16 @@ func (kc *BPMConverter) serviceToQuarksStatefulSet(
 
 	spec := &extSts.Spec.Template.Spec.Template.Spec
 
-	spec.DNSPolicy, spec.DNSConfig, err = boshdns.DNSSetting(manifest, serviceIP, namespace)
-	if err != nil {
-		return qstsv1a1.QuarksStatefulSet{}, err
+	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.DNS != "" {
+		spec.DNSPolicy, spec.DNSConfig = boshdns.CustomDNSSetting(
+			instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.DNS,
+			namespace,
+		)
+	} else {
+		spec.DNSPolicy, spec.DNSConfig, err = boshdns.DNSSetting(manifest, serviceIP, namespace)
+		if err != nil {
+			return qstsv1a1.QuarksStatefulSet{}, err
+		}
 	}
 
 	if len(instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Tolerations) > 0 {
@@ -392,25 +399,34 @@ func (kc *BPMConverter) errandToQuarksJob(
 		},
 	}
 
-	qJob.Spec.Template.Spec.Template.Spec.DNSPolicy, qJob.Spec.Template.Spec.Template.Spec.DNSConfig, err = boshdns.DNSSetting(manifest, serviceIP, namespace)
-	if err != nil {
-		return qjv1a1.QuarksJob{}, err
+	spec := &qJob.Spec.Template.Spec.Template.Spec
+
+	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.DNS != "" {
+		spec.DNSPolicy, spec.DNSConfig = boshdns.CustomDNSSetting(
+			instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.DNS,
+			namespace,
+		)
+	} else {
+		spec.DNSPolicy, spec.DNSConfig, err = boshdns.DNSSetting(manifest, serviceIP, namespace)
+		if err != nil {
+			return qjv1a1.QuarksJob{}, err
+		}
 	}
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity != nil {
-		qJob.Spec.Template.Spec.Template.Spec.Affinity = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity
+		spec.Affinity = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Affinity
 	}
 
 	if len(instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Tolerations) > 0 {
-		qJob.Spec.Template.Spec.Template.Spec.Tolerations = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Tolerations
+		spec.Tolerations = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.Tolerations
 	}
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName != "" {
-		qJob.Spec.Template.Spec.Template.Spec.ServiceAccountName = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName
+		spec.ServiceAccountName = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.ServiceAccountName
 	}
 
 	if instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.AutomountServiceAccountToken != nil {
-		qJob.Spec.Template.Spec.Template.Spec.AutomountServiceAccountToken = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.AutomountServiceAccountToken
+		spec.AutomountServiceAccountToken = instanceGroup.Env.AgentEnvBoshConfig.Agent.Settings.AutomountServiceAccountToken
 	}
 
 	return qJob, nil
