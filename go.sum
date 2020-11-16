@@ -340,6 +340,7 @@ github.com/golangplus/fmt v0.0.0-20150411045040-2a5d6d7d2995/go.mod h1:lJgMEyOkY
 github.com/golangplus/testing v0.0.0-20180327235837-af21d9c3145e/go.mod h1:0AA//k/eakGydO4jKRoRL2j92ZKSzTgj9tclaCrvXHk=
 github.com/gonvenience/bunt v1.1.3 h1:jGqAxYR+4JDicbA8qivc3zMK1aeo1D7P3F3wYM1M32I=
 github.com/gonvenience/bunt v1.1.3/go.mod h1:hZ898ZprNWgaVlq4s1ivsJu3AY+3wrlJadF5Gp7Yq2c=
+github.com/gonvenience/bunt v1.1.4/go.mod h1:hZ898ZprNWgaVlq4s1ivsJu3AY+3wrlJadF5Gp7Yq2c=
 github.com/gonvenience/term v1.0.0 h1:joCB/j0Ngmdakd3muuLgAGPMf7DNKdoe708c1I6RiBs=
 github.com/gonvenience/term v1.0.0/go.mod h1:wohD4Iqso9Eol7qc2VnNhSFFhZxok5PvO7pZhdrAn4E=
 github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ5JPQ=
