@@ -357,9 +357,10 @@ func (c *Catalog) Sleep1hPodSpec() corev1.PodSpec {
 		TerminationGracePeriodSeconds: pointers.Int64(1),
 		Containers: []corev1.Container{
 			{
-				Name:    "busybox",
-				Image:   "busybox",
-				Command: []string{"sleep", "3600"},
+				Name:            "busybox",
+				Image:           "busybox",
+				ImagePullPolicy: corev1.PullIfNotPresent,
+				Command:         []string{"sleep", "3600"},
 			},
 		},
 	}
@@ -381,8 +382,9 @@ func (c *Catalog) PodWithTailLogsContainer(podName string, parentPodCmd string, 
 			RestartPolicy: corev1.RestartPolicyOnFailure,
 			Containers: []corev1.Container{
 				{
-					Name:  parentCName,
-					Image: dockerImg,
+					Name:            parentCName,
+					Image:           dockerImg,
+					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      bpmconverter.VolumeSysDirName,
@@ -398,8 +400,9 @@ func (c *Catalog) PodWithTailLogsContainer(podName string, parentPodCmd string, 
 					},
 				},
 				{
-					Name:  sidecardCName,
-					Image: dockerImg,
+					Name:            sidecardCName,
+					Image:           dockerImg,
+					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      bpmconverter.VolumeSysDirName,
@@ -506,9 +509,10 @@ func (c *Catalog) WaitingPod(name string, serviceList ...string) corev1.Pod {
 // EchoContainer returns a container which just "echo" for use in tests
 func (c *Catalog) EchoContainer(name string) corev1.Container {
 	return corev1.Container{
-		Name:    name,
-		Image:   "busybox",
-		Command: []string{"echo"},
+		Name:            name,
+		Image:           "busybox",
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Command:         []string{"echo"},
 	}
 }
 
