@@ -33,8 +33,8 @@ var _ = Describe("ContainerFactory", func() {
 		releaseImageProvider.GetReleaseImageReturns("", nil)
 
 		jobs = []bdm.Job{
-			bdm.Job{Name: "fake-job"},
-			bdm.Job{Name: "other-job"},
+			{Name: "fake-job"},
+			{Name: "other-job"},
 		}
 
 		defaultVolumeMounts = []corev1.VolumeMount{
@@ -173,7 +173,7 @@ var _ = Describe("ContainerFactory", func() {
 			bpmConfigs = bpm.Configs{
 				"fake-job": bpm.Config{
 					Processes: []bpm.Process{
-						bpm.Process{
+						{
 							Name:           "fake-process",
 							EphemeralDisk:  pointers.Bool(true),
 							PersistentDisk: pointers.Bool(true),
@@ -204,7 +204,7 @@ var _ = Describe("ContainerFactory", func() {
 				},
 				"other-job": bpm.Config{
 					Processes: []bpm.Process{
-						bpm.Process{
+						{
 							Name:           "fake-process",
 							Capabilities:   []string{"CHOWN", "AUDIT_CONTROL"},
 							Env:            map[string]string{"a": "1", "b": "2"},
@@ -309,7 +309,7 @@ var _ = Describe("ContainerFactory", func() {
 			bpmConfigsWithError := bpm.Configs{
 				"fake-job": bpm.Config{
 					Processes: []bpm.Process{
-						bpm.Process{
+						{
 							Name: "foobar-process",
 							AdditionalVolumes: []bpm.Volume{
 								{
@@ -365,7 +365,7 @@ var _ = Describe("ContainerFactory", func() {
 		It("adds all environment variables to containers", func() {
 			containers, err := act()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(containers[1].Env).To(HaveLen(2))
+			Expect(containers[1].Env).To(HaveLen(5))
 		})
 
 		It("handles an error when jobs is empty", func() {
@@ -526,7 +526,7 @@ var _ = Describe("ContainerFactory", func() {
 			)
 			BeforeEach(func() {
 				igJobs = []bdm.Job{
-					bdm.Job{
+					{
 						Name: "foo",
 					},
 				}
@@ -534,7 +534,7 @@ var _ = Describe("ContainerFactory", func() {
 				bpmJobConfigs = bpm.Configs{
 					"foo": bpm.Config{
 						Processes: []bpm.Process{
-							bpm.Process{},
+							{},
 						},
 					},
 				}
@@ -689,7 +689,8 @@ var _ = Describe("ContainerFactory", func() {
 				bpmConfigs = bpm.Configs{
 					"fake-job": bpm.Config{
 						Processes: []bpm.Process{
-							bpm.Process{Name: "fake-process",
+							{
+								Name:           "fake-process",
 								Hooks:          bpm.Hooks{PreStart: "fake-cmd"},
 								EphemeralDisk:  pointers.Bool(true),
 								PersistentDisk: pointers.Bool(true),
