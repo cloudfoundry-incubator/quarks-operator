@@ -3,7 +3,7 @@ module code.cloudfoundry.org/quarks-operator
 require (
 	code.cloudfoundry.org/quarks-job v0.0.214-g7d90bf5
 	code.cloudfoundry.org/quarks-secret v1.0.752
-	code.cloudfoundry.org/quarks-statefulset v0.0.1307-g32e35c27
+	code.cloudfoundry.org/quarks-statefulset v0.0.1308-g6a8b2220
 	code.cloudfoundry.org/quarks-utils v0.0.2-0.20201104164019-cb2fb89e3552
 	github.com/SUSE/go-patch v0.3.0
 	github.com/bmatcuk/doublestar v1.1.1 // indirect
