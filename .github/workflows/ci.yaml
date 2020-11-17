@@ -113,7 +113,7 @@ jobs:
         git config user.email "no-reply@quarks.cloudfoundry.org"
         git config user.name "$GITHUB_ACTOR"
     - name: Create k8s Kind Cluster
-      uses: engineerd/setup-kind@v0.4.0
+      uses: engineerd/setup-kind@v0.5.0
       with:
        config: .github/kind-config.yaml
        version: v0.7.0
@@ -166,7 +166,7 @@ jobs:
         git config user.email "no-reply@quarks.cloudfoundry.org"
         git config user.name "$GITHUB_ACTOR"
     - name: Create k8s Kind Cluster
-      uses: engineerd/setup-kind@v0.3.0
+      uses: engineerd/setup-kind@v0.5.0
       with:
        config: .github/kind-config.yaml
        version: v0.7.0
