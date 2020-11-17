@@ -46,6 +46,20 @@ func Validate(m bdm.Manifest) error {
 	return err
 }
 
+// CustomDNSSetting sets the pod dns policy.
+func CustomDNSSetting(serviceIP, namespace string) (corev1.DNSPolicy, *corev1.PodDNSConfig) {
+	ndots := "5"
+	return corev1.DNSNone, &corev1.PodDNSConfig{
+		Nameservers: []string{serviceIP},
+		Searches: []string{
+			fmt.Sprintf("%s.svc.%s", namespace, clusterDomain),
+			fmt.Sprintf("svc.%s", clusterDomain),
+			clusterDomain,
+		},
+		Options: []corev1.PodDNSConfigOption{{Name: "ndots", Value: &ndots}},
+	}
+}
+
 // DNSSetting sets the pod dns policy.
 func DNSSetting(m bdm.Manifest, serviceIP, namespace string) (corev1.DNSPolicy, *corev1.PodDNSConfig, error) {
 	index := HasBoshDNSAddOn(m)
@@ -53,16 +67,8 @@ func DNSSetting(m bdm.Manifest, serviceIP, namespace string) (corev1.DNSPolicy, 
 		if serviceIP == "" {
 			return corev1.DNSNone, nil, errors.New("BoshDomainNameService: DNSSetting called before Apply")
 		}
-		ndots := "5"
-		return corev1.DNSNone, &corev1.PodDNSConfig{
-			Nameservers: []string{serviceIP},
-			Searches: []string{
-				fmt.Sprintf("%s.svc.%s", namespace, clusterDomain),
-				fmt.Sprintf("svc.%s", clusterDomain),
-				clusterDomain,
-			},
-			Options: []corev1.PodDNSConfigOption{{Name: "ndots", Value: &ndots}},
-		}, nil
+		p, c := CustomDNSSetting(serviceIP, namespace)
+		return p, c, nil
 	}
 
 	return corev1.DNSClusterFirst, nil, nil

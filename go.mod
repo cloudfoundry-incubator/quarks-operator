@@ -15,7 +15,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/go-logr/logr v0.1.0
 	github.com/go-test/deep v1.0.7
-	github.com/gonvenience/bunt v1.1.3
+	github.com/gonvenience/bunt v1.1.4
 	github.com/hpcloud/tail v1.0.0
 	github.com/imdario/mergo v0.3.11
 	github.com/mattn/go-isatty v0.0.11 // indirect

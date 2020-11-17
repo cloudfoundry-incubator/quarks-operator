@@ -186,7 +186,7 @@ var _ = Describe("BPM Converter", func() {
 				})
 
 				It("converts the instance group to an QuarksStatefulSet", func() {
-
+					t := int64(1000)
 					tolerations := []corev1.Toleration{
 						{
 							Key:      "key",
@@ -196,6 +196,7 @@ var _ = Describe("BPM Converter", func() {
 						},
 					}
 					m.InstanceGroups[1].Env.AgentEnvBoshConfig.Agent.Settings.Tolerations = tolerations
+					m.InstanceGroups[1].Env.AgentEnvBoshConfig.Agent.Settings.TerminationGracePeriodSeconds = &t
 
 					activePassiveProbes := map[string]corev1.Probe{
 						"rep-server": corev1.Probe{
@@ -233,6 +234,7 @@ var _ = Describe("BPM Converter", func() {
 						qstsv1a1.LabelPodOrdinal:    "0",
 						qstsv1a1.LabelActivePod:     "active",
 					}))
+					Expect(stS.Spec.TerminationGracePeriodSeconds).To(Equal(&t))
 				})
 
 				It("converts the instance group to an QuarksStatefulSet", func() {
