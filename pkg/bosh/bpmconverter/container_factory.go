@@ -22,6 +22,23 @@ var (
 	rootUserID = int64(0)
 	vcapUserID = int64(1000)
 	entrypoint = []string{"/usr/bin/dumb-init", "--"}
+
+	podOrdinalEnv = corev1.EnvVar{
+		Name: EnvPodOrdinal,
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "metadata.labels['quarks.cloudfoundry.org/startup-ordinal']",
+			},
+		},
+	}
+	replicasEnv = corev1.EnvVar{
+		Name:  EnvReplicas,
+		Value: "1",
+	}
+	azIndexEnv = corev1.EnvVar{
+		Name:  EnvAzIndex,
+		Value: "1",
+	}
 )
 
 const (
@@ -136,7 +153,7 @@ func (c *ContainerFactoryImpl) JobsToInitContainers(
 	initContainers := flattenContainers(
 		containerRunCopier(),
 		copyingSpecsInitContainers,
-		templateRenderingContainer(c.instanceGroupName),
+		templateRenderingContainer(c.instanceGroupName, c.version == "1"),
 		createDirContainer(jobs, c.instanceGroupName),
 		createWaitContainer(requiredService),
 		boshPreStartInitContainers,
@@ -334,8 +351,8 @@ func JobSpecCopierContainer(releaseName string, jobImage string, volumeMountName
 	}
 }
 
-func templateRenderingContainer(instanceGroupName string) corev1.Container {
-	return corev1.Container{
+func templateRenderingContainer(instanceGroupName string, initialRollout bool) corev1.Container {
+	container := corev1.Container{
 		Name:            "template-render",
 		Image:           operatorimage.GetOperatorDockerImage(),
 		ImagePullPolicy: operatorimage.GetOperatorImagePullPolicy(),
@@ -369,6 +386,9 @@ func templateRenderingContainer(instanceGroupName string) corev1.Container {
 					},
 				},
 			},
+			podOrdinalEnv,
+			replicasEnv,
+			azIndexEnv,
 		},
 		Command: entrypoint,
 		Args: []string{
@@ -377,6 +397,16 @@ func templateRenderingContainer(instanceGroupName string) corev1.Container {
 			"time quarks-operator util template-render",
 		},
 	}
+
+	if !initialRollout {
+		container.Env = append(container.Env,
+			corev1.EnvVar{
+				Name:  EnvInitialRollout,
+				Value: "false",
+			})
+	}
+
+	return container
 }
 
 func createDirContainer(jobs []bdm.Job, instanceGroupName string) corev1.Container {
@@ -441,6 +471,11 @@ func boshPreStartInitContainer(
 			"-xc",
 			script,
 		},
+		Env: []corev1.EnvVar{
+			podOrdinalEnv,
+			replicasEnv,
+			azIndexEnv,
+		},
 		SecurityContext: securityContext,
 	}
 }
@@ -481,6 +516,11 @@ func bpmPreStartInitContainer(
 			"/bin/sh",
 			"-xc",
 			script,
+		},
+		Env: []corev1.EnvVar{
+			podOrdinalEnv,
+			replicasEnv,
+			azIndexEnv,
 		},
 		SecurityContext: securityContext,
 	}
@@ -545,13 +585,20 @@ func bpmProcessContainer(
 		limits[corev1.ResourceCPU] = quantity
 	}
 
+	newEnvs := process.NewEnvs(quarksEnvs)
+	newEnvs = defaultEnv(newEnvs, map[string]corev1.EnvVar{
+		EnvPodOrdinal: podOrdinalEnv,
+		EnvReplicas:   replicasEnv,
+		EnvAzIndex:    azIndexEnv,
+	})
+
 	container := corev1.Container{
 		Name:            names.Sanitize(name),
 		Image:           jobImage,
 		VolumeMounts:    deduplicateVolumeMounts(volumeMounts),
 		Command:         command,
 		Args:            args,
-		Env:             process.NewEnvs(quarksEnvs),
+		Env:             newEnvs,
 		WorkingDir:      workdir,
 		SecurityContext: securityContext,
 		Lifecycle:       &corev1.Lifecycle{},
@@ -613,6 +660,18 @@ echo "Done"`,
 		}
 	}
 	return container, nil
+}
+
+// defaultEnv adds the default value if no value is set
+func defaultEnv(envs []corev1.EnvVar, defaults map[string]corev1.EnvVar) []corev1.EnvVar {
+	for _, env := range envs {
+		delete(defaults, env.Name)
+	}
+
+	for _, env := range defaults {
+		envs = append(envs, env)
+	}
+	return envs
 }
 
 // capability converts string slice into Capability slice of kubernetes.
