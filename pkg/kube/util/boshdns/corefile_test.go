@@ -101,7 +101,7 @@ var _ = Describe("Corefile", func() {
 	template IN A bits.service.cf.internal {
 		match ^bits\.service\.cf\.internal\.$
 		answer "{{ .Name }} 60 IN CNAME bits.default.svc."
-		upstream`))
+		fallthrough`))
 			})
 		})
 

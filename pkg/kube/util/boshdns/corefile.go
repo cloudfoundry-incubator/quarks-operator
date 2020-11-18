@@ -209,15 +209,15 @@ const cnameTemplate = `
 	template IN A %[4]s {
 		match ^%[2]s%[1]s\.$
 		answer "{{ .Name }} 60 IN CNAME %[3]s"
-		upstream
+		fallthrough
 	}
 	template IN AAAA %[4]s {
 		match ^%[2]s%[1]s\.$
 		answer "{{ .Name }} 60 IN CNAME %[3]s"
-		upstream
+		fallthrough
 	}
 	template IN CNAME %[4]s {
 		match ^%[2]s%[1]s\.$
 		answer "{{ .Name }} 60 IN CNAME %[3]s"
-		upstream
+		fallthrough
 	}`

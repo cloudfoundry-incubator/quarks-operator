@@ -229,17 +229,17 @@ var _ = Describe("BOSHDomainNameService", func() {
 	template IN A bits.service.cf.internal {
 		match ^bits\.service\.cf\.internal\.$
 		answer "{{ .Name }} 60 IN CNAME bits.default.svc."
-		upstream`))
+		fallthrough`))
 				Expect(corefile).To(ContainSubstring(`
 	template IN AAAA bits.service.cf.internal {
 		match ^bits\.service\.cf\.internal\.$
 		answer "{{ .Name }} 60 IN CNAME bits.default.svc."
-		upstream`))
+		fallthrough`))
 				Expect(corefile).To(ContainSubstring(`
 	template IN CNAME bbs1.service.cf.internal {
 		match ^bbs1\.service\.cf\.internal\.$
 		answer "{{ .Name }} 60 IN CNAME diego-api.default.svc."
-		upstream
+		fallthrough
 	}`))
 
 				By("checking for entries which are missing an instance group, but do not use _ query")
@@ -247,14 +247,14 @@ var _ = Describe("BOSHDomainNameService", func() {
 	template IN A uaa.service.cf.internal {
 		match ^uaa\.service\.cf\.internal\.$
 		answer "{{ .Name }} 60 IN CNAME uaa.default.svc."
-		upstream`))
+		fallthrough`))
 
 				By("checking for entries for diego-cells in mutli-zone")
 				Expect(corefile).To(ContainSubstring(`
 	template IN A diego-cell-z0-0.cell.service.cf.internal {
 		match ^diego-cell-z0-0\.cell\.service\.cf\.internal\.$
 		answer "{{ .Name }} 60 IN CNAME diego-cell-z0-0.default.svc."
-		upstream`))
+		fallthrough`))
 			})
 		})
 
@@ -309,7 +309,7 @@ var _ = Describe("BOSHDomainNameService", func() {
 	template IN CNAME bbs1.service.cf.internal {
 		match ^bbs1\.service\.cf\.internal\.$
 		answer "{{ .Name }} 60 IN CNAME diego-api.default.svc."
-		upstream
+		fallthrough
 	}`))
 			})
 		})
