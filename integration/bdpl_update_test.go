@@ -288,7 +288,7 @@ var _ = Describe("BDPL updates", func() {
 			})
 
 			It("should update the dns pods", func() {
-				deployment, err := env.CollectDeployment(env.Namespace, "bosh-dns", 1)
+				deployment, err := env.CollectDeployment(env.Namespace, boshdns.AppName, 1)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(deployment.Spec.Template.GetAnnotations()).To(HaveKey(quarksrestart.RestartKey))
 			})

@@ -106,7 +106,7 @@ var _ = Describe("BOSH DNS coredns", func() {
 		})
 
 		It("config is valid and deployment starts", func() {
-			err := env.WaitForDeployment(env.Namespace, "bosh-dns", 0)
+			err := env.WaitForDeployment(env.Namespace, boshdns.AppName, 0)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})

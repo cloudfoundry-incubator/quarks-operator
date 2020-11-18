@@ -128,10 +128,10 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 	dnsService := &corev1.Service{}
 	if boshdns.HasBoshDNSAddOn(*manifest) != -1 {
-		err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: "bosh-dns"}, dnsService)
+		err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: boshdns.AppName}, dnsService)
 		if err != nil {
 			return reconcile.Result{},
-				log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get bosh-dns service '%s/%s': %v", request.Namespace, deploymentName, err)
+				log.WithEvent(bpmSecret, "GetBOSHDeployment").Errorf(ctx, "Failed to get '%s' service '%s/%s': %v", boshdns.AppName, request.Namespace, deploymentName, err)
 		}
 	}
 

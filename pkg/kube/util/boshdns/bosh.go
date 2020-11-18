@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	appName        = "bosh-dns"
+	// AppName is the name os the DNS deployed by quarks.
+	AppName        = "coredns-quarks"
 	coreConfigFile = "Corefile"
 )
 
@@ -83,9 +84,9 @@ func (dns *BoshDomainNameService) Add(addOn *bdm.AddOn) error {
 func (dns *BoshDomainNameService) CorefileConfigMap(namespace string) (corev1.ConfigMap, error) {
 	cm := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      appName,
+			Name:      AppName,
 			Namespace: namespace,
-			Labels:    map[string]string{"app": appName},
+			Labels:    map[string]string{"app": AppName},
 		},
 	}
 
@@ -105,18 +106,18 @@ func (dns *BoshDomainNameService) Deployment(namespace string) appsv1.Deployment
 	const volumeName = "bosh-dns-volume"
 	return appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      appName,
+			Name:      AppName,
 			Namespace: namespace,
-			Labels:    map[string]string{"app": appName},
+			Labels:    map[string]string{"app": AppName},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"app": appName},
+				MatchLabels: map[string]string{"app": AppName},
 			},
 			Replicas: &replicas,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      map[string]string{"app": appName},
+					Labels:      map[string]string{"app": AppName},
 					Annotations: map[string]string{annotationRestartOnUpdate: "true"},
 				},
 				Spec: corev1.PodSpec{
@@ -165,7 +166,7 @@ func (dns *BoshDomainNameService) Deployment(namespace string) appsv1.Deployment
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									DefaultMode: &corefileMode,
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: appName,
+										Name: AppName,
 									},
 									Items: []corev1.KeyToPath{
 										{Key: coreConfigFile, Path: coreConfigFile},
@@ -184,9 +185,9 @@ func (dns *BoshDomainNameService) Deployment(namespace string) appsv1.Deployment
 func (dns *BoshDomainNameService) Service(namespace string) corev1.Service {
 	return corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      appName,
+			Name:      AppName,
 			Namespace: namespace,
-			Labels:    map[string]string{"app": appName},
+			Labels:    map[string]string{"app": AppName},
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -194,7 +195,7 @@ func (dns *BoshDomainNameService) Service(namespace string) corev1.Service {
 				{Name: dnsTCPPort.Name, Port: 53, Protocol: dnsTCPPort.Protocol, TargetPort: intstr.FromString(dnsTCPPort.Name)},
 				{Name: metricsPort.Name, Port: 9153, Protocol: metricsPort.Protocol, TargetPort: intstr.FromString(metricsPort.Name)},
 			},
-			Selector: map[string]string{"app": appName},
+			Selector: map[string]string{"app": AppName},
 			Type:     "ClusterIP",
 		},
 	}
