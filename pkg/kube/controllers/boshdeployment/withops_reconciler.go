@@ -20,7 +20,6 @@ import (
 	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
-	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
@@ -92,25 +91,25 @@ func (r *ReconcileWithOps) Reconcile(request reconcile.Request) (reconcile.Resul
 	labels := withOpsSecret.GetLabels()
 	boshdeploymentName := labels[bdv1.LabelDeploymentName]
 
-	lastReconcile, ok := annotations[meltdown.AnnotationLastReconcile]
-	if (ok && lastReconcile == "") || !ok {
-		annotations[meltdown.AnnotationLastReconcile] = metav1.Now().Format(time.RFC3339)
-		withOpsSecret.SetAnnotations(annotations)
-		err = r.client.Update(ctx, withOpsSecret)
-		if err != nil {
-			return reconcile.Result{},
-				log.WithEvent(withOpsSecret, "UpdateError").Errorf(ctx, "failed to update lastreconcile annotation on withops secret for bdpl '%s': %v", boshdeploymentName, err)
-		}
-		log.Infof(ctx, "Meltdown started for '%s'", request.NamespacedName)
+	// lastReconcile, ok := annotations[meltdown.AnnotationLastReconcile]
+	// if (ok && lastReconcile == "") || !ok {
+	//         annotations[meltdown.AnnotationLastReconcile] = metav1.Now().Format(time.RFC3339)
+	//         withOpsSecret.SetAnnotations(annotations)
+	//         err = r.client.Update(ctx, withOpsSecret)
+	//         if err != nil {
+	//                 return reconcile.Result{},
+	//                         log.WithEvent(withOpsSecret, "UpdateError").Errorf(ctx, "failed to update lastreconcile annotation on withops secret for bdpl '%s': %v", boshdeploymentName, err)
+	//         }
+	//         log.Infof(ctx, "Meltdown started for '%s'", request.NamespacedName)
 
-		return reconcile.Result{RequeueAfter: ReconcileSkipDuration}, nil
-	}
+	//         return reconcile.Result{RequeueAfter: ReconcileSkipDuration}, nil
+	// }
 
-	if meltdown.NewAnnotationWindow(ReconcileSkipDuration, annotations).Contains(time.Now()) {
-		log.Infof(ctx, "Meltdown in progress for '%s'", request.NamespacedName)
-		return reconcile.Result{}, nil
-	}
-	log.Infof(ctx, "Meltdown ended for '%s'", request.NamespacedName)
+	// if meltdown.NewAnnotationWindow(ReconcileSkipDuration, annotations).Contains(time.Now()) {
+	//         log.Infof(ctx, "Meltdown in progress for '%s'", request.NamespacedName)
+	//         return reconcile.Result{}, nil
+	// }
+	// log.Infof(ctx, "Meltdown ended for '%s'", request.NamespacedName)
 
 	boshdeployment := &bdv1.BOSHDeployment{}
 	err = r.client.Get(ctx, types.NamespacedName{Namespace: request.Namespace, Name: boshdeploymentName}, boshdeployment)
@@ -119,13 +118,13 @@ func (r *ReconcileWithOps) Reconcile(request reconcile.Request) (reconcile.Resul
 			log.WithEvent(withOpsSecret, "WithOpsManifestError").Errorf(ctx, "failed to get BOSHDeployment '%s': %v", boshdeploymentName, err)
 	}
 
-	annotations[meltdown.AnnotationLastReconcile] = ""
-	withOpsSecret.SetAnnotations(annotations)
-	err = r.client.Update(ctx, withOpsSecret)
-	if err != nil {
-		return reconcile.Result{},
-			log.WithEvent(withOpsSecret, "UpdateError").Errorf(ctx, "failed to update lastreconcile annotation on withops secret for bdpl '%s': %v", boshdeploymentName, err)
-	}
+	// annotations[meltdown.AnnotationLastReconcile] = ""
+	// withOpsSecret.SetAnnotations(annotations)
+	// err = r.client.Update(ctx, withOpsSecret)
+	// if err != nil {
+	//         return reconcile.Result{},
+	//                 log.WithEvent(withOpsSecret, "UpdateError").Errorf(ctx, "failed to update lastreconcile annotation on withops secret for bdpl '%s': %v", boshdeploymentName, err)
+	// }
 
 	withOpsManifestData := withOpsSecret.Data["manifest.yaml"]
 

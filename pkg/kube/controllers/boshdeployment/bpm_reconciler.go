@@ -29,7 +29,6 @@ import (
 	qstscontroller "code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/quarksstatefulset"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
-	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
 	"code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
@@ -95,10 +94,10 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 		return reconcile.Result{RequeueAfter: time.Second * 5}, nil
 	}
 
-	if meltdown.NewAnnotationWindow(r.config.MeltdownDuration, bpmSecret.ObjectMeta.Annotations).Contains(time.Now()) {
-		log.WithEvent(bpmSecret, "Meltdown").Debugf(ctx, "Resource '%s/%s' is in meltdown, requeue reconcile after %s", bpmSecret.Namespace, bpmSecret.Name, r.config.MeltdownRequeueAfter)
-		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
-	}
+	// if meltdown.NewAnnotationWindow(r.config.MeltdownDuration, bpmSecret.ObjectMeta.Annotations).Contains(time.Now()) {
+	//         log.WithEvent(bpmSecret, "Meltdown").Debugf(ctx, "Resource '%s/%s' is in meltdown, requeue reconcile after %s", bpmSecret.Namespace, bpmSecret.Name, r.config.MeltdownRequeueAfter)
+	//         return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
+	// }
 
 	// Get the labels from the BPM Secret and read the corresponding desired manifest
 	deploymentName, ok := bpmSecret.Labels[bdv1.LabelDeploymentName]
@@ -157,12 +156,12 @@ func (r *ReconcileBPM) Reconcile(request reconcile.Request) (reconcile.Result, e
 			log.WithEvent(bpmSecret, "InstanceGroupStartError").Errorf(ctx, "Failed to start: %v", err)
 	}
 
-	meltdown.SetLastReconcile(&bpmSecret.ObjectMeta, time.Now())
-	err = r.client.Update(ctx, bpmSecret)
-	if err != nil {
-		log.WithEvent(bpmSecret, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on BPM versioned secret '%s' (%v): %s", bpmSecret.Name, bpmSecret.ResourceVersion, err)
-		return reconcile.Result{Requeue: false}, nil
-	}
+	// meltdown.SetLastReconcile(&bpmSecret.ObjectMeta, time.Now())
+	// err = r.client.Update(ctx, bpmSecret)
+	// if err != nil {
+	//         log.WithEvent(bpmSecret, "UpdateError").Errorf(ctx, "Failed to update reconcile timestamp on BPM versioned secret '%s' (%v): %s", bpmSecret.Name, bpmSecret.ResourceVersion, err)
+	//         return reconcile.Result{Requeue: false}, nil
+	// }
 
 	return reconcile.Result{}, nil
 }

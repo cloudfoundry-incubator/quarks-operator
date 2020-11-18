@@ -26,7 +26,6 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/logger"
-	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
 )
 
 // BDPLStateCreating is the Bosh Deployment Status spec Creating State
@@ -106,27 +105,27 @@ func (r *ReconcileBOSHDeployment) Reconcile(request reconcile.Request) (reconcil
 			log.WithEvent(bdpl, "GetBOSHDeploymentError").Errorf(ctx, "failed to get BOSHDeployment '%s': %v", request.NamespacedName, err)
 	}
 
-	if bdpl.Status.LastReconcile == nil {
-		now := metav1.Now()
-		bdpl.Status.LastReconcile = &now
-		err = r.client.Status().Update(ctx, bdpl)
-		if err != nil {
-			return reconcile.Result{},
-				log.WithEvent(bdpl, "UpdateError").Errorf(ctx, "failed to update reconcile timestamp on bdpl '%s' (%v): %s", request.NamespacedName, bdpl.ResourceVersion, err)
-		}
-		log.Infof(ctx, "Meltdown started for '%s'", request.NamespacedName)
+	// if bdpl.Status.LastReconcile == nil {
+	//         now := metav1.Now()
+	//         bdpl.Status.LastReconcile = &now
+	//         err = r.client.Status().Update(ctx, bdpl)
+	//         if err != nil {
+	//                 return reconcile.Result{},
+	//                         log.WithEvent(bdpl, "UpdateError").Errorf(ctx, "failed to update reconcile timestamp on bdpl '%s' (%v): %s", request.NamespacedName, bdpl.ResourceVersion, err)
+	//         }
+	//         log.Infof(ctx, "Meltdown started for '%s'", request.NamespacedName)
 
-		return reconcile.Result{RequeueAfter: ReconcileSkipDuration}, nil
-	}
+	//         return reconcile.Result{RequeueAfter: ReconcileSkipDuration}, nil
+	// }
 
-	if meltdown.NewWindow(ReconcileSkipDuration, bdpl.Status.LastReconcile).Contains(time.Now()) {
-		log.Infof(ctx, "Meltdown in progress for '%s'", request.NamespacedName)
-		return reconcile.Result{}, nil
-	}
+	// if meltdown.NewWindow(ReconcileSkipDuration, bdpl.Status.LastReconcile).Contains(time.Now()) {
+	//         log.Infof(ctx, "Meltdown in progress for '%s'", request.NamespacedName)
+	//         return reconcile.Result{}, nil
+	// }
 
 	log.Infof(ctx, "Meltdown ended for '%s'", request.NamespacedName)
 
-	bdpl.Status.LastReconcile = nil
+	//bdpl.Status.LastReconcile = nil
 	// update the bdpl state spec with the initial state
 	now := metav1.Now()
 	bdpl.Status.StateTimestamp = &now
