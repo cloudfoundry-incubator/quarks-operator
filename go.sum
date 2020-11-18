@@ -14,6 +14,7 @@ cloud.google.com/go/pubsub v1.0.1/go.mod h1:R0Gpsv3s54REJCy4fxDixWD93lHJMoZTyQ2k
 cloud.google.com/go/storage v1.0.0/go.mod h1:IhtSnM/ZTZV8YYJWCY8RULGVqBDmpoyjwiyrjsg+URw=
 code.cloudfoundry.org/quarks-job v0.0.214-g7d90bf5 h1:JtBrEkVHin9tly8BYVe0FpTL/G24jXpjYergkMaTnFg=
 code.cloudfoundry.org/quarks-job v0.0.214-g7d90bf5/go.mod h1:frjZekZLEqR6yAhmL9IpUYdaoaR4c07oQeFhymC45wU=
+code.cloudfoundry.org/quarks-job v0.0.214-gc9a1396/go.mod h1:frjZekZLEqR6yAhmL9IpUYdaoaR4c07oQeFhymC45wU=
 code.cloudfoundry.org/quarks-secret v1.0.752 h1:DmqOuhVD+w3vDiWggEjmFcWRdCQGdDv4RLjGcEyID7o=
 code.cloudfoundry.org/quarks-secret v1.0.752/go.mod h1:5XWVFJ4wVZCbElNBl4Sjb38r038WsxrrSt0DMIqhSQU=
 code.cloudfoundry.org/quarks-secret v1.0.753/go.mod h1:5XWVFJ4wVZCbElNBl4Sjb38r038WsxrrSt0DMIqhSQU=
