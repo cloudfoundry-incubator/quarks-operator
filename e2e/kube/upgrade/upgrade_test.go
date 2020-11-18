@@ -59,7 +59,7 @@ var _ = Describe("Quarks Upgrade test", func() {
 
 		// installLatestOperator fetches latest release and deploy the operator
 		installLatestOperator := func(singlenamespace bool) {
-			path, teardown, err := e2ehelper.GetChart("quarks/cf-operator")
+			path, teardown, err := e2ehelper.GetChart("quarks/quarks")
 			Expect(err).ToNot(HaveOccurred())
 			teardowns = append(teardowns, teardown)
 
@@ -69,7 +69,7 @@ var _ = Describe("Quarks Upgrade test", func() {
 
 			if singlenamespace {
 				// uses the default 'singleNamespace' setup from our helm templates
-				teardown, err = e2ehelper.InstallChart(path+"/cf-operator", operatorNamespace,
+				teardown, err = e2ehelper.InstallChart(path+"/quarks", operatorNamespace,
 					"--set", fmt.Sprintf("global.singleNamespace.name=%s", monitoredID),
 					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
 					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
@@ -81,7 +81,7 @@ var _ = Describe("Quarks Upgrade test", func() {
 
 			} else {
 				// Create multiple namespaces, service accounts and role bindings manually
-				teardown, err = e2ehelper.InstallChart(path+"/cf-operator", operatorNamespace,
+				teardown, err = e2ehelper.InstallChart(path+"/quarks", operatorNamespace,
 					"--set", fmt.Sprintf("global.singleNamespace.create=%s", "false"),
 					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
 					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
