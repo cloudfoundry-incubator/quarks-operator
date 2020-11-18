@@ -285,7 +285,7 @@ var _ = Describe("Examples Directory", func() {
 				"foo.nats.service.cf.internal",
 			}
 			for _, name := range unresolvableWildCardNames {
-				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s || true", name), "no servers could be reached")
+				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s || true", name), "NXDOMAIN")
 				Expect(err).NotTo(HaveOccurred())
 			}
 
