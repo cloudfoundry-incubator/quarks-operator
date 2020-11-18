@@ -81,7 +81,11 @@ var _ = Describe("QuarksRestart", func() {
 			err := testing.Create(namespace, f)
 			Expect(err).ToNot(HaveOccurred())
 
-			podName := getPodName(selector)
+			var podName string
+			Eventually(func() string {
+				podName = getPodName(selector)
+				return podName
+			}).ShouldNot(BeEmpty())
 			waitReady("pod/" + podName)
 
 			By("Updating secret")
