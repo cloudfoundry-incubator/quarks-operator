@@ -12,6 +12,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
 	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 )
 
@@ -236,7 +237,7 @@ var _ = Describe("Examples Directory", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("DNS lookup")
-			err = kubectl.WaitLabelFilter(namespace, "ready", "pod", "app=bosh-dns")
+			err = kubectl.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("app=%s", boshdns.AppName))
 			Expect(err).ToNot(HaveOccurred())
 			placeholderNames := []string{
 				"nats-0.myplaceholderalias.service.cf.internal.",
@@ -268,7 +269,7 @@ var _ = Describe("Examples Directory", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("DNS lookup")
-			err = kubectl.WaitLabelFilter(namespace, "ready", "pod", "app=bosh-dns")
+			err = kubectl.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("app=%s", boshdns.AppName))
 			Expect(err).ToNot(HaveOccurred())
 			cnames := []string{
 				"nats.service.cf.internal.",
