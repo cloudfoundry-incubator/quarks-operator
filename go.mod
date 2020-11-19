@@ -13,7 +13,7 @@ require (
 	github.com/cppforlife/go-patch v0.2.0 // indirect
 	github.com/daaku/go.zipexe v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.4.9
-	github.com/go-logr/logr v0.1.0
+	github.com/go-logr/logr v0.3.0
 	github.com/go-test/deep v1.0.7
 	github.com/gonvenience/bunt v1.1.4
 	github.com/hpcloud/tail v1.0.0
