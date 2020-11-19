@@ -13,7 +13,7 @@ require (
 	github.com/cppforlife/go-patch v0.2.0 // indirect
 	github.com/daaku/go.zipexe v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.4.9
-	github.com/go-logr/logr v0.1.0
+	github.com/go-logr/logr v0.2.0
 	github.com/go-test/deep v1.0.7
 	github.com/gonvenience/bunt v1.1.4
 	github.com/hpcloud/tail v1.0.0
@@ -33,11 +33,11 @@ require (
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	gomodules.xyz/jsonpatch/v2 v2.0.1
 	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/api v0.18.9
+	k8s.io/api v0.19.4
 	k8s.io/apiextensions-apiserver v0.18.9
-	k8s.io/apimachinery v0.18.9
-	k8s.io/client-go v0.18.9
-	k8s.io/utils v0.0.0-20200603063816-c1c6865ac451
+	k8s.io/apimachinery v0.19.4
+	k8s.io/client-go v0.19.4
+	k8s.io/utils v0.0.0-20200729134348-d5654de09c73
 	sigs.k8s.io/controller-runtime v0.6.3
 	sigs.k8s.io/yaml v1.2.0
 )
