@@ -281,6 +281,8 @@ jobs:
         DOCKER_IMAGE_ORG: "${{ env.DOCKER_RELEASE_ORG }}"
         DOCKER_IMAGE_REPOSITORY: "${{ env.DOCKER_RELEASE_REPOSITORY }}"
         ARTIFACT_VERSION: "${{ steps.get_version.outputs.artifact_version }}"
+        DOCKER_IMAGE_TAG: "${{ steps.get_version.outputs.artifact_version }}"
+        RELEASE: "true"
       id: build_helm
 
     - uses: actions/setup-python@v2
