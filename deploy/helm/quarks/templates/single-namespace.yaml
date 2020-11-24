@@ -26,6 +26,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: "{{ .Values.corednsServiceAccount.name }}"
+  namespace: "{{ .Values.global.singleNamespace.name }}"
 roleRef:
   kind: ClusterRole
   name: "{{ .Values.corednsServiceAccount.name }}"
