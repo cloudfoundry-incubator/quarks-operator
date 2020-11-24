@@ -99,7 +99,7 @@ var _ = Describe("BOSH DNS coredns", func() {
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
-			deployment := dns.Deployment(env.Namespace)
+			deployment := dns.Deployment(env.Namespace, "default")
 			tearDown, err = env.CreateDeployment(env.Namespace, deployment)
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
