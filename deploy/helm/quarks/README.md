@@ -21,7 +21,7 @@ The operator will watch for BOSH deployments in separate namespaces (default: on
 
 ### Using multiple operators
 
-Choose different namespaces and cluster role names. The persist output service account will be named the same as the cluster role:
+Choose different namespaces and cluster role names. The persist output service account will be named the same as the cluster role as well as for coredns:
 
 ```
 helm install qops1 quarks/quarks \
@@ -29,6 +29,7 @@ helm install qops1 quarks/quarks \
   --set "global.singleNamespace.name=staging1" \
   --set "global.monitoredID=id1" \
   --set "quarks-job.persistOutputClusterRole.name=clusterrole1" \
+  --et  "corednsServiceAccount.name=clusterrole2" \
 ```
 
 ### Using multiple namespaces with one operator
@@ -43,11 +44,13 @@ helm install relname1 quarks/quarks \
 
 Manually create before running `helm install`, for each namespace:
 
-* a namespace "staging1" with the following labels (note: "cfo" and "qjob-persist-output" are the defaults from `values.yaml`):
+* a namespace "staging1" with the following labels (note: "cfo", "qjob-persist-output" and "coredns-quarks-service-account" are the defaults from `values.yaml`):
   * quarks.cloudfoundry.org/monitored: cfo
   * quarks.cloudfoundry.org/qjob-service-account: qjob-persist-output
-* a service account named "qjob-persist-output"
+  * quarks.cloudfoundry.org/coredns-quarks-service-account: coredns-quarks
+* a service account named "qjob-persist-output" and "coredns-quarks"
 * a role binding from the existing cluster role "qjob-persist-output" to "qjob-persist-output" service account in namespace "staging1"
+* another cluster binding from the existing cluster role "coredns-quarks" to "coredns-quarks" service account in namesapce "staging1"
 
 ## Installing the Chart From the Development Branch
 
