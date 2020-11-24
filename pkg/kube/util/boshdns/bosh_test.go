@@ -9,6 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -182,6 +183,15 @@ var _ = Describe("BOSHDomainNameService", func() {
 			return &addOn
 		}
 
+		namespace := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "default",
+				Labels: map[string]string{
+					"quarks.cloudfoundry.org/coredns-quarks-service-account": "coredns-quarks",
+				},
+			},
+		}
+
 		getCorefile := func(client *cfakes.FakeClient) string {
 			_, obj, _ := client.CreateArgsForCall(0)
 			cm, ok := obj.(*corev1.ConfigMap)
@@ -206,6 +216,11 @@ var _ = Describe("BOSHDomainNameService", func() {
 				client = &cfakes.FakeClient{}
 				// Needed to get along with CreateOrUpdate
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+					switch object := object.(type) {
+					case *corev1.Namespace:
+						namespace.DeepCopyInto(object)
+						return nil
+					}
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
 			})
@@ -266,6 +281,11 @@ var _ = Describe("BOSHDomainNameService", func() {
 
 				client = &cfakes.FakeClient{}
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+					switch object := object.(type) {
+					case *corev1.Namespace:
+						namespace.DeepCopyInto(object)
+						return nil
+					}
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
 			})
@@ -292,6 +312,11 @@ var _ = Describe("BOSHDomainNameService", func() {
 
 				client = &cfakes.FakeClient{}
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+					switch object := object.(type) {
+					case *corev1.Namespace:
+						namespace.DeepCopyInto(object)
+						return nil
+					}
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
 			})
