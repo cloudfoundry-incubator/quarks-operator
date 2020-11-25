@@ -29,7 +29,7 @@ helm install qops1 quarks/quarks \
   --set "global.singleNamespace.name=staging1" \
   --set "global.monitoredID=id1" \
   --set "quarks-job.persistOutputClusterRole.name=clusterrole1" \
-  --et  "corednsServiceAccount.name=clusterrole2" \
+  --set  "corednsServiceAccount.name=clusterrole2" \
 ```
 
 ### Using multiple namespaces with one operator
