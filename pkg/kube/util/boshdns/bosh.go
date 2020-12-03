@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -20,6 +22,8 @@ const (
 	// AppName is the name os the DNS deployed by quarks.
 	AppName        = "coredns-quarks"
 	coreConfigFile = "Corefile"
+	// CorednsServiceAccountLabel is the label of coredns service account on ns.
+	CorednsServiceAccountLabel = "quarks.cloudfoundry.org/coredns-quarks-service-account"
 )
 
 var (
@@ -100,7 +104,7 @@ func (dns *BoshDomainNameService) CorefileConfigMap(namespace string) (corev1.Co
 }
 
 // Deployment returns the k8s Deployment for coredns
-func (dns *BoshDomainNameService) Deployment(namespace string) appsv1.Deployment {
+func (dns *BoshDomainNameService) Deployment(namespace string, corednsServiceAccountName string) appsv1.Deployment {
 	var corefileMode int32 = 0644
 	var replicas int32 = 2
 	const volumeName = "bosh-dns-volume"
@@ -121,6 +125,7 @@ func (dns *BoshDomainNameService) Deployment(namespace string) appsv1.Deployment
 					Annotations: map[string]string{annotationRestartOnUpdate: "true"},
 				},
 				Spec: corev1.PodSpec{
+					ServiceAccountName: corednsServiceAccountName,
 					Containers: []corev1.Container{
 						{
 							Name:  "coredns",
@@ -208,7 +213,18 @@ func (dns *BoshDomainNameService) Apply(ctx context.Context, namespace string, c
 		return err
 	}
 
-	deployment := dns.Deployment(namespace)
+	var ns corev1.Namespace
+	err = c.Get(ctx, client.ObjectKey{Name: namespace}, &ns)
+	if err != nil {
+		return errors.Wrapf(err, "could not get ns '%s'", namespace)
+	}
+
+	corednsServiceAccountName, ok := ns.Labels[CorednsServiceAccountLabel]
+	if !ok {
+		return errors.Wrapf(err, "could not get coredns service account name from ns '%s'", namespace)
+	}
+
+	deployment := dns.Deployment(namespace, corednsServiceAccountName)
 	service := dns.Service(namespace)
 
 	for _, obj := range []metav1.Object{&configMap, &deployment, &service} {
