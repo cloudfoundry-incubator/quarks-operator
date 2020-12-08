@@ -27,6 +27,7 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/monitorednamespace"
+	"code.cloudfoundry.org/quarks-utils/pkg/ratelimiter"
 	"code.cloudfoundry.org/quarks-utils/pkg/skip"
 )
 
@@ -50,6 +51,7 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	c, err := controller.New("boshdeployment-controller", mgr, controller.Options{
 		Reconciler:              r,
 		MaxConcurrentReconciles: config.MaxBoshDeploymentWorkers,
+		RateLimiter:             ratelimiter.New(),
 	})
 	if err != nil {
 		return errors.Wrap(err, "Adding Bosh deployment controller to manager failed.")

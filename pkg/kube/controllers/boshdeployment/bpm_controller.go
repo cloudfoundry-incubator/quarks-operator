@@ -23,6 +23,7 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/meltdown"
 	"code.cloudfoundry.org/quarks-utils/pkg/monitorednamespace"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
+	"code.cloudfoundry.org/quarks-utils/pkg/ratelimiter"
 	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
 
@@ -43,6 +44,7 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 	c, err := controller.New("bpm-controller", mgr, controller.Options{
 		Reconciler:              r,
 		MaxConcurrentReconciles: config.MaxBoshDeploymentWorkers,
+		RateLimiter:             ratelimiter.New(),
 	})
 	if err != nil {
 		return errors.Wrap(err, "Adding BPM controller to manager failed.")
