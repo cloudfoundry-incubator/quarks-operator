@@ -114,7 +114,7 @@ spec:
       labels:
         app.kubernetes.io/managed-by: {{ $.Release.Service | quote }}
         app.kubernetes.io/instance: {{ $.Release.Name | quote }}
-        helm.sh/chart: "{{ $.Chart.Name }}-{{ $.Chart.Version }}"
+        helm.sh/chart: {{ include "cf-operator.chart" $ }}
     spec:
       restartPolicy: Never
       serviceAccountName: {{$hook}}-helm-hook

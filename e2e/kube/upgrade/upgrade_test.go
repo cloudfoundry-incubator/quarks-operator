@@ -46,13 +46,17 @@ var _ = Describe("Quarks Upgrade test", func() {
 				_, err := e2ehelper.UpgradeChart(chartPath, operatorNamespace,
 					"--set", fmt.Sprintf("global.singleNamespace.name=%s", namespace),
 					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
-					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID))
+					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
+					"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", namespace, "coredns-quarks"),
+				)
 				Expect(err).ToNot(HaveOccurred())
 			} else {
 				_, err := e2ehelper.UpgradeChart(chartPath, operatorNamespace,
 					"--set", fmt.Sprintf("global.singleNamespace.create=%s", "false"),
 					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
-					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID))
+					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
+					"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", namespace, "coredns-quarks"),
+				)
 				Expect(err).ToNot(HaveOccurred())
 			}
 		}
@@ -73,6 +77,7 @@ var _ = Describe("Quarks Upgrade test", func() {
 					"--set", fmt.Sprintf("global.singleNamespace.name=%s", monitoredID),
 					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
 					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
+					"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", namespace, "coredns-quarks"),
 				)
 				Expect(err).ToNot(HaveOccurred())
 				teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
@@ -85,6 +90,7 @@ var _ = Describe("Quarks Upgrade test", func() {
 					"--set", fmt.Sprintf("global.singleNamespace.create=%s", "false"),
 					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
 					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
+					"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", namespace, "coredns-quarks"),
 				)
 				Expect(err).ToNot(HaveOccurred())
 				teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)

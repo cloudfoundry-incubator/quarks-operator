@@ -281,6 +281,8 @@ jobs:
         DOCKER_IMAGE_ORG: "${{ env.DOCKER_RELEASE_ORG }}"
         DOCKER_IMAGE_REPOSITORY: "${{ env.DOCKER_RELEASE_REPOSITORY }}"
         ARTIFACT_VERSION: "${{ steps.get_version.outputs.artifact_version }}"
+        DOCKER_IMAGE_TAG: "${{ steps.get_version.outputs.artifact_version }}"
+        RELEASE: "true"
       id: build_helm
 
     - uses: actions/setup-python@v2
@@ -301,15 +303,16 @@ jobs:
     - name: Create KubeCF PR
       shell: bash
       run: |
-        version=$(echo "$version" | sed 's/+/%2B/')
+        version=$(echo "$version" | sed 's/^v//;s/-/+/')
+        url_version=$(echo "$version" | sed 's/+/%2B/')
 
         cd kubecf
         sed -i "/cf_operator:/{n;s/sha256: \(.*\)/sha256: ${sha}/}" ./dependencies.yaml
-        sed -i "/cf_operator:/{n;n;n;s/version: \(.*\)/version: ${version}/}" ./dependencies.yaml
+        sed -i "/cf_operator:/{n;n;n;s/version: \(.*\)/version: ${url_version}/}" ./dependencies.yaml
         git checkout -b bot/cf-operator
 
         git add .
-        git commit -m "feat: bump cf-operator $version"
+        git commit -m "feat: bump quarks $version"
 
         git push -f origin bot/cf-operator
 

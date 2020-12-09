@@ -99,14 +99,14 @@ var _ = Describe("BOSH DNS coredns", func() {
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 
-			deployment := dns.Deployment(env.Namespace)
+			deployment := dns.Deployment(env.Namespace, "default")
 			tearDown, err = env.CreateDeployment(env.Namespace, deployment)
 			Expect(err).NotTo(HaveOccurred())
 			tearDowns = append(tearDowns, tearDown)
 		})
 
 		It("config is valid and deployment starts", func() {
-			err := env.WaitForDeployment(env.Namespace, "bosh-dns", 0)
+			err := env.WaitForDeployment(env.Namespace, boshdns.AppName, 0)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})

@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -17,8 +19,11 @@ import (
 )
 
 const (
-	appName        = "bosh-dns"
+	// AppName is the name os the DNS deployed by quarks.
+	AppName        = "coredns-quarks"
 	coreConfigFile = "Corefile"
+	// CorednsServiceAccountLabel is the label of coredns service account on ns.
+	CorednsServiceAccountLabel = "quarks.cloudfoundry.org/coredns-quarks-service-account"
 )
 
 var (
@@ -83,9 +88,9 @@ func (dns *BoshDomainNameService) Add(addOn *bdm.AddOn) error {
 func (dns *BoshDomainNameService) CorefileConfigMap(namespace string) (corev1.ConfigMap, error) {
 	cm := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      appName,
+			Name:      AppName,
 			Namespace: namespace,
-			Labels:    map[string]string{"app": appName},
+			Labels:    map[string]string{"app": AppName},
 		},
 	}
 
@@ -99,27 +104,28 @@ func (dns *BoshDomainNameService) CorefileConfigMap(namespace string) (corev1.Co
 }
 
 // Deployment returns the k8s Deployment for coredns
-func (dns *BoshDomainNameService) Deployment(namespace string) appsv1.Deployment {
+func (dns *BoshDomainNameService) Deployment(namespace string, corednsServiceAccountName string) appsv1.Deployment {
 	var corefileMode int32 = 0644
 	var replicas int32 = 2
 	const volumeName = "bosh-dns-volume"
 	return appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      appName,
+			Name:      AppName,
 			Namespace: namespace,
-			Labels:    map[string]string{"app": appName},
+			Labels:    map[string]string{"app": AppName},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"app": appName},
+				MatchLabels: map[string]string{"app": AppName},
 			},
 			Replicas: &replicas,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      map[string]string{"app": appName},
+					Labels:      map[string]string{"app": AppName},
 					Annotations: map[string]string{annotationRestartOnUpdate: "true"},
 				},
 				Spec: corev1.PodSpec{
+					ServiceAccountName: corednsServiceAccountName,
 					Containers: []corev1.Container{
 						{
 							Name:  "coredns",
@@ -165,7 +171,7 @@ func (dns *BoshDomainNameService) Deployment(namespace string) appsv1.Deployment
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									DefaultMode: &corefileMode,
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: appName,
+										Name: AppName,
 									},
 									Items: []corev1.KeyToPath{
 										{Key: coreConfigFile, Path: coreConfigFile},
@@ -184,9 +190,9 @@ func (dns *BoshDomainNameService) Deployment(namespace string) appsv1.Deployment
 func (dns *BoshDomainNameService) Service(namespace string) corev1.Service {
 	return corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      appName,
+			Name:      AppName,
 			Namespace: namespace,
-			Labels:    map[string]string{"app": appName},
+			Labels:    map[string]string{"app": AppName},
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -194,7 +200,7 @@ func (dns *BoshDomainNameService) Service(namespace string) corev1.Service {
 				{Name: dnsTCPPort.Name, Port: 53, Protocol: dnsTCPPort.Protocol, TargetPort: intstr.FromString(dnsTCPPort.Name)},
 				{Name: metricsPort.Name, Port: 9153, Protocol: metricsPort.Protocol, TargetPort: intstr.FromString(metricsPort.Name)},
 			},
-			Selector: map[string]string{"app": appName},
+			Selector: map[string]string{"app": AppName},
 			Type:     "ClusterIP",
 		},
 	}
@@ -207,7 +213,18 @@ func (dns *BoshDomainNameService) Apply(ctx context.Context, namespace string, c
 		return err
 	}
 
-	deployment := dns.Deployment(namespace)
+	var ns corev1.Namespace
+	err = c.Get(ctx, client.ObjectKey{Name: namespace}, &ns)
+	if err != nil {
+		return errors.Wrapf(err, "could not get ns '%s'", namespace)
+	}
+
+	corednsServiceAccountName, ok := ns.Labels[CorednsServiceAccountLabel]
+	if !ok {
+		return errors.Wrapf(err, "could not get coredns service account name from ns '%s'", namespace)
+	}
+
+	deployment := dns.Deployment(namespace, corednsServiceAccountName)
 	service := dns.Service(namespace)
 
 	for _, obj := range []metav1.Object{&configMap, &deployment, &service} {
