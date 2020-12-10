@@ -1,3 +1,4 @@
+// Package quarksrestart restarts deployments and such if their pod's secrets/configmaps changes
 package quarksrestart
 
 import (

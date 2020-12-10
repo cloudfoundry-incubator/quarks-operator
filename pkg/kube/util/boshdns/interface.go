@@ -1,3 +1,4 @@
+// Package boshdns installs a coredns server per deployment that understands BOSH DNS aliases
 package boshdns
 
 import (

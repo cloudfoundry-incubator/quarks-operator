@@ -1,3 +1,4 @@
+// Package logrotate runs the logrotate command with a configuration suitable for BOSH (/var/vcap)
 package logrotate
 
 import (

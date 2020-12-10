@@ -1,3 +1,4 @@
+// Package converter converts various structs (LinkInfos, bdm.Variable) into k8s resources (Volumes, qsec)
 package converter
 
 import (

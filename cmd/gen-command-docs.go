@@ -1,3 +1,4 @@
+// Package main for the gen-command-docs binary
 package main
 
 import (

@@ -1,3 +1,4 @@
+// Package withops resolves the with ops manifest, by applying ops files and fetching all implicit variables
 package withops
 
 import (

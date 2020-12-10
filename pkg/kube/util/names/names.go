@@ -1,3 +1,4 @@
+// Package names generates valid k8s names for resources
 package names
 
 import (

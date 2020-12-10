@@ -1,3 +1,4 @@
+// Package operatorimage has the configured docker image for the operators own image, so we can run the sub-commands in-cluster
 package operatorimage
 
 import (

@@ -1,3 +1,4 @@
+// Package quarkslink adds quark link secret mounts to (entangled) pods
 package quarkslink
 
 import (

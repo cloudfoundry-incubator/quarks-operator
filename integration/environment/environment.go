@@ -1,3 +1,4 @@
+// Package environment for setting up the integration test environment
 package environment
 
 import (

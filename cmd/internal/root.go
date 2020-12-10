@@ -1,3 +1,4 @@
+// Package cmd contains all commands of the cf-operator binary
 package cmd
 
 import (

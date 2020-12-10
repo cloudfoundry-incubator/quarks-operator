@@ -1,3 +1,4 @@
+// Package boshreleases contains test manifests for bpm related unit tests
 package boshreleases
 
 // MultiProcessBPMConfig is a BOSH Job configuration with multi processes
