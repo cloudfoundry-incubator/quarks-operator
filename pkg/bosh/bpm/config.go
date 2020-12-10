@@ -1,3 +1,4 @@
+// Package bpm contains the structs to represent BOSH BPM information
 package bpm
 
 import (

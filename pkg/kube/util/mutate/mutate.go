@@ -1,3 +1,4 @@
+// Package mutate has shared funcs to mutate different resources
 package mutate
 
 import (

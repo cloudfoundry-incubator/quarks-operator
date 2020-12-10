@@ -1,3 +1,4 @@
+// Package qjobs creates the quarks job to render the instance group manifests
 package qjobs
 
 import (
@@ -52,7 +53,7 @@ func NewJobFactory() *JobFactory {
 	return &JobFactory{}
 }
 
-// InstanceGroupManifestJob generates the job to create an instance group manifest
+// InstanceGroupManifestJob generates the job to create an instance group manifest, this needs to run on the BOSH release image
 func (f *JobFactory) InstanceGroupManifestJob(namespace string, deploymentName string, manifest bdm.Manifest, linkInfos converter.LinkInfos, initialRollout bool) (*qjv1a1.QuarksJob, error) {
 	dmName := desiredManifestName()
 	ct := containerTemplate{

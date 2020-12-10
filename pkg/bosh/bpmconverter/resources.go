@@ -1,3 +1,4 @@
+// Package bpmconverter converts bpm configs + ig manifests into k8s resources (services, qjob, qsts)
 package bpmconverter
 
 import (

@@ -1,3 +1,4 @@
+// Package reference returns reconciles for resources if they reference a resource
 package reference
 
 import (
