@@ -16,12 +16,11 @@ code.cloudfoundry.org/quarks-job v1.0.213 h1:+qFHpPlwzNnIe+fbWkVCbrWlsseGlFKqxg6
 code.cloudfoundry.org/quarks-job v1.0.213/go.mod h1:frjZekZLEqR6yAhmL9IpUYdaoaR4c07oQeFhymC45wU=
 code.cloudfoundry.org/quarks-secret v1.0.754 h1:pQYbci/oWA7PGTaNa6iBAQdvhHwBj/O9YGg3TuR2ckA=
 code.cloudfoundry.org/quarks-secret v1.0.754/go.mod h1:5XWVFJ4wVZCbElNBl4Sjb38r038WsxrrSt0DMIqhSQU=
-code.cloudfoundry.org/quarks-statefulset v0.0.1308-g6a8b2220 h1:XHIF8hMG8SOaK4lm2NijY8RPwUVzwD9W1ohcijm2ycw=
-code.cloudfoundry.org/quarks-statefulset v0.0.1308-g6a8b2220/go.mod h1:98ljusevv5l/Cww0+Sm1uUhxRSW9NbsSRWwwqoXbCNA=
-code.cloudfoundry.org/quarks-statefulset v0.0.1309-g7280c24d/go.mod h1:98ljusevv5l/Cww0+Sm1uUhxRSW9NbsSRWwwqoXbCNA=
+code.cloudfoundry.org/quarks-statefulset v1.0.1310 h1:C3qCCmHsjiMa1+RK84sFIbJO7i8s5uuyXWX6z5dpjuI=
+code.cloudfoundry.org/quarks-statefulset v1.0.1310/go.mod h1:k7ot09prYqjXJrowF5jRMBNzpkcXcV0TNB9k5HUp4pg=
 code.cloudfoundry.org/quarks-utils v0.0.2-0.20201027114038-8aab73d224e4/go.mod h1:K8KH67rdNk9+VPOA5QRgrujTFhbmtqxLOuPQ6APL6ks=
-code.cloudfoundry.org/quarks-utils v0.0.2-0.20201104164019-cb2fb89e3552 h1:5wX9bbxBi7ViUucYcnZTNnbwV/BZ9EDhsRXg/UtrleY=
-code.cloudfoundry.org/quarks-utils v0.0.2-0.20201104164019-cb2fb89e3552/go.mod h1:K8KH67rdNk9+VPOA5QRgrujTFhbmtqxLOuPQ6APL6ks=
+code.cloudfoundry.org/quarks-utils v0.0.2-0.20210112105226-682bcba574a2 h1:fa+qziyLPYkeL0JkElqThtFoszqA6GC45dW9f5xUE9g=
+code.cloudfoundry.org/quarks-utils v0.0.2-0.20210112105226-682bcba574a2/go.mod h1:js5WFs4G2V0TR/8zJMhDTfMU7j/AjKUNKBvU/SnKiwo=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/Azure/azure-sdk-for-go v16.2.1+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
