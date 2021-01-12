@@ -1,3 +1,4 @@
+// Package waitservice adds a wait init container to wait for linked services
 package waitservice
 
 import (

@@ -1,3 +1,4 @@
+// Package desiredmanifest retrieves the latest desired manifest
 package desiredmanifest
 
 import (

@@ -1,3 +1,4 @@
+// Package versionedsecret makes sure that versioned secrets are immutable
 package versionedsecret
 
 import (

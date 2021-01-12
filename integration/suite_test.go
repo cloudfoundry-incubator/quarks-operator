@@ -99,6 +99,11 @@ var _ = BeforeEach(func() {
 		fmt.Printf("WARNING: failed to start quarks-statefulset operator: %v\n", err)
 	}
 
+	err = env.SetupServiceAccount()
+	if err != nil {
+		fmt.Printf("WARNING: failed to setup service account: %v\n", err)
+	}
+
 	err = env.StartOperator()
 	if err != nil {
 		fmt.Printf("WARNING: failed to start operator: %v\n", err)

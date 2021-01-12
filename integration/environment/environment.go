@@ -1,3 +1,4 @@
+// Package environment for setting up the integration test environment
 package environment
 
 import (
@@ -12,6 +13,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
@@ -46,6 +50,7 @@ const (
 	defaultTestMeltdownRequeueAfter = 1
 	testPerNode                     = 200
 	portPerTest                     = 3
+	serviceAccountName              = "coredns-quarks"
 )
 
 // testPerNode=200, portPerTest=1
@@ -120,6 +125,51 @@ func (e *Environment) SetupClientsets() error {
 	}
 	e.QuarksStatefulSetClient, err = qstsclient.NewForConfig(e.KubeConfig)
 	return err
+}
+
+// SetupServiceAccount creates a service account for coredns
+func (e *Environment) SetupServiceAccount() error {
+	serviceAccount := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      serviceAccountName,
+			Namespace: e.Namespace,
+		},
+	}
+
+	client := e.Clientset.CoreV1().ServiceAccounts(e.Namespace)
+	if _, err := client.Create(context.Background(), serviceAccount, metav1.CreateOptions{}); err != nil {
+		if !apierrors.IsAlreadyExists(err) {
+			return errors.Wrapf(err, "could not create service account")
+		}
+	}
+
+	// Bind the "coredns-quarks" service account to the cluster-admin ClusterRole.
+	roleBinding := &v1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "coredns-quarks-role",
+			Namespace: e.Namespace,
+		},
+		Subjects: []v1.Subject{
+			{
+				Kind:      v1.ServiceAccountKind,
+				Name:      serviceAccountName,
+				Namespace: e.Namespace,
+			},
+		},
+		RoleRef: v1.RoleRef{
+			Kind:     "ClusterRole",
+			Name:     "cluster-admin",
+			APIGroup: "rbac.authorization.k8s.io",
+		},
+	}
+
+	rbac := e.Clientset.RbacV1().RoleBindings(e.Namespace)
+	if _, err := rbac.Create(context.Background(), roleBinding, metav1.CreateOptions{}); err != nil {
+		if !apierrors.IsAlreadyExists(err) {
+			return errors.Wrapf(err, "could not create role binding")
+		}
+	}
+	return nil
 }
 
 // NodeIP returns a public IP of a node

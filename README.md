@@ -46,3 +46,18 @@ For more information about
 * building the operator from source, see [here](https://quarks.suse.dev/docs/development/building/)
 * how to develop a BOSH release using Quarks and SCF, see the [SCFv3 docs](https://github.com/SUSE/scf/blob/v3-develop/dev/scf/docs/bosh-author.md)
 
+
+## Quarks Meta
+
+* https://github.com/cloudfoundry-incubator/quarks-job - helm chart to run jobs and persist their output to secrets
+* https://github.com/cloudfoundry-incubator/quarks-secret - helm chart to generate credentials in cluster
+* https://github.com/cloudfoundry-incubator/quarks-statefulset - helm chart to improve on statefulsets
+* https://github.com/cloudfoundry-incubator/quarks-utils - library with shared functionality
+* https://github.com/cloudfoundry-incubator/quarks-container-run - command wrapper, which supports a conditional 'post start' command
+* https://github.com/cloudfoundry-incubator/quarks-docs - the sources for https://quarks.suse.dev/
+* https://github.com/cloudfoundry-incubator/quarks-gora - a simple server, used in testing
+* https://github.com/cloudfoundry-incubator/quarks-gora-release - a BOSH release for quarks-gora, used in testing
+* https://github.com/cloudfoundry-incubator/quarks-helm - the helm repo for all Quarks charts
+* https://github.com/cloudfoundry-incubator/quarks-ci - CI pipelines, also contains the [fissile pipeline](https://github.com/cloudfoundry-incubator/quarks-ci/tree/master/pipelines/release-images-cf-deployment) to create the BOSH release images
+* https://github.com/cloudfoundry-incubator/fissile - command line tool to convert BOSH releases into Docker images
+* https://github.com/viovanov/bosh-template-go - a Go wrapper for the bosh-template gem, to render job specs

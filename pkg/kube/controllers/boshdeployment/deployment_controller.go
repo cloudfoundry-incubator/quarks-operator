@@ -1,3 +1,4 @@
+// Package boshdeployment handles the boshdeployment resource. It directs the deployment of BOSH releases on k8s.
 package boshdeployment
 
 import (

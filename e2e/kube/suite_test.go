@@ -63,6 +63,7 @@ var _ = BeforeEach(func() {
 		"--set", fmt.Sprintf("global.singleNamespace.name=%s", namespace),
 		"--set", fmt.Sprintf("global.monitoredID=%s", namespace),
 		"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", namespace),
+		"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", namespace, "coredns-quarks"),
 	)
 	Expect(err).ToNot(HaveOccurred())
 	// prepend helm clean up

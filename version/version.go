@@ -1,3 +1,4 @@
+// Package version just contains a dummy version, overwritten by bin/build
 package version
 
 var (

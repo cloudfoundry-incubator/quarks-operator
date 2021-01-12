@@ -1,3 +1,4 @@
+// Package operator applies CRDs and starts all the controllers and webhooks as configured
 package operator
 
 import (
