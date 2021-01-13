@@ -77,7 +77,7 @@ var _ = Describe("Quarks Upgrade test", func() {
 					"--set", fmt.Sprintf("global.singleNamespace.name=%s", monitoredID),
 					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
 					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
-					"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", namespace, "coredns-quarks"),
+					"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", monitoredID, "coredns-quarks"),
 				)
 				Expect(err).ToNot(HaveOccurred())
 				teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
@@ -85,12 +85,13 @@ var _ = Describe("Quarks Upgrade test", func() {
 				namespace = monitoredID
 
 			} else {
+				// TODO coredns service account setup is broken in multi-cluster, needs setup in e2ehelper like persistoutput?
 				// Create multiple namespaces, service accounts and role bindings manually
 				teardown, err = e2ehelper.InstallChart(path+"/quarks", operatorNamespace,
 					"--set", fmt.Sprintf("global.singleNamespace.create=%s", "false"),
 					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
 					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
-					"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", namespace, "coredns-quarks"),
+					"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", monitoredID, "coredns-quarks"),
 				)
 				Expect(err).ToNot(HaveOccurred())
 				teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
@@ -107,7 +108,7 @@ var _ = Describe("Quarks Upgrade test", func() {
 		}
 
 		// exerciseGora simulates a real-world deployment
-		exerciseGora := func() {
+		exerciseGora := func(namespace string) {
 			apply(namespace, "bosh-deployment/quarks-gora-errands.yaml")
 			waitReady(namespace, "pod/quarks-gora-0")
 			waitReady(namespace, "pod/quarks-gora-1")
@@ -264,7 +265,7 @@ var _ = Describe("Quarks Upgrade test", func() {
 
 			By("Deploying Gora and deleting it")
 			setupCerts(namespace)
-			exerciseGora()
+			exerciseGora(namespace)
 		})
 
 		When("multiple deployments are present in different namespaces", func() {

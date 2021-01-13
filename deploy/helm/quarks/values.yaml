@@ -22,7 +22,7 @@ image:
   # tag of the operator docker image
   tag: foobar
 
-# creates a service account for coredns-quarks.
+# creates a service account for coredns-quarks, the must be unique as it is used for the cluster role too.
 corednsServiceAccount:
   create: true
   name: coredns-quarks
