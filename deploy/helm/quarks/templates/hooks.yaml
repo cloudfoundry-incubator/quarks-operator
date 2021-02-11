@@ -35,11 +35,11 @@ spec:
         - name: SINGLE_NAMESPACE
           value: {{ $.Values.global.singleNamespace.name | quote }}
         {{- end }}
-        command: ["/bin/bash","-cex"]
-        args: 
+        command: ["/bin/bash","-cx"]
+        args:
         - |
-           for f in /hooks/*.sh; do 
-            bash "$f" -H || break
+           for f in /hooks/*.sh; do
+             bash "$f"
            done
         volumeMounts:
         - name: hooks
