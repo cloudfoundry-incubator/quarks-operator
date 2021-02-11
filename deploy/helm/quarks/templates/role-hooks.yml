@@ -18,6 +18,8 @@ rules:
   verbs:
   - delete
 
+# hooks only work in singleNamespace mode, this lists all required permissions
+# for running the scripts
 {{- if $.Values.global.singleNamespace.create }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -34,6 +36,14 @@ rules:
   resources: [quarksjobs]
   resourceNames: [dm]
   verbs: [delete]
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - patch
+  - list
 {{- end }}
 
 ---
