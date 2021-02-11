@@ -447,10 +447,10 @@ func (kc *BPMConverter) generateServices(
 			azIndex = 0
 		}
 		labels := map[string]string{
-			bdv1.LabelDeploymentName:    deploymentName,
-			bdv1.LabelInstanceGroupName: instanceGroup.Name,
-			qstsv1a1.LabelAZIndex:       strconv.Itoa(azIndex),
-			qstsv1a1.LabelPodOrdinal:    strconv.Itoa(ordinal),
+			bdv1.LabelDeploymentName:     deploymentName,
+			bdv1.LabelInstanceGroupName:  instanceGroup.Name,
+			qstsv1a1.LabelAZIndex:        strconv.Itoa(azIndex),
+			qstsv1a1.LabelStartupOrdinal: strconv.Itoa(ordinal),
 		}
 		if includeActiveSelector {
 			labels[qstsv1a1.LabelActivePod] = "active"
