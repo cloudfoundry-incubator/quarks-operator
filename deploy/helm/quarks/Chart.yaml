@@ -1,7 +1,7 @@
 apiVersion: v1
 name: quarks
-version: x.x.x
-appVersion: x.x.x
+version: v0.0.0
+appVersion: v0.0.0
 description: A Helm chart for quarks-operator, the k8s operator for deploying BOSH releases
 home: https://github.com/cloudfoundry-incubator/quarks-operator
 icon: https://cloudfoundry-incubator.github.io/quarks-helm/logo.png
