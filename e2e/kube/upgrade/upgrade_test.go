@@ -17,52 +17,36 @@ var _ = Describe("Quarks Upgrade test", func() {
 	var (
 		monitoredID       string
 		namespace         string
-		namespace2        string
 		operatorNamespace string
 	)
 
-	// Set the configuration for all tests
-	BeforeEach(func() {
-	})
-
 	// Delete CRDs to make sure the cluster is pristine
-	JustBeforeEach(func() {
+	BeforeEach(func() {
 		_ = kubectl.Delete("crds", "boshdeployments.quarks.cloudfoundry.org")
 		_ = kubectl.Delete("crds", "quarksjobs.quarks.cloudfoundry.org")
 		_ = kubectl.Delete("crds", "quarkssecrets.quarks.cloudfoundry.org")
 		_ = kubectl.Delete("crds", "quarksstatefulsets.quarks.cloudfoundry.org")
 	})
 
-	Context("upgrade from latest released chart", func() {
-		var singleNamespace bool
+	When("the upgrades happen", func() {
 		selector := "example=owned-by-bdpl"
 
-		upgradeOperatorToCurrent := func(singlenamespace bool) {
+		upgradeOperatorToCurrent := func() {
 			dir, err := os.Getwd()
 			Expect(err).ToNot(HaveOccurred())
 
 			chartPath := fmt.Sprintf("%s%s", dir, "/../../../helm/quarks")
-			if singlenamespace {
-				_, err := e2ehelper.UpgradeChart(chartPath, operatorNamespace,
-					"--set", fmt.Sprintf("global.singleNamespace.name=%s", namespace),
-					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
-					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
-					"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", namespace, "coredns-quarks"),
-				)
-				Expect(err).ToNot(HaveOccurred())
-			} else {
-				_, err := e2ehelper.UpgradeChart(chartPath, operatorNamespace,
-					"--set", fmt.Sprintf("global.singleNamespace.create=%s", "false"),
-					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
-					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
-					"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", namespace, "coredns-quarks"),
-				)
-				Expect(err).ToNot(HaveOccurred())
-			}
+			_, err = e2ehelper.UpgradeChart(chartPath, operatorNamespace,
+				"--set", fmt.Sprintf("global.singleNamespace.name=%s", namespace),
+				"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
+				"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
+				"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", namespace, "coredns-quarks"),
+			)
+			Expect(err).ToNot(HaveOccurred())
 		}
 
 		// installLatestOperator fetches latest release and deploy the operator
-		installLatestOperator := func(singlenamespace bool) {
+		installLatestOperator := func() {
 			path, teardown, err := e2ehelper.GetChart("quarks/quarks")
 			Expect(err).ToNot(HaveOccurred())
 			teardowns = append(teardowns, teardown)
@@ -71,51 +55,51 @@ var _ = Describe("Quarks Upgrade test", func() {
 			Expect(err).ToNot(HaveOccurred())
 			teardowns = append(teardowns, teardown)
 
-			if singlenamespace {
-				// uses the default 'singleNamespace' setup from our helm templates
-				teardown, err = e2ehelper.InstallChart(path+"/quarks", operatorNamespace,
-					"--set", fmt.Sprintf("global.singleNamespace.name=%s", monitoredID),
-					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
-					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
-					"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", monitoredID, "coredns-quarks"),
-				)
-				Expect(err).ToNot(HaveOccurred())
-				teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
+			// uses the default 'singleNamespace' setup from our helm templates
+			teardown, err = e2ehelper.InstallChart(path+"/quarks", operatorNamespace,
+				"--set", fmt.Sprintf("global.singleNamespace.name=%s", monitoredID),
+				"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
+				"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
+				"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", monitoredID, "coredns-quarks"),
+			)
+			Expect(err).ToNot(HaveOccurred())
+			teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
 
-				namespace = monitoredID
-
-			} else {
-				// TODO coredns service account setup is broken in multi-cluster, needs setup in e2ehelper like persistoutput?
-				// Create multiple namespaces, service accounts and role bindings manually
-				teardown, err = e2ehelper.InstallChart(path+"/quarks", operatorNamespace,
-					"--set", fmt.Sprintf("global.singleNamespace.create=%s", "false"),
-					"--set", fmt.Sprintf("global.monitoredID=%s", monitoredID),
-					"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", monitoredID),
-					"--set", fmt.Sprintf("corednsServiceAccount.name=%s-%s", monitoredID, "coredns-quarks"),
-				)
-				Expect(err).ToNot(HaveOccurred())
-				teardowns = append([]e2ehelper.TearDownFunc{teardown}, teardowns...)
-
-				var nsTeardowns []e2ehelper.TearDownFunc
-				namespace, nsTeardowns, err = e2ehelper.CreateMonitoredNamespaceFromExistingRole(monitoredID)
-				Expect(err).ToNot(HaveOccurred())
-				teardowns = append(teardowns, nsTeardowns...)
-
-				namespace2, nsTeardowns, err = e2ehelper.CreateMonitoredNamespaceFromExistingRole(monitoredID)
-				Expect(err).ToNot(HaveOccurred())
-				teardowns = append(teardowns, nsTeardowns...)
-			}
+			namespace = monitoredID
 		}
 
-		// exerciseGora simulates a real-world deployment
-		exerciseGora := func(namespace string) {
-			apply(namespace, "bosh-deployment/quarks-gora-errands.yaml")
-			waitReady(namespace, "pod/quarks-gora-0")
-			waitReady(namespace, "pod/quarks-gora-1")
-			err := kubectl.WaitForService(namespace, "quarks-gora-0")
+		checkServices := func(namespace string) {
+			err := kubectl.WaitForService(namespace, "quarks-gora")
+			Expect(err).ToNot(HaveOccurred())
+			err = kubectl.WaitForService(namespace, "quarks-gora-0")
 			Expect(err).ToNot(HaveOccurred())
 			err = kubectl.WaitForService(namespace, "quarks-gora-1")
 			Expect(err).ToNot(HaveOccurred())
+			err = kubectl.WaitForService(namespace, "quarks-gora-2")
+			Expect(err).ToNot(HaveOccurred())
+
+			works, err := kubectl.ServiceWorks(namespace, "quarks-gora")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(works).To(BeTrue())
+			works, err = kubectl.ServiceWorks(namespace, "quarks-gora-0")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(works).To(BeTrue())
+			works, err = kubectl.ServiceWorks(namespace, "quarks-gora-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(works).To(BeTrue())
+			works, err = kubectl.ServiceWorks(namespace, "quarks-gora-2")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(works).To(BeTrue())
+		}
+
+		// exerciseGora simulates a real-world deployment checking
+		// deployment of pods, working of service and delete of pods.
+		exerciseGora := func(namespace string) {
+			apply(namespace, "bosh-deployment/quarks-gora-errands.yaml")
+			waitReady(namespace, "pod/quarks-gora-2")
+
+			By("Checking services")
+			checkServices(namespace)
 
 			By("Doing sanity checks on the latest release")
 			exists, err := kubectl.SecretExists(namespace, "link-quarks-gora-quarks-gora")
@@ -144,18 +128,18 @@ var _ = Describe("Quarks Upgrade test", func() {
 
 		deployGora := func(namespace string) {
 			apply(namespace, "bosh-deployment/quarks-gora-errands.yaml")
-			waitReady(namespace, "pod/quarks-gora-1")
+			waitReady(namespace, "pod/quarks-gora-2")
+
 			Eventually(func() bool {
 				exists, _ := kubectl.Exists(namespace, "qjob", "smoke")
 				return exists
 			}, 360*time.Second, 10*time.Second).Should(BeTrue())
 
-			exists, err := kubectl.ServiceExists(namespace, "quarks-gora-0")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(exists).To(BeTrue())
+			By("Checking services")
+			checkServices(namespace)
 
 			// Check autoerrand was executed
-			err = kubectl.WaitLabelFilter(namespace, "complete", "pod", "quarks.cloudfoundry.org/qjob-name=autoerrand")
+			err := kubectl.WaitLabelFilter(namespace, "complete", "pod", "quarks.cloudfoundry.org/qjob-name=autoerrand")
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Running quarks-gora smoke tests with the latest release of quarks")
@@ -180,16 +164,30 @@ var _ = Describe("Quarks Upgrade test", func() {
 			Expect(checkEntanglement(namespace, podName, "echo $LINK_QUARKS_GORA_PORT", "55556")).ToNot(HaveOccurred())
 
 			By("Checking quarks-gora is up")
-			exists, err = kubectl.PodExists(namespace, "quarks.cloudfoundry.org/deployment-name=gora-test-deployment", "quarks-gora-0")
+			exists, err := kubectl.PodExists(namespace, "quarks.cloudfoundry.org/deployment-name=gora-test-deployment", "quarks-gora-0")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exists).To(BeTrue())
 		}
 
 		checkUpgrade := func(namespace string) {
 			By("Checking quarks-gora is up after upgrade")
-			exists, err := kubectl.PodExists(namespace, "quarks.cloudfoundry.org/deployment-name=gora-test-deployment", "quarks-gora-0")
+			exists, err := kubectl.PodExists(namespace, "quarks.cloudfoundry.org/deployment-name=gora-test-deployment", "quarks-gora-2")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exists).To(BeTrue())
+
+			By("Checking services")
+			checkServices(namespace)
+
+			By("Restart pods")
+			err = kubectl.Delete("--namespace", namespace, "pod", "quarks-gora-0")
+			Expect(err).ToNot(HaveOccurred())
+			err = kubectl.Delete("--namespace", namespace, "pod", "quarks-gora-1")
+			Expect(err).ToNot(HaveOccurred())
+			err = kubectl.Delete("--namespace", namespace, "pod", "quarks-gora-2")
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Checking services")
+			checkServices(namespace)
 
 			By("Scaling quarks-gora after the upgrade")
 			scale(namespace, "1")
@@ -259,58 +257,19 @@ var _ = Describe("Quarks Upgrade test", func() {
 			Expect(err).ToNot(HaveOccurred())
 		}
 
-		JustBeforeEach(func() {
-			By("Deploying the latest release of cfo")
-			installLatestOperator(singleNamespace)
+		BeforeEach(func() {
+			By("Deploying the latest release of cf-operator")
+			installLatestOperator()
 
-			By("Deploying Gora and deleting it")
+			By("Excersing and deploying Gora")
 			setupCerts(namespace)
 			exerciseGora(namespace)
+			deployGora(namespace)
 		})
 
-		When("multiple deployments are present in different namespaces", func() {
-			BeforeEach(func() {
-				singleNamespace = false
-			})
-
-			JustBeforeEach(func() {
-				By("Keeping bosh-deployments composed of errands/sts/entanglement between cfo upgrades", func() {
-					deployGora(namespace)
-					setupCerts(namespace2)
-					deployGora(namespace2)
-				})
-			})
-
-			It("deploys and manages a bosh deployment between upgrades", func() {
-				By("Upgrading the operator to the current code checkout", func() {
-					upgradeOperatorToCurrent(singleNamespace)
-					waitReady(namespace, "pod/quarks-gora-1")
-				})
-
-				checkUpgrade(namespace)
-				checkUpgrade(namespace2)
-			})
-		})
-
-		When("only a single deployment is present", func() {
-			BeforeEach(func() {
-				singleNamespace = true
-			})
-
-			JustBeforeEach(func() {
-				By("Keeping a bosh-deployment composed of errands/sts/entanglement between cfo upgrades", func() {
-					deployGora(namespace)
-				})
-			})
-
-			It("deploys and manages a bosh deployment between upgrades", func() {
-				By("Upgrading the operator to the current code checkout", func() {
-					upgradeOperatorToCurrent(singleNamespace)
-					waitReady(namespace, "pod/quarks-gora-1")
-				})
-
-				checkUpgrade(namespace)
-			})
+		It("manages the bosh deployment HA between upgrades", func() {
+			upgradeOperatorToCurrent()
+			checkUpgrade(namespace)
 		})
 	})
 })
