@@ -13,6 +13,8 @@ import (
 	"github.com/pkg/errors"
 	btg "github.com/viovanov/bosh-template-go"
 	"golang.org/x/sync/errgroup"
+
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 const (
@@ -24,13 +26,20 @@ const (
 // RenderJobTemplates will render templates for all jobs of the instance group
 // https://bosh.io/docs/create-release/#job-specs
 // boshManifest is a resolved manifest for a single instance group
+//
+// qsts pod mutator sets pod-ordinal (to name suffix of the pod)
+// replicas is set to 1 in the container factory
+// azIndex is set to 1 in the container factory
+// qsts controller overwrites replicas, if InjectReplicasEnv is true, otherwise replicas is 1.
+// qsts controller overwrites azIndex (1..n), or to 0 if ig.AZs is null
 func RenderJobTemplates(
 	boshManifestPath string,
 	jobsDir string,
 	jobsOutputDir string,
 	instanceGroupName string,
-	specIndex int,
 	podIP net.IP,
+	azIndex int,
+	podOrdinal int,
 	replicas int,
 	initialRollout bool,
 ) error {
@@ -46,6 +55,11 @@ func RenderJobTemplates(
 		return errors.Wrap(err, "bosh template gem is not available")
 	}
 
+	// adapt replicas to always be valid
+	if podOrdinal+1 > replicas {
+		replicas = podOrdinal + 1
+	}
+
 	// Loading deployment manifest file
 	resolvedYML, err := ioutil.ReadFile(boshManifestPath)
 	if err != nil {
@@ -56,34 +70,55 @@ func RenderJobTemplates(
 	if err != nil {
 		return errors.Wrapf(err, "failed to load BOSH deployment manifest %s", boshManifestPath)
 	}
-	fmt.Println(resolvedYML)
 
-	currentInstanceGroup, ok := boshManifest.InstanceGroups.InstanceGroupByName(instanceGroupName)
+	ig, ok := boshManifest.InstanceGroups.InstanceGroupByName(instanceGroupName)
 	if !ok {
 		return errors.Wrapf(err, "instance group %s not found in BOSH deployment manifest %s", instanceGroupName, boshManifestPath)
 	}
-	currentInstanceGroup.Instances = replicas
-	fmt.Println(currentInstanceGroup)
+	ig.Instances = replicas
+
+	// Make sure azIndex is at least 1 and within bounds, if any ig.AZs is configured
+	// It has to be 0, if no AZs are configured.
+	if err := validateAZ(len(ig.AZs), azIndex); err != nil {
+		return errors.Wrap(err, "az index doesn't match azs")
+	}
+
+	// this is needed for old integration tests to pass, should be ok since
+	// specIndex is the same for 0 and 1
+	if len(ig.AZs) == 0 && azIndex == 1 {
+		azIndex = 0
+	}
 
 	// Generate Job Instances Spec
-	for jobIdx, job := range currentInstanceGroup.Jobs {
+	for jobIdx, job := range ig.Jobs {
 		// Generate instance spec for each ig instance
 		// This will be stored inside the current job under
 		// job.properties.quarks
-		jobsInstances := currentInstanceGroup.jobInstances(job.Name, initialRollout)
-
-		// set jobs.properties.quarks.instances with the ig instances
-		currentInstanceGroup.Jobs[jobIdx].Properties.Quarks.Instances = jobsInstances
+		// TODO this has pre generated indexes
+		jobInstances := ig.newJobInstances(job.Name, initialRollout)
+		ig.Jobs[jobIdx].Properties.Quarks.Instances = jobInstances
 	}
 
 	// Run all pre-render scripts first.
-	if err := runPreRenderScripts(currentInstanceGroup); err != nil {
+	if err := runPreRenderScripts(ig); err != nil {
 		return err
 	}
 
+	// We use a very large value as a maximum number of replicas per instance group, per AZ.
+	// We do this in lieu of using the actual replica count, which would cause pods to always restart.
+	// azindex podOrdinal  specIndex
+	//    0       0          0
+	//    0       1          1
+	//    1       0          0
+	//    1       1          1
+	//    2       0          10000
+	//    2       1          10001
+	specIndex := names.SpecIndex(azIndex, podOrdinal)
+	// TODO Why are we not using the label?
+
 	jobGroup := errgroup.Group{}
 	// Render all files for all jobs included in this instance_group.
-	for _, job := range currentInstanceGroup.Jobs {
+	for _, job := range ig.Jobs {
 
 		job := job // https://golang.org/doc/faq#closures_and_goroutines
 		jobGroup.Go(func() error {
@@ -94,27 +129,7 @@ func RenderJobTemplates(
 			}
 
 			// Find job instance that's being rendered
-			var currentJobInstance *JobInstance
-			for _, instance := range job.Properties.Quarks.Instances {
-				if len(currentInstanceGroup.AZs) > 0 {
-					for azIndex, az := range currentInstanceGroup.AZs {
-						if instance.AZ == az {
-							if instance.Instance+azIndex*10000 == specIndex {
-								currentJobInstance = &instance
-								break
-							}
-						}
-					}
-					if currentJobInstance != nil {
-						break
-					}
-				} else {
-					if instance.Index == specIndex {
-						currentJobInstance = &instance
-						break
-					}
-				}
-			}
+			currentJobInstance := job.Properties.Quarks.jobInstance(ig.AZs, specIndex)
 			if currentJobInstance == nil {
 				return errors.Errorf("no job instance found for spec index '%d'", specIndex)
 			}
@@ -172,6 +187,28 @@ func RenderJobTemplates(
 		})
 	}
 	return jobGroup.Wait()
+}
+
+// Verify that he azIndex, which is starting at 1, matches the number of AZs.
+// An index of 0 is used if no AZs are configured.
+// azs: 0, idx: 0
+// azs: 1, idx: 1
+// azs: 2, idx: 1,2
+// azs: 3, idx: 1,2,3
+func validateAZ(azMax int, idx int) error {
+	// idx 0 is only allowed if no azs
+	if azMax == 0 && idx == 0 {
+		return nil
+	}
+	// idx must be within azMax
+	if azMax >= 1 && idx >= 1 && idx <= azMax {
+		return nil
+	}
+	// the azindex will later be set to 0
+	if azMax == 0 && idx == 1 {
+		return nil
+	}
+	return errors.Errorf("%d <= %d", idx, azMax)
 }
 
 func runRenderScript(

@@ -259,18 +259,18 @@ func (igr *InstanceGroupResolver) collectReleaseSpecsAndProviderLinks(initialRol
 			// spec of the current jobs release/name
 			spec := igr.jobReleaseSpecs[job.Release][job.Name]
 
-			// Generate instance spec for each ig instance
+			// Generate instance spec for each ig instance.
 			// This will be stored inside the current job under
-			// job.properties.quarks
-			jobsInstances := instanceGroup.jobInstances(job.Name, initialRollout)
-
+			// job.properties.quarks.
+			// However igr.Manifest() will remove all Quarks.Instances before marshalling the ig manifest
+			jobInstances := instanceGroup.newJobInstances(job.Name, initialRollout)
 			// set jobs.properties.quarks.instances with the ig instances
-			instanceGroup.Jobs[jobIdx].Properties.Quarks.Instances = jobsInstances
+			instanceGroup.Jobs[jobIdx].Properties.Quarks.Instances = jobInstances
 
 			// Create a list of fully evaluated links provided by the current job
 			// These is specified in the job release job.MF file
 			if spec.Provides != nil {
-				err := igr.jobProviderLinks.add(instanceGroup.Name, job, spec, jobsInstances, serviceName)
+				err := igr.jobProviderLinks.add(instanceGroup.Name, job, spec, jobInstances, serviceName)
 				if err != nil {
 					return errors.Wrapf(err, "Collecting release spec and provider links failed for %s", job.Name)
 				}
