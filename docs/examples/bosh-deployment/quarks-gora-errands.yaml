@@ -52,6 +52,13 @@ stringData:
             - name: "quarks-gora"
               protocol: "TCP"
               internal: 55556
+            activePassiveProbes:
+              quarks-gora-quarks-gora:
+                exec:
+                  command:
+                  - bash
+                  - -ce
+                  - date
     - name: smoke
       instances: 1
       lifecycle: errand
@@ -104,7 +111,7 @@ data:
   ops: |
     - type: replace
       path: /instance_groups/name=quarks-gora?/instances
-      value: 2
+      value: 3
 ---
 apiVersion: quarks.cloudfoundry.org/v1alpha1
 kind: BOSHDeployment
