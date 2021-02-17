@@ -4,6 +4,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"code.cloudfoundry.org/quarks-operator/pkg/bosh/bpm"
+	"code.cloudfoundry.org/quarks-utils/pkg/names"
 )
 
 // Quarks represents the special 'quarks' property key.
@@ -40,6 +41,25 @@ type JobInstance struct {
 	Bootstrap bool                   `json:"bootstrap"`
 	ID        string                 `json:"id"`
 	Network   map[string]interface{} `json:"networks"`
+}
+
+func (q Quarks) jobInstance(azs []string, specIndex int) *JobInstance {
+	for _, instance := range q.Instances {
+		if len(azs) > 0 {
+			for i, az := range azs {
+				if instance.AZ == az {
+					if names.SpecIndex(i+1, instance.Instance) == specIndex {
+						return &instance
+					}
+				}
+			}
+		} else {
+			if instance.Index == specIndex {
+				return &instance
+			}
+		}
+	}
+	return nil
 }
 
 // JobLinkProperties are the properties from the provides section in a job spec manifest

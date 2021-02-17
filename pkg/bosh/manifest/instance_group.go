@@ -112,59 +112,72 @@ func (ig *InstanceGroup) IndexedServiceName(index int, azIndex int) string {
 	return fmt.Sprintf("%s-%d", sn, index)
 }
 
+func (ig *InstanceGroup) newJobInstances(
+	jobName string,
+	initialRollout bool,
+) []JobInstance {
+	if len(ig.AZs) > 0 {
+		return ig.jobInstancesAZ(jobName, initialRollout)
+	}
+	return ig.jobInstances(jobName, initialRollout)
+}
+
 func (ig *InstanceGroup) jobInstances(
 	jobName string,
 	initialRollout bool,
 ) []JobInstance {
-	var jobsInstances []JobInstance
 
 	bootstrapIndex := 0
 	if !initialRollout {
-		azCount := 1
-		if len(ig.AZs) > 1 {
-			azCount = len(ig.AZs)
-		}
-
-		bootstrapIndex = ig.Instances*azCount - 1
+		bootstrapIndex = ig.Instances - 1
 	}
 
-	if len(ig.AZs) > 0 {
-		for azIndex, az := range ig.AZs {
-			jobsInstances = ig.generateJobInstances(jobsInstances, azIndex, az, jobName, bootstrapIndex)
-		}
-	} else {
-		jobsInstances = ig.generateJobInstances(jobsInstances, -1, "", jobName, bootstrapIndex)
-	}
+	var jobsInstances []JobInstance
+	for i := 0; i < ig.Instances; i++ {
+		igName := ig.NameSanitized()
 
+		//specIndex := names.SpecIndex(azIndex+1, i))
+
+		jobsInstances = append(jobsInstances, JobInstance{
+			Address:   ig.IndexedServiceName(i, -1),
+			AZ:        "",
+			Bootstrap: i == bootstrapIndex,
+			Index:     i,
+			Instance:  i,
+			Name:      fmt.Sprintf("%s-%s", igName, jobName),
+			ID:        fmt.Sprintf("%s-%d", igName, i),
+		})
+	}
 	return jobsInstances
 }
 
-func (ig *InstanceGroup) generateJobInstances(jobsInstances []JobInstance,
-	azIndex int,
-	az string,
+func (ig *InstanceGroup) jobInstancesAZ(
 	jobName string,
-	bootstrapIndex int) []JobInstance {
+	initialRollout bool,
+) []JobInstance {
 
-	for i := 0; i < ig.Instances; i++ {
-		index := len(jobsInstances)
-		address := ig.IndexedServiceName(i, azIndex)
-		name := fmt.Sprintf("%s-%s", ig.NameSanitized(), jobName)
-		id := ""
-		if azIndex > -1 {
-			id = fmt.Sprintf("%s-z%d-%d", ig.NameSanitized(), azIndex, index%ig.Instances)
-		} else {
-			id = fmt.Sprintf("%s-%d", ig.NameSanitized(), index)
+	bootstrapIndex := 0
+	// TODO why does this switch from first AZ to last?
+	if !initialRollout {
+		bootstrapIndex = ig.Instances*len(ig.AZs) - 1
+	}
+
+	var jobsInstances []JobInstance
+	for azIndex, az := range ig.AZs {
+		for i := 0; i < ig.Instances; i++ {
+			igName := ig.NameSanitized()
+			index := len(jobsInstances)
+
+			jobsInstances = append(jobsInstances, JobInstance{
+				Address:   ig.IndexedServiceName(i, azIndex),
+				AZ:        az,
+				Bootstrap: index == bootstrapIndex,
+				Index:     index,
+				Instance:  i,
+				Name:      fmt.Sprintf("%s-%s", igName, jobName),
+				ID:        fmt.Sprintf("%s-z%d-%d", igName, azIndex, index%ig.Instances),
+			})
 		}
-
-		jobsInstances = append(jobsInstances, JobInstance{
-			Address:   address,
-			AZ:        az,
-			Bootstrap: index == bootstrapIndex,
-			Index:     index,
-			Instance:  i,
-			Name:      name,
-			ID:        id,
-		})
 	}
 	return jobsInstances
 }

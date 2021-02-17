@@ -27,10 +27,20 @@ var (
 		Name: EnvPodOrdinal,
 		ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "metadata.labels['quarks.cloudfoundry.org/pod-ordinal']",
+			},
+		},
+	}
+	// mappedOrdinal is a POD_ORDINAL=startup-ordinal that was introduced in 7.1
+	mappedOrdinalEnv = corev1.EnvVar{
+		Name: EnvPodOrdinal,
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
 				FieldPath: "metadata.labels['quarks.cloudfoundry.org/startup-ordinal']",
 			},
 		},
 	}
+
 	replicasEnv = corev1.EnvVar{
 		Name:  EnvReplicas,
 		Value: "1",
@@ -398,6 +408,7 @@ func templateRenderingContainer(instanceGroupName string, initialRollout bool) c
 		},
 	}
 
+	// Default is true for template-render
 	if !initialRollout {
 		container.Env = append(container.Env,
 			corev1.EnvVar{
@@ -472,7 +483,7 @@ func boshPreStartInitContainer(
 			script,
 		},
 		Env: []corev1.EnvVar{
-			podOrdinalEnv,
+			mappedOrdinalEnv,
 			replicasEnv,
 			azIndexEnv,
 		},
@@ -518,7 +529,7 @@ func bpmPreStartInitContainer(
 			script,
 		},
 		Env: []corev1.EnvVar{
-			podOrdinalEnv,
+			mappedOrdinalEnv,
 			replicasEnv,
 			azIndexEnv,
 		},
@@ -587,7 +598,7 @@ func bpmProcessContainer(
 
 	newEnvs := process.NewEnvs(quarksEnvs)
 	newEnvs = defaultEnv(newEnvs, map[string]corev1.EnvVar{
-		EnvPodOrdinal: podOrdinalEnv,
+		EnvPodOrdinal: mappedOrdinalEnv,
 		EnvReplicas:   replicasEnv,
 		EnvAzIndex:    azIndexEnv,
 	})

@@ -1,0 +1,288 @@
+director_uuid: ""
+instance_groups:
+  - name: log-api
+    instances: 2
+    azs:
+      - z1
+      - z2
+    jobs:
+      - name: loggregator_trafficcontroller
+        release: loggregator
+        properties:
+          quarks:
+            bpm:
+              processes:
+                - name: loggregator_trafficcontroller
+                  executable: /var/vcap/packages/loggregator_trafficcontroller/trafficcontroller
+                  env:
+                    AGENT_GRPC_ADDRESS: 127.0.0.1:3458
+                    AGENT_UDP_ADDRESS: 127.0.0.1:3457
+                    CC_CA_FILE: /var/vcap/jobs/loggregator_trafficcontroller/config/certs/mutual_tls_ca.crt
+                    CC_CERT_FILE: /var/vcap/jobs/loggregator_trafficcontroller/config/certs/cc_trafficcontroller.crt
+                    CC_KEY_FILE: /var/vcap/jobs/loggregator_trafficcontroller/config/certs/cc_trafficcontroller.key
+                    FOOBARWITHLINKINSTANCESADDRESS: doppler-0-doppler.default.svc.cluster.local
+                    FOOBARWITHLINKINSTANCESAZ: z1
+                    FOOBARWITHLINKINSTANCESINDEX: "0"
+                    FOOBARWITHLINKNESTEDVALUES: "7765"
+                    FOOBARWITHLINKVALUES: "10001"
+                    FOOBARWITHSPECADDRESS: log-api-3-loggregator_trafficcontroller.default.svc.cluster.local
+                    FOOBARWITHSPECDEPLOYMENT: cf
+                    FOOBARWITHSPECIP: ""
+                    ROUTER_CA_FILE: /var/vcap/jobs/loggregator_trafficcontroller/config/certs/loggregator_ca.crt
+                    ROUTER_CERT_FILE: /var/vcap/jobs/loggregator_trafficcontroller/config/certs/trafficcontroller.crt
+                    ROUTER_KEY_FILE: /var/vcap/jobs/loggregator_trafficcontroller/config/certs/trafficcontroller.key
+                    TRAFFIC_CONTROLLER_DISABLE_ACCESS_CONTROL: "false"
+                    TRAFFIC_CONTROLLER_HEALTH_ADDR: localhost:14825
+                    TRAFFIC_CONTROLLER_IP: ""
+                    TRAFFIC_CONTROLLER_METRIC_EMITTER_INTERVAL: 1m
+                    TRAFFIC_CONTROLLER_OUTGOING_DROPSONDE_PORT: "8081"
+                    TRAFFIC_CONTROLLER_PPROF_PORT: "0"
+                    TRAFFIC_CONTROLLER_SKIP_CERT_VERIFY: "true"
+                  limits:
+                    open_files: 65536
+            consumes:
+              doppler:
+                instances:
+                  - address: doppler-0-doppler.default.svc.cluster.local
+                    az: z1
+                    id: doppler-0-doppler
+                    index: 0
+                    instance: 0
+                    name: doppler-doppler
+                    bpm:
+                      processes:
+                        - name: doppler
+                          executable: /var/vcap/packages/doppler/doppler
+                          env:
+                            AGENT_GRPC_ADDRESS: foobar.com:3458
+                            ROUTER_CA_FILE: /var/vcap/jobs/doppler/config/certs/loggregator_ca.crt
+                            ROUTER_CERT_FILE: /var/vcap/jobs/doppler/config/certs/doppler.crt
+                            ROUTER_CIPHER_SUITES: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+                            ROUTER_CONTAINER_METRIC_TTL_SECONDS: "120"
+                            ROUTER_HEALTH_ADDR: localhost:14825
+                            ROUTER_KEY_FILE: /var/vcap/jobs/doppler/config/certs/doppler.key
+                            ROUTER_MAX_RETAINED_LOG_MESSAGES: "100"
+                            ROUTER_PORT: "7765"
+                            ROUTER_PPROF_PORT: "0"
+                            ROUTER_SINK_INACTIVITY_TIMEOUT_SECONDS: "3600"
+                          limits:
+                            open_files: 65536
+                    fingerprint: null
+                    bootstrap: true
+                    networks: {}
+                    ip: ""
+                  - address: doppler-1-doppler.default.svc.cluster.local
+                    az: z2
+                    id: doppler-1-doppler
+                    index: 1
+                    instance: 0
+                    name: doppler-doppler
+                    bpm:
+                      processes:
+                        - name: doppler
+                          executable: /var/vcap/packages/doppler/doppler
+                          env:
+                            AGENT_GRPC_ADDRESS: foobar.com:3458
+                            ROUTER_CA_FILE: /var/vcap/jobs/doppler/config/certs/loggregator_ca.crt
+                            ROUTER_CERT_FILE: /var/vcap/jobs/doppler/config/certs/doppler.crt
+                            ROUTER_CIPHER_SUITES: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+                            ROUTER_CONTAINER_METRIC_TTL_SECONDS: "120"
+                            ROUTER_HEALTH_ADDR: localhost:14825
+                            ROUTER_KEY_FILE: /var/vcap/jobs/doppler/config/certs/doppler.key
+                            ROUTER_MAX_RETAINED_LOG_MESSAGES: "100"
+                            ROUTER_PORT: "7765"
+                            ROUTER_PPROF_PORT: "0"
+                            ROUTER_SINK_INACTIVITY_TIMEOUT_SECONDS: "3600"
+                          limits:
+                            open_files: 65536
+                    fingerprint: null
+                    bootstrap: false
+                    networks: {}
+                    ip: ""
+                  - address: doppler-2-doppler.default.svc.cluster.local
+                    az: z1
+                    id: doppler-2-doppler
+                    index: 2
+                    instance: 1
+                    name: doppler-doppler
+                    bpm:
+                      processes:
+                        - name: doppler
+                          executable: /var/vcap/packages/doppler/doppler
+                          env:
+                            AGENT_GRPC_ADDRESS: foobar.com:3458
+                            ROUTER_CA_FILE: /var/vcap/jobs/doppler/config/certs/loggregator_ca.crt
+                            ROUTER_CERT_FILE: /var/vcap/jobs/doppler/config/certs/doppler.crt
+                            ROUTER_CIPHER_SUITES: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+                            ROUTER_CONTAINER_METRIC_TTL_SECONDS: "120"
+                            ROUTER_HEALTH_ADDR: localhost:14825
+                            ROUTER_KEY_FILE: /var/vcap/jobs/doppler/config/certs/doppler.key
+                            ROUTER_MAX_RETAINED_LOG_MESSAGES: "100"
+                            ROUTER_PORT: "7765"
+                            ROUTER_PPROF_PORT: "0"
+                            ROUTER_SINK_INACTIVITY_TIMEOUT_SECONDS: "3600"
+                          limits:
+                            open_files: 65536
+                    fingerprint: null
+                    bootstrap: false
+                    networks: {}
+                    ip: ""
+                  - address: doppler-3-doppler.default.svc.cluster.local
+                    az: z2
+                    id: doppler-3-doppler
+                    index: 3
+                    instance: 1
+                    name: doppler-doppler
+                    bpm:
+                      processes:
+                        - name: doppler
+                          executable: /var/vcap/packages/doppler/doppler
+                          env:
+                            AGENT_GRPC_ADDRESS: foobar.com:3458
+                            ROUTER_CA_FILE: /var/vcap/jobs/doppler/config/certs/loggregator_ca.crt
+                            ROUTER_CERT_FILE: /var/vcap/jobs/doppler/config/certs/doppler.crt
+                            ROUTER_CIPHER_SUITES: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+                            ROUTER_CONTAINER_METRIC_TTL_SECONDS: "120"
+                            ROUTER_HEALTH_ADDR: localhost:14825
+                            ROUTER_KEY_FILE: /var/vcap/jobs/doppler/config/certs/doppler.key
+                            ROUTER_MAX_RETAINED_LOG_MESSAGES: "100"
+                            ROUTER_PORT: "7765"
+                            ROUTER_PPROF_PORT: "0"
+                            ROUTER_SINK_INACTIVITY_TIMEOUT_SECONDS: "3600"
+                          limits:
+                            open_files: 65536
+                    fingerprint: null
+                    bootstrap: false
+                    networks: {}
+                    ip: ""
+                  - address: doppler-4-doppler.default.svc.cluster.local
+                    az: z1
+                    id: doppler-4-doppler
+                    index: 4
+                    instance: 2
+                    name: doppler-doppler
+                    bpm:
+                      processes:
+                        - name: doppler
+                          executable: /var/vcap/packages/doppler/doppler
+                          env:
+                            AGENT_GRPC_ADDRESS: foobar.com:3458
+                            ROUTER_CA_FILE: /var/vcap/jobs/doppler/config/certs/loggregator_ca.crt
+                            ROUTER_CERT_FILE: /var/vcap/jobs/doppler/config/certs/doppler.crt
+                            ROUTER_CIPHER_SUITES: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+                            ROUTER_CONTAINER_METRIC_TTL_SECONDS: "120"
+                            ROUTER_HEALTH_ADDR: localhost:14825
+                            ROUTER_KEY_FILE: /var/vcap/jobs/doppler/config/certs/doppler.key
+                            ROUTER_MAX_RETAINED_LOG_MESSAGES: "100"
+                            ROUTER_PORT: "7765"
+                            ROUTER_PPROF_PORT: "0"
+                            ROUTER_SINK_INACTIVITY_TIMEOUT_SECONDS: "3600"
+                          limits:
+                            open_files: 65536
+                    fingerprint: null
+                    bootstrap: false
+                    networks: {}
+                    ip: ""
+                  - address: doppler-5-doppler.default.svc.cluster.local
+                    az: z2
+                    id: doppler-5-doppler
+                    index: 5
+                    instance: 2
+                    name: doppler-doppler
+                    bpm:
+                      processes:
+                        - name: doppler
+                          executable: /var/vcap/packages/doppler/doppler
+                          env:
+                            AGENT_GRPC_ADDRESS: foobar.com:3458
+                            ROUTER_CA_FILE: /var/vcap/jobs/doppler/config/certs/loggregator_ca.crt
+                            ROUTER_CERT_FILE: /var/vcap/jobs/doppler/config/certs/doppler.crt
+                            ROUTER_CIPHER_SUITES: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+                            ROUTER_CONTAINER_METRIC_TTL_SECONDS: "120"
+                            ROUTER_HEALTH_ADDR: localhost:14825
+                            ROUTER_KEY_FILE: /var/vcap/jobs/doppler/config/certs/doppler.key
+                            ROUTER_MAX_RETAINED_LOG_MESSAGES: "100"
+                            ROUTER_PORT: "7765"
+                            ROUTER_PPROF_PORT: "0"
+                            ROUTER_SINK_INACTIVITY_TIMEOUT_SECONDS: "3600"
+                          limits:
+                            open_files: 65536
+                    fingerprint: null
+                    bootstrap: false
+                    networks: {}
+                    ip: ""
+                  - address: doppler-6-doppler.default.svc.cluster.local
+                    az: z1
+                    id: doppler-6-doppler
+                    index: 6
+                    instance: 3
+                    name: doppler-doppler
+                    bpm:
+                      processes:
+                        - name: doppler
+                          executable: /var/vcap/packages/doppler/doppler
+                          env:
+                            AGENT_GRPC_ADDRESS: foobar.com:3458
+                            ROUTER_CA_FILE: /var/vcap/jobs/doppler/config/certs/loggregator_ca.crt
+                            ROUTER_CERT_FILE: /var/vcap/jobs/doppler/config/certs/doppler.crt
+                            ROUTER_CIPHER_SUITES: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+                            ROUTER_CONTAINER_METRIC_TTL_SECONDS: "120"
+                            ROUTER_HEALTH_ADDR: localhost:14825
+                            ROUTER_KEY_FILE: /var/vcap/jobs/doppler/config/certs/doppler.key
+                            ROUTER_MAX_RETAINED_LOG_MESSAGES: "100"
+                            ROUTER_PORT: "7765"
+                            ROUTER_PPROF_PORT: "0"
+                            ROUTER_SINK_INACTIVITY_TIMEOUT_SECONDS: "3600"
+                          limits:
+                            open_files: 65536
+                    fingerprint: null
+                    bootstrap: false
+                    networks: {}
+                    ip: ""
+                  - address: doppler-7-doppler.default.svc.cluster.local
+                    az: z2
+                    id: doppler-7-doppler
+                    index: 7
+                    instance: 3
+                    name: doppler-doppler
+                    bpm: null
+                    fingerprint: null
+                    bootstrap: false
+                    networks: {}
+                    ip: ""
+                properties:
+                  doppler:
+                    grpc_port: 7765
+                    fooprop: 10001
+            instances: null
+            release: loggregator
+            envs:
+            - name: TRAFFIC_CONTROLLER_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+          cc:
+            internal_service_hostname: cloud-controller-ng.service.cf.internal
+            mutual_tls:
+              ca_cert: ((service_cf_internal_ca.certificate))
+            tls_port: 9023
+          doppler:
+            grpc_port: 6060
+          loggregator:
+            tls:
+              ca_cert: ((loggregator_ca.certificate))
+              cc_trafficcontroller:
+                cert: ((loggregator_tls_cc_tc.certificate))
+                key: ((loggregator_tls_cc_tc.private_key))
+              trafficcontroller:
+                cert: ((loggregator_tls_tc.certificate))
+                key: ((loggregator_tls_tc.private_key))
+            uaa:
+              client_secret: ((uaa_clients_doppler_secret))
+          ssl:
+            skip_cert_verify: true
+          system_domain: ((system_domain))
+          uaa:
+            ca_cert: ((uaa_ca.certificate))
+            internal_url: https://uaa.service.cf.internal:8443
