@@ -49,7 +49,7 @@ var _ = Describe("BDPL updates", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 		})
 
@@ -68,7 +68,7 @@ var _ = Describe("BDPL updates", func() {
 			})
 
 			It("should update the deployment", func() {
-				err := env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "1", 1)
+				err := env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", 1)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 			})
 		})
@@ -238,7 +238,7 @@ var _ = Describe("BDPL updates", func() {
 				_, _, err = env.UpdateConfigMap(env.Namespace, *cm)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "2", 2)
+				err = env.WaitForInstanceGroupVersions(env.Namespace, deploymentName, "nats", 2, "2")
 				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 				// Stop the watcher if it's still running
@@ -269,7 +269,7 @@ var _ = Describe("BDPL updates", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 		})
 
@@ -314,7 +314,7 @@ var _ = Describe("BDPL updates", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "quarks-gora", "1", 1)
+			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "quarks-gora", 1)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 		})
 
@@ -388,7 +388,7 @@ var _ = Describe("BDPL updates", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 		})
 
@@ -410,7 +410,7 @@ var _ = Describe("BDPL updates", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				By("checking for instance group pods")
-				err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "2", 2)
+				err = env.WaitForInstanceGroupVersions(env.Namespace, deploymentName, "nats", 2, "2")
 				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 				secret, err = env.GetSecret(env.Namespace, "var-nats-password")
@@ -480,7 +480,7 @@ var _ = Describe("BDPL updates", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 		})
 
@@ -525,7 +525,7 @@ var _ = Describe("BDPL updates", func() {
 			tearDowns = append(tearDowns, tearDown)
 
 			By("checking for instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 		})
 
@@ -543,7 +543,7 @@ var _ = Describe("BDPL updates", func() {
 
 			It("should update the deployment", func() {
 				By("checking for instance group pods")
-				err := env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", "2", 2)
+				err := env.WaitForInstanceGroup(env.Namespace, deploymentName, "nats", 2)
 				Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 			})
 		})
@@ -561,11 +561,11 @@ var _ = Describe("BDPL updates", func() {
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
 			By("checking for nats instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, manifestName, "nats", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, manifestName, "nats", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("checking for route_registrar instance group pods")
-			err = env.WaitForInstanceGroup(env.Namespace, manifestName, "route_registrar", "1", 2)
+			err = env.WaitForInstanceGroup(env.Namespace, manifestName, "route_registrar", 2)
 			Expect(err).NotTo(HaveOccurred(), "error waiting for instance group pods from deployment")
 
 			By("Updating the deployment")
