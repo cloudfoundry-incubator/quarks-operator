@@ -3,14 +3,17 @@ package cli_test
 import (
 	"encoding/json"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 
-	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+
 	"sigs.k8s.io/yaml"
+
+	"code.cloudfoundry.org/quarks-operator/pkg/bosh/manifest"
 )
 
 var _ = Describe("instance-group", func() {
@@ -28,6 +31,13 @@ var _ = Describe("instance-group", func() {
 	Context("when manifest exists", func() {
 		BeforeEach(func() {
 			manifestPath = assetPath + "/gatherManifest.yml"
+		})
+
+		AfterEach(func() {
+			for _, f := range []string{"bpm.json", "ig.json", "provides.json"} {
+				err := os.RemoveAll(filepath.Join(assetPath, f))
+				Expect(err).NotTo(HaveOccurred())
+			}
 		})
 
 		It("gathers data to stdout", func() {
