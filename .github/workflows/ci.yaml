@@ -89,7 +89,7 @@ jobs:
     runs-on: ubuntu-16.04
     strategy:
       matrix:
-        kubernetes_version: [v1.14.10,v1.16.4,v1.18.0]
+        kubernetes_version: [v1.14.10,v1.16.15,v1.18.8]
 
     steps:
     - name: Set up Go
@@ -116,7 +116,7 @@ jobs:
       uses: engineerd/setup-kind@v0.5.0
       with:
        config: .github/kind-config.yaml
-       version: v0.7.0
+       version: v0.9.0
        image: kindest/node:${{matrix.kubernetes_version}}
 
     - name: Run cluster tests
@@ -132,6 +132,12 @@ jobs:
         PROJECT: "quarks-operator"
         CF_OPERATOR_WEBHOOK_SERVICE_HOST: 172.17.0.1
     - uses: actions/upload-artifact@v2
+      if: failure()
+      with:
+        name: e2e env dump
+        path: "/tmp/env_dumps"
+        retention-days: 1
+    - uses: actions/upload-artifact@v2
       if: success()
       with:
         name: helm chart
@@ -142,7 +148,7 @@ jobs:
     runs-on: ubuntu-16.04
     strategy:
       matrix:
-        kubernetes_version: [v1.14.10,v1.16.4,v1.18.0]
+        kubernetes_version: [v1.14.10,v1.16.15,v1.18.8]
 
     steps:
     - name: Set up Go
@@ -169,7 +175,7 @@ jobs:
       uses: engineerd/setup-kind@v0.5.0
       with:
        config: .github/kind-config.yaml
-       version: v0.7.0
+       version: v0.9.0
        image: kindest/node:${{matrix.kubernetes_version}}
 
     - name: Run cluster tests
@@ -188,6 +194,7 @@ jobs:
       with:
         name: ginkgo debug logs
         path: "**/ginkgo-node-*.log"
+        retention-days: 2
 
   publish:
     needs: [integration-tests,e2e-tests]
