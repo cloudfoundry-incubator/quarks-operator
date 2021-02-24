@@ -21,8 +21,8 @@ code.cloudfoundry.org/quarks-statefulset v1.0.1311/go.mod h1:k7ot09prYqjXJrowF5j
 code.cloudfoundry.org/quarks-utils v0.0.2-0.20201027114038-8aab73d224e4/go.mod h1:K8KH67rdNk9+VPOA5QRgrujTFhbmtqxLOuPQ6APL6ks=
 code.cloudfoundry.org/quarks-utils v0.0.2-0.20210112105226-682bcba574a2 h1:fa+qziyLPYkeL0JkElqThtFoszqA6GC45dW9f5xUE9g=
 code.cloudfoundry.org/quarks-utils v0.0.2-0.20210112105226-682bcba574a2/go.mod h1:js5WFs4G2V0TR/8zJMhDTfMU7j/AjKUNKBvU/SnKiwo=
-code.cloudfoundry.org/quarks-utils v0.0.2-0.20210217074215-d6e582bf6d60 h1:B9G+fJlqSnva8DPW2lMcr4WQBqz2fZ9NUmrr/d1YbiQ=
-code.cloudfoundry.org/quarks-utils v0.0.2-0.20210217074215-d6e582bf6d60/go.mod h1:js5WFs4G2V0TR/8zJMhDTfMU7j/AjKUNKBvU/SnKiwo=
+code.cloudfoundry.org/quarks-utils v0.0.2-0.20210224153537-cd2bbd701b5f h1:N1vGFgvICkNGGcx0/g4TPDVmRHClQ0HQ2LrKYuzA/1Q=
+code.cloudfoundry.org/quarks-utils v0.0.2-0.20210224153537-cd2bbd701b5f/go.mod h1:js5WFs4G2V0TR/8zJMhDTfMU7j/AjKUNKBvU/SnKiwo=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/Azure/azure-sdk-for-go v16.2.1+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=

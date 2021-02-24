@@ -69,27 +69,24 @@ var _ = Describe("Quarks Upgrade test", func() {
 		}
 
 		checkServices := func(namespace string) {
-			err := kubectl.WaitForService(namespace, "quarks-gora")
-			Expect(err).ToNot(HaveOccurred())
-			err = kubectl.WaitForService(namespace, "quarks-gora-0")
-			Expect(err).ToNot(HaveOccurred())
-			err = kubectl.WaitForService(namespace, "quarks-gora-1")
-			Expect(err).ToNot(HaveOccurred())
-			err = kubectl.WaitForService(namespace, "quarks-gora-2")
-			Expect(err).ToNot(HaveOccurred())
+			services := []string{"quarks-gora", "quarks-gora-0", "quarks-gora-1", "quarks-gora-2"}
+			for _, svc := range services {
+				err := kubectl.WaitForService(namespace, svc)
+				Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to wait for service '%s' creation", svc))
+			}
 
-			works, err := kubectl.ServiceWorks(namespace, "quarks-gora")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(works).To(BeTrue())
-			works, err = kubectl.ServiceWorks(namespace, "quarks-gora-0")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(works).To(BeTrue())
-			works, err = kubectl.ServiceWorks(namespace, "quarks-gora-1")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(works).To(BeTrue())
-			works, err = kubectl.ServiceWorks(namespace, "quarks-gora-2")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(works).To(BeTrue())
+			Eventually(func() error {
+				for _, svc := range services {
+					works, err := kubectl.ServiceWorks(namespace, svc)
+					if err != nil {
+						return err
+					}
+					if !works {
+						return fmt.Errorf("ServiceWorks returned false for service '%s'", svc)
+					}
+				}
+				return nil
+			}).Should(BeNil(), "dns lookup on services")
 		}
 
 		// exerciseGora simulates a real-world deployment checking
