@@ -239,15 +239,19 @@ var _ = Describe("Examples Directory", func() {
 			By("DNS lookup")
 			err = kubectl.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("app=%s", boshdns.AppName))
 			Expect(err).ToNot(HaveOccurred())
+
 			placeholderNames := []string{
 				"nats-0.myplaceholderalias.service.cf.internal.",
 				"nats-0.myplaceholderalias.service.cf.internal",
 			}
-
-			for _, name := range placeholderNames {
-				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), service.Spec.ClusterIP)
-				Expect(err).ToNot(HaveOccurred())
-			}
+			Eventually(func() error {
+				for _, name := range placeholderNames {
+					if err := kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), service.Spec.ClusterIP); err != nil {
+						return err
+					}
+				}
+				return nil
+			}).Should(BeNil())
 
 			By("negativ DNS lookup")
 			unresolvableNames := []string{
@@ -271,14 +275,19 @@ var _ = Describe("Examples Directory", func() {
 			By("DNS lookup")
 			err = kubectl.WaitLabelFilter(namespace, "ready", "pod", fmt.Sprintf("app=%s", boshdns.AppName))
 			Expect(err).ToNot(HaveOccurred())
+
 			cnames := []string{
 				"nats.service.cf.internal.",
 				"nats.service.cf.internal",
 			}
-			for _, name := range cnames {
-				err = kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), podStatus.PodIP)
-				Expect(err).ToNot(HaveOccurred())
-			}
+			Eventually(func() error {
+				for _, name := range cnames {
+					if err := kubectl.RunCommandWithCheckString(namespace, podName, fmt.Sprintf("nslookup %s", name), podStatus.PodIP); err != nil {
+						return err
+					}
+				}
+				return nil
+			}).Should(BeNil())
 
 			By("negative DNS lookup")
 			unresolvableWildCardNames := []string{
