@@ -36,7 +36,7 @@ jobs:
         sudo gem install bosh-template
         go install github.com/onsi/ginkgo/ginkgo
         go get -u golang.org/x/lint/golint
-        curl -LO https://github.com/dominikh/go-tools/releases/download/2020.1.3/staticcheck_linux_amd64.tar.gz
+        curl -LO https://github.com/dominikh/go-tools/releases/download/2020.2.2/staticcheck_linux_amd64.tar.gz
         sudo tar xfz staticcheck_linux_amd64.tar.gz --strip-component 1 -C $GOPATH/bin staticcheck/staticcheck
     - name: Install shared tools
       run: |
