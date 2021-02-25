@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -208,7 +207,7 @@ variables: []
 		}
 
 		client = &fakes.FakeClient{}
-		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+		client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 			switch object := object.(type) {
 			case *corev1.Secret:
 				if nn.Name == manifestWithVars.Name {
@@ -221,7 +220,7 @@ variables: []
 
 			return nil
 		})
-		client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
+		client.ListCalls(func(context context.Context, object crc.ObjectList, _ ...crc.ListOption) error {
 			switch object := object.(type) {
 			case *corev1.SecretList:
 				secretList := corev1.SecretList{}
@@ -250,7 +249,7 @@ variables: []
 	Describe("Reconcile", func() {
 		Context("when manifest with ops is created", func() {
 			It("handles an error when getting the resource", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object.(type) {
 					case *corev1.Secret:
 						return errors.New("some error")
@@ -259,7 +258,7 @@ variables: []
 					return nil
 				})
 
-				result, err := reconciler.Reconcile(request)
+				result, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result.RequeueAfter).To(Equal(5 * time.Second))
 				Expect(logs.FilterMessageSnippet("Failed to get Instance Group BPM versioned secret 'default/foo.bpm.fakepod'").Len()).To(Equal(1))
@@ -267,7 +266,7 @@ variables: []
 
 			It("handles an error when applying BPM info", func() {
 				kubeConverter.ResourcesReturns(&bpmconverter.Resources{}, errors.New("fake-error"))
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *corev1.Secret:
 						if nn.Name == request.Name {
@@ -278,7 +277,7 @@ variables: []
 					return nil
 				})
 
-				_, err := reconciler.Reconcile(request)
+				_, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to apply BPM information"))
 			})
@@ -297,7 +296,7 @@ variables: []
 					},
 				}, nil)
 
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *corev1.Secret:
 						if nn.Name == manifestWithVars.Name {
@@ -317,24 +316,24 @@ variables: []
 					return nil
 				})
 
-				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
+				client.CreateCalls(func(context context.Context, object crc.Object, _ ...crc.CreateOption) error {
 					return errors.New("fake-error")
 				})
 
-				_, err := reconciler.Reconcile(request)
+				_, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to start: failed to apply Service for instance group 'fakepod'"))
 			})
 
 			It("creates instance groups and updates bpm configs created state to deploying state successfully", func() {
-				client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOption) error {
+				client.UpdateCalls(func(context context.Context, object crc.Object, _ ...crc.UpdateOption) error {
 					switch object.(type) {
 					}
 					return nil
 				})
 
 				By("From bpm configs created to variable interpolated state")
-				result, err := reconciler.Reconcile(request)
+				result, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{
 					Requeue: false,

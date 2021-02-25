@@ -160,7 +160,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 		instance.Status.LastReconcile = &bdplTime
 
 		client = &fakes.FakeClient{}
-		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+		client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 			switch object := object.(type) {
 			case *bdv1.BOSHDeployment:
 				instance.DeepCopyInto(object)
@@ -196,7 +196,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				statusWriter = fakes.FakeStatusWriter{}
 				client.StatusCalls(func() crc.StatusWriter { return &statusWriter })
 				statusCallQueue := helper.NewCallQueue(
-					func(context context.Context, object runtime.Object) error {
+					func(context context.Context, object crc.Object) error {
 						switch qJob := object.(type) {
 						case *qjv1a1.QuarksJob:
 							Expect(qJob.Status.LastReconcile).NotTo(BeNil())
@@ -208,7 +208,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("should go into meltdown", func() {
-				result, err := reconciler.Reconcile(request)
+				result, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result.RequeueAfter).To(Equal(cfd.ReconcileSkipDuration))
 				Expect(result.RequeueAfter).To(Equal(cfd.ReconcileSkipDuration))
@@ -217,7 +217,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			})
 
 			It("should stay in meltown when multiple reconciles happen", func() {
-				result, err := reconciler.Reconcile(request)
+				result, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result.RequeueAfter).To(Equal(cfd.ReconcileSkipDuration))
 				Expect(result.RequeueAfter).To(Equal(cfd.ReconcileSkipDuration))
@@ -226,7 +226,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				now := metav1.Now()
 				instance.Status.LastReconcile = &now
 
-				result, err = reconciler.Reconcile(request)
+				result, err = reconciler.Reconcile(context.Background(), request)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result.Requeue).To(BeFalse())
 				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
@@ -238,8 +238,8 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			It("returns an empty result when the resource was not found", func() {
 				client.GetReturns(apierrors.NewNotFound(schema.GroupResource{}, "not found is requeued"))
 
-				_, _ = reconciler.Reconcile(request)
-				result, err := reconciler.Reconcile(request)
+				_, _ = reconciler.Reconcile(context.Background(), request)
+				result, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(reconcile.Result{}).To(Equal(result))
 			})
@@ -247,7 +247,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			It("handles an error when the request failed", func() {
 				client.GetReturns(apierrors.NewBadRequest("bad request returns error"))
 
-				_, err := reconciler.Reconcile(request)
+				_, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("bad request returns error"))
 
@@ -258,7 +258,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			It("handles an error when resolving the BOSHDeployment", func() {
 				withops.ManifestReturns(nil, fmt.Errorf("resolver error"))
 
-				_, err := reconciler.Reconcile(request)
+				_, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("resolver error"))
 
@@ -272,7 +272,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				manifest = &bdm.Manifest{}
 				withops.ManifestReturns(manifest, errors.New("fake-error"))
 
-				_, err := reconciler.Reconcile(request)
+				_, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("error resolving the manifest 'default/foo': fake-error"))
 			})
@@ -284,13 +284,13 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					},
 				)
 
-				_, err := reconciler.Reconcile(request)
+				_, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to set ownerReference for QuarksJob 'default/ig-foo': some error"))
 			})
 
 			It("handles an error when creating manifest secret with ops", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
 						instance.DeepCopyInto(object)
@@ -304,14 +304,14 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 
 					return nil
 				})
-				client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOption) error {
+				client.UpdateCalls(func(context context.Context, object crc.Object, _ ...crc.UpdateOption) error {
 					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
 						object.DeepCopyInto(instance)
 					}
 					return nil
 				})
-				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
+				client.CreateCalls(func(context context.Context, object crc.Object, _ ...crc.CreateOption) error {
 					switch object.(type) {
 					case *corev1.Secret:
 						return errors.New("fake-error")
@@ -320,7 +320,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				})
 
 				By("From created state to ops applied state")
-				_, err := reconciler.Reconcile(request)
+				_, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to create with-ops manifest secret for BOSHDeployment 'default/foo': failed to apply Secret 'default/with-ops': fake-error"))
 			})
@@ -328,7 +328,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			It("handles an error generating the new variable secrets", func() {
 				kubeConverter.VariablesReturns(nil, errors.New("fake-error"))
 
-				_, err := reconciler.Reconcile(request)
+				_, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to generate quarks secrets from manifest"))
 			})
@@ -341,7 +341,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 						},
 					},
 				}, nil)
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
 						instance.DeepCopyInto(object)
@@ -350,7 +350,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					}
 					return nil
 				})
-				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
+				client.CreateCalls(func(context context.Context, object crc.Object, _ ...crc.CreateOption) error {
 					switch object.(type) {
 					case *qsv1a1.QuarksSecret:
 						return errors.New("fake-error")
@@ -358,7 +358,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					return nil
 				})
 
-				_, err := reconciler.Reconcile(request)
+				_, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to create quarks secrets for BOSH manifest 'default/foo'"))
 			})
@@ -366,13 +366,13 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 			It("handles an error when building instance group manifest qJob", func() {
 				jobFactory.InstanceGroupManifestJobReturns(dmQJob, errors.New("fake-error"))
 
-				_, err := reconciler.Reconcile(request)
+				_, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to build instance group manifest qJob"))
 			})
 
 			It("handles an error when creating instance group manifest qJob", func() {
-				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
+				client.CreateCalls(func(context context.Context, object crc.Object, _ ...crc.CreateOption) error {
 					switch object := object.(type) {
 					case *qjv1a1.QuarksJob:
 						qJob := object
@@ -383,7 +383,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 					return nil
 				})
 
-				_, err := reconciler.Reconcile(request)
+				_, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("failed to create instance group manifest qJob for BOSHDeployment 'default/foo': creating or updating QuarksJob 'default/ig-foo': fake-error"))
 			})
@@ -395,7 +395,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 						{ObjectMeta: metav1.ObjectMeta{Name: "other-variable", Namespace: "default"}},
 						{ObjectMeta: metav1.ObjectMeta{Name: "last-variable", Namespace: "default"}},
 					}, nil)
-					client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+					client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 						switch object := object.(type) {
 						case *bdv1.BOSHDeployment:
 							instance.DeepCopyInto(object)
@@ -409,7 +409,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				})
 
 				It("creates the variable secrets", func() {
-					result, err := reconciler.Reconcile(request)
+					result, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(result).To(Equal(reconcile.Result{}))
 					Expect(client.CreateCallCount()).To(Equal(4))
@@ -482,7 +482,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 						},
 					}
 
-					client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
+					client.ListCalls(func(context context.Context, object crc.ObjectList, _ ...crc.ListOption) error {
 						switch object := object.(type) {
 						case *corev1.SecretList:
 							secretList := corev1.SecretList{
@@ -496,7 +496,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				})
 
 				It("passes link secrets to QJobs", func() {
-					_, err := reconciler.Reconcile(request)
+					_, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					_, _, _, linksSecrets, _ := jobFactory.InstanceGroupManifestJobArgsForCall(0)
 					Expect(linksSecrets).To(Equal(converter.LinkInfos{
@@ -515,7 +515,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 				})
 
 				It("handles an error when listing secrets", func() {
-					client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
+					client.ListCalls(func(context context.Context, object crc.ObjectList, _ ...crc.ListOption) error {
 						switch object.(type) {
 						case *corev1.SecretList:
 							return errors.New("fake-error")
@@ -524,18 +524,18 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 						return nil
 					})
 
-					_, err := reconciler.Reconcile(request)
+					_, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err.Error()).To(ContainSubstring("listing secrets to fill missing links"))
 				})
 
 				It("handles an error on missing providers when the secret doesn't have the annotation", func() {
 					bazSecret.Annotations = nil
-					_, err := reconciler.Reconcile(request)
+					_, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err.Error()).To(ContainSubstring("missing link secrets for providers"))
 				})
 
 				It("handles an error on duplicated secrets of provider when duplicated secrets match the annotation", func() {
-					client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
+					client.ListCalls(func(context context.Context, object crc.ObjectList, _ ...crc.ListOption) error {
 						switch object := object.(type) {
 						case *corev1.SecretList:
 							secretList := corev1.SecretList{
@@ -547,7 +547,7 @@ var _ = Describe("ReconcileBoshDeployment", func() {
 						return nil
 					})
 
-					_, err := reconciler.Reconcile(request)
+					_, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err.Error()).To(ContainSubstring("duplicated secrets of provider"))
 				})
 			})

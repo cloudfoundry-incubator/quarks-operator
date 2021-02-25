@@ -9,7 +9,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"k8s.io/api/admission/v1beta1"
+	v1 "k8s.io/api/admission/v1"
 	admissionregistration "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -85,7 +85,7 @@ func (v *ValidationHandler) Handle(ctx context.Context, req admission.Request) a
 	err := v.decoder.Decode(req, secret)
 	if err != nil {
 		return admission.Response{
-			AdmissionResponse: v1beta1.AdmissionResponse{
+			AdmissionResponse: v1.AdmissionResponse{
 				Allowed: false,
 				Result: &metav1.Status{
 					Message: fmt.Sprintf("Failed to decode secret: %s", err.Error()),
@@ -108,7 +108,7 @@ func (v *ValidationHandler) Handle(ctx context.Context, req admission.Request) a
 		if dataChanged {
 			v.log.Infof("Denying update to versioned secret '%s/%s' data as it is immutable.", secret.Namespace, secret.Name)
 			return admission.Response{
-				AdmissionResponse: v1beta1.AdmissionResponse{
+				AdmissionResponse: v1.AdmissionResponse{
 					Allowed: false,
 					Result: &metav1.Status{
 						Message: fmt.Sprintf("Denying update to versioned secret '%s/%s' as it is immutable.", secret.Namespace, secret.Name),
@@ -119,7 +119,7 @@ func (v *ValidationHandler) Handle(ctx context.Context, req admission.Request) a
 	}
 
 	return admission.Response{
-		AdmissionResponse: v1beta1.AdmissionResponse{
+		AdmissionResponse: v1.AdmissionResponse{
 			Allowed: true,
 		},
 	}

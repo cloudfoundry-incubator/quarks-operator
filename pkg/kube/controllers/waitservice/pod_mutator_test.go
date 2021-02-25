@@ -9,12 +9,12 @@ import (
 	"go.uber.org/zap"
 	"gomodules.xyz/jsonpatch/v2"
 
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/json"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	fakeClient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -53,7 +53,7 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 	newAdmissionRequest := func(pod corev1.Pod) admission.Request {
 		raw, _ := json.Marshal(pod)
 		return admission.Request{
-			AdmissionRequest: admissionv1beta1.AdmissionRequest{
+			AdmissionRequest: admissionv1.AdmissionRequest{
 				Object: runtime.RawExtension{Raw: raw},
 			},
 		}
@@ -82,7 +82,9 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 		BeforeEach(func() {
 			pod = env.DefaultPod("test-pod")
 			request = newAdmissionRequest(pod)
-			client = fakeClient.NewFakeClient(&entanglementSecret)
+			client = fake.NewClientBuilder().
+				WithObjects(&entanglementSecret).
+				Build()
 		})
 
 		It("does not apply changes", func() {
@@ -105,7 +107,9 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 
 		Context("when wait-for label exists", func() {
 			BeforeEach(func() {
-				client = fakeClient.NewFakeClient(&entanglementSecret)
+				client = fake.NewClientBuilder().
+					WithObjects(&entanglementSecret).
+					Build()
 			})
 
 			It("initcontainer is appended", func() {
@@ -134,7 +138,9 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 
 		Context("when wait-for label exists", func() {
 			BeforeEach(func() {
-				client = fakeClient.NewFakeClient(&entanglementSecret)
+				client = fake.NewClientBuilder().
+					WithObjects(&entanglementSecret).
+					Build()
 			})
 
 			It("initcontainer is appended", func() {
@@ -159,7 +165,9 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 
 		Context("when wait-for label exists", func() {
 			BeforeEach(func() {
-				client = fakeClient.NewFakeClient(&entanglementSecret)
+				client = fake.NewClientBuilder().
+					WithObjects(&entanglementSecret).
+					Build()
 			})
 
 			It("initcontainer is not appended", func() {
@@ -192,7 +200,9 @@ var _ = Describe("Adds waiting initcontainer on pods with wait-for annotation", 
 			}
 			request = newAdmissionRequest(pod)
 
-			client = fakeClient.NewFakeClient(&entanglementSecret)
+			client = fake.NewClientBuilder().
+				WithObjects(&entanglementSecret).
+				Build()
 		})
 
 		It("does add the initcontainer at the beginning, and not replace it", func() {

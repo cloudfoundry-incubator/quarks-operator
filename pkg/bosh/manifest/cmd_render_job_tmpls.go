@@ -56,12 +56,14 @@ func RenderJobTemplates(
 	if err != nil {
 		return errors.Wrapf(err, "failed to load BOSH deployment manifest %s", boshManifestPath)
 	}
+	fmt.Println(resolvedYML)
 
 	currentInstanceGroup, ok := boshManifest.InstanceGroups.InstanceGroupByName(instanceGroupName)
 	if !ok {
 		return errors.Wrapf(err, "instance group %s not found in BOSH deployment manifest %s", instanceGroupName, boshManifestPath)
 	}
 	currentInstanceGroup.Instances = replicas
+	fmt.Println(currentInstanceGroup)
 
 	// Generate Job Instances Spec
 	for jobIdx, job := range currentInstanceGroup.Jobs {

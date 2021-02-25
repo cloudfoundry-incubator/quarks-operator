@@ -62,8 +62,8 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 	p := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			ctxlog.NewPredicateEvent(e.Object).Debug(
-				ctx, e.Meta, "bdv1.BOSHDeployment",
-				fmt.Sprintf("Create predicate passed for '%s/%s'", e.Meta.GetNamespace(), e.Meta.GetName()),
+				ctx, e.Object, "bdv1.BOSHDeployment",
+				fmt.Sprintf("Create predicate passed for '%s/%s'", e.Object.GetNamespace(), e.Object.GetName()),
 			)
 			return true
 		},
@@ -74,8 +74,8 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			n := e.ObjectNew.(*bdv1.BOSHDeployment)
 			if !reflect.DeepEqual(o.Spec, n.Spec) {
 				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
-					ctx, e.MetaNew, "bdv1.BOSHDeployment",
-					fmt.Sprintf("Update predicate passed for '%s/%s'", e.MetaNew.GetNamespace(), e.MetaNew.GetName()),
+					ctx, e.ObjectNew, "bdv1.BOSHDeployment",
+					fmt.Sprintf("Update predicate passed for '%s/%s'", e.ObjectNew.GetNamespace(), e.ObjectNew.GetName()),
 				)
 				return true
 			}
@@ -99,9 +99,9 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			return !reflect.DeepEqual(oldConfigMap.Data, newConfigMap.Data)
 		},
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
-			config := a.Object.(*corev1.ConfigMap)
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, handler.EnqueueRequestsFromMapFunc(
+		func(a client.Object) []reconcile.Request {
+			config := a.(*corev1.ConfigMap)
 
 			if skip.Reconciles(ctx, mgr.GetClient(), config) {
 				return []reconcile.Request{}
@@ -113,12 +113,11 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "BOSHDeployment", a.Meta.GetName(), bdv1.ConfigMapReference)
+				ctxlog.NewMappingEvent(a).Debug(ctx, reconciliation, "BOSHDeployment", a.GetName(), bdv1.ConfigMapReference)
 			}
 
 			return reconciles
-		}),
-	}, nsPred, p)
+		}), nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching configmaps failed in bosh deployment controller.")
 	}
@@ -144,9 +143,9 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			return !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
 		},
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
-			secret := a.Object.(*corev1.Secret)
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(
+		func(a client.Object) []reconcile.Request {
+			secret := a.(*corev1.Secret)
 
 			if skip.Reconciles(ctx, mgr.GetClient(), secret) {
 				return []reconcile.Request{}
@@ -158,12 +157,11 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "BOSHDeployment", a.Meta.GetName(), bdv1.SecretReference)
+				ctxlog.NewMappingEvent(a).Debug(ctx, reconciliation, "BOSHDeployment", a.GetName(), bdv1.SecretReference)
 			}
 
 			return reconciles
-		}),
-	}, nsPred, p)
+		}), nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching secrets failed in bosh deployment controller.")
 
@@ -185,12 +183,12 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			return isLinkProviderService(newService) || isLinkProviderService(oldService)
 		},
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
+	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, handler.EnqueueRequestsFromMapFunc(
+		func(a client.Object) []reconcile.Request {
 			// Get one request from one service at most
 			reconciles := make([]reconcile.Request, 1)
 
-			svc := a.Object.(*corev1.Service)
+			svc := a.(*corev1.Service)
 			if name, ok := svc.GetLabels()[bdv1.LabelDeploymentName]; ok {
 				reconciles[0] = reconcile.Request{
 					NamespacedName: types.NamespacedName{
@@ -198,12 +196,11 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 						Name:      name,
 					},
 				}
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciles[0], "BOSHDeployment", a.Meta.GetName(), "ServiceOfLinkProvider")
+				ctxlog.NewMappingEvent(a).Debug(ctx, reconciles[0], "BOSHDeployment", a.GetName(), "ServiceOfLinkProvider")
 			}
 
 			return reconciles
-		}),
-	}, nsPred, p)
+		}), nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "watching services failed in bosh deployment controller.")
 
@@ -232,12 +229,12 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 			return isLinkProviderService(svc)
 		},
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.Endpoints{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
+	err = c.Watch(&source.Kind{Type: &corev1.Endpoints{}}, handler.EnqueueRequestsFromMapFunc(
+		func(a client.Object) []reconcile.Request {
 			// One endpoint is used by one service, which can only be used in link
 			reconciles := []reconcile.Request{}
 
-			ep := a.Object.(*corev1.Endpoints)
+			ep := a.(*corev1.Endpoints)
 			svc, err := getEndpointsService(ctx, mgr.GetClient(), *ep)
 			if err != nil {
 				return reconciles
@@ -250,12 +247,12 @@ func AddDeployment(ctx context.Context, config *config.Config, mgr manager.Manag
 						Name:      name,
 					},
 				})
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciles[0], "BOSHDeployment", a.Meta.GetName(), "EndpointOfLinkProvider")
+				ctxlog.NewMappingEvent(a).Debug(ctx, reconciles[0], "BOSHDeployment", a.GetName(), "EndpointOfLinkProvider")
 			}
 
 			return reconciles
 		}),
-	}, nsPred, p)
+		nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "watching services failed in bosh deployment controller.")
 

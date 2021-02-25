@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -56,17 +57,17 @@ func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager)
 
 			if !reflect.DeepEqual(oldSecret.Data, newSecret.Data) {
 				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
-					ctx, e.MetaNew, "corev1.Secret",
-					fmt.Sprintf("Update predicate passed for '%s/%s'", e.MetaNew.GetNamespace(), e.MetaNew.GetName()),
+					ctx, e.ObjectNew, "corev1.Secret",
+					fmt.Sprintf("Update predicate passed for '%s/%s'", e.ObjectNew.GetNamespace(), e.ObjectNew.GetName()),
 				)
 				return true
 			}
 			return false
 		},
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
-			secret := a.Object.(*corev1.Secret)
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(
+		func(a client.Object) []reconcile.Request {
+			secret := a.(*corev1.Secret)
 
 			if skip.Reconciles(ctx, mgr.GetClient(), secret) {
 				return []reconcile.Request{}
@@ -78,12 +79,11 @@ func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager)
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "RestartController", a.Meta.GetName(), "secret")
+				ctxlog.NewMappingEvent(a).Debug(ctx, reconciliation, "RestartController", a.GetName(), "secret")
 			}
 
 			return reconciles
-		}),
-	}, nsPred, p)
+		}), nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching secrets failed in Restart controller failed.")
 	}
@@ -100,17 +100,17 @@ func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager)
 
 			if !reflect.DeepEqual(oldConfigMap.Data, newConfigMap.Data) {
 				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
-					ctx, e.MetaNew, "corev1.ConfigMap",
-					fmt.Sprintf("Update predicate passed for '%s/%s'", e.MetaNew.GetNamespace(), e.MetaNew.GetName()),
+					ctx, e.ObjectNew, "corev1.ConfigMap",
+					fmt.Sprintf("Update predicate passed for '%s/%s'", e.ObjectNew.GetNamespace(), e.ObjectNew.GetName()),
 				)
 				return true
 			}
 			return false
 		},
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
-			configmap := a.Object.(*corev1.ConfigMap)
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, handler.EnqueueRequestsFromMapFunc(
+		func(a client.Object) []reconcile.Request {
+			configmap := a.(*corev1.ConfigMap)
 
 			if skip.Reconciles(ctx, mgr.GetClient(), configmap) {
 				return []reconcile.Request{}
@@ -122,12 +122,11 @@ func AddRestart(ctx context.Context, config *config.Config, mgr manager.Manager)
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "RestartController", a.Meta.GetName(), "configmap")
+				ctxlog.NewMappingEvent(a).Debug(ctx, reconciliation, "RestartController", a.GetName(), "configmap")
 			}
 
 			return reconciles
-		}),
-	}, nsPred, p)
+		}), nsPred, p)
 	if err != nil {
 		return errors.Wrapf(err, "Watching configmaps failed in Restart controller failed.")
 	}

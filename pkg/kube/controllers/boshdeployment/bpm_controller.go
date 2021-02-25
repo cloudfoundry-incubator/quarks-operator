@@ -60,9 +60,9 @@ func AddBPM(ctx context.Context, config *config.Config, mgr manager.Manager) err
 				}
 
 				ctxlog.NewPredicateEvent(o).Debug(
-					ctx, e.Meta, names.Secret,
+					ctx, e.Object, names.Secret,
 					fmt.Sprintf("Create predicate passed for '%s/%s', existing secret with label %s, value %s",
-						e.Meta.GetNamespace(), e.Meta.GetName(), bdv1.LabelDeploymentSecretType, o.GetLabels()[bdv1.LabelDeploymentSecretType]),
+						e.Object.GetNamespace(), e.Object.GetName(), bdv1.LabelDeploymentSecretType, o.GetLabels()[bdv1.LabelDeploymentSecretType]),
 				)
 			}
 

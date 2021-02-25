@@ -10,9 +10,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
@@ -55,7 +55,7 @@ var _ = Describe("Mutate", func() {
 
 		Context("when the boshDeployment is not found", func() {
 			It("creates the BoshDeployment", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
 
@@ -67,7 +67,7 @@ var _ = Describe("Mutate", func() {
 
 		Context("when the boshDeployment is found", func() {
 			It("updates the BoshDeployment when spec is changed", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
 						existing := &bdv1.BOSHDeployment{
@@ -95,7 +95,7 @@ var _ = Describe("Mutate", func() {
 			})
 
 			It("does not update the BoshDeployment when nothing is changed", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *bdv1.BOSHDeployment:
 						boshDeployment.DeepCopyInto(object)
@@ -135,7 +135,7 @@ var _ = Describe("Mutate", func() {
 
 		Context("when the quarksStatefulSet is not found", func() {
 			It("creates the quarksStatefulSet", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
 
@@ -147,7 +147,7 @@ var _ = Describe("Mutate", func() {
 
 		Context("when the quarksStatefulSet is found", func() {
 			It("updates the quarksStatefulSet when spec is changed", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *qstsv1a1.QuarksStatefulSet:
 						existing := &qstsv1a1.QuarksStatefulSet{
@@ -176,7 +176,7 @@ var _ = Describe("Mutate", func() {
 			})
 
 			It("does not update the quarksStatefulSet when nothing is changed", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object.(type) {
 					case *qstsv1a1.QuarksStatefulSet:
 						return nil
@@ -213,7 +213,7 @@ var _ = Describe("Mutate", func() {
 
 		Context("when the quarksJob is not found", func() {
 			It("creates the quarksJob", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
 
@@ -225,7 +225,7 @@ var _ = Describe("Mutate", func() {
 
 		Context("when the quarksJob is found", func() {
 			It("updates the quarksJob when spec is changed", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *qjv1a1.QuarksJob:
 						existing := &qjv1a1.QuarksJob{
@@ -248,7 +248,7 @@ var _ = Describe("Mutate", func() {
 			})
 
 			It("does not update the quarksJob when nothing is changed", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object.(type) {
 					case *qjv1a1.QuarksJob:
 						return nil
@@ -262,7 +262,7 @@ var _ = Describe("Mutate", func() {
 			})
 
 			It("does not update trigger strategy", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *qjv1a1.QuarksJob:
 						existing := &qjv1a1.QuarksJob{
@@ -319,7 +319,7 @@ var _ = Describe("Mutate", func() {
 
 		Context("when the service is not found", func() {
 			It("creates the service", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 				})
 
@@ -331,7 +331,7 @@ var _ = Describe("Mutate", func() {
 
 		Context("when the service is found", func() {
 			It("updates the service when spec is changed", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *corev1.Service:
 						existing := &corev1.Service{
@@ -365,7 +365,7 @@ var _ = Describe("Mutate", func() {
 			})
 
 			It("does not update cluster IP", func() {
-				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 					switch object := object.(type) {
 					case *corev1.Service:
 						existing := &corev1.Service{

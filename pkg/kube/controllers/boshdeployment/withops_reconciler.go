@@ -60,7 +60,7 @@ type ReconcileWithOps struct {
 
 // Reconcile reconciles an withOps secret and generates the corresponding
 // desired manifest secret.
-func (r *ReconcileWithOps) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileWithOps) Reconcile(_ context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(r.ctx, r.config.CtxTimeOut)
 	defer cancel()

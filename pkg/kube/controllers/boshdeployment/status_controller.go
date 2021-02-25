@@ -48,10 +48,10 @@ func AddBDPLStatusReconcilers(ctx context.Context, config *config.Config, mgr ma
 
 	p := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			return bdv1.HasDeploymentName(e.MetaNew.GetLabels()) || bdv1.HasDeploymentName(e.MetaOld.GetLabels())
+			return bdv1.HasDeploymentName(e.ObjectNew.GetLabels()) || bdv1.HasDeploymentName(e.ObjectOld.GetLabels())
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
-			return bdv1.HasDeploymentName(e.Meta.GetLabels())
+			return bdv1.HasDeploymentName(e.Object.GetLabels())
 		},
 		GenericFunc: func(e event.GenericEvent) bool {
 			return false
